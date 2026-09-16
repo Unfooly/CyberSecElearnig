@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  TRIAL
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum Role {
+  SUPER_ADMIN
+  ORG_ADMIN
+  DEPARTMENT_MANAGER
+  EMPLOYEE
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  name       String
+  plan       Plan     @default(TRIAL)
+  seatsLimit Int      @default(10)
+  createdAt  DateTime @default(now())
+
+  users       User[]
+  departments Department[]
+
+  @@map("organizations")
+}
+
+model Department {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name String @db.VarChar(255)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        User[]
+
+  @@index([organizationId])
+  @@map("departments")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(EMPLOYEE)
+  departmentId   String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([departmentId])
+  @@map("users")
+}

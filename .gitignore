@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# env
+.env
+.env.test
+.env.*.local
+
+# build output
+dist/
+build/
+.next/
+out/
+
+# prisma
+apps/api/prisma/migrations/**/migration.sql.bak
+
+# logs
+npm-debug.log*
+*.log
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# os
+.DS_Store
+Thumbs.db
+
+# test coverage
+coverage/

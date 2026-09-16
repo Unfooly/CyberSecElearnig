@@ -14,6 +14,7 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   const orgAEmail = `rls-a-${uniqueSuffix}@e2e-test.local`;
   const orgBEmail = `rls-b-${uniqueSuffix}@e2e-test.local`;
   let orgAId: string;
+  let courseId: string;
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -48,9 +49,27 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
 
     const orgAUser = await tenantPrisma.runAuthLookup({ email: orgAEmail });
     orgAId = orgAUser!.organizationId;
+
+    const course = await prisma.course.create({
+      data: {
+        title: `RLS Test Course ${uniqueSuffix}`,
+        category: 'GENERAL_AWARENESS',
+        durationMinutes: 5,
+        contentBlocks: [{ type: 'VIDEO', url: 'https://example.test/video.mp4' }],
+      },
+    });
+    courseId = course.id;
+
+    await tenantPrisma.runInOrgContext(orgAId, (tx) =>
+      tx.courseAssignment.create({
+        data: { organizationId: orgAId, userId: orgAUser!.id, courseId },
+      }),
+    );
   });
 
   afterAll(async () => {
+    await prisma.courseAssignment.deleteMany({ where: { courseId } });
+    await prisma.course.deleteMany({ where: { id: courseId } });
     await prisma.user.deleteMany({ where: { email: { endsWith: '@e2e-test.local' } } });
     await prisma.organization.deleteMany({ where: { name: { startsWith: 'RLS Org ' } } });
     await app.close();
@@ -75,5 +94,18 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
     const emails = usersInOrgAContext.map((user) => user.email);
     expect(emails).toContain(orgAEmail);
     expect(emails).not.toContain(orgBEmail);
+  });
+
+  it('course_assignments: nie zwraca żadnych wierszy bez ustawionego kontekstu organizacji', async () => {
+    const assignments = await prisma.courseAssignment.findMany({ where: { courseId } });
+    expect(assignments).toEqual([]);
+  });
+
+  it('course_assignments: zwraca wiersz tylko w kontekście właściwej organizacji', async () => {
+    const inOrgAContext = await tenantPrisma.runInOrgContext(orgAId, (tx) =>
+      tx.courseAssignment.findMany({ where: { courseId } }),
+    );
+    expect(inOrgAContext).toHaveLength(1);
+    expect(inOrgAContext[0].organizationId).toBe(orgAId);
   });
 });

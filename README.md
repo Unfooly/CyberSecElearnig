@@ -183,3 +183,22 @@ osobnych zadaniach:
   lokalnym dev to akceptowalne, ale warto przenieść je do zmiennej env analogicznie do
   `APP_DB_PASSWORD`, zanim ten sam `docker-compose.yml` posłuży kiedyś za wzorzec dla
   konfiguracji bliższej produkcji — inaczej unieważni to sens rozdziału ról opisanego wyżej.
+
+## Backlog modułu kursów e-learningowych
+
+Z code review modułu kursów (`apps/api/src/courses`). Wyciek klucza odpowiedzi w `/start` i
+możliwość ukończenia kursu z pominięciem ocenianych bloków są już naprawione. Pozostałe punkty:
+
+- **`ON DELETE CASCADE` z `courses` do `course_assignments`**
+  (`apps/api/prisma/migrations/*_add_courses_and_assignments/migration.sql`) — usunięcie
+  wiersza kursu bezpowrotnie kasuje `score`/`completedAt` wszystkich organizacji, które go
+  ukończyły. Dziś nie ma endpointu usuwającego kursy, więc nie jest to pilne, ale na platformie
+  sprzedawanej pod kątem audytów zgodności warto rozważyć `RESTRICT` + archiwizację kursów
+  zamiast hard delete, zanim taki endpoint powstanie.
+- **Nieznany `block.type` w `contentBlocks` jest cicho traktowany jak blok nieoceniany**
+  (`CoursesService.evaluateBlock`) — niska waga, bo treść kursów jest dziś zarządzana wyłącznie
+  administracyjnie (brak endpointu tworzenia kursów), ale warto to zauważyć, zanim ktoś zacznie
+  importować treść z zewnętrznego źródła.
+- **Brak endpointów administracyjnych** do tworzenia `Course` i przypisywania `CourseAssignment`
+  — świadomie poza zakresem tego zadania (testy seedują dane bezpośrednio przez Prisma); osobne
+  zadanie, gdy będzie potrzebny panel `ORG_ADMIN`/`SUPER_ADMIN` do zarządzania treścią.

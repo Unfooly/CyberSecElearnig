@@ -21,6 +21,29 @@ enum Role {
   EMPLOYEE
 }
 
+enum CourseCategory {
+  PHISHING_SOCIAL_ENGINEERING
+  EMAIL_SECURITY
+  IT_HYGIENE
+  INCIDENT_RESPONSE
+  MALWARE
+  GENERAL_AWARENESS
+}
+
+enum ContentBlockType {
+  VIDEO
+  QUIZ
+  BRANCHING_SCENARIO
+  DRAG_AND_DROP
+}
+
+enum AssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
 model Organization {
   id         String   @id @default(cuid())
   name       String
@@ -28,8 +51,9 @@ model Organization {
   seatsLimit Int      @default(10)
   createdAt  DateTime @default(now())
 
-  users       User[]
-  departments Department[]
+  users             User[]
+  departments       Department[]
+  courseAssignments CourseAssignment[]
 
   @@map("organizations")
 }
@@ -56,10 +80,58 @@ model User {
   departmentId   String?
   createdAt      DateTime @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department        Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  courseAssignments CourseAssignment[]
 
   @@index([organizationId])
   @@index([departmentId])
   @@map("users")
+}
+
+model Course {
+  id              String         @id @default(cuid())
+  title           String
+  category        CourseCategory
+  durationMinutes Int
+  mandatory       Boolean        @default(false)
+  // Uporządkowana lista bloków treści (VIDEO/QUIZ/BRANCHING_SCENARIO/
+  // DRAG_AND_DROP) - patrz docs/content-backlog-elearning.md. Dla QUIZ i
+  // BRANCHING_SCENARIO każda opcja niesie poprawność (`correct: boolean`
+  // albo, zgodnie z przykładem w docs, `outcome: "correct" | "wrong"`) -
+  // backend porównuje z tym wybór usera, nigdy nie ufa ocenie z klienta.
+  contentBlocks   Json
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  assignments CourseAssignment[]
+
+  @@map("courses")
+}
+
+model CourseAssignment {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  courseId       String
+  status         AssignmentStatus @default(NOT_STARTED)
+  // Indeks pierwszego nieukończonego bloku - gdzie wznowić kurs.
+  currentBlockIndex Int           @default(0)
+  // Wynik per blok: { [blockIndex]: { type, answer?, correct?, answeredAt } }.
+  // Wypełniane wyłącznie po stronie serwera (CoursesService), nigdy z ciała
+  // żądania klienta.
+  progress       Json?
+  score          Int?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("course_assignments")
 }

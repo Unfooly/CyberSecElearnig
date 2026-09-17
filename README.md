@@ -258,3 +258,39 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
   prosty atak formularzowy kończy się na 400. Warto pamiętać przy dodawaniu kolejnych stanowych
   endpointów frontendu (np. logout) — rozważyć wtedy CSRF token albo `sameSite: 'strict'` tam,
   gdzie to możliwe.
+
+## Moduł e-mail (`apps/api/src/email/`)
+
+Fundament pod przyszłe flow (reset hasła, powiadomienia) — `EmailService.send({ to, subject,
+templateName, templateData })`, generyczna wysyłka przez **Postmark Templates API**. Treść HTML
+maila żyje jako szablon w panelu Postmark (adresowany przez `templateName`/alias), nie w
+kodzie — zmiana treści nie wymaga deploya backendu. To zadanie samo w sobie niczego jeszcze nie
+wysyła (brak resetu hasła/powiadomień) — to czysto reużywalny mechanizm do wstrzyknięcia przez
+kolejne moduły.
+
+- **Brak `POSTMARK_API_TOKEN`** (pusty string też się liczy — patrz `.env.test`) → `send()` loguje
+  treść maila do konsoli (`[EMAIL DEV MODE]`) zamiast wysyłać. Dzięki temu praca nad resztą
+  aplikacji nie wymaga konta Postmark.
+- **Błąd z Postmark API nigdy nie przerywa flow, który wywołał `send()`** (np. rejestracji) —
+  złapany, zalogowany, świadomie nie rzucany dalej. Jeśli kiedyś powstanie flow, dla którego
+  e-mail jest krytyczny, to ten przyszły flow powinien to obsłużyć jawnie (np. sprawdzić wynik
+  wysyłki), nie `EmailService` samo w sobie.
+- **Token nigdy nie trafia do logów** — nawet przy błędzie z Postmark logowany jest tylko
+  `error.message` (nigdy cały obiekt błędu), dodatkowo aktywnie skanowany i redagowany, gdyby
+  jednak zawierał token. Pokryte testem (`email.service.spec.ts`).
+- **Dwie role Postgresa** (`cyberszkolo` vs `cyberszkolo_app`) nie mają tu odpowiednika — Postmark
+  nie jest bazą danych, nie dotyczy go Zasada nr 1/RLS.
+
+### Backlog
+- **`templateData` jest logowane w całości w trybie DEV MODE** (`EmailService.send`, brak
+  tokenu) — dziś nieszkodliwe (nic jeszcze nie wywołuje `send()`), ale przyszłe flow (reset
+  hasła, kody OTP) będą przekazywać w `templateData` sekrety, które w środowisku bez
+  `POSTMARK_API_TOKEN` trafią jawnie do logów konsoli. Zanim taki flow powstanie, warto dodać
+  maskowanie pól typu `*token*`/`*password*`/`*code*` przed logowaniem w trybie dev.
+- Brak szablonów w panelu Postmark, resetu hasła, powiadomień — kolejne zadania.
+
+**Zweryfikowane end-to-end** z prawdziwym `POSTMARK_API_TOKEN`: autentykacja przechodzi,
+żądanie dociera do Postmarka, błędy wracają ustrukturyzowane i nigdy nie zawierają tokenu,
+`send()` faktycznie nie rzuca. Konto Postmark jest dziś w stanie "pending approval" (limit
+wysyłki tylko na domenę `From`) i nie ma jeszcze żadnego szablonu — oba do uzupełnienia po
+stronie Postmarka, zanim realna wysyłka (nie tylko sama integracja) zadziała.

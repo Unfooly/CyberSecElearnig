@@ -1,0 +1,247 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { AssignmentStatus } from '@prisma/client';
+import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { DashboardOverviewDto } from './dto/dashboard-overview.dto';
+import { DepartmentCompletionDto } from './dto/department-completion.dto';
+import { OrganizationOverviewDto } from './dto/organization-overview.dto';
+
+const NO_DEPARTMENT_LABEL = 'Brak działu';
+
+function percentage(completed: number, total: number): number | null {
+  return total > 0 ? Math.round((completed / total) * 100) : null;
+}
+
+export function escapeCsvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+export function toCsv(rows: string[][]): string {
+  return rows.map((row) => row.map(escapeCsvField).join(',')).join('\r\n') + '\r\n';
+}
+
+function latestDate(dates: Date[]): Date | null {
+  return dates.reduce<Date | null>(
+    (latest, date) => (!latest || date > latest ? date : latest),
+    null,
+  );
+}
+
+@Injectable()
+export class DashboardService {
+  constructor(private readonly tenantPrisma: TenantPrismaService) {}
+
+  /**
+   * organizationId pochodzi WYŁĄCZNIE z tokena JWT wywołującego (zob.
+   * DashboardController) — endpointy świadomie nie przyjmują go od klienta.
+   */
+  async getOverview(organizationId: string): Promise<DashboardOverviewDto> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const [totalUsers, mandatoryTotal, mandatoryCompleted, overdueCount, activeUserRows] =
+        await Promise.all([
+          tx.user.count({ where: { organizationId } }),
+          tx.courseAssignment.count({ where: { organizationId, course: { mandatory: true } } }),
+          tx.courseAssignment.count({
+            where: {
+              organizationId,
+              course: { mandatory: true },
+              status: AssignmentStatus.COMPLETED,
+            },
+          }),
+          tx.courseAssignment.count({
+            where: { organizationId, status: AssignmentStatus.OVERDUE },
+          }),
+          tx.courseAssignment.findMany({
+            where: {
+              organizationId,
+              status: { in: [AssignmentStatus.IN_PROGRESS, AssignmentStatus.COMPLETED] },
+            },
+            select: { userId: true },
+            distinct: ['userId'],
+          }),
+        ]);
+
+      return {
+        completionRate: percentage(mandatoryCompleted, mandatoryTotal),
+        activeUsers: { count: activeUserRows.length, total: totalUsers },
+        overdueCount,
+        phishingClickRate: null,
+        phishingReportRate: null,
+      };
+    });
+  }
+
+  async getDepartmentBreakdown(organizationId: string): Promise<DepartmentCompletionDto[]> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const [departments, assignments] = await Promise.all([
+        tx.department.findMany({ where: { organizationId }, select: { id: true, name: true } }),
+        tx.courseAssignment.findMany({
+          where: { organizationId, course: { mandatory: true } },
+          select: { status: true, user: { select: { departmentId: true } } },
+        }),
+      ]);
+
+      const buckets = new Map<string | null, { total: number; completed: number }>();
+      for (const department of departments) {
+        buckets.set(department.id, { total: 0, completed: 0 });
+      }
+
+      for (const assignment of assignments) {
+        const key = assignment.user.departmentId;
+        const bucket = buckets.get(key) ?? { total: 0, completed: 0 };
+        bucket.total += 1;
+        if (assignment.status === AssignmentStatus.COMPLETED) {
+          bucket.completed += 1;
+        }
+        buckets.set(key, bucket);
+      }
+
+      const nameById = new Map(departments.map((department) => [department.id, department.name]));
+
+      const result: DepartmentCompletionDto[] = Array.from(buckets.entries()).map(
+        ([departmentId, bucket]) => ({
+          departmentId,
+          departmentName: departmentId === null ? NO_DEPARTMENT_LABEL : nameById.get(departmentId)!,
+          completionRate: percentage(bucket.completed, bucket.total),
+          mandatoryTotal: bucket.total,
+          mandatoryCompleted: bucket.completed,
+        }),
+      );
+
+      // Rosnąco wg completionRate - najniższy (najwyższe ryzyko) pierwszy.
+      // Brak danych (null) traktowany jako "nieznane ryzyko", nie
+      // "najwyższe" ani "najniższe" - zawsze na końcu.
+      result.sort((a, b) => {
+        if (a.completionRate === null) return b.completionRate === null ? 0 : 1;
+        if (b.completionRate === null) return -1;
+        return a.completionRate - b.completionRate;
+      });
+
+      return result;
+    });
+  }
+
+  async exportCsv(organizationId: string, format: 'csv' = 'csv'): Promise<string> {
+    // ExportQueryDto/ValidationPipe już odrzuca (400) każdy format poza
+    // "csv" na wejściu do kontrolera - to dodatkowa, jawna asercja na
+    // poziomie serwisu, żeby nie polegać wyłącznie na warstwie HTTP.
+    if (format !== 'csv') {
+      throw new BadRequestException('Nieobsługiwany format eksportu');
+    }
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const users = await tx.user.findMany({
+        where: { organizationId },
+        select: {
+          email: true,
+          department: { select: { name: true } },
+          courseAssignments: {
+            select: {
+              status: true,
+              completedAt: true,
+              course: { select: { mandatory: true } },
+            },
+          },
+        },
+        orderBy: { email: 'asc' },
+      });
+
+      const header = ['Email', 'Dział', 'Ukończone/Wszystkie obowiązkowe', 'Ostatnie ukończenie kursu'];
+      const rows = users.map((user) => {
+        // "Ukończone/Wszystkie obowiązkowe" celowo liczy się TYLKO z kursów
+        // obowiązkowych (compliance) - ale "Ostatnie ukończenie kursu" to
+        // sygnał ogólnej aktywności usera, więc bierze pod uwagę WSZYSTKIE
+        // przypisania (też opcjonalne). To ta sama definicja, co w
+        // getOrganizationsOverview - patrz komentarz tam.
+        const mandatoryAssignments = user.courseAssignments.filter((a) => a.course.mandatory);
+        const mandatoryCompleted = mandatoryAssignments.filter(
+          (a) => a.status === AssignmentStatus.COMPLETED,
+        ).length;
+
+        const completionDates = user.courseAssignments
+          .map((a) => a.completedAt)
+          .filter((date): date is Date => date !== null);
+        const lastCourseCompletionAt = latestDate(completionDates)?.toISOString() ?? '';
+
+        return [
+          user.email,
+          user.department?.name ?? NO_DEPARTMENT_LABEL,
+          `${mandatoryCompleted}/${mandatoryAssignments.length}`,
+          lastCourseCompletionAt,
+        ];
+      });
+
+      return toCsv([header, ...rows]);
+    });
+  }
+
+  /**
+   * Jedyna metoda w projekcie czytająca dane wielu organizacji naraz -
+   * WYŁĄCZNIE dla GET /dashboard/admin/organizations (SUPER_ADMIN).
+   * Kontroler musi sprawdzić rolę PRZED wywołaniem (RolesGuard) - ta
+   * metoda sama w sobie nie jest kontrolą dostępu.
+   */
+  async getOrganizationsOverview(): Promise<OrganizationOverviewDto[]> {
+    const { organizations, users, assignments } = await this.tenantPrisma.runCrossOrgQuery(async (tx) => {
+      const [organizations, users, assignments] = await Promise.all([
+        tx.organization.findMany({
+          select: { id: true, name: true, plan: true, seatsLimit: true },
+          orderBy: { name: 'asc' },
+        }),
+        tx.user.findMany({ select: { organizationId: true } }),
+        // Nieprzefiltrowane po course.mandatory - completionRate poniżej
+        // świadomie liczy się tylko z obowiązkowych (compliance), ale
+        // lastCourseCompletionAt to sygnał ogólnej aktywności organizacji,
+        // więc musi widzieć też ukończenia kursów opcjonalnych - tak samo
+        // jak analogiczna kolumna w exportCsv.
+        tx.courseAssignment.findMany({
+          select: {
+            organizationId: true,
+            status: true,
+            completedAt: true,
+            course: { select: { mandatory: true } },
+          },
+        }),
+      ]);
+      return { organizations, users, assignments };
+    });
+
+    const userCountByOrg = new Map<string, number>();
+    for (const user of users) {
+      userCountByOrg.set(user.organizationId, (userCountByOrg.get(user.organizationId) ?? 0) + 1);
+    }
+
+    const statsByOrg = new Map<
+      string,
+      { mandatoryTotal: number; mandatoryCompleted: number; completionDates: Date[] }
+    >();
+    for (const assignment of assignments) {
+      const stats = statsByOrg.get(assignment.organizationId) ?? {
+        mandatoryTotal: 0,
+        mandatoryCompleted: 0,
+        completionDates: [],
+      };
+      if (assignment.course.mandatory) {
+        stats.mandatoryTotal += 1;
+        if (assignment.status === AssignmentStatus.COMPLETED) {
+          stats.mandatoryCompleted += 1;
+        }
+      }
+      if (assignment.completedAt) {
+        stats.completionDates.push(assignment.completedAt);
+      }
+      statsByOrg.set(assignment.organizationId, stats);
+    }
+
+    return organizations.map((organization) => {
+      const stats = statsByOrg.get(organization.id);
+      return {
+        id: organization.id,
+        name: organization.name,
+        plan: organization.plan,
+        seatsLimit: organization.seatsLimit,
+        userCount: userCountByOrg.get(organization.id) ?? 0,
+        completionRate: stats ? percentage(stats.mandatoryCompleted, stats.mandatoryTotal) : null,
+        lastCourseCompletionAt: stats ? latestDate(stats.completionDates) : null,
+      };
+    });
+  }
+}

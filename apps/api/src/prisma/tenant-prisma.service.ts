@@ -41,4 +41,24 @@ export class TenantPrismaService {
       return tx.user.findUnique({ where });
     });
   }
+
+  /**
+   * DRUGI wyjątek od Zasady nr 1 — używać WYŁĄCZNIE w DashboardService dla
+   * GET /dashboard/admin/organizations (SUPER_ADMIN, panel operacyjny).
+   * To jedyny endpoint w projekcie, który świadomie czyta dane wielu
+   * organizacji naraz — kontroler musi sprawdzić rolę SUPER_ADMIN przez
+   * RolesGuard PRZED wywołaniem tej metody, nie polegać na niej samej jako
+   * na kontroli dostępu.
+   *
+   * Ten sam sentinel app.bypass_tenant_rls co runAuthLookup, ale na
+   * course_assignments obejmuje tylko klauzulę USING (odczyt) — WITH CHECK
+   * (zapis) nadal wymaga zgodności organizationId, więc tej metody nie da
+   * się użyć do zapisu danych w cudzej organizacji nawet przez pomyłkę.
+   */
+  async runCrossOrgQuery<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_tenant_rls', 'on', true)`;
+      return fn(tx);
+    });
+  }
 }

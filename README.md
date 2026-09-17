@@ -202,3 +202,36 @@ możliwość ukończenia kursu z pominięciem ocenianych bloków są już napraw
 - **Brak endpointów administracyjnych** do tworzenia `Course` i przypisywania `CourseAssignment`
   — świadomie poza zakresem tego zadania (testy seedują dane bezpośrednio przez Prisma); osobne
   zadanie, gdy będzie potrzebny panel `ORG_ADMIN`/`SUPER_ADMIN` do zarządzania treścią.
+
+## Backlog modułu dashboard/raporty
+
+- **`overdueCount` w `GET /dashboard/overview` będzie dziś praktycznie zawsze 0.** Zapytanie
+  (`DashboardService.getOverview`) poprawnie liczy `CourseAssignment` ze `status: OVERDUE`, ale
+  nic w kodzie jeszcze nie ustawia tego statusu — brak joba (BullMQ + Redis, już w stosie
+  projektu) przełączającego przypisania po `dueDate` z `NOT_STARTED`/`IN_PROGRESS` na `OVERDUE`.
+  Metryka zadziała poprawnie, gdy taki job powstanie; do tego czasu liczba 0 nie znaczy "brak
+  zaległości", tylko "nic jeszcze nie oznaczyło ich jako zaległe".
+- **Brak ochrony przed CSV/formula injection w `GET /dashboard/export`.** Pola zaczynające się od
+  `=`, `+`, `-` lub `@` mogą zostać zinterpretowane jako formuła przy otwarciu w Excelu/Sheets.
+  Jedyne wolnotekstowe pole w eksporcie to `department.name`, tworzone przez ORG_ADMIN we
+  własnej organizacji — ryzyko dotyczy więc co najwyżej tej samej organizacji, nie wycieku
+  między tenantami. Niska waga, ale warto rozważyć prefiksowanie takich pól apostrofem/spacją
+  w `DashboardService.exportCsv` przed wystawieniem eksportu szerszemu gronu odbiorców.
+
+### Świadoma asymetria zakresu: "ukończone kursy" vs "ostatnia aktywność"
+
+W `GET /dashboard/export` (kolumna CSV) i `GET /dashboard/admin/organizations` (pole
+`lastCourseCompletionAt`) te same dwie metryki liczą się z różnego zakresu przypisań, celowo:
+
+- Licznik ukończonych kursów (`mandatoryCompleted`/`mandatoryTotal`, kolumna CSV "Ukończone/
+  Wszystkie obowiązkowe") — WYŁĄCZNIE kursy z `course.mandatory = true`, bo to metryka
+  zgodności (compliance), nie ogólnej aktywności.
+- `lastCourseCompletionAt` — WSZYSTKIE przypisania, także opcjonalne, bo to sygnał "czy user w
+  ogóle coś robi w platformie", nie tylko czy spełnia obowiązek. Ukończenie kursu opcjonalnego
+  aktualizuje tę datę tak samo jak obowiązkowego.
+
+Ta asymetria jest identyczna w obu endpointach (`DashboardService.exportCsv` i
+`.getOrganizationsOverview`) i pokryta testem w `dashboard.e2e-spec.ts`, który celowo nadaje
+kursowi opcjonalnemu późniejszą datę ukończenia niż obowiązkowemu — regresja polegająca na
+zawężeniu `lastCourseCompletionAt` tylko do kursów obowiązkowych (raz już się zdarzyła w code
+review) zostanie złapana przez ten test.

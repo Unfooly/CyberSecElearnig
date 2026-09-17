@@ -14,7 +14,10 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   const orgAEmail = `rls-a-${uniqueSuffix}@e2e-test.local`;
   const orgBEmail = `rls-b-${uniqueSuffix}@e2e-test.local`;
   let orgAId: string;
+  let orgBId: string;
+  let orgAUserId: string;
   let courseId: string;
+  let writeCheckCourseId: string;
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -48,7 +51,10 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
       .expect(201);
 
     const orgAUser = await tenantPrisma.runAuthLookup({ email: orgAEmail });
+    const orgBUser = await tenantPrisma.runAuthLookup({ email: orgBEmail });
     orgAId = orgAUser!.organizationId;
+    orgBId = orgBUser!.organizationId;
+    orgAUserId = orgAUser!.id;
 
     const course = await prisma.course.create({
       data: {
@@ -60,16 +66,34 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
     });
     courseId = course.id;
 
+    // Osobny kurs dla testu WITH CHECK poniżej - orgAUserId nie ma tu
+    // jeszcze przypisania, więc jedyny powód odrzucenia insertu to
+    // niezgodność organizationId, nie unique constraint ani FK.
+    const writeCheckCourse = await prisma.course.create({
+      data: {
+        title: `RLS Write Check Course ${uniqueSuffix}`,
+        category: 'GENERAL_AWARENESS',
+        durationMinutes: 5,
+        contentBlocks: [{ type: 'VIDEO', url: 'https://example.test/write-check.mp4' }],
+      },
+    });
+    writeCheckCourseId = writeCheckCourse.id;
+
     await tenantPrisma.runInOrgContext(orgAId, (tx) =>
       tx.courseAssignment.create({
         data: { organizationId: orgAId, userId: orgAUser!.id, courseId },
       }),
     );
+    await tenantPrisma.runInOrgContext(orgBId, (tx) =>
+      tx.courseAssignment.create({
+        data: { organizationId: orgBId, userId: orgBUser!.id, courseId },
+      }),
+    );
   });
 
   afterAll(async () => {
-    await prisma.courseAssignment.deleteMany({ where: { courseId } });
-    await prisma.course.deleteMany({ where: { id: courseId } });
+    await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, writeCheckCourseId] } } });
+    await prisma.course.deleteMany({ where: { id: { in: [courseId, writeCheckCourseId] } } });
     await prisma.user.deleteMany({ where: { email: { endsWith: '@e2e-test.local' } } });
     await prisma.organization.deleteMany({ where: { name: { startsWith: 'RLS Org ' } } });
     await app.close();
@@ -107,5 +131,32 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
     );
     expect(inOrgAContext).toHaveLength(1);
     expect(inOrgAContext[0].organizationId).toBe(orgAId);
+  });
+
+  it('course_assignments: runCrossOrgQuery bez sentinela nadal jest fail-closed (nowy wyjątek nie zepsuł domyślnego zachowania)', async () => {
+    const assignments = await prisma.courseAssignment.findMany({ where: { courseId } });
+    expect(assignments).toEqual([]);
+  });
+
+  it('course_assignments: runCrossOrgQuery z sentinelem widzi wiersze wielu organizacji naraz (SUPER_ADMIN dashboard)', async () => {
+    const rows = await tenantPrisma.runCrossOrgQuery((tx) =>
+      tx.courseAssignment.findMany({ where: { courseId } }),
+    );
+    const organizationIds = rows.map((row) => row.organizationId).sort();
+    expect(organizationIds).toEqual([orgAId, orgBId].sort());
+  });
+
+  it('course_assignments: bypass sentinel NIE pozwala zapisać wiersza w cudzej organizacji (WITH CHECK bez zmian)', async () => {
+    // orgAUserId i writeCheckCourseId są realne (FK przechodzi, brak
+    // konfliktu unique) - jedyny powód odrzucenia to WITH CHECK, bo
+    // runCrossOrgQuery nigdy nie ustawia app.current_org_id, więc żadna
+    // wartość organizationId nie przejdzie porównania w WITH CHECK.
+    await expect(
+      tenantPrisma.runCrossOrgQuery((tx) =>
+        tx.courseAssignment.create({
+          data: { organizationId: orgBId, userId: orgAUserId, courseId: writeCheckCourseId },
+        }),
+      ),
+    ).rejects.toThrow();
   });
 });

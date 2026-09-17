@@ -51,9 +51,10 @@ model Organization {
   seatsLimit Int      @default(10)
   createdAt  DateTime @default(now())
 
-  users             User[]
-  departments       Department[]
-  courseAssignments CourseAssignment[]
+  users               User[]
+  departments         Department[]
+  courseAssignments   CourseAssignment[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("organizations")
 }
@@ -80,13 +81,39 @@ model User {
   departmentId   String?
   createdAt      DateTime @default(now())
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department        Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  courseAssignments CourseAssignment[]
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  courseAssignments   CourseAssignment[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([organizationId])
   @@index([departmentId])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  // Hash SHA-256 surowego tokenu (nigdy nie zapisujemy tokenu w czystej
+  // postaci) - w przeciwieństwie do haseł token ma z góry 256 bitów
+  // entropii, więc nie potrzebuje wolnego hashu jak bcrypt; szybki hash z
+  // dokładnym dopasowaniem po indeksie wystarcza i jest jedynym sposobem na
+  // odnalezienie rekordu przez `findUnique` (bcrypt z losową solą tego nie
+  // umożliwia).
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  // null = nieużyty. Ustawiane raz, przy pierwszym udanym resecie - drugie
+  // użycie tego samego tokenu musi się nie udać (patrz auth.service.ts).
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model Course {

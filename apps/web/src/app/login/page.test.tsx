@@ -4,15 +4,18 @@ import LoginPage from './page';
 
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
+let searchParams = new URLSearchParams();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
+  useSearchParams: () => searchParams,
 }));
 
 describe('LoginPage', () => {
   beforeEach(() => {
     pushMock.mockClear();
     refreshMock.mockClear();
+    searchParams = new URLSearchParams();
   });
 
   it('blokuje wysyłkę przy pustych polach i nie woła API', async () => {
@@ -91,5 +94,27 @@ describe('LoginPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/nie udało się połączyć/i);
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('pokazuje baner sukcesu resetu hasła, gdy w URL jest ?reset=success', () => {
+    searchParams = new URLSearchParams({ reset: 'success' });
+    render(<LoginPage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Hasło zostało zmienione. Zaloguj się nowym hasłem.');
+  });
+
+  it('nie pokazuje banera sukcesu bez parametru ?reset=success', () => {
+    render(<LoginPage />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('ma link do /forgot-password', () => {
+    render(<LoginPage />);
+    expect(screen.getByRole('link', { name: /zapomniałeś hasła/i })).toHaveAttribute('href', '/forgot-password');
+  });
+
+  it('ma link do /register', () => {
+    render(<LoginPage />);
+    expect(screen.getByRole('link', { name: /załóż organizację/i })).toHaveAttribute('href', '/register');
   });
 });

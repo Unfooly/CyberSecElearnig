@@ -165,6 +165,22 @@ osobnych zadaniach:
 
 - **Brak rewokacji refresh tokenów / brak `/auth/logout`.** Wyciekły refresh token jest ważny
   przez pełne 7 dni i nic go nie unieważni — potrzebna tabela sesji/`jti` i endpoint wylogowania.
+  Dotyczy to też `/auth/reset-password` (`apps/api/src/auth/auth.service.ts`): zmiana hasła NIE
+  unieważnia wcześniej wydanych access/refresh tokenów — jeśli powód resetu to podejrzenie
+  przejęcia konta, napastnik z przechwyconym refresh tokenem zachowuje dostęp do 7 dni mimo
+  zmiany hasła. Świadomie nie budowane teraz razem z resetem hasła (osobne zadanie, patrz punkt
+  wyżej) — jako częściowe złagodzenie `/auth/reset-password` nie wydaje nowych tokenów, więc user
+  musi zalogować się od nowa po resecie.
+- **`EmailService` w trybie dev-fallback (brak `POSTMARK_API_TOKEN`) loguje pełną treść
+  `templateData` w czystej postaci** (`apps/api/src/email/email.service.ts`), w tym surowy,
+  jednorazowy token resetu hasła z linku wysyłanego przez `AuthService.forgotPassword` — to
+  świadomy kompromis na rzecz wygody lokalnego dev (można kliknąć link z konsoli bez
+  skonfigurowanego Postmarka), ale w środowisku ze scentralizowanym logowaniem (staging/prod
+  z przypadkowo pustym/błędnym tokenem) oznacza to wyciek sekretu równoważnego jednorazowemu
+  hasłu do logów czytanych przez więcej osób/narzędzi niż skrzynka mailowa użytkownika.
+  Znalezione w security review tej sesji — do zrobienia: albo redagować wartości wyglądające na
+  tokeny/URL z parametrami przed logiem, albo odmówić startu bez skonfigurowanego providera
+  e-mail poza `NODE_ENV=development`.
 - **Globalna unikalność e-maila między organizacjami** (`User.email` ma `@unique`, nie
   `@@unique([organizationId, email])`) — potwierdzić, czy to świadoma decyzja produktowa (ta
   sama osoba nie może dziś mieć kont w dwóch różnych organizacjach-klientach pod tym samym

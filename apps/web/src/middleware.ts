@@ -15,8 +15,13 @@ import { clearAuthCookies, setAuthCookies, type TokenPair } from '@/lib/auth-coo
 // `config.matcher` poniżej - to osobna, statyczna lista. Dodanie tu nowego
 // wpisu bez odpowiadającego mu wzorca w matcherze oznacza, że ochrona po
 // cichu nie zadziała dla tej ścieżki.
+const ALL_ROLES = Object.values(Role);
+
 const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: '/dashboard', roles: [Role.ORG_ADMIN] },
+  // /courses jest dostępne dla każdej zalogowanej roli, w przeciwieństwie
+  // do /dashboard (tylko ORG_ADMIN).
+  { prefix: '/courses', roles: ALL_ROLES },
 ];
 
 function redirectToLogin(request: NextRequest): NextResponse {
@@ -88,5 +93,5 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/courses/:path*'],
 };

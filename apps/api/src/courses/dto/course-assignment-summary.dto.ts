@@ -11,4 +11,7 @@ export class CourseAssignmentSummaryDto {
   score!: number | null;
   dueDate!: Date | null;
   completedAt!: Date | null;
+  // Do wyliczenia paska postępu na liście kursów bez wołania /start.
+  currentBlockIndex!: number;
+  totalBlocks!: number;
 }

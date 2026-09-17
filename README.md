@@ -241,11 +241,11 @@ review) zostanie złapana przez ten test.
 Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
 
 - **Rozjazd typów DTO między frontendem a `apps/api`.** `apps/web/src/app/dashboard/page.tsx`
-  (`OverviewData`) i `apps/web/src/app/dashboard/_components/DepartmentsTable.tsx`
-  (`DepartmentRow`) ręcznie odwzorowują pole-po-polu `DashboardOverviewDto` i
-  `DepartmentCompletionDto` z `apps/api/src/dashboard/dto/`. Dla MVP akceptowalne —
-  `packages/shared` eksportuje dziś wyłącznie `Role` — ale przy kolejnym module (kursy,
-  kampanie phishingowe) ręczne duplikowanie kształtu łatwo doprowadzi do rozjazdu pól przy
+  (`OverviewData`), `apps/web/src/app/dashboard/_components/DepartmentsTable.tsx`
+  (`DepartmentRow`) i teraz też `apps/web/src/lib/courses-types.ts` ręcznie odwzorowują
+  pole-po-polu DTO z `apps/api/src/dashboard/dto/` i `apps/api/src/courses/dto/`. Dla MVP
+  akceptowalne — `packages/shared` eksportuje dziś wyłącznie `Role` — ale przy kolejnym module
+  (kampanie phishingowe) ręczne duplikowanie kształtu łatwo doprowadzi do rozjazdu pól przy
   zmianie backendu bez aktualizacji frontu. Warto zaplanować przeniesienie współdzielonych DTO
   do `packages/shared`, zanim liczba duplikowanych interfejsów urośnie.
 - **Brak endpointu wylogowania** (`/api/auth/logout`) — `clearAuthCookies` istnieje
@@ -258,6 +258,29 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
   prosty atak formularzowy kończy się na 400. Warto pamiętać przy dodawaniu kolejnych stanowych
   endpointów frontendu (np. logout) — rozważyć wtedy CSRF token albo `sameSite: 'strict'` tam,
   gdzie to możliwe.
+
+## Backlog modułu kursów (`/courses`, `/courses/[courseId]`)
+
+- **Brak wyjaśnienia tekstowego w feedbacku po odpowiedzi.**
+  `CourseProgressResponseDto.lastResult` (`apps/api/src/courses/dto/course-progress-response.dto.ts`)
+  zwraca tylko `{blockIndex, type, correct}` — żadnego pola z uzasadnieniem odpowiedzi. Do tego
+  `contentBlocks` z `/start` ma już usunięte `correct`/`outcome`/ewentualny `feedback` z opcji
+  (celowo, żeby nie ujawniać klucza odpowiedzi przed odpowiedzią — patrz wcześniejszy security
+  review modułu kursów). Efekt: `FeedbackPanel` (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`)
+  pokazuje wyłącznie generyczne "Poprawna odpowiedź!"/"Niepoprawna odpowiedź.", bez wyjaśnienia
+  *dlaczego*. Żeby to zmienić, `CoursesService.submitBlockProgress` musiałby dodatkowo zwracać
+  tekst wyjaśnienia dla wybranej/poprawnej opcji — nowe pole DTO, świadomie poza zakresem tego
+  zadania.
+- **`DragAndDropBlock` to uproszczona wersja (dwa przyciski klasyfikujące), nie prawdziwe
+  przeciąganie.** Uzasadnienie: `CoursesService.evaluateBlock` w ogóle nie ocenia bloków
+  `DRAG_AND_DROP` (nie ma go w `SCOREABLE_BLOCK_TYPES`, tak jak `VIDEO`) — prawdziwe drag&drop
+  dawałoby złudzenie oceniania, którego backend i tak nie weryfikuje. Jeśli kiedyś ten typ bloku
+  ma być realnie oceniany, potrzebna jest zarówno prawdziwa interakcja przeciągania, jak i
+  rozszerzenie `evaluateBlock` o logikę oceny — dwie osobne zmiany (frontend + backend).
+- **Tracking obejrzenia wideo jest czysto kosmetyczny.** `VideoBlock` blokuje "Dalej" do zdarzenia
+  `onEnded`/`onError`, ale nic po stronie backendu tego nie weryfikuje (`VIDEO` też nie jest w
+  `SCOREABLE_BLOCK_TYPES`) — user może przewinąć na koniec. Świadomy kompromis: to jest UX, nie
+  kontrola dostępu do treści.
 
 ## Moduł e-mail (`apps/api/src/email/`)
 

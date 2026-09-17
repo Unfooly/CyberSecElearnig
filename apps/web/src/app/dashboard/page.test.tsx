@@ -15,6 +15,9 @@ vi.mock('next/navigation', () => ({
     // asercjonować "przekierowało i nic więcej się nie wykonało".
     throw new Error(`REDIRECT:${url}`);
   }),
+  // DashboardPage renderuje <Sidebar>, który woła usePathname() - potrzebny
+  // minimalny mock, żeby render się nie wywalił.
+  usePathname: () => '/dashboard',
 }));
 
 function mockCookieValue(value: string | undefined) {

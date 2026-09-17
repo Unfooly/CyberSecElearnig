@@ -60,6 +60,47 @@ describe('middleware', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
+  describe('/courses - dostępne dla każdej zalogowanej roli', () => {
+    it.each(['SUPER_ADMIN', 'ORG_ADMIN', 'DEPARTMENT_MANAGER', 'EMPLOYEE'])(
+      'przepuszcza rolę %s',
+      async (role) => {
+        const token = fakeJwt({
+          sub: 'user-1',
+          organizationId: 'org-1',
+          role,
+          email: 'user@example.test',
+          exp: Math.floor(Date.now() / 1000) + 900,
+        });
+        const response = await middleware(
+          buildRequest('/courses', `access_token=${token}; refresh_token=some-refresh-token`),
+        );
+
+        expect(response.headers.get('location')).toBeNull();
+      },
+    );
+
+    it('przepuszcza podstronę odtwarzacza /courses/:courseId dla EMPLOYEE', async () => {
+      const token = fakeJwt({
+        sub: 'user-1',
+        organizationId: 'org-1',
+        role: 'EMPLOYEE',
+        email: 'employee@example.test',
+        exp: Math.floor(Date.now() / 1000) + 900,
+      });
+      const response = await middleware(
+        buildRequest('/courses/course-123', `access_token=${token}; refresh_token=some-refresh-token`),
+      );
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it('przekierowuje niezalogowanego (brak cookies) do /login', async () => {
+      const response = await middleware(buildRequest('/courses'));
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+  });
+
   describe('proaktywny refresh wygasłego access tokenu', () => {
     const expiredToken = fakeJwt({
       sub: 'user-1',

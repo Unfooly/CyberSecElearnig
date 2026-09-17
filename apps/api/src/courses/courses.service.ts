@@ -74,6 +74,7 @@ export class CoursesService {
               category: true,
               durationMinutes: true,
               mandatory: true,
+              contentBlocks: true,
             },
           },
         },
@@ -92,6 +93,8 @@ export class CoursesService {
       score: assignment.score,
       dueDate: assignment.dueDate,
       completedAt: assignment.completedAt,
+      currentBlockIndex: assignment.currentBlockIndex,
+      totalBlocks: this.countBlocks(assignment.course.contentBlocks),
     }));
   }
 
@@ -218,6 +221,16 @@ export class CoursesService {
     }
     const correctCount = scored.filter((entry) => entry.correct).length;
     return Math.round((correctCount / scored.length) * 100);
+  }
+
+  /**
+   * Wersja parseContentBlocks, która nie rzuca — używana przy listowaniu
+   * WIELU kursów naraz (listMyCourses), gdzie jeden kurs z uszkodzoną
+   * treścią nie powinien wywalać całej listy pozostałych. 0 jest bezpiecznym
+   * fallbackiem (frontend i tak nie pokaże paska postępu dla totalBlocks=0).
+   */
+  private countBlocks(contentBlocks: Prisma.JsonValue): number {
+    return Array.isArray(contentBlocks) ? contentBlocks.length : 0;
   }
 
   private parseContentBlocks(course: Course): ContentBlock[] {

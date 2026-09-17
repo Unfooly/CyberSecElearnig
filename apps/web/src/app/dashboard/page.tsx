@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
-import Sidebar from './_components/Sidebar';
+import Sidebar from '@/components/Sidebar';
 import KpiCard from './_components/KpiCard';
 import DepartmentsTable, { type DepartmentRow } from './_components/DepartmentsTable';
 

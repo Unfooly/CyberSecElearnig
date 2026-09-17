@@ -235,3 +235,26 @@ Ta asymetria jest identyczna w obu endpointach (`DashboardService.exportCsv` i
 kursowi opcjonalnemu późniejszą datę ukończenia niż obowiązkowemu — regresja polegająca na
 zawężeniu `lastCourseCompletionAt` tylko do kursów obowiązkowych (raz już się zdarzyła w code
 review) zostanie złapana przez ten test.
+
+## Backlog frontendu (`apps/web`)
+
+Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
+
+- **Rozjazd typów DTO między frontendem a `apps/api`.** `apps/web/src/app/dashboard/page.tsx`
+  (`OverviewData`) i `apps/web/src/app/dashboard/_components/DepartmentsTable.tsx`
+  (`DepartmentRow`) ręcznie odwzorowują pole-po-polu `DashboardOverviewDto` i
+  `DepartmentCompletionDto` z `apps/api/src/dashboard/dto/`. Dla MVP akceptowalne —
+  `packages/shared` eksportuje dziś wyłącznie `Role` — ale przy kolejnym module (kursy,
+  kampanie phishingowe) ręczne duplikowanie kształtu łatwo doprowadzi do rozjazdu pól przy
+  zmianie backendu bez aktualizacji frontu. Warto zaplanować przeniesienie współdzielonych DTO
+  do `packages/shared`, zanim liczba duplikowanych interfejsów urośnie.
+- **Brak endpointu wylogowania** (`/api/auth/logout`) — `clearAuthCookies` istnieje
+  (`apps/web/src/lib/auth-cookies.ts`) i jest używane wewnętrznie przez `middleware.ts` przy
+  redirectach, ale nie jest wystawione jako endpoint. Bez niego httpOnly refresh token żyje
+  pełne 7 dni niezależnie od intencji użytkownika. Świadomie poza zakresem zadania "login +
+  dashboard".
+- **Login CSRF, niskie ryzyko.** `/api/auth/login` (jedyny stanowy endpoint frontendu) wymaga
+  `Content-Type: application/json`, czego zwykły cross-site `<form>` nie potrafi wysłać, więc
+  prosty atak formularzowy kończy się na 400. Warto pamiętać przy dodawaniu kolejnych stanowych
+  endpointów frontendu (np. logout) — rozważyć wtedy CSRF token albo `sameSite: 'strict'` tam,
+  gdzie to możliwe.

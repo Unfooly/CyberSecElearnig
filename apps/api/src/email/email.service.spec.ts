@@ -137,3 +137,25 @@ describe('renderTemplate', () => {
     expect(rendered?.text).toContain('admin@firma.pl');
   });
 });
+
+describe('renderTemplate - branding', () => {
+  it('używa logo PNG z publicznego adresu aplikacji i kolorów marki', () => {
+    const rendered = renderTemplate(
+      'password-reset',
+      { resetUrl: 'https://app.unfooly.test/reset-password?token=abc' },
+      { assetBaseUrl: 'https://app.unfooly.test/' },
+    );
+
+    expect(rendered?.html).toContain('src="https://app.unfooly.test/brand/png/unfooly-wordmark-1600.png"');
+    expect(rendered?.html).not.toContain('.svg');
+    expect(rendered?.html).toContain('#6C5CE7');
+    expect(rendered?.html).not.toContain('#059669');
+  });
+
+  it('bez adresu aplikacji pokazuje tekstowy wordmark zamiast niedziałającego obrazka', () => {
+    const rendered = renderTemplate('email-verification', { verificationUrl: 'http://localhost:3000/verify-email?token=x' });
+
+    expect(rendered?.html).not.toContain('<img');
+    expect(rendered?.html).toContain('unfooly');
+  });
+});

@@ -100,6 +100,15 @@ phishingowych, sprzedawana firmom (B2B). Pełny kontekst projektu: [`CLAUDE.md`]
    # albo: npm run dev --workspace=apps/web
    ```
 
+### Konto demo w bazie dev (`cyberszkolo`, localhost:5432)
+
+Baza dev zawiera dane demo używane do zrzutów ekranu rebrandingu (działy IT/Finanse/HR/Sprzedaż,
+kilku pracowników, przypisania kursów). Logowanie administratora demo: `admin@demo.test` /
+`Demo12345!x` (tylko lokalny dev - to NIE jest hasło do żadnego środowiska współdzielonego).
+Hasło tego konta zostało nadpisane bez zachowania poprzedniego hashu, więc nie da się go przywrócić - obowiązuje powyższe.
+Zrzuty ekranu: `node docs/brand/screens/shoot.mjs <etap>` i `shoot-auth.mjs <etap>` (Playwright,
+`BASE` = adres web, domyślnie http://localhost:3010).
+
 ## Komendy
 
 ```bash

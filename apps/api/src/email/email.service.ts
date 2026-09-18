@@ -12,6 +12,7 @@ export class EmailService {
   private readonly token: string | undefined;
   private readonly from: string | undefined;
   private readonly fromName: string;
+  private readonly assetBaseUrl: string | undefined;
   private readonly logLinksInDevMode: boolean;
 
   constructor(configService: ConfigService) {
@@ -21,6 +22,7 @@ export class EmailService {
     this.token = rawToken && rawToken !== '' ? rawToken : undefined;
     this.from = configService.get<string>('EMAIL_FROM');
     this.fromName = configService.get<string>('EMAIL_FROM_NAME') ?? 'Unfooly';
+    this.assetBaseUrl = configService.get<string>('FRONTEND_URL');
 
     // Bez tokenu send() loguje pełne templateData - w tym jednorazowe linki
     // resetu/aktywacji/weryfikacji. Na produkcji to wyciek sekretów do logów,
@@ -76,7 +78,9 @@ export class EmailService {
       return true;
     }
 
-    const rendered = renderTemplate(options.templateName, options.templateData);
+    const rendered = renderTemplate(options.templateName, options.templateData, {
+      assetBaseUrl: this.assetBaseUrl,
+    });
     if (!rendered) {
       this.logger.error(`Nieznany szablon e-mail: ${options.templateName} (do: ${options.to})`);
       return false;

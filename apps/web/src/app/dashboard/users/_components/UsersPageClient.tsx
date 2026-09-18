@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DepartmentOption, InviteUserResult, UserListItem, UsersListResponse } from '@/lib/users-types';
+import { Plus, Upload } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import { SearchInput, SelectField } from '@/components/ui/Fields';
+import PageHeader from '@/components/ui/PageHeader';
 import UsersTable from './UsersTable';
 import InviteUserModal from './InviteUserModal';
 import EditUserModal from './EditUserModal';
@@ -149,60 +154,63 @@ export default function UsersPageClient() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isFiltered = search.trim() !== '' || departmentId !== '';
+
+  const inviteButton = (
+    <Button onClick={() => setShowInvite(true)} icon={<Plus size={16} strokeWidth={2.4} aria-hidden="true" />}>
+      Zaproś pracownika
+    </Button>
+  );
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Szukaj po imieniu, nazwisku lub e-mailu..."
-            aria-label="Szukaj pracowników"
-            className="w-64 rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          <select
-            aria-label="Filtruj po dziale"
-            value={departmentId}
-            onChange={(event) => {
-              setDepartmentId(event.target.value);
-              setPage(1);
-            }}
-            className="rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">Wszystkie działy</option>
-            {departments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <PageHeader
+        title="Zespół"
+        subtitle={`${total} ${total === 1 ? 'pracownik' : 'pracowników'}`}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setShowImportCsv(true)}
+              icon={<Upload size={16} strokeWidth={2.2} aria-hidden="true" />}
+            >
+              Importuj z CSV
+            </Button>
+            {inviteButton}
+          </>
+        }
+      />
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShowImportCsv(true)}
-            className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Importuj z CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowInvite(true)}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Zaproś pracownika
-          </button>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Szukaj po imieniu, nazwisku lub e-mailu..."
+          aria-label="Szukaj pracowników"
+          className="w-80 max-w-full"
+        />
+        <SelectField
+          aria-label="Filtruj po dziale"
+          value={departmentId}
+          onChange={(event) => {
+            setDepartmentId(event.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Wszystkie działy</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.id}>
+              {department.name}
+            </option>
+          ))}
+        </SelectField>
       </div>
 
       {notice && (
         <p
           role={notice.kind === 'warning' ? 'alert' : 'status'}
-          className={`mb-4 rounded px-3 py-2 text-sm ${
-            notice.kind === 'warning' ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-700'
+          className={`mb-4 rounded-btn px-3 py-2 text-sm font-semibold ${
+            notice.kind === 'warning' ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'
           }`}
         >
           {notice.text}
@@ -210,50 +218,54 @@ export default function UsersPageClient() {
       )}
 
       {actionError && (
-        <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="mb-4 rounded-btn bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
           {actionError}
         </p>
       )}
 
       {loadError && (
-        <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="mb-4 rounded-btn bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
           {loadError}
         </p>
       )}
 
-      <UsersTable
-        users={users}
-        isLoading={isLoading}
-        onEdit={setEditingUser}
-        onDelete={handleDelete}
-        onResendInvite={handleResendInvite}
-      />
+      <Card>
+        <UsersTable
+          users={users}
+          isLoading={isLoading}
+          onEdit={setEditingUser}
+          onDelete={handleDelete}
+          onResendInvite={handleResendInvite}
+          isFiltered={isFiltered}
+          emptyAction={inviteButton}
+        />
 
-      {total > 0 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-          <span>
-            Strona {page} z {totalPages} ({total} {total === 1 ? 'pracownik' : 'pracowników'})
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              className="rounded px-3 py-1 font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-            >
-              Poprzednia
-            </button>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              className="rounded px-3 py-1 font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-            >
-              Następna
-            </button>
+        {total > 0 && (
+          <div className="flex items-center justify-between px-5 py-3.5 text-[13px] text-muted">
+            <span>
+              Strona {page} z {totalPages} ({total} {total === 1 ? 'pracownik' : 'pracowników'})
+            </span>
+            <div className="flex gap-1.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Poprzednia
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              >
+                Następna
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
 
       {showInvite && (
         <InviteUserModal

@@ -105,42 +105,42 @@ export default function InviteUserModal({
       aria-labelledby="invite-user-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-        <h2 id="invite-user-title" className="mb-4 text-lg font-semibold text-slate-900">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-card">
+        <h2 id="invite-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Zaproś pracownika
         </h2>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label htmlFor="invite-firstName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="invite-firstName" className="mb-1 block text-sm font-semibold text-ink">
               Imię
             </label>
             <input
               id="invite-firstName"
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.firstName)}
             />
-            {fieldErrors.firstName && <p className="mt-1 text-sm text-red-600">{fieldErrors.firstName}</p>}
+            {fieldErrors.firstName && <p className="mt-1 text-sm text-danger">{fieldErrors.firstName}</p>}
           </div>
 
           <div>
-            <label htmlFor="invite-lastName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="invite-lastName" className="mb-1 block text-sm font-semibold text-ink">
               Nazwisko
             </label>
             <input
               id="invite-lastName"
               value={lastName}
               onChange={(event) => setLastName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.lastName)}
             />
-            {fieldErrors.lastName && <p className="mt-1 text-sm text-red-600">{fieldErrors.lastName}</p>}
+            {fieldErrors.lastName && <p className="mt-1 text-sm text-danger">{fieldErrors.lastName}</p>}
           </div>
 
           <div>
-            <label htmlFor="invite-email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="invite-email" className="mb-1 block text-sm font-semibold text-ink">
               E-mail
             </label>
             <input
@@ -148,21 +148,21 @@ export default function InviteUserModal({
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.email)}
             />
-            {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
+            {fieldErrors.email && <p className="mt-1 text-sm text-danger">{fieldErrors.email}</p>}
           </div>
 
           <div>
-            <label htmlFor="invite-department" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="invite-department" className="mb-1 block text-sm font-semibold text-ink">
               Dział
             </label>
             <select
               id="invite-department"
               value={departmentId}
               onChange={(event) => setDepartmentId(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             >
               <option value="">Bez działu</option>
               {departments.map((department) => (
@@ -174,14 +174,14 @@ export default function InviteUserModal({
           </div>
 
           <div>
-            <label htmlFor="invite-role" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="invite-role" className="mb-1 block text-sm font-semibold text-ink">
               Rola
             </label>
             <select
               id="invite-role"
               value={role}
               onChange={(event) => setRole(event.target.value as AssignableRole)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             >
               {ASSIGNABLE_ROLES.map((value) => (
                 <option key={value} value={value}>
@@ -192,7 +192,7 @@ export default function InviteUserModal({
           </div>
 
           {formError && (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
               {formError}
             </p>
           )}
@@ -201,14 +201,14 @@ export default function InviteUserModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              className="h-10 rounded-btn px-4 text-sm font-bold text-accent-ink hover:bg-accent-soft"
             >
               Anuluj
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="h-10 rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {isSubmitting ? 'Zapraszanie...' : 'Zaproś'}
             </button>

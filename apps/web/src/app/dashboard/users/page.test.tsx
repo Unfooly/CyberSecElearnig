@@ -53,6 +53,6 @@ describe('UsersPage', () => {
     // Czeka aż UsersPageClient (dziecko klienckie) domknie swój efekt
     // ładowania - inaczej test kończy się przed rozwiązaniem fetch(), co
     // React ostrzega jako aktualizację stanu poza act().
-    await screen.findByText('Brak pracowników do wyświetlenia.');
+    await screen.findByRole('heading', { name: 'Twój zespół jest jeszcze pusty' });
   });
 });

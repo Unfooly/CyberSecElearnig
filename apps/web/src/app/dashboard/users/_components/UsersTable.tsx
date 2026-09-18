@@ -1,6 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Users } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import InitialsAvatar, { initialsFrom } from '@/components/ui/InitialsAvatar';
+import Pill from '@/components/ui/Pill';
+import { Table, Td, Th, Tr } from '@/components/ui/Table';
 import { ROLE_LABELS, type UserListItem } from '@/lib/users-types';
 
 const STATUS_LABELS: Record<UserListItem['status'], string> = {
@@ -9,17 +14,14 @@ const STATUS_LABELS: Record<UserListItem['status'], string> = {
 };
 
 function StatusBadge({ status }: { status: UserListItem['status'] }) {
-  const isActive = status === 'ACTIVE';
   return (
-    <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-        isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-      }`}
-    >
+    <Pill tone={status === 'ACTIVE' ? 'ok' : 'warn'} dot>
       {STATUS_LABELS[status]}
-    </span>
+    </Pill>
   );
 }
+
+const ACTION = 'rounded px-1.5 py-1 text-sm font-semibold hover:underline';
 
 function DeleteAction({ user, onConfirm }: { user: UserListItem; onConfirm: (user: UserListItem) => void }) {
   const [confirming, setConfirming] = useState(false);
@@ -27,19 +29,11 @@ function DeleteAction({ user, onConfirm }: { user: UserListItem; onConfirm: (use
   if (confirming) {
     return (
       <span className="inline-flex items-center gap-2">
-        <span className="text-xs text-slate-500">Na pewno?</span>
-        <button
-          type="button"
-          onClick={() => onConfirm(user)}
-          className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-        >
+        <span className="text-xs text-muted">Na pewno?</span>
+        <button type="button" onClick={() => onConfirm(user)} className={`${ACTION} text-danger`}>
           Usuń
         </button>
-        <button
-          type="button"
-          onClick={() => setConfirming(false)}
-          className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
-        >
+        <button type="button" onClick={() => setConfirming(false)} className={`${ACTION} text-muted`}>
           Anuluj
         </button>
       </span>
@@ -47,11 +41,7 @@ function DeleteAction({ user, onConfirm }: { user: UserListItem; onConfirm: (use
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setConfirming(true)}
-      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-    >
+    <button type="button" onClick={() => setConfirming(true)} className={`${ACTION} text-danger`}>
       Usuń
     </button>
   );
@@ -63,91 +53,93 @@ export default function UsersTable({
   onEdit,
   onDelete,
   onResendInvite,
+  isFiltered = false,
+  emptyAction,
 }: {
   users: UserListItem[];
   isLoading: boolean;
   onEdit: (user: UserListItem) => void;
   onDelete: (user: UserListItem) => void;
   onResendInvite?: (user: UserListItem) => void;
+  // Puste wyniki przy aktywnym wyszukiwaniu/filtrze to co innego niż pusty zespół.
+  isFiltered?: boolean;
+  emptyAction?: ReactNode;
 }) {
+  if (!isLoading && users.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        title={isFiltered ? 'Brak pasujących pracowników' : 'Twój zespół jest jeszcze pusty'}
+        description={
+          isFiltered
+            ? 'Zmień wyszukiwaną frazę albo wybierz inny dział.'
+            : 'Zaproś pierwszą osobę albo zaimportuj cały zespół z pliku CSV.'
+        }
+        action={isFiltered ? undefined : emptyAction}
+      />
+    );
+  }
+
   return (
-    <div className="overflow-hidden rounded-lg bg-white shadow-sm">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-100 text-slate-600">
+    <Table>
+      <thead>
+        <tr>
+          <Th className="w-[130px]">Status</Th>
+          <Th>Pracownik</Th>
+          <Th>E-mail</Th>
+          <Th>Dział</Th>
+          <Th>Rola</Th>
+          <Th className="text-right">Akcje</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {isLoading ? (
           <tr>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Status
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Imię
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Nazwisko
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              E-mail
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Dział
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Rola
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Akcje
-            </th>
+            <td colSpan={6} className="px-5 py-6 text-center text-muted">
+              Ładowanie...
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {isLoading ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
-                Ładowanie...
-              </td>
-            </tr>
-          ) : users.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
-                Brak pracowników do wyświetlenia.
-              </td>
-            </tr>
-          ) : (
-            users.map((user) => (
-              <tr key={user.id} className="border-t border-slate-100">
-                <td className="px-4 py-3">
+        ) : (
+          users.map((user) => {
+            const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+            return (
+              <Tr key={user.id}>
+                <Td>
                   <StatusBadge status={user.status} />
-                </td>
-                <td className="px-4 py-3 text-slate-900">{user.firstName ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-900">{user.lastName ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                <td className="px-4 py-3 text-slate-600">{user.department?.name ?? 'Brak działu'}</td>
-                <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[user.role]}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(user)}
-                      className="rounded px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      Edytuj
-                    </button>
-                    {user.status === 'INVITED' && onResendInvite && (
-                      <button
-                        type="button"
-                        onClick={() => onResendInvite(user)}
-                        className="rounded px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
-                      >
+                </Td>
+                <Td>
+                  <div className="flex items-center gap-2.5 whitespace-nowrap font-semibold">
+                    <InitialsAvatar initials={initialsFrom(user.firstName, user.lastName, user.email)} />
+                    {fullName ? fullName : <span className="font-medium text-muted">Nie uzupełniono</span>}
+                  </div>
+                </Td>
+                <Td className="text-muted">{user.email}</Td>
+                <Td>{user.department ? <Pill tone="acc">{user.department.name}</Pill> : <Pill tone="off">Brak działu</Pill>}</Td>
+                <Td>{ROLE_LABELS[user.role]}</Td>
+                <Td className="whitespace-nowrap text-right">
+                  <button type="button" onClick={() => onEdit(user)} className={`${ACTION} text-accent-ink`}>
+                    Edytuj
+                  </button>
+                  {user.status === 'INVITED' && onResendInvite && (
+                    <>
+                      <span aria-hidden="true" className="text-muted-2">
+                        {' · '}
+                      </span>
+                      <button type="button" onClick={() => onResendInvite(user)} className={`${ACTION} text-accent-ink`}>
                         Wyślij zaproszenie ponownie
                       </button>
-                    )}
-                    <DeleteAction user={user} onConfirm={onDelete} />
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+                    </>
+                  )}
+                  <span aria-hidden="true" className="text-muted-2">
+                    {' · '}
+                  </span>
+                  <DeleteAction user={user} onConfirm={onDelete} />
+                </Td>
+              </Tr>
+            );
+          })
+        )}
+      </tbody>
+    </Table>
   );
 }

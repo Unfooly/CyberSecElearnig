@@ -102,15 +102,15 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
       aria-labelledby="import-csv-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg">
+      <div className="w-full max-w-lg rounded-card border border-border bg-surface p-6 shadow-card">
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="import-csv-title" className="text-lg font-semibold text-slate-900">
+          <h2 id="import-csv-title" className="text-lg font-bold tracking-[-0.01em]">
             Importuj z CSV
           </h2>
           <button
             type="button"
             onClick={downloadTemplate}
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-accent-ink underline"
           >
             Pobierz szablon CSV
           </button>
@@ -134,7 +134,7 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
               }
             }}
             className={`mb-4 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center text-sm ${
-              isDragging ? 'border-slate-900 bg-slate-50' : 'border-slate-300 text-slate-500'
+              isDragging ? 'border-accent bg-accent-soft' : 'border-border text-muted'
             }`}
           >
             <p>{file ? file.name : 'Przeciągnij plik CSV tutaj albo kliknij, żeby wybrać'}</p>
@@ -154,21 +154,21 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
         )}
 
         {preview?.fileError && (
-          <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
             {preview.fileError}
           </p>
         )}
 
         {preview && !preview.fileError && (
-          <div className="mb-4 max-h-48 overflow-y-auto rounded border border-slate-200 text-sm">
-            <p className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+          <div className="mb-4 max-h-48 overflow-y-auto rounded-btn border border-border text-sm">
+            <p className="border-b border-border bg-paper px-3 py-2 text-ink">
               {preview.validRows.length} poprawnych wierszy
               {preview.invalidRows.length > 0 ? `, ${preview.invalidRows.length} z błędami` : ''}
             </p>
             {preview.invalidRows.length > 0 && (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-border">
                 {preview.invalidRows.map((row) => (
-                  <li key={row.line} className="px-3 py-2 text-red-700">
+                  <li key={row.line} className="px-3 py-2 text-danger">
                     Wiersz {row.line} ({row.email || 'brak e-maila'}): {row.error}
                   </li>
                 ))}
@@ -178,27 +178,27 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
         )}
 
         {submitError && (
-          <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
             {submitError}
           </p>
         )}
 
         {report && (
-          <div className="mb-4 rounded border border-slate-200 text-sm">
-            <p className="border-b border-slate-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+          <div className="mb-4 rounded-btn border border-border text-sm">
+            <p className="border-b border-border bg-success-soft px-3 py-2 text-success">
               Zaproszono {report.successCount} {report.successCount === 1 ? 'osobę' : 'osób'}
               {report.failedCount > 0 ? `, ${report.failedCount} wierszy odrzucono` : ''}
             </p>
             {report.emailFailedCount > 0 && (
-              <p role="alert" className="border-b border-slate-200 bg-amber-50 px-3 py-2 text-amber-800">
+              <p role="alert" className="border-b border-border bg-warning-soft px-3 py-2 text-warning">
                 Dla {report.emailFailedCount} kont wiadomość z zaproszeniem NIE została wysłana - użyj
                 &bdquo;Wyślij zaproszenie ponownie&rdquo; na liście.
               </p>
             )}
             {report.errors.length > 0 && (
-              <ul className="max-h-40 divide-y divide-slate-100 overflow-y-auto">
+              <ul className="max-h-40 divide-y divide-border overflow-y-auto">
                 {report.errors.map((error) => (
-                  <li key={`${error.line}-${error.email}`} className="px-3 py-2 text-red-700">
+                  <li key={`${error.line}-${error.email}`} className="px-3 py-2 text-danger">
                     Wiersz {error.line} ({error.email || 'brak e-maila'}): {error.reason}
                   </li>
                 ))}
@@ -211,7 +211,7 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="h-10 rounded-btn px-4 text-sm font-bold text-accent-ink hover:bg-accent-soft"
           >
             {report ? 'Zamknij' : 'Anuluj'}
           </button>
@@ -220,7 +220,7 @@ export default function ImportCsvModal({ onClose, onImported }: { onClose: () =>
               type="button"
               onClick={handleImport}
               disabled={!canImport || isSubmitting}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="h-10 rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {isSubmitting ? 'Importowanie...' : 'Importuj'}
             </button>

@@ -17,10 +17,9 @@ export default function UsersPage() {
   const userEmail = decodeJwtPayload(accessToken)?.email ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-7xl p-8">
-        <h1 className="mb-6 text-2xl font-semibold text-slate-900">Zespół</h1>
+      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
         <UsersPageClient />
       </main>
     </div>

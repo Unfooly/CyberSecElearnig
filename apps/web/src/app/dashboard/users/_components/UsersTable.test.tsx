@@ -29,7 +29,7 @@ const users: UserListItem[] = [
 describe('UsersTable', () => {
   it('pokazuje komunikat, gdy lista jest pusta', () => {
     render(<UsersTable users={[]} isLoading={false} onEdit={vi.fn()} onDelete={vi.fn()} />);
-    expect(screen.getByText('Brak pracowników do wyświetlenia.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Twój zespół jest jeszcze pusty' })).toBeInTheDocument();
   });
 
   it('pokazuje stan ładowania', () => {

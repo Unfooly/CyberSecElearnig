@@ -76,46 +76,46 @@ export default function EditUserModal({
       aria-labelledby="edit-user-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-        <h2 id="edit-user-title" className="mb-4 text-lg font-semibold text-slate-900">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-card">
+        <h2 id="edit-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Edytuj pracownika
         </h2>
-        <p className="mb-4 text-sm text-slate-500">{user.email}</p>
+        <p className="mb-4 text-sm text-muted">{user.email}</p>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label htmlFor="edit-firstName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="edit-firstName" className="mb-1 block text-sm font-semibold text-ink">
               Imię
             </label>
             <input
               id="edit-firstName"
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             />
           </div>
 
           <div>
-            <label htmlFor="edit-lastName" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="edit-lastName" className="mb-1 block text-sm font-semibold text-ink">
               Nazwisko
             </label>
             <input
               id="edit-lastName"
               value={lastName}
               onChange={(event) => setLastName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             />
           </div>
 
           <div>
-            <label htmlFor="edit-department" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="edit-department" className="mb-1 block text-sm font-semibold text-ink">
               Dział
             </label>
             <select
               id="edit-department"
               value={departmentId}
               onChange={(event) => setDepartmentId(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             >
               <option value="">Bez działu</option>
               {departments.map((department) => (
@@ -127,14 +127,14 @@ export default function EditUserModal({
           </div>
 
           <div>
-            <label htmlFor="edit-role" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="edit-role" className="mb-1 block text-sm font-semibold text-ink">
               Rola
             </label>
             <select
               id="edit-role"
               value={role}
               onChange={(event) => setRole(event.target.value as AssignableRole)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             >
               {ASSIGNABLE_ROLES.map((value) => (
                 <option key={value} value={value}>
@@ -145,7 +145,7 @@ export default function EditUserModal({
           </div>
 
           {formError && (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
               {formError}
             </p>
           )}
@@ -154,14 +154,14 @@ export default function EditUserModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              className="h-10 rounded-btn px-4 text-sm font-bold text-accent-ink hover:bg-accent-soft"
             >
               Anuluj
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="h-10 rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {isSubmitting ? 'Zapisywanie...' : 'Zapisz'}
             </button>

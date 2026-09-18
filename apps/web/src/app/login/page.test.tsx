@@ -108,6 +108,48 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
+  it('przy EMAIL_NOT_VERIFIED pokazuje komunikat i pozwala wysłać link weryfikacyjny ponownie', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'Adres e-mail nie został jeszcze potwierdzony.', code: 'EMAIL_NOT_VERIFIED' }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Wysłaliśmy nowy link weryfikacyjny.' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'jan@test.pl' } });
+    fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'SuperSecret123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /zaloguj się/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/nie został jeszcze potwierdzony/i);
+    fireEvent.click(screen.getByRole('button', { name: /wyślij link weryfikacyjny ponownie/i }));
+
+    await waitFor(() => expect(screen.getByText('Wysłaliśmy nowy link weryfikacyjny.')).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/resend-verification',
+      expect.objectContaining({ body: JSON.stringify({ email: 'jan@test.pl' }) }),
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('bez EMAIL_NOT_VERIFIED (zwykły błąd logowania) nie pokazuje przycisku ponownej wysyłki', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Nieprawidłowy e-mail lub hasło' }) }),
+    );
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'jan@test.pl' } });
+    fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'SuperSecret123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /zaloguj się/i }));
+
+    await screen.findByRole('alert');
+    expect(screen.queryByRole('button', { name: /wyślij link weryfikacyjny/i })).not.toBeInTheDocument();
+  });
+
   it('ma link do /forgot-password', () => {
     render(<LoginPage />);
     expect(screen.getByRole('link', { name: /zapomniałeś hasła/i })).toHaveAttribute('href', '/forgot-password');

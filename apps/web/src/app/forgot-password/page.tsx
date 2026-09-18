@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { EMAIL_REGEX } from '@/lib/email';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Zawsze ten sam komunikat po wysłaniu formularza, niezależnie od treści
 // odpowiedzi backendu - front NIE interpretuje data.message dla sukcesu,
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
         <h1 className="mb-2 text-2xl font-semibold text-slate-900">Zapomniałeś hasła?</h1>
         <p className="mb-6 text-sm text-slate-600">
           Podaj adres e-mail, na który wyślemy link do zresetowania hasła.
@@ -105,7 +105,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {isSubmitting ? 'Wysyłanie...' : 'Wyślij link do resetu'}
             </button>

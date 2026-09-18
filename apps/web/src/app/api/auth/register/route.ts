@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/config';
-import { setAuthCookies } from '@/lib/auth-cookies';
 
-// Proxy server-side do apps/api - /auth/register zwraca parę tokenów tak jak
-// /auth/login (auth.service.ts: register() kończy się issueTokens()), więc
-// ten route mirroruje login/route.ts 1:1 - rejestracja loguje od razu.
+// Proxy server-side do apps/api. /auth/register NIE zwraca tokenów -
+// logowanie jest zablokowane do potwierdzenia adresu e-mail (link w
+// wiadomości), więc tu nie ma cookies do ustawienia; przekazujemy tylko
+// komunikat.
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  const organizationName = typeof body?.organizationName === 'string' ? body.organizationName : '';
   const email = typeof body?.email === 'string' ? body.email : '';
   const password = typeof body?.password === 'string' ? body.password : '';
 
-  if (!organizationName || !email || !password) {
+  if (!email || !password) {
     return NextResponse.json({ message: 'Uzupełnij wszystkie pola.' }, { status: 400 });
   }
 
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
     backendResponse = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizationName, email, password }),
+      body: JSON.stringify({ email, password }),
     });
   } catch (error) {
     console.error('Nie udało się połączyć z apps/api podczas rejestracji:', (error as Error).message);
@@ -34,26 +32,18 @@ export async function POST(request: NextRequest) {
   const data = await backendResponse.json().catch(() => null);
 
   if (!backendResponse.ok) {
-    // apps/api zwraca albo pojedynczy string (np. duplikat e-maila -
-    // REGISTRATION_FAILED_MESSAGE), albo tablicę komunikatów walidacji
-    // (class-validator, ValidationPipe) - normalizujemy do jednego stringa,
-    // żeby front nie musiał znać tego szczegółu.
+    // apps/api zwraca albo pojedynczy string, albo tablicę komunikatów
+    // walidacji (class-validator) - normalizujemy do jednego stringa.
     const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
-    return NextResponse.json({ message: message ?? 'Rejestracja nie powiodła się.' }, {
-      status: backendResponse.status,
-    });
-  }
-
-  // Walidacja kształtu odpowiedzi 200/201 - analogicznie do login/route.ts.
-  if (typeof data?.accessToken !== 'string' || typeof data?.refreshToken !== 'string') {
-    console.error('Odpowiedź /auth/register z apps/api ma nieoczekiwany kształt.');
     return NextResponse.json(
-      { message: 'Rejestracja nie powiodła się. Spróbuj ponownie później.' },
-      { status: 502 },
+      { message: message ?? 'Rejestracja nie powiodła się.' },
+      { status: backendResponse.status },
     );
   }
 
-  setAuthCookies(cookies(), { accessToken: data.accessToken, refreshToken: data.refreshToken });
-
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    message: typeof data?.message === 'string' ? data.message : 'Wysłaliśmy link weryfikacyjny na podany adres e-mail.',
+    // false = konto utworzone, ale mail nie wyszedł - UI oferuje ponowną wysyłkę.
+    emailSent: data?.emailSent !== false,
+  });
 }

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Komunikat błędu przechodzi wprost z apps/api - już jest generyczny
     // ("Nieprawidłowy e-mail lub hasło"), nie ujawnia które pole jest złe.
     return NextResponse.json(
-      { message: data?.message ?? 'Logowanie nie powiodło się.' },
+      { message: data?.message ?? 'Logowanie nie powiodło się.', code: data?.code },
       { status: backendResponse.status },
     );
   }

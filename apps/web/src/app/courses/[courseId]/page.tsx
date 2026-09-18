@@ -2,8 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect, notFound } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
+import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseDetail } from '@/lib/courses-types';
-import Sidebar from '@/components/Sidebar';
+import Topbar from '@/components/Topbar';
 import CoursePlayer from './_components/CoursePlayer';
 
 export default async function CoursePlayerPage({ params }: { params: { courseId: string } }) {
@@ -11,6 +12,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   if (!accessToken) {
     redirect('/login');
   }
+  const userEmail = decodeJwtPayload(accessToken)?.email ?? null;
 
   // /start jest wołane raz, server-side, przy renderze strony - tak jak
   // reszta zapytań w apps/web (patrz dashboard/page.tsx). Idempotentne po
@@ -29,10 +31,10 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   }
   if (!startResult.ok) {
     return (
-      <div className="flex min-h-screen bg-slate-50">
-        <Sidebar />
-        <main className="flex-1 p-8">
-          <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+      <div className="min-h-screen bg-slate-50">
+        <Topbar userEmail={userEmail} />
+        <main className="mx-auto max-w-7xl p-8">
+          <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             Nie udało się załadować kursu. Spróbuj odświeżyć stronę za chwilę.
           </p>
         </main>
@@ -67,9 +69,9 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
-      <main className="flex-1 p-8">
+    <div className="min-h-screen bg-slate-50">
+      <Topbar userEmail={userEmail} />
+      <main className="mx-auto max-w-7xl p-8">
         <CoursePlayer
           courseId={params.courseId}
           initial={{ ...course, score }}

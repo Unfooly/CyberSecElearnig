@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import RegisterPage from './page';
 
 const pushMock = vi.fn();
@@ -10,7 +10,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 function fillValidForm() {
-  fireEvent.change(screen.getByLabelText('Nazwa organizacji'), { target: { value: 'Acme Sp. z o.o.' } });
   fireEvent.change(screen.getByLabelText('E-mail admina'), { target: { value: 'admin@acme.test' } });
   fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'SuperSecret123!' } });
   fireEvent.change(screen.getByLabelText('Powtórz hasło'), { target: { value: 'SuperSecret123!' } });
@@ -29,8 +28,7 @@ describe('RegisterPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /załóż organizację/i }));
 
-    expect(await screen.findByText('Podaj nazwę organizacji.')).toBeInTheDocument();
-    expect(screen.getByText('Podaj adres e-mail.')).toBeInTheDocument();
+    expect(await screen.findByText('Podaj adres e-mail.')).toBeInTheDocument();
     expect(screen.getByText('Podaj hasło.')).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -40,7 +38,6 @@ describe('RegisterPage', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText('Nazwa organizacji'), { target: { value: 'Acme' } });
     fireEvent.change(screen.getByLabelText('E-mail admina'), { target: { value: 'admin@acme.test' } });
     fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'krotkie' } });
     fireEvent.change(screen.getByLabelText('Powtórz hasło'), { target: { value: 'krotkie' } });
@@ -55,7 +52,6 @@ describe('RegisterPage', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<RegisterPage />);
 
-    fireEvent.change(screen.getByLabelText('Nazwa organizacji'), { target: { value: 'Acme' } });
     fireEvent.change(screen.getByLabelText('E-mail admina'), { target: { value: 'admin@acme.test' } });
     fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'SuperSecret123!' } });
     fireEvent.change(screen.getByLabelText('Powtórz hasło'), { target: { value: 'CosInnego456' } });
@@ -65,26 +61,51 @@ describe('RegisterPage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('woła /api/auth/register i przekierowuje do /dashboard po sukcesie (auto-login)', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+  it('woła /api/auth/register i pokazuje ekran "sprawdź skrzynkę" (bez auto-logowania)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ message: 'Wysłaliśmy link weryfikacyjny.' }) });
     vi.stubGlobal('fetch', fetchMock);
     render(<RegisterPage />);
 
     fillValidForm();
     fireEvent.click(screen.getByRole('button', { name: /załóż organizację/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+    expect(await screen.findByText('Sprawdź skrzynkę e-mail')).toBeInTheDocument();
+    expect(screen.getByText('Wysłaliśmy link weryfikacyjny.')).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/register',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          organizationName: 'Acme Sp. z o.o.',
           email: 'admin@acme.test',
           password: 'SuperSecret123!',
         }),
       }),
+    );
+  });
+
+  it('gdy mail nie wyszedł (emailSent=false) pokazuje ostrzeżenie i pozwala wysłać link ponownie', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Konto utworzone, ale nie udało się wysłać linku.', emailSent: false }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Wysłaliśmy nowy link.' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<RegisterPage />);
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole('button', { name: /załóż organizację/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/nie udało się wysłać/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Wyślij link ponownie' }));
+
+    expect(await screen.findByText('Wysłaliśmy nowy link.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/resend-verification',
+      expect.objectContaining({ body: JSON.stringify({ email: 'admin@acme.test' }) }),
     );
   });
 

@@ -1,0 +1,109 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import Topbar from './Topbar';
+import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+
+const usePathnameMock = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => usePathnameMock(),
+}));
+
+describe('Topbar', () => {
+  it('renderuje linki do /dashboard, /dashboard/users, /courses i /courses/achievements jako aktywne pozycje', () => {
+    usePathnameMock.mockReturnValue('/dashboard');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'Zespół' })).toHaveAttribute('href', '/dashboard/users');
+    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveAttribute('href', '/courses');
+    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveAttribute('href', '/courses/achievements');
+  });
+
+  it('podświetla WYŁĄCZNIE "Zespół" na /dashboard/users, mimo że to też podścieżka /dashboard', () => {
+    usePathnameMock.mockReturnValue('/dashboard/users');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: 'Zespół' })).toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: /^dashboard$/i })).not.toHaveClass('font-semibold');
+  });
+
+  it('podświetla WYŁĄCZNIE "Kursy" na /courses (nie miesza z Osiągnięciami)', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).not.toHaveClass('font-semibold');
+  });
+
+  it('podświetla WYŁĄCZNIE "Osiągnięcia" na /courses/achievements, mimo że to też podścieżka /courses', () => {
+    usePathnameMock.mockReturnValue('/courses/achievements');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Kursy' })).not.toHaveClass('font-semibold');
+  });
+
+  it('podświetla "Kursy" też na podstronie odtwarzacza (/courses/:id)', () => {
+    usePathnameMock.mockReturnValue('/courses/course-1');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveClass('font-semibold');
+  });
+
+  it('pokazuje wybrany avatar zamiast inicjałów, gdy użytkownik go ustawił', async () => {
+    usePathnameMock.mockReturnValue('/courses');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ avatarUrl: 'fox' }) }));
+    render(<Topbar userEmail="adrian.pozniak@example.test" />);
+
+    expect(await screen.findByRole('img', { name: 'Twój avatar' })).toBeInTheDocument();
+    expect(screen.queryByText('AP')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('po zapisaniu nowego avatara (zdarzenie) od razu podmienia inicjały, bez przeładowania', async () => {
+    usePathnameMock.mockReturnValue('/courses');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ avatarUrl: null }) }));
+    render(<Topbar userEmail="adrian.pozniak@example.test" />);
+    expect(await screen.findByText('AP')).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: 'fox' }));
+    });
+
+    expect(screen.getByRole('img', { name: 'Twój avatar' })).toBeInTheDocument();
+    expect(screen.queryByText('AP')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('przy błędzie pobrania avatara zostają inicjały', async () => {
+    usePathnameMock.mockReturnValue('/courses');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')));
+    render(<Topbar userEmail="adrian.pozniak@example.test" />);
+
+    expect(await screen.findByText('AP')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('pokazuje inicjały z e-maila użytkownika', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan.kowalski@example.test" />);
+
+    expect(screen.getByText('JK')).toBeInTheDocument();
+  });
+
+  it('nie renderuje sekcji użytkownika, gdy userEmail jest null', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail={null} />);
+
+    expect(screen.queryByText(/@/)).not.toBeInTheDocument();
+  });
+
+  it('renderuje nieaktywne pozycje jako nie-linki (bez href)', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.queryByRole('link', { name: 'Kampanie phishingowe' })).not.toBeInTheDocument();
+    expect(screen.getByText('Kampanie phishingowe')).toBeInTheDocument();
+  });
+});

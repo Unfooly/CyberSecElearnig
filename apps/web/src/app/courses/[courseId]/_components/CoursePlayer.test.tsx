@@ -42,6 +42,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
         score: 100,
         completedAt: '2026-01-01T00:00:00.000Z',
         lastResult: { blockIndex: 0, type: 'QUIZ', correct: true },
+        gamification: null,
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -77,6 +78,43 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
     expect(screen.getByText('Rozpoznawanie phishingu')).toBeInTheDocument();
+    // gamification: null w odpowiedzi (badge się nie odblokował w tym
+    // scenariuszu testowym) -> brak modala nagrody.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('pokazuje CourseRewardModal z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'assignment-1',
+        status: 'COMPLETED',
+        currentBlockIndex: 1,
+        score: 100,
+        completedAt: '2026-01-01T00:00:00.000Z',
+        lastResult: { blockIndex: 0, type: 'QUIZ', correct: true },
+        gamification: {
+          xpGained: 150,
+          newLevel: 2,
+          leveledUp: true,
+          unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<CoursePlayer courseId="course-1" initial={singleQuizBlockCourse} />);
+
+    fireEvent.click(screen.getByText('wsparcie@bank-0ficjalny.pl'));
+    fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Zobacz podsumowanie' }));
+
+    await screen.findByText('Kurs ukończony');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Zdobyłeś +150 XP!');
+    expect(dialog).toHaveTextContent('Awans na poziom 2!');
+    expect(dialog).toHaveTextContent('Pierwszy Krok');
   });
 
   it('kurs już COMPLETED przy wejściu -> od razu podsumowanie, bez renderowania bloków', () => {
@@ -119,6 +157,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
         score: 0,
         completedAt: '2026-01-01T00:00:00.000Z',
         lastResult: { blockIndex: 0, type: 'QUIZ', correct: false },
+        gamification: null,
       }),
     });
     vi.stubGlobal('fetch', fetchMock);

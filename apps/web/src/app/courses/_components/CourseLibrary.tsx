@@ -12,6 +12,17 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'overdue', label: 'Zaległe' },
 ];
 
+// Ta sama lista co CourseCategory w apps/api/prisma/schema.prisma - front
+// nie ma dziś endpointu zwracającego dostępne kategorie, więc trzymane tu.
+const CATEGORY_LABELS: Record<string, string> = {
+  PHISHING_SOCIAL_ENGINEERING: 'Phishing i inżynieria społeczna',
+  EMAIL_SECURITY: 'Bezpieczeństwo e-mail',
+  IT_HYGIENE: 'Higiena IT',
+  INCIDENT_RESPONSE: 'Reagowanie na incydenty',
+  MALWARE: 'Złośliwe oprogramowanie',
+  GENERAL_AWARENESS: 'Świadomość ogólna',
+};
+
 function matchesTab(course: CourseAssignmentSummary, tab: Tab): boolean {
   if (tab === 'mandatory') return course.mandatory;
   if (tab === 'overdue') return course.status === 'OVERDUE';
@@ -19,10 +30,17 @@ function matchesTab(course: CourseAssignmentSummary, tab: Tab): boolean {
 }
 
 export default function CourseLibrary({ courses }: { courses: CourseAssignmentSummary[] }) {
-  // Zakładki filtrują po stronie klienta jeden już pobrany zestaw danych -
-  // brak dodatkowych zapytań przy przełączaniu.
+  // Zakładki i kategoria filtrują po stronie klienta jeden już pobrany
+  // zestaw danych - brak dodatkowych zapytań przy przełączaniu. Biblioteka
+  // pokazuje WYŁĄCZNIE kursy już przypisane userowi (apps/api nie ma dziś
+  // endpointu do przeglądania pełnego katalogu nieprzypisanych kursów) -
+  // filtr kategorii zawęża tę samą listę, nie odkrywa nowych kursów.
   const [tab, setTab] = useState<Tab>('all');
-  const filtered = courses.filter((course) => matchesTab(course, tab));
+  const [category, setCategory] = useState<string>('all');
+  const categories = Array.from(new Set(courses.map((c) => c.category)));
+  const filtered = courses.filter(
+    (course) => matchesTab(course, tab) && (category === 'all' || course.category === category),
+  );
 
   const counts: Record<Tab, number> = {
     all: courses.length,
@@ -32,7 +50,24 @@ export default function CourseLibrary({ courses }: { courses: CourseAssignmentSu
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Biblioteka kursów</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">Biblioteka</h1>
+        <label className="flex items-center gap-2 text-sm text-slate-500">
+          Kategoria
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+          >
+            <option value="all">Wszystkie kategorie</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABELS[c] ?? c}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div role="tablist" className="mb-6 flex gap-2 border-b border-slate-200">
         {TABS.map((t) => (
@@ -43,7 +78,7 @@ export default function CourseLibrary({ courses }: { courses: CourseAssignmentSu
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium ${
               tab === t.key
-                ? 'border-b-2 border-slate-900 text-slate-900'
+                ? 'border-b-2 border-emerald-600 text-slate-900'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >

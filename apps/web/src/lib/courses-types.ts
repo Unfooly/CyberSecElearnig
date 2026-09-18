@@ -4,7 +4,7 @@
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
-export type ContentBlockType = 'VIDEO' | 'QUIZ' | 'BRANCHING_SCENARIO' | 'DRAG_AND_DROP';
+export type ContentBlockType = 'VIDEO' | 'QUIZ' | 'BRANCHING_SCENARIO' | 'DRAG_AND_DROP' | 'EMBEDDED_HTML';
 
 export interface CourseAssignmentSummary {
   assignmentId: string;
@@ -43,6 +43,10 @@ export interface ContentBlock {
   items?: DragAndDropItem[];
   // Etykiety dwóch koszyków klasyfikacji (domyślnie "Bezpieczne"/"Phishing").
   categories?: [string, string];
+  // EMBEDDED_HTML - pełny dokument HTML renderowany WYŁĄCZNIE w
+  // sandboxowanym <iframe> (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia
+  // do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
+  html?: string;
 }
 
 export interface CourseDetail {
@@ -63,6 +67,16 @@ export interface LastResult {
   correct?: boolean;
 }
 
+// Obecne WYŁĄCZNIE gdy dana odpowiedź /progress ukończyła kurs - patrz
+// apps/api CourseProgressResponseDto. CourseRewardModal pokazuje się tylko
+// wtedy.
+export interface CourseCompletionReward {
+  xpGained: number;
+  newLevel: number;
+  leveledUp: boolean;
+  unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
+}
+
 export interface CourseProgressResponse {
   assignmentId: string;
   status: AssignmentStatus;
@@ -70,4 +84,5 @@ export interface CourseProgressResponse {
   score: number | null;
   completedAt: string | null;
   lastResult: LastResult;
+  gamification: CourseCompletionReward | null;
 }

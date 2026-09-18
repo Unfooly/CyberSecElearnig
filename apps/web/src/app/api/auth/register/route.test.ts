@@ -31,7 +31,7 @@ describe('POST /api/auth/register', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await POST(buildRequest({ organizationName: '', email: 'a@test.pl', password: 'haslo123!' }));
+    const response = await POST(buildRequest({ email: '', password: 'haslo123!' }));
 
     expect(response.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -41,7 +41,7 @@ describe('POST /api/auth/register', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connection refused')));
 
     const response = await POST(
-      buildRequest({ organizationName: 'Acme', email: 'a@test.pl', password: 'SuperSecret123!' }),
+      buildRequest({ email: 'a@test.pl', password: 'SuperSecret123!' }),
     );
 
     expect(response.status).toBe(502);
@@ -61,7 +61,7 @@ describe('POST /api/auth/register', () => {
     );
 
     const response = await POST(
-      buildRequest({ organizationName: 'Acme', email: 'zajety@test.pl', password: 'SuperSecret123!' }),
+      buildRequest({ email: 'zajety@test.pl', password: 'SuperSecret123!' }),
     );
     const body = await response.json();
 
@@ -81,7 +81,7 @@ describe('POST /api/auth/register', () => {
     );
 
     const response = await POST(
-      buildRequest({ organizationName: 'Acme', email: 'a@test.pl', password: 'krotkie' }),
+      buildRequest({ email: 'a@test.pl', password: 'krotkie' }),
     );
     const body = await response.json();
 
@@ -89,44 +89,37 @@ describe('POST /api/auth/register', () => {
     expect(body.message).toMatch(/8 characters/);
   });
 
-  it('przy sukcesie (201 od apps/api) ustawia cookies i zwraca WYŁĄCZNIE {success:true}', async () => {
+  it('przy sukcesie NIE ustawia cookies i przekazuje wyłącznie komunikat (logowanie po weryfikacji e-mail)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         status: 201,
-        json: async () => ({ accessToken: 'access-value', refreshToken: 'refresh-value' }),
+        json: async () => ({ message: 'Wysłaliśmy link weryfikacyjny.' }),
       }),
     );
 
-    const response = await POST(
-      buildRequest({ organizationName: 'Acme', email: 'nowy@test.pl', password: 'SuperSecret123!' }),
-    );
+    const response = await POST(buildRequest({ email: 'nowy@test.pl', password: 'SuperSecret123!' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ success: true });
-    expect(JSON.stringify(body)).not.toContain('access-value');
-    expect(setCookieMock).toHaveBeenCalledWith(
-      'access_token',
-      'access-value',
-      expect.objectContaining({ httpOnly: true }),
-    );
-    expect(setCookieMock).toHaveBeenCalledWith(
-      'refresh_token',
-      'refresh-value',
-      expect.objectContaining({ httpOnly: true }),
-    );
+    expect(body).toEqual({ message: 'Wysłaliśmy link weryfikacyjny.', emailSent: true });
+    expect(setCookieMock).not.toHaveBeenCalled();
   });
 
-  it('odrzuca 201 z apps/api bez accessToken/refreshToken (fail closed)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({}) }));
-
-    const response = await POST(
-      buildRequest({ organizationName: 'Acme', email: 'nowy@test.pl', password: 'SuperSecret123!' }),
+  it('przekazuje emailSent=false, gdy backend zgłosił nieudaną wysyłkę maila', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({ message: 'Konto utworzone, ale nie udało się wysłać linku.', emailSent: false }),
+      }),
     );
 
-    expect(response.status).toBe(502);
-    expect(setCookieMock).not.toHaveBeenCalled();
+    const response = await POST(buildRequest({ email: 'nowy@test.pl', password: 'SuperSecret123!' }));
+    const body = await response.json();
+
+    expect(body.emailSent).toBe(false);
   });
 });

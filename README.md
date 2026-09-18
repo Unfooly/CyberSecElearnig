@@ -76,6 +76,14 @@ phishingowych, sprzedawana firmom (B2B). Pełny kontekst projektu: [`CLAUDE.md`]
    npx dotenv -e .env.test -- npm run prisma:deploy --workspace=apps/api
    ```
 
+5a. **Seed odznak** (moduł grywalizacji — `badges` to katalog danych administracyjnych, nie
+    schemat, więc nie jest częścią migracji; idempotentny, bezpieczny do wielokrotnego
+    uruchomienia po dodaniu nowej odznaki):
+
+   ```bash
+   npm run seed:badges --workspace=apps/api
+   ```
+
 6. **Backend:**
 
    ```bash
@@ -108,6 +116,82 @@ npm run lint --workspace=apps/web
 npm run prisma:migrate --workspace=apps/api
 npm run prisma:generate --workspace=apps/api
 ```
+
+## Wdrożenie produkcyjne
+
+Docker Compose (`docker-compose.prod.yml`) + Caddy jako jedyny punkt wejścia z zewnątrz
+(automatyczny SSL przez Let's Encrypt). Zakłada VPS Ubuntu 24.04 z zainstalowanym Dockerem —
+minimalny sensowny rozmiar to 1GB RAM (zmierzone lokalnie: wszystkie cztery kontenery
+`postgres`+`redis`+`api`+`web` w spoczynku, tuż po starcie, zużywają razem ok. 125MB —
+zostaje spory margines na Caddy i realny ruch, ale warto to monitorować po pierwszym
+wdrożeniu, nie tylko ufać temu pomiarowi).
+
+### 1. Sekrety — `.env` obok `docker-compose.prod.yml`
+
+`apps/api/Dockerfile` i `apps/web/Dockerfile` **nie zawierają żadnych sekretów** — trafiają do
+kontenerów wyłącznie w runtime przez `env_file: .env` w `docker-compose.prod.yml` (patrz
+`.dockerignore` — `.env*` nigdy nie wchodzi do kontekstu builda). Skopiuj `.env.example` jako
+punkt startowy, ale **na produkcji trzeba zmienić więcej niż tylko wartości**:
+
+| Zmienna | Względem `.env.example` | Wartość na produkcji |
+|---|---|---|
+| `POSTGRES_PASSWORD` | **Nowa** — nie istnieje w `.env.example` (dev ma ją zahardkodowaną w `docker-compose.yml`) | Losowy sekret (`openssl rand -hex 24`) |
+| `API_URL` | **Nowa** — nie istnieje wcale w `.env.example` (dev korzysta z domyślnego fallbacku `localhost:3001` w kodzie) | `http://api:3001` — nazwa usługi Dockera, NIE `localhost` (`apps/web` woła `apps/api` przez wewnętrzną sieć compose) |
+| `DATABASE_URL` | Istnieje, zmień host | `postgresql://cyberszkolo:<POSTGRES_PASSWORD>@postgres:5432/cyberszkolo?schema=public` |
+| `DATABASE_URL_APP` | Istnieje, zmień host | `postgresql://cyberszkolo_app:<APP_DB_PASSWORD>@postgres:5432/cyberszkolo?schema=public` |
+| `REDIS_URL` | Istnieje, zmień host | `redis://redis:6379` |
+| `APP_DB_PASSWORD` | Istnieje | Losowy sekret — **ten sam** ciąg musi pojawić się dosłownie w `DATABASE_URL_APP` (patrz niżej) |
+| `FRONTEND_URL` | Istnieje | Prawdziwa publiczna domena z `Caddyfile` (np. `https://twoja-domena.pl`) — trafia do linków w mailach klikanych przez userów w przeglądarce, więc **nie** nazwa usługi Dockera |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Istnieje | Losowe sekrety, różne od dev |
+| `MAILERSEND_API_TOKEN` | Istnieje | **Ustaw naprawdę na produkcji.** Pusty token = `EmailService` loguje treść maila (w tym surowy token resetu hasła) do konsoli kontenera zamiast wysyłać — akceptowalne w dev, ale w logach produkcyjnych to wyciek sekretu równoważnego jednorazowemu hasłu (patrz "Backlog bezpieczeństwa modułu auth" niżej) |
+| `EMAIL_FROM`, `PHISHING_EMAIL_DOMAIN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Istnieje | Jak w `.env.example`, uzupełnij gdy te funkcje będą używane |
+
+`env_file` w Docker Compose **nie podstawia** `${...}` wewnątrz samego pliku — hasła trzeba
+wpisać dosłownie w dwóch miejscach (raz jako osobna zmienna, raz wklejone do `DATABASE_URL*`),
+dokładnie jak już działa to w `.env.example` dla dev.
+
+### 2. Domena
+
+Podmień `twoja-domena.pl` w `Caddyfile` na prawdziwą domenę (dwa wystąpienia — główna domena
+dla `web` i `api.twoja-domena.pl` dla `api`), z DNS wskazującym na IP VPS-a, zanim uruchomisz
+Caddy — inaczej Let's Encrypt nie zweryfikuje domeny.
+
+### 3. Build i start
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Migracje Prisma (`prisma migrate deploy`) uruchamiają się **automatycznie przy każdym starcie
+kontenera `api`** (`apps/api/docker-entrypoint.sh`), nie są zaszyte w obrazie na etapie builda —
+`git pull` z nowymi migracjami + restart kontenera wystarczy, bez ręcznego kroku. Bezpieczne
+też przy ewentualnym przyszłym skalowaniu `api` do więcej niż jednej repliki: `migrate deploy`
+bierze advisory lock w Postgresie na czas aplikowania migracji, więc równoległy start drugiego
+kontenera czeka na zwolnienie locka, a potem widzi migracje już zaaplikowane i kończy się bez
+błędu.
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f api    # sprawdź, czy migracje przeszły
+docker compose -f docker-compose.prod.yml ps
+```
+
+### 4. Obrazy — multi-stage, dlaczego są małe
+
+- **`apps/api/Dockerfile`**: etap builda instaluje `python3`/`make`/`g++` (kompilacja `bcrypt`,
+  natywny moduł) i buduje `nest build` + `prisma generate`, potem `npm prune --omit=dev` usuwa
+  devDependencies z tego samego drzewa `node_modules` (bez ponownej instalacji — natywnie
+  skompilowany `bcrypt` przetrwa). Etap produkcyjny kopiuje wyłącznie spakowany `node_modules`,
+  `dist/` i `prisma/` (migracje potrzebne w runtime przez entrypoint) — zmierzony rozmiar obrazu:
+  ~405MB. `prisma` (CLI) jest celowo w `dependencies`, nie `devDependencies` — potrzebny w
+  runtime do `migrate deploy`.
+- **`apps/web/Dockerfile`**: `next.config.mjs` ma `output: 'standalone'` — Next.js sam śledzi
+  i kopiuje tylko realnie potrzebne zależności do `.next/standalone`, zamiast pełnego
+  `node_modules`. W monorepo (npm workspaces) wymaga `experimental.outputFileTracingRoot`
+  wskazującego na root repo, inaczej gubi pakiety hoistowane poza `apps/web` (np.
+  `@cyberszkolo/shared`) — zmierzony rozmiar obrazu: ~224MB.
+- Oba Dockerfile'e budują **tylko** manifesty (`package.json`) potrzebnych sobie workspace'ów
+  (`apps/api` NIE kopiuje `apps/web/package.json` i odwrotnie) — inaczej `npm ci` hoistowałby do
+  wspólnego `node_modules` zależności drugiej aplikacji (np. cały Next.js do obrazu backendu).
 
 ## Izolacja danych między organizacjami
 
@@ -159,9 +243,11 @@ Testy regresyjne tej izolacji:
 ## Backlog bezpieczeństwa modułu auth
 
 Z audytu bezpieczeństwa modułu auth (izolacja tenantów / hashowanie haseł / JWT). Fail-closed
-RLS + role Postgresa, rate limiting na `/auth/login` i `/auth/register` oraz ujednolicony
-komunikat błędu rejestracji są już zaimplementowane. Pozostałe punkty, do zrobienia w
-osobnych zadaniach:
+RLS + role Postgresa, rate limiting na `/auth/login` i `/auth/register` są już zaimplementowane.
+Komunikat błędu rejestracji jest ujednolicony (anty-enumeracyjny) TYLKO dla duplikatu e-maila
+(`REGISTRATION_FAILED_MESSAGE`) — duplikat organizacji (patrz niżej) celowo dostaje odrębny,
+jawny komunikat, bo to informacja na poziomie firmy, nie konkretnego konta. Pozostałe punkty,
+do zrobienia w osobnych zadaniach:
 
 - **Brak rewokacji refresh tokenów / brak `/auth/logout`.** Wyciekły refresh token jest ważny
   przez pełne 7 dni i nic go nie unieważni — potrzebna tabela sesji/`jti` i endpoint wylogowania.
@@ -171,11 +257,11 @@ osobnych zadaniach:
   zmiany hasła. Świadomie nie budowane teraz razem z resetem hasła (osobne zadanie, patrz punkt
   wyżej) — jako częściowe złagodzenie `/auth/reset-password` nie wydaje nowych tokenów, więc user
   musi zalogować się od nowa po resecie.
-- **`EmailService` w trybie dev-fallback (brak `POSTMARK_API_TOKEN`) loguje pełną treść
+- **`EmailService` w trybie dev-fallback (brak `MAILERSEND_API_TOKEN`) loguje pełną treść
   `templateData` w czystej postaci** (`apps/api/src/email/email.service.ts`), w tym surowy,
   jednorazowy token resetu hasła z linku wysyłanego przez `AuthService.forgotPassword` — to
   świadomy kompromis na rzecz wygody lokalnego dev (można kliknąć link z konsoli bez
-  skonfigurowanego Postmarka), ale w środowisku ze scentralizowanym logowaniem (staging/prod
+  skonfigurowanego MailerSend), ale w środowisku ze scentralizowanym logowaniem (staging/prod
   z przypadkowo pustym/błędnym tokenem) oznacza to wyciek sekretu równoważnego jednorazowemu
   hasłu do logów czytanych przez więcej osób/narzędzi niż skrzynka mailowa użytkownika.
   Znalezione w security review tej sesji — do zrobienia: albo redagować wartości wyglądające na
@@ -185,6 +271,15 @@ osobnych zadaniach:
   `@@unique([organizationId, email])`) — potwierdzić, czy to świadoma decyzja produktowa (ta
   sama osoba nie może dziś mieć kont w dwóch różnych organizacjach-klientach pod tym samym
   adresem).
+- **Nazwa organizacji = domena e-maila, z unikalnym constraintem** (`Organization.name`,
+  migracja `organization_name_unique`) — pierwsza osoba, która zarejestruje się z danej domeny,
+  "zajmuje" ją dla wszystkich kolejnych (świadoma decyzja tej sesji, patrz
+  `AuthService.deriveOrganizationNameFromEmail`). Celowo BEZ wyjątku dla domen współdzielonych
+  publicznie (gmail.com, outlook.com, ...) — druga osoba z takiej domeny dostanie 400
+  (`ORGANIZATION_ALREADY_EXISTS_MESSAGE`), mimo że nie ma żadnego związku z pierwszą. Docelowo,
+  jeśli platforma ma obsługiwać rejestracje spoza firmowych domen, potrzebna albo lista
+  wykluczonych domen publicznych, albo osobny mechanizm auto-joina do istniejącej organizacji
+  (kto dołącza z jaką rolą, czy wymaga akceptacji admina) — żadne z tego nie jest budowane teraz.
 - **Brak normalizacji e-maila** (lowercase/trim) przed zapisem i porównaniem w `auth.service.ts`.
 - **Polityka haseł** ograniczona do `@MinLength(8)` — rozważyć sprawdzanie względem znanych
   wycieków (np. HaveIBeenPwned range API), skoro produkt sam uczy klientów higieny haseł.
@@ -252,6 +347,27 @@ kursowi opcjonalnemu późniejszą datę ukończenia niż obowiązkowemu — reg
 zawężeniu `lastCourseCompletionAt` tylko do kursów obowiązkowych (raz już się zdarzyła w code
 review) zostanie złapana przez ten test.
 
+### Executive Dashboard (`/dashboard`): trendy, status pracowników, raport
+
+- `GET /dashboard/stats/trends` (6 ostatnich miesięcy) i `GET /dashboard/users-status` — oba tylko
+  `ORG_ADMIN`, `organizationId` wyłącznie z JWT (+ RLS). Logika wyliczeń: `dashboard-metrics.ts`.
+- **Trend liczony wstecz z `createdAt`/`completedAt`, bez tabeli historii.** Trwałe usunięcie
+  pracownika (hard delete, CASCADE) usuwa też jego przypisania, więc jego wkład znika również z
+  historycznych punktów trendu. Do zmiany, gdy potrzebne będą audytowalne migawki (np. tabela
+  `compliance_snapshots` zasilana jobem).
+- **Sortowanie i paginacja `users-status` odbywają się w pamięci** (filtr search/dział w SQL,
+  `completionPercentage` jest polem wyliczanym). Świadomy kompromis dla skali MVP
+  (setki–tysiące użytkowników na organizację); przy większej skali przenieść agregację do SQL.
+- **"Ostatnia aktywność"** = najnowszy `CourseAssignment.updatedAt` spośród przypisań w statusie
+  innym niż `NOT_STARTED` (samo przypisanie kursu przez admina nie jest aktywnością pracownika).
+  Kolumna `updatedAt` została dodana migracją z backfillem `COALESCE(completedAt, createdAt)`.
+- **Status zgodności:** `Zgodny` (wszystkie obowiązkowe ukończone), `Zaległości` (status OVERDUE
+  albo termin minął), `W trakcie`, `Brak przypisań`. Przypomnienie: nic jeszcze nie ustawia
+  statusu OVERDUE (patrz wyżej), ale termin w przeszłości jest wykrywany po `dueDate`.
+- **Raport:** "Pobierz raport CSV" (proxy `/api/dashboard/export`) i "Drukuj raport" (druk
+  przeglądarki → zapis jako PDF; style `@media print` chowają nawigację). Osobny generator PDF
+  po stronie serwera nie jest zbudowany.
+
 ## Backlog frontendu (`apps/web`)
 
 Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
@@ -300,36 +416,78 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
 
 ## Moduł e-mail (`apps/api/src/email/`)
 
-Fundament pod przyszłe flow (reset hasła, powiadomienia) — `EmailService.send({ to, subject,
-templateName, templateData })`, generyczna wysyłka przez **Postmark Templates API**. Treść HTML
-maila żyje jako szablon w panelu Postmark (adresowany przez `templateName`/alias), nie w
-kodzie — zmiana treści nie wymaga deploya backendu. To zadanie samo w sobie niczego jeszcze nie
-wysyła (brak resetu hasła/powiadomień) — to czysto reużywalny mechanizm do wstrzyknięcia przez
-kolejne moduły.
+`EmailService.send({ to, subject, templateName, templateData })` - wysyłka przez **MailerSend**
+(`POST https://api.mailersend.com/v1/email`, `Authorization: Bearer MAILERSEND_API_TOKEN`).
+Treść maila renderowana z szablonów **w kodzie** (`apps/api/src/email/templates/`: `email-verification`,
+`password-reset`, `user-invite`), wartości od użytkownika są escapowane. Nadawca: `EMAIL_FROM` +
+`EMAIL_FROM_NAME` - adres MUSI należeć do domeny zweryfikowanej w MailerSend (na koncie trial to
+domena `*.mlsender.net`, wysyłka zwykle tylko do właściciela konta).
 
-- **Brak `POSTMARK_API_TOKEN`** (pusty string też się liczy — patrz `.env.test`) → `send()` loguje
-  treść maila do konsoli (`[EMAIL DEV MODE]`) zamiast wysyłać. Dzięki temu praca nad resztą
-  aplikacji nie wymaga konta Postmark.
-- **Błąd z Postmark API nigdy nie przerywa flow, który wywołał `send()`** (np. rejestracji) —
-  złapany, zalogowany, świadomie nie rzucany dalej. Jeśli kiedyś powstanie flow, dla którego
-  e-mail jest krytyczny, to ten przyszły flow powinien to obsłużyć jawnie (np. sprawdzić wynik
-  wysyłki), nie `EmailService` samo w sobie.
-- **Token nigdy nie trafia do logów** — nawet przy błędzie z Postmark logowany jest tylko
-  `error.message` (nigdy cały obiekt błędu), dodatkowo aktywnie skanowany i redagowany, gdyby
-  jednak zawierał token. Pokryte testem (`email.service.spec.ts`).
-- **Dwie role Postgresa** (`cyberszkolo` vs `cyberszkolo_app`) nie mają tu odpowiednika — Postmark
-  nie jest bazą danych, nie dotyczy go Zasada nr 1/RLS.
+Flow korzystające z maili: **weryfikacja adresu przy rejestracji** (link 24 h, logowanie
+zablokowane do potwierdzenia - `EMAIL_NOT_VERIFIED`), **reset hasła** (link 1 h), **zaproszenie
+do organizacji** (mail z nazwą organizacji i osobą zapraszającą; klik w link ustawia hasło i
+potwierdza adres).
+
+- **Brak `MAILERSEND_API_TOKEN`** (pusty też się liczy - `.env.test`) -> `send()` loguje treść
+  maila do konsoli (`[EMAIL DEV MODE]`). Na `NODE_ENV=production` bez tokenu aplikacja NIE
+  wystartuje (linki z tokenami trafiłyby do logów), chyba że `ALLOW_EMAIL_DEV_MODE=true`
+  (tylko lokalny stack `prodlocal`).
+- **Błąd wysyłki nigdy nie przerywa flow, który wywołał `send()`** - złapany i zalogowany (status
+  HTTP + treść odpowiedzi MailerSend, po redakcji tokenu). Konsekwencja: użytkownik, któremu mail nie
+  dotarł, korzysta z "Wyślij link ponownie" (`POST /auth/resend-verification`).
+- **Token nigdy nie trafia do logów** - komunikaty błędów są skanowane i redagowane. Test:
+  `email.service.spec.ts`.
+- Token API trzymamy wyłącznie w `.env` (gitignorowany). Token, który wkleisz do czatu/ticketu,
+  uznaj za ujawniony i zrotuj po testach.
 
 ### Backlog
-- **`templateData` jest logowane w całości w trybie DEV MODE** (`EmailService.send`, brak
-  tokenu) — dziś nieszkodliwe (nic jeszcze nie wywołuje `send()`), ale przyszłe flow (reset
-  hasła, kody OTP) będą przekazywać w `templateData` sekrety, które w środowisku bez
-  `POSTMARK_API_TOKEN` trafią jawnie do logów konsoli. Zanim taki flow powstanie, warto dodać
-  maskowanie pól typu `*token*`/`*password*`/`*code*` przed logowaniem w trybie dev.
-- Brak szablonów w panelu Postmark, resetu hasła, powiadomień — kolejne zadania.
+- `templateData` jest logowane w całości w trybie DEV MODE (zawiera linki z tokenami) - akceptowalne
+  lokalnie, patrz guard produkcyjny wyżej.
+- Konto MailerSend w trybie trial: wysyłka do dowolnych adresów wymaga zweryfikowanej domeny
+  własnej (DNS) - do zrobienia przed publicznym wdrożeniem.
+- Niepotwierdzona organizacja nadal "zajmuje" domenę (nazwa organizacji = domena e-maila) - do
+  rozważenia wygaszanie niepotwierdzonych kont po X dniach.
 
-**Zweryfikowane end-to-end** z prawdziwym `POSTMARK_API_TOKEN`: autentykacja przechodzi,
-żądanie dociera do Postmarka, błędy wracają ustrukturyzowane i nigdy nie zawierają tokenu,
-`send()` faktycznie nie rzuca. Konto Postmark jest dziś w stanie "pending approval" (limit
-wysyłki tylko na domenę `From`) i nie ma jeszcze żadnego szablonu — oba do uzupełnienia po
-stronie Postmarka, zanim realna wysyłka (nie tylko sama integracja) zadziała.
+## Moduł grywalizacji, awatary i leaderboard (`apps/api/src/gamification/`)
+
+XP/level/odznaki za ukończenie kursów, ranking w obrębie organizacji (i opcjonalnie działu),
+personalizacja profilu przez `avatarUrl`. `GamificationService` jest wołany **bezpośrednio** z
+`CoursesService.submitBlockProgress` (w tej samej transakcji Prisma co oznaczenie kursu jako
+`COMPLETED`), świadomie NIE przez event emitter — projekt tej zależności nie ma, a event w
+jednym procesie NestJS bez kolejki/wielu konsumentów nie dawałby żadnej korzyści, za to
+wprowadzałby ryzyko "kurs ukończony, proces padł przed obsłużeniem eventu, zero XP, cicho".
+Bezpośrednie wywołanie w tym samym `tx` eliminuje to strukturalnie.
+
+- **`level = floor(sqrt(xp / 100)) + 1`** — rozpisane na progi w `level.util.ts`: próg wejścia na
+  poziom `L` to `(L-1)² × 100` XP, próg następnego poziomu to `L² × 100` XP.
+- **`badges` (katalog odznak) celowo bez `organizationId`/RLS** — globalna definicja, jak
+  `courses`. **`user_badges` (kto co odblokował) ma RLS fail-closed**, bez wyjątku bypass — w
+  przeciwieństwie do `users`/`password_reset_tokens` nie ma tu ścieżki, która musiałaby odnaleźć
+  wiersz przed poznaniem `organizationId` (zawsze znane z JWT).
+- **Jednorazowość odznaki** wymuszona przez `@@unique([userId, badgeId])` + `try/catch` na
+  naruszeniu tego constraintu w `tryUnlockBadge` (nie tylko logiczny check wcześniej) — chroni
+  przed podwójnym przyznaniem XP *za konkretną odznakę* przy współbieżnych wywołaniach.
+  **Bazowe/bonusowe XP za samo ukończenie kursu ma OSOBNĄ ochronę** — `submitBlockProgress`
+  (`apps/api/src/courses/courses.service.ts`) zapisuje postęp przez `updateMany` z
+  `currentBlockIndex` odczytanym na starcie funkcji w `WHERE` (optymistyczna blokada): dwa
+  równoległe żądania kończące ten sam blok/kurs (dwie karty przeglądarki, retry) — pierwsze
+  wygrywa i commituje, drugie trafia na już zmieniony wiersz, dopasowuje 0 wierszy i dostaje 409
+  zamiast cicho wywołać `awardCourseCompletion` drugi raz. Znalezione w niezależnych review
+  (`code-reviewer` i `security-reviewer`) tej samej sesji — wcześniejsza wersja tego opisu błędnie
+  sugerowała, że sama ochrona odznak wystarcza na całość XP.
+- **`firstName`/`lastName` na `User` istnieją w schemacie, ale żaden endpoint w tym module ich
+  nie ustawia** — leaderboard w praktyce dziś zawsze spada na inicjały z e-maila
+  (`initialsFromEmail`), dopóki nie powstanie ekran edycji profilu. Świadoma decyzja z tej sesji
+  (dodanie pól bez API do ich ustawiania) — zanotowane w backlogu niżej, nie ukryte.
+- **`SPEED_DEMON` jest zaseedowana, ale bez logiki auto-odblokowania** — wymagałaby pola
+  `startedAt` na `CourseAssignment` (moment faktycznego rozpoczęcia, nie samego przypisania),
+  którego dziś nie ma — zmiana schematu poza zakresem tego zadania.
+
+### Backlog
+- Endpoint do edycji `firstName`/`lastName` (patrz wyżej) — bez niego leaderboard nie pokaże
+  realnych imion/nazwisk.
+- `startedAt` na `CourseAssignment` + logika odblokowania `SPEED_DEMON`.
+- Odznaki dziś sprawdzane tylko przy ukończeniu kursu (`CoursesService`) — kolejne zdarzenia XP
+  (np. terminowość względem `dueDate`, seria dni z rzędu) to osobne zadania.
+- `AVATAR_PRESETS` (`apps/api/src/users/avatar-presets.ts`) to na razie goła lista slugów —
+  brak endpointu zwracającego metadane presetów (np. URL miniatury) dla frontendu.

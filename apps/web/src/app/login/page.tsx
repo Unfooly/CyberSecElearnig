@@ -3,8 +3,8 @@
 import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { EMAIL_REGEX } from '@/lib/email';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface FieldErrors {
   email?: string;
@@ -20,6 +20,23 @@ function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  async function handleResend() {
+    setResendMessage(null);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json().catch(() => null);
+      setResendMessage(data?.message ?? 'Nie udało się wysłać linku. Spróbuj ponownie później.');
+    } catch {
+      setResendMessage('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
+    }
+  }
 
   function validate(): boolean {
     const errors: FieldErrors = {};
@@ -38,6 +55,8 @@ function LoginForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    setNeedsVerification(false);
+    setResendMessage(null);
 
     if (!validate()) {
       return;
@@ -57,6 +76,7 @@ function LoginForm() {
         // istnieje - apps/api już go nie ujawnia (auth.service.ts), więc
         // front tylko przekazuje treść dalej, nie interpretuje jej.
         setFormError(data?.message ?? 'Logowanie nie powiodło się.');
+        setNeedsVerification(data?.code === 'EMAIL_NOT_VERIFIED');
         return;
       }
 
@@ -70,7 +90,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
+    <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Zaloguj się</h1>
 
       {showResetSuccess && (
@@ -130,10 +150,23 @@ function LoginForm() {
           </p>
         )}
 
+        {needsVerification && (
+          <div className="text-sm text-slate-600">
+            <button type="button" onClick={handleResend} className="font-medium text-slate-900 underline">
+              Wyślij link weryfikacyjny ponownie
+            </button>
+            {resendMessage && (
+              <p role="status" className="mt-2 rounded bg-green-50 px-3 py-2 text-green-700">
+                {resendMessage}
+              </p>
+            )}
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
         </button>
@@ -157,7 +190,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Suspense fallback={<div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">Ładowanie...</div>}>
+      <Suspense fallback={<div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">Ładowanie...</div>}>
         <LoginForm />
       </Suspense>
     </main>

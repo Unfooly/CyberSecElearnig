@@ -4,6 +4,10 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardPage from './page';
 
+vi.mock('./_components/UsersComplianceTable', () => ({
+  default: () => <div data-testid="users-compliance-table" />,
+}));
+
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
@@ -36,6 +40,10 @@ const overviewResponse = {
 
 const departmentsResponse = [
   { departmentId: 'd1', departmentName: 'IT', completionRate: 80, mandatoryTotal: 5, mandatoryCompleted: 4 },
+];
+
+const trendsResponse = [
+  { month: '2026-09', completionRate: 60, mandatoryTotal: 5, mandatoryCompleted: 3 },
 ];
 
 describe('DashboardPage', () => {
@@ -95,7 +103,8 @@ describe('DashboardPage', () => {
       vi
         .fn()
         .mockResolvedValueOnce({ ok: true, json: async () => overviewResponse })
-        .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse }),
+        .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => trendsResponse }),
     );
 
     const jsx = await DashboardPage();
@@ -107,8 +116,8 @@ describe('DashboardPage', () => {
     expect(
       screen.getAllByText('Brak danych - moduł symulacji jeszcze nie wdrożony'),
     ).toHaveLength(2);
-    expect(screen.getByText('IT')).toBeInTheDocument();
-    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getAllByText('IT').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('80%').length).toBeGreaterThan(0);
   });
 
   it('pokazuje "Brak danych" dla completionRate=null zamiast 0%', async () => {
@@ -121,13 +130,14 @@ describe('DashboardPage', () => {
           ok: true,
           json: async () => ({ ...overviewResponse, completionRate: null }),
         })
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
         .mockResolvedValueOnce({ ok: true, json: async () => [] }),
     );
 
     const jsx = await DashboardPage();
     render(jsx);
 
-    expect(screen.getByText('Brak danych do wyświetlenia.')).toBeInTheDocument();
+    expect(screen.getAllByText('Brak danych do wyświetlenia.')).not.toHaveLength(0);
     const brakDanychNodes = screen.getAllByText('Brak danych');
     expect(brakDanychNodes.length).toBeGreaterThan(0);
   });

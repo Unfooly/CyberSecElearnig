@@ -86,4 +86,31 @@ describe('CourseLibrary - filtrowanie klienckie po zakładkach', () => {
     expect(screen.getByRole('tab', { name: 'Obowiązkowe (2)' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Zaległe (1)' })).toBeInTheDocument();
   });
+
+  it('selektor kategorii filtruje TEN SAM zestaw danych (bez dodatkowego zapytania)', () => {
+    const mixedCategoryCourses = [
+      course({ assignmentId: 'e1', title: 'Kurs e-mail', category: 'EMAIL_SECURITY' }),
+      course({ assignmentId: 'p1', title: 'Kurs phishing', category: 'PHISHING_SOCIAL_ENGINEERING' }),
+    ];
+    render(<CourseLibrary courses={mixedCategoryCourses} />);
+
+    fireEvent.change(screen.getByLabelText('Kategoria'), { target: { value: 'EMAIL_SECURITY' } });
+
+    expect(screen.getByText('Kurs e-mail')).toBeInTheDocument();
+    expect(screen.queryByText('Kurs phishing')).not.toBeInTheDocument();
+  });
+
+  it('selektor kategorii działa razem z zakładkami (oba filtry naraz)', () => {
+    const mixedCourses = [
+      course({ assignmentId: 'e1', title: 'E-mail obowiązkowy', category: 'EMAIL_SECURITY', mandatory: true }),
+      course({ assignmentId: 'e2', title: 'E-mail opcjonalny', category: 'EMAIL_SECURITY', mandatory: false }),
+    ];
+    render(<CourseLibrary courses={mixedCourses} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Obowiązkowe/ }));
+    fireEvent.change(screen.getByLabelText('Kategoria'), { target: { value: 'EMAIL_SECURITY' } });
+
+    expect(screen.getByText('E-mail obowiązkowy')).toBeInTheDocument();
+    expect(screen.queryByText('E-mail opcjonalny')).not.toBeInTheDocument();
+  });
 });

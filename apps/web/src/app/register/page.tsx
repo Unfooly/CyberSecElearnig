@@ -1,41 +1,48 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { EMAIL_REGEX } from '@/lib/email';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Dokładnie to, co wymusza backend (RegisterDto: @MinLength(8)) - nie
 // zmyślamy dodatkowych reguł (wielkie litery/cyfry), których backend nie
 // egzekwuje.
 const MIN_PASSWORD_LENGTH = 8;
-// RegisterDto: @MinLength(2) na organizationName.
-const MIN_ORG_NAME_LENGTH = 2;
 
 interface FieldErrors {
-  organizationName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [organizationName, setOrganizationName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(true);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  async function handleResend() {
+    setResendMessage(null);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json().catch(() => null);
+      setResendMessage(data?.message ?? 'Nie udało się wysłać linku. Spróbuj ponownie później.');
+    } catch {
+      setResendMessage('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
+    }
+  }
 
   function validate(): boolean {
     const errors: FieldErrors = {};
-    if (!organizationName.trim()) {
-      errors.organizationName = 'Podaj nazwę organizacji.';
-    } else if (organizationName.trim().length < MIN_ORG_NAME_LENGTH) {
-      errors.organizationName = `Nazwa organizacji musi mieć min. ${MIN_ORG_NAME_LENGTH} znaki.`;
-    }
     if (!email.trim()) {
       errors.email = 'Podaj adres e-mail.';
     } else if (!EMAIL_REGEX.test(email.trim())) {
@@ -68,7 +75,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationName: organizationName.trim(), email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       if (!response.ok) {
@@ -80,11 +87,13 @@ export default function RegisterPage() {
         return;
       }
 
-      // /auth/register loguje od razu (zwraca tokeny tak jak /auth/login) -
-      // nowo utworzony user ma rolę ORG_ADMIN, zgodną z PROTECTED_ROUTES dla
-      // /dashboard w middleware.ts.
-      router.push('/dashboard');
-      router.refresh();
+      // /auth/register NIE loguje - konto czeka na potwierdzenie adresu
+      // e-mail (link w wiadomości), dopiero potem można się zalogować.
+      const data = await response.json().catch(() => null);
+      setEmailSent(data?.emailSent !== false);
+      setRegisteredMessage(
+        data?.message ?? 'Wysłaliśmy link weryfikacyjny na podany adres e-mail.',
+      );
     } catch {
       setFormError('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
     } finally {
@@ -92,33 +101,47 @@ export default function RegisterPage() {
     }
   }
 
+  if (registeredMessage) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
+          <h1 className="mb-2 text-2xl font-semibold text-slate-900">Sprawdź skrzynkę e-mail</h1>
+          <p
+            role={emailSent ? 'status' : 'alert'}
+            className={`mb-6 rounded px-3 py-2 text-sm ${
+              emailSent ? 'text-slate-600' : 'bg-amber-50 text-amber-800'
+            }`}
+          >
+            {registeredMessage}
+          </p>
+          {!emailSent && (
+            <div className="mb-6 text-sm">
+              <button type="button" onClick={handleResend} className="font-medium text-slate-900 underline">
+                Wyślij link ponownie
+              </button>
+              {resendMessage && (
+                <p role="status" className="mt-2 rounded bg-green-50 px-3 py-2 text-green-700">
+                  {resendMessage}
+                </p>
+              )}
+            </div>
+          )}
+          <Link href="/login" className="font-medium text-slate-900 hover:underline">
+            Przejdź do logowania
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
-        <h1 className="mb-6 text-2xl font-semibold text-slate-900">Załóż organizację</h1>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
+        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Załóż organizację</h1>
+        <p className="mb-6 text-sm text-slate-600">
+          Nazwę organizacji ustawimy na podstawie domeny Twojego adresu e-mail.
+        </p>
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <div>
-            <label htmlFor="organizationName" className="mb-1 block text-sm font-medium text-slate-700">
-              Nazwa organizacji
-            </label>
-            <input
-              id="organizationName"
-              name="organizationName"
-              type="text"
-              autoComplete="organization"
-              value={organizationName}
-              onChange={(event) => setOrganizationName(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              aria-invalid={Boolean(fieldErrors.organizationName)}
-              aria-describedby={fieldErrors.organizationName ? 'organization-name-error' : undefined}
-            />
-            {fieldErrors.organizationName && (
-              <p id="organization-name-error" className="mt-1 text-sm text-red-600">
-                {fieldErrors.organizationName}
-              </p>
-            )}
-          </div>
-
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
               E-mail admina
@@ -194,7 +217,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Zakładanie konta...' : 'Załóż organizację'}
           </button>

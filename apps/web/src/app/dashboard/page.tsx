@@ -2,9 +2,15 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
-import Sidebar from '@/components/Sidebar';
+import { decodeJwtPayload } from '@/lib/jwt';
+import Topbar from '@/components/Topbar';
 import KpiCard from './_components/KpiCard';
 import DepartmentsTable, { type DepartmentRow } from './_components/DepartmentsTable';
+import CompletionTrendChart from './_components/CompletionTrendChart';
+import DepartmentRiskChart from './_components/DepartmentRiskChart';
+import UsersComplianceTable from './_components/UsersComplianceTable';
+import ReportActions from './_components/ReportActions';
+import type { TrendPoint } from '@/lib/dashboard-types';
 
 interface OverviewData {
   completionRate: number | null;
@@ -32,17 +38,20 @@ export default async function DashboardPage() {
   if (!accessToken) {
     redirect('/login');
   }
+  const userEmail = decodeJwtPayload(accessToken)?.email ?? null;
 
-  const [overviewResult, departmentsResult] = await Promise.all([
+  const [overviewResult, departmentsResult, trendsResult] = await Promise.all([
     fetchFromApi<OverviewData>('/dashboard/overview', accessToken),
     fetchFromApi<DepartmentRow[]>('/dashboard/departments', accessToken),
+    fetchFromApi<TrendPoint[]>('/dashboard/stats/trends', accessToken),
   ]);
 
   // 401 = token rzeczywiście nieważny (np. odrzucony mimo że middleware go
   // odświeżył) - to jest prawdziwe "musisz się zalogować ponownie".
   const isUnauthorized =
     (!overviewResult.ok && overviewResult.status === 401) ||
-    (!departmentsResult.ok && departmentsResult.status === 401);
+    (!departmentsResult.ok && departmentsResult.status === 401) ||
+    (!trendsResult.ok && trendsResult.status === 401);
   if (isUnauthorized) {
     redirect('/login');
   }
@@ -52,11 +61,11 @@ export default async function DashboardPage() {
   // który myliłby admina co do przyczyny.
   if (!overviewResult.ok || !departmentsResult.ok) {
     return (
-      <div className="flex min-h-screen bg-slate-50">
-        <Sidebar />
-        <main className="flex-1 p-8">
+      <div className="min-h-screen bg-slate-50">
+        <Topbar userEmail={userEmail} />
+        <main className="mx-auto max-w-7xl p-8">
           <h1 className="mb-6 text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             Nie udało się załadować danych dashboardu. Spróbuj odświeżyć stronę za chwilę.
           </p>
         </main>
@@ -66,12 +75,21 @@ export default async function DashboardPage() {
 
   const overview = overviewResult.data;
   const departments = departmentsResult.data;
+  // Trend jest dodatkiem - jego awaria nie powinna zasłaniać reszty
+  // dashboardu, więc degradujemy do pustego wykresu ("Brak danych").
+  const trends = trendsResult.ok ? trendsResult.data : [];
+  const departmentOptions = departments.flatMap((department) =>
+    department.departmentId ? [{ id: department.departmentId, name: department.departmentName }] : [],
+  );
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <h1 className="mb-6 text-2xl font-semibold text-slate-900">Dashboard</h1>
+    <div className="min-h-screen bg-slate-50">
+      <Topbar userEmail={userEmail} />
+      <main className="mx-auto max-w-7xl p-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+          <ReportActions />
+        </div>
 
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <KpiCard
@@ -85,6 +103,15 @@ export default async function DashboardPage() {
           <KpiCard label="Zaległe szkolenia" value={String(overview.overdueCount)} />
           <KpiCard label="Klikalność phishingowa" value={PHISHING_PLACEHOLDER} muted />
           <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_PLACEHOLDER} muted />
+        </div>
+
+        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <CompletionTrendChart points={trends} />
+          <DepartmentRiskChart rows={departments} />
+        </div>
+
+        <div className="mb-8">
+          <UsersComplianceTable departments={departmentOptions} />
         </div>
 
         <DepartmentsTable rows={departments} />

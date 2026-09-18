@@ -72,7 +72,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
         <h1 className="mb-2 text-2xl font-semibold text-slate-900">Nieprawidłowy link</h1>
         <p className="mb-6 text-sm text-slate-600">
           Ten link do resetowania hasła jest niekompletny. Poproś o nowy.
@@ -85,7 +85,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
+    <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Ustaw nowe hasło</h1>
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
@@ -141,7 +141,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {isSubmitting ? 'Zapisywanie...' : 'Ustaw nowe hasło'}
         </button>
@@ -153,7 +153,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Suspense fallback={<div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">Ładowanie...</div>}>
+      <Suspense fallback={<div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">Ładowanie...</div>}>
         <ResetPasswordForm />
       </Suspense>
     </main>

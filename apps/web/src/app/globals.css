@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Raport dla zarządu: "Drukuj raport" -> zapis do PDF z przeglądarki. */
+@media print {
+  header,
+  nav,
+  aside {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+}

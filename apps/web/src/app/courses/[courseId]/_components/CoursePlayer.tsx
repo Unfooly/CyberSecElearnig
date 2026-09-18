@@ -2,11 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ContentBlock, CourseDetail, CourseProgressResponse, LastResult } from '@/lib/courses-types';
+import type {
+  ContentBlock,
+  CourseCompletionReward,
+  CourseDetail,
+  CourseProgressResponse,
+  LastResult,
+} from '@/lib/courses-types';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
+import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
 import FeedbackPanel from './FeedbackPanel';
 import SummaryScreen from './SummaryScreen';
 
@@ -32,6 +39,8 @@ function renderBlock(
       return <BranchingScenarioBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
     case 'DRAG_AND_DROP':
       return <DragAndDropBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
+    case 'EMBEDDED_HTML':
+      return <EmbeddedHtmlBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
     default:
       // Nieznany typ bloku (np. backend dodał nowy typ, front się jeszcze
       // nie zaktualizował) - jawny komunikat zamiast pustego <div>.
@@ -63,6 +72,11 @@ export default function CoursePlayer({
     score: initial.score,
   });
   const [feedback, setFeedback] = useState<LastResult | null>(null);
+  // Obecne WYŁĄCZNIE po świeżym ukończeniu w TEJ sesji (ustawiane w
+  // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
+  // wrócił do wcześniej ukończonego kursu, więc CourseRewardModal wtedy się
+  // nie pokazuje.
+  const [reward, setReward] = useState<CourseCompletionReward | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +86,12 @@ export default function CoursePlayer({
   // sesji state.score zawsze pochodzi wprost z odpowiedzi /progress.
   if (state.status === 'COMPLETED' && !feedback) {
     return (
-      <SummaryScreen title={initial.title} score={state.score} scoreUnavailable={scoreUnavailable} />
+      <SummaryScreen
+        title={initial.title}
+        score={state.score}
+        scoreUnavailable={scoreUnavailable}
+        reward={reward}
+      />
     );
   }
 
@@ -104,6 +123,7 @@ export default function CoursePlayer({
 
       const progress = data as CourseProgressResponse;
       setFeedback(progress.lastResult);
+      setReward(progress.gamification);
       setState({
         status: progress.status,
         currentBlockIndex: progress.currentBlockIndex,

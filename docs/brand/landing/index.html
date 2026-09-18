@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unfooly — szkolenia z cyberbezpieczeństwa i symulacje phishingu dla firm</title>
+<meta name="description" content="Unfooly: krótkie szkolenia security awareness, symulacje phishingu i raporty pod NIS2 i ISO 27001. Start w jeden dzień.">
+<link rel="icon" href="../logo/favicon.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+:root{--ink:#131313;--paper:#F6F6F4;--surface:#FFFFFF;--border:#E6E6E2;--muted:#6F6F6B;--muted-2:#9A9A96;
+--accent:#6C5CE7;--accent-hover:#5B4BD6;--accent-soft:#EEEBFF;--accent-ink:#3F32B5;
+--success:#1E9E6A;--success-soft:#E6F6EE;--warning:#C77C0F;--warning-soft:#FFF3DF;
+--shadow:0 1px 2px rgba(19,19,19,.04),0 8px 24px -16px rgba(19,19,19,.18);--shadow-lg:0 2px 4px rgba(19,19,19,.04),0 40px 80px -40px rgba(19,19,19,.35)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1160px;margin:0 auto;padding:0 40px}
+.nav{height:72px;display:flex;align-items:center;gap:40px;background:rgba(246,246,244,.9);border-bottom:1px solid var(--border)}
+.nav .links{display:flex;gap:28px;flex-grow:1;font-weight:600;color:var(--muted);font-size:15px}
+.nav .links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:48px;padding:0 22px;border-radius:12px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-hover)}
+.btn.secondary{background:var(--surface);color:var(--ink);border-color:var(--border)}
+.btn.ink{background:var(--ink);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink);padding:0 8px}
+.btn.lg{height:56px;padding:0 28px;font-size:16px;border-radius:14px}
+.btn.sm{height:40px;padding:0 16px;font-size:14px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink)}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+h1{font-size:64px;line-height:1.05;letter-spacing:-.035em;font-weight:800;margin:0}
+h1 .u{color:var(--accent)}
+h2{font-size:40px;line-height:1.12;letter-spacing:-.03em;font-weight:800;margin:0}
+h3{font-size:20px;line-height:1.3;letter-spacing:-.01em;font-weight:700;margin:0}
+.lead{font-size:20px;color:var(--muted);line-height:1.5;margin:0}
+.section{padding:104px 0}
+.section.tight{padding:72px 0}
+.hero{padding:88px 0 64px;display:grid;grid-template-columns:minmax(0,1fr) 520px;gap:64px;align-items:center}
+.hero .copy{display:flex;flex-direction:column;gap:28px}
+.hero .cta{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hero .fine{display:flex;flex-wrap:wrap;gap:12px 22px;color:var(--muted);font-size:14px;font-weight:600}
+.hero .fine span{display:inline-flex;align-items:center;gap:8px}
+.hero .fine svg{color:var(--success)}
+.shot{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow-lg);position:relative;margin-right:24px}
+.shot .bar{border-radius:19px 19px 0 0;height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 16px;background:#FBFBF9}
+.shot .bar i{width:10px;height:10px;border-radius:50%;background:#E6E6E2;display:block}
+.shot .body{border-radius:0 0 19px 19px;padding:20px;display:flex;flex-direction:column;gap:14px;background:var(--paper)}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.tile .l{font-size:12px;font-weight:600;color:var(--muted)}
+.tile .v{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.tile .v small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0;margin-left:3px}
+.pbar{height:6px;border-radius:999px;background:var(--paper);border:1px solid var(--border);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.pbar.ok i{background:var(--success)}.pbar.warn i{background:var(--warning)}
+.rows{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.rows .r{display:grid;grid-template-columns:110px minmax(0,1fr) 44px 92px;gap:14px;align-items:center;padding:11px 16px;border-top:1px solid var(--border);font-size:13px;font-weight:600}
+.rows .r:first-child{border-top:none;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.pill{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
+.pill.ok{background:var(--success-soft);color:var(--success)}.pill.warn{background:var(--warning-soft);color:var(--warning)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}.pill.off{background:var(--paper);color:var(--muted);border:1px solid var(--border)}
+.float{position:absolute;right:-40px;bottom:28px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);padding:14px 16px;display:flex;gap:12px;align-items:center;width:300px}
+.float .ico{width:40px;height:40px;border-radius:12px;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.float b{display:block;font-size:14px}.float span{font-size:12px;color:var(--muted)}
+.head{display:flex;flex-direction:column;gap:14px;max-width:720px;margin-bottom:48px}
+.head.center{margin-left:auto;margin-right:auto;text-align:center;align-items:center}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.card .ico{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.card.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.card.dark p{color:#B9B9B3}.card.dark .ico{background:#2A2A2A;color:#fff}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;counter-reset:s}
+.step{position:relative;padding:28px;border-radius:20px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
+.step .n{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+.step p{margin:0;color:var(--muted);font-size:15px}
+.band{background:var(--ink);color:#fff;border-radius:28px;padding:64px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:48px;align-items:center}
+.band h2{color:#fff}.band p{color:#B9B9B3;margin:0;font-size:18px}
+.band .list{display:flex;flex-direction:column;gap:14px}
+.band .list div{display:flex;gap:12px;align-items:flex-start;font-weight:600}
+.band .list svg{color:#7FE0C3;flex-shrink:0;margin-top:3px}
+.feat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.feat .f{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px}
+.feat .f .t{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.feat .f h3{font-size:17px}.feat .f p{margin:0;color:var(--muted);font-size:14px}
+.feat .f .ico{color:var(--accent-ink)}
+.who{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.who .w{border-radius:20px;padding:28px;background:var(--accent-soft);display:flex;flex-direction:column;gap:10px}
+.who .w:nth-child(2){background:var(--success-soft)}.who .w:nth-child(3){background:var(--warning-soft)}
+.who p{margin:0;color:var(--ink);opacity:.75;font-size:15px}
+.price{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:40px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:40px;box-shadow:var(--shadow)}
+.price .amt{font-size:56px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.price .amt small{font-size:16px;font-weight:600;color:var(--muted);letter-spacing:0;margin-left:6px}
+.price ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px}
+.price li{display:flex;gap:10px;align-items:center;font-weight:600;font-size:15px}
+.price li svg{color:var(--success);flex-shrink:0}
+.price .box{background:var(--paper);border:1px solid var(--border);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:700}
+.input{height:46px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:0 14px;font:inherit;font-size:15px;color:var(--ink);width:100%}
+.cta-final{text-align:center;display:flex;flex-direction:column;align-items:center;gap:22px}
+.cta-final .row{display:flex;gap:12px}
+footer{border-top:1px solid var(--border);padding:40px 0;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;align-items:center;justify-content:space-between;gap:24px}
+footer .links{display:flex;gap:22px;font-weight:600}
+.pron{font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="nav"><div class="wrap" style="display:flex;align-items:center;gap:40px;width:100%">
+  <svg viewBox="0 0 855 278" style="height:28px;width:auto;display:block" role="img" aria-label="Unfooly"><g transform="translate(40 -7)">
+  <path transform="translate(0 0)" d="M13 113 V150 A37 37 0 0 0 87 150 V113 M87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(122 0)" d="M13 113 V187 M13 150 A37 37 0 0 1 87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(257 0)" d="M0 100 H54 M21 187 V94 A34 34 0 0 1 55 60" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="397" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <circle cx="519" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <path transform="translate(591 0)" d="M13 60 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(639 0)" d="M87 113 L45 232 M13 113 L56 200" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="779" cy="182" r="18" fill="#6C5CE7"/>
+  </g></svg>
+  <nav class="links"><a href="#produkt">Produkt</a><a href="#jak">Jak to działa</a><a href="#funkcje">Funkcje</a><a href="#cennik">Cennik</a></nav>
+  <div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="#">Zaloguj się</a><a class="btn primary sm" href="#demo">Umów demo</a></div>
+</div></header>
+
+<section class="wrap hero">
+  <div class="copy">
+    <span class="eyebrow"><span class="dot"></span>Security awareness dla firm</span>
+    <h1>Pracownicy, których nie da się <span class="u">nabrać</span>.</h1>
+    <p class="lead">Unfooly to platforma krótkich szkoleń z cyberbezpieczeństwa i symulacji phishingu. Zespół uczy się w kilkanaście minut, a Ty dostajesz raport, który możesz pokazać zarządowi i audytorowi.</p>
+    <div class="cta"><a class="btn primary lg" href="#demo">Umów 20-minutowe demo <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn secondary lg" href="#jak"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg> Zobacz, jak to działa</a></div>
+    <div class="fine"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Start w 1 dzień</span><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Import zespołu z CSV</span><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Dane w UE, zgodność z RODO</span></div>
+  </div>
+  <div class="shot">
+    <div class="bar"><i></i><i></i><i></i><span style="margin-left:10px;font-size:12px;font-weight:600;color:var(--muted)">app.unfooly.com — Dashboard</span></div>
+    <div class="body">
+      <div class="mini">
+        <div class="tile"><span class="l">Ukończenie szkoleń</span><span class="v">78<small>%</small></span><div class="pbar"><i style="width:78%"></i></div></div>
+        <div class="tile"><span class="l">Aktywni użytkownicy</span><span class="v">46<small>/ 52</small></span><div class="pbar ok"><i style="width:88%"></i></div></div>
+        <div class="tile"><span class="l">Zaległe szkolenia</span><span class="v">9</span><span class="pill warn" style="align-self:flex-start">w 4 działach</span></div>
+      </div>
+      <div class="rows">
+        <div class="r"><span>Dział</span><span>Ukończenie</span><span></span><span>Status</span></div>
+        <div class="r"><span>IT</span><div class="pbar ok"><i style="width:100%"></i></div><span>100%</span><span class="pill ok">Komplet</span></div>
+        <div class="r"><span>Finanse</span><div class="pbar"><i style="width:88%"></i></div><span>88%</span><span class="pill acc">W toku</span></div>
+        <div class="r"><span>Sprzedaż</span><div class="pbar warn"><i style="width:64%"></i></div><span>64%</span><span class="pill warn">5 zaległych</span></div>
+        <div class="r"><span>Zarząd</span><div class="pbar warn"><i style="width:50%"></i></div><span>50%</span><span class="pill warn">2 zaległe</span></div>
+      </div>
+    </div>
+    <div class="float"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/></svg></div><div><b>Anna zgłosiła podejrzany e-mail</b><span>Symulacja „Faktura do zapłaty" · 2 min temu</span></div></div>
+  </div>
+</section>
+
+<section class="section" id="produkt"><div class="wrap">
+  <div class="head"><span class="eyebrow"><span class="dot"></span>Dlaczego Unfooly</span><h2>Szkolenie, które ludzie kończą. Raport, któremu zarząd wierzy.</h2><p class="lead">Coroczna prezentacja o phishingu nie zmienia nawyków. Zmieniają je krótkie kursy, praktyczne testy i widoczny postęp.</p></div>
+  <div class="grid3">
+    <div class="card"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Mikroszkolenia 5–12 minut</h3><p>Kursy w małych porcjach, z quizem na końcu i punktami XP. Pracownik widzi swój poziom, odznaki i miejsce w rankingu, więc wraca sam, bez przypominania.</p></div>
+    <div class="card"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/></svg></div><h3>Symulacje phishingu</h3><p>Realistyczne kampanie e-mail, które testują odruch „stop, zanim kliknę". Kto kliknął, dostaje krótką lekcję od razu, a nie za pół roku. <span class="pill off">Wkrótce</span></p></div>
+    <div class="card dark"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h3>Raporty dla zarządu i audytora</h3><p>Ukończenie według działów, zaległości, trend w czasie. Gotowy dowód szkoleń pod NIS2 i ISO 27001, do pobrania jednym kliknięciem.</p></div>
+  </div>
+</div></section>
+
+<section class="section tight" id="jak"><div class="wrap">
+  <div class="head center"><span class="eyebrow"><span class="dot"></span>Jak to działa</span><h2>Trzy kroki do zespołu, który nie klika w byle co</h2></div>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><h3>Zaproś zespół</h3><p>Wgraj plik CSV albo zaproś ludzi e-mailem. Podziel ich na działy i przypisz role: administrator, menedżer działu, pracownik.</p></div>
+    <div class="step"><span class="n">2</span><h3>Przypisz ścieżkę nauki</h3><p>Wybierz kursy obowiązkowe i termin. Każdy pracownik widzi swoją ścieżkę krok po kroku, a przypomnienia wychodzą automatycznie.</p></div>
+    <div class="step"><span class="n">3</span><h3>Mierz i raportuj</h3><p>Dashboard pokazuje ukończenie w czasie rzeczywistym. Eksportujesz raport dla zarządu, audytora albo ubezpieczyciela.</p></div>
+  </div>
+</div></section>
+
+<section class="section" id="funkcje"><div class="wrap">
+  <div class="head"><span class="eyebrow"><span class="dot"></span>Funkcje</span><h2>Wszystko, czego potrzebuje program security awareness</h2></div>
+  <div class="feat">
+    <div class="f"><div class="t"><h3>Ścieżki nauki</h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M9 18h5a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8h5"/></svg></span></div><p>Kursy obowiązkowe i dodatkowe, terminy, kolejność kroków. Osobna ścieżka dla nowych pracowników.</p></div>
+    <div class="f"><div class="t"><h3>Gamifikacja</h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/></svg></span></div><p>XP, poziomy, odznaki i ranking organizacji. Certyfikat po ukończeniu ścieżki, do pobrania przez pracownika.</p></div>
+    <div class="f"><div class="t"><h3>Zespół i działy</h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6M17 4a4 4 0 0 1 0 8M22 20c0-3-2-5-5-5.5"/></svg></span></div><p>Import z CSV, zaproszenia e-mail, role i działy. Menedżer widzi tylko swój zespół, administrator całą firmę.</p></div>
+    <div class="f"><div class="t"><h3>Kampanie phishingowe <span class="pill off">Wkrótce</span></h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/></svg></span></div><p>Szablony realnych ataków, harmonogram kampanii, klikalność i zgłaszalność w raporcie.</p></div>
+    <div class="f"><div class="t"><h3>Zgłaszanie e-maili <span class="pill off">Wkrótce</span></h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span></div><p>Przycisk „to phishing" w skrzynce pracownika i kolejka zgłoszeń dla działu IT.</p></div>
+    <div class="f"><div class="t"><h3>Wiele organizacji</h3><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></span></div><p>Jedno konto partnera, wiele firm klientów. Osobne dane, osobne raporty, jeden panel do zarządzania.</p></div>
+  </div>
+</div></section>
+
+<section class="section tight"><div class="wrap">
+  <div class="band">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <span class="eyebrow" style="color:#B8AEFF"><span class="dot" style="background:#B8AEFF"></span>Zgodność</span>
+      <h2>Szkolenie pracowników to obowiązek. Unfooly robi z niego dowód.</h2>
+      <p>NIS2 i ISO 27001 wymagają regularnych szkoleń z cyberbezpieczeństwa i ich dokumentowania. Zamiast listy obecności w Excelu dostajesz raport z datami, wynikami i podpisem cyfrowym platformy.</p>
+    </div>
+    <div class="list">
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span><b>NIS2</b> — art. 20 i 21: szkolenia kadry i pracowników</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span><b>ISO 27001</b> — kontrola A.6.3: świadomość, edukacja i szkolenia</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span><b>RODO</b> — dane w UE, umowa powierzenia w standardzie</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span><b>Ubezpieczenie cyber</b> — raport jako załącznik do wniosku</span></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="head"><span class="eyebrow"><span class="dot"></span>Dla kogo</span><h2>Od 20 do 2000 pracowników</h2></div>
+  <div class="who">
+    <div class="w"><h3>Małe i średnie firmy</h3><p>Bez działu bezpieczeństwa. Uruchamiasz w jeden dzień, platforma pilnuje reszty: przypomnienia, terminy, raport na koniec kwartału.</p></div>
+    <div class="w"><h3>Firmy pod NIS2 i ISO</h3><p>Potrzebujesz dowodu szkoleń dla audytora. Dostajesz go w formacie, który da się załączyć do dokumentacji.</p></div>
+    <div class="w"><h3>Partnerzy IT i MSP</h3><p>Obsługujesz wielu klientów. Jedno konto, wiele organizacji, osobne raporty. Sprzedajesz szkolenia jako usługę pod własną opieką.</p></div>
+  </div>
+</div></section>
+
+<section class="section tight" id="cennik"><div class="wrap">
+  <div class="head"><span class="eyebrow"><span class="dot"></span>Cennik</span><h2>Jedna cena za pracownika. Bez ukrytych modułów.</h2></div>
+  <div class="price">
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div><div class="amt">[CENA] zł<small>/ pracownik / miesiąc</small></div><div class="pron" style="margin-top:8px">Rozliczenie roczne. Poniżej 20 osób: stała opłata [KWOTA] zł / rok.</div></div>
+      <ul>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Wszystkie kursy i ścieżki</li><li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Nielimitowani administratorzy</li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Raporty i eksport</li><li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Import CSV i zaproszenia</li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Gamifikacja i certyfikaty</li><li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Wsparcie e-mail w dni robocze</li>
+      </ul>
+      <div class="pron">Kampanie phishingowe i zgłaszanie e-maili dołączą do planu bez dopłaty po premierze modułu.</div>
+    </div>
+    <div class="box" id="demo">
+      <b style="font-size:18px">Zobacz Unfooly na swoich danych</b>
+      <span class="pron">20 minut online. Pokażemy dashboard, ścieżkę pracownika i raport.</span>
+      <div class="field"><label>Służbowy e-mail</label><input class="input" placeholder="imie@firma.pl"></div>
+      <div class="field"><label>Liczba pracowników</label><input class="input" placeholder="np. 120"></div>
+      <button class="btn primary" style="width:100%">Umów demo</button>
+      <span class="pron" style="font-size:12px">Bez zobowiązań. Odpisujemy w 1 dzień roboczy.</span>
+    </div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap cta-final">
+  <h2>Zrób z zespołu pierwszą linię obrony, a nie najsłabsze ogniwo.</h2>
+  <p class="lead">Pierwsza ścieżka nauki gotowa w 24 godziny od podpisania umowy.</p>
+  <div class="row"><a class="btn primary lg" href="#demo">Umów demo <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><a class="btn secondary lg" href="#">Napisz do nas</a></div>
+</div></section>
+
+<footer><div class="wrap">
+  <div style="display:flex;flex-direction:column;gap:6px"><svg viewBox="0 0 855 278" style="height:28px;width:auto;display:block" role="img" aria-label="Unfooly"><g transform="translate(40 -7)">
+  <path transform="translate(0 0)" d="M13 113 V150 A37 37 0 0 0 87 150 V113 M87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(122 0)" d="M13 113 V187 M13 150 A37 37 0 0 1 87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(257 0)" d="M0 100 H54 M21 187 V94 A34 34 0 0 1 55 60" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="397" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <circle cx="519" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <path transform="translate(591 0)" d="M13 60 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(639 0)" d="M87 113 L45 232 M13 113 L56 200" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="779" cy="182" r="18" fill="#6C5CE7"/>
+  </g></svg><span class="pron">Unfooly (an-FU-li) — nie do nabrania.</span></div>
+  <div class="links"><a href="#">Produkt</a><a href="#">Cennik</a><a href="#">Bezpieczeństwo</a><a href="#">Polityka prywatności</a><a href="#">Kontakt</a></div>
+  <span>© 2026 Unfooly</span>
+</div></footer>
+
+</body>
+</html>

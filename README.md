@@ -109,6 +109,19 @@ Hasło tego konta zostało nadpisane bez zachowania poprzedniego hashu, więc ni
 Zrzuty ekranu: `node docs/brand/screens/shoot.mjs <etap>` i `shoot-auth.mjs <etap>` (Playwright,
 `BASE` = adres web, domyślnie http://localhost:3010).
 
+## Strona główna (`/`) i formularz "Umów demo"
+
+- Landing: `apps/web/src/app/_landing/` (sekcje wg `docs/brand/landing/index.html`). Zalogowani (obecny
+  refresh token) są przekierowani: ORG_ADMIN → `/dashboard`, pozostali → `/courses`.
+- **Do uzupełnienia:** ceny w `apps/web/src/lib/landing-config.ts` (`[CENA]`, `[KWOTA]`) oraz
+  zmienna `SALES_EMAIL` w `.env` API - adres, na który trafiają zgłoszenia. Bez niej
+  `POST /demo-requests` zwraca 503, a formularz pokazuje komunikat o niedostępności.
+- `POST /demo-requests` jest publiczny (bez JWT, bez bazy): limit 3 żądania/min na IP (in-memory,
+  jak reszta throttlera), pułapka na boty (`website`), wysyłka szablonem `demo-request`.
+- `SITE_URL` (web, opcjonalne) - publiczny adres do metadanych OG/canonical; domyślnie `FRONTEND_URL`.
+- Strony "Bezpieczeństwo" i "Polityka prywatności" z mockupu nie istnieją - w stopce ich nie linkujemy
+  (do zrobienia przed publicznym startem, wymóg RODO).
+
 ## Komendy
 
 ```bash

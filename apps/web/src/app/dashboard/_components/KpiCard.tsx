@@ -16,9 +16,11 @@ interface KpiCardProps {
   placeholder?: boolean;
   // Pill pod tekstem placeholdera; null = bez pilla (np. brak danych, a nie brak modułu).
   placeholderPill?: string | null;
+  // Mniejsza wersja (np. podgląd dashboardu na stronie głównej).
+  compact?: boolean;
 }
 
-export default function KpiCard({ label, value, unit, progress, hint, hintTone = 'ok', placeholder = false, placeholderPill = 'Moduł wkrótce' }: KpiCardProps) {
+export default function KpiCard({ label, value, unit, progress, hint, hintTone = 'ok', placeholder = false, placeholderPill = 'Moduł wkrótce', compact = false }: KpiCardProps) {
   if (placeholder) {
     return (
       <div className="flex min-h-[136px] flex-col gap-2.5 rounded-card border border-dashed border-border bg-paper px-[22px] py-5">
@@ -34,9 +36,9 @@ export default function KpiCard({ label, value, unit, progress, hint, hintTone =
   }
 
   return (
-    <Card className="flex min-h-[136px] flex-col gap-2.5 px-[22px] py-5">
+    <Card className={compact ? 'flex flex-col gap-2 px-4 py-3.5' : 'flex min-h-[136px] flex-col gap-2.5 px-[22px] py-5'}>
       <p className="text-[13px] font-semibold text-muted">{label}</p>
-      <p className="text-[32px] font-extrabold leading-none tracking-[-0.03em]">
+      <p className={`${compact ? 'text-[26px]' : 'text-[32px]'} font-extrabold leading-none tracking-[-0.03em]`}>
         {value}
         {unit && <small className="ml-1 text-base font-semibold tracking-normal text-muted">{unit}</small>}
       </p>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { EMAIL_REGEX } from '@/lib/email';
+import { resolveHomePath } from '@/lib/home-path';
 
 
 interface FieldErrors {
@@ -82,9 +83,9 @@ function LoginForm() {
       }
 
       const result = await response.json().catch(() => null);
-      // Strona startowa zależy od roli (patrz lib/home-path.ts); przyjmujemy
-      // tylko ścieżkę względną z własnego BFF.
-      const target = typeof result?.redirectTo === 'string' && /^\/[^/]/.test(result.redirectTo) ? result.redirectTo : '/courses';
+      // Strona startowa zależy od roli (patrz lib/home-path.ts); z odpowiedzi
+      // BFF przyjmujemy wyłącznie wartość z allowlisty (ochrona przed open redirect).
+      const target = resolveHomePath(result?.redirectTo);
       router.push(target);
       router.refresh();
     } catch {

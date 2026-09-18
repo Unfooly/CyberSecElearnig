@@ -159,4 +159,19 @@ describe('LoginPage', () => {
     render(<LoginPage />);
     expect(screen.getByRole('link', { name: /załóż organizację/i })).toHaveAttribute('href', '/register');
   });
+
+  it.each(['//evil.com', '/\evil.com', '/\t/evil.com', 'https://evil.com', 'javascript:alert(1)', undefined])(
+    'wrogie redirectTo %j nie powoduje wyjścia poza aplikację - fallback /courses',
+    async (redirectTo) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, redirectTo }) }));
+      render(<LoginPage />);
+
+      fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'user@example.test' } });
+      fireEvent.change(screen.getByLabelText('Hasło'), { target: { value: 'SuperSecret123!' } });
+      fireEvent.click(screen.getByRole('button', { name: /zaloguj się/i }));
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/courses'));
+      expect(pushMock).toHaveBeenCalledTimes(1);
+    },
+  );
 });

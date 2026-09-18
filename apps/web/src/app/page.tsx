@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
+import { homePathForRole } from '@/lib/home-path';
 import {
   AudienceSection,
   ComplianceBand,
@@ -51,8 +52,8 @@ export default function HomePage() {
   if (store.get(REFRESH_TOKEN_COOKIE)?.value) {
     const accessToken = store.get(ACCESS_TOKEN_COOKIE)?.value;
     const role = accessToken ? decodeJwtPayload(accessToken)?.role : undefined;
-    // Pracownik nie ma dostępu do /dashboard (tylko ORG_ADMIN) - jego panel to /courses.
-    redirect(role && role !== 'ORG_ADMIN' && role !== 'SUPER_ADMIN' ? '/courses' : '/dashboard');
+    // Ta sama tabela co po zalogowaniu (lib/home-path.ts).
+    redirect(homePathForRole(role));
   }
 
   return (

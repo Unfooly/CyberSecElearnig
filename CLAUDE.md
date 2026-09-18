@@ -22,7 +22,7 @@ Pełna specyfikacja: `docs/mvp-spec.md` (skopiuj tam wcześniejszy dokument MVP)
 - **Frontend:** Next.js (React) + TypeScript + Tailwind CSS
 - **Kolejki / scheduler:** BullMQ + Redis (wysyłka kampanii phishingowych, przypomnienia mailowe)
 - **Auth:** własny JWT (access + refresh token); SSO/SAML/OIDC to backlog v2, nie buduj teraz
-- **E-mail:** dedykowany provider transakcyjny (np. SES/Postmark) — kampanie phishingowe idą z OSOBNEJ domeny niż e-maile transakcyjne
+- **E-mail:** MailerSend (REST API `POST /v1/email`, klient w `apps/api/src/email`, szablony renderowane w kodzie) — kampanie phishingowe idą z OSOBNEJ domeny niż e-maile transakcyjne; przed produkcją wymagana własna, zweryfikowana domena nadawcy (dziś domena trial MailerSend)
 - **Płatności:** Stripe (subskrypcje per liczba licencji) — na MVP wystarczy webhook + ręczna obsługa planów, pełny self-service billing to v2
 - **Hosting:** UE (wymóg RODO) — zakładamy AWS eu-central-1
 - **Testy:** Jest (backend), Playwright (e2e krytycznych ścieżek), Vitest + React Testing Library (frontend)

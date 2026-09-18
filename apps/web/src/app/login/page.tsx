@@ -81,7 +81,11 @@ function LoginForm() {
         return;
       }
 
-      router.push('/dashboard');
+      const result = await response.json().catch(() => null);
+      // Strona startowa zależy od roli (patrz lib/home-path.ts); przyjmujemy
+      // tylko ścieżkę względną z własnego BFF.
+      const target = typeof result?.redirectTo === 'string' && /^\/[^/]/.test(result.redirectTo) ? result.redirectTo : '/courses';
+      router.push(target);
       router.refresh();
     } catch {
       setFormError('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');

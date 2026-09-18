@@ -66,7 +66,7 @@ describe('POST /api/auth/login', () => {
     expect(setCookieMock).not.toHaveBeenCalled();
   });
 
-  it('przy sukcesie ustawia cookies i zwraca WYŁĄCZNIE {success:true} - tokeny nigdy w body', async () => {
+  it('przy sukcesie ustawia cookies i zwraca WYŁĄCZNIE {success:true} - tokeny nigdy w body (poza ścieżką startową)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -79,7 +79,8 @@ describe('POST /api/auth/login', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ success: true });
+    expect(Object.keys(body).sort()).toEqual(['redirectTo', 'success']);
+    expect(body.success).toBe(true);
     expect(JSON.stringify(body)).not.toContain('access-value');
     expect(setCookieMock).toHaveBeenCalledWith(
       'access_token',
@@ -122,5 +123,28 @@ describe('POST /api/auth/login', () => {
 
     expect(response.status).toBe(502);
     expect(setCookieMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/auth/login - redirectTo wg roli z JWT', () => {
+  const jwtFor = (role: string) => {
+    const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    return `${encode({ alg: 'none' })}.${encode({ sub: 'u1', email: 'a@b.pl', role, organizationId: 'o1', exp: 9999999999 })}.sig`;
+  };
+
+  it.each([
+    ['ORG_ADMIN', '/dashboard'],
+    ['EMPLOYEE', '/courses'],
+    ['DEPARTMENT_MANAGER', '/courses'],
+    ['SUPER_ADMIN', '/courses'],
+  ])('%s => %s', async (role, expected) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ accessToken: jwtFor(role), refreshToken: 'r' }) }),
+    );
+
+    const response = await POST(buildRequest({ email: 'a@example.test', password: 'SuperSecret123!' }));
+
+    expect((await response.json()).redirectTo).toBe(expected);
   });
 });

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/config';
 import { setAuthCookies } from '@/lib/auth-cookies';
+import { decodeJwtPayload } from '@/lib/jwt';
+import { homePathForRole } from '@/lib/home-path';
 
 // Proxy server-side do apps/api - przeglądarka woła TYLKO ten endpoint,
 // nigdy nie łączy się z apps/api bezpośrednio i nigdy nie widzi tokenów.
@@ -57,5 +59,7 @@ export async function POST(request: NextRequest) {
 
   setAuthCookies(cookies(), { accessToken: data.accessToken, refreshToken: data.refreshToken });
 
-  return NextResponse.json({ success: true });
+  // Rola tylko do wyboru strony startowej (UX) - dostęp i tak egzekwuje middleware + apps/api.
+  const role = decodeJwtPayload(data.accessToken)?.role;
+  return NextResponse.json({ success: true, redirectTo: homePathForRole(role) });
 }

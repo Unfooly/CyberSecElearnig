@@ -52,10 +52,16 @@ describe('HomePage (landing)', () => {
     expect(() => HomePage()).toThrow('REDIRECT:/courses');
   });
 
-  it('sam refresh token (wygasły access) też przekierowuje - middleware odświeży sesję', () => {
+  it('sam refresh token (rola nieznana) => /courses, dostępne dla każdej roli; middleware odświeży sesję', () => {
     mockCookies({ refresh_token: 'r' });
 
-    expect(() => HomePage()).toThrow('REDIRECT:/dashboard');
+    expect(() => HomePage()).toThrow('REDIRECT:/courses');
+  });
+
+  it.each(['SUPER_ADMIN', 'DEPARTMENT_MANAGER'])('%s trafia do /courses (middleware nie wpuszcza go na /dashboard)', (role) => {
+    mockCookies({ refresh_token: 'r', access_token: jwtWithRole(role) });
+
+    expect(() => HomePage()).toThrow('REDIRECT:/courses');
   });
 
   it('ma metadane SEO: opis i obraz OG z logo PNG', () => {

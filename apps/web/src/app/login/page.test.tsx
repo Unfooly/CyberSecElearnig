@@ -43,10 +43,10 @@ describe('LoginPage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('woła /api/auth/login i przekierowuje do /dashboard po sukcesie', async () => {
+  it('woła /api/auth/login i przekierowuje na redirectTo z odpowiedzi po sukcesie', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true }),
+      json: async () => ({ success: true, redirectTo: '/dashboard' }),
     });
     vi.stubGlobal('fetch', fetchMock);
     render(<LoginPage />);

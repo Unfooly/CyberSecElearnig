@@ -76,7 +76,7 @@ describe('CourseLibrary - filtrowanie klienckie po zakładkach', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Zaległe/ }));
 
-    expect(screen.getByText('Brak kursów w tej kategorii.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Brak kursów w tej kategorii' })).toBeInTheDocument();
   });
 
   it('liczniki w nazwach zakładek odzwierciedlają liczbę pasujących kursów', () => {

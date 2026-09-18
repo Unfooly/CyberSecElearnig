@@ -3,10 +3,12 @@ import { render, screen } from '@testing-library/react';
 import AvatarDisplay from './AvatarDisplay';
 
 describe('AvatarDisplay', () => {
-  it('renderuje emoji presetu, gdy avatarUrl jest znanym slugiem', () => {
+  it('renderuje ikonę presetu (SVG, nie emoji), gdy avatarUrl jest znanym slugiem', () => {
     render(<AvatarDisplay avatarUrl="fox" label="Mój avatar" />);
 
-    expect(screen.getByRole('img', { name: 'Mój avatar' })).toHaveTextContent('🦊');
+    const avatar = screen.getByRole('img', { name: 'Mój avatar' });
+    expect(avatar.querySelector('svg')).not.toBeNull();
+    expect(avatar).toHaveTextContent('');
   });
 
   it('renderuje <img> z URL, gdy avatarUrl nie jest znanym presetem', () => {
@@ -20,6 +22,12 @@ describe('AvatarDisplay', () => {
   it('renderuje domyślną ikonę, gdy avatarUrl jest null', () => {
     render(<AvatarDisplay avatarUrl={null} />);
 
-    expect(screen.getByRole('img', { name: /brak avatara/i })).toHaveTextContent('👤');
+    expect(screen.getByRole('img', { name: /brak avatara/i }).querySelector('svg')).not.toBeNull();
+  });
+
+  it('pokazuje inicjały zamiast ikony, gdy podano initials i brak avatara', () => {
+    render(<AvatarDisplay avatarUrl={null} initials="AK" />);
+
+    expect(screen.getByRole('img', { name: /brak avatara/i })).toHaveTextContent('AK');
   });
 });

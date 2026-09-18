@@ -20,18 +20,18 @@ describe('LeaderboardTable', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('wyróżnia wiersz zalogowanego użytkownika etykietą "(Ty)"', () => {
+  it('wyróżnia wiersz zalogowanego użytkownika pillem "Ty"', () => {
     render(<LeaderboardTable entries={entries} currentUserId="user-2" />);
 
-    const label = screen.getByText('(Ty)');
+    const label = screen.getByText('Ty');
     expect(label).toBeInTheDocument();
     expect(label.closest('tr')).toHaveTextContent('Anna Nowak');
   });
 
-  it('nie pokazuje "(Ty)" u nikogo, gdy currentUserId nie pasuje do żadnego wpisu', () => {
+  it('nie pokazuje pilla "Ty" u nikogo, gdy currentUserId nie pasuje do żadnego wpisu', () => {
     render(<LeaderboardTable entries={entries} currentUserId="user-inny" />);
 
-    expect(screen.queryByText('(Ty)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ty')).not.toBeInTheDocument();
   });
 
   it('pokazuje komunikat o pustym rankingu zamiast pustej tabeli', () => {

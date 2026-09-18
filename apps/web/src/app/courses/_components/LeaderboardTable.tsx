@@ -1,3 +1,8 @@
+import { Trophy } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import { initialsFrom } from '@/components/ui/InitialsAvatar';
+import Pill from '@/components/ui/Pill';
+import { Table, Td, Th, Tr } from '@/components/ui/Table';
 import type { LeaderboardEntry } from '@/lib/gamification-types';
 import AvatarDisplay from './AvatarDisplay';
 
@@ -12,44 +17,57 @@ export default function LeaderboardTable({
   currentUserId: string;
 }) {
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-500">Ranking jest jeszcze pusty.</p>;
+    return (
+      <EmptyState
+        icon={Trophy}
+        title="Ranking jest jeszcze pusty"
+        description="Ukończ pierwszy kurs, żeby zdobyć XP i pojawić się w rankingu organizacji."
+      />
+    );
   }
 
   return (
-    <table className="w-full text-left text-sm">
+    <Table>
       <thead>
-        <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
-          <th className="py-2 pr-2 font-medium">#</th>
-          <th className="py-2 pr-2 font-medium" />
-          <th className="py-2 pr-2 font-medium">Imię i nazwisko</th>
-          <th className="py-2 pr-2 font-medium">Dział</th>
-          <th className="py-2 pr-2 font-medium">Poziom</th>
-          <th className="py-2 pr-2 text-right font-medium">XP</th>
+        <tr>
+          <Th className="w-14">#</Th>
+          <Th>Imię i nazwisko</Th>
+          <Th>Dział</Th>
+          <Th>Poziom</Th>
+          <Th className="text-right">XP</Th>
         </tr>
       </thead>
       <tbody>
         {entries.map((entry) => {
           const isCurrentUser = entry.userId === currentUserId;
+          // Podświetlenie wiersza "Ty" (accent-soft) idzie na komórkach, bo
+          // tło <tr> przykrywają tła komórek.
+          const highlight = isCurrentUser ? 'bg-accent-soft group-hover:bg-accent-soft' : '';
           return (
-            <tr
-              key={entry.userId}
-              className={`border-b border-slate-100 last:border-0 ${isCurrentUser ? 'bg-blue-50' : ''}`}
-            >
-              <td className="py-2 pr-2 font-medium text-slate-500">{entry.rank}</td>
-              <td className="py-2 pr-2">
-                <AvatarDisplay avatarUrl={entry.avatarUrl} size="sm" />
-              </td>
-              <td className="py-2 pr-2 font-medium text-slate-900">
-                {entry.firstName} {entry.lastName}
-                {isCurrentUser && <span className="ml-2 text-xs font-normal text-blue-700">(Ty)</span>}
-              </td>
-              <td className="py-2 pr-2 text-slate-500">{entry.departmentName ?? '—'}</td>
-              <td className="py-2 pr-2 text-slate-500">{entry.level}</td>
-              <td className="py-2 pr-2 text-right font-medium text-slate-900">{entry.xp}</td>
-            </tr>
+            <Tr key={entry.userId}>
+              <Td className={`font-bold text-muted ${highlight}`}>{entry.rank}</Td>
+              <Td className={highlight}>
+                <div className="flex items-center gap-2.5 font-semibold">
+                  <AvatarDisplay
+                    avatarUrl={entry.avatarUrl}
+                    size="sm"
+                    initials={initialsFrom(entry.firstName, entry.lastName, '')}
+                  />
+                  <span>
+                    {entry.firstName} {entry.lastName}
+                  </span>
+                  {isCurrentUser && <Pill tone="acc">Ty</Pill>}
+                </div>
+              </Td>
+              <Td className={`${entry.departmentName ? '' : 'text-muted'} ${highlight}`}>{entry.departmentName ?? '—'}</Td>
+              <Td className={highlight}>{entry.level}</Td>
+              <Td className={`text-right ${highlight}`}>
+                <b>{entry.xp}</b>
+              </Td>
+            </Tr>
           );
         })}
       </tbody>
-    </table>
+    </Table>
   );
 }

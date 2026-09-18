@@ -7,7 +7,8 @@ import type { CourseAssignmentSummary } from '@/lib/courses-types';
 import type { GamificationOverview, LeaderboardEntry } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
 import CourseLibrary from './_components/CourseLibrary';
-import CourseCarousel from './_components/CourseCarousel';
+import LearningPath from './_components/LearningPath';
+import Card from '@/components/ui/Card';
 import UserGamificationCard from './_components/UserGamificationCard';
 import WelcomeBanner from './_components/WelcomeBanner';
 import DidYouKnowWidget from './_components/DidYouKnowWidget';
@@ -48,23 +49,23 @@ export default async function CoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-7xl p-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-          <div className="space-y-6">
+      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="space-y-4">
             {coursesResult.ok && <WelcomeBanner courses={coursesResult.data} userEmail={userEmail} />}
             {gamificationResult.ok && <UserGamificationCard overview={gamificationResult.data} />}
             <DidYouKnowWidget />
           </div>
 
-          <div className="space-y-10">
+          <div className="space-y-7">
             <section>
-              <h1 className="mb-4 text-2xl font-bold text-slate-900">Twoja ścieżka nauki</h1>
+              <h1 className="mb-3.5 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Twoja ścieżka nauki</h1>
               {coursesResult.ok ? (
-                <CourseCarousel courses={coursesResult.data} />
+                <LearningPath courses={coursesResult.data} />
               ) : (
-                <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+                <p className="rounded-card border border-border bg-danger-soft p-4 text-sm font-semibold text-danger">
                   Nie udało się załadować listy kursów. Spróbuj odświeżyć stronę za chwilę.
                 </p>
               )}
@@ -73,10 +74,12 @@ export default async function CoursesPage() {
             {coursesResult.ok && <CourseLibrary courses={coursesResult.data} />}
 
             {leaderboardResult.ok && currentUserId && (
-              <section className="rounded-2xl bg-white p-5 shadow-sm">
-                <h2 className="mb-3 text-lg font-bold text-slate-900">Ranking organizacji</h2>
+              <Card>
+                <div className="flex items-center justify-between border-b border-border px-5 py-[18px]">
+                  <h2 className="text-lg font-bold tracking-[-0.01em]">Ranking organizacji</h2>
+                </div>
                 <LeaderboardTable entries={leaderboardResult.data} currentUserId={currentUserId} />
-              </section>
+              </Card>
             )}
           </div>
         </div>

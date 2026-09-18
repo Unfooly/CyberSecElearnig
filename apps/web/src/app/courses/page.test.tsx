@@ -142,7 +142,7 @@ describe('CoursesPage', () => {
     expect(screen.getByText('150 / 400 XP')).toBeInTheDocument();
     expect(screen.getByText('Ranking organizacji')).toBeInTheDocument();
     // user-1 z leaderboardu to ten sam `sub` co w VALID_TOKEN - podświetlone jako "Ty".
-    expect(screen.getByText('(Ty)')).toBeInTheDocument();
+    expect(screen.getByText('Ty')).toBeInTheDocument();
   });
 
   it('nie renderuje sekcji gamifikacji, gdy GET /users/me/gamification zawiedzie', async () => {

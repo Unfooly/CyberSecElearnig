@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react';
+import Card from '@/components/ui/Card';
 
 // Treść statyczna, hardkodowana po stronie frontendu - jak AVATAR_PRESETS,
 // nie ma dziś żadnego endpointu/tabeli z faktami. Backlog: gdyby to miało
@@ -26,33 +28,26 @@ export default function DidYouKnowWidget() {
     setIndex((current) => (current + delta + FACTS.length) % FACTS.length);
   }
 
-  return (
-    <div className="rounded-2xl bg-white p-5 text-center shadow-sm">
-      <p className="mb-3 text-3xl" aria-hidden="true">
-        🦉
-      </p>
-      <h3 className="mb-2 font-semibold text-slate-900">Czy wiedziałeś/aś?</h3>
-      <p className="mb-4 text-sm leading-relaxed text-slate-600">{FACTS[index]}</p>
+  const arrowClasses =
+    'flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted hover:bg-paper';
 
-      <div className="flex items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => goTo(-1)}
-          aria-label="Poprzedni fakt"
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
-        >
-          ‹
+  return (
+    <Card className="flex flex-col items-center gap-2 p-[22px] text-center">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-soft text-warning" aria-hidden="true">
+        <Lightbulb size={20} strokeWidth={2.2} />
+      </span>
+      <h3 className="font-bold">Czy wiedziałeś/aś?</h3>
+      <p className="text-muted">{FACTS[index]}</p>
+
+      <div className="flex items-center justify-center gap-3 text-xs font-semibold text-muted">
+        <button type="button" onClick={() => goTo(-1)} aria-label="Poprzedni fakt" className={arrowClasses}>
+          <ChevronLeft size={16} aria-hidden="true" />
         </button>
-        <span className="text-xs text-slate-400">{`${index + 1}/${FACTS.length}`}</span>
-        <button
-          type="button"
-          onClick={() => goTo(1)}
-          aria-label="Następny fakt"
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
-        >
-          ›
+        <span>{`${index + 1}/${FACTS.length}`}</span>
+        <button type="button" onClick={() => goTo(1)} aria-label="Następny fakt" className={arrowClasses}>
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

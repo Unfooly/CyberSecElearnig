@@ -1,10 +1,11 @@
+import Pill, { type PillTone } from '@/components/ui/Pill';
 import type { AssignmentStatus } from '@/lib/courses-types';
 
-const STYLES: Record<AssignmentStatus, string> = {
-  NOT_STARTED: 'bg-slate-100 text-slate-600',
-  IN_PROGRESS: 'bg-blue-100 text-blue-700',
-  COMPLETED: 'bg-green-100 text-green-700',
-  OVERDUE: 'bg-red-100 text-red-700',
+const TONES: Record<AssignmentStatus, PillTone> = {
+  NOT_STARTED: 'off',
+  IN_PROGRESS: 'acc',
+  COMPLETED: 'ok',
+  OVERDUE: 'warn',
 };
 
 const LABELS: Record<AssignmentStatus, string> = {
@@ -15,9 +16,5 @@ const LABELS: Record<AssignmentStatus, string> = {
 };
 
 export default function StatusBadge({ status }: { status: AssignmentStatus }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STYLES[status]}`}>
-      {LABELS[status]}
-    </span>
-  );
+  return <Pill tone={TONES[status]}>{LABELS[status]}</Pill>;
 }

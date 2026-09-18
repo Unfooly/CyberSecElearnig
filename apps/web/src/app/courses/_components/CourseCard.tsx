@@ -1,7 +1,10 @@
-import Link from 'next/link';
+import { ButtonLink } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Pill from '@/components/ui/Pill';
 import type { CourseAssignmentSummary } from '@/lib/courses-types';
-import StatusBadge from './StatusBadge';
+import CourseCategoryIcon, { type CourseIconTone } from './CourseCategoryIcon';
 import ProgressBar from './ProgressBar';
+import StatusBadge from './StatusBadge';
 
 function actionLabel(status: CourseAssignmentSummary['status']): string {
   switch (status) {
@@ -18,53 +21,42 @@ function actionLabel(status: CourseAssignmentSummary['status']): string {
   }
 }
 
-// Brak prawdziwych miniaturek (żadnych assetów graficznych w projekcie) -
-// gradient zależny od kategorii daje wizualne zróżnicowanie kart bez
-// potrzeby obrazków, w duchu mockupu (kolorowa miniatura u góry karty).
-const CATEGORY_GRADIENT: Record<string, string> = {
-  PHISHING_SOCIAL_ENGINEERING: 'from-rose-400 to-orange-500',
-  EMAIL_SECURITY: 'from-sky-400 to-blue-600',
-  IT_HYGIENE: 'from-emerald-400 to-teal-600',
-  INCIDENT_RESPONSE: 'from-amber-400 to-orange-600',
-  MALWARE: 'from-fuchsia-400 to-purple-600',
-  GENERAL_AWARENESS: 'from-teal-400 to-emerald-600',
-};
+function toneFor(status: CourseAssignmentSummary['status']): CourseIconTone {
+  if (status === 'COMPLETED') return 'ok';
+  if (status === 'OVERDUE') return 'warn';
+  return 'acc';
+}
 
 export default function CourseCard({ course }: { course: CourseAssignmentSummary }) {
   const showProgress = course.status === 'IN_PROGRESS' || course.status === 'OVERDUE';
-  const gradient = CATEGORY_GRADIENT[course.category] ?? 'from-slate-400 to-slate-600';
 
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm">
-      <div className={`relative h-28 w-full rounded-xl bg-gradient-to-br ${gradient}`}>
-        <span className="absolute left-2 top-2">
-          <StatusBadge status={course.status} />
-        </span>
-        <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-600">
-          {course.durationMinutes} min
-        </span>
+    <Card className="flex h-full flex-col gap-3 p-[18px]">
+      <CourseCategoryIcon category={course.category} tone={toneFor(course.status)} />
+
+      <h3 className="line-clamp-2 text-[15px] font-bold leading-snug">{course.title}</h3>
+
+      <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-muted">
+        <span>{course.durationMinutes} min</span>
+        <span aria-hidden="true">·</span>
+        <StatusBadge status={course.status} />
+        {course.mandatory && <Pill tone="warn">Obowiązkowy</Pill>}
       </div>
 
-      <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{course.title}</h3>
-
-      {course.mandatory && (
-        <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Obowiązkowy</span>
-      )}
-
-      {showProgress && (
-        <ProgressBar currentBlockIndex={course.currentBlockIndex} totalBlocks={course.totalBlocks} />
-      )}
+      {showProgress && <ProgressBar currentBlockIndex={course.currentBlockIndex} totalBlocks={course.totalBlocks} />}
 
       {course.status === 'COMPLETED' && course.score !== null && (
-        <p className="text-xs text-slate-500">Wynik: {course.score}%</p>
+        <p className="text-xs font-semibold text-muted">Wynik: {course.score}%</p>
       )}
 
-      <Link
+      <ButtonLink
         href={`/courses/${course.courseId}`}
-        className="mt-auto rounded-full bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-slate-800"
+        variant={course.status === 'COMPLETED' ? 'secondary' : 'primary'}
+        size="sm"
+        className="mt-auto"
       >
         {actionLabel(course.status)}
-      </Link>
-    </div>
+      </ButtonLink>
+    </Card>
   );
 }

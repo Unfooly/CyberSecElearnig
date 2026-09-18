@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import type { CourseAssignmentSummary } from '@/lib/courses-types';
+import { Library } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import { SelectField } from '@/components/ui/Fields';
 import CourseCard from './CourseCard';
 
 type Tab = 'all' | 'mandatory' | 'overdue';
@@ -50,36 +53,30 @@ export default function CourseLibrary({ courses }: { courses: CourseAssignmentSu
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-900">Biblioteka</h1>
-        <label className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold tracking-[-0.01em]">Biblioteka</h2>
+        <label className="flex items-center gap-2 text-sm font-semibold text-muted">
           Kategoria
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
-          >
+          <SelectField value={category} onChange={(event) => setCategory(event.target.value)} className="h-9 [&_select]:h-9">
             <option value="all">Wszystkie kategorie</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABELS[c] ?? c}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
       </div>
 
-      <div role="tablist" className="mb-6 flex gap-2 border-b border-slate-200">
+      <div role="tablist" className="mb-4 flex gap-1 border-b border-border">
         {TABS.map((t) => (
           <button
             key={t.key}
             role="tab"
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium ${
-              tab === t.key
-                ? 'border-b-2 border-emerald-600 text-slate-900'
-                : 'text-slate-500 hover:text-slate-700'
+            className={`-mb-px border-b-2 px-3.5 py-2.5 font-semibold ${
+              tab === t.key ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
             }`}
           >
             {t.label} ({counts[t.key]})
@@ -88,9 +85,13 @@ export default function CourseLibrary({ courses }: { courses: CourseAssignmentSu
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-slate-400">Brak kursów w tej kategorii.</p>
+        <EmptyState
+          icon={Library}
+          title="Brak kursów w tej kategorii"
+          description="Zmień zakładkę albo kategorię, żeby zobaczyć pozostałe szkolenia."
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((course) => (
             <CourseCard key={course.assignmentId} course={course} />
           ))}

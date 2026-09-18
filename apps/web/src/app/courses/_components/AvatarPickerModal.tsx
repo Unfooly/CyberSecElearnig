@@ -67,32 +67,32 @@ export default function AvatarPickerModal({
       aria-labelledby="avatar-picker-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-        <h2 id="avatar-picker-title" className="mb-4 text-lg font-semibold text-slate-900">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-card">
+        <h2 id="avatar-picker-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Wybierz avatar
         </h2>
 
         <div className="mb-4 grid grid-cols-4 gap-3">
-          {Object.entries(AVATAR_PRESETS).map(([slug, emoji]) => (
+          {Object.entries(AVATAR_PRESETS).map(([slug, Icon]) => (
             <button
               key={slug}
               type="button"
               onClick={() => setSelected(slug)}
               aria-pressed={selected === slug}
               aria-label={slug}
-              className={`flex h-14 w-14 items-center justify-center rounded-full text-2xl transition ${
+              className={`flex h-14 w-14 items-center justify-center rounded-full transition ${
                 selected === slug
-                  ? 'bg-slate-900 ring-2 ring-offset-2 ring-slate-900'
-                  : 'bg-slate-100 hover:bg-slate-200'
+                  ? 'bg-accent text-white ring-2 ring-accent ring-offset-2'
+                  : 'bg-accent-soft text-accent-ink hover:bg-accent-soft/60'
               }`}
             >
-              {emoji}
+              <Icon size={24} strokeWidth={2} aria-hidden="true" />
             </button>
           ))}
         </div>
 
         {error && (
-          <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
@@ -101,7 +101,7 @@ export default function AvatarPickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="h-10 rounded-btn px-4 text-sm font-bold text-accent-ink hover:bg-accent-soft"
           >
             Anuluj
           </button>
@@ -109,7 +109,7 @@ export default function AvatarPickerModal({
             type="button"
             onClick={handleSave}
             disabled={isSubmitting || !selected}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="h-10 rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
           >
             {isSubmitting ? 'Zapisywanie...' : 'Zapisz'}
           </button>

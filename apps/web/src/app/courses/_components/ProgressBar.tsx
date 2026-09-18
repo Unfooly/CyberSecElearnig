@@ -1,3 +1,7 @@
+import UiProgressBar from '@/components/ui/ProgressBar';
+
+// Postęp kursu liczony w blokach (nie w procentach) - pasek to wspólny
+// components/ui/ProgressBar, tu tylko przeliczenie i podpis "x / y bloków".
 export default function ProgressBar({
   currentBlockIndex,
   totalBlocks,
@@ -13,16 +17,8 @@ export default function ProgressBar({
 
   return (
     <div>
-      <div
-        role="progressbar"
-        aria-valuenow={percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
-      >
-        <div className="h-full rounded-full bg-blue-600" style={{ width: `${percent}%` }} />
-      </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <UiProgressBar value={percent} />
+      <p className="mt-1 text-xs font-semibold text-muted">
         {currentBlockIndex} / {totalBlocks} bloków
       </p>
     </div>

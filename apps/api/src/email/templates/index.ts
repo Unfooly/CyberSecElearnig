@@ -7,7 +7,7 @@ export interface RenderedEmail {
   text: string;
 }
 
-const PRODUCT_NAME = 'CyberSzkoło';
+const PRODUCT_NAME = 'Unfooly';
 
 export function escapeHtml(value: unknown): string {
   return String(value ?? '')

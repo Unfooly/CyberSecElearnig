@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+import Logo from './Logo';
 
 interface NavItem {
   label: string;
@@ -80,22 +81,24 @@ export default function Topbar({ userEmail }: { userEmail: string | null }) {
     .sort((a, b) => b.length - a.length)[0];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-6 py-3">
-      <div className="mx-auto flex max-w-7xl items-center gap-8">
-        <Link href="/courses" className="shrink-0 text-lg font-bold tracking-tight text-slate-900">
-          Cyber<span className="text-emerald-600">Szkoło</span>
+    <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-10">
+      <div className="flex h-full items-center gap-9">
+        <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
+          <Logo variant="dark" />
         </Link>
 
-        <nav className="flex flex-1 items-center gap-6">
+        <nav className="flex h-full flex-1 items-center gap-1">
           {NAV_ITEMS.map((item) => {
             if (!item.built) {
               return (
                 <span
                   key={item.label}
-                  title="Wkrótce"
-                  className="hidden cursor-not-allowed text-sm text-slate-300 md:inline"
+                  className="hidden h-full cursor-default items-center gap-2 border-b-2 border-transparent px-3 font-semibold text-muted-2 md:flex"
                 >
                   {item.label}
+                  <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
+                    Wkrótce
+                  </span>
                 </span>
               );
             }
@@ -104,8 +107,9 @@ export default function Topbar({ userEmail }: { userEmail: string | null }) {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`text-sm ${
-                  isActive ? 'font-semibold text-slate-900' : 'text-slate-500 hover:text-slate-900'
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex h-full items-center border-b-2 px-3 font-semibold ${
+                  isActive ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
                 }`}
               >
                 {item.label}
@@ -115,15 +119,15 @@ export default function Topbar({ userEmail }: { userEmail: string | null }) {
         </nav>
 
         {userEmail && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2.5 text-muted">
             {avatarUrl ? (
               <AvatarDisplay avatarUrl={avatarUrl} size="sm" label="Twój avatar" />
             ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent-ink">
                 {initialsFromEmail(userEmail)}
               </span>
             )}
-            <span className="hidden text-sm text-slate-600 sm:inline">{userEmail}</span>
+            <span className="hidden sm:inline">{userEmail}</span>
           </div>
         )}
       </div>

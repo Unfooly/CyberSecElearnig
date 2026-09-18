@@ -24,31 +24,31 @@ describe('Topbar', () => {
     usePathnameMock.mockReturnValue('/dashboard/users');
     render(<Topbar userEmail="jan@example.test" />);
 
-    expect(screen.getByRole('link', { name: 'Zespół' })).toHaveClass('font-semibold');
-    expect(screen.getByRole('link', { name: /^dashboard$/i })).not.toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Zespół' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /^dashboard$/i })).not.toHaveAttribute('aria-current', 'page');
   });
 
   it('podświetla WYŁĄCZNIE "Kursy" na /courses (nie miesza z Osiągnięciami)', () => {
     usePathnameMock.mockReturnValue('/courses');
     render(<Topbar userEmail="jan@example.test" />);
 
-    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveClass('font-semibold');
-    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).not.toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).not.toHaveAttribute('aria-current', 'page');
   });
 
   it('podświetla WYŁĄCZNIE "Osiągnięcia" na /courses/achievements, mimo że to też podścieżka /courses', () => {
     usePathnameMock.mockReturnValue('/courses/achievements');
     render(<Topbar userEmail="jan@example.test" />);
 
-    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveClass('font-semibold');
-    expect(screen.getByRole('link', { name: 'Kursy' })).not.toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Kursy' })).not.toHaveAttribute('aria-current', 'page');
   });
 
   it('podświetla "Kursy" też na podstronie odtwarzacza (/courses/:id)', () => {
     usePathnameMock.mockReturnValue('/courses/course-1');
     render(<Topbar userEmail="jan@example.test" />);
 
-    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveClass('font-semibold');
+    expect(screen.getByRole('link', { name: 'Kursy' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('pokazuje wybrany avatar zamiast inicjałów, gdy użytkownik go ustawił', async () => {

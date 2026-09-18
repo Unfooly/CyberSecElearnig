@@ -1,4 +1,4 @@
-# CyberSzkoło
+# Unfooly (dawniej CyberSzkoło)
 
 Wielodostępowa (multi-tenant) platforma SaaS do szkoleń z cyberbezpieczeństwa i symulacji
 phishingowych, sprzedawana firmom (B2B). Pełny kontekst projektu: [`CLAUDE.md`](./CLAUDE.md).

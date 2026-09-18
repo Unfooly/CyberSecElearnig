@@ -580,7 +580,7 @@ export class UsersService {
       to: email,
       subject: context.organizationName
         ? `Dodano Cię do organizacji ${context.organizationName}`
-        : 'Zaproszenie do CyberSzkoło',
+        : 'Zaproszenie do Unfooly',
       templateName: 'user-invite',
       templateData: {
         activationUrl,

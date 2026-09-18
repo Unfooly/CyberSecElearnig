@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 855 278" width="855" height="278" role="img" aria-label="Unfooly">
+  
+  <g transform="translate(40 -7)">
+  <path transform="translate(0 0)" d="M13 113 V150 A37 37 0 0 0 87 150 V113 M87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(122 0)" d="M13 113 V187 M13 150 A37 37 0 0 1 87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(257 0)" d="M0 100 H54 M21 187 V94 A34 34 0 0 1 55 60" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="397" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <circle cx="519" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <path transform="translate(591 0)" d="M13 60 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(639 0)" d="M87 113 L45 232 M13 113 L56 200" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="779" cy="182" r="18" fill="#6C5CE7"/>
+  </g>
+</svg>

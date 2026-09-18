@@ -5,6 +5,6 @@ import HomePage from './page';
 describe('HomePage', () => {
   it('renderuje nazwę platformy', () => {
     render(<HomePage />);
-    expect(screen.getByText('CyberSzkoło')).toBeInTheDocument();
+    expect(screen.getByText('Unfooly')).toBeInTheDocument();
   });
 });

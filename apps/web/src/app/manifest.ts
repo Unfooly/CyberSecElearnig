@@ -1,0 +1,17 @@
+import type { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Unfooly',
+    short_name: 'Unfooly',
+    description: 'Platforma szkoleń z cyberbezpieczeństwa i symulacji phishingowych',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#F6F6F4',
+    theme_color: '#6C5CE7',
+    icons: [
+      { src: '/brand/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/brand/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+  };
+}

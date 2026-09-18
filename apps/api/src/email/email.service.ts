@@ -20,7 +20,7 @@ export class EmailService {
     const rawToken = configService.get<string>('MAILERSEND_API_TOKEN')?.trim();
     this.token = rawToken && rawToken !== '' ? rawToken : undefined;
     this.from = configService.get<string>('EMAIL_FROM');
-    this.fromName = configService.get<string>('EMAIL_FROM_NAME') ?? 'CyberSzkoło';
+    this.fromName = configService.get<string>('EMAIL_FROM_NAME') ?? 'Unfooly';
 
     // Bez tokenu send() loguje pełne templateData - w tym jednorazowe linki
     // resetu/aktywacji/weryfikacji. Na produkcji to wyciek sekretów do logów,

@@ -1,4 +1,12 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  // "prisma" wykluczone celowo - prisma/seed-badges.ts importuje z ../src
+  // (patrz komentarz w tym pliku), a bez tego wykluczenia ten jeden plik
+  // przesuwał wykryty rootDir z "src" na "." (bo tsc bierze najmniejszy
+  // wspólny katalog wszystkich wejściowych plików), co zmieniało strukturę
+  // dist/ (dist/src/main.js zamiast dist/main.js) i wywalało start
+  // produkcyjny (docker-entrypoint.sh/`node dist/main` szukają dist/main.js
+  // wprost). seed-badges.ts i tak jest uruchamiany osobno przez ts-node
+  // (npm run seed:badges), nie potrzebuje być częścią `nest build`.
+  "exclude": ["node_modules", "test", "dist", "prisma", "**/*spec.ts"]
 }

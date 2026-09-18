@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { registerVerified } from './helpers/auth';
 
 describe('Dashboard i raporty (e2e)', () => {
   let app: INestApplication;
@@ -15,8 +16,13 @@ describe('Dashboard i raporty (e2e)', () => {
   let configService: ConfigService;
 
   const uniqueSuffix = Date.now();
-  const orgAEmail = `admin-a-${uniqueSuffix}@e2e-test.local`;
-  const orgBEmail = `admin-b-${uniqueSuffix}@e2e-test.local`;
+  // Osobne domeny dla A/B - organizations.name jest teraz unikalne (nazwa =
+  // domena), więc dwie organizacje w jednym pliku testowym potrzebują dwóch
+  // różnych domen. Pracownicy/super-admin poniżej są tworzeni bezpośrednio
+  // w bazie (nie przez /auth/register), więc mogą zostać na wspólnej domenie
+  // dashboard-e2e-test.local bez kolizji z tym constraintem.
+  const orgAEmail = `admin-a-${uniqueSuffix}@org-a.dashboard-e2e-test.local`;
+  const orgBEmail = `admin-b-${uniqueSuffix}@org-b.dashboard-e2e-test.local`;
 
   let orgAId: string;
   let orgBId: string;
@@ -58,22 +64,14 @@ describe('Dashboard i raporty (e2e)', () => {
     jwtService = app.get(JwtService);
     configService = app.get(ConfigService);
 
-    const orgAResponse = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `Dashboard Org A ${uniqueSuffix}`,
+    const orgAResponse = await registerVerified(app, tenantPrisma, {
         email: orgAEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
-    const orgBResponse = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `Dashboard Org B ${uniqueSuffix}`,
+      });
+    const orgBResponse = await registerVerified(app, tenantPrisma, {
         email: orgBEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
+      });
 
     orgAAdminToken = orgAResponse.body.accessToken;
     orgBAdminToken = orgBResponse.body.accessToken;
@@ -135,7 +133,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee1 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee1-${uniqueSuffix}@e2e-test.local`,
+          email: `employee1-${uniqueSuffix}@dashboard-e2e-test.local`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
           departmentId: department.id,
@@ -144,7 +142,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee2 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee2-${uniqueSuffix}@e2e-test.local`,
+          email: `employee2-${uniqueSuffix}@dashboard-e2e-test.local`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
           departmentId: department.id,
@@ -153,7 +151,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee3 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee3-${uniqueSuffix}@e2e-test.local`,
+          email: `employee3-${uniqueSuffix}@dashboard-e2e-test.local`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
         },
@@ -250,7 +248,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const superAdmin = await tx.user.create({
         data: {
           organizationId: orgBId,
-          email: `super-admin-${uniqueSuffix}@e2e-test.local`,
+          email: `super-admin-${uniqueSuffix}@dashboard-e2e-test.local`,
           passwordHash: 'unused-in-tests',
           role: 'SUPER_ADMIN',
         },
@@ -271,7 +269,7 @@ describe('Dashboard i raporty (e2e)', () => {
       where: { id: { in: [courseMandatory1Id, courseMandatory2Id, courseOptionalId] } },
     });
     await prisma.organization.deleteMany({
-      where: { name: { startsWith: 'Dashboard Org ' } },
+      where: { name: { endsWith: 'dashboard-e2e-test.local' } },
     });
     await app.close();
   });
@@ -397,16 +395,16 @@ describe('Dashboard i raporty (e2e)', () => {
       // data ukończenia kursu obowiązkowego.
       expect(adminARow).toContain(laterOptionalCompletionIso);
       expect(
-        lines.find((line) => line.startsWith(`employee1-${uniqueSuffix}@e2e-test.local,`)),
+        lines.find((line) => line.startsWith(`employee1-${uniqueSuffix}@dashboard-e2e-test.local,`)),
       ).toContain('2/2');
       const employee2Row = lines.find((line) =>
-        line.startsWith(`employee2-${uniqueSuffix}@e2e-test.local,`),
+        line.startsWith(`employee2-${uniqueSuffix}@dashboard-e2e-test.local,`),
       );
       expect(employee2Row).toContain('0/2');
       // employee2 nic nie ukończył - ostatnia kolumna musi zostać pusta,
       // nie zmyślona.
       expect(employee2Row).toBe(
-        `employee2-${uniqueSuffix}@e2e-test.local,IT ${uniqueSuffix},0/2,`,
+        `employee2-${uniqueSuffix}@dashboard-e2e-test.local,IT ${uniqueSuffix},0/2,`,
       );
       // Organizacja B (adminB) nie może wyciekać do eksportu organizacji A.
       expect(response.text).not.toContain(orgBEmail);
@@ -457,6 +455,163 @@ describe('Dashboard i raporty (e2e)', () => {
         .get('/dashboard/admin/organizations')
         .set('Authorization', `Bearer ${employeeToken}`)
         .expect(403);
+    });
+  });
+  describe('GET /dashboard/stats/trends', () => {
+    it('zwraca 6 punktów miesięcznych; bieżący miesiąc odzwierciedla dane organizacji A (3/7 = 43%)', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/stats/trends')
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveLength(6);
+      const current = response.body[5];
+      expect(current).toEqual({
+        month: expect.stringMatching(/^\d{4}-\d{2}$/),
+        completionRate: 43,
+        mandatoryTotal: 7,
+        mandatoryCompleted: 3,
+      });
+      // Przypisania powstały dopiero teraz - wcześniejsze miesiące bez danych.
+      expect(response.body[0].completionRate).toBeNull();
+    });
+
+    it('izolacja tenantów: admin organizacji B (bez przypisań) nie widzi żadnych danych organizacji A', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/stats/trends')
+        .set('Authorization', `Bearer ${orgBAdminToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveLength(6);
+      expect(response.body.every((p: { mandatoryTotal: number }) => p.mandatoryTotal === 0)).toBe(true);
+      expect(response.body.every((p: { completionRate: number | null }) => p.completionRate === null)).toBe(true);
+    });
+
+    it('odrzuca EMPLOYEE (403) i brak tokena (401)', async () => {
+      await request(app.getHttpServer())
+        .get('/dashboard/stats/trends')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .expect(403);
+      await request(app.getHttpServer()).get('/dashboard/stats/trends').expect(401);
+    });
+  });
+
+  describe('GET /dashboard/users-status', () => {
+    const emailOf = (n: number) => `employee${n}-${uniqueSuffix}@dashboard-e2e-test.local`;
+
+    it('zwraca pracowników organizacji A z podsumowaniem obowiązkowych kursów i statusem zgodności', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+
+      expect(response.body.total).toBe(4);
+      const byEmail = Object.fromEntries(
+        response.body.items.map((row: { email: string }) => [row.email, row]),
+      );
+
+      expect(byEmail[emailOf(1)]).toMatchObject({
+        completedMandatoryCoursesCount: 2,
+        totalMandatoryCoursesCount: 2,
+        completionPercentage: 100,
+        complianceStatus: 'COMPLIANT',
+      });
+      expect(byEmail[emailOf(1)].lastActivityAt).toEqual(expect.any(String));
+      expect(byEmail[emailOf(2)]).toMatchObject({ completionPercentage: 0, complianceStatus: 'IN_PROGRESS' });
+      expect(byEmail[emailOf(3)]).toMatchObject({ complianceStatus: 'OVERDUE' });
+      expect(byEmail[emailOf(1)].departmentName).toMatch(/^IT /);
+      expect(byEmail[orgAEmail].departmentName).toBeNull();
+    });
+
+    it('izolacja tenantów: admin B widzi wyłącznie użytkowników własnej organizacji', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .set('Authorization', `Bearer ${orgBAdminToken}`)
+        .expect(200);
+
+      const emails = response.body.items.map((row: { email: string }) => row.email);
+      expect(emails).toContain(orgBEmail);
+      expect(emails).not.toContain(orgAEmail);
+      expect(emails).not.toContain(emailOf(1));
+      expect(response.body.total).toBe(emails.length);
+    });
+
+    it('nie pozwala obejść izolacji przez departmentId z innej organizacji (pusty wynik, nie dane A)', async () => {
+      const departments = await request(app.getHttpServer())
+        .get('/dashboard/departments')
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+      const itDepartment = departments.body.find((d: { departmentName: string }) => d.departmentName.startsWith('IT '));
+
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ departmentId: itDepartment.departmentId })
+        .set('Authorization', `Bearer ${orgBAdminToken}`)
+        .expect(200);
+
+      expect(response.body.items).toEqual([]);
+      expect(response.body.total).toBe(0);
+    });
+
+    it('filtruje po dziale i wyszukuje po e-mailu', async () => {
+      const departments = await request(app.getHttpServer())
+        .get('/dashboard/departments')
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+      const itDepartment = departments.body.find((d: { departmentName: string }) => d.departmentName.startsWith('IT '));
+
+      const byDepartment = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ departmentId: itDepartment.departmentId })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+      expect(byDepartment.body.total).toBe(2);
+
+      const bySearch = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ search: 'EMPLOYEE3' })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+      expect(bySearch.body.items.map((row: { email: string }) => row.email)).toEqual([emailOf(3)]);
+    });
+
+    it('sortuje po % ukończenia i stronicuje bez powtórzeń', async () => {
+      const first = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ sortBy: 'completion', sortDir: 'desc', pageSize: 2, page: 1 })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+      const second = await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ sortBy: 'completion', sortDir: 'desc', pageSize: 2, page: 2 })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(200);
+
+      const percentages = first.body.items.map((row: { completionPercentage: number }) => row.completionPercentage);
+      expect(percentages[0]).toBeGreaterThanOrEqual(percentages[1]);
+      const ids = [...first.body.items, ...second.body.items].map((row: { id: string }) => row.id);
+      expect(new Set(ids).size).toBe(4);
+    });
+
+    it('waliduje parametry: zły sortBy i za duży pageSize => 400', async () => {
+      await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ sortBy: 'passwordHash' })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .query({ pageSize: 1000 })
+        .set('Authorization', `Bearer ${orgAAdminToken}`)
+        .expect(400);
+    });
+
+    it('odrzuca EMPLOYEE (403) i brak tokena (401)', async () => {
+      await request(app.getHttpServer())
+        .get('/dashboard/users-status')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .expect(403);
+      await request(app.getHttpServer()).get('/dashboard/users-status').expect(401);
     });
   });
 });

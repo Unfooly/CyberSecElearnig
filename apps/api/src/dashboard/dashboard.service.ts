@@ -4,6 +4,14 @@ import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { DashboardOverviewDto } from './dto/dashboard-overview.dto';
 import { DepartmentCompletionDto } from './dto/department-completion.dto';
 import { OrganizationOverviewDto } from './dto/organization-overview.dto';
+import { TrendPointDto } from './dto/trend-point.dto';
+import { UserStatusRowDto } from './dto/user-status-row.dto';
+import { UsersStatusResponseDto } from './dto/users-status-response.dto';
+import {
+  USERS_STATUS_DEFAULT_PAGE_SIZE,
+  UsersStatusQueryDto,
+} from './dto/users-status-query.dto';
+import { buildMonthlyTrend, sortRows, summarizeUser } from './dashboard-metrics';
 
 const NO_DEPARTMENT_LABEL = 'Brak działu';
 
@@ -12,7 +20,10 @@ function percentage(completed: number, total: number): number | null {
 }
 
 export function escapeCsvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // Formula injection: pole zaczynające się od = + - @ (lub tab/CR) Excel
+  // wykona jako formułę - dopisujemy apostrof, żeby traktował to jako tekst.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export function toCsv(rows: string[][]): string {
@@ -118,6 +129,97 @@ export class DashboardService {
 
       return result;
     });
+  }
+
+  /**
+   * Trend ukończenia szkoleń obowiązkowych z ostatnich 6 miesięcy
+   * (organizationId WYŁĄCZNIE z JWT - patrz DashboardController).
+   */
+  async getCompletionTrends(organizationId: string, now: Date = new Date()): Promise<TrendPointDto[]> {
+    const assignments = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.courseAssignment.findMany({
+        where: { organizationId, course: { mandatory: true } },
+        select: { createdAt: true, completedAt: true },
+      }),
+    );
+    return buildMonthlyTrend(assignments, now);
+  }
+
+  /**
+   * Lista pracowników z podsumowaniem postępu w szkoleniach obowiązkowych.
+   * `completionPercentage` jest polem wyliczanym, więc filtrowanie (search,
+   * dział) idzie w bazie, a sortowanie/paginacja w pamięci po wyliczeniu -
+   * świadomy kompromis na skalę MVP (patrz README).
+   */
+  async getUsersStatus(
+    organizationId: string,
+    query: UsersStatusQueryDto,
+    now: Date = new Date(),
+  ): Promise<UsersStatusResponseDto> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? USERS_STATUS_DEFAULT_PAGE_SIZE;
+    const search = query.search?.trim();
+
+    const users = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.user.findMany({
+        where: {
+          organizationId,
+          ...(query.departmentId ? { departmentId: query.departmentId } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { email: { contains: search, mode: 'insensitive' as const } },
+                  { firstName: { contains: search, mode: 'insensitive' as const } },
+                  { lastName: { contains: search, mode: 'insensitive' as const } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          department: { select: { id: true, name: true } },
+          courseAssignments: {
+            where: { organizationId },
+            select: {
+              status: true,
+              dueDate: true,
+              completedAt: true,
+              updatedAt: true,
+              course: { select: { mandatory: true } },
+            },
+          },
+        },
+      }),
+    );
+
+    const rows: UserStatusRowDto[] = users.map((user) => {
+      const summary = summarizeUser(
+        user.courseAssignments.map((assignment) => ({
+          status: assignment.status,
+          dueDate: assignment.dueDate,
+          completedAt: assignment.completedAt,
+          updatedAt: assignment.updatedAt,
+          mandatory: assignment.course.mandatory,
+        })),
+        now,
+      );
+      return {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        departmentId: user.department?.id ?? null,
+        departmentName: user.department?.name ?? null,
+        ...summary,
+      };
+    });
+
+    const sorted = sortRows(rows, query.sortBy ?? 'name', query.sortDir ?? 'asc');
+    const start = (page - 1) * pageSize;
+    return { items: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize };
   }
 
   async exportCsv(organizationId: string, format: 'csv' = 'csv'): Promise<string> {

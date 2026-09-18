@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { DashboardService } from './dashboard.service';
 import { ExportQueryDto } from './dto/export-query.dto';
+import { UsersStatusQueryDto } from './dto/users-status-query.dto';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,6 +24,18 @@ export class DashboardController {
   @Roles(Role.ORG_ADMIN)
   getDepartmentBreakdown(@CurrentUser() user: AuthenticatedUser) {
     return this.dashboardService.getDepartmentBreakdown(user.organizationId);
+  }
+
+  @Get('stats/trends')
+  @Roles(Role.ORG_ADMIN)
+  getCompletionTrends(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getCompletionTrends(user.organizationId);
+  }
+
+  @Get('users-status')
+  @Roles(Role.ORG_ADMIN)
+  getUsersStatus(@CurrentUser() user: AuthenticatedUser, @Query() query: UsersStatusQueryDto) {
+    return this.dashboardService.getUsersStatus(user.organizationId, query);
   }
 
   @Get('export')

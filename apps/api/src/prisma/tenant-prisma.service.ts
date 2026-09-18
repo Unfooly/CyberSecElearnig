@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, PasswordResetToken, User } from '@prisma/client';
+import { EmailVerificationToken, Prisma, PasswordResetToken, User } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
 /**
@@ -58,6 +58,20 @@ export class TenantPrismaService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.bypass_tenant_rls', 'on', true)`;
       return tx.passwordResetToken.findUnique({ where: { tokenHash } });
+    });
+  }
+
+  /**
+   * TRZECI wąski wyjątek od Zasady nr 1, ten sam sentinel co
+   * runPasswordResetTokenLookup - WYŁĄCZNIE dla AuthService.verifyEmail
+   * (token odnajdywany po globalnie unikalnym tokenHash, zanim znamy
+   * organizationId). Sztywny findUnique po jednym polu; bypass obejmuje
+   * tylko USING (odczyt), nie WITH CHECK.
+   */
+  async runEmailVerificationTokenLookup(tokenHash: string): Promise<EmailVerificationToken | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_tenant_rls', 'on', true)`;
+      return tx.emailVerificationToken.findUnique({ where: { tokenHash } });
     });
   }
 

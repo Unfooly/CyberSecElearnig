@@ -30,11 +30,19 @@ enum CourseCategory {
   GENERAL_AWARENESS
 }
 
+// UWAGA: ten enum nie jest podpięty do żadnej kolumny (Course.contentBlocks
+// to Json, typ bloku w środku to zwykły string) - istnieje w Postgresie, ale
+// nic go tam nie egzekwuje. Prawdziwe źródło prawdy o dozwolonych typach to
+// apps/api/src/courses/content-block.types.ts (TypeScript union). Trzymane
+// tu tylko jako dokumentacja/spójny słownik wartości.
 enum ContentBlockType {
   VIDEO
   QUIZ
   BRANCHING_SCENARIO
   DRAG_AND_DROP
+  // Renderowany WYŁĄCZNIE w sandboxowanym <iframe> na froncie - patrz
+  // komentarz przy ContentBlockType w content-block.types.ts.
+  EMBEDDED_HTML
 }
 
 enum AssignmentStatus {
@@ -44,17 +52,27 @@ enum AssignmentStatus {
   OVERDUE
 }
 
+enum UserStatus {
+  ACTIVE
+  INVITED
+}
+
 model Organization {
   id         String   @id @default(cuid())
-  name       String
+  // Unikalna - nazwa jest domeną e-maila (AuthService.deriveOrganizationNameFromEmail),
+  // więc unikalność wymusza jedną organizację na domenę i zamyka TOCTOU
+  // przy równoległej rejestracji (ten sam wzorzec co unikalny User.email).
+  name       String   @unique
   plan       Plan     @default(TRIAL)
   seatsLimit Int      @default(10)
   createdAt  DateTime @default(now())
 
-  users               User[]
-  departments         Department[]
-  courseAssignments   CourseAssignment[]
-  passwordResetTokens PasswordResetToken[]
+  users                   User[]
+  departments             Department[]
+  courseAssignments       CourseAssignment[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  userBadges              UserBadge[]
 
   @@map("organizations")
 }
@@ -68,27 +86,84 @@ model Department {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   users        User[]
 
+  // Umożliwia bezpieczny upsert przy imporcie CSV (find-or-create działu po
+  // nazwie w obrębie organizacji) i jest sensowną gwarancją jakości danych -
+  // patrz UsersService.importCsv.
+  @@unique([organizationId, name])
   @@index([organizationId])
   @@map("departments")
 }
 
 model User {
-  id             String   @id @default(cuid())
-  organizationId String
-  email          String   @unique
-  passwordHash   String
-  role           Role     @default(EMPLOYEE)
-  departmentId   String?
-  createdAt      DateTime @default(now())
+  id              String     @id @default(cuid())
+  organizationId  String
+  email           String     @unique
+  passwordHash    String
+  role            Role       @default(EMPLOYEE)
+  // ACTIVE = zarejestrowany sam / hasło ustawione. INVITED = utworzony przez
+  // UsersService.inviteUser/importCsv, czeka na ustawienie pierwszego hasła.
+  // AuthService.resetPassword przełącza INVITED -> ACTIVE przy pierwszym
+  // udanym użyciu tokenu (ten sam PasswordResetToken co "zapomniałem hasła").
+  status          UserStatus @default(ACTIVE)
+  // null = adres niepotwierdzony (logowanie zablokowane). Ustawiane przez
+  // AuthService.verifyEmail albo resetPassword (klik w link z maila).
+  emailVerifiedAt DateTime?
+  departmentId    String?
+  // Nullable - userzy sprzed modułu grywalizacji nie mają tych danych;
+  // leaderboard (GamificationService) spada wtedy na inicjały z e-maila.
+  firstName       String?
+  lastName        String?
+  // Preset (slug z GamificationService.AVATAR_PRESETS) albo zwalidowany URL
+  // http(s) - walidacja w UsersService.updateAvatar, nie w samym DTO (patrz
+  // komentarz przy UpdateAvatarDto).
+  avatarUrl       String?
+  xp              Int        @default(0)
+  level           Int        @default(1)
+  createdAt       DateTime   @default(now())
 
-  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  courseAssignments   CourseAssignment[]
-  passwordResetTokens PasswordResetToken[]
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department              Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  courseAssignments       CourseAssignment[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  unlockedBadges          UserBadge[]
 
   @@index([organizationId])
   @@index([departmentId])
   @@map("users")
+}
+
+model Badge {
+  // uuid (nie cuid jak reszta modeli) - tak wskazuje specyfikacja tego
+  // modułu; nie ujednolicam z resztą schematu bez pytania.
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  icon        String
+  xpReward    Int      @default(50)
+  createdAt   DateTime @default(now())
+
+  unlockedBy UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id             String   @id @default(uuid())
+  userId         String
+  badgeId        String
+  organizationId String
+  unlockedAt     DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge        Badge        @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("user_badges")
 }
 
 model PasswordResetToken {
@@ -116,6 +191,25 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model EmailVerificationToken {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  // Hash SHA-256 surowego tokenu (jak PasswordResetToken) - surowy token
+  // istnieje tylko w mailu.
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
 model Course {
   id              String         @id @default(cuid())
   title           String
@@ -137,21 +231,24 @@ model Course {
 }
 
 model CourseAssignment {
-  id             String           @id @default(cuid())
-  organizationId String
-  userId         String
-  courseId       String
-  status         AssignmentStatus @default(NOT_STARTED)
+  id                String           @id @default(cuid())
+  organizationId    String
+  userId            String
+  courseId          String
+  status            AssignmentStatus @default(NOT_STARTED)
   // Indeks pierwszego nieukończonego bloku - gdzie wznowić kurs.
-  currentBlockIndex Int           @default(0)
+  currentBlockIndex Int              @default(0)
   // Wynik per blok: { [blockIndex]: { type, answer?, correct?, answeredAt } }.
   // Wypełniane wyłącznie po stronie serwera (CoursesService), nigdy z ciała
   // żądania klienta.
-  progress       Json?
-  score          Int?
-  dueDate        DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime         @default(now())
+  progress          Json?
+  score             Int?
+  dueDate           DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  // Ostatnia zmiana przypisania (postęp, ukończenie) - źródło "ostatniej
+  // aktywności" w dashboardzie zarządu (DashboardService.getUsersStatus).
+  updatedAt         DateTime         @default(now()) @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

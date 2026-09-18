@@ -12,4 +12,13 @@ export class CourseProgressResponseDto {
     type: ContentBlockType;
     correct?: boolean;
   };
+  // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
+  // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody
+  // tylko wtedy, nie przy każdym zapisie postępu.
+  gamification!: {
+    xpGained: number;
+    newLevel: number;
+    leveledUp: boolean;
+    unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
+  } | null;
 }

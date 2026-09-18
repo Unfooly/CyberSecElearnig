@@ -22,6 +22,19 @@ describe('escapeCsvField', () => {
   });
 });
 
+describe('escapeCsvField — formula injection', () => {
+  it.each(['=HYPERLINK("http://x")', '+1+1', '-2+3', '@SUM(A1)'])(
+    'neutralizuje pole zaczynające się od znaku formuły: %s',
+    (value) => {
+      expect(escapeCsvField(value).replace(/^"/, '').startsWith("'")).toBe(true);
+    },
+  );
+
+  it('nie zmienia zwykłego tekstu', () => {
+    expect(escapeCsvField('Jan Kowalski')).toBe('Jan Kowalski');
+  });
+});
+
 describe('toCsv', () => {
   it('łączy wiersze CRLF i dodaje końcowy CRLF (RFC4180)', () => {
     const csv = toCsv([

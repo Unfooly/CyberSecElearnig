@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { registerVerified } from './helpers/auth';
 
 describe('Kursy e-learningowe (e2e)', () => {
   let app: INestApplication;
@@ -11,8 +12,11 @@ describe('Kursy e-learningowe (e2e)', () => {
   let tenantPrisma: TenantPrismaService;
 
   const uniqueSuffix = Date.now();
-  const orgAEmail = `courses-a-${uniqueSuffix}@e2e-test.local`;
-  const orgBEmail = `courses-b-${uniqueSuffix}@e2e-test.local`;
+  // Osobne domeny dla A/B - organizations.name jest teraz unikalne (nazwa =
+  // domena), więc dwie organizacje w jednym pliku testowym potrzebują dwóch
+  // różnych domen, nie tylko różnych lokalnych części e-maila.
+  const orgAEmail = `courses-a-${uniqueSuffix}@org-a.courses-e2e-test.local`;
+  const orgBEmail = `courses-b-${uniqueSuffix}@org-b.courses-e2e-test.local`;
 
   let orgAId: string;
   let orgAToken: string;
@@ -73,22 +77,14 @@ describe('Kursy e-learningowe (e2e)', () => {
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
 
-    const orgAResponse = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `Courses Org A ${uniqueSuffix}`,
+    const orgAResponse = await registerVerified(app, tenantPrisma, {
         email: orgAEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
-    const orgBResponse = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `Courses Org B ${uniqueSuffix}`,
+      });
+    const orgBResponse = await registerVerified(app, tenantPrisma, {
         email: orgBEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
+      });
 
     orgAToken = orgAResponse.body.accessToken;
     orgBToken = orgBResponse.body.accessToken;
@@ -135,8 +131,8 @@ describe('Kursy e-learningowe (e2e)', () => {
   afterAll(async () => {
     await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, sequenceCourseId] } } });
     await prisma.course.deleteMany({ where: { id: { in: [courseId, sequenceCourseId] } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: '@e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { startsWith: 'Courses Org ' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'courses-e2e-test.local' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'courses-e2e-test.local' } } });
     await app.close();
   });
 
@@ -179,11 +175,13 @@ describe('Kursy e-learningowe (e2e)', () => {
 
   it('ocenia QUIZ i BRANCHING_SCENARIO po stronie serwera, przelicza wynik i kończy kurs', async () => {
     // Blok 0: VIDEO - samo wykonanie, bez oceny.
-    await request(app.getHttpServer())
+    const firstBlockResponse = await request(app.getHttpServer())
       .post(`/courses/${courseId}/progress`)
       .set('Authorization', `Bearer ${orgAToken}`)
       .send({ blockIndex: 0 })
       .expect(200);
+    // Kurs jeszcze się nie kończy tym zapisem - brak nagrody do pokazania.
+    expect(firstBlockResponse.body.gamification).toBeNull();
 
     // Blok 1: QUIZ - poprawna odpowiedź (index 1).
     const quizResponse = await request(app.getHttpServer())
@@ -216,6 +214,11 @@ describe('Kursy e-learningowe (e2e)', () => {
     expect(finalResponse.body.status).toBe('COMPLETED');
     expect(finalResponse.body.completedAt).toEqual(expect.any(String));
     expect(finalResponse.body.score).toBe(50);
+    // Ten zapis KOŃCZY kurs - gamification musi być obecne (nie null),
+    // niezależnie od tego, czy jakaś odznaka faktycznie się odblokowała.
+    expect(finalResponse.body.gamification).toEqual(
+      expect.objectContaining({ xpGained: expect.any(Number), newLevel: expect.any(Number) }),
+    );
 
     const listResponse = await request(app.getHttpServer())
       .get('/courses/my')

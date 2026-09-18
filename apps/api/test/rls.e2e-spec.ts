@@ -1,9 +1,9 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { registerVerified } from './helpers/auth';
 
 describe('Row-Level Security jest fail-closed (e2e)', () => {
   let app: INestApplication;
@@ -11,8 +11,10 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   let tenantPrisma: TenantPrismaService;
 
   const uniqueSuffix = Date.now();
-  const orgAEmail = `rls-a-${uniqueSuffix}@e2e-test.local`;
-  const orgBEmail = `rls-b-${uniqueSuffix}@e2e-test.local`;
+  // Osobne domeny dla A/B - organizations.name jest teraz unikalne (nazwa =
+  // domena).
+  const orgAEmail = `rls-a-${uniqueSuffix}@org-a.rls-e2e-test.local`;
+  const orgBEmail = `rls-b-${uniqueSuffix}@org-b.rls-e2e-test.local`;
   let orgAId: string;
   let orgBId: string;
   let orgAUserId: string;
@@ -33,22 +35,14 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
 
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `RLS Org A ${uniqueSuffix}`,
+    await registerVerified(app, tenantPrisma, {
         email: orgAEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        organizationName: `RLS Org B ${uniqueSuffix}`,
+      });
+    await registerVerified(app, tenantPrisma, {
         email: orgBEmail,
         password: 'SuperSecret123!',
-      })
-      .expect(201);
+      });
 
     const orgAUser = await tenantPrisma.runAuthLookup({ email: orgAEmail });
     const orgBUser = await tenantPrisma.runAuthLookup({ email: orgBEmail });
@@ -94,8 +88,8 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   afterAll(async () => {
     await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, writeCheckCourseId] } } });
     await prisma.course.deleteMany({ where: { id: { in: [courseId, writeCheckCourseId] } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: '@e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { startsWith: 'RLS Org ' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'rls-e2e-test.local' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'rls-e2e-test.local' } } });
     await app.close();
   });
 

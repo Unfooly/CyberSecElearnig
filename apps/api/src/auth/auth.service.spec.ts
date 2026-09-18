@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
@@ -17,6 +18,11 @@ describe('AuthService — reset hasła', () => {
   let passwordResetTokenCreate: jest.Mock;
   let passwordResetTokenUpdateMany: jest.Mock;
   let userUpdate: jest.Mock;
+  let runEmailVerificationTokenLookup: jest.Mock;
+  let verificationTokenCreate: jest.Mock;
+  let verificationTokenDeleteMany: jest.Mock;
+  let verificationTokenUpdateMany: jest.Mock;
+  let jwtSign: jest.Mock;
 
   beforeEach(async () => {
     passwordResetTokenDeleteMany = jest.fn();
@@ -28,6 +34,11 @@ describe('AuthService — reset hasła', () => {
     sendEmail = jest.fn().mockResolvedValue(undefined);
 
     runAuthLookup = jest.fn();
+    runEmailVerificationTokenLookup = jest.fn();
+    verificationTokenCreate = jest.fn();
+    verificationTokenDeleteMany = jest.fn();
+    verificationTokenUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
+    jwtSign = jest.fn().mockResolvedValue('jwt');
     runPasswordResetTokenLookup = jest.fn();
     runInOrgContext = jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
       fn({
@@ -37,6 +48,12 @@ describe('AuthService — reset hasła', () => {
           updateMany: passwordResetTokenUpdateMany,
         },
         user: { update: userUpdate },
+        organization: { findUnique: jest.fn().mockResolvedValue({ name: 'firma.pl' }) },
+        emailVerificationToken: {
+          create: verificationTokenCreate,
+          deleteMany: verificationTokenDeleteMany,
+          updateMany: verificationTokenUpdateMany,
+        },
       }),
     );
 
@@ -45,15 +62,252 @@ describe('AuthService — reset hasła', () => {
         AuthService,
         {
           provide: TenantPrismaService,
-          useValue: { runAuthLookup, runInOrgContext, runPasswordResetTokenLookup },
+          useValue: { runAuthLookup, runInOrgContext, runPasswordResetTokenLookup, runEmailVerificationTokenLookup },
         },
-        { provide: JwtService, useValue: { signAsync: jest.fn(), verifyAsync: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jwtSign, verifyAsync: jest.fn() } },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: EmailService, useValue: { send: sendEmail } },
       ],
     }).compile();
 
     service = module.get(AuthService);
+  });
+
+  describe('register — kolizja unikalności (P2002)', () => {
+    function p2002(target: unknown) {
+      return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '5.19.1',
+        meta: { target },
+      });
+    }
+
+    it.each([
+      ['tablica kolumn', ['name']],
+      ['nazwa constraintu', 'organizations_name_key'],
+    ])('kolizja nazwy organizacji (%s) daje komunikat o istniejącej organizacji', async (_label, target) => {
+      runInOrgContext.mockRejectedValueOnce(p2002(target));
+
+      await expect(service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toThrow(
+        /Organizacja dla domeny/,
+      );
+    });
+
+    it('kolizja e-maila daje ogólny komunikat, nie ujawnia istnienia organizacji', async () => {
+      runInOrgContext.mockRejectedValueOnce(p2002(['email']));
+
+      await expect(service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toThrow(
+        /Nie udało się utworzyć konta/,
+      );
+    });
+  });
+
+  describe('weryfikacja adresu e-mail', () => {
+    const validRecord = {
+      id: 't1',
+      organizationId: 'o1',
+      userId: 'u1',
+      expiresAt: new Date(Date.now() + 60_000),
+      usedAt: null,
+    };
+
+    async function unverifiedUser() {
+      return {
+        id: 'u1',
+        organizationId: 'o1',
+        role: 'ORG_ADMIN',
+        email: 'a@firma.pl',
+        passwordHash: await bcrypt.hash('SuperSecret123!', 4),
+        emailVerifiedAt: null,
+      };
+    }
+
+    it('register NIE zwraca tokenów, wystawia token weryfikacyjny i wysyła e-mail', async () => {
+      runInOrgContext.mockImplementationOnce((_id: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          organization: { create: jest.fn() },
+          user: {
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@firma.pl' }),
+          },
+        }),
+      );
+
+      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
+
+      expect(result).toEqual({ message: expect.stringMatching(/link weryfikacyjny/), emailSent: true });
+      expect(jwtSign).not.toHaveBeenCalled();
+      expect(verificationTokenCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ organizationId: 'o1', userId: 'u1' }) }),
+      );
+      expect(sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'a@firma.pl', templateName: 'email-verification' }),
+      );
+    });
+
+    const createdUserTx = () =>
+      (_id: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          organization: { create: jest.fn() },
+          user: {
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@firma.pl' }),
+          },
+        });
+
+    it('register: gdy mail nie wyszedł (send=false), zwraca emailSent=false i komunikat z podpowiedzią - konto zostaje', async () => {
+      runInOrgContext.mockImplementationOnce(createdUserTx());
+      sendEmail.mockResolvedValue(false);
+
+      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
+
+      expect(result.emailSent).toBe(false);
+      expect(result.message).toMatch(/nie udało się wysłać/i);
+    });
+
+    it('register: wyjątek przy wystawianiu tokenu po utworzeniu konta NIE zamienia rejestracji w 500', async () => {
+      runInOrgContext.mockImplementationOnce(createdUserTx());
+      verificationTokenCreate.mockRejectedValue(new Error('db down'));
+
+      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
+
+      expect(result.emailSent).toBe(false);
+    });
+
+    it('resendVerification dla ZAPROSZONEGO (INVITED) odnawia link aktywacyjny, nie weryfikacyjny', async () => {
+      runAuthLookup.mockResolvedValueOnce({
+        id: 'u3',
+        organizationId: 'o1',
+        email: 'inv@f.pl',
+        firstName: 'Ola',
+        status: 'INVITED',
+        emailVerifiedAt: null,
+      });
+
+      await service.resendVerification({ email: 'inv@f.pl' });
+
+      expect(passwordResetTokenCreate).toHaveBeenCalled();
+      expect(verificationTokenCreate).not.toHaveBeenCalled();
+      expect(sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'inv@f.pl',
+          templateName: 'user-invite',
+          templateData: expect.objectContaining({ organizationName: 'firma.pl' }),
+        }),
+      );
+    });
+
+    it('refresh odrzuca token użytkownika bez potwierdzonego adresu e-mail', async () => {
+      const verifyAsync = jest.fn().mockResolvedValue({ sub: 'u1' });
+      (service as unknown as { jwtService: { verifyAsync: jest.Mock } }).jwtService.verifyAsync = verifyAsync;
+      runAuthLookup.mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@f.pl', emailVerifiedAt: null });
+
+      await expect(service.refresh('rt')).rejects.toThrow(/refresh token/i);
+      expect(jwtSign).not.toHaveBeenCalled();
+    });
+
+    it('login odrzuca (403 EMAIL_NOT_VERIFIED) poprawne hasło niepotwierdzonego konta', async () => {
+      runAuthLookup.mockResolvedValue(await unverifiedUser());
+
+      await expect(service.login({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toMatchObject({
+        response: { code: 'EMAIL_NOT_VERIFIED' },
+      });
+      expect(jwtSign).not.toHaveBeenCalled();
+    });
+
+    it('login niepotwierdzonego konta ze ZŁYM hasłem daje zwykłe 401 (bez ujawniania statusu)', async () => {
+      runAuthLookup.mockResolvedValue(await unverifiedUser());
+
+      await expect(service.login({ email: 'a@firma.pl', password: 'zle-haslo-123' })).rejects.toThrow(
+        /Nieprawidłowy e-mail lub hasło/,
+      );
+    });
+
+    it('verifyEmail: poprawny token ustawia emailVerifiedAt', async () => {
+      runEmailVerificationTokenLookup.mockResolvedValue(validRecord);
+
+      await service.verifyEmail({ token: 'raw' });
+
+      expect(userUpdate).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { emailVerifiedAt: expect.any(Date) },
+      });
+    });
+
+    it('verifyEmail odrzuca nieistniejący, wygasły i już użyty token', async () => {
+      runEmailVerificationTokenLookup.mockResolvedValueOnce(null);
+      await expect(service.verifyEmail({ token: 'x' })).rejects.toMatchObject({
+        response: { code: 'TOKEN_INVALID_OR_EXPIRED' },
+      });
+
+      runEmailVerificationTokenLookup.mockResolvedValueOnce({ ...validRecord, expiresAt: new Date(Date.now() - 1000) });
+      await expect(service.verifyEmail({ token: 'x' })).rejects.toMatchObject({
+        response: { code: 'TOKEN_INVALID_OR_EXPIRED' },
+      });
+
+      runEmailVerificationTokenLookup.mockResolvedValueOnce({ ...validRecord, usedAt: new Date() });
+      await expect(service.verifyEmail({ token: 'x' })).rejects.toMatchObject({
+        response: { code: 'TOKEN_ALREADY_USED' },
+      });
+      expect(userUpdate).not.toHaveBeenCalled();
+    });
+
+    it('verifyEmail: przegrany wyścig (claim.count=0) daje "już użyty" i nie aktywuje konta', async () => {
+      runEmailVerificationTokenLookup.mockResolvedValue(validRecord);
+      verificationTokenUpdateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.verifyEmail({ token: 'raw' })).rejects.toMatchObject({
+        response: { code: 'TOKEN_ALREADY_USED' },
+      });
+      expect(userUpdate).not.toHaveBeenCalled();
+    });
+
+    it('resendVerification: identyczna odpowiedź dla każdego przypadku, wysyła tylko dla niepotwierdzonego', async () => {
+      runAuthLookup.mockResolvedValueOnce({
+        id: 'u1',
+        organizationId: 'o1',
+        email: 'a@f.pl',
+        status: 'ACTIVE',
+        emailVerifiedAt: null,
+      });
+      const existing = await service.resendVerification({ email: 'a@f.pl' });
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+
+      runAuthLookup.mockResolvedValueOnce(null);
+      const missing = await service.resendVerification({ email: 'brak@f.pl' });
+
+      runAuthLookup.mockResolvedValueOnce({
+        id: 'u2',
+        organizationId: 'o1',
+        email: 'b@f.pl',
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
+      });
+      const verified = await service.resendVerification({ email: 'b@f.pl' });
+
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(existing).toEqual(missing);
+      expect(existing).toEqual(verified);
+    });
+
+    it('resetPassword potwierdza też adres e-mail (klik w link z maila)', async () => {
+      runPasswordResetTokenLookup.mockResolvedValue({
+        id: 'token-1',
+        organizationId: 'org-1',
+        userId: 'user-1',
+        expiresAt: new Date(Date.now() + 60_000),
+        usedAt: null,
+      });
+
+      await service.resetPassword({ token: 'raw', newPassword: 'NoweHaslo123' });
+
+      expect(userUpdate).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({ emailVerifiedAt: expect.any(Date), status: 'ACTIVE' }),
+      });
+    });
   });
 
   describe('forgotPassword', () => {
@@ -107,7 +361,7 @@ describe('AuthService — reset hasła', () => {
 
       expect(userUpdate).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { passwordHash: expect.any(String) },
+        data: { passwordHash: expect.any(String), status: 'ACTIVE', emailVerifiedAt: expect.any(Date) },
       });
       const newHash = userUpdate.mock.calls[0][0].data.passwordHash;
       await expect(bcrypt.compare('NoweHaslo123', newHash)).resolves.toBe(true);

@@ -1,0 +1,33 @@
+# Zależności - instalowane od zera w każdym etapie builda (npm ci)
+node_modules
+**/node_modules
+
+# Git
+.git
+.gitignore
+
+# Sekrety - obrazy Dockera NIE mają nigdy zawierać .env; wartości
+# produkcyjne trafiają do kontenera przez `env_file: .env` w
+# docker-compose.prod.yml, na hoście, nigdy w warstwach obrazu.
+.env
+.env.*
+!.env.example
+
+# Build output - odtwarzane na nowo w kontenerze buildera
+**/dist
+**/.next
+**/coverage
+*.tsbuildinfo
+
+# Dokumentacja / narzędzia deweloperskie niepotrzebne w kontekście builda
+docs
+.vscode
+.idea
+*.md
+!README.md
+
+# OS / logi
+.DS_Store
+Thumbs.db
+npm-debug.log*
+*.log

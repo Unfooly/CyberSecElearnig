@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { AssignmentStatus, Course, Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { GamificationService } from '../gamification/gamification.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
@@ -55,7 +57,10 @@ function omitAnswerKey(option: ContentBlockOption): ContentBlockOption {
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly tenantPrisma: TenantPrismaService) {}
+  constructor(
+    private readonly tenantPrisma: TenantPrismaService,
+    private readonly gamificationService: GamificationService,
+  ) {}
 
   /**
    * organizationId i userId pochodzą WYŁĄCZNIE z tokena JWT wywołującego
@@ -169,25 +174,57 @@ export class CoursesService {
       const currentBlockIndex = assignment.currentBlockIndex + 1;
       const isComplete = currentBlockIndex >= contentBlocks.length;
       const score = this.computeScore(progress);
+      const status = isComplete ? AssignmentStatus.COMPLETED : AssignmentStatus.IN_PROGRESS;
+      const completedAt = isComplete ? new Date() : null;
 
-      const updated = await tx.courseAssignment.update({
-        where: { id: assignment.id },
-        data: {
-          progress,
-          currentBlockIndex,
-          score,
-          status: isComplete ? AssignmentStatus.COMPLETED : AssignmentStatus.IN_PROGRESS,
-          completedAt: isComplete ? new Date() : null,
-        },
+      // Optymistyczna blokada: WHERE zawiera currentBlockIndex odczytany na
+      // początku tej funkcji (`assignment.currentBlockIndex`, SPRZED
+      // inkrementacji) - jeśli dwa równoległe żądania odczytały ten sam stan
+      // i oba próbują zapisać ten sam blok (duplikat/retry/dwie karty
+      // przeglądarki), drugie z nich trafi na już zmieniony wiersz i
+      // dopasuje 0 wierszy, zamiast cicho podwoić przyznane XP w
+      // awardCourseCompletion niżej (wykryte w security review tej sesji -
+      // ten sam mechanizm ataku/wyścigu co TOCTOU naprawiony wcześniej przy
+      // resecie hasła, tylko węższy zakres).
+      const claim = await tx.courseAssignment.updateMany({
+        where: { id: assignment.id, currentBlockIndex: assignment.currentBlockIndex },
+        data: { progress, currentBlockIndex, score, status, completedAt },
       });
 
+      if (claim.count === 0) {
+        throw new ConflictException(
+          'Ten postęp został już zapisany (np. w innej karcie przeglądarki). Odśwież stronę.',
+        );
+      }
+
+      // W TEJ SAMEJ transakcji co powyższy zapis - XP/level/odznaki muszą
+      // być spójne z faktem ukończenia kursu, nie osobnym krokiem po fakcie
+      // (patrz GamificationService.awardCourseCompletion i plan architektury
+      // tego modułu: świadomie bez event emittera, właśnie z tego powodu).
+      const gamification = isComplete
+        ? await this.gamificationService.awardCourseCompletion(tx, organizationId, userId, { score })
+        : null;
+
       return {
-        assignmentId: updated.id,
-        status: updated.status,
-        currentBlockIndex: updated.currentBlockIndex,
-        score: updated.score,
-        completedAt: updated.completedAt,
+        assignmentId: assignment.id,
+        status,
+        currentBlockIndex,
+        score,
+        completedAt,
         lastResult: { blockIndex: dto.blockIndex, type: entry.type, correct: entry.correct },
+        gamification: gamification
+          ? {
+              xpGained: gamification.xpGained,
+              newLevel: gamification.newLevel,
+              leveledUp: gamification.leveledUp,
+              unlockedBadges: gamification.unlockedBadges.map((badge) => ({
+                code: badge.code,
+                title: badge.title,
+                icon: badge.icon,
+                xpReward: badge.xpReward,
+              })),
+            }
+          : null,
       };
     });
   }

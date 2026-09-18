@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConflictException } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { GamificationService } from '../gamification/gamification.service';
 
 describe('CoursesService.listMyCourses', () => {
   let service: CoursesService;
@@ -15,7 +17,11 @@ describe('CoursesService.listMyCourses', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CoursesService, { provide: TenantPrismaService, useValue: tenantPrisma }],
+      providers: [
+        CoursesService,
+        { provide: TenantPrismaService, useValue: tenantPrisma },
+        { provide: GamificationService, useValue: { awardCourseCompletion: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get(CoursesService);
@@ -95,5 +101,147 @@ describe('CoursesService.listMyCourses', () => {
     const [result] = await service.listMyCourses('org-1', 'user-1');
 
     expect(result.totalBlocks).toBe(0);
+  });
+});
+
+describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona przed wyścigiem', () => {
+  let service: CoursesService;
+  let findFirst: jest.Mock;
+  let updateMany: jest.Mock;
+  let awardCourseCompletion: jest.Mock;
+
+  function assignmentFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'assignment-1',
+      status: 'IN_PROGRESS',
+      currentBlockIndex: 0,
+      progress: null,
+      course: {
+        id: 'course-1',
+        contentBlocks: [{ type: 'VIDEO' }],
+      },
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    findFirst = jest.fn();
+    // Domyślnie "udany claim" (1 zaktualizowany wiersz) - test wyścigu
+    // nadpisuje to na {count: 0} dla konkretnego wywołania.
+    updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    awardCourseCompletion = jest
+      .fn()
+      .mockResolvedValue({ xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] });
+
+    const tenantPrisma = {
+      runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
+        fn({ courseAssignment: { findFirst, updateMany } }),
+      ),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CoursesService,
+        { provide: TenantPrismaService, useValue: tenantPrisma },
+        { provide: GamificationService, useValue: { awardCourseCompletion } },
+      ],
+    }).compile();
+
+    service = module.get(CoursesService);
+  });
+
+  it('woła GamificationService.awardCourseCompletion, gdy ostatni blok kończy kurs (isComplete)', async () => {
+    findFirst.mockResolvedValue(assignmentFixture());
+
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+
+    expect(awardCourseCompletion).toHaveBeenCalledWith(
+      expect.anything(),
+      'org-1',
+      'user-1',
+      { score: null },
+    );
+  });
+
+  it('NIE woła GamificationService.awardCourseCompletion, gdy kurs ma jeszcze kolejne bloki', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'VIDEO' }, { type: 'VIDEO' }] } }),
+    );
+
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+
+    expect(awardCourseCompletion).not.toHaveBeenCalled();
+  });
+
+  it('przekazuje faktyczny wynik (score) do awardCourseCompletion, żeby PERFECT_SCORE mógł zadziałać', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'QUIZ', options: [{ correct: true }] }] } }),
+    );
+
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: 0 });
+
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: 100 });
+  });
+
+  it('dołącza wynik GamificationService do odpowiedzi jako pole `gamification`, gdy kurs się kończy', async () => {
+    findFirst.mockResolvedValue(assignmentFixture());
+    awardCourseCompletion.mockResolvedValue({
+      xpGained: 150,
+      newLevel: 2,
+      leveledUp: true,
+      unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+    });
+
+    const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+
+    expect(result.gamification).toEqual({
+      xpGained: 150,
+      newLevel: 2,
+      leveledUp: true,
+      unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+    });
+  });
+
+  it('zwraca `gamification: null`, gdy kurs się jeszcze nie kończy', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'VIDEO' }, { type: 'VIDEO' }] } }),
+    );
+
+    const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+
+    expect(result.gamification).toBeNull();
+  });
+
+  it('woła updateMany z WHERE zawierającym currentBlockIndex odczytany na starcie (optymistyczna blokada)', async () => {
+    findFirst.mockResolvedValue(assignmentFixture({ currentBlockIndex: 2, course: { id: 'course-1', contentBlocks: [{ type: 'VIDEO' }, { type: 'VIDEO' }, { type: 'VIDEO' }] } }));
+
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 2 });
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'assignment-1', currentBlockIndex: 2 } }),
+    );
+  });
+
+  it('wyścig: gdy updateMany trafia 0 wierszy (równoległe żądanie już zapisało ten sam blok), rzuca ConflictException i NIE przyznaje XP', async () => {
+    findFirst.mockResolvedValue(assignmentFixture());
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(awardCourseCompletion).not.toHaveBeenCalled();
+  });
+
+  it('EMBEDDED_HTML jest traktowany jak blok niescorowany - kończy się bez wymaganej odpowiedzi', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'EMBEDDED_HTML', html: '<html></html>' }] } }),
+    );
+
+    const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+
+    expect(result.lastResult).toEqual({ blockIndex: 0, type: 'EMBEDDED_HTML', correct: undefined });
+    expect(result.status).toBe('COMPLETED');
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null });
   });
 });

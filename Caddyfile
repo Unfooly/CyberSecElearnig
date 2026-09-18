@@ -1,0 +1,10 @@
+# Podmień na swoją prawdziwą domenę, zanim uruchomisz - Caddy automatycznie
+# pobierze i odnowi certyfikat SSL (Let's Encrypt), zero ręcznej konfiguracji.
+
+twoja-domena.pl {
+    reverse_proxy web:3000
+}
+
+api.twoja-domena.pl {
+    reverse_proxy api:3001
+}

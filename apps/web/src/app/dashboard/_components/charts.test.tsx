@@ -26,7 +26,7 @@ describe('CompletionTrendChart', () => {
 
   it('pokazuje komunikat, gdy żaden miesiąc nie ma danych', () => {
     render(<CompletionTrendChart points={[{ month: '2026-09', completionRate: null, mandatoryTotal: 0, mandatoryCompleted: 0 }]} />);
-    expect(screen.getByText('Brak danych do wyświetlenia.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Trend pojawi się/ })).toBeInTheDocument();
   });
 });
 
@@ -49,6 +49,6 @@ describe('DepartmentRiskChart', () => {
 
   it('pokazuje komunikat, gdy brak działów z danymi', () => {
     render(<DepartmentRiskChart rows={[]} />);
-    expect(screen.getByText('Brak danych do wyświetlenia.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Brak działów z danymi' })).toBeInTheDocument();
   });
 });

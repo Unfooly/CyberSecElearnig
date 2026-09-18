@@ -110,17 +110,17 @@ describe('DashboardPage', () => {
     const jsx = await DashboardPage();
     render(jsx);
 
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getByText('2 / 4')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(
-      screen.getAllByText('Brak danych - moduł symulacji jeszcze nie wdrożony'),
-    ).toHaveLength(2);
+    expect(screen.getAllByText('50').length).toBeGreaterThan(0);
+    expect(screen.getByText('/ 4')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pobierz raport CSV' })).toHaveAttribute('href', '/api/dashboard/export');
+    expect(screen.getAllByText('Moduł wkrótce')).toHaveLength(2);
+    expect(screen.getAllByText('Pojawi się po pierwszej kampanii')).toHaveLength(2);
     expect(screen.getAllByText('IT').length).toBeGreaterThan(0);
     expect(screen.getAllByText('80%').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Stan organizacji na dziś/)).toBeInTheDocument();
   });
 
-  it('pokazuje "Brak danych" dla completionRate=null zamiast 0%', async () => {
+  it('pokazuje placeholder (nie 0%) dla completionRate=null i EmptyState dla pustych działów', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal(
       'fetch',
@@ -137,8 +137,8 @@ describe('DashboardPage', () => {
     const jsx = await DashboardPage();
     render(jsx);
 
-    expect(screen.getAllByText('Brak danych do wyświetlenia.')).not.toHaveLength(0);
-    const brakDanychNodes = screen.getAllByText('Brak danych');
-    expect(brakDanychNodes.length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Brak działów do porównania' })).toBeInTheDocument();
+    expect(screen.getByText(/Pojawi się po pierwszym przypisaniu obowiązkowego kursu/)).toBeInTheDocument();
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
 });

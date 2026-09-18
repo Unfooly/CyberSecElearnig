@@ -49,7 +49,7 @@ describe('UsersComplianceTable', () => {
   it('pokazuje pusty stan i błąd ładowania', async () => {
     stubFetch([]);
     const { unmount } = render(<UsersComplianceTable departments={[]} />);
-    expect(await screen.findByText('Brak pracowników do wyświetlenia.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nie ma jeszcze kogo raportować' })).toBeInTheDocument();
     unmount();
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) }));

@@ -4,6 +4,7 @@ import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
 import { decodeJwtPayload } from '@/lib/jwt';
 import Topbar from '@/components/Topbar';
+import PageHeader from '@/components/ui/PageHeader';
 import KpiCard from './_components/KpiCard';
 import DepartmentsTable, { type DepartmentRow } from './_components/DepartmentsTable';
 import CompletionTrendChart from './_components/CompletionTrendChart';
@@ -20,7 +21,7 @@ interface OverviewData {
   phishingReportRate: null;
 }
 
-const PHISHING_PLACEHOLDER = 'Brak danych - moduł symulacji jeszcze nie wdrożony';
+const PHISHING_PLACEHOLDER = 'Pojawi się po pierwszej kampanii';
 
 function fetchFromApi<T>(path: string, accessToken: string) {
   return fetchJson<T>(`${API_URL}${path}`, {
@@ -61,11 +62,11 @@ export default async function DashboardPage() {
   // który myliłby admina co do przyczyny.
   if (!overviewResult.ok || !departmentsResult.ok) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-paper">
         <Topbar userEmail={userEmail} />
-        <main className="mx-auto max-w-7xl p-8">
-          <h1 className="mb-6 text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+        <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+          <PageHeader title="Dashboard" />
+          <p role="alert" className="rounded-card border border-border bg-danger-soft p-4 text-sm text-danger">
             Nie udało się załadować danych dashboardu. Spróbuj odświeżyć stronę za chwilę.
           </p>
         </main>
@@ -76,41 +77,54 @@ export default async function DashboardPage() {
   const overview = overviewResult.data;
   const departments = departmentsResult.data;
   // Trend jest dodatkiem - jego awaria nie powinna zasłaniać reszty
-  // dashboardu, więc degradujemy do pustego wykresu ("Brak danych").
+  // dashboardu, więc degradujemy do pustego wykresu.
   const trends = trendsResult.ok ? trendsResult.data : [];
   const departmentOptions = departments.flatMap((department) =>
     department.departmentId ? [{ id: department.departmentId, name: department.departmentName }] : [],
   );
+  const today = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'long' }).format(new Date());
+  const activePercent =
+    overview.activeUsers.total > 0 ? Math.round((overview.activeUsers.count / overview.activeUsers.total) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-7xl p-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <ReportActions />
-        </div>
+      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+        <PageHeader title="Dashboard" subtitle={`Stan organizacji na dziś, ${today}`} actions={<ReportActions />} />
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard
-            label="Ukończenie szkoleń obowiązkowych"
-            value={overview.completionRate !== null ? `${overview.completionRate}%` : 'Brak danych'}
-          />
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {overview.completionRate !== null ? (
+            <KpiCard
+              label="Ukończenie szkoleń obowiązkowych"
+              value={String(overview.completionRate)}
+              unit="%"
+              progress={{ value: overview.completionRate }}
+            />
+          ) : (
+            <KpiCard
+              label="Ukończenie szkoleń obowiązkowych"
+              value="Pojawi się po pierwszym przypisaniu obowiązkowego kursu"
+              placeholderPill={null}
+              placeholder
+            />
+          )}
           <KpiCard
             label="Aktywni użytkownicy"
-            value={`${overview.activeUsers.count} / ${overview.activeUsers.total}`}
+            value={String(overview.activeUsers.count)}
+            unit={`/ ${overview.activeUsers.total}`}
+            progress={{ value: activePercent, tone: 'success' }}
           />
           <KpiCard label="Zaległe szkolenia" value={String(overview.overdueCount)} />
-          <KpiCard label="Klikalność phishingowa" value={PHISHING_PLACEHOLDER} muted />
-          <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_PLACEHOLDER} muted />
+          <KpiCard label="Klikalność phishingowa" value={PHISHING_PLACEHOLDER} placeholder />
+          <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_PLACEHOLDER} placeholder />
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <CompletionTrendChart points={trends} />
           <DepartmentRiskChart rows={departments} />
         </div>
 
-        <div className="mb-8">
+        <div className="mb-6">
           <UsersComplianceTable departments={departmentOptions} />
         </div>
 

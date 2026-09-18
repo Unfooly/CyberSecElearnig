@@ -3,7 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComplianceStatus, UsersStatusResponse, UsersStatusSortField } from '@/lib/dashboard-types';
 import { formatDateTime } from '@/lib/format';
-import PercentBar from './PercentBar';
+import { Users } from 'lucide-react';
+import { SearchInput, SelectField } from '@/components/ui/Fields';
+import Button from '@/components/ui/Button';
+import EmptyState from '@/components/ui/EmptyState';
+import InitialsAvatar, { initialsFrom } from '@/components/ui/InitialsAvatar';
+import Pill, { type PillTone } from '@/components/ui/Pill';
+import ProgressBar, { type ProgressTone } from '@/components/ui/ProgressBar';
+import { Table, Td, Th, Tr } from '@/components/ui/Table';
+
+function toneForPercent(value: number): ProgressTone {
+  if (value === 100) return 'success';
+  if (value < 50) return 'warning';
+  return 'accent';
+}
 
 const PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -13,11 +26,11 @@ export interface DepartmentFilterOption {
   name: string;
 }
 
-const STATUS_BADGES: Record<ComplianceStatus, { label: string; className: string }> = {
-  COMPLIANT: { label: 'Zgodny', className: 'bg-green-100 text-green-800' },
-  OVERDUE: { label: 'Zaległości', className: 'bg-red-100 text-red-800' },
-  IN_PROGRESS: { label: 'W trakcie', className: 'bg-amber-100 text-amber-800' },
-  NO_ASSIGNMENTS: { label: 'Brak przypisań', className: 'bg-slate-100 text-slate-600' },
+const STATUS_BADGES: Record<ComplianceStatus, { label: string; tone: PillTone }> = {
+  COMPLIANT: { label: 'Zgodny', tone: 'ok' },
+  OVERDUE: { label: 'Zaległości', tone: 'warn' },
+  IN_PROGRESS: { label: 'W trakcie', tone: 'acc' },
+  NO_ASSIGNMENTS: { label: 'Brak przypisań', tone: 'off' },
 };
 
 const COLUMNS: { label: string; field: UsersStatusSortField | null }[] = [
@@ -108,31 +121,35 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
   const total = data?.total ?? 0;
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const items = data?.items ?? [];
+  const isFiltered = search.trim() !== '' || departmentId !== '';
 
   return (
-    <section className="rounded-lg bg-white p-4 shadow-sm" aria-labelledby="compliance-heading">
-      <h2 id="compliance-heading" className="mb-3 text-base font-semibold text-slate-900">
-        Status pracowników
-      </h2>
+    <section
+      className="rounded-card border border-border bg-surface shadow-card"
+      aria-labelledby="compliance-heading"
+    >
+      <div className="border-b border-border px-5 py-[18px]">
+        <h2 id="compliance-heading" className="text-lg font-bold tracking-[-0.01em]">
+          Status pracowników
+        </h2>
+      </div>
 
-      <div className="mb-4 flex flex-wrap gap-3 print:hidden">
-        <input
-          type="search"
+      <div className="flex flex-wrap gap-3 px-5 pt-4 print:hidden">
+        <SearchInput
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Szukaj po imieniu, nazwisku lub e-mailu"
           aria-label="Szukaj pracownika"
           maxLength={100}
-          className="min-w-64 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="min-w-64 flex-1"
         />
-        <select
+        <SelectField
           value={departmentId}
           onChange={(event) => {
             setDepartmentId(event.target.value);
             setPage(1);
           }}
           aria-label="Filtruj po dziale"
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
         >
           <option value="">Wszystkie działy</option>
           {departments.map((department) => (
@@ -140,24 +157,32 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
               {department.name}
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
 
       {loadError && (
-        <p role="alert" className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="mx-5 mt-4 rounded-btn bg-danger-soft p-3 text-sm text-danger">
           {loadError}
         </p>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm" aria-busy={isLoading}>
-          <thead className="bg-slate-100 text-slate-600">
+      {items.length === 0 && !isLoading && !loadError ? (
+        <EmptyState
+          icon={Users}
+          title={isFiltered ? 'Brak pasujących pracowników' : 'Nie ma jeszcze kogo raportować'}
+          description={
+            isFiltered
+              ? 'Zmień wyszukiwaną frazę albo wybierz inny dział.'
+              : 'Gdy zaprosisz pracowników i przypiszesz im szkolenia, zobaczysz tu ich status.'
+          }
+        />
+      ) : (
+        <Table aria-busy={isLoading}>
+          <thead>
             <tr>
               {COLUMNS.map((column) => (
-                <th
+                <Th
                   key={column.label}
-                  scope="col"
-                  className="px-4 py-3 font-medium"
                   aria-sort={
                     column.field && column.field === sortBy
                       ? sortDir === 'asc'
@@ -170,7 +195,7 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
                     <button
                       type="button"
                       onClick={() => toggleSort(column.field as UsersStatusSortField)}
-                      className="font-medium hover:text-slate-900"
+                      className="font-bold uppercase tracking-[0.04em] hover:text-ink"
                     >
                       {column.label}
                       {column.field === sortBy ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
@@ -178,15 +203,15 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
                   ) : (
                     column.label
                   )}
-                </th>
+                </Th>
               ))}
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNS.length} className="px-4 py-6 text-center text-slate-400">
-                  {isLoading ? 'Ładowanie...' : 'Brak pracowników do wyświetlenia.'}
+                <td colSpan={COLUMNS.length} className="px-5 py-6 text-center text-muted">
+                  Ładowanie...
                 </td>
               </tr>
             ) : (
@@ -194,50 +219,70 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
                 const badge = STATUS_BADGES[row.complianceStatus];
                 const fullName = [row.firstName, row.lastName].filter(Boolean).join(' ');
                 return (
-                  <tr key={row.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3">
-                      <div className="text-slate-900">{fullName || row.email}</div>
-                      {fullName && <div className="text-xs text-slate-500">{row.email}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">{row.departmentName ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <PercentBar value={row.completionPercentage} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">{formatDateTime(row.lastActivityAt)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
+                  <Tr key={row.id}>
+                    <Td>
+                      <div className="flex items-center gap-2.5">
+                        <InitialsAvatar initials={initialsFrom(row.firstName, row.lastName, row.email)} />
+                        <div>
+                          <div className="font-semibold">{fullName || row.email}</div>
+                          {fullName && <div className="text-xs text-muted">{row.email}</div>}
+                        </div>
+                      </div>
+                    </Td>
+                    <Td>
+                      {row.departmentName ? <Pill tone="acc">{row.departmentName}</Pill> : <Pill tone="off">Brak działu</Pill>}
+                    </Td>
+                    <Td>
+                      {row.completionPercentage === null ? (
+                        <span className="text-muted-2">Brak przypisań</span>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-28">
+                            <ProgressBar
+                              value={row.completionPercentage}
+                              tone={toneForPercent(row.completionPercentage)}
+                              label={`Postęp: ${fullName || row.email}`}
+                            />
+                          </div>
+                          <b className="w-10">{row.completionPercentage}%</b>
+                        </div>
+                      )}
+                    </Td>
+                    <Td className="text-muted">{formatDateTime(row.lastActivityAt)}</Td>
+                    <Td>
+                      <Pill tone={badge.tone} dot>
                         {badge.label}
-                      </span>
-                    </td>
-                  </tr>
+                      </Pill>
+                    </Td>
+                  </Tr>
                 );
               })
             )}
           </tbody>
-        </table>
-      </div>
+        </Table>
+      )}
 
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600 print:hidden">
+      <div className="flex items-center justify-between px-5 py-3.5 text-[13px] text-muted print:hidden">
         <span>
           Razem: {total} · Strona {Math.min(page, lastPage)} z {lastPage}
         </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
+        <div className="flex gap-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1 || isLoading}
-            className="rounded-md border border-slate-300 px-3 py-1.5 disabled:opacity-50"
           >
             Poprzednia
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
             disabled={page >= lastPage || isLoading}
-            className="rounded-md border border-slate-300 px-3 py-1.5 disabled:opacity-50"
           >
             Następna
-          </button>
+          </Button>
         </div>
       </div>
     </section>

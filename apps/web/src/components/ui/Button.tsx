@@ -4,14 +4,14 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'reac
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-hover',
+  primary: 'border-transparent bg-accent text-white hover:bg-accent-hover',
   secondary: 'border-border bg-surface text-ink hover:bg-paper',
-  ghost: 'bg-transparent text-accent-ink hover:bg-accent-soft',
+  ghost: 'border-transparent bg-transparent text-accent-ink hover:bg-accent-soft',
 };
 
 export function buttonClasses(variant: ButtonVariant = 'primary', size: 'md' | 'sm' = 'md'): string {
   const sizing = size === 'sm' ? 'h-8 px-3 text-[13px]' : 'h-10 px-4 text-sm';
-  return `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-btn border border-transparent font-bold transition-colors disabled:cursor-default disabled:opacity-50 ${sizing} ${VARIANTS[variant]}`;
+  return `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-btn border font-bold transition-colors disabled:cursor-default disabled:opacity-50 ${sizing} ${VARIANTS[variant]}`;
 }
 
 interface CommonProps {

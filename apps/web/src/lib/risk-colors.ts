@@ -1,10 +1,11 @@
 export type RiskLevel = 'high' | 'medium' | 'low' | 'unknown';
 
+// Wartości ze statusów marki Unfooly (BRAND.md): danger / warning / success.
 export const RISK_COLORS: Record<RiskLevel, string> = {
-  high: '#dc2626',
-  medium: '#f59e0b',
-  low: '#16a34a',
-  unknown: '#94a3b8',
+  high: '#D9483B',
+  medium: '#C77C0F',
+  low: '#1E9E6A',
+  unknown: '#9A9A96',
 };
 
 export const RISK_LABELS: Record<RiskLevel, string> = {

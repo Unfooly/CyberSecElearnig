@@ -159,3 +159,14 @@ describe('renderTemplate - branding', () => {
     expect(rendered?.html).toContain('unfooly');
   });
 });
+
+describe('renderTemplate - demo-request', () => {
+  it('escapuje dane z formularza i pokazuje liczbę pracowników', () => {
+    const rendered = renderTemplate('demo-request', { email: '<b>x</b>@firma.pl', employeeCount: 120 });
+
+    expect(rendered?.html).toContain('&lt;b&gt;x&lt;/b&gt;@firma.pl');
+    expect(rendered?.html).toContain('120');
+    expect(rendered?.html).not.toContain('<b>x</b>');
+    expect(rendered?.text).toContain('120');
+  });
+});

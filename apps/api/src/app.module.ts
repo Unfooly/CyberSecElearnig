@@ -9,6 +9,7 @@ import { CoursesModule } from './courses/courses.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EmailModule } from './email/email.module';
 import { GamificationModule } from './gamification/gamification.module';
+import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { GamificationModule } from './gamification/gamification.module';
     DashboardModule,
     EmailModule,
     GamificationModule,
+    DemoRequestsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

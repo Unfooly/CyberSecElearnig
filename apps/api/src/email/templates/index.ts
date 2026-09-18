@@ -84,6 +84,16 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Reset hasła (link ważny 1 godzinę): ${String(data.resetUrl)}`,
   }),
+  'demo-request': (data, options) => ({
+    html: layout(
+      'Nowa prośba o demo',
+      `<p>Służbowy e-mail: <strong>${escapeHtml(data.email)}</strong><br>Liczba pracowników: <strong>${escapeHtml(data.employeeCount)}</strong></p>` +
+        '<p>Odpisz w ciągu 1 dnia roboczego.</p>',
+      undefined,
+      options,
+    ),
+    text: `Nowa prośba o demo. E-mail: ${plain(data.email)}, liczba pracowników: ${plain(data.employeeCount)}`,
+  }),
   'user-invite': (data, options) => {
     const org = plain(data.organizationName ?? 'organizacji');
     const inviter = data.invitedBy ? plain(data.invitedBy) : null;

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unfooly — Dashboard (mockup)</title>
+<link rel="icon" href="../logo/favicon.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+:root{--ink:#131313;--paper:#F6F6F4;--surface:#FFFFFF;--border:#E6E6E2;--muted:#6F6F6B;--muted-2:#9A9A96;
+--accent:#6C5CE7;--accent-hover:#5B4BD6;--accent-soft:#EEEBFF;--accent-ink:#3F32B5;
+--success:#1E9E6A;--success-soft:#E6F6EE;--warning:#C77C0F;--warning-soft:#FFF3DF;--danger:#D9483B;--danger-soft:#FDECEA;
+--r-card:16px;--r-btn:10px;--shadow:0 1px 2px rgba(19,19,19,.04),0 8px 24px -16px rgba(19,19,19,.18)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-ink);text-decoration:none}a:hover{text-decoration:underline}
+.nav{height:64px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 40px;gap:36px}
+.nav .links{display:flex;gap:4px;flex-grow:1}
+.nav .links a{display:flex;align-items:center;gap:8px;height:64px;padding:0 12px;font-weight:600;color:var(--muted);position:relative;border-bottom:2px solid transparent}
+.nav .links a.active{color:var(--ink);border-bottom-color:var(--accent)}
+.nav .links a.soon{color:var(--muted-2)}
+.soon-pill{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--paper);border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:2px 7px}
+.nav .user{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:500}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.page{max-width:1280px;margin:0 auto;padding:36px 40px 48px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.2}
+h2{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.kpi{padding:20px 22px;display:flex;flex-direction:column;gap:10px;min-height:136px}
+.kpi .label{font-size:13px;font-weight:600;color:var(--muted)}
+.kpi .value{font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.kpi .value small{font-size:16px;font-weight:600;color:var(--muted);letter-spacing:0;margin-left:4px}
+.kpi .delta{font-size:12px;font-weight:600;color:var(--success)}
+.kpi .delta.warn{color:var(--warning)}
+.kpi.placeholder{background:var(--paper);border-style:dashed;box-shadow:none}
+.kpi.placeholder .value{font-size:14px;font-weight:600;color:var(--muted);line-height:1.5}
+.bar{height:6px;border-radius:999px;background:var(--paper);overflow:hidden;border:1px solid var(--border)}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.bar.ok i{background:var(--success)}.bar.warn i{background:var(--warning)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:14px 20px;border-bottom:1px solid var(--border)}
+td{padding:14px 20px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFAF8}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+.pill{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
+.pill.ok{background:var(--success-soft);color:var(--success)}
+.pill.warn{background:var(--warning-soft);color:var(--warning)}
+.pill.off{background:var(--paper);color:var(--muted);border:1px solid var(--border)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-btn);font:inherit;font-weight:700;font-size:14px;cursor:pointer;border:1px solid transparent}
+.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-hover)}
+.btn.secondary{background:var(--surface);color:var(--ink);border-color:var(--border)}
+.btn.ghost{background:transparent;color:var(--accent-ink)}
+.btn.sm{height:32px;padding:0 12px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.input{height:40px;border:1px solid var(--border);border-radius:var(--r-btn);background:var(--surface);padding:0 12px 0 36px;font:inherit;color:var(--ink);width:320px;position:relative}
+.field{position:relative}.field svg{position:absolute;left:12px;top:12px;color:var(--muted)}
+select.input{padding-left:12px;width:auto;appearance:none;padding-right:34px}
+.spacer{flex-grow:1}
+.name{display:flex;align-items:center;gap:10px;font-weight:600}
+.link-danger{color:var(--danger)}
+.foot{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;color:var(--muted);font-size:13px}
+.pager{display:flex;gap:6px}.pager .btn{height:32px;padding:0 10px}
+.two{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;align-items:start}
+.hero{background:var(--accent-soft);border:1px solid #DCD6FF;border-radius:var(--r-card);padding:22px}
+.hero h2{color:var(--accent-ink)}
+.profile{padding:22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.ring{position:relative;width:104px;height:104px}
+.ring .lvl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:22px;letter-spacing:-.02em;line-height:1}
+.ring .lvl small{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tabs a{padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs a.active{color:var(--ink);border-bottom-color:var(--accent)}
+.courses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.course{padding:18px;display:flex;flex-direction:column;gap:12px}
+.course .thumb{height:96px;border-radius:12px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent-ink)}
+.course .thumb.ok{background:var(--success-soft);color:var(--success)}
+.course .thumb.warn{background:var(--warning-soft);color:var(--warning)}
+.course h3{margin:0;font-size:15px;font-weight:700;line-height:1.35}
+.meta{display:flex;gap:10px;color:var(--muted);font-size:12px;font-weight:600;align-items:center}
+.path{display:flex;flex-direction:column;gap:12px}
+.path .row{display:flex;align-items:center;gap:16px;padding:16px 18px}
+.path .num{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.path .num.done{background:var(--success)}
+.path .grow{flex-grow:1;display:flex;flex-direction:column;gap:6px}
+.fact{padding:22px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.fact .ic{width:40px;height:40px;border-radius:12px;background:var(--warning-soft);color:var(--warning);display:flex;align-items:center;justify-content:center}
+.rank{width:22px;font-weight:700;color:var(--muted)}
+.me td{background:var(--accent-soft)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <svg viewBox="0 0 855 278" style="height:26px;width:auto;display:block" role="img" aria-label="Unfooly"><g transform="translate(40 -7)">
+  <path transform="translate(0 0)" d="M13 113 V150 A37 37 0 0 0 87 150 V113 M87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(122 0)" d="M13 113 V187 M13 150 A37 37 0 0 1 87 150 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(257 0)" d="M0 100 H54 M21 187 V94 A34 34 0 0 1 55 60" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="397" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <circle cx="519" cy="150" r="37" fill="none" stroke="#131313" stroke-width="26"/>
+  <path transform="translate(591 0)" d="M13 60 V187" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(639 0)" d="M87 113 L45 232 M13 113 L56 200" fill="none" stroke="#131313" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="779" cy="182" r="18" fill="#6C5CE7"/>
+  </g></svg>
+  <div class="links"><a href="#" class="active">Dashboard</a><a href="#" class="">Zespół</a><a href="#" class="">Kursy</a><a href="#" class="">Osiągnięcia</a><a href="#" class="soon">Kampanie phishingowe <span class="soon-pill">Wkrótce</span></a><a href="#" class="soon">Zgłoszenia <span class="soon-pill">Wkrótce</span></a></div>
+  <div class="user"><span class="avatar">AP</span><span>adrian.pozniak@aries-it.pl</span></div>
+</nav>
+<main class="page">
+  <div class="page-head">
+    <div><h1>Dashboard</h1><div class="sub">Stan organizacji na dziś, 18 września 2026</div></div>
+    <button class="btn secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg> Eksportuj raport</button>
+  </div>
+  <div class="kpis">
+    <div class="card kpi "><div class="label">Ukończenie szkoleń obowiązkowych</div><div class="value">78<small>%</small></div><div class="bar"><i style="width:78%"></i></div><div class="delta">+6 pkt vs poprzedni miesiąc</div></div>
+    <div class="card kpi "><div class="label">Aktywni użytkownicy</div><div class="value">46<small>/ 52</small></div><div class="bar ok"><i style="width:88%"></i></div><div class="delta">6 osób nie zalogowało się jeszcze</div></div>
+    <div class="card kpi "><div class="label">Zaległe szkolenia</div><div class="value">9</div><div class="delta warn">w 4 działach · najstarsze 12 dni</div></div>
+    <div class="card kpi placeholder"><div class="label">Klikalność phishingowa</div><div class="value">Pojawi się po pierwszej kampanii</div><span class="pill off">Moduł wkrótce</span></div>
+    <div class="card kpi placeholder"><div class="label">Zgłaszalność phishingowa</div><div class="value">Pojawi się po pierwszej kampanii</div><span class="pill off">Moduł wkrótce</span></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Ukończenie według działów</h2><a href="#">Zobacz wszystkie działy</a></div>
+    <table>
+      <thead><tr><th style="width:28%">Dział</th><th style="width:44%">Ukończenie</th><th>Ukończone / obowiązkowe</th><th style="text-align:right">Status</th></tr></thead>
+      <tbody>
+        <tr><td><span class="name">IT</span></td><td><div style="display:flex;align-items:center;gap:12px"><div class="bar ok" style="flex-grow:1"><i style="width:100%"></i></div><b style="width:40px;text-align:right">100%</b></div></td><td>12 / 12</td><td style="text-align:right"><span class="pill ok"><span class="dot"></span>Komplet</span></td></tr>
+        <tr><td><span class="name">Finanse</span></td><td><div style="display:flex;align-items:center;gap:12px"><div class="bar" style="flex-grow:1"><i style="width:88%"></i></div><b style="width:40px;text-align:right">88%</b></div></td><td>7 / 8</td><td style="text-align:right"><span class="pill acc"><span class="dot"></span>W toku</span></td></tr>
+        <tr><td><span class="name">HR</span></td><td><div style="display:flex;align-items:center;gap:12px"><div class="bar" style="flex-grow:1"><i style="width:80%"></i></div><b style="width:40px;text-align:right">80%</b></div></td><td>4 / 5</td><td style="text-align:right"><span class="pill acc"><span class="dot"></span>W toku</span></td></tr>
+        <tr><td><span class="name">Sprzedaż</span></td><td><div style="display:flex;align-items:center;gap:12px"><div class="bar warn" style="flex-grow:1"><i style="width:64%"></i></div><b style="width:40px;text-align:right">64%</b></div></td><td>9 / 14</td><td style="text-align:right"><span class="pill warn"><span class="dot"></span>5 zaległych</span></td></tr>
+        <tr><td><span class="name">Zarząd</span></td><td><div style="display:flex;align-items:center;gap:12px"><div class="bar warn" style="flex-grow:1"><i style="width:50%"></i></div><b style="width:40px;text-align:right">50%</b></div></td><td>2 / 4</td><td style="text-align:right"><span class="pill warn"><span class="dot"></span>2 zaległe</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+</body>
+</html>

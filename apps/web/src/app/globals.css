@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokeny marki Unfooly (docs/brand/BRAND.md). */
+:root {
+  --ink: #131313;
+  --paper: #f6f6f4;
+  --surface: #ffffff;
+  --border: #e6e6e2;
+  --muted: #6f6f6b;
+  --muted-2: #9a9a96;
+
+  --accent: #6c5ce7;
+  --accent-hover: #5b4bd6;
+  --accent-soft: #eeebff;
+  --accent-ink: #3f32b5;
+
+  --success: #1e9e6a;
+  --success-soft: #e6f6ee;
+  --warning: #c77c0f;
+  --warning-soft: #fff3df;
+  --danger: #d9483b;
+  --danger-soft: #fdecea;
+
+  --r-card: 16px;
+  --r-btn: 10px;
+  --shadow-card: 0 1px 2px rgba(19, 19, 19, 0.04), 0 8px 24px -16px rgba(19, 19, 19, 0.18);
+}
+
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
 /* Raport dla zarządu: "Drukuj raport" -> zapis do PDF z przeglądarki. */
 @media print {
   header,

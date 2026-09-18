@@ -106,6 +106,11 @@ Baza dev zawiera dane demo używane do zrzutów ekranu rebrandingu (działy IT/F
 kilku pracowników, przypisania kursów). Logowanie administratora demo: `admin@demo.test` /
 `Demo12345!x` (tylko lokalny dev - to NIE jest hasło do żadnego środowiska współdzielonego).
 Hasło tego konta zostało nadpisane bez zachowania poprzedniego hashu, więc nie da się go przywrócić - obowiązuje powyższe.
+Konta demo dla każdej roli (to samo hasło `Demo12345!x`, ta sama organizacja co `admin@demo.test`):
+`super-admin@demo.test`, `manager@demo.test`, `employee@demo.test`. Tworzy je (idempotentnie, tylko dev)
+`cd apps/api && npx dotenv -e ../../.env -- npx ts-node prisma/seed-dev-roles.ts`. Weryfikacja stron
+startowych na działającej aplikacji (prawdziwy formularz logowania, Playwright):
+`BASE=http://localhost:3010 node scripts/verify-role-redirects.mjs`.
 Zrzuty ekranu: `node docs/brand/screens/shoot.mjs <etap>` i `shoot-auth.mjs <etap>` (Playwright,
 `BASE` = adres web, domyślnie http://localhost:3010).
 
@@ -394,6 +399,17 @@ review) zostanie złapana przez ten test.
 
 Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
 
+- **Strona główna `/` nie odświeża sesji przez API (znany kompromis).** ORG_ADMIN, który wchodzi na `/`
+  po wygaśnięciu cookie access tokena (15 min), a z ważnym refresh tokenem, trafia na `/courses` zamiast
+  na `/dashboard`: `/` nie jest objęte middleware (`config.matcher`), więc roli nie da się odczytać z
+  nieistniejącego cookie i strona wybiera bezpieczny cel wspólny dla wszystkich ról
+  (`homePathForRole`, `apps/web/src/lib/home-path.ts`). Jeden klik dalej ("Dashboard" w nawigacji),
+  nie blokuje pracy; middleware odświeża sesję już na `/courses`. Rozwiązanie, gdyby przeszkadzało:
+  dodać `/` do matchera i odświeżać token w middleware przed decyzją o przekierowaniu.
+- **`home-path.ts` i `PROTECTED_ROUTES` (middleware) są spięte tylko komentarzem.** Zmiana dopuszczonych
+  ról w middleware bez zmiany `homePathForRole` skończyłaby się wylogowaniem tuż po zalogowaniu.
+  Warto wyeksportować `PROTECTED_ROUTES` i dodać test, że dla każdej roli strona startowa mieści się
+  w trasach dopuszczających tę rolę.
 - **Rozjazd typów DTO między frontendem a `apps/api`.** `apps/web/src/app/dashboard/page.tsx`
   (`OverviewData`), `apps/web/src/app/dashboard/_components/DepartmentsTable.tsx`
   (`DepartmentRow`) i teraz też `apps/web/src/lib/courses-types.ts` ręcznie odwzorowują

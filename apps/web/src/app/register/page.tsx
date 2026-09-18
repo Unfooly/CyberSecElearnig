@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { EMAIL_REGEX } from '@/lib/email';
 
 // Dokładnie to, co wymusza backend (RegisterDto: @MinLength(8)) - nie
@@ -103,30 +104,33 @@ export default function RegisterPage() {
 
   if (registeredMessage) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
-          <h1 className="mb-2 text-2xl font-semibold text-slate-900">Sprawdź skrzynkę e-mail</h1>
+      <main className="flex min-h-screen items-center justify-center bg-paper p-4">
+        <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>
+          <h1 className="mb-2 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Sprawdź skrzynkę e-mail</h1>
           <p
             role={emailSent ? 'status' : 'alert'}
-            className={`mb-6 rounded px-3 py-2 text-sm ${
-              emailSent ? 'text-slate-600' : 'bg-amber-50 text-amber-800'
+            className={`mb-6 rounded-btn px-3 py-2 ${
+              emailSent ? 'text-muted' : 'bg-warning-soft font-semibold text-warning'
             }`}
           >
             {registeredMessage}
           </p>
           {!emailSent && (
             <div className="mb-6 text-sm">
-              <button type="button" onClick={handleResend} className="font-medium text-slate-900 underline">
+              <button type="button" onClick={handleResend} className="font-semibold text-accent-ink underline">
                 Wyślij link ponownie
               </button>
               {resendMessage && (
-                <p role="status" className="mt-2 rounded bg-green-50 px-3 py-2 text-green-700">
+                <p role="status" className="mt-2 rounded-btn bg-success-soft px-3 py-2 font-semibold text-success">
                   {resendMessage}
                 </p>
               )}
             </div>
           )}
-          <Link href="/login" className="font-medium text-slate-900 hover:underline">
+          <Link href="/login" className="font-semibold text-accent-ink hover:underline">
             Przejdź do logowania
           </Link>
         </div>
@@ -135,15 +139,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Załóż organizację</h1>
-        <p className="mb-6 text-sm text-slate-600">
+    <main className="flex min-h-screen items-center justify-center bg-paper p-4">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>
+        <h1 className="mb-2 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Załóż organizację</h1>
+        <p className="mb-6 text-muted">
           Nazwę organizacji ustawimy na podstawie domeny Twojego adresu e-mail.
         </p>
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="email" className="mb-1 block text-sm font-semibold text-ink">
               E-mail admina
             </label>
             <input
@@ -153,19 +160,19 @@ export default function RegisterPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.email)}
               aria-describedby={fieldErrors.email ? 'email-error' : undefined}
             />
             {fieldErrors.email && (
-              <p id="email-error" className="mt-1 text-sm text-red-600">
+              <p id="email-error" className="mt-1 text-sm font-semibold text-danger">
                 {fieldErrors.email}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="password" className="mb-1 block text-sm font-semibold text-ink">
               Hasło
             </label>
             <input
@@ -175,19 +182,19 @@ export default function RegisterPage() {
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.password)}
               aria-describedby={fieldErrors.password ? 'password-error' : undefined}
             />
             {fieldErrors.password && (
-              <p id="password-error" className="mt-1 text-sm text-red-600">
+              <p id="password-error" className="mt-1 text-sm font-semibold text-danger">
                 {fieldErrors.password}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="confirmPassword" className="mb-1 block text-sm font-semibold text-ink">
               Powtórz hasło
             </label>
             <input
@@ -197,19 +204,19 @@ export default function RegisterPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
               aria-invalid={Boolean(fieldErrors.confirmPassword)}
               aria-describedby={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
             />
             {fieldErrors.confirmPassword && (
-              <p id="confirm-password-error" className="mt-1 text-sm text-red-600">
+              <p id="confirm-password-error" className="mt-1 text-sm font-semibold text-danger">
                 {fieldErrors.confirmPassword}
               </p>
             )}
           </div>
 
           {formError && (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
               {formError}
             </p>
           )}
@@ -217,15 +224,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="h-10 w-full rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
           >
             {isSubmitting ? 'Zakładanie konta...' : 'Załóż organizację'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-6 text-center text-muted">
           Masz już konto?{' '}
-          <Link href="/login" className="font-medium text-slate-900 hover:underline">
+          <Link href="/login" className="font-semibold text-accent-ink hover:underline">
             Zaloguj się
           </Link>
         </p>

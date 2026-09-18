@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { EMAIL_REGEX } from '@/lib/email';
 
 
@@ -61,21 +62,24 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Zapomniałeś hasła?</h1>
-        <p className="mb-6 text-sm text-slate-600">
+    <main className="flex min-h-screen items-center justify-center bg-paper p-4">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>
+        <h1 className="mb-2 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Zapomniałeś hasła?</h1>
+        <p className="mb-6 text-muted">
           Podaj adres e-mail, na który wyślemy link do zresetowania hasła.
         </p>
 
         {successMessage ? (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded-btn bg-success-soft px-3 py-2 text-sm font-semibold text-success">
             {successMessage}
           </p>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
-              <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="email" className="mb-1 block text-sm font-semibold text-ink">
                 E-mail
               </label>
               <input
@@ -85,19 +89,19 @@ export default function ForgotPasswordPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
                 aria-invalid={Boolean(emailError)}
                 aria-describedby={emailError ? 'email-error' : undefined}
               />
               {emailError && (
-                <p id="email-error" className="mt-1 text-sm text-red-600">
+                <p id="email-error" className="mt-1 text-sm font-semibold text-danger">
                   {emailError}
                 </p>
               )}
             </div>
 
             {formError && (
-              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
                 {formError}
               </p>
             )}
@@ -105,15 +109,15 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="h-10 w-full rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {isSubmitting ? 'Wysyłanie...' : 'Wyślij link do resetu'}
             </button>
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          <Link href="/login" className="font-medium text-slate-900 hover:underline">
+        <p className="mt-6 text-center text-muted">
+          <Link href="/login" className="font-semibold text-accent-ink hover:underline">
             Wróć do logowania
           </Link>
         </p>

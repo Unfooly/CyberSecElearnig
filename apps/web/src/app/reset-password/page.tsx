@@ -3,6 +3,7 @@
 import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -72,12 +73,15 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900">Nieprawidłowy link</h1>
-        <p className="mb-6 text-sm text-slate-600">
+      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>
+        <h1 className="mb-2 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Nieprawidłowy link</h1>
+        <p className="mb-6 text-muted">
           Ten link do resetowania hasła jest niekompletny. Poproś o nowy.
         </p>
-        <Link href="/forgot-password" className="font-medium text-slate-900 hover:underline">
+        <Link href="/forgot-password" className="font-semibold text-accent-ink hover:underline">
           Poproś o nowy link
         </Link>
       </div>
@@ -85,11 +89,14 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Ustaw nowe hasło</h1>
+    <div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>
+      <h1 className="mb-6 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Ustaw nowe hasło</h1>
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
-          <label htmlFor="newPassword" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="newPassword" className="mb-1 block text-sm font-semibold text-ink">
             Nowe hasło
           </label>
           <input
@@ -99,19 +106,19 @@ function ResetPasswordForm() {
             autoComplete="new-password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             aria-invalid={Boolean(fieldErrors.newPassword)}
             aria-describedby={fieldErrors.newPassword ? 'new-password-error' : undefined}
           />
           {fieldErrors.newPassword && (
-            <p id="new-password-error" className="mt-1 text-sm text-red-600">
+            <p id="new-password-error" className="mt-1 text-sm font-semibold text-danger">
               {fieldErrors.newPassword}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-semibold text-ink">
             Powtórz nowe hasło
           </label>
           <input
@@ -121,19 +128,19 @@ function ResetPasswordForm() {
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="h-10 w-full rounded-btn border border-border bg-surface px-3 text-sm font-medium placeholder:text-muted-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
             aria-describedby={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
           />
           {fieldErrors.confirmPassword && (
-            <p id="confirm-password-error" className="mt-1 text-sm text-red-600">
+            <p id="confirm-password-error" className="mt-1 text-sm font-semibold text-danger">
               {fieldErrors.confirmPassword}
             </p>
           )}
         </div>
 
         {formError && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
             {formError}
           </p>
         )}
@@ -141,7 +148,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="h-10 w-full rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
         >
           {isSubmitting ? 'Zapisywanie...' : 'Ustaw nowe hasło'}
         </button>
@@ -152,8 +159,11 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Suspense fallback={<div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow">Ładowanie...</div>}>
+    <main className="flex min-h-screen items-center justify-center bg-paper p-4">
+      <Suspense fallback={<div className="w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card">
+      <div className="mb-6">
+        <Logo variant="dark" height={28} />
+      </div>Ładowanie...</div>}>
         <ResetPasswordForm />
       </Suspense>
     </main>

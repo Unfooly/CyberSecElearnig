@@ -40,6 +40,36 @@ describe('AchievementsPage', () => {
     await expect(AchievementsPage()).rejects.toThrow('REDIRECT:/login');
   });
 
+  it('403 z guarda organizacji PENDING => /onboarding (stan potwierdzony w /organization/me)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'PENDING_DOMAIN_VERIFICATION' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    await expect(AchievementsPage()).rejects.toThrow('REDIRECT:/onboarding');
+  });
+
+  it('403 z innego powodu (organizacja ACTIVE) nie przekierowuje na onboarding', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'ACTIVE' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    render(await AchievementsPage());
+
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it('pokazuje komunikat błędu (nie przekierowuje) przy 5xx/awarii sieci', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));

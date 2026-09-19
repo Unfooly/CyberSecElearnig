@@ -231,6 +231,44 @@ Rotacja tokenu tunelu: w panelu Cloudflare wygeneruj nowy token, podmień `TUNNE
 i `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d cloudflared`. Rotacja tokenu GHCR: załóż nowy
 (krok 2), `docker login ghcr.io` ponownie, stary usuń w ustawieniach GitHuba.
 
+## 9. Checklista startu produkcyjnego (publiczne udostępnienie)
+
+To jest lista **warunków twardych**: dopóki którykolwiek punkt z sekcji A nie jest spełniony, **nie wdrażamy
+publicznie** (środowisko testowe z placeholderami i `draft-1` jest w porządku, ale nie może przyjmować
+prawdziwych klientów).
+
+### A. Warunki blokujące
+
+- [ ] **Dokumenty prawne są finalne.** Wersja dokumentów zapisywana w `LegalAcceptance` (stała
+  `LEGAL_DOCUMENT_VERSION` w `packages/shared`) wskazuje na **finalny** regulamin i politykę prywatności
+  (nie `draft-1`), a strony `/regulamin`, `/polityka-prywatnosci` i `/bezpieczenstwo`:
+  - nie zawierają żadnych `[DO UZUPEŁNIENIA]` (`grep -r "DO UZUPE" apps/web/src` zwraca pusto),
+  - nie mają `noindex` (usuń `robots: { index: false, follow: false }` z ich `metadata`) i nie mają żółtego
+    banera „wersja robocza” (`LegalPage`),
+  - zgody zebrane na wersję `draft-1` są traktowane jako nieważne dla nowej wersji (decyzja: ponowna akceptacja
+    przy pierwszym logowaniu albo usunięcie kont testowych).
+- [ ] **Checklista polityki prywatności** (`docs/legal/privacy-policy-checklist.md`) przejrzona z prawnikiem/IOD,
+  a wszystkie pozycje odzwierciedlone w polityce.
+- [ ] **Wdrożenie z obrazu po etapie 5 lub nowszego** - nigdy z obrazu etapu 2 (patrz uwaga w sekcji 5).
+- [ ] **Domena nadawcy e-mail** własna i zweryfikowana w MailerSend (SPF, DKIM, DMARC); kampanie phishingowe z
+  OSOBNEJ domeny niż e-maile transakcyjne (`CLAUDE.md`). Trial-owa domena MailerSend nie wystarcza.
+- [ ] **Scenariusz ręczny** z `docs/e2e-registration.md` przeszedł na środowisku z prawdziwym MailerSend i DNS
+  (rejestracja -> mail -> hasło -> rekord TXT -> odblokowanie -> sprzątanie).
+- [ ] **Sekrety i tryby deweloperskie wyłączone:** brak `ALLOW_EMAIL_DEV_MODE`, ustawiony `MAILERSEND_API_TOKEN` i
+  `EMAIL_FROM`, `FRONTEND_URL` na publiczny `https://`, wygenerowane nowe `JWT_SECRET`/`JWT_REFRESH_SECRET`, brak
+  kont demo z seedów (`seed-dev-roles`) w bazie produkcyjnej.
+- [ ] **Redis z trwałością** (AOF/RDB) i `BACKGROUND_JOBS_ENABLED` niewyłączone: bez workera nie działa sprzątanie
+  organizacji PENDING (14 dni) ani przypomnienie po 7 dniach.
+- [ ] **Kopie zapasowe bazy** (harmonogram + sprawdzone odtworzenie) i region UE (RODO).
+
+### B. Zalecane przed startem (z backlogu rejestracji, README)
+
+- [ ] `trust proxy` / prawdziwy adres IP za Cloudflare Tunnel (inaczej limity IP liczą jeden adres albo dają się obejść).
+- [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
+- [ ] Limiter maili rejestracji w Redis (dziś w pamięci procesu).
+- [ ] Testy e2e w CI (Postgres + Redis) - dziś uruchamiane ręcznie przed wdrożeniem (`npm run test:e2e --workspace=apps/api`).
+- [ ] Monitoring/alert na logi „zadanie w tle ... nie powiodło się” (rejestracja, sprzątanie organizacji).
+
 ## Klasyczna alternatywa: Caddy
 
 Zamiast tunelu można użyć Caddy (Let's Encrypt, porty 80/443 otwarte): w `.env.prod` ustaw

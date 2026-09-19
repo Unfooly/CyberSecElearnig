@@ -235,7 +235,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 
 ## Backlog rejestracji firmy (samoobsługa)
 
-Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zrobienia **przed publicznym startem**:
+Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7)”. Do rozstrzygnięcia/zrobienia
+**przed publicznym startem** (lub później, jeśli tak zaznaczono):
 
 - ~~Pre-hijacking konta~~ - **rozwiązane w etapie 3**: rejestracja nie przyjmuje hasła; admin powstaje
   jako `INVITED` z losowym hashem zastępczym, a mail „ustaw hasło” (link 24 h do `/reset-password`)
@@ -258,8 +259,20 @@ Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zr
 - **Praca w tle = błędy tylko w logu.** Rejestracja odpowiada natychmiast, a zapis i mail idą w tle
   (brak kanału czasowego enumeracji). Awaria bazy nie dociera do klienta: użytkownik nie dostaje maila i
   może spróbować ponownie. Docelowo monitoring/alert na logi „zadanie w tle (rejestracja) nie powiodło się”.
-- **Formularz w `apps/web` (do etapu 5).** BFF i strona rejestracji wysyłają jeszcze tylko
-  e-mail + hasło, więc rejestracja z UI zwraca 400, dopóki nie powstanie nowy formularz.
+- **e2e w CI.** Testy e2e API (`npm run test:e2e --workspace=apps/api`, w tym `jobs.e2e-spec.ts` wymagający
+  Redisa) i skrypt przeglądarkowy `scripts/e2e-registration.mjs` nie biegną w GitHub Actions. Do zrobienia:
+  job z usługami Postgres i Redis, migracje, potem oba zestawy (szczegóły: „Backlog CI/CD”).
+- **Kraje poza PL i numer VAT.** Rejestracja przyjmuje tylko Polskę (CHECK `country = 'PL'` w bazie, walidacja NIP z
+  sumą kontrolną). Inne kraje wymagają: zdjęcia CHECK-a, walidacji VAT-ID (VIES), innych formatów kodu
+  pocztowego i zmian w formularzu.
+- **Pełny flow self-join pracowników.** Dziś istnieje tylko przełącznik `selfJoinEnabled` (włączany po weryfikacji
+  domeny) - nic go jeszcze nie czyta. Brakuje: ekranu „dołącz do organizacji” dla adresów w zweryfikowanej domenie,
+  potwierdzenia skrzynki, roli domyślnej, limitu licencji i akceptacji przez admina.
+- **Planowane (nie budować przed decyzją):** SSO Microsoft (Entra ID) jako uzupełnienie potwierdzania domeny i
+  logowania; fakturowanie w Stripe z danych `organization_billing_details`.
+- **Strony prawne.** `/regulamin`, `/polityka-prywatnosci`, `/bezpieczenstwo` mają placeholdery i `noindex`, a zgody
+  zapisują wersję `draft-1`. Warunek startu publicznego: patrz „Checklista startu produkcyjnego” w
+  `docs/deploy-test.md` i `docs/legal/privacy-policy-checklist.md`.
 
 ## Zadania w tle (BullMQ, `apps/api/src/jobs/`)
 

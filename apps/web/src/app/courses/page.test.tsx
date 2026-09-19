@@ -65,6 +65,20 @@ describe('CoursesPage', () => {
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
+  it('403 z guarda organizacji PENDING => /onboarding (stan potwierdzony w /organization/me)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'PENDING_DOMAIN_VERIFICATION' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    await expect(CoursesPage()).rejects.toThrow('REDIRECT:/onboarding');
+  });
+
   it('przekierowuje do /login, gdy API kursów zwraca 401', async () => {
     mockCookieValue(VALID_TOKEN);
     vi.stubGlobal(

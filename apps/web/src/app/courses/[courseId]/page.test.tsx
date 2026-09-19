@@ -46,6 +46,36 @@ describe('CoursePlayerPage', () => {
     vi.mocked(notFound).mockClear();
   });
 
+  it('403 z guarda organizacji PENDING => /onboarding (stan potwierdzony w /organization/me)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'PENDING_DOMAIN_VERIFICATION' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    await expect(CoursePlayerPage({ params: { courseId: 'course-1' } })).rejects.toThrow('REDIRECT:/onboarding');
+  });
+
+  it('403 z innego powodu (organizacja ACTIVE) nie przekierowuje na onboarding', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'ACTIVE' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it('przekierowuje do /login, gdy brak cookie access_token', async () => {
     mockCookieValue(undefined);
 

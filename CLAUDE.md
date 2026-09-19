@@ -20,7 +20,7 @@ Pełna specyfikacja: `docs/mvp-spec.md` (skopiuj tam wcześniejszy dokument MVP)
 - **Backend:** Node.js + NestJS, TypeScript
 - **ORM / baza:** PostgreSQL + Prisma
 - **Frontend:** Next.js (React) + TypeScript + Tailwind CSS
-- **Kolejki / scheduler:** BullMQ + Redis (wysyłka kampanii phishingowych, przypomnienia mailowe)
+- **Kolejki / scheduler:** BullMQ + Redis (wysyłka kampanii phishingowych, przypomnienia mailowe). Dziś działa jeden worker w procesie API (`apps/api/src/jobs/`), obsługujący zadania cykliczne - patrz sekcja „Zadania w tle”.
 - **Auth:** własny JWT (access + refresh token); SSO/SAML/OIDC to backlog v2, nie buduj teraz
 - **E-mail:** MailerSend (REST API `POST /v1/email`, klient w `apps/api/src/email`, szablony renderowane w kodzie) — kampanie phishingowe idą z OSOBNEJ domeny niż e-maile transakcyjne; przed produkcją wymagana własna, zweryfikowana domena nadawcy (dziś domena trial MailerSend)
 - **Płatności:** Stripe (subskrypcje per liczba licencji) — na MVP wystarczy webhook + ręczna obsługa planów, pełny self-service billing to v2
@@ -38,6 +38,61 @@ To jest najważniejsza reguła w całym projekcie. Złamanie jej = wyciek danych
 - Włącz Row-Level Security (RLS) w Postgresie jako drugą linię obrony, nie poleganie wyłącznie na filtrach w kodzie aplikacji.
 - Każdy nowy endpoint API musi mieć test sprawdzający, że użytkownik z organizacji A nie ma dostępu do danych organizacji B.
 - Jeśli piszesz kod, który dotyka danych klienckich i nie widzisz w nim filtra po `organizationId` — zatrzymaj się i zapytaj, zanim to scommitujesz.
+
+## Model rejestracji firm (samoobsługowy) i weryfikacja domeny
+
+Firmy zakładają konta same, bez udziału operatora. Przepływ (kod: `apps/api/src/auth/registration.service.ts`,
+`apps/api/src/organizations/`, ekrany w `apps/web/src/app/{register,onboarding,dashboard/settings}`):
+
+1. **Rejestracja** (`POST /auth/register`): dane administratora (imię, nazwisko, **służbowy** e-mail), dane firmy (pełna
+   nazwa, nazwa wyświetlana, NIP z sumą kontrolną, adres, kraj - na razie tylko PL) i dwie zgody (regulamin, polityka
+   prywatności; zapisywane w `legal_acceptances` z wersją dokumentów). **Formularz nie ma pól hasła.** Domeny
+   publiczne (Gmail, WP itd.) i sieci wewnętrznych (`.local`, `.internal`, `.corp`, `.lan`) są odrzucane. Nazwa
+   organizacji jest podawana przez klienta i **nie** wynika z domeny e-maila (nie jest unikalna).
+2. **Potwierdzenie skrzynki = ustawienie hasła.** Admin powstaje jako `INVITED` z losowym hashem; mail (ważny 24 h)
+   prowadzi do `/reset-password`, które ustawia hasło, aktywuje konto i potwierdza e-mail. Dzięki temu nikt nie założy
+   konta cudzym adresem ze swoim hasłem (pre-hijacking). Odpowiedź rejestracji jest identyczna dla nowych i istniejących
+   adresów (anty-enumeracja) - nie zmieniaj tego.
+3. **Weryfikacja domeny DNS TXT.** Nowa organizacja ma status `PENDING_DOMAIN_VERIFICATION`. Admin dodaje rekord
+   `_unfooly-verify.<domena> = "unfooly-verify=<token>"` i klika „Sprawdź teraz”. **`verifiedAt` i status `ACTIVE`
+   ustawia wyłącznie `DomainVerificationService`** - nigdy inny kod. Każda porażka weryfikacji zwraca ten sam błąd
+   (bez ujawniania przyczyny, także gdy domena jest już zweryfikowana w innej organizacji).
+4. **Guard PENDING (fail-closed).** Globalny `ActiveOrganizationGuard` zwraca 403 dla organizacji niezweryfikowanej na
+   **każdym** endpoincie, chyba że oznaczono go `@AllowPendingOrganization()` (dziś: auth, `/organization/*`, avatar).
+   Nowy endpoint jest więc domyślnie zablokowany dla PENDING - dodaj dekorator tylko, jeśli endpoint ma działać przed
+   weryfikacją (i uzasadnij to). Przekierowania na `/onboarding` w `apps/web` to wyłącznie UX, ochrona jest w API.
+5. **Po weryfikacji:** organizacja `ACTIVE`, w ustawieniach można włączyć `selfJoinEnabled`.
+6. **Sprzątanie:** organizacja PENDING dostaje mail po 7 dniach i jest usuwana wraz z danymi po 14 dniach (job w tle).
+
+Dane do faktury (`organization_billing_details`) są osobną tabelą z RLS (`organizations` jest globalna, bez RLS) -
+nowe dane firmowe/osobowe dodawaj do tabel objętych RLS, nie do `organizations`. Tabela `organizations` jest wyjątkiem:
+zapytania na niej filtruj po `id` organizacji z JWT (albo po `id` konkretnej organizacji w jobach).
+
+**Planowane (nie buduj bez decyzji):** SSO Microsoft (Entra ID), fakturowanie w Stripe z danych
+`organization_billing_details`, pełny flow samodzielnego dołączania pracowników (dziś jest tylko przełącznik
+`selfJoinEnabled`, którego nic jeszcze nie czyta), kraje poza PL i numer VAT. Szczegóły i pozostały backlog: README.
+
+**Warunek publicznego startu:** finalne dokumenty prawne (bez placeholderów i `noindex`, właściwa
+`LEGAL_DOCUMENT_VERSION`) - patrz `docs/deploy-test.md` sekcja 9 i `docs/legal/privacy-policy-checklist.md`.
+Zmiana zakresu przetwarzania danych osobowych wymaga aktualizacji tej checklisty.
+
+## Zadania w tle (BullMQ)
+
+Jeden worker w procesie API (`JobsService`, kolejka `maintenance`, Redis z `REDIS_URL`). Jak dodać kolejny job cykliczny
+(np. OVERDUE, przypomnienia kampanii):
+
+1. W module funkcji dodaj serwis z metodą wykonującą pracę (przyjmuje `now: Date`, żeby testować z zamrożonym zegarem)
+   i wstrzyknij `JobsService`.
+2. W `onModuleInit` serwisu wywołaj `jobs.registerRecurring({ name, cron, handler })` (cron w UTC). Harmonogram to
+   idempotentny upsert - wiele instancji API nie dubluje zadania. Wzorzec: `PendingOrganizationCleanupService`.
+3. Zadanie **musi być idempotentne** (retry: 3 próby, backoff 60 s) i race-safe (atomowe zajmowanie pracy, np. warunek w
+   `updateMany`). Błędy pojedynczych rekordów łap i loguj (bez danych osobowych), żeby jeden nie blokował reszty.
+4. Zadanie nie może omijać RLS: dane klienckie czytaj przez `runInOrgContext(organizationId, ...)`. Zapytania
+   międzyorganizacyjne tylko przez istniejące, opisane wyjątki (`TenantPrismaService`) i z uzasadnieniem.
+5. Testy: e2e z zamrożonym zegarem (granice czasu, powtórne biegi, równoległe biegi, awarie wysyłki, izolacja A/B).
+   Test na prawdziwym Redisie tylko z własnym `JOBS_QUEUE_PREFIX`.
+6. Konfiguracja: `BACKGROUND_JOBS_ENABLED` (wyłączone w `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`. Nowa tabela z
+   `organizationId` musi mieć `onDelete: Cascade` do `organizations` (inaczej sprzątanie organizacji się zatnie).
 
 ## Role i uprawnienia
 
@@ -89,6 +144,12 @@ npm run lint --workspace=apps/web
 
 # baza danych
 npx prisma migrate dev
+
+# e2e API (Postgres + Redis lokalnie; jeszcze nie w CI)
+npm run test:e2e --workspace=apps/api
+
+# e2e w przeglądarce całej ścieżki rejestracji (opis: docs/e2e-registration.md)
+npx dotenv -e .env -- node scripts/e2e-registration.mjs
 ```
 
 ## Czego NIE robić w MVP (backlog v2+)

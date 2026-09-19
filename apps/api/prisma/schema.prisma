@@ -100,6 +100,8 @@ model Organization {
   billingDetails          OrganizationBillingDetails?
   legalAcceptances        LegalAcceptance[]
   refreshTokens           RefreshToken[]
+  phishingTemplates       PhishingTemplate[]
+  phishingTemplateEdits   PhishingTemplateEdit[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -177,6 +179,65 @@ model LegalAcceptance {
   @@unique([userId, documentType, version])
   @@index([organizationId])
   @@map("legal_acceptances")
+}
+
+enum PhishingTemplateAction {
+  CLONED
+  UPDATED
+  DELETED
+}
+
+// Szablon maila symulacji phishingowej. organizationId = NULL => szablon GLOBALNY (startowy zestaw,
+// wstawiany migracją jako właściciel schematu); niepusty => własny szablon organizacji (klon/edycja).
+// RLS ROZBITY NA KOMENDY (migracja): SELECT widzi "NULL lub moja organizacja", a INSERT/UPDATE/DELETE
+// wyłącznie "moja organizacja" - rola aplikacji nie może zmienić ani usunąć szablonu globalnego
+// (DELETE sprawdza tylko USING, dlatego USING dla DELETE/UPDATE nie zawiera "IS NULL").
+// Treść HTML jest sanityzowana przy zapisie (allow-lista tagów; jedyny link to {{trackingLink}}).
+model PhishingTemplate {
+  id               String   @id @default(cuid())
+  organizationId   String?
+  // Stały klucz szablonu globalnego (np. "kurier"); null dla szablonów organizacji.
+  key              String?  @unique
+  name             String   @db.VarChar(120)
+  subject          String   @db.VarChar(200)
+  bodyHtml         String   @db.Text
+  // Treść strony "To była symulacja" (lekcja) - sanityzowana, bez linków.
+  lessonHtml       String   @db.Text
+  // Nazwa wyświetlana nadawcy i część lokalna adresu; domena zawsze z PHISHING_EMAIL_DOMAIN.
+  senderName       String   @db.VarChar(80)
+  senderLocalPart  String   @db.VarChar(64)
+  // Skąd sklonowano (globalny albo własny); luźne powiązanie, bez FK (szablon źródłowy może zniknąć).
+  sourceTemplateId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Cel złożonego FK z phishing_template_edits (SQL-only, patrz migracja).
+  @@unique([organizationId, id])
+  @@index([organizationId])
+  @@map("phishing_templates")
+}
+
+// Audyt zmian szablonów organizacji (kto, kiedy, co). Wiersze przeżywają usunięcie szablonu
+// i pracownika: templateId i actorUserId są zerowane (ON DELETE SET NULL (kolumna) - SQL-only
+// złożone FK, patrz migracja), a nazwa szablonu i e-mail aktora to kopie z chwili zdarzenia.
+model PhishingTemplateEdit {
+  id             String                 @id @default(cuid())
+  organizationId String
+  templateId     String?
+  templateName   String                 @db.VarChar(120)
+  action         PhishingTemplateAction
+  // Nazwy zmienionych pól (bez wartości - treść może być duża).
+  changedFields  String[]
+  actorUserId    String?
+  actorEmail     String                 @db.VarChar(254)
+  createdAt      DateTime               @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, templateId])
+  @@map("phishing_template_edits")
 }
 
 // Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.

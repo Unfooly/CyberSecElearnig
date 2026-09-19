@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Role } from '@cyberszkolo/shared';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
@@ -14,16 +15,20 @@ interface NavItem {
   // moduły MVP z CLAUDE.md, żeby struktura nawigacji była kompletna, ale
   // nie sugerowała nieistniejących ekranów (patrz dawny Sidebar.tsx).
   built: boolean;
+  // Pozycja panelu administratora organizacji - ukrywana dla innych ról (EMPLOYEE nie widzi
+  // modułów zarządzania, w tym symulacji phishingowych). To wyłącznie UX: dostęp egzekwują
+  // middleware.ts i apps/api (RolesGuard).
+  adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', built: true },
-  { label: 'Zespół', href: '/dashboard/users', built: true },
+  { label: 'Dashboard', href: '/dashboard', built: true, adminOnly: true },
+  { label: 'Zespół', href: '/dashboard/users', built: true, adminOnly: true },
   { label: 'Kursy', href: '/courses', built: true },
   { label: 'Osiągnięcia', href: '/courses/achievements', built: true },
-  { label: 'Ustawienia', href: '/dashboard/settings', built: true },
-  { label: 'Kampanie phishingowe', href: '#', built: false },
-  { label: 'Zgłoszenia', href: '#', built: false },
+  { label: 'Ustawienia', href: '/dashboard/settings', built: true, adminOnly: true },
+  { label: 'Kampanie phishingowe', href: '/dashboard/phishing/templates', built: true, adminOnly: true },
+  { label: 'Zgłoszenia', href: '#', built: false, adminOnly: true },
 ];
 
 function initialsFromEmail(email: string): string {
@@ -34,7 +39,7 @@ function initialsFromEmail(email: string): string {
   return `${first}${second}`;
 }
 
-export default function Topbar({ userEmail }: { userEmail: string | null }) {
+export default function Topbar({ userEmail, role }: { userEmail: string | null; role?: Role }) {
   const pathname = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -74,7 +79,9 @@ export default function Topbar({ userEmail }: { userEmail: string | null }) {
     };
   }, [userEmail]);
 
-  const builtHrefs = NAV_ITEMS.filter((item) => item.built).map((item) => item.href);
+  // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
+  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === undefined || role === Role.ORG_ADMIN);
+  const builtHrefs = visibleItems.filter((item) => item.built).map((item) => item.href);
   // Najdłuższy pasujący prefiks wygrywa - bez tego /courses/achievements
   // podświetlałoby jednocześnie "Kursy" i "Osiągnięcia" (oba są prefiksami).
   const activeHref = builtHrefs
@@ -89,7 +96,7 @@ export default function Topbar({ userEmail }: { userEmail: string | null }) {
         </Link>
 
         <nav className="flex h-full flex-1 items-center gap-1">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             if (!item.built) {
               return (
                 <span

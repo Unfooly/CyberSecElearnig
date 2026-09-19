@@ -17,7 +17,8 @@ export default async function AchievementsPage() {
   if (!accessToken) {
     redirect('/login');
   }
-  const userEmail = decodeJwtPayload(accessToken)?.email ?? null;
+  const payload = decodeJwtPayload(accessToken);
+  const userEmail = payload?.email ?? null;
 
   const result = await fetchJson<Badge[]>(`${API_URL}/gamification/badges`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -33,7 +34,7 @@ export default async function AchievementsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Topbar userEmail={userEmail} />
+      <Topbar userEmail={userEmail} role={payload?.role} />
       <main className="mx-auto max-w-7xl p-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-slate-900">Osiągnięcia</h1>

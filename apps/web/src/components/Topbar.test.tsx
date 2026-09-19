@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import { Role } from '@cyberszkolo/shared';
 import Topbar from './Topbar';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
 
@@ -18,6 +19,39 @@ describe('Topbar', () => {
     expect(screen.getByRole('link', { name: 'Zespół' })).toHaveAttribute('href', '/dashboard/users');
     expect(screen.getByRole('link', { name: 'Kursy' })).toHaveAttribute('href', '/courses');
     expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveAttribute('href', '/courses/achievements');
+  });
+
+  describe('nawigacja zależna od roli (UX; dostęp egzekwują middleware i API)', () => {
+    const adminLabels = ['Dashboard', 'Zespół', 'Ustawienia', 'Kampanie phishingowe'];
+
+    it('EMPLOYEE NIE widzi modułów administratora (w tym symulacji phishingowych), widzi kursy i osiągnięcia', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      for (const label of adminLabels) {
+        expect(screen.queryByText(label)).not.toBeInTheDocument();
+      }
+      expect(screen.getByRole('link', { name: 'Kursy' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toBeInTheDocument();
+    });
+
+    it('DEPARTMENT_MANAGER też nie widzi pozycji administratora organizacji', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.DEPARTMENT_MANAGER} />);
+
+      expect(screen.queryByText('Kampanie phishingowe')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Zespół' })).not.toBeInTheDocument();
+    });
+
+    it('ORG_ADMIN widzi wszystko, w tym link do szablonów symulacji', () => {
+      usePathnameMock.mockReturnValue('/dashboard');
+      render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
+
+      expect(screen.getByRole('link', { name: 'Kampanie phishingowe' })).toHaveAttribute('href', '/dashboard/phishing/templates');
+      for (const label of ['Zespół', 'Ustawienia']) {
+        expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+      }
+    });
   });
 
   it('podświetla WYŁĄCZNIE "Zespół" na /dashboard/users, mimo że to też podścieżka /dashboard', () => {
@@ -103,7 +137,7 @@ describe('Topbar', () => {
     usePathnameMock.mockReturnValue('/courses');
     render(<Topbar userEmail="jan@example.test" />);
 
-    expect(screen.queryByRole('link', { name: 'Kampanie phishingowe' })).not.toBeInTheDocument();
-    expect(screen.getByText('Kampanie phishingowe')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Zgłoszenia' })).not.toBeInTheDocument();
+    expect(screen.getByText('Zgłoszenia')).toBeInTheDocument();
   });
 });

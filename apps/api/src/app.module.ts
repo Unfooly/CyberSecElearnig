@@ -13,6 +13,7 @@ import { EmailModule } from './email/email.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { PhishingModule } from './phishing/phishing.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
     GamificationModule,
     DemoRequestsModule,
     OrganizationsModule,
+    PhishingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ProxyAwareThrottlerGuard }],
 })

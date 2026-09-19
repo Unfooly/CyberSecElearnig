@@ -13,7 +13,8 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   if (!accessToken) {
     redirect('/login');
   }
-  const userEmail = decodeJwtPayload(accessToken)?.email ?? null;
+  const payload = decodeJwtPayload(accessToken);
+  const userEmail = payload?.email ?? null;
 
   // /start jest wołane raz, server-side, przy renderze strony - tak jak
   // reszta zapytań w apps/web (patrz dashboard/page.tsx). Idempotentne po
@@ -36,7 +37,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   if (!startResult.ok) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Topbar userEmail={userEmail} />
+        <Topbar userEmail={userEmail} role={payload?.role} />
         <main className="mx-auto max-w-7xl p-8">
           <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             Nie udało się załadować kursu. Spróbuj odświeżyć stronę za chwilę.
@@ -74,7 +75,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Topbar userEmail={userEmail} />
+      <Topbar userEmail={userEmail} role={payload?.role} />
       <main className="mx-auto max-w-7xl p-8">
         <CoursePlayer
           courseId={params.courseId}

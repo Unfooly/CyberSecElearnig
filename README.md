@@ -356,6 +356,10 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
   (opcjonalna kolumna w złożonej relacji). Istnieją tylko w migracjach SQL, a `prisma migrate diff` /
   `migrate dev` pokazuje złożony FK jako „do usunięcia”. **Przy generowaniu nowej migracji przez
   `migrate dev` ręcznie usuń z niej `DROP CONSTRAINT users_organizationId_departmentId_fkey`.**
+- **Kolejne constrainty SQL-only (moduł symulacji phishingowych):** złożone FK
+  `phishing_template_edits_organizationId_templateId_fkey` i `..._organizationId_actorUserId_fkey` z
+  `ON DELETE SET NULL (kolumna)` (PostgreSQL 15+; Prisma nie wyraża) oraz CHECK-i na `phishing_templates`.
+  `prisma migrate dev` pokaże te FK jako „do usunięcia” - usuń takie linie z nowej migracji.
 - **Zwykłe FK na `users(id)` bez sprawdzenia organizacji.** `course_assignments.userId`,
   `user_badges.userId`, `password_reset_tokens.userId` i `email_verification_tokens.userId` mają
   kolumnę `organizationId`, ale FK tylko na `users(id)` (FK omijają RLS), więc baza nie pilnuje, że

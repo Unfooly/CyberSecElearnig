@@ -61,6 +61,11 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 - [ ] Dane do faktury/księgowe - zgodnie z przepisami (zwykle 5 lat od końca roku podatkowego).
 - [ ] Logi i backupy - okres i mechanizm usuwania; jak backupy mają się do żądania usunięcia.
 - [ ] Zgody (`legal_acceptances`) - jak długo jako dowód, mimo usunięcia konta.
+- [ ] **Audyty modułu symulacji phishingowych** (`phishing_template_edits`, później `phishing_result_visibility_audit`):
+  zawierają **kopię adresu e-mail aktora** (kto zmienił szablon / włączył widok osobowy), która **przeżywa usunięcie
+  konta pracownika** (`actorUserId` jest zerowany, e-mail zostaje) - do czasu usunięcia organizacji. Zdecydować:
+  podstawę (rozliczalność / uzasadniony interes), okres retencji i czy maskować e-mail po usunięciu konta; opisać w
+  polityce i w DPIA modułu (patrz sekcja 8).
 
 ## 6. Prawa osób i ich realizacja
 

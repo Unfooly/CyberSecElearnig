@@ -32,7 +32,7 @@ export function isSameOriginRequest(): boolean {
  * obsługuje UI); awaria sieci = 502.
  */
 export async function proxyAuthenticated(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   apiPath: string,
   body?: Record<string, unknown>,
 ): Promise<NextResponse> {
@@ -66,6 +66,10 @@ export async function proxyAuthenticated(
     );
   }
 
+  // 204 nie może mieć ciała (np. DELETE).
+  if (backendResponse.status === 204) {
+    return new NextResponse(null, { status: 204 });
+  }
   const data = await backendResponse.json().catch(() => null);
   return NextResponse.json(data, { status: backendResponse.status });
 }

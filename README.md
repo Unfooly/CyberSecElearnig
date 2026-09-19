@@ -146,8 +146,10 @@ npm run prisma:generate --workspace=apps/api
 
 ## Wdrożenie produkcyjne
 
-Docker Compose (`docker-compose.prod.yml`) + Caddy jako jedyny punkt wejścia z zewnątrz
-(automatyczny SSL przez Let's Encrypt). Zakłada VPS Ubuntu 24.04 z zainstalowanym Dockerem —
+Docker Compose (`docker-compose.prod.yml`). Punkt wejścia z zewnątrz: **Cloudflare Tunnel** (usługa
+`cloudflared`, profil `tunnel`, żadnych otwartych portów na VPS - krok po kroku w
+`docs/deploy-test.md`, wzór zmiennych w `.env.prod.example`) albo alternatywnie Caddy (profil `caddy`,
+Let's Encrypt). Zakłada VPS Ubuntu 24.04 z zainstalowanym Dockerem —
 minimalny sensowny rozmiar to 1GB RAM (zmierzone lokalnie: wszystkie cztery kontenery
 `postgres`+`redis`+`api`+`web` w spoczynku, tuż po starcie, zużywają razem ok. 125MB —
 zostaje spory margines na Caddy i realny ruch, ale warto to monitorować po pierwszym
@@ -186,19 +188,20 @@ Caddy — inaczej Let's Encrypt nie zweryfikuje domeny.
 ### 3. Build i start
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-Migracje Prisma (`prisma migrate deploy`) uruchamiają się **automatycznie przy każdym starcie
-kontenera `api`** (`apps/api/docker-entrypoint.sh`), nie są zaszyte w obrazie na etapie builda —
-`git pull` z nowymi migracjami + restart kontenera wystarczy, bez ręcznego kroku. Bezpieczne
-też przy ewentualnym przyszłym skalowaniu `api` do więcej niż jednej repliki: `migrate deploy`
-bierze advisory lock w Postgresie na czas aplikowania migracji, więc równoległy start drugiego
-kontenera czeka na zwolnienie locka, a potem widzi migracje już zaaplikowane i kończy się bez
-błędu.
+Migracje Prisma (`prisma migrate deploy`) to **osobny, jednorazowy krok**: usługa `migrate` w
+`docker-compose.prod.yml` (ten sam obraz co `api`, rola migracyjna z `DATABASE_URL`) kończy się kodem 0,
+a `api` startuje dopiero po jej sukcesie (`service_completed_successfully`). Błąd migracji zatrzymuje
+wdrożenie zamiast zapętlać restartujący się kontener, a restart samego `api` nie dotyka schematu.
+`migrate deploy` bierze advisory lock w Postgresie, więc jest bezpieczny także przy równoległym
+starcie. **Uwaga:** `up -d --no-deps api` pomija ten krok - po `git pull` z nowymi migracjami użyj
+`up -d` albo `run --rm migrate`.
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f api    # sprawdź, czy migracje przeszły
+docker compose -f docker-compose.prod.yml logs migrate   # czy migracje przeszły
 docker compose -f docker-compose.prod.yml ps
 ```
 
@@ -208,7 +211,7 @@ docker compose -f docker-compose.prod.yml ps
   natywny moduł) i buduje `nest build` + `prisma generate`, potem `npm prune --omit=dev` usuwa
   devDependencies z tego samego drzewa `node_modules` (bez ponownej instalacji — natywnie
   skompilowany `bcrypt` przetrwa). Etap produkcyjny kopiuje wyłącznie spakowany `node_modules`,
-  `dist/` i `prisma/` (migracje potrzebne w runtime przez entrypoint) — zmierzony rozmiar obrazu:
+  `dist/` i `prisma/` (migracje potrzebne usłudze `migrate`) — zmierzony rozmiar obrazu:
   ~405MB. `prisma` (CLI) jest celowo w `dependencies`, nie `devDependencies` — potrzebny w
   runtime do `migrate deploy`.
 - **`apps/web/Dockerfile`**: `next.config.mjs` ma `output: 'standalone'` — Next.js sam śledzi

@@ -16,3 +16,6 @@ services:
     env_file: .env.prodlocal.local
     ports:
       - "3000:3000"
+
+  migrate:
+    env_file: .env.prodlocal.local

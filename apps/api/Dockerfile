@@ -62,7 +62,7 @@ COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-# Migrations + schema - wymagane w runtime przez docker-entrypoint.sh
+# Migrations + schema - wymagane w runtime przez usługę `migrate`
 # (`prisma migrate deploy`), nie tylko na etapie builda.
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 

@@ -30,6 +30,26 @@ services:
       retries: 5
     # Też bez "ports:" - tylko wewnątrz sieci Dockera.
 
+  # Migracje Prisma jako OSOBNY, jednorazowy krok (nie w entrypoincie api):
+  # uruchamia się przed api, kończy się kodem 0 i nie jest restartowany.
+  # `prisma migrate deploy` bierze advisory lock w Postgresie, więc jest
+  # bezpieczny nawet przy równoległym starcie. Używa DATABASE_URL (rola
+  # migracyjna z uprawnieniami DDL); runtime api łączy się osobną, ograniczoną
+  # przez RLS rolą z DATABASE_URL_APP.
+  # UWAGA: `up -d --no-deps api` POMIJA ten krok - po `git pull` z nowymi
+  # migracjami użyj `docker compose ... up -d` albo najpierw `run --rm migrate`.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: "no"
+    env_file: .env
+    entrypoint: []
+    command: ["npx", "prisma", "migrate", "deploy", "--schema=apps/api/prisma/schema.prisma"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -37,11 +57,14 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Bez "ports:" - Caddy jest jedynym punktem wejścia z zewnątrz.
+    # Bez "ports:" - api nie jest wystawione na zewnątrz. Przeglądarka rozmawia
+    # wyłącznie z web (BFF), a web woła api przez wewnętrzną sieć compose.
 
   web:
     build:
@@ -51,9 +74,32 @@ services:
     env_file: .env
     depends_on:
       - api
+    # Bez "ports:" - ruch z internetu wchodzi przez cloudflared (albo Caddy).
 
+  # Cloudflare Tunnel: wychodzące połączenie z Cloudflare do tej sieci, więc
+  # VPS nie wystawia żadnych portów (80/443 zamknięte), a TLS terminuje
+  # Cloudflare. Ta sama (domyślna) sieć compose co web - w panelu Cloudflare
+  # Zero Trust ustaw Public Hostname -> Service: http://web:3000.
+  # Włączany profilem "tunnel" (COMPOSE_PROFILES=tunnel w .env), żeby lokalny
+  # stack (prodlocal) nie wymagał tokenu. Patrz docs/deploy-test.md.
+  cloudflared:
+    image: cloudflare/cloudflared:latest # na produkcji przypnij konkretną wersję
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Bez ":?" celowo - compose interpoluje cały plik także dla usług
+      # wyłączonych profilem, a prodlocal nie ma tokenu. Pusty token kończy
+      # się głośnym błędem cloudflared przy starcie.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+
+  # Alternatywa dla tunelu: klasyczny reverse proxy z Let's Encrypt na
+  # portach 80/443 (profil "caddy": COMPOSE_PROFILES=caddy). Nie łącz z tunelem.
   caddy:
     image: caddy:2-alpine
+    profiles: ["caddy"]
     restart: unless-stopped
     ports:
       - "80:80"

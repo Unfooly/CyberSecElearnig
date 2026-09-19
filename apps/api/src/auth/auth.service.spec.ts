@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
+import { SessionsService } from './sessions.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
 
@@ -21,7 +21,13 @@ describe('AuthService — reset hasła', () => {
   let verificationTokenCreate: jest.Mock;
   let verificationTokenDeleteMany: jest.Mock;
   let verificationTokenUpdateMany: jest.Mock;
-  let jwtSign: jest.Mock;
+  let startSession: jest.Mock;
+  let rotate: jest.Mock;
+  let logout: jest.Mock;
+  let revokeAllSessions: jest.Mock;
+  let revokeAllInTransaction: jest.Mock;
+  let publishRevocation: jest.Mock;
+  let revokedAt: Date;
 
   beforeEach(async () => {
     passwordResetTokenDeleteMany = jest.fn();
@@ -37,7 +43,13 @@ describe('AuthService — reset hasła', () => {
     verificationTokenCreate = jest.fn();
     verificationTokenDeleteMany = jest.fn();
     verificationTokenUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
-    jwtSign = jest.fn().mockResolvedValue('jwt');
+    startSession = jest.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+    rotate = jest.fn();
+    logout = jest.fn();
+    revokeAllSessions = jest.fn();
+    revokedAt = new Date('2027-01-01T00:00:00Z');
+    revokeAllInTransaction = jest.fn().mockResolvedValue(revokedAt);
+    publishRevocation = jest.fn().mockResolvedValue(undefined);
     runPasswordResetTokenLookup = jest.fn();
     runInOrgContext = jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
       fn({
@@ -63,7 +75,10 @@ describe('AuthService — reset hasła', () => {
           provide: TenantPrismaService,
           useValue: { runAuthLookup, runInOrgContext, runPasswordResetTokenLookup, runEmailVerificationTokenLookup },
         },
-        { provide: JwtService, useValue: { signAsync: jwtSign, verifyAsync: jest.fn() } },
+        {
+          provide: SessionsService,
+          useValue: { startSession, rotate, logout, revokeAllSessions, revokeAllInTransaction, publishRevocation },
+        },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: EmailService, useValue: { send: sendEmail } },
       ],
@@ -117,13 +132,17 @@ describe('AuthService — reset hasła', () => {
       );
     });
 
-    it('refresh odrzuca token użytkownika bez potwierdzonego adresu e-mail', async () => {
-      const verifyAsync = jest.fn().mockResolvedValue({ sub: 'u1' });
-      (service as unknown as { jwtService: { verifyAsync: jest.Mock } }).jwtService.verifyAsync = verifyAsync;
-      runAuthLookup.mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@f.pl', emailVerifiedAt: null });
+    it('refresh i wylogowanie są delegowane do SessionsService (rotacja i reuse: sessions.service.spec)', async () => {
+      startSession.mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+      rotate.mockResolvedValue({ accessToken: 'a2', refreshToken: 'r2' });
 
-      await expect(service.refresh('rt')).rejects.toThrow(/refresh token/i);
-      expect(jwtSign).not.toHaveBeenCalled();
+      await expect(service.refresh('rt')).resolves.toEqual({ accessToken: 'a2', refreshToken: 'r2' });
+      await service.logout('rt');
+      await service.logoutAll('o1', 'u1');
+
+      expect(rotate).toHaveBeenCalledWith('rt');
+      expect(logout).toHaveBeenCalledWith('rt');
+      expect(revokeAllSessions).toHaveBeenCalledWith('o1', 'u1');
     });
 
     it('login odrzuca (403 EMAIL_NOT_VERIFIED) poprawne hasło niepotwierdzonego konta', async () => {
@@ -132,7 +151,7 @@ describe('AuthService — reset hasła', () => {
       await expect(service.login({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toMatchObject({
         response: { code: 'EMAIL_NOT_VERIFIED' },
       });
-      expect(jwtSign).not.toHaveBeenCalled();
+      expect(startSession).not.toHaveBeenCalled();
     });
 
     it('login niepotwierdzonego konta ze ZŁYM hasłem daje zwykłe 401 (bez ujawniania statusu)', async () => {
@@ -208,6 +227,48 @@ describe('AuthService — reset hasła', () => {
       expect(sendEmail).toHaveBeenCalledTimes(1);
       expect(existing).toEqual(missing);
       expect(existing).toEqual(verified);
+    });
+
+    it('resetPassword unieważnia WSZYSTKIE sesje: w transakcji tenanta (baza), a odbicie w Redisie dopiero po niej', async () => {
+      const order: string[] = [];
+      revokeAllInTransaction.mockImplementation(async () => {
+        order.push('baza');
+        return revokedAt;
+      });
+      publishRevocation.mockImplementation(async () => {
+        order.push('redis');
+      });
+      runPasswordResetTokenLookup.mockResolvedValue({
+        id: 't', organizationId: 'org-1', userId: 'user-1', expiresAt: new Date(Date.now() + 60_000), usedAt: null,
+      });
+
+      await service.resetPassword({ token: 'raw', newPassword: 'NoweHaslo123' });
+
+      expect(revokeAllInTransaction).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1');
+      expect(publishRevocation).toHaveBeenCalledWith('user-1', revokedAt);
+      expect(order).toEqual(['baza', 'redis']);
+    });
+
+    it('resetPassword: gdy odbicie w Redisie zawiedzie (publishRevocation łapie błąd sam), reset i tak się udaje', async () => {
+      publishRevocation.mockResolvedValue(undefined);
+      runPasswordResetTokenLookup.mockResolvedValue({
+        id: 't', organizationId: 'org-1', userId: 'user-1', expiresAt: new Date(Date.now() + 60_000), usedAt: null,
+      });
+
+      await expect(service.resetPassword({ token: 'raw', newPassword: 'NoweHaslo123' })).resolves.toMatchObject({
+        message: expect.stringMatching(/Hasło zostało zmienione/),
+      });
+    });
+
+    it('resetPassword: przegrany wyścig o token NIE unieważnia sesji (nic się nie zmieniło)', async () => {
+      passwordResetTokenUpdateMany.mockResolvedValueOnce({ count: 0 });
+      runPasswordResetTokenLookup.mockResolvedValue({
+        id: 't', organizationId: 'org-1', userId: 'user-1', expiresAt: new Date(Date.now() + 60_000), usedAt: null,
+      });
+
+      await expect(service.resetPassword({ token: 'raw', newPassword: 'NoweHaslo123' })).rejects.toBeInstanceOf(BadRequestException);
+      expect(revokeAllInTransaction).not.toHaveBeenCalled();
+      expect(publishRevocation).not.toHaveBeenCalled();
     });
 
     it('resetPassword potwierdza też adres e-mail (klik w link z maila)', async () => {

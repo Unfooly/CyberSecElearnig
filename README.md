@@ -288,6 +288,44 @@ widzi tylko kontener web, więc bez przekazania adresu wszyscy użytkownicy dzie
 - **Warunek bezpieczeństwa:** api nigdy nie wystawiamy na zewnątrz, a web ma być osiągalny wyłącznie przez tunel/proxy
   (Cloudflare nadpisuje `CF-Connecting-IP`). Inaczej przy `true` nagłówek da się podrobić i obejść limity.
 
+## Sesje i unieważnianie tokenów (`apps/api/src/auth/sessions.service.ts`)
+
+- **Refresh tokeny w bazie jako hash** (tabela `refresh_tokens`: `organizationId`, RLS `FORCE`, złożony FK do
+  `users(organizationId, id)`; SHA-256 całego tokenu JWT, nigdy jawnie). Każdy login = nowa „rodzina” (`familyId`).
+- **Rotacja przy każdym `/auth/refresh`** i wykrywanie reuse: użycie tokenu już wymienionego, po oknie łaski, unieważnia
+  CAŁĄ rodzinę (401). **Okno łaski 10 s** (`REFRESH_ROTATION_GRACE_MS`) to **świadomy kompromis**: równoległe
+  odświeżenia (middleware web, RSC, dwie karty) używają tego samego tokenu niemal jednocześnie, więc w oknie token
+  wymieniony przed chwilą dostaje kolejny token w tej samej rodzinie zamiast wywołać wylogowanie. Cena: w tym oknie
+  **replay jest możliwy** - ktoś, kto przechwycił już wymieniony token, dostanie własny ważny token, a jego gałąź
+  (rotowana niezależnie, więc bez alarmu reuse) **trwa do wylogowania / „wyloguj wszędzie” / resetu hasła**. Tempo
+  mnożenia gałęzi ogranicza `MAX_TOKENS_PER_GRACE_WINDOW` (3 tokeny rodziny w oknie; więcej = reuse, rodzina
+  unieważniona). Po oknie obowiązuje ścisłe wykrywanie. Dodatkowo middleware `apps/web` odświeża single-flight.
+- **Serializacja z unieważnieniem:** rotacja (zajęcie tokenu + zapis nowego) i unieważnienie wszystkich sesji są
+  serializowane blokadą wiersza użytkownika (`FOR SHARE` w rotacji, `UPDATE users` w unieważnieniu) - token zajęty tuż
+  przed resetem hasła nie wyda nowej, żywej rodziny po jego commicie.
+- **Limity:** `/auth/refresh` i `/auth/logout` mają 30 żądań/min na klienta (logowanie 10/min). Zwykły logout BFF
+  zwraca `sessionRevoked: false`, gdy API odmówi (429/5xx) - cookies są czyszczone, ale sesja w bazie żyje do wygaśnięcia.
+- **Trasy publiczne** (`/auth/*` oprócz `logout-all`) mają `@SkipSessionCheck()` - stary, unieważniony Bearer
+  doklejony przez klienta ich nie blokuje.
+- **`POST /auth/logout`** (refresh token z ciasteczka, przez BFF `/api/auth/logout`) unieważnia rodzinę bieżącej sesji.
+  **Zwykły logout NIE unieważnia access tokenu** - ten działa do wygaśnięcia (max 15 min); to świadomy kompromis.
+- **`POST /auth/logout-all`** („Wyloguj wszędzie” w ustawieniach) i **reset hasła** ustawiają `users.sessionsRevokedAt`
+  (źródło prawdy, transakcja RLS) i unieważniają wszystkie refresh tokeny, a odbicie `sessions-revoked:<userId>` w
+  Redisie (TTL = `ACCESS_TOKEN_TTL_SECONDS` + zapas, z `token-config.ts`) sprawia, że globalny guard odrzuca każdy
+  access token wydany wcześniej **natychmiast** (401 `SESSION_REVOKED`; jeden `GET`, bez dodatkowego zapytania do bazy).
+  Kolejność: najpierw baza, potem Redis.
+- **Redis padł albo klucz zniknął:** guard jest fail-open (okno do 15 min, jak bez tej funkcji), a operacja unieważnienia
+  i tak się udaje (kolumna w bazie + refresh tokeny unieważnione); incydent loguje `RedisService` (error raz, info po
+  powrocie). Utrata klucza bez awarii (restart bez trwałości, eviction) byłaby CICHA - dlatego prod Redis ma AOF i
+  `noeviction` (`docker-compose.prod.yml`). Nie odtwarzamy kluczy z kolumny po restarcie (backlog: job/odtwarzanie).
+- **Reuse a access tokeny:** wykrycie reuse unieważnia rodzinę refresh tokenów, ale nie access tokenów (żyją do 15 min);
+  świadomie nie ustawiamy wtedy `sessionsRevokedAt`, żeby nie wylogowywać innych sesji użytkownika.
+- **Zegary:** `sessionsRevokedAt` i `iatMs` liczą zegary instancji API (bez skew NTP porównanie jest dokładne do ms).
+- **Po wdrożeniu** wszystkie dotychczasowe sesje (refresh tokeny bez rodziny) przestają działać - każdy zaloguje się raz
+  ponownie.
+- **Sprzątanie:** job `refresh-token-cleanup` (03:30 UTC) kasuje tokeny po terminie ważności + doba (cross-org DELETE
+  przez `runCrossOrgQuery`, bypass tylko w USING - opisany wyjątek w `TenantPrismaService`).
+
 ## Zadania w tle (BullMQ, `apps/api/src/jobs/`)
 
 Jeden worker BullMQ w procesie API (Redis z `REDIS_URL`), kolejka `maintenance`. Nowe zadanie cykliczne
@@ -394,14 +432,7 @@ Komunikat błędu rejestracji jest ujednolicony (anty-enumeracyjny) TYLKO dla du
 jawny komunikat, bo to informacja na poziomie firmy, nie konkretnego konta. Pozostałe punkty,
 do zrobienia w osobnych zadaniach:
 
-- **Brak rewokacji refresh tokenów / brak `/auth/logout`.** Wyciekły refresh token jest ważny
-  przez pełne 7 dni i nic go nie unieważni — potrzebna tabela sesji/`jti` i endpoint wylogowania.
-  Dotyczy to też `/auth/reset-password` (`apps/api/src/auth/auth.service.ts`): zmiana hasła NIE
-  unieważnia wcześniej wydanych access/refresh tokenów — jeśli powód resetu to podejrzenie
-  przejęcia konta, napastnik z przechwyconym refresh tokenem zachowuje dostęp do 7 dni mimo
-  zmiany hasła. Świadomie nie budowane teraz razem z resetem hasła (osobne zadanie, patrz punkt
-  wyżej) — jako częściowe złagodzenie `/auth/reset-password` nie wydaje nowych tokenów, więc user
-  musi zalogować się od nowa po resecie.
+- ~~Brak rewokacji refresh tokenów / brak `/auth/logout`~~ - **rozwiązane**, patrz „Sesje i unieważnianie tokenów”.
 - **`EmailService` w trybie dev-fallback (brak `MAILERSEND_API_TOKEN`) loguje pełną treść
   `templateData` w czystej postaci** (`apps/api/src/email/email.service.ts`), w tym surowy,
   jednorazowy token resetu hasła z linku wysyłanego przez `AuthService.forgotPassword` — to
@@ -536,16 +567,11 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
   (kampanie phishingowe) ręczne duplikowanie kształtu łatwo doprowadzi do rozjazdu pól przy
   zmianie backendu bez aktualizacji frontu. Warto zaplanować przeniesienie współdzielonych DTO
   do `packages/shared`, zanim liczba duplikowanych interfejsów urośnie.
-- **Brak endpointu wylogowania** (`/api/auth/logout`) — `clearAuthCookies` istnieje
-  (`apps/web/src/lib/auth-cookies.ts`) i jest używane wewnętrznie przez `middleware.ts` przy
-  redirectach, ale nie jest wystawione jako endpoint. Bez niego httpOnly refresh token żyje
-  pełne 7 dni niezależnie od intencji użytkownika. Świadomie poza zakresem zadania "login +
-  dashboard".
-- **Login CSRF, niskie ryzyko.** `/api/auth/login` (jedyny stanowy endpoint frontendu) wymaga
-  `Content-Type: application/json`, czego zwykły cross-site `<form>` nie potrafi wysłać, więc
-  prosty atak formularzowy kończy się na 400. Warto pamiętać przy dodawaniu kolejnych stanowych
-  endpointów frontendu (np. logout) — rozważyć wtedy CSRF token albo `sameSite: 'strict'` tam,
-  gdzie to możliwe.
+- ~~Brak endpointu wylogowania~~ - **rozwiązane**: `/api/auth/logout` (unieważnia sesję w API i czyści
+  cookies) i `/api/auth/logout-all`; oba z ochroną Origin.
+- **Login CSRF, niskie ryzyko.** `/api/auth/login` wymaga `Content-Type: application/json`, czego zwykły
+  cross-site `<form>` nie potrafi wysłać, więc prosty atak formularzowy kończy się na 400. Trasy zmieniające stan
+  przez ciasteczka (`proxyAuthenticated`, logout) mają dodatkowo sprawdzenie `Origin`.
 
 ## Backlog modułu kursów (`/courses`, `/courses/[courseId]`)
 

@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -7,7 +7,14 @@ import type { Request } from 'express';
 import { ExtractJwt } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ALLOW_PENDING_ORGANIZATION_KEY } from '../decorators/allow-pending-organization.decorator';
+import { SKIP_SESSION_CHECK_KEY } from '../decorators/skip-session-check.decorator';
 import { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import { SessionsService } from '../../auth/sessions.service';
+
+export const SESSION_REVOKED_ERROR = {
+  code: 'SESSION_REVOKED',
+  message: 'Sesja została unieważniona. Zaloguj się ponownie.',
+};
 
 export const ORGANIZATION_PENDING_ERROR = {
   code: 'ORGANIZATION_PENDING_DOMAIN_VERIFICATION',
@@ -27,6 +34,9 @@ export const ORGANIZATION_PENDING_ERROR = {
  * uwierzytelnienie jest wymagane, a trasy publiczne (rejestracja, logowanie)
  * nie dotyczą żadnej organizacji.
  *
+ * Ten sam guard odrzuca (401 SESSION_REVOKED) access tokeny unieważnione przez "wyloguj
+ * wszędzie" / reset hasła (SessionsService) - patrz komentarz przy sprawdzeniu.
+ *
  * Status organizacji czytamy z bazy na KAŻDYM żądaniu (jedno zapytanie po
  * kluczu głównym, tabela organizations jest globalna bez RLS) - świadomie nie
  * z JWT (token żyje 15 min i po weryfikacji domeny/usunięciu organizacji
@@ -41,6 +51,7 @@ export class ActiveOrganizationGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly sessions: SessionsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -51,9 +62,6 @@ export class ActiveOrganizationGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (allowed) {
-      return true;
-    }
 
     // Ten sam ekstraktor co JwtStrategy - rozbieżny parser (np. "bearer" małymi
     // literami, tabulator) pozwoliłby ominąć guard przy uwierzytelnionym żądaniu.
@@ -71,7 +79,22 @@ export class ActiveOrganizationGuard implements CanActivate {
     } catch {
       return true;
     }
-    if (payload.role === Role.SUPER_ADMIN) {
+
+    // Unieważnienie sesji ("wyloguj wszędzie", reset hasła): access token wydany PRZED chwilą
+    // unieważnienia jest odrzucany natychmiast - także na trasach dozwolonych dla PENDING i dla
+    // SUPER_ADMIN. Jeden GET z Redisa (RedisService: bezpiecznik, commandTimeout 500 ms, fail-open).
+    // Trasy publiczne (login, refresh, logout...) oznaczone @SkipSessionCheck() nie są blokowane
+    // przez stary Bearer doklejony przez klienta.
+    const skipSessionCheck = this.reflector.getAllAndOverride<boolean>(SKIP_SESSION_CHECK_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    const issuedAtMs = payload.iatMs ?? (payload.iat ?? 0) * 1000;
+    if (!skipSessionCheck && (await this.sessions.isAccessTokenRevoked(payload.sub, issuedAtMs))) {
+      throw new UnauthorizedException(SESSION_REVOKED_ERROR);
+    }
+
+    if (allowed || payload.role === Role.SUPER_ADMIN) {
       return true;
     }
 

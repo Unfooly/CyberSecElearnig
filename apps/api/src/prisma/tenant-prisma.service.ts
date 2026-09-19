@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EmailVerificationToken, Prisma, PasswordResetToken, User } from '@prisma/client';
+import { EmailVerificationToken, Prisma, PasswordResetToken, RefreshToken, User } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
 /**
@@ -78,8 +78,28 @@ export class TenantPrismaService {
   }
 
   /**
+   * CZWARTY wąski wyjątek od Zasady nr 1, ten sam sentinel co
+   * runPasswordResetTokenLookup - WYŁĄCZNIE dla SessionsService (/auth/refresh i
+   * /auth/logout): refresh token odnajdywany po globalnie unikalnym tokenHash
+   * (SHA-256), zanim organizationId jest znane. Sztywny findUnique po jednym polu;
+   * bypass obejmuje tylko USING (odczyt), więc pod nim nie da się zapisać wiersza w
+   * cudzej organizacji. Wszystkie zapisy (rotacja, unieważnienie) idą już przez
+   * runInOrgContext(record.organizationId).
+   */
+  async runRefreshTokenLookup(tokenHash: string): Promise<RefreshToken | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_tenant_rls', 'on', true)`;
+      return tx.refreshToken.findUnique({ where: { tokenHash } });
+    });
+  }
+
+  /**
    * DRUGI wyjątek od Zasady nr 1 — używać WYŁĄCZNIE w DashboardService dla
-   * GET /dashboard/admin/organizations (SUPER_ADMIN, panel operacyjny).
+   * GET /dashboard/admin/organizations (SUPER_ADMIN, panel operacyjny) oraz w jobie
+   * RefreshTokenCleanupService (usuwanie WYGASŁYCH refresh tokenów wszystkich
+   * organizacji). Uwaga: DELETE sprawdza tylko USING, więc pod bypassem jest dozwolony wobec
+   * DOWOLNYCH wierszy - ochroną jest wyłącznie jawny warunek `where` (data wygaśnięcia) w
+   * wołającym; INSERT/UPDATE pod bypassem blokuje WITH CHECK.
    * To jedyny endpoint w projekcie, który świadomie czyta dane wielu
    * organizacji naraz — kontroler musi sprawdzić rolę SUPER_ADMIN przez
    * RolesGuard PRZED wywołaniem tej metody, nie polegać na niej samej jako

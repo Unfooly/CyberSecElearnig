@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { Role, UserStatus } from '@cyberszkolo/shared';
@@ -17,7 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { SessionsService, TokenPair } from './sessions.service';
 
 // Ten sam komunikat niezależnie od tego, czy podany e-mail istnieje w
 // systemie — wzorzec anty-enumeracyjny (jak w rejestracji, patrz RegistrationService).
@@ -47,11 +46,6 @@ const VERIFICATION_TOKEN_ALREADY_USED = {
   message: 'Ten link został już wykorzystany. Jeśli adres jest potwierdzony, po prostu się zaloguj.',
 };
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
 // Eksportowane - UsersService reużywa tej samej stałej przy hashowaniu
 // losowego, nigdy nie ujawnianego hasła dla zaproszonych userów (zamiast
 // duplikować liczbę rund gdzie indziej i ryzykować rozjazd).
@@ -74,7 +68,7 @@ export class AuthService {
 
   constructor(
     private readonly tenantPrisma: TenantPrismaService,
-    private readonly jwtService: JwtService,
+    private readonly sessions: SessionsService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {
@@ -105,7 +99,7 @@ export class AuthService {
       throw new ForbiddenException(EMAIL_NOT_VERIFIED);
     }
 
-    return this.issueTokens({
+    return this.sessions.startSession({
       sub: user.id,
       organizationId: user.organizationId,
       role: user.role as Role,
@@ -113,29 +107,17 @@ export class AuthService {
     });
   }
 
-  async refresh(refreshToken: string): Promise<TokenPair> {
-    let payload: JwtPayload;
-    try {
-      payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      });
-    } catch {
-      throw new UnauthorizedException('Nieprawidłowy refresh token');
-    }
+  // Rotacja refresh tokenu z wykrywaniem reuse: patrz SessionsService.
+  refresh(refreshToken: string): Promise<TokenPair> {
+    return this.sessions.rotate(refreshToken);
+  }
 
-    const user = await this.tenantPrisma.runAuthLookup({ id: payload.sub });
-    // Tokeny dostają wyłącznie zweryfikowani, ale refresh sprawdza to jawnie -
-    // gdyby kiedyś powstało "cofnięcie weryfikacji", stare tokeny nie mogą go obejść.
-    if (!user || !user.emailVerifiedAt) {
-      throw new UnauthorizedException('Nieprawidłowy refresh token');
-    }
+  logout(refreshToken: string): Promise<void> {
+    return this.sessions.logout(refreshToken);
+  }
 
-    return this.issueTokens({
-      sub: user.id,
-      organizationId: user.organizationId,
-      role: user.role as Role,
-      email: user.email,
-    });
+  logoutAll(organizationId: string, userId: string): Promise<void> {
+    return this.sessions.revokeAllSessions(organizationId, userId);
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
@@ -209,6 +191,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     const usedAt = new Date();
+    let revokedAt: Date | null = null;
 
     const claimed = await this.tenantPrisma.runInOrgContext(record.organizationId, async (tx) => {
       // Atomowe "sprawdź i oznacz" jednym UPDATE ... WHERE usedAt IS NULL,
@@ -241,6 +224,9 @@ export class AuthService {
         where: { userId: record.userId, usedAt: null },
         data: { usedAt },
       });
+      // Reset hasła unieważnia WSZYSTKIE sesje usera (sessionsRevokedAt + refresh tokeny),
+      // w tej samej transakcji RLS co zmiana hasła; odbicie w Redisie dopiero po commicie.
+      revokedAt = await this.sessions.revokeAllInTransaction(tx, record.organizationId, record.userId);
       return claim;
     });
 
@@ -249,6 +235,10 @@ export class AuthService {
       // między odczytem wyżej a tym UPDATE - traktujemy jak "już użyty", nie
       // jak cichy sukces.
       throw new BadRequestException(TOKEN_ALREADY_USED);
+    }
+    if (revokedAt) {
+      // Kolejność: baza (wyżej), potem Redis; awaria Redisa nie psuje resetu (okno access tokenu, log).
+      await this.sessions.publishRevocation(record.userId, revokedAt);
     }
 
     return { message: 'Hasło zostało zmienione. Zaloguj się nowym hasłem.' };
@@ -416,18 +406,4 @@ export class AuthService {
     return createHash('sha256').update(rawToken).digest('hex');
   }
 
-  private async issueTokens(payload: JwtPayload): Promise<TokenPair> {
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: '15m',
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: '7d',
-      }),
-    ]);
-
-    return { accessToken, refreshToken };
-  }
 }

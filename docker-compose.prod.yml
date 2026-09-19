@@ -30,6 +30,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Trwałość (AOF) i BRAK eviction: w Redisie leży m.in. unieważnienie sesji ("wyloguj wszędzie"
+    # - klucz sessions-revoked:*) i limiter maili. Restart bez trwałości albo wyparcie klucza (LRU)
+    # po cichu cofnęłoby unieważnienie access tokenów (guard jest wtedy fail-open). Przy zapełnieniu
+    # (maxmemory) zapisy zwracają błąd zamiast kasować cudze klucze - aplikacja loguje incydent.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
     volumes:
       - redis_data:/data
     healthcheck:

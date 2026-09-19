@@ -56,6 +56,22 @@ async function refreshTokens(refreshToken: string, clientIp: Record<string, stri
   }
 }
 
+// Single-flight: równoległe żądania z TYM SAMYM refresh tokenem (przeładowanie strony z wieloma
+// zasobami, kilka RSC naraz) dzielą jedno odświeżenie zamiast wołać /auth/refresh po kilka razy.
+// Pamięć procesu/izolatu: zmniejsza zależność od okna łaski rotacji w API, ale go nie zastępuje
+// (inne instancje web albo inne izolaty middleware nie widzą tej mapy).
+const inFlightRefreshes = new Map<string, Promise<TokenPair | null>>();
+
+function refreshTokensOnce(refreshToken: string, clientIp: Record<string, string>): Promise<TokenPair | null> {
+  const existing = inFlightRefreshes.get(refreshToken);
+  if (existing) {
+    return existing;
+  }
+  const pending = refreshTokens(refreshToken, clientIp).finally(() => inFlightRefreshes.delete(refreshToken));
+  inFlightRefreshes.set(refreshToken, pending);
+  return pending;
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const route = PROTECTED_ROUTES.find((r) => request.nextUrl.pathname.startsWith(r.prefix));
   if (!route) {
@@ -76,7 +92,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // mogą modyfikować cookies, więc to jedyne miejsce, gdzie transparentny
   // refresh może zaktualizować je na odpowiedzi.
   if (!payload || isExpired(payload)) {
-    refreshedTokens = await refreshTokens(refreshToken, clientIpHeaders(request.headers));
+    refreshedTokens = await refreshTokensOnce(refreshToken, clientIpHeaders(request.headers));
     if (!refreshedTokens) {
       return redirectToLogin(request);
     }

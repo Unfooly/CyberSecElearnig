@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
+import { REFRESH_TOKEN_CLEANUP_JOB } from '../src/auth/refresh-token-cleanup.service';
 import { PENDING_ORGANIZATION_CLEANUP_JOB } from '../src/organizations/pending-organization-cleanup.service';
 import { Queue } from 'bullmq';
 import { JobsService, MAINTENANCE_QUEUE } from '../src/jobs/jobs.service';
@@ -115,7 +116,12 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
       await queue.close();
       await app.close();
 
-      expect(schedulers.map((s) => [s.key, s.pattern])).toEqual([[PENDING_ORGANIZATION_CLEANUP_JOB, '0 3 * * *']]);
+      expect(schedulers.map((s) => [s.key, s.pattern]).sort()).toEqual(
+        [
+          [PENDING_ORGANIZATION_CLEANUP_JOB, '0 3 * * *'],
+          [REFRESH_TOKEN_CLEANUP_JOB, '30 3 * * *'],
+        ].sort(),
+      );
     } finally {
       delete process.env.BACKGROUND_JOBS_ENABLED;
       delete process.env.JOBS_QUEUE_PREFIX;

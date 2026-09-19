@@ -207,6 +207,40 @@ describe('middleware', () => {
       vi.unstubAllEnvs();
     });
 
+    it('single-flight: równoległe żądania z tym samym refresh tokenem wołają /auth/refresh JEDEN raz i dostają te same tokeny', async () => {
+      const newAccessToken = fakeJwt({
+        sub: 'user-1', organizationId: 'org-1', role: 'ORG_ADMIN', email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900,
+      });
+      let release: (value: unknown) => void = () => {};
+      const gate = new Promise((resolve) => (release = resolve));
+      const fetchMock = vi.fn().mockImplementation(async () => {
+        await gate;
+        return { ok: true, json: async () => ({ accessToken: newAccessToken, refreshToken: 'new-refresh' }) };
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const cookie = `access_token=${expiredToken}; refresh_token=shared-refresh`;
+
+      const pending = [middleware(buildRequest('/dashboard', cookie)), middleware(buildRequest('/dashboard/users', cookie)), middleware(buildRequest('/dashboard', cookie))];
+      release(undefined);
+      const responses = await Promise.all(pending);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      for (const response of responses) {
+        expect(response.cookies.get('refresh_token')?.value).toBe('new-refresh');
+      }
+    });
+
+    it('single-flight nie zatrzymuje kolejnych odświeżeń: po zakończeniu następne żądanie odświeża od nowa', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+      vi.stubGlobal('fetch', fetchMock);
+      const cookie = `access_token=${expiredToken}; refresh_token=again-refresh`;
+
+      await middleware(buildRequest('/dashboard', cookie));
+      await middleware(buildRequest('/dashboard', cookie));
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
     it('porażka: backend odrzuca refresh (401) -> redirect do /login', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 401 });
       vi.stubGlobal('fetch', fetchMock);

@@ -5,16 +5,21 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { EmailModule } from '../email/email.module';
 import { AuthService } from './auth.service';
+import { SessionsService } from './sessions.service';
+import { RefreshTokenCleanupService } from './refresh-token-cleanup.service';
+import { JobsModule } from '../jobs/jobs.module';
 import { AuthController } from './auth.controller';
 import { RegistrationService } from './registration.service';
 import { RegistrationMailLimiter } from './registration-mail-limiter';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), EmailModule],
+  imports: [PassportModule, JwtModule.register({}), EmailModule, JobsModule],
   controllers: [AuthController],
   providers: [
     AuthService,
+    SessionsService,
+    RefreshTokenCleanupService,
     RegistrationService,
     RegistrationMailLimiter,
     JwtStrategy,

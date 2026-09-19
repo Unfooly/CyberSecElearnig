@@ -72,12 +72,12 @@ enum LegalDocumentType {
 }
 
 model Organization {
-  id         String   @id @default(cuid())
+  id                      String             @id @default(cuid())
   // Nazwa wyświetlana podana przy rejestracji (NIE jest wyprowadzana z domeny
   // e-maila i NIE jest unikalna - o własności domeny rozstrzyga weryfikacja DNS).
-  name       String
-  plan       Plan     @default(TRIAL)
-  seatsLimit Int      @default(10)
+  name                    String
+  plan                    Plan               @default(TRIAL)
+  seatsLimit              Int                @default(10)
   // Domyślnie PENDING_DOMAIN_VERIFICATION (fail-closed dla nowych organizacji).
   // Migracje ustawiły ACTIVE organizacjom istniejącym przed tym modelem (bez
   // weryfikacji domeny).
@@ -88,7 +88,7 @@ model Organization {
   // Ustawiane raz, gdy job sprzątania wysłał ostrzeżenie o usunięciu
   // niezweryfikowanej organizacji (po 7 dniach) - chroni przed duplikatami maila.
   unverifiedWarningSentAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt               DateTime           @default(now())
 
   users                   User[]
   departments             Department[]
@@ -99,6 +99,7 @@ model Organization {
   domains                 OrganizationDomain[]
   billingDetails          OrganizationBillingDetails?
   legalAcceptances        LegalAcceptance[]
+  refreshTokens           RefreshToken[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -178,6 +179,35 @@ model LegalAcceptance {
   @@map("legal_acceptances")
 }
 
+// Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.
+// Każdy login tworzy "rodzinę" (familyId); /auth/refresh rotuje token w obrębie rodziny.
+// Użycie tokenu już wykorzystanego (poza oknem łaski) = reuse => unieważnienie CAŁEJ rodziny.
+// RLS jak inne tabele z organizationId (migracja); odczyt po tokenHash przed poznaniem
+// organizacji idzie wąską furtką TenantPrismaService.runRefreshTokenLookup (USING-only).
+model RefreshToken {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  familyId       String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  // Ustawiane przy rotacji (token został wymieniony na następny).
+  usedAt         DateTime?
+  // Ustawiane przy wylogowaniu / reuse / "wyloguj wszędzie" / resecie hasła.
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (patrz migracja).
+  user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
 model Department {
   id             String @id @default(cuid())
   organizationId String
@@ -199,31 +229,35 @@ model Department {
 }
 
 model User {
-  id              String     @id @default(cuid())
-  organizationId  String
-  email           String     @unique
-  passwordHash    String
-  role            Role       @default(EMPLOYEE)
+  id                String     @id @default(cuid())
+  organizationId    String
+  email             String     @unique
+  passwordHash      String
+  role              Role       @default(EMPLOYEE)
   // ACTIVE = zarejestrowany sam / hasło ustawione. INVITED = utworzony przez
   // UsersService.inviteUser/importCsv, czeka na ustawienie pierwszego hasła.
   // AuthService.resetPassword przełącza INVITED -> ACTIVE przy pierwszym
   // udanym użyciu tokenu (ten sam PasswordResetToken co "zapomniałem hasła").
-  status          UserStatus @default(ACTIVE)
+  status            UserStatus @default(ACTIVE)
   // null = adres niepotwierdzony (logowanie zablokowane). Ustawiane przez
   // AuthService.verifyEmail albo resetPassword (klik w link z maila).
-  emailVerifiedAt DateTime?
-  departmentId    String?
+  emailVerifiedAt   DateTime?
+  departmentId      String?
   // Nullable - userzy sprzed modułu grywalizacji nie mają tych danych;
   // leaderboard (GamificationService) spada wtedy na inicjały z e-maila.
-  firstName       String?
-  lastName        String?
+  firstName         String?
+  lastName          String?
   // Preset (slug z GamificationService.AVATAR_PRESETS) albo zwalidowany URL
   // http(s) - walidacja w UsersService.updateAvatar, nie w samym DTO (patrz
   // komentarz przy UpdateAvatarDto).
-  avatarUrl       String?
-  xp              Int        @default(0)
-  level           Int        @default(1)
-  createdAt       DateTime   @default(now())
+  avatarUrl         String?
+  xp                Int        @default(0)
+  level             Int        @default(1)
+  // Ustawiane WYŁĄCZNIE przez "wyloguj wszędzie" i reset hasła (SessionsService):
+  // access tokeny wydane wcześniej są odrzucane (guard), a refresh tokeny unieważnione.
+  // Źródło prawdy; odbicie z TTL w Redisie służy tylko szybkiemu sprawdzeniu w guardzie.
+  sessionsRevokedAt DateTime?
+  createdAt         DateTime   @default(now())
 
   organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Prisma modeluje tu zwykły FK (departmentId -> departments.id, SET NULL).
@@ -238,6 +272,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   unlockedBadges          UserBadge[]
   legalAcceptances        LegalAcceptance[]
+  refreshTokens           RefreshToken[]
 
   // Cel złożonego FK z LegalAcceptance (użytkownik tej samej organizacji).
   @@unique([organizationId, id])

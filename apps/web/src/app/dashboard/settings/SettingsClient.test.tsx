@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SettingsClient from './SettingsClient';
 import type { OrganizationOverview } from '@/lib/organization';
 
+const pushMock = vi.fn();
+const refreshMock = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock, refresh: refreshMock }) }));
+
 const BASE: OrganizationOverview = {
   id: 'o1',
   name: 'Acme',
@@ -87,6 +91,41 @@ describe('SettingsClient', () => {
 
     expect(await screen.findByText('Ustawienie zapisane.')).toBeInTheDocument();
     expect(screen.getByRole('switch')).toBeChecked();
+  });
+
+  describe('"Wyloguj wszędzie"', () => {
+    it('woła /api/auth/logout-all i po sukcesie przenosi na /login', async () => {
+      pushMock.mockClear();
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<SettingsClient organization={BASE} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Wyloguj wszędzie' }));
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
+      expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout-all', { method: 'POST' });
+    });
+
+    it('błąd API: komunikat i brak przekierowania (sesja nadal aktywna)', async () => {
+      pushMock.mockClear();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+      render(<SettingsClient organization={BASE} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Wyloguj wszędzie' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Nie udało się wylogować/);
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    it('awaria sieci: komunikat, przycisk znów aktywny', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('net')));
+      render(<SettingsClient organization={BASE} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Wyloguj wszędzie' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/połączyć z serwerem/);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Wyloguj wszędzie' })).toBeEnabled());
+    });
   });
 
   it('wyłączenie działa, gdy było włączone', async () => {

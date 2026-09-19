@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
 import type { OrganizationOverview } from '@/lib/organization';
 
@@ -18,11 +20,32 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function SettingsClient({ organization }: { organization: OrganizationOverview }) {
   const [selfJoin, setSelfJoin] = useState(organization.selfJoinEnabled);
+  const router = useRouter();
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
 
   const domainVerified = organization.domain?.verified === true;
   const { billing, domain } = organization;
+
+  async function handleLogoutAll() {
+    setIsLoggingOutAll(true);
+    setSessionsError(null);
+    try {
+      const response = await fetch('/api/auth/logout-all', { method: 'POST' });
+      if (!response.ok) {
+        setSessionsError('Nie udało się wylogować ze wszystkich urządzeń. Spróbuj ponownie.');
+        return;
+      }
+      router.push('/login');
+      router.refresh();
+    } catch {
+      setSessionsError('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
+    } finally {
+      setIsLoggingOutAll(false);
+    }
+  }
 
   async function handleToggle(next: boolean) {
     setIsSaving(true);
@@ -121,6 +144,24 @@ export default function SettingsClient({ organization }: { organization: Organiz
               }`}
             >
               {message.text}
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Sesje" />
+        <div className="p-5 text-sm">
+          <p className="mb-3 text-muted">
+            Wyloguje Cię ze wszystkich urządzeń i przeglądarek, także tej. Użyj tego, gdy zgubisz urządzenie albo
+            podejrzewasz, że ktoś ma dostęp do Twojego konta.
+          </p>
+          <Button variant="secondary" onClick={handleLogoutAll} disabled={isLoggingOutAll}>
+            {isLoggingOutAll ? 'Wylogowywanie...' : 'Wyloguj wszędzie'}
+          </Button>
+          {sessionsError && (
+            <p role="alert" className="mt-3 rounded-btn bg-danger-soft px-3 py-2 font-semibold text-danger">
+              {sessionsError}
             </p>
           )}
         </div>

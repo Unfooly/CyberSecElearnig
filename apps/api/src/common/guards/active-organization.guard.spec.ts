@@ -1,9 +1,10 @@
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { SessionsService } from '../../auth/sessions.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ActiveOrganizationGuard, ORGANIZATION_PENDING_ERROR } from './active-organization.guard';
+import { ActiveOrganizationGuard, ORGANIZATION_PENDING_ERROR, SESSION_REVOKED_ERROR } from './active-organization.guard';
 
 function contextWith(headers: Record<string, string | undefined>, type = 'http'): ExecutionContext {
   return {
@@ -18,18 +19,72 @@ describe('ActiveOrganizationGuard (fail-closed)', () => {
   let allowed: boolean | undefined;
   let verifyAsync: jest.Mock;
   let findUnique: jest.Mock;
+  let isAccessTokenRevoked: jest.Mock;
+  let skipSessionCheck: boolean | undefined;
   let guard: ActiveOrganizationGuard;
 
   beforeEach(() => {
     allowed = undefined;
+    skipSessionCheck = undefined;
+    isAccessTokenRevoked = jest.fn().mockResolvedValue(false);
     verifyAsync = jest.fn().mockResolvedValue({ sub: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@firma.pl' });
     findUnique = jest.fn().mockResolvedValue({ status: 'ACTIVE' });
     guard = new ActiveOrganizationGuard(
-      { getAllAndOverride: () => allowed } as unknown as Reflector,
+      { getAllAndOverride: (key: string) => (key === 'skipSessionCheck' ? skipSessionCheck : allowed) } as unknown as Reflector,
       { verifyAsync } as unknown as JwtService,
       { get: () => 'secret' } as unknown as ConfigService,
       { organization: { findUnique } } as unknown as PrismaService,
+      { isAccessTokenRevoked } as unknown as SessionsService,
     );
+  });
+
+  describe('unieważnienie sesji (wyloguj wszędzie / reset hasła)', () => {
+    it('access token unieważniony => 401 SESSION_REVOKED, bez zapytania o organizację', async () => {
+      isAccessTokenRevoked.mockResolvedValue(true);
+
+      const promise = guard.canActivate(contextWith({ authorization: 'Bearer token-value' }));
+
+      await expect(promise).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(promise).rejects.toMatchObject({ response: SESSION_REVOKED_ERROR });
+      expect(findUnique).not.toHaveBeenCalled();
+    });
+
+    it('sprawdzenie obejmuje też trasy @AllowPendingOrganization i SUPER_ADMIN-a', async () => {
+      isAccessTokenRevoked.mockResolvedValue(true);
+      allowed = true;
+      await expect(guard.canActivate(contextWith({ authorization: 'Bearer t' }))).rejects.toBeInstanceOf(UnauthorizedException);
+
+      allowed = undefined;
+      verifyAsync.mockResolvedValue({ sub: 's1', organizationId: 'o', role: 'SUPER_ADMIN', email: 's@x.test' });
+      await expect(guard.canActivate(contextWith({ authorization: 'Bearer t' }))).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('trasa oznaczona @SkipSessionCheck (login, refresh, logout): unieważniony Bearer jej nie blokuje i Redis nie jest pytany', async () => {
+      isAccessTokenRevoked.mockResolvedValue(true);
+      skipSessionCheck = true;
+      allowed = true;
+
+      await expect(guard.canActivate(contextWith({ authorization: 'Bearer stary' }))).resolves.toBe(true);
+      expect(isAccessTokenRevoked).not.toHaveBeenCalled();
+    });
+
+    it('moment wydania: iatMs (ms) albo iat*1000 dla tokenów sprzed tego pola', async () => {
+      verifyAsync.mockResolvedValue({ sub: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@x.test', iatMs: 1234 });
+      await guard.canActivate(contextWith({ authorization: 'Bearer t' }));
+      expect(isAccessTokenRevoked).toHaveBeenLastCalledWith('u1', 1234);
+
+      verifyAsync.mockResolvedValue({ sub: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@x.test', iat: 50 });
+      await guard.canActivate(contextWith({ authorization: 'Bearer t' }));
+      expect(isAccessTokenRevoked).toHaveBeenLastCalledWith('u1', 50_000);
+    });
+
+    it('bez tokenu albo ze złym podpisem: sprawdzenia sesji nie ma (JwtAuthGuard odrzuci tam, gdzie trzeba)', async () => {
+      await guard.canActivate(contextWith({}));
+      verifyAsync.mockRejectedValueOnce(new Error('bad'));
+      await guard.canActivate(contextWith({ authorization: 'Bearer t' }));
+
+      expect(isAccessTokenRevoked).not.toHaveBeenCalled();
+    });
   });
 
   const bearer = { authorization: 'Bearer token-value' };

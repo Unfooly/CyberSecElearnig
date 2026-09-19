@@ -32,7 +32,7 @@ istnieją wyłącznie w `docker-compose.prodlocal.yml` (lokalny test na maszynie
 | `web` | `ghcr.io/amadispl/cybersecelearnig-web` |
 
 Tagi: `:latest` (ostatni udany build z `main`) oraz `:sha-<7 znaków commita>` (np. `sha-1a2b3c4`).
-Tag wybiera zmienna `IMAGE_TAG` w `.env` (domyślnie `latest`), prefiks `IMAGE_PREFIX` (domyślnie
+Tag wybiera zmienna `IMAGE_TAG` w `.env.prod` (domyślnie `latest`), prefiks `IMAGE_PREFIX` (domyślnie
 `ghcr.io/amadispl/cybersecelearnig`). Nazwy w GHCR są zawsze pisane małymi literami.
 
 Workflow `.github/workflows/build-images.yml` uruchamia się na push do `main` (poza zmianami w
@@ -92,11 +92,11 @@ przeszedł przynajmniej raz).
 
 ```bash
 git clone https://github.com/Amadispl/CyberSecElearnig.git unfooly && cd unfooly
-cp .env.prod.example .env
-chmod 600 .env
+cp .env.prod.example .env.prod
+chmod 600 .env.prod
 ```
 
-Uzupełnij `.env` (każda pozycja jest opisana w pliku). Minimum:
+Uzupełnij `.env.prod` (każda pozycja jest opisana w pliku). Minimum:
 
 - `TUNNEL_TOKEN` (z kroku 1), `COMPOSE_PROFILES=tunnel` (jest domyślnie w przykładzie).
 - `IMAGE_TAG` (domyślnie `latest`; do wycofania patrz niżej).
@@ -106,16 +106,32 @@ Uzupełnij `.env` (każda pozycja jest opisana w pliku). Minimum:
 - `FRONTEND_URL` = publiczny adres z kroku 1, z `https://`.
 - `MAILERSEND_API_TOKEN`, `EMAIL_FROM` (z zweryfikowanej domeny), `SALES_EMAIL`.
 
-Plik musi nazywać się dokładnie `.env` (compose czyta go do interpolacji i jako `env_file`).
+**`.env.prod` jest jedynym plikiem konfiguracji na VPS.** Kontenery `api`, `web` i `migrate` czytają
+z niego swoje zmienne środowiskowe (`env_file: ${ENV_FILE:-.env.prod}` w compose), a ten sam plik
+podajesz compose flagą `--env-file .env.prod` do interpolacji (`IMAGE_TAG`, `TUNNEL_TOKEN`, hasła
+Postgresa, profile). Dlatego **każde** polecenie compose w tej instrukcji ma `--env-file .env.prod`.
+Dev-owy `.env` (np. z `FRONTEND_URL=http://localhost:3000`) kontenery na VPS **nie** czytają; wcześniej
+czytały go, przez co linki w mailach wskazywały localhost. Jeśli na VPS leży stary `.env`, usuń go
+albo przenieś sekrety do `.env.prod`, żeby nie mylił.
+
+Żeby nie pisać flag za każdym razem, w sesji powłoki (lub w `~/.bashrc`):
+
+```bash
+export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
+# wtedy wystarczy: docker compose pull && docker compose up -d
+```
+
+Gdy zapomnisz flagi, compose przerwie się błędem `required variable POSTGRES_PASSWORD is missing`
+(zamierzone zabezpieczenie), zamiast po cichu wystartować z nie tym plikiem.
 
 ## 4. Pierwszy start
 
 ```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d postgres redis
-docker compose -f docker-compose.prod.yml run --rm migrate      # migracje widoczne w wyjściu
-docker compose -f docker-compose.prod.yml up -d                 # api, web, cloudflared
-docker compose -f docker-compose.prod.yml ps
+docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d postgres redis
+docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate      # migracje widoczne w wyjściu
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d                 # api, web, cloudflared
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 ```
 
 ## 5. Kolejne wdrożenia
@@ -126,34 +142,34 @@ Actions w repozytorium). Potem na VPS:
 ```bash
 cd ~/unfooly
 git pull                                                        # compose, docs, .env.prod.example
-docker compose -f docker-compose.prod.yml pull                  # nowe obrazy z GHCR
-docker compose -f docker-compose.prod.yml up -d                 # migrate biegnie sam przed api
+docker compose --env-file .env.prod -f docker-compose.prod.yml pull                  # nowe obrazy z GHCR
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d                 # migrate biegnie sam przed api
 ```
 
 `git pull` jest potrzebny tylko na pliki (compose, Caddyfile, dokumentację) - kod aplikacji jest w
 obrazach. `up -d --no-deps api` **pomija** migracje; jeśli nowy kod ma migracje, użyj wersji wyżej
 albo najpierw `run --rm migrate`.
 
-**Wycofanie do poprzedniej wersji:** ustaw w `.env` `IMAGE_TAG=sha-<krótki-hash-poprzedniego-commita>`,
-potem `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`.
+**Wycofanie do poprzedniej wersji:** ustaw w `.env.prod` `IMAGE_TAG=sha-<krótki-hash-poprzedniego-commita>`,
+potem `docker compose --env-file .env.prod -f docker-compose.prod.yml pull && docker compose --env-file .env.prod -f docker-compose.prod.yml up -d`.
 (Migracje bazy nie są automatycznie cofane.)
 
 ## 6. Lista kontrolna po wdrożeniu
 
 Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres).
 
-1. **Kontenery:** `docker compose -f docker-compose.prod.yml ps` - `postgres`, `redis`, `api`,
+1. **Kontenery:** `docker compose --env-file .env.prod -f docker-compose.prod.yml ps` - `postgres`, `redis`, `api`,
    `web`, `cloudflared` w stanie `running`/`healthy`; `migrate` w stanie `exited (0)`.
-2. **Właściwy obraz:** `docker compose -f docker-compose.prod.yml images` - `api`/`web` z tagiem
+2. **Właściwy obraz:** `docker compose --env-file .env.prod -f docker-compose.prod.yml images` - `api`/`web` z tagiem
    zgodnym z `IMAGE_TAG`.
-3. **Tunel połączony:** `docker compose -f docker-compose.prod.yml logs cloudflared | tail` -
+3. **Tunel połączony:** `docker compose --env-file .env.prod -f docker-compose.prod.yml logs cloudflared | tail` -
    linie „Registered tunnel connection”. W panelu Cloudflare tunel ma status **Healthy**.
 4. **Strona z internetu:** `curl -sI https://app.twoja-domena.pl/` - `HTTP/2 200`.
    `curl -sI https://app.twoja-domena.pl/login` - `200`.
 5. **Porty zamknięte:** `nmap -Pn -p 80,443,3000,3001,5432,6379 <IP-VPS>` z zewnątrz - wszystkie
    `closed`/`filtered`. Publicznie działa wyłącznie przez Cloudflare.
 6. **Migracje zaaplikowane:**
-   `docker compose -f docker-compose.prod.yml logs migrate | tail` -
+   `docker compose --env-file .env.prod -f docker-compose.prod.yml logs migrate | tail` -
    „All migrations have been successfully applied” (lub „No pending migrations to apply”).
 7. **Logowanie i cookies:** zaloguj się w przeglądarce. W narzędziach deweloperskich cookies
    `access_token` / `refresh_token` mają flagi `HttpOnly` i `Secure`. ORG_ADMIN ląduje na
@@ -178,21 +194,22 @@ Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres
 | `api` kończy się od razu z błędem o e-mailu | Na produkcji wymagane `MAILERSEND_API_TOKEN` i `EMAIL_FROM`. |
 | Logowanie „przechodzi”, ale wraca na `/login` | `FRONTEND_URL`/hostname bez `https` albo dostęp przez `http` (cookies `Secure`); użyj adresu z `https://`. |
 | Linki w mailach wskazują localhost | `FRONTEND_URL` nie ustawione na publiczny adres. |
-| `required variable ... is missing` przy `compose` | Brak pliku `.env` (nazwa dokładnie `.env`, nie `.env.prod`) albo pusta zmienna. |
+| `required variable ... is missing` albo `env file .env.prod not found` przy `compose` | Polecenie bez `--env-file .env.prod`, brak pliku `.env.prod` w katalogu projektu albo pusta zmienna w nim. |
+| Linki w mailach z `localhost:3000` mimo poprawnego `FRONTEND_URL` w `.env.prod` | Kontener wystartował ze starą konfiguracją (sprzed przejścia na `.env.prod`). `up -d --force-recreate api web`; sprawdź: `docker compose --env-file .env.prod exec api printenv FRONTEND_URL`. |
 
 ## 8. Wycofanie i sprzątanie
 
 ```bash
-docker compose -f docker-compose.prod.yml down          # zatrzymuje kontenery, dane zostają
-docker compose -f docker-compose.prod.yml down -v       # UWAGA: kasuje wolumeny (baza!)
+docker compose --env-file .env.prod -f docker-compose.prod.yml down          # zatrzymuje kontenery, dane zostają
+docker compose --env-file .env.prod -f docker-compose.prod.yml down -v       # UWAGA: kasuje wolumeny (baza!)
 docker image prune -a                                   # stare obrazy po kilku wdrożeniach (oszczędza dysk)
 ```
 
-Rotacja tokenu tunelu: w panelu Cloudflare wygeneruj nowy token, podmień `TUNNEL_TOKEN` w `.env`
-i `docker compose -f docker-compose.prod.yml up -d cloudflared`. Rotacja tokenu GHCR: załóż nowy
+Rotacja tokenu tunelu: w panelu Cloudflare wygeneruj nowy token, podmień `TUNNEL_TOKEN` w `.env.prod`
+i `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d cloudflared`. Rotacja tokenu GHCR: załóż nowy
 (krok 2), `docker login ghcr.io` ponownie, stary usuń w ustawieniach GitHuba.
 
 ## Klasyczna alternatywa: Caddy
 
-Zamiast tunelu można użyć Caddy (Let's Encrypt, porty 80/443 otwarte): w `.env` ustaw
+Zamiast tunelu można użyć Caddy (Let's Encrypt, porty 80/443 otwarte): w `.env.prod` ustaw
 `COMPOSE_PROFILES=caddy`, podmień domeny w `Caddyfile` i uruchom jak wyżej. Nie łącz z tunelem.

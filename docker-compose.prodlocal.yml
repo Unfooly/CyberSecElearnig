@@ -5,17 +5,24 @@
 # Tu (i tylko tu) obrazy są BUDOWANE lokalnie zamiast pobierane z GHCR - tagi
 # `prodlocal-*` nie nadpisują obrazów z GHCR na tej maszynie.
 #
+# Konfiguracja: JEDEN plik, `.env.prodlocal.local` (gitignored, patrz .gitignore:
+# .env.*.local). Podajemy go flagą --env-file (interpolacja), a ścieżkę do
+# niego dla kontenerów niesie zmienna ENV_FILE zapisana w tym samym pliku
+# (docker-compose.prod.yml: `env_file: ${ENV_FILE:-.env.prod}`).
+# UWAGA: env_file z pliku nadrzędnego i override'u się SUMUJE (nie zastępuje),
+# dlatego tu celowo NIE ma własnych `env_file` - inaczej kontenery czytałyby
+# jednocześnie .env.prod i .env.prodlocal.local.
+#
 # Użycie:
 #   docker compose -p prodlocal -f docker-compose.prod.yml -f docker-compose.prodlocal.yml --env-file .env.prodlocal.local up -d --build
 #
-# Wymaga .env.prodlocal.local (gitignored, patrz .gitignore: .env.*.local).
+# Wymaga w .env.prodlocal.local linii: ENV_FILE=.env.prodlocal.local
 services:
   api:
     image: prodlocal-api
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: .env.prodlocal.local
     ports:
       - "3001:3001"
 
@@ -24,7 +31,6 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    env_file: .env.prodlocal.local
     ports:
       - "3000:3000"
 
@@ -33,4 +39,3 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: .env.prodlocal.local

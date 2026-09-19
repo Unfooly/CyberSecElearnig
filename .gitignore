@@ -6,6 +6,8 @@ node_modules/
 .env.test
 .env.local
 .env.*.local
+# Produkcyjny plik konfiguracji na VPS (wzór: .env.prod.example) - zawiera sekrety
+.env.prod
 
 # build output
 dist/

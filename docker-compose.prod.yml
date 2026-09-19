@@ -1,12 +1,21 @@
+# JEDYNYM źródłem konfiguracji na VPS jest plik `.env.prod` (wzór: .env.prod.example).
+# Ten sam plik służy do dwóch rzeczy i MUSI być podany w obu:
+#   1. interpolacji ${...} w tym pliku  -> flaga `--env-file .env.prod`,
+#   2. zmiennych środowiskowych kontenerów -> `env_file: ${ENV_FILE:-.env.prod}` niżej.
+# Dlatego każde polecenie: docker compose --env-file .env.prod -f docker-compose.prod.yml ...
+# (albo raz w powłoce: export COMPOSE_ENV_FILES=.env.prod COMPOSE_FILE=docker-compose.prod.yml).
+# Dev-owy `.env` NIE jest tu czytany przez kontenery. Brak flagi kończy się błędem
+# "required variable POSTGRES_PASSWORD is missing" (celowo, patrz niżej).
+# Lokalny stack (docker-compose.prodlocal.yml) wskazuje swój plik przez ENV_FILE.
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: cyberszkolo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Brak POSTGRES_PASSWORD - uruchom compose z --env-file .env.prod i ustaw go w .env.prod}
       POSTGRES_DB: cyberszkolo
-      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Ustaw APP_DB_PASSWORD w .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Brak APP_DB_PASSWORD - uruchom compose z --env-file .env.prod i ustaw go w .env.prod}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
@@ -32,7 +41,7 @@ services:
 
 # Obrazy api i web NIE są budowane na VPS (1 GB RAM - `next build` kończy się OOM).
 # Buduje je GitHub Actions (.github/workflows/build-images.yml) i wypycha do GHCR;
-# tutaj tylko `docker compose pull`. Tag: IMAGE_TAG w .env (domyślnie latest, do
+# tutaj tylko `docker compose pull`. Tag: IMAGE_TAG w .env.prod (domyślnie latest, do
 # wycofania np. sha-1a2b3c4). Lokalny build do testów: docker-compose.prodlocal.yml.
 
   # Migracje Prisma jako OSOBNY, jednorazowy krok (nie w entrypoincie api):
@@ -46,7 +55,7 @@ services:
   migrate:
     image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: "no"
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.prod}
     entrypoint: []
     command: ["npx", "prisma", "migrate", "deploy", "--schema=apps/api/prisma/schema.prisma"]
     depends_on:
@@ -56,7 +65,7 @@ services:
   api:
     image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.prod}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -70,7 +79,7 @@ services:
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.prod}
     depends_on:
       - api
     # Bez "ports:" - ruch z internetu wchodzi przez cloudflared (albo Caddy).
@@ -79,7 +88,7 @@ services:
   # VPS nie wystawia żadnych portów (80/443 zamknięte), a TLS terminuje
   # Cloudflare. Ta sama (domyślna) sieć compose co web - w panelu Cloudflare
   # Zero Trust ustaw Public Hostname -> Service: http://web:3000.
-  # Włączany profilem "tunnel" (COMPOSE_PROFILES=tunnel w .env), żeby lokalny
+  # Włączany profilem "tunnel" (COMPOSE_PROFILES=tunnel w .env.prod), żeby lokalny
   # stack (prodlocal) nie wymagał tokenu. Patrz docs/deploy-test.md.
   cloudflared:
     image: cloudflare/cloudflared:latest # na produkcji przypnij konkretną wersję

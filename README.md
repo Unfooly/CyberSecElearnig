@@ -155,12 +155,17 @@ minimalny sensowny rozmiar to 1GB RAM (zmierzone lokalnie: wszystkie cztery kont
 zostaje spory margines na Caddy i realny ruch, ale warto to monitorować po pierwszym
 wdrożeniu, nie tylko ufać temu pomiarowi).
 
-### 1. Sekrety — `.env` obok `docker-compose.prod.yml`
+### 1. Sekrety — `.env.prod` obok `docker-compose.prod.yml`
 
 `apps/api/Dockerfile` i `apps/web/Dockerfile` **nie zawierają żadnych sekretów** — trafiają do
-kontenerów wyłącznie w runtime przez `env_file: .env` w `docker-compose.prod.yml` (patrz
-`.dockerignore` — `.env*` nigdy nie wchodzi do kontekstu builda). Skopiuj `.env.example` jako
-punkt startowy, ale **na produkcji trzeba zmienić więcej niż tylko wartości**:
+kontenerów wyłącznie w runtime przez `env_file: ${ENV_FILE:-.env.prod}` w `docker-compose.prod.yml`
+(patrz `.dockerignore` — `.env*` nigdy nie wchodzi do kontekstu builda). **`.env.prod` jest jedynym
+plikiem konfiguracji na VPS** (dev-owy `.env` nie jest tam czytany) i podajesz go compose także flagą
+`--env-file .env.prod` (interpolacja `${...}`), więc każde polecenie ma postać
+`docker compose --env-file .env.prod -f docker-compose.prod.yml ...` (szczegóły i skrót przez
+`COMPOSE_ENV_FILES`: `docs/deploy-test.md`). Punktem startowym jest `.env.prod.example`
+(zawiera wszystkie poniższe zmienne); **na produkcji trzeba zmienić więcej niż tylko wartości
+względem dev-owego `.env.example`**:
 
 | Zmienna | Względem `.env.example` | Wartość na produkcji |
 |---|---|---|
@@ -193,8 +198,8 @@ GitHub Actions (`.github/workflows/build-images.yml`, po zielonych lint + testac
 tokenem **tylko `read:packages`** (nigdy PAT z szerszymi uprawnieniami) i robi `pull`:
 
 ```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 ```
 
 Migracje Prisma (`prisma migrate deploy`) to **osobny, jednorazowy krok**: usługa `migrate` (ten sam obraz
@@ -206,8 +211,8 @@ tokenu, wycofanie przez `IMAGE_TAG`): `docs/deploy-test.md`. Lokalny test obraz�
 `docker-compose.prodlocal.yml`.
 
 ```bash
-docker compose -f docker-compose.prod.yml logs migrate   # czy migracje przeszły
-docker compose -f docker-compose.prod.yml ps
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs migrate   # czy migracje przeszły
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 ```
 
 ### 4. Obrazy — multi-stage, dlaczego są małe

@@ -90,18 +90,20 @@ model Organization {
   unverifiedWarningSentAt DateTime?
   createdAt               DateTime           @default(now())
 
-  users                   User[]
-  departments             Department[]
-  courseAssignments       CourseAssignment[]
-  passwordResetTokens     PasswordResetToken[]
-  emailVerificationTokens EmailVerificationToken[]
-  userBadges              UserBadge[]
-  domains                 OrganizationDomain[]
-  billingDetails          OrganizationBillingDetails?
-  legalAcceptances        LegalAcceptance[]
-  refreshTokens           RefreshToken[]
-  phishingTemplates       PhishingTemplate[]
-  phishingTemplateEdits   PhishingTemplateEdit[]
+  users                      User[]
+  departments                Department[]
+  courseAssignments          CourseAssignment[]
+  passwordResetTokens        PasswordResetToken[]
+  emailVerificationTokens    EmailVerificationToken[]
+  userBadges                 UserBadge[]
+  domains                    OrganizationDomain[]
+  billingDetails             OrganizationBillingDetails?
+  legalAcceptances           LegalAcceptance[]
+  refreshTokens              RefreshToken[]
+  phishingTemplates          PhishingTemplate[]
+  phishingTemplateEdits      PhishingTemplateEdit[]
+  phishingCampaigns          PhishingCampaign[]
+  phishingCampaignRecipients PhishingCampaignRecipient[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -238,6 +240,95 @@ model PhishingTemplateEdit {
 
   @@index([organizationId, templateId])
   @@map("phishing_template_edits")
+}
+
+enum PhishingCampaignStatus {
+  // Zaplanowana: zadania wysyłki są w kolejce, żadna wiadomość jeszcze nie wyszła.
+  SCHEDULED
+  // Co najmniej jedna wiadomość została zajęta do wysyłki.
+  RUNNING
+  // Każdy odbiorca ma wynik końcowy (wysłano albo nieudane).
+  COMPLETED
+  // Anulowana przez ORG_ADMIN (zadania usunięte z kolejki, niewysłane => failedAt CANCELLED).
+  CANCELLED
+}
+
+enum PhishingAudienceType {
+  ALL
+  DEPARTMENTS
+  USERS
+}
+
+// Kampania jednorazowa. SNAPSHOT szablonu (temat, treść, nadawca) jest kopiowany do kampanii przy starcie:
+// późniejsza edycja/usunięcie szablonu nie zmienia trwającej ani zakończonej kampanii. Usunięcie
+// autora zeruje createdByUserId (SQL-only złożone FK ON DELETE SET NULL, patrz migracja); createdByEmail
+// to kopia z chwili utworzenia (wpis w checkliście DPIA).
+model PhishingCampaign {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  name            String                 @db.VarChar(120)
+  status          PhishingCampaignStatus @default(SCHEDULED)
+  audienceType    PhishingAudienceType
+  // Skąd wzięto szablon (luźne powiązanie, bez FK).
+  templateId      String?
+  templateName    String                 @db.VarChar(120)
+  subject         String                 @db.VarChar(200)
+  bodyHtml        String                 @db.Text
+  lessonHtml      String                 @db.Text
+  senderName      String                 @db.VarChar(80)
+  senderLocalPart String                 @db.VarChar(64)
+  windowStart     DateTime
+  windowEnd       DateTime
+  createdByUserId String?
+  createdByEmail  String                 @db.VarChar(254)
+  createdAt       DateTime               @default(now())
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipients   PhishingCampaignRecipient[]
+
+  // Cel złożonego FK z odbiorców: odbiorca musi należeć do kampanii TEJ SAMEJ organizacji.
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt])
+  @@index([status, windowEnd])
+  @@map("phishing_campaigns")
+}
+
+// Odbiorca kampanii = jedna zaplanowana wiadomość. Stan wysyłki (at-most-once):
+//   nowy -> claimedAt (atomowe zajęcie, tokenHash) -> sentAt (dostawca przyjął) | failedAt+failureCode.
+// Nie ma stanu "zajęty" po restarcie: zajęcie starsze niż limit i bez wyniku jest domykane jako
+// INTERRUPTED_UNKNOWN (niepewne - dostawca mógł wysłać). Wiersz przeżywa usunięcie pracownika:
+// userId zerowane (SQL-only złożone FK ON DELETE SET NULL ("userId")), nazwa działu to snapshot.
+// Adresu e-mail NIE kopiujemy - wysyłka czyta go z konta pracownika w chwili wysyłki.
+model PhishingCampaignRecipient {
+  id                String    @id @default(cuid())
+  organizationId    String
+  campaignId        String
+  userId            String?
+  departmentId      String?
+  departmentName    String?   @db.VarChar(255)
+  scheduledAt       DateTime
+  claimedAt         DateTime?
+  sentAt            DateTime?
+  failedAt          DateTime?
+  // Kod bez danych osobowych (HTTP_422, TIMEOUT_UNKNOWN, CANCELLED, WINDOW_EXPIRED...).
+  failureCode       String?   @db.VarChar(40)
+  sendAttempts      Int       @default(0)
+  providerMessageId String?   @db.VarChar(200)
+  // SHA-256 tokenu z linku (sam token istnieje tylko w mailu); ustawiany przy zajęciu.
+  tokenHash         String?   @unique
+  createdAt         DateTime  @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaign     PhishingCampaign @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  // Jeden e-mail na osobę w kampanii (wiele wierszy z userId NULL po usunięciu pracowników jest dozwolone).
+  @@unique([campaignId, userId])
+  @@index([organizationId])
+  @@index([campaignId])
+  @@index([scheduledAt])
+  @@map("phishing_campaign_recipients")
 }
 
 // Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.

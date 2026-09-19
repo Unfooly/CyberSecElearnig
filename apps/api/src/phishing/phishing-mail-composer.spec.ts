@@ -93,6 +93,28 @@ describe('composePhishingMail', () => {
     expect(compose({ subject: 'a'.repeat(400) }).subject).toHaveLength(200);
   });
 
+  it('tekst "href=\\"...\\"" wpisany jako treść (nie atrybut) NIE zatrzymuje wysyłki i nie jest liczony jako link', () => {
+    const message = compose({ bodyHtml: '<p>Wpisz href="https://evil.example.com" w polu</p><p><a href="{{trackingLink}}">Dalej</a></p>' });
+
+    expect([...message.html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1])).toEqual([URL_OK]);
+  });
+
+  it('obcy link w atrybucie innego znacznika lub w apostrofach nadal zatrzymuje wysyłkę', () => {
+    expect(() => compose({ bodyHtml: '<a href="{{trackingLink}}">x</a><img src="a" href=\'https://evil.example.com\'>' })).toThrow(/link/i);
+    expect(() => compose({ bodyHtml: '<a href=https://evil.example.com>x</a><a href="{{trackingLink}}">y</a>' })).toThrow(/link/i);
+  });
+
+  it('pusta nazwa nadawcy po oczyszczeniu => część lokalna adresu', () => {
+    expect(compose({ senderName: '<>"' }).fromName).toBe('hr');
+  });
+
+  it('temat ucinany po punktach kodowych: emoji na granicy 200 znaków nie jest rozrywane', () => {
+    const subject = compose({ subject: `${'a'.repeat(199)}😀😀` }).subject;
+
+    expect(subject).toBe(`${'a'.repeat(199)}😀`);
+    expect(subject).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+  });
+
   it('wersja tekstowa: linki jako "tekst (adres)", akapity, listy, encje', () => {
     const { text } = compose();
 

@@ -1,6 +1,6 @@
 import { createTransport, Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
-import { PhishingMailMessage, PhishingMailTransport, PhishingSendResult, PhishingTransportError } from './phishing-mail-transport';
+import { classifyTransportFailure, PhishingMailMessage, PhishingMailTransport, PhishingSendResult, PhishingTransportError } from './phishing-mail-transport';
 
 function isLoopback(smtpUrl: string): boolean {
   try {
@@ -49,8 +49,9 @@ export class SmtpPhishingTransport extends PhishingMailTransport {
         // 4xx = przejściowe (greylisting, limit), 5xx = trwałe odrzucenie (adres, polityka).
         throw new PhishingTransportError(`SMTP odrzucił wiadomość (kod ${responseCode}).`, responseCode >= 400 && responseCode < 500, `SMTP_${responseCode}`);
       }
-      // Brak kodu odpowiedzi = problem z połączeniem/TLS/uwierzytelnieniem - traktujemy jako przejściowy.
-      throw new PhishingTransportError('SMTP: błąd połączenia.', true, 'NETWORK');
+      // Brak kodu odpowiedzi: ponawiamy tylko błędy PRZED wysłaniem (połączenie, DNS, TLS, uwierzytelnienie);
+      // timeout i zerwanie w trakcie to wynik niepewny (co najwyżej raz).
+      throw classifyTransportFailure(error);
     }
   }
 }

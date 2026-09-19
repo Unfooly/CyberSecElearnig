@@ -94,8 +94,31 @@ export class TenantPrismaService {
   }
 
   /**
+   * PIĄTY wąski wyjątek od Zasady nr 1, ten sam sentinel co runCrossOrgQuery - WYŁĄCZNIE dla
+   * CampaignReconcileService (zadanie uzgadniające kampanie symulacji). Zwraca TYLKO pary (id, organizationId)
+   * kampanii do uzgodnienia: aktywnych (SCHEDULED/RUNNING) oraz anulowanych w ciągu ostatnich `cancelledSince`.
+   * Typ wyniku (select) nie ujawnia treści kampanii ani adresów; strona po id (kursor) - bez głodzenia nowszych.
+   * Polityka SELECT phishing_campaigns dopuszcza bypass tylko do odczytu (INSERT/UPDATE/DELETE nie), a odbiorcy
+   * kampanii są pod bypassem niewidoczni. Cała dalsza praca idzie w runInOrgContext(organizationId kampanii).
+   */
+  async listCampaignsToReconcile(cancelledSince: Date, afterId: string | null, take: number): Promise<{ id: string; organizationId: string }[]> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.bypass_tenant_rls', 'on', true)`;
+      return tx.phishingCampaign.findMany({
+        where: {
+          OR: [{ status: { in: ['SCHEDULED', 'RUNNING'] } }, { status: 'CANCELLED', cancelledAt: { gte: cancelledSince } }],
+          ...(afterId ? { id: { gt: afterId } } : {}),
+        },
+        select: { id: true, organizationId: true },
+        orderBy: { id: 'asc' },
+        take,
+      });
+    });
+  }
+
+  /**
    * DRUGI wyjątek od Zasady nr 1 — używać WYŁĄCZNIE w DashboardService dla
-   * GET /dashboard/admin/organizations (SUPER_ADMIN, panel operacyjny) oraz w jobie
+   * GET /dashboard/admin/organizations (SUPER_ADMIN, panel operacyjny), w jobie
    * RefreshTokenCleanupService (usuwanie WYGASŁYCH refresh tokenów wszystkich
    * organizacji). Uwaga: DELETE sprawdza tylko USING, więc pod bypassem jest dozwolony wobec
    * DOWOLNYCH wierszy - ochroną jest wyłącznie jawny warunek `where` (data wygaśnięcia) w

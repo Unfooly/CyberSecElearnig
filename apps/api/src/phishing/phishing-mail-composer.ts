@@ -72,7 +72,9 @@ export function composePhishingMail(input: {
 
   const safeUrl = escapeAttribute(trackingUrl);
   const body = template.bodyHtml.split(`href="${TRACKING_LINK_PLACEHOLDER}"`).join(`href="${safeUrl}"`);
-  const hrefs = [...body.matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+  // Tylko atrybuty w ZNACZNIKACH: tekst "href=..." wpisany jako treść (sanityzer escapuje < i >, ale nie cudzysłowy)
+  // nie jest linkiem i nie może zatrzymać wysyłki. Nawet gdyby coś przemyciło href inaczej zapisany, nie przejdzie.
+  const hrefs = [...body.matchAll(/<[a-z][^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)].map((match) => match[1] ?? match[2] ?? match[3]);
   if (hrefs.length === 0 || hrefs.some((href) => href !== safeUrl)) {
     throw new Error('Treść wiadomości zawiera niedozwolony link.');
   }
@@ -81,8 +83,10 @@ export function composePhishingMail(input: {
   return {
     toEmail: recipientEmail,
     fromEmail: `${template.senderLocalPart}@${senderDomain}`,
-    fromName: template.senderName.replace(/[\p{Cc}\p{Cf}<>"]/gu, '').trim(),
-    subject: template.subject.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').trim().slice(0, 200),
+    // Pusta nazwa po oczyszczeniu => część lokalna adresu (nigdy pusty nagłówek From).
+    fromName: template.senderName.replace(/[\p{Cc}\p{Cf}<>"]/gu, '').trim() || template.senderLocalPart,
+    // Cięcie po punktach kodowych, nie jednostkach UTF-16 (nie rozrywa pary zastępczej, np. emoji).
+    subject: Array.from(template.subject.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').trim()).slice(0, 200).join(''),
     html,
     text: htmlToText(body),
   };

@@ -3,7 +3,7 @@ import * as nodemailer from 'nodemailer';
 import { LogPhishingTransport } from './log.transport';
 import { MailerSendPhishingTransport } from './mailersend.transport';
 import { NotConfiguredPhishingTransport } from './not-configured.transport';
-import { PhishingMailMessage, PhishingTransportError } from './phishing-mail-transport';
+import { isUncertainFailureCode, PhishingMailMessage, PhishingTransportError } from './phishing-mail-transport';
 import { SmtpPhishingTransport } from './smtp.transport';
 
 const MESSAGE: PhishingMailMessage = {
@@ -57,13 +57,27 @@ describe('MailerSendPhishingTransport', () => {
     expect(await new MailerSendPhishingTransport('t').send(MESSAGE)).toEqual({ providerMessageId: null });
   });
 
-  it.each([429, 500, 502, 503])('HTTP %i to błąd PRZEJŚCIOWY (retryable)', async (status) => {
-    fetchMock.mockResolvedValue({ ok: false, status, headers: { get: () => null } });
+  it('HTTP 429 (limit) to jedyny błąd HTTP ponawialny - dostawca nic nie wysłał', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429, headers: { get: () => null } });
 
     const error = await catchError(new MailerSendPhishingTransport('t').send(MESSAGE));
 
     expect(error).toBeInstanceOf(PhishingTransportError);
-    expect(error).toMatchObject({ retryable: true, code: `HTTP_${status}` });
+    expect(error).toMatchObject({ retryable: true, code: 'HTTP_429' });
+  });
+
+  it.each([500, 502, 503, 504])('HTTP %i NIE jest ponawiany ("co najwyżej raz": bramka mogła przyjąć wiadomość) i jest liczony jako niepewny', async (status) => {
+    fetchMock.mockResolvedValue({ ok: false, status, headers: { get: () => null } });
+
+    const error = await catchError(new MailerSendPhishingTransport('t').send(MESSAGE));
+
+    expect(error).toMatchObject({ retryable: false, code: `HTTP_${status}` });
+    expect(isUncertainFailureCode(error.code)).toBe(true);
+  });
+
+  it('isUncertainFailureCode: timeouty, nieznane wyniki i 5xx tak; 4xx, SMTP i kody kampanii nie', () => {
+    for (const code of ['TIMEOUT_UNKNOWN', 'RESULT_UNKNOWN', 'INTERRUPTED_UNKNOWN', 'HTTP_500', 'HTTP_599']) expect(isUncertainFailureCode(code)).toBe(true);
+    for (const code of ['HTTP_422', 'HTTP_429', 'SMTP_550', 'CANCELLED', 'WINDOW_EXPIRED', 'COMPOSE_FAILED', 'NETWORK']) expect(isUncertainFailureCode(code)).toBe(false);
   });
 
   it.each([400, 401, 403, 422])('HTTP %i to błąd TRWAŁY (bez ponawiania: zły adres, token, blokada)', async (status) => {
@@ -74,13 +88,30 @@ describe('MailerSendPhishingTransport', () => {
     expect(error).toMatchObject({ retryable: false, code: `HTTP_${status}` });
   });
 
-  it('timeout/brak sieci: błąd przejściowy NETWORK, a komunikat nie zawiera adresu odbiorcy ani tokenu', async () => {
-    fetchMock.mockRejectedValue(new Error(`getaddrinfo ENOTFOUND api.mailersend.com for ${MESSAGE.toEmail} with phishing-token`));
+  it('brak połączenia PRZED wysłaniem (DNS/odmowa): ponawialny NETWORK, komunikat bez adresu odbiorcy i tokenu', async () => {
+    const cause = Object.assign(new Error(`getaddrinfo ENOTFOUND api.mailersend.com for ${MESSAGE.toEmail} with phishing-token`), { code: 'ENOTFOUND' });
+    fetchMock.mockRejectedValue(Object.assign(new TypeError('fetch failed'), { cause }));
 
     const error = await catchError(new MailerSendPhishingTransport('phishing-token').send(MESSAGE));
 
     expect(error).toMatchObject({ retryable: true, code: 'NETWORK' });
     expect(JSON.stringify([error.message, error.code])).not.toMatch(/kowalska|phishing-token|firma\.example/);
+  });
+
+  it('TIMEOUT: NIE jest ponawialny (co najwyżej raz) - kod TIMEOUT_UNKNOWN, bo dostawca mógł wysłać', async () => {
+    fetchMock.mockRejectedValue(Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }));
+
+    const error = await catchError(new MailerSendPhishingTransport('t').send(MESSAGE));
+
+    expect(error).toMatchObject({ retryable: false, code: 'TIMEOUT_UNKNOWN' });
+  });
+
+  it('inny błąd bez odpowiedzi (np. zerwane połączenie po wysłaniu): nieponawialny RESULT_UNKNOWN', async () => {
+    fetchMock.mockRejectedValue(Object.assign(new TypeError('fetch failed'), { cause: Object.assign(new Error('reset'), { code: 'ECONNRESET' }) }));
+
+    const error = await catchError(new MailerSendPhishingTransport('t').send(MESSAGE));
+
+    expect(error).toMatchObject({ retryable: false, code: 'RESULT_UNKNOWN' });
   });
 
   it('błąd HTTP nie ujawnia treści odpowiedzi, adresu ani tokenu', async () => {
@@ -139,13 +170,39 @@ describe('SmtpPhishingTransport', () => {
     expect(error).toMatchObject({ retryable: false, code: `SMTP_${responseCode}` });
   });
 
-  it('błąd połączenia/TLS/uwierzytelnienia (bez kodu odpowiedzi) jest przejściowy, a komunikat nie zawiera danych dostępowych ani adresów', async () => {
-    sendMail.mockRejectedValue(new Error('Invalid login: smtps://user:sekret@smtp.example.net for anna.kowalska@firma.example.pl'));
+  it('ECONNECTION po DATA (zerwane połączenie, wiadomość mogła zostać przyjęta) albo bez komendy: NIEPONAWIALNY RESULT_UNKNOWN', async () => {
+    sendMail.mockRejectedValueOnce(Object.assign(new Error('Connection closed unexpectedly'), { code: 'ECONNECTION', command: 'DATA' }));
+    sendMail.mockRejectedValueOnce(Object.assign(new Error('Connection closed unexpectedly'), { code: 'ECONNECTION' }));
+    const transport = new SmtpPhishingTransport('smtp://x', transporter);
+
+    expect(await catchError(transport.send(MESSAGE))).toMatchObject({ retryable: false, code: 'RESULT_UNKNOWN' });
+    expect(await catchError(transport.send(MESSAGE))).toMatchObject({ retryable: false, code: 'RESULT_UNKNOWN' });
+  });
+
+  it.each([
+    ['ECONNECTION', 'CONN'],
+    ['ECONNECTION', 'EHLO'],
+    ['EAUTH', undefined],
+    ['ETLS', undefined],
+    ['EDNS', undefined],
+  ])('błąd %s (%s, przed wysłaniem) jest ponawialny, a komunikat nie zawiera danych dostępowych ani adresów', async (code, command) => {
+    sendMail.mockRejectedValue(Object.assign(new Error('Invalid login: smtps://user:sekret@smtp.example.net for anna.kowalska@firma.example.pl'), { code, command }));
 
     const error = await catchError(new SmtpPhishingTransport('smtps://user:sekret@smtp.example.net', transporter).send(MESSAGE));
 
     expect(error).toMatchObject({ retryable: true, code: 'NETWORK' });
     expect(error.message).not.toMatch(/sekret|kowalska/);
+  });
+
+  it('ETIMEDOUT / ESOCKET / błąd bez kodu: NIEPONAWIALNE (wynik niepewny)', async () => {
+    sendMail.mockRejectedValueOnce(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' }));
+    sendMail.mockRejectedValueOnce(Object.assign(new Error('socket'), { code: 'ESOCKET' }));
+    sendMail.mockRejectedValueOnce(new Error('coś'));
+    const transport = new SmtpPhishingTransport('smtp://x', transporter);
+
+    expect(await catchError(transport.send(MESSAGE))).toMatchObject({ retryable: false, code: 'TIMEOUT_UNKNOWN' });
+    expect(await catchError(transport.send(MESSAGE))).toMatchObject({ retryable: false, code: 'RESULT_UNKNOWN' });
+    expect(await catchError(transport.send(MESSAGE))).toMatchObject({ retryable: false, code: 'RESULT_UNKNOWN' });
   });
 
   it('konstruktor z URL tworzy transport bez połączenia (nic nie jest wysyłane przy starcie)', () => {

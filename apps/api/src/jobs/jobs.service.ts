@@ -20,6 +20,18 @@ export interface RecurringJob {
   handler: () => Promise<unknown>;
 }
 
+/** Zadanie jednorazowe (z danymi, opcjonalnie opóźnione) - np. wysyłka jednego maila kampanii. */
+export interface TaskDefinition {
+  name: string;
+  handler: (data: unknown) => Promise<unknown>;
+}
+
+export interface EnqueueOptions {
+  delayMs: number;
+  /** Deduplikacja: dodanie zadania o tym samym id jest ignorowane, dopóki poprzednie istnieje. Bez ":". */
+  jobId: string;
+}
+
 /**
  * Wspólna konfiguracja kolejki/workera BullMQ (Redis). Jeden worker w procesie
  * API obsługuje wszystkie zadania cykliczne; kolejne (np. OVERDUE, kampanie)
@@ -37,6 +49,7 @@ export interface RecurringJob {
 export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(JobsService.name);
   private readonly jobs = new Map<string, RecurringJob>();
+  private readonly tasks = new Map<string, TaskDefinition>();
   private queue?: Queue;
   private worker?: Worker;
   private destroyed = false;
@@ -63,13 +76,68 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     this.jobs.set(job.name, job);
   }
 
+  /**
+   * Rejestruje obsługę zadań jednorazowych o danej nazwie (enqueueDelayed). Wywoływane z onModuleInit.
+   * Handler dostaje dane zadania i MUSI być idempotentny (ponowienia BullMQ, duplikaty po awarii Redisa).
+   */
+  registerTask(task: TaskDefinition): void {
+    this.tasks.set(task.name, task);
+  }
+
+  /**
+   * Dodaje zadanie jednorazowe z opóźnieniem. Rzuca, gdy kolejka nie jest gotowa (Redis niedostępny,
+   * zadania wyłączone) - wołający decyduje, czy to błąd, czy zostawia sprawę zadaniu uzgadniającemu.
+   */
+  async enqueueDelayed(name: string, data: unknown, options: EnqueueOptions & { replaceFinished?: boolean }): Promise<void> {
+    if (!this.queue || !this.ready) {
+      throw new Error('Kolejka zadań niedostępna.');
+    }
+    if (options.replaceFinished) {
+      // Zakończone/nieudane zadanie o tym samym id zostaje w Redisie (removeOnComplete/removeOnFail) i blokowałoby
+      // dodanie nowego (deduplikacja po jobId). Zadanie oczekujące/w toku zostaje nietknięte (add jest wtedy no-op).
+      const existing = await this.queue.getJob(options.jobId);
+      if (existing && ['failed', 'completed'].includes(await existing.getState())) {
+        await existing.remove().catch(() => undefined);
+      }
+    }
+    await this.queue.add(name, data, { delay: Math.max(0, Math.round(options.delayMs)), jobId: options.jobId });
+  }
+
+  /** Dodaje wiele zadań jednorazowych jednym round-tripem (addBulk); dedup po jobId jak w enqueueDelayed. */
+  async enqueueDelayedBulk(name: string, items: { data: unknown; options: EnqueueOptions }[]): Promise<void> {
+    if (!this.queue || !this.ready) {
+      throw new Error('Kolejka zadań niedostępna.');
+    }
+    if (items.length === 0) {
+      return;
+    }
+    await this.queue.addBulk(items.map(({ data, options }) => ({ name, data, opts: { delay: Math.max(0, Math.round(options.delayMs)), jobId: options.jobId } })));
+  }
+
+  /** Usuwa oczekujące (opóźnione/czekające) zadania po id; zadania w toku i nieistniejące są pomijane. */
+  async removeQueued(jobIds: string[]): Promise<void> {
+    if (!this.queue || !this.ready) {
+      throw new Error('Kolejka zadań niedostępna.');
+    }
+    for (const jobId of jobIds) {
+      const job = await this.queue.getJob(jobId);
+      if (job) {
+        await job.remove().catch(() => undefined); // zadanie w toku (zablokowane) nie da się usunąć - sendOne sam sprawdzi status kampanii
+      }
+    }
+  }
+
+  isReady(): boolean {
+    return this.ready;
+  }
+
   /** Kończy się, gdy harmonogram jest zaplanowany (albo serwis zamknięty). Dla testów. */
   whenStarted(): Promise<void> {
     return this.startup;
   }
 
   onApplicationBootstrap(): void {
-    if (!this.isEnabled() || this.jobs.size === 0) {
+    if (!this.isEnabled() || (this.jobs.size === 0 && this.tasks.size === 0)) {
       return;
     }
     const redisUrl = this.config.get<string>('REDIS_URL');
@@ -121,13 +189,19 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     this.worker = new Worker(
       MAINTENANCE_QUEUE,
       async (job) => {
+        const task = this.tasks.get(job.name);
+        if (task) {
+          return task.handler(job.data);
+        }
         const definition = this.jobs.get(job.name);
         if (!definition) {
           throw new Error(`Nieznane zadanie: ${job.name}`);
         }
         return definition.handler();
       },
-      { connection, prefix, concurrency: 1 },
+      // Kilka zadań równolegle: wolny/timeoutujący transport jednej wiadomości nie blokuje reszty kampanii
+      // ani zadań cyklicznych (wszystkie handlery są idempotentne i race-safe).
+      { connection, prefix, concurrency: 4 },
     );
     this.worker.on('error', (error) => this.logger.error(`Worker: ${error.message}`));
     this.worker.on('failed', (job, error) => this.logger.error(`Zadanie ${job?.name} nieudane: ${error.message}`));

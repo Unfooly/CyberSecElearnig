@@ -26,7 +26,9 @@ export class PhishingConfigService {
   }
 
   isProduction(): boolean {
-    return this.config.get<string>('NODE_ENV') === 'production';
+    // Jak w resolvePhishingTransportConfig: tylko development/test/brak są luźne, staging = produkcja.
+    const env = this.config.get<string>('NODE_ENV')?.trim().toLowerCase() ?? '';
+    return !['', 'development', 'test'].includes(env);
   }
 
   /** Baza publicznych linków odbiorców: PHISHING_LANDING_BASE_URL, a w środowisku testowym domyślnie FRONTEND_URL. */

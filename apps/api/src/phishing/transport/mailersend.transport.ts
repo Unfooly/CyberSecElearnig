@@ -1,4 +1,4 @@
-import { PhishingMailMessage, PhishingMailTransport, PhishingSendResult, PhishingTransportError } from './phishing-mail-transport';
+import { classifyTransportFailure, PhishingMailMessage, PhishingMailTransport, PhishingSendResult, PhishingTransportError } from './phishing-mail-transport';
 
 const MAILERSEND_URL = 'https://api.mailersend.com/v1/email';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -34,18 +34,19 @@ export class MailerSendPhishingTransport extends PhishingMailTransport {
         }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-    } catch {
-      // Timeout / brak sieci: przejściowe. Komunikat oryginalnego błędu pomijamy (bywa z adresem).
-      // UWAGA: po timeoucie dostawca mógł już przyjąć wiadomość - ponowienie może dać duplikat. Job wysyłający
-      // (commit 3) świadomie przyjmuje "co najwyżej raz" dla takich błędów albo akceptuje ryzyko duplikatu.
-      throw new PhishingTransportError('MailerSend: brak odpowiedzi (sieć/timeout).', true, 'NETWORK');
+    } catch (error) {
+      // Timeout NIE jest ponawialny (TIMEOUT_UNKNOWN): dostawca mógł już przyjąć wiadomość, a duplikat maila
+      // symulacji jest gorszy niż brak. Ponawiamy tylko błąd połączenia PRZED wysłaniem.
+      throw classifyTransportFailure(error);
     }
 
     if (response.ok) {
       return { providerMessageId: response.headers.get('x-message-id') };
     }
-    // 429 i 5xx przejściowe; pozostałe 4xx (zły token, niepoprawny adres, blokada konta) trwałe.
-    const retryable = response.status === 429 || response.status >= 500;
+    // Ponawiamy TYLKO 429 (limit: dostawca odrzucił żądanie, nic nie wysłał). 5xx NIE dowodzi, że wiadomość nie została
+    // przyjęta (bramka mogła zwrócić 502/504 po przekazaniu), więc jest nieponawialne i liczone jako "niepewne"
+    // (isUncertainFailureCode). Pozostałe 4xx (zły token, niepoprawny adres, blokada konta) to trwałe odrzucenie.
+    const retryable = response.status === 429;
     throw new PhishingTransportError(`MailerSend odrzucił wiadomość (HTTP ${response.status}).`, retryable, `HTTP_${response.status}`);
   }
 }

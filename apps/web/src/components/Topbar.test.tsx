@@ -47,7 +47,7 @@ describe('Topbar', () => {
       usePathnameMock.mockReturnValue('/dashboard');
       render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
 
-      expect(screen.getByRole('link', { name: 'Kampanie phishingowe' })).toHaveAttribute('href', '/dashboard/phishing/templates');
+      expect(screen.getByRole('link', { name: 'Kampanie phishingowe' })).toHaveAttribute('href', '/dashboard/phishing/campaigns');
       for (const label of ['Zespół', 'Ustawienia']) {
         expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
       }

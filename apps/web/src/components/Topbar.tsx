@@ -27,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Kursy', href: '/courses', built: true },
   { label: 'Osiągnięcia', href: '/courses/achievements', built: true },
   { label: 'Ustawienia', href: '/dashboard/settings', built: true, adminOnly: true },
-  { label: 'Kampanie phishingowe', href: '/dashboard/phishing/templates', built: true, adminOnly: true },
+  { label: 'Kampanie phishingowe', href: '/dashboard/phishing/campaigns', built: true, adminOnly: true },
   { label: 'Zgłoszenia', href: '#', built: false, adminOnly: true },
 ];
 

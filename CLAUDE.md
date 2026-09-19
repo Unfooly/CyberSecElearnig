@@ -91,6 +91,10 @@ Jeden worker w procesie API (`JobsService`, kolejka `maintenance`, Redis z `REDI
    międzyorganizacyjne tylko przez istniejące, opisane wyjątki (`TenantPrismaService`) i z uzasadnieniem.
 5. Testy: e2e z zamrożonym zegarem (granice czasu, powtórne biegi, równoległe biegi, awarie wysyłki, izolacja A/B).
    Test na prawdziwym Redisie tylko z własnym `JOBS_QUEUE_PREFIX`.
+   Zadania jednorazowe z danymi i opóźnieniem (np. wysyłka jednego maila kampanii): `jobs.registerTask({ name, handler(data) })`
+   i `jobs.enqueueDelayed(name, data, { delayMs, jobId })` (dedup po `jobId`, bez `:`), usuwanie `jobs.removeQueued([jobId])`.
+   Dane zadania to same identyfikatory (organizationId + id rekordu), nigdy dane osobowe; stan i wynik trzymamy w bazie, a
+   kolejka to tylko wyzwalacz (zadanie uzgadniające odtwarza zgubione). Wzorzec: `apps/api/src/phishing/campaigns/`.
 6. Konfiguracja: `BACKGROUND_JOBS_ENABLED` (wyłączone w `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`. Nowa tabela z
    `organizationId` musi mieć `onDelete: Cascade` do `organizations` (inaczej sprzątanie organizacji się zatnie).
 

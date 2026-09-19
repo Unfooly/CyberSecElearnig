@@ -185,20 +185,25 @@ Podmień `twoja-domena.pl` w `Caddyfile` na prawdziwą domenę (dwa wystąpienia
 dla `web` i `api.twoja-domena.pl` dla `api`), z DNS wskazującym na IP VPS-a, zanim uruchomisz
 Caddy — inaczej Let's Encrypt nie zweryfikuje domeny.
 
-### 3. Build i start
+### 3. Obrazy z GHCR i start
+
+Obrazy `api` i `web` **nie są budowane na VPS** (1 GB RAM: `next build` kończy się OOM) - buduje je
+GitHub Actions (`.github/workflows/build-images.yml`, po zielonych lint + testach) i wypycha do
+`ghcr.io/amadispl/cybersecelearnig-api` oraz `-web` (tagi `latest` i `sha-<short>`). VPS loguje się do GHCR
+tokenem **tylko `read:packages`** (nigdy PAT z szerszymi uprawnieniami) i robi `pull`:
 
 ```bash
-docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Migracje Prisma (`prisma migrate deploy`) to **osobny, jednorazowy krok**: usługa `migrate` w
-`docker-compose.prod.yml` (ten sam obraz co `api`, rola migracyjna z `DATABASE_URL`) kończy się kodem 0,
-a `api` startuje dopiero po jej sukcesie (`service_completed_successfully`). Błąd migracji zatrzymuje
-wdrożenie zamiast zapętlać restartujący się kontener, a restart samego `api` nie dotyka schematu.
-`migrate deploy` bierze advisory lock w Postgresie, więc jest bezpieczny także przy równoległym
-starcie. **Uwaga:** `up -d --no-deps api` pomija ten krok - po `git pull` z nowymi migracjami użyj
-`up -d` albo `run --rm migrate`.
+Migracje Prisma (`prisma migrate deploy`) to **osobny, jednorazowy krok**: usługa `migrate` (ten sam obraz
+co `api`, rola migracyjna z `DATABASE_URL`) kończy się kodem 0, a `api` startuje dopiero po jej sukcesie
+(`service_completed_successfully`). Błąd migracji zatrzymuje wdrożenie, a restart samego `api` nie dotyka
+schematu. `migrate deploy` bierze advisory lock w Postgresie, więc jest bezpieczny także przy równoległym
+starcie. **Uwaga:** `up -d --no-deps api` pomija ten krok. Pełna procedura (logowanie do GHCR, tworzenie
+tokenu, wycofanie przez `IMAGE_TAG`): `docs/deploy-test.md`. Lokalny test obrazów budowanych na miejscu:
+`docker-compose.prodlocal.yml`.
 
 ```bash
 docker compose -f docker-compose.prod.yml logs migrate   # czy migracje przeszły

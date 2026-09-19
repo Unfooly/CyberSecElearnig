@@ -30,18 +30,21 @@ services:
       retries: 5
     # Też bez "ports:" - tylko wewnątrz sieci Dockera.
 
+# Obrazy api i web NIE są budowane na VPS (1 GB RAM - `next build` kończy się OOM).
+# Buduje je GitHub Actions (.github/workflows/build-images.yml) i wypycha do GHCR;
+# tutaj tylko `docker compose pull`. Tag: IMAGE_TAG w .env (domyślnie latest, do
+# wycofania np. sha-1a2b3c4). Lokalny build do testów: docker-compose.prodlocal.yml.
+
   # Migracje Prisma jako OSOBNY, jednorazowy krok (nie w entrypoincie api):
   # uruchamia się przed api, kończy się kodem 0 i nie jest restartowany.
   # `prisma migrate deploy` bierze advisory lock w Postgresie, więc jest
-  # bezpieczny nawet przy równoległym starcie. Używa DATABASE_URL (rola
-  # migracyjna z uprawnieniami DDL); runtime api łączy się osobną, ograniczoną
-  # przez RLS rolą z DATABASE_URL_APP.
+  # bezpieczny nawet przy równoległym starcie. Używa TEGO SAMEGO obrazu co api;
+  # DATABASE_URL to rola migracyjna z uprawnieniami DDL, a runtime api łączy się
+  # osobną, ograniczoną przez RLS rolą z DATABASE_URL_APP.
   # UWAGA: `up -d --no-deps api` POMIJA ten krok - po `git pull` z nowymi
   # migracjami użyj `docker compose ... up -d` albo najpierw `run --rm migrate`.
   migrate:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: "no"
     env_file: .env
     entrypoint: []
@@ -51,9 +54,7 @@ services:
         condition: service_healthy
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -67,9 +68,7 @@ services:
     # wyłącznie z web (BFF), a web woła api przez wewnętrzną sieć compose.
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: .env
     depends_on:

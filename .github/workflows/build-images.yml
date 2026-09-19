@@ -1,0 +1,107 @@
+name: build-images
+
+# Obrazy api i web budujemy tutaj, NIE na VPS (1 GB RAM: `next build` kończy się
+# tam SIGKILL/OOM). VPS tylko pobiera gotowe obrazy z GHCR - patrz docs/deploy-test.md.
+# Obrazy trafiają do GHCR wyłącznie po zielonych testach (job `test`).
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + testy
+    runs-on: ubuntu-latest
+    env:
+      # Placeholder jak w apps/api/Dockerfile: `prisma generate` czyta schema.prisma
+      # (env("DATABASE_URL")), ale nie łączy się z bazą.
+      DATABASE_URL: postgresql://user:password@localhost:5432/db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # postinstall buduje też packages/shared (potrzebne api i web).
+      - run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      # Bez --fix (skrypt `npm run lint` w api go ma) - w CI błąd lintu ma
+      # zatrzymać pipeline, a nie zostać po cichu poprawiony.
+      - name: Lint api
+        working-directory: apps/api
+        run: npx eslint "{src,test}/**/*.ts"
+
+      - name: Testy jednostkowe api
+        working-directory: apps/api
+        run: npx jest
+
+      - name: Lint web
+        run: npm run lint --workspace=apps/web
+
+      - name: Testy web
+        run: npm run test --workspace=apps/web
+
+  images:
+    name: obraz ${{ matrix.app }}
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nazwy w GHCR muszą być małymi literami (owner i repo mogą mieć wielkie).
+      - name: Nazwa obrazu
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tagi
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-,format=short
+
+      - name: Build i push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Pojedynczy manifest (bez atestacji "unknown/unknown" w GHCR).
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

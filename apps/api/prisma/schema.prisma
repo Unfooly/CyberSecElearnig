@@ -73,20 +73,15 @@ enum LegalDocumentType {
 
 model Organization {
   id         String   @id @default(cuid())
-  // Unikalna - nazwa jest domeną e-maila (AuthService.deriveOrganizationNameFromEmail),
-  // więc unikalność wymusza jedną organizację na domenę i zamyka TOCTOU
-  // przy równoległej rejestracji (ten sam wzorzec co unikalny User.email).
-  // TYMCZASOWO: unikalność znika razem ze zmianą rejestracji (nazwa wyświetlana
-  // nie będzie już wyprowadzana z domeny) - patrz następny etap tego zadania.
-  name       String   @unique
+  // Nazwa wyświetlana podana przy rejestracji (NIE jest wyprowadzana z domeny
+  // e-maila i NIE jest unikalna - o własności domeny rozstrzyga weryfikacja DNS).
+  name       String
   plan       Plan     @default(TRIAL)
   seatsLimit Int      @default(10)
-  // TYMCZASOWO domyślnie ACTIVE (istniejące organizacje zostają ACTIVE bez
-  // weryfikacji domeny). Domyślna wartość zmienia się na
-  // PENDING_DOMAIN_VERIFICATION (fail-closed) razem z nową rejestracją, która
-  // tworzy wiersz OrganizationDomain - inaczej stary kod rejestracji tworzyłby
-  // organizacje PENDING bez możliwości weryfikacji.
-  status                  OrganizationStatus @default(ACTIVE)
+  // Domyślnie PENDING_DOMAIN_VERIFICATION (fail-closed dla nowych organizacji).
+  // Migracje ustawiły ACTIVE organizacjom istniejącym przed tym modelem (bez
+  // weryfikacji domeny).
+  status                  OrganizationStatus @default(PENDING_DOMAIN_VERIFICATION)
   // Zweryfikowana domena pozwala włączyć "pracownicy z adresem @domena mogą sami
   // dołączyć". Tu tylko przełącznik - sam przepływ dołączania to osobne zadanie.
   selfJoinEnabled         Boolean            @default(false)
@@ -176,7 +171,7 @@ model LegalAcceptance {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (patrz migracja).
-  user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+  user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([userId, documentType, version])
   @@index([organizationId])

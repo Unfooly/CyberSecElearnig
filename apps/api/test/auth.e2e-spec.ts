@@ -5,7 +5,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { EmailService } from '../src/email/email.service';
-import { registerVerified } from './helpers/auth';
+import { postRegister, registerVerified } from './helpers/auth';
 
 describe('Auth + izolacja tenantów (e2e)', () => {
   let app: INestApplication;
@@ -44,28 +44,21 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   const uniqueSuffix = Date.now();
 
   it('rejestruje nową organizację razem z pierwszym użytkownikiem jako ORG_ADMIN', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email: `admin-a-${uniqueSuffix}@admin-a.auth-e2e-test.local`,
-        password: 'SuperSecret123!',
-      })
-      .expect(201);
+    const email = `admin-a-${uniqueSuffix}@admin-a.auth-e2e-test.local`;
+    const response = await postRegister(app, email);
+    expect(response.status).toBe(201);
 
     // Bez tokenów - logowanie zablokowane do potwierdzenia adresu e-mail.
     expect(response.body.accessToken).toBeUndefined();
-    expect(response.body.message).toMatch(/link weryfikacyjny/i);
+    expect(response.body.message).toMatch(/weryfikacyjn/i);
+
+    const admin = await tenantPrisma.runAuthLookup({ email });
+    expect(admin).toMatchObject({ role: 'ORG_ADMIN', firstName: 'Anna', lastName: 'Testowa' });
   });
 
   it('odrzuca logowanie z błędnym hasłem', async () => {
     const email = `wrongpass-${uniqueSuffix}@wrongpass.auth-e2e-test.local`;
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email,
-        password: 'SuperSecret123!',
-      })
-      .expect(201);
+    expect((await postRegister(app, email)).status).toBe(201);
 
     await request(app.getHttpServer())
       .post('/auth/login')
@@ -118,67 +111,35 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     await request(app.getHttpServer()).get('/users').expect(401);
   });
 
-  it('odrzuca powtórną rejestrację tego samego e-maila (ta sama domena = kolizja organizacji, nie tylko e-maila)', async () => {
+  // Szczegółowe testy rejestracji (anty-enumeracja, domena publiczna, zgody,
+  // wyścigi) są w registration.e2e-spec.ts.
+  it('powtórna rejestracja tego samego e-maila nie tworzy drugiego konta, a pierwsze zostaje nienaruszone', async () => {
     const email = `duplicate-${uniqueSuffix}@duplicate.auth-e2e-test.local`;
 
+    expect((await postRegister(app, email)).status).toBe(201);
+    expect((await postRegister(app, email, 'InneHaslo12345!')).status).toBe(201);
+
+    // Stare hasło nadal działa (drugie żądanie niczego nie nadpisało); konto niepotwierdzone => 403.
     await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email,
-        password: 'SuperSecret123!',
-      })
-      .expect(201);
-
-    const response = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email,
-        password: 'SuperSecret123!',
-      })
-      .expect(400);
-
-    // Ta sama domena co za pierwszym razem -> organization.create (uruchamiany
-    // PRZED user.create w tej samej transakcji) odrzuca insert na unikalności
-    // nazwy organizacji, zanim w ogóle dojdzie do sprawdzenia unikalności
-    // e-maila - patrz test niżej ("odrzuca rejestrację drugiej organizacji...")
-    // dla tego samego zachowania z DWOMA różnymi e-mailami tej samej domeny.
-    expect(response.body.message).toMatch(/organizacja/i);
+      .post('/auth/login')
+      .send({ email, password: 'SuperSecret123!' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password: 'InneHaslo12345!' })
+      .expect(401);
   });
 
-  it('odrzuca rejestrację drugiej organizacji dla domeny, która już ma organizację', async () => {
+  it('dwie rejestracje z tej samej domeny tworzą dwie osobne organizacje (nazwa nie jest wyprowadzana z domeny ani unikalna)', async () => {
     const firstEmail = `domain-owner-${uniqueSuffix}@dup-domain.auth-e2e-test.local`;
     const secondEmail = `domain-newcomer-${uniqueSuffix}@dup-domain.auth-e2e-test.local`;
 
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({ email: firstEmail, password: 'SuperSecret123!' })
-      .expect(201);
+    expect((await postRegister(app, firstEmail)).status).toBe(201);
+    expect((await postRegister(app, secondEmail)).status).toBe(201);
 
-    const response = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({ email: secondEmail, password: 'SuperSecret123!' })
-      .expect(400);
-
-    // Tu, w odróżnieniu od duplikatu e-maila powyżej, komunikat CELOWO
-    // ujawnia że organizacja dla tej domeny istnieje - to informacja na
-    // poziomie firmy, nie konkretnego konta (patrz komentarz przy
-    // ORGANIZATION_ALREADY_EXISTS_MESSAGE w auth.service.ts).
-    expect(response.body.message).toMatch(/organizacja/i);
-
-    // Drugi e-mail nie mógł się zalogować - insert usera i organizacji jest
-    // w jednej transakcji (runInOrgContext), więc odrzucenie organizacji
-    // musiało cofnąć też usera.
-    await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: secondEmail, password: 'SuperSecret123!' })
-      .expect(401);
-
-    // Pierwsze konto/organizacja nie zostały naruszone przez odrzuconą
-    // drugą próbę.
-    await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: firstEmail, password: 'SuperSecret123!' })
-      .expect(403); // konto istnieje i hasło poprawne, ale adres niepotwierdzony
+    const first = await tenantPrisma.runAuthLookup({ email: firstEmail });
+    const second = await tenantPrisma.runAuthLookup({ email: secondEmail });
+    expect(first!.organizationId).not.toBe(second!.organizationId);
   });
 
   it('ogranicza liczbę prób logowania w krótkim czasie (rate limiting)', async () => {
@@ -242,10 +203,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
       const emailService = verifyApp.get(EmailService);
       const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
 
-      await request(verifyApp.getHttpServer())
-        .post('/auth/register')
-        .send({ email, password: 'SuperSecret123!' })
-        .expect(201);
+      expect((await postRegister(verifyApp, email)).status).toBe(201);
 
       const call = sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0];
       sendSpy.mockRestore();
@@ -280,11 +238,11 @@ describe('Auth + izolacja tenantów (e2e)', () => {
       const emailService = verifyApp.get(EmailService);
       const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
 
-      await request(verifyApp.getHttpServer()).post('/auth/register').send({ email: emailA, password: 'SuperSecret123!' }).expect(201);
+      expect((await postRegister(verifyApp, emailA)).status).toBe(201);
       const tokenA = new URL(
         (sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0].templateData as { verificationUrl: string }).verificationUrl,
       ).searchParams.get('token');
-      await request(verifyApp.getHttpServer()).post('/auth/register').send({ email: emailB, password: 'SuperSecret123!' }).expect(201);
+      expect((await postRegister(verifyApp, emailB)).status).toBe(201);
       sendSpy.mockRestore();
 
       await request(verifyApp.getHttpServer()).post('/auth/verify-email').send({ token: tokenA }).expect(200);
@@ -298,10 +256,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     async function registerAndCaptureToken(email: string): Promise<string> {
       const emailService = verifyApp.get(EmailService);
       const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
-      await request(verifyApp.getHttpServer())
-        .post('/auth/register')
-        .send({ email, password: 'SuperSecret123!' })
-        .expect(201);
+      expect((await postRegister(verifyApp, email)).status).toBe(201);
       const call = sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0];
       sendSpy.mockRestore();
       return new URL((call.templateData as { verificationUrl: string }).verificationUrl).searchParams.get(
@@ -399,10 +354,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     async function registerUser(email: string, password = 'StareHaslo123'): Promise<void> {
-      await request(resetApp.getHttpServer())
-        .post('/auth/register')
-        .send({ email, password })
-        .expect(201);
+      expect((await postRegister(resetApp, email, password)).status).toBe(201);
     }
 
     // EmailService realnie nie wysyła (brak MAILERSEND_API_TOKEN w .env.test) —

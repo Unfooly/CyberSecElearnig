@@ -233,6 +233,32 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
   (`apps/api` NIE kopiuje `apps/web/package.json` i odwrotnie) — inaczej `npm ci` hoistowałby do
   wspólnego `node_modules` zależności drugiej aplikacji (np. cały Next.js do obrazu backendu).
 
+## Backlog rejestracji firmy (samoobsługa)
+
+Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zrobienia **przed publicznym startem**:
+
+- **Pre-hijacking konta (wysokie) - wymaga decyzji produktowej.** Atakujący rejestruje się adresem
+  ofiary ze SWOIM hasłem; ofiara dostaje „Potwierdź adres e-mail”, klika, a `verifyEmail` potwierdza
+  konto z hasłem atakującego. Organizacja jest PENDING i bez dowodu własności domeny niewiele może,
+  ale zweryfikowany adres ofiary siedzi w cudzym koncie. Poprawka (jedna z dwóch): hasło ustawiane
+  DOPIERO po weryfikacji skrzynki (link prowadzi do ekranu „ustaw hasło”, jak zaproszenie), albo
+  `verifyEmail` unieważnia hasło z rejestracji i wymusza jego ustawienie.
+- **Limiter maili rejestracji w pamięci procesu.** Działa per instancja, znika po restarcie, a przy
+  zalewie >5000 adresami wypiera najstarsze wpisy. Docelowo Redis (`SET NX EX`) razem z
+  infrastrukturą BullMQ (etap z jobem sprzątania). Klucz już ignoruje aliasy `+tag`.
+- **Ochrona przed masowym zakładaniem organizacji.** Throttle to 10/min/IP; brak limitu globalnego,
+  CAPTCHA (Turnstile/hCaptcha) i limitu niezweryfikowanych organizacji na domenę. Do tego job sprzątania
+  (14 dni) zmniejsza skutek, ale nie zastępuje tych limitów. Rejestracja przetwarza też w tle maks. 50
+  zadań naraz (nadmiar dostaje 503).
+- **`trust proxy` / prawdziwy adres IP.** Throttler liczy IP z requestu; za Cloudflare Tunnel i proxy
+  trzeba ustawić zaufanie do nagłówka (`CF-Connecting-IP`/`X-Forwarded-For`), inaczej wszyscy dzielą jedno
+  IP (limit trafia niewinnych) albo nagłówek da się podrobić. Do sprawdzenia przy wdrożeniu.
+- **Praca w tle = błędy tylko w logu.** Rejestracja odpowiada natychmiast, a zapis i mail idą w tle
+  (brak kanału czasowego enumeracji). Awaria bazy nie dociera do klienta: użytkownik nie dostaje maila i
+  może spróbować ponownie. Docelowo monitoring/alert na logi „zadanie w tle (rejestracja) nie powiodło się”.
+- **Formularz w `apps/web` (do etapu 5).** BFF i strona rejestracji wysyłają jeszcze tylko
+  e-mail + hasło, więc rejestracja z UI zwraca 400, dopóki nie powstanie nowy formularz.
+
 ## Backlog bazy danych (izolacja tenantów)
 
 - **Constrainty spoza `schema.prisma`.** Prisma nie potrafi wyrazić: partial unique index

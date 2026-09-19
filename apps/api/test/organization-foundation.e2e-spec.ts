@@ -72,23 +72,27 @@ describe('Organizacja: fundament modelu samoobsługowego (e2e, RLS + constraints
       expect(role).toEqual({ rolsuper: false, rolbypassrls: false });
     });
 
-    it('domyślnie bez samodzielnego dołączania i bez znacznika ostrzeżenia; status ACTIVE do czasu nowej rejestracji', async () => {
+    it('nowa organizacja domyślnie czeka na weryfikację domeny (fail-closed), bez samodzielnego dołączania i bez znacznika ostrzeżenia', async () => {
       const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgAId } });
 
-      // Domyślny status zmienia się na PENDING_DOMAIN_VERIFICATION razem z nową
-      // rejestracją (migracja + kod), żeby stary kod nie tworzył organizacji
-      // bez możliwości weryfikacji domeny.
-      expect(org.status).toBe('ACTIVE');
+      expect(org.status).toBe('PENDING_DOMAIN_VERIFICATION');
       expect(org.selfJoinEnabled).toBe(false);
       expect(org.unverifiedWarningSentAt).toBeNull();
     });
 
-    it('status PENDING_DOMAIN_VERIFICATION można ustawić jawnie', async () => {
+    it('status ACTIVE można ustawić jawnie (weryfikacja domeny / istniejące organizacje)', async () => {
       const org = await prisma.organization.create({
-        data: { name: `found-pending-${suffix}.${domainSuffix}`, status: 'PENDING_DOMAIN_VERIFICATION' },
+        data: { name: `found-active-${suffix}.${domainSuffix}`, status: 'ACTIVE' },
       });
 
-      expect(org.status).toBe('PENDING_DOMAIN_VERIFICATION');
+      expect(org.status).toBe('ACTIVE');
+    });
+
+    it('nazwa organizacji nie jest unikalna (kilka firm może mieć tę samą nazwę wyświetlaną)', async () => {
+      const name = `found-same-name-${suffix}.${domainSuffix}`;
+      await prisma.organization.create({ data: { name } });
+
+      await expect(prisma.organization.create({ data: { name } })).resolves.toBeDefined();
     });
   });
 

@@ -8,12 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomBytes, randomUUID } from 'crypto';
-import { Prisma } from '@prisma/client';
+import { createHash, randomBytes } from 'crypto';
 import { Role, UserStatus } from '@cyberszkolo/shared';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -21,26 +19,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
-const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
-
-// Ten sam komunikat dla "e-mail już istnieje" i innych błędów rejestracji —
-// celowo nie potwierdza, czy podany adres jest już w systemie (patrz audyt
-// bezpieczeństwa modułu auth, ryzyko enumeracji kont na platformie
-// antyphishingowej).
-const REGISTRATION_FAILED_MESSAGE =
-  'Nie udało się utworzyć konta z podanymi danymi. Jeśli masz już konto, zaloguj się.';
-
-// Odrębny komunikat od REGISTRATION_FAILED_MESSAGE (celowo NIE anty-
-// enumeracyjny jak tamten) — domena e-maila jest już nazwą organizacji
-// (`organizations.name`, unikalny constraint), więc "organizacja dla tej
-// domeny już istnieje" to informacja na poziomie firmy, nie konkretnego
-// konta; ten sam wzorzec UX co Slack/Notion przy rejestracji firmowej
-// domeny drugi raz - patrz ustalenia z użytkownikiem w tej sesji.
-const ORGANIZATION_ALREADY_EXISTS_MESSAGE =
-  'Organizacja dla domeny Twojego adresu e-mail już istnieje w systemie. Poproś administratora tej organizacji o dodanie Cię jako pracownika, albo zaloguj się, jeśli masz już konto.';
-
 // Ten sam komunikat niezależnie od tego, czy podany e-mail istnieje w
-// systemie — analogiczny wzorzec anty-enumeracyjny co REGISTRATION_FAILED_MESSAGE.
+// systemie — wzorzec anty-enumeracyjny (jak w rejestracji, patrz RegistrationService).
 const FORGOT_PASSWORD_RESPONSE_MESSAGE =
   'Jeśli podany adres e-mail istnieje w systemie, wysłaliśmy na niego link do zresetowania hasła.';
 
@@ -79,10 +59,6 @@ export const BCRYPT_ROUNDS = 12;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-const REGISTRATION_EMAIL_FAILED_MESSAGE =
-  'Konto utworzone, ale nie udało się wysłać linku weryfikacyjnego. Użyj "Wyślij link ponownie" (na ekranie logowania) albo sprawdź, czy adres e-mail jest poprawny.';
-const REGISTRATION_SUCCESS_MESSAGE =
-  'Konto utworzone. Wysłaliśmy link weryfikacyjny na podany adres e-mail - potwierdź go, aby się zalogować.';
 const RESEND_VERIFICATION_RESPONSE_MESSAGE =
   'Jeśli konto o podanym adresie czeka na potwierdzenie, wysłaliśmy nowy link weryfikacyjny.';
 const EMAIL_NOT_VERIFIED = {
@@ -108,73 +84,8 @@ export class AuthService {
     }
   }
 
-  async register(dto: RegisterDto): Promise<{ message: string; emailSent: boolean }> {
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const organizationName = this.deriveOrganizationNameFromEmail(dto.email);
-
-    // Id generujemy przed transakcją, żeby kontekst RLS mógł iść przez
-    // jedyny punkt prawdy (TenantPrismaService.runInOrgContext) zamiast
-    // odtwarzać `set_config` ręcznie tutaj — organizacja jeszcze nie
-    // istnieje, więc nie możemy poznać jej id inaczej niż wygenerować je
-    // sami z góry.
-    const organizationId = randomUUID();
-
-    let user: { id: string; organizationId: string; role: string; email: string };
-    try {
-      user = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-        await tx.organization.create({
-          data: { id: organizationId, name: organizationName },
-        });
-
-        return tx.user.create({
-          data: {
-            organizationId,
-            email: dto.email,
-            passwordHash,
-            role: Role.ORG_ADMIN,
-          },
-        });
-      });
-    } catch (error) {
-      // Unikalność e-maila i unikalność nazwy organizacji (domeny) są
-      // wymuszone na poziomie bazy (constraints działają niezależnie od RLS,
-      // więc nie potrzebujemy osobnego pre-checku przez bypass RLS ani nie
-      // martwimy się o TOCTOU przy dwóch równoległych rejestracjach tej samej
-      // domeny — baza odrzuci drugą). `error.meta.target` mówi, który
-      // constraint faktycznie odrzucił insert, więc możemy dać dwa różne,
-      // trafne komunikaty zamiast jednego ogólnego dla obu przypadków.
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === UNIQUE_CONSTRAINT_VIOLATION
-      ) {
-        // meta.target to tablica kolumn (['name']) albo, zależnie od
-        // silnika/adaptera, nazwa constraintu ('organizations_name_key') -
-        // obsługujemy oba kształty.
-        const target = error.meta?.target;
-        const targetText = Array.isArray(target) ? target.join(',') : String(target ?? '');
-        if (/organizations_name_key|(^|,)name(,|$)/.test(targetText)) {
-          throw new BadRequestException(ORGANIZATION_ALREADY_EXISTS_MESSAGE);
-        }
-        throw new BadRequestException(REGISTRATION_FAILED_MESSAGE);
-      }
-      throw error;
-    }
-
-    // Bez tokenów - logowanie jest zablokowane do potwierdzenia adresu
-    // (emailVerifiedAt). Bez weryfikacji ktoś mógłby zająć cudzą domenę
-    // (organizacja = domena e-maila) i spamować zaproszeniami z domeny
-    // platformy.
-    // Konto już istnieje - awaria wystawienia tokenu/wysyłki nie może zamienić
-    // udanej rejestracji w 500 (ponowna rejestracja i tak trafiłaby na
-    // "organizacja już istnieje"). Mówimy wprost, że mail nie wyszedł.
-    let emailSent = false;
-    try {
-      emailSent = await this.sendVerificationEmail(user.organizationId, user.id, user.email);
-    } catch (error) {
-      this.logger.error(`Konto ${user.id} utworzone, ale wysyłka linku weryfikacyjnego nie powiodła się: ${(error as Error).message}`);
-    }
-    return { message: emailSent ? REGISTRATION_SUCCESS_MESSAGE : REGISTRATION_EMAIL_FAILED_MESSAGE, emailSent };
-  }
+  // Rejestracja firmy (samoobsługowa) żyje w RegistrationService - AuthService
+  // zostaje przy logowaniu, tokenach, weryfikacji e-maila i resecie hasła.
 
   async login(dto: LoginDto): Promise<TokenPair> {
     const user = await this.tenantPrisma.runAuthLookup({ email: dto.email });
@@ -337,26 +248,6 @@ export class AuthService {
     return { message: 'Hasło zostało zmienione. Zaloguj się nowym hasłem.' };
   }
 
-  /**
-   * Nazwa organizacji = domena e-maila (część po @), nie pole od klienta -
-   * zgodnie z decyzją tej sesji (self-serve rejestracja bez pytania o nazwę
-   * firmy). `organizations.name` ma unikalny constraint (migracja
-   * organization_name_unique), więc druga rejestracja z tej samej domeny
-   * dostaje 400 (ORGANIZATION_ALREADY_EXISTS_MESSAGE) zamiast tworzyć drugą
-   * organizację o tej samej nazwie - też decyzja tej sesji, świadomie bez
-   * osobnej flagi/wyjątku dla domen współdzielonych publicznie (gmail.com,
-   * outlook.com); pierwsza osoba z takiej domeny "zajmuje" ją dla
-   * pozostałych, co jest akceptowalnym kompromisem na tym etapie (platforma
-   * B2B, docelowo firmowe domeny) - NIE buduj tu auto-join do istniejącej
-   * organizacji (kto dołącza z jaką rolą, czy wymaga akceptacji admina) bez
-   * wyraźnej, osobnej decyzji, bo to inna, większa funkcja.
-   * `dto.email` jest już zwalidowane przez @IsEmail (RegisterDto), więc
-   * split('@') zawsze da dokładnie dwie części.
-   */
-  private deriveOrganizationNameFromEmail(email: string): string {
-    return email.split('@')[1].toLowerCase();
-  }
-
   async verifyEmail(dto: VerifyEmailDto): Promise<{ message: string }> {
     const tokenHash = this.hashResetToken(dto.token);
     const record = await this.tenantPrisma.runEmailVerificationTokenLookup(tokenHash);
@@ -392,17 +283,32 @@ export class AuthService {
   async resendVerification(dto: ResendVerificationDto): Promise<{ message: string }> {
     const user = await this.tenantPrisma.runAuthLookup({ email: dto.email });
     if (user && !user.emailVerifiedAt) {
-      if (user.status === UserStatus.INVITED) {
-        // Zaproszony nie ma własnego hasła - "weryfikacją" jest ustawienie go
-        // linkiem aktywacyjnym, więc odnawiamy TEN link (inaczej po wygaśnięciu
-        // zaproszenia użytkownik utknąłby w pętli EMAIL_NOT_VERIFIED).
-        await this.sendActivationReminder(user);
-      } else {
-        await this.sendVerificationEmail(user.organizationId, user.id, user.email);
-      }
+      await this.sendVerificationOrActivation(user);
     }
     // Zawsze ta sama odpowiedź - anty-enumeracja, jak przy forgotPassword.
     return { message: RESEND_VERIFICATION_RESPONSE_MESSAGE };
+  }
+
+  /**
+   * Link dla NIEPOTWIERDZONEGO konta: zwykły link weryfikacyjny, a dla
+   * zaproszonego (INVITED) - link aktywacyjny. Zaproszony nie ma własnego
+   * hasła, więc "weryfikacją" jest ustawienie go linkiem aktywacyjnym;
+   * odnawiamy TEN link (inaczej po wygaśnięciu zaproszenia użytkownik utknąłby
+   * w pętli EMAIL_NOT_VERIFIED). Wspólne dla resendVerification i rejestracji
+   * na adres istniejącego, niepotwierdzonego konta.
+   */
+  async sendVerificationOrActivation(user: {
+    id: string;
+    organizationId: string;
+    email: string;
+    firstName: string | null;
+    status: string;
+  }): Promise<void> {
+    if (user.status === UserStatus.INVITED) {
+      await this.sendActivationReminder(user);
+    } else {
+      await this.sendVerificationEmail(user.organizationId, user.id, user.email);
+    }
   }
 
   private async sendActivationReminder(user: {
@@ -428,7 +334,8 @@ export class AuthService {
     });
   }
 
-  private async sendVerificationEmail(organizationId: string, userId: string, email: string): Promise<boolean> {
+  // Publiczne: używa też RegistrationService (link weryfikacyjny po rejestracji).
+  async sendVerificationEmail(organizationId: string, userId: string, email: string): Promise<boolean> {
     const rawToken = randomBytes(32).toString('hex');
     const tokenHash = this.hashResetToken(rawToken);
 

@@ -3,7 +3,6 @@ import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Prisma } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
@@ -73,34 +72,7 @@ describe('AuthService — reset hasła', () => {
     service = module.get(AuthService);
   });
 
-  describe('register — kolizja unikalności (P2002)', () => {
-    function p2002(target: unknown) {
-      return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.19.1',
-        meta: { target },
-      });
-    }
-
-    it.each([
-      ['tablica kolumn', ['name']],
-      ['nazwa constraintu', 'organizations_name_key'],
-    ])('kolizja nazwy organizacji (%s) daje komunikat o istniejącej organizacji', async (_label, target) => {
-      runInOrgContext.mockRejectedValueOnce(p2002(target));
-
-      await expect(service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toThrow(
-        /Organizacja dla domeny/,
-      );
-    });
-
-    it('kolizja e-maila daje ogólny komunikat, nie ujawnia istnienia organizacji', async () => {
-      runInOrgContext.mockRejectedValueOnce(p2002(['email']));
-
-      await expect(service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' })).rejects.toThrow(
-        /Nie udało się utworzyć konta/,
-      );
-    });
-  });
+  // Testy rejestracji: registration.service.spec.ts.
 
   describe('weryfikacja adresu e-mail', () => {
     const validRecord = {
@@ -121,60 +93,6 @@ describe('AuthService — reset hasła', () => {
         emailVerifiedAt: null,
       };
     }
-
-    it('register NIE zwraca tokenów, wystawia token weryfikacyjny i wysyła e-mail', async () => {
-      runInOrgContext.mockImplementationOnce((_id: string, fn: (tx: unknown) => unknown) =>
-        fn({
-          organization: { create: jest.fn() },
-          user: {
-            create: jest
-              .fn()
-              .mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@firma.pl' }),
-          },
-        }),
-      );
-
-      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
-
-      expect(result).toEqual({ message: expect.stringMatching(/link weryfikacyjny/), emailSent: true });
-      expect(jwtSign).not.toHaveBeenCalled();
-      expect(verificationTokenCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ organizationId: 'o1', userId: 'u1' }) }),
-      );
-      expect(sendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'a@firma.pl', templateName: 'email-verification' }),
-      );
-    });
-
-    const createdUserTx = () =>
-      (_id: string, fn: (tx: unknown) => unknown) =>
-        fn({
-          organization: { create: jest.fn() },
-          user: {
-            create: jest
-              .fn()
-              .mockResolvedValue({ id: 'u1', organizationId: 'o1', role: 'ORG_ADMIN', email: 'a@firma.pl' }),
-          },
-        });
-
-    it('register: gdy mail nie wyszedł (send=false), zwraca emailSent=false i komunikat z podpowiedzią - konto zostaje', async () => {
-      runInOrgContext.mockImplementationOnce(createdUserTx());
-      sendEmail.mockResolvedValue(false);
-
-      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
-
-      expect(result.emailSent).toBe(false);
-      expect(result.message).toMatch(/nie udało się wysłać/i);
-    });
-
-    it('register: wyjątek przy wystawianiu tokenu po utworzeniu konta NIE zamienia rejestracji w 500', async () => {
-      runInOrgContext.mockImplementationOnce(createdUserTx());
-      verificationTokenCreate.mockRejectedValue(new Error('db down'));
-
-      const result = await service.register({ email: 'a@firma.pl', password: 'SuperSecret123!' });
-
-      expect(result.emailSent).toBe(false);
-    });
 
     it('resendVerification dla ZAPROSZONEGO (INVITED) odnawia link aktywacyjny, nie weryfikacyjny', async () => {
       runAuthLookup.mockResolvedValueOnce({

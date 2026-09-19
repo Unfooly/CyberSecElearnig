@@ -24,7 +24,9 @@ export class TenantPrismaService {
 
   /**
    * WYJĄTEK od Zasady nr 1 — używać WYŁĄCZNIE w AuthService.login / .refresh
-   * / .forgotPassword, gdzie użytkownika trzeba znaleźć po globalnie
+   * / .forgotPassword / .resendVerification oraz RegistrationService.register
+   * (tylko do sprawdzenia, czy adres ma już konto; wynik nie trafia do
+   * odpowiedzi), gdzie użytkownika trzeba znaleźć po globalnie
    * unikalnym e-mailu / id, zanim jego organizationId jest znane. RLS jest
    * fail-closed (brak kontekstu = zero wierszy), więc ta metoda jawnie
    * ustawia sentinel app.bypass_tenant_rls, żeby ten jeden, ręcznie

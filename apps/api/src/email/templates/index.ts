@@ -84,6 +84,20 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Reset hasła (link ważny 1 godzinę): ${String(data.resetUrl)}`,
   }),
+  // Rejestracja na adres, który ma już konto: mail do WŁAŚCICIELA adresu (w UI
+  // nic się nie zmienia - anty-enumeracja). Nie zawiera żadnych danych z
+  // formularza atakującego, tylko linki do logowania i resetu hasła.
+  'registration-existing-account': (data, options) => ({
+    html: layout(
+      'Ktoś próbował zarejestrować konto na Twój adres',
+      '<p>Ktoś (być może Ty) próbował zarejestrować organizację, używając tego adresu e-mail, ale konto już istnieje. ' +
+        'Nic się nie zmieniło. Jeśli to Ty, zaloguj się. Jeśli nie pamiętasz hasła, użyj opcji „Zapomniałeś hasła?”: ' +
+        `<a href="${escapeHtml(data.forgotPasswordUrl)}" style="color:#3F32B5">${escapeHtml(data.forgotPasswordUrl)}</a>.</p>`,
+      { label: 'Przejdź do logowania', url: String(data.loginUrl) },
+      options,
+    ),
+    text: `Ktoś próbował zarejestrować konto na Twój adres, ale konto już istnieje. Zaloguj się: ${String(data.loginUrl)} lub zresetuj hasło: ${String(data.forgotPasswordUrl)}`,
+  }),
   'demo-request': (data, options) => ({
     html: layout(
       'Nowa prośba o demo',

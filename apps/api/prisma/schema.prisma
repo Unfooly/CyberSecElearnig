@@ -196,6 +196,9 @@ model Department {
   // nazwie w obrębie organizacji) i jest sensowną gwarancją jakości danych -
   // patrz UsersService.importCsv.
   @@unique([organizationId, name])
+  // Cel dodatkowego złożonego FK users(organizationId, departmentId) - patrz
+  // komentarz przy User.department.
+  @@unique([organizationId, id])
   @@index([organizationId])
   @@map("departments")
 }
@@ -228,6 +231,12 @@ model User {
   createdAt       DateTime   @default(now())
 
   organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Prisma modeluje tu zwykły FK (departmentId -> departments.id, SET NULL).
+  // Dodatkowo migracja 20260919130000_user_department_same_organization dodała
+  // złożony FK users_organizationId_departmentId_fkey (NO ACTION), który
+  // wymusza, że dział należy do TEJ SAMEJ organizacji - Prisma nie potrafi go
+  // wyrazić (opcjonalna kolumna w złożonej relacji), więc istnieje tylko w SQL.
+  // NIE usuwaj go przy generowaniu kolejnych migracji (`migrate dev`).
   department              Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   courseAssignments       CourseAssignment[]
   passwordResetTokens     PasswordResetToken[]

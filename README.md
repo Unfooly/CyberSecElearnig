@@ -233,6 +233,21 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
   (`apps/api` NIE kopiuje `apps/web/package.json` i odwrotnie) — inaczej `npm ci` hoistowałby do
   wspólnego `node_modules` zależności drugiej aplikacji (np. cały Next.js do obrazu backendu).
 
+## Backlog bazy danych (izolacja tenantów)
+
+- **Constrainty spoza `schema.prisma`.** Prisma nie potrafi wyrazić: partial unique index
+  `organization_domains_domain_verified_key` oraz złożonego FK `users_organizationId_departmentId_fkey`
+  (opcjonalna kolumna w złożonej relacji). Istnieją tylko w migracjach SQL, a `prisma migrate diff` /
+  `migrate dev` pokazuje złożony FK jako „do usunięcia”. **Przy generowaniu nowej migracji przez
+  `migrate dev` ręcznie usuń z niej `DROP CONSTRAINT users_organizationId_departmentId_fkey`.**
+- **Zwykłe FK na `users(id)` bez sprawdzenia organizacji.** `course_assignments.userId`,
+  `user_badges.userId`, `password_reset_tokens.userId` i `email_verification_tokens.userId` mają
+  kolumnę `organizationId`, ale FK tylko na `users(id)` (FK omijają RLS), więc baza nie pilnuje, że
+  użytkownik jest z tej samej organizacji. Ta sama luka została domknięta na `legal_acceptances` i
+  `users.departmentId`. Do zrobienia jedną migracją: złożone FK `(organizationId, userId) ->
+  users(organizationId, id)` (`ON UPDATE NO ACTION`; indeks unikalny na `users` już istnieje;
+  kolumny `userId` są wymagane, więc Prisma może wyrazić relację normalnie).
+
 ## Backlog CI/CD
 
 - **Testy e2e (w tym RLS / izolacja tenantów) nie działają w CI.** Workflow `build-images`

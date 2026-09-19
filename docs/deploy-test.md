@@ -255,6 +255,14 @@ prawdziwych klientów).
 - [ ] **Wdrożenie z obrazu po etapie 5 lub nowszego** - nigdy z obrazu etapu 2 (patrz uwaga w sekcji 5).
 - [ ] **Domena nadawcy e-mail** własna i zweryfikowana w MailerSend (SPF, DKIM, DMARC); kampanie phishingowe z
   OSOBNEJ domeny niż e-maile transakcyjne (`CLAUDE.md`). Trial-owa domena MailerSend nie wystarcza.
+- [ ] **Symulacje phishingowe - nadawca i strona lądowania** (warunek blokujący włączenia kampanii):
+  - domena nadawcy (`PHISHING_EMAIL_DOMAIN`) ma zweryfikowane **SPF, DKIM i DMARC** u dostawcy transportu i nie
+    pokrywa się z domeną `EMAIL_FROM` ani hostem `FRONTEND_URL` (API blokuje transport na produkcji przy
+    pokrywaniu: `GET /phishing/config` pokazuje `reason`),
+  - ustawione `PHISHING_MAIL_TRANSPORT` (mailersend/smtp; `log` jest na produkcji zabroniony) i **własny**
+    `PHISHING_MAILERSEND_API_TOKEN` (albo `PHISHING_SMTP_URL`),
+  - `PHISHING_LANDING_BASE_URL` wskazuje **osobną domenę** strony lądowania (`https://`), routowaną do web; bez tego
+    reputacja domeny aplikacji zależy od linków z symulacji.
 - [ ] **Scenariusz ręczny** z `docs/e2e-registration.md` przeszedł na środowisku z prawdziwym MailerSend i DNS
   (rejestracja -> mail -> hasło -> rekord TXT -> odblokowanie -> sprzątanie).
 - [ ] **Sekrety i tryby deweloperskie wyłączone:** brak `ALLOW_EMAIL_DEV_MODE`, ustawiony `MAILERSEND_API_TOKEN` i

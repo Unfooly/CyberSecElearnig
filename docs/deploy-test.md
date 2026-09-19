@@ -245,8 +245,10 @@ prawdziwych klientów).
   - nie zawierają żadnych `[DO UZUPEŁNIENIA]` (`grep -r "DO UZUPE" apps/web/src` zwraca pusto),
   - nie mają `noindex` (usuń `robots: { index: false, follow: false }` z ich `metadata`) i nie mają żółtego
     banera „wersja robocza” (`LegalPage`),
-  - zgody zebrane na wersję `draft-1` są traktowane jako nieważne dla nowej wersji (decyzja: ponowna akceptacja
-    przy pierwszym logowaniu albo usunięcie kont testowych).
+  - **Wszystkie organizacje testowe są skasowane przed startem** (na VPS: `docker compose --env-file .env.prod -f
+    docker-compose.prod.yml down -v`, czyli świeża baza z migracji) - żadna zgoda na wersję roboczą `draft-1` nie
+    przechodzi na produkcję. Sprawdź po starcie: `select count(*) from legal_acceptances where version = 'draft-1'`
+    (na produkcji musi zwrócić 0).
 - [ ] **Checklista polityki prywatności** (`docs/legal/privacy-policy-checklist.md`) przejrzona z prawnikiem/IOD,
   a wszystkie pozycje odzwierciedlone w polityce.
 - [ ] **Wdrożenie z obrazu po etapie 5 lub nowszego** - nigdy z obrazu etapu 2 (patrz uwaga w sekcji 5).

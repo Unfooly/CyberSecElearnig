@@ -270,6 +270,11 @@ Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7
   potwierdzenia skrzynki, roli domyślnej, limitu licencji i akceptacji przez admina.
 - **Planowane (nie budować przed decyzją):** SSO Microsoft (Entra ID) jako uzupełnienie potwierdzania domeny i
   logowania; fakturowanie w Stripe z danych `organization_billing_details`.
+- **Ponowna akceptacja dokumentów przy logowaniu (nie teraz).** Gdy `LEGAL_DOCUMENT_VERSION` jest nowsza niż wersja
+  zaakceptowana przez użytkownika (`legal_acceptances`), po zalogowaniu trzeba pokazać ekran akceptacji nowych
+  dokumentów i zablokować resztę aż do zapisania nowej zgody. Potrzebne przy każdej przyszłej zmianie regulaminu
+  lub polityki; wymaga: sprawdzenia wersji w API (guard albo pole w odpowiedzi logowania), endpointu zapisu zgody,
+  ekranu w `apps/web` i decyzji, kto akceptuje w imieniu organizacji (każdy użytkownik czy tylko admin).
 - **Strony prawne.** `/regulamin`, `/polityka-prywatnosci`, `/bezpieczenstwo` mają placeholdery i `noindex`, a zgody
   zapisują wersję `draft-1`. Warunek startu publicznego: patrz „Checklista startu produkcyjnego” w
   `docs/deploy-test.md` i `docs/legal/privacy-policy-checklist.md`.

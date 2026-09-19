@@ -57,14 +57,42 @@ enum UserStatus {
   INVITED
 }
 
+// Stan organizacji w modelu samoobsługowym. PENDING_DOMAIN_VERIFICATION =
+// firma się zarejestrowała, ale nie potwierdziła jeszcze domeny e-maila admina
+// rekordem DNS TXT (OrganizationDomain) - do tego czasu API blokuje wszystko
+// poza ekranem weryfikacji i ustawieniami (guard fail-closed, osobny commit).
+enum OrganizationStatus {
+  PENDING_DOMAIN_VERIFICATION
+  ACTIVE
+}
+
+enum LegalDocumentType {
+  TERMS
+  PRIVACY_POLICY
+}
+
 model Organization {
   id         String   @id @default(cuid())
   // Unikalna - nazwa jest domeną e-maila (AuthService.deriveOrganizationNameFromEmail),
   // więc unikalność wymusza jedną organizację na domenę i zamyka TOCTOU
   // przy równoległej rejestracji (ten sam wzorzec co unikalny User.email).
+  // TYMCZASOWO: unikalność znika razem ze zmianą rejestracji (nazwa wyświetlana
+  // nie będzie już wyprowadzana z domeny) - patrz następny etap tego zadania.
   name       String   @unique
   plan       Plan     @default(TRIAL)
   seatsLimit Int      @default(10)
+  // TYMCZASOWO domyślnie ACTIVE (istniejące organizacje zostają ACTIVE bez
+  // weryfikacji domeny). Domyślna wartość zmienia się na
+  // PENDING_DOMAIN_VERIFICATION (fail-closed) razem z nową rejestracją, która
+  // tworzy wiersz OrganizationDomain - inaczej stary kod rejestracji tworzyłby
+  // organizacje PENDING bez możliwości weryfikacji.
+  status                  OrganizationStatus @default(ACTIVE)
+  // Zweryfikowana domena pozwala włączyć "pracownicy z adresem @domena mogą sami
+  // dołączyć". Tu tylko przełącznik - sam przepływ dołączania to osobne zadanie.
+  selfJoinEnabled         Boolean            @default(false)
+  // Ustawiane raz, gdy job sprzątania wysłał ostrzeżenie o usunięciu
+  // niezweryfikowanej organizacji (po 7 dniach) - chroni przed duplikatami maila.
+  unverifiedWarningSentAt DateTime?
   createdAt  DateTime @default(now())
 
   users                   User[]
@@ -73,8 +101,86 @@ model Organization {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   userBadges              UserBadge[]
+  domains                 OrganizationDomain[]
+  billingDetails          OrganizationBillingDetails?
+  legalAcceptances        LegalAcceptance[]
 
+  // Job sprzątania szuka organizacji PENDING starszych niż N dni.
+  @@index([status, createdAt])
   @@map("organizations")
+}
+
+// Domena e-maila admina do weryfikacji rekordem DNS TXT:
+//   _unfooly-verify.<domain> = "unfooly-verify=<verificationToken>"
+// verificationToken NIE jest sekretem (wartość i tak trafia do publicznego DNS),
+// ale jest losowy (nieodgadywalny).
+//
+// Unikalność domeny tylko wśród ZWERYFIKOWANYCH: partial unique index
+// "organization_domains_domain_verified_key" (WHERE "verifiedAt" IS NOT NULL) -
+// Prisma nie potrafi go wyrazić, więc żyje wyłącznie w migracji SQL. Kilka
+// organizacji może czekać na tę samą domenę; wygrywa pierwsza zweryfikowana.
+model OrganizationDomain {
+  id                String    @id @default(cuid())
+  organizationId    String
+  // Znormalizowana: małe litery, punycode, bez końcowej kropki.
+  domain            String
+  verificationToken String
+  verifiedAt        DateTime?
+  // Ostatnie kliknięcie "Sprawdź teraz" - cooldown per organizacja.
+  lastCheckedAt     DateTime?
+  createdAt         DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domain])
+  @@index([organizationId])
+  @@index([domain])
+  @@map("organization_domains")
+}
+
+// Dane do faktury (dane firmowe i osobowe). Osobna tabela zamiast kolumn na
+// Organization: `organizations` jest globalna (bez RLS), a NIP i adres muszą
+// podlegać Zasadzie nr 1 (organizationId + RLS + FORCE). Na start tylko PL:
+// country jest stałe "PL" (CHECK w migracji), NIP z sumą kontrolną sprawdza
+// aplikacja, kod pocztowy NN-NNN wymusza CHECK.
+model OrganizationBillingDetails {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  legalName      String   @db.VarChar(255)
+  // 10 cyfr, bez myślników.
+  taxId          String   @db.VarChar(10)
+  // Ulica i numer.
+  addressLine    String   @db.VarChar(255)
+  postalCode     String   @db.VarChar(6)
+  city           String   @db.VarChar(120)
+  country        String   @default("PL") @db.VarChar(2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_billing_details")
+}
+
+// Dowód zgody (regulamin, polityka prywatności) z wersją dokumentu - przy
+// zmianie treści da się wykazać, którą wersję kto zaakceptował. Świadomie bez
+// adresu IP (dodatkowa dana osobowa).
+model LegalAcceptance {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String
+  documentType   LegalDocumentType
+  // np. "draft-1" (do czasu dostarczenia treści prawnych).
+  version        String            @db.VarChar(40)
+  acceptedAt     DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (patrz migracja).
+  user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([userId, documentType, version])
+  @@index([organizationId])
+  @@map("legal_acceptances")
 }
 
 model Department {
@@ -127,7 +233,10 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   unlockedBadges          UserBadge[]
+  legalAcceptances        LegalAcceptance[]
 
+  // Cel złożonego FK z LegalAcceptance (użytkownik tej samej organizacji).
+  @@unique([organizationId, id])
   @@index([organizationId])
   @@index([departmentId])
   @@map("users")

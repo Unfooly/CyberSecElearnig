@@ -261,6 +261,28 @@ Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zr
 - **Formularz w `apps/web` (do etapu 5).** BFF i strona rejestracji wysyłają jeszcze tylko
   e-mail + hasło, więc rejestracja z UI zwraca 400, dopóki nie powstanie nowy formularz.
 
+## Zadania w tle (BullMQ, `apps/api/src/jobs/`)
+
+Jeden worker BullMQ w procesie API (Redis z `REDIS_URL`), kolejka `maintenance`. Nowe zadanie cykliczne
+(np. OVERDUE, kampanie) rejestruje się w `onModuleInit` swojego modułu przez
+`JobsService.registerRecurring({ name, cron, handler })` - harmonogram to idempotentny upsert, więc wiele
+instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 próby, backoff 60 s).
+
+- **Sprzątanie organizacji PENDING** (`pending-organization-cleanup`, codziennie 03:00 UTC): po 7 dniach
+  jeden mail do adminów (slot `unverifiedWarningSentAt` zajmowany atomowo), po 14 dniach usunięcie
+  organizacji z danymi (kaskadowo). ACTIVE nigdy nie jest ruszana. Usunięcie następuje między 14. a 15. dniem
+  (bieg raz na dobę), a mail podaje datę `createdAt + 14 dni`.
+- **Semantyka „co najwyżej raz”:** awaria procesu między zajęciem slotu a wysyłką gubi ostrzeżenie
+  (świadomie - alternatywą są duplikaty). Błąd wysyłki do WSZYSTKICH adminów zwalnia slot (ponowienie
+  następnego dnia); gdy choć jeden admin dostał mail, slot zostaje.
+- **Redis niedostępny:** API startuje normalnie, start workera jest ponawiany co 30 s (błędy w logach).
+- **Konfiguracja:** `BACKGROUND_JOBS_ENABLED` (domyślnie włączone poza `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`
+  (prefiks kluczy Redis, domyślnie `unfooly`). Zamknięcie (`SIGTERM`) dokańcza trwające zadanie (do 30 s).
+- **Testy** `jobs.e2e-spec.ts` wymagają Redisa (`REDIS_URL`, domyślnie `localhost:6379`); e2e nie jest jeszcze w CI
+  (patrz „Backlog CI/CD”). `jest-e2e.json` ma `forceExit`, bo test „Redis niedostępny” zostawia timery ioredis.
+- **Kaskada usuwania:** nowa tabela z `organizationId` MUSI mieć `onDelete: Cascade` do `organizations`,
+  inaczej sprzątanie nie usunie organizacji (błąd jest logowany, organizacja zostaje).
+
 ## Backlog bazy danych (izolacja tenantów)
 
 - **Constrainty spoza `schema.prisma`.** Prisma nie potrafi wyrazić: partial unique index

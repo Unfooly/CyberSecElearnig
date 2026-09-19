@@ -123,6 +123,23 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Nowa prośba o demo. E-mail: ${plain(data.email)}, liczba pracowników: ${plain(data.employeeCount)}`,
   }),
+  // Ostrzeżenie w 7. dniu: organizacja nadal czeka na weryfikację domeny i
+  // zostanie usunięta razem z danymi w 14. dniu od rejestracji.
+  'pending-organization-warning': (data, options) => {
+    const org = plain(data.organizationName ?? 'Twoja organizacja');
+    const deleteOn = plain(data.deleteOn ?? '');
+    return {
+      html: layout(
+        'Dokończ weryfikację domeny',
+        `<p>Organizacja <strong>${escapeHtml(org)}</strong> nadal czeka na weryfikację domeny e-mail. ` +
+          `Jeśli nie zostanie dokończona do <strong>${escapeHtml(deleteOn)}</strong>, organizacja i wszystkie jej dane zostaną trwale usunięte.</p>` +
+          '<p>Zaloguj się i dodaj rekord DNS wskazany na ekranie weryfikacji. Jeśli nie ustawiono jeszcze hasła, użyj opcji „Zapomniałeś hasła?”.</p>',
+        { label: 'Dokończ weryfikację', url: String(data.loginUrl) },
+        options,
+      ),
+      text: `Organizacja ${org} nadal czeka na weryfikację domeny e-mail. Bez weryfikacji do ${deleteOn} zostanie usunięta wraz z danymi. Zaloguj się: ${String(data.loginUrl)}`,
+    };
+  },
   'user-invite': (data, options) => {
     const org = plain(data.organizationName ?? 'organizacji');
     const inviter = data.invitedBy ? plain(data.invitedBy) : null;

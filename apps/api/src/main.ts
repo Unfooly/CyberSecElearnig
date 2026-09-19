@@ -13,6 +13,10 @@ async function bootstrap() {
     }),
   );
 
+  // SIGTERM/SIGINT (Docker, ECS) => onModuleDestroy: worker BullMQ dokańcza
+  // trwające zadanie, Prisma zamyka połączenia.
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
 }

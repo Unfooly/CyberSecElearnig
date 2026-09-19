@@ -20,9 +20,9 @@ describe('Dashboard i raporty (e2e)', () => {
   // domena), więc dwie organizacje w jednym pliku testowym potrzebują dwóch
   // różnych domen. Pracownicy/super-admin poniżej są tworzeni bezpośrednio
   // w bazie (nie przez /auth/register), więc mogą zostać na wspólnej domenie
-  // dashboard-e2e-test.local bez kolizji z tym constraintem.
-  const orgAEmail = `admin-a-${uniqueSuffix}@org-a.dashboard-e2e-test.local`;
-  const orgBEmail = `admin-b-${uniqueSuffix}@org-b.dashboard-e2e-test.local`;
+  // dashboard-e2e-test.test bez kolizji z tym constraintem.
+  const orgAEmail = `admin-a-${uniqueSuffix}@org-a.dashboard-e2e-test.test`;
+  const orgBEmail = `admin-b-${uniqueSuffix}@org-b.dashboard-e2e-test.test`;
 
   let orgAId: string;
   let orgBId: string;
@@ -133,7 +133,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee1 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee1-${uniqueSuffix}@dashboard-e2e-test.local`,
+          email: `employee1-${uniqueSuffix}@dashboard-e2e-test.test`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
           departmentId: department.id,
@@ -142,7 +142,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee2 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee2-${uniqueSuffix}@dashboard-e2e-test.local`,
+          email: `employee2-${uniqueSuffix}@dashboard-e2e-test.test`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
           departmentId: department.id,
@@ -151,7 +151,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const employee3 = await tx.user.create({
         data: {
           organizationId: orgAId,
-          email: `employee3-${uniqueSuffix}@dashboard-e2e-test.local`,
+          email: `employee3-${uniqueSuffix}@dashboard-e2e-test.test`,
           passwordHash: 'unused-in-tests',
           role: 'EMPLOYEE',
         },
@@ -248,7 +248,7 @@ describe('Dashboard i raporty (e2e)', () => {
       const superAdmin = await tx.user.create({
         data: {
           organizationId: orgBId,
-          email: `super-admin-${uniqueSuffix}@dashboard-e2e-test.local`,
+          email: `super-admin-${uniqueSuffix}@dashboard-e2e-test.test`,
           passwordHash: 'unused-in-tests',
           role: 'SUPER_ADMIN',
         },
@@ -269,7 +269,7 @@ describe('Dashboard i raporty (e2e)', () => {
       where: { id: { in: [courseMandatory1Id, courseMandatory2Id, courseOptionalId] } },
     });
     await prisma.organization.deleteMany({
-      where: { name: { endsWith: 'dashboard-e2e-test.local' } },
+      where: { name: { endsWith: 'dashboard-e2e-test.test' } },
     });
     await app.close();
   });
@@ -395,16 +395,16 @@ describe('Dashboard i raporty (e2e)', () => {
       // data ukończenia kursu obowiązkowego.
       expect(adminARow).toContain(laterOptionalCompletionIso);
       expect(
-        lines.find((line) => line.startsWith(`employee1-${uniqueSuffix}@dashboard-e2e-test.local,`)),
+        lines.find((line) => line.startsWith(`employee1-${uniqueSuffix}@dashboard-e2e-test.test,`)),
       ).toContain('2/2');
       const employee2Row = lines.find((line) =>
-        line.startsWith(`employee2-${uniqueSuffix}@dashboard-e2e-test.local,`),
+        line.startsWith(`employee2-${uniqueSuffix}@dashboard-e2e-test.test,`),
       );
       expect(employee2Row).toContain('0/2');
       // employee2 nic nie ukończył - ostatnia kolumna musi zostać pusta,
       // nie zmyślona.
       expect(employee2Row).toBe(
-        `employee2-${uniqueSuffix}@dashboard-e2e-test.local,IT ${uniqueSuffix},0/2,`,
+        `employee2-${uniqueSuffix}@dashboard-e2e-test.test,IT ${uniqueSuffix},0/2,`,
       );
       // Organizacja B (adminB) nie może wyciekać do eksportu organizacji A.
       expect(response.text).not.toContain(orgBEmail);
@@ -497,7 +497,7 @@ describe('Dashboard i raporty (e2e)', () => {
   });
 
   describe('GET /dashboard/users-status', () => {
-    const emailOf = (n: number) => `employee${n}-${uniqueSuffix}@dashboard-e2e-test.local`;
+    const emailOf = (n: number) => `employee${n}-${uniqueSuffix}@dashboard-e2e-test.test`;
 
     it('zwraca pracowników organizacji A z podsumowaniem obowiązkowych kursów i statusem zgodności', async () => {
       const response = await request(app.getHttpServer())

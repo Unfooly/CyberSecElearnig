@@ -240,6 +240,11 @@ Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zr
 - ~~Pre-hijacking konta~~ - **rozwiązane w etapie 3**: rejestracja nie przyjmuje hasła; admin powstaje
   jako `INVITED` z losowym hashem zastępczym, a mail „ustaw hasło” (link 24 h do `/reset-password`)
   jednocześnie potwierdza skrzynkę. Atakujący nie zna żadnego hasła do konta ofiary.
+- **Unieważnianie linku aktywacyjnego przez osoby trzecie (uciążliwość, nie przejęcie).** Nowy link
+  (`register`, `resend-verification`, `forgot-password`) kasuje poprzedni nieużyty token, więc ktoś
+  obcy może powtarzalnie prosić o link dla adresu ofiary i unieważniać jej ważny link 24 h. Limit:
+  1 mail/skrzynka/10 min (w pamięci) + 10/min/IP. Docelowo: limiter w Redis, ewentualnie nie kasować
+  tokenu, który ma jeszcze >1 h ważności.
 - **Limiter maili rejestracji w pamięci procesu.** Działa per instancja, znika po restarcie, a przy
   zalewie >5000 adresami wypiera najstarsze wpisy. Docelowo Redis (`SET NX EX`) razem z
   infrastrukturą BullMQ (etap z jobem sprzątania). Klucz już ignoruje aliasy `+tag`.

@@ -1,4 +1,4 @@
-import { isPublicEmailDomain, isValidNip, normalizeNip, PUBLIC_EMAIL_DOMAINS } from '@cyberszkolo/shared';
+import { hasInternalTld, isPublicEmailDomain, isValidNip, normalizeNip, PUBLIC_EMAIL_DOMAINS } from '@cyberszkolo/shared';
 
 // Reguły z @cyberszkolo/shared współdzielone z frontendem - testowane tu, bo
 // pakiet shared nie ma własnego runnera testów.
@@ -28,6 +28,16 @@ describe('NIP (suma kontrolna)', () => {
     expect(normalizeNip('526-025-02-74')).toBe('5260250274');
     expect(normalizeNip('PL 5260250274')).toBe('5260250274');
     expect(normalizeNip('123')).toBeNull();
+  });
+});
+
+describe('TLD sieci wewnętrznych', () => {
+  it.each(['firma.local', 'srv.firma.internal', 'ad.corp', 'router.lan'])('%s jest odrzucana', (domain) => {
+    expect(hasInternalTld(domain)).toBe(true);
+  });
+
+  it.each(['firma.pl', 'local.pl', 'internal.firma.com', 'corp.io'])('%s nie jest odrzucana', (domain) => {
+    expect(hasInternalTld(domain)).toBe(false);
   });
 });
 

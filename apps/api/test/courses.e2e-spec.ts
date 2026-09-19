@@ -15,8 +15,8 @@ describe('Kursy e-learningowe (e2e)', () => {
   // Osobne domeny dla A/B - organizations.name jest teraz unikalne (nazwa =
   // domena), więc dwie organizacje w jednym pliku testowym potrzebują dwóch
   // różnych domen, nie tylko różnych lokalnych części e-maila.
-  const orgAEmail = `courses-a-${uniqueSuffix}@org-a.courses-e2e-test.local`;
-  const orgBEmail = `courses-b-${uniqueSuffix}@org-b.courses-e2e-test.local`;
+  const orgAEmail = `courses-a-${uniqueSuffix}@org-a.courses-e2e-test.test`;
+  const orgBEmail = `courses-b-${uniqueSuffix}@org-b.courses-e2e-test.test`;
 
   let orgAId: string;
   let orgAToken: string;
@@ -131,8 +131,8 @@ describe('Kursy e-learningowe (e2e)', () => {
   afterAll(async () => {
     await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, sequenceCourseId] } } });
     await prisma.course.deleteMany({ where: { id: { in: [courseId, sequenceCourseId] } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: 'courses-e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { endsWith: 'courses-e2e-test.local' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'courses-e2e-test.test' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'courses-e2e-test.test' } } });
     await app.close();
   });
 

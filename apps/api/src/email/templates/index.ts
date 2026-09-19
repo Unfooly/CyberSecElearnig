@@ -88,11 +88,16 @@ const renderers: Record<string, Renderer> = {
   'registration-activation': (data, options) => ({
     html: layout(
       'Potwierdź adres e-mail i ustaw hasło',
-      '<p>Dziękujemy za rejestrację firmy w Unfooly. Kliknij przycisk, aby potwierdzić adres e-mail i ustawić hasło do konta. Link jest ważny 24 godziny.</p>',
+      (data.organizationName
+        ? `<p>Ten adres e-mail podano przy rejestracji firmy <strong>${escapeHtml(data.organizationName)}</strong> w Unfooly. Jeśli to Ty, kliknij przycisk, aby potwierdzić adres i ustawić hasło do konta. Link jest ważny 24 godziny.</p>` +
+          '<p>Jeśli nie rejestrowałeś(-aś) tej firmy, zignoruj tę wiadomość - bez kliknięcia w link konto pozostanie nieaktywne.</p>'
+        : '<p>Dziękujemy za rejestrację firmy w Unfooly. Kliknij przycisk, aby potwierdzić adres e-mail i ustawić hasło do konta. Link jest ważny 24 godziny.</p>'),
       { label: 'Potwierdź adres i ustaw hasło', url: String(data.activationUrl) },
       options,
     ),
-    text: `Potwierdź adres e-mail i ustaw hasło (link ważny 24 godziny): ${String(data.activationUrl)}`,
+    text: data.organizationName
+      ? `Ten adres e-mail podano przy rejestracji firmy ${String(data.organizationName)} w Unfooly. Jeśli to Ty, potwierdź adres i ustaw hasło (link ważny 24 godziny): ${String(data.activationUrl)}. Jeśli nie rejestrowałeś(-aś) tej firmy, zignoruj wiadomość.`
+      : `Potwierdź adres e-mail i ustaw hasło (link ważny 24 godziny): ${String(data.activationUrl)}`,
   }),
   // Rejestracja na adres, który ma już konto: mail do WŁAŚCICIELA adresu (w UI
   // nic się nie zmienia - anty-enumeracja). Nie zawiera żadnych danych z

@@ -151,6 +151,13 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 
 ## 5. Kolejne wdrożenia
 
+> **Uwaga - kolejność wdrożenia modelu samoobsługowej rejestracji firmy.** Wdrożenie na VPS ma iść
+> bezpośrednio z obrazu zbudowanego **po etapie 5** (formularz rejestracji bez hasła + ekran
+> weryfikacji domeny), **nigdy z obrazu etapu 2** (commit `49857e2`). Etap 2 tworzył admina ze
+> statusem ACTIVE i hasłem z formularza (pre-hijacking); od etapu 3 rejestracja jest bezpieczna, ale
+> dopiero po etapie 5 użytkownik ma w UI komplet ekranów. Produkcja jest dziś na obrazie sprzed
+> etapu 1 i bez kont z pośrednich etapów.
+
 Najpierw poczekaj, aż workflow **build-images** dla Twojego commita będzie zielony (zakładka
 Actions w repozytorium). Potem na VPS:
 

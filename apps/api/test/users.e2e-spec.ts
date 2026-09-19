@@ -15,8 +15,8 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
 
   const uniqueSuffix = Date.now();
   // Osobne domeny dla A/B - organizations.name jest unikalne (nazwa = domena).
-  const orgAEmail = `admin-a-${uniqueSuffix}@org-a.users-e2e-test.local`;
-  const orgBEmail = `admin-b-${uniqueSuffix}@org-b.users-e2e-test.local`;
+  const orgAEmail = `admin-a-${uniqueSuffix}@org-a.users-e2e-test.test`;
+  const orgBEmail = `admin-b-${uniqueSuffix}@org-b.users-e2e-test.test`;
 
   let orgAId: string;
   let orgBId: string;
@@ -63,8 +63,8 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany({ where: { email: { endsWith: 'users-e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { endsWith: 'users-e2e-test.local' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'users-e2e-test.test' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'users-e2e-test.test' } } });
     await app.close();
   });
 
@@ -90,7 +90,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
         .send({
-          email: `cross-org-invite-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `cross-org-invite-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'Jan',
           lastName: 'Kowalski',
           departmentId: orgBDepartmentId,
@@ -124,7 +124,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
     });
 
     it('odrzuca dostęp bez roli ORG_ADMIN (EMPLOYEE nie może zapraszać)', async () => {
-      const employeeEmail = `employee-${uniqueSuffix}@org-a.users-e2e-test.local`;
+      const employeeEmail = `employee-${uniqueSuffix}@org-a.users-e2e-test.test`;
       const { activationUrl } = await captureInviteActivationUrl(() =>
         request(app.getHttpServer())
           .post('/users/invite')
@@ -159,7 +159,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${employeeTokenResponse.body.accessToken}`)
         .send({
-          email: `should-fail-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `should-fail-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'X',
           lastName: 'Y',
           role: 'EMPLOYEE',
@@ -210,7 +210,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
         .send({
-          email: `phish-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `phish-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'Konto zablokowane: kliknij http://zly.pl',
           lastName: 'Kowalski',
           role: 'EMPLOYEE',
@@ -223,7 +223,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
         .send({
-          email: `nazwisko-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `nazwisko-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'Zażółć',
           lastName: "Gęślą-O'Brien",
           role: 'EMPLOYEE',
@@ -238,7 +238,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
         .send({
-          email: `adrian.poźniak-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `adrian.poźniak-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'A',
           lastName: 'B',
           role: 'EMPLOYEE',
@@ -247,7 +247,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
     });
 
     it('resend-invite: działa dla zaproszonego, odrzuca aktywnego i konto innej organizacji', async () => {
-      const email = `resend-${uniqueSuffix}@org-a.users-e2e-test.local`;
+      const email = `resend-${uniqueSuffix}@org-a.users-e2e-test.test`;
       const invited = await request(app.getHttpServer())
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
@@ -314,7 +314,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
     });
 
     it('normalizuje e-mail zaproszenia do małych liter (brak duplikatów wielkością liter)', async () => {
-      const email = `Case-${uniqueSuffix}@org-a.users-e2e-test.local`;
+      const email = `Case-${uniqueSuffix}@org-a.users-e2e-test.test`;
       const first = await request(app.getHttpServer())
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
@@ -332,7 +332,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
 
   describe('Zapraszanie pojedynczego użytkownika', () => {
     it('happy path: invite tworzy usera ze statusem INVITED, aktywacja przez /auth/reset-password przełącza na ACTIVE i pozwala się zalogować', async () => {
-      const inviteEmail = `invite-happy-${uniqueSuffix}@org-a.users-e2e-test.local`;
+      const inviteEmail = `invite-happy-${uniqueSuffix}@org-a.users-e2e-test.test`;
 
       const { response, activationUrl } = await captureInviteActivationUrl(() =>
         request(app.getHttpServer())
@@ -373,7 +373,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
         .post('/users/invite')
         .set('Authorization', `Bearer ${orgAToken}`)
         .send({
-          email: `super-admin-attempt-${uniqueSuffix}@org-a.users-e2e-test.local`,
+          email: `super-admin-attempt-${uniqueSuffix}@org-a.users-e2e-test.test`,
           firstName: 'X',
           lastName: 'Y',
           role: 'SUPER_ADMIN',
@@ -393,7 +393,7 @@ describe('Zarządzanie i zapraszanie pracowników (e2e)', () => {
           await tx.user.create({
             data: {
               organizationId: orgAId,
-              email: `${firstName.toLowerCase()}-${uniqueSuffix}@org-a.users-e2e-test.local`,
+              email: `${firstName.toLowerCase()}-${uniqueSuffix}@org-a.users-e2e-test.test`,
               passwordHash: 'unused-in-tests',
               firstName,
               lastName,

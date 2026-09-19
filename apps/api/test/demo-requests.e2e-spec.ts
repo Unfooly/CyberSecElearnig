@@ -10,7 +10,7 @@ describe('POST /demo-requests (e2e, endpoint publiczny)', () => {
   const send = jest.fn().mockResolvedValue(true);
 
   beforeAll(async () => {
-    process.env.SALES_EMAIL = 'sprzedaz@demo-e2e.local';
+    process.env.SALES_EMAIL = 'sprzedaz@demo-e2e.test';
     const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(EmailService)
       .useValue({ send })
@@ -44,7 +44,7 @@ describe('POST /demo-requests (e2e, endpoint publiczny)', () => {
 
     expect(response.body.message).toMatch(/Dziękujemy/);
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'sprzedaz@demo-e2e.local', templateData: { email: 'jan@firma.pl', employeeCount: 120 } }),
+      expect.objectContaining({ to: 'sprzedaz@demo-e2e.test', templateData: { email: 'jan@firma.pl', employeeCount: 120 } }),
     );
   });
 

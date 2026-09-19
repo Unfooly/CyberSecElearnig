@@ -19,7 +19,7 @@ describe('Rejestracja firmy (e2e)', () => {
   let sendSpy: jest.SpyInstance;
 
   const suffix = Date.now();
-  const domainSuffix = 'registration-e2e.local';
+  const domainSuffix = 'registration-e2e.test';
   const email = (label: string) => `${label}-${suffix}@${label}.${domainSuffix}`;
   // Wszystkie nazwy kończą się sufiksem - afterAll sprząta po nazwie.
   const orgName = (label: string) => `Firma ${label}.${domainSuffix}`;
@@ -254,6 +254,31 @@ describe('Rejestracja firmy (e2e)', () => {
         expect(sendSpy).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('domeny wewnętrzne i treść maila aktywacyjnego', () => {
+    it.each(['firma.local', 'srv.firma.internal', 'ad.corp', 'router.lan'])('%s => 400 INVALID_EMAIL_DOMAIN, nic nie powstaje', async (domain) => {
+      const response = await postRegister(app, `ktos-${suffix}@${domain}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('INVALID_EMAIL_DOMAIN');
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
+    it('mail aktywacyjny zawiera nazwę firmy (escapowaną) - ofiara rozpozna cudzą rejestrację', async () => {
+      const adminEmail = email('mailname');
+      const name = `Firma <b>"Ofiary"</b> & Syn ${domainSuffix}`;
+
+      await postRegister(app, adminEmail, { organizationName: name });
+
+      const call = sendSpy.mock.calls.find(([opts]) => opts.templateName === 'registration-activation')![0];
+      expect(call.templateData).toMatchObject({ organizationName: name });
+      const { renderTemplate } = await import('../src/email/templates');
+      const rendered = renderTemplate('registration-activation', call.templateData as Record<string, unknown>)!;
+      expect(rendered.html).toContain('Firma &lt;b&gt;');
+      expect(rendered.html).not.toContain('<b>"Ofiary"');
+      expect(rendered.text).toContain(name);
+    });
   });
 
   describe('anty-enumeracja', () => {

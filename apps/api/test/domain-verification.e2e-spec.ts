@@ -28,7 +28,7 @@ describe('Weryfikacja domeny i guard PENDING (e2e)', () => {
   const resolveTxt = jest.fn<Promise<string[][]>, [string]>();
 
   const suffix = Date.now();
-  const domainSuffix = 'domain-e2e.local';
+  const domainSuffix = 'domain-e2e.test';
   const email = (label: string) => `${label}-${suffix}@${label}.${domainSuffix}`;
 
   beforeAll(async () => {

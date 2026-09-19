@@ -14,7 +14,7 @@ describe('Organizacja: fundament modelu samoobsługowego (e2e, RLS + constraints
   let tenantPrisma: TenantPrismaService;
 
   const suffix = Date.now();
-  const domainSuffix = 'foundation-e2e.local';
+  const domainSuffix = 'foundation-e2e.test';
   let orgAId: string;
   let orgBId: string;
   let userAId: string;

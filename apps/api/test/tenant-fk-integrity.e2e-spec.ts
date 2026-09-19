@@ -13,7 +13,7 @@ describe('Integralność między organizacjami: users.departmentId (e2e)', () =>
   let tenantPrisma: TenantPrismaService;
 
   const suffix = Date.now();
-  const domainSuffix = 'fk-integrity-e2e.local';
+  const domainSuffix = 'fk-integrity-e2e.test';
   let orgBId: string;
   let userBId: string;
   let deptAId: string;

@@ -64,6 +64,17 @@ export const PUBLIC_EMAIL_DOMAINS: readonly string[] = [
 
 const PUBLIC_EMAIL_DOMAIN_SET = new Set(PUBLIC_EMAIL_DOMAINS);
 
+// TLD sieci wewnętrznych: nie da się na nich udowodnić własności domeny w
+// publicznym DNS, a weryfikacja odpytywałaby wewnętrzny DNS serwera.
+export const INTERNAL_TLDS: readonly string[] = ['local', 'internal', 'corp', 'lan'];
+
+const INTERNAL_TLD_SET = new Set(INTERNAL_TLDS);
+
+/** Oczekuje domeny znormalizowanej (małe litery, ASCII/punycode, bez końcowej kropki). */
+export function hasInternalTld(domain: string): boolean {
+  return INTERNAL_TLD_SET.has(domain.slice(domain.lastIndexOf('.') + 1));
+}
+
 /** Oczekuje domeny znormalizowanej (małe litery, ASCII/punycode, bez końcowej kropki). */
 export function isPublicEmailDomain(domain: string): boolean {
   return PUBLIC_EMAIL_DOMAIN_SET.has(domain);

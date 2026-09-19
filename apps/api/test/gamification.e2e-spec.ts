@@ -16,9 +16,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
   // bo organizations.name jest teraz unikalne (nazwa = domena). orgAUser2Email
   // jest tworzony bezpośrednio w bazie (nie przez register), więc może zostać
   // na domenie organizacji A bez kolizji.
-  const orgAUser1Email = `gami-a1-${uniqueSuffix}@org-a.gami-e2e-test.local`;
-  const orgAUser2Email = `gami-a2-${uniqueSuffix}@org-a.gami-e2e-test.local`;
-  const orgBUserEmail = `gami-b1-${uniqueSuffix}@org-b.gami-e2e-test.local`;
+  const orgAUser1Email = `gami-a1-${uniqueSuffix}@org-a.gami-e2e-test.test`;
+  const orgAUser2Email = `gami-a2-${uniqueSuffix}@org-a.gami-e2e-test.test`;
+  const orgBUserEmail = `gami-b1-${uniqueSuffix}@org-b.gami-e2e-test.test`;
 
   let orgAId: string;
   let orgAUser1Id: string;
@@ -164,9 +164,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       where: { courseId: { in: [firstStepCourseId, perfectScoreCourseId] } },
     });
     await prisma.course.deleteMany({ where: { id: { in: [firstStepCourseId, perfectScoreCourseId] } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: 'gami-e2e-test.local' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'gami-e2e-test.test' } } });
     await prisma.department.deleteMany({ where: { name: { startsWith: 'Dział Testowy' } } });
-    await prisma.organization.deleteMany({ where: { name: { endsWith: 'gami-e2e-test.local' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'gami-e2e-test.test' } } });
     await app.close();
   });
 

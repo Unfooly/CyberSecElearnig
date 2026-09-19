@@ -13,8 +13,8 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   const uniqueSuffix = Date.now();
   // Osobne domeny dla A/B - organizations.name jest teraz unikalne (nazwa =
   // domena).
-  const orgAEmail = `rls-a-${uniqueSuffix}@org-a.rls-e2e-test.local`;
-  const orgBEmail = `rls-b-${uniqueSuffix}@org-b.rls-e2e-test.local`;
+  const orgAEmail = `rls-a-${uniqueSuffix}@org-a.rls-e2e-test.test`;
+  const orgBEmail = `rls-b-${uniqueSuffix}@org-b.rls-e2e-test.test`;
   let orgAId: string;
   let orgBId: string;
   let orgAUserId: string;
@@ -88,8 +88,8 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   afterAll(async () => {
     await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, writeCheckCourseId] } } });
     await prisma.course.deleteMany({ where: { id: { in: [courseId, writeCheckCourseId] } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: 'rls-e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { endsWith: 'rls-e2e-test.local' } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'rls-e2e-test.test' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'rls-e2e-test.test' } } });
     await app.close();
   });
 

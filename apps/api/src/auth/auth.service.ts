@@ -336,6 +336,9 @@ export class AuthService {
    * SWOIM hasłem i liczyć, że ofiara je "potwierdzi" (pre-hijacking).
    */
   async sendRegistrationActivation(user: { id: string; organizationId: string; email: string }): Promise<boolean> {
+    const organization = await this.tenantPrisma.runInOrgContext(user.organizationId, (tx) =>
+      tx.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } }),
+    );
     const activationUrl = await this.issuePasswordResetUrl(
       user.organizationId,
       user.id,
@@ -345,7 +348,9 @@ export class AuthService {
       to: user.email,
       subject: 'Potwierdź adres e-mail i ustaw hasło',
       templateName: 'registration-activation',
-      templateData: { activationUrl },
+      // Nazwa firmy pozwala właścicielowi skrzynki rozpoznać, że ktoś zapisał
+      // go do obcej organizacji (pre-hijacking); w szablonie escapowana.
+      templateData: { activationUrl, organizationName: organization?.name ?? null },
     });
     // Tylko jawne false = błąd (mocki testowe zwracają undefined).
     return accepted !== false;

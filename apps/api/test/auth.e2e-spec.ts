@@ -35,22 +35,22 @@ describe('Auth + izolacja tenantów (e2e)', () => {
 
   afterAll(async () => {
     // Porządek po sobie — usuwamy tylko dane utworzone w tym pliku testowym.
-    // Wszystkie domeny e-maili w tym pliku kończą się na auth-e2e-test.local
+    // Wszystkie domeny e-maili w tym pliku kończą się na auth-e2e-test.test
     // (każdy scenariusz rejestracji ma WŁASNĄ subdomenę, np.
-    // admin-a.auth-e2e-test.local, bo organizations.name jest teraz unikalne
+    // admin-a.auth-e2e-test.test, bo organizations.name jest teraz unikalne
     // - nazwa organizacji = domena), więc `endsWith` obejmuje je wszystkie i
     // nie koliduje z organizacjami tworzonymi równolegle przez inne pliki
     // *.e2e-spec.ts (Jest domyślnie uruchamia je równolegle).
-    await prisma.passwordResetToken.deleteMany({ where: { user: { email: { endsWith: 'auth-e2e-test.local' } } } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: 'auth-e2e-test.local' } } });
-    await prisma.organization.deleteMany({ where: { name: { endsWith: 'auth-e2e-test.local' } } });
+    await prisma.passwordResetToken.deleteMany({ where: { user: { email: { endsWith: 'auth-e2e-test.test' } } } });
+    await prisma.user.deleteMany({ where: { email: { endsWith: 'auth-e2e-test.test' } } });
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'auth-e2e-test.test' } } });
     await app.close();
   });
 
   const uniqueSuffix = Date.now();
 
   it('rejestruje nową organizację razem z pierwszym użytkownikiem jako ORG_ADMIN', async () => {
-    const email = `admin-a-${uniqueSuffix}@admin-a.auth-e2e-test.local`;
+    const email = `admin-a-${uniqueSuffix}@admin-a.auth-e2e-test.test`;
     const response = await postRegister(app, email);
     expect(response.status).toBe(201);
 
@@ -63,7 +63,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   });
 
   it('odrzuca logowanie z błędnym hasłem', async () => {
-    const email = `wrongpass-${uniqueSuffix}@wrongpass.auth-e2e-test.local`;
+    const email = `wrongpass-${uniqueSuffix}@wrongpass.auth-e2e-test.test`;
     expect((await postRegister(app, email)).status).toBe(201);
 
     await request(app.getHttpServer())
@@ -73,8 +73,8 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   });
 
   it('nie pozwala użytkownikowi organizacji A pobrać listy użytkowników organizacji B', async () => {
-    const orgAEmail = `org-a-${uniqueSuffix}@org-a.auth-e2e-test.local`;
-    const orgBEmail = `org-b-${uniqueSuffix}@org-b.auth-e2e-test.local`;
+    const orgAEmail = `org-a-${uniqueSuffix}@org-a.auth-e2e-test.test`;
+    const orgBEmail = `org-b-${uniqueSuffix}@org-b.auth-e2e-test.test`;
 
     const orgAResponse = await registerVerified(app, tenantPrisma, {
         email: orgAEmail,
@@ -120,7 +120,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   // Szczegółowe testy rejestracji (anty-enumeracja, domena publiczna, zgody,
   // wyścigi) są w registration.e2e-spec.ts.
   it('powtórna rejestracja tego samego e-maila nie tworzy drugiego konta, a pierwsze zostaje nienaruszone', async () => {
-    const email = `duplicate-${uniqueSuffix}@duplicate.auth-e2e-test.local`;
+    const email = `duplicate-${uniqueSuffix}@duplicate.auth-e2e-test.test`;
 
     expect((await postRegister(app, email, { firstName: 'Pierwsza' })).status).toBe(201);
     expect((await postRegister(app, email, { firstName: 'Druga' })).status).toBe(201);
@@ -131,8 +131,8 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   });
 
   it('dwie rejestracje z tej samej domeny tworzą dwie osobne organizacje (nazwa nie jest wyprowadzana z domeny ani unikalna)', async () => {
-    const firstEmail = `domain-owner-${uniqueSuffix}@dup-domain.auth-e2e-test.local`;
-    const secondEmail = `domain-newcomer-${uniqueSuffix}@dup-domain.auth-e2e-test.local`;
+    const firstEmail = `domain-owner-${uniqueSuffix}@dup-domain.auth-e2e-test.test`;
+    const secondEmail = `domain-newcomer-${uniqueSuffix}@dup-domain.auth-e2e-test.test`;
 
     expect((await postRegister(app, firstEmail)).status).toBe(201);
     expect((await postRegister(app, secondEmail)).status).toBe(201);
@@ -165,7 +165,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
       for (let i = 0; i < totalRequests; i += 1) {
         const response = await request(throttleApp.getHttpServer())
           .post('/auth/login')
-          .send({ email: `throttle-isolated-${uniqueSuffix}@auth-e2e-test.local`, password: 'cokolwiek' });
+          .send({ email: `throttle-isolated-${uniqueSuffix}@auth-e2e-test.test`, password: 'cokolwiek' });
         statuses.push(response.status);
       }
 
@@ -202,7 +202,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     // niepotwierdzone). Nowa rejestracja firmy idzie linkiem "ustaw hasło" -
     // patrz registration.e2e-spec.ts.
     it('pełny flow weryfikacji (konto starego typu): logowanie zablokowane -> link z maila -> logowanie działa', async () => {
-      const email = `login-${uniqueSuffix}@login.auth-e2e-test.local`;
+      const email = `login-${uniqueSuffix}@login.auth-e2e-test.test`;
       const legacy = await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email, password: 'SuperSecret123!' });
       const token = await issueVerificationToken(verifyApp, { ...legacy, email });
 
@@ -229,8 +229,8 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('izolacja tenantów: token weryfikacyjny org A potwierdza wyłącznie konto org A, nie org B', async () => {
-      const emailA = `verify-a-${uniqueSuffix}@verify-a.auth-e2e-test.local`;
-      const emailB = `verify-b-${uniqueSuffix}@verify-b.auth-e2e-test.local`;
+      const emailA = `verify-a-${uniqueSuffix}@verify-a.auth-e2e-test.test`;
+      const emailB = `verify-b-${uniqueSuffix}@verify-b.auth-e2e-test.test`;
       const legacyA = await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email: emailA, password: 'SuperSecret123!' });
       await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email: emailB, password: 'SuperSecret123!' });
       const tokenA = await issueVerificationToken(verifyApp, { ...legacyA, email: emailA });
@@ -249,7 +249,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     }
 
     it('wygasły token weryfikacyjny jest odrzucany (TOKEN_INVALID_OR_EXPIRED), konto zostaje niepotwierdzone', async () => {
-      const email = `expired-${uniqueSuffix}@expired.auth-e2e-test.local`;
+      const email = `expired-${uniqueSuffix}@expired.auth-e2e-test.test`;
       const token = await registerAndCaptureToken(email);
 
       const user = await tenantPrisma.runAuthLookup({ email });
@@ -269,7 +269,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('niepotwierdzone konto ze ZŁYM hasłem dostaje zwykłe 401 (nie ujawnia, że konto czeka na weryfikację)', async () => {
-      const email = `wrongpw-${uniqueSuffix}@wrongpw.auth-e2e-test.local`;
+      const email = `wrongpw-${uniqueSuffix}@wrongpw.auth-e2e-test.test`;
       await registerAndCaptureToken(email);
 
       await request(verifyApp.getHttpServer())
@@ -279,9 +279,9 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('resend-verification dla ZAPROSZONEGO odnawia link aktywacyjny (nie zostawia go w pętli EMAIL_NOT_VERIFIED)', async () => {
-      const email = `invited-${uniqueSuffix}@invited.auth-e2e-test.local`;
+      const email = `invited-${uniqueSuffix}@invited.auth-e2e-test.test`;
       const registered = await registerVerified(verifyApp, tenantPrisma, {
-        email: `admin-${uniqueSuffix}@invited.auth-e2e-test.local`,
+        email: `admin-${uniqueSuffix}@invited.auth-e2e-test.test`,
         password: 'SuperSecret123!',
       });
       await request(verifyApp.getHttpServer())
@@ -303,11 +303,11 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     it('resend-verification: ta sama odpowiedź dla istniejącego i nieistniejącego adresu', async () => {
       const existing = await request(verifyApp.getHttpServer())
         .post('/auth/resend-verification')
-        .send({ email: `login-${uniqueSuffix}@login.auth-e2e-test.local` })
+        .send({ email: `login-${uniqueSuffix}@login.auth-e2e-test.test` })
         .expect(200);
       const missing = await request(verifyApp.getHttpServer())
         .post('/auth/resend-verification')
-        .send({ email: `nie-ma-${uniqueSuffix}@nie-ma.auth-e2e-test.local` })
+        .send({ email: `nie-ma-${uniqueSuffix}@nie-ma.auth-e2e-test.test` })
         .expect(200);
 
       expect(existing.body).toEqual(missing.body);
@@ -361,7 +361,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     }
 
     it('happy path: forgot-password -> reset-password -> logowanie działa nowym hasłem, nie starym', async () => {
-      const email = `reset-happy-${uniqueSuffix}@reset-happy.auth-e2e-test.local`;
+      const email = `reset-happy-${uniqueSuffix}@reset-happy.auth-e2e-test.test`;
       await registerUser(email);
 
       const token = await requestResetAndExtractToken(email);
@@ -383,7 +383,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('drugie użycie tego samego tokenu nie powodzi się z odrębnym komunikatem "już użyty"', async () => {
-      const email = `reset-reuse-${uniqueSuffix}@reset-reuse.auth-e2e-test.local`;
+      const email = `reset-reuse-${uniqueSuffix}@reset-reuse.auth-e2e-test.test`;
       await registerUser(email);
       const token = await requestResetAndExtractToken(email);
 
@@ -402,7 +402,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('wygasły token jest odrzucany z tym samym kodem co token nieistniejący (bez rozróżnienia)', async () => {
-      const email = `reset-expired-${uniqueSuffix}@reset-expired.auth-e2e-test.local`;
+      const email = `reset-expired-${uniqueSuffix}@reset-expired.auth-e2e-test.test`;
       await registerUser(email);
       const token = await requestResetAndExtractToken(email);
 
@@ -435,7 +435,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     it('odpowiedź /auth/forgot-password jest identyczna dla istniejącego i nieistniejącego e-maila', async () => {
-      const existingEmail = `reset-exists-${uniqueSuffix}@reset-exists.auth-e2e-test.local`;
+      const existingEmail = `reset-exists-${uniqueSuffix}@reset-exists.auth-e2e-test.test`;
       await registerUser(existingEmail);
 
       const forExisting = await request(resetApp.getHttpServer())
@@ -445,15 +445,15 @@ describe('Auth + izolacja tenantów (e2e)', () => {
 
       const forMissing = await request(resetApp.getHttpServer())
         .post('/auth/forgot-password')
-        .send({ email: `nie-istnieje-${uniqueSuffix}@auth-e2e-test.local` })
+        .send({ email: `nie-istnieje-${uniqueSuffix}@auth-e2e-test.test` })
         .expect(200);
 
       expect(forExisting.body).toEqual(forMissing.body);
     });
 
     it('izolacja tenantów: reset hasła w organizacji A nie zużywa tokenu ani nie zmienia hasła w organizacji B', async () => {
-      const emailA = `reset-isolation-a-${uniqueSuffix}@reset-isolation-a.auth-e2e-test.local`;
-      const emailB = `reset-isolation-b-${uniqueSuffix}@reset-isolation-b.auth-e2e-test.local`;
+      const emailA = `reset-isolation-a-${uniqueSuffix}@reset-isolation-a.auth-e2e-test.test`;
+      const emailB = `reset-isolation-b-${uniqueSuffix}@reset-isolation-b.auth-e2e-test.test`;
       await registerUser(emailA);
       await registerUser(emailB, 'HasloOrgB123');
 
@@ -504,7 +504,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
         for (let i = 0; i < totalRequests; i += 1) {
           const response = await request(throttleApp.getHttpServer())
             .post('/auth/forgot-password')
-            .send({ email: `throttle-forgot-${uniqueSuffix}@auth-e2e-test.local` });
+            .send({ email: `throttle-forgot-${uniqueSuffix}@auth-e2e-test.test` });
           statuses.push(response.status);
         }
 

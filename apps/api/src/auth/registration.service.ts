@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes, randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import {
+  hasInternalTld,
   isPublicEmailDomain,
   LEGAL_DOCUMENT_VERSION,
   normalizeNip,
@@ -67,6 +68,9 @@ export class RegistrationService {
   async register(dto: RegisterDto): Promise<{ message: string }> {
     const domain = emailDomain(dto.email);
     if (!domain) {
+      throw new BadRequestException({ code: 'INVALID_EMAIL_DOMAIN', message: INVALID_EMAIL_DOMAIN_MESSAGE });
+    }
+    if (hasInternalTld(domain)) {
       throw new BadRequestException({ code: 'INVALID_EMAIL_DOMAIN', message: INVALID_EMAIL_DOMAIN_MESSAGE });
     }
     if (isPublicEmailDomain(domain)) {

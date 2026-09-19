@@ -72,6 +72,7 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 4. **Migracje bazy danych** zawsze przez Prisma Migrate, nigdy ręczne ALTER TABLE. Migracja + odpowiadający jej update `schema.prisma` w tym samym commicie.
 5. **Sekrety** (klucze API, connection stringi) tylko w zmiennych środowiskowych / `.env` (nieopublikowanym), nigdy hardkodowane w kodzie.
 6. **Commity małe i opisowe.** Jeden commit = jedna logiczna zmiana.
+7. **Pliki edytujesz narzędziem do edycji plików** (Write/Edit), nigdy przez `echo`, `cat` ani heredoc w powłoce. Powłoka interpretuje backticki i `$(...)` w treści jako komendy: tak backticki w README wykonały się jako polecenia, uruchomiły testy e2e i zostawiły dziury w tekście. Powłoka służy do uruchamiania poleceń, nie do zapisywania treści plików.
 
 ## Komendy
 

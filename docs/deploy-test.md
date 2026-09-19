@@ -7,7 +7,7 @@ Redis nie są wystawione na zewnątrz. Obrazy `api` i `web` buduje GitHub Action
 VPS je tylko pobiera.
 
 ```
-push do main --> GitHub Actions: lint + testy --> build --> ghcr.io/amadispl/cybersecelearnig-{api,web}
+push do main --> GitHub Actions: lint + testy --> build --> ghcr.io/unfooly/cybersecelearnig-{api,web}
                                                                      |
                                                             docker compose pull (VPS)
                                                                      v
@@ -28,12 +28,24 @@ istnieją wyłącznie w `docker-compose.prodlocal.yml` (lokalny test na maszynie
 
 | Usługa | Obraz w GHCR |
 |---|---|
-| `api` i `migrate` | `ghcr.io/amadispl/cybersecelearnig-api` |
-| `web` | `ghcr.io/amadispl/cybersecelearnig-web` |
+| `api` i `migrate` | `ghcr.io/unfooly/cybersecelearnig-api` |
+| `web` | `ghcr.io/unfooly/cybersecelearnig-web` |
 
 Tagi: `:latest` (ostatni udany build z `main`) oraz `:sha-<7 znaków commita>` (np. `sha-1a2b3c4`).
 Tag wybiera zmienna `IMAGE_TAG` w `.env.prod` (domyślnie `latest`), prefiks `IMAGE_PREFIX` (domyślnie
-`ghcr.io/amadispl/cybersecelearnig`). Nazwy w GHCR są zawsze pisane małymi literami.
+`ghcr.io/unfooly/cybersecelearnig`). Nazwy w GHCR są zawsze pisane małymi literami.
+
+**Skąd bierze się nazwa:** workflow składa ją z `github.repository_owner` (konto lub organizacja, tu
+`Unfooly` -> `unfooly`) i nazwy repozytorium: `ghcr.io/<owner>/<repo>-<api|web>`, nic nie jest wpisane
+na sztywno w workflow. Compose nie zna kontekstu GitHuba, więc jego domyślny prefiks jest wpisany w
+`docker-compose.prod.yml`, a na VPS ustawiasz go jawnie w `.env.prod` (`IMAGE_PREFIX`). **Po
+przeniesieniu repozytorium do innego właściciela lub zmianie jego nazwy** zmień `IMAGE_PREFIX` w
+`.env.prod` (i domyślną wartość w compose), a stare paczki w GHCR zostają pod starym właścicielem.
+
+**Repozytorium w organizacji:** paczki tworzone przez workflow są przypisane do repozytorium, a ich
+widoczność dziedziczy ustawienia organizacji (Organization → Settings → Packages). Sprawdź w
+Package settings → „Manage Actions access”, że repozytorium ma rolę **Write** (inaczej workflow nie
+wypchnie obrazu ani nie posprząta starych wersji).
 
 Workflow `.github/workflows/build-images.yml` uruchamia się na push do `main` (poza zmianami w
 `docs/` i `*.md`) oraz ręcznie (`workflow_dispatch`). Najpierw job `test` (lint + testy
@@ -70,6 +82,9 @@ tokenem **tylko do odczytu**.
 3. Zaznacz **wyłącznie** `read:packages`. Nic więcej: bez `repo`, `write:packages`,
    `delete:packages`, `workflow`.
 4. Skopiuj token (GitHub pokaże go raz).
+5. Jeśli organizacja `Unfooly` wymaga SSO/SAML, obok tokenu kliknij **Configure SSO → Authorize** dla
+   tej organizacji - bez tego `docker login`/`pull` zwróci `denied`. Konto tokenu musi być członkiem
+   organizacji z dostępem do odczytu paczek (Package settings → Manage access).
 
 **Nie wolno** używać na VPS tokenu z szerszymi uprawnieniami (np. PAT z `repo` albo
 `write:packages`): wyciek tokenu z serwera oznaczałby wtedy dostęp do kodu lub możliwość
@@ -85,13 +100,13 @@ read -rs GHCR_TOKEN && echo "$GHCR_TOKEN" | docker login ghcr.io -u <twoj-login-
 chmod 600 ~/.docker/config.json     # Docker zapisuje tam poświadczenia
 ```
 
-Sprawdzenie: `docker pull ghcr.io/amadispl/cybersecelearnig-web:latest` (wymaga, żeby workflow
+Sprawdzenie: `docker pull ghcr.io/unfooly/cybersecelearnig-web:latest` (wymaga, żeby workflow
 przeszedł przynajmniej raz).
 
 ## 3. Pliki na VPS
 
 ```bash
-git clone https://github.com/Amadispl/CyberSecElearnig.git unfooly && cd unfooly
+git clone https://github.com/Unfooly/CyberSecElearnig.git unfooly && cd unfooly
 cp .env.prod.example .env.prod
 chmod 600 .env.prod
 ```

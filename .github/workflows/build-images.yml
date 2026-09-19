@@ -74,10 +74,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Nazwy w GHCR muszą być małymi literami (owner i repo mogą mieć wielkie).
+      # Nazwa wynika z właściciela repozytorium (github.repository_owner - konto
+      # albo organizacja, np. Unfooly -> ghcr.io/unfooly/...) i nazwy repozytorium,
+      # nic nie jest wpisane na sztywno. GHCR wymaga małych liter.
       - name: Nazwa obrazu
         id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          APP: ${{ matrix.app }}
+        run: echo "name=ghcr.io/${OWNER,,}/${REPO,,}-${APP}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 

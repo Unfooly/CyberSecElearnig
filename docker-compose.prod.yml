@@ -53,7 +53,7 @@ services:
   # UWAGA: `up -d --no-deps api` POMIJA ten krok - po `git pull` z nowymi
   # migracjami użyj `docker compose ... up -d` albo najpierw `run --rm migrate`.
   migrate:
-    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: "no"
     env_file: ${ENV_FILE:-.env.prod}
     entrypoint: []
@@ -63,7 +63,7 @@ services:
         condition: service_healthy
 
   api:
-    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${ENV_FILE:-.env.prod}
     depends_on:
@@ -77,7 +77,7 @@ services:
     # wyłącznie z web (BFF), a web woła api przez wewnętrzną sieć compose.
 
   web:
-    image: ${IMAGE_PREFIX:-ghcr.io/amadispl/cybersecelearnig}-web:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file: ${ENV_FILE:-.env.prod}
     depends_on:

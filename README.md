@@ -194,7 +194,7 @@ Caddy — inaczej Let's Encrypt nie zweryfikuje domeny.
 
 Obrazy `api` i `web` **nie są budowane na VPS** (1 GB RAM: `next build` kończy się OOM) - buduje je
 GitHub Actions (`.github/workflows/build-images.yml`, po zielonych lint + testach) i wypycha do
-`ghcr.io/amadispl/cybersecelearnig-api` oraz `-web` (tagi `latest` i `sha-<short>`). VPS loguje się do GHCR
+`ghcr.io/unfooly/cybersecelearnig-api` oraz `-web` (nazwa z `github.repository_owner`, tagi `latest` i `sha-<short>`). VPS loguje się do GHCR
 tokenem **tylko `read:packages`** (nigdy PAT z szerszymi uprawnieniami) i robi `pull`:
 
 ```bash

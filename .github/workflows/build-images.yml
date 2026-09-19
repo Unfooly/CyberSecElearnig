@@ -2,7 +2,7 @@ name: build-images
 
 # Obrazy api i web budujemy tutaj, NIE na VPS (1 GB RAM: `next build` kończy się
 # tam SIGKILL/OOM). VPS tylko pobiera gotowe obrazy z GHCR - patrz docs/deploy-test.md.
-# Obrazy trafiają do GHCR wyłącznie po zielonych testach (job `test`).
+# Obrazy trafiają do GHCR wyłącznie po zielonych testach (joby `test` i `e2e`).
 
 on:
   push:
@@ -60,9 +60,85 @@ jobs:
       - name: Testy skryptu czyszczenia GHCR
         run: node --test .github/scripts/select-versions-to-delete.test.js
 
+  # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
+  # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
+  # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga
+  # przeglądarek) - ten zostaje ręcznie (docs/e2e-registration.md).
+  e2e:
+    name: testy e2e (api)
+    runs-on: ubuntu-latest
+    # Lokalnie testy trwają ok. 1 min; limit łapie zawieszony uchwyt (BullMQ/ioredis) zamiast maskować go forceExit.
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cyberszkolo
+          POSTGRES_PASSWORD: ci-migrator-password
+          POSTGRES_DB: cyberszkolo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h localhost -U cyberszkolo -d cyberszkolo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Jak lokalnie (.env.test): migracje rolą właścicielem, runtime rolą cyberszkolo_app
+      # (bez BYPASSRLS), żeby testy sprawdzały RLS w konfiguracji produkcyjnej.
+      DATABASE_URL: postgresql://cyberszkolo:ci-migrator-password@localhost:5432/cyberszkolo_test?schema=public
+      DATABASE_URL_APP: postgresql://cyberszkolo_app:ci-app-password@localhost:5432/cyberszkolo_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      # Sekrety wyłącznie testowe, jednorazowe dla runnera.
+      JWT_SECRET: ci-e2e-access-secret
+      JWT_REFRESH_SECRET: ci-e2e-refresh-secret
+      FRONTEND_URL: http://localhost:3000
+      # Pusty token = tryb deweloperski EmailService (nic nie wychodzi na zewnątrz).
+      MAILERSEND_API_TOKEN: ''
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      # Ten sam skrypt co w docker/postgres-init (kontener serwisowy nie montuje katalogu init).
+      - name: Rola runtime cyberszkolo_app
+        env:
+          PGHOST: localhost
+          PGPASSWORD: ci-migrator-password
+          POSTGRES_USER: cyberszkolo
+          POSTGRES_DB: cyberszkolo_test
+          # Skrypt wstawia hasło do SQL w apostrofach - hasło bez znaku ' (dotyczy też DATABASE_URL_APP wyżej).
+          APP_DB_PASSWORD: ci-app-password
+        run: sh docker/postgres-init/01-create-app-role.sh
+
+      - name: Migracje (prisma migrate deploy)
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Testy e2e api
+        working-directory: apps/api
+        run: npx jest --config ./test/jest-e2e.json --runInBand
+
   images:
     name: obraz ${{ matrix.app }}
-    needs: test
+    needs: [test, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read

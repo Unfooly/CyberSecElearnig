@@ -1,0 +1,3 @@
+# Skrypty powłoki muszą mieć LF także na klonach Windows (autocrlf): z CRLF `sh` w kontenerze
+# (docker/postgres-init) i na runnerze CI odrzuca je błędem składni.
+*.sh text eol=lf

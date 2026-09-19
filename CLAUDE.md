@@ -145,7 +145,7 @@ npm run lint --workspace=apps/web
 # baza danych
 npx prisma migrate dev
 
-# e2e API (Postgres + Redis lokalnie; jeszcze nie w CI)
+# e2e API (Postgres + Redis lokalnie; w CI: job `e2e` w .github/workflows/build-images.yml)
 npm run test:e2e --workspace=apps/api
 
 # e2e w przeglądarce całej ścieżki rejestracji (opis: docs/e2e-registration.md)

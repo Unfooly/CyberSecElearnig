@@ -48,9 +48,10 @@ Package settings → „Manage Actions access”, że repozytorium ma rolę **Wr
 wypchnie obrazu ani nie posprząta starych wersji).
 
 Workflow `.github/workflows/build-images.yml` uruchamia się na push do `main` (poza zmianami w
-`docs/` i `*.md`) oraz ręcznie (`workflow_dispatch`). Najpierw job `test` (lint + testy
-jednostkowe api i web); dopiero gdy przejdzie, job `images` buduje i wypycha oba obrazy. Padnięte
-testy = brak nowych obrazów. Testy e2e (potrzebują Postgresa) nie są częścią tego workflow.
+`docs/` i `*.md`) oraz ręcznie (`workflow_dispatch`). Najpierw joby `test` (lint + testy
+jednostkowe api i web) i `e2e` (testy e2e API na Postgresie i Redisie w kontenerach serwisowych); dopiero
+gdy oba przejdą, job `images` buduje i wypycha oba obrazy. Padnięte testy = brak nowych obrazów.
+Skrypt przeglądarkowy Playwright (`docs/e2e-registration.md`) nie jest częścią workflow.
 
 ## Wymagania
 
@@ -269,7 +270,6 @@ prawdziwych klientów).
 ### B. Zalecane przed startem (z backlogu rejestracji, README)
 
 - [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
-- [ ] Testy e2e w CI (Postgres + Redis) - dziś uruchamiane ręcznie przed wdrożeniem (`npm run test:e2e --workspace=apps/api`).
 - [ ] Monitoring/alert na logi „zadanie w tle ... nie powiodło się” (rejestracja, sprzątanie organizacji).
 
 ## Klasyczna alternatywa: Caddy

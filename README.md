@@ -257,9 +257,6 @@ Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7
 - **Praca w tle = błędy tylko w logu.** Rejestracja odpowiada natychmiast, a zapis i mail idą w tle
   (brak kanału czasowego enumeracji). Awaria bazy nie dociera do klienta: użytkownik nie dostaje maila i
   może spróbować ponownie. Docelowo monitoring/alert na logi „zadanie w tle (rejestracja) nie powiodło się”.
-- **e2e w CI.** Testy e2e API (`npm run test:e2e --workspace=apps/api`, w tym `jobs.e2e-spec.ts` wymagający
-  Redisa) i skrypt przeglądarkowy `scripts/e2e-registration.mjs` nie biegną w GitHub Actions. Do zrobienia:
-  job z usługami Postgres i Redis, migracje, potem oba zestawy (szczegóły: „Backlog CI/CD”).
 - **Kraje poza PL i numer VAT.** Rejestracja przyjmuje tylko Polskę (CHECK `country = 'PL'` w bazie, walidacja NIP z
   sumą kontrolną). Inne kraje wymagają: zdjęcia CHECK-a, walidacji VAT-ID (VIES), innych formatów kodu
   pocztowego i zmian w formularzu.
@@ -308,8 +305,8 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
 - **Redis niedostępny:** API startuje normalnie, start workera jest ponawiany co 30 s (błędy w logach).
 - **Konfiguracja:** `BACKGROUND_JOBS_ENABLED` (domyślnie włączone poza `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`
   (prefiks kluczy Redis, domyślnie `unfooly`). Zamknięcie (`SIGTERM`) dokańcza trwające zadanie (do 30 s).
-- **Testy** `jobs.e2e-spec.ts` wymagają Redisa (`REDIS_URL`, domyślnie `localhost:6379`); e2e nie jest jeszcze w CI
-  (patrz „Backlog CI/CD”). Jest kończy się czysto (bez `forceExit`): `retryStrategy` ioredis przestaje ponawiać
+- **Testy** `jobs.e2e-spec.ts` wymagają Redisa (`REDIS_URL`, domyślnie `localhost:6379`); w CI biegną w jobie `e2e` z kontenerem Redis.
+  Jest kończy się czysto (bez `forceExit`): `retryStrategy` ioredis przestaje ponawiać
   połączenia po zamknięciu, a timery limitów mają `unref()`.
 - **Kaskada usuwania:** nowa tabela z `organizationId` MUSI mieć `onDelete: Cascade` do `organizations`,
   inaczej sprzątanie nie usunie organizacji (błąd jest logowany, organizacja zostaje).
@@ -331,14 +328,11 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
 
 ## Backlog CI/CD
 
-- **Testy e2e (w tym RLS / izolacja tenantów) nie działają w CI.** Workflow `build-images`
-  uruchamia tylko lint i testy jednostkowe (api, web). Testy `apps/api/test/*.e2e-spec.ts` (m.in.
-  `rls.e2e-spec.ts` i testy izolacji organizacji wymagane przez Zasadę nr 1) potrzebują Postgresa,
-  którego workflow nie ma. Do zrobienia w osobnym zadaniu: kontener serwisowy `postgres:16` w jobie
-  `test` (z rolami `cyberszkolo` i `cyberszkolo_app` jak w `docker/postgres-init`),
-  `prisma migrate deploy` na czystej bazie, potem `npm run test:e2e --workspace=apps/api`.
-  Job `images` powinien wtedy zależeć także od tego kroku. Do tego czasu e2e uruchamiamy ręcznie
-  przed wdrożeniem.
+- **Testy e2e API działają w CI** (job `e2e` w `build-images`: kontenery `postgres:16` i `redis:7`, rola
+  `cyberszkolo_app` z tego samego skryptu co `docker/postgres-init`, `prisma migrate deploy`, potem
+  `jest --config ./test/jest-e2e.json --runInBand`); job `images` zależy od `test` i `e2e`. Lokalnie ok. 1 min.
+  **Nadal poza CI:** skrypt przeglądarkowy `scripts/e2e-registration.mjs` (Playwright wymaga przeglądarek i
+  zbudowanych aplikacji) - uruchamiany ręcznie przed wdrożeniem (`docs/e2e-registration.md`).
 - **Sprzątanie GHCR usuwa stare wersje obrazów** (zostaje `:latest` i 3 najnowsze `sha-*`), więc
   wycofanie przez `IMAGE_TAG` działa tylko do 3 ostatnich buildów wstecz. Limit prywatnych paczek
   na planie Free (ok. 500 MB) może i tak być ciasny dla dwóch obrazów po 3 wersje - do sprawdzenia

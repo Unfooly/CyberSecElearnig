@@ -36,11 +36,9 @@ export class RegisterDto {
   @MaxLength(254)
   email!: string;
 
-  // Powtórzenie hasła sprawdza formularz - do API idzie jedno pole.
-  @IsString()
-  @MinLength(8)
-  @MaxLength(128)
-  password!: string;
+  // BRAK pola hasła (pre-hijacking): konto powstaje bez hasła klienta, a hasło
+  // ustawia się dopiero po kliknięciu linku z maila (potwierdzenie skrzynki).
+  // Klient, który prześle "password", dostanie 400 (forbidNonWhitelisted).
 
   // --- firma ---
   // Nazwa formalna (do faktury) i nazwa wyświetlana (może być taka sama).

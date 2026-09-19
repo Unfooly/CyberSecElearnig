@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { AllowPendingOrganization } from '../common/decorators/allow-pending-organization.decorator';
 import { AuthService } from './auth.service';
 import { RegistrationService } from './registration.service';
 import { RegisterDto } from './dto/register.dto';
@@ -14,7 +15,10 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 // brute-force / credential stuffing na endpointach logowania i rejestracji.
 const AUTH_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
+// Uwierzytelnianie (logowanie, odświeżanie, reset hasła, weryfikacja) musi działać
+// także dla organizacji czekającej na weryfikację domeny.
 @Controller('auth')
+@AllowPendingOrganization()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

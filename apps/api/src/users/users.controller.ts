@@ -19,6 +19,7 @@ import { Role } from '@cyberszkolo/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AllowPendingOrganization } from '../common/decorators/allow-pending-organization.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { GamificationService } from '../gamification/gamification.service';
@@ -97,13 +98,16 @@ export class UsersController {
   }
 
   // Bez @Roles() - dowolna zalogowana rola widzi WŁASNY avatar (Topbar).
+  // Dostępne też przy organizacji czekającej na weryfikację domeny (dane własnego profilu).
   @Get('me/avatar')
+  @AllowPendingOrganization()
   getMyAvatar(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.getAvatar(user.organizationId, user.userId);
   }
 
   // Bez @Roles() - dowolna zalogowana rola może zmienić WŁASNY avatar.
   @Patch('me/avatar')
+  @AllowPendingOrganization()
   updateMyAvatar(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateAvatarDto) {
     return this.usersService.updateAvatar(user.organizationId, user.userId, dto.avatarUrl);
   }

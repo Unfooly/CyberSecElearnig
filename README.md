@@ -237,12 +237,9 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 
 Z przeglądu bezpieczeństwa etapu 2 (rejestracja w API). Do rozstrzygnięcia/zrobienia **przed publicznym startem**:
 
-- **Pre-hijacking konta (wysokie) - wymaga decyzji produktowej.** Atakujący rejestruje się adresem
-  ofiary ze SWOIM hasłem; ofiara dostaje „Potwierdź adres e-mail”, klika, a `verifyEmail` potwierdza
-  konto z hasłem atakującego. Organizacja jest PENDING i bez dowodu własności domeny niewiele może,
-  ale zweryfikowany adres ofiary siedzi w cudzym koncie. Poprawka (jedna z dwóch): hasło ustawiane
-  DOPIERO po weryfikacji skrzynki (link prowadzi do ekranu „ustaw hasło”, jak zaproszenie), albo
-  `verifyEmail` unieważnia hasło z rejestracji i wymusza jego ustawienie.
+- ~~Pre-hijacking konta~~ - **rozwiązane w etapie 3**: rejestracja nie przyjmuje hasła; admin powstaje
+  jako `INVITED` z losowym hashem zastępczym, a mail „ustaw hasło” (link 24 h do `/reset-password`)
+  jednocześnie potwierdza skrzynkę. Atakujący nie zna żadnego hasła do konta ofiary.
 - **Limiter maili rejestracji w pamięci procesu.** Działa per instancja, znika po restarcie, a przy
   zalewie >5000 adresami wypiera najstarsze wpisy. Docelowo Redis (`SET NX EX`) razem z
   infrastrukturą BullMQ (etap z jobem sprzątania). Klucz już ignoruje aliasy `+tag`.

@@ -6,7 +6,6 @@ const validRegistration = {
   firstName: 'Anna',
   lastName: 'Kowalska',
   email: 'Anna@Firma.pl',
-  password: 'SuperSecret123!',
   organizationLegalName: 'Firma Testowa Sp. z o.o.',
   organizationName: 'Firma Testowa',
   taxId: '526-025-02-74',
@@ -43,7 +42,8 @@ describe('RegisterDto', () => {
     ['imię z frazą phishingową (cyfry, dwukropek)', { firstName: 'Konto: kliknij http://x.pl' }, 'firstName'],
     ['puste imię', { firstName: '   ' }, 'firstName'],
     ['nazwa firmy z nową linią', { organizationName: 'Firma\nBcc: x@y.pl' }, 'organizationName'],
-    ['za krótkie hasło', { password: 'short' }, 'password'],
+    // Brak pola hasła w rejestracji (pre-hijacking): hasło ustawia się po weryfikacji skrzynki.
+    ['hasło w rejestracji (nie jest przyjmowane)', { password: 'SuperSecret123!' }, 'password'],
     ['zły e-mail', { email: 'nie-email' }, 'email'],
   ])('odrzuca: %s', async (_label, overrides, field) => {
     const { fields } = await errorsFor(overrides);

@@ -19,7 +19,6 @@ const DTO: RegisterDto = {
   firstName: 'Anna',
   lastName: 'Kowalska',
   email: 'anna@firma.pl',
-  password: 'SuperSecret123!',
   organizationLegalName: 'Firma Testowa Sp. z o.o.',
   organizationName: 'Firma Testowa',
   taxId: '526-025-02-74',
@@ -44,6 +43,7 @@ const existingUser = (over: Record<string, unknown> = {}) => ({
   email: 'anna@firma.pl',
   firstName: 'Anna',
   status: 'ACTIVE',
+  role: 'ORG_ADMIN',
   emailVerifiedAt: new Date(),
   ...over,
 });
@@ -51,7 +51,7 @@ const existingUser = (over: Record<string, unknown> = {}) => ({
 describe('RegistrationService', () => {
   let runAuthLookup: jest.Mock;
   let runInOrgContext: jest.Mock;
-  let sendVerificationEmail: jest.Mock;
+  let sendRegistrationActivation: jest.Mock;
   let sendVerificationOrActivation: jest.Mock;
   let sendEmail: jest.Mock;
   let service: RegistrationService;
@@ -66,7 +66,7 @@ describe('RegistrationService', () => {
 
   beforeEach(() => {
     runAuthLookup = jest.fn().mockResolvedValue(null);
-    sendVerificationEmail = jest.fn().mockResolvedValue(true);
+    sendRegistrationActivation = jest.fn().mockResolvedValue(true);
     sendVerificationOrActivation = jest.fn().mockResolvedValue(undefined);
     sendEmail = jest.fn().mockResolvedValue(true);
     txCalls = {
@@ -87,7 +87,7 @@ describe('RegistrationService', () => {
     );
     service = new RegistrationService(
       { runAuthLookup, runInOrgContext } as unknown as TenantPrismaService,
-      { sendVerificationEmail, sendVerificationOrActivation } as unknown as AuthService,
+      { sendRegistrationActivation, sendVerificationOrActivation } as unknown as AuthService,
       { send: sendEmail } as unknown as EmailService,
       { get: (key: string) => (key === 'FRONTEND_URL' ? 'https://app.unfooly.test' : undefined) } as unknown as ConfigService,
       new RegistrationMailLimiter(),
@@ -104,9 +104,18 @@ describe('RegistrationService', () => {
     expect(txCalls.organizationCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ name: 'Firma Testowa', status: 'PENDING_DOMAIN_VERIFICATION' }),
     });
+    // Konto bez hasła klienta (pre-hijacking): INVITED, niepotwierdzone, losowy hash zastępczy.
     expect(txCalls.userCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ email: 'anna@firma.pl', role: 'ORG_ADMIN', firstName: 'Anna', lastName: 'Kowalska' }),
+      data: expect.objectContaining({
+        email: 'anna@firma.pl',
+        role: 'ORG_ADMIN',
+        status: 'INVITED',
+        firstName: 'Anna',
+        lastName: 'Kowalska',
+        passwordHash: 'hashed-password',
+      }),
     });
+    expect(txCalls.userCreate.mock.calls[0][0].data).not.toHaveProperty('emailVerifiedAt');
     expect(txCalls.billingCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ legalName: 'Firma Testowa Sp. z o.o.', taxId: '5260250274', country: 'PL', postalCode: '00-001' }),
     });
@@ -116,7 +125,11 @@ describe('RegistrationService', () => {
     const acceptances = txCalls.acceptanceCreateMany.mock.calls[0][0].data as { documentType: string; version: string }[];
     expect(acceptances.map((a) => a.documentType).sort()).toEqual(['PRIVACY_POLICY', 'TERMS']);
     expect(acceptances.every((a) => a.version === 'draft-1')).toBe(true);
-    expect(sendVerificationEmail).toHaveBeenCalledTimes(1);
+    // Link z maila = potwierdzenie skrzynki + ustawienie hasła (nie zwykły link weryfikacyjny).
+    expect(sendRegistrationActivation).toHaveBeenCalledTimes(1);
+    expect(sendRegistrationActivation).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u1', email: 'anna@firma.pl', organizationId: expect.any(String) }),
+    );
   });
 
   it('odpowiedź wraca ZANIM praca się zacznie (czas odpowiedzi nie zależy od stanu konta)', async () => {
@@ -188,7 +201,7 @@ describe('RegistrationService', () => {
     await registerAndFlush();
 
     expect(sendVerificationOrActivation).toHaveBeenCalledWith(expect.objectContaining({ status: 'INVITED' }));
-    expect(sendVerificationEmail).not.toHaveBeenCalled();
+    expect(sendRegistrationActivation).not.toHaveBeenCalled();
   });
 
   it('wyścig: P2002 na e-mailu => traktowane jak istniejące konto, odpowiedź uniform, bez wycieku meta', async () => {
@@ -218,12 +231,12 @@ describe('RegistrationService', () => {
 
     expect(errorLog).toHaveBeenCalled();
     expect(errorLog.mock.calls.flat().join(' ')).not.toMatch(/organizationId|domain'/);
-    expect(sendVerificationEmail).not.toHaveBeenCalled();
+    expect(sendRegistrationActivation).not.toHaveBeenCalled();
   });
 
   it('awaria wysyłki maila NIE zmienia odpowiedzi rejestracji', async () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-    sendVerificationEmail.mockRejectedValue(new Error('smtp down'));
+    sendRegistrationActivation.mockRejectedValue(new Error('smtp down'));
 
     await expect(registerAndFlush()).resolves.toEqual({ message: REGISTRATION_ACCEPTED_MESSAGE });
   });

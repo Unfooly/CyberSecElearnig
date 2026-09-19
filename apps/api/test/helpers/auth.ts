@@ -1,26 +1,26 @@
 import { INestApplication } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import request from 'supertest';
+import { AuthService } from '../../src/auth/auth.service';
 import { RegistrationService } from '../../src/auth/registration.service';
+import { EmailService } from '../../src/email/email.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
 import { TenantPrismaService } from '../../src/prisma/tenant-prisma.service';
 
 export const DEFAULT_TEST_PASSWORD = 'SuperSecret123!';
 
 /**
- * Kompletny, poprawny ładunek rejestracji firmy (samoobsługowej). Testy, które
- * interesuje tylko e-mail i hasło, podają je; resztę pól uzupełniamy poprawnymi
- * danymi (NIP 5260250274 ma poprawną sumę kontrolną). `overrides` nadpisuje
- * dowolne pole - także po to, by wysłać celowo błędne dane.
+ * Kompletny, poprawny ładunek rejestracji firmy (samoobsługowej) - BEZ hasła
+ * (hasło ustawia się dopiero linkiem z maila). Testy, które interesuje tylko
+ * e-mail, podają go; resztę pól uzupełniamy poprawnymi danymi (NIP 5260250274
+ * ma poprawną sumę kontrolną). `overrides` nadpisuje dowolne pole - także po
+ * to, by wysłać celowo błędne dane.
  */
-export function registrationPayload(
-  email: string,
-  password: string = DEFAULT_TEST_PASSWORD,
-  overrides: Record<string, unknown> = {},
-) {
+export function registrationPayload(email: string, overrides: Record<string, unknown> = {}) {
   return {
     firstName: 'Anna',
     lastName: 'Testowa',
     email,
-    password,
     organizationLegalName: 'Firma Testowa Sp. z o.o.',
     // Domyślnie domena e-maila: testy sprzątają organizacje po sufiksie nazwy
     // (deleteMany name endsWith ...). Produkcyjnie nazwa NIE pochodzi z domeny.
@@ -36,46 +36,104 @@ export function registrationPayload(
 }
 
 /**
- * POST /auth/register i - po odpowiedzi - poczekanie na wysyłki maili, które
- * serwis robi w tle (czas odpowiedzi nie zależy od maila). Bez tego testy
- * przechwytujące mail (spy na EmailService) widziałyby go za późno.
+ * POST /auth/register i - po odpowiedzi - poczekanie na pracę, którą serwis
+ * robi w tle (zapis i maile; czas odpowiedzi nie zależy od stanu konta). Bez
+ * tego testy czytające bazę albo przechwytujące mail (spy na EmailService)
+ * widziałyby wynik za wcześnie.
  */
 export async function postRegister(
   app: INestApplication,
   email: string,
-  password: string = DEFAULT_TEST_PASSWORD,
   overrides: Record<string, unknown> = {},
 ): Promise<request.Response> {
-  const response = await request(app.getHttpServer())
-    .post('/auth/register')
-    .send(registrationPayload(email, password, overrides));
+  const response = await request(app.getHttpServer()).post('/auth/register').send(registrationPayload(email, overrides));
   await app.get(RegistrationService).flushBackgroundTasks();
   return response;
 }
 
 /**
- * /auth/register nie zwraca tokenów (logowanie jest zablokowane do
- * potwierdzenia adresu e-mail). Ten helper przechodzi całą ścieżkę
- * rejestracja -> potwierdzenie -> logowanie, ale potwierdzenie robi wprost w
- * bazie (przez runInOrgContext, jak reszta aplikacji), żeby testy izolacji/
- * kursów/dashboardu nie zależały od przechwytywania maila. Prawdziwy flow z
- * tokenem z maila jest testowany osobno w auth.e2e-spec.ts.
+ * Rejestracja + "kliknięcie linku z maila" zrobione wprost w bazie: ustawia
+ * hasło, aktywuje konto (INVITED -> ACTIVE) i potwierdza e-mail - tak jak
+ * robi to POST /auth/reset-password. Testy izolacji/kursów/dashboardu nie
+ * zależą dzięki temu od przechwytywania maila; prawdziwy flow z tokenem z
+ * maila jest w registration.e2e-spec.ts.
+ *
+ * `activateOrganization` (domyślnie true) ustawia też organizację na ACTIVE
+ * BEZ dotykania OrganizationDomain (verifiedAt ustawia wyłącznie serwis DNS):
+ * bez tego globalny guard zablokowałby każdy endpoint biznesowy. Testy samego
+ * stanu PENDING podają false.
  */
-export async function registerVerified(
+export async function createVerifiedUser(
   app: INestApplication,
   tenantPrisma: TenantPrismaService,
   credentials: { email: string; password: string },
-): Promise<{ body: { accessToken: string; refreshToken: string } }> {
-  const registered = await postRegister(app, credentials.email, credentials.password);
+  options: { activateOrganization?: boolean } = {},
+): Promise<{ organizationId: string; userId: string }> {
+  const registered = await postRegister(app, credentials.email);
   if (registered.status !== 201) {
     throw new Error(`Rejestracja testowa nie powiodła się (${registered.status}): ${JSON.stringify(registered.body)}`);
   }
 
   const user = await tenantPrisma.runAuthLookup({ email: credentials.email });
-  await tenantPrisma.runInOrgContext(user!.organizationId, (tx) =>
-    tx.user.update({ where: { id: user!.id }, data: { emailVerifiedAt: new Date() } }),
+  if (!user) {
+    throw new Error(`Rejestracja testowa nie utworzyła konta ${credentials.email}`);
+  }
+  const passwordHash = await bcrypt.hash(credentials.password, 4);
+  await tenantPrisma.runInOrgContext(user.organizationId, (tx) =>
+    tx.user.update({ where: { id: user.id }, data: { passwordHash, status: 'ACTIVE', emailVerifiedAt: new Date() } }),
   );
+  if (options.activateOrganization !== false) {
+    await app.get(PrismaService).organization.update({ where: { id: user.organizationId }, data: { status: 'ACTIVE' } });
+  }
+  return { organizationId: user.organizationId, userId: user.id };
+}
 
+/** createVerifiedUser + logowanie (zwraca tokeny). */
+export async function registerVerified(
+  app: INestApplication,
+  tenantPrisma: TenantPrismaService,
+  credentials: { email: string; password: string },
+  options: { activateOrganization?: boolean } = {},
+): Promise<{ body: { accessToken: string; refreshToken: string } }> {
+  await createVerifiedUser(app, tenantPrisma, credentials, options);
   const login = await request(app.getHttpServer()).post('/auth/login').send(credentials).expect(200);
   return { body: login.body };
+}
+
+/**
+ * Konto "starego typu": ACTIVE, z hasłem, ale NIEPOTWIERDZONE (tak powstawało
+ * przed zmianą rejestracji). Endpoint /auth/verify-email nadal je obsługuje.
+ * Organizacja ACTIVE, żeby guard nie przeszkadzał.
+ */
+export async function createLegacyUnverifiedUser(
+  app: INestApplication,
+  tenantPrisma: TenantPrismaService,
+  credentials: { email: string; password: string },
+): Promise<{ organizationId: string; userId: string }> {
+  const prisma = app.get(PrismaService);
+  const organization = await prisma.organization.create({
+    data: { name: credentials.email.split('@')[1], status: 'ACTIVE' },
+  });
+  const passwordHash = await bcrypt.hash(credentials.password, 4);
+  const user = await tenantPrisma.runInOrgContext(organization.id, (tx) =>
+    tx.user.create({
+      data: { organizationId: organization.id, email: credentials.email, passwordHash, role: 'ORG_ADMIN', status: 'ACTIVE' },
+    }),
+  );
+  return { organizationId: organization.id, userId: user.id };
+}
+
+/** Wysyła link weryfikacyjny (stary flow) i zwraca surowy token z przechwyconego maila. */
+export async function issueVerificationToken(
+  app: INestApplication,
+  user: { organizationId: string; userId: string; email: string },
+): Promise<string> {
+  const sendSpy = jest.spyOn(app.get(EmailService), 'send').mockResolvedValue(true);
+  try {
+    await app.get(AuthService).sendVerificationEmail(user.organizationId, user.userId, user.email);
+    const call = sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0];
+    return new URL((call.templateData as { verificationUrl: string }).verificationUrl).searchParams.get('token') as string;
+  } finally {
+    sendSpy.mockRestore();
+  }
 }

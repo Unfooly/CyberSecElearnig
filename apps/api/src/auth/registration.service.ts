@@ -1,9 +1,16 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { isPublicEmailDomain, LEGAL_DOCUMENT_VERSION, normalizeNip, REGISTRATION_COUNTRY, Role } from '@cyberszkolo/shared';
+import {
+  isPublicEmailDomain,
+  LEGAL_DOCUMENT_VERSION,
+  normalizeNip,
+  REGISTRATION_COUNTRY,
+  Role,
+  UserStatus,
+} from '@cyberszkolo/shared';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailDomain, generateDomainVerificationToken } from '../organizations/domain.util';
@@ -79,18 +86,19 @@ export class RegistrationService {
   }
 
   private async processRegistration(dto: RegisterDto, domain: string): Promise<void> {
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-
     const existing = await this.tenantPrisma.runAuthLookup({ email: dto.email });
     if (existing) {
       await this.notifyExistingAccount(existing);
       return;
     }
 
-    const created = await this.createOrganization(dto, domain, passwordHash);
+    // Konto bez hasła klienta (pre-hijacking): losowy, nigdy nieujawniany hash -
+    // realne hasło ustawia właściciel skrzynki linkiem z maila (24 h).
+    const placeholderHash = await bcrypt.hash(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
+    const created = await this.createOrganization(dto, domain, placeholderHash);
     if (created) {
       if (this.mailLimiter.tryAcquire(created.email)) {
-        await this.authService.sendVerificationEmail(created.organizationId, created.id, created.email);
+        await this.authService.sendRegistrationActivation(created);
       }
       return;
     }
@@ -133,6 +141,9 @@ export class RegistrationService {
             email: dto.email,
             passwordHash,
             role: Role.ORG_ADMIN,
+            // INVITED = hasło jeszcze nie ustawione; resetPassword (link z maila)
+            // przełącza na ACTIVE i ustawia emailVerifiedAt.
+            status: UserStatus.INVITED,
             firstName: dto.firstName,
             lastName: dto.lastName,
           },
@@ -188,6 +199,7 @@ export class RegistrationService {
     email: string;
     firstName: string | null;
     status: string;
+    role: string;
     emailVerifiedAt: Date | null;
   }): Promise<void> {
     if (!this.mailLimiter.tryAcquire(user.email)) {

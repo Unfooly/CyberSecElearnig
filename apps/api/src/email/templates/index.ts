@@ -84,6 +84,16 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Reset hasła (link ważny 1 godzinę): ${String(data.resetUrl)}`,
   }),
+  // Rejestracja firmy: jeden link = potwierdzenie skrzynki + ustawienie hasła.
+  'registration-activation': (data, options) => ({
+    html: layout(
+      'Potwierdź adres e-mail i ustaw hasło',
+      '<p>Dziękujemy za rejestrację firmy w Unfooly. Kliknij przycisk, aby potwierdzić adres e-mail i ustawić hasło do konta. Link jest ważny 24 godziny.</p>',
+      { label: 'Potwierdź adres i ustaw hasło', url: String(data.activationUrl) },
+      options,
+    ),
+    text: `Potwierdź adres e-mail i ustaw hasło (link ważny 24 godziny): ${String(data.activationUrl)}`,
+  }),
   // Rejestracja na adres, który ma już konto: mail do WŁAŚCICIELA adresu (w UI
   // nic się nie zmienia - anty-enumeracja). Nie zawiera żadnych danych z
   // formularza atakującego, tylko linki do logowania i resetu hasła.

@@ -5,7 +5,13 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { EmailService } from '../src/email/email.service';
-import { postRegister, registerVerified } from './helpers/auth';
+import {
+  createLegacyUnverifiedUser,
+  createVerifiedUser,
+  issueVerificationToken,
+  postRegister,
+  registerVerified,
+} from './helpers/auth';
 
 describe('Auth + izolacja tenantów (e2e)', () => {
   let app: INestApplication;
@@ -116,18 +122,12 @@ describe('Auth + izolacja tenantów (e2e)', () => {
   it('powtórna rejestracja tego samego e-maila nie tworzy drugiego konta, a pierwsze zostaje nienaruszone', async () => {
     const email = `duplicate-${uniqueSuffix}@duplicate.auth-e2e-test.local`;
 
-    expect((await postRegister(app, email)).status).toBe(201);
-    expect((await postRegister(app, email, 'InneHaslo12345!')).status).toBe(201);
+    expect((await postRegister(app, email, { firstName: 'Pierwsza' })).status).toBe(201);
+    expect((await postRegister(app, email, { firstName: 'Druga' })).status).toBe(201);
 
-    // Stare hasło nadal działa (drugie żądanie niczego nie nadpisało); konto niepotwierdzone => 403.
-    await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, password: 'SuperSecret123!' })
-      .expect(403);
-    await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, password: 'InneHaslo12345!' })
-      .expect(401);
+    // Drugie żądanie niczego nie nadpisało ani nie utworzyło.
+    const admin = await tenantPrisma.runAuthLookup({ email });
+    expect(admin).toMatchObject({ firstName: 'Pierwsza', role: 'ORG_ADMIN' });
   });
 
   it('dwie rejestracje z tej samej domeny tworzą dwie osobne organizacje (nazwa nie jest wyprowadzana z domeny ani unikalna)', async () => {
@@ -198,17 +198,13 @@ describe('Auth + izolacja tenantów (e2e)', () => {
       await verifyApp.close();
     });
 
-    it('pełny flow weryfikacji: rejestracja -> logowanie zablokowane -> link z maila -> logowanie działa', async () => {
+    // Endpoint /auth/verify-email obsługuje konta "starego typu" (ACTIVE, z hasłem,
+    // niepotwierdzone). Nowa rejestracja firmy idzie linkiem "ustaw hasło" -
+    // patrz registration.e2e-spec.ts.
+    it('pełny flow weryfikacji (konto starego typu): logowanie zablokowane -> link z maila -> logowanie działa', async () => {
       const email = `login-${uniqueSuffix}@login.auth-e2e-test.local`;
-      const emailService = verifyApp.get(EmailService);
-      const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
-
-      expect((await postRegister(verifyApp, email)).status).toBe(201);
-
-      const call = sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0];
-      sendSpy.mockRestore();
-      expect(call.templateName).toBe('email-verification');
-      const token = new URL((call.templateData as { verificationUrl: string }).verificationUrl).searchParams.get('token');
+      const legacy = await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email, password: 'SuperSecret123!' });
+      const token = await issueVerificationToken(verifyApp, { ...legacy, email });
 
       // Przed potwierdzeniem: poprawne hasło, ale 403 EMAIL_NOT_VERIFIED.
       const blocked = await request(verifyApp.getHttpServer())
@@ -235,15 +231,9 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     it('izolacja tenantów: token weryfikacyjny org A potwierdza wyłącznie konto org A, nie org B', async () => {
       const emailA = `verify-a-${uniqueSuffix}@verify-a.auth-e2e-test.local`;
       const emailB = `verify-b-${uniqueSuffix}@verify-b.auth-e2e-test.local`;
-      const emailService = verifyApp.get(EmailService);
-      const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
-
-      expect((await postRegister(verifyApp, emailA)).status).toBe(201);
-      const tokenA = new URL(
-        (sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0].templateData as { verificationUrl: string }).verificationUrl,
-      ).searchParams.get('token');
-      expect((await postRegister(verifyApp, emailB)).status).toBe(201);
-      sendSpy.mockRestore();
+      const legacyA = await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email: emailA, password: 'SuperSecret123!' });
+      await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email: emailB, password: 'SuperSecret123!' });
+      const tokenA = await issueVerificationToken(verifyApp, { ...legacyA, email: emailA });
 
       await request(verifyApp.getHttpServer()).post('/auth/verify-email').send({ token: tokenA }).expect(200);
 
@@ -254,14 +244,8 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     async function registerAndCaptureToken(email: string): Promise<string> {
-      const emailService = verifyApp.get(EmailService);
-      const sendSpy = jest.spyOn(emailService, 'send').mockResolvedValue(true);
-      expect((await postRegister(verifyApp, email)).status).toBe(201);
-      const call = sendSpy.mock.calls[sendSpy.mock.calls.length - 1][0];
-      sendSpy.mockRestore();
-      return new URL((call.templateData as { verificationUrl: string }).verificationUrl).searchParams.get(
-        'token',
-      ) as string;
+      const legacy = await createLegacyUnverifiedUser(verifyApp, tenantPrisma, { email, password: 'SuperSecret123!' });
+      return issueVerificationToken(verifyApp, { ...legacy, email });
     }
 
     it('wygasły token weryfikacyjny jest odrzucany (TOKEN_INVALID_OR_EXPIRED), konto zostaje niepotwierdzone', async () => {
@@ -354,7 +338,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
     });
 
     async function registerUser(email: string, password = 'StareHaslo123'): Promise<void> {
-      expect((await postRegister(resetApp, email, password)).status).toBe(201);
+      await createVerifiedUser(resetApp, tenantPrisma, { email, password });
     }
 
     // EmailService realnie nie wysyła (brak MAILERSEND_API_TOKEN w .env.test) —

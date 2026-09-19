@@ -9,8 +9,9 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { postRegister, registrationPayload } from './helpers/auth';
 
-// Samoobsługowa rejestracja firmy (etap 2): dane, domena publiczna,
-// anty-enumeracja, zgody, wyścigi, izolacja nowych tabel.
+// Samoobsługowa rejestracja firmy: dane, domena publiczna, brak hasła w
+// rejestracji (link "ustaw hasło" = potwierdzenie skrzynki), anty-enumeracja,
+// zgody, wyścigi, izolacja nowych tabel.
 describe('Rejestracja firmy (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -20,7 +21,7 @@ describe('Rejestracja firmy (e2e)', () => {
   const suffix = Date.now();
   const domainSuffix = 'registration-e2e.local';
   const email = (label: string) => `${label}-${suffix}@${label}.${domainSuffix}`;
-  // Wszystkie nazwy kończą się sufiksem - afterAll sprzątanie po nazwie.
+  // Wszystkie nazwy kończą się sufiksem - afterAll sprząta po nazwie.
   const orgName = (label: string) => `Firma ${label}.${domainSuffix}`;
 
   beforeAll(async () => {
@@ -51,10 +52,30 @@ describe('Rejestracja firmy (e2e)', () => {
     return { user: user!, organizationId: user!.organizationId };
   }
 
+  // Link z maila rejestracyjnego -> surowy token (z ostatniego maila 'registration-activation').
+  function activationTokenFromMail(): string {
+    const call = [...sendSpy.mock.calls].reverse().find(([opts]) => opts.templateName === 'registration-activation');
+    expect(call).toBeDefined();
+    const url = (call![0].templateData as { activationUrl: string }).activationUrl;
+    expect(new URL(url).pathname).toBe('/reset-password');
+    return new URL(url).searchParams.get('token') as string;
+  }
+
+  // Tłumi mail i przesuwa zegar poza okno limitera maili (10 min).
+  async function withClockAdvanced<T>(ms: number, fn: () => Promise<T>): Promise<T> {
+    const realNow = Date.now();
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(realNow + ms);
+    try {
+      return await fn();
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
   describe('utworzone dane', () => {
-    it('tworzy organizację PENDING z podaną nazwą, admina, dane do faktury, domenę do weryfikacji i dwie zgody', async () => {
+    it('tworzy organizację PENDING z podaną nazwą, admina bez hasła (INVITED), dane do faktury, domenę do weryfikacji i dwie zgody', async () => {
       const adminEmail = email('full');
-      const response = await postRegister(app, adminEmail, undefined, {
+      const response = await postRegister(app, adminEmail, {
         organizationName: orgName('Wyświetlana'),
         organizationLegalName: 'Formalna Nazwa Sp. z o.o.',
         taxId: '526-025-02-74',
@@ -74,12 +95,18 @@ describe('Rejestracja firmy (e2e)', () => {
         selfJoinEnabled: false,
         unverifiedWarningSentAt: null,
       });
-      expect(user).toMatchObject({ role: 'ORG_ADMIN', firstName: 'Zofia', lastName: 'Nowak-Kowalska', emailVerifiedAt: null });
+      expect(user).toMatchObject({
+        role: 'ORG_ADMIN',
+        status: 'INVITED',
+        firstName: 'Zofia',
+        lastName: 'Nowak-Kowalska',
+        emailVerifiedAt: null,
+      });
 
       const details = await tenantPrisma.runInOrgContext(organizationId, async (tx) => ({
         billing: await tx.organizationBillingDetails.findUnique({ where: { organizationId } }),
         domains: await tx.organizationDomain.findMany(),
-        acceptances: await tx.legalAcceptance.findMany({ orderBy: { documentType: 'asc' } }),
+        acceptances: await tx.legalAcceptance.findMany(),
       }));
       expect(details.billing).toMatchObject({
         legalName: 'Formalna Nazwa Sp. z o.o.',
@@ -100,21 +127,12 @@ describe('Rejestracja firmy (e2e)', () => {
 
     it('nazwa organizacji NIE jest wyprowadzana z domeny e-maila', async () => {
       const adminEmail = email('nameless');
-      await postRegister(app, adminEmail, undefined, { organizationName: orgName('Zupełnie Inna') });
+      await postRegister(app, adminEmail, { organizationName: orgName('Zupełnie Inna') });
 
       const { organizationId } = await orgOf(adminEmail);
       const org = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
       expect(org.name).toBe(orgName('Zupełnie Inna'));
       expect(org.name).not.toBe(`nameless.${domainSuffix}`);
-    });
-
-    it('wysyła link weryfikacyjny (24 h) na adres admina', async () => {
-      const adminEmail = email('linkmail');
-      await postRegister(app, adminEmail);
-
-      expect(sendSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ to: adminEmail, templateName: 'email-verification' }),
-      );
     });
 
     it('dwie organizacje mogą czekać na TĘ SAMĄ domenę (obie PENDING, domeny niezweryfikowane)', async () => {
@@ -130,6 +148,96 @@ describe('Rejestracja firmy (e2e)', () => {
       const domainsB = await tenantPrisma.runInOrgContext(b.organizationId, (tx) => tx.organizationDomain.findMany());
       expect(domainsA[0].domain).toBe(domainsB[0].domain);
       expect([domainsA[0].verifiedAt, domainsB[0].verifiedAt]).toEqual([null, null]);
+    });
+  });
+
+  describe('hasło ustawiane dopiero linkiem z maila (pre-hijacking)', () => {
+    it('rejestracja NIE przyjmuje hasła: pole "password" => 400, konto nie powstaje', async () => {
+      const adminEmail = email('withpw');
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ ...registrationPayload(adminEmail), password: 'SuperSecret123!' });
+
+      expect(response.status).toBe(400);
+      expect(await tenantPrisma.runAuthLookup({ email: adminEmail })).toBeNull();
+    });
+
+    it('mail rejestracyjny to link "ustaw hasło" (24 h) - nie zwykły link weryfikacyjny; przed kliknięciem nie da się zalogować', async () => {
+      const adminEmail = email('activate');
+      await postRegister(app, adminEmail);
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      expect(sendSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ to: adminEmail, templateName: 'registration-activation' }),
+      );
+      const { user, organizationId } = await orgOf(adminEmail);
+      const tokens = await tenantPrisma.runInOrgContext(organizationId, (tx) =>
+        tx.passwordResetToken.findMany({ where: { userId: user.id } }),
+      );
+      expect(tokens).toHaveLength(1);
+      const hoursLeft = (tokens[0].expiresAt.getTime() - Date.now()) / 3_600_000;
+      expect(hoursLeft).toBeGreaterThan(23.9);
+      expect(hoursLeft).toBeLessThanOrEqual(24);
+
+      // Żadne hasło nie jest znane nikomu (hash zastępczy) - logowanie odrzucone.
+      await request(app.getHttpServer()).post('/auth/login').send({ email: adminEmail, password: 'SuperSecret123!' }).expect(401);
+    });
+
+    it('link z maila ustawia hasło, potwierdza skrzynkę i aktywuje konto; drugi raz nie zadziała; organizacja zostaje PENDING', async () => {
+      const adminEmail = email('setpw');
+      await postRegister(app, adminEmail);
+      const token = activationTokenFromMail();
+
+      await request(app.getHttpServer())
+        .post('/auth/reset-password')
+        .send({ token, newPassword: 'Moje-Wlasne-Haslo-1!' })
+        .expect(200);
+
+      const { user, organizationId } = await orgOf(adminEmail);
+      expect(user).toMatchObject({ status: 'ACTIVE' });
+      expect(user.emailVerifiedAt).not.toBeNull();
+      const reuse = await request(app.getHttpServer())
+        .post('/auth/reset-password')
+        .send({ token, newPassword: 'Inne-Haslo-999!' })
+        .expect(400);
+      expect(reuse.body.code).toBe('TOKEN_ALREADY_USED');
+
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: adminEmail, password: 'Moje-Wlasne-Haslo-1!' })
+        .expect(200);
+      expect(login.body.accessToken).toEqual(expect.any(String));
+      const org = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
+      expect(org.status).toBe('PENDING_DOMAIN_VERIFICATION');
+    });
+
+    it('atak: ktoś rejestruje adres ofiary - ofiara klika link i sama ustawia hasło, atakujący nie ma żadnego', async () => {
+      const victim = email('victim');
+      // "Atakujący" nie może podać hasła w rejestracji (400) - zostaje mu tylko wysłanie żądania.
+      await postRegister(app, victim, { firstName: 'Ofiara' });
+      const token = activationTokenFromMail();
+
+      // Zgadywanie hasła atakującego (jedyne, co zna) nie działa przed kliknięciem.
+      await request(app.getHttpServer()).post('/auth/login').send({ email: victim, password: 'HasloAtakujacego1!' }).expect(401);
+
+      await request(app.getHttpServer()).post('/auth/reset-password').send({ token, newPassword: 'HasloOfiary-123!' }).expect(200);
+
+      await request(app.getHttpServer()).post('/auth/login').send({ email: victim, password: 'HasloAtakujacego1!' }).expect(401);
+      await request(app.getHttpServer()).post('/auth/login').send({ email: victim, password: 'HasloOfiary-123!' }).expect(200);
+    });
+
+    it('ponowna wysyłka (resend-verification) dla niepotwierdzonego admina PENDING: znów link "ustaw hasło"', async () => {
+      const adminEmail = email('resend');
+      await postRegister(app, adminEmail);
+      sendSpy.mockClear();
+
+      await request(app.getHttpServer()).post('/auth/resend-verification').send({ email: adminEmail }).expect(200);
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      expect(sendSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ to: adminEmail, templateName: 'registration-activation' }),
+      );
     });
   });
 
@@ -149,15 +257,19 @@ describe('Rejestracja firmy (e2e)', () => {
   });
 
   describe('anty-enumeracja', () => {
-    it('odpowiedź (status i ciało) jest identyczna dla nowego adresu, zweryfikowanego konta i konta czekającego na potwierdzenie', async () => {
+    async function activate(adminEmail: string) {
+      const { user, organizationId } = await orgOf(adminEmail);
+      await tenantPrisma.runInOrgContext(organizationId, (tx) =>
+        tx.user.update({ where: { id: user.id }, data: { status: 'ACTIVE', emailVerifiedAt: new Date() } }),
+      );
+    }
+
+    it('odpowiedź (status i ciało) jest identyczna dla nowego adresu, aktywnego konta i konta czekającego na link', async () => {
       const verified = email('enum-verified');
       const pending = email('enum-pending');
       await postRegister(app, verified);
       await postRegister(app, pending);
-      const { user, organizationId } = await orgOf(verified);
-      await tenantPrisma.runInOrgContext(organizationId, (tx) =>
-        tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } }),
-      );
+      await activate(verified);
 
       const forNew = await postRegister(app, email('enum-new'));
       const forVerified = await postRegister(app, verified);
@@ -169,21 +281,16 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(Object.keys(forNew.body)).toEqual(['message']);
     });
 
-    it('konto zweryfikowane: nie powstaje nowa organizacja, właściciel dostaje mail "konto już istnieje"', async () => {
+    it('konto aktywne: nie powstaje nowa organizacja, właściciel dostaje mail "konto już istnieje"', async () => {
       const adminEmail = email('exists');
-      await postRegister(app, adminEmail, undefined, { organizationName: orgName('Istniejąca') });
-      const { user, organizationId } = await orgOf(adminEmail);
-      await tenantPrisma.runInOrgContext(organizationId, (tx) =>
-        tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } }),
-      );
+      await postRegister(app, adminEmail, { organizationName: orgName('Istniejąca') });
+      await activate(adminEmail);
       sendSpy.mockClear();
 
-      // Inne dane firmy w drugim żądaniu - nie mogą nic zmienić ani utworzyć.
       // Okno limitera (pierwsza rejestracja je zużyła) przesuwamy o 11 minut.
-      const realNow = Date.now();
-      const clock = jest.spyOn(Date, 'now').mockReturnValue(realNow + 11 * 60_000);
-      const again = await postRegister(app, adminEmail, 'Inne-Haslo-123!', { organizationName: orgName('Nowa Nazwa') });
-      clock.mockRestore();
+      const again = await withClockAdvanced(11 * 60_000, () =>
+        postRegister(app, adminEmail, { organizationName: orgName('Nowa Nazwa') }),
+      );
 
       expect(again.status).toBe(201);
       expect(await prisma.organization.count({ where: { name: orgName('Nowa Nazwa') } })).toBe(0);
@@ -191,23 +298,9 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({ to: adminEmail, templateName: 'registration-existing-account' }),
       );
-      // Hasło z drugiego żądania nie zostało nadpisane.
-      await request(app.getHttpServer()).post('/auth/login').send({ email: adminEmail, password: 'Inne-Haslo-123!' }).expect(401);
     });
 
-    // Limiter (1 mail / adres / 10 min) działa w pamięci procesu na Date.now();
-    // upływ okna symulujemy przesunięciem zegara.
-    async function withClockAdvanced<T>(ms: number, fn: () => Promise<T>): Promise<T> {
-      const realNow = Date.now();
-      const spy = jest.spyOn(Date, 'now').mockReturnValue(realNow + ms);
-      try {
-        return await fn();
-      } finally {
-        spy.mockRestore();
-      }
-    }
-
-    it('konto niepotwierdzone: po upływie okna limitera dostaje nowy link weryfikacyjny (nie informację o istnieniu konta)', async () => {
+    it('konto niepotwierdzone: po upływie okna limitera dostaje nowy link (nie informację o istnieniu konta)', async () => {
       const adminEmail = email('unverified');
       await postRegister(app, adminEmail);
       sendSpy.mockClear();
@@ -216,22 +309,18 @@ describe('Rejestracja firmy (e2e)', () => {
 
       expect(again.status).toBe(201);
       expect(sendSpy).toHaveBeenCalledTimes(1);
-      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: adminEmail, templateName: 'email-verification' }));
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: adminEmail, templateName: 'registration-activation' }));
     });
 
     it('limiter: seria żądań na ten sam adres w oknie 10 min nie wysyła nic ponad pierwszy mail; po oknie znów jeden', async () => {
       const adminEmail = email('spam');
       await postRegister(app, adminEmail);
-      const { user, organizationId } = await orgOf(adminEmail);
-      await tenantPrisma.runInOrgContext(organizationId, (tx) =>
-        tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } }),
-      );
+      await activate(adminEmail);
       sendSpy.mockClear();
 
       for (let i = 0; i < 4; i += 1) {
         expect((await postRegister(app, adminEmail)).status).toBe(201);
       }
-      // Pierwsza rejestracja zużyła okno limitera, więc te próby nie wysyłają nic.
       expect(sendSpy).not.toHaveBeenCalled();
 
       await withClockAdvanced(11 * 60_000, () => postRegister(app, adminEmail));
@@ -250,7 +339,7 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(sendSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('konto ZAPROSZONE (INVITED) na tym adresie dostaje link aktywacyjny (user-invite), nie weryfikacyjny', async () => {
+    it('konto ZAPROSZONE przez admina (INVITED, pracownik) dostaje link zaproszenia (user-invite), nie link rejestracji firmy', async () => {
       const inviteeEmail = email('invitee');
       const org = await prisma.organization.create({ data: { name: orgName('Zapraszająca'), status: 'ACTIVE' } });
       await tenantPrisma.runInOrgContext(org.id, (tx) =>
@@ -270,13 +359,13 @@ describe('Rejestracja firmy (e2e)', () => {
     it('domena IDN i jej punycode to ta sama skrzynka: drugie żądanie nie tworzy drugiego konta ani organizacji', async () => {
       const idnDomain = `b${String.fromCharCode(0xfc)}cher-${suffix}.${domainSuffix}`;
       const name = orgName('Idn');
-      await postRegister(app, `jan@${idnDomain}`, undefined, { organizationName: name });
+      await postRegister(app, `jan@${idnDomain}`, { organizationName: name });
       const punycodeEmail = `jan@${new URL(`http://${idnDomain}`).hostname}`;
 
       const stored = await tenantPrisma.runAuthLookup({ email: punycodeEmail });
       expect(stored).not.toBeNull();
 
-      await postRegister(app, punycodeEmail, undefined, { organizationName: name });
+      await postRegister(app, punycodeEmail, { organizationName: name });
       expect(await prisma.organization.count({ where: { name } })).toBe(1);
     });
 
@@ -285,10 +374,9 @@ describe('Rejestracja firmy (e2e)', () => {
       const name = orgName('Wyścig');
 
       const [a, b] = await Promise.all([
-        request(app.getHttpServer()).post('/auth/register').send(registrationPayload(adminEmail, undefined, { organizationName: name })),
-        request(app.getHttpServer()).post('/auth/register').send(registrationPayload(adminEmail, undefined, { organizationName: name })),
+        request(app.getHttpServer()).post('/auth/register').send(registrationPayload(adminEmail, { organizationName: name })),
+        request(app.getHttpServer()).post('/auth/register').send(registrationPayload(adminEmail, { organizationName: name })),
       ]);
-
       // Praca idzie w tle - czekamy na jej koniec, zanim sprawdzimy bazę.
       await app.get(RegistrationService).flushBackgroundTasks();
 
@@ -299,7 +387,7 @@ describe('Rejestracja firmy (e2e)', () => {
     });
 
     it('odpowiedź błędu walidacji nie ujawnia stanu kont (tylko treść walidacji)', async () => {
-      const response = await postRegister(app, email('validation'), undefined, { taxId: '5260250275' });
+      const response = await postRegister(app, email('validation'), { taxId: '5260250275' });
 
       expect(response.status).toBe(400);
       expect(JSON.stringify(response.body)).not.toMatch(/istnieje|already|exists|konto/i);
@@ -315,7 +403,7 @@ describe('Rejestracja firmy (e2e)', () => {
       ['brak zgody na politykę prywatności', { acceptPrivacyPolicy: false }, /polityki prywatności/],
       ['imię z frazą phishingową', { firstName: 'Konto: kliknij http://x.pl' }, /Imię i nazwisko/],
     ])('400: %s', async (_label, overrides, message) => {
-      const response = await postRegister(app, email('bad'), undefined, overrides);
+      const response = await postRegister(app, email('bad'), overrides);
 
       expect(response.status).toBe(400);
       expect(JSON.stringify(response.body.message)).toMatch(message);
@@ -323,12 +411,12 @@ describe('Rejestracja firmy (e2e)', () => {
     });
 
     it('nie da się nadać sobie statusu ACTIVE ani roli SUPER_ADMIN przez dodatkowe pola', async () => {
-      const response = await postRegister(app, email('escalate'), undefined, { status: 'ACTIVE', role: 'SUPER_ADMIN' });
+      const response = await postRegister(app, email('escalate'), { status: 'ACTIVE', role: 'SUPER_ADMIN' });
 
       expect(response.status).toBe(400);
     });
 
-    it('brak zgód w ogóle => 400 i nic nie jest zapisane (transakcja)', async () => {
+    it('brak zgód w ogóle => 400 i nic nie jest zapisane', async () => {
       const payload = registrationPayload(email('noconsent'));
       const { acceptTerms: _t, acceptPrivacyPolicy: _p, ...withoutConsent } = payload;
       void _t;

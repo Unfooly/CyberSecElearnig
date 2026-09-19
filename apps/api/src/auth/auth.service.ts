@@ -58,6 +58,8 @@ export interface TokenPair {
 export const BCRYPT_ROUNDS = 12;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+// Link z maila rejestracyjnego (potwierdzenie skrzynki + ustawienie hasła): 24 h.
+const REGISTRATION_ACTIVATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 const RESEND_VERIFICATION_RESPONSE_MESSAGE =
   'Jeśli konto o podanym adresie czeka na potwierdzenie, wysłaliśmy nowy link weryfikacyjny.';
@@ -163,7 +165,11 @@ export class AuthService {
    * różni się tylko treść e-maila (decyzja z tej sesji, patrz plan zadania
    * "Zarządzanie i zapraszanie pracowników").
    */
-  async issuePasswordResetUrl(organizationId: string, userId: string): Promise<string> {
+  async issuePasswordResetUrl(
+    organizationId: string,
+    userId: string,
+    ttlMs: number = PASSWORD_RESET_TOKEN_TTL_MS,
+  ): Promise<string> {
     const rawToken = randomBytes(32).toString('hex');
     const tokenHash = this.hashResetToken(rawToken);
 
@@ -176,7 +182,7 @@ export class AuthService {
           organizationId,
           userId,
           tokenHash,
-          expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+          expiresAt: new Date(Date.now() + ttlMs),
         },
       });
     });
@@ -303,12 +309,46 @@ export class AuthService {
     email: string;
     firstName: string | null;
     status: string;
+    role: string;
   }): Promise<void> {
     if (user.status === UserStatus.INVITED) {
+      // Administrator organizacji założonej samoobsługowo (INVITED = hasło jeszcze
+      // nie ustawione, PENDING = domena niezweryfikowana) dostaje link rejestracyjny,
+      // a pracownik zaproszony przez admina - link zaproszenia.
+      const organization = await this.tenantPrisma.runInOrgContext(user.organizationId, (tx) =>
+        tx.organization.findUnique({ where: { id: user.organizationId }, select: { status: true } }),
+      );
+      if (user.role === Role.ORG_ADMIN && organization?.status === 'PENDING_DOMAIN_VERIFICATION') {
+        await this.sendRegistrationActivation(user);
+        return;
+      }
       await this.sendActivationReminder(user);
     } else {
       await this.sendVerificationEmail(user.organizationId, user.id, user.email);
     }
+  }
+
+  /**
+   * Rejestracja firmy: konto powstaje BEZ hasła klienta, a link z maila (24 h)
+   * jest jednocześnie potwierdzeniem skrzynki i ekranem "ustaw hasło"
+   * (POST /auth/reset-password aktywuje konto INVITED -> ACTIVE i ustawia
+   * emailVerifiedAt). Dzięki temu nikt nie może założyć konta cudzym adresem ze
+   * SWOIM hasłem i liczyć, że ofiara je "potwierdzi" (pre-hijacking).
+   */
+  async sendRegistrationActivation(user: { id: string; organizationId: string; email: string }): Promise<boolean> {
+    const activationUrl = await this.issuePasswordResetUrl(
+      user.organizationId,
+      user.id,
+      REGISTRATION_ACTIVATION_TOKEN_TTL_MS,
+    );
+    const accepted = await this.emailService.send({
+      to: user.email,
+      subject: 'Potwierdź adres e-mail i ustaw hasło',
+      templateName: 'registration-activation',
+      templateData: { activationUrl },
+    });
+    // Tylko jawne false = błąd (mocki testowe zwracają undefined).
+    return accepted !== false;
   }
 
   private async sendActivationReminder(user: {

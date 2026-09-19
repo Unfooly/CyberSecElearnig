@@ -5,6 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RegistrationService } from '../src/auth/registration.service';
 import { EmailService } from '../src/email/email.service';
+import { RedisService } from '../src/redis/redis.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { postRegister, registrationPayload } from './helpers/auth';
@@ -25,6 +26,8 @@ describe('Rejestracja firmy (e2e)', () => {
   const orgName = (label: string) => `Firma ${label}.${domainSuffix}`;
 
   beforeAll(async () => {
+    // Własny prefiks kluczy Redisa: czyszczenie limitera w testach nie dotyka kluczy innego środowiska.
+    process.env.REDIS_KEY_PREFIX = `unfooly-test-reg-${suffix}`;
     const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
@@ -44,6 +47,8 @@ describe('Rejestracja firmy (e2e)', () => {
 
   afterAll(async () => {
     await prisma.organization.deleteMany({ where: { name: { endsWith: domainSuffix } } });
+    await clearLimiterKeys();
+    delete process.env.REDIS_KEY_PREFIX;
     await app.close();
   });
 
@@ -61,15 +66,27 @@ describe('Rejestracja firmy (e2e)', () => {
     return new URL(url).searchParams.get('token') as string;
   }
 
-  // Tłumi mail i przesuwa zegar poza okno limitera maili (10 min).
-  async function withClockAdvanced<T>(ms: number, fn: () => Promise<T>): Promise<T> {
-    const realNow = Date.now();
-    const spy = jest.spyOn(Date, 'now').mockReturnValue(realNow + ms);
-    try {
-      return await fn();
-    } finally {
-      spy.mockRestore();
+  // Symuluje upływ okna limitera maili (10 min): stan limitera jest w Redisie i wygasa wg
+  // czasu Redisa (zegar aplikacji go nie dotyczy), więc usuwamy klucze limitera. Dotyczy to
+  // WYŁĄCZNIE unikalnego prefiksu tego pakietu (REDIS_KEY_PREFIX ustawiony w beforeAll).
+  async function withClockAdvanced<T>(fn: () => Promise<T>): Promise<T> {
+    await clearLimiterKeys();
+    return fn();
+  }
+
+  async function clearLimiterKeys(): Promise<void> {
+    const redis = app.get(RedisService);
+    if (!redis.client) {
+      throw new Error('Ten pakiet e2e wymaga Redisa (REDIS_URL) - limiter maili jest w Redisie.');
     }
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.client.scan(cursor, 'MATCH', redis.key('reg-mail', '*'), 'COUNT', 200);
+      cursor = next;
+      if (keys.length > 0) {
+        await redis.client.del(...keys);
+      }
+    } while (cursor !== '0');
   }
 
   describe('utworzone dane', () => {
@@ -313,7 +330,7 @@ describe('Rejestracja firmy (e2e)', () => {
       sendSpy.mockClear();
 
       // Okno limitera (pierwsza rejestracja je zużyła) przesuwamy o 11 minut.
-      const again = await withClockAdvanced(11 * 60_000, () =>
+      const again = await withClockAdvanced(() =>
         postRegister(app, adminEmail, { organizationName: orgName('Nowa Nazwa') }),
       );
 
@@ -330,7 +347,7 @@ describe('Rejestracja firmy (e2e)', () => {
       await postRegister(app, adminEmail);
       sendSpy.mockClear();
 
-      const again = await withClockAdvanced(11 * 60_000, () => postRegister(app, adminEmail));
+      const again = await withClockAdvanced(() => postRegister(app, adminEmail));
 
       expect(again.status).toBe(201);
       expect(sendSpy).toHaveBeenCalledTimes(1);
@@ -348,7 +365,7 @@ describe('Rejestracja firmy (e2e)', () => {
       }
       expect(sendSpy).not.toHaveBeenCalled();
 
-      await withClockAdvanced(11 * 60_000, () => postRegister(app, adminEmail));
+      await withClockAdvanced(() => postRegister(app, adminEmail));
       expect(sendSpy).toHaveBeenCalledTimes(1);
       expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ templateName: 'registration-existing-account' }));
     });

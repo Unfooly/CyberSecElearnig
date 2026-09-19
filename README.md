@@ -246,9 +246,10 @@ Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7
   obcy może powtarzalnie prosić o link dla adresu ofiary i unieważniać jej ważny link 24 h. Limit:
   1 mail/skrzynka/10 min (w pamięci) + 10/min/IP. Docelowo: limiter w Redis, ewentualnie nie kasować
   tokenu, który ma jeszcze >1 h ważności.
-- **Limiter maili rejestracji w pamięci procesu.** Działa per instancja, znika po restarcie, a przy
-  zalewie >5000 adresami wypiera najstarsze wpisy. Docelowo Redis (`SET NX EX`) razem z
-  infrastrukturą BullMQ (etap z jobem sprzątania). Klucz już ignoruje aliasy `+tag`.
+- **Limiter maili rejestracji jest w Redisie** (`SET NX PX`, wspólny dla instancji, klucz = SHA-256 adresu bez `+tag`,
+  prefiks `REDIS_KEY_PREFIX`). Awaria Redisa = fail-open z rezerwą w pamięci procesu (limit per instancja): log `error`
+  raz na incydent i `info` po powrocie. Throttler żądań (`@nestjs/throttler`) nadal liczy w pamięci procesu - przy więcej
+  niż jednej instancji api limity są per instancja; docelowo Redis storage (backlog).
 - **Ochrona przed masowym zakładaniem organizacji.** Throttle to 10/min/IP; brak limitu globalnego,
   CAPTCHA (Turnstile/hCaptcha) i limitu niezweryfikowanych organizacji na domenę. Do tego job sprzątania
   (14 dni) zmniejsza skutek, ale nie zastępuje tych limitów. Rejestracja przetwarza też w tle maks. 50

@@ -101,7 +101,7 @@ export class RegistrationService {
     const placeholderHash = await bcrypt.hash(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
     const created = await this.createOrganization(dto, domain, placeholderHash);
     if (created) {
-      if (this.mailLimiter.tryAcquire(created.email)) {
+      if (await this.mailLimiter.tryAcquire(created.email)) {
         await this.authService.sendRegistrationActivation(created);
       }
       return;
@@ -206,7 +206,7 @@ export class RegistrationService {
     role: string;
     emailVerifiedAt: Date | null;
   }): Promise<void> {
-    if (!this.mailLimiter.tryAcquire(user.email)) {
+    if (!(await this.mailLimiter.tryAcquire(user.email))) {
       return;
     }
     if (!user.emailVerifiedAt) {

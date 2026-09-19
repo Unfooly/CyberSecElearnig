@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ProxyAwareThrottlerGuard } from './common/guards/proxy-aware-throttler.guard';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CoursesModule } from './courses/courses.module';
@@ -20,6 +21,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
     // nałożony na /auth/login i /auth/register, patrz auth.controller.ts).
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 20 }]),
     PrismaModule,
+    RedisModule,
     AuthModule,
     UsersModule,
     CoursesModule,

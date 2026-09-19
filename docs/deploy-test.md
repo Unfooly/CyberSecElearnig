@@ -269,7 +269,6 @@ prawdziwych klientów).
 ### B. Zalecane przed startem (z backlogu rejestracji, README)
 
 - [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
-- [ ] Limiter maili rejestracji w Redis (dziś w pamięci procesu).
 - [ ] Testy e2e w CI (Postgres + Redis) - dziś uruchamiane ręcznie przed wdrożeniem (`npm run test:e2e --workspace=apps/api`).
 - [ ] Monitoring/alert na logi „zadanie w tle ... nie powiodło się” (rejestracja, sprzątanie organizacji).
 

@@ -60,6 +60,10 @@ jobs:
       - name: Testy skryptu czyszczenia GHCR
         run: node --test .github/scripts/select-versions-to-delete.test.js
 
+      # Hook Claude Code egzekwujący regułę 7 (CLAUDE.md): przykłady blokowane i dozwolone.
+      - name: Testy hooka block-file-writes (reguła 7)
+        run: node --test .claude/hooks/block-file-writes.test.js
+
   # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
   # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
   # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga

@@ -41,6 +41,7 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private worker?: Worker;
   private destroyed = false;
   private ready = false;
+  private retire?: () => void;
   private wake?: () => void;
   private stop!: () => void;
   private readonly stopped = new Promise<void>((resolve) => {
@@ -97,7 +98,12 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   private async start(redisUrl: string): Promise<void> {
-    const connection = redisConnectionFromUrl(redisUrl);
+    // Każda próba ma własną flagę: zamknięcie/porzucenie próby wyłącza ponawianie jej połączeń.
+    const alive = { value: true };
+    this.retire = () => {
+      alive.value = false;
+    };
+    const connection = redisConnectionFromUrl(redisUrl, () => alive.value);
     const prefix = this.config.get<string>('JOBS_QUEUE_PREFIX') ?? 'unfooly';
 
     this.queue = new Queue(MAINTENANCE_QUEUE, {
@@ -137,6 +143,8 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => reject(new Error(`timeout ${ms} ms (Redis niedostępny?)`)), ms);
+      // Zamknięcie aplikacji przerywa wyścig (this.stopped) - ten timer nie może jej wtedy przytrzymać.
+      timer.unref();
     });
     return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
   }
@@ -165,6 +173,9 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private async closeBoth(worker: Worker | undefined, queue: Queue | undefined): Promise<void> {
     const wasReady = this.ready;
     this.ready = false;
+    if (!wasReady) {
+      this.retire?.();
+    }
     // Gdy start się nie powiódł (Redis niedostępny), nie ma czego domykać łagodnie -
     // od razu rozłączamy. Gdy działa: worker dokańcza bieżące zadanie (do limitu).
     const closing = [worker, queue].map((client) => {
@@ -192,6 +203,9 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     this.destroyed = true;
     this.stop();
     this.wake?.();
+    if (!this.ready) {
+      this.retire?.();
+    }
     const worker = this.worker;
     const queue = this.queue;
     this.worker = undefined;

@@ -5,7 +5,7 @@ import { ConnectionOptions } from 'bullmq';
  * połączenia BullMQ. Własny parser zamiast przekazywania URL-a, bo BullMQ
  * przyjmuje obiekt opcji ioredis.
  */
-export function redisConnectionFromUrl(url: string): ConnectionOptions {
+export function redisConnectionFromUrl(url: string, shouldRetry: () => boolean = () => true): ConnectionOptions {
   const parsed = new URL(url);
   if (parsed.protocol !== 'redis:' && parsed.protocol !== 'rediss:') {
     throw new Error('REDIS_URL musi zaczynać się od redis:// albo rediss://');
@@ -23,5 +23,9 @@ export function redisConnectionFromUrl(url: string): ConnectionOptions {
     ...(parsed.protocol === 'rediss:' ? { tls: {} } : {}),
     // Wymagane przez Worker BullMQ (blokujące komendy).
     maxRetriesPerRequest: null,
+    // Ponawianie połączeń do czasu zamknięcia: po `shouldRetry() === false` ioredis
+    // przestaje planować timery (inaczej porzucone połączenie z niedostępnym Redisem
+    // trzyma proces przy życiu).
+    retryStrategy: (times: number) => (shouldRetry() ? Math.min(times * 500, 10_000) : null),
   };
 }

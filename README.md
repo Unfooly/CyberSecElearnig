@@ -279,7 +279,8 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
 - **Konfiguracja:** `BACKGROUND_JOBS_ENABLED` (domyślnie włączone poza `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`
   (prefiks kluczy Redis, domyślnie `unfooly`). Zamknięcie (`SIGTERM`) dokańcza trwające zadanie (do 30 s).
 - **Testy** `jobs.e2e-spec.ts` wymagają Redisa (`REDIS_URL`, domyślnie `localhost:6379`); e2e nie jest jeszcze w CI
-  (patrz „Backlog CI/CD”). `jest-e2e.json` ma `forceExit`, bo test „Redis niedostępny” zostawia timery ioredis.
+  (patrz „Backlog CI/CD”). Jest kończy się czysto (bez `forceExit`): `retryStrategy` ioredis przestaje ponawiać
+  połączenia po zamknięciu, a timery limitów mają `unref()`.
 - **Kaskada usuwania:** nowa tabela z `organizationId` MUSI mieć `onDelete: Cascade` do `organizations`,
   inaczej sprzątanie nie usunie organizacji (błąd jest logowany, organizacja zostaje).
 

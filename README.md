@@ -364,6 +364,15 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
   users(organizationId, id)` (`ON UPDATE NO ACTION`; indeks unikalny na `users` już istnieje;
   kolumny `userId` są wymagane, więc Prisma może wyrazić relację normalnie).
 
+## Backlog operacyjny (Redis)
+
+- **Monitoring pamięci Redisa i alert przy 80%.** Prod Redis działa z `maxmemory 128mb` i `noeviction`
+  (`docker-compose.prod.yml`), więc zapełnienie pamięci oznacza błędy zapisu: limiter maili przechodzi na
+  rezerwę w pamięci procesu (fail-open), zapisy klucza `sessions-revoked:*` przy „wyloguj wszędzie” i resecie hasła
+  padają (okno access tokenu do 15 min), a joby BullMQ (sprzątanie organizacji, tokenów) nie zapiszą stanu.
+  Do zrobienia: zbieranie `used_memory` (`redis-cli INFO memory`; `used_memory / maxmemory`) i alert przy 80%,
+  ewentualnie podniesienie limitu; do tego czasu zapełnienie zobaczymy tylko w logach `RedisService`.
+
 ## Backlog CI/CD
 
 - **Testy e2e API działają w CI** (job `e2e` w `build-images`: kontenery `postgres:16` i `redis:7`, rola

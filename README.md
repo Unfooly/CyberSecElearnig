@@ -228,6 +228,19 @@ docker compose -f docker-compose.prod.yml ps
   (`apps/api` NIE kopiuje `apps/web/package.json` i odwrotnie) — inaczej `npm ci` hoistowałby do
   wspólnego `node_modules` zależności drugiej aplikacji (np. cały Next.js do obrazu backendu).
 
+## Backlog CI/CD
+
+- **Testy e2e (w tym RLS / izolacja tenantów) nie działają w CI.** Workflow   uruchamia tylko lint i testy jednostkowe (api, web); testy  (m.in.
+  , testy izolacji organizacji wymagane przez Zasadę nr 1) potrzebują Postgresa,
+  którego workflow nie ma. Do zrobienia w osobnym zadaniu: kontener serwisowy  w jobie
+   (z rolami / jak w ),   na czystej bazie, potem > @cyberszkolo/api@0.0.1 test:e2e
+> dotenv -e ../../.env.test -e ../../.env -- jest --config ./test/jest-e2e.json; job  powinien wtedy zależeć
+  także od niego. Do tego czasu e2e uruchamiamy ręcznie przed wdrożeniem.
+- **Sprzątanie GHCR usuwa stare wersje obrazów** (zostaje  i 3 najnowsze ), więc wycofanie
+  przez  działa tylko do 3 ostatnich buildów wstecz. Limit prywatnych paczek na planie Free
+  (ok. 500 MB) może i tak być ciasny dla dwóch obrazów po 3 wersje - do sprawdzenia w Settings → Packages
+  po kilku buildach; w razie potrzeby zmniejsz  w workflow.
+
 ## Izolacja danych między organizacjami
 
 Zgodnie z Zasadą nr 1 z `CLAUDE.md`, izolacja tenantów jest wymuszana na dwóch niezależnych

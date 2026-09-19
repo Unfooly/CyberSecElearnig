@@ -57,6 +57,9 @@ jobs:
       - name: Testy web
         run: npm run test --workspace=apps/web
 
+      - name: Testy skryptu czyszczenia GHCR
+        run: node --test .github/scripts/select-versions-to-delete.test.js
+
   images:
     name: obraz ${{ matrix.app }}
     needs: test
@@ -105,3 +108,51 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  # Limit GHCR na planie Free to ok. 500 MB dla prywatnych paczek - po udanym
+  # pushu zostawiamy wersję z tagiem :latest i 3 najnowsze wersje z tagiem
+  # sha-*, resztę (starsze sha-*, wersje bez tagów) usuwamy. Dla obu paczek.
+  # Wybór wersji: .github/scripts/select-versions-to-delete.js (testowany).
+  cleanup:
+    name: sprzątanie ${{ matrix.app }}
+    needs: images
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Usuń stare wersje obrazu
+        uses: actions/github-script@v7
+        env:
+          APP: ${{ matrix.app }}
+          KEEP_SHA_TAGS: '3'
+        with:
+          script: |
+            const { selectVersionsToDelete } = require('./.github/scripts/select-versions-to-delete.js');
+            const owner = context.repo.owner;
+            const packageName = `${context.repo.repo}-${process.env.APP}`.toLowerCase();
+            // Konto osobiste vs organizacja - inny prefiks endpointu.
+            const scope = context.payload.repository.owner.type === 'Organization' ? 'orgs' : 'users';
+
+            const versions = await github.paginate(
+              `GET /${scope}/{owner}/packages/container/{package_name}/versions`,
+              { owner, package_name: packageName, per_page: 100 },
+            );
+            const toDelete = selectVersionsToDelete(versions, { keepShaTags: Number(process.env.KEEP_SHA_TAGS) });
+            core.info(`${packageName}: ${versions.length} wersji, do usunięcia: ${toDelete.length}`);
+
+            for (const version of toDelete) {
+              const tags = version.metadata?.container?.tags ?? [];
+              core.info(`Usuwam wersję ${version.id} (${tags.join(', ') || 'bez tagów'}) z ${version.created_at}`);
+              await github.request(
+                `DELETE /${scope}/{owner}/packages/container/{package_name}/versions/{package_version_id}`,
+                { owner, package_name: packageName, package_version_id: version.id },
+              );
+            }

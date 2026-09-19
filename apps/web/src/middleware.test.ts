@@ -186,6 +186,27 @@ describe('middleware', () => {
       expect(response.headers.get('location')).toBeNull();
     });
 
+    it('za zaufanym proxy przekazuje adres klienta do /auth/refresh (limit per klient); bez TRUST_PROXY - nie', async () => {
+      const okResponse = () => ({ ok: false, status: 401 });
+      const cookie = `access_token=${expiredToken}; refresh_token=old-refresh-token`;
+      const withIp = (path: string) =>
+        new NextRequest(new URL(path, 'http://localhost:3000'), {
+          headers: { cookie, 'cf-connecting-ip': '203.0.113.7' },
+        });
+
+      const untrusted = vi.fn().mockResolvedValue(okResponse());
+      vi.stubGlobal('fetch', untrusted);
+      await middleware(withIp('/dashboard'));
+      expect(untrusted.mock.calls[0][1].headers).not.toHaveProperty('CF-Connecting-IP');
+
+      vi.stubEnv('TRUST_PROXY', 'true');
+      const trusted = vi.fn().mockResolvedValue(okResponse());
+      vi.stubGlobal('fetch', trusted);
+      await middleware(withIp('/dashboard'));
+      expect(trusted.mock.calls[0][1].headers).toMatchObject({ 'CF-Connecting-IP': '203.0.113.7' });
+      vi.unstubAllEnvs();
+    });
+
     it('porażka: backend odrzuca refresh (401) -> redirect do /login', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 401 });
       vi.stubGlobal('fetch', fetchMock);

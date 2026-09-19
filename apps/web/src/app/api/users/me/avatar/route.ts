@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do apps/api - AvatarPickerModal jest komponentem
 // klienckim (modal otwierany interaktywnie), więc nie może czytać httpOnly
@@ -13,7 +14,7 @@ export async function GET() {
   }
 
   try {
-    const backendResponse = await fetch(`${API_URL}/users/me/avatar`, {
+    const backendResponse = await apiFetch(`${API_URL}/users/me/avatar`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });
@@ -35,7 +36,7 @@ export async function PATCH(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/me/avatar`, {
+    backendResponse = await apiFetch(`${API_URL}/users/me/avatar`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

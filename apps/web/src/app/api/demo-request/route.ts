@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Publiczny proxy formularza "Umów demo" -> POST /demo-requests w apps/api.
 // Bez cookie/JWT (odwiedzający jest anonimowy); walidację i limit żądań
@@ -12,15 +13,10 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/demo-requests`, {
+    backendResponse = await apiFetch(`${API_URL}/demo-requests`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Limit żądań w apps/api liczy IP klienta - przekazujemy je dalej.
-        ...(request.headers.get('x-forwarded-for')
-          ? { 'X-Forwarded-For': request.headers.get('x-forwarded-for') as string }
-          : {}),
-      },
+      // Adres klienta dla limitu w apps/api dokłada apiFetch (tylko za zaufanym proxy).
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       cache: 'no-store',
     });

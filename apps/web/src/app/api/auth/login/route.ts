@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 import { setAuthCookies } from '@/lib/auth-cookies';
 import { decodeJwtPayload } from '@/lib/jwt';
 import { Role } from '@cyberszkolo/shared';
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/auth/login`, {
+    backendResponse = await apiFetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),

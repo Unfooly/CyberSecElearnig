@@ -1,10 +1,20 @@
 # Podmień na swoją prawdziwą domenę, zanim uruchomisz - Caddy automatycznie
 # pobierze i odnowi certyfikat SSL (Let's Encrypt), zero ręcznej konfiguracji.
 
+# Przy TRUST_PROXY=true aplikacja bierze adres klienta z CF-Connecting-IP. Za Caddy (bez
+# Cloudflare) ten nagłówek pochodziłby od klienta, więc Caddy NADPISUJE go prawdziwym adresem
+# połączenia ({remote_host}); dopisywany przez Caddy X-Forwarded-For jest fallbackiem.
 twoja-domena.pl {
-    reverse_proxy web:3000
+    reverse_proxy web:3000 {
+        header_up CF-Connecting-IP {remote_host}
+    }
 }
 
+# Bezpośredni dostęp do api z internetu (nie zalecany): przy TRUST_PROXY=true klient nie może
+# podać własnego CF-Connecting-IP - usuwamy go, a ostatni hop X-Forwarded-For dopisuje Caddy.
+# Jeśli nie potrzebujesz publicznego api.*, usuń ten blok (api bez wystawionych portów jest bezpieczniejsze).
 api.twoja-domena.pl {
-    reverse_proxy api:3001
+    reverse_proxy api:3001 {
+        header_up -CF-Connecting-IP
+    }
 }

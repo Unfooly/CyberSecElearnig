@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Role } from '@cyberszkolo/shared';
 import { ACCESS_TOKEN_COOKIE, API_URL, REFRESH_TOKEN_COOKIE } from '@/lib/config';
+import { clientIpHeaders } from '@/lib/client-ip';
 import { decodeJwtPayload, isExpired } from '@/lib/jwt';
 import { clearAuthCookies, setAuthCookies, type TokenPair } from '@/lib/auth-cookies';
 
@@ -32,11 +33,11 @@ function redirectToLogin(request: NextRequest): NextResponse {
   return response;
 }
 
-async function refreshTokens(refreshToken: string): Promise<TokenPair | null> {
+async function refreshTokens(refreshToken: string, clientIp: Record<string, string>): Promise<TokenPair | null> {
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...clientIp },
       body: JSON.stringify({ refreshToken }),
     });
     if (!response.ok) {
@@ -75,7 +76,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // mogą modyfikować cookies, więc to jedyne miejsce, gdzie transparentny
   // refresh może zaktualizować je na odpowiedzi.
   if (!payload || isExpired(payload)) {
-    refreshedTokens = await refreshTokens(refreshToken);
+    refreshedTokens = await refreshTokens(refreshToken, clientIpHeaders(request.headers));
     if (!refreshedTokens) {
       return redirectToLogin(request);
     }

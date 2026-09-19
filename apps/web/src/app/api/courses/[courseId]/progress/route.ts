@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do apps/api - jedyny nowy Route Handler tego zadania
 // (start woła się bezpośrednio z Server Component, tak jak reszta
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(
+    backendResponse = await apiFetch(
       `${API_URL}/courses/${encodeURIComponent(params.courseId)}/progress`,
       {
         method: 'POST',

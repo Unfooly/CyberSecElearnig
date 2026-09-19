@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 export async function GET() {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -10,7 +11,7 @@ export async function GET() {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/departments`, {
+    backendResponse = await apiFetch(`${API_URL}/users/departments`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });

@@ -1,3 +1,5 @@
+import { apiFetch } from '@/lib/api-fetch';
+
 export type FetchResult<T> = { ok: true; data: T } | { ok: false; status: number };
 
 /**
@@ -11,7 +13,8 @@ export async function fetchJson<T>(
   init: RequestInit,
 ): Promise<FetchResult<T>> {
   try {
-    const response = await fetch(url, init);
+    // Adres klienta dla limitów po stronie API (tylko za zaufanym proxy).
+    const response = await apiFetch(url, init);
     if (!response.ok) {
       return { ok: false, status: response.status };
     }

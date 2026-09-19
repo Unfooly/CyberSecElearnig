@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Odpowiedź apps/api jest celowo identyczna dla istniejącego i nieistniejącego
 // konta (anty-enumeracja) - front tylko ją wyświetla, nie interpretuje.
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/auth/resend-verification`, {
+    backendResponse = await apiFetch(`${API_URL}/auth/resend-verification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),

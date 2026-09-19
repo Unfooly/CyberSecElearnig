@@ -22,7 +22,8 @@ describe('POST /api/demo-request', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain('/demo-requests');
     expect(init.headers.Authorization).toBeUndefined();
-    expect(init.headers['X-Forwarded-For']).toBe('1.2.3.4');
+    // Surowy X-Forwarded-For od klienta NIE jest przekazywany (adres dokłada apiFetch, tylko za zaufanym proxy).
+    expect(init.headers['X-Forwarded-For']).toBeUndefined();
   });
 
   it('400 dla niepoprawnego JSON', async () => {

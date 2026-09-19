@@ -259,13 +259,15 @@ prawdziwych klientów).
 - [ ] **Sekrety i tryby deweloperskie wyłączone:** brak `ALLOW_EMAIL_DEV_MODE`, ustawiony `MAILERSEND_API_TOKEN` i
   `EMAIL_FROM`, `FRONTEND_URL` na publiczny `https://`, wygenerowane nowe `JWT_SECRET`/`JWT_REFRESH_SECRET`, brak
   kont demo z seedów (`seed-dev-roles`) w bazie produkcyjnej.
+- [ ] **`TRUST_PROXY=true` w `.env.prod`** (tunel Cloudflare): bez tego wszyscy użytkownicy dzielą jeden licznik limitów
+  (adres kontenera web). Po wdrożeniu sprawdź: dwa różne IP nie blokują się nawzajem po przekroczeniu limitu
+  (np. 4 zgłoszenia „Umów demo” z jednego IP => 429, z drugiego => 202). Api bez wystawionych portów.
 - [ ] **Redis z trwałością** (AOF/RDB) i `BACKGROUND_JOBS_ENABLED` niewyłączone: bez workera nie działa sprzątanie
   organizacji PENDING (14 dni) ani przypomnienie po 7 dniach.
 - [ ] **Kopie zapasowe bazy** (harmonogram + sprawdzone odtworzenie) i region UE (RODO).
 
 ### B. Zalecane przed startem (z backlogu rejestracji, README)
 
-- [ ] `trust proxy` / prawdziwy adres IP za Cloudflare Tunnel (inaczej limity IP liczą jeden adres albo dają się obejść).
 - [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
 - [ ] Limiter maili rejestracji w Redis (dziś w pamięci procesu).
 - [ ] Testy e2e w CI (Postgres + Redis) - dziś uruchamiane ręcznie przed wdrożeniem (`npm run test:e2e --workspace=apps/api`).

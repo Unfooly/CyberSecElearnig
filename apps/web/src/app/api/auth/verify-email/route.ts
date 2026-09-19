@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do apps/api. Weryfikacja NIE loguje (brak cookies) -
 // user loguje się po potwierdzeniu, jak po resecie hasła.
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/auth/verify-email`, {
+    backendResponse = await apiFetch(`${API_URL}/auth/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),

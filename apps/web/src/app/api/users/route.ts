@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do apps/api - GET listuje pracowników (paginacja/
 // wyszukiwanie/filtr przez query string, przekazywane 1:1), POST zaprasza
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users${request.nextUrl.search}`, {
+    backendResponse = await apiFetch(`${API_URL}/users${request.nextUrl.search}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/invite`, {
+    backendResponse = await apiFetch(`${API_URL}/users/invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

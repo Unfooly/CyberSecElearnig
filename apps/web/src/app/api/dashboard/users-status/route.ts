@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do GET /dashboard/users-status (query przekazywane 1:1;
 // walidację parametrów robi backend).
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/dashboard/users-status${request.nextUrl.search}`, {
+    backendResponse = await apiFetch(`${API_URL}/dashboard/users-status${request.nextUrl.search}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });

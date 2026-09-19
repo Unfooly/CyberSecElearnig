@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy pliku CSV z GET /dashboard/export?format=csv - przekazuje treść oraz
 // Content-Disposition, żeby przeglądarka zapisała plik pod nazwą z backendu.
@@ -12,7 +13,7 @@ export async function GET() {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/dashboard/export?format=csv`, {
+    backendResponse = await apiFetch(`${API_URL}/dashboard/export?format=csv`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });

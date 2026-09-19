@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies, headers } from 'next/headers';
+import { apiFetch } from '@/lib/api-fetch';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 
 /**
@@ -48,7 +49,7 @@ export async function proxyAuthenticated(
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}${apiPath}`, {
+    backendResponse = await apiFetch(`${API_URL}${apiPath}`, {
       method,
       headers: {
         Authorization: `Bearer ${accessToken}`,

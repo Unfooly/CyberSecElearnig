@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -12,7 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
+    backendResponse = await apiFetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +41,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
+    backendResponse = await apiFetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` },
     });

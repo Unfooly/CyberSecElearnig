@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy server-side do apps/api - ten endpoint nigdy nie wydaje cookies
 // (forgot-password nie loguje), więc jest tu wyłącznie żeby przeglądarka nie
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/auth/forgot-password`, {
+    backendResponse = await apiFetch(`${API_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),

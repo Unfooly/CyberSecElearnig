@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Pola tekstowe przekazywane do apps/api - ALLOWLISTA: inne klucze z żądania
 // (np. status, role, password, country) nigdy nie docierają do backendu.
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/auth/register`, {
+    backendResponse = await apiFetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

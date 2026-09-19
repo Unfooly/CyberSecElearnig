@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -10,7 +11,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/${encodeURIComponent(params.id)}/resend-invite`, {
+    backendResponse = await apiFetch(`${API_URL}/users/${encodeURIComponent(params.id)}/resend-invite`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
     });

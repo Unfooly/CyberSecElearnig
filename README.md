@@ -253,9 +253,6 @@ Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7
   CAPTCHA (Turnstile/hCaptcha) i limitu niezweryfikowanych organizacji na domenę. Do tego job sprzątania
   (14 dni) zmniejsza skutek, ale nie zastępuje tych limitów. Rejestracja przetwarza też w tle maks. 50
   zadań naraz (nadmiar dostaje 503).
-- **`trust proxy` / prawdziwy adres IP.** Throttler liczy IP z requestu; za Cloudflare Tunnel i proxy
-  trzeba ustawić zaufanie do nagłówka (`CF-Connecting-IP`/`X-Forwarded-For`), inaczej wszyscy dzielą jedno
-  IP (limit trafia niewinnych) albo nagłówek da się podrobić. Do sprawdzenia przy wdrożeniu.
 - **Praca w tle = błędy tylko w logu.** Rejestracja odpowiada natychmiast, a zapis i mail idą w tle
   (brak kanału czasowego enumeracji). Awaria bazy nie dociera do klienta: użytkownik nie dostaje maila i
   może spróbować ponownie. Docelowo monitoring/alert na logi „zadanie w tle (rejestracja) nie powiodło się”.
@@ -278,6 +275,20 @@ Zebrane z przeglądów bezpieczeństwa i kodu całej serii „Organizacja (1-6/7
 - **Strony prawne.** `/regulamin`, `/polityka-prywatnosci`, `/bezpieczenstwo` mają placeholdery i `noindex`, a zgody
   zapisują wersję `draft-1`. Warunek startu publicznego: patrz „Checklista startu produkcyjnego” w
   `docs/deploy-test.md` i `docs/legal/privacy-policy-checklist.md`.
+
+## Adres klienta i limity żądań (`TRUST_PROXY`)
+
+Ruch produkcyjny: przeglądarka → Cloudflare → tunel → **web (BFF)** → api. API nie ma wystawionych portów i
+widzi tylko kontener web, więc bez przekazania adresu wszyscy użytkownicy dzieliby jeden licznik throttlera.
+
+- **`TRUST_PROXY=true`** (produkcja, `.env.prod`): web bierze adres z `CF-Connecting-IP` (fallback: pierwszy hop
+  `X-Forwarded-For`), przekazuje go w `CF-Connecting-IP` do api (`apps/web/src/lib/api-fetch.ts`, także middleware
+  i strony serwerowe przez `fetchJson`), a `ProxyAwareThrottlerGuard` w api liczy limity po tym adresie
+  (`apps/api/src/common/client-ip.ts`; wartość musi być poprawnym IP). Express dostaje `trust proxy = 1`.
+- **`TRUST_PROXY` inne niż `true`** (domyślnie, lokalnie): nagłówki są ignorowane, liczy się adres gniazda - nie da
+  się podszyć IP.
+- **Warunek bezpieczeństwa:** api nigdy nie wystawiamy na zewnątrz, a web ma być osiągalny wyłącznie przez tunel/proxy
+  (Cloudflare nadpisuje `CF-Connecting-IP`). Inaczej przy `true` nagłówek da się podrobić i obejść limity.
 
 ## Zadania w tle (BullMQ, `apps/api/src/jobs/`)
 

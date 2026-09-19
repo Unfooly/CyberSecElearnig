@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
+import { apiFetch } from '@/lib/api-fetch';
 
 // Proxy multipart - czytamy FormData z żądania przeglądarki i budujemy NOWY
 // FormData do apps/api, zamiast ręcznie przekazywać surowe body/nagłówki:
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${API_URL}/users/import-csv`, {
+    backendResponse = await apiFetch(`${API_URL}/users/import-csv`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: outgoing,

@@ -97,6 +97,7 @@ Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres
 
 | Objaw | Najczęstsza przyczyna |
 |---|---|
+| Build web: „BLAD: brak .../standalone/apps/web/server.js” albo COPY standalone „not found” | Na VPS jest stary checkout (bez `output: 'standalone'` w `apps/web/next.config.mjs`). `git pull` i sprawdź: `grep -n "standalone|outputFileTracingRoot" apps/web/next.config.mjs`. Build przerywa się celowo z czytelnym komunikatem. |
 | Cloudflare pokazuje błąd 502/1033 | `cloudflared` nie działa (pusty/zły `TUNNEL_TOKEN`) albo Public Hostname wskazuje `localhost` zamiast `web:3000`. |
 | `cloudflared` restartuje się | Zły token. `docker compose ... logs cloudflared`. |
 | `api` nie startuje, `migrate` w stanie `exited (1)` | Błąd migracji lub zły `DATABASE_URL`/hasło. `logs migrate`. Api nie wystartuje, dopóki `migrate` nie zakończy się kodem 0 (to zamierzone). |

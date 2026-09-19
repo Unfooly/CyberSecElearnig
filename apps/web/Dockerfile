@@ -28,6 +28,12 @@ COPY apps/web apps/web
 # packages/shared jest już zbudowane przez postinstall powyżej (npm ci).
 RUN npm run build --workspace=apps/web
 
+# Czytelny błąd zamiast "not found" przy COPY w etapie production, gdyby
+# next.config.mjs nie miał output: 'standalone' albo zmieniło się
+# experimental.outputFileTracingRoot (przy root = root repo server.js leży w
+# .next/standalone/apps/web/, nie w korzeniu standalone).
+RUN test -f apps/web/.next/standalone/apps/web/server.js || { echo "BLAD: brak apps/web/.next/standalone/apps/web/server.js - sprawdz output: 'standalone' i experimental.outputFileTracingRoot w apps/web/next.config.mjs" >&2; exit 1; }
+
 # ---- production -----------------------------------------------------------
 FROM node:20-alpine AS production
 WORKDIR /app

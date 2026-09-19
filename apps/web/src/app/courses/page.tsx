@@ -13,6 +13,7 @@ import UserGamificationCard from './_components/UserGamificationCard';
 import WelcomeBanner from './_components/WelcomeBanner';
 import DidYouKnowWidget from './_components/DidYouKnowWidget';
 import LeaderboardTable from './_components/LeaderboardTable';
+import { redirectIfPending } from '@/lib/organization';
 
 export default async function CoursesPage() {
   // middleware.ts już przekierował niezalogowanego - to dodatkowe
@@ -46,6 +47,10 @@ export default async function CoursesPage() {
 
   if (!coursesResult.ok && coursesResult.status === 401) {
     redirect('/login');
+  }
+  // 403 z guarda organizacji PENDING => ekran weryfikacji domeny.
+  if (!coursesResult.ok && coursesResult.status === 403) {
+    await redirectIfPending(accessToken);
   }
 
   return (

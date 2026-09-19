@@ -59,6 +59,37 @@ describe('DashboardPage', () => {
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
+  it('403 z guarda organizacji PENDING => /onboarding (stan potwierdzony w /organization/me)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'PENDING_DOMAIN_VERIFICATION' }) }
+          : { ok: false, status: 403, json: async () => ({ code: 'ORGANIZATION_PENDING_DOMAIN_VERIFICATION' }) },
+      ),
+    );
+
+    await expect(DashboardPage()).rejects.toThrow('REDIRECT:/onboarding');
+  });
+
+  it('403 z innego powodu (organizacja ACTIVE) NIE przekierowuje na onboarding', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/organization/me')
+          ? { ok: true, status: 200, json: async () => ({ status: 'ACTIVE' }) }
+          : { ok: false, status: 403, json: async () => ({}) },
+      ),
+    );
+
+    render(await DashboardPage());
+
+    expect(redirect).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
   it('przekierowuje do /login, gdy API zwraca 401 (token faktycznie nieważny)', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal(

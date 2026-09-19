@@ -406,6 +406,9 @@ export function LandingFooter() {
           <a href="#produkt" className="hover:text-ink">Produkt</a>
           <a href="#cennik" className="hover:text-ink">Cennik</a>
           <a href="#demo" className="hover:text-ink">Kontakt</a>
+          <a href="/regulamin" className="hover:text-ink">Regulamin</a>
+          <a href="/polityka-prywatnosci" className="hover:text-ink">Polityka prywatności</a>
+          <a href="/bezpieczenstwo" className="hover:text-ink">Bezpieczeństwo</a>
         </nav>
         <span>© {new Date().getFullYear()} Unfooly</span>
       </div>

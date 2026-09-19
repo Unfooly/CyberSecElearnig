@@ -127,6 +127,29 @@ describe('Weryfikacja domeny i guard PENDING (e2e)', () => {
       });
     });
 
+    it('zwraca dane firmy z rejestracji (tylko własne, bez danych innej organizacji)', async () => {
+      const a = await pendingAdmin('billing-a');
+      const b = await pendingAdmin('billing-b');
+      await tenantPrisma.runInOrgContext(b.organizationId, (tx) =>
+        tx.organizationBillingDetails.update({
+          where: { organizationId: b.organizationId },
+          data: { legalName: 'Sekretna Firma B', addressLine: 'ul. Tajna 9' },
+        }),
+      );
+
+      const response = await request(app.getHttpServer()).get('/organization/me').set(auth(a.token)).expect(200);
+      expect(JSON.stringify(response.body)).not.toMatch(/Sekretna Firma B|ul\. Tajna 9/);
+
+      expect(response.body.billing).toEqual({
+        legalName: 'Firma Testowa Sp. z o.o.',
+        taxId: '5260250274',
+        addressLine: 'ul. Testowa 1',
+        postalCode: '00-001',
+        city: 'Warszawa',
+        country: 'PL',
+      });
+    });
+
     it('EMPLOYEE dostaje 403 (rola sprawdzana w guardzie)', async () => {
       const { organizationId } = await pendingAdmin('employee');
       await prisma.organization.update({ where: { id: organizationId }, data: { status: 'ACTIVE' } });

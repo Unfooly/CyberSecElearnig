@@ -7,6 +7,7 @@ import { decodeJwtPayload } from '@/lib/jwt';
 import type { Badge } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
 import BadgeGrid from './_components/BadgeGrid';
+import { redirectIfPending } from '@/lib/organization';
 
 export default async function AchievementsPage() {
   // middleware.ts już przekierował niezalogowanego - to dodatkowe
@@ -25,6 +26,9 @@ export default async function AchievementsPage() {
 
   if (!result.ok && result.status === 401) {
     redirect('/login');
+  }
+  if (!result.ok && result.status === 403) {
+    await redirectIfPending(accessToken);
   }
 
   return (

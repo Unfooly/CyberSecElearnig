@@ -94,6 +94,58 @@ describe('POST /api/auth/login', () => {
     );
   });
 
+  describe('strona startowa zależna od statusu organizacji (ORG_ADMIN)', () => {
+    const jwt = (role: string) => {
+      const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString('base64url');
+      return `${b64({ alg: 'none' })}.${b64({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 })}.x`;
+    };
+    const loginThenOrg = (role: string, org: { ok: boolean; status?: number; body?: unknown }) =>
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ accessToken: jwt(role), refreshToken: 'r' }) })
+        .mockResolvedValueOnce({ ok: org.ok, status: org.status ?? 200, json: async () => org.body });
+
+    it('organizacja PENDING => /onboarding (zapytanie o status z tokenem świeżo zalogowanego)', async () => {
+      const fetchMock = loginThenOrg('ORG_ADMIN', { ok: true, body: { status: 'PENDING_DOMAIN_VERIFICATION' } });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const response = await POST(buildRequest({ email: 'a@example.test', password: 'x' }));
+
+      expect((await response.json()).redirectTo).toBe('/onboarding');
+      expect(fetchMock.mock.calls[1][0]).toMatch(/\/organization\/me$/);
+      expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe(`Bearer ${jwt('ORG_ADMIN')}`);
+    });
+
+    it('organizacja ACTIVE => /dashboard', async () => {
+      vi.stubGlobal('fetch', loginThenOrg('ORG_ADMIN', { ok: true, body: { status: 'ACTIVE' } }));
+
+      const response = await POST(buildRequest({ email: 'a@example.test', password: 'x' }));
+
+      expect((await response.json()).redirectTo).toBe('/dashboard');
+    });
+
+    it('błąd zapytania o status nie blokuje logowania (zwykła strona startowa)', async () => {
+      vi.stubGlobal('fetch', loginThenOrg('ORG_ADMIN', { ok: false, status: 503 }));
+
+      const response = await POST(buildRequest({ email: 'a@example.test', password: 'x' }));
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).redirectTo).toBe('/dashboard');
+    });
+
+    it('EMPLOYEE: bez zapytania o organizację, /courses', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ accessToken: jwt('EMPLOYEE'), refreshToken: 'r' }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const response = await POST(buildRequest({ email: 'a@example.test', password: 'x' }));
+
+      expect((await response.json()).redirectTo).toBe('/courses');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('odrzuca 200 z apps/api, gdy body nie ma accessToken/refreshToken (fail closed, nie fałszywy sukces)', async () => {
     vi.stubGlobal(
       'fetch',

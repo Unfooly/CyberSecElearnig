@@ -3,7 +3,9 @@ import { cookies } from 'next/headers';
 import { API_URL } from '@/lib/config';
 import { setAuthCookies } from '@/lib/auth-cookies';
 import { decodeJwtPayload } from '@/lib/jwt';
-import { homePathForRole } from '@/lib/home-path';
+import { Role } from '@cyberszkolo/shared';
+import { homePathForRole, ONBOARDING_PATH } from '@/lib/home-path';
+import { fetchOrganization } from '@/lib/organization';
 
 // Proxy server-side do apps/api - przeglądarka woła TYLKO ten endpoint,
 // nigdy nie łączy się z apps/api bezpośrednio i nigdy nie widzi tokenów.
@@ -61,5 +63,15 @@ export async function POST(request: NextRequest) {
 
   // Rola tylko do wyboru strony startowej (UX) - dostęp i tak egzekwuje middleware + apps/api.
   const role = decodeJwtPayload(data.accessToken)?.role;
+
+  // Admin organizacji, która nie zweryfikowała jeszcze domeny, ląduje na ekranie
+  // weryfikacji, nie na dashboardzie (API i tak zablokowałoby dane - guard PENDING).
+  // Błąd tego zapytania nie blokuje logowania: wtedy zwykła strona startowa.
+  if (role === Role.ORG_ADMIN) {
+    const organization = await fetchOrganization(data.accessToken);
+    if (organization.ok && organization.data.status === 'PENDING_DOMAIN_VERIFICATION') {
+      return NextResponse.json({ success: true, redirectTo: ONBOARDING_PATH });
+    }
+  }
   return NextResponse.json({ success: true, redirectTo: homePathForRole(role) });
 }

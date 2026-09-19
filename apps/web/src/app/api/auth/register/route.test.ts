@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
 import { POST } from './route';
-
-const setCookieMock = vi.fn();
-
-vi.mock('next/headers', () => ({
-  cookies: vi.fn(() => ({ set: setCookieMock })),
-}));
+import { API_URL } from '@/lib/config';
 
 function buildRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost:3000/api/auth/register', {
@@ -17,109 +11,93 @@ function buildRequest(body: unknown): NextRequest {
   });
 }
 
+const VALID = {
+  firstName: 'Anna',
+  lastName: 'Nowak',
+  email: 'anna@acme.pl',
+  organizationLegalName: 'Acme Sp. z o.o.',
+  organizationName: 'Acme',
+  taxId: '5260250274',
+  addressLine: 'ul. Długa 5',
+  postalCode: '80-001',
+  city: 'Gdańsk',
+  acceptTerms: true,
+  acceptPrivacyPolicy: true,
+};
+
 describe('POST /api/auth/register', () => {
   const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    setCookieMock.mockClear();
-    vi.mocked(cookies).mockClear();
     consoleErrorSpy.mockClear();
   });
 
-  it('zwraca 400, gdy brakuje któregokolwiek pola, bez wołania backendu', async () => {
+  it('zwraca 400 bez wołania backendu, gdy brakuje któregokolwiek pola tekstowego', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await POST(buildRequest({ email: '', password: 'haslo123!' }));
+    const response = await POST(buildRequest({ ...VALID, taxId: '' }));
 
     expect(response.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('przekazuje TYLKO allowlistę pól: hasło, rola, status i kraj z żądania nie docierają do API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ message: 'ok' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await POST(buildRequest({ ...VALID, password: 'x', role: 'SUPER_ADMIN', status: 'ACTIVE', country: 'DE' }));
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_URL}/auth/register`);
+    expect(JSON.parse(init.body)).toEqual(VALID);
+  });
+
+  it('zgody muszą być dokładnie true (string "true" => false)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ message: 'Zgoda wymagana' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await POST(buildRequest({ ...VALID, acceptTerms: 'true' }));
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).acceptTerms).toBe(false);
+  });
+
   it('zwraca 502, gdy backend jest nieosiągalny', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connection refused')));
 
-    const response = await POST(
-      buildRequest({ email: 'a@test.pl', password: 'SuperSecret123!' }),
-    );
+    const response = await POST(buildRequest(VALID));
 
     expect(response.status).toBe(502);
-    expect(setCookieMock).not.toHaveBeenCalled();
   });
 
-  it('przy duplikacie e-maila przekazuje generyczny komunikat 1:1 z backendu (bez ujawniania że e-mail zajęty)', async () => {
+  it('normalizuje tablicę komunikatów walidacji do stringa i przekazuje kod błędu', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
         status: 400,
-        json: async () => ({
-          message: 'Nie udało się utworzyć konta z podanymi danymi. Jeśli masz już konto, zaloguj się.',
-        }),
+        json: async () => ({ message: ['Podaj poprawny NIP.'], code: 'X' }),
       }),
     );
 
-    const response = await POST(
-      buildRequest({ email: 'zajety@test.pl', password: 'SuperSecret123!' }),
-    );
+    const response = await POST(buildRequest(VALID));
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.message).not.toMatch(/istnieje/i);
-    expect(setCookieMock).not.toHaveBeenCalled();
+    expect(body).toEqual({ message: 'Podaj poprawny NIP.', code: 'X' });
   });
 
-  it('normalizuje tablicę komunikatów walidacji (class-validator) do pojedynczego stringa', async () => {
+  it('przy sukcesie nie ustawia cookies i przekazuje wyłącznie komunikat', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: async () => ({ message: ['password must be longer than or equal to 8 characters'], statusCode: 400 }),
-      }),
+      vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ message: 'Wysłaliśmy link.', extra: 1 }) }),
     );
 
-    const response = await POST(
-      buildRequest({ email: 'a@test.pl', password: 'krotkie' }),
-    );
-    const body = await response.json();
-
-    expect(typeof body.message).toBe('string');
-    expect(body.message).toMatch(/8 characters/);
-  });
-
-  it('przy sukcesie NIE ustawia cookies i przekazuje wyłącznie komunikat (logowanie po weryfikacji e-mail)', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: async () => ({ message: 'Wysłaliśmy link weryfikacyjny.' }),
-      }),
-    );
-
-    const response = await POST(buildRequest({ email: 'nowy@test.pl', password: 'SuperSecret123!' }));
-    const body = await response.json();
+    const response = await POST(buildRequest(VALID));
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ message: 'Wysłaliśmy link weryfikacyjny.', emailSent: true });
-    expect(setCookieMock).not.toHaveBeenCalled();
-  });
-
-  it('przekazuje emailSent=false, gdy backend zgłosił nieudaną wysyłkę maila', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: async () => ({ message: 'Konto utworzone, ale nie udało się wysłać linku.', emailSent: false }),
-      }),
-    );
-
-    const response = await POST(buildRequest({ email: 'nowy@test.pl', password: 'SuperSecret123!' }));
-    const body = await response.json();
-
-    expect(body.emailSent).toBe(false);
+    expect(await response.json()).toEqual({ message: 'Wysłaliśmy link.' });
+    expect(response.headers.get('set-cookie')).toBeNull();
   });
 });

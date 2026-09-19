@@ -13,6 +13,15 @@ export interface OrganizationOverview {
   name: string;
   status: 'PENDING_DOMAIN_VERIFICATION' | 'ACTIVE';
   selfJoinEnabled: boolean;
+  // Dane firmy z rejestracji (tylko do odczytu w ustawieniach); null dla organizacji sprzed modelu samoobsługowego.
+  billing: {
+    legalName: string;
+    taxId: string;
+    addressLine: string;
+    postalCode: string;
+    city: string;
+    country: string;
+  } | null;
   domain: {
     name: string;
     verified: boolean;
@@ -38,8 +47,13 @@ export class OrganizationsService {
         where: { organizationId },
         orderBy: { createdAt: 'asc' },
       });
+      const billing = await tx.organizationBillingDetails.findUnique({
+        where: { organizationId },
+        select: { legalName: true, taxId: true, addressLine: true, postalCode: true, city: true, country: true },
+      });
       return {
         ...organization,
+        billing,
         domain: domain
           ? {
               name: domain.domain,

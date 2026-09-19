@@ -54,6 +54,28 @@ describe('middleware', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
+  describe('/onboarding - tylko ORG_ADMIN', () => {
+    const tokenFor = (role: string) =>
+      fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+
+    it('przepuszcza ORG_ADMIN', async () => {
+      const response = await middleware(
+        buildRequest('/onboarding', `access_token=${tokenFor('ORG_ADMIN')}; refresh_token=r`),
+      );
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it.each(['EMPLOYEE', 'DEPARTMENT_MANAGER'])('rola %s => /login', async (role) => {
+      const response = await middleware(buildRequest('/onboarding', `access_token=${tokenFor(role)}; refresh_token=r`));
+      expect(response.headers.get('location')).toContain('/login');
+    });
+
+    it('niezalogowany => /login', async () => {
+      const response = await middleware(buildRequest('/onboarding'));
+      expect(response.headers.get('location')).toContain('/login');
+    });
+  });
+
   it('nie dotyka żądań spoza chronionych ścieżek', async () => {
     const response = await middleware(buildRequest('/login'));
 

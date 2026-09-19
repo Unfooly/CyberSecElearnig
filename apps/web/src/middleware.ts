@@ -19,6 +19,8 @@ const ALL_ROLES = Object.values(Role);
 
 const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: '/dashboard', roles: [Role.ORG_ADMIN] },
+  // Ekran weryfikacji domeny organizacji PENDING (tylko admin organizacji).
+  { prefix: '/onboarding', roles: [Role.ORG_ADMIN] },
   // /courses jest dostępne dla każdej zalogowanej roli, w przeciwieństwie
   // do /dashboard (tylko ORG_ADMIN).
   { prefix: '/courses', roles: ALL_ROLES },
@@ -93,5 +95,5 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/courses/:path*'],
+  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*'],
 };

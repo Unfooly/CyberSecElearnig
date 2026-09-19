@@ -30,7 +30,7 @@ const MAX_PENDING_REGISTRATIONS = 50;
 // niezależnie od tego, czy adres jest nowy, czy konto już istnieje (i czy mail
 // wyszedł). Anty-enumeracja: nic w odpowiedzi HTTP nie zdradza stanu konta.
 export const REGISTRATION_ACCEPTED_MESSAGE =
-  'Jeśli podane dane są poprawne, wysłaliśmy wiadomość z linkiem weryfikacyjnym na podany adres e-mail. Potwierdź go, aby się zalogować.';
+  'Jeśli podane dane są poprawne, wysłaliśmy wiadomość z linkiem na podany adres e-mail. Kliknij go, aby potwierdzić adres i ustawić hasło.';
 
 // Jedyny przypadek, w którym UI mówi coś o domenie (ustalenie produktowe):
 // komunikat nie ujawnia niczego o kontach, tylko wymaga firmowej domeny.

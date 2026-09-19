@@ -57,6 +57,33 @@ describe('UsersPageClient', () => {
     expect(await screen.findByText('Nie udało się załadować listy pracowników.')).toBeInTheDocument();
   });
 
+  it('403 z kodem organizacji PENDING przenosi na /onboarding (bez komunikatu o błędzie)', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: async () => ({ code: 'ORGANIZATION_PENDING_DOMAIN_VERIFICATION' }),
+      }),
+    );
+    render(<UsersPageClient />);
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/onboarding'));
+    expect(screen.queryByText('Nie udało się załadować listy pracowników.')).not.toBeInTheDocument();
+  });
+
+  it('403 z innego powodu pokazuje zwykły komunikat błędu (bez przekierowania)', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({ code: 'X' }) }));
+    render(<UsersPageClient />);
+
+    expect(await screen.findByText('Nie udało się załadować listy pracowników.')).toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it('otwiera modal zapraszania po kliknięciu "Zaproś pracownika"', async () => {
     vi.stubGlobal('fetch', mockFetch());
     render(<UsersPageClient />);

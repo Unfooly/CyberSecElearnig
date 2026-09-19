@@ -56,7 +56,7 @@ describe('Auth + izolacja tenantów (e2e)', () => {
 
     // Bez tokenów - logowanie zablokowane do potwierdzenia adresu e-mail.
     expect(response.body.accessToken).toBeUndefined();
-    expect(response.body.message).toMatch(/weryfikacyjn/i);
+    expect(response.body.message).toMatch(/ustawić hasło/i);
 
     const admin = await tenantPrisma.runAuthLookup({ email });
     expect(admin).toMatchObject({ role: 'ORG_ADMIN', firstName: 'Anna', lastName: 'Testowa' });

@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Zespół', href: '/dashboard/users', built: true },
   { label: 'Kursy', href: '/courses', built: true },
   { label: 'Osiągnięcia', href: '/courses/achievements', built: true },
+  { label: 'Ustawienia', href: '/dashboard/settings', built: true },
   { label: 'Kampanie phishingowe', href: '#', built: false },
   { label: 'Zgłoszenia', href: '#', built: false },
 ];

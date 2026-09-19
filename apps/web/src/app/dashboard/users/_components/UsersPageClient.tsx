@@ -64,6 +64,14 @@ export default function UsersPageClient() {
         return;
       }
       if (!response.ok) {
+        // Guard API: organizacja czeka na weryfikację domeny => ekran weryfikacji.
+        if (response.status === 403) {
+          const body = await response.json().catch(() => null);
+          if (body?.code === 'ORGANIZATION_PENDING_DOMAIN_VERIFICATION') {
+            window.location.assign('/onboarding');
+            return;
+          }
+        }
         setLoadError('Nie udało się załadować listy pracowników.');
         return;
       }

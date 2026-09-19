@@ -6,6 +6,7 @@ import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseDetail } from '@/lib/courses-types';
 import Topbar from '@/components/Topbar';
 import CoursePlayer from './_components/CoursePlayer';
+import { redirectIfPending } from '@/lib/organization';
 
 export default async function CoursePlayerPage({ params }: { params: { courseId: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -25,6 +26,9 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
 
   if (!startResult.ok && startResult.status === 401) {
     redirect('/login');
+  }
+  if (!startResult.ok && startResult.status === 403) {
+    await redirectIfPending(accessToken);
   }
   if (!startResult.ok && startResult.status === 404) {
     notFound();

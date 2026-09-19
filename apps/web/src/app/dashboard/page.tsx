@@ -11,6 +11,7 @@ import CompletionTrendChart from './_components/CompletionTrendChart';
 import DepartmentRiskChart from './_components/DepartmentRiskChart';
 import UsersComplianceTable from './_components/UsersComplianceTable';
 import ReportActions from './_components/ReportActions';
+import { redirectIfPending } from '@/lib/organization';
 import type { TrendPoint } from '@/lib/dashboard-types';
 
 interface OverviewData {
@@ -55,6 +56,10 @@ export default async function DashboardPage() {
     (!trendsResult.ok && trendsResult.status === 401);
   if (isUnauthorized) {
     redirect('/login');
+  }
+  // 403 z guarda organizacji PENDING => ekran weryfikacji domeny.
+  if ((!overviewResult.ok && overviewResult.status === 403) || (!departmentsResult.ok && departmentsResult.status === 403)) {
+    await redirectIfPending(accessToken);
   }
 
   // Każdy inny błąd (5xx, sieć, backend nieosiągalny) to awaria API, nie

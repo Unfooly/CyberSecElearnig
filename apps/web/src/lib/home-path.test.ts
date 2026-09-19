@@ -15,7 +15,7 @@ describe('homePathForRole', () => {
 });
 
 describe('resolveHomePath (allowlista - ochrona przed open redirect)', () => {
-  it.each(['/dashboard', '/courses'])('przepuszcza %s', (path) => {
+  it.each(['/dashboard', '/courses', '/onboarding'])('przepuszcza %s', (path) => {
     expect(resolveHomePath(path)).toBe(path);
   });
 

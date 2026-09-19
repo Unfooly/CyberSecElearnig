@@ -32,7 +32,15 @@ RUN npm run build --workspace=apps/web
 # next.config.mjs nie miał output: 'standalone' albo zmieniło się
 # experimental.outputFileTracingRoot (przy root = root repo server.js leży w
 # .next/standalone/apps/web/, nie w korzeniu standalone).
-RUN test -f apps/web/.next/standalone/apps/web/server.js || { echo "BLAD: brak apps/web/.next/standalone/apps/web/server.js - sprawdz output: 'standalone' i experimental.outputFileTracingRoot w apps/web/next.config.mjs" >&2; exit 1; }
+# Przy porażce wypisuje diagnostykę: jaki config faktycznie jest w obrazie i
+# gdzie Next umieścił server.js (jeśli w ogóle).
+RUN test -f apps/web/.next/standalone/apps/web/server.js || { \
+      echo "BLAD: brak apps/web/.next/standalone/apps/web/server.js" >&2; \
+      echo "--- pliki next.config w obrazie:" >&2; ls -la apps/web/next.config.* >&2; \
+      echo "--- linie standalone/outputFileTracingRoot:" >&2; grep -n "standalone\|outputFileTracingRoot" apps/web/next.config.* >&2 || echo "(brak takich linii)" >&2; \
+      echo "--- zawartosc apps/web/.next:" >&2; ls apps/web/.next >&2; \
+      echo "--- server.js pod .next:" >&2; find apps/web/.next -name server.js -not -path "*/node_modules/*" >&2; \
+      exit 1; }
 
 # ---- production -----------------------------------------------------------
 FROM node:20-alpine AS production

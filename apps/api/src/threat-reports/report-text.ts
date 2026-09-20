@@ -63,6 +63,14 @@ export function normalizeSubject(subject: string): string {
   return result.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
+const DOMAIN_NAME = /^(?=.{1,255}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/** Domena adresu nadawcy (małe litery) albo null, gdy adres jest nieznany lub domena nie wygląda na nazwę domeny. */
+export function extractSenderDomain(address: string | null): string | null {
+  const domain = address?.split('@')[1]?.toLowerCase();
+  return domain && DOMAIN_NAME.test(domain) ? domain : null;
+}
+
 const ANGLE_ADDRESS = /<\s*([^<>\s@]+@[^<>\s@]+)\s*>/;
 const BARE_ADDRESS = /^[^<>\s@"]+@[^<>\s@"]+$/;
 

@@ -172,6 +172,14 @@ describe('Zgłaszanie podejrzanych wiadomości (e2e)', () => {
       });
     });
 
+    it('zapisuje domenę nadawcy małymi literami (do statystyk); bez adresu w polu nadawcy domena jest pusta', async () => {
+      const withAddress = await report(orgA.users.e1.token, realReport({ sender: 'Ktoś <Obcy@Zlosliwa-Domena.EXAMPLE>' })).expect(201);
+      const withoutAddress = await report(orgA.users.e1.token, realReport({ sender: 'Sam Nadawca Bez Adresu' })).expect(201);
+
+      expect((await reportRow(orgA, withAddress.body.id)).senderDomain).toBe('zlosliwa-domena.example');
+      expect((await reportRow(orgA, withoutAddress.body.id)).senderDomain).toBeNull();
+    });
+
     it('sanityzuje do czystego tekstu: znaki sterujące i nadpisania kierunku znikają, HTML zostaje tekstem', async () => {
       const response = await report(orgA.users.e1.token, realReport({ subject: 'Temat\u0000 z‮ dziwnym\nznakiem', body: '<script>alert(1)</script>\u0007ok' })).expect(201);
 
@@ -432,6 +440,7 @@ describe('Zgłaszanie podejrzanych wiadomości (e2e)', () => {
             organizationId: org.organizationId,
             kind,
             senderText: 'obcy@example.test',
+            senderDomain: 'example.test',
             subject: 'Temat',
             createdAt: new Date(Date.now() - ageDays * DAY),
             ...(kind === 'REAL' ? { body: 'treść', headers: 'nagłówki', comment: 'komentarz' } : {}),
@@ -453,10 +462,34 @@ describe('Zgłaszanie podejrzanych wiadomości (e2e)', () => {
       expect(first.purged).toBeGreaterThanOrEqual(2);
       expect(first.failed).toBe(0);
       expect(second.purged).toBe(0);
-      expect(await reportRow(orgA, oldA.id)).toMatchObject({ body: null, headers: null, comment: null, contentPurgedAt: now, subject: 'Temat', senderText: 'obcy@example.test' });
-      expect(await reportRow(orgB, oldB.id)).toMatchObject({ body: null, headers: null, comment: null });
-      expect(await reportRow(orgA, freshA.id)).toMatchObject({ body: 'treść', headers: 'nagłówki', comment: 'komentarz', contentPurgedAt: null });
-      expect((await reportRow(orgA, simulation.id)).contentPurgedAt).toBeNull(); // symulacje nie mają treści - nie ma czego czyścić
+      // Po 90 dniach znika treść, nagłówki, komentarz, nadawca i temat; zostaje domena nadawcy (statystyki) i powiązania.
+      expect(await reportRow(orgA, oldA.id)).toMatchObject({
+        body: null,
+        headers: null,
+        comment: null,
+        senderText: null,
+        subject: null,
+        senderDomain: 'example.test',
+        reporterUserId: null,
+        contentPurgedAt: now,
+      });
+      expect(await reportRow(orgB, oldB.id)).toMatchObject({ body: null, headers: null, comment: null, senderText: null, subject: null, senderDomain: 'example.test' });
+      expect(await reportRow(orgA, freshA.id)).toMatchObject({ body: 'treść', headers: 'nagłówki', comment: 'komentarz', senderText: 'obcy@example.test', subject: 'Temat', contentPurgedAt: null });
+      // Symulacje nie mają treści; temat i nadawca zostają (powiązanie z odbiorcą kampanii), retencja ich nie rusza.
+      expect(await reportRow(orgA, simulation.id)).toMatchObject({ contentPurgedAt: null, senderText: 'obcy@example.test', subject: 'Temat' });
+    });
+
+    it('samoleczenie: rekord już "spurgowany" wcześniejszą wersją retencji (treść usunięta, nadawca i temat zostały) też zostaje wyczyszczony', async () => {
+      const now = new Date();
+      const legacy = await insert(orgA, 'REAL', CONTENT_RETENTION_DAYS + 10, { body: null, headers: null, comment: null, contentPurgedAt: new Date(now.getTime() - 5 * DAY) });
+      expect(await reportRow(orgA, legacy.id)).toMatchObject({ senderText: 'obcy@example.test', subject: 'Temat' });
+
+      const first = await retention.run(now);
+      const second = await retention.run(now);
+
+      expect(first.purged).toBeGreaterThanOrEqual(1);
+      expect(second.purged).toBe(0); // idempotentne: po wyczyszczeniu nic już nie pasuje do warunku
+      expect(await reportRow(orgA, legacy.id)).toMatchObject({ senderText: null, subject: null, senderDomain: 'example.test' });
     });
 
     it('granica: zgłoszenie dokładnie sprzed 90 dni jest czyszczone, sprzed 90 dni minus sekunda nie', async () => {

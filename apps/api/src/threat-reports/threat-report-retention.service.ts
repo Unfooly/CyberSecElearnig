@@ -18,8 +18,9 @@ export interface RetentionResult {
 }
 
 /**
- * Retencja treści zgłoszeń: po 90 dniach body, headers i comment PRAWDZIWYCH zgłoszeń są zerowane (zostaje rekord:
- * temat, nadawca, status, daty - potrzebny do statystyk). Zgłoszenia symulacyjne nie mają treści od początku.
+ * Retencja treści zgłoszeń: po 90 dniach body, headers, comment, senderText i subject PRAWDZIWYCH zgłoszeń są zerowane
+ * (zostaje rekord: domena nadawcy, status, daty, zgłaszający - do statystyk). Zgłoszenia symulacyjne nie mają treści od
+ * początku i zachowują temat i nadawcę (powiązanie z odbiorcą kampanii; nie są kasowane retencją).
  *
  * Idempotentne i race-safe: warunek (contentPurgedAt IS NULL i wiek) jest w samym UPDATE. Tabela organizations jest
  * globalna (bez RLS), więc lista organizacji nie wymaga żadnej furtki omijającej RLS; czyszczenie idzie w kontekście
@@ -71,8 +72,16 @@ export class ThreatReportRetentionService implements OnModuleInit {
   private async purgeOrganization(organizationId: string, cutoff: Date, now: Date): Promise<number> {
     const { count } = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.threatReport.updateMany({
-        where: { organizationId, kind: 'REAL', contentPurgedAt: null, createdAt: { lte: cutoff } },
-        data: { body: null, headers: null, comment: null, contentPurgedAt: now },
+        // Warunek w samym UPDATE (idempotentność, brak wyścigu). Trzy alternatywy: treść jeszcze nie czyszczona ALBO zostały
+        // nadawca/temat (rekord "spurgowany" wcześniejszą wersją retencji, która czyściła tylko treść) - samoleczenie bez migracji.
+        where: {
+          organizationId,
+          kind: 'REAL',
+          createdAt: { lte: cutoff },
+          OR: [{ contentPurgedAt: null }, { senderText: { not: null } }, { subject: { not: null } }],
+        },
+        // senderDomain zostaje (statystyki "najczęstsze domeny nadawców"); reszta danych z treści zgłoszenia znika.
+        data: { body: null, headers: null, comment: null, senderText: null, subject: null, contentPurgedAt: now },
       }),
     );
     return count;

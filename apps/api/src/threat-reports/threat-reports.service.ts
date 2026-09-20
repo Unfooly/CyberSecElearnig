@@ -6,7 +6,7 @@ import { PhishingConfigService } from '../phishing/phishing-config.service';
 import { sha256Hex } from '../phishing/token-hash';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { CreateThreatReportDto } from './dto/create-threat-report.dto';
-import { extractSenderAddress, extractTrackingTokens, maskTrackingTokens, normalizeSubject, sanitizePlainText } from './report-text';
+import { extractSenderAddress, extractSenderDomain, extractTrackingTokens, maskTrackingTokens, normalizeSubject, sanitizePlainText } from './report-text';
 
 const err = (code: string, message: string) => ({ code, message });
 export const REPORT_RATE_LIMIT_HOURLY = err('REPORT_RATE_LIMIT', 'Zgłosiłeś/-aś już wiele wiadomości w ostatniej godzinie. Spróbuj ponownie za jakiś czas.');
@@ -95,10 +95,11 @@ export class ThreatReportsService {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`threat-report:${user.userId}`}))`;
         await this.enforceRateLimit(tx, user, now);
 
+        const senderAddress = extractSenderAddress(rawTexts.sender);
         const reporter = await tx.user.findFirst({ where: { id: user.userId, organizationId: user.organizationId }, select: { departmentId: true } });
         const match = await this.findSimulationMatch(tx, user.organizationId, {
           reporterUserId: user.userId,
-          senderAddress: extractSenderAddress(rawTexts.sender),
+          senderAddress,
           normalizedSubject: normalizeSubject(rawTexts.subject),
           tokens,
           senderDomain: this.phishingConfig.senderDomain(),
@@ -115,6 +116,7 @@ export class ThreatReportsService {
             kind: match ? 'SIMULATION' : 'REAL',
             senderText: masked.sender,
             subject: masked.subject,
+            senderDomain: extractSenderDomain(senderAddress),
             body: match ? null : masked.body || null,
             headers: match ? null : masked.headers || null,
             comment: match ? null : masked.comment || null,

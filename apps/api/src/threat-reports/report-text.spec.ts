@@ -1,4 +1,4 @@
-import { extractSenderAddress, extractTrackingTokens, maskTrackingTokens, normalizeSubject, sanitizePlainText, TOKEN_MASK } from './report-text';
+import { extractSenderAddress, extractSenderDomain, extractTrackingTokens, maskTrackingTokens, normalizeSubject, sanitizePlainText, TOKEN_MASK } from './report-text';
 
 const TOKEN_A = 'A'.repeat(43);
 const TOKEN_B = 'b-_'.repeat(14) + 'b'; // 43 znaki base64url
@@ -96,6 +96,21 @@ describe('normalizeSubject', () => {
 
   it('porównuje formy NFKC (pełnoszerokie znaki)', () => {
     expect(normalizeSubject('ＰＡＣＺＫＡ')).toBe('paczka');
+  });
+});
+
+describe('extractSenderDomain', () => {
+  it('zwraca domenę małymi literami', () => {
+    expect(extractSenderDomain('kurier@Powiadomienia.Example')).toBe('powiadomienia.example');
+    expect(extractSenderDomain('a@sub.domena-x.example.com')).toBe('sub.domena-x.example.com');
+  });
+
+  it('zwraca null dla braku adresu i domen niepodobnych do nazwy domeny', () => {
+    expect(extractSenderDomain(null)).toBeNull();
+    expect(extractSenderDomain('kurier')).toBeNull();
+    expect(extractSenderDomain('a@localhost')).toBeNull();
+    expect(extractSenderDomain('a@-zla.example')).toBeNull();
+    expect(extractSenderDomain('a@x_y.example')).toBeNull();
   });
 });
 

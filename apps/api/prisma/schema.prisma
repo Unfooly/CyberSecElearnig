@@ -430,9 +430,12 @@ model ThreatReport {
   reporterDepartmentId String?
   kind                 ThreatReportKind
   status               ThreatReportStatus       @default(NEW)
-  // Nadawca i temat tak, jak je wpisał pracownik (tekst, bez znaków sterujących).
-  senderText           String                   @db.VarChar(320)
-  subject              String                   @db.VarChar(300)
+  // Nadawca i temat tak, jak je wpisał pracownik (tekst, bez znaków sterujących). Po 90 dniach retencja czyści je w
+  // zgłoszeniach prawdziwych (null); zostaje wyłącznie senderDomain (statystyki "najczęstsze domeny nadawców").
+  senderText           String?                  @db.VarChar(320)
+  subject              String?                  @db.VarChar(300)
+  // Domena adresu nadawcy (małe litery); null, gdy pracownik nie podał adresu. Nie jest czyszczona retencją.
+  senderDomain         String?                  @db.VarChar(255)
   body                 String?                  @db.Text
   headers              String?                  @db.Text
   comment              String?                  @db.VarChar(1000)

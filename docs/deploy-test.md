@@ -255,7 +255,7 @@ prawdziwych klientów).
 - [ ] **Wdrożenie z obrazu po etapie 5 lub nowszego** - nigdy z obrazu etapu 2 (patrz uwaga w sekcji 5).
 - [ ] **Domena nadawcy e-mail** własna i zweryfikowana w MailerSend (SPF, DKIM, DMARC); kampanie phishingowe z
   OSOBNEJ domeny niż e-maile transakcyjne (`CLAUDE.md`). Trial-owa domena MailerSend nie wystarcza.
-- [ ] **Symulacje phishingowe - nadawca i strona lądowania** (warunek blokujący włączenia kampanii):
+- [ ] **Symulacje phishingowe - nadawca i strona lądowania** (warunek blokujący włączenia kampanii; kroki: sekcja 10):
   - domena nadawcy (`PHISHING_EMAIL_DOMAIN`) ma zweryfikowane **SPF, DKIM i DMARC** u dostawcy transportu i nie
     pokrywa się z domeną `EMAIL_FROM` ani hostem `FRONTEND_URL` (API blokuje transport na produkcji przy
     pokrywaniu: `GET /phishing/config` pokazuje `reason`),
@@ -283,6 +283,68 @@ prawdziwych klientów).
 
 - [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
 - [ ] Monitoring/alert na logi „zadanie w tle ... nie powiodło się” (rejestracja, sprzątanie organizacji).
+
+## 10. Wdrożenie modułu symulacji phishingowych (kroki)
+
+Moduł jest w API i web od commitów `3743fa6`...`9fd7262`; poniżej to, co trzeba zrobić na środowisku. Wysyłka jest **domyślnie
+zablokowana** (transport `none` na produkcji), więc do czasu wykonania kroków 1-4 kampanii nie da się uruchomić (409
+`TRANSPORT_NOT_CONFIGURED`), a reszta platformy działa jak dotąd. Opis modułu: `docs/phishing-simulations.md`.
+
+### Zmienne środowiskowe (`.env.prod`; wzór w `.env.prod.example`)
+
+| Zmienna | Wartość na produkcji |
+|---|---|
+| `PHISHING_EMAIL_DOMAIN` | Własna domena nadawcy kampanii (np. `symulacje.twoja-domena.pl`), **osobna** od domeny `EMAIL_FROM` i hosta `FRONTEND_URL` (na produkcji API blokuje nakładanie się, także subdomeny). Klient edytuje tylko część lokalną adresu. |
+| `PHISHING_MAIL_TRANSPORT` | `mailersend` (albo `smtp`). Puste = wysyłka zablokowana; `log` jest na produkcji zabroniony. Środowiska inne niż `development`/`test` (np. `staging`) są traktowane jak produkcja. |
+| `PHISHING_MAILERSEND_API_TOKEN` | **Własny** token MailerSend dla symulacji (osobne konto/domena od poczty transakcyjnej). Identyczny z `MAILERSEND_API_TOKEN` jest odrzucany (`TOKEN_SHARED_WITH_TRANSACTIONAL`). |
+| `PHISHING_SMTP_URL` | Tylko dla `smtp`: `smtp://` albo `smtps://user:hasło@host:port` (TLS wymuszony poza localhost). |
+| `PHISHING_LANDING_BASE_URL` | Publiczny adres strony lądowania w linkach z maili (`https://...`, tylko origin); docelowo osobna domena niż aplikacja. Puste = `FRONTEND_URL`. |
+
+Bez zmian, ale teraz czytane także przez moduł: `NODE_ENV`, `EMAIL_FROM`, `FRONTEND_URL`, `MAILERSEND_API_TOKEN` (tylko do
+sprawdzenia rozdziału od poczty transakcyjnej), `REDIS_URL` i `BACKGROUND_JOBS_ENABLED` (nie `false`: bez workera kampanie nie
+wysyłają), `TRUST_PROXY=true`. Po zmianie `.env.prod`: `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d`
+(kontener `api` musi się przeładować).
+
+### Kolejność
+
+1. **DNS domeny nadawcy** (u dostawcy DNS domeny, dane z panelu MailerSend → Domains → wybrana domena):
+   - **SPF** (TXT na domenie nadawcy): rekord z panelu dostawcy (np. `v=spf1 include:_spf.mlsend.com ~all`),
+   - **DKIM** (CNAME/TXT `<selektor>._domainkey.<domena>`): dokładnie wartości z panelu,
+   - **DMARC** (TXT `_dmarc.<domena>`): start od `v=DMARC1; p=none; rua=mailto:dmarc@twoja-domena.pl`, po stabilizacji
+     zaostrzyć do `quarantine`,
+   - (zalecane) rekord zwrotny/`Return-Path` z panelu, żeby SPF przechodził w trybie zestawionym.
+   Poczekaj na status **Verified** w panelu MailerSend, sprawdź: `dig TXT <domena>`, `dig TXT _dmarc.<domena>`,
+   `dig CNAME <selektor>._domainkey.<domena>`. Domena testowa `*.mlsender.net` służy tylko środowisku testowemu.
+2. **Domena strony lądowania** (zalecana osobna): w tunelu Cloudflare (sekcja 1) dodaj drugi **Public Hostname**
+   (np. `verify.twoja-domena.pl` → `web:3000`) i ustaw `PHISHING_LANDING_BASE_URL=https://verify.twoja-domena.pl`. To ten sam
+   kontener `web`, więc na tym hostname działa CAŁA aplikacja - w Cloudflare WAF dodaj regułę **Block** dla hosta lądowania i
+   ścieżek poza `/t/*`, `/api/t/*` i `/_next/*` (favicon). Origin BFF liczy się po hoście żądania, więc strona lądowania
+   działa na własnej domenie bez dodatkowej konfiguracji.
+3. **Limit na brzegu (WAF/rate limiting) - WARUNEK STARTU:** Cloudflare → Security → WAF → Rate limiting rules dla ścieżek
+   `/t/*` i `/api/t/*` (np. 120 żądań/min na adres, akcja Block na 10 minut). Limit w API (120/min na adres, IPv6 po /64) jest w
+   pamięci procesu i nie zastępuje limitu brzegowego. Razem z tym: `TRUST_PROXY=true`, API bez wystawionych portów (sekcja 1),
+   dostęp do logów dostępowych ograniczony (zawierają tokeny z linków).
+4. **Migracje**: wykonuje usługa `migrate` przy `up -d` (sekcja 5). Moduł dodaje tabele `phishing_*` z RLS oraz zależy od
+   PostgreSQL **15+** (`ON DELETE SET NULL (kolumna)`); stack używa 16. Po wdrożeniu: `docker compose ... logs migrate` -
+   migracje `phishing_templates`, `phishing_campaigns`, `phishing_tracking`, `phishing_tracking_lookup_sentinel`,
+   `phishing_results` muszą być zastosowane.
+5. **Weryfikacja konfiguracji**: zaloguj się jako ORG_ADMIN aktywnej organizacji i `GET /phishing/config` (albo kreator nowej
+   kampanii): `configured: true`, `sendsRealMail: true`, poprawny `senderDomain` i `landingHost`; przy `configured: false` pole
+   `reason` wskazuje przyczynę (`SENDER_DOMAIN_OVERLAPS_TRANSACTIONAL`, `TOKEN_SHARED_WITH_TRANSACTIONAL`, `SMTP_URL_MISSING`...).
+6. **Próba na własnej skrzynce**: kampania z jednym odbiorcą (własne konto `ACTIVE`; wyniki zbiorcze wymagają >= 3 osób, ale do
+   próby wystarczy 1) z wąskim oknem (10 minut). Sprawdź: mail dotarł (nie w spamie: nagłówki SPF/DKIM/DMARC = pass),
+   link prowadzi na domenę lądowania, `/t/<token>` pokazuje stronę, po 2,5 s kliknięcie zostaje zapisane, po "Potwierdź" pojawia się
+   lekcja i przypisuje się kurs. Potem anuluj kampanię testową. Na koniec kilka realnych skrzynek (Gmail, Outlook) przed
+   pierwszą kampanią klienta.
+7. **Monitoring po starcie**: `docker compose ... logs api | grep -i "phishing\|Wysyłka"` (kody `HTTP_*`, `TIMEOUT_UNKNOWN` = "niepewne"),
+   licznik odbić i skarg w panelu MailerSend, alert przy wzroście skarg/bounce (reputacja domeny nadawcy).
+
+### Rollback modułu
+
+Wyłączenie wysyłki bez wycofywania obrazu: puste `PHISHING_MAIL_TRANSPORT` i `up -d` (nowe kampanie dostają 409
+`TRANSPORT_NOT_CONFIGURED`; wysyłki już zaplanowane kończą się nieudane z kodem `NOT_CONFIGURED_*`, bez wysłania maila - najpierw
+anuluj aktywne kampanie w panelu, żeby wyniki nie zawierały takich wpisów). Migracje są addytywne - wycofanie obrazu do sprzed
+modułu nie wymaga cofania schematu (nowe tabele są ignorowane).
 
 ## Klasyczna alternatywa: Caddy
 

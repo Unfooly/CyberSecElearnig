@@ -187,9 +187,17 @@ bez wpisu w dzienniku. Wielu kampanii z nakładającymi się zbiorami nie da si�
 liniowe wyników), a reguła "zbiory odbiorców różnią się o 0 albo >= 3 osoby" blokowałaby zwykłe użycie (nowy pracownik między
 kampaniami). Ryzyko jest ograniczone, bo: (1) dotyczy wyłącznie `ORG_ADMIN` - `DEPARTMENT_MANAGER` nie tworzy kampanii i widzi tylko
 własny dział; (2) ten sam administrator może włączyć wyniki osobowe z uzasadnieniem i audytem, więc atak omija głównie ślad
-audytu, nie ujawnia danych, do których nie miałby dostępu; (3) każda kampania zapisuje autora (`createdByEmail`). **Decyzja do
-podjęcia przed startem:** akceptacja z wpisem w DPIA, albo ograniczenie audiencji (np. tylko "cała organizacja" i całe działy
->= 3 osób) kosztem elastyczności. Do czasu decyzji dokumenty nie twierdzą, że małej grupy "nie da się odjąć" poza pojedynczym widokiem.
+audytu, nie ujawnia danych, do których nie miałby dostępu; (3) każda kampania zapisuje autora (`createdByEmail`).
+
+**Decyzja (2026-09-20): ryzyko rezydualne ZAAKCEPTOWANE.** Różnicowanie wyników przez własnego administratora organizacji, który i
+tak ma audytowaną ścieżkę do danych osobowych, jest przyjętym ryzykiem; próg minimalnej liczebności zostaje na 3. Wymagany wpis w
+DPIA (`docs/legal/privacy-policy-checklist.md`, sekcja 8). Dokumenty nie twierdzą, że małej grupy "nie da się odjąć" poza pojedynczym
+widokiem. Alternatywy rozważone i odrzucone na teraz: ograniczenie audiencji do "cała organizacja" i całych działów >= 3 osób
+(kosztem elastyczności), próg 5 lub zaokrąglanie do przedziałów.
+
+**Backlog (tanie ograniczenie na przyszłość): alert audytowy różnicowania.** Gdy w ciągu 7 dni powstają kampanie tej samej
+organizacji o zbiorach odbiorców różniących się o mniej niż 3 osoby (i więcej niż 0), zapisać wpis w dzienniku audytu i pokazać go
+w ustawieniach oraz operatorowi (SUPER_ADMIN). Sama różnica 1-2 osób (np. nowy pracownik) jest zwykła, więc alert informuje, a nie blokuje.
 
 Inne kanały, o których warto wiedzieć: przy progu 3 wynik 0% albo 100% w grupie ujawnia zachowanie każdej osoby (dział 3-osobowy
 zna własny wynik); liczba dostarczonych w wierszu zależy od nieudanych/niepewnych wysyłek. Rozważany wyższy próg (5) albo

@@ -97,9 +97,10 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
   pisemnym uzasadnieniem (min. 20 znaków, CHECK w bazie); (3) dziennik dostępu append-only: włączenie/wyłączenie, każdy wgląd i
   eksport (kto, kiedy, którą kampanię, jaki zakres, ile osób), kopia e-maila aktora przeżywa usunięcie konta; (4) kierownik
   działu widzi wyłącznie agregaty własnego działu (bez metadanych pozostałych kampanii organizacji), nigdy danych osobowych;
-  **ryzyko szczątkowe do akceptacji w DPIA:** administrator, który sam dobiera odbiorców kampanii, może przez porównanie wyników
-  kampanii różniących się o małą grupę wyliczyć wynik grupy poniżej progu (patrz `docs/phishing-simulations.md`, "Znane,
-  nieusunięte ograniczenie") - dotyczy roli, która i tak może włączyć audytowane wyniki osobowe; (5) wyniki per osoba nie są kopiowane do eksportu dashboardu; (6) wartości
+  **ryzyko rezydualne ZAAKCEPTOWANE decyzją właściciela produktu (2026-09-20), do wpisania w DPIA:** administrator, który sam
+  dobiera odbiorców kampanii, może przez porównanie wyników kampanii różniących się o małą grupę wyliczyć wynik grupy poniżej
+  progu (patrz `docs/phishing-simulations.md`, "Znane, nieusunięte ograniczenie") - dotyczy roli, która i tak ma audytowaną
+  ścieżkę do danych osobowych; próg 3 bez zmian; w backlogu alert audytowy, gdy kampanie w 7 dni różnią się o mniej niż 3 osoby; (5) wyniki per osoba nie są kopiowane do eksportu dashboardu; (6) wartości
   wpisane w formularzu strony lądowania nie są zapisywane ani logowane. Do rozstrzygnięcia: okres przechowywania wyników i dziennika
   (dziś: do usunięcia organizacji), rola podmiotu przetwarzającego.
 - [ ] **Odbiorcy kampanii spoza zweryfikowanej domeny organizacji** (np. kontraktorzy na Gmailu): podstawą jest, że

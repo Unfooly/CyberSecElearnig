@@ -1,0 +1,285 @@
+# Backlog jako zgłoszenia (issues)
+
+Backlog rozproszony po README, `docs/*.md` i uwagach z przeglądów, zebrany w jednym miejscu **w formie gotowej do założenia jako
+zgłoszenia w GitHub**. Każdy wpis ma tytuł, etykiety, priorytet, źródło, opis i kryteria akceptacji.
+
+## Jak z tego korzystać
+
+1. Zakładasz zgłoszenie (tytuł = nagłówek wpisu, treść = Opis + Kryteria akceptacji, etykiety jak niżej), a do wpisu tutaj dopisujesz numer
+   zgłoszenia w polu `Zgłoszenie:`. Od tej chwili źródłem prawdy jest zgłoszenie; wpis tutaj zostaje jako indeks.
+2. Wpis zrobiony przez PR oznaczasz `Status: zrobione (PR #N)` (nie usuwasz - historia).
+3. Nowe uwagi odłożone z review dopisujesz tu w tym samym PR (CLAUDE.md, „Praca zespołowa”).
+4. Etykiety do założenia w repo: priorytet `P1` (przed publicznym startem), `P2` (wkrótce), `P3` (kiedyś); typ `bug`, `security`, `tech-debt`,
+   `feature`, `docs`, `ops`, `decision-needed`; moduł `mod:auth`, `mod:rejestracja`, `mod:kursy`, `mod:dashboard`, `mod:phishing`,
+   `mod:zgloszenia`, `mod:import`, `mod:gamifikacja`, `mod:web`, `mod:ci`, `mod:db`; oraz `good first issue` dla małych, dobrze opisanych zadań.
+5. Wpisy `decision-needed` nie wolno implementować bez decyzji właściciela produktu (CLAUDE.md); najpierw wpis w `docs/decisions.md`.
+
+Pochodzenie: README (sekcje „Backlog …”), `docs/phishing-simulations.md`, `docs/user-import.md`, `docs/deploy-test.md`, przeglądy
+bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodzą ze starszych notatek README i mogły się zdezaktualizować.
+
+---
+
+## A. Przed publicznym startem (P1)
+
+### B-001 Finalne dokumenty prawne: regulamin, polityka prywatności, bezpieczeństwo
+- Etykiety: `P1`, `feature`, `docs`, `mod:web` · Źródło: README „Strony prawne”, CLAUDE.md „Warunek publicznego startu”, `docs/legal/privacy-policy-checklist.md`
+- Opis: `/regulamin`, `/polityka-prywatnosci`, `/bezpieczenstwo` mają placeholdery i `noindex`, zgody zapisują wersję `draft-1`.
+- Akceptacja: dokumenty bez placeholderów i bez `noindex`, poprawna `LEGAL_DOCUMENT_VERSION`, linki w stopce, checklista prywatności zamknięta (w tym role stron).
+
+### B-002 Własna, zweryfikowana domena nadawcy w MailerSend
+- Etykiety: `P1`, `ops`, `mod:ci` · Źródło: CLAUDE.md „E-mail”, README „Moduł e-mail”
+- Opis: dziś domena trial (wysyłka tylko do ograniczonej puli adresów). Kampanie phishingowe mają iść z OSOBNEJ domeny niż maile transakcyjne.
+- Akceptacja: dwie zweryfikowane domeny (transakcyjna, symulacje) z SPF/DKIM/DMARC; `GET /phishing/config` pokazuje `configured: true`, poprawny `senderDomain`.
+
+### B-003 Limit na brzegu (WAF/rate limiting) dla `/t/*` i `/api/t/*`
+- Etykiety: `P1`, `ops`, `security`, `mod:phishing` · Źródło: `docs/deploy-test.md` „Limit na brzegu - WARUNEK STARTU”
+- Opis: limit w API jest w pamięci procesu i nie zastępuje limitu brzegowego.
+- Akceptacja: reguła Cloudflare (np. 120 żądań/min na adres, blokada 10 min), `TRUST_PROXY=true`, API bez wystawionych portów, ograniczony dostęp do logów.
+
+### B-004 Ochrona przed masowym zakładaniem organizacji
+- Etykiety: `P1`, `security`, `mod:rejestracja` · Źródło: README „Backlog rejestracji firmy”
+- Opis: throttle 10/min/IP i limit 50 zadań w tle; brak CAPTCHA (Turnstile/hCaptcha), limitu globalnego i limitu niezweryfikowanych organizacji na domenę.
+- Akceptacja: CAPTCHA na `/register`, limit niezweryfikowanych organizacji na domenę, test przeciążenia (503 zamiast pamięci).
+
+### B-005 Helmet i CORS w API **(zweryfikuj)**
+- Etykiety: `P1`, `security`, `mod:auth` · Źródło: README „Backlog bezpieczeństwa modułu auth”
+- Opis: w `apps/api/src/main.ts` nie ma Helmet ani jawnej konfiguracji CORS (stan na dziś: brak `helmet` w kodzie).
+- Akceptacja: nagłówki bezpieczeństwa, CORS zawężony do `FRONTEND_URL`, test nagłówków.
+
+### B-006 Ponowna akceptacja dokumentów prawnych po zmianie wersji
+- Etykiety: `P1`, `feature`, `decision-needed`, `mod:auth` · Źródło: README „Ponowna akceptacja dokumentów”
+- Opis: gdy `LEGAL_DOCUMENT_VERSION` jest nowsza niż zaakceptowana, po logowaniu potrzebny ekran akceptacji i blokada reszty aplikacji.
+- Akceptacja: decyzja, kto akceptuje w imieniu organizacji; sprawdzenie wersji w API (guard/pole logowania), endpoint zapisu zgody, ekran w web, testy.
+
+### B-007 Throttler żądań w Redisie (limity per instancja)
+- Etykiety: `P1`, `tech-debt`, `mod:auth` · Źródło: README „Backlog rejestracji firmy”
+- Opis: `@nestjs/throttler` liczy w pamięci procesu, więc przy więcej niż jednej instancji API limity są per instancja.
+- Akceptacja: storage w Redisie z awaryjnym fallbackiem, test dwóch instancji (lub testu współdzielenia), dokumentacja w README.
+
+### B-008 Monitoring pamięci Redisa i alert przy 80%
+- Etykiety: `P1`, `ops` · Źródło: README „Backlog operacyjny (Redis)”
+- Opis: prod Redis ma `maxmemory 128mb` i `noeviction`; zapełnienie oznacza błędy zapisu (limiter maili fail-open, brak `sessions-revoked:*`, joby bez stanu).
+- Akceptacja: zbieranie `used_memory / maxmemory`, alert przy 80%, decyzja o limicie; Redis chroniony hasłem i siecią wewnętrzną.
+
+### B-009 Alert na błędy pracy w tle rejestracji
+- Etykiety: `P1`, `ops`, `mod:rejestracja` · Źródło: README „Praca w tle = błędy tylko w logu”
+- Opis: awaria zapisu/maila w tle nie dociera do klienta (celowo), widać ją tylko w logu.
+- Akceptacja: alert na log „zadanie w tle (rejestracja) nie powiodło się”; runbook.
+
+### B-010 Gałąź `main` chroniona i wymagane joby CI
+- Etykiety: `P1`, `ops`, `mod:ci` · Źródło: CLAUDE.md „Praca zespołowa”
+- Opis: ustawienia GitHub: wymagany PR, zielone `lint + testy` i `testy e2e (api)`, 1 zatwierdzenie, brak force-push.
+- Akceptacja: reguły ochrony włączone i opisane w README.
+
+## B. Rejestracja, auth, dane
+
+### B-011 Unieważnianie linku aktywacyjnego przez osoby trzecie
+- Etykiety: `P2`, `security`, `mod:rejestracja` · Źródło: README „Backlog rejestracji firmy”
+- Opis: nowy link kasuje poprzedni nieużyty token, więc obcy może powtarzalnie unieważniać ważny link ofiary (limit 1 mail/skrzynka/10 min + 10/min/IP).
+- Akceptacja: nie kasujemy tokenu, który ma jeszcze >1 h ważności (albo równoważne rozwiązanie), test.
+
+### B-012 Kraje poza PL i numer VAT
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:rejestracja` · Źródło: README, CLAUDE.md „Planowane”
+- Opis: dziś CHECK `country = 'PL'`, NIP z sumą kontrolną. Inne kraje: zdjęcie CHECK-a, walidacja VAT-ID (VIES), formaty kodu pocztowego, zmiany formularza.
+- Akceptacja: decyzja o krajach; migracja, walidacja, formularz, testy.
+
+### B-013 Pełny flow samodzielnego dołączania pracowników (`selfJoinEnabled`)
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:rejestracja` · Źródło: README, CLAUDE.md
+- Opis: istnieje tylko przełącznik, którego nic nie czyta. Brakuje ekranu „dołącz”, potwierdzenia skrzynki, roli domyślnej, limitu licencji, akceptacji admina.
+- Akceptacja: decyzja produktowa; potem implementacja z testami A/B.
+
+### B-014 Potwierdzenie decyzji: globalna unikalność `users.email` (D-009)
+- Etykiety: `P2`, `decision-needed`, `mod:auth` · Źródło: README, `docs/decisions.md` D-009
+- Opis: ta sama osoba nie może mieć kont w dwóch organizacjach-klientach pod jednym adresem.
+- Akceptacja: decyzja właściciela produktu wpisana do `docs/decisions.md` (Przyjęta albo Zastąpiona).
+
+### B-015 Polityka haseł: sprawdzanie znanych wycieków
+- Etykiety: `P3`, `security`, `mod:auth` · Źródło: README „Backlog bezpieczeństwa modułu auth”
+- Opis: dziś tylko `@MinLength(8)`; produkt uczy klientów higieny haseł.
+- Akceptacja: sprawdzenie w HaveIBeenPwned (range API, k-anonimowość) z fallbackiem przy awarii usługi.
+
+### B-016 `POSTGRES_PASSWORD` zahardkodowane w `docker-compose.yml` i port 5432 na `0.0.0.0`
+- Etykiety: `P2`, `security`, `ops` · Źródło: README „Backlog bezpieczeństwa modułu auth”
+- Opis: hasło superusera (BYPASSRLS) w pliku; przy wzorcowaniu produkcji na tym pliku unieważnia rozdział ról.
+- Akceptacja: hasło ze zmiennej env (jak `APP_DB_PASSWORD`), port tylko na `127.0.0.1`.
+
+### B-017 SSO Microsoft (Entra ID)
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:auth` · Źródło: CLAUDE.md „Planowane”
+- Opis: uzupełnienie potwierdzania domeny i logowania. Nie budować bez decyzji.
+- Akceptacja: decyzja i projekt; implementacja w osobnych zgłoszeniach.
+
+### B-018 Fakturowanie w Stripe z `organization_billing_details`
+- Etykiety: `P3`, `feature`, `decision-needed` · Źródło: CLAUDE.md „Planowane”
+- Opis: na MVP wystarczy webhook + ręczna zmiana planu przez super-admina.
+- Akceptacja: decyzja o zakresie; projekt; implementacja.
+
+### B-019 Aktualizacja README: sekcje nieaktualne wobec kodu **(zweryfikuj)**
+- Etykiety: `P2`, `docs` · Źródło: porównanie README z CLAUDE.md i kodem
+- Opis: m.in. „Nazwa organizacji = domena e-maila, unikalna” (CLAUDE.md: nazwa podawana przez klienta i nieunikalna), „Brak normalizacji e-maila”
+  (DTO używają `@NormalizeEmail`), „Brak ochrony przed CSV/formula injection w `/dashboard/export`” (jest w `escapeCsvField`), „Niepotwierdzona
+  organizacja zajmuje domenę” (jest sprzątanie po 14 dniach), backlog rejestracji „pre-hijacking”.
+- Akceptacja: każda wymieniona sekcja poprawiona albo usunięta, z odnośnikiem do wpisu w `docs/decisions.md`.
+
+## C. Baza danych i CI
+
+### B-020 Złożone FK `(organizationId, userId)` na tabelach z kolumną `userId`
+- Etykiety: `P2`, `security`, `tech-debt`, `mod:db` · Źródło: README „Backlog bazy danych”
+- Opis: `course_assignments`, `user_badges`, `password_reset_tokens`, `email_verification_tokens` mają FK tylko na `users(id)` (FK omijają RLS), więc baza
+  nie pilnuje zgodności organizacji.
+- Akceptacja: jedna migracja ze złożonymi FK `ON UPDATE NO ACTION` (indeks unikalny na `users` już jest), testy naruszeń w e2e.
+
+### B-021 Sprawdzenie backfillu `notifiedAt` przy pierwszym wdrożeniu
+- Etykiety: `P2`, `ops`, `mod:zgloszenia` · Źródło: `docs/phishing-simulations.md` „Znane ograniczenia”, `docs/decisions.md` D-046
+- Opis: dane migracji nie są osiągalne w e2e.
+- Akceptacja: przed pierwszym wdrożeniem na bazie z istniejącymi zgłoszeniami `SELECT count(*) FROM threat_reports WHERE kind='REAL' AND "notifiedAt" IS NULL` = 0.
+
+### B-022 Sporadyczne „Jest did not exit one second after the test run has completed”
+- Etykiety: `P3`, `tech-debt`, `mod:ci` · Źródło: `docs/phishing-simulations.md`, `docs/decisions.md` D-045
+- Opis: ok. 3 z 8 pełnych przebiegów repliki CI, przy zielonych testach, zwykle w pierwszym przebiegu po świeżym starcie kontenerów.
+  `--detectOpenHandles` niczego nie wykazał; podejrzenie: klient Redis/BullMQ z ponawianiem połączenia przy zimnym starcie.
+- Akceptacja: przyczyna ustalona i usunięta albo udokumentowana; wracamy, jeśli CI zacznie padać.
+
+### B-023 Testy e2e przeglądarkowe (Playwright) w CI
+- Etykiety: `P3`, `tech-debt`, `mod:ci` · Źródło: README „Backlog CI/CD”, `docs/e2e-registration.md`
+- Opis: `scripts/e2e-registration.mjs` uruchamiany ręcznie przed wdrożeniem.
+- Akceptacja: job CI z przeglądarkami i zbudowanymi aplikacjami dla krytycznej ścieżki rejestracji.
+
+### B-024 Retencja obrazów w GHCR
+- Etykiety: `P3`, `ops`, `mod:ci` · Źródło: README „Backlog CI/CD”
+- Opis: zostaje `:latest` i 3 najnowsze `sha-*`, więc wycofanie działa do 3 buildów wstecz; limit planu Free może być ciasny.
+- Akceptacja: sprawdzenie zużycia w Settings → Packages, ewentualna zmiana `KEEP_SHA_TAGS`.
+
+## D. E-learning, dashboard, gamifikacja
+
+### B-030 Job oznaczający przypisania jako `OVERDUE`
+- Etykiety: `P2`, `feature`, `mod:dashboard`, `mod:kursy` · Źródło: README „Backlog modułu dashboard/raporty”
+- Opis: nic nie ustawia statusu `OVERDUE`, więc `overdueCount` jest praktycznie zawsze 0 (termin w przeszłości jest wykrywany po `dueDate`).
+- Akceptacja: cykliczny job wg wzorca z CLAUDE.md „Zadania w tle” (idempotentny, `runInOrgContext`, test z zamrożonym zegarem, izolacja A/B).
+
+### B-031 Endpointy administracyjne do kursów i przypisań
+- Etykiety: `P2`, `feature`, `decision-needed`, `mod:kursy` · Źródło: README „Backlog modułu kursów e-learningowych”
+- Opis: brak tworzenia `Course` i przypisywania `CourseAssignment` (testy seedują przez Prisma). Potrzebny panel ORG_ADMIN/SUPER_ADMIN.
+- Akceptacja: decyzja o zakresie i rolach; endpointy z testami A/B; walidacja `contentBlocks` (nieznany `block.type` nie jest cicho pomijany).
+
+### B-032 `ON DELETE CASCADE` z `courses` do `course_assignments`: RESTRICT + archiwizacja
+- Etykiety: `P3`, `tech-debt`, `mod:kursy`, `mod:db` · Źródło: README
+- Opis: usunięcie kursu bezpowrotnie kasuje wyniki wszystkich organizacji (ważne dla audytów zgodności).
+- Akceptacja: `RESTRICT` i archiwizacja kursów przed powstaniem endpointu usuwającego.
+
+### B-033 Trend ukończenia szkoleń z tabeli historii
+- Etykiety: `P3`, `tech-debt`, `mod:dashboard` · Źródło: README „Executive Dashboard”
+- Opis: trend liczony wstecz z `createdAt`/`completedAt`; twarde usunięcie pracownika usuwa jego wkład z historii.
+- Akceptacja: migawki (np. `compliance_snapshots` zasilane jobem) z RLS i testami.
+
+### B-034 Agregacja `users-status` w SQL
+- Etykiety: `P3`, `tech-debt`, `mod:dashboard` · Źródło: README
+- Opis: sortowanie i paginacja w pamięci (OK dla setek-tysięcy użytkowników).
+- Akceptacja: przeniesienie do SQL przy przekroczeniu skali, benchmark przed/po.
+
+### B-035 Wyjaśnienie odpowiedzi w feedbacku kursu
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: README „Backlog modułu kursów”
+- Opis: `FeedbackPanel` pokazuje tylko „Poprawna/Niepoprawna”; wyjaśnienie wymaga nowego pola DTO bez ujawniania klucza odpowiedzi przed odpowiedzią.
+- Akceptacja: pole wyjaśnienia w `submitBlockProgress`, test braku wycieku klucza, UI.
+
+### B-036 Prawdziwe drag&drop z oceną i realny tracking wideo
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: README
+- Opis: `DragAndDropBlock` to uproszczenie (backend go nie ocenia), a obejrzenie wideo jest tylko kosmetyczne.
+- Akceptacja: rozszerzenie `evaluateBlock` i frontendu razem; decyzja, czy wideo ma być weryfikowane.
+
+### B-037 Gamifikacja: edycja imienia i nazwiska, `startedAt`, kolejne zdarzenia XP
+- Etykiety: `P3`, `feature`, `mod:gamifikacja` · Źródło: README „Moduł grywalizacji”
+- Opis: brak endpointu ustawiającego `firstName`/`lastName` (leaderboard używa inicjałów z e-maila); brak `startedAt` na `CourseAssignment` (odznaka
+  `SPEED_DEMON`); odznaki tylko przy ukończeniu kursu; `AVATAR_PRESETS` bez metadanych.
+- Akceptacja: osobne zgłoszenia na każdy punkt po decyzji o kolejności.
+
+## E. Frontend
+
+### B-040 Odświeżanie sesji na stronie głównej `/`
+- Etykiety: `P3`, `tech-debt`, `mod:web` · Źródło: README „Backlog frontendu”
+- Opis: ORG_ADMIN z ważnym refresh tokenem po wygaśnięciu access tokena trafia z `/` na `/courses` zamiast `/dashboard`.
+- Akceptacja: `/` w matcherze middleware z odświeżaniem tokenu przed decyzją o przekierowaniu.
+
+### B-041 Test spinający `PROTECTED_ROUTES` z `homePathForRole`
+- Etykiety: `P3`, `tech-debt`, `mod:web` · Źródło: README
+- Opis: zmiana ról w middleware bez zmiany `home-path.ts` kończy się wylogowaniem tuż po zalogowaniu.
+- Akceptacja: eksport `PROTECTED_ROUTES` i test, że dla każdej roli strona startowa mieści się w dopuszczonych trasach.
+
+### B-042 Współdzielone DTO w `packages/shared`
+- Etykiety: `P3`, `tech-debt`, `mod:web` · Źródło: README
+- Opis: frontend ręcznie duplikuje typy DTO z API (dashboard, kursy, import, phishing) - ryzyko rozjazdu przy zmianie backendu.
+- Akceptacja: przeniesienie współdzielonych DTO, kompilacja obu workspace'ów, brak duplikatów.
+
+## F. Symulacje phishingowe i zgłoszenia
+
+### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny
+- Etykiety: `P2`, `security`, `mod:phishing` · Źródło: `docs/phishing-simulations.md` „Znane ograniczenia”
+- Opis: sygnał nadużycia (wysyłka z naszej domeny do osób trzecich), gdy >20% odbiorców kampanii to adresy spoza domeny organizacji.
+- Akceptacja: alert i test progu.
+
+### B-051 Dopracowane limity wysyłki symulacji
+- Etykiety: `P2`, `security`, `mod:phishing` · Źródło: `docs/phishing-simulations.md`
+- Opis: poza limitem dobowym (2 × licencje): per kampania, per godzinę, reputacja domeny.
+- Akceptacja: limity z testami; decyzja o wartościach.
+
+### B-052 Alert audytowy różnicowania wyników małych grup
+- Etykiety: `P3`, `security`, `mod:phishing`, `mod:zgloszenia` · Źródło: `docs/phishing-simulations.md`, checklista prywatności
+- Opis: gdy w ciągu 7 dni powstają wielokrotne, zbliżone widoki pozwalające odjąć małą grupę (ryzyko rezydualne zaakceptowane w D-021).
+- Akceptacja: alert audytowy i test.
+
+### B-053 Powiadomienia o zgłoszeniach: kolejka per organizacja
+- Etykiety: `P3`, `tech-debt`, `mod:zgloszenia` · Źródło: `docs/phishing-simulations.md`, D-026
+- Opis: zamiast pętli co 5 minut po wszystkich organizacjach - kolejka opóźniona uruchamiana przy zgłoszeniu (wzorzec `phishing/campaigns`).
+- Akceptacja: mniejsze opóźnienie maila, brak skanowania organizacji bez zgłoszeń, testy izolacji i idempotencji.
+
+### B-054 Ekran kierownika działu (v2)
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:zgloszenia` · Źródło: `docs/phishing-simulations.md`
+- Opis: API kierownika jest gotowe i przetestowane, osobny ekran to backlog v2.
+- Akceptacja: decyzja i projekt ekranu (bez tematu i nadawcy, D-023).
+
+## G. Import i zaproszenia
+
+### B-060 Domena organizacji-właściciela nie jest blokowana przy przejęciu przez rejestrację
+- Etykiety: `P3`, `security`, `mod:import`, `mod:rejestracja` · Źródło: przegląd bezpieczeństwa (niska waga)
+- Opis: w `claimRegistration` sprawdzenie zweryfikowanej domeny organizacji-właściciela nie blokuje wiersza domeny (`FOR SHARE`); okno ułamka sekundy,
+  skutek to jedno zaproszenie do ponownej wysyłki.
+- Akceptacja: `FOR SHARE` na wierszu domeny albo warunek w samym zapisie; test wyścigu.
+
+### B-061 Sprzątanie wygasłych potwierdzeń rejestracji bez skanu wszystkich organizacji PENDING
+- Etykiety: `P3`, `tech-debt`, `mod:rejestracja` · Źródło: przegląd (koszt `purgeExpiredClaims`)
+- Opis: po zawężeniu do organizacji starszych niż 24 h nadal skanujemy je transakcja po transakcji (filtr po relacji poza RLS nie działa).
+- Akceptacja: znacznik na `organizations` (np. „ma oczekujący wpis”) albo inne tanie kryterium; benchmark przy tysiącach organizacji PENDING.
+
+### B-062 Wyścig limitu dobowego zaproszeń: ręczne vs kolejka
+- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: przegląd bezpieczeństwa
+- Opis: `assertInviteQuota` (ręczne zaproszenia) nie bierze blokady `import-invites:<org>`, więc bieg joba i ręczne zaproszenie mogą przekroczyć 300 o kilka.
+- Akceptacja: wspólna blokada albo świadomie udokumentowane przybliżenie.
+
+### B-063 Nieaktualne liczniki w podsumowaniu importu po przeniesieniu wierszy do `EXISTING`
+- Etykiety: `P3`, `bug`, `mod:import` · Źródło: przegląd
+- Opis: `validCount`/`existingCount` partii nie są aktualizowane przy potwierdzeniu, gdy konto pojawiło się po podglądzie.
+- Akceptacja: liczniki zgodne z wierszami po potwierdzeniu, test.
+
+### B-064 Job zaproszeń nie sprawdza statusu organizacji
+- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: przegląd
+- Opis: po zawieszeniu lub zmianie statusu organizacji kolejka nadal wysyła zaproszenia.
+- Akceptacja: warunek statusu w jobie (jeśli taki stan istnieje) i test.
+
+### B-065 Szacowana data zakończenia importu uwzględniająca zaproszenia ręczne
+- Etykiety: `P3`, `feature`, `mod:import` · Źródło: `docs/user-import.md`
+- Opis: ETA zakłada stały limit i brak innych zaproszeń w organizacji.
+- Akceptacja: lepsze przybliżenie albo jawny opis w UI.
+
+### B-066 Adresy e-mail odbiorców w logach `EmailService`
+- Etykiety: `P2`, `security`, `mod:ci` · Źródło: przegląd bezpieczeństwa (RODO)
+- Opis: `logger.error` zapisuje adres odbiorcy i fragment odpowiedzi dostawcy; to dane osobowe w logach aplikacyjnych.
+- Akceptacja: logowanie wyłącznie kodu/szablonu i identyfikatorów, test na brak adresu w logu.
+
+### B-067 Niezgodność długości kolumn `pending_admin_claims.legalVersion` (64) i `legal_acceptances.version` (40)
+- Etykiety: `P3`, `bug`, `mod:db` · Źródło: wykryte testem atomowości
+- Opis: wersja dokumentów dłuższa niż 40 znaków przeszłaby zapis wpisu, a padła przy tworzeniu zgód.
+- Akceptacja: wyrównanie długości (migracja) albo walidacja przy zapisie wpisu.
+
+### B-068 `README` opisuje wygasanie niepotwierdzonych kont jako „do rozważenia”
+- Etykiety: `P3`, `docs` · Źródło: README „Moduł e-mail / Backlog”
+- Opis: wygasanie jest zrobione (organizacje PENDING po 14 dniach, zaproszenia po 30 dniach, wpisy potwierdzeń po 24 h).
+- Akceptacja: wpis README zaktualizowany; patrz B-019.

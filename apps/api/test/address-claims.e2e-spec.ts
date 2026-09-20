@@ -395,8 +395,11 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
     const HOUR_MS = 3_600_000;
     const cleanup = () => app.get(PendingOrganizationCleanupService);
     let counter = 0;
-    const ghostOrg = async (label: string, over: { claimExpiresInMs?: number[]; admin?: 'INVITED' | 'ACTIVE' | null } = {}) => {
-      const org = await owner.organization.create({ data: { name: `${label}-${suffix}.${domainSuffix}`, status: 'PENDING_DOMAIN_VERIFICATION' } });
+    const ghostOrg = async (label: string, over: { claimExpiresInMs?: number[]; admin?: 'INVITED' | 'ACTIVE' | null; ageMs?: number } = {}) => {
+      // Domyślnie organizacja sprzed 2 dni: wpis wygasa 24 h po utworzeniu organizacji, więc tylko starsze organizacje mogą mieć wygasłe wpisy.
+      const org = await owner.organization.create({
+        data: { name: `${label}-${suffix}.${domainSuffix}`, status: 'PENDING_DOMAIN_VERIFICATION', createdAt: new Date(Date.now() - (over.ageMs ?? 2 * DAY)) },
+      });
       for (const offset of over.claimExpiresInMs ?? [-HOUR_MS]) {
         counter += 1;
         await owner.pendingAdminClaim.create({
@@ -431,6 +434,16 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       expect(await claimsOf(mixed.id)).toBe(1);
       const again = await cleanup().purgeExpiredClaims(new Date());
       expect(again.claims).toBe(0);
+    });
+
+    it('zawężenie zapytania: organizacja młodsza niż 24 h nie jest skanowana (wygasły wpis nie może w niej legalnie być), starsza tak', async () => {
+      const young = await ghostOrg('sp6', { ageMs: HOUR_MS });
+      const old = await ghostOrg('sp7');
+
+      await cleanup().purgeExpiredClaims(new Date());
+
+      expect(await claimsOf(young.id)).toBe(1); // poza zakresem skanu
+      expect(await exists(old.id)).toBe(false);
     });
 
     it('organizacja ACTIVE z wygasłym wpisem nie jest ruszana (ani organizacja, ani jej konta)', async () => {

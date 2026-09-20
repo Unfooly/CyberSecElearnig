@@ -63,6 +63,11 @@ odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i w
    (bypass tylko w SELECT `phishing_campaigns`).
 7. `runCrossOrgQuery` - dashboard SUPER_ADMIN i sprzątanie wygasłych refresh tokenów (jawny warunek `where` po stronie wołającego).
 
+Nie jest wyjątkiem, ale wymaga tu wzmianki: `TenantPrismaService.runInOrgContextsSequence` (jedna transakcja, w której kolejne
+kroki idą pod RLS RÓŻNYCH organizacji; bez sentinela bypass, polityki bez zmian) służy **wyłącznie do przejęcia adresu**
+(`RegistrationService.claimRegistration`: usunięcie cudzego nieaktywowanego zaproszenia + utworzenie admina atomowo).
+Nowy wywołujący wymaga decyzji i wpisu tutaj; identyfikatory organizacji muszą pochodzić z zaufanego źródła, nigdy wprost z żądania.
+
 ## Model rejestracji firm (samoobsługowy) i weryfikacja domeny
 
 Firmy zakładają konta same, bez udziału operatora. Przepływ (kod: `apps/api/src/auth/registration.service.ts`,

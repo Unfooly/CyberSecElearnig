@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrganizationStatus } from '@prisma/client';
 import { Role } from '@cyberszkolo/shared';
+import { CLAIM_TOKEN_TTL_MS } from '../auth/claim-ttl';
 import { EmailService } from '../email/email.service';
 import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -95,7 +96,14 @@ export class PendingOrganizationCleanupService implements OnModuleInit {
     let afterId: string | null = null;
     for (;;) {
       const page: { id: string }[] = await this.prisma.organization.findMany({
-        where: { status: OrganizationStatus.PENDING_DOMAIN_VERIFICATION, ...(afterId ? { id: { gt: afterId } } : {}) },
+        where: {
+          status: OrganizationStatus.PENDING_DOMAIN_VERIFICATION,
+          // Wpis powstaje razem z organizacją i wygasa po CLAIM_TOKEN_TTL_MS, więc wygasły wpis może być tylko w organizacji starszej
+          // niż ta wartość: świeżych PENDING (większość) nie skanujemy. (Filtr po relacji do pending_admin_claims/users odpada: poza
+          // kontekstem RLS relacje są puste.)
+          createdAt: { lte: new Date(now.getTime() - CLAIM_TOKEN_TTL_MS) },
+          ...(afterId ? { id: { gt: afterId } } : {}),
+        },
         select: { id: true },
         orderBy: { id: 'asc' },
         take: 200,

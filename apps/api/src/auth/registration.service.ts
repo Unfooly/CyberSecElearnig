@@ -18,12 +18,11 @@ import { emailDomain, generateDomainVerificationToken } from '../organizations/d
 import { AddressClaimService } from '../users/address-claim.service';
 import { InvitedAccountChangedError, expireInvitedAccounts } from '../users/invited-accounts';
 import { AuthService, BCRYPT_ROUNDS } from './auth.service';
+import { CLAIM_TOKEN_TTL_MS } from './claim-ttl';
 import { RegisterDto } from './dto/register.dto';
 import { RegistrationMailLimiter } from './registration-mail-limiter';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
-/** Link potwierdzający rejestrację na adres z cudzym nieaktywowanym zaproszeniem ważny 24 h (jak link aktywacyjny). */
-const CLAIM_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 export const CLAIM_INVALID_MESSAGE = 'Ten link jest nieprawidłowy, wygasł albo został już użyty.';
 export const CLAIM_CONFIRMED_MESSAGE = 'Adres potwierdzony. Wysłaliśmy wiadomość z linkiem do ustawienia hasła (ważny 24 godziny).';
 /** "<organizationId (uuid)>.<64 znaki hex>" - ścisły format (organizationId trafia do set_config, więc tylko prawdziwy UUID). */

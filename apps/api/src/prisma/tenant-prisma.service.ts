@@ -44,6 +44,10 @@ export class TenantPrismaService {
    * To NIE jest furtka omijająca RLS (żaden sentinel bypass, polityki bez zmian) - służy wyłącznie tam, gdzie atomowość musi objąć
    * dwie organizacje: przejęcie adresu (usunięcie cudzego nieaktywowanego zaproszenia w organizacji A i utworzenie administratora w
    * organizacji B: albo obie zmiany, albo żadna). Pierwszy krok idzie pod `firstOrganizationId`.
+   *
+   * WYŁĄCZNIE do przejęcia adresu (`RegistrationService.claimRegistration`); jedyny dozwolony wywołujący (CLAUDE.md, sekcja o
+   * wyjątkach od Zasady nr 1). Identyfikatory organizacji muszą pochodzić z zaufanego źródła (rekord z bazy albo token zweryfikowany
+   * ścisłym formatem i dopasowanym po hashu pod RLS), nigdy wprost z danych żądania. Nowy wywołujący wymaga decyzji i wpisu w CLAUDE.md.
    */
   async runInOrgContextsSequence<T>(
     firstOrganizationId: string,

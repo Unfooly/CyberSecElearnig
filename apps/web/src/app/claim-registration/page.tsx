@@ -1,31 +1,35 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 
 type State =
+  | { kind: 'ready' }
   | { kind: 'loading' }
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string };
 
 const CARD = 'w-full max-w-sm rounded-card border border-border bg-surface p-8 shadow-card';
 
-// Potwierdzenie rejestracji firmy na adres, który wcześniej ktoś zaprosił do innej organizacji: kliknięcie przejmuje adres i tworzy
-// administratora, a hasło ustawia się linkiem z kolejnego maila.
+// Potwierdzenie rejestracji firmy na adres, który wcześniej ktoś zaprosił do innej organizacji: kliknięcie przejmuje adres (KASUJE
+// cudze zaproszenie) i tworzy administratora, a hasło ustawia się linkiem z kolejnego maila.
+// To akcja niszcząca, więc NIE wykonuje się sama po wejściu na stronę (skaner poczty albo podgląd linku wykonujący JS nie może jej
+// uruchomić) - wymaga świadomego kliknięcia "Potwierdzam". (verify-email zostaje automatyczne: niczego nie niszczy.)
 function ClaimRegistration() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const [state, setState] = useState<State>({ kind: 'loading' });
-  // Link jest jednorazowy - w React Strict Mode (dev) efekt odpala się dwa razy, a drugie wywołanie zwróciłoby błąd po udanym pierwszym.
+  const [state, setState] = useState<State>({ kind: 'ready' });
+  // Link jest jednorazowy - podwójne kliknięcie nie może wysłać dwóch żądań.
   const startedRef = useRef(false);
 
-  useEffect(() => {
+  function confirm() {
     if (!token || startedRef.current) {
       return;
     }
     startedRef.current = true;
+    setState({ kind: 'loading' });
 
     fetch('/api/auth/claim-registration', {
       method: 'POST',
@@ -41,7 +45,7 @@ function ClaimRegistration() {
         }
       })
       .catch(() => setState({ kind: 'error', message: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' }));
-  }, [token]);
+  }
 
   if (!token) {
     return (
@@ -64,6 +68,16 @@ function ClaimRegistration() {
         <Logo variant="dark" height={28} />
       </div>
       <h1 className="mb-2 text-[28px] font-extrabold leading-tight tracking-[-0.02em]">Potwierdzenie rejestracji</h1>
+      {state.kind === 'ready' && (
+        <>
+          <p className="mb-4 text-muted">
+            Potwierdź, że to Ty rejestrowałeś/-aś organizację na ten adres e-mail. <strong>Kliknięcie unieważni zaproszenie do innej firmy, jeśli takie masz.</strong> Jeśli to nie Ty, po prostu zamknij tę stronę.
+          </p>
+          <button type="button" onClick={confirm} className="mb-2 h-10 w-full rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover">
+            Potwierdzam
+          </button>
+        </>
+      )}
       {state.kind === 'loading' && <p className="text-muted">Potwierdzanie...</p>}
       {state.kind === 'success' && (
         <p role="status" className="mb-6 rounded-btn bg-success-soft px-3 py-2 text-sm font-semibold text-success">

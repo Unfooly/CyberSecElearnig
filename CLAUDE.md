@@ -169,6 +169,36 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     wcześniejszych decyzji), użytkownik rozstrzyga każdą, dopiero potem robisz commit (poprawki jako osobny commit, gdy to
     kolejna iteracja). Nie commituj „bo uwagi wynikają z decyzji użytkownika” ani „a uwagi opiszę w raporcie po fakcie”.
 
+## Praca zespołowa: branże i pull requesty
+
+Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/pull_request_template.md` (szablon opisu PR),
+`docs/decisions.md` (rejestr decyzji), `docs/onboarding.md` (start nowej osoby), `docs/backlog-issues.md` (backlog jako zgłoszenia).
+
+- **`main` jest zawsze wdrażalny i chroniony.** Zmiany trafiają tam wyłącznie przez pull request; nikt nie pushuje na `main`
+  bezpośrednio (agent też pracuje na branchu). Ustawienia GitHub (Settings → Branches → ochrona `main`): wymagany PR, wymagane zielone
+  joby `lint + testy` i `testy e2e (api)`, co najmniej 1 zatwierdzenie, branch aktualny względem `main`, brak force-push. Dopóki tych
+  ustawień nie włączono, obowiązuje ta sama zasada z dyscypliny (i reguła 8: po pushu podajesz hash i prosisz o status CI).
+- **Nazwa brancha:** `<typ>/<numer-zgłoszenia>-<krótki-opis>`, np. `feat/142-import-csv`, `fix/155-limit-zaproszen`. Typy: `feat`, `fix`,
+  `refactor`, `test`, `docs`, `chore`. Bez zgłoszenia pomijasz numer (`chore/typecheck-web`). Branch żyje krótko (dni, nie tygodnie); większe
+  zadanie dzielisz na kilka PR-ów (reguła 2), a nie na jeden wielki branch.
+- **Jeden PR = jedna logiczna zmiana** (reguła 6), z małymi, opisowymi commitami. Migracja bazy i odpowiadająca jej zmiana `schema.prisma`
+  są w tym samym commicie (reguła 4). PR bez testu nie jest skończony (reguła 3), w tym test izolacji A/B dla każdego nowego endpointu.
+- **Opis PR** wypełnia szablon `.github/pull_request_template.md` (po co, co się zmienia, jak sprawdzono, ryzyka: izolacja tenantów, migracje,
+  wysyłka maili, dane osobowe). Nie usuwaj sekcji; wpisz „nie dotyczy”, jeśli punkt nie ma zastosowania.
+- **Review:** co najmniej jedna osoba poza autorem. Przed otwarciem PR dotykającego auth, guardów, RLS, zapytań na danych klienckich,
+  wysyłki maili, wyników symulacji albo importu: przegląd `security-reviewer`; w pozostałych przypadkach `code-reviewer`. Werdykt „nie
+  gotowy” blokuje merge do decyzji właściciela produktu (reguła 10); uwagi wklejasz do opisu PR razem z rozstrzygnięciem.
+- **CI musi być zielone przed merge.** Czerwone CI blokuje też start następnego kroku (reguła 8). Sporadyczne „Jest did not exit” przy
+  zielonych testach nie blokuje (patrz `docs/phishing-simulations.md`, „Znane ograniczenia”); każdy inny błąd tak.
+- **Sposób scalania:** „Rebase and merge” dla PR z małymi, opisowymi commitami (zachowuje historię z reguły 6); „Squash and merge” tylko
+  wtedy, gdy commity w PR to szum (poprawki, WIP). Nigdy merge commit z `main` do brancha - aktualizujesz przez rebase.
+- **Migracje w równoległych branchach:** nazwy migracji mają znacznik czasu, więc dwa branche mogą dodać migracje w dowolnej kolejności.
+  Po zmergowaniu cudzej migracji robisz rebase i, jeśli twoja jest starsza niż zmergowana, zmieniasz jej znacznik czasu na nowszy.
+  Nigdy nie edytujesz migracji, która trafiła na `main` - dodajesz nową.
+- **Decyzje i backlog:** decyzja, która zmienia zachowanie produktu, bezpieczeństwo albo konwencje, dostaje wpis w `docs/decisions.md` w
+  tym samym PR. Odłożone uwagi z review wchodzą do backlogu (`docs/backlog-issues.md`, potem zgłoszenie w GitHub) - nie znikają w komentarzu.
+- **Sekrety i dane:** żadnych sekretów, dumpów bazy ani danych osobowych w commitach, opisach PR i logach CI (reguła 5).
+
 ## Daty i strefy czasowe (web)
 
 Daty i godziny formatujemy **wyłącznie** przez `apps/web/src/lib/datetime.ts` (jawna strefa, domyślnie `Europe/Warsaw`; docelowo

@@ -284,6 +284,33 @@ prawdziwych klientów).
 - [ ] CAPTCHA na `/auth/register` i limit globalny/na domenę dla niezweryfikowanych organizacji.
 - [ ] Monitoring/alert na logi „zadanie w tle ... nie powiodło się” (rejestracja, sprzątanie organizacji).
 
+## Seed konta administratora ze zweryfikowaną domeną (tylko środowisko TESTOWE)
+
+Skrót do pracy na środowisku testowym: jedna organizacja (`ACTIVE`, domena już zweryfikowana) i jedno konto `ORG_ADMIN`, bez
+rejestracji i rekordu DNS TXT. **To świadomy wyjątek od zasady z `CLAUDE.md`** (`verifiedAt` i `ACTIVE` ustawia normalnie tylko
+`DomainVerificationService`), więc: nigdy na środowisku z prawdziwymi klientami; na `NODE_ENV=production` skrypt odmawia, dopóki nie
+ustawisz `SEED_CONFIRM_TEST_ENVIRONMENT=yes-this-is-not-real-customer-data`. Pełna ścieżka rejestracji z DNS (`docs/e2e-registration.md`)
+zostaje jedynym sposobem na produkcji.
+
+- **Hasło jest losowe i nieznane** (nigdzie niewypisywane): wejście przez „Zapomniałem hasła” na stronie logowania (link z maila).
+  Na koncie MailerSend w trybie próbnym mail dojdzie tylko na adres dozwolony dla konta (zwykle adres właściciela) - `jakub.pieterwas@aries-it.pl`
+  musi nim być albo domena nadawcy musi być zweryfikowana.
+- Skrypt niczego nie nadpisuje: istniejące konto o tym e-mailu albo domena już zweryfikowana w innej organizacji => błąd i cofnięta
+  transakcja (usuń wcześniej starą organizację, np. `aries-it.pl` z wcześniejszych testów).
+- Wymaga obrazu API zawierającego `apps/api/prisma/seed-org-admin.js` (po `pull` obrazu zbudowanego z tego commita):
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm --no-deps \
+  -e SEED_ADMIN_EMAIL=jakub.pieterwas@aries-it.pl \
+  -e SEED_ORGANIZATION_NAME="Aries IT" \
+  -e SEED_CONFIRM_TEST_ENVIRONMENT=yes-this-is-not-real-customer-data \
+  migrate node apps/api/prisma/seed-org-admin.js
+```
+
+  Usługa `migrate` ma połączenie właściciela schematu (`DATABASE_URL`). Lokalnie (dev): `cd apps/api && SEED_ADMIN_EMAIL=... npx dotenv -e ../../.env -- node prisma/seed-org-admin.js`.
+  Przed wykonaniem na VPS sprawdź, że w bazie nie ma konta ani zweryfikowanej domeny `aries-it.pl`. Test skryptu: `apps/api/test/seed-org-admin.e2e-spec.ts`.
+
 ## 10. Wdrożenie modułu symulacji phishingowych (kroki)
 
 Moduł jest w API i web od commitów `3743fa6`...`9fd7262`; poniżej to, co trzeba zrobić na środowisku. Wysyłka jest **domyślnie

@@ -97,8 +97,12 @@ export interface ResultRow {
   delivered: number | null;
   clicked: number | null;
   submitted: number | null;
+  // Zgłosiło wiadomość jako podejrzaną i - w tym - zgłosiło PO kliknięciu (ta sama grupa i ten sam próg co pozostałe liczby).
+  reported: number | null;
+  reportedAfterClick: number | null;
   clickRate: number | null;
   submitRate: number | null;
+  reportRate: number | null;
 }
 
 export interface ResultsView {
@@ -112,7 +116,7 @@ export interface ResultsView {
 }
 
 export type DeliveryStatus = 'SENT' | 'FAILED' | 'UNCERTAIN' | 'PENDING';
-export const PEOPLE_FILTERS = ['ALL', 'PROBLEMS', 'CLICKED', 'SUBMITTED'] as const;
+export const PEOPLE_FILTERS = ['ALL', 'PROBLEMS', 'CLICKED', 'SUBMITTED', 'REPORTED'] as const;
 export type PeopleFilter = (typeof PEOPLE_FILTERS)[number];
 
 export const PEOPLE_FILTER_LABELS: Record<PeopleFilter, string> = {
@@ -120,6 +124,7 @@ export const PEOPLE_FILTER_LABELS: Record<PeopleFilter, string> = {
   PROBLEMS: 'Nieudane i niepewne',
   CLICKED: 'Kliknęli',
   SUBMITTED: 'Wysłali formularz',
+  REPORTED: 'Zgłosili wiadomość',
 };
 
 export interface PersonResult {
@@ -132,6 +137,9 @@ export interface PersonResult {
   sentAt: string | null;
   clickedAt: string | null;
   submittedAt: string | null;
+  // Zgłosił(a) wiadomość jako podejrzaną; reportedAfterClick = kliknął(ęła), a potem zgłosił(a).
+  reportedAt: string | null;
+  reportedAfterClick: boolean;
 }
 
 export interface PersonalResultsSettings {

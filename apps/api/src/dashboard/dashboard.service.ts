@@ -84,7 +84,7 @@ export class DashboardService {
         overdueCount,
         phishingClickRate: phishing.clickRate,
         phishingSubmitRate: phishing.submitRate,
-        phishingReportRate: null,
+        phishingReportRate: phishing.reportRate,
       };
     });
   }

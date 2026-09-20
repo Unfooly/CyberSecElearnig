@@ -25,7 +25,7 @@ function DepartmentRow({ row, minGroupSize }: { row: ResultRow; minGroupSize: nu
     <tr className="border-b border-border last:border-0">
       <td className="px-5 py-3 font-semibold">{row.name}</td>
       {row.insufficientData ? (
-        <td colSpan={5} className="px-5 py-3 text-muted">
+        <td colSpan={8} className="px-5 py-3 text-muted">
           <Pill tone="off">Za mało danych</Pill> <span className="ml-2 text-xs">Wynik grupy poniżej {minGroupSize} osób nie jest pokazywany.</span>
         </td>
       ) : (
@@ -35,6 +35,9 @@ function DepartmentRow({ row, minGroupSize }: { row: ResultRow; minGroupSize: nu
           <td className="px-5 py-3 text-right">{percent(row.clickRate)}</td>
           <td className="px-5 py-3 text-right">{row.submitted}</td>
           <td className="px-5 py-3 text-right">{percent(row.submitRate)}</td>
+          <td className="px-5 py-3 text-right">{row.reported}</td>
+          <td className="px-5 py-3 text-right">{percent(row.reportRate)}</td>
+          <td className="px-5 py-3 text-right">{row.reportedAfterClick}</td>
         </>
       )}
     </tr>
@@ -85,8 +88,9 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
           }
         />
         <p className="px-5 pt-3 text-xs text-muted">
-          Podatność = odsetek osób z dostarczoną wiadomością, które kliknęły / wysłały formularz. Grupy mniejsze niż {view.minGroupSize} osoby są łączone w
-          „Pozostałe działy” albo ukrywane, żeby nie identyfikować pojedynczych osób.
+          Podatność = odsetek osób z dostarczoną wiadomością, które kliknęły / wysłały formularz. Zgłaszalność = odsetek osób, które zgłosiły wiadomość jako
+          podejrzaną (w tym: zgłosiły dopiero po kliknięciu). Grupy mniejsze niż {view.minGroupSize} osoby są łączone w „Pozostałe działy” albo ukrywane,
+          żeby nie identyfikować pojedynczych osób.
         </p>
         <table className="w-full text-left text-sm">
           <thead>
@@ -97,6 +101,9 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
               <th className="px-5 py-3 text-right">% kliknęło</th>
               <th className="px-5 py-3 text-right">Wysłało formularz</th>
               <th className="px-5 py-3 text-right">% formularz</th>
+              <th className="px-5 py-3 text-right">Zgłosiło</th>
+              <th className="px-5 py-3 text-right">% zgłosiło</th>
+              <th className="px-5 py-3 text-right">W tym po kliknięciu</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +113,7 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
             ))}
             {view.departments.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-4 text-muted">
+                <td colSpan={9} className="px-5 py-4 text-muted">
                   Brak danych do pokazania.
                 </td>
               </tr>
@@ -172,6 +179,7 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
                     <th className="px-3 py-2">Dostarczenie</th>
                     <th className="px-3 py-2">Kliknięcie</th>
                     <th className="px-3 py-2">Formularz</th>
+                    <th className="px-3 py-2">Zgłoszenie</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -188,11 +196,19 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
                       </td>
                       <td className="px-3 py-2 text-muted">{person.clickedAt ? formatDateTime(person.clickedAt) : '-'}</td>
                       <td className="px-3 py-2 text-muted">{person.submittedAt ? formatDateTime(person.submittedAt) : '-'}</td>
+                      <td className="px-3 py-2 text-muted">
+                        {person.reportedAt ? formatDateTime(person.reportedAt) : '-'}
+                        {person.reportedAfterClick && (
+                          <div className="mt-1">
+                            <Pill tone="warn">Po kliknięciu</Pill>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {people.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-3 py-4 text-muted">
+                      <td colSpan={6} className="px-3 py-4 text-muted">
                         Brak osób w wybranym zakresie.
                       </td>
                     </tr>

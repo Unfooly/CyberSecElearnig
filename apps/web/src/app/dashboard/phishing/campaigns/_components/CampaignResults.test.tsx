@@ -11,8 +11,11 @@ const row = (over: Partial<ResultsView['departments'][number]>) => ({
   delivered: 5,
   clicked: 2,
   submitted: 1,
+  reported: 3,
+  reportedAfterClick: 1,
   clickRate: 40,
   submitRate: 20,
+  reportRate: 60,
   ...over,
 });
 
@@ -26,7 +29,7 @@ const view: ResultsView = {
 };
 
 const person = (over: Partial<PersonResult>): PersonResult => ({
-  userId: 'u1', name: 'Anna Nowak', email: 'anna@firma.pl', departmentName: 'Sprzedaż', delivery: 'SENT', failureCode: null, sentAt: '2027-01-01T09:00:00Z', clickedAt: '2027-01-01T09:05:00Z', submittedAt: null, ...over,
+  userId: 'u1', name: 'Anna Nowak', email: 'anna@firma.pl', departmentName: 'Sprzedaż', delivery: 'SENT', failureCode: null, sentAt: '2027-01-01T09:00:00Z', clickedAt: '2027-01-01T09:05:00Z', submittedAt: null, reportedAt: null, reportedAfterClick: false, ...over,
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -36,7 +39,13 @@ describe('CampaignResults', () => {
     render(
       <CampaignResults
         campaignId="c1"
-        view={{ ...view, departments: [...view.departments, row({ name: 'IT', insufficientData: true, delivered: null, clicked: null, submitted: null, clickRate: null, submitRate: null })] }}
+        view={{
+          ...view,
+          departments: [
+            ...view.departments,
+            row({ name: 'IT', insufficientData: true, delivered: null, clicked: null, submitted: null, reported: null, reportedAfterClick: null, clickRate: null, submitRate: null, reportRate: null }),
+          ],
+        }}
         personalResultsEnabled={false}
       />,
     );
@@ -48,6 +57,51 @@ describe('CampaignResults', () => {
     expect(itRow).toHaveTextContent('Za mało danych');
     expect(itRow).not.toHaveTextContent('%');
     expect(screen.getByRole('link', { name: 'Pobierz CSV' })).toHaveAttribute('href', '/api/phishing/results/campaigns/c1/departments.csv');
+  });
+
+  it('agregaty pokazują kolumny zgłoszeń: zgłosiło, % zgłosiło, w tym po kliknięciu; wiersz "za mało danych" nie ma żadnych liczb zgłoszeń', () => {
+    render(
+      <CampaignResults
+        campaignId="c1"
+        view={{ ...view, departments: [row({ reported: 3, reportRate: 60, reportedAfterClick: 2 }), row({ name: 'IT', insufficientData: true, delivered: null, reported: null, reportedAfterClick: null, reportRate: null })] }}
+        personalResultsEnabled={false}
+      />,
+    );
+
+    for (const header of ['Zgłosiło', '% zgłosiło', 'W tym po kliknięciu']) {
+      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
+    const sales = screen.getByText('Sprzedaż', { selector: 'td' }).closest('tr') as HTMLElement;
+    expect(sales).toHaveTextContent('60%');
+    expect(sales.querySelectorAll('td')).toHaveLength(9);
+    const it = screen.getByText('IT').closest('tr') as HTMLElement;
+    expect(it).toHaveTextContent('Za mało danych');
+    expect(it).not.toHaveTextContent('%');
+    expect(it.querySelectorAll('td')).toHaveLength(2); // nazwa + jedna komórka z komunikatem (colSpan), bez żadnej liczby
+  });
+
+  it('wyniki osobowe: kolumna zgłoszenia z datą i oznaczeniem "Po kliknięciu"; filtr "Zgłosili wiadomość" jest dostępny', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        person({ reportedAt: '2027-01-01T10:00:00Z', reportedAfterClick: true }),
+        person({ userId: 'u2', name: 'Jan Kowalski', email: 'jan@firma.pl', clickedAt: null, reportedAt: '2027-01-01T10:30:00Z', reportedAfterClick: false }),
+        person({ userId: 'u3', name: 'Ewa Nowa', email: 'ewa@firma.pl', reportedAt: null }),
+      ],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CampaignResults campaignId="c1" view={view} personalResultsEnabled />);
+
+    fireEvent.change(screen.getByLabelText('Zakres'), { target: { value: 'REPORTED' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż wyniki osobowe' }));
+
+    expect(await screen.findByText('Anna Nowak')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/phishing/results/campaigns/c1/people?filter=REPORTED');
+    expect(screen.getByRole('columnheader', { name: 'Zgłoszenie' })).toBeInTheDocument();
+    expect(screen.getAllByText('Po kliknięciu')).toHaveLength(1); // tylko Anna zgłosiła PO kliknięciu
+    expect(screen.getByText('Anna Nowak').closest('tr')).toHaveTextContent('Po kliknięciu');
+    expect(screen.getByText('Jan Kowalski').closest('tr')).not.toHaveTextContent('Po kliknięciu');
+    expect(screen.getByText('Ewa Nowa').closest('tr')).toHaveTextContent('-');
   });
 
   it('wyniki osobowe WYŁĄCZONE: tylko informacja z linkiem do ustawień; nie ma przycisku, listy ani CSV osobowego, nic nie jest pobierane', () => {

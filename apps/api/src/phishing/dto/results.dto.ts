@@ -17,7 +17,7 @@ export class SetPersonalResultsDto {
   justification?: string;
 }
 
-export const PEOPLE_FILTERS = ['ALL', 'PROBLEMS', 'CLICKED', 'SUBMITTED'] as const;
+export const PEOPLE_FILTERS = ['ALL', 'PROBLEMS', 'CLICKED', 'SUBMITTED', 'REPORTED'] as const;
 export type PeopleFilter = (typeof PEOPLE_FILTERS)[number];
 
 export class PeopleQueryDto {

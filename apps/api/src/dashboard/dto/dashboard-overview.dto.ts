@@ -16,6 +16,7 @@ export class DashboardOverviewDto {
   phishingClickRate!: number | null;
   phishingSubmitRate!: number | null;
 
-  // Placeholder do czasu modułu zgłaszania zagrożeń - świadomie null, nie zmyślone liczby.
-  phishingReportRate!: null;
+  // KPI "zgłaszalność": % dostarczonych wiadomości symulacji zgłoszonych przez adresata jako podejrzane (moduł zgłoszeń;
+  // te same 90 dni, ta sama liczebność i próg co powyżej). null = brak kampanii albo za mało danych.
+  phishingReportRate!: number | null;
 }

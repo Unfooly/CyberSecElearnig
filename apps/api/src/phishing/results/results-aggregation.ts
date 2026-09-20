@@ -8,6 +8,10 @@
  * co najmniej MIN_GROUP_SIZE osób, więc żadnej pojedynczej małej grupy nie da się odjąć od sumy. Gdy cała organizacja
  * ma mniej osób niż próg, nie publikujemy nic ("za mało danych").
  *
+ * Metryki zgłoszeń ("zgłosiło", "w tym po kliknięciu") to trzecia i czwarta liczba TEGO SAMEGO wiersza: podlegają
+ * dokładnie tym samym grupom i progom (liczebność wiersza = osoby z dostarczoną wiadomością), więc nie tworzą nowych
+ * granic grup. Zgłoszenia nie mają własnego progu - wiersz poniżej progu ukrywa wszystkie metryki naraz.
+ *
  * CZYSTE funkcje - bez bazy, bez danych osobowych (wejście to fakty bez identyfikatorów osób).
  */
 
@@ -21,12 +25,18 @@ export interface RecipientFacts {
   sentAt: Date | null;
   clickedAt: Date | null;
   submittedAt: Date | null;
+  /** Pierwsze zgłoszenie wiadomości jako podejrzanej (moduł zgłoszeń). */
+  reportedAt: Date | null;
 }
 
 export interface GroupStats {
   delivered: number;
   clicked: number;
   submitted: number;
+  /** Zgłosiło wiadomość jako podejrzaną (niezależnie od kliknięcia). */
+  reported: number;
+  /** W tym: zgłosiło PO kliknięciu (kliknęło, a potem zgłosiło) - podzbiór `reported` i `clicked`. */
+  reportedAfterClick: number;
 }
 
 export type ResultRowKind = 'DEPARTMENT' | 'NO_DEPARTMENT' | 'OTHER' | 'ALL';
@@ -40,19 +50,32 @@ export interface ResultRow {
   delivered: number | null;
   clicked: number | null;
   submitted: number | null;
+  reported: number | null;
+  reportedAfterClick: number | null;
   clickRate: number | null;
   submitRate: number | null;
+  reportRate: number | null;
 }
 
-/** Wiadomość uznajemy za dostarczoną, gdy dostawca ją przyjął albo odbiorca kliknął (kliknięcie dowodzi dostarczenia). */
-export const isDelivered = (recipient: Pick<RecipientFacts, 'sentAt' | 'clickedAt'>) => recipient.sentAt !== null || recipient.clickedAt !== null;
+/**
+ * Wiadomość uznajemy za dostarczoną, gdy dostawca ją przyjął albo odbiorca kliknął lub zgłosił ją (kliknięcie i zgłoszenie
+ * dowodzą dostarczenia).
+ */
+export const isDelivered = (recipient: Pick<RecipientFacts, 'sentAt' | 'clickedAt' | 'reportedAt'>) =>
+  recipient.sentAt !== null || recipient.clickedAt !== null || recipient.reportedAt !== null;
 
-const emptyStats = (): GroupStats => ({ delivered: 0, clicked: 0, submitted: 0 });
+/** Zgłoszenie PO kliknięciu: kliknął, a zgłosił później (zgłoszenie przed kliknięciem to nie "po kliknięciu"). */
+export const isReportedAfterClick = (recipient: Pick<RecipientFacts, 'clickedAt' | 'reportedAt'>) =>
+  recipient.clickedAt !== null && recipient.reportedAt !== null && recipient.reportedAt.getTime() > recipient.clickedAt.getTime();
+
+const emptyStats = (): GroupStats => ({ delivered: 0, clicked: 0, submitted: 0, reported: 0, reportedAfterClick: 0 });
 
 function add(target: GroupStats, source: GroupStats): void {
   target.delivered += source.delivered;
   target.clicked += source.clicked;
   target.submitted += source.submitted;
+  target.reported += source.reported;
+  target.reportedAfterClick += source.reportedAfterClick;
 }
 
 /** Procent z jednym miejscem po przecinku; null, gdy mianownik 0. */
@@ -67,6 +90,8 @@ export function statsOf(recipients: readonly RecipientFacts[]): GroupStats {
     stats.delivered += 1;
     if (recipient.clickedAt !== null) stats.clicked += 1;
     if (recipient.submittedAt !== null) stats.submitted += 1;
+    if (recipient.reportedAt !== null) stats.reported += 1;
+    if (isReportedAfterClick(recipient)) stats.reportedAfterClick += 1;
   }
   return stats;
 }
@@ -79,8 +104,11 @@ const visibleRow = (kind: ResultRowKind, departmentId: string | null, name: stri
   delivered: stats.delivered,
   clicked: stats.clicked,
   submitted: stats.submitted,
+  reported: stats.reported,
+  reportedAfterClick: stats.reportedAfterClick,
   clickRate: rate(stats.clicked, stats.delivered),
   submitRate: rate(stats.submitted, stats.delivered),
+  reportRate: rate(stats.reported, stats.delivered),
 });
 
 const hiddenRow = (kind: ResultRowKind, departmentId: string | null, name: string): ResultRow => ({
@@ -91,8 +119,11 @@ const hiddenRow = (kind: ResultRowKind, departmentId: string | null, name: strin
   delivered: null,
   clicked: null,
   submitted: null,
+  reported: null,
+  reportedAfterClick: null,
   clickRate: null,
   submitRate: null,
+  reportRate: null,
 });
 
 export const OTHER_DEPARTMENTS_LABEL = 'Pozostałe działy (za mało osób w pojedynczych działach)';

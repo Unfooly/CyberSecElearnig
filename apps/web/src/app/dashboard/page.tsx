@@ -23,10 +23,10 @@ interface OverviewData {
   // kampanii albo za mało danych (próg minimalnej liczebności 3 osoby).
   phishingClickRate: number | null;
   phishingSubmitRate?: number | null;
-  phishingReportRate: null;
+  // % dostarczonych wiadomości symulacji zgłoszonych przez adresata jako podejrzane (90 dni; ta sama liczebność i próg).
+  phishingReportRate: number | null;
 }
 
-const PHISHING_PLACEHOLDER = 'Pojawi się po pierwszej kampanii';
 const PHISHING_NO_DATA = 'Brak kampanii z ostatnich 90 dni albo za mało danych (poniżej 3 osób)';
 
 function fetchFromApi<T>(path: string, accessToken: string) {
@@ -138,7 +138,17 @@ export default async function DashboardPage() {
           ) : (
             <KpiCard label="Podatność na phishing" value={PHISHING_NO_DATA} placeholder placeholderPill={null} />
           )}
-          <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_PLACEHOLDER} placeholder />
+          {overview.phishingReportRate !== null ? (
+            <KpiCard
+              label="Zgłaszalność phishingowa"
+              value={String(overview.phishingReportRate)}
+              unit="%"
+              progress={{ value: overview.phishingReportRate }}
+              hint="Zgłosiło wiadomość symulacji jako podejrzaną (90 dni)"
+            />
+          ) : (
+            <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_NO_DATA} placeholder placeholderPill={null} />
+          )}
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

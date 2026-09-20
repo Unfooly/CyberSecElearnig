@@ -245,8 +245,8 @@ describe('Wyniki symulacji: agregaty, wyniki osobowe, audyt (e2e)', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       const text = response.text;
       expect(text.startsWith(BOM)).toBe(true);
-      expect(text).toContain('Dział,Dostarczono,Kliknęło,Wysłało formularz,% kliknęło,% wysłało formularz,Uwagi');
-      expect(text).toContain('Sales,5,2,1,40,20');
+      expect(text).toContain('Dział,Dostarczono,Kliknęło,Wysłało formularz,Zgłosiło,W tym zgłosiło po kliknięciu,% kliknęło,% wysłało formularz,% zgłosiło,Uwagi');
+      expect(text).toContain('Sales,5,2,1,0,0,40,20,0'); // dostarczono, kliknęło, formularz, zgłosiło, po kliknięciu, %kl, %form, %zgł
       expect(text).not.toMatch(/Tiny|@|Imię-|HYPERLINK/);
     });
 
@@ -335,7 +335,7 @@ describe('Wyniki symulacji: agregaty, wyniki osobowe, audyt (e2e)', () => {
     it('KPI "podatność na phishing": zagregowany % całej organizacji, bez danych osobowych', async () => {
       const response = await get(orgA.adminToken, '/dashboard/overview').expect(200);
 
-      expect(response.body).toMatchObject({ phishingClickRate: 50, phishingSubmitRate: 16.7, phishingReportRate: null });
+      expect(response.body).toMatchObject({ phishingClickRate: 50, phishingSubmitRate: 16.7, phishingReportRate: 0 }); // 12 dostarczonych, 0 zgłoszeń (zgłoszenia: phishing-results-reports.e2e-spec.ts)
       expect(JSON.stringify(response.body)).not.toMatch(/@|Imię-/);
     });
 

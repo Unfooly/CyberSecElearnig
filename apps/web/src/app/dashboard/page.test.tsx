@@ -133,7 +133,7 @@ describe('DashboardPage', () => {
       'fetch',
       vi
         .fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...overviewResponse, phishingClickRate: 42.5, phishingSubmitRate: 12.3 }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...overviewResponse, phishingClickRate: 42.5, phishingSubmitRate: 12.3, phishingReportRate: 10 }) })
         .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse })
         .mockResolvedValueOnce({ ok: true, json: async () => trendsResponse }),
     );
@@ -146,7 +146,43 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(/Brak kampanii z ostatnich 90 dni/)).not.toBeInTheDocument();
   });
 
-  it('renderuje realne dane z API, w tym placeholdery dla metryk phishingowych', async () => {
+  it('KPI "Zgłaszalność phishingowa": pokazuje procent zgłoszeń z API (także 0%, bez placeholdera)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...overviewResponse, phishingClickRate: 20, phishingReportRate: 37.5 }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => trendsResponse }),
+    );
+
+    render(await DashboardPage());
+
+    expect(screen.getByText('Zgłaszalność phishingowa')).toBeInTheDocument();
+    expect(screen.getByText('37.5')).toBeInTheDocument();
+    expect(screen.getByText(/Zgłosiło wiadomość symulacji jako podejrzaną/)).toBeInTheDocument();
+    expect(screen.queryByText('Pojawi się po pierwszej kampanii')).not.toBeInTheDocument();
+  });
+
+  it('KPI "Zgłaszalność phishingowa" = 0% jest wartością (nie brakiem danych)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...overviewResponse, phishingClickRate: 20, phishingReportRate: 0 }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => trendsResponse }),
+    );
+
+    render(await DashboardPage());
+
+    expect(screen.getByText(/Zgłosiło wiadomość symulacji jako podejrzaną/)).toBeInTheDocument();
+    expect(screen.queryByText(/Brak kampanii z ostatnich 90 dni/)).not.toBeInTheDocument();
+  });
+
+  it('renderuje realne dane z API, w tym komunikat braku danych dla metryk phishingowych', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal(
       'fetch',
@@ -163,11 +199,11 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('50').length).toBeGreaterThan(0);
     expect(screen.getByText('/ 4')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Pobierz raport CSV' })).toHaveAttribute('href', '/api/dashboard/export');
-    // Zgłaszalność: placeholder (moduł zgłoszeń nie istnieje). Podatność na phishing: brak danych => opis progu, bez pilla "Moduł wkrótce".
-    expect(screen.getAllByText('Moduł wkrótce')).toHaveLength(1);
-    expect(screen.getAllByText('Pojawi się po pierwszej kampanii')).toHaveLength(1);
+    // Podatność na phishing i Zgłaszalność: brak danych => opis progu (dwa razy), bez pilla "Moduł wkrótce" (moduł istnieje).
+    expect(screen.queryByText('Moduł wkrótce')).not.toBeInTheDocument();
     expect(screen.getByText('Podatność na phishing')).toBeInTheDocument();
-    expect(screen.getByText(/Brak kampanii z ostatnich 90 dni albo za mało danych/)).toBeInTheDocument();
+    expect(screen.getByText('Zgłaszalność phishingowa')).toBeInTheDocument();
+    expect(screen.getAllByText(/Brak kampanii z ostatnich 90 dni albo za mało danych/)).toHaveLength(2);
     expect(screen.getAllByText('IT').length).toBeGreaterThan(0);
     expect(screen.getAllByText('80%').length).toBeGreaterThan(0);
     expect(screen.getByText(/Stan organizacji na dziś/)).toBeInTheDocument();

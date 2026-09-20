@@ -4,15 +4,23 @@ import { escapeCsvField, toCsv } from './results-csv';
 const SENT = new Date('2027-01-01T10:00:00Z');
 const CLICK = new Date('2027-01-01T11:00:00Z');
 
-/** n odbiorców działu; pierwsi `clicked` kliknęli, pierwsi `submitted` wysłali formularz, `failed` bez dostarczenia. */
-function dept(id: string | null, count: number, opts: { clicked?: number; submitted?: number; failed?: number } = {}): RecipientFacts[] {
-  const { clicked = 0, submitted = 0, failed = 0 } = opts;
+const REPORT_AFTER_CLICK = new Date('2027-01-01T12:00:00Z');
+const REPORT_BEFORE_CLICK = new Date('2027-01-01T10:30:00Z');
+
+/**
+ * n odbiorców działu; pierwsi `clicked` kliknęli, pierwsi `submitted` wysłali formularz, `failed` bez dostarczenia.
+ * `reported` = pierwsi tylu odbiorców zgłosiło wiadomość (osoby z pierwszej części listy, które też kliknęły, zgłosiły
+ * PO kliknięciu; pozostałe bez kliknięcia).
+ */
+function dept(id: string | null, count: number, opts: { clicked?: number; submitted?: number; failed?: number; reported?: number } = {}): RecipientFacts[] {
+  const { clicked = 0, submitted = 0, failed = 0, reported = 0 } = opts;
   return Array.from({ length: count }, (_v, index) => ({
     departmentId: id,
     departmentName: id === null ? null : `Dział ${id}`,
     sentAt: index < count - failed ? SENT : null,
     clickedAt: index < clicked ? CLICK : null,
     submittedAt: index < submitted ? CLICK : null,
+    reportedAt: index < reported ? REPORT_AFTER_CLICK : null,
   }));
 }
 
@@ -48,9 +56,16 @@ describe('progi minimalnej liczebności (agregaty per dział)', () => {
       const departments = 1 + Math.floor(random() * 6);
       for (let d = 0; d < departments; d += 1) {
         const size = Math.floor(random() * 7);
-        recipients.push(...dept(`d${d}`, size, { clicked: Math.floor(random() * (size + 1)), failed: Math.floor(random() * (size + 1) * 0.3) }));
+        recipients.push(
+          ...dept(`d${d}`, size, {
+            clicked: Math.floor(random() * (size + 1)),
+            reported: Math.floor(random() * (size + 1)),
+            failed: Math.floor(random() * (size + 1) * 0.3),
+          }),
+        );
       }
-      const total = statsOf(recipients).delivered;
+      const totals = statsOf(recipients);
+      const total = totals.delivered;
 
       const rows = departmentRows(recipients);
 
@@ -58,6 +73,9 @@ describe('progi minimalnej liczebności (agregaty per dział)', () => {
       published.forEach((row) => expect(row.delivered as number).toBeGreaterThanOrEqual(MIN_GROUP_SIZE));
       if (total >= MIN_GROUP_SIZE) {
         expect(published.reduce((sum, row) => sum + (row.delivered as number), 0)).toBe(total);
+        // Metryki zgłoszeń mają te same grupy i progi: suma opublikowanych wierszy = suma organizacji (nic nie da się odjąć).
+        expect(published.reduce((sum, row) => sum + (row.reported as number), 0)).toBe(totals.reported);
+        expect(published.reduce((sum, row) => sum + (row.reportedAfterClick as number), 0)).toBe(totals.reportedAfterClick);
       } else {
         expect(published).toEqual([]);
       }
@@ -82,7 +100,7 @@ describe('progi minimalnej liczebności (agregaty per dział)', () => {
   it('niedostarczone wiadomości nie liczą się do liczebności; kliknięcie dowodzi dostarczenia; grupa bez dostarczeń nie tworzy wiersza', () => {
     const facts: RecipientFacts[] = [
       ...dept('a', 5, { failed: 3 }), // dostarczono 2 => poniżej progu
-      { departmentId: 'b', departmentName: 'Dział b', sentAt: null, clickedAt: CLICK, submittedAt: null }, // "niepewny", ale kliknął
+      { departmentId: 'b', departmentName: 'Dział b', sentAt: null, clickedAt: CLICK, submittedAt: null, reportedAt: null }, // "niepewny", ale kliknął
       ...dept('c', 4, { failed: 4 }), // nic nie dostarczono
     ];
 
@@ -100,6 +118,54 @@ describe('progi minimalnej liczebności (agregaty per dział)', () => {
       ['DEPARTMENT', 'Dział A', 5],
       ['NO_DEPARTMENT', 'Bez działu', 4],
     ]);
+  });
+});
+
+describe('metryki zgłoszeń ("zgłosiło", "w tym po kliknięciu")', () => {
+  it('liczy zgłoszenia i zgłoszenia po kliknięciu (podzbiór) oraz procent zgłaszalności z dostarczonych', () => {
+    // 10 osób: 4 kliknęło, 6 zgłosiło; zgłoszenia pierwszych 4 (kliknęli) są PO kliknięciu, kolejne 2 bez kliknięcia.
+    const rows = departmentRows(dept('A', 10, { clicked: 4, reported: 6 }));
+
+    expect(rows[0]).toMatchObject({ delivered: 10, clicked: 4, reported: 6, reportedAfterClick: 4, reportRate: 60, clickRate: 40 });
+  });
+
+  it('zgłoszenie PRZED kliknięciem nie jest "po kliknięciu", ale jest zgłoszeniem', () => {
+    const facts: RecipientFacts[] = Array.from({ length: 3 }, () => ({
+      departmentId: 'A',
+      departmentName: 'Dział A',
+      sentAt: SENT,
+      clickedAt: CLICK,
+      submittedAt: null,
+      reportedAt: REPORT_BEFORE_CLICK,
+    }));
+
+    expect(statsOf(facts)).toMatchObject({ clicked: 3, reported: 3, reportedAfterClick: 0 });
+  });
+
+  it('zgłoszenie dowodzi dostarczenia (jak kliknięcie): odbiorca bez sentAt, ale ze zgłoszeniem, liczy się do liczebności', () => {
+    const facts: RecipientFacts = { departmentId: 'A', departmentName: 'Dział A', sentAt: null, clickedAt: null, submittedAt: null, reportedAt: REPORT_AFTER_CLICK };
+
+    expect(isDelivered(facts)).toBe(true);
+    expect(statsOf([facts])).toMatchObject({ delivered: 1, reported: 1, reportedAfterClick: 0 });
+  });
+
+  it('próg dotyczy zgłoszeń tak samo: dział 2-osobowy nie ujawnia zgłoszeń, a wiersz zbiorczy sumuje je z resztą', () => {
+    const rows = departmentRows([...dept('duży', 10, { reported: 2 }), ...dept('mały', 2, { reported: 2 }), ...dept('średni', 5, { reported: 1 })]);
+
+    expect(rows.find((row) => row.name === 'Dział mały')).toBeUndefined();
+    // mały (2) + najmniejszy widoczny (średni: 5) = 7 osób, 3 zgłoszenia; z tego nie da się wyliczyć samego małego.
+    expect(rows.find((row) => row.kind === 'OTHER')).toMatchObject({ delivered: 7, reported: 3, reportRate: 42.9 });
+  });
+
+  it('wiersz poniżej progu ukrywa WSZYSTKIE metryki, także zgłoszenia', () => {
+    const rows = departmentRows(dept('a', 2, { clicked: 1, reported: 2 }));
+
+    expect(rows).toEqual([expect.objectContaining({ kind: 'ALL', insufficientData: true, reported: null, reportedAfterClick: null, reportRate: null })]);
+    expect(summaryRow('ALL', null, 'Org', dept('a', 2, { reported: 2 }))).toMatchObject({ insufficientData: true, reported: null, reportRate: null });
+  });
+
+  it('summaryRow od progu podaje zgłaszalność', () => {
+    expect(summaryRow('ALL', null, 'Org', dept('a', 4, { reported: 1 }))).toMatchObject({ reported: 1, reportRate: 25 });
   });
 });
 

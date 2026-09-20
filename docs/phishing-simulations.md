@@ -160,7 +160,7 @@ Trzy poziomy dostępu, egzekwowane w serwisie `PhishingResultsService` (kontrole
    następnego żądania, a żądanie w toku dokończy się z widokiem sprzed zmiany. Wglądy mają limit 30/min (dziennik nie do
    zalania). Bez flagi: `403
    PERSONAL_RESULTS_DISABLED`, bez odczytu danych i bez wpisu audytu. `DEPARTMENT_MANAGER` nigdy ich nie dostaje, także przy
-   włączonej fladze. Filtry: wszyscy, nieudani i niepewni (`PROBLEMS`), kliknęli, wysłali formularz.
+   włączonej fladze. Filtry: wszyscy, nieudani i niepewni (`PROBLEMS`), kliknęli, wysłali formularz, zgłosili wiadomość (`REPORTED`).
 3. **Ustawienie flagi i audyt**: `POST /phishing/results/settings/personal-results` (tylko `ORG_ADMIN`). Włączenie wymaga
    uzasadnienia (min. 20 znaków; egzekwuje serwis **i CHECK w bazie**), ustawienie i wpis audytu w jednej transakcji, ta sama
    wartość = 409 (bez dubli). Dziennik `phishing_result_visibility_audit` jest **append-only** dla roli aplikacji
@@ -203,13 +203,35 @@ Inne kanały, o których warto wiedzieć: przy progu 3 wynik 0% albo 100% w grup
 zna własny wynik); liczba dostarczonych w wierszu zależy od nieudanych/niepewnych wysyłek. Rozważany wyższy próg (5) albo
 zaokrąglanie do przedziałów.
 
-Definicje: **dostarczono** = przyjęte przez dostawcę (`sentAt`) albo kliknięte (kliknięcie dowodzi dostarczenia, także dla
-odbiorców "niepewnych"); **podatność** = kliknęło / dostarczono; nieudane i niepewne bez kliknięcia nie wchodzą do mianownika.
+Definicje: **dostarczono** = przyjęte przez dostawcę (`sentAt`) albo kliknięte albo zgłoszone (kliknięcie i zgłoszenie dowodzą
+dostarczenia, także dla odbiorców "niepewnych"); **podatność** = kliknęło / dostarczono; **zgłaszalność** = zgłosiło /
+dostarczono; **zgłosiło po kliknięciu** = kliknęło, a `reportedAt` jest późniejsze niż `clickedAt` (zgłoszenie przed
+kliknięciem jest zgłoszeniem, ale nie "po kliknięciu"); nieudane i niepewne bez kliknięcia nie wchodzą do mianownika.
+
+### Zgłoszenia w wynikach (moduł zgłoszeń, commit 2/5)
+
+Metryki **"zgłosiło"**, **"w tym po kliknięciu"** i **% zgłosiło** to kolejne liczby TEGO SAMEGO wiersza (te same grupy, ten sam
+próg 3 i łączenie małych grup): nie mają własnego progu, a wiersz poniżej progu ukrywa wszystkie metryki naraz. Źródłem jest
+wyłącznie `phishing_campaign_recipients.reportedAt` (jedno zgłoszenie na odbiorcę, ustawiane raz), a nie liczba wierszy
+`threat_reports` - ponowne zgłoszenie tej samej wiadomości nie zawyża wyniku. Zgłoszenie to **wynik osobowy**: widok osobowy
+(`reportedAt`, "po kliknięciu", filtr `REPORTED`) i CSV podlegają tej samej fladze, tej samej roli i temu samemu audytowi co
+kliknięcia. Agregaty per dział, CSV agregatów i KPI `phishingReportRate` (dashboard, 90 dni) liczą je tak samo.
+
+**Zgłoszenia a atak różnicowy (K1) i próg 3.** Zgłoszenia nie tworzą nowych granic grup, więc nie pogarszają ochrony per widok
+(test losowy sprawdza, że suma opublikowanych wierszy = suma organizacji także dla zgłoszeń). Ryzyko K1 (różnicowanie kampanii
+przez ORG_ADMIN) rozciąga się na trzecią metrykę tak samo jak na kliknięcia - jest objęte tą samą zaakceptowaną decyzją. Nowy
+kanał, który warto znać: **różnicowanie w czasie**. Zgłoszenia napływają po zakończeniu kampanii (ścieżka po tokenie: bez
+ograniczenia w czasie, po nadawcy i temacie: do 30 dni), więc wynik tej samej kampanii zmienia się między dwoma wglądami; wzrost
+"zgłosiło" o 1 w grupie >= 3 osób oznacza, że jedna osoba zgłosiła w międzyczasie, a administrator, który wie, kto właśnie zgłosił
+(zgłoszenia bywają ogłaszane w zespole), może to przypisać. Dotyczy to też kliknięć, ale zgłoszenia są zwykle dobrowolne, jawne i
+opóźnione, więc kanał jest tu szerszy. Bez zmiany progu; ryzyko ograniczone tym, że dotyczy wyłącznie roli, która ma audytowaną
+ścieżkę do wyników osobowych. Backlog: ten sam alert audytowy co dla K1 może obejmować gwałtowne różnice między wglądami.
 
 ### KPI i eksporty
 
-- **KPI "Podatność na phishing"** w dashboardzie (`GET /dashboard/overview`): `phishingClickRate` i `phishingSubmitRate` z
-  ostatnich 90 dni dla całej organizacji, z progiem liczebności (`null` = brak kampanii albo za mało danych).
+- **KPI "Podatność na phishing" i "Zgłaszalność phishingowa"** w dashboardzie (`GET /dashboard/overview`): `phishingClickRate`,
+  `phishingSubmitRate` i `phishingReportRate` z ostatnich 90 dni dla całej organizacji, z progiem liczebności (`null` = brak
+  kampanii albo za mało danych; 0 to wartość, nie brak danych).
 - **Eksport dashboardu** (`GET /dashboard/export`) nie zawiera żadnych wyników symulacji - test e2e pilnuje, że przy
   wyłączonej i włączonej fladze plik jest identyczny.
 - **CSV**: RFC 4180 z BOM UTF-8, ochrona przed wstrzyknięciem formuł (komórki zaczynające się od `= + - @` tab CR dostają
@@ -244,8 +266,8 @@ zgłoszeń). Ryzyko małe, dlatego wymagamy obu cech. Fałszywy brak dopasowania
 zgłoszenie „prawdziwe” - trafi do skrzynki, bez szkody dla wyników (kliknięcia i tak zliczają się osobno).
 
 **Dane:** zgłoszenie dopasowane **nie zapisuje** treści, nagłówków ani komentarza (zostaje temat, nadawca i powiązanie z odbiorcą;
-CHECK w bazie). Zgłoszenie prawdziwe: treść, nagłówki i komentarz są czyszczone po **90 dniach** (job `threat-report-retention`,
-03:30 UTC). Linki śledzące `/t/<token>` są maskowane w każdym polu przed zapisem (token cudzego odbiorcy nie może wyciec do
+CHECK w bazie). Zgłoszenie prawdziwe: treść, nagłówki, komentarz, nadawca i temat są czyszczone po **90 dniach** (job
+`threat-report-retention`, 03:30 UTC); zostaje `senderDomain` (statystyki „najczęstsze domeny”), status i daty. Linki śledzące `/t/<token>` są maskowane w każdym polu przed zapisem (token cudzego odbiorcy nie może wyciec do
 skrzynki zgłoszeń), także w wersjach zakodowanych przez bramki poczty (`%2Ft%2F`, `&#47;`, `\/`, pełnoszerokie `／`, łamanie
 quoted-printable); podwójne kodowanie (`%252F`) nie jest obsługiwane - znane ograniczenie. `reportedAt` na odbiorcy jest ustawiane **raz** (atomowo, `IS NULL`).
 

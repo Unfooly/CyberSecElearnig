@@ -28,7 +28,7 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 | Postępy w kursach, wyniki, odznaki, awatary, ranking | `course_assignments`, `user_badges`, leaderboard | ranking widoczny dla organizacji - uwzględnić w informacji dla pracowników |
 | Wyniki symulacji phishingowych: wysłano / kliknięto / wysłano formularz (znaczniki czasu per odbiorca), dział jako snapshot, hash tokenu z linku; **wartości wpisane w formularzu strony lądowania NIE są zapisywane ani logowane**; brak pikseli otwarcia | `phishing_campaign_recipients` (moduł kampanii; wyniki per osoba domyślnie niewidoczne - patrz commit 5) | **wymaga osobnej oceny** (monitorowanie pracowników, kodeks pracy, konsultacje ze związkami, DPIA). Adres IP odwiedzającego stronę lądowania nie jest zapisywany w wynikach (tylko krótkotrwały licznik limitu żądań w pamięci) |
 | Kopia e-maila autora kampanii (`phishing_campaigns.createdByEmail`) i aktora zmian szablonów | `phishing_campaigns`, `phishing_template_edits` | przeżywa usunięcie konta (dowód rozliczalności) - okres przechowywania |
-| **Zgłoszenia podejrzanych wiadomości** (pracownik zgłasza e-mail): nadawca i temat (tekst wpisany przez pracownika), **wklejona treść, nagłówki i komentarz** (tylko zgłoszenia prawdziwe), zgłaszający i jego dział (snapshot), status, dopasowanie do symulacji; dla symulacji dodatkowo znacznik `reportedAt` odbiorcy kampanii | `threat_reports` (RLS), `phishing_campaign_recipients.reportedAt` | **treść może zawierać dane osobowe osób trzecich** (nadawca, dane w treści maila, czasem dane pracownika) - pracownika trzeba poinformować, że zgłoszenie widzą osoby odpowiedzialne za bezpieczeństwo w firmie; linki śledzące `/t/<token>` są maskowane przy zapisie; **zgłoszenie dopasowane do symulacji NIE zapisuje treści, nagłówków ani komentarza** (CHECK w bazie) - zostaje temat, nadawca i powiązanie z odbiorcą kampanii |
+| **Zgłoszenia podejrzanych wiadomości** (pracownik zgłasza e-mail): nadawca, jego domena i temat (tekst wpisany przez pracownika), **wklejona treść, nagłówki i komentarz** (tylko zgłoszenia prawdziwe), zgłaszający i jego dział (snapshot), status, dopasowanie do symulacji; dla symulacji dodatkowo znacznik `reportedAt` odbiorcy kampanii | `threat_reports` (RLS), `phishing_campaign_recipients.reportedAt` | **treść może zawierać dane osobowe osób trzecich** (nadawca, dane w treści maila, czasem dane pracownika) - pracownika trzeba poinformować, że zgłoszenie widzą osoby odpowiedzialne za bezpieczeństwo w firmie; linki śledzące `/t/<token>` są maskowane przy zapisie; **zgłoszenie dopasowane do symulacji NIE zapisuje treści, nagłówków ani komentarza** (CHECK w bazie) - zostaje temat, nadawca i powiązanie z odbiorcą kampanii |
 | Przypisanie kursu uzupełniającego po kliknięciu w symulację | `course_assignments` | pracownik dostaje kurs szkoleniowy; uwzględnić w informacji dla pracowników |
 | Tokeny (reset hasła, weryfikacja e-mail) - tylko hashe | `password_reset_tokens`, `email_verification_tokens` | krótki okres życia |
 | Hasła - tylko hashe bcrypt | `users.passwordHash` | brak haseł w logach |
@@ -67,9 +67,10 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 - [ ] **Zgłoszenia podejrzanych wiadomości** (`threat_reports`) - decyzja właściciela produktu (2026-09-20), dwa przypadki:
   (1) zgłoszenie **dopasowane do symulacji**: treść, nagłówki i komentarz **nie są zapisywane w ogóle** (usuwane w chwili
   dopasowania, egzekwuje to CHECK w bazie); zostają temat, nadawca i powiązanie z odbiorcą kampanii - do usunięcia organizacji
-  (statystyki wyników); (2) zgłoszenie **prawdziwe**: treść, nagłówki i komentarz **usuwane po 90 dniach** (job
-  `threat-report-retention`, codziennie 03:30 UTC; zostaje rekord: temat, nadawca, status, daty, zgłaszający); po usunięciu
-  konta zgłaszającego `reporterUserId` jest zerowany. Wpisać oba okresy w polityce prywatności.
+  (statystyki wyników); (2) zgłoszenie **prawdziwe**: treść, nagłówki, komentarz, **a także nadawca i temat usuwane po 90 dniach** (job
+  `threat-report-retention`, codziennie 03:30 UTC; zostaje wyłącznie **domena nadawcy** - statystyki „najczęstsze domeny” - oraz
+  status, daty, zgłaszający i dział; decyzja właściciela produktu 2026-09-20, bo pracownik może wpisać dane osobowe także w
+  polach nadawcy i tematu); po usunięciu konta zgłaszającego `reporterUserId` jest zerowany. Wpisać oba okresy w polityce prywatności.
 - [ ] **Audyty modułu symulacji phishingowych** (`phishing_template_edits`, później `phishing_result_visibility_audit`):
   zawierają **kopię adresu e-mail aktora** (kto zmienił szablon / włączył widok osobowy), która **przeżywa usunięcie
   konta pracownika** (`actorUserId` jest zerowany, e-mail zostaje) - do czasu usunięcia organizacji. Zdecydować:
@@ -114,7 +115,9 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
   (patrz sekcja 2 i 5), dostęp (skrzynka zgłoszeń: ORG_ADMIN; kierownik działu - ograniczony widok bez tożsamości zgłaszającego
   i bez treści; wprowadzane w kolejnych commitach modułu - zaktualizować ten wpis przy wdrożeniu panelu), zakaz wykorzystywania
   zgłoszeń do oceny pracownika. Zgłoszenie po kliknięciu w symulację (`reportedAt` po `clickedAt`) trafia do statystyk
-  zbiorczych; wynik osobowy podlega tym samym zasadom co pozostałe wyniki osobowe (flaga, audyt). Dopasowanie do symulacji
+  zbiorczych (te same grupy i próg 3 co kliknięcia; KPI „zgłaszalność”); wynik osobowy (kto zgłosił, kto po kliknięciu) podlega
+  tym samym zasadom co pozostałe wyniki osobowe (flaga, audyt, tylko ORG_ADMIN). Nowy kanał różnicowania w czasie (zgłoszenia
+  napływają po kampanii) - opisany w `docs/phishing-simulations.md`, do wpisu w DPIA razem z K1. Dopasowanie do symulacji
   jest heurystyczne (token w treści albo dokładny nadawca i temat) - opisać w informacji dla pracowników, że zgłoszenie
   ćwiczebnej wiadomości nie trafia do skrzynki zgłoszeń.
 - [ ] **Odbiorcy kampanii spoza zweryfikowanej domeny organizacji** (np. kontraktorzy na Gmailu): podstawą jest, że

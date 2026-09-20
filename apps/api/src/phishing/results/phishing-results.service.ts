@@ -6,7 +6,7 @@ import { KeyedMutex } from '../../common/keyed-mutex';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { JUSTIFICATION_MIN_LENGTH, PeopleFilter, SetPersonalResultsDto } from '../dto/results.dto';
 import { isUncertainFailureCode } from '../transport/phishing-mail-transport';
-import { departmentRows, MIN_GROUP_SIZE, NO_DEPARTMENT_LABEL, RecipientFacts, ResultRow, summaryRow } from './results-aggregation';
+import { departmentRows, isReportedAfterClick, MIN_GROUP_SIZE, NO_DEPARTMENT_LABEL, RecipientFacts, ResultRow, summaryRow } from './results-aggregation';
 import { toCsv } from './results-csv';
 
 const err = (code: string, message: string) => ({ code, message });
@@ -43,6 +43,10 @@ export interface PersonResult {
   sentAt: Date | null;
   clickedAt: Date | null;
   submittedAt: Date | null;
+  /** Zgłosił(a) wiadomość jako podejrzaną (moduł zgłoszeń) - to wynik osobowy: ta sama flaga, ten sam audyt. */
+  reportedAt: Date | null;
+  /** Kliknął(ęła), a potem zgłosił(a). */
+  reportedAfterClick: boolean;
 }
 
 export interface PersonalResultsSettingsView {
@@ -63,7 +67,7 @@ export interface VisibilityAuditView {
   createdAt: Date;
 }
 
-const FACT_SELECT = { departmentId: true, departmentName: true, sentAt: true, clickedAt: true, submittedAt: true } as const;
+const FACT_SELECT = { departmentId: true, departmentName: true, sentAt: true, clickedAt: true, submittedAt: true, reportedAt: true } as const;
 
 /**
  * Wyniki symulacji. Trzy poziomy dostępu, egzekwowane W SERWISIE (nie tylko w kontrolerze/UI):
@@ -119,7 +123,7 @@ export class PhishingResultsService {
   }
 
   /** KPI "podatność na phishing" dla dashboardu (cała organizacja; wartości tylko przy liczebności >= próg). */
-  async susceptibilityKpi(organizationId: string, now: Date = new Date()): Promise<{ clickRate: number | null; submitRate: number | null }> {
+  async susceptibilityKpi(organizationId: string, now: Date = new Date()): Promise<{ clickRate: number | null; submitRate: number | null; reportRate: number | null }> {
     const since = new Date(now.getTime() - RESULTS_WINDOW_DAYS * 24 * 3_600_000);
     const facts = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.phishingCampaignRecipient.findMany({
@@ -130,7 +134,7 @@ export class PhishingResultsService {
       }),
     );
     const row = summaryRow('ALL', null, 'Cała organizacja', facts);
-    return { clickRate: row.clickRate, submitRate: row.submitRate };
+    return { clickRate: row.clickRate, submitRate: row.submitRate, reportRate: row.reportRate };
   }
 
   /** CSV agregatów per dział (ten sam zakres i progi co widok; bez danych osobowych). */
@@ -140,11 +144,17 @@ export class PhishingResultsService {
       row.delivered,
       row.clicked,
       row.submitted,
+      row.reported,
+      row.reportedAfterClick,
       row.clickRate,
       row.submitRate,
+      row.reportRate,
       row.insufficientData ? `Za mało danych (mniej niż ${view.minGroupSize} osoby)` : '',
     ]);
-    return toCsv(['Dział', 'Dostarczono', 'Kliknęło', 'Wysłało formularz', '% kliknęło', '% wysłało formularz', 'Uwagi'], rows);
+    return toCsv(
+      ['Dział', 'Dostarczono', 'Kliknęło', 'Wysłało formularz', 'Zgłosiło', 'W tym zgłosiło po kliknięciu', '% kliknęło', '% wysłało formularz', '% zgłosiło', 'Uwagi'],
+      rows,
+    );
   }
 
   private async buildView(
@@ -224,7 +234,7 @@ export class PhishingResultsService {
 
       const recipients = await tx.phishingCampaignRecipient.findMany({
         where: { organizationId: user.organizationId, campaignId },
-        select: { userId: true, departmentName: true, sentAt: true, failedAt: true, failureCode: true, clickedAt: true, submittedAt: true },
+        select: { userId: true, departmentName: true, sentAt: true, failedAt: true, failureCode: true, clickedAt: true, submittedAt: true, reportedAt: true },
         take: MAX_PEOPLE_ROWS,
       });
       const userIds = recipients.map((recipient) => recipient.userId).filter((id): id is string => id !== null);
@@ -244,6 +254,8 @@ export class PhishingResultsService {
           sentAt: recipient.sentAt,
           clickedAt: recipient.clickedAt,
           submittedAt: recipient.submittedAt,
+          reportedAt: recipient.reportedAt,
+          reportedAfterClick: isReportedAfterClick(recipient),
         };
       });
       const shown = results
@@ -261,7 +273,7 @@ export class PhishingResultsService {
   async peopleCsv(user: AuthenticatedUser, campaignId: string, filter: PeopleFilter = 'ALL'): Promise<string> {
     const results = await this.people(user, campaignId, filter, 'EXPORTED');
     return toCsv(
-      ['Imię i nazwisko', 'E-mail', 'Dział', 'Dostarczenie', 'Kod', 'Wysłano', 'Kliknięcie', 'Wysłanie formularza'],
+      ['Imię i nazwisko', 'E-mail', 'Dział', 'Dostarczenie', 'Kod', 'Wysłano', 'Kliknięcie', 'Wysłanie formularza', 'Zgłoszenie', 'Zgłoszenie po kliknięciu'],
       results.map((result) => [
         result.name ?? '',
         result.email ?? '(usunięty pracownik)',
@@ -271,6 +283,8 @@ export class PhishingResultsService {
         result.sentAt?.toISOString() ?? '',
         result.clickedAt?.toISOString() ?? '',
         result.submittedAt?.toISOString() ?? '',
+        result.reportedAt?.toISOString() ?? '',
+        result.reportedAfterClick ? 'tak' : '',
       ]),
     );
   }
@@ -289,6 +303,8 @@ export class PhishingResultsService {
         return result.clickedAt !== null;
       case 'SUBMITTED':
         return result.submittedAt !== null;
+      case 'REPORTED':
+        return result.reportedAt !== null;
       default:
         return true;
     }

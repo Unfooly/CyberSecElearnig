@@ -192,7 +192,11 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
 - **Review:** co najmniej jedna osoba poza autorem. Przed otwarciem PR dotykającego auth, guardów, RLS, zapytań na danych klienckich,
   wysyłki maili, wyników symulacji albo importu: przegląd `security-reviewer`; w pozostałych przypadkach `code-reviewer`. Werdykt „nie
   gotowy” blokuje merge do decyzji właściciela produktu (reguła 10); uwagi wklejasz do opisu PR razem z rozstrzygnięciem.
-- **CI musi być zielone przed merge.** Czerwone CI blokuje też start następnego kroku (reguła 8). Sporadyczne „Jest did not exit” przy
+- **PR bez zielonych sprawdzeń nie jest mergowany.** Workflow `build-images` uruchamia na KAŻDYM pull requeście do `main` (także tylko z
+  dokumentami) dwa sprawdzenia: `lint + testy` (lint API i web, testy jednostkowe API i web, `typecheck` web, testy skryptów i hooków: reguła 7
+  oraz blokada pushu na `main`) i `testy e2e (api)` (Postgres + Redis, szeregowo). PR nie buduje ani nie publikuje obrazów (to tylko po
+  pushu do `main`). Właściciel merguje dopiero, gdy oba sprawdzenia są zielone (po upgrade'ie planu wymusi to ochrona gałęzi, B-010).
+  Czerwone CI blokuje też start następnego kroku (reguła 8). Sporadyczne „Jest did not exit” przy
   zielonych testach nie blokuje (patrz `docs/phishing-simulations.md`, „Znane ograniczenia”); każdy inny błąd tak.
 - **Sposób scalania:** „Rebase and merge” dla PR z małymi, opisowymi commitami (zachowuje historię z reguły 6); „Squash and merge” tylko
   wtedy, gdy commity w PR to szum (poprawki, WIP). Nigdy merge commit z `main` do brancha - aktualizujesz przez rebase.

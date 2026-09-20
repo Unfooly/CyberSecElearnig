@@ -47,11 +47,13 @@ widoczność dziedziczy ustawienia organizacji (Organization → Settings → Pa
 Package settings → „Manage Actions access”, że repozytorium ma rolę **Write** (inaczej workflow nie
 wypchnie obrazu ani nie posprząta starych wersji).
 
-Workflow `.github/workflows/build-images.yml` uruchamia się na push do `main` (poza zmianami w
-`docs/` i `*.md`) oraz ręcznie (`workflow_dispatch`). Najpierw joby `test` (lint + testy
-jednostkowe api i web) i `e2e` (testy e2e API na Postgresie i Redisie w kontenerach serwisowych); dopiero
-gdy oba przejdą, job `images` buduje i wypycha oba obrazy. Padnięte testy = brak nowych obrazów.
-Skrypt przeglądarkowy Playwright (`docs/e2e-registration.md`) nie jest częścią workflow.
+Workflow `.github/workflows/build-images.yml` uruchamia się na **pull requeście do `main`** (zawsze, także z samymi
+dokumentami), na push do `main` (poza zmianami w `docs/` i `*.md`) oraz ręcznie (`workflow_dispatch`). Zawsze najpierw
+joby `test` („lint + testy”: lint api i web, testy jednostkowe api i web, `typecheck` web, testy skryptów i hooków) i `e2e`
+(„testy e2e (api)” na Postgresie i Redisie w kontenerach serwisowych, szeregowo). **Obrazy budują się i publikują tylko z
+gałęzi `main`** (push albo ręczne uruchomienie na `main`), dopiero gdy oba sprawdzenia przejdą: joby `images` i `cleanup`
+są pomijane na pull requeście i przy ręcznym uruchomieniu z innej gałęzi (PR niczego nie buduje ani nie publikuje).
+Padnięte testy = brak nowych obrazów. Skrypt przeglądarkowy Playwright (`docs/e2e-registration.md`) nie jest częścią workflow.
 
 ## Wymagania
 

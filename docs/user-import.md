@@ -1,11 +1,12 @@
 # Import pracowników z CSV
 
 Import jest dwuetapowy: **krok 1 (podgląd)** rozbiera i waliduje cały plik, niczego nie zapisując w `users`; **krok 2
-(potwierdzenie, zaproszenia w kolejce, raport)** dochodzi w commicie 5/5 modułu. Dziś działa krok 1 oraz dotychczasowy
-jednoetapowy `POST /users/import-csv` (do zastąpienia w commicie 5/5), który też respektuje limit licencji.
+(potwierdzenie)** tworzy konta `INVITED`, a zaproszenia idą w kolejce z tempem (job w tle), z postępem i raportem CSV.
+Dawny jednoetapowy `POST /users/import-csv` został usunięty.
 
-Kod: `apps/api/src/users/import/` (parser `csv-import.ts`, serwis podglądu, kontroler, sprzątanie), limit miejsc `apps/api/src/users/seats.ts`,
-tabele `user_import_batches` i `user_import_rows` (RLS FORCE, złożone FK).
+Kod: `apps/api/src/users/import/` (parser `csv-import.ts`, serwis importu, kolejka zaproszeń `user-import-invite.service.ts`, tempo
+`invite-pace.ts`, kontroler, sprzątanie), limit miejsc `apps/api/src/users/seats.ts`, tabele `user_import_batches` i `user_import_rows`
+(RLS FORCE, złożone FK). UI: `apps/web/src/app/dashboard/users/_components/ImportUsersModal.tsx` (BFF: `app/api/users/import/*`).
 
 ## Format pliku
 
@@ -42,27 +43,56 @@ podsumowanie ze **świeżym stanem miejsc**; `DELETE /users/import/:id` anuluje 
   z wierszami, więc dane z pliku zostają w bazie najwyżej ok. 25 h.
 - **Numer wiersza (`line`)** liczy rekordy CSV, nie linie fizyczne: przy polach w cudzysłowie zawierających nowe linie może się rozjechać z arkuszem.
 - **Multipart:** żadnych pól tekstowych i najwyżej 2 części (ochrona pamięci); limit 1 MB na plik.
-- **Raporty (commit 5/5):** adres e-mail może zaczynać się od `+`/`-` (poprawny adres), więc każdy eksport CSV musi escapować komórki
-  (prefiks `'` przed `= + - @`), jak `escapeCsvField` w wynikach symulacji.
+- **Raporty:** adres e-mail może zaczynać się od `+`/`-` (poprawny adres), więc eksport CSV escapuje komórki (prefiks `'` przed
+  `= + - @`, wspólne `toCsv` z BOM), jak w wynikach symulacji.
 - **Uprawnienia:** rola (`ORG_ADMIN`) i status (`ACTIVE`) czytane z bazy na każde żądanie; organizacja PENDING = 403.
 
 ## Limit licencji (`Organization.seatsLimit`)
 
 Miejsca = liczba kont w organizacji (każdy status i rola, także `INVITED`). Egzekwowane w: **pojedynczym zaproszeniu** (`POST /users/invite`),
-starym imporcie jednoetapowym i (commit 5/5) potwierdzeniu importu - blokada doradcza w tej samej transakcji co zapis konta, więc równoległe
+potwierdzeniu importu - blokada doradcza w tej samej transakcji co zapis konta, więc równoległe
 zaproszenia nie przekroczą limitu. Odpowiedź `409 SEAT_LIMIT`: `seatsLimit`, `seatsUsed`, `seatsAvailable`, `seatsRequired`, `seatsMissing` i
 `settingsPath` (`/dashboard/settings` - zmiana planu; Stripe później); komunikat mówi, ile miejsc zostało. **Podgląd nie odrzuca pliku ponad
 limit** - pokazuje `seats.missing` i `seats.ok = false` PRZED zapisem; odrzucenie (bez zapisu jakiegokolwiek konta) następuje przy
 potwierdzeniu.
 
+## Potwierdzenie (`POST /users/import/:id/confirm`, tylko ORG_ADMIN)
+
+W JEDNEJ transakcji, po sprawdzeniu miejsc pod blokadą doradczą: tworzy konta `INVITED` dla wierszy `VALID` (z jednym zastępczym hashem
+hasła na partię; hasło ustawia dopiero użytkownik z maila), tworzy brakujące działy i zapisuje wynik per wiersz (`accountResult`
+`CREATED`/`FAILED`). Partia przechodzi w `PROCESSING`. Brak miejsc = `409 SEAT_LIMIT` bez zapisu jakiegokolwiek konta. Adres, którego nie
+wolno użyć (np. konto w innej organizacji), daje wiersz `FAILED` z ogólnym powodem, bez zużycia licencji. Ponowne potwierdzenie tej samej
+partii jest idempotentne; limit 3 żądania/min.
+
+## Kolejka zaproszeń z tempem
+
+Zaproszenia NIE idą w jednej serii: job `user-import-invites` (co 5 min, UTC) wysyła je partiami. Tempo (`invite-pace.ts`): najwyżej
+**20 na bieg** (okno `claimedRecently` chroni przed równoległymi biegami) i w granicach **dobowego limitu 300 na organizację**
+(`INVITE_DAILY_LIMIT_PER_ORG`, wspólnego z zaproszeniami ręcznymi; liczonego z tokenów z ostatnich 24 h). Limit 300 zostaje limitem
+antyspamowym - import 5000 osób rozkłada się na kolejne doby. Wiersz zaproszenia: `PENDING` → `SENDING` → `SENT`/`FAILED`/`SKIPPED`;
+zajęcie wiersza jest atomowe (at-most-once): zaproszenie zostające w `SENDING` po przerwaniu procesu (starsze niż
+`INVITE_STALE_CLAIM_MS`) jest domykane jako `FAILED` ze stanem niepewnym (admin użyje „Wyślij zaproszenie ponownie” przy koncie),
+zamiast ryzykować duplikat maila. Konto aktywowane albo usunięte w międzyczasie = `SKIPPED`. Dane zadania to same identyfikatory.
+
+## Postęp, zatrzymanie i raport
+
+- `GET /users/import/latest` - trwająca albo niedawno zakończona partia (UI wznawia widok po zamknięciu okna).
+- `GET /users/import/:id` - `progress`: `accountsCreated`, `invites{pending,sent,failed,skipped}`, `invitesSent`/`invitesTotal`, `remaining`,
+  `dailyLimit`, `dailyRemaining`, `restTomorrow` i `estimatedCompletionAt`. UI: „wysłano X z Y, reszta jutro” i szacowana data. **Data to
+  szacunek** (zakłada stały limit i brak innych zaproszeń w organizacji), nie obietnica.
+- `POST /users/import/:id/stop` - zatrzymuje wysyłkę (konta zostają, oczekujące zaproszenia → `SKIPPED`), partia `COMPLETED`.
+- `GET /users/import/:id/report.csv` - raport per wiersz (walidacja, konto, zaproszenie), komórki escapowane, błąd to zawsze JSON.
+- Partia `COMPLETED` po wysłaniu/pominięciu wszystkich zaproszeń.
+
 ## Dane w bazie i prywatność
 
 Partie podglądu zawierają adresy e-mail, imiona i nazwiska oraz nazwy działów z pliku - **przez maksymalnie ok. 25 h** (ważność 24 h + godzinne sprzątanie; potem kasowane;
-patrz `docs/legal/privacy-policy-checklist.md`). Autor partii: kopia e-maila (`createdByEmail`) przeżywa usunięcie konta, `createdByUserId` jest zerowane.
+patrz `docs/legal/privacy-policy-checklist.md`). Partie **potwierdzone** (dane potrzebne do postępu i raportu) są kasowane **30 dni po
+zakończeniu**, a zawieszone w przetwarzaniu najpóźniej **60 dni** po potwierdzeniu (job `user-import-retention`). Autor partii: kopia
+e-maila (`createdByEmail`, `confirmedByEmail`) przeżywa usunięcie konta, `createdByUserId` jest zerowane.
 
-## Znane ograniczenia (do commitu 5/5)
+## Znane ograniczenia
 
-- Kroku potwierdzenia jeszcze nie ma: podgląd niczego nie tworzy. Zaproszenia mają dobowy limit 300 wysyłek na organizację
-  (`INVITE_DAILY_LIMIT_PER_ORG`), więc import 5000 osób w jednej dobie wymaga w commicie 5/5 decyzji: rozłożenia zaproszeń w czasie
-  (kolejka z tempem) albo podniesienia limitu dla importu.
-- UI podglądu (wybór pliku, tabela błędów, stan miejsc) dochodzi w commicie 5/5 razem z potwierdzeniem; do tego czasu działa stary modal.
+- Szacowana data zakończenia jest przybliżeniem (patrz wyżej); zaproszenia o niepewnym wyniku wysyłki kończą jako `FAILED`, nie są
+  ponawiane automatycznie.
+- Numer wiersza w raporcie liczy rekordy CSV, nie linie fizyczne (patrz uwaga przy podglądzie).

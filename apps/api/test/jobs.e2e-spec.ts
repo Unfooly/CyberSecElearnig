@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { REFRESH_TOKEN_CLEANUP_JOB } from '../src/auth/refresh-token-cleanup.service';
 import { THREAT_REPORT_NOTIFICATION_JOB } from '../src/threat-reports/threat-report-notification.service';
+import { USER_IMPORT_INVITES_JOB } from '../src/users/import/user-import-invite.service';
 import { USER_IMPORT_RETENTION_JOB } from '../src/users/import/user-import-retention.service';
 import { THREAT_REPORT_RETENTION_JOB } from '../src/threat-reports/threat-report-retention.service';
 import { CAMPAIGN_RECONCILE_JOB } from '../src/phishing/campaigns/campaign-reconcile.service';
@@ -128,6 +129,7 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
           [THREAT_REPORT_RETENTION_JOB, '30 3 * * *'],
           [THREAT_REPORT_NOTIFICATION_JOB, '*/5 * * * *'],
           [USER_IMPORT_RETENTION_JOB, '0 * * * *'],
+          [USER_IMPORT_INVITES_JOB, '*/5 * * * *'],
         ].sort(),
       );
     } finally {

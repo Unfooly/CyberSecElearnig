@@ -151,7 +151,7 @@ describe('Import pracowników z CSV: podgląd (e2e)', () => {
       expect(response.body.sample.map((row: { line: number }) => row.line)).toEqual([2, 5]);
     });
 
-    it('nowy podgląd ZASTĘPUJE poprzedni (jedna aktywna partia na organizację); stary identyfikator to 404', async () => {
+    it('nowy podgląd ZASTĘPUJE poprzedni PODGLĄD (jedna aktywna partia podglądu na organizację); stary identyfikator to 404', async () => {
       const first = await upload(orgA.adminToken, csv(HEADER, 'a@firma.pl,Anna,Nowak,')).expect(201);
       const second = await upload(orgA.adminToken, csv(HEADER, 'b@firma.pl,Jan,Kowalski,', 'c@firma.pl,Ewa,Nowak,')).expect(201);
 
@@ -610,19 +610,12 @@ describe('Import pracowników z CSV: podgląd (e2e)', () => {
       await invite(orgB.adminToken, email('wolne-added-1')).expect(201);
     });
 
-    it('stary import jednoetapowy respektuje limit: wiersze ponad limit trafiają do błędów "Brak wolnych licencji", pozostałe powstają', async () => {
-      const used = await userCount(orgA);
-      await setSeats(orgA, used + 1);
-
-      const response = await request(app.getHttpServer())
+    it('stary endpoint jednoetapowy POST /users/import-csv został zastąpiony dwuetapowym: 404', async () => {
+      await request(app.getHttpServer())
         .post('/users/import-csv')
         .set('Authorization', `Bearer ${orgA.adminToken}`)
-        .attach('file', Buffer.from(csv('email,firstName,lastName', `${email('imp-added-1')},Anna,Nowak`, `${email('imp-added-2')},Jan,Kowalski`)), { filename: 'x.csv', contentType: 'text/csv' })
-        .expect(201);
-
-      expect(response.body).toMatchObject({ successCount: 1, failedCount: 1 });
-      expect(response.body.errors[0].reason).toBe('Brak wolnych licencji (limit planu)');
-      expect(await userCount(orgA)).toBe(used + 1);
+        .attach('file', Buffer.from(csv('email,firstName,lastName', `${email('imp-added-1')},Anna,Nowak`)), { filename: 'x.csv', contentType: 'text/csv' })
+        .expect(404);
     });
   });
 });

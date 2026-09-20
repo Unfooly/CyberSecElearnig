@@ -102,6 +102,8 @@ describe('UsersPageClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Importuj z CSV' }));
 
     expect(screen.getByRole('dialog', { name: /importuj z csv/i })).toBeInTheDocument();
+    // Kreator najpierw pyta o trwający import; czekamy na wybór pliku, żeby aktualizacja stanu była w act.
+    expect(await screen.findByRole('button', { name: 'Wybierz plik' })).toBeInTheDocument();
   });
 
   it('pokazuje komunikat, gdy usunięcie się nie powiodło (np. ostatni administrator)', async () => {

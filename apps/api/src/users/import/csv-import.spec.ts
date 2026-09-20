@@ -1,4 +1,4 @@
-import { decodeImportFile, detectDelimiter, ImportFileError, mapHeader, MAX_IMPORT_ROWS, normalizeHeader, parseImportFile } from './csv-import';
+import { decodeImportFile, detectDelimiter, EXCEL_UTF8_HINT, ImportFileError, mapHeader, MAX_IMPORT_ROWS, normalizeHeader, parseImportFile } from './csv-import';
 
 const BOM = String.fromCharCode(0xfeff);
 const buf = (text: string) => Buffer.from(text, 'utf-8');
@@ -28,6 +28,14 @@ describe('decodeImportFile', () => {
   it('odrzuca Windows-1250 (typowy eksport polskiego Excela) zamiast zgadywać kodowanie i psuć polskie znaki', () => {
     // "Żółć" w Windows-1250: Ż=0xAF, ó=0xF3, ł=0xB3, ć=0xE6 - niepoprawny UTF-8.
     expect(() => decodeImportFile(Buffer.from([0x41, 0x2c, 0xaf, 0xf3, 0xb3, 0xe6]))).toThrow(/UTF-8.*Windows-1250/);
+  });
+
+  it('komunikat o kodowaniu pokazuje DOKŁADNĄ ścieżkę w Excelu (najczęstszy błąd klientów), także dla UTF-16 i XLSX', () => {
+    const path = 'Plik → Zapisz jako → w polu „Zapisz jako typ” wybierz „CSV UTF-8 (rozdzielany przecinkami)” (NIE zwykły „CSV (rozdzielany przecinkami)”)';
+    for (const bytes of [[0x41, 0x2c, 0xaf, 0xf3, 0xb3, 0xe6], [0xff, 0xfe, 0x65, 0x00], [0x50, 0x4b, 0x03, 0x04, 0x14]]) {
+      expect(() => decodeImportFile(Buffer.from(bytes))).toThrow(EXCEL_UTF8_HINT);
+      expect(EXCEL_UTF8_HINT).toContain(path);
+    }
     expect(() => decodeImportFile(Buffer.from([0x41, 0x2c, 0xaf, 0xf3, 0xb3, 0xe6]))).toThrow(ImportFileError);
   });
 });

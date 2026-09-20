@@ -41,16 +41,3 @@ export interface UsersListResponse {
   page: number;
   pageSize: number;
 }
-
-export interface ImportCsvRowError {
-  line: number;
-  email: string;
-  reason: string;
-}
-
-export interface ImportCsvReport {
-  successCount: number;
-  failedCount: number;
-  emailFailedCount: number;
-  errors: ImportCsvRowError[];
-}

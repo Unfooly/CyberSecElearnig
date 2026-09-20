@@ -1,19 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@cyberszkolo/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,9 +14,7 @@ import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
-// 2MB - egzekwowane przez Multer PRZED tym, jak treść pliku w ogóle trafi do
-// UsersService.importCsv (limit wierszy jest osobno, w samym serwisie).
-const MAX_CSV_UPLOAD_BYTES = 2 * 1024 * 1024;
+// Import pracowników z CSV: UserImportController (users/import/*, dwuetapowy: podgląd i potwierdzenie).
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -63,17 +46,6 @@ export class UsersController {
   @Roles(Role.ORG_ADMIN)
   invite(@CurrentUser() user: AuthenticatedUser, @Body() dto: InviteUserDto) {
     return this.usersService.inviteUser(user.organizationId, dto, user.email);
-  }
-
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post('import-csv')
-  @Roles(Role.ORG_ADMIN)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_CSV_UPLOAD_BYTES } }))
-  importCsv(@CurrentUser() user: AuthenticatedUser, @UploadedFile() file?: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('Brak pliku CSV w żądaniu.');
-    }
-    return this.usersService.importCsv(user.organizationId, file.buffer.toString('utf-8'), user.email);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

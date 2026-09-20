@@ -1,18 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { UsersService } from './users.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EmailService } from '../email/email.service';
-
-function p2002(target: string[]): Prisma.PrismaClientKnownRequestError {
-  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-    code: 'P2002',
-    clientVersion: '5.19.1',
-    meta: { target },
-  });
-}
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -183,16 +174,6 @@ describe('UsersService', () => {
       expect((await service.inviteUser('org-a', dto)).inviteEmailSent).toBe(true);
     });
 
-    it('importCsv liczy konta z nieudaną wysyłką w emailFailedCount', async () => {
-      userCreate.mockResolvedValue(created);
-      sendEmail.mockResolvedValue(false);
-
-      const report = await service.importCsv('org-a', 'email,firstName,lastName\nnowy@test.pl,Jan,K\n');
-
-      expect(report.successCount).toBe(1);
-      expect(report.emailFailedCount).toBe(1);
-    });
-
     it('resendInvite wysyła ponownie dla konta INVITED', async () => {
       userFindFirst.mockResolvedValue({ id: 'user-1', email: 'nowy@test.pl', firstName: 'Jan', status: 'INVITED' });
       sendEmail.mockResolvedValue(true);
@@ -223,15 +204,6 @@ describe('UsersService', () => {
       expect(userCreate).not.toHaveBeenCalled();
     });
 
-    it('importCsv odrzuca cały plik z góry, gdy liczba wierszy przekroczyłaby dobowy limit', async () => {
-      tokenCount.mockResolvedValue(299);
-
-      await expect(
-        service.importCsv('org-a', 'email,firstName,lastName\na@test.pl,Jan,K\nb@test.pl,Ewa,K\n'),
-      ).rejects.toMatchObject({ status: 429 });
-      expect(userCreate).not.toHaveBeenCalled();
-    });
-
     it('resendInvite odrzuca (429) ponowną wysyłkę do tej samej osoby w ciągu cooldownu', async () => {
       userFindFirst.mockResolvedValue({ id: 'user-1', email: 'a@test.pl', firstName: 'A', status: 'INVITED' });
       tokenFindFirst.mockResolvedValue({ createdAt: new Date(Date.now() - 30_000) });
@@ -246,95 +218,9 @@ describe('UsersService', () => {
 
       await expect(service.resendInvite('org-a', 'user-1')).resolves.toEqual({ inviteEmailSent: true });
     });
-
-    it('importCsv odrzuca wiersz z frazą phishingową zamiast imienia (allowlista znaków)', async () => {
-      userCreate.mockResolvedValue({
-        id: 'u1',
-        email: 'ok@test.pl',
-        firstName: 'Jan',
-        lastName: 'K',
-        role: 'EMPLOYEE',
-        status: 'INVITED',
-        createdAt: new Date(),
-        department: null,
-      });
-
-      const report = await service.importCsv(
-        'org-a',
-        'email,firstName,lastName\nok@test.pl,Jan,K\nzly@test.pl,"Konto zablokowane: kliknij http://x.pl",K\n',
-      );
-
-      expect(report.successCount).toBe(1);
-      expect(report.errors).toEqual([
-        { line: 3, email: 'zly@test.pl', reason: 'Niedozwolone znaki w imieniu lub nazwisku' },
-      ]);
-    });
   });
 
-  describe('importCsv', () => {
-    it('przetwarza plik z poprawnym, niepoprawnym i zduplikowanym wierszem - liczy sukcesy/błędy per wiersz', async () => {
-      // Wiersz 2: poprawny -> sukces.
-      // Wiersz 3: zły format e-maila -> błąd walidacji, zero zapisów do bazy.
-      // Wiersz 4: e-mail, który baza odrzuca jako duplikat (P2002) -> błąd,
-      // ale NIE przerywa przetwarzania kolejnych/wcześniejszych wierszy.
-      const csv =
-        'email,firstName,lastName,departmentName\n' +
-        'jan@test.pl,Jan,Kowalski,IT\n' +
-        'zly-format,Anna,Nowak,\n' +
-        'zajety@test.pl,Piotr,Zajac,\n';
-
-      userCreate
-        .mockResolvedValueOnce({
-          id: 'user-1',
-          email: 'jan@test.pl',
-          firstName: 'Jan',
-          lastName: 'Kowalski',
-          role: 'EMPLOYEE',
-          status: 'INVITED',
-          createdAt: new Date(),
-          department: { id: 'dept-1', name: 'IT' },
-        })
-        .mockRejectedValueOnce(p2002(['email']));
-
-      departmentUpsert.mockResolvedValue({ id: 'dept-1', organizationId: 'org-a', name: 'IT' });
-
-      const report = await service.importCsv('org-a', csv);
-
-      expect(report.successCount).toBe(1);
-      expect(report.failedCount).toBe(2);
-      expect(report.errors).toEqual([
-        { line: 3, email: 'zly-format', reason: 'Nieprawidłowy format e-maila' },
-        { line: 4, email: 'zajety@test.pl', reason: 'Nie można użyć tego adresu e-mail.' },
-      ]);
-      expect(sendEmail).toHaveBeenCalledTimes(1);
-    });
-
-    it('normalizuje e-mail do małych liter i odrzuca zbyt długie pola', async () => {
-      userCreate.mockResolvedValue({
-        id: 'user-1',
-        email: 'jan@test.pl',
-        firstName: 'Jan',
-        lastName: 'K',
-        role: 'EMPLOYEE',
-        status: 'INVITED',
-        createdAt: new Date(),
-        department: null,
-      });
-
-      const report = await service.importCsv(
-        'org-a',
-        `email,firstName,lastName
-JAN@Test.PL,Jan,K
-x@test.pl,${'a'.repeat(101)},K
-`,
-      );
-
-      expect(userCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ email: 'jan@test.pl' }) }),
-      );
-      expect(report.errors).toEqual([{ line: 3, email: 'x@test.pl', reason: 'Zbyt długa wartość w polu' }]);
-    });
-
+  describe('odporność zaproszenia na awarię tokenu', () => {
     it('nie przerywa zaproszenia, gdy wystawienie tokenu/e-maila się nie uda (konto już istnieje)', async () => {
       userCreate.mockResolvedValue({
         id: 'user-1',
@@ -356,20 +242,6 @@ x@test.pl,${'a'.repeat(101)},K
       });
 
       expect(result.id).toBe('user-1');
-    });
-
-    it('odrzuca cały plik, gdy w nagłówku brakuje wymaganych kolumn', async () => {
-      await expect(service.importCsv('org-a', 'email,firstName\njan@test.pl,Jan\n')).rejects.toThrow(
-        BadRequestException,
-      );
-      expect(userCreate).not.toHaveBeenCalled();
-    });
-
-    it('odrzuca strukturalnie uszkodzony plik CSV (niesparowany cudzysłów)', async () => {
-      await expect(
-        service.importCsv('org-a', 'email,firstName,lastName\n"jan@test.pl,Jan,Kowalski\n'),
-      ).rejects.toThrow(BadRequestException);
-      expect(userCreate).not.toHaveBeenCalled();
     });
   });
 

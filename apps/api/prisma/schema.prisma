@@ -519,7 +519,30 @@ model ThreatReportView {
 // partia podglądu (nowy podgląd zastępuje poprzedni). Wiersze zawierają adresy e-mail i imiona pracowników - wpis w
 // checkliście prywatności. Usunięcie autora zeruje createdByUserId (SQL-only złożone FK ON DELETE SET NULL), createdByEmail to kopia.
 enum UserImportBatchStatus {
+  // Podgląd po walidacji, nic nie zapisano w users (ważny 24 h).
   PREVIEW
+  // Potwierdzony: konta utworzone, zaproszenia idą w kolejce z tempem (limit dobowy organizacji).
+  PROCESSING
+  // Wszystkie zaproszenia rozstrzygnięte (wysłane, nieudane albo pominięte); raport dostępny do wygaśnięcia partii.
+  COMPLETED
+}
+
+// Wynik utworzenia konta dla wiersza VALID przy potwierdzeniu.
+enum UserImportAccountResult {
+  CREATED
+  // Np. adres zajęty w innej organizacji (ogólny powód, bez ujawniania) - nie zużywa licencji.
+  FAILED
+}
+
+// Stan zaproszenia mailowego utworzonego konta (kolejka z tempem).
+enum UserImportInviteStatus {
+  PENDING
+  // Zajęte do wysyłki (at-most-once: zajęcie przerwane awarią jest domykane jako FAILED, nie ponawiane po cichu).
+  SENDING
+  SENT
+  FAILED
+  // Pominięte: konto już aktywne/usunięte albo wysyłka zatrzymana przez administratora.
+  SKIPPED
 }
 
 enum UserImportRowStatus {
@@ -551,7 +574,12 @@ model UserImportBatch {
   // Kolumny z nagłówka niepasujące do żadnego pola (ignorowane).
   ignoredColumns  String[]
   createdAt       DateTime              @default(now())
+  // PREVIEW: koniec ważności podglądu (24 h). Po potwierdzeniu: górna granica przetwarzania (60 dni), a po zakończeniu
+  // ostatnia chwila dostępności raportu (30 dni); po niej job sprzątania kasuje partię z wierszami (dane osobowe z pliku).
   expiresAt       DateTime
+  confirmedAt     DateTime?
+  confirmedByEmail String?              @db.VarChar(254)
+  completedAt     DateTime?
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   rows         UserImportRow[]
@@ -559,6 +587,7 @@ model UserImportBatch {
   // Cel złożonego FK z user_import_rows (wiersz tej samej organizacji co partia).
   @@unique([organizationId, id])
   @@index([organizationId, createdAt])
+  @@index([organizationId, status])
   @@index([expiresAt])
   @@map("user_import_batches")
 }
@@ -575,12 +604,22 @@ model UserImportRow {
   departmentName String?             @db.VarChar(100)
   status         UserImportRowStatus
   reason         String?             @db.VarChar(200)
+  // Po potwierdzeniu (tylko wiersze VALID): wynik utworzenia konta i stan zaproszenia. userId to konto utworzone przez import
+  // (luźne powiązanie + SQL-only złożone FK ON DELETE SET NULL); zerowane po usunięciu konta.
+  accountResult  UserImportAccountResult?
+  accountReason  String?             @db.VarChar(200)
+  userId         String?
+  inviteStatus   UserImportInviteStatus?
+  inviteReason   String?             @db.VarChar(200)
+  inviteClaimedAt DateTime?
+  inviteSentAt   DateTime?
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   batch        UserImportBatch @relation(fields: [organizationId, batchId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([batchId, line])
   @@index([organizationId, batchId, status])
+  @@index([organizationId, batchId, inviteStatus])
   @@map("user_import_rows")
 }
 

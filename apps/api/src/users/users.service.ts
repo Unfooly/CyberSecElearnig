@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { isEmail } from 'class-validator';
 import { Prisma } from '@prisma/client';
 import { Role, UserStatus } from '@cyberszkolo/shared';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -17,14 +16,12 @@ import { EmailService } from '../email/email.service';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersListResponseDto } from './dto/users-list-response.dto';
 import { DepartmentOptionDto } from './dto/department-option.dto';
-import { ImportCsvReportDto, ImportCsvRowError } from './dto/import-csv-report.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { InviteUserResponseDto } from './dto/invite-user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto, DEFAULT_PAGE_SIZE } from './dto/list-users-query.dto';
 import { AVATAR_PRESETS } from './avatar-presets';
-import { parseCsv } from './csv.util';
-import { NAME_PATTERN } from './name-pattern';
+import { INVITE_DAILY_LIMIT_PER_ORG } from './import/invite-pace';
 import { assertSeatsAvailable, lockSeats } from './seats';
 
 const AVATAR_VALIDATION_MESSAGE =
@@ -32,19 +29,12 @@ const AVATAR_VALIDATION_MESSAGE =
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
-// Twarda górna granica na pojedyncze żądanie /users/import-csv - endpoint
-// robi do tylu zapisów w bazie w jednym synchronicznym request/response.
-// Rozmiar pliku (2MB) jest egzekwowany osobno, na poziomie Multer
-// (UsersController), zanim treść w ogóle trafi tutaj.
-const MAX_CSV_IMPORT_ROWS = 500;
-
 // Ochrona przed używaniem platformy jako kanału spamu: każde zaproszenie
 // wysyła mail z NASZEJ domeny na dowolny adres. Limit dobowy na organizację
-// (liczony po wystawionych tokenach zaproszeń/resetów) i minimalny odstęp
+// (INVITE_DAILY_LIMIT_PER_ORG, liczony po wystawionych tokenach zaproszeń/resetów; wspólny
+// z importem CSV, który wysyła zaproszenia w kolejce z tempem) i minimalny odstęp
 // między ponownymi wysyłkami do tej samej osoby.
-const INVITE_DAILY_LIMIT_PER_ORG = 300;
 const INVITE_RESEND_COOLDOWN_MS = 2 * 60 * 1000;
-const MAX_CSV_FIELD_LENGTH = 100;
 
 // Jeden, ogólny komunikat - users.email jest globalnie unikalny, więc P2002
 // może pochodzić od konta w CUDZEJ organizacji; konkretny komunikat "już
@@ -187,158 +177,6 @@ export class UsersService {
     );
 
     return { ...toUserResponseDto(user), inviteEmailSent };
-  }
-
-  /**
-   * Każdy wiersz to osobna transakcja (dział + user razem, atomowo) - NIE
-   * cały plik w jednej transakcji. Inaczej jeden zły wiersz (np. duplikat
-   * e-maila w środku pliku) cofnąłby WSZYSTKIE poprawne wiersze, a
-   * successCount/failedCount/errors z zadania wprost zakładają częściowy
-   * sukces per wiersz.
-   */
-  async importCsv(
-    organizationId: string,
-    fileContent: string,
-    invitedBy?: string,
-  ): Promise<ImportCsvReportDto> {
-    let rows: string[][];
-    try {
-      rows = parseCsv(fileContent);
-    } catch (error) {
-      throw new BadRequestException((error as Error).message);
-    }
-
-    if (rows.length === 0) {
-      throw new BadRequestException('Plik CSV jest pusty.');
-    }
-
-    const header = rows[0].map((column) => column.trim().toLowerCase());
-    const emailIdx = header.indexOf('email');
-    const firstNameIdx = header.indexOf('firstname');
-    const lastNameIdx = header.indexOf('lastname');
-    const departmentNameIdx = header.indexOf('departmentname');
-    if (emailIdx === -1 || firstNameIdx === -1 || lastNameIdx === -1) {
-      throw new BadRequestException(
-        'Nagłówek CSV musi zawierać kolumny: email, firstName, lastName (departmentName opcjonalnie).',
-      );
-    }
-
-    const dataRows = rows.slice(1);
-    if (dataRows.length > MAX_CSV_IMPORT_ROWS) {
-      throw new BadRequestException(`Plik zawiera zbyt wiele wierszy (limit: ${MAX_CSV_IMPORT_ROWS}).`);
-    }
-
-    await this.assertInviteQuota(organizationId, dataRows.length);
-    const inviteContext = await this.buildInviteContext(organizationId, invitedBy);
-    const errors: ImportCsvRowError[] = [];
-    const seenEmails = new Set<string>();
-    let successCount = 0;
-    let emailFailedCount = 0;
-
-    for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex += 1) {
-      // +1 za nagłówek, +1 bo numeracja wierszy w komunikatach jest 1-indexed.
-      const line = rowIndex + 2;
-      const columns = dataRows[rowIndex];
-
-      // Całkowicie pusty wiersz (np. końcowa pusta linia pliku) - pomijamy
-      // po cichu, to nie jest błąd danych.
-      if (columns.every((column) => column.trim() === '')) {
-        continue;
-      }
-
-      const email = (columns[emailIdx] ?? '').trim().toLowerCase();
-      const firstName = (columns[firstNameIdx] ?? '').trim();
-      const lastName = (columns[lastNameIdx] ?? '').trim();
-      const departmentName = departmentNameIdx !== -1 ? (columns[departmentNameIdx] ?? '').trim() : '';
-
-      if (
-        email.length > 254 ||
-        firstName.length > MAX_CSV_FIELD_LENGTH ||
-        lastName.length > MAX_CSV_FIELD_LENGTH ||
-        departmentName.length > MAX_CSV_FIELD_LENGTH
-      ) {
-        errors.push({ line, email: email.slice(0, 254), reason: 'Zbyt długa wartość w polu' });
-        continue;
-      }
-      if (!isEmail(email, { allow_utf8_local_part: false })) {
-        errors.push({ line, email, reason: 'Nieprawidłowy format e-maila' });
-        continue;
-      }
-      if (!firstName || !lastName) {
-        errors.push({ line, email, reason: 'Brak imienia lub nazwiska' });
-        continue;
-      }
-      if (!NAME_PATTERN.test(firstName) || !NAME_PATTERN.test(lastName)) {
-        errors.push({ line, email, reason: 'Niedozwolone znaki w imieniu lub nazwisku' });
-        continue;
-      }
-      const normalizedEmail = email.toLowerCase();
-      if (seenEmails.has(normalizedEmail)) {
-        errors.push({ line, email, reason: 'Zduplikowany e-mail w tym pliku' });
-        continue;
-      }
-
-      try {
-        // Hashowane PRZED transakcją - bcrypt jest CPU-bound i nie powinien
-        // trzymać otwartej transakcji/połączenia do bazy dłużej niż trzeba,
-        // zwłaszcza przy imporcie do tysiąca wierszy pod rząd.
-        const passwordHash = await this.hashRandomPassword();
-
-        const user = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-          // Limit licencji także w starym imporcie jednoetapowym (zastąpionym dwuetapowym w commicie 5/5).
-          await lockSeats(tx, organizationId);
-          await assertSeatsAvailable(tx, organizationId);
-          let departmentId: string | null = null;
-          if (departmentName) {
-            const department = await tx.department.upsert({
-              where: { organizationId_name: { organizationId, name: departmentName } },
-              update: {},
-              create: { organizationId, name: departmentName },
-            });
-            departmentId = department.id;
-          }
-          return tx.user.create({
-            data: {
-              organizationId,
-              email,
-              passwordHash,
-              firstName,
-              lastName,
-              departmentId,
-              role: Role.EMPLOYEE,
-              status: UserStatus.INVITED,
-            },
-            select: USER_SELECT,
-          });
-        });
-
-        seenEmails.add(normalizedEmail);
-        const sent = await this.sendInviteEmailSafely(
-          organizationId,
-          user.id,
-          user.email,
-          user.firstName,
-          inviteContext,
-        );
-        if (!sent) {
-          emailFailedCount += 1;
-        }
-        successCount += 1;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === UNIQUE_CONSTRAINT_VIOLATION
-        ) {
-          errors.push({ line, email, reason: EMAIL_UNAVAILABLE_MESSAGE });
-        } else if (error instanceof HttpException && (error.getResponse() as { code?: string })?.code === 'SEAT_LIMIT') {
-          errors.push({ line, email, reason: 'Brak wolnych licencji (limit planu)' });
-        } else {
-          errors.push({ line, email, reason: 'Nie udało się utworzyć konta' });
-        }
-      }
-    }
-
-    return { successCount, failedCount: errors.length, emailFailedCount, errors };
   }
 
   /**
@@ -545,7 +383,8 @@ export class UsersService {
   // Konto już istnieje w bazie - awaria wystawienia tokenu/wysyłki nie może
   // zamienić udanego zapisu w 500 (klient ponowiłby i dostał "adres
   // niedostępny"). Logujemy i idziemy dalej; brak wysyłki widać w logach.
-  private async sendInviteEmailSafely(
+  /** Wysyła zaproszenie (nigdy nie rzuca; false = mail nie wyszedł). Publiczne dla kolejki zaproszeń z importu. */
+  async sendInviteEmailSafely(
     organizationId: string,
     userId: string,
     email: string,
@@ -556,7 +395,7 @@ export class UsersService {
       return await this.sendInviteEmail(organizationId, userId, email, firstName, context);
     } catch (error) {
       this.logger.error(
-        `Konto ${userId} utworzone, ale nie udało się wysłać zaproszenia: ${(error as Error).message}`,
+        `Konto ${userId} utworzone, ale nie udało się wysłać zaproszenia: ${(error as Error).name}`,
       );
       return false;
     }
@@ -564,7 +403,8 @@ export class UsersService {
 
   // Dane do powiadomienia "Dodano Cię do organizacji X przez Y". Nazwa
   // organizacji jest kosmetyką maila - jej brak nie może blokować zaproszenia.
-  private async buildInviteContext(organizationId: string, invitedBy?: string): Promise<InviteContext> {
+  /** Nazwa organizacji i zapraszający do treści maila. Publiczne dla kolejki zaproszeń z importu. */
+  async buildInviteContext(organizationId: string, invitedBy?: string): Promise<InviteContext> {
     let organizationName: string | null = null;
     try {
       const organization = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>

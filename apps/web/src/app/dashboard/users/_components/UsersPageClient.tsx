@@ -10,7 +10,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import UsersTable from './UsersTable';
 import InviteUserModal from './InviteUserModal';
 import EditUserModal from './EditUserModal';
-import ImportCsvModal from './ImportCsvModal';
+import ImportUsersModal from './ImportUsersModal';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -296,7 +296,7 @@ export default function UsersPageClient() {
       )}
 
       {showImportCsv && (
-        <ImportCsvModal onClose={() => setShowImportCsv(false)} onImported={() => void fetchUsers()} />
+        <ImportUsersModal onClose={() => setShowImportCsv(false)} onChanged={() => void fetchUsers()} />
       )}
     </div>
   );

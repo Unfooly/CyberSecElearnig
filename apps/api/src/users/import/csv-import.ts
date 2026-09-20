@@ -17,6 +17,13 @@ const MAX_RAW_FIELD_LENGTH = 1000;
 // BOM budowany z kodu (literał znaku w źródle bywa psuty przez edytory/narzędzia).
 const BOM = String.fromCharCode(0xfeff);
 
+/**
+ * Dokładna ścieżka w Excelu (decyzja właściciela produktu 2026-09-20: to będzie najczęstszy błąd klientów). Zwykły typ "CSV
+ * (rozdzielany przecinkami)" zapisuje plik w Windows-1250; potrzebny jest osobny typ "CSV UTF-8".
+ */
+export const EXCEL_UTF8_HINT =
+  'W Excelu: Plik → Zapisz jako → w polu „Zapisz jako typ” wybierz „CSV UTF-8 (rozdzielany przecinkami)” (NIE zwykły „CSV (rozdzielany przecinkami)”), zapisz i wgraj ten plik ponownie.';
+
 export class ImportFileError extends Error {}
 
 const err = (message: string) => new ImportFileError(message);
@@ -34,10 +41,10 @@ export function decodeImportFile(buffer: Buffer): string {
     throw err('Plik jest za duży (limit: 1 MB).');
   }
   if ((buffer[0] === 0xff && buffer[1] === 0xfe) || (buffer[0] === 0xfe && buffer[1] === 0xff)) {
-    throw err('Plik jest zapisany w UTF-16. Zapisz go jako "CSV UTF-8" (Excel: Zapisz jako -> CSV UTF-8).');
+    throw err(`Plik jest zapisany w kodowaniu UTF-16 (np. "Tekst Unicode"). ${EXCEL_UTF8_HINT}`);
   }
   if (buffer[0] === 0x50 && buffer[1] === 0x4b) {
-    throw err('To wygląda na plik XLSX/ZIP, a nie CSV. Zapisz arkusz jako "CSV UTF-8".');
+    throw err(`To wygląda na plik Excela (XLSX), a nie CSV. ${EXCEL_UTF8_HINT}`);
   }
   if (buffer.includes(0x00)) {
     throw err('To nie jest plik tekstowy CSV (zawiera dane binarne).');
@@ -45,7 +52,7 @@ export function decodeImportFile(buffer: Buffer): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
   } catch {
-    throw err('Plik nie jest zapisany w kodowaniu UTF-8 (np. Windows-1250). W Excelu wybierz: Zapisz jako -> CSV UTF-8 (rozdzielany przecinkami).');
+    throw err(`Plik nie jest zapisany w kodowaniu UTF-8 (to typowe dla zwykłego "CSV" z polskiego Excela - Windows-1250 - przez co polskie znaki w imionach by się zepsuły). ${EXCEL_UTF8_HINT}`);
   }
 }
 

@@ -335,10 +335,25 @@ Jeden worker BullMQ w procesie API (Redis z `REDIS_URL`), kolejka `maintenance`.
 `JobsService.registerRecurring({ name, cron, handler })` - harmonogram to idempotentny upsert, więc wiele
 instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 próby, backoff 60 s).
 
-- **Sprzątanie organizacji PENDING** (`pending-organization-cleanup`, codziennie 03:00 UTC): po 7 dniach
+- **Sprzątanie organizacji PENDING** (`pending-organization-cleanup`, codziennie 03:00 UTC; przy okazji kasuje też wygasłe wpisy
+  `pending_admin_claims` i organizacje-widma bez admina): po 7 dniach
   jeden mail do adminów (slot `unverifiedWarningSentAt` zajmowany atomowo), po 14 dniach usunięcie
   organizacji z danymi (kaskadowo). ACTIVE nigdy nie jest ruszana. Usunięcie następuje między 14. a 15. dniem
   (bieg raz na dobę), a mail podaje datę `createdAt + 14 dni`.
+- **Pozostałe zadania cykliczne** (UTC; każde idempotentne, dane klienckie przez `runInOrgContext`):
+
+  | Zadanie | Harmonogram | Co robi |
+  |---|---|---|
+  | `phishing-campaign-reconcile` | co 5 min | uzgadnia kampanie, odtwarza zgubione zadania wysyłki |
+  | `refresh-token-cleanup` | 03:30 | usuwa wygasłe refresh tokeny |
+  | `threat-report-retention` | 03:30 | 90 dni: czyści treść, nadawcę i temat prawdziwych zgłoszeń |
+  | `threat-report-notification` | co 5 min | zbiorcze powiadomienia o zgłoszeniach (max 1 mail / 15 min / organizację) |
+  | `user-import-retention` | co godzinę | kasuje wygasłe podglądy importu i stare raporty |
+  | `user-import-invites` | co 5 min | wysyła zaproszenia z importu z tempem (`docs/user-import.md`) |
+  | `invite-expiry` | 04:20 | wygasza nieaktywowane zaproszenia po 30 dniach |
+
+  Ich lista i harmonogramy są pilnowane testem `jobs.e2e-spec.ts`. Zadania jednorazowe (wysyłka maila kampanii)
+  idą przez `JobsService.registerTask`/`enqueueDelayed` (CLAUDE.md, „Zadania w tle”).
 - **Semantyka „co najwyżej raz”:** awaria procesu między zajęciem slotu a wysyłką gubi ostrzeżenie
   (świadomie - alternatywą są duplikaty). Błąd wysyłki do WSZYSTKICH adminów zwalnia slot (ponowienie
   następnego dnia); gdy choć jeden admin dostał mail, slot zostaje.
@@ -442,36 +457,32 @@ Testy regresyjne tej izolacji:
 
 Z audytu bezpieczeństwa modułu auth (izolacja tenantów / hashowanie haseł / JWT). Fail-closed
 RLS + role Postgresa, rate limiting na `/auth/login` i `/auth/register` są już zaimplementowane.
-Komunikat błędu rejestracji jest ujednolicony (anty-enumeracyjny) TYLKO dla duplikatu e-maila
-(`REGISTRATION_FAILED_MESSAGE`) — duplikat organizacji (patrz niżej) celowo dostaje odrębny,
-jawny komunikat, bo to informacja na poziomie firmy, nie konkretnego konta. Pozostałe punkty,
-do zrobienia w osobnych zadaniach:
+Odpowiedź rejestracji (`POST /auth/register`) jest ZAWSZE taka sama (`REGISTRATION_ACCEPTED_MESSAGE`,
+praca idzie w tle): nie zdradza, czy adres ma już konto ani czy organizacja istnieje (anty-enumeracja);
+właściciel istniejącego adresu dostaje o tym mail. Zasady przejmowania adresów z nieaktywowanym
+zaproszeniem: `docs/user-import.md`. Pozostałe punkty, do zrobienia w osobnych zadaniach:
 
 - ~~Brak rewokacji refresh tokenów / brak `/auth/logout`~~ - **rozwiązane**, patrz „Sesje i unieważnianie tokenów”.
-- **`EmailService` w trybie dev-fallback (brak `MAILERSEND_API_TOKEN`) loguje pełną treść
-  `templateData` w czystej postaci** (`apps/api/src/email/email.service.ts`), w tym surowy,
-  jednorazowy token resetu hasła z linku wysyłanego przez `AuthService.forgotPassword` — to
-  świadomy kompromis na rzecz wygody lokalnego dev (można kliknąć link z konsoli bez
-  skonfigurowanego MailerSend), ale w środowisku ze scentralizowanym logowaniem (staging/prod
-  z przypadkowo pustym/błędnym tokenem) oznacza to wyciek sekretu równoważnego jednorazowemu
-  hasłu do logów czytanych przez więcej osób/narzędzi niż skrzynka mailowa użytkownika.
-  Znalezione w security review tej sesji — do zrobienia: albo redagować wartości wyglądające na
-  tokeny/URL z parametrami przed logiem, albo odmówić startu bez skonfigurowanego providera
-  e-mail poza `NODE_ENV=development`.
+- ~~`EmailService` w trybie dev-fallback loguje pełną treść `templateData`~~ - **rozwiązane**: na
+  `NODE_ENV=production` bez `MAILERSEND_API_TOKEN` aplikacja NIE startuje (chyba że jawnie
+  `ALLOW_EMAIL_DEV_MODE=true`, tylko lokalny stack `prodlocal`), a pełne `templateData` (z tokenami z
+  linków) loguje się wyłącznie w `development`/`test`/przy `ALLOW_EMAIL_DEV_MODE`; staging z pustym
+  tokenem loguje samo podsumowanie. Pozostaje: adres odbiorcy w logach błędów wysyłki
+  (`docs/backlog-issues.md`, B-066).
 - **Globalna unikalność e-maila między organizacjami** (`User.email` ma `@unique`, nie
-  `@@unique([organizationId, email])`) — potwierdzić, czy to świadoma decyzja produktowa (ta
-  sama osoba nie może dziś mieć kont w dwóch różnych organizacjach-klientach pod tym samym
-  adresem).
-- **Nazwa organizacji = domena e-maila, z unikalnym constraintem** (`Organization.name`,
-  migracja `organization_name_unique`) — pierwsza osoba, która zarejestruje się z danej domeny,
-  "zajmuje" ją dla wszystkich kolejnych (świadoma decyzja tej sesji, patrz
-  `AuthService.deriveOrganizationNameFromEmail`). Celowo BEZ wyjątku dla domen współdzielonych
-  publicznie (gmail.com, outlook.com, ...) — druga osoba z takiej domeny dostanie 400
-  (`ORGANIZATION_ALREADY_EXISTS_MESSAGE`), mimo że nie ma żadnego związku z pierwszą. Docelowo,
-  jeśli platforma ma obsługiwać rejestracje spoza firmowych domen, potrzebna albo lista
-  wykluczonych domen publicznych, albo osobny mechanizm auto-joina do istniejącej organizacji
-  (kto dołącza z jaką rolą, czy wymaga akceptacji admina) — żadne z tego nie jest budowane teraz.
-- **Brak normalizacji e-maila** (lowercase/trim) przed zapisem i porównaniem w `auth.service.ts`.
+  `@@unique([organizationId, email])`) — do POTWIERDZENIA przez właściciela produktu (`docs/decisions.md`,
+  D-009): ta sama osoba nie może dziś mieć kont w dwóch różnych organizacjach-klientach pod tym samym
+  adresem. Konsekwencje dla zaproszeń i importu (brak sondy istnienia kont, pierwszeństwo do adresu):
+  `docs/user-import.md`.
+- ~~Nazwa organizacji = domena e-maila, z unikalnym constraintem~~ - **rozwiązane**: migracja
+  `registration_self_service` zdjęła unikalność nazwy. Nazwę organizacji podaje klient przy rejestracji
+  (nie wynika z domeny i nie jest unikalna); o własności domeny rozstrzyga weryfikacja DNS TXT
+  (`DomainVerificationService`), a partial unique index dopuszcza tę samą domenę u wielu organizacji
+  niezweryfikowanych i tylko jedną zweryfikowaną. Domeny publiczne (Gmail, WP...) i sieci wewnętrzne
+  odrzuca rejestracja.
+- ~~Brak normalizacji e-maila~~ - **rozwiązane**: `@NormalizeEmail()` (lowercase + trim) w DTO logowania,
+  rejestracji, resetu hasła, ponownej weryfikacji, zaproszeń i formularza demo (`common/transforms`);
+  parser importu CSV zapisuje adresy małymi literami.
 - **Polityka haseł** ograniczona do `@MinLength(8)` — rozważyć sprawdzanie względem znanych
   wycieków (np. HaveIBeenPwned range API), skoro produkt sam uczy klientów higieny haseł.
 - **Brak Helmet/CORS** w `apps/api/src/main.ts` — dodać przed wystawieniem API publicznie.
@@ -513,12 +524,10 @@ możliwość ukończenia kursu z pominięciem ocenianych bloków są już napraw
   projektu) przełączającego przypisania po `dueDate` z `NOT_STARTED`/`IN_PROGRESS` na `OVERDUE`.
   Metryka zadziała poprawnie, gdy taki job powstanie; do tego czasu liczba 0 nie znaczy "brak
   zaległości", tylko "nic jeszcze nie oznaczyło ich jako zaległe".
-- **Brak ochrony przed CSV/formula injection w `GET /dashboard/export`.** Pola zaczynające się od
-  `=`, `+`, `-` lub `@` mogą zostać zinterpretowane jako formuła przy otwarciu w Excelu/Sheets.
-  Jedyne wolnotekstowe pole w eksporcie to `department.name`, tworzone przez ORG_ADMIN we
-  własnej organizacji — ryzyko dotyczy więc co najwyżej tej samej organizacji, nie wycieku
-  między tenantami. Niska waga, ale warto rozważyć prefiksowanie takich pól apostrofem/spacją
-  w `DashboardService.exportCsv` przed wystawieniem eksportu szerszemu gronu odbiorców.
+- ~~Brak ochrony przed CSV/formula injection w `GET /dashboard/export`~~ - **rozwiązane**:
+  `escapeCsvField` (`DashboardService`) dopisuje apostrof przed polem zaczynającym się od `=`, `+`, `-`,
+  `@`, tabulatora lub CR. Eksporty wyników symulacji i raport importu używają wspólnego `toCsv`
+  (`phishing/results/results-csv.ts`) z tym samym escapowaniem.
 
 ### Świadoma asymetria zakresu: "ukończone kursy" vs "ostatnia aktywność"
 
@@ -615,8 +624,12 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
 
 `EmailService.send({ to, subject, templateName, templateData })` - wysyłka przez **MailerSend**
 (`POST https://api.mailersend.com/v1/email`, `Authorization: Bearer MAILERSEND_API_TOKEN`).
-Treść maila renderowana z szablonów **w kodzie** (`apps/api/src/email/templates/`: `email-verification`,
-`password-reset`, `user-invite`), wartości od użytkownika są escapowane. Nadawca: `EMAIL_FROM` +
+Treść maila renderowana z szablonów **w kodzie** (`apps/api/src/email/templates/index.ts`: weryfikacja i
+aktywacja konta, reset hasła, zaproszenia, powiadomienia o zgłoszeniach, `registration-claim`,
+`invite-address-taken`, formularz demo), wartości od użytkownika są escapowane, a nazwa organizacji od
+obcej strony w mailach do osób trzecich jest przycięta i oczyszczona (`email/display-name.ts`).
+`send(options, outcome?)` zwraca `boolean`, a opcjonalny `outcome` niesie sklasyfikowany wynik
+(wysłano / pewne niepowodzenie / niepewne), którego używa kolejka zaproszeń z importu. Nadawca: `EMAIL_FROM` +
 `EMAIL_FROM_NAME` - adres MUSI należeć do domeny zweryfikowanej w MailerSend (na koncie trial to
 domena `*.mlsender.net`, wysyłka zwykle tylko do właściciela konta).
 
@@ -642,8 +655,9 @@ potwierdza adres).
   lokalnie, patrz guard produkcyjny wyżej.
 - Konto MailerSend w trybie trial: wysyłka do dowolnych adresów wymaga zweryfikowanej domeny
   własnej (DNS) - do zrobienia przed publicznym wdrożeniem.
-- Niepotwierdzona organizacja nadal "zajmuje" domenę (nazwa organizacji = domena e-maila) - do
-  rozważenia wygaszanie niepotwierdzonych kont po X dniach.
+- ~~Niepotwierdzona organizacja "zajmuje" domenę~~ - **rozwiązane**: nazwa organizacji nie jest kluczem, a
+  niezweryfikowane organizacje PENDING są sprzątane (mail po 7 dniach, usunięcie po 14); nieaktywowane
+  zaproszenia wygasają po 30 dniach i nie blokują adresu (`docs/user-import.md`).
 
 ## Moduł grywalizacji, awatary i leaderboard (`apps/api/src/gamification/`)
 

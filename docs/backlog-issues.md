@@ -114,6 +114,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja o zakresie; projekt; implementacja.
 
 ### B-019 Aktualizacja README: sekcje nieaktualne wobec kodu **(zweryfikuj)**
+- **Status: zrobione** (README opisuje stan faktyczny: rejestracja, nazwa organizacji, normalizacja e-maila, eksport CSV, dev-fallback e-maila, wygasanie kont, lista zadań w tle, szablony maili)
 - Etykiety: `P2`, `docs` · Źródło: porównanie README z CLAUDE.md i kodem
 - Opis: m.in. „Nazwa organizacji = domena e-maila, unikalna” (CLAUDE.md: nazwa podawana przez klienta i nieunikalna), „Brak normalizacji e-maila”
   (DTO używają `@NormalizeEmail`), „Brak ochrony przed CSV/formula injection w `/dashboard/export`” (jest w `escapeCsvField`), „Niepotwierdzona
@@ -280,6 +281,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: wyrównanie długości (migracja) albo walidacja przy zapisie wpisu.
 
 ### B-068 `README` opisuje wygasanie niepotwierdzonych kont jako „do rozważenia”
+- **Status: zrobione** (razem z B-019)
 - Etykiety: `P3`, `docs` · Źródło: README „Moduł e-mail / Backlog”
 - Opis: wygasanie jest zrobione (organizacje PENDING po 14 dniach, zaproszenia po 30 dniach, wpisy potwierdzeń po 24 h).
 - Akceptacja: wpis README zaktualizowany; patrz B-019.

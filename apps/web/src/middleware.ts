@@ -25,7 +25,12 @@ const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   // /courses jest dostępne dla każdej zalogowanej roli, w przeciwieństwie
   // do /dashboard (tylko ORG_ADMIN).
   { prefix: '/courses', roles: ALL_ROLES },
+  // Zgłaszanie podejrzanych wiadomości: każda zalogowana rola.
+  { prefix: '/report', roles: ALL_ROLES },
 ];
+
+// Prefiks dopasowujemy po SEGMENCIE ścieżki: "/report" nie może obejmować "/reports" (panel zgłoszeń ma inne role).
+const matchesPrefix = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 function redirectToLogin(request: NextRequest): NextResponse {
   const response = NextResponse.redirect(new URL('/login', request.url));
@@ -73,7 +78,7 @@ function refreshTokensOnce(refreshToken: string, clientIp: Record<string, string
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
-  const route = PROTECTED_ROUTES.find((r) => request.nextUrl.pathname.startsWith(r.prefix));
+  const route = PROTECTED_ROUTES.find((r) => matchesPrefix(request.nextUrl.pathname, r.prefix));
   if (!route) {
     return NextResponse.next();
   }
@@ -112,5 +117,5 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*'],
+  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*', '/report/:path*'],
 };

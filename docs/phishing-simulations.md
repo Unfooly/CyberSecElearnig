@@ -223,6 +223,35 @@ odbiorców "niepewnych"); **podatność** = kliknęło / dostarczono; nieudane i
 Interfejs w `apps/web` obejmuje `ORG_ADMIN` (`/dashboard` wymaga tej roli). Zakres `DEPARTMENT_MANAGER` jest zaimplementowany i
 przetestowany w API; osobny ekran kierownika działu to backlog (v2).
 
+## Zgłaszanie podejrzanych wiadomości (moduł zgłoszeń, commit 1/5)
+
+Kod: `apps/api/src/threat-reports/`, tabela `threat_reports` (RLS, `reportedAt` na odbiorcy kampanii), ekran `/report`
+(przycisk „Zgłoś podejrzany mail” w Topbarze, każda rola). `POST /threat-reports`: nadawca, temat (wymagane), treść, nagłówki,
+komentarz (opcjonalne); czysty tekst (bez znaków sterujących i formatujących Unicode), limity 320/300/20 000/20 000/1000 znaków.
+Limit per użytkownik liczony w bazie: **5 zgłoszeń na godzinę i 20 na dobę** (429 `REPORT_RATE_LIMIT`), atomowo wobec żądań
+równoległych (kolejka w procesie + blokada doradcza). Organizacja PENDING dostaje 403.
+
+**Dopasowanie do symulacji** - wyłącznie wśród wierszy odbiorców ZGŁASZAJĄCEGO (cudza symulacja nie zmienia niczyjego wyniku):
+
+1. `TOKEN` (jednoznaczne): w wklejonym tekście jest link `/t/<43 znaki>`, którego hash należy do własnego wiersza odbiorcy.
+2. `SENDER_SUBJECT`: dokładny adres nadawcy (część lokalna kampanii + `PHISHING_EMAIL_DOMAIN`) **oraz** znormalizowany temat kampanii
+   (bez `Re:`/`Fwd:`/`Odp:`/`PD:`, wielkość liter, białe znaki, NFKC) - kampania RUNNING/COMPLETED, wiadomość przyjęta przez dostawcę
+   w ostatnich 30 dniach. Sam nadawca albo sam temat **nie** wystarcza; nadawcy bez adresu (samo imię) nie zgadujemy.
+
+Możliwe fałszywe dopasowanie: prawdziwy phishing podszywający się dokładnie pod nasz adres nadawcy (domena chroniona SPF/DKIM/DMARC)
+i temat kampanii, którą pracownik faktycznie dostał w ostatnich 30 dniach, zostanie uznany za symulację (brak wpisu w skrzynce
+zgłoszeń). Ryzyko małe, dlatego wymagamy obu cech. Fałszywy brak dopasowania (np. pracownik przepisał temat z literówką) daje
+zgłoszenie „prawdziwe” - trafi do skrzynki, bez szkody dla wyników (kliknięcia i tak zliczają się osobno).
+
+**Dane:** zgłoszenie dopasowane **nie zapisuje** treści, nagłówków ani komentarza (zostaje temat, nadawca i powiązanie z odbiorcą;
+CHECK w bazie). Zgłoszenie prawdziwe: treść, nagłówki i komentarz są czyszczone po **90 dniach** (job `threat-report-retention`,
+03:30 UTC). Linki śledzące `/t/<token>` są maskowane w każdym polu przed zapisem (token cudzego odbiorcy nie może wyciec do
+skrzynki zgłoszeń), także w wersjach zakodowanych przez bramki poczty (`%2Ft%2F`, `&#47;`, `\/`, pełnoszerokie `／`, łamanie
+quoted-printable); podwójne kodowanie (`%252F`) nie jest obsługiwane - znane ograniczenie. `reportedAt` na odbiorcy jest ustawiane **raz** (atomowo, `IS NULL`).
+
+Kolejne commity modułu: wyniki (metryka „zgłosiło”, po kliknięciu, agregaty z progiem 3, widok osobowy, CSV, KPI), panel
+zgłoszeń dla ORG_ADMIN i kierownika działu z powiadomieniem, import pracowników z CSV.
+
 ## Znane ograniczenia i backlog (świadomie poza tym commitem)
 
 - **Alert dla SUPER_ADMIN:** organizacja, w której >20% odbiorców kampanii to adresy spoza zweryfikowanej domeny

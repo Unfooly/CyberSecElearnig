@@ -109,6 +109,7 @@ model Organization {
   phishingCampaignRecipients PhishingCampaignRecipient[]
   phishingResultSettings     PhishingResultSettings?
   phishingResultAudit        PhishingResultVisibilityAudit[]
+  threatReports              ThreatReport[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -324,6 +325,9 @@ model PhishingCampaignRecipient {
   // linków) i pierwsze wysłanie formularza (POST /t/:token/submit). Wartości z formularza nie są nigdzie zapisywane.
   clickedAt         DateTime?
   submittedAt       DateTime?
+  // Pierwsze zgłoszenie tej wiadomości jako podejrzanej przez adresata (moduł zgłoszeń); ustawiane RAZ (atomowo,
+  // warunek reportedAt IS NULL). Raport po kliknięciu = clickedAt < reportedAt.
+  reportedAt        DateTime?
   providerMessageId String?   @db.VarChar(200)
   // SHA-256 tokenu z linku (sam token istnieje tylko w mailu); ustawiany przy zajęciu.
   tokenHash         String?   @unique
@@ -334,6 +338,8 @@ model PhishingCampaignRecipient {
 
   // Jeden e-mail na osobę w kampanii (wiele wierszy z userId NULL po usunięciu pracowników jest dozwolone).
   @@unique([campaignId, userId])
+  // Cel złożonego FK z threat_reports (zgłoszenie dopasowane do odbiorcy tej samej organizacji).
+  @@unique([organizationId, id])
   @@index([organizationId])
   @@index([campaignId])
   @@index([scheduledAt])
@@ -387,6 +393,61 @@ model PhishingResultVisibilityAudit {
 
   @@index([organizationId, createdAt])
   @@map("phishing_result_visibility_audit")
+}
+
+enum ThreatReportKind {
+  // Zgłoszenie dopasowane do naszej symulacji: NIE trafia do skrzynki zgłoszeń admina, liczy się tylko w statystykach.
+  SIMULATION
+  // Prawdziwe zgłoszenie podejrzanej wiadomości (do skrzynki zgłoszeń).
+  REAL
+}
+
+enum ThreatReportStatus {
+  NEW
+  IN_REVIEW
+  THREAT
+  SAFE
+}
+
+enum ThreatReportMatchMethod {
+  // W wklejonym tekście był link śledzący należący do WŁASNEGO wiersza odbiorcy zgłaszającego (jednoznaczne).
+  TOKEN
+  // Dokładny nadawca (część lokalna + PHISHING_EMAIL_DOMAIN) ORAZ znormalizowany temat kampanii zgłaszającego.
+  SENDER_SUBJECT
+}
+
+// Zgłoszenie podejrzanej wiadomości przez pracownika. Treść (body, headers, comment) trafia do bazy WYŁĄCZNIE dla
+// zgłoszeń prawdziwych (CHECK w migracji): zgłoszenie dopasowane do symulacji zachowuje tylko temat, nadawcę i
+// powiązanie z odbiorcą kampanii. Treść prawdziwych zgłoszeń jest czyszczona po 90 dniach (ThreatReportRetentionService;
+// wpis w checkliście DPIA). Linki śledzące /t/<token> są maskowane przy zapisie (token cudzego odbiorcy nie może
+// wyciec do skrzynki zgłoszeń). Usunięcie konta zeruje reporterUserId, dział i odbiorca to SQL-only złożone FK
+// ON DELETE SET NULL (patrz migracja).
+model ThreatReport {
+  id                   String                   @id @default(cuid())
+  organizationId       String
+  reporterUserId       String?
+  // Dział zgłaszającego w chwili zgłoszenia (zakres kierownika działu); luźny snapshot + złożone FK w SQL.
+  reporterDepartmentId String?
+  kind                 ThreatReportKind
+  status               ThreatReportStatus       @default(NEW)
+  // Nadawca i temat tak, jak je wpisał pracownik (tekst, bez znaków sterujących).
+  senderText           String                   @db.VarChar(320)
+  subject              String                   @db.VarChar(300)
+  body                 String?                  @db.Text
+  headers              String?                  @db.Text
+  comment              String?                  @db.VarChar(1000)
+  matchedRecipientId   String?
+  matchMethod          ThreatReportMatchMethod?
+  // Kiedy treść została usunięta (retencja); null = treść (jeśli jest) nadal w bazie.
+  contentPurgedAt      DateTime?
+  createdAt            DateTime                 @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, reporterUserId, createdAt])
+  @@index([organizationId, kind, status])
+  @@map("threat_reports")
 }
 
 // Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.

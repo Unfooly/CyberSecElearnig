@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+import { buttonClasses } from './ui/Button';
 import Logo from './Logo';
 
 interface NavItem {
@@ -125,6 +126,12 @@ export default function Topbar({ userEmail, role }: { userEmail: string | null; 
             );
           })}
         </nav>
+
+        {userEmail && (
+          <Link href="/report" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
+            Zgłoś podejrzany mail
+          </Link>
+        )}
 
         {userEmail && (
           <div className="flex shrink-0 items-center gap-2.5 text-muted">

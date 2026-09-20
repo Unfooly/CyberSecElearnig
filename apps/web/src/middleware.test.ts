@@ -123,6 +123,29 @@ describe('middleware', () => {
     });
   });
 
+  describe('/report - dostępne dla każdej zalogowanej roli, ale prefiks nie obejmuje /reports', () => {
+    const tokenFor = (role: string) =>
+      fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+
+    it.each(['ORG_ADMIN', 'DEPARTMENT_MANAGER', 'EMPLOYEE'])('przepuszcza rolę %s', async (role) => {
+      const response = await middleware(buildRequest('/report', `access_token=${tokenFor(role)}; refresh_token=r`));
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it('niezalogowany => /login', async () => {
+      const response = await middleware(buildRequest('/report'));
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+
+    it('/reports (osobny moduł) NIE jest chroniony wpisem /report (dopasowanie po segmencie ścieżki)', async () => {
+      const response = await middleware(buildRequest('/reports'));
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+  });
+
   describe('proaktywny refresh wygasłego access tokenu', () => {
     const expiredToken = fakeJwt({
       sub: 'user-1',

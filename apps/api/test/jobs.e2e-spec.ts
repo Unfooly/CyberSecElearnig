@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { REFRESH_TOKEN_CLEANUP_JOB } from '../src/auth/refresh-token-cleanup.service';
+import { THREAT_REPORT_RETENTION_JOB } from '../src/threat-reports/threat-report-retention.service';
 import { CAMPAIGN_RECONCILE_JOB } from '../src/phishing/campaigns/campaign-reconcile.service';
 import { PENDING_ORGANIZATION_CLEANUP_JOB } from '../src/organizations/pending-organization-cleanup.service';
 import { Queue } from 'bullmq';
@@ -101,7 +102,7 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
     expect(failed).toBe(1);
   }, 20_000);
 
-  it('aplikacja z włączonymi zadaniami planuje dzienne sprzątanie organizacji PENDING (jedno powtarzalne zadanie)', async () => {
+  it('aplikacja z włączonymi zadaniami planuje zadania cykliczne (uzgadnianie kampanii i dzienne sprzątania: organizacje PENDING, refresh tokeny, retencja zgłoszeń)', async () => {
     const appPrefix = `${prefix}-app`;
     process.env.BACKGROUND_JOBS_ENABLED = 'true';
     process.env.JOBS_QUEUE_PREFIX = appPrefix;
@@ -122,6 +123,7 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
           [CAMPAIGN_RECONCILE_JOB, '*/5 * * * *'],
           [PENDING_ORGANIZATION_CLEANUP_JOB, '0 3 * * *'],
           [REFRESH_TOKEN_CLEANUP_JOB, '30 3 * * *'],
+          [THREAT_REPORT_RETENTION_JOB, '30 3 * * *'],
         ].sort(),
       );
     } finally {

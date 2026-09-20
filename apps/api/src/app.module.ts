@@ -14,6 +14,7 @@ import { GamificationModule } from './gamification/gamification.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PhishingModule } from './phishing/phishing.module';
+import { ThreatReportsModule } from './threat-reports/threat-reports.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PhishingModule } from './phishing/phishing.module';
     DemoRequestsModule,
     OrganizationsModule,
     PhishingModule,
+    ThreatReportsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ProxyAwareThrottlerGuard }],
 })

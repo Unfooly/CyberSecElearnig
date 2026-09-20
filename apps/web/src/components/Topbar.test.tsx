@@ -21,6 +21,20 @@ describe('Topbar', () => {
     expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveAttribute('href', '/courses/achievements');
   });
 
+  it.each([Role.EMPLOYEE, Role.DEPARTMENT_MANAGER, Role.ORG_ADMIN])('rola %s widzi przycisk "Zgłoś podejrzany mail" prowadzący do /report', (role) => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan@example.test" role={role} />);
+
+    expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toHaveAttribute('href', '/report');
+  });
+
+  it('bez zalogowanego użytkownika nie ma przycisku zgłoszenia', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail={null} />);
+
+    expect(screen.queryByRole('link', { name: 'Zgłoś podejrzany mail' })).not.toBeInTheDocument();
+  });
+
   describe('nawigacja zależna od roli (UX; dostęp egzekwują middleware i API)', () => {
     const adminLabels = ['Dashboard', 'Zespół', 'Ustawienia', 'Kampanie phishingowe'];
 

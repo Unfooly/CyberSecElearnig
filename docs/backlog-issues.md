@@ -41,10 +41,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: throttle 10/min/IP i limit 50 zadań w tle; brak CAPTCHA (Turnstile/hCaptcha), limitu globalnego i limitu niezweryfikowanych organizacji na domenę.
 - Akceptacja: CAPTCHA na `/register`, limit niezweryfikowanych organizacji na domenę, test przeciążenia (503 zamiast pamięci).
 
-### B-005 Helmet i CORS w API **(zweryfikuj)**
+### B-005 Helmet i CORS w API
+- **Status: zrobione** (Helmet z konfiguracją domyślną, bez CSP: `common/security-headers.ts`, test `security-headers.spec.ts`). Kryterium „CORS zawężony do
+  `FRONTEND_URL`” ZMIENIONO na „CORS niewłączony” (najściślejsza konfiguracja: API woła server-side BFF, uwierzytelnianie nagłówkiem, nie cookie); patrz `docs/decisions.md` D-047
 - Etykiety: `P1`, `security`, `mod:auth` · Źródło: README „Backlog bezpieczeństwa modułu auth”
-- Opis: w `apps/api/src/main.ts` nie ma Helmet ani jawnej konfiguracji CORS (stan na dziś: brak `helmet` w kodzie).
-- Akceptacja: nagłówki bezpieczeństwa, CORS zawężony do `FRONTEND_URL`, test nagłówków.
+- Opis: w `apps/api/src/main.ts` nie było Helmet.
+- Akceptacja: nagłówki bezpieczeństwa i test nagłówków (także na odpowiedziach błędów parsera).
 
 ### B-006 Ponowna akceptacja dokumentów prawnych po zmianie wersji
 - Etykiety: `P1`, `feature`, `decision-needed`, `mod:auth` · Źródło: README „Ponowna akceptacja dokumentów”

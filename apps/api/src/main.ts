@@ -4,11 +4,14 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { configureBodyParsing } from './common/body-parsing';
 import { isProxyTrusted } from './common/client-ip';
+import { configureSecurityHeaders } from './common/security-headers';
 
 async function bootstrap() {
   // bodyParser: false - własne parsowanie ciała z middleware błędów (patrz common/body-parsing.ts): błędy parsera nie
   // mogą zwracać ani logować fragmentu ciała publicznych żądań.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  // Nagłówki bezpieczeństwa jako pierwszy middleware (także odpowiedzi błędów parsera ciała); patrz common/security-headers.ts.
+  configureSecurityHeaders(app);
   configureBodyParsing(app);
 
   // Za zaufanym proxy (produkcja: Cloudflare Tunnel -> web/BFF -> api) Express ma

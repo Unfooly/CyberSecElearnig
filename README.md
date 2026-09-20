@@ -485,7 +485,14 @@ zaproszeniem: `docs/user-import.md`. Pozostałe punkty, do zrobienia w osobnych 
   parser importu CSV zapisuje adresy małymi literami.
 - **Polityka haseł** ograniczona do `@MinLength(8)` — rozważyć sprawdzanie względem znanych
   wycieków (np. HaveIBeenPwned range API), skoro produkt sam uczy klientów higieny haseł.
-- **Brak Helmet/CORS** w `apps/api/src/main.ts` — dodać przed wystawieniem API publicznie.
+- ~~Brak Helmet~~ - **rozwiązane**: `apps/api/src/common/security-headers.ts` podpina Helmet (konfiguracja domyślna: `nosniff`,
+  `X-Frame-Options`, `Referrer-Policy: no-referrer`, HSTS, CORP/COOP, bez `X-Powered-By`) jako PIERWSZY middleware w `main.ts`.
+  Świadomie BEZ Content-Security-Policy (`contentSecurityPolicy: false`): CSP ustawia `apps/web`, a API zwraca wyłącznie
+  JSON/CSV. CORS nie jest włączony: obce originy nie odczytają odpowiedzi API, a uwierzytelnianie idzie nagłówkiem
+  `Authorization` (Bearer, wymusza preflight), nie cookie API (refresh token jest w cookie domeny web). Uwaga: brak CORS NIE
+  blokuje wysłania „prostego” żądania, tylko odczyt odpowiedzi, więc publiczne trasy zmieniające stan (`/t/*`) nie polegają na CORS.
+  W `docker-compose.prod.yml` API nie ma wystawionych portów (woła je server-side BFF); opcjonalny blok `api.*` w `Caddyfile`
+  wystawia je bezpośrednio - nie zalecany.
 - **`organizations` nie ma włączonego RLS** (tylko `users` i `departments`) — to celowe, bo to
   rejestr samych tenantów, nie dane "per organizacja" (brak kolumny `organizationId`). Ale
   każdy przyszły endpoint dotykający tej tabeli (np. panel `SUPER_ADMIN`) musi ręcznie

@@ -7,7 +7,12 @@ export const INVITE_DAILY_LIMIT_PER_ORG = 300;
 export const INVITE_RUN_INTERVAL_MINUTES = 5;
 /** ...i wysyła najwyżej tyle zaproszeń na organizację w jednym biegu (ok. 240/h: nie zalewamy dostawcy poczty). */
 export const INVITE_PER_RUN = 20;
-/** Zajęcie do wysyłki starsze niż to bez wyniku = awaria między zajęciem a wynikiem (stan niepewny, nie ponawiamy po cichu). */
+/**
+ * Zajęcie do wysyłki (SENDING) starsze niż to i bez wyniku = proces padł w trakcie wysyłki (INTERRUPTED_UNKNOWN: wynik niepewny, nie
+ * ponawiamy po cichu). To NIE jest limit czasu wysyłki: każde zaproszenie jest zajmowane tuż przed własną wysyłką, a wysyłka ma
+ * timeout dostawcy (kilka sekund, TIMEOUT_UNKNOWN), więc żywa wysyłka nigdy nie dożywa tego progu - wiek zajęcia to czas TEJ wysyłki,
+ * nie czas oczekiwania w biegu (jak w wysyłce kampanii, docs/phishing-simulations.md).
+ */
 export const INVITE_STALE_CLAIM_MS = 10 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

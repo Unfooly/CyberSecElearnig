@@ -435,7 +435,12 @@ function ProgressView({
         </p>
       )}
       {progress.invites.failed > 0 && (
-        <p className="text-xs text-danger">Nie udało się wysłać {progress.invites.failed} zaproszeń - użyj „Wyślij zaproszenie ponownie” przy koncie (szczegóły w raporcie CSV).</p>
+        <p className="text-xs text-danger">Nie udało się wysłać {progress.invites.failed} zaproszeń (dostawca poczty je odrzucił) - użyj „Wyślij zaproszenie ponownie” przy koncie (szczegóły w raporcie CSV).</p>
+      )}
+      {progress.invites.uncertain > 0 && (
+        <p className="text-xs text-muted">
+          Wynik wysyłki nieznany dla {progress.invites.uncertain} zaproszeń: mogły dotrzeć, więc nie wysyłamy ich ponownie (przycisk „Wyślij zaproszenie ponownie” jest dla nich zablokowany). Poproś te osoby o sprawdzenie skrzynki (szczegóły w raporcie CSV).
+        </p>
       )}
       {progress.invites.expired > 0 && <p className="text-xs text-muted">Wygasło zaproszeń: {progress.invites.expired} (konto nie zostało aktywowane w ciągu 30 dni albo adres został przypisany do innej organizacji).</p>}
       {progress.invites.skipped > 0 &&<p className="text-xs text-muted">Pominięto zaproszeń: {progress.invites.skipped} (konto aktywne, usunięte albo wysyłka zatrzymana).</p>}

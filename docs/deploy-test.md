@@ -359,8 +359,9 @@ wysyłają), `TRUST_PROXY=true`. Po zmianie `.env.prod`: `docker compose --env-f
    `/t/*` i `/api/t/*` (np. 120 żądań/min na adres, akcja Block na 10 minut). Limit w API (120/min na adres, IPv6 po /64) jest w
    pamięci procesu i nie zastępuje limitu brzegowego. Razem z tym: `TRUST_PROXY=true`, API bez wystawionych portów (sekcja 1),
    dostęp do logów dostępowych ograniczony (zawierają tokeny z linków).
-4. **Migracje**: wykonuje usługa `migrate` przy `up -d` (sekcja 5). Moduł dodaje tabele `phishing_*` z RLS oraz zależy od
-   PostgreSQL **15+** (`ON DELETE SET NULL (kolumna)`); stack używa 16. Po wdrożeniu: `docker compose ... logs migrate` -
+4. **Migracje**: wykonuje usługa `migrate` przy `up -d` (sekcja 5). **Cała aplikacja wymaga PostgreSQL 15+**: złożone klucze
+   obce `ON DELETE SET NULL (kolumna)` (moduły `phishing_*`, zgłoszenia, import pracowników) nie działają na starszych wersjach
+   (RDS/Aurora: wersja silnika co najmniej 15); stack używa 16, a e2e w CI działa na 16. Moduł dodaje tabele `phishing_*` z RLS. Po wdrożeniu: `docker compose ... logs migrate` -
    migracje `phishing_templates`, `phishing_campaigns`, `phishing_tracking`, `phishing_tracking_lookup_sentinel`,
    `phishing_results` muszą być zastosowane.
 5. **Weryfikacja konfiguracji**: zaloguj się jako ORG_ADMIN aktywnej organizacji i `GET /phishing/config` (albo kreator nowej

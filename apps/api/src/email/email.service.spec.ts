@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { EmailService } from './email.service';
+import { MailOutcome } from './interfaces/send-email-options.interface';
 import { renderTemplate } from './templates';
 
 async function createService(configValues: Record<string, string | undefined>): Promise<EmailService> {
@@ -98,6 +99,66 @@ describe('EmailService (MailerSend)', () => {
       const logged = errorSpy.mock.calls.map((call) => String(call[0])).join('\n');
       expect(logged).toContain('[REDACTED]');
       expect(logged).not.toContain('mlsn.secret-token');
+    });
+
+    describe('klasyfikacja wyniku (jak w wysyłce kampanii: wysłano / pewne niepowodzenie / niepewne)', () => {
+      const MAIL = { to: 'a@test.pl', subject: 'T', templateName: 'password-reset', templateData: { resetUrl: 'u' } };
+      const resultOf = async (arrange: () => void) => {
+        arrange();
+        const outcome: MailOutcome = {};
+        const service = await createService(BASE);
+        const accepted = await service.send(MAIL, outcome);
+        return { accepted, result: outcome.result };
+      };
+
+      it('2xx: SENT', async () => {
+        expect(await resultOf(() => fetchMock.mockResolvedValue({ ok: true, status: 202 }))).toEqual({ accepted: true, result: { status: 'SENT' } });
+      });
+
+      it('4xx (np. 422 odrzucony adres, 429 limit): pewne niepowodzenie REJECTED', async () => {
+        for (const status of [400, 422, 429]) {
+          const { accepted, result } = await resultOf(() => fetchMock.mockResolvedValue({ ok: false, status, text: async () => '' }));
+          expect(accepted).toBe(false);
+          expect(result).toEqual({ status: 'REJECTED', code: `HTTP_${status}` });
+        }
+      });
+
+      it('5xx: NIEPEWNE (bramka mogła zwrócić 502/504 po przekazaniu wiadomości)', async () => {
+        for (const status of [408, 500, 502, 504]) {
+          const { result } = await resultOf(() => fetchMock.mockResolvedValue({ ok: false, status, text: async () => '' }));
+          expect(result).toEqual({ status: 'UNCERTAIN', code: `HTTP_${status}` });
+        }
+      });
+
+      it('timeout żądania: NIEPEWNE TIMEOUT_UNKNOWN', async () => {
+        const timeout = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+        const { accepted, result } = await resultOf(() => fetchMock.mockRejectedValue(timeout));
+        expect(accepted).toBe(false);
+        expect(result).toEqual({ status: 'UNCERTAIN', code: 'TIMEOUT_UNKNOWN' });
+      });
+
+      it('brak połączenia przed wysłaniem (DNS, odmowa): pewne niepowodzenie; zerwane połączenie i nieznany błąd: niepewne', async () => {
+        const failed = (code: string) => Object.assign(new TypeError('fetch failed'), { cause: { code } });
+        for (const code of ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']) {
+          const { result } = await resultOf(() => fetchMock.mockRejectedValue(failed(code)));
+          expect(result).toEqual({ status: 'REJECTED', code: 'CONNECTION' });
+        }
+        expect((await resultOf(() => fetchMock.mockRejectedValue(failed('ECONNRESET')))).result).toEqual({ status: 'UNCERTAIN', code: 'RESULT_UNKNOWN' });
+        expect((await resultOf(() => fetchMock.mockRejectedValue(new Error('coś dziwnego')))).result).toEqual({ status: 'UNCERTAIN', code: 'RESULT_UNKNOWN' });
+      });
+
+      it('nieznany szablon: REJECTED bez wołania API; tryb dev (bez tokenu): SENT', async () => {
+        const service = await createService(BASE);
+        const outcome: MailOutcome = {};
+        await service.send({ ...MAIL, templateName: 'nie-ma-takiego' }, outcome);
+        expect(outcome.result).toEqual({ status: 'REJECTED', code: 'TEMPLATE_UNKNOWN' });
+        expect(fetchMock).not.toHaveBeenCalled();
+
+        const dev = await createService({ EMAIL_FROM: 'from@test.pl' });
+        const devOutcome: MailOutcome = {};
+        await dev.send(MAIL, devOutcome);
+        expect(devOutcome.result).toEqual({ status: 'SENT' });
+      });
     });
 
     it('loguje błąd i nie wysyła dla nieznanego szablonu', async () => {

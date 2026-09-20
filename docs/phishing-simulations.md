@@ -58,6 +58,10 @@ W szczegółach kampanii takie wpisy są liczone osobno jako **niepewne** (`coun
 Konsekwencja dla wyników: "niepewne" mogły dostać wiadomość, ale nie mamy tokenu potwierdzonego wysyłką - w
 raportach traktujemy je osobno, nie jako wysłane.
 
+Ten sam wzorzec (zajęcie tuż przed wysyłką, PEWNE niepowodzenie vs NIEPEWNY wynik, brak ponawiania niepewnych, awaria procesu =
+`INTERRUPTED_UNKNOWN`) stosuje kolejka zaproszeń z importu pracowników: `docs/user-import.md`, sekcja „Kolejka zaproszeń z tempem”
+(tam niepewne zaproszenie ma dodatkowo zablokowane „Wyślij zaproszenie ponownie”).
+
 ## Koniec okna i anulowanie
 
 - Zadanie może ruszyć do 15 min po końcu okna (opóźnienie workera); później odbiorca dostaje `WINDOW_EXPIRED` i nie

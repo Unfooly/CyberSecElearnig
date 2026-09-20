@@ -23,6 +23,7 @@ describe('UsersService', () => {
   let tokenFindFirst: jest.Mock;
   let issuePasswordResetUrl: jest.Mock;
   let sendEmail: jest.Mock;
+  let importRowFindMany: jest.Mock;
   let noticeCount: jest.Mock;
   let noticeCreate: jest.Mock;
   let claimForOrganization: jest.Mock;
@@ -41,6 +42,7 @@ describe('UsersService', () => {
     tokenFindFirst = jest.fn().mockResolvedValue(null);
     issuePasswordResetUrl = jest.fn().mockResolvedValue('http://localhost:3000/reset-password?token=abc');
     sendEmail = jest.fn().mockResolvedValue(undefined);
+    importRowFindMany = jest.fn().mockResolvedValue([]);
     noticeCount = jest.fn().mockResolvedValue(0);
     noticeCreate = jest.fn().mockResolvedValue({});
     claimForOrganization = jest.fn().mockResolvedValue('TAKEN');
@@ -52,6 +54,7 @@ describe('UsersService', () => {
         organization: { findUnique: organizationFindUnique },
         passwordResetToken: { count: tokenCount, findFirst: tokenFindFirst },
         inviteNotice: { count: noticeCount, create: noticeCreate },
+        userImportRow: { findMany: importRowFindMany },
         department: { findFirst: departmentFindFirst, upsert: departmentUpsert },
         user: {
           create: userCreate,
@@ -125,6 +128,7 @@ describe('UsersService', () => {
       expect(issuePasswordResetUrl).toHaveBeenCalledWith('org-a', 'user-1');
       expect(sendEmail).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'nowy@test.pl', templateName: 'user-invite' }),
+        expect.anything(), // odbiornik sklasyfikowanego wyniku wysyłki
       );
       expect(result.status).toBe('INVITED');
     });
@@ -154,6 +158,7 @@ describe('UsersService', () => {
           subject: expect.stringContaining('firma.pl'),
           templateData: expect.objectContaining({ organizationName: 'firma.pl', invitedBy: 'admin@firma.pl' }),
         }),
+        expect.anything(),
       );
     });
   });
@@ -226,6 +231,28 @@ describe('UsersService', () => {
       expect(sendEmail).not.toHaveBeenCalled();
     });
 
+    it('resendInvite jest ZABLOKOWANE (409 INVITE_RESULT_UNKNOWN), gdy zaproszenie z importu ma niepewny wynik wysyłki - mogło dotrzeć', async () => {
+      userFindFirst.mockResolvedValue({ id: 'user-1', email: 'a@test.pl', firstName: 'A', status: 'INVITED' });
+      importRowFindMany.mockResolvedValue([{ inviteStatus: 'UNCERTAIN' }]);
+
+      await expect(service.resendInvite('org-a', 'user-1')).rejects.toMatchObject({ status: 409, response: { code: 'INVITE_RESULT_UNKNOWN' } });
+
+      expect(importRowFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-a', userId: 'user-1' }) }));
+      expect(sendEmail).not.toHaveBeenCalled();
+      expect(issuePasswordResetUrl).not.toHaveBeenCalled();
+    });
+
+    it('resendInvite jest ZABLOKOWANE (409 INVITE_QUEUED) także dla zaproszenia czekającego w kolejce importu albo właśnie wysyłanego - bez duplikatu', async () => {
+      userFindFirst.mockResolvedValue({ id: 'user-1', email: 'a@test.pl', firstName: 'A', status: 'INVITED' });
+      for (const inviteStatus of ['PENDING', 'SENDING']) {
+        importRowFindMany.mockResolvedValue([{ inviteStatus }]);
+
+        await expect(service.resendInvite('org-a', 'user-1')).rejects.toMatchObject({ status: 409, response: { code: 'INVITE_QUEUED' } });
+      }
+      expect(sendEmail).not.toHaveBeenCalled();
+      expect(issuePasswordResetUrl).not.toHaveBeenCalled();
+    });
+
     it('resendInvite wysyła, gdy poprzednie zaproszenie było dawno', async () => {
       userFindFirst.mockResolvedValue({ id: 'user-1', email: 'a@test.pl', firstName: 'A', status: 'INVITED' });
       tokenFindFirst.mockResolvedValue({ createdAt: new Date(Date.now() - 10 * 60_000) });
@@ -262,7 +289,7 @@ describe('UsersService', () => {
       expect(issuePasswordResetUrl).not.toHaveBeenCalled();
       expect(noticeCreate).toHaveBeenCalledTimes(1);
       expect(sendEmail).toHaveBeenCalledTimes(1);
-      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ktos@test.pl', templateName: 'invite-address-taken' }));
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ktos@test.pl', templateName: 'invite-address-taken' }), expect.anything());
     });
 
     it('powiadomienie idzie do dziennika (limit dobowy) także wtedy, gdy skrzynka jest chroniona limitem "jedna wiadomość na 10 minut"', async () => {
@@ -286,7 +313,7 @@ describe('UsersService', () => {
 
       expect(result).toMatchObject({ id: 'user-1', inviteEmailSent: true });
       expect(noticeCreate).not.toHaveBeenCalled();
-      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ templateName: 'user-invite' }));
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ templateName: 'user-invite' }), expect.anything());
     });
 
     it('przejęcie się udało, ale adres zajęto ponownie (wyścig): traktowany jak zajęty (powiadomienie, brak konta)', async () => {

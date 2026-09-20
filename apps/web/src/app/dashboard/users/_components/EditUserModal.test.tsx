@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import EditUserModal from './EditUserModal';
+import { Role, UserStatus } from '@cyberszkolo/shared';
 import type { UserListItem } from '@/lib/users-types';
 
 const departments = [{ id: 'd1', name: 'IT' }];
@@ -10,8 +11,8 @@ const user: UserListItem = {
   email: 'jan@test.pl',
   firstName: 'Jan',
   lastName: 'Kowalski',
-  role: 'EMPLOYEE',
-  status: 'ACTIVE',
+  role: Role.EMPLOYEE,
+  status: UserStatus.ACTIVE,
   department: { id: 'd1', name: 'IT' },
   createdAt: new Date().toISOString(),
 };

@@ -50,7 +50,7 @@ export interface ImportSeats extends SeatUsage {
 export interface ImportProgress {
   accountsCreated: number;
   accountsFailed: number;
-  invites: { pending: number; sending: number; sent: number; failed: number; skipped: number; expired: number };
+  invites: { pending: number; sending: number; sent: number; failed: number; skipped: number; expired: number; uncertain: number };
   /** Ile zaproszeń wysłano z ilu do wysłania (utworzone konta). */
   invitesSent: number;
   invitesTotal: number;
@@ -97,7 +97,7 @@ export interface ImportRowView {
   /** Po potwierdzeniu (wiersze VALID): wynik konta i stan zaproszenia. */
   accountResult?: 'CREATED' | 'FAILED' | null;
   accountReason?: string | null;
-  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | null;
+  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | 'UNCERTAIN' | null;
   inviteReason?: string | null;
 }
 
@@ -130,7 +130,7 @@ const ROW_SELECT = {
 
 const VALIDATION_LABELS: Record<UserImportRowStatus, string> = { VALID: 'Poprawny', EXISTING: 'Konto już istnieje', ERROR: 'Błąd' };
 const ACCOUNT_LABELS = { CREATED: 'Utworzono', FAILED: 'Nie utworzono' } as const;
-const INVITE_LABELS = { PENDING: 'Oczekuje', SENDING: 'Wysyłanie', SENT: 'Wysłano', FAILED: 'Nie wysłano', SKIPPED: 'Pominięto', EXPIRED: 'Wygasło' } as const;
+const INVITE_LABELS = { PENDING: 'Oczekuje', SENDING: 'Wysyłanie', SENT: 'Wysłano', FAILED: 'Nie wysłano', SKIPPED: 'Pominięto', EXPIRED: 'Wygasło', UNCERTAIN: 'Niepewne' } as const;
 
 /**
  * Domyka partię PROCESSING jako COMPLETED, gdy nie ma już zaproszeń oczekujących ani w trakcie wysyłki; od tej chwili raport jest
@@ -487,7 +487,7 @@ export class UserImportService {
     ]);
     const accountCount = (result: 'CREATED' | 'FAILED') => accounts.find((group) => group.accountResult === result)?._count._all ?? 0;
     const inviteCount = (status: string) => invites.find((group) => group.inviteStatus === status)?._count._all ?? 0;
-    const counts = { pending: inviteCount('PENDING'), sending: inviteCount('SENDING'), sent: inviteCount('SENT'), failed: inviteCount('FAILED'), skipped: inviteCount('SKIPPED'), expired: inviteCount('EXPIRED') };
+    const counts = { pending: inviteCount('PENDING'), sending: inviteCount('SENDING'), sent: inviteCount('SENT'), failed: inviteCount('FAILED'), skipped: inviteCount('SKIPPED'), expired: inviteCount('EXPIRED'), uncertain: inviteCount('UNCERTAIN') };
     const remaining = counts.pending + counts.sending;
     const left = dailyRemaining(INVITE_DAILY_LIMIT_PER_ORG, tokens);
     return {

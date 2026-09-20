@@ -1,10 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SendEmailOptions } from './interfaces/send-email-options.interface';
+import { MailOutcome, MailResult, SendEmailOptions } from './interfaces/send-email-options.interface';
 import { renderTemplate } from './templates';
 
 const MAILERSEND_URL = 'https://api.mailersend.com/v1/email';
 const REQUEST_TIMEOUT_MS = 10_000;
+
+// Błędy sieci PRZED wysłaniem żądania (nie ma z kim rozmawiać): wiadomość na pewno nie wyszła.
+const PRE_SEND_ERROR_CODES = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+
+/**
+ * Timeout i zerwane połączenie po wysłaniu żądania => wynik NIEPEWNY (dostawca mógł przyjąć wiadomość), jak TIMEOUT_UNKNOWN /
+ * RESULT_UNKNOWN w wysyłce kampanii; błąd rozwiązywania nazwy albo odmowa połączenia => pewne niepowodzenie.
+ */
+export function classifyFetchError(error: unknown): MailResult {
+  const name = (error as Error | undefined)?.name;
+  if (name === 'TimeoutError' || name === 'AbortError') {
+    return { status: 'UNCERTAIN', code: 'TIMEOUT_UNKNOWN' };
+  }
+  const cause = (error as { cause?: { code?: string } } | undefined)?.cause;
+  if (cause?.code && PRE_SEND_ERROR_CODES.has(cause.code)) {
+    return { status: 'REJECTED', code: 'CONNECTION' };
+  }
+  return { status: 'UNCERTAIN', code: 'RESULT_UNKNOWN' };
+}
 
 @Injectable()
 export class EmailService {
@@ -66,7 +85,14 @@ export class EmailService {
    * e-mail jest krytyczny, ta decyzja (nie ta metoda) powinna to obsłużyć
    * osobno - patrz README.
    */
-  async send(options: SendEmailOptions): Promise<boolean> {
+  async send(options: SendEmailOptions, outcome?: MailOutcome): Promise<boolean> {
+    const result = await this.deliver(options);
+    if (outcome) outcome.result = result;
+    return result.status === 'SENT';
+  }
+
+  /** Klasyfikacja wyniku wysyłki: patrz MailResult. Nigdy nie rzuca. */
+  private async deliver(options: SendEmailOptions): Promise<MailResult> {
     if (!this.token) {
       // Pełne templateData zawiera jednorazowe linki (aktywacja/reset/
       // weryfikacja) - logujemy je tylko w dev/test albo przy jawnym
@@ -75,7 +101,7 @@ export class EmailService {
       this.logger.log(
         `[EMAIL DEV MODE] Do: ${options.to} | Temat: ${options.subject} | Szablon: ${options.templateName}${details}`,
       );
-      return true;
+      return { status: 'SENT' };
     }
 
     const rendered = renderTemplate(options.templateName, options.templateData, {
@@ -83,7 +109,7 @@ export class EmailService {
     });
     if (!rendered) {
       this.logger.error(`Nieznany szablon e-mail: ${options.templateName} (do: ${options.to})`);
-      return false;
+      return { status: 'REJECTED', code: 'TEMPLATE_UNKNOWN' };
     }
 
     try {
@@ -109,15 +135,19 @@ export class EmailService {
         this.logger.error(
           `MailerSend odrzucił e-mail (szablon: ${options.templateName}, do: ${options.to}): HTTP ${response.status} ${this.redactToken(detail).slice(0, 300)}`,
         );
-        return false;
+        // 5xx (i 408 - timeout po stronie bramki) nie dowodzi, że nic nie wyszło: bramka mogła zwrócić 502/504 po przekazaniu
+        // wiadomości; pozostałe 4xx to pewne odrzucenie.
+        return response.status >= 500 || response.status === 408
+          ? { status: 'UNCERTAIN', code: `HTTP_${response.status}` }
+          : { status: 'REJECTED', code: `HTTP_${response.status}` };
       }
-      return true;
+      return { status: 'SENT' };
     } catch (error) {
       this.logger.error(
         `Nie udało się wysłać e-maila (szablon: ${options.templateName}, do: ${options.to}): ${this.extractSafeErrorMessage(error)}`,
       );
       // Świadomie NIE rzucamy dalej - patrz komentarz nad metodą.
-      return false;
+      return classifyFetchError(error);
     }
   }
 

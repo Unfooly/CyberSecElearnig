@@ -25,7 +25,7 @@ function summary(overrides: Partial<ImportSummary> = {}): ImportSummary {
     progress: {
       accountsCreated: 5000,
       accountsFailed: 0,
-      invites: { pending: 4700, sending: 0, sent: 300, failed: 0, skipped: 0, expired: 0 },
+      invites: { pending: 4700, sending: 0, sent: 300, failed: 0, skipped: 0, expired: 0, uncertain: 0 },
       invitesSent: 300,
       invitesTotal: 5000,
       remaining: 4700,
@@ -193,6 +193,16 @@ describe('ImportUsersModal', () => {
 
     expect(await screen.findByText(/Wygasło zaproszeń: 2/)).toBeInTheDocument();
     expect(screen.queryByText(/inn(a|ej) organizacj[ai] (przejęła|przejął)/i)).not.toBeInTheDocument();
+  });
+
+  it('niepewny wynik wysyłki: osobna informacja (nie "nie udało się"), z blokadą ponownej wysyłki; pewne niepowodzenie osobno', async () => {
+    const base = summary();
+    route({ 'GET /api/users/import/latest': () => json(200, { batch: { ...base, progress: { ...base.progress!, invites: { ...base.progress!.invites, uncertain: 3, failed: 1 } } } }) });
+    render(<ImportUsersModal onClose={() => undefined} onChanged={() => undefined} />);
+
+    expect(await screen.findByText(/Wynik wysyłki nieznany dla 3 zaproszeń/)).toBeInTheDocument();
+    expect(screen.getByText(/jest dla nich zablokowany/)).toBeInTheDocument();
+    expect(screen.getByText(/Nie udało się wysłać 1 zaproszeń \(dostawca poczty je odrzucił\)/)).toBeInTheDocument();
   });
 
   it('429 dobowego limitu importu przy potwierdzeniu: komunikat z API, bez przejścia do postępu', async () => {

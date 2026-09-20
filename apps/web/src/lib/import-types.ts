@@ -23,6 +23,9 @@ export interface ImportInviteCounts {
   skipped: number;
   // Zaproszenie wygasło (nieaktywowane 30 dni albo adres przejęty przez organizację ze zweryfikowaną domeną); powód ogólny.
   expired: number;
+  // Wynik wysyłki nieznany (timeout dostawcy, HTTP 5xx, awaria w trakcie): zaproszenie mogło dotrzeć, nie ponawiamy go
+  // ani nie pozwalamy wysłać ponownie ("Wyślij zaproszenie ponownie" jest zablokowane).
+  uncertain: number;
 }
 
 export interface ImportProgress {
@@ -70,7 +73,7 @@ export interface ImportRow {
   reason: string | null;
   accountResult?: 'CREATED' | 'FAILED' | null;
   accountReason?: string | null;
-  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | null;
+  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | 'UNCERTAIN' | null;
   inviteReason?: string | null;
 }
 

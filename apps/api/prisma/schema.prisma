@@ -538,10 +538,15 @@ enum UserImportAccountResult {
 // Stan zaproszenia mailowego utworzonego konta (kolejka z tempem).
 enum UserImportInviteStatus {
   PENDING
-  // Zajęte do wysyłki (at-most-once: zajęcie przerwane awarią jest domykane jako FAILED, nie ponawiane po cichu).
+  // Wysyłka WŁAŚNIE trwa (zajęcie tuż przed wysyłką, at-most-once): zajęcie bez wyniku po awarii procesu jest domykane jako
+  // UNCERTAIN (INTERRUPTED_UNKNOWN), nigdy ponawiane po cichu.
   SENDING
   SENT
+  // PEWNE niepowodzenie (dostawca odrzucił wiadomość albo nie było połączenia): nic nie wyszło.
   FAILED
+  // NIEPEWNY wynik (timeout, HTTP 5xx, zerwane połączenie, przerwanie przez awarię): wiadomość MOGŁA dotrzeć. Jak RESULT_UNKNOWN
+  // w wysyłce kampanii: nie ponawiamy i blokujemy "Wyślij zaproszenie ponownie" dla tego konta.
+  UNCERTAIN
   // Pominięte: konto już aktywne/usunięte albo wysyłka zatrzymana przez administratora.
   SKIPPED
   // Zaproszenie wygasło: konto INVITED nie zostało aktywowane w 30 dni albo adres przejęła organizacja ze zweryfikowaną domeną
@@ -615,7 +620,11 @@ model UserImportRow {
   userId         String?
   inviteStatus   UserImportInviteStatus?
   inviteReason   String?             @db.VarChar(200)
+  // Rezerwacja pojemności przez bieg kolejki (znacznik `now` biegu; wiersz zostaje PENDING) - liczy się do tempa (okno biegu).
   inviteClaimedAt DateTime?
+  // Początek wysyłki TEGO zaproszenia (zajęcie PENDING -> SENDING tuż przed wysyłką). Wiek tego znacznika to czas jednej wysyłki:
+  // zajęcie bez wyniku, starsze niż próg, oznacza awarię procesu (wynik niepewny), a nie wolny bieg.
+  inviteSendingAt DateTime?
   inviteSentAt   DateTime?
   // WEWNĘTRZNE, nigdy w odpowiedziach API, raporcie ani licznikach: adres miał w chwili potwierdzenia konto w INNEJ organizacji, więc
   // konta nie utworzono (userId puste), a kolejka zamiast zaproszenia wyśle właścicielowi adresu informację "ktoś próbował Cię dodać".

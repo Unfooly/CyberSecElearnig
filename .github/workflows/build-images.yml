@@ -54,6 +54,10 @@ jobs:
       - name: Lint web
         run: npm run lint --workspace=apps/web
 
+      # Typy także w plikach testowych (vitest ich nie sprawdza, a `next build` nie obejmuje testów).
+      - name: Typy web (tsc)
+        run: npm run typecheck --workspace=apps/web
+
       - name: Testy web
         run: npm run test --workspace=apps/web
 

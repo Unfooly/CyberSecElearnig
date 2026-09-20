@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { JobsService } from '../../jobs/jobs.service';
+import { MailResult } from '../../email/interfaces/send-email-options.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { AddressClaimService } from '../address-claim.service';
@@ -24,17 +25,48 @@ export interface InviteRunResult {
   failed: number;
 }
 
+type RowOutcome = { status: 'SENT' | 'FAILED' | 'SKIPPED' | 'UNCERTAIN'; reason: string | null };
+interface ClaimedRow {
+  id: string;
+  userId: string | null;
+  email: string;
+  firstName: string;
+  lastName: string;
+  departmentName: string | null;
+  addressTaken: boolean;
+}
+
+const FAILED_REASON = 'Nie udało się wysłać zaproszenia';
+const UNCERTAIN_REASON = 'Wynik wysyłki nieznany - zaproszenie mogło dotrzeć i nie wysyłamy go ponownie';
+
+/**
+ * Wynik wysyłki -> wynik wiersza (ten sam podział co w wysyłce kampanii, docs/phishing-simulations.md): SENT = dostawca przyjął;
+ * REJECTED = PEWNE niepowodzenie (nic nie wyszło) => FAILED; UNCERTAIN (timeout, HTTP 5xx, zerwane połączenie) => UNCERTAIN, bez
+ * ponawiania. Powody nie odsyłają do "Wyślij ponownie" (dla wiersza z zajętym adresem konta nie ma, więc taka wskazówka byłaby sondą).
+ */
+export function rowOutcomeOf(result: MailResult): RowOutcome {
+  if (result.status === 'SENT') return { status: 'SENT', reason: null };
+  if (result.status === 'REJECTED') return { status: 'FAILED', reason: `${FAILED_REASON} (${result.code})` };
+  return { status: 'UNCERTAIN', reason: `${UNCERTAIN_REASON} (${result.code})` };
+}
+
 /**
  * Kolejka zaproszeń z importu CSV, wysyłana Z TEMPEM (decyzja właściciela produktu 2026-09-20): import 5000 osób rozkłada się na
  * kolejne dni w ramach dobowego limitu zaproszeń organizacji (INVITE_DAILY_LIMIT_PER_ORG = 300, wspólny z zaproszeniami ręcznymi -
  * limit anty-spamowy zostaje), a w jednym biegu (co 5 minut) idzie najwyżej INVITE_PER_RUN zaproszeń na organizację.
  *
- * Idempotentne i race-safe: zaproszenia są zajmowane atomowo (PENDING -> SENDING warunkiem w UPDATE), pojemność liczona pod
- * blokadą doradczą organizacji z uwzględnieniem już zajętych, a każdy wiersz ma wynik (SENT/FAILED/SKIPPED). AT-MOST-ONCE: zajęcie
- * starsze niż INVITE_STALE_CLAIM_MS bez wyniku (awaria między zajęciem a wynikiem) jest domykane jako FAILED ze stanem niepewnym -
- * nie ponawiamy po cichu (mail mógł wyjść), administrator użyje "Wyślij zaproszenie ponownie" przy koncie. Konto, które w międzyczasie
- * aktywowano albo usunięto, jest pomijane. Błąd jednego wiersza nie blokuje reszty; logi bez danych osobowych. Dane klienckie czytane
- * przez runInOrgContext (bez furtki omijającej RLS); tabela organizations jest globalna - skan organizacji jak w innych zadaniach.
+ * Wysyłka jednego zaproszenia jak w kampaniach phishingowych, "co najwyżej raz":
+ *  1. REZERWACJA pojemności (pod blokadą doradczą organizacji): wiersze wybrane do biegu dostają tylko znacznik czasu rezerwacji
+ *     (`inviteClaimedAt` = `now` biegu), zostają PENDING - liczą się do tempa, ale nikt jeszcze nie zaczął ich wysyłać;
+ *  2. ZAJĘCIE tuż przed wysyłką KAŻDEGO zaproszenia (atomowe `updateMany` PENDING -> SENDING, `inviteSendingAt` = początek TEJ
+ *     wysyłki): tylko jeden wykonawca dostaje count = 1. Wiek zajęcia to czas jednej wysyłki, nie czas oczekiwania w biegu, więc
+ *     wolny dostawca albo długi bieg nie zamieni żywej wysyłki w "niepewną";
+ *  3. WYSYŁKA poza transakcją, z timeoutem dostawcy; wynik: SENT / FAILED (pewne) / UNCERTAIN (mogło dotrzeć).
+ * Zajęcie bez wyniku starsze niż INVITE_STALE_CLAIM_MS (proces padł w trakcie wysyłki) jest domykane jako UNCERTAIN
+ * (INTERRUPTED_UNKNOWN); rezerwacja bez zajęcia po awarii po prostu wygasa i wiersz wraca do kolejki (nic nie wyszło). Niepewne
+ * zaproszenia blokują "Wyślij zaproszenie ponownie" (UsersService). Konto, które w międzyczasie aktywowano albo usunięto, jest
+ * pomijane. Błąd jednego wiersza nie blokuje reszty; logi bez danych osobowych. Dane klienckie tylko przez runInOrgContext (bez
+ * furtki omijającej RLS); tabela organizations jest globalna - skan organizacji jak w innych zadaniach.
  */
 @Injectable()
 export class UserImportInviteService implements OnModuleInit {
@@ -82,7 +114,7 @@ export class UserImportInviteService implements OnModuleInit {
 
   /** Jeden bieg dla organizacji; zwraca liczbę zaproszeń wysłanych w tym biegu. */
   async processOrganization(organizationId: string, now: Date): Promise<number> {
-    const claim = await this.claim(organizationId, now);
+    const claim = await this.reserve(organizationId, now);
     if (!claim || claim.rows.length === 0) {
       return 0;
     }
@@ -90,29 +122,28 @@ export class UserImportInviteService implements OnModuleInit {
     const context = await this.users.buildInviteContext(organizationId, claim.invitedBy ?? undefined);
     let sent = 0;
     for (const row of claim.rows) {
-      let outcome: { status: 'SENT' | 'FAILED' | 'SKIPPED'; reason: string | null };
+      // ZAJĘCIE tuż przed wysyłką tego zaproszenia; count != 1 = ktoś inny już je wziął albo zatrzymano wysyłkę - nie ruszamy go.
+      const startedAt = new Date();
+      const started = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+        tx.userImportRow.updateMany({
+          where: { id: row.id, organizationId, inviteStatus: 'PENDING' },
+          data: { inviteStatus: 'SENDING', inviteSendingAt: startedAt },
+        }),
+      );
+      if (started.count !== 1) continue;
+
+      let outcome: RowOutcome;
       try {
-        const account = row.userId
-          ? await this.tenantPrisma.runInOrgContext(organizationId, (tx) => tx.user.findFirst({ where: { id: row.userId as string, organizationId }, select: { id: true, email: true, firstName: true, status: true } }))
-          : null;
-        if (row.addressTaken) {
-          outcome = await this.processTakenAddress(organizationId, row, context);
-        } else if (!account || account.status !== 'INVITED') {
-          outcome = { status: 'SKIPPED', reason: 'Konto zostało w międzyczasie aktywowane albo usunięte' };
-        } else if (await this.users.sendInviteEmailSafely(organizationId, account.id, account.email, account.firstName, context)) {
-          outcome = { status: 'SENT', reason: null };
-        } else {
-          outcome = { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
-        }
+        outcome = await this.sendOne(organizationId, row, context);
       } catch (error) {
         this.logger.error(`Zaproszenie z importu nie zostało przetworzone (organizacja ${organizationId}): ${(error as Error).name}`);
-        outcome = { status: 'FAILED', reason: 'Błąd przetwarzania - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+        outcome = { status: 'FAILED', reason: `${FAILED_REASON} (INTERNAL)` };
       }
       if (outcome.status === 'SENT') sent += 1;
       await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-        // Warunek SENDING: wynik zapisujemy tylko dla wiersza, który nadal jest zajęty przez ten bieg.
+        // Warunek SENDING i znacznik TEGO zajęcia: wynik zapisujemy tylko dla wiersza, który nadal jest zajęty przez tę wysyłkę.
         tx.userImportRow.updateMany({
-          where: { id: row.id, organizationId, inviteStatus: 'SENDING' },
+          where: { id: row.id, organizationId, inviteStatus: 'SENDING', inviteSendingAt: startedAt },
           data: { inviteStatus: outcome.status, inviteReason: outcome.reason, inviteSentAt: outcome.status === 'SENT' ? new Date() : null },
         }),
       );
@@ -120,6 +151,19 @@ export class UserImportInviteService implements OnModuleInit {
 
     await this.tenantPrisma.runInOrgContext(organizationId, (tx) => completeBatchIfDone(tx, organizationId, claim.batchId, new Date()));
     return sent;
+  }
+
+  private async sendOne(organizationId: string, row: ClaimedRow, context: { organizationName: string | null; invitedBy: string | null }): Promise<RowOutcome> {
+    if (row.addressTaken) {
+      return this.processTakenAddress(organizationId, row, context);
+    }
+    const account = row.userId
+      ? await this.tenantPrisma.runInOrgContext(organizationId, (tx) => tx.user.findFirst({ where: { id: row.userId as string, organizationId }, select: { id: true, email: true, firstName: true, status: true } }))
+      : null;
+    if (!account || account.status !== 'INVITED') {
+      return { status: 'SKIPPED', reason: 'Konto zostało w międzyczasie aktywowane albo usunięte' };
+    }
+    return rowOutcomeOf(await this.users.sendInviteEmailClassified(organizationId, account.id, account.email, account.firstName, context));
   }
 
   /**
@@ -131,12 +175,11 @@ export class UserImportInviteService implements OnModuleInit {
    */
   private async processTakenAddress(
     organizationId: string,
-    row: { id: string; email: string; firstName: string; lastName: string; departmentName: string | null },
+    row: ClaimedRow,
     context: { organizationName: string | null; invitedBy: string | null },
-  ): Promise<{ status: 'SENT' | 'FAILED' | 'SKIPPED'; reason: string | null }> {
+  ): Promise<RowOutcome> {
     if ((await this.claims.claimForOrganization(organizationId, row.email)) === 'TAKEN') {
-      const sent = await this.users.notifyAddressTaken(organizationId, row.email, context);
-      return sent ? { status: 'SENT', reason: null } : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+      return rowOutcomeOf(await this.users.notifyAddressTaken(organizationId, row.email, context));
     }
 
     const placeholderHash = await bcrypt.hash(randomBytes(32).toString('hex'), 4);
@@ -156,60 +199,72 @@ export class UserImportInviteService implements OnModuleInit {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         // Adres zajęty ponownie (wyścig): zachowujemy się jak dla zajętego.
-        const sent = await this.users.notifyAddressTaken(organizationId, row.email, context);
-        return sent ? { status: 'SENT', reason: null } : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+        return rowOutcomeOf(await this.users.notifyAddressTaken(organizationId, row.email, context));
       }
       throw error;
     }
     if (!account) {
-      return { status: 'FAILED', reason: 'Nie udało się utworzyć konta - brak wolnych licencji' };
+      // Powód ogólny (jak każda awaria po naszej stronie): konkretny ("brak licencji") byłby możliwy tylko dla adresu, który przy
+      // potwierdzeniu był zajęty, więc zdradzałby, że taki adres miał konto w innej organizacji.
+      return { status: 'FAILED', reason: `${FAILED_REASON} (INTERNAL)` };
     }
-    return (await this.users.sendInviteEmailSafely(organizationId, account.id, account.email, account.firstName, context))
-      ? { status: 'SENT', reason: null }
-      : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+    return rowOutcomeOf(await this.users.sendInviteEmailClassified(organizationId, account.id, account.email, account.firstName, context));
   }
 
-  private claim(organizationId: string, now: Date) {
+  private reserve(organizationId: string, now: Date) {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-      // Serializacja biegów (kilka instancji API): pojemność i zajęcie wierszy w jednej, wyłącznej sekcji organizacji.
+      // Serializacja biegów (kilka instancji API): pojemność i rezerwacja wierszy w jednej, wyłącznej sekcji organizacji.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`import-invites:${organizationId}`}))`;
       const batch = await tx.userImportBatch.findFirst({ where: { organizationId, status: 'PROCESSING' }, orderBy: { confirmedAt: 'asc' }, select: { id: true, confirmedByEmail: true } });
       if (!batch) {
         return null;
       }
-      // Awaria między zajęciem a wynikiem: stan niepewny (mail mógł wyjść) - domykamy jako FAILED, nie ponawiamy po cichu.
+      // Proces padł w trakcie wysyłki (zajęcie starsze niż INVITE_STALE_CLAIM_MS, znacznik jest z początku TEJ wysyłki, a nie z
+      // rezerwacji): mail mógł wyjść - wynik niepewny, nie ponawiamy po cichu.
       await tx.userImportRow.updateMany({
-        where: { organizationId, batchId: batch.id, inviteStatus: 'SENDING', inviteClaimedAt: { lt: new Date(now.getTime() - INVITE_STALE_CLAIM_MS) } },
-        data: { inviteStatus: 'FAILED', inviteReason: 'Wysyłka przerwana - stan niepewny. Użyj "Wyślij zaproszenie ponownie" przy koncie' },
+        where: {
+          organizationId,
+          batchId: batch.id,
+          inviteStatus: 'SENDING',
+          // Obrona w głąb: SENDING bez znacznika początku wysyłki (nie powinno się zdarzyć po backfillu migracji) liczymy od rezerwacji,
+          // żeby taki wiersz nie wisiał w nieskończoność i nie blokował pojemności ani domknięcia partii.
+          OR: [
+            { inviteSendingAt: { lt: new Date(now.getTime() - INVITE_STALE_CLAIM_MS) } },
+            { inviteSendingAt: null, inviteClaimedAt: { lt: new Date(now.getTime() - INVITE_STALE_CLAIM_MS) } },
+            { inviteSendingAt: null, inviteClaimedAt: null },
+          ],
+        },
+        data: { inviteStatus: 'UNCERTAIN', inviteReason: `${UNCERTAIN_REASON} (INTERRUPTED_UNKNOWN)` },
       });
       if (await completeBatchIfDone(tx, organizationId, batch.id, now)) {
-        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] };
+        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] as ClaimedRow[] };
       }
+      const windowStart = new Date(now.getTime() - INVITE_RUN_INTERVAL_MINUTES * 60_000);
       const [tokens, inFlight, claimedRecently] = await Promise.all([
         // Ruch zaproszeń = tokeny + powiadomienia "ktoś próbował Cię dodać" (jeden dobowy limit).
         countInviteTraffic(tx, organizationId, new Date(now.getTime() - DAY_MS)),
         tx.userImportRow.count({ where: { organizationId, batchId: batch.id, inviteStatus: 'SENDING' } }),
-        // Tempo: zaproszenia zajęte w oknie jednego biegu (ściśle później niż now - interwał) liczą się do tempa tego biegu.
-        tx.userImportRow.count({ where: { organizationId, batchId: batch.id, inviteClaimedAt: { gt: new Date(now.getTime() - INVITE_RUN_INTERVAL_MINUTES * 60_000) } } }),
+        // Tempo: zaproszenia zarezerwowane/zajęte w oknie jednego biegu (ściśle później niż now - interwał) liczą się do tempa tego biegu.
+        tx.userImportRow.count({ where: { organizationId, batchId: batch.id, inviteClaimedAt: { gt: windowStart } } }),
       ]);
       const capacity = inviteCapacity(INVITE_DAILY_LIMIT_PER_ORG, tokens, inFlight, claimedRecently);
       if (capacity === 0) {
-        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] };
+        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] as ClaimedRow[] };
       }
-      const pending = await tx.userImportRow.findMany({
-        where: { organizationId, batchId: batch.id, inviteStatus: 'PENDING' },
+      const pending: ClaimedRow[] = await tx.userImportRow.findMany({
+        // Wiersze niedawno zarezerwowane przez inny bieg (okno tempa) pomijamy; rezerwacja, która wygasła (awaria przed zajęciem), wraca do kolejki.
+        where: { organizationId, batchId: batch.id, inviteStatus: 'PENDING', OR: [{ inviteClaimedAt: null }, { inviteClaimedAt: { lte: windowStart } }] },
         orderBy: { line: 'asc' },
         take: capacity,
         select: { id: true, userId: true, email: true, firstName: true, lastName: true, departmentName: true, addressTaken: true },
       });
       if (pending.length === 0) {
-        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] };
+        return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] as ClaimedRow[] };
       }
-      const claimed = await tx.userImportRow.updateMany({
-        where: { id: { in: pending.map((row) => row.id) }, organizationId, inviteStatus: 'PENDING' },
-        data: { inviteStatus: 'SENDING', inviteClaimedAt: now },
-      });
-      return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: claimed.count === pending.length ? pending : [] };
+      // Rezerwacja = sam znacznik czasu; status zostaje PENDING do chwili zajęcia tuż przed wysyłką (zatrzymanie importu nadal
+      // pomija niewysłane wiersze, a awaria po rezerwacji niczego nie zostawia "w trakcie").
+      await tx.userImportRow.updateMany({ where: { id: { in: pending.map((row) => row.id) }, organizationId, inviteStatus: 'PENDING' }, data: { inviteClaimedAt: now } });
+      return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: pending };
     });
   }
 }

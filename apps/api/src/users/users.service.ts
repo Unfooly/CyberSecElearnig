@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -13,6 +14,7 @@ import { Role, UserStatus } from '@cyberszkolo/shared';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EmailService } from '../email/email.service';
+import { MailOutcome, MailResult } from '../email/interfaces/send-email-options.interface';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersListResponseDto } from './dto/users-list-response.dto';
 import { DepartmentOptionDto } from './dto/department-option.dto';
@@ -61,6 +63,15 @@ interface InviteContext {
 }
 
 type SelectedUser = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;
+
+/**
+ * Wynik wysyłki dla wołającego: klasyfikacja z EmailService, a gdy jej brak (np. atrapa w testach), jawne `false` to pewne
+ * niepowodzenie nieznanego rodzaju, a wszystko inne (true/undefined) to wysłano.
+ */
+function classifyMail(accepted: boolean | undefined, outcome: MailOutcome): MailResult {
+  if (outcome.result) return outcome.result;
+  return accepted === false ? { status: 'REJECTED', code: 'UNKNOWN' } : { status: 'SENT' };
+}
 
 /** Identyfikator w kształcie cuid (jak prawdziwe id kont), żeby odpowiedź dla zajętego adresu nie różniła się od odpowiedzi dla nowego. */
 function lookalikeUserId(): string {
@@ -255,22 +266,26 @@ export class UsersService {
    * rejestracji (ochrona skrzynki właściciela przed zalewem). Nigdy nie rzuca; false = mail nie wyszedł (nikt tego nie widzi).
    * Publiczne dla kolejki zaproszeń z importu.
    */
-  async notifyAddressTaken(organizationId: string, email: string, context: InviteContext): Promise<boolean> {
+  async notifyAddressTaken(organizationId: string, email: string, context: InviteContext): Promise<MailResult> {
     try {
       await this.tenantPrisma.runInOrgContext(organizationId, (tx) => tx.inviteNotice.create({ data: { organizationId } }));
       if (!(await this.mailLimiter.tryAcquire(email))) {
-        return true;
+        return { status: 'SENT' }; // pominięte po cichu (ochrona skrzynki) - dla wołającego wygląda jak zwykła wysyłka
       }
-      const accepted = await this.emailService.send({
-        to: email,
-        subject: context.organizationName ? `Ktoś próbował dodać Cię do organizacji ${context.organizationName}` : 'Ktoś próbował dodać Cię do organizacji',
-        templateName: 'invite-address-taken',
-        templateData: { organizationName: context.organizationName },
-      });
-      return accepted !== false;
+      const outcome: MailOutcome = {};
+      const accepted = await this.emailService.send(
+        {
+          to: email,
+          subject: context.organizationName ? `Ktoś próbował dodać Cię do organizacji ${context.organizationName}` : 'Ktoś próbował dodać Cię do organizacji',
+          templateName: 'invite-address-taken',
+          templateData: { organizationName: context.organizationName },
+        },
+        outcome,
+      );
+      return classifyMail(accepted, outcome);
     } catch (error) {
       this.logger.error(`Nie udało się wysłać powiadomienia o próbie dodania: ${(error as Error).name}`);
-      return false;
+      return { status: 'REJECTED', code: 'INTERNAL' };
     }
   }
 
@@ -295,6 +310,7 @@ export class UsersService {
     }
 
     await this.assertResendAllowed(organizationId, target.id);
+    await this.assertInviteResultKnown(organizationId, target.id);
     const context = await this.buildInviteContext(organizationId, invitedBy);
     const inviteEmailSent = await this.sendInviteEmailSafely(
       organizationId,
@@ -412,6 +428,35 @@ export class UsersService {
     }
   }
 
+  /**
+   * Zaproszenie z importu o NIEPEWNYM wyniku (timeout, HTTP 5xx, zerwane połączenie, awaria po zajęciu) mogło dotrzeć: ponowna wysyłka
+   * dałaby duplikat i unieważniła link, który osoba już ma, więc jest zablokowana (jak brak ponawiania RESULT_UNKNOWN w wysyłce
+   * kampanii). Konto nieaktywowane wygasa po 30 dniach; administrator może je też usunąć i dodać ponownie.
+   */
+  private async assertInviteResultKnown(organizationId: string, userId: string): Promise<void> {
+    const rows = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.userImportRow.findMany({
+        where: { organizationId, userId, inviteStatus: { in: ['PENDING', 'SENDING', 'UNCERTAIN'] } },
+        select: { inviteStatus: true },
+        take: 10,
+      }),
+    );
+    if (rows.some((row) => row.inviteStatus === 'UNCERTAIN')) {
+      throw new ConflictException({
+        code: 'INVITE_RESULT_UNKNOWN',
+        message: 'Nie znamy wyniku wysyłki zaproszenia do tej osoby (mogło dotrzeć), więc nie wysyłamy go ponownie. Poproś ją o sprawdzenie skrzynki albo usuń konto i dodaj je ponownie.',
+      });
+    }
+    // Zaproszenie czeka w kolejce importu albo właśnie jest wysyłane: ręczna wysyłka dałaby duplikat poza mechanizmem "co najwyżej raz"
+    // (kolejny token unieważniłby link z pierwszej wiadomości).
+    if (rows.length > 0) {
+      throw new ConflictException({
+        code: 'INVITE_QUEUED',
+        message: 'Zaproszenie dla tej osoby czeka w kolejce importu albo właśnie jest wysyłane - wyślemy je automatycznie. Możesz zatrzymać wysyłkę importu, jeśli chcesz zaprosić ją ręcznie.',
+      });
+    }
+  }
+
   private async assertResendAllowed(organizationId: string, userId: string): Promise<void> {
     const latest = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.passwordResetToken.findFirst({
@@ -476,7 +521,7 @@ export class UsersService {
   // Konto już istnieje w bazie - awaria wystawienia tokenu/wysyłki nie może
   // zamienić udanego zapisu w 500 (klient ponowiłby i dostał "adres
   // niedostępny"). Logujemy i idziemy dalej; brak wysyłki widać w logach.
-  /** Wysyła zaproszenie (nigdy nie rzuca; false = mail nie wyszedł). Publiczne dla kolejki zaproszeń z importu. */
+  /** Wysyła zaproszenie (nigdy nie rzuca; false = mail nie wyszedł albo wynik niepewny). */
   async sendInviteEmailSafely(
     organizationId: string,
     userId: string,
@@ -484,13 +529,27 @@ export class UsersService {
     firstName: string | null,
     context: InviteContext,
   ): Promise<boolean> {
+    return (await this.sendInviteEmailClassified(organizationId, userId, email, firstName, context)).status === 'SENT';
+  }
+
+  /**
+   * Wysyła zaproszenie i zwraca SKLASYFIKOWANY wynik (wysłano / pewne niepowodzenie / niepewne - jak w wysyłce kampanii). Nigdy nie
+   * rzuca: awaria wystawienia tokenu to pewne niepowodzenie (mail nie został nawet zbudowany). Publiczne dla kolejki zaproszeń z importu.
+   */
+  async sendInviteEmailClassified(
+    organizationId: string,
+    userId: string,
+    email: string,
+    firstName: string | null,
+    context: InviteContext,
+  ): Promise<MailResult> {
     try {
       return await this.sendInviteEmail(organizationId, userId, email, firstName, context);
     } catch (error) {
       this.logger.error(
         `Konto ${userId} utworzone, ale nie udało się wysłać zaproszenia: ${(error as Error).name}`,
       );
-      return false;
+      return { status: 'REJECTED', code: 'TOKEN' };
     }
   }
 
@@ -516,23 +575,26 @@ export class UsersService {
     email: string,
     firstName: string | null,
     context: InviteContext,
-  ): Promise<boolean> {
+  ): Promise<MailResult> {
     const activationUrl = await this.authService.issuePasswordResetUrl(organizationId, userId);
-    const accepted = await this.emailService.send({
-      to: email,
-      subject: context.organizationName
-        ? `Dodano Cię do organizacji ${context.organizationName}`
-        : 'Zaproszenie do Unfooly',
-      templateName: 'user-invite',
-      templateData: {
-        activationUrl,
-        firstName,
-        organizationName: context.organizationName,
-        invitedBy: context.invitedBy,
+    const outcome: MailOutcome = {};
+    const accepted = await this.emailService.send(
+      {
+        to: email,
+        subject: context.organizationName
+          ? `Dodano Cię do organizacji ${context.organizationName}`
+          : 'Zaproszenie do Unfooly',
+        templateName: 'user-invite',
+        templateData: {
+          activationUrl,
+          firstName,
+          organizationName: context.organizationName,
+          invitedBy: context.invitedBy,
+        },
       },
-    });
-    // Tylko jawne false = błąd (testowe mocki zwracają undefined).
-    return accepted !== false;
+      outcome,
+    );
+    return classifyMail(accepted, outcome);
   }
 
   private assertValidAvatar(avatarUrl: string): void {

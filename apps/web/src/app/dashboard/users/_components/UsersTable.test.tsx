@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import UsersTable from './UsersTable';
+import { Role, UserStatus } from '@cyberszkolo/shared';
 import type { UserListItem } from '@/lib/users-types';
 
 const users: UserListItem[] = [
@@ -9,8 +10,8 @@ const users: UserListItem[] = [
     email: 'jan@test.pl',
     firstName: 'Jan',
     lastName: 'Kowalski',
-    role: 'EMPLOYEE',
-    status: 'ACTIVE',
+    role: Role.EMPLOYEE,
+    status: UserStatus.ACTIVE,
     department: { id: 'd1', name: 'IT' },
     createdAt: new Date().toISOString(),
   },
@@ -19,8 +20,8 @@ const users: UserListItem[] = [
     email: 'anna@test.pl',
     firstName: 'Anna',
     lastName: 'Nowak',
-    role: 'ORG_ADMIN',
-    status: 'INVITED',
+    role: Role.ORG_ADMIN,
+    status: UserStatus.INVITED,
     department: null,
     createdAt: new Date().toISOString(),
   },

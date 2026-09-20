@@ -295,7 +295,7 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
   // ---- limit importu nowych kont na dobę ----------------------------------------------------------------------------
 
   describe('limit importu nowych kont na dobę (2 x seatsLimit)', () => {
-    async function seedHistory(org: Org, count: number) {
+    async function seedHistory(org: Org, count: number, ageMs = 0) {
       const batch = await owner.userImportBatch.create({
         data: {
           organizationId: org.organizationId,
@@ -309,8 +309,8 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
           skippedEmpty: 0,
           ignoredColumns: [],
           expiresAt: new Date(Date.now() + DAY),
-          confirmedAt: new Date(),
-          completedAt: new Date(),
+          confirmedAt: new Date(Date.now() - ageMs),
+          completedAt: new Date(Date.now() - ageMs),
         },
       });
       await owner.userImportRow.createMany({
@@ -348,6 +348,30 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       await owner.userImportBatch.updateMany({ where: { organizationId: orgA.organizationId, status: 'COMPLETED' }, data: { confirmedAt: new Date(Date.now() - 25 * 3_600_000) } });
       clearThrottle();
       await request(app.getHttpServer()).post(`/users/import/${preview.body.id}/confirm`).set('Authorization', `Bearer ${orgA.adminToken}`).expect(200);
+    });
+
+    it('GRANICE: dokładnie do limitu przechodzi (limit - 1 w historii + 1), o jeden ponad nie; wiersze sprzed 23 h nadal się liczą', async () => {
+      await prisma.organization.update({ where: { id: orgA.organizationId }, data: { seatsLimit: 6 } });
+      const limit = IMPORT_DAILY_ACCOUNTS_FACTOR * 6;
+      const previewOf = async (address: string) => {
+        clearThrottle();
+        const preview = await request(app.getHttpServer())
+          .post('/users/import/preview')
+          .set('Authorization', `Bearer ${orgA.adminToken}`)
+          .attach('file', Buffer.from(csvOf([address]), 'utf-8'), { filename: 'lista.csv', contentType: 'text/csv' })
+          .expect(201);
+        clearThrottle();
+        return preview.body.id as string;
+      };
+      const confirmOf = (id: string) => request(app.getHttpServer()).post(`/users/import/${id}/confirm`).set('Authorization', `Bearer ${orgA.adminToken}`);
+
+      await seedHistory(orgA, limit, 23 * 3_600_000); // limit wykorzystany 23 h temu: nadal w oknie 24 h
+      const over = await previewOf(inDomain(`gr.${domainSuffix}`, 'ponad'));
+      await confirmOf(over).expect(429);
+
+      await owner.userImportBatch.deleteMany({ where: { organizationId: orgA.organizationId, status: 'COMPLETED' } });
+      await seedHistory(orgA, limit - 1, 23 * 3_600_000);
+      await confirmOf(over).expect(200); // limit - 1 + 1 = limit: mieści się dokładnie
     });
 
     it('izolacja: historia importów organizacji A nie zużywa limitu organizacji B', async () => {

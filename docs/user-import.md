@@ -102,10 +102,29 @@ utworzenia; wiersze importu dostają status „Wygasło”.
 Zaproszenia NIE idą w jednej serii: job `user-import-invites` (co 5 min, UTC) wysyła je partiami. Tempo (`invite-pace.ts`): najwyżej
 **20 na bieg** (okno `claimedRecently` chroni przed równoległymi biegami) i w granicach **dobowego limitu 300 na organizację**
 (`INVITE_DAILY_LIMIT_PER_ORG`, wspólnego z zaproszeniami ręcznymi; liczonego z tokenów zaproszeń i powiadomień „ktoś próbował Cię dodać” z ostatnich 24 h). Limit 300 zostaje limitem
-antyspamowym - import 5000 osób rozkłada się na kolejne doby. Wiersz zaproszenia: `PENDING` → `SENDING` → `SENT`/`FAILED`/`SKIPPED`;
-zajęcie wiersza jest atomowe (at-most-once): zaproszenie zostające w `SENDING` po przerwaniu procesu (starsze niż
-`INVITE_STALE_CLAIM_MS`) jest domykane jako `FAILED` ze stanem niepewnym (admin użyje „Wyślij zaproszenie ponownie” przy koncie),
-zamiast ryzykować duplikat maila. Konto aktywowane albo usunięte w międzyczasie = `SKIPPED`. Dane zadania to same identyfikatory.
+antyspamowym - import 5000 osób rozkłada się na kolejne doby.
+
+**Wysyłka jednego zaproszenia jest „co najwyżej raz”, tak samo jak w kampaniach phishingowych** (`docs/phishing-simulations.md`):
+
+1. **Rezerwacja pojemności** (pod blokadą doradczą organizacji): wiersze wybrane do biegu dostają tylko znacznik `inviteClaimedAt`
+   (= `now` biegu) i zostają `PENDING` - liczą się do tempa, ale nikt nie zaczął ich wysyłać. Rezerwacja po awarii po prostu wygasa,
+   a wiersz wraca do kolejki (nic nie wyszło).
+2. **Zajęcie tuż przed wysyłką KAŻDEGO zaproszenia**: atomowe `updateMany` `PENDING` → `SENDING` z `inviteSendingAt` = początek TEJ
+   wysyłki; tylko jeden wykonawca dostaje `count = 1`. Wiek zajęcia to czas jednej wysyłki, nie czas oczekiwania w biegu - wolny
+   dostawca ani długi bieg nie zamieniają żywej wysyłki w „niepewną”. **Nie ma progu „10 minut = niepewne” dla żywych wysyłek.**
+3. **Wynik** (ten sam podział co `PhishingMailTransport`): `SENT` (dostawca przyjął), `FAILED` (PEWNE niepowodzenie: HTTP 4xx, brak
+   połączenia z dostawcą, awaria wystawienia tokenu; nic nie wyszło) albo `UNCERTAIN` (**timeout dostawcy** `TIMEOUT_UNKNOWN`,
+   HTTP 5xx i 408, zerwane połączenie `RESULT_UNKNOWN`: wiadomość mogła dotrzeć). Klasyfikuje `EmailService.send(options, outcome)`. Konto aktywowane albo usunięte w międzyczasie = `SKIPPED`.
+4. **Niepewne nie są ponawiane**, mają osobny licznik i status „Niepewne” w raporcie, a **„Wyślij zaproszenie ponownie” jest dla nich
+   zablokowane** (`409 INVITE_RESULT_UNKNOWN`) - ponowna wysyłka dałaby duplikat i unieważniła link, który osoba już ma. Konto
+   nieaktywowane i tak wygasa po 30 dniach; administrator może też usunąć konto i dodać je ponownie. Ta sama blokada (`409
+   INVITE_QUEUED`) obejmuje zaproszenie, które czeka w kolejce importu albo właśnie jest wysyłane (ręczna wysyłka dałaby duplikat
+   poza mechanizmem „co najwyżej raz”); po zatrzymaniu wysyłki importu wiersze są pomijane i ręczna wysyłka jest znów możliwa.
+5. **Awaria procesu w trakcie wysyłki** (`SENDING` starsze niż `INVITE_STALE_CLAIM_MS` = 10 min, liczone od początku tej wysyłki, a
+   wysyłka ma timeout dostawcy 10 s) jest domykana przy następnym biegu jako `UNCERTAIN` (`INTERRUPTED_UNKNOWN`) - jak zajęcia bez wyniku w kampaniach.
+
+Powody wierszy nie odsyłają do „Wyślij ponownie” (dla wiersza z zajętym adresem konta nie ma, więc taka wskazówka byłaby sondą). Dane
+zadania to same identyfikatory.
 
 ## Postęp, zatrzymanie i raport
 
@@ -126,6 +145,6 @@ e-maila (`createdByEmail`, `confirmedByEmail`) przeżywa usunięcie konta, `crea
 
 ## Znane ograniczenia
 
-- Szacowana data zakończenia jest przybliżeniem (patrz wyżej); zaproszenia o niepewnym wyniku wysyłki kończą jako `FAILED`, nie są
-  ponawiane automatycznie.
+- Szacowana data zakończenia jest przybliżeniem (patrz wyżej); zaproszenia o niepewnym wyniku wysyłki (`UNCERTAIN`) nie są
+  ponawiane automatycznie ani ręcznie.
 - Numer wiersza w raporcie liczy rekordy CSV, nie linie fizyczne (patrz uwaga przy podglądzie).

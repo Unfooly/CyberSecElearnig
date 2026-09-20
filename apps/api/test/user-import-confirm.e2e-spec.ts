@@ -261,7 +261,7 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
       const rows = await rowsOf(orgA, preview.body.id);
       expect(rows.map((r) => r.inviteStatus)).toEqual(['SENT', 'SENT', 'SENT']);
       expect(rows.map((r) => r.inviteReason)).toEqual([null, null, null]);
-      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: foreign, templateName: 'invite-address-taken' }));
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: foreign, templateName: 'invite-address-taken' }), expect.anything());
       expect(invites().map((i) => i.to)).not.toContain(foreign); // właściciel nie dostaje linku aktywacyjnego do cudzej organizacji
       expect(invites()).toHaveLength(2);
       // Wewnętrzny znacznik nie wycieka: ani w API (wiersze), ani w raporcie CSV.
@@ -401,9 +401,9 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
       expect(new Set(invites().map((mail) => mail.to)).size).toBe(invites().length);
     });
 
-    it('awaria wysyłki: wiersze FAILED z powodem, BEZ ponawiania po cichu (at-most-once), partia się domyka', async () => {
+    it('PEWNE niepowodzenie wysyłki (dostawca odrzucił): wiersze FAILED, BEZ ponawiania po cichu (at-most-once), partia się domyka; powód nie odsyła do "Wyślij ponownie"', async () => {
       const id = await importPeople(orgA, people(3));
-      sendSpy.mockResolvedValue(false);
+      sendSpy.mockResolvedValue(false); // atrapa bez klasyfikacji: jawne false = pewne niepowodzenie
 
       await inviter.processOrganization(orgA.organizationId, T0);
       sendSpy.mockResolvedValue(true);
@@ -411,20 +411,132 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
       await inviter.processOrganization(orgA.organizationId, at(5 * 60_000));
 
       const rows = await rowsOf(orgA, id);
-      expect(rows.every((r) => r.inviteStatus === 'FAILED' && (r.inviteReason ?? '').includes('Wyślij zaproszenie ponownie'))).toBe(true);
+      expect(rows.every((r) => r.inviteStatus === 'FAILED' && (r.inviteReason ?? '').startsWith('Nie udało się wysłać zaproszenia'))).toBe(true);
+      expect(rows.some((r) => /ponownie/i.test(r.inviteReason ?? ''))).toBe(false);
       expect(invites()).toHaveLength(0); // drugi bieg niczego nie ponowił
       expect((await batchRow(orgA, id)).status).toBe('COMPLETED');
     });
 
-    it('zajęcie przerwane awarią (SENDING starsze niż 10 min): domknięte jako FAILED "stan niepewny", nie wysyłane ponownie', async () => {
+    it('NIEPEWNY wynik (timeout dostawcy, HTTP 5xx): status UNCERTAIN z kodem, osobny licznik, bez ponawiania; sukces = SENT; partia się domyka', async () => {
       const id = await importPeople(orgA, people(3));
+      const codes = ['TIMEOUT_UNKNOWN', 'HTTP_502'];
+      sendSpy.mockImplementation(async (_options: unknown, outcome?: { result?: unknown }) => {
+        const code = codes.shift();
+        if (!code) return true; // trzecie zaproszenie: sukces
+        if (outcome) outcome.result = { status: 'UNCERTAIN', code };
+        return false;
+      });
+
+      await inviter.processOrganization(orgA.organizationId, T0);
+      sendSpy.mockClear();
+      await inviter.processOrganization(orgA.organizationId, at(5 * 60_000));
+
       const rows = await rowsOf(orgA, id);
-      await owner.userImportRow.updateMany({ where: { id: { in: rows.slice(0, 2).map((r) => r.id) } }, data: { inviteStatus: 'SENDING', inviteClaimedAt: at(-20 * 60_000) } });
+      expect(rows.map((r) => r.inviteStatus)).toEqual(['UNCERTAIN', 'UNCERTAIN', 'SENT']);
+      expect(rows[0].inviteReason).toContain('TIMEOUT_UNKNOWN');
+      expect(rows[1].inviteReason).toContain('HTTP_502');
+      expect(rows[0].inviteSentAt).toBeNull();
+      expect(sendSpy).not.toHaveBeenCalled(); // niepewne nie są ponawiane
+      const summary = await get(orgA.adminToken, `/users/import/${id}`).expect(200);
+      expect(summary.body.progress.invites).toMatchObject({ uncertain: 2, sent: 1, failed: 0 });
+      expect(summary.body.status).toBe('COMPLETED');
+      const report = await get(orgA.adminToken, `/users/import/${id}/report.csv`).expect(200);
+      expect(report.text).toContain('Niepewne');
+
+      // "Wyślij zaproszenie ponownie" jest ZABLOKOWANE dla niepewnego (mogło dotrzeć), dozwolone dla wysłanego po cooldownie.
+      await owner.passwordResetToken.deleteMany({ where: { organizationId: orgA.organizationId } });
+      clearThrottle();
+      const blocked = await post(orgA.adminToken, `/users/${rows[0].userId}/resend-invite`).expect(409);
+      expect(blocked.body.code).toBe('INVITE_RESULT_UNKNOWN');
+      clearThrottle();
+      await post(orgA.adminToken, `/users/${rows[2].userId}/resend-invite`).expect(200);
+    });
+
+    it('"Wyślij zaproszenie ponownie" jest zablokowane (409 INVITE_QUEUED) dla zaproszenia czekającego w kolejce importu; po zatrzymaniu wysyłki (SKIPPED) wolno', async () => {
+      const id = await importPeople(orgA, people(2));
+      const [row] = await rowsOf(orgA, id);
+      clearThrottle();
+
+      const queued = await post(orgA.adminToken, `/users/${row.userId}/resend-invite`).expect(409);
+
+      expect(queued.body.code).toBe('INVITE_QUEUED');
+      expect(sendSpy).not.toHaveBeenCalled();
+      clearThrottle();
+      await post(orgA.adminToken, `/users/import/${id}/stop`).expect(200);
+      await owner.passwordResetToken.deleteMany({ where: { organizationId: orgA.organizationId } });
+      clearThrottle();
+      await post(orgA.adminToken, `/users/${row.userId}/resend-invite`).expect(200);
+    });
+
+    it('zajęcie sprzed wprowadzenia znacznika początku wysyłki (SENDING bez inviteSendingAt) nie wisi w nieskończoność: domykane jako niepewne', async () => {
+      const id = await importPeople(orgA, people(2));
+      const rows = await rowsOf(orgA, id);
+      await owner.userImportRow.update({ where: { id: rows[0].id }, data: { inviteStatus: 'SENDING', inviteClaimedAt: at(-30 * 60_000), inviteSendingAt: null } });
 
       await inviter.processOrganization(orgA.organizationId, T0);
 
       const after = await rowsOf(orgA, id);
-      expect(after.slice(0, 2).map((r) => [r.inviteStatus, r.inviteReason])).toEqual([['FAILED', expect.stringContaining('stan niepewny')], ['FAILED', expect.stringContaining('stan niepewny')]]);
+      expect(after[0].inviteStatus).toBe('UNCERTAIN');
+      expect(after[1].inviteStatus).toBe('SENT');
+      expect((await batchRow(orgA, id)).status).toBe('COMPLETED');
+    });
+
+    it('ZAJĘCIE tuż przed wysyłką każdego zaproszenia: w trakcie biegu tylko wysyłane teraz jest SENDING, reszta zarezerwowana czeka jako PENDING', async () => {
+      const id = await importPeople(orgA, people(5));
+      let release!: () => void;
+      const gate = new Promise<boolean>((resolve) => {
+        release = () => resolve(true);
+      });
+      sendSpy.mockImplementationOnce(() => gate);
+
+      const run = inviter.processOrganization(orgA.organizationId, T0);
+      for (let i = 0; i < 200 && sendSpy.mock.calls.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 25));
+      const mid = await rowsOf(orgA, id);
+
+      expect(mid.map((r) => r.inviteStatus)).toEqual(['SENDING', 'PENDING', 'PENDING', 'PENDING', 'PENDING']);
+      expect(mid[0].inviteSendingAt).toBeInstanceOf(Date);
+      expect(mid.slice(1).every((r) => r.inviteSendingAt === null && r.inviteClaimedAt !== null)).toBe(true); // zarezerwowane, nie zajęte
+      release();
+      await run;
+      expect((await rowsOf(orgA, id)).every((r) => r.inviteStatus === 'SENT')).toBe(true);
+    });
+
+    it('DŁUGI bieg nie robi z żywej wysyłki "niepewnej": zajęcie liczy się od początku TEJ wysyłki, nie od rezerwacji biegu sprzed godzin', async () => {
+      const id = await importPeople(orgA, people(2));
+      const rows = await rowsOf(orgA, id);
+      // Rezerwacja sprzed 3 h (bardzo długi bieg), ale wysyłka tego zaproszenia zaczęła się przed chwilą.
+      await owner.userImportRow.update({ where: { id: rows[0].id }, data: { inviteStatus: 'SENDING', inviteClaimedAt: at(-3 * HOUR), inviteSendingAt: at(-5_000) } });
+
+      await inviter.processOrganization(orgA.organizationId, T0);
+
+      const after = await rowsOf(orgA, id);
+      expect(after[0].inviteStatus).toBe('SENDING'); // nietknięte: żywa wysyłka
+      expect(after[1].inviteStatus).toBe('SENT');
+    });
+
+    it('rezerwacja bez zajęcia po awarii wygasa, a wiersz wraca do kolejki (nic nie wyszło, więc bez "niepewnego")', async () => {
+      const id = await importPeople(orgA, people(2));
+      const rows = await rowsOf(orgA, id);
+      await owner.userImportRow.updateMany({ where: { id: { in: rows.map((r) => r.id) } }, data: { inviteClaimedAt: at(-20 * 60_000) } }); // PENDING ze starą rezerwacją
+
+      await inviter.processOrganization(orgA.organizationId, T0);
+
+      expect((await rowsOf(orgA, id)).map((r) => r.inviteStatus)).toEqual(['SENT', 'SENT']);
+      expect(invites()).toHaveLength(2);
+    });
+
+    it('zajęcie przerwane awarią (SENDING od ponad 10 min): domknięte jako UNCERTAIN (INTERRUPTED_UNKNOWN), nie wysyłane ponownie', async () => {
+      const id = await importPeople(orgA, people(3));
+      const rows = await rowsOf(orgA, id);
+      await owner.userImportRow.updateMany({ where: { id: { in: rows.slice(0, 2).map((r) => r.id) } }, data: { inviteStatus: 'SENDING', inviteSendingAt: at(-20 * 60_000) } });
+
+      await inviter.processOrganization(orgA.organizationId, T0);
+
+      const after = await rowsOf(orgA, id);
+      expect(after.slice(0, 2).map((r) => [r.inviteStatus, r.inviteReason])).toEqual([
+        ['UNCERTAIN', expect.stringContaining('INTERRUPTED_UNKNOWN')],
+        ['UNCERTAIN', expect.stringContaining('INTERRUPTED_UNKNOWN')],
+      ]);
       expect(after[2].inviteStatus).toBe('SENT');
       expect(invites().map((mail) => mail.to)).toEqual([after[2].email]);
     });
@@ -434,7 +546,7 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
       const rows = await rowsOf(orgA, id);
       await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.user.update({ where: { id: rows[0].userId as string }, data: { status: 'ACTIVE' } }));
       await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.user.delete({ where: { id: rows[1].userId as string } }));
-      await owner.userImportRow.update({ where: { id: rows[2].id }, data: { inviteStatus: 'SENDING', inviteClaimedAt: at(-60_000) } });
+      await owner.userImportRow.update({ where: { id: rows[2].id }, data: { inviteStatus: 'SENDING', inviteSendingAt: at(-60_000) } });
 
       await inviter.processOrganization(orgA.organizationId, T0);
 

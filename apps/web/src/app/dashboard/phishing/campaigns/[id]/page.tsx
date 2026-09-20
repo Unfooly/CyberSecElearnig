@@ -4,11 +4,12 @@ import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
 import { decodeJwtPayload } from '@/lib/jwt';
 import { redirectIfPending } from '@/lib/organization';
-import type { Campaign } from '@/lib/phishing-types';
+import type { Campaign, PersonalResultsSettings, ResultsView } from '@/lib/phishing-types';
 import { isSafeId } from '@/lib/safe-id';
 import Topbar from '@/components/Topbar';
 import PageHeader from '@/components/ui/PageHeader';
 import CampaignDetails from '../_components/CampaignDetails';
+import CampaignResults from '../_components/CampaignResults';
 
 export default async function PhishingCampaignPage({ params }: { params: { id: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -34,13 +35,31 @@ export default async function PhishingCampaignPage({ params }: { params: { id: s
     notFound();
   }
 
+  // Wyniki per dział (agregaty z progami) i stan przełącznika wyników osobowych - jedno źródło prawdy: API.
+  const init = { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' as const };
+  const [resultsView, settings] = result.ok
+    ? await Promise.all([
+        fetchJson<ResultsView>(`${API_URL}/phishing/results/campaigns/${params.id}/departments`, init),
+        fetchJson<PersonalResultsSettings>(`${API_URL}/phishing/results/settings`, init),
+      ])
+    : [null, null];
+
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
       <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
         <PageHeader title={result.ok ? result.data.name : 'Kampania'} />
         {result.ok ? (
-          <CampaignDetails campaign={result.data} />
+          <div className="space-y-6">
+            <CampaignDetails campaign={result.data} />
+            {resultsView?.ok ? (
+              <CampaignResults campaignId={params.id} view={resultsView.data} personalResultsEnabled={settings?.ok === true && settings.data.personalResultsEnabled} />
+            ) : (
+              <p role="alert" className="rounded-card border border-border bg-danger-soft p-4 text-sm text-danger">
+                Nie udało się załadować wyników kampanii.
+              </p>
+            )}
+          </div>
         ) : (
           <p role="alert" className="rounded-card border border-border bg-danger-soft p-4 text-sm text-danger">
             Nie udało się załadować kampanii. Spróbuj odświeżyć stronę za chwilę.

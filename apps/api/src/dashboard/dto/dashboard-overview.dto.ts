@@ -10,8 +10,12 @@ export class DashboardOverviewDto {
 
   overdueCount!: number;
 
-  // Placeholdery do czasu modułu symulacji phishingowych - świadomie null,
-  // nie zmyślone liczby.
-  phishingClickRate!: null;
+  // KPI "podatność na phishing": % dostarczonych wiadomości symulacji z kliknięciem / wysłaniem formularza w kampaniach
+  // z ostatnich 90 dni (cała organizacja). null = brak kampanii albo za mało danych (mniej niż 3 osoby z dostarczoną
+  // wiadomością - próg minimalnej liczebności). Żadnych danych osobowych.
+  phishingClickRate!: number | null;
+  phishingSubmitRate!: number | null;
+
+  // Placeholder do czasu modułu zgłaszania zagrożeń - świadomie null, nie zmyślone liczby.
   phishingReportRate!: null;
 }

@@ -104,6 +104,8 @@ model Organization {
   phishingTemplateEdits      PhishingTemplateEdit[]
   phishingCampaigns          PhishingCampaign[]
   phishingCampaignRecipients PhishingCampaignRecipient[]
+  phishingResultSettings     PhishingResultSettings?
+  phishingResultAudit        PhishingResultVisibilityAudit[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -333,6 +335,55 @@ model PhishingCampaignRecipient {
   @@index([campaignId])
   @@index([scheduledAt])
   @@map("phishing_campaign_recipients")
+}
+
+enum PhishingVisibilityAction {
+  // Włączenie wyników osobowych (wymaga uzasadnienia) i wyłączenie.
+  ENABLED
+  DISABLED
+  // Wgląd w wyniki osobowe kampanii i ich eksport CSV (każdy wgląd zostawia ślad).
+  VIEWED
+  EXPORTED
+}
+
+// Ustawienia wyników symulacji organizacji. Wyniki OSOBOWE (kto kliknął) są domyślnie NIEDOSTĘPNE: dostępne wyłącznie
+// dla ORG_ADMIN po jawnym włączeniu z uzasadnieniem (min. 20 znaków). Flaga jest czytana z bazy na KAŻDYM żądaniu o
+// dane osobowe (nigdy z JWT ani cache). Tabela z RLS - dane firmowe nie trafiają do `organizations`.
+model PhishingResultSettings {
+  id                     String   @id @default(cuid())
+  organizationId         String   @unique
+  personalResultsEnabled Boolean  @default(false)
+  // Uzasadnienie ostatniego włączenia (wymagane; CHECK w migracji).
+  justification          String?  @db.VarChar(500)
+  changedByEmail         String   @db.VarChar(254)
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("phishing_result_settings")
+}
+
+// Dziennik dostępu do wyników osobowych: włączenia/wyłączenia (z uzasadnieniem), każdy wgląd i eksport. Tylko dopisywanie
+// (REVOKE UPDATE, DELETE dla roli aplikacji). actorUserId zerowane po usunięciu konta (SQL-only złożone FK
+// ON DELETE SET NULL), a actorEmail to kopia z chwili zdarzenia (wpis w checkliście DPIA).
+model PhishingResultVisibilityAudit {
+  id             String                   @id @default(cuid())
+  organizationId String
+  action         PhishingVisibilityAction
+  justification  String?                  @db.VarChar(500)
+  // Kampania, której dotyczył wgląd/eksport (luźne powiązanie, bez FK - kampania może zniknąć).
+  campaignId     String?
+  // Zakres wglądu/eksportu (ALL/PROBLEMS/CLICKED/SUBMITTED) i liczba zwróconych osób - widać, co dokładnie zostało pokazane.
+  filter         String?                  @db.VarChar(20)
+  rowCount       Int?
+  actorUserId    String?
+  actorEmail     String                   @db.VarChar(254)
+  createdAt      DateTime                 @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("phishing_result_visibility_audit")
 }
 
 // Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.

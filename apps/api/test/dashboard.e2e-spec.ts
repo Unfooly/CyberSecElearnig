@@ -286,6 +286,7 @@ describe('Dashboard i raporty (e2e)', () => {
         activeUsers: { count: 3, total: 4 },
         overdueCount: 1,
         phishingClickRate: null,
+        phishingSubmitRate: null,
         phishingReportRate: null,
       });
     });
@@ -304,6 +305,7 @@ describe('Dashboard i raporty (e2e)', () => {
         activeUsers: { count: 0, total: 2 },
         overdueCount: 0,
         phishingClickRate: null,
+        phishingSubmitRate: null,
         phishingReportRate: null,
       });
     });

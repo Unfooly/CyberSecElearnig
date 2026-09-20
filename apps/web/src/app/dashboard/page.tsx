@@ -18,11 +18,15 @@ interface OverviewData {
   completionRate: number | null;
   activeUsers: { count: number; total: number };
   overdueCount: number;
-  phishingClickRate: null;
+  // % dostarczonych wiadomości symulacji z kliknięciem / wysłanym formularzem (90 dni, cała organizacja); null = brak
+  // kampanii albo za mało danych (próg minimalnej liczebności 3 osoby).
+  phishingClickRate: number | null;
+  phishingSubmitRate?: number | null;
   phishingReportRate: null;
 }
 
 const PHISHING_PLACEHOLDER = 'Pojawi się po pierwszej kampanii';
+const PHISHING_NO_DATA = 'Brak kampanii z ostatnich 90 dni albo za mało danych (poniżej 3 osób)';
 
 function fetchFromApi<T>(path: string, accessToken: string) {
   return fetchJson<T>(`${API_URL}${path}`, {
@@ -120,7 +124,18 @@ export default async function DashboardPage() {
             progress={{ value: activePercent, tone: 'success' }}
           />
           <KpiCard label="Zaległe szkolenia" value={String(overview.overdueCount)} />
-          <KpiCard label="Klikalność phishingowa" value={PHISHING_PLACEHOLDER} placeholder />
+          {overview.phishingClickRate !== null ? (
+            <KpiCard
+              label="Podatność na phishing"
+              value={String(overview.phishingClickRate)}
+              unit="%"
+              progress={{ value: overview.phishingClickRate, tone: overview.phishingClickRate > 15 ? 'warning' : 'success' }}
+              hint={overview.phishingSubmitRate != null ? `Kliknęło w symulację; formularz wysłało ${overview.phishingSubmitRate}% (90 dni)` : 'Kliknęło w symulację (90 dni)'}
+              hintTone={overview.phishingClickRate > 15 ? 'warn' : 'ok'}
+            />
+          ) : (
+            <KpiCard label="Podatność na phishing" value={PHISHING_NO_DATA} placeholder placeholderPill={null} />
+          )}
           <KpiCard label="Zgłaszalność phishingowa" value={PHISHING_PLACEHOLDER} placeholder />
         </div>
 

@@ -90,6 +90,18 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 
 - [ ] **Symulacje phishingowe** wobec pracowników: podstawa i zakres monitorowania, informowanie pracowników,
   zakaz wykorzystywania wyników do sankcji (jeśli tak zdecydujemy), DPIA - **przed** uruchomieniem modułu kampanii.
+- [ ] **DPIA - wyniki osobowe symulacji (kto kliknął)**: to monitorowanie zachowania pracowników (kodeks pracy, konsultacje ze
+  związkami/przedstawicielami, cel i proporcjonalność, informacja dla pracowników, zakaz wykorzystania do sankcji - decyzja
+  klienta). Środki w produkcie: (1) domyślnie WYŁĄCZONE - wyniki tylko zagregowane per dział, próg minimalnej liczebności 3 osób z
+  łączeniem małych grup (brak identyfikacji w działach 1-2 osobowych); (2) włączenie wyłącznie przez administratora organizacji z
+  pisemnym uzasadnieniem (min. 20 znaków, CHECK w bazie); (3) dziennik dostępu append-only: włączenie/wyłączenie, każdy wgląd i
+  eksport (kto, kiedy, którą kampanię, jaki zakres, ile osób), kopia e-maila aktora przeżywa usunięcie konta; (4) kierownik
+  działu widzi wyłącznie agregaty własnego działu (bez metadanych pozostałych kampanii organizacji), nigdy danych osobowych;
+  **ryzyko szczątkowe do akceptacji w DPIA:** administrator, który sam dobiera odbiorców kampanii, może przez porównanie wyników
+  kampanii różniących się o małą grupę wyliczyć wynik grupy poniżej progu (patrz `docs/phishing-simulations.md`, "Znane,
+  nieusunięte ograniczenie") - dotyczy roli, która i tak może włączyć audytowane wyniki osobowe; (5) wyniki per osoba nie są kopiowane do eksportu dashboardu; (6) wartości
+  wpisane w formularzu strony lądowania nie są zapisywane ani logowane. Do rozstrzygnięcia: okres przechowywania wyników i dziennika
+  (dziś: do usunięcia organizacji), rola podmiotu przetwarzającego.
 - [ ] **Odbiorcy kampanii spoza zweryfikowanej domeny organizacji** (np. kontraktorzy na Gmailu): podstawą jest, że
   odbiorca jest kontem `ACTIVE` (sam aktywował konto linkiem z maila = potwierdził członkostwo w organizacji); wysyłka
   z naszej domeny do osób trzecich jest ryzykiem nadużycia - patrz backlog (alert SUPER_ADMIN >20% odbiorców spoza domeny)

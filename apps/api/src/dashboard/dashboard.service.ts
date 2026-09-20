@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AssignmentStatus } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { PhishingResultsService } from '../phishing/results/phishing-results.service';
 import { DashboardOverviewDto } from './dto/dashboard-overview.dto';
 import { DepartmentCompletionDto } from './dto/department-completion.dto';
 import { OrganizationOverviewDto } from './dto/organization-overview.dto';
@@ -39,13 +40,19 @@ function latestDate(dates: Date[]): Date | null {
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly tenantPrisma: TenantPrismaService) {}
+  constructor(
+    private readonly tenantPrisma: TenantPrismaService,
+    private readonly phishingResults: PhishingResultsService,
+  ) {}
 
   /**
    * organizationId pochodzi WYŁĄCZNIE z tokena JWT wywołującego (zob.
    * DashboardController) — endpointy świadomie nie przyjmują go od klienta.
    */
   async getOverview(organizationId: string): Promise<DashboardOverviewDto> {
+    // KPI symulacji: tylko zagregowany procent całej organizacji z progiem minimalnej liczebności (null = za mało
+    // danych albo brak kampanii); żadnych danych osobowych.
+    const phishing = await this.phishingResults.susceptibilityKpi(organizationId);
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const [totalUsers, mandatoryTotal, mandatoryCompleted, overdueCount, activeUserRows] =
         await Promise.all([
@@ -75,7 +82,8 @@ export class DashboardService {
         completionRate: percentage(mandatoryCompleted, mandatoryTotal),
         activeUsers: { count: activeUserRows.length, total: totalUsers },
         overdueCount,
-        phishingClickRate: null,
+        phishingClickRate: phishing.clickRate,
+        phishingSubmitRate: phishing.submitRate,
         phishingReportRate: null,
       };
     });

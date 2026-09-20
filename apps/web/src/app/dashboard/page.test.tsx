@@ -127,6 +127,25 @@ describe('DashboardPage', () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  it('KPI "Podatność na phishing": pokazuje procent kliknięć i formularzy z API (bez placeholdera)', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...overviewResponse, phishingClickRate: 42.5, phishingSubmitRate: 12.3 }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => departmentsResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => trendsResponse }),
+    );
+
+    render(await DashboardPage());
+
+    expect(screen.getByText('Podatność na phishing')).toBeInTheDocument();
+    expect(screen.getByText('42.5')).toBeInTheDocument();
+    expect(screen.getByText(/formularz wysłało 12.3%/)).toBeInTheDocument();
+    expect(screen.queryByText(/Brak kampanii z ostatnich 90 dni/)).not.toBeInTheDocument();
+  });
+
   it('renderuje realne dane z API, w tym placeholdery dla metryk phishingowych', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal(
@@ -144,8 +163,11 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('50').length).toBeGreaterThan(0);
     expect(screen.getByText('/ 4')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Pobierz raport CSV' })).toHaveAttribute('href', '/api/dashboard/export');
-    expect(screen.getAllByText('Moduł wkrótce')).toHaveLength(2);
-    expect(screen.getAllByText('Pojawi się po pierwszej kampanii')).toHaveLength(2);
+    // Zgłaszalność: placeholder (moduł zgłoszeń nie istnieje). Podatność na phishing: brak danych => opis progu, bez pilla "Moduł wkrótce".
+    expect(screen.getAllByText('Moduł wkrótce')).toHaveLength(1);
+    expect(screen.getAllByText('Pojawi się po pierwszej kampanii')).toHaveLength(1);
+    expect(screen.getByText('Podatność na phishing')).toBeInTheDocument();
+    expect(screen.getByText(/Brak kampanii z ostatnich 90 dni albo za mało danych/)).toBeInTheDocument();
     expect(screen.getAllByText('IT').length).toBeGreaterThan(0);
     expect(screen.getAllByText('80%').length).toBeGreaterThan(0);
     expect(screen.getByText(/Stan organizacji na dziś/)).toBeInTheDocument();

@@ -73,3 +73,34 @@ export async function proxyAuthenticated(
   const data = await backendResponse.json().catch(() => null);
   return NextResponse.json(data, { status: backendResponse.status });
 }
+
+/**
+ * Proxy PLIKU (CSV) z apps/api dla zalogowanego użytkownika: token z httpOnly cookie, ścieżka STAŁA po stronie serwera.
+ * Sukces: treść + Content-Disposition z backendu (i `no-store`); błąd (403 PERSONAL_RESULTS_DISABLED, 404...) przechodzi
+ * jako JSON z tym samym statusem - nigdy jako plik. Tylko GET (nie zmienia stanu po stronie użytkownika).
+ */
+export async function proxyAuthenticatedFile(apiPath: string): Promise<NextResponse> {
+  const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
+  if (!accessToken) {
+    return NextResponse.json({ message: 'Wymagane zalogowanie.' }, { status: 401 });
+  }
+  let backendResponse: Response;
+  try {
+    backendResponse = await apiFetch(`${API_URL}${apiPath}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+  } catch (error) {
+    console.error(`Nie udało się połączyć z apps/api (GET ${apiPath}):`, (error as Error).message);
+    return NextResponse.json({ message: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' }, { status: 502 });
+  }
+  if (!backendResponse.ok) {
+    const data = await backendResponse.json().catch(() => null);
+    return NextResponse.json(data, { status: backendResponse.status });
+  }
+  return new NextResponse(await backendResponse.text(), {
+    status: 200,
+    headers: {
+      'Content-Type': backendResponse.headers.get('content-type') ?? 'text/csv; charset=utf-8',
+      'Content-Disposition': backendResponse.headers.get('content-disposition') ?? 'attachment; filename="wyniki.csv"',
+      'Cache-Control': 'no-store',
+    },
+  });
+}

@@ -144,6 +144,77 @@ bez marek). Token to 32 losowe bajty (base64url, 43 znaki); w bazie jest tylko j
   wyjątków: `CLAUDE.md`.
 - Token jest ważny 90 dni od **zajęcia** (`claimedAt`, chwila wysyłki). Kurs uzupełniający dostają tylko konta `ACTIVE`.
 
+## Wyniki i raporty
+
+Trzy poziomy dostępu, egzekwowane w serwisie `PhishingResultsService` (kontroler i UI to tylko pierwsza linia):
+
+1. **Agregaty per dział** (zawsze dostępne): `GET /phishing/results/overview` (90 dni), `.../campaigns/:id/departments` i
+   `.../departments.csv`. `ORG_ADMIN` widzi całą organizację, **`DEPARTMENT_MANAGER` wyłącznie własny dział** (dział
+   czytany z bazy na każde żądanie, nie z tokenu) jako jeden wiersz, bez sumy organizacji i bez innych działów.
+   Wejście agregatora to fakty bez identyfikatorów osób, więc odpowiedź nie może zawierać danych osobowych.
+2. **Wyniki osobowe** (kto kliknął): `.../people` i `.../people.csv` - wyłącznie `ORG_ADMIN` i wyłącznie przy włączonej
+   fladze organizacji (`phishing_result_settings.personalResultsEnabled`, domyślnie **wyłączona**). **Rola, status (`ACTIVE`) i
+   dział wywołującego są czytane z bazy na każde żądanie, nie z tokenu** (zdegradowany albo zdezaktywowany admin traci dostęp od
+   razu). Flaga jest czytana z bazy w tej samej transakcji co dane, pod blokadą wiersza (`FOR SHARE`), a jej zmiana bierze
+   blokadę doradczą organizacji (równoległe przełączenia się serializują: jedno wygrywa, reszta 409): wyłączenie działa od
+   następnego żądania, a żądanie w toku dokończy się z widokiem sprzed zmiany. Wglądy mają limit 30/min (dziennik nie do
+   zalania). Bez flagi: `403
+   PERSONAL_RESULTS_DISABLED`, bez odczytu danych i bez wpisu audytu. `DEPARTMENT_MANAGER` nigdy ich nie dostaje, także przy
+   włączonej fladze. Filtry: wszyscy, nieudani i niepewni (`PROBLEMS`), kliknęli, wysłali formularz.
+3. **Ustawienie flagi i audyt**: `POST /phishing/results/settings/personal-results` (tylko `ORG_ADMIN`). Włączenie wymaga
+   uzasadnienia (min. 20 znaków; egzekwuje serwis **i CHECK w bazie**), ustawienie i wpis audytu w jednej transakcji, ta sama
+   wartość = 409 (bez dubli). Dziennik `phishing_result_visibility_audit` jest **append-only** dla roli aplikacji
+   (`REVOKE UPDATE, DELETE, TRUNCATE`) i zapisuje: `ENABLED`/`DISABLED` (z uzasadnieniem), **każdy wgląd** (`VIEWED`) i **każdy
+   eksport CSV** (`EXPORTED`) wraz z kampanią, **zakresem (filtr) i liczbą zwróconych osób** oraz e-mailem aktora (kopia;
+   `actorUserId` zerowane po usunięciu konta). Wpis powstaje w tej samej transakcji co odczyt, a dane opuszczają serwis dopiero po
+   jej zatwierdzeniu - nie da się ich dostać bez śladu. Endpoint audytu zwraca 200 najnowszych wpisów (bez paginacji).
+   `DEPARTMENT_MANAGER` nie dostaje też metadanych całej organizacji: liczba kampanii to `null`, a kampania, w której jego dział
+   nie uczestniczył, jest dla niego "nieistniejąca" (404).
+
+### Próg minimalnej liczebności
+
+Wynik grupy z mniej niż **3 osobami z dostarczoną wiadomością** nie jest pokazywany (`MIN_GROUP_SIZE`). Sam próg nie wystarcza
+(przy jednej ukrytej grupie jej wartości wynikałyby z różnicy "razem minus reszta"), dlatego grupy poniżej progu są **łączone w
+jeden wiersz "Pozostałe działy"**, a gdy i on jest za mały, dokładany jest do niego najmniejszy widoczny dział, aż liczebność
+osiągnie próg. W obrębie JEDNEGO widoku każdy opublikowany wiersz dotyczy >= 3 osób, więc żadnej małej grupy nie da się odjąć
+od sumy (test losowy w `results-aggregation.spec.ts`). Gdy cała organizacja ma mniej niż 3 dostarczone wiadomości: "za mało
+danych", bez liczb (dotyczy też KPI). Manager małego działu widzi "za mało danych".
+
+**Znane, nieusunięte ograniczenie (atak różnicowy między kampaniami).** Ochrona działa per widok. `ORG_ADMIN`, który sam
+dobiera odbiorców kampanii, może porównać wyniki kampanii różniących się o małą grupę (np. kampania A = duży dział, kampania B =
+duży dział + dział 2-osobowy: różnica sum daje wynik 2 osób), także przez `overview`, KPI i CSV, bez włączania wyników osobowych i
+bez wpisu w dzienniku. Wielu kampanii z nakładającymi się zbiorami nie da się wyczerpująco zabezpieczyć samym progiem (kombinacje
+liniowe wyników), a reguła "zbiory odbiorców różnią się o 0 albo >= 3 osoby" blokowałaby zwykłe użycie (nowy pracownik między
+kampaniami). Ryzyko jest ograniczone, bo: (1) dotyczy wyłącznie `ORG_ADMIN` - `DEPARTMENT_MANAGER` nie tworzy kampanii i widzi tylko
+własny dział; (2) ten sam administrator może włączyć wyniki osobowe z uzasadnieniem i audytem, więc atak omija głównie ślad
+audytu, nie ujawnia danych, do których nie miałby dostępu; (3) każda kampania zapisuje autora (`createdByEmail`). **Decyzja do
+podjęcia przed startem:** akceptacja z wpisem w DPIA, albo ograniczenie audiencji (np. tylko "cała organizacja" i całe działy
+>= 3 osób) kosztem elastyczności. Do czasu decyzji dokumenty nie twierdzą, że małej grupy "nie da się odjąć" poza pojedynczym widokiem.
+
+Inne kanały, o których warto wiedzieć: przy progu 3 wynik 0% albo 100% w grupie ujawnia zachowanie każdej osoby (dział 3-osobowy
+zna własny wynik); liczba dostarczonych w wierszu zależy od nieudanych/niepewnych wysyłek. Rozważany wyższy próg (5) albo
+zaokrąglanie do przedziałów.
+
+Definicje: **dostarczono** = przyjęte przez dostawcę (`sentAt`) albo kliknięte (kliknięcie dowodzi dostarczenia, także dla
+odbiorców "niepewnych"); **podatność** = kliknęło / dostarczono; nieudane i niepewne bez kliknięcia nie wchodzą do mianownika.
+
+### KPI i eksporty
+
+- **KPI "Podatność na phishing"** w dashboardzie (`GET /dashboard/overview`): `phishingClickRate` i `phishingSubmitRate` z
+  ostatnich 90 dni dla całej organizacji, z progiem liczebności (`null` = brak kampanii albo za mało danych).
+- **Eksport dashboardu** (`GET /dashboard/export`) nie zawiera żadnych wyników symulacji - test e2e pilnuje, że przy
+  wyłączonej i włączonej fladze plik jest identyczny.
+- **CSV**: RFC 4180 z BOM UTF-8, ochrona przed wstrzyknięciem formuł (komórki zaczynające się od `= + - @` tab CR dostają
+  apostrof), `Cache-Control: no-store`. Nagłówki pliku są ustawiane dopiero po udanym wygenerowaniu - błąd (np. 403) jest
+  zawsze odpowiedzią JSON, nigdy pobieralnym plikiem. BFF w `apps/web` przekazuje błąd API jako JSON.
+- **Szczegóły kampanii** (`/dashboard/phishing/campaigns/:id`): agregaty per dział, liczniki nieudanych i "niepewnych"; z
+  włączoną flagą także lista osób (ładowana dopiero po jawnym kliknięciu, bo każdy wgląd jest audytowany).
+
+### Zakres UI
+
+Interfejs w `apps/web` obejmuje `ORG_ADMIN` (`/dashboard` wymaga tej roli). Zakres `DEPARTMENT_MANAGER` jest zaimplementowany i
+przetestowany w API; osobny ekran kierownika działu to backlog (v2).
+
 ## Znane ograniczenia i backlog (świadomie poza tym commitem)
 
 - **Alert dla SUPER_ADMIN:** organizacja, w której >20% odbiorców kampanii to adresy spoza zweryfikowanej domeny
@@ -169,5 +240,8 @@ pilnuje tego `transport-separation.spec.ts`.
   nielogowane, odpowiedź neutralna, limit żądań), przypisanie kursu, izolacja A/B, RLS lookupu, CHECK-i.
 - Web: `tracking-routes.test.ts` (BFF: brak ciała, stała ścieżka, neutralność), `LandingClient.test.tsx` (GET nie liczy,
   opóźnienie/interakcja, brak wartości pól).
+- `results-aggregation.spec.ts`: progi, łączenie małych grup, test losowy "nie da się odjąć", CSV. `test/phishing-results.e2e-spec.ts`:
+  agregaty (ORG_ADMIN i manager), flaga wyników osobowych z audytem, CSV, KPI i eksport dashboardu, role, PENDING, izolacja A/B, RLS,
+  CHECK-i i append-only dziennika.
 - `test/phishing-campaigns-queue.e2e-spec.ts`: jeden test z prawdziwym BullMQ/Redisem (własny `JOBS_QUEUE_PREFIX`,
   opóźnienie ~300 ms, deduplikacja, usuwanie zadań).

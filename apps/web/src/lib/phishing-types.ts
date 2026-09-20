@@ -84,6 +84,89 @@ export interface PhishingConfig {
   sendsRealMail: boolean;
 }
 
+// --- Wyniki ---
+
+export type ResultRowKind = 'DEPARTMENT' | 'NO_DEPARTMENT' | 'OTHER' | 'ALL';
+
+export interface ResultRow {
+  kind: ResultRowKind;
+  departmentId: string | null;
+  name: string;
+  // true = za mało osób (próg minimalnej liczebności): liczby i procenty są null.
+  insufficientData: boolean;
+  delivered: number | null;
+  clicked: number | null;
+  submitted: number | null;
+  clickRate: number | null;
+  submitRate: number | null;
+}
+
+export interface ResultsView {
+  scope: 'ORGANIZATION' | 'DEPARTMENT';
+  minGroupSize: number;
+  campaign: { id: string; name: string; status: string; windowStart: string; windowEnd: string } | null;
+  // null dla DEPARTMENT_MANAGER (metadane całej organizacji).
+  campaignsCount: number | null;
+  total: ResultRow | null;
+  departments: ResultRow[];
+}
+
+export type DeliveryStatus = 'SENT' | 'FAILED' | 'UNCERTAIN' | 'PENDING';
+export const PEOPLE_FILTERS = ['ALL', 'PROBLEMS', 'CLICKED', 'SUBMITTED'] as const;
+export type PeopleFilter = (typeof PEOPLE_FILTERS)[number];
+
+export const PEOPLE_FILTER_LABELS: Record<PeopleFilter, string> = {
+  ALL: 'Wszyscy odbiorcy',
+  PROBLEMS: 'Nieudane i niepewne',
+  CLICKED: 'Kliknęli',
+  SUBMITTED: 'Wysłali formularz',
+};
+
+export interface PersonResult {
+  userId: string | null;
+  name: string | null;
+  email: string | null;
+  departmentName: string | null;
+  delivery: DeliveryStatus;
+  failureCode: string | null;
+  sentAt: string | null;
+  clickedAt: string | null;
+  submittedAt: string | null;
+}
+
+export interface PersonalResultsSettings {
+  personalResultsEnabled: boolean;
+  justification: string | null;
+  changedByEmail: string | null;
+  updatedAt: string | null;
+}
+
+export interface VisibilityAuditEntry {
+  id: string;
+  action: 'ENABLED' | 'DISABLED' | 'VIEWED' | 'EXPORTED';
+  justification: string | null;
+  campaignId: string | null;
+  // Zakres wglądu/eksportu i liczba zwróconych osób (tylko VIEWED/EXPORTED).
+  filter: string | null;
+  rowCount: number | null;
+  actorEmail: string;
+  createdAt: string;
+}
+
+export const AUDIT_ACTION_LABELS: Record<VisibilityAuditEntry['action'], string> = {
+  ENABLED: 'Włączono wyniki osobowe',
+  DISABLED: 'Wyłączono wyniki osobowe',
+  VIEWED: 'Wgląd w wyniki osobowe',
+  EXPORTED: 'Eksport CSV wyników osobowych',
+};
+
+export const DELIVERY_LABELS: Record<DeliveryStatus, string> = {
+  SENT: 'Wysłano',
+  FAILED: 'Nieudane',
+  UNCERTAIN: 'Niepewne',
+  PENDING: 'Oczekuje',
+};
+
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   SCHEDULED: 'Zaplanowana',
   RUNNING: 'W trakcie',

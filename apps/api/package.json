@@ -10,7 +10,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "dotenv -e ../../.env.test -e ../../.env -- jest",
     "test:watch": "dotenv -e ../../.env.test -e ../../.env -- jest --watch",
-    "test:e2e": "dotenv -e ../../.env.test -e ../../.env -- jest --config ./test/jest-e2e.json",
+    "test:e2e": "dotenv -e ../../.env.test -e ../../.env -- jest --config ./test/jest-e2e.json --runInBand",
     "prisma:generate": "dotenv -e ../../.env -- prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",

@@ -69,6 +69,9 @@ apps/api/prisma/schema.prisma --script` powinno pokazać wyłącznie te SQL-only
   `node:20` z `--cpus=2`, kontenery `postgres:16` i `redis:7` w jednej sieci Dockera, zmienne z sekcji `env` joba `e2e`, rola `cyberszkolo_app` ze
   skryptu `docker/postgres-init/01-create-app-role.sh`, `prisma migrate deploy`, `jest --config ./test/jest-e2e.json --runInBand`. Po zmianie
   `schema.prisma` wygeneruj klienta Prisma w kontenerze (`prisma generate`), inaczej testy nie skompilują się na starym kliencie.
+- **E2E biegną szeregowo (`--runInBand`), tak jak w CI.** Specyfikacje dzielą jedną bazę i jeden Redis, a część z nich przechodzi po WSZYSTKICH
+  organizacjach (joby sprzątania, retencji, powiadomień) i czyści dane po sobie. Równoległe uruchomienie dawało losowe błędy (znikające konta
+  po rejestracji, `P2025`, przekroczone 5 s w hookach), których w CI nie ma. Skrypt `test:e2e` ma flagę wpisaną; przy ręcznym `jest` dodaj ją sam.
 - **E2E z równoległymi żądaniami:** `app.listen(0)`, nie `app.init()`, i `Promise.allSettled` (CLAUDE.md, reguła 9).
 - **Throttling w e2e:** limity żądań są w pamięci procesu; specyfikacje czyszczą magazyn throttlera (`ThrottlerStorage`) przed testami, które robią
   wiele logowań/rejestracji. Limiter maili jest w Redisie: testy używają własnego `REDIS_KEY_PREFIX` i czyszczą swoje klucze.

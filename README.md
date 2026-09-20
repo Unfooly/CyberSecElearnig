@@ -2,6 +2,8 @@
 
 Wielodostępowa (multi-tenant) platforma SaaS do szkoleń z cyberbezpieczeństwa i symulacji
 phishingowych, sprzedawana firmom (B2B). Pełny kontekst projektu: [`CLAUDE.md`](./CLAUDE.md).
+Nowa osoba w zespole: zacznij od [`docs/onboarding.md`](./docs/onboarding.md); decyzje i ich uzasadnienia:
+[`docs/decisions.md`](./docs/decisions.md); backlog jako zgłoszenia: [`docs/backlog-issues.md`](./docs/backlog-issues.md).
 
 ## Struktura repo
 

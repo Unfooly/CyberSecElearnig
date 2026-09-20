@@ -182,6 +182,24 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=sha-,format=short
 
+      # Test dymny obrazu API PRZED publikacją: kontener musi rozwiązać wszystkie moduły aplikacji. Wyłapuje błędy, których
+      # nie widzą testy na źródłach (np. zależność zagnieżdżona w apps/api/node_modules niedokopiowana do obrazu
+      # => "Cannot find module 'sanitize-html'" przy starcie). Cache warstw jest współdzielony z krokiem push.
+      - name: Test dymny obrazu (API)
+        if: matrix.app == 'api'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          load: true
+          push: false
+          tags: smoke-api:ci
+          provenance: false
+          cache-from: type=gha,scope=api
+      - name: Uruchom test dymny (require app.module)
+        if: matrix.app == 'api'
+        run: docker run --rm --entrypoint node smoke-api:ci -e "require('./apps/api/dist/app.module')"
+
       - name: Build i push
         uses: docker/build-push-action@v6
         with:

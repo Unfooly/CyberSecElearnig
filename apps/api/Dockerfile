@@ -57,6 +57,9 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 
 COPY --from=builder /app/node_modules ./node_modules
+# Zależności ZAGNIEŻDŻONE w workspace (npm nie hoistuje ich, gdy w korzeniu jest inna wersja - np. przypięty
+# sanitize-html 2.13.1): bez tego kontener API kończy się na "Cannot find module 'sanitize-html'".
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist

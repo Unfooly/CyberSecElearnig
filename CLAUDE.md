@@ -169,6 +169,19 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     wcześniejszych decyzji), użytkownik rozstrzyga każdą, dopiero potem robisz commit (poprawki jako osobny commit, gdy to
     kolejna iteracja). Nie commituj „bo uwagi wynikają z decyzji użytkownika” ani „a uwagi opiszę w raporcie po fakcie”.
 
+11. **Żadnych poleceń niszczących na origin ani na main.** Nie uruchamiasz: `git push --force`/`-f`/`--force-with-lease`, `git push --delete`/`-d`,
+    `git push <remote> :<ref>` (usunięcie refu), `--mirror`/`--all`, pushu NA `main`, `git branch -D`, `git reset --hard`, `git clean -f`,
+    `git checkout -- .`/`git restore .` (odrzucenie zmian z całego drzewa), rebase gałęzi `main` (będąc na `main` albo z `main` jako rebasowaną
+    gałęzią), aliasów gita ukrywających takie polecenia, ani `gh repo delete`, `gh release delete`, `gh pr merge`, `gh api` z metodą DELETE
+    lub zmieniającego refy - także „na próbę”, także z `--dry-run` w tej formie. **Do sprawdzania hooków i uprawnień służy
+    wyłącznie:** `--dry-run` (gdy polecenie go obsługuje i nie jest z powyższej listy), tymczasowe repozytorium (`git init` w katalogu
+    tymczasowym z lokalnym „origin” w tym katalogu) albo test jednostkowy hooka (`.githooks/pre-push.test.js`,
+    `.claude/hooks/block-destructive-git.test.js`) - **nigdy prawdziwy origin**. Rebase własnego brancha roboczego na `origin/main` jest dozwolony
+    (tak go aktualizujemy); zabroniony jest rebase, gdy aktualną gałęzią jest `main` (regułę rebase egzekwuje wyłącznie hook, który zna aktualną
+    gałąź; `permissions.deny` nie potrafi jej rozróżnić). Egzekwują to mechanicznie: `permissions.deny` w `.claude/settings.json` oraz hook
+    PreToolUse `.claude/hooks/block-destructive-git.js` (bo `permissions.deny` bywa pomijane w trybie auto); jest to bariera przed odruchem,
+    nie sandbox (nie wykryje m.in. poleceń ze zmiennych, skryptów i aliasów z `~/.gitconfig`; fail-open przy uszkodzonym wejściu hooka). Jeśli coś z listy jest naprawdę potrzebne, zatrzymaj się i zapytaj użytkownika.
+
 ## Praca zespołowa: branże i pull requesty
 
 Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/pull_request_template.md` (szablon opisu PR),

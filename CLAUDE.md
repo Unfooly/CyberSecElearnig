@@ -45,7 +45,9 @@ Wszystkie idą przez `TenantPrismaService` (sentinel `app.bypass_tenant_rls`, w 
 odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i wpisu tutaj. Zapisy zawsze przez
 `runInOrgContext(organizationId)` po odczycie.
 
-1. `runAuthLookup` - użytkownik po globalnym e-mailu/id (login, refresh, reset, rejestracja - tylko sprawdzenie istnienia).
+1. `runAuthLookup` - użytkownik po globalnym e-mailu/id (login, refresh, reset, rejestracja - tylko sprawdzenie istnienia;
+   oraz `AddressClaimService` przy zaproszeniu/imporcie/rejestracji - decyzja o przejęciu nieaktywowanego zaproszenia; wynik
+   nigdy nie trafia do klienta, a usunięcie cudzego konta idzie przez `runInOrgContext(organizacja właściciela)`).
 2. `runPasswordResetTokenLookup`, 3. `runEmailVerificationTokenLookup` - token po `tokenHash`, zanim znamy organizację.
 4. `runRefreshTokenLookup` - refresh token po `tokenHash` (sesje).
 5. `runTrackingTokenLookup` - odbiorca kampanii po `tokenHash` tokenu z linku symulacji (publiczne `POST /t/:token/view|submit`;

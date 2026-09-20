@@ -113,6 +113,23 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Ktoś próbował zarejestrować konto na Twój adres, ale konto już istnieje. Zaloguj się: ${String(data.loginUrl)} lub zresetuj hasło: ${String(data.forgotPasswordUrl)}`,
   }),
+  // Ktoś (administrator organizacji) próbował dodać do niej adres, który ma już konto na platformie: mail do WŁAŚCICIELA adresu.
+  // Administrator niczego o tym nie widzi (anty-enumeracja) - dla niego zaproszenie wygląda na wysłane. Bez linków i bez danych
+  // osoby zapraszającej: tylko nazwa organizacji, żeby właściciel mógł rozpoznać pomyłkę.
+  'invite-address-taken': (data, options) => ({
+    html: layout(
+      'Ktoś próbował dodać Cię do organizacji',
+      data.organizationName
+        ? `<p>Ktoś próbował dodać Twój adres e-mail do organizacji <strong>${escapeHtml(data.organizationName)}</strong> w Unfooly. ` +
+            'Nic się nie zmieniło i nie musisz nic robić. Jeśli to pomyłka, zignoruj tę wiadomość.</p>'
+        : '<p>Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly. Nic się nie zmieniło i nie musisz nic robić. Jeśli to pomyłka, zignoruj tę wiadomość.</p>',
+      undefined,
+      options,
+    ),
+    text: data.organizationName
+      ? `Ktoś próbował dodać Twój adres e-mail do organizacji ${plain(data.organizationName)} w Unfooly. Nic się nie zmieniło. Jeśli to pomyłka, zignoruj tę wiadomość.`
+      : 'Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly. Nic się nie zmieniło. Jeśli to pomyłka, zignoruj tę wiadomość.',
+  }),
   'demo-request': (data, options) => ({
     html: layout(
       'Nowa prośba o demo',

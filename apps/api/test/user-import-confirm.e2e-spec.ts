@@ -18,6 +18,8 @@ import { DEFAULT_TEST_PASSWORD, registerVerified } from './helpers/auth';
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const IMPORT_DOMAIN = '@firma-import.test';
+// Chwila "teraz" dla biegów kolejki (tokeny zaproszeń powstają na prawdziwym zegarze, więc `now` musi być bliski rzeczywistemu).
+const T_NOW = new Date();
 type Role = 'EMPLOYEE' | 'DEPARTMENT_MANAGER' | 'ORG_ADMIN';
 
 interface Org {
@@ -81,6 +83,7 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
     const ids = [orgA.organizationId, orgB.organizationId];
     await owner.userImportBatch.deleteMany({ where: { organizationId: { in: ids } } });
     await owner.passwordResetToken.deleteMany({ where: { organizationId: { in: ids } } });
+    await owner.inviteNotice.deleteMany({ where: { organizationId: { in: ids } } });
     await owner.user.deleteMany({ where: { organizationId: { in: ids }, email: { endsWith: IMPORT_DOMAIN } } });
     await owner.department.deleteMany({ where: { organizationId: { in: ids }, name: { startsWith: 'Imp-' } } });
   });
@@ -234,8 +237,10 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
       expect(await rowsOf(orgA, running)).toHaveLength(3);
     });
 
-    it('adres zajęty w INNEJ organizacji: konto nie powstaje, ogólny powód (bez ujawniania), nie zużywa licencji; reszta pliku przechodzi', async () => {
-      const foreign = orgB.adminEmail;
+    it('adres zajęty w INNEJ organizacji: dla administratora wiersz jak każdy inny (bez sondy), konta w A nie ma, właściciel dostaje powiadomienie', async () => {
+      // Pracownik B utworzony bezpośrednio (bez maila rejestracyjnego: ten zajmuje limit "jedna wiadomość na skrzynkę na 10 minut").
+      await addUser(orgB, 'emp-b', 'EMPLOYEE');
+      const foreign = email('emp-b');
       const preview = await upload(orgA.adminToken, csvOf([`${foreign},Jan,Kowalski,`, ...people(2)])).expect(201);
       expect(preview.body).toMatchObject({ validCount: 3 }); // w podglądzie nie da się tego rozpoznać (brak enumeracji)
       clearThrottle();
@@ -243,14 +248,28 @@ describe('Import pracowników z CSV: potwierdzenie i kolejka zaproszeń (e2e)', 
 
       const response = await post(orgA.adminToken, `/users/import/${preview.body.id}/confirm`).expect(200);
 
-      expect(response.body.progress).toMatchObject({ accountsCreated: 2, accountsFailed: 1, invitesTotal: 2 });
+      // Liczniki jak dla samych nowych adresów: nic nie zdradza, że jeden z nich ma konto gdzie indziej.
+      expect(response.body.progress).toMatchObject({ accountsCreated: 3, accountsFailed: 0, invitesTotal: 3, remaining: 3 });
       expect(await userCount(orgA)).toBe(before + 2);
-      const failed = (await rowsOf(orgA, preview.body.id)).find((r) => r.accountResult === 'FAILED');
-      expect(failed?.accountReason).toBe('Nie można użyć tego adresu e-mail.');
-      expect(failed?.accountReason).not.toMatch(/istnieje|inn(a|ej) organizac/i);
-      expect(failed?.inviteStatus).toBeNull(); // bez konta nie ma zaproszenia
+      const taken = (await rowsOf(orgA, preview.body.id)).find((r) => r.email === foreign);
+      expect(taken).toMatchObject({ accountResult: 'CREATED', accountReason: null, inviteStatus: 'PENDING', userId: null });
       // Konto z innej organizacji nietknięte (nie przeniesione ani nadpisane).
-      expect(await tenantPrisma.runAuthLookup({ email: foreign })).toMatchObject({ organizationId: orgB.organizationId });
+      expect(await tenantPrisma.runAuthLookup({ email: foreign })).toMatchObject({ organizationId: orgB.organizationId, status: 'ACTIVE' });
+
+      await inviter.processOrganization(orgA.organizationId, T_NOW);
+
+      const rows = await rowsOf(orgA, preview.body.id);
+      expect(rows.map((r) => r.inviteStatus)).toEqual(['SENT', 'SENT', 'SENT']);
+      expect(rows.map((r) => r.inviteReason)).toEqual([null, null, null]);
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: foreign, templateName: 'invite-address-taken' }));
+      expect(invites().map((i) => i.to)).not.toContain(foreign); // właściciel nie dostaje linku aktywacyjnego do cudzej organizacji
+      expect(invites()).toHaveLength(2);
+      // Wewnętrzny znacznik nie wycieka: ani w API (wiersze), ani w raporcie CSV.
+      const api = await get(orgA.adminToken, `/users/import/${preview.body.id}/rows`).expect(200);
+      expect(JSON.stringify(api.body)).not.toMatch(/addressTaken/);
+      const report = await get(orgA.adminToken, `/users/import/${preview.body.id}/report.csv`).expect(200);
+      const lines = report.text.split('\n').filter((l) => l.includes(foreign) || l.includes(imp('p0')));
+      expect(lines[0].replace(foreign, 'X').replace(/Jan,Kowalski/, 'N').split(',').slice(2).join(',')).toBe(lines[1].replace(imp('p0'), 'X').replace(/Anna,Nowak/, 'N').split(',').slice(2).join(','));
     });
 
     it('konto, które pojawiło się po podglądzie, jest pomijane przy potwierdzeniu (EXISTING), a licencje liczone od stanu bieżącego', async () => {

@@ -6,6 +6,7 @@ import { RegistrationMailLimiter } from './registration-mail-limiter';
 import { AuthService } from './auth.service';
 import { EmailService } from '../email/email.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { AddressClaimService } from '../users/address-claim.service';
 import { RegisterDto } from './dto/register.dto';
 
 // bcrypt(12) kosztuje ~250 ms na hash - w testach jednostkowych podmieniamy (natywny
@@ -54,6 +55,7 @@ describe('RegistrationService', () => {
   let sendRegistrationActivation: jest.Mock;
   let sendVerificationOrActivation: jest.Mock;
   let sendEmail: jest.Mock;
+  let displace: jest.Mock;
   let service: RegistrationService;
   let txCalls: Record<string, jest.Mock>;
 
@@ -66,6 +68,7 @@ describe('RegistrationService', () => {
 
   beforeEach(() => {
     runAuthLookup = jest.fn().mockResolvedValue(null);
+    displace = jest.fn().mockResolvedValue(false);
     sendRegistrationActivation = jest.fn().mockResolvedValue(true);
     sendVerificationOrActivation = jest.fn().mockResolvedValue(undefined);
     sendEmail = jest.fn().mockResolvedValue(true);
@@ -91,6 +94,7 @@ describe('RegistrationService', () => {
       { send: sendEmail } as unknown as EmailService,
       { get: (key: string) => (key === 'FRONTEND_URL' ? 'https://app.unfooly.test' : undefined) } as unknown as ConfigService,
       new RegistrationMailLimiter(),
+      { displaceUnprotectedForRegistration: displace } as unknown as AddressClaimService,
     );
   });
 
@@ -202,6 +206,29 @@ describe('RegistrationService', () => {
 
     expect(sendVerificationOrActivation).toHaveBeenCalledWith(expect.objectContaining({ status: 'INVITED' }));
     expect(sendRegistrationActivation).not.toHaveBeenCalled();
+  });
+
+  it('nieaktywowane zaproszenie w obcej organizacji BEZ zweryfikowanej domeny adresu: zwalnia adres i rejestracja idzie jak dla nowego', async () => {
+    const stale = existingUser({ emailVerifiedAt: null, status: 'INVITED', role: 'EMPLOYEE' });
+    runAuthLookup.mockResolvedValueOnce(stale);
+    displace.mockResolvedValueOnce(true);
+
+    await registerAndFlush();
+
+    expect(displace).toHaveBeenCalledWith(stale);
+    expect(txCalls.organizationCreate).toHaveBeenCalledTimes(1);
+    expect(sendVerificationOrActivation).not.toHaveBeenCalled();
+    expect(sendRegistrationActivation).toHaveBeenCalledTimes(1);
+  });
+
+  it('zaproszenie chronione (organizacja ze zweryfikowaną domeną adresu): adres NIE jest przejmowany, właściciel dostaje link aktywacyjny', async () => {
+    runAuthLookup.mockResolvedValueOnce(existingUser({ emailVerifiedAt: null, status: 'INVITED', role: 'EMPLOYEE' }));
+    displace.mockResolvedValueOnce(false);
+
+    await registerAndFlush();
+
+    expect(txCalls.organizationCreate).not.toHaveBeenCalled();
+    expect(sendVerificationOrActivation).toHaveBeenCalledTimes(1);
   });
 
   it('wyścig: P2002 na e-mailu => traktowane jak istniejące konto, odpowiedź uniform, bez wycieku meta', async () => {

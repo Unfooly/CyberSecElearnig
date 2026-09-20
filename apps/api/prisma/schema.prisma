@@ -114,6 +114,7 @@ model Organization {
   threatReportViews          ThreatReportView[]
   userImportBatches          UserImportBatch[]
   userImportRows             UserImportRow[]
+  inviteNotices              InviteNotice[]
   threatReportNotification   ThreatReportNotificationState?
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
@@ -543,6 +544,9 @@ enum UserImportInviteStatus {
   FAILED
   // Pominięte: konto już aktywne/usunięte albo wysyłka zatrzymana przez administratora.
   SKIPPED
+  // Zaproszenie wygasło: konto INVITED nie zostało aktywowane w 30 dni albo adres przejęła organizacja ze zweryfikowaną domeną
+  // tego adresu (powód dla administratora jest ogólny - nie mówi, kto przejął adres).
+  EXPIRED
 }
 
 enum UserImportRowStatus {
@@ -613,6 +617,10 @@ model UserImportRow {
   inviteReason   String?             @db.VarChar(200)
   inviteClaimedAt DateTime?
   inviteSentAt   DateTime?
+  // WEWNĘTRZNE, nigdy w odpowiedziach API, raporcie ani licznikach: adres miał w chwili potwierdzenia konto w INNEJ organizacji, więc
+  // konta nie utworzono (userId puste), a kolejka zamiast zaproszenia wyśle właścicielowi adresu informację "ktoś próbował Cię dodać".
+  // Dla administratora wiersz wygląda jak każdy inny (konto utworzone, zaproszenie wysłane) - brak sondy istnienia kont.
+  addressTaken   Boolean             @default(false)
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   batch        UserImportBatch @relation(fields: [organizationId, batchId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
@@ -621,6 +629,20 @@ model UserImportRow {
   @@index([organizationId, batchId, status])
   @@index([organizationId, batchId, inviteStatus])
   @@map("user_import_rows")
+}
+
+// Dziennik wiadomości "ktoś próbował dodać Cię do organizacji" (adres z kontem w INNEJ organizacji). Bez adresu i danych osobowych -
+// tylko organizacja i czas. Liczy się do dobowego limitu zaproszeń organizacji na równi z tokenami zaproszeń, więc ukrycie faktu
+// istnienia konta (odpowiedź jak dla nowego adresu) nie otwiera nielimitowanego kanału sondowania.
+model InviteNotice {
+  id             String   @id @default(cuid())
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("invite_notices")
 }
 
 // Stan powiadomień organizacji: kiedy wysłano ostatni mail zbiorczy (okno 15 minut). Jeden wiersz na organizację.

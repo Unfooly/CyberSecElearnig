@@ -25,7 +25,7 @@ function summary(overrides: Partial<ImportSummary> = {}): ImportSummary {
     progress: {
       accountsCreated: 5000,
       accountsFailed: 0,
-      invites: { pending: 4700, sending: 0, sent: 300, failed: 0, skipped: 0 },
+      invites: { pending: 4700, sending: 0, sent: 300, failed: 0, skipped: 0, expired: 0 },
       invitesSent: 300,
       invitesTotal: 5000,
       remaining: 4700,
@@ -184,6 +184,30 @@ describe('ImportUsersModal', () => {
 
     expect(await screen.findByText('Import zakończony')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nowy import' })).toBeInTheDocument();
+  });
+
+  it('wygasłe zaproszenia: osobna informacja z ogólnym powodem (bez wskazywania, kto przejął adres)', async () => {
+    const base = summary();
+    route({ 'GET /api/users/import/latest': () => json(200, { batch: { ...base, progress: { ...base.progress!, invites: { ...base.progress!.invites, expired: 2 } } } }) });
+    render(<ImportUsersModal onClose={() => undefined} onChanged={() => undefined} />);
+
+    expect(await screen.findByText(/Wygasło zaproszeń: 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/inn(a|ej) organizacj[ai] (przejęła|przejął)/i)).not.toBeInTheDocument();
+  });
+
+  it('429 dobowego limitu importu przy potwierdzeniu: komunikat z API, bez przejścia do postępu', async () => {
+    route({
+      'GET /api/users/import/latest': () => json(200, { batch: null }),
+      'POST /api/users/import/preview': () => json(201, preview()),
+      'POST /api/users/import/p1/confirm': () => json(429, { code: 'IMPORT_DAILY_LIMIT', message: 'Przekroczono dobowy limit importu nowych kont (20, dziś wykorzystano 19).' }),
+    });
+    render(<ImportUsersModal onClose={() => undefined} onChanged={() => undefined} />);
+    await screen.findByRole('button', { name: 'Wybierz plik' });
+    pickFile();
+    fireEvent.click(await screen.findByRole('button', { name: /Zaimportuj/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Przekroczono dobowy limit importu nowych kont (20, dziś wykorzystano 19).');
+    expect(screen.queryByText(/Import w toku/)).not.toBeInTheDocument();
   });
 
   it('anulowanie podglądu woła DELETE i wraca do wyboru pliku', async () => {

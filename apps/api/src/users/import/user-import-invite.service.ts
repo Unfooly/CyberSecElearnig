@@ -1,7 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { JobsService } from '../../jobs/jobs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
+import { AddressClaimService } from '../address-claim.service';
+import { countInviteTraffic } from '../invite-traffic';
+import { loadSeatUsage, lockSeats } from '../seats';
 import { UsersService } from '../users.service';
 import { INVITE_DAILY_LIMIT_PER_ORG, INVITE_RUN_INTERVAL_MINUTES, INVITE_STALE_CLAIM_MS, inviteCapacity } from './invite-pace';
 import { completeBatchIfDone } from './user-import.service';
@@ -38,6 +44,7 @@ export class UserImportInviteService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly tenantPrisma: TenantPrismaService,
     private readonly users: UsersService,
+    private readonly claims: AddressClaimService,
     private readonly jobs: JobsService,
   ) {}
 
@@ -88,7 +95,9 @@ export class UserImportInviteService implements OnModuleInit {
         const account = row.userId
           ? await this.tenantPrisma.runInOrgContext(organizationId, (tx) => tx.user.findFirst({ where: { id: row.userId as string, organizationId }, select: { id: true, email: true, firstName: true, status: true } }))
           : null;
-        if (!account || account.status !== 'INVITED') {
+        if (row.addressTaken) {
+          outcome = await this.processTakenAddress(organizationId, row, context);
+        } else if (!account || account.status !== 'INVITED') {
           outcome = { status: 'SKIPPED', reason: 'Konto zostało w międzyczasie aktywowane albo usunięte' };
         } else if (await this.users.sendInviteEmailSafely(organizationId, account.id, account.email, account.firstName, context)) {
           outcome = { status: 'SENT', reason: null };
@@ -113,6 +122,53 @@ export class UserImportInviteService implements OnModuleInit {
     return sent;
   }
 
+  /**
+   * Wiersz, którego adres miał w chwili potwierdzenia konto w INNEJ organizacji (dla administratora nie do odróżnienia od pozostałych).
+   * Jeśli organizacja ma zweryfikowaną domenę adresu, a właścicielem jest nieaktywowane zaproszenie obcej organizacji, adres jest
+   * przejmowany (zaproszenie tamtej organizacji wygasa), konto powstaje teraz i idzie zwykłe zaproszenie. W każdym innym przypadku
+   * właściciel adresu dostaje informację "ktoś próbował Cię dodać" - wynik dla wiersza to "wysłano" tak samo jak dla zwykłego
+   * zaproszenia. Brak wolnej licencji przy przejęciu (zwolniła się i została zajęta) kończy wiersz błędem "nie wysłano".
+   */
+  private async processTakenAddress(
+    organizationId: string,
+    row: { id: string; email: string; firstName: string; lastName: string; departmentName: string | null },
+    context: { organizationName: string | null; invitedBy: string | null },
+  ): Promise<{ status: 'SENT' | 'FAILED' | 'SKIPPED'; reason: string | null }> {
+    if ((await this.claims.claimForOrganization(organizationId, row.email)) === 'TAKEN') {
+      const sent = await this.users.notifyAddressTaken(organizationId, row.email, context);
+      return sent ? { status: 'SENT', reason: null } : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+    }
+
+    const placeholderHash = await bcrypt.hash(randomBytes(32).toString('hex'), 4);
+    let account: { id: string; email: string; firstName: string | null } | null;
+    try {
+      account = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+        await lockSeats(tx, organizationId);
+        if ((await loadSeatUsage(tx, organizationId)).available < 1) return null;
+        const department = row.departmentName ? await tx.department.findFirst({ where: { organizationId, name: row.departmentName }, select: { id: true } }) : null;
+        const created = await tx.user.create({
+          data: { organizationId, email: row.email, passwordHash: placeholderHash, firstName: row.firstName, lastName: row.lastName, departmentId: department?.id ?? null, role: 'EMPLOYEE', status: 'INVITED' },
+          select: { id: true, email: true, firstName: true },
+        });
+        await tx.userImportRow.updateMany({ where: { id: row.id, organizationId }, data: { userId: created.id, addressTaken: false } });
+        return created;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        // Adres zajęty ponownie (wyścig): zachowujemy się jak dla zajętego.
+        const sent = await this.users.notifyAddressTaken(organizationId, row.email, context);
+        return sent ? { status: 'SENT', reason: null } : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+      }
+      throw error;
+    }
+    if (!account) {
+      return { status: 'FAILED', reason: 'Nie udało się utworzyć konta - brak wolnych licencji' };
+    }
+    return (await this.users.sendInviteEmailSafely(organizationId, account.id, account.email, account.firstName, context))
+      ? { status: 'SENT', reason: null }
+      : { status: 'FAILED', reason: 'Nie udało się wysłać wiadomości - użyj "Wyślij zaproszenie ponownie" przy koncie' };
+  }
+
   private claim(organizationId: string, now: Date) {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // Serializacja biegów (kilka instancji API): pojemność i zajęcie wierszy w jednej, wyłącznej sekcji organizacji.
@@ -130,7 +186,8 @@ export class UserImportInviteService implements OnModuleInit {
         return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] };
       }
       const [tokens, inFlight, claimedRecently] = await Promise.all([
-        tx.passwordResetToken.count({ where: { organizationId, createdAt: { gte: new Date(now.getTime() - DAY_MS) } } }),
+        // Ruch zaproszeń = tokeny + powiadomienia "ktoś próbował Cię dodać" (jeden dobowy limit).
+        countInviteTraffic(tx, organizationId, new Date(now.getTime() - DAY_MS)),
         tx.userImportRow.count({ where: { organizationId, batchId: batch.id, inviteStatus: 'SENDING' } }),
         // Tempo: zaproszenia zajęte w oknie jednego biegu (ściśle później niż now - interwał) liczą się do tempa tego biegu.
         tx.userImportRow.count({ where: { organizationId, batchId: batch.id, inviteClaimedAt: { gt: new Date(now.getTime() - INVITE_RUN_INTERVAL_MINUTES * 60_000) } } }),
@@ -143,7 +200,7 @@ export class UserImportInviteService implements OnModuleInit {
         where: { organizationId, batchId: batch.id, inviteStatus: 'PENDING' },
         orderBy: { line: 'asc' },
         take: capacity,
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, email: true, firstName: true, lastName: true, departmentName: true, addressTaken: true },
       });
       if (pending.length === 0) {
         return { batchId: batch.id, invitedBy: batch.confirmedByEmail, rows: [] };

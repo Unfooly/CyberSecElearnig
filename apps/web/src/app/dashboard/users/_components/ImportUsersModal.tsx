@@ -437,7 +437,8 @@ function ProgressView({
       {progress.invites.failed > 0 && (
         <p className="text-xs text-danger">Nie udało się wysłać {progress.invites.failed} zaproszeń - użyj „Wyślij zaproszenie ponownie” przy koncie (szczegóły w raporcie CSV).</p>
       )}
-      {progress.invites.skipped > 0 && <p className="text-xs text-muted">Pominięto zaproszeń: {progress.invites.skipped} (konto aktywne, usunięte albo wysyłka zatrzymana).</p>}
+      {progress.invites.expired > 0 && <p className="text-xs text-muted">Wygasło zaproszeń: {progress.invites.expired} (konto nie zostało aktywowane w ciągu 30 dni albo adres został przypisany do innej organizacji).</p>}
+      {progress.invites.skipped > 0 &&<p className="text-xs text-muted">Pominięto zaproszeń: {progress.invites.skipped} (konto aktywne, usunięte albo wysyłka zatrzymana).</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <a href={`/api/users/import/${summary.id}/report`} download className="text-sm font-bold text-accent-ink hover:underline">

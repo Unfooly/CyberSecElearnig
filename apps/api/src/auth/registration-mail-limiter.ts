@@ -72,6 +72,8 @@ class InMemoryWindow {
 @Injectable()
 export class RegistrationMailLimiter {
   private readonly fallback = new InMemoryWindow();
+  /** Przestrzeń kluczy w Redisie; podklasa dla innego rodzaju wiadomości ma własną, więc jej okno nie zjada okna rejestracji. */
+  protected readonly namespace: string = 'reg-mail';
 
   constructor(@Optional() private readonly redis?: RedisService) {}
 
@@ -87,7 +89,7 @@ export class RegistrationMailLimiter {
       return this.fallback.tryAcquire(normalized, now);
     }
 
-    const key = redis.key('reg-mail', createHash('sha256').update(normalized).digest('hex'));
+    const key = redis.key(this.namespace, createHash('sha256').update(normalized).digest('hex'));
     try {
       const result = await redis.client.set(key, '1', 'PX', WINDOW_MS, 'NX');
       redis.reportSuccess();
@@ -97,4 +99,14 @@ export class RegistrationMailLimiter {
       return this.fallback.tryAcquire(normalized, now);
     }
   }
+}
+
+/**
+ * Ten sam limit "jedna wiadomość na skrzynkę na 10 minut" dla wiadomości "ktoś próbował dodać Cię do organizacji", ale w OSOBNEJ
+ * przestrzeni kluczy: organizacja zapraszająca cudzy adres nie może zużyć okna skrzynki i w ten sposób wyciszyć maila
+ * rejestracyjnego/aktywacyjnego właściciela.
+ */
+@Injectable()
+export class InviteNoticeMailLimiter extends RegistrationMailLimiter {
+  protected override readonly namespace: string = 'invite-notice';
 }

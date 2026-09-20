@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { UsersService } from './users.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EmailService } from '../email/email.service';
+import { InviteNoticeMailLimiter } from '../auth/registration-mail-limiter';
+import { AddressClaimService } from './address-claim.service';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -20,6 +23,10 @@ describe('UsersService', () => {
   let tokenFindFirst: jest.Mock;
   let issuePasswordResetUrl: jest.Mock;
   let sendEmail: jest.Mock;
+  let noticeCount: jest.Mock;
+  let noticeCreate: jest.Mock;
+  let claimForOrganization: jest.Mock;
+  let tryAcquireMail: jest.Mock;
 
   beforeEach(async () => {
     organizationFindUnique = jest.fn().mockResolvedValue({ name: 'firma.pl', seatsLimit: 1000 });
@@ -34,12 +41,17 @@ describe('UsersService', () => {
     tokenFindFirst = jest.fn().mockResolvedValue(null);
     issuePasswordResetUrl = jest.fn().mockResolvedValue('http://localhost:3000/reset-password?token=abc');
     sendEmail = jest.fn().mockResolvedValue(undefined);
+    noticeCount = jest.fn().mockResolvedValue(0);
+    noticeCreate = jest.fn().mockResolvedValue({});
+    claimForOrganization = jest.fn().mockResolvedValue('TAKEN');
+    tryAcquireMail = jest.fn().mockResolvedValue(true);
 
     runInOrgContext = jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
       fn({
         $executeRaw: jest.fn().mockResolvedValue(0), // blokada doradcza licencji
         organization: { findUnique: organizationFindUnique },
         passwordResetToken: { count: tokenCount, findFirst: tokenFindFirst },
+        inviteNotice: { count: noticeCount, create: noticeCreate },
         department: { findFirst: departmentFindFirst, upsert: departmentUpsert },
         user: {
           create: userCreate,
@@ -57,6 +69,8 @@ describe('UsersService', () => {
         { provide: TenantPrismaService, useValue: { runInOrgContext } },
         { provide: AuthService, useValue: { issuePasswordResetUrl } },
         { provide: EmailService, useValue: { send: sendEmail } },
+        { provide: AddressClaimService, useValue: { claimForOrganization: claimForOrganization } },
+        { provide: InviteNoticeMailLimiter, useValue: { tryAcquire: tryAcquireMail } },
       ],
     }).compile();
 
@@ -217,6 +231,81 @@ describe('UsersService', () => {
       tokenFindFirst.mockResolvedValue({ createdAt: new Date(Date.now() - 10 * 60_000) });
 
       await expect(service.resendInvite('org-a', 'user-1')).resolves.toEqual({ inviteEmailSent: true });
+    });
+  });
+
+  describe('adres zajęty (users.email jest unikalny globalnie)', () => {
+    const dto = { email: 'ktos@test.pl', firstName: 'Jan', lastName: 'K', role: 'EMPLOYEE' as never };
+    const p2002 = () => new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: '5.22.0', meta: { modelName: 'User' } });
+    const created = { id: 'user-1', email: 'ktos@test.pl', firstName: 'Jan', lastName: 'K', role: 'EMPLOYEE', status: 'INVITED', createdAt: new Date(), department: null };
+
+    it('konto w TEJ organizacji: ogólny błąd 400, bez powiadomienia i bez próby przejęcia', async () => {
+      userCreate.mockRejectedValue(p2002());
+      userFindFirst.mockResolvedValue({ id: 'own' });
+
+      await expect(service.inviteUser('org-a', dto)).rejects.toBeInstanceOf(BadRequestException);
+      expect(claimForOrganization).not.toHaveBeenCalled();
+      expect(noticeCreate).not.toHaveBeenCalled();
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('adres w INNEJ organizacji: odpowiedź jak dla nowego adresu (INVITED, inviteEmailSent), konta nie tworzy, właściciel dostaje powiadomienie', async () => {
+      userCreate.mockRejectedValue(p2002());
+      userFindFirst.mockResolvedValue(null);
+      claimForOrganization.mockResolvedValue('TAKEN');
+
+      const result = await service.inviteUser('org-a', dto);
+
+      expect(result).toMatchObject({ email: 'ktos@test.pl', firstName: 'Jan', lastName: 'K', role: 'EMPLOYEE', status: 'INVITED', inviteEmailSent: true, department: null });
+      expect(result.id).toMatch(/^c[a-z0-9]{24}$/);
+      expect(userCreate).toHaveBeenCalledTimes(1);
+      expect(issuePasswordResetUrl).not.toHaveBeenCalled();
+      expect(noticeCreate).toHaveBeenCalledTimes(1);
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ktos@test.pl', templateName: 'invite-address-taken' }));
+    });
+
+    it('powiadomienie idzie do dziennika (limit dobowy) także wtedy, gdy skrzynka jest chroniona limitem "jedna wiadomość na 10 minut"', async () => {
+      userCreate.mockRejectedValue(p2002());
+      userFindFirst.mockResolvedValue(null);
+      tryAcquireMail.mockResolvedValue(false);
+
+      const result = await service.inviteUser('org-a', dto);
+
+      expect(result.inviteEmailSent).toBe(true);
+      expect(noticeCreate).toHaveBeenCalledTimes(1);
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('organizacja ze zweryfikowaną domeną przejmuje adres od nieaktywowanego zaproszenia: konto powstaje normalnie, zwykłe zaproszenie', async () => {
+      userCreate.mockRejectedValueOnce(p2002()).mockResolvedValueOnce(created);
+      userFindFirst.mockResolvedValue(null);
+      claimForOrganization.mockResolvedValue('CLAIMED');
+
+      const result = await service.inviteUser('org-a', dto);
+
+      expect(result).toMatchObject({ id: 'user-1', inviteEmailSent: true });
+      expect(noticeCreate).not.toHaveBeenCalled();
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ templateName: 'user-invite' }));
+    });
+
+    it('przejęcie się udało, ale adres zajęto ponownie (wyścig): traktowany jak zajęty (powiadomienie, brak konta)', async () => {
+      userCreate.mockRejectedValue(p2002());
+      userFindFirst.mockResolvedValue(null);
+      claimForOrganization.mockResolvedValue('CLAIMED');
+
+      const result = await service.inviteUser('org-a', dto);
+
+      expect(result.inviteEmailSent).toBe(true);
+      expect(noticeCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('limit dobowy liczy powiadomienia razem z tokenami zaproszeń (sondowanie adresów nie omija limitu)', async () => {
+      tokenCount.mockResolvedValue(200);
+      noticeCount.mockResolvedValue(100);
+
+      await expect(service.inviteUser('org-a', dto)).rejects.toMatchObject({ status: 429 });
+      expect(userCreate).not.toHaveBeenCalled();
     });
   });
 

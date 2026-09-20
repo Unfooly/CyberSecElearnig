@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { RegistrationService } from '../src/auth/registration.service';
+import { REGISTRATION_ACCEPTED_MESSAGE, RegistrationService } from '../src/auth/registration.service';
 import { EmailService } from '../src/email/email.service';
 import { RedisService } from '../src/redis/redis.service';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -381,14 +381,23 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(sendSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('konto ZAPROSZONE przez admina (INVITED, pracownik) dostaje link zaproszenia (user-invite), nie link rejestracji firmy', async () => {
-      const inviteeEmail = email('invitee');
+    // Zapraszająca organizacja; `verifiedDomain` = ma ZWERYFIKOWANĄ domenę adresu zaproszonego (zaproszenie chronione).
+    async function inviteEmployee(inviteeEmail: string, verifiedDomain: boolean) {
       const org = await prisma.organization.create({ data: { name: orgName('Zapraszająca'), status: 'ACTIVE' } });
-      await tenantPrisma.runInOrgContext(org.id, (tx) =>
-        tx.user.create({
+      const user = await tenantPrisma.runInOrgContext(org.id, async (tx) => {
+        if (verifiedDomain) {
+          await tx.organizationDomain.create({ data: { organizationId: org.id, domain: inviteeEmail.split('@')[1], verificationToken: 'tok', verifiedAt: new Date() } });
+        }
+        return tx.user.create({
           data: { organizationId: org.id, email: inviteeEmail, passwordHash: 'x', role: 'EMPLOYEE', status: 'INVITED', firstName: 'Ida', lastName: 'Zaproszona' },
-        }),
-      );
+        });
+      });
+      return { org, user };
+    }
+
+    it('konto ZAPROSZONE przez organizację ze zweryfikowaną domeną adresu (INVITED, pracownik) dostaje link zaproszenia (user-invite), nie link rejestracji firmy', async () => {
+      const inviteeEmail = email('invitee');
+      await inviteEmployee(inviteeEmail, true);
       sendSpy.mockClear();
 
       const response = await postRegister(app, inviteeEmail);
@@ -396,6 +405,38 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(response.status).toBe(201);
       expect(sendSpy).toHaveBeenCalledTimes(1);
       expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'user-invite' }));
+    });
+
+    it('nieaktywowane zaproszenie od organizacji BEZ zweryfikowanej domeny adresu nie blokuje rejestracji: wygasa, rejestracja idzie jak dla nowego adresu', async () => {
+      const inviteeEmail = email('squat');
+      const { org, user } = await inviteEmployee(inviteeEmail, false);
+      sendSpy.mockClear();
+
+      const response = await postRegister(app, inviteeEmail);
+      await app.get(RegistrationService).flushBackgroundTasks();
+
+      expect(response.status).toBe(201);
+      expect(response.body).toEqual({ message: REGISTRATION_ACCEPTED_MESSAGE });
+      const current = await tenantPrisma.runAuthLookup({ email: inviteeEmail });
+      expect(current?.role).toBe('ORG_ADMIN');
+      expect(current?.organizationId).not.toBe(org.id);
+      expect(await tenantPrisma.runInOrgContext(org.id, (tx) => tx.user.count({ where: { organizationId: org.id, id: user.id } }))).toBe(0);
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'registration-activation' }));
+    });
+
+    it('aktywne konto (nawet bez zweryfikowanej domeny organizacji) NIE jest przejmowane przez rejestrację', async () => {
+      const inviteeEmail = email('active');
+      const { org, user } = await inviteEmployee(inviteeEmail, false);
+      await tenantPrisma.runInOrgContext(org.id, (tx) =>
+        tx.user.update({ where: { id: user.id }, data: { status: 'ACTIVE', emailVerifiedAt: new Date() } }),
+      );
+      sendSpy.mockClear();
+
+      await postRegister(app, inviteeEmail);
+      await app.get(RegistrationService).flushBackgroundTasks();
+
+      expect((await tenantPrisma.runAuthLookup({ email: inviteeEmail }))?.organizationId).toBe(org.id);
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'registration-existing-account' }));
     });
 
     it('domena IDN i jej punycode to ta sama skrzynka: drugie żądanie nie tworzy drugiego konta ani organizacji', async () => {

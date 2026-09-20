@@ -35,9 +35,8 @@ wierszy. Resztę wierszy pobiera `GET /users/import/:id/rows?status=ERROR|EXISTI
 podsumowanie ze **świeżym stanem miejsc**; `DELETE /users/import/:id` anuluje podgląd (204).
 
 - **Istniejące konta:** adres z kontem **w tej organizacji** (bez względu na wielkość liter) dostaje status `EXISTING`: pomijany, **nic nie
-  nadpisujemy**, nie zużywa miejsca. Adresów z **innych organizacji** celowo NIE sprawdzamy (wymagałoby furtki omijającej RLS i pozwalało
-  sprawdzać, kto ma konto na platformie): taki wiersz jest w podglądzie poprawny, a przy potwierdzeniu wyjdzie jako ogólny błąd „Nie można
-  użyć tego adresu e-mail” i nie zużyje licencji.
+  nadpisujemy**, nie zużywa miejsca. Adresów z **innych organizacji** w podglądzie NIE sprawdzamy: wiersz jest poprawny, a jego dalszy los
+  opisuje sekcja „Adres zajęty w innej organizacji” (administrator niczego nie dowiaduje się o kontach na platformie).
 - **Jedna aktywna partia na organizację:** nowy podgląd zastępuje poprzedni (ogranicza ilość przechowywanych danych osobowych).
 - **Ważność 24 h:** wygasły podgląd jest „nieistniejący” (404); job `user-import-retention` (co godzinę, UTC) kasuje wygasłe partie razem
   z wierszami, więc dane z pliku zostają w bazie najwyżej ok. 25 h.
@@ -60,15 +59,49 @@ potwierdzeniu.
 
 W JEDNEJ transakcji, po sprawdzeniu miejsc pod blokadą doradczą: tworzy konta `INVITED` dla wierszy `VALID` (z jednym zastępczym hashem
 hasła na partię; hasło ustawia dopiero użytkownik z maila), tworzy brakujące działy i zapisuje wynik per wiersz (`accountResult`
-`CREATED`/`FAILED`). Partia przechodzi w `PROCESSING`. Brak miejsc = `409 SEAT_LIMIT` bez zapisu jakiegokolwiek konta. Adres, którego nie
-wolno użyć (np. konto w innej organizacji), daje wiersz `FAILED` z ogólnym powodem, bez zużycia licencji. Ponowne potwierdzenie tej samej
-partii jest idempotentne; limit 3 żądania/min.
+`CREATED`). Partia przechodzi w `PROCESSING`. Brak miejsc = `409 SEAT_LIMIT` bez zapisu jakiegokolwiek konta. Ponowne potwierdzenie tej
+samej partii jest idempotentne; limit 3 żądania/min.
+
+**Limit importu nowych kont na dobę:** `2 x seatsLimit` na kroczące 24 h (jak wysyłki symulacji; `IMPORT_DAILY_ACCOUNTS_FACTOR`), liczony po
+wszystkich wierszach przyjętych do utworzenia - także tych, dla których konta nie utworzono (adres zajęty). Przekroczenie = `429
+IMPORT_DAILY_LIMIT` bez zapisu. Ogranicza skalę sondowania adresów nawet przy ukrytym wyniku.
+
+## Adres zajęty w innej organizacji (brak sondy istnienia kont)
+
+`users.email` jest unikalny globalnie, więc adres może mieć konto w INNEJ organizacji. Administrator **nie może się tego dowiedzieć**
+(ani z importu, ani z pojedynczego zaproszenia `POST /users/invite`):
+
+- Import: wiersz zostaje „utworzony” (`accountResult = CREATED`, zaproszenie w kolejce), liczniki i raport CSV nie rozróżniają go od
+  pozostałych; wewnętrzny znacznik `addressTaken` nigdy nie trafia do API ani raportu. Konta w organizacji administratora nie ma.
+  Kolejka zamiast zaproszenia wysyła **właścicielowi adresu** wiadomość „Ktoś próbował dodać Cię do organizacji <nazwa>” (bez linków;
+  szablon `invite-address-taken`, jak przy próbie rejestracji na istniejący adres) i oznacza wiersz jako „wysłano”. Jedna wiadomość na
+  skrzynkę na 10 minut (ochrona właściciela); każda próba trafia do dziennika `invite_notices` i liczy się do **dobowego limitu
+  zaproszeń (300)** razem z prawdziwymi zaproszeniami.
+- Pojedyncze zaproszenie: odpowiedź `201` ma ten sam kształt co dla nowego adresu (`status: INVITED`, `inviteEmailSent: true`, id w
+  formacie zwykłego id); konta nie ma. Adres z kontem w TEJ organizacji nadal daje ogólny `400` (administrator widzi swoją listę).
+- **Rezydualny kanał:** administrator zobaczy, że osoby nie ma na liście użytkowników organizacji; tego nie da się ukryć bez ukrywania
+  własnej listy. Realnie sondowanie ogranicza limit dobowy importu i zaproszeń.
+
+**Pierwszeństwo do adresu (squatting).** Konto `INVITED`, które nie zostało aktywowane, nie blokuje adresu:
+
+1. zaproszenie/import z organizacji ze **zweryfikowaną domeną DNS** tego adresu przejmuje adres: cudze nieaktywowane zaproszenie jest
+   usuwane, a konto powstaje normalnie (przy imporcie w kolejce, tuż przed wysyłką zaproszenia);
+2. **rejestracja** nowej organizacji na adres z nieaktywowanym zaproszeniem w obcej organizacji, która NIE ma zweryfikowanej domeny tego
+   adresu (zaprosiła cudzy adres bez praw do domeny), zwalnia adres i przebiega jak dla nowego adresu. Zaproszenie od organizacji ze
+   zweryfikowaną domeną adresu jest chronione (właściciel dostaje link aktywacyjny jak dotąd);
+3. konto aktywowane i konto `ORG_ADMIN` nie są przejmowane.
+
+Administrator organizacji, której zaproszenie wygasło w wyniku przejęcia, widzi w raporcie importu status „Wygasło” z ogólnym powodem
+(nie ujawniamy, kto przejął adres). Dopasowanie domeny jest dokładne (bez subdomen).
+
+**Wygasanie:** job `invite-expiry` (raz na dobę, 04:20 UTC) usuwa konta `INVITED` (poza `ORG_ADMIN`) nieaktywowane od **30 dni** od
+utworzenia; wiersze importu dostają status „Wygasło”.
 
 ## Kolejka zaproszeń z tempem
 
 Zaproszenia NIE idą w jednej serii: job `user-import-invites` (co 5 min, UTC) wysyła je partiami. Tempo (`invite-pace.ts`): najwyżej
 **20 na bieg** (okno `claimedRecently` chroni przed równoległymi biegami) i w granicach **dobowego limitu 300 na organizację**
-(`INVITE_DAILY_LIMIT_PER_ORG`, wspólnego z zaproszeniami ręcznymi; liczonego z tokenów z ostatnich 24 h). Limit 300 zostaje limitem
+(`INVITE_DAILY_LIMIT_PER_ORG`, wspólnego z zaproszeniami ręcznymi; liczonego z tokenów zaproszeń i powiadomień „ktoś próbował Cię dodać” z ostatnich 24 h). Limit 300 zostaje limitem
 antyspamowym - import 5000 osób rozkłada się na kolejne doby. Wiersz zaproszenia: `PENDING` → `SENDING` → `SENT`/`FAILED`/`SKIPPED`;
 zajęcie wiersza jest atomowe (at-most-once): zaproszenie zostające w `SENDING` po przerwaniu procesu (starsze niż
 `INVITE_STALE_CLAIM_MS`) jest domykane jako `FAILED` ze stanem niepewnym (admin użyje „Wyślij zaproszenie ponownie” przy koncie),

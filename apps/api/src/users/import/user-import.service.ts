@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, UserImportBatchStatus, UserImportRowStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
@@ -7,12 +7,16 @@ import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
 import { KeyedMutex } from '../../common/keyed-mutex';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { toCsv } from '../../phishing/results/results-csv';
+import { countInviteTraffic } from '../invite-traffic';
 import { loadSeatUsage, lockSeats, seatLimitError, SeatUsage } from '../seats';
 import { ImportFileError, ParsedImport, parseImportFile } from './csv-import';
 import { dailyRemaining, estimateInviteCompletion, INVITE_DAILY_LIMIT_PER_ORG } from './invite-pace';
 
 const err = (code: string, message: string) => ({ code, message });
 export const IMPORT_FILE_INVALID = 'IMPORT_FILE_INVALID';
+export const IMPORT_DAILY_LIMIT = err('IMPORT_DAILY_LIMIT', 'Przekroczono dobowy limit importu nowych kont.');
+/** Limit nowych kont z importu na kroczące 24 h = ten mnożnik x liczba licencji organizacji (seatsLimit), jak przy wysyłkach symulacji. */
+export const IMPORT_DAILY_ACCOUNTS_FACTOR = 2;
 export const IMPORT_ALREADY_CONFIRMED = err('IMPORT_ALREADY_CONFIRMED', 'Ten import został już potwierdzony. Nie można go potwierdzić ani anulować ponownie - możesz zatrzymać wysyłkę zaproszeń.');
 export const IMPORT_IN_PROGRESS = err('IMPORT_IN_PROGRESS', 'Poprzedni import nadal wysyła zaproszenia. Poczekaj na jego zakończenie albo zatrzymaj wysyłkę.');
 export const IMPORT_NOTHING_TO_CONFIRM = err('IMPORT_NOTHING_TO_CONFIRM', 'W pliku nie ma żadnych nowych, poprawnych osób do dodania.');
@@ -46,7 +50,7 @@ export interface ImportSeats extends SeatUsage {
 export interface ImportProgress {
   accountsCreated: number;
   accountsFailed: number;
-  invites: { pending: number; sending: number; sent: number; failed: number; skipped: number };
+  invites: { pending: number; sending: number; sent: number; failed: number; skipped: number; expired: number };
   /** Ile zaproszeń wysłano z ilu do wysłania (utworzone konta). */
   invitesSent: number;
   invitesTotal: number;
@@ -93,7 +97,7 @@ export interface ImportRowView {
   /** Po potwierdzeniu (wiersze VALID): wynik konta i stan zaproszenia. */
   accountResult?: 'CREATED' | 'FAILED' | null;
   accountReason?: string | null;
-  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | null;
+  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | null;
   inviteReason?: string | null;
 }
 
@@ -126,7 +130,7 @@ const ROW_SELECT = {
 
 const VALIDATION_LABELS: Record<UserImportRowStatus, string> = { VALID: 'Poprawny', EXISTING: 'Konto już istnieje', ERROR: 'Błąd' };
 const ACCOUNT_LABELS = { CREATED: 'Utworzono', FAILED: 'Nie utworzono' } as const;
-const INVITE_LABELS = { PENDING: 'Oczekuje', SENDING: 'Wysyłanie', SENT: 'Wysłano', FAILED: 'Nie wysłano', SKIPPED: 'Pominięto' } as const;
+const INVITE_LABELS = { PENDING: 'Oczekuje', SENDING: 'Wysyłanie', SENT: 'Wysłano', FAILED: 'Nie wysłano', SKIPPED: 'Pominięto', EXPIRED: 'Wygasło' } as const;
 
 /**
  * Domyka partię PROCESSING jako COMPLETED, gdy nie ma już zaproszeń oczekujących ani w trakcie wysyłki; od tej chwili raport jest
@@ -333,6 +337,7 @@ export class UserImportService {
           if (toCreate.length > usage.available) {
             throw seatLimitError(usage, toCreate.length);
           }
+          await this.assertDailyImportLimit(tx, user.organizationId, toCreate.length, now);
 
           if (nowExisting.length > 0) {
             await tx.userImportRow.updateMany({
@@ -372,21 +377,26 @@ export class UserImportService {
               WHERE r."id" = v."id" AND r."organizationId" = ${user.organizationId}`;
           }
           if (failedRows.length > 0) {
+            // Adres z kontem w INNEJ organizacji: dla administratora wiersz wygląda jak każdy inny (konto "utworzone", zaproszenie
+            // w kolejce) - brak sondy istnienia kont na platformie. Konta nie ma (userId puste); kolejka zamiast zaproszenia wyśle
+            // właścicielowi adresu informację "ktoś próbował Cię dodać" albo, gdy organizacja ma zweryfikowaną domenę adresu i
+            // właścicielem jest nieaktywowane zaproszenie, przejmie adres (patrz AddressClaimService). Znacznik addressTaken jest
+            // wewnętrzny: nie trafia do odpowiedzi API, liczników ani raportu.
             await tx.userImportRow.updateMany({
               where: { id: { in: failedRows.map((row) => row.id) }, organizationId: user.organizationId },
-              data: { accountResult: 'FAILED', accountReason: 'Nie można użyć tego adresu e-mail.' },
+              data: { accountResult: 'CREATED', addressTaken: true, inviteStatus: 'PENDING' },
             });
           }
 
-          const allDone = createdRows.length === 0;
+          // toCreate nie jest puste (wyżej 409), a każdy jego wiersz czeka w kolejce (konto albo powiadomienie): partię domyka job.
           await tx.userImportBatch.update({
             where: { id: batch.id },
             data: {
-              status: allDone ? 'COMPLETED' : 'PROCESSING',
+              status: 'PROCESSING',
               confirmedAt: now,
               confirmedByEmail: actor.email,
-              completedAt: allDone ? now : null,
-              expiresAt: new Date(now.getTime() + (allDone ? REPORT_TTL_MS : PROCESSING_TTL_MS)),
+              completedAt: null,
+              expiresAt: new Date(now.getTime() + PROCESSING_TTL_MS),
             },
           });
           return this.loadSummary(tx, user, batch.id, now);
@@ -394,6 +404,25 @@ export class UserImportService {
         { maxWait: 15_000, timeout: 120_000 },
       ),
     );
+  }
+
+  /**
+   * Limit nowych kont z importu na kroczące 24 h: IMPORT_DAILY_ACCOUNTS_FACTOR x seatsLimit (jak limit wysyłek symulacji). Liczą się
+   * WSZYSTKIE wiersze przyjęte do utworzenia, także te, dla których konta nie utworzono (adres zajęty w innej organizacji) - dzięki
+   * temu ukrycie faktu istnienia konta nie pozwala sondować adresów bez ograniczeń. Wołane pod blokadą importu organizacji.
+   */
+  private async assertDailyImportLimit(tx: Prisma.TransactionClient, organizationId: string, requested: number, now: Date): Promise<void> {
+    const organization = await tx.organization.findUnique({ where: { id: organizationId }, select: { seatsLimit: true } });
+    const limit = IMPORT_DAILY_ACCOUNTS_FACTOR * (organization?.seatsLimit ?? 0);
+    const used = await tx.userImportRow.count({
+      where: { organizationId, accountResult: { not: null }, batch: { confirmedAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } },
+    });
+    if (used + requested > limit) {
+      throw new HttpException(
+        { code: IMPORT_DAILY_LIMIT.code, message: `Przekroczono dobowy limit importu nowych kont (${limit}, dziś wykorzystano ${used}). Spróbuj ponownie jutro albo zmień plan.` },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
   }
 
   /** Zatrzymanie wysyłki: oczekujące zaproszenia są pomijane (konta zostają, można je zaprosić ręcznie); wysyłane już zostają. */
@@ -454,11 +483,11 @@ export class UserImportService {
     const [accounts, invites, tokens] = await Promise.all([
       tx.userImportRow.groupBy({ by: ['accountResult'], where: { organizationId, batchId, accountResult: { not: null } }, _count: { _all: true } }),
       tx.userImportRow.groupBy({ by: ['inviteStatus'], where: { organizationId, batchId, inviteStatus: { not: null } }, _count: { _all: true } }),
-      tx.passwordResetToken.count({ where: { organizationId, createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } }),
+      countInviteTraffic(tx, organizationId, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
     ]);
     const accountCount = (result: 'CREATED' | 'FAILED') => accounts.find((group) => group.accountResult === result)?._count._all ?? 0;
     const inviteCount = (status: string) => invites.find((group) => group.inviteStatus === status)?._count._all ?? 0;
-    const counts = { pending: inviteCount('PENDING'), sending: inviteCount('SENDING'), sent: inviteCount('SENT'), failed: inviteCount('FAILED'), skipped: inviteCount('SKIPPED') };
+    const counts = { pending: inviteCount('PENDING'), sending: inviteCount('SENDING'), sent: inviteCount('SENT'), failed: inviteCount('FAILED'), skipped: inviteCount('SKIPPED'), expired: inviteCount('EXPIRED') };
     const remaining = counts.pending + counts.sending;
     const left = dailyRemaining(INVITE_DAILY_LIMIT_PER_ORG, tokens);
     return {

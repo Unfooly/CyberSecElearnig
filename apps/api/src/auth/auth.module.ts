@@ -4,6 +4,7 @@ import { ActiveOrganizationGuard } from '../common/guards/active-organization.gu
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { EmailModule } from '../email/email.module';
+import { AddressClaimModule } from '../users/address-claim.service';
 import { AuthService } from './auth.service';
 import { SessionsService } from './sessions.service';
 import { RefreshTokenCleanupService } from './refresh-token-cleanup.service';
@@ -14,7 +15,7 @@ import { RegistrationMailLimiter } from './registration-mail-limiter';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), EmailModule, JobsModule],
+  imports: [PassportModule, JwtModule.register({}), EmailModule, JobsModule, AddressClaimModule],
   controllers: [AuthController],
   providers: [
     AuthService,

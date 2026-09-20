@@ -15,6 +15,7 @@ import {
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailDomain, generateDomainVerificationToken } from '../organizations/domain.util';
+import { AddressClaimService } from '../users/address-claim.service';
 import { AuthService, BCRYPT_ROUNDS } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { RegistrationMailLimiter } from './registration-mail-limiter';
@@ -63,6 +64,7 @@ export class RegistrationService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly mailLimiter: RegistrationMailLimiter,
+    private readonly addressClaims: AddressClaimService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string }> {
@@ -90,7 +92,12 @@ export class RegistrationService {
   }
 
   private async processRegistration(dto: RegisterDto, domain: string): Promise<void> {
-    const existing = await this.tenantPrisma.runAuthLookup({ email: dto.email });
+    let existing = await this.tenantPrisma.runAuthLookup({ email: dto.email });
+    // Nieaktywowane zaproszenie do obcej organizacji, która nie ma zweryfikowanej domeny tego adresu, nie blokuje rejestracji
+    // (squatting adresów): zaproszenie wygasa, a rejestracja idzie normalnie - jak dla nowego adresu.
+    if (existing && (await this.addressClaims.displaceUnprotectedForRegistration(existing))) {
+      existing = null;
+    }
     if (existing) {
       await this.notifyExistingAccount(existing);
       return;

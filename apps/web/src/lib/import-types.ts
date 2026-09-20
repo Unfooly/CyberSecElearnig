@@ -21,6 +21,8 @@ export interface ImportInviteCounts {
   sent: number;
   failed: number;
   skipped: number;
+  // Zaproszenie wygasło (nieaktywowane 30 dni albo adres przejęty przez organizację ze zweryfikowaną domeną); powód ogólny.
+  expired: number;
 }
 
 export interface ImportProgress {
@@ -68,7 +70,7 @@ export interface ImportRow {
   reason: string | null;
   accountResult?: 'CREATED' | 'FAILED' | null;
   accountReason?: string | null;
-  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | null;
+  inviteStatus?: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED' | 'EXPIRED' | null;
   inviteReason?: string | null;
 }
 

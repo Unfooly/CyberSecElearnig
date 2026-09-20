@@ -21,7 +21,10 @@ import { InviteUserResponseDto } from './dto/invite-user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto, DEFAULT_PAGE_SIZE } from './dto/list-users-query.dto';
 import { AVATAR_PRESETS } from './avatar-presets';
+import { InviteNoticeMailLimiter } from '../auth/registration-mail-limiter';
+import { AddressClaimService } from './address-claim.service';
 import { INVITE_DAILY_LIMIT_PER_ORG } from './import/invite-pace';
+import { countInviteTraffic } from './invite-traffic';
 import { assertSeatsAvailable, lockSeats } from './seats';
 
 const AVATAR_VALIDATION_MESSAGE =
@@ -59,6 +62,11 @@ interface InviteContext {
 
 type SelectedUser = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;
 
+/** Identyfikator w kształcie cuid (jak prawdziwe id kont), żeby odpowiedź dla zajętego adresu nie różniła się od odpowiedzi dla nowego. */
+function lookalikeUserId(): string {
+  return `c${Date.now().toString(36)}${randomBytes(9).toString('hex')}`.slice(0, 25);
+}
+
 function toUserResponseDto(user: SelectedUser): UserResponseDto {
   // Prisma generuje własne enumy Role/UserStatus ze schema.prisma,
   // strukturalnie identyczne z @cyberszkolo/shared, ale nominalnie odrębne -
@@ -74,6 +82,8 @@ export class UsersService {
     private readonly tenantPrisma: TenantPrismaService,
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
+    private readonly addressClaims: AddressClaimService,
+    private readonly mailLimiter: InviteNoticeMailLimiter,
   ) {}
 
   /**
@@ -136,35 +146,16 @@ export class UsersService {
 
     let user: SelectedUser;
     try {
-      user = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-        // Limit licencji: blokada + sprawdzenie w tej samej transakcji co utworzenie konta (bez wyścigu równoległych zaproszeń).
-        await lockSeats(tx, organizationId);
-        await assertSeatsAvailable(tx, organizationId);
-        if (dto.departmentId) {
-          await this.assertDepartmentBelongsToOrg(tx, organizationId, dto.departmentId);
-        }
-        return tx.user.create({
-          data: {
-            organizationId,
-            email: dto.email,
-            passwordHash,
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            departmentId: dto.departmentId ?? null,
-            role: dto.role,
-            status: UserStatus.INVITED,
-          },
-          select: USER_SELECT,
-        });
-      });
+      user = await this.createInvitedUser(organizationId, dto, passwordHash);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === UNIQUE_CONSTRAINT_VIOLATION
-      ) {
-        throw new BadRequestException(EMAIL_UNAVAILABLE_MESSAGE);
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_VIOLATION)) {
+        throw error;
       }
-      throw error;
+      const recovered = await this.recoverTakenAddress(organizationId, dto, passwordHash, invitedBy);
+      if ('response' in recovered) {
+        return recovered.response;
+      }
+      user = recovered.user;
     }
 
     const inviteContext = await this.buildInviteContext(organizationId, invitedBy);
@@ -177,6 +168,110 @@ export class UsersService {
     );
 
     return { ...toUserResponseDto(user), inviteEmailSent };
+  }
+
+  private createInvitedUser(organizationId: string, dto: InviteUserDto, passwordHash: string): Promise<SelectedUser> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // Limit licencji: blokada + sprawdzenie w tej samej transakcji co utworzenie konta (bez wyścigu równoległych zaproszeń).
+      await lockSeats(tx, organizationId);
+      await assertSeatsAvailable(tx, organizationId);
+      if (dto.departmentId) {
+        await this.assertDepartmentBelongsToOrg(tx, organizationId, dto.departmentId);
+      }
+      return tx.user.create({
+        data: {
+          organizationId,
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          departmentId: dto.departmentId ?? null,
+          role: dto.role,
+          status: UserStatus.INVITED,
+        },
+        select: USER_SELECT,
+      });
+    });
+  }
+
+  /**
+   * Adres zajęty (users.email jest unikalny globalnie). Trzy przypadki, bez sondy istnienia kont w INNYCH organizacjach:
+   *  1) konto w TEJ organizacji: zwykły, ogólny błąd (administrator i tak widzi swoją listę);
+   *  2) organizacja ma zweryfikowaną domenę adresu, a właścicielem jest nieaktywowane zaproszenie obcej organizacji: przejmujemy
+   *     adres (cudze zaproszenie wygasa) i tworzymy konto normalnie;
+   *  3) w każdym innym przypadku odpowiedź jest IDENTYCZNA jak dla nowego adresu ("zaproszenie wysłane"), konta nie powstaje, a
+   *     właściciel adresu dostaje wiadomość "ktoś próbował Cię dodać" (limit dobowy liczy ją jak zaproszenie).
+   * Dział i limit licencji były sprawdzone przed próbą zapisu, więc błędy walidacji są takie same jak dla nowego adresu.
+   */
+  private async recoverTakenAddress(
+    organizationId: string,
+    dto: InviteUserDto,
+    passwordHash: string,
+    invitedBy?: string,
+  ): Promise<{ user: SelectedUser } | { response: InviteUserResponseDto }> {
+    const own = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.user.findFirst({ where: { organizationId, email: dto.email }, select: { id: true } }),
+    );
+    if (own) {
+      throw new BadRequestException(EMAIL_UNAVAILABLE_MESSAGE);
+    }
+
+    if ((await this.addressClaims.claimForOrganization(organizationId, dto.email)) === 'CLAIMED') {
+      try {
+        return { user: await this.createInvitedUser(organizationId, dto, passwordHash) };
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_VIOLATION)) {
+          throw error;
+        }
+        // Adres zajęty ponownie (wyścig): traktujemy jak zajęty.
+      }
+    }
+
+    const context = await this.buildInviteContext(organizationId, invitedBy);
+    await this.notifyAddressTaken(organizationId, dto.email, context);
+    const department = dto.departmentId
+      ? await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+          tx.department.findFirst({ where: { id: dto.departmentId, organizationId }, select: { id: true, name: true } }),
+        )
+      : null;
+    return {
+      response: {
+        id: lookalikeUserId(),
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: dto.role,
+        status: UserStatus.INVITED,
+        createdAt: new Date(),
+        department,
+        inviteEmailSent: true,
+      },
+    };
+  }
+
+  /**
+   * Wiadomość do właściciela adresu, który ma konto w innej organizacji: "ktoś próbował dodać Cię do organizacji X". Zawsze zapisuje
+   * wpis w dzienniku (dobowy limit zaproszeń), a sama wysyłka podlega limitowi "jedna wiadomość na skrzynkę na 10 minut" jak przy
+   * rejestracji (ochrona skrzynki właściciela przed zalewem). Nigdy nie rzuca; false = mail nie wyszedł (nikt tego nie widzi).
+   * Publiczne dla kolejki zaproszeń z importu.
+   */
+  async notifyAddressTaken(organizationId: string, email: string, context: InviteContext): Promise<boolean> {
+    try {
+      await this.tenantPrisma.runInOrgContext(organizationId, (tx) => tx.inviteNotice.create({ data: { organizationId } }));
+      if (!(await this.mailLimiter.tryAcquire(email))) {
+        return true;
+      }
+      const accepted = await this.emailService.send({
+        to: email,
+        subject: context.organizationName ? `Ktoś próbował dodać Cię do organizacji ${context.organizationName}` : 'Ktoś próbował dodać Cię do organizacji',
+        templateName: 'invite-address-taken',
+        templateData: { organizationName: context.organizationName },
+      });
+      return accepted !== false;
+    } catch (error) {
+      this.logger.error(`Nie udało się wysłać powiadomienia o próbie dodania: ${(error as Error).name}`);
+      return false;
+    }
   }
 
   /**
@@ -308,9 +403,7 @@ export class UsersService {
 
   private async assertInviteQuota(organizationId: string, requested: number): Promise<void> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const used = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-      tx.passwordResetToken.count({ where: { organizationId, createdAt: { gte: since } } }),
-    );
+    const used = await this.tenantPrisma.runInOrgContext(organizationId, (tx) => countInviteTraffic(tx, organizationId, since));
     if (used + requested > INVITE_DAILY_LIMIT_PER_ORG) {
       throw new HttpException(
         `Przekroczono dobowy limit zaproszeń dla organizacji (${INVITE_DAILY_LIMIT_PER_ORG}). Spróbuj ponownie jutro.`,

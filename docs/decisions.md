@@ -1,0 +1,66 @@
+# Rejestr decyzji
+
+Krótki rejestr decyzji produktowych, bezpieczeństwa i architektury, których nie widać z samego kodu. Cel: nowa osoba (i agent) wie,
+**co zostało rozstrzygnięte, dlaczego i gdzie to siedzi**, zamiast odkrywać to z historii commitów albo powtarzać spór.
+
+## Jak dodawać wpisy
+
+- Nowa decyzja (zmienia zachowanie produktu, bezpieczeństwo albo konwencje) = nowy wpis **w tym samym PR** (CLAUDE.md, „Praca zespołowa”).
+- Wpisy są dopisywane na końcu tabeli danej sekcji, numeracja `D-NNN` rośnie i nigdy się nie zmienia. Nie usuwamy wpisów: zmienioną
+  decyzję oznaczamy statusem `Zastąpiona przez D-NNN` i dopisujemy nowy wpis.
+- Format: **Data**, **Status** (`Przyjęta`, `Do potwierdzenia`, `Zastąpiona`), **Decyzja**, **Dlaczego**, **Gdzie** (kod/dokument).
+- Decyzje z dat sprzed rejestru (start projektu) mają datę „start” - źródłem jest wtedy `CLAUDE.md`/README, a szczegóły historia gita.
+- Kto rozstrzyga: właściciel produktu. Uwagi security-reviewera dotyczące jego decyzji też wracają do niego (CLAUDE.md, reguła 10).
+
+## 1. Fundamenty
+
+| ID | Data | Status | Decyzja | Dlaczego | Gdzie |
+|---|---|---|---|---|---|
+| D-001 | start | Przyjęta | Multi-tenant: każda tabela z danymi klienckimi ma `organizationId`, każde zapytanie go filtruje, a RLS (FORCE) w Postgresie jest drugą linią obrony. | Wyciek danych jednego klienta do drugiego to najgorszy scenariusz produktu B2B. | CLAUDE.md „Zasada nr 1”; README „Izolacja danych” |
+| D-002 | start | Przyjęta | Wyjątki od Zasady nr 1 (omijanie RLS) to zamknięta lista przez `TenantPrismaService`, z osobnymi sentinelami i tylko w `USING` odczytu. Nowy wyjątek wymaga decyzji, opisu w kodzie i wpisu w CLAUDE.md. | Każda furtka obok RLS jest ryzykiem; lista ma być krótka i przeglądalna. | CLAUDE.md (lista wyjątków), `tenant-prisma.service.ts` |
+| D-003 | start | Przyjęta | Dwie role Postgresa: migracje (właściciel) i runtime (`cyberszkolo_app`, bez BYPASSRLS). | Aplikacja nie może omijać RLS nawet przez pomyłkę. | README „Dwie role Postgresa” |
+| D-004 | start | Przyjęta | Własny JWT (access + refresh), SSO/SAML/OIDC to backlog v2. | Zakres MVP. | CLAUDE.md „Stos technologiczny” |
+| D-005 | start | Przyjęta | Firmy rejestrują się same; formularz nie ma pola hasła, a link z maila (24 h) jednocześnie potwierdza skrzynkę i ustawia hasło. Odpowiedź rejestracji jest identyczna dla nowych i istniejących adresów. | Pre-hijacking (ktoś zakłada konto cudzym adresem ze swoim hasłem) i enumeracja kont. | CLAUDE.md „Model rejestracji firm”; `registration.service.ts` |
+| D-006 | start | Przyjęta | Organizacja startuje jako `PENDING_DOMAIN_VERIFICATION` i jest blokowana fail-closed na każdym endpoincie (chyba że `@AllowPendingOrganization()`); status `ACTIVE` ustawia wyłącznie `DomainVerificationService` po weryfikacji rekordu DNS TXT. PENDING jest sprzątana: mail po 7 dniach, usunięcie po 14. | Nikt nie działa w cudzej domenie bez dowodu jej posiadania; zapobiega zaśmiecaniu. | CLAUDE.md; `active-organization.guard.ts`, `pending-organization-cleanup.service.ts` |
+| D-007 | start | Przyjęta | E-mail przez MailerSend (REST), szablony w kodzie; kampanie phishingowe z OSOBNEJ domeny niż maile transakcyjne. Przed produkcją wymagana własna, zweryfikowana domena nadawcy. | Reputacja domeny transakcyjnej nie może cierpieć przez symulacje. | CLAUDE.md „Stos”; `docs/deploy-test.md` |
+| D-008 | start | Przyjęta | Zadania w tle: jeden worker BullMQ + Redis w procesie API; zadania idempotentne, race-safe, dane klienckie przez `runInOrgContext`, dane zadań to same identyfikatory. | Prostota MVP; wiele instancji API nie dubluje zadań. | CLAUDE.md „Zadania w tle”; README |
+| D-009 | start | Do potwierdzenia | `users.email` jest unikalny GLOBALNIE (jedno konto na adres w całej platformie). | Uproszczenie logowania po e-mailu; skutek: ta sama osoba nie ma kont w dwóch organizacjach-klientach. Wymaga potwierdzenia, że to świadoma decyzja produktowa. | README „Backlog bezpieczeństwa modułu auth” |
+| D-010 | start | Przyjęta | Płatności: Stripe (webhook + ręczna obsługa planów przez super-admina); pełny self-service billing to v2. | Zakres MVP. | CLAUDE.md „Stos”, „Czego NIE robić” |
+
+## 2. Symulacje phishingowe i zgłoszenia (2026-09-20)
+
+| ID | Data | Status | Decyzja | Dlaczego | Gdzie |
+|---|---|---|---|---|---|
+| D-020 | start | Przyjęta | Odbiorcą symulacji jest wyłącznie konto `ACTIVE`; adresów odbiorców NIE ograniczamy do zweryfikowanej domeny organizacji. | Firmy mają kontraktorów na zewnętrznych adresach; aktywacja potwierdza, że osoba jest świadomym członkiem organizacji. | `docs/phishing-simulations.md` „Odbiorcy” |
+| D-021 | 2026-09-20 | Przyjęta | Ryzyko różnicowania wyników małych grup przez własnego admina jest zaakceptowane; próg minimalnej liczebności zostaje 3; wpis w DPIA. | Admin ma i tak audytowaną ścieżkę do danych osobowych; wyższy próg kosztowałby elastyczność. | `docs/phishing-simulations.md`; `docs/legal/privacy-policy-checklist.md` sekcja 8 |
+| D-022 | 2026-09-20 | Przyjęta | Agregaty per dział (przegląd, kampanie, CSV, KPI) liczone z migawki odświeżanej nie częściej niż raz na godzinę; widok osobowy (audytowany) bez opóźnienia. | Zgłoszenie „zaraz po tym, jak ktoś powiedział, że zgłosił” nie może być obserwowalne w czasie rzeczywistym. | `ResultsSnapshotCache`; `docs/phishing-simulations.md` |
+| D-023 | 2026-09-20 | Przyjęta | Kierownik działu widzi zgłoszenia własnego działu jako sam fakt zdarzenia (data, status, domena nadawcy, powiązanie z symulacją tak/nie), BEZ tematu i pełnego nadawcy. Lista ORG_ADMIN nie pokazuje zgłaszającego - tożsamość tylko w szczegółach. | Dane osób trzecich w zgłoszeniach; zasada minimalizacji. | `docs/phishing-simulations.md`; checklista prywatności |
+| D-024 | 2026-09-20 | Przyjęta | Każdy wgląd ORG_ADMIN w szczegóły zgłoszenia jest audytowany (`threat_report_views`). | Rozliczalność dostępu do danych zgłaszających. | `docs/phishing-simulations.md` |
+| D-025 | 2026-09-20 | Przyjęta | Retencja 90 dni czyści treść prawdziwych zgłoszeń, także nadawcę i temat; zostaje domena nadawcy. | Minimalizacja danych osobowych po okresie przydatności. | `docs/phishing-simulations.md`; checklista prywatności |
+| D-026 | 2026-09-20 | Przyjęta | Powiadomienia o zgłoszeniach: najwyżej 1 zbiorczy mail / 15 min / organizację. Kolejka per organizacja zamiast pętli co 5 minut - backlog. | Nie zalewamy adminów; koszt skanowania jest akceptowalny na MVP. | `docs/phishing-simulations.md` „Znane ograniczenia” |
+
+## 3. Import pracowników i zaproszenia (2026-09-20)
+
+| ID | Data | Status | Decyzja | Dlaczego | Gdzie |
+|---|---|---|---|---|---|
+| D-030 | 2026-09-20 | Przyjęta | Import CSV jest dwuetapowy (podgląd bez zapisu kont, potem potwierdzenie). Tylko UTF-8: Windows-1250, UTF-16 i XLSX są odrzucane z instrukcją Excela („Plik → Zapisz jako → CSV UTF-8 (rozdzielany przecinkami)”). Limit 5000 wierszy i 1 MB. | Zgadywanie kodowania psuje polskie znaki w mailach z zaproszeniem; to będzie najczęstszy błąd klientów. | `docs/user-import.md`; `csv-import.ts` |
+| D-031 | 2026-09-20 | Przyjęta | Limit licencji sprawdzany pod blokadą przy potwierdzeniu: za mało miejsc = 409 i żadne konto nie powstaje. | Równoległe zaproszenia nie mogą przekroczyć planu. | `docs/user-import.md` |
+| D-032 | 2026-09-20 | Przyjęta | Zaproszenia z importu idą w kolejce z tempem (20 na bieg co 5 minut, w ramach dobowego limitu 300 na organizację, wspólnego z zaproszeniami ręcznymi); import 5000 osób rozkłada się na kolejne doby, admin widzi „wysłano X z Y, reszta jutro” i szacowaną datę. Limit 300 zostaje limitem antyspamowym. | Nie używamy platformy jako kanału spamu z naszej domeny. | `docs/user-import.md`; `invite-pace.ts` |
+| D-033 | 2026-09-20 | Przyjęta | Wysyłka zaproszenia jak w kampaniach: zajęcie tuż przed wysyłką każdego zaproszenia (co najwyżej raz), wynik SENT / FAILED (pewne) / UNCERTAIN (timeout, 5xx, awaria). Niepewne nie są ponawiane, a „Wyślij zaproszenie ponownie” jest dla nich (i dla zaproszeń w kolejce) zablokowane. Brak progu „10 minut = niepewne” dla żywych wysyłek. | Spójność z `docs/phishing-simulations.md`; duplikat maila unieważniałby link, który osoba już ma. | `docs/user-import.md`; `user-import-invite.service.ts` |
+| D-034 | 2026-09-20 | Przyjęta | Adres zajęty w INNEJ organizacji jest niewidoczny dla administratora (import: wiersz „utworzony”; zaproszenie: odpowiedź jak dla nowego adresu). Właściciel adresu dostaje mail „ktoś próbował dodać Cię do organizacji <nazwa>”. Import nowych kont ograniczony do 2 × `seatsLimit` na dobę. Resztkowa sonda (brak osoby na liście użytkowników) zaakceptowana, bez konta-widma. | Nie wolno sprawdzać, kto ma konto na platformie. | `docs/user-import.md`; CLAUDE.md (wpis `runAuthLookup`) |
+| D-035 | 2026-09-20 | Przyjęta | Nieaktywowane zaproszenie (`INVITED`) nie blokuje adresu: przejmuje je organizacja ze zweryfikowaną domeną adresu (także niepotwierdzonego ORG_ADMIN-a organizacji PENDING; jedyny admin => organizacja usuwana od razu) oraz rejestracja właściciela skrzynki, gdy organizacja-właściciel zaproszenia nie ma zweryfikowanej domeny adresu. Zaproszenia wygasają po 30 dniach. Kasowanie kont nieaktywowanych razem z ich przypisaniami jest w porządku. | Squatting adresów i pre-hijacking; konto nigdy nie było używane. | `docs/user-import.md`; `address-claim.service.ts` |
+| D-036 | 2026-09-20 | Przyjęta | Rejestracja NIE przejmuje adresu przy `POST /auth/register`; przejęcie następuje dopiero po kliknięciu linku przez rejestrującego, a strona wymaga kliknięcia „Potwierdzam” (akcja niszcząca nie wykonuje się sama; `verify-email` zostaje automatyczne). Do kliknięcia oba rekordy współistnieją; bez kliknięcia w 24 h nic się nie dzieje. | Anonim nie może kasować cudzych zaproszeń; skaner poczty nie może wykonać akcji niszczącej. | `registration.service.ts`; `/claim-registration` |
+| D-037 | 2026-09-20 | Przyjęta | Job sprzątania działa raz na dobę (dane niepotwierdzonych rejestracji zostają do ok. 48 h); bez osobnego joba godzinowego. | Wystarczające i tańsze. | `pending-organization-cleanup.service.ts` |
+| D-038 | 2026-09-20 | Przyjęta | Maile do osoby trzeciej z nazwą organizacji od obcej strony: nazwa przycięta do 50 znaków i oczyszczona (także w temacie), z jawnym zdaniem ostrzegawczym o skutku kliknięcia. | Nazwa od atakującego nie może być socjotechniką z naszej domeny nadawcy. | `display-name.ts`; `email/templates/index.ts` |
+
+## 4. Proces i narzędzia
+
+| ID | Data | Status | Decyzja | Dlaczego | Gdzie |
+|---|---|---|---|---|---|
+| D-040 | 2026-09-20 | Przyjęta | Werdykt security-reviewera „nie gotowy do commitu” = brak commitu; wracamy do właściciela z listą uwag (także gdy dotyczą jego wcześniejszych decyzji), on rozstrzyga, dopiero potem commit (poprawki jako osobny commit). | Decyzje o ryzyku należą do właściciela produktu, nie do autora zmiany. | CLAUDE.md, workflow reguła 10 |
+| D-041 | 2026-09-20 | Przyjęta | Pliki edytujemy wyłącznie narzędziem do edycji (nie `echo`/heredoc/`sed -i`/skrypty); egzekwuje to hook PreToolUse. | Powłoka interpretuje backticki i `$(...)` w treści plików. | CLAUDE.md reguła 7; `.claude/hooks/block-file-writes.js` |
+| D-042 | 2026-09-20 | Przyjęta | Testy e2e API z równoległymi żądaniami używają `app.listen(0)`, nie `app.init()` (na Linuksie/Node 20 supertest zrywał żądania: `ECONNRESET`). Replika CI lokalnie: kontener `node:20`, 2 CPU, Postgres 16, Redis 7. | Zielone testy lokalne nie znaczą zielonego CI. | CLAUDE.md reguła 9 |
+| D-043 | 2026-09-20 | Przyjęta | Typy w plikach testowych web pilnuje krok CI `npm run typecheck --workspace=apps/web` (vitest ich nie sprawdza). | Wykryte błędy typów w testach, których CI nie widziało. | `.github/workflows/build-images.yml` |
+| D-044 | 2026-09-20 | Przyjęta | Cała aplikacja wymaga PostgreSQL 15+ (złożone FK `ON DELETE SET NULL (kolumna)`); stack używa 16. | Prisma nie wyraża tych FK, żyją w migracjach SQL. | `docs/deploy-test.md` |
+| D-045 | 2026-09-20 | Przyjęta | Sporadyczne „Jest did not exit one second after the test run has completed” przy zielonych testach nie blokuje; wracamy, jeśli CI zacznie na tym padać. | Źródła nie ustalono (`--detectOpenHandles` nic nie wykazał). | `docs/phishing-simulations.md` „Znane ograniczenia” |
+| D-046 | 2026-09-20 | Przyjęta | Backfill `notifiedAt` w migracji `20260920160000_threat_report_inbox` bez testu (dane migracji nieosiągalne w e2e); ręczna weryfikacja przy pierwszym wdrożeniu na istniejącej bazie. | Koszt testu przewyższa ryzyko. | `docs/phishing-simulations.md` |

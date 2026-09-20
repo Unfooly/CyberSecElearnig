@@ -125,6 +125,9 @@ Wdrożenie: `docs/deploy-test.md`.
 2. Branch `<typ>/<numer>-<opis>` z aktualnego `main`.
 3. Zmiana + testy (w tym A/B, jeśli dotyka danych klienckich) + lint + `typecheck` (web) + e2e.
 4. Otwórz PR z wypełnionym szablonem; dla zmian w auth/RLS/wysyłce/imporcie najpierw przegląd `security-reviewer`.
-5. Zielone CI, review, merge (rebase and merge). Decyzję, którą podjęto po drodze, dopisz do `docs/decisions.md`.
+5. **Sprawdzenia PR:** na każdym pull requeście do `main` (także z samymi dokumentami) biegną `lint + testy` (lint, testy jednostkowe, `typecheck` web,
+   testy hooków) i `testy e2e (api)`. Obrazów PR nie buduje i nie publikuje. **PR bez zielonych sprawdzeń nie jest mergowany** - czerwone sprawdzenie
+   naprawiasz w tym samym PR (nie ignorujesz go, nie mergujesz „bo to nie moja zmiana”). Status podglądasz w zakładce Checks PR-a albo `gh pr checks`.
+6. Zielone sprawdzenia, review, merge (rebase and merge; robi właściciel). Decyzję, którą podjęto po drodze, dopisz do `docs/decisions.md`.
 
 W razie wątpliwości co do konwencji CLAUDE.md każe pytać zamiast zgadywać - zrób to.

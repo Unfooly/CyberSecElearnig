@@ -3,6 +3,14 @@ name: build-images
 # Obrazy api i web budujemy tutaj, NIE na VPS (1 GB RAM: `next build` kończy się
 # tam SIGKILL/OOM). VPS tylko pobiera gotowe obrazy z GHCR - patrz docs/deploy-test.md.
 # Obrazy trafiają do GHCR wyłącznie po zielonych testach (joby `test` i `e2e`).
+#
+# Ten sam workflow pełni dwie role:
+#  - SPRAWDZENIA (`test` = "lint + testy" z typami web i testami hooków, `e2e` = "testy e2e (api)") biegną na KAŻDYM pull requeście do
+#    main oraz na pushu do main. PR bez zielonych sprawdzeń nie jest mergowany (CLAUDE.md, "Praca zespołowa"). Nazwy jobów są stałe:
+#    to pod nie ustawia się wymagane sprawdzenia w ochronie gałęzi (po upgrade'ie planu, docs/backlog-issues.md B-010).
+#  - BUDOWA I PUBLIKACJA OBRAZÓW (`images`, `cleanup`) tylko z gałęzi main (push albo ręczne uruchomienie na main), NIGDY na pull
+#    requeście ani z ręcznego uruchomienia z innej gałęzi: PR nie buduje obrazów, nie loguje się do GHCR i nie pushuje niczego.
+#    NIE dodawać wyzwalacza `pull_request_target` (dawałby kodowi z PR uprawnienia i sekrety repozytorium).
 
 on:
   push:
@@ -10,6 +18,10 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+  # Bez paths-ignore: PR zmieniający tylko dokumenty też musi mieć zielone (raportowane) sprawdzenia, inaczej wymagane sprawdzenie
+  # zostałoby na zawsze "oczekujące" i zablokowało merge.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -151,6 +163,9 @@ jobs:
   images:
     name: obraz ${{ matrix.app }}
     needs: [test, e2e]
+    # Tylko z gałęzi main (push albo ręczne uruchomienie NA main): nigdy na pull requeście ani z ręcznego uruchomienia z innej gałęzi
+    # (bez budowy, bez logowania do GHCR, bez pushu).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -228,7 +243,7 @@ jobs:
   cleanup:
     name: sprzątanie ${{ matrix.app }}
     needs: images
-    if: success()
+    if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     permissions:
       contents: read

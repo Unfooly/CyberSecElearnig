@@ -95,6 +95,20 @@ describe('resolvePhishingTransportConfig', () => {
       expect(resolvePhishingTransportConfig(config({ ...mailersend, PHISHING_EMAIL_DOMAIN: domain }))).toEqual({ kind: 'none', reason: 'SENDER_DOMAIN_INVALID' });
     });
 
+    it('jawny opt-in środowiska testowego: wspólna domena próbna (nakładanie) przechodzi na "produkcji", ale wspólny TOKEN nadal jest zablokowany', () => {
+      const shared = { ...mailersend, PHISHING_EMAIL_DOMAIN: 'unfooly.example.com', PHISHING_ALLOW_SHARED_TRANSACTIONAL_DOMAIN: 'yes-this-is-a-test-environment' };
+
+      expect(resolvePhishingTransportConfig(config(shared))).toEqual({ kind: 'mailersend', token: 't' });
+      expect(resolvePhishingTransportConfig(config({ ...shared, MAILERSEND_API_TOKEN: 't' }))).toEqual({ kind: 'none', reason: 'TOKEN_SHARED_WITH_TRANSACTIONAL' });
+      expect(resolvePhishingTransportConfig(config({ ...shared, PHISHING_EMAIL_DOMAIN: 'zle domena' }))).toEqual({ kind: 'none', reason: 'SENDER_DOMAIN_INVALID' });
+    });
+
+    it.each(['true', 'yes', '1', 'YES-THIS-IS-A-TEST-ENVIRONMENT', ''])('opt-in o innej wartości ("%s") NIE działa: nakładanie domen nadal zablokowane', (value) => {
+      const overlapping = { ...mailersend, PHISHING_EMAIL_DOMAIN: 'unfooly.example.com', PHISHING_ALLOW_SHARED_TRANSACTIONAL_DOMAIN: value };
+
+      expect(resolvePhishingTransportConfig(config(overlapping))).toEqual({ kind: 'none', reason: 'SENDER_DOMAIN_OVERLAPS_TRANSACTIONAL' });
+    });
+
     it('poza produkcją (środowisko testowe z domeną trial) pokrywanie nie blokuje', () => {
       const dev = { ...mailersend, NODE_ENV: 'development', PHISHING_EMAIL_DOMAIN: 'unfooly.example.com' };
 

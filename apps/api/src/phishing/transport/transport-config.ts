@@ -6,6 +6,9 @@ import { NotConfiguredPhishingTransport } from './not-configured.transport';
 import { PhishingMailTransport } from './phishing-mail-transport';
 import { SmtpPhishingTransport } from './smtp.transport';
 
+/** Wartość PHISHING_ALLOW_SHARED_TRANSACTIONAL_DOMAIN, która zezwala na wspólną domenę (tylko środowisko testowe). */
+export const SHARED_DOMAIN_CONFIRMATION = 'yes-this-is-a-test-environment';
+
 export type PhishingTransportKind = 'mailersend' | 'smtp' | 'log';
 
 export type PhishingTransportConfig =
@@ -71,7 +74,11 @@ export function resolvePhishingTransportConfig(config: Pick<ConfigService, 'get'
   if (!HOSTNAME.test(senderDomain)) {
     return { kind: 'none', reason: 'SENDER_DOMAIN_INVALID' };
   }
-  if (production) {
+  // Wyjątek DLA ŚRODOWISKA TESTOWEGO z jedną domeną próbną MailerSend (ta sama domena dla maili transakcyjnych i symulacji): jawny
+  // opt-in o nazwie i wartości, których nie da się ustawić przez pomyłkę. Wyłącza WYŁĄCZNIE kontrolę nakładania domen; kontrola
+  // wspólnego tokenu i pozostałe zostają.
+  const overlapAllowed = config.get<string>('PHISHING_ALLOW_SHARED_TRANSACTIONAL_DOMAIN') === SHARED_DOMAIN_CONFIRMATION;
+  if (production && !overlapAllowed) {
     // Nieznana domena poczty transakcyjnej albo aplikacji = nie da się wykluczyć pokrywania => blokada.
     const transactionalDomains = [domainOfEmail(config.get<string>('EMAIL_FROM')), hostOfUrl(config.get<string>('FRONTEND_URL'))];
     if (transactionalDomains.some((domain) => domain === null)) {

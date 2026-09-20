@@ -342,6 +342,11 @@ wysyłają), `TRUST_PROXY=true`. Po zmianie `.env.prod`: `docker compose --env-f
    - (zalecane) rekord zwrotny/`Return-Path` z panelu, żeby SPF przechodził w trybie zestawionym.
    Poczekaj na status **Verified** w panelu MailerSend, sprawdź: `dig TXT <domena>`, `dig TXT _dmarc.<domena>`,
    `dig CNAME <selektor>._domainkey.<domena>`. Domena testowa `*.mlsender.net` służy tylko środowisku testowemu.
+   **Środowisko testowe z jedną domeną próbną** (ta sama w `EMAIL_FROM` i `PHISHING_EMAIL_DOMAIN`): API na `NODE_ENV=production`
+   blokuje nakładanie domen (`SENDER_DOMAIN_OVERLAPS_TRANSACTIONAL`), więc dopisz do `.env.prod`
+   `PHISHING_ALLOW_SHARED_TRANSACTIONAL_DOMAIN=yes-this-is-a-test-environment` (dokładnie ta wartość; wyłącza tylko tę jedną
+   kontrolę) oraz **drugi, osobny token** MailerSend w `PHISHING_MAILERSEND_API_TOKEN` (ten sam co `MAILERSEND_API_TOKEN` jest
+   odrzucany: `TOKEN_SHARED_WITH_TRANSACTIONAL`). Na środowisku z prawdziwymi klientami tej zmiennej nie ustawiać.
 2. **Domena strony lądowania** (zalecana osobna): w tunelu Cloudflare (sekcja 1) dodaj drugi **Public Hostname**
    (np. `verify.twoja-domena.pl` → `web:3000`) i ustaw `PHISHING_LANDING_BASE_URL=https://verify.twoja-domena.pl`. To ten sam
    kontener `web`, więc na tym hostname działa CAŁA aplikacja - w Cloudflare WAF dodaj regułę **Block** dla hosta lądowania i

@@ -95,6 +95,10 @@ apps/api/prisma/schema.prisma --script` powinno pokazać wyłącznie te SQL-only
   migracji, w której powstała.
 - **Edycja plików przez narzędzie do edycji plików**, nie przez `echo`/heredoc/`sed -i` (CLAUDE.md, reguła 7); hook `.claude/hooks/block-file-writes.js`
   blokuje takie próby. Pliki tymczasowe (np. wynik testów) zapisuj poza repo, np. do `/tmp`.
+- **Polecenia niszczące na origin/main są zablokowane mechanicznie** (CLAUDE.md, reguła 11): `.claude/settings.json` (`permissions.deny`) i hook
+  `.claude/hooks/block-destructive-git.js` odrzucają m.in. `git push --force`, `git push origin :ref`, `git reset --hard`, `git clean -f`, `git branch -D`,
+  push na `main` i `gh pr merge`. Hooków i uprawnień NIE sprawdzasz na prawdziwym origin: użyj testu jednostkowego, `--dry-run` (poza formami z listy) albo
+  tymczasowego repozytorium z lokalnym „origin”.
 - **Daty w web** formatuj wyłącznie przez `apps/web/src/lib/datetime.ts` (strefa `Europe/Warsaw`), nigdy `toLocale*String`/`Intl.DateTimeFormat`.
 - **Windows:** repo ma końce linii LF w plikach, git ostrzega o zamianie na CRLF - to nie jest błąd.
 - **Sporadyczne „Jest did not exit” przy zielonych testach** nie blokuje (znane, patrz `docs/phishing-simulations.md`).

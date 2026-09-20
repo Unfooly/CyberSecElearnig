@@ -84,6 +84,10 @@ jobs:
       - name: Testy hooka pre-push (blokada pushu na main)
         run: node --test .githooks/pre-push.test.js
 
+      # Hook Claude Code egzekwujący regułę 11 (CLAUDE.md): polecenia niszczące na origin/main (force-push, reset --hard, ...).
+      - name: Testy hooka block-destructive-git (reguła 11)
+        run: node --test .claude/hooks/block-destructive-git.test.js
+
   # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
   # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
   # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga

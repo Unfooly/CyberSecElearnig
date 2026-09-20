@@ -1,4 +1,63 @@
 {
+  "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push* --force*)",
+      "Bash(git push* -f*)",
+      "Bash(git push --delete*)",
+      "Bash(git push* --delete*)",
+      "Bash(git push* -d *)",
+      "Bash(git push --mirror*)",
+      "Bash(git push* --mirror*)",
+      "Bash(git push --all*)",
+      "Bash(git push* --all*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main *)",
+      "Bash(git push* HEAD:main)",
+      "Bash(git push* HEAD:main *)",
+      "Bash(git branch -D*)",
+      "Bash(git branch* -D*)",
+      "Bash(git reset --hard*)",
+      "Bash(git reset* --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git clean* -f*)",
+      "Bash(git clean* --force*)",
+      "Bash(git checkout -- .)",
+      "Bash(git checkout .)",
+      "Bash(git restore .)",
+      "Bash(git restore -- .)",
+      "Bash(gh repo delete*)",
+      "Bash(gh release delete*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh api* -X DELETE*)",
+      "Bash(gh api* --method DELETE*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(git push* --force*)",
+      "PowerShell(git push* -f*)",
+      "PowerShell(git push --delete*)",
+      "PowerShell(git push* --delete*)",
+      "PowerShell(git push* -d *)",
+      "PowerShell(git push --mirror*)",
+      "PowerShell(git push* --mirror*)",
+      "PowerShell(git push --all*)",
+      "PowerShell(git push origin main)",
+      "PowerShell(git push origin main *)",
+      "PowerShell(git branch -D*)",
+      "PowerShell(git branch* -D*)",
+      "PowerShell(git reset --hard*)",
+      "PowerShell(git reset* --hard*)",
+      "PowerShell(git clean -f*)",
+      "PowerShell(git clean* -f*)",
+      "PowerShell(git checkout -- .)",
+      "PowerShell(git checkout .)",
+      "PowerShell(git restore .)",
+      "PowerShell(gh repo delete*)",
+      "PowerShell(gh release delete*)",
+      "PowerShell(gh pr merge*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -7,6 +66,10 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-file-writes.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-destructive-git.js\""
           }
         ]
       }

@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "postinstall": "npm run build --workspace=packages/shared",
+    "hooks:install": "git config core.hooksPath .githooks",
     "dev:api": "npm run start:dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/api && npm run build --workspace=apps/web",

@@ -3,6 +3,20 @@
 Dla nowej osoby (i nowej sesji agenta). Cel: w godzinę mieć działające środowisko, zielone testy i wiedzieć, jakich zasad nie wolno
 złamać. Szczegóły komend i konfiguracji są w `README.md` (sekcja „Uruchomienie lokalne”), tu jest ścieżka i pułapki.
 
+## 0. Krok zero: włącz blokadę pushu na `main`
+
+Ochrona gałęzi `main` w GitHub wymaga planu Team (dziś Free), więc do czasu upgrade'u blokujemy push na `main` lokalnie. Zrób to zaraz po
+sklonowaniu repo, raz na klon (działa w Git Bash na Windowsie i na Linuksie/macOS):
+
+```bash
+git config core.hooksPath .githooks     # albo: npm run hooks:install
+```
+
+Od tej chwili `git push` na `refs/heads/main` (także usunięcie i force-push) jest odrzucany przez `.githooks/pre-push` z komunikatem odsyłającym do
+zasad w CLAUDE.md. Pracujesz na branchu `<typ>/<numer>-<opis>`, wypychasz go i otwierasz pull request; merge do `main` robi właściciel w GitHub.
+Sprawdzenie, że hook działa: `git push origin main` powinno się zakończyć komunikatem „ODRZUCONO PUSH NA main”. Nie omijaj go `--no-verify`.
+Gdy ochrona gałęzi w GitHub zostanie włączona, hook zostaje jako pierwsza (szybsza) linia obrony.
+
 ## 1. Co to jest
 
 Unfooly (dawniej CyberSzkoło): wielodostępowa (multi-tenant) platforma SaaS do szkoleń z cyberbezpieczeństwa i symulacji phishingowych,

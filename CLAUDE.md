@@ -176,8 +176,12 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
 
 - **`main` jest zawsze wdrażalny i chroniony.** Zmiany trafiają tam wyłącznie przez pull request; nikt nie pushuje na `main`
   bezpośrednio (agent też pracuje na branchu). Ustawienia GitHub (Settings → Branches → ochrona `main`): wymagany PR, wymagane zielone
-  joby `lint + testy` i `testy e2e (api)`, co najmniej 1 zatwierdzenie, branch aktualny względem `main`, brak force-push. Dopóki tych
-  ustawień nie włączono, obowiązuje ta sama zasada z dyscypliny (i reguła 8: po pushu podajesz hash i prosisz o status CI).
+  joby `lint + testy` i `testy e2e (api)`, co najmniej 1 zatwierdzenie, branch aktualny względem `main`, brak force-push. Ochrona
+  gałęzi w GitHub wymaga planu Team (dziś Free), więc **do czasu upgrade'u działa blokada lokalna: hook `.githooks/pre-push` odrzuca
+  każdy push na `refs/heads/main`** (też usunięcie i force-push). Włącz go raz na klon: `git config core.hooksPath .githooks` (albo
+  `npm run hooks:install`); to krok 0 w `docs/onboarding.md`. Nie omijaj go `--no-verify`. Merge do `main` robi właściciel w GitHub po
+  zielonym CI, potem `git switch main && git pull`. Agent też pracuje na branchu i otwiera PR (reguła 8: po pushu podajesz hash i
+  prosisz o status CI).
 - **Nazwa brancha:** `<typ>/<numer-zgłoszenia>-<krótki-opis>`, np. `feat/142-import-csv`, `fix/155-limit-zaproszen`. Typy: `feat`, `fix`,
   `refactor`, `test`, `docs`, `chore`. Bez zgłoszenia pomijasz numer (`chore/typecheck-web`). Branch żyje krótko (dni, nie tygodnie); większe
   zadanie dzielisz na kilka PR-ów (reguła 2), a nie na jeden wielki branch.

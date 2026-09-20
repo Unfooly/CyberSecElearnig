@@ -39,7 +39,7 @@ describe('Publiczne śledzenie symulacji (e2e)', () => {
     app = moduleRef.createNestApplication({ bodyParser: false });
     configureBodyParsing(app);
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    await app.init();
+    await app.listen(0); // patrz phishing-campaigns.e2e-spec.ts: równoległe żądania wymagają nasłuchującego serwera
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
     tracking = app.get(TrackingService);

@@ -33,7 +33,7 @@ describe('Sesje: refresh, logout, logout-all, reset hasła (e2e)', () => {
     const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    await app.init();
+    await app.listen(0); // patrz phishing-campaigns.e2e-spec.ts: równoległe żądania wymagają nasłuchującego serwera
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
     redis = app.get(RedisService);

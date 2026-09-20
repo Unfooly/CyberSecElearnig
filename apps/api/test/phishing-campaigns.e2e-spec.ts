@@ -68,7 +68,9 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    await app.init();
+    // listen(0), nie init(): przy równoległych żądaniach supertest na nie-nasłuchującym serwerze pierwsze żądanie
+    // "posiada" serwer i zamyka go po SWOJEJ odpowiedzi, zrywając (ECONNRESET) resztę w locie - Linux/Node 20 (CI).
+    await app.listen(0);
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
     sender = app.get(CampaignSenderService);

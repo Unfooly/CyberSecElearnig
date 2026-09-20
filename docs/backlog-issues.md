@@ -5,7 +5,11 @@ zgłoszenia w GitHub**. Każdy wpis ma tytuł, etykiety, priorytet, źródło, o
 
 ## Jak z tego korzystać
 
-1. Zakładasz zgłoszenie (tytuł = nagłówek wpisu, treść = Opis + Kryteria akceptacji, etykiety jak niżej), a do wpisu tutaj dopisujesz numer
+0. **Hurtowo:** `scripts/create-issues.sh` zakłada etykiety (`gh label create --force`) i zgłoszenia (`gh issue create`) ze wszystkich wpisów
+   poniżej (wymaga `gh` i zalogowania: `gh auth login` albo `GH_TOKEN`). Jest idempotentny: pomija zgłoszenia, których numer `B-NNN` jest już
+   w tytule któregoś zgłoszenia (otwartego lub zamkniętego), oraz wpisy ze statusem „zrobione”; przed zapisem sprawdza etykiety. Najpierw
+   `scripts/create-issues.sh --dry-run` (tylko drukuje polecenia), potem bez flagi; `--repo WLASCICIEL/REPO` wskazuje repozytorium.
+1. Zakładasz zgłoszenie ręcznie (tytuł = nagłówek wpisu, treść = Opis + Kryteria akceptacji, etykiety jak niżej), a do wpisu tutaj dopisujesz numer
    zgłoszenia w polu `Zgłoszenie:`. Od tej chwili źródłem prawdy jest zgłoszenie; wpis tutaj zostaje jako indeks.
 2. Wpis zrobiony przez PR oznaczasz `Status: zrobione (PR #N)` (nie usuwasz - historia).
 3. Nowe uwagi odłożone z review dopisujesz tu w tym samym PR (CLAUDE.md, „Praca zespołowa”).

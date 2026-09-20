@@ -39,6 +39,23 @@ To jest najważniejsza reguła w całym projekcie. Złamanie jej = wyciek danych
 - Każdy nowy endpoint API musi mieć test sprawdzający, że użytkownik z organizacji A nie ma dostępu do danych organizacji B.
 - Jeśli piszesz kod, który dotyka danych klienckich i nie widzisz w nim filtra po `organizationId` — zatrzymaj się i zapytaj, zanim to scommitujesz.
 
+### Wyjątki od Zasady nr 1 (omijanie RLS): pełna lista
+
+Wszystkie idą przez `TenantPrismaService` (sentinel `app.bypass_tenant_rls`, w politykach RLS wyłącznie w `USING`
+odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i wpisu tutaj. Zapisy zawsze przez
+`runInOrgContext(organizationId)` po odczycie.
+
+1. `runAuthLookup` - użytkownik po globalnym e-mailu/id (login, refresh, reset, rejestracja - tylko sprawdzenie istnienia).
+2. `runPasswordResetTokenLookup`, 3. `runEmailVerificationTokenLookup` - token po `tokenHash`, zanim znamy organizację.
+4. `runRefreshTokenLookup` - refresh token po `tokenHash` (sesje).
+5. `runTrackingTokenLookup` - odbiorca kampanii po `tokenHash` tokenu z linku symulacji (publiczne `POST /t/:token/view|submit`;
+   sztywny `findUnique`, wąski `select` bez e-maila i treści). Ma WŁASNY sentinel `app.bypass_tracking_lookup` (migracje
+   `phishing_tracking*`), honorowany wyłącznie w polityce SELECT `phishing_campaign_recipients`: generyczny
+   `runCrossOrgQuery` (poz. 7) odbiorców kampanii NIE widzi.
+6. `listCampaignsToReconcile` - pary (id, organizationId) kampanii do uzgodnienia przez `CampaignReconcileService`
+   (bypass tylko w SELECT `phishing_campaigns`).
+7. `runCrossOrgQuery` - dashboard SUPER_ADMIN i sprzątanie wygasłych refresh tokenów (jawny warunek `where` po stronie wołającego).
+
 ## Model rejestracji firm (samoobsługowy) i weryfikacja domeny
 
 Firmy zakładają konta same, bez udziału operatora. Przepływ (kod: `apps/api/src/auth/registration.service.ts`,
@@ -58,7 +75,8 @@ Firmy zakładają konta same, bez udziału operatora. Przepływ (kod: `apps/api/
    ustawia wyłącznie `DomainVerificationService`** - nigdy inny kod. Każda porażka weryfikacji zwraca ten sam błąd
    (bez ujawniania przyczyny, także gdy domena jest już zweryfikowana w innej organizacji).
 4. **Guard PENDING (fail-closed).** Globalny `ActiveOrganizationGuard` zwraca 403 dla organizacji niezweryfikowanej na
-   **każdym** endpoincie, chyba że oznaczono go `@AllowPendingOrganization()` (dziś: auth, `/organization/*`, avatar).
+   **każdym** endpoincie, chyba że oznaczono go `@AllowPendingOrganization()` (dziś: auth, `/organization/*`, avatar oraz publiczne `/t/*`
+   - śledzenie symulacji: trasa bez sesji i bez kontekstu organizacji wywołującego, oznaczona też `@SkipSessionCheck()`).
    Nowy endpoint jest więc domyślnie zablokowany dla PENDING - dodaj dekorator tylko, jeśli endpoint ma działać przed
    weryfikacją (i uzasadnij to). Przekierowania na `/onboarding` w `apps/web` to wyłącznie UX, ochrona jest w API.
 5. **Po weryfikacji:** organizacja `ACTIVE`, w ustawieniach można włączyć `selfJoinEnabled`.

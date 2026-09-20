@@ -8,7 +8,11 @@ import { PhishingConfigService } from '../phishing-config.service';
 import { PhishingTemplatesService } from '../phishing-templates.service';
 import { isUncertainFailureCode } from '../transport/phishing-mail-transport';
 import { PhishingSendQueue } from './phishing-send-queue';
-import { planSendTimes, shuffled } from './send-planner';
+import { peakInAnyWindow, planSendTimes, shuffled } from './send-planner';
+
+const DAY_MS = 24 * 3_600_000;
+/** Bezpiecznik zapytania o istniejące wysyłki (5000 odbiorców x 10 aktywnych kampanii x zapas). */
+const MAX_DAILY_LIMIT_ROWS = 100_000;
 
 export const MIN_WINDOW_MS = 10 * 60_000;
 export const MAX_WINDOW_MS = 30 * 24 * 3_600_000;
@@ -28,7 +32,10 @@ export const TOO_MANY_ACTIVE_CAMPAIGNS = err('TOO_MANY_ACTIVE_CAMPAIGNS', `Możn
 export const DUPLICATE_CAMPAIGN = err('DUPLICATE_CAMPAIGN', 'Taka sama kampania została właśnie utworzona. Sprawdź listę kampanii.');
 /** Identyczna kampania (nazwa, szablon, grono, okno) utworzona w tym czasie jest traktowana jako ponowione żądanie. */
 export const DUPLICATE_WINDOW_MS = 2 * 60_000;
-export const CAMPAIGN_NOT_ACTIVE =err('CAMPAIGN_NOT_ACTIVE', 'Kampania jest już zakończona lub anulowana.');
+export const DAILY_SEND_LIMIT = err('DAILY_SEND_LIMIT', 'Przekroczony dobowy limit wysyłek symulacji.');
+/** Limit wysyłek na kroczące 24 h = ten mnożnik x liczba licencji organizacji (seatsLimit). */
+export const DAILY_SEND_LIMIT_FACTOR = 2;
+export const CAMPAIGN_NOT_ACTIVE = err('CAMPAIGN_NOT_ACTIVE', 'Kampania jest już zakończona lub anulowana.');
 
 export interface CampaignCounts {
   total: number;
@@ -131,6 +138,10 @@ export class PhishingCampaignsService {
       if (recipients.length > CAMPAIGN_LIMITS.maxRecipients) {
         throw new BadRequestException(TOO_MANY_RECIPIENTS);
       }
+      // Czasy są posortowane, a odbiorcy przychodzą w kolejności z bazy - tasujemy czasy, żeby kolejność wysyłki nie
+      // wynikała z kolejności założenia kont (pracownicy nie mogą przewidzieć, kto dostanie wiadomość następny).
+      const times = shuffled(planSendTimes(recipients.length, from, end));
+      await this.assertDailyLimit(tx, organizationId, times);
 
       const created = await tx.phishingCampaign.create({
         data: {
@@ -150,9 +161,6 @@ export class PhishingCampaignsService {
           createdByEmail: actorEmail,
         },
       });
-      // Czasy są posortowane, a odbiorcy przychodzą w kolejności z bazy - tasujemy czasy, żeby kolejność wysyłki nie
-      // wynikała z kolejności założenia kont (pracownicy nie mogą przewidzieć, kto dostanie wiadomość następny).
-      const times = shuffled(planSendTimes(recipients.length, from, end));
       const rows = recipients.map((recipient, index) => ({
         id: randomUUID(),
         organizationId,
@@ -229,6 +237,39 @@ export class PhishingCampaignsService {
       this.logger.warn(`Nie usunięto zadań z kolejki po anulowaniu (kampania ${id}): ${(error as Error).message}`);
     }
     return this.get(organizationId, id);
+  }
+
+  /**
+   * Limit globalny organizacji: DAILY_SEND_LIMIT_FACTOR x seatsLimit WYSYŁEK na dowolne kroczące 24 h. Liczymy po
+   * ZAPLANOWANYCH momentach wysyłki (scheduledAt), nie po dacie utworzenia: kampanie tworzone w różne dni z tym samym
+   * oknem wysyłki i tak sumują się w dniu wysyłki. Sprawdzamy, czy po dołożeniu momentów nowej kampanii jakiekolwiek
+   * 24 h (okno przesuwne) zawiera więcej wysyłek niż limit. Odbiorcy anulowani przed wysyłką (failureCode CANCELLED)
+   * nie zużywają limitu; świeżo anulowana kampania zużywa go do czasu domknięcia odbiorców (zachowanie konserwatywne).
+   * Sprawdzane przy uruchamianiu kampanii, w transakcji pod blokadą organizacji - równoległe żądania go nie obejdą.
+   */
+  private async assertDailyLimit(tx: Prisma.TransactionClient, organizationId: string, newTimes: Date[]): Promise<void> {
+    const organization = await tx.organization.findUnique({ where: { id: organizationId }, select: { seatsLimit: true } });
+    const limit = DAILY_SEND_LIMIT_FACTOR * (organization?.seatsLimit ?? 0);
+    const newMs = newTimes.map((time) => time.getTime());
+    const min = Math.min(...newMs);
+    const max = Math.max(...newMs);
+    const existing = await tx.phishingCampaignRecipient.findMany({
+      where: {
+        organizationId,
+        scheduledAt: { gte: new Date(min - DAY_MS), lte: new Date(max + DAY_MS) },
+        OR: [{ failureCode: null }, { failureCode: { not: 'CANCELLED' } }],
+      },
+      select: { scheduledAt: true },
+      take: MAX_DAILY_LIMIT_ROWS,
+    });
+    const peak = peakInAnyWindow([...existing.map((row) => row.scheduledAt.getTime()), ...newMs], DAY_MS);
+    if (peak > limit) {
+      const peakExisting = peakInAnyWindow(existing.map((row) => row.scheduledAt.getTime()), DAY_MS);
+      throw new ConflictException({
+        code: DAILY_SEND_LIMIT.code,
+        message: `Limit wysyłek symulacji to ${limit} na dobę (kroczące 24 h). Ta kampania (${newTimes.length} odbiorców) przekroczyłaby go: w najbardziej obciążonej dobie byłoby ${peak} wysyłek (już zaplanowanych: ${peakExisting}). Zmniejsz grono albo przesuń okno wysyłki.`,
+      });
+    }
   }
 
   private validateWindow(start: Date, end: Date, now: Date): void {

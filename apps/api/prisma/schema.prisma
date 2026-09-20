@@ -315,6 +315,10 @@ model PhishingCampaignRecipient {
   // Kod bez danych osobowych (HTTP_422, TIMEOUT_UNKNOWN, CANCELLED, WINDOW_EXPIRED...).
   failureCode       String?   @db.VarChar(40)
   sendAttempts      Int       @default(0)
+  // Pierwsze wejście na stronę lądowania (POST /t/:token/view z JS strony, NIE samo pobranie strony - skanery
+  // linków) i pierwsze wysłanie formularza (POST /t/:token/submit). Wartości z formularza nie są nigdzie zapisywane.
+  clickedAt         DateTime?
+  submittedAt       DateTime?
   providerMessageId String?   @db.VarChar(200)
   // SHA-256 tokenu z linku (sam token istnieje tylko w mailu); ustawiany przy zajęciu.
   tokenHash         String?   @unique
@@ -551,7 +555,9 @@ model CourseAssignment {
   updatedAt         DateTime         @default(now()) @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (FK omijają RLS, więc bez tego przypisanie
+  // w kontekście organizacji A mogłoby wskazać użytkownika organizacji B).
+  user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])

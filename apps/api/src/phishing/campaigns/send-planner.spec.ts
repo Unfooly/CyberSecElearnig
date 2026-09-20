@@ -1,4 +1,27 @@
-import { planSendTimes, shuffled } from './send-planner';
+import { peakInAnyWindow, planSendTimes, shuffled } from './send-planner';
+
+describe('peakInAnyWindow', () => {
+  const HOUR = 3_600_000;
+  const DAY = 24 * HOUR;
+
+  it('liczy maksimum w oknie przesuwnym: puste = 0, wszystko w dobie = n, rozrzucone > doby = pojedyncze', () => {
+    expect(peakInAnyWindow([], DAY)).toBe(0);
+    expect(peakInAnyWindow([0, HOUR, 2 * HOUR], DAY)).toBe(3);
+    expect(peakInAnyWindow([0, 2 * DAY, 4 * DAY], DAY)).toBe(1);
+  });
+
+  it('granica okna jest półotwarta: dokładnie 24 h różnicy to już inna doba', () => {
+    expect(peakInAnyWindow([0, DAY], DAY)).toBe(1);
+    expect(peakInAnyWindow([0, DAY - 1], DAY)).toBe(2);
+  });
+
+  it('wynik nie zależy od kolejności wejścia i znajduje najgęstszy fragment', () => {
+    const times = [10 * DAY, 0, 10 * DAY + HOUR, HOUR, 10 * DAY + 2 * HOUR, 5 * DAY];
+
+    expect(peakInAnyWindow(times, DAY)).toBe(3);
+    expect(peakInAnyWindow([...times].reverse(), DAY)).toBe(3);
+  });
+});
 
 // Deterministyczny generator (LCG) - testy planera bez losowości i bez czekania.
 const seeded = (seed: number) => () => {

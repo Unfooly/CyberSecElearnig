@@ -26,7 +26,9 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 | Zgody: typ dokumentu, **wersja**, znacznik czasu, użytkownik | `legal_acceptances` | dowód zgody; wersja musi wskazywać realny tekst |
 | Dane pracowników: e-mail, imię, nazwisko, dział, rola, status | `users`, `departments` | rola: podmiot przetwarzający |
 | Postępy w kursach, wyniki, odznaki, awatary, ranking | `course_assignments`, `user_badges`, leaderboard | ranking widoczny dla organizacji - uwzględnić w informacji dla pracowników |
-| Wyniki symulacji phishingowych (planowane: kliknięcia, zgłoszenia) | moduł kampanii (nie zbudowany) | **wymaga osobnej oceny** (monitorowanie pracowników, kodeks pracy, konsultacje ze związkami, DPIA) |
+| Wyniki symulacji phishingowych: wysłano / kliknięto / wysłano formularz (znaczniki czasu per odbiorca), dział jako snapshot, hash tokenu z linku; **wartości wpisane w formularzu strony lądowania NIE są zapisywane ani logowane**; brak pikseli otwarcia | `phishing_campaign_recipients` (moduł kampanii; wyniki per osoba domyślnie niewidoczne - patrz commit 5) | **wymaga osobnej oceny** (monitorowanie pracowników, kodeks pracy, konsultacje ze związkami, DPIA). Adres IP odwiedzającego stronę lądowania nie jest zapisywany w wynikach (tylko krótkotrwały licznik limitu żądań w pamięci) |
+| Kopia e-maila autora kampanii (`phishing_campaigns.createdByEmail`) i aktora zmian szablonów | `phishing_campaigns`, `phishing_template_edits` | przeżywa usunięcie konta (dowód rozliczalności) - okres przechowywania |
+| Przypisanie kursu uzupełniającego po kliknięciu w symulację | `course_assignments` | pracownik dostaje kurs szkoleniowy; uwzględnić w informacji dla pracowników |
 | Tokeny (reset hasła, weryfikacja e-mail) - tylko hashe | `password_reset_tokens`, `email_verification_tokens` | krótki okres życia |
 | Hasła - tylko hashe bcrypt | `users.passwordHash` | brak haseł w logach |
 | Dane techniczne: adres IP, logi żądań, ciasteczka sesyjne (`access_token`, `refresh_token`, httpOnly) | API, BFF (`apps/web`) | ciasteczka niezbędne - informacja, bez banera zgody; ocenić, czy dodajemy analitykę |
@@ -88,6 +90,13 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 
 - [ ] **Symulacje phishingowe** wobec pracowników: podstawa i zakres monitorowania, informowanie pracowników,
   zakaz wykorzystywania wyników do sankcji (jeśli tak zdecydujemy), DPIA - **przed** uruchomieniem modułu kampanii.
+- [ ] **Odbiorcy kampanii spoza zweryfikowanej domeny organizacji** (np. kontraktorzy na Gmailu): podstawą jest, że
+  odbiorca jest kontem `ACTIVE` (sam aktywował konto linkiem z maila = potwierdził członkostwo w organizacji); wysyłka
+  z naszej domeny do osób trzecich jest ryzykiem nadużycia - patrz backlog (alert SUPER_ADMIN >20% odbiorców spoza domeny)
+  i `docs/phishing-simulations.md`.
+- [ ] **Strona lądowania i śledzenie** (`/t/<token>`): token 256-bitowy w bazie tylko jako hash, ważny 90 dni od zajęcia (chwili wysyłki), jawny w logach dostępowych infrastruktury;
+  strona bez cookie, bez marek, `noindex`; kliknięcie zalicza JS strony po 2,5 s lub interakcji (nie samo pobranie
+  strony); dobowy limit wysyłek 2 x liczba licencji na organizację. Informacja dla pracowników o samym istnieniu symulacji.
 - [ ] **Ranking i odznaki** (grywalizacja) - widoczność wyników dla współpracowników.
 - [ ] Wysyłka e-maili phishingowych z osobnej domeny - reputacja, regulamin dostawcy poczty, zgoda klienta na
   symulacje (pkt regulaminu).

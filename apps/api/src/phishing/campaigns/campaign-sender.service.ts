@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
+import { sha256Hex } from '../token-hash';
 import { JobsService } from '../../jobs/jobs.service';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { PhishingConfigService } from '../phishing-config.service';
@@ -18,7 +19,7 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export type SendOutcome ='SENT' | 'FAILED' | 'SKIPPED';
 
-export const sha256Hex = (value: string) => createHash('sha256').update(value).digest('hex');
+export { sha256Hex };
 
 /**
  * Wysyłka JEDNEGO maila kampanii - "co najwyżej raz", idempotentna i odporna na wyścigi.

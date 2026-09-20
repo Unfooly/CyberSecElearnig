@@ -6,6 +6,8 @@ import { CampaignSenderService } from './campaigns/campaign-sender.service';
 import { PhishingCampaignsController } from './campaigns/phishing-campaigns.controller';
 import { PhishingCampaignsService } from './campaigns/phishing-campaigns.service';
 import { BullPhishingSendQueue, PhishingSendQueue } from './campaigns/phishing-send-queue';
+import { PhishingTrackingController } from './tracking/tracking.controller';
+import { TrackingService } from './tracking/tracking.service';
 import { PhishingConfigController } from './phishing-config.controller';
 import { PhishingConfigService } from './phishing-config.service';
 import { PhishingTemplatesController } from './phishing-templates.controller';
@@ -18,8 +20,9 @@ import { createPhishingTransport } from './transport/transport-config';
 // (osobny transport, osobne tokeny), a maile transakcyjne wyłącznie przez EmailService.
 @Module({
   imports: [JobsModule],
-  controllers: [PhishingTemplatesController, PhishingConfigController, PhishingCampaignsController],
+  controllers: [PhishingTemplatesController, PhishingConfigController, PhishingCampaignsController, PhishingTrackingController],
   providers: [
+    TrackingService,
     PhishingTemplatesService,
     PhishingConfigService,
     PhishingCampaignsService,

@@ -28,6 +28,23 @@ export function planSendTimes(count: number, from: Date, to: Date, rng: () => nu
   return times.sort((a, b) => a - b).map((time) => new Date(time));
 }
 
+/**
+ * Największa liczba momentów mieszcząca się w jednym oknie przesuwnym o długości `windowMs` (okno półotwarte
+ * [t, t + windowMs)). Dwa wskaźniki po posortowanych czasach: O(n log n). Używane do limitu wysyłek na kroczące 24 h.
+ */
+export function peakInAnyWindow(timesMs: readonly number[], windowMs: number): number {
+  const sorted = [...timesMs].sort((a, b) => a - b);
+  let peak = 0;
+  let left = 0;
+  for (let right = 0; right < sorted.length; right += 1) {
+    while (sorted[right] - sorted[left] >= windowMs) {
+      left += 1;
+    }
+    peak = Math.max(peak, right - left + 1);
+  }
+  return peak;
+}
+
 // Kryptograficzny generator [0, 1): kolejności wysyłki nie da się odgadnąć (pracownicy nie przewidzą, kto dostanie
 // wiadomość jako następny).
 const secureRandom = () => randomInt(2 ** 32) / 2 ** 32;

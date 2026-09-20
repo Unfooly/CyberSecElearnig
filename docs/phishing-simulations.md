@@ -86,12 +86,69 @@ Lista kampanii do uzgodnienia (wszystkich organizacji, stronami po id) to jedyne
 w polityce SELECT `phishing_campaigns`, wyłącznie przez `TenantPrismaService.listCampaignsToReconcile` (wynik to tylko id i
 organizationId). Wynik uzgadniania danej kampanii zapisuje się już w kontekście jej organizacji.
 
+## Odbiorcy: podstawa i zabezpieczenie przed nadużyciem
+
+**Decyzja:** NIE ograniczamy adresów odbiorców do zweryfikowanej domeny organizacji - firmy mają kontraktorów i
+współpracowników na zewnętrznych adresach (np. Gmail).
+
+**Podstawa zabezpieczenia:** odbiorcą jest wyłącznie konto w stanie `ACTIVE`, czyli takie, które użytkownik sam aktywował
+linkiem z maila (ustawienie hasła). Aktywacja potwierdza, że osoba jest świadomym członkiem tej organizacji; admin nie może
+więc "wyphishować" osoby trzeciej z naszej domeny samym dodaniem jej adresu (konto `INVITED` nie jest odbiorcą, a
+`sendOne` sprawdza `ACTIVE` w chwili wysyłki). Ryzyko szczątkowe: admin kontroluje adres, który sam aktywował.
+
+## Dobowy limit wysyłek
+
+Globalny limit organizacji: **2 x `seatsLimit` wysyłek na DOWOLNE kroczące 24 h** (`DAILY_SEND_LIMIT_FACTOR`), liczony po
+**zaplanowanych momentach wysyłki** (`scheduledAt`), nie po dacie utworzenia: kampanie tworzone w różne dni z tym samym
+oknem wysyłki sumują się w dniu wysyłki. Przy uruchamianiu kampanii, w transakcji pod blokadą organizacji, sprawdzamy
+(okno przesuwne, `peakInAnyWindow`), czy po dołożeniu momentów nowej kampanii jakiekolwiek 24 h zawiera więcej wysyłek niż
+limit; inaczej `409 DAILY_SEND_LIMIT` z komunikatem (limit, szczyt po dołożeniu, już zaplanowane). Odbiorcy anulowani
+przed wysyłką nie zużywają limitu; świeżo anulowana kampania zużywa go do domknięcia odbiorców (konserwatywnie).
+Dopracowane limity - backlog.
+
+## Śledzenie kliknięć i strona lądowania
+
+Link w mailu prowadzi do `<PHISHING_LANDING_BASE_URL>/t/<token>` (strona w `apps/web`, publiczna, bez cookie, `noindex`,
+bez marek). Token to 32 losowe bajty (base64url, 43 znaki); w bazie jest tylko jego SHA-256.
+
+- **`GET /t/<token>` (strona) niczego nie zalicza** i nie woła API - pobierają go skanery linków w skrzynkach. Wynik nie
+  zależy od tokenu (każda wartość daje tę samą stronę).
+- **`POST /api/t/<token>/view`** (BFF -> `POST /t/:token/view` w API) wywołuje JS strony po 2,5 s widoczności albo przy
+  pierwszej interakcji. Zapisuje `clickedAt` (raz) i przypisuje kurs uzupełniający. To ograniczenie, nie gwarancja:
+  skaner z pełnym JS i oczekiwaniem może to obejść; wyniki są szacunkiem.
+- **`POST .../submit`** zapisuje `submittedAt` (i `clickedAt`, gdy brakowało). **Ciało żądania jest ignorowane**: strona
+  nie wysyła wartości pól, BFF ich nie czyta, API nie deklaruje `@Body`, a nic w tej ścieżce nie loguje. Miarą jest
+  wyłącznie fakt wysłania formularza. Także przy bezpośrednim wywołaniu API z uszkodzonym ciałem: parser ciała jest
+  własny (`common/body-parsing.ts`, aplikacja tworzona z `bodyParser: false`) z middleware błędów, który odpowiada
+  stałym `Nieprawidłowe żądanie.` - domyślna obsługa zwracałaby i logowała `error.message` z `JSON.parse` zawierający
+  FRAGMENT ciała. Limit ciała: 100 kB.
+- **Odpowiedź publiczna** to zawsze `200 { lessonHtml }` - treść lekcji kampanii dla tokenu ważnego, lekcja domyślna dla
+  nieznanego, źle sformatowanego, wygasłego (90 dni od zajęcia) i niezajętego. Bez danych osobowych, nazwy kampanii i
+  organizacji. Przy 256 bitach entropii i limicie 120 żądań/min na adres (osobno dla `view` i `submit`; IPv6 liczone po
+  prefiksie /64) zgadywanie tokenów jest nierealne; różnica czasu odpowiedzi nie daje przewagi. Limit jest wyższy niż
+  typowy, bo pracownicy jednej firmy często wychodzą przez wspólny adres NAT i otwierają pocztę o tej samej porze; przekroczenie
+  daje 429, a strona pokazuje wtedy lekcję domyślną BEZ zapisu kliknięcia (zaniżony wynik, bez sygnału dla operatora).
+  Twardy limit na brzegu (WAF Cloudflare) i `TRUST_PROXY=true` są warunkami startu (`docs/deploy-test.md`).
+- **Token w adresie URL** trafia jawnie do logów dostępowych infrastruktury (Cloudflare, reverse proxy) i historii
+  przeglądarki: ktoś z dostępem do tych logów może zaliczyć cudze kliknięcie przez 90 dni. Logi dostępowe traktujemy jako
+  dane wrażliwe. Baza trzyma tylko hash, strona nie ładuje zasobów zewnętrznych, a `Referrer-Policy: no-referrer`, `no-store`
+  i `noindex` są ustawione w `next.config.mjs`.
+- Token działa także po anulowaniu kampanii i dla odbiorców "niepewnych" (kliknięcie dowodzi, że mail dotarł).
+- Lekcja ("To była symulacja") pochodzi ze snapshotu kampanii, jest sanityzowana na wyjściu i pokazywana w `iframe
+  sandbox=""`. Wyświetla się po wysłaniu formularza lub kliknięciu "Anuluj".
+- **Kurs uzupełniający:** najstarszy kurs z kategorii `PHISHING_SOCIAL_ENGINEERING`, termin 14 dni, idempotentnie (unikat
+  `userId + courseId`, istniejące przypisanie zostaje). Użytkownik musi należeć do organizacji odbiorcy (jawny warunek +
+  złożone FK `course_assignments -> users(organizationId, id)`). Brak takiego kursu w katalogu = brak przypisania.
+- **Wyjątek od Zasady nr 1:** lookup odbiorcy po hashu tokenu (`TenantPrismaService.runTrackingTokenLookup`, wąski select,
+  własny sentinel `app.bypass_tracking_lookup` tylko w SELECT - `runCrossOrgQuery` odbiorców nie widzi). Pełna lista
+  wyjątków: `CLAUDE.md`.
+- Token jest ważny 90 dni od **zajęcia** (`claimedAt`, chwila wysyłki). Kurs uzupełniający dostają tylko konta `ACTIVE`.
+
 ## Znane ograniczenia i backlog (świadomie poza tym commitem)
 
-- **Adresy odbiorców a domeny organizacji:** zaproszenia nie ograniczają domeny e-maila do zweryfikowanych domen
-  organizacji, a wysyłka symulacji idzie z naszej domeny nadawcy. Rozważyć wymaganie zgodności domeny odbiorcy z
-  zweryfikowaną domeną organizacji (decyzja produktowa).
-- **Limit dobowy wysyłki na organizację:** dziś ograniczają tylko 5000 odbiorców i 10 aktywnych kampanii.
+- **Alert dla SUPER_ADMIN:** organizacja, w której >20% odbiorców kampanii to adresy spoza zweryfikowanej domeny
+  organizacji (sygnał nadużycia - wysyłka z naszej domeny do osób trzecich).
+- Dopracowane limity wysyłki (per kampania, per godzinę, reputacja domeny) poza limitem dobowym.
 - Redis musi być chroniony (hasło, sieć wewnętrzna): kolejka steruje wysyłką, a zadania niosą tylko identyfikatory.
 
 Bez działającego Redisa/workera (`BACKGROUND_JOBS_ENABLED=false`) kampanie nie wysyłają - status API pokazuje
@@ -108,5 +165,9 @@ pilnuje tego `transport-separation.spec.ts`.
 - `send-planner.spec.ts`: rozkład i granice planera z wstrzykiwanym generatorem (bez czekania).
 - `test/phishing-campaigns.e2e-spec.ts`: API, `sendOne` (w tym równoległe wywołania, ponowienia, timeout, koniec okna,
   usunięty pracownik), `reconcile`, izolacja organizacji A/B, RLS i ograniczenia w bazie. Kolejka i transport to atrapy.
+- `test/phishing-tracking.e2e-spec.ts`: publiczne `view`/`submit` (idempotencja, równoległość, ciało niezapisywane i
+  nielogowane, odpowiedź neutralna, limit żądań), przypisanie kursu, izolacja A/B, RLS lookupu, CHECK-i.
+- Web: `tracking-routes.test.ts` (BFF: brak ciała, stała ścieżka, neutralność), `LandingClient.test.tsx` (GET nie liczy,
+  opóźnienie/interakcja, brak wartości pól).
 - `test/phishing-campaigns-queue.e2e-spec.ts`: jeden test z prawdziwym BullMQ/Redisem (własny `JOBS_QUEUE_PREFIX`,
   opóźnienie ~300 ms, deduplikacja, usuwanie zadań).

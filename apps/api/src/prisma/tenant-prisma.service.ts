@@ -8,6 +8,15 @@ import { PrismaService } from './prisma.service';
  * i RLS w Postgresie (policy na app.current_org_id) chroniły izolację
  * tenantów — patrz CLAUDE.md "Zasada nr 1".
  */
+/** Wynik runTrackingTokenLookup: tylko identyfikatory i znaczniki czasu (bez danych osobowych). */
+export interface TrackingRecipientRef {
+  id: string;
+  organizationId: string;
+  campaignId: string;
+  userId: string | null;
+  claimedAt: Date | null;
+}
+
 @Injectable()
 export class TenantPrismaService {
   constructor(private readonly prisma: PrismaService) {}
@@ -94,7 +103,30 @@ export class TenantPrismaService {
   }
 
   /**
-   * PIĄTY wąski wyjątek od Zasady nr 1, ten sam sentinel co runCrossOrgQuery - WYŁĄCZNIE dla
+   * PIĄTY wąski wyjątek od Zasady nr 1 (lookup po hashu tokenu, jak runRefreshTokenLookup) - WYŁĄCZNIE dla
+   * TrackingService (publiczne POST /t/:token/view|submit). Odwiedzający zna tylko token z linku w mailu; organizację
+   * poznajemy dopiero z wiersza odbiorcy. Sztywny `findUnique` po jednym polu (SHA-256 tokenu, unikalny indeks) i
+   * WĄSKI select (identyfikatory i znaczniki czasu, bez adresu e-mail i bez treści) - typy, nie konwencja, wykluczają
+   * użycie tej furtki do zapytań zwracających więcej rekordów lub więcej danych. Bypass ma WŁASNY sentinel
+   * (app.bypass_tracking_lookup) i obejmuje tylko politykę SELECT phishing_campaign_recipients (migracje
+   * phishing_tracking i phishing_tracking_lookup_sentinel): pod nim nie da się niczego zapisać ani usunąć, a
+   * runCrossOrgQuery (inny sentinel) odbiorców kampanii nie widzi. Wszystkie zapisy (kliknięcie, formularz, przypisanie kursu) idą już przez runInOrgContext(organizationId
+   * odczytanego wiersza). Brak wiersza = null (wołający zwraca odpowiedź neutralną, identyczną jak dla poprawnego tokenu).
+   */
+  async runTrackingTokenLookup(tokenHash: string): Promise<TrackingRecipientRef | null> {
+    return this.prisma.$transaction(async (tx) => {
+      // OSOBNY sentinel (nie app.bypass_tenant_rls): polityka SELECT odbiorców honoruje tylko ten, więc generyczny
+      // runCrossOrgQuery nie zyskuje dostępu do wyników kampanii.
+      await tx.$executeRaw`SELECT set_config('app.bypass_tracking_lookup', 'on', true)`;
+      return tx.phishingCampaignRecipient.findUnique({
+        where: { tokenHash },
+        select: { id: true, organizationId: true, campaignId: true, userId: true, claimedAt: true },
+      });
+    });
+  }
+
+  /**
+   * SZÓSTY wąski wyjątek od Zasady nr 1, ten sam sentinel co runCrossOrgQuery - WYŁĄCZNIE dla
    * CampaignReconcileService (zadanie uzgadniające kampanie symulacji). Zwraca TYLKO pary (id, organizationId)
    * kampanii do uzgodnienia: aktywnych (SCHEDULED/RUNNING) oraz anulowanych w ciągu ostatnich `cancelledSince`.
    * Typ wyniku (select) nie ujawnia treści kampanii ani adresów; strona po id (kursor) - bez głodzenia nowszych.

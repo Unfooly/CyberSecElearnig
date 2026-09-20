@@ -263,6 +263,10 @@ prawdziwych klientów).
     `PHISHING_MAILERSEND_API_TOKEN` (albo `PHISHING_SMTP_URL`),
   - `PHISHING_LANDING_BASE_URL` wskazuje **osobną domenę** strony lądowania (`https://`), routowaną do web; bez tego
     reputacja domeny aplikacji zależy od linków z symulacji.
+- [ ] **Limit na brzegu dla publicznego śledzenia** (`/t/*`, `/api/t/*`): reguła WAF/rate limiting w Cloudflare (limit
+  w API to 120/min na adres w pamięci procesu, bez współdzielenia między instancjami), `TRUST_PROXY=true`, API dostępne
+  wyłącznie z sieci wewnętrznej, web tylko przez tunel (inaczej nagłówek `CF-Connecting-IP` da się podszyć). Logi
+  dostępowe zawierają tokeny z linków - ograniczyć dostęp i retencję.
 - [ ] **Scenariusz ręczny** z `docs/e2e-registration.md` przeszedł na środowisku z prawdziwym MailerSend i DNS
   (rejestracja -> mail -> hasło -> rekord TXT -> odblokowanie -> sprzątanie).
 - [ ] **Sekrety i tryby deweloperskie wyłączone:** brak `ALLOW_EMAIL_DEV_MODE`, ustawiony `MAILERSEND_API_TOKEN` i

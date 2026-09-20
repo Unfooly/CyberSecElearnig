@@ -25,6 +25,14 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
+      // Strona lądowania symulacji: token w adresie i licznik kliknięć - nigdy w cache przeglądarki/pośredników.
+      {
+        source: '/t/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ];
   },
   experimental: {

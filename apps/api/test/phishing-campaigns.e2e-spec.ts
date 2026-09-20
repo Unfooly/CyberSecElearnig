@@ -77,6 +77,8 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
 
     orgA = await newOrg('a', { sales: ['s1', 's2'], it: ['i1'] });
     orgB = await newOrg('b', { hr: ['h1'] });
+    // Domyślny limit dobowy (2 x seatsLimit = 20) ograniczałby testy tworzące wiele kampanii; jego działanie ma osobne testy.
+    await prisma.organization.updateMany({ where: { id: { in: [orgA.organizationId, orgB.organizationId] } }, data: { seatsLimit: 1000 } });
     // Kierownik działu w organizacji A (aktywny, więc jest odbiorcą grona ALL; nie ma dostępu do kampanii).
     await tenantPrisma.runInOrgContext(orgA.organizationId, async (tx) =>
       tx.user.create({ data: { organizationId: orgA.organizationId, email: email('a-manager'), passwordHash: await bcrypt.hash(DEFAULT_TEST_PASSWORD, 4), role: 'DEPARTMENT_MANAGER', status: 'ACTIVE', emailVerifiedAt: new Date() } }),
@@ -384,6 +386,81 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
 
       const mine = (await rows(orgA, campaign.id)).map((row) => row.id).sort();
       expect(queue.enqueued.filter((item) => mine.includes(item.recipientId)).map((item) => item.recipientId).sort()).toEqual(mine);
+    });
+  });
+
+  describe('dobowy limit wysyłek (2 x seatsLimit, kroczące 24 h)', () => {
+    const setSeats = (seats: number, org: Org = orgA) => prisma.organization.update({ where: { id: org.organizationId }, data: { seatsLimit: seats } });
+    afterEach(async () => {
+      await setSeats(1000);
+      await setSeats(1000, orgB);
+    });
+    const users = (...labels: string[]) => ({ type: 'USERS', userIds: labels.map((label) => orgA.users[label]) });
+
+    it('kampania przekraczająca limit => 409 DAILY_SEND_LIMIT z komunikatem (limit, wykorzystano, zostało); nic nie powstaje', async () => {
+      await setSeats(2); // limit 4, a grono ALL to 5 osób
+
+      const response = await post(orgA.token, '/phishing/campaigns', await launchBody());
+
+      expect([response.status, response.body.code]).toEqual([409, 'DAILY_SEND_LIMIT']);
+      expect(response.body.message).toMatch(/4 na dobę.*5 odbiorców.*byłoby 5 wysyłek \(już zaplanowanych: 0\)/);
+      expect((await get(orgA.token, '/phishing/campaigns').expect(200)).body).toEqual([]);
+      expect(queue.enqueued).toEqual([]);
+    });
+
+    it('limit sumuje kampanie z ostatnich 24 h; dokładnie do limitu przechodzi, powyżej nie', async () => {
+      await setSeats(2); // limit 4
+      await launch({ audience: users('s1', 's2', 'i1') }); // 3 z 4
+
+      const over = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Druga', audience: users('s1', 's2') }));
+      const exact = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Trzecia', audience: users('s1') }));
+
+      expect([over.status, over.body.code]).toEqual([409, 'DAILY_SEND_LIMIT']);
+      expect(over.body.message).toMatch(/byłoby 5 wysyłek \(już zaplanowanych: 3\)/);
+      expect(exact.status).toBe(201); // 3 + 1 = 4
+    });
+
+    it('odbiorcy anulowani przed wysyłką nie zużywają limitu, a odbiorcy sprzed 24 h nie są liczeni', async () => {
+      await setSeats(2); // limit 4
+      const first = await launch({ audience: users('s1', 's2', 'i1') });
+      await post(orgA.token, `/phishing/campaigns/${first.id}/cancel`).expect(200);
+
+      const afterCancel = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Po anulowaniu', audience: users('s1', 's2', 'i1') }));
+      expect(afterCancel.status).toBe(201);
+
+      const blocked = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Zablokowana', audience: users('s1', 's2') }));
+      expect(blocked.status).toBe(409);
+      await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) =>
+        tx.phishingCampaignRecipient.updateMany({ where: { organizationId: orgA.organizationId }, data: { scheduledAt: new Date(Date.now() - 25 * HOUR) } }),
+      );
+      const rolling = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Po dobie', audience: users('s1', 's2', 'i1') }));
+      expect(rolling.status).toBe(201);
+    });
+
+    it('liczą się ZAPLANOWANE wysyłki, nie data utworzenia: kampanie tworzone w różne dni z tym samym oknem sumują się w dniu wysyłki', async () => {
+      await setSeats(2); // limit 4
+      const first = await launch({ audience: users('s1', 's2', 'i1') }); // 3 wysyłki w oknie najbliższych 2 h
+      await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) =>
+        tx.phishingCampaignRecipient.updateMany({ where: { campaignId: first.id }, data: { createdAt: new Date(Date.now() - 3 * 24 * HOUR), scheduledAt: new Date(Date.now() + HOUR) } }),
+      );
+
+      const sameDay = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'To samo okno', audience: users('s1', 's2') }));
+      const nextWeek = await post(orgA.token, '/phishing/campaigns', await launchBody({ name: 'Za tydzień', audience: users('s1', 's2'), ...windowFromNow(7 * 24 * HOUR) }));
+
+      expect([sameDay.status, sameDay.body.code]).toEqual([409, 'DAILY_SEND_LIMIT']);
+      expect(nextWeek.status).toBe(201); // inna doba: limit dotyczy dowolnych 24 h, nie sumy całkowitej
+    });
+
+    it('limit dotyczy organizacji: wyczerpany limit A nie blokuje B (i odwrotnie), a RÓWNOLEGŁE żądania go nie obchodzą', async () => {
+      await setSeats(2); // limit 4 dla A
+      const bodies = await Promise.all([1, 2, 3].map((i) => launchBody({ name: `Równolegle ${i}`, audience: users('s1', 's2') })));
+
+      const responses = await Promise.all(bodies.map((body) => post(orgA.token, '/phishing/campaigns', body)));
+
+      expect(responses.filter((r) => r.status === 201)).toHaveLength(2); // 2 x 2 = 4, trzecia 409
+      expect(responses.filter((r) => r.status === 409).every((r) => r.body.code === 'DAILY_SEND_LIMIT')).toBe(true);
+      const bResponse = await post(orgB.token, '/phishing/campaigns', await launchBody({ audience: { type: 'ALL' } }, orgB.token));
+      expect(bResponse.status).toBe(201);
     });
   });
 
@@ -835,17 +912,20 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
       ).rejects.toThrow();
     });
 
-    it('bypass (runCrossOrgQuery) pozwala tylko ODCZYTAĆ kampanie; nie zmieni ani nie usunie, a odbiorców w ogóle nie widzi', async () => {
+    it('bypass (runCrossOrgQuery) pozwala tylko ODCZYTAĆ kampanie; odbiorców w ogóle nie widzi i niczego nie zmieni ani nie usunie', async () => {
       const campaign = await launch({ audience: { type: 'USERS', userIds: [orgA.users.s1] } });
 
       const result = await tenantPrisma.runCrossOrgQuery(async (tx) => ({
         visible: (await tx.phishingCampaign.findMany({ where: { id: campaign.id }, select: { id: true } })).length,
-        recipients: await tx.phishingCampaignRecipient.count(),
+        recipients: await tx.phishingCampaignRecipient.count({ where: { campaignId: campaign.id } }),
         updated: (await tx.phishingCampaign.updateMany({ where: { id: campaign.id }, data: { name: 'HACK' } })).count,
         deleted: (await tx.phishingCampaign.deleteMany({ where: { id: campaign.id } })).count,
+        recipientsUpdated: (await tx.phishingCampaignRecipient.updateMany({ where: { campaignId: campaign.id }, data: { failedAt: new Date(), failureCode: 'HACK' } })).count,
+        recipientsDeleted: (await tx.phishingCampaignRecipient.deleteMany({ where: { campaignId: campaign.id } })).count,
       }));
 
-      expect(result).toEqual({ visible: 1, recipients: 0, updated: 0, deleted: 0 });
+      // Odbiorców kampanii generyczny bypass NIE widzi (osobny sentinel lookupu tokenu), a kampanie tylko odczytuje.
+      expect(result).toEqual({ visible: 1, recipients: 0, updated: 0, deleted: 0, recipientsUpdated: 0, recipientsDeleted: 0 });
       expect((await campaignRow(orgA, campaign.id)).name).toBe('Kampania testowa');
     });
 

@@ -111,6 +111,9 @@ export interface ResultsView {
   campaign: { id: string; name: string; status: string; windowStart: string; windowEnd: string } | null;
   // null dla DEPARTMENT_MANAGER (metadane całej organizacji).
   campaignsCount: number | null;
+  // Chwila policzenia agregatów: odświeżane nie częściej niż raz na godzinę (ograniczenie obserwacji zmian w czasie
+  // rzeczywistym). Opcjonalne w typie dla zgodności ze starszymi odpowiedziami/testami.
+  dataAsOf?: string;
   total: ResultRow | null;
   departments: ResultRow[];
 }

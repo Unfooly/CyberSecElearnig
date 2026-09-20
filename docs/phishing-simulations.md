@@ -274,6 +274,56 @@ quoted-printable); podwójne kodowanie (`%252F`) nie jest obsługiwane - znane o
 Kolejne commity modułu: wyniki (metryka „zgłosiło”, po kliknięciu, agregaty z progiem 3, widok osobowy, CSV, KPI), panel
 zgłoszeń dla ORG_ADMIN i kierownika działu z powiadomieniem, import pracowników z CSV.
 
+### Agregaty odświeżane co godzinę (commit 3/5)
+
+Jedno tanie ograniczenie kanału różnicowania w czasie (decyzja właściciela produktu 2026-09-20): **agregaty per dział (widok
+przeglądu i kampanii, CSV agregatów, KPI dashboardu) są liczone z migawki odświeżanej nie częściej niż raz na godzinę**
+(`ResultsSnapshotCache`), żeby "wzrost o 1 zaraz po tym, jak ktoś powiedział, że zgłosił" nie był obserwowalny w czasie
+rzeczywistym. Szczegóły:
+
+- Migawka to **same liczby per dział** (dostarczono, kliknęło, zgłosiło...), bez identyfikatorów osób. Klucz zawiera
+  `organizationId` z JWT; Redis (wspólny dla instancji API) z rezerwą w pamięci procesu. TTL jest **stały od chwili policzenia**
+  (odczyty go nie przedłużają); równoległe żądania dzielą jedno przeliczenie. Odpowiedź ma `dataAsOf`, UI pokazuje "Agregaty z ...".
+- **Autoryzacja nie jest cache'owana**: rola, status `ACTIVE`, dział i istnienie kampanii są czytane z bazy na każde żądanie
+  PRZED odczytem migawki (test: degradacja/dezaktywacja działa od razu przy rozgrzanym cache; kampania innej organizacji to 404).
+- **Widok osobowy (audytowany) i jego CSV nie używają migawki** - są aktualne bez opóźnienia.
+- Kompromis: nowa kampania, anulowanie, zgłoszenie czy kliknięcie pojawia się w agregatach z opóźnieniem do godziny (metadane
+  kampanii - nazwa, status - są świeże). Konfiguracja: `RESULTS_CACHE_TTL_SECONDS` (domyślnie 3600; `0` wyłącza; w `NODE_ENV=test`
+  domyślnie `0`, żeby testy nie zależały od czasu). To ograniczenie, nie eliminacja: kto porówna dwa odczyty dzielone godziną,
+  nadal zobaczy różnicę - ale nie "na żywo".
+
+## Skrzynka zgłoszeń i powiadomienia (moduł zgłoszeń, commit 3/5)
+
+Kod: `apps/api/src/threat-reports/`, ekrany `/reports` (lista) i `/reports/:id` (szczegóły, tylko ORG_ADMIN).
+
+**Zakresy** (rola, status i dział z bazy na każde żądanie - nie z tokenu; zgłoszenia symulacyjne nie trafiają do skrzynki):
+
+| Rola | Co widzi / może |
+|---|---|
+| `ORG_ADMIN` | lista prawdziwych zgłoszeń (temat, nadawca, **zgłaszający**, status, filtr i stronicowanie), szczegóły (treść, nagłówki, komentarz, dział, dziennik), zmiana statusu (`NEW` / `IN_REVIEW` / `THREAT` / `SAFE`), notatki |
+| `DEPARTMENT_MANAGER` | `GET /threat-reports/department`: zgłoszenia **własnego działu** - temat, nadawca, status, data. **Bez zgłaszającego, treści, nagłówków, komentarza i notatek, bez zmian statusu.** Dwa zabezpieczenia dodane ponad decyzję 1 (uwagi z przeglądu bezpieczeństwa), żeby zgłoszenie nie identyfikowało zgłaszającego: (1) dział z mniej niż 3 **innymi** aktywnymi osobami (kierownik nie liczy się do progu - wie, czy sam zgłaszał): "za mało danych", bez listy; (2) zgłoszenia pojawiają się w tym widoku **dopiero po godzinie** (to samo opóźnienie co agregaty, `RESULTS_CACHE_TTL_SECONDS`), żeby nie było ich widać "na żywo" zaraz po tym, jak ktoś powiedział, że zgłosił; `total` liczy tylko widoczne |
+| `EMPLOYEE` | tylko zgłaszanie (`/report`) |
+
+Ograniczenia zasobów: lista admina czyta wąski zestaw kolumn (bez treści), `pageSize` <= 100 i `page` <= 500, historia zgłoszenia ma
+maksymalnie 200 wpisów (409 `EVENT_LIMIT`; dziennik jest append-only, więc rośnie tylko do tego limitu).
+
+**Dziennik zdarzeń** (`threat_report_events`): każda zmiana statusu (z jakiego na jaki) i każda notatka ma autora (kopia e-maila,
+`actorUserId` zerowane po usunięciu konta) i czas. Zmiana statusu jest **warunkowa** (status musi być nadal taki, jaki widział admin) i
+zapisywana z wpisem dziennika w jednej transakcji: równoległa zmiana daje 409 `STATUS_CONFLICT`, nie cichą utratę. Dziennik jest
+append-only dla roli aplikacji (`REVOKE UPDATE, DELETE`); jedyny wyjątek to `GRANT UPDATE ("note")` - **retencja czyści treść notatek
+po 90 dniach razem z treścią zgłoszenia** (zdarzenie, autor, czas i zmiany statusu zostają). Wgląd w szczegóły NIE jest audytowany
+(inaczej niż wgląd w wyniki osobowe: zgłoszenie to dane, które sam pracownik przekazał administratorowi do analizy) - do decyzji, jeśli ma się to zmienić.
+
+**Powiadomienia mailowe** (`ThreatReportNotificationService`, job co 5 minut UTC): do wszystkich aktywnych `ORG_ADMIN` organizacji, **zbiorczo -
+jeden mail na organizację w oknie 15 minut** (okno liczone od ostatniego wysłanego maila, stan w `threat_report_notification_state`),
+z liczbą nowych zgłoszeń i linkiem do `/reports`. **Mail nie zawiera treści zgłoszeń, nadawców ani danych zgłaszających** (idzie zewnętrznym
+dostawcą; szablon `threat-report-notification`). Idzie przez transakcyjny `EmailService`, nigdy przez transport symulacji. Zgłoszenia zajmowane atomowo
+(`notifiedAt IS NULL`), organizacja serializowana blokadą doradczą (równoległe biegi/instancje = jedna runda), zgłoszenia w oknie czekają na
+następny mail; gdy nikt nie dostał maila, zajęcie i okno są cofane (następny bieg ponawia). Awaria procesu między zajęciem a wysyłką gubi jeden
+mail (at-most-once; zgłoszenia zostają w skrzynce). Opóźnienie pierwszego maila to do 5 minut. Zgłoszenia sprzed migracji uznano za
+powiadomione. Zadanie iteruje po organizacjach (tabela globalna, bez furtki RLS) - przy tysiącach organizacji rozważyć zamianę na kolejkę
+opóźnioną per organizacja (backlog). Kierownicy działu nie dostają maili.
+
 ## Znane ograniczenia i backlog (świadomie poza tym commitem)
 
 - **Alert dla SUPER_ADMIN:** organizacja, w której >20% odbiorców kampanii to adresy spoza zweryfikowanej domeny

@@ -111,6 +111,16 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
   ścieżkę do danych osobowych; próg 3 bez zmian; w backlogu alert audytowy, gdy kampanie w 7 dni różnią się o mniej niż 3 osoby; (5) wyniki per osoba nie są kopiowane do eksportu dashboardu; (6) wartości
   wpisane w formularzu strony lądowania nie są zapisywane ani logowane. Do rozstrzygnięcia: okres przechowywania wyników i dziennika
   (dziś: do usunięcia organizacji), rola podmiotu przetwarzającego.
+- [ ] **Skrzynka zgłoszeń, notatki i powiadomienia** (commit 3/5): (1) zgłaszający jest widoczny dla `ORG_ADMIN` (potrzebne do odpowiedzi
+  pracownikowi); kierownik działu widzi listę własnego działu **bez** zgłaszającego, treści i notatek, **z opóźnieniem godziny** i tylko dla działów z
+  >= 3 innymi osobami niż on sam (mniej: bez listy); temat i nadawca zgłoszenia pochodzą z treści zgłoszonej wiadomości i mogą zawierać
+  dane osób trzecich - do potwierdzenia, czy kierownik ma je widzieć;
+  (2) dziennik zdarzeń zgłoszenia (`threat_report_events`) zawiera **kopię e-maila admina** (autor zmiany statusu/notatki), która
+  przeżywa usunięcie jego konta - do czasu usunięcia organizacji (jak audyty modułu, patrz sekcja 5); **treść notatek jest czyszczona po
+  90 dniach** razem z treścią zgłoszenia; (3) powiadomienia mailowe do adminów (zbiorczo, max 1 / 15 min) **nie zawierają treści zgłoszeń ani
+  danych zgłaszających**, tylko liczbę i link - mail idzie przez dostawcę poczty transakcyjnej (MailerSend); (4) wgląd w szczegóły zgłoszenia
+  nie jest audytowany (decyzja do potwierdzenia); (5) agregaty wyników są odświeżane co godzinę (migawka w Redisie: same liczby per dział, bez
+  danych osobowych) - ograniczenie kanału różnicowania w czasie.
 - [ ] **Zgłaszanie podejrzanych wiadomości**: cel (bezpieczeństwo organizacji, uzasadniony interes / wykonanie umowy), zakres
   (patrz sekcja 2 i 5), dostęp (skrzynka zgłoszeń: ORG_ADMIN; kierownik działu - ograniczony widok bez tożsamości zgłaszającego
   i bez treści; wprowadzane w kolejnych commitach modułu - zaktualizować ten wpis przy wdrożeniu panelu), zakaz wykorzystywania

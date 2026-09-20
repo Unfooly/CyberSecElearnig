@@ -87,6 +87,12 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
             </a>
           }
         />
+        {view.dataAsOf && (
+          <p className="px-5 pt-3 text-xs font-semibold text-muted">
+            Agregaty z {formatDateTime(view.dataAsOf)}. Odświeżane najwyżej raz na godzinę - świeże zgłoszenia i kliknięcia mogą pojawić się z opóźnieniem. Wyniki osobowe
+            (jeśli włączone) są zawsze aktualne.
+          </p>
+        )}
         <p className="px-5 pt-3 text-xs text-muted">
           Podatność = odsetek osób z dostarczoną wiadomością, które kliknęły / wysłały formularz. Zgłaszalność = odsetek osób, które zgłosiły wiadomość jako
           podejrzaną (w tym: zgłosiły dopiero po kliknięciu). Grupy mniejsze niż {view.minGroupSize} osoby są łączone w „Pozostałe działy” albo ukrywane,

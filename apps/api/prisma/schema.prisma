@@ -110,6 +110,8 @@ model Organization {
   phishingResultSettings     PhishingResultSettings?
   phishingResultAudit        PhishingResultVisibilityAudit[]
   threatReports              ThreatReport[]
+  threatReportEvents         ThreatReportEvent[]
+  threatReportNotification   ThreatReportNotificationState?
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -443,14 +445,62 @@ model ThreatReport {
   matchMethod          ThreatReportMatchMethod?
   // Kiedy treść została usunięta (retencja); null = treść (jeśli jest) nadal w bazie.
   contentPurgedAt      DateTime?
+  // Kiedy zgłoszenie zostało ujęte w powiadomieniu mailowym dla adminów (zbiorczym, max 1 mail / 15 min na organizację);
+  // null = jeszcze nie powiadomiono. Zajmowane atomowo przez ThreatReportNotificationService.
+  notifiedAt           DateTime?
   createdAt            DateTime                 @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       ThreatReportEvent[]
 
+  // Cel złożonego FK z threat_report_events (zdarzenie tej samej organizacji co zgłoszenie).
+  @@unique([organizationId, id])
   @@index([organizationId, createdAt])
   @@index([organizationId, reporterUserId, createdAt])
   @@index([organizationId, kind, status])
+  @@index([organizationId, kind, notifiedAt])
   @@map("threat_reports")
+}
+
+enum ThreatReportEventType {
+  STATUS_CHANGED
+  NOTE_ADDED
+}
+
+// Dziennik zgłoszenia: zmiany statusu i notatki adminów (kto, kiedy, co). Tylko dopisywanie dla roli aplikacji
+// (REVOKE UPDATE, DELETE; jedyny wyjątek to UPDATE kolumny `note`, żeby retencja mogła wyczyścić treść notatek razem z
+// treścią zgłoszenia po 90 dniach - samo zdarzenie i jego autor zostają). actorUserId zerowane po usunięciu konta
+// (SQL-only złożone FK ON DELETE SET NULL), actorEmail to kopia z chwili zdarzenia (wpis w checkliście DPIA).
+model ThreatReportEvent {
+  id             String                @id @default(cuid())
+  organizationId String
+  reportId       String
+  type           ThreatReportEventType
+  fromStatus     ThreatReportStatus?
+  toStatus       ThreatReportStatus?
+  // Treść notatki (czysty tekst, tokeny linków maskowane); null po retencji albo dla zmiany statusu.
+  note           String?               @db.VarChar(1000)
+  actorUserId    String?
+  actorEmail     String                @db.VarChar(254)
+  createdAt      DateTime              @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  report       ThreatReport @relation(fields: [organizationId, reportId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, reportId, createdAt])
+  @@map("threat_report_events")
+}
+
+// Stan powiadomień organizacji: kiedy wysłano ostatni mail zbiorczy (okno 15 minut). Jeden wiersz na organizację.
+model ThreatReportNotificationState {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  lastSentAt     DateTime
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("threat_report_notification_state")
 }
 
 // Sesje: refresh tokeny przechowywane jako HASH (SHA-256 całego tokenu JWT), nigdy jawnie.

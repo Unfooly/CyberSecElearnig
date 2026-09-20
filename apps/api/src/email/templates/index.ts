@@ -140,6 +140,23 @@ const renderers: Record<string, Renderer> = {
       text: `Organizacja ${org} nadal czeka na weryfikację domeny e-mail. Bez weryfikacji do ${deleteOn} zostanie usunięta wraz z danymi. Zaloguj się: ${String(data.loginUrl)}`,
     };
   },
+  // Zbiorcze powiadomienie adminów o nowych zgłoszeniach podejrzanych wiadomości (max 1 mail / 15 min na organizację).
+  // Celowo BEZ treści zgłoszeń, nadawców i danych zgłaszających - mail idzie zewnętrznym dostawcą; szczegóły są w aplikacji.
+  'threat-report-notification': (data, options) => {
+    const org = plain(data.organizationName ?? 'Twoja organizacja');
+    const count = Math.max(1, Math.floor(Number(data.count) || 1));
+    const what = count === 1 ? 'Pracownik zgłosił podejrzaną wiadomość' : `Pracownicy zgłosili podejrzane wiadomości (${count})`;
+    return {
+      html: layout(
+        'Nowe zgłoszenia podejrzanych wiadomości',
+        `<p>${escapeHtml(what)} w organizacji <strong>${escapeHtml(org)}</strong>. Szczegóły i decyzję o statusie znajdziesz w skrzynce zgłoszeń po zalogowaniu.</p>` +
+          '<p>Ze względów bezpieczeństwa ta wiadomość nie zawiera treści zgłoszeń.</p>',
+        { label: 'Otwórz skrzynkę zgłoszeń', url: String(data.reportsUrl) },
+        options,
+      ),
+      text: `${what} w organizacji ${org}. Otwórz skrzynkę zgłoszeń (wiadomość nie zawiera treści zgłoszeń): ${String(data.reportsUrl)}`,
+    };
+  },
   'user-invite': (data, options) => {
     const org = plain(data.organizationName ?? 'organizacji');
     const inviter = data.invitedBy ? plain(data.invitedBy) : null;

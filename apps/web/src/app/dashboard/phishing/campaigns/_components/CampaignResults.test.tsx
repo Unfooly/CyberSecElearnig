@@ -59,6 +59,14 @@ describe('CampaignResults', () => {
     expect(screen.getByRole('link', { name: 'Pobierz CSV' })).toHaveAttribute('href', '/api/phishing/results/campaigns/c1/departments.csv');
   });
 
+  it('pokazuje, z kiedy są agregaty i że odświeżają się najwyżej raz na godzinę (bez tej informacji, gdy API jej nie zwraca)', () => {
+    const { rerender } = render(<CampaignResults campaignId="c1" view={{ ...view, dataAsOf: '2027-01-01T10:00:00Z' }} personalResultsEnabled={false} />);
+
+    expect(screen.getByText(/Agregaty z .*Odświeżane najwyżej raz na godzinę/)).toBeInTheDocument();
+    rerender(<CampaignResults campaignId="c1" view={view} personalResultsEnabled={false} />);
+    expect(screen.queryByText(/Odświeżane najwyżej raz na godzinę/)).not.toBeInTheDocument();
+  });
+
   it('agregaty pokazują kolumny zgłoszeń: zgłosiło, % zgłosiło, w tym po kliknięciu; wiersz "za mało danych" nie ma żadnych liczb zgłoszeń', () => {
     render(
       <CampaignResults

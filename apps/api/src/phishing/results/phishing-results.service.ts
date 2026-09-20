@@ -6,8 +6,19 @@ import { KeyedMutex } from '../../common/keyed-mutex';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { JUSTIFICATION_MIN_LENGTH, PeopleFilter, SetPersonalResultsDto } from '../dto/results.dto';
 import { isUncertainFailureCode } from '../transport/phishing-mail-transport';
-import { departmentRows, isReportedAfterClick, MIN_GROUP_SIZE, NO_DEPARTMENT_LABEL, RecipientFacts, ResultRow, summaryRow } from './results-aggregation';
+import {
+  departmentRowsFromGroups,
+  Group,
+  groupByDepartment,
+  isReportedAfterClick,
+  MIN_GROUP_SIZE,
+  NO_DEPARTMENT_LABEL,
+  ResultRow,
+  summaryRowFromStats,
+  totalStats,
+} from './results-aggregation';
 import { toCsv } from './results-csv';
+import { ResultsSnapshot, ResultsSnapshotCache } from './results-snapshot-cache';
 
 const err = (code: string, message: string) => ({ code, message });
 export const PERSONAL_RESULTS_DISABLED = err('PERSONAL_RESULTS_DISABLED', 'Wyniki osobowe są wyłączone. Włącz je w ustawieniach (wymaga uzasadnienia).');
@@ -26,6 +37,8 @@ export interface ResultsView {
   campaign: { id: string; name: string; status: string; windowStart: Date; windowEnd: Date } | null;
   /** Liczba kampanii organizacji z okna przeglądu; null dla DEPARTMENT_MANAGER (metadane całej organizacji). */
   campaignsCount: number | null;
+  /** Chwila policzenia migawki agregatów (odświeżana nie częściej niż raz na godzinę); UI pokazuje "dane z godz.". */
+  dataAsOf: Date;
   /** Cała organizacja (tylko ORG_ADMIN; null, gdy za mało danych zwraca wiersz z insufficientData). */
   total: ResultRow | null;
   departments: ResultRow[];
@@ -67,6 +80,15 @@ export interface VisibilityAuditView {
   createdAt: Date;
 }
 
+/** Użytkownik wywołujący odczytany z bazy (rola, dział - nie z tokenu). */
+interface Actor {
+  email: string;
+  role: Role | string;
+  status: string;
+  departmentId: string | null;
+  department: { name: string } | null;
+}
+
 const FACT_SELECT = { departmentId: true, departmentName: true, sentAt: true, clickedAt: true, submittedAt: true, reportedAt: true } as const;
 
 /**
@@ -83,28 +105,36 @@ const FACT_SELECT = { departmentId: true, departmentName: true, sentAt: true, cl
 export class PhishingResultsService {
   private readonly toggleLock = new KeyedMutex();
 
-  constructor(private readonly tenantPrisma: TenantPrismaService) {}
+  constructor(
+    private readonly tenantPrisma: TenantPrismaService,
+    private readonly snapshots: ResultsSnapshotCache,
+  ) {}
 
   // ---- agregaty ----------------------------------------------------------------------------------------------------
+  //
+  // Agregaty (widok per dział, CSV agregatów, KPI) czytamy z MIGAWKI odświeżanej nie częściej niż raz na godzinę
+  // (ResultsSnapshotCache): to jedno tanie ograniczenie kanału różnicowania w czasie. Autoryzacja (rola, status, dział,
+  // istnienie kampanii) idzie ZAWSZE świeżo z bazy i PRZED odczytem migawki; w migawce są tylko liczby per dział.
+  // Wyniki osobowe (people) migawki nie używają - są audytowane i czytane bez opóźnienia.
 
   /** Przegląd z ostatnich RESULTS_WINDOW_DAYS dni (wszystkie kampanie organizacji), z zakresem wynikającym z roli. */
   async overview(user: AuthenticatedUser, now: Date = new Date()): Promise<ResultsView> {
     const since = new Date(now.getTime() - RESULTS_WINDOW_DAYS * 24 * 3_600_000);
-    return this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+    const { actor, campaignsCount } = await this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+      const actor = await this.loadActor(tx, user);
+      this.assertCanViewAggregates(actor);
       const campaignsCount = await tx.phishingCampaign.count({ where: { organizationId: user.organizationId, createdAt: { gte: since } } });
-      const facts = await tx.phishingCampaignRecipient.findMany({
-        where: { organizationId: user.organizationId, campaign: { organizationId: user.organizationId, createdAt: { gte: since } } },
-        select: FACT_SELECT,
-        orderBy: { id: 'asc' }, // deterministyczny wybór, gdyby limit został przekroczony
-        take: MAX_RECIPIENT_ROWS,
-      });
-      return this.buildView(tx, user, facts, null, campaignsCount);
+      return { actor, campaignsCount };
     });
+    const snapshot = await this.overviewSnapshot(user.organizationId, since, now);
+    return this.buildView(actor, snapshot, null, campaignsCount);
   }
 
   /** Wyniki jednej kampanii per dział. */
-  async campaignDepartments(user: AuthenticatedUser, campaignId: string): Promise<ResultsView> {
-    return this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+  async campaignDepartments(user: AuthenticatedUser, campaignId: string, now: Date = new Date()): Promise<ResultsView> {
+    const { actor, campaign } = await this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+      const actor = await this.loadActor(tx, user);
+      this.assertCanViewAggregates(actor);
       const campaign = await tx.phishingCampaign.findFirst({
         where: { id: campaignId, organizationId: user.organizationId },
         select: { id: true, name: true, status: true, windowStart: true, windowEnd: true },
@@ -112,29 +142,36 @@ export class PhishingResultsService {
       if (!campaign) {
         throw new NotFoundException('Nie znaleziono kampanii.');
       }
-      const facts = await tx.phishingCampaignRecipient.findMany({
-        where: { organizationId: user.organizationId, campaignId },
-        select: FACT_SELECT,
-        orderBy: { id: 'asc' }, // deterministyczny wybór, gdyby limit został przekroczony
-        take: MAX_RECIPIENT_ROWS,
-      });
-      return this.buildView(tx, user, facts, campaign, 1);
+      return { actor, campaign };
     });
+    // Klucz z organizationId z JWT i identyfikatorem kampanii POTWIERDZONEJ powyżej jako należącej do tej organizacji.
+    const snapshot = await this.snapshots.get(`${user.organizationId}:campaign:${campaignId}`, () => this.computeGroups(user.organizationId, { campaignId }), now);
+    return this.buildView(actor, snapshot, campaign, 1);
   }
 
-  /** KPI "podatność na phishing" dla dashboardu (cała organizacja; wartości tylko przy liczebności >= próg). */
+  /** KPI "podatność na phishing" dla dashboardu (cała organizacja; wartości tylko przy liczebności >= próg). Z tej samej migawki co przegląd. */
   async susceptibilityKpi(organizationId: string, now: Date = new Date()): Promise<{ clickRate: number | null; submitRate: number | null; reportRate: number | null }> {
     const since = new Date(now.getTime() - RESULTS_WINDOW_DAYS * 24 * 3_600_000);
+    const snapshot = await this.overviewSnapshot(organizationId, since, now);
+    const row = summaryRowFromStats('ALL', null, 'Cała organizacja', totalStats(snapshot.groups));
+    return { clickRate: row.clickRate, submitRate: row.submitRate, reportRate: row.reportRate };
+  }
+
+  private overviewSnapshot(organizationId: string, since: Date, now: Date): Promise<ResultsSnapshot> {
+    return this.snapshots.get(`${organizationId}:overview`, () => this.computeGroups(organizationId, { campaign: { organizationId, createdAt: { gte: since } } }), now);
+  }
+
+  /** Przelicza statystyki per dział z odbiorców (jedno zapytanie w kontekście organizacji); wynik nie zawiera identyfikatorów osób. */
+  private async computeGroups(organizationId: string, recipientFilter: Prisma.PhishingCampaignRecipientWhereInput): Promise<Group[]> {
     const facts = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.phishingCampaignRecipient.findMany({
-        where: { organizationId, campaign: { organizationId, createdAt: { gte: since } } },
+        where: { organizationId, ...recipientFilter },
         select: FACT_SELECT,
         orderBy: { id: 'asc' }, // deterministyczny wybór, gdyby limit został przekroczony
         take: MAX_RECIPIENT_ROWS,
       }),
     );
-    const row = summaryRow('ALL', null, 'Cała organizacja', facts);
-    return { clickRate: row.clickRate, submitRate: row.submitRate, reportRate: row.reportRate };
+    return groupByDepartment(facts);
   }
 
   /** CSV agregatów per dział (ten sam zakres i progi co widok; bez danych osobowych). */
@@ -157,24 +194,25 @@ export class PhishingResultsService {
     );
   }
 
-  private async buildView(
-    tx: Prisma.TransactionClient,
-    user: AuthenticatedUser,
-    facts: RecipientFacts[],
-    campaign: ResultsView['campaign'],
-    campaignsCount: number,
-  ): Promise<ResultsView> {
-    // Rola, status i dział z BAZY (nie z JWT): zdegradowany albo zdezaktywowany użytkownik traci dostęp od razu,
-    // a nie dopiero po wygaśnięciu access tokenu.
-    const actor = await this.loadActor(tx, user);
+  /** Agregaty widzą tylko ORG_ADMIN i DEPARTMENT_MANAGER (rola z bazy). */
+  private assertCanViewAggregates(actor: Actor): void {
+    if (actor.role !== Role.ORG_ADMIN && actor.role !== Role.DEPARTMENT_MANAGER) {
+      throw new ForbiddenException('Brak uprawnień do tego zasobu');
+    }
+  }
+
+  /** Widok z migawki statystyk per dział (bez odbiorców); `actor` (rola, status, dział) pochodzi ze świeżego odczytu z bazy. */
+  private buildView(actor: Actor, snapshot: ResultsSnapshot, campaign: ResultsView['campaign'], campaignsCount: number): ResultsView {
+    const dataAsOf = new Date(snapshot.computedAt);
     if (actor.role === Role.ORG_ADMIN) {
       return {
         scope: 'ORGANIZATION',
         minGroupSize: MIN_GROUP_SIZE,
         campaign,
         campaignsCount,
-        total: summaryRow('ALL', null, 'Cała organizacja', facts),
-        departments: departmentRows(facts),
+        dataAsOf,
+        total: summaryRowFromStats('ALL', null, 'Cała organizacja', totalStats(snapshot.groups)),
+        departments: departmentRowsFromGroups(snapshot.groups),
       };
     }
     if (actor.role !== Role.DEPARTMENT_MANAGER) {
@@ -185,18 +223,18 @@ export class PhishingResultsService {
     // nie uczestniczył (404 jak dla nieistniejącej).
     if (!actor.departmentId) {
       if (campaign) throw new NotFoundException('Nie znaleziono kampanii.');
-      return { scope: 'DEPARTMENT', minGroupSize: MIN_GROUP_SIZE, campaign, campaignsCount: null, total: null, departments: [] };
+      return { scope: 'DEPARTMENT', minGroupSize: MIN_GROUP_SIZE, campaign, campaignsCount: null, dataAsOf, total: null, departments: [] };
     }
-    const own = facts.filter((fact) => fact.departmentId === actor.departmentId);
-    if (campaign && own.length === 0) {
+    const own = snapshot.groups.find((group) => group.departmentId === actor.departmentId);
+    if (campaign && !own) {
       throw new NotFoundException('Nie znaleziono kampanii.');
     }
-    const row = summaryRow('DEPARTMENT', actor.departmentId, actor.department?.name ?? NO_DEPARTMENT_LABEL, own);
-    return { scope: 'DEPARTMENT', minGroupSize: MIN_GROUP_SIZE, campaign, campaignsCount: null, total: null, departments: [row] };
+    const row = summaryRowFromStats('DEPARTMENT', actor.departmentId, actor.department?.name ?? NO_DEPARTMENT_LABEL, own?.stats ?? totalStats([]));
+    return { scope: 'DEPARTMENT', minGroupSize: MIN_GROUP_SIZE, campaign, campaignsCount: null, dataAsOf, total: null, departments: [row] };
   }
 
   /** Użytkownik wywołujący z BAZY: musi istnieć w organizacji i być ACTIVE; rola i dział pochodzą stąd, nie z tokenu. */
-  private async loadActor(tx: Prisma.TransactionClient, user: AuthenticatedUser) {
+  private async loadActor(tx: Prisma.TransactionClient, user: AuthenticatedUser): Promise<Actor> {
     const record = await tx.user.findFirst({
       where: { id: user.userId, organizationId: user.organizationId },
       select: { email: true, role: true, status: true, departmentId: true, department: { select: { name: true } } },

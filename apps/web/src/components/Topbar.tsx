@@ -20,6 +20,8 @@ interface NavItem {
   // modułów zarządzania, w tym symulacji phishingowych). To wyłącznie UX: dostęp egzekwują
   // middleware.ts i apps/api (RolesGuard).
   adminOnly?: boolean;
+  // Widoczność dla wskazanych ról (np. skrzynka zgłoszeń: ORG_ADMIN i DEPARTMENT_MANAGER); ma pierwszeństwo przed adminOnly.
+  visibleFor?: Role[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -29,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Osiągnięcia', href: '/courses/achievements', built: true },
   { label: 'Ustawienia', href: '/dashboard/settings', built: true, adminOnly: true },
   { label: 'Kampanie phishingowe', href: '/dashboard/phishing/campaigns', built: true, adminOnly: true },
-  { label: 'Zgłoszenia', href: '#', built: false, adminOnly: true },
+  { label: 'Zgłoszenia', href: '/reports', built: true, visibleFor: [Role.ORG_ADMIN, Role.DEPARTMENT_MANAGER] },
 ];
 
 function initialsFromEmail(email: string): string {
@@ -81,7 +83,9 @@ export default function Topbar({ userEmail, role }: { userEmail: string | null; 
   }, [userEmail]);
 
   // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === undefined || role === Role.ORG_ADMIN);
+  const visibleItems = NAV_ITEMS.filter((item) =>
+    item.visibleFor ? role === undefined || item.visibleFor.includes(role) : !item.adminOnly || role === undefined || role === Role.ORG_ADMIN,
+  );
   const builtHrefs = visibleItems.filter((item) => item.built).map((item) => item.href);
   // Najdłuższy pasujący prefiks wygrywa - bez tego /courses/achievements
   // podświetlałoby jednocześnie "Kursy" i "Osiągnięcia" (oba są prefiksami).

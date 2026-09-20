@@ -8,6 +8,7 @@ import { PhishingCampaignsService } from './campaigns/phishing-campaigns.service
 import { BullPhishingSendQueue, PhishingSendQueue } from './campaigns/phishing-send-queue';
 import { PhishingResultsController } from './results/phishing-results.controller';
 import { PhishingResultsService } from './results/phishing-results.service';
+import { ResultsSnapshotCache } from './results/results-snapshot-cache';
 import { PhishingTrackingController } from './tracking/tracking.controller';
 import { TrackingService } from './tracking/tracking.service';
 import { PhishingConfigController } from './phishing-config.controller';
@@ -26,6 +27,7 @@ import { createPhishingTransport } from './transport/transport-config';
   providers: [
     TrackingService,
     PhishingResultsService,
+    ResultsSnapshotCache,
     PhishingTemplatesService,
     PhishingConfigService,
     PhishingCampaignsService,

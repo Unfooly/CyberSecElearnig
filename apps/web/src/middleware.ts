@@ -27,6 +27,8 @@ const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: '/courses', roles: ALL_ROLES },
   // Zgłaszanie podejrzanych wiadomości: każda zalogowana rola.
   { prefix: '/report', roles: ALL_ROLES },
+  // Skrzynka zgłoszeń: ORG_ADMIN (pełna) i DEPARTMENT_MANAGER (ograniczona lista działu); pracownik zgłasza przez /report.
+  { prefix: '/reports', roles: [Role.ORG_ADMIN, Role.DEPARTMENT_MANAGER] },
 ];
 
 // Prefiks dopasowujemy po SEGMENCIE ścieżki: "/report" nie może obejmować "/reports" (panel zgłoszeń ma inne role).
@@ -117,5 +119,5 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*', '/report/:path*'],
+  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*', '/report/:path*', '/reports/:path*'],
 };

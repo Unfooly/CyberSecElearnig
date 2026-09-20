@@ -70,8 +70,14 @@ export class ThreatReportRetentionService implements OnModuleInit {
   }
 
   private async purgeOrganization(organizationId: string, cutoff: Date, now: Date): Promise<number> {
-    const { count } = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-      tx.threatReport.updateMany({
+    const { count } = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // Notatki adminów do starych zgłoszeń znikają razem z ich treścią (mogą zawierać dane z treści); zdarzenie, autor,
+      // czas i zmiany statusu zostają w dzienniku. Rola aplikacji ma UPDATE wyłącznie kolumny "note" (migracja).
+      await tx.threatReportEvent.updateMany({
+        where: { organizationId, type: 'NOTE_ADDED', note: { not: null }, report: { organizationId, kind: 'REAL', createdAt: { lte: cutoff } } },
+        data: { note: null },
+      });
+      return tx.threatReport.updateMany({
         // Warunek w samym UPDATE (idempotentność, brak wyścigu). Trzy alternatywy: treść jeszcze nie czyszczona ALBO zostały
         // nadawca/temat (rekord "spurgowany" wcześniejszą wersją retencji, która czyściła tylko treść) - samoleczenie bez migracji.
         where: {
@@ -82,8 +88,8 @@ export class ThreatReportRetentionService implements OnModuleInit {
         },
         // senderDomain zostaje (statystyki "najczęstsze domeny nadawców"); reszta danych z treści zgłoszenia znika.
         data: { body: null, headers: null, comment: null, senderText: null, subject: null, contentPurgedAt: now },
-      }),
-    );
+      });
+    });
     return count;
   }
 }

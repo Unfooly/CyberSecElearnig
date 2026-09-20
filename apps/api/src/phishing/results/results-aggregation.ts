@@ -130,7 +130,7 @@ export const OTHER_DEPARTMENTS_LABEL = 'Pozostałe działy (za mało osób w poj
 export const NO_DEPARTMENT_LABEL = 'Bez działu';
 export const ALL_DEPARTMENTS_LABEL = 'Cała organizacja';
 
-interface Group {
+export interface Group {
   key: string;
   departmentId: string | null;
   name: string;
@@ -162,7 +162,22 @@ export function groupByDepartment(recipients: readonly RecipientFacts[]): Group[
  * malejąco wg liczebności, potem "Pozostałe działy". Grupy bez żadnej dostarczonej wiadomości nie tworzą wierszy.
  */
 export function departmentRows(recipients: readonly RecipientFacts[], min: number = MIN_GROUP_SIZE): ResultRow[] {
-  const groups = groupByDepartment(recipients).filter((group) => group.stats.delivered > 0);
+  return departmentRowsFromGroups(groupByDepartment(recipients), min);
+}
+
+/** Suma statystyk wszystkich grup (cała organizacja). */
+export function totalStats(groups: readonly Group[]): GroupStats {
+  const total = emptyStats();
+  groups.forEach((group) => add(total, group.stats));
+  return total;
+}
+
+/**
+ * To samo co departmentRows, ale z GOTOWYCH statystyk grup (bez odbiorców): dzięki temu wynik można zapisać w pamięci
+ * podręcznej jako same liczby per dział - bez żadnych danych o osobach (patrz ResultsSnapshotCache).
+ */
+export function departmentRowsFromGroups(allGroups: readonly Group[], min: number = MIN_GROUP_SIZE): ResultRow[] {
+  const groups = allGroups.filter((group) => group.stats.delivered > 0).map((group) => ({ ...group, stats: { ...group.stats } }));
   const visible = groups.filter((group) => group.stats.delivered >= min);
   const small = groups.filter((group) => group.stats.delivered < min);
 
@@ -189,6 +204,9 @@ export function departmentRows(recipients: readonly RecipientFacts[], min: numbe
 
 /** Wynik całej organizacji (KPI) albo pojedynczej grupy (np. dział kierownika): wartości tylko przy liczebności >= próg. */
 export function summaryRow(kind: ResultRowKind, departmentId: string | null, name: string, recipients: readonly RecipientFacts[], min: number = MIN_GROUP_SIZE): ResultRow {
-  const stats = statsOf(recipients);
+  return summaryRowFromStats(kind, departmentId, name, statsOf(recipients), min);
+}
+
+export function summaryRowFromStats(kind: ResultRowKind, departmentId: string | null, name: string, stats: GroupStats, min: number = MIN_GROUP_SIZE): ResultRow {
   return stats.delivered >= min ? visibleRow(kind, departmentId, name, stats) : hiddenRow(kind, departmentId, name);
 }

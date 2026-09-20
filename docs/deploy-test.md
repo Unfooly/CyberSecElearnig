@@ -328,6 +328,7 @@ zablokowana** (transport `none` na produkcji), więc do czasu wykonania kroków 
 | `PHISHING_MAILERSEND_API_TOKEN` | **Własny** token MailerSend dla symulacji (osobne konto/domena od poczty transakcyjnej). Identyczny z `MAILERSEND_API_TOKEN` jest odrzucany (`TOKEN_SHARED_WITH_TRANSACTIONAL`). |
 | `PHISHING_SMTP_URL` | Tylko dla `smtp`: `smtp://` albo `smtps://user:hasło@host:port` (TLS wymuszony poza localhost). |
 | `PHISHING_LANDING_BASE_URL` | Publiczny adres strony lądowania w linkach z maili (`https://...`, tylko origin); docelowo osobna domena niż aplikacja. Puste = `FRONTEND_URL`. |
+| `RESULTS_CACHE_TTL_SECONDS` | Odświeżanie agregatów wyników symulacji (widok per dział, CSV agregatów, KPI): domyślnie `3600` (nie częściej niż raz na godzinę), `0` = wyłączone. Wymaga Redisa (rezerwa w pamięci procesu, gdy go brak). Nieprawidłowa wartość = `3600`. |
 
 Bez zmian, ale teraz czytane także przez moduł: `NODE_ENV`, `EMAIL_FROM`, `FRONTEND_URL`, `MAILERSEND_API_TOKEN` (tylko do
 sprawdzenia rozdziału od poczty transakcyjnej), `REDIS_URL` i `BACKGROUND_JOBS_ENABLED` (nie `false`: bez workera kampanie nie

@@ -139,10 +139,27 @@ describe('middleware', () => {
       expect(response.headers.get('location')).toContain('/login');
     });
 
-    it('/reports (osobny moduł) NIE jest chroniony wpisem /report (dopasowanie po segmencie ścieżki)', async () => {
-      const response = await middleware(buildRequest('/reports'));
+    it('prefiks /report nie obejmuje /reports: pracownik na /reports jest odsyłany (dopasowanie po segmencie ścieżki)', async () => {
+      const response = await middleware(buildRequest('/reports', `access_token=${tokenFor('EMPLOYEE')}; refresh_token=r`));
 
-      expect(response.headers.get('location')).toBeNull();
+      expect(response.headers.get('location')).toContain('/login');
+    });
+  });
+
+  describe('/reports - skrzynka zgłoszeń: ORG_ADMIN i DEPARTMENT_MANAGER', () => {
+    const tokenFor = (role: string) =>
+      fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+
+    it.each(['ORG_ADMIN', 'DEPARTMENT_MANAGER'])('przepuszcza rolę %s (także podstronę szczegółów)', async (role) => {
+      for (const path of ['/reports', '/reports/abc123']) {
+        const response = await middleware(buildRequest(path, `access_token=${tokenFor(role)}; refresh_token=r`));
+        expect(response.headers.get('location')).toBeNull();
+      }
+    });
+
+    it('EMPLOYEE => /login; niezalogowany => /login', async () => {
+      expect((await middleware(buildRequest('/reports', `access_token=${tokenFor('EMPLOYEE')}; refresh_token=r`))).headers.get('location')).toContain('/login');
+      expect((await middleware(buildRequest('/reports/abc123'))).headers.get('location')).toContain('/login');
     });
   });
 

@@ -147,11 +147,34 @@ describe('Topbar', () => {
     expect(screen.queryByText(/@/)).not.toBeInTheDocument();
   });
 
-  it('renderuje nieaktywne pozycje jako nie-linki (bez href)', () => {
-    usePathnameMock.mockReturnValue('/courses');
-    render(<Topbar userEmail="jan@example.test" />);
+  describe('skrzynka zgłoszeń (/reports)', () => {
+    it.each([Role.ORG_ADMIN, Role.DEPARTMENT_MANAGER])('rola %s widzi aktywną pozycję "Zgłoszenia" prowadzącą do /reports', (role) => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={role} />);
 
-    expect(screen.queryByRole('link', { name: 'Zgłoszenia' })).not.toBeInTheDocument();
-    expect(screen.getByText('Zgłoszenia')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Zgłoszenia' })).toHaveAttribute('href', '/reports');
+    });
+
+    it('EMPLOYEE nie widzi pozycji "Zgłoszenia" (ma tylko przycisk zgłoszenia podejrzanego maila)', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      expect(screen.queryByRole('link', { name: 'Zgłoszenia' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
+    });
+
+    it('pozycja jest aktywna (aria-current) na /reports i podstronie zgłoszenia', () => {
+      usePathnameMock.mockReturnValue('/reports/abc123');
+      render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
+
+      expect(screen.getByRole('link', { name: 'Zgłoszenia' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('bez znanej roli (strony administratora) pozycja jest widoczna', () => {
+      usePathnameMock.mockReturnValue('/dashboard');
+      render(<Topbar userEmail="jan@example.test" />);
+
+      expect(screen.getByRole('link', { name: 'Zgłoszenia' })).toBeInTheDocument();
+    });
   });
 });

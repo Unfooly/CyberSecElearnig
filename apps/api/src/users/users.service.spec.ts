@@ -17,6 +17,7 @@ function p2002(target: string[]): Prisma.PrismaClientKnownRequestError {
 describe('UsersService', () => {
   let service: UsersService;
   let runInOrgContext: jest.Mock;
+  let organizationFindUnique: jest.Mock;
   let departmentFindFirst: jest.Mock;
   let departmentUpsert: jest.Mock;
   let userCreate: jest.Mock;
@@ -30,13 +31,14 @@ describe('UsersService', () => {
   let sendEmail: jest.Mock;
 
   beforeEach(async () => {
+    organizationFindUnique = jest.fn().mockResolvedValue({ name: 'firma.pl', seatsLimit: 1000 });
     departmentFindFirst = jest.fn();
     departmentUpsert = jest.fn();
     userCreate = jest.fn();
     userFindFirst = jest.fn();
     userDelete = jest.fn();
     userUpdate = jest.fn();
-    userCount = jest.fn();
+    userCount = jest.fn().mockResolvedValue(0); // domyślnie: brak kont (limit licencji nie jest przedmiotem większości testów)
     tokenCount = jest.fn().mockResolvedValue(0);
     tokenFindFirst = jest.fn().mockResolvedValue(null);
     issuePasswordResetUrl = jest.fn().mockResolvedValue('http://localhost:3000/reset-password?token=abc');
@@ -44,7 +46,8 @@ describe('UsersService', () => {
 
     runInOrgContext = jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
       fn({
-        organization: { findUnique: jest.fn().mockResolvedValue({ name: 'firma.pl' }) },
+        $executeRaw: jest.fn().mockResolvedValue(0), // blokada doradcza licencji
+        organization: { findUnique: organizationFindUnique },
         passwordResetToken: { count: tokenCount, findFirst: tokenFindFirst },
         department: { findFirst: departmentFindFirst, upsert: departmentUpsert },
         user: {

@@ -25,6 +25,7 @@ import { ListUsersQueryDto, DEFAULT_PAGE_SIZE } from './dto/list-users-query.dto
 import { AVATAR_PRESETS } from './avatar-presets';
 import { parseCsv } from './csv.util';
 import { NAME_PATTERN } from './name-pattern';
+import { assertSeatsAvailable, lockSeats } from './seats';
 
 const AVATAR_VALIDATION_MESSAGE =
   'avatarUrl musi być jednym z dostępnych presetów albo poprawnym adresem URL (https).';
@@ -146,6 +147,9 @@ export class UsersService {
     let user: SelectedUser;
     try {
       user = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+        // Limit licencji: blokada + sprawdzenie w tej samej transakcji co utworzenie konta (bez wyścigu równoległych zaproszeń).
+        await lockSeats(tx, organizationId);
+        await assertSeatsAvailable(tx, organizationId);
         if (dto.departmentId) {
           await this.assertDepartmentBelongsToOrg(tx, organizationId, dto.departmentId);
         }
@@ -281,6 +285,9 @@ export class UsersService {
         const passwordHash = await this.hashRandomPassword();
 
         const user = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+          // Limit licencji także w starym imporcie jednoetapowym (zastąpionym dwuetapowym w commicie 5/5).
+          await lockSeats(tx, organizationId);
+          await assertSeatsAvailable(tx, organizationId);
           let departmentId: string | null = null;
           if (departmentName) {
             const department = await tx.department.upsert({
@@ -323,6 +330,8 @@ export class UsersService {
           error.code === UNIQUE_CONSTRAINT_VIOLATION
         ) {
           errors.push({ line, email, reason: EMAIL_UNAVAILABLE_MESSAGE });
+        } else if (error instanceof HttpException && (error.getResponse() as { code?: string })?.code === 'SEAT_LIMIT') {
+          errors.push({ line, email, reason: 'Brak wolnych licencji (limit planu)' });
         } else {
           errors.push({ line, email, reason: 'Nie udało się utworzyć konta' });
         }

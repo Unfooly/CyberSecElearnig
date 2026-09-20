@@ -80,6 +80,54 @@ describe('InviteUserModal', () => {
     expect(onCreated).not.toHaveBeenCalled();
   });
 
+  describe('limit licencji (409 SEAT_LIMIT)', () => {
+    const fillAndSubmit = () => {
+      fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
+      fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
+      fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'nowy@test.pl' } });
+      fireEvent.click(screen.getByRole('button', { name: /zaproś$/i }));
+    };
+    const seatLimit = (over: Record<string, unknown> = {}) => ({
+      ok: false,
+      json: async () => ({
+        code: 'SEAT_LIMIT',
+        message: 'Brak wolnych licencji. Wykorzystano 10 z 10 licencji, zostało miejsc: 0. Aby dodać więcej osób, zmień plan w ustawieniach organizacji (/dashboard/settings).',
+        settingsPath: '/dashboard/settings',
+        ...over,
+      }),
+    });
+
+    it('pokazuje komunikat z liczbą pozostałych miejsc i odsyłacz do ustawień (zmiana planu)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(seatLimit()));
+      render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+      fillAndSubmit();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('zostało miejsc: 0');
+      expect(screen.getByRole('link', { name: 'Przejdź do ustawień' })).toHaveAttribute('href', '/dashboard/settings');
+    });
+
+    it('odsyłacz tylko do ścieżki wewnątrz panelu: obcy adres z odpowiedzi nie tworzy linku', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(seatLimit({ settingsPath: 'https://evil.example/plan' })));
+      render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+      fillAndSubmit();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('zostało miejsc: 0');
+      expect(screen.queryByRole('link', { name: 'Przejdź do ustawień' })).not.toBeInTheDocument();
+    });
+
+    it('zwykły błąd (inny kod) nie pokazuje odsyłacza do ustawień', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ message: 'Nie można użyć tego adresu e-mail.', settingsPath: '/dashboard/settings' }) }));
+      render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+      fillAndSubmit();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Nie można użyć tego adresu e-mail.');
+      expect(screen.queryByRole('link', { name: 'Przejdź do ustawień' })).not.toBeInTheDocument();
+    });
+  });
+
   it('Escape zamyka modal', () => {
     const onClose = vi.fn();
     render(<InviteUserModal departments={departments} onClose={onClose} onCreated={vi.fn()} />);

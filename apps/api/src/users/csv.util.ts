@@ -7,13 +7,14 @@
 // takiego pliku nie da się wiarygodnie podzielić na "dobre i złe wiersze",
 // więc UsersService.importCsv odrzuca cały plik w takim przypadku, zamiast
 // zgadywać.
-export function parseCsv(rawContent: string): string[][] {
+export function parseCsv(rawContent: string, forcedDelimiter?: string): string[][] {
   // BOM (Excel "CSV UTF-8") przed cudzysłowem nagłówka inaczej wyglądałby
   // jak "cudzysłów w środku pola".
   const content = rawContent.replace(/^\uFEFF/, '');
   // Polski Excel eksportuje CSV ze srednikiem - wykrywamy separator po pierwszej linii.
   const firstLine = content.split(/\r?\n/, 1)[0] ?? '';
-  const delimiter = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
+  // Import dwuetapowy podaje separator jawnie (wykryty poza cudzysłowami w csv-import.ts).
+  const delimiter = forcedDelimiter ?? (firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',');
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';

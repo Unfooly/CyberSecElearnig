@@ -112,6 +112,8 @@ model Organization {
   threatReports              ThreatReport[]
   threatReportEvents         ThreatReportEvent[]
   threatReportViews          ThreatReportView[]
+  userImportBatches          UserImportBatch[]
+  userImportRows             UserImportRow[]
   threatReportNotification   ThreatReportNotificationState?
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
@@ -509,6 +511,77 @@ model ThreatReportView {
 
   @@index([organizationId, reportId, createdAt])
   @@map("threat_report_views")
+}
+
+// Import pracowników z CSV, krok 1 (podgląd): plik jest w całości rozebrany na wiersze i zwalidowany PRZED jakimkolwiek
+// zapisem kont; partia trzyma wynik walidacji, żeby krok potwierdzenia (commit 5/5) pracował na tym, co użytkownik zobaczył.
+// Partia w statusie PREVIEW wygasa po 24 h (job sprzątania kasuje ją razem z wierszami); na organizację jest jedna aktywna
+// partia podglądu (nowy podgląd zastępuje poprzedni). Wiersze zawierają adresy e-mail i imiona pracowników - wpis w
+// checkliście prywatności. Usunięcie autora zeruje createdByUserId (SQL-only złożone FK ON DELETE SET NULL), createdByEmail to kopia.
+enum UserImportBatchStatus {
+  PREVIEW
+}
+
+enum UserImportRowStatus {
+  // Poprawny, nowy adres: kandydat do utworzenia konta w kroku potwierdzenia.
+  VALID
+  // Adres ma już konto W TEJ organizacji: pomijamy, nic nie nadpisujemy.
+  EXISTING
+  // Błąd walidacji (powód w `reason`): wiersz nie zostanie zapisany.
+  ERROR
+}
+
+model UserImportBatch {
+  id              String                @id @default(cuid())
+  organizationId  String
+  createdByUserId String?
+  createdByEmail  String                @db.VarChar(254)
+  status          UserImportBatchStatus @default(PREVIEW)
+  // Nazwa pliku do wyświetlenia (oczyszczona, bez ścieżki).
+  fileName        String?               @db.VarChar(200)
+  // Wykryty separator: "," ";" albo tabulator.
+  delimiter       String                @db.VarChar(1)
+  // Niepuste wiersze danych = validCount + existingCount + errorCount (CHECK w migracji).
+  totalRows       Int
+  validCount      Int
+  existingCount   Int
+  errorCount      Int
+  // Puste wiersze pominięte po cichu.
+  skippedEmpty    Int
+  // Kolumny z nagłówka niepasujące do żadnego pola (ignorowane).
+  ignoredColumns  String[]
+  createdAt       DateTime              @default(now())
+  expiresAt       DateTime
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rows         UserImportRow[]
+
+  // Cel złożonego FK z user_import_rows (wiersz tej samej organizacji co partia).
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt])
+  @@index([expiresAt])
+  @@map("user_import_batches")
+}
+
+model UserImportRow {
+  id             String              @id @default(cuid())
+  organizationId String
+  batchId        String
+  // Numer wiersza w pliku (1 = nagłówek).
+  line           Int
+  email          String              @db.VarChar(254)
+  firstName      String              @db.VarChar(100)
+  lastName       String              @db.VarChar(100)
+  departmentName String?             @db.VarChar(100)
+  status         UserImportRowStatus
+  reason         String?             @db.VarChar(200)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batch        UserImportBatch @relation(fields: [organizationId, batchId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([batchId, line])
+  @@index([organizationId, batchId, status])
+  @@map("user_import_rows")
 }
 
 // Stan powiadomień organizacji: kiedy wysłano ostatni mail zbiorczy (okno 15 minut). Jeden wiersz na organizację.

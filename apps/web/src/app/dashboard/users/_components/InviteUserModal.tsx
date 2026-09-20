@@ -29,6 +29,7 @@ export default function InviteUserModal({
   const [role, setRole] = useState<AssignableRole>(Role.EMPLOYEE);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [settingsPath, setSettingsPath] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export default function InviteUserModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    setSettingsPath(null);
 
     if (!validate()) {
       return;
@@ -87,6 +89,10 @@ export default function InviteUserModal({
 
       if (!response.ok) {
         setFormError(data?.message ?? 'Nie udało się zaprosić pracownika.');
+        // Limit licencji (409 SEAT_LIMIT): komunikat mówi, ile miejsc zostało; odsyłacz do ustawień (zmiana planu) tylko dla
+        // ścieżki wewnątrz panelu - nie ufamy dowolnemu adresowi z odpowiedzi.
+        const path = data?.code === 'SEAT_LIMIT' && typeof data?.settingsPath === 'string' && /^\/dashboard\/[a-z-]*$/.test(data.settingsPath) ? data.settingsPath : null;
+        setSettingsPath(path);
         return;
       }
 
@@ -194,6 +200,14 @@ export default function InviteUserModal({
           {formError && (
             <p role="alert" className="rounded-btn bg-danger-soft px-3 py-2 text-sm text-danger">
               {formError}
+              {settingsPath && (
+                <>
+                  {' '}
+                  <a href={settingsPath} className="font-bold underline">
+                    Przejdź do ustawień
+                  </a>
+                </>
+              )}
             </p>
           )}
 

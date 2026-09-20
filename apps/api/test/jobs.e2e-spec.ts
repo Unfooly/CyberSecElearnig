@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { REFRESH_TOKEN_CLEANUP_JOB } from '../src/auth/refresh-token-cleanup.service';
 import { THREAT_REPORT_NOTIFICATION_JOB } from '../src/threat-reports/threat-report-notification.service';
+import { USER_IMPORT_RETENTION_JOB } from '../src/users/import/user-import-retention.service';
 import { THREAT_REPORT_RETENTION_JOB } from '../src/threat-reports/threat-report-retention.service';
 import { CAMPAIGN_RECONCILE_JOB } from '../src/phishing/campaigns/campaign-reconcile.service';
 import { PENDING_ORGANIZATION_CLEANUP_JOB } from '../src/organizations/pending-organization-cleanup.service';
@@ -103,7 +104,7 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
     expect(failed).toBe(1);
   }, 20_000);
 
-  it('aplikacja z włączonymi zadaniami planuje zadania cykliczne (uzgadnianie kampanii i dzienne sprzątania: organizacje PENDING, refresh tokeny, retencja zgłoszeń; powiadomienia o zgłoszeniach co 5 minut)', async () => {
+  it('aplikacja z włączonymi zadaniami planuje zadania cykliczne (uzgadnianie kampanii i dzienne sprzątania: organizacje PENDING, refresh tokeny, retencja zgłoszeń; powiadomienia o zgłoszeniach co 5 minut; wygasłe podglądy importu)', async () => {
     const appPrefix = `${prefix}-app`;
     process.env.BACKGROUND_JOBS_ENABLED = 'true';
     process.env.JOBS_QUEUE_PREFIX = appPrefix;
@@ -126,6 +127,7 @@ describe('JobsService - BullMQ (e2e, Redis)', () => {
           [REFRESH_TOKEN_CLEANUP_JOB, '30 3 * * *'],
           [THREAT_REPORT_RETENTION_JOB, '30 3 * * *'],
           [THREAT_REPORT_NOTIFICATION_JOB, '*/5 * * * *'],
+          [USER_IMPORT_RETENTION_JOB, '0 * * * *'],
         ].sort(),
       );
     } finally {

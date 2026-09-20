@@ -1,0 +1,46 @@
+#!/bin/sh
+# Lokalna blokada pushu na `main` (do czasu, aż ochrona gałęzi w GitHub będzie dostępna na planie Team).
+#
+# Zasada (CLAUDE.md, sekcja "Praca zespołowa: branże i pull requesty"): `main` zmieniamy wyłącznie przez pull request. Ten hook odrzuca
+# każdy push, w którym docelową gałęzią jest refs/heads/main (także usunięcie gałęzi i force-push). Push na inne gałęzie i tagi
+# przechodzi bez zmian.
+#
+# Włączenie (raz na klon):   git config core.hooksPath .githooks      (albo: npm run hooks:install)
+# Działa w Git Bash (Windows) i na Linuksie/macOS: czysty POSIX sh, bez zewnętrznych narzędzi poza `read`/`printf`.
+#
+# Git podaje na standardowe wejście po jednej linii na wypychany ref: <local ref> <local sha> <remote ref> <remote sha>.
+# Obejście `git push --no-verify` istnieje technicznie, ale łamie zasadę zespołu - nie używamy go do pushu na main.
+# To DYSCYPLINA, nie ochrona: działa tylko na klonach z włączonym core.hooksPath i nie dotyczy merge'a w GitHub. Chroni wyłącznie `main`
+# (dokładnie refs/heads/main), nie inne gałęzie ani tagi.
+#
+# UTRZYMANIE: plik MUSI mieć tryb 100755 w indeksie Gita, inaczej Linux/macOS po cichu zignoruje hook. Na Windowsie (core.fileMode=false)
+# `git add` nie zapisze bitu, więc po zmianie: git update-index --chmod=+x .githooks/pre-push (pilnuje tego test w pre-push.test.js).
+
+protected_ref="refs/heads/main"
+blocked=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "$protected_ref" ]; then
+    blocked=1
+  fi
+done
+
+if [ "$blocked" -eq 1 ]; then
+  {
+    printf '\n'
+    printf 'ODRZUCONO PUSH NA main.\n'
+    printf '\n'
+    printf '  Gałąź main zmieniamy wyłącznie przez pull request (CLAUDE.md, sekcja\n'
+    printf '  "Praca zespołowa: branże i pull requesty").\n'
+    printf '\n'
+    printf '  Co zrobić:\n'
+    printf '    git switch -c <typ>/<numer>-<opis>     # np. feat/142-import-csv, chore/pre-push-hook\n'
+    printf '    git push -u origin <ta-gałąź>          # potem otwórz PR według .github/pull_request_template.md\n'
+    printf '\n'
+    printf '  (Jeśli ten hook blokuje coś, czego nie powinien: docs/onboarding.md, krok 0.)\n'
+    printf '\n'
+  } >&2
+  exit 1
+fi
+
+exit 0

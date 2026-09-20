@@ -24,6 +24,10 @@ Nowa osoba w zespole: zacznij od [`docs/onboarding.md`](./docs/onboarding.md); d
 
 ## Uruchomienie lokalne
 
+0. **Blokada pushu na `main`** (raz na klon; do czasu ochrony gałęzi w GitHub, która wymaga planu Team): `git config core.hooksPath
+   .githooks` albo `npm run hooks:install`. To dyscyplina, nie ochrona (klon bez włączonego hooka i `--no-verify` ją omijają).
+   Szczegóły: `docs/onboarding.md`, krok 0.
+
 1. **Zmienne środowiskowe** — skopiuj przykładowe pliki i uzupełnij sekrety:
 
    ```bash

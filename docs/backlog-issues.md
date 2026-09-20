@@ -74,8 +74,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 
 ### B-010 Gałąź `main` chroniona i wymagane joby CI
 - Etykiety: `P1`, `ops`, `mod:ci` · Źródło: CLAUDE.md „Praca zespołowa”
-- Opis: ustawienia GitHub: wymagany PR, zielone `lint + testy` i `testy e2e (api)`, 1 zatwierdzenie, brak force-push.
-- Akceptacja: reguły ochrony włączone i opisane w README.
+- Opis: ustawienia GitHub: wymagany PR, zielone `lint + testy` i `testy e2e (api)`, 1 zatwierdzenie, brak force-push. Wymaga planu Team (dziś Free);
+  do czasu upgrade'u działa lokalny hook `.githooks/pre-push` (blokada pushu na `main`, `docs/decisions.md` D-048), którego NIE da się wymusić na
+  klonie (każdy włącza go sam), więc to tylko dyscyplina, nie ochrona.
+- Akceptacja: upgrade planu, reguły ochrony włączone i opisane w README; hook zostaje jako pierwsza linia obrony.
 
 ## B. Rejestracja, auth, dane
 

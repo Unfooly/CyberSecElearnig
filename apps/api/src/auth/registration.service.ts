@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
 import {
   hasInternalTld,
@@ -16,11 +16,19 @@ import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailDomain, generateDomainVerificationToken } from '../organizations/domain.util';
 import { AddressClaimService } from '../users/address-claim.service';
+import { InvitedAccountChangedError, expireInvitedAccounts } from '../users/invited-accounts';
 import { AuthService, BCRYPT_ROUNDS } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { RegistrationMailLimiter } from './registration-mail-limiter';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
+/** Link potwierdzający rejestrację na adres z cudzym nieaktywowanym zaproszeniem ważny 24 h (jak link aktywacyjny). */
+const CLAIM_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+export const CLAIM_INVALID_MESSAGE = 'Ten link jest nieprawidłowy, wygasł albo został już użyty.';
+export const CLAIM_CONFIRMED_MESSAGE = 'Adres potwierdzony. Wysłaliśmy wiadomość z linkiem do ustawienia hasła (ważny 24 godziny).';
+/** "<organizationId (uuid)>.<64 znaki hex>" - ścisły format (organizationId trafia do set_config, więc tylko prawdziwy UUID). */
+const CLAIM_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{64}$/;
+const hashClaimToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 // Górna granica jednocześnie przetwarzanych rejestracji w tle (bcrypt + zapis).
 // Ochrona CPU/pamięci przed zalewem z wielu IP (throttler limituje tylko per IP);
@@ -92,11 +100,14 @@ export class RegistrationService {
   }
 
   private async processRegistration(dto: RegisterDto, domain: string): Promise<void> {
-    let existing = await this.tenantPrisma.runAuthLookup({ email: dto.email });
+    const existing = await this.tenantPrisma.runAuthLookup({ email: dto.email });
     // Nieaktywowane zaproszenie do obcej organizacji, która nie ma zweryfikowanej domeny tego adresu, nie blokuje rejestracji
-    // (squatting adresów): zaproszenie wygasa, a rejestracja idzie normalnie - jak dla nowego adresu.
-    if (existing && (await this.addressClaims.displaceUnprotectedForRegistration(existing))) {
-      existing = null;
+    // (squatting adresów) - ale adres przejmujemy DOPIERO po kliknięciu linku przez rejestrującego (potwierdzenie skrzynki), nie
+    // przy samym POST /auth/register: anonim nie może w ten sposób kasować cudzych zaproszeń. Do kliknięcia zaproszenie i
+    // rejestracja współistnieją (organizacja PENDING bez admina + wpis z danymi admina); bez kliknięcia w 24 h nic się nie dzieje.
+    if (existing && (await this.addressClaims.isClaimableByRegistration(existing))) {
+      await this.startRegistrationClaim(dto, domain);
+      return;
     }
     if (existing) {
       await this.notifyExistingAccount(existing);
@@ -123,6 +134,149 @@ export class RegistrationService {
     await this.notifyExistingAccount(raced);
   }
 
+  /** Organizacja PENDING z danymi do faktury i domeną do weryfikacji (bez administratora - ten dochodzi osobno). */
+  private async createOrganizationRecords(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    dto: RegisterDto,
+    domain: string,
+    taxId: string,
+  ): Promise<void> {
+    await tx.organization.create({
+      data: { id: organizationId, name: dto.organizationName, status: 'PENDING_DOMAIN_VERIFICATION' },
+    });
+    await tx.organizationBillingDetails.create({
+      data: {
+        organizationId,
+        legalName: dto.organizationLegalName,
+        taxId,
+        addressLine: dto.addressLine,
+        postalCode: dto.postalCode,
+        city: dto.city,
+        country: REGISTRATION_COUNTRY,
+      },
+    });
+    await tx.organizationDomain.create({
+      data: { organizationId, domain, verificationToken: generateDomainVerificationToken() },
+    });
+  }
+
+  /**
+   * Rejestracja na adres z nieaktywowanym zaproszeniem w obcej organizacji: organizacja (PENDING) i wpis z danymi admina powstają od
+   * razu, ale konta admina jeszcze NIE (adres jest zajęty), a mail z linkiem potwierdzającym skrzynkę idzie na ten adres. Dopiero
+   * kliknięcie (`claimRegistration`) przejmuje adres i tworzy admina. Odpowiedź rejestracji jest identyczna jak zawsze.
+   */
+  private async startRegistrationClaim(dto: RegisterDto, domain: string): Promise<void> {
+    // Limiter skrzynki PRZED jakimkolwiek zapisem: gdy mail i tak nie wyjdzie (jedna wiadomość na skrzynkę na 10 minut), nic nie
+    // powstaje - ani organizacja, ani wpis (nikt nie dostałby tokenu, a seria rejestracji nie zapychałaby bazy).
+    if (!(await this.mailLimiter.tryAcquire(dto.email))) {
+      return;
+    }
+    const organizationId = randomUUID();
+    const taxId = normalizeNip(dto.taxId) as string;
+    const rawToken = `${organizationId}.${randomBytes(32).toString('hex')}`;
+    await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await this.createOrganizationRecords(tx, organizationId, dto, domain, taxId);
+      await tx.pendingAdminClaim.create({
+        data: {
+          organizationId,
+          email: dto.email,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          legalVersion: LEGAL_DOCUMENT_VERSION,
+          tokenHash: hashClaimToken(rawToken),
+          expiresAt: new Date(Date.now() + CLAIM_TOKEN_TTL_MS),
+        },
+      });
+    });
+    const baseUrl = this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    await this.emailService.send({
+      to: dto.email,
+      subject: 'Potwierdź rejestrację firmy w Unfooly',
+      templateName: 'registration-claim',
+      templateData: { claimUrl: `${baseUrl}/claim-registration?token=${rawToken}`, organizationName: dto.organizationName },
+    });
+  }
+
+  /**
+   * Klik w link z maila `registration-claim`: potwierdzenie skrzynki rejestrującego. W JEDNEJ transakcji: (1) usunięcie
+   * nieaktywowanego zaproszenia w obcej organizacji (pod jej RLS, o ile nadal wolno je przejąć), (2) utworzenie administratora
+   * organizacji (INVITED, bez hasła klienta) ze zgodami i (3) zużycie wpisu - albo wszystko, albo nic (niepowodzenie tworzenia
+   * admina nie kasuje cudzego zaproszenia). Dopiero PO commicie idzie zwykły link aktywacyjny (ustawienie hasła); jego niepowodzenie
+   * niczego nie cofa - admin ma ścieżkę "nie pamiętam hasła". Każda porażka (zły/wygasły/zużyty token, adres aktywowany albo
+   * chroniony w międzyczasie) daje TEN SAM błąd.
+   */
+  async claimRegistration(token: string): Promise<{ message: string }> {
+    const fail = () => new BadRequestException({ code: 'CLAIM_INVALID_OR_EXPIRED', message: CLAIM_INVALID_MESSAGE });
+    if (!CLAIM_TOKEN_PATTERN.test(token)) {
+      throw fail();
+    }
+    const organizationId = token.split('.')[0];
+    const claim = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.pendingAdminClaim.findFirst({ where: { organizationId, tokenHash: hashClaimToken(token), expiresAt: { gt: new Date() } } }),
+    );
+    if (!claim) {
+      throw fail();
+    }
+
+    const existing = await this.tenantPrisma.runAuthLookup({ email: claim.email });
+    if (existing && !(await this.addressClaims.isClaimableByRegistration(existing))) {
+      throw fail();
+    }
+
+    const placeholderHash = await bcrypt.hash(randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
+    let created: { id: string; organizationId: string; email: string };
+    try {
+      created = await this.tenantPrisma.runInOrgContextsSequence(existing?.organizationId ?? organizationId, async (tx, switchOrganization) => {
+        if (existing) {
+          // Krok 1 pod RLS organizacji-właściciela zaproszenia. Domenę sprawdzamy jeszcze raz (mogła zostać zweryfikowana od
+          // sprawdzenia wyżej), a usunięcie jest warunkowe (NEVER_ACTIVATED): konto aktywowane w międzyczasie cofa całą transakcję.
+          const domain = emailDomain(existing.email);
+          const protectedNow = domain
+            ? await tx.organizationDomain.findFirst({ where: { organizationId: existing.organizationId, domain, verifiedAt: { not: null } }, select: { id: true } })
+            : null;
+          if (protectedNow) {
+            throw fail();
+          }
+          await expireInvitedAccounts(tx, existing.organizationId, [existing.id], new Date());
+          await switchOrganization(organizationId);
+        }
+        // Jednorazowość: wpis usuwamy warunkowo w tej samej transakcji, równoległe kliknięcie dostaje count = 0.
+        const consumed = await tx.pendingAdminClaim.deleteMany({ where: { id: claim.id, organizationId, expiresAt: { gt: new Date() } } });
+        if (consumed.count !== 1) {
+          throw fail();
+        }
+        const user = await tx.user.create({
+          data: {
+            organizationId,
+            email: claim.email,
+            passwordHash: placeholderHash,
+            role: Role.ORG_ADMIN,
+            status: UserStatus.INVITED,
+            firstName: claim.firstName,
+            lastName: claim.lastName,
+          },
+        });
+        await tx.legalAcceptance.createMany({
+          data: (['TERMS', 'PRIVACY_POLICY'] as const).map((documentType) => ({ organizationId, userId: user.id, documentType, version: claim.legalVersion })),
+        });
+        return { id: user.id, organizationId, email: user.email };
+      });
+    } catch (error) {
+      if (error instanceof InvitedAccountChangedError || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_VIOLATION)) {
+        throw fail(); // konto aktywowane albo adres zajęty ponownie (wyścig): transakcja cofnięta, nic się nie zmieniło
+      }
+      throw error;
+    }
+    // Po commicie: niepowodzenie wysyłki niczego nie cofa (admin istnieje, hasło ustawi przez "nie pamiętam hasła").
+    try {
+      await this.authService.sendRegistrationActivation(created);
+    } catch (error) {
+      this.logger.error(`Potwierdzenie rejestracji: nie udało się wysłać linku aktywacyjnego: ${(error as Error).name}`);
+    }
+    return { message: CLAIM_CONFIRMED_MESSAGE };
+  }
+
   /**
    * Zwraca utworzonego admina albo null, gdy adres już istnieje (P2002 na
    * users.email). Kolizję łapiemy POZA transakcją i nie zwracamy klientowi
@@ -143,9 +297,7 @@ export class RegistrationService {
 
     try {
       return await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-        await tx.organization.create({
-          data: { id: organizationId, name: dto.organizationName, status: 'PENDING_DOMAIN_VERIFICATION' },
-        });
+        await this.createOrganizationRecords(tx, organizationId, dto, domain, taxId);
         const user = await tx.user.create({
           data: {
             organizationId,
@@ -158,20 +310,6 @@ export class RegistrationService {
             firstName: dto.firstName,
             lastName: dto.lastName,
           },
-        });
-        await tx.organizationBillingDetails.create({
-          data: {
-            organizationId,
-            legalName: dto.organizationLegalName,
-            taxId,
-            addressLine: dto.addressLine,
-            postalCode: dto.postalCode,
-            city: dto.city,
-            country: REGISTRATION_COUNTRY,
-          },
-        });
-        await tx.organizationDomain.create({
-          data: { organizationId, domain, verificationToken: generateDomainVerificationToken() },
         });
         await tx.legalAcceptance.createMany({
           data: (['TERMS', 'PRIVACY_POLICY'] as const).map((documentType) => ({

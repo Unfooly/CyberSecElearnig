@@ -14,6 +14,7 @@ import { Role, UserStatus } from '@cyberszkolo/shared';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EmailService } from '../email/email.service';
+import { displayName } from '../email/display-name';
 import { MailOutcome, MailResult } from '../email/interfaces/send-email-options.interface';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersListResponseDto } from './dto/users-list-response.dto';
@@ -276,7 +277,10 @@ export class UsersService {
       const accepted = await this.emailService.send(
         {
           to: email,
-          subject: context.organizationName ? `Ktoś próbował dodać Cię do organizacji ${context.organizationName}` : 'Ktoś próbował dodać Cię do organizacji',
+          // Nazwa organizacji od obcej strony: przycięta i bez znaków sterujących (temat to nagłówek maila).
+          subject: displayName(context.organizationName)
+            ? `Ktoś próbował dodać Cię do organizacji ${displayName(context.organizationName)}`
+            : 'Ktoś próbował dodać Cię do organizacji',
           templateName: 'invite-address-taken',
           templateData: { organizationName: context.organizationName },
         },
@@ -581,8 +585,8 @@ export class UsersService {
     const accepted = await this.emailService.send(
       {
         to: email,
-        subject: context.organizationName
-          ? `Dodano Cię do organizacji ${context.organizationName}`
+        subject: displayName(context.organizationName)
+          ? `Dodano Cię do organizacji ${displayName(context.organizationName)}`
           : 'Zaproszenie do Unfooly',
         templateName: 'user-invite',
         templateData: {

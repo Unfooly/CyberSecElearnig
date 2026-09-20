@@ -85,11 +85,30 @@ IMPORT_DAILY_LIMIT` bez zapisu. Ogranicza skalę sondowania adresów nawet przy 
 **Pierwszeństwo do adresu (squatting).** Konto `INVITED`, które nie zostało aktywowane, nie blokuje adresu:
 
 1. zaproszenie/import z organizacji ze **zweryfikowaną domeną DNS** tego adresu przejmuje adres: cudze nieaktywowane zaproszenie jest
-   usuwane, a konto powstaje normalnie (przy imporcie w kolejce, tuż przed wysyłką zaproszenia);
-2. **rejestracja** nowej organizacji na adres z nieaktywowanym zaproszeniem w obcej organizacji, która NIE ma zweryfikowanej domeny tego
-   adresu (zaprosiła cudzy adres bez praw do domeny), zwalnia adres i przebiega jak dla nowego adresu. Zaproszenie od organizacji ze
-   zweryfikowaną domeną adresu jest chronione (właściciel dostaje link aktywacyjny jak dotąd);
-3. konto aktywowane i konto `ORG_ADMIN` nie są przejmowane.
+   usuwane, a konto powstaje normalnie (przy imporcie w kolejce, tuż przed wysyłką zaproszenia). Dotyczy to także
+   **niepotwierdzonego `ORG_ADMIN`-a organizacji PENDING** (pre-hijacking: ktoś zarejestrował firmę na cudzy służbowy adres, zanim
+   prawowita organizacja zweryfikowała domenę): jeśli organizacja traci w ten sposób jedynego admina, jest **usuwana natychmiast**
+   (`PendingOrganizationCleanupService.deleteNow`, ten sam mechanizm i warunek statusu co sprzątanie po 14 dniach, plus warunek
+   „nikt nie aktywował konta” w samym DELETE); przy drugim adminie znika tylko przejęte konto;
+2. **rejestracja** nowej organizacji na adres z nieaktywowanym zaproszeniem pracownika w obcej organizacji, która NIE ma zweryfikowanej
+   domeny tego adresu (zaprosiła cudzy adres bez praw do domeny), przejmuje adres **dopiero po kliknięciu linku przez rejestrującego**
+   (potwierdzenie skrzynki), nigdy przy samym `POST /auth/register` (anonim nie kasuje w ten sposób cudzych zaproszeń). Do kliknięcia
+   oba rekordy współistnieją: zaproszenie zostaje, a rejestracja tworzy organizację PENDING **bez admina** i wpis `pending_admin_claims`
+   (RLS; dane admina, hash tokenu `<organizationId>.<hex>`, ważność 24 h) oraz wysyła mail `registration-claim`. **Limiter skrzynki
+   (jedna wiadomość na 10 minut) działa PRZED zapisem**: przy odmowie nie powstaje nic (ani organizacja, ani wpis, ani mail), a
+   odpowiedź jest ta sama. Klik (`POST /auth/claim-registration`, strona `/claim-registration`) robi w JEDNEJ transakcji: usunięcie
+   zaproszenia (pod RLS organizacji-właściciela; `TenantPrismaService.runInOrgContextsSequence` przełącza kontekst w trakcie
+   transakcji, bez omijania RLS), utworzenie admina (`INVITED`, zgody) i zużycie wpisu; niepowodzenie któregokolwiek kroku cofa całość
+   (cudze zaproszenie nie ginie bez powstania admina). Zwykły link do ustawienia hasła idzie PO commicie, a jego niepowodzenie nic
+   nie cofa (admin ma ścieżkę „nie pamiętam hasła”). Każda porażka (zły/wygasły/zużyty token, adres aktywowany albo chroniony w
+   międzyczasie) daje ten sam błąd `CLAIM_INVALID_OR_EXPIRED`. Bez kliknięcia w 24 h nic się nie dzieje, a job
+   `pending-organization-cleanup` (raz na dobę, 03:00 UTC) kasuje wygasłe wpisy i organizację-widmo bez admina, więc dane osoby trzeciej i
+   dane do faktury zostają najwyżej ok. 48 h;
+   Mail do osoby trzeciej (`registration-claim`, `invite-address-taken`): nazwa organizacji od obcej strony jest przycięta do 50 znaków
+   i oczyszczona ze znaków sterujących i nowych linii (`displayName`, także w temacie); `registration-claim` mówi wprost: „Kliknij
+   tylko, jeśli to Ty rejestrowałeś/-aś organizację. Kliknięcie unieważni zaproszenie do innej firmy, jeśli takie masz.”;
+   Zaproszenie od organizacji ze zweryfikowaną domeną adresu jest chronione (właściciel dostaje link aktywacyjny jak dotąd);
+3. konto aktywowane nie jest przejmowane nigdy; `ORG_ADMIN` organizacji ACTIVE także nie, a rejestracja nie przejmuje żadnego `ORG_ADMIN`-a.
 
 Administrator organizacji, której zaproszenie wygasło w wyniku przejęcia, widzi w raporcie importu status „Wygasło” z ogólnym powodem
 (nie ujawniamy, kto przejął adres). Dopasowanie domeny jest dokładne (bez subdomen).

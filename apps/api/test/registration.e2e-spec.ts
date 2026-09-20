@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage } from '@nestjs/throttler';
+import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { REGISTRATION_ACCEPTED_MESSAGE, RegistrationService } from '../src/auth/registration.service';
@@ -407,21 +408,181 @@ describe('Rejestracja firmy (e2e)', () => {
       expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'user-invite' }));
     });
 
-    it('nieaktywowane zaproszenie od organizacji BEZ zweryfikowanej domeny adresu nie blokuje rejestracji: wygasa, rejestracja idzie jak dla nowego adresu', async () => {
-      const inviteeEmail = email('squat');
-      const { org, user } = await inviteEmployee(inviteeEmail, false);
-      sendSpy.mockClear();
+    // Link z maila `registration-claim` -> surowy token.
+    function claimTokenFromMail(): string {
+      const call = [...sendSpy.mock.calls].reverse().find(([opts]) => opts.templateName === 'registration-claim');
+      expect(call).toBeDefined();
+      return new URL((call![0].templateData as { claimUrl: string }).claimUrl).searchParams.get('token') as string;
+    }
+    const claim = (token: string) => request(app.getHttpServer()).post('/auth/claim-registration').send({ token });
+    const userCountIn = (orgId: string, userId: string) => tenantPrisma.runInOrgContext(orgId, (tx) => tx.user.count({ where: { organizationId: orgId, id: userId } }));
 
-      const response = await postRegister(app, inviteeEmail);
-      await app.get(RegistrationService).flushBackgroundTasks();
+    describe('rejestracja na adres z nieaktywowanym zaproszeniem BEZ zweryfikowanej domeny adresu: przejęcie dopiero po kliknięciu', () => {
+      it('sam POST /register niczego nie kasuje ani nie przejmuje: zaproszenie zostaje, powstaje organizacja PENDING bez admina i wpis; link idzie na adres', async () => {
+        const inviteeEmail = email('squat');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        sendSpy.mockClear();
 
-      expect(response.status).toBe(201);
-      expect(response.body).toEqual({ message: REGISTRATION_ACCEPTED_MESSAGE });
-      const current = await tenantPrisma.runAuthLookup({ email: inviteeEmail });
-      expect(current?.role).toBe('ORG_ADMIN');
-      expect(current?.organizationId).not.toBe(org.id);
-      expect(await tenantPrisma.runInOrgContext(org.id, (tx) => tx.user.count({ where: { organizationId: org.id, id: user.id } }))).toBe(0);
-      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'registration-activation' }));
+        const response = await postRegister(app, inviteeEmail);
+
+        expect(response.status).toBe(201);
+        expect(response.body).toEqual({ message: REGISTRATION_ACCEPTED_MESSAGE }); // identyczna jak dla nowego adresu
+        expect(await userCountIn(org.id, user.id)).toBe(1); // zaproszenie nietknięte
+        expect(await tenantPrisma.runAuthLookup({ email: inviteeEmail })).toMatchObject({ organizationId: org.id, status: 'INVITED' });
+        const newOrg = await prisma.organization.findFirstOrThrow({ where: { name: inviteeEmail.split('@')[1], NOT: { id: org.id } } });
+        expect(newOrg.status).toBe('PENDING_DOMAIN_VERIFICATION');
+        expect(await tenantPrisma.runInOrgContext(newOrg.id, (tx) => tx.user.count({ where: { organizationId: newOrg.id } }))).toBe(0);
+        expect(await tenantPrisma.runInOrgContext(newOrg.id, (tx) => tx.pendingAdminClaim.count({ where: { organizationId: newOrg.id, email: inviteeEmail } }))).toBe(1);
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'registration-claim' }));
+      });
+
+      it('klik w link: adres przejęty (zaproszenie wygasa), admin organizacji powstaje (ORG_ADMIN, INVITED, zgody), idzie link aktywacyjny; drugi klik = błąd', async () => {
+        const inviteeEmail = email('claim');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        sendSpy.mockClear();
+
+        const clicked = await claim(token).expect(200);
+
+        expect(clicked.body.message).toMatch(/linkiem do ustawienia hasła/);
+        const admin = await tenantPrisma.runAuthLookup({ email: inviteeEmail });
+        expect(admin).toMatchObject({ role: 'ORG_ADMIN', status: 'INVITED', firstName: 'Anna' });
+        expect(admin?.organizationId).not.toBe(org.id);
+        expect(await userCountIn(org.id, user.id)).toBe(0);
+        expect(await tenantPrisma.runInOrgContext(admin!.organizationId, (tx) => tx.legalAcceptance.count({ where: { organizationId: admin!.organizationId } }))).toBe(2);
+        expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ to: inviteeEmail, templateName: 'registration-activation' }));
+        const again = await claim(token).expect(400);
+        expect(again.body.code).toBe('CLAIM_INVALID_OR_EXPIRED');
+        expect(await tenantPrisma.runInOrgContext(admin!.organizationId, (tx) => tx.user.count({ where: { organizationId: admin!.organizationId } }))).toBe(1);
+      });
+
+      it('bez kliknięcia w 24 h nic się nie dzieje: wpis wygasa, link nie działa, zaproszenie nietknięte', async () => {
+        const inviteeEmail = email('expired');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        // Rola właściciela (omija RLS - tylko do przesunięcia zegara w teście); runtime nie ma polityki UPDATE dla tej tabeli.
+        const owner = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+        try {
+          await owner.pendingAdminClaim.updateMany({ where: { email: inviteeEmail }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+        } finally {
+          await owner.$disconnect();
+        }
+
+        const response = await claim(token).expect(400);
+
+        expect(response.body.code).toBe('CLAIM_INVALID_OR_EXPIRED');
+        expect(await userCountIn(org.id, user.id)).toBe(1);
+      });
+
+      it('zaproszony zdążył aktywować konto przed kliknięciem: klik nie przejmuje adresu (ten sam błąd), konto nietknięte', async () => {
+        const inviteeEmail = email('activated');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        await tenantPrisma.runInOrgContext(org.id, (tx) => tx.user.update({ where: { id: user.id }, data: { status: 'ACTIVE', emailVerifiedAt: new Date() } }));
+
+        const response = await claim(token).expect(400);
+
+        expect(response.body.code).toBe('CLAIM_INVALID_OR_EXPIRED');
+        expect(await tenantPrisma.runAuthLookup({ email: inviteeEmail })).toMatchObject({ organizationId: org.id, status: 'ACTIVE' });
+      });
+
+      it('organizacja-właściciel zweryfikowała domenę adresu przed kliknięciem: zaproszenie staje się chronione, klik nie przejmuje adresu', async () => {
+        const inviteeEmail = email('lateverify');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        await tenantPrisma.runInOrgContext(org.id, (tx) =>
+          tx.organizationDomain.create({ data: { organizationId: org.id, domain: inviteeEmail.split('@')[1], verificationToken: 'tok', verifiedAt: new Date() } }),
+        );
+
+        await claim(token).expect(400);
+
+        expect(await userCountIn(org.id, user.id)).toBe(1);
+      });
+
+      it('token: zły format, nieznany, z cudzym organizationId (izolacja RLS) - wszystkie dają ten sam błąd i niczego nie tworzą', async () => {
+        const inviteeEmail = email('tamper');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        const [, secret] = token.split('.');
+        const bodies: unknown[] = [];
+        for (const bad of ['nie-token', `${org.id}.${'0'.repeat(64)}`, `${org.id}.${secret}`, `${'1'.repeat(8)}-1111-4111-8111-${'1'.repeat(12)}.${secret}`]) {
+          const response = await claim(bad).expect(400);
+          bodies.push(response.body);
+        }
+
+        expect(new Set(bodies.map((b) => JSON.stringify(b))).size).toBe(1);
+        expect(await userCountIn(org.id, user.id)).toBe(1);
+        expect((await tenantPrisma.runAuthLookup({ email: inviteeEmail }))?.organizationId).toBe(org.id);
+      });
+
+      it('limiter skrzynki PRZED zapisem: druga rejestracja na ten sam adres w oknie 10 minut nie tworzy ani organizacji, ani wpisu, ani maila (odpowiedź ta sama)', async () => {
+        const inviteeEmail = email('limited');
+        const { org } = await inviteEmployee(inviteeEmail, false);
+        const domain = inviteeEmail.split('@')[1];
+        await postRegister(app, inviteeEmail);
+        sendSpy.mockClear();
+
+        const second = await postRegister(app, inviteeEmail);
+
+        expect(second.body).toEqual({ message: REGISTRATION_ACCEPTED_MESSAGE });
+        expect(await prisma.organization.count({ where: { name: domain, NOT: { id: org.id } } })).toBe(1); // tylko z pierwszej rejestracji
+        expect(sendSpy).not.toHaveBeenCalled();
+      });
+
+      it('ATOMOWOŚĆ: niepowodzenie tworzenia admina (zgody) cofa całość - cudze zaproszenie NIE zostaje skasowane, wpis nie zużyty, maila brak', async () => {
+        const inviteeEmail = email('atomic');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        sendSpy.mockClear();
+        const owner = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+        try {
+          // Wersja dokumentów dłuższa niż kolumna legal_acceptances.version (40): zapis zgód pada PO usunięciu zaproszenia i utworzeniu admina.
+          await owner.pendingAdminClaim.updateMany({ where: { email: inviteeEmail }, data: { legalVersion: 'v'.repeat(50) } });
+
+          await claim(token).expect(500);
+
+          expect(await userCountIn(org.id, user.id)).toBe(1); // zaproszenie nietknięte (rollback)
+          expect(await tenantPrisma.runAuthLookup({ email: inviteeEmail })).toMatchObject({ organizationId: org.id, status: 'INVITED' });
+          expect(await owner.pendingAdminClaim.count({ where: { email: inviteeEmail } })).toBe(1); // wpis nie zużyty
+          expect(sendSpy).not.toHaveBeenCalled();
+        } finally {
+          await owner.$disconnect();
+        }
+      });
+
+      it('niepowodzenie maila z linkiem aktywacyjnym PO commicie niczego nie cofa: sukces, admin istnieje, zaproszenie wygasło', async () => {
+        const inviteeEmail = email('mailfail');
+        const { org, user } = await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+        sendSpy.mockRejectedValueOnce(new Error('MailerSend down'));
+
+        await claim(token).expect(200);
+
+        expect(await tenantPrisma.runAuthLookup({ email: inviteeEmail })).toMatchObject({ role: 'ORG_ADMIN', status: 'INVITED' });
+        expect(await userCountIn(org.id, user.id)).toBe(0);
+      });
+
+      it('równoległe kliknięcia tego samego linku: dokładnie jedno wygrywa, jeden admin', async () => {
+        const inviteeEmail = email('parallel');
+        await inviteEmployee(inviteeEmail, false);
+        await postRegister(app, inviteeEmail);
+        const token = claimTokenFromMail();
+
+        const results = await Promise.allSettled([claim(token), claim(token), claim(token)]);
+
+        const statuses = results.map((r) => (r.status === 'fulfilled' ? r.value.status : 0));
+        expect(statuses.filter((s) => s === 200)).toHaveLength(1);
+        expect(statuses.filter((s) => s === 400)).toHaveLength(2);
+        expect((await tenantPrisma.runAuthLookup({ email: inviteeEmail }))?.role).toBe('ORG_ADMIN');
+      });
     });
 
     it('aktywne konto (nawet bez zweryfikowanej domeny organizacji) NIE jest przejmowane przez rejestrację', async () => {

@@ -46,8 +46,13 @@ odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i w
 `runInOrgContext(organizationId)` po odczycie.
 
 1. `runAuthLookup` - użytkownik po globalnym e-mailu/id (login, refresh, reset, rejestracja - tylko sprawdzenie istnienia;
-   oraz `AddressClaimService` przy zaproszeniu/imporcie/rejestracji - decyzja o przejęciu nieaktywowanego zaproszenia; wynik
-   nigdy nie trafia do klienta, a usunięcie cudzego konta idzie przez `runInOrgContext(organizacja właściciela)`).
+   oraz `AddressClaimService` przy zaproszeniu/imporcie/potwierdzeniu rejestracji - decyzja o przejęciu nieaktywowanego zaproszenia).
+   Dlaczego bezpieczne: wynik (rekord konta) służy wyłącznie do decyzji wewnątrz serwisu i nigdy nie trafia do klienta (odpowiedź
+   API jest taka sama dla adresu wolnego i zajętego, więc nie da się enumerować kont); przy zaproszeniu/imporcie odczyt idzie
+   dopiero po sprawdzeniu, że wnioskująca organizacja ma zweryfikowaną (DNS) domenę dokładnie tego adresu; przy rejestracji
+   (`POST /auth/register`, publiczne) sam odczyt niczego nie zmienia, a przejęcie następuje dopiero po kliknięciu linku, który
+   dostaje wyłącznie właściciel skrzynki; usunięcie cudzego konta idzie przez `runInOrgContext` (organizacja właściciela), nigdy
+   przez bypass.
 2. `runPasswordResetTokenLookup`, 3. `runEmailVerificationTokenLookup` - token po `tokenHash`, zanim znamy organizację.
 4. `runRefreshTokenLookup` - refresh token po `tokenHash` (sesje).
 5. `runTrackingTokenLookup` - odbiorca kampanii po `tokenHash` tokenu z linku symulacji (publiczne `POST /t/:token/view|submit`;
@@ -154,6 +159,10 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 7. **Pliki edytujesz narzędziem do edycji plików** (Write/Edit), nigdy przez `echo`, `cat` ani heredoc w powłoce. Powłoka interpretuje backticki i `$(...)` w treści jako komendy: tak backticki w README wykonały się jako polecenia, uruchomiły testy e2e i zostawiły dziury w tekście. Powłoka służy do uruchamiania poleceń, nie do zapisywania treści plików. Dotyczy to także skryptów Python/Node uruchamianych z powłoki do modyfikacji plików (w tym jednorazowych `python - <<EOF`, `node -e`, `sed -i`): jedyny dozwolony sposób edycji plików to Write/Edit.
 8. **Status CI po pushu.** Dopóki nie masz dostępu do GitHub Actions, po pushu raportujesz „wypchnięte, czekam na status CI” (razem z hashem) i prosisz użytkownika o status runa. Zielone testy lokalne nie oznaczają zielonego CI (inna liczba rdzeni, wersja Node, pula połączeń) - nie pisz „gotowe”, dopóki nie znasz wyniku CI. Nie zaczynaj kolejnego kroku, gdy CI jest czerwone.
 9. **E2E API: równoległe żądania = `app.listen(0)`, nie `app.init()`.** Supertest na nie-nasłuchującym serwerze robi z pierwszego żądania „właściciela”, który zamyka serwer po swojej odpowiedzi i zrywa (`read ECONNRESET`) pozostałe żądania w locie; wychodzi to na Linuksie/Node 20 (CI), nie na Windows/Node 24. Serie żądań czekaj przez `Promise.allSettled`. Replika CI lokalnie: kontener `node:20` z `--cpus=2`, Postgres 16 i Redis 7 w Dockerze, dane z joba `e2e`.
+
+10. **„Nie gotowy do commitu” od security-reviewera = brak commitu.** Wracasz do użytkownika z listą uwag (także gdy dotyczą jego
+    wcześniejszych decyzji), użytkownik rozstrzyga każdą, dopiero potem robisz commit (poprawki jako osobny commit, gdy to
+    kolejna iteracja). Nie commituj „bo uwagi wynikają z decyzji użytkownika” ani „a uwagi opiszę w raporcie po fakcie”.
 
 ## Daty i strefy czasowe (web)
 

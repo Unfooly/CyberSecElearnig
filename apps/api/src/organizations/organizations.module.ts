@@ -17,6 +17,7 @@ import { PendingOrganizationCleanupService } from './pending-organization-cleanu
     // Abstrakcja pozwala w testach podmienić DNS (nigdy prawdziwe zapytania).
     { provide: DnsTxtResolver, useClass: NodeDnsTxtResolver },
   ],
-  exports: [DomainVerificationService],
+  // PendingOrganizationCleanupService: natychmiastowe usunięcie organizacji PENDING przy przejęciu adresu jej jedynego admina.
+  exports: [DomainVerificationService, PendingOrganizationCleanupService],
 })
 export class OrganizationsModule {}

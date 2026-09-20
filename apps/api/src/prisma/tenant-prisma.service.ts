@@ -39,10 +39,38 @@ export class TenantPrismaService {
   }
 
   /**
+   * Jedna transakcja, w której KOLEJNE kroki idą pod RLS RÓŻNYCH organizacji: `switchOrganization(id)` przestawia
+   * `app.current_org_id` (lokalnie dla transakcji), a każdy krok nadal widzi i zapisuje wyłącznie wiersze bieżącej organizacji.
+   * To NIE jest furtka omijająca RLS (żaden sentinel bypass, polityki bez zmian) - służy wyłącznie tam, gdzie atomowość musi objąć
+   * dwie organizacje: przejęcie adresu (usunięcie cudzego nieaktywowanego zaproszenia w organizacji A i utworzenie administratora w
+   * organizacji B: albo obie zmiany, albo żadna). Pierwszy krok idzie pod `firstOrganizationId`.
+   */
+  async runInOrgContextsSequence<T>(
+    firstOrganizationId: string,
+    fn: (tx: Prisma.TransactionClient, switchOrganization: (organizationId: string) => Promise<void>) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number },
+  ): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      const switchOrganization = async (organizationId: string) => {
+        await tx.$executeRaw`SELECT set_config('app.current_org_id', ${organizationId}, true)`;
+      };
+      await switchOrganization(firstOrganizationId);
+      return fn(tx, switchOrganization);
+    }, options);
+  }
+
+  /**
    * WYJĄTEK od Zasady nr 1 — używać WYŁĄCZNIE w AuthService.login / .refresh
    * / .forgotPassword / .resendVerification oraz RegistrationService.register
    * (tylko do sprawdzenia, czy adres ma już konto; wynik nie trafia do
-   * odpowiedzi), gdzie użytkownika trzeba znaleźć po globalnie
+   * odpowiedzi), a także RegistrationService.claimRegistration i
+   * AddressClaimService (decyzja, czy nieaktywowane zaproszenie wolno
+   * przejąć: przy zaproszeniu/imporcie dopiero PO sprawdzeniu, że
+   * wnioskująca organizacja ma zweryfikowaną domenę adresu; przy rejestracji
+   * wynik służy tylko do decyzji "link potwierdzający zamiast maila o
+   * istniejącym koncie", a samo przejęcie następuje dopiero po kliknięciu
+   * linku przez właściciela skrzynki; wynik nigdy nie trafia do klienta),
+   * gdzie użytkownika trzeba znaleźć po globalnie
    * unikalnym e-mailu / id, zanim jego organizationId jest znane. RLS jest
    * fail-closed (brak kontekstu = zero wierszy), więc ta metoda jawnie
    * ustawia sentinel app.bypass_tenant_rls, żeby ten jeden, ręcznie

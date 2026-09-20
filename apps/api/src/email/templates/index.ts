@@ -2,12 +2,19 @@
 // jest wersjonowana i testowana razem z resztą aplikacji. Wartości z
 // templateData mogą pochodzić od użytkownika (imię, nazwa organizacji), więc
 // KAŻDA jest escapowana przed wstawieniem do HTML.
+import { displayName } from '../display-name';
+
 export interface RenderedEmail {
   html: string;
   text: string;
 }
 
 const PRODUCT_NAME = 'Unfooly';
+
+// Zdania ostrzegawcze w mailach do osoby trzeciej (nazwa organizacji pochodzi od obcej strony i nie może uchodzić za treść od nas).
+const CLAIM_WARNING =
+  'Kliknij tylko, jeśli to Ty rejestrowałeś/-aś organizację. Kliknięcie unieważni zaproszenie do innej firmy, jeśli takie masz.';
+const NOTICE_WARNING = 'Ta wiadomość nie zawiera linków i nie wymaga żadnej akcji. Nie podawaj nikomu żadnych danych w odpowiedzi na nią.';
 
 export function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -113,23 +120,41 @@ const renderers: Record<string, Renderer> = {
     ),
     text: `Ktoś próbował zarejestrować konto na Twój adres, ale konto już istnieje. Zaloguj się: ${String(data.loginUrl)} lub zresetuj hasło: ${String(data.forgotPasswordUrl)}`,
   }),
+  // Rejestracja firmy na adres, który ma nieaktywowane zaproszenie do innej organizacji: link potwierdza skrzynkę rejestrującego i
+  // dopiero jego kliknięcie przejmuje adres. Bez kliknięcia w 24 h nic się nie dzieje (można zignorować).
+  // Nazwa organizacji pochodzi od OBCEJ strony (rejestrującego), więc jest przycinana do 50 znaków i oczyszczana (displayName), a treść
+  // mówi wprost, co zrobi kliknięcie.
+  'registration-claim': (data, options) => ({
+    html: layout(
+      'Potwierdź rejestrację firmy',
+      `<p>Ktoś (być może Ty) zarejestrował organizację <strong>${escapeHtml(displayName(data.organizationName))}</strong> w Unfooly, używając tego adresu e-mail. ` +
+        'Jeśli to Ty, potwierdź adres przyciskiem poniżej (link ważny 24 godziny) - w następnym mailu ustawisz hasło.</p>' +
+        `<p><strong>${escapeHtml(CLAIM_WARNING)}</strong> Jeśli to nie Ty, zignoruj tę wiadomość: nic się nie zmieni.</p>`,
+      { label: 'Potwierdź adres e-mail', url: String(data.claimUrl) },
+      options,
+    ),
+    text: `Ktoś (być może Ty) zarejestrował organizację ${displayName(data.organizationName)} w Unfooly, używając tego adresu e-mail. Jeśli to Ty, potwierdź adres (link ważny 24 godziny): ${String(data.claimUrl)}. ${CLAIM_WARNING} Jeśli to nie Ty, zignoruj wiadomość.`,
+  }),
   // Ktoś (administrator organizacji) próbował dodać do niej adres, który ma już konto na platformie: mail do WŁAŚCICIELA adresu.
   // Administrator niczego o tym nie widzi (anty-enumeracja) - dla niego zaproszenie wygląda na wysłane. Bez linków i bez danych
   // osoby zapraszającej: tylko nazwa organizacji, żeby właściciel mógł rozpoznać pomyłkę.
-  'invite-address-taken': (data, options) => ({
-    html: layout(
-      'Ktoś próbował dodać Cię do organizacji',
-      data.organizationName
-        ? `<p>Ktoś próbował dodać Twój adres e-mail do organizacji <strong>${escapeHtml(data.organizationName)}</strong> w Unfooly. ` +
-            'Nic się nie zmieniło i nie musisz nic robić. Jeśli to pomyłka, zignoruj tę wiadomość.</p>'
-        : '<p>Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly. Nic się nie zmieniło i nie musisz nic robić. Jeśli to pomyłka, zignoruj tę wiadomość.</p>',
-      undefined,
-      options,
-    ),
-    text: data.organizationName
-      ? `Ktoś próbował dodać Twój adres e-mail do organizacji ${plain(data.organizationName)} w Unfooly. Nic się nie zmieniło. Jeśli to pomyłka, zignoruj tę wiadomość.`
-      : 'Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly. Nic się nie zmieniło. Jeśli to pomyłka, zignoruj tę wiadomość.',
-  }),
+  // Nazwa organizacji jest od OBCEJ strony: przycięta do 50 znaków i oczyszczona (displayName), jak w `registration-claim`.
+  'invite-address-taken': (data, options) => {
+    const name = displayName(data.organizationName);
+    return {
+      html: layout(
+        'Ktoś próbował dodać Cię do organizacji',
+        (name
+          ? `<p>Ktoś próbował dodać Twój adres e-mail do organizacji <strong>${escapeHtml(name)}</strong> w Unfooly. `
+          : '<p>Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly. ') +
+          'Nic się nie zmieniło i nie musisz nic robić. Jeśli to pomyłka, zignoruj tę wiadomość.</p>' +
+          `<p>${escapeHtml(NOTICE_WARNING)}</p>`,
+        undefined,
+        options,
+      ),
+      text: `${name ? `Ktoś próbował dodać Twój adres e-mail do organizacji ${name} w Unfooly.` : 'Ktoś próbował dodać Twój adres e-mail do organizacji w Unfooly.'} Nic się nie zmieniło. Jeśli to pomyłka, zignoruj tę wiadomość. ${NOTICE_WARNING}`,
+    };
+  },
   'demo-request': (data, options) => ({
     html: layout(
       'Nowa prośba o demo',

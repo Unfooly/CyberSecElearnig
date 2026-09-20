@@ -57,9 +57,70 @@ export class PendingOrganizationCleanupService implements OnModuleInit {
   async run(now: Date = new Date()): Promise<CleanupResult> {
     // Najpierw usuwanie: organizacja po terminie nie dostaje już ostrzeżenia.
     const deleted = await this.deleteExpired(now);
+    const claims = await this.purgeExpiredClaims(now);
     const warned = await this.warnDue(now);
-    this.logger.log(`Sprzątanie organizacji PENDING: usunięto ${deleted}, ostrzeżono ${warned}`);
+    this.logger.log(`Sprzątanie organizacji PENDING: usunięto ${deleted}, ostrzeżono ${warned}, wygasłe potwierdzenia rejestracji ${claims.claims} (organizacje bez admina: ${claims.organizations})`);
     return { deleted, warned };
+  }
+
+  /**
+   * Natychmiastowe usunięcie organizacji PENDING (kaskadowo z danymi) - ten sam mechanizm i ten sam warunek statusu w samym DELETE
+   * co w sprzątaniu po 14 dniach, tylko bez czekania: dla organizacji, która straciła jedynego (niepotwierdzonego) administratora,
+   * bo adres przejęła organizacja ze zweryfikowaną domeną. Organizacja ACTIVE nigdy nie jest ruszana. true = usunięto.
+   */
+  async deleteNow(organizationId: string): Promise<boolean> {
+    // W kontekście TEJ organizacji: filtr po relacji `users` idzie pod RLS, więc widzi jej konta. Poza kontekstem (RLS fail-closed)
+    // ta relacja byłaby pusta i warunek "nikt nie aktywował konta" byłby zawsze prawdziwy, czyli nic nie chroniłby.
+    const result = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.organization.deleteMany({
+        where: {
+          id: organizationId,
+          status: OrganizationStatus.PENDING_DOMAIN_VERIFICATION,
+          // W samym DELETE: nikt z tej organizacji nie zdążył aktywować konta (aktywacja w trakcie = nie ruszamy).
+          users: { none: { OR: [{ status: { not: 'INVITED' } }, { emailVerifiedAt: { not: null } }] } },
+        },
+      }),
+    );
+    return result.count === 1;
+  }
+
+  /**
+   * Wygasłe wpisy `pending_admin_claims` (rejestracja na adres z cudzym zaproszeniem, link niekliknięty w 24 h) są kasowane, a
+   * organizacja-widmo, która nie ma admina ani innych kont ani niewygasłych wpisów, jest usuwana razem z danymi do faktury
+   * (`deleteNow`). Tabele klienckie czytane per organizacja (RLS) - nie da się tego zrobić jednym zapytaniem po relacji z
+   * `organizations`, bo poza kontekstem RLS nie widzi wierszy. Idempotentne; błąd jednej organizacji nie blokuje reszty.
+   */
+  async purgeExpiredClaims(now: Date = new Date()): Promise<{ claims: number; organizations: number }> {
+    const result = { claims: 0, organizations: 0 };
+    let afterId: string | null = null;
+    for (;;) {
+      const page: { id: string }[] = await this.prisma.organization.findMany({
+        where: { status: OrganizationStatus.PENDING_DOMAIN_VERIFICATION, ...(afterId ? { id: { gt: afterId } } : {}) },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+        take: 200,
+      });
+      if (page.length === 0) break;
+      afterId = page[page.length - 1].id;
+      for (const { id } of page) {
+        try {
+          const outcome = await this.tenantPrisma.runInOrgContext(id, async (tx) => {
+            const deleted = await tx.pendingAdminClaim.deleteMany({ where: { organizationId: id, expiresAt: { lte: now } } });
+            if (deleted.count === 0) return { deleted: 0, orphan: false };
+            const [claims, users] = await Promise.all([
+              tx.pendingAdminClaim.count({ where: { organizationId: id } }),
+              tx.user.count({ where: { organizationId: id } }),
+            ]);
+            return { deleted: deleted.count, orphan: claims === 0 && users === 0 };
+          });
+          result.claims += outcome.deleted;
+          if (outcome.orphan && (await this.deleteNow(id))) result.organizations += 1;
+        } catch (error) {
+          this.logger.error(`Sprzątanie wygasłych potwierdzeń rejestracji nie powiodło się (organizacja ${id}): ${(error as Error).name}`);
+        }
+      }
+    }
+    return result;
   }
 
   private cutoff(now: Date, days: number): Date {

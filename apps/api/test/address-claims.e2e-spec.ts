@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RegistrationMailLimiter } from '../src/auth/registration-mail-limiter';
 import { EmailService } from '../src/email/email.service';
+import { PendingOrganizationCleanupService } from '../src/organizations/pending-organization-cleanup.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
@@ -13,7 +14,7 @@ import { IMPORT_DAILY_ACCOUNTS_FACTOR } from '../src/users/import/user-import.se
 import { UserImportInviteService } from '../src/users/import/user-import-invite.service';
 import { InviteExpiryService } from '../src/users/invite-expiry.service';
 import { INVITE_EXPIRY_DAYS } from '../src/users/invited-accounts';
-import { DEFAULT_TEST_PASSWORD, registerVerified } from './helpers/auth';
+import { DEFAULT_TEST_PASSWORD, postRegister, registerVerified } from './helpers/auth';
 
 const DAY = 24 * 3_600_000;
 
@@ -243,7 +244,7 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       expect(mailsTo(address, 'invite-address-taken')).toHaveLength(1);
     });
 
-    it('konto ORG_ADMIN nie jest przejmowane (organizacja nie zostanie bez administratora)', async () => {
+    it('niepotwierdzony ORG_ADMIN organizacji ACTIVE nie jest przejmowany (organizacja nie zostanie bez administratora)', async () => {
       const domain = `admin.${domainSuffix}`;
       await verifyDomain(orgB, domain);
       const adminAddress = inDomain(domain, 'szef');
@@ -252,6 +253,102 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       await invite(orgB, adminAddress).expect(201);
 
       expect(await owned(adminAddress)).toMatchObject({ organizationId: orgA.organizationId, role: 'ORG_ADMIN' });
+    });
+
+    describe('pre-hijacking: rejestracja firmy (PENDING) na cudzy służbowy adres, zanim prawowita organizacja zweryfikuje domenę', () => {
+      // Napastnik rejestruje firmę na adres w domenie, którą organizacja B weryfikuje (jego organizacja: PENDING, admin INVITED).
+      async function squatterRegisters(domain: string, local: string) {
+        const address = inDomain(domain, local);
+        await postRegister(app, address);
+        const admin = await owned(address);
+        expect(admin).toMatchObject({ role: 'ORG_ADMIN', status: 'INVITED' });
+        return { address, squatterOrgId: admin!.organizationId };
+      }
+      const orgExists = async (id: string) => (await prisma.organization.count({ where: { id } })) === 1;
+
+      it('zaproszenie z organizacji ze zweryfikowaną domeną przejmuje adres; organizacja PENDING, która traci jedynego admina, znika OD RAZU', async () => {
+        const domain = `pre1.${domainSuffix}`;
+        const { address, squatterOrgId } = await squatterRegisters(domain, 'cfo');
+        await verifyDomain(orgB, domain);
+        sendSpy.mockClear();
+
+        const response = await invite(orgB, address).expect(201);
+
+        expect(response.body).toMatchObject({ email: address, status: 'INVITED', inviteEmailSent: true });
+        expect(await owned(address)).toMatchObject({ organizationId: orgB.organizationId, role: 'EMPLOYEE', status: 'INVITED' });
+        expect(await orgExists(squatterOrgId)).toBe(false); // bez czekania 14 dni
+        expect(mailsTo(address, 'user-invite')).toHaveLength(1);
+        expect(mailsTo(address, 'invite-address-taken')).toHaveLength(0);
+        expect(await notices(orgB)).toBe(0);
+      });
+
+      it('gdy w organizacji PENDING jest inny administrator, znika tylko przejęte konto, organizacja zostaje', async () => {
+        const domain = `pre2.${domainSuffix}`;
+        const { address, squatterOrgId } = await squatterRegisters(domain, 'cfo');
+        await owner.user.create({ data: { organizationId: squatterOrgId, email: inDomain(`inny.${domainSuffix}`, 'drugi'), passwordHash: 'x', role: 'ORG_ADMIN', status: 'ACTIVE', emailVerifiedAt: new Date() } });
+        await verifyDomain(orgB, domain);
+
+        await invite(orgB, address).expect(201);
+
+        expect(await owned(address)).toMatchObject({ organizationId: orgB.organizationId });
+        expect(await orgExists(squatterOrgId)).toBe(true);
+      });
+
+      it('admin, który ZDĄŻYŁ potwierdzić skrzynkę (konto aktywne), nie jest przejmowany: odpowiedź jak dla nowego adresu, powiadomienie do właściciela', async () => {
+        const domain = `pre3.${domainSuffix}`;
+        const { address, squatterOrgId } = await squatterRegisters(domain, 'cfo');
+        await owner.user.updateMany({ where: { email: address }, data: { status: 'ACTIVE', emailVerifiedAt: new Date() } });
+        await verifyDomain(orgB, domain);
+        sendSpy.mockClear();
+
+        await invite(orgB, address).expect(201);
+
+        expect(await owned(address)).toMatchObject({ organizationId: squatterOrgId, status: 'ACTIVE' });
+        expect(await orgExists(squatterOrgId)).toBe(true);
+        expect(mailsTo(address, 'invite-address-taken')).toHaveLength(1);
+      });
+
+      it('organizacja bez zweryfikowanej domeny adresu NIE przejmuje niepotwierdzonego admina (zaproszenie od "obcego" wygląda jak zwykłe)', async () => {
+        const domain = `pre4.${domainSuffix}`;
+        const { address, squatterOrgId } = await squatterRegisters(domain, 'cfo');
+
+        await invite(orgB, address).expect(201); // B nie ma domeny pre4
+
+        expect(await owned(address)).toMatchObject({ organizationId: squatterOrgId });
+        expect(await orgExists(squatterOrgId)).toBe(true);
+      });
+
+      it('IZOLACJA A/B: przejęcie adresu dotyka wyłącznie organizacji-właściciela tego adresu; cudza organizacja PENDING (inny adres w tej samej domenie) i organizacje A/B zostają', async () => {
+        const domain = `pre6.${domainSuffix}`;
+        const target = await squatterRegisters(domain, 'cel');
+        const bystander = await squatterRegisters(domain, 'obok');
+        await verifyDomain(orgB, domain);
+
+        await invite(orgB, target.address).expect(201);
+
+        expect(await orgExists(target.squatterOrgId)).toBe(false);
+        expect(await orgExists(bystander.squatterOrgId)).toBe(true);
+        expect(await owned(bystander.address)).toMatchObject({ organizationId: bystander.squatterOrgId, role: 'ORG_ADMIN', status: 'INVITED' });
+        expect(await orgExists(orgA.organizationId)).toBe(true);
+        expect(await owned(orgA.adminEmail)).toMatchObject({ organizationId: orgA.organizationId, status: 'ACTIVE' });
+        expect(await owned(orgB.adminEmail)).toMatchObject({ organizationId: orgB.organizationId, status: 'ACTIVE' });
+      });
+
+      it('import: ten sam scenariusz przez kolejkę - adres przejęty, organizacja PENDING usunięta, wiersz jak każdy inny (wysłano)', async () => {
+        const domain = `pre5.${domainSuffix}`;
+        const { address, squatterOrgId } = await squatterRegisters(domain, 'cfo');
+        await verifyDomain(orgB, domain);
+        sendSpy.mockClear();
+
+        const batch = await importAddresses(orgB, [address]);
+        await inviter.processOrganization(orgB.organizationId, new Date());
+
+        const [row] = await rowsOf(orgB, batch);
+        expect(row).toMatchObject({ accountResult: 'CREATED', inviteStatus: 'SENT', addressTaken: false });
+        expect(row.userId).toBeTruthy();
+        expect(await owned(address)).toMatchObject({ organizationId: orgB.organizationId });
+        expect(await orgExists(squatterOrgId)).toBe(false);
+      });
     });
 
     it('import: B ze zweryfikowaną domeną przejmuje adres (kolejka), zaproszenie A wygasa ze statusem "wygasło" bez informacji o przejęciu', async () => {
@@ -289,6 +386,76 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       expect(rows[0].userId).toBeNull();
       expect(mailsTo(address, 'invite-address-taken')).toHaveLength(1);
       expect(await notices(orgA)).toBe(1);
+    });
+  });
+
+  // ---- sprzątanie wygasłych potwierdzeń rejestracji i organizacji-widm ---------------------------------------------
+
+  describe('sprzątanie wygasłych potwierdzeń rejestracji (pending_admin_claims)', () => {
+    const HOUR_MS = 3_600_000;
+    const cleanup = () => app.get(PendingOrganizationCleanupService);
+    let counter = 0;
+    const ghostOrg = async (label: string, over: { claimExpiresInMs?: number[]; admin?: 'INVITED' | 'ACTIVE' | null } = {}) => {
+      const org = await owner.organization.create({ data: { name: `${label}-${suffix}.${domainSuffix}`, status: 'PENDING_DOMAIN_VERIFICATION' } });
+      for (const offset of over.claimExpiresInMs ?? [-HOUR_MS]) {
+        counter += 1;
+        await owner.pendingAdminClaim.create({
+          data: { organizationId: org.id, email: `c${counter}-${suffix}@${label}.${domainSuffix}`, firstName: 'A', lastName: 'B', legalVersion: 'draft-1', tokenHash: `h${counter}-${suffix}`, expiresAt: new Date(Date.now() + offset) },
+        });
+      }
+      if (over.admin) {
+        await owner.user.create({
+          data: { organizationId: org.id, email: `adm-${label}-${suffix}@${label}.${domainSuffix}`, passwordHash: 'x', role: 'ORG_ADMIN', status: over.admin, ...(over.admin === 'ACTIVE' ? { emailVerifiedAt: new Date() } : {}) },
+        });
+      }
+      return org;
+    };
+    const exists = async (id: string) => (await prisma.organization.count({ where: { id } })) === 1;
+    const claimsOf = (id: string) => owner.pendingAdminClaim.count({ where: { organizationId: id } });
+
+    it('wygasły wpis jest kasowany; organizacja-widmo bez admina i bez innych wpisów znika, pozostałe zostają; idempotentnie', async () => {
+      const orphan = await ghostOrg('sp1'); // wygasły wpis, brak admina => znika razem z organizacją
+      const withAdmin = await ghostOrg('sp2', { admin: 'ACTIVE' }); // wygasły wpis, jest konto => zostaje organizacja
+      const fresh = await ghostOrg('sp3', { claimExpiresInMs: [+HOUR_MS] }); // niewygasły => nietknięty
+      const mixed = await ghostOrg('sp4', { claimExpiresInMs: [-HOUR_MS, +HOUR_MS] }); // jeden wygasły, jeden żywy => zostaje z jednym
+
+      const first = await cleanup().purgeExpiredClaims(new Date());
+
+      expect(first.claims).toBeGreaterThanOrEqual(3);
+      expect(await exists(orphan.id)).toBe(false);
+      expect(await exists(withAdmin.id)).toBe(true);
+      expect(await claimsOf(withAdmin.id)).toBe(0);
+      expect(await exists(fresh.id)).toBe(true);
+      expect(await claimsOf(fresh.id)).toBe(1);
+      expect(await exists(mixed.id)).toBe(true);
+      expect(await claimsOf(mixed.id)).toBe(1);
+      const again = await cleanup().purgeExpiredClaims(new Date());
+      expect(again.claims).toBe(0);
+    });
+
+    it('organizacja ACTIVE z wygasłym wpisem nie jest ruszana (ani organizacja, ani jej konta)', async () => {
+      const active = await ghostOrg('sp5', { admin: 'ACTIVE' });
+      await owner.organization.update({ where: { id: active.id }, data: { status: 'ACTIVE' } });
+
+      await cleanup().purgeExpiredClaims(new Date());
+
+      expect(await exists(active.id)).toBe(true);
+      expect(await claimsOf(active.id)).toBe(1); // job sprząta tylko organizacje PENDING
+    });
+
+    it('deleteNow: usuwa organizację PENDING bez aktywowanych kont, NIE usuwa z aktywowanym kontem (warunek sprawdzany pod RLS organizacji) ani ACTIVE', async () => {
+      const onlyInvited = await ghostOrg('dn1', { claimExpiresInMs: [], admin: 'INVITED' });
+      const activated = await ghostOrg('dn2', { claimExpiresInMs: [], admin: 'ACTIVE' });
+      const activeOrg = await ghostOrg('dn3', { claimExpiresInMs: [], admin: 'INVITED' });
+      await owner.organization.update({ where: { id: activeOrg.id }, data: { status: 'ACTIVE' } });
+
+      expect(await cleanup().deleteNow(activated.id)).toBe(false);
+      expect(await cleanup().deleteNow(activeOrg.id)).toBe(false);
+      expect(await cleanup().deleteNow(onlyInvited.id)).toBe(true);
+
+      expect(await exists(activated.id)).toBe(true);
+      expect(await exists(activeOrg.id)).toBe(true);
+      expect(await exists(onlyInvited.id)).toBe(false);
     });
   });
 
@@ -452,6 +619,21 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       const deleted = await tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.inviteNotice.deleteMany({}));
       expect(deleted.count).toBe(0);
       expect(await notices(orgA)).toBe(1);
+    });
+
+    it('RLS: wpisy oczekujących adminów (pending_admin_claims) są izolowane - B nie widzi wpisu A, nie zapisze go w imieniu A, nie usunie', async () => {
+      const claimData = { organizationId: orgA.organizationId, email: `claim-${suffix}@rls.${domainSuffix}`, firstName: 'A', lastName: 'B', legalVersion: 'draft-1', tokenHash: `h-${suffix}`, expiresAt: new Date(Date.now() + DAY) };
+      await owner.pendingAdminClaim.create({ data: claimData });
+      try {
+        expect(await tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.pendingAdminClaim.findMany({}))).toHaveLength(0);
+        await expect(
+          tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.pendingAdminClaim.create({ data: { ...claimData, tokenHash: `h2-${suffix}` } })),
+        ).rejects.toBeDefined();
+        expect((await tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.pendingAdminClaim.deleteMany({}))).count).toBe(0);
+        expect(await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.pendingAdminClaim.count({ where: { organizationId: orgA.organizationId } }))).toBe(1);
+      } finally {
+        await owner.pendingAdminClaim.deleteMany({ where: { organizationId: orgA.organizationId } });
+      }
     });
 
     it('CHECK: wiersz z zajętym adresem nie może mieć konta ani wyniku innego niż CREATED', async () => {

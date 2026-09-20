@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { displayName } from './display-name';
 import { EmailService } from './email.service';
 import { MailOutcome } from './interfaces/send-email-options.interface';
 import { renderTemplate } from './templates';
@@ -196,6 +197,46 @@ describe('renderTemplate', () => {
 
     expect(rendered?.text).toContain('firma.pl');
     expect(rendered?.text).toContain('admin@firma.pl');
+  });
+
+  describe('maile do osoby trzeciej z nazwą organizacji od obcej strony (registration-claim, invite-address-taken)', () => {
+    const LONG = `Pilne: konto zablokowane\r\nBcc: ofiara@x.pl kliknij i potwierdź natychmiast inaczej stracisz dostęp ${'x'.repeat(200)}`;
+    const claimUrl = 'http://x/claim-registration?token=t';
+
+    it('nazwa jest przycięta do 50 znaków, bez nowych linii i znaków sterujących (HTML i tekst)', () => {
+      for (const [name, data] of [
+        ['registration-claim', { organizationName: LONG, claimUrl }],
+        ['invite-address-taken', { organizationName: LONG }],
+      ] as const) {
+        const rendered = renderTemplate(name, data);
+        const shown = displayName(LONG);
+
+        expect(Array.from(shown)).toHaveLength(50);
+        expect(rendered?.html).toContain(shown);
+        expect(rendered?.text).toContain(shown);
+        expect(rendered?.html).not.toContain('x'.repeat(60));
+        expect(rendered?.text).not.toContain('x'.repeat(60));
+        expect(rendered?.text).not.toContain('\r');
+        expect(rendered?.text).not.toMatch(/Pilne: konto zablokowane\nBcc/);
+      }
+    });
+
+    it('registration-claim ma zdanie ostrzegawcze o skutku kliknięcia, a nazwa jest escapowana', () => {
+      const rendered = renderTemplate('registration-claim', { organizationName: '<b>Zła</b>', claimUrl });
+
+      expect(rendered?.text).toContain('Kliknij tylko, jeśli to Ty rejestrowałeś/-aś organizację. Kliknięcie unieważni zaproszenie do innej firmy, jeśli takie masz.');
+      expect(rendered?.html).toContain('Kliknij tylko, jeśli to Ty rejestrowałeś/-aś organizację.');
+      expect(rendered?.html).not.toContain('<b>Zła</b>');
+      expect(rendered?.html).toContain(claimUrl);
+    });
+
+    it('invite-address-taken nie ma linków i informuje, że nie wymaga akcji', () => {
+      const rendered = renderTemplate('invite-address-taken', { organizationName: 'Firma' });
+
+      expect(rendered?.text).not.toMatch(/https?:\/\//);
+      expect(rendered?.text).toContain('nie zawiera linków');
+      expect(renderTemplate('invite-address-taken', {})?.text).toContain('do organizacji w Unfooly');
+    });
   });
 });
 

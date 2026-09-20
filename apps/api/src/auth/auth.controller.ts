@@ -13,6 +13,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ClaimRegistrationDto } from './dto/claim-registration.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 
 // Ciaśniejszy limit niż globalny default (app.module.ts) — ochrona przed
@@ -98,6 +99,14 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto);
+  }
+
+  // Potwierdzenie rejestracji na adres z cudzym nieaktywowanym zaproszeniem (klik w link z maila): przejmuje adres i tworzy admina.
+  @Post('claim-registration')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(AUTH_THROTTLE)
+  claimRegistration(@Body() dto: ClaimRegistrationDto) {
+    return this.registrationService.claimRegistration(dto.token);
   }
 
   @Post('resend-verification')

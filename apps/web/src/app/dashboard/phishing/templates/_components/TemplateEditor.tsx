@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
+import { formatDateTime } from '@/lib/datetime';
 import type { PhishingTemplate, PhishingTemplateEdit, TemplatePreview } from '@/lib/phishing-types';
 
 const INPUT =
@@ -215,7 +216,7 @@ export default function TemplateEditor({ template, edits }: { template: Phishing
                   {edits.map((edit) => (
                     <li key={edit.id}>
                       <span className="font-semibold">{ACTION_LABEL[edit.action]}</span> - {edit.actorEmail},{' '}
-                      {new Date(edit.createdAt).toLocaleString('pl-PL')}
+                      {formatDateTime(edit.createdAt)}
                       {edit.changedFields.length > 0 && <span className="text-muted"> ({edit.changedFields.join(', ')})</span>}
                     </li>
                   ))}

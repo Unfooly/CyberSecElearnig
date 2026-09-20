@@ -10,6 +10,8 @@ export interface OrganizationOverview {
   name: string;
   status: OrganizationStatus;
   selfJoinEnabled: boolean;
+  // Strefa czasowa organizacji (IANA); opcjonalna w typie dla zgodności ze starszymi odpowiedziami/testami.
+  timezone?: string;
   billing: {
     legalName: string;
     taxId: string;

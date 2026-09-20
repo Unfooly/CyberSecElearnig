@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Pill from '@/components/ui/Pill';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/datetime';
 import { CAMPAIGN_STATUS_LABELS, failureLabel, type Campaign } from '@/lib/phishing-types';
 import { STATUS_TONES } from './CampaignsList';
 

@@ -88,6 +88,9 @@ model Organization {
   // Ustawiane raz, gdy job sprzątania wysłał ostrzeżenie o usunięciu
   // niezweryfikowanej organizacji (po 7 dniach) - chroni przed duplikatami maila.
   unverifiedWarningSentAt DateTime?
+  // Strefa czasowa organizacji (IANA, np. "Europe/Warsaw") - wg niej UI formatuje daty i godziny (jeden helper w apps/web,
+  // niezależnie od strefy serwera i przeglądarki). Na teraz wszyscy mają domyślną wartość; edycja w ustawieniach.
+  timezone                String             @default("Europe/Warsaw") @db.VarChar(64)
   createdAt               DateTime           @default(now())
 
   users                      User[]

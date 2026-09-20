@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
+import { DEFAULT_TIMEZONE } from '@/lib/datetime';
 import type { OrganizationOverview } from '@/lib/organization';
 
 const COUNTRY_NAMES: Record<string, string> = { PL: 'Polska' };
+const TIMEZONE_CHOICES = ['Europe/Warsaw', 'Europe/Berlin', 'Europe/London', 'Europe/Kyiv', 'UTC'];
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -20,6 +22,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function SettingsClient({ organization }: { organization: OrganizationOverview }) {
   const [selfJoin, setSelfJoin] = useState(organization.selfJoinEnabled);
+  const [timezone, setTimezone] = useState(organization.timezone ?? DEFAULT_TIMEZONE);
   const router = useRouter();
   const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
@@ -71,8 +74,59 @@ export default function SettingsClient({ organization }: { organization: Organiz
     }
   }
 
+  async function handleTimezone(next: string) {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch('/api/organization/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timezone: next }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setMessage({ kind: 'error', text: Array.isArray(data?.message) ? data.message.join(' ') : (data?.message ?? 'Nie udało się zapisać strefy czasowej.') });
+        return;
+      }
+      setTimezone(typeof data?.timezone === 'string' ? data.timezone : next);
+      setMessage({ kind: 'success', text: 'Strefa czasowa zapisana.' });
+    } catch {
+      setMessage({ kind: 'error', text: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Najczęstsze strefy; aktualna wartość z API jest zawsze na liście (także spoza niej).
+  const timezoneOptions = TIMEZONE_CHOICES.includes(timezone) ? TIMEZONE_CHOICES : [timezone, ...TIMEZONE_CHOICES];
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader title="Strefa czasowa" />
+        <div className="space-y-2 p-5 text-sm">
+          <label className="block font-semibold">
+            Strefa czasowa organizacji
+            <select
+              value={timezone}
+              disabled={isSaving}
+              onChange={(event) => handleTimezone(event.target.value)}
+              className="mt-1 block h-10 w-72 rounded-btn border border-border bg-surface px-3 font-medium"
+            >
+              {timezoneOptions.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-xs text-muted">
+            Zapisana strefa jest przechowywana przy organizacji. Wyświetlanie dat i godzin w aplikacji stosuje na razie stałą strefę {DEFAULT_TIMEZONE} - podłączenie
+            zapisanej wartości do wszystkich ekranów to następny krok.
+          </p>
+        </div>
+      </Card>
+
       <Card>
         <CardHeader title="Dane firmy" />
         <div className="p-5">

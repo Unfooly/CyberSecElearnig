@@ -1,5 +1,6 @@
 import { IsBoolean, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { Trim } from '../../common/transforms/trim';
+import { IsIanaTimeZone } from '../../common/validators/iana-time-zone.validator';
 
 // Bez znaków sterujących/formatujących (nazwa trafia do maili) - jak w RegisterDto.
 const NO_CONTROL_CHARS = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]*$/u;
@@ -20,4 +21,9 @@ export class UpdateOrganizationSettingsDto {
   @IsOptional()
   @IsBoolean()
   selfJoinEnabled?: boolean;
+
+  // Strefa czasowa organizacji (IANA); serwis zapisuje nazwę kanoniczną.
+  @IsOptional()
+  @IsIanaTimeZone()
+  timezone?: string;
 }

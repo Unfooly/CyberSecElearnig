@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComplianceStatus, UsersStatusResponse, UsersStatusSortField } from '@/lib/dashboard-types';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/datetime';
 import { Users } from 'lucide-react';
 import { SearchInput, SelectField } from '@/components/ui/Fields';
 import Button from '@/components/ui/Button';

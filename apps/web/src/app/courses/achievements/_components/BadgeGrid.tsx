@@ -1,8 +1,5 @@
+import { formatDateLong as formatDate } from '@/lib/datetime';
 import type { Badge } from '@/lib/gamification-types';
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pl-PL', { year: 'numeric', month: 'long', day: 'numeric' });
-}
 
 export default function BadgeGrid({ badges }: { badges: Badge[] }) {
   if (badges.length === 0) {

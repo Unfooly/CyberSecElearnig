@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { canonicalTimeZone } from '../common/validators/iana-time-zone.validator';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { DomainVerificationService } from './domain-verification.service';
 import { UpdateOrganizationSettingsDto } from './dto/update-organization-settings.dto';
@@ -13,6 +14,8 @@ export interface OrganizationOverview {
   name: string;
   status: 'PENDING_DOMAIN_VERIFICATION' | 'ACTIVE';
   selfJoinEnabled: boolean;
+  // Strefa czasowa organizacji (IANA) - wg niej UI formatuje daty.
+  timezone: string;
   // Dane firmy z rejestracji (tylko do odczytu w ustawieniach); null dla organizacji sprzed modelu samoobsługowego.
   billing: {
     legalName: string;
@@ -41,7 +44,7 @@ export class OrganizationsService {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const organization = await tx.organization.findUniqueOrThrow({
         where: { id: organizationId },
-        select: { id: true, name: true, status: true, selfJoinEnabled: true },
+        select: { id: true, name: true, status: true, selfJoinEnabled: true, timezone: true },
       });
       const domain = await tx.organizationDomain.findFirst({
         where: { organizationId },
@@ -85,6 +88,8 @@ export class OrganizationsService {
         data: {
           ...(dto.name !== undefined ? { name: dto.name } : {}),
           ...(dto.selfJoinEnabled !== undefined ? { selfJoinEnabled: dto.selfJoinEnabled } : {}),
+          // Nazwa kanoniczna (walidator już potwierdził, że strefa istnieje).
+          ...(dto.timezone !== undefined ? { timezone: canonicalTimeZone(dto.timezone) ?? undefined } : {}),
         },
       });
     });

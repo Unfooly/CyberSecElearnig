@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { formatYear } from '@/lib/datetime';
 import {
   ArrowRight,
   BarChart3,
@@ -410,7 +411,7 @@ export function LandingFooter() {
           <a href="/polityka-prywatnosci" className="hover:text-ink">Polityka prywatności</a>
           <a href="/bezpieczenstwo" className="hover:text-ink">Bezpieczeństwo</a>
         </nav>
-        <span>© {new Date().getFullYear()} Unfooly</span>
+        <span>© {formatYear()} Unfooly</span>
       </div>
     </footer>
   );

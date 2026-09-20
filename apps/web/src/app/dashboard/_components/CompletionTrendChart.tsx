@@ -4,7 +4,7 @@ import { LineChart } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { TrendPoint } from '@/lib/dashboard-types';
-import { formatMonthLabel } from '@/lib/format';
+import { formatMonthLabel } from '@/lib/datetime';
 
 export default function CompletionTrendChart({ points }: { points: TrendPoint[] }) {
   const hasData = points.some((point) => point.completionRate !== null);

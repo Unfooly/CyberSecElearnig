@@ -151,6 +151,13 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 6. **Commity małe i opisowe.** Jeden commit = jedna logiczna zmiana.
 7. **Pliki edytujesz narzędziem do edycji plików** (Write/Edit), nigdy przez `echo`, `cat` ani heredoc w powłoce. Powłoka interpretuje backticki i `$(...)` w treści jako komendy: tak backticki w README wykonały się jako polecenia, uruchomiły testy e2e i zostawiły dziury w tekście. Powłoka służy do uruchamiania poleceń, nie do zapisywania treści plików. Dotyczy to także skryptów Python/Node uruchamianych z powłoki do modyfikacji plików (w tym jednorazowych `python - <<EOF`, `node -e`, `sed -i`): jedyny dozwolony sposób edycji plików to Write/Edit.
 
+## Daty i strefy czasowe (web)
+
+Daty i godziny formatujemy **wyłącznie** przez `apps/web/src/lib/datetime.ts` (jawna strefa, domyślnie `Europe/Warsaw`; docelowo
+`Organization.timezone`). Nie używaj `toLocale*String`, `Intl.DateTimeFormat`, `getHours()`, `getTimezoneOffset()` itp. poza tym plikiem:
+serwer renderuje w UTC, a przeglądarka w strefie użytkownika, więc format bez strefy daje inne godziny w SSR i po hydracji. Pola
+`datetime-local` to czas ścienny w strefie organizacji (`isoToZonedInput` / `zonedInputToIso`). Test `datetime.test.tsx` pilnuje reguły.
+
 ## Komendy
 
 Uzupełnij po utworzeniu szkieletu projektu (Claude Code ma je uruchamiać przed uznaniem zadania za zakończone):

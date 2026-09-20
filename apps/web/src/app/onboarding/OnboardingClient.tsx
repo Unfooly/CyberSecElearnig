@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Copy } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import { formatDateTime } from '@/lib/datetime';
 import type { OrganizationOverview } from '@/lib/organization';
 
 type Domain = NonNullable<OrganizationOverview['domain']>;
@@ -132,7 +133,7 @@ export default function OnboardingClient({ organization }: { organization: Organ
           </span>
           {domain.lastCheckedAt && (
             <span className="ml-2">
-              Ostatnie sprawdzenie: {new Date(domain.lastCheckedAt).toLocaleString('pl-PL')}
+              Ostatnie sprawdzenie: {formatDateTime(domain.lastCheckedAt)}
             </span>
           )}
         </p>

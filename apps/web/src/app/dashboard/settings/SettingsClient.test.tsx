@@ -29,6 +29,33 @@ const BASE: OrganizationOverview = {
   },
 };
 
+describe('SettingsClient: strefa czasowa', () => {
+  it('domyślnie Europe/Warsaw; zmiana wysyła PATCH z samym polem timezone i pokazuje wartość z API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...BASE, timezone: 'Europe/London' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<SettingsClient organization={BASE} />);
+
+    const select = screen.getByLabelText('Strefa czasowa organizacji') as HTMLSelectElement;
+    expect(select.value).toBe('Europe/Warsaw');
+    fireEvent.change(select, { target: { value: 'Europe/London' } });
+
+    await waitFor(() => expect(screen.getByText('Strefa czasowa zapisana.')).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith('/api/organization/settings', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ timezone: 'Europe/London' }) }));
+    expect((screen.getByLabelText('Strefa czasowa organizacji') as HTMLSelectElement).value).toBe('Europe/London');
+  });
+
+  it('strefa spoza listy podstawowej z API jest na liście; błąd API pokazany', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ message: ['Nieprawidłowa strefa czasowa'] }) }));
+    render(<SettingsClient organization={{ ...BASE, timezone: 'Asia/Tokyo' }} />);
+
+    const select = screen.getByLabelText('Strefa czasowa organizacji') as HTMLSelectElement;
+    expect(select.value).toBe('Asia/Tokyo');
+    fireEvent.change(select, { target: { value: 'UTC' } });
+
+    await waitFor(() => expect(screen.getByText('Nieprawidłowa strefa czasowa')).toBeInTheDocument());
+  });
+});
+
 describe('SettingsClient', () => {
   it('pokazuje dane firmy z rejestracji (tylko do odczytu)', () => {
     render(<SettingsClient organization={BASE} />);

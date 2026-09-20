@@ -5,18 +5,12 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { SearchInput } from '@/components/ui/Fields';
-import { formatDateTime } from '@/lib/format';
+import { DEFAULT_TIMEZONE, formatDateTime, isoToZonedInput, zonedInputToIso } from '@/lib/datetime';
 import type { Audience, AudienceType, PhishingConfig, PhishingTemplate } from '@/lib/phishing-types';
 import type { DepartmentOption, UserListItem, UsersListResponse } from '@/lib/users-types';
 
 const STEPS = ['Szablon', 'Odbiorcy', 'Okno wysyłki', 'Podgląd i uruchomienie'] as const;
 const HOUR = 3_600_000;
-
-// Wartość dla <input type="datetime-local"> (czas lokalny przeglądarki).
-function toLocalInput(date: Date): string {
-  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return shifted.toISOString().slice(0, 16);
-}
 
 // Podgląd treści: placeholder linku zastępujemy atrapą (nic nie jest klikalne w sandboxowanym iframe).
 function previewDocument(template: PhishingTemplate): string {
@@ -28,10 +22,12 @@ export default function CampaignWizard({
   templates,
   departments,
   config,
+  timeZone = DEFAULT_TIMEZONE,
 }: {
   templates: PhishingTemplate[];
   departments: DepartmentOption[];
   config: PhishingConfig;
+  timeZone?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -44,8 +40,9 @@ export default function CampaignWizard({
   const [found, setFound] = useState<UserListItem[]>([]);
   const [count, setCount] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
-  const [windowStart, setWindowStart] = useState(() => toLocalInput(new Date(Date.now() + 5 * 60_000)));
-  const [windowEnd, setWindowEnd] = useState(() => toLocalInput(new Date(Date.now() + 8 * HOUR)));
+  // Pola datetime-local to czas ścienny w strefie ORGANIZACJI (nie przeglądarki) - patrz lib/datetime.ts.
+  const [windowStart, setWindowStart] = useState(() => isoToZonedInput(new Date(Date.now() + 5 * 60_000), timeZone));
+  const [windowEnd, setWindowEnd] = useState(() => isoToZonedInput(new Date(Date.now() + 8 * HOUR), timeZone));
   const [acknowledged, setAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,8 +113,8 @@ export default function CampaignWizard({
     };
   }, [audienceKey, audienceReady, step]);
 
-  const startDate = new Date(windowStart);
-  const endDate = new Date(windowEnd);
+  const startDate = new Date(zonedInputToIso(windowStart, timeZone) ?? Number.NaN);
+  const endDate = new Date(zonedInputToIso(windowEnd, timeZone) ?? Number.NaN);
   const windowValid =
     Number.isFinite(startDate.getTime()) &&
     Number.isFinite(endDate.getTime()) &&
@@ -296,7 +293,7 @@ export default function CampaignWizard({
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-muted">
-              Każdy odbiorca dostanie wiadomość w losowym momencie w tym oknie (okno: od 10 minut do 30 dni).
+              Każdy odbiorca dostanie wiadomość w losowym momencie w tym oknie (okno: od 10 minut do 30 dni). Godziny w strefie organizacji: {timeZone}.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-bold">
@@ -330,7 +327,7 @@ export default function CampaignWizard({
                   Wiadomość dostanie <strong>{count ?? '?'}</strong> {count === 1 ? 'osoba' : 'osób'}.
                 </li>
                 <li>
-                  Wysyłka w oknie: <strong>{formatDateTime(startDate.toISOString())}</strong> - <strong>{formatDateTime(endDate.toISOString())}</strong>, w losowych momentach.
+                  Wysyłka w oknie: <strong>{formatDateTime(startDate.toISOString(), timeZone)}</strong> - <strong>{formatDateTime(endDate.toISOString(), timeZone)}</strong>, w losowych momentach.
                 </li>
                 <li>
                   Nadawca: <strong>{template.senderAddress ?? template.senderLocalPart}</strong>

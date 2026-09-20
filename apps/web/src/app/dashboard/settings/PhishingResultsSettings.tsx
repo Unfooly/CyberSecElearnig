@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/datetime';
 import { AUDIT_ACTION_LABELS, PEOPLE_FILTER_LABELS, type PeopleFilter, type PersonalResultsSettings, type VisibilityAuditEntry } from '@/lib/phishing-types';
 
 const MIN_JUSTIFICATION = 20;

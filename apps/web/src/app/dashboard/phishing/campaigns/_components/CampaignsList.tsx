@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Pill, { type PillTone } from '@/components/ui/Pill';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/datetime';
 import { CAMPAIGN_STATUS_LABELS, type Campaign, type CampaignStatus } from '@/lib/phishing-types';
 
 export const STATUS_TONES: Record<CampaignStatus, PillTone> = {

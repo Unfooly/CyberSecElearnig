@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
 import { SelectField } from '@/components/ui/Fields';
 import Pill from '@/components/ui/Pill';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/datetime';
 import {
   DELIVERY_LABELS,
   failureLabel,

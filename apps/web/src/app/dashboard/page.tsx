@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
+import { formatDateLong } from '@/lib/datetime';
 import { decodeJwtPayload } from '@/lib/jwt';
 import Topbar from '@/components/Topbar';
 import PageHeader from '@/components/ui/PageHeader';
@@ -91,7 +92,8 @@ export default async function DashboardPage() {
   const departmentOptions = departments.flatMap((department) =>
     department.departmentId ? [{ id: department.departmentId, name: department.departmentName }] : [],
   );
-  const today = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'long' }).format(new Date());
+  // "Dziś" wg strefy organizacji (nie strefy serwera): o północy UTC serwer bywa o dzień przed użytkownikiem.
+  const today = formatDateLong(new Date());
   const activePercent =
     overview.activeUsers.total > 0 ? Math.round((overview.activeUsers.count / overview.activeUsers.total) * 100) : 0;
 

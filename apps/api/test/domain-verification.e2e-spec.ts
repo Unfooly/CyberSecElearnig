@@ -274,6 +274,49 @@ describe('Weryfikacja domeny i guard PENDING (e2e)', () => {
     });
   });
 
+  describe('PATCH /organization/settings (timezone)', () => {
+    it('nowa organizacja ma domyślną strefę Europe/Warsaw (w GET /organization/me)', async () => {
+      const { token } = await pendingAdmin('tz-default');
+
+      const overview = await request(app.getHttpServer()).get('/organization/me').set(auth(token)).expect(200);
+
+      expect(overview.body.timezone).toBe('Europe/Warsaw');
+    });
+
+    it('zmiana strefy zapisuje nazwę KANONICZNĄ (wielkość liter wg IANA); działa też przed weryfikacją domeny', async () => {
+      const { token } = await pendingAdmin('tz-change');
+
+      const response = await request(app.getHttpServer()).patch('/organization/settings').set(auth(token)).send({ timezone: 'america/new_york' }).expect(200);
+
+      expect(response.body.timezone).toBe('America/New_York');
+      expect((await request(app.getHttpServer()).get('/organization/me').set(auth(token)).expect(200)).body.timezone).toBe('America/New_York');
+    });
+
+    it.each(['Europe/Nie_Istnieje', '+01:00', 'CET', 'Warsaw', "Europe/Warsaw'; DROP TABLE organizations;--", '', 42])('nieprawidłowa strefa %p => 400 i bez zmiany', async (timezone) => {
+      const { token } = await pendingAdmin('tz-bad');
+
+      await request(app.getHttpServer()).patch('/organization/settings').set(auth(token)).send({ timezone }).expect(400);
+
+      expect((await request(app.getHttpServer()).get('/organization/me').set(auth(token)).expect(200)).body.timezone).toBe('Europe/Warsaw');
+    });
+
+    it('izolacja: zmiana strefy w organizacji A nie zmienia strefy B', async () => {
+      const a = await pendingAdmin('tz-iso-a');
+      const b = await pendingAdmin('tz-iso-b');
+
+      await request(app.getHttpServer()).patch('/organization/settings').set(auth(a.token)).send({ timezone: 'Asia/Tokyo' }).expect(200);
+
+      const orgB = await prisma.organization.findUniqueOrThrow({ where: { id: b.organizationId } });
+      expect(orgB.timezone).toBe('Europe/Warsaw');
+    });
+
+    it('baza wymusza kształt nazwy (CHECK): zapis spoza formatu IANA odrzucony', async () => {
+      const { organizationId } = await pendingAdmin('tz-check');
+
+      await expect(prisma.organization.update({ where: { id: organizationId }, data: { timezone: 'zla strefa;' } })).rejects.toThrow(/check constraint|violates/i);
+    });
+  });
+
   describe('izolacja tenantów', () => {
     it('admin A sprawdza tylko własną domenę: token organizacji B w DNS nie weryfikuje A i nie zmienia B', async () => {
       const a = await pendingAdmin('iso-a');

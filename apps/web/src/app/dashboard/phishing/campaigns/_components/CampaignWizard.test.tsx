@@ -112,6 +112,33 @@ describe('CampaignWizard', () => {
     expect(screen.getByText(/Tryb testowy: wiadomości NIE są wysyłane/)).toBeInTheDocument();
   });
 
+  it('okno kampanii = czas ścienny w strefie ORGANIZACJI: 10:00 w Europe/Warsaw to 08:00 UTC także w przeglądarce w Los Angeles', async () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    try {
+      render(<CampaignWizard templates={[template]} departments={departments} config={config} />);
+      fireEvent.change(screen.getByLabelText('Nazwa kampanii'), { target: { value: 'Jesień' } });
+      fireEvent.click(screen.getByRole('radio', { name: /Przesyłka kurierska/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
+      await waitFor(() => expect(screen.getByText('Odbiorców: 5')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
+      fireEvent.change(screen.getByLabelText('Początek okna'), { target: { value: '2031-09-20T10:00' } });
+      fireEvent.change(screen.getByLabelText('Koniec okna'), { target: { value: '2031-09-20T12:30' } });
+      expect(screen.getByText(/Godziny w strefie organizacji: Europe\/Warsaw/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
+      expect(screen.getByText(/20 wrz 2031, 10:00/)).toBeInTheDocument(); // podsumowanie w tej samej strefie co wejście
+      fireEvent.click(screen.getByRole('checkbox', { name: /Rozumiem i uruchamiam/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Uruchom kampanię' }));
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalled());
+      const post = fetchMock.mock.calls.find(([url, init]) => url === '/api/phishing/campaigns' && init?.method === 'POST');
+      expect(JSON.parse(post?.[1].body)).toMatchObject({ windowStart: '2031-09-20T08:00:00.000Z', windowEnd: '2031-09-20T10:30:00.000Z' });
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
   it('krok 3: okno krótsze niż 10 minut blokuje dalej', async () => {
     render(<CampaignWizard templates={[template]} departments={departments} config={config} />);
     fireEvent.change(screen.getByLabelText('Nazwa kampanii'), { target: { value: 'Jesień' } });

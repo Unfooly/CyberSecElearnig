@@ -170,6 +170,27 @@ describe('BFF /api/organization/*', () => {
       expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ selfJoinEnabled: true });
     });
 
+    it('timezone: przekazywana (samodzielnie albo z selfJoinEnabled), obce pola nadal odrzucane', async () => {
+      mockCookie('tok');
+      const fetchMock = vi.fn().mockResolvedValue({ status: 200, json: async () => ({ timezone: 'Asia/Tokyo' }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await patchSettings(patchRequest({ timezone: 'Asia/Tokyo', status: 'ACTIVE' }));
+      await patchSettings(patchRequest({ timezone: 'UTC', selfJoinEnabled: false, name: 'X' }));
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ timezone: 'Asia/Tokyo' });
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ selfJoinEnabled: false, timezone: 'UTC' });
+    });
+
+    it.each([{ timezone: 5 }, { timezone: null }, { timezone: 'a'.repeat(65) }, { timezone: ['UTC'] }])('nieprawidłowa strefa %j => 400 bez wołania API', async (body) => {
+      mockCookie('tok');
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      expect((await patchSettings(patchRequest(body))).status).toBe(400);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it.each([{}, { selfJoinEnabled: 'true' }, { selfJoinEnabled: 1 }, null])('nieprawidłowe ciało %j => 400 bez wołania API', async (body) => {
       mockCookie('tok');
       const fetchMock = vi.fn();

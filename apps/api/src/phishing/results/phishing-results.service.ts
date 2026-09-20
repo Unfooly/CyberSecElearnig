@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { Prisma } from '@prisma/client';
 import { Role } from '@cyberszkolo/shared';
 import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
+import { KeyedMutex } from '../../common/keyed-mutex';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { JUSTIFICATION_MIN_LENGTH, PeopleFilter, SetPersonalResultsDto } from '../dto/results.dto';
 import { isUncertainFailureCode } from '../transport/phishing-mail-transport';
@@ -76,6 +77,8 @@ const FACT_SELECT = { departmentId: true, departmentName: true, sentAt: true, cl
  */
 @Injectable()
 export class PhishingResultsService {
+  private readonly toggleLock = new KeyedMutex();
+
   constructor(private readonly tenantPrisma: TenantPrismaService) {}
 
   // ---- agregaty ----------------------------------------------------------------------------------------------------
@@ -307,7 +310,9 @@ export class PhishingResultsService {
     if (dto.enabled && (justification?.length ?? 0) < JUSTIFICATION_MIN_LENGTH) {
       throw new BadRequestException(JUSTIFICATION_REQUIRED);
     }
-    await this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+    // KeyedMutex (w procesie) trzyma oczekujące przełączenia poza pulą połączeń (patrz komentarz w KeyedMutex); blokada
+    // doradcza poniżej zostaje jedyną ochroną między instancjami API.
+    await this.toggleLock.run(user.organizationId, () => this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
       // Rola i status z bazy (nie z JWT) + blokada doradcza organizacji na czas zmiany: równoległe przełączenia się
       // serializują (jedno wygrywa, drugie dostaje 409 zamiast P2002/500 albo dubla wpisu ENABLED), a odczyty flagi
       // (FOR SHARE) czekają na zatwierdzenie zmiany.
@@ -329,7 +334,7 @@ export class PhishingResultsService {
       await tx.phishingResultVisibilityAudit.create({
         data: { organizationId: user.organizationId, action: dto.enabled ? 'ENABLED' : 'DISABLED', justification, actorUserId: user.userId, actorEmail },
       });
-    });
+    }, { maxWait: 15_000, timeout: 30_000 }));
     return this.getSettings(user.organizationId);
   }
 

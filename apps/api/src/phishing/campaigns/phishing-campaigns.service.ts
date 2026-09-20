@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import { PhishingAudienceType, PhishingCampaign, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
+import { KeyedMutex } from '../../common/keyed-mutex';
 import { TenantPrismaService } from '../../prisma/tenant-prisma.service';
 import { AudienceDto, CAMPAIGN_LIMITS, CreateCampaignDto } from '../dto/campaign.dto';
 import { PhishingConfigService } from '../phishing-config.service';
@@ -11,6 +12,8 @@ import { PhishingSendQueue } from './phishing-send-queue';
 import { peakInAnyWindow, planSendTimes, shuffled } from './send-planner';
 
 const DAY_MS = 24 * 3_600_000;
+/** Transakcja tworzenia kampanii (może czekać na blokadę doradczą innej instancji): dłuższe limity niż domyślne 2 s / 5 s. */
+const CREATE_TRANSACTION_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
 /** Bezpiecznik zapytania o istniejące wysyłki (5000 odbiorców x 10 aktywnych kampanii x zapas). */
 const MAX_DAILY_LIMIT_ROWS = 100_000;
 
@@ -82,6 +85,7 @@ interface ResolvedRecipient {
 @Injectable()
 export class PhishingCampaignsService {
   private readonly logger = new Logger(PhishingCampaignsService.name);
+  private readonly createLock = new KeyedMutex();
 
   constructor(
     private readonly tenantPrisma: TenantPrismaService,
@@ -108,9 +112,14 @@ export class PhishingCampaignsService {
     const from = new Date(Math.max(start.getTime(), now.getTime()));
     const actorEmail = await this.actorEmail(organizationId, actor);
 
-    const { campaign, scheduled } = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-      // Tworzenie kampanii organizacji jest serializowane blokadą (do końca transakcji): limit aktywnych kampanii i
-      // wykrywanie duplikatu nie mogą być ominięte przez równoległe żądania (READ COMMITTED).
+    // Serializacja tworzenia kampanii organizacji na dwóch poziomach:
+    //  1. KeyedMutex (w procesie): oczekujące żądania czekają w JS, NIE zajmując połączeń z puli. Bez tego N równoległych
+    //     transakcji czekających na blokadę z pkt 2 wyczerpywało pulę (domyślnie 2 x rdzenie + 1; na runnerze CI = 5) i reszta
+    //     żądań kończyła się błędem P2028 "Unable to start a transaction in the given time" (500).
+    //  2. Blokada doradcza Postgresa (do końca transakcji): jedyna ochrona między INSTANCJAMI API. Limit aktywnych kampanii,
+    //     wykrywanie duplikatu i limit dobowy nie mogą być ominięte przez równoległe żądania (READ COMMITTED).
+    // Jawne limity transakcji: oczekiwanie na blokadę liczy się do `timeout` (domyślne 5 s bywa za krótkie na wolnym runnerze).
+    const { campaign, scheduled } = await this.createLock.run(organizationId, () => this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`phishing-campaign:${organizationId}`}))`;
       const active = await tx.phishingCampaign.count({ where: { organizationId, status: { in: ['SCHEDULED', 'RUNNING'] } } });
       if (active >= MAX_ACTIVE_CAMPAIGNS) {
@@ -172,7 +181,7 @@ export class PhishingCampaignsService {
       }));
       await tx.phishingCampaignRecipient.createMany({ data: rows });
       return { campaign: created, scheduled: rows.map((row) => ({ recipientId: row.id, scheduledAt: row.scheduledAt })) };
-    });
+    }, CREATE_TRANSACTION_OPTIONS));
 
     // Kolejka POZA transakcją. Niepowodzenie (Redis niedostępny) nie cofa kampanii: zadanie uzgadniające
     // dołoży zadania dla zaległych odbiorców.

@@ -21,14 +21,21 @@ export interface TrackingRecipientRef {
 export class TenantPrismaService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * `options` (opcjonalne) to limity interaktywnej transakcji Prisma: `maxWait` = ile czekać na wolne połączenie z puli
+   * (domyślnie 2 s), `timeout` = jak długo może trwać cała transakcja (domyślnie 5 s, LICZĄC oczekiwanie na blokady w bazie).
+   * Domyślne wartości wystarczają dla zwykłych zapytań; podnosimy je tylko tam, gdzie transakcja świadomie czeka na
+   * blokadę doradczą (np. tworzenie kampanii).
+   */
   async runInOrgContext<T>(
     organizationId: string,
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number },
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.current_org_id', ${organizationId}, true)`;
       return fn(tx);
-    });
+    }, options);
   }
 
   /**

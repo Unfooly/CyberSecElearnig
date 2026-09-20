@@ -100,7 +100,7 @@ jobs:
       # Jak lokalnie (.env.test): migracje rolą właścicielem, runtime rolą cyberszkolo_app
       # (bez BYPASSRLS), żeby testy sprawdzały RLS w konfiguracji produkcyjnej.
       DATABASE_URL: postgresql://cyberszkolo:ci-migrator-password@localhost:5432/cyberszkolo_test?schema=public
-      DATABASE_URL_APP: postgresql://cyberszkolo_app:ci-app-password@localhost:5432/cyberszkolo_test?schema=public
+      DATABASE_URL_APP: postgresql://cyberszkolo_app:ci-app-password@localhost:5432/cyberszkolo_test?schema=public&connection_limit=10
       REDIS_URL: redis://localhost:6379
       # Sekrety wyłącznie testowe, jednorazowe dla runnera.
       JWT_SECRET: ci-e2e-access-secret

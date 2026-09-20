@@ -118,6 +118,8 @@ Uzupełnij `.env.prod` (każda pozycja jest opisana w pliku). Minimum:
 - `IMAGE_TAG` (domyślnie `latest`; do wycofania patrz niżej).
 - Hasła Postgresa: `POSTGRES_PASSWORD` oraz `APP_DB_PASSWORD` - **to samo hasło dosłownie** w
   `DATABASE_URL` / `DATABASE_URL_APP` (compose nie podstawia zmiennych wewnątrz env_file).
+  W `DATABASE_URL_APP` zostaw `&connection_limit=10` z przykładu: bez niego rozmiar puli Prisma zależy od liczby rdzeni
+  maszyny (2 x rdzenie + 1), a tworzenie kampanii czeka na blokadę doradczą, trzymając połączenie.
 - `JWT_SECRET`, `JWT_REFRESH_SECRET` (`openssl rand -hex 32`, różne od siebie).
 - `FRONTEND_URL` = publiczny adres z kroku 1, z `https://`.
 - `MAILERSEND_API_TOKEN`, `EMAIL_FROM` (z zweryfikowanej domeny), `SALES_EMAIL`.

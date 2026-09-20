@@ -139,6 +139,14 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
   const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
   const get = (token: string, path: string) => request(app.getHttpServer()).get(path).set(auth(token));
   const post = (token: string, path: string, body: unknown = {}) => request(app.getHttpServer()).post(path).set(auth(token)).send(body as object);
+  // Serie równoległych żądań: czekamy na WSZYSTKIE (allSettled), żeby przy błędzie jednego nie zostawały w locie
+  // żądania osierocone, które kończyłyby się już po teście (zrywane połączenia, "Jest did not exit").
+  async function settleAll<T>(promises: PromiseLike<T>[]): Promise<T[]> {
+    const results = await Promise.allSettled(promises);
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failed) throw failed.reason;
+    return results.map((r) => (r as PromiseFulfilledResult<T>).value);
+  }
 
   async function kurierTemplateId(token = orgA.token) {
     const list = await get(token, '/phishing/templates').expect(200);
@@ -341,7 +349,7 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
     it('ponowione żądanie (podwójne kliknięcie): RÓWNOLEGŁE identyczne POST-y dają jedną kampanię, drugi dostaje 409 DUPLICATE_CAMPAIGN', async () => {
       const body = await launchBody({ audience: { type: 'USERS', userIds: [orgA.users.s1] } });
 
-      const responses = await Promise.all([post(orgA.token, '/phishing/campaigns', body), post(orgA.token, '/phishing/campaigns', body), post(orgA.token, '/phishing/campaigns', body)]);
+      const responses = await settleAll([post(orgA.token, '/phishing/campaigns', body), post(orgA.token, '/phishing/campaigns', body), post(orgA.token, '/phishing/campaigns', body)]);
 
       expect(responses.map((r) => r.status).sort()).toEqual([201, 409, 409]);
       expect(responses.filter((r) => r.status === 409).every((r) => r.body.code === 'DUPLICATE_CAMPAIGN')).toBe(true);
@@ -352,8 +360,9 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
     it('RÓWNOLEGŁE POST-y różnych kampanii nie obchodzą limitu aktywnych (10): dokładnie 10 powstaje', async () => {
       const bodies = await Promise.all(Array.from({ length: 14 }, async (_v, i) => launchBody({ name: `Równoległa ${i}`, audience: { type: 'USERS', userIds: [orgA.users.s1] } })));
 
-      const responses = await Promise.all(bodies.map((body) => post(orgA.token, '/phishing/campaigns', body)));
+      const responses = await settleAll(bodies.map((body) => post(orgA.token, '/phishing/campaigns', body)));
 
+      expect(responses.filter((r) => r.status >= 500)).toEqual([]);
       expect(responses.filter((r) => r.status === 201)).toHaveLength(10);
       expect(responses.filter((r) => r.status === 409).every((r) => r.body.code === 'TOO_MANY_ACTIVE_CAMPAIGNS')).toBe(true);
     });
@@ -455,7 +464,7 @@ describe('Kampanie symulacji phishingowych (e2e)', () => {
       await setSeats(2); // limit 4 dla A
       const bodies = await Promise.all([1, 2, 3].map((i) => launchBody({ name: `Równolegle ${i}`, audience: users('s1', 's2') })));
 
-      const responses = await Promise.all(bodies.map((body) => post(orgA.token, '/phishing/campaigns', body)));
+      const responses = await settleAll(bodies.map((body) => post(orgA.token, '/phishing/campaigns', body)));
 
       expect(responses.filter((r) => r.status === 201)).toHaveLength(2); // 2 x 2 = 4, trzecia 409
       expect(responses.filter((r) => r.status === 409).every((r) => r.body.code === 'DAILY_SEND_LIMIT')).toBe(true);

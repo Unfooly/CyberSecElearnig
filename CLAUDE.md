@@ -150,6 +150,7 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 5. **Sekrety** (klucze API, connection stringi) tylko w zmiennych środowiskowych / `.env` (nieopublikowanym), nigdy hardkodowane w kodzie.
 6. **Commity małe i opisowe.** Jeden commit = jedna logiczna zmiana.
 7. **Pliki edytujesz narzędziem do edycji plików** (Write/Edit), nigdy przez `echo`, `cat` ani heredoc w powłoce. Powłoka interpretuje backticki i `$(...)` w treści jako komendy: tak backticki w README wykonały się jako polecenia, uruchomiły testy e2e i zostawiły dziury w tekście. Powłoka służy do uruchamiania poleceń, nie do zapisywania treści plików. Dotyczy to także skryptów Python/Node uruchamianych z powłoki do modyfikacji plików (w tym jednorazowych `python - <<EOF`, `node -e`, `sed -i`): jedyny dozwolony sposób edycji plików to Write/Edit.
+8. **Status CI po pushu.** Dopóki nie masz dostępu do GitHub Actions, po pushu raportujesz „wypchnięte, czekam na status CI” (razem z hashem) i prosisz użytkownika o status runa. Zielone testy lokalne nie oznaczają zielonego CI (inna liczba rdzeni, wersja Node, pula połączeń) - nie pisz „gotowe”, dopóki nie znasz wyniku CI. Nie zaczynaj kolejnego kroku, gdy CI jest czerwone.
 
 ## Daty i strefy czasowe (web)
 

@@ -172,7 +172,7 @@ względem dev-owego `.env.example`**:
 | `POSTGRES_PASSWORD` | **Nowa** — nie istnieje w `.env.example` (dev ma ją zahardkodowaną w `docker-compose.yml`) | Losowy sekret (`openssl rand -hex 24`) |
 | `API_URL` | **Nowa** — nie istnieje wcale w `.env.example` (dev korzysta z domyślnego fallbacku `localhost:3001` w kodzie) | `http://api:3001` — nazwa usługi Dockera, NIE `localhost` (`apps/web` woła `apps/api` przez wewnętrzną sieć compose) |
 | `DATABASE_URL` | Istnieje, zmień host | `postgresql://cyberszkolo:<POSTGRES_PASSWORD>@postgres:5432/cyberszkolo?schema=public` |
-| `DATABASE_URL_APP` | Istnieje, zmień host | `postgresql://cyberszkolo_app:<APP_DB_PASSWORD>@postgres:5432/cyberszkolo?schema=public` |
+| `DATABASE_URL_APP` | Istnieje, zmień host | `postgresql://cyberszkolo_app:<APP_DB_PASSWORD>@postgres:5432/cyberszkolo?schema=public&connection_limit=10` (jawny `connection_limit`: domyślnie Prisma bierze 2 x liczba rdzeni + 1, więc pula zależy od maszyny; transakcje czekające na blokadę doradczą trzymają połączenie) |
 | `REDIS_URL` | Istnieje, zmień host | `redis://redis:6379` |
 | `APP_DB_PASSWORD` | Istnieje | Losowy sekret — **ten sam** ciąg musi pojawić się dosłownie w `DATABASE_URL_APP` (patrz niżej) |
 | `FRONTEND_URL` | Istnieje | Prawdziwa publiczna domena z `Caddyfile` (np. `https://twoja-domena.pl`) — trafia do linków w mailach klikanych przez userów w przeglądarce, więc **nie** nazwa usługi Dockera |

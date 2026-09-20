@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Pill from '@/components/ui/Pill';
 import { formatDateTime } from '@/lib/datetime';
-import { REPORT_STATUSES, STATUS_LABELS, STATUS_TONES, type AdminReportDetail, type ReportStatus } from '@/lib/threat-report-types';
+import { REPORT_STATUSES, STATUS_LABELS, STATUS_TONES, type AdminReportDetail, type ReportActionResult, type ReportStatus } from '@/lib/threat-report-types';
 
 const NOTE_MAX = 1000;
 
@@ -64,7 +64,9 @@ export default function ReportDetail({ id }: { id: string }) {
         }
         return false;
       }
-      setReport(body as AdminReportDetail);
+      // Odpowiedź akcji niesie tylko status i historię (bez treści): podmieniamy tylko te pola, resztę zostawiamy.
+      const result = body as ReportActionResult;
+      setReport((current) => (current ? { ...current, status: result.status, events: result.events } : current));
       return true;
     } catch {
       setActionError('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
@@ -159,6 +161,30 @@ export default function ReportDetail({ id }: { id: string }) {
               </Button>
             ))}
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Wglądy w to zgłoszenie" />
+        <div className="space-y-2 px-5 py-4 text-sm">
+          <p className="text-xs text-muted">Każde otwarcie szczegółów zgłoszenia (treść i dane zgłaszającego) jest zapisywane: kto i kiedy.</p>
+          <h3 className="pt-1 text-xs font-bold uppercase tracking-wide text-muted">Kto oglądał</h3>
+          <ul className="divide-y divide-border">
+            {report.viewers.map((viewer) => (
+              <li key={viewer.actorEmail} className="py-2">
+                <strong>{viewer.actorEmail}</strong> - wglądów: {viewer.count}, pierwszy {formatDateTime(viewer.firstAt)}, ostatni {formatDateTime(viewer.lastAt)}
+              </li>
+            ))}
+          </ul>
+          <h3 className="pt-1 text-xs font-bold uppercase tracking-wide text-muted">Ostatnie wglądy</h3>
+          <ul className="divide-y divide-border">
+            {report.views.length === 0 && <li className="py-2 text-muted">Brak wpisów.</li>}
+            {report.views.map((view) => (
+              <li key={view.id} className="py-2">
+                {formatDateTime(view.createdAt)} - {view.actorEmail}
+              </li>
+            ))}
+          </ul>
         </div>
       </Card>
 

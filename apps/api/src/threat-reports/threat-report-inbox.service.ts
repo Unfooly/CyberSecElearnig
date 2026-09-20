@@ -29,7 +29,10 @@ export interface Page<T> {
   pageSize: number;
 }
 
-/** Wiersz skrzynki ORG_ADMIN: pełna tożsamość zgłaszającego (potrzebna do odpowiedzi), bez treści (ta jest w szczegółach). */
+/**
+ * Wiersz skrzynki ORG_ADMIN: temat i nadawca do triażu, BEZ treści i BEZ tożsamości zgłaszającego - ta jest wyłącznie w
+ * szczegółach, których każdy wgląd jest audytowany (lista nie zostawia śladu, więc nie może ujawniać zgłaszającego).
+ */
 export interface AdminInboxItem {
   id: string;
   createdAt: Date;
@@ -37,7 +40,6 @@ export interface AdminInboxItem {
   subject: string | null;
   senderText: string | null;
   senderDomain: string | null;
-  reporter: { userId: string; name: string | null; email: string } | null;
   /** false = treść zgłoszenia została już usunięta (retencja 90 dni). */
   hasContent: boolean;
 }
@@ -52,27 +54,58 @@ export interface ReportEventView {
   createdAt: Date;
 }
 
+/** Szczegóły zgłoszenia (treść, zgłaszający): zwracane WYŁĄCZNIE przez audytowany getForAdmin. */
 export interface AdminReportDetail extends AdminInboxItem {
+  reporter: { userId: string; name: string | null; email: string } | null;
   body: string | null;
   headers: string | null;
   comment: string | null;
   departmentName: string | null;
   events: ReportEventView[];
+  /** Ostatnie wglądy w to zgłoszenie (kto i kiedy) - najnowsze pierwsze, do RECENT_VIEWS wpisów. */
+  views: ReportViewEntry[];
+  /** Podsumowanie wglądów per admin (liczba, pierwszy, ostatni): nie da się go "zakopać" wieloma odświeżeniami. */
+  viewers: ReportViewer[];
+}
+
+export interface ReportViewEntry {
+  id: string;
+  actorEmail: string;
+  createdAt: Date;
+}
+
+export interface ReportViewer {
+  actorEmail: string;
+  count: number;
+  firstAt: Date;
+  lastAt: Date;
 }
 
 /**
- * Widok kierownika działu (decyzja 1): lista zgłoszeń WŁASNEGO działu BEZ tożsamości zgłaszającego, bez treści, nagłówków,
- * komentarza i notatek, bez możliwości zmiany statusu. Dział czytany z bazy (nie z tokenu). Dział mniejszy niż próg
- * (MIN_GROUP_SIZE aktywnych osób) nie dostaje listy ("za mało danych") - w takim dziale pojedyncze zgłoszenie
- * identyfikowałoby zgłaszającego, tak samo jak w wynikach symulacji.
+ * Wynik zmiany statusu / dodania notatki: TYLKO status i historia zdarzeń - bez treści i zgłaszającego. Te operacje nie zapisują
+ * wpisu wglądu, więc nie mogą być drogą do odczytu treści z pominięciem audytu.
+ */
+export interface ReportActionResult {
+  id: string;
+  status: ReportStatus;
+  events: ReportEventView[];
+}
+
+const RECENT_VIEWS = 50;
+
+/**
+ * Widok kierownika działu (decyzje 1 i 2026-09-20): zgłoszenia WŁASNEGO działu jako sama informacja o zdarzeniu - data,
+ * status (tylko zgłoszenia prawdziwe), DOMENA nadawcy i czy zgłoszenie było powiązane z symulacją. BEZ tematu, pełnego
+ * nadawcy (dane osób trzecich), tożsamości zgłaszającego, treści, nagłówków, komentarza i notatek; bez zmiany statusu.
+ * Dział czytany z bazy (nie z tokenu); dział z mniej niż MIN_GROUP_SIZE innymi osobami dostaje "za mało danych".
  */
 export interface DepartmentInboxItem {
   id: string;
   createdAt: Date;
-  status: ReportStatus;
-  subject: string | null;
-  senderText: string | null;
+  /** null dla zgłoszenia symulacyjnego (status ma sens tylko w skrzynce prawdziwych zgłoszeń). */
+  status: ReportStatus | null;
   senderDomain: string | null;
+  isSimulation: boolean;
 }
 
 export interface DepartmentInbox extends Page<DepartmentInboxItem> {
@@ -127,36 +160,90 @@ export class ThreatReportInboxService {
         tx.threatReport.count({ where }),
         tx.threatReport.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize, select: LIST_SELECT }),
       ]);
-      const reporters = await this.reporters(tx, user.organizationId, rows.map((row) => row.reporterUserId));
-      return { items: rows.map((row) => this.adminItem(row, reporters)), total, page, pageSize };
+      return { items: rows.map((row) => this.adminItem(row)), total, page, pageSize };
     });
   }
 
+  /**
+   * Szczegóły zgłoszenia (treść, nagłówki, komentarz, zgłaszający). Każdy wgląd jest AUDYTOWANY jak wgląd w wyniki osobowe:
+   * wpis (kto, kiedy, które zgłoszenie) powstaje w tej samej transakcji co odczyt - dane opuszczają serwis dopiero po jej
+   * zatwierdzeniu, więc nie da się ich odczytać bez śladu; błąd zapisu wpisu cofa całość.
+   */
   async getForAdmin(user: AuthenticatedUser, reportId: string): Promise<AdminReportDetail> {
     return this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
-      await this.requireAdmin(tx, user);
+      const actor = await this.requireAdmin(tx, user);
       const row = await tx.threatReport.findFirst({ where: { id: reportId, organizationId: user.organizationId, kind: 'REAL' }, select: ADMIN_SELECT });
       if (!row) {
         throw new NotFoundException(NOT_FOUND);
       }
-      const [reporters, department, events] = await Promise.all([
+      // Wpis wglądu PRZED odczytem reszty, w tej samej transakcji (błąd zapisu cofa odczyt).
+      await tx.threatReportView.create({ data: { organizationId: user.organizationId, reportId, actorUserId: user.userId, actorEmail: actor.email } });
+      const [reporters, department, events, views, viewers] = await Promise.all([
         this.reporters(tx, user.organizationId, [row.reporterUserId]),
         row.reporterDepartmentId ? tx.department.findFirst({ where: { id: row.reporterDepartmentId, organizationId: user.organizationId }, select: { name: true } }) : null,
-        tx.threatReportEvent.findMany({
-          where: { organizationId: user.organizationId, reportId: row.id },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-          select: { id: true, type: true, fromStatus: true, toStatus: true, note: true, actorEmail: true, createdAt: true },
+        this.events(tx, user.organizationId, reportId),
+        tx.threatReportView.findMany({
+          where: { organizationId: user.organizationId, reportId },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: RECENT_VIEWS,
+          select: { id: true, actorEmail: true, createdAt: true },
         }),
+        this.viewers(tx, user.organizationId, reportId),
       ]);
-      return { ...this.adminItem(row, reporters), body: row.body, headers: row.headers, comment: row.comment, departmentName: department?.name ?? null, events };
+      const person = row.reporterUserId ? reporters.get(row.reporterUserId) : undefined;
+      const name = [person?.firstName, person?.lastName].filter(Boolean).join(' ');
+      return {
+        ...this.adminItem(row),
+        reporter: person ? { userId: person.id, name: name || null, email: person.email } : null,
+        body: row.body,
+        headers: row.headers,
+        comment: row.comment,
+        departmentName: department?.name ?? null,
+        events,
+        views,
+        viewers,
+      };
     });
+  }
+
+  /** Stan po zmianie statusu/notatce: tylko status i historia (bez treści i zgłaszającego), bez wpisu wglądu. */
+  private actionResult(user: AuthenticatedUser, reportId: string): Promise<ReportActionResult> {
+    return this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
+      await this.requireAdmin(tx, user);
+      const row = await tx.threatReport.findFirst({ where: { id: reportId, organizationId: user.organizationId, kind: 'REAL' }, select: { id: true, status: true } });
+      if (!row) {
+        throw new NotFoundException(NOT_FOUND);
+      }
+      return { id: row.id, status: row.status, events: await this.events(tx, user.organizationId, reportId) };
+    });
+  }
+
+  private events(tx: Prisma.TransactionClient, organizationId: string, reportId: string): Promise<ReportEventView[]> {
+    return tx.threatReportEvent.findMany({
+      where: { organizationId, reportId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, type: true, fromStatus: true, toStatus: true, note: true, actorEmail: true, createdAt: true },
+    });
+  }
+
+  private async viewers(tx: Prisma.TransactionClient, organizationId: string, reportId: string): Promise<ReportViewer[]> {
+    const groups = await tx.threatReportView.groupBy({
+      by: ['actorEmail'],
+      where: { organizationId, reportId },
+      _count: { _all: true },
+      _min: { createdAt: true },
+      _max: { createdAt: true },
+    });
+    return groups
+      .map((group) => ({ actorEmail: group.actorEmail, count: group._count._all, firstAt: group._min.createdAt as Date, lastAt: group._max.createdAt as Date }))
+      .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime());
   }
 
   /**
    * Zmiana statusu + wpis w dzienniku zdarzeń w JEDNEJ transakcji. Zmiana jest warunkowa (status musi być nadal taki, jaki
    * widział admin): równoległa zmiana daje 409 zamiast cichego nadpisania i dubla wpisu.
    */
-  async changeStatus(user: AuthenticatedUser, reportId: string, dto: ChangeStatusDto): Promise<AdminReportDetail> {
+  async changeStatus(user: AuthenticatedUser, reportId: string, dto: ChangeStatusDto): Promise<ReportActionResult> {
     await this.tenantPrisma.runInOrgContext(user.organizationId, async (tx) => {
       const actor = await this.requireAdmin(tx, user);
       const report = await tx.threatReport.findFirst({ where: { id: reportId, organizationId: user.organizationId, kind: 'REAL' }, select: { status: true } });
@@ -186,10 +273,10 @@ export class ThreatReportInboxService {
         },
       });
     });
-    return this.getForAdmin(user, reportId);
+    return this.actionResult(user, reportId);
   }
 
-  async addNote(user: AuthenticatedUser, reportId: string, dto: AddNoteDto): Promise<AdminReportDetail> {
+  async addNote(user: AuthenticatedUser, reportId: string, dto: AddNoteDto): Promise<ReportActionResult> {
     // Czysty tekst; linki śledzące maskowane także tu (admin mógł wkleić link z maila).
     const note = maskTrackingTokens(sanitizePlainText(dto.note, { multiline: true }));
     if (!note) {
@@ -206,7 +293,7 @@ export class ThreatReportInboxService {
         data: { organizationId: user.organizationId, reportId, type: 'NOTE_ADDED', note: note.slice(0, 1000), actorUserId: user.userId, actorEmail: actor.email },
       });
     });
-    return this.getForAdmin(user, reportId);
+    return this.actionResult(user, reportId);
   }
 
   // ---- DEPARTMENT_MANAGER ------------------------------------------------------------------------------------------
@@ -236,12 +323,13 @@ export class ThreatReportInboxService {
       if (members < MIN_GROUP_SIZE) {
         return { ...empty, insufficientData: true };
       }
+      // Zgłoszenia prawdziwe i symulacyjne (kierownik widzi tylko, czy zgłoszenie było powiązane z symulacją); filtr statusu
+      // dotyczy wyłącznie prawdziwych.
       const where: Prisma.ThreatReportWhereInput = {
         organizationId: user.organizationId,
-        kind: 'REAL',
         reporterDepartmentId: actor.departmentId,
         createdAt: { lte: visibleUntil },
-        ...(query.status ? { status: query.status } : {}),
+        ...(query.status ? { kind: 'REAL', status: query.status } : {}),
       };
       const [total, rows] = await Promise.all([
         tx.threatReport.count({ where }),
@@ -250,11 +338,20 @@ export class ThreatReportInboxService {
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           skip: (page - 1) * pageSize,
           take: pageSize,
-          // Wąski select: bez zgłaszającego, treści, nagłówków, komentarza i notatek (typy, nie konwencja).
-          select: { id: true, createdAt: true, status: true, subject: true, senderText: true, senderDomain: true },
+          // Wąski select (typy, nie konwencja): bez tematu, pełnego nadawcy, zgłaszającego, treści, nagłówków, komentarza i notatek.
+          select: { id: true, createdAt: true, status: true, senderDomain: true, kind: true },
         }),
       ]);
-      return { ...empty, items: rows, total };
+      const items = rows.map((row): DepartmentInboxItem => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        status: row.kind === 'REAL' ? row.status : null,
+        // Dla zgłoszenia symulacyjnego domeny nie podajemy: to nasza domena kampanii (nie niesie informacji poza "tak"), a
+        // jej ujawnienie zdradzałoby kierownikowi, którą kampanię trwa.
+        senderDomain: row.kind === 'SIMULATION' ? null : row.senderDomain,
+        isSimulation: row.kind === 'SIMULATION',
+      }));
+      return { ...empty, items, total };
     });
   }
 
@@ -300,12 +397,7 @@ export class ThreatReportInboxService {
     return new Map(users.map((entry) => [entry.id, entry]));
   }
 
-  private adminItem(
-    row: { id: string; createdAt: Date; status: ReportStatus; subject: string | null; senderText: string | null; senderDomain: string | null; reporterUserId: string | null; contentPurgedAt: Date | null },
-    reporters: Map<string, { id: string; email: string; firstName: string | null; lastName: string | null }>,
-  ): AdminInboxItem {
-    const person = row.reporterUserId ? reporters.get(row.reporterUserId) : undefined;
-    const name = [person?.firstName, person?.lastName].filter(Boolean).join(' ');
+  private adminItem(row: { id: string; createdAt: Date; status: ReportStatus; subject: string | null; senderText: string | null; senderDomain: string | null; contentPurgedAt: Date | null }): AdminInboxItem {
     return {
       id: row.id,
       createdAt: row.createdAt,
@@ -313,7 +405,6 @@ export class ThreatReportInboxService {
       subject: row.subject,
       senderText: row.senderText,
       senderDomain: row.senderDomain,
-      reporter: person ? { userId: person.id, name: name || null, email: person.email } : null,
       hasContent: row.contentPurgedAt === null,
     };
   }

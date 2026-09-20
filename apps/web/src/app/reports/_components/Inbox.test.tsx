@@ -14,18 +14,20 @@ const item = (over: Partial<AdminInboxItem> = {}): AdminInboxItem => ({
   subject: 'Pilna faktura',
   senderText: 'Obcy <obcy@zlosliwa.example>',
   senderDomain: 'zlosliwa.example',
-  reporter: { userId: 'u1', name: 'Anna Nowak', email: 'anna@firma.pl' },
   hasContent: true,
   ...over,
 });
 
 const detail = (over: Partial<AdminReportDetail> = {}): AdminReportDetail => ({
   ...item(),
+  reporter: { userId: 'u1', name: 'Anna Nowak', email: 'anna@firma.pl' },
   body: '<script>alert(1)</script> Kliknij',
   headers: 'Received: x',
   comment: 'Podejrzane',
   departmentName: 'Sprzedaż',
   events: [],
+  views: [],
+  viewers: [],
   ...over,
 });
 
@@ -42,14 +44,13 @@ describe('skrzynka zgłoszeń (web)', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   describe('AdminInbox', () => {
-    it('lista: temat jako link do szczegółów, nadawca, zgłaszający i status; bez treści zgłoszenia', async () => {
-      fetchMock.mockResolvedValue(ok({ items: [item(), item({ id: 'r2', reporter: null, subject: null, senderText: null, status: 'THREAT' })], total: 2, page: 1, pageSize: 25 }));
+    it('lista: temat jako link do szczegółów, nadawca i status; BEZ treści i bez kolumny zgłaszającego (tożsamość tylko w audytowanych szczegółach)', async () => {
+      fetchMock.mockResolvedValue(ok({ items: [item(), item({ id: 'r2', subject: null, senderText: null, status: 'THREAT' })], total: 2, page: 1, pageSize: 25 }));
       render(<AdminInbox />);
 
       expect(await screen.findByRole('link', { name: 'Pilna faktura' })).toHaveAttribute('href', '/reports/r1');
-      expect(screen.getByText('Anna Nowak')).toBeInTheDocument();
-      expect(screen.getByText('anna@firma.pl')).toBeInTheDocument();
-      expect(screen.getByText('(usunięty pracownik)')).toBeInTheDocument();
+      expect(screen.queryByRole('columnheader', { name: 'Zgłaszający' })).not.toBeInTheDocument();
+      expect(screen.getByText('Obcy <obcy@zlosliwa.example>')).toBeInTheDocument();
       expect(screen.getByText('Zagrożenie', { selector: 'span' })).toBeInTheDocument(); // plakietka statusu (nie opcja filtra)
       expect(screen.getByRole('link', { name: '(treść usunięta po 90 dniach)' })).toBeInTheDocument();
       expect(fetchMock.mock.calls[0][0]).toBe('/api/threat-reports/inbox?page=1&pageSize=25');
@@ -89,13 +90,34 @@ describe('skrzynka zgłoszeń (web)', () => {
   });
 
   describe('DepartmentInbox (kierownik działu)', () => {
-    it('pokazuje temat, nadawcę, status i datę - bez kolumny zgłaszającego i bez linków do szczegółów', async () => {
-      fetchMock.mockResolvedValue(ok({ items: [{ id: 'r1', createdAt: '2027-01-01T10:00:00Z', status: 'IN_REVIEW', subject: 'Zgłoszenie z działu', senderText: 'Obcy <o@x.example>', senderDomain: 'x.example' }], total: 1, page: 1, pageSize: 25, insufficientData: false, minGroupSize: 3 }));
+    it('pokazuje datę, DOMENĘ nadawcy, powiązanie z symulacją i status - bez tematu, pełnego nadawcy, zgłaszającego i linków do szczegółów', async () => {
+      fetchMock.mockResolvedValue(
+        ok({
+          items: [
+            { id: 'r1', createdAt: '2027-01-01T10:00:00Z', status: 'IN_REVIEW', senderDomain: 'x.example', isSimulation: false },
+            { id: 'r2', createdAt: '2027-01-01T11:00:00Z', status: null, senderDomain: 'symulacje.example', isSimulation: true },
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 25,
+          insufficientData: false,
+          minGroupSize: 3,
+        }),
+      );
       render(<DepartmentInbox />);
 
-      expect(await screen.findByText('Zgłoszenie z działu')).toBeInTheDocument();
+      expect(await screen.findByText('x.example')).toBeInTheDocument();
       expect(screen.getByText('W analizie')).toBeInTheDocument();
-      expect(screen.queryByRole('columnheader', { name: 'Zgłaszający' })).not.toBeInTheDocument();
+      const rows = screen.getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('Nie'); // powiązanie z symulacją: nie
+      expect(rows[1]).toHaveTextContent('Tak');
+      expect(rows[1]).toHaveTextContent('symulacje.example');
+      for (const header of ['Zgłoszono', 'Domena nadawcy', 'Symulacja', 'Status']) {
+        expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
+      }
+      for (const forbidden of ['Zgłaszający', 'Temat i nadawca', 'Temat']) {
+        expect(screen.queryByRole('columnheader', { name: forbidden })).not.toBeInTheDocument();
+      }
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
       expect(fetchMock.mock.calls[0][0]).toBe('/api/threat-reports/department?page=1&pageSize=25');
     });
@@ -146,8 +168,9 @@ describe('skrzynka zgłoszeń (web)', () => {
       render(<ReportDetail id="r1" />);
       await screen.findByText('Treść wiadomości');
       expect(screen.getByRole('button', { name: 'Nowe' })).toBeDisabled();
+      // Odpowiedź akcji: tylko status i historia (bez treści); UI zachowuje treść z wcześniejszego, audytowanego odczytu.
       fetchMock.mockResolvedValueOnce(
-        ok(detail({ status: 'IN_REVIEW', events: [{ id: 'e1', type: 'STATUS_CHANGED', fromStatus: 'NEW', toStatus: 'IN_REVIEW', note: null, actorEmail: 'admin@firma.pl', createdAt: '2027-01-01T11:00:00Z' }] })),
+        ok({ id: 'r1', status: 'IN_REVIEW', events: [{ id: 'e1', type: 'STATUS_CHANGED', fromStatus: 'NEW', toStatus: 'IN_REVIEW', note: null, actorEmail: 'admin@firma.pl', createdAt: '2027-01-01T11:00:00Z' }] }),
       );
 
       fireEvent.click(screen.getByRole('button', { name: 'W analizie' }));
@@ -157,6 +180,7 @@ describe('skrzynka zgłoszeń (web)', () => {
       expect(url).toBe('/api/threat-reports/inbox/r1/status');
       expect(JSON.parse(init.body)).toEqual({ status: 'IN_REVIEW' });
       expect(screen.getByRole('button', { name: 'W analizie' })).toBeDisabled();
+      expect(screen.getByText(/<script>alert\(1\)<\/script> Kliknij/)).toBeInTheDocument(); // treść nadal widoczna (nie zniknęła po akcji)
     });
 
     it('konflikt statusu (409): komunikat i ponowne pobranie aktualnego stanu', async () => {
@@ -179,7 +203,7 @@ describe('skrzynka zgłoszeń (web)', () => {
       await screen.findByText('Treść wiadomości');
       const add = screen.getByRole('button', { name: 'Dodaj notatkę' });
       expect(add).toBeDisabled();
-      fetchMock.mockResolvedValueOnce(ok(detail({ events: [{ id: 'e2', type: 'NOTE_ADDED', fromStatus: null, toStatus: null, note: 'Zweryfikowane z dostawcą', actorEmail: 'admin@firma.pl', createdAt: '2027-01-01T11:00:00Z' }] })));
+      fetchMock.mockResolvedValueOnce(ok({ id: 'r1', status: 'NEW', events: [{ id: 'e2', type: 'NOTE_ADDED', fromStatus: null, toStatus: null, note: 'Zweryfikowane z dostawcą', actorEmail: 'admin@firma.pl', createdAt: '2027-01-01T11:00:00Z' }] }));
 
       fireEvent.change(screen.getByLabelText('Nowa notatka'), { target: { value: 'Zweryfikowane z dostawcą' } });
       fireEvent.click(add);
@@ -187,6 +211,28 @@ describe('skrzynka zgłoszeń (web)', () => {
       expect(await screen.findByText('Zweryfikowane z dostawcą', { selector: 'div' })).toBeInTheDocument();
       expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ note: 'Zweryfikowane z dostawcą' });
       expect(screen.getByLabelText('Nowa notatka')).toHaveValue('');
+    });
+
+    it('pokazuje dziennik wglądów (kto i kiedy) z informacją, że każde otwarcie jest zapisywane', async () => {
+      fetchMock.mockResolvedValue(
+        ok(
+          detail({
+            views: [{ id: 'v2', actorEmail: 'drugi@firma.pl', createdAt: '2027-01-02T10:00:00Z' }],
+            viewers: [
+              { actorEmail: 'drugi@firma.pl', count: 1, firstAt: '2027-01-02T10:00:00Z', lastAt: '2027-01-02T10:00:00Z' },
+              { actorEmail: 'admin@firma.pl', count: 57, firstAt: '2027-01-01T10:00:00Z', lastAt: '2027-01-01T12:00:00Z' },
+            ],
+          }),
+        ),
+      );
+      render(<ReportDetail id="r1" />);
+
+      expect(await screen.findByText('Wglądy w to zgłoszenie')).toBeInTheDocument();
+      expect(screen.getByText(/jest zapisywane: kto i kiedy/)).toBeInTheDocument();
+      // Podsumowanie per admin (z licznikiem) pokazuje też wglądy, których nie ma już na liście "ostatnich".
+      expect(screen.getByText(/wglądów: 57/)).toBeInTheDocument();
+      expect(screen.getAllByText(/drugi@firma.pl/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/admin@firma.pl/)).toBeInTheDocument();
     });
 
     it('notatka po retencji pokazuje informację zamiast treści; 404 to komunikat "Nie znaleziono"', async () => {

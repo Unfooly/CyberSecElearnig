@@ -26,8 +26,10 @@ export class ThreatReportInboxController {
     return this.inbox.listForAdmin(user, query);
   }
 
+  // Każdy wgląd jest audytowany (wpis w dzienniku wglądów) - limit chroni dziennik przed zalaniem odświeżaniem.
   @Get('inbox/:id')
   @Roles(Role.ORG_ADMIN)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Header('Cache-Control', 'no-store')
   detail(@CurrentUser() user: AuthenticatedUser, @Param('id', SafeIdPipe) id: string) {
     return this.inbox.getForAdmin(user, id);

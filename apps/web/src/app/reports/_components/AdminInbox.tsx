@@ -84,7 +84,6 @@ export default function AdminInbox() {
             <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
               <th className="px-5 py-3">Zgłoszono</th>
               <th className="px-5 py-3">Temat i nadawca</th>
-              <th className="px-5 py-3">Zgłaszający</th>
               <th className="px-5 py-3">Status</th>
             </tr>
           </thead>
@@ -99,30 +98,20 @@ export default function AdminInbox() {
                   <div className="text-xs text-muted">{item.senderText ?? (item.senderDomain ? `domena: ${item.senderDomain}` : '-')}</div>
                 </td>
                 <td className="px-5 py-3">
-                  {item.reporter ? (
-                    <>
-                      <div className="font-semibold">{item.reporter.name ?? item.reporter.email}</div>
-                      {item.reporter.name && <div className="text-xs text-muted">{item.reporter.email}</div>}
-                    </>
-                  ) : (
-                    <span className="text-muted">(usunięty pracownik)</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
                   <Pill tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Pill>
                 </td>
               </tr>
             ))}
             {data && data.items.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-muted">
+                <td colSpan={3} className="px-5 py-6 text-muted">
                   Brak zgłoszeń w wybranym zakresie.
                 </td>
               </tr>
             )}
             {loading && !data && (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-muted">
+                <td colSpan={3} className="px-5 py-6 text-muted">
                   Ładowanie...
                 </td>
               </tr>

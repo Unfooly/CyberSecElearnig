@@ -24,7 +24,7 @@ export interface Page<T> {
   pageSize: number;
 }
 
-// Widok ORG_ADMIN: pełna tożsamość zgłaszającego (potrzebna do odpowiedzi), lista bez treści.
+// Wiersz listy ORG_ADMIN: temat i nadawca do triażu, BEZ treści i BEZ zgłaszającego (tożsamość tylko w audytowanych szczegółach).
 export interface AdminInboxItem {
   id: string;
   createdAt: string;
@@ -32,7 +32,6 @@ export interface AdminInboxItem {
   subject: string | null;
   senderText: string | null;
   senderDomain: string | null;
-  reporter: { userId: string; name: string | null; email: string } | null;
   // false = treść zgłoszenia została usunięta (retencja 90 dni).
   hasContent: boolean;
 }
@@ -48,21 +47,47 @@ export interface ReportEvent {
 }
 
 export interface AdminReportDetail extends AdminInboxItem {
+  reporter: { userId: string; name: string | null; email: string } | null;
   body: string | null;
   headers: string | null;
   comment: string | null;
   departmentName: string | null;
   events: ReportEvent[];
+  // Ostatnie wglądy w szczegóły tego zgłoszenia (kto i kiedy), najnowsze pierwsze.
+  views: ReportView[];
+  // Podsumowanie wglądów per admin (liczba, pierwszy, ostatni).
+  viewers: ReportViewer[];
 }
 
-// Widok kierownika działu: bez zgłaszającego, treści i notatek; bez zmian.
+export interface ReportViewer {
+  actorEmail: string;
+  count: number;
+  firstAt: string;
+  lastAt: string;
+}
+
+// Wynik zmiany statusu / dodania notatki: tylko status i historia (bez treści i zgłaszającego).
+export interface ReportActionResult {
+  id: string;
+  status: ReportStatus;
+  events: ReportEvent[];
+}
+
+export interface ReportView {
+  id: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
+// Widok kierownika działu: data, status, DOMENA nadawcy i powiązanie z symulacją. Bez tematu, pełnego nadawcy (dane osób
+// trzecich), zgłaszającego, treści i notatek; bez zmian.
 export interface DepartmentInboxItem {
   id: string;
   createdAt: string;
-  status: ReportStatus;
-  subject: string | null;
-  senderText: string | null;
+  // null dla zgłoszenia symulacyjnego.
+  status: ReportStatus | null;
   senderDomain: string | null;
+  isSimulation: boolean;
 }
 
 export interface DepartmentInbox extends Page<DepartmentInboxItem> {

@@ -300,8 +300,8 @@ Kod: `apps/api/src/threat-reports/`, ekrany `/reports` (lista) i `/reports/:id` 
 
 | Rola | Co widzi / może |
 |---|---|
-| `ORG_ADMIN` | lista prawdziwych zgłoszeń (temat, nadawca, **zgłaszający**, status, filtr i stronicowanie), szczegóły (treść, nagłówki, komentarz, dział, dziennik), zmiana statusu (`NEW` / `IN_REVIEW` / `THREAT` / `SAFE`), notatki |
-| `DEPARTMENT_MANAGER` | `GET /threat-reports/department`: zgłoszenia **własnego działu** - temat, nadawca, status, data. **Bez zgłaszającego, treści, nagłówków, komentarza i notatek, bez zmian statusu.** Dwa zabezpieczenia dodane ponad decyzję 1 (uwagi z przeglądu bezpieczeństwa), żeby zgłoszenie nie identyfikowało zgłaszającego: (1) dział z mniej niż 3 **innymi** aktywnymi osobami (kierownik nie liczy się do progu - wie, czy sam zgłaszał): "za mało danych", bez listy; (2) zgłoszenia pojawiają się w tym widoku **dopiero po godzinie** (to samo opóźnienie co agregaty, `RESULTS_CACHE_TTL_SECONDS`), żeby nie było ich widać "na żywo" zaraz po tym, jak ktoś powiedział, że zgłosił; `total` liczy tylko widoczne |
+| `ORG_ADMIN` | lista prawdziwych zgłoszeń (temat, nadawca, status, filtr i stronicowanie; **bez treści i bez zgłaszającego** - lista nie zostawia śladu w audycie), szczegóły (treść, nagłówki, komentarz, **zgłaszający**, dział, dziennik; **każdy wgląd audytowany**), zmiana statusu (`NEW` / `IN_REVIEW` / `THREAT` / `SAFE`) i notatki (odpowiedź tych dwóch operacji to wyłącznie status i historia zdarzeń - nie są drogą do odczytu treści z pominięciem audytu) |
+| `DEPARTMENT_MANAGER` | `GET /threat-reports/department`: zgłoszenia **własnego działu** jako sama informacja o zdarzeniu - **data, status, DOMENA nadawcy, powiązanie z symulacją (tak/nie)**; widzi też zgłoszenia symulacyjne (jako "tak", bez statusu). **Bez tematu i pełnego nadawcy (dane osób trzecich, a kierownik nie obsługuje zgłoszeń), bez zgłaszającego, treści, nagłówków, komentarza i notatek, bez zmian statusu** (decyzja właściciela produktu 2026-09-20). Dwa zabezpieczenia dodane ponad decyzję 1 (uwagi z przeglądu bezpieczeństwa), żeby zgłoszenie nie identyfikowało zgłaszającego: (1) dział z mniej niż 3 **innymi** aktywnymi osobami (kierownik nie liczy się do progu - wie, czy sam zgłaszał): "za mało danych", bez listy; (2) zgłoszenia pojawiają się w tym widoku **dopiero po godzinie** (to samo opóźnienie co agregaty, `RESULTS_CACHE_TTL_SECONDS`), żeby nie było ich widać "na żywo" zaraz po tym, jak ktoś powiedział, że zgłosił; `total` liczy tylko widoczne |
 | `EMPLOYEE` | tylko zgłaszanie (`/report`) |
 
 Ograniczenia zasobów: lista admina czyta wąski zestaw kolumn (bez treści), `pageSize` <= 100 i `page` <= 500, historia zgłoszenia ma
@@ -311,8 +311,17 @@ maksymalnie 200 wpisów (409 `EVENT_LIMIT`; dziennik jest append-only, więc ro�
 `actorUserId` zerowane po usunięciu konta) i czas. Zmiana statusu jest **warunkowa** (status musi być nadal taki, jaki widział admin) i
 zapisywana z wpisem dziennika w jednej transakcji: równoległa zmiana daje 409 `STATUS_CONFLICT`, nie cichą utratę. Dziennik jest
 append-only dla roli aplikacji (`REVOKE UPDATE, DELETE`); jedyny wyjątek to `GRANT UPDATE ("note")` - **retencja czyści treść notatek
-po 90 dniach razem z treścią zgłoszenia** (zdarzenie, autor, czas i zmiany statusu zostają). Wgląd w szczegóły NIE jest audytowany
-(inaczej niż wgląd w wyniki osobowe: zgłoszenie to dane, które sam pracownik przekazał administratorowi do analizy) - do decyzji, jeśli ma się to zmienić.
+po 90 dniach razem z treścią zgłoszenia** (zdarzenie, autor, czas i zmiany statusu zostają).
+
+**Audyt wglądów** (`threat_report_views`, decyzja właściciela produktu 2026-09-20): **każdy wgląd ORG_ADMIN w szczegóły zgłoszenia**
+(`GET /threat-reports/inbox/:id` - treść, nagłówki, komentarz, zgłaszający) zapisuje wpis: kto (kopia e-maila, `actorUserId` zerowane po
+usunięciu konta), kiedy i które zgłoszenie - tak jak wgląd w wyniki osobowe. Wpis powstaje w **tej samej transakcji** co odczyt (błąd zapisu
+cofa odczyt; odmowa 403/404 nie zostawia wpisu), tabela jest append-only dla roli aplikacji (`REVOKE UPDATE, DELETE`), wgląd ma limit 30/min.
+Lista, zmiana statusu i notatki nie dokładają wpisu wglądu (te ostatnie mają własny wpis w dzienniku zdarzeń). Ostatnie 50 wglądów oraz **podsumowanie per admin** (liczba wglądów, pierwszy i ostatni) widać w
+szczegółach zgłoszenia - podsumowania nie da się "zakopać" wieloma odświeżeniami. Wpisy zostają do usunięcia organizacji (jak inne audyty
+modułu). Znane: tabela rośnie o jeden wiersz na wgląd (limit 30/min na adres, nie na użytkownika), więc rekordowy insider mógłby dopisać
+dziesiątki tysięcy wierszy dziennie; indeks utrzymuje wydajność, alert/limit per użytkownik to backlog. Widok kierownika nie pokazuje domeny
+nadawcy dla zgłoszeń symulacyjnych (nasza domena kampanii zdradzałaby trwającą kampanię).
 
 **Powiadomienia mailowe** (`ThreatReportNotificationService`, job co 5 minut UTC): do wszystkich aktywnych `ORG_ADMIN` organizacji, **zbiorczo -
 jeden mail na organizację w oknie 15 minut** (okno liczone od ostatniego wysłanego maila, stan w `threat_report_notification_state`),
@@ -330,6 +339,18 @@ opóźnioną per organizacja (backlog). Kierownicy działu nie dostają maili.
   organizacji (sygnał nadużycia - wysyłka z naszej domeny do osób trzecich).
 - Dopracowane limity wysyłki (per kampania, per godzinę, reputacja domeny) poza limitem dobowym.
 - Redis musi być chroniony (hasło, sieć wewnętrzna): kolejka steruje wysyłką, a zadania niosą tylko identyfikatory.
+- **Powiadomienia o zgłoszeniach - kolejka per organizacja** (decyzja 2026-09-20: zgoda na backlog): zamiast pętli co 5 minut po
+  wszystkich organizacjach, kolejka opóźniona uruchamiana przy zgłoszeniu (wzorzec `phishing/campaigns`); skraca opóźnienie maila i
+  usuwa koszt skanowania organizacji bez zgłoszeń. Dziś: do 5 minut opóźnienia i krótka transakcja na organizację.
+- **Backfill `notifiedAt` w migracji `20260920160000_threat_report_inbox` bez testu** (decyzja 2026-09-20: zgoda): dane migracji nie są
+  osiągalne w e2e. Zmiana odblokowuje FORCE RLS na czas jednego UPDATE, żeby zadziałał także dla roli bez BYPASSRLS. Do ręcznego
+  sprawdzenia przy pierwszym wdrożeniu na bazie z istniejącymi zgłoszeniami: `SELECT count(*) FROM threat_reports WHERE kind='REAL' AND "notifiedAt" IS NULL` = 0.
+- **CI/testy: sporadyczne "Jest did not exit one second after the test run has completed"** (decyzja 2026-09-20: nie blokuje; wracamy,
+  jeśli CI zacznie na tym padać). Ustalone: w replice CI (kontener `node:20`, 2 CPU, Postgres 16, Redis 7) pojawiło się w 3 z ok. 8
+  pełnych przebiegów e2e, zawsze w PIERWSZYM przebiegu po świeżym starcie kontenerów, przy wszystkich testach zielonych; `--detectOpenHandles`
+  (pełny przebieg i wybrane specyfikacje z Redisem: jobs, registration-mail-limiter, throttle-client-ip, sessions) niczego nie wykazał.
+  Źródła nie ustalono; komunikat był też w logu CI z czasów sprzed modułu zgłoszeń, więc prawdopodobnie istniał wcześniej (niepotwierdzone).
+  Podejrzenie: klient Redis/BullMQ z ponawianiem połączenia (w tym test z celowo niedostępnym Redisem `127.0.0.1:1`) przy zimnym starcie.
 
 Bez działającego Redisa/workera (`BACKGROUND_JOBS_ENABLED=false`) kampanie nie wysyłają - status API pokazuje
 konfigurację transportu (`GET /phishing/config`), ale nie stan kolejki.

@@ -168,7 +168,10 @@ describe('Skrzynka zgłoszeń (e2e)', () => {
       expect(response.body.total).toBe(2);
       expect(response.body.items.map((item: { id: string }) => item.id)).toEqual([newer.id, older.id]);
       expect(response.body.items[0]).toMatchObject({ subject: 'Nowsze', status: 'NEW', senderDomain: 'zlosliwa.example', hasContent: true });
-      expect(response.body.items[0].reporter).toEqual({ userId: orgA.people.i1.id, name: 'Imię-i1 Testowy', email: orgA.people.i1.email });
+      // Lista nie zostawia śladu w dzienniku wglądów, więc NIE ujawnia zgłaszającego (tylko audytowane szczegóły).
+      expect(response.body.items[0]).not.toHaveProperty('reporter');
+      expect(JSON.stringify(response.body)).not.toContain(orgA.people.i1.email);
+      expect(JSON.stringify(response.body)).not.toContain(orgA.people.i1.id);
       expect(JSON.stringify(response.body)).not.toMatch(/TREŚĆ-TAJNA|NAGŁÓWKI-TAJNE|KOMENTARZ-TAJNY/); // lista bez treści
       expect(JSON.stringify(response.body)).not.toContain('SIMULATION');
     });
@@ -218,6 +221,132 @@ describe('Skrzynka zgłoszeń (e2e)', () => {
       const detail = await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
 
       expect(detail.body.reporter).toBeNull();
+    });
+  });
+
+  // ---- ORG_ADMIN: audyt wglądów ------------------------------------------------------------------------------------
+
+  describe('audyt wglądów w szczegóły zgłoszenia (jak wgląd w wyniki osobowe)', () => {
+    const views = (org: Org, reportId: string) =>
+      tenantPrisma.runInOrgContext(org.organizationId, (tx) => tx.threatReportView.findMany({ where: { organizationId: org.organizationId, reportId }, orderBy: { createdAt: 'asc' } }));
+
+    it('każdy wgląd zapisuje wpis (kto, kiedy, które zgłoszenie) i jest widoczny w szczegółach; lista NIE zapisuje wglądów', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      await get(orgA.adminToken, '/threat-reports/inbox').expect(200);
+      expect(await views(orgA, report.id)).toEqual([]);
+
+      const first = await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+      const second = await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+
+      expect(first.body.views).toEqual([expect.objectContaining({ actorEmail: orgA.adminEmail })]);
+      expect(second.body.views).toHaveLength(2);
+      const stored = await views(orgA, report.id);
+      expect(stored).toHaveLength(2);
+      expect(stored.every((view) => view.actorUserId === orgA.adminId && view.organizationId === orgA.organizationId && view.actorEmail === orgA.adminEmail)).toBe(true);
+    });
+
+    it('wgląd innego admina jest osobnym wpisem z jego adresem', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      const other = await addPerson(orgA, 'admin-two', 'ORG_ADMIN', null);
+
+      await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+      const detail = await get(other.token, `/threat-reports/inbox/${report.id}`).expect(200);
+
+      expect(detail.body.views.map((view: { actorEmail: string }) => view.actorEmail).sort()).toEqual([orgA.adminEmail, other.email].sort());
+    });
+
+    it('zmiana statusu i notatka NIE dokładają wpisu wglądu i NIE zwracają treści ani zgłaszającego (nie są drogą do odczytu z pominięciem audytu)', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+
+      const status = await post(orgA.adminToken, `/threat-reports/inbox/${report.id}/status`, { status: 'SAFE' }).expect(200);
+      const note = await post(orgA.adminToken, `/threat-reports/inbox/${report.id}/notes`, { note: 'x' }).expect(201);
+
+      expect(await views(orgA, report.id)).toEqual([]);
+      for (const body of [status.body, note.body]) {
+        expect(Object.keys(body).sort()).toEqual(['events', 'id', 'status']);
+        expect(JSON.stringify(body)).not.toMatch(/TREŚĆ-TAJNA|NAGŁÓWKI-TAJNE|KOMENTARZ-TAJNY|zlosliwa|Pilna faktura/);
+        expect(JSON.stringify(body)).not.toContain(orgA.people.s1.email);
+      }
+    });
+
+    it('podsumowanie wglądów per admin (liczba, pierwszy, ostatni) nie da się zakopać wieloma odświeżeniami', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      const other = await addPerson(orgA, 'viewer-two', 'ORG_ADMIN', null);
+      await get(other.token, `/threat-reports/inbox/${report.id}`).expect(200);
+      for (let i = 0; i < 55; i += 1) {
+        await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+        if (i % 25 === 24) clearThrottle(); // limit 30/min na GET nie jest tu przedmiotem testu
+      }
+
+      const detail = await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+
+      expect(detail.body.views).toHaveLength(50); // ostatnie wglądy: 50 najnowszych
+      expect(detail.body.views.every((view: { actorEmail: string }) => view.actorEmail === orgA.adminEmail)).toBe(true); // wgląd drugiego admina wypchnięty z listy...
+      const viewers = new Map(detail.body.viewers.map((v: { actorEmail: string; count: number }) => [v.actorEmail, v]));
+      expect(viewers.get(other.email)).toMatchObject({ count: 1 }); // ...ale nadal widoczny w podsumowaniu
+      expect(viewers.get(orgA.adminEmail)).toMatchObject({ count: 56 });
+    });
+
+    it('brak śladu bez wglądu i odwrotnie: odmowa (403/404) nie zostawia wpisu, a nieudany zapis wpisu cofa odczyt', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      const simulation = await insertReport(orgA, 's2', 'Sales', { kind: 'SIMULATION' });
+
+      await get(orgA.people['mgr-sales'].token, `/threat-reports/inbox/${report.id}`).expect(403);
+      await get(orgA.people.s1.token, `/threat-reports/inbox/${report.id}`).expect(403);
+      await get(orgA.adminToken, `/threat-reports/inbox/${simulation.id}`).expect(404);
+      await get(orgB.adminToken, `/threat-reports/inbox/${report.id}`).expect(404);
+
+      expect(await views(orgA, report.id)).toEqual([]);
+      expect(await views(orgA, simulation.id)).toEqual([]);
+      // Zapis wpisu wglądu nie powiódł się => odpowiedź z danymi nie może wyjść (jedna transakcja).
+      const original = tenantPrisma.runInOrgContext.bind(tenantPrisma);
+      jest.spyOn(tenantPrisma, 'runInOrgContext').mockImplementation((async (orgId: string, fn: (tx: never) => Promise<unknown>, options?: never) =>
+        original(
+          orgId,
+          async (tx) =>
+            fn(
+              new Proxy(tx, {
+                get: (target, property, receiver) =>
+                  property === 'threatReportView'
+                    ? { ...Reflect.get(target, property, receiver), create: async () => Promise.reject(new Error('zapis audytu nie powiódł się')) }
+                    : Reflect.get(target, property, receiver),
+              }) as never,
+            ),
+          options,
+        )) as never);
+      try {
+        const failed = await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`);
+        expect(failed.status).toBe(500);
+        expect(JSON.stringify(failed.body)).not.toContain('TREŚĆ-TAJNA');
+      } finally {
+        jest.restoreAllMocks();
+        jest.spyOn(app.get(EmailService), 'send').mockResolvedValue(true);
+      }
+    });
+
+    it('izolacja A/B i uprawnienia bazy: wpisy wglądów są niewidoczne dla drugiej organizacji; rola aplikacji nie może ich zmienić ani usunąć', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      await get(orgA.adminToken, `/threat-reports/inbox/${report.id}`).expect(200);
+      const [view] = await views(orgA, report.id);
+
+      const seenByB = await tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.threatReportView.findMany({ select: { id: true } }));
+
+      expect(seenByB).toEqual([]);
+      await expect(tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.threatReportView.deleteMany({ where: { id: view.id } }))).rejects.toThrow();
+      await expect(tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.threatReportView.updateMany({ where: { id: view.id }, data: { actorEmail: 'inny@example.test' } }))).rejects.toThrow();
+      await expect(
+        tenantPrisma.runInOrgContext(orgB.organizationId, (tx) => tx.threatReportView.create({ data: { organizationId: orgB.organizationId, reportId: report.id, actorEmail: 'x@example.test' } })),
+      ).rejects.toThrow(); // złożone FK: zgłoszenie musi należeć do tej samej organizacji
+    });
+
+    it('usunięcie konta admina zeruje actorUserId, a wpis i kopia e-maila zostają', async () => {
+      const report = await insertReport(orgA, 's1', 'Sales');
+      const temp = await addPerson(orgA, 'view-admin', 'ORG_ADMIN', null);
+      await get(temp.token, `/threat-reports/inbox/${report.id}`).expect(200);
+
+      await tenantPrisma.runInOrgContext(orgA.organizationId, (tx) => tx.user.delete({ where: { id: temp.id } }));
+
+      expect((await views(orgA, report.id))[0]).toMatchObject({ actorUserId: null, actorEmail: temp.email });
     });
   });
 
@@ -400,23 +529,25 @@ describe('Skrzynka zgłoszeń (e2e)', () => {
   // ---- kierownik działu --------------------------------------------------------------------------------------------
 
   describe('DEPARTMENT_MANAGER: ograniczona lista własnego działu', () => {
-    it('widzi tylko zgłoszenia SWOJEGO działu - bez zgłaszającego, treści, nagłówków, komentarza i notatek', async () => {
-      const mine = await insertReport(orgA, 's1', 'Sales', { subject: 'Zgłoszenie z Sales' });
+    it('widzi tylko zgłoszenia SWOJEGO działu jako: data, status, DOMENA nadawcy, powiązanie z symulacją (tak/nie) - bez tematu, pełnego nadawcy, zgłaszającego, treści i notatek', async () => {
+      const mine = await insertReport(orgA, 's1', 'Sales', { subject: 'TEMAT-OSOBY-TRZECIEJ' });
       await insertReport(orgA, 'i1', 'IT', { subject: 'Zgłoszenie z IT' });
-      await insertReport(orgA, 's2', 'Sales', { kind: 'SIMULATION', subject: 'Symulacja Sales' });
+      const simulation = await insertReport(orgA, 's2', 'Sales', { kind: 'SIMULATION', subject: 'TEMAT-SYMULACJI' });
       await post(orgA.adminToken, `/threat-reports/inbox/${mine.id}/notes`, { note: 'NOTATKA-ADMINA-TAJNA' }).expect(201);
 
       const response = await get(orgA.people['mgr-sales'].token, '/threat-reports/department').expect(200);
 
-      expect(response.body).toMatchObject({ total: 1, insufficientData: false, minGroupSize: 3 });
-      expect(response.body.items).toEqual([
-        { id: mine.id, createdAt: expect.any(String), status: 'NEW', subject: 'Zgłoszenie z Sales', senderText: 'Obcy <obcy@zlosliwa.example>', senderDomain: 'zlosliwa.example' },
-      ]);
+      expect(response.body).toMatchObject({ total: 2, insufficientData: false, minGroupSize: 3 });
+      const byId = new Map(response.body.items.map((item: { id: string }) => [item.id, item]));
+      expect(byId.get(mine.id)).toEqual({ id: mine.id, createdAt: expect.any(String), status: 'NEW', senderDomain: 'zlosliwa.example', isSimulation: false });
+      // Zgłoszenie symulacyjne: bez domeny (nasza domena kampanii nie niesie informacji, a zdradzałaby trwającą kampanię) i bez statusu.
+      expect(byId.get(simulation.id)).toEqual({ id: simulation.id, createdAt: expect.any(String), status: null, senderDomain: null, isSimulation: true });
       const text = JSON.stringify(response.body);
-      expect(text).not.toMatch(/TREŚĆ-TAJNA|NAGŁÓWKI-TAJNE|KOMENTARZ-TAJNY|NOTATKA-ADMINA-TAJNA|Zgłoszenie z IT|Symulacja/);
+      expect(text).not.toMatch(/TREŚĆ-TAJNA|NAGŁÓWKI-TAJNE|KOMENTARZ-TAJNY|NOTATKA-ADMINA-TAJNA|Zgłoszenie z IT|TEMAT-/);
+      expect(text).not.toContain('obcy@zlosliwa.example'); // pełny adres nadawcy to dane osoby trzeciej - tylko domena
       expect(text).not.toContain(orgA.people.s1.email); // brak tożsamości zgłaszającego
       expect(text).not.toContain(orgA.people.s1.id);
-      expect(text).not.toMatch(/reporter|events|body|headers|comment/);
+      expect(text).not.toMatch(/reporter|events|body|headers|comment|subject|senderText/);
     });
 
     it('filtr statusu działa; kierownik widzi zmiany statusu (tylko wartość), nie ich autora', async () => {
@@ -429,6 +560,9 @@ describe('Skrzynka zgłoszeń (e2e)', () => {
       expect(threat.body.items).toHaveLength(1);
       expect(threat.body.items[0].status).toBe('THREAT');
       expect(safe.body.items).toEqual([]);
+      // Filtr statusu dotyczy tylko zgłoszeń prawdziwych (symulacyjne nie mają statusu).
+      await insertReport(orgA, 's2', 'Sales', { kind: 'SIMULATION' });
+      expect((await get(orgA.people['mgr-sales'].token, '/threat-reports/department?status=NEW').expect(200)).body.items).toEqual([]);
       expect(JSON.stringify(threat.body)).not.toContain(orgA.adminEmail);
     });
 
@@ -600,8 +734,10 @@ describe('Skrzynka zgłoszeń (e2e)', () => {
     const manager = await get(orgA.people['mgr-sales'].token, '/threat-reports/department').expect(200);
 
     expect(created.body.isSimulation).toBe(false);
-    expect(list.body.items).toEqual([expect.objectContaining({ id: created.body.id, subject: 'Prawdziwy phishing', reporter: expect.objectContaining({ email: orgA.people.s1.email }) })]);
-    expect(manager.body.items).toEqual([expect.objectContaining({ id: created.body.id, subject: 'Prawdziwy phishing' })]);
-    expect(JSON.stringify(manager.body)).not.toContain('Kliknij i zapłać');
+    expect(list.body.items).toEqual([expect.objectContaining({ id: created.body.id, subject: 'Prawdziwy phishing' })]);
+    const detail = await get(orgA.adminToken, `/threat-reports/inbox/${created.body.id}`).expect(200);
+    expect(detail.body.reporter).toMatchObject({ email: orgA.people.s1.email }); // tożsamość zgłaszającego dopiero w audytowanych szczegółach
+    expect(manager.body.items).toEqual([expect.objectContaining({ id: created.body.id, senderDomain: 'obcy.example', isSimulation: false })]);
+    expect(JSON.stringify(manager.body)).not.toMatch(/Kliknij i zapłać|Prawdziwy phishing|ktos@obcy/);
   });
 });

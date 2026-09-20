@@ -10,8 +10,9 @@ import { STATUS_LABELS, STATUS_TONES, type DepartmentInbox as DepartmentInboxDat
 const PAGE_SIZE = 25;
 
 /**
- * Widok kierownika działu: zgłoszenia WŁASNEGO działu - temat, nadawca, status i data. Bez zgłaszającego, treści, nagłówków,
- * komentarza i notatek, bez zmiany statusu (decyzja produktu). Dział poniżej progu liczebności: "za mało danych".
+ * Widok kierownika działu: zgłoszenia WŁASNEGO działu - data, domena nadawcy, czy zgłoszenie było powiązane z symulacją i status.
+ * Bez tematu i pełnego nadawcy (dane osób trzecich), zgłaszającego, treści, nagłówków, komentarza i notatek, bez zmiany statusu
+ * (decyzja produktu). Zgłoszenia pojawiają się z opóźnieniem godziny. Dział poniżej progu liczebności: "za mało danych".
  */
 export default function DepartmentInbox() {
   const [page, setPage] = useState(1);
@@ -71,7 +72,8 @@ export default function DepartmentInbox() {
         <thead>
           <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
             <th className="px-5 py-3">Zgłoszono</th>
-            <th className="px-5 py-3">Temat i nadawca</th>
+            <th className="px-5 py-3">Domena nadawcy</th>
+            <th className="px-5 py-3">Symulacja</th>
             <th className="px-5 py-3">Status</th>
           </tr>
         </thead>
@@ -79,18 +81,16 @@ export default function DepartmentInbox() {
           {data?.items.map((item) => (
             <tr key={item.id} className="border-b border-border last:border-0">
               <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(item.createdAt)}</td>
+              <td className="px-5 py-3">{item.senderDomain ?? '-'}</td>
+              <td className="px-5 py-3">{item.isSimulation ? 'Tak' : 'Nie'}</td>
               <td className="px-5 py-3">
-                <div className="font-semibold">{item.subject ?? '(treść usunięta po 90 dniach)'}</div>
-                <div className="text-xs text-muted">{item.senderText ?? (item.senderDomain ? `domena: ${item.senderDomain}` : '-')}</div>
-              </td>
-              <td className="px-5 py-3">
-                <Pill tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Pill>
+                {item.status ? <Pill tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Pill> : <span className="text-muted">-</span>}
               </td>
             </tr>
           ))}
           {data && data.items.length === 0 && (
             <tr>
-              <td colSpan={3} className="px-5 py-6 text-muted">
+              <td colSpan={4} className="px-5 py-6 text-muted">
                 Brak zgłoszeń z Twojego działu.
               </td>
             </tr>

@@ -331,6 +331,21 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: Dockerfile'e API i web oraz joby CI na Node 22 (LTS), replika CI z reguły 9 w CLAUDE.md (`node:22`), zielone testy i e2e, podniesione `re2`
   (usunięty pin z D-052), zaktualizowane `docs/onboarding.md` i README (wersja Node).
 
+### B-075 Awatary: tylko presety albo własny upload (zamiast dowolnego URL)
+- Etykiety: `P2`, `security`, `feature`, `decision-needed`, `mod:web` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
+- Opis: awatar z dowolnego adresu `https` (`<img src={avatarUrl}>`) nie mieści się w `img-src 'self' data: <CONTENT_BASE_URL>` (CSP z D-053), więc obrazek
+  się nie załaduje; do czasu decyzji UI pokazuje inicjały (fallback przy błędzie ładowania). Nie poszerzamy `img-src` o `https:`.
+- Akceptacja: decyzja (tylko presety albo własny upload do zasobów z `CONTENT_BASE_URL`), walidacja w API (odrzucenie zewnętrznych URL-i), migracja
+  istniejących awatarów z URL-a (na preset/inicjały), test A/B, zaktualizowany `AvatarPickerModal`.
+
+### B-076 Migracja istniejących bloków VIDEO na zasoby z `CONTENT_BASE_URL`
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
+- Opis: `<video src>` z dowolnego hosta jest blokowany przez `media-src 'self' <CONTENT_BASE_URL>`. Nowe bloki VIDEO używają ścieżki względnej z
+  `CONTENT_BASE_URL`; stare bloki z zewnętrznym adresem `https` dostają w odtwarzaczu link „Otwórz wideo” (`target="_blank"`, `rel="noopener noreferrer"`,
+  tylko `https`).
+- Akceptacja: lista istniejących kursów z zewnętrznym wideo, wgranie plików do zasobów (R2), nowa wersja kursu z ścieżkami względnymi (wersje niemutowalne,
+  D-051), usunięcie linku zastępczego po migracji.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

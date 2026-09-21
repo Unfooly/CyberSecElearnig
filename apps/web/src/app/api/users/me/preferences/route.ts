@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { apiFetch } from '@/lib/api-fetch';
+import { proxyAuthenticated } from '@/lib/bff';
+import { pickFields } from '@/lib/pick-fields';
 
 // Proxy server-side do apps/api (GET/PATCH /users/me/preferences): przełącznik "Lektor wył." w odtwarzaczu jest komponentem
 // klienckim, który nie czyta httpOnly cookie ani nie zna API_URL - ten sam wzorzec co /api/users/me/avatar. Identyfikatora
@@ -25,32 +27,11 @@ export async function GET() {
   }
 }
 
+// Zapis preferencji zmienia stan: proxyAuthenticated wymaga żądania z naszej własnej strony (CSRF), ciało z allowlisty { narrationEnabled }.
 export async function PATCH(request: NextRequest) {
-  const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
-  if (!accessToken) {
-    return NextResponse.json({ message: 'Wymagane zalogowanie.' }, { status: 401 });
+  const body = pickFields(await request.json().catch(() => null), ['narrationEnabled']);
+  if (!body) {
+    return NextResponse.json({ message: 'Nieprawidłowe żądanie.' }, { status: 400 });
   }
-
-  const body = await request.json().catch(() => null);
-
-  let backendResponse: Response;
-  try {
-    backendResponse = await apiFetch(`${API_URL}/users/me/preferences`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    console.error('Nie udało się połączyć z apps/api przy zapisie preferencji:', (error as Error).message);
-    return NextResponse.json(
-      { message: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' },
-      { status: 502 },
-    );
-  }
-
-  const data = await backendResponse.json().catch(() => null);
-  return NextResponse.json(data, { status: backendResponse.status });
+  return proxyAuthenticated('PATCH', '/users/me/preferences', body);
 }

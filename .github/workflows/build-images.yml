@@ -69,8 +69,10 @@ jobs:
 
       # Narzędzia autora treści (audio narracji, zasoby modułów): OSOBNY projekt npm poza workspace'ami (SDK S3 i klucze nie trafiają do
       # lockfile'a aplikacji ani do obrazów). Testy są offline: ElevenLabs i S3/R2 za interfejsami, w CI zero wywołań sieciowych i zero kluczy.
+      # Potok ładuje packages/content/dist (parseModule, klasyfikacja pól): budowa jawnie tu, żeby krok nie zależał od postinstall.
       - name: Testy scripts/content
         run: |
+          npm run build --workspace=packages/content
           npm ci --prefix scripts/content
           npm run typecheck --prefix scripts/content
           npm test --prefix scripts/content

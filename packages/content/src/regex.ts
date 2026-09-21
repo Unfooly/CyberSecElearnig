@@ -5,7 +5,20 @@ import RE2 from 're2';
 // "przeszło walidację" znaczy "da się dopasować". Składnia jest ograniczona do tego, co RE2 obsługuje (bez backreferencji i
 // lookahead/lookbehind). Kod tylko dla Node (natywny moduł) - dlatego jest w `@cyberszkolo/content/dist/node`, nie w indeksie.
 
-/** Rdzeń wzorca bez zewnętrznych ^ i $ (dopasowanie opakowujemy w ^(?:...)$, więc alternatywy najwyższego poziomu nie omijają kotwic). */
+/**
+ * Rdzeń wzorca bez zewnętrznych ^ i $.
+ *
+ * NIEZMIENNIK "dopasowanie zawsze CAŁEJ odpowiedzi" zapewnia WRAPPER `^(?:rdzeń)$` (compileAnswerRegex), a NIE tekstowa kontrola
+ * kotwic w validateRegex. Ta kontrola (`^` na początku, nieuciekany `$` na końcu) jest tylko wymogiem zapisu dla autora i dobrym
+ * komunikatem błędu; sama niczego nie gwarantuje (np. `^a|b$` ją przechodzi, a i tak dopasowuje wyłącznie całe `a` albo całe `b`).
+ *
+ * Wrapper jest szczelny tylko wtedy, gdy rdzeń jest ZBALANSOWANYM, samodzielnie kompilowalnym wyrażeniem. Wzorzec z niezbalansowanym
+ * nawiasem, np. `^a)|(b$`, po sklejeniu daje `^(?:a)|(b)$` - poprawne, ale INNE wyrażenie: nawias zamykający kończy grupę wrappera
+ * i alternatywa najwyższego poziomu omija kotwice (dopasowałoby `axxxx`). Dlatego validateRegex kompiluje rdzeń przez RE2 OSOBNO,
+ * bez wrappera (`new RE2(anchoredRegexCore(pattern), 'u')`). NIE usuwaj tej kompilacji jako "zbędnej" (kompilacja opakowanego
+ * wzorca jej nie zastępuje: właśnie tu przechodzi). Oba warunki pilnuje packages/content/src/regex.spec.ts (dopasowanie tylko całej
+ * odpowiedzi dla alternatyw najwyższego poziomu oraz odrzucanie `^a)|(b$` i `^)a(|b$`) oraz module.spec.ts.
+ */
 export function anchoredRegexCore(pattern: string): string {
   return pattern.slice(1, -1);
 }

@@ -128,6 +128,23 @@ Jeden worker w procesie API (`JobsService`, kolejka `maintenance`, Redis z `REDI
 6. Konfiguracja: `BACKGROUND_JOBS_ENABLED` (wyłączone w `NODE_ENV=test`), `JOBS_QUEUE_PREFIX`. Nowa tabela z
    `organizationId` musi mieć `onDelete: Cascade` do `organizations` (inaczej sprzątanie organizacji się zatnie).
 
+## Silnik szkoleń (`packages/content`)
+
+Kursy to treść (JSON modułu zwalidowany zod), nie kod; szczegóły i format: `packages/content/README.md`, decyzje: D-051. Niezmienniki:
+
+1. **Klucz odpowiedzi nigdy nie trafia do klienta.** Treść bloku idzie do przeglądarki wyłącznie przez `toClientBlock` (biała lista pól,
+   `FIELD_CLASSIFICATION`). Nowe pole schematu bloku musi być sklasyfikowane jako `client` albo `secret` (test kompletności wywala CI), a
+   podpowiedzi, rozwiązania i poprawne odpowiedzi to zawsze `secret`. Nigdy nie zwracaj `Course.contentBlocks` ani `CourseVersion.contentBlocks`
+   wprost w odpowiedzi API.
+2. **Ocenę wylicza wyłącznie serwer** (`apps/api/src/courses/scoring`); klient wysyła swój wybór, nigdy poprawność ani punkty.
+3. **Treść jest wersjonowana i niemutowalna** (`course_versions`): zmiana treści = nowa wersja, przypisanie zostaje na swojej. Nigdy nie
+   edytuj zapisanej wersji ani `blockId` opublikowanego bloku. `progress` jest kluczowany `blockId`.
+4. **Id elementów ocenianych po id (ORDERING, kryteria EMAIL_ANALYSIS) są dla klienta nieprzejrzyste** (HMAC z kluczem serwera, inne w każdym
+   przypisaniu); tasowanie ma seed z tego samego klucza, nigdy z samych publicznych identyfikatorów. SVG tylko przez `<img>`; `EMBEDDED_HTML` tylko w
+   `<iframe sandbox>` bez `allow-same-origin`.
+5. **Kurs z przypisaniami nie da się usunąć** (`RESTRICT`). W testach e2e sprzątaj organizacje (kasują przypisania kaskadowo) PRZED kursami:
+   `deleteMany` przypisań bez kontekstu organizacji ich nie widzi (FORCE RLS).
+
 ## Role i uprawnienia
 
 - `SUPER_ADMIN` — wy, dostęp do wszystkich organizacji (panel operacyjny, nie mylić z rolami klienta)

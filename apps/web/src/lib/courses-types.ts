@@ -68,10 +68,8 @@ export interface ContentBlock {
   items?: DragAndDropItem[];
   // Etykiety dwóch koszyków klasyfikacji (domyślnie "Bezpieczne"/"Phishing").
   categories?: [string, string];
-  // EMBEDDED_HTML - pełny dokument HTML renderowany WYŁĄCZNIE w
-  // sandboxowanym <iframe> (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia
-  // do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
-  html?: string;
+  // EMBEDDED_HTML: dokument HTML NIE jest częścią treści bloku (pole sekretne po stronie serwera); iframe ładuje go z osobnej trasy embed
+  // (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
   // SCENE_HOTSPOTS: ilustracja (ścieżka względna wobec bazy zasobów), tekst alternatywny i prostokąty w % obrazu.
   image?: string;
   imageAlt?: string;

@@ -45,6 +45,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
   };
   const start = (token: string, courseId: string) => call('post', `/courses/${courseId}/start`, token);
   const submit = (token: string, courseId: string, body: object) => call('post', `/courses/${courseId}/progress`, token, body);
+  const embed = (token: string, courseId: string, blockId: string) => call('get', `/courses/${courseId}/blocks/${blockId}/embed`, token);
   const attempt = (token: string, courseId: string, blockId: string, answer: unknown, ip?: string) =>
     call('post', `/courses/${courseId}/blocks/${blockId}/attempt`, token, { answer }, ip);
 
@@ -207,7 +208,10 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       });
       await submit(tokenA, engineCourseId, { blockIndex: 2, answer: 1 }).expect(200);
       await submit(tokenA, engineCourseId, { blockIndex: 3 }).expect(200);
+      // Blok html (indeks 4) jest bieżący do momentu zapisu, potem wcześniejszy: dokument dostępny (przy wejściu i po powrocie z podglądu).
+      expect((await embed(tokenA, engineCourseId, 'html').expect(200)).body).toEqual({ html: '<p>Treść</p>' });
       await submit(tokenA, engineCourseId, { blockIndex: 4 }).expect(200);
+      expect((await embed(tokenA, engineCourseId, 'html').expect(200)).body).toEqual({ html: '<p>Treść</p>' });
 
       await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: [] } }).expect(400);
       await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1', 'nie-ma'] } }).expect(400);
@@ -461,6 +465,56 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect((await attempt(tokenA, textCourseId, 'wideo', 'x', '198.51.100.8')).status).toBe(429);
       // Użytkownik B (organizacja B) z innego adresu: dalej zwykła odpowiedź (kurs nie jest mu przypisany), nie 429.
       expect((await attempt(tokenB, textCourseId, 'wideo', 'x', '198.51.100.9')).status).toBe(404);
+    });
+  });
+
+  describe('EMBEDDED_HTML: dokument osobno od treści modułu', () => {
+    it('/start nie zawiera `html` bloku (pole sekretne: wykonuje dowolny JS), a blok jest w treści bez tego pola', async () => {
+      const body = (await start(tokenA, engineCourseId).expect(200)).body;
+      expect(JSON.stringify(body)).not.toContain('<p>Treść</p>');
+      const block = body.contentBlocks.find((b: { id: string }) => b.id === 'html');
+      expect(block).toMatchObject({ id: 'html', type: 'EMBEDDED_HTML' });
+      expect(block).not.toHaveProperty('html');
+    });
+
+    it('dokument dostępny tylko dla bloku BIEŻĄCEGO lub wcześniejszego, tylko dla typu EMBEDDED_HTML; każda odmowa to ten sam 404', async () => {
+      const course = await createCourse(`Embed ${suffix}`, [videoBlock('wideo'), { id: 'gra', type: 'EMBEDDED_HTML', html: '<p>Gra tajna</p>' }], 2);
+      await assign(orgAId, userAId, course);
+
+      // Przypisanie stoi na bloku 0: blok "gra" (indeks 1) jest przyszły.
+      const notYet = await embed(tokenA, course, 'gra').expect(404);
+      expect(JSON.stringify(notYet.body)).not.toContain('Gra tajna');
+      await embed(tokenA, course, 'wideo').expect(404); // inny typ bloku
+      await embed(tokenA, course, 'nie-ma').expect(404);
+      await embed(tokenA, course, '..').expect(404);
+
+      await submit(tokenA, course, { blockIndex: 0 }).expect(200); // teraz "gra" jest bieżący
+      expect((await embed(tokenA, course, 'gra').expect(200)).body).toEqual({ html: '<p>Gra tajna</p>' });
+    });
+
+    it('kurs sprzed silnika (bloki bez id, wersja 1): /start nie zawiera html, a dokument jest pod id b<indeks>; bez tokena 401', async () => {
+      const legacy = await createCourse(
+        `Embed legacy ${suffix}`,
+        [{ type: 'VIDEO', url: 'https://example.test/v.mp4' }, { type: 'EMBEDDED_HTML', html: '<p>Legacy tajne</p>' }],
+        1,
+        false,
+      );
+      await assign(orgAId, userAId, legacy);
+      const started = (await start(tokenA, legacy).expect(200)).body;
+      expect(JSON.stringify(started)).not.toContain('Legacy tajne');
+      expect(started.contentBlocks[1]).toMatchObject({ id: 'b1', type: 'EMBEDDED_HTML' });
+      expect(started.contentBlocks[1]).not.toHaveProperty('html');
+
+      await embed(tokenA, legacy, 'b1').expect(404); // blok przyszły
+      await submit(tokenA, legacy, { blockIndex: 0 }).expect(200);
+      expect((await embed(tokenA, legacy, 'b1').expect(200)).body).toEqual({ html: '<p>Legacy tajne</p>' });
+
+      await request(app.getHttpServer()).get(`/courses/${legacy}/blocks/b1/embed`).set('CF-Connecting-IP', nextIp()).expect(401);
+    });
+
+    it('izolacja A/B: użytkownik organizacji B (bez przypisania) dostaje 404 także dla własnego, poprawnego blockId', async () => {
+      await embed(tokenB, engineCourseId, 'html').expect(404);
+      await embed(tokenB, engineCourseId, 'quiz').expect(404);
     });
   });
 

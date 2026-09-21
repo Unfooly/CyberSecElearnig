@@ -246,6 +246,28 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(scrollBy).not.toHaveBeenCalled();
   });
 
+  it('EMBEDDED_HTML: podczas podglądu "Wstecz" w DOM nie ma <iframe> (odmontowany, nie ukryty); po powrocie iframe wraca', () => {
+    const embedCourse = course({
+      currentBlockIndex: 1,
+      contentBlocks: [
+        { type: 'QUIZ', id: 'quiz0', prompt: 'Pierwsze?', options: [{ text: 'A' }, { text: 'B' }] },
+        { type: 'EMBEDDED_HTML', id: 'gra' },
+      ],
+      progress: { v: 2, blocks: { quiz0: { type: 'QUIZ', done: true, correct: true, points: 1, answer: 0 } }, notes: [] },
+    });
+    const { container } = render(<CoursePlayer courseId="course-1" initial={embedCourse} narrationEnabled={false} />);
+
+    expect(container.querySelectorAll('iframe')).toHaveLength(1);
+    expect(container.querySelector('iframe')?.getAttribute('src')).toBe('/api/courses/course-1/blocks/gra/embed');
+
+    fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+    expect(screen.getByTestId('review-block')).toBeInTheDocument();
+    expect(container.querySelector('iframe')).toBeNull(); // nie w ukrytym kontenerze: w ogóle nie ma elementu
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
+    expect(container.querySelectorAll('iframe')).toHaveLength(1);
+  });
+
   it('bez dowodów w module licznik się nie pokazuje', () => {
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
     expect(screen.queryByTestId('evidence-counter')).not.toBeInTheDocument();

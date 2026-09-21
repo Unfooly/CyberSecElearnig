@@ -25,6 +25,12 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
+      // Dokument bloku EMBEDDED_HTML jest osadzany przez NASZĄ stronę (iframe): jedyny wyjątek od DENY, tylko SAMEORIGIN (frame-ancestors
+      // 'self' ustawia sama trasa). Reguła po globalnej, więc jej wartość wygrywa.
+      {
+        source: '/api/courses/:courseId/blocks/:blockId/embed',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
+      },
       // Strona lądowania symulacji: token w adresie i licznik kliknięć - nigdy w cache przeglądarki/pośredników.
       {
         source: '/t/:path*',

@@ -47,6 +47,8 @@ interface RenderContext {
   /** Stan zadania tekstowego z serwera (próby, podpowiedzi) i zgłaszanie zmian do wyników sesji. */
   progress?: ClientProgressBlock;
   onProgress: (blockId: string, patch: Partial<ClientProgressBlock>) => void;
+  /** Trwa podgląd wcześniejszego bloku: blok z kodem z zewnątrz (EMBEDDED_HTML) odmontowuje swój iframe zamiast go ukrywać. */
+  suspended: boolean;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -79,7 +81,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
     case 'DRAG_AND_DROP':
       return <DragAndDropBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
     case 'EMBEDDED_HTML':
-      return <EmbeddedHtmlBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
+      return <EmbeddedHtmlBlock block={block} courseId={ctx.courseId} onSubmit={() => onSubmit(undefined)} disabled={disabled} suspended={ctx.suspended} />;
     default:
       // Nieznany typ bloku (np. backend dodał nowy typ, front się jeszcze
       // nie zaktualizował) - jawny komunikat zamiast pustego <div>.
@@ -344,6 +346,7 @@ export default function CoursePlayer({
               disabled: submitting,
               progress: results[keyOf(state.currentBlockIndex)],
               onProgress,
+              suspended: reviewing,
             })}
           </div>
         )}

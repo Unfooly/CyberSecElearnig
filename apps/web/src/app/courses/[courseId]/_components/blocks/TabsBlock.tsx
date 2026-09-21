@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 import ExploreFooter from './ExploreFooter';
 
@@ -21,7 +21,7 @@ export default function TabsBlock({
   const [activeId, setActiveId] = useState<string | null>(tabs[0]?.id ?? null);
   const [opened, setOpened] = useState<string[]>(tabs[0] ? [tabs[0].id] : []);
   const buttons = useRef<Record<string, HTMLButtonElement | null>>({});
-  const baseId = `tabs-${block.id ?? 'x'}`;
+  const baseId = `tabs-${useId()}`; // unikalne także dla dwóch zamontowanych bloków (ukryty bieżący + podgląd)
 
   // Jak na serwerze: requiredTabs albo wszystkie zakładki (zakładki nie mają flag required).
   const required = block.requiredTabs ?? tabs.map((tab) => tab.id);

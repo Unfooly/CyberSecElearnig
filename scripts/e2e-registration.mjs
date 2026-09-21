@@ -112,6 +112,8 @@ try {
   // onboarding, panel, ustawienia i odtwarzacz kursu. Chromium zgłasza je jako błędy konsoli i błędy strony.
   const cspViolations = [];
   page.on('console', (message) => {
+    // Wyjątek: dokument bloku EMBEDDED_HTML (/embed) celowo próbuje sieci, którą jego własne CSP blokuje (dowód izolacji, krok "embed").
+    if (/\/blocks\/[^/]+\/embed/.test(message.location().url ?? '')) return;
     if (message.type() === 'error' && /content security policy/i.test(message.text())) {
       cspViolations.push(`${pathOf()}: ${message.text().slice(0, 200)}`);
     }
@@ -437,6 +439,21 @@ try {
       maxAttempts: 3,
       solution: { text: 'weryfikacja-konta.example', explanation: 'Wszystko przed nią to tylko poddomeny, które mają uśpić czujność.' },
     },
+    {
+      id: 'gra',
+      type: 'EMBEDDED_HTML',
+      title: 'Interaktywna gra',
+      // Dokument wykonuje inline-skrypt (CSP dokumentu na to pozwala) i sprawdza, czego NIE może: ciasteczek, rodzica, localStorage, sieci.
+      html: `<!doctype html><html><body><!--EMBED-SECRET-MARKER--><p id="o">start</p><script>
+        var r = [];
+        try { r.push('cookie:' + (document.cookie === '' ? 'pusty' : 'DOSTEPNE')); } catch (e) { r.push('cookie:blok'); }
+        try { parent.document.title; r.push('parent:DOSTEPNY'); } catch (e) { r.push('parent:blok'); }
+        try { localStorage.getItem('x'); r.push('storage:DOSTEPNY'); } catch (e) { r.push('storage:blok'); }
+        var o = document.getElementById('o');
+        o.textContent = 'skrypt dziala | ' + r.join(' | ');
+        fetch('/api/users/me/preferences', { credentials: 'include' }).then(function () { o.textContent += ' | fetch:DOSTEPNY'; }).catch(function () { o.textContent += ' | fetch:blok'; });
+      </script></body></html>`,
+    },
     { id: 'wnioski', type: 'SUMMARY', title: 'Rozwiązanie sprawy', text: 'Do incydentu doszło przez słabe nawyki: hasło na kartce i pochopne kliknięcie w link.' },
   ];
   const caseCourse = await prisma.course.create({
@@ -628,6 +645,49 @@ try {
   await page.getByRole('button', { name: 'Kontynuuj' }).click();
   const textBody = await (await textDone).json();
   step('śledztwo: zadanie tekstowe rozstrzygnięte na serwerze (75%), "Kontynuuj" zapisuje postęp', textBody.lastResult?.points === 0.75, JSON.stringify(textBody.lastResult?.points));
+  await nextEnabled().click();
+
+  // --- EMBEDDED_HTML: osobny dokument z własnym CSP i sandboxem; nie ma go w treści modułu ani w stronie. ---
+  const embedFrame = page.frameLocator('iframe[title="Interaktywny moduł szkoleniowy"]');
+  await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
+  await embedFrame.locator('#o').waitFor();
+  const embedText = await embedFrame.locator('#o').textContent();
+  await page.waitForTimeout(400); // wynik próby sieci (blokada CSP) dopisuje się asynchronicznie
+  const embedResult = (await embedFrame.locator('#o').textContent()) ?? '';
+  step('embed: inline-skrypt w osobnym dokumencie działa mimo CSP strony (własne CSP dokumentu)', embedText?.includes('skrypt dziala') === true, embedResult);
+  step('embed: dokument w sandboxie nie ma dostępu do ciasteczek, rodzica, localStorage ani sieci', /cookie:blok/.test(embedResult) && /parent:blok/.test(embedResult) && /storage:blok/.test(embedResult) && /fetch:blok/.test(embedResult) && !/DOSTEPN/.test(embedResult), embedResult);
+  step('embed: źródło dokumentu nie jest w stronie (ani w treści, ani w danych RSC): pole html jest sekretne', !(await page.content()).includes('EMBED-SECRET-MARKER'));
+  const iframeAttrs = await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').evaluate((el) => ({ sandbox: el.getAttribute('sandbox'), referrerpolicy: el.getAttribute('referrerpolicy'), src: el.getAttribute('src'), srcdoc: el.hasAttribute('srcdoc') }));
+  step('embed: iframe sandbox="allow-scripts" (nic więcej), src z trasy embed, bez srcdoc', iframeAttrs.sandbox === 'allow-scripts' && iframeAttrs.referrerpolicy === 'no-referrer' && /\/embed$/.test(iframeAttrs.src ?? '') && !iframeAttrs.srcdoc, JSON.stringify(iframeAttrs));
+  await shoot('embed');
+
+  // Nagłówki dokumentu i wyjątek od X-Frame-Options: DENY (tylko ta trasa: SAMEORIGIN).
+  const embedUrl = `${WEB}${iframeAttrs.src}`;
+  const embedHead = await page.request.get(embedUrl);
+  const embedCsp = embedHead.headers()['content-security-policy'] ?? '';
+  step('embed: nagłówki dokumentu (CSP z sandboxem bez allow-same-origin, nosniff, no-store, SAMEORIGIN)', embedHead.status() === 200 && /sandbox allow-scripts/.test(embedCsp) && !/allow-same-origin/.test(embedCsp) && /default-src 'none'/.test(embedCsp) && embedHead.headers()['x-content-type-options'] === 'nosniff' && embedHead.headers()['cache-control'] === 'private, no-store' && embedHead.headers()['x-frame-options'] === 'SAMEORIGIN', JSON.stringify({ status: embedHead.status(), xfo: embedHead.headers()['x-frame-options'], csp: embedCsp.slice(0, 80) }));
+  const pageHead = await page.request.get(`${WEB}/login`);
+  step('embed: reszta aplikacji nadal ma X-Frame-Options: DENY (wyjątek tylko dla trasy embed)', pageHead.headers()['x-frame-options'] === 'DENY', pageHead.headers()['x-frame-options']);
+
+  // Obcy origin nie osadzi dokumentu (X-Frame-Options / frame-ancestors 'self'): ramka kończy na stronie błędu przeglądarki.
+  const evil = await page.context().newPage();
+  await evil.route('http://obcy-origin.example/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><iframe id="f" src="${embedUrl}" width="400" height="200"></iframe>` }),
+  );
+  await evil.goto('http://obcy-origin.example/');
+  await evil.waitForTimeout(1500);
+  const foreignFrame = evil.frames().find((frame) => frame !== evil.mainFrame());
+  step('embed: osadzenie dokumentu z OBCEGO originu jest blokowane (ramka nie ładuje treści)', !!foreignFrame && /chrome-error:/.test(foreignFrame.url()), foreignFrame?.url());
+  await evil.close();
+
+  // "Wstecz": iframe jest ODMONTOWANY (nie ukryty), po powrocie ładuje się od nowa.
+  await page.getByRole('button', { name: /Wstecz/ }).click();
+  step('embed: podczas podglądu "Wstecz" w DOM nie ma <iframe>', (await page.locator('iframe').count()) === 0);
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+  await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
+  step('embed: po powrocie z podglądu iframe wraca', (await page.locator('iframe').count()) === 1);
+  await page.getByRole('button', { name: 'Ukończyłem' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   await page.getByTestId('case-evidence').waitFor();

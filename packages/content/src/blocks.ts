@@ -357,7 +357,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   QUIZ: classify(['prompt', 'options[].text'], CHOICE_SECRET),
   BRANCHING_SCENARIO: classify(['prompt', 'options[].text'], CHOICE_SECRET),
   DRAG_AND_DROP: classify(['prompt', 'items[].text', 'categories[]'], []),
-  EMBEDDED_HTML: classify(['html'], []),
+  // `html` wykonuje dowolny JS, więc NIE idzie do przeglądarki razem z treścią modułu (/start): serwowany jest osobnym dokumentem
+  // (GET /courses/:id/blocks/:blockId/embed) z własnym CSP i sandboxem, dopiero gdy blok jest osiągalny dla przypisania.
+  EMBEDDED_HTML: classify([], ['html']),
   SCENE_HOTSPOTS: classify(
     [
       'image',

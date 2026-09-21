@@ -223,6 +223,25 @@ export class CoursesService {
   }
 
   /**
+   * Dokument HTML bloku EMBEDDED_HTML (osobno od treści modułu: `html` jest polem sekretnym i nie idzie w /start). Dostęp tylko dla
+   * właściciela przypisania (RLS + organizationId + userId), do bloku bieżącego albo wcześniejszego (blok przyszły nie jest osiągalny),
+   * wyłącznie dla bloków tego typu. Każdy brak dostępu to ten sam 404 (bez ujawniania, czy blok istnieje). Treść jest niezaufana: BFF
+   * serwuje ją jako dokument w sandboxie z restrykcyjnym CSP (apps/web, trasa embed).
+   */
+  async getEmbeddedHtml(organizationId: string, userId: string, courseId: string, blockId: string): Promise<{ html: string }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      const block = index >= 0 ? version.blocks[index] : undefined;
+      if (!block || block.type !== 'EMBEDDED_HTML' || typeof block.html !== 'string' || index > assignment.currentBlockIndex) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      return { html: block.html };
+    });
+  }
+
+  /**
    * Próba odpowiedzi w bloku TEXT_INPUT_GUIDED. Poprawność, punkty (maleją z liczbą prób), podpowiedzi i rozwiązanie
    * wyznacza WYŁĄCZNIE serwer; podpowiedź wychodzi dopiero po błędnej próbie, rozwiązanie dopiero po wyczerpaniu prób.
    * Blok rozstrzyga się tu (done), ale kurs przesuwa dopiero zwykły zapis postępu ("Dalej").

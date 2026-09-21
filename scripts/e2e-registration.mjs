@@ -65,6 +65,8 @@ async function cleanup(prisma) {
   for (const child of children) child.kill();
   try {
     await prisma?.organization.deleteMany({ where: { name: { in: [COMPANY, `${COMPANY} (wyświetlana)`] } } });
+    // Kurs po organizacjach: przypisania znikają kaskadowo, a kurs z przypisaniami jest chroniony (RESTRICT, B-032).
+    if (courseId) await prisma?.course.deleteMany({ where: { id: courseId } });
     await prisma?.$disconnect();
   } catch (error) {
     console.error('Sprzątanie bazy nie powiodło się:', error.message);
@@ -74,6 +76,7 @@ async function cleanup(prisma) {
 
 let prisma;
 let browser;
+let courseId;
 try {
   // Zmienne z .env (baza, sekrety JWT) dziedziczy proces API; token MailerSend nadpisany na pusty =>
   // tryb deweloperski: mail nie wychodzi, a link ląduje w logu API.
@@ -101,8 +104,27 @@ try {
   const page = await (await browser.newContext()).newPage();
   const pathOf = () => new URL(page.url()).pathname;
 
+  // Naruszenia Content-Security-Policy (D-053) w konsoli przeglądarki przez CAŁY scenariusz: rejestracja, aktywacja, logowanie,
+  // onboarding, panel, ustawienia i odtwarzacz kursu. Chromium zgłasza je jako błędy konsoli i błędy strony.
+  const cspViolations = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && /content security policy/i.test(message.text())) {
+      cspViolations.push(`${pathOf()}: ${message.text().slice(0, 200)}`);
+    }
+  });
+  page.on('pageerror', (error) => {
+    if (/content security policy/i.test(error.message)) cspViolations.push(`${pathOf()}: ${error.message.slice(0, 200)}`);
+  });
+
   // 1. Formularz rejestracji: brak pól hasła, komplet danych, zgody.
-  await page.goto(`${WEB}/register`);
+  const registerResponse = await page.goto(`${WEB}/register`);
+  const csp = registerResponse.headers()['content-security-policy'] ?? '';
+  step(
+    'nagłówek CSP: script-src z nonce, bez unsafe-inline/unsafe-eval; object-src none; frame-ancestors none',
+    /script-src 'self' 'nonce-[^']+'(;|$)/.test(csp) && !/script-src[^;]*unsafe-/.test(csp) && csp.includes("object-src 'none'") && csp.includes("frame-ancestors 'none'"),
+    csp.slice(0, 120),
+  );
+  step('skrypty Next.js na stronie mają nonce z nagłówka', (await page.locator('script[nonce]').count()) > 0);
   step('formularz nie ma pól hasła', (await page.locator('input[type=password]').count()) === 0);
   await page.fill('#firstName', 'Ewa');
   await page.fill('#lastName', 'Testowa');
@@ -188,6 +210,48 @@ try {
   prisma = new PrismaClient();
   const org = await prisma.organization.findFirst({ where: { name: COMPANY } });
   step('baza: status ACTIVE i selfJoinEnabled', org?.status === 'ACTIVE' && org.selfJoinEnabled === true);
+
+  // 11. Odtwarzacz kursu (dummy: kurs w formacie sprzed silnika: QUIZ, scenariusz, DRAG_AND_DROP - bez wideo z obcego hosta i bez
+  // EMBEDDED_HTML z inline-skryptem: patrz D-053, oba wymagają osobnych rozwiązań w PR 2). Przypisanie ma FORCE RLS, więc idzie
+  // w transakcji z kontekstem organizacji (jak TenantPrismaService).
+  const course = await prisma.course.create({
+    data: {
+      title: `E2E kurs CSP ${RUN}`,
+      category: 'EMAIL_SECURITY',
+      durationMinutes: 3,
+      contentBlocks: [
+        { type: 'QUIZ', prompt: 'Który adres jest podejrzany?', options: [{ text: 'a@bank.pl', correct: false }, { text: 'a@bank-0.pl', correct: true }] },
+        { type: 'BRANCHING_SCENARIO', prompt: 'Co robisz?', options: [{ text: 'Klikam', outcome: 'wrong' }, { text: 'Zgłaszam', outcome: 'correct' }] },
+        { type: 'DRAG_AND_DROP', prompt: 'Posegreguj', items: [{ text: 'Mail 1' }], categories: ['Bezpieczne', 'Phishing'] },
+      ],
+    },
+  });
+  courseId = course.id;
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+    const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
+    await tx.courseAssignment.create({ data: { organizationId: org.id, userId: admin.id, courseId } });
+  });
+  await page.goto(`${WEB}/courses/${courseId}`);
+  await page.getByText('Który adres jest podejrzany?').waitFor();
+  await page.getByLabel('a@bank-0.pl').check();
+  step('odtwarzacz kursu: blok się renderuje i reaguje na kliknięcie (hydracja z nonce działa)', await page.getByLabel('a@bank-0.pl').isChecked());
+
+  step('brak naruszeń CSP w konsoli przez cały scenariusz (rejestracja, panel, ustawienia, odtwarzacz)', cspViolations.length === 0, cspViolations.slice(0, 3).join(' | '));
+
+  // Kontrola negatywna: skrypt inline BEZ nonce musi zostać zablokowany. Bez niej "zero naruszeń" mogłoby znaczyć "CSP nie działa".
+  await page.evaluate(() => {
+    window.__cspCanary = false;
+    const script = document.createElement('script');
+    script.textContent = 'window.__cspCanary = true';
+    document.body.appendChild(script);
+  });
+  await page.waitForTimeout(300);
+  step(
+    'kontrola: inline-skrypt bez nonce jest zablokowany przez CSP (i zgłoszony w konsoli)',
+    (await page.evaluate(() => window.__cspCanary)) === false && cspViolations.length > 0,
+    cspViolations[0]?.slice(0, 100),
+  );
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {
   console.error(`\nBŁĄD: ${error.message}`);

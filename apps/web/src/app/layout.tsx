@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   description: 'Platforma szkoleń z cyberbezpieczeństwa i symulacji phishingowych',
 };
 
+// CSP z nonce (middleware.ts, security-headers.ts) jest generowane per żądanie, więc KAŻDA strona musi być renderowana dynamicznie:
+// statyczny HTML miałby skrypty inline Next.js bez nonce i przeglądarka by je zablokowała (D-053).
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" className={jakarta.variable}>

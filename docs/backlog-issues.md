@@ -376,8 +376,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: PR 3 (przegląd bezpieczeństwa commitu 4, N4 i N5)
 - Opis: (1) kolejność zapisów `module.json` -> `audio.lock.json` -> manifest nie jest transakcją (przerwanie po pierwszym zapisie zostawia moduł bez locka;
   samonaprawialne kolejnym przebiegiem z cache, `--check` to wykrywa; zapisy pojedynczych plików są atomowe, bez fsync). (2) `redactSecrets` maskuje tylko
-  dosłowne wartości sekretów (nie formy URL-encoded ani base64) i pomija wartości krótsze niż 6 znaków.
-- Akceptacja: zapis pary module+lock jako jedna operacja (albo lock najpierw z oznaczeniem „w toku”), maskowanie także zakodowanych form; test.
+  dosłowne wartości sekretów (nie formy URL-encoded ani base64) i pomija wartości krótsze niż 6 znaków. (3) Przy niepełnej parze nagranie + sidecar (przerwany
+  przebieg, odrzucony sidecar) potok nadpisuje nagranie pod tym samym, niemutowalnym kluczem (`immutable`), a MP3 z ElevenLabs nie jest deterministyczne:
+  klient albo CDN ze starą kopią może mieć audio niezgodne z nowymi czasami napisów.
+- Akceptacja: zapis pary module+lock jako jedna operacja (albo lock najpierw z oznaczeniem „w toku”), maskowanie także zakodowanych form; przy odrzuconym
+  sidecarze nowy klucz (np. z licznikiem regeneracji w skrócie) zamiast nadpisania; test.
 
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051

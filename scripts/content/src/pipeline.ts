@@ -64,7 +64,7 @@ export function assertNarrationPathsClassified(
   }
   for (const [type, fields] of Object.entries(classification)) {
     for (const path of [...fields.client, ...fields.secret]) {
-      if (!/(^|\.)(narration|answerNarration)\.audioUrl$/.test(path)) continue;
+      if (!/[nN]arration\.audioUrl$/.test(path)) continue;
       const prefix = path.slice(0, -'.audioUrl'.length);
       if (fields.secret.includes(path)) {
         if (!textOnlyPrefixes.includes(prefix)) throw new Error(`Pole narracji "${prefix}" (${type}) jest secret, ale nie ma go w TEXT_ONLY_NARRATION_PATHS.`);
@@ -131,7 +131,7 @@ export function collectNarrations(raw: Json): NarrationRef[] {
       if (Array.isArray(node)) stack.push(...node);
       else if (isObject(node)) {
         for (const [name, value] of Object.entries(node)) {
-          if ((name === 'narration' || name === 'answerNarration') && isObject(value) && !seen.has(value)) {
+          if (/[nN]arration$/.test(name) && isObject(value) && !seen.has(value)) {
             throw new Error(`Blok "${block.id}": narracja w nieznanym miejscu (${name}); dodaj wzorzec do NARRATION_PATHS.`);
           }
           stack.push(value);
@@ -140,6 +140,23 @@ export function collectNarrations(raw: Json): NarrationRef[] {
     }
   }
   return refs;
+}
+
+/** Narracje bez tekstu (np. same spacje), które mają jeszcze audioUrl: nagranie jest osierocone (nikt go nie odtworzy ani nie zaktualizuje). */
+export function findOrphanAudio(raw: Json): string[] {
+  const orphans: string[] = [];
+  const blocks = Array.isArray(raw.blocks) ? raw.blocks : [];
+  for (const block of blocks) {
+    if (!isObject(block) || typeof block.id !== 'string') continue;
+    for (const path of NARRATION_PATHS) {
+      for (const { holder, key, trail } of expand(block, path, [])) {
+        const narration = holder[key] as Json;
+        const empty = typeof narration.text !== 'string' || narration.text.trim() === '';
+        if (empty && ('audioUrl' in narration || 'cues' in narration)) orphans.push(`${block.id}#${trail.join('.')}`);
+      }
+    }
+  }
+  return orphans;
 }
 
 export interface PipelineParams {
@@ -193,19 +210,30 @@ export interface PipelineResult {
   chars: number;
   /** Tylko --check: problemy (pusta lista = OK). */
   problems: string[];
+  /** Ostrzeżenia niebędące błędem (kod wyjścia bez zmian), np. osierocone audio. */
+  warnings: string[];
 }
 
 const hashFromKey = (key: string) => key.split('/').pop()!.replace(/\.mp3$/, '');
 
-/** Sidecar z magazynu to dane z zewnątrz: zły JSON albo kształt to "brak" (nagranie zostanie wygenerowane od nowa), nie wpis do modułu. */
-function parseSidecar(bytes: Uint8Array, key: string, voiceId: string): Sidecar | null {
+const withoutSpaces = (text: string) => text.replace(/\s+/gu, '');
+
+/**
+ * Sidecar z magazynu to dane z zewnątrz (napisy trafiają potem do module.json i do klienta): zły JSON, kształt albo napisy niezgodne z
+ * tekstem narracji to "brak" (nagranie zostanie wygenerowane od nowa), nie wpis do modułu. Nazwa pliku ma skrót TEKSTU, ale to nie chroni
+ * zawartości sidecara, więc złożone napisy muszą dawać dokładnie tekst narracji (z dokładnością do białych znaków, jak w alignmentToCues).
+ */
+function parseSidecar(bytes: Uint8Array, key: string, voiceId: string, narrationText: string): Sidecar | null {
   try {
     const value = JSON.parse(new TextDecoder().decode(bytes)) as Sidecar;
-    const cuesOk =
-      Array.isArray(value.cues) &&
-      value.cues.length > 0 &&
-      value.cues.every((cue) => cue && typeof cue.text === 'string' && Number.isInteger(cue.startMs) && cue.startMs >= 0);
-    if (value.hash !== hashFromKey(key) || value.voiceId !== voiceId || !cuesOk || !Number.isInteger(value.durationMs)) return null;
+    if (value.hash !== hashFromKey(key) || value.voiceId !== voiceId || !Number.isInteger(value.durationMs)) return null;
+    if (!Array.isArray(value.cues) || value.cues.length === 0) return null;
+    let previous = 0;
+    for (const cue of value.cues) {
+      if (!cue || typeof cue.text !== 'string' || !Number.isInteger(cue.startMs) || cue.startMs < previous || cue.startMs > value.durationMs) return null;
+      previous = cue.startMs;
+    }
+    if (withoutSpaces(value.cues.map((cue) => cue.text).join('')) !== withoutSpaces(narrationText)) return null;
     return value;
   } catch {
     return null;
@@ -259,7 +287,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   const refs = collectNarrations(raw);
   const lock = (await readJsonFile(lockPath)) as Lock | null;
 
-  if (params.check) return checkOffline(refs, lock, params);
+  if (params.check) return checkOffline(refs, lock, params, findOrphanAudio(raw));
 
   // Dry-run bez kluczy nie zna głosu z .env.local: bierze go z lockfile (ten sam skrót co przy generowaniu).
   const voiceId = params.voiceId || (params.dryRun ? lock?.voiceId ?? '' : '');
@@ -295,7 +323,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     }
     const audio = await params.store.head(ref.key);
     const sidecarBytes = audio ? await params.store.get(sidecarKey(ref.key)) : null;
-    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceId) : null;
+    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceId, ref.text) : null;
     if (audio && sidecar) {
       sidecars.set(ref.id, sidecar);
       cachedIds.add(ref.id);
@@ -310,7 +338,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   say(params.output, formatPlan(summary));
   if (params.dryRun) {
     say(params.output, '(--dry-run: bez sieci i bez zapisów; „istniejące” = moduł już wskazuje na to nagranie)');
-    return { generated: 0, cached: summary.cached, chars: summary.chars, problems: [] };
+    return { generated: 0, cached: summary.cached, chars: summary.chars, problems: [], warnings: [] };
   }
 
   // 3. Limit znaków i potwierdzenie PRZED pierwszym wywołaniem ElevenLabs.
@@ -387,11 +415,11 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     await params.store.put(manifestKey(slug, params.version), manifestBytes, { contentType: JSON_CONTENT_TYPE, cacheControl: MUTABLE_CACHE }, true);
   }
   say(params.output, `Gotowe: wygenerowano ${generated}, istniejących ${summary.cached}. module.json ${moduleChanged ? 'zaktualizowany' : 'bez zmian'}, audio.lock.json ${lockChanged ? 'zaktualizowany' : 'bez zmian'}.`);
-  return { generated, cached: summary.cached, chars: summary.chars, problems: [] };
+  return { generated, cached: summary.cached, chars: summary.chars, problems: [], warnings: [] };
 }
 
 /** --check: OFFLINE (bez magazynu, kluczy i sieci). Sprawdza, że każda narracja ma nagranie zgodne z JEJ AKTUALNYM tekstem (skrót z lockfile). */
-function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineParams): PipelineResult {
+function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineParams, orphans: string[]): PipelineResult {
   const problems: string[] = [];
   if (!lock) {
     problems.push('Brak audio.lock.json: uruchom generowanie audio dla modułu.');
@@ -415,7 +443,9 @@ function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineP
     const known = new Set(refs.map((ref) => ref.id));
     for (const id of Object.keys(lock.entries)) if (!known.has(id)) problems.push(`${id}: wpis w audio.lock.json bez narracji w module (usuń albo wygeneruj ponownie).`);
   }
+  const warnings = orphans.map((id) => `${id}: narracja bez tekstu ma jeszcze audioUrl/cues (osierocone nagranie; usuń pola audio albo przywróć tekst).`);
   for (const problem of problems) say(params.output, `BŁĄD: ${problem}`);
+  for (const warning of warnings) say(params.output, `OSTRZEŻENIE: ${warning}`);
   if (problems.length === 0) say(params.output, `OK: ${refs.length} narracji ma aktualne nagrania (sprawdzono offline).`);
-  return { generated: 0, cached: refs.length - problems.length, chars: 0, problems };
+  return { generated: 0, cached: refs.length - problems.length, chars: 0, problems, warnings };
 }

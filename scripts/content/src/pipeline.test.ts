@@ -213,6 +213,19 @@ describe('runPipeline', () => {
     expect(tts.calls).toHaveLength(1);
     const lockAfter = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
     expect(Object.keys(lockAfter.entries)).toEqual(Object.keys(lockBefore.entries));
+    // Zmienił się TYLKO wpis wybranej narracji (nowy skrót i nowy klucz); pozostałe wpisy są identyczne co do bajtu.
+    const changedId = `${blockId}#narration`;
+    expect(lockAfter.entries[changedId].hash).not.toBe(lockBefore.entries[changedId].hash);
+    expect(lockAfter.entries[changedId].textSha).not.toBe(lockBefore.entries[changedId].textSha);
+    expect(lockAfter.entries[changedId].key).not.toBe(lockBefore.entries[changedId].key);
+    for (const id of Object.keys(lockBefore.entries).filter((entryId) => entryId !== changedId)) {
+      expect(lockAfter.entries[id]).toEqual(lockBefore.entries[id]);
+    }
+    // Manifest po --only zawiera pełny zestaw plików (nowe nagranie + niezmienione), bez starego klucza wybranej narracji.
+    const manifest = JSON.parse(new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body));
+    expect(manifest.files).toContain(lockAfter.entries[changedId].key);
+    expect(manifest.files).not.toContain(lockBefore.entries[changedId].key);
+    expect(manifest.files).toHaveLength(Object.keys(lockAfter.entries).length);
   });
 
   it('ostrzega, gdy moduł ma już audio w innej wersji partii', async () => {
@@ -284,23 +297,118 @@ describe('kompletność i spójność', () => {
     expect(tts.calls).toEqual([]);
   });
 
-  it('identyczne teksty w jednym bloku dzielą plik: TTS raz, plan liczy raz', async () => {
+  it('identyczne teksty w jednym bloku dzielą plik: TTS raz, plan i manifest liczą raz, lock ma osobne wpisy z tym samym kluczem', async () => {
+    const baseline = new FakeTts();
+    await runPipeline(params({ tts: baseline }));
+    await writeFile(modulePath, JSON.stringify(bareModule()));
+    await rm(join(dir, 'audio.lock.json'));
+
+    // Scena: narracja bloku i narracja hotspotu o tym samym tekście (ten sam blockId, ten sam skrót = ten sam plik).
     const module = bareModule();
-    const block = (module.blocks as Record<string, unknown>[])[0] as { narration: { text: string }; hints?: unknown };
-    block.narration.text = 'Tak.';
-    const other = (module.blocks as Record<string, unknown>[]).find((b, i) => i > 0 && (b.narration as { text?: string } | undefined))!;
-    other.narration = { text: 'Inny.' };
-    // Drugi wpis o tym samym tekście w TYM SAMYM bloku: użyj hotspotu z fixtury sceny.
-    const scene = (module.blocks as Record<string, unknown>[]).find((b) => Array.isArray(b.hotspots)) as { hotspots: { narration?: { text: string } }[]; narration?: { text: string } };
+    const scene = (module.blocks as Record<string, unknown>[]).find((b) => Array.isArray(b.hotspots)) as {
+      id: string;
+      hotspots: { narration?: { text: string } }[];
+      narration?: { text: string };
+    };
     scene.narration = { text: 'Powtórka.' };
     scene.hotspots[0].narration = { text: 'Powtórka.' };
     await writeFile(modulePath, JSON.stringify(module));
+
+    const store = new MemoryStore();
     const tts = new FakeTts();
-    await runPipeline(params({ tts }));
+    const result = await runPipeline(params({ store, tts }));
     expect(tts.calls.filter((call) => call.text === 'Powtórka.')).toHaveLength(1);
+    // Plan: duplikat liczony raz (znaki i liczba narracji do wygenerowania).
+    expect(result.generated).toBe(tts.calls.length);
+    expect(result.chars).toBe(tts.calls.reduce((sum, call) => sum + call.text.length, 0));
+
     const saved = JSON.parse(await readFile(modulePath, 'utf8'));
     const savedScene = saved.blocks.find((b: { hotspots?: unknown }) => Array.isArray(b.hotspots));
     expect(savedScene.hotspots[0].narration.audioUrl).toBe(savedScene.narration.audioUrl);
+
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    const sceneEntries = Object.entries(lock.entries).filter(([id]) => id.startsWith(`${scene.id}#`)) as [string, { key: string }][];
+    const sameKey = sceneEntries.filter(([, entry]) => entry.key === savedScene.narration.audioUrl);
+    expect(sameKey.map(([id]) => id).sort()).toEqual([`${scene.id}#hotspots.0.narration`, `${scene.id}#narration`]);
+
+    const manifest = JSON.parse(new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body));
+    expect(manifest.files.filter((key: string) => key === savedScene.narration.audioUrl)).toHaveLength(1);
+    expect(new Set(manifest.files).size).toBe(manifest.files.length);
+  });
+});
+
+describe('napisy z magazynu (sidecar) muszą odpowiadać tekstowi narracji', () => {
+  async function tamper(mutate: (sidecar: { cues: { text: string; startMs: number }[] }) => void) {
+    const store = new MemoryStore();
+    await runPipeline(params({ store }));
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const sidecarPath = String(module.blocks[0].narration.audioUrl).replace(/\.mp3$/, '.json');
+    const stored = store.objects.get(sidecarPath)!;
+    const sidecar = JSON.parse(new TextDecoder().decode(stored.body));
+    mutate(sidecar);
+    stored.body = new TextEncoder().encode(JSON.stringify(sidecar));
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts }));
+    return { tts, result, module: JSON.parse(await readFile(modulePath, 'utf8')), sidecarAfter: JSON.parse(new TextDecoder().decode(store.objects.get(sidecarPath)!.body)) };
+  }
+
+  it('podmieniony tekst napisu: sidecar odrzucony, narracja wygenerowana od nowa, do modułu nie trafia obcy tekst', async () => {
+    const { tts, result, module } = await tamper((sidecar) => {
+      sidecar.cues[0].text = 'Kliknij ten link natychmiast.';
+    });
+    expect(result.generated).toBe(1);
+    expect(tts.calls).toHaveLength(1);
+    expect(JSON.stringify(module)).not.toContain('Kliknij ten link natychmiast');
+  });
+
+  it('dopisany napis (dodatkowa treść): odrzucony', async () => {
+    const { result } = await tamper((sidecar) => {
+      sidecar.cues.push({ text: 'Dopisek.', startMs: sidecar.cues[sidecar.cues.length - 1].startMs });
+    });
+    expect(result.generated).toBe(1);
+  });
+
+  it('napisy nie rosnące albo po końcu nagrania: odrzucone', async () => {
+    const decreasing = await tamper((sidecar) => {
+      if (sidecar.cues.length > 1) sidecar.cues[1].startMs = 0;
+      sidecar.cues[0].startMs = 5;
+    });
+    expect(decreasing.result.generated).toBe(1);
+    const beyond = await tamper((sidecar) => {
+      sidecar.cues[0].startMs = 9_999_999;
+    });
+    expect(beyond.result.generated).toBe(1);
+  });
+
+  it('różnica tylko w białych znakach jest dozwolona (jak w alignmentToCues): cache trafiony bez TTS', async () => {
+    const { tts, result } = await tamper((sidecar) => {
+      sidecar.cues[0].text = ` ${sidecar.cues[0].text}\n`;
+    });
+    expect(result.generated).toBe(0);
+    expect(tts.calls).toEqual([]);
+  });
+});
+
+describe('guard i osierocone audio', () => {
+  it('pole narracji o innej nazwie (np. introNarration) w nieznanym miejscu: błąd', () => {
+    const module = bareModule();
+    (module.blocks as Record<string, unknown>[])[0].intro = { introNarration: { text: 'x' } };
+    expect(() => collectNarrations(module)).toThrow(/nieznanym miejscu/);
+  });
+
+  it('--check: narracja bez tekstu z audioUrl to OSTRZEŻENIE (nie błąd)', async () => {
+    await runPipeline(params());
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    module.blocks[0].narration.text = '   ';
+    await writeFile(modulePath, JSON.stringify(module));
+    const chunks: string[] = [];
+    const output = new Writable({ write: (chunk, _e, done) => (chunks.push(String(chunk)), done()) });
+    const result = await runPipeline(params({ tts: undefined, check: true, store: new MemoryStore(), output }));
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/osierocone/);
+    expect(chunks.join('')).toContain('OSTRZEŻENIE:');
+    // Lock nadal ma wpis tej narracji bez odpowiednika w module: to błąd; ostrzeżenie jest osobną informacją.
+    expect(result.problems.every((problem) => !/osierocone/.test(problem))).toBe(true);
   });
 });
 

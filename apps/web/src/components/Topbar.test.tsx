@@ -28,6 +28,48 @@ describe('Topbar', () => {
     expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toHaveAttribute('href', '/report');
   });
 
+  describe('układ wąski (telefon) i tryb skupienia', () => {
+    it('skrócona etykieta "Zgłoś" na telefonie nie zmienia nazwy dostępnej linku', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      const link = screen.getByRole('link', { name: 'Zgłoś podejrzany mail' });
+      expect(link).toHaveAttribute('aria-label', 'Zgłoś podejrzany mail');
+      expect(link).toHaveTextContent('Zgłoś');
+    });
+
+    it('domyślnie menu główne jest widoczne także na wąskich ekranach (przewijane w pasku, nie wypycha strony)', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
+
+      const nav = container.querySelector('nav') as HTMLElement;
+      expect(nav.className).toMatch(/\bflex\b/);
+      expect(nav.className).not.toMatch(/\bhidden\b/);
+      expect(nav.className).toMatch(/overflow-x-auto/);
+      expect(nav.className).toMatch(/min-w-0/);
+    });
+
+    it('focusMode (odtwarzacz): na wąskich ekranach menu jest ukryte, zostaje logo, "Zgłoś" i avatar; od sm menu wraca', () => {
+      usePathnameMock.mockReturnValue('/courses/abc');
+      const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} focusMode />);
+
+      const nav = container.querySelector('nav') as HTMLElement;
+      expect(nav.className).toMatch(/\bhidden\b/);
+      expect(nav.className).toMatch(/sm:flex/);
+      expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
+    });
+
+    it('długi adres e-mail jest skracany, pełny w podpowiedzi (nie wypycha układu)', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test" role={Role.EMPLOYEE} />);
+
+      const email = screen.getByText('bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test');
+      expect(email.className).toMatch(/truncate/);
+      expect(email).toHaveAttribute('title', 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test');
+    });
+  });
+
   it('bez zalogowanego użytkownika nie ma przycisku zgłoszenia', () => {
     usePathnameMock.mockReturnValue('/courses');
     render(<Topbar userEmail={null} />);

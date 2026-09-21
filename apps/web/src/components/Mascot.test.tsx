@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MASCOT_POSES as CONTENT_POSES } from '@cyberszkolo/content';
 import Mascot, { MASCOT_POSES } from './Mascot';
+import MascotSays from './MascotSays';
 
 describe('Mascot', () => {
   it('lista póz zgadza się ze schematem treści (packages/content)', () => {
@@ -24,11 +25,6 @@ describe('Mascot', () => {
     expect(container.querySelector('img')!.getAttribute('src')).toMatch(/^\/mascot\//);
   });
 
-  it('dymek pokazuje tekst bloku', () => {
-    render(<Mascot pose="greeting" text="Cześć! Zaczynamy." />);
-    expect(screen.getByText('Cześć! Zaczynamy.')).toBeInTheDocument();
-  });
-
   it('błąd ładowania pliku (brak w buildzie) daje placeholder z opisem', () => {
     render(<Mascot pose="warning" />);
     fireEvent.error(screen.getByRole('img'));
@@ -40,6 +36,38 @@ describe('Mascot', () => {
     const { container } = render(<Mascot pose="../../etc/passwd" />);
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByTestId('mascot-placeholder')).toBeInTheDocument();
+  });
+});
+
+describe('MascotSays (maskotka i dymek jako jedna jednostka)', () => {
+  it('pokazuje maskotkę i dymek z tekstem bloku w jednym kontenerze', () => {
+    render(<MascotSays pose="pointing" text="Sprawdź dokładnie każdy znak. To ważne. Zwróć uwagę na zero." />);
+    const unit = screen.getByTestId('mascot-says');
+    expect(unit).toContainElement(screen.getByAltText('Maskotka Unfooly wskazuje'));
+    expect(unit).toContainElement(screen.getByText('Sprawdź dokładnie każdy znak. To ważne. Zwróć uwagę na zero.'));
+  });
+
+  it('dymek ma ogonek (dekoracyjny, ukryty przed czytnikami ekranu)', () => {
+    const { container } = render(<MascotSays pose="greeting" text="Cześć!" />);
+    expect(container.querySelector('span[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('bez tekstu pokazuje samą maskotkę, bez dymka', () => {
+    const { container } = render(<MascotSays pose="cheer" />);
+    expect(screen.getByAltText('Maskotka Unfooly się cieszy')).toBeInTheDocument();
+    expect(container.querySelector('p')).toBeNull();
+  });
+
+  it('długi tekst (3-4 zdania) jest w całości w dymku', () => {
+    const text = 'Pierwsze zdanie jest o adresie. Drugie zdanie dotyczy domeny nadawcy. Trzecie ostrzega przed presją czasu. Czwarte radzi zgłosić wiadomość.';
+    render(<MascotSays pose="thinking" text={text} />);
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it('tekst z treści jest wstawiany jako tekst (bez HTML)', () => {
+    const { container } = render(<MascotSays pose="warning" text={'<img src=x onerror=alert(1)>'} />);
+    expect(container.querySelectorAll('img')).toHaveLength(1); // wyłącznie maskotka
+    expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
   });
 });
 

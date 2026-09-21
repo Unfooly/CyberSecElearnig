@@ -42,7 +42,16 @@ function initialsFromEmail(email: string): string {
   return `${first}${second}`;
 }
 
-export default function Topbar({ userEmail, role }: { userEmail: string | null; role?: Role }) {
+export default function Topbar({
+  userEmail,
+  role,
+  focusMode = false,
+}: {
+  userEmail: string | null;
+  role?: Role;
+  /** Tryb skupienia (odtwarzacz szkolenia): na wąskich ekranach ukrywa pozycje menu, zostaje logo, "Zgłoś" i avatar. Na desktopie bez zmian. */
+  focusMode?: boolean;
+}) {
   const pathname = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -94,13 +103,19 @@ export default function Topbar({ userEmail, role }: { userEmail: string | null; 
     .sort((a, b) => b.length - a.length)[0];
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-10">
-      <div className="flex h-full items-center gap-9">
+    <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-4 sm:px-10">
+      <div className="flex h-full items-center gap-3 sm:gap-9">
         <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
           <Logo variant="dark" />
         </Link>
 
-        <nav className="flex h-full flex-1 items-center gap-1">
+        {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska: wiele pozycji menu (rola ORG_ADMIN) nie może wypychać strony poza okno na telefonie. */}
+        {focusMode && <div className="flex-1 sm:hidden" aria-hidden="true" />}
+        <nav
+          className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
+            focusMode ? 'hidden sm:flex' : 'flex'
+          }`}
+        >
           {visibleItems.map((item) => {
             if (!item.built) {
               return (
@@ -132,8 +147,9 @@ export default function Topbar({ userEmail, role }: { userEmail: string | null; 
         </nav>
 
         {userEmail && (
-          <Link href="/report" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
-            Zgłoś podejrzany mail
+          <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
+            <span className="sm:hidden">Zgłoś</span>
+            <span className="hidden sm:inline">Zgłoś podejrzany mail</span>
           </Link>
         )}
 
@@ -146,7 +162,10 @@ export default function Topbar({ userEmail, role }: { userEmail: string | null; 
                 {initialsFromEmail(userEmail)}
               </span>
             )}
-            <span className="hidden sm:inline">{userEmail}</span>
+            {/* Długi adres nie może wypychać układu poza okno (poziome przewijanie): skracamy, pełny adres w podpowiedzi. */}
+            <span className="hidden max-w-[10rem] truncate sm:inline" title={userEmail}>
+              {userEmail}
+            </span>
           </div>
         )}
       </div>

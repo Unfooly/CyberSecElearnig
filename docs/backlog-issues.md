@@ -346,6 +346,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: lista istniejących kursów z zewnętrznym wideo, wgranie plików do zasobów (R2), nowa wersja kursu z ścieżkami względnymi (wersje niemutowalne,
   D-051), usunięcie linku zastępczego po migracji.
 
+### B-077 Menu główne na wąskich ekranach (hamburger)
+- Etykiety: `P2`, `feature`, `mod:web` · Źródło: zrzuty odtwarzacza (PR 2), decyzja właściciela 2026-09-21
+- Opis: pozycje menu w `Topbar` nie mieszczą się na 390 px (np. „Zesp” ucięte). Tymczasowo: menu przewijane poziomo wewnątrz paska, a w odtwarzaczu szkolenia
+  tryb skupienia (`focusMode`) ukrywa pozycje menu na telefonie (zostaje logo, „Zgłoś” i avatar).
+- Akceptacja: menu zwijane w przycisk „hamburger” na wąskich ekranach (dostępne z klawiatury i czytników, fokus w panelu, zamykanie Escape), test na
+  390 px bez przewijania poziomego strony, aktualizacja `Topbar.test.tsx`; po wdrożeniu usunięcie obejścia `focusMode` albo zostawienie go jako opcji skupienia.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

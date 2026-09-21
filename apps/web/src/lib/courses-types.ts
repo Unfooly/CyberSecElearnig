@@ -3,8 +3,24 @@
 // sekcja "Backlog frontendu"). Trzymane tu, w jednym miejscu, żeby biblioteka
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
+import type { Narration } from '@cyberszkolo/content';
+
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
-export type ContentBlockType = 'VIDEO' | 'QUIZ' | 'BRANCHING_SCENARIO' | 'DRAG_AND_DROP' | 'EMBEDDED_HTML';
+export type ContentBlockType =
+  | 'VIDEO'
+  | 'QUIZ'
+  | 'BRANCHING_SCENARIO'
+  | 'DRAG_AND_DROP'
+  | 'EMBEDDED_HTML'
+  // Silnik scen (packages/content): komponenty tych bloków dochodzą w kolejnych commitach PR 2.
+  | 'SCENE_HOTSPOTS'
+  | 'DIALOGUE'
+  | 'NOTEPAD'
+  | 'EMAIL_ANALYSIS'
+  | 'TEXT_INPUT_GUIDED'
+  | 'ORDERING'
+  | 'TABS'
+  | 'SUMMARY';
 
 export interface CourseAssignmentSummary {
   assignmentId: string;
@@ -34,6 +50,13 @@ export interface DragAndDropItem {
 
 export interface ContentBlock {
   type: ContentBlockType;
+  // Bloki silnika scen (v2) mają stabilne id; bloki sprzed silnika dostają id b<indeks> z API.
+  id?: string;
+  title?: string;
+  // Narracja (lektor): tekst, nagranie (ścieżka względna wobec CONTENT_BASE_URL), czas i opcjonalne napisy z czasami.
+  narration?: Narration;
+  // Poza maskotki i dymek z tekstem (poza jest enumem w schemacie; klient i tak traktuje ją jako niezaufany tekst).
+  mascot?: { pose: string; text?: string };
   // VIDEO
   url?: string;
   // QUIZ / BRANCHING_SCENARIO
@@ -49,6 +72,26 @@ export interface ContentBlock {
   html?: string;
 }
 
+// Widok postępu z /start (apps/api: clientProgress): własne wyniki bloków po id oraz notatki (treść rozwiązana przez serwer, bez kluczy).
+export interface ClientProgressBlock {
+  type: string;
+  done: boolean;
+  correct?: boolean;
+  points?: number;
+  attempts?: number;
+}
+
+export interface ClientNote {
+  blockId: string;
+  text: string;
+}
+
+export interface ClientProgress {
+  v: 2;
+  blocks: Record<string, ClientProgressBlock>;
+  notes: ClientNote[];
+}
+
 export interface CourseDetail {
   assignmentId: string;
   courseId: string;
@@ -56,11 +99,15 @@ export interface CourseDetail {
   status: AssignmentStatus;
   currentBlockIndex: number;
   contentBlocks: ContentBlock[];
-  progress: Record<string, unknown> | null;
+  progress: ClientProgress | null;
 }
 
 export interface LastResult {
   blockIndex: number;
+  // Id bloku (b<indeks> dla bloków sprzed silnika); starsze odpowiedzi mogą go nie mieć.
+  blockId?: string;
+  // 0..1; obecne dla bloków ocenianych.
+  points?: number;
   type: ContentBlockType;
   // Brak dla VIDEO/DRAG_AND_DROP (nieoceniane) - obecne (true/false) dla
   // QUIZ/BRANCHING_SCENARIO.

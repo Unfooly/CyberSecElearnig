@@ -360,6 +360,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: odtwarzanie nagrania po wybraniu elementu (z poszanowaniem przełącznika „Lektor”, jedno nagranie naraz, zatrzymanie przy zmianie
   elementu/bloku), napisy jak w `NarrationPlayer`, testy jednostkowe; dopiero po dostarczeniu plików audio (PR 3).
 
+### B-080 Kontrola same-origin w pozostałych trasach BFF zmieniających stan
+- Etykiety: `P1`, `security`, `mod:web` · Źródło: przegląd bezpieczeństwa PR 2 (trasa `/attempt`), decyzja właściciela 2026-09-21
+- Opis: `proxyAuthenticated` (`apps/web/src/lib/bff.ts`) odrzuca żądania zmieniające stan bez własnego `Origin` / `Sec-Fetch-Site: same-origin` (obrona przed CSRF także z sąsiedniej subdomeny, gdzie `SameSite=Lax` nie chroni). W PR 2 objęto trasy kursów (`/api/courses/[courseId]/progress`, `.../blocks/[blockId]/attempt`). Audyt tras `POST/PATCH/DELETE` w `apps/web/src/app/api` pokazał trasy UWIERZYTELNIONE bez tej kontroli (własne `fetch` z ciasteczkiem):
+  `users` (POST), `users/[id]` (PATCH/DELETE), `users/[id]/resend-invite`, `users/import/preview`, `users/import/[id]` (DELETE), `users/import/[id]/confirm`, `users/import/[id]/stop`, `users/me/avatar`, `users/me/preferences`, `threat-reports/inbox/[id]/notes`, `threat-reports/inbox/[id]/status`.
+  Trasy publiczne bez sesji (`auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `auth/verify-email`, `auth/claim-registration`, `auth/resend-verification`, `demo-request`, `t/[token]/view|submit`) nie mają sesji do nadużycia; ich ochrona to osobny temat (login CSRF, spam), do oceny osobno.
+- Akceptacja: każda trasa z listy przez `proxyAuthenticated` (albo z `isSameOriginRequest()`), ciało z allowlisty, test „Origin obcego hosta → 403” i „bez Origin i Sec-Fetch-Site → 403, z `Sec-Fetch-Site: same-origin` → przechodzi” (ta sama reguła co w pozostałych trasach, bez drugiej).
+
 ### B-079 Ukryty blok EMBEDDED_HTML w podglądzie „Wstecz”
 - Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: przegląd kodu PR 2 (commit 4b-2), D-055
 - Opis: podczas podglądu wcześniejszego bloku bieżący blok zostaje zamontowany w `<div hidden>` (żeby jego stan, np. dowody dodane do notatnika, przeżył „Wstecz”). Dla `EMBEDDED_HTML` iframe działa więc w tle (`display: none`) do końca podglądu; bez nowej powierzchni ataku (sandbox bez `allow-same-origin`, ładowany był już przed „Wstecz”), ale skrypt bloku może dalej grać dźwięk albo liczyć.

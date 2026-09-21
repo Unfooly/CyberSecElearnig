@@ -396,8 +396,9 @@ describe('napisy z magazynu (sidecar) muszą odpowiadać tekstowi narracji', () 
     ['dodatkowa spacja na brzegach', (text: string) => ` ${text}\n`],
     ['spacja w środku słowa (granica słowa)', (text: string) => `${text.slice(0, 3)} ${text.slice(3)}`],
     ['usunięta spacja między słowami', (text: string) => text.replace(' ', '')],
-    ['niewidoczny znak (zero-width space)', (text: string) => `${text}​`],
-    ['spacja niełamiąca zamiast zwykłej', (text: string) => text.replace(' ', ' ')],
+    ['niewidoczny znak (zero-width space, U+200B)', (text: string) => `${text}${String.fromCharCode(0x200b)}`],
+    // Drugi argument replace poniżej to literalny NBSP (U+00A0), niewidoczny w przeglądzie: zamiana zwykłej spacji na spację niełamiącą.
+    ['spacja niełamiąca zamiast zwykłej (NBSP, U+00A0)',(text: string) => text.replace(' ', ' ')],
   ])('sidecar różniący się od tekstu tylko odstępami albo znakami niewidocznymi (%s): odrzucony, tekst napisów liczy się lokalnie', async (_name, change) => {
     const { result, module } = await tamper((sidecar) => {
       sidecar.cues[0].text = change(sidecar.cues[0].text);

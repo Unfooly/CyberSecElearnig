@@ -8,10 +8,14 @@
 // używa lokalnej bazy z .env i sprząta po sobie. DNS jest podmieniony preloadem
 // scripts/e2e/dns-stub.cjs (tylko w procesie API tego skryptu).
 //
+// Wymaga zbudowanych pakietów: `npm run build --workspace=packages/shared` i `--workspace=packages/content` (skrypt importuje
+// packages/content/dist/node.js do wyliczenia skrótu treści kursu v2). Na końcu sprawdza odtwarzacz modułu (powłoka, CSP, brak
+// przewijania poziomego na 1280 i 390 px) i zapisuje zrzuty ekranu do E2E_SCREENSHOT_DIR (domyślnie docs/brand/screens, poza gitem).
+//
 // Użycie z katalogu repo (dotenv-cli ładuje bazę i sekrety JWT z .env):
 //   npx dotenv -e .env -- node scripts/e2e-registration.mjs
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
@@ -65,6 +69,8 @@ async function cleanup(prisma) {
   for (const child of children) child.kill();
   try {
     await prisma?.organization.deleteMany({ where: { name: { in: [COMPANY, `${COMPANY} (wyświetlana)`] } } });
+    // Kurs po organizacjach: przypisania znikają kaskadowo, a kurs z przypisaniami jest chroniony (RESTRICT, B-032).
+    if (courseIds.length > 0) await prisma?.course.deleteMany({ where: { id: { in: courseIds } } });
     await prisma?.$disconnect();
   } catch (error) {
     console.error('Sprzątanie bazy nie powiodło się:', error.message);
@@ -74,6 +80,7 @@ async function cleanup(prisma) {
 
 let prisma;
 let browser;
+const courseIds = [];
 try {
   // Zmienne z .env (baza, sekrety JWT) dziedziczy proces API; token MailerSend nadpisany na pusty =>
   // tryb deweloperski: mail nie wychodzi, a link ląduje w logu API.
@@ -101,8 +108,29 @@ try {
   const page = await (await browser.newContext()).newPage();
   const pathOf = () => new URL(page.url()).pathname;
 
+  // Naruszenia Content-Security-Policy (D-053) w konsoli przeglądarki przez CAŁY scenariusz: rejestracja, aktywacja, logowanie,
+  // onboarding, panel, ustawienia i odtwarzacz kursu. Chromium zgłasza je jako błędy konsoli i błędy strony.
+  const cspViolations = [];
+  page.on('console', (message) => {
+    // Wyjątek: dokument bloku EMBEDDED_HTML (/embed) celowo próbuje sieci, którą jego własne CSP blokuje (dowód izolacji, krok "embed").
+    if (/\/blocks\/[^/]+\/embed/.test(message.location().url ?? '')) return;
+    if (message.type() === 'error' && /content security policy/i.test(message.text())) {
+      cspViolations.push(`${pathOf()}: ${message.text().slice(0, 200)}`);
+    }
+  });
+  page.on('pageerror', (error) => {
+    if (/content security policy/i.test(error.message)) cspViolations.push(`${pathOf()}: ${error.message.slice(0, 200)}`);
+  });
+
   // 1. Formularz rejestracji: brak pól hasła, komplet danych, zgody.
-  await page.goto(`${WEB}/register`);
+  const registerResponse = await page.goto(`${WEB}/register`);
+  const csp = registerResponse.headers()['content-security-policy'] ?? '';
+  step(
+    'nagłówek CSP: script-src z nonce, bez unsafe-inline/unsafe-eval; object-src none; frame-ancestors none',
+    /script-src 'self' 'nonce-[^']+'(;|$)/.test(csp) && !/script-src[^;]*unsafe-/.test(csp) && csp.includes("object-src 'none'") && csp.includes("frame-ancestors 'none'"),
+    csp.slice(0, 120),
+  );
+  step('skrypty Next.js na stronie mają nonce z nagłówka', (await page.locator('script[nonce]').count()) > 0);
   step('formularz nie ma pól hasła', (await page.locator('input[type=password]').count()) === 0);
   await page.fill('#firstName', 'Ewa');
   await page.fill('#lastName', 'Testowa');
@@ -188,6 +216,509 @@ try {
   prisma = new PrismaClient();
   const org = await prisma.organization.findFirst({ where: { name: COMPANY } });
   step('baza: status ACTIVE i selfJoinEnabled', org?.status === 'ACTIVE' && org.selfJoinEnabled === true);
+
+  // 11. Odtwarzacz kursu (dummy: kurs w formacie sprzed silnika: QUIZ, scenariusz, DRAG_AND_DROP - bez wideo z obcego hosta i bez
+  // EMBEDDED_HTML z inline-skryptem: patrz D-053, oba wymagają osobnych rozwiązań w PR 2). Przypisanie ma FORCE RLS, więc idzie
+  // w transakcji z kontekstem organizacji (jak TenantPrismaService).
+  const course = await prisma.course.create({
+    data: {
+      title: `E2E kurs CSP ${RUN}`,
+      category: 'EMAIL_SECURITY',
+      durationMinutes: 3,
+      contentBlocks: [
+        { type: 'QUIZ', prompt: 'Który adres jest podejrzany?', options: [{ text: 'a@bank.pl', correct: false }, { text: 'a@bank-0.pl', correct: true }] },
+        { type: 'BRANCHING_SCENARIO', prompt: 'Co robisz?', options: [{ text: 'Klikam', outcome: 'wrong' }, { text: 'Zgłaszam', outcome: 'correct' }] },
+        { type: 'DRAG_AND_DROP', prompt: 'Posegreguj', items: [{ text: 'Mail 1' }], categories: ['Bezpieczne', 'Phishing'] },
+      ],
+    },
+  });
+  const courseId = course.id;
+  courseIds.push(course.id);
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+    const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
+    await tx.courseAssignment.create({ data: { organizationId: org.id, userId: admin.id, courseId } });
+  });
+  await page.goto(`${WEB}/courses/${courseId}`);
+  await page.getByText('Który adres jest podejrzany?').waitFor();
+  await page.getByLabel('a@bank-0.pl').check();
+  step('odtwarzacz kursu: blok się renderuje i reaguje na kliknięcie (hydracja z nonce działa)', await page.getByLabel('a@bank-0.pl').isChecked());
+
+  // 12. Powłoka odtwarzacza modułu (silnik scen, PR 2): kurs w formacie v2 z narracją i maskotką, zrzuty ekranu na desktopie i telefonie.
+  // Zrzuty lądują w E2E_SCREENSHOT_DIR (domyślnie docs/brand/screens, katalog poza gitem). Nagranie to cisza WAV serwowana przez
+  // page.route pod ścieżką .mp3 (tylko na potrzeby zrzutu: prawdziwe pliki audio dochodzą w PR 3).
+  // Skrypt jest ESM, a pakiet CJS: ścieżka z rozszerzeniem, eksport przez interop (named albo default).
+  const contentNode = await import('@cyberszkolo/content/dist/node.js');
+  const hashContent = contentNode.hashContent ?? contentNode.default.hashContent;
+  const demoBlocks = [
+    { id: 'wstep', type: 'QUIZ', prompt: 'Pytanie wstępne', options: [{ text: 'A', correct: true }, { text: 'B', correct: false }] },
+    {
+      id: 'adres',
+      type: 'QUIZ',
+      title: 'Adres nadawcy',
+      prompt: 'Który adres nadawcy jest podejrzany?',
+      options: [{ text: 'wsparcie@bank-oficjalny.pl', correct: false }, { text: 'wsparcie@bank-0ficjalny.pl', correct: true }],
+      narration: {
+        text: 'Spójrz uważnie na adres nadawcy. Oszuści często podmieniają jedną literę. Zwróć uwagę na zero zamiast litery o.',
+        audioUrl: 'audio/demo.mp3',
+        durationMs: 8000,
+        cues: [
+          { text: 'Spójrz uważnie na adres nadawcy.', startMs: 0 },
+          { text: 'Oszuści często podmieniają jedną literę.', startMs: 2600 },
+          { text: 'Zwróć uwagę na zero zamiast litery o.', startMs: 5400 },
+        ],
+      },
+      mascot: {
+        pose: 'pointing',
+        text: 'Sprawdź dokładnie każdy znak w adresie! Oszuści podmieniają pojedyncze litery, na przykład literę o na zero. Jeśli coś budzi wątpliwości, nie klikaj i zgłoś wiadomość.',
+      },
+    },
+    { id: 'link', type: 'QUIZ', prompt: 'Co zrobisz z linkiem?', options: [{ text: 'Kliknę', correct: false }, { text: 'Zgłoszę', correct: true }] },
+    { id: 'koniec', type: 'QUIZ', prompt: 'Ostatnie pytanie', options: [{ text: 'A', correct: true }, { text: 'B', correct: false }] },
+  ];
+  const demoCourse = await prisma.course.create({
+    data: { title: `Sprawa testowa ${RUN}`, category: 'EMAIL_SECURITY', durationMinutes: 8, contentBlocks: demoBlocks },
+  });
+  courseIds.push(demoCourse.id);
+  const demoVersion = await prisma.courseVersion.create({
+    data: { courseId: demoCourse.id, version: 1, schemaVersion: 2, contentHash: hashContent(demoBlocks), contentBlocks: demoBlocks, blockCount: demoBlocks.length },
+  });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+    const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
+    await tx.courseAssignment.create({
+      data: {
+        organizationId: org.id,
+        userId: admin.id,
+        courseId: demoCourse.id,
+        courseVersionId: demoVersion.id,
+        status: 'IN_PROGRESS',
+        currentBlockIndex: 1,
+        progress: { v: 2, blocks: { wstep: { type: 'QUIZ', done: true, answeredAt: new Date().toISOString(), weight: 1, points: 1, correct: true } }, notes: [] },
+      },
+    });
+  });
+
+  // Cisza WAV (8 s, 8 kHz, mono, 8 bit) zamiast pliku audio.
+  const sampleRate = 8000;
+  const samples = sampleRate * 8;
+  const wav = Buffer.alloc(44 + samples, 0x80);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + samples, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(sampleRate, 24);
+  wav.writeUInt32LE(sampleRate, 28);
+  wav.writeUInt16LE(1, 32);
+  wav.writeUInt16LE(8, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(samples, 40);
+  await page.route('**/content/audio/demo.mp3', (route) => route.fulfill({ status: 200, contentType: 'audio/wav', body: wav }));
+
+  const screenshotDir = process.env.E2E_SCREENSHOT_DIR ?? join(process.cwd(), 'docs', 'brand', 'screens');
+  mkdirSync(screenshotDir, { recursive: true });
+  const viewports = [['desktop', { width: 1280, height: 800 }], ['mobile-390', { width: 390, height: 844 }]];
+  // Dwa stany: blok Z narracją (dłuższy dymek: 3 zdania) i blok BEZ narracji (znika cały rząd odtwarzacza, zostaje nawigacja).
+  const shots = [
+    { suffix: '', promptText: 'Który adres nadawcy jest podejrzany?', narrated: true },
+    { suffix: '-bez-narracji', promptText: 'Co zrobisz z linkiem?', narrated: false },
+  ];
+  for (const shot of shots) {
+    if (!shot.narrated) {
+      // Przesuwamy kurs do bloku bez narracji (przypisanie ma FORCE RLS: transakcja z kontekstem organizacji).
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+        await tx.courseAssignment.updateMany({ where: { organizationId: org.id, courseId: demoCourse.id }, data: { currentBlockIndex: 2 } });
+      });
+    }
+    for (const [name, size] of viewports) {
+      await page.setViewportSize(size);
+      await page.goto(`${WEB}/courses/${demoCourse.id}`);
+      await page.getByText(shot.promptText).waitFor();
+      if (shot.narrated) await page.getByTestId('caption').waitFor();
+      const label = `${name}${shot.suffix}`;
+      const narrationRows = await page.locator('section[aria-label="Narracja"]').count();
+      step(`odtwarzacz (${label}): ${shot.narrated ? 'rząd narracji jest' : 'rząd narracji znika, zostaje nawigacja'}`, shot.narrated ? narrationRows === 1 : narrationRows === 0);
+      // Bez poziomego przewijania strony (telefon): szerokość dokumentu nie przekracza okna.
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      // Przy nadmiarze wskazujemy elementy wystające poza okno (diagnostyka).
+      const offenders = overflow > 0
+        ? await page.evaluate(() =>
+            [...document.querySelectorAll('body *')]
+              .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+              .slice(0, 6)
+              .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)} right=${Math.round(el.getBoundingClientRect().right)}`),
+          )
+        : [];
+      step(`odtwarzacz (${label}): brak poziomego przewijania`, overflow <= 0, `nadmiar ${overflow}px ${offenders.join(' | ')}`);
+      // Dolny pasek na telefonie nie może zajmować więcej niż ok. jednej czwartej ekranu (cel: dwa rzędy).
+      const barHeight = await page.evaluate(() => document.querySelector('nav[aria-label="Nawigacja po blokach"]')?.closest('.sticky')?.getBoundingClientRect().height ?? 0);
+      if (name === 'mobile-390') step(`odtwarzacz (${label}): dolny pasek <= 30% wysokości ekranu`, barHeight <= size.height * 0.3, `${Math.round(barHeight)} px z ${size.height}`);
+      const file = join(screenshotDir, `player-${name}${shot.suffix}.png`);
+      await page.screenshot({ path: file });
+      step(`odtwarzacz (${label}): zrzut ekranu zapisany`, true, file);
+    }
+  }
+
+  // 13. Śledztwo (schemaVersion 3): hotspoty z dowodami, dialog po jednej kwestii, rozwiązanie sprawy. Cała ścieżka idzie przez prawdziwe API
+  // (ocena i liczniki dowodów po stronie serwera). Ilustracje to proste SVG serwowane przez page.route pod ścieżką z CONTENT_BASE (tylko <img>).
+  const caseBlocks = [
+    {
+      id: 'scena',
+      type: 'SCENE_HOTSPOTS',
+      title: 'Biuro',
+      image: 'scenes/office.svg',
+      imageAlt: 'Biurko z monitorem, drzwi i kubek',
+      hotspots: [
+        { id: 'monitor', label: 'Monitor', x: 8, y: 12, width: 26, height: 30, content: 'Na monitorze przyklejona kartka z hasłem do systemu księgowego.', required: true, evidence: true, note: { text: 'Hasło na kartce przy monitorze.', kind: 'item' } },
+        { id: 'drzwi', label: 'Drzwi', x: 62, y: 20, width: 20, height: 55, content: 'Drzwi do biura nie były zamknięte na klucz.', required: true, evidence: true, note: { text: 'Drzwi biura niezamknięte.', kind: 'place' } },
+        { id: 'kubek', label: 'Kubek', x: 40, y: 58, width: 12, height: 14, content: 'Zwykły kubek z logo firmy. Nic podejrzanego.', required: false, evidence: true, note: { text: 'Kubek z logo firmy.', kind: 'item' } },
+      ],
+    },
+    {
+      id: 'rozmowa',
+      type: 'DIALOGUE',
+      title: 'Rozmowa z Anną',
+      character: { name: 'Anna Kowalska', role: 'Księgowa', avatar: 'img/anna.svg' },
+      questions: [
+        {
+          id: 'mail',
+          text: 'Skąd był ten mail?',
+          lines: [{ text: 'Przyszedł dziś rano, podpisany jako bank.' }, { text: 'Prosił o pilne potwierdzenie danych logowania.' }, { text: 'Kliknęłam w link, zanim to sprawdziłam.' }],
+          note: { text: 'Pracownica kliknęła link z maila.', kind: 'person' },
+          evidence: true,
+          required: true,
+        },
+        { id: 'nadawca', text: 'Znasz tego nadawcę?', answer: 'Nie, ale adres wyglądał znajomo.', required: false },
+      ],
+    },
+    {
+      id: 'mail',
+      type: 'EMAIL_ANALYSIS',
+      title: 'Podejrzany mail',
+      prompt: 'Kliknij w mailu to, co budzi podejrzenia, i sprawdź odpowiedź.',
+      email: {
+        fromName: 'Bank Zaufany',
+        fromAddress: 'wsparcie@bank-0ficjalny.pl',
+        subject: 'Pilne: potwierdź dane logowania w ciągu 24 godzin',
+        date: 'pon., 21 wrz 2026, 08:14',
+        body: 'Szanowny Kliencie,\nWykryliśmy nieautoryzowane logowanie. Twoje konto zostanie zablokowane, jeśli nie potwierdzisz danych. Zaloguj się tutaj i uzupełnij formularz.\nZespół Bezpieczeństwa',
+        attachment: { name: 'formularz-weryfikacji.pdf', size: '212 KB' },
+        links: [{ id: 'login', text: 'Zaloguj się tutaj', url: 'https://bank-0ficjalny.pl.weryfikacja-konta.example/login?id=7731' }],
+      },
+      criteria: [
+        { id: 'adres', label: 'Adres nadawcy podszywa się pod bank (zero zamiast litery o)', correct: true, explanation: 'Domena bank-0ficjalny.pl różni się od prawdziwej jedną literą.', note: { text: 'Nadawca podszywa się pod bank (bank-0ficjalny.pl).', kind: 'mail' }, evidence: true, target: { kind: 'sender' } },
+        { id: 'link', label: 'Link prowadzi do obcej domeny', correct: true, explanation: 'Prawdziwa domena to weryfikacja-konta.example, a nie bank.', note: { text: 'Link prowadzi do domeny weryfikacja-konta.example.', kind: 'mail' }, evidence: true, target: { kind: 'link', linkId: 'login' } },
+        { id: 'zalacznik', label: 'Załącznik z formularzem jest wiarygodny', correct: false, explanation: 'Banki nie proszą o wypełnianie formularzy w załącznikach.', note: { text: 'Załącznik wygląda wiarygodnie.', kind: 'item' }, target: { kind: 'attachment' } },
+        { id: 'grozba', label: 'Groźba zablokowania konta buduje presję', correct: true, explanation: 'Presja czasu to klasyczny sposób oszustów.', note: { text: 'Mail grozi zablokowaniem konta.', kind: 'mail' }, target: { kind: 'text', quote: 'Twoje konto zostanie zablokowane' } },
+        { id: 'ogolny', label: 'Ogólne zwroty zamiast imienia i nazwiska klienta', correct: true, explanation: '„Szanowny Kliencie” zamiast imienia to częsta oznaka masowej wysyłki.', note: { text: 'Mail nie zwraca się do klienta po imieniu.', kind: 'mail' } },
+      ],
+      scoring: 'partial',
+    },
+    {
+      id: 'kolejnosc',
+      type: 'ORDERING',
+      prompt: 'Ułóż w kolejności, co robisz po otrzymaniu podejrzanego maila.',
+      items: [
+        { id: 'stop', text: 'Nie klikam w link ani w załącznik' },
+        { id: 'zglos', text: 'Zgłaszam wiadomość do działu bezpieczeństwa' },
+        { id: 'usun', text: 'Usuwam wiadomość ze skrzynki' },
+      ],
+      scoring: 'partial',
+      explanation: 'Najpierw nic nie klikasz, potem zgłaszasz, a dopiero na końcu usuwasz.',
+    },
+    {
+      id: 'domena',
+      type: 'TEXT_INPUT_GUIDED',
+      prompt: 'Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?',
+      placeholder: 'domena.pl',
+      answer: { accept: ['weryfikacja-konta.example'], caseSensitive: false },
+      hints: [{ text: 'Prawdziwa domena to ostatni człon przed pierwszym ukośnikiem, czyli to, co stoi tuż przed „/login”.' }],
+      maxAttempts: 3,
+      solution: { text: 'weryfikacja-konta.example', explanation: 'Wszystko przed nią to tylko poddomeny, które mają uśpić czujność.' },
+    },
+    {
+      id: 'gra',
+      type: 'EMBEDDED_HTML',
+      title: 'Interaktywna gra',
+      // Dokument wykonuje inline-skrypt (CSP dokumentu na to pozwala) i sprawdza, czego NIE może: ciasteczek, rodzica, localStorage, sieci.
+      html: `<!doctype html><html><body><!--EMBED-SECRET-MARKER--><p id="o">start</p><script>
+        var r = [];
+        try { r.push('cookie:' + (document.cookie === '' ? 'pusty' : 'DOSTEPNE')); } catch (e) { r.push('cookie:blok'); }
+        try { parent.document.title; r.push('parent:DOSTEPNY'); } catch (e) { r.push('parent:blok'); }
+        try { localStorage.getItem('x'); r.push('storage:DOSTEPNY'); } catch (e) { r.push('storage:blok'); }
+        var o = document.getElementById('o');
+        o.textContent = 'skrypt dziala | ' + r.join(' | ');
+        fetch('/api/users/me/preferences', { credentials: 'include' }).then(function () { o.textContent += ' | fetch:DOSTEPNY'; }).catch(function () { o.textContent += ' | fetch:blok'; });
+      </script></body></html>`,
+    },
+    { id: 'wnioski', type: 'SUMMARY', title: 'Rozwiązanie sprawy', text: 'Do incydentu doszło przez słabe nawyki: hasło na kartce i pochopne kliknięcie w link.' },
+  ];
+  const caseCourse = await prisma.course.create({
+    data: { title: `Śledztwo ${RUN}`, category: 'EMAIL_SECURITY', durationMinutes: 6, contentBlocks: caseBlocks },
+  });
+  courseIds.push(caseCourse.id);
+  const caseVersion = await prisma.courseVersion.create({
+    data: { courseId: caseCourse.id, version: 1, schemaVersion: 3, contentHash: hashContent(caseBlocks), contentBlocks: caseBlocks, blockCount: caseBlocks.length },
+  });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+    const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
+    await tx.courseAssignment.create({
+      data: { organizationId: org.id, userId: admin.id, courseId: caseCourse.id, courseVersionId: caseVersion.id, status: 'IN_PROGRESS', currentBlockIndex: 0 },
+    });
+  });
+  const svg = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240">${body}</svg>`;
+  const office = svg('<rect width="400" height="240" fill="#e8ecf4"/><rect x="30" y="30" width="105" height="70" rx="6" fill="#2d3a55"/><rect x="40" y="40" width="85" height="50" fill="#9fb8e8"/><rect x="250" y="50" width="80" height="130" fill="#b58b5c"/><rect x="160" y="140" width="48" height="34" rx="6" fill="#fff" stroke="#6C5CE7" stroke-width="3"/><rect x="0" y="190" width="400" height="50" fill="#c9d1e0"/>');
+  const annaAvatar = svg('<rect width="400" height="240" fill="#6C5CE7"/><circle cx="200" cy="105" r="58" fill="#f3d6b5"/><path d="M110 240 Q200 130 290 240Z" fill="#2d3a55"/>');
+  await page.route('**/content/scenes/office.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: office }));
+  await page.route('**/content/img/anna.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: annaAvatar }));
+
+  const noHScroll = async (label) => {
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    step(`śledztwo (${label}): brak poziomego przewijania`, overflow <= 0, `nadmiar ${overflow}px`);
+  };
+  const shoot = async (name) => {
+    // Playwright przewija stronę do klikanego elementu; zrzut zawsze od góry, żeby pokazywał nagłówek z licznikiem.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const file = join(screenshotDir, `sledztwo-${name}.png`);
+    await page.screenshot({ path: file });
+    step(`śledztwo: zrzut ${name}`, true, file);
+  };
+  const counter = () => page.getByTestId('evidence-counter');
+
+  // Wyższe okno desktopowe (1280x1100), żeby scena z obrazem, licznik i karta punktu mieściły się na jednym zrzucie.
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.goto(`${WEB}/courses/${caseCourse.id}`);
+  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  // Suma nieznana ("?"): blok maila ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (gracz nie wie z góry, ile zaznaczyć).
+  step('śledztwo: licznik startuje z serwera, suma ukryta przez blok maila (Dowody 0/?)', (await counter().textContent())?.includes('Dowody 0/?') === true, await counter().textContent());
+  step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
+  await shoot('hotspoty-przed');
+
+  // Punkt z obrazu (mysz) i z listy (klawiatura/czytnik); dowód dodaje "Dodaj do notatnika".
+  await page.getByTestId('hotspot-overlay-drzwi').click();
+  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await page.getByRole('list', { name: 'Elementy sceny' }).getByRole('button', { name: 'Monitor' }).click();
+  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/?') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
+  step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
+  await shoot('hotspoty-po');
+  await noHScroll('desktop, hotspoty');
+
+  // Treść bloku nie może zostać pod lepkim paskiem: po przewinięciu do końca ostatni element ("Kontynuuj") leży nad paskiem, a element
+  // z fokusem klawiatury przewija się nad pasek (scroll-padding-bottom z pomiaru). Sprawdzane na desktopie i na telefonie.
+  const visibleAboveBar = async (label) => {
+    // Od góry strony i fokus klawiaturą na "Kontynuuj": przeglądarka przewija element do widoku, a scroll-padding-bottom (pomiar paska)
+    // ma zostawić go NAD paskiem. Samo przewinięcie do końca niczego nie dowodzi (pasek leży wtedy w przepływie pod treścią).
+    // blur: element mógł już mieć fokus z poprzedniego pomiaru (ponowne focus() na fokusowanym elemencie nie wywołuje zdarzenia ani przewijania).
+    await page.evaluate(() => {
+      document.activeElement?.blur();
+      window.scrollTo(0, 0);
+    });
+    await page.getByRole('button', { name: 'Kontynuuj' }).focus();
+    const metrics = await page.evaluate(() => {
+      const bar = document.querySelector('nav[aria-label="Nawigacja po blokach"]')?.closest('.sticky');
+      const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Kontynuuj');
+      return {
+        barTop: bar?.getBoundingClientRect().top ?? 0,
+        barHeight: bar?.getBoundingClientRect().height ?? 0,
+        buttonBottom: button?.getBoundingClientRect().bottom ?? 0,
+        padding: document.documentElement.style.getPropertyValue('scroll-padding-bottom'),
+        scrollY: Math.round(window.scrollY),
+        docHeight: document.documentElement.scrollHeight,
+        innerHeight: window.innerHeight,
+      };
+    });
+    step(`śledztwo (${label}): "Kontynuuj" z fokusem klawiatury jest w całości nad dolnym paskiem`, metrics.buttonBottom > 0 && metrics.buttonBottom <= metrics.barTop + 1, JSON.stringify(metrics));
+    const padding = await page.evaluate(() => document.documentElement.style.getPropertyValue('scroll-padding-bottom'));
+    step(`śledztwo (${label}): scroll-padding-bottom ustawiony z pomiaru paska`, /^\d+px$/.test(padding), padding);
+  };
+  await visibleAboveBar('desktop');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visibleAboveBar('telefon');
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
+  step('śledztwo: po zapisie licznik z serwera nadal 2/? (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/?') === true, await counter().textContent());
+  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+
+  await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
+  await page.getByRole('button', { name: 'Skąd był ten mail?' }).click();
+  step('śledztwo: dialog pokazuje pierwszą kwestię, nie całość', (await page.getByText('Przyszedł dziś rano, podpisany jako bank.').count()) === 1 && (await page.getByText('Kliknęłam w link, zanim to sprawdziłam.').count()) === 0);
+  step('śledztwo: avatar rozmówcy ładuje się przez <img>', (await page.locator('img[src$="/content/img/anna.svg"]').count()) === 1);
+  await shoot('dialog-w-trakcie');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noHScroll('telefon, dialog');
+  await shoot('dialog-w-trakcie-390');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Następna kwestia' }).click();
+  await page.getByRole('button', { name: 'Następna kwestia' }).click();
+  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/?)', (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
+  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+
+  // --- Bloki oceniane: mail (klik we fragmenty), kolejność (klawiatura), zadanie tekstowe z podpowiedzią; ocena po stronie serwera. ---
+  const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  await page.setViewportSize({ width: 1280, height: 1100 });
+
+  await page.getByTestId('mail-client').waitFor();
+  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik), licznik nadal z "?"', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1 && (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
+  await shoot('mail-przed');
+
+  // Link nigdy nie nawiguje: adres w pasku statusu po najechaniu i kliknięciu, adres strony bez zmian.
+  const urlBefore = page.url();
+  const mailLink = page.getByTestId('mail-client').getByRole('button', { name: /Zaloguj się tutaj/ });
+  await mailLink.hover();
+  step('śledztwo: link w mailu po najechaniu pokazuje prawdziwy adres w pasku statusu', (await page.getByTestId('mail-status-bar').textContent())?.includes('weryfikacja-konta.example/login?id=7731') === true);
+  await mailLink.click();
+  step('śledztwo: kliknięcie linku w mailu nie nawiguje (adres strony bez zmian, brak kotwic <a>)', page.url() === urlBefore && (await page.getByTestId('mail-client').locator('a').count()) === 0, page.url());
+  // Pierwsze kliknięcie zaznaczyło kryterium linku; kolejne dwa odznaczają je i zaznaczają znowu (kliknięcie fragmentu = przełącznik).
+  await mailLink.click();
+  await mailLink.click();
+
+  // Zaznaczamy nadawcę i link (trafne) oraz załącznik (fałszywy alarm), grozby i ogólnika nie ("przeoczone").
+  await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).click();
+  await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).click();
+  const checked = await page.getByRole('group', { name: /Zaznaczone oznaki/ }).getByRole('checkbox', { checked: true }).count();
+  step('śledztwo: kliknięcia we fragmenty maila zaznaczają kryteria w checkliście (3 zaznaczone)', checked === 3, String(checked));
+  await shoot('mail-zaznaczone');
+  const mailAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
+  const mailBody = await (await mailAnswered).json();
+  step('śledztwo: serwer ocenił mail (25%), rozstrzygnięcie po id nieprzejrzystych, dowody 5/6 i notatki od razu', mailBody.lastResult?.points === 0.25 && mailBody.lastResult?.detail?.criteria?.length === 5 && mailBody.evidence?.collected === 5 && mailBody.evidence?.total === 6 && mailBody.notes?.length === 2 && !JSON.stringify(mailBody.lastResult.detail).match(/"(adres|link|zalacznik|grozba|ogolny)"/), JSON.stringify({ points: mailBody.lastResult?.points, evidence: mailBody.evidence?.collected + '/' + mailBody.evidence?.total, notes: mailBody.notes?.length }));
+  await page.getByText(/Wynik: 25%/).waitFor();
+  step('śledztwo: wynik maila w bloku: trafione, fałszywy alarm i przeoczone; licznik 5/6, notatnik (5)', (await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).textContent())?.includes('(trafione)') === true && (await page.getByTestId('mail-client').getByRole('button', { name: /Załącznik/ }).textContent())?.includes('(fałszywy alarm)') === true && (await counter().textContent())?.includes('Dowody 5/6') === true && (await page.getByRole('button', { name: /Notatnik \(5\)/ }).count()) === 1, await counter().textContent());
+  step('śledztwo: zła odpowiedź maila: maskotka ostrzega', (await page.getByAltText('Maskotka Unfooly ostrzega').count()) === 1);
+  await shoot('mail-wynik');
+  await noHScroll('desktop, wynik maila');
+  await nextEnabled().click();
+
+  // Kolejność: cała obsługa z klawiatury (Enter na przyciskach "w górę / w dół"), ostatnie dwa kroki celowo zamienione.
+  await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  await shoot('kolejnosc-przed');
+  const wanted = ['Nie klikam w link ani w załącznik', 'Usuwam wiadomość ze skrzynki', 'Zgłaszam wiadomość do działu bezpieczeństwa'];
+  const rows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
+  for (let target = 0; target < wanted.length; target += 1) {
+    for (let guard = 0; guard < 6; guard += 1) {
+      const texts = await rows();
+      const at = texts.findIndex((t) => t.includes(wanted[target]));
+      if (at === target) break;
+      const button = page.getByRole('button', { name: `Przesuń w górę: ${wanted[target]}` });
+      await button.focus();
+      await button.press('Enter');
+    }
+  }
+  const finalRows = await rows();
+  step('śledztwo: kolejność ułożona z klawiatury (Enter na przyciskach w górę/w dół)', wanted.every((text, i) => finalRows[i].includes(text)), finalRows.join(' | ').slice(0, 200));
+  const orderAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
+  const orderBody = await (await orderAnswered).json();
+  step('śledztwo: serwer ocenił kolejność (1/3 na miejscu), poprawna kolejność w wyniku jako id nieprzejrzyste', Math.abs(orderBody.lastResult?.points - 1 / 3) < 1e-9 && orderBody.lastResult?.detail?.correctOrder?.length === 3 && !JSON.stringify(orderBody.lastResult.detail).match(/"(stop|zglos|usun)"/), JSON.stringify(orderBody.lastResult?.points));
+  await page.getByRole('region', { name: 'Poprawna kolejność' }).waitFor();
+  await shoot('kolejnosc-wynik');
+  await nextEnabled().click();
+
+  // Zadanie tekstowe: błędna próba pokazuje podpowiedź (jej treść przychodzi dopiero po próbie), poprawna kończy zadanie.
+  await page.getByLabel('Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?').waitFor();
+  const hintsBefore = await page.getByText('Prawdziwa domena to ostatni człon').count();
+  step('śledztwo: podpowiedź zadania tekstowego nie jest w stronie przed próbą (klient zna tylko liczbę)', hintsBefore === 0 && !(await page.content()).includes('Prawdziwa domena to ostatni człon'));
+  const attemptInput = page.getByLabel('Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?');
+  await attemptInput.fill('bank-0ficjalny.pl');
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await page.getByText(/Prawdziwa domena to ostatni człon/).waitFor();
+  step('śledztwo: po błędnej próbie podpowiedź i maskotka "thinking"', (await page.getByAltText('Maskotka Unfooly się zastanawia').count()) === 1 && (await page.getByText(/Pozostało prób: 2/).count()) === 1);
+  await shoot('tekst-podpowiedz');
+  await noHScroll('desktop, zadanie tekstowe');
+  await attemptInput.fill('weryfikacja-konta.example');
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await page.getByText(/Poprawna odpowiedź!/).waitFor();
+  const textDone = progressResponse();
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  const textBody = await (await textDone).json();
+  step('śledztwo: zadanie tekstowe rozstrzygnięte na serwerze (75%), "Kontynuuj" zapisuje postęp', textBody.lastResult?.points === 0.75, JSON.stringify(textBody.lastResult?.points));
+  await nextEnabled().click();
+
+  // --- EMBEDDED_HTML: osobny dokument z własnym CSP i sandboxem; nie ma go w treści modułu ani w stronie. ---
+  const embedFrame = page.frameLocator('iframe[title="Interaktywny moduł szkoleniowy"]');
+  await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
+  await embedFrame.locator('#o').waitFor();
+  const embedText = await embedFrame.locator('#o').textContent();
+  await page.waitForTimeout(400); // wynik próby sieci (blokada CSP) dopisuje się asynchronicznie
+  const embedResult = (await embedFrame.locator('#o').textContent()) ?? '';
+  step('embed: inline-skrypt w osobnym dokumencie działa mimo CSP strony (własne CSP dokumentu)', embedText?.includes('skrypt dziala') === true, embedResult);
+  step('embed: dokument w sandboxie nie ma dostępu do ciasteczek, rodzica, localStorage ani sieci', /cookie:blok/.test(embedResult) && /parent:blok/.test(embedResult) && /storage:blok/.test(embedResult) && /fetch:blok/.test(embedResult) && !/DOSTEPN/.test(embedResult), embedResult);
+  step('embed: źródło dokumentu nie jest w stronie (ani w treści, ani w danych RSC): pole html jest sekretne', !(await page.content()).includes('EMBED-SECRET-MARKER'));
+  const iframeAttrs = await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').evaluate((el) => ({ sandbox: el.getAttribute('sandbox'), referrerpolicy: el.getAttribute('referrerpolicy'), src: el.getAttribute('src'), srcdoc: el.hasAttribute('srcdoc') }));
+  step('embed: iframe sandbox="allow-scripts" (nic więcej), src z trasy embed, bez srcdoc', iframeAttrs.sandbox === 'allow-scripts' && iframeAttrs.referrerpolicy === 'no-referrer' && /\/embed$/.test(iframeAttrs.src ?? '') && !iframeAttrs.srcdoc, JSON.stringify(iframeAttrs));
+  await shoot('embed');
+
+  // Nagłówki dokumentu i wyjątek od X-Frame-Options: DENY (tylko ta trasa: SAMEORIGIN).
+  const embedUrl = `${WEB}${iframeAttrs.src}`;
+  const embedHead = await page.request.get(embedUrl);
+  const embedCsp = embedHead.headers()['content-security-policy'] ?? '';
+  step('embed: nagłówki dokumentu (CSP z sandboxem bez allow-same-origin, nosniff, no-store, SAMEORIGIN)', embedHead.status() === 200 && /sandbox allow-scripts/.test(embedCsp) && !/allow-same-origin/.test(embedCsp) && /default-src 'none'/.test(embedCsp) && embedHead.headers()['x-content-type-options'] === 'nosniff' && embedHead.headers()['cache-control'] === 'private, no-store' && embedHead.headers()['x-frame-options'] === 'SAMEORIGIN', JSON.stringify({ status: embedHead.status(), xfo: embedHead.headers()['x-frame-options'], csp: embedCsp.slice(0, 80) }));
+  const pageHead = await page.request.get(`${WEB}/login`);
+  step('embed: reszta aplikacji nadal ma X-Frame-Options: DENY (wyjątek tylko dla trasy embed)', pageHead.headers()['x-frame-options'] === 'DENY', pageHead.headers()['x-frame-options']);
+
+  // Obcy origin nie osadzi dokumentu (X-Frame-Options / frame-ancestors 'self'): ramka kończy na stronie błędu przeglądarki.
+  const evil = await page.context().newPage();
+  await evil.route('http://obcy-origin.example/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><iframe id="f" src="${embedUrl}" width="400" height="200"></iframe>` }),
+  );
+  await evil.goto('http://obcy-origin.example/');
+  await evil.waitForTimeout(1500);
+  const foreignFrame = evil.frames().find((frame) => frame !== evil.mainFrame());
+  step('embed: osadzenie dokumentu z OBCEGO originu jest blokowane (ramka nie ładuje treści)', !!foreignFrame && /chrome-error:/.test(foreignFrame.url()), foreignFrame?.url());
+  await evil.close();
+
+  // "Wstecz": iframe jest ODMONTOWANY (nie ukryty), po powrocie ładuje się od nowa.
+  await page.getByRole('button', { name: /Wstecz/ }).click();
+  step('embed: podczas podglądu "Wstecz" w DOM nie ma <iframe>', (await page.locator('iframe').count()) === 0);
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+  await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
+  step('embed: po powrocie z podglądu iframe wraca', (await page.locator('iframe').count()) === 1);
+  await page.getByRole('button', { name: 'Ukończyłem' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
+  await nextEnabled().click();
+
+  await page.getByTestId('case-evidence').waitFor();
+  const caseText = (await page.getByTestId('case-evidence').textContent()) ?? '';
+  step('śledztwo: rozwiązanie sprawy: 5 z 6 dowodów, przeoczony 1 tylko liczbowo (bez treści)', caseText.includes('Zebrane dowody: 5 z 6') && caseText.includes('1 dowód w tej scenie pozostał nieodkryty') && caseText.includes('Podejrzany mail: 2 z 2') && !caseText.includes('Kubek'), caseText.slice(0, 200));
+  await shoot('rozwiazanie-sprawy');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noHScroll('telefon, rozwiązanie sprawy');
+  await shoot('rozwiazanie-sprawy-390');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Odpowiedź /progress na "Zakończ sprawę" musi mieć status COMPLETED (kurs ukończony po stronie serwera), nie tylko zmianę ekranu.
+  const completion = page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Zakończ sprawę' }).click();
+  const completionBody = await (await completion).json();
+  step('śledztwo: "Zakończ sprawę" kończy kurs po stronie serwera (status COMPLETED)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status, evidence: completionBody.evidence?.collected }));
+
+  step('brak naruszeń CSP w konsoli przez cały scenariusz (rejestracja, panel, ustawienia, odtwarzacz)', cspViolations.length === 0, cspViolations.slice(0, 3).join(' | '));
+
+  // Kontrola negatywna: skrypt inline BEZ nonce musi zostać zablokowany. Bez niej "zero naruszeń" mogłoby znaczyć "CSP nie działa".
+  await page.evaluate(() => {
+    window.__cspCanary = false;
+    const script = document.createElement('script');
+    script.textContent = 'window.__cspCanary = true';
+    document.body.appendChild(script);
+  });
+  await page.waitForTimeout(300);
+  step(
+    'kontrola: inline-skrypt bez nonce jest zablokowany przez CSP (i zgłoszony w konsoli)',
+    (await page.evaluate(() => window.__cspCanary)) === false && cspViolations.length > 0,
+    cspViolations[0]?.slice(0, 100),
+  );
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {
   console.error(`\nBŁĄD: ${error.message}`);

@@ -1,3 +1,18 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    // apps/web importuje z @cyberszkolo/content WYŁĄCZNIE część izomorficzną (typy i stałe). `dist/node` (natywny re2, node:crypto) i
+    // `dist/fixtures` (dane testowe) nie mogą trafić do bundla przeglądarki - patrz packages/content/README.md.
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@cyberszkolo/content/dist/*", "@cyberszkolo/content/src/*"],
+            "message": "Importuj tylko z '@cyberszkolo/content' (część izomorficzna); dist/node i fixtury są tylko dla Node."
+          }
+        ]
+      }
+    ]
+  }
 }

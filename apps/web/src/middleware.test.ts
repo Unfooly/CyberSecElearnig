@@ -17,6 +17,62 @@ function buildRequest(path: string, cookieHeader?: string): NextRequest {
   });
 }
 
+describe('middleware: Content-Security-Policy z nonce', () => {
+  const policyOf = (response: Response) => response.headers.get('content-security-policy') ?? '';
+  const nonceOf = (policy: string) => /'nonce-([^']+)'/.exec(policy)?.[1];
+
+  it('strona publiczna dostaje CSP z nonce, bez unsafe-inline/unsafe-eval w script-src', async () => {
+    const response = await middleware(buildRequest('/login'));
+    const policy = policyOf(response);
+
+    expect(nonceOf(policy)).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+    expect(policy).toMatch(/script-src 'self' 'nonce-[^']+'(;|$)/);
+    expect(policy).toContain("frame-ancestors 'none'");
+  });
+
+  it('nonce jest przekazany do żądania (x-nonce i CSP w nagłówkach żądania) - Next.js czyta go stamtąd', async () => {
+    const response = await middleware(buildRequest('/regulamin'));
+    const forwarded = response.headers.get('x-middleware-request-content-security-policy');
+
+    expect(forwarded).toBe(policyOf(response));
+    expect(response.headers.get('x-middleware-request-x-nonce')).toBe(nonceOf(policyOf(response)));
+  });
+
+  it('każda odpowiedź ma inny nonce', async () => {
+    const first = nonceOf(policyOf(await middleware(buildRequest('/login'))));
+    const second = nonceOf(policyOf(await middleware(buildRequest('/login'))));
+
+    expect(first).toBeTruthy();
+    expect(first).not.toBe(second);
+  });
+
+  it('CSP dostaje też chroniona strona z poprawną sesją (przekierowania go nie potrzebują)', async () => {
+    const token = fakeJwt({
+      sub: 'user-1',
+      organizationId: 'org-1',
+      role: 'ORG_ADMIN',
+      email: 'admin@example.test',
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const response = await middleware(buildRequest('/dashboard', `access_token=${token}; refresh_token=r`));
+
+    expect(nonceOf(policyOf(response))).toBeTruthy();
+  });
+
+  it('matcher obejmuje strony, a pomija trasy BFF, zasoby statyczne Next.js i pliki ikon', async () => {
+    const { config } = await import('./middleware');
+    const matcher = new RegExp(`^${config.matcher[0]}$`);
+
+    // Ścieżki graniczne: prefiksy podobne do wyjątków NIE są wyjątkami (muszą dostać CSP).
+    for (const path of ['/', '/login', '/dashboard/users', '/courses/abc', '/t/token', '/regulamin', '/apiary', '/_nextfoo', '/logo.svg', '/brand/x']) {
+      expect(matcher.test(path), path).toBe(true);
+    }
+    for (const path of ['/api/courses/x/progress', '/_next/static/chunks/a.js', '/_next/image', '/favicon.ico', '/icon.svg', '/manifest.webmanifest']) {
+      expect(matcher.test(path), path).toBe(false);
+    }
+  });
+});
+
 describe('middleware', () => {
   it('przekierowuje na /login, gdy nie ma żadnych cookies (niezalogowany)', async () => {
     const response = await middleware(buildRequest('/dashboard'));

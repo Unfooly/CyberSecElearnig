@@ -10,6 +10,8 @@ import { AttemptBlockDto } from './dto/attempt-block.dto';
 
 // Limit prób odpowiedzi tekstowych na użytkownika (poza limitem maxAttempts z treści bloku): chroni bazę i utrudnia zgadywanie.
 const ATTEMPT_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
+// Ładowanie dokumentu embed (iframe ładuje go przy każdym wejściu w blok i po powrocie z podglądu).
+const EMBED_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
 
 @Controller('courses')
 @UseGuards(JwtAuthGuard)
@@ -38,6 +40,18 @@ export class CoursesController {
     @Body() dto: SubmitBlockProgressDto,
   ) {
     return this.coursesService.submitBlockProgress(user.organizationId, user.userId, courseId, dto);
+  }
+
+  // Dokument HTML bloku EMBEDDED_HTML ({ html }): tylko dla właściciela przypisania i tylko do bloku bieżącego lub wcześniejszego.
+  @Get(':courseId/blocks/:blockId/embed')
+  @Throttle(EMBED_THROTTLE)
+  @UseGuards(UserThrottlerGuard)
+  getEmbeddedHtml(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('courseId') courseId: string,
+    @Param('blockId') blockId: string,
+  ) {
+    return this.coursesService.getEmbeddedHtml(user.organizationId, user.userId, courseId, blockId);
   }
 
   // Próba odpowiedzi w bloku TEXT_INPUT_GUIDED: zwraca werdykt i kolejną podpowiedź, nie przesuwa kursu ("Dalej" to /progress).

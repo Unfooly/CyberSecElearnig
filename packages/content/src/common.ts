@@ -43,15 +43,39 @@ export function text(max: number) {
   return z.string().min(1).max(max);
 }
 
+// Napisy z dokładnymi czasami: zdanie i moment jego początku w nagraniu (ms). Wypełnia je skrypt TTS z timestampów ElevenLabs
+// (with_timestamps, PR 3). Bez `cues` odtwarzacz dzieli `text` na zdania i rozkłada czas proporcjonalnie do ich długości (fallback).
+export const cueSchema = z
+  .object({
+    text: text(1000),
+    startMs: z.number().int().min(0).max(1_800_000),
+  })
+  .strict();
+
 export const narrationSchema = z
   .object({
     text: text(4000),
     audioUrl: audioPathSchema.optional(),
     durationMs: z.number().int().min(0).max(1_800_000).optional(),
+    cues: z.array(cueSchema).min(1).max(200).optional(),
   })
   .strict()
   .refine((n) => (n.audioUrl === undefined) === (n.durationMs === undefined), {
     message: 'audioUrl i durationMs występują razem (wpisuje je skrypt TTS)',
+  })
+  .refine((n) => n.cues === undefined || n.durationMs !== undefined, {
+    message: 'cues wymaga nagrania (audioUrl i durationMs): są czasami w nagraniu',
+  })
+  .refine(
+    (n) =>
+      n.cues === undefined ||
+      n.cues.every((cue, i) => (i === 0 || cue.startMs >= n.cues![i - 1].startMs) && cue.startMs <= (n.durationMs ?? 0)),
+    { message: 'cues: startMs rosnąco i nie później niż durationMs' },
+  )
+  // Napisy dzielą ten sam tekst co narracja: łączna długość cues nie może go rażąco przekraczać (ochrona przed rozdęciem odpowiedzi
+  // /start: 200 cues x 1000 znaków to ok. 200 KB na jedną narrację).
+  .refine((n) => n.cues === undefined || n.cues.reduce((sum, cue) => sum + cue.text.length, 0) <= 2 * n.text.length + 200, {
+    message: 'cues: łączna długość napisów rażąco przekracza tekst narracji',
   });
 export type Narration = z.infer<typeof narrationSchema>;
 
@@ -62,7 +86,25 @@ export const mascotSchema = z
   })
   .strict();
 
-export const noteSchema = z.object({ text: text(500) }).strict();
+// Rodzaj wpisu w notatniku (ikona: mail, osoba, przedmiot, miejsce). Od schemaVersion 3; wymagany, gdy element jest dowodem (semantics.ts).
+export const NOTE_KINDS = ['mail', 'person', 'item', 'place'] as const;
+export type NoteKind = (typeof NOTE_KINDS)[number];
+
+export const noteSchema = z.object({ text: text(500), kind: z.enum(NOTE_KINDS).optional() }).strict();
+
+/**
+ * Elementy wymagane do ukończenia bloku eksploracyjnego (hotspoty, pytania dialogu). Jedna reguła dla serwera i klienta:
+ *  1. jeśli którykolwiek element ma jawne `required` (true/false): wymagane są te z `required: true` (reszta to "smaczki");
+ *  2. inaczej lista `requiredX[]` (przestarzała od schemaVersion 3, nadal działa);
+ *  3. inaczej wszystkie.
+ */
+export function requiredItemIds(
+  items: readonly { id: string; required?: boolean }[],
+  legacyRequired?: readonly string[],
+): string[] {
+  if (items.some((item) => item.required !== undefined)) return items.filter((item) => item.required === true).map((item) => item.id);
+  return legacyRequired ? [...legacyRequired] : items.map((item) => item.id);
+}
 
 // Pola wspólne każdego bloku.
 export const baseShape = {

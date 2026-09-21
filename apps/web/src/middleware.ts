@@ -4,6 +4,7 @@ import { ACCESS_TOKEN_COOKIE, API_URL, REFRESH_TOKEN_COOKIE } from '@/lib/config
 import { clientIpHeaders } from '@/lib/client-ip';
 import { decodeJwtPayload, isExpired } from '@/lib/jwt';
 import { clearAuthCookies, setAuthCookies, type TokenPair } from '@/lib/auth-cookies';
+import { buildContentSecurityPolicy, generateNonce, resolveContentOrigin } from '@/lib/security-headers';
 
 // Ścieżka -> role dopuszczone do wejścia. To WYŁĄCZNIE wygoda UX (szybszy
 // redirect, brak migotania niezalogowanego widoku) - prawdziwa kontrola
@@ -12,10 +13,9 @@ import { clearAuthCookies, setAuthCookies, type TokenPair } from '@/lib/auth-coo
 // weryfikuje podpisu - tylko odczytuje payload, żeby podjąć decyzję o
 // przekierowaniu/odświeżeniu tokenu.
 //
-// UWAGA: middleware uruchamia się WYŁĄCZNIE dla ścieżek pasujących do
-// `config.matcher` poniżej - to osobna, statyczna lista. Dodanie tu nowego
-// wpisu bez odpowiadającego mu wzorca w matcherze oznacza, że ochrona po
-// cichu nie zadziała dla tej ścieżki.
+// UWAGA: middleware uruchamia się dla ścieżek pasujących do `config.matcher`
+// na dole pliku (wszystkie strony poza /api, /_next i plikami statycznymi) -
+// nie dodawaj do matchera wyjątków, które pominęłyby ścieżkę z tej listy.
 const ALL_ROLES = Object.values(Role);
 
 const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
@@ -79,10 +79,31 @@ function refreshTokensOnce(refreshToken: string, clientIp: Record<string, string
   return pending;
 }
 
+/**
+ * Przepuszcza żądanie z nagłówkiem Content-Security-Policy z nonce (security-headers.ts). Nonce trafia też do nagłówków ŻĄDANIA:
+ * Next.js czyta go stamtąd i nakłada na własne skrypty inline. Odpowiedzi przekierowań (redirectToLogin) nie mają treści, więc CSP
+ * nie potrzebują.
+ */
+function passThrough(request: NextRequest): NextResponse {
+  const development = process.env.NODE_ENV === 'development';
+  const nonce = generateNonce();
+  const policy = buildContentSecurityPolicy({
+    nonce,
+    contentOrigin: resolveContentOrigin(process.env.CONTENT_BASE_URL, development),
+    development,
+  });
+  const headers = new Headers(request.headers);
+  headers.set('x-nonce', nonce);
+  headers.set('Content-Security-Policy', policy);
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set('Content-Security-Policy', policy);
+  return response;
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const route = PROTECTED_ROUTES.find((r) => matchesPrefix(request.nextUrl.pathname, r.prefix));
   if (!route) {
-    return NextResponse.next();
+    return passThrough(request);
   }
 
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
@@ -111,13 +132,16 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return redirectToLogin(request);
   }
 
-  const response = NextResponse.next();
+  const response = passThrough(request);
   if (refreshedTokens) {
     setAuthCookies(response.cookies, refreshedTokens);
   }
   return response;
 }
 
+// Middleware działa dla WSZYSTKICH stron (CSP z nonce jest potrzebne każdej stronie HTML), poza trasami BFF (`/api/*`: same odpowiedzi
+// JSON), zasobami statycznymi Next.js i plikami ikon/manifestu. O ochronie tras decyduje PROTECTED_ROUTES (prefiks), nie matcher:
+// nowa chroniona ścieżka wymaga wpisu w PROTECTED_ROUTES, a matcher obejmie ją automatycznie.
 export const config = {
-  matcher: ['/dashboard/:path*', '/courses/:path*', '/onboarding/:path*', '/report/:path*', '/reports/:path*'],
+  matcher: ['/((?!api/|_next/|favicon\\.ico|icon\\.svg|manifest\\.webmanifest).*)'],
 };

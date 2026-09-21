@@ -39,6 +39,14 @@ const inProgressCourse = {
 
 const completedCourse = { ...inProgressCourse, status: 'COMPLETED', currentBlockIndex: 1 };
 
+// Przełącznik "Lektor" jest tylko w blokach z narracją (blok bez narracji nie ma rzędu odtwarzacza).
+const narratedCourse = {
+  ...inProgressCourse,
+  contentBlocks: [
+    { type: 'VIDEO', url: 'https://example.test/v.mp4', narration: { text: 'Narracja.', audioUrl: 'audio/a.mp3', durationMs: 1000 } },
+  ],
+};
+
 describe('CoursePlayerPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -120,7 +128,7 @@ describe('CoursePlayerPage', () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it('kurs IN_PROGRESS: renderuje odtwarzacz z pierwszym blokiem, bez dodatkowego zapytania o score', async () => {
+  it('kurs IN_PROGRESS: renderuje odtwarzacz z pierwszym blokiem; zapytania tylko o start i preferencje (bez score)', async () => {
     mockCookieValue('token');
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => inProgressCourse });
     vi.stubGlobal('fetch', fetchMock);
@@ -128,11 +136,46 @@ describe('CoursePlayerPage', () => {
     const jsx = await CoursePlayerPage({ params: { courseId: 'course-1' } });
     render(jsx);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+      expect.stringMatching(/\/courses\/course-1\/start$/),
+      expect.stringMatching(/\/users\/me\/preferences$/),
+    ]);
     expect(document.querySelector('video')).toHaveAttribute('src', 'https://example.test/v.mp4');
   });
 
-  it('kurs COMPLETED: dociąga wynik z /courses/my i pokazuje go w podsumowaniu', async () => {
+  it('przekazuje ustawienie lektora z konta: wyłączony lektor => przełącznik "Lektor" niezaznaczony', async () => {
+    mockCookieValue('token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/users/me/preferences')
+          ? { ok: true, status: 200, json: async () => ({ narrationEnabled: false }) }
+          : { ok: true, status: 200, json: async () => narratedCourse },
+      ),
+    );
+
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+
+    expect(screen.getByRole('switch', { name: 'Lektor' })).not.toBeChecked();
+  });
+
+  it('błąd odczytu preferencji nie blokuje kursu: domyślnie lektor włączony', async () => {
+    mockCookieValue('token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/users/me/preferences')
+          ? { ok: false, status: 500, json: async () => ({}) }
+          : { ok: true, status: 200, json: async () => narratedCourse },
+      ),
+    );
+
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+
+    expect(screen.getByRole('switch', { name: 'Lektor' })).toBeChecked();
+  });
+
+  it('kurs COMPLETED: dociąga wynik z /courses/my i NIE pobiera preferencji (podsumowanie nie ma odtwarzacza)', async () => {
     mockCookieValue('token');
     const fetchMock = vi
       .fn()
@@ -147,7 +190,9 @@ describe('CoursePlayerPage', () => {
     render(jsx);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.map((call) => String(call[0])).some((url) => url.includes('/users/me/preferences'))).toBe(false);
     expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Lektor' })).toBeNull();
   });
 
   it('kurs COMPLETED, /courses/my zwraca 401: przekierowuje do /login zamiast pokazać mylący wynik', async () => {

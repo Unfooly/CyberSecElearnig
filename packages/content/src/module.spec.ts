@@ -1,6 +1,6 @@
-import { ContentValidationError, withLegacyIds } from './index';
+import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, withLegacyIds } from './index';
 import { fullModule } from './fixtures';
-import { hashContent, parseModule } from './node';
+import { hashContent, moduleWarnings, parseModule } from './node';
 
 // Głęboka kopia z luźnym typem: testy celowo psują moduł.
 type TestModule = { blocks: Record<string, any>[]; [key: string]: any };
@@ -67,6 +67,47 @@ describe('parseModule: walidacja modułu', () => {
     expectInvalid((m) => {
       (m.blocks[0].narration as Record<string, unknown>).audioUrl = audioUrl;
     }, 'narration.audioUrl');
+  });
+
+  describe('narration.cues (napisy z dokładnymi czasami)', () => {
+    const narrationOf = (m: TestModule) => m.blocks[0].narration as Record<string, any>;
+
+    it('poprawne cues (rosnące startMs, nie później niż durationMs) przechodzą', () => {
+      const module = fullModuleForTests();
+      narrationOf(module).cues = [{ text: 'A.', startMs: 0 }, { text: 'B.', startMs: 500 }, { text: 'C.', startMs: 1200 }];
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it('cues są opcjonalne (fallback: podział proporcjonalny w odtwarzaczu)', () => {
+      const module = fullModuleForTests();
+      delete narrationOf(module).cues;
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it('odrzuca cues nierosnące, spoza nagrania, bez nagrania i puste', () => {
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 500 }, { text: 'B.', startMs: 100 }];
+      }, 'startMs rosnąco');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 0 }, { text: 'B.', startMs: 5000 }];
+      }, 'nie później niż durationMs');
+      expectInvalid((m) => {
+        delete narrationOf(m).audioUrl;
+        delete narrationOf(m).durationMs;
+      }, 'cues wymaga nagrania');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: -1 }];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 0, extra: 1 }];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = Array.from({ length: 50 }, (_, i) => ({ text: 'x'.repeat(1000), startMs: i }));
+      }, 'łączna długość napisów');
+    });
   });
 
   it('audioUrl bez durationMs (lub odwrotnie) jest błędem', () => {
@@ -176,6 +217,197 @@ describe('parseModule: walidacja modułu', () => {
     expectInvalid((m) => {
       (m as Record<string, unknown>).schemaVersion = 1;
     }, 'schemaVersion');
+  });
+});
+
+// Pola "śledztwa" (schemaVersion 3): dowody, required, kwestie dialogu, avatar.
+describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const hotspots = (m: TestModule) => m.blocks.find((b) => b.type === 'SCENE_HOTSPOTS') as Record<string, any>;
+  const dialogue = (m: TestModule) => m.blocks.find((b) => b.type === 'DIALOGUE') as Record<string, any>;
+  const email = (m: TestModule) => m.blocks.find((b) => b.type === 'EMAIL_ANALYSIS') as Record<string, any>;
+
+  it('fixtura v3 przechodzi; bieżąca wersja to 3', () => {
+    expect(MODULE_SCHEMA_VERSION).toBe(3);
+    expect(() => parseModule(fullModuleForTests())).not.toThrow();
+  });
+
+  it('migracja: moduł w wersji 2 bez pól z wersji 3 (stare requiredHotspots[]/requiredQuestions[], answer) nadal przechodzi', () => {
+    const module = fullModuleForTests();
+    module.schemaVersion = 2;
+    const h = hotspots(module);
+    for (const hotspot of h.hotspots) {
+      delete hotspot.required;
+      delete hotspot.evidence;
+      delete hotspot.note;
+    }
+    const d = dialogue(module);
+    delete d.character.avatar;
+    d.questions = [
+      { id: 'q1', text: 'Skąd ten mail?', answer: 'Rano.', note: { text: 'Mail przyszedł rano.' } },
+      { id: 'q2', text: 'Kto go wysłał?', answer: 'Nie wiem.' },
+    ];
+    delete email(module).email.date;
+    delete email(module).email.attachment;
+    for (const criterion of email(module).criteria) {
+      delete criterion.evidence;
+      delete criterion.target;
+      if (criterion.note) delete criterion.note.kind;
+    }
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('moduł w wersji 2 z polami z wersji 3 jest odrzucony (każde pole nazwane w błędzie)', () => {
+    const message = invalid((m) => {
+      m.schemaVersion = 2;
+    });
+    for (const feature of [
+      'hotspots[].evidence',
+      'hotspots[].required',
+      'questions[].lines',
+      'character.avatar',
+      'criteria[].evidence',
+      'criteria[].target',
+      'email.date',
+      'email.attachment',
+    ]) {
+      expect(message).toContain(`pole ${feature} wymaga schemaVersion 3`);
+    }
+  });
+
+  it('wersja spoza 2 i 3 jest odrzucona', () => {
+    expect(invalid((m) => (m.schemaVersion = 4))).toContain('schemaVersion');
+  });
+
+  it('evidence bez note to błąd', () => {
+    expect(invalid((m) => delete hotspots(m).hotspots[0].note)).toContain('hotspots[0]: evidence wymaga pola note');
+  });
+
+  it('w wersji 3 każda notatka ma kind (także bez evidence), w wersji 2 nie ma go nigdzie', () => {
+    expect(invalid((m) => delete hotspots(m).hotspots[0].note.kind)).toContain('hotspots[0]: note wymaga note.kind');
+    expect(invalid((m) => delete dialogue(m).questions[0].note.kind)).toContain('questions[0]: note wymaga note.kind');
+    expect(invalid((m) => delete email(m).criteria[0].note.kind)).toContain('criteria[0]: note wymaga note.kind');
+    // Notatka bez evidence też: jedna reguła.
+    expect(invalid((m) => delete email(m).criteria[1].note.kind)).toContain('criteria[1]: note wymaga note.kind');
+  });
+
+  it('dowodem może być tylko kryterium maila oznaczone jako poprawne', () => {
+    expect(
+      invalid((m) => {
+        email(m).criteria[1].evidence = true;
+        email(m).criteria[1].note.kind = 'mail';
+      }),
+    ).toContain('criteria[1]: dowodem może być tylko kryterium poprawne');
+  });
+
+  describe('kotwice kryteriów w makiecie maila (criteria[].target)', () => {
+    const target = (m: TestModule, index: number, value: unknown) => {
+      email(m).criteria[index].target = value;
+    };
+
+    it('poprawne kotwice wszystkich rodzajów przechodzą', () => {
+      const module = fullModuleForTests();
+      target(module, 0, { kind: 'subject' });
+      target(module, 1, { kind: 'attachment' });
+      target(module, 2, { kind: 'text', quote: 'Kliknij link' });
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it.each([
+      ['link do nieistniejącego linku', { kind: 'link', linkId: 'brak' }, 'link wymaga linkId istniejącego w email.links'],
+      ['link bez linkId', { kind: 'link' }, 'link wymaga linkId'],
+      ['cytat spoza treści', { kind: 'text', quote: 'tego nie ma w mailu' }, 'quote musi być fragmentem email.body'],
+      ['text bez cytatu', { kind: 'text' }, 'quote musi być fragmentem email.body'],
+      ['sender z quote', { kind: 'sender', quote: 'x' }, 'sender nie ma linkId ani quote'],
+    ])('odrzuca: %s', (_label, value, fragment) => {
+      expect(invalid((m) => target(m, 0, value))).toContain(fragment);
+    });
+
+    it('cytat z samych spacji jest odrzucony; ostrzeżenia: kotwice tylko przy poprawnych i cytat występujący wielokrotnie', () => {
+      expect(invalid((m) => target(m, 0, { kind: 'text', quote: ' ' }))).toContain('quote musi być fragmentem email.body');
+
+      const onlyCorrect = fullModuleForTests();
+      target(onlyCorrect, 1, undefined); // c2 to jedyne błędne kryterium z kotwicą w fixturze
+      expect(moduleWarnings(parseModule(onlyCorrect))).toContainEqual(expect.stringContaining('wszystkie kryteria z target są poprawne'));
+      expect(moduleWarnings(parseModule(fullModuleForTests())).join('\n')).not.toContain('wszystkie kryteria z target');
+
+      const repeated = fullModuleForTests();
+      email(repeated).email.body = 'Kliknij link. Potem znów Kliknij.';
+      const warnings = moduleWarnings(parseModule(repeated)).join('\n');
+      expect(warnings).toContain('występuje w treści więcej niż raz');
+    });
+
+    it('attachment wymaga załącznika w mailu; dwa kryteria nie mogą mieć tej samej kotwicy', () => {
+      expect(
+        invalid((m) => {
+          delete email(m).email.attachment;
+          target(m, 0, { kind: 'attachment' });
+        }),
+      ).toContain('attachment wymaga email.attachment');
+      expect(invalid((m) => target(m, 1, { kind: 'sender' }))).toContain('ta sama kotwica jest już użyta');
+    });
+  });
+
+  it('nieznany rodzaj notatki jest odrzucony', () => {
+    expect(invalid((m) => (hotspots(m).hotspots[0].note.kind = 'dragon'))).toContain('note.kind');
+  });
+
+  it('pytanie ma dokładnie jedno z answer / lines', () => {
+    expect(invalid((m) => (dialogue(m).questions[0].answer = 'X'))).toContain('questions[0]: dokładnie jedno z pól answer / lines');
+    expect(
+      invalid((m) => {
+        delete dialogue(m).questions[1].answer;
+      }),
+    ).toContain('questions[1]: dokładnie jedno z pól answer / lines');
+  });
+
+  it('required: co najmniej jeden element wymagany, gdy ustawiono je jawnie', () => {
+    expect(
+      invalid((m) => {
+        hotspots(m).hotspots[0].required = false;
+      }),
+    ).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+  });
+
+  it('avatar: tylko ścieżka względna do obrazu (jak inne zasoby)', () => {
+    expect(invalid((m) => (dialogue(m).character.avatar = 'https://evil.test/a.png'))).toContain('character.avatar');
+  });
+
+  it('ostrzeżenia (nie błędy) o przestarzałych requiredHotspots[] / requiredQuestions[]', () => {
+    const parsed = parseModule(fullModuleForTests());
+    expect(moduleWarnings(parsed)).toEqual([
+      expect.stringContaining('requiredHotspots[] jest przestarzałe'),
+      expect.stringContaining('requiredQuestions[] jest przestarzałe'),
+    ]);
+    const dead = fullModuleForTests();
+    hotspots(dead).hotspots[1].note = { text: 'Martwa notatka.', kind: 'place' };
+    expect(moduleWarnings(parseModule(dead))).toContainEqual(expect.stringContaining('hotspots[1].note bez evidence'));
+    const clean = fullModuleForTests();
+    delete hotspots(clean).requiredHotspots;
+    delete dialogue(clean).requiredQuestions;
+    expect(moduleWarnings(parseModule(clean))).toEqual([]);
+  });
+});
+
+describe('requiredItemIds (jedna reguła dla serwera i klienta)', () => {
+  const items = [{ id: 'a' }, { id: 'b', required: true }, { id: 'c', required: false }];
+  it('jawne required wygrywa ze starą listą i z domyślnym "wszystkie"', () => {
+    expect(requiredItemIds(items, ['a', 'c'])).toEqual(['b']);
+  });
+  it('bez required: stara lista, a bez niej wszystkie; pusta stara lista = nic nie wymagane (jak na serwerze)', () => {
+    const plain = [{ id: 'a' }, { id: 'b' }];
+    expect(requiredItemIds(plain, ['b'])).toEqual(['b']);
+    expect(requiredItemIds(plain)).toEqual(['a', 'b']);
+    expect(requiredItemIds(plain, [])).toEqual([]);
   });
 });
 

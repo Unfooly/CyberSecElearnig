@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
-import { DEFAULT_WEIGHT, BlockType, idSchema } from '@cyberszkolo/content';
+import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
 import { compileAnswerRegex } from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
 
@@ -20,7 +20,8 @@ export interface SubmitResult {
 const MAX_TEXT_ANSWER = 500;
 
 const ids = z.array(idSchema).max(50);
-const visitedAnswer = z.object({ visited: ids }).strict();
+// `noted`: hotspoty dodane do notatnika ("Dodaj do notatnika"); podzbiór `visited`, wyłącznie elementy z evidence (evaluateSubmit).
+const visitedAnswer = z.object({ visited: ids, noted: ids.optional() }).strict();
 const askedAnswer = z.object({ asked: ids }).strict();
 const openedAnswer = z.object({ opened: ids }).strict();
 const selectedAnswer = z.object({ selected: ids }).strict();
@@ -95,16 +96,22 @@ export function evaluateSubmit(
     }
 
     case 'SCENE_HOTSPOTS': {
-      const { visited } = parseAnswer(visitedAnswer, answer);
-      const all = (block.hotspots as { id: string }[]).map((h) => h.id);
-      requireCoverage('hotspoty', visited, all, block.requiredHotspots);
-      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: [] };
+      const { visited, noted = [] } = parseAnswer(visitedAnswer, answer);
+      const hotspots = block.hotspots as { id: string; required?: boolean; evidence?: boolean; note?: unknown }[];
+      const all = hotspots.map((h) => h.id);
+      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots, block.requiredHotspots));
+      // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
+      const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
+      if (!unique(noted) || noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id))) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: noted.map((id) => noteKey(block.id, id)) };
     }
 
     case 'DIALOGUE': {
       const { asked } = parseAnswer(askedAnswer, answer);
-      const questions = block.questions as { id: string; note?: unknown }[];
-      requireCoverage('pytania', asked, questions.map((q) => q.id), block.requiredQuestions);
+      const questions = block.questions as { id: string; required?: boolean; note?: unknown }[];
+      requireCoverage('pytania', asked, questions.map((q) => q.id), requiredItemIds(questions, block.requiredQuestions));
       const notesAdded = questions.filter((q) => q.note && asked.includes(q.id)).map((q) => noteKey(block.id, q.id));
       return { entry: baseEntry(block, now, weightPoints(block)), notesAdded };
     }
@@ -131,17 +138,10 @@ export function evaluateSubmit(
         .filter((c) => c.correct && c.note && selected.includes(c.id))
         .map((c) => noteKey(block.id, c.id));
       return {
-        entry: baseEntry(block, now, { correct: points === 1, points }),
+        // `selected` (id z treści) zostaje w wpisie: podgląd ukończonego bloku ("Wstecz") pokazuje wybór gracza (clientProgress).
+        entry: baseEntry(block, now, { correct: points === 1, points, selected }),
         notesAdded,
-        detail: {
-          // Id nieprzejrzyste: klient rozpoznaje kryteria po id, które dostał w /start.
-          criteria: criteria.map((c) => ({
-            id: opaque(block.id, c.id),
-            correct: c.correct,
-            selected: selected.includes(c.id),
-            ...(c.explanation ? { explanation: c.explanation } : {}),
-          })),
-        },
+        detail: emailDetail(block, selected, opaque),
       };
     }
 
@@ -156,12 +156,9 @@ export function evaluateSubmit(
       const inPlace = order.filter((id, index) => id === correctOrder[index]).length;
       const points = block.scoring === 'exact' ? (inPlace === correctOrder.length ? 1 : 0) : inPlace / correctOrder.length;
       return {
-        entry: baseEntry(block, now, { correct: points === 1, points }),
+        entry: baseEntry(block, now, { correct: points === 1, points, order }),
         notesAdded: [],
-        detail: {
-          correctOrder: correctOrder.map((id) => opaque(block.id, id)),
-          ...(block.explanation ? { explanation: block.explanation } : {}),
-        },
+        detail: orderingDetail(block, opaque),
       };
     }
 
@@ -178,6 +175,31 @@ export function evaluateSubmit(
     default:
       return { entry: baseEntry(block, now), notesAdded: [] };
   }
+}
+
+/**
+ * Rozstrzygnięcie kryteriów maila po odpowiedzi (id nieprzejrzyste, jak w /start). Ta sama postać idzie w odpowiedzi /progress i, dla
+ * bloku UKOŃCZONEGO, w widoku postępu (clientProgress): po ukończeniu klucz nie jest już tajny (pokazano go w wyniku).
+ */
+export function emailDetail(block: Block, selected: string[], opaque: OpaqueId) {
+  const criteria = (Array.isArray(block.criteria) ? block.criteria : []) as { id: string; correct: boolean; explanation?: string }[];
+  return {
+    criteria: criteria.map((c) => ({
+      id: opaque(block.id, c.id),
+      correct: c.correct,
+      selected: selected.includes(c.id),
+      ...(c.explanation ? { explanation: c.explanation } : {}),
+    })),
+  };
+}
+
+/** Poprawna kolejność (id nieprzejrzyste) i wyjaśnienie: jak wyżej, tylko po ukończeniu bloku. */
+export function orderingDetail(block: Block, opaque: OpaqueId) {
+  const items = (Array.isArray(block.items) ? block.items : []) as { id: string }[];
+  return {
+    correctOrder: items.map((i) => opaque(block.id, i.id)),
+    ...(block.explanation ? { explanation: block.explanation } : {}),
+  };
 }
 
 // Bloki eksploracyjne: po spełnieniu wymagań punkty = 1 (ważne tylko, gdy autor nada im wagę > 0).

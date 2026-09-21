@@ -2,12 +2,17 @@ import { z } from 'zod';
 import { blockSchema } from './blocks';
 import { COURSE_CATEGORIES, idSchema, text } from './common';
 
-/** Wersja formatu modułu z silnikiem scen. Wersja 1 to "legacy": bloki bez `id`, zapisane przed silnikiem (patrz withLegacyIds). */
-export const MODULE_SCHEMA_VERSION = 2;
+/**
+ * Wersja formatu modułu z silnikiem scen (bieżąca). Wersja 1 to "legacy": bloki bez `id`, zapisane przed silnikiem (patrz
+ * withLegacyIds). Wersja 3 dodaje pola "śledztwa" (evidence, note.kind, required, dialog `lines`, `character.avatar`); wszystkie
+ * opcjonalne, więc moduły w wersji 2 nadal się walidują, ale NIE mogą używać pól z wersji 3 (semantics.ts: V3_FEATURES).
+ */
+export const MODULE_SCHEMA_VERSION = 3;
+export const SUPPORTED_SCHEMA_VERSIONS = [2, 3] as const;
 
 export const moduleSchema = z
   .object({
-    schemaVersion: z.literal(MODULE_SCHEMA_VERSION),
+    schemaVersion: z.union([z.literal(2), z.literal(3)]),
     // Stabilny klucz modułu (import robi po nim upsert kursu).
     slug: idSchema,
     title: text(200),

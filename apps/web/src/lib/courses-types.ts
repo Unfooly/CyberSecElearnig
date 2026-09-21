@@ -3,8 +3,24 @@
 // sekcja "Backlog frontendu"). Trzymane tu, w jednym miejscu, żeby biblioteka
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
+import type { Narration } from '@cyberszkolo/content';
+
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
-export type ContentBlockType = 'VIDEO' | 'QUIZ' | 'BRANCHING_SCENARIO' | 'DRAG_AND_DROP' | 'EMBEDDED_HTML';
+export type ContentBlockType =
+  | 'VIDEO'
+  | 'QUIZ'
+  | 'BRANCHING_SCENARIO'
+  | 'DRAG_AND_DROP'
+  | 'EMBEDDED_HTML'
+  // Silnik scen (packages/content): komponenty tych bloków dochodzą w kolejnych commitach PR 2.
+  | 'SCENE_HOTSPOTS'
+  | 'DIALOGUE'
+  | 'NOTEPAD'
+  | 'EMAIL_ANALYSIS'
+  | 'TEXT_INPUT_GUIDED'
+  | 'ORDERING'
+  | 'TABS'
+  | 'SUMMARY';
 
 export interface CourseAssignmentSummary {
   assignmentId: string;
@@ -30,10 +46,19 @@ export interface ContentBlockOption {
 
 export interface DragAndDropItem {
   text: string;
+  /** ORDERING: id nieprzejrzyste elementu (DRAG_AND_DROP go nie ma). */
+  id?: string;
 }
 
 export interface ContentBlock {
   type: ContentBlockType;
+  // Bloki silnika scen (v2) mają stabilne id; bloki sprzed silnika dostają id b<indeks> z API.
+  id?: string;
+  title?: string;
+  // Narracja (lektor): tekst, nagranie (ścieżka względna wobec CONTENT_BASE_URL), czas i opcjonalne napisy z czasami.
+  narration?: Narration;
+  // Poza maskotki i dymek z tekstem (poza jest enumem w schemacie; klient i tak traktuje ją jako niezaufany tekst).
+  mascot?: { pose: string; text?: string };
   // VIDEO
   url?: string;
   // QUIZ / BRANCHING_SCENARIO
@@ -43,10 +68,117 @@ export interface ContentBlock {
   items?: DragAndDropItem[];
   // Etykiety dwóch koszyków klasyfikacji (domyślnie "Bezpieczne"/"Phishing").
   categories?: [string, string];
-  // EMBEDDED_HTML - pełny dokument HTML renderowany WYŁĄCZNIE w
-  // sandboxowanym <iframe> (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia
-  // do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
-  html?: string;
+  // EMBEDDED_HTML: dokument HTML NIE jest częścią treści bloku (pole sekretne po stronie serwera); iframe ładuje go z osobnej trasy embed
+  // (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
+  // SCENE_HOTSPOTS: ilustracja (ścieżka względna wobec bazy zasobów), tekst alternatywny i prostokąty w % obrazu.
+  image?: string;
+  imageAlt?: string;
+  hotspots?: SceneHotspot[];
+  requiredHotspots?: string[];
+  // DIALOGUE
+  character?: { name: string; role?: string; avatar?: string };
+  questions?: DialogueQuestion[];
+  requiredQuestions?: string[];
+  // TABS
+  tabs?: ContentTab[];
+  requiredTabs?: string[];
+  // SUMMARY
+  text?: string;
+  // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).
+  email?: EmailContent;
+  criteria?: EmailCriterion[];
+  // TEXT_INPUT_GUIDED
+  placeholder?: string;
+  maxAttempts?: number;
+  hintCount?: number;
+}
+
+export interface EmailContent {
+  fromName: string;
+  fromAddress: string;
+  subject: string;
+  body: string;
+  date?: string;
+  attachment?: { name: string; size?: string };
+  links: { id: string; text: string; url: string }[];
+}
+
+export interface EmailCriterion {
+  id: string;
+  label: string;
+  /** Fragment maila, którego kliknięcie zaznacza kryterium (brak = tylko na liście). */
+  target?: { kind: 'sender' | 'subject' | 'link' | 'attachment' | 'text'; linkId?: string; quote?: string };
+}
+
+export interface SceneHotspot {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content: string;
+  narration?: Narration;
+  // schemaVersion 3: dowód (wpis w notatniku po "Dodaj do notatnika") i wymagalność.
+  evidence?: boolean;
+  note?: { text: string; kind?: NoteKind };
+  required?: boolean;
+}
+
+export interface DialogueQuestion {
+  id: string;
+  text: string;
+  // Odpowiedź jako jeden tekst ALBO kwestie po kolei (schemaVersion 3).
+  answer?: string;
+  lines?: { text: string; narration?: Narration }[];
+  answerNarration?: Narration;
+  note?: { text: string; kind?: NoteKind };
+  evidence?: boolean;
+  required?: boolean;
+}
+
+export type NoteKind = 'mail' | 'person' | 'item' | 'place';
+
+export interface EvidenceSummary {
+  collected: number;
+  /** null = jeszcze nieznana (blok e-mail ukrywa liczbę dowodów do zatwierdzenia odpowiedzi). */
+  total: number | null;
+  perBlock: { blockId: string; collected: number; total: number | null }[];
+}
+
+export interface ContentTab {
+  id: string;
+  title: string;
+  content: string;
+}
+
+// Widok postępu z /start (apps/api: clientProgress): własne wyniki bloków po id oraz notatki (treść rozwiązana przez serwer, bez kluczy).
+export interface ClientProgressBlock {
+  type: string;
+  done: boolean;
+  correct?: boolean;
+  points?: number;
+  attempts?: number;
+  // TEXT_INPUT_GUIDED: odsłonięte dotąd podpowiedzi i (po wyczerpaniu prób) rozwiązanie.
+  revealedHints?: { text: string }[];
+  solution?: { text: string; explanation?: string };
+  // Ukończone bloki oceniane: własny wybór i rozstrzygnięcie (podgląd "Wstecz" także po odświeżeniu).
+  answer?: ChosenAnswer;
+  detail?: ResultDetail;
+}
+
+export interface ClientNote {
+  blockId: string;
+  text: string;
+  kind?: NoteKind;
+}
+
+export interface ClientProgress {
+  v: 2;
+  blocks: Record<string, ClientProgressBlock>;
+  notes: ClientNote[];
+  // Dowody liczone przez serwer (brak w odpowiedziach starszego API).
+  evidence?: EvidenceSummary;
 }
 
 export interface CourseDetail {
@@ -56,11 +188,26 @@ export interface CourseDetail {
   status: AssignmentStatus;
   currentBlockIndex: number;
   contentBlocks: ContentBlock[];
-  progress: Record<string, unknown> | null;
+  progress: ClientProgress | null;
 }
+
+/** Rozstrzygnięcie ukończonego bloku (id elementów nieprzejrzyste, jak w /start): EMAIL_ANALYSIS -> criteria, ORDERING -> correctOrder. */
+export interface ResultDetail {
+  criteria?: { id: string; correct: boolean; selected: boolean; explanation?: string }[];
+  correctOrder?: string[];
+  explanation?: string;
+}
+
+/** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste). */
+export type ChosenAnswer = number | { selected: string[] } | { order: string[] };
 
 export interface LastResult {
   blockIndex: number;
+  detail?: ResultDetail;
+  // Id bloku (b<indeks> dla bloków sprzed silnika); starsze odpowiedzi mogą go nie mieć.
+  blockId?: string;
+  // 0..1; obecne dla bloków ocenianych.
+  points?: number;
   type: ContentBlockType;
   // Brak dla VIDEO/DRAG_AND_DROP (nieoceniane) - obecne (true/false) dla
   // QUIZ/BRANCHING_SCENARIO.
@@ -84,5 +231,8 @@ export interface CourseProgressResponse {
   score: number | null;
   completedAt: string | null;
   lastResult: LastResult;
+  // Notatki dopisane tym zapisem (np. trafione kryteria maila): dołączane do notatnika od razu.
+  notes?: ClientNote[];
+  evidence?: EvidenceSummary;
   gamification: CourseCompletionReward | null;
 }

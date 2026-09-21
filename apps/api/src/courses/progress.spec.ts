@@ -1,5 +1,5 @@
 import { BlockEntry, ProgressV2, computeScore, emptyProgress, entryOf, readProgress } from './progress';
-import { clientProgress, resolveNote, shuffleContext } from './client-view';
+import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
 import { Block } from './scoring/evaluate';
 import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
 
@@ -113,8 +113,10 @@ describe('client-view', () => {
   });
 
   it('resolveNote: notatki DIALOGUE i EMAIL_ANALYSIS z treści modułu; nieznane klucze -> null', () => {
-    expect(resolveNote(blocks(), 'rozmowa.q1')).toEqual({ key: 'rozmowa.q1', blockId: 'rozmowa', text: 'Mail przyszedł rano.' });
+    expect(resolveNote(blocks(), 'rozmowa.q1')).toEqual({ key: 'rozmowa.q1', blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' });
     expect(resolveNote(blocks(), 'mail.c1')?.text).toContain('SEKRET');
+    expect(resolveNote(blocks(), 'scena.h1')).toEqual({ key: 'scena.h1', blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' });
+    expect(resolveNote(blocks(), 'scena.h2')).toBeNull();
     expect(resolveNote(blocks(), 'rozmowa.q2')).toBeNull();
     expect(resolveNote(blocks(), 'nie-ma.q1')).toBeNull();
     expect(resolveNote(blocks(), 'bezkropki')).toBeNull();
@@ -148,7 +150,98 @@ describe('client-view', () => {
   it('clientProgress: notatki jako treści rozwiązane po stronie serwera', () => {
     const view = clientProgress({ v: 2, blocks: {}, notes: ['rozmowa.q1', 'zly.klucz'] }, blocks());
     // Bez `key`: klucz zawiera id elementu z treści (np. kryterium maila), więc klient dostaje tylko blockId i treść.
-    expect(view.notes).toEqual([{ blockId: 'rozmowa', text: 'Mail przyszedł rano.' }]);
+    expect(view.notes).toEqual([{ blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' }]);
     expect(JSON.stringify(view)).not.toContain('rozmowa.q1');
+  });
+
+  describe('clientProgress: podgląd ukończonych bloków ocenianych (answer i detail)', () => {
+    const opaque = (blockId: string, itemId: string) => `op-${blockId}-${itemId}`;
+    const done = (over: Partial<BlockEntry>) => entry({ done: true, ...over });
+    const view = (blocksProgress: Record<string, BlockEntry>) => clientProgress({ v: 2, blocks: blocksProgress, notes: [] }, blocks(), opaque);
+
+    it('QUIZ: własny wybór (indeks); e-mail: wybrane kryteria i rozstrzygnięcie jako id nieprzejrzyste; ORDERING: kolejność i klucz', () => {
+      const result = view({
+        quiz: done({ type: 'QUIZ', answer: 1, correct: true, points: 1 }),
+        mail: done({ type: 'EMAIL_ANALYSIS', selected: ['c1', 'c3'], correct: true, points: 1 }),
+        kolejnosc: done({ type: 'ORDERING', order: ['o2', 'o1', 'o3'], correct: false, points: 1 / 3 }),
+      });
+      expect(result.blocks.quiz).toMatchObject({ answer: 1 });
+      expect(result.blocks.mail).toMatchObject({ answer: { selected: ['op-mail-c1', 'op-mail-c3'] } });
+      expect((result.blocks.mail as { detail: { criteria: { id: string; selected: boolean; correct: boolean }[] } }).detail.criteria).toEqual([
+        expect.objectContaining({ id: 'op-mail-c1', selected: true, correct: true }),
+        expect.objectContaining({ id: 'op-mail-c2', selected: false, correct: false }),
+        expect.objectContaining({ id: 'op-mail-c3', selected: true, correct: true }),
+      ]);
+      expect(result.blocks.kolejnosc).toMatchObject({
+        answer: { order: ['op-kolejnosc-o2', 'op-kolejnosc-o1', 'op-kolejnosc-o3'] },
+        detail: { correctOrder: ['op-kolejnosc-o1', 'op-kolejnosc-o2', 'op-kolejnosc-o3'] },
+      });
+      // Żadne id z treści nie wychodzi (tylko nieprzejrzyste).
+      expect(JSON.stringify(result.blocks.mail)).not.toMatch(/"c[123]"/);
+      expect(JSON.stringify(result.blocks.kolejnosc)).not.toMatch(/"o[123]"/);
+    });
+
+    it('blok nieukończony albo bez `opaque`: bez answer i detail (klucz niczego nie zdradza przed odpowiedzią)', () => {
+      const undone = view({ mail: entry({ type: 'EMAIL_ANALYSIS', done: false, selected: ['c1'] }) });
+      expect(undone.blocks.mail).not.toHaveProperty('answer');
+      expect(undone.blocks.mail).not.toHaveProperty('detail');
+      const withoutOpaque = clientProgress({ v: 2, blocks: { mail: done({ type: 'EMAIL_ANALYSIS', selected: ['c1'] }) }, notes: [] }, blocks());
+      expect(withoutOpaque.blocks.mail).not.toHaveProperty('answer');
+    });
+
+    it('stary wpis bez selected/order (sprzed tej zmiany) nie psuje widoku', () => {
+      const result = view({ mail: done({ type: 'EMAIL_ANALYSIS', correct: true, points: 1 }) });
+      expect(result.blocks.mail).toMatchObject({ done: true, correct: true });
+      expect(result.blocks.mail).not.toHaveProperty('answer');
+    });
+  });
+
+  describe('evidenceSummary (Dowody X/Y liczy serwer)', () => {
+    const done = (type: string) => entry({ type, done: true });
+
+    it('bez notatek: 0 z sumy dowodów w hotspotach i dialogu; e-mail ukryty (total null) do zatwierdzenia odpowiedzi', () => {
+      const summary = evidenceSummary({ v: 2, blocks: {}, notes: [] }, blocks());
+      expect(summary).toEqual({
+        collected: 0,
+        total: null,
+        perBlock: [
+          { blockId: 'scena', collected: 0, total: 1 },
+          { blockId: 'rozmowa', collected: 0, total: 1 },
+          { blockId: 'mail', collected: 0, total: null },
+        ],
+      });
+    });
+
+    it('zebrane dowody i po zatwierdzeniu maila znana suma (bez oglądania nieznanych kluczy)', () => {
+      const summary = evidenceSummary(
+        { v: 2, blocks: { mail: done('EMAIL_ANALYSIS') }, notes: ['scena.h1', 'rozmowa.q1', 'mail.c1', 'mail.c3', 'nie-ma.x'] },
+        blocks(),
+      );
+      // mail: tylko c1 ma evidence (c3 to zwykła notatka)
+      expect(summary).toEqual({
+        collected: 3,
+        total: 3,
+        perBlock: [
+          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'rozmowa', collected: 1, total: 1 },
+          { blockId: 'mail', collected: 1, total: 1 },
+        ],
+      });
+    });
+
+    it('perBlock ma tylko blockId i liczby (bez identyfikatorów elementów), a clientProgress dołącza evidence', () => {
+      const view = clientProgress({ v: 2, blocks: {}, notes: ['scena.h1'] }, blocks());
+      expect(view.evidence.collected).toBe(1);
+      const json = JSON.stringify(view.evidence);
+      for (const secret of ['h1', 'q1', 'c1', 'SEKRET']) expect(json).not.toContain(`"${secret}"`);
+      expect(Object.keys(view.evidence.perBlock[0]).sort()).toEqual(['blockId', 'collected', 'total']);
+    });
+
+    it('nie liczy dowodów bez notatki i notatek bez evidence', () => {
+      const noEvidence = blocks();
+      const scene = noEvidence.find((b) => b.type === 'SCENE_HOTSPOTS') as Block;
+      (scene.hotspots as Record<string, unknown>[]).forEach((h) => delete h.evidence);
+      expect(evidenceSummary({ v: 2, blocks: {}, notes: ['scena.h1'] }, noEvidence).perBlock.map((b) => b.blockId)).not.toContain('scena');
+    });
   });
 });

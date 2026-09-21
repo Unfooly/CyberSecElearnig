@@ -32,6 +32,9 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# maskotka: kopia generowana z packages/content/mascot przez apps/web/scripts/sync-mascot.mjs (predev/prebuild)
+apps/web/public/mascot/
+
 # test coverage
 coverage/
 docs/brand/screens/*.png

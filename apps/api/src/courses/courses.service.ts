@@ -8,7 +8,7 @@ import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { clientProgress, shuffleContext } from './client-view';
+import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import { AttemptResponse, evaluateAttempt, evaluateSubmit } from './scoring/evaluate';
@@ -105,7 +105,7 @@ export class CoursesService {
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
-        progress: clientProgress(readProgress(current.progress), version.blocks) as unknown as Prisma.JsonValue,
+        progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
       };
     });
   }
@@ -198,6 +198,13 @@ export class CoursesService {
           ...(result.entry.points !== undefined ? { points: result.entry.points } : {}),
           ...(result.detail ? { detail: result.detail } : {}),
         },
+        // Dowody po tym zapisie (liczby liczy serwer; total null dla maila do zatwierdzenia odpowiedzi).
+        evidence: evidenceSummary(progress, blocks),
+        // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
+        notes: result.notesAdded
+          .map((key) => resolveNote(blocks, key))
+          .filter((note): note is NonNullable<typeof note> => note !== null)
+          .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) })),
         gamification: gamification
           ? {
               xpGained: gamification.xpGained,
@@ -212,6 +219,25 @@ export class CoursesService {
             }
           : null,
       };
+    });
+  }
+
+  /**
+   * Dokument HTML bloku EMBEDDED_HTML (osobno od treści modułu: `html` jest polem sekretnym i nie idzie w /start). Dostęp tylko dla
+   * właściciela przypisania (RLS + organizationId + userId), do bloku bieżącego albo wcześniejszego (blok przyszły nie jest osiągalny),
+   * wyłącznie dla bloków tego typu. Każdy brak dostępu to ten sam 404 (bez ujawniania, czy blok istnieje). Treść jest niezaufana: BFF
+   * serwuje ją jako dokument w sandboxie z restrykcyjnym CSP (apps/web, trasa embed).
+   */
+  async getEmbeddedHtml(organizationId: string, userId: string, courseId: string, blockId: string): Promise<{ html: string }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      const block = index >= 0 ? version.blocks[index] : undefined;
+      if (!block || block.type !== 'EMBEDDED_HTML' || typeof block.html !== 'string' || index > assignment.currentBlockIndex) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      return { html: block.html };
     });
   }
 

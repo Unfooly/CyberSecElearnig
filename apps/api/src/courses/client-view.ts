@@ -1,7 +1,7 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
 import { ProgressV2 } from './progress';
-import { Block } from './scoring/evaluate';
+import { Block, OpaqueId, emailDetail, orderingDetail } from './scoring/evaluate';
 
 /**
  * Klucze pochodne od JWT_SECRET (HKDF-SHA256 ze stałym `info` osobnym dla każdego zastosowania), więc bez nowej zmiennej
@@ -39,6 +39,20 @@ interface ClientNote {
   key: string;
   blockId: string;
   text: string;
+  kind?: string;
+}
+
+interface NoteItem {
+  id: string;
+  evidence?: boolean;
+  note?: { text?: string; kind?: string };
+}
+
+/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila). */
+function noteItems(block: Block): NoteItem[] {
+  const list: unknown =
+    block.type === 'SCENE_HOTSPOTS' ? block.hotspots : block.type === 'DIALOGUE' ? block.questions : block.type === 'EMAIL_ANALYSIS' ? block.criteria : [];
+  return Array.isArray(list) ? (list as NoteItem[]) : [];
 }
 
 /** Treść notatki z treści modułu (klient nigdy nie wysyła treści notatek). */
@@ -49,23 +63,65 @@ export function resolveNote(blocks: Block[], key: string): ClientNote | null {
   const itemId = key.slice(dot + 1);
   const block = blocks.find((b) => b.id === blockId);
   if (!block) return null;
-  const items: { id: string; note?: { text?: string } }[] =
-    block.type === 'DIALOGUE' ? block.questions : block.type === 'EMAIL_ANALYSIS' ? block.criteria : [];
-  const item = Array.isArray(items) ? items.find((i) => i.id === itemId) : undefined;
-  return item?.note?.text ? { key, blockId, text: item.note.text } : null;
+  const item = noteItems(block).find((i) => i.id === itemId);
+  return item?.note?.text ? { key, blockId, text: item.note.text, ...(item.note.kind ? { kind: item.note.kind } : {}) } : null;
+}
+
+export interface EvidenceSummary {
+  collected: number;
+  /** null = jeszcze nieznana: blok EMAIL_ANALYSIS ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (inaczej gracz wiedziałby, ile zaznaczyć). */
+  total: number | null;
+  /** Tylko bloki z dowodami; bez identyfikatorów elementów (tylko id bloku i liczby). */
+  perBlock: { blockId: string; collected: number; total: number | null }[];
+}
+
+/**
+ * Dowody zebrane w śledztwie: elementy z `evidence: true`, których notatka trafiła do `progress.notes`. Liczby liczy serwer z zapisanej
+ * wersji kursu (flaga evidence przy kryterium maila jest sekretem, więc klient nie może sam policzyć sumy).
+ */
+export function evidenceSummary(progress: ProgressV2, blocks: Block[]): EvidenceSummary {
+  const noted = new Set(progress.notes);
+  const perBlock: EvidenceSummary['perBlock'] = [];
+  let collected = 0;
+  let total: number | null = 0;
+  for (const block of blocks) {
+    const evidence = noteItems(block).filter((item) => item.evidence === true && item.note?.text);
+    if (evidence.length === 0) continue;
+    const got = evidence.filter((item) => noted.has(`${block.id}.${item.id}`)).length;
+    const hidden = block.type === 'EMAIL_ANALYSIS' && progress.blocks[block.id]?.done !== true;
+    perBlock.push({ blockId: block.id, collected: got, total: hidden ? null : evidence.length });
+    collected += got;
+    total = hidden || total === null ? null : total + evidence.length;
+  }
+  return { collected, total, perBlock };
 }
 
 /**
  * Widok postępu dla klienta: własne wyniki i stan, plus WYŁĄCZNIE ujawnione dotąd elementy zadań tekstowych (podpowiedzi
  * odsłonięte próbami; rozwiązanie po wyczerpaniu prób) i rozwiązane notatki. Niczego, co nie było jeszcze ujawnione.
  */
-export function clientProgress(progress: ProgressV2, blocks: Block[]) {
+export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: OpaqueId) {
   const view: Record<string, unknown> = {};
   for (const [blockId, entry] of Object.entries(progress.blocks)) {
     const block = blocks.find((b) => b.id === blockId);
     const revealedHints =
       block?.type === 'TEXT_INPUT_GUIDED' && Array.isArray(block.hints) ? block.hints.slice(0, entry.hintsShown ?? 0) : undefined;
     const solution = block?.type === 'TEXT_INPUT_GUIDED' && entry.done && entry.correct === false ? block.solution : undefined;
+    // Podgląd UKOŃCZONEGO bloku ("Wstecz"): własny wybór gracza i rozstrzygnięcie (po ukończeniu klucz nie jest już tajny, wynik
+    // pokazano przy zapisie). Elementy zawsze jako id nieprzejrzyste, jak w /start. Bez `opaque` (starsze wywołania) nie ma ich wcale.
+    let answer: unknown;
+    let detail: unknown;
+    if (block && entry.done && opaque) {
+      if ((block.type === 'QUIZ' || block.type === 'BRANCHING_SCENARIO') && typeof entry.answer === 'number') answer = entry.answer;
+      if (block.type === 'EMAIL_ANALYSIS' && Array.isArray(entry.selected)) {
+        answer = { selected: entry.selected.map((id) => opaque(block.id, id)) };
+        detail = emailDetail(block, entry.selected, opaque);
+      }
+      if (block.type === 'ORDERING' && Array.isArray(entry.order)) {
+        answer = { order: entry.order.map((id) => opaque(block.id, id)) };
+        detail = orderingDetail(block, opaque);
+      }
+    }
     view[blockId] = {
       type: entry.type,
       done: entry.done,
@@ -74,6 +130,8 @@ export function clientProgress(progress: ProgressV2, blocks: Block[]) {
       ...(entry.attempts !== undefined ? { attempts: entry.attempts } : {}),
       ...(revealedHints && revealedHints.length > 0 ? { revealedHints } : {}),
       ...(solution ? { solution } : {}),
+      ...(answer !== undefined ? { answer } : {}),
+      ...(detail !== undefined ? { detail } : {}),
     };
   }
   // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId i
@@ -81,6 +139,6 @@ export function clientProgress(progress: ProgressV2, blocks: Block[]) {
   const notes = progress.notes
     .map((key) => resolveNote(blocks, key))
     .filter((n): n is ClientNote => n !== null)
-    .map(({ blockId, text }) => ({ blockId, text }));
-  return { v: 2 as const, blocks: view, notes };
+    .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) }));
+  return { v: 2 as const, blocks: view, notes, evidence: evidenceSummary(progress, blocks) };
 }

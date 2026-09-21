@@ -7,6 +7,7 @@ import type { CourseAssignmentSummary, CourseDetail } from '@/lib/courses-types'
 import Topbar from '@/components/Topbar';
 import CoursePlayer from './_components/CoursePlayer';
 import { redirectIfPending } from '@/lib/organization';
+import { contentAssetBase } from '@/lib/content-assets';
 
 export default async function CoursePlayerPage({ params }: { params: { courseId: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -73,14 +74,29 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
     }
   }
 
+  // Ustawienie lektora z konta (users.narrationEnabled). Błąd odczytu nie blokuje kursu: domyślnie lektor włączony.
+  // Dla kursu już ukończonego pokazujemy tylko podsumowanie (bez odtwarzacza), więc preferencji nie pobieramy.
+  let narrationEnabled = true;
+  if (course.status !== 'COMPLETED') {
+    const preferencesResult = await fetchJson<{ narrationEnabled: boolean }>(`${API_URL}/users/me/preferences`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    });
+    narrationEnabled = preferencesResult.ok ? preferencesResult.data.narrationEnabled !== false : true;
+  }
+  // Baza adresów zasobów modułu (ilustracje, audio): CONTENT_BASE_URL z env albo lokalny /content; ta sama walidacja co w CSP.
+  const contentBase = contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development');
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Topbar userEmail={userEmail} role={payload?.role} />
-      <main className="mx-auto max-w-7xl p-8">
+      <Topbar userEmail={userEmail} role={payload?.role} focusMode />
+      <main className="mx-auto max-w-7xl p-4 sm:p-8">
         <CoursePlayer
           courseId={params.courseId}
           initial={{ ...course, score }}
           scoreUnavailable={scoreUnavailable}
+          narrationEnabled={narrationEnabled}
+          contentBase={contentBase}
         />
       </main>
     </div>

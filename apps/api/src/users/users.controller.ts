@@ -10,6 +10,7 @@ import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { GamificationService } from '../gamification/gamification.service';
 import { UsersService } from './users.service';
 import { UpdateAvatarDto } from './dto/update-avatar.dto';
+import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -82,6 +83,19 @@ export class UsersController {
   @AllowPendingOrganization()
   updateMyAvatar(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateAvatarDto) {
     return this.usersService.updateAvatar(user.organizationId, user.userId, dto.avatarUrl);
+  }
+
+  // Bez @Roles() - dowolna zalogowana rola czyta i zmienia WŁASNE preferencje (lektor w odtwarzaczu szkoleń). Bez
+  // @AllowPendingOrganization(): kursy są niedostępne dla organizacji czekającej na weryfikację domeny, więc preferencje
+  // odtwarzacza też (domyślnie zablokowane, guard PENDING).
+  @Get('me/preferences')
+  getMyPreferences(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.getPreferences(user.organizationId, user.userId);
+  }
+
+  @Patch('me/preferences')
+  updateMyPreferences(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePreferencesDto) {
+    return this.usersService.updatePreferences(user.organizationId, user.userId, dto);
   }
 
   // Bez @Roles() - dowolna zalogowana rola widzi WŁASNY postęp grywalizacji.

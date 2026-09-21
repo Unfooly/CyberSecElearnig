@@ -331,6 +331,47 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: Dockerfile'e API i web oraz joby CI na Node 22 (LTS), replika CI z reguły 9 w CLAUDE.md (`node:22`), zielone testy i e2e, podniesione `re2`
   (usunięty pin z D-052), zaktualizowane `docs/onboarding.md` i README (wersja Node).
 
+### B-075 Awatary: tylko presety albo własny upload (zamiast dowolnego URL)
+- Etykiety: `P2`, `security`, `feature`, `decision-needed`, `mod:web` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
+- Opis: awatar z dowolnego adresu `https` (`<img src={avatarUrl}>`) nie mieści się w `img-src 'self' data: <CONTENT_BASE_URL>` (CSP z D-053), więc obrazek
+  się nie załaduje; do czasu decyzji UI pokazuje inicjały (fallback przy błędzie ładowania). Nie poszerzamy `img-src` o `https:`.
+- Akceptacja: decyzja (tylko presety albo własny upload do zasobów z `CONTENT_BASE_URL`), walidacja w API (odrzucenie zewnętrznych URL-i), migracja
+  istniejących awatarów z URL-a (na preset/inicjały), test A/B, zaktualizowany `AvatarPickerModal`.
+
+### B-076 Migracja istniejących bloków VIDEO na zasoby z `CONTENT_BASE_URL`
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
+- Opis: `<video src>` z dowolnego hosta jest blokowany przez `media-src 'self' <CONTENT_BASE_URL>`. Nowe bloki VIDEO używają ścieżki względnej z
+  `CONTENT_BASE_URL`; stare bloki z zewnętrznym adresem `https` dostają w odtwarzaczu link „Otwórz wideo” (`target="_blank"`, `rel="noopener noreferrer"`,
+  tylko `https`).
+- Akceptacja: lista istniejących kursów z zewnętrznym wideo, wgranie plików do zasobów (R2), nowa wersja kursu z ścieżkami względnymi (wersje niemutowalne,
+  D-051), usunięcie linku zastępczego po migracji.
+
+### B-077 Menu główne na wąskich ekranach (hamburger)
+- Etykiety: `P2`, `feature`, `mod:web` · Źródło: zrzuty odtwarzacza (PR 2), decyzja właściciela 2026-09-21
+- Opis: pozycje menu w `Topbar` nie mieszczą się na 390 px (np. „Zesp” ucięte). Tymczasowo: menu przewijane poziomo wewnątrz paska, a w odtwarzaczu szkolenia
+  tryb skupienia (`focusMode`) ukrywa pozycje menu na telefonie (zostaje logo, „Zgłoś” i avatar).
+- Akceptacja: menu zwijane w przycisk „hamburger” na wąskich ekranach (dostępne z klawiatury i czytników, fokus w panelu, zamykanie Escape), test na
+  390 px bez przewijania poziomego strony, aktualizacja `Topbar.test.tsx`; po wdrożeniu usunięcie obejścia `focusMode` albo zostawienie go jako opcji skupienia.
+
+### B-078 Narracja elementów bloków eksploracyjnych (hotspot, odpowiedź w dialogu)
+- Etykiety: `P2`, `feature`, `mod:web` · Źródło: PR 2 (commit 4), D-054
+- Opis: schemat pozwala na osobną narrację dla punktu sceny (`hotspots[].narration`) i odpowiedzi postaci (`questions[].answerNarration`); komponenty
+  bloków (`SceneHotspotsBlock`, `DialogueBlock`) na razie pokazują wyłącznie tekst, a nagranie całego bloku gra w dolnym pasku jak dotąd.
+- Akceptacja: odtwarzanie nagrania po wybraniu elementu (z poszanowaniem przełącznika „Lektor”, jedno nagranie naraz, zatrzymanie przy zmianie
+  elementu/bloku), napisy jak w `NarrationPlayer`, testy jednostkowe; dopiero po dostarczeniu plików audio (PR 3).
+
+### B-081 Login CSRF i limity na publicznych trasach BFF
+- Etykiety: `P2`, `security`, `mod:web` · Źródło: audyt B-080, decyzja właściciela 2026-09-21
+- Opis: trasy bez sesji (`auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `auth/verify-email`, `auth/claim-registration`, `auth/resend-verification`, `demo-request`, `t/[token]/view|submit`) nie mają sesji do nadużycia przez CSRF, ale zostają: login CSRF (wymuszenie logowania na cudze konto), spam i limity (throttling po stronie API vs BFF), ocena, które trasy mają wymagać własnego `Origin`, a które muszą działać z zewnątrz (`t/*` to publiczne linki symulacji).
+- Akceptacja: decyzja per trasa, testy, po pilocie. Ciasteczko sesji ma `SameSite=Lax` (`apps/web/src/lib/auth-cookies.ts`).
+
+### B-080 Kontrola same-origin w pozostałych trasach BFF zmieniających stan
+- Etykiety: `P1`, `security`, `mod:web` · Źródło: przegląd bezpieczeństwa PR 2 (trasa `/attempt`), decyzja właściciela 2026-09-21
+- Opis: `proxyAuthenticated` (`apps/web/src/lib/bff.ts`) odrzuca żądania zmieniające stan bez własnego `Origin` / `Sec-Fetch-Site: same-origin` (obrona przed CSRF także z sąsiedniej subdomeny, gdzie `SameSite=Lax` nie chroni). W PR 2 objęto trasy kursów (`/api/courses/[courseId]/progress`, `.../blocks/[blockId]/attempt`). Audyt tras `POST/PATCH/DELETE` w `apps/web/src/app/api` pokazał trasy UWIERZYTELNIONE bez tej kontroli (własne `fetch` z ciasteczkiem):
+  `users` (POST), `users/[id]` (PATCH/DELETE), `users/[id]/resend-invite`, `users/import/preview`, `users/import/[id]` (DELETE), `users/import/[id]/confirm`, `users/import/[id]/stop`, `users/me/avatar`, `users/me/preferences`, `threat-reports/inbox/[id]/notes`, `threat-reports/inbox/[id]/status`.
+  Trasy publiczne bez sesji (`auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `auth/verify-email`, `auth/claim-registration`, `auth/resend-verification`, `demo-request`, `t/[token]/view|submit`) nie mają sesji do nadużycia; ich ochrona to osobny temat (login CSRF, spam), do oceny osobno.
+- Akceptacja: każda trasa z listy przez `proxyAuthenticated` (albo z `isSameOriginRequest()`), ciało z allowlisty, test „Origin obcego hosta → 403” i „bez Origin i Sec-Fetch-Site → 403, z `Sec-Fetch-Site: same-origin` → przechodzi” (ta sama reguła co w pozostałych trasach, bez drugiej).
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

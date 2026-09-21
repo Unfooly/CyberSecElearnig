@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
-import { alignmentToCues } from './cues.js';
+import { alignmentToCues, splitSentences } from './cues.js';
 import { audioKey, manifestKey, narrationHash, sidecarKey } from './hash.js';
 import { confirm, enforceMaxChars, formatPlan, summarizePlan, type PlannedNarration } from './plan.js';
 import { AUDIO_CONTENT_TYPE, IMMUTABLE_CACHE, JSON_CONTENT_TYPE, MUTABLE_CACHE } from './stores/key.js';
@@ -216,24 +216,25 @@ export interface PipelineResult {
 
 const hashFromKey = (key: string) => key.split('/').pop()!.replace(/\.mp3$/, '');
 
-const withoutSpaces = (text: string) => text.replace(/\s+/gu, '');
-
 /**
  * Sidecar z magazynu to dane z zewnątrz (napisy trafiają potem do module.json i do klienta): zły JSON, kształt albo napisy niezgodne z
  * tekstem narracji to "brak" (nagranie zostanie wygenerowane od nowa), nie wpis do modułu. Nazwa pliku ma skrót TEKSTU, ale to nie chroni
- * zawartości sidecara, więc złożone napisy muszą dawać dokładnie tekst narracji (z dokładnością do białych znaków, jak w alignmentToCues).
+ * zawartości sidecara, więc TEKST napisów wyliczamy lokalnie (splitSentences, ta sama funkcja co w alignmentToCues) i wymagamy dokładnej
+ * równości z sidecarem: z niezaufanego pliku zostają wyłącznie czasy (startMs), żadna treść, spacja ani granica zdania.
  */
 function parseSidecar(bytes: Uint8Array, key: string, voiceId: string, narrationText: string): Sidecar | null {
   try {
     const value = JSON.parse(new TextDecoder().decode(bytes)) as Sidecar;
-    if (value.hash !== hashFromKey(key) || value.voiceId !== voiceId || !Number.isInteger(value.durationMs)) return null;
+    if (value.hash !== hashFromKey(key) || value.voiceId !== voiceId || !Number.isInteger(value.durationMs) || value.durationMs > 1_800_000) return null; // 30 min: limit schematu treści (inaczej parseModule przerwałby cały przebieg)
     if (!Array.isArray(value.cues) || value.cues.length === 0) return null;
+    const expected = splitSentences(narrationText);
+    if (value.cues.length !== expected.length) return null;
     let previous = 0;
-    for (const cue of value.cues) {
-      if (!cue || typeof cue.text !== 'string' || !Number.isInteger(cue.startMs) || cue.startMs < previous || cue.startMs > value.durationMs) return null;
+    for (const [index, cue] of value.cues.entries()) {
+      if (!cue || cue.text !== expected[index] || !Number.isInteger(cue.startMs) || cue.startMs < previous || cue.startMs > value.durationMs) return null;
       previous = cue.startMs;
     }
-    if (withoutSpaces(value.cues.map((cue) => cue.text).join('')) !== withoutSpaces(narrationText)) return null;
+    if (value.cues[0].startMs !== 0) return null; // napis widoczny od początku nagrania (jak w alignmentToCues)
     return value;
   } catch {
     return null;

@@ -369,21 +369,68 @@ describe('napisy z magazynu (sidecar) muszą odpowiadać tekstowi narracji', () 
   });
 
   it('napisy nie rosnące albo po końcu nagrania: odrzucone', async () => {
-    const decreasing = await tamper((sidecar) => {
-      if (sidecar.cues.length > 1) sidecar.cues[1].startMs = 0;
-      sidecar.cues[0].startMs = 5;
+    const negative = await tamper((sidecar) => {
+      expect(sidecar.cues.length).toBeGreaterThan(1); // test ma sens tylko dla kilku napisów
+      sidecar.cues[1].startMs = -1;
     });
-    expect(decreasing.result.generated).toBe(1);
+    expect(negative.result.generated).toBe(1);
+    const outOfOrder = await tamper((sidecar) => {
+      sidecar.cues[0].startMs = 900;
+      sidecar.cues[1].startMs = 300;
+    });
+    expect(outOfOrder.result.generated).toBe(1);
     const beyond = await tamper((sidecar) => {
-      sidecar.cues[0].startMs = 9_999_999;
+      sidecar.cues[1].startMs = 9_999_999;
     });
     expect(beyond.result.generated).toBe(1);
   });
 
-  it('różnica tylko w białych znakach jest dozwolona (jak w alignmentToCues): cache trafiony bez TTS', async () => {
-    const { tts, result } = await tamper((sidecar) => {
-      sidecar.cues[0].text = ` ${sidecar.cues[0].text}\n`;
+  it('pierwszy napis nie od 0 ms: odrzucony', async () => {
+    const { result } = await tamper((sidecar) => {
+      sidecar.cues[0].startMs = 100;
     });
+    expect(result.generated).toBe(1);
+  });
+
+  it.each([
+    ['dodatkowa spacja na brzegach', (text: string) => ` ${text}\n`],
+    ['spacja w środku słowa (granica słowa)', (text: string) => `${text.slice(0, 3)} ${text.slice(3)}`],
+    ['usunięta spacja między słowami', (text: string) => text.replace(' ', '')],
+    ['niewidoczny znak (zero-width space)', (text: string) => `${text}​`],
+    ['spacja niełamiąca zamiast zwykłej', (text: string) => text.replace(' ', ' ')],
+  ])('sidecar różniący się od tekstu tylko odstępami albo znakami niewidocznymi (%s): odrzucony, tekst napisów liczy się lokalnie', async (_name, change) => {
+    const { result, module } = await tamper((sidecar) => {
+      sidecar.cues[0].text = change(sidecar.cues[0].text);
+    });
+    expect(result.generated).toBe(1);
+    expect(module.blocks[0].narration.cues[0].text).toBe(`Narracja ${module.blocks[0].id}.`);
+  });
+
+  it('inny podział na zdania (granica przesunięta) przy tych samych literach: odrzucony', async () => {
+    const { result } = await tamper((sidecar) => {
+      const [first, second] = sidecar.cues;
+      sidecar.cues = [{ text: `${first.text} ${second.text}`, startMs: 0 }];
+    });
+    expect(result.generated).toBe(1);
+  });
+
+  it('napis z pustym tekstem przy niezmienionej liczbie napisów: odrzucony', async () => {
+    const { result } = await tamper((sidecar) => {
+      sidecar.cues[0].text = '';
+    });
+    expect(result.generated).toBe(1);
+  });
+
+  it('durationMs ponad 30 minut: odrzucony (regeneracja), przebieg nie pada na parseModule', async () => {
+    const { result } = await tamper((sidecar) => {
+      (sidecar as unknown as { durationMs: number }).durationMs = 9_999_999_999;
+      sidecar.cues[1].startMs = 9_999_999_998;
+    });
+    expect(result.generated).toBe(1);
+  });
+
+  it('wierny sidecar: cache trafiony bez TTS', async () => {
+    const { tts, result } = await tamper(() => {});
     expect(result.generated).toBe(0);
     expect(tts.calls).toEqual([]);
   });
@@ -407,7 +454,8 @@ describe('guard i osierocone audio', () => {
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/osierocone/);
     expect(chunks.join('')).toContain('OSTRZEŻENIE:');
-    // Lock nadal ma wpis tej narracji bez odpowiednika w module: to błąd; ostrzeżenie jest osobną informacją.
+    // Lock nadal ma wpis tej narracji bez odpowiednika w module: to BŁĄD (w problems), a ostrzeżenie jest osobną informacją.
+    expect(result.problems.length).toBeGreaterThan(0);
     expect(result.problems.every((problem) => !/osierocone/.test(problem))).toBe(true);
   });
 });

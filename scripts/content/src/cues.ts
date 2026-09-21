@@ -5,6 +5,8 @@ import type { Alignment } from './types.js';
 //
 // UWAGA: `splitSentences` jest KOPIĄ apps/web/src/lib/narration-captions.ts (skrypt jest poza workspace'ami i nie importuje kodu aplikacji).
 // Zgodność obu pilnuje test `cues.test.ts` (ten sam wynik na korpusie zdań); zmiana reguł podziału musi iść w obu miejscach.
+// Skutek uboczny: pipeline.ts przyjmuje sidecar z cache tylko, gdy jego napisy równają się splitSentences(tekst), więc KAŻDA zmiana reguł
+// podziału unieważnia istniejące sidecary i wymusza ponowne generowanie audio w ElevenLabs (koszt). Zmieniaj te reguły świadomie.
 
 // Skróty, po których kropka NIE kończy zdania (polskie).
 const ABBREVIATIONS = new Set(['np', 'tzn', 'tzw', 'itd', 'itp', 'ok', 'ul', 'godz', 'dr', 'prof', 'mgr', 'inż', 'zob', 'tj', 'm.in', 'ww', 'wg', 'pkt', 'nr', 'rys', 'tab']);

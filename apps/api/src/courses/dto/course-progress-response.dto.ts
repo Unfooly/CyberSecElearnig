@@ -18,6 +18,8 @@ export class CourseProgressResponseDto {
     // Wynik po ukończeniu bloku (np. rozstrzygnięcie kryteriów maila, poprawna kolejność).
     detail?: Record<string, unknown>;
   };
+  // Notatki dopisane tym zapisem (blockId, treść, rodzaj); bez kluczy elementów.
+  notes!: { blockId: string; text: string; kind?: string }[];
   // Dowody śledztwa po tym zapisie (client-view.ts, evidenceSummary): liczby i id bloków, bez id elementów.
   evidence!: {
     collected: number;

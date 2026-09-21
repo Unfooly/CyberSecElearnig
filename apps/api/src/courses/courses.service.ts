@@ -8,7 +8,7 @@ import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { clientProgress, evidenceSummary, shuffleContext } from './client-view';
+import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import { AttemptResponse, evaluateAttempt, evaluateSubmit } from './scoring/evaluate';
@@ -200,6 +200,11 @@ export class CoursesService {
         },
         // Dowody po tym zapisie (liczby liczy serwer; total null dla maila do zatwierdzenia odpowiedzi).
         evidence: evidenceSummary(progress, blocks),
+        // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
+        notes: result.notesAdded
+          .map((key) => resolveNote(blocks, key))
+          .filter((note): note is NonNullable<typeof note> => note !== null)
+          .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) })),
         gamification: gamification
           ? {
               xpGained: gamification.xpGained,

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode, RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
 
 // Powłoka odtwarzacza modułu: nagłówek z tytułem i paskiem postępu (jak na wzorcach), scena na środku (max. ok. 880 px, wyśrodkowana),
@@ -25,6 +25,7 @@ export default function PlayerShell({
   onForward,
   canBack,
   canForward,
+  hideForward = false,
   forwardHint,
   headingRef,
 }: {
@@ -49,6 +50,8 @@ export default function PlayerShell({
   onForward: () => void;
   canBack: boolean;
   canForward: boolean;
+  /** Ukrywa "Dalej" i jego podpowiedź (blok ma własne, jedyne wyjście, np. "Zakończ sprawę"). */
+  hideForward?: boolean;
   /** Krótki tekst po lewej od "Dalej", gdy jest nieaktywne (np. trzeba ukończyć bieżący blok). */
   forwardHint?: string;
   headingRef: RefObject<HTMLHeadingElement>;
@@ -56,9 +59,39 @@ export default function PlayerShell({
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
   const width = notesOpen ? 'max-w-[1200px]' : 'max-w-[880px]';
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // Dolny pasek jest lepki (sticky), więc element z fokusem (Tab) albo przewijany do widoku lądowałby POD paskiem. Mierzymy jego wysokość
+  // (zmienia się: z narracją, bez niej, z rozwiniętą transkrypcją, na telefonie) i ustawiamy scroll-padding-bottom dokumentu: przeglądarka
+  // przewija wtedy element nad pasek (WCAG 2.4.11 Focus Not Obscured). Bez sztywnej wartości: pomiar + ResizeObserver.
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const root = document.documentElement;
+    const apply = () => {
+      root.style.setProperty('scroll-padding-bottom', `${Math.ceil(bar.getBoundingClientRect().height) + 8}px`);
+    };
+    apply();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
+    observer?.observe(bar);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('scroll-padding-bottom');
+    };
+  }, []);
+
+  // Przeglądarka nie przewija elementu z fokusem, gdy mieści się w oknie, choć leży POD lepkim paskiem (Chromium na telefonie: scroll-padding
+  // nie działa dla focus()). Robimy to sami: element z fokusem spoza paska, którego dół zachodzi na pasek, przewijamy nad pasek.
+  function keepFocusAboveBar(event: React.FocusEvent<HTMLDivElement>) {
+    const bar = barRef.current;
+    const target = event.target as HTMLElement;
+    if (!bar || bar.contains(target)) return;
+    const overlap = target.getBoundingClientRect().bottom - bar.getBoundingClientRect().top;
+    if (overlap > 0) window.scrollBy({ top: overlap + 8 });
+  }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col">
+    <div onFocusCapture={keepFocusAboveBar} className="flex min-h-[calc(100vh-8rem)] flex-col">
       <header className={`mx-auto mb-4 w-full ${width}`}>
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
@@ -112,6 +145,7 @@ export default function PlayerShell({
 
       {/* Pasek ma tę samą szerokość co scena (na telefonie pełna szerokość okna, od sm wyśrodkowany razem z sceną). */}
       <div
+        ref={barRef}
         className={`sticky bottom-0 -mx-4 mt-6 max-h-[60vh] overflow-y-auto border-t border-slate-200 bg-white/95 px-4 py-2 backdrop-blur sm:mx-auto sm:w-full sm:rounded-lg sm:border ${
           notesOpen ? 'sm:max-w-[1200px]' : 'sm:max-w-[880px]'
         }`}
@@ -129,20 +163,26 @@ export default function PlayerShell({
               Wstecz
             </button>
             {/* Podpowiedź w TYM SAMYM rzędzie (flex-1): jej pojawienie się nie przesuwa układu, jak przy tekście pod przyciskiem. */}
-            <span id={hintId} className="min-w-0 flex-1 truncate text-right text-xs text-slate-500" title={!canForward ? forwardHint : undefined}>
-              {!canForward ? forwardHint : ''}
-            </span>
-            <button
-              type="button"
-              onClick={onForward}
-              disabled={!canForward}
-              aria-describedby={!canForward && forwardHint ? hintId : undefined}
-              title={!canForward ? forwardHint : undefined}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4"
+            <span
+              id={hintId}
+              className="min-w-0 flex-1 truncate text-right text-xs text-slate-500"
+              title={!canForward && !hideForward ? forwardHint : undefined}
             >
-              Dalej
-              <ChevronRight aria-hidden="true" className="h-4 w-4" />
-            </button>
+              {!canForward && !hideForward ? forwardHint : ''}
+            </span>
+            {!hideForward && (
+              <button
+                type="button"
+                onClick={onForward}
+                disabled={!canForward}
+                aria-describedby={!canForward && forwardHint ? hintId : undefined}
+                title={!canForward ? forwardHint : undefined}
+                className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4"
+              >
+                Dalej
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
           </nav>
         </div>
       </div>

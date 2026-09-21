@@ -173,6 +173,7 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(screen.queryByText('Wyglądał jak od banku.')).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(screen.getByText('Zadano 0 z 1 pytań.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
     expect(screen.getByText('Wyglądał jak od banku.')).toBeInTheDocument();
@@ -184,6 +185,9 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(screen.queryByRole('button', { name: 'Następna kwestia' })).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail przyszedł rano.');
     expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    // Zadane pytanie ma znacznik ✓ jak odkryte hotspoty; licznik "Zadano".
+    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).getByRole('button', { name: /Skąd ten mail/ })).toHaveTextContent('✓');
+    expect(screen.getByText('Wszystkie wymagane pytania zadane.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
@@ -353,6 +357,10 @@ describe('EvidenceCounter', () => {
     const plusOne = screen.getByTestId('evidence-plus-one');
     expect(plusOne.className).toContain('motion-safe:animate-bounce');
     expect(plusOne.className).not.toMatch(/(^|\s)animate-/);
+    // "+1" jest W WIERSZU licznika (zarezerwowane miejsce, nie pozycjonowane absolutnie poza pasek postępu).
+    expect(screen.getByTestId('evidence-counter')).toContainElement(plusOne);
+    expect(plusOne.className).not.toContain('absolute');
+    expect(plusOne.parentElement?.className).not.toContain('absolute');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 2/5');
 
     act(() => {

@@ -65,17 +65,20 @@ export function EvidenceCounter() {
   const total = summary.total === null ? '?' : String(summary.total);
 
   return (
-    <div data-testid="evidence-counter" className="relative inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-800">
+    <div data-testid="evidence-counter" className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-800">
       <Search aria-hidden="true" className="h-4 w-4 text-indigo-700" />
       <span>
         Dowody {collected}/{total}
       </span>
-      {flash && (
-        // "+1" pojawia się na chwilę; animacja unosi go tylko bez prefers-reduced-motion (motion-safe), inaczej po prostu jest widoczny.
-        <span aria-hidden="true" data-testid="evidence-plus-one" className="pointer-events-none absolute -top-4 left-6 text-xs font-bold text-green-700 motion-safe:animate-bounce">
-          +1
-        </span>
-      )}
+      {/* "+1" w wierszu licznika, po prawej, w zarezerwowanym miejscu (bez przesuwania układu i bez wystawania poza pasek postępu);
+          animacja tylko bez prefers-reduced-motion (motion-safe), inaczej po prostu jest widoczny. */}
+      <span aria-hidden="true" className="inline-block w-5 text-xs font-bold text-green-700">
+        {flash && (
+          <span data-testid="evidence-plus-one" className="inline-block motion-safe:animate-bounce">
+            +1
+          </span>
+        )}
+      </span>
       <span className="sr-only" aria-live="polite">
         {flash ? `Nowy dowód. Dowody ${collected} z ${total}.` : ''}
       </span>

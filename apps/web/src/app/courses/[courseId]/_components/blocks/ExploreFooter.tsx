@@ -4,6 +4,8 @@ export default function ExploreFooter({
   done,
   total,
   noun,
+  verb = 'Obejrzano',
+  readyText = 'Wszystko obejrzane.',
   onSubmit,
   disabled,
   review,
@@ -12,6 +14,10 @@ export default function ExploreFooter({
   total: number;
   /** Rzeczownik w dopełniaczu liczby mnogiej, np. "elementów". */
   noun: string;
+  /** Czasownik licznika: "Obejrzano 1 z 3 elementów" (dialog: "Zadano 1 z 2 pytań"). */
+  verb?: string;
+  /** Tekst po spełnieniu wymagań (dialog: "Wszystkie wymagane pytania zadane."). */
+  readyText?: string;
   onSubmit: () => void;
   disabled: boolean;
   review: boolean;
@@ -31,7 +37,7 @@ export default function ExploreFooter({
         Kontynuuj
       </button>
       <p className="text-sm text-slate-600" aria-live="polite">
-        {ready ? 'Wszystko obejrzane.' : `Obejrzano ${done} z ${total} ${noun}.`}
+        {ready ? readyText : `${verb} ${done} z ${total} ${noun}.`}
       </p>
     </div>
   );

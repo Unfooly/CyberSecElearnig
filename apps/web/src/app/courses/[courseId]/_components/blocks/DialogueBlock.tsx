@@ -150,6 +150,7 @@ export default function DialogueBlock({
               >
                 {question.text}
                 {done && <span className="sr-only"> (zadane)</span>}
+                {done && <span aria-hidden="true"> ✓</span>}
               </button>
             </li>
           );
@@ -160,6 +161,8 @@ export default function DialogueBlock({
         done={doneCount}
         total={required.length}
         noun="pytań"
+        verb="Zadano"
+        readyText="Wszystkie wymagane pytania zadane."
         onSubmit={() => onSubmit({ asked })}
         disabled={disabled}
         review={review}

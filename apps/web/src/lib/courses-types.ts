@@ -46,6 +46,8 @@ export interface ContentBlockOption {
 
 export interface DragAndDropItem {
   text: string;
+  /** ORDERING: id nieprzejrzyste elementu (DRAG_AND_DROP go nie ma). */
+  id?: string;
 }
 
 export interface ContentBlock {
@@ -84,6 +86,30 @@ export interface ContentBlock {
   requiredTabs?: string[];
   // SUMMARY
   text?: string;
+  // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).
+  email?: EmailContent;
+  criteria?: EmailCriterion[];
+  // TEXT_INPUT_GUIDED
+  placeholder?: string;
+  maxAttempts?: number;
+  hintCount?: number;
+}
+
+export interface EmailContent {
+  fromName: string;
+  fromAddress: string;
+  subject: string;
+  body: string;
+  date?: string;
+  attachment?: { name: string; size?: string };
+  links: { id: string; text: string; url: string }[];
+}
+
+export interface EmailCriterion {
+  id: string;
+  label: string;
+  /** Fragment maila, którego kliknięcie zaznacza kryterium (brak = tylko na liście). */
+  target?: { kind: 'sender' | 'subject' | 'link' | 'attachment' | 'text'; linkId?: string; quote?: string };
 }
 
 export interface SceneHotspot {
@@ -135,6 +161,12 @@ export interface ClientProgressBlock {
   correct?: boolean;
   points?: number;
   attempts?: number;
+  // TEXT_INPUT_GUIDED: odsłonięte dotąd podpowiedzi i (po wyczerpaniu prób) rozwiązanie.
+  revealedHints?: { text: string }[];
+  solution?: { text: string; explanation?: string };
+  // Ukończone bloki oceniane: własny wybór i rozstrzygnięcie (podgląd "Wstecz" także po odświeżeniu).
+  answer?: ChosenAnswer;
+  detail?: ResultDetail;
 }
 
 export interface ClientNote {
@@ -161,8 +193,19 @@ export interface CourseDetail {
   progress: ClientProgress | null;
 }
 
+/** Rozstrzygnięcie ukończonego bloku (id elementów nieprzejrzyste, jak w /start): EMAIL_ANALYSIS -> criteria, ORDERING -> correctOrder. */
+export interface ResultDetail {
+  criteria?: { id: string; correct: boolean; selected: boolean; explanation?: string }[];
+  correctOrder?: string[];
+  explanation?: string;
+}
+
+/** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste). */
+export type ChosenAnswer = number | { selected: string[] } | { order: string[] };
+
 export interface LastResult {
   blockIndex: number;
+  detail?: ResultDetail;
   // Id bloku (b<indeks> dla bloków sprzed silnika); starsze odpowiedzi mogą go nie mieć.
   blockId?: string;
   // 0..1; obecne dla bloków ocenianych.
@@ -190,6 +233,8 @@ export interface CourseProgressResponse {
   score: number | null;
   completedAt: string | null;
   lastResult: LastResult;
+  // Notatki dopisane tym zapisem (np. trafione kryteria maila): dołączane do notatnika od razu.
+  notes?: ClientNote[];
   evidence?: EvidenceSummary;
   gamification: CourseCompletionReward | null;
 }

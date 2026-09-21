@@ -255,6 +255,11 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
 
       expect(result.lastResult).toMatchObject({ blockId: 'mail', correct: true, points: 1 });
       expect(result.lastResult.detail.criteria).toHaveLength(3);
+      // Notatki dopisane tym zapisem (trafione kryteria) wracają od razu, jako blockId + treść + rodzaj (bez id z treści).
+      expect(result.notes).toEqual([
+        { blockId: 'mail', text: `${SECRET_MARKER}-note-c1`, kind: 'mail' },
+        { blockId: 'mail', text: `${SECRET_MARKER}-note-c3`, kind: 'mail' },
+      ]);
       // Rozstrzygnięcie kryteriów idzie po id nieprzejrzystych, które klient zna.
       expect(result.lastResult.detail.criteria.map((c: { id: string }) => c.id)).toContain(c1);
       const progress = (await start(tokenA, engineCourseId).expect(200)).body.progress;

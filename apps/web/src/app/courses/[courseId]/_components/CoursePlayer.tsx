@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
+  ClientNote,
   ClientProgressBlock,
   ContentBlock,
   CourseCompletionReward,
@@ -19,6 +20,7 @@ import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
 import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
+import ScoredBlock, { hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
 import SummaryScreen from './SummaryScreen';
 import PlayerShell from './player/PlayerShell';
@@ -26,7 +28,7 @@ import NarrationPlayer from './player/NarrationPlayer';
 import ReviewBlock from './player/ReviewBlock';
 import { NotesPanel, NotesProvider, useNotes } from './player/notes';
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
-import { DEFAULT_IDLE_POSE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
+import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
 
 export interface CoursePlayerInitialState extends CourseDetail {
@@ -37,15 +39,35 @@ export interface CoursePlayerInitialState extends CourseDetail {
 
 type PlayerState = Pick<CoursePlayerInitialState, 'status' | 'currentBlockIndex' | 'score'>;
 
-function renderBlock(
-  block: ContentBlock,
-  onSubmit: (answer?: unknown) => void,
-  disabled: boolean,
-  contentBase: string,
-) {
+interface RenderContext {
+  courseId: string;
+  contentBase: string;
+  onSubmit: (answer?: unknown) => void;
+  disabled: boolean;
+  /** Stan zadania tekstowego z serwera (próby, podpowiedzi) i zgłaszanie zmian do wyników sesji. */
+  progress?: ClientProgressBlock;
+  onProgress: (blockId: string, patch: Partial<ClientProgressBlock>) => void;
+}
+
+function renderBlock(block: ContentBlock, ctx: RenderContext) {
+  const { onSubmit, disabled, contentBase } = ctx;
   if (isExploratory(block.type)) {
     // key: stan wewnętrzny (odwiedzone elementy) nie może przechodzić między kolejnymi blokami tego samego typu.
     return <ExploratoryBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} />;
+  }
+  if (isScored(block.type)) {
+    return (
+      <ScoredBlock
+        key={block.id}
+        block={block}
+        courseId={ctx.courseId}
+        onSubmit={onSubmit}
+        disabled={disabled}
+        progress={ctx.progress}
+        onContinue={() => onSubmit()}
+        onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+      />
+    );
   }
   switch (block.type) {
     case 'VIDEO':
@@ -91,6 +113,15 @@ function ShellWithNotes({
 }
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
+
+// Notatki dopisane przez serwer przy zapisie bloku (np. trafione kryteria maila) trafiają do notatnika od razu; dedup w addNote.
+function ApplyServerNotes({ notes }: { notes: ClientNote[] }) {
+  const { addNote } = useNotes();
+  useEffect(() => {
+    for (const note of notes) addNote(note);
+  }, [notes, addNote]);
+  return null;
+}
 
 export default function CoursePlayer({
   courseId,
@@ -139,6 +170,8 @@ export default function CoursePlayer({
   const [results, setResults] = useState<Record<string, ClientProgressBlock>>(initial.progress?.blocks ?? {});
   // Dowody śledztwa: liczby z serwera (start i każda odpowiedź /progress); dowody z niezapisanego bloku dolicza EvidenceProvider.
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
+  // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
+  const [serverNotes, setServerNotes] = useState<ClientNote[]>([]);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false);
@@ -214,15 +247,24 @@ export default function CoursePlayer({
       // Po zapisie wracamy do bieżącego bloku z serwera: ewentualny podgląd ("Wstecz") z czasu oczekiwania nie może przetrwać.
       setViewIndex(null);
       setFeedback(progress.lastResult);
-      setResults((current) => ({
-        ...current,
-        [progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex)]: {
-          type: progress.lastResult.type,
-          done: true,
-          ...(progress.lastResult.correct !== undefined ? { correct: progress.lastResult.correct } : {}),
-          ...(progress.lastResult.points !== undefined ? { points: progress.lastResult.points } : {}),
-        },
-      }));
+      setResults((current) => {
+        const blockId = progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex);
+        return {
+          ...current,
+          [blockId]: {
+            // Zachowujemy to, co wiemy o bloku (np. próby i rozwiązanie zadania tekstowego zgłoszone przez blok).
+            ...(current[blockId] ?? {}),
+            type: progress.lastResult.type,
+            done: true,
+            ...(progress.lastResult.correct !== undefined ? { correct: progress.lastResult.correct } : {}),
+            ...(progress.lastResult.points !== undefined ? { points: progress.lastResult.points } : {}),
+            // Własny wybór gracza i rozstrzygnięcie: wynik zaraz po zapisie i podgląd "Wstecz" (id nieprzejrzyste, jak w /start).
+            ...(answer !== undefined ? { answer: answer as ClientProgressBlock['answer'] } : {}),
+            ...(progress.lastResult.detail ? { detail: progress.lastResult.detail } : {}),
+          },
+        };
+      });
+      if (progress.notes && progress.notes.length > 0) setServerNotes(progress.notes);
       if (progress.evidence) setEvidence(progress.evidence);
       setReward(progress.gamification);
       setState({
@@ -262,15 +304,28 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
+  const continueLabel = state.status === 'COMPLETED' ? 'Zobacz podsumowanie' : 'Dalej';
+  const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
+    setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
+
   let stage: React.ReactNode;
   if (showingFeedback) {
-    stage = (
-      <FeedbackPanel
-        feedback={feedback}
-        onContinue={continueAfterFeedback}
-        continueLabel={state.status === 'COMPLETED' ? 'Zobacz podsumowanie' : 'Dalej'}
-      />
-    );
+    const answered = blocks[feedback.blockIndex];
+    const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
+    // Mail i kolejność pokazują wynik w samym bloku (wybór gracza, trafienia, wyjaśnienia); reszta ogólny komunikat.
+    stage =
+      answered && hasInlineResult(answered.type) && feedback.detail ? (
+        <ScoredBlock
+          key={`result-${answered.id}`}
+          block={answered}
+          courseId={courseId}
+          result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points }}
+          onContinue={continueAfterFeedback}
+          continueLabel={continueLabel}
+        />
+      ) : (
+        <FeedbackPanel feedback={feedback} onContinue={continueAfterFeedback} continueLabel={continueLabel} />
+      );
   } else if (!currentBlock) {
     stage = <p className="text-slate-500">Nie znaleziono treści tego bloku.</p>;
   } else {
@@ -280,8 +335,19 @@ export default function CoursePlayer({
     const liveBlock = blocks[state.currentBlockIndex];
     stage = (
       <>
-        {liveBlock && <div key={keyOf(state.currentBlockIndex)} hidden={reviewing}>{renderBlock(liveBlock, handleAnswer, submitting, contentBase)}</div>}
-        {reviewing && <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} />}
+        {liveBlock && (
+          <div key={keyOf(state.currentBlockIndex)} hidden={reviewing}>
+            {renderBlock(liveBlock, {
+              courseId,
+              contentBase,
+              onSubmit: handleAnswer,
+              disabled: submitting,
+              progress: results[keyOf(state.currentBlockIndex)],
+              onProgress,
+            })}
+          </div>
+        )}
+        {reviewing && <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} courseId={courseId} />}
       </>
     );
   }
@@ -292,6 +358,7 @@ export default function CoursePlayer({
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
       <EvidenceProvider summary={evidence}>
         <MascotReactionProvider resetKey={`${displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
+          <ApplyServerNotes notes={serverNotes} />
           <ShellWithNotes
             title={initial.title}
             blockNumber={Math.min(displayedIndex + 1, blocks.length)}
@@ -302,9 +369,7 @@ export default function CoursePlayer({
               currentBlock && !showingFeedback
                 ? currentBlock.mascot
                   ? { pose: currentBlock.mascot.pose, text: currentBlock.mascot.text }
-                  : DEFAULT_IDLE_POSE[currentBlock.type]
-                    ? { pose: DEFAULT_IDLE_POSE[currentBlock.type] }
-                    : undefined
+                  : DEFAULT_IDLE[currentBlock.type]
                 : undefined
             }
             stage={
@@ -334,6 +399,8 @@ export default function CoursePlayer({
             onBack={goBack}
             onForward={goForward}
             canBack={displayedIndex > 0 && !showingFeedback && !submitting}
+            // Na SUMMARY jedynym wyjściem jest "Zakończ sprawę" w bloku: "Dalej" z paska znika (jedno CTA zamiast dwóch).
+            hideForward={!showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY'}
             canForward={reviewing && !showingFeedback}
             forwardHint={
               showingFeedback

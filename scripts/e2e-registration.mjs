@@ -392,6 +392,51 @@ try {
         { id: 'nadawca', text: 'Znasz tego nadawcę?', answer: 'Nie, ale adres wyglądał znajomo.', required: false },
       ],
     },
+    {
+      id: 'mail',
+      type: 'EMAIL_ANALYSIS',
+      title: 'Podejrzany mail',
+      prompt: 'Kliknij w mailu to, co budzi podejrzenia, i sprawdź odpowiedź.',
+      email: {
+        fromName: 'Bank Zaufany',
+        fromAddress: 'wsparcie@bank-0ficjalny.pl',
+        subject: 'Pilne: potwierdź dane logowania w ciągu 24 godzin',
+        date: 'pon., 21 wrz 2026, 08:14',
+        body: 'Szanowny Kliencie,\nWykryliśmy nieautoryzowane logowanie. Twoje konto zostanie zablokowane, jeśli nie potwierdzisz danych. Zaloguj się tutaj i uzupełnij formularz.\nZespół Bezpieczeństwa',
+        attachment: { name: 'formularz-weryfikacji.pdf', size: '212 KB' },
+        links: [{ id: 'login', text: 'Zaloguj się tutaj', url: 'https://bank-0ficjalny.pl.weryfikacja-konta.example/login?id=7731' }],
+      },
+      criteria: [
+        { id: 'adres', label: 'Adres nadawcy podszywa się pod bank (zero zamiast litery o)', correct: true, explanation: 'Domena bank-0ficjalny.pl różni się od prawdziwej jedną literą.', note: { text: 'Nadawca podszywa się pod bank (bank-0ficjalny.pl).', kind: 'mail' }, evidence: true, target: { kind: 'sender' } },
+        { id: 'link', label: 'Link prowadzi do obcej domeny', correct: true, explanation: 'Prawdziwa domena to weryfikacja-konta.example, a nie bank.', note: { text: 'Link prowadzi do domeny weryfikacja-konta.example.', kind: 'mail' }, evidence: true, target: { kind: 'link', linkId: 'login' } },
+        { id: 'zalacznik', label: 'Załącznik z formularzem jest wiarygodny', correct: false, explanation: 'Banki nie proszą o wypełnianie formularzy w załącznikach.', note: { text: 'Załącznik wygląda wiarygodnie.', kind: 'item' }, target: { kind: 'attachment' } },
+        { id: 'grozba', label: 'Groźba zablokowania konta buduje presję', correct: true, explanation: 'Presja czasu to klasyczny sposób oszustów.', note: { text: 'Mail grozi zablokowaniem konta.', kind: 'mail' }, target: { kind: 'text', quote: 'Twoje konto zostanie zablokowane' } },
+        { id: 'ogolny', label: 'Ogólne zwroty zamiast imienia i nazwiska klienta', correct: true, explanation: '„Szanowny Kliencie” zamiast imienia to częsta oznaka masowej wysyłki.', note: { text: 'Mail nie zwraca się do klienta po imieniu.', kind: 'mail' } },
+      ],
+      scoring: 'partial',
+    },
+    {
+      id: 'kolejnosc',
+      type: 'ORDERING',
+      prompt: 'Ułóż w kolejności, co robisz po otrzymaniu podejrzanego maila.',
+      items: [
+        { id: 'stop', text: 'Nie klikam w link ani w załącznik' },
+        { id: 'zglos', text: 'Zgłaszam wiadomość do działu bezpieczeństwa' },
+        { id: 'usun', text: 'Usuwam wiadomość ze skrzynki' },
+      ],
+      scoring: 'partial',
+      explanation: 'Najpierw nic nie klikasz, potem zgłaszasz, a dopiero na końcu usuwasz.',
+    },
+    {
+      id: 'domena',
+      type: 'TEXT_INPUT_GUIDED',
+      prompt: 'Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?',
+      placeholder: 'domena.pl',
+      answer: { accept: ['weryfikacja-konta.example'], caseSensitive: false },
+      hints: [{ text: 'Prawdziwa domena to ostatni człon przed pierwszym ukośnikiem, czyli to, co stoi tuż przed „/login”.' }],
+      maxAttempts: 3,
+      solution: { text: 'weryfikacja-konta.example', explanation: 'Wszystko przed nią to tylko poddomeny, które mają uśpić czujność.' },
+    },
     { id: 'wnioski', type: 'SUMMARY', title: 'Rozwiązanie sprawy', text: 'Do incydentu doszło przez słabe nawyki: hasło na kartce i pochopne kliknięcie w link.' },
   ];
   const caseCourse = await prisma.course.create({
@@ -431,7 +476,8 @@ try {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(`${WEB}/courses/${caseCourse.id}`);
   await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
-  step('śledztwo: licznik startuje z serwera (Dowody 0/4)', (await counter().textContent())?.includes('Dowody 0/4') === true, await counter().textContent());
+  // Suma nieznana ("?"): blok maila ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (gracz nie wie z góry, ile zaznaczyć).
+  step('śledztwo: licznik startuje z serwera, suma ukryta przez blok maila (Dowody 0/?)', (await counter().textContent())?.includes('Dowody 0/?') === true, await counter().textContent());
   step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
   await shoot('hotspoty-przed');
 
@@ -440,14 +486,48 @@ try {
   await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
   await page.getByRole('list', { name: 'Elementy sceny' }).getByRole('button', { name: 'Monitor' }).click();
   await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/4) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/4') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
+  step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/?') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
   step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-po');
   await noHScroll('desktop, hotspoty');
 
+  // Treść bloku nie może zostać pod lepkim paskiem: po przewinięciu do końca ostatni element ("Kontynuuj") leży nad paskiem, a element
+  // z fokusem klawiatury przewija się nad pasek (scroll-padding-bottom z pomiaru). Sprawdzane na desktopie i na telefonie.
+  const visibleAboveBar = async (label) => {
+    // Od góry strony i fokus klawiaturą na "Kontynuuj": przeglądarka przewija element do widoku, a scroll-padding-bottom (pomiar paska)
+    // ma zostawić go NAD paskiem. Samo przewinięcie do końca niczego nie dowodzi (pasek leży wtedy w przepływie pod treścią).
+    // blur: element mógł już mieć fokus z poprzedniego pomiaru (ponowne focus() na fokusowanym elemencie nie wywołuje zdarzenia ani przewijania).
+    await page.evaluate(() => {
+      document.activeElement?.blur();
+      window.scrollTo(0, 0);
+    });
+    await page.getByRole('button', { name: 'Kontynuuj' }).focus();
+    const metrics = await page.evaluate(() => {
+      const bar = document.querySelector('nav[aria-label="Nawigacja po blokach"]')?.closest('.sticky');
+      const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Kontynuuj');
+      return {
+        barTop: bar?.getBoundingClientRect().top ?? 0,
+        barHeight: bar?.getBoundingClientRect().height ?? 0,
+        buttonBottom: button?.getBoundingClientRect().bottom ?? 0,
+        padding: document.documentElement.style.getPropertyValue('scroll-padding-bottom'),
+        scrollY: Math.round(window.scrollY),
+        docHeight: document.documentElement.scrollHeight,
+        innerHeight: window.innerHeight,
+      };
+    });
+    step(`śledztwo (${label}): "Kontynuuj" z fokusem klawiatury jest w całości nad dolnym paskiem`, metrics.buttonBottom > 0 && metrics.buttonBottom <= metrics.barTop + 1, JSON.stringify(metrics));
+    const padding = await page.evaluate(() => document.documentElement.style.getPropertyValue('scroll-padding-bottom'));
+    step(`śledztwo (${label}): scroll-padding-bottom ustawiony z pomiaru paska`, /^\d+px$/.test(padding), padding);
+  };
+  await visibleAboveBar('desktop');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visibleAboveBar('telefon');
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   await page.getByRole('button', { name: 'Kontynuuj' }).click();
   await page.getByText('Blok ukończony.').waitFor();
-  step('śledztwo: po zapisie licznik z serwera nadal 2/4 (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/4') === true, await counter().textContent());
+  step('śledztwo: po zapisie licznik z serwera nadal 2/? (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/?') === true, await counter().textContent());
   // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
   await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
 
@@ -462,15 +542,97 @@ try {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole('button', { name: 'Następna kwestia' }).click();
   await page.getByRole('button', { name: 'Następna kwestia' }).click();
-  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/4)', (await counter().textContent())?.includes('Dowody 3/4') === true, await counter().textContent());
+  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/?)', (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
   await page.getByRole('button', { name: 'Kontynuuj' }).click();
   await page.getByText('Blok ukończony.').waitFor();
   // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
   await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
 
+  // --- Bloki oceniane: mail (klik we fragmenty), kolejność (klawiatura), zadanie tekstowe z podpowiedzią; ocena po stronie serwera. ---
+  const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  await page.setViewportSize({ width: 1280, height: 1100 });
+
+  await page.getByTestId('mail-client').waitFor();
+  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik), licznik nadal z "?"', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1 && (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
+  await shoot('mail-przed');
+
+  // Link nigdy nie nawiguje: adres w pasku statusu po najechaniu i kliknięciu, adres strony bez zmian.
+  const urlBefore = page.url();
+  const mailLink = page.getByTestId('mail-client').getByRole('button', { name: /Zaloguj się tutaj/ });
+  await mailLink.hover();
+  step('śledztwo: link w mailu po najechaniu pokazuje prawdziwy adres w pasku statusu', (await page.getByTestId('mail-status-bar').textContent())?.includes('weryfikacja-konta.example/login?id=7731') === true);
+  await mailLink.click();
+  step('śledztwo: kliknięcie linku w mailu nie nawiguje (adres strony bez zmian, brak kotwic <a>)', page.url() === urlBefore && (await page.getByTestId('mail-client').locator('a').count()) === 0, page.url());
+  // Pierwsze kliknięcie zaznaczyło kryterium linku; kolejne dwa odznaczają je i zaznaczają znowu (kliknięcie fragmentu = przełącznik).
+  await mailLink.click();
+  await mailLink.click();
+
+  // Zaznaczamy nadawcę i link (trafne) oraz załącznik (fałszywy alarm), grozby i ogólnika nie ("przeoczone").
+  await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).click();
+  await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).click();
+  const checked = await page.getByRole('group', { name: /Zaznaczone oznaki/ }).getByRole('checkbox', { checked: true }).count();
+  step('śledztwo: kliknięcia we fragmenty maila zaznaczają kryteria w checkliście (3 zaznaczone)', checked === 3, String(checked));
+  await shoot('mail-zaznaczone');
+  const mailAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
+  const mailBody = await (await mailAnswered).json();
+  step('śledztwo: serwer ocenił mail (25%), rozstrzygnięcie po id nieprzejrzystych, dowody 5/6 i notatki od razu', mailBody.lastResult?.points === 0.25 && mailBody.lastResult?.detail?.criteria?.length === 5 && mailBody.evidence?.collected === 5 && mailBody.evidence?.total === 6 && mailBody.notes?.length === 2 && !JSON.stringify(mailBody.lastResult.detail).match(/"(adres|link|zalacznik|grozba|ogolny)"/), JSON.stringify({ points: mailBody.lastResult?.points, evidence: mailBody.evidence?.collected + '/' + mailBody.evidence?.total, notes: mailBody.notes?.length }));
+  await page.getByText(/Wynik: 25%/).waitFor();
+  step('śledztwo: wynik maila w bloku: trafione, fałszywy alarm i przeoczone; licznik 5/6, notatnik (5)', (await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).textContent())?.includes('(trafione)') === true && (await page.getByTestId('mail-client').getByRole('button', { name: /Załącznik/ }).textContent())?.includes('(fałszywy alarm)') === true && (await counter().textContent())?.includes('Dowody 5/6') === true && (await page.getByRole('button', { name: /Notatnik \(5\)/ }).count()) === 1, await counter().textContent());
+  step('śledztwo: zła odpowiedź maila: maskotka ostrzega', (await page.getByAltText('Maskotka Unfooly ostrzega').count()) === 1);
+  await shoot('mail-wynik');
+  await noHScroll('desktop, wynik maila');
+  await nextEnabled().click();
+
+  // Kolejność: cała obsługa z klawiatury (Enter na przyciskach "w górę / w dół"), ostatnie dwa kroki celowo zamienione.
+  await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  await shoot('kolejnosc-przed');
+  const wanted = ['Nie klikam w link ani w załącznik', 'Usuwam wiadomość ze skrzynki', 'Zgłaszam wiadomość do działu bezpieczeństwa'];
+  const rows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
+  for (let target = 0; target < wanted.length; target += 1) {
+    for (let guard = 0; guard < 6; guard += 1) {
+      const texts = await rows();
+      const at = texts.findIndex((t) => t.includes(wanted[target]));
+      if (at === target) break;
+      const button = page.getByRole('button', { name: `Przesuń w górę: ${wanted[target]}` });
+      await button.focus();
+      await button.press('Enter');
+    }
+  }
+  const finalRows = await rows();
+  step('śledztwo: kolejność ułożona z klawiatury (Enter na przyciskach w górę/w dół)', wanted.every((text, i) => finalRows[i].includes(text)), finalRows.join(' | ').slice(0, 200));
+  const orderAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
+  const orderBody = await (await orderAnswered).json();
+  step('śledztwo: serwer ocenił kolejność (1/3 na miejscu), poprawna kolejność w wyniku jako id nieprzejrzyste', Math.abs(orderBody.lastResult?.points - 1 / 3) < 1e-9 && orderBody.lastResult?.detail?.correctOrder?.length === 3 && !JSON.stringify(orderBody.lastResult.detail).match(/"(stop|zglos|usun)"/), JSON.stringify(orderBody.lastResult?.points));
+  await page.getByRole('region', { name: 'Poprawna kolejność' }).waitFor();
+  await shoot('kolejnosc-wynik');
+  await nextEnabled().click();
+
+  // Zadanie tekstowe: błędna próba pokazuje podpowiedź (jej treść przychodzi dopiero po próbie), poprawna kończy zadanie.
+  await page.getByLabel('Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?').waitFor();
+  const hintsBefore = await page.getByText('Prawdziwa domena to ostatni człon').count();
+  step('śledztwo: podpowiedź zadania tekstowego nie jest w stronie przed próbą (klient zna tylko liczbę)', hintsBefore === 0 && !(await page.content()).includes('Prawdziwa domena to ostatni człon'));
+  const attemptInput = page.getByLabel('Jaka jest prawdziwa domena w linku z tego maila (bez ścieżki)?');
+  await attemptInput.fill('bank-0ficjalny.pl');
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await page.getByText(/Prawdziwa domena to ostatni człon/).waitFor();
+  step('śledztwo: po błędnej próbie podpowiedź i maskotka "thinking"', (await page.getByAltText('Maskotka Unfooly się zastanawia').count()) === 1 && (await page.getByText(/Pozostało prób: 2/).count()) === 1);
+  await shoot('tekst-podpowiedz');
+  await noHScroll('desktop, zadanie tekstowe');
+  await attemptInput.fill('weryfikacja-konta.example');
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await page.getByText(/Poprawna odpowiedź!/).waitFor();
+  const textDone = progressResponse();
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  const textBody = await (await textDone).json();
+  step('śledztwo: zadanie tekstowe rozstrzygnięte na serwerze (75%), "Kontynuuj" zapisuje postęp', textBody.lastResult?.points === 0.75, JSON.stringify(textBody.lastResult?.points));
+  await nextEnabled().click();
+
   await page.getByTestId('case-evidence').waitFor();
   const caseText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('śledztwo: rozwiązanie sprawy: 3 z 4 dowodów, przeoczony 1 tylko liczbowo (bez treści)', caseText.includes('Zebrane dowody: 3 z 4') && caseText.includes('1 dowód w tej scenie pozostał nieodkryty') && !caseText.includes('Kubek'), caseText.slice(0, 160));
+  step('śledztwo: rozwiązanie sprawy: 5 z 6 dowodów, przeoczony 1 tylko liczbowo (bez treści)', caseText.includes('Zebrane dowody: 5 z 6') && caseText.includes('1 dowód w tej scenie pozostał nieodkryty') && caseText.includes('Podejrzany mail: 2 z 2') && !caseText.includes('Kubek'), caseText.slice(0, 200));
   await shoot('rozwiazanie-sprawy');
   await page.setViewportSize({ width: 390, height: 844 });
   await noHScroll('telefon, rozwiązanie sprawy');

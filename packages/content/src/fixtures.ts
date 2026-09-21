@@ -4,7 +4,15 @@ import { BlockType } from './blocks';
 // sekretne ma wartość z markerem SEKRET (testy szukają go w odpowiedzi /start) albo jest liczbą/boolem (sprawdzane po ścieżkach).
 export const SECRET_MARKER = 'SEKRET';
 
-const audio = (name: string) => ({ text: `Narracja ${name}.`, audioUrl: `audio/${name}.mp3`, durationMs: 1200 });
+const audio = (name: string) => ({
+  text: `Narracja ${name}. Drugie zdanie.`,
+  audioUrl: `audio/${name}.mp3`,
+  durationMs: 1200,
+  cues: [
+    { text: `Narracja ${name}.`, startMs: 0 },
+    { text: 'Drugie zdanie.', startMs: 600 },
+  ],
+});
 
 function base(id: string) {
   return {

@@ -69,6 +69,47 @@ describe('parseModule: walidacja modułu', () => {
     }, 'narration.audioUrl');
   });
 
+  describe('narration.cues (napisy z dokładnymi czasami)', () => {
+    const narrationOf = (m: TestModule) => m.blocks[0].narration as Record<string, any>;
+
+    it('poprawne cues (rosnące startMs, nie później niż durationMs) przechodzą', () => {
+      const module = fullModuleForTests();
+      narrationOf(module).cues = [{ text: 'A.', startMs: 0 }, { text: 'B.', startMs: 500 }, { text: 'C.', startMs: 1200 }];
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it('cues są opcjonalne (fallback: podział proporcjonalny w odtwarzaczu)', () => {
+      const module = fullModuleForTests();
+      delete narrationOf(module).cues;
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it('odrzuca cues nierosnące, spoza nagrania, bez nagrania i puste', () => {
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 500 }, { text: 'B.', startMs: 100 }];
+      }, 'startMs rosnąco');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 0 }, { text: 'B.', startMs: 5000 }];
+      }, 'nie później niż durationMs');
+      expectInvalid((m) => {
+        delete narrationOf(m).audioUrl;
+        delete narrationOf(m).durationMs;
+      }, 'cues wymaga nagrania');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: -1 }];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = [{ text: 'A.', startMs: 0, extra: 1 }];
+      }, 'narration.cues');
+      expectInvalid((m) => {
+        narrationOf(m).cues = Array.from({ length: 50 }, (_, i) => ({ text: 'x'.repeat(1000), startMs: i }));
+      }, 'łączna długość napisów');
+    });
+  });
+
   it('audioUrl bez durationMs (lub odwrotnie) jest błędem', () => {
     expectInvalid((m) => {
       delete (m.blocks[0].narration as Record<string, unknown>).durationMs;

@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CoursesService } from './courses.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
+
+const configProvider = { provide: ConfigService, useValue: { getOrThrow: () => 'test-secret' } };
 
 describe('CoursesService.listMyCourses', () => {
   let service: CoursesService;
@@ -21,6 +24,7 @@ describe('CoursesService.listMyCourses', () => {
         CoursesService,
         { provide: TenantPrismaService, useValue: tenantPrisma },
         { provide: GamificationService, useValue: { awardCourseCompletion: jest.fn() } },
+        configProvider,
       ],
     }).compile();
 
@@ -133,9 +137,26 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
       .fn()
       .mockResolvedValue({ xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] });
 
+    // Kurs z treścią sprzed silnika nie ma jeszcze wersji: resolveVersion tworzy "wersję 1" z course.contentBlocks. Mock
+    // odtwarza to, zwracając wersję zbudowaną z treści aktualnej fixtury.
+    const courseVersion = {
+      findFirst: jest.fn(async () => {
+        const assignment = (await findFirst()) as { course: { id: string; contentBlocks: unknown } };
+        return {
+          id: 'version-1',
+          courseId: assignment.course.id,
+          version: 1,
+          schemaVersion: 1,
+          contentBlocks: assignment.course.contentBlocks,
+        };
+      }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      findUnique: jest.fn(),
+    };
+
     const tenantPrisma = {
       runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
-        fn({ courseAssignment: { findFirst, updateMany } }),
+        fn({ courseAssignment: { findFirst, updateMany }, courseVersion, $queryRaw: jest.fn() }),
       ),
     };
 
@@ -144,6 +165,7 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
         CoursesService,
         { provide: TenantPrismaService, useValue: tenantPrisma },
         { provide: GamificationService, useValue: { awardCourseCompletion } },
+        configProvider,
       ],
     }).compile();
 
@@ -233,6 +255,33 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
     expect(awardCourseCompletion).not.toHaveBeenCalled();
   });
 
+  it('/start na ukończonym kursie nie zmienia statusu (żadnego updateMany po status)', async () => {
+    findFirst.mockResolvedValue(assignmentFixture({ status: 'COMPLETED', currentBlockIndex: 1 }));
+
+    const result = await service.startOrContinue('org-1', 'user-1', 'course-1');
+
+    expect(result.status).toBe('COMPLETED');
+    for (const [args] of updateMany.mock.calls) expect(args.where).not.toHaveProperty('status');
+  });
+
+  it('wyścig /start: równoległy zapis ukończył kurs po odczycie NOT_STARTED - status zostaje COMPLETED, nie wraca na IN_PROGRESS', async () => {
+    // Kolejność odczytów: przypisanie, wersja (mock wersji czyta fixturę), ponowny odczyt po warunkowym updateMany.
+    findFirst
+      .mockResolvedValueOnce(assignmentFixture({ status: 'NOT_STARTED' }))
+      .mockResolvedValueOnce(assignmentFixture({ status: 'NOT_STARTED' }))
+      .mockResolvedValueOnce(assignmentFixture({ status: 'COMPLETED', currentBlockIndex: 1 }));
+    // Przypięcie wersji (count 1), potem warunkowe NOT_STARTED -> IN_PROGRESS trafia w 0 wierszy (kurs już COMPLETED).
+    updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+
+    const result = await service.startOrContinue('org-1', 'user-1', 'course-1');
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'assignment-1', status: 'NOT_STARTED' }) }),
+    );
+    expect(result.status).toBe('COMPLETED');
+    expect(result.currentBlockIndex).toBe(1);
+  });
+
   it('EMBEDDED_HTML jest traktowany jak blok niescorowany - kończy się bez wymaganej odpowiedzi', async () => {
     findFirst.mockResolvedValue(
       assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'EMBEDDED_HTML', html: '<html></html>' }] } }),
@@ -240,7 +289,7 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
 
     const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
 
-    expect(result.lastResult).toEqual({ blockIndex: 0, type: 'EMBEDDED_HTML', correct: undefined });
+    expect(result.lastResult).toEqual({ blockIndex: 0, blockId: 'b0', type: 'EMBEDDED_HTML', correct: undefined });
     expect(result.status).toBe('COMPLETED');
     expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null });
   });

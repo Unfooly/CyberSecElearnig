@@ -9,8 +9,14 @@ export class CourseProgressResponseDto {
   completedAt!: Date | null;
   lastResult!: {
     blockIndex: number;
-    type: ContentBlockType;
+    blockId: string;
+    // Typ z zapisanej wersji kursu (string: klient obsługuje też typy, których ten kod jeszcze nie zna).
+    type: ContentBlockType | string;
     correct?: boolean;
+    // 0..1; obecne dla bloków ocenianych.
+    points?: number;
+    // Wynik po ukończeniu bloku (np. rozstrzygnięcie kryteriów maila, poprawna kolejność).
+    detail?: Record<string, unknown>;
   };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
   // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody

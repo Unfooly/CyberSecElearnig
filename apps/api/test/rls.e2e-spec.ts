@@ -86,10 +86,11 @@ describe('Row-Level Security jest fail-closed (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, writeCheckCourseId] } } });
-    await prisma.course.deleteMany({ where: { id: { in: [courseId, writeCheckCourseId] } } });
+    // Kursy na końcu: przypisania znikają kaskadowo z użytkownikami/organizacjami (FORCE RLS - deleteMany bez kontekstu
+    // organizacji ich nie widzi), a kurs z przypisaniami jest chroniony (RESTRICT, B-032).
     await prisma.user.deleteMany({ where: { email: { endsWith: 'rls-e2e-test.test' } } });
     await prisma.organization.deleteMany({ where: { name: { endsWith: 'rls-e2e-test.test' } } });
+    await prisma.course.deleteMany({ where: { id: { in: [courseId, writeCheckCourseId] } } });
     await app.close();
   });
 

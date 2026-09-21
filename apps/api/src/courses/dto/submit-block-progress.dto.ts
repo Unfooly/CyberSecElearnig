@@ -5,12 +5,10 @@ export class SubmitBlockProgressDto {
   @Min(0)
   blockIndex!: number;
 
-  // Indeks wybranej opcji - wymagany dla bloków QUIZ/BRANCHING_SCENARIO,
-  // ignorowany dla VIDEO/DRAG_AND_DROP. Serwer sam wylicza poprawność z
-  // contentBlocks danego kursu (CoursesService) - DTO celowo NIE przyjmuje
-  // pola "correct" ani żadnej oceny od klienta.
-  @IsInt()
-  @Min(0)
+  // Odpowiedź zależy od typu bloku: indeks wybranej opcji (QUIZ/BRANCHING_SCENARIO) albo obiekt z listą id
+  // ({ visited } / { asked } / { opened } / { selected } / { order }); dla bloków bez odpowiedzi pomijana. Kształt waliduje
+  // serwer wg typu bloku z zapisanej wersji kursu (evaluateSubmit). Serwer sam wylicza poprawność i punkty - DTO celowo NIE
+  // przyjmuje pola "correct" ani żadnej oceny od klienta.
   @IsOptional()
-  answer?: number;
+  answer?: unknown;
 }

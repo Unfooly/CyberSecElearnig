@@ -1,6 +1,6 @@
 import { ServerBlock } from './blocks';
 import { collectPaths } from './introspect';
-import { ContentModule, ContentValidationError, moduleSchema } from './module';
+import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, moduleSchema } from './module';
 import { validateRegex } from './regex';
 
 // Walidacja semantyczna modułu (relacje między polami, których zod nie wyrazi w schemacie obiektu, kompilacja wzorców RE2).
@@ -16,12 +16,18 @@ function duplicates(ids: string[]): string[] {
   return [...dup];
 }
 
-/** Dowód (evidence: true) musi mieć wpis w notatniku z rodzajem (kind), żeby każdy dowód miał ikonę. */
-function evidenceErrors(label: string, item: { evidence?: boolean; note?: { text: string; kind?: string } }): string[] {
-  if (item.evidence !== true) return [];
+/**
+ * Notatka i dowód. Dowód (evidence: true) musi mieć `note`. Od schemaVersion 3 KAŻDA notatka ma `kind` (ikona w notatniku; jedna reguła
+ * zamiast "kind tylko przy dowodzie"); moduły w wersji 2 nie mają tego pola, więc są zwolnione.
+ */
+function evidenceErrors(
+  label: string,
+  item: { evidence?: boolean; note?: { text: string; kind?: string } },
+  kindRequired: boolean,
+): string[] {
   const errors: string[] = [];
-  if (!item.note) errors.push(`${label}: evidence wymaga pola note`);
-  else if (!item.note.kind) errors.push(`${label}: evidence wymaga note.kind (ikona dowodu)`);
+  if (item.evidence === true && !item.note) errors.push(`${label}: evidence wymaga pola note`);
+  if (item.note && !item.note.kind && kindRequired) errors.push(`${label}: note wymaga note.kind (ikona w notatniku)`);
   return errors;
 }
 
@@ -42,8 +48,9 @@ export function v3FeaturesUsed(block: ServerBlock): string[] {
 }
 
 /** Zwraca listę błędów semantycznych bloku (pusta = OK). */
-export function validateBlockSemantics(block: ServerBlock): string[] {
+export function validateBlockSemantics(block: ServerBlock, schemaVersion: number = MODULE_SCHEMA_VERSION): string[] {
   const errors: string[] = [];
+  const kindRequired = schemaVersion >= 3;
   const checkUnique = (label: string, ids: string[]) => {
     for (const id of duplicates(ids)) errors.push(`${label}: powtórzony identyfikator "${id}"`);
   };
@@ -74,7 +81,7 @@ export function validateBlockSemantics(block: ServerBlock): string[] {
       checkSubset('requiredHotspots', block.requiredHotspots, ids);
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
-        errors.push(...evidenceErrors(`hotspots[${i}]`, h));
+        errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
       });
       checkRequiredFlags('hotspots', block.hotspots, errors);
       break;
@@ -87,7 +94,7 @@ export function validateBlockSemantics(block: ServerBlock): string[] {
         if ((q.answer === undefined) === (q.lines === undefined)) {
           errors.push(`questions[${i}]: dokładnie jedno z pól answer / lines`);
         }
-        errors.push(...evidenceErrors(`questions[${i}]`, q));
+        errors.push(...evidenceErrors(`questions[${i}]`, q, kindRequired));
       });
       checkRequiredFlags('questions', block.questions, errors);
       break;
@@ -96,7 +103,7 @@ export function validateBlockSemantics(block: ServerBlock): string[] {
       checkUnique('criteria', block.criteria.map((c) => c.id));
       checkUnique('email.links', block.email.links.map((l) => l.id));
       block.criteria.forEach((c, i) => {
-        errors.push(...evidenceErrors(`criteria[${i}]`, c));
+        errors.push(...evidenceErrors(`criteria[${i}]`, c, kindRequired));
         if (c.evidence === true && c.correct !== true) errors.push(`criteria[${i}]: dowodem może być tylko kryterium poprawne (correct: true)`);
       });
       break;
@@ -168,7 +175,7 @@ export function parseModule(input: unknown): ContentModule {
   contentModule.blocks.forEach((block, index) => {
     if (seen.has(block.id)) errors.push(`blocks[${index}]: powtórzony identyfikator bloku "${block.id}"`);
     seen.add(block.id);
-    for (const error of validateBlockSemantics(block)) errors.push(`blocks[${index}] (${block.id}): ${error}`);
+    for (const error of validateBlockSemantics(block, contentModule.schemaVersion)) errors.push(`blocks[${index}] (${block.id}): ${error}`);
     if (contentModule.schemaVersion < 3) {
       for (const feature of v3FeaturesUsed(block)) {
         errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 3`);

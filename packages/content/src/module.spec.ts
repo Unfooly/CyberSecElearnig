@@ -276,11 +276,16 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     expect(invalid((m) => (m.schemaVersion = 4))).toContain('schemaVersion');
   });
 
-  it('evidence bez note to błąd; evidence z note bez kind to błąd (każdy dowód ma ikonę)', () => {
+  it('evidence bez note to błąd', () => {
     expect(invalid((m) => delete hotspots(m).hotspots[0].note)).toContain('hotspots[0]: evidence wymaga pola note');
-    expect(invalid((m) => delete hotspots(m).hotspots[0].note.kind)).toContain('hotspots[0]: evidence wymaga note.kind');
-    expect(invalid((m) => delete dialogue(m).questions[0].note.kind)).toContain('questions[0]: evidence wymaga note.kind');
-    expect(invalid((m) => delete email(m).criteria[0].note.kind)).toContain('criteria[0]: evidence wymaga note.kind');
+  });
+
+  it('w wersji 3 każda notatka ma kind (także bez evidence), w wersji 2 nie ma go nigdzie', () => {
+    expect(invalid((m) => delete hotspots(m).hotspots[0].note.kind)).toContain('hotspots[0]: note wymaga note.kind');
+    expect(invalid((m) => delete dialogue(m).questions[0].note.kind)).toContain('questions[0]: note wymaga note.kind');
+    expect(invalid((m) => delete email(m).criteria[0].note.kind)).toContain('criteria[0]: note wymaga note.kind');
+    // Notatka bez evidence też: jedna reguła.
+    expect(invalid((m) => delete email(m).criteria[1].note.kind)).toContain('criteria[1]: note wymaga note.kind');
   });
 
   it('dowodem może być tylko kryterium maila oznaczone jako poprawne', () => {

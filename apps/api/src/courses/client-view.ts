@@ -1,7 +1,7 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
 import { ProgressV2 } from './progress';
-import { Block } from './scoring/evaluate';
+import { Block, OpaqueId, emailDetail, orderingDetail } from './scoring/evaluate';
 
 /**
  * Klucze pochodne od JWT_SECRET (HKDF-SHA256 ze stałym `info` osobnym dla każdego zastosowania), więc bez nowej zmiennej
@@ -100,13 +100,28 @@ export function evidenceSummary(progress: ProgressV2, blocks: Block[]): Evidence
  * Widok postępu dla klienta: własne wyniki i stan, plus WYŁĄCZNIE ujawnione dotąd elementy zadań tekstowych (podpowiedzi
  * odsłonięte próbami; rozwiązanie po wyczerpaniu prób) i rozwiązane notatki. Niczego, co nie było jeszcze ujawnione.
  */
-export function clientProgress(progress: ProgressV2, blocks: Block[]) {
+export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: OpaqueId) {
   const view: Record<string, unknown> = {};
   for (const [blockId, entry] of Object.entries(progress.blocks)) {
     const block = blocks.find((b) => b.id === blockId);
     const revealedHints =
       block?.type === 'TEXT_INPUT_GUIDED' && Array.isArray(block.hints) ? block.hints.slice(0, entry.hintsShown ?? 0) : undefined;
     const solution = block?.type === 'TEXT_INPUT_GUIDED' && entry.done && entry.correct === false ? block.solution : undefined;
+    // Podgląd UKOŃCZONEGO bloku ("Wstecz"): własny wybór gracza i rozstrzygnięcie (po ukończeniu klucz nie jest już tajny, wynik
+    // pokazano przy zapisie). Elementy zawsze jako id nieprzejrzyste, jak w /start. Bez `opaque` (starsze wywołania) nie ma ich wcale.
+    let answer: unknown;
+    let detail: unknown;
+    if (block && entry.done && opaque) {
+      if ((block.type === 'QUIZ' || block.type === 'BRANCHING_SCENARIO') && typeof entry.answer === 'number') answer = entry.answer;
+      if (block.type === 'EMAIL_ANALYSIS' && Array.isArray(entry.selected)) {
+        answer = { selected: entry.selected.map((id) => opaque(block.id, id)) };
+        detail = emailDetail(block, entry.selected, opaque);
+      }
+      if (block.type === 'ORDERING' && Array.isArray(entry.order)) {
+        answer = { order: entry.order.map((id) => opaque(block.id, id)) };
+        detail = orderingDetail(block, opaque);
+      }
+    }
     view[blockId] = {
       type: entry.type,
       done: entry.done,
@@ -115,6 +130,8 @@ export function clientProgress(progress: ProgressV2, blocks: Block[]) {
       ...(entry.attempts !== undefined ? { attempts: entry.attempts } : {}),
       ...(revealedHints && revealedHints.length > 0 ? { revealedHints } : {}),
       ...(solution ? { solution } : {}),
+      ...(answer !== undefined ? { answer } : {}),
+      ...(detail !== undefined ? { detail } : {}),
     };
   }
   // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId i

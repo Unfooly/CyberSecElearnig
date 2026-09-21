@@ -138,17 +138,10 @@ export function evaluateSubmit(
         .filter((c) => c.correct && c.note && selected.includes(c.id))
         .map((c) => noteKey(block.id, c.id));
       return {
-        entry: baseEntry(block, now, { correct: points === 1, points }),
+        // `selected` (id z treści) zostaje w wpisie: podgląd ukończonego bloku ("Wstecz") pokazuje wybór gracza (clientProgress).
+        entry: baseEntry(block, now, { correct: points === 1, points, selected }),
         notesAdded,
-        detail: {
-          // Id nieprzejrzyste: klient rozpoznaje kryteria po id, które dostał w /start.
-          criteria: criteria.map((c) => ({
-            id: opaque(block.id, c.id),
-            correct: c.correct,
-            selected: selected.includes(c.id),
-            ...(c.explanation ? { explanation: c.explanation } : {}),
-          })),
-        },
+        detail: emailDetail(block, selected, opaque),
       };
     }
 
@@ -163,12 +156,9 @@ export function evaluateSubmit(
       const inPlace = order.filter((id, index) => id === correctOrder[index]).length;
       const points = block.scoring === 'exact' ? (inPlace === correctOrder.length ? 1 : 0) : inPlace / correctOrder.length;
       return {
-        entry: baseEntry(block, now, { correct: points === 1, points }),
+        entry: baseEntry(block, now, { correct: points === 1, points, order }),
         notesAdded: [],
-        detail: {
-          correctOrder: correctOrder.map((id) => opaque(block.id, id)),
-          ...(block.explanation ? { explanation: block.explanation } : {}),
-        },
+        detail: orderingDetail(block, opaque),
       };
     }
 
@@ -185,6 +175,31 @@ export function evaluateSubmit(
     default:
       return { entry: baseEntry(block, now), notesAdded: [] };
   }
+}
+
+/**
+ * Rozstrzygnięcie kryteriów maila po odpowiedzi (id nieprzejrzyste, jak w /start). Ta sama postać idzie w odpowiedzi /progress i, dla
+ * bloku UKOŃCZONEGO, w widoku postępu (clientProgress): po ukończeniu klucz nie jest już tajny (pokazano go w wyniku).
+ */
+export function emailDetail(block: Block, selected: string[], opaque: OpaqueId) {
+  const criteria = (Array.isArray(block.criteria) ? block.criteria : []) as { id: string; correct: boolean; explanation?: string }[];
+  return {
+    criteria: criteria.map((c) => ({
+      id: opaque(block.id, c.id),
+      correct: c.correct,
+      selected: selected.includes(c.id),
+      ...(c.explanation ? { explanation: c.explanation } : {}),
+    })),
+  };
+}
+
+/** Poprawna kolejność (id nieprzejrzyste) i wyjaśnienie: jak wyżej, tylko po ukończeniu bloku. */
+export function orderingDetail(block: Block, opaque: OpaqueId) {
+  const items = (Array.isArray(block.items) ? block.items : []) as { id: string }[];
+  return {
+    correctOrder: items.map((i) => opaque(block.id, i.id)),
+    ...(block.explanation ? { explanation: block.explanation } : {}),
+  };
 }
 
 // Bloki eksploracyjne: po spełnieniu wymagań punkty = 1 (ważne tylko, gdy autor nada im wagę > 0).

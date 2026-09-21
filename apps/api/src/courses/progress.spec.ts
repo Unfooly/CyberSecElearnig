@@ -154,6 +154,48 @@ describe('client-view', () => {
     expect(JSON.stringify(view)).not.toContain('rozmowa.q1');
   });
 
+  describe('clientProgress: podgląd ukończonych bloków ocenianych (answer i detail)', () => {
+    const opaque = (blockId: string, itemId: string) => `op-${blockId}-${itemId}`;
+    const done = (over: Partial<BlockEntry>) => entry({ done: true, ...over });
+    const view = (blocksProgress: Record<string, BlockEntry>) => clientProgress({ v: 2, blocks: blocksProgress, notes: [] }, blocks(), opaque);
+
+    it('QUIZ: własny wybór (indeks); e-mail: wybrane kryteria i rozstrzygnięcie jako id nieprzejrzyste; ORDERING: kolejność i klucz', () => {
+      const result = view({
+        quiz: done({ type: 'QUIZ', answer: 1, correct: true, points: 1 }),
+        mail: done({ type: 'EMAIL_ANALYSIS', selected: ['c1', 'c3'], correct: true, points: 1 }),
+        kolejnosc: done({ type: 'ORDERING', order: ['o2', 'o1', 'o3'], correct: false, points: 1 / 3 }),
+      });
+      expect(result.blocks.quiz).toMatchObject({ answer: 1 });
+      expect(result.blocks.mail).toMatchObject({ answer: { selected: ['op-mail-c1', 'op-mail-c3'] } });
+      expect((result.blocks.mail as { detail: { criteria: { id: string; selected: boolean; correct: boolean }[] } }).detail.criteria).toEqual([
+        expect.objectContaining({ id: 'op-mail-c1', selected: true, correct: true }),
+        expect.objectContaining({ id: 'op-mail-c2', selected: false, correct: false }),
+        expect.objectContaining({ id: 'op-mail-c3', selected: true, correct: true }),
+      ]);
+      expect(result.blocks.kolejnosc).toMatchObject({
+        answer: { order: ['op-kolejnosc-o2', 'op-kolejnosc-o1', 'op-kolejnosc-o3'] },
+        detail: { correctOrder: ['op-kolejnosc-o1', 'op-kolejnosc-o2', 'op-kolejnosc-o3'] },
+      });
+      // Żadne id z treści nie wychodzi (tylko nieprzejrzyste).
+      expect(JSON.stringify(result.blocks.mail)).not.toMatch(/"c[123]"/);
+      expect(JSON.stringify(result.blocks.kolejnosc)).not.toMatch(/"o[123]"/);
+    });
+
+    it('blok nieukończony albo bez `opaque`: bez answer i detail (klucz niczego nie zdradza przed odpowiedzią)', () => {
+      const undone = view({ mail: entry({ type: 'EMAIL_ANALYSIS', done: false, selected: ['c1'] }) });
+      expect(undone.blocks.mail).not.toHaveProperty('answer');
+      expect(undone.blocks.mail).not.toHaveProperty('detail');
+      const withoutOpaque = clientProgress({ v: 2, blocks: { mail: done({ type: 'EMAIL_ANALYSIS', selected: ['c1'] }) }, notes: [] }, blocks());
+      expect(withoutOpaque.blocks.mail).not.toHaveProperty('answer');
+    });
+
+    it('stary wpis bez selected/order (sprzed tej zmiany) nie psuje widoku', () => {
+      const result = view({ mail: done({ type: 'EMAIL_ANALYSIS', correct: true, points: 1 }) });
+      expect(result.blocks.mail).toMatchObject({ done: true, correct: true });
+      expect(result.blocks.mail).not.toHaveProperty('answer');
+    });
+  });
+
   describe('evidenceSummary (Dowody X/Y liczy serwer)', () => {
     const done = (type: string) => entry({ type, done: true });
 

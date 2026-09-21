@@ -31,6 +31,35 @@ function evidenceErrors(
   return errors;
 }
 
+/**
+ * Kotwice kryteriów w makiecie maila (criteria[].target): spójność z treścią maila. link -> linkId istnieje w email.links (bez quote);
+ * text -> quote jest fragmentem email.body (bez linkId); attachment -> mail ma załącznik; sender i subject bez dodatkowych pól;
+ * dwa kryteria nie mogą mieć tej samej kotwicy (kliknięcie fragmentu zaznacza dokładnie jedno kryterium).
+ */
+function emailTargetErrors(block: Extract<ServerBlock, { type: 'EMAIL_ANALYSIS' }>): string[] {
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  block.criteria.forEach((c, i) => {
+    const t = c.target;
+    if (!t) return;
+    const label = `criteria[${i}].target`;
+    if (t.kind === 'link') {
+      if (!t.linkId || !block.email.links.some((l) => l.id === t.linkId)) errors.push(`${label}: link wymaga linkId istniejącego w email.links`);
+      if (t.quote !== undefined) errors.push(`${label}: link nie ma quote`);
+    } else if (t.kind === 'text') {
+      if (!t.quote || !t.quote.trim() || !block.email.body.includes(t.quote)) errors.push(`${label}: quote musi być fragmentem email.body`);
+      if (t.linkId !== undefined) errors.push(`${label}: text nie ma linkId`);
+    } else {
+      if (t.linkId !== undefined || t.quote !== undefined) errors.push(`${label}: ${t.kind} nie ma linkId ani quote`);
+      if (t.kind === 'attachment' && !block.email.attachment) errors.push(`${label}: attachment wymaga email.attachment`);
+    }
+    const key = `${t.kind}:${t.linkId ?? ''}:${t.quote ?? ''}`;
+    if (seen.has(key)) errors.push(`${label}: ta sama kotwica jest już użyta przez inne kryterium`);
+    seen.add(key);
+  });
+  return errors;
+}
+
 /** `required` jawnie ustawione co najmniej na jednym elemencie musi zostawiać co najmniej jeden element wymagany (przy obu sposobach wygrywa `required`). */
 function checkRequiredFlags(label: string, items: { required?: boolean }[], errors: string[]) {
   if (!items.some((item) => item.required !== undefined)) return;
@@ -39,7 +68,7 @@ function checkRequiredFlags(label: string, items: { required?: boolean }[], erro
 
 // Pola dostępne dopiero od schemaVersion 3 (moduł w wersji 2 ich nie używa). Ścieżki względem bloku: `a.b`, `a[].b`.
 const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].required', 'questions[].evidence', 'questions[].required',
-  'questions[].lines', 'questions[].note.kind', 'character.avatar', 'criteria[].evidence', 'criteria[].note.kind'];
+  'questions[].lines', 'questions[].note.kind', 'character.avatar', 'criteria[].evidence', 'criteria[].note.kind', 'criteria[].target', 'email.date', 'email.attachment'];
 
 /** Pola z wersji 3 użyte w bloku (do sprawdzenia względem deklarowanego schemaVersion). */
 export function v3FeaturesUsed(block: ServerBlock): string[] {
@@ -106,6 +135,7 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         errors.push(...evidenceErrors(`criteria[${i}]`, c, kindRequired));
         if (c.evidence === true && c.correct !== true) errors.push(`criteria[${i}]: dowodem może być tylko kryterium poprawne (correct: true)`);
       });
+      errors.push(...emailTargetErrors(block));
       break;
     }
     case 'TEXT_INPUT_GUIDED': {
@@ -150,6 +180,19 @@ export function moduleWarnings(contentModule: ContentModule): string[] {
     if (block.type === 'SCENE_HOTSPOTS') {
       block.hotspots.forEach((h, i) => {
         if (h.note && h.evidence !== true) warnings.push(`${where}: hotspots[${i}].note bez evidence: true nigdy nie trafi do notatnika`);
+      });
+    }
+    if (block.type === 'EMAIL_ANALYSIS') {
+      const anchored = block.criteria.filter((c) => c.target);
+      // Klikalne fragmenty tylko przy poprawnych kryteriach zdradzają odpowiedź (D-056): kotwice mają mieć też kryteria błędne.
+      if (anchored.length > 0 && anchored.every((c) => c.correct === true)) {
+        warnings.push(`${where}: wszystkie kryteria z target są poprawne: klikalność fragmentów zdradza odpowiedź (dodaj kotwice kryteriom błędnym)`);
+      }
+      block.criteria.forEach((c, i) => {
+        const quote = c.target?.kind === 'text' ? c.target.quote : undefined;
+        if (quote && block.email.body.split(quote).length > 2) {
+          warnings.push(`${where}: criteria[${i}].target.quote występuje w treści więcej niż raz (podświetlone zostanie pierwsze wystąpienie)`);
+        }
       });
     }
     if (block.type === 'DIALOGUE' && block.requiredQuestions !== undefined) {

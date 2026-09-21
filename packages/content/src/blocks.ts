@@ -142,6 +142,9 @@ const notepadSchema = z
   })
   .strict();
 
+/** Rodzaje fragmentów maila, które mogą być kotwicą kryterium: nagłówek nadawcy (nazwa i adres), temat, link, załącznik, cytat z treści. */
+export const EMAIL_TARGET_KINDS = ['sender', 'subject', 'link', 'attachment', 'text'] as const;
+
 const emailAnalysisSchema = z
   .object({
     ...baseShape,
@@ -152,7 +155,11 @@ const emailAnalysisSchema = z
         fromAddress: text(200),
         subject: text(300),
         body: text(4000),
-        // `url` to tylko PODGLĄD adresu (wyświetlany, nigdy klikalny).
+        // schemaVersion 3: wygląd prawdziwego klienta pocztowego. Data to tekst do wyświetlenia (nie jest parsowana), załącznik to
+        // element klikalny w makiecie, ale bez pobierania (nie ma adresu pliku).
+        date: text(60).optional(),
+        attachment: z.object({ name: text(120), size: text(30).optional() }).strict().optional(),
+        // `url` to tylko PODGLĄD adresu (wyświetlany w dymku jak pasek statusu przeglądarki, nigdy nie nawiguje).
         links: z.array(z.object({ id: idSchema, text: text(200), url: text(500) }).strict()).max(10),
       })
       .strict(),
@@ -169,6 +176,18 @@ const emailAnalysisSchema = z
             note: noteSchema.optional(),
             // schemaVersion 3: trafione kryterium jest dowodem (wymaga `correct: true` oraz `note` z `kind`). SEKRET (zdradzałby poprawność).
             evidence: z.boolean().optional(),
+            // schemaVersion 3: fragment maila, którego kliknięcie zaznacza to kryterium (checklista zostaje alternatywą dla klawiatury).
+            // Kotwice mają też kryteria BŁĘDNE (inaczej sam fakt, że fragment jest klikalny, zdradzałby poprawne). Kryterium bez `target`
+            // (np. "presja czasu" w całości) jest tylko na liście.
+            target: z
+              .object({
+                kind: z.enum(EMAIL_TARGET_KINDS),
+                // kind=link: id linku z email.links; kind=text: cytat (fragment email.body, semantics.ts).
+                linkId: idSchema.optional(),
+                quote: text(200).optional(),
+              })
+              .strict()
+              .optional(),
           })
           .strict(),
       )
@@ -397,12 +416,18 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'email.fromAddress',
       'email.subject',
       'email.body',
+      'email.date',
+      'email.attachment.name',
+      'email.attachment.size',
       'email.links[].id',
       'email.links[].text',
       'email.links[].url',
       'prompt',
       'criteria[].id',
       'criteria[].label',
+      'criteria[].target.kind',
+      'criteria[].target.linkId',
+      'criteria[].target.quote',
     ],
     ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'criteria[].note.kind', 'criteria[].evidence', 'scoring'],
   ),

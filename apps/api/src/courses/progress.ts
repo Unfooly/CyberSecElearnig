@@ -16,6 +16,9 @@ export interface BlockEntry {
   correct?: boolean;
   // QUIZ/BRANCHING: indeks wybranej opcji (jak w formacie sprzed silnika).
   answer?: number;
+  // EMAIL_ANALYSIS: zaznaczone kryteria, ORDERING: ułożona kolejność (id Z TREŚCI; klient dostaje je nieprzejrzyste, client-view.ts).
+  selected?: string[];
+  order?: string[];
   // TEXT_INPUT_GUIDED: zużyte próby i odsłonięte podpowiedzi.
   attempts?: number;
   hintsShown?: number;

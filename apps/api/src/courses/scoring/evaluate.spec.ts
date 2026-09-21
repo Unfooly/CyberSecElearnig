@@ -146,6 +146,12 @@ describe('EMAIL_ANALYSIS: punkty częściowe i scoring exact', () => {
   const points = (selected: string[], block = email()) =>
     submit(block, { selected: ops('mail', ...selected) }).entry.points;
 
+  it('wpis bloku zapamiętuje wybór (id z treści) do podglądu ukończonego bloku', () => {
+    expect(submit(email(), { selected: ops('mail', 'c1', 'c3') }).entry.selected).toEqual(['c1', 'c3']);
+    const ordering = blocks().ORDERING;
+    expect(submit(ordering, { order: ops('kolejnosc', 'o2', 'o1', 'o3') }).entry.order).toEqual(['o2', 'o1', 'o3']);
+  });
+
   it('partial: (trafione - błędne) / liczba poprawnych, nie mniej niż 0', () => {
     expect(points(['c1', 'c3'])).toBe(1);
     expect(points(['c1'])).toBe(0.5);

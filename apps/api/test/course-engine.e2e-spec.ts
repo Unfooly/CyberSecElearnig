@@ -268,6 +268,11 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       for (const note of progress.notes) expect(Object.keys(note).sort()).toEqual(expect.arrayContaining(['blockId', 'text']));
       for (const note of progress.notes) expect(Object.keys(note).every((k) => ['blockId', 'text', 'kind'].includes(k))).toBe(true);
       expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|scena\.h1|"c[123]"|"h[12]"/);
+      // Podgląd ukończonego bloku po wznowieniu: własny wybór i rozstrzygnięcie, wyłącznie jako id nieprzejrzyste z /start.
+      expect(progress.blocks.mail.answer).toEqual({ selected: [c1, c3] });
+      expect(progress.blocks.mail.detail.criteria.map((c: { id: string; selected: boolean }) => [c.id, c.selected])).toEqual(
+        expect.arrayContaining([[c1, true], [c3, true]]),
+      );
       // Po zatwierdzeniu maila znana suma (3 dowody: hotspot, pytanie, kryterium c1); c3 to zwykła notatka. Perblock bez id elementów.
       expect(result.evidence).toEqual({
         collected: 3,

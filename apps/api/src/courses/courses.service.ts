@@ -105,7 +105,7 @@ export class CoursesService {
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
-        progress: clientProgress(readProgress(current.progress), version.blocks) as unknown as Prisma.JsonValue,
+        progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
       };
     });
   }

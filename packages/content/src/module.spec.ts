@@ -256,8 +256,11 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
       { id: 'q1', text: 'Skąd ten mail?', answer: 'Rano.', note: { text: 'Mail przyszedł rano.' } },
       { id: 'q2', text: 'Kto go wysłał?', answer: 'Nie wiem.' },
     ];
+    delete email(module).email.date;
+    delete email(module).email.attachment;
     for (const criterion of email(module).criteria) {
       delete criterion.evidence;
+      delete criterion.target;
       if (criterion.note) delete criterion.note.kind;
     }
     expect(() => parseModule(module)).not.toThrow();
@@ -267,7 +270,16 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     const message = invalid((m) => {
       m.schemaVersion = 2;
     });
-    for (const feature of ['hotspots[].evidence', 'hotspots[].required', 'questions[].lines', 'character.avatar', 'criteria[].evidence']) {
+    for (const feature of [
+      'hotspots[].evidence',
+      'hotspots[].required',
+      'questions[].lines',
+      'character.avatar',
+      'criteria[].evidence',
+      'criteria[].target',
+      'email.date',
+      'email.attachment',
+    ]) {
       expect(message).toContain(`pole ${feature} wymaga schemaVersion 3`);
     }
   });
@@ -295,6 +307,54 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
         email(m).criteria[1].note.kind = 'mail';
       }),
     ).toContain('criteria[1]: dowodem może być tylko kryterium poprawne');
+  });
+
+  describe('kotwice kryteriów w makiecie maila (criteria[].target)', () => {
+    const target = (m: TestModule, index: number, value: unknown) => {
+      email(m).criteria[index].target = value;
+    };
+
+    it('poprawne kotwice wszystkich rodzajów przechodzą', () => {
+      const module = fullModuleForTests();
+      target(module, 0, { kind: 'subject' });
+      target(module, 1, { kind: 'attachment' });
+      target(module, 2, { kind: 'text', quote: 'Kliknij link' });
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it.each([
+      ['link do nieistniejącego linku', { kind: 'link', linkId: 'brak' }, 'link wymaga linkId istniejącego w email.links'],
+      ['link bez linkId', { kind: 'link' }, 'link wymaga linkId'],
+      ['cytat spoza treści', { kind: 'text', quote: 'tego nie ma w mailu' }, 'quote musi być fragmentem email.body'],
+      ['text bez cytatu', { kind: 'text' }, 'quote musi być fragmentem email.body'],
+      ['sender z quote', { kind: 'sender', quote: 'x' }, 'sender nie ma linkId ani quote'],
+    ])('odrzuca: %s', (_label, value, fragment) => {
+      expect(invalid((m) => target(m, 0, value))).toContain(fragment);
+    });
+
+    it('cytat z samych spacji jest odrzucony; ostrzeżenia: kotwice tylko przy poprawnych i cytat występujący wielokrotnie', () => {
+      expect(invalid((m) => target(m, 0, { kind: 'text', quote: ' ' }))).toContain('quote musi być fragmentem email.body');
+
+      const onlyCorrect = fullModuleForTests();
+      target(onlyCorrect, 1, undefined); // c2 to jedyne błędne kryterium z kotwicą w fixturze
+      expect(moduleWarnings(parseModule(onlyCorrect))).toContainEqual(expect.stringContaining('wszystkie kryteria z target są poprawne'));
+      expect(moduleWarnings(parseModule(fullModuleForTests())).join('\n')).not.toContain('wszystkie kryteria z target');
+
+      const repeated = fullModuleForTests();
+      email(repeated).email.body = 'Kliknij link. Potem znów Kliknij.';
+      const warnings = moduleWarnings(parseModule(repeated)).join('\n');
+      expect(warnings).toContain('występuje w treści więcej niż raz');
+    });
+
+    it('attachment wymaga załącznika w mailu; dwa kryteria nie mogą mieć tej samej kotwicy', () => {
+      expect(
+        invalid((m) => {
+          delete email(m).email.attachment;
+          target(m, 0, { kind: 'attachment' });
+        }),
+      ).toContain('attachment wymaga email.attachment');
+      expect(invalid((m) => target(m, 1, { kind: 'sender' }))).toContain('ta sama kotwica jest już użyta');
+    });
   });
 
   it('nieznany rodzaj notatki jest odrzucony', () => {

@@ -70,6 +70,45 @@ export interface ContentBlock {
   // sandboxowanym <iframe> (patrz EmbeddedHtmlBlock.tsx). Nigdy nie trafia
   // do dangerouslySetInnerHTML w głównym DOM-ie aplikacji.
   html?: string;
+  // SCENE_HOTSPOTS: ilustracja (ścieżka względna wobec bazy zasobów), tekst alternatywny i prostokąty w % obrazu.
+  image?: string;
+  imageAlt?: string;
+  hotspots?: SceneHotspot[];
+  requiredHotspots?: string[];
+  // DIALOGUE
+  character?: { name: string; role?: string };
+  questions?: DialogueQuestion[];
+  requiredQuestions?: string[];
+  // TABS
+  tabs?: ContentTab[];
+  requiredTabs?: string[];
+  // SUMMARY
+  text?: string;
+}
+
+export interface SceneHotspot {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content: string;
+  narration?: Narration;
+}
+
+export interface DialogueQuestion {
+  id: string;
+  text: string;
+  answer: string;
+  answerNarration?: Narration;
+  note?: { text: string };
+}
+
+export interface ContentTab {
+  id: string;
+  title: string;
+  content: string;
 }
 
 // Widok postępu z /start (apps/api: clientProgress): własne wyniki bloków po id oraz notatki (treść rozwiązana przez serwer, bez kluczy).

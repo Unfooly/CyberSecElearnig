@@ -353,6 +353,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: menu zwijane w przycisk „hamburger” na wąskich ekranach (dostępne z klawiatury i czytników, fokus w panelu, zamykanie Escape), test na
   390 px bez przewijania poziomego strony, aktualizacja `Topbar.test.tsx`; po wdrożeniu usunięcie obejścia `focusMode` albo zostawienie go jako opcji skupienia.
 
+### B-078 Narracja elementów bloków eksploracyjnych (hotspot, odpowiedź w dialogu)
+- Etykiety: `P2`, `feature`, `mod:web` · Źródło: PR 2 (commit 4), D-054
+- Opis: schemat pozwala na osobną narrację dla punktu sceny (`hotspots[].narration`) i odpowiedzi postaci (`questions[].answerNarration`); komponenty
+  bloków (`SceneHotspotsBlock`, `DialogueBlock`) na razie pokazują wyłącznie tekst, a nagranie całego bloku gra w dolnym pasku jak dotąd.
+- Akceptacja: odtwarzanie nagrania po wybraniu elementu (z poszanowaniem przełącznika „Lektor”, jedno nagranie naraz, zatrzymanie przy zmianie
+  elementu/bloku), napisy jak w `NarrationPlayer`, testy jednostkowe; dopiero po dostarczeniu plików audio (PR 3).
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

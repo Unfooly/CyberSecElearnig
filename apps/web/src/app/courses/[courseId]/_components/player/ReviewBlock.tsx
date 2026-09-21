@@ -1,9 +1,26 @@
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
+import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 
 // Podgląd JUŻ ukończonego bloku (przycisk "Wstecz"): tylko do odczytu, bez zmiany stanu na serwerze. Serwer i tak nie pozwala ponownie
-// zapisać ukończonego bloku (sekwencyjność), więc podgląd pokazuje treść i wynik, nie formularz. Interaktywny podgląd bloków
-// nieocenianych (hotspoty, dialog, zakładki, notatnik) dochodzi z ich komponentami.
-export default function ReviewBlock({ block, result }: { block: ContentBlock; result?: ClientProgressBlock }) {
+// zapisać ukończonego bloku (sekwencyjność). Bloki eksploracyjne (hotspoty, dialog, zakładki, notatnik, podsumowanie) można przejść
+// ponownie interaktywnie (review: bez zapisu); bloki oceniane pokazują treść i wynik, nie formularz.
+export default function ReviewBlock({
+  block,
+  result,
+  contentBase,
+}: {
+  block: ContentBlock;
+  result?: ClientProgressBlock;
+  contentBase: string;
+}) {
+  if (isExploratory(block.type)) {
+    return (
+      <div data-testid="review-block">
+        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
+        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} disabled review />
+      </div>
+    );
+  }
   const headline = block.title ?? block.prompt ?? 'Ukończony blok';
 
   return (

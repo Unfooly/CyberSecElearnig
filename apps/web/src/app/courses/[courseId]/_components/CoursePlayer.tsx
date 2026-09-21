@@ -17,6 +17,7 @@ import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
+import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import FeedbackPanel from './FeedbackPanel';
 import SummaryScreen from './SummaryScreen';
 import PlayerShell from './player/PlayerShell';
@@ -35,9 +36,14 @@ type PlayerState = Pick<CoursePlayerInitialState, 'status' | 'currentBlockIndex'
 
 function renderBlock(
   block: ContentBlock,
-  onSubmit: (answer?: number) => void,
+  onSubmit: (answer?: unknown) => void,
   disabled: boolean,
+  contentBase: string,
 ) {
+  if (isExploratory(block.type)) {
+    // key: stan wewnętrzny (odwiedzone elementy) nie może przechodzić między kolejnymi blokami tego samego typu.
+    return <ExploratoryBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} />;
+  }
   switch (block.type) {
     case 'VIDEO':
       return <VideoBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
@@ -149,7 +155,7 @@ export default function CoursePlayer({
     preference.enabled && contentAssetUrl(contentBase, blocks[index]?.narration?.audioUrl, 'audio') !== null;
   const keyOf = (index: number) => blockIdOf(blocks, index);
 
-  async function handleAnswer(answer?: number) {
+  async function handleAnswer(answer?: unknown) {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
@@ -240,9 +246,9 @@ export default function CoursePlayer({
   } else if (!currentBlock) {
     stage = <p className="text-slate-500">Nie znaleziono treści tego bloku.</p>;
   } else if (reviewing) {
-    stage = <ReviewBlock block={currentBlock} result={results[keyOf(displayedIndex)]} />;
+    stage = <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} />;
   } else {
-    stage = renderBlock(currentBlock, handleAnswer, submitting);
+    stage = renderBlock(currentBlock, handleAnswer, submitting, contentBase);
   }
 
   const narrationBlock = showingFeedback ? blocks[feedback.blockIndex] : currentBlock;

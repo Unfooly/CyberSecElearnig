@@ -762,6 +762,9 @@ model User {
   // http(s) - walidacja w UsersService.updateAvatar, nie w samym DTO (patrz
   // komentarz przy UpdateAvatarDto).
   avatarUrl         String?
+  // Ustawienie konta: lektor (narracja audio) w odtwarzaczu szkoleń. Zmieniane wyłącznie przez użytkownika dla SIEBIE
+  // (PATCH /users/me/preferences); domyślnie włączony.
+  narrationEnabled  Boolean    @default(true)
   xp                Int        @default(0)
   level             Int        @default(1)
   // Ustawiane WYŁĄCZNIE przez "wyloguj wszędzie" i reset hasła (SessionsService):

@@ -394,6 +394,39 @@ export class UsersService {
     });
   }
 
+  /** Własne preferencje (odtwarzacz szkoleń) - organizationId/userId wyłącznie z tokena JWT. */
+  async getPreferences(organizationId: string, userId: string): Promise<{ narrationEnabled: boolean }> {
+    const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.user.findFirst({ where: { id: userId, organizationId }, select: { narrationEnabled: true } }),
+    );
+    if (!user) {
+      throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+    }
+    return { narrationEnabled: user.narrationEnabled };
+  }
+
+  /**
+   * organizationId i userId pochodzą WYŁĄCZNIE z tokena JWT wywołującego (zob. UsersController): użytkownik zmienia wyłącznie
+   * własne preferencje, endpoint nie przyjmuje identyfikatora użytkownika. updateMany z jawnym organizationId (Zasada nr 1),
+   * RLS jest drugą linią obrony.
+   */
+  async updatePreferences(
+    organizationId: string,
+    userId: string,
+    preferences: { narrationEnabled: boolean },
+  ): Promise<{ narrationEnabled: boolean }> {
+    const result = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.user.updateMany({
+        where: { id: userId, organizationId },
+        data: { narrationEnabled: preferences.narrationEnabled },
+      }),
+    );
+    if (result.count === 0) {
+      throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+    }
+    return { narrationEnabled: preferences.narrationEnabled };
+  }
+
   /** Własny avatar (Topbar) - organizationId/userId wyłącznie z tokena JWT. */
   async getAvatar(organizationId: string, userId: string): Promise<{ avatarUrl: string | null }> {
     const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>

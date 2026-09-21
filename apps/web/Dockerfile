@@ -21,6 +21,8 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared packages/shared
+# Root postinstall buduje też packages/content (zob. package.json), więc musi być w kontekście przed `npm ci`.
+COPY packages/content packages/content
 RUN npm ci
 
 COPY apps/web apps/web

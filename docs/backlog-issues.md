@@ -360,6 +360,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: odtwarzanie nagrania po wybraniu elementu (z poszanowaniem przełącznika „Lektor”, jedno nagranie naraz, zatrzymanie przy zmianie
   elementu/bloku), napisy jak w `NarrationPlayer`, testy jednostkowe; dopiero po dostarczeniu plików audio (PR 3).
 
+### B-079 Ukryty blok EMBEDDED_HTML w podglądzie „Wstecz”
+- Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: przegląd kodu PR 2 (commit 4b-2), D-055
+- Opis: podczas podglądu wcześniejszego bloku bieżący blok zostaje zamontowany w `<div hidden>` (żeby jego stan, np. dowody dodane do notatnika, przeżył „Wstecz”). Dla `EMBEDDED_HTML` iframe działa więc w tle (`display: none`) do końca podglądu; bez nowej powierzchni ataku (sandbox bez `allow-same-origin`, ładowany był już przed „Wstecz”), ale skrypt bloku może dalej grać dźwięk albo liczyć.
+- Akceptacja: przy trasie `embed` (osobny dokument) wstrzymywać albo odmontowywać iframe ukrytego bloku i przywracać go bez utraty postępu; ocenić `allow-downloads` dla ukrytego bloku. Przy okazji `TabsBlock`: `useId()` zamiast `block.id ?? 'x'` w `baseId`.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

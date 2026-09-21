@@ -76,7 +76,7 @@ export interface ContentBlock {
   hotspots?: SceneHotspot[];
   requiredHotspots?: string[];
   // DIALOGUE
-  character?: { name: string; role?: string };
+  character?: { name: string; role?: string; avatar?: string };
   questions?: DialogueQuestion[];
   requiredQuestions?: string[];
   // TABS
@@ -95,14 +95,31 @@ export interface SceneHotspot {
   height: number;
   content: string;
   narration?: Narration;
+  // schemaVersion 3: dowód (wpis w notatniku po "Dodaj do notatnika") i wymagalność.
+  evidence?: boolean;
+  note?: { text: string; kind?: NoteKind };
+  required?: boolean;
 }
 
 export interface DialogueQuestion {
   id: string;
   text: string;
-  answer: string;
+  // Odpowiedź jako jeden tekst ALBO kwestie po kolei (schemaVersion 3).
+  answer?: string;
+  lines?: { text: string; narration?: Narration }[];
   answerNarration?: Narration;
-  note?: { text: string };
+  note?: { text: string; kind?: NoteKind };
+  evidence?: boolean;
+  required?: boolean;
+}
+
+export type NoteKind = 'mail' | 'person' | 'item' | 'place';
+
+export interface EvidenceSummary {
+  collected: number;
+  /** null = jeszcze nieznana (blok e-mail ukrywa liczbę dowodów do zatwierdzenia odpowiedzi). */
+  total: number | null;
+  perBlock: { blockId: string; collected: number; total: number | null }[];
 }
 
 export interface ContentTab {
@@ -123,12 +140,15 @@ export interface ClientProgressBlock {
 export interface ClientNote {
   blockId: string;
   text: string;
+  kind?: NoteKind;
 }
 
 export interface ClientProgress {
   v: 2;
   blocks: Record<string, ClientProgressBlock>;
   notes: ClientNote[];
+  // Dowody liczone przez serwer (brak w odpowiedziach starszego API).
+  evidence?: EvidenceSummary;
 }
 
 export interface CourseDetail {
@@ -170,5 +190,6 @@ export interface CourseProgressResponse {
   score: number | null;
   completedAt: string | null;
   lastResult: LastResult;
+  evidence?: EvidenceSummary;
   gamification: CourseCompletionReward | null;
 }

@@ -32,7 +32,7 @@ export default function ExploratoryBlock({
     case 'SCENE_HOTSPOTS':
       return <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} review={review} />;
     case 'DIALOGUE':
-      return <DialogueBlock block={block} onSubmit={onSubmit} disabled={disabled} review={review} />;
+      return <DialogueBlock block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} review={review} />;
     case 'TABS':
       return <TabsBlock block={block} onSubmit={onSubmit} disabled={disabled} review={review} />;
     case 'NOTEPAD':

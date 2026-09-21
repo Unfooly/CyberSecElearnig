@@ -1,7 +1,7 @@
 'use client';
 
 import type { ContentBlock } from '@/lib/courses-types';
-import { useNotes } from '../player/notes';
+import { GroupedNotes, useNotes } from '../player/notes';
 
 // Blok "Notatnik": zachęta (prompt) i lista notatek zebranych dotąd. Notatki tworzą wyłącznie bloki i serwer (treść z kursu); użytkownik
 // nie wpisuje własnego tekstu, więc nie ma tu pola formularza ani danych osobowych po stronie klienta.
@@ -16,18 +16,16 @@ export default function NotepadBlock({
   disabled: boolean;
   review?: boolean;
 }) {
-  const { notes } = useNotes();
+  const { notes, blockTitles } = useNotes();
   return (
     <div>
       <p className="mb-3 text-lg text-slate-900">{block.prompt ?? 'Twoje notatki z dotychczasowego szkolenia'}</p>
       {notes.length === 0 ? (
         <p className="text-sm text-slate-600">Nie zebrano jeszcze notatek.</p>
       ) : (
-        <ul className="list-disc space-y-1 rounded bg-amber-50 p-4 pl-8 text-slate-800 ring-1 ring-amber-200">
-          {notes.map((note, index) => (
-            <li key={index}>{note.text}</li>
-          ))}
-        </ul>
+        <div className="rounded bg-amber-50 p-4 ring-1 ring-amber-200">
+          <GroupedNotes notes={notes} blockTitles={blockTitles} />
+        </div>
       )}
       {!review && (
         <button

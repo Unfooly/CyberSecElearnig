@@ -36,8 +36,3 @@ export default function ExploreFooter({
     </div>
   );
 }
-
-/** Zbiór id, które trzeba odwiedzić: requiredIds z treści albo wszystkie. Pusta lista = wszystkie (klient jest ostrzejszy niż serwer, który przy [] niczego nie wymaga; odpowiedź zawsze jest nadzbiorem wymaganych). */
-export function requiredIds(all: string[], required?: string[]): string[] {
-  return required && required.length > 0 ? required : all;
-}

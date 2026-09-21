@@ -85,7 +85,7 @@ describe('SCENE_HOTSPOTS', () => {
     await user.click(within(list).getByRole('button', { name: 'Biurko' }));
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(onSubmit).toHaveBeenCalledWith({ visited: ['a', 'b'] });
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['a', 'b'], noted: [] });
   });
 
   it('obraz tylko z bazy zasobów, przez <img> z tekstem alternatywnym; ścieżka spoza reguł = brak obrazu, lista nadal działa', () => {

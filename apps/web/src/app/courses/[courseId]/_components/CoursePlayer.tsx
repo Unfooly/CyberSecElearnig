@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
   ClientProgressBlock,
@@ -8,6 +8,7 @@ import type {
   CourseCompletionReward,
   CourseDetail,
   CourseProgressResponse,
+  EvidenceSummary,
   LastResult,
 } from '@/lib/courses-types';
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
@@ -24,6 +25,8 @@ import PlayerShell from './player/PlayerShell';
 import NarrationPlayer from './player/NarrationPlayer';
 import ReviewBlock from './player/ReviewBlock';
 import { NotesPanel, NotesProvider, useNotes } from './player/notes';
+import { EvidenceCounter, EvidenceProvider } from './player/evidence';
+import { DEFAULT_IDLE_POSE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
 
 export interface CoursePlayerInitialState extends CourseDetail {
@@ -65,9 +68,26 @@ function renderBlock(
 // Powłoka z licznikiem notatek (kontekst notatnika): osobny komponent, bo hook useNotes musi być pod NotesProvider.
 const NOTES_ID = 'notes-panel';
 
-function ShellWithNotes(props: Omit<React.ComponentProps<typeof PlayerShell>, 'notesCount' | 'notesPanel' | 'notesId'>) {
+function ShellWithNotes({
+  idleMascot,
+  ...props
+}: Omit<React.ComponentProps<typeof PlayerShell>, 'notesCount' | 'notesPanel' | 'notesId' | 'mascot' | 'evidence'> & {
+  /** Poza spoczynkowa maskotki bieżącego bloku (z treści albo domyślna dla typu); reakcja na zdarzenie (np. nowy dowód) ją chwilowo zastępuje. */
+  idleMascot?: { pose: string; text?: string };
+}) {
   const { notes } = useNotes();
-  return <PlayerShell {...props} notesCount={notes.length} notesId={NOTES_ID} notesPanel={<NotesPanel id={NOTES_ID} />} />;
+  const { reaction } = useMascotReaction();
+  const shown = reaction ?? idleMascot;
+  return (
+    <PlayerShell
+      {...props}
+      notesCount={notes.length}
+      notesId={NOTES_ID}
+      notesPanel={<NotesPanel id={NOTES_ID} />}
+      mascot={shown ? <MascotSays pose={shown.pose} text={shown.text} /> : undefined}
+      evidence={<EvidenceCounter />}
+    />
+  );
 }
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
@@ -117,6 +137,8 @@ export default function CoursePlayer({
   const [autoPlayFor, setAutoPlayFor] = useState<string | null>(null);
   // Wyniki bloków po id: początkowe z /start, uzupełniane po każdej odpowiedzi w tej sesji (dla podglądu "Wstecz").
   const [results, setResults] = useState<Record<string, ClientProgressBlock>>(initial.progress?.blocks ?? {});
+  // Dowody śledztwa: liczby z serwera (start i każda odpowiedź /progress); dowody z niezapisanego bloku dolicza EvidenceProvider.
+  const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false);
@@ -126,6 +148,11 @@ export default function CoursePlayer({
 
   const blocks = initial.contentBlocks;
   const displayedIndex = viewIndex ?? state.currentBlockIndex;
+  // Nagłówki grup w notatniku i podsumowaniu sprawy: tytuł bloku (albo opis obrazu sceny, albo numer).
+  const blockTitles = useMemo(
+    () => Object.fromEntries(blocks.map((block, index) => [block.id ?? `b${index}`, block.title ?? block.imageAlt ?? `Blok ${index + 1}`])),
+    [blocks],
+  );
 
   // Po zmianie bloku fokus na nagłówek sceny (czytniki ekranu i klawiatura zaczynają od nowej treści); nie przy pierwszym renderze.
   useEffect(() => {
@@ -196,6 +223,7 @@ export default function CoursePlayer({
           ...(progress.lastResult.points !== undefined ? { points: progress.lastResult.points } : {}),
         },
       }));
+      if (progress.evidence) setEvidence(progress.evidence);
       setReward(progress.gamification);
       setState({
         status: progress.status,
@@ -245,59 +273,78 @@ export default function CoursePlayer({
     );
   } else if (!currentBlock) {
     stage = <p className="text-slate-500">Nie znaleziono treści tego bloku.</p>;
-  } else if (reviewing) {
-    stage = <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} />;
   } else {
-    stage = renderBlock(currentBlock, handleAnswer, submitting, contentBase);
+    // Bieżący blok z serwera zostaje ZAMONTOWANY (ukryty), gdy oglądamy podgląd wcześniejszego: jego stan (odwiedzone punkty, dodane do
+    // notatnika dowody, rozmowa, zaznaczona opcja) przeżywa "Wstecz" i "Dalej", więc licznik dowodów i notatnik (stan ponad blokiem) nie
+    // rozjeżdżają się ze stanem bloku. Ukryty blok jest poza drzewem dostępności i kolejnością Tab (atrybut hidden).
+    const liveBlock = blocks[state.currentBlockIndex];
+    stage = (
+      <>
+        {liveBlock && <div key={keyOf(state.currentBlockIndex)} hidden={reviewing}>{renderBlock(liveBlock, handleAnswer, submitting, contentBase)}</div>}
+        {reviewing && <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} />}
+      </>
+    );
   }
 
   const narrationBlock = showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
 
   return (
-    <NotesProvider initial={initial.progress?.notes ?? []}>
-      <ShellWithNotes
-        title={initial.title}
-        blockNumber={Math.min(displayedIndex + 1, blocks.length)}
-        totalBlocks={blocks.length}
-        completedBlocks={state.currentBlockIndex}
-        headingRef={headingRef}
-        mascot={currentBlock?.mascot && !showingFeedback ? <MascotSays pose={currentBlock.mascot.pose} text={currentBlock.mascot.text} /> : undefined}
-        stage={
-          <>
-            {error && (
-              <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
-            {stage}
-          </>
-        }
-        narration={
-          <NarrationPlayer
-            key={`${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`}
-            narration={narrationBlock?.narration}
-            contentBase={contentBase}
-            enabled={preference.enabled}
-            onToggleEnabled={preference.toggle}
-            togglePending={preference.pending}
-            toggleError={preference.error}
-            autoPlay={!showingFeedback && autoPlayFor === keyOf(displayedIndex)}
+    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
+      <EvidenceProvider summary={evidence}>
+        <MascotReactionProvider resetKey={`${displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
+          <ShellWithNotes
+            title={initial.title}
+            blockNumber={Math.min(displayedIndex + 1, blocks.length)}
+            totalBlocks={blocks.length}
+            completedBlocks={state.currentBlockIndex}
+            headingRef={headingRef}
+            idleMascot={
+              currentBlock && !showingFeedback
+                ? currentBlock.mascot
+                  ? { pose: currentBlock.mascot.pose, text: currentBlock.mascot.text }
+                  : DEFAULT_IDLE_POSE[currentBlock.type]
+                    ? { pose: DEFAULT_IDLE_POSE[currentBlock.type] }
+                    : undefined
+                : undefined
+            }
+            stage={
+              <>
+                {error && (
+                  <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {error}
+                  </p>
+                )}
+                {stage}
+              </>
+            }
+            narration={
+              <NarrationPlayer
+                key={`${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`}
+                narration={narrationBlock?.narration}
+                contentBase={contentBase}
+                enabled={preference.enabled}
+                onToggleEnabled={preference.toggle}
+                togglePending={preference.pending}
+                toggleError={preference.error}
+                autoPlay={!showingFeedback && autoPlayFor === keyOf(displayedIndex)}
+              />
+            }
+            notesOpen={notesOpen}
+            onToggleNotes={() => setNotesOpen((open) => !open)}
+            onBack={goBack}
+            onForward={goForward}
+            canBack={displayedIndex > 0 && !showingFeedback && !submitting}
+            canForward={reviewing && !showingFeedback}
+            forwardHint={
+              showingFeedback
+                ? 'Użyj przycisku pod wynikiem.'
+                : !reviewing
+                  ? 'Ukończ ten blok, aby przejść dalej.'
+                  : undefined
+            }
           />
-        }
-        notesOpen={notesOpen}
-        onToggleNotes={() => setNotesOpen((open) => !open)}
-        onBack={goBack}
-        onForward={goForward}
-        canBack={displayedIndex > 0 && !showingFeedback && !submitting}
-        canForward={reviewing && !showingFeedback}
-        forwardHint={
-          showingFeedback
-            ? 'Użyj przycisku pod wynikiem.'
-            : !reviewing
-              ? 'Ukończ ten blok, aby przejść dalej.'
-              : undefined
-        }
-      />
+        </MascotReactionProvider>
+      </EvidenceProvider>
     </NotesProvider>
   );
 }

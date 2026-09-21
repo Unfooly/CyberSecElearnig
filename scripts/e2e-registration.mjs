@@ -360,6 +360,128 @@ try {
     }
   }
 
+  // 13. Śledztwo (schemaVersion 3): hotspoty z dowodami, dialog po jednej kwestii, rozwiązanie sprawy. Cała ścieżka idzie przez prawdziwe API
+  // (ocena i liczniki dowodów po stronie serwera). Ilustracje to proste SVG serwowane przez page.route pod ścieżką z CONTENT_BASE (tylko <img>).
+  const caseBlocks = [
+    {
+      id: 'scena',
+      type: 'SCENE_HOTSPOTS',
+      title: 'Biuro',
+      image: 'scenes/office.svg',
+      imageAlt: 'Biurko z monitorem, drzwi i kubek',
+      hotspots: [
+        { id: 'monitor', label: 'Monitor', x: 8, y: 12, width: 26, height: 30, content: 'Na monitorze przyklejona kartka z hasłem do systemu księgowego.', required: true, evidence: true, note: { text: 'Hasło na kartce przy monitorze.', kind: 'item' } },
+        { id: 'drzwi', label: 'Drzwi', x: 62, y: 20, width: 20, height: 55, content: 'Drzwi do biura nie były zamknięte na klucz.', required: true, evidence: true, note: { text: 'Drzwi biura niezamknięte.', kind: 'place' } },
+        { id: 'kubek', label: 'Kubek', x: 40, y: 58, width: 12, height: 14, content: 'Zwykły kubek z logo firmy. Nic podejrzanego.', required: false, evidence: true, note: { text: 'Kubek z logo firmy.', kind: 'item' } },
+      ],
+    },
+    {
+      id: 'rozmowa',
+      type: 'DIALOGUE',
+      title: 'Rozmowa z Anną',
+      character: { name: 'Anna Kowalska', role: 'Księgowa', avatar: 'img/anna.svg' },
+      questions: [
+        {
+          id: 'mail',
+          text: 'Skąd był ten mail?',
+          lines: [{ text: 'Przyszedł dziś rano, podpisany jako bank.' }, { text: 'Prosił o pilne potwierdzenie danych logowania.' }, { text: 'Kliknęłam w link, zanim to sprawdziłam.' }],
+          note: { text: 'Pracownica kliknęła link z maila.', kind: 'person' },
+          evidence: true,
+          required: true,
+        },
+        { id: 'nadawca', text: 'Znasz tego nadawcę?', answer: 'Nie, ale adres wyglądał znajomo.', required: false },
+      ],
+    },
+    { id: 'wnioski', type: 'SUMMARY', title: 'Rozwiązanie sprawy', text: 'Do incydentu doszło przez słabe nawyki: hasło na kartce i pochopne kliknięcie w link.' },
+  ];
+  const caseCourse = await prisma.course.create({
+    data: { title: `Śledztwo ${RUN}`, category: 'EMAIL_SECURITY', durationMinutes: 6, contentBlocks: caseBlocks },
+  });
+  courseIds.push(caseCourse.id);
+  const caseVersion = await prisma.courseVersion.create({
+    data: { courseId: caseCourse.id, version: 1, schemaVersion: 3, contentHash: hashContent(caseBlocks), contentBlocks: caseBlocks, blockCount: caseBlocks.length },
+  });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, true)`;
+    const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
+    await tx.courseAssignment.create({
+      data: { organizationId: org.id, userId: admin.id, courseId: caseCourse.id, courseVersionId: caseVersion.id, status: 'IN_PROGRESS', currentBlockIndex: 0 },
+    });
+  });
+  const svg = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240">${body}</svg>`;
+  const office = svg('<rect width="400" height="240" fill="#e8ecf4"/><rect x="30" y="30" width="105" height="70" rx="6" fill="#2d3a55"/><rect x="40" y="40" width="85" height="50" fill="#9fb8e8"/><rect x="250" y="50" width="80" height="130" fill="#b58b5c"/><rect x="160" y="140" width="48" height="34" rx="6" fill="#fff" stroke="#6C5CE7" stroke-width="3"/><rect x="0" y="190" width="400" height="50" fill="#c9d1e0"/>');
+  const annaAvatar = svg('<rect width="400" height="240" fill="#6C5CE7"/><circle cx="200" cy="105" r="58" fill="#f3d6b5"/><path d="M110 240 Q200 130 290 240Z" fill="#2d3a55"/>');
+  await page.route('**/content/scenes/office.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: office }));
+  await page.route('**/content/img/anna.svg', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: annaAvatar }));
+
+  const noHScroll = async (label) => {
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    step(`śledztwo (${label}): brak poziomego przewijania`, overflow <= 0, `nadmiar ${overflow}px`);
+  };
+  const shoot = async (name) => {
+    // Playwright przewija stronę do klikanego elementu; zrzut zawsze od góry, żeby pokazywał nagłówek z licznikiem.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const file = join(screenshotDir, `sledztwo-${name}.png`);
+    await page.screenshot({ path: file });
+    step(`śledztwo: zrzut ${name}`, true, file);
+  };
+  const counter = () => page.getByTestId('evidence-counter');
+
+  // Wyższe okno desktopowe (1280x1100), żeby scena z obrazem, licznik i karta punktu mieściły się na jednym zrzucie.
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await page.goto(`${WEB}/courses/${caseCourse.id}`);
+  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  step('śledztwo: licznik startuje z serwera (Dowody 0/4)', (await counter().textContent())?.includes('Dowody 0/4') === true, await counter().textContent());
+  step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
+  await shoot('hotspoty-przed');
+
+  // Punkt z obrazu (mysz) i z listy (klawiatura/czytnik); dowód dodaje "Dodaj do notatnika".
+  await page.getByTestId('hotspot-overlay-drzwi').click();
+  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await page.getByRole('list', { name: 'Elementy sceny' }).getByRole('button', { name: 'Monitor' }).click();
+  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/4) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/4') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
+  step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
+  await shoot('hotspoty-po');
+  await noHScroll('desktop, hotspoty');
+
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
+  step('śledztwo: po zapisie licznik z serwera nadal 2/4 (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/4') === true, await counter().textContent());
+  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+
+  await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
+  await page.getByRole('button', { name: 'Skąd był ten mail?' }).click();
+  step('śledztwo: dialog pokazuje pierwszą kwestię, nie całość', (await page.getByText('Przyszedł dziś rano, podpisany jako bank.').count()) === 1 && (await page.getByText('Kliknęłam w link, zanim to sprawdziłam.').count()) === 0);
+  step('śledztwo: avatar rozmówcy ładuje się przez <img>', (await page.locator('img[src$="/content/img/anna.svg"]').count()) === 1);
+  await shoot('dialog-w-trakcie');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noHScroll('telefon, dialog');
+  await shoot('dialog-w-trakcie-390');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Następna kwestia' }).click();
+  await page.getByRole('button', { name: 'Następna kwestia' }).click();
+  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/4)', (await counter().textContent())?.includes('Dowody 3/4') === true, await counter().textContent());
+  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  await page.getByText('Blok ukończony.').waitFor();
+  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
+  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+
+  await page.getByTestId('case-evidence').waitFor();
+  const caseText = (await page.getByTestId('case-evidence').textContent()) ?? '';
+  step('śledztwo: rozwiązanie sprawy: 3 z 4 dowodów, przeoczony 1 tylko liczbowo (bez treści)', caseText.includes('Zebrane dowody: 3 z 4') && caseText.includes('1 dowód w tej scenie pozostał nieodkryty') && !caseText.includes('Kubek'), caseText.slice(0, 160));
+  await shoot('rozwiazanie-sprawy');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noHScroll('telefon, rozwiązanie sprawy');
+  await shoot('rozwiazanie-sprawy-390');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Odpowiedź /progress na "Zakończ sprawę" musi mieć status COMPLETED (kurs ukończony po stronie serwera), nie tylko zmianę ekranu.
+  const completion = page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Zakończ sprawę' }).click();
+  const completionBody = await (await completion).json();
+  step('śledztwo: "Zakończ sprawę" kończy kurs po stronie serwera (status COMPLETED)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status, evidence: completionBody.evidence?.collected }));
+
   step('brak naruszeń CSP w konsoli przez cały scenariusz (rejestracja, panel, ustawienia, odtwarzacz)', cspViolations.length === 0, cspViolations.slice(0, 3).join(' | '));
 
   // Kontrola negatywna: skrypt inline BEZ nonce musi zostać zablokowany. Bez niej "zero naruszeń" mogłoby znaczyć "CSP nie działa".

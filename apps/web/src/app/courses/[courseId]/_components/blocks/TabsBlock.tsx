@@ -2,7 +2,7 @@
 
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
-import ExploreFooter, { requiredIds } from './ExploreFooter';
+import ExploreFooter from './ExploreFooter';
 
 // Zakładki według wzorca ARIA (tablist/tab/tabpanel, strzałki, Home/End, roving tabindex). Zakładka liczy się jako otwarta po wyświetleniu.
 // Odpowiedź dla serwera: { opened: [id...] }.
@@ -23,10 +23,8 @@ export default function TabsBlock({
   const buttons = useRef<Record<string, HTMLButtonElement | null>>({});
   const baseId = `tabs-${block.id ?? 'x'}`;
 
-  const required = requiredIds(
-    tabs.map((tab) => tab.id),
-    block.requiredTabs,
-  );
+  // Jak na serwerze: requiredTabs albo wszystkie zakładki (zakładki nie mają flag required).
+  const required = block.requiredTabs ?? tabs.map((tab) => tab.id);
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
 

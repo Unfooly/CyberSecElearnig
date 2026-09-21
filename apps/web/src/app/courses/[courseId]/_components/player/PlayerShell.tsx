@@ -14,6 +14,7 @@ export default function PlayerShell({
   completedBlocks,
   stage,
   mascot,
+  evidence,
   narration,
   notesCount,
   notesOpen,
@@ -35,6 +36,8 @@ export default function PlayerShell({
   completedBlocks: number;
   stage: ReactNode;
   mascot?: ReactNode;
+  /** Licznik dowodów obok paska postępu (sam decyduje, czy się pokazać). */
+  evidence?: ReactNode;
   narration: ReactNode;
   notesCount: number;
   notesOpen: boolean;
@@ -82,6 +85,7 @@ export default function PlayerShell({
           >
             <div className="h-full rounded-full bg-indigo-600 motion-safe:transition-all" style={{ width: `${percent}%` }} />
           </div>
+          {evidence}
           <span className="whitespace-nowrap text-xs tabular-nums text-slate-600">
             Blok {blockNumber} z {totalBlocks}
           </span>

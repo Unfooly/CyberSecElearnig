@@ -53,14 +53,67 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(() => submit(block, undefined)).toThrow(BadRequestException);
   });
 
-  it('bez requiredHotspots wymagane są wszystkie', () => {
-    const block = { ...blocks().SCENE_HOTSPOTS, requiredHotspots: undefined };
+  const plainHotspots = () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    return {
+      ...block,
+      requiredHotspots: undefined,
+      hotspots: block.hotspots.map((h: Record<string, unknown>) => ({ ...h, required: undefined })),
+    };
+  };
+
+  it('bez required i requiredHotspots wymagane są wszystkie', () => {
+    const block = plainHotspots();
     expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
     expect(submit(block, { visited: ['h2', 'h1'] }).entry.done).toBe(true);
   });
 
-  it('DIALOGUE dopisuje notatki tylko zadanych pytań, które je mają', () => {
-    const block = blocks().DIALOGUE;
+  it('hotspots[].required: wymagane tylko oznaczone, "smaczek" nie blokuje ukończenia; jawne required wygrywa ze starą listą', () => {
+    const block = blocks().SCENE_HOTSPOTS; // h1 required: true, h2 required: false, requiredHotspots: ['h1']
+    expect(submit(block, { visited: ['h1'] }).entry.done).toBe(true);
+    const flipped = {
+      ...block,
+      requiredHotspots: ['h1'],
+      hotspots: block.hotspots.map((h: Record<string, unknown>) => ({ ...h, required: h.id === 'h2' })),
+    };
+    expect(() => submit(flipped, { visited: ['h1'] })).toThrow(BadRequestException);
+    expect(submit(flipped, { visited: ['h2'] }).entry.done).toBe(true);
+  });
+
+  it('SCENE_HOTSPOTS: "Dodaj do notatnika" (noted) dopisuje notatkę tylko odwiedzonego hotspotu z evidence', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    expect(submit(block, { visited: ['h1'], noted: ['h1'] }).notesAdded).toEqual(['scena.h1']);
+    expect(submit(block, { visited: ['h1'] }).notesAdded).toEqual([]);
+    expect(submit(block, { visited: ['h1'], noted: [] }).notesAdded).toEqual([]);
+  });
+
+  it.each([
+    ['element bez evidence', { visited: ['h1', 'h2'], noted: ['h2'] }],
+    ['element nieodwiedzony', { visited: ['h1'], noted: ['h1', 'h2'] }],
+    ['element nieistniejący', { visited: ['h1'], noted: ['nie-ma'] }],
+    ['duplikat', { visited: ['h1'], noted: ['h1', 'h1'] }],
+    ['zła postać', { visited: ['h1'], noted: 'h1' }],
+  ])('SCENE_HOTSPOTS: noted - %s to 400 bez treści bloku', (_label, answer) => {
+    let error: unknown;
+    try {
+      submit(blocks().SCENE_HOTSPOTS, answer);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(JSON.stringify((error as BadRequestException).getResponse())).toBe(
+      JSON.stringify({ message: 'Brak lub nieprawidłowa odpowiedź dla tego bloku', error: 'Bad Request', statusCode: 400 }),
+    );
+  });
+
+  it('hotspot z evidence, ale bez note, nie trafia do notatnika (noted odrzucone)', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const noNote = { ...block, hotspots: block.hotspots.map((h: Record<string, unknown>) => (h.id === 'h1' ? { ...h, note: undefined } : h)) };
+    expect(() => submit(noNote, { visited: ['h1'], noted: ['h1'] })).toThrow(BadRequestException);
+  });
+
+  it('DIALOGUE dopisuje notatki tylko zadanych pytań, które je mają; wymagane wg questions[].required', () => {
+    const block = blocks().DIALOGUE; // q1 required: true (z notatką), q2 required: false
     expect(submit(block, { asked: ['q1', 'q2'] }).notesAdded).toEqual(['rozmowa.q1']);
     expect(submit(block, { asked: ['q1'] }).notesAdded).toEqual(['rozmowa.q1']);
     expect(() => submit(block, { asked: ['q2'] })).toThrow(BadRequestException);

@@ -211,7 +211,24 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
 
       await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: [] } }).expect(400);
       await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1', 'nie-ma'] } }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1'] } }).expect(200);
+
+      // "Dodaj do notatnika": tylko odwiedzony hotspot z evidence; reszta to 400 bez treści bloku (h2 nie jest dowodem).
+      const badNote = await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1', 'h2'], noted: ['h2'] } }).expect(400);
+      for (const fragment of ['Kartka z hasłem', 'Hasło na kartce', 'Drzwi bez zamka', SECRET_MARKER]) {
+        expect(JSON.stringify(badNote.body)).not.toContain(fragment);
+      }
+      await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
+      const hotspots = (await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1'], noted: ['h1'] } }).expect(200)).body;
+      // Liczy serwer: 1 dowód zebrany; suma nieznana, bo blok maila (kryteria = sekret) ukrywa ją do zatwierdzenia odpowiedzi.
+      expect(hotspots.evidence).toEqual({
+        collected: 1,
+        total: null,
+        perBlock: [
+          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'rozmowa', collected: 0, total: 1 },
+          { blockId: 'mail', collected: 0, total: null },
+        ],
+      });
     });
 
     it('dialog dopisuje notatkę do progress (treść rozwiązuje serwer), notatnik ją pokazuje po wznowieniu', async () => {
@@ -220,7 +237,12 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
 
       const resumed = (await start(tokenA, engineCourseId).expect(200)).body;
       expect(resumed.currentBlockIndex).toBe(8);
-      expect(resumed.progress.notes).toEqual([{ blockId: 'rozmowa', text: 'Mail przyszedł rano.' }]);
+      expect(resumed.progress.notes).toEqual([
+        { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
+        { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
+      ]);
+      // Po wznowieniu dowody z serwera (mail nadal ukryty, dopóki odpowiedź nie zatwierdzona).
+      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: null });
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });
@@ -237,13 +259,25 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(result.lastResult.detail.criteria.map((c: { id: string }) => c.id)).toContain(c1);
       const progress = (await start(tokenA, engineCourseId).expect(200)).body.progress;
       expect(progress.notes.map((n: { text: string }) => n.text)).toEqual([
+        'Hasło na kartce przy monitorze.',
         'Mail przyszedł rano.',
         `${SECRET_MARKER}-note-c1`,
         `${SECRET_MARKER}-note-c3`,
       ]);
-      // Brak id z treści w progress.notes: klient dostaje blockId i treść, bez klucza "<blockId>.<itemId>" (np. mail.c1).
-      for (const note of progress.notes) expect(Object.keys(note).sort()).toEqual(['blockId', 'text']);
-      expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|"c[123]"/);
+      // Brak id z treści w progress.notes: klient dostaje blockId, treść i (opcjonalnie) rodzaj, bez klucza "<blockId>.<itemId>" (np. mail.c1).
+      for (const note of progress.notes) expect(Object.keys(note).sort()).toEqual(expect.arrayContaining(['blockId', 'text']));
+      for (const note of progress.notes) expect(Object.keys(note).every((k) => ['blockId', 'text', 'kind'].includes(k))).toBe(true);
+      expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|scena\.h1|"c[123]"|"h[12]"/);
+      // Po zatwierdzeniu maila znana suma (3 dowody: hotspot, pytanie, kryterium c1); c3 to zwykła notatka. Perblock bez id elementów.
+      expect(result.evidence).toEqual({
+        collected: 3,
+        total: 3,
+        perBlock: [
+          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'rozmowa', collected: 1, total: 1 },
+          { blockId: 'mail', collected: 1, total: 1 },
+        ],
+      });
     });
 
     it('TEXT_INPUT_GUIDED: "Dalej" wymaga rozwiązania; próby, podpowiedź po błędnej, punkty maleją z próbami', async () => {

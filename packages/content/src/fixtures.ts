@@ -68,24 +68,34 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           height: 20,
           content: 'Kartka z hasłem na monitorze.',
           narration: audio('h1'),
+          required: true,
+          evidence: true,
+          note: { text: 'Hasło na kartce przy monitorze.', kind: 'item' },
         },
-        { id: 'h2', label: 'Drzwi', x: 50, y: 50, width: 20, height: 20, content: 'Drzwi bez zamka.' },
+        // Opcjonalny "smaczek": bez required (inny hotspot ma jawne required, więc ten nie jest wymagany), bez dowodu.
+        { id: 'h2', label: 'Drzwi', x: 50, y: 50, width: 20, height: 20, content: 'Drzwi bez zamka.', required: false },
       ],
+      // Przestarzała lista (zgodna z flagami; przy obu wygrywa `required`): fixtura wypełnia każde sklasyfikowane pole.
       requiredHotspots: ['h1'],
     },
     DIALOGUE: {
       ...base('rozmowa'),
       type: 'DIALOGUE',
-      character: { name: 'Anna', role: 'Księgowa' },
+      character: { name: 'Anna', role: 'Księgowa', avatar: 'img/anna.png' },
       questions: [
         {
           id: 'q1',
           text: 'Skąd ten mail?',
-          answer: 'Przyszedł dziś rano.',
+          lines: [
+            { text: 'Przyszedł dziś rano.', narration: audio('q1l1') },
+            { text: 'Wyglądał jak od banku.' },
+          ],
           answerNarration: audio('q1'),
-          note: { text: 'Mail przyszedł rano.' },
+          note: { text: 'Mail przyszedł rano.', kind: 'mail' },
+          evidence: true,
+          required: true,
         },
-        { id: 'q2', text: 'Kto go wysłał?', answer: 'Nie znam nadawcy.' },
+        { id: 'q2', text: 'Kto go wysłał?', answer: 'Nie znam nadawcy.', required: false },
       ],
       requiredQuestions: ['q1'],
     },
@@ -107,7 +117,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           label: 'Podejrzana domena',
           correct: true,
           explanation: `${SECRET_MARKER}-expl-c1`,
-          note: { text: `${SECRET_MARKER}-note-c1` },
+          note: { text: `${SECRET_MARKER}-note-c1`, kind: 'mail' },
+          evidence: true,
         },
         { id: 'c2', label: 'Poprawna polszczyzna', correct: false, explanation: `${SECRET_MARKER}-expl-c2`, note: { text: `${SECRET_MARKER}-note-c2` } },
         { id: 'c3', label: 'Presja czasu', correct: true, explanation: `${SECRET_MARKER}-expl-c3`, note: { text: `${SECRET_MARKER}-note-c3` } },
@@ -167,7 +178,7 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
 export function fullModule() {
   const blocks = fullBlocks();
   return {
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     slug: 'sprawa-testowa',
     title: 'Sprawa testowa',
     category: 'EMAIL_SECURITY' as const,

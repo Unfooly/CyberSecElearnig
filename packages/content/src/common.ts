@@ -86,7 +86,25 @@ export const mascotSchema = z
   })
   .strict();
 
-export const noteSchema = z.object({ text: text(500) }).strict();
+// Rodzaj wpisu w notatniku (ikona: mail, osoba, przedmiot, miejsce). Od schemaVersion 3; wymagany, gdy element jest dowodem (semantics.ts).
+export const NOTE_KINDS = ['mail', 'person', 'item', 'place'] as const;
+export type NoteKind = (typeof NOTE_KINDS)[number];
+
+export const noteSchema = z.object({ text: text(500), kind: z.enum(NOTE_KINDS).optional() }).strict();
+
+/**
+ * Elementy wymagane do ukończenia bloku eksploracyjnego (hotspoty, pytania dialogu). Jedna reguła dla serwera i klienta:
+ *  1. jeśli którykolwiek element ma jawne `required` (true/false): wymagane są te z `required: true` (reszta to "smaczki");
+ *  2. inaczej lista `requiredX[]` (przestarzała od schemaVersion 3, nadal działa);
+ *  3. inaczej wszystkie.
+ */
+export function requiredItemIds(
+  items: readonly { id: string; required?: boolean }[],
+  legacyRequired?: readonly string[],
+): string[] {
+  if (items.some((item) => item.required !== undefined)) return items.filter((item) => item.required === true).map((item) => item.id);
+  return legacyRequired ? [...legacyRequired] : items.map((item) => item.id);
+}
 
 // Pola wspólne każdego bloku.
 export const baseShape = {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseShape, imagePathSchema, idSchema, noteSchema, text } from './common';
+import { baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -85,12 +85,16 @@ const hotspotsSchema = z
             height: z.number().min(1).max(100),
             content: text(2000),
             narration: baseShape.narration,
+            // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Dodaj do notatnika"; wymaga `note` z `kind`) i wymagalność.
+            evidence: z.boolean().optional(),
+            note: noteSchema.optional(),
+            required: z.boolean().optional(),
           })
           .strict(),
       )
       .min(1)
       .max(20),
-    // Domyślnie wszystkie.
+    // PRZESTARZAŁE od schemaVersion 3 (zastąpione `hotspots[].required`); nadal działa. Domyślnie wszystkie.
     requiredHotspots: z.array(idSchema).max(20).optional(),
   })
   .strict();
@@ -99,22 +103,33 @@ const dialogueSchema = z
   .object({
     ...baseShape,
     type: z.literal('DIALOGUE'),
-    character: z.object({ name: text(80), role: text(120).optional() }).strict(),
+    // avatar: schemaVersion 3, ścieżka względna wobec CONTENT_BASE_URL (klient tylko przez <img>).
+    character: z.object({ name: text(80), role: text(120).optional(), avatar: imagePathSchema.optional() }).strict(),
     questions: z
       .array(
         z
           .object({
             id: idSchema,
             text: text(300),
-            answer: text(2000),
+            // Odpowiedź jako jeden tekst ALBO kwestie wypowiadane po kolei (schemaVersion 3): dokładnie jedno z nich (semantics.ts).
+            answer: text(2000).optional(),
+            lines: z
+              .array(z.object({ text: text(600), narration: narrationSchema.optional() }).strict())
+              .min(1)
+              .max(10)
+              .optional(),
             answerNarration: baseShape.narration,
             // Dopisywana do notatnika, gdy pytanie zostało zadane.
             note: noteSchema.optional(),
+            // schemaVersion 3: pytanie odblokowuje dowód (wymaga `note` z `kind`) i wymagalność.
+            evidence: z.boolean().optional(),
+            required: z.boolean().optional(),
           })
           .strict(),
       )
       .min(1)
       .max(15),
+    // PRZESTARZAŁE od schemaVersion 3 (zastąpione `questions[].required`); nadal działa.
     requiredQuestions: z.array(idSchema).max(15).optional(),
   })
   .strict();
@@ -152,6 +167,8 @@ const emailAnalysisSchema = z
             explanation: text(1000).optional(),
             // Trafia do notatnika, gdy kryterium jest poprawne i zostało zaznaczone.
             note: noteSchema.optional(),
+            // schemaVersion 3: trafione kryterium jest dowodem (wymaga `correct: true` oraz `note` z `kind`). SEKRET (zdradzałby poprawność).
+            evidence: z.boolean().optional(),
           })
           .strict(),
       )
@@ -338,6 +355,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].narration.durationMs',
       'hotspots[].narration.cues[].text',
       'hotspots[].narration.cues[].startMs',
+      'hotspots[].evidence',
+      'hotspots[].note.text',
+      'hotspots[].note.kind',
+      'hotspots[].required',
       'requiredHotspots[]',
     ],
     [],
@@ -346,9 +367,19 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [
       'character.name',
       'character.role',
+      'character.avatar',
       'questions[].id',
       'questions[].text',
       'questions[].answer',
+      'questions[].lines[].text',
+      'questions[].lines[].narration.text',
+      'questions[].lines[].narration.audioUrl',
+      'questions[].lines[].narration.durationMs',
+      'questions[].lines[].narration.cues[].text',
+      'questions[].lines[].narration.cues[].startMs',
+      'questions[].evidence',
+      'questions[].required',
+      'questions[].note.kind',
       'questions[].answerNarration.text',
       'questions[].answerNarration.audioUrl',
       'questions[].answerNarration.durationMs',
@@ -373,7 +404,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'criteria[].id',
       'criteria[].label',
     ],
-    ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'scoring'],
+    ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'criteria[].note.kind', 'criteria[].evidence', 'scoring'],
   ),
   TEXT_INPUT_GUIDED: classify(
     ['prompt', 'placeholder', 'maxAttempts'],

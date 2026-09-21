@@ -8,7 +8,7 @@ import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { clientProgress, shuffleContext } from './client-view';
+import { clientProgress, evidenceSummary, shuffleContext } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import { AttemptResponse, evaluateAttempt, evaluateSubmit } from './scoring/evaluate';
@@ -198,6 +198,8 @@ export class CoursesService {
           ...(result.entry.points !== undefined ? { points: result.entry.points } : {}),
           ...(result.detail ? { detail: result.detail } : {}),
         },
+        // Dowody po tym zapisie (liczby liczy serwer; total null dla maila do zatwierdzenia odpowiedzi).
+        evidence: evidenceSummary(progress, blocks),
         gamification: gamification
           ? {
               xpGained: gamification.xpGained,

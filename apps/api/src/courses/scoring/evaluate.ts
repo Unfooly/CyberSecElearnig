@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
-import { DEFAULT_WEIGHT, BlockType, idSchema } from '@cyberszkolo/content';
+import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
 import { compileAnswerRegex } from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
 
@@ -20,7 +20,8 @@ export interface SubmitResult {
 const MAX_TEXT_ANSWER = 500;
 
 const ids = z.array(idSchema).max(50);
-const visitedAnswer = z.object({ visited: ids }).strict();
+// `noted`: hotspoty dodane do notatnika ("Dodaj do notatnika"); podzbiór `visited`, wyłącznie elementy z evidence (evaluateSubmit).
+const visitedAnswer = z.object({ visited: ids, noted: ids.optional() }).strict();
 const askedAnswer = z.object({ asked: ids }).strict();
 const openedAnswer = z.object({ opened: ids }).strict();
 const selectedAnswer = z.object({ selected: ids }).strict();
@@ -95,16 +96,22 @@ export function evaluateSubmit(
     }
 
     case 'SCENE_HOTSPOTS': {
-      const { visited } = parseAnswer(visitedAnswer, answer);
-      const all = (block.hotspots as { id: string }[]).map((h) => h.id);
-      requireCoverage('hotspoty', visited, all, block.requiredHotspots);
-      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: [] };
+      const { visited, noted = [] } = parseAnswer(visitedAnswer, answer);
+      const hotspots = block.hotspots as { id: string; required?: boolean; evidence?: boolean; note?: unknown }[];
+      const all = hotspots.map((h) => h.id);
+      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots, block.requiredHotspots));
+      // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
+      const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
+      if (!unique(noted) || noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id))) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: noted.map((id) => noteKey(block.id, id)) };
     }
 
     case 'DIALOGUE': {
       const { asked } = parseAnswer(askedAnswer, answer);
-      const questions = block.questions as { id: string; note?: unknown }[];
-      requireCoverage('pytania', asked, questions.map((q) => q.id), block.requiredQuestions);
+      const questions = block.questions as { id: string; required?: boolean; note?: unknown }[];
+      requireCoverage('pytania', asked, questions.map((q) => q.id), requiredItemIds(questions, block.requiredQuestions));
       const notesAdded = questions.filter((q) => q.note && asked.includes(q.id)).map((q) => noteKey(block.id, q.id));
       return { entry: baseEntry(block, now, weightPoints(block)), notesAdded };
     }

@@ -18,6 +18,12 @@ export class CourseProgressResponseDto {
     // Wynik po ukończeniu bloku (np. rozstrzygnięcie kryteriów maila, poprawna kolejność).
     detail?: Record<string, unknown>;
   };
+  // Dowody śledztwa po tym zapisie (client-view.ts, evidenceSummary): liczby i id bloków, bez id elementów.
+  evidence!: {
+    collected: number;
+    total: number | null;
+    perBlock: { blockId: string; collected: number; total: number | null }[];
+  };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
   // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody
   // tylko wtedy, nie przy każdym zapisie postępu.

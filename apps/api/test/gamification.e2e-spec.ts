@@ -160,13 +160,12 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
 
   afterAll(async () => {
     await prisma.userBadge.deleteMany({ where: { organizationId: orgAId } });
-    await prisma.courseAssignment.deleteMany({
-      where: { courseId: { in: [firstStepCourseId, perfectScoreCourseId] } },
-    });
-    await prisma.course.deleteMany({ where: { id: { in: [firstStepCourseId, perfectScoreCourseId] } } });
+    // Kursy na końcu: przypisania znikają kaskadowo z użytkownikami/organizacjami (mają FORCE RLS, więc deleteMany bez kontekstu
+    // organizacji ich nie widzi), a kurs z przypisaniami jest chroniony (RESTRICT, B-032).
     await prisma.user.deleteMany({ where: { email: { endsWith: 'gami-e2e-test.test' } } });
     await prisma.department.deleteMany({ where: { name: { startsWith: 'Dział Testowy' } } });
     await prisma.organization.deleteMany({ where: { name: { endsWith: 'gami-e2e-test.test' } } });
+    await prisma.course.deleteMany({ where: { id: { in: [firstStepCourseId, perfectScoreCourseId] } } });
     await app.close();
   });
 

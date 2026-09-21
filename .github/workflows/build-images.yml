@@ -47,7 +47,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      # postinstall buduje też packages/shared (potrzebne api i web).
+      # postinstall buduje też packages/shared i packages/content (potrzebne api i web).
       - run: npm ci
 
       - name: Prisma generate
@@ -62,6 +62,10 @@ jobs:
       - name: Testy jednostkowe api
         working-directory: apps/api
         run: npx jest
+
+      # Schematy bloków, klasyfikacja pól client/secret i test mutacyjny wycieku klucza odpowiedzi.
+      - name: Testy packages/content
+        run: npm run test --workspace=packages/content
 
       - name: Lint web
         run: npm run lint --workspace=apps/web
@@ -225,7 +229,10 @@ jobs:
           cache-from: type=gha,scope=api
       - name: Uruchom test dymny (require app.module)
         if: matrix.app == 'api'
-        run: docker run --rm --entrypoint node smoke-api:ci -e "require('./apps/api/dist/app.module')"
+        # Dodatkowo: natywny re2 (dopasowanie i walidacja regexów odpowiedzi, D-052) faktycznie się ładuje w obrazie i dopasowuje.
+        run: >-
+          docker run --rm --entrypoint node smoke-api:ci -e
+          "require('./apps/api/dist/app.module'); const c = require('@cyberszkolo/content/dist/node'); if (!c.compileAnswerRegex('^(?:ab|cd)$').test('CD') || c.validateRegex('^(?=a)a$').length !== 1) process.exit(1)"
 
       - name: Build i push
         uses: docker/build-push-action@v6

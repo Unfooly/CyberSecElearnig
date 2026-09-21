@@ -880,13 +880,43 @@ model Course {
   // BRANCHING_SCENARIO każda opcja niesie poprawność (`correct: boolean`
   // albo, zgodnie z przykładem w docs, `outcome: "correct" | "wrong"`) -
   // backend porównuje z tym wybór usera, nigdy nie ufa ocenie z klienta.
+  // Od silnika scen (packages/content) to KOPIA treści NAJNOWSZEJ wersji (import ją odświeża) - źródłem prawdy dla
+  // przypisania jest przypięta CourseVersion. Kursy sprzed silnika (tworzone wprost) dostają wersję 1 leniwie (CoursesService).
   contentBlocks   Json
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   assignments CourseAssignment[]
+  versions    CourseVersion[]
 
   @@map("courses")
+}
+
+// Niemutowalna wersja treści kursu. Globalna jak `courses` (katalog treści, nie dane klienta: brak organizationId i RLS).
+// Zmiana treści = NOWA wersja; przypisania w trakcie zostają na swojej (CourseAssignment.courseVersionId), więc pracownikowi
+// nie przesuwają się bloki pod nogami. Wpisy tworzy wyłącznie import treści (content:import) i leniwe "wersja 1" dla kursów
+// sprzed silnika (schemaVersion 1: bloki bez id, id nadawane deterministycznie jako b<indeks>).
+model CourseVersion {
+  id            String   @id @default(cuid())
+  courseId      String
+  // Kolejny numer w obrębie kursu (1, 2, ...).
+  version       Int
+  // 1 = format sprzed silnika scen (bloki bez id), 2 = moduł zwalidowany packages/content (bloki z id).
+  schemaVersion Int
+  // SHA-256 kanonicznego JSON-a treści: identyczna treść nie tworzy nowej wersji (import jest idempotentny).
+  contentHash   String   @db.VarChar(80)
+  contentBlocks Json
+  blockCount    Int
+  createdAt     DateTime @default(now())
+
+  // CASCADE tylko z kursu bez przypisań: przypisanie ma RESTRICT na kurs i na wersję (B-032), więc nie da się skasować
+  // kursu z czyimkolwiek wynikiem.
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignments CourseAssignment[]
+
+  @@unique([courseId, version])
+  @@unique([courseId, contentHash])
+  @@map("course_versions")
 }
 
 model CourseAssignment {
@@ -897,10 +927,13 @@ model CourseAssignment {
   status            AssignmentStatus @default(NOT_STARTED)
   // Indeks pierwszego nieukończonego bloku - gdzie wznowić kurs.
   currentBlockIndex Int              @default(0)
-  // Wynik per blok: { [blockIndex]: { type, answer?, correct?, answeredAt } }.
-  // Wypełniane wyłącznie po stronie serwera (CoursesService), nigdy z ciała
-  // żądania klienta.
+  // Nowy format (v: 2): { v: 2, blocks: { [blockId]: { type, done, points?, correct?, weight, attempts?, ... } }, notes: string[] }.
+  // Format sprzed silnika (bez `v`): { [blockIndex]: { type, answer?, correct?, answeredAt } } - CZYTELNY (CoursesService
+  // przelicza go w locie: indeks i -> blockId "b<i>"), ale nowe zapisy są zawsze w nowym formacie.
+  // Wypełniane wyłącznie po stronie serwera (CoursesService), nigdy z ciała żądania klienta.
   progress          Json?
+  // Wersja treści, na której pracownik zaczął kurs (null = jeszcze nie przypięta: pierwszy /start przypina). Zobacz CourseVersion.
+  courseVersionId   String?
   score             Int?
   dueDate           DateTime?
   completedAt       DateTime?
@@ -913,9 +946,12 @@ model CourseAssignment {
   // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (FK omijają RLS, więc bez tego przypisanie
   // w kontekście organizacji A mogłoby wskazać użytkownika organizacji B).
   user         User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // RESTRICT (B-032): usunięcie kursu/wersji nie może po cichu skasować wyników wszystkich organizacji (audyt zgodności).
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  courseVersion CourseVersion? @relation(fields: [courseVersionId], references: [id], onDelete: Restrict)
 
   @@unique([userId, courseId])
+  @@index([courseVersionId])
   @@index([organizationId])
   @@index([userId])
   @@map("course_assignments")

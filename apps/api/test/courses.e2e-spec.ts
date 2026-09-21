@@ -129,10 +129,11 @@ describe('Kursy e-learningowe (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.courseAssignment.deleteMany({ where: { courseId: { in: [courseId, sequenceCourseId] } } });
-    await prisma.course.deleteMany({ where: { id: { in: [courseId, sequenceCourseId] } } });
+    // Kursy na końcu: przypisania znikają kaskadowo z użytkownikami/organizacjami (FORCE RLS - deleteMany bez kontekstu
+    // organizacji ich nie widzi), a kurs z przypisaniami jest chroniony (RESTRICT, B-032).
     await prisma.user.deleteMany({ where: { email: { endsWith: 'courses-e2e-test.test' } } });
     await prisma.organization.deleteMany({ where: { name: { endsWith: 'courses-e2e-test.test' } } });
+    await prisma.course.deleteMany({ where: { id: { in: [courseId, sequenceCourseId] } } });
     await app.close();
   });
 
@@ -158,9 +159,9 @@ describe('Kursy e-learningowe (e2e)', () => {
 
     const blocks = response.body.contentBlocks;
     expect(blocks).toHaveLength(contentBlocks.length);
-    // VIDEO/DRAG_AND_DROP nie mają czego ukrywać - wracają bez zmian.
-    expect(blocks[0]).toEqual(contentBlocks[0]);
-    expect(blocks[3]).toEqual(contentBlocks[3]);
+    // VIDEO/DRAG_AND_DROP nie mają czego ukrywać - wracają z tą samą treścią plus id nadane blokowi sprzed silnika (b<indeks>).
+    expect(blocks[0]).toEqual({ ...contentBlocks[0], id: 'b0' });
+    expect(blocks[3]).toEqual({ ...contentBlocks[3], id: 'b3' });
     // QUIZ/BRANCHING_SCENARIO - treść pytania zostaje, ale klucz odpowiedzi
     // (correct/outcome) musi zniknąć zanim user odpowie.
     expect(blocks[1].options).toEqual([
@@ -189,7 +190,7 @@ describe('Kursy e-learningowe (e2e)', () => {
       .set('Authorization', `Bearer ${orgAToken}`)
       .send({ blockIndex: 1, answer: 1 })
       .expect(200);
-    expect(quizResponse.body.lastResult).toEqual({ blockIndex: 1, type: 'QUIZ', correct: true });
+    expect(quizResponse.body.lastResult).toEqual({ blockIndex: 1, blockId: 'b1', type: 'QUIZ', correct: true, points: 1 });
     expect(quizResponse.body.score).toBe(100);
 
     // Blok 2: BRANCHING_SCENARIO - błędna odpowiedź (index 0, outcome "wrong").
@@ -200,8 +201,10 @@ describe('Kursy e-learningowe (e2e)', () => {
       .expect(200);
     expect(scenarioResponse.body.lastResult).toEqual({
       blockIndex: 2,
+      blockId: 'b2',
       type: 'BRANCHING_SCENARIO',
       correct: false,
+      points: 0,
     });
     expect(scenarioResponse.body.score).toBe(50); // 1 z 2 ocenianych bloków poprawna
 

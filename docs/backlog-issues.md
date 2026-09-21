@@ -172,6 +172,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja o zakresie i rolach; endpointy z testami A/B; walidacja `contentBlocks` (nieznany `block.type` nie jest cicho pomijany).
 
 ### B-032 `ON DELETE CASCADE` z `courses` do `course_assignments`: RESTRICT + archiwizacja
+- **Status: RESTRICT zrobione** (silnik scen, migracja `course_versions`, D-051: `course_assignments` → `courses` i → `course_versions`). Archiwizacja kursów
+  (zamiast usuwania) zostaje otwarta.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy`, `mod:db` · Źródło: README
 - Opis: usunięcie kursu bezpowrotnie kasuje wyniki wszystkich organizacji (ważne dla audytów zgodności).
 - Akceptacja: `RESTRICT` i archiwizacja kursów przed powstaniem endpointu usuwającego.
@@ -187,6 +189,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: przeniesienie do SQL przy przekroczeniu skali, benchmark przed/po.
 
 ### B-035 Wyjaśnienie odpowiedzi w feedbacku kursu
+- **Status: częściowo** (silnik scen, D-051): nowe typy zwracają wyjaśnienia po ukończeniu bloku (`lastResult.detail`, rozwiązanie zadania tekstowego po
+  wyczerpaniu prób). Dla QUIZ/BRANCHING_SCENARIO `feedback` opcji NIE wychodzi (projekcja klienta go wycina) i nadal nie ma go w odpowiedzi po zapisie.
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: README „Backlog modułu kursów”
 - Opis: `FeedbackPanel` pokazuje tylko „Poprawna/Niepoprawna”; wyjaśnienie wymaga nowego pola DTO bez ujawniania klucza odpowiedzi przed odpowiedzią.
 - Akceptacja: pole wyjaśnienia w `submitBlockProgress`, test braku wycieku klucza, UI.
@@ -294,3 +298,40 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Etykiety: `P3`, `docs` · Źródło: README „Moduł e-mail / Backlog”
 - Opis: wygasanie jest zrobione (organizacje PENDING po 14 dniach, zaproszenia po 30 dniach, wpisy potwierdzeń po 24 h).
 - Akceptacja: wpis README zaktualizowany; patrz B-019.
+
+## D. Silnik szkoleń (scen) - odłożone i następne kroki
+
+### B-069 Certyfikat ukończenia szkolenia (następne zadanie po silniku scen)
+- Etykiety: `P1`, `feature`, `decision-needed`, `mod:kursy` · Źródło: decyzja właściciela produktu 2026-09-21 (D-051)
+- Opis: certyfikat jest potrzebny do kwalifikacji „usługa szkoleniowa” (decyzja podatkowa); dziś nie ma go w produkcie (SUMMARY w silniku scen pokazuje raport z
+  notatek i wynik, bez certyfikatu). To kolejne zadanie zaraz po silniku scen (PR 1-4).
+- Akceptacja: decyzja o treści i danych na certyfikacie (imię i nazwisko, kurs, wersja treści, data, wynik, numer), generowanie i pobieranie (PDF), weryfikacja
+  autentyczności (numer/link), dane osobowe w `docs/legal/privacy-policy-checklist.md`, RLS i test izolacji A/B, blok SUMMARY z linkiem do certyfikatu.
+
+### B-070 Przeniesienie pracownika będącego w trakcie kursu na nowszą wersję treści
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:kursy` · Źródło: D-051
+- Opis: przypisanie zostaje na wersji, na której się zaczęło (niemutowalne `course_versions`). Brakuje operacji świadomego przeniesienia (np. gdy stara wersja ma
+  błąd merytoryczny) z mapowaniem po `blockId`.
+- Akceptacja: decyzja (kto, kiedy, co z wynikiem), operacja w panelu administracyjnym (B-031) z podglądem skutków, testy A/B.
+
+### B-072 Złożony klucz obcy `(courseId, courseVersionId)` w `course_assignments`
+- Etykiety: `P3`, `tech-debt`, `security`, `mod:kursy`, `mod:db` · Źródło: przegląd bezpieczeństwa silnika scen (D-051)
+- Opis: FK wskazuje tylko `course_versions.id`, więc spójność wersji z kursem przypisania pilnuje wyłącznie kod (`resolveVersion`). Dziś nie ma ścieżki ataku.
+- Akceptacja: złożony FK (jak dla tenantowych kluczy użytkownika), migracja z odpowiednim `@@unique` na `course_versions(courseId, id)`, test.
+
+### B-073 Testy współbieżności `/progress` oraz `/start` równolegle z `/attempt`
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: przegląd bezpieczeństwa silnika scen (D-051)
+- Opis: pokryte są równoległe `/attempt` (limit prób) i równoległe `/start` (wersja 1), brak równoległych zapisów postępu ani mieszanki start/attempt.
+- Akceptacja: testy e2e (`app.listen(0)`, `Promise.allSettled`): jeden zwycięzca zapisu bloku (409 dla reszty), brak podwójnego XP, spójny stan po mieszance.
+
+### B-074 Migracja na Node 22 (Dockerfile'e, CI, reguła 9) - osobny PR
+- Etykiety: `P2`, `tech-debt`, `ops`, `mod:ci` · Źródło: `docs/decisions.md` D-052
+- Opis: obrazy (`node:20-alpine`) i CI (`node-version: 20`) działają na Node 20, przez co `re2` jest przypięte do 1.21.5 (nowsze wymagają Node >=22 i nie
+  mają prebuilda `linux-musl` pod Node 20). Migracja odblokowuje aktualne `re2` i inne zależności z wymaganiem Node >=22 (np. nowsze `node-gyp`).
+- Akceptacja: Dockerfile'e API i web oraz joby CI na Node 22 (LTS), replika CI z reguły 9 w CLAUDE.md (`node:22`), zielone testy i e2e, podniesione `re2`
+  (usunięty pin z D-052), zaktualizowane `docs/onboarding.md` i README (wersja Node).
+
+### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
+- Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
+- Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

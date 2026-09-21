@@ -1,0 +1,326 @@
+import { BadRequestException } from '@nestjs/common';
+import { SECRET_MARKER, fullBlocks } from '@cyberszkolo/content/dist/fixtures';
+import {
+  Block,
+  attemptPoints,
+  emailPoints,
+  evaluateAttempt,
+  evaluateSubmit,
+  isTextCorrect,
+  normalizeText,
+  weightOf,
+} from './evaluate';
+
+const now = new Date('2026-09-21T10:00:00.000Z');
+const blocks = () => fullBlocks() as unknown as Record<string, Block>;
+// Nieprzejrzyste id jak w produkcji (inne dla każdego przypisania); tu deterministyczne, byle nie równe id z treści.
+const opaque = (blockId: string, itemId: string) => `op${blockId}${itemId}`;
+const ops = (blockId: string, ...itemIds: string[]) => itemIds.map((id) => opaque(blockId, id));
+const submit = (block: Block, answer: unknown, existing?: Parameters<typeof evaluateSubmit>[2]) =>
+  evaluateSubmit(block, answer, existing, now, opaque);
+
+describe('evaluateSubmit: bloki wyborów (QUIZ / BRANCHING_SCENARIO)', () => {
+  it('poprawna i błędna opcja dają 1 / 0 punktów, waga z bloku', () => {
+    const quiz = blocks().QUIZ;
+    expect(submit(quiz, 1).entry).toMatchObject({ correct: true, points: 1, answer: 1, weight: 2, done: true });
+    expect(submit(quiz, 0).entry).toMatchObject({ correct: false, points: 0 });
+    expect(submit(blocks().BRANCHING_SCENARIO, 1).entry.correct).toBe(true);
+  });
+
+  it('waga domyślna 1, gdy blok jej nie ustawia', () => {
+    const quiz = { ...blocks().QUIZ, weight: undefined };
+    expect(weightOf(quiz)).toBe(1);
+    expect(weightOf({ ...blocks().VIDEO, weight: undefined })).toBe(0);
+    expect(weightOf({ id: 'x', type: 'NIEZNANY' })).toBe(0);
+  });
+
+  it.each([undefined, -1, 2, 1.5, '1', null, { a: 1 }])('odrzuca odpowiedź %p', (answer) => {
+    expect(() => submit(blocks().QUIZ, answer)).toThrow(BadRequestException);
+  });
+});
+
+describe('evaluateSubmit: bloki eksploracyjne', () => {
+  it('SCENE_HOTSPOTS: wymaga wszystkich wskazanych hotspotów, nie ocenia', () => {
+    const block = { ...blocks().SCENE_HOTSPOTS, weight: 0 };
+    const ok = submit(block, { visited: ['h1'] });
+    expect(ok.entry.done).toBe(true);
+    expect(ok.entry.points).toBeUndefined();
+    expect(() => submit(block, { visited: ['h2'] })).toThrow(BadRequestException);
+    expect(() => submit(block, { visited: [] })).toThrow(BadRequestException);
+    expect(() => submit(block, { visited: ['h1', 'nie-ma'] })).toThrow(BadRequestException);
+    expect(() => submit(block, { visited: ['h1', 'h1'] })).toThrow(BadRequestException);
+    expect(() => submit(block, { visited: ['h1'], inne: 1 })).toThrow(BadRequestException);
+    expect(() => submit(block, undefined)).toThrow(BadRequestException);
+  });
+
+  it('bez requiredHotspots wymagane są wszystkie', () => {
+    const block = { ...blocks().SCENE_HOTSPOTS, requiredHotspots: undefined };
+    expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
+    expect(submit(block, { visited: ['h2', 'h1'] }).entry.done).toBe(true);
+  });
+
+  it('DIALOGUE dopisuje notatki tylko zadanych pytań, które je mają', () => {
+    const block = blocks().DIALOGUE;
+    expect(submit(block, { asked: ['q1', 'q2'] }).notesAdded).toEqual(['rozmowa.q1']);
+    expect(submit(block, { asked: ['q1'] }).notesAdded).toEqual(['rozmowa.q1']);
+    expect(() => submit(block, { asked: ['q2'] })).toThrow(BadRequestException);
+  });
+
+  it('TABS: wymagane zakładki', () => {
+    expect(submit(blocks().TABS, { opened: ['t1'] }).entry.done).toBe(true);
+    expect(() => submit(blocks().TABS, { opened: ['t2'] })).toThrow(BadRequestException);
+  });
+
+  it('bloki bez odpowiedzi (wideo, notatnik, podsumowanie, nieznane) kończą się bez oceny i ignorują odpowiedź klienta', () => {
+    for (const type of ['VIDEO', 'NOTEPAD', 'SUMMARY', 'DRAG_AND_DROP', 'EMBEDDED_HTML'] as const) {
+      const result = submit(blocks()[type], { correct: true, points: 1 });
+      expect(result.entry.correct).toBeUndefined();
+      expect(result.entry.points).toBeUndefined();
+    }
+    expect(submit({ id: 'b0', type: 'NIEZNANY' }, undefined).entry).toMatchObject({ done: true, weight: 0 });
+  });
+
+  it('blok eksploracyjny z wagą > 0 daje 1 punkt po spełnieniu wymagań', () => {
+    const block = { ...blocks().TABS, weight: 1 };
+    expect(submit(block, { opened: ['t1'] }).entry).toMatchObject({ points: 1, weight: 1 });
+  });
+});
+
+describe('EMAIL_ANALYSIS: punkty częściowe i scoring exact', () => {
+  // kryteria: c1 (poprawne), c2 (błędne), c3 (poprawne)
+  const email = () => blocks().EMAIL_ANALYSIS;
+  // Klient wysyła id nieprzejrzyste (jak z /start); tu podajemy id z treści i tłumaczymy je tak, jak zrobiłby klient.
+  const points = (selected: string[], block = email()) =>
+    submit(block, { selected: ops('mail', ...selected) }).entry.points;
+
+  it('partial: (trafione - błędne) / liczba poprawnych, nie mniej niż 0', () => {
+    expect(points(['c1', 'c3'])).toBe(1);
+    expect(points(['c1'])).toBe(0.5);
+    expect(points(['c1', 'c3', 'c2'])).toBe(0.5);
+    expect(points(['c1', 'c2'])).toBe(0);
+    expect(points(['c2'])).toBe(0);
+    expect(points([])).toBe(0);
+  });
+
+  it('exact: cały zestaw albo 0', () => {
+    const exact = { ...email(), scoring: 'exact' };
+    expect(points(['c1', 'c3'], exact)).toBe(1);
+    expect(points(['c1'], exact)).toBe(0);
+    expect(points(['c1', 'c3', 'c2'], exact)).toBe(0);
+  });
+
+  it('correct = pełny wynik; notatki tylko dla zaznaczonych poprawnych; detail rozstrzyga kryteria (id nieprzejrzyste)', () => {
+    const result = submit(email(), { selected: ops('mail', 'c1', 'c2') });
+    expect(result.entry.correct).toBe(false);
+    expect(result.notesAdded).toEqual(['mail.c1']);
+    expect(result.detail).toEqual({
+      criteria: [
+        { id: opaque('mail', 'c1'), correct: true, selected: true, explanation: expect.any(String) },
+        { id: opaque('mail', 'c2'), correct: false, selected: true, explanation: expect.any(String) },
+        { id: opaque('mail', 'c3'), correct: true, selected: false, explanation: expect.any(String) },
+      ],
+    });
+  });
+
+  it('odrzuca id z treści (nieprzejrzyste są jedyną drogą) oraz id z cudzego przypisania, bez treści bloku w komunikacie', () => {
+    for (const selected of [['c1'], ['op-cudzy-mail-c1'], ops('inny-blok', 'c1')]) {
+      let error: unknown;
+      try {
+        submit(email(), { selected });
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(BadRequestException);
+      const body = JSON.stringify((error as BadRequestException).getResponse());
+      expect(body).not.toContain('Podejrzana domena');
+      expect(body).not.toContain(SECRET_MARKER);
+    }
+  });
+
+  it('emailPoints: brak poprawnych kryteriów (zestaw "mail jest w porządku")', () => {
+    expect(emailPoints('partial', 0, 0, 0)).toBe(1);
+    expect(emailPoints('partial', 0, 0, 2)).toBe(0);
+    expect(emailPoints('exact', 0, 0, 0)).toBe(1);
+  });
+
+  it.each([
+    { selected: ['nie-ma'] },
+    { selected: [opaque('mail', 'c1'), opaque('mail', 'c1')] },
+    { selected: opaque('mail', 'c1') },
+    {},
+    undefined,
+  ])('odrzuca odpowiedź %p', (answer) => {
+    expect(() => submit(email(), answer)).toThrow(BadRequestException);
+  });
+});
+
+describe('ORDERING: punkty częściowe i scoring exact', () => {
+  const ordering = () => blocks().ORDERING; // poprawnie: o1, o2, o3
+
+  const order = (...ids: string[]) => ({ order: ops('kolejnosc', ...ids) });
+
+  it('partial: udział elementów na właściwych pozycjach', () => {
+    expect(submit(ordering(), order('o1', 'o2', 'o3')).entry.points).toBe(1);
+    expect(submit(ordering(), order('o1', 'o3', 'o2')).entry.points).toBeCloseTo(1 / 3);
+    expect(submit(ordering(), order('o3', 'o1', 'o2')).entry.points).toBe(0);
+  });
+
+  it('exact: tylko idealna kolejność', () => {
+    const exact = { ...ordering(), scoring: 'exact' };
+    expect(submit(exact, order('o1', 'o2', 'o3')).entry.points).toBe(1);
+    expect(submit(exact, order('o1', 'o3', 'o2')).entry.points).toBe(0);
+  });
+
+  it('detail zawiera poprawną kolejność (id nieprzejrzyste) dopiero po odpowiedzi', () => {
+    expect(submit(ordering(), order('o3', 'o2', 'o1')).detail).toMatchObject({
+      correctOrder: ops('kolejnosc', 'o1', 'o2', 'o3'),
+    });
+  });
+
+  it.each([
+    { order: ops('kolejnosc', 'o1', 'o2') },
+    { order: ops('kolejnosc', 'o1', 'o2', 'o2') },
+    { order: [...ops('kolejnosc', 'o1', 'o2'), 'nie-ma'] },
+    { order: ops('kolejnosc', 'o1', 'o2', 'o3', 'o1') },
+    { order: ['o1', 'o2', 'o3'] }, // id z treści zamiast nieprzejrzystych
+    { order: [...ops('kolejnosc', 'o1', 'o2'), 'opcudzy-o3'] }, // id z cudzego przypisania
+    { order: 'o1,o2,o3' },
+  ])('odrzuca %p', (answer) => {
+    expect(() => submit(ordering(), answer)).toThrow(BadRequestException);
+  });
+});
+
+describe('TEXT_INPUT_GUIDED: próby, podpowiedzi, punkty malejące z próbami', () => {
+  const text = (overrides: Record<string, unknown> = {}): Block => ({
+    ...blocks().TEXT_INPUT_GUIDED,
+    answer: { accept: ['Bank-Prawdziwy.pl'], regex: undefined },
+    hints: [{ text: 'Podpowiedź 1' }, { text: 'Podpowiedź 2' }],
+    maxAttempts: 4,
+    ...overrides,
+  });
+
+  // Symuluje kolejne próby, przekazując zapisany wpis dalej (jak progress w bazie).
+  function play(block: Block, inputs: string[]) {
+    let entry: Parameters<typeof evaluateAttempt>[2];
+    const responses = [];
+    for (const input of inputs) {
+      const result = evaluateAttempt(block, input, entry, now);
+      entry = result.entry;
+      responses.push(result.response);
+    }
+    return { entry: entry!, responses };
+  }
+
+  it('poprawna od razu: 1 punkt, brak podpowiedzi, brak rozwiązania w odpowiedzi', () => {
+    const { entry, responses } = play(text(), ['  BANK-prawdziwy.PL ']);
+    expect(responses[0]).toEqual({ blockId: 'domena', correct: true, attempt: 1, attemptsLeft: 3, done: true, points: 1 });
+    expect(entry).toMatchObject({ done: true, correct: true, points: 1, attempts: 1 });
+  });
+
+  it('punkty maleją z próbami (1, 0.75, 0.5, 0.25) i nie schodzą poniżej floor', () => {
+    const wrong = 'zla';
+    expect(play(text(), [wrong, 'bank-prawdziwy.pl']).entry.points).toBe(0.75);
+    expect(play(text(), [wrong, wrong, 'bank-prawdziwy.pl']).entry.points).toBe(0.5);
+    expect(play(text(), [wrong, wrong, wrong, 'bank-prawdziwy.pl']).entry.points).toBe(0.25);
+    expect(attemptPoints(10, 0.25, 0.25)).toBe(0.25);
+    expect(attemptPoints(3, 0.1, 0)).toBeCloseTo(0.8);
+  });
+
+  it('błędna próba odsłania kolejne podpowiedzi po kolei, nie wcześniej', () => {
+    const { responses } = play(text(), ['zla', 'zla', 'zla']);
+    expect(responses[0].hint).toEqual({ text: 'Podpowiedź 1' });
+    expect(responses[1].hint).toEqual({ text: 'Podpowiedź 2' });
+    expect(responses[2].hint).toBeUndefined();
+    expect(responses[0].solution).toBeUndefined();
+  });
+
+  it('wyczerpanie prób: blok rozstrzygnięty z 0 punktów, odpowiedź odsłania rozwiązanie i wyjaśnienie', () => {
+    const block = text();
+    const { entry, responses } = play(block, ['a', 'b', 'c', 'd']);
+    const last = responses[3];
+    expect(last).toMatchObject({ correct: false, done: true, attemptsLeft: 0, points: 0 });
+    expect(last.solution).toEqual(block.solution);
+    expect(entry).toMatchObject({ done: true, correct: false, points: 0, attempts: 4 });
+    expect(last.hint).toBeUndefined();
+  });
+
+  it('po rozstrzygnięciu kolejna próba jest odrzucona (także po wyczerpaniu prób)', () => {
+    const solved = play(text(), ['bank-prawdziwy.pl']).entry;
+    expect(() => evaluateAttempt(text(), 'x', solved, now)).toThrow(BadRequestException);
+    const exhausted = play(text(), ['a', 'b', 'c', 'd']).entry;
+    expect(() => evaluateAttempt(text(), 'bank-prawdziwy.pl', exhausted, now)).toThrow(BadRequestException);
+  });
+
+  it('domyślny limit prób to 4, limit z bloku jest respektowany', () => {
+    const block = text({ maxAttempts: 2, hints: [] });
+    const { responses } = play(block, ['a', 'b']);
+    expect(responses[1]).toMatchObject({ done: true, correct: false, attemptsLeft: 0 });
+  });
+
+  it('regex: dopasowanie po normalizacji, domyślnie bez rozróżniania wielkości liter', () => {
+    const block = text({ answer: { accept: [], regex: '^bank-prawdziwy\\.(pl|com)$' } });
+    expect(play(block, ['Bank-Prawdziwy.COM']).entry.correct).toBe(true);
+    expect(play(block, ['bank-prawdziwy.eu']).entry.done).toBe(false);
+  });
+
+  it('regex zawsze dopasowuje CAŁĄ odpowiedź: podciąg nie wystarcza, a alternatywy nie omijają kotwic', () => {
+    const anchored = text({ answer: { accept: [], regex: '^bank\\.pl$' } });
+    expect(isTextCorrect(anchored, 'xxbank.plxx')).toBe(false);
+    expect(isTextCorrect(anchored, 'bank.pl')).toBe(true);
+    // ^a|b$ czytane naiwnie akceptuje "xb" i "ax"; opakowane w ^(?:...)$ - nie.
+    const alternation = text({ answer: { accept: [], regex: '^(?:a)|(?:b)$' } });
+    expect(isTextCorrect(alternation, 'xb')).toBe(false);
+    expect(isTextCorrect(alternation, 'ax')).toBe(false);
+    expect(isTextCorrect(alternation, 'a')).toBe(true);
+    expect(isTextCorrect(alternation, 'b')).toBe(true);
+  });
+
+  it('caseSensitive: rozróżnia wielkość liter zarówno w accept, jak i w regex (domyślnie false)', () => {
+    const accept = text({ answer: { accept: ['BankPL'], caseSensitive: true } });
+    expect(isTextCorrect(accept, 'BankPL')).toBe(true);
+    expect(isTextCorrect(accept, 'bankpl')).toBe(false);
+    const regex = text({ answer: { accept: [], regex: '^Bank[A-Z]{2}$', caseSensitive: true } });
+    expect(isTextCorrect(regex, 'BankPL')).toBe(true);
+    expect(isTextCorrect(regex, 'bankpl')).toBe(false);
+    expect(isTextCorrect(text({ answer: { accept: ['BankPL'] } }), 'bankpl')).toBe(true);
+  });
+
+  it.each(['^a*a*a*a*a*a*$', '^((a|aa))+$', '^(a+)+$', '^(.*a){20}$'])(
+    'wzorzec katastrofalny dla silnika z nawrotem (%s) dopasowuje maksymalną odpowiedź (500 znaków) w < 50 ms (RE2)',
+    (regex) => {
+      const block = text({ answer: { accept: [], regex } });
+      const started = process.hrtime.bigint();
+      expect(isTextCorrect(block, `${'a'.repeat(499)}!`)).toBe(false);
+      expect(Number(process.hrtime.bigint() - started) / 1e6).toBeLessThan(50);
+      // Pełny przebieg próby (z limitem długości, normalizacją i zapisem wyniku) też jest szybki.
+      const attemptStarted = process.hrtime.bigint();
+      expect(evaluateAttempt(block, `${'a'.repeat(499)}!`, undefined, now).response.correct).toBe(false);
+      expect(Number(process.hrtime.bigint() - attemptStarted) / 1e6).toBeLessThan(50);
+    },
+  );
+
+  it('odpowiedź ponad limit długości nie dochodzi do dopasowania w ogóle', () => {
+    const block = text({ answer: { accept: [], regex: '^a*a*a*a*a*a*$' } });
+    expect(() => evaluateAttempt(block, 'a'.repeat(501), undefined, now)).toThrow(BadRequestException);
+  });
+
+  it('normalizacja: trim, małe litery, zwijanie białych znaków - każde wyłączane', () => {
+    expect(normalizeText('  Ala   MA  Kota ', {})).toBe('ala ma kota');
+    expect(normalizeText('  Ala  ', { trim: false, caseSensitive: true, collapseWhitespace: false })).toBe('  Ala  ');
+    expect(normalizeText('A   B', { collapseWhitespace: false })).toBe('a   b');
+    expect(normalizeText('Ala', { caseSensitive: true })).toBe('Ala');
+  });
+
+  it('zbyt długa odpowiedź jest odrzucana', () => {
+    expect(() => evaluateAttempt(text(), 'a'.repeat(501), undefined, now)).toThrow(BadRequestException);
+  });
+
+  it('"Dalej" (submit) wymaga rozstrzygnięcia i nie zmienia wyniku zapisanego przez /attempt', () => {
+    const block = text();
+    expect(() => submit(block, undefined)).toThrow(BadRequestException);
+    const inProgress = play(block, ['zla']).entry;
+    expect(() => submit(block, undefined, inProgress)).toThrow(BadRequestException);
+    const solved = play(block, ['zla', 'bank-prawdziwy.pl']).entry;
+    expect(submit(block, { correct: true, points: 1 }, solved).entry).toBe(solved);
+  });
+});

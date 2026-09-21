@@ -27,6 +27,8 @@ RUN apk add --no-cache python3 make g++ openssl
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/shared packages/shared
+# packages/content (schematy bloków, walidacja modułów) - też budowane przez postinstall, więc kopiowane przed `npm ci`.
+COPY packages/content packages/content
 RUN npm ci
 
 # Placeholder na czas builda - `prisma generate` czyta schema.prisma (który
@@ -63,6 +65,12 @@ COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/content/package.json ./packages/content/package.json
+COPY --from=builder /app/packages/content/dist ./packages/content/dist
+# re2 (natywny moduł, dopasowanie i walidacja regexów odpowiedzi) jest wg package-lock zainstalowany ZAGNIEŻDŻONY w workspace
+# (packages/content/node_modules), więc samo kopiowanie /app/node_modules go nie obejmuje: bez tego kontener API kończy się na
+# "Cannot find module 're2'". Jeśli lockfile kiedyś zhoistuje re2 do korzenia, ten COPY zawiedzie głośno (brak katalogu) - wtedy usuń go.
+COPY --from=builder /app/packages/content/node_modules ./packages/content/node_modules
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 # Migrations + schema - wymagane w runtime przez usługę `migrate`

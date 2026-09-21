@@ -265,11 +265,12 @@ describe('Dashboard i raporty (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.course.deleteMany({
-      where: { id: { in: [courseMandatory1Id, courseMandatory2Id, courseOptionalId] } },
-    });
+    // Najpierw organizacje (kasują przypisania kaskadowo), potem kursy: kurs z przypisaniami jest chroniony (RESTRICT, B-032).
     await prisma.organization.deleteMany({
       where: { name: { endsWith: 'dashboard-e2e-test.test' } },
+    });
+    await prisma.course.deleteMany({
+      where: { id: { in: [courseMandatory1Id, courseMandatory2Id, courseOptionalId] } },
     });
     await app.close();
   });

@@ -1,66 +1,32 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
-import { AssignmentStatus, Course, Prisma } from '@prisma/client';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
+import { toClientBlock } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { ContentBlockType } from './content-block.types';
+import { clientProgress, shuffleContext } from './client-view';
+import { resolveVersion } from './course-versions';
+import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
+import { AttemptResponse, evaluateAttempt, evaluateSubmit } from './scoring/evaluate';
 
-const SCOREABLE_BLOCK_TYPES: ContentBlockType[] = ['QUIZ', 'BRANCHING_SCENARIO'];
-
-interface ContentBlockOption {
-  correct?: boolean;
-  // Format użyty w przykładzie BRANCHING_SCENARIO w
-  // docs/content-backlog-elearning.md.
-  outcome?: 'correct' | 'wrong';
-  [key: string]: unknown;
-}
-
-interface ContentBlock {
-  type: ContentBlockType;
-  options?: ContentBlockOption[];
-  [key: string]: unknown;
-}
-
-interface ProgressEntry {
-  type: ContentBlockType;
-  answer?: number;
-  correct?: boolean;
-  answeredAt: string;
-}
-
-function isOptionCorrect(option: ContentBlockOption): boolean {
-  return option.correct === true || option.outcome === 'correct';
-}
-
-/**
- * Usuwa klucz odpowiedzi (correct/outcome) z opcji bloków QUIZ/
- * BRANCHING_SCENARIO przed wysłaniem treści do klienta — inaczej cały sens
- * liczenia oceny wyłącznie po stronie serwera jest zniweczony, bo poprawna
- * odpowiedź byłaby widoczna w odpowiedzi /start, zanim user w ogóle
- * odpowie (patrz security review tego modułu).
- */
-function omitAnswerKey(option: ContentBlockOption): ContentBlockOption {
-  const sanitized = { ...option };
-  delete sanitized.correct;
-  delete sanitized.outcome;
-  return sanitized;
-}
+type AssignmentWithCourse = CourseAssignment & { course: Course };
 
 @Injectable()
 export class CoursesService {
+  private readonly shuffleSecret: string;
+
   constructor(
     private readonly tenantPrisma: TenantPrismaService,
     private readonly gamificationService: GamificationService,
-  ) {}
+    configService: ConfigService,
+  ) {
+    // Ten sam sekret co JWT (etykieta w HMAC oddziela zastosowania) - patrz shuffleContext.
+    this.shuffleSecret = configService.getOrThrow<string>('JWT_SECRET');
+  }
 
   /**
    * organizationId i userId pochodzą WYŁĄCZNIE z tokena JWT wywołującego
@@ -82,6 +48,7 @@ export class CoursesService {
               contentBlocks: true,
             },
           },
+          courseVersion: { select: { blockCount: true } },
         },
         orderBy: { createdAt: 'asc' },
       }),
@@ -99,7 +66,8 @@ export class CoursesService {
       dueDate: assignment.dueDate,
       completedAt: assignment.completedAt,
       currentBlockIndex: assignment.currentBlockIndex,
-      totalBlocks: this.countBlocks(assignment.course.contentBlocks),
+      // Liczba bloków przypiętej wersji (na której pracuje pracownik); dla nieprzypiętych - treść kursu.
+      totalBlocks: assignment.courseVersion?.blockCount ?? this.countBlocks(assignment.course.contentBlocks),
     }));
   }
 
@@ -110,20 +78,25 @@ export class CoursesService {
   ): Promise<CourseDetailDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+      const version = await resolveVersion(tx, assignment);
 
-      const current =
-        assignment.status === AssignmentStatus.NOT_STARTED
-          ? await tx.courseAssignment.update({
-              where: { id: assignment.id },
-              data: { status: AssignmentStatus.IN_PROGRESS },
-            })
-          : assignment;
+      // NOT_STARTED -> IN_PROGRESS tylko warunkowo: równoległy zapis mógł już przesunąć/ukończyć kurs, a bezwarunkowy update
+      // nadpisałby COMPLETED z powrotem na IN_PROGRESS (kurs 1-blokowy byłby wtedy zablokowany). Po próbie czytamy wiersz
+      // jeszcze raz, więc odpowiedź zawsze odzwierciedla rzeczywisty stan.
+      let current = assignment;
+      if (assignment.status === AssignmentStatus.NOT_STARTED) {
+        await tx.courseAssignment.updateMany({
+          where: { id: assignment.id, organizationId, status: AssignmentStatus.NOT_STARTED },
+          data: { status: AssignmentStatus.IN_PROGRESS },
+        });
+        const fresh = await tx.courseAssignment.findFirst({ where: { id: assignment.id, organizationId } });
+        if (fresh) current = { ...assignment, ...fresh };
+      }
 
-      const contentBlocks = this.parseContentBlocks(assignment.course).map((block) =>
-        SCOREABLE_BLOCK_TYPES.includes(block.type) && Array.isArray(block.options)
-          ? { ...block, options: block.options.map(omitAnswerKey) }
-          : block,
-      );
+      // Jedyna droga treści do klienta: biała lista pól per typ bloku (packages/content, toClientBlock). Klucz odpowiedzi,
+      // podpowiedzi i rozwiązania nie wychodzą; kolejność elementów ORDERING/EMAIL_ANALYSIS jest tasowana sekretem serwera.
+      const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
+      const contentBlocks = version.blocks.map((block) => toClientBlock(block, context));
 
       return {
         assignmentId: current.id,
@@ -132,7 +105,7 @@ export class CoursesService {
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
-        progress: current.progress,
+        progress: clientProgress(readProgress(current.progress), version.blocks) as unknown as Prisma.JsonValue,
       };
     });
   }
@@ -144,36 +117,41 @@ export class CoursesService {
     dto: SubmitBlockProgressDto,
   ): Promise<CourseProgressResponseDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
       const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
 
       if (assignment.status === AssignmentStatus.COMPLETED) {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const contentBlocks = this.parseContentBlocks(assignment.course);
+      const version = await resolveVersion(tx, assignment);
+      const blocks = version.blocks;
 
-      if (dto.blockIndex >= contentBlocks.length) {
+      if (dto.blockIndex >= blocks.length) {
         throw new BadRequestException('Nieprawidłowy indeks bloku treści');
       }
 
       // Bloki muszą być ukończone po kolei — inaczej user mógłby przeskoczyć
       // od razu do ostatniego bloku i "ukończyć" obowiązkowe szkolenie z
-      // pominięciem ocenianych bloków QUIZ/BRANCHING_SCENARIO (patrz code
-      // review tego modułu). currentBlockIndex rośnie zawsze o dokładnie
-      // jeden, nigdy nie przeskakuje.
+      // pominięciem ocenianych bloków (patrz code review tego modułu).
+      // currentBlockIndex rośnie zawsze o dokładnie jeden, nigdy nie przeskakuje.
       if (dto.blockIndex !== assignment.currentBlockIndex) {
         throw new BadRequestException('Bloki trzeba ukończyć po kolei');
       }
 
-      const block = contentBlocks[dto.blockIndex];
-      const entry = this.evaluateBlock(block, dto.answer);
+      const block = blocks[dto.blockIndex];
+      const progress = readProgress(assignment.progress);
+      const { opaqueId } = shuffleContext(this.shuffleSecret, assignment.id, version.id);
+      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), opaqueId);
 
-      const existingProgress = (assignment.progress as Record<string, ProgressEntry> | null) ?? {};
-      const progress = { ...existingProgress, [dto.blockIndex]: entry };
+      progress.blocks[block.id] = result.entry;
+      for (const key of result.notesAdded) {
+        if (!progress.notes.includes(key)) progress.notes.push(key);
+      }
 
       const currentBlockIndex = assignment.currentBlockIndex + 1;
-      const isComplete = currentBlockIndex >= contentBlocks.length;
-      const score = this.computeScore(progress);
+      const isComplete = currentBlockIndex >= blocks.length;
+      const score = computeScore(progress);
       const status = isComplete ? AssignmentStatus.COMPLETED : AssignmentStatus.IN_PROGRESS;
       const completedAt = isComplete ? new Date() : null;
 
@@ -185,10 +163,11 @@ export class CoursesService {
       // dopasuje 0 wierszy, zamiast cicho podwoić przyznane XP w
       // awardCourseCompletion niżej (wykryte w security review tej sesji -
       // ten sam mechanizm ataku/wyścigu co TOCTOU naprawiony wcześniej przy
-      // resecie hasła, tylko węższy zakres).
+      // resecie hasła, tylko węższy zakres). Dodatkowo lockOwnAssignment
+      // (FOR UPDATE) serializuje zapisy postępu i prób tego przypisania.
       const claim = await tx.courseAssignment.updateMany({
         where: { id: assignment.id, currentBlockIndex: assignment.currentBlockIndex },
-        data: { progress, currentBlockIndex, score, status, completedAt },
+        data: { progress: toJson(progress), currentBlockIndex, score, status, completedAt },
       });
 
       if (claim.count === 0) {
@@ -211,7 +190,14 @@ export class CoursesService {
         currentBlockIndex,
         score,
         completedAt,
-        lastResult: { blockIndex: dto.blockIndex, type: entry.type, correct: entry.correct },
+        lastResult: {
+          blockIndex: dto.blockIndex,
+          blockId: block.id,
+          type: result.entry.type,
+          correct: result.entry.correct,
+          ...(result.entry.points !== undefined ? { points: result.entry.points } : {}),
+          ...(result.detail ? { detail: result.detail } : {}),
+        },
         gamification: gamification
           ? {
               xpGained: gamification.xpGained,
@@ -230,38 +216,58 @@ export class CoursesService {
   }
 
   /**
-   * Wyznacza correct WYŁĄCZNIE po stronie serwera, porównując przesłany
-   * `answer` (indeks wybranej opcji) z contentBlocks zapisanym w bazie dla
-   * tego kursu. Klient nigdy nie przesyła ani nie wpływa na ocenę
-   * bezpośrednio — DTO (SubmitBlockProgressDto) nie ma nawet pola "correct".
+   * Próba odpowiedzi w bloku TEXT_INPUT_GUIDED. Poprawność, punkty (maleją z liczbą prób), podpowiedzi i rozwiązanie
+   * wyznacza WYŁĄCZNIE serwer; podpowiedź wychodzi dopiero po błędnej próbie, rozwiązanie dopiero po wyczerpaniu prób.
+   * Blok rozstrzyga się tu (done), ale kurs przesuwa dopiero zwykły zapis postępu ("Dalej").
    */
-  private evaluateBlock(block: ContentBlock, answer: number | undefined): ProgressEntry {
-    const answeredAt = new Date().toISOString();
+  async attemptBlock(
+    organizationId: string,
+    userId: string,
+    courseId: string,
+    blockId: string,
+    answer: string,
+  ): Promise<AttemptResponse> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // FOR UPDATE: równoległe próby tego samego przypisania idą po kolei, więc licznik prób i limit maxAttempts nie dają
+      // się obejść wysłaniem wielu żądań naraz.
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
 
-    if (!SCOREABLE_BLOCK_TYPES.includes(block.type)) {
-      // VIDEO / DRAG_AND_DROP - samo oznaczenie wykonania, bez oceny.
-      return { type: block.type, answeredAt };
-    }
+      if (assignment.status === AssignmentStatus.COMPLETED) {
+        throw new BadRequestException('Kurs jest już ukończony');
+      }
 
-    const option = answer !== undefined ? block.options?.[answer] : undefined;
-    if (answer === undefined || !option) {
-      throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
-    }
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      if (index < 0) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      if (index !== assignment.currentBlockIndex) {
+        throw new BadRequestException('Bloki trzeba ukończyć po kolei');
+      }
+      const block = version.blocks[index];
+      if (block.type !== 'TEXT_INPUT_GUIDED') {
+        throw new BadRequestException('Ten blok nie przyjmuje odpowiedzi tekstowych');
+      }
 
-    return { type: block.type, answer, correct: isOptionCorrect(option), answeredAt };
-  }
+      const progress: ProgressV2 = readProgress(assignment.progress);
+      const { entry, response } = evaluateAttempt(block, answer, entryOf(progress, block.id), new Date());
+      progress.blocks[block.id] = entry;
 
-  private computeScore(progress: Record<string, ProgressEntry>): number | null {
-    const scored = Object.values(progress).filter((entry) => entry.correct !== undefined);
-    if (scored.length === 0) {
-      return null;
-    }
-    const correctCount = scored.filter((entry) => entry.correct).length;
-    return Math.round((correctCount / scored.length) * 100);
+      await tx.courseAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          progress: toJson(progress),
+          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS } : {}),
+        },
+      });
+
+      return response;
+    });
   }
 
   /**
-   * Wersja parseContentBlocks, która nie rzuca — używana przy listowaniu
+   * Wersja countBlocks, która nie rzuca — używana przy listowaniu
    * WIELU kursów naraz (listMyCourses), gdzie jeden kurs z uszkodzoną
    * treścią nie powinien wywalać całej listy pozostałych. 0 jest bezpiecznym
    * fallbackiem (frontend i tak nie pokaże paska postępu dla totalBlocks=0).
@@ -270,14 +276,14 @@ export class CoursesService {
     return Array.isArray(contentBlocks) ? contentBlocks.length : 0;
   }
 
-  private parseContentBlocks(course: Course): ContentBlock[] {
-    const contentBlocks = course.contentBlocks;
-    if (!Array.isArray(contentBlocks)) {
-      // Błąd danych administracyjnych (treść kursu), nie błąd wejścia
-      // klienta - stąd 500, nie 400.
-      throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');
-    }
-    return contentBlocks as unknown as ContentBlock[];
+  // Blokada wiersza przypisania do końca transakcji (RLS obowiązuje: widać tylko własną organizację).
+  private async lockOwnAssignment(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+    courseId: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT "id" FROM "course_assignments" WHERE "organizationId" = ${organizationId} AND "userId" = ${userId} AND "courseId" = ${courseId} FOR UPDATE`;
   }
 
   private async findOwnAssignment(
@@ -285,7 +291,7 @@ export class CoursesService {
     organizationId: string,
     userId: string,
     courseId: string,
-  ) {
+  ): Promise<AssignmentWithCourse> {
     const assignment = await tx.courseAssignment.findFirst({
       where: { organizationId, userId, courseId },
       include: { course: true },

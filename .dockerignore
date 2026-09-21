@@ -19,6 +19,13 @@ node_modules
 **/coverage
 *.tsbuildinfo
 
+# Treść modułów: do obrazów trafia wyłącznie JSON i kod pakietu, nigdy ilustracje/audio (te idą z CONTENT_BASE_URL).
+# Archiwa i podglądy maskotki to materiał źródłowy, nie zasób aplikacji.
+packages/content/mascot/*.zip
+packages/content/mascot/preview.html
+packages/content/assets
+packages/content/**/*.mp3
+
 # Dokumentacja / narzędzia deweloperskie niepotrzebne w kontekście builda
 docs
 .vscode

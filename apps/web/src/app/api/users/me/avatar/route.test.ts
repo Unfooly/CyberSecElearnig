@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { PATCH } from './route';
 import { API_URL } from '@/lib/config';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
+  headers: vi.fn(),
 }));
 
 function mockCookie(value: string | undefined) {
   vi.mocked(cookies).mockReturnValue({
     get: () => (value === undefined ? undefined : { name: 'access_token', value }),
   } as unknown as ReturnType<typeof cookies>);
+  // Żądanie z naszej własnej strony (proxyAuthenticated wymaga zgodnego Origin); obce Origin: users-csrf.test.ts.
+  const sameOrigin: Record<string, string> = { origin: 'http://localhost:3000', host: 'localhost:3000' };
+  vi.mocked(headers).mockReturnValue({ get: (name: string) => sameOrigin[name.toLowerCase()] ?? null } as unknown as ReturnType<typeof headers>);
 }
 
 function buildRequest(body: unknown): NextRequest {

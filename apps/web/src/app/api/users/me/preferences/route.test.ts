@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { GET, PATCH } from './route';
 import { API_URL } from '@/lib/config';
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
+  headers: vi.fn(),
 }));
 
 function mockCookie(value: string | undefined) {
   vi.mocked(cookies).mockReturnValue({
     get: () => (value === undefined ? undefined : { name: 'access_token', value }),
   } as unknown as ReturnType<typeof cookies>);
+  // Żądanie z naszej własnej strony (proxyAuthenticated wymaga zgodnego Origin); obce Origin: users-csrf.test.ts.
+  const sameOrigin: Record<string, string> = { origin: 'http://localhost:3000', host: 'localhost:3000' };
+  vi.mocked(headers).mockReturnValue({ get: (name: string) => sameOrigin[name.toLowerCase()] ?? null } as unknown as ReturnType<typeof headers>);
 }
 
 function patchRequest(body: unknown): NextRequest {
@@ -112,9 +116,9 @@ describe('/api/users/me/preferences (BFF)', () => {
       expect((await PATCH(patchRequest({ narrationEnabled: false }))).status).toBe(502);
     });
 
-    it('nieparsowalne body idzie do apps/api jako "null" (API odrzuca 400 - fail-closed), bez własnych domyślnych wartości', async () => {
+    it('nieparsowalne body: 400 z BFF (fail-closed), bez wołania API i bez własnych domyślnych wartości', async () => {
       mockCookie('access-token-value');
-      const fetchMock = vi.fn().mockResolvedValue({ status: 400, json: async () => ({ message: 'Bad Request' }) });
+      const fetchMock = vi.fn();
       vi.stubGlobal('fetch', fetchMock);
       const broken = new NextRequest('http://localhost:3000/api/users/me/preferences', {
         method: 'PATCH',
@@ -124,8 +128,18 @@ describe('/api/users/me/preferences (BFF)', () => {
 
       const response = await PATCH(broken);
 
-      expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ body: 'null' }));
       expect(response.status).toBe(400);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('obce pola (userId, organizationId) są odcinane: do API idzie tylko narrationEnabled', async () => {
+      mockCookie('access-token-value');
+      const fetchMock = vi.fn().mockResolvedValue({ status: 200, json: async () => ({ narrationEnabled: false }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await PATCH(patchRequest({ narrationEnabled: false, userId: 'obcy', organizationId: 'obca' }));
+
+      expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ narrationEnabled: false }));
     });
   });
 });

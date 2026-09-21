@@ -1,64 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
-import { apiFetch } from '@/lib/api-fetch';
+import { proxyAuthenticated } from '@/lib/bff';
+import { pickFields } from '@/lib/pick-fields';
+import { isSafeId } from '@/lib/safe-id';
+
+// Edycja i usunięcie pracownika. Obie zmieniają stan: proxyAuthenticated wymaga żądania z naszej własnej strony (CSRF), ścieżka jest stała
+// po stronie serwera (identyfikator tylko po isSafeId), ciało PATCH z allowlisty pól. Uprawnienia (ORG_ADMIN), zasady zmiany roli i
+// filtr po organizacji egzekwuje apps/api.
+const badId = () => NextResponse.json({ message: 'Nieprawidłowy identyfikator.' }, { status: 400 });
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
-  if (!accessToken) {
-    return NextResponse.json({ message: 'Wymagane zalogowanie.' }, { status: 401 });
+  if (!isSafeId(params.id)) return badId();
+  const body = pickFields(await request.json().catch(() => null), ['firstName', 'lastName', 'departmentId', 'role']);
+  if (!body) {
+    return NextResponse.json({ message: 'Nieprawidłowe żądanie.' }, { status: 400 });
   }
-
-  const body = await request.json().catch(() => null);
-
-  let backendResponse: Response;
-  try {
-    backendResponse = await apiFetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    console.error('Nie udało się połączyć z apps/api przy edycji pracownika:', (error as Error).message);
-    return NextResponse.json(
-      { message: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' },
-      { status: 502 },
-    );
-  }
-
-  const data = await backendResponse.json().catch(() => null);
-  return NextResponse.json(data, { status: backendResponse.status });
+  return proxyAuthenticated('PATCH', `/users/${params.id}`, body);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
-  if (!accessToken) {
-    return NextResponse.json({ message: 'Wymagane zalogowanie.' }, { status: 401 });
-  }
-
-  let backendResponse: Response;
-  try {
-    backendResponse = await apiFetch(`${API_URL}/users/${encodeURIComponent(params.id)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-  } catch (error) {
-    console.error('Nie udało się połączyć z apps/api przy usuwaniu pracownika:', (error as Error).message);
-    return NextResponse.json(
-      { message: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' },
-      { status: 502 },
-    );
-  }
-
-  // 204 No Content od apps/api nie ma body - NextResponse.json(null) na 204
-  // wysłałoby "null" jako treść, co jest niepoprawne dla statusu bez treści.
-  if (backendResponse.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-
-  const data = await backendResponse.json().catch(() => null);
-  return NextResponse.json(data, { status: backendResponse.status });
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+  if (!isSafeId(params.id)) return badId();
+  // 204 No Content bez ciała obsługuje proxyAuthenticated.
+  return proxyAuthenticated('DELETE', `/users/${params.id}`);
 }

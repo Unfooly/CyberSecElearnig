@@ -463,7 +463,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (HEAD każdego wpisu `audio.lock.json`/sidecara, gdy `store` nie jest `null`); `parseArguments` zdejmuje warunek
   "wyłącznie z --assets"; testy analogiczne do `assets.test.ts`'s `describe('--check --remote...')`.
 
-### B-091 "Rozpocznij od nowa" - powtórka własnego, ukończonego/nieobowiązkowego przypisania
+### ~~B-091 "Rozpocznij od nowa" - powtórka własnego, ukończonego/nieobowiązkowego przypisania~~ - ROZWIĄZANE (D-069)
 - Etykiety: `P2`, `feature`, `mod:kursy` · Źródło: zgłoszone przez właściciela produktu przy okazji ręcznego resetu
   przypisania modułu 1 (SQL na VPS), D-065
 - Opis: dziś jedyny sposób przejść kurs jeszcze raz to ręczny `DELETE` przypisania w bazie - potrzebny przycisk na
@@ -484,6 +484,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   stare przypisanie trafia do archiwum (nowe pole/status, nie `DELETE` - historia dla raportów zostaje); nowe
   przypisanie wskazuje NAJNOWSZĄ `CourseVersion` kursu; test izolacji A/B; jawna decyzja produktowa o XP (patrz
   uwaga projektowa wyżej) zapisana w `docs/decisions.md` przed implementacją.
+- **Rozwiązane (D-069, gałąź `feat/course-restart`):** zakres zawężony przez właściciela produktu do WYŁĄCZNIE
+  `status: COMPLETED` (bez wariantu "nieukończony, nieobowiązkowy" z opisu wyżej - trwającego przypisania, nawet
+  nieobowiązkowego, restart nie przerywa). Decyzja o XP (uwaga projektowa wyżej): "jak dziś przy ręcznym
+  resetowaniu w bazie" - restart NIE wyklucza powtórzonego ukończenia z przyznawania XP (żadne nowe oznaczenie
+  "powtórka" w `awardCourseCompletion`); to świadomie zaakceptowany, udokumentowany w D-069 kompromis, nie
+  przeoczenie.
 
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051

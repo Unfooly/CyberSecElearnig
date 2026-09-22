@@ -263,6 +263,7 @@ export default function CoursePlayer({
             // Własny wybór gracza i rozstrzygnięcie: wynik zaraz po zapisie i podgląd "Wstecz" (id nieprzejrzyste, jak w /start).
             ...(answer !== undefined ? { answer: answer as ClientProgressBlock['answer'] } : {}),
             ...(progress.lastResult.detail ? { detail: progress.lastResult.detail } : {}),
+            ...(progress.lastResult.reaction ? { reaction: progress.lastResult.reaction } : {}),
           },
         };
       });
@@ -321,7 +322,7 @@ export default function CoursePlayer({
           key={`result-${answered.id}`}
           block={answered}
           courseId={courseId}
-          result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points }}
+          result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
           onContinue={continueAfterFeedback}
           continueLabel={continueLabel}
         />

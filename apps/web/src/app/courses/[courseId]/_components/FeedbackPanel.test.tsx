@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import FeedbackPanel from './FeedbackPanel';
+import { MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 
 describe('FeedbackPanel', () => {
   it('pokazuje "Poprawna odpowiedź!" dla correct=true', () => {
@@ -52,5 +53,18 @@ describe('FeedbackPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it('reaction z treści (schemaVersion 4, np. QUIZ/BRANCHING_SCENARIO) pokazuje się przez dymek maskotki w powłoce', () => {
+    function Probe() {
+      return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+    }
+    render(
+      <MascotReactionProvider resetKey="k">
+        <FeedbackPanel feedback={{ blockIndex: 0, type: 'QUIZ', correct: true, reaction: { pose: 'cheer', text: 'Brawo!' } }} onContinue={vi.fn()} continueLabel="Dalej" />
+        <Probe />
+      </MascotReactionProvider>,
+    );
+    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
   });
 });

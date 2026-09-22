@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
+import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/courses-types';
 import { useMascotReaction } from '../player/mascot-reaction';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
@@ -18,6 +18,7 @@ interface AttemptResponse {
   points?: number;
   hint?: { text: string };
   solution?: { text: string; explanation?: string };
+  reaction?: ContentReaction;
 }
 
 export default function TextInputBlock({
@@ -102,6 +103,9 @@ export default function TextInputBlock({
       if (data.hint) {
         setHints((list) => [...list, data.hint!.text]);
         mascot.react('hint');
+      } else if (data.done && data.reaction) {
+        // Reakcja z treści (schemaVersion 4, reactions.result: when correct/incorrect) ma pierwszeństwo nad ogólnym ostrzeżeniem.
+        mascot.show(data.reaction);
       } else if (!data.correct) {
         mascot.react('wrong');
       }

@@ -220,6 +220,11 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
     expect(screen.getByText(/wszystkie oznaki trafione/)).toBeInTheDocument();
   });
+
+  it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem', () => {
+    setup({ result: { ...result, reaction: { pose: 'thinking', text: 'Prawie się udało.' } }, onContinue: vi.fn() });
+    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+  });
 });
 
 describe('bodySegments', () => {

@@ -6,10 +6,11 @@ import DialogueBlock from './DialogueBlock';
 import TabsBlock from './TabsBlock';
 import NotepadBlock from './NotepadBlock';
 import SummaryBlock from './SummaryBlock';
+import NarrativeBlock from './NarrativeBlock';
 
 // Bloki eksploracyjne (nieoceniane): po przejrzeniu wymaganych elementów blok się kończy bez punktów. Ten sam komponent służy do
 // podglądu ("Wstecz", review=true: bez zapisu i przycisku ukończenia), więc ukończony blok można przejść ponownie bez skutku na serwerze.
-export const EXPLORATORY_TYPES = ['SCENE_HOTSPOTS', 'DIALOGUE', 'NOTEPAD', 'TABS', 'SUMMARY'] as const;
+export const EXPLORATORY_TYPES = ['SCENE_HOTSPOTS', 'DIALOGUE', 'NOTEPAD', 'TABS', 'SUMMARY', 'NARRATIVE'] as const;
 
 export function isExploratory(type: string): boolean {
   return (EXPLORATORY_TYPES as readonly string[]).includes(type);
@@ -39,6 +40,8 @@ export default function ExploratoryBlock({
       return <NotepadBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
     case 'SUMMARY':
       return <SummaryBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
+    case 'NARRATIVE':
+      return <NarrativeBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
     default:
       return null;
   }

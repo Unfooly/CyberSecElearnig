@@ -1,6 +1,6 @@
 'use client';
 
-import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ResultDetail } from '@/lib/courses-types';
+import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ContentReaction, ResultDetail } from '@/lib/courses-types';
 import EmailAnalysisBlock from './EmailAnalysisBlock';
 import OrderingBlock from './OrderingBlock';
 import TextInputBlock from './TextInputBlock';
@@ -20,6 +20,8 @@ export interface ScoredResult {
   detail?: ResultDetail;
   correct?: boolean;
   points?: number;
+  // Reakcja maskotki na wynik (schemaVersion 4), dopiero po ukończeniu - patrz packages/content D-061.
+  reaction?: ContentReaction;
 }
 
 export default function ScoredBlock({
@@ -54,7 +56,7 @@ export default function ScoredBlock({
           block={block}
           onSubmit={onSubmit}
           disabled={disabled}
-          result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points } : undefined}
+          result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
           onContinue={onContinue}
           continueLabel={continueLabel}
         />
@@ -67,7 +69,7 @@ export default function ScoredBlock({
           block={block}
           onSubmit={onSubmit}
           disabled={disabled}
-          result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points } : undefined}
+          result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
           onContinue={onContinue}
           continueLabel={continueLabel}
         />

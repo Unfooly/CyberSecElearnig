@@ -7,7 +7,7 @@ import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
-import { useMascotReaction } from '../player/mascot-reaction';
+import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
 import ExploreFooter from './ExploreFooter';
 
 // Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu. Punkty na obrazie są
@@ -42,6 +42,7 @@ export default function SceneHotspotsBlock({
 
   const required = requiredItemIds(hotspots, block.requiredHotspots);
   const doneCount = required.filter((id) => visited.includes(id)).length;
+  useCompleteReaction(block.reactions?.complete, doneCount >= required.length, review);
 
   function open(id: string) {
     setInteracted(true);

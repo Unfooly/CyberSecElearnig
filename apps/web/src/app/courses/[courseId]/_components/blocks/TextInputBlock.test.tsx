@@ -88,6 +88,18 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
+  it('reaction z treści (schemaVersion 4, reactions.result) po rozstrzygnięciu ma pierwszeństwo nad brakiem reakcji/ogólnym ostrzeżeniem', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(attempt({ correct: true, attempt: 1, attemptsLeft: 2, done: true, points: 1, reaction: { pose: 'cheer', text: 'Świetnie!' } })),
+    );
+    setup({ onContinue: vi.fn() });
+    type('bank.pl');
+    check();
+    await screen.findByText(/Poprawna odpowiedź!/);
+    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+  });
+
   it('wyczerpane próby: rozwiązanie z wyjaśnieniem', async () => {
     vi.stubGlobal(
       'fetch',

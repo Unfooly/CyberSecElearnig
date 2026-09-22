@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
 import { NotesProvider, useNotes } from '../player/notes';
+import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
 import type { ContentBlock } from '@/lib/courses-types';
 
 const BASE = '/content';
@@ -60,11 +61,17 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
     const { notes } = useNotes();
     return <output data-testid="notes">{notes.map((n) => n.text).join('|')}</output>;
   }
+  function ReactionProbe() {
+    return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+  }
   render(
-    <NotesProvider initial={props.notes ?? []}>
-      <ExploratoryBlock block={block} contentBase={BASE} onSubmit={onSubmit} disabled={false} review={props.review} />
-      <NotesProbe />
-    </NotesProvider>,
+    <MascotReactionProvider resetKey="k">
+      <NotesProvider initial={props.notes ?? []}>
+        <ExploratoryBlock block={block} contentBase={BASE} onSubmit={onSubmit} disabled={false} review={props.review} />
+        <NotesProbe />
+        <ReactionProbe />
+      </NotesProvider>
+    </MascotReactionProvider>,
   );
   return onSubmit;
 }
@@ -119,6 +126,28 @@ describe('SCENE_HOTSPOTS', () => {
     expect(screen.getByText('Nie wpuszczaj obcych.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('reactions.complete (schemaVersion 4) odpala reakcję maskotki dopiero po wymaganych punktach, nigdy w podglądzie', async () => {
+    const user = userEvent.setup();
+    const withReaction: ContentBlock = { ...hotspots, reactions: { complete: { pose: 'cheer', text: 'Wszystko widziane!' } } };
+    renderBlock(withReaction);
+    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    const list = screen.getByRole('list', { name: 'Elementy sceny' });
+    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
+    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+  });
+
+  it('reactions.complete nie odpala się w podglądzie ("Wstecz")', async () => {
+    const user = userEvent.setup();
+    const withReaction: ContentBlock = { ...hotspots, reactions: { complete: { pose: 'cheer', text: 'Wszystko widziane!' } } };
+    renderBlock(withReaction, { review: true });
+    const list = screen.getByRole('list', { name: 'Elementy sceny' });
+    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
+    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+  });
 });
 
 describe('DIALOGUE', () => {
@@ -141,6 +170,11 @@ describe('DIALOGUE', () => {
     renderBlock(dialogue, { review: true });
     await user.click(screen.getByRole('button', { name: 'Co się stało?' }));
     expect(screen.getByTestId('notes')).toHaveTextContent('');
+  });
+
+  it('character.opening (schemaVersion 4) pokazuje pierwszą kwestię postaci, zanim padnie jakiekolwiek pytanie', () => {
+    renderBlock({ ...dialogue, character: { ...dialogue.character!, opening: 'Cześć, potrzebuję pomocy.' } });
+    expect(screen.getByText('Cześć, potrzebuję pomocy.')).toBeInTheDocument();
   });
 
   it('notatka nie dubluje się z notatką już zapisaną przez serwer', async () => {
@@ -179,6 +213,12 @@ describe('TABS', () => {
     expect(screen.getByRole('tab', { name: 'Hasła' })).toHaveAttribute('tabindex', '0');
     expect(screen.getByRole('tab', { name: 'Maile' })).toHaveAttribute('tabindex', '-1');
   });
+
+  it('treść zakładki renderuje wąski markdown (pogrubienie)', () => {
+    renderBlock({ ...tabs, tabs: [{ id: 'x', title: 'Hasła', content: '**Długie** hasła.' }] });
+    const strong = screen.getByText('Długie');
+    expect(strong.tagName).toBe('STRONG');
+  });
 });
 
 describe('NOTEPAD i SUMMARY', () => {
@@ -203,5 +243,49 @@ describe('NOTEPAD i SUMMARY', () => {
   it('SUMMARY w podglądzie nie ma przycisku ukończenia', () => {
     renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { review: true });
     expect(screen.queryByRole('button', { name: 'Zakończ szkolenie' })).not.toBeInTheDocument();
+  });
+
+  it('SUMMARY renderuje tekst przez wąski markdown (pogrubienie)', () => {
+    renderBlock({ type: 'SUMMARY', id: 's1', text: '**Brawo!** Sprawa zamknięta.' });
+    const strong = screen.getByText('Brawo!');
+    expect(strong.tagName).toBe('STRONG');
+  });
+});
+
+describe('NARRATIVE (schemaVersion 4)', () => {
+  it('pokazuje tytuł i tekst, ukończenie bez odpowiedzi', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderBlock({ type: 'NARRATIVE', id: 'n1', title: 'Sprawa', text: 'To się wydarzyło...' });
+    expect(screen.getByText('Sprawa')).toBeInTheDocument();
+    expect(screen.getByText('To się wydarzyło...')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(onSubmit).toHaveBeenCalledWith();
+  });
+
+  it('w podglądzie nie ma przycisku ukończenia', () => {
+    renderBlock({ type: 'NARRATIVE', id: 'n1', text: 'To się wydarzyło...' }, { review: true });
+    expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
+  });
+
+  it('reactions.complete odpala się od razu po zamontowaniu (bez elementów do pokrycia), nigdy w podglądzie', () => {
+    const withReaction: ContentBlock = {
+      type: 'NARRATIVE',
+      id: 'n1',
+      text: 'To się wydarzyło...',
+      reactions: { complete: { pose: 'thinking', text: 'Ciekawe...' } },
+    };
+    renderBlock(withReaction);
+    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+  });
+
+  it('reactions.complete nie odpala się w podglądzie', () => {
+    const withReaction: ContentBlock = {
+      type: 'NARRATIVE',
+      id: 'n1',
+      text: 'To się wydarzyło...',
+      reactions: { complete: { pose: 'thinking', text: 'Ciekawe...' } },
+    };
+    renderBlock(withReaction, { review: true });
+    expect(screen.getByTestId('reaction')).toHaveTextContent('');
   });
 });

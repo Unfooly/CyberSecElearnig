@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, GripVertical, X } from 'lucide-react';
-import type { ContentBlock, ResultDetail } from '@/lib/courses-types';
+import type { ContentBlock, ContentReaction, ResultDetail } from '@/lib/courses-types';
 import { useMascotReaction } from '../player/mascot-reaction';
 
 // Układanie kroków w kolejności. Elementy mają id nieprzejrzyste i kolejność potasowaną przez serwer (klient nie zna poprawnej). Ścieżka
@@ -15,6 +15,7 @@ export interface OrderingResult {
   detail?: ResultDetail;
   correct?: boolean;
   points?: number;
+  reaction?: ContentReaction;
 }
 
 export function move<T>(list: T[], from: number, to: number): T[] {
@@ -51,8 +52,11 @@ export default function OrderingBlock({
   const byId = new Map(items.map((item) => [item.id ?? item.text, item]));
   const correctOrder = result?.detail?.correctOrder ?? [];
 
+  // Reakcja z treści (schemaVersion 4, reactions.result) ma pierwszeństwo; starsza treść bez niej dostaje ogólne ostrzeżenie przy błędzie.
   useEffect(() => {
-    if (onContinue && result && result.correct === false) mascot.react('wrong');
+    if (!onContinue || !result) return;
+    if (result.reaction) mascot.show(result.reaction);
+    else if (result.correct === false) mascot.react('wrong');
     // Jednorazowo przy pokazaniu wyniku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

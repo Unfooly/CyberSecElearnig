@@ -58,10 +58,20 @@ describe('HomePage (landing)', () => {
     expect(() => HomePage()).toThrow('REDIRECT:/courses');
   });
 
-  it.each(['SUPER_ADMIN', 'DEPARTMENT_MANAGER'])('%s trafia do /courses (middleware nie wpuszcza go na /dashboard)', (role) => {
-    mockCookies({ refresh_token: 'r', access_token: jwtWithRole(role) });
+  it('DEPARTMENT_MANAGER trafia do /courses (middleware nie wpuszcza go na /dashboard)', () => {
+    mockCookies({ refresh_token: 'r', access_token: jwtWithRole('DEPARTMENT_MANAGER') });
 
     expect(() => HomePage()).toThrow('REDIRECT:/courses');
+  });
+
+  // Role platformy mają własne panele (D-069) - /courses byłoby dla nich pustym ekranem klienta.
+  it.each([
+    ['SUPER_ADMIN', '/dashboard/admin'],
+    ['RESELLER_ADMIN', '/dashboard/reseller'],
+  ])('%s trafia do %s', (role, path) => {
+    mockCookies({ refresh_token: 'r', access_token: jwtWithRole(role) });
+
+    expect(() => HomePage()).toThrow(`REDIRECT:${path}`);
   });
 
   it('ma metadane SEO: opis i obraz OG z logo PNG', () => {

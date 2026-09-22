@@ -145,6 +145,22 @@ export default function SettingsClient({ organization }: { organization: Organiz
         </div>
       </Card>
 
+      {/* Opiekun (partner): sama nazwa, bez historii wejść i bez możliwości zmiany - przypisanie
+          i odłączenie resellera to wyłącznie decyzja operatora platformy (D-069). */}
+      {organization.reseller && (
+        <Card>
+          <CardHeader title="Opieka partnera" />
+          <div className="p-5">
+            <dl className="space-y-3">
+              <Row label="Twój opiekun" value={organization.reseller.name} />
+            </dl>
+            <p className="mt-4 text-xs text-muted">
+              Partner pomaga w obsłudze Twojej organizacji. Zmiana lub rezygnacja z opieki: skontaktuj się z nami.
+            </p>
+          </div>
+        </Card>
+      )}
+
       <Card>
         <CardHeader title="Domena" />
         <div className="p-5 text-sm">

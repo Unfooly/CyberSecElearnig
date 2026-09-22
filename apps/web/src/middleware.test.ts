@@ -179,6 +179,55 @@ describe('middleware', () => {
     });
   });
 
+  // D-069: panele platformy leżą pod /dashboard, więc ich wpisy MUSZĄ stać przed regułą
+  // "/dashboard tylko ORG_ADMIN" (wygrywa pierwszy pasujący prefiks).
+  describe('/dashboard/admin i /dashboard/reseller - panele operatora i partnera', () => {
+    const tokenFor = (role: string) =>
+      fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+
+    it('SUPER_ADMIN wchodzi na /dashboard/admin', async () => {
+      const response = await middleware(buildRequest('/dashboard/admin', `access_token=${tokenFor('SUPER_ADMIN')}; refresh_token=r`));
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it.each(['ORG_ADMIN', 'RESELLER_ADMIN', 'EMPLOYEE'])('%s NIE wchodzi na /dashboard/admin', async (role) => {
+      const response = await middleware(buildRequest('/dashboard/admin', `access_token=${tokenFor(role)}; refresh_token=r`));
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+
+    it('RESELLER_ADMIN wchodzi na /dashboard/reseller', async () => {
+      const response = await middleware(
+        buildRequest('/dashboard/reseller', `access_token=${tokenFor('RESELLER_ADMIN')}; refresh_token=r`),
+      );
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it.each(['ORG_ADMIN', 'SUPER_ADMIN', 'EMPLOYEE'])('%s NIE wchodzi na /dashboard/reseller', async (role) => {
+      const response = await middleware(
+        buildRequest('/dashboard/reseller', `access_token=${tokenFor(role)}; refresh_token=r`),
+      );
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+
+    it('RESELLER_ADMIN nie wchodzi na panel klienta (/dashboard)', async () => {
+      const response = await middleware(buildRequest('/dashboard', `access_token=${tokenFor('RESELLER_ADMIN')}; refresh_token=r`));
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+
+    it('ORG_ADMIN nadal wchodzi na /dashboard i jego podstrony klienckie', async () => {
+      const dashboard = await middleware(buildRequest('/dashboard', `access_token=${tokenFor('ORG_ADMIN')}; refresh_token=r`));
+      const users = await middleware(buildRequest('/dashboard/users', `access_token=${tokenFor('ORG_ADMIN')}; refresh_token=r`));
+
+      expect(dashboard.headers.get('location')).toBeNull();
+      expect(users.headers.get('location')).toBeNull();
+    });
+  });
+
   describe('/account - ustawienia konta dla każdej zalogowanej roli', () => {
     const tokenFor = (role: string) =>
       fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });

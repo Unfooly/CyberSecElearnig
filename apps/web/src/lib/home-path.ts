@@ -7,6 +7,12 @@ import { Role } from '@cyberszkolo/shared';
 // wyczyszczonymi cookies (czyli wylogowaniem tuż po zalogowaniu).
 // Zmieniając PROTECTED_ROUTES, zmień też to mapowanie.
 export function homePathForRole(role: Role | undefined): string {
+  if (role === Role.SUPER_ADMIN) {
+    return ADMIN_PANEL_PATH;
+  }
+  if (role === Role.RESELLER_ADMIN) {
+    return RESELLER_PANEL_PATH;
+  }
   return role === Role.ORG_ADMIN ? '/dashboard' : '/courses';
 }
 
@@ -18,7 +24,17 @@ export function homePathForRole(role: Role | undefined): string {
 // (status organizacji zna tylko API - patrz apps/web/src/lib/organization.ts).
 export const ONBOARDING_PATH = '/onboarding';
 
-const ALLOWED_HOME_PATHS: readonly string[] = ['/dashboard', '/courses', ONBOARDING_PATH];
+// Panele operatora platformy i partnera (D-069) - osobne strony startowe dla tych ról.
+export const ADMIN_PANEL_PATH = '/dashboard/admin';
+export const RESELLER_PANEL_PATH = '/dashboard/reseller';
+
+const ALLOWED_HOME_PATHS: readonly string[] = [
+  '/dashboard',
+  '/courses',
+  ONBOARDING_PATH,
+  ADMIN_PANEL_PATH,
+  RESELLER_PANEL_PATH,
+];
 
 export function resolveHomePath(value: unknown): string {
   return typeof value === 'string' && ALLOWED_HOME_PATHS.includes(value) ? value : '/courses';

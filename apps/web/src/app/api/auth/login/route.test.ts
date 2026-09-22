@@ -188,7 +188,9 @@ describe('POST /api/auth/login - redirectTo wg roli z JWT', () => {
     ['ORG_ADMIN', '/dashboard'],
     ['EMPLOYEE', '/courses'],
     ['DEPARTMENT_MANAGER', '/courses'],
-    ['SUPER_ADMIN', '/courses'],
+    // Role platformy mają własne panele (D-069).
+    ['SUPER_ADMIN', '/dashboard/admin'],
+    ['RESELLER_ADMIN', '/dashboard/reseller'],
   ])('%s => %s', async (role, expected) => {
     vi.stubGlobal(
       'fetch',

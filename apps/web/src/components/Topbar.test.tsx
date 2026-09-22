@@ -116,6 +116,48 @@ describe('Topbar', () => {
     });
   });
 
+  describe('panele platformy: operator i partner (D-069)', () => {
+    it('SUPER_ADMIN widzi WYŁĄCZNIE "Panel operatora" - bez kursów, zgłoszeń i kampanii klienta', () => {
+      usePathnameMock.mockReturnValue('/dashboard/admin');
+      render(<Topbar userEmail="operator@example.test" role={Role.SUPER_ADMIN} />);
+
+      expect(screen.getByRole('link', { name: 'Panel operatora' })).toHaveAttribute('href', '/dashboard/admin');
+      for (const label of ['Kursy', 'Osiągnięcia', 'Zespół', 'Dashboard', 'Moi klienci']) {
+        expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument();
+      }
+      expect(screen.queryByRole('link', { name: 'Zgłoś podejrzany mail' })).not.toBeInTheDocument();
+    });
+
+    it('RESELLER_ADMIN widzi WYŁĄCZNIE "Moi klienci"', () => {
+      usePathnameMock.mockReturnValue('/dashboard/reseller');
+      render(<Topbar userEmail="partner@example.test" role={Role.RESELLER_ADMIN} />);
+
+      expect(screen.getByRole('link', { name: 'Moi klienci' })).toHaveAttribute('href', '/dashboard/reseller');
+      for (const label of ['Kursy', 'Panel operatora', 'Dashboard']) {
+        expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument();
+      }
+    });
+
+    it('EMPLOYEE i ORG_ADMIN nie widzą paneli platformy', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      expect(screen.queryByRole('link', { name: 'Panel operatora' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Moi klienci' })).not.toBeInTheDocument();
+    });
+
+    it('przy NIEZNANEJ roli panele platformy są ukryte - inaczej klik wylogowałby admina klienta', () => {
+      // Strony administratora organizacji nie przekazują roli do Topbara; middleware nie wpuszcza
+      // ORG_ADMIN-a na /dashboard/admin i odsyła na /login (czyli wylogowuje).
+      usePathnameMock.mockReturnValue('/dashboard');
+      render(<Topbar userEmail="jan@example.test" />);
+
+      expect(screen.queryByRole('link', { name: 'Panel operatora' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Moi klienci' })).not.toBeInTheDocument();
+      // Pozycje klienckie przy nieznanej roli nadal są widoczne (zachowanie sprzed tej zmiany).
+      expect(screen.getByRole('link', { name: 'Zespół' })).toBeInTheDocument();
+    });
+  });
+
   it('podświetla WYŁĄCZNIE "Zespół" na /dashboard/users, mimo że to też podścieżka /dashboard', () => {
     usePathnameMock.mockReturnValue('/dashboard/users');
     render(<Topbar userEmail="jan@example.test" />);

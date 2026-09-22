@@ -22,9 +22,17 @@ interface NavItem {
   adminOnly?: boolean;
   // Widoczność dla wskazanych ról (np. skrzynka zgłoszeń: ORG_ADMIN i DEPARTMENT_MANAGER); ma pierwszeństwo przed adminOnly.
   visibleFor?: Role[];
+  // Pozycja znika, gdy rola jest NIEZNANA (część stron administratora nie przekazuje jej do Topbara).
+  // Potrzebne dla paneli operatora i partnera: pokazane administratorowi klienta byłyby pułapką -
+  // middleware nie wpuszcza go na te trasy i odsyła na /login, czyli wylogowuje (D-069).
+  onlyForKnownRole?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
+  // Panele operatora i partnera (D-069): widoczne wyłącznie dla swoich ról - reszta menu
+  // (kursy, zgłoszenia, kampanie) dotyczy organizacji klienckiej i ich nie dotyczy.
+  { label: 'Panel operatora', href: '/dashboard/admin', built: true, visibleFor: [Role.SUPER_ADMIN], onlyForKnownRole: true },
+  { label: 'Moi klienci', href: '/dashboard/reseller', built: true, visibleFor: [Role.RESELLER_ADMIN], onlyForKnownRole: true },
   { label: 'Dashboard', href: '/dashboard', built: true, adminOnly: true },
   { label: 'Zespół', href: '/dashboard/users', built: true, adminOnly: true },
   { label: 'Kursy', href: '/courses', built: true },
@@ -92,9 +100,18 @@ export default function Topbar({
   }, [userEmail]);
 
   // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    item.visibleFor ? role === undefined || item.visibleFor.includes(role) : !item.adminOnly || role === undefined || role === Role.ORG_ADMIN,
-  );
+  // Role platformy (operator, partner) nie pracują w organizacji klienckiej: nie mają kursów,
+  // zgłoszeń ani kampanii. Widzą wyłącznie swój panel (D-069).
+  const isPlatformRole = role === Role.SUPER_ADMIN || role === Role.RESELLER_ADMIN;
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (isPlatformRole) {
+      return item.visibleFor?.includes(role as Role) ?? false;
+    }
+    if (item.visibleFor) {
+      return role === undefined ? !item.onlyForKnownRole : item.visibleFor.includes(role);
+    }
+    return !item.adminOnly || role === undefined || role === Role.ORG_ADMIN;
+  });
   const builtHrefs = visibleItems.filter((item) => item.built).map((item) => item.href);
   // Najdłuższy pasujący prefiks wygrywa - bez tego /courses/achievements
   // podświetlałoby jednocześnie "Kursy" i "Osiągnięcia" (oba są prefiksami).
@@ -146,7 +163,8 @@ export default function Topbar({
           })}
         </nav>
 
-        {userEmail && (
+        {/* Zgłoszenie podejrzanej wiadomości dotyczy pracownika organizacji klienckiej - operator i partner nie mają czego zgłaszać. */}
+        {userEmail && !isPlatformRole && (
           <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
             <span className="sm:hidden">Zgłoś</span>
             <span className="hidden sm:inline">Zgłoś podejrzany mail</span>

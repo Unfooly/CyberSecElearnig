@@ -5,7 +5,10 @@ import { homePathForRole, resolveHomePath } from './home-path';
 describe('homePathForRole', () => {
   it.each([
     [Role.ORG_ADMIN, '/dashboard'],
-    [Role.SUPER_ADMIN, '/courses'],
+    // Role platformy mają własne panele (D-069); wysłanie ich na /courses kończyłoby się
+    // pustym ekranem klienta, a nie tym, po co się logują.
+    [Role.SUPER_ADMIN, '/dashboard/admin'],
+    [Role.RESELLER_ADMIN, '/dashboard/reseller'],
     [Role.DEPARTMENT_MANAGER, '/courses'],
     [Role.EMPLOYEE, '/courses'],
     [undefined, '/courses'],
@@ -15,9 +18,12 @@ describe('homePathForRole', () => {
 });
 
 describe('resolveHomePath (allowlista - ochrona przed open redirect)', () => {
-  it.each(['/dashboard', '/courses', '/onboarding'])('przepuszcza %s', (path) => {
-    expect(resolveHomePath(path)).toBe(path);
-  });
+  it.each(['/dashboard', '/courses', '/onboarding', '/dashboard/admin', '/dashboard/reseller'])(
+    'przepuszcza %s',
+    (path) => {
+      expect(resolveHomePath(path)).toBe(path);
+    },
+  );
 
   const hostile: string[] = [
     '//evil.com',

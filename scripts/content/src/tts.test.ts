@@ -25,6 +25,8 @@ describe('tts CLI: kody wyjścia i tryby', () => {
     ['zły --storage', ['modul', '--storage', 's3']],
     ['zły slug', ['../etc']],
     ['zła wersja', ['modul', '--version', '../x']],
+    ['--remote bez --check', ['modul', '--assets', '--remote']],
+    ['--remote bez --assets (mimo --check)', ['modul', '--check', '--remote']],
   ])('błędne użycie (%s): kod 2, czytelny komunikat, bez stack trace', async (_name, argv) => {
     expect(await main(argv)).toBe(2);
     expect(errors.join('\n')).toMatch(/^Błąd:/);
@@ -67,5 +69,21 @@ describe('tts CLI: kody wyjścia i tryby', () => {
     expect(await main(['nie-ma-takiego-modulu', '--assets', '--check'], { CI: 'true' })).toBe(1);
     expect(errors.join('\n')).toMatch(/Brak pliku/);
     expect(errors.join('\n')).not.toMatch(/CI=true|ELEVENLABS|R2_/);
+  });
+
+  it('--assets --check --remote w CI: odmowa (--remote potrzebuje magazynu/sieci, więc --check przestaje być offline)', async () => {
+    expect(await main(['modul', '--assets', '--check', '--remote'], { CI: 'true' })).toBe(1);
+    expect(errors.join('\n')).toMatch(/CI=true/);
+  });
+
+  it('--assets --check --remote (domyślnie --storage local): nie wymaga kluczy R2/ElevenLabs, błąd dotyczy modułu', async () => {
+    expect(await main(['nie-ma-takiego-modulu', '--assets', '--check', '--remote'], {})).toBe(1);
+    expect(errors.join('\n')).toMatch(/Brak pliku/);
+    expect(errors.join('\n')).not.toMatch(/ELEVENLABS|R2_/);
+  });
+
+  it('--assets --check --remote --storage r2 bez konfiguracji: błąd z NAZWAMI zmiennych R2', async () => {
+    expect(await main(['nie-ma-takiego-modulu', '--assets', '--check', '--remote', '--storage', 'r2'], {})).toBe(1);
+    expect(errors.join('\n')).toMatch(/R2_ENDPOINT/);
   });
 });

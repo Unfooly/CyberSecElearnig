@@ -6,6 +6,7 @@ import { Writable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertAssetPathsClassified, collectAssetRefs, runAssetsPipeline, type AssetsPipelineParams } from './assets.js';
 import { MemoryStore } from './stores/memory.js';
+import type { ObjectHead, ObjectStore, PutOptions } from './types.js';
 
 const requireCjs = createRequire(import.meta.url);
 const { fullModule } = requireCjs('../../../packages/content/dist/fixtures.js') as { fullModule: () => Record<string, unknown> };
@@ -231,6 +232,75 @@ describe('runAssetsPipeline', () => {
   });
 });
 
+/** Magazyn w pamięci, który rzuca na HEAD/PUT dla wskazanych kluczy (albo dla n-tego wywołania) - do testów awarii sieci. */
+class FlakyStore implements ObjectStore {
+  private readonly inner = new MemoryStore();
+  private headCalls = 0;
+  private putCalls = 0;
+  constructor(private readonly opts: { failHeadOnCall?: number; failPutOnCall?: number; failHeadForKeyIncluding?: string } = {}) {}
+
+  get objects() {
+    return this.inner.objects;
+  }
+
+  async head(key: string): Promise<ObjectHead | null> {
+    this.headCalls += 1;
+    if (this.opts.failHeadOnCall === this.headCalls || (this.opts.failHeadForKeyIncluding && key.includes(this.opts.failHeadForKeyIncluding))) {
+      throw new Error('R2 HEAD kaboom: symulowana awaria sieci');
+    }
+    return this.inner.head(key);
+  }
+
+  async put(key: string, body: Uint8Array, options: PutOptions, overwrite = false): Promise<boolean> {
+    this.putCalls += 1;
+    if (this.opts.failPutOnCall === this.putCalls) throw new Error('R2 PUT kaboom: symulowana awaria sieci');
+    return this.inner.put(key, body, options, overwrite);
+  }
+
+  async get(key: string): Promise<Uint8Array | null> {
+    return this.inner.get(key);
+  }
+}
+
+describe('runAssetsPipeline: awaria magazynu (HEAD/PUT) jest PER-ZASÓB, nie przerywa całego przebiegu', () => {
+  it('PUT drugiego zasobu rzuca: pierwszy jest opublikowany i trafia do locka, drugi NIE trafia do locka (tylko do problems)', async () => {
+    const store = new FlakyStore({ failPutOnCall: 2 });
+    const result = await runAssetsPipeline(params({ store }));
+
+    expect(result.published).toBe(1);
+    expect(result.problems).toHaveLength(1);
+    expect(result.problems[0]).toMatch(/publikacja w magazynie nie powiodła się.*NIE zapisano w assets\.lock\.json/);
+
+    const lock = JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8'));
+    expect(Object.keys(lock.entries)).toHaveLength(1); // wyłącznie zasób, którego PUT się powiódł
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const scene = module.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS');
+    const dialogue = module.blocks.find((b: { type: string }) => b.type === 'DIALOGUE');
+    // Dokładnie jedno z dwóch pól zostało podmienione na klucz - drugie zostaje nazwą pliku źródłowego (nieopublikowane).
+    const values = [scene.image, dialogue.character.avatar];
+    expect(values.filter((v) => /^assets\//.test(v))).toHaveLength(1);
+    expect(values.filter((v) => v === 'scena.png' || v === 'anna.png')).toHaveLength(1);
+  });
+
+  it('kolejny przebieg po naprawie magazynu dokańcza WYŁĄCZNIE brakujący zasób (ten opublikowany zostaje z locka nietknięty)', async () => {
+    const flaky = new FlakyStore({ failPutOnCall: 2 });
+    const first = await runAssetsPipeline(params({ store: flaky }));
+    expect(first.published).toBe(1);
+
+    // Ten sam magazyn (dziedziczy stan z FlakyStore.inner), ale bez wstrzykniętej awarii tym razem.
+    const healthy = new MemoryStore();
+    for (const [key, object] of flaky.objects) healthy.objects.set(key, object);
+    const second = await runAssetsPipeline(params({ store: healthy }));
+    expect(second.published).toBe(1); // tylko ten, co wcześniej padł
+    expect(second.cached).toBe(1); // ten, co się udał za pierwszym razem
+    expect(second.problems).toEqual([]);
+
+    const lock = JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8'));
+    expect(Object.keys(lock.entries)).toHaveLength(2);
+  });
+});
+
 describe('--check (offline)', () => {
   it('bez assets.lock.json: błąd; po publikacji: OK; po zmianie źródła: problem; bez dotykania magazynu', async () => {
     const offlineStore = new MemoryStore();
@@ -260,5 +330,52 @@ describe('--check (offline)', () => {
     await rm(join(assetsDir, 'scena.png'));
     const result = await runAssetsPipeline(params({ check: true }));
     expect(result.problems.some((p) => p.includes('nie istnieje'))).toBe(true);
+  });
+});
+
+describe('--check --remote: potwierdza HEAD w PRAWDZIWYM magazynie, nie tylko treść lockfile\'a', () => {
+  it('bez --remote: lockfile "kłamie" (opisuje publikację, obiektu nie ma w magazynie) i --check tego NIE wykrywa', async () => {
+    const store = new MemoryStore();
+    await runAssetsPipeline(params({ store }));
+    store.objects.clear(); // symuluje "obiekt zniknął/nigdy nie powstał w magazynie mimo wpisu w locku"
+
+    const result = await runAssetsPipeline(params({ store, check: true })); // bez remote: offline, ufa tylko lockowi
+    expect(result.problems).toEqual([]);
+  });
+
+  it('z --remote: to samo lockfile\'owe "kłamstwo" jest wykryte (HEAD w magazynie mówi: obiektu nie ma)', async () => {
+    const store = new MemoryStore();
+    await runAssetsPipeline(params({ store }));
+    store.objects.clear();
+
+    const result = await runAssetsPipeline(params({ store, check: true, remote: true }));
+    expect(result.problems).toHaveLength(2); // oba zasoby
+    expect(result.problems[0]).toMatch(/NIE MA w magazynie/);
+  });
+
+  it('z --remote: zasoby faktycznie obecne w magazynie -> OK, wzmianka o --remote w komunikacie', async () => {
+    const store = new MemoryStore();
+    await runAssetsPipeline(params({ store }));
+    const chunks: string[] = [];
+    const capture = new Writable({
+      write: (chunk, _enc, done) => {
+        chunks.push(String(chunk));
+        done();
+      },
+    });
+
+    const result = await runAssetsPipeline(params({ store, check: true, remote: true, output: capture }));
+    expect(result.problems).toEqual([]);
+    expect(chunks.join('')).toMatch(/OK:.*--remote/);
+  });
+
+  it('HEAD w magazynie rzuca (awaria sieci): problem czytelny, bez wyjątku', async () => {
+    const store = new MemoryStore();
+    await runAssetsPipeline(params({ store }));
+    const flaky = new FlakyStore({ failHeadForKeyIncluding: 'scena' });
+    for (const [key, object] of store.objects) flaky.objects.set(key, object);
+
+    const result = await runAssetsPipeline(params({ store: flaky, check: true, remote: true }));
+    expect(result.problems.some((p) => p.includes('nie udało się sprawdzić magazynu'))).toBe(true);
   });
 });

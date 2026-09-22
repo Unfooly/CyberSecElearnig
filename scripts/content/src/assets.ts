@@ -97,6 +97,10 @@ export interface AssetsPipelineParams {
   store: ObjectStore;
   dryRun: boolean;
   check: boolean;
+  /** --check --remote: dodatkowo potwierdza HEAD w magazynie skonfigurowanym przez --storage (wymaga sieci/kluczy -
+   * bez tego --check zostaje w pełni offline, D-060). Bez tej flagi assets.lock.json jest jedynym źródłem prawdy dla
+   * --check, więc nie wykrywa obiektu, który zniknął/nigdy nie powstał w magazynie mimo wpisu w locku. */
+  remote?: boolean;
   only?: string[];
   output: Writable;
 }
@@ -147,9 +151,10 @@ export async function runAssetsPipeline(params: AssetsPipelineParams): Promise<A
     if (unknown.length > 0) throw new Error(`--only: brak zasobów w blokach: ${unknown.join(', ')}.`);
   }
 
-  if (params.check) return checkAssetsOffline(refs, lock, assetsDir, params.output);
+  if (params.check) return checkAssets(refs, lock, assetsDir, params.remote ? params.store : null, params.output);
 
   const entries: Record<string, AssetsLockEntry> = only && lock ? { ...lock.entries } : {};
+  const problems: string[] = [];
   let published = 0;
   let cached = 0;
 
@@ -168,6 +173,9 @@ export async function runAssetsPipeline(params: AssetsPipelineParams): Promise<A
       const violations = lintSvg(text);
       if (violations.length > 0) throw new Error(`Zasób "${original}" (blok "${ref.blockId}") odrzucony przez lint SVG:\n${formatSvgViolations(violations)}`);
     }
+    // Błędy WALIDACJI TREŚCI (rozszerzenie, UTF-8, lint SVG) powyżej zostają TWARDE (rzucają, przerywają cały przebieg,
+    // zero zapisu) - to pomyłka autora, nie flaki sieci, i nie powinna dać połowicznej publikacji. Od tego miejsca w dół
+    // (magazyn) błędy są per-zasób: jeden padnięty HEAD/PUT nie blokuje reszty i NIE trafia do locka (patrz catch niżej).
     const hash8 = contentHash(bytes, 8);
     const key = assetKey({ slug, relativePath: original, hash8 });
 
@@ -176,13 +184,21 @@ export async function runAssetsPipeline(params: AssetsPipelineParams): Promise<A
       else published += 1;
       continue;
     }
-    // Klucz jest niemutowalny (skrót treści w nazwie): istnienie pod tym kluczem oznacza identyczną zawartość, więc pomijamy zapis (ETag/HEAD).
-    if (await params.store.head(key)) {
-      cached += 1;
-    } else {
-      await params.store.put(key, bytes, { contentType: CONTENT_TYPE[ext], cacheControl: IMMUTABLE_CACHE }, false);
-      published += 1;
-      say(params.output, `${ref.id}: ${original} -> ${key}`);
+
+    try {
+      // Klucz jest niemutowalny (skrót treści w nazwie): istnienie pod tym kluczem oznacza identyczną zawartość, więc pomijamy zapis (ETag/HEAD).
+      if (await params.store.head(key)) {
+        cached += 1;
+      } else {
+        await params.store.put(key, bytes, { contentType: CONTENT_TYPE[ext], cacheControl: IMMUTABLE_CACHE }, false);
+        published += 1;
+        say(params.output, `${ref.id}: ${original} -> ${key}`);
+      }
+    } catch (error) {
+      const problem = `${ref.id}: publikacja w magazynie nie powiodła się (${(error as Error).message}) - NIE zapisano w assets.lock.json, uruchom ponownie.`;
+      problems.push(problem);
+      say(params.output, `BŁĄD: ${problem}`);
+      continue; // Wpis trafia do locka WYŁĄCZNIE po potwierdzonym HEAD/PUT - żaden błąd magazynu nie może go tam doprowadzić.
     }
     ref.holder[ref.key] = key;
     entries[ref.id] = { original, hash: hash8, key };
@@ -199,13 +215,18 @@ export async function runAssetsPipeline(params: AssetsPipelineParams): Promise<A
   const lockChanged = await writeIfChanged(lockPath, encode(nextLock));
   say(
     params.output,
-    `Gotowe: opublikowano ${published}, bez zmian ${cached}. module.json ${moduleChanged ? 'zaktualizowany' : 'bez zmian'}, assets.lock.json ${lockChanged ? 'zaktualizowany' : 'bez zmian'}.`,
+    `Gotowe: opublikowano ${published}, bez zmian ${cached}, błędów ${problems.length}. module.json ${moduleChanged ? 'zaktualizowany' : 'bez zmian'}, assets.lock.json ${lockChanged ? 'zaktualizowany' : 'bez zmian'}.`,
   );
-  return { published, cached, problems: [] };
+  return { published, cached, problems };
 }
 
-/** --check: OFFLINE (bez magazynu i sieci). Czyta lokalne pliki źródłowe (assets/), żeby porównać ich skrót z assets.lock.json. */
-async function checkAssetsOffline(refs: AssetRef[], lock: AssetsLock | null, assetsDir: string, output: Writable): Promise<AssetsPipelineResult> {
+/**
+ * --check: domyślnie OFFLINE (bez magazynu i sieci, D-060) - czyta lokalne pliki źródłowe (assets/), żeby porównać
+ * ich skrót z assets.lock.json. Z `store` (--check --remote): dodatkowo HEAD każdego wpisu w PRAWDZIWYM magazynie -
+ * jedyny sposób odróżnić "lockfile opisuje publikację" od "obiekt naprawdę tam jest" (bez tego --check ufa wyłącznie
+ * treści pliku w repo, nie stanowi dowodu, że PUT się kiedykolwiek powiódł).
+ */
+async function checkAssets(refs: AssetRef[], lock: AssetsLock | null, assetsDir: string, store: ObjectStore | null, output: Writable): Promise<AssetsPipelineResult> {
   const problems: string[] = [];
   if (!lock) {
     problems.push('Brak assets.lock.json: uruchom publikację zasobów modułu (--assets).');
@@ -226,12 +247,19 @@ async function checkAssetsOffline(refs: AssetRef[], lock: AssetsLock | null, ass
       } catch (error) {
         problems.push(`${ref.id}: ${(error as Error).message}`);
       }
+      if (store) {
+        try {
+          if (!(await store.head(entry.key))) problems.push(`${ref.id}: lockfile opisuje publikację ("${entry.key}"), ale obiektu NIE MA w magazynie (--remote).`);
+        } catch (error) {
+          problems.push(`${ref.id}: nie udało się sprawdzić magazynu dla "${entry.key}" (${(error as Error).message}).`);
+        }
+      }
     }
     const known = new Set(refs.map((ref) => ref.id));
     for (const id of Object.keys(lock.entries)) if (!known.has(id)) problems.push(`${id}: wpis w assets.lock.json bez zasobu w module (usuń albo opublikuj ponownie).`);
   }
   for (const problem of problems) say(output, `BŁĄD: ${problem}`);
-  if (problems.length === 0) say(output, `OK: ${refs.length} zasobów ma aktualne publikacje (sprawdzono offline).`);
+  if (problems.length === 0) say(output, `OK: ${refs.length} zasobów ma aktualne publikacje (sprawdzono ${store ? 'lokalnie i w magazynie, --remote' : 'offline'}).`);
   return { published: 0, cached: refs.length - problems.length, problems };
 }
 

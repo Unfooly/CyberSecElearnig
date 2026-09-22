@@ -417,13 +417,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
   `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
 
-### B-087 `objectives` (cele modułu) nie są nigdzie wyświetlane w apps/web
+### B-087 `subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie - nie trafiają do bazy, więc nie ma ich jak wyświetlić
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1
-- Opis: `module.json` (schemaVersion 4) niesie opcjonalne `objectives: string[]` (max 6) - moduł 1 go wypełnia. D-061 już
-  przewidział, że UI może go jeszcze nie pokazywać ("jeśli karta kursu ich nie pokazuje, backlog"): dziś ani karta kursu
-  (`apps/web/src/app/courses/_components/CourseCard.tsx`), ani ekran SUMMARY (`SummaryBlock.tsx`) nie czytają
-  `objectives` z odpowiedzi API - pole dociera do klienta (jest `client` w `FIELD_CLASSIFICATION` na poziomie modułu),
-  ale nic go nie renderuje.
+- Opis: `module.json` (schemaVersion 4) niesie opcjonalne `subtitle`, `level` i `objectives: string[]` (max 6) - moduł 1
+  je wypełnia, i `parseModule` je waliduje. D-061 przewidział, że UI może ich jeszcze nie pokazywać, ale zakres jest
+  szerszy: `content-import.ts`'s `importModule` (`courseData`, ok. linii 88-94) kopiuje do `Course`/`CourseVersion`
+  wyłącznie `title/category/durationMinutes/mandatory/contentBlocks` - `subtitle`/`level`/`objectives` NIE trafiają do
+  bazy w ogóle (nie ma dla nich kolumny ani miejsca w `contentBlocks`), więc znikają po walidacji, zanim dotrą do
+  klienta. To nie jest tylko brakujący render w `CourseCard.tsx`/`SummaryBlock.tsx` - brakuje też zapisu/DTO. Poprawka
+  wymaga decyzji, gdzie te pola mają żyć (nowe kolumny `Course` czy część `contentBlocks`/osobne pole DTO), zanim
+  powstanie UI, który by je pokazywał.
 - Akceptacja: `objectives` pokazane jako „Czego się nauczysz” na karcie kursu i/albo „Czego się nauczyłeś” na ekranie
   SUMMARY po ukończeniu (D-061 pkt 1); wymaga dodania pola do `CourseDetail`/`CourseAssignmentSummary` w
   `apps/web/src/lib/courses-types.ts` i odpowiadającego pola w DTO `apps/api`.

@@ -107,6 +107,10 @@ export class TrackingService {
     if (!course) {
       return false;
     }
+    // Bez zmian dla D-069 (restart): nowy wiersz ma archivedAt=null (domyślne), więc `skipDuplicates` nadal chroni
+    // przed duplikatem względem AKTYWNEGO przypisania (częściowy unikalny indeks, patrz schema.prisma) - jeśli
+    // jedyne dotychczasowe przypisanie tego kursu jest zarchiwizowane (user je zrestartował), to wywołanie utworzy
+    // nowe aktywne, co jest poprawne (nie ma już nic do pominięcia).
     const created = await tx.courseAssignment.createMany({
       data: [
         {

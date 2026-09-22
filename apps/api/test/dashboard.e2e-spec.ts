@@ -625,3 +625,141 @@ describe('Dashboard i raporty (e2e)', () => {
     });
   });
 });
+
+// Fixture ODDZIELONA od powyższej (własna organizacja) - restart (D-069) zmienia sens "aktywne/wszystkie" per
+// endpoint, więc liczy się tu WŁASNY, mały scenariusz zamiast dokładania kolejnych userów do już wyliczonych,
+// dokładnych sum w describe wyżej.
+describe('Dashboard po "Rozpocznij od nowa" (D-069): aktywne vs. historia per endpoint', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let tenantPrisma: TenantPrismaService;
+  let jwtService: JwtService;
+  let configService: ConfigService;
+
+  const uniqueSuffix = Date.now();
+  const orgEmail = `admin-${uniqueSuffix}@restart-dashboard-e2e-test.test`;
+
+  let orgId: string;
+  let adminToken: string;
+  let employeeToken: string;
+  let superAdminToken: string;
+  let courseId: string;
+  let firstCompletionIso: string;
+
+  async function signToken(payload: { sub: string; organizationId: string; role: string; email: string }): Promise<string> {
+    return jwtService.signAsync(payload, { secret: configService.get<string>('JWT_SECRET'), expiresIn: '15m' });
+  }
+
+  beforeAll(async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    await app.init();
+
+    prisma = app.get(PrismaService);
+    tenantPrisma = app.get(TenantPrismaService);
+    jwtService = app.get(JwtService);
+    configService = app.get(ConfigService);
+
+    const orgResponse = await registerVerified(app, tenantPrisma, { email: orgEmail, password: 'SuperSecret123!' });
+    adminToken = orgResponse.body.accessToken;
+    const admin = await tenantPrisma.runAuthLookup({ email: orgEmail });
+    orgId = admin!.organizationId;
+
+    const course = await prisma.course.create({
+      data: {
+        title: `Restart Dashboard Test ${uniqueSuffix}`,
+        category: 'GENERAL_AWARENESS',
+        durationMinutes: 5,
+        mandatory: true,
+        contentBlocks: [{ type: 'VIDEO', url: 'https://example.test/restart-dashboard.mp4' }],
+      },
+    });
+    courseId = course.id;
+
+    // /start wymaga JUŻ ISTNIEJĄCEGO CourseAssignment - jak przy ręcznym przypisaniu przez ORG_ADMIN (wprost w bazie,
+    // mandatory:true, żeby liczby niżej odpowiadały "obowiązkowym" w dashboardzie).
+    employeeToken = await tenantPrisma.runInOrgContext(orgId, async (tx) => {
+      const employee = await tx.user.create({
+        data: { organizationId: orgId, email: `employee-${uniqueSuffix}@restart-dashboard-e2e-test.test`, passwordHash: 'unused-in-tests', role: 'EMPLOYEE', status: 'ACTIVE', emailVerifiedAt: new Date() },
+      });
+      await tx.courseAssignment.create({ data: { organizationId: orgId, userId: employee.id, courseId, mandatory: true } });
+      return signToken({ sub: employee.id, organizationId: orgId, role: 'EMPLOYEE', email: employee.email });
+    });
+
+    superAdminToken = await tenantPrisma.runInOrgContext(orgId, async (tx) => {
+      const superAdmin = await tx.user.create({
+        data: { organizationId: orgId, email: `super-admin-${uniqueSuffix}@restart-dashboard-e2e-test.test`, passwordHash: 'unused-in-tests', role: 'SUPER_ADMIN' },
+      });
+      return signToken({ sub: superAdmin.id, organizationId: orgId, role: 'SUPER_ADMIN', email: superAdmin.email });
+    });
+
+    // Ukończenie, potem restart: JEDEN aktywny wpis (NOT_STARTED) + JEDEN zarchiwizowany (COMPLETED) w bazie.
+    await request(app.getHttpServer()).post(`/courses/${courseId}/start`).set('Authorization', `Bearer ${employeeToken}`).expect(200);
+    const completion = await request(app.getHttpServer())
+      .post(`/courses/${courseId}/progress`)
+      .set('Authorization', `Bearer ${employeeToken}`)
+      .send({ blockIndex: 0 })
+      .expect(200);
+    firstCompletionIso = new Date(completion.body.completedAt).toISOString();
+    await request(app.getHttpServer()).post(`/courses/${courseId}/restart`).set('Authorization', `Bearer ${employeeToken}`).expect(200);
+  });
+
+  afterAll(async () => {
+    await prisma.organization.deleteMany({ where: { name: { endsWith: 'restart-dashboard-e2e-test.test' } } });
+    await prisma.course.deleteMany({ where: { id: courseId } });
+    await app.close();
+  });
+
+  it('GET /dashboard/overview: liczy tylko AKTYWNE przypisanie (NOT_STARTED) - mandatoryTotal/mandatoryCompleted NIE widzą archiwum', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/overview').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    // completionRate = 0/1 (aktywne NOT_STARTED), nie 1/2 i nie null - archiwum (COMPLETED) już się nie liczy.
+    expect(response.body.completionRate).toBe(0);
+    expect(response.body.overdueCount).toBe(0);
+  });
+
+  it('GET /dashboard/departments: "Brak działu" liczy tylko aktywne (1 obowiązkowy, 0 ukończonych)', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/departments').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    expect(response.body).toContainEqual(
+      expect.objectContaining({ departmentName: 'Brak działu', mandatoryTotal: 1, mandatoryCompleted: 0, completionRate: 0 }),
+    );
+  });
+
+  // complianceStatus: 'IN_PROGRESS' (dashboard-metrics.ts) NIE oznacza AssignmentStatus.IN_PROGRESS - aktywne
+  // przypisanie jest tu w rzeczywistości NOT_STARTED (restart, świeże, nikt jeszcze nie wołał /start); to nazwa
+  // koszyka zgodności ("obowiązkowe istnieją, żadne nie ukończone, nic nie przeterminowane"), nie odzwierciedlenie
+  // surowego statusu przypisania. Ważne jest to, że liczy się z AKTYWNEGO przypisania (totalMandatoryCoursesCount:
+  // 1, nie 2), nie z archiwalnego COMPLETED sprzed restartu.
+  it('GET /dashboard/users-status: status zgodności pracownika liczony z aktywnego przypisania, nie z archiwalnego COMPLETED', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/users-status').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    const employeeEmail = `employee-${uniqueSuffix}@restart-dashboard-e2e-test.test`;
+    const row = response.body.items.find((r: { email: string }) => r.email === employeeEmail);
+    expect(row).toMatchObject({
+      completedMandatoryCoursesCount: 0,
+      totalMandatoryCoursesCount: 1,
+      completionPercentage: 0,
+      complianceStatus: 'IN_PROGRESS',
+    });
+  });
+
+  it('GET /dashboard/export: "Ukończone/Wszystkie obowiązkowe" = 0/1 (aktywne), ale "Ostatnie ukończenie kursu" zostaje z ARCHIWUM (historia)', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/export?format=csv').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    const employeeEmail = `employee-${uniqueSuffix}@restart-dashboard-e2e-test.test`;
+    const line = (response.text as string).split('\r\n').find((l) => l.startsWith(`${employeeEmail},`));
+    expect(line).toContain('0/1');
+    expect(line).toContain(firstCompletionIso);
+  });
+
+  it('GET /dashboard/stats/trends: bieżący miesiąc widzi OBA przypisania w mianowniku (historia) - 2 obowiązkowe, 1 ukończone', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/stats/trends').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    const current = response.body[response.body.length - 1];
+    expect(current).toEqual(expect.objectContaining({ mandatoryTotal: 2, mandatoryCompleted: 1, completionRate: 50 }));
+  });
+
+  it('GET /dashboard/admin/organizations (SUPER_ADMIN): completionRate tylko z aktywnych, lastCourseCompletionAt z ARCHIWUM (historia)', async () => {
+    const response = await request(app.getHttpServer()).get('/dashboard/admin/organizations').set('Authorization', `Bearer ${superAdminToken}`).expect(200);
+    const entry = response.body.find((org: { id: string }) => org.id === orgId);
+    expect(entry).toEqual(expect.objectContaining({ completionRate: 0 }));
+    expect(new Date(entry.lastCourseCompletionAt).toISOString()).toBe(firstCompletionIso);
+  });
+});

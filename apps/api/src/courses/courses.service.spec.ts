@@ -106,6 +106,16 @@ describe('CoursesService.listMyCourses', () => {
     expect(result.totalBlocks).toBe(0);
   });
 
+  it('czyta tylko AKTYWNE przypisania (D-069: archivedAt: null) - historia po restarcie nie wraca jako "moje kursy"', async () => {
+    findMany.mockResolvedValue([]);
+
+    await service.listMyCourses('org-1', 'user-1');
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: 'org-1', userId: 'user-1', archivedAt: null } }),
+    );
+  });
+
   it('zwraca totalBlocks=0 dla kursu z pustą tablicą contentBlocks', async () => {
     findMany.mockResolvedValue([
       {
@@ -209,6 +219,17 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
     expect(courseFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: undefined }));
   });
 
+  it('listCatalog: przypisania "już mam ten kurs" czyta tylko AKTYWNE (D-069)', async () => {
+    courseAssignmentFindMany.mockResolvedValue([]);
+    courseFindMany.mockResolvedValue([]);
+
+    await service.listCatalog('org-1', 'user-1');
+
+    expect(courseAssignmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: 'org-1', userId: 'user-1', archivedAt: null } }),
+    );
+  });
+
   it('selfAssign tworzy przypisanie ZAWSZE z mandatory:false, niezależnie od treści kursu', async () => {
     courseFindUnique.mockResolvedValue({ id: 'course-1' });
     assignmentFindFirst.mockResolvedValue({ id: 'assignment-nowy' });
@@ -219,6 +240,9 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
       data: [{ organizationId: 'org-1', userId: 'user-1', courseId: 'course-1', mandatory: false }],
       skipDuplicates: true,
     });
+    expect(assignmentFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: 'org-1', userId: 'user-1', courseId: 'course-1', archivedAt: null } }),
+    );
     expect(result).toEqual({ assignmentId: 'assignment-nowy' });
   });
 
@@ -237,6 +261,143 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
 
     await expect(service.selfAssign('org-1', 'user-1', 'nie-ma-takiego')).rejects.toBeInstanceOf(NotFoundException);
     expect(createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('CoursesService.restart ("Rozpocznij od nowa", D-069)', () => {
+  let service: CoursesService;
+  let assignmentFindFirst: jest.Mock;
+  let assignmentUpdateMany: jest.Mock;
+  let assignmentCreate: jest.Mock;
+  let courseVersionFindFirst: jest.Mock;
+  let queryRaw: jest.Mock;
+
+  function assignmentFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'assignment-old',
+      status: 'COMPLETED',
+      mandatory: true,
+      dueDate: new Date('2026-01-01T00:00:00.000Z'),
+      course: { id: 'course-1' },
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    assignmentFindFirst = jest.fn();
+    assignmentUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
+    assignmentCreate = jest.fn().mockResolvedValue({ id: 'assignment-new' });
+    courseVersionFindFirst = jest.fn().mockResolvedValue({ id: 'version-2' });
+    queryRaw = jest.fn();
+
+    const tenantPrisma = {
+      runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          courseAssignment: { findFirst: assignmentFindFirst, updateMany: assignmentUpdateMany, create: assignmentCreate },
+          courseVersion: { findFirst: courseVersionFindFirst },
+          $queryRaw: queryRaw,
+        }),
+      ),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CoursesService,
+        { provide: TenantPrismaService, useValue: tenantPrisma },
+        { provide: GamificationService, useValue: { awardCourseCompletion: jest.fn() } },
+        configProvider,
+      ],
+    }).compile();
+
+    service = module.get(CoursesService);
+  });
+
+  it('archiwizuje stare przypisanie i tworzy nowe z mandatory/dueDate przepisanymi i przypiętą NAJNOWSZĄ wersją', async () => {
+    assignmentFindFirst.mockResolvedValue(assignmentFixture());
+
+    const result = await service.restart('org-1', 'user-1', 'course-1');
+
+    expect(assignmentUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'assignment-old', organizationId: 'org-1', archivedAt: null },
+      data: { archivedAt: expect.any(Date) },
+    });
+    expect(courseVersionFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { courseId: 'course-1' }, orderBy: { version: 'desc' } }),
+    );
+    expect(assignmentCreate).toHaveBeenCalledWith({
+      data: {
+        organizationId: 'org-1',
+        userId: 'user-1',
+        courseId: 'course-1',
+        mandatory: true,
+        dueDate: new Date('2026-01-01T00:00:00.000Z'),
+        courseVersionId: 'version-2',
+      },
+      select: { id: true },
+    });
+    expect(result).toEqual({ assignmentId: 'assignment-new' });
+  });
+
+  it('NIE woła GamificationService - XP/odznaki/ranking nietknięte samym restartem', async () => {
+    assignmentFindFirst.mockResolvedValue(assignmentFixture());
+    const gamification = { awardCourseCompletion: jest.fn() };
+    const tenantPrisma = {
+      runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          courseAssignment: { findFirst: assignmentFindFirst, updateMany: assignmentUpdateMany, create: assignmentCreate },
+          courseVersion: { findFirst: courseVersionFindFirst },
+          $queryRaw: queryRaw,
+        }),
+      ),
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CoursesService,
+        { provide: TenantPrismaService, useValue: tenantPrisma },
+        { provide: GamificationService, useValue: gamification },
+        configProvider,
+      ],
+    }).compile();
+    const isolatedService = module.get(CoursesService);
+
+    await isolatedService.restart('org-1', 'user-1', 'course-1');
+
+    expect(gamification.awardCourseCompletion).not.toHaveBeenCalled();
+  });
+
+  it('kurs NIEUKOŃCZONY (IN_PROGRESS/NOT_STARTED): 409, żadnej archiwizacji ani nowego przypisania', async () => {
+    assignmentFindFirst.mockResolvedValue(assignmentFixture({ status: 'IN_PROGRESS' }));
+
+    await expect(service.restart('org-1', 'user-1', 'course-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(assignmentUpdateMany).not.toHaveBeenCalled();
+    expect(assignmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('drugi restart zaraz po pierwszym (idempotencja): przypisanie już zarchiwizowane (updateMany trafia 0 wierszy) => 409', async () => {
+    assignmentFindFirst.mockResolvedValue(assignmentFixture());
+    assignmentUpdateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.restart('org-1', 'user-1', 'course-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(assignmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('brak własnego przypisania tego kursu => NotFoundException (nie 409)', async () => {
+    assignmentFindFirst.mockResolvedValue(null);
+
+    await expect(service.restart('org-1', 'user-1', 'course-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('findOwnAssignment/lockOwnAssignment czytają/blokują tylko przypisanie AKTYWNE (archivedAt: null w where / raw SQL)', async () => {
+    assignmentFindFirst.mockResolvedValue(assignmentFixture());
+
+    await service.restart('org-1', 'user-1', 'course-1');
+
+    expect(assignmentFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: 'org-1', userId: 'user-1', courseId: 'course-1', archivedAt: null } }),
+    );
+    expect(queryRaw).toHaveBeenCalled();
+    const [sqlParts] = queryRaw.mock.calls[0] as [TemplateStringsArray];
+    expect(sqlParts.join('')).toContain('archivedAt');
   });
 });
 

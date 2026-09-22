@@ -404,8 +404,9 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
 - **Testy e2e API działają w CI** (job `e2e` w `build-images`: kontenery `postgres:16` i `redis:7`, rola
   `cyberszkolo_app` z tego samego skryptu co `docker/postgres-init`, `prisma migrate deploy`, potem
   `jest --config ./test/jest-e2e.json --runInBand`); job `images` zależy od `test` i `e2e`. Lokalnie ok. 1 min.
-  **Nadal poza CI:** skrypt przeglądarkowy `scripts/e2e-registration.mjs` (Playwright wymaga przeglądarek i
-  zbudowanych aplikacji) - uruchamiany ręcznie przed wdrożeniem (`docs/e2e-registration.md`).
+  **Nadal poza CI:** skrypty przeglądarkowe `scripts/e2e-registration.mjs` i `scripts/e2e-module-01.mjs` (Playwright
+  wymaga przeglądarek i zbudowanych aplikacji) - uruchamiane ręcznie przed wdrożeniem (`docs/e2e-registration.md`,
+  `docs/e2e-module-01.md`).
 - **Sprzątanie GHCR usuwa stare wersje obrazów** (zostaje `:latest` i 3 najnowsze `sha-*`), więc
   wycofanie przez `IMAGE_TAG` działa tylko do 3 ostatnich buildów wstecz. Limit prywatnych paczek
   na planie Free (ok. 500 MB) może i tak być ciasny dla dwóch obrazów po 3 wersje - do sprawdzenia

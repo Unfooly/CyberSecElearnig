@@ -2,10 +2,11 @@ import { IsString, MaxLength } from 'class-validator';
 
 export class UpdateAvatarDto {
   // Celowo tylko kształt (string, rozsądna długość) w DTO - właściwa reguła
-  // biznesowa ("preset z listy ALBO poprawny URL http/https") jest w
-  // UsersService.assertValidAvatar, bo class-validator nie ma czytelnego
-  // sposobu wyrażenia takiej alternatywy deklaratywnie.
+  // biznesowa („wyłącznie preset z listy”, D-067) jest w
+  // UsersService.assertValidAvatar, razem z resztą zasad dotyczących avatara.
+  // Własne zdjęcie idzie osobną trasą (POST /users/me/avatar/image), a znacznik
+  // `upload:<hash>` ustawia wyłącznie serwer - tędy nie da się go podać.
   @IsString()
-  @MaxLength(2048)
+  @MaxLength(64)
   avatarUrl!: string;
 }

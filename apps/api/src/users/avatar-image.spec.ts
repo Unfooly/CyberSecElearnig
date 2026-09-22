@@ -1,0 +1,107 @@
+import { BadRequestException } from '@nestjs/common';
+import sharp from 'sharp';
+import {
+  AVATAR_IMAGE_MIME,
+  AVATAR_IMAGE_SIZE,
+  isUploadedAvatar,
+  MAX_AVATAR_UPLOAD_BYTES,
+  processAvatarUpload,
+  uploadedAvatarValue,
+} from './avatar-image';
+
+function asUpload(buffer: Buffer) {
+  return { buffer, size: buffer.length };
+}
+
+async function png(width: number, height: number, background = '#3355ff'): Promise<Buffer> {
+  return sharp({ create: { width, height, channels: 3, background } })
+    .png()
+    .toBuffer();
+}
+
+describe('processAvatarUpload', () => {
+  it('przyjmuje PNG i zwraca kwadratowy webp o ustalonym boku', async () => {
+    const result = await processAvatarUpload(asUpload(await png(800, 400)));
+
+    expect(result.mimeType).toBe(AVATAR_IMAGE_MIME);
+    const meta = await sharp(result.bytes).metadata();
+    expect(meta.format).toBe('webp');
+    expect(meta.width).toBe(AVATAR_IMAGE_SIZE);
+    expect(meta.height).toBe(AVATAR_IMAGE_SIZE);
+  });
+
+  it('przyjmuje JPEG i WebP', async () => {
+    const jpeg = await sharp({ create: { width: 300, height: 300, channels: 3, background: '#fff' } })
+      .jpeg()
+      .toBuffer();
+    const webp = await sharp({ create: { width: 300, height: 300, channels: 3, background: '#fff' } })
+      .webp()
+      .toBuffer();
+
+    await expect(processAvatarUpload(asUpload(jpeg))).resolves.toBeDefined();
+    await expect(processAvatarUpload(asUpload(webp))).resolves.toBeDefined();
+  });
+
+  it('USUWA metadane EXIF (np. współrzędne GPS ze zdjęcia z telefonu)', async () => {
+    const withExif = await sharp({ create: { width: 300, height: 300, channels: 3, background: '#fff' } })
+      .withMetadata({ exif: { IFD0: { Copyright: 'Jan Kowalski', Software: 'Aparat' } } })
+      .jpeg()
+      .toBuffer();
+    expect((await sharp(withExif).metadata()).exif).toBeDefined();
+
+    const result = await processAvatarUpload(asUpload(withExif));
+
+    expect((await sharp(result.bytes).metadata()).exif).toBeUndefined();
+  });
+
+  it('odrzuca SVG - to dokument, który potrafi wykonać skrypt', async () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'utf8');
+
+    await expect(processAvatarUpload(asUpload(svg))).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('odrzuca plik, który obrazem nie jest (rozpoznanie po bajtach, nie po nazwie ani Content-Type)', async () => {
+    // Nagłówek pliku wykonywalnego DOS/Windows: "MZ" + bajty 0x90 0x00. Bajty podajemy liczbowo,
+    // nigdy jako niewidoczne znaki w literale - inaczej git uznaje CAŁY plik za binarny i jego
+    // diff znika z przeglądu na GitHubie (ta sama konwencja co w scripts/content, commit 2269324).
+    const dosExecutable = Buffer.concat([Buffer.from('MZ', 'ascii'), Buffer.from([0x90, 0x00]), Buffer.from(' program', 'ascii')]);
+    await expect(processAvatarUpload(asUpload(dosExecutable))).rejects.toBeInstanceOf(BadRequestException);
+    await expect(processAvatarUpload(asUpload(Buffer.from('zwykły tekst', 'utf8')))).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('odrzuca plik-hybrydę: poprawny nagłówek PNG z doklejonymi śmieciami zamiast obrazu', async () => {
+    const fake = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from('<?php system($_GET[0]); ?>', 'utf8'),
+    ]);
+
+    await expect(processAvatarUpload(asUpload(fake))).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('odrzuca brak pliku i plik większy niż limit', async () => {
+    await expect(processAvatarUpload(undefined)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      processAvatarUpload({ buffer: await png(10, 10), size: MAX_AVATAR_UPLOAD_BYTES + 1 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('ta sama treść daje ten sam skrót, inna - inny (adres obrazka unieważnia cache)', async () => {
+    const first = await processAvatarUpload(asUpload(await png(300, 300, '#112233')));
+    const same = await processAvatarUpload(asUpload(await png(300, 300, '#112233')));
+    const other = await processAvatarUpload(asUpload(await png(300, 300, '#ffcc00')));
+
+    expect(first.hash).toBe(same.hash);
+    expect(first.hash).not.toBe(other.hash);
+    expect(first.hash).toMatch(/^[0-9a-f]{16}$/);
+  });
+});
+
+describe('znacznik wgranego avatara', () => {
+  it('rozpoznaje własny obrazek i odróżnia go od presetu', () => {
+    expect(isUploadedAvatar(uploadedAvatarValue('abc123'))).toBe(true);
+    expect(isUploadedAvatar('fox')).toBe(false);
+    expect(isUploadedAvatar(null)).toBe(false);
+  });
+});

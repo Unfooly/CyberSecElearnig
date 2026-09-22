@@ -52,6 +52,7 @@ export default function LeaderboardTable({
                     avatarUrl={entry.avatarUrl}
                     size="sm"
                     initials={initialsFrom(entry.firstName, entry.lastName, '')}
+                    userId={entry.userId}
                   />
                   <span>
                     {entry.firstName} {entry.lastName}

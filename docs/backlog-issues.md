@@ -342,6 +342,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (usunięty pin z D-052), zaktualizowane `docs/onboarding.md` i README (wersja Node).
 
 ### B-075 Awatary: tylko presety albo własny upload (zamiast dowolnego URL)
+- **Status: zrobione** (D-067): API przyjmuje wyłącznie presety, migracja wyczyściła awatary z zewnętrznych adresów do NULL, a własne
+  zdjęcie wgrywa się przez `POST /users/me/avatar/image` (obraz kodowany od nowa: 256×256 WebP bez EXIF, w bazie z RLS, serwowany przez
+  nasz origin). Testy: `avatar-image.spec.ts`, e2e avatara w `gamification.e2e-spec.ts` (w tym izolacja A/B), testy tras BFF i UI.
 - Etykiety: `P2`, `security`, `feature`, `decision-needed`, `mod:web` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
 - Opis: awatar z dowolnego adresu `https` (`<img src={avatarUrl}>`) nie mieści się w `img-src 'self' data: <CONTENT_BASE_URL>` (CSP z D-053), więc obrazek
   się nie załaduje; do czasu decyzji UI pokazuje inicjały (fallback przy błędzie ładowania). Nie poszerzamy `img-src` o `https:`.

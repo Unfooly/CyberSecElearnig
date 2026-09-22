@@ -43,6 +43,9 @@ const PROTECTED: Row[] = [
   { route: './users/[id]/route.ts', method: 'DELETE', params: { id: 'u1' } },
   { route: './users/[id]/resend-invite/route.ts', method: 'POST', params: { id: 'u1' } },
   { route: './users/me/avatar/route.ts', method: 'PATCH', body: { avatarUrl: 'preset:owl' } },
+  // Własne zdjęcie (D-067): wgranie (multipart) i usunięcie.
+  { route: './users/me/avatar/image/route.ts', method: 'POST', file: true },
+  { route: './users/me/avatar/image/route.ts', method: 'DELETE' },
   { route: './users/me/preferences/route.ts', method: 'PATCH', body: { narrationEnabled: false } },
   // Import pracowników
   { route: './users/import/preview/route.ts', method: 'POST', file: true },

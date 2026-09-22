@@ -51,4 +51,21 @@ describe('tts CLI: kody wyjścia i tryby', () => {
     expect(errors.join('\n')).toMatch(/Brak pliku/);
     expect(errors.join('\n')).not.toMatch(/R2_/);
   });
+
+  it('--assets nie wymaga ELEVENLABS_* (błąd dotyczy modułu, nie kluczy)', async () => {
+    expect(await main(['nie-ma-takiego-modulu', '--assets', '--yes'], {})).toBe(1);
+    expect(errors.join('\n')).toMatch(/Brak pliku/);
+    expect(errors.join('\n')).not.toMatch(/ELEVENLABS/);
+  });
+
+  it('--assets w trybie zapisu (nie --check/--dry-run) w CI: odmowa zanim cokolwiek zostanie przeczytane', async () => {
+    expect(await main(['modul', '--assets'], { CI: 'true' })).toBe(1);
+    expect(errors.join('\n')).toMatch(/CI=true/);
+  });
+
+  it('--assets --check działa w CI bez konfiguracji', async () => {
+    expect(await main(['nie-ma-takiego-modulu', '--assets', '--check'], { CI: 'true' })).toBe(1);
+    expect(errors.join('\n')).toMatch(/Brak pliku/);
+    expect(errors.join('\n')).not.toMatch(/CI=true|ELEVENLABS|R2_/);
+  });
 });

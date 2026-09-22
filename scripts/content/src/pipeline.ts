@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { alignmentToCues, splitSentences } from './cues.js';
 import { audioKey, manifestKey, narrationHash, sidecarKey } from './hash.js';
+import { contentIndex, contentNode, encode, isObject, type Json, readJsonFile, say, writeIfChanged } from './io.js';
 import { confirm, enforceMaxChars, formatPlan, summarizePlan, type PlannedNarration } from './plan.js';
 import { AUDIO_CONTENT_TYPE, IMMUTABLE_CACHE, JSON_CONTENT_TYPE, MUTABLE_CACHE } from './stores/key.js';
 import type { ObjectStore, TtsProvider } from './types.js';
@@ -14,12 +13,7 @@ import type { ObjectStore, TtsProvider } from './types.js';
 // module.json, a `audio.lock.json` (w repo) zapamiętuje skróty, głos i wersję partii: dzięki niemu `--check` działa OFFLINE (bez kluczy i sieci)
 // i wykrywa narrację, której tekst zmieniono bez ponownego generowania. Nagrania i sidecary (czasy napisów) są niemutowalne (nazwa z hashem).
 // Kolejność kontraktu: walidacja modułu -> plan -> limit znaków -> potwierdzenie -> DOPIERO WTEDY pierwsze wywołanie ElevenLabs.
-
-const requireCjs = createRequire(import.meta.url);
-const content = requireCjs('../../../packages/content/dist/node.js') as { parseModule: (input: unknown) => unknown };
-const contentSchema = requireCjs('../../../packages/content/dist/index.js') as {
-  FIELD_CLASSIFICATION: Record<string, { client: string[]; secret: string[] }>;
-};
+// Zasoby modułów (obrazy, avatary): assets.ts (osobny potok, --assets); oba dzielą io.ts (odczyt/zapis JSON, packages/content/dist).
 
 /**
  * Miejsca narracji, dla których GENERUJEMY audio (wzorce ścieżek; `*` = każdy element tablicy). Pliki audio, sidecary (pełny tekst napisów)
@@ -46,7 +40,7 @@ const toClassificationPath = (path: string[]) => path.map((part) => (part === '*
  * wisieć poza obiema listami). Rzuca przy niezgodności (nowe pole narracji w schemacie bez decyzji tutaj = błąd, nie ciche audio).
  */
 export function assertNarrationPathsClassified(
-  classification: Record<string, { client: string[]; secret: string[] }> = contentSchema.FIELD_CLASSIFICATION,
+  classification: Record<string, { client: string[]; secret: string[] }> = contentIndex.FIELD_CLASSIFICATION,
 ): void {
   const audioPrefixes = NARRATION_PATHS.map(toClassificationPath);
   const textOnlyPrefixes = TEXT_ONLY_NARRATION_PATHS.map(toClassificationPath);
@@ -82,12 +76,6 @@ export interface NarrationRef {
   holder: Record<string, unknown>;
   key: string;
   text: string;
-}
-
-type Json = Record<string, unknown>;
-
-function isObject(value: unknown): value is Json {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function expand(node: unknown, path: string[], trail: string[]): { holder: Json; key: string; trail: string[] }[] {
@@ -242,37 +230,6 @@ function parseSidecar(bytes: Uint8Array, key: string, voiceId: string, narration
 }
 
 const textSha = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
-const encode = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`);
-const say = (out: Writable, line: string) => void out.write(`${line}\n`);
-
-async function readJsonFile(path: string): Promise<Json | null> {
-  try {
-    return JSON.parse(await readFile(path, 'utf8')) as Json;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
-}
-
-/** Zapis pliku tylko przy zmianie treści (idempotencja: drugi przebieg nie dotyka plików ani czasów modyfikacji), przez plik tymczasowy. */
-async function writeIfChanged(path: string, bytes: Uint8Array): Promise<boolean> {
-  try {
-    const current = await readFile(path);
-    if (Buffer.compare(current, Buffer.from(bytes)) === 0) return false;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.${process.pid}.tmp`;
-  try {
-    await writeFile(temporary, bytes);
-    await rename(temporary, path);
-  } catch (error) {
-    await rm(temporary, { force: true });
-    throw error;
-  }
-  return true;
-}
 
 export async function runPipeline(params: PipelineParams): Promise<PipelineResult> {
   assertNarrationPathsClassified(); // fail-closed: schemat treści a lista pól z audio muszą się zgadzać, zanim cokolwiek trafi do publicznego magazynu
@@ -281,7 +238,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   const raw = await readJsonFile(modulePath);
   if (!raw) throw new Error(`Brak pliku ${modulePath}.`);
   // 1. Walidacja PRZED czymkolwiek innym: zły moduł nie zużyje budżetu ani nie trafi do magazynu.
-  content.parseModule(raw);
+  contentNode.parseModule(raw);
   const slug = String(raw.slug);
   // Klucze audio i manifest powstają ze sluga z modułu: musi to być moduł z tego katalogu, inaczej zapis trafiłby do przestrzeni innego modułu.
   if (slug !== basename(resolve(params.moduleDir))) throw new Error(`Slug w module.json ("${slug}") różni się od nazwy katalogu modułu.`);
@@ -397,7 +354,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     ref.holder.durationMs = sidecar.durationMs;
     ref.holder.cues = sidecar.cues;
   }
-  content.parseModule(raw);
+  contentNode.parseModule(raw);
   const entries: Record<string, LockEntry> = only && lock ? { ...lock.entries } : {};
   for (const ref of selected) {
     entries[ref.id] = { hash: hashFromKey(ref.key), key: ref.key, textSha: textSha(ref.text), durationMs: sidecars.get(ref.id)!.durationMs };

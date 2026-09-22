@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assertBlockId, assertSlug, assertVersion, audioKey, contentHash, manifestKey, narrationHash, sidecarKey } from './hash.js';
+import { assertBlockId, assertSlug, assertVersion, assetExt, assetKey, audioKey, contentHash, manifestKey, narrationHash, sidecarKey } from './hash.js';
 
 const base = { text: 'Spójrz na adres nadawcy.', model: 'eleven_multilingual_v2', language: 'pl', voiceId: 'voice-1' };
 
@@ -63,5 +63,43 @@ describe('contentHash', () => {
     const a = contentHash(new TextEncoder().encode('<svg/>'));
     expect(a).toMatch(/^[0-9a-f]{8}$/);
     expect(contentHash(new TextEncoder().encode('<svg />'))).not.toBe(a);
+  });
+});
+
+describe('assetKey / assetExt', () => {
+  it('assets/<slug>/<nazwa>.<hash8>.<ext>; skrót przed rozszerzeniem, bez podkatalogu', () => {
+    expect(assetKey({ slug: 'sprawa-testowa', relativePath: 'office.svg', hash8: 'a1b2c3d4' })).toBe('assets/sprawa-testowa/office.a1b2c3d4.svg');
+  });
+
+  it('zachowuje podkatalog źródłowy', () => {
+    expect(assetKey({ slug: 's', relativePath: 'scenes/office.svg', hash8: 'a1b2c3d4' })).toBe('assets/s/scenes/office.a1b2c3d4.svg');
+  });
+
+  it('rozszerzenie małymi literami, niezależnie od wielkości liter źródła', () => {
+    expect(assetKey({ slug: 's', relativePath: 'Office.SVG', hash8: 'a1b2c3d4' })).toBe('assets/s/Office.a1b2c3d4.svg');
+    expect(assetExt('Office.SVG')).toBe('svg');
+  });
+
+  it('skrót musi mieć 8 znaków hex', () => {
+    expect(() => assetKey({ slug: 's', relativePath: 'x.svg', hash8: 'abc' })).toThrow();
+    expect(() => assetKey({ slug: 's', relativePath: 'x.svg', hash8: 'ZZZZZZZZ' })).toThrow();
+  });
+
+  it.each(['office', '.svg', 'dir/'])('ścieżka bez nazwy i rozszerzenia odrzucona: "%s"', (relativePath) => {
+    expect(() => assetKey({ slug: 's', relativePath, hash8: 'a1b2c3d4' })).toThrow();
+    expect(() => assetExt(relativePath)).toThrow();
+  });
+
+  it('backslash nie jest separatorem (jedna reguła co assertSafeKey w assets.ts: tylko "/")', () => {
+    expect(() => assetKey({ slug: 's', relativePath: 'a\\office.svg', hash8: 'a1b2c3d4' })).toThrow();
+  });
+
+  it.each(['..', '../x.svg', 'a/../../b.svg'])('ścieżka nie może wyjść poza katalog zasobów: "%s"', (relativePath) => {
+    expect(() => assetKey({ slug: 's', relativePath, hash8: 'a1b2c3d4' })).toThrow();
+  });
+
+  it('slug zastrzeżony "assets" (koliduje z prefiksem kluczy zasobów)', () => {
+    expect(() => assetKey({ slug: 'assets', relativePath: 'x.svg', hash8: 'a1b2c3d4' })).toThrow(/zastrzeżon/);
+    expect(() => assertSlug('assets')).toThrow(/zastrzeżon/);
   });
 });

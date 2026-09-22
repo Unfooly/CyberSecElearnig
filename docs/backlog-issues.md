@@ -382,6 +382,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: zapis pary module+lock jako jedna operacja (albo lock najpierw z oznaczeniem „w toku”), maskowanie także zakodowanych form; przy odrzuconym
   sidecarze nowy klucz (np. z licznikiem regeneracji w skrócie) zamiast nadpisania; test.
 
+### B-084 Lint SVG (scripts/content) parserem XML zamiast regexów na surowym tekście
+- Etykiety: `P3`, `tech-debt`, `security`, `mod:kursy` · Źródło: PR 3 (przegląd bezpieczeństwa commitu 5), decyzja właściciela 2026-09-22
+- Opis: `svg-lint.ts` sprawdza SVG regexami na tekście (obrona w głąb - klient renderuje SVG wyłącznie przez `<img>`, silnik szkoleń pkt 4;
+  druga linia to CSP/`X-Content-Type-Options` na `content.unfooly.com`, docs/content-pipeline.md). Regexy po przeglądzie łapią znane obejścia
+  (prefiks przestrzeni nazw `<x:script>`, numeryczne encje `&#106;avascript:`, złe kodowanie UTF-16 zamiast UTF-8 - odrzucane osobno w
+  `assets.ts` przed lintem), ale nie są parserem: komentarz XML rozcinający nazwę tagu, `CDATA`, UTF-7 bez BOM i inne sztuczki XML mogą wciąż
+  ominąć dopasowanie. Ryzyko dziś ograniczone: treść tworzy wyłącznie zaufany operator (D-058).
+- Akceptacja: lint na drzewie XML (np. `fast-xml-parser` w trybie XML) sprawdzający local-name elementu/atrybutu po rozwiązaniu namespace,
+  zamiast dopasowań tekstowych; przed rozszerzeniem autorstwa treści poza operatora (temat wraca też w D-058 pkt 5a).
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

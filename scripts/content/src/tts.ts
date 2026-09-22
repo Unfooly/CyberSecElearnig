@@ -2,6 +2,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { assertNotCi, readEnvFile, redactSecrets, requireVars, resolveConfig, type Config } from './env.js';
+import { runAssetsPipeline } from './assets.js';
 import { assertSlug, assertVersion } from './hash.js';
 import { runPipeline } from './pipeline.js';
 import { DEFAULT_MAX_CHARS } from './plan.js';
@@ -11,8 +12,9 @@ import { createR2Store } from './stores/r2.js';
 import type { ObjectStore } from './types.js';
 
 // Użycie: npm run tts --prefix scripts/content -- <slug> [--storage local|r2] [--version v1] [--only blockId,...] [--max-chars 20000]
-//                                                    [--yes] [--dry-run] [--check]
+//                                                    [--yes] [--dry-run] [--check] [--assets]
 // Klucze tylko w scripts/content/.env.local (poza gitem, CI i kontenerami). --check i --dry-run działają bez kluczy i bez sieci.
+// --assets: osobny tryb (bez ElevenLabs) - publikuje obrazy/avatary z packages/content/modules/<slug>/assets/ zamiast generować audio.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = resolve(HERE, '..');
@@ -25,7 +27,8 @@ const USAGE = `Użycie: npm run tts --prefix scripts/content -- <slug> [opcje]
   --max-chars <n>      limit znaków do wygenerowania w jednym przebiegu (domyślnie ${DEFAULT_MAX_CHARS})
   --yes                bez pytania o potwierdzenie
   --dry-run            tylko plan (bez sieci, kluczy i zapisów)
-  --check              offline: czy nagrania odpowiadają aktualnym tekstom (bez kluczy i sieci)`;
+  --check              offline: czy nagrania/zasoby odpowiadają aktualnej treści (bez kluczy i sieci)
+  --assets             publikuj zasoby modułu (obrazy, avatary) zamiast generować audio; nie wymaga ELEVENLABS_*`;
 
 /** Kody wyjścia: 0 = OK, 1 = błąd wykonania albo --check wykrył problemy, 2 = błędne użycie (argumenty). */
 export async function main(argv: string[], processEnv: NodeJS.ProcessEnv = process.env): Promise<number> {
@@ -52,6 +55,7 @@ interface Parsed {
   yes: boolean;
   dryRun: boolean;
   check: boolean;
+  assets: boolean;
 }
 
 function parseArguments(argv: string[]): Parsed | 'help' {
@@ -66,6 +70,7 @@ function parseArguments(argv: string[]): Parsed | 'help' {
       yes: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       check: { type: 'boolean', default: false },
+      assets: { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
   });
@@ -81,6 +86,7 @@ function parseArguments(argv: string[]): Parsed | 'help' {
     yes: values.yes!,
     dryRun: values['dry-run']!,
     check: values.check!,
+    assets: values.assets!,
   };
 }
 
@@ -97,6 +103,18 @@ async function execute(args: Parsed, processEnv: NodeJS.ProcessEnv): Promise<num
     let store: ObjectStore;
     if (args.storage === 'r2' && !offline) store = await createR2Store(config);
     else store = new LocalStore(join(REPO_ROOT, 'apps', 'web', 'public', 'content'));
+
+    if (args.assets) {
+      const result = await runAssetsPipeline({
+        moduleDir: join(REPO_ROOT, 'packages', 'content', 'modules', args.slug),
+        store,
+        dryRun: args.dryRun,
+        check: args.check,
+        only: args.only,
+        output: process.stdout,
+      });
+      return result.problems.length > 0 ? 1 : 0;
+    }
 
     let tts: ElevenLabsProvider | undefined;
     let voiceId = '';

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { assertSafeKey } from './stores/key.js';
 
 // Nazwa pliku audio zawiera skrót jego wejścia, więc plik jest niemutowalny i idempotentny: ten sam tekst, model, język i głos to ten sam klucz
 // (skrypt robi HEAD przed generowaniem i nie pali minut ElevenLabs), a zmiana któregokolwiek z nich to NOWY plik (stary zostaje, bo moduły w
@@ -26,7 +27,7 @@ export function contentHash(bytes: Uint8Array, length = 8): string {
 // swój prefiks (bez "..", "/", "\", schematu ani znaków specjalnych), niezależnie od tego, skąd pochodzi slug czy id bloku.
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
-const RESERVED_SLUGS = new Set(['audio', 'mascot']);
+const RESERVED_SLUGS = new Set(['audio', 'mascot', 'assets']);
 
 export function assertSlug(slug: string): string {
   if (!ID.test(slug) || RESERVED_SLUGS.has(slug.toLowerCase())) {
@@ -63,4 +64,35 @@ export function sidecarKey(audioObjectKey: string): string {
 /** Klucz manifestu partii: `audio/<slug>/<wersja>/manifest.json`. */
 export function manifestKey(slug: string, version: string): string {
   return `audio/${assertSlug(slug)}/${assertVersion(version)}/manifest.json`;
+}
+
+/**
+ * Rozbija ścieżkę zasobu (względem katalogu assets/ modułu) na katalog, nazwę i rozszerzenie (małymi literami). Separator to WYŁĄCZNIE "/"
+ * (bez normalizacji backslasha): ścieżka pochodzi z pola modułu (schemat treści - ASSET_PATH w common.ts - i tak odrzuca "\") albo z
+ * assets.lock.json zapisanego przez ten sam skrypt, więc backslash tu nie jest wspieranym wejściem. `assetKey` poniżej i tak by go odrzucił
+ * (assertSafeKey na złożonym kluczu), tak samo jak `readSource` w assets.ts (assertSafeKey na surowym `original`) - jedna reguła w obu miejscach.
+ */
+function splitAssetPath(relativePath: string): { dir: string; name: string; ext: string } {
+  const lastSlash = relativePath.lastIndexOf('/');
+  const dir = lastSlash >= 0 ? relativePath.slice(0, lastSlash + 1) : '';
+  const file = lastSlash >= 0 ? relativePath.slice(lastSlash + 1) : relativePath;
+  const dot = file.lastIndexOf('.');
+  if (dot <= 0) throw new Error(`Zasób "${relativePath}" musi mieć nazwę i rozszerzenie.`);
+  return { dir, name: file.slice(0, dot), ext: file.slice(dot + 1).toLowerCase() };
+}
+
+/** Rozszerzenie pliku zasobu (małymi literami), np. "svg". */
+export function assetExt(relativePath: string): string {
+  return splitAssetPath(relativePath).ext;
+}
+
+/**
+ * Klucz pliku zasobu względem bazy zasobów: `assets/<slug>/<ścieżka>/<nazwa>.<hash8>.<ext>` (wersjonowana nazwa: skrót TREŚCI pliku
+ * wstawiony przed rozszerzeniem, np. `office.a1b2c3d4.svg` - decyzja właściciela, PR 3). Plik jest więc niemutowalny jak audio: ten sam
+ * zasób to ten sam klucz (HEAD przed publikacją pomija już opublikowane), a zmiana treści to NOWY plik (stary zostaje dla starszych wersji).
+ */
+export function assetKey(parts: { slug: string; relativePath: string; hash8: string }): string {
+  if (!/^[0-9a-f]{8}$/.test(parts.hash8)) throw new Error('Niepoprawny skrót zasobu.');
+  const { dir, name, ext } = splitAssetPath(parts.relativePath);
+  return assertSafeKey(`assets/${assertSlug(parts.slug)}/${dir}${name}.${parts.hash8}.${ext}`);
 }

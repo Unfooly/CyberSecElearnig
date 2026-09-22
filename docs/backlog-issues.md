@@ -448,6 +448,28 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `mandatory` (domyślnie z `course.mandatory` - D-065 pkt 4) i `dueDate`; endpoint tworzy `CourseAssignment` masowo w
   JEDNEJ organizacji (żaden nowy wyjątek od Zasady nr 1); test izolacji A/B; UI w panelu admina.
 
+### B-091 "Rozpocznij od nowa" - powtórka własnego, ukończonego/nieobowiązkowego przypisania
+- Etykiety: `P2`, `feature`, `mod:kursy` · Źródło: zgłoszone przez właściciela produktu przy okazji ręcznego resetu
+  przypisania modułu 1 (SQL na VPS), D-065
+- Opis: dziś jedyny sposób przejść kurs jeszcze raz to ręczny `DELETE` przypisania w bazie - potrzebny przycisk na
+  ekranie wyniku ukończonego kursu (WŁASNE przypisanie, tylko gdy `mandatory: false` LUB status `COMPLETED` - nie
+  dla trwającego obowiązkowego, tego przypisania nie wolno przerwać w trakcie). Ma ARCHIWIZOWAĆ stare przypisanie
+  (nie kasować - zostaje w historii do raportów compliance/dashboardu), nie tworzyć go od zera przez `DELETE`, i
+  przypiąć NAJNOWSZĄ wersję kursu (kurs mógł się zmienić od pierwszego podejścia). Do zrobienia razem z B-089 (oba
+  dotykają tworzenia `CourseAssignment` poza self-assign, sensowne zaprojektować wspólnie).
+- **Uwaga projektowa (sprawdzone w kodzie przy okazji SQL-a wyżej):** `GamificationService.awardCourseCompletion`
+  NIE wie nic o `courseId` - każde ukończenie kursu (w tym POWTÓRZONE) dolicza `COURSE_COMPLETION_XP` (+ ewentualny
+  bonus za 100%) PONOWNIE do `User.xp`. Odznaki (`UserBadge`, `@@unique([userId, badgeId])`) są bezpieczne
+  (`tryUnlockBadge` łapie naruszenie unikalności i cicho pomija - zero duplikatów, zero podwójnego XP z odznaki), ale
+  sama flaga ukończenia kursu NIE jest odznaką i XP z samego ukończenia zawsze się dolicza. Decyzja do podjęcia razem
+  z tym zadaniem: czy "Rozpocznij od nowa" ma dawać XP ponownie (jak dziś przy ręcznym resetowaniu w bazie), czy
+  archiwizowane/powtórzone przypisanie ma być wykluczone z przyznawania XP (wymaga oznaczenia przypisania jako
+  "powtórka" i sprawdzenia tego w `awardCourseCompletion`, którego dziś nie ma).
+- Akceptacja: przycisk widoczny wyłącznie dla WŁASNEGO przypisania z `mandatory: false` lub status `COMPLETED`;
+  stare przypisanie trafia do archiwum (nowe pole/status, nie `DELETE` - historia dla raportów zostaje); nowe
+  przypisanie wskazuje NAJNOWSZĄ `CourseVersion` kursu; test izolacji A/B; jawna decyzja produktowa o XP (patrz
+  uwaga projektowa wyżej) zapisana w `docs/decisions.md` przed implementacją.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

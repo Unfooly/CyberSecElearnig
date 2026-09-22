@@ -13,6 +13,8 @@ vi.mock('next/navigation', () => ({
     throw new Error(`REDIRECT:${url}`);
   }),
   usePathname: () => '/courses',
+  // Topbar renderuje UserMenu (wylogowanie), które korzysta z routera.
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
 function mockCookieValue(value: string | undefined) {

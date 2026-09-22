@@ -1,30 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Logo from '@/components/Logo';
 import Button from '@/components/ui/Button';
+import { useLogout } from '@/lib/use-logout';
 
 // Uproszczony nagłówek dla admina organizacji, która czeka na weryfikację
 // domeny: tylko ekrany dostępne dla PENDING (weryfikacja, ustawienia) i
 // wylogowanie. Pełny Topbar prowadziłby do stron blokowanych przez API.
 export default function PendingHeader() {
-  const router = useRouter();
   const pathname = usePathname();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  async function logout() {
-    setIsLoggingOut(true);
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {
-      // Awaria sieci: i tak przechodzimy na /login (tam sesja zostanie odrzucona/odświeżona).
-    } finally {
-      router.push('/login');
-      router.refresh();
-    }
-  }
+  // Ta sama ścieżka wylogowania co w UserMenu (Topbar) - patrz lib/use-logout.ts.
+  const { logout, isLoggingOut } = useLogout();
 
   const link = (href: string, label: string) => (
     <Link

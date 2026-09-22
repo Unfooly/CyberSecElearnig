@@ -218,6 +218,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: zmiana ról w middleware bez zmiany `home-path.ts` kończy się wylogowaniem tuż po zalogowaniu.
 - Akceptacja: eksport `PROTECTED_ROUTES` i test, że dla każdej roli strona startowa mieści się w dopuszczonych trasach.
 
+### B-088 Ostrzeżenie w UI, gdy wylogowanie nie unieważniło sesji w API (`sessionRevoked: false`)
+- Etykiety: `P2`, `security`, `mod:web` · Źródło: przegląd bezpieczeństwa PR „menu użytkownika w Topbarze”
+- Opis: trasa BFF `apps/web/src/app/api/auth/logout/route.ts` zwraca `{ success: true, sessionRevoked: false }`, gdy `apps/api` nie
+  potwierdziło unieważnienia (5xx, 429, timeout, awaria sieci). Cookies są wtedy i tak czyszczone, ale refresh token w bazie pozostaje
+  ważny aż do naturalnego wygaśnięcia (do 7 dni). Wspólny hook `apps/web/src/lib/use-logout.ts` (UserMenu w Topbarze, PendingHeader) nie
+  czyta odpowiedzi, więc użytkownik dostaje ciche „wylogowano” - istotne na komputerze współdzielonym. Stan sprzed tej zmiany (ten sam
+  brak był w PendingHeader), ale menu w Topbarze jest teraz głównym punktem wylogowania w aplikacji.
+- Akceptacja: `useLogout` czyta `sessionRevoked` z odpowiedzi; przy `false` użytkownik widzi ostrzeżenie (np. na `/login`) z odnośnikiem
+  do „Wyloguj wszędzie” (`/api/auth/logout-all`, ekran ustawień); test dla obu wariantów odpowiedzi.
+
 ### B-042 Współdzielone DTO w `packages/shared`
 - Etykiety: `P3`, `tech-debt`, `mod:web` · Źródło: README
 - Opis: frontend ręcznie duplikuje typy DTO z API (dashboard, kursy, import, phishing) - ryzyko rozjazdu przy zmianie backendu.

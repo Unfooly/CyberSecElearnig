@@ -1,24 +1,93 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
+import { Upload } from 'lucide-react';
 import Card, { CardHeader } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import Button, { buttonClasses } from '@/components/ui/Button';
+import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { AVATAR_PRESETS } from '@/lib/gamification-types';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+import { isUploadedAvatar } from '@/lib/avatar';
+
+/** Ten sam limit co w apps/api (MAX_AVATAR_UPLOAD_BYTES) - tu tylko po to, żeby nie wysyłać za dużego pliku. */
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 /**
- * Wybór avatara w ustawieniach konta. Wcześniej ta sama siatka presetów żyła w
- * modalu otwieranym z karty „Twoje osiągnięcia” (`AvatarPickerModal`); na ekranie
- * ustawień modal byłby zbędnym krokiem, więc wybór jest sekcją strony (D-066).
- * Zapis idzie niezmienioną ścieżką: PATCH /api/users/me/avatar (trasa BFF).
+ * Avatar w ustawieniach konta: gotowe presety albo własne zdjęcie (D-067).
+ * Presety zapisuje PATCH /api/users/me/avatar, zdjęcie POST /api/users/me/avatar/image
+ * (obraz jest po stronie API kodowany od nowa: 256x256, bez metadanych).
+ * Wcześniej ta sama siatka presetów żyła w modalu otwieranym z karty „Twoje osiągnięcia”
+ * (`AvatarPickerModal`); na ekranie ustawień modal byłby zbędnym krokiem (D-066).
  */
 export default function AvatarSettings({ initialAvatarUrl }: { initialAvatarUrl: string | null }) {
   // Zapisany stan (do porównania) i bieżący wybór - "Zapisz" ma sens tylko, gdy się różnią.
   const [savedAvatarUrl, setSavedAvatarUrl] = useState(initialAvatarUrl);
   const [selected, setSelected] = useState<string | null>(initialAvatarUrl);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Zapis avatara (preset albo plik) w jednym miejscu: stan lokalny, pasek na górze i komunikat.
+  function applySaved(avatarUrl: string | null) {
+    setSavedAvatarUrl(avatarUrl);
+    setSelected(avatarUrl);
+    setIsSaved(true);
+    // Topbar (osobny komponent, na każdej stronie) nasłuchuje tego zdarzenia
+    // i od razu podmienia avatar - bez przeładowania strony.
+    window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: avatarUrl }));
+  }
+
+  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Pole czyścimy od razu: bez tego wybranie TEGO SAMEGO pliku po błędzie nie wywołałoby zmiany.
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError('Plik jest za duży (maksymalnie 2 MB).');
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+    setIsSaved(false);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await fetch('/api/users/me/avatar/image', { method: 'POST', body });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setError(data?.message ?? 'Nie udało się wgrać zdjęcia.');
+        return;
+      }
+      applySaved(data.avatarUrl as string);
+    } catch {
+      setError('Nie udało się połączyć z serwerem. Spróbuj ponownie.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRemoveImage() {
+    setIsUploading(true);
+    setError(null);
+    setIsSaved(false);
+    try {
+      const response = await fetch('/api/users/me/avatar/image', { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.message ?? 'Nie udało się usunąć zdjęcia.');
+        return;
+      }
+      applySaved(null);
+    } catch {
+      setError('Nie udało się połączyć z serwerem. Spróbuj ponownie.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function handleSave() {
     if (!selected) {
@@ -40,12 +109,7 @@ export default function AvatarSettings({ initialAvatarUrl }: { initialAvatarUrl:
         return;
       }
 
-      // Topbar (osobny komponent, na każdej stronie) nasłuchuje tego zdarzenia
-      // i od razu podmienia inicjały na nowy avatar - bez przeładowania strony.
-      window.dispatchEvent(new CustomEvent(AVATAR_CHANGED_EVENT, { detail: data.avatarUrl as string }));
-      setSavedAvatarUrl(data.avatarUrl as string);
-      setSelected(data.avatarUrl as string);
-      setIsSaved(true);
+      applySaved(data.avatarUrl as string);
     } catch {
       setError('Nie udało się połączyć z serwerem. Spróbuj ponownie.');
     } finally {
@@ -85,6 +149,34 @@ export default function AvatarSettings({ initialAvatarUrl }: { initialAvatarUrl:
               <Icon size={24} strokeWidth={2} aria-hidden="true" />
             </button>
           ))}
+        </div>
+
+        <div className="mb-5 border-t border-border pt-5">
+          <h3 className="mb-1 text-sm font-bold">Własne zdjęcie</h3>
+          <p className="mb-3 text-sm text-muted">
+            PNG, JPEG albo WebP, do 2 MB. Zdjęcie przycinamy do kwadratu 256×256 i zapisujemy bez metadanych (m.in. bez
+            lokalizacji z aparatu).
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <AvatarDisplay avatarUrl={savedAvatarUrl} size="md" label="Twój avatar" />
+            <label className={`${buttonClasses('secondary')} cursor-pointer`}>
+              <Upload size={16} strokeWidth={2} aria-hidden="true" />
+              {isUploading ? 'Wgrywanie...' : 'Wgraj zdjęcie'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                disabled={isUploading}
+                onChange={handleUpload}
+              />
+            </label>
+            {isUploadedAvatar(savedAvatarUrl) && (
+              <Button variant="ghost" onClick={handleRemoveImage} disabled={isUploading}>
+                Usuń zdjęcie
+              </Button>
+            )}
+          </div>
         </div>
 
         {error && (

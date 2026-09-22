@@ -16,9 +16,20 @@ enum Plan {
 
 enum Role {
   SUPER_ADMIN
+  /// Partner obsługujący wiele organizacji klienckich (D-069). Nadaje ją wyłącznie operator.
+  RESELLER_ADMIN
   ORG_ADMIN
   DEPARTMENT_MANAGER
   EMPLOYEE
+}
+
+/// Organizacja kliencka (domyślnie) albo organizacja partnera-resellera (D-069).
+/// Reseller jest zwykłą organizacją, dzięki czemu logowanie, sesje, zaproszenia i RLS
+/// działają bez żadnego nowego mechanizmu - różni się tylko rolą swoich użytkowników
+/// i tym, że nie ma pracowników ani szkoleń.
+enum OrganizationKind {
+  CLIENT
+  RESELLER
 }
 
 enum CourseCategory {
@@ -76,6 +87,8 @@ model Organization {
   // Nazwa wyświetlana podana przy rejestracji (NIE jest wyprowadzana z domeny
   // e-maila i NIE jest unikalna - o własności domeny rozstrzyga weryfikacja DNS).
   name                    String
+  /// CLIENT (domyślnie) albo RESELLER - organizacja partnera, tworzona wyłącznie przez operatora (D-069).
+  kind                    OrganizationKind   @default(CLIENT)
   plan                    Plan               @default(TRIAL)
   seatsLimit              Int                @default(10)
   // Domyślnie PENDING_DOMAIN_VERIFICATION (fail-closed dla nowych organizacji).
@@ -118,6 +131,10 @@ model Organization {
   pendingAdminClaims         PendingAdminClaim[]
   threatReportNotification   ThreatReportNotificationState?
   userAvatarImages           UserAvatarImage[]
+  /// Klienci obsługiwani przez tę organizację, gdy jest resellerem (D-069).
+  resellerClients            ResellerAssignment[] @relation("ResellerClients")
+  /// Przypisanie do resellera, gdy ta organizacja jest klientem (najwyżej jedno).
+  resellerAssignment         ResellerAssignment?  @relation("ClientReseller")
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -811,6 +828,27 @@ model Badge {
   unlockedBy UserBadge[]
 
   @@map("badges")
+}
+
+/// Kto obsługuje którą organizację kliencką (D-069, zgłoszenie B-092). Tabela GLOBALNA -
+/// jak `organizations`, bez RLS: to metadana platformy, nie dane klienckie. Zapis i odczyt
+/// wyłącznie przez endpointy operatora (SUPER_ADMIN) oraz listę własnych klientów resellera,
+/// gdzie warunek `resellerOrganizationId` bierze się z tokena, nie z żądania.
+model ResellerAssignment {
+  id                     String   @id @default(cuid())
+  /// Organizacja partnera (`kind = RESELLER`).
+  resellerOrganizationId String
+  /// Organizacja kliencka - najwyżej jeden reseller na klienta.
+  organizationId         String   @unique
+  assignedAt             DateTime @default(now())
+  /// Kopia adresu operatora, który przypisał - przeżywa usunięcie jego konta (rozliczalność).
+  assignedByEmail        String   @db.VarChar(254)
+
+  reseller     Organization @relation("ResellerClients", fields: [resellerOrganizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation("ClientReseller", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([resellerOrganizationId])
+  @@map("reseller_assignments")
 }
 
 /// Własny avatar wgrany przez użytkownika (D-067, zgłoszenie B-075). Osobna tabela,

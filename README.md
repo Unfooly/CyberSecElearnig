@@ -515,19 +515,26 @@ zaproszeniem: `docs/user-import.md`. Pozostałe punkty, do zrobienia w osobnych 
 Z code review modułu kursów (`apps/api/src/courses`). Wyciek klucza odpowiedzi w `/start` i
 możliwość ukończenia kursu z pominięciem ocenianych bloków są już naprawione. Pozostałe punkty:
 
-- **`ON DELETE CASCADE` z `courses` do `course_assignments`**
-  (`apps/api/prisma/migrations/*_add_courses_and_assignments/migration.sql`) — usunięcie
-  wiersza kursu bezpowrotnie kasuje `score`/`completedAt` wszystkich organizacji, które go
-  ukończyły. Dziś nie ma endpointu usuwającego kursy, więc nie jest to pilne, ale na platformie
-  sprzedawanej pod kątem audytów zgodności warto rozważyć `RESTRICT` + archiwizację kursów
-  zamiast hard delete, zanim taki endpoint powstanie.
-- **Nieznany `block.type` w `contentBlocks` jest cicho traktowany jak blok nieoceniany**
-  (`CoursesService.evaluateBlock`) — niska waga, bo treść kursów jest dziś zarządzana wyłącznie
-  administracyjnie (brak endpointu tworzenia kursów), ale warto to zauważyć, zanim ktoś zacznie
-  importować treść z zewnętrznego źródła.
-- **Brak endpointów administracyjnych** do tworzenia `Course` i przypisywania `CourseAssignment`
-  — świadomie poza zakresem tego zadania (testy seedują dane bezpośrednio przez Prisma); osobne
-  zadanie, gdy będzie potrzebny panel `ORG_ADMIN`/`SUPER_ADMIN` do zarządzania treścią.
+- ~~`ON DELETE CASCADE` z `courses` do `course_assignments`~~ — **rozwiązane** (silnik szkoleń, D-051 pkt 6/B-032):
+  `course_assignments` → `courses` i → `course_versions` są dziś `ON DELETE RESTRICT`
+  (`apps/api/prisma/schema.prisma`), więc kurs z choćby jednym przypisaniem nie da się usunąć -
+  `score`/`completedAt` nigdy nie znikają "po cichu" razem z kursem. Zostaje: **archiwizacja
+  kursów zamiast usuwania** (backlog B-071, `docs/backlog-issues.md`) - dziś nie ma sposobu na
+  wycofanie kursu z katalogu bez usuwania, a usunąć i tak się nie da, gdy ktoś go ukończył.
+- **Nieznany `block.type` z importu treści jest odrzucany PRZY IMPORCIE** (nie w runtime) - od PR 4
+  (`content-import`, D-051/D-062) jedyna administracyjna droga dodania treści waliduje ją w całości
+  przez `parseModule` (schemat `.strict()` + unia dyskryminowana typu bloku) ZANIM cokolwiek trafi
+  do bazy, więc nieznany typ bloku nigdy nie dotrze do `CoursesService`/`evaluateSubmit`. Dotyczy to
+  wyłącznie treści z importu (`schemaVersion` ≥ 2); kursy tworzone wprost (`schemaVersion` 1, np.
+  testy) nadal nie mają takiej walidacji - `evaluateSubmit`'s `default:` traktuje nieznany typ jak
+  blok nieoceniany, celowo (kursy sprzed silnika nie mają typu bloku wychodzącego poza dotychczasową,
+  zamkniętą listę).
+- **Brak endpointów/panelu administracyjnego do RĘCZNEGO przypisywania kursów pracownikom.**
+  Import treści (PR 4, `content-import`) tworzy `Course`/`CourseVersion`, ale nic poza
+  `TrackingService.assignFollowUpCourse` (auto-przypisanie kursu uzupełniającego po kliknięciu w
+  symulację phishingową, wybór najstarszego kursu z danej kategorii) nie tworzy `CourseAssignment` w
+  kodzie produkcyjnym - testy seedują dane bezpośrednio przez Prisma. Osobne zadanie, gdy będzie
+  potrzebny panel `ORG_ADMIN` do przypisywania kursów pracownikom ręcznie/masowo.
 
 ## Backlog modułu dashboard/raporty
 
@@ -612,16 +619,17 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
 
 ## Backlog modułu kursów (`/courses`, `/courses/[courseId]`)
 
-- **Brak wyjaśnienia tekstowego w feedbacku po odpowiedzi.**
+- **Brak wyjaśnienia tekstowego w feedbacku po odpowiedzi (częściowo zaadresowane, PR 4).**
   `CourseProgressResponseDto.lastResult` (`apps/api/src/courses/dto/course-progress-response.dto.ts`)
-  zwraca tylko `{blockIndex, type, correct}` — żadnego pola z uzasadnieniem odpowiedzi. Do tego
-  `contentBlocks` z `/start` ma już usunięte `correct`/`outcome`/ewentualny `feedback` z opcji
-  (celowo, żeby nie ujawniać klucza odpowiedzi przed odpowiedzią — patrz wcześniejszy security
-  review modułu kursów). Efekt: `FeedbackPanel` (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`)
-  pokazuje wyłącznie generyczne "Poprawna odpowiedź!"/"Niepoprawna odpowiedź.", bez wyjaśnienia
-  *dlaczego*. Żeby to zmienić, `CoursesService.submitBlockProgress` musiałby dodatkowo zwracać
-  tekst wyjaśnienia dla wybranej/poprawnej opcji — nowe pole DTO, świadomie poza zakresem tego
-  zadania.
+  nadal nie ma dedykowanego pola "dlaczego" dla QUIZ/BRANCHING_SCENARIO — `contentBlocks` z `/start`
+  ma celowo usunięte `correct`/`outcome`/ewentualny `feedback` z opcji (nie ujawniać klucza odpowiedzi
+  przed odpowiedzią). PR 4 (schemaVersion 4, `reactions.result` - D-061/D-062) dodało jednak
+  autorski komentarz maskotki zależny od wyniku (`lastResult.reaction: {pose, text}`), pokazywany
+  przez dymek w powłoce niezależnie od `FeedbackPanel`'a (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`
+  wywołuje `mascot.show(feedback.reaction)`) - dla modułów, które go definiują (jak "Sprawa: wyłudzone
+  hasło"), generyczne "Poprawna odpowiedź!"/"Niepoprawna odpowiedź." NIE jest już jedynym feedbackiem.
+  To nadal nie jest pełne wyjaśnienie konkretnej odpowiedzi (poziom bloku, nie opcji) - starsza treść
+  bez `reactions.result` zostaje przy samym komunikacie generycznym.
 - **`DragAndDropBlock` to uproszczona wersja (dwa przyciski klasyfikujące), nie prawdziwe
   przeciąganie.** Uzasadnienie: `CoursesService.evaluateBlock` w ogóle nie ocenia bloków
   `DRAG_AND_DROP` (nie ma go w `SCOREABLE_BLOCK_TYPES`, tak jak `VIDEO`) — prawdziwe drag&drop

@@ -1,6 +1,7 @@
 export class DashboardOverviewDto {
-  // % ukończonych CourseAssignment wśród obowiązkowych kursów (course.mandatory
-  // = true). Kursy opcjonalne nie wchodzą ani do licznika, ani do mianownika.
+  // % ukończonych CourseAssignment wśród obowiązkowych przypisań (mandatory
+  // = true, per przypisanie - D-065). Kursy opcjonalne (w tym samoobsługowe
+  // z katalogu) nie wchodzą ani do licznika, ani do mianownika.
   // null, gdy organizacja nie ma jeszcze żadnego obowiązkowego przypisania.
   completionRate!: number | null;
 

@@ -87,9 +87,12 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
 
   const courseData = {
     title: contentModule.title,
+    subtitle: contentModule.subtitle ?? null,
     category: contentModule.category,
+    level: contentModule.level ?? null,
     durationMinutes: contentModule.durationMinutes,
     mandatory: contentModule.mandatory,
+    objectives: (contentModule.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
     contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
   };
   const courseId = existing

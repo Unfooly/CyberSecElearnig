@@ -878,9 +878,17 @@ model Course {
   // (testy, kursy sprzed silnika) - import robi po nim upsert (content-import, PR 4).
   slug            String?        @unique @db.VarChar(64)
   title           String
+  // schemaVersion 4 (packages/content), dotąd walidowane przy imporcie, ale nigdzie nie zapisywane (B-087) - do karty
+  // kursu/katalogu i SUMMARY "Czego się nauczyłeś"; wypełniane wyłącznie przez content-import.
+  subtitle        String?        @db.VarChar(300)
+  // 'basic' | 'intermediate' | 'advanced' (packages/content MODULE_LEVELS) - string, nie enum Prisma: zbiór wartości
+  // pochodzi z pakietu treści, dodanie kolejnego poziomu nie powinno wymagać migracji bazy.
+  level           String?        @db.VarChar(20)
   category        CourseCategory
   durationMinutes Int
   mandatory       Boolean        @default(false)
+  // Cele szkolenia (lista tekstów, packages/content), do SUMMARY "Czego się nauczyłeś" - opcjonalne.
+  objectives      Json?
   // Uporządkowana lista bloków treści (VIDEO/QUIZ/BRANCHING_SCENARIO/
   // DRAG_AND_DROP) - patrz docs/content-backlog-elearning.md. Dla QUIZ i
   // BRANCHING_SCENARIO każda opcja niesie poprawność (`correct: boolean`
@@ -931,6 +939,11 @@ model CourseAssignment {
   userId            String
   courseId          String
   status            AssignmentStatus @default(NOT_STARTED)
+  // Czy TO przypisanie liczy się do zgodności/terminu (dashboard, zakładka "Obowiązkowe") - PER PRZYPISANIE, nie
+  // pochodna course.mandatory: ten sam kurs może być samodzielnym (zawsze false, CoursesService.selfAssign) albo
+  // ręcznym przypisaniem admina (domyślnie course.mandatory, następny PR) dla różnych pracowników jednocześnie.
+  // Twórca przypisania ustawia to pole jawnie; backfill istniejących wierszy - migracja 20260922180000.
+  mandatory         Boolean          @default(false)
   // Indeks pierwszego nieukończonego bloku - gdzie wznowić kurs.
   currentBlockIndex Int              @default(0)
   // Nowy format (v: 2): { v: 2, blocks: { [blockId]: { type, done, points?, correct?, weight, attempts?, ... } }, notes: string[] }.

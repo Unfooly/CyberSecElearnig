@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
     throw new Error(`REDIRECT:${url}`);
   }),
   usePathname: () => '/courses',
-  // Topbar renderuje UserMenu (wylogowanie), które korzysta z routera.
+  // Topbar renderuje UserMenu (wylogowanie) i CourseCatalog (Katalog) jest komponentem klienckim - oba korzystają z routera.
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
@@ -127,6 +127,7 @@ describe('CoursesPage', () => {
             },
           ],
         })
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
         .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
         .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) }),
     );
@@ -146,6 +147,7 @@ describe('CoursesPage', () => {
       'fetch',
       vi
         .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
         .mockResolvedValueOnce({ ok: true, json: async () => [] })
         .mockResolvedValueOnce({ ok: true, json: async () => gamificationResponse })
         .mockResolvedValueOnce({ ok: true, json: async () => leaderboardResponse }),
@@ -168,6 +170,7 @@ describe('CoursesPage', () => {
       vi
         .fn()
         .mockResolvedValueOnce({ ok: true, json: async () => [] })
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
         .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
         .mockResolvedValueOnce({ ok: true, json: async () => leaderboardResponse }),
     );
@@ -176,5 +179,57 @@ describe('CoursesPage', () => {
     render(jsx);
 
     expect(screen.queryByText(/^Poziom /)).not.toBeInTheDocument();
+  });
+
+  it('renderuje Katalog z danych GET /courses/catalog, z przyciskiem "Rozpocznij"; pomija sekcję, gdy katalog jest pusty', async () => {
+    mockCookieValue(VALID_TOKEN);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            {
+              courseId: 'course-catalog-1',
+              title: 'Sprawa: wyłudzone hasło',
+              subtitle: 'Prawdziwy przypadek phishingu',
+              level: 'basic',
+              objectives: [],
+              category: 'PHISHING_SOCIAL_ENGINEERING',
+              durationMinutes: 12,
+              totalBlocks: 9,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) }),
+    );
+
+    const jsx = await CoursesPage();
+    render(jsx);
+
+    expect(screen.getByText('Katalog')).toBeInTheDocument();
+    expect(screen.getByText('Sprawa: wyłudzone hasło')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rozpocznij' })).toBeInTheDocument();
+  });
+
+  it('nie renderuje sekcji Katalog, gdy GET /courses/catalog zawiedzie (403 dla ról bez dostępu, np. SUPER_ADMIN)', async () => {
+    mockCookieValue(VALID_TOKEN);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
+        .mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) }),
+    );
+
+    const jsx = await CoursesPage();
+    render(jsx);
+
+    expect(screen.queryByText('Katalog')).not.toBeInTheDocument();
   });
 });

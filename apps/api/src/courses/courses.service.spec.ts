@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CoursesService } from './courses.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -40,12 +40,12 @@ describe('CoursesService.listMyCourses', () => {
         dueDate: null,
         completedAt: null,
         currentBlockIndex: 2,
+        mandatory: true,
         course: {
           id: 'course-1',
           title: 'Rozpoznawanie phishingu',
           category: 'EMAIL_SECURITY',
           durationMinutes: 8,
-          mandatory: true,
           contentBlocks: [{ type: 'VIDEO' }, { type: 'QUIZ' }, { type: 'QUIZ' }, { type: 'DRAG_AND_DROP' }],
         },
       },
@@ -55,6 +55,31 @@ describe('CoursesService.listMyCourses', () => {
 
     expect(result.currentBlockIndex).toBe(2);
     expect(result.totalBlocks).toBe(4);
+  });
+
+  it('mandatory pochodzi z PRZYPISANIA (D-065), nie z course.mandatory - samoobsługowy kurs zostaje nieobowiązkowy nawet gdy treść jest mandatory:true', async () => {
+    findMany.mockResolvedValue([
+      {
+        id: 'assignment-self',
+        status: 'NOT_STARTED',
+        score: null,
+        dueDate: null,
+        completedAt: null,
+        currentBlockIndex: 0,
+        mandatory: false,
+        course: {
+          id: 'course-1',
+          title: 'Sprawa: wyłudzone hasło',
+          category: 'PHISHING_SOCIAL_ENGINEERING',
+          durationMinutes: 12,
+          contentBlocks: [{ type: 'NARRATIVE' }],
+        },
+      },
+    ]);
+
+    const [result] = await service.listMyCourses('org-1', 'user-1');
+
+    expect(result.mandatory).toBe(false);
   });
 
   it('zwraca totalBlocks=0 dla kursu z uszkodzoną treścią (contentBlocks nie jest tablicą), zamiast rzucać', async () => {
@@ -71,7 +96,6 @@ describe('CoursesService.listMyCourses', () => {
           title: 'Kurs z uszkodzoną treścią',
           category: 'GENERAL_AWARENESS',
           durationMinutes: 5,
-          mandatory: false,
           contentBlocks: null,
         },
       },
@@ -96,7 +120,6 @@ describe('CoursesService.listMyCourses', () => {
           title: 'Kurs bez treści',
           category: 'GENERAL_AWARENESS',
           durationMinutes: 5,
-          mandatory: false,
           contentBlocks: [],
         },
       },
@@ -105,6 +128,115 @@ describe('CoursesService.listMyCourses', () => {
     const [result] = await service.listMyCourses('org-1', 'user-1');
 
     expect(result.totalBlocks).toBe(0);
+  });
+});
+
+describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
+  let service: CoursesService;
+  let courseAssignmentFindMany: jest.Mock;
+  let courseFindMany: jest.Mock;
+  let courseFindUnique: jest.Mock;
+  let createMany: jest.Mock;
+  let assignmentFindFirst: jest.Mock;
+
+  beforeEach(async () => {
+    courseAssignmentFindMany = jest.fn();
+    courseFindMany = jest.fn();
+    courseFindUnique = jest.fn();
+    createMany = jest.fn().mockResolvedValue({ count: 1 });
+    assignmentFindFirst = jest.fn();
+
+    const tenantPrisma = {
+      runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          courseAssignment: { findMany: courseAssignmentFindMany, createMany, findFirst: assignmentFindFirst },
+          course: { findMany: courseFindMany, findUnique: courseFindUnique },
+        }),
+      ),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CoursesService,
+        { provide: TenantPrismaService, useValue: tenantPrisma },
+        { provide: GamificationService, useValue: { awardCourseCompletion: jest.fn() } },
+        configProvider,
+      ],
+    }).compile();
+
+    service = module.get(CoursesService);
+  });
+
+  it('listCatalog pomija kursy, na które wywołujący ma już przypisanie', async () => {
+    courseAssignmentFindMany.mockResolvedValue([{ courseId: 'course-już-przypisany' }]);
+    courseFindMany.mockResolvedValue([
+      {
+        id: 'course-nowy',
+        title: 'Sprawa: wyłudzone hasło',
+        subtitle: 'Prawdziwy przypadek phishingu',
+        level: 'basic',
+        objectives: ['Rozpoznaj fałszywy mail'],
+        category: 'PHISHING_SOCIAL_ENGINEERING',
+        durationMinutes: 12,
+        contentBlocks: [{ type: 'NARRATIVE' }],
+        versions: [{ blockCount: 9 }],
+      },
+    ]);
+
+    const [result] = await service.listCatalog('org-1', 'user-1');
+
+    expect(courseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { notIn: ['course-już-przypisany'] } } }),
+    );
+    expect(result).toEqual({
+      courseId: 'course-nowy',
+      title: 'Sprawa: wyłudzone hasło',
+      subtitle: 'Prawdziwy przypadek phishingu',
+      level: 'basic',
+      objectives: ['Rozpoznaj fałszywy mail'],
+      category: 'PHISHING_SOCIAL_ENGINEERING',
+      durationMinutes: 12,
+      totalBlocks: 9,
+    });
+  });
+
+  it('listCatalog: bez przypisań wywołującego, zapytanie idzie bez filtra notIn (pusta lista courseId byłaby błędem Prisma)', async () => {
+    courseAssignmentFindMany.mockResolvedValue([]);
+    courseFindMany.mockResolvedValue([]);
+
+    await service.listCatalog('org-1', 'user-1');
+
+    expect(courseFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: undefined }));
+  });
+
+  it('selfAssign tworzy przypisanie ZAWSZE z mandatory:false, niezależnie od treści kursu', async () => {
+    courseFindUnique.mockResolvedValue({ id: 'course-1' });
+    assignmentFindFirst.mockResolvedValue({ id: 'assignment-nowy' });
+
+    const result = await service.selfAssign('org-1', 'user-1', 'course-1');
+
+    expect(createMany).toHaveBeenCalledWith({
+      data: [{ organizationId: 'org-1', userId: 'user-1', courseId: 'course-1', mandatory: false }],
+      skipDuplicates: true,
+    });
+    expect(result).toEqual({ assignmentId: 'assignment-nowy' });
+  });
+
+  it('selfAssign jest idempotentny: drugie wywołanie (skipDuplicates trafia w istniejący wiersz) nadal zwraca to samo assignmentId', async () => {
+    courseFindUnique.mockResolvedValue({ id: 'course-1' });
+    createMany.mockResolvedValue({ count: 0 }); // skipDuplicates: wiersz już istniał
+    assignmentFindFirst.mockResolvedValue({ id: 'assignment-istniejący' });
+
+    const result = await service.selfAssign('org-1', 'user-1', 'course-1');
+
+    expect(result).toEqual({ assignmentId: 'assignment-istniejący' });
+  });
+
+  it('selfAssign na nieistniejącym kursie rzuca NotFoundException, zamiast tworzyć przypisanie', async () => {
+    courseFindUnique.mockResolvedValue(null);
+
+    await expect(service.selfAssign('org-1', 'user-1', 'nie-ma-takiego')).rejects.toBeInstanceOf(NotFoundException);
+    expect(createMany).not.toHaveBeenCalled();
   });
 });
 

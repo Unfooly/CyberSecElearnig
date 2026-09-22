@@ -99,12 +99,26 @@ export class TrackingService {
     if (!user) {
       return false;
     }
-    const course = await tx.course.findFirst({ where: { category: 'PHISHING_SOCIAL_ENGINEERING' }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+    const course = await tx.course.findFirst({
+      where: { category: 'PHISHING_SOCIAL_ENGINEERING' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, mandatory: true },
+    });
     if (!course) {
       return false;
     }
     const created = await tx.courseAssignment.createMany({
-      data: [{ organizationId, userId: user.id, courseId: course.id, dueDate: new Date(now.getTime() + FOLLOW_UP_COURSE_DUE_MS) }],
+      data: [
+        {
+          organizationId,
+          userId: user.id,
+          courseId: course.id,
+          // Zachowuje dotychczasowe zachowanie (mandatory było liczone z course.mandatory w locie) - teraz jawnie na
+          // przypisaniu (D-065).
+          mandatory: course.mandatory,
+          dueDate: new Date(now.getTime() + FOLLOW_UP_COURSE_DUE_MS),
+        },
+      ],
       skipDuplicates: true,
     });
     return created.count > 0;

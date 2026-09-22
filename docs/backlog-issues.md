@@ -427,19 +427,26 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
   `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
 
-### B-087 `subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie - nie trafiają do bazy, więc nie ma ich jak wyświetlić
+### B-087 ~~`subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie~~ - ROZWIĄZANE (D-065)
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1
-- Opis: `module.json` (schemaVersion 4) niesie opcjonalne `subtitle`, `level` i `objectives: string[]` (max 6) - moduł 1
-  je wypełnia, i `parseModule` je waliduje. D-061 przewidział, że UI może ich jeszcze nie pokazywać, ale zakres jest
-  szerszy: `content-import.ts`'s `importModule` (`courseData`, ok. linii 88-94) kopiuje do `Course`/`CourseVersion`
-  wyłącznie `title/category/durationMinutes/mandatory/contentBlocks` - `subtitle`/`level`/`objectives` NIE trafiają do
-  bazy w ogóle (nie ma dla nich kolumny ani miejsca w `contentBlocks`), więc znikają po walidacji, zanim dotrą do
-  klienta. To nie jest tylko brakujący render w `CourseCard.tsx`/`SummaryBlock.tsx` - brakuje też zapisu/DTO. Poprawka
-  wymaga decyzji, gdzie te pola mają żyć (nowe kolumny `Course` czy część `contentBlocks`/osobne pole DTO), zanim
-  powstanie UI, który by je pokazywał.
-- Akceptacja: `objectives` pokazane jako „Czego się nauczysz” na karcie kursu i/albo „Czego się nauczyłeś” na ekranie
-  SUMMARY po ukończeniu (D-061 pkt 1); wymaga dodania pola do `CourseDetail`/`CourseAssignmentSummary` w
-  `apps/web/src/lib/courses-types.ts` i odpowiadającego pola w DTO `apps/api`.
+- **Rozwiązane** hotfixem `fix/imported-course-visibility` (D-065, `Course.subtitle`/`level`/`objectives`, migracja
+  `20260922180000_course_catalog`, `content-import.ts`'s `courseData` je teraz kopiuje) - powstało przy okazji katalogu
+  kursów (`GET /courses/catalog`), który potrzebował tych pól do karty. Nadal NIE są pokazywane na `CourseCard.tsx`
+  ani `SummaryBlock.tsx` (Biblioteka/SUMMARY) - tylko w nowym widoku Katalogu (`CourseCatalog.tsx`, tylko
+  `subtitle`, bez `level`/`objectives` w UI). Ewentualne pokazanie ich też w Bibliotece/SUMMARY to osobne, mniejsze
+  zadanie (dane już są w bazie i DTO, brakuje tylko renderu).
+
+### B-089 Panel przypisań dla ORG_ADMIN - przypisz kurs wybranym osobom/działowi/całej organizacji
+- Etykiety: `P1`, `feature`, `mod:kursy` · Źródło: D-065 (hotfix `fix/imported-course-visibility`), zgłoszone przez
+  właściciela produktu przy tym samym hotfixie
+- Opis: po D-065 pracownik może SAM dodać sobie nieobowiązkowy kurs z katalogu (`POST /courses/:id/self-assign`), ale
+  wciąż nie ma żadnego sposobu, żeby `ORG_ADMIN` przypisał kurs komuś INNEMU - jedyny twórca `CourseAssignment` poza
+  self-assign to `TrackingService.assignFollowUpCourse` (automatyczne, po symulacji phishingowej, jeden pracownik na
+  raz). To jest funkcja SPRZEDAŻOWA (szkolenia obowiązkowe dla wybranych osób/działu/całej firmy), nie dodatek -
+  priorytet P1, przed publicznym startem.
+- Akceptacja: `ORG_ADMIN` wybiera kurs z katalogu i grupę odbiorców (osoba/dział/cała organizacja), ustawia
+  `mandatory` (domyślnie z `course.mandatory` - D-065 pkt 4) i `dueDate`; endpoint tworzy `CourseAssignment` masowo w
+  JEDNEJ organizacji (żaden nowy wyjątek od Zasady nr 1); test izolacji A/B; UI w panelu admina.
 
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051

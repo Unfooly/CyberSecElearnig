@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
 import { toClientBlock } from '@cyberszkolo/content';
@@ -6,6 +6,7 @@ import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
+import { CourseCatalogItemDto } from './dto/course-catalog-item.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
 import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
@@ -44,7 +45,6 @@ export class CoursesService {
               title: true,
               category: true,
               durationMinutes: true,
-              mandatory: true,
               contentBlocks: true,
             },
           },
@@ -60,7 +60,9 @@ export class CoursesService {
       title: assignment.course.title,
       category: assignment.course.category,
       durationMinutes: assignment.course.durationMinutes,
-      mandatory: assignment.course.mandatory,
+      // PER PRZYPISANIE (D-065), nie course.mandatory: ten sam kurs bywa jednocześnie samoobsługowy (zawsze false) i
+      // ręcznie przypisany (mandatory admina) dla różnych pracowników.
+      mandatory: assignment.mandatory,
       status: assignment.status,
       score: assignment.score,
       dueDate: assignment.dueDate,
@@ -69,6 +71,67 @@ export class CoursesService {
       // Liczba bloków przypiętej wersji (na której pracuje pracownik); dla nieprzypiętych - treść kursu.
       totalBlocks: assignment.courseVersion?.blockCount ?? this.countBlocks(assignment.course.contentBlocks),
     }));
+  }
+
+  /**
+   * Katalog: kursy globalne (Course - bez organizationId/RLS, jak `badges`), na które TEN pracownik nie ma jeszcze
+   * przypisania - do samodzielnego rozpoczęcia (selfAssign). Bez treści bloków (tylko metadane do karty) - D-065.
+   */
+  async listCatalog(organizationId: string, userId: string): Promise<CourseCatalogItemDto[]> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const assigned = await tx.courseAssignment.findMany({ where: { organizationId, userId }, select: { courseId: true } });
+      const assignedIds = assigned.map((a) => a.courseId);
+      const courses = await tx.course.findMany({
+        where: assignedIds.length > 0 ? { id: { notIn: assignedIds } } : undefined,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          level: true,
+          objectives: true,
+          category: true,
+          durationMinutes: true,
+          contentBlocks: true,
+          versions: { orderBy: { version: 'desc' }, take: 1, select: { blockCount: true } },
+        },
+      });
+
+      return courses.map((course) => ({
+        courseId: course.id,
+        title: course.title,
+        subtitle: course.subtitle,
+        level: course.level,
+        objectives: Array.isArray(course.objectives) ? (course.objectives as string[]) : [],
+        category: course.category,
+        durationMinutes: course.durationMinutes,
+        totalBlocks: course.versions[0]?.blockCount ?? this.countBlocks(course.contentBlocks),
+      }));
+    });
+  }
+
+  /**
+   * Samodzielne rozpoczęcie kursu z katalogu: tworzy CourseAssignment TYLKO dla wywołującego, w JEGO organizacji
+   * (zwykły zapis pod RLS - żadnego wyjątku od Zasady nr 1). ZAWSZE nieobowiązkowe (mandatory: false), niezależnie od
+   * Course.mandatory - to pole jest domyślną wartością wyłącznie dla PRZYSZŁEGO ręcznego przypisania przez ORG_ADMIN
+   * (D-065). Idempotentne: powtórne wywołanie zwraca istniejące przypisanie (unikalność [userId, courseId]).
+   */
+  async selfAssign(organizationId: string, userId: string, courseId: string): Promise<{ assignmentId: string }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const course = await tx.course.findUnique({ where: { id: courseId }, select: { id: true } });
+      if (!course) {
+        throw new NotFoundException('Kurs nie istnieje.');
+      }
+      await tx.courseAssignment.createMany({
+        data: [{ organizationId, userId, courseId, mandatory: false }],
+        skipDuplicates: true,
+      });
+      const assignment = await tx.courseAssignment.findFirst({ where: { organizationId, userId, courseId }, select: { id: true } });
+      if (!assignment) {
+        throw new InternalServerErrorException('Nie udało się utworzyć przypisania.');
+      }
+      return { assignmentId: assignment.id };
+    });
   }
 
   async startOrContinue(

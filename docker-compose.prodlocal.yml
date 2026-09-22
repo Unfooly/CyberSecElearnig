@@ -39,3 +39,9 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+
+  content-import:
+    image: prodlocal-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile

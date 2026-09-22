@@ -14,7 +14,8 @@
     "prisma:generate": "dotenv -e ../../.env -- prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
-    "seed:badges": "dotenv -e ../../.env -- ts-node prisma/seed-badges.ts"
+    "seed:badges": "dotenv -e ../../.env -- ts-node prisma/seed-badges.ts",
+    "content:import": "dotenv -e ../../.env -- ts-node src/scripts/content-import.ts"
   },
   "dependencies": {
     "@cyberszkolo/content": "*",

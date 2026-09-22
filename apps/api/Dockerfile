@@ -42,6 +42,13 @@ COPY apps/api apps/api
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma \
   && npm run build --workspace=apps/api
 
+# Treść modułów (content-import, D-051 pkt 11): do obrazu trafiają WYŁĄCZNIE pliki module.json - surowe źródła assetów
+# (packages/content/modules/<slug>/assets/**, audio.lock.json, assets.lock.json) są duże i niepotrzebne w runtime
+# (produkcja czyta obrazy/audio z R2 przez CONTENT_BASE_URL, patrz docs/content-pipeline.md), więc usuwamy je PO
+# skopiowaniu całego drzewa (prościej niż wybiórczy COPY po glob-ie, który nie zachowuje struktury katalogów).
+COPY packages/content/modules packages/content/modules
+RUN find packages/content/modules -type f ! -name 'module.json' -delete
+
 # Usuwa devDependencies z ISTNIEJĄCEGO drzewa node_modules (nie reinstaluje) -
 # `bcrypt` zostaje skompilowany raz, `@prisma/client`/wygenerowany klient
 # zostają (są w dependencies), a `prisma` CLI (przeniesiony do dependencies -
@@ -76,6 +83,8 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 # Migrations + schema - wymagane w runtime przez usługę `migrate`
 # (`prisma migrate deploy`), nie tylko na etapie builda.
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+# Treść modułów (content-import) - już przycięta w builderze do samych module.json.
+COPY --from=builder /app/packages/content/modules ./packages/content/modules
 
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh

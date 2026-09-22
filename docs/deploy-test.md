@@ -198,6 +198,11 @@ Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres
 6. **Migracje zaaplikowane:**
    `docker compose --env-file .env.prod -f docker-compose.prod.yml logs migrate | tail` -
    „All migrations have been successfully applied” (lub „No pending migrations to apply”).
+6a. **Import treści:** `docker compose --env-file .env.prod -f docker-compose.prod.yml logs content-import` - jeden
+    wiersz `[content-import] OK: ...` na moduł (albo `Brak modułów do zaimportowania`, jeśli obraz jeszcze nie ma
+    żadnego `module.json`). Usługa jest jednorazowa i NIEZALEŻNA od `api` (D-051 pkt 11): jej ewentualna awaria
+    (np. uszkodzony `module.json`) NIE blokuje ani nie opóźnia startu `api` - `exited (1)` tu jest widoczny wyłącznie
+    w tym logu i w kodzie wyjścia kontenera, sprawdź to osobno po każdym `up -d`.
 7. **Logowanie i cookies:** zaloguj się w przeglądarce. W narzędziach deweloperskich cookies
    `access_token` / `refresh_token` mają flagi `HttpOnly` i `Secure`. ORG_ADMIN ląduje na
    `/dashboard`, pozostałe role na `/courses`.
@@ -218,6 +223,7 @@ Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres
 | Cloudflare pokazuje błąd 502/1033 | `cloudflared` nie działa (pusty/zły `TUNNEL_TOKEN`) albo Public Hostname wskazuje `localhost` zamiast `web:3000`. |
 | `cloudflared` restartuje się | Zły token. `docker compose ... logs cloudflared`. |
 | `api` nie startuje, `migrate` w stanie `exited (1)` | Błąd migracji lub zły `DATABASE_URL`/hasło. `logs migrate`. Api nie wystartuje, dopóki `migrate` nie zakończy się kodem 0 (to zamierzone). |
+| `content-import` w stanie `exited (1)`, `api` działa normalnie | Zamierzone (D-051 pkt 11): `api` NIE zależy od `content-import`. `logs content-import` pokaże błąd na module (zły `module.json` albo przejściowy błąd bazy) - popraw treść i uruchom ponownie: `docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm content-import`. |
 | `api` kończy się od razu z błędem o e-mailu | Na produkcji wymagane `MAILERSEND_API_TOKEN` i `EMAIL_FROM`. |
 | Logowanie „przechodzi”, ale wraca na `/login` | `FRONTEND_URL`/hostname bez `https` albo dostęp przez `http` (cookies `Secure`); użyj adresu z `https://`. |
 | Linki w mailach wskazują localhost | `FRONTEND_URL` nie ustawione na publiczny adres. |

@@ -35,6 +35,8 @@ const PROTECTED: Row[] = [
   // Kursy (PR 2)
   { route: './courses/[courseId]/progress/route.ts', method: 'POST', params: { courseId: 'c1' }, body: { blockIndex: 0 } },
   { route: './courses/[courseId]/blocks/[blockId]/attempt/route.ts', method: 'POST', params: { courseId: 'c1', blockId: 'b1' }, body: { answer: 'x' } },
+  // Katalog kursów (D-065, hotfix widoczności zaimportowanego kursu)
+  { route: './courses/[courseId]/self-assign/route.ts', method: 'POST', params: { courseId: 'c1' } },
   // Pracownicy i konto (B-080)
   { route: './users/route.ts', method: 'POST', body: { email: 'a@b.pl', firstName: 'A', lastName: 'B', role: 'EMPLOYEE' } },
   { route: './users/[id]/route.ts', method: 'PATCH', params: { id: 'u1' }, body: { firstName: 'A' } },

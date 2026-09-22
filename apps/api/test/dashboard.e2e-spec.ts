@@ -172,6 +172,7 @@ describe('Dashboard i raporty (e2e)', () => {
           courseId: courseMandatory1Id,
           status: 'COMPLETED',
           completedAt: now,
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -190,6 +191,7 @@ describe('Dashboard i raporty (e2e)', () => {
           courseId: courseMandatory1Id,
           status: 'COMPLETED',
           completedAt: now,
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -199,6 +201,7 @@ describe('Dashboard i raporty (e2e)', () => {
           courseId: courseMandatory2Id,
           status: 'COMPLETED',
           completedAt: now,
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -207,6 +210,7 @@ describe('Dashboard i raporty (e2e)', () => {
           userId: employee2.id,
           courseId: courseMandatory1Id,
           status: 'IN_PROGRESS',
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -215,6 +219,7 @@ describe('Dashboard i raporty (e2e)', () => {
           userId: employee2.id,
           courseId: courseMandatory2Id,
           status: 'NOT_STARTED',
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -223,6 +228,7 @@ describe('Dashboard i raporty (e2e)', () => {
           userId: employee3.id,
           courseId: courseMandatory1Id,
           status: 'NOT_STARTED',
+          mandatory: true,
         },
       });
       await tx.courseAssignment.create({
@@ -231,6 +237,7 @@ describe('Dashboard i raporty (e2e)', () => {
           userId: employee3.id,
           courseId: courseMandatory2Id,
           status: 'OVERDUE',
+          mandatory: true,
         },
       });
 

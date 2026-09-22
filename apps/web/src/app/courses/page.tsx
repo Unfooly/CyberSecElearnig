@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
 import { decodeJwtPayload } from '@/lib/jwt';
-import type { CourseAssignmentSummary } from '@/lib/courses-types';
+import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
 import type { GamificationOverview, LeaderboardEntry } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
 import CourseLibrary from './_components/CourseLibrary';
+import CourseCatalog from './_components/CourseCatalog';
 import LearningPath from './_components/LearningPath';
 import Card from '@/components/ui/Card';
 import UserGamificationCard from './_components/UserGamificationCard';
@@ -30,8 +31,12 @@ export default async function CoursesPage() {
   // dokładnie jak middleware.ts.
   const currentUserId = payload?.sub ?? null;
 
-  const [coursesResult, gamificationResult, leaderboardResult] = await Promise.all([
+  const [coursesResult, catalogResult, gamificationResult, leaderboardResult] = await Promise.all([
     fetchJson<CourseAssignmentSummary[]>(`${API_URL}/courses/my`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    }),
+    fetchJson<CourseCatalogItem[]>(`${API_URL}/courses/catalog`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     }),
@@ -77,6 +82,8 @@ export default async function CoursesPage() {
             </section>
 
             {coursesResult.ok && <CourseLibrary courses={coursesResult.data} />}
+
+            {catalogResult.ok && <CourseCatalog courses={catalogResult.data} />}
 
             {leaderboardResult.ok && currentUserId && (
               <Card>

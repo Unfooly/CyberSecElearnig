@@ -157,7 +157,8 @@ describe('Publiczne śledzenie symulacji (e2e)', () => {
       expect(row.submittedAt).toBeNull();
       const [assignment, ...rest] = await assignments(orgA, 'u1');
       expect(rest).toEqual([]);
-      expect(assignment).toMatchObject({ organizationId: orgA.organizationId, courseId: expectedCourseId, status: 'NOT_STARTED' });
+      // mandatory kopiowane z course.mandatory w chwili przypisania (D-065) - kurs testowy (linia ~51) nie ustawia go jawnie, więc domyślne false.
+      expect(assignment).toMatchObject({ organizationId: orgA.organizationId, courseId: expectedCourseId, status: 'NOT_STARTED', mandatory: false });
       expect(Math.abs((assignment.dueDate as Date).getTime() - (Date.now() + FOLLOW_UP_COURSE_DUE_MS))).toBeLessThan(60_000);
     });
 

@@ -1,9 +1,12 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { Role } from '@cyberszkolo/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { UserThrottlerGuard } from '../common/guards/user-throttler.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { CoursesService } from './courses.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { AttemptBlockDto } from './dto/attempt-block.dto';
@@ -12,15 +15,32 @@ import { AttemptBlockDto } from './dto/attempt-block.dto';
 const ATTEMPT_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
 // Ładowanie dokumentu embed (iframe ładuje go przy każdym wejściu w blok i po powrocie z podglądu).
 const EMBED_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
+// Katalog/self-assign celowo NIE dla SUPER_ADMIN (operator platformy, nie pracownik przechodzący szkolenia - D-065).
+const COURSE_ROLES = [Role.EMPLOYEE, Role.DEPARTMENT_MANAGER, Role.ORG_ADMIN] as const;
 
 @Controller('courses')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
   @Get('my')
   listMyCourses(@CurrentUser() user: AuthenticatedUser) {
     return this.coursesService.listMyCourses(user.organizationId, user.userId);
+  }
+
+  // Kursy globalne bez przypisania temu pracownikowi - do samodzielnego rozpoczęcia (D-065).
+  @Get('catalog')
+  @Roles(...COURSE_ROLES)
+  listCatalog(@CurrentUser() user: AuthenticatedUser) {
+    return this.coursesService.listCatalog(user.organizationId, user.userId);
+  }
+
+  // Samoobsługowe przypisanie kursu z katalogu (ZAWSZE nieobowiązkowe) - 200, nie 201, idempotentne jak start/progress.
+  @Post(':courseId/self-assign')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...COURSE_ROLES)
+  selfAssign(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string) {
+    return this.coursesService.selfAssign(user.organizationId, user.userId, courseId);
   }
 
   // 200, nie domyślne 201 - obie akcje aktualizują istniejący

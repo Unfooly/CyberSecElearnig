@@ -57,11 +57,11 @@ export class DashboardService {
       const [totalUsers, mandatoryTotal, mandatoryCompleted, overdueCount, activeUserRows] =
         await Promise.all([
           tx.user.count({ where: { organizationId } }),
-          tx.courseAssignment.count({ where: { organizationId, course: { mandatory: true } } }),
+          tx.courseAssignment.count({ where: { organizationId, mandatory: true } }),
           tx.courseAssignment.count({
             where: {
               organizationId,
-              course: { mandatory: true },
+              mandatory: true,
               status: AssignmentStatus.COMPLETED,
             },
           }),
@@ -94,7 +94,7 @@ export class DashboardService {
       const [departments, assignments] = await Promise.all([
         tx.department.findMany({ where: { organizationId }, select: { id: true, name: true } }),
         tx.courseAssignment.findMany({
-          where: { organizationId, course: { mandatory: true } },
+          where: { organizationId, mandatory: true },
           select: { status: true, user: { select: { departmentId: true } } },
         }),
       ]);
@@ -146,7 +146,7 @@ export class DashboardService {
   async getCompletionTrends(organizationId: string, now: Date = new Date()): Promise<TrendPointDto[]> {
     const assignments = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.courseAssignment.findMany({
-        where: { organizationId, course: { mandatory: true } },
+        where: { organizationId, mandatory: true },
         select: { createdAt: true, completedAt: true },
       }),
     );
@@ -196,7 +196,7 @@ export class DashboardService {
               dueDate: true,
               completedAt: true,
               updatedAt: true,
-              course: { select: { mandatory: true } },
+              mandatory: true,
             },
           },
         },
@@ -210,7 +210,7 @@ export class DashboardService {
           dueDate: assignment.dueDate,
           completedAt: assignment.completedAt,
           updatedAt: assignment.updatedAt,
-          mandatory: assignment.course.mandatory,
+          mandatory: assignment.mandatory,
         })),
         now,
       );
@@ -247,7 +247,7 @@ export class DashboardService {
             select: {
               status: true,
               completedAt: true,
-              course: { select: { mandatory: true } },
+              mandatory: true,
             },
           },
         },
@@ -261,7 +261,7 @@ export class DashboardService {
         // sygnał ogólnej aktywności usera, więc bierze pod uwagę WSZYSTKIE
         // przypisania (też opcjonalne). To ta sama definicja, co w
         // getOrganizationsOverview - patrz komentarz tam.
-        const mandatoryAssignments = user.courseAssignments.filter((a) => a.course.mandatory);
+        const mandatoryAssignments = user.courseAssignments.filter((a) => a.mandatory);
         const mandatoryCompleted = mandatoryAssignments.filter(
           (a) => a.status === AssignmentStatus.COMPLETED,
         ).length;
@@ -297,8 +297,8 @@ export class DashboardService {
           orderBy: { name: 'asc' },
         }),
         tx.user.findMany({ select: { organizationId: true } }),
-        // Nieprzefiltrowane po course.mandatory - completionRate poniżej
-        // świadomie liczy się tylko z obowiązkowych (compliance), ale
+        // Nieprzefiltrowane po mandatory - completionRate poniżej świadomie
+        // liczy się tylko z obowiązkowych (compliance), ale
         // lastCourseCompletionAt to sygnał ogólnej aktywności organizacji,
         // więc musi widzieć też ukończenia kursów opcjonalnych - tak samo
         // jak analogiczna kolumna w exportCsv.
@@ -307,7 +307,7 @@ export class DashboardService {
             organizationId: true,
             status: true,
             completedAt: true,
-            course: { select: { mandatory: true } },
+            mandatory: true,
           },
         }),
       ]);
@@ -329,7 +329,7 @@ export class DashboardService {
         mandatoryCompleted: 0,
         completionDates: [],
       };
-      if (assignment.course.mandatory) {
+      if (assignment.mandatory) {
         stats.mandatoryTotal += 1;
         if (assignment.status === AssignmentStatus.COMPLETED) {
           stats.mandatoryCompleted += 1;

@@ -45,6 +45,19 @@ export interface CourseAssignmentSummary {
   totalBlocks: number;
 }
 
+// Pozycja katalogu (GET /courses/catalog, D-065): kurs globalny, na który wywołujący nie ma jeszcze przypisania -
+// bez treści bloków. "Rozpocznij" (POST /courses/:id/self-assign) tworzy WŁASNE, zawsze nieobowiązkowe przypisanie.
+export interface CourseCatalogItem {
+  courseId: string;
+  title: string;
+  subtitle: string | null;
+  level: string | null;
+  objectives: string[];
+  category: string;
+  durationMinutes: number;
+  totalBlocks: number;
+}
+
 // Opcje QUIZ/BRANCHING_SCENARIO tak, jak wraca z /start - apps/api usuwa
 // pole "correct"/"outcome" (i ewentualny "feedback") przed wysłaniem, więc
 // front nigdy nie widzi klucza odpowiedzi.

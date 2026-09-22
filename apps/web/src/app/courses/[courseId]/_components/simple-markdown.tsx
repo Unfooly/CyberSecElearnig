@@ -1,21 +1,27 @@
 import type { ReactNode } from 'react';
 
-// Bardzo wąski podzbiór markdown do treści kursu (TABS/SUMMARY): pogrubienie (**tekst**), listy wypunktowane (linia
-// zaczynająca się od "- "/"* "), listy numerowane (linia zaczynająca się od "1. ", "2. " itd. - numerację nadaje
-// wyłącznie <ol> (bez atrybutu value), więc oryginalne cyfry w treści są tylko znacznikiem "to jest lista", nie liczą
-// się dosłownie) i akapity (puste linie). CELOWO bez HTML i bez linków: React renderuje string jako zwykły tekst (nie
-// parsuje go jako znaczniki), więc `<b>` czy `[link](adres)` w treści wychodzą na ekranie dosłownie - nigdy nie
-// używamy dangerouslySetInnerHTML.
+// ZAMKNIĘTY, wąski podzbiór markdown do treści kursu (TABS/SUMMARY/NARRATIVE): pogrubienie (**tekst**), kod (`tekst`),
+// listy wypunktowane (linia zaczynająca się od "- "/"* "), listy numerowane (linia zaczynająca się od "1. ", "2. " itd. -
+// numerację nadaje wyłącznie <ol> bez atrybutu value, więc oryginalne cyfry w treści są tylko znacznikiem "to jest lista",
+// nie liczą się dosłownie) i akapity (puste linie). Nowy element treści = nowe pytanie do właściciela produktu, nie kolejne
+// ciche rozszerzenie (packages/content/README.md, "Katalog modułu"). CELOWO bez HTML i bez linków: React renderuje string
+// jako zwykły tekst (nie parsuje go jako znaczniki), więc `<b>` czy `[link](adres)` w treści wychodzą na ekranie dosłownie
+// (nawet wewnątrz `code` - patrz test) - nigdy nie używamy dangerouslySetInnerHTML.
 
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter((part) => part.length > 0);
-  return parts.map((part, index) =>
-    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
-      <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>
-    ) : (
-      <span key={`${keyPrefix}-${index}`}>{part}</span>
-    ),
-  );
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter((part) => part.length > 0);
+  return parts.map((part, index) => {
+    const key = `${keyPrefix}-${index}`;
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={key}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code key={key} className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.9em]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={key}>{part}</span>;
+  });
 }
 
 const LIST_KINDS = {

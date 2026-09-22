@@ -267,6 +267,12 @@ describe('NARRATIVE (schemaVersion 4)', () => {
     expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
   });
 
+  it('renderuje tekst przez wąski markdown (pogrubienie)', () => {
+    renderBlock({ type: 'NARRATIVE', id: 'n1', text: '**Ważne.** Reszta zwykłym tekstem.' });
+    const strong = screen.getByText('Ważne.');
+    expect(strong.tagName).toBe('STRONG');
+  });
+
   it('reactions.complete odpala się od razu po zamontowaniu (bez elementów do pokrycia), nigdy w podglądzie', () => {
     const withReaction: ContentBlock = {
       type: 'NARRATIVE',

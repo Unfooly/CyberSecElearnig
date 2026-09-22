@@ -2,6 +2,7 @@
 
 import type { ContentBlock } from '@/lib/courses-types';
 import { useCompleteReaction } from '../player/mascot-reaction';
+import { SimpleMarkdown } from '../simple-markdown';
 
 // Blok narracyjny (schemaVersion 4): sam tekst, bez interakcji poza "Dalej" - w przeciwieństwie do SUMMARY może wystąpić wielokrotnie,
 // w dowolnym miejscu modułu (np. wprowadzenie do sceny). Reakcja maskotki na ukończenie (reactions.complete) odpala się od razu po
@@ -22,7 +23,11 @@ export default function NarrativeBlock({
   return (
     <div>
       {block.title && <p className="mb-3 text-lg font-medium text-slate-900">{block.title}</p>}
-      {block.text && <p className="whitespace-pre-line text-slate-800">{block.text}</p>}
+      {block.text && (
+        <div className="space-y-2 text-slate-800">
+          <SimpleMarkdown text={block.text} />
+        </div>
+      )}
       {!review && (
         <button
           type="button"

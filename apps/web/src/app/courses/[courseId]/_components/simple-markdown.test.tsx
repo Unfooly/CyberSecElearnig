@@ -20,6 +20,14 @@ describe('SimpleMarkdown: wąski podzbiór (pogrubienie, listy, akapity), bez HT
     expect(screen.getByText(/To jest/)).toBeInTheDocument();
   });
 
+  it('`kod` trafia do <code>, a znacznik HTML wewnątrz kodu wychodzi dosłownie (nie jako <b>)', () => {
+    render(<SimpleMarkdown text="Domena to `bankwektor.pl`, nie `<b>zly.pl</b>`." />);
+    const code = screen.getByText('bankwektor.pl');
+    expect(code.tagName).toBe('CODE');
+    expect(screen.getByText('<b>zly.pl</b>').tagName).toBe('CODE');
+    expect(document.querySelector('b')).not.toBeInTheDocument();
+  });
+
   it('blok, którego WSZYSTKIE linie zaczynają się od "- ", staje się listą <ul><li>', () => {
     render(<SimpleMarkdown text={'Zasady:\n\n- pierwsza\n- druga'} />);
     expect(screen.getByText('Zasady:')).toBeInTheDocument();

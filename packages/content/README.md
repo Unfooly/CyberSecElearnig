@@ -40,6 +40,16 @@ Typy bloków: dotychczasowe `VIDEO`, `QUIZ`, `BRANCHING_SCENARIO`, `DRAG_AND_DRO
 `NOTEPAD`, `EMAIL_ANALYSIS`, `TEXT_INPUT_GUIDED`, `ORDERING`, `TABS`, `SUMMARY` (ostatni, co najwyżej jeden). Pełny wzór każdego typu:
 `src/fixtures.ts` (`fullBlocks()`).
 
+### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`)
+
+Renderer po stronie klienta (`apps/web/src/app/courses/[courseId]/_components/simple-markdown.tsx`) obsługuje ZAMKNIĘTY,
+wąski podzbiór: pogrubienie (`**tekst**`), kod (`` `tekst` ``), listy wypunktowane (`- `/`* `) i numerowane (`1. `, `2. `),
+akapity (pusta linia). CELOWO bez HTML i bez linków (`<b>`, `[x](y)` wychodzą jako dosłowny tekst, nawet wewnątrz kodu -
+`dangerouslySetInnerHTML` nigdy nie jest używane). Autor treści pisze WYŁĄCZNIE w tym podzbiorze - inny element markdown
+(nagłówki `#`, cytaty `>`, tabele, zagnieżdżone listy) wyjdzie na ekranie dosłownie, nie jako sformatowany element.
+Potrzeba nowego elementu to **pytanie do właściciela produktu** (rozszerzenie renderera, osobny mały commit z testem -
+patrz `docs/decisions.md`), nie powód do improwizowania treści bez formatowania albo z inną składnią.
+
 ## Ocena i wynik
 
 - Klient wysyła tylko swój wybór (indeks opcji, listę id, tekst). Poprawność i punkty (0-1) wylicza serwer (`apps/api/src/courses/scoring`).
@@ -80,3 +90,16 @@ Zmiana treści kursu to NOWA wersja (`course_versions`, niemutowalna); przypisan
 
 Import treści (PR 4) musi dla kursu BEZ wersji najpierw utworzyć wersję 1 z jego obecnej treści, dopiero potem dodać nową: rozpoczęte,
 nieprzypięte przypisania rozwiązują się do najniższej wersji, więc bez wersji 1 trafiłyby na nową treść.
+
+## Katalog modułu (`packages/content/modules/<slug>/`)
+
+Każdy moduł ma **dwa pliki, w tej kolejności powstawania**:
+
+1. **`SCENARIUSZ.md`** - źródło prawdy o treści: fabuła, postaci, dialogi, treść maila, pytania, oceny, reakcje maskotki. Pisze go
+   (albo dostarcza) właściciel produktu, PRZED `module.json`.
+2. **`module.json`** - wierne odwzorowanie `SCENARIUSZ.md` na schemat silnika. Tam, gdzie schemat czegoś nie przewiduje (np. pole
+   wymagane przez zod, którego scenariusz nie precyzuje wprost), agent ZGŁASZA rozjazd i pyta - nie improwizuje po cichu treści,
+   której nie ma w scenariuszu.
+
+Opcjonalnie `assets/` (surowe źródła obrazów/avatarów przed publikacją - `docs/content-pipeline.md`) i, po publikacji,
+`assets.lock.json`/`audio.lock.json` (generowane przez `scripts/content`, nie edytować ręcznie).

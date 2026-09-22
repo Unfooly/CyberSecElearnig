@@ -24,5 +24,7 @@ import { UsersController } from './users.controller';
   // InviteNoticeMailLimiter: wiadomość "ktoś próbował dodać Cię" ma limit "jedna na skrzynkę na 10 minut" jak maile rejestracyjne,
   // ale w osobnej przestrzeni kluczy (nie zjada okna maila rejestracyjnego/aktywacyjnego właściciela).
   providers: [UsersService, UserImportService, UserImportRetentionService, UserImportInviteService, InviteExpiryService, InviteNoticeMailLimiter],
+  // UsersService: ResellersModule zaprasza pierwszego administratora partnera tym samym mechanizmem co pracownika (D-069).
+  exports: [UsersService],
 })
 export class UsersModule {}

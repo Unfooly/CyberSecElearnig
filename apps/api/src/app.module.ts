@@ -13,6 +13,7 @@ import { EmailModule } from './email/email.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { ResellersModule } from './resellers/resellers.module';
 import { PhishingModule } from './phishing/phishing.module';
 import { ThreatReportsModule } from './threat-reports/threat-reports.module';
 
@@ -32,6 +33,7 @@ import { ThreatReportsModule } from './threat-reports/threat-reports.module';
     GamificationModule,
     DemoRequestsModule,
     OrganizationsModule,
+    ResellersModule,
     PhishingModule,
     ThreatReportsModule,
   ],

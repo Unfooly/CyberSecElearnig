@@ -5,9 +5,9 @@ import { apiFetch } from '@/lib/api-fetch';
 import { proxyAuthenticated } from '@/lib/bff';
 import { pickFields } from '@/lib/pick-fields';
 
-// Proxy server-side do apps/api - AvatarPickerModal jest komponentem
-// klienckim (modal otwierany interaktywnie), więc nie może czytać httpOnly
-// cookie samo ani znać API_URL (konwencja server-only) - ten sam wzorzec co
+// Proxy server-side do apps/api - sekcja avatara w ustawieniach konta
+// (AvatarSettings) i Topbar są komponentami klienckimi, więc nie mogą czytać
+// httpOnly cookie same ani znać API_URL (konwencja server-only) - ten sam wzorzec co
 // /api/courses/[courseId]/progress/route.ts.
 export async function GET() {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;

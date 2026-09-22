@@ -38,6 +38,26 @@ describe('UserMenu', () => {
     expect(screen.getByText('jan.kowalski@example.test')).toBeInTheDocument();
   });
 
+  it('menu ma pozycję "Ustawienia konta" prowadzącą do /account, NAD "Wyloguj"', () => {
+    renderMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+
+    const settings = screen.getByRole('menuitem', { name: 'Ustawienia konta' });
+    expect(settings).toHaveAttribute('href', '/account');
+    // Kolejność w DOM = kolejność w menu; ustawienia mają być pierwszą pozycją.
+    const items = screen.getAllByRole('menuitem').map((item) => item.textContent);
+    expect(items).toEqual(['Ustawienia konta', 'Wyloguj']);
+  });
+
+  it('przejście do ustawień konta zamyka menu', () => {
+    renderMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ustawienia konta' }));
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
   it('adres e-mail nie jest pokazywany w samym pasku (nie ucinamy go wielokropkiem)', () => {
     renderMenu();
 

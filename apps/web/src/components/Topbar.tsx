@@ -56,7 +56,7 @@ export default function Topbar({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Własny avatar pobieramy po stronie klienta (Topbar jest współdzielony
-  // przez wszystkie strony), a zmianę z AvatarPickerModal łapiemy przez
+  // przez wszystkie strony), a zmianę z ustawień konta łapiemy przez
   // zdarzenie - bez przeładowania strony. Błąd/brak avatara = inicjały.
   useEffect(() => {
     // Nowy użytkownik nie może widzieć avatara poprzedniego do czasu odpowiedzi.

@@ -12,7 +12,6 @@ describe('ResellersService', () => {
   let assignmentCreate: jest.Mock;
   let assignmentDeleteMany: jest.Mock;
   let assignmentFindMany: jest.Mock;
-  let assignmentFindUnique: jest.Mock;
   let inviteUser: jest.Mock;
   let service: ResellersService;
 
@@ -23,7 +22,6 @@ describe('ResellersService', () => {
     assignmentCreate = jest.fn().mockResolvedValue({});
     assignmentDeleteMany = jest.fn().mockResolvedValue({ count: 1 });
     assignmentFindMany = jest.fn().mockResolvedValue([]);
-    assignmentFindUnique = jest.fn().mockResolvedValue(null);
     inviteUser = jest.fn().mockResolvedValue({});
 
     service = new ResellersService(
@@ -33,7 +31,6 @@ describe('ResellersService', () => {
           create: assignmentCreate,
           deleteMany: assignmentDeleteMany,
           findMany: assignmentFindMany,
-          findUnique: assignmentFindUnique,
         },
       } as unknown as PrismaService,
       { inviteUser } as unknown as UsersService,
@@ -146,15 +143,4 @@ describe('ResellersService', () => {
     });
   });
 
-  describe('getResellerNameForOrganization', () => {
-    it('zwraca samą nazwę opiekuna (klient nie dostaje historii wejść ani identyfikatorów)', async () => {
-      assignmentFindUnique.mockResolvedValueOnce({ reseller: { name: 'IT Partner' } });
-
-      await expect(service.getResellerNameForOrganization('org-1')).resolves.toBe('IT Partner');
-    });
-
-    it('brak opiekuna => null', async () => {
-      await expect(service.getResellerNameForOrganization('org-1')).resolves.toBeNull();
-    });
-  });
 });

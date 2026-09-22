@@ -130,6 +130,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   organizacja zajmuje domenę” (jest sprzątanie po 14 dniach), backlog rejestracji „pre-hijacking”.
 - Akceptacja: każda wymieniona sekcja poprawiona albo usunięta, z odnośnikiem do wpisu w `docs/decisions.md`.
 
+### B-093 Domknięcie ról platformy (SUPER_ADMIN, RESELLER_ADMIN) na trasach klienckich
+- Etykiety: `P3`, `tech-debt`, `mod:auth` · Źródło: przegląd bezpieczeństwa PR z panelem resellera (D-069)
+- Opis: role platformy nie pracują w organizacji klienckiej, ale wciąż mieszczą się w `ALL_ROLES` w `middleware.ts`
+  (`/courses`, `/report`, `/account`), więc technicznie wejdą pod te adresy i zobaczą ekran, który i tak nic nie pokaże
+  (API odrzuca je jawną listą ról). To niespójność, nie luka: Topbar ukrywa te pozycje (`isPlatformRole`), a kontrolery
+  kursów i zgłoszeń wyliczają role klienckie wprost. Druga część: `GamificationController` ma tylko `JwtAuthGuard`, bez
+  `@Roles`/`RolesGuard` (stan sprzed tego PR), więc `RESELLER_ADMIN` też go odpyta - nieszkodliwie (dane po
+  `organizationId` z tokena, organizacja partnera nie ma odznak ani rankingu), ale warto to dopiąć świadomie.
+- Akceptacja: role platformy wykluczone z wpisów `ALL_ROLES` w `middleware.ts` (albo świadomie zostawione z komentarzem),
+  `@Roles` na `GamificationController`, testy ról dla obu zmian.
+
 ### B-092 Panel resellera (partner obsługujący wiele organizacji)
 - **Status: krok 1 zrobiony** (D-069): model danych (`kind = RESELLER`, rola `RESELLER_ADMIN`, `reseller_assignments`),
   panel operatora `/dashboard/admin` (zakładanie partnerów, przypisywanie i odłączanie klientów), panel partnera

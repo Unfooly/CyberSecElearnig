@@ -174,14 +174,9 @@ export class ResellersService {
     }));
   }
 
-  /** Nazwa opiekuna dla panelu klienta - sama nazwa, bez historii wejść (decyzja właściciela produktu). */
-  async getResellerNameForOrganization(organizationId: string): Promise<string | null> {
-    const assignment = await this.prisma.resellerAssignment.findUnique({
-      where: { organizationId },
-      select: { reseller: { select: { name: true } } },
-    });
-    return assignment?.reseller.name ?? null;
-  }
+  // Nazwę opiekuna dla panelu KLIENTA czyta OrganizationsService.getOverview (jedno miejsce,
+  // w kontekście organizacji klienta). Świadomie nie dublujemy tego tutaj: przy kroku 2 relacja
+  // reseller-klient zyska logikę audytu i uprawnień, a dwa wejścia do niej rozjechałyby się.
 
   private async assertReseller(resellerOrganizationId: string): Promise<void> {
     const reseller = await this.prisma.organization.findUnique({

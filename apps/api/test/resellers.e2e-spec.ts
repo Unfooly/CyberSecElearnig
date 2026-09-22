@@ -243,6 +243,37 @@ describe('Panel resellera: operator, partner, izolacja (e2e)', () => {
     });
   });
 
+  // Cała konstrukcja opiera się na tym, że rolę partnera nadaje WYŁĄCZNIE operator. Gdyby admin
+  // organizacji klienckiej mógł ją komuś nadać, zrobiłby sobie konto widzące listę klientów.
+  describe('Eskalacja roli', () => {
+    it('ORG_ADMIN nie zaprosi nikogo z rolą RESELLER_ADMIN ani nie podniesie jej istniejącemu użytkownikowi', async () => {
+      const invite = await request(app.getHttpServer())
+        .post('/users/invite')
+        .set('Authorization', `Bearer ${clientAToken}`)
+        .send({
+          email: `eskalacja-${suffix}@klient-a.reseller-e2e.test`,
+          firstName: 'Ewa',
+          lastName: 'Testowa',
+          role: 'RESELLER_ADMIN',
+        });
+      expect(invite.status).toBe(400);
+
+      const clientAUser = await tenantPrisma.runAuthLookup({ email: clientAEmail });
+      const update = await request(app.getHttpServer())
+        .patch(`/users/${clientAUser!.id}`)
+        .set('Authorization', `Bearer ${clientAToken}`)
+        .send({ role: 'RESELLER_ADMIN' });
+      expect(update.status).toBe(400);
+
+      // SUPER_ADMIN też nie przechodzi tą drogą - role platformy nadaje wyłącznie panel operatora.
+      const superAdminAttempt = await request(app.getHttpServer())
+        .patch(`/users/${clientAUser!.id}`)
+        .set('Authorization', `Bearer ${clientAToken}`)
+        .send({ role: 'SUPER_ADMIN' });
+      expect(superAdminAttempt.status).toBe(400);
+    });
+  });
+
   describe('Odłączenie klienta', () => {
     it('operator odłącza klienta, partner przestaje go widzieć, a klient traci opiekuna', async () => {
       await request(app.getHttpServer())

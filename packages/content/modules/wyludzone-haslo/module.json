@@ -19,7 +19,39 @@
       "type": "NARRATIVE",
       "title": "Otwarcie sprawy",
       "narration": {
-        "text": "Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem."
+        "text": "Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
+        "audioUrl": "audio/wyludzone-haslo/v1/otwarcie/90b4b96e1eb0cd0c.mp3",
+        "durationMs": 27632,
+        "cues": [
+          {
+            "text": "Wtorek, 9:40.",
+            "startMs": 0
+          },
+          {
+            "text": "W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych.",
+            "startMs": 2345
+          },
+          {
+            "text": "Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej.",
+            "startMs": 7860
+          },
+          {
+            "text": "Anna twierdzi, że niczego nie wysyłała.",
+            "startMs": 14420
+          },
+          {
+            "text": "Bank twierdzi, że wszystko odbyło się prawidłowo.",
+            "startMs": 16916
+          },
+          {
+            "text": "Ktoś tu ma rację.",
+            "startMs": 20121
+          },
+          {
+            "text": "Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
+            "startMs": 21583
+          }
+        ]
       },
       "mascot": {
         "pose": "greeting",
@@ -32,7 +64,23 @@
       "type": "SCENE_HOTSPOTS",
       "title": "Biuro Anny",
       "narration": {
-        "text": "Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
+        "text": "Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
+        "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/1bfab24b3440464e.mp3",
+        "durationMs": 10960,
+        "cues": [
+          {
+            "text": "Biuro Anny wygląda jak każde inne.",
+            "startMs": 0
+          },
+          {
+            "text": "Biurko, monitor, telefon, kubek po kawie.",
+            "startMs": 2775
+          },
+          {
+            "text": "Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
+            "startMs": 7012
+          }
+        ]
       },
       "mascot": {
         "pose": "pointing",
@@ -139,7 +187,23 @@
       "type": "DIALOGUE",
       "title": "Rozmowa z Anną",
       "narration": {
-        "text": "Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
+        "text": "Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-anna/c48febdc399e571b.mp3",
+        "durationMs": 10542,
+        "cues": [
+          {
+            "text": "Anna wróciła od telefonu.",
+            "startMs": 0
+          },
+          {
+            "text": "Jest roztrzęsiona, ale chce pomóc.",
+            "startMs": 2067
+          },
+          {
+            "text": "Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
+            "startMs": 4412
+          }
+        ]
       },
       "mascot": {
         "pose": "thinking",
@@ -257,7 +321,23 @@
       "title": "Ten mail",
       "weight": 3,
       "narration": {
-        "text": "Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
+        "text": "Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
+        "audioUrl": "audio/wyludzone-haslo/v1/ten-mail/b713c198c1418a33.mp3",
+        "durationMs": 10820,
+        "cues": [
+          {
+            "text": "Oto wiadomość, od której wszystko się zaczęło.",
+            "startMs": 0
+          },
+          {
+            "text": "Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli.",
+            "startMs": 2879
+          },
+          {
+            "text": "Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
+            "startMs": 7175
+          }
+        ]
       },
       "mascot": {
         "pose": "pointing",
@@ -389,7 +469,19 @@
       "type": "TABS",
       "title": "Akta sprawy",
       "narration": {
-        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
+        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać.",
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/e980488ab70207dc.mp3",
+        "durationMs": 6548,
+        "cues": [
+          {
+            "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt.",
+            "startMs": 0
+          },
+          {
+            "text": "Trzy rzeczy, które każdy w Nortex powinien znać.",
+            "startMs": 3564
+          }
+        ]
       },
       "mascot": {
         "pose": "thinking",
@@ -418,7 +510,23 @@
       "type": "DIALOGUE",
       "title": "Rozmowa z Markiem z IT",
       "narration": {
-        "text": "Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
+        "text": "Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-marek/7af1d78855544b7e.mp3",
+        "durationMs": 7802,
+        "cues": [
+          {
+            "text": "Marek wrócił z urlopu wczoraj wieczorem.",
+            "startMs": 0
+          },
+          {
+            "text": "Dziś rano zastał pożar.",
+            "startMs": 2601
+          },
+          {
+            "text": "Ma logi — i ma coś, czego Anna nie wie.",
+            "startMs": 4377
+          }
+        ]
       },
       "mascot": {
         "pose": "pointing",
@@ -515,7 +623,23 @@
       "title": "Rekonstrukcja zdarzeń",
       "weight": 2,
       "narration": {
-        "text": "Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
+        "text": "Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rekonstrukcja/687b4fc9cb569015.mp3",
+        "durationMs": 5062,
+        "cues": [
+          {
+            "text": "Sześć zdarzeń.",
+            "startMs": 0
+          },
+          {
+            "text": "Jedna kolejność.",
+            "startMs": 1324
+          },
+          {
+            "text": "Ułóż je tak, jak naprawdę się wydarzyły.",
+            "startMs": 2589
+          }
+        ]
       },
       "mascot": {
         "pose": "pointing",
@@ -570,7 +694,19 @@
       "title": "Ostatnie pytanie",
       "weight": 1,
       "narration": {
-        "text": "Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
+        "text": "Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem.",
+        "audioUrl": "audio/wyludzone-haslo/v1/ostatnie-pytanie/93869a10e370af29.mp3",
+        "durationMs": 6037,
+        "cues": [
+          {
+            "text": "Zostało jedno pytanie.",
+            "startMs": 0
+          },
+          {
+            "text": "Najważniejsze — bo to ono uratuje cię następnym razem.",
+            "startMs": 1707
+          }
+        ]
       },
       "mascot": {
         "pose": "thinking",
@@ -614,7 +750,31 @@
       "type": "SUMMARY",
       "title": "Rozwiązanie sprawy",
       "narration": {
-        "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47."
+        "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/9096ffe95f992b1d.mp3",
+        "durationMs": 21223,
+        "cues": [
+          {
+            "text": "Sprawa Anny nie była sprawą o głupotę.",
+            "startMs": 0
+          },
+          {
+            "text": "Była sprawą o pośpiech, zaufanie i jedną karteczkę.",
+            "startMs": 2833
+          },
+          {
+            "text": "Oszust nie złamał żadnego zabezpieczenia.",
+            "startMs": 6920
+          },
+          {
+            "text": "Poprosił — i dostał.",
+            "startMs": 9729
+          },
+          {
+            "text": "Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
+            "startMs": 12225
+          }
+        ]
       },
       "mascot": {
         "pose": "greeting",

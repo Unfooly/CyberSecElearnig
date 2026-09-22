@@ -384,6 +384,51 @@ Wyłączenie wysyłki bez wycofywania obrazu: puste `PHISHING_MAIL_TRANSPORT` i 
 anuluj aktywne kampanie w panelu, żeby wyniki nie zawierały takich wpisów). Migracje są addytywne - wycofanie obrazu do sprzed
 modułu nie wymaga cofania schematu (nowe tabele są ignorowane).
 
+## 11. Wdrożenie potoku treści (audio narracji i zasoby modułów, Cloudflare R2)
+
+Audio narracji (ElevenLabs) i zasoby modułów (obrazy scen, avatary) publikuje wyłącznie autor treści, ze swojej maszyny
+(`npm run tts --prefix scripts/content`) - serwer aplikacji (`api`, `web`) nigdy nie woła ElevenLabs ani R2, zna tylko
+`CONTENT_BASE_URL`. Opis narzędzia i formatu: `docs/content-pipeline.md` (D-060).
+
+### Zmienne środowiskowe
+
+| Zmienna | Gdzie | Wartość |
+|---|---|---|
+| `CONTENT_BASE_URL` | `.env.prod` (serwer) | `https://content.twoja-domena.pl` (publiczna domena R2 z kroku 1 niżej), konkretny origin, tylko https (D-053). |
+| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `R2_*` | `scripts/content/.env.local` (**maszyna autora treści**, poza gitem) | Wzór: `scripts/content/.env.local.example`. Nigdy w `.env.prod`, w repo ani w CI. |
+
+### Kolejność
+
+1. **Bucket i publiczna domena R2** (panel Cloudflare, R2 → Create bucket): `unfooly-content`, region EEUR. R2 → bucket →
+   Settings → Public access → Custom domain → `content.unfooly.com` (albo domena klienta). Poczekaj na aktywny certyfikat.
+2. **Token API R2** (R2 → Manage API tokens → Create API token): uprawnienie **Object Read & Write**, ograniczone do
+   bucketa `unfooly-content` (nigdy klucz kontowy z dostępem do wszystkich bucketów). Wpisz `R2_ACCOUNT_ID`,
+   `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET=unfooly-content`, `R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`
+   do `scripts/content/.env.local` **na maszynie autora treści** - nie na serwerze, nie w repo.
+3. **Nagłówki odpowiedzi na domenie zasobów - WARUNEK przed pierwszą publikacją SVG:** Cloudflare → Rules → Transform
+   Rules → Modify Response Header, dla `content.unfooly.com` (wszystkie ścieżki): dodaj
+   `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox` i `X-Content-Type-Options: nosniff`.
+   To druga linia obrony lintu SVG (`docs/content-pipeline.md`) - bez niej otwarcie klucza R2 wprost w karcie przeglądarki
+   mogłoby wykonać skrypt w źle zlintowanym/ręcznie wgranym pliku SVG.
+4. **`CONTENT_BASE_URL`** w `.env.prod`: `https://content.unfooly.com` (domena z kroku 1). Po zmianie:
+   `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d` (kontener `web` musi się przeładować, CSP
+   `img-src`/`media-src` czyta tę zmienną przy starcie, D-053).
+5. **Pierwsza publikacja**: na maszynie autora treści `npm ci --prefix scripts/content`, potem dla modułu w
+   `packages/content/modules/<slug>/`: `npm run tts --prefix scripts/content -- <slug> --storage r2 --yes` (audio) i
+   `npm run tts --prefix scripts/content -- <slug> --assets --storage r2` (obrazy/avatary). Skrypt pyta o potwierdzenie
+   (liczba narracji, znaki, szacowany czas ElevenLabs) - bez `--yes` interaktywnie.
+6. **Weryfikacja**: otwórz w przeglądarce publiczny klucz audio (`https://content.unfooly.com/audio/<slug>/...mp3`) -
+   odtwarza się; nagłówki odpowiedzi (DevTools → Network) zawierają `Cache-Control: public, max-age=31536000, immutable`
+   i (na dowolnym kluczu w tej domenie) `X-Content-Type-Options: nosniff` oraz `Content-Security-Policy` z kroku 3.
+   Otwórz moduł w odtwarzaczu (`/courses/...`) - narracja i obrazy ładują się z `content.unfooly.com`, bez naruszeń CSP w
+   konsoli przeglądarki (`img-src`/`media-src` aplikacji, D-053).
+
+### Rollback / zmiana zasobów
+
+Pliki są niemutowalne (nazwa zawiera skrót treści) - nic nie trzeba wycofywać: `module.json` zmienionego modułu (nowa
+wersja treści, D-051) po prostu przestaje wskazywać na stare klucze, które zostają w buckecie nieużywane. Sprzątanie
+nieużywanych plików to świadoma, ręczna decyzja operatora (`R2Store` nigdy nie robi `DeleteObject`).
+
 ## Klasyczna alternatywa: Caddy
 
 Zamiast tunelu można użyć Caddy (Let's Encrypt, porty 80/443 otwarte): w `.env.prod` ustaw

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Prisma } from '@prisma/client';
 import { Role } from '@cyberszkolo/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { UsersService } from '../users/users.service';
 import { ResellersService } from './resellers.service';
 
@@ -13,6 +14,8 @@ describe('ResellersService', () => {
   let assignmentDeleteMany: jest.Mock;
   let assignmentFindMany: jest.Mock;
   let inviteUser: jest.Mock;
+  let organizationDelete: jest.Mock;
+  let userFindFirst: jest.Mock;
   let service: ResellersService;
 
   beforeEach(() => {
@@ -22,17 +25,28 @@ describe('ResellersService', () => {
     assignmentCreate = jest.fn().mockResolvedValue({});
     assignmentDeleteMany = jest.fn().mockResolvedValue({ count: 1 });
     assignmentFindMany = jest.fn().mockResolvedValue([]);
-    inviteUser = jest.fn().mockResolvedValue({});
+    // Domyślnie: zaproszenie się udało i konto faktycznie powstało w organizacji partnera.
+    inviteUser = jest.fn().mockResolvedValue({ inviteEmailSent: true });
+    organizationDelete = jest.fn().mockResolvedValue({});
+    userFindFirst = jest.fn().mockResolvedValue({ id: 'user-1' });
 
     service = new ResellersService(
       {
-        organization: { findUnique: organizationFindUnique, findMany: organizationFindMany, create: organizationCreate },
+        organization: {
+          findUnique: organizationFindUnique,
+          findMany: organizationFindMany,
+          create: organizationCreate,
+          delete: organizationDelete,
+        },
         resellerAssignment: {
           create: assignmentCreate,
           deleteMany: assignmentDeleteMany,
           findMany: assignmentFindMany,
         },
       } as unknown as PrismaService,
+      {
+        runInOrgContext: (_id: string, fn: (tx: unknown) => unknown) => fn({ user: { findFirst: userFindFirst } }),
+      } as unknown as TenantPrismaService,
       { inviteUser } as unknown as UsersService,
     );
   });
@@ -49,7 +63,38 @@ describe('ResellersService', () => {
         expect.objectContaining({ data: expect.objectContaining({ kind: 'RESELLER', status: 'ACTIVE' }) }),
       );
       expect(inviteUser).toHaveBeenCalledWith('res-1', expect.objectContaining({ role: Role.RESELLER_ADMIN }));
-      expect(result).toEqual(expect.objectContaining({ id: 'res-1', clientCount: 0, createdByEmail: 'operator@unfooly.test' }));
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'res-1', clientCount: 0, createdByEmail: 'operator@unfooly.test', inviteEmailSent: true }),
+      );
+      expect(organizationDelete).not.toHaveBeenCalled();
+    });
+
+    // inviteUser przy adresie zajętym w innej organizacji NIE rzuca - zwraca odpowiedź nie do
+    // odróżnienia od sukcesu (anty-enumeracja). Bez tego sprawdzenia operator dostałby partnera,
+    // do którego nikt nigdy się nie zaloguje, i bez ścieżki naprawy.
+    it('adres zajęty w innej organizacji: kasuje świeżo utworzoną organizację i zgłasza konflikt', async () => {
+      userFindFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.createReseller(
+          { name: 'IT Partner', adminEmail: 'zajety@inna.test', adminFirstName: 'Anna', adminLastName: 'Nowak' },
+          'operator@unfooly.test',
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(organizationDelete).toHaveBeenCalledWith({ where: { id: 'res-1' } });
+    });
+
+    it('konto powstało, ale mail nie wyszedł: partner zostaje, a operator dostaje o tym informację', async () => {
+      inviteUser.mockResolvedValueOnce({ inviteEmailSent: false });
+
+      const result = await service.createReseller(
+        { name: 'IT Partner', adminEmail: 'anna@partner.test', adminFirstName: 'Anna', adminLastName: 'Nowak' },
+        'operator@unfooly.test',
+      );
+
+      expect(result.inviteEmailSent).toBe(false);
+      expect(organizationDelete).not.toHaveBeenCalled();
     });
   });
 

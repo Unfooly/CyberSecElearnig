@@ -10,4 +10,10 @@ export class ResellerDto {
   clientCount!: number;
   /** Tylko w odpowiedzi na utworzenie: kto je założył (kopia adresu operatora). */
   createdByEmail?: string;
+  /**
+   * Tylko w odpowiedzi na utworzenie: false = konto administratora partnera powstało, ale e-mail
+   * z zaproszeniem nie wyszedł. Operator musi to widzieć, bo partner nie ma jak poprosić o ponowną
+   * wysyłkę (zaproszenia wysyła ORG_ADMIN organizacji klienckiej).
+   */
+  inviteEmailSent?: boolean;
 }

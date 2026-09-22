@@ -162,6 +162,59 @@ describe('Panel resellera: operator, partner, izolacja (e2e)', () => {
         .expect(404);
     });
 
+    it('lista organizacji do przypisania zawiera WYŁĄCZNIE organizacje klienckie, z aktualnym opiekunem', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/resellers/assignable-organizations')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+
+      const byId = new Map(response.body.map((organization: { id: string }) => [organization.id, organization]));
+      // Organizacje partnerów nie są klientami - nie wolno ich nikomu przypisać.
+      expect(byId.has(resellerAId)).toBe(false);
+      expect(byId.has(resellerBId)).toBe(false);
+      expect(byId.get(clientAOrganizationId)).toEqual(
+        expect.objectContaining({ resellerId: resellerAId, resellerName: `Partner ${suffix} A` }),
+      );
+    });
+
+    it('istniejący raport operatora (/dashboard/admin/organizations) NIE miesza organizacji partnerów z klientami', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard/admin/organizations')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+
+      const ids = response.body.map((organization: { id: string }) => organization.id);
+      expect(ids).toContain(clientAOrganizationId);
+      expect(ids).not.toContain(resellerAId);
+      expect(ids).not.toContain(resellerBId);
+    });
+
+    it('adres zajęty w innej organizacji: partner NIE powstaje (bez osieroconej organizacji)', async () => {
+      const before = await request(app.getHttpServer())
+        .get('/resellers')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/resellers')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .send({
+          name: `Partner ${suffix} C`,
+          // Adres administratora klienta A - ma już konto w innej organizacji.
+          adminEmail: clientAEmail,
+          adminFirstName: 'Cezary',
+          adminLastName: 'Partnerski',
+        })
+        .expect(409);
+
+      const after = await request(app.getHttpServer())
+        .get('/resellers')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+      expect(after.body).toHaveLength(before.body.length);
+      expect(after.body.some((reseller: { name: string }) => reseller.name === `Partner ${suffix} C`)).toBe(false);
+    });
+
     it('lista partnerów pokazuje liczbę klientów', async () => {
       const response = await request(app.getHttpServer())
         .get('/resellers')

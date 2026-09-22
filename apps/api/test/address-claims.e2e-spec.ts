@@ -577,6 +577,9 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       await make(orgA, 'swiezy', { createdAt: new Date(Date.now() - 29 * DAY) });
       await make(orgA, 'aktywny', { createdAt: OLD, status: 'ACTIVE', emailVerifiedAt: new Date() });
       await make(orgA, 'admin', { createdAt: OLD, role: 'ORG_ADMIN' });
+      // Administrator partnera (D-069) jest jedynym kontem swojej organizacji, a ta startuje jako
+      // ACTIVE i nie podlega sprzątaniu - skasowanie go zostawiłoby organizację bez nikogo.
+      await make(orgA, 'partner', { createdAt: OLD, role: 'RESELLER_ADMIN' });
       await make(orgB, 'starb', { createdAt: OLD });
 
       const first = await expiry.run(new Date());
@@ -585,7 +588,7 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       expect(first.expired).toBeGreaterThanOrEqual(2);
       expect(await owned(inDomain(`wyg.${domainSuffix}`, 'imp'))).toBeNull();
       expect(await owned(inDomain(`wyg.${domainSuffix}`, 'starb'))).toBeNull();
-      for (const kept of ['swiezy', 'aktywny', 'admin']) {
+      for (const kept of ['swiezy', 'aktywny', 'admin', 'partner']) {
         expect(await owned(inDomain(`wyg.${domainSuffix}`, kept))).not.toBeNull();
       }
       const [row] = await rowsOf(orgA, batch);

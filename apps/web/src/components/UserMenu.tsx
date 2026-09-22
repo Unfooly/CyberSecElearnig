@@ -66,6 +66,8 @@ export default function UserMenu({
   }
 
   return (
+    // Menu otwiera wyłącznie klik (decyzja właściciela produktu 2026-09-22): hover otwierałby je
+    // przy zwykłym przejeździe myszą przez pasek, a na dotyku i klawiaturze i tak go nie ma.
     <div ref={containerRef} className="relative shrink-0">
       <button
         ref={triggerRef}
@@ -84,10 +86,7 @@ export default function UserMenu({
           initials={initials}
           label={avatarUrl ? 'Twój avatar' : undefined}
         />
-        {/* Długi adres nie może wypychać układu poza okno (poziome przewijanie): skracamy, pełny w podpowiedzi i w menu. */}
-        <span className="hidden max-w-[10rem] truncate sm:inline" title={userEmail}>
-          {userEmail}
-        </span>
+        {/* Adresu nie ma w pasku (długi bywał ucinany wielokropkiem) - pełny jest w menu. */}
         <ChevronDown size={16} strokeWidth={2.5} aria-hidden="true" className={isOpen ? 'rotate-180' : undefined} />
       </button>
 
@@ -98,7 +97,7 @@ export default function UserMenu({
           aria-label="Menu użytkownika"
           className="absolute right-0 top-full z-50 mt-2 w-60 rounded-card border border-border bg-surface py-1.5 shadow-card"
         >
-          {/* Na telefonie adres jest ukryty w pasku (brak miejsca) - w menu widać go zawsze. */}
+          {/* Adresu nie ma już w pasku - tu widać go zawsze, w całości. */}
           <p className="break-all border-b border-border px-3 pb-2 pt-1 text-[13px] font-semibold text-muted">{userEmail}</p>
           <button
             type="button"

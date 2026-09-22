@@ -147,7 +147,10 @@ Kursy to treść (JSON modułu zwalidowany zod), nie kod; szczegóły i format: 
 
 ## Role i uprawnienia
 
-- `SUPER_ADMIN` — wy, dostęp do wszystkich organizacji (panel operacyjny, nie mylić z rolami klienta)
+- `SUPER_ADMIN` — wy, dostęp do wszystkich organizacji (panel operacyjny `/dashboard/admin`, nie mylić z rolami klienta)
+- `RESELLER_ADMIN` — partner sprzedający platformę (D-069). Żyje we własnej organizacji (`kind = RESELLER`), widzi
+  wyłącznie listę przypisanych mu klientów (`/dashboard/reseller`) i ich metadane — **nie ma dostępu do danych klienta**.
+  Przypisanie i odłączenie klienta robi WYŁĄCZNIE operator; klient widzi nazwę opiekuna, ale nie może go zmienić.
 - `ORG_ADMIN` — admin po stronie klienta, zarządza pracownikami/kampaniami/kursami swojej organizacji
 - `DEPARTMENT_MANAGER` — widzi tylko swój dział (jeśli już zaimplementowane; w MVP v1 opcjonalne)
 - `EMPLOYEE` — uczestniczy w szkoleniach i symulacjach

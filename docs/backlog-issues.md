@@ -131,7 +131,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: każda wymieniona sekcja poprawiona albo usunięta, z odnośnikiem do wpisu w `docs/decisions.md`.
 
 ### B-092 Panel resellera (partner obsługujący wiele organizacji)
-- Etykiety: `P3`, `feature`, `decision-needed`, `mod:auth`, `mod:db` · Źródło: rozmowa z właścicielem produktu 2026-09-22
+- **Status: krok 1 zrobiony** (D-069): model danych (`kind = RESELLER`, rola `RESELLER_ADMIN`, `reseller_assignments`),
+  panel operatora `/dashboard/admin` (zakładanie partnerów, przypisywanie i odłączanie klientów), panel partnera
+  `/dashboard/reseller` (lista klientów - same metadane organizacji), nazwa opiekuna w ustawieniach klienta.
+  **Do zrobienia pozostaje krok 2: „wejdź jako organizacja”** - token zakresowany na jedną organizację, audyt wejść
+  (niepokazywany klientowi), natychmiastowe unieważnianie dostępu, a wraz z nim wpis do checklisty prywatności.
+  Otwarte także: kto zakłada organizacje klienckie (operator czy partner), co przy rozstaniu z partnerem (okres
+  przejściowy i tryb tylko do odczytu), limity puli licencji, white-label.
+- Etykiety: `P3`, `feature`, `mod:auth`, `mod:db` · Źródło: rozmowa z właścicielem produktu 2026-09-22
 - Opis: sprzedaż przez partnerów (firmy IT, MSP, biura rachunkowe), którzy obsługują wiele organizacji klienckich. Wpis powstał po rozmowie
   koncepcyjnej - **nie implementować bez wpisu w `docs/decisions.md`** (CLAUDE.md, `decision-needed`). Wobec listy MVP (moduły 1-5, dokumenty
   prawne, własna domena nadawcy, limity na brzegu) to zadanie na po starcie.

@@ -1,0 +1,626 @@
+{
+  "schemaVersion": 4,
+  "slug": "wyludzone-haslo",
+  "title": "Sprawa: wyłudzone hasło",
+  "subtitle": "Phishing, hasła i jedna karteczka",
+  "category": "PHISHING_SOCIAL_ENGINEERING",
+  "level": "basic",
+  "durationMinutes": 12,
+  "mandatory": true,
+  "objectives": [
+    "Rozpoznać fałszywą domenę w adresie nadawcy i w linku.",
+    "Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS.",
+    "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
+    "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
+  ],
+  "blocks": [
+    {
+      "id": "otwarcie",
+      "type": "NARRATIVE",
+      "title": "Otwarcie sprawy",
+      "narration": {
+        "text": "Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem."
+      },
+      "mascot": {
+        "pose": "greeting",
+        "text": "Cześć, detektywie. Mamy sprawę. Zbieraj dowody do notatnika — na końcu złożymy to w całość."
+      },
+      "text": "**Od czego zaczynamy?**\n\nOd miejsca zdarzenia. Biuro Anny — zobaczmy, co tam zostało.\n\nKlikaj wszystko, co wygląda podejrzanie. Nie wszystko jest dowodem, ale wszystko coś mówi."
+    },
+    {
+      "id": "biuro-anny",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Biuro Anny",
+      "narration": {
+        "text": "Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
+      },
+      "mascot": {
+        "pose": "pointing",
+        "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
+      },
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.4e3b436a.svg",
+      "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą.",
+      "hotspots": [
+        {
+          "id": "karteczka",
+          "label": "Żółta karteczka",
+          "x": 52.5,
+          "y": 25.5,
+          "width": 7,
+          "height": 9.5,
+          "content": "Na karteczce: „Nortex2024!” — a niżej dopisek długopisem: bank: to samo.",
+          "evidence": true,
+          "note": {
+            "text": "Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku.",
+            "kind": "item"
+          },
+          "required": true
+        },
+        {
+          "id": "monitor",
+          "label": "Monitor",
+          "x": 30,
+          "y": 28,
+          "width": 26.5,
+          "height": 29.5,
+          "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
+          "evidence": true,
+          "note": {
+            "text": "Mail od „Banku Wektor” z 8:47, temat: pilna weryfikacja konta.",
+            "kind": "mail"
+          },
+          "required": true
+        },
+        {
+          "id": "telefon",
+          "label": "Telefon stacjonarny",
+          "x": 62,
+          "y": 52,
+          "width": 12,
+          "height": 11.5,
+          "content": "Nieodebrane połączenie z 9:05, numer zastrzeżony. Na wyświetlaczu notatka Anny: „informatyk, oddzwonić”.",
+          "evidence": true,
+          "note": {
+            "text": "Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała „informatyk”.",
+            "kind": "item"
+          },
+          "required": true
+        },
+        {
+          "id": "kalendarz",
+          "label": "Kalendarz ścienny",
+          "x": 79.5,
+          "y": 11.5,
+          "width": 12.5,
+          "height": 23,
+          "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
+          "evidence": true,
+          "note": {
+            "text": "Anna miała dziś termin przelewów do 15:00 — działała pod presją.",
+            "kind": "place"
+          },
+          "required": true
+        },
+        {
+          "id": "drukarka",
+          "label": "Drukarka",
+          "x": 6.5,
+          "y": 51.5,
+          "width": 15,
+          "height": 14,
+          "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
+          "evidence": true,
+          "note": {
+            "text": "Przelew z 9:12 na nieznaną firmę „Wektor Rozliczenia”, tytuł „weryfikacja salda”.",
+            "kind": "item"
+          },
+          "required": false
+        },
+        {
+          "id": "kubek",
+          "label": "Kubek z kawą",
+          "x": 21,
+          "y": 54,
+          "width": 6,
+          "height": 7,
+          "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
+          "required": false
+        }
+      ],
+      "reactions": {
+        "complete": {
+          "pose": "cheer",
+          "text": "Cztery ślady. Teraz porozmawiajmy z Anną."
+        }
+      }
+    },
+    {
+      "id": "rozmowa-anna",
+      "type": "DIALOGUE",
+      "title": "Rozmowa z Anną",
+      "narration": {
+        "text": "Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
+      },
+      "mascot": {
+        "pose": "thinking",
+        "text": "Nie oceniaj. Pytaj."
+      },
+      "character": {
+        "name": "Anna Kowalska",
+        "role": "księgowa w Nortex Sp. z o.o.",
+        "avatar": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg",
+        "opening": "Ja naprawdę nic nie zrobiłam. Znaczy… zrobiłam to, co kazali."
+      },
+      "questions": [
+        {
+          "id": "mail",
+          "text": "Opowiedz o tym mailu z banku.",
+          "lines": [
+            {
+              "text": "Przyszedł rano, wyglądał normalnie — logo, stopka, wszystko."
+            },
+            {
+              "text": "Pisali, że konto firmowe będzie zablokowane do 10:00, jeśli nie potwierdzę danych."
+            },
+            {
+              "text": "Kliknęłam w link, strona wyglądała jak nasz bank. Wpisałam login i hasło."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Anna kliknęła link z maila i wpisała login oraz hasło na stronie „banku”.",
+            "kind": "person"
+          },
+          "required": true
+        },
+        {
+          "id": "telefon",
+          "text": "Kto dzwonił o 9:05?",
+          "lines": [
+            {
+              "text": "Informatyk z banku. Powiedział, że wykryli podejrzaną próbę logowania i muszą to zatrzymać."
+            },
+            {
+              "text": "Poprosił o kod SMS, który właśnie przyszedł. Żeby anulować operację."
+            },
+            {
+              "text": "Podałam. Był bardzo uprzejmy. Miał mój numer, znał nazwę firmy…"
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Anna podała przez telefon kod SMS „informatykowi z banku”, który miał anulować operację.",
+            "kind": "person"
+          },
+          "required": true
+        },
+        {
+          "id": "haslo",
+          "text": "To hasło na karteczce…",
+          "lines": [
+            {
+              "text": "Wiem, wiem. Ale mamy dwanaście systemów i każdy chce innego hasła."
+            },
+            {
+              "text": "Marek z IT mówił, żebym używała menedżera haseł. Nie miałam kiedy."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Anna używa tego samego hasła do systemu księgowego i banku; nie ma menedżera haseł.",
+            "kind": "person"
+          },
+          "required": true
+        },
+        {
+          "id": "presja",
+          "text": "Dlaczego działałaś tak szybko?",
+          "lines": [
+            {
+              "text": "Do 15:00 muszę puścić wszystkie przelewy do dostawców. Jak konto by zablokowali, nie zdążyłabym."
+            },
+            {
+              "text": "W mailu był zegar. Odliczał."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Mail zawierał odliczanie; Anna działała pod presją terminu przelewów.",
+            "kind": "person"
+          },
+          "required": false
+        },
+        {
+          "id": "zglosic",
+          "text": "Pomyślałaś, żeby to komuś zgłosić?",
+          "lines": [
+            {
+              "text": "Komu? Marek był na urlopie do wczoraj."
+            },
+            {
+              "text": "Poza tym… to był bank. Bank się nie zgłasza, bank się słucha."
+            }
+          ],
+          "required": false
+        }
+      ],
+      "reactions": {
+        "complete": {
+          "pose": "warning",
+          "text": "Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail."
+        }
+      }
+    },
+    {
+      "id": "ten-mail",
+      "type": "EMAIL_ANALYSIS",
+      "title": "Ten mail",
+      "weight": 3,
+      "narration": {
+        "text": "Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
+      },
+      "mascot": {
+        "pose": "pointing",
+        "text": "Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
+      },
+      "email": {
+        "fromName": "Bank Wektor — Dział Bezpieczeństwa",
+        "fromAddress": "bezpieczenstwo@bankwektor-weryfikacja.pl",
+        "to": "a.kowalska@nortex.pl",
+        "subject": "PILNE: weryfikacja konta firmowego — blokada o 10:00",
+        "date": "wtorek, 8:47",
+        "body": "Szanowna Kliencie,\n\nW związku z aktualizacją systemów bezpieczeństwa Twoje konto firmowe wymaga natychmiastowej weryfikacji. W przypadku braku potwierdzenia do godziny 10:00 dostęp do rachunku zostanie tymczasowo zablokowany.\n\nPozostało: 01:12:33\n\nAby potwierdzić dane, kliknij: Przejdź do weryfikacji\n\nProsimy o nie odpowiadanie na tę wiadomość.\n\nZ poważaniem,\nZespół Bezpieczeństwa Bank Wektor\nBank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa",
+        "attachment": {
+          "name": "Regulamin_weryfikacji.pdf.exe",
+          "size": "412 KB"
+        },
+        "links": [
+          {
+            "id": "l1",
+            "text": "Przejdź do weryfikacji",
+            "url": "https://bankwektor-weryfikacja.pl/login?id=88213"
+          }
+        ]
+      },
+      "criteria": [
+        {
+          "id": "domena",
+          "label": "Adres nadawcy: bankwektor-weryfikacja.pl",
+          "correct": true,
+          "evidence": true,
+          "note": {
+            "text": "Nadawca z domeny „bankwektor-weryfikacja.pl”, nie „bankwektor.pl”.",
+            "kind": "mail"
+          },
+          "explanation": "Prawdziwa domena banku to bankwektor.pl. Dopisek „-weryfikacja” robi z tego zupełnie inną stronę, którą może zarejestrować każdy.",
+          "target": {
+            "kind": "sender"
+          }
+        },
+        {
+          "id": "link",
+          "label": "Link „Przejdź do weryfikacji”",
+          "correct": true,
+          "evidence": true,
+          "note": {
+            "text": "Link prowadzi na „bankwektor-weryfikacja.pl/login”.",
+            "kind": "mail"
+          },
+          "explanation": "Napis mówi jedno, adres — drugie. Zawsze patrz na adres, nie na napis.",
+          "target": {
+            "kind": "link",
+            "linkId": "l1"
+          }
+        },
+        {
+          "id": "zalacznik",
+          "label": "Załącznik Regulamin_weryfikacji.pdf.exe",
+          "correct": true,
+          "evidence": true,
+          "note": {
+            "text": "Załącznik „.pdf.exe” — plik wykonywalny udający PDF.",
+            "kind": "mail"
+          },
+          "explanation": "„.pdf.exe” to program udający dokument. Bank nie wysyła programów.",
+          "target": {
+            "kind": "attachment"
+          }
+        },
+        {
+          "id": "presja",
+          "label": "Odliczanie czasu do blokady konta",
+          "correct": true,
+          "explanation": "Odliczanie i groźba blokady mają wyłączyć myślenie. Prawdziwy bank daje czas i nigdy nie odlicza."
+        },
+        {
+          "id": "zwrot",
+          "label": "Zwrot „Szanowna Kliencie”",
+          "correct": true,
+          "explanation": "Błąd gramatyczny w zwrocie do klienta. Bank wie, jak się nazywasz.",
+          "target": {
+            "kind": "text",
+            "quote": "Szanowna Kliencie"
+          }
+        },
+        {
+          "id": "stopka",
+          "label": "Stopka z adresem banku",
+          "correct": false,
+          "explanation": "Stopka jest skopiowana z prawdziwych maili banku — sama w sobie nic nie znaczy. Oszuści kopiują stopki jako pierwsze.",
+          "target": {
+            "kind": "text",
+            "quote": "Bank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa"
+          }
+        },
+        {
+          "id": "nieodpowiadaj",
+          "label": "„Prosimy o nie odpowiadanie”",
+          "correct": false,
+          "explanation": "To standardowy zwrot w automatycznych mailach. Nie jest sygnałem.",
+          "target": {
+            "kind": "text",
+            "quote": "Prosimy o nie odpowiadanie na tę wiadomość."
+          }
+        }
+      ],
+      "scoring": "partial",
+      "reactions": {
+        "result": [
+          {
+            "minScore": 0.8,
+            "pose": "cheer",
+            "text": "Czytasz maile jak detektyw."
+          },
+          {
+            "minScore": 0.4,
+            "pose": "thinking",
+            "text": "Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je."
+          },
+          {
+            "minScore": 0,
+            "pose": "warning",
+            "text": "Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj."
+          }
+        ]
+      }
+    },
+    {
+      "id": "akta-sprawy",
+      "type": "TABS",
+      "title": "Akta sprawy",
+      "narration": {
+        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
+      },
+      "mascot": {
+        "pose": "thinking",
+        "text": "Krótka lektura. Przyda się za chwilę."
+      },
+      "tabs": [
+        {
+          "id": "domeny",
+          "title": "Domeny",
+          "content": "Prawdziwe adresy Banku Wektor kończą się na `@bankwektor.pl`, a strona logowania to `https://www.bankwektor.pl`. Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (`.com`, `.net`, `.pl.info`) — nie jest bankiem. Sprawdzaj to, co jest **tuż przed pierwszym ukośnikiem** po `https://`."
+        },
+        {
+          "id": "zasady-banku",
+          "title": "Czego bank nigdy nie zrobi",
+          "content": "- Nie poprosi o hasło — mailem, telefonem ani SMS-em.\n- Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS **zawsze zatwierdza**, nigdy nie anuluje.\n- Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.\n- Nie wyśle programu (`.exe`, `.scr`, `.bat`) w załączniku.\n\nJeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila."
+        },
+        {
+          "id": "zgloszenie",
+          "title": "Jak zgłosić w Nortex",
+          "content": "Podejrzany mail: przycisk **„Zgłoś podejrzany mail”** w Unfooly albo przekaż do `bezpieczenstwo@nortex.pl`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+        }
+      ]
+    },
+    {
+      "id": "rozmowa-marek",
+      "type": "DIALOGUE",
+      "title": "Rozmowa z Markiem z IT",
+      "narration": {
+        "text": "Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
+      },
+      "mascot": {
+        "pose": "pointing",
+        "text": "Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego."
+      },
+      "character": {
+        "name": "Marek Zieliński",
+        "role": "administrator IT (jednoosobowy dział)",
+        "avatar": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg",
+        "opening": "Nie mów mi, że karteczka. Błagam, nie karteczka."
+      },
+      "questions": [
+        {
+          "id": "logi",
+          "text": "Co mówią logi banku?",
+          "lines": [
+            {
+              "text": "Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login, poprawne hasło — bo Anna je wpisała na ich stronie o 8:58."
+            },
+            {
+              "text": "Przelew o 9:12, zatwierdzony kodem SMS. Tym, który Anna podała przez telefon."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Logi: logowanie z zagranicy o 9:03 po wpisaniu danych przez Annę o 8:58; przelew 9:12 zatwierdzony kodem SMS podanym przez telefon.",
+            "kind": "item"
+          },
+          "required": true
+        },
+        {
+          "id": "dzwonil",
+          "text": "Ktoś z IT dzwonił do Anny o 9:05?",
+          "lines": [
+            {
+              "text": "Nikt. Jestem jedynym informatykiem w tej firmie, a o 9:05 stałem w korku."
+            },
+            {
+              "text": "Bank też nie dzwoni z zastrzeżonego. Ten „informatyk” to był oszust — i to on wtedy siedział zalogowany na koncie Anny, czekając na kod."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Nikt z IT ani z banku nie dzwonił o 9:05 — dzwonił oszust, już zalogowany, po kod SMS.",
+            "kind": "person"
+          },
+          "required": true
+        },
+        {
+          "id": "inni",
+          "text": "Czy ktoś jeszcze dostał ten mail?",
+          "lines": [
+            {
+              "text": "Sprawdziłem: siedem osób. Dwie kliknęły w link, ale nie wpisały danych — strona wydała im się dziwna."
+            },
+            {
+              "text": "Nikt nie zgłosił. Ani jedna osoba. Gdyby pierwsza kliknęła „Zgłoś”, zablokowałbym domenę przed 8:55."
+            }
+          ],
+          "evidence": true,
+          "note": {
+            "text": "Mail trafił do 7 osób, 2 kliknęły, nikt nie zgłosił.",
+            "kind": "mail"
+          },
+          "required": false
+        },
+        {
+          "id": "co_teraz",
+          "text": "Co robimy teraz?",
+          "lines": [
+            {
+              "text": "Bank próbuje cofnąć przelew — czasem się udaje, jeśli zgłosisz w ciągu godziny. Tu minęło pięć."
+            },
+            {
+              "text": "Zmieniamy hasła Anny — wszystkie, bo były takie same. Włączamy menedżer haseł dla całej księgowości."
+            },
+            {
+              "text": "I zgłaszamy na policję. To przestępstwo, nie wpadka."
+            }
+          ],
+          "required": false
+        }
+      ],
+      "reactions": {
+        "complete": {
+          "pose": "thinking",
+          "text": "Masz już wszystko. Ułóżmy to w kolejności."
+        }
+      }
+    },
+    {
+      "id": "rekonstrukcja",
+      "type": "ORDERING",
+      "title": "Rekonstrukcja zdarzeń",
+      "weight": 2,
+      "narration": {
+        "text": "Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
+      },
+      "mascot": {
+        "pose": "pointing",
+        "text": "Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
+      },
+      "prompt": "Ułóż sześć zdarzeń w kolejności, w jakiej naprawdę się wydarzyły.",
+      "items": [
+        {
+          "id": "mail",
+          "text": "8:47 — Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl."
+        },
+        {
+          "id": "link",
+          "text": "8:58 — Anna klika link i wpisuje login oraz hasło na fałszywej stronie."
+        },
+        {
+          "id": "login",
+          "text": "9:03 — Oszust loguje się do prawdziwego banku danymi Anny."
+        },
+        {
+          "id": "telefon",
+          "text": "9:05 — „Informatyk” dzwoni po kod SMS, żeby anulować operację."
+        },
+        {
+          "id": "kod",
+          "text": "9:06 — Anna podaje kod; oszust zatwierdza przelew."
+        },
+        {
+          "id": "przelew",
+          "text": "9:12 — 14 000 zł wychodzi na konto „Wektor Rozliczenia”."
+        }
+      ],
+      "scoring": "partial",
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "pose": "cheer",
+            "text": "Dokładnie tak. I zauważ: łańcuch dało się przerwać w trzech miejscach — przy mailu, przy stronie i przy telefonie."
+          },
+          {
+            "minScore": 0,
+            "pose": "thinking",
+            "text": "Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku i brakowało mu tylko kodu."
+          }
+        ]
+      }
+    },
+    {
+      "id": "ostatnie-pytanie",
+      "type": "TEXT_INPUT_GUIDED",
+      "title": "Ostatnie pytanie",
+      "weight": 1,
+      "narration": {
+        "text": "Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
+      },
+      "mascot": {
+        "pose": "thinking",
+        "text": "Bez zaglądania do notatnika. Pamiętasz?"
+      },
+      "prompt": "Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).",
+      "answer": {
+        "regex": "^(www\\.)?bankwektor-weryfikacja\\.pl/?$",
+        "caseSensitive": false
+      },
+      "maxAttempts": 3,
+      "hints": [
+        {
+          "text": "Spójrz na to, co jest po @ w adresie nadawcy."
+        },
+        {
+          "text": "Prawdziwa domena to bankwektor.pl. Fałszywa miała coś dopisane po myślniku."
+        }
+      ],
+      "solution": {
+        "text": "bankwektor-weryfikacja.pl",
+        "explanation": "Jedno słowo po myślniku wystarczyło, żeby to nie był bank."
+      },
+      "reactions": {
+        "result": [
+          {
+            "when": "correct",
+            "pose": "cheer",
+            "text": "To jest to. Domena, nie napis. Zawsze domena."
+          },
+          {
+            "when": "incorrect",
+            "pose": "warning",
+            "text": "Nic straconego — ale zapamiętaj ten adres. Następny będzie wyglądał podobnie."
+          }
+        ]
+      }
+    },
+    {
+      "id": "rozwiazanie-sprawy",
+      "type": "SUMMARY",
+      "title": "Rozwiązanie sprawy",
+      "narration": {
+        "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47."
+      },
+      "mascot": {
+        "pose": "greeting",
+        "text": "Sprawa zamknięta. Dobra robota, detektywie."
+      },
+      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmienił Nortex po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”."
+    }
+  ]
+}

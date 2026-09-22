@@ -1,0 +1,21 @@
+{
+  "lockVersion": 1,
+  "slug": "wyludzone-haslo",
+  "entries": {
+    "biuro-anny#image": {
+      "original": "scenes/biuro-anny.svg",
+      "hash": "4e3b436a",
+      "key": "assets/wyludzone-haslo/scenes/biuro-anny.4e3b436a.svg"
+    },
+    "rozmowa-anna#character.avatar": {
+      "original": "avatars/anna.svg",
+      "hash": "a31c9500",
+      "key": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg"
+    },
+    "rozmowa-marek#character.avatar": {
+      "original": "avatars/marek.svg",
+      "hash": "27eb889f",
+      "key": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg"
+    }
+  }
+}

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" font-family="Arial, Helvetica, sans-serif">
+<rect width="1600" height="1000" fill="#EEF0FA"/>
+<rect y="780" width="1600" height="220" fill="#CFD3E8"/>
+<rect y="770" width="1600" height="14" fill="#E3E6F5"/>
+<rect x="60" y="80" width="300" height="280" rx="10" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="8"/>
+<rect x="72" y="92" width="276" height="256" fill="#DDEBFF"/>
+<rect x="206" y="92" width="8" height="256" fill="#B8BAD0"/><rect x="72" y="216" width="276" height="8" fill="#B8BAD0"/>
+<circle cx="290" cy="150" r="26" fill="#FFF3B0"/>
+<rect x="1280" y="120" width="192" height="220" rx="8" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="4"/>
+<rect x="1280" y="120" width="192" height="44" rx="8" fill="#6C5CE7"/>
+<rect x="1280" y="150" width="192" height="14" fill="#6C5CE7"/>
+<text x="1376" y="151" text-anchor="middle" font-size="22" font-weight="bold" fill="#FFFFFF">WRZESIEŃ</text>
+<rect x="1292" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1318" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1344" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1370" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1396" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1422" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1448" y="176" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1292" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1318" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1344" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1370" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1396" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1422" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1448" y="214" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1292" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1318" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1344" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1370" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1396" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1422" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1448" y="252" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1292" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1318" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1344" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1370" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1396" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1422" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<rect x="1448" y="290" width="22" height="30" rx="3" fill="#EEF0FA"/>
+<circle cx="1329" cy="267" r="17" fill="none" stroke="#E5484D" stroke-width="5"/>
+<text x="1329" y="273" text-anchor="middle" font-size="16" font-weight="bold" fill="#E5484D">15</text>
+<text x="1376" y="330" text-anchor="middle" font-size="12" font-weight="bold" fill="#E5484D">PRZELEWY DO 15:00 !!!</text>
+<rect x="1260" y="440" width="260" height="14" rx="4" fill="#8C8FA8"/>
+<rect x="1280" y="370" width="44" height="70" rx="4" fill="#6C5CE7" opacity="0.9"/>
+<rect x="1336" y="370" width="44" height="70" rx="4" fill="#F0883A" opacity="0.9"/>
+<rect x="1392" y="370" width="44" height="70" rx="4" fill="#3AA6B9" opacity="0.9"/>
+<rect x="1448" y="370" width="44" height="70" rx="4" fill="#4E40B8" opacity="0.9"/>
+<rect x="120" y="600" width="1360" height="40" rx="10" fill="#D9C3A5"/>
+<rect x="120" y="636" width="1360" height="16" fill="#B89C7A"/>
+<rect x="170" y="650" width="40" height="150" fill="#B89C7A"/><rect x="1390" y="650" width="40" height="150" fill="#B89C7A"/>
+<rect x="1120" y="650" width="260" height="150" rx="8" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="4"/>
+<rect x="1140" y="672" width="220" height="44" rx="6" fill="#E3E6F5"/><rect x="1140" y="732" width="220" height="44" rx="6" fill="#E3E6F5"/>
+<rect x="1230" y="690" width="40" height="8" rx="4" fill="#8C8FA8"/><rect x="1230" y="750" width="40" height="8" rx="4" fill="#8C8FA8"/>
+<rect x="110" y="540" width="230" height="110" rx="14" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="5"/>
+<rect x="140" y="520" width="170" height="30" rx="6" fill="#B8BAD0"/>
+<rect x="130" y="575" width="190" height="10" rx="5" fill="#2B2440" opacity="0.15"/>
+<rect x="150" y="560" width="150" height="90" rx="4" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="3" transform="rotate(-4 225 605)"/>
+<rect x="165" y="575" width="110" height="5" rx="2" fill="#B8BAD0" transform="rotate(-4 225 605)"/>
+<rect x="165" y="588" width="98" height="5" rx="2" fill="#B8BAD0" transform="rotate(-4 225 605)"/>
+<rect x="165" y="601" width="86" height="5" rx="2" fill="#B8BAD0" transform="rotate(-4 225 605)"/>
+<rect x="165" y="614" width="74" height="5" rx="2" fill="#B8BAD0" transform="rotate(-4 225 605)"/>
+<rect x="165" y="627" width="62" height="5" rx="2" fill="#B8BAD0" transform="rotate(-4 225 605)"/>
+<text x="176" y="640" font-size="11" fill="#E5484D" font-weight="bold" transform="rotate(-4 225 605)">PRZELEW 9:12 — 14 000 zł</text>
+<circle cx="320" cy="560" r="6" fill="#2FB36B"/>
+<rect x="640" y="560" width="100" height="50" rx="8" fill="#8C8FA8"/>
+<rect x="580" y="596" width="220" height="16" rx="8" fill="#8C8FA8"/>
+<rect x="480" y="280" width="420" height="290" rx="16" fill="#2B2440"/>
+<rect x="498" y="298" width="384" height="250" rx="6" fill="#F7F8FF"/>
+<rect x="498" y="298" width="384" height="34" fill="#6C5CE7"/>
+<text x="512" y="321" font-size="16" font-weight="bold" fill="#FFFFFF">Poczta — Skrzynka odbiorcza</text>
+<rect x="498" y="332" width="110" height="216" fill="#E3E6F5"/>
+<rect x="510" y="346" width="60" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="510" y="376" width="72" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="510" y="406" width="84" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="510" y="436" width="60" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="510" y="466" width="72" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="510" y="496" width="84" height="10" rx="5" fill="#B8BAD0"/>
+<rect x="608" y="332" width="274" height="216" fill="#FFFFFF"/>
+<rect x="608" y="332" width="274" height="42" fill="#FFF1F1"/>
+<text x="620" y="350" font-size="13" font-weight="bold" fill="#E5484D">PILNE: weryfikacja konta firmowego</text>
+<text x="620" y="366" font-size="11" fill="#8C8FA8">Bank Wektor — Dział Bezpieczeństwa · 8:47</text>
+<rect x="620" y="388" width="250" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="408" width="227" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="428" width="204" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="448" width="181" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="468" width="248" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="488" width="225" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="508" width="202" height="8" rx="4" fill="#B8BAD0"/>
+<rect x="620" y="520" width="150" height="20" rx="5" fill="#6C5CE7"/>
+<text x="695" y="534" text-anchor="middle" font-size="11" font-weight="bold" fill="#FFFFFF">Przejdź do weryfikacji</text>
+<g transform="rotate(6 896 300)"><rect x="850" y="262" width="92" height="80" fill="#FFE066"/><rect x="850" y="262" width="92" height="12" fill="#E6C845" opacity="0.6"/><text x="896" y="296" text-anchor="middle" font-size="15" font-weight="bold" fill="#2B2440">Nortex2024!</text><text x="896" y="318" text-anchor="middle" font-size="11" fill="#4E40B8">bank: to samo</text><rect x="882" y="256" width="28" height="12" rx="3" fill="#2B2440" opacity="0.25"/></g>
+<rect x="1000" y="540" width="180" height="70" rx="12" fill="#2B2440"/>
+<rect x="1012" y="552" width="70" height="46" rx="6" fill="#DDEBFF"/>
+<text x="1047" y="571" text-anchor="middle" font-size="9" fill="#2B2440">9:05 nieodebrane</text>
+<text x="1047" y="586" text-anchor="middle" font-size="9" font-weight="bold" fill="#2B2440">nr zastrzeżony</text>
+<rect x="1096" y="554" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1120" y="554" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1144" y="554" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1096" y="569" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1120" y="569" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1144" y="569" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1096" y="584" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1120" y="584" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<rect x="1144" y="584" width="18" height="10" rx="2" fill="#8C8FA8"/>
+<circle cx="1166" cy="552" r="7" fill="#E5484D"><animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/></circle>
+<rect x="1000" y="522" width="180" height="22" rx="11" fill="#8C8FA8"/>
+<rect x="1004" y="590" width="92" height="22" rx="4" fill="#FFE066" transform="rotate(-4 1050 601)"/>
+<text x="1050" y="605" text-anchor="middle" font-size="9" font-weight="bold" fill="#2B2440" transform="rotate(-4 1050 601)">informatyk, oddzwonić</text>
+<rect x="392" y="560" width="26" height="30" rx="10" fill="none" stroke="#3AA6B9" stroke-width="7"/>
+<rect x="340" y="545" width="66" height="60" rx="8" fill="#3AA6B9"/>
+<ellipse cx="373" cy="545" rx="33" ry="8" fill="#2B8797"/>
+<text x="373" y="580" text-anchor="middle" font-size="8" font-weight="bold" fill="#FFFFFF">Najlepsza</text><text x="373" y="591" text-anchor="middle" font-size="8" font-weight="bold" fill="#FFFFFF">księgowa</text>
+<rect x="560" y="612" width="300" height="22" rx="6" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="3"/>
+<rect x="890" y="612" width="36" height="24" rx="12" fill="#FFFFFF" stroke="#B8BAD0" stroke-width="3"/>
+<rect x="640" y="700" width="220" height="30" rx="10" fill="#4E40B8"/>
+<rect x="735" y="730" width="30" height="50" fill="#8C8FA8"/>
+<rect x="660" y="778" width="180" height="14" rx="7" fill="#8C8FA8"/>
+<rect x="640" y="660" width="220" height="60" rx="14" fill="#6C5CE7"/>
+<rect x="1440" y="700" width="60" height="80" rx="8" fill="#F0883A"/>
+<circle cx="1440" cy="660" r="34" fill="#2FB36B"/>
+<circle cx="1500" cy="654" r="30" fill="#2FB36B"/>
+<circle cx="1470" cy="630" r="36" fill="#2FB36B"/>
+<circle cx="1460" cy="680" r="26" fill="#2FB36B"/>
+<circle cx="1492" cy="686" r="24" fill="#2FB36B"/>
+</svg>

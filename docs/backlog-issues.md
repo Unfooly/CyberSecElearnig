@@ -417,6 +417,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
   `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
 
+### B-087 `objectives` (cele modułu) nie są nigdzie wyświetlane w apps/web
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1
+- Opis: `module.json` (schemaVersion 4) niesie opcjonalne `objectives: string[]` (max 6) - moduł 1 go wypełnia. D-061 już
+  przewidział, że UI może go jeszcze nie pokazywać ("jeśli karta kursu ich nie pokazuje, backlog"): dziś ani karta kursu
+  (`apps/web/src/app/courses/_components/CourseCard.tsx`), ani ekran SUMMARY (`SummaryBlock.tsx`) nie czytają
+  `objectives` z odpowiedzi API - pole dociera do klienta (jest `client` w `FIELD_CLASSIFICATION` na poziomie modułu),
+  ale nic go nie renderuje.
+- Akceptacja: `objectives` pokazane jako „Czego się nauczysz” na karcie kursu i/albo „Czego się nauczyłeś” na ekranie
+  SUMMARY po ukończeniu (D-061 pkt 1); wymaga dodania pola do `CourseDetail`/`CourseAssignmentSummary` w
+  `apps/web/src/lib/courses-types.ts` i odpowiadającego pola w DTO `apps/api`.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

@@ -823,7 +823,7 @@ model UserAvatarImage {
   organizationId String
   mimeType       String   @db.VarChar(32)
   bytes          Bytes
-  /// Skrót treści (8 hex) - trafia do `users.avatarUrl` jako `upload:<hash>` i do adresu
+  /// Skrót treści (16 znaków hex = 8 bajtów sha256) - trafia do `users.avatarUrl` jako `upload:<hash>` i do adresu
   /// obrazka, żeby po zmianie avatara przeglądarka nie pokazywała starego z cache.
   hash           String   @db.VarChar(16)
   createdAt      DateTime @default(now())

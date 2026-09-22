@@ -49,7 +49,7 @@ function sniffFormat(buffer: Buffer): 'png' | 'jpeg' | 'webp' | null {
 export interface ProcessedAvatarImage {
   bytes: Buffer;
   mimeType: string;
-  /** Skrót treści (8 hex) do `users.avatarUrl` i adresu obrazka - unieważnia cache przeglądarki po zmianie. */
+  /** Skrót treści (16 znaków hex) do `users.avatarUrl` i adresu obrazka - unieważnia cache przeglądarki po zmianie. */
   hash: string;
 }
 

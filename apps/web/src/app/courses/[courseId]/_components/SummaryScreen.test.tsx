@@ -69,21 +69,19 @@ describe('SummaryScreen', () => {
 
   describe('"Rozpocznij od nowa" (D-069)', () => {
     const fetchMock = vi.fn();
-    let confirmSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
       fetchMock.mockReset();
       refreshMock.mockReset();
       vi.stubGlobal('fetch', fetchMock);
-      confirmSpy = vi.spyOn(window, 'confirm');
     });
     afterEach(() => {
       vi.unstubAllGlobals();
-      confirmSpy.mockRestore();
+      vi.restoreAllMocks();
     });
 
     it('bez potwierdzenia (confirm=false): nie woła API, nie odświeża', () => {
-      confirmSpy.mockReturnValue(false);
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
       render(<SummaryScreen courseId="c1" title="Kurs" score={100} />);
 
       fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij od nowa' }));
@@ -93,7 +91,7 @@ describe('SummaryScreen', () => {
     });
 
     it('po potwierdzeniu: POST na .../restart, potem router.refresh() (ta sama trasa, nie nawigacja)', async () => {
-      confirmSpy.mockReturnValue(true);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       fetchMock.mockResolvedValue({ ok: true, json: async () => ({ assignmentId: 'a2' }) });
       render(<SummaryScreen courseId="c1" title="Kurs" score={100} />);
 
@@ -104,7 +102,7 @@ describe('SummaryScreen', () => {
     });
 
     it('błąd restartu (np. 409): pokazuje komunikat, NIE odświeża, przycisk wraca do "Rozpocznij od nowa"', async () => {
-      confirmSpy.mockReturnValue(true);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       fetchMock.mockResolvedValue({ ok: false, status: 409, json: async () => ({ message: 'Błąd' }) });
       render(<SummaryScreen courseId="c1" title="Kurs" score={100} />);
 
@@ -116,7 +114,7 @@ describe('SummaryScreen', () => {
     });
 
     it('przycisk jest zablokowany w trakcie żądania ("Uruchamianie od nowa…")', async () => {
-      confirmSpy.mockReturnValue(true);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       let resolveFetch: (value: unknown) => void = () => {};
       fetchMock.mockReturnValue(new Promise((resolve) => (resolveFetch = resolve)));
       render(<SummaryScreen courseId="c1" title="Kurs" score={100} />);

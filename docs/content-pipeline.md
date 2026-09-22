@@ -73,12 +73,20 @@ informacji, którego pola narracji dotyczy który plik (to mapowanie trzyma wył
 ## Zasoby modułu (`npm run tts -- <slug> --assets`)
 
 ```bash
-npm run tts --prefix scripts/content -- <slug> --assets [--storage local|r2] [--only id,id] [--dry-run] [--check]
+npm run tts --prefix scripts/content -- <slug> --assets [--storage local|r2] [--only id,id] [--dry-run] [--check [--remote]]
 ```
 
 Nie wymaga kluczy ElevenLabs. Publikuje obrazy scen (`image`) i avatary postaci (`character.avatar`) -
 jedyne dwa pola-ścieżki zasobów w schemacie treści, oba `client` (`assertAssetPathsClassified` pilnuje tego samo tak, jak
 `assertNarrationPathsClassified` dla audio).
+
+**`--check` jest domyślnie OFFLINE** (D-060/D-068): porównuje lokalny plik źródłowy z zapisanym skrótem w
+`assets.lock.json`, ale NIE dotyka magazynu - "OK" oznacza "repo jest spójne", nie "obiekt na pewno jest w R2".
+**`--check --remote`** dodatkowo robi HEAD każdego wpisu w PRAWDZIWYM magazynie (`--storage`) - jedyny sposób
+potwierdzić, że publikacja faktycznie doszła (wymaga sieci/kluczy jak zwykła publikacja, odmawia startu w CI).
+Błąd zapisu w magazynie (HEAD/PUT) podczas `--assets` jest dziś PER-ZASÓB: jeden padnięty zapis nie blokuje reszty i
+NIGDY nie trafia do `assets.lock.json` (lock opisuje wyłącznie potwierdzone publikacje) - uruchom `--assets`
+ponownie, żeby dokończyć tylko to, co nie przeszło.
 
 **Układ katalogów:** autor trzyma pliki źródłowe w `packages/content/modules/<slug>/assets/<nazwa>.<ext>` (dozwolone
 rozszerzenia: `png`, `jpg`, `jpeg`, `webp`, `avif`, `svg`, jak w schemacie treści), a pole w `module.json` wskazuje tę nazwę

@@ -21,14 +21,15 @@ const PACKAGE_ROOT = resolve(HERE, '..');
 const REPO_ROOT = resolve(PACKAGE_ROOT, '..', '..');
 
 const USAGE = `Użycie: npm run tts --prefix scripts/content -- <slug> [opcje]
-  --storage local|r2   gdzie zapisać nagrania (domyślnie local: apps/web/public/content)
-  --version <v>        wersja partii audio w kluczu pliku (domyślnie v1)
-  --only <id,id>       tylko wskazane bloki
-  --max-chars <n>      limit znaków do wygenerowania w jednym przebiegu (domyślnie ${DEFAULT_MAX_CHARS})
-  --yes                bez pytania o potwierdzenie
-  --dry-run            tylko plan (bez sieci, kluczy i zapisów)
-  --check              offline: czy nagrania/zasoby odpowiadają aktualnej treści (bez kluczy i sieci)
-  --assets             publikuj zasoby modułu (obrazy, avatary) zamiast generować audio; nie wymaga ELEVENLABS_*`;
+  --storage local|r2    gdzie zapisać nagrania (domyślnie local: apps/web/public/content)
+  --version <v>         wersja partii audio w kluczu pliku (domyślnie v1)
+  --only <id,id>        tylko wskazane bloki
+  --max-chars <n>       limit znaków do wygenerowania w jednym przebiegu (domyślnie ${DEFAULT_MAX_CHARS})
+  --yes                 bez pytania o potwierdzenie
+  --dry-run             tylko plan (bez sieci, kluczy i zapisów)
+  --check               offline: czy nagrania/zasoby odpowiadają aktualnej treści (bez kluczy i sieci)
+  --remote              z --check i --assets: dodatkowo HEAD w PRAWDZIWYM magazynie (--storage), nie tylko lockfile
+  --assets              publikuj zasoby modułu (obrazy, avatary) zamiast generować audio; nie wymaga ELEVENLABS_*`;
 
 /** Kody wyjścia: 0 = OK, 1 = błąd wykonania albo --check wykrył problemy, 2 = błędne użycie (argumenty). */
 export async function main(argv: string[], processEnv: NodeJS.ProcessEnv = process.env): Promise<number> {
@@ -55,6 +56,7 @@ interface Parsed {
   yes: boolean;
   dryRun: boolean;
   check: boolean;
+  remote: boolean;
   assets: boolean;
 }
 
@@ -70,6 +72,7 @@ function parseArguments(argv: string[]): Parsed | 'help' {
       yes: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       check: { type: 'boolean', default: false },
+      remote: { type: 'boolean', default: false },
       assets: { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
@@ -77,6 +80,10 @@ function parseArguments(argv: string[]): Parsed | 'help' {
   if (values.help) return 'help';
   if (positionals.length !== 1) throw new Error('Podaj dokładnie jeden slug modułu.');
   if (values.storage !== 'local' && values.storage !== 'r2') throw new Error('--storage: local albo r2.');
+  if (values.remote && !values.check) throw new Error('--remote wymaga --check.');
+  // Weryfikacja --remote dla narracji (runPipeline) to osobne zadanie - dziś dotyczy wyłącznie --assets, żeby --check
+  // --remote bez --assets nie dawał fałszywego poczucia sprawdzenia magazynu, którego w rzeczywistości nie zrobiono.
+  if (values.remote && !values.assets) throw new Error('--remote jest dziś wspierane wyłącznie razem z --assets (narracja: backlog).');
   return {
     slug: assertSlug(positionals[0]),
     version: assertVersion(values.version!),
@@ -86,13 +93,17 @@ function parseArguments(argv: string[]): Parsed | 'help' {
     yes: values.yes!,
     dryRun: values['dry-run']!,
     check: values.check!,
+    remote: values.remote!,
     assets: values.assets!,
   };
 }
 
 async function execute(args: Parsed, processEnv: NodeJS.ProcessEnv): Promise<number> {
-  const offline = args.check || args.dryRun;
-  // Config (i .env.local) tylko dla trybów z siecią/kluczami; --check i --dry-run go nie czytają i działają w CI.
+  // --check --remote potrzebuje prawdziwego magazynu (klucze/sieć dla --storage r2) - inaczej --check zostaje w pełni
+  // offline (D-060). --dry-run jest offline zawsze, niezależnie od --remote (parseArguments już odrzuca --remote bez
+  // --check, więc tu wystarczy sprawdzić samo --remote).
+  const offline = args.dryRun || (args.check && !args.remote);
+  // Config (i .env.local) tylko dla trybów z siecią/kluczami; --check (bez --remote) i --dry-run go nie czytają i działają w CI.
   let config: Config = {};
   const redact = (text: string) => redactSecrets(text, config);
   try {
@@ -110,6 +121,7 @@ async function execute(args: Parsed, processEnv: NodeJS.ProcessEnv): Promise<num
         store,
         dryRun: args.dryRun,
         check: args.check,
+        remote: args.remote,
         only: args.only,
         output: process.stdout,
       });

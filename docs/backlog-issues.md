@@ -451,6 +451,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `mandatory` (domyślnie z `course.mandatory` - D-065 pkt 4) i `dueDate`; endpoint tworzy `CourseAssignment` masowo w
   JEDNEJ organizacji (żaden nowy wyjątek od Zasady nr 1); test izolacji A/B; UI w panelu admina.
 
+### B-090 `--check --remote` dla narracji (audio) - dziś tylko `--assets` ma prawdziwą weryfikację magazynu
+- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: D-068 (świadome zawężenie zakresu, "Mały PR"), code review
+- Opis: D-068 dodał `--check --remote` (HEAD w prawdziwym magazynie, nie tylko porównanie lokalnego pliku z
+  `assets.lock.json`) WYŁĄCZNIE dla `--assets`; `parseArguments` w `tts.ts` jawnie odrzuca `--remote` bez `--assets`
+  błędem "dziś wspierane wyłącznie razem z --assets", żeby nie dawać fałszywego poczucia sprawdzenia magazynu.
+  `runPipeline`'s `checkOffline` (`pipeline.ts`, narracja/audio) ma DOKŁADNIE tę samą lukę co `--assets --check` miało
+  przed D-068 - `audio.lock.json` może "kłamać" (opisywać publikację, której magazyn faktycznie nie potwierdza) i
+  `--check` narracji tego nie wykryje.
+- Akceptacja: `checkOffline` w `pipeline.ts` dostaje ten sam parametr `store: ObjectStore | null` co `checkAssets`
+  (HEAD każdego wpisu `audio.lock.json`/sidecara, gdy `store` nie jest `null`); `parseArguments` zdejmuje warunek
+  "wyłącznie z --assets"; testy analogiczne do `assets.test.ts`'s `describe('--check --remote...')`.
+
 ### B-091 "Rozpocznij od nowa" - powtórka własnego, ukończonego/nieobowiązkowego przypisania
 - Etykiety: `P2`, `feature`, `mod:kursy` · Źródło: zgłoszone przez właściciela produktu przy okazji ręcznego resetu
   przypisania modułu 1 (SQL na VPS), D-065

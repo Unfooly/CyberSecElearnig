@@ -117,6 +117,7 @@ model Organization {
   inviteNotices              InviteNotice[]
   pendingAdminClaims         PendingAdminClaim[]
   threatReportNotification   ThreatReportNotificationState?
+  userAvatarImages           UserAvatarImage[]
 
   // Job sprzątania szuka organizacji PENDING starszych niż N dni.
   @@index([status, createdAt])
@@ -787,6 +788,7 @@ model User {
   unlockedBadges          UserBadge[]
   legalAcceptances        LegalAcceptance[]
   refreshTokens           RefreshToken[]
+  avatarImage             UserAvatarImage?
 
   // Cel złożonego FK z LegalAcceptance (użytkownik tej samej organizacji).
   @@unique([organizationId, id])
@@ -809,6 +811,29 @@ model Badge {
   unlockedBy UserBadge[]
 
   @@map("badges")
+}
+
+/// Własny avatar wgrany przez użytkownika (D-067, zgłoszenie B-075). Osobna tabela,
+/// żeby bajty obrazka nie ładowały się przy każdym zapytaniu o użytkownika.
+/// Zapisujemy WYŁĄCZNIE wynik ponownego zakodowania po stronie API (256x256, bez
+/// metadanych EXIF), nigdy pliku przysłanego przez klienta.
+model UserAvatarImage {
+  // Jeden avatar na użytkownika - userId jest kluczem głównym (zapis to upsert).
+  userId         String   @id
+  organizationId String
+  mimeType       String   @db.VarChar(32)
+  bytes          Bytes
+  /// Skrót treści (8 hex) - trafia do `users.avatarUrl` jako `upload:<hash>` i do adresu
+  /// obrazka, żeby po zmianie avatara przeglądarka nie pokazywała starego z cache.
+  hash           String   @db.VarChar(16)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("user_avatar_images")
 }
 
 model UserBadge {

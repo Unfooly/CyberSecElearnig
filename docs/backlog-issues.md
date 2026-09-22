@@ -342,6 +342,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (usunięty pin z D-052), zaktualizowane `docs/onboarding.md` i README (wersja Node).
 
 ### B-075 Awatary: tylko presety albo własny upload (zamiast dowolnego URL)
+- **Status: zrobione** (D-067): API przyjmuje wyłącznie presety, migracja wyczyściła awatary z zewnętrznych adresów do NULL, a własne
+  zdjęcie wgrywa się przez `POST /users/me/avatar/image` (obraz kodowany od nowa: 256×256 WebP bez EXIF, w bazie z RLS, serwowany przez
+  nasz origin). Testy: `avatar-image.spec.ts`, e2e avatara w `gamification.e2e-spec.ts` (w tym izolacja A/B), testy tras BFF i UI.
 - Etykiety: `P2`, `security`, `feature`, `decision-needed`, `mod:web` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21
 - Opis: awatar z dowolnego adresu `https` (`<img src={avatarUrl}>`) nie mieści się w `img-src 'self' data: <CONTENT_BASE_URL>` (CSP z D-053), więc obrazek
   się nie załaduje; do czasu decyzji UI pokazuje inicjały (fallback przy błędzie ładowania). Nie poszerzamy `img-src` o `https:`.
@@ -449,12 +452,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   JEDNEJ organizacji (żaden nowy wyjątek od Zasady nr 1); test izolacji A/B; UI w panelu admina.
 
 ### B-090 `--check --remote` dla narracji (audio) - dziś tylko `--assets` ma prawdziwą weryfikację magazynu
-- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: D-067 (świadome zawężenie zakresu, "Mały PR"), code review
-- Opis: D-067 dodał `--check --remote` (HEAD w prawdziwym magazynie, nie tylko porównanie lokalnego pliku z
+- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: D-068 (świadome zawężenie zakresu, "Mały PR"), code review
+- Opis: D-068 dodał `--check --remote` (HEAD w prawdziwym magazynie, nie tylko porównanie lokalnego pliku z
   `assets.lock.json`) WYŁĄCZNIE dla `--assets`; `parseArguments` w `tts.ts` jawnie odrzuca `--remote` bez `--assets`
   błędem "dziś wspierane wyłącznie razem z --assets", żeby nie dawać fałszywego poczucia sprawdzenia magazynu.
   `runPipeline`'s `checkOffline` (`pipeline.ts`, narracja/audio) ma DOKŁADNIE tę samą lukę co `--assets --check` miało
-  przed D-067 - `audio.lock.json` może "kłamać" (opisywać publikację, której magazyn faktycznie nie potwierdza) i
+  przed D-068 - `audio.lock.json` może "kłamać" (opisywać publikację, której magazyn faktycznie nie potwierdza) i
   `--check` narracji tego nie wykryje.
 - Akceptacja: `checkOffline` w `pipeline.ts` dostaje ten sam parametr `store: ObjectStore | null` co `checkAssets`
   (HEAD każdego wpisu `audio.lock.json`/sidecara, gdy `store` nie jest `null`); `parseArguments` zdejmuje warunek

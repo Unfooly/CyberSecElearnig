@@ -382,6 +382,10 @@ instancji API nie dubluje zadań. Zadania muszą być idempotentne (retry: 3 pr�
   `phishing_template_edits_organizationId_templateId_fkey` i `..._organizationId_actorUserId_fkey` z
   `ON DELETE SET NULL (kolumna)` (PostgreSQL 15+; Prisma nie wyraża) oraz CHECK-i na `phishing_templates`.
   `prisma migrate dev` pokaże te FK jako „do usunięcia” - usuń takie linie z nowej migracji.
+- **Constraint SQL-only (własne zdjęcie profilowe, D-067):** złożony FK
+  `user_avatar_images_organizationId_userId_fkey` -> `users(organizationId, id)` pilnuje, że obrazek należy do
+  użytkownika z tej samej organizacji co wiersz. `prisma migrate dev` pokaże go jako „do usunięcia” - usuń taką
+  linię z nowej migracji (migracja `20260922191733_user_avatar_images` ma to opisane w nagłówku).
 - **Zwykłe FK na `users(id)` bez sprawdzenia organizacji.** `course_assignments.userId`,
   `user_badges.userId`, `password_reset_tokens.userId` i `email_verification_tokens.userId` mają
   kolumnę `organizationId`, ale FK tylko na `users(id)` (FK omijają RLS), więc baza nie pilnuje, że

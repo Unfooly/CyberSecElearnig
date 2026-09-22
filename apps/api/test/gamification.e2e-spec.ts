@@ -275,13 +275,22 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(response.body.avatarUrl).toBe('fox');
     });
 
-    it('akceptuje poprawny URL http(s)', async () => {
-      const response = await request(app.getHttpServer())
+    // D-067 (B-075): zewnętrzne adresy nie są już przyjmowane - CSP i tak nie pozwalała ich
+    // wyświetlić, a obcy serwer widział adresy IP oglądających. Własne zdjęcie idzie uploadem.
+    it('odrzuca zewnętrzny adres https (tylko presety albo wgrany plik)', async () => {
+      await request(app.getHttpServer())
         .patch('/users/me/avatar')
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .send({ avatarUrl: 'https://example.test/custom-avatar.png' })
-        .expect(200);
-      expect(response.body.avatarUrl).toBe('https://example.test/custom-avatar.png');
+        .expect(400);
+    });
+
+    it('odrzuca podszycie się pod znacznik wgranego obrazka (upload: ustawia wyłącznie serwer)', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/me/avatar')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .send({ avatarUrl: 'upload:deadbeefdeadbeef' })
+        .expect(400);
     });
 
     it('odrzuca wartość, która nie jest ani presetem, ani poprawnym URL', async () => {
@@ -298,6 +307,126 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .send({ avatarUrl: 'javascript:alert(1)' })
         .expect(400);
+    });
+  });
+
+  // Własne zdjęcie (D-067): obraz jest kodowany od nowa po stronie API i trzymany w bazie
+  // (tabela z organizationId i RLS), a nie w zewnętrznym magazynie.
+  describe('Własny avatar z pliku', () => {
+    // Najmniejszy poprawny PNG (1x1) - wystarcza, żeby sharp miał co zdekodować.
+    const onePixelPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+
+    it('wgrywa plik, ustawia znacznik upload:<hash> i serwuje obrazek jako webp', async () => {
+      const upload = await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', onePixelPng, { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(200);
+      expect(upload.body.avatarUrl).toMatch(/^upload:[0-9a-f]{16}$/);
+
+      const image = await request(app.getHttpServer())
+        .get(`/users/${orgAUser1Id}/avatar/image`)
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(200);
+      expect(image.headers['content-type']).toBe('image/webp');
+      expect(image.headers['x-content-type-options']).toBe('nosniff');
+      expect(image.body.length).toBeGreaterThan(0);
+
+      // Avatar pojawia się też w zwykłym GET /users/me/avatar (Topbar).
+      const own = await request(app.getHttpServer())
+        .get('/users/me/avatar')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(200);
+      expect(own.body.avatarUrl).toBe(upload.body.avatarUrl);
+    });
+
+    it('izolacja tenantów: użytkownik organizacji B nie pobierze avatara użytkownika organizacji A', async () => {
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', onePixelPng, { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get(`/users/${orgAUser1Id}/avatar/image`)
+        .set('Authorization', `Bearer ${orgBToken}`)
+        .expect(404);
+    });
+
+    it('odrzuca plik, który nie jest obrazem (np. SVG ze skryptem)', async () => {
+      const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'utf8');
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', svg, { filename: 'avatar.svg', contentType: 'image/svg+xml' })
+        .expect(400);
+    });
+
+    it('odrzuca plik podszywający się pod obraz nagłówkiem Content-Type', async () => {
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', Buffer.from('to nie jest obraz', 'utf8'), { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(400);
+    });
+
+    it('usunięcie zdjęcia czyści avatar i obrazek przestaje być dostępny', async () => {
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', onePixelPng, { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .delete('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(200);
+
+      const own = await request(app.getHttpServer())
+        .get('/users/me/avatar')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(200);
+      expect(own.body.avatarUrl).toBeNull();
+
+      await request(app.getHttpServer())
+        .get(`/users/${orgAUser1Id}/avatar/image`)
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(404);
+    });
+
+    it('wybór presetu kasuje wcześniej wgrany obrazek (bez osieroconych danych osobowych)', async () => {
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .attach('file', onePixelPng, { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch('/users/me/avatar')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .send({ avatarUrl: 'owl' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get(`/users/${orgAUser1Id}/avatar/image`)
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .expect(404);
+
+      const stored = await tenantPrisma.runInOrgContext(orgAId, (tx) =>
+        tx.userAvatarImage.findMany({ where: { userId: orgAUser1Id } }),
+      );
+      expect(stored).toHaveLength(0);
+    });
+
+    it('bez tokena nie da się ani wgrać, ani pobrać obrazka', async () => {
+      await request(app.getHttpServer())
+        .post('/users/me/avatar/image')
+        .attach('file', onePixelPng, { filename: 'avatar.png', contentType: 'image/png' })
+        .expect(401);
+      await request(app.getHttpServer()).get(`/users/${orgAUser1Id}/avatar/image`).expect(401);
     });
   });
 

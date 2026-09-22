@@ -24,14 +24,14 @@ import { InviteUserResponseDto } from './dto/invite-user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto, DEFAULT_PAGE_SIZE } from './dto/list-users-query.dto';
 import { AVATAR_PRESETS } from './avatar-presets';
+import { processAvatarUpload, UPLOADED_AVATAR_PREFIX, uploadedAvatarValue } from './avatar-image';
 import { InviteNoticeMailLimiter } from '../auth/registration-mail-limiter';
 import { AddressClaimService } from './address-claim.service';
 import { INVITE_DAILY_LIMIT_PER_ORG } from './import/invite-pace';
 import { countInviteTraffic } from './invite-traffic';
 import { assertSeatsAvailable, lockSeats } from './seats';
 
-const AVATAR_VALIDATION_MESSAGE =
-  'avatarUrl musi być jednym z dostępnych presetów albo poprawnym adresem URL (https).';
+const AVATAR_VALIDATION_MESSAGE = 'avatarUrl musi być jednym z dostępnych presetów.';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
@@ -444,14 +444,84 @@ export class UsersService {
 
     // updateMany z jawnym organizationId (Zasada nr 1) - RLS jest drugą linią
     // obrony, nie jedyną.
-    const result = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-      tx.user.updateMany({ where: { id: userId, organizationId }, data: { avatarUrl } }),
-    );
+    const result = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const updated = await tx.user.updateMany({ where: { id: userId, organizationId }, data: { avatarUrl } });
+      if (updated.count > 0) {
+        // Wybór presetu kasuje wcześniej wgrany obrazek - inaczej zostałby w bazie
+        // osierocony (nikt by go już nie wyświetlił, a to dane osobowe: wizerunek).
+        await tx.userAvatarImage.deleteMany({ where: { userId, organizationId } });
+      }
+      return updated;
+    });
     if (result.count === 0) {
       throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
     }
 
     return { avatarUrl };
+  }
+
+  /**
+   * Własny avatar z pliku (D-067). Do bazy trafia wyłącznie obraz zakodowany od nowa
+   * przez `processAvatarUpload`, nigdy bajty od klienta. `users.avatarUrl` dostaje
+   * znacznik `upload:<hash>` - adres obrazka składa klient z identyfikatora użytkownika
+   * (patrz UsersController), więc w bazie nie trzymamy żadnego URL-a.
+   */
+  async uploadAvatarImage(
+    organizationId: string,
+    userId: string,
+    file: { buffer: Buffer; size: number } | undefined,
+  ): Promise<{ avatarUrl: string }> {
+    const image = await processAvatarUpload(file);
+    const avatarUrl = uploadedAvatarValue(image.hash);
+
+    const result = await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const updated = await tx.user.updateMany({ where: { id: userId, organizationId }, data: { avatarUrl } });
+      if (updated.count === 0) {
+        return updated;
+      }
+      await tx.userAvatarImage.upsert({
+        where: { userId },
+        create: { userId, organizationId, mimeType: image.mimeType, bytes: image.bytes, hash: image.hash },
+        update: { mimeType: image.mimeType, bytes: image.bytes, hash: image.hash },
+      });
+      return updated;
+    });
+    if (result.count === 0) {
+      throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+    }
+
+    return { avatarUrl };
+  }
+
+  /** Usunięcie wgranego avatara: obrazek znika z bazy, użytkownik wraca do inicjałów. */
+  async deleteAvatarImage(organizationId: string, userId: string): Promise<{ avatarUrl: null }> {
+    await this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await tx.userAvatarImage.deleteMany({ where: { userId, organizationId } });
+      // Presetu nie ruszamy - czyścimy tylko znacznik wgranego obrazka.
+      await tx.user.updateMany({
+        where: { id: userId, organizationId, avatarUrl: { startsWith: UPLOADED_AVATAR_PREFIX } },
+        data: { avatarUrl: null },
+      });
+    });
+    return { avatarUrl: null };
+  }
+
+  /**
+   * Bajty avatara użytkownika Z TEJ SAMEJ organizacji (ranking pokazuje avatary kolegów).
+   * `organizationId` pochodzi z tokena wywołującego, więc zapytanie nigdy nie wyjdzie poza
+   * jego organizację - RLS jest drugą linią obrony.
+   */
+  async getAvatarImage(
+    organizationId: string,
+    userId: string,
+  ): Promise<{ bytes: Buffer; mimeType: string; hash: string } | null> {
+    const image = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.userAvatarImage.findFirst({
+        where: { userId, organizationId },
+        select: { bytes: true, mimeType: true, hash: true },
+      }),
+    );
+    return image ? { bytes: Buffer.from(image.bytes), mimeType: image.mimeType, hash: image.hash } : null;
   }
 
   private async assertInviteQuota(organizationId: string, requested: number): Promise<void> {
@@ -634,20 +704,16 @@ export class UsersService {
     return classifyMail(accepted, outcome);
   }
 
+  /**
+   * Presety i NIC więcej (D-067, zamknięcie B-075). Wcześniej przechodził dowolny adres
+   * https, ale CSP (`img-src 'self' data: <CONTENT_BASE_URL>`, D-053) i tak nie pozwalała
+   * takiego obrazka wyświetlić - była to funkcja martwa, a przy okazji kanał wycieku: adres
+   * strony i adresy IP oglądających trafiały na obcy serwer. Własny obrazek wgrywa się dziś
+   * przez POST /users/me/avatar/image; znacznika `upload:` klient podać nie może - ustawia
+   * go wyłącznie serwer po przetworzeniu pliku.
+   */
   private assertValidAvatar(avatarUrl: string): void {
-    if ((AVATAR_PRESETS as readonly string[]).includes(avatarUrl)) {
-      return;
-    }
-
-    let parsed: URL;
-    try {
-      parsed = new URL(avatarUrl);
-    } catch {
-      throw new BadRequestException(AVATAR_VALIDATION_MESSAGE);
-    }
-    // Tylko https: http dawałoby mixed content, a zewnętrzny obrazek i tak
-    // pozwala śledzić IP oglądających (dlatego <img> ma referrerPolicy).
-    if (parsed.protocol !== 'https:') {
+    if (!(AVATAR_PRESETS as readonly string[]).includes(avatarUrl)) {
       throw new BadRequestException(AVATAR_VALIDATION_MESSAGE);
     }
   }

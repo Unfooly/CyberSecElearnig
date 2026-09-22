@@ -1,5 +1,6 @@
 import { User } from 'lucide-react';
 import { AVATAR_PRESETS } from '@/lib/gamification-types';
+import { isUploadedAvatar, uploadedAvatarSrc } from '@/lib/avatar';
 
 const SIZE_CLASSES = {
   sm: 'h-8 w-8 text-xs',
@@ -17,12 +18,15 @@ export default function AvatarDisplay({
   size = 'md',
   label,
   initials,
+  userId,
 }: {
   avatarUrl: string | null;
   size?: keyof typeof SIZE_CLASSES;
   label?: string;
   // Fallback, gdy użytkownik nie ustawił avatara (np. w rankingu).
   initials?: string;
+  // Czyj to avatar - potrzebne dla wgranego obrazka (`upload:<hash>`). Pominięty = własny ("me").
+  userId?: string | null;
 }) {
   const PresetIcon = avatarUrl ? AVATAR_PRESETS[avatarUrl] : undefined;
   const baseClasses = `flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-soft font-bold text-accent-ink ${SIZE_CLASSES[size]}`;
@@ -35,14 +39,19 @@ export default function AvatarDisplay({
     );
   }
 
-  if (avatarUrl) {
-    // URL dowolnej domeny (użytkownik wkleja własny link) - next/image
-    // wymagałby skonfigurowania dozwolonych hostów z góry.
+  // Własny obrazek wgrany przez użytkownika: adres składamy z identyfikatora i skrótu treści,
+  // a plik idzie z NASZEGO origin przez trasę BFF (CSP `img-src 'self' ...`, D-067). Avatary z
+  // obcych adresów nie są już obsługiwane (B-075) - taka wartość daje inicjały, jak brak avatara.
+  if (isUploadedAvatar(avatarUrl)) {
     return (
-      // referrerPolicy: adres strony (z tokenami w query na /verify-email itp.) nie
-      // może wyciec do serwera, z którego user wskazał obrazek.
+      // next/image wymagałby konfiguracji hostów; to własna trasa, więc zwykły <img> wystarcza.
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={avatarUrl} alt={label ?? 'Avatar'} className={baseClasses} referrerPolicy="no-referrer" />
+      <img
+        src={uploadedAvatarSrc(avatarUrl as string, userId)}
+        alt={label ?? 'Avatar'}
+        className={baseClasses}
+        referrerPolicy="no-referrer"
+      />
     );
   }
 

@@ -80,7 +80,7 @@ Nie wymaga kluczy ElevenLabs. Publikuje obrazy scen (`image`) i avatary postaci 
 jedyne dwa pola-ścieżki zasobów w schemacie treści, oba `client` (`assertAssetPathsClassified` pilnuje tego samo tak, jak
 `assertNarrationPathsClassified` dla audio).
 
-**`--check` jest domyślnie OFFLINE** (D-060/D-067): porównuje lokalny plik źródłowy z zapisanym skrótem w
+**`--check` jest domyślnie OFFLINE** (D-060/D-068): porównuje lokalny plik źródłowy z zapisanym skrótem w
 `assets.lock.json`, ale NIE dotyka magazynu - "OK" oznacza "repo jest spójne", nie "obiekt na pewno jest w R2".
 **`--check --remote`** dodatkowo robi HEAD każdego wpisu w PRAWDZIWYM magazynie (`--storage`) - jedyny sposób
 potwierdzić, że publikacja faktycznie doszła (wymaga sieci/kluczy jak zwykła publikacja, odmawia startu w CI).

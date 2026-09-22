@@ -61,7 +61,12 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     const content = moduleFixture('zmiana');
     const first = await prisma.$transaction((tx) => importModule(tx, content));
 
-    const changed = moduleFixture('zmiana', { durationMinutes: content.durationMinutes + 5 });
+    // contentHash (i decyzja o nowej wersji) liczy się WYŁĄCZNIE z `blocks` (jak CourseVersion.contentHash gdzie indziej
+    // w kodzie) - samo `durationMinutes` (metadane Course, nie treść wersji) nie tworzy nowej wersji, więc zmieniamy oba.
+    const changed = moduleFixture('zmiana', {
+      durationMinutes: content.durationMinutes + 5,
+      blocks: content.blocks.map((block, index) => (index === 0 ? { ...block, text: `${(block as { text: string }).text} (zmienione)` } : block)),
+    });
     const second = await prisma.$transaction((tx) => importModule(tx, changed));
 
     expect(second).toMatchObject({ courseId: first.courseId, courseCreated: false, versionCreated: true, version: 2 });

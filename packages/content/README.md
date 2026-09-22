@@ -24,8 +24,12 @@ Część izomorficzna (`@cyberszkolo/content`, bez modułów Node) jest bezpiecz
 - `blocks[].id` jest stały i unikalny w module (klucz w postępie pracownika, notatkach i wersjach). Litery, cyfry, `-`, `_`; bez nazw z
   `Object.prototype` i `__proto__`.
 - Każdy blok może mieć `title`, `narration { text, audioUrl, durationMs }`, `mascot { pose, text }` i `weight`.
-- Ścieżki zasobów (`image`, `narration.audioUrl`) są WZGLĘDNE względem `CONTENT_BASE_URL`: bez schematu, hosta, `..` i ścieżki bezwzględnej
-  (walidacja odrzuca `https://`, `//`, `javascript:`). `audioUrl` i `durationMs` występują razem (wpisuje je skrypt TTS).
+- Ścieżki zasobów (`image`, `character.avatar`, `narration.audioUrl`) są WZGLĘDNE względem `CONTENT_BASE_URL`: bez schematu, hosta, `..` i
+  ścieżki bezwzględnej (walidacja odrzuca `https://`, `//`, `javascript:`). `audioUrl` i `durationMs` występują razem, a `image`/`avatar`
+  jest wersjonowaną nazwą (`nazwa.<hash8>.ext`) - oba wpisuje skrypt `scripts/content` (`npm run tts`, `--assets`), NIE autor ręcznie po
+  pierwszej publikacji; autor podaje tylko oryginalną nazwę pliku (audio: tekst narracji; zasoby: nazwę w `assets/`). Pełny opis potoku,
+  layout katalogów i lint SVG: `docs/content-pipeline.md` (D-060). Podpowiedzi (`hints[].narration`, pole `secret`) NIE dostają audio -
+  zostają tekstowe (B-082).
 - Schematy są `.strict()`: literówka w nazwie pola to błąd walidacji.
 - **Ilustracje SVG wolno ładować WYŁĄCZNIE przez `<img>`** - nigdy inline, przez `<object>`/`<iframe>`, nawigację ani
   `dangerouslySetInnerHTML` (SVG może zawierać skrypty; w `<img>` się nie wykonują).

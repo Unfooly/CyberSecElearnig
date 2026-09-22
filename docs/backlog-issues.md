@@ -365,6 +365,35 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: trasy bez sesji (`auth/login`, `auth/register`, `auth/forgot-password`, `auth/reset-password`, `auth/verify-email`, `auth/claim-registration`, `auth/resend-verification`, `demo-request`, `t/[token]/view|submit`) nie mają sesji do nadużycia przez CSRF, ale zostają: login CSRF (wymuszenie logowania na cudze konto), spam i limity (throttling po stronie API vs BFF), ocena, które trasy mają wymagać własnego `Origin`, a które muszą działać z zewnątrz (`t/*` to publiczne linki symulacji).
 - Akceptacja: decyzja per trasa, testy, po pilocie. Uwaga z przeglądu: `auth/register`, `auth/forgot-password`, `auth/resend-verification` i `demo-request` można wykorzystać do wysyłania maili na cudzy adres (mail-bombing), więc limity w API są częścią tej oceny; `auth/login` podlega login CSRF. Ciasteczko sesji ma `SameSite=Lax` (`apps/web/src/lib/auth-cookies.ts`).
 
+### B-082 Audio podpowiedzi przez API po odblokowaniu (podpisany URL)
+- Etykiety: `P3`, `feature`, `security`, `mod:kursy` · Źródło: PR 3 (przegląd bezpieczeństwa commitu 4), decyzja właściciela 2026-09-22
+- Opis: podpowiedzi (`hints[].narration`) to pola `secret`, a audio i napisy idą do PUBLICZNEGO magazynu (R2/`CONTENT_BASE_URL`), więc dziś podpowiedzi
+  nie mają nagrań (zostają tekstowe; `scripts/content` odmawia audio dla pól `secret` i pilnuje tego testem wiążącym `NARRATION_PATHS` z `FIELD_CLASSIFICATION`).
+- Akceptacja: nagrania podpowiedzi w prywatnym prefiksie/bucketcie, wydawane przez API dopiero po odblokowaniu podpowiedzi (podpisany URL o krótkiej
+  ważności, z zachowaniem `maxAttempts`), test, że przed odblokowaniem żaden URL ani skrót nagrania nie jest znany klientowi; potem zdjęcie wyjątku TEXT_ONLY.
+
+### B-083 Zapisy potoku audio nie są transakcyjne; maskowanie zakodowanych form sekretów
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: PR 3 (przegląd bezpieczeństwa commitu 4, N4 i N5)
+- Opis: (1) kolejność zapisów `module.json` -> `audio.lock.json` -> manifest nie jest transakcją (przerwanie po pierwszym zapisie zostawia moduł bez locka;
+  samonaprawialne kolejnym przebiegiem z cache, `--check` to wykrywa; zapisy pojedynczych plików są atomowe, bez fsync). (2) `redactSecrets` maskuje tylko
+  dosłowne wartości sekretów (nie formy URL-encoded ani base64) i pomija wartości krótsze niż 6 znaków. (3) Przy niepełnej parze nagranie + sidecar (przerwany
+  przebieg, odrzucony sidecar) potok nadpisuje nagranie pod tym samym, niemutowalnym kluczem (`immutable`), a MP3 z ElevenLabs nie jest deterministyczne:
+  klient albo CDN ze starą kopią może mieć audio niezgodne z nowymi czasami napisów.
+- Akceptacja: zapis pary module+lock jako jedna operacja (albo lock najpierw z oznaczeniem „w toku”), maskowanie także zakodowanych form; przy odrzuconym
+  sidecarze nowy klucz (np. z licznikiem regeneracji w skrócie) zamiast nadpisania; test.
+
+### B-084 Lint SVG (scripts/content) parserem XML zamiast regexów na surowym tekście
+- Etykiety: `P3`, `tech-debt`, `security`, `mod:kursy` · Źródło: PR 3 (przegląd bezpieczeństwa commitu 5), decyzja właściciela 2026-09-22
+- Opis: `svg-lint.ts` sprawdza SVG regexami na tekście (obrona w głąb - klient renderuje SVG wyłącznie przez `<img>`, silnik szkoleń pkt 4;
+  druga linia to CSP/`X-Content-Type-Options` na `content.unfooly.com`, docs/content-pipeline.md). Regexy po przeglądzie łapią znane obejścia
+  (prefiks przestrzeni nazw `<x:script>`, numeryczne encje `&#106;avascript:`, złe kodowanie UTF-16 zamiast UTF-8 - odrzucane osobno w
+  `assets.ts` przed lintem), ale nie są parserem: komentarz XML rozcinający nazwę tagu, `CDATA`, UTF-7 bez BOM, animacja SMIL zmieniająca
+  `href`/`xlink:href` w czasie (`<animate attributeName="href" to="...">`, `<set>`, `<animateMotion>` - `hrefsOf()` sprawdza tylko atrybuty
+  statyczne na otwierającym tagu) i inne sztuczki XML mogą wciąż ominąć dopasowanie. Ryzyko dziś ograniczone: treść tworzy wyłącznie zaufany
+  operator (D-058), a CSP `sandbox` na `content.unfooly.com` blokuje taki fetch niezależnie od tego, czy adres był statyczny czy z SMIL.
+- Akceptacja: lint na drzewie XML (np. `fast-xml-parser` w trybie XML) sprawdzający local-name elementu/atrybutu po rozwiązaniu namespace,
+  zamiast dopasowań tekstowych; przed rozszerzeniem autorstwa treści poza operatora (temat wraca też w D-058 pkt 5a).
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

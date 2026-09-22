@@ -107,6 +107,8 @@ export interface ContentBlock {
 export interface EmailContent {
   fromName: string;
   fromAddress: string;
+  // schemaVersion 4: adresat do wyświetlenia w makiecie (pod "Od:"), tekst bez znaczenia oceniającego.
+  to?: string;
   subject: string;
   body: string;
   date?: string;

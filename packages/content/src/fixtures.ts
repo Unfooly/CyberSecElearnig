@@ -123,6 +123,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       email: {
         fromName: 'Bank',
         fromAddress: 'support@bank-0.pl',
+        to: 'jan.kowalski@example.pl',
         subject: 'Pilne: potwierdź dane',
         body: 'Kliknij link.',
         date: 'pon., 21 wrz 2026, 08:14',

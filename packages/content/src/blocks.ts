@@ -171,6 +171,9 @@ const emailAnalysisSchema = z
       .object({
         fromName: text(120),
         fromAddress: text(200),
+        // schemaVersion 4: adresat do wyświetlenia w makiecie (pod "Od:") - tekst, nie jest parsowany ani używany jako kotwica
+        // kryterium (na to jest criteria[].target); opcjonalny, bo starsze moduły (2/3) go nie mają.
+        to: text(200).optional(),
         subject: text(300),
         body: text(4000),
         // schemaVersion 3: wygląd prawdziwego klienta pocztowego. Data to tekst do wyświetlenia (nie jest parsowana), załącznik to
@@ -451,6 +454,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [
       'email.fromName',
       'email.fromAddress',
+      // to: schemaVersion 4, patrz komentarz przy schemacie (blocks.ts, emailAnalysisSchema).
+      'email.to',
       'email.subject',
       'email.body',
       'email.date',

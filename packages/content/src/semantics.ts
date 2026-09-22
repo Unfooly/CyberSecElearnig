@@ -72,7 +72,7 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
 
 // Pola dostępne dopiero od schemaVersion 4 (poziom bloku; metadane modułu - subtitle/level/objectives - i blok NARRATIVE mają
 // osobne sprawdzenie w parseModule, bo nie są ścieżkami WEWNĄTRZ bloku).
-const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result'];
+const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to'];
 
 function featuresUsed(block: ServerBlock, features: string[]): string[] {
   const paths = new Set(collectPaths(block));

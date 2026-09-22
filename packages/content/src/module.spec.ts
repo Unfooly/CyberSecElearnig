@@ -265,6 +265,7 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     ];
     delete email(module).email.date;
     delete email(module).email.attachment;
+    delete email(module).email.to;
     for (const criterion of email(module).criteria) {
       delete criterion.evidence;
       delete criterion.target;
@@ -421,6 +422,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
   const quiz = (m: TestModule) => blockOf(m, 'QUIZ');
   const text = (m: TestModule) => blockOf(m, 'TEXT_INPUT_GUIDED');
   const dialogue = (m: TestModule) => blockOf(m, 'DIALOGUE');
+  const email = (m: TestModule) => blockOf(m, 'EMAIL_ANALYSIS');
 
   it('moduł w wersji 3 z polami z wersji 4 jest odrzucony (każde pole/blok nazwane w błędzie)', () => {
     const message = invalid((m) => {
@@ -433,6 +435,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     expect(message).toContain('pole character.opening wymaga schemaVersion 4');
     expect(message).toContain('pole reactions.complete wymaga schemaVersion 4');
     expect(message).toContain('pole reactions.result wymaga schemaVersion 4');
+    expect(message).toContain('pole email.to wymaga schemaVersion 4');
   });
 
   it('moduł w wersji 3 bez pól z wersji 4 nadal przechodzi (migracja jak dla wersji 2)', () => {
@@ -444,6 +447,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE');
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
+    delete email(module).email.to;
     expect(() => parseModule(module)).not.toThrow();
   });
 

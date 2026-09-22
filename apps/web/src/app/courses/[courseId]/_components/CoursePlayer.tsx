@@ -205,6 +205,7 @@ export default function CoursePlayer({
   if (state.status === 'COMPLETED' && !feedback) {
     return (
       <SummaryScreen
+        courseId={courseId}
         title={initial.title}
         score={state.score}
         scoreUnavailable={scoreUnavailable}

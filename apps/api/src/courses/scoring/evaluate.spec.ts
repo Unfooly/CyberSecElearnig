@@ -8,6 +8,7 @@ import {
   evaluateSubmit,
   isTextCorrect,
   normalizeText,
+  pickReaction,
   weightOf,
 } from './evaluate';
 
@@ -381,5 +382,48 @@ describe('TEXT_INPUT_GUIDED: próby, podpowiedzi, punkty malejące z próbami', 
     expect(() => submit(block, undefined, inProgress)).toThrow(BadRequestException);
     const solved = play(block, ['zla', 'bank-prawdziwy.pl']).entry;
     expect(submit(block, { correct: true, points: 1 }, solved).entry).toBe(solved);
+  });
+});
+
+describe('pickReaction: reakcja maskotki na wynik (schemaVersion 4, reactions.result)', () => {
+  it('QUIZ/BRANCHING_SCENARIO (minScore, wynik 0 albo 1): trafia próg 1 albo 0', () => {
+    expect(pickReaction(blocks().QUIZ, { points: 1 })?.text).toContain(`${SECRET_MARKER}-quiz-cheer`);
+    expect(pickReaction(blocks().QUIZ, { points: 0 })?.text).toContain(`${SECRET_MARKER}-quiz-warning`);
+    expect(pickReaction(blocks().BRANCHING_SCENARIO, { points: 1 })?.text).toContain(`${SECRET_MARKER}-branching-cheer`);
+  });
+
+  it('EMAIL_ANALYSIS/ORDERING (minScore malejąco): pierwszy próg <= wynikowi wygrywa', () => {
+    expect(pickReaction(blocks().EMAIL_ANALYSIS, { points: 0.9 })?.text).toContain(`${SECRET_MARKER}-email-cheer`);
+    expect(pickReaction(blocks().EMAIL_ANALYSIS, { points: 0.8 })?.text).toContain(`${SECRET_MARKER}-email-cheer`);
+    expect(pickReaction(blocks().EMAIL_ANALYSIS, { points: 0.5 })?.text).toContain(`${SECRET_MARKER}-email-thinking`);
+    expect(pickReaction(blocks().EMAIL_ANALYSIS, { points: 0.1 })?.text).toContain(`${SECRET_MARKER}-email-warning`);
+    expect(pickReaction(blocks().EMAIL_ANALYSIS, { points: 0 })?.text).toContain(`${SECRET_MARKER}-email-warning`);
+    expect(pickReaction(blocks().ORDERING, { points: 1 })?.text).toContain(`${SECRET_MARKER}-ordering-cheer`);
+    expect(pickReaction(blocks().ORDERING, { points: 0.5 })?.text).toContain(`${SECRET_MARKER}-ordering-thinking`);
+  });
+
+  it('TEXT_INPUT_GUIDED (when, nie próg): poprawnie/niepoprawnie, bez reakcji dopóki nierozstrzygnięte', () => {
+    expect(pickReaction(blocks().TEXT_INPUT_GUIDED, { correct: true, points: 1 })?.text).toContain(`${SECRET_MARKER}-text-cheer`);
+    expect(pickReaction(blocks().TEXT_INPUT_GUIDED, { correct: false, points: 0 })?.text).toContain(`${SECRET_MARKER}-text-warning`);
+    // Próba z pozostałymi podejściami: entry.correct jeszcze nie ustawione (evaluateAttempt ustawia je tylko przy done).
+    expect(pickReaction(blocks().TEXT_INPUT_GUIDED, {})).toBeUndefined();
+  });
+
+  it('pełny przebieg evaluateAttempt: reakcja pojawia się dopiero przy rozstrzygnięciu, nie przy próbie z podpowiedzią', () => {
+    const block: Block = { ...blocks().TEXT_INPUT_GUIDED, answer: { accept: ['bank-prawdziwy.pl'], regex: undefined }, maxAttempts: 4 };
+    const wrong = evaluateAttempt(block, 'zla', undefined, now);
+    expect(pickReaction(block, wrong.entry)).toBeUndefined(); // attempt 1/4, jeszcze nie done
+    const right = evaluateAttempt(block, 'bank-prawdziwy.pl', wrong.entry, now);
+    expect(pickReaction(block, right.entry)?.text).toContain(`${SECRET_MARKER}-text-cheer`);
+  });
+
+  it('blok bez wyniku 0-1 (eksploracyjny, bez oceny): brak reakcji niezależnie od reactions.result', () => {
+    expect(pickReaction(blocks().SCENE_HOTSPOTS, { points: 1, correct: true })).toBeUndefined();
+    expect(pickReaction({ ...blocks().NOTEPAD, reactions: { result: [{ minScore: 0, pose: 'cheer', text: 'x' }] } }, { points: 1 })).toBeUndefined();
+  });
+
+  it('brak reactions.result w treści: brak reakcji (nic nie rzuca)', () => {
+    expect(pickReaction({ ...blocks().QUIZ, reactions: {} }, { points: 1 })).toBeUndefined();
+    expect(pickReaction({ ...blocks().QUIZ, reactions: undefined }, { points: 1 })).toBeUndefined();
   });
 });

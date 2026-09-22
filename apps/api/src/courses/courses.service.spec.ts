@@ -108,10 +108,11 @@ describe('CoursesService.listMyCourses', () => {
   });
 });
 
-describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona przed wyścigiem', () => {
+describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji, ochrona przed wyścigiem, reaction', () => {
   let service: CoursesService;
   let findFirst: jest.Mock;
   let updateMany: jest.Mock;
+  let update: jest.Mock;
   let awardCourseCompletion: jest.Mock;
 
   function assignmentFixture(overrides: Record<string, unknown> = {}) {
@@ -133,6 +134,8 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
     // Domyślnie "udany claim" (1 zaktualizowany wiersz) - test wyścigu
     // nadpisuje to na {count: 0} dla konkretnego wywołania.
     updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    // Tylko attemptBlock (TEXT_INPUT_GUIDED) woła `update` (nie `updateMany`) na przypisaniu.
+    update = jest.fn().mockResolvedValue({});
     awardCourseCompletion = jest
       .fn()
       .mockResolvedValue({ xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] });
@@ -156,7 +159,7 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
 
     const tenantPrisma = {
       runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
-        fn({ courseAssignment: { findFirst, updateMany }, courseVersion, $queryRaw: jest.fn() }),
+        fn({ courseAssignment: { findFirst, updateMany, update }, courseVersion, $queryRaw: jest.fn() }),
       ),
     };
 
@@ -282,6 +285,26 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
     expect(result.currentBlockIndex).toBe(1);
   });
 
+  it('lastResult niesie reaction (schemaVersion 4) dopiero po ocenie, dobraną wg wyniku', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({
+        course: {
+          id: 'course-1',
+          contentBlocks: [
+            {
+              type: 'QUIZ',
+              options: [{ correct: true }, { correct: false }],
+              reactions: { result: [{ minScore: 1, pose: 'cheer', text: 'Świetnie!' }, { minScore: 0, pose: 'warning', text: 'Spróbuj ponownie.' }] },
+            },
+          ],
+        },
+      }),
+    );
+
+    const correct = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: 0 });
+    expect(correct.lastResult.reaction).toEqual({ pose: 'cheer', text: 'Świetnie!' });
+  });
+
   it('EMBEDDED_HTML jest traktowany jak blok niescorowany - kończy się bez wymaganej odpowiedzi', async () => {
     findFirst.mockResolvedValue(
       assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ type: 'EMBEDDED_HTML', html: '<html></html>' }] } }),
@@ -292,5 +315,35 @@ describe('CoursesService.submitBlockProgress — hak grywalizacji i ochrona prze
     expect(result.lastResult).toEqual({ blockIndex: 0, blockId: 'b0', type: 'EMBEDDED_HTML', correct: undefined });
     expect(result.status).toBe('COMPLETED');
     expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null });
+  });
+
+  describe('attemptBlock (TEXT_INPUT_GUIDED): reaction (schemaVersion 4) tylko przy rozstrzygnięciu', () => {
+    // Treść "sprzed silnika" w tej fixturze zawsze dostaje id legacy (b0, b1...) - patrz test EMBEDDED_HTML wyżej (blockId: 'b0').
+    const textBlock = {
+      type: 'TEXT_INPUT_GUIDED',
+      answer: { accept: ['bank.pl'] },
+      maxAttempts: 3,
+      reactions: { result: [{ when: 'correct', pose: 'cheer', text: 'Brawo!' }, { when: 'incorrect', pose: 'warning', text: 'Spróbuj ponownie.' }] },
+    };
+
+    it('brak reaction przy próbie z pozostałymi podejściami; reaction dobrana wg poprawności dopiero po rozstrzygnięciu', async () => {
+      findFirst.mockResolvedValue(assignmentFixture({ course: { id: 'course-1', contentBlocks: [textBlock] } }));
+
+      const wrong = await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'zla-domena');
+      expect(wrong).toMatchObject({ correct: false, done: false });
+      expect(wrong).not.toHaveProperty('reaction');
+
+      const right = await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'bank.pl');
+      expect(right).toMatchObject({ correct: true, done: true });
+      expect(right.reaction).toEqual({ pose: 'cheer', text: 'Brawo!' });
+    });
+
+    it('wyczerpanie prób: reaction "incorrect", bez wycieku when/minScore', async () => {
+      findFirst.mockResolvedValue(assignmentFixture({ course: { id: 'course-1', contentBlocks: [{ ...textBlock, maxAttempts: 1 }] } }));
+
+      const exhausted = await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'zla-domena');
+      expect(exhausted).toMatchObject({ correct: false, done: true });
+      expect(exhausted.reaction).toEqual({ pose: 'warning', text: 'Spróbuj ponownie.' });
+    });
   });
 });

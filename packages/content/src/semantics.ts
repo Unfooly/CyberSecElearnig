@@ -91,9 +91,10 @@ export function v4FeaturesUsed(block: ServerBlock): string[] {
 
 // Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
 // (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
-const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
+// Eksportowane: apps/api (evaluate.ts, pickReaction) wybiera pasujący wpis reactions.result tą samą regułą, którą tu walidujemy.
+export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
-const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
+export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
 
 /**
  * `reactions.result` (schemaVersion 4): tylko na blokach ocenianych (SCORED_BLOCK_TYPES); TEXT_INPUT_GUIDED używa `when`

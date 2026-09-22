@@ -1,7 +1,7 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
 import { ProgressV2 } from './progress';
-import { Block, OpaqueId, emailDetail, orderingDetail } from './scoring/evaluate';
+import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
 
 /**
  * Klucze pochodne od JWT_SECRET (HKDF-SHA256 ze stałym `info` osobnym dla każdego zastosowania), więc bez nowej zmiennej
@@ -107,6 +107,9 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
     const revealedHints =
       block?.type === 'TEXT_INPUT_GUIDED' && Array.isArray(block.hints) ? block.hints.slice(0, entry.hintsShown ?? 0) : undefined;
     const solution = block?.type === 'TEXT_INPUT_GUIDED' && entry.done && entry.correct === false ? block.solution : undefined;
+    // Reakcja maskotki na WYNIK (schemaVersion 4, pole secret): jak solution, tylko po ukończeniu bloku - nie wymaga `opaque`
+    // (nie odsłania żadnych id z treści), więc dostępna też przy starszych wywołaniach bez tego parametru.
+    const reaction = block && entry.done ? pickReaction(block, entry) : undefined;
     // Podgląd UKOŃCZONEGO bloku ("Wstecz"): własny wybór gracza i rozstrzygnięcie (po ukończeniu klucz nie jest już tajny, wynik
     // pokazano przy zapisie). Elementy zawsze jako id nieprzejrzyste, jak w /start. Bez `opaque` (starsze wywołania) nie ma ich wcale.
     let answer: unknown;
@@ -130,6 +133,7 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       ...(entry.attempts !== undefined ? { attempts: entry.attempts } : {}),
       ...(revealedHints && revealedHints.length > 0 ? { revealedHints } : {}),
       ...(solution ? { solution } : {}),
+      ...(reaction ? { reaction } : {}),
       ...(answer !== undefined ? { answer } : {}),
       ...(detail !== undefined ? { detail } : {}),
     };

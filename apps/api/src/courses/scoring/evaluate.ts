@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
-import { compileAnswerRegex } from '@cyberszkolo/content/dist/node';
+import { compileAnswerRegex, SCORED_BLOCK_TYPES, WHEN_BASED_TYPES } from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
 
 // Ocena odpowiedzi PO STRONIE SERWERA. Klient przesyła wyłącznie swój wybór (indeks, listę id, tekst) - nigdy ocenę ani
@@ -207,6 +207,44 @@ function weightPoints(block: Block): Partial<BlockEntry> {
   return weightOf(block) > 0 ? { points: 1, correct: true } : {};
 }
 
+export interface Reaction {
+  pose: string;
+  text: string;
+}
+
+interface ReactionResultEntry {
+  pose: string;
+  text: string;
+  when?: 'correct' | 'incorrect';
+  minScore?: number;
+}
+
+/**
+ * Reakcja maskotki na WYNIK bloku ocenianego (schemaVersion 4, packages/content: baseShape.reactions.result). Pole jest
+ * `secret` (FIELD_CLASSIFICATION) - nie ma go w treści z `/start` - więc wolno je czytać wprost z pełnego `block` po stronie
+ * serwera, dopiero gdy wynik jest znany (ten sam wzorzec co `emailDetail`/`orderingDetail`/`solution`/`hints[]`: NIGDY przed
+ * odpowiedzią). SCORED_BLOCK_TYPES/WHEN_BASED_TYPES to te same stałe, którymi semantics.ts (packages/content) waliduje treść
+ * modułu przy imporcie, więc wybór tutaj zawsze trafia w kształt, jaki walidacja zagwarantowała.
+ */
+export function pickReaction(block: Block, entry: Pick<BlockEntry, 'correct' | 'points'>): Reaction | undefined {
+  if (!(SCORED_BLOCK_TYPES as readonly string[]).includes(block.type)) return undefined;
+  const result = (block.reactions as { result?: ReactionResultEntry[] } | undefined)?.result;
+  if (!Array.isArray(result) || result.length === 0) return undefined;
+  let match: ReactionResultEntry | undefined;
+  if (WHEN_BASED_TYPES.has(block.type)) {
+    if (entry.correct === undefined) return undefined; // nierozstrzygnięte (np. próba z zostałymi próbami) - jeszcze bez reakcji
+    const when = entry.correct ? 'correct' : 'incorrect';
+    match = result.find((candidate) => candidate.when === when);
+  } else if (entry.points !== undefined) {
+    const points = entry.points;
+    // Lista malejąca (semantics.ts to waliduje przy imporcie): pierwszy wpis, którego próg jest osiągnięty, wygrywa.
+    match = result.find((candidate) => typeof candidate.minScore === 'number' && candidate.minScore <= points);
+  }
+  // Wyłącznie pose+text: `when`/`minScore` to wewnętrzny klucz doboru reakcji, nie treść do pokazania (i tak jest tylko w
+  // sekrecie serwera, ale odpowiedź API ma nieść dokładnie to, co ma pokazać klient, nic więcej - biała lista jak toClientBlock).
+  return match ? { pose: match.pose, text: match.text } : undefined;
+}
+
 export function emailPoints(scoring: string | undefined, totalCorrect: number, hits: number, wrong: number): number {
   if (scoring === 'exact') return hits === totalCorrect && wrong === 0 ? 1 : 0;
   if (totalCorrect === 0) return wrong === 0 ? 1 : 0;
@@ -224,6 +262,7 @@ export interface AttemptResponse {
   points?: number;
   hint?: { text: string; narration?: unknown };
   solution?: { text: string; explanation?: string };
+  reaction?: Reaction;
 }
 
 export function normalizeText(

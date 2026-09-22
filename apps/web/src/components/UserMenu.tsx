@@ -5,6 +5,15 @@ import { ChevronDown, LogOut } from 'lucide-react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useLogout } from '@/lib/use-logout';
 
+/**
+ * Czy urządzenie ma prawdziwy hover (mysz, touchpad). Na dotyku tapnięcie daje
+ * `mouseenter` ORAZ `click`, więc bez tego sprawdzenia menu otworzyłoby się
+ * najechaniem i natychmiast zamknęło klikiem.
+ */
+function hasHover(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches === true;
+}
+
 // Menu użytkownika w Topbarze (klik w avatar). Dziś jedna pozycja - wylogowanie;
 // wcześniej wylogować się dało tylko z uproszczonego PendingHeader, więc zalogowany
 // użytkownik ACTIVE nie miał do tego żadnego przycisku w interfejsie.
@@ -66,7 +75,13 @@ export default function UserMenu({
   }
 
   return (
-    <div ref={containerRef} className="relative shrink-0">
+    // Najechanie wskaźnikiem rozwija menu; klik nadal przełącza (klawiatura i dotyk nie mają hoveru).
+    <div
+      ref={containerRef}
+      className="relative shrink-0"
+      onMouseEnter={() => hasHover() && setIsOpen(true)}
+      onMouseLeave={() => hasHover() && setIsOpen(false)}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -84,32 +99,33 @@ export default function UserMenu({
           initials={initials}
           label={avatarUrl ? 'Twój avatar' : undefined}
         />
-        {/* Długi adres nie może wypychać układu poza okno (poziome przewijanie): skracamy, pełny w podpowiedzi i w menu. */}
-        <span className="hidden max-w-[10rem] truncate sm:inline" title={userEmail}>
-          {userEmail}
-        </span>
+        {/* Adresu nie ma w pasku (długi bywał ucinany wielokropkiem) - pełny jest w menu. */}
         <ChevronDown size={16} strokeWidth={2.5} aria-hidden="true" className={isOpen ? 'rotate-180' : undefined} />
       </button>
 
       {isOpen && (
-        <div
-          id={menuId}
-          role="menu"
-          aria-label="Menu użytkownika"
-          className="absolute right-0 top-full z-50 mt-2 w-60 rounded-card border border-border bg-surface py-1.5 shadow-card"
-        >
-          {/* Na telefonie adres jest ukryty w pasku (brak miejsca) - w menu widać go zawsze. */}
-          <p className="break-all border-b border-border px-3 pb-2 pt-1 text-[13px] font-semibold text-muted">{userEmail}</p>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-ink hover:bg-paper disabled:cursor-default disabled:opacity-50"
+        // Odstęp od paska robi PADDING opakowania, nie margines karty: przerwa między
+        // avatarem a menu zostaje wtedy wewnątrz kontenera i przejazd myszą jej nie zamyka.
+        <div className="absolute right-0 top-full z-50 pt-2">
+          <div
+            id={menuId}
+            role="menu"
+            aria-label="Menu użytkownika"
+            className="w-60 rounded-card border border-border bg-surface py-1.5 shadow-card"
           >
-            <LogOut size={16} strokeWidth={2} aria-hidden="true" />
-            {isLoggingOut ? 'Wylogowywanie...' : 'Wyloguj'}
-          </button>
+            {/* Adresu nie ma już w pasku - tu widać go zawsze, w całości. */}
+            <p className="break-all border-b border-border px-3 pb-2 pt-1 text-[13px] font-semibold text-muted">{userEmail}</p>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-ink hover:bg-paper disabled:cursor-default disabled:opacity-50"
+            >
+              <LogOut size={16} strokeWidth={2} aria-hidden="true" />
+              {isLoggingOut ? 'Wylogowywanie...' : 'Wyloguj'}
+            </button>
+          </div>
         </div>
       )}
     </div>

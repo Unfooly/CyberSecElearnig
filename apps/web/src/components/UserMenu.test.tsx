@@ -34,8 +34,47 @@ describe('UserMenu', () => {
 
     expect(screen.getByRole('button', { name: 'Menu użytkownika' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('menuitem', { name: 'Wyloguj' })).toBeInTheDocument();
-    // Adres w pasku jest ukryty na telefonie, więc w menu musi być widoczny w całości.
-    expect(screen.getAllByText('jan.kowalski@example.test').length).toBeGreaterThan(0);
+    // Adresu nie ma w pasku, więc menu jest jedynym miejscem, gdzie widać go w całości.
+    expect(screen.getByText('jan.kowalski@example.test')).toBeInTheDocument();
+  });
+
+  it('adres e-mail nie jest pokazywany w samym pasku (nie ucinamy go wielokropkiem)', () => {
+    renderMenu();
+
+    expect(screen.queryByText('jan.kowalski@example.test')).not.toBeInTheDocument();
+  });
+
+  // Urządzenie z myszą / touchpadem: media query (hover: hover) pasuje.
+  function stubHover(matches: boolean) {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({ matches: query === '(hover: hover)' && matches, media: query })),
+    );
+  }
+
+  it('najechanie myszą rozwija menu, a zjechanie z niego zamyka', () => {
+    stubHover(true);
+    const { container } = renderMenu();
+    const wrapper = container.firstElementChild as HTMLElement;
+
+    fireEvent.mouseEnter(wrapper);
+    expect(screen.getByRole('menuitem', { name: 'Wyloguj' })).toBeInTheDocument();
+
+    fireEvent.mouseLeave(wrapper);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('na dotyku (brak hoveru) menu otwiera dopiero tapnięcie - nie zamyka się samo tuż po otwarciu', () => {
+    stubHover(false);
+    const { container } = renderMenu();
+    const wrapper = container.firstElementChild as HTMLElement;
+
+    // Tapnięcie w przeglądarce mobilnej daje mouseenter, a zaraz po nim click.
+    fireEvent.mouseEnter(wrapper);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+    expect(screen.getByRole('menuitem', { name: 'Wyloguj' })).toBeInTheDocument();
   });
 
   it('ponowny klik w avatar zamyka menu', () => {

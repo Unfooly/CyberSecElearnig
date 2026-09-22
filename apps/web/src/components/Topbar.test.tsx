@@ -64,17 +64,15 @@ describe('Topbar', () => {
       expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
     });
 
-    it('długi adres e-mail jest skracany w pasku, pełny w menu użytkownika (nie wypycha układu)', () => {
+    it('adres e-mail jest wyłącznie w menu użytkownika, w całości (w pasku go nie ma, więc nic się nie ucina)', () => {
       usePathnameMock.mockReturnValue('/courses');
       const email = 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test';
       render(<Topbar userEmail={email} role={Role.EMPLOYEE} />);
 
-      const shortened = screen.getByText(email);
-      expect(shortened.className).toMatch(/truncate/);
-      expect(shortened).toHaveAttribute('title', email);
+      expect(screen.queryByText(email)).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
-      expect(screen.getAllByText(email).some((node) => node.className.includes('break-all'))).toBe(true);
+      expect(screen.getByText(email).className).toMatch(/break-all/);
     });
   });
 

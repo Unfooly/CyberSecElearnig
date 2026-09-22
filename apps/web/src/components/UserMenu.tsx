@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, LogOut, Settings } from 'lucide-react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useLogout } from '@/lib/use-logout';
 
@@ -99,6 +100,16 @@ export default function UserMenu({
         >
           {/* Adresu nie ma już w pasku - tu widać go zawsze, w całości. */}
           <p className="break-all border-b border-border px-3 pb-2 pt-1 text-[13px] font-semibold text-muted">{userEmail}</p>
+          <Link
+            href="/account"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
+          >
+            <Settings size={16} strokeWidth={2} aria-hidden="true" />
+            Ustawienia konta
+          </Link>
+          <div className="my-1 border-t border-border" />
           <button
             type="button"
             role="menuitem"

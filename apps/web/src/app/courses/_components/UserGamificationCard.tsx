@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { Award } from 'lucide-react';
 import Button from '@/components/ui/Button';
@@ -8,29 +7,17 @@ import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
 import type { GamificationOverview } from '@/lib/gamification-types';
 import AvatarDisplay from './AvatarDisplay';
-import AvatarPickerModal from './AvatarPickerModal';
 
 const RING_RADIUS = 46;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default function UserGamificationCard({ overview }: { overview: GamificationOverview }) {
-  const [avatarUrl, setAvatarUrl] = useState(overview.avatarUrl);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const percent = Math.min(100, Math.max(0, overview.currentLevelProgressPercent));
 
   return (
     <Card className="flex flex-col items-center gap-3 p-[22px] text-center">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setIsPickerOpen(true)}
-          className="rounded-full ring-offset-2 hover:ring-2 hover:ring-accent"
-          aria-label="Zmień avatar"
-        >
-          <AvatarDisplay avatarUrl={avatarUrl} size="sm" />
-        </button>
-        <span className="text-xs font-semibold text-muted">Zmień avatar</span>
-      </div>
+      {/* Avatar tylko do oglądania - zmienia się go w ustawieniach konta (/account, D-066). */}
+      <AvatarDisplay avatarUrl={overview.avatarUrl} size="sm" />
 
       <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted">Twoje osiągnięcia</p>
 
@@ -99,17 +86,6 @@ export default function UserGamificationCard({ overview }: { overview: Gamificat
       <Button variant="secondary" disabled title="Wkrótce" className="w-full">
         Wystaw certyfikat
       </Button>
-
-      {isPickerOpen && (
-        <AvatarPickerModal
-          currentAvatarUrl={avatarUrl}
-          onClose={() => setIsPickerOpen(false)}
-          onSaved={(newAvatarUrl) => {
-            setAvatarUrl(newAvatarUrl);
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
     </Card>
   );
 }

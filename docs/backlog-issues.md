@@ -346,7 +346,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: awatar z dowolnego adresu `https` (`<img src={avatarUrl}>`) nie mieści się w `img-src 'self' data: <CONTENT_BASE_URL>` (CSP z D-053), więc obrazek
   się nie załaduje; do czasu decyzji UI pokazuje inicjały (fallback przy błędzie ładowania). Nie poszerzamy `img-src` o `https:`.
 - Akceptacja: decyzja (tylko presety albo własny upload do zasobów z `CONTENT_BASE_URL`), walidacja w API (odrzucenie zewnętrznych URL-i), migracja
-  istniejących awatarów z URL-a (na preset/inicjały), test A/B, zaktualizowany `AvatarPickerModal`.
+  istniejących awatarów z URL-a (na preset/inicjały), test A/B, zaktualizowana sekcja avatara w ustawieniach konta (`AvatarSettings`).
 
 ### B-076 Migracja istniejących bloków VIDEO na zasoby z `CONTENT_BASE_URL`
 - Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: D-053 (CSP), decyzja właściciela 2026-09-21

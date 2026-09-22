@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import UserGamificationCard from './UserGamificationCard';
 import type { GamificationOverview } from '@/lib/gamification-types';
 
@@ -36,29 +36,12 @@ describe('UserGamificationCard', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25');
   });
 
-  it('otwiera AvatarPickerModal po kliknięciu avatara', () => {
+  it('pokazuje avatar użytkownika, ale BEZ możliwości zmiany (ta jest w ustawieniach konta)', () => {
     render(<UserGamificationCard overview={overview} />);
 
+    expect(screen.getByRole('img', { name: 'Avatar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /zmień avatar/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/zmień avatar/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /zmień avatar/i }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('po zapisaniu nowego avatara w modalu woła API i zamyka modal', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ avatarUrl: 'owl' }) });
-    vi.stubGlobal('fetch', fetchMock);
-    render(<UserGamificationCard overview={overview} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /zmień avatar/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'owl' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }));
-
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/users/me/avatar',
-        expect.objectContaining({ body: JSON.stringify({ avatarUrl: 'owl' }) }),
-      ),
-    );
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });

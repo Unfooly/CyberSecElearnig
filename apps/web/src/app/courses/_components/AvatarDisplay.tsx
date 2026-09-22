@@ -8,7 +8,7 @@ const SIZE_CLASSES = {
 
 const ICON_SIZES = { sm: 16, md: 24 } as const;
 
-// Współdzielone między UserGamificationCard, AvatarPickerModal, Topbar i
+// Współdzielone między UserGamificationCard, ustawieniami konta, Topbar i
 // LeaderboardTable - jeden punkt prawdy o tym, jak rysujemy avatar (preset
 // -> ikona Lucide, URL -> <img>, brak -> inicjały albo ikona domyślna),
 // żeby te miejsca się nie rozjechały.

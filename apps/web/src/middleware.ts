@@ -27,6 +27,9 @@ const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: '/courses', roles: ALL_ROLES },
   // Zgłaszanie podejrzanych wiadomości: każda zalogowana rola.
   { prefix: '/report', roles: ALL_ROLES },
+  // Ustawienia KONTA (avatar itd.) - każda zalogowana rola, w odróżnieniu od
+  // /dashboard/settings, czyli ustawień ORGANIZACJI dla ORG_ADMIN-a.
+  { prefix: '/account', roles: ALL_ROLES },
   // Skrzynka zgłoszeń: ORG_ADMIN (pełna) i DEPARTMENT_MANAGER (ograniczona lista działu); pracownik zgłasza przez /report.
   { prefix: '/reports', roles: [Role.ORG_ADMIN, Role.DEPARTMENT_MANAGER] },
 ];

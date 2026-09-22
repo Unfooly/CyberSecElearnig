@@ -179,6 +179,23 @@ describe('middleware', () => {
     });
   });
 
+  describe('/account - ustawienia konta dla każdej zalogowanej roli', () => {
+    const tokenFor = (role: string) =>
+      fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+
+    it.each(['ORG_ADMIN', 'DEPARTMENT_MANAGER', 'EMPLOYEE'])('przepuszcza rolę %s', async (role) => {
+      const response = await middleware(buildRequest('/account', `access_token=${tokenFor(role)}; refresh_token=r`));
+
+      expect(response.headers.get('location')).toBeNull();
+    });
+
+    it('niezalogowany => /login', async () => {
+      const response = await middleware(buildRequest('/account'));
+
+      expect(response.headers.get('location')).toContain('/login');
+    });
+  });
+
   describe('/report - dostępne dla każdej zalogowanej roli, ale prefiks nie obejmuje /reports', () => {
     const tokenFor = (role: string) =>
       fakeJwt({ sub: 'u', organizationId: 'o', role, email: 'a@example.test', exp: Math.floor(Date.now() / 1000) + 900 });

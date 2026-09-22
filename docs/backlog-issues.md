@@ -394,6 +394,19 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: lint na drzewie XML (np. `fast-xml-parser` w trybie XML) sprawdzający local-name elementu/atrybutu po rozwiązaniu namespace,
   zamiast dopasowań tekstowych; przed rozszerzeniem autorstwa treści poza operatora (temat wraca też w D-058 pkt 5a).
 
+### B-085 Lokalna replika CI dla e2e API nie działa (kontenery ci-pg/ci-redis bez publikacji portów)
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: PR 4, naprawa CI po commitcie schematu v4 (2026-09-22)
+- Opis: `docker ps` na maszynie deweloperskiej pokazuje kontenery `ci-pg`/`ci-redis` (Postgres 16, Redis 7), ale bez opublikowanych
+  portów na hosta (`5432/tcp`, `6379/tcp` bez `0.0.0.0:...->`), więc `npm run test:e2e --workspace=apps/api` z `.env.test`
+  (`DATABASE_URL` na `localhost:5432`) nie może się połączyć. Efekt uboczny: po błędzie połączenia w `beforeAll` Jest wisiał
+  ponad godzinę zamiast zakończyć się szybko (`--runInBand`, nieudane `app.listen`, brak `--forceExit`) - trzeba było ręcznie
+  zabić proces `node`. CLAUDE.md reguła 9 opisuje replikę CI jako "kontener `node:20` z `--cpus=2`, Postgres 16 i Redis 7 w
+  Dockerze" - dziś nie da się jej uruchomić z gotowych kontenerów bez ręcznej konfiguracji sieci/portów.
+- Akceptacja: kontenery `ci-pg`/`ci-redis` publikują porty na hosta (albo dokumentacja/skrypt uruchamia `test:e2e` wewnątrz
+  tej samej sieci Dockera co te kontenery, np. przez `docker compose run`), żeby pełny `npm run test:e2e --workspace=apps/api`
+  dało się uruchomić lokalnie przed pushem, bez polegania wyłącznie na CI. Rozważyć też timeout/`--forceExit` w `test:e2e`,
+  żeby błąd połączenia z bazą kończył się szybko, a nie wielogodzinnym zawieszeniem.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

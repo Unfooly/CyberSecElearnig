@@ -320,11 +320,6 @@ describe('SUMMARY: rozwiązanie sprawy', () => {
     expect(text).toContain('12 dowodów w tej scenie pozostało nieodkrytych');
   });
 
-  it('suma nieznana (blok maila jeszcze niezatwierdzony) to "?"; moduł bez dowodów to zwykłe podsumowanie', () => {
-    setup({ type: 'SUMMARY', id: 's' }, { summary: { collected: 3, total: null, perBlock: [{ blockId: 'mail', collected: 0, total: null }] } });
-    expect(screen.getByTestId('case-evidence')).toHaveTextContent('Zebrane dowody: 3 z ?');
-  });
-
   it('bez dowodów w module: "Zakończ szkolenie", bez sekcji dowodów', () => {
     setup({ type: 'SUMMARY', id: 's', text: 'Dziękujemy.' });
     expect(screen.queryByTestId('case-evidence')).not.toBeInTheDocument();
@@ -341,7 +336,7 @@ describe('EvidenceCounter', () => {
       <EvidenceCounter />
     </EvidenceProvider>
   );
-  const s = (collected: number, total: number | null): EvidenceSummary => ({ collected, total, perBlock: [{ blockId: 'a', collected, total }] });
+  const s = (collected: number, total: number): EvidenceSummary => ({ collected, total, perBlock: [{ blockId: 'a', collected, total }] });
 
   it('nie pokazuje się w module bez dowodów', () => {
     render(withSummary(undefined));
@@ -393,10 +388,5 @@ describe('EvidenceCounter', () => {
     rerender(tree(s(1, 2))); // serwer zapisał blok: te same liczby, bez podwójnego liczenia i bez nowego +1
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     expect(screen.queryByTestId('evidence-plus-one')).not.toBeInTheDocument();
-  });
-
-  it('suma nieznana to "?"', () => {
-    render(withSummary(s(3, null)));
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 3/?');
   });
 });

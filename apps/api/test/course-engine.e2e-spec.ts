@@ -225,14 +225,14 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       }
       await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
       const hotspots = (await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h1'] } }).expect(200)).body;
-      // Liczy serwer: 1 dowód zebrany; suma nieznana, bo blok maila (kryteria = sekret) ukrywa ją do zatwierdzenia odpowiedzi.
+      // Liczy serwer: 1 dowód zebrany; suma znana od startu, także dla bloku maila (D-055 pkt 2 - poprawka PR 4).
       expect(hotspots.evidence).toEqual({
         collected: 1,
-        total: null,
+        total: 3,
         perBlock: [
           { blockId: 'scena', collected: 1, total: 1 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
-          { blockId: 'mail', collected: 0, total: null },
+          { blockId: 'mail', collected: 0, total: 1 },
         ],
       });
     });
@@ -247,8 +247,8 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
         { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
         { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
       ]);
-      // Po wznowieniu dowody z serwera (mail nadal ukryty, dopóki odpowiedź nie zatwierdzona).
-      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: null });
+      // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila).
+      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: 3 });
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });
@@ -284,7 +284,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(progress.blocks.mail.detail.criteria.map((c: { id: string; selected: boolean }) => [c.id, c.selected])).toEqual(
         expect.arrayContaining([[c1, true], [c3, true]]),
       );
-      // Po zatwierdzeniu maila znana suma (3 dowody: hotspot, pytanie, kryterium c1); c3 to zwykła notatka. Perblock bez id elementów.
+      // Suma (3 dowody: hotspot, pytanie, kryterium c1) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
       expect(result.evidence).toEqual({
         collected: 3,
         total: 3,

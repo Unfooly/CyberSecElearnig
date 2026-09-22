@@ -69,29 +69,30 @@ export function resolveNote(blocks: Block[], key: string): ClientNote | null {
 
 export interface EvidenceSummary {
   collected: number;
-  /** null = jeszcze nieznana: blok EMAIL_ANALYSIS ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (inaczej gracz wiedziałby, ile zaznaczyć). */
-  total: number | null;
+  total: number;
   /** Tylko bloki z dowodami; bez identyfikatorów elementów (tylko id bloku i liczby). */
-  perBlock: { blockId: string; collected: number; total: number | null }[];
+  perBlock: { blockId: string; collected: number; total: number }[];
 }
 
 /**
  * Dowody zebrane w śledztwie: elementy z `evidence: true`, których notatka trafiła do `progress.notes`. Liczby liczy serwer z zapisanej
- * wersji kursu (flaga evidence przy kryterium maila jest sekretem, więc klient nie może sam policzyć sumy).
+ * wersji kursu (flaga evidence przy KONKRETNYM kryterium maila jest sekretem, więc klient nie może sam policzyć, KTÓRE kryteria to
+ * dowody - `total` to tylko ich LICZBA per blok, znana od startu, dla wszystkich typów bloków jednolicie, łącznie z EMAIL_ANALYSIS
+ * (poprawka D-055 pkt 2, PR 4: wcześniejsze ukrywanie tej liczby do zatwierdzenia odpowiedzi było zbyt małym wyciekiem, żeby psuć UX
+ * licznikiem "?" przez cztery bloki).
  */
 export function evidenceSummary(progress: ProgressV2, blocks: Block[]): EvidenceSummary {
   const noted = new Set(progress.notes);
   const perBlock: EvidenceSummary['perBlock'] = [];
   let collected = 0;
-  let total: number | null = 0;
+  let total = 0;
   for (const block of blocks) {
     const evidence = noteItems(block).filter((item) => item.evidence === true && item.note?.text);
     if (evidence.length === 0) continue;
     const got = evidence.filter((item) => noted.has(`${block.id}.${item.id}`)).length;
-    const hidden = block.type === 'EMAIL_ANALYSIS' && progress.blocks[block.id]?.done !== true;
-    perBlock.push({ blockId: block.id, collected: got, total: hidden ? null : evidence.length });
+    perBlock.push({ blockId: block.id, collected: got, total: evidence.length });
     collected += got;
-    total = hidden || total === null ? null : total + evidence.length;
+    total += evidence.length;
   }
   return { collected, total, perBlock };
 }

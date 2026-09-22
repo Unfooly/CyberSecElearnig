@@ -25,8 +25,8 @@ export class CourseProgressResponseDto {
   // Dowody śledztwa po tym zapisie (client-view.ts, evidenceSummary): liczby i id bloków, bez id elementów.
   evidence!: {
     collected: number;
-    total: number | null;
-    perBlock: { blockId: string; collected: number; total: number | null }[];
+    total: number;
+    perBlock: { blockId: string; collected: number; total: number }[];
   };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
   // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody

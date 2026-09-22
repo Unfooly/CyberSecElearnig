@@ -154,9 +154,8 @@ export type NoteKind = 'mail' | 'person' | 'item' | 'place';
 
 export interface EvidenceSummary {
   collected: number;
-  /** null = jeszcze nieznana (blok e-mail ukrywa liczbę dowodów do zatwierdzenia odpowiedzi). */
-  total: number | null;
-  perBlock: { blockId: string; collected: number; total: number | null }[];
+  total: number;
+  perBlock: { blockId: string; collected: number; total: number }[];
 }
 
 export interface ContentTab {

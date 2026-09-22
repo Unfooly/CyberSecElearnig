@@ -201,7 +201,7 @@ export class CoursesService {
           // Reakcja maskotki na WYNIK (schemaVersion 4, pole secret): dopiero tutaj, po ocenie, nigdy w /start.
           ...(reaction ? { reaction } : {}),
         },
-        // Dowody po tym zapisie (liczby liczy serwer; total null dla maila do zatwierdzenia odpowiedzi).
+        // Dowody po tym zapisie (liczby liczy serwer; total znany od startu dla wszystkich bloków, D-055 pkt 2).
         evidence: evidenceSummary(progress, blocks),
         // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
         notes: result.notesAdded

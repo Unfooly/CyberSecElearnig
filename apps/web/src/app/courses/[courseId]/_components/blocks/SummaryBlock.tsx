@@ -35,7 +35,7 @@ export default function SummaryBlock({
   const { summary, pending } = useEvidence();
   const investigation = hasEvidence(summary);
   const collected = summary.collected + pending;
-  const total = summary.total === null ? '?' : String(summary.total);
+  const total = summary.total;
   useCompleteReaction(block.reactions?.complete, true, review);
 
   return (
@@ -50,12 +50,12 @@ export default function SummaryBlock({
           </h3>
           <ul className="space-y-1 text-sm text-slate-800">
             {summary.perBlock.map((entry) => {
-              const missed = entry.total === null ? 0 : Math.max(0, entry.total - entry.collected);
+              const missed = Math.max(0, entry.total - entry.collected);
               return (
                 <li key={entry.blockId}>
                   <span className="font-medium">{blockTitles[entry.blockId] ?? 'Scena'}</span>
                   {': '}
-                  {entry.total === null ? `${entry.collected} zebranych` : `${entry.collected} z ${entry.total}`}
+                  {entry.collected} z {entry.total}
                   {missed > 0 && (
                     <span className="text-slate-600"> ({missedPhrase(missed)})</span>
                   )}

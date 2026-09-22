@@ -219,20 +219,20 @@ describe('client-view', () => {
   describe('evidenceSummary (Dowody X/Y liczy serwer)', () => {
     const done = (type: string) => entry({ type, done: true });
 
-    it('bez notatek: 0 z sumy dowodów w hotspotach i dialogu; e-mail ukryty (total null) do zatwierdzenia odpowiedzi', () => {
+    it('bez notatek: total znany od startu dla wszystkich bloków, łącznie z jeszcze niezatwierdzonym mailem (D-055 pkt 2)', () => {
       const summary = evidenceSummary({ v: 2, blocks: {}, notes: [] }, blocks());
       expect(summary).toEqual({
         collected: 0,
-        total: null,
+        total: 3,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 1 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
-          { blockId: 'mail', collected: 0, total: null },
+          { blockId: 'mail', collected: 0, total: 1 },
         ],
       });
     });
 
-    it('zebrane dowody i po zatwierdzeniu maila znana suma (bez oglądania nieznanych kluczy)', () => {
+    it('zebrane dowody sumują się poprawnie (bez oglądania nieznanych kluczy)', () => {
       const summary = evidenceSummary(
         { v: 2, blocks: { mail: done('EMAIL_ANALYSIS') }, notes: ['scena.h1', 'rozmowa.q1', 'mail.c1', 'mail.c3', 'nie-ma.x'] },
         blocks(),

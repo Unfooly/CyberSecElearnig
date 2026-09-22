@@ -91,7 +91,7 @@ export default function SceneHotspotsBlock({
                 style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
                 className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${
                   seen
-                    ? 'border-green-600 bg-green-500/20'
+                    ? 'border-green-600 bg-green-500/[0.07]'
                     : interacted
                       ? 'border-transparent'
                       : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'

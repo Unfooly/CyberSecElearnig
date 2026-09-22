@@ -42,7 +42,7 @@ export function hasEvidence(summary: EvidenceSummary | undefined): boolean {
   return !!summary && summary.perBlock.length > 0;
 }
 
-/** "Dowody 2/5" z lupą; przy nowym dowodzie krótkie "+1" (animacja tylko bez prefers-reduced-motion). Suma nieznana = "?". */
+/** "Dowody 2/5" z lupą; przy nowym dowodzie krótkie "+1" (animacja tylko bez prefers-reduced-motion). Suma znana od startu (D-055 pkt 2). */
 export function EvidenceCounter() {
   const { summary, pending } = useEvidence();
   const collected = summary.collected + pending;
@@ -62,7 +62,7 @@ export function EvidenceCounter() {
   }, [collected]);
 
   if (!hasEvidence(summary)) return null;
-  const total = summary.total === null ? '?' : String(summary.total);
+  const total = summary.total;
 
   return (
     <div data-testid="evidence-counter" className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-800">

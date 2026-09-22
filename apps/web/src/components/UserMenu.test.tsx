@@ -44,32 +44,10 @@ describe('UserMenu', () => {
     expect(screen.queryByText('jan.kowalski@example.test')).not.toBeInTheDocument();
   });
 
-  // Urządzenie z myszą / touchpadem: media query (hover: hover) pasuje.
-  function stubHover(matches: boolean) {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn().mockImplementation((query: string) => ({ matches: query === '(hover: hover)' && matches, media: query })),
-    );
-  }
-
-  it('najechanie myszą rozwija menu, a zjechanie z niego zamyka', () => {
-    stubHover(true);
+  it('samo najechanie myszą NIE otwiera menu - wymagany jest klik', () => {
     const { container } = renderMenu();
     const wrapper = container.firstElementChild as HTMLElement;
 
-    fireEvent.mouseEnter(wrapper);
-    expect(screen.getByRole('menuitem', { name: 'Wyloguj' })).toBeInTheDocument();
-
-    fireEvent.mouseLeave(wrapper);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-  });
-
-  it('na dotyku (brak hoveru) menu otwiera dopiero tapnięcie - nie zamyka się samo tuż po otwarciu', () => {
-    stubHover(false);
-    const { container } = renderMenu();
-    const wrapper = container.firstElementChild as HTMLElement;
-
-    // Tapnięcie w przeglądarce mobilnej daje mouseenter, a zaraz po nim click.
     fireEvent.mouseEnter(wrapper);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 

@@ -130,6 +130,38 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   organizacja zajmuje domenę” (jest sprzątanie po 14 dniach), backlog rejestracji „pre-hijacking”.
 - Akceptacja: każda wymieniona sekcja poprawiona albo usunięta, z odnośnikiem do wpisu w `docs/decisions.md`.
 
+### B-092 Panel resellera (partner obsługujący wiele organizacji)
+- Etykiety: `P3`, `feature`, `decision-needed`, `mod:auth`, `mod:db` · Źródło: rozmowa z właścicielem produktu 2026-09-22
+- Opis: sprzedaż przez partnerów (firmy IT, MSP, biura rachunkowe), którzy obsługują wiele organizacji klienckich. Wpis powstał po rozmowie
+  koncepcyjnej - **nie implementować bez wpisu w `docs/decisions.md`** (CLAUDE.md, `decision-needed`). Wobec listy MVP (moduły 1-5, dokumenty
+  prawne, własna domena nadawcy, limity na brzegu) to zadanie na po starcie.
+- **Decyzje właściciela produktu (2026-09-22), już podjęte:**
+  1. **Reseller kupuje pulę licencji i refakturuje** swoim klientom. W Stripe klientem jest WYŁĄCZNIE reseller (jedna subskrypcja na pulę),
+     przydział licencji do organizacji jest wewnętrzny, a rozliczenie reseller-klient dzieje się poza systemem (reseller wystawia własne faktury).
+  2. **Przypisanie i odłączenie resellera robi wyłącznie operator** (SUPER_ADMIN, panel operacyjny). Klient NIE ma takiego przycisku; zmiana
+     resellera to również operacja operatora, a nie uzgodnienie między partnerami.
+  3. **Klient widzi, kto się nim opiekuje** (nazwa resellera, tylko do odczytu), ale **NIE widzi historii wejść** resellera do swojej organizacji.
+     Audyt wejść zapisujemy zawsze, tylko nie pokazujemy go klientowi (na żądanie administratora danych wyciągany ręcznie).
+  4. **Reseller nie może usunąć organizacji klienta ani wyeksportować jej danych** - usunięcie i eksport to wyłącznie decyzja ORG_ADMIN-a klienta.
+- **Architektura do zatwierdzenia przy realizacji (propozycja):**
+  - Tabela `reseller_organizations` (reseller, organizacja, od kiedy, kto nadał) jako JEDYNE źródło prawdy o zasięgu partnera.
+  - **Wejście w organizację = token zakresowany na JEDNĄ organizację**, wydawany po sprawdzeniu wpisu w tej tabeli. Token z listą organizacji
+    odpada: wymagałby przepisania każdego zapytania w aplikacji. Dzięki zakresowaniu istniejące guardy, `organizationId` z JWT i RLS działają
+    bez zmian i **bez nowego wyjątku na liście omijania RLS** (CLAUDE.md).
+  - Widok wielu organizacji naraz (lista klientów, metryki) jako wąskie, dedykowane zapytanie agregujące po `reseller_organizations` - nigdy
+    generyczny dostęp do danych klienckich; `runCrossOrgQuery` (globalny bypass) NIE jest tu do użycia.
+  - Odebranie dostępu unieważnia zakresowane tokeny natychmiast (wzorzec `sessionsRevokedAt` + odbicie w Redisie, jak „wyloguj wszędzie”).
+  - Audyt wejść wzorem `phishing_result_visibility_audit` (kto, kiedy, do której organizacji, w jakim celu).
+- **Otwarte pytania (rozstrzygnąć przed implementacją):** czy reseller zakłada organizacje sam, czy prosi operatora; co dzieje się przy rozstaniu
+  z resellerem (proponowany okres przejściowy i tryb tylko do odczytu zamiast kasowania danych); limity puli licencji i zachowanie przy
+  przekroczeniu; white-label (logo, domena, nadawca maili) - świadomie odłożony w całości.
+- **RODO:** reseller to **podpowierzenie** (klient jest administratorem danych swoich pracowników). Skoro klient nie ma przycisku odłączenia,
+  kontrola musi być w umowie i procesie: reseller wymieniony jako podprzetwarzający w umowie z klientem oraz opisana ścieżka „klient zgłasza
+  sprzeciw → operator odłącza”. Przy realizacji: wpis w `docs/legal/privacy-policy-checklist.md` (kategoria danych, odbiorcy, audyt).
+- Akceptacja: wpis w `docs/decisions.md` z powyższymi decyzjami; model danych z RLS i testem izolacji **A/B na poziomie resellerów** (reseller A
+  nie widzi organizacji resellera B) oraz testem, że zakresowany token przestaje działać natychmiast po odłączeniu; panel operatora do nadawania
+  i odbierania dostępu; lista klientów z metrykami; audyt wejść; informacja o resellerze w panelu klienta (bez historii wejść).
+
 ## C. Baza danych i CI
 
 ### B-020 Złożone FK `(organizationId, userId)` na tabelach z kolumną `userId`

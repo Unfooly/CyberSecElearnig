@@ -70,15 +70,68 @@ function checkRequiredFlags(label: string, items: { required?: boolean }[], erro
 const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].required', 'questions[].evidence', 'questions[].required',
   'questions[].lines', 'questions[].note.kind', 'character.avatar', 'criteria[].evidence', 'criteria[].note.kind', 'criteria[].target', 'email.date', 'email.attachment'];
 
+// Pola dostępne dopiero od schemaVersion 4 (poziom bloku; metadane modułu - subtitle/level/objectives - i blok NARRATIVE mają
+// osobne sprawdzenie w parseModule, bo nie są ścieżkami WEWNĄTRZ bloku).
+const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result'];
+
+function featuresUsed(block: ServerBlock, features: string[]): string[] {
+  const paths = new Set(collectPaths(block));
+  return features.filter((feature) => [...paths].some((path) => path === feature || path.startsWith(`${feature}.`) || path.startsWith(`${feature}[]`)));
+}
+
 /** Pola z wersji 3 użyte w bloku (do sprawdzenia względem deklarowanego schemaVersion). */
 export function v3FeaturesUsed(block: ServerBlock): string[] {
-  const paths = new Set(collectPaths(block));
-  return V3_FEATURES.filter((feature) => [...paths].some((path) => path === feature || path.startsWith(`${feature}.`) || path.startsWith(`${feature}[]`)));
+  return featuresUsed(block, V3_FEATURES);
+}
+
+/** Pola z wersji 4 użyte w bloku. */
+export function v4FeaturesUsed(block: ServerBlock): string[] {
+  return featuresUsed(block, V4_FEATURES);
+}
+
+// Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
+// (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
+const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
+// TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
+const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
+
+/**
+ * `reactions.result` (schemaVersion 4): tylko na blokach ocenianych (SCORED_BLOCK_TYPES); TEXT_INPUT_GUIDED używa `when`
+ * (co najwyżej jeden wpis 'correct' i jeden 'incorrect'), reszta `minScore` (malejąco, bez duplikatów - pierwszy pasujący wpis
+ * wygrywa, więc rosnąca/płaska lista uczyniłaby dalsze wpisy nieosiągalnymi).
+ */
+function reactionErrors(block: ServerBlock): string[] {
+  const result = block.reactions?.result;
+  if (!result) return [];
+  const errors: string[] = [];
+  if (!(SCORED_BLOCK_TYPES as readonly string[]).includes(block.type)) {
+    errors.push(`reactions.result: nieprawidłowe dla bloku typu ${block.type} (brak wyniku 0-1 do progowania)`);
+    return errors;
+  }
+  if (WHEN_BASED_TYPES.has(block.type)) {
+    result.forEach((entry, i) => {
+      if (entry.when === undefined) errors.push(`reactions.result[${i}]: dla TEXT_INPUT_GUIDED każdy wpis musi mieć "when"`);
+    });
+    const whens = result.map((entry) => entry.when).filter((w): w is 'correct' | 'incorrect' => w !== undefined);
+    for (const dup of duplicates(whens)) errors.push(`reactions.result: powtórzone "when": "${dup}"`);
+  } else {
+    result.forEach((entry, i) => {
+      if (entry.minScore === undefined) errors.push(`reactions.result[${i}]: dla ${block.type} każdy wpis musi mieć "minScore"`);
+    });
+    // Indeksy ORYGINALNE z result[] (nie skondensowanej listy samych minScore) - komunikat ma wskazywać prawdziwą pozycję
+    // wpisu, także gdy któryś wcześniejszy wpis nie miał minScore wcale (błąd wyżej).
+    const scores = result.map((entry, i) => [i, entry.minScore] as const).filter((pair): pair is [number, number] => pair[1] !== undefined);
+    for (let k = 1; k < scores.length; k += 1) {
+      const [i, score] = scores[k];
+      if (score >= scores[k - 1][1]) errors.push(`reactions.result[${i}]: lista minScore musi być malejąca (pierwszy pasujący wpis wygrywa)`);
+    }
+  }
+  return errors;
 }
 
 /** Zwraca listę błędów semantycznych bloku (pusta = OK). */
 export function validateBlockSemantics(block: ServerBlock, schemaVersion: number = MODULE_SCHEMA_VERSION): string[] {
-  const errors: string[] = [];
+  const errors: string[] = [...reactionErrors(block)];
   const kindRequired = schemaVersion >= 3;
   const checkUnique = (label: string, ids: string[]) => {
     for (const id of duplicates(ids)) errors.push(`${label}: powtórzony identyfikator "${id}"`);
@@ -224,7 +277,20 @@ export function parseModule(input: unknown): ContentModule {
         errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 3`);
       }
     }
+    if (contentModule.schemaVersion < 4) {
+      if (block.type === 'NARRATIVE') errors.push(`blocks[${index}] (${block.id}): blok NARRATIVE wymaga schemaVersion 4`);
+      for (const feature of v4FeaturesUsed(block)) {
+        errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 4`);
+      }
+    }
   });
+
+  // Metadane modułu z wersji 4 (nie są ścieżką WEWNĄTRZ bloku, więc osobne sprawdzenie od v3FeaturesUsed/v4FeaturesUsed).
+  if (contentModule.schemaVersion < 4) {
+    if (contentModule.subtitle !== undefined) errors.push('subtitle: wymaga schemaVersion 4');
+    if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
+    if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
+  }
 
   const summaries = contentModule.blocks.map((b, i) => (b.type === 'SUMMARY' ? i : -1)).filter((i) => i >= 0);
   if (summaries.length > 1) errors.push('SUMMARY: co najwyżej jeden blok podsumowania');

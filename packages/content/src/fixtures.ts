@@ -21,8 +21,16 @@ function base(id: string) {
     narration: audio(id),
     mascot: { pose: 'pointing' as const, text: 'Uważaj!' },
     weight: 2,
+    // reactions.complete (schemaVersion 4): client, więc bezpieczne na KAŻDYM typie bloku (wywołuje je klient po ukończeniu).
+    reactions: { complete: { pose: 'cheer' as const, text: 'Zebrane!' } },
   };
 }
+
+/** reactions.result (schemaVersion 4) dla bloków OCENIANYCH: dokłada się do `base(id).reactions`, więc `complete` zostaje. */
+const scoredReactions = (result: { pose: 'cheer' | 'warning' | 'thinking'; text: string; when?: 'correct' | 'incorrect'; minScore?: number }[]) => ({
+  complete: { pose: 'cheer' as const, text: 'Zebrane!' },
+  result,
+});
 
 export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
   return {
@@ -35,6 +43,10 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { text: 'a@bank.pl', correct: false, feedback: `${SECRET_MARKER}-feedback-a` },
         { text: 'a@bank-0.pl', correct: true, feedback: `${SECRET_MARKER}-feedback-b` },
       ],
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-quiz-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-quiz-warning` },
+      ]),
     },
     BRANCHING_SCENARIO: {
       ...base('scenariusz'),
@@ -44,6 +56,10 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { text: 'Klikam', outcome: 'wrong', feedback: `${SECRET_MARKER}-feedback-x` },
         { text: 'Sprawdzam nadawcę', outcome: 'correct', feedback: `${SECRET_MARKER}-feedback-y` },
       ],
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-branching-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-branching-warning` },
+      ]),
     },
     DRAG_AND_DROP: {
       ...base('segregacja'),
@@ -81,7 +97,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
     DIALOGUE: {
       ...base('rozmowa'),
       type: 'DIALOGUE',
-      character: { name: 'Anna', role: 'Księgowa', avatar: 'img/anna.png' },
+      character: { name: 'Anna', role: 'Księgowa', avatar: 'img/anna.png', opening: 'Ja naprawdę nic nie zrobiłam.' },
       questions: [
         {
           id: 'q1',
@@ -100,6 +116,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       requiredQuestions: ['q1'],
     },
     NOTEPAD: { ...base('notatnik'), type: 'NOTEPAD', prompt: 'Przejrzyj notatki.' },
+    NARRATIVE: { ...base('otwarcie'), type: 'NARRATIVE', text: 'Wtorek, 9:40. Zniknęło czternaście tysięcy złotych.' },
     EMAIL_ANALYSIS: {
       ...base('mail'),
       type: 'EMAIL_ANALYSIS',
@@ -141,6 +158,11 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         },
       ],
       scoring: 'partial',
+      reactions: scoredReactions([
+        { minScore: 0.8, pose: 'cheer', text: `${SECRET_MARKER}-email-cheer` },
+        { minScore: 0.4, pose: 'thinking', text: `${SECRET_MARKER}-email-thinking` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-email-warning` },
+      ]),
     },
     TEXT_INPUT_GUIDED: {
       ...base('domena'),
@@ -153,6 +175,10 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       maxAttempts: 4,
       scoring: { attemptPenalty: 0.25, floor: 0.25 },
       solution: { text: `${SECRET_MARKER}-rozwiazanie`, explanation: `${SECRET_MARKER}-rozwiazanie-wyjasnienie` },
+      reactions: scoredReactions([
+        { when: 'correct', pose: 'cheer', text: `${SECRET_MARKER}-text-cheer` },
+        { when: 'incorrect', pose: 'warning', text: `${SECRET_MARKER}-text-warning` },
+      ]),
     },
     ORDERING: {
       ...base('kolejnosc'),
@@ -164,6 +190,10 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { id: 'o3', text: 'Usuń' },
       ],
       scoring: 'partial',
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-ordering-cheer` },
+        { minScore: 0, pose: 'thinking', text: `${SECRET_MARKER}-ordering-thinking` },
+      ]),
       explanation: `${SECRET_MARKER}-kolejnosc-wyjasnienie`,
     },
     TABS: {
@@ -188,6 +218,16 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   const blocks = fullBlocks();
   for (const option of blocks.QUIZ.options as Record<string, unknown>[]) option.outcome = 'wrong';
   for (const option of blocks.BRANCHING_SCENARIO.options as Record<string, unknown>[]) option.correct = false;
+  // reactions.result jest w schemacie na KAŻDYM typie (baseShape), więc klasyfikacja obejmuje go wszędzie - ale semantycznie
+  // wolno go mieć tylko blokom ocenianym, i tylko z JEDNYM z when/minScore (semantics.ts, reactionErrors). fullBlocks() trzyma
+  // się tej reguły (musi przejść parseModule w fullModule()); TUTAJ, gdzie ważna jest tylko klasyfikacja/projekcja (nie
+  // parseModule), nadpisujemy `result` wpisem z OBOMA polami naraz na KAŻDYM typie - inaczej testy klasyfikacji/wycieku
+  // (classification.spec.ts) nie miałyby gdzie sprawdzić ścieżki `reactions.result[].when` na typach, których fixtura w
+  // fullBlocks() używa tylko `minScore` (i odwrotnie dla TEXT_INPUT_GUIDED).
+  for (const [type, block] of Object.entries(blocks)) {
+    const reactions = block.reactions as { complete?: unknown; result?: unknown };
+    reactions.result = [{ minScore: 0, when: 'incorrect', pose: 'thinking', text: `${SECRET_MARKER}-reaction-${type}` }];
+  }
   return blocks;
 }
 
@@ -195,13 +235,17 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
 export function fullModule() {
   const blocks = fullBlocks();
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     slug: 'sprawa-testowa',
     title: 'Sprawa testowa',
+    subtitle: 'Podtytuł testowy',
     category: 'EMAIL_SECURITY' as const,
+    level: 'basic' as const,
     durationMinutes: 10,
     mandatory: false,
+    objectives: ['Rozpoznać phishing', 'Nie klikać podejrzanych linków'],
     blocks: [
+      blocks.NARRATIVE,
       blocks.VIDEO,
       blocks.QUIZ,
       blocks.BRANCHING_SCENARIO,

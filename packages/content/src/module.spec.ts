@@ -236,14 +236,20 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
   const dialogue = (m: TestModule) => m.blocks.find((b) => b.type === 'DIALOGUE') as Record<string, any>;
   const email = (m: TestModule) => m.blocks.find((b) => b.type === 'EMAIL_ANALYSIS') as Record<string, any>;
 
-  it('fixtura v3 przechodzi; bieżąca wersja to 3', () => {
-    expect(MODULE_SCHEMA_VERSION).toBe(3);
+  it('fixtura przechodzi; bieżąca wersja to 4', () => {
+    expect(MODULE_SCHEMA_VERSION).toBe(4);
     expect(() => parseModule(fullModuleForTests())).not.toThrow();
   });
 
-  it('migracja: moduł w wersji 2 bez pól z wersji 3 (stare requiredHotspots[]/requiredQuestions[], answer) nadal przechodzi', () => {
+  it('migracja: moduł w wersji 2 bez pól z wersji 3/4 (stare requiredHotspots[]/requiredQuestions[], answer) nadal przechodzi', () => {
     const module = fullModuleForTests();
     module.schemaVersion = 2;
+    delete module.subtitle;
+    delete module.level;
+    delete module.objectives;
+    // NARRATIVE to CAŁY nowy typ (wersja 4), nie pojedyncze pole - w module w wersji 2 go po prostu nie ma.
+    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE');
+    for (const block of module.blocks) delete block.reactions;
     const h = hotspots(module);
     for (const hotspot of h.hotspots) {
       delete hotspot.required;
@@ -252,6 +258,7 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     }
     const d = dialogue(module);
     delete d.character.avatar;
+    delete d.character.opening;
     d.questions = [
       { id: 'q1', text: 'Skąd ten mail?', answer: 'Rano.', note: { text: 'Mail przyszedł rano.' } },
       { id: 'q2', text: 'Kto go wysłał?', answer: 'Nie wiem.' },
@@ -284,8 +291,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     }
   });
 
-  it('wersja spoza 2 i 3 jest odrzucona', () => {
-    expect(invalid((m) => (m.schemaVersion = 4))).toContain('schemaVersion');
+  it('wersja spoza 2, 3 i 4 jest odrzucona', () => {
+    expect(invalid((m) => (m.schemaVersion = 5))).toContain('schemaVersion');
   });
 
   it('evidence bez note to błąd', () => {
@@ -395,6 +402,130 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     delete hotspots(clean).requiredHotspots;
     delete dialogue(clean).requiredQuestions;
     expect(moduleWarnings(parseModule(clean))).toEqual([]);
+  });
+});
+
+// Pola "wersji 4": metadane modułu (subtitle/level/objectives), character.opening, reakcje maskotki (reactions), blok NARRATIVE.
+describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, reactions, NARRATIVE)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const blockOf = (m: TestModule, type: string) => m.blocks.find((b) => b.type === type) as Record<string, any>;
+  const quiz = (m: TestModule) => blockOf(m, 'QUIZ');
+  const text = (m: TestModule) => blockOf(m, 'TEXT_INPUT_GUIDED');
+  const dialogue = (m: TestModule) => blockOf(m, 'DIALOGUE');
+
+  it('moduł w wersji 3 z polami z wersji 4 jest odrzucony (każde pole/blok nazwane w błędzie)', () => {
+    const message = invalid((m) => {
+      m.schemaVersion = 3;
+    });
+    expect(message).toContain('subtitle: wymaga schemaVersion 4');
+    expect(message).toContain('level: wymaga schemaVersion 4');
+    expect(message).toContain('objectives: wymaga schemaVersion 4');
+    expect(message).toContain('blok NARRATIVE wymaga schemaVersion 4');
+    expect(message).toContain('pole character.opening wymaga schemaVersion 4');
+    expect(message).toContain('pole reactions.complete wymaga schemaVersion 4');
+    expect(message).toContain('pole reactions.result wymaga schemaVersion 4');
+  });
+
+  it('moduł w wersji 3 bez pól z wersji 4 nadal przechodzi (migracja jak dla wersji 2)', () => {
+    const module = fullModuleForTests();
+    module.schemaVersion = 3;
+    delete module.subtitle;
+    delete module.level;
+    delete module.objectives;
+    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE');
+    for (const block of module.blocks) delete block.reactions;
+    delete dialogue(module).character.opening;
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('reactions.result: dokładnie jedno z when/minScore (schemat)', () => {
+    expect(
+      invalid((m) => {
+        quiz(m).reactions.result[0].when = 'correct';
+      }),
+    ).toContain('when/minScore');
+    expect(
+      invalid((m) => {
+        delete text(m).reactions.result[0].when;
+      }),
+    ).toContain('when/minScore');
+  });
+
+  it('reactions.result na bloku bez wyniku (np. NOTEPAD) to błąd', () => {
+    expect(
+      invalid((m) => {
+        blockOf(m, 'NOTEPAD').reactions = { result: [{ minScore: 0, pose: 'cheer', text: 'x' }] };
+      }),
+    ).toContain('reactions.result: nieprawidłowe dla bloku typu NOTEPAD');
+  });
+
+  it('TEXT_INPUT_GUIDED: reactions.result musi używać "when", nie "minScore"', () => {
+    expect(
+      invalid((m) => {
+        const t = text(m);
+        t.reactions.result = [{ minScore: 1, pose: 'cheer', text: 'x' }];
+      }),
+    ).toContain('dla TEXT_INPUT_GUIDED każdy wpis musi mieć "when"');
+  });
+
+  it('TEXT_INPUT_GUIDED: powtórzone "when" (dwa wpisy "correct") to błąd', () => {
+    expect(
+      invalid((m) => {
+        text(m).reactions.result.push({ when: 'correct', pose: 'cheer', text: 'y' });
+      }),
+    ).toContain('powtórzone "when": "correct"');
+  });
+
+  it('QUIZ (i reszta ocenianych bez TEXT_INPUT_GUIDED): reactions.result musi używać "minScore", nie "when"', () => {
+    expect(
+      invalid((m) => {
+        quiz(m).reactions.result = [{ when: 'correct', pose: 'cheer', text: 'x' }];
+      }),
+    ).toContain('dla QUIZ każdy wpis musi mieć "minScore"');
+  });
+
+  it('QUIZ: lista minScore musi być malejąca (pierwszy pasujący wpis wygrywa)', () => {
+    expect(
+      invalid((m) => {
+        quiz(m).reactions.result = [
+          { minScore: 0, pose: 'warning', text: 'x' },
+          { minScore: 1, pose: 'cheer', text: 'y' },
+        ];
+      }),
+    ).toContain('minScore musi być malejąca');
+    expect(
+      invalid((m) => {
+        quiz(m).reactions.result = [
+          { minScore: 0.5, pose: 'warning', text: 'x' },
+          { minScore: 0.5, pose: 'cheer', text: 'y' },
+        ];
+      }),
+    ).toContain('minScore musi być malejąca');
+  });
+
+  it('NARRATIVE: blok bez interakcji, tylko text (+ narration/mascot/reactions wspólne)', () => {
+    const module = fullModuleForTests();
+    const narrative = blockOf(module, 'NARRATIVE');
+    expect(narrative.text).toEqual(expect.any(String));
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('NARRATIVE: w odróżnieniu od SUMMARY może wystąpić wielokrotnie i w DOWOLNYM miejscu (nie tylko na końcu)', () => {
+    const module = fullModuleForTests();
+    const narrative = blockOf(module, 'NARRATIVE');
+    // Druga kopia (inny id) wstawiona na początek, a oryginał zostaje w środku - żadne z tych miejsc nie jest "końcem".
+    module.blocks.unshift({ ...JSON.parse(JSON.stringify(narrative)), id: 'otwarcie-2' });
+    expect(module.blocks.filter((b: Record<string, any>) => b.type === 'NARRATIVE')).toHaveLength(2);
+    expect(() => parseModule(module)).not.toThrow();
   });
 });
 

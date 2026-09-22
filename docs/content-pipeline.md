@@ -17,6 +17,10 @@ zawieszeniem.
 
 ## Instalacja i konfiguracja
 
+Wymaga wcześniej zbudowanego `packages/content` (`npm ci` w rootcie repo robi to przez `postinstall`; ręcznie:
+`npm run build --workspace=packages/content`) - `scripts/content` ładuje jego skompilowany kod (`dist/node.js`,
+`dist/index.js`) do walidacji modułów i klasyfikacji pól. Bez tego pierwsze uruchomienie kończy się `Cannot find module`.
+
 ```bash
 npm ci --prefix scripts/content
 cp scripts/content/.env.local.example scripts/content/.env.local
@@ -62,8 +66,9 @@ razem z pełnym tekstem, z pominięciem `maxAttempts` i stopniowego ujawniania w
 listę pól z audio z klasyfikacją przy każdym uruchomieniu (fail-closed: nowe pole narracji w schemacie bez decyzji tutaj to
 błąd, nie ciche audio). Backlog B-082: audio podpowiedzi przez API po odblokowaniu (podpisany URL).
 
-Manifest partii (`audio/<slug>/<wersja>/manifest.json`, publiczny, mutowalny) zawiera WYŁĄCZNIE listę kluczy plików - żadnych
-ścieżek pól (mapowanie narracja -> plik trzyma tylko `module.json` i `audio.lock.json` w repo).
+Manifest partii (`audio/<slug>/<wersja>/manifest.json`, publiczny, mutowalny: `manifestVersion`, `slug`, `audioVersion`,
+`model`, `language`, `voiceId`, `files`) NIE zawiera ścieżek pól - `files` to tylko posortowana lista kluczy plików, bez
+informacji, którego pola narracji dotyczy który plik (to mapowanie trzyma wyłącznie `module.json` i `audio.lock.json` w repo).
 
 ## Zasoby modułu (`npm run tts -- <slug> --assets`)
 

@@ -387,8 +387,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: `svg-lint.ts` sprawdza SVG regexami na tekście (obrona w głąb - klient renderuje SVG wyłącznie przez `<img>`, silnik szkoleń pkt 4;
   druga linia to CSP/`X-Content-Type-Options` na `content.unfooly.com`, docs/content-pipeline.md). Regexy po przeglądzie łapią znane obejścia
   (prefiks przestrzeni nazw `<x:script>`, numeryczne encje `&#106;avascript:`, złe kodowanie UTF-16 zamiast UTF-8 - odrzucane osobno w
-  `assets.ts` przed lintem), ale nie są parserem: komentarz XML rozcinający nazwę tagu, `CDATA`, UTF-7 bez BOM i inne sztuczki XML mogą wciąż
-  ominąć dopasowanie. Ryzyko dziś ograniczone: treść tworzy wyłącznie zaufany operator (D-058).
+  `assets.ts` przed lintem), ale nie są parserem: komentarz XML rozcinający nazwę tagu, `CDATA`, UTF-7 bez BOM, animacja SMIL zmieniająca
+  `href`/`xlink:href` w czasie (`<animate attributeName="href" to="...">`, `<set>`, `<animateMotion>` - `hrefsOf()` sprawdza tylko atrybuty
+  statyczne na otwierającym tagu) i inne sztuczki XML mogą wciąż ominąć dopasowanie. Ryzyko dziś ograniczone: treść tworzy wyłącznie zaufany
+  operator (D-058), a CSP `sandbox` na `content.unfooly.com` blokuje taki fetch niezależnie od tego, czy adres był statyczny czy z SMIL.
 - Akceptacja: lint na drzewie XML (np. `fast-xml-parser` w trybie XML) sprawdzający local-name elementu/atrybutu po rozwiązaniu namespace,
   zamiast dopasowań tekstowych; przed rozszerzeniem autorstwa treści poza operatora (temat wraca też w D-058 pkt 5a).
 

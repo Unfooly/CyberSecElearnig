@@ -34,7 +34,7 @@ export default function ReviewBlock({
           block={block}
           courseId={courseId}
           progress={result}
-          result={{ answer: result.answer, detail: result.detail, correct: result.correct, points: result.points }}
+          result={{ answer: result.answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction }}
         />
         <p className="mt-2 text-xs text-slate-500">Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
       </div>

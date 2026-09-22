@@ -3,6 +3,8 @@
 import type { ContentBlock } from '@/lib/courses-types';
 import { GroupedNotes, useNotes } from '../player/notes';
 import { hasEvidence, useEvidence } from '../player/evidence';
+import { useCompleteReaction } from '../player/mascot-reaction';
+import { SimpleMarkdown } from '../simple-markdown';
 
 // Polska liczba mnoga: 1 dowód pozostał nieodkryty; 2-4 dowody pozostały nieodkryte; 5+ (także 12-14) dowodów pozostało nieodkrytych.
 function missedPhrase(count: number): string {
@@ -33,12 +35,13 @@ export default function SummaryBlock({
   const { summary, pending } = useEvidence();
   const investigation = hasEvidence(summary);
   const collected = summary.collected + pending;
-  const total = summary.total === null ? '?' : String(summary.total);
+  const total = summary.total;
+  useCompleteReaction(block.reactions?.complete, true, review);
 
   return (
     <div>
       <p className="mb-3 text-lg font-medium text-slate-900">{block.title ?? (investigation ? 'Rozwiązanie sprawy' : 'Podsumowanie')}</p>
-      {block.text && <p className="mb-4 whitespace-pre-line text-slate-800">{block.text}</p>}
+      {block.text && <div className="mb-4 space-y-2 text-slate-800"><SimpleMarkdown text={block.text} /></div>}
 
       {investigation && (
         <section aria-label="Dowody" data-testid="case-evidence" className="mb-4 rounded bg-indigo-50 p-4 ring-1 ring-indigo-200">
@@ -47,12 +50,12 @@ export default function SummaryBlock({
           </h3>
           <ul className="space-y-1 text-sm text-slate-800">
             {summary.perBlock.map((entry) => {
-              const missed = entry.total === null ? 0 : Math.max(0, entry.total - entry.collected);
+              const missed = Math.max(0, entry.total - entry.collected);
               return (
                 <li key={entry.blockId}>
                   <span className="font-medium">{blockTitles[entry.blockId] ?? 'Scena'}</span>
                   {': '}
-                  {entry.total === null ? `${entry.collected} zebranych` : `${entry.collected} z ${entry.total}`}
+                  {entry.collected} z {entry.total}
                   {missed > 0 && (
                     <span className="text-slate-600"> ({missedPhrase(missed)})</span>
                   )}

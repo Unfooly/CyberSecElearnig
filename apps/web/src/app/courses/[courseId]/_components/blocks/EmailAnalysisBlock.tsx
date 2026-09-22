@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, Info, Paperclip, X } from 'lucide-react';
-import type { ContentBlock, EmailCriterion, ResultDetail } from '@/lib/courses-types';
+import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
 import { useMascotReaction } from '../player/mascot-reaction';
 
-// Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, data, temat, treść, załącznik, linki). Kryteria zaznacza się
+// Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
+// linki). Kryteria zaznacza się
 // KLIKNIĘCIEM FRAGMENTU maila (nadawca, temat, link, załącznik, fragment tekstu); lista kryteriów pod mailem to ta sama zaznaczona lista
 // (checkbox per kryterium) i jest ścieżką dla klawiatury/czytników oraz dla kryteriów bez fragmentu w mailu.
 // Link w treści NIGDY nie nawiguje (to <button>): po najechaniu, fokusie i kliknięciu jego prawdziwy adres pokazuje pasek statusu u dołu
@@ -17,6 +18,7 @@ export interface EmailResult {
   detail?: ResultDetail;
   correct?: boolean;
   points?: number;
+  reaction?: ContentReaction;
 }
 
 type Verdict = 'hit' | 'false-alarm' | 'missed' | 'neutral';
@@ -116,9 +118,12 @@ export default function EmailAnalysisBlock({
     return detail.correct ? 'missed' : 'neutral';
   };
 
-  // Reakcja maskotki na wynik (tylko w fazie wyniku po zapisie, czyli gdy jest `onContinue`; nie w podglądzie "Wstecz").
+  // Reakcja maskotki na wynik (tylko w fazie wyniku po zapisie, czyli gdy jest `onContinue`; nie w podglądzie "Wstecz"). Reakcja z
+  // treści (schemaVersion 4, reactions.result) ma pierwszeństwo; starsza treść bez niej dostaje ogólne ostrzeżenie przy błędzie.
   useEffect(() => {
-    if (onContinue && result && result.correct === false) mascot.react('wrong');
+    if (!onContinue || !result) return;
+    if (result.reaction) mascot.show(result.reaction);
+    else if (result.correct === false) mascot.react('wrong');
     // Jednorazowo przy pokazaniu wyniku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -220,6 +225,12 @@ export default function EmailAnalysisBlock({
             </div>
             {email.date && <span className="text-xs text-slate-500">{email.date}</span>}
           </div>
+          {email.to && (
+            <div className="min-w-0 break-words text-slate-600">
+              <span className="text-slate-500">Do: </span>
+              {email.to}
+            </div>
+          )}
         </div>
 
         <div className="whitespace-pre-line px-4 py-4 text-sm leading-relaxed text-slate-800">

@@ -151,7 +151,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const response = await start(tokenA, engineCourseId).expect(200);
       const blocks = response.body.contentBlocks as { id: string; type: BlockType }[];
 
-      expect(blocks).toHaveLength(13);
+      expect(blocks).toHaveLength(14);
       expect(JSON.stringify(response.body)).not.toContain(SECRET_MARKER);
 
       for (const block of blocks) {
@@ -184,78 +184,80 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     });
 
     it('opcje QUIZ nie mają correct/outcome/feedback', async () => {
-      const quiz = (await start(tokenA, engineCourseId).expect(200)).body.contentBlocks[1];
+      const quiz = (await start(tokenA, engineCourseId).expect(200)).body.contentBlocks[2];
       expect(quiz.options).toEqual([{ text: 'a@bank.pl' }, { text: 'a@bank-0.pl' }]);
     });
   });
 
   describe('przejście całego modułu z każdym typem bloku', () => {
     it('sekwencyjność: nie da się przeskoczyć bloku ani wysłać niepoprawnego kształtu odpowiedzi', async () => {
-      await submit(tokenA, engineCourseId, { blockIndex: 5 }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 0, answer: { correct: true } }).expect(200); // wideo: odpowiedź ignorowana
+      await submit(tokenA, engineCourseId, { blockIndex: 6 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 0 }).expect(200); // otwarcie (NARRATIVE): bez odpowiedzi, ukończony po wyświetleniu
       await submit(tokenA, engineCourseId, { blockIndex: 0 }).expect(400); // ten blok jest już za nami
+      await submit(tokenA, engineCourseId, { blockIndex: 1, answer: { correct: true } }).expect(200); // wideo: odpowiedź ignorowana
+      await submit(tokenA, engineCourseId, { blockIndex: 1 }).expect(400); // ten blok jest już za nami
       // Klient nie może podać oceny ani punktów: pole spoza DTO odrzuca ValidationPipe.
-      await submit(tokenA, engineCourseId, { blockIndex: 1, answer: 1, correct: true }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 1, answer: '1' }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 1 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 2, answer: 1, correct: true }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 2, answer: '1' }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 2 }).expect(400);
     });
 
     it('bloki wyboru, nieoceniane i eksploracyjne', async () => {
-      expect((await submit(tokenA, engineCourseId, { blockIndex: 1, answer: 1 }).expect(200)).body.lastResult).toMatchObject({
+      expect((await submit(tokenA, engineCourseId, { blockIndex: 2, answer: 1 }).expect(200)).body.lastResult).toMatchObject({
         blockId: 'quiz',
         correct: true,
         points: 1,
       });
-      await submit(tokenA, engineCourseId, { blockIndex: 2, answer: 1 }).expect(200);
-      await submit(tokenA, engineCourseId, { blockIndex: 3 }).expect(200);
-      // Blok html (indeks 4) jest bieżący do momentu zapisu, potem wcześniejszy: dokument dostępny (przy wejściu i po powrocie z podglądu).
-      expect((await embed(tokenA, engineCourseId, 'html').expect(200)).body).toEqual({ html: '<p>Treść</p>' });
+      await submit(tokenA, engineCourseId, { blockIndex: 3, answer: 1 }).expect(200);
       await submit(tokenA, engineCourseId, { blockIndex: 4 }).expect(200);
+      // Blok html (indeks 5) jest bieżący do momentu zapisu, potem wcześniejszy: dokument dostępny (przy wejściu i po powrocie z podglądu).
+      expect((await embed(tokenA, engineCourseId, 'html').expect(200)).body).toEqual({ html: '<p>Treść</p>' });
+      await submit(tokenA, engineCourseId, { blockIndex: 5 }).expect(200);
       expect((await embed(tokenA, engineCourseId, 'html').expect(200)).body).toEqual({ html: '<p>Treść</p>' });
 
-      await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: [] } }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1', 'nie-ma'] } }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: [] } }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'nie-ma'] } }).expect(400);
 
       // "Dodaj do notatnika": tylko odwiedzony hotspot z evidence; reszta to 400 bez treści bloku (h2 nie jest dowodem).
-      const badNote = await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1', 'h2'], noted: ['h2'] } }).expect(400);
+      const badNote = await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'h2'], noted: ['h2'] } }).expect(400);
       for (const fragment of ['Kartka z hasłem', 'Hasło na kartce', 'Drzwi bez zamka', SECRET_MARKER]) {
         expect(JSON.stringify(badNote.body)).not.toContain(fragment);
       }
-      await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
-      const hotspots = (await submit(tokenA, engineCourseId, { blockIndex: 5, answer: { visited: ['h1'], noted: ['h1'] } }).expect(200)).body;
-      // Liczy serwer: 1 dowód zebrany; suma nieznana, bo blok maila (kryteria = sekret) ukrywa ją do zatwierdzenia odpowiedzi.
+      await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
+      const hotspots = (await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h1'] } }).expect(200)).body;
+      // Liczy serwer: 1 dowód zebrany; suma znana od startu, także dla bloku maila (D-055 pkt 2 - poprawka PR 4).
       expect(hotspots.evidence).toEqual({
         collected: 1,
-        total: null,
+        total: 3,
         perBlock: [
           { blockId: 'scena', collected: 1, total: 1 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
-          { blockId: 'mail', collected: 0, total: null },
+          { blockId: 'mail', collected: 0, total: 1 },
         ],
       });
     });
 
     it('dialog dopisuje notatkę do progress (treść rozwiązuje serwer), notatnik ją pokazuje po wznowieniu', async () => {
-      await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { asked: ['q1'] } }).expect(200);
-      await submit(tokenA, engineCourseId, { blockIndex: 7 }).expect(200);
+      await submit(tokenA, engineCourseId, { blockIndex: 7, answer: { asked: ['q1'] } }).expect(200);
+      await submit(tokenA, engineCourseId, { blockIndex: 8 }).expect(200);
 
       const resumed = (await start(tokenA, engineCourseId).expect(200)).body;
-      expect(resumed.currentBlockIndex).toBe(8);
+      expect(resumed.currentBlockIndex).toBe(9);
       expect(resumed.progress.notes).toEqual([
         { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
         { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
       ]);
-      // Po wznowieniu dowody z serwera (mail nadal ukryty, dopóki odpowiedź nie zatwierdzona).
-      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: null });
+      // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila).
+      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: 3 });
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });
 
     it('EMAIL_ANALYSIS: ocena serwerowa, rozstrzygnięcie kryteriów po odpowiedzi, notatki za trafione kryteria', async () => {
       const [c1, c3] = await opaqueIds(tokenA, engineCourseId, 'mail', 'criteria', [CRITERIA.c1, CRITERIA.c3]);
-      await submit(tokenA, engineCourseId, { blockIndex: 8, answer: { selected: [c1, 'nie-ma'] } }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 8, answer: { selected: ['c1', 'c3'] } }).expect(400); // id z treści
-      const result = (await submit(tokenA, engineCourseId, { blockIndex: 8, answer: { selected: [c1, c3] } }).expect(200)).body;
+      await submit(tokenA, engineCourseId, { blockIndex: 9, answer: { selected: [c1, 'nie-ma'] } }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 9, answer: { selected: ['c1', 'c3'] } }).expect(400); // id z treści
+      const result = (await submit(tokenA, engineCourseId, { blockIndex: 9, answer: { selected: [c1, c3] } }).expect(200)).body;
 
       expect(result.lastResult).toMatchObject({ blockId: 'mail', correct: true, points: 1 });
       expect(result.lastResult.detail.criteria).toHaveLength(3);
@@ -282,7 +284,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(progress.blocks.mail.detail.criteria.map((c: { id: string; selected: boolean }) => [c.id, c.selected])).toEqual(
         expect.arrayContaining([[c1, true], [c3, true]]),
       );
-      // Po zatwierdzeniu maila znana suma (3 dowody: hotspot, pytanie, kryterium c1); c3 to zwykła notatka. Perblock bez id elementów.
+      // Suma (3 dowody: hotspot, pytanie, kryterium c1) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
       expect(result.evidence).toEqual({
         collected: 3,
         total: 3,
@@ -295,7 +297,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     });
 
     it('TEXT_INPUT_GUIDED: "Dalej" wymaga rozwiązania; próby, podpowiedź po błędnej, punkty maleją z próbami', async () => {
-      await submit(tokenA, engineCourseId, { blockIndex: 9 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 10 }).expect(400);
 
       const wrong = (await attempt(tokenA, engineCourseId, 'domena', 'zla').expect(200)).body;
       expect(wrong).toMatchObject({ correct: false, attempt: 1, attemptsLeft: 3, done: false });
@@ -306,29 +308,29 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const resumed = (await start(tokenA, engineCourseId).expect(200)).body.progress.blocks.domena;
       expect(resumed).toMatchObject({ done: false, attempts: 1 });
       expect(resumed.revealedHints).toHaveLength(1);
-      await submit(tokenA, engineCourseId, { blockIndex: 9 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 10 }).expect(400);
 
       const right = (await attempt(tokenA, engineCourseId, 'domena', ` ${SECRET_MARKER}-ODP `).expect(200)).body;
       expect(right).toMatchObject({ correct: true, attempt: 2, done: true, points: 0.75 });
       await attempt(tokenA, engineCourseId, 'domena', 'jeszcze raz').expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 9 }).expect(200);
+      await submit(tokenA, engineCourseId, { blockIndex: 10 }).expect(200);
     });
 
     it('ORDERING i TABS, potem SUMMARY kończy kurs; wynik = średnia ważona bloków ocenianych', async () => {
       const steps = await opaqueIds(tokenA, engineCourseId, 'kolejnosc', 'items', [STEPS.o1, STEPS.o2, STEPS.o3]);
-      await submit(tokenA, engineCourseId, { blockIndex: 10, answer: { order: steps.slice(0, 2) } }).expect(400);
-      await submit(tokenA, engineCourseId, { blockIndex: 10, answer: { order: ['o1', 'o2', 'o3'] } }).expect(400); // id z treści
-      const ordering = (await submit(tokenA, engineCourseId, { blockIndex: 10, answer: { order: steps } }).expect(200)).body;
+      await submit(tokenA, engineCourseId, { blockIndex: 11, answer: { order: steps.slice(0, 2) } }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 11, answer: { order: ['o1', 'o2', 'o3'] } }).expect(400); // id z treści
+      const ordering = (await submit(tokenA, engineCourseId, { blockIndex: 11, answer: { order: steps } }).expect(200)).body;
       expect(ordering.lastResult).toMatchObject({ points: 1, detail: { correctOrder: steps } });
-      await submit(tokenA, engineCourseId, { blockIndex: 11, answer: { opened: ['t1'] } }).expect(200);
+      await submit(tokenA, engineCourseId, { blockIndex: 12, answer: { opened: ['t1'] } }).expect(200);
 
-      const done = (await submit(tokenA, engineCourseId, { blockIndex: 12 }).expect(200)).body;
+      const done = (await submit(tokenA, engineCourseId, { blockIndex: 13 }).expect(200)).body;
       expect(done.status).toBe('COMPLETED');
-      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne poza wynikiem) = 4.75 / 5.
+      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne i NARRATIVE poza wynikiem) = 4.75 / 5.
       expect(done.score).toBe(95);
       expect(done.gamification).not.toBeNull();
 
-      await submit(tokenA, engineCourseId, { blockIndex: 12 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 13 }).expect(400);
       await attempt(tokenA, engineCourseId, 'domena', 'x').expect(400);
       // /start na ukończonym kursie nie cofa statusu.
       expect((await start(tokenA, engineCourseId).expect(200)).body.status).toBe('COMPLETED');

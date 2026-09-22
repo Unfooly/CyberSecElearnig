@@ -2,6 +2,8 @@
 
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
+import { useCompleteReaction } from '../player/mascot-reaction';
+import { SimpleMarkdown } from '../simple-markdown';
 import ExploreFooter from './ExploreFooter';
 
 // Zakładki według wzorca ARIA (tablist/tab/tabpanel, strzałki, Home/End, roving tabindex). Zakładka liczy się jako otwarta po wyświetleniu.
@@ -27,6 +29,7 @@ export default function TabsBlock({
   const required = block.requiredTabs ?? tabs.map((tab) => tab.id);
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
+  useCompleteReaction(block.reactions?.complete, doneCount >= required.length, review);
 
   function select(id: string, focus = false) {
     setActiveId(id);
@@ -81,7 +84,9 @@ export default function TabsBlock({
           tabIndex={0}
           className="rounded bg-slate-50 p-3"
         >
-          <p className="whitespace-pre-line text-slate-800">{active.content}</p>
+          <div className="space-y-2 text-slate-800">
+            <SimpleMarkdown text={active.content} />
+          </div>
         </div>
       )}
       <ExploreFooter

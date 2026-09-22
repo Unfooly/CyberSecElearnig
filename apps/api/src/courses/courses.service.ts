@@ -11,7 +11,7 @@ import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
 import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
-import { AttemptResponse, evaluateAttempt, evaluateSubmit } from './scoring/evaluate';
+import { AttemptResponse, evaluateAttempt, evaluateSubmit, pickReaction } from './scoring/evaluate';
 
 type AssignmentWithCourse = CourseAssignment & { course: Course };
 
@@ -143,6 +143,7 @@ export class CoursesService {
       const progress = readProgress(assignment.progress);
       const { opaqueId } = shuffleContext(this.shuffleSecret, assignment.id, version.id);
       const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), opaqueId);
+      const reaction = pickReaction(block, result.entry);
 
       progress.blocks[block.id] = result.entry;
       for (const key of result.notesAdded) {
@@ -197,8 +198,10 @@ export class CoursesService {
           correct: result.entry.correct,
           ...(result.entry.points !== undefined ? { points: result.entry.points } : {}),
           ...(result.detail ? { detail: result.detail } : {}),
+          // Reakcja maskotki na WYNIK (schemaVersion 4, pole secret): dopiero tutaj, po ocenie, nigdy w /start.
+          ...(reaction ? { reaction } : {}),
         },
-        // Dowody po tym zapisie (liczby liczy serwer; total null dla maila do zatwierdzenia odpowiedzi).
+        // Dowody po tym zapisie (liczby liczy serwer; total znany od startu dla wszystkich bloków, D-055 pkt 2).
         evidence: evidenceSummary(progress, blocks),
         // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
         notes: result.notesAdded
@@ -288,7 +291,10 @@ export class CoursesService {
         },
       });
 
-      return response;
+      // Reakcja maskotki na WYNIK (schemaVersion 4, pole secret): pickReaction czyta entry.correct, ustawione tylko gdy
+      // `done` (poprawna odpowiedź albo wyczerpane próby) - żadnej reakcji na próbę z pozostałymi podejściami.
+      const reaction = pickReaction(block, entry);
+      return { ...response, ...(reaction ? { reaction } : {}) };
     });
   }
 

@@ -20,7 +20,15 @@ export type ContentBlockType =
   | 'TEXT_INPUT_GUIDED'
   | 'ORDERING'
   | 'TABS'
-  | 'SUMMARY';
+  | 'SUMMARY'
+  // schemaVersion 4: blok narracyjny (tekst, bez interakcji poza "Dalej") - patrz packages/content D-061.
+  | 'NARRATIVE';
+
+/** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
+export interface ContentReaction {
+  pose: string;
+  text: string;
+}
 
 export interface CourseAssignmentSummary {
   assignmentId: string;
@@ -76,7 +84,7 @@ export interface ContentBlock {
   hotspots?: SceneHotspot[];
   requiredHotspots?: string[];
   // DIALOGUE
-  character?: { name: string; role?: string; avatar?: string };
+  character?: { name: string; role?: string; avatar?: string; opening?: string };
   questions?: DialogueQuestion[];
   requiredQuestions?: string[];
   // TABS
@@ -91,11 +99,16 @@ export interface ContentBlock {
   placeholder?: string;
   maxAttempts?: number;
   hintCount?: number;
+  // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.
+  // reactions.result (sekret) NIE jest tu: dochodzi dopiero w LastResult/ClientProgressBlock, po ocenie.
+  reactions?: { complete?: ContentReaction };
 }
 
 export interface EmailContent {
   fromName: string;
   fromAddress: string;
+  // schemaVersion 4: adresat do wyświetlenia w makiecie (pod "Od:"), tekst bez znaczenia oceniającego.
+  to?: string;
   subject: string;
   body: string;
   date?: string;
@@ -141,9 +154,8 @@ export type NoteKind = 'mail' | 'person' | 'item' | 'place';
 
 export interface EvidenceSummary {
   collected: number;
-  /** null = jeszcze nieznana (blok e-mail ukrywa liczbę dowodów do zatwierdzenia odpowiedzi). */
-  total: number | null;
-  perBlock: { blockId: string; collected: number; total: number | null }[];
+  total: number;
+  perBlock: { blockId: string; collected: number; total: number }[];
 }
 
 export interface ContentTab {
@@ -165,6 +177,8 @@ export interface ClientProgressBlock {
   // Ukończone bloki oceniane: własny wybór i rozstrzygnięcie (podgląd "Wstecz" także po odświeżeniu).
   answer?: ChosenAnswer;
   detail?: ResultDetail;
+  // Reakcja maskotki na WYNIK (schemaVersion 4), dopiero po ukończeniu - patrz packages/content D-061.
+  reaction?: ContentReaction;
 }
 
 export interface ClientNote {
@@ -212,6 +226,8 @@ export interface LastResult {
   // Brak dla VIDEO/DRAG_AND_DROP (nieoceniane) - obecne (true/false) dla
   // QUIZ/BRANCHING_SCENARIO.
   correct?: boolean;
+  // Reakcja maskotki na WYNIK (schemaVersion 4), dobrana wg wyniku - patrz packages/content D-061.
+  reaction?: ContentReaction;
 }
 
 // Obecne WYŁĄCZNIE gdy dana odpowiedź /progress ukończyła kurs - patrz

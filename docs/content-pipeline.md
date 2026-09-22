@@ -123,6 +123,35 @@ zasoby) - `Cache-Control: public, max-age=31536000, immutable`; manifest - `Cach
 `audio/mpeg` (audio), `application/json` (sidecar, manifest), `image/svg+xml` / `image/png` / `image/jpeg` / `image/webp` /
 `image/avif` (zasoby, wg rozszerzenia pliku źródłowego).
 
+## Wdrożenie nowego/zmienionego modułu (PR 4: `content-import`)
+
+`content-import` (`apps/api/src/scripts/content-import.ts`, uruchamiany jednorazowo w `docker-compose.prod.yml` po
+`migrate` - `docs/decisions.md` D-051 pkt 11) zapisuje TYLKO `module.json` do bazy (`courses`/`course_versions`) -
+**niczego nie publikuje do R2**. Ścieżki w `module.json` (`image`, `character.avatar`, `narration.audioUrl`) muszą więc
+wskazywać na pliki, które już istnieją pod `CONTENT_BASE_URL` produkcji, ZANIM zadziała import - inaczej odtwarzacz
+dostanie 404 na obrazach/audio mimo poprawnie zaimportowanej treści. Kolejność przed merge'em PR z nowym modułem:
+
+1. Autor treści uruchamia lokalnie (klucze tylko u niego, `scripts/content/.env.local`):
+   `npm run tts --prefix scripts/content -- <slug> --assets --storage r2` (obrazy/avatary) i
+   `npm run tts --prefix scripts/content -- <slug> --storage r2` (audio narracji) - PRZED zmergowaniem PR, żeby pliki
+   były w R2, zanim `content-import` na produkcji zapisze `module.json`, który się do nich odwołuje.
+2. `module.json` w PR ma już wersjonowane nazwy (`nazwa.<hash8>.ext`) wpisane przez powyższy krok (`--storage r2` i
+   `--storage local` dają TĘ SAMĄ nazwę pliku - hash liczony jest z treści/tekstu, nie z magazynu), więc `module.json`
+   nie trzeba zmieniać między CI (który używa `--storage local`, patrz niżej) a produkcją.
+3. CI i lokalny dev NIE mają kluczy R2 (`scripts/content` odmawia startu trybów sieciowych, gdy `CI` jest ustawione -
+   patrz wyżej): `apps/web`/testy serwują te same zasoby z `apps/web/public/content` (`--storage local`), więc PR
+   przechodzi CI niezależnie od kroku 1.
+4. Po merge'u: `docker compose ... up -d` buduje/pobiera nowy obraz `api` (z nowym `module.json` - Dockerfile kopiuje
+   WYŁĄCZNIE pliki `module.json`, patrz komentarz w `apps/api/Dockerfile`), `migrate`, potem `content-import` (osobno,
+   nie blokuje `api` - `docs/deploy-test.md` p. 6a). Produkcja ma `CONTENT_BASE_URL=https://content.unfooly.com`
+   (wyżej), więc odtwarzacz odczyta zasoby z R2 opublikowane w kroku 1.
+
+## Zrzuty ekranu modułu do raportu/opisu PR
+
+`node scripts/screenshot-module.mjs [slug]` (domyślnie `wyludzone-haslo`) przechodzi moduł w prawdziwej przeglądarce
+(jak `scripts/e2e-module-01.mjs`) i zapisuje 16 zrzutów (8 momentów × desktop/mobile) do `docs/brand/screens/<slug>/`
+(poza gitem) - kroki interakcji są dziś specyficzne dla treści modułu 1, więc kolejny moduł wymaga ich aktualizacji.
+
 ## Znane ograniczenia
 
 - Retry po timeout ElevenLabs (co najwyżej jedno ponowienie) nie jest wliczane w `--max-chars`: bardzo rzadko realny koszt

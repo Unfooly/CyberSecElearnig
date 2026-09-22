@@ -23,6 +23,27 @@ function toResolved(version: CourseVersion): ResolvedVersion {
 }
 
 /**
+ * Wiersz wersji 1 (`schemaVersion` 1) będący DOKŁADNĄ kopią obecnej treści kursu - wspólny kształt dla dwóch wywołujących:
+ * `ensureLegacyVersion` niżej (kurs utworzony wprost, leniwie przy pierwszym dostępie) i `content-import.ts::importModule`
+ * (kurs, który już istnieje po `slug`, ale nie ma jeszcze żadnej wersji, TUŻ PRZED zaimportowaniem nowej treści - D-051
+ * pkt 11). Rzuca głośno, gdy treść nie jest tablicą (błąd danych administracyjnych) - żaden wywołujący nie ma po cichu
+ * zapisywać `blockCount: 0` ani innej zgadywanej wartości.
+ */
+export function buildLegacyVersionData(courseId: string, contentBlocks: unknown): Prisma.CourseVersionCreateManyInput {
+  if (!Array.isArray(contentBlocks)) {
+    throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');
+  }
+  return {
+    courseId,
+    version: 1,
+    schemaVersion: 1,
+    contentHash: hashContent(contentBlocks),
+    contentBlocks: contentBlocks as Prisma.InputJsonValue,
+    blockCount: contentBlocks.length,
+  };
+}
+
+/**
  * Wersja 1 dla kursu utworzonego wprost (bez importu i bez wpisu z migracji): kopia Course.contentBlocks w formacie sprzed
  * silnika.
  *
@@ -34,22 +55,7 @@ function toResolved(version: CourseVersion): ResolvedVersion {
  * kursów tworzonych bezpośrednio (testy, ewentualne skrypty).
  */
 async function ensureLegacyVersion(tx: Prisma.TransactionClient, course: Course): Promise<CourseVersion> {
-  if (!Array.isArray(course.contentBlocks)) {
-    throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');
-  }
-  await tx.courseVersion.createMany({
-    data: [
-      {
-        courseId: course.id,
-        version: 1,
-        schemaVersion: 1,
-        contentHash: hashContent(course.contentBlocks),
-        contentBlocks: course.contentBlocks as Prisma.InputJsonValue,
-        blockCount: course.contentBlocks.length,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  await tx.courseVersion.createMany({ data: [buildLegacyVersionData(course.id, course.contentBlocks)], skipDuplicates: true });
   const version = await tx.courseVersion.findFirst({ where: { courseId: course.id }, orderBy: { version: 'asc' } });
   if (!version) throw new InternalServerErrorException('Nie udało się utworzyć wersji kursu');
   return version;

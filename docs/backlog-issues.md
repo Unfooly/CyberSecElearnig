@@ -394,6 +394,43 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: lint na drzewie XML (np. `fast-xml-parser` w trybie XML) sprawdzający local-name elementu/atrybutu po rozwiązaniu namespace,
   zamiast dopasowań tekstowych; przed rozszerzeniem autorstwa treści poza operatora (temat wraca też w D-058 pkt 5a).
 
+### B-085 Lokalna replika CI dla e2e API nie działa (kontenery ci-pg/ci-redis bez publikacji portów)
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: PR 4, naprawa CI po commitcie schematu v4 (2026-09-22)
+- Opis: `docker ps` na maszynie deweloperskiej pokazuje kontenery `ci-pg`/`ci-redis` (Postgres 16, Redis 7), ale bez opublikowanych
+  portów na hosta (`5432/tcp`, `6379/tcp` bez `0.0.0.0:...->`), więc `npm run test:e2e --workspace=apps/api` z `.env.test`
+  (`DATABASE_URL` na `localhost:5432`) nie może się połączyć. Efekt uboczny: po błędzie połączenia w `beforeAll` Jest wisiał
+  ponad godzinę zamiast zakończyć się szybko (`--runInBand`, nieudane `app.listen`, brak `--forceExit`) - trzeba było ręcznie
+  zabić proces `node`. CLAUDE.md reguła 9 opisuje replikę CI jako "kontener `node:20` z `--cpus=2`, Postgres 16 i Redis 7 w
+  Dockerze" - dziś nie da się jej uruchomić z gotowych kontenerów bez ręcznej konfiguracji sieci/portów.
+- Akceptacja: kontenery `ci-pg`/`ci-redis` publikują porty na hosta (albo dokumentacja/skrypt uruchamia `test:e2e` wewnątrz
+  tej samej sieci Dockera co te kontenery, np. przez `docker compose run`), żeby pełny `npm run test:e2e --workspace=apps/api`
+  dało się uruchomić lokalnie przed pushem, bez polegania wyłącznie na CI. Rozważyć też timeout/`--forceExit` w `test:e2e`,
+  żeby błąd połączenia z bazą kończył się szybko, a nie wielogodzinnym zawieszeniem.
+
+### B-086 Media w hotspotach (audio/obraz/dokument) sceny z punktami
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4, decyzja właściciela 2026-09-22 (nie implementować teraz)
+- Opis: dziś karta punktu sceny (`SCENE_HOTSPOTS`) ma tylko tekst (`hotspot.content`). Potrzebne rozszerzenie o
+  `hotspots[].media: { kind: 'audio', audioUrl, transcript } | { kind: 'image', src, alt } | { kind: 'document', title, lines[] }`:
+  audio jako karta z WŁASNYM odtwarzaczem (np. poczta głosowa atakującego, inny głos niż narrator - TTS potrzebowałby wtedy
+  wyboru `voiceId` per nagranie, nie tylko per moduł), obraz/dokument jako podgląd na pełnym ekranie (wydruk, mail na
+  ekranie monitora). Rozszerza mechanizm dowodów/notatnika z B-078 (ta sama karta, nowy typ zawartości).
+- Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
+  `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
+
+### B-087 `subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie - nie trafiają do bazy, więc nie ma ich jak wyświetlić
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1
+- Opis: `module.json` (schemaVersion 4) niesie opcjonalne `subtitle`, `level` i `objectives: string[]` (max 6) - moduł 1
+  je wypełnia, i `parseModule` je waliduje. D-061 przewidział, że UI może ich jeszcze nie pokazywać, ale zakres jest
+  szerszy: `content-import.ts`'s `importModule` (`courseData`, ok. linii 88-94) kopiuje do `Course`/`CourseVersion`
+  wyłącznie `title/category/durationMinutes/mandatory/contentBlocks` - `subtitle`/`level`/`objectives` NIE trafiają do
+  bazy w ogóle (nie ma dla nich kolumny ani miejsca w `contentBlocks`), więc znikają po walidacji, zanim dotrą do
+  klienta. To nie jest tylko brakujący render w `CourseCard.tsx`/`SummaryBlock.tsx` - brakuje też zapisu/DTO. Poprawka
+  wymaga decyzji, gdzie te pola mają żyć (nowe kolumny `Course` czy część `contentBlocks`/osobne pole DTO), zanim
+  powstanie UI, który by je pokazywał.
+- Akceptacja: `objectives` pokazane jako „Czego się nauczysz” na karcie kursu i/albo „Czego się nauczyłeś” na ekranie
+  SUMMARY po ukończeniu (D-061 pkt 1); wymaga dodania pola do `CourseDetail`/`CourseAssignmentSummary` w
+  `apps/web/src/lib/courses-types.ts` i odpowiadającego pola w DTO `apps/api`.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

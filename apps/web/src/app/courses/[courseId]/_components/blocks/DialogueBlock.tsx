@@ -6,7 +6,7 @@ import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
-import { useMascotReaction } from '../player/mascot-reaction';
+import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
 import ExploreFooter from './ExploreFooter';
 
 // Rozmowa z postacią: gracz wybiera pytanie, postać odpowiada KWESTIAMI PO KOLEI (klik "Dalej" w dymku, nie cały tekst naraz; odpowiedź
@@ -50,6 +50,7 @@ export default function DialogueBlock({
 
   const required = requiredItemIds(questions, block.requiredQuestions);
   const doneCount = required.filter((id) => asked.includes(id)).length;
+  useCompleteReaction(block.reactions?.complete, doneCount >= required.length, review);
 
   function finish(id: string) {
     const question = questions.find((candidate) => candidate.id === id);
@@ -98,6 +99,13 @@ export default function DialogueBlock({
             {character.role && <span>, {character.role}</span>}
           </p>
         </div>
+      )}
+
+      {character?.opening && (
+        <p className="mb-4 max-w-[85%] rounded-lg bg-slate-100 px-3 py-2 text-slate-900">
+          <span className="sr-only">{character.name}: </span>
+          {character.opening}
+        </p>
       )}
 
       <ol ref={logRef} tabIndex={-1} aria-label="Rozmowa" aria-live="polite" className="mb-4 space-y-3 focus:outline-none">

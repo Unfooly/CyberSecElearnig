@@ -30,9 +30,11 @@ export interface MascotReaction {
 interface Value {
   reaction: MascotReaction | null;
   react: (event: MascotEvent) => void;
+  /** Reakcja z treści bloku (schemaVersion 4: reactions.complete/result), zamiast stałego tekstu zdarzenia powłoki. */
+  show: (reaction: MascotReaction) => void;
 }
 
-const MascotReactionContext = createContext<Value>({ reaction: null, react: () => {} });
+const MascotReactionContext = createContext<Value>({ reaction: null, react: () => {}, show: () => {} });
 
 const REACTION_MS = 5000;
 
@@ -47,11 +49,16 @@ export function MascotReactionProvider({ resetKey, children }: { resetKey: strin
   const latestKey = useRef(resetKey);
   latestKey.current = resetKey;
 
-  const react = useCallback((event: MascotEvent) => {
+  const show = useCallback((reaction: MascotReaction) => {
     if (timer.current) clearTimeout(timer.current);
-    setStored({ reaction: { pose: MASCOT_EVENT_POSE[event], text: EVENT_TEXT[event] }, key: latestKey.current });
+    setStored({ reaction, key: latestKey.current });
     timer.current = setTimeout(() => setStored(null), REACTION_MS);
   }, []);
+
+  const react = useCallback(
+    (event: MascotEvent) => show({ pose: MASCOT_EVENT_POSE[event], text: EVENT_TEXT[event] }),
+    [show],
+  );
 
   useEffect(
     () => () => {
@@ -61,8 +68,25 @@ export function MascotReactionProvider({ resetKey, children }: { resetKey: strin
   );
 
   const reaction = stored && stored.key === resetKey ? stored.reaction : null;
-  const value = useMemo(() => ({ reaction, react }), [reaction, react]);
+  const value = useMemo(() => ({ reaction, react, show }), [reaction, react, show]);
   return <MascotReactionContext.Provider value={value}>{children}</MascotReactionContext.Provider>;
 }
 
 export const useMascotReaction = () => useContext(MascotReactionContext);
+
+/**
+ * Reakcja z treści na ukończenie bloku eksploracyjnego (reactions.complete, schemaVersion 4): wywołana raz, gdy `ready` stanie się
+ * prawdziwe (np. wymagane elementy obejrzane), nigdy w podglądzie ("Wstecz" - `review`). Wspólna dla SCENE_HOTSPOTS/DIALOGUE/TABS
+ * (ready = pokrycie wymaganych elementów) i NOTEPAD/SUMMARY/NARRATIVE (ready = zamontowanie, bo nie mają pokrycia do zliczenia).
+ */
+export function useCompleteReaction(reaction: MascotReaction | undefined, ready: boolean, review: boolean) {
+  const { show } = useMascotReaction();
+  const fired = useRef(false);
+  useEffect(() => {
+    if (review || !ready || !reaction || fired.current) return;
+    fired.current = true;
+    show(reaction);
+    // show ma stabilną tożsamość (useCallback w providerze); reaction/ready/review to jedyne prawdziwe zależności.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, review, reaction]);
+}

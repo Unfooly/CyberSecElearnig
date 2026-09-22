@@ -106,6 +106,40 @@ export function requiredItemIds(
   return legacyRequired ? [...legacyRequired] : items.map((item) => item.id);
 }
 
+// Reakcja maskotki: własna poza i tekst zamiast domyślnej reakcji powłoki (mascot-reaction.tsx). `complete` (schemaVersion 4)
+// to zdarzenie "blok ukończony" - pole dostępne na KAŻDYM typie bloku (baseShape), choć w PR 4 wywołuje je klient tylko dla
+// bloków eksploracyjnych (po zebraniu wymaganych elementów; SCENE_HOTSPOTS/DIALOGUE/TABS/NARRATIVE). Jest polem `client`
+// niezależnie od typu bloku: to KLIENT wywołuje je sam po stronie przeglądarki, więc nie zdradza niczego (komentarz PO fakcie,
+// nie klucz odpowiedzi) - nic nie stoi na przeszkodzie, żeby w przyszłości użył go też inny typ bloku (np. VIDEO po obejrzeniu).
+export const reactionMomentSchema = z.object({ pose: z.enum(MASCOT_POSES), text: text(300) }).strict();
+
+/**
+ * Jeden wpis reakcji na WYNIK bloku ocenianego (schemaVersion 4): dokładnie jedno z `when`/`minScore`, zależnie od typu bloku
+ * (semantics.ts, reactionErrors) - `when` dla TEXT_INPUT_GUIDED (wynik jest binarny: poprawnie/po wyczerpaniu prób), `minScore`
+ * dla reszty ocenianych typów (wynik 0-1: QUIZ, BRANCHING_SCENARIO, EMAIL_ANALYSIS, ORDERING). Lista `result[]` jest SEKRETEM
+ * (FIELD_CLASSIFICATION): dociera do klienta dopiero w odpowiedzi /attempt albo /progress, razem z wynikiem, nigdy w /start -
+ * inaczej zdradzałaby progi oceny, zanim gracz odpowie.
+ */
+export const reactionResultEntrySchema = z
+  .object({
+    pose: z.enum(MASCOT_POSES),
+    text: text(300),
+    when: z.enum(['correct', 'incorrect']).optional(),
+    // Próg wyniku (0-1): wpis pasuje, gdy minScore <= wynik. Lista musi być malejąca (semantics.ts) - wygrywa pierwszy pasujący.
+    minScore: z.number().min(0).max(1).optional(),
+  })
+  .strict()
+  .refine((entry) => (entry.when === undefined) !== (entry.minScore === undefined), {
+    message: 'reactions.result: dokładnie jedno z pól when/minScore',
+  });
+
+export const reactionsSchema = z
+  .object({
+    complete: reactionMomentSchema.optional(),
+    result: z.array(reactionResultEntrySchema).min(1).max(10).optional(),
+  })
+  .strict();
+
 // Pola wspólne każdego bloku.
 export const baseShape = {
   id: idSchema,
@@ -114,4 +148,6 @@ export const baseShape = {
   mascot: mascotSchema.optional(),
   // Waga w wyniku modułu; domyślnie z DEFAULT_WEIGHT (bloki oceniane 1, eksploracyjne 0).
   weight: z.number().min(0).max(10).optional(),
+  // Reakcje maskotki na zdarzenia bloku (schemaVersion 4, opcjonalne): patrz reactionsSchema wyżej.
+  reactions: reactionsSchema.optional(),
 };

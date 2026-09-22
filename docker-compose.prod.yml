@@ -67,6 +67,20 @@ services:
       postgres:
         condition: service_healthy
 
+  # Import treści (content-import, D-051 pkt 11): jednorazowo, PO migrate, ale NIEZALEŻNIE od api (świadomie NIE ma go
+  # w depends_on api) - import to TREŚĆ, nie SCHEMAT, więc jego awaria (np. uszkodzony module.json) ma być widoczna w
+  # logach i kodzie wyjścia, a nie blokować (ani opóźniać) start API na produkcji. Po `docker compose up -d` sprawdź
+  # `docker compose logs content-import` (patrz docs/deploy-test.md).
+  content-import:
+    image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
+    restart: "no"
+    env_file: ${ENV_FILE:-.env.prod}
+    entrypoint: []
+    command: ["node", "apps/api/dist/scripts/content-import.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped

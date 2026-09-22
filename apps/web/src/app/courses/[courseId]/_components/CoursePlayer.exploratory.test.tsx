@@ -338,14 +338,14 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
             v: 2,
             blocks: { quiz0: { type: 'QUIZ', done: true, correct: true, points: 1, answer: 1 } },
             notes: [],
-            evidence: { collected: 0, total: null, perBlock: [{ blockId: 'mail', collected: 0, total: null }] },
+            evidence: { collected: 0, total: 2, perBlock: [{ blockId: 'mail', collected: 0, total: 2 }] },
           },
         })}
       />,
     );
 
-    // Dowody: suma mail-a nieznana przed odpowiedzią.
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/?');
+    // Dowody: suma mail-a znana od startu (D-055 pkt 2), przed odpowiedzią.
+    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
     fireEvent.click(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Sprawdź odpowiedź' }));
 

@@ -874,6 +874,9 @@ model EmailVerificationToken {
 
 model Course {
   id              String         @id @default(cuid())
+  // Stabilny klucz treści importowanej z packages/content (module.json `slug`); NULL dla kursów tworzonych wprost
+  // (testy, kursy sprzed silnika) - import robi po nim upsert (content-import, PR 4).
+  slug            String?        @unique @db.VarChar(64)
   title           String
   category        CourseCategory
   durationMinutes Int

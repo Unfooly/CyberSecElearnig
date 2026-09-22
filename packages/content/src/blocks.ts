@@ -103,8 +103,16 @@ const dialogueSchema = z
   .object({
     ...baseShape,
     type: z.literal('DIALOGUE'),
-    // avatar: schemaVersion 3, ścieżka względna wobec CONTENT_BASE_URL (klient tylko przez <img>).
-    character: z.object({ name: text(80), role: text(120).optional(), avatar: imagePathSchema.optional() }).strict(),
+    character: z
+      .object({
+        name: text(80),
+        role: text(120).optional(),
+        // avatar: schemaVersion 3, ścieżka względna wobec CONTENT_BASE_URL (klient tylko przez <img>).
+        avatar: imagePathSchema.optional(),
+        // opening: schemaVersion 4, kwestia wypowiadana PRZED listą pytań (bez narracji na razie - tylko tekst).
+        opening: text(300).optional(),
+      })
+      .strict(),
     questions: z
       .array(
         z
@@ -142,6 +150,16 @@ const notepadSchema = z
   })
   .strict();
 
+// schemaVersion 4: czysta narracja/tekst bez interakcji (np. otwarcie/przejście fabularne) - ukończony po samym wyświetleniu,
+// jak dotychczas SUMMARY, ale NARRATIVE może wystąpić wielokrotnie i w dowolnym miejscu modułu (SUMMARY tylko raz, na końcu).
+const narrativeSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('NARRATIVE'),
+    text: text(2000),
+  })
+  .strict();
+
 /** Rodzaje fragmentów maila, które mogą być kotwicą kryterium: nagłówek nadawcy (nazwa i adres), temat, link, załącznik, cytat z treści. */
 export const EMAIL_TARGET_KINDS = ['sender', 'subject', 'link', 'attachment', 'text'] as const;
 
@@ -153,6 +171,9 @@ const emailAnalysisSchema = z
       .object({
         fromName: text(120),
         fromAddress: text(200),
+        // schemaVersion 4: adresat do wyświetlenia w makiecie (pod "Od:") - tekst, nie jest parsowany ani używany jako kotwica
+        // kryterium (na to jest criteria[].target); opcjonalny, bo starsze moduły (2/3) go nie mają.
+        to: text(200).optional(),
         subject: text(300),
         body: text(4000),
         // schemaVersion 3: wygląd prawdziwego klienta pocztowego. Data to tekst do wyświetlenia (nie jest parsowana), załącznik to
@@ -275,6 +296,7 @@ export const BLOCK_SCHEMAS = {
   SCENE_HOTSPOTS: hotspotsSchema,
   DIALOGUE: dialogueSchema,
   NOTEPAD: notepadSchema,
+  NARRATIVE: narrativeSchema,
   EMAIL_ANALYSIS: emailAnalysisSchema,
   TEXT_INPUT_GUIDED: textInputSchema,
   ORDERING: orderingSchema,
@@ -294,6 +316,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   hotspotsSchema,
   dialogueSchema,
   notepadSchema,
+  narrativeSchema,
   emailAnalysisSchema,
   textInputSchema,
   orderingSchema,
@@ -314,6 +337,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   SCENE_HOTSPOTS: 0,
   DIALOGUE: 0,
   NOTEPAD: 0,
+  NARRATIVE: 0,
   EMAIL_ANALYSIS: 1,
   TEXT_INPUT_GUIDED: 1,
   ORDERING: 1,
@@ -338,8 +362,19 @@ const BASE_CLIENT = [
   'narration.cues[].startMs',
   'mascot.pose',
   'mascot.text',
+  // reactions.complete (schemaVersion 4): zdarzenie "blok ukończony", wywoływane przez klienta - nie zdradza niczego.
+  'reactions.complete.pose',
+  'reactions.complete.text',
 ];
-const BASE_SECRET = ['weight'];
+const BASE_SECRET = [
+  'weight',
+  // reactions.result (schemaVersion 4): progi/teksty reakcji na WYNIK bloku ocenianego - zdradzałyby próg oceny przed
+  // odpowiedzią, więc SEKRET; dociera do klienta dopiero w /attempt i /progress (evaluate.ts pickReaction), nigdy w /start.
+  'reactions.result[].pose',
+  'reactions.result[].text',
+  'reactions.result[].when',
+  'reactions.result[].minScore',
+];
 
 export interface FieldClassification {
   client: string[];
@@ -389,6 +424,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'character.name',
       'character.role',
       'character.avatar',
+      // opening: schemaVersion 4, kwestia otwierająca przed listą pytań.
+      'character.opening',
       'questions[].id',
       'questions[].text',
       'questions[].answer',
@@ -412,10 +449,13 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [],
   ),
   NOTEPAD: classify(['prompt'], []),
+  NARRATIVE: classify(['text'], []),
   EMAIL_ANALYSIS: classify(
     [
       'email.fromName',
       'email.fromAddress',
+      // to: schemaVersion 4, patrz komentarz przy schemacie (blocks.ts, emailAnalysisSchema).
+      'email.to',
       'email.subject',
       'email.body',
       'email.date',

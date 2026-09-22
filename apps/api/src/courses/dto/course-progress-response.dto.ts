@@ -17,14 +17,16 @@ export class CourseProgressResponseDto {
     points?: number;
     // Wynik po ukończeniu bloku (np. rozstrzygnięcie kryteriów maila, poprawna kolejność).
     detail?: Record<string, unknown>;
+    // Reakcja maskotki na WYNIK (schemaVersion 4, packages/content: baseShape.reactions.result) - dopiero tutaj, po ocenie.
+    reaction?: { pose: string; text: string };
   };
   // Notatki dopisane tym zapisem (blockId, treść, rodzaj); bez kluczy elementów.
   notes!: { blockId: string; text: string; kind?: string }[];
   // Dowody śledztwa po tym zapisie (client-view.ts, evidenceSummary): liczby i id bloków, bez id elementów.
   evidence!: {
     collected: number;
-    total: number | null;
-    perBlock: { blockId: string; collected: number; total: number | null }[];
+    total: number;
+    perBlock: { blockId: string; collected: number; total: number }[];
   };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
   // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody

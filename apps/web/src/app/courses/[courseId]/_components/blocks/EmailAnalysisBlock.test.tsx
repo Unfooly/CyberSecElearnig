@@ -60,6 +60,18 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     expect(within(mail).getByRole('button', { name: /Załącznik: faktura\.pdf/ })).toHaveTextContent('84 KB');
   });
 
+  it('adresat "Do:" (schemaVersion 4) pokazuje się tylko, gdy treść go ustawia', () => {
+    setup();
+    expect(screen.queryByText('Do:')).not.toBeInTheDocument();
+    render(
+      <MascotReactionProvider resetKey="k2">
+        <EmailAnalysisBlock block={{ ...block, email: { ...block.email!, to: 'jan.kowalski@nortex.pl' } }} onSubmit={vi.fn()} disabled={false} />
+      </MascotReactionProvider>,
+    );
+    expect(screen.getByText('Do:')).toBeInTheDocument();
+    expect(screen.getByText('jan.kowalski@nortex.pl')).toBeInTheDocument();
+  });
+
   it('nic w makiecie nie nawiguje ani nie pobiera: brak <a>, href i download', () => {
     setup();
     const mail = screen.getByTestId('mail-client');
@@ -219,6 +231,11 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
     setup({ result: { ...result, correct: true, points: 1 }, onContinue: vi.fn() });
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
     expect(screen.getByText(/wszystkie oznaki trafione/)).toBeInTheDocument();
+  });
+
+  it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem', () => {
+    setup({ result: { ...result, reaction: { pose: 'thinking', text: 'Prawie się udało.' } }, onContinue: vi.fn() });
+    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
   });
 });
 

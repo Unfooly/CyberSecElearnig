@@ -1,7 +1,7 @@
 import { BlockEntry, ProgressV2, computeScore, emptyProgress, entryOf, readProgress } from './progress';
 import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
 import { Block } from './scoring/evaluate';
-import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
+import { SECRET_MARKER, fullBlocks } from '@cyberszkolo/content/dist/fixtures';
 
 const entry = (overrides: Partial<BlockEntry> = {}): BlockEntry => ({
   type: 'QUIZ',
@@ -194,25 +194,45 @@ describe('client-view', () => {
       expect(result.blocks.mail).toMatchObject({ done: true, correct: true });
       expect(result.blocks.mail).not.toHaveProperty('answer');
     });
+
+    it('reaction (schemaVersion 4): dopiero po ukończeniu, dobrana wg wyniku, obecna nawet bez `opaque`', () => {
+      const cheer = view({ quiz: done({ type: 'QUIZ', answer: 1, correct: true, points: 1 }) });
+      expect(cheer.blocks.quiz).toMatchObject({ reaction: { pose: 'cheer', text: expect.stringContaining(`${SECRET_MARKER}-quiz-cheer`) } });
+
+      const warning = view({ quiz: done({ type: 'QUIZ', answer: 0, correct: false, points: 0 }) });
+      expect(warning.blocks.quiz).toMatchObject({ reaction: { pose: 'warning', text: expect.stringContaining(`${SECRET_MARKER}-quiz-warning`) } });
+
+      // Bez `opaque` (starsze wywołania): reaction i tak jest, bo nie niesie id z treści (w odróżnieniu od answer/detail).
+      const withoutOpaque = clientProgress({ v: 2, blocks: { quiz: done({ type: 'QUIZ', correct: true, points: 1 }) }, notes: [] }, blocks());
+      expect(withoutOpaque.blocks.quiz).toHaveProperty('reaction');
+
+      // Nieukończony blok: żadnej reakcji (nie zdradza progu oceny przed odpowiedzią).
+      const undone = view({ quiz: entry({ type: 'QUIZ', done: false }) });
+      expect(undone.blocks.quiz).not.toHaveProperty('reaction');
+
+      // Blok bez reactions.result w treści (eksploracyjny, bez wyniku 0-1): brak reakcji mimo done.
+      const noReactions = view({ wideo: done({ type: 'VIDEO' }) });
+      expect(noReactions.blocks.wideo).not.toHaveProperty('reaction');
+    });
   });
 
   describe('evidenceSummary (Dowody X/Y liczy serwer)', () => {
     const done = (type: string) => entry({ type, done: true });
 
-    it('bez notatek: 0 z sumy dowodów w hotspotach i dialogu; e-mail ukryty (total null) do zatwierdzenia odpowiedzi', () => {
+    it('bez notatek: total znany od startu dla wszystkich bloków, łącznie z jeszcze niezatwierdzonym mailem (D-055 pkt 2)', () => {
       const summary = evidenceSummary({ v: 2, blocks: {}, notes: [] }, blocks());
       expect(summary).toEqual({
         collected: 0,
-        total: null,
+        total: 3,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 1 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
-          { blockId: 'mail', collected: 0, total: null },
+          { blockId: 'mail', collected: 0, total: 1 },
         ],
       });
     });
 
-    it('zebrane dowody i po zatwierdzeniu maila znana suma (bez oglądania nieznanych kluczy)', () => {
+    it('zebrane dowody sumują się poprawnie (bez oglądania nieznanych kluczy)', () => {
       const summary = evidenceSummary(
         { v: 2, blocks: { mail: done('EMAIL_ANALYSIS') }, notes: ['scena.h1', 'rozmowa.q1', 'mail.c1', 'mail.c3', 'nie-ma.x'] },
         blocks(),

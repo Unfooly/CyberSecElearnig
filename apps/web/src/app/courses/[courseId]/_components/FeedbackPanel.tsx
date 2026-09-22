@@ -1,11 +1,15 @@
+import { useEffect } from 'react';
 import type { LastResult } from '@/lib/courses-types';
+import { useMascotReaction } from './player/mascot-reaction';
 
 // Backend nie zwraca wyjaśnienia/uzasadnienia tekstowego dla odpowiedzi
 // (CourseProgressResponseDto.lastResult ma tylko {blockIndex, type,
 // correct}) - contentBlocks z /start ma już usunięty klucz odpowiedzi
 // (correct/outcome/feedback), więc tu nie ma skąd wziąć wyjaśnienia. Stąd
 // tylko generyczny komunikat poprawnie/niepoprawnie. Patrz README, backlog
-// frontendu.
+// frontendu. Komentarz maskotki do wyniku (schemaVersion 4, reactions.result)
+// idzie WYŁĄCZNIE przez dymek maskotki w powłoce (jak przy EMAIL_ANALYSIS/
+// ORDERING), nigdy jako dodatkowy tekst tutaj.
 export default function FeedbackPanel({
   feedback,
   onContinue,
@@ -16,6 +20,13 @@ export default function FeedbackPanel({
   continueLabel: string;
 }) {
   const isScoreable = feedback.correct !== undefined;
+  const mascot = useMascotReaction();
+
+  useEffect(() => {
+    if (feedback.reaction) mascot.show(feedback.reaction);
+    // Jednorazowo przy pokazaniu wyniku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm">

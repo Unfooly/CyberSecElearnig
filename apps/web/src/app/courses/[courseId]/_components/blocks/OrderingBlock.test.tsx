@@ -119,4 +119,12 @@ describe('OrderingBlock: wynik', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
     expect(onContinue).toHaveBeenCalled();
   });
+
+  it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem', () => {
+    setup({
+      result: { answer: { order: ['x1', 'x3', 'x2'] }, detail, correct: false, points: 1 / 3, reaction: { pose: 'thinking', text: 'Prawie.' } },
+      onContinue: vi.fn(),
+    });
+    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+  });
 });

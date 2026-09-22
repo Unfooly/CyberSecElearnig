@@ -146,6 +146,12 @@ dostanie 404 na obrazach/audio mimo poprawnie zaimportowanej treści. Kolejnoś�
    nie blokuje `api` - `docs/deploy-test.md` p. 6a). Produkcja ma `CONTENT_BASE_URL=https://content.unfooly.com`
    (wyżej), więc odtwarzacz odczyta zasoby z R2 opublikowane w kroku 1.
 
+## Zrzuty ekranu modułu do raportu/opisu PR
+
+`node scripts/screenshot-module.mjs [slug]` (domyślnie `wyludzone-haslo`) przechodzi moduł w prawdziwej przeglądarce
+(jak `scripts/e2e-module-01.mjs`) i zapisuje 16 zrzutów (8 momentów × desktop/mobile) do `docs/brand/screens/<slug>/`
+(poza gitem) - kroki interakcji są dziś specyficzne dla treści modułu 1, więc kolejny moduł wymaga ich aktualizacji.
+
 ## Znane ograniczenia
 
 - Retry po timeout ElevenLabs (co najwyżej jedno ponowienie) nie jest wliczane w `--max-chars`: bardzo rzadko realny koszt

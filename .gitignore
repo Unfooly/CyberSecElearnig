@@ -38,3 +38,4 @@ apps/web/public/mascot/
 # test coverage
 coverage/
 docs/brand/screens/*.png
+docs/brand/screens/*/*.png

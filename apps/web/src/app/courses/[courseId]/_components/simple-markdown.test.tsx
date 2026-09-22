@@ -36,6 +36,20 @@ describe('SimpleMarkdown: wąski podzbiór (pogrubienie, listy, akapity), bez HT
     expect(screen.getByText(/- pierwsza/)).toBeInTheDocument();
   });
 
+  it('blok, którego WSZYSTKIE linie zaczynają się od "N. ", staje się listą <ol><li> (numerację nadaje <ol>, nie cyfry z treści)', () => {
+    render(<SimpleMarkdown text={'1. **Pierwsza** rzecz\n2. Druga rzecz\n3. Trzecia rzecz'} />);
+    const list = screen.getByRole('list');
+    expect(list.tagName).toBe('OL');
+    const items = screen.getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(['Pierwsza rzecz', 'Druga rzecz', 'Trzecia rzecz']);
+    expect(screen.getByText('Pierwsza').tagName).toBe('STRONG');
+  });
+
+  it('blok mieszany list wypunktowanej i numerowanej zostaje akapitem, nie listą', () => {
+    render(<SimpleMarkdown text={'1. pierwsza\n- druga'} />);
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
   it('pusta linia rozdziela akapity', () => {
     render(<SimpleMarkdown text={'Pierwszy akapit.\n\nDrugi akapit.'} />);
     expect(screen.getByText('Pierwszy akapit.')).toBeInTheDocument();

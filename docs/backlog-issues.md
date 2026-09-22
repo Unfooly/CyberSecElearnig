@@ -407,6 +407,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   dało się uruchomić lokalnie przed pushem, bez polegania wyłącznie na CI. Rozważyć też timeout/`--forceExit` w `test:e2e`,
   żeby błąd połączenia z bazą kończył się szybko, a nie wielogodzinnym zawieszeniem.
 
+### B-086 Media w hotspotach (audio/obraz/dokument) sceny z punktami
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4, decyzja właściciela 2026-09-22 (nie implementować teraz)
+- Opis: dziś karta punktu sceny (`SCENE_HOTSPOTS`) ma tylko tekst (`hotspot.content`). Potrzebne rozszerzenie o
+  `hotspots[].media: { kind: 'audio', audioUrl, transcript } | { kind: 'image', src, alt } | { kind: 'document', title, lines[] }`:
+  audio jako karta z WŁASNYM odtwarzaczem (np. poczta głosowa atakującego, inny głos niż narrator - TTS potrzebowałby wtedy
+  wyboru `voiceId` per nagranie, nie tylko per moduł), obraz/dokument jako podgląd na pełnym ekranie (wydruk, mail na
+  ekranie monitora). Rozszerza mechanizm dowodów/notatnika z B-078 (ta sama karta, nowy typ zawartości).
+- Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
+  `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
+
 ### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.

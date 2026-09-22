@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { Role } from '@cyberszkolo/shared';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
 import { buttonClasses } from './ui/Button';
 import Logo from './Logo';
+import UserMenu from './UserMenu';
 
 interface NavItem {
   label: string;
@@ -153,21 +153,7 @@ export default function Topbar({
           </Link>
         )}
 
-        {userEmail && (
-          <div className="flex shrink-0 items-center gap-2.5 text-muted">
-            {avatarUrl ? (
-              <AvatarDisplay avatarUrl={avatarUrl} size="sm" label="Twój avatar" />
-            ) : (
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent-ink">
-                {initialsFromEmail(userEmail)}
-              </span>
-            )}
-            {/* Długi adres nie może wypychać układu poza okno (poziome przewijanie): skracamy, pełny adres w podpowiedzi. */}
-            <span className="hidden max-w-[10rem] truncate sm:inline" title={userEmail}>
-              {userEmail}
-            </span>
-          </div>
-        )}
+        {userEmail && <UserMenu userEmail={userEmail} avatarUrl={avatarUrl} initials={initialsFromEmail(userEmail)} />}
       </div>
     </header>
   );

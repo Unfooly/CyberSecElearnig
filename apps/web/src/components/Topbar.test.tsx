@@ -1,13 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Role } from '@cyberszkolo/shared';
 import Topbar from './Topbar';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
 
 const usePathnameMock = vi.fn();
+const pushMock = vi.fn();
+const refreshMock = vi.fn();
 
 vi.mock('next/navigation', () => ({
   usePathname: () => usePathnameMock(),
+  // Topbar renderuje UserMenu (wylogowanie), które korzysta z routera.
+  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
 }));
 
 describe('Topbar', () => {
@@ -60,13 +64,17 @@ describe('Topbar', () => {
       expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
     });
 
-    it('długi adres e-mail jest skracany, pełny w podpowiedzi (nie wypycha układu)', () => {
+    it('długi adres e-mail jest skracany w pasku, pełny w menu użytkownika (nie wypycha układu)', () => {
       usePathnameMock.mockReturnValue('/courses');
-      render(<Topbar userEmail="bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test" role={Role.EMPLOYEE} />);
+      const email = 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test';
+      render(<Topbar userEmail={email} role={Role.EMPLOYEE} />);
 
-      const email = screen.getByText('bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test');
-      expect(email.className).toMatch(/truncate/);
-      expect(email).toHaveAttribute('title', 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test');
+      const shortened = screen.getByText(email);
+      expect(shortened.className).toMatch(/truncate/);
+      expect(shortened).toHaveAttribute('title', email);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+      expect(screen.getAllByText(email).some((node) => node.className.includes('break-all'))).toBe(true);
     });
   });
 
@@ -173,6 +181,15 @@ describe('Topbar', () => {
 
     expect(await screen.findByText('AP')).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+
+  it('klik w avatar otwiera menu użytkownika z pozycją "Wyloguj"', () => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan.kowalski@example.test" role={Role.EMPLOYEE} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Wyloguj' })).toBeInTheDocument();
   });
 
   it('pokazuje inicjały z e-maila użytkownika', () => {

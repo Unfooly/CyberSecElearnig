@@ -6,17 +6,11 @@
   "language": "pl",
   "voiceId": "o2xdfKUpc1Bwq7RchZuW",
   "entries": {
-    "otwarcie#narration": {
-      "hash": "561024f91447795d",
-      "key": "audio/wyludzone-haslo/v1/otwarcie/561024f91447795d.mp3",
-      "textSha": "f0c2b1793e55489b",
-      "durationMs": 27400
-    },
     "korytarz#narration": {
-      "hash": "9ce3cd658df3f572",
-      "key": "audio/wyludzone-haslo/v1/korytarz/9ce3cd658df3f572.mp3",
-      "textSha": "69220021ef0040d6",
-      "durationMs": 11053
+      "hash": "c5289f58af9023ab",
+      "key": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
+      "textSha": "2e22962e2098b76b",
+      "durationMs": 10031
     },
     "biuro-anny#narration": {
       "hash": "7a5f0aeb354f1d3f",

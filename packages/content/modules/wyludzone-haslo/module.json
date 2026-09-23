@@ -20,7 +20,9 @@
       "title": "Korytarz",
       "narration": {
         "text": "Wtorek, 9:40. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "spokenText": "Wtorek, dziewiąta czterdzieści. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą."
+        "spokenText": "Wtorek, dziewiąta czterdzieści. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
+        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
+        "durationMs": 10031
       },
       "image": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
@@ -63,7 +65,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.0177a2e4.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.9752d64b.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {

@@ -14,6 +14,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { composeScene, previewHtml } from './compose.js';
+import { patchHotspotCoords, resolveTargetHotspots, type ContentModuleLike } from './patch-module.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -48,25 +49,18 @@ if (process.argv.includes('--preview')) writeFileSync(join(outDir, `${name}.prev
 const modulePath = arg('--module');
 const blockId = arg('--block');
 const nestedId = arg('--nested');
+if (nestedId && !(modulePath && blockId)) {
+  console.error('--nested wymaga --module i --block.');
+  process.exit(2);
+}
+if (modulePath && !blockId) {
+  console.error('--module wymaga --block.');
+  process.exit(2);
+}
 if (modulePath && blockId) {
-  const mod = JSON.parse(readFileSync(modulePath, 'utf8'));
-  const block = (mod.blocks as any[]).find(b => b.id === blockId);
-  if (!block || block.type !== 'SCENE_HOTSPOTS') throw new Error(`Blok ${blockId} nie istnieje albo nie jest SCENE_HOTSPOTS`);
-  let targetHotspots: any[] = block.hotspots;
-  if (nestedId) {
-    const outer = (block.hotspots as any[]).find(h => h.id === nestedId);
-    if (!outer || outer.media?.kind !== 'scene') throw new Error(`Hotspot "${nestedId}" nie istnieje w bloku ${blockId} albo nie ma media.kind:"scene"`);
-    targetHotspots = outer.media.scene.hotspots;
-  }
-  const byId = new Map(res.hotspots.map(h => [h.id, h]));
-  let patched = 0;
-  for (const hs of targetHotspots) {
-    const h = byId.get(hs.id);
-    if (!h) throw new Error(`Hotspot "${hs.id}" z module.json nie istnieje w scenie`);
-    // module.json (packages/content/src/blocks.ts) nazywa te pola "width"/"height", nie "w"/"h" jak Hotspot (types.ts).
-    Object.assign(hs, { x: h.x, y: h.y, width: h.w, height: h.h });
-    patched++;
-  }
+  const mod = JSON.parse(readFileSync(modulePath, 'utf8')) as ContentModuleLike;
+  const targetHotspots = resolveTargetHotspots(mod, blockId, nestedId);
+  const patched = patchHotspotCoords(targetHotspots, res.hotspots);
   writeFileSync(modulePath, JSON.stringify(mod, null, 2) + '\n');
   console.log(`Zaktualizowano ${patched} hotspotów w ${modulePath} (blok ${blockId}${nestedId ? `, zagnieżdżona scena "${nestedId}"` : ''})`);
 }

@@ -56,14 +56,24 @@ describe('Restart kursu: POST /courses/:id/restart (e2e)', () => {
     const orgBAdmin = await tenantPrisma.runAuthLookup({ email: orgBEmail });
     orgBId = orgBAdmin!.organizationId;
 
-    // Kurs obowiązkowy, jeden blok VIDEO (bez oceny - kończy się od razu po /progress, jak w gamification.e2e-spec.ts).
+    // Kurs obowiązkowy, jeden blok QUIZ (nie VIDEO: potrzebny NIEZEROWY score, żeby test "historia (score) zostaje"
+    // faktycznie coś sprawdzał - jak perfectScoreCourse w gamification.e2e-spec.ts).
     const course = await prisma.course.create({
       data: {
         title: `Restart Test ${uniqueSuffix}`,
         category: 'GENERAL_AWARENESS',
         durationMinutes: 5,
         mandatory: true,
-        contentBlocks: [{ type: 'VIDEO', url: 'https://example.test/restart-1.mp4' }],
+        contentBlocks: [
+          {
+            type: 'QUIZ',
+            prompt: 'Pytanie testowe',
+            options: [
+              { text: 'Zła odpowiedź', correct: false },
+              { text: 'Dobra odpowiedź', correct: true },
+            ],
+          },
+        ],
       },
     });
     courseId = course.id;
@@ -109,10 +119,11 @@ describe('Restart kursu: POST /courses/:id/restart (e2e)', () => {
 
   async function completeCourse(token: string): Promise<void> {
     await request(app.getHttpServer()).post(`/courses/${courseId}/start`).set('Authorization', `Bearer ${token}`).expect(200);
+    // answer: 1 = "Dobra odpowiedź" (poprawna, index 1) -> score 100, jak w gamification.e2e-spec.ts.
     await request(app.getHttpServer())
       .post(`/courses/${courseId}/progress`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ blockIndex: 0 })
+      .send({ blockIndex: 0, answer: 1 })
       .expect(200);
   }
 
@@ -154,7 +165,16 @@ describe('Restart kursu: POST /courses/:id/restart (e2e)', () => {
         version: 2,
         schemaVersion: 1,
         contentHash: `hash-2-${uniqueSuffix}`,
-        contentBlocks: [{ type: 'VIDEO', url: 'https://example.test/restart-1.mp4' }],
+        contentBlocks: [
+          {
+            type: 'QUIZ',
+            prompt: 'Pytanie testowe',
+            options: [
+              { text: 'Zła odpowiedź', correct: false },
+              { text: 'Dobra odpowiedź', correct: true },
+            ],
+          },
+        ],
         blockCount: 1,
       },
     });
@@ -172,7 +192,8 @@ describe('Restart kursu: POST /courses/:id/restart (e2e)', () => {
     ]);
     expect(archivedOld?.archivedAt).not.toBeNull();
     expect(archivedOld?.status).toBe('COMPLETED');
-    expect(archivedOld?.score).not.toBeNull();
+    // Wynik (100 = poprawna odpowiedź QUIZ) zostaje na zarchiwizowanym wierszu - historia, nie kasowanie (D-069).
+    expect(archivedOld?.score).toBe(100);
     expect(newAssignment?.archivedAt).toBeNull();
     expect(newAssignment?.status).toBe('NOT_STARTED');
     expect(newAssignment?.currentBlockIndex).toBe(0);

@@ -154,6 +154,11 @@ describe('parseModule: walidacja modułu', () => {
       door.media = { kind: 'document', title: 'X', lines: ['x'] };
     }, 'action "next"');
     expectInvalid((m) => {
+      // required:true na drzwiach byłoby ślepym zaułkiem - drzwi nigdy nie trafiają do `visited` same z siebie.
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.required = true;
+    }, 'action "next"');
+    expectInvalid((m) => {
       // Zwykły hotspot (action domyślne "card") bez content - dozwolone tylko dla "next".
       delete blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].content;
     }, 'content jest wymagane');

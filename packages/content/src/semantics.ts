@@ -192,9 +192,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
         if (h.action === 'next') {
           // "Drzwi": klik kończy blok jak przycisk "Dalej" - nigdy nie otwiera karty, więc content/media/evidence/note
-          // byłyby martwą konfiguracją (autor mógłby pomyśleć, że działają).
-          if (h.content !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined) {
-            errors.push(`hotspots[${i}]: action "next" (drzwi) nie może mieć content, media, evidence ani note`);
+          // byłyby martwą konfiguracją (autor mógłby pomyśleć, że działają). `required` też zakazane: drzwi nigdy nie
+          // trafiają do `visited` (klik od razu wysyła submit, nie "odwiedza" siebie samych) - required:true na nich
+          // byłoby ślepym zaułkiem (blok nigdy nie mógłby się ukończyć: warunek gotowości nigdy nie zostałby spełniony).
+          if (h.content !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined || h.required !== undefined) {
+            errors.push(`hotspots[${i}]: action "next" (drzwi) nie może mieć content, media, evidence, note ani required`);
           }
         } else {
           if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);

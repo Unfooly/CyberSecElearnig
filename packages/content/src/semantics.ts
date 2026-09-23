@@ -159,14 +159,35 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       break;
     }
     case 'SCENE_HOTSPOTS': {
-      const ids = block.hotspots.map((h) => h.id);
-      checkUnique('hotspots', ids);
-      checkSubset('requiredHotspots', block.requiredHotspots, ids);
+      // Hotspoty WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene', B-086/D-071) dzielą z zewnętrznymi JEDNĄ płaską pulę
+      // id i required: stan bloku (visited/noted) jest jedną listą niezależnie od poziomu zagnieżdżenia (max 1 poziom -
+      // innerHotspotSchema nie ma już własnego media.kind: 'scene', więc tu nie ma czego rekurencyjnie schodzić głębiej).
+      const outerIds = block.hotspots.map((h) => h.id);
+      const nestedIds = block.hotspots.flatMap((h) => (h.media?.kind === 'scene' ? h.media.scene.hotspots.map((ih) => ih.id) : []));
+      checkUnique('hotspots', [...outerIds, ...nestedIds]);
+      checkSubset('requiredHotspots', block.requiredHotspots, outerIds); // lista jest PRZESTARZAŁA i starsza niż zagnieżdżanie: tylko zewnętrzne.
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
-        errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
+        if (h.action === 'next') {
+          // "Drzwi": klik kończy blok jak przycisk "Dalej" - nigdy nie otwiera karty, więc content/media/evidence/note
+          // byłyby martwą konfiguracją (autor mógłby pomyśleć, że działają).
+          if (h.content !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined) {
+            errors.push(`hotspots[${i}]: action "next" (drzwi) nie może mieć content, media, evidence ani note`);
+          }
+        } else {
+          if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);
+          errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
+        }
+        if (h.media?.kind === 'scene') {
+          h.media.scene.hotspots.forEach((ih, j) => {
+            const label = `hotspots[${i}].media.scene.hotspots[${j}]`;
+            if (ih.x + ih.width > 100 || ih.y + ih.height > 100) errors.push(`${label}: obszar wychodzi poza obraz`);
+            errors.push(...evidenceErrors(label, ih, kindRequired));
+          });
+        }
       });
-      checkRequiredFlags('hotspots', block.hotspots, errors);
+      const flatForRequired = block.hotspots.flatMap((h) => [h, ...(h.media?.kind === 'scene' ? h.media.scene.hotspots : [])]);
+      checkRequiredFlags('hotspots', flatForRequired, errors);
       break;
     }
     case 'DIALOGUE': {
@@ -233,6 +254,13 @@ export function moduleWarnings(contentModule: ContentModule): string[] {
     }
     if (block.type === 'SCENE_HOTSPOTS') {
       block.hotspots.forEach((h, i) => {
+        if (h.media?.kind === 'scene') {
+          h.media.scene.hotspots.forEach((ih, j) => {
+            if (ih.note && ih.evidence !== true) {
+              warnings.push(`${where}: hotspots[${i}].media.scene.hotspots[${j}].note bez evidence: true nigdy nie trafi do notatnika`);
+            }
+          });
+        }
         if (h.note && h.evidence !== true) warnings.push(`${where}: hotspots[${i}].note bez evidence: true nigdy nie trafi do notatnika`);
       });
     }

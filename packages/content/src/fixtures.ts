@@ -117,6 +117,68 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           content: 'Telefon z nieodebranym połączeniem.',
           media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, tu dział bezpieczeństwa banku...' },
         },
+        // Czwarty hotspot: media.kind "scene" (B-086/D-071) - zagnieżdżona mini-scena (np. pulpit komputera zza monitora).
+        // Wewnętrzny hotspot NIESIE własne evidence/required (płaska lista dowodów całego bloku) - fixtura wypełnia go w
+        // całości (narracja, media, notatka), żeby test kompletności klasyfikacji miał czego szukać.
+        {
+          id: 'h4',
+          label: 'Kalendarz',
+          x: 10,
+          y: 70,
+          width: 15,
+          height: 15,
+          content: 'Kalendarz z zakreśloną datą.',
+          media: {
+            kind: 'scene',
+            scene: {
+              image: 'img/pulpit.png',
+              imageAlt: 'Pulpit komputera',
+              hotspots: [
+                {
+                  id: 'h4-outlook',
+                  label: 'Outlook',
+                  x: 5,
+                  y: 5,
+                  width: 20,
+                  height: 20,
+                  content: 'Ikona programu pocztowego.',
+                  media: { kind: 'image', src: 'img/mail-na-ekranie.png', alt: 'Podgląd wiadomości e-mail' },
+                  narration: audio('h4-outlook'),
+                  // required: false (NIE true) - h1 zostaje JEDYNYM required:true w całej (płaskiej) fixturze: test w
+                  // module.spec.ts ("required: co najmniej jeden element wymagany") ustawia h1.required = false i
+                  // oczekuje błędu "brak required:true" - drugi required:true gdziekolwiek w drzewie by to zamaskował.
+                  required: false,
+                  evidence: true,
+                  note: { text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
+                },
+                // Dwa kolejne WYŁĄCZNIE po to, żeby fixtura pokrywała wszystkie warianty media WEWNĄTRZ zagnieżdżonej
+                // sceny (jeden inner hotspot może mieć tylko jeden kind naraz) - bez evidence, jak "smaczki" wyżej.
+                {
+                  id: 'h4-kosz',
+                  label: 'Kosz',
+                  x: 30,
+                  y: 5,
+                  width: 15,
+                  height: 15,
+                  content: 'Pusty kosz systemowy.',
+                  media: { kind: 'audio', audioUrl: 'audio/kosz.mp3', transcript: 'Kosz jest pusty.' },
+                },
+                {
+                  id: 'h4-folder',
+                  label: 'Folder',
+                  x: 5,
+                  y: 30,
+                  width: 15,
+                  height: 15,
+                  content: 'Folder "Faktury".',
+                  media: { kind: 'document', title: 'Zawartość folderu', lines: ['faktura_marzec.pdf', 'faktura_kwiecien.pdf'] },
+                },
+              ],
+            },
+          },
+        },
+        // Piąty hotspot: action "next" (drzwi) - kończy blok jak przycisk "Dalej", bez content/media/evidence/note.
+        { id: 'h5', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
       ],
       // Przestarzała lista (zgodna z flagami; przy obu wygrywa `required`): fixtura wypełnia każde sklasyfikowane pole.
       requiredHotspots: ['h1'],

@@ -143,6 +143,38 @@ describe('parseModule: walidacja modułu', () => {
     }, 'media');
   });
 
+  it('hotspots[].action "next" (drzwi, B-086): nie może mieć content ani media; hotspot bez action wymaga content', () => {
+    expectInvalid((m) => {
+      // h5 to "drzwi" (action: 'next') w fixturze - bez content i media; dopisanie któregokolwiek jest błędem.
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.content = 'To nie powinno tu być.';
+    }, 'action "next"');
+    expectInvalid((m) => {
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.media = { kind: 'document', title: 'X', lines: ['x'] };
+    }, 'action "next"');
+    expectInvalid((m) => {
+      // Zwykły hotspot (action domyślne "card") bez content - dozwolone tylko dla "next".
+      delete blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].content;
+    }, 'content jest wymagane');
+  });
+
+  it('hotspots[].media.kind "scene" (zagnieżdżona mini-scena, B-086): id unikalne w CAŁYM bloku (zewnętrzne + wewnętrzne), obszar i evidence/note jak zewnętrzne', () => {
+    expectInvalid((m) => {
+      // h4-outlook (wewnątrz zagnieżdżonej sceny h4) dostaje id już zajęte przez zewnętrzny hotspot h1.
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      nested.media.scene.hotspots[0].id = 'h1';
+    }, 'powtórzony identyfikator');
+    expectInvalid((m) => {
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      nested.media.scene.hotspots[0].width = 96; // x: 5 + width: 96 > 100
+    }, 'obszar wychodzi poza obraz');
+    expectInvalid((m) => {
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      delete nested.media.scene.hotspots[0].note;
+    }, 'evidence wymaga pola note');
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';
@@ -276,6 +308,15 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
       delete hotspot.required;
       delete hotspot.evidence;
       delete hotspot.note;
+      // required/evidence/note są liczone na PŁASKIEJ liście (zewnętrzne + zagnieżdżone, semantics.ts) - trzeba je
+      // usunąć też z hotspotów WEWNĄTRZ media.kind: 'scene', inaczej drugi required:false/evidence tam zostaje.
+      if (hotspot.media?.kind === 'scene') {
+        for (const inner of hotspot.media.scene.hotspots) {
+          delete inner.required;
+          delete inner.evidence;
+          delete inner.note;
+        }
+      }
     }
     const d = dialogue(module);
     delete d.character.avatar;

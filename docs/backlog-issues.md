@@ -434,10 +434,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `ELEVENLABS_VOICE_ID` + regenerację; audio hotspotu to zwykły plik `--assets`, nie przechodzi przez TTS).
 - Akceptacja: ~~schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`~~ **ZROBIONE**
   (D-071, `feat/hotspot-media`: `hotspots[].media`, `hotspots[].action`, zagnieżdżona scena, `FIELD_CLASSIFICATION`,
-  `V4_FEATURES`). WCIĄŻ DO ZROBIENIA (ta sama gałąź, kolejne commity): komponent `SceneHotspotsBlock` renderujący każdy
-  wariant + nawigację "Dalej" dla `action:'next'`, `scripts/content --assets` dla mp3, `apps/api`'s `evaluate.ts`/
-  `client-view.ts` liczące spłaszczone id (dziś widzą TYLKO zewnętrzne hotspoty - zagnieżdżone dowody nie są jeszcze
-  liczone po stronie serwera, mimo że schemat już je dopuszcza), treść modułu 1 (nowe grafiki od właściciela).
+  `V4_FEATURES`). ~~`apps/api`'s `evaluate.ts`/`client-view.ts` liczące spłaszczone id~~ **ZROBIONE** (`flattenHotspots`,
+  dzielona z walidacją modułu - `evaluate.ts` waliduje `visited`/`noted` i "wymagane elementy" na spłaszczonej liście,
+  `client-view.ts` liczy `evidenceSummary` i rozwiązuje notatki tak samo; `apps/api/test/course-engine.e2e-spec.ts`
+  zaktualizowany ręcznie, bez lokalnego uruchomienia - B-085). WCIĄŻ DO ZROBIENIA (ta sama gałąź, kolejne commity):
+  komponent `SceneHotspotsBlock` renderujący każdy wariant + nawigację "Dalej" dla `action:'next'`, `scripts/content
+  --assets` dla mp3, treść modułu 1 (nowe grafiki od właściciela).
 
 ### B-087 ~~`subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie~~ - ROZWIĄZANE (D-065)
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1

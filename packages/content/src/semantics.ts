@@ -17,6 +17,29 @@ function duplicates(ids: string[]): string[] {
 }
 
 /**
+ * Kształt hotspotu SCENE_HOTSPOTS wystarczający do spłaszczenia (id, required, evidence, note, zagnieżdżona scena) -
+ * strukturalnie zgodny zarówno z `ServerBlock`'s wariantem SCENE_HOTSPOTS (blocks.ts), jak i z luźno typowanym `Block`
+ * w apps/api (evaluate.ts, client-view.ts), które NIE importują pełnych typów zod (unikają zależności od `zod` w API).
+ */
+export interface HotspotLike {
+  id: string;
+  required?: boolean;
+  evidence?: boolean;
+  note?: { text: string; kind?: string };
+  media?: { kind?: string; scene?: { hotspots?: readonly HotspotLike[] } };
+}
+
+/**
+ * Spłaszcza hotspoty SCENE_HOTSPOTS (zewnętrzne + WEWNĘTRZNE z `media.kind: 'scene'`, B-086/D-071) do JEDNEJ listy -
+ * DZIELONA definicja między walidacją modułu (poniżej) a apps/api (liczenie dowodów, walidacja `visited`/`noted`):
+ * jedno miejsce decyduje, co się liczy, żeby te dwie strony nigdy nie rozjechały się w tym, co uznają za "ten sam zbiór".
+ * Zawsze dokładnie jeden poziom (innerHotspotSchema nie ma już własnego `media.kind: 'scene'`), więc bez rekurencji.
+ */
+export function flattenHotspots(hotspots: readonly HotspotLike[]): HotspotLike[] {
+  return hotspots.flatMap((h) => [h, ...(h.media?.kind === 'scene' ? (h.media.scene?.hotspots ?? []) : [])]);
+}
+
+/**
  * Notatka i dowód. Dowód (evidence: true) musi mieć `note`. Od schemaVersion 3 KAŻDA notatka ma `kind` (ikona w notatniku; jedna reguła
  * zamiast "kind tylko przy dowodzie"); moduły w wersji 2 nie mają tego pola, więc są zwolnione.
  */
@@ -161,12 +184,9 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       break;
     }
     case 'SCENE_HOTSPOTS': {
-      // Hotspoty WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene', B-086/D-071) dzielą z zewnętrznymi JEDNĄ płaską pulę
-      // id i required: stan bloku (visited/noted) jest jedną listą niezależnie od poziomu zagnieżdżenia (max 1 poziom -
-      // innerHotspotSchema nie ma już własnego media.kind: 'scene', więc tu nie ma czego rekurencyjnie schodzić głębiej).
+      // Id i required liczone na SPŁASZCZONEJ liście (ta sama funkcja co apps/api - flattenHotspots wyżej w tym pliku).
       const outerIds = block.hotspots.map((h) => h.id);
-      const nestedIds = block.hotspots.flatMap((h) => (h.media?.kind === 'scene' ? h.media.scene.hotspots.map((ih) => ih.id) : []));
-      checkUnique('hotspots', [...outerIds, ...nestedIds]);
+      checkUnique('hotspots', flattenHotspots(block.hotspots).map((h) => h.id));
       checkSubset('requiredHotspots', block.requiredHotspots, outerIds); // lista jest PRZESTARZAŁA i starsza niż zagnieżdżanie: tylko zewnętrzne.
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
@@ -188,8 +208,7 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           });
         }
       });
-      const flatForRequired = block.hotspots.flatMap((h) => [h, ...(h.media?.kind === 'scene' ? h.media.scene.hotspots : [])]);
-      checkRequiredFlags('hotspots', flatForRequired, errors);
+      checkRequiredFlags('hotspots', flattenHotspots(block.hotspots), errors);
       break;
     }
     case 'DIALOGUE': {

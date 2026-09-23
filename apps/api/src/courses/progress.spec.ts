@@ -223,9 +223,11 @@ describe('client-view', () => {
       const summary = evidenceSummary({ v: 2, blocks: {}, notes: [] }, blocks());
       expect(summary).toEqual({
         collected: 0,
-        total: 3,
+        // scena: 2 - h1 (zewnętrzny) + h4-outlook (wewnątrz zagnieżdżonej sceny media.kind:'scene', B-086/D-071) - dowody
+        // z zagnieżdżonej sceny LICZĄ SIĘ do bloku (spłaszczone id, ta sama funkcja co semantics.ts).
+        total: 4,
         perBlock: [
-          { blockId: 'scena', collected: 0, total: 1 },
+          { blockId: 'scena', collected: 0, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
         ],
@@ -237,16 +239,22 @@ describe('client-view', () => {
         { v: 2, blocks: { mail: done('EMAIL_ANALYSIS') }, notes: ['scena.h1', 'rozmowa.q1', 'mail.c1', 'mail.c3', 'nie-ma.x'] },
         blocks(),
       );
-      // mail: tylko c1 ma evidence (c3 to zwykła notatka)
+      // mail: tylko c1 ma evidence (c3 to zwykła notatka); scena: h4-outlook (zagnieżdżony) nie ma notatki w tym teście,
+      // więc liczy się do total, ale nie do collected.
       expect(summary).toEqual({
         collected: 3,
-        total: 3,
+        total: 4,
         perBlock: [
-          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'scena', collected: 1, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
         ],
       });
+    });
+
+    it('dowód WEWNĄTRZ zagnieżdżonej sceny (media.kind:"scene") liczy się do collected po notatce z jego id', () => {
+      const summary = evidenceSummary({ v: 2, blocks: {}, notes: ['scena.h4-outlook'] }, blocks());
+      expect(summary.perBlock.find((b) => b.blockId === 'scena')).toEqual({ blockId: 'scena', collected: 1, total: 2 });
     });
 
     it('perBlock ma tylko blockId i liczby (bez identyfikatorów elementów), a clientProgress dołącza evidence', () => {
@@ -260,7 +268,12 @@ describe('client-view', () => {
     it('nie liczy dowodów bez notatki i notatek bez evidence', () => {
       const noEvidence = blocks();
       const scene = noEvidence.find((b) => b.type === 'SCENE_HOTSPOTS') as Block;
-      (scene.hotspots as Record<string, unknown>[]).forEach((h) => delete h.evidence);
+      for (const h of scene.hotspots as Record<string, any>[]) {
+        delete h.evidence;
+        // media.kind:'scene' (B-086/D-071): evidence WEWNĄTRZ zagnieżdżonej sceny liczy się do bloku (flattenHotspots),
+        // więc trzeba je zdjąć też stąd, inaczej test dalej znalazłby "scena" w perBlock przez h4-outlook.
+        if (h.media?.kind === 'scene') for (const inner of h.media.scene.hotspots as Record<string, any>[]) delete inner.evidence;
+      }
       expect(evidenceSummary({ v: 2, blocks: {}, notes: ['scena.h1'] }, noEvidence).perBlock.map((b) => b.blockId)).not.toContain('scena');
     });
   });

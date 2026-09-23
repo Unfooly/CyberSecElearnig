@@ -54,22 +54,50 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(() => submit(block, undefined)).toThrow(BadRequestException);
   });
 
+  it('SCENE_HOTSPOTS: hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind:"scene", B-086/D-071) liczy się do required na tych samych zasadach co zewnętrzny', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const gateway = (block.hotspots as unknown as Record<string, any>[]).find((h) => h.media?.kind === 'scene')!;
+    gateway.media.scene.hotspots[0].required = true; // h4-outlook required na tej próbie (w fixturze domyślnie false)
+    expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException); // brakuje wymaganego h4-outlook
+    expect(submit(block, { visited: ['h1', 'h4-outlook'] }).entry.done).toBe(true);
+  });
+
+  it('SCENE_HOTSPOTS: nieznane id (spoza spłaszczonego zbioru zewnętrzne+wewnętrzne) jest odrzucone bez treści bloku', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const rejected = () => submit(block, { visited: ['h1', 'wymyslone-id'] });
+    expect(rejected).toThrow(BadRequestException);
+    try {
+      rejected();
+    } catch (e) {
+      expect(JSON.stringify((e as BadRequestException).getResponse())).not.toContain('SEKRET');
+    }
+  });
+
   const plainHotspots = () => {
     const block = blocks().SCENE_HOTSPOTS;
     return {
       ...block,
       requiredHotspots: undefined,
-      hotspots: block.hotspots.map((h: Record<string, unknown>) => ({ ...h, required: undefined })),
+      hotspots: block.hotspots.map((h: Record<string, any>) => ({
+        ...h,
+        required: undefined,
+        // required jest liczone na SPŁASZCZONEJ liście (flattenHotspots, B-086/D-071) - trzeba je zdjąć też z
+        // hotspotów WEWNĄTRZ media.kind:'scene', inaczej jedyny pozostały required:false (h4-outlook) sprawiłby,
+        // że "żaden element nie jest required" (pusty zbiór), zamiast "wszystkie są required" (fallback).
+        ...(h.media?.kind === 'scene'
+          ? { media: { ...h.media, scene: { ...h.media.scene, hotspots: h.media.scene.hotspots.map((ih: Record<string, any>) => ({ ...ih, required: undefined })) } } }
+          : {}),
+      })),
     };
   };
 
   it('bez required i requiredHotspots wymagane są wszystkie', () => {
     const block = plainHotspots();
     expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
-    // Fixtura ma 5 hotspotów najwyższego poziomu (h3: media audio, h4: media scene, h5: action "next") - apps/api dziś
-    // liczy TYLKO poziom zewnętrzny (nie zna jeszcze media.kind:'scene'), więc wszystkie 5 muszą być odwiedzone.
-    expect(() => submit(block, { visited: ['h2', 'h1'] })).toThrow(BadRequestException);
-    expect(submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5'] }).entry.done).toBe(true);
+    // Fixtura ma 5 hotspotów najwyższego poziomu + 3 wewnątrz zagnieżdżonej sceny h4 (h4-outlook/h4-kosz/h4-folder) -
+    // required liczone na spłaszczonej liście (B-086/D-071), więc wszystkich 8 trzeba odwiedzić.
+    expect(() => submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5'] })).toThrow(BadRequestException);
+    expect(submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5', 'h4-outlook', 'h4-kosz', 'h4-folder'] }).entry.done).toBe(true);
   });
 
   it('hotspots[].required: wymagane tylko oznaczone, "smaczek" nie blokuje ukończenia; jawne required wygrywa ze starą listą', () => {

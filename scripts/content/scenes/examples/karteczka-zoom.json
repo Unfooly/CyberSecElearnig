@@ -1,0 +1,23 @@
+{
+  "width": 800,
+  "height": 800,
+  "background": {
+    "flat": true,
+    "wall": "#2B2440"
+  },
+  "items": [
+    {
+      "id": "karteczka",
+      "prop": "stickyNote",
+      "x": 78,
+      "y": 120,
+      "scale": 7,
+      "params": {
+        "lines": [
+          "Nortex2024!",
+          "bank: to samo"
+        ]
+      }
+    }
+  ]
+}

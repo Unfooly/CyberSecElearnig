@@ -21,8 +21,11 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 // zablokowane"), widoczny focus-ring (FOCUS_RING) - klawiatura i czytnik ekranu działają WYŁĄCZNIE przez te punkty,
 // bez osobnej listy. Licznik "Obejrzano X z Y" (ExploreFooter) jest nad obrazem, mały.
 //
-// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE (nie pod obrazem): position absolute w obrębie
-// kontenera obrazu na desktopie (tło półprzezroczyste ciemni obraz pod spodem), pełny ekran na mobile. Zagnieżdżona
+// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE, NA obrazie (nie zamiast niego): na desktopie
+// position absolute w obrębie kontenera obrazu, karta max 80% szerokości/wysokości sceny i wyśrodkowana (tło
+// rgba(43,36,64,.55) - kolor `ink` z palety scen - lekko przyciemnia obraz WIDOCZNY dookoła karty), przewijana w
+// środku, gdy treść nie mieści się w 80% (feedback z produkcji po PR #32: wcześniej karta na h-full/w-full
+// całkowicie zasłaniała obraz). Pełny ekran na mobile (<640px). Zagnieżdżona
 // scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
 // wzorzec, rekurencyjnie): stos maks. 2 poziomy (zewnętrzny hotspot -> zagnieżdżona scena -> jej hotspot), bo
 // zagnieżdżanie ma zawsze dokładnie 1 poziom (innerHotspotSchema nie ma już własnego media.kind:'scene'). "Wróć"
@@ -207,8 +210,11 @@ export default function SceneHotspotsBlock({
                 aria-label={label}
                 // Nieaktywne drzwi zostają SKUPIALNE (aria-disabled, nie natywne disabled) - czytnik ekranu ma usłyszeć
                 // DLACZEGO, zamiast po prostu pominąć przycisk. Gdy nakładka jest otwarta, punkty pod nią wychodzą z
-                // kolejności Tab (są wizualnie przykryte, bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx).
+                // kolejności Tab i dostają aria-hidden (kontener sceny z obrazem i hotspotami ZOSTAJE w DOM pod
+                // nakładką - feedback z produkcji; aria-hidden to dodatkowa, bardziej niezawodna warstwa niż samo
+                // poleganie na aria-modal czytnika), bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx.
                 aria-disabled={blocked}
+                aria-hidden={activeId ? true : undefined}
                 title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}
                 tabIndex={activeId ? -1 : undefined}
                 onClick={(event) => handleHotspotClick(hotspot, event.currentTarget)}
@@ -242,9 +248,12 @@ export default function SceneHotspotsBlock({
               role="dialog"
               aria-modal="true"
               aria-labelledby={overlayTitleId}
-              className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/70 sm:absolute"
+              className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(43,36,64,0.55)] sm:absolute"
             >
-              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 sm:h-full sm:rounded sm:p-4">
+              {/* Nakładka NA scenie, nie zamiast niej: na desktopie karta to najwyżej 80% kontenera (obraz widoczny i
+                  lekko przyciemniony dookoła), przewijana w środku, gdy treść nie mieści się w 80%. Na telefonie
+                  (<640px, sm:) karta zajmuje cały ekran - feedback z produkcji (`feat/scene-overlay-fix`). */}
+              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-auto sm:max-h-[80%] sm:w-auto sm:max-w-[80%] sm:min-w-[320px] sm:rounded sm:p-4">
                 <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
                   {current.label}
                 </h3>
@@ -398,6 +407,7 @@ function NestedSceneImage({
             key={hotspot.id}
             type="button"
             aria-label={`${hotspot.label}${seen ? ' (obejrzane)' : ''}`}
+            aria-hidden={overlayOpen ? true : undefined}
             tabIndex={overlayOpen ? -1 : undefined}
             onClick={() => onPick(hotspot.id)}
             style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}

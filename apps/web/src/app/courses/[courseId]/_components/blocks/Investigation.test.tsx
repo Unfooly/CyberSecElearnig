@@ -137,6 +137,24 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
+  it('nakładka leży NA scenie: karta ograniczona do 80% na desktopie (nie h-full/w-full - obraz ma być widoczny dookoła), punkty pod nią dostają aria-hidden (feedback z produkcji, poprawka po PR #32)', () => {
+    setup(scene, { summary });
+    fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
+
+    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).parentElement!;
+    expect(card.className).toMatch(/sm:max-h-\[80%\]/);
+    expect(card.className).toMatch(/sm:max-w-\[80%\]/);
+    expect(card.className).not.toMatch(/sm:h-full/);
+    expect(card.className).not.toMatch(/sm:w-full/);
+
+    const covered = screen.getByTestId('hotspot-overlay-h2'); // "Drzwi" - inny hotspot na tej samej scenie, zasłonięty
+    expect(covered).toHaveAttribute('aria-hidden', 'true');
+    expect(covered).toHaveAttribute('tabindex', '-1');
+
+    back();
+    expect(screen.getByTestId('hotspot-overlay-h2')).not.toHaveAttribute('aria-hidden');
+  });
+
   it('błąd wczytania OBRAZU (poprawna ścieżka, np. 404 z CDN - onError, nie zła ścieżka od startu) chowa punkty: bez chipów jako zapasowej ścieżki są teraz nieosiągalne (code review: to inny warunek niż "zła ścieżka", oba muszą działać)', () => {
     setup(scene, { summary });
     expect(screen.getByRole('img')).toBeInTheDocument();

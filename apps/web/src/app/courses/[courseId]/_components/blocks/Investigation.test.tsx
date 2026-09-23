@@ -284,6 +284,18 @@ const mediaScene: ContentBlock = {
       content: 'Wydruk przelewu.',
       media: { kind: 'document', title: 'Potwierdzenie przelewu', lines: ['Kwota: 14 000,00 PLN', 'Odbiorca: Wektor Rozliczenia'] },
     },
+    // Drugi hotspot audio WYŁĄCZNIE po to, żeby przetestować key={hotspot.id} na AudioMedia (code review commitu
+    // 1ff5939): stan (playing/currentTime) między dwoma RÓŻNYMI hotspotami audio nie może "przeciekać".
+    {
+      id: 'radio',
+      label: 'Radio',
+      x: 40,
+      y: 40,
+      width: 20,
+      height: 20,
+      content: 'Radio gra w tle.',
+      media: { kind: 'audio', audioUrl: 'audio/radio.mp3', transcript: 'Muzyka w tle.' },
+    },
   ],
 };
 
@@ -357,6 +369,35 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
 
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Pauza' }));
     expect(audioEl.pause).toHaveBeenCalled();
+  });
+
+  it('audio: stan (playing/czas) nie przecieka między dwoma RÓŻNYMI hotspotami audio - key={hotspot.id} wymusza remount', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    const firstAudio = document.querySelector('audio')!;
+    Object.defineProperty(firstAudio, 'paused', { value: false, configurable: true });
+    Object.defineProperty(firstAudio, 'duration', { value: 60, configurable: true });
+    Object.defineProperty(firstAudio, 'currentTime', { value: 30, configurable: true });
+    fireEvent(firstAudio, new Event('play'));
+    fireEvent(firstAudio, new Event('loadedmetadata'));
+    fireEvent(firstAudio, new Event('timeupdate'));
+    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
+    expect(screen.getByText('0:30 / 1:00')).toBeInTheDocument();
+
+    back();
+    pick('Radio');
+    const secondAudio = document.querySelector('audio')!;
+    expect(secondAudio).not.toBe(firstAudio); // inny <audio> - świeży <AudioMedia>, nie ta sama instancja
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // stan playing zresetowany
+    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument(); // czas zresetowany, nie "0:30 / 1:00" z Telefonu
+  });
+
+  it('audio: przeglądarka odrzuca play() (autoplay zablokowany) - przycisk zostaje "Odtwórz", bez komunikatu błędu i bez wywalenia komponentu', () => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockRejectedValue(new DOMException('blocked', 'NotAllowedError'));
+    setup(mediaScene);
+    pick('Telefon');
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
+    expect(screen.queryByText(/autoodtwarzanie|zablokował/i)).not.toBeInTheDocument(); // celowo BEZ komunikatu (inaczej niż NarrationPlayer.tsx)
   });
 
   it('audio: dowód WYMAGA kliknięcia "Dodaj do notatnika" - samo otwarcie karty (ani odsłuchanie) nie wystarcza (zmiana: dowód zawsze przyciskiem, D-071)', () => {

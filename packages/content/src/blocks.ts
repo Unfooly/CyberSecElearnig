@@ -72,9 +72,12 @@ const embeddedHtmlSchema = z
 // `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
 const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, alt: text(300) }).strict();
 // image: opcjonalne zbliżenie pokazywane NAD własnym odtwarzaczem audio (zamiast natywnych <audio controls> - feedback z
-// produkcji po PR #32, PR feat/scene-overlay-fix), publikowane tym samym potokiem --assets co media.src.
+// produkcji po PR #32, PR feat/scene-overlay-fix), publikowane tym samym potokiem --assets co media.src. alt: jak w
+// imageMediaSchema - opcjonalny, bo zbliżenie bywa czysto ilustracyjne (treść i tak jest w transkrypcie), ale gdy niesie
+// informację NIEOBECNĄ w transkrypcie (np. tekst widoczny na zdjęciu telefonu), autor może ją opisać. `alt` to WSPÓLNA
+// ścieżka klasyfikacji z imageMediaSchema (hotspots[].media.alt) - nie potrzeba osobnego wpisu w FIELD_CLASSIFICATION.
 const audioMediaSchema = z
-  .object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000), image: imagePathSchema.optional() })
+  .object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000), image: imagePathSchema.optional(), alt: text(300).optional() })
   .strict();
 const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
 

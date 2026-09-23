@@ -515,7 +515,7 @@ function AudioMedia({
         <>
           {imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
-            <img src={imageUrl} alt="" referrerPolicy="no-referrer" className="w-full rounded border border-slate-200 object-contain" />
+            <img src={imageUrl} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="w-full rounded border border-slate-200 object-contain" />
           )}
           <audio
             ref={audioRef}

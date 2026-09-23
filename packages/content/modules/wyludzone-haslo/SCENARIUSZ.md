@@ -1,7 +1,7 @@
 # Moduł 1 — „Sprawa: wyłudzone hasło"
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
-Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, NARRATIVE, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
+Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
 pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
 
 ## Metadane
@@ -23,7 +23,7 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
 - podpowiedzi (hints) są wyłącznie tekstowe — bez audio (D-060/K1)
 - reakcje maskotki: pole `reactions` na bloku (`complete` dla eksploracyjnych, `result` dla ocenianych) — zastępuje dawne „Po ukończeniu: Fooli…"
-- media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 2 i Blok 3 niżej.
+- media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 1 i Blok 2 niżej.
 
 ## Postaci
 
@@ -38,35 +38,17 @@ Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak
 
 ---
 
-## Blok 1 — Otwarcie sprawy (NARRATIVE, weight 0)
+## Blok 1 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
-Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść poniżej (narracja lektora jako `narration`, dymek jako `mascot`, pytanie i dwie kwestie Fooli jako tekst bloku).
-
-**Lektor (narracja):**
-> Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.
-
-**Fooli (dymek, poza: greeting):**
-> Cześć, detektywie. Mamy sprawę. Zbieraj dowody do notatnika — na końcu złożymy to w całość.
-
-**Tekst bloku (markdown):**
-> **Od czego zaczynamy?**
->
-> Od miejsca zdarzenia. Biuro Anny — zobaczmy, co tam zostało.
->
-> Klikaj wszystko, co wygląda podejrzanie. Nie wszystko jest dowodem, ale wszystko coś mówi.
-
-**reactions.complete:** brak (przejście przyciskiem „Dalej").
-
----
-
-## Blok 2 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
+Moduł zaczyna się TUTAJ (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
+przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią modułu).
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
 - imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
-- **Lektor:** „Wtorek, 8:50. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
+- **Lektor:** „Wtorek, 9:40. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
 - **Fooli:** brak (blok czysto przejściowy — bez dymka).
 - ukończenie: brak dowodów, bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`).
-- drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 7 (DIALOGUE), nie jako osobna lokacja.
+- drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 6 (DIALOGUE), nie jako osobna lokacja.
 
 | id | x | y | w | h | action |
 |---|---|---|---|---|---|
@@ -74,7 +56,7 @@ Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść
 
 ---
 
-## Blok 3 — Biuro Anny (SCENE_HOTSPOTS)
+## Blok 2 — Biuro Anny (SCENE_HOTSPOTS)
 
 - obraz: `scenes/biuro-anny.svg` (1600×1000, przekomponowana wersja: drzwi po prawej, biurko krótsze, roślina po lewej)
 - imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe."
@@ -144,7 +126,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 ---
 
-## Blok 4 — Rozmowa z Anną (DIALOGUE)
+## Blok 3 — Rozmowa z Anną (DIALOGUE)
 
 - postać: Anna Kowalska, księgowa, `avatars/anna.svg`
 - **Lektor:** „Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
@@ -165,7 +147,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 ---
 
-## Blok 5 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
+## Blok 4 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
 
 - **Lektor:** „Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
 - **Fooli (poza: pointing):** „Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
@@ -223,7 +205,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 6 — Akta sprawy (TABS) — bez oceny
+## Blok 5 — Akta sprawy (TABS) — bez oceny
 
 - **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
 - **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
@@ -244,7 +226,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 7 — Rozmowa z Markiem z IT (DIALOGUE)
+## Blok 6 — Rozmowa z Markiem z IT (DIALOGUE)
 
 - postać: Marek Zieliński, administrator IT, `avatars/marek.svg`
 - **Lektor:** „Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
@@ -264,7 +246,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 8 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
+## Blok 7 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
 
 - **Lektor:** „Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
 - **Fooli (pointing):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
@@ -284,7 +266,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 9 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
+## Blok 8 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
 
 - **Lektor:** „Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
 - **Fooli (thinking):** „Bez zaglądania do notatnika. Pamiętasz?"
@@ -301,7 +283,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 10 — Rozwiązanie sprawy (SUMMARY)
+## Blok 9 — Rozwiązanie sprawy (SUMMARY)
 
 - **Lektor:** „Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo »szybkie potwierdzenie«, przypomnij sobie wtorek, 8:47."
 - **mascot:** `{ pose: greeting, text: „Sprawa zamknięta. Dobra robota, detektywie." }`
@@ -327,8 +309,8 @@ edycja SVG.
 
 | plik | rozmiar | użycie |
 |---|---|---|
-| `scenes/korytarz.svg` | 1600×1000 | Blok 2 (korytarz) |
-| `scenes/biuro-anny.svg` | 1600×1000 | Blok 3 (Biuro Anny) |
+| `scenes/korytarz.svg` | 1600×1000 | Blok 1 (korytarz) |
+| `scenes/biuro-anny.svg` | 1600×1000 | Blok 2 (Biuro Anny) |
 | `scenes/pulpit.svg` | 1200×800 | zagnieżdżona scena na hotspocie `monitor` |
 | `scenes/mail-na-ekranie.svg` | 1200×800 | media image na hotspocie `outlook` (wewnątrz `pulpit`) |
 | `scenes/karteczka-zoom.svg` | 800×800 | media image na hotspocie `karteczka` |
@@ -343,13 +325,13 @@ blok ma jedno nagranie lektora — tekst „Lektor" wyżej). Kwestie Fooli i pos
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
 
-**`scenes/korytarz.svg`** (Blok 2):
+**`scenes/korytarz.svg`** (Blok 1):
 
 | id | x | y | w | h |
 |---|---|---|---|---|
 | `drzwi` | 43.8 | 36.6 | 12.4 | 42.8 |
 
-**`scenes/biuro-anny.svg`** (Blok 3):
+**`scenes/biuro-anny.svg`** (Blok 2):
 
 | id | x | y | w | h |
 |---|---|---|---|---|

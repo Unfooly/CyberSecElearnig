@@ -15,59 +15,12 @@
   ],
   "blocks": [
     {
-      "id": "otwarcie",
-      "type": "NARRATIVE",
-      "title": "Otwarcie sprawy",
-      "narration": {
-        "text": "Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
-        "audioUrl": "audio/wyludzone-haslo/v1/otwarcie/561024f91447795d.mp3",
-        "durationMs": 27400,
-        "cues": [
-          {
-            "text": "Wtorek, 9:40.",
-            "startMs": 0
-          },
-          {
-            "text": "W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych.",
-            "startMs": 3100
-          },
-          {
-            "text": "Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej.",
-            "startMs": 8057
-          },
-          {
-            "text": "Anna twierdzi, że niczego nie wysyłała.",
-            "startMs": 14025
-          },
-          {
-            "text": "Bank twierdzi, że wszystko odbyło się prawidłowo.",
-            "startMs": 16776
-          },
-          {
-            "text": "Ktoś tu ma rację.",
-            "startMs": 19760
-          },
-          {
-            "text": "Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
-            "startMs": 21281
-          }
-        ]
-      },
-      "mascot": {
-        "pose": "greeting",
-        "text": "Cześć, detektywie. Mamy sprawę. Zbieraj dowody do notatnika — na końcu złożymy to w całość."
-      },
-      "text": "**Od czego zaczynamy?**\n\nOd miejsca zdarzenia. Biuro Anny — zobaczmy, co tam zostało.\n\nKlikaj wszystko, co wygląda podejrzanie. Nie wszystko jest dowodem, ale wszystko coś mówi."
-    },
-    {
       "id": "korytarz",
       "type": "SCENE_HOTSPOTS",
       "title": "Korytarz",
       "narration": {
-        "text": "Wtorek, 8:50. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "spokenText": "Wtorek, ósma pięćdziesiąt. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/9ce3cd658df3f572.mp3",
-        "durationMs": 11053
+        "text": "Wtorek, 9:40. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
+        "spokenText": "Wtorek, dziewiąta czterdzieści. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą."
       },
       "image": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",

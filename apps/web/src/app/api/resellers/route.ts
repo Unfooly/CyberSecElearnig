@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { proxyAuthenticated } from '@/lib/bff';
 import { pickFields } from '@/lib/pick-fields';
 
-// Panel operatora (D-069): lista partnerów i zakładanie nowego. Rolę (SUPER_ADMIN) sprawdza apps/api.
+// Panel operatora (D-070): lista partnerów i zakładanie nowego. Rolę (SUPER_ADMIN) sprawdza apps/api.
 export async function GET() {
   return proxyAuthenticated('GET', '/resellers');
 }

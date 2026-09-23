@@ -27,7 +27,7 @@ export interface OrganizationOverview {
     lastCheckedAt: string | null;
     txtRecord: { type: 'TXT'; host: string; value: string };
   } | null;
-  // Partner opiekujący się organizacją (D-069): SAMA nazwa, tylko do odczytu. Przypisanie i odłączenie
+  // Partner opiekujący się organizacją (D-070): SAMA nazwa, tylko do odczytu. Przypisanie i odłączenie
   // robi wyłącznie operator - klient nie ma takiej akcji. Opcjonalne dla zgodności ze starszymi testami.
   reseller?: { name: string } | null;
 }

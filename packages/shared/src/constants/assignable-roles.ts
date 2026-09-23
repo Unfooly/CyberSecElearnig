@@ -1,7 +1,7 @@
 import { Role } from '../enums/role.enum';
 
 // SUPER_ADMIN i RESELLER_ADMIN celowo wykluczone - to role operatora platformy
-// (panel operacyjny) i partnera (D-069), nadawane wyłącznie przez operatora, nie
+// (panel operacyjny) i partnera (D-070), nadawane wyłącznie przez operatora, nie
 // przez self-service invite/edycję w organizacji-kliencie. Używane zarówno w apps/api (walidacja DTO, @IsIn) jak i
 // apps/web (lista rozwijana ról w modalu zapraszania/edycji).
 // `as const` - pozwala apps/web zawęzić typ do dokładnie tych 3 wartości

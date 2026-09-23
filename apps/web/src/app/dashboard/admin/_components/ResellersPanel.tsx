@@ -9,7 +9,7 @@ import { Table, Td, Th, Tr } from '@/components/ui/Table';
 import type { AssignableOrganization, Reseller } from '@/lib/reseller-types';
 
 /**
- * Panel operatora (D-069): zakładanie partnerów i przypisywanie im organizacji klienckich.
+ * Panel operatora (D-070): zakładanie partnerów i przypisywanie im organizacji klienckich.
  * Wszystkie operacje idą przez trasy BFF (`/api/resellers/*`), a rolę SUPER_ADMIN sprawdza
  * apps/api - tu jest tylko interfejs. Klient nie ma odpowiednika tych akcji: przypisanie
  * i odłączenie resellera to wyłącznie decyzja operatora.

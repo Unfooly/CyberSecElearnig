@@ -64,7 +64,7 @@ describe('HomePage (landing)', () => {
     expect(() => HomePage()).toThrow('REDIRECT:/courses');
   });
 
-  // Role platformy mają własne panele (D-069) - /courses byłoby dla nich pustym ekranem klienta.
+  // Role platformy mają własne panele (D-070) - /courses byłoby dla nich pustym ekranem klienta.
   it.each([
     ['SUPER_ADMIN', '/dashboard/admin'],
     ['RESELLER_ADMIN', '/dashboard/reseller'],

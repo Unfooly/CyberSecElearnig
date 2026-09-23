@@ -116,7 +116,7 @@ describe('Topbar', () => {
     });
   });
 
-  describe('panele platformy: operator i partner (D-069)', () => {
+  describe('panele platformy: operator i partner (D-070)', () => {
     it('SUPER_ADMIN widzi WYŁĄCZNIE "Panel operatora" - bez kursów, zgłoszeń i kampanii klienta', () => {
       usePathnameMock.mockReturnValue('/dashboard/admin');
       render(<Topbar userEmail="operator@example.test" role={Role.SUPER_ADMIN} />);

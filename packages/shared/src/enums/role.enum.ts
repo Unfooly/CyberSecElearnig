@@ -1,6 +1,6 @@
 export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
-  // Partner sprzedający platformę i obsługujący wiele organizacji klienckich (D-069).
+  // Partner sprzedający platformę i obsługujący wiele organizacji klienckich (D-070).
   // Żyje w organizacji z `kind = RESELLER`, nie w organizacji klienta; widzi wyłącznie
   // listę przypisanych mu klientów, nigdy ich danych (wejście w organizację to osobny krok).
   RESELLER_ADMIN = 'RESELLER_ADMIN',

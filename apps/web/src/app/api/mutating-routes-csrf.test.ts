@@ -58,7 +58,7 @@ const PROTECTED: Row[] = [
   { route: './threat-reports/route.ts', method: 'POST', body: { sender: 'a@b.pl', subject: 'Temat' } },
   { route: './threat-reports/inbox/[id]/notes/route.ts', method: 'POST', params: { id: 'r1' }, body: { note: 'x' } },
   { route: './threat-reports/inbox/[id]/status/route.ts', method: 'POST', params: { id: 'r1' }, body: { status: 'SAFE' } },
-  // Panel operatora: partnerzy i przypisanie organizacji klienckich (D-069)
+  // Panel operatora: partnerzy i przypisanie organizacji klienckich (D-070)
   { route: './resellers/route.ts', method: 'POST', body: { name: 'Partner', adminEmail: 'a@b.pl', adminFirstName: 'A', adminLastName: 'B' } },
   { route: './resellers/[id]/organizations/route.ts', method: 'POST', params: { id: 'r1' }, body: { organizationId: 'o1' } },
   { route: './resellers/[id]/organizations/[organizationId]/route.ts', method: 'DELETE', params: { id: 'r1', organizationId: 'o1' } },

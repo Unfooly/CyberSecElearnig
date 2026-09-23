@@ -11,7 +11,7 @@ import Card, { CardHeader } from '@/components/ui/Card';
 import { Table, Td, Th, Tr } from '@/components/ui/Table';
 
 // Panel partnera (RESELLER_ADMIN - middleware.ts i RolesGuard w apps/api): lista obsługiwanych
-// organizacji. Krok 1 (D-069) celowo NIE daje dostępu do danych klienta - tylko metadane
+// organizacji. Krok 1 (D-070) celowo NIE daje dostępu do danych klienta - tylko metadane
 // organizacji. Wejście w organizację klienta to osobne zadanie (token zakresowany + audyt).
 export default async function ResellerPanelPage() {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;

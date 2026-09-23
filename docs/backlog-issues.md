@@ -131,7 +131,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: każda wymieniona sekcja poprawiona albo usunięta, z odnośnikiem do wpisu w `docs/decisions.md`.
 
 ### B-093 Domknięcie ról platformy (SUPER_ADMIN, RESELLER_ADMIN) na trasach klienckich
-- Etykiety: `P3`, `tech-debt`, `mod:auth` · Źródło: przegląd bezpieczeństwa PR z panelem resellera (D-069)
+- Etykiety: `P3`, `tech-debt`, `mod:auth` · Źródło: przegląd bezpieczeństwa PR z panelem resellera (D-070)
 - Opis: role platformy nie pracują w organizacji klienckiej, ale wciąż mieszczą się w `ALL_ROLES` w `middleware.ts`
   (`/courses`, `/report`, `/account`), więc technicznie wejdą pod te adresy i zobaczą ekran, który i tak nic nie pokaże
   (API odrzuca je jawną listą ról). To niespójność, nie luka: Topbar ukrywa te pozycje (`isPlatformRole`), a kontrolery
@@ -142,7 +142,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `@Roles` na `GamificationController`, testy ról dla obu zmian.
 
 ### B-092 Panel resellera (partner obsługujący wiele organizacji)
-- **Status: krok 1 zrobiony** (D-069): model danych (`kind = RESELLER`, rola `RESELLER_ADMIN`, `reseller_assignments`),
+- **Status: krok 1 zrobiony** (D-070): model danych (`kind = RESELLER`, rola `RESELLER_ADMIN`, `reseller_assignments`),
   panel operatora `/dashboard/admin` (zakładanie partnerów, przypisywanie i odłączanie klientów), panel partnera
   `/dashboard/reseller` (lista klientów - same metadane organizacji), nazwa opiekuna w ustawieniach klienta.
   **Do zrobienia pozostaje krok 2: „wejdź jako organizacja”** - token zakresowany na jedną organizację, audyt wejść

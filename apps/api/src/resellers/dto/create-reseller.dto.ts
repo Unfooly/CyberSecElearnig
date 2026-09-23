@@ -2,7 +2,7 @@ import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength } from 'class-validat
 import { NAME_PATTERN, NAME_PATTERN_MESSAGE } from '../../users/name-pattern';
 import { NormalizeEmail } from '../../common/transforms/normalize-email';
 
-/** Założenie partnera przez operatora: nazwa firmy i dane jej pierwszego administratora (D-069). */
+/** Założenie partnera przez operatora: nazwa firmy i dane jej pierwszego administratora (D-070). */
 export class CreateResellerDto {
   @IsString()
   @IsNotEmpty()

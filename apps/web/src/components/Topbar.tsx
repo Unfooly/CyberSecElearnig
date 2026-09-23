@@ -24,12 +24,12 @@ interface NavItem {
   visibleFor?: Role[];
   // Pozycja znika, gdy rola jest NIEZNANA (część stron administratora nie przekazuje jej do Topbara).
   // Potrzebne dla paneli operatora i partnera: pokazane administratorowi klienta byłyby pułapką -
-  // middleware nie wpuszcza go na te trasy i odsyła na /login, czyli wylogowuje (D-069).
+  // middleware nie wpuszcza go na te trasy i odsyła na /login, czyli wylogowuje (D-070).
   onlyForKnownRole?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  // Panele operatora i partnera (D-069): widoczne wyłącznie dla swoich ról - reszta menu
+  // Panele operatora i partnera (D-070): widoczne wyłącznie dla swoich ról - reszta menu
   // (kursy, zgłoszenia, kampanie) dotyczy organizacji klienckiej i ich nie dotyczy.
   { label: 'Panel operatora', href: '/dashboard/admin', built: true, visibleFor: [Role.SUPER_ADMIN], onlyForKnownRole: true },
   { label: 'Moi klienci', href: '/dashboard/reseller', built: true, visibleFor: [Role.RESELLER_ADMIN], onlyForKnownRole: true },
@@ -101,7 +101,7 @@ export default function Topbar({
 
   // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
   // Role platformy (operator, partner) nie pracują w organizacji klienckiej: nie mają kursów,
-  // zgłoszeń ani kampanii. Widzą wyłącznie swój panel (D-069).
+  // zgłoszeń ani kampanii. Widzą wyłącznie swój panel (D-070).
   const isPlatformRole = role === Role.SUPER_ADMIN || role === Role.RESELLER_ADMIN;
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (isPlatformRole) {

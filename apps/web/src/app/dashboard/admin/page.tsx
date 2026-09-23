@@ -10,7 +10,7 @@ import Card from '@/components/ui/Card';
 import ResellersPanel from './_components/ResellersPanel';
 
 // Panel operatora platformy (SUPER_ADMIN - middleware.ts i RolesGuard w apps/api): partnerzy
-// i przypisywanie im organizacji klienckich (D-069). Klient nie może tego zmienić sam.
+// i przypisywanie im organizacji klienckich (D-070). Klient nie może tego zmienić sam.
 export default async function AdminPanelPage() {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
   if (!accessToken) {

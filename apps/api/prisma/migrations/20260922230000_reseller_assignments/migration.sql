@@ -1,4 +1,4 @@
--- Panel resellera, krok 1 (D-069, zgłoszenie B-092): partner obsługujący wiele organizacji klienckich.
+-- Panel resellera, krok 1 (D-070, zgłoszenie B-092): partner obsługujący wiele organizacji klienckich.
 -- Reseller jest ZWYKŁĄ organizacją z `kind = RESELLER`, więc logowanie, sesje, zaproszenia i RLS działają
 -- bez nowego mechanizmu; różni się tylko rolą użytkowników (RESELLER_ADMIN) i tym, że nie ma pracowników.
 --

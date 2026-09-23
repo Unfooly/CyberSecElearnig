@@ -24,7 +24,7 @@ export function homePathForRole(role: Role | undefined): string {
 // (status organizacji zna tylko API - patrz apps/web/src/lib/organization.ts).
 export const ONBOARDING_PATH = '/onboarding';
 
-// Panele operatora platformy i partnera (D-069) - osobne strony startowe dla tych ról.
+// Panele operatora platformy i partnera (D-070) - osobne strony startowe dla tych ról.
 export const ADMIN_PANEL_PATH = '/dashboard/admin';
 export const RESELLER_PANEL_PATH = '/dashboard/reseller';
 

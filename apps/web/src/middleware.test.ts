@@ -179,7 +179,7 @@ describe('middleware', () => {
     });
   });
 
-  // D-069: panele platformy leżą pod /dashboard, więc ich wpisy MUSZĄ stać przed regułą
+  // D-070: panele platformy leżą pod /dashboard, więc ich wpisy MUSZĄ stać przed regułą
   // "/dashboard tylko ORG_ADMIN" (wygrywa pierwszy pasujący prefiks).
   describe('/dashboard/admin i /dashboard/reseller - panele operatora i partnera', () => {
     const tokenFor = (role: string) =>

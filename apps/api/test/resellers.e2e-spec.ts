@@ -8,7 +8,7 @@ import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { DEFAULT_TEST_PASSWORD, registerVerified } from './helpers/auth';
 
 /**
- * Panel resellera, krok 1 (D-069, zgłoszenie B-092).
+ * Panel resellera, krok 1 (D-070, zgłoszenie B-092).
  *
  * Najważniejsze w tych testach: izolacja PIĘTRO WYŻEJ niż zwykle - nie między organizacjami
  * klienckimi, tylko między PARTNERAMI. Reseller A nie może zobaczyć klientów resellera B,

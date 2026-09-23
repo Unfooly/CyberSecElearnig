@@ -1,4 +1,4 @@
-// Panel operatora i panel partnera (D-069). Typy odwzorowują DTO z apps/api/src/resellers/dto
+// Panel operatora i panel partnera (D-070). Typy odwzorowują DTO z apps/api/src/resellers/dto
 // pole-po-polu (ta sama praktyka co courses-types.ts; wspólne DTO to osobne zadanie, B-042).
 
 export interface Reseller {

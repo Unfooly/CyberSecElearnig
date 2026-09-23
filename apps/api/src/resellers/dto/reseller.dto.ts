@@ -1,4 +1,4 @@
-/** Partner w panelu operatora (D-069). Bez danych klienckich - same liczniki. */
+/** Partner w panelu operatora (D-070). Bez danych klienckich - same liczniki. */
 export class ResellerDto {
   id!: string;
   name!: string;

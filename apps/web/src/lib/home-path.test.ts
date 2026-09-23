@@ -5,7 +5,7 @@ import { homePathForRole, resolveHomePath } from './home-path';
 describe('homePathForRole', () => {
   it.each([
     [Role.ORG_ADMIN, '/dashboard'],
-    // Role platformy mają własne panele (D-069); wysłanie ich na /courses kończyłoby się
+    // Role platformy mają własne panele (D-070); wysłanie ich na /courses kończyłoby się
     // pustym ekranem klienta, a nie tym, po co się logują.
     [Role.SUPER_ADMIN, '/dashboard/admin'],
     [Role.RESELLER_ADMIN, '/dashboard/reseller'],

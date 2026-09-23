@@ -84,7 +84,7 @@ export class InviteExpiryService implements OnModuleInit {
             const stale = await tx.user.findMany({
               // ORG_ADMIN i RESELLER_ADMIN wyłączone: usunięcie jedynego administratora zostawiłoby
               // organizację ACTIVE bez kogokolwiek, kto może się do niej zalogować (dla partnera nie ma
-              // nawet sprzątania - to dotyczy wyłącznie organizacji PENDING). D-069.
+              // nawet sprzątania - to dotyczy wyłącznie organizacji PENDING). D-070.
               where: { organizationId, ...NEVER_ACTIVATED, role: { notIn: ['ORG_ADMIN', 'RESELLER_ADMIN'] }, createdAt: { lt: cutoff } },
               orderBy: { createdAt: 'asc' },
               take: BATCH_SIZE,

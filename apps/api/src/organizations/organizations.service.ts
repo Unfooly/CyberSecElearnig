@@ -33,7 +33,7 @@ export interface OrganizationOverview {
     // Dokładny rekord do wklejenia w DNS.
     txtRecord: { type: 'TXT'; host: string; value: string };
   } | null;
-  // Partner opiekujący się organizacją (D-069) - sama nazwa, tylko do odczytu; null = brak opiekuna.
+  // Partner opiekujący się organizacją (D-070) - sama nazwa, tylko do odczytu; null = brak opiekuna.
   reseller: { name: string } | null;
 }
 
@@ -56,7 +56,7 @@ export class OrganizationsService {
         where: { organizationId },
         select: { legalName: true, taxId: true, addressLine: true, postalCode: true, city: true, country: true },
       });
-      // Opiekun (reseller): SAMA NAZWA, bez historii wejść - decyzja właściciela produktu (D-069).
+      // Opiekun (reseller): SAMA NAZWA, bez historii wejść - decyzja właściciela produktu (D-070).
       // Klient nie może tego zmienić ani odłączyć; przypisanie zmienia wyłącznie operator.
       // Tabela jest globalna (jak `organizations`), więc czytamy ją zwykłym zapytaniem, bez obejścia RLS.
       const resellerAssignment = await tx.resellerAssignment.findUnique({

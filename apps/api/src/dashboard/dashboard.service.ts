@@ -309,7 +309,7 @@ export class DashboardService {
     const { organizations, users, assignments } = await this.tenantPrisma.runCrossOrgQuery(async (tx) => {
       const [organizations, users, assignments] = await Promise.all([
         tx.organization.findMany({
-          // Wyłącznie organizacje KLIENCKIE: organizacje partnerów (kind = RESELLER, D-069) nie mają
+          // Wyłącznie organizacje KLIENCKIE: organizacje partnerów (kind = RESELLER, D-070) nie mają
           // pracowników ani szkoleń, więc w raporcie zgodności byłyby wierszem z zerami i psuły obraz.
           where: { kind: OrganizationKind.CLIENT },
           select: { id: true, name: true, plan: true, seatsLimit: true },

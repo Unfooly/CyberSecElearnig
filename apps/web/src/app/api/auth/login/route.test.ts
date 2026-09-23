@@ -188,7 +188,7 @@ describe('POST /api/auth/login - redirectTo wg roli z JWT', () => {
     ['ORG_ADMIN', '/dashboard'],
     ['EMPLOYEE', '/courses'],
     ['DEPARTMENT_MANAGER', '/courses'],
-    // Role platformy mają własne panele (D-069).
+    // Role platformy mają własne panele (D-070).
     ['SUPER_ADMIN', '/dashboard/admin'],
     ['RESELLER_ADMIN', '/dashboard/reseller'],
   ])('%s => %s', async (role, expected) => {

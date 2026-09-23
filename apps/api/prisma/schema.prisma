@@ -16,14 +16,14 @@ enum Plan {
 
 enum Role {
   SUPER_ADMIN
-  /// Partner obsługujący wiele organizacji klienckich (D-069). Nadaje ją wyłącznie operator.
+  /// Partner obsługujący wiele organizacji klienckich (D-070). Nadaje ją wyłącznie operator.
   RESELLER_ADMIN
   ORG_ADMIN
   DEPARTMENT_MANAGER
   EMPLOYEE
 }
 
-/// Organizacja kliencka (domyślnie) albo organizacja partnera-resellera (D-069).
+/// Organizacja kliencka (domyślnie) albo organizacja partnera-resellera (D-070).
 /// Reseller jest zwykłą organizacją, dzięki czemu logowanie, sesje, zaproszenia i RLS
 /// działają bez żadnego nowego mechanizmu - różni się tylko rolą swoich użytkowników
 /// i tym, że nie ma pracowników ani szkoleń.
@@ -87,7 +87,7 @@ model Organization {
   // Nazwa wyświetlana podana przy rejestracji (NIE jest wyprowadzana z domeny
   // e-maila i NIE jest unikalna - o własności domeny rozstrzyga weryfikacja DNS).
   name                    String
-  /// CLIENT (domyślnie) albo RESELLER - organizacja partnera, tworzona wyłącznie przez operatora (D-069).
+  /// CLIENT (domyślnie) albo RESELLER - organizacja partnera, tworzona wyłącznie przez operatora (D-070).
   kind                    OrganizationKind   @default(CLIENT)
   plan                    Plan               @default(TRIAL)
   seatsLimit              Int                @default(10)
@@ -131,7 +131,7 @@ model Organization {
   pendingAdminClaims         PendingAdminClaim[]
   threatReportNotification   ThreatReportNotificationState?
   userAvatarImages           UserAvatarImage[]
-  /// Klienci obsługiwani przez tę organizację, gdy jest resellerem (D-069).
+  /// Klienci obsługiwani przez tę organizację, gdy jest resellerem (D-070).
   resellerClients            ResellerAssignment[] @relation("ResellerClients")
   /// Przypisanie do resellera, gdy ta organizacja jest klientem (najwyżej jedno).
   resellerAssignment         ResellerAssignment?  @relation("ClientReseller")
@@ -830,7 +830,7 @@ model Badge {
   @@map("badges")
 }
 
-/// Kto obsługuje którą organizację kliencką (D-069, zgłoszenie B-092). Tabela GLOBALNA -
+/// Kto obsługuje którą organizację kliencką (D-070, zgłoszenie B-092). Tabela GLOBALNA -
 /// jak `organizations`, bez RLS: to metadana platformy, nie dane klienckie. Zapis i odczyt
 /// wyłącznie przez endpointy operatora (SUPER_ADMIN) oraz listę własnych klientów resellera,
 /// gdzie warunek `resellerOrganizationId` bierze się z tokena, nie z żądania.

@@ -577,7 +577,7 @@ describe('Pierwszeństwo do adresu, brak sondy istnienia kont, wygasanie zaprosz
       await make(orgA, 'swiezy', { createdAt: new Date(Date.now() - 29 * DAY) });
       await make(orgA, 'aktywny', { createdAt: OLD, status: 'ACTIVE', emailVerifiedAt: new Date() });
       await make(orgA, 'admin', { createdAt: OLD, role: 'ORG_ADMIN' });
-      // Administrator partnera (D-069) jest jedynym kontem swojej organizacji, a ta startuje jako
+      // Administrator partnera (D-070) jest jedynym kontem swojej organizacji, a ta startuje jako
       // ACTIVE i nie podlega sprzątaniu - skasowanie go zostawiłoby organizację bez nikogo.
       await make(orgA, 'partner', { createdAt: OLD, role: 'RESELLER_ADMIN' });
       await make(orgB, 'starb', { createdAt: OLD });

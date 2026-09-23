@@ -3,7 +3,7 @@ import { proxyAuthenticated } from '@/lib/bff';
 import { isSafeId } from '@/lib/safe-id';
 import { pickFields } from '@/lib/pick-fields';
 
-// Przypisanie organizacji klienckiej do partnera (operator, D-069). Ścieżka składana wyłącznie
+// Przypisanie organizacji klienckiej do partnera (operator, D-070). Ścieżka składana wyłącznie
 // z identyfikatora sprawdzonego przez isSafeId; ciało z allowlisty. Rolę sprawdza apps/api.
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   if (!isSafeId(params.id)) {

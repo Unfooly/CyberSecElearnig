@@ -146,7 +146,7 @@ export default function SettingsClient({ organization }: { organization: Organiz
       </Card>
 
       {/* Opiekun (partner): sama nazwa, bez historii wejść i bez możliwości zmiany - przypisanie
-          i odłączenie resellera to wyłącznie decyzja operatora platformy (D-069). */}
+          i odłączenie resellera to wyłącznie decyzja operatora platformy (D-070). */}
       {organization.reseller && (
         <Card>
           <CardHeader title="Opieka partnera" />

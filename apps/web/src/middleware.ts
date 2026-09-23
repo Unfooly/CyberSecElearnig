@@ -21,7 +21,7 @@ const ALL_ROLES = Object.values(Role);
 const PROTECTED_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   // KOLEJNOŚĆ MA ZNACZENIE: wygrywa PIERWSZY pasujący prefiks, więc trasy głębsze niż
   // /dashboard muszą stać przed nim - inaczej wpadłyby pod regułę "/dashboard tylko ORG_ADMIN".
-  // Panel operatora platformy (partnerzy, organizacje) - wyłącznie SUPER_ADMIN (D-069).
+  // Panel operatora platformy (partnerzy, organizacje) - wyłącznie SUPER_ADMIN (D-070).
   { prefix: '/dashboard/admin', roles: [Role.SUPER_ADMIN] },
   // Panel partnera: lista jego klientów. Bez dostępu do danych klienta (to osobny krok).
   { prefix: '/dashboard/reseller', roles: [Role.RESELLER_ADMIN] },

@@ -15,7 +15,7 @@ const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 const RESELLER_SEATS_LIMIT = 5;
 
 /**
- * Panel resellera, krok 1 (D-069, zgłoszenie B-092).
+ * Panel resellera, krok 1 (D-070, zgłoszenie B-092).
  *
  * Partner jest ZWYKŁĄ organizacją z `kind = RESELLER`, więc logowanie, sesje, zaproszenia i RLS
  * działają bez nowego mechanizmu. Ten serwis dotyka WYŁĄCZNIE dwóch tabel globalnych
@@ -136,7 +136,7 @@ export class ResellersService {
     }));
   }
 
-  /** Przypisanie klienta do partnera. Wyłącznie operator (D-069): klient nie może tego zmienić. */
+  /** Przypisanie klienta do partnera. Wyłącznie operator (D-070): klient nie może tego zmienić. */
   async assignOrganization(resellerOrganizationId: string, organizationId: string, actorEmail: string): Promise<void> {
     await this.assertReseller(resellerOrganizationId);
     const organization = await this.prisma.organization.findUnique({

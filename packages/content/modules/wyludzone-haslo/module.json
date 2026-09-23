@@ -60,6 +60,28 @@
       "text": "**Od czego zaczynamy?**\n\nOd miejsca zdarzenia. Biuro Anny — zobaczmy, co tam zostało.\n\nKlikaj wszystko, co wygląda podejrzanie. Nie wszystko jest dowodem, ale wszystko coś mówi."
     },
     {
+      "id": "korytarz",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Korytarz",
+      "narration": {
+        "text": "Wtorek, 8:50. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
+        "spokenText": "Wtorek, ósma pięćdziesiąt. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą."
+      },
+      "image": "scenes/korytarz.svg",
+      "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
+      "hotspots": [
+        {
+          "id": "drzwi",
+          "label": "Drzwi do księgowości",
+          "x": 43.8,
+          "y": 36.6,
+          "width": 12.4,
+          "height": 42.8,
+          "action": "next"
+        }
+      ]
+    },
+    {
       "id": "biuro-anny",
       "type": "SCENE_HOTSPOTS",
       "title": "Biuro Anny",
@@ -87,16 +109,21 @@
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
       "image": "assets/wyludzone-haslo/scenes/biuro-anny.4e3b436a.svg",
-      "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą.",
+      "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
           "id": "karteczka",
           "label": "Żółta karteczka",
-          "x": 52.5,
-          "y": 25.5,
-          "width": 7,
-          "height": 9.5,
+          "x": 53.3,
+          "y": 24.2,
+          "width": 7.9,
+          "height": 11.6,
           "content": "Na karteczce: „Nortex2024!” — a niżej dopisek długopisem: bank: to samo.",
+          "media": {
+            "kind": "image",
+            "src": "scenes/karteczka-zoom.svg",
+            "alt": "Zbliżenie żółtej karteczki: hasło „Nortex2024!” i dopisek „bank: to samo”"
+          },
           "evidence": true,
           "note": {
             "text": "Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku.",
@@ -107,26 +134,55 @@
         {
           "id": "monitor",
           "label": "Monitor",
-          "x": 30,
-          "y": 28,
-          "width": 26.5,
-          "height": 29.5,
+          "x": 30.8,
+          "y": 27.2,
+          "width": 27.3,
+          "height": 34.8,
           "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
-          "evidence": true,
-          "note": {
-            "text": "Mail od „Banku Wektor” z 8:47, temat: pilna weryfikacja konta.",
-            "kind": "mail"
+          "media": {
+            "kind": "scene",
+            "scene": {
+              "image": "scenes/pulpit.svg",
+              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Przelewy, Internet, Faktury, Kosz; pasek zadań pokazuje 8:52.",
+              "hotspots": [
+                {
+                  "id": "outlook",
+                  "label": "Poczta",
+                  "x": 4.2,
+                  "y": 5,
+                  "width": 17.7,
+                  "height": 28.1,
+                  "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
+                  "media": {
+                    "kind": "image",
+                    "src": "scenes/mail-na-ekranie.svg",
+                    "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
+                  },
+                  "evidence": true,
+                  "note": {
+                    "text": "Mail od „Banku Wektor” z 8:47, temat: pilna weryfikacja konta.",
+                    "kind": "mail"
+                  },
+                  "required": false
+                }
+              ]
+            }
           },
           "required": true
         },
         {
           "id": "telefon",
           "label": "Telefon stacjonarny",
-          "x": 62,
-          "y": 52,
-          "width": 12,
-          "height": 11.5,
-          "content": "Nieodebrane połączenie z 9:05, numer zastrzeżony. Na wyświetlaczu notatka Anny: „informatyk, oddzwonić”.",
+          "x": 59.5,
+          "y": 51.4,
+          "width": 12.3,
+          "height": 12.8,
+          "content": "Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje.",
+          "media": {
+            "kind": "audio",
+            "audioUrl": "audio/poczta-glosowa.mp3",
+            "transcript": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot."
+          },
           "evidence": true,
           "note": {
             "text": "Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała „informatyk”.",
@@ -137,11 +193,16 @@
         {
           "id": "kalendarz",
           "label": "Kalendarz ścienny",
-          "x": 79.5,
-          "y": 11.5,
-          "width": 12.5,
-          "height": 23,
+          "x": 73.3,
+          "y": 11.2,
+          "width": 13,
+          "height": 23.6,
           "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
+          "media": {
+            "kind": "image",
+            "src": "scenes/kalendarz-zoom.svg",
+            "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
+          },
           "evidence": true,
           "note": {
             "text": "Anna miała dziś termin przelewów do 15:00 — działała pod presją.",
@@ -152,11 +213,16 @@
         {
           "id": "drukarka",
           "label": "Drukarka",
-          "x": 6.5,
-          "y": 51.5,
-          "width": 15,
-          "height": 14,
+          "x": 8.9,
+          "y": 51.2,
+          "width": 15.4,
+          "height": 14.6,
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
+          "media": {
+            "kind": "image",
+            "src": "scenes/wydruk.svg",
+            "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
+          },
           "evidence": true,
           "note": {
             "text": "Przelew z 9:12 na nieznaną firmę „Wektor Rozliczenia”, tytuł „weryfikacja salda”.",
@@ -167,12 +233,21 @@
         {
           "id": "kubek",
           "label": "Kubek z kawą",
-          "x": 21,
-          "y": 54,
+          "x": 24.5,
+          "y": 53.7,
           "width": 6,
-          "height": 7,
+          "height": 7.8,
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "required": false
+        },
+        {
+          "id": "drzwi",
+          "label": "Wyjście",
+          "x": 87.9,
+          "y": 36.6,
+          "width": 12.1,
+          "height": 42.8,
+          "action": "next"
         }
       ],
       "reactions": {
@@ -649,27 +724,27 @@
       "items": [
         {
           "id": "mail",
-          "text": "8:47 — Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl."
+          "text": "Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl."
         },
         {
           "id": "link",
-          "text": "8:58 — Anna klika link i wpisuje login oraz hasło na fałszywej stronie."
+          "text": "Anna klika link i wpisuje login oraz hasło na fałszywej stronie."
         },
         {
           "id": "login",
-          "text": "9:03 — Oszust loguje się do prawdziwego banku danymi Anny."
+          "text": "Oszust loguje się do prawdziwego banku danymi Anny."
         },
         {
           "id": "telefon",
-          "text": "9:05 — „Informatyk” dzwoni po kod SMS, żeby anulować operację."
+          "text": "„Informatyk” dzwoni po kod SMS, żeby anulować operację."
         },
         {
           "id": "kod",
-          "text": "9:06 — Anna podaje kod; oszust zatwierdza przelew."
+          "text": "Anna podaje kod; oszust zatwierdza przelew."
         },
         {
           "id": "przelew",
-          "text": "9:12 — 14 000 zł wychodzi na konto „Wektor Rozliczenia”."
+          "text": "14 000 zł wychodzi na konto „Wektor Rozliczenia”."
         }
       ],
       "scoring": "partial",

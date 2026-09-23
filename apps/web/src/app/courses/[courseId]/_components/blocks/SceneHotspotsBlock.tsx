@@ -122,6 +122,12 @@ export default function SceneHotspotsBlock({
     setInteracted(true);
     overlayTriggerRef.current = trigger;
     setActiveId(id);
+    // Obronnie (code review, D-073): poprawność stosu 2-poziomowego opiera się na tym, że nie da się otworzyć innego
+    // zewnętrznego hotspotu, gdy nakładka jest już otwarta (przycisk jest wtedy zasłonięty i poza kolejnością Tab) -
+    // ale to inwariant UI, nie coś, na czym stan POWINIEN polegać. Jawny reset na wypadek, gdyby ten inwariant kiedyś
+    // przestał obowiązywać (np. przez przyszły refaktor): bez tego nowo otwarty zewnętrzny hotspot mógłby pokazać
+    // "current" ze STAREJ zagnieżdżonej sceny, gdyby miała hotspot o tym samym id.
+    setNestedActiveId(null);
     markVisited(id);
   }
 

@@ -137,6 +137,15 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
+  it('błąd wczytania OBRAZU (poprawna ścieżka, np. 404 z CDN - onError, nie zła ścieżka od startu) chowa punkty: bez chipów jako zapasowej ścieżki są teraz nieosiągalne (code review: to inny warunek niż "zła ścieżka", oba muszą działać)', () => {
+    setup(scene, { summary });
+    expect(screen.getByRole('img')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Monitor' })).toBeInTheDocument();
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument();
+  });
+
   it('kliknięty punkt otwiera nakładkę NA scenie (role=dialog); "Dodaj do notatnika" zalicza dowód, wpis z ikoną rodzaju, licznik i maskotka reagują; "Wróć" zamyka i oddaje fokus', () => {
     const { onSubmit, ready } = setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
@@ -409,7 +418,8 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     expect(ready.current).toBeNull();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Kosz' }));
     expect(ready.current).toBeNull(); // kubek (zewnętrzny) jeszcze nieodwiedzony
-    back(); // pulpit -> zamyka
+    back(); // kosz (mail-level karta) -> pulpit
+    back(); // pulpit -> zamyka nakładkę całkowicie
     pick('Kubek');
     back();
     expect(ready.current).not.toBeNull();

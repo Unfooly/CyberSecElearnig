@@ -20,8 +20,8 @@
       "title": "Otwarcie sprawy",
       "narration": {
         "text": "Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
-        "audioUrl": "audio/wyludzone-haslo/v1/otwarcie/90b4b96e1eb0cd0c.mp3",
-        "durationMs": 27632,
+        "audioUrl": "audio/wyludzone-haslo/v1/otwarcie/561024f91447795d.mp3",
+        "durationMs": 27400,
         "cues": [
           {
             "text": "Wtorek, 9:40.",
@@ -29,27 +29,27 @@
           },
           {
             "text": "W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych.",
-            "startMs": 2345
+            "startMs": 3100
           },
           {
             "text": "Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej.",
-            "startMs": 7860
+            "startMs": 8057
           },
           {
             "text": "Anna twierdzi, że niczego nie wysyłała.",
-            "startMs": 14420
+            "startMs": 14025
           },
           {
             "text": "Bank twierdzi, że wszystko odbyło się prawidłowo.",
-            "startMs": 16916
+            "startMs": 16776
           },
           {
             "text": "Ktoś tu ma rację.",
-            "startMs": 20121
+            "startMs": 19760
           },
           {
             "text": "Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.",
-            "startMs": 21583
+            "startMs": 21281
           }
         ]
       },
@@ -65,9 +65,11 @@
       "title": "Korytarz",
       "narration": {
         "text": "Wtorek, 8:50. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "spokenText": "Wtorek, ósma pięćdziesiąt. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą."
+        "spokenText": "Wtorek, ósma pięćdziesiąt. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
+        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/9ce3cd658df3f572.mp3",
+        "durationMs": 11053
       },
-      "image": "scenes/korytarz.svg",
+      "image": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
       "hotspots": [
         {
@@ -87,8 +89,8 @@
       "title": "Biuro Anny",
       "narration": {
         "text": "Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
-        "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/1bfab24b3440464e.mp3",
-        "durationMs": 10960,
+        "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/7a5f0aeb354f1d3f.mp3",
+        "durationMs": 10913,
         "cues": [
           {
             "text": "Biuro Anny wygląda jak każde inne.",
@@ -96,11 +98,11 @@
           },
           {
             "text": "Biurko, monitor, telefon, kubek po kawie.",
-            "startMs": 2775
+            "startMs": 2984
           },
           {
             "text": "Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
-            "startMs": 7012
+            "startMs": 6490
           }
         ]
       },
@@ -108,7 +110,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.4e3b436a.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.0177a2e4.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
@@ -121,7 +123,7 @@
           "content": "Na karteczce: „Nortex2024!” — a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "scenes/karteczka-zoom.svg",
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e0f18a.svg",
             "alt": "Zbliżenie żółtej karteczki: hasło „Nortex2024!” i dopisek „bank: to samo”"
           },
           "evidence": true,
@@ -142,7 +144,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "scenes/pulpit.svg",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.c3e94060.svg",
               "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Przelewy, Internet, Faktury, Kosz; pasek zadań pokazuje 8:52.",
               "hotspots": [
                 {
@@ -155,7 +157,7 @@
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "scenes/mail-na-ekranie.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.2767b4f1.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -180,7 +182,7 @@
           "content": "Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje.",
           "media": {
             "kind": "audio",
-            "audioUrl": "audio/poczta-glosowa.mp3",
+            "audioUrl": "assets/wyludzone-haslo/audio/poczta-glosowa.513da5fc.mp3",
             "transcript": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot."
           },
           "evidence": true,
@@ -200,7 +202,7 @@
           "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
           "media": {
             "kind": "image",
-            "src": "scenes/kalendarz-zoom.svg",
+            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.06cb2820.svg",
             "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
           },
           "evidence": true,
@@ -220,7 +222,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "scenes/wydruk.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.34985292.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -263,8 +265,8 @@
       "title": "Rozmowa z Anną",
       "narration": {
         "text": "Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-anna/c48febdc399e571b.mp3",
-        "durationMs": 10542,
+        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-anna/06ac7fb55530441f.mp3",
+        "durationMs": 11656,
         "cues": [
           {
             "text": "Anna wróciła od telefonu.",
@@ -272,11 +274,11 @@
           },
           {
             "text": "Jest roztrzęsiona, ale chce pomóc.",
-            "startMs": 2067
+            "startMs": 2125
           },
           {
             "text": "Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
-            "startMs": 4412
+            "startMs": 5004
           }
         ]
       },
@@ -287,7 +289,7 @@
       "character": {
         "name": "Anna Kowalska",
         "role": "księgowa w Nortex Sp. z o.o.",
-        "avatar": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg",
+        "avatar": "assets/wyludzone-haslo/avatars/anna.06a4b7f7.svg",
         "opening": "Ja naprawdę nic nie zrobiłam. Znaczy… zrobiłam to, co kazali."
       },
       "questions": [
@@ -397,8 +399,8 @@
       "weight": 3,
       "narration": {
         "text": "Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
-        "audioUrl": "audio/wyludzone-haslo/v1/ten-mail/b713c198c1418a33.mp3",
-        "durationMs": 10820,
+        "audioUrl": "audio/wyludzone-haslo/v1/ten-mail/3c9b7959f45165eb.mp3",
+        "durationMs": 12028,
         "cues": [
           {
             "text": "Oto wiadomość, od której wszystko się zaczęło.",
@@ -406,11 +408,11 @@
           },
           {
             "text": "Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli.",
-            "startMs": 2879
+            "startMs": 2949
           },
           {
             "text": "Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
-            "startMs": 7175
+            "startMs": 7964
           }
         ]
       },
@@ -545,8 +547,8 @@
       "title": "Akta sprawy",
       "narration": {
         "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać.",
-        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/e980488ab70207dc.mp3",
-        "durationMs": 6548,
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/2e4796ce9e4b1181.mp3",
+        "durationMs": 7152,
         "cues": [
           {
             "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt.",
@@ -554,7 +556,7 @@
           },
           {
             "text": "Trzy rzeczy, które każdy w Nortex powinien znać.",
-            "startMs": 3564
+            "startMs": 3796
           }
         ]
       },
@@ -586,8 +588,8 @@
       "title": "Rozmowa z Markiem z IT",
       "narration": {
         "text": "Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-marek/7af1d78855544b7e.mp3",
-        "durationMs": 7802,
+        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-marek/8f7ee5eba0bbea22.mp3",
+        "durationMs": 7988,
         "cues": [
           {
             "text": "Marek wrócił z urlopu wczoraj wieczorem.",
@@ -595,11 +597,11 @@
           },
           {
             "text": "Dziś rano zastał pożar.",
-            "startMs": 2601
+            "startMs": 2473
           },
           {
             "text": "Ma logi — i ma coś, czego Anna nie wie.",
-            "startMs": 4377
+            "startMs": 4238
           }
         ]
       },
@@ -610,7 +612,7 @@
       "character": {
         "name": "Marek Zieliński",
         "role": "administrator IT (jednoosobowy dział)",
-        "avatar": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg",
+        "avatar": "assets/wyludzone-haslo/avatars/marek.124879dd.svg",
         "opening": "Nie mów mi, że karteczka. Błagam, nie karteczka."
       },
       "questions": [
@@ -699,8 +701,8 @@
       "weight": 2,
       "narration": {
         "text": "Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rekonstrukcja/687b4fc9cb569015.mp3",
-        "durationMs": 5062,
+        "audioUrl": "audio/wyludzone-haslo/v1/rekonstrukcja/c7eb9bb462503fd0.mp3",
+        "durationMs": 5805,
         "cues": [
           {
             "text": "Sześć zdarzeń.",
@@ -708,11 +710,11 @@
           },
           {
             "text": "Jedna kolejność.",
-            "startMs": 1324
+            "startMs": 1358
           },
           {
             "text": "Ułóż je tak, jak naprawdę się wydarzyły.",
-            "startMs": 2589
+            "startMs": 2775
           }
         ]
       },
@@ -770,8 +772,8 @@
       "weight": 1,
       "narration": {
         "text": "Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem.",
-        "audioUrl": "audio/wyludzone-haslo/v1/ostatnie-pytanie/93869a10e370af29.mp3",
-        "durationMs": 6037,
+        "audioUrl": "audio/wyludzone-haslo/v1/ostatnie-pytanie/046e257f21ea0267.mp3",
+        "durationMs": 5619,
         "cues": [
           {
             "text": "Zostało jedno pytanie.",
@@ -779,7 +781,7 @@
           },
           {
             "text": "Najważniejsze — bo to ono uratuje cię następnym razem.",
-            "startMs": 1707
+            "startMs": 1602
           }
         ]
       },
@@ -826,8 +828,8 @@
       "title": "Rozwiązanie sprawy",
       "narration": {
         "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/9096ffe95f992b1d.mp3",
-        "durationMs": 21223,
+        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/01c92de143a8711c.mp3",
+        "durationMs": 21734,
         "cues": [
           {
             "text": "Sprawa Anny nie była sprawą o głupotę.",
@@ -835,19 +837,19 @@
           },
           {
             "text": "Była sprawą o pośpiech, zaufanie i jedną karteczkę.",
-            "startMs": 2833
+            "startMs": 3100
           },
           {
             "text": "Oszust nie złamał żadnego zabezpieczenia.",
-            "startMs": 6920
+            "startMs": 7279
           },
           {
             "text": "Poprosił — i dostał.",
-            "startMs": 9729
+            "startMs": 10368
           },
           {
             "text": "Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
-            "startMs": 12225
+            "startMs": 12434
           }
         ]
       },

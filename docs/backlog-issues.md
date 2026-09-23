@@ -491,7 +491,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   "powtórka" w `awardCourseCompletion`); to świadomie zaakceptowany, udokumentowany w D-069 kompromis, nie
   przeoczenie.
 
-### B-071 Archiwizacja kursów zamiast usuwania (dokończenie B-032)
+### B-092 `scripts/content/src/tts.test.ts` - test "--assets --check --remote bez konfiguracji" kruchy względem lokalnego `.env.local`
+- Etykiety: `P3`, `tech-debt`, `mod:import` · Źródło: code review PR `feat/player-polish` (D-070)
+- Opis: test zakłada BRAK konfiguracji R2 (`R2_ENDPOINT` itd.) w środowisku, żeby dostać oczekiwany komunikat błędu z
+  nazwami brakujących zmiennych; u developera z prawdziwym, skonfigurowanym `.env.local` (potrzebnym do realnych
+  przebiegów `scripts/content` z ElevenLabs/R2) test dostaje inny błąd ("Brak pliku module.json") i failuje - nie z
+  powodu regresji w kodzie, tylko dlatego że sekret akurat jest obecny lokalnie. Sieć w testach jest i tak
+  zablokowana na poziomie `vitest.setup.ts` (D-060), więc nic realnie się nie łączy - to czysto kwestia tego, co
+  test widzi jako "skonfigurowane".
+- Akceptacja: test jawnie przesłania `R2_*` pustymi/nieprawidłowymi wartościami (albo w inny sposób symuluje "brak
+  konfiguracji" niezależnie od realnego `.env.local` na dysku developera), zamiast polegać na nieobecności sekretu.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

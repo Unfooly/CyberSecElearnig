@@ -148,7 +148,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   **Do zrobienia pozostaje krok 2: „wejdź jako organizacja”** - token zakresowany na jedną organizację, audyt wejść
   (niepokazywany klientowi), natychmiastowe unieważnianie dostępu, a wraz z nim wpis do checklisty prywatności.
   Otwarte także: kto zakłada organizacje klienckie (operator czy partner), co przy rozstaniu z partnerem (okres
-  przejściowy i tryb tylko do odczytu), limity puli licencji, white-label.
+  przejściowy i tryb tylko do odczytu), limity puli licencji (dziś `RESELLER_SEATS_LIMIT = 5` na sztywno w
+  `apps/api/src/resellers/resellers.service.ts` - wystarcza na samo konto administratora partnera, ale krok 2 daje
+  partnerowi więcej ludzi; uwaga z przeglądu bezpieczeństwa kroku 1), white-label.
 - Etykiety: `P3`, `feature`, `mod:auth`, `mod:db` · Źródło: rozmowa z właścicielem produktu 2026-09-22
 - Opis: sprzedaż przez partnerów (firmy IT, MSP, biura rachunkowe), którzy obsługują wiele organizacji klienckich. Wpis powstał po rozmowie
   koncepcyjnej - **nie implementować bez wpisu w `docs/decisions.md`** (CLAUDE.md, `decision-needed`). Wobec listy MVP (moduły 1-5, dokumenty

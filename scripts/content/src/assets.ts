@@ -14,8 +14,22 @@ import type { ObjectStore } from './types.js';
 // zostać pod swoją oryginalną nazwą na stałe (autor go nie przenosi). Zmiana treści pliku (ta sama nazwa) to NOWY klucz przy następnym
 // uruchomieniu; stary zostaje w magazynie, bo starsze wersje kursu mogą na niego wskazywać (D-051).
 
-/** Pola-ścieżki zasobów w blokach (wzorce; `*` = każdy element tablicy). Zgodne ze schematem treści (packages/content/src/blocks.ts). */
-export const ASSET_PATHS: string[][] = [['image'], ['character', 'avatar']];
+/**
+ * Pola-ścieżki zasobów w blokach (wzorce; `*` = każdy element tablicy). Zgodne ze schematem treści
+ * (packages/content/src/blocks.ts). hotspots[].media.{src,audioUrl}: obraz/audio karty hotspotu (B-086/D-071) - audio
+ * hotspotu to GOTOWY plik z --assets (jak obraz), NIE przechodzi przez silnik TTS/cues narracji (scripts/content/src/
+ * pipeline.ts, osobny potok). Zagnieżdżona scena (media.kind:'scene') ma WŁASNY obraz i własne, wewnętrzne hotspoty -
+ * zawsze dokładnie jeden poziom (packages/content's innerHotspotSchema), więc bez rekurencji tutaj też.
+ */
+export const ASSET_PATHS: string[][] = [
+  ['image'],
+  ['character', 'avatar'],
+  ['hotspots', '*', 'media', 'src'],
+  ['hotspots', '*', 'media', 'audioUrl'],
+  ['hotspots', '*', 'media', 'scene', 'image'],
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'src'],
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
+];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).
 const SVG_DECODER = new TextDecoder('utf-8', { fatal: true });
@@ -27,7 +41,13 @@ const CONTENT_TYPE: Record<string, string> = {
   jpeg: 'image/jpeg',
   webp: 'image/webp',
   avif: 'image/avif',
+  mp3: 'audio/mpeg',
 };
+
+// Jak w scripts/content/src/pipeline.ts (toClassificationPath): `*` w ASSET_PATHS odpowiada `[]` w zapisie ścieżek
+// FIELD_CLASSIFICATION (packages/content/src/blocks.ts) - te dwie konwencje muszą się zgadzać, inaczej sprawdzenie
+// niżej zawsze fałszywie by "nie znajdowało" pola z tablicą.
+const toClassificationPath = (path: string[]) => path.map((part) => (part === '*' ? '[]' : `.${part}`)).join('').replace(/^\./, '');
 
 /**
  * Wiąże ASSET_PATHS z klasyfikacją pól: każde pole musi istnieć w klasyfikacji i być `client` (publiczny magazyn nie może zawierać pola
@@ -36,7 +56,7 @@ const CONTENT_TYPE: Record<string, string> = {
  */
 export function assertAssetPathsClassified(classification: Record<string, { client: string[]; secret: string[] }> = contentIndex.FIELD_CLASSIFICATION): void {
   for (const path of ASSET_PATHS) {
-    const dotted = path.join('.');
+    const dotted = toClassificationPath(path);
     const owners = Object.entries(classification).filter(([, fields]) => fields.client.includes(dotted) || fields.secret.includes(dotted));
     if (owners.length === 0) throw new Error(`ASSET_PATHS: pole "${dotted}" nie istnieje w klasyfikacji pól (schemat się zmienił?).`);
     for (const [type, fields] of owners) {
@@ -58,6 +78,12 @@ export interface AssetRef {
 function expandAsset(node: unknown, path: string[], trail: string[]): { holder: Json; key: string; trail: string[] }[] {
   const [head, ...rest] = path;
   if (rest.length === 0) return isObject(node) && typeof node[head] === 'string' ? [{ holder: node, key: head, trail: [...trail, head] }] : [];
+  if (head === '*') {
+    // Jak scripts/content/src/pipeline.ts's expand(): brak dopasowania (np. media.kind inny niż oczekiwany dla tej
+    // ścieżki - pole po prostu nie istnieje) to cicho pusta lista, nie błąd - to samo pole może pasować do wielu
+    // wzorców ASSET_PATHS (media.src dla image, media.audioUrl dla audio), z których tylko jeden trafi.
+    return Array.isArray(node) ? node.flatMap((item, index) => expandAsset(item, rest, [...trail, String(index)])) : [];
+  }
   return isObject(node) ? expandAsset((node as Json)[head], rest, [...trail, head]) : [];
 }
 

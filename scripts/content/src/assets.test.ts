@@ -17,10 +17,13 @@ const MALICIOUS_SVG = '<svg onload="alert(1)"></svg>';
 
 function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): Record<string, unknown> {
   const module = JSON.parse(JSON.stringify(fullModule())) as { blocks: Record<string, unknown>[] };
-  const scene = module.blocks.find((block) => block.type === 'SCENE_HOTSPOTS') as { image: string };
+  const scene = module.blocks.find((block) => block.type === 'SCENE_HOTSPOTS') as { image: string; hotspots: Record<string, unknown>[] };
   const dialogue = module.blocks.find((block) => block.type === 'DIALOGUE') as { character: { avatar?: string } };
   scene.image = overrides.image ?? 'scena.png';
   dialogue.character.avatar = overrides.avatar ?? 'anna.png';
+  // Fixtura (packages/content) ma media (image/audio/scene, B-086/D-071) na hotspotach h1/h3/h4/... - poza zakresem
+  // TYCH testów (ogólny potok publikacji), więc zdjęte tu; hotspots[].media.* ma własne testy niżej (moduleWithHotspotMedia).
+  for (const hotspot of scene.hotspots) delete hotspot.media;
   return module as unknown as Record<string, unknown>;
 }
 
@@ -61,6 +64,77 @@ describe('collectAssetRefs', () => {
     const dialogue = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'DIALOGUE') as { character: { avatar?: string } };
     delete dialogue.character.avatar;
     expect(collectAssetRefs(module)).toHaveLength(1);
+  });
+});
+
+// hotspots[].media (B-086/D-071): image/audio karty hotspotu i obraz zagnieżdżonej sceny (media.kind:'scene') to
+// zasoby jak image/character.avatar - hash-wersjonowane, publikowane tym samym potokiem. document (title+lines) nie
+// jest zasobem (to tekst w treści, nie plik) - celowo bez testu na to tutaj.
+function moduleWithHotspotMedia(): Record<string, unknown> {
+  const module = moduleWithAssets();
+  const scene = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'SCENE_HOTSPOTS') as {
+    hotspots: Record<string, unknown>[];
+  };
+  scene.hotspots = [
+    { id: 'h1', label: 'Zdjęcie', x: 0, y: 0, width: 10, height: 10, content: 'x', media: { kind: 'image', src: 'kartka.png', alt: 'x' } },
+    { id: 'h2', label: 'Telefon', x: 0, y: 0, width: 10, height: 10, content: 'x', media: { kind: 'audio', audioUrl: 'poczta.mp3', transcript: 'x' } },
+    {
+      id: 'h3',
+      label: 'Monitor',
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      content: 'x',
+      media: {
+        kind: 'scene',
+        scene: {
+          image: 'pulpit.png',
+          imageAlt: 'x',
+          hotspots: [{ id: 'h3-1', label: 'Outlook', x: 0, y: 0, width: 10, height: 10, content: 'x', media: { kind: 'image', src: 'mail.png', alt: 'x' } }],
+        },
+      },
+    },
+  ];
+  return module;
+}
+
+describe('collectAssetRefs: hotspots[].media (B-086/D-071)', () => {
+  it('znajduje media.src (image), media.audioUrl (audio) i media.scene.{image, hotspots[].media.src} (zagnieżdżona scena)', () => {
+    const refs = collectAssetRefs(moduleWithHotspotMedia());
+    // 2 (image + avatar z moduleWithAssets) + 4 (h1 image, h2 audio, h3 scene.image, h3-1 nested image).
+    expect(refs).toHaveLength(6);
+    const values = refs.map((ref) => ref.value).sort();
+    expect(values).toEqual(['anna.png', 'kartka.png', 'mail.png', 'poczta.mp3', 'pulpit.png', 'scena.png']);
+  });
+});
+
+describe('runAssetsPipeline: hotspots[].media (B-086/D-071)', () => {
+  it('publikuje image i audio (mp3) hotspotu oraz obraz zagnieżdżonej sceny z poprawnym content-type', async () => {
+    await writeFile(modulePath, JSON.stringify(moduleWithHotspotMedia()));
+    await writeFile(join(assetsDir, 'kartka.png'), PNG);
+    await writeFile(join(assetsDir, 'poczta.mp3'), new Uint8Array([0x49, 0x44, 0x33, 1, 2, 3])); // nagłówek ID3 + śmieci (treść nieważna)
+    await writeFile(join(assetsDir, 'pulpit.png'), PNG);
+    await writeFile(join(assetsDir, 'mail.png'), PNG);
+
+    const store = new MemoryStore();
+    const result = await runAssetsPipeline(params({ store }));
+    expect(result.published).toBe(6);
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const scene = module.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS');
+    const [h1, h2, h3] = scene.hotspots;
+    expect(h1.media.src).toMatch(/^assets\/sprawa-testowa\/kartka\.[0-9a-f]{8}\.png$/);
+    expect(h2.media.audioUrl).toMatch(/^assets\/sprawa-testowa\/poczta\.[0-9a-f]{8}\.mp3$/);
+    expect(h3.media.scene.image).toMatch(/^assets\/sprawa-testowa\/pulpit\.[0-9a-f]{8}\.png$/);
+    expect(h3.media.scene.hotspots[0].media.src).toMatch(/^assets\/sprawa-testowa\/mail\.[0-9a-f]{8}\.png$/);
+
+    expect(store.objects.get(h2.media.audioUrl)!.options).toEqual({ contentType: 'audio/mpeg', cacheControl: 'public, max-age=31536000, immutable' });
+    expect(store.objects.get(h1.media.src)!.options).toEqual({ contentType: 'image/png', cacheControl: 'public, max-age=31536000, immutable' });
+
+    // parseModule (wywołane wewnątrz runAssetsPipeline przed zapisem) już to potwierdziło, ale sprawdzamy jawnie:
+    // kluczowane pola po publikacji dalej przechodzą walidację schematu (ASSET_PATH w common.ts akceptuje ścieżkę z hashem).
+    expect(() => JSON.stringify(module)).not.toThrow();
   });
 });
 

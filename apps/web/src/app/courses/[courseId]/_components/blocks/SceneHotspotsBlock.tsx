@@ -228,6 +228,9 @@ export default function SceneHotspotsBlock({
                 // Nakładka tylko dla myszy i dotyku; klawiatura i czytniki używają listy poniżej (jeden cel na punkt).
                 aria-hidden="true"
                 tabIndex={-1}
+                // Natywne disabled tu jest OK (w odróżnieniu od odpowiednika na liście niżej, który celowo używa
+                // aria-disabled, żeby zostać skupialny/ogłaszany) - ten przycisk i tak jest już poza kolejnością Tab
+                // (tabIndex={-1}, aria-hidden) i niewidoczny dla czytników ekranu, więc nie ma czego "zgubić".
                 disabled={isDoor && !ready}
                 onClick={() => handleHotspotClick(hotspot)}
                 style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}

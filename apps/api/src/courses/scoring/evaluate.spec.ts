@@ -69,6 +69,19 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(submit(block, { visited: [] }).entry.done).toBe(true);
   });
 
+  it('SCENE_HOTSPOTS: drzwi + INNY required hotspot naraz - wykluczenie drzwi z puli nie "zjada" pozostałych required', () => {
+    const block = {
+      ...blocks().SCENE_HOTSPOTS,
+      requiredHotspots: undefined,
+      hotspots: [
+        { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: true },
+        { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
+      ],
+    };
+    expect(() => submit(block, { visited: [] })).toThrow(BadRequestException); // dowod required:true, mimo wykluczenia drzwi
+    expect(submit(block, { visited: ['dowod'] }).entry.done).toBe(true); // drzwi same NIE muszą być w visited
+  });
+
   it('SCENE_HOTSPOTS: nieznane id (spoza spłaszczonego zbioru zewnętrzne+wewnętrzne) jest odrzucone bez treści bloku', () => {
     const block = blocks().SCENE_HOTSPOTS;
     const rejected = () => submit(block, { visited: ['h1', 'wymyslone-id'] });

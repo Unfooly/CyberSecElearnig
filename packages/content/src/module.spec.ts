@@ -194,6 +194,24 @@ describe('parseModule: walidacja modułu', () => {
     expect(() => parseModule(module)).not.toThrow();
   });
 
+  it('drzwi + INNY hotspot z required: false (bez required: true nigdzie): wykluczenie drzwi z puli nie maskuje błędu "brak required: true"', () => {
+    const module = fullModuleForTests();
+    const scene = blockOf(module, 'SCENE_HOTSPOTS');
+    delete scene.requiredHotspots;
+    scene.hotspots = [
+      { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: false },
+      { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
+    ];
+    let error: unknown;
+    try {
+      parseModule(module);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ContentValidationError);
+    expect((error as ContentValidationError).issues.join('\n')).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';

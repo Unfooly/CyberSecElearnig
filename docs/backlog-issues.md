@@ -420,15 +420,24 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   dało się uruchomić lokalnie przed pushem, bez polegania wyłącznie na CI. Rozważyć też timeout/`--forceExit` w `test:e2e`,
   żeby błąd połączenia z bazą kończył się szybko, a nie wielogodzinnym zawieszeniem.
 
-### B-086 Media w hotspotach (audio/obraz/dokument) sceny z punktami
-- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4, decyzja właściciela 2026-09-22 (nie implementować teraz)
+### B-086 Media w hotspotach (audio/obraz/dokument) sceny z punktami - CZĘŚCIOWO ROZWIĄZANE (D-071, schemat)
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4, decyzja właściciela 2026-09-22 (nie implementować teraz); podjęte:
+  `feat/hotspot-media`, decyzja właściciela 2026-09-23 (D-071)
 - Opis: dziś karta punktu sceny (`SCENE_HOTSPOTS`) ma tylko tekst (`hotspot.content`). Potrzebne rozszerzenie o
   `hotspots[].media: { kind: 'audio', audioUrl, transcript } | { kind: 'image', src, alt } | { kind: 'document', title, lines[] }`:
-  audio jako karta z WŁASNYM odtwarzaczem (np. poczta głosowa atakującego, inny głos niż narrator - TTS potrzebowałby wtedy
-  wyboru `voiceId` per nagranie, nie tylko per moduł), obraz/dokument jako podgląd na pełnym ekranie (wydruk, mail na
-  ekranie monitora). Rozszerza mechanizm dowodów/notatnika z B-078 (ta sama karta, nowy typ zawartości).
-- Akceptacja: schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`, komponent
-  `SceneHotspotsBlock` renderujący każdy wariant, skrypt TTS z obsługą `voiceId` per narrację, test.
+  audio jako karta z WŁASNYM odtwarzaczem (np. poczta głosowa atakującego, inny głos niż narrator), obraz/dokument jako
+  podgląd na pełnym ekranie (wydruk, mail na ekranie monitora). Rozszerza mechanizm dowodów/notatnika z B-078 (ta sama
+  karta, nowy typ zawartości). D-071 dorzuciła do zakresu (decyzja właściciela przy planowaniu tego PR): `action: 'next'`
+  ("drzwi" - kończy blok jak "Dalej") i `media.kind: 'scene'` (zagnieżdżona mini-scena, max 1 poziom, dowody z niej LICZĄ
+  SIĘ do bloku, id spłaszczone) - **`hotspot.nextScene` jako osobna nawigacja i `voiceId` per narracja świadomie
+  ODRZUCONE** na rzecz prostszego kształtu (voiceId nie jest dziś potrzebny: zmiana głosu idzie przez
+  `ELEVENLABS_VOICE_ID` + regenerację; audio hotspotu to zwykły plik `--assets`, nie przechodzi przez TTS).
+- Akceptacja: ~~schemat (`packages/content`) z polem `media` sklasyfikowanym w `FIELD_CLASSIFICATION`~~ **ZROBIONE**
+  (D-071, `feat/hotspot-media`: `hotspots[].media`, `hotspots[].action`, zagnieżdżona scena, `FIELD_CLASSIFICATION`,
+  `V4_FEATURES`). WCIĄŻ DO ZROBIENIA (ta sama gałąź, kolejne commity): komponent `SceneHotspotsBlock` renderujący każdy
+  wariant + nawigację "Dalej" dla `action:'next'`, `scripts/content --assets` dla mp3, `apps/api`'s `evaluate.ts`/
+  `client-view.ts` liczące spłaszczone id (dziś widzą TYLKO zewnętrzne hotspoty - zagnieżdżone dowody nie są jeszcze
+  liczone po stronie serwera, mimo że schemat już je dopuszcza), treść modułu 1 (nowe grafiki od właściciela).
 
 ### B-087 ~~`subtitle`/`level`/`objectives` (metadane modułu) giną przy imporcie~~ - ROZWIĄZANE (D-065)
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4 commit 3 (moduł „Sprawa: wyłudzone hasło”), D-061 pkt 1

@@ -175,6 +175,12 @@ describe('parseModule: walidacja modułu', () => {
     }, 'evidence wymaga pola note');
   });
 
+  it('requiredHotspots[] (przestarzałe) nie widzi id hotspotów WEWNĄTRZ zagnieżdżonej sceny - lista jest starsza niż zagnieżdżanie', () => {
+    expectInvalid((m) => {
+      blockOf(m, 'SCENE_HOTSPOTS').requiredHotspots = ['h4-outlook'];
+    }, 'nieznany identyfikator "h4-outlook"');
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';
@@ -317,6 +323,11 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
           delete inner.note;
         }
       }
+      // action/media (B-086) to funkcje wersji 4 - w module w wersji 2 ich po prostu nie ma; drzwi (action: 'next') bez
+      // v4 wracają do zwykłej karty (jak w teście "wersja 3 bez pól z wersji 4" niżej).
+      if (hotspot.action === 'next') hotspot.content = 'Zwykły hotspot bez akcji "next" (drzwi to funkcja wersji 4).';
+      delete hotspot.action;
+      delete hotspot.media;
     }
     const d = dialogue(module);
     delete d.character.avatar;
@@ -498,6 +509,8 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     expect(message).toContain('pole reactions.complete wymaga schemaVersion 4');
     expect(message).toContain('pole reactions.result wymaga schemaVersion 4');
     expect(message).toContain('pole email.to wymaga schemaVersion 4');
+    expect(message).toContain('pole hotspots[].action wymaga schemaVersion 4');
+    expect(message).toContain('pole hotspots[].media wymaga schemaVersion 4');
   });
 
   it('moduł w wersji 3 bez pól z wersji 4 nadal przechodzi (migracja jak dla wersji 2)', () => {
@@ -510,6 +523,12 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
     delete email(module).email.to;
+    for (const hotspot of blockOf(module, 'SCENE_HOTSPOTS').hotspots) {
+      // action: 'next' (drzwi) nie ma content - bez v4 drzwi nie istnieją, więc wraca do zwykłej karty (jak w wersji 3).
+      if (hotspot.action === 'next') hotspot.content = 'Zwykły hotspot bez akcji "next" (drzwi to funkcja wersji 4).';
+      delete hotspot.action;
+      delete hotspot.media;
+    }
     expect(() => parseModule(module)).not.toThrow();
   });
 

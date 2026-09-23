@@ -212,6 +212,36 @@ describe('runAssetsPipeline', () => {
     expect(store.objects.has(oldKey)).toBe(true); // stary plik zostaje (starsze wersje kursu mogą wskazywać)
   });
 
+  // B-093: module.json i assets.lock.json to DWA OSOBNE writeIfChanged na końcu przebiegu, nie jedna operacja -
+  // crash/przerwanie MIĘDZY nimi (albo ręczna edycja jednego pliku bez drugiego - dokładnie tak powstał ten stan
+  // przy prawdziwej publikacji biuro-anny.svg w tym PR-ze) zostawia lock z nowym kluczem, ale pole w module.json
+  // wciąż na STARYM. Dziś resolveOriginal() traktuje niepasujące pole module.json jak nieopublikowaną nazwę pliku
+  // źródłowego i rzuca mylący błąd "zasób nie istnieje", zamiast się z tego naprawić. Naprawa: osobny mały PR po
+  // merge #32 (nie teraz) - `it.fails` dokumentuje błąd, nie psując dzisiejszego zielonego CI.
+  it.fails('B-093: pole w module.json niepasujące do assets.lock.json (crash/edycja między dwoma zapisami) - kolejny --assets powinien się naprawić, dziś rzuca mylący błąd', async () => {
+    const store = new MemoryStore();
+    await runAssetsPipeline(params({ store })); // publikacja 1: scena.png -> hashA, module.json i lock spójne
+    const afterFirst = JSON.parse(await readFile(modulePath, 'utf8'));
+    const keyA = afterFirst.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS').image;
+
+    await writeFile(join(assetsDir, 'scena.png'), new Uint8Array([...PNG, 9, 9, 9])); // "asset zmieniony"
+    await runAssetsPipeline(params({ store })); // publikacja 2: hashB, module.json i lock znów spójne (oba na hashB)
+
+    // Symulacja crasha MIĘDZY dwoma writeIfChanged: lock.json zostaje na hashB (jak po publikacji 2), ale module.json
+    // cofnięty do STAREGO klucza hashA - "asset zmieniony, wcześniej opublikowany pod innym kluczem".
+    const desynced = JSON.parse(await readFile(modulePath, 'utf8'));
+    desynced.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS').image = keyA;
+    await writeFile(modulePath, JSON.stringify(desynced));
+
+    // Kolejny --assets (bez żadnej nowej zmiany pliku źródłowego) powinien się z tego naprawić: module.json ma wrócić
+    // do klucza, który lock.json (źródło prawdy o publikacji, D-068) już zna dla tego zasobu - bez rzucania.
+    await runAssetsPipeline(params({ store }));
+    const repaired = JSON.parse(await readFile(modulePath, 'utf8'));
+    const lock = JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8'));
+    const lockKey = lock.entries[Object.keys(lock.entries).find((id) => id.includes('#image'))!].key;
+    expect(repaired.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS').image).toBe(lockKey);
+  });
+
   it('SVG z aktywną treścią (onload=): odrzucony, nigdy nie trafia do magazynu, module.json bez zmian', async () => {
     // Błąd przerywa przebieg jak w audio: pliki OK przed nim (tu: obraz sceny) mogą już być opublikowane, ale module.json zmienia się
     // dopiero na końcu (po pełnym przebiegu bez błędu) - drugi przebieg po poprawce dokończy tylko to, czego jeszcze nie ma.

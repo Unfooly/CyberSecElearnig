@@ -512,6 +512,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   test widzi jako "skonfigurowane".
 - Akceptacja: test jawnie przesłania `R2_*` pustymi/nieprawidłowymi wartościami (albo w inny sposób symuluje "brak
   konfiguracji" niezależnie od realnego `.env.local` na dysku developera), zamiast polegać na nieobecności sekretu.
+- **Podpunkt (2026-09-24, znalezione przy aktualizacji `scripts/e2e-module-01.mjs`/`screenshot-module.mjs`/
+  `e2e-registration.mjs` po feedbacku z produkcji PR #32):** `scripts/e2e-registration.mjs` (linie ~526-568, blok
+  SCENE_HOTSPOTS/DIALOGUE fixtury "śledztwo") klika/sprawdza przycisk `Kontynuuj` - wygląda na pozostałość sprzed
+  D-070 ("jeden Dalej" w pasku powłoki zamiast osobnego przycisku ukończenia w bloku). Nie sprawdzone, czy skrypt
+  faktycznie dziś przechodzi (lokalny Postgres/Redis nie działają - ten sam powód, dla którego żaden z tych trzech
+  skryptów nie został uruchomiony przy tamtej aktualizacji), więc nie wiadomo, czy to martwy kod, czy realna regresja
+  od D-070. Nie naprawione w tamtym PR - poza jego zakresem (feedback dotyczył wyłącznie SCENE_HOTSPOTS/EMAIL_ANALYSIS
+  w module 1, nie tej fixtury).
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

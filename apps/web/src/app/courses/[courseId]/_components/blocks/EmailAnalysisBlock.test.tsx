@@ -31,17 +31,10 @@ const block: ContentBlock = {
   ],
 };
 
-// Lista kryteriów jest domyślnie ZWINIĘTA podczas odpowiadania (za przyciskiem "Lista elementów (dla klawiatury)") -
-// helpery testowe otwierają ją w razie potrzeby, żeby istniejące asercje na checkboxach nie musiały tego robić same.
-// W widoku wyniku (readOnly, przycisk nie istnieje) lista jest od razu widoczna.
-function openCriteriaList() {
-  const toggle = screen.queryByRole('button', { name: 'Lista elementów (dla klawiatury)' });
-  if (toggle && toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle);
-}
-const list = () => {
-  openCriteriaList();
-  return screen.getByRole('group', { name: /Zaznaczone oznaki|Kryteria/ });
-};
+// Lista kryteriów pod mailem: podczas odpowiadania pokazuje WYŁĄCZNIE kryteria bez fragmentu w mailu (target) - reszta
+// idzie przez klik w treści (fragment jest już prawdziwym <button>em, feedback z produkcji: osobny przycisk
+// "Lista elementów (dla klawiatury)" usunięty). W widoku wyniku (readOnly) lista pokazuje WSZYSTKIE kryteria.
+const list = () => screen.getByRole('group', { name: /Inne elementy|Kryteria/ });
 const checkbox = (name: RegExp | string) => within(list()).getByRole('checkbox', { name });
 
 function setup(overrides: { result?: Parameters<typeof EmailAnalysisBlock>[0]['result']; onContinue?: () => void; continueLabel?: string } = {}) {
@@ -91,46 +84,41 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     for (const button of within(mail).getAllByRole('button')) expect(button).toHaveAttribute('type', 'button');
   });
 
-  it('kliknięcie fragmentu (nadawca, temat, załącznik, cytat, link) zaznacza kryterium i synchronizuje checklistę', () => {
+  it('kliknięcie fragmentu (nadawca, temat, załącznik, cytat, link) zaznacza kryterium (aria-pressed na przycisku - fragment jest już fokusowalnym <button>em, bez osobnej checklisty do synchronizacji)', () => {
     setup();
     const mail = screen.getByTestId('mail-client');
+    const pressed = (name: RegExp) => within(mail).getByRole('button', { name }).getAttribute('aria-pressed');
+
     fireEvent.click(within(mail).getByRole('button', { name: /Bank Zaufany/ }));
-    expect(checkbox(/Podejrzany adres nadawcy/)).toBeChecked();
+    expect(pressed(/Bank Zaufany/)).toBe('true');
     fireEvent.click(within(mail).getByRole('button', { name: /Pilne: potwierdź/ }));
-    expect(checkbox(/Presja czasu/)).toBeChecked();
+    expect(pressed(/Pilne: potwierdź/)).toBe('true');
     fireEvent.click(within(mail).getByRole('button', { name: /Załącznik: faktura/ }));
-    expect(checkbox(/załącznik/)).toBeChecked();
+    expect(pressed(/Załącznik: faktura/)).toBe('true');
     fireEvent.click(within(mail).getByRole('button', { name: /Twoje konto zostanie zablokowane/ }));
-    expect(checkbox(/Groźba/)).toBeChecked();
+    expect(pressed(/Twoje konto zostanie zablokowane/)).toBe('true');
     fireEvent.click(within(mail).getByRole('button', { name: /Kliknij tutaj/ }));
-    expect(checkbox(/obcej domeny/)).toBeChecked();
+    expect(pressed(/Kliknij tutaj/)).toBe('true');
 
     // Ponowne kliknięcie odznacza.
     fireEvent.click(within(mail).getByRole('button', { name: /Bank Zaufany/ }));
-    expect(checkbox(/Podejrzany adres nadawcy/)).not.toBeChecked();
-    expect(within(mail).getByRole('button', { name: /Pilne: potwierdź/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(pressed(/Bank Zaufany/)).toBe('false');
+    expect(pressed(/Pilne: potwierdź/)).toBe('true');
   });
 
-  it('lista kryteriów jest domyślnie zwinięta podczas odpowiadania (zaznaczanie idzie przez klikanie w mailu); przycisk ją rozwija', () => {
+  it('lista pod mailem pokazuje podczas odpowiadania WYŁĄCZNIE kryteria bez fragmentu w mailu (target) - reszta idzie przez klik w treści, bez osobnego przycisku (feedback z produkcji: "Lista elementów (dla klawiatury)" usunięty)', () => {
     setup();
-    const toggle = screen.getByRole('button', { name: 'Lista elementów (dla klawiatury)' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('checkbox', { name: /Podejrzany adres nadawcy/ })).not.toBeInTheDocument();
-
-    fireEvent.click(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank Zaufany/ }));
-    // Zaznaczenie przez klik w mailu działa nawet ze zwiniętą listą.
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('checkbox', { name: /Podejrzany adres nadawcy/ })).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Lista elementów (dla klawiatury)' })).not.toBeInTheDocument();
+    for (const name of [/Podejrzany adres nadawcy/, /Presja czasu/, /Nieoczekiwany załącznik/, /Groźba zablokowania/, /obcej domeny/]) {
+      expect(screen.queryByRole('checkbox', { name })).not.toBeInTheDocument();
+    }
+    // Jedyne kryterium bez fragmentu (k-general) jest od razu widoczne - nie ma czego kliknąć w treści za nie.
+    expect(checkbox(/Ogólny, bezosobowy ton/)).toBeInTheDocument();
   });
 
-  it('checklista działa jak alternatywa (klawiatura): zaznaczenie kryterium podświetla fragment; kryterium bez fragmentu tylko na liście', () => {
+  it('kryterium bez fragmentu w mailu jest zaznaczalne WYŁĄCZNIE przez listę (nie ma odpowiadającego przycisku w treści maila)', () => {
     setup();
-    fireEvent.click(checkbox(/Podejrzany adres nadawcy/));
-    expect(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank Zaufany/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(list()).getByText(/ogólna oznaka, bez fragmentu w mailu/)).toBeInTheDocument();
+    expect(within(screen.getByTestId('mail-client')).queryByText(/Ogólny, bezosobowy ton/)).not.toBeInTheDocument();
     fireEvent.click(checkbox(/Ogólny, bezosobowy ton/));
     expect(checkbox(/Ogólny/)).toBeChecked();
   });
@@ -168,7 +156,7 @@ describe('EmailAnalysisBlock: link nigdy nie nawiguje, adres w pasku statusu', (
     expect(notPrevented).toBe(true);
     expect(statusBar()).toHaveTextContent('https://bank-0.pl/login?u=1');
     expect(window.location.href).toBe(before);
-    expect(checkbox(/obcej domeny/)).toBeChecked();
+    expect(link).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('link bez kryterium tylko pokazuje adres (nic nie zaznacza); adres jest też w tekście dla czytników ekranu', () => {
@@ -215,7 +203,7 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
     expect(screen.queryByRole('button', { name: 'Sprawdź odpowiedź' })).not.toBeInTheDocument();
     for (const box of screen.getAllByRole('checkbox')) expect(box).toBeDisabled();
     expect(screen.getAllByRole('checkbox').filter((box) => (box as HTMLInputElement).checked)).toHaveLength(3);
-    // W wyniku lista jest od razu widoczna (nic do zaznaczania) - przycisk zwijający/rozwijający w ogóle nie istnieje.
+    // Przycisk zwijający/rozwijający usunięty (feedback z produkcji) - nie istnieje w ogóle, ani tu, ani podczas odpowiadania.
     expect(screen.queryByRole('button', { name: 'Lista elementów (dla klawiatury)' })).not.toBeInTheDocument();
   });
 

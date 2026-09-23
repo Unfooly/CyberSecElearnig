@@ -93,7 +93,7 @@ try {
   const wyludzoneHaslo = modules.find((m) => m.slug === 'wyludzone-haslo');
   step('content-import: moduł "wyludzone-haslo" wczytany i zwalidowany', !!wyludzoneHaslo, `${modules.length} modułów łącznie`);
   const importResult = await prisma.$transaction((tx) => contentImport.importModule(tx, wyludzoneHaslo));
-  step('content-import: moduł zaimportowany do bazy (10 bloków)', importResult.courseId != null && importResult.slug === 'wyludzone-haslo', JSON.stringify(importResult));
+  step('content-import: moduł zaimportowany do bazy (9 bloków)', importResult.courseId != null && importResult.slug === 'wyludzone-haslo', JSON.stringify(importResult));
   courseId = importResult.courseId;
   courseCreatedByThisRun = importResult.courseCreated;
 
@@ -132,54 +132,61 @@ try {
   // (auto-retry Playwrighta) czeka na TEN docelowy tekst zamiast zgadywać z arbitralnym opóźnieniem.
   const reactionText = (text) => page.getByText(text, { exact: true }).waitFor();
 
-  // --- Blok 1: Otwarcie sprawy (NARRATIVE) -------------------------------------------------------------------------------
-  await page.getByText('Otwarcie sprawy').waitFor();
-  step('NARRATIVE: pogrubiony nagłówek renderuje się jako <strong> (nie dosłowne **)', (await page.locator('strong', { hasText: 'Od czego zaczynamy?' }).count()) === 1);
-  step('NARRATIVE: poza spoczynkowa maskotki z treści bloku (greeting)', (await mascotAlt('wita').count()) === 1);
-  // Bloki eksploracyjne nie mają już własnego "Kontynuuj": "Dalej" w pasku powłoki jest jedynym przyciskiem
-  // ukończenia (od razu aktywne, bez pośredniego ekranu "Blok ukończony.") - raport z pierwszego przejścia modułu 1.
-  await nextEnabled().click();
+  // Karta hotspotu otwiera się jako nakładka NA scenie (role="dialog", feedback z produkcji po PR #32) - "Wróć" zamyka ją
+  // (albo zdejmuje jeden poziom w zagnieżdżonej scenie); trzeba ją zamknąć, zanim kliknie się kolejny punkt (nakładka
+  // wizualnie zasłania resztę obrazu, tak jak dla prawdziwego użytkownika).
+  const dialog = () => page.getByRole('dialog');
+  const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
 
-  // --- Blok 2: Korytarz (SCENE_HOTSPOTS, tylko drzwi) - B-086/D-071 -------------------------------------------------------
-  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  // --- Blok 1: Korytarz (SCENE_HOTSPOTS, tylko drzwi) - B-086/D-071 -------------------------------------------------------
+  // Moduł zaczyna się TUTAJ - blok NARRATIVE "Otwarcie sprawy" wypadł (feedback z produkcji), jego zdanie otwierające
+  // przeniesione na początek narracji tego bloku.
+  await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): brak "Dalej" w pasku - jedynym wyjściem są drzwi (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
   // Scena bez wymaganych dowodów (poza drzwiami samymi) - "drzwi" (action:'next') są gotowe od razu, bez odwiedzania
   // żadnego innego hotspotu; klik od razu kończy blok (jak "Dalej"), więc nie czekamy na żadną reakcję pośrednią.
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
   step('SCENE_HOTSPOTS (korytarz): "drzwi" gotowe bez dowodów, klik kończy blok', true);
 
-  // --- Blok 3: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071 --------------
-  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
-  const hotspotList = page.getByRole('list', { name: 'Elementy sceny' });
-  // Hotspoty Z MEDIAMI (karteczka/telefon/kalendarz/drukarka: image/audio) zaliczają dowód OD RAZU przy otwarciu karty
-  // (markVisited -> addToNotepad w SceneHotspotsBlock.tsx) - już nie ma osobnego "Dodaj do notatnika" do klikania w
-  // drugim przebiegu, jak dla zwykłego (bezmedialnego) hotspotu. "Monitor" kończy pętlę wymaganych - jego karta pokazuje
-  // TEASER (bez dowodu, bez media.src) i miniaturę zagnieżdżonej sceny "pulpit" tuż pod treścią.
-  const requiredHotspots = ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny', 'Monitor'];
-  for (const label of requiredHotspots) {
-    await hotspotList.getByRole('button', { name: label }).click();
+  // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071 --------------
+  await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
+  // Punkty na obrazie są teraz jedyną, w pełni dostępną ścieżką (bez osobnej listy-chipów pod obrazem, feedback z
+  // produkcji). Dowód zalicza WYŁĄCZNIE przycisk "Dodaj do notatnika" w nakładce (odwraca część D-071: media już NIE
+  // zaliczają dowodu samym otwarciem) - jednolicie, także dla hotspotów z mediami.
+  for (const label of ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny']) {
+    await page.getByRole('button', { name: label }).click();
+    await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+    await back();
   }
+
+  // "Monitor" jest 4. i ostatnim wymaganym punktem - jego karta pokazuje TEASER i zagnieżdżoną scenę "pulpit" (bez
+  // własnego dowodu; otwarcie samego pulpitu niczego nie zalicza). reactions.complete odpala się od razu po tym kliku.
+  await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
   step('SCENE_HOTSPOTS: reactions.complete (cheer) po wymaganych 4 punktach', true);
   step('SCENE_HOTSPOTS: "drzwi" chowa "Dalej" z paska nawet gdy ready (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
 
-  // Prawdziwy dowód maila jest dopiero za Outlookiem wewnątrz zagnieżdżonej sceny "pulpit" (karta "Monitor" pozostaje
-  // active po ostatnim kliknięciu w pętli wyżej, więc jej zagnieżdżona lista jest już widoczna) - otwarcie pulpitu
-  // (klik "Monitor") niczego nie zalicza, dopiero klik w "Poczta" (media image, jak każdy inny hotspot z mediami).
-  const nestedList = page.getByRole('list', { name: /Elementy: / });
-  await nestedList.getByRole('button', { name: 'Poczta' }).click();
+  // Prawdziwy dowód maila jest dopiero za Outlookiem wewnątrz zagnieżdżonej sceny "pulpit" - dopiero "Dodaj do
+  // notatnika" na karcie "Poczta" (drugi poziom TEJ SAMEJ nakładki) go zalicza.
+  await dialog().getByRole('button', { name: 'Poczta' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
   step('SCENE_HOTSPOTS: zagnieżdżona scena "pulpit" - dowód z hotspotu "outlook" (media image, B-086/D-071)', true);
+  await back(); // mail -> pulpit
+  await back(); // pulpit -> zamyka nakładkę
 
-  await hotspotList.getByRole('button', { name: 'Drukarka' }).click();
-  await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
+  await page.getByRole('button', { name: 'Drukarka' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back();
   step('SCENE_HOTSPOTS: 5 dowodów w notatniku (kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 5/'), await page.getByTestId('evidence-counter').textContent());
+  await page.getByRole('button', { name: 'Kubek z kawą' }).click();
+  await back(); // kubek nie ma evidence - tylko "Wróć"
 
   // "drzwi" (action:'next', label "Wyjście") kończy blok jak "Dalej" w pasku (który jest ukryty - patrz krok wyżej):
   // gotowe od razu, bo wymagane 4 są już odwiedzone.
-  await hotspotList.getByRole('button', { name: 'Wyjście' }).click();
+  await page.getByRole('button', { name: 'Wyjście' }).click();
   step('SCENE_HOTSPOTS: "drzwi" (Wyjście) kończy blok zamiast "Dalej"', true);
 
-  // --- Blok 4: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
+  // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
   step('DIALOGUE: character.opening pokazuje się przed jakimkolwiek pytaniem', true);
   const askAll = async (questions) => {
@@ -196,30 +203,28 @@ try {
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
   await nextEnabled().click();
 
-  // --- Blok 5: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
+  // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
   await page.getByTestId('mail-client').waitFor();
   step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@nortex.pl'));
-  // Lista kryteriów jest domyślnie zwinięta (zaznaczanie idzie przede wszystkim przez klikanie w mailu) - otwieramy ją
-  // raz, żeby zaznaczyć checkboxami (niezależnie od dokładnej pozycji fragmentów w makiecie maila).
-  await page.getByRole('button', { name: 'Lista elementów (dla klawiatury)' }).click();
-  const criteriaList = page.getByRole('group', { name: /Zaznaczone oznaki/ });
-  for (const label of [
-    /Adres nadawcy: bankwektor-weryfikacja\.pl/,
-    /Link „Przejdź do weryfikacji”/,
-    /Załącznik Regulamin_weryfikacji\.pdf\.exe/,
-    /Odliczanie czasu do blokady konta/,
-    /Zwrot „Szanowna Kliencie”/,
-  ]) {
-    await criteriaList.getByRole('checkbox', { name: label }).check();
-  }
+  // Fragmenty maila są prawdziwymi <button>-ami inline (aria-pressed) - klikamy bezpośrednio, bez osobnej "Listy
+  // elementów (dla klawiatury)" (usunięta, feedback z produkcji). "presja" (groźba blokady) NIE ma fragmentu w treści
+  // (nie sąsiaduje z licznikiem "Pozostało: 01:12:33", który dostał WŁASNE, anchorowalne kryterium "odliczanie") -
+  // jedyna droga do zaznaczenia go to lista pod mailem, teraz pokazująca wyłącznie kryteria bez fragmentu.
+  const mail = page.getByTestId('mail-client');
+  await mail.getByRole('button', { name: /Dział Bezpieczeństwa/ }).click(); // domena (nadawca)
+  await mail.getByRole('button', { name: 'Przejdź do weryfikacji' }).click(); // link
+  await mail.getByRole('button', { name: /Załącznik: Regulamin_weryfikacji\.pdf\.exe/ }).click(); // zalacznik
+  await mail.getByRole('button', { name: 'Pozostało: 01:12:33' }).click(); // odliczanie
+  await mail.getByRole('button', { name: 'Szanowna Kliencie' }).click(); // zwrot
+  await page.getByRole('group', { name: /Inne elementy/ }).getByRole('checkbox', { name: /Groźba zablokowania/ }).check(); // presja
   const emailAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
   const emailBody = await (await emailAnswered).json();
-  step('EMAIL_ANALYSIS: wszystkie 5 poprawnych kryteriów -> 100%, reaction cheer', emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(emailBody.lastResult));
+  step('EMAIL_ANALYSIS: wszystkie 6 poprawnych kryteriów -> 100%, reaction cheer', emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(emailBody.lastResult));
   await page.getByText(/Wynik: 100%/).waitFor();
   await nextEnabled().click();
 
-  // --- Blok 6: Akta sprawy (TABS) ------------------------------------------------------------------------------------------
+  // --- Blok 5: Akta sprawy (TABS) ------------------------------------------------------------------------------------------
   await page.getByRole('tablist').waitFor();
   await page.getByRole('tab', { name: 'Domeny' }).click();
   step('TABS: pogrubienie w zakładce "Domeny"', (await page.locator('strong', { hasText: 'tuż przed pierwszym ukośnikiem' }).count()) === 1);
@@ -230,7 +235,7 @@ try {
   step('TABS: `kod` w zakładce "Jak zgłosić w Nortex"', (await page.locator('code', { hasText: 'bezpieczenstwo@nortex.pl' }).count()) === 1);
   await nextEnabled().click();
 
-  // --- Blok 7: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
+  // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
   await page.getByText('Nie mów mi, że karteczka').waitFor();
   await askAll(['Co mówią logi banku?', 'Ktoś z IT dzwonił do Anny o 9:05?']);
   await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
@@ -238,7 +243,7 @@ try {
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
   await nextEnabled().click();
 
-  // --- Blok 8: Rekonstrukcja zdarzeń (ORDERING, waga 2) --------------------------------------------------------------------
+  // --- Blok 7: Rekonstrukcja zdarzeń (ORDERING, waga 2) --------------------------------------------------------------------
   await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
   // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara,
   // nie rekonstrukcją zdarzeń.
@@ -267,7 +272,7 @@ try {
   step('ORDERING: pełna poprawna kolejność (6/6) -> reaction cheer', orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(orderingBody.lastResult));
   await nextEnabled().click();
 
-  // --- Blok 9: Ostatnie pytanie (TEXT_INPUT_GUIDED, waga 1) ----------------------------------------------------------------
+  // --- Blok 8: Ostatnie pytanie (TEXT_INPUT_GUIDED, waga 1) ----------------------------------------------------------------
   await page.getByLabel('Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).').waitFor();
   await page.getByLabel('Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).').fill('bankwektor-weryfikacja.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
@@ -282,10 +287,10 @@ try {
   const textBody = await (await textDone).json();
   step('TEXT_INPUT_GUIDED: pełne punkty za pierwszą próbę (bez kary)', textBody.lastResult?.points === 1, JSON.stringify(textBody.lastResult?.points));
 
-  // --- Blok 10: Rozwiązanie sprawy (SUMMARY) -------------------------------------------------------------------------------
+  // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
   await page.getByTestId('case-evidence').waitFor();
   const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SUMMARY: wszystkie 15 dowodów zebrane (5+4+3+3)', summaryText.includes('Zebrane dowody: 15 z 15'), summaryText.slice(0, 120));
+  step('SUMMARY: wszystkie 16 dowodów zebrane (5+4+4+3)', summaryText.includes('Zebrane dowody: 16 z 16'), summaryText.slice(0, 120));
   step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
   step('SUMMARY: poza spoczynkowa maskotki (greeting, "Sprawa zamknięta")', (await mascotAlt('wita').count()) === 1);
 

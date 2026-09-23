@@ -9,6 +9,7 @@ export default function ExploreFooter({
   verb = 'Obejrzano',
   readyText = 'Wszystko obejrzane.',
   review,
+  className,
 }: {
   done: number;
   total: number;
@@ -19,13 +20,17 @@ export default function ExploreFooter({
   /** Tekst po spełnieniu wymagań (dialog: "Wszystkie wymagane pytania zadane."). */
   readyText?: string;
   review: boolean;
+  /** Nadpisuje domyślne klasy, w OBU gałęziach - review i "gotowe" (SceneHotspotsBlock: mniejszy licznik NAD obrazem,
+      nie stopka pod nim, niezależnie od tego, czy blok jest w podglądzie). Bez override każda gałąź ma swój dawny
+      domyślny styl (inny rozmiar/kolor niż druga) - żeby nie zmieniać wyglądu pozostałych wywołujących. */
+  className?: string;
 }) {
   if (review) {
-    return <p className="mt-4 text-xs text-slate-500">Podgląd ukończonego bloku: możesz przejrzeć go ponownie, nic się nie zapisuje.</p>;
+    return <p className={className ?? 'mt-4 text-xs text-slate-500'}>Podgląd ukończonego bloku: możesz przejrzeć go ponownie, nic się nie zapisuje.</p>;
   }
   const ready = done >= total;
   return (
-    <p className="mt-4 text-sm text-slate-600" aria-live="polite">
+    <p className={className ?? 'mt-4 text-sm text-slate-600'} aria-live="polite">
       {ready ? readyText : `${verb} ${done} z ${total} ${noun}.`}
     </p>
   );

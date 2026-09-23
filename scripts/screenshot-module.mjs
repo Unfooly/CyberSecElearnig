@@ -9,9 +9,11 @@
 // żeby nie mnożyć plików `screenshot-module-01.mjs`, `screenshot-module-02.mjs` itd.
 //
 // Struktura skopiowana z scripts/e2e-module-01.mjs (import przez prawdziwy content-import, next dev zamiast next start
-// z tego samego powodu co tam - cookies Secure blokują BFF pod next start). Zamiast asercji: page.screenshot() w 8
-// ustalonych momentach, dla dwóch niezależnych przebiegów (osobna organizacja/pracownik na viewport), żeby uniknąć
-// przełączania rozmiaru okna w trakcie płynięcia bloków.
+// z tego samego powodu co tam - cookies Secure blokują BFF pod next start). Zamiast asercji: page.screenshot() w 6
+// ustalonych momentach (feedback z produkcji po PR #32: korytarz, karteczka/telefon/pulpit/mail w nakładce NA scenie,
+// kryterium "odliczanie" zaznaczone w EMAIL_ANALYSIS), dla dwóch niezależnych przebiegów (osobna organizacja/
+// pracownik na viewport), żeby uniknąć przełączania rozmiaru okna w trakcie płynięcia bloków. Kurs jest mimo to
+// przechodzony DO KOŃCA (nie tylko do ostatniego zrzutu) - kolejne bloki bez zdjęcia trzeba i tak ukończyć.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -98,38 +100,53 @@ async function runViewport(viewport) {
 
   await page.goto(`${WEB}/courses/${courseId}`);
 
-  // --- 1. NARRATIVE (otwarcie) ---------------------------------------------------------------------------------
-  // Bloki eksploracyjne nie mają już własnego "Kontynuuj": "Dalej" w pasku powłoki jest jedynym przyciskiem
-  // ukończenia (od razu aktywne, bez pośredniego ekranu "Blok ukończony.") - raport z pierwszego przejścia modułu 1.
-  await page.getByText('Otwarcie sprawy').waitFor();
-  await shot(page, '01-narrative', viewport.name);
-  await nextEnabled().click();
+  // Karta hotspotu otwiera się jako nakładka NA scenie (role="dialog", feedback z produkcji po PR #32).
+  const dialog = () => page.getByRole('dialog');
+  const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
 
-  // --- Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) - przechodzimy bez zrzutu (jeden pusty kadr nie wnosi nic) ---
-  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) - moduł zaczyna się TUTAJ (NARRATIVE "Otwarcie sprawy" wypadło) ---
+  await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
+  await shot(page, '01-korytarz', viewport.name);
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
 
-  // --- 2. SCENE_HOTSPOTS (biuro Anny, hotspoty z mediami odkryte + notatnik, B-086/D-071) ----------------------
-  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
-  const hotspotList = page.getByRole('list', { name: 'Elementy sceny' });
-  // Hotspoty z mediami (karteczka/telefon/kalendarz/drukarka) zaliczają dowód od razu przy otwarciu karty - nie ma
-  // już osobnego "Dodaj do notatnika" do klikania w drugim przebiegu.
-  const requiredHotspots = ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny', 'Monitor'];
-  for (const label of requiredHotspots) {
-    await hotspotList.getByRole('button', { name: label }).click();
-  }
-  await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
-  // Dowód maila jest dopiero za Outlookiem wewnątrz zagnieżdżonej sceny "pulpit" (karta "Monitor" zostaje active) -
-  // zrzut tuż po tym pokazuje nową zagnieżdżoną scenę (B-086/D-071), nie ostatnio klikniętą kartę.
-  await page.getByRole('list', { name: /Elementy: / }).getByRole('button', { name: 'Poczta' }).click();
-  await page.keyboard.press('Escape').catch(() => {});
-  await shot(page, '02-scene-hotspots', viewport.name);
-  await hotspotList.getByRole('button', { name: 'Drukarka' }).click();
-  await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
-  // "drzwi" (Wyjście) kończy blok zamiast "Dalej" paska (ukryty - hideForward).
-  await hotspotList.getByRole('button', { name: 'Wyjście' }).click();
+  // --- 2. Biuro Anny: karteczka - overlay NA scenie (nie pod obrazem) -------------------------------------------
+  await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
+  await page.getByRole('button', { name: 'Żółta karteczka' }).click();
+  await shot(page, '02-biuro-karteczka-overlay', viewport.name);
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back();
 
-  // --- 3. DIALOGUE (Anna, w trakcie) ---------------------------------------------------------------------------
+  // --- 3. Biuro Anny: telefon - overlay z odtwarzaczem audio -----------------------------------------------------
+  await page.getByRole('button', { name: 'Telefon stacjonarny' }).click();
+  await shot(page, '03-biuro-telefon-audio', viewport.name);
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back();
+
+  await page.getByRole('button', { name: 'Kalendarz ścienny' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back();
+
+  // --- 4. Biuro Anny: monitor -> zagnieżdżona scena "pulpit" (drugi ekran TEJ SAMEJ nakładki, B-086/D-071) --------
+  await page.getByRole('button', { name: 'Monitor' }).click();
+  await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
+  await shot(page, '04-biuro-pulpit-overlay', viewport.name);
+
+  // --- 5. Biuro Anny: "Poczta" wewnątrz pulpitu -> mail na ekranie (trzeci poziom tej samej nakładki) --------------
+  await dialog().getByRole('button', { name: 'Poczta' }).click();
+  await shot(page, '05-biuro-mail-overlay', viewport.name);
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back(); // mail -> pulpit
+  await back(); // pulpit -> zamyka nakładkę
+
+  await page.getByRole('button', { name: 'Drukarka' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await back();
+  await page.getByRole('button', { name: 'Kubek z kawą' }).click();
+  await back(); // kubek nie ma evidence - tylko "Wróć"
+  // "drzwi" (Wyjście) kończy blok zamiast "Dalej" paska (ukryty - hideForward).
+  await page.getByRole('button', { name: 'Wyjście' }).click();
+
+  // --- DIALOGUE (Anna) - przechodzimy bez zrzutu (poza zakresem tej rundy) ---------------------------------------
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
   const askOne = async (text) => {
     await page.getByRole('button', { name: text, exact: true }).click();
@@ -137,54 +154,46 @@ async function runViewport(viewport) {
       await page.getByRole('button', { name: 'Następna kwestia' }).click();
     }
   };
-  await askOne('Opowiedz o tym mailu z banku.');
-  await shot(page, '03-dialogue-anna', viewport.name);
   const askAll = async (questions) => {
     for (const text of questions) await askOne(text);
   };
-  await askAll(['Kto dzwonił o 9:05?', 'To hasło na karteczce…']);
+  await askAll(['Opowiedz o tym mailu z banku.', 'Kto dzwonił o 9:05?', 'To hasło na karteczce…']);
   await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
   await nextEnabled().click();
 
-  // --- 4/5. EMAIL_ANALYSIS (przed i po) --------------------------------------------------------------------------
+  // --- 6. EMAIL_ANALYSIS: kryterium "odliczanie" zaznaczone (fragment "Pozostało: 01:12:33" jest już przyciskiem -
+  // "Lista elementów (dla klawiatury)" usunięta, feedback z produkcji) --------------------------------------------
   await page.getByTestId('mail-client').waitFor();
-  await shot(page, '04-email-przed', viewport.name);
-  // Lista kryteriów jest domyślnie zwinięta (zaznaczanie idzie przede wszystkim przez klikanie w mailu) - tu wygodniej
-  // otworzyć ją raz i zaznaczyć checkboxami, niż trafiać w konkretne fragmenty makiety maila.
-  await page.getByRole('button', { name: 'Lista elementów (dla klawiatury)' }).click();
-  const criteriaList = page.getByRole('group', { name: /Zaznaczone oznaki/ });
-  for (const label of [
-    /Adres nadawcy: bankwektor-weryfikacja\.pl/,
-    /Link „Przejdź do weryfikacji”/,
-    /Załącznik Regulamin_weryfikacji\.pdf\.exe/,
-    /Odliczanie czasu do blokady konta/,
-    /Zwrot „Szanowna Kliencie”/,
-  ]) {
-    await criteriaList.getByRole('checkbox', { name: label }).check();
-  }
+  const mail = page.getByTestId('mail-client');
+  await mail.getByRole('button', { name: /Dział Bezpieczeństwa/ }).click(); // domena
+  await mail.getByRole('button', { name: 'Przejdź do weryfikacji' }).click(); // link
+  await mail.getByRole('button', { name: /Załącznik: Regulamin_weryfikacji\.pdf\.exe/ }).click(); // zalacznik
+  await mail.getByRole('button', { name: 'Pozostało: 01:12:33' }).click(); // odliczanie
+  await shot(page, '06-email-odliczanie', viewport.name);
+  await mail.getByRole('button', { name: 'Szanowna Kliencie' }).click(); // zwrot
+  await page.getByRole('group', { name: /Inne elementy/ }).getByRole('checkbox', { name: /Groźba zablokowania/ }).check(); // presja
   const emailAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
   await emailAnswered;
   await page.getByText(/Wynik: 100%/).waitFor();
-  await shot(page, '05-email-po', viewport.name);
   await nextEnabled().click();
 
-  // --- TABS (przechodzimy, nie jest w liście zrzutów, ale blok trzeba ukończyć - wymaga odwiedzenia WSZYSTKICH zakładek) ---
+  // --- TABS (przechodzimy, blok trzeba ukończyć - wymaga odwiedzenia WSZYSTKICH zakładek) -------------------------
   await page.getByRole('tablist').waitFor();
   await page.getByRole('tab', { name: 'Domeny' }).click();
   await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
   await page.getByRole('tab', { name: 'Jak zgłosić w Nortex' }).click();
   await nextEnabled().click();
 
-  // --- DIALOGUE (Marek) - przechodzimy bez zrzutu (już mamy zrzut dialogu z Anną) ---------------------------------
+  // --- DIALOGUE (Marek) - przechodzimy bez zrzutu ------------------------------------------------------------------
   await page.getByText('Nie mów mi, że karteczka').waitFor();
   await askAll(['Co mówią logi banku?', 'Ktoś z IT dzwonił do Anny o 9:05?']);
   await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
   await nextEnabled().click();
 
-  // --- 6. ORDERING (rekonstrukcja kolejności, po ułożeniu) --------------------------------------------------------
+  // --- ORDERING (rekonstrukcja kolejności) - przechodzimy bez zrzutu (poza zakresem tej rundy) ---------------------
   await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
   // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara.
   const wanted = [
@@ -209,18 +218,11 @@ async function runViewport(viewport) {
   const orderingAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
   await orderingAnswered;
-  await shot(page, '06-ordering', viewport.name);
   await nextEnabled().click();
 
-  // --- 7. TEXT_INPUT_GUIDED (z podpowiedzią widoczną) --------------------------------------------------------------
+  // --- TEXT_INPUT_GUIDED - przechodzimy bez zrzutu (poza zakresem tej rundy) --------------------------------------
   const prompt = 'Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).';
   await page.getByLabel(prompt).waitFor();
-  // Świadomie ZŁA pierwsza próba (nie jak w e2e-module-01.mjs, tam liczy się brak kary) - tylko żeby ujawnić
-  // podpowiedź na zrzucie; poprawną odpowiedź wpisujemy zaraz potem, żeby przejść dalej.
-  await page.getByLabel(prompt).fill('https://bankwektor.pl');
-  await page.getByRole('button', { name: 'Sprawdź' }).click();
-  await page.getByText('Podpowiedź', { exact: true }).waitFor();
-  await shot(page, '07-text-input-podpowiedz', viewport.name);
   await page.getByLabel(prompt).fill('bankwektor-weryfikacja.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
@@ -228,9 +230,8 @@ async function runViewport(viewport) {
   // ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd ten sam nextEnabled() (wybiera włączony przycisk).
   await nextEnabled().click();
 
-  // --- 8. SUMMARY (Rozwiązanie sprawy) -------------------------------------------------------------------------
+  // --- SUMMARY (Rozwiązanie sprawy) - kończymy przejście, bez zrzutu (poza zakresem tej rundy) ---------------------
   await page.getByTestId('case-evidence').waitFor();
-  await shot(page, '08-summary', viewport.name);
 
   await context.close();
 }

@@ -88,51 +88,56 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
   return { onSubmit, ready };
 }
 
+// Feedback z produkcji po PR #32: bez listy-chipów, jedyna interakcja to klik w punkt na obrazie (w pełni dostępny);
+// karta otwiera się jako nakładka (role="dialog") NA scenie, więc "Wróć" trzeba kliknąć, zanim klika się kolejny punkt
+// (nakładka wizualnie zasłania resztę obrazu, tak jak dla prawdziwego użytkownika).
 describe('SCENE_HOTSPOTS', () => {
+  const back = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Wróć' }));
+
   it('ukończenie (onReady) dopiero po wymaganych punktach i odpowiedź { visited }', async () => {
     const user = userEvent.setup();
     const { onSubmit, ready } = renderBlock(hotspots);
     expect(ready.current).toBeNull();
     expect(screen.getByText('Obejrzano 0 z 2 elementów.')).toBeInTheDocument();
 
-    const list = screen.getByRole('list', { name: 'Elementy sceny' });
-    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
+    await user.click(screen.getByRole('button', { name: 'Monitor' }));
     expect(screen.getByText('Zablokuj ekran.')).toBeInTheDocument();
     expect(ready.current).toBeNull();
+    back();
 
-    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    await user.click(screen.getByRole('button', { name: 'Biurko' }));
     expect(ready.current).not.toBeNull();
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['a', 'b'], noted: [] });
   });
 
-  it('obraz tylko z bazy zasobów, przez <img> z tekstem alternatywnym; ścieżka spoza reguł = brak obrazu, lista nadal działa', () => {
+  it('obraz tylko z bazy zasobów, przez <img> z tekstem alternatywnym; ścieżka spoza reguł = brak obrazu, punkty nadal działają', () => {
     renderBlock(hotspots);
     const img = screen.getByRole('img', { name: 'Biuro' });
     expect(img).toHaveAttribute('src', '/content/scenes/office.png');
     expect(img).toHaveAttribute('referrerpolicy', 'no-referrer');
   });
 
-  it('niepoprawna ścieżka obrazu nie ładuje niczego', () => {
+  it('niepoprawna ścieżka obrazu nie ładuje niczego; punkty są teraz nieosiągalne (jedyna interakcja to klik w obraz, bez chipów jako zapasowej ścieżki)', () => {
     renderBlock({ ...hotspots, image: 'https://evil.example/x.png' });
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Monitor' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument();
   });
 
   it('bez requiredHotspots wymagane są wszystkie', async () => {
     const user = userEvent.setup();
     const { ready } = renderBlock({ ...hotspots, requiredHotspots: undefined });
     expect(screen.getByText('Obejrzano 0 z 3 elementów.')).toBeInTheDocument();
-    const list = screen.getByRole('list', { name: 'Elementy sceny' });
-    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
-    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    await user.click(screen.getByRole('button', { name: 'Monitor' }));
+    back();
+    await user.click(screen.getByRole('button', { name: 'Biurko' }));
     expect(ready.current).toBeNull();
   });
 
   it('podgląd: interaktywny, ale nigdy nie zgłasza gotowości ani nie woła onSubmit', async () => {
     const user = userEvent.setup();
     const { onSubmit, ready } = renderBlock(hotspots, { review: true });
-    await user.click(within(screen.getByRole('list', { name: 'Elementy sceny' })).getByRole('button', { name: 'Drzwi' }));
+    await user.click(screen.getByRole('button', { name: 'Drzwi' }));
     expect(screen.getByText('Nie wpuszczaj obcych.')).toBeInTheDocument();
     expect(ready.current).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -143,10 +148,10 @@ describe('SCENE_HOTSPOTS', () => {
     const withReaction: ContentBlock = { ...hotspots, reactions: { complete: { pose: 'cheer', text: 'Wszystko widziane!' } } };
     renderBlock(withReaction);
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
-    const list = screen.getByRole('list', { name: 'Elementy sceny' });
-    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
+    await user.click(screen.getByRole('button', { name: 'Monitor' }));
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
-    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    back();
+    await user.click(screen.getByRole('button', { name: 'Biurko' }));
     expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
   });
 
@@ -154,9 +159,9 @@ describe('SCENE_HOTSPOTS', () => {
     const user = userEvent.setup();
     const withReaction: ContentBlock = { ...hotspots, reactions: { complete: { pose: 'cheer', text: 'Wszystko widziane!' } } };
     renderBlock(withReaction, { review: true });
-    const list = screen.getByRole('list', { name: 'Elementy sceny' });
-    await user.click(within(list).getByRole('button', { name: 'Monitor' }));
-    await user.click(within(list).getByRole('button', { name: 'Biurko' }));
+    await user.click(screen.getByRole('button', { name: 'Monitor' }));
+    back();
+    await user.click(screen.getByRole('button', { name: 'Biurko' }));
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
   });
 });

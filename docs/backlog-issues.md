@@ -512,6 +512,45 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   test widzi jako "skonfigurowane".
 - Akceptacja: test jawnie przesłania `R2_*` pustymi/nieprawidłowymi wartościami (albo w inny sposób symuluje "brak
   konfiguracji" niezależnie od realnego `.env.local` na dysku developera), zamiast polegać na nieobecności sekretu.
+- **Podpunkt (2026-09-24, znalezione przy aktualizacji `scripts/e2e-module-01.mjs`/`screenshot-module.mjs`/
+  `e2e-registration.mjs` po feedbacku z produkcji PR #32):** `scripts/e2e-registration.mjs` (linie ~526-568, blok
+  SCENE_HOTSPOTS/DIALOGUE fixtury "śledztwo") klika/sprawdza przycisk `Kontynuuj` - wygląda na pozostałość sprzed
+  D-070 ("jeden Dalej" w pasku powłoki zamiast osobnego przycisku ukończenia w bloku). Nie sprawdzone, czy skrypt
+  faktycznie dziś przechodzi (lokalny Postgres/Redis nie działają - ten sam powód, dla którego żaden z tych trzech
+  skryptów nie został uruchomiony przy tamtej aktualizacji), więc nie wiadomo, czy to martwy kod, czy realna regresja
+  od D-070. Nie naprawione w tamtym PR - poza jego zakresem (feedback dotyczył wyłącznie SCENE_HOTSPOTS/EMAIL_ANALYSIS
+  w module 1, nie tej fixtury).
+
+### B-093 `--assets` może zdesynchronizować `module.json` i `assets.lock.json` (dwa osobne zapisy, nie jedna operacja)
+- Etykiety: `P2`, `bug`, `mod:import` · Źródło: znalezione przy publikacji `biuro-anny.svg` (PR `feat/hotspot-media`,
+  feedback z produkcji po PR #32) - `--assets --check` zgłosił `"biuro-anny#image: pole w module.json nie wskazuje
+  na opublikowany zasob z assets.lock.json."` mimo że `assets.lock.json` miał poprawny, świeżo opublikowany wpis.
+- Opis: `runAssetsPipeline` (`scripts/content/src/assets.ts`) na końcu przebiegu zapisuje `module.json` i
+  `assets.lock.json` DWOMA OSOBNYMI `writeIfChanged` (`io.ts`), nie jedną operacją - mimo że mają reprezentować
+  jeden spójny stan publikacji (D-068: `assets.lock.json` to źródło prawdy WYŁĄCZNIE po potwierdzonym zapisie w
+  magazynie). Crash/przerwanie MIĘDZY tymi dwoma zapisami (albo ręczna edycja/cofnięcie jednego pliku bez drugiego -
+  dokładnie tak powstał ten stan przy tej publikacji) zostawia je niespójne: lock ma NOWY klucz dla danego zasobu,
+  ale pole w `module.json` wciąż wskazuje na STARY (zasób zmieniony, wcześniej opublikowany pod innym kluczem).
+  Dzisiejszy `resolveOriginal()` nie wykrywa tej desynchronizacji jako takiej - niepasujące pole `module.json`
+  traktuje jak NIEOPUBLIKOWANĄ nazwę pliku źródłowego (to normalna ścieżka dla nowego, jeszcze nieopublikowanego
+  zasobu), więc `readSource` szuka pliku o nazwie literalnie równej starej, już zahaszowanej ścieżce (np.
+  `assets/wyludzone-haslo/scenes/biuro-anny.0177a2e4.svg`) w katalogu `assets/` - taki plik nie istnieje (prawdziwe
+  źródło to `scenes/biuro-anny.svg`), więc rzuca mylący błąd "Zasób ... nie istnieje w katalogu assets/ modułu.",
+  łatwy do odczytania jako "brakuje pliku źródłowego SVG", podczas gdy prawdziwy problem to nieaktualne pole w
+  `module.json`. Reprodukcja (test `scripts/content/src/assets.test.ts`, `it.fails('B-093: ...')`, dodany w tym PR
+  jako dokumentacja błędu - dziś celowo nie przechodzi, `it.fails` utrzymuje CI zielone): dwie kolejne, normalne
+  publikacje tego samego zasobu pod dwiema różnymi treściami dają spójne pary (module.json, lock) na hashA i potem
+  hashB; ręczne cofnięcie WYŁĄCZNIE pola `module.json` do klucza hashA (lock zostaje na hashB) symuluje crash
+  między zapisami; trzeci przebieg `--assets` (bez żadnej nowej zmiany pliku źródłowego) dziś rzuca błąd zamiast się
+  z tego naprawić.
+- Akceptacja: kolejny `--assets` po takiej desynchronizacji NIE rzuca mylącego błędu o brakującym zasobie źródłowym.
+  Minimalny wariant: `resolveOriginal()`/`runAssetsPipeline` rozpoznaje ten przypadek (pole `module.json` nie zgadza
+  się z `entry.key`, ale `ref.id` JEST w locku) i albo się samo naprawia (nadpisuje pole w `module.json` kluczem z
+  locka, skoro lock jest źródłem prawdy - D-068), albo rzuca jasny, odróżnialny komunikat wskazujący na desynchronizację
+  między `module.json` i `assets.lock.json`, nie na brakujący plik źródłowy. Rozważyć też: jeden atomowy zapis obu
+  plików (np. tymczasowe pliki + rename obu przed potwierdzeniem sukcesu) zamiast dwóch niezależnych
+  `writeIfChanged`, żeby crash między nimi był strukturalnie niemożliwy, nie tylko wykrywalny post factum. Test z
+  tego PR-u (`it.fails`) zamieniony na zwykłą asercję (bez `.fails`) i przechodzi.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

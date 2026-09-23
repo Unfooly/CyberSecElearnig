@@ -1,27 +1,130 @@
 {
-  "width": 1600, "height": 1000,
-  "background": { "floorY": 780 },
+  "width": 1600,
+  "height": 1000,
+  "background": {
+    "floorY": 780
+  },
   "items": [
-    { "id": "okno", "prop": "window", "x": 60, "y": 80 },
-    { "id": "kalendarz", "prop": "calendar", "x": 1180, "y": 120, "hotspot": true,
-      "params": { "month": "WRZESIEŃ", "markedDay": 15, "note": "PRZELEWY DO 15:00 !!!" } },
-    { "id": "polka", "prop": "shelf", "x": 1120, "y": 370 },
-    { "id": "drzwi", "prop": "door", "x": 1420, "y": 380, "hotspot": true, "pad": 14, "params": { "label": "WYJŚCIE" } },
-    { "id": "biurko", "prop": "desk", "x": 120, "y": 600, "params": { "w": 1240 } },
-    { "id": "szafka", "prop": "drawerUnit", "x": 1080, "y": 650 },
-    { "id": "krzeslo", "prop": "chair", "x": 640, "y": 660 },
-    { "id": "roslina", "prop": "plant", "x": 10, "y": 600 },
-    { "id": "drukarka", "prop": "printer", "x": 150, "y": 520, "hotspot": true,
-      "params": { "paperText": "PRZELEW 9:12 — 14 000 zł" } },
-    { "id": "kubek", "prop": "mug", "x": 400, "y": 545, "hotspot": true,
-      "params": { "label": ["Najlepsza", "księgowa"] } },
-    { "id": "monitor", "prop": "monitor", "x": 500, "y": 280, "hotspot": true,
-      "partHotspots": { "sticky": "karteczka" },
-      "params": { "screen": "mail", "subject": "PILNE: weryfikacja konta firmowego",
-                  "sender": "Bank Wektor — Dział Bezpieczeństwa · 8:47",
-                  "sticky": ["Nortex2024!", "bank: to samo"] } },
-    { "id": "klawiatura", "prop": "keyboardMouse", "x": 560, "y": 612 },
-    { "id": "telefon", "prop": "phone", "x": 960, "y": 522, "hotspot": true,
-      "params": { "led": true, "display": ["9:05 nieodebrane", "nr zastrzeżony"], "note": "informatyk, oddzwonić" } }
+    {
+      "id": "okno",
+      "prop": "window",
+      "x": 60,
+      "y": 80
+    },
+    {
+      "id": "kalendarz",
+      "prop": "calendar",
+      "x": 1180,
+      "y": 120,
+      "hotspot": true,
+      "params": {
+        "month": "WRZESIEŃ",
+        "markedDay": 15,
+        "note": "PRZELEWY DO 15:00 !!!"
+      }
+    },
+    {
+      "id": "polka",
+      "prop": "shelf",
+      "x": 1120,
+      "y": 370
+    },
+    {
+      "id": "drzwi",
+      "prop": "door",
+      "x": 1420,
+      "y": 380,
+      "hotspot": true,
+      "pad": 14,
+      "params": {
+        "label": "WYJŚCIE"
+      }
+    },
+    {
+      "id": "biurko",
+      "prop": "desk",
+      "x": 120,
+      "y": 600,
+      "params": {
+        "w": 1240
+      }
+    },
+    {
+      "id": "szafka",
+      "prop": "drawerUnit",
+      "x": 1080,
+      "y": 650
+    },
+    {
+      "id": "krzeslo",
+      "prop": "chair",
+      "x": 640,
+      "y": 660
+    },
+    {
+      "id": "roslina",
+      "prop": "plant",
+      "x": 10,
+      "y": 600
+    },
+    {
+      "id": "drukarka",
+      "prop": "printer",
+      "x": 150,
+      "y": 520,
+      "hotspot": true,
+      "params": {}
+    },
+    {
+      "id": "kubek",
+      "prop": "mug",
+      "x": 400,
+      "y": 545,
+      "hotspot": true,
+      "params": {
+        "label": [
+          "Najlepsza",
+          "księgowa"
+        ]
+      }
+    },
+    {
+      "id": "monitor",
+      "prop": "monitor",
+      "x": 500,
+      "y": 280,
+      "hotspot": true,
+      "partHotspots": {
+        "sticky": "karteczka"
+      },
+      "params": {
+        "screen": "mail",
+        "subject": "PILNE: weryfikacja konta firmowego",
+        "sender": "Bank Wektor — Dział Bezpieczeństwa · 8:47",
+        "sticky": [
+          "Nortex2024!",
+          "bank: to samo"
+        ]
+      }
+    },
+    {
+      "id": "klawiatura",
+      "prop": "keyboardMouse",
+      "x": 560,
+      "y": 612
+    },
+    {
+      "id": "telefon",
+      "prop": "phone",
+      "x": 960,
+      "y": 522,
+      "hotspot": true,
+      "params": {
+        "led": true,
+        "display": [
+          "1 nieodebrane"
+        ]
+      }
+    }
   ]
 }

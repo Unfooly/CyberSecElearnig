@@ -1,7 +1,7 @@
 # Moduł 1 — „Sprawa: wyłudzone hasło"
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
-Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, NARRATIVE, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
+Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
 pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
 
 ## Metadane
@@ -17,13 +17,14 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **15** (12 na ścieżce głównej: 9 ✱ w scenie/dialogach + 3 z analizy maila; 3 opcjonalne: drukarka, presja, inni)
+- dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
+  analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
 - podpowiedzi (hints) są wyłącznie tekstowe — bez audio (D-060/K1)
 - reakcje maskotki: pole `reactions` na bloku (`complete` dla eksploracyjnych, `result` dla ocenianych) — zastępuje dawne „Po ukończeniu: Fooli…"
-- media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 2 i Blok 3 niżej.
+- media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 1 i Blok 2 niżej.
 
 ## Postaci
 
@@ -38,35 +39,17 @@ Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak
 
 ---
 
-## Blok 1 — Otwarcie sprawy (NARRATIVE, weight 0)
+## Blok 1 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
-Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść poniżej (narracja lektora jako `narration`, dymek jako `mascot`, pytanie i dwie kwestie Fooli jako tekst bloku).
-
-**Lektor (narracja):**
-> Wtorek, 9:40. W dziale księgowości firmy Nortex zniknęło z konta czternaście tysięcy złotych. Przelew wyszedł o 9:12, zatwierdzony poprawnym loginem i hasłem Anny Kowalskiej. Anna twierdzi, że niczego nie wysyłała. Bank twierdzi, że wszystko odbyło się prawidłowo. Ktoś tu ma rację. Twoim zadaniem jest ustalić, co się stało — i jak do tego nie dopuścić następnym razem.
-
-**Fooli (dymek, poza: greeting):**
-> Cześć, detektywie. Mamy sprawę. Zbieraj dowody do notatnika — na końcu złożymy to w całość.
-
-**Tekst bloku (markdown):**
-> **Od czego zaczynamy?**
->
-> Od miejsca zdarzenia. Biuro Anny — zobaczmy, co tam zostało.
->
-> Klikaj wszystko, co wygląda podejrzanie. Nie wszystko jest dowodem, ale wszystko coś mówi.
-
-**reactions.complete:** brak (przejście przyciskiem „Dalej").
-
----
-
-## Blok 2 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
+Moduł zaczyna się TUTAJ (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
+przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią modułu).
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
 - imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
-- **Lektor:** „Wtorek, 8:50. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
+- **Lektor:** „Wtorek, 9:40. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
 - **Fooli:** brak (blok czysto przejściowy — bez dymka).
 - ukończenie: brak dowodów, bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`).
-- drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 7 (DIALOGUE), nie jako osobna lokacja.
+- drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 6 (DIALOGUE), nie jako osobna lokacja.
 
 | id | x | y | w | h | action |
 |---|---|---|---|---|---|
@@ -74,7 +57,7 @@ Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść
 
 ---
 
-## Blok 3 — Biuro Anny (SCENE_HOTSPOTS)
+## Blok 2 — Biuro Anny (SCENE_HOTSPOTS)
 
 - obraz: `scenes/biuro-anny.svg` (1600×1000, przekomponowana wersja: drzwi po prawej, biurko krótsze, roślina po lewej)
 - imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe."
@@ -144,7 +127,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 ---
 
-## Blok 4 — Rozmowa z Anną (DIALOGUE)
+## Blok 3 — Rozmowa z Anną (DIALOGUE)
 
 - postać: Anna Kowalska, księgowa, `avatars/anna.svg`
 - **Lektor:** „Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
@@ -165,7 +148,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 ---
 
-## Blok 5 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
+## Blok 4 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
 
 - **Lektor:** „Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
 - **Fooli (poza: pointing):** „Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
@@ -207,23 +190,26 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 | `domena` | adres nadawcy `bankwektor-weryfikacja.pl` | tak | tak | „Prawdziwa domena banku to `bankwektor.pl`. Dopisek `-weryfikacja` robi z tego zupełnie inną stronę, którą może zarejestrować każdy." | (mail) „Nadawca z domeny `bankwektor-weryfikacja.pl`, nie `bankwektor.pl`." |
 | `link` | link „Przejdź do weryfikacji" (URL w dymku po najechaniu) | tak | tak | „Napis mówi jedno, adres — drugie. Zawsze patrz na adres, nie na napis." | (mail) „Link prowadzi na `bankwektor-weryfikacja.pl/login`." |
 | `zalacznik` | załącznik `Regulamin_weryfikacji.pdf.exe` | tak | tak | „`.pdf.exe` to program udający dokument. Bank nie wysyła programów." | (mail) „Załącznik `.pdf.exe` — plik wykonywalny udający PDF." |
-| `presja` (bez kotwicy w mailu) | „do godziny 10:00 dostęp … zostanie zablokowany" + zegar | tak | nie | „Odliczanie i groźba blokady mają wyłączyć myślenie. Prawdziwy bank daje czas i nigdy nie odlicza." | — |
+| `presja` (bez kotwicy w mailu) | „do godziny 10:00 dostęp … zostanie zablokowany" | tak | nie | „Groźba bliskiej blokady konta ma wyłączyć myślenie i skłonić do szybkiego działania bez zastanowienia." | — |
+| `odliczanie` | „Pozostało: 01:12:33" | tak | tak | „Licznik czasu to presja. Prawdziwy bank nie odlicza sekund do blokady konta." | (mail) „Mail odlicza czas do blokady." |
 | `zwrot` | „Szanowna Kliencie" | tak | nie | „Błąd gramatyczny w zwrocie do klienta. Bank wie, jak się nazywasz." | — |
 | `stopka` | stopka z adresem | nie | — | „Stopka jest skopiowana z prawdziwych maili banku — sama w sobie nic nie znaczy. Oszuści kopiują stopki jako pierwsze." | — |
 | `nieodpowiadaj` | „Prosimy o nie odpowiadanie" | nie | — | „To standardowy zwrot w automatycznych mailach. Nie jest sygnałem." | — |
 
-- `presja` bez kotwicy: `criteria[].target` (schemat) obsługuje jeden ciągły cytat z `email.body`, a ten fragment to dwa
-  oddzielne elementy (zdanie o blokadzie + licznik) - kryterium jest widoczne i zaznaczalne wyłącznie na liście pod mailem,
-  bez klikalnego fragmentu w treści (rozjazd zgłoszony i rozstrzygnięty 2026-09-22).
-- punktacja: trafione kryteria +1, fałszywe alarmy −0,5 (nie poniżej 0), wynik jako % z 5 poprawnych
-- **reactions.result** (progi po wzorze silnika; agent dopasuje minScore tak, by odpowiadały ≥4/5, 2–3/5, ≤1/5 trafień):
+- `presja` bez kotwicy: `criteria[].target` (schemat) obsługuje jeden ciągły cytat z `email.body`; zdanie o blokadzie
+  ("do godziny 10:00 … zablokowany") i licznik ("Pozostało: 01:12:33") są dwoma OSOBNYMI, nie-sąsiadującymi fragmentami
+  (rozjazd zgłoszony i rozstrzygnięty 2026-09-22, PODZIELONE feedbackiem z produkcji po PR #32: licznik dostał WŁASNE,
+  anchorowalne kryterium `odliczanie`, `presja` zostaje wyłącznie zdaniem o blokadzie, nadal bez kotwicy - widoczne i
+  zaznaczalne tylko na liście pod mailem, bo nie ma osobnego przycisku-fragmentu w treści dla niego).
+- punktacja: trafione kryteria +1, fałszywe alarmy −0,5 (nie poniżej 0), wynik jako % z 6 poprawnych
+- **reactions.result** (progi po wzorze silnika; agent dopasuje minScore tak, by odpowiadały ≥5/6, 3–4/6, ≤2/6 trafień):
   - `{ minScore: 0.8, pose: cheer, text: „Czytasz maile jak detektyw." }`
   - `{ minScore: 0.4, pose: thinking, text: „Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je." }`
   - `{ minScore: 0, pose: warning, text: „Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj." }`
 
 ---
 
-## Blok 6 — Akta sprawy (TABS) — bez oceny
+## Blok 5 — Akta sprawy (TABS) — bez oceny
 
 - **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
 - **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
@@ -244,7 +230,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 7 — Rozmowa z Markiem z IT (DIALOGUE)
+## Blok 6 — Rozmowa z Markiem z IT (DIALOGUE)
 
 - postać: Marek Zieliński, administrator IT, `avatars/marek.svg`
 - **Lektor:** „Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
@@ -264,7 +250,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 8 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
+## Blok 7 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
 
 - **Lektor:** „Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
 - **Fooli (pointing):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
@@ -284,7 +270,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 9 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
+## Blok 8 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
 
 - **Lektor:** „Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
 - **Fooli (thinking):** „Bez zaglądania do notatnika. Pamiętasz?"
@@ -301,7 +287,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 10 — Rozwiązanie sprawy (SUMMARY)
+## Blok 9 — Rozwiązanie sprawy (SUMMARY)
 
 - **Lektor:** „Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo »szybkie potwierdzenie«, przypomnij sobie wtorek, 8:47."
 - **mascot:** `{ pose: greeting, text: „Sprawa zamknięta. Dobra robota, detektywie." }`
@@ -327,8 +313,8 @@ edycja SVG.
 
 | plik | rozmiar | użycie |
 |---|---|---|
-| `scenes/korytarz.svg` | 1600×1000 | Blok 2 (korytarz) |
-| `scenes/biuro-anny.svg` | 1600×1000 | Blok 3 (Biuro Anny) |
+| `scenes/korytarz.svg` | 1600×1000 | Blok 1 (korytarz) |
+| `scenes/biuro-anny.svg` | 1600×1000 | Blok 2 (Biuro Anny) |
 | `scenes/pulpit.svg` | 1200×800 | zagnieżdżona scena na hotspocie `monitor` |
 | `scenes/mail-na-ekranie.svg` | 1200×800 | media image na hotspocie `outlook` (wewnątrz `pulpit`) |
 | `scenes/karteczka-zoom.svg` | 800×800 | media image na hotspocie `karteczka` |
@@ -343,13 +329,13 @@ blok ma jedno nagranie lektora — tekst „Lektor" wyżej). Kwestie Fooli i pos
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
 
-**`scenes/korytarz.svg`** (Blok 2):
+**`scenes/korytarz.svg`** (Blok 1):
 
 | id | x | y | w | h |
 |---|---|---|---|---|
 | `drzwi` | 43.8 | 36.6 | 12.4 | 42.8 |
 
-**`scenes/biuro-anny.svg`** (Blok 3):
+**`scenes/biuro-anny.svg`** (Blok 2):
 
 | id | x | y | w | h |
 |---|---|---|---|---|

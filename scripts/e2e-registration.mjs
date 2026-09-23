@@ -492,21 +492,26 @@ try {
   // Wyższe okno desktopowe (1280x1100), żeby scena z obrazem, licznik i karta punktu mieściły się na jednym zrzucie.
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(`${WEB}/courses/${caseCourse.id}`);
-  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  await page.getByTestId('hotspot-overlay-monitor').waitFor();
   // Suma nieznana ("?"): blok maila ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (gracz nie wie z góry, ile zaznaczyć).
   step('śledztwo: licznik startuje z serwera, suma ukryta przez blok maila (Dowody 0/?)', (await counter().textContent())?.includes('Dowody 0/?') === true, await counter().textContent());
   step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
   await shoot('hotspoty-przed');
 
-  // Punkt z obrazu (mysz) i z listy (klawiatura/czytnik); dowód dodaje "Dodaj do notatnika".
+  // Punkt na obrazie jest teraz jedyną, w pełni dostępną ścieżką (bez osobnej listy-chipów pod obrazem, feedback z
+  // produkcji po PR #32) - klik otwiera kartę jako nakładkę NA scenie (role="dialog"); dowód dodaje "Dodaj do
+  // notatnika" w nakładce, "Wróć" ją zamyka (trzeba zamknąć, zanim klika się kolejny punkt - nakładka zasłania scenę).
+  const dialog = () => page.getByRole('dialog');
   await page.getByTestId('hotspot-overlay-drzwi').click();
-  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await page.getByRole('list', { name: 'Elementy sceny' }).getByRole('button', { name: 'Monitor' }).click();
-  await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await dialog().getByRole('button', { name: 'Wróć' }).click();
+  await page.getByRole('button', { name: 'Monitor' }).click();
+  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
   step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/?') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
   step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-po');
   await noHScroll('desktop, hotspoty');
+  await dialog().getByRole('button', { name: 'Wróć' }).click();
 
   // Treść bloku nie może zostać pod lepkim paskiem: po przewinięciu do końca ostatni element ("Kontynuuj") leży nad paskiem, a element
   // z fokusem klawiatury przewija się nad pasek (scroll-padding-bottom z pomiaru). Sprawdzane na desktopie i na telefonie.
@@ -585,11 +590,19 @@ try {
   await mailLink.click();
   await mailLink.click();
 
-  // Zaznaczamy nadawcę i link (trafne) oraz załącznik (fałszywy alarm), grozby i ogólnika nie ("przeoczone").
+  // Zaznaczamy nadawcę i link (trafne) oraz załącznik (fałszywy alarm), grozby i ogólnika nie ("przeoczone"). Fragmenty
+  // maila są fokusowalnymi <button>-ami (aria-pressed) - lista pod mailem pokazuje dziś WYŁĄCZNIE kryteria bez
+  // fragmentu w treści (tu: "ogolny"), więc te trzy sprawdzamy po stanie samych przycisków, nie po checkliście.
   await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).click();
   await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).click();
-  const checked = await page.getByRole('group', { name: /Zaznaczone oznaki/ }).getByRole('checkbox', { checked: true }).count();
-  step('śledztwo: kliknięcia we fragmenty maila zaznaczają kryteria w checkliście (3 zaznaczone)', checked === 3, String(checked));
+  const pressedCount = async () => {
+    let n = 0;
+    for (const name of [/Bank Zaufany/, /Zaloguj się tutaj/, /Załącznik: formularz-weryfikacji\.pdf/]) {
+      if ((await page.getByTestId('mail-client').getByRole('button', { name }).getAttribute('aria-pressed')) === 'true') n += 1;
+    }
+    return n;
+  };
+  step('śledztwo: kliknięcia we fragmenty maila zaznaczają kryteria (aria-pressed, 3 zaznaczone)', (await pressedCount()) === 3, String(await pressedCount()));
   await shoot('mail-zaznaczone');
   const mailAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();

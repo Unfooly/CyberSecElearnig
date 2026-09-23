@@ -290,6 +290,106 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
   });
 });
 
+const nestedScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'scena-zagniezdzona',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    {
+      id: 'monitor',
+      label: 'Monitor',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Ekran z otwartym pulpitem.',
+      media: {
+        kind: 'scene',
+        scene: {
+          image: 'scenes/pulpit.png',
+          imageAlt: 'Pulpit komputera',
+          hotspots: [
+            {
+              id: 'outlook',
+              label: 'Outlook',
+              x: 5,
+              y: 5,
+              width: 15,
+              height: 15,
+              content: 'Program pocztowy.',
+              media: { kind: 'image', src: 'img/mail.png', alt: 'Podgląd maila' },
+              evidence: true,
+              note: { text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
+            },
+            { id: 'kosz', label: 'Kosz', x: 30, y: 5, width: 15, height: 15, content: 'Pusty kosz.' },
+          ],
+        },
+      },
+    },
+    { id: 'kubek', label: 'Kubek', x: 70, y: 10, width: 10, height: 10, content: 'Zwykły kubek.' },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D-071)', () => {
+  it('klik na hotspot z media.kind:"scene" pokazuje jej obraz i listę elementów w karcie', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    expect(screen.getByText('Ekran z otwartym pulpitem.')).toBeInTheDocument();
+    const inner = screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    expect(within(inner).getByRole('button', { name: 'Outlook' })).toBeInTheDocument();
+    expect(within(inner).getByRole('button', { name: 'Kosz' })).toBeInTheDocument();
+  });
+
+  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego własną kartę i zalicza dowód od razu (image)', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    const inner = screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    fireEvent.click(within(inner).getByRole('button', { name: 'Outlook' }));
+
+    expect(screen.getByRole('heading', { name: 'Outlook', level: 4 })).toBeInTheDocument();
+    expect(screen.getByText('Program pocztowy.')).toBeInTheDocument();
+    expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail otwarty w programie pocztowym.');
+    expect(screen.getByRole('button', { name: /Powiększ: Podgląd maila/ })).toBeInTheDocument();
+  });
+
+  it('visited/noted wysłane do serwera zawierają id z WEWNĄTRZ zagnieżdżonej sceny (spłaszczone, D-071)', () => {
+    const { onSubmit, ready } = setup(nestedScene);
+    pick('Monitor');
+    const inner = () => screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    fireEvent.click(within(inner()).getByRole('button', { name: 'Outlook' }));
+    // Wszystkie wymagane (żaden hotspot nie ma jawnego required -> fallback "wszystkie"): monitor, outlook, kosz, kubek.
+    expect(ready.current).toBeNull();
+    fireEvent.click(within(inner()).getByRole('button', { name: 'Kosz' }));
+    expect(ready.current).toBeNull(); // kubek (zewnętrzny) jeszcze nieodwiedzony
+    pick('Kubek');
+    expect(ready.current).not.toBeNull();
+    ready.current!();
+    expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'outlook', 'kosz', 'kubek']), noted: ['outlook'] });
+  });
+
+  it('licznik "Obejrzano X z Y" liczy Y ze spłaszczonego zbioru (4: monitor, outlook, kosz, kubek)', () => {
+    setup(nestedScene);
+    expect(screen.getByText('Obejrzano 0 z 4 elementów.')).toBeInTheDocument();
+  });
+
+  it('zmiana zewnętrznego hotspotu resetuje wybór wewnątrz JEGO zagnieżdżonej sceny', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    fireEvent.click(within(screen.getByRole('list', { name: 'Elementy: Pulpit komputera' })).getByRole('button', { name: 'Outlook' }));
+    expect(screen.getByRole('heading', { name: 'Outlook', level: 4 })).toBeInTheDocument();
+
+    pick('Kubek');
+    expect(screen.queryByRole('heading', { name: 'Outlook', level: 4 })).not.toBeInTheDocument();
+
+    // Monitor już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)" - dopasowanie dokładne ('pick') by go nie znalazło.
+    fireEvent.click(within(list()).getByRole('button', { name: /^Monitor/ }));
+    expect(screen.queryByRole('heading', { name: 'Outlook', level: 4 })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Elementy: Pulpit komputera' })).toBeInTheDocument();
+  });
+});
+
 describe('DIALOGUE: kwestie po jednej', () => {
   it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
     const { onSubmit, ready } = setup(dialogue);

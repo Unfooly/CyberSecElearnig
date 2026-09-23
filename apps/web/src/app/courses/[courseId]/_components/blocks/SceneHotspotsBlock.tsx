@@ -2,13 +2,16 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
-import type { ContentBlock, HotspotMedia } from '@/lib/courses-types';
+import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
+import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
 import ExploreFooter from './ExploreFooter';
+
+type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 
 // Nakładka pełnoekranowa (image/document, B-086/D-071): mobile pełny ekran, od sm w górę max-width/max-height 90vw/90vh
 // wyśrodkowane. Ten sam wzorzec dialogu co CourseRewardModal.tsx (role=dialog, aria-modal, Escape zamyka) - bez pełnego
@@ -64,13 +67,16 @@ function MediaOverlay({
 // niewidoczne do najechania (lekki puls podpowiada je do pierwszego kliknięcia); te same punkty są listą przycisków pod obrazem: to główna
 // ścieżka dla klawiatury, czytników ekranu i dotyku (małe prostokąty na 390 px trudno trafić), więc nakładki są aria-hidden i poza kolejnością
 // Tab. Kliknięty punkt otwiera kartę; punkt-dowód ma "Dodaj do notatnika". Ukończenie po wymaganych punktach (reszta to "smaczki").
-// Media karty (B-086/D-071): hotspot może OBOK content mieć media (image/audio/document) - image/document w pełnoekranowej
-// nakładce, audio z własnym odtwarzaczem. Dla hotspotu Z MEDIA dowód zalicza się OD RAZU przy otwarciu karty (nie po
-// odsłuchaniu/obejrzeniu) - "otwarcie" jest tu dowodem samym w sobie, inaczej niż zwykły tekstowy hotspot, który wciąż
-// wymaga świadomego "Dodaj do notatnika". Dla audio: insight (content bloku) odsłania się dopiero po onEnded (SCENARIUSZ),
-// ale transkrypcja jest dostępna od razu pod przyciskiem "Pokaż transkrypcję" - użytkownik bez dźwięku nie może czekać na
-// zdarzenie, które nigdy nie nadejdzie. media.kind "scene" (zagnieżdżona mini-scena) i action "next" (drzwi): kolejny commit.
-// Odpowiedź dla serwera: { visited: [id...], noted: [id...] }.
+// Media karty (B-086/D-071): hotspot może OBOK content mieć media (image/audio/document/scene) - image/document w
+// pełnoekranowej nakładce, audio z własnym odtwarzaczem, scene to zagnieżdżona mini-scena (własny obraz + własne
+// hotspoty, zawsze DOKŁADNIE jeden poziom - jej hotspoty nie mają już własnego media.kind:'scene'). Required/ukończenie
+// bloku liczone na SPŁASZCZONEJ liście (zewnętrzne + wewnętrzne, flattenHotspots - ta sama funkcja co serwer, D-071) -
+// dowody z zagnieżdżonej sceny LICZĄ SIĘ do bloku. Dla hotspotu Z MEDIA (dowolny poziom, oprócz samej "bramki" scene)
+// dowód zalicza się OD RAZU przy otwarciu karty (nie po odsłuchaniu/obejrzeniu) - "otwarcie" jest tu dowodem samym w
+// sobie, inaczej niż zwykły tekstowy hotspot, który wciąż wymaga świadomego "Dodaj do notatnika". Dla audio: insight
+// (content bloku) odsłania się dopiero po onEnded, ale transkrypcja jest dostępna od razu pod przyciskiem "Pokaż
+// transkrypcję" - użytkownik bez dźwięku nie może czekać na zdarzenie, które nigdy nie nadejdzie.
+// action "next" (drzwi): kolejny commit. Odpowiedź dla serwera: { visited: [id...], noted: [id...] }.
 export default function SceneHotspotsBlock({
   block,
   contentBase,
@@ -86,26 +92,30 @@ export default function SceneHotspotsBlock({
   review?: boolean;
 }) {
   const hotspots = block.hotspots ?? [];
+  const flat = flattenHotspots(hotspots);
   const { addNote } = useNotes();
   const evidence = useEvidence();
   const mascot = useMascotReaction();
   const [visited, setVisited] = useState<string[]>([]);
   const [noted, setNoted] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Id hotspotu WEWNĄTRZ zagnieżdżonej sceny bieżącego `active` (media.kind:'scene') - resetuje się przy zmianie activeId.
+  const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [interacted, setInteracted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  // Audio: id hotspotów, których nagranie zostało odsłuchane do końca (onEnded) - odsłania insight (content) pod odtwarzaczem.
+  // Audio: id hotspotów (dowolnego poziomu), których nagranie zostało odsłuchane do końca (onEnded) - odsłania insight (content).
   const [listenedIds, setListenedIds] = useState<string[]>([]);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const [overlayKind, setOverlayKind] = useState<'image' | 'document' | null>(null);
+  const [overlay, setOverlay] = useState<{ hotspot: AnyHotspot; kind: 'image' | 'document' } | null>(null);
   const overlayTriggerRef = useRef<HTMLButtonElement | null>(null);
   const imageUrl = contentAssetUrl(contentBase, block.image, 'image');
   const active = hotspots.find((hotspot) => hotspot.id === activeId) ?? null;
-  const overlayImageUrl = active?.media?.kind === 'image' ? contentAssetUrl(contentBase, active.media.src, 'image') : null;
+  const nestedScene = active?.media?.kind === 'scene' ? active.media.scene : undefined;
+  const activeInner = nestedScene?.hotspots.find((hotspot) => hotspot.id === nestedActiveId) ?? null;
   const transcriptId = useId();
   const overlayTitleId = useId();
 
-  const required = requiredItemIds(hotspots, block.requiredHotspots);
+  const required = requiredItemIds(flat, block.requiredHotspots);
   const doneCount = required.filter((id) => visited.includes(id)).length;
   const ready = doneCount >= required.length;
   useCompleteReaction(block.reactions?.complete, ready, review);
@@ -117,24 +127,38 @@ export default function SceneHotspotsBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visited, noted, review]);
 
-  // Zmiana aktywnego hotspotu: transkrypcja (audio) zwija się z powrotem, nakładka (image/document) zamyka się.
+  // Zmiana aktywnego elementu (zewnętrznego albo wewnątrz zagnieżdżonej sceny): transkrypcja się zwija, nakładka zamyka.
   useEffect(() => {
     setTranscriptOpen(false);
-    setOverlayKind(null);
+    setOverlay(null);
+  }, [activeId, nestedActiveId]);
+
+  // Zmiana zewnętrznego hotspotu zeruje wybór wewnątrz JEGO zagnieżdżonej sceny (poprzedni wybór nie ma tu sensu).
+  useEffect(() => {
+    setNestedActiveId(null);
   }, [activeId]);
+
+  function markVisited(id: string) {
+    setVisited((current) => (current.includes(id) ? current : [...current, id]));
+    const hotspot = flat.find((candidate) => candidate.id === id);
+    // Media (dowolny poziom, oprócz samej "bramki" scene) zalicza dowód OD RAZU przy otwarciu karty: "otwarcie" jest
+    // dowodem, w przeciwieństwie do zwykłego tekstowego hotspotu (addToNotepad niżej no-opuje, gdy nie jest dowodem).
+    if (hotspot?.media && hotspot.media.kind !== 'scene') addToNotepad(id);
+  }
 
   function open(id: string) {
     setInteracted(true);
     setActiveId(id);
-    setVisited((current) => (current.includes(id) ? current : [...current, id]));
-    const hotspot = hotspots.find((candidate) => candidate.id === id);
-    // Media (image/audio/document, NIE scene - kolejny commit) zalicza dowód OD RAZU przy otwarciu karty: "otwarcie" jest
-    // dowodem, w przeciwieństwie do zwykłego tekstowego hotspotu (addToNotepad niżej no-opuje, gdy hotspot nie jest dowodem).
-    if (hotspot?.media && hotspot.media.kind !== 'scene') addToNotepad(id);
+    markVisited(id);
+  }
+
+  function openNested(id: string) {
+    setNestedActiveId(id);
+    markVisited(id);
   }
 
   function addToNotepad(id: string) {
-    const hotspot = hotspots.find((candidate) => candidate.id === id);
+    const hotspot = flat.find((candidate) => candidate.id === id);
     if (!hotspot?.evidence || !hotspot.note || noted.includes(id) || review || !block.id) return;
     setNoted((current) => [...current, id]);
     addNote({ blockId: block.id, text: hotspot.note.text, kind: hotspot.note.kind });
@@ -142,17 +166,18 @@ export default function SceneHotspotsBlock({
     mascot.react('evidence');
   }
 
-  function openOverlay(kind: 'image' | 'document', trigger: HTMLButtonElement | null) {
+  function openOverlay(hotspot: AnyHotspot, kind: 'image' | 'document', trigger: HTMLButtonElement | null) {
     overlayTriggerRef.current = trigger;
-    setOverlayKind(kind);
+    setOverlay({ hotspot, kind });
   }
 
   function closeOverlay() {
-    setOverlayKind(null);
+    setOverlay(null);
     overlayTriggerRef.current?.focus();
   }
 
   const isNoted = (id: string) => noted.includes(id);
+  const overlayImageUrl = overlay?.kind === 'image' && overlay.hotspot.media?.kind === 'image' ? contentAssetUrl(contentBase, overlay.hotspot.media.src, 'image') : null;
 
   return (
     <div>
@@ -225,46 +250,62 @@ export default function SceneHotspotsBlock({
           <article data-testid="hotspot-card" aria-label={active.label} className="rounded bg-slate-50 p-3 ring-1 ring-slate-200">
             <h3 className="mb-1 text-sm font-semibold text-slate-900">{active.label}</h3>
 
-            {active.media?.kind !== 'audio' && active.content && <p className="whitespace-pre-line text-slate-800">{active.content}</p>}
+            <HotspotDetailBody
+              hotspot={active}
+              contentBase={contentBase}
+              listened={listenedIds.includes(active.id)}
+              transcriptOpen={transcriptOpen}
+              transcriptId={transcriptId}
+              onToggleTranscript={() => setTranscriptOpen((open) => !open)}
+              onEnded={() => setListenedIds((current) => (current.includes(active.id) ? current : [...current, active.id]))}
+              onOpenOverlay={(kind, trigger) => openOverlay(active, kind, trigger)}
+              noted={isNoted(active.id)}
+              onAddToNotepad={() => addToNotepad(active.id)}
+              review={review}
+            />
 
-            {active.media?.kind === 'image' && (
-              <ImagePreview contentBase={contentBase} media={active.media} onOpen={(trigger) => openOverlay('image', trigger)} />
-            )}
+            {nestedScene && (
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{nestedScene.imageAlt}</p>
+                <NestedSceneImage contentBase={contentBase} scene={nestedScene} visited={visited} interacted={interacted} onPick={openNested} />
+                <ul aria-label={`Elementy: ${nestedScene.imageAlt}`} className="flex flex-wrap gap-2">
+                  {nestedScene.hotspots.map((hotspot) => (
+                    <li key={hotspot.id}>
+                      <button
+                        type="button"
+                        aria-pressed={nestedActiveId === hotspot.id}
+                        onClick={() => openNested(hotspot.id)}
+                        className={`min-h-[44px] rounded border px-3 py-2 text-sm font-medium ${
+                          nestedActiveId === hotspot.id
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                        }`}
+                      >
+                        {hotspot.label}
+                        {visited.includes(hotspot.id) && <span className="sr-only"> (obejrzane)</span>}
+                        {visited.includes(hotspot.id) && <span aria-hidden="true"> ✓</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
 
-            {active.media?.kind === 'document' && (
-              <DocumentPreview media={active.media} onOpen={(trigger) => openOverlay('document', trigger)} />
-            )}
-
-            {active.media?.kind === 'audio' && (
-              <AudioMedia
-                contentBase={contentBase}
-                media={active.media}
-                transcriptOpen={transcriptOpen}
-                transcriptId={transcriptId}
-                onToggleTranscript={() => setTranscriptOpen((open) => !open)}
-                onEnded={() => setListenedIds((current) => (current.includes(active.id) ? current : [...current, active.id]))}
-              />
-            )}
-
-            {active.media?.kind === 'audio' && listenedIds.includes(active.id) && active.content && (
-              <p className="mt-3 whitespace-pre-line text-slate-800">{active.content}</p>
-            )}
-
-            {active.evidence && active.note && !review && (
-              <div className="mt-3">
-                {isNoted(active.id) ? (
-                  <p className="inline-flex items-center gap-2 text-sm font-medium text-green-700">
-                    <NoteKindIcon kind={active.note.kind} />
-                    Dodano do notatnika
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => addToNotepad(active.id)}
-                    className="min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
-                  >
-                    Dodaj do notatnika
-                  </button>
+                {activeInner && (
+                  <article className="mt-3 rounded bg-white p-3 ring-1 ring-slate-200" aria-label={activeInner.label}>
+                    <h4 className="mb-1 text-sm font-semibold text-slate-900">{activeInner.label}</h4>
+                    <HotspotDetailBody
+                      hotspot={activeInner}
+                      contentBase={contentBase}
+                      listened={listenedIds.includes(activeInner.id)}
+                      transcriptOpen={transcriptOpen}
+                      transcriptId={transcriptId}
+                      onToggleTranscript={() => setTranscriptOpen((open) => !open)}
+                      onEnded={() => setListenedIds((current) => (current.includes(activeInner.id) ? current : [...current, activeInner.id]))}
+                      onOpenOverlay={(kind, trigger) => openOverlay(activeInner, kind, trigger)}
+                      noted={isNoted(activeInner.id)}
+                      onAddToNotepad={() => addToNotepad(activeInner.id)}
+                      review={review}
+                    />
+                  </article>
                 )}
               </div>
             )}
@@ -272,21 +313,26 @@ export default function SceneHotspotsBlock({
         )}
       </div>
 
-      {active && overlayKind === 'image' && active.media?.kind === 'image' && overlayImageUrl && (
-        <MediaOverlay onClose={closeOverlay} ariaLabel={active.media.alt || active.label}>
+      {overlay?.kind === 'image' && overlayImageUrl && overlay.hotspot.media?.kind === 'image' && (
+        <MediaOverlay onClose={closeOverlay} ariaLabel={overlay.hotspot.media.alt || overlay.hotspot.label}>
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL, nakładka pełnoekranowa */}
-          <img src={overlayImageUrl} alt={active.media.alt ?? ''} referrerPolicy="no-referrer" className="m-auto max-h-full max-w-full object-contain" />
+          <img
+            src={overlayImageUrl}
+            alt={overlay.hotspot.media.alt ?? ''}
+            referrerPolicy="no-referrer"
+            className="m-auto max-h-full max-w-full object-contain"
+          />
         </MediaOverlay>
       )}
 
-      {active && overlayKind === 'document' && active.media?.kind === 'document' && (
+      {overlay?.kind === 'document' && overlay.hotspot.media?.kind === 'document' && (
         <MediaOverlay onClose={closeOverlay} titleId={overlayTitleId}>
           <div className="flex h-full flex-col p-4 sm:p-6">
             <h2 id={overlayTitleId} className="mb-3 pr-10 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {active.media.title}
+              {overlay.hotspot.media.title}
             </h2>
             <pre className="flex-1 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-4 font-mono text-sm leading-relaxed text-slate-100">
-              {active.media.lines?.join('\n')}
+              {overlay.hotspot.media.lines?.join('\n')}
             </pre>
           </div>
         </MediaOverlay>
@@ -297,13 +343,128 @@ export default function SceneHotspotsBlock({
   );
 }
 
+// Treść (content + media + wskaźnik dowodu) współdzielona przez kartę zewnętrznego hotspotu i kartę hotspotu wewnątrz
+// zagnieżdżonej sceny - obie zachowują się identycznie poza tym, że wewnętrzna nigdy nie ma media.kind:'scene' (typ to
+// wymusza, więc gałąź "scene" tu w ogóle nie występuje).
+function HotspotDetailBody({
+  hotspot,
+  contentBase,
+  listened,
+  transcriptOpen,
+  transcriptId,
+  onToggleTranscript,
+  onEnded,
+  onOpenOverlay,
+  noted,
+  onAddToNotepad,
+  review,
+}: {
+  hotspot: AnyHotspot;
+  contentBase: string;
+  listened: boolean;
+  transcriptOpen: boolean;
+  transcriptId: string;
+  onToggleTranscript: () => void;
+  onEnded: () => void;
+  onOpenOverlay: (kind: 'image' | 'document', trigger: HTMLButtonElement | null) => void;
+  noted: boolean;
+  onAddToNotepad: () => void;
+  review: boolean;
+}) {
+  const media = hotspot.media;
+  return (
+    <>
+      {media?.kind !== 'audio' && hotspot.content && <p className="whitespace-pre-line text-slate-800">{hotspot.content}</p>}
+
+      {media?.kind === 'image' && (
+        <ImagePreview contentBase={contentBase} media={media} onOpen={(trigger) => onOpenOverlay('image', trigger)} />
+      )}
+
+      {media?.kind === 'document' && <DocumentPreview media={media} onOpen={(trigger) => onOpenOverlay('document', trigger)} />}
+
+      {media?.kind === 'audio' && (
+        <AudioMedia
+          contentBase={contentBase}
+          media={media}
+          transcriptOpen={transcriptOpen}
+          transcriptId={transcriptId}
+          onToggleTranscript={onToggleTranscript}
+          onEnded={onEnded}
+        />
+      )}
+
+      {media?.kind === 'audio' && listened && hotspot.content && <p className="mt-3 whitespace-pre-line text-slate-800">{hotspot.content}</p>}
+
+      {hotspot.evidence && hotspot.note && !review && (
+        <div className="mt-3">
+          {noted ? (
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-green-700">
+              <NoteKindIcon kind={hotspot.note.kind} />
+              Dodano do notatnika
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={onAddToNotepad}
+              className="min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
+            >
+              Dodaj do notatnika
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// Obraz zagnieżdżonej sceny z klikalnymi prostokątami - jak główna ilustracja bloku, ale bez własnego stanu "imageFailed"
+// (błąd wczytania po prostu nic nie pokazuje - to smaczek w karcie, nie osobny blok).
+function NestedSceneImage({
+  contentBase,
+  scene,
+  visited,
+  interacted,
+  onPick,
+}: {
+  contentBase: string;
+  scene: NestedScene;
+  visited: string[];
+  interacted: boolean;
+  onPick: (id: string) => void;
+}) {
+  const url = contentAssetUrl(contentBase, scene.image, 'image');
+  if (!url) return null;
+  return (
+    <div className="relative mb-3 overflow-hidden rounded border border-slate-200">
+      {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
+      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" className="block w-full" />
+      {scene.hotspots.map((hotspot) => {
+        const seen = visited.includes(hotspot.id);
+        return (
+          <button
+            key={hotspot.id}
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            onClick={() => onPick(hotspot.id)}
+            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
+            className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${
+              seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function ImagePreview({
   contentBase,
   media,
   onOpen,
 }: {
   contentBase: string;
-  media: HotspotMedia;
+  media: HotspotMedia | InnerHotspotMedia;
   onOpen: (trigger: HTMLButtonElement | null) => void;
 }) {
   const url = contentAssetUrl(contentBase, media.src, 'image');
@@ -321,7 +482,7 @@ function ImagePreview({
   );
 }
 
-function DocumentPreview({ media, onOpen }: { media: HotspotMedia; onOpen: (trigger: HTMLButtonElement | null) => void }) {
+function DocumentPreview({ media, onOpen }: { media: HotspotMedia | InnerHotspotMedia; onOpen: (trigger: HTMLButtonElement | null) => void }) {
   return (
     <button
       type="button"
@@ -342,7 +503,7 @@ function AudioMedia({
   onEnded,
 }: {
   contentBase: string;
-  media: HotspotMedia;
+  media: HotspotMedia | InnerHotspotMedia;
   transcriptOpen: boolean;
   transcriptId: string;
   onToggleTranscript: () => void;

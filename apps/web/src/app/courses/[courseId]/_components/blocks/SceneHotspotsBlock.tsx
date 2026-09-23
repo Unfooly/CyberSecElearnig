@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Check, DoorOpen, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Check, DoorOpen } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -13,70 +13,27 @@ import ExploreFooter from './ExploreFooter';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 
-// Nakładka pełnoekranowa (image/document, B-086/D-071): mobile pełny ekran, od sm w górę max-width/max-height 90vw/90vh
-// wyśrodkowane. Ten sam wzorzec dialogu co CourseRewardModal.tsx (role=dialog, aria-modal, Escape zamyka) - bez pełnego
-// focus trapu (jak tam), bo jedyny interaktywny element w środku to przycisk zamknięcia. Fokus po zamknięciu wraca do
-// przycisku, który otworzył nakładkę (onClose w SceneHotspotsBlock go oddaje).
-function MediaOverlay({
-  onClose,
-  ariaLabel,
-  titleId,
-  children,
-}: {
-  onClose: () => void;
-  ariaLabel?: string;
-  titleId?: string;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={ariaLabel}
-      aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex h-full w-full flex-col overflow-auto bg-white sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-[90vw] sm:rounded-lg sm:shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Zamknij podgląd"
-          className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow hover:bg-white"
-        >
-          <X aria-hidden="true" className="h-5 w-5" />
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu. Punkty na obrazie są
-// niewidoczne do najechania (lekki puls podpowiada je do pierwszego kliknięcia); te same punkty są listą przycisków pod obrazem: to główna
-// ścieżka dla klawiatury, czytników ekranu i dotyku (małe prostokąty na 390 px trudno trafić), więc nakładki są aria-hidden i poza kolejnością
-// Tab. Kliknięty punkt otwiera kartę; punkt-dowód ma "Dodaj do notatnika". Ukończenie po wymaganych punktach (reszta to "smaczki").
-// Media karty (B-086/D-071): hotspot może OBOK content mieć media (image/audio/document/scene) - image/document w
-// pełnoekranowej nakładce, audio z własnym odtwarzaczem, scene to zagnieżdżona mini-scena (własny obraz + własne
-// hotspoty, zawsze DOKŁADNIE jeden poziom - jej hotspoty nie mają już własnego media.kind:'scene'). Required/ukończenie
-// bloku liczone na SPŁASZCZONEJ liście (zewnętrzne + wewnętrzne, flattenHotspots - ta sama funkcja co serwer, D-071) -
-// dowody z zagnieżdżonej sceny LICZĄ SIĘ do bloku. Dla hotspotu Z MEDIA (dowolny poziom, oprócz samej "bramki" scene)
-// dowód zalicza się OD RAZU przy otwarciu karty (nie po odsłuchaniu/obejrzeniu) - "otwarcie" jest tu dowodem samym w
-// sobie, inaczej niż zwykły tekstowy hotspot, który wciąż wymaga świadomego "Dodaj do notatnika". Dla audio: insight
-// (content bloku) odsłania się dopiero po onEnded, ale transkrypcja jest dostępna od razu pod przyciskiem "Pokaż
-// transkrypcję" - użytkownik bez dźwięku nie może czekać na zdarzenie, które nigdy nie nadejdzie.
-// action "next" (drzwi): kolejny commit. Odpowiedź dla serwera: { visited: [id...], noted: [id...] }.
+// Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu - JEDYNA
+// interakcja (feedback z produkcji po PR #32: usunięta lista przycisków-chipów pod obrazem). Każdy hotspot jest
+// niewidocznym <button> nałożonym na obraz, w pełni dostępny: aria-label z tytułu (+ stan "obejrzane"/"drzwi
+// zablokowane"), widoczny focus-ring (FOCUS_RING) - klawiatura i czytnik ekranu działają WYŁĄCZNIE przez te punkty,
+// bez osobnej listy. Licznik "Obejrzano X z Y" (ExploreFooter) jest nad obrazem, mały.
+//
+// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE (nie pod obrazem): position absolute w obrębie
+// kontenera obrazu na desktopie (tło półprzezroczyste ciemni obraz pod spodem), pełny ekran na mobile. Zagnieżdżona
+// scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
+// wzorzec, rekurencyjnie): stos maks. 2 poziomy (zewnętrzny hotspot -> zagnieżdżona scena -> jej hotspot), bo
+// zagnieżdżanie ma zawsze dokładnie 1 poziom (innerHotspotSchema nie ma już własnego media.kind:'scene'). "Wróć"
+// (i Escape, ten sam handler) zdejmuje jeden poziom: z maila do pulpitu, z pulpitu zamyka nakładkę. Fokus po każdej
+// zmianie poziomu ląduje na nagłówku karty (kontekst dla czytnika ekranu); po CAŁKOWITYM zamknięciu wraca na
+// przycisk, który otworzył nakładkę.
+//
+// Dowód zalicza się WYŁĄCZNIE przyciskiem "Dodaj do notatnika" (zmiana względem wcześniejszej wersji tego bloku,
+// gdzie media zaliczały dowód od razu przy otwarciu karty - feedback z produkcji, D-071 zaktualizowane) - jednolicie
+// dla wszystkich hotspotów z `evidence`, bez wyjątku dla mediów. Po kliknięciu przycisk zmienia się w statyczne
+// "W notatniku ✓". Hotspoty bez `evidence` (np. kubek) nie mają tego przycisku, tylko "Wróć".
 export default function SceneHotspotsBlock({
   block,
   contentBase,
@@ -99,19 +56,20 @@ export default function SceneHotspotsBlock({
   const [visited, setVisited] = useState<string[]>([]);
   const [noted, setNoted] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Id hotspotu WEWNĄTRZ zagnieżdżonej sceny bieżącego `active` (media.kind:'scene') - resetuje się przy zmianie activeId.
+  // Id hotspotu WEWNĄTRZ zagnieżdżonej sceny bieżącego `active` (media.kind:'scene') - drugi (ostatni możliwy) poziom nakładki.
   const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [interacted, setInteracted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   // Audio: id hotspotów (dowolnego poziomu), których nagranie zostało odsłuchane do końca (onEnded) - odsłania insight (content).
   const [listenedIds, setListenedIds] = useState<string[]>([]);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const [overlay, setOverlay] = useState<{ hotspot: AnyHotspot; kind: 'image' | 'document' } | null>(null);
   const overlayTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const imageUrl = contentAssetUrl(contentBase, block.image, 'image');
   const active = hotspots.find((hotspot) => hotspot.id === activeId) ?? null;
   const nestedScene = active?.media?.kind === 'scene' ? active.media.scene : undefined;
   const activeInner = nestedScene?.hotspots.find((hotspot) => hotspot.id === nestedActiveId) ?? null;
+  const current: AnyHotspot | null = activeInner ?? active;
   const transcriptId = useId();
   const overlayTitleId = useId();
 
@@ -138,27 +96,31 @@ export default function SceneHotspotsBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visited, noted, review, hasDoor]);
 
-  // Zmiana aktywnego elementu (zewnętrznego albo wewnątrz zagnieżdżonej sceny): transkrypcja się zwija, nakładka zamyka.
+  // Zmiana poziomu nakładki (otwarcie, zejście głębiej, "Wróć"): transkrypcja się zwija, fokus ląduje na nagłówku
+  // karty (kontekst dla czytnika ekranu przy zmianie treści w tej samej nakładce).
   useEffect(() => {
     setTranscriptOpen(false);
-    setOverlay(null);
-  }, [activeId, nestedActiveId]);
+    if (current) headingRef.current?.focus();
+  }, [activeId, nestedActiveId, current]);
 
-  // Zmiana zewnętrznego hotspotu zeruje wybór wewnątrz JEGO zagnieżdżonej sceny (poprzedni wybór nie ma tu sensu).
+  // Escape zdejmuje jeden poziom nakładki - ten sam handler co przycisk "Wróć".
   useEffect(() => {
-    setNestedActiveId(null);
-  }, [activeId]);
+    if (!activeId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') goBack();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, nestedActiveId]);
 
   function markVisited(id: string) {
     setVisited((current) => (current.includes(id) ? current : [...current, id]));
-    const hotspot = flat.find((candidate) => candidate.id === id);
-    // Media (dowolny poziom, oprócz samej "bramki" scene) zalicza dowód OD RAZU przy otwarciu karty: "otwarcie" jest
-    // dowodem, w przeciwieństwie do zwykłego tekstowego hotspotu (addToNotepad niżej no-opuje, gdy nie jest dowodem).
-    if (hotspot?.media && hotspot.media.kind !== 'scene') addToNotepad(id);
   }
 
-  function open(id: string) {
+  function open(id: string, trigger: HTMLButtonElement | null) {
     setInteracted(true);
+    overlayTriggerRef.current = trigger;
     setActiveId(id);
     markVisited(id);
   }
@@ -169,14 +131,29 @@ export default function SceneHotspotsBlock({
     if (!review && ready) onSubmit({ visited, noted });
   }
 
-  function handleHotspotClick(hotspot: SceneHotspot) {
+  function handleHotspotClick(hotspot: SceneHotspot, trigger: HTMLButtonElement | null) {
     if (hotspot.action === 'next') clickDoor();
-    else open(hotspot.id);
+    else open(hotspot.id, trigger);
   }
 
   function openNested(id: string) {
+    setInteracted(true);
     setNestedActiveId(id);
     markVisited(id);
+  }
+
+  // "Wróć": z poziomu maila (nestedActiveId) cofa do pulpitu; z pulpitu/karty najwyższego poziomu zamyka nakładkę
+  // i oddaje fokus przyciskowi, który ją otworzył.
+  function goBack() {
+    if (nestedActiveId) {
+      setNestedActiveId(null);
+      return;
+    }
+    if (activeId) {
+      const trigger = overlayTriggerRef.current;
+      setActiveId(null);
+      trigger?.focus();
+    }
   }
 
   function addToNotepad(id: string) {
@@ -188,26 +165,16 @@ export default function SceneHotspotsBlock({
     mascot.react('evidence');
   }
 
-  function openOverlay(hotspot: AnyHotspot, kind: 'image' | 'document', trigger: HTMLButtonElement | null) {
-    overlayTriggerRef.current = trigger;
-    setOverlay({ hotspot, kind });
-  }
-
-  function closeOverlay() {
-    setOverlay(null);
-    overlayTriggerRef.current?.focus();
-  }
-
   const isNoted = (id: string) => noted.includes(id);
-  const overlayImageUrl = overlay?.kind === 'image' && overlay.hotspot.media?.kind === 'image' ? contentAssetUrl(contentBase, overlay.hotspot.media.src, 'image') : null;
 
   return (
     <div>
       {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
-      <p className="mb-3 text-sm text-slate-600">Wybierz elementy sceny, aby dowiedzieć się więcej.</p>
+      <p className="mb-2 text-sm text-slate-600">Wybierz elementy sceny, aby dowiedzieć się więcej.</p>
+      <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
 
       {imageUrl && !imageFailed && (
-        <div className="relative mb-4 overflow-hidden rounded border border-slate-200">
+        <div className="relative overflow-hidden rounded border border-slate-200">
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
           <img
             src={imageUrl}
@@ -219,22 +186,28 @@ export default function SceneHotspotsBlock({
           {hotspots.map((hotspot) => {
             const seen = visited.includes(hotspot.id);
             const isDoor = hotspot.action === 'next';
+            const blocked = isDoor && !ready;
+            const label = isDoor
+              ? blocked
+                ? `${hotspot.label}: zbierz najpierw dowody (${doneCount}/${required.length})`
+                : hotspot.label
+              : `${hotspot.label}${seen ? ' (obejrzane)' : ''}`;
             return (
               <button
                 key={hotspot.id}
                 type="button"
                 data-testid={`hotspot-overlay-${hotspot.id}`}
                 data-state={isDoor ? (ready ? 'ready' : 'blocked') : seen ? 'discovered' : interacted ? 'hidden' : 'hint'}
-                // Nakładka tylko dla myszy i dotyku; klawiatura i czytniki używają listy poniżej (jeden cel na punkt).
-                aria-hidden="true"
-                tabIndex={-1}
-                // Natywne disabled tu jest OK (w odróżnieniu od odpowiednika na liście niżej, który celowo używa
-                // aria-disabled, żeby zostać skupialny/ogłaszany) - ten przycisk i tak jest już poza kolejnością Tab
-                // (tabIndex={-1}, aria-hidden) i niewidoczny dla czytników ekranu, więc nie ma czego "zgubić".
-                disabled={isDoor && !ready}
-                onClick={() => handleHotspotClick(hotspot)}
+                aria-label={label}
+                // Nieaktywne drzwi zostają SKUPIALNE (aria-disabled, nie natywne disabled) - czytnik ekranu ma usłyszeć
+                // DLACZEGO, zamiast po prostu pominąć przycisk. Gdy nakładka jest otwarta, punkty pod nią wychodzą z
+                // kolejności Tab (są wizualnie przykryte, bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx).
+                aria-disabled={blocked}
+                title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}
+                tabIndex={activeId ? -1 : undefined}
+                onClick={(event) => handleHotspotClick(hotspot, event.currentTarget)}
                 style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
-                className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors ${
+                className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors ${FOCUS_RING} ${
                   isDoor
                     ? ready
                       ? 'border-amber-500 bg-amber-400/20 hover:border-amber-600 hover:bg-amber-400/30'
@@ -248,6 +221,7 @@ export default function SceneHotspotsBlock({
                       }`
                 }`}
               >
+                {isDoor && <DoorOpen aria-hidden="true" className="pointer-events-none mx-auto h-4 w-4 text-amber-800" />}
                 {!isDoor && seen && (
                   <span className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white">
                     <Check aria-hidden="true" className="h-3 w-3" />
@@ -256,152 +230,72 @@ export default function SceneHotspotsBlock({
               </button>
             );
           })}
+
+          {activeId && current && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={overlayTitleId}
+              className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/70 sm:absolute"
+            >
+              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 sm:h-full sm:rounded sm:p-4">
+                <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
+                  {current.label}
+                </h3>
+
+                <HotspotDetailBody
+                  hotspot={current}
+                  contentBase={contentBase}
+                  listened={listenedIds.includes(current.id)}
+                  transcriptOpen={transcriptOpen}
+                  transcriptId={transcriptId}
+                  onToggleTranscript={() => setTranscriptOpen((open) => !open)}
+                  onEnded={() => setListenedIds((list) => (list.includes(current.id) ? list : [...list, current.id]))}
+                  visited={visited}
+                  interacted={interacted}
+                  nestedOverlayOpen={!!nestedActiveId}
+                  onPickNested={openNested}
+                />
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {current.evidence && current.note && !review && (
+                    <>
+                      {isNoted(current.id) ? (
+                        <p className="inline-flex min-h-[44px] items-center gap-2 rounded px-1 text-sm font-medium text-green-700">
+                          <NoteKindIcon kind={current.note.kind} />W notatniku ✓
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => addToNotepad(current.id)}
+                          className={`min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
+                        >
+                          Dodaj do notatnika
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className={`min-h-[44px] rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none hover:bg-slate-50 ${FOCUS_RING}`}
+                  >
+                    Wróć
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      <ul aria-label="Elementy sceny" className="flex flex-wrap gap-2">
-        {hotspots.map((hotspot) =>
-          hotspot.action === 'next' ? (
-            <li key={hotspot.id}>
-              {/* Drzwi: gotowe (ready) kończą blok od razu, jak "Dalej" w pasku (który jest wtedy ukryty - hideForward
-                  w CoursePlayer.tsx). Nieaktywne zostaje SKUPIALNE (aria-disabled, nie disabled) - czytnik ekranu ma
-                  usłyszeć DLACZEGO, zamiast po prostu pominąć przycisk. */}
-              <button
-                type="button"
-                aria-disabled={!ready}
-                aria-label={ready ? undefined : `${hotspot.label}: zbierz najpierw dowody (${doneCount}/${required.length})`}
-                title={ready ? undefined : `Zbierz najpierw dowody: ${doneCount}/${required.length}`}
-                onClick={() => handleHotspotClick(hotspot)}
-                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium ${
-                  ready
-                    ? 'border-amber-600 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                    : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                }`}
-              >
-                <DoorOpen aria-hidden="true" className="h-4 w-4" />
-                {hotspot.label}
-              </button>
-            </li>
-          ) : (
-            <li key={hotspot.id}>
-              <button
-                type="button"
-                aria-pressed={activeId === hotspot.id}
-                onClick={() => open(hotspot.id)}
-                className={`min-h-[44px] rounded border px-3 py-2 text-sm font-medium ${
-                  activeId === hotspot.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                {hotspot.label}
-                {visited.includes(hotspot.id) && <span className="sr-only"> (obejrzane)</span>}
-                {visited.includes(hotspot.id) && <span aria-hidden="true"> ✓</span>}
-              </button>
-            </li>
-          ),
-        )}
-      </ul>
-
-      <div aria-live="polite" className="mt-4 min-h-[3rem]">
-        {active && (
-          <article data-testid="hotspot-card" aria-label={active.label} className="rounded bg-slate-50 p-3 ring-1 ring-slate-200">
-            <h3 className="mb-1 text-sm font-semibold text-slate-900">{active.label}</h3>
-
-            <HotspotDetailBody
-              hotspot={active}
-              contentBase={contentBase}
-              listened={listenedIds.includes(active.id)}
-              transcriptOpen={transcriptOpen}
-              transcriptId={transcriptId}
-              onToggleTranscript={() => setTranscriptOpen((open) => !open)}
-              onEnded={() => setListenedIds((current) => (current.includes(active.id) ? current : [...current, active.id]))}
-              onOpenOverlay={(kind, trigger) => openOverlay(active, kind, trigger)}
-              noted={isNoted(active.id)}
-              onAddToNotepad={() => addToNotepad(active.id)}
-              review={review}
-            />
-
-            {nestedScene && (
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{nestedScene.imageAlt}</p>
-                <NestedSceneImage contentBase={contentBase} scene={nestedScene} visited={visited} interacted={interacted} onPick={openNested} />
-                <ul aria-label={`Elementy: ${nestedScene.imageAlt}`} className="flex flex-wrap gap-2">
-                  {nestedScene.hotspots.map((hotspot) => (
-                    <li key={hotspot.id}>
-                      <button
-                        type="button"
-                        aria-pressed={nestedActiveId === hotspot.id}
-                        onClick={() => openNested(hotspot.id)}
-                        className={`min-h-[44px] rounded border px-3 py-2 text-sm font-medium ${
-                          nestedActiveId === hotspot.id
-                            ? 'border-slate-900 bg-slate-900 text-white'
-                            : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                        }`}
-                      >
-                        {hotspot.label}
-                        {visited.includes(hotspot.id) && <span className="sr-only"> (obejrzane)</span>}
-                        {visited.includes(hotspot.id) && <span aria-hidden="true"> ✓</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                {activeInner && (
-                  <article className="mt-3 rounded bg-white p-3 ring-1 ring-slate-200" aria-label={activeInner.label}>
-                    <h4 className="mb-1 text-sm font-semibold text-slate-900">{activeInner.label}</h4>
-                    <HotspotDetailBody
-                      hotspot={activeInner}
-                      contentBase={contentBase}
-                      listened={listenedIds.includes(activeInner.id)}
-                      transcriptOpen={transcriptOpen}
-                      transcriptId={transcriptId}
-                      onToggleTranscript={() => setTranscriptOpen((open) => !open)}
-                      onEnded={() => setListenedIds((current) => (current.includes(activeInner.id) ? current : [...current, activeInner.id]))}
-                      onOpenOverlay={(kind, trigger) => openOverlay(activeInner, kind, trigger)}
-                      noted={isNoted(activeInner.id)}
-                      onAddToNotepad={() => addToNotepad(activeInner.id)}
-                      review={review}
-                    />
-                  </article>
-                )}
-              </div>
-            )}
-          </article>
-        )}
-      </div>
-
-      {overlay?.kind === 'image' && overlayImageUrl && overlay.hotspot.media?.kind === 'image' && (
-        <MediaOverlay onClose={closeOverlay} ariaLabel={overlay.hotspot.media.alt || overlay.hotspot.label}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL, nakładka pełnoekranowa */}
-          <img
-            src={overlayImageUrl}
-            alt={overlay.hotspot.media.alt ?? ''}
-            referrerPolicy="no-referrer"
-            className="m-auto max-h-full max-w-full object-contain"
-          />
-        </MediaOverlay>
-      )}
-
-      {overlay?.kind === 'document' && overlay.hotspot.media?.kind === 'document' && (
-        <MediaOverlay onClose={closeOverlay} titleId={overlayTitleId}>
-          <div className="flex h-full flex-col p-4 sm:p-6">
-            <h2 id={overlayTitleId} className="mb-3 pr-10 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {overlay.hotspot.media.title}
-            </h2>
-            <pre className="flex-1 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-4 font-mono text-sm leading-relaxed text-slate-100">
-              {overlay.hotspot.media.lines?.join('\n')}
-            </pre>
-          </div>
-        </MediaOverlay>
-      )}
-
-      <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} />
     </div>
   );
 }
 
-// Treść (content + media + wskaźnik dowodu) współdzielona przez kartę zewnętrznego hotspotu i kartę hotspotu wewnątrz
-// zagnieżdżonej sceny - obie zachowują się identycznie poza tym, że wewnętrzna nigdy nie ma media.kind:'scene' (typ to
-// wymusza, więc gałąź "scene" tu w ogóle nie występuje).
+// Treść (tekst + media) współdzielona przez kartę zewnętrznego hotspotu i kartę hotspotu wewnątrz zagnieżdżonej sceny -
+// obie zachowują się identycznie poza tym, że wewnętrzna nigdy nie ma media.kind:'scene' (typ to wymusza, więc ta
+// gałąź po prostu nie występuje dla InnerSceneHotspot). Przycisk dowodu i "Wróć" renderuje RODZIC (SceneHotspotsBlock),
+// nie ten komponent - "pod spodem dwa przyciski" jest wspólne dla wszystkich poziomów nakładki, nie część "treści".
 function HotspotDetailBody({
   hotspot,
   contentBase,
@@ -410,10 +304,10 @@ function HotspotDetailBody({
   transcriptId,
   onToggleTranscript,
   onEnded,
-  onOpenOverlay,
-  noted,
-  onAddToNotepad,
-  review,
+  visited,
+  interacted,
+  nestedOverlayOpen,
+  onPickNested,
 }: {
   hotspot: AnyHotspot;
   contentBase: string;
@@ -422,21 +316,23 @@ function HotspotDetailBody({
   transcriptId: string;
   onToggleTranscript: () => void;
   onEnded: () => void;
-  onOpenOverlay: (kind: 'image' | 'document', trigger: HTMLButtonElement | null) => void;
-  noted: boolean;
-  onAddToNotepad: () => void;
-  review: boolean;
+  visited: string[];
+  interacted: boolean;
+  nestedOverlayOpen: boolean;
+  onPickNested: (id: string) => void;
 }) {
   const media = hotspot.media;
+  // media.scene osobno (nie tylko media?.kind === 'scene' && media.scene): HotspotMedia to jeden płaski interfejs
+  // (courses-types.ts), nie prawdziwa unia dyskryminowana - sprawdzenie .kind nie zawęża TypeScriptowi opcjonalności
+  // .scene. Prawda/fałsz osobnej stałej TS już zawęża poprawnie (ten sam wzorzec co wcześniej nestedScene w rodzicu).
+  const scene = media?.kind === 'scene' ? media.scene : undefined;
   return (
     <>
       {media?.kind !== 'audio' && hotspot.content && <p className="whitespace-pre-line text-slate-800">{hotspot.content}</p>}
 
-      {media?.kind === 'image' && (
-        <ImagePreview contentBase={contentBase} media={media} onOpen={(trigger) => onOpenOverlay('image', trigger)} />
-      )}
+      {media?.kind === 'image' && <ImageMedia contentBase={contentBase} media={media} />}
 
-      {media?.kind === 'document' && <DocumentPreview media={media} onOpen={(trigger) => onOpenOverlay('document', trigger)} />}
+      {media?.kind === 'document' && <DocumentMedia media={media} />}
 
       {media?.kind === 'audio' && (
         <AudioMedia
@@ -451,47 +347,42 @@ function HotspotDetailBody({
 
       {media?.kind === 'audio' && listened && hotspot.content && <p className="mt-3 whitespace-pre-line text-slate-800">{hotspot.content}</p>}
 
-      {hotspot.evidence && hotspot.note && !review && (
-        <div className="mt-3">
-          {noted ? (
-            <p className="inline-flex items-center gap-2 text-sm font-medium text-green-700">
-              <NoteKindIcon kind={hotspot.note.kind} />
-              Dodano do notatnika
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={onAddToNotepad}
-              className="min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
-            >
-              Dodaj do notatnika
-            </button>
-          )}
-        </div>
+      {scene && (
+        <NestedSceneImage
+          contentBase={contentBase}
+          scene={scene}
+          visited={visited}
+          interacted={interacted}
+          overlayOpen={nestedOverlayOpen}
+          onPick={onPickNested}
+        />
       )}
     </>
   );
 }
 
-// Obraz zagnieżdżonej sceny z klikalnymi prostokątami - jak główna ilustracja bloku, ale bez własnego stanu "imageFailed"
-// (błąd wczytania po prostu nic nie pokazuje - to smaczek w karcie, nie osobny blok).
+// Obraz zagnieżdżonej sceny z klikalnymi prostokątami - ten sam wzorzec dostępności co główna ilustracja bloku
+// (aria-label, focus-ring, bez chipów): klik otwiera KOLEJNY poziom tej samej nakładki (SceneHotspotsBlock's
+// nestedActiveId), nie nową nakładkę.
 function NestedSceneImage({
   contentBase,
   scene,
   visited,
   interacted,
+  overlayOpen,
   onPick,
 }: {
   contentBase: string;
   scene: NestedScene;
   visited: string[];
   interacted: boolean;
+  overlayOpen: boolean;
   onPick: (id: string) => void;
 }) {
   const url = contentAssetUrl(contentBase, scene.image, 'image');
   if (!url) return null;
   return (
-    <div className="relative mb-3 overflow-hidden rounded border border-slate-200">
+    <div className="relative mt-3 overflow-hidden rounded border border-slate-200">
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
       <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" className="block w-full" />
       {scene.hotspots.map((hotspot) => {
@@ -500,53 +391,43 @@ function NestedSceneImage({
           <button
             key={hotspot.id}
             type="button"
-            aria-hidden="true"
-            tabIndex={-1}
+            aria-label={`${hotspot.label}${seen ? ' (obejrzane)' : ''}`}
+            tabIndex={overlayOpen ? -1 : undefined}
             onClick={() => onPick(hotspot.id)}
             style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
-            className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${
+            className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${
               seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
             }`}
-          />
+          >
+            {seen && (
+              <span className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white">
+                <Check aria-hidden="true" className="h-3 w-3" />
+              </span>
+            )}
+          </button>
         );
       })}
     </div>
   );
 }
 
-function ImagePreview({
-  contentBase,
-  media,
-  onOpen,
-}: {
-  contentBase: string;
-  media: HotspotMedia | InnerHotspotMedia;
-  onOpen: (trigger: HTMLButtonElement | null) => void;
-}) {
+function ImageMedia({ contentBase, media }: { contentBase: string; media: HotspotMedia | InnerHotspotMedia }) {
   const url = contentAssetUrl(contentBase, media.src, 'image');
   if (!url) return null;
   return (
-    <button
-      type="button"
-      onClick={(event) => onOpen(event.currentTarget)}
-      className="mt-3 block overflow-hidden rounded border border-slate-300 hover:border-indigo-500"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL, podgląd przed powiększeniem */}
-      <img src={url} alt="" referrerPolicy="no-referrer" className="max-h-48 w-full object-cover" />
-      <span className="block bg-slate-900/80 px-2 py-1 text-xs font-medium text-white">Powiększ{media.alt ? `: ${media.alt}` : ''}</span>
-    </button>
+    // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL, powiększenie wprost w karcie (bez osobnej nakładki)
+    <img src={url} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="mt-3 max-h-[45vh] w-full rounded border border-slate-200 object-contain" />
   );
 }
 
-function DocumentPreview({ media, onOpen }: { media: HotspotMedia | InnerHotspotMedia; onOpen: (trigger: HTMLButtonElement | null) => void }) {
+function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   return (
-    <button
-      type="button"
-      onClick={(event) => onOpen(event.currentTarget)}
-      className="mt-3 min-h-[44px] rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-    >
-      Zobacz dokument{media.title ? `: ${media.title}` : ''}
-    </button>
+    <div className="mt-3">
+      {media.title && <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{media.title}</h4>}
+      <pre className="max-h-[35vh] overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-3 font-mono text-sm leading-relaxed text-slate-100">
+        {media.lines?.join('\n')}
+      </pre>
+    </div>
   );
 }
 
@@ -581,7 +462,7 @@ function AudioMedia({
             onClick={onToggleTranscript}
             aria-expanded={transcriptOpen}
             aria-controls={transcriptId}
-            className="mt-2 min-h-[44px] text-sm font-medium text-indigo-700 underline hover:text-indigo-900"
+            className={`mt-2 min-h-[44px] text-sm font-medium text-indigo-700 underline outline-none hover:text-indigo-900 ${FOCUS_RING}`}
           >
             {transcriptOpen ? 'Ukryj transkrypcję' : 'Pokaż transkrypcję'}
           </button>

@@ -104,7 +104,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     // Domyślna poza spoczynkowa dla scen z punktami.
     expect(screen.getByAltText('Maskotka Unfooly wskazuje')).toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByRole('list', { name: 'Elementy sceny' })).getByRole('button', { name: 'Monitor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatnika' }));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     expect(screen.getByAltText('Maskotka Unfooly się cieszy')).toBeInTheDocument();
@@ -158,17 +158,17 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
       />,
     );
 
-    fireEvent.click(within(screen.getByRole('list', { name: 'Elementy sceny' })).getByRole('button', { name: 'Monitor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatnika' }));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
 
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
     expect(screen.getByTestId('review-block')).toBeInTheDocument();
-    expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument(); // ukryty blok jest poza drzewem dostępności
+    expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument(); // Wstecz pokazuje INNY (wcześniejszy) blok
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
 
-    // Ten sam blok, ten sam stan: "Dodano do notatnika", wszystko obejrzane, licznik bez zmian.
-    expect(screen.getByText('Dodano do notatnika')).toBeInTheDocument();
+    // Ten sam blok, ten sam stan: "W notatniku ✓", wszystko obejrzane, licznik bez zmian.
+    expect(screen.getByText('W notatniku ✓')).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     // Z powrotem na żywym bloku: ten sam "Dalej" w pasku (gotowość przetrwała powrót z podglądu) zapisuje odpowiedź.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
@@ -314,7 +314,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
     const bar = screen.getByRole('navigation', { name: 'Nawigacja po blokach' }).parentElement!.parentElement as HTMLElement;
     vi.spyOn(bar, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 760, height: 60 } as DOMRect);
-    const monitor = within(screen.getByRole('list', { name: 'Elementy sceny' })).getByRole('button', { name: 'Monitor' });
+    const monitor = screen.getByRole('button', { name: 'Monitor' });
 
     vi.spyOn(monitor, 'getBoundingClientRect').mockReturnValue({ top: 650, bottom: 720 } as DOMRect); // dół 20 px pod górną krawędzią paska
     monitor.focus();

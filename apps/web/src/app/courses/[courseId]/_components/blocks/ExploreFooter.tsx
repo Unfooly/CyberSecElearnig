@@ -9,6 +9,7 @@ export default function ExploreFooter({
   verb = 'Obejrzano',
   readyText = 'Wszystko obejrzane.',
   review,
+  className = 'mt-4 text-sm text-slate-600',
 }: {
   done: number;
   total: number;
@@ -19,13 +20,15 @@ export default function ExploreFooter({
   /** Tekst po spełnieniu wymagań (dialog: "Wszystkie wymagane pytania zadane."). */
   readyText?: string;
   review: boolean;
+  /** Nadpisuje domyślne klasy (SceneHotspotsBlock: mniejszy licznik NAD obrazem, nie stopka pod nim). */
+  className?: string;
 }) {
   if (review) {
     return <p className="mt-4 text-xs text-slate-500">Podgląd ukończonego bloku: możesz przejrzeć go ponownie, nic się nie zapisuje.</p>;
   }
   const ready = done >= total;
   return (
-    <p className="mt-4 text-sm text-slate-600" aria-live="polite">
+    <p className={className} aria-live="polite">
       {ready ? readyText : `${verb} ${done} z ${total} ${noun}.`}
     </p>
   );

@@ -44,13 +44,13 @@
     },
     "rozmowa-anna#character.avatar": {
       "original": "avatars/anna.svg",
-      "hash": "06a4b7f7",
-      "key": "assets/wyludzone-haslo/avatars/anna.06a4b7f7.svg"
+      "hash": "a31c9500",
+      "key": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg"
     },
     "rozmowa-marek#character.avatar": {
       "original": "avatars/marek.svg",
-      "hash": "124879dd",
-      "key": "assets/wyludzone-haslo/avatars/marek.124879dd.svg"
+      "hash": "27eb889f",
+      "key": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg"
     }
   }
 }

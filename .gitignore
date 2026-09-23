@@ -35,6 +35,10 @@ Thumbs.db
 # maskotka: kopia generowana z packages/content/mascot przez apps/web/scripts/sync-mascot.mjs (predev/prebuild)
 apps/web/public/mascot/
 
+# zasoby modułów treści przy `scripts/content --storage local` (domyślne, lokalny odpowiednik R2): lokalna kopia
+# do dev/testów, nie deployment - prawdziwe środowiska serwują z R2 (CONTENT_BASE_URL). Nie commitować.
+apps/web/public/content/
+
 # test coverage
 coverage/
 docs/brand/screens/*.png

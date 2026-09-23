@@ -438,9 +438,24 @@
         },
         {
           "id": "presja",
-          "label": "Odliczanie czasu do blokady konta",
+          "label": "Groźba zablokowania konta do godziny 10:00",
           "correct": true,
-          "explanation": "Odliczanie i groźba blokady mają wyłączyć myślenie. Prawdziwy bank daje czas i nigdy nie odlicza."
+          "explanation": "Groźba bliskiej blokady konta ma wyłączyć myślenie i skłonić do szybkiego działania bez zastanowienia."
+        },
+        {
+          "id": "odliczanie",
+          "label": "Licznik: Pozostało 01:12:33",
+          "correct": true,
+          "evidence": true,
+          "note": {
+            "text": "Mail odlicza czas do blokady.",
+            "kind": "mail"
+          },
+          "explanation": "Licznik czasu to presja. Prawdziwy bank nie odlicza sekund do blokady konta.",
+          "target": {
+            "kind": "text",
+            "quote": "Pozostało: 01:12:33"
+          }
         },
         {
           "id": "zwrot",

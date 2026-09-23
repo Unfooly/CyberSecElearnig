@@ -17,7 +17,8 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **15** (12 na ścieżce głównej: 9 ✱ w scenie/dialogach + 3 z analizy maila; 3 opcjonalne: drukarka, presja, inni)
+- dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
+  analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
@@ -189,16 +190,19 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 | `domena` | adres nadawcy `bankwektor-weryfikacja.pl` | tak | tak | „Prawdziwa domena banku to `bankwektor.pl`. Dopisek `-weryfikacja` robi z tego zupełnie inną stronę, którą może zarejestrować każdy." | (mail) „Nadawca z domeny `bankwektor-weryfikacja.pl`, nie `bankwektor.pl`." |
 | `link` | link „Przejdź do weryfikacji" (URL w dymku po najechaniu) | tak | tak | „Napis mówi jedno, adres — drugie. Zawsze patrz na adres, nie na napis." | (mail) „Link prowadzi na `bankwektor-weryfikacja.pl/login`." |
 | `zalacznik` | załącznik `Regulamin_weryfikacji.pdf.exe` | tak | tak | „`.pdf.exe` to program udający dokument. Bank nie wysyła programów." | (mail) „Załącznik `.pdf.exe` — plik wykonywalny udający PDF." |
-| `presja` (bez kotwicy w mailu) | „do godziny 10:00 dostęp … zostanie zablokowany" + zegar | tak | nie | „Odliczanie i groźba blokady mają wyłączyć myślenie. Prawdziwy bank daje czas i nigdy nie odlicza." | — |
+| `presja` (bez kotwicy w mailu) | „do godziny 10:00 dostęp … zostanie zablokowany" | tak | nie | „Groźba bliskiej blokady konta ma wyłączyć myślenie i skłonić do szybkiego działania bez zastanowienia." | — |
+| `odliczanie` | „Pozostało: 01:12:33" | tak | tak | „Licznik czasu to presja. Prawdziwy bank nie odlicza sekund do blokady konta." | (mail) „Mail odlicza czas do blokady." |
 | `zwrot` | „Szanowna Kliencie" | tak | nie | „Błąd gramatyczny w zwrocie do klienta. Bank wie, jak się nazywasz." | — |
 | `stopka` | stopka z adresem | nie | — | „Stopka jest skopiowana z prawdziwych maili banku — sama w sobie nic nie znaczy. Oszuści kopiują stopki jako pierwsze." | — |
 | `nieodpowiadaj` | „Prosimy o nie odpowiadanie" | nie | — | „To standardowy zwrot w automatycznych mailach. Nie jest sygnałem." | — |
 
-- `presja` bez kotwicy: `criteria[].target` (schemat) obsługuje jeden ciągły cytat z `email.body`, a ten fragment to dwa
-  oddzielne elementy (zdanie o blokadzie + licznik) - kryterium jest widoczne i zaznaczalne wyłącznie na liście pod mailem,
-  bez klikalnego fragmentu w treści (rozjazd zgłoszony i rozstrzygnięty 2026-09-22).
-- punktacja: trafione kryteria +1, fałszywe alarmy −0,5 (nie poniżej 0), wynik jako % z 5 poprawnych
-- **reactions.result** (progi po wzorze silnika; agent dopasuje minScore tak, by odpowiadały ≥4/5, 2–3/5, ≤1/5 trafień):
+- `presja` bez kotwicy: `criteria[].target` (schemat) obsługuje jeden ciągły cytat z `email.body`; zdanie o blokadzie
+  ("do godziny 10:00 … zablokowany") i licznik ("Pozostało: 01:12:33") są dwoma OSOBNYMI, nie-sąsiadującymi fragmentami
+  (rozjazd zgłoszony i rozstrzygnięty 2026-09-22, PODZIELONE feedbackiem z produkcji po PR #32: licznik dostał WŁASNE,
+  anchorowalne kryterium `odliczanie`, `presja` zostaje wyłącznie zdaniem o blokadzie, nadal bez kotwicy - widoczne i
+  zaznaczalne tylko na liście pod mailem, bo nie ma osobnego przycisku-fragmentu w treści dla niego).
+- punktacja: trafione kryteria +1, fałszywe alarmy −0,5 (nie poniżej 0), wynik jako % z 6 poprawnych
+- **reactions.result** (progi po wzorze silnika; agent dopasuje minScore tak, by odpowiadały ≥5/6, 3–4/6, ≤2/6 trafień):
   - `{ minScore: 0.8, pose: cheer, text: „Czytasz maile jak detektyw." }`
   - `{ minScore: 0.4, pose: thinking, text: „Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je." }`
   - `{ minScore: 0, pose: warning, text: „Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj." }`

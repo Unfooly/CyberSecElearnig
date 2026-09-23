@@ -1,7 +1,11 @@
 import { P } from './palette.js';
 import type { PropFn, PropOutput } from './types.js';
 
-const esc = (s: unknown) =>
+// Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
+// zob. compose.ts) muszą przejść przez esc() - inaczej autor treści (dziś zaufany, lokalny JSON) mógłby wstrzyknąć
+// dodatkowy atrybut/zdarzenie (np. `"color": "\" onmouseover=\"..."`), złagodzone dziś wyłącznie przez lintSvg
+// (trzecia linia obrony) i render przez <img> (który ich i tak nie wykona), ale to nie powód, żeby tu nie escapować.
+export const esc = (s: unknown) =>
   String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -9,10 +13,10 @@ const esc = (s: unknown) =>
     .replace(/"/g, '&quot;');
 
 const text = (x: number, y: number, s: unknown, size: number, o: { fill?: string; bold?: boolean; anchor?: 'start' | 'middle' | 'end' } = {}) =>
-  `<text x="${x}" y="${y}" font-size="${size}" fill="${o.fill ?? P.ink}"${o.bold ? ' font-weight="bold"' : ''}${o.anchor ? ` text-anchor="${o.anchor}"` : ''}>${esc(s)}</text>`;
+  `<text x="${x}" y="${y}" font-size="${size}" fill="${esc(o.fill ?? P.ink)}"${o.bold ? ' font-weight="bold"' : ''}${o.anchor ? ` text-anchor="${o.anchor}"` : ''}>${esc(s)}</text>`;
 
 const lines = (x: number, y: number, widths: number[], gap = 14, h = 6, fill = P.grey) =>
-  widths.map((w, i) => `<rect x="${x}" y="${y + i * gap}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}"/>`).join('');
+  widths.map((w, i) => `<rect x="${x}" y="${y + i * gap}" width="${w}" height="${h}" rx="${h / 2}" fill="${esc(fill)}"/>`).join('');
 
 /* ---------- ściana / tło ---------- */
 
@@ -54,7 +58,7 @@ export const shelf: PropFn<{ binders?: string[] }> = ({ binders = [P.purple, P.o
     w, h,
     svg:
       `<rect y="70" width="${w}" height="14" rx="4" fill="${P.greyDark}"/>` +
-      binders.map((c, i) => `<rect x="${20 + i * 56}" width="44" height="70" rx="4" fill="${c}" opacity="0.9"/>`).join(''),
+      binders.map((c, i) => `<rect x="${20 + i * 56}" width="44" height="70" rx="4" fill="${esc(c)}" opacity="0.9"/>`).join(''),
   };
 };
 
@@ -171,7 +175,7 @@ export const stickyNote: PropFn<{ lines?: string[]; color?: string }> = ({ lines
   return {
     w, h,
     svg:
-      `<rect width="${w}" height="${h}" fill="${color}"/><rect width="${w}" height="12" fill="${P.yellowDark}" opacity="0.6"/>` +
+      `<rect width="${w}" height="${h}" fill="${esc(color)}"/><rect width="${w}" height="12" fill="${P.yellowDark}" opacity="0.6"/>` +
       `<rect x="32" y="-6" width="28" height="12" rx="3" fill="${P.ink}" opacity="0.25"/>` +
       ls.slice(0, 3).map((l, i) => text(w / 2, 34 + i * 22, l, i === 0 ? 15 : 11, { anchor: 'middle', bold: i === 0, fill: i === 0 ? P.ink : P.purpleDark })).join(''),
   };
@@ -209,7 +213,7 @@ export const printer: PropFn<{ paper?: boolean; paperText?: string; ready?: bool
 export const mug: PropFn<{ label?: string[]; color?: string }> = ({ label = [], color = P.teal }) => ({
   w: 80, h: 62,
   svg:
-    `<rect x="52" y="15" width="26" height="30" rx="10" fill="none" stroke="${color}" stroke-width="7"/><rect width="66" height="60" rx="8" fill="${color}"/>` +
+    `<rect x="52" y="15" width="26" height="30" rx="10" fill="none" stroke="${esc(color)}" stroke-width="7"/><rect width="66" height="60" rx="8" fill="${esc(color)}"/>` +
     `<ellipse cx="33" cy="0" rx="33" ry="8" fill="${P.ink}" opacity="0.25"/>` +
     label.slice(0, 2).map((l, i) => text(33, 35 + i * 11, l, 8, { fill: P.white, bold: true, anchor: 'middle' })).join(''),
 });

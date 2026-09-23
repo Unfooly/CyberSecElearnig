@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { PROPS } from './props.js';
+import { esc, PROPS } from './props.js';
 import type { ComposeResult, Hotspot, SceneSpec } from './types.js';
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -36,10 +36,10 @@ export function composeScene(spec: SceneSpec): ComposeResult {
 
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif">`,
-    `<rect width="${W}" height="${H}" fill="${wall}"/>`,
+    `<rect width="${W}" height="${H}" fill="${esc(wall)}"/>`,
   ];
   if (!spec.background?.flat) {
-    parts.push(`<rect y="${floorY}" width="${W}" height="${H - floorY}" fill="${floor}"/>`);
+    parts.push(`<rect y="${floorY}" width="${W}" height="${H - floorY}" fill="${esc(floor)}"/>`);
     parts.push(`<rect y="${floorY - 10}" width="${W}" height="14" fill="${P.wall2}"/>`);
   }
   const hotspots: Hotspot[] = [];

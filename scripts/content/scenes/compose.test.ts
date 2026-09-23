@@ -49,6 +49,21 @@ describe('composeScene', () => {
     expect(res.svg).toContain('a&amp;b');
   });
 
+  // Pola renderowane w KONTEKŚCIE ATRYBUTU (fill/stroke), nie <text>: ucieczka z cudzysłowu atrybutu wstrzyknęłaby
+  // dodatkowy atrybut/zdarzenie (np. `onmouseover=`), inny wektor niż zawartość <text> wyżej - osobny test, bo esc()
+  // dla tych pól był kiedyś pominięty (color/binders/background.wall/background.floor).
+  it('pola w kontekście atrybutu (color/binders/tło) są escapowane', () => {
+    const injected = '"onmouseover="alert(1)';
+    const sticky = composeScene({ ...base, items: [{ id: 'n', prop: 'stickyNote', x: 0, y: 0, params: { color: injected } }] });
+    const mug = composeScene({ ...base, items: [{ id: 'm', prop: 'mug', x: 0, y: 0, params: { color: injected } }] });
+    const shelf = composeScene({ ...base, items: [{ id: 's', prop: 'shelf', x: 0, y: 0, params: { binders: [injected] } }] });
+    const bg = composeScene({ ...base, background: { wall: injected, floor: injected } });
+    for (const res of [sticky, mug, shelf, bg]) {
+      expect(res.svg).not.toContain(injected); // niezescapowany ciąg (z prawdziwym ") nigdzie nie występuje - nie da się wyjść z atrybutu
+      expect(res.svg).toContain('&quot;onmouseover=&quot;alert(1)'); // ten sam tekst, ale bezpiecznie zescapowany
+    }
+  });
+
   it('każdy klocek renderuje się z domyślnymi parametrami', () => {
     for (const [name, fn] of Object.entries(PROPS)) {
       const out = fn({});

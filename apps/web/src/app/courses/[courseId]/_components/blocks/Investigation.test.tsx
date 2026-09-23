@@ -151,8 +151,14 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(covered).toHaveAttribute('aria-hidden', 'true');
     expect(covered).toHaveAttribute('tabindex', '-1');
 
+    // Code review po commicie 367743b: samo ukrycie przycisków nie wystarczy - obraz sceny pod nimi (z niepustym alt)
+    // musi też dostać aria-hidden, inaczej czytnik ekranu w trybie przeglądania (virtual cursor) i tak "wejdzie" na
+    // jego opis mimo otwartego role="dialog" aria-modal="true".
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+
     back();
     expect(screen.getByTestId('hotspot-overlay-h2')).not.toHaveAttribute('aria-hidden');
+    expect(screen.getByRole('img')).not.toHaveAttribute('aria-hidden');
   });
 
   it('błąd wczytania OBRAZU (poprawna ścieżka, np. 404 z CDN - onError, nie zła ścieżka od startu) chowa punkty: bez chipów jako zapasowej ścieżki są teraz nieosiągalne (code review: to inny warunek niż "zła ścieżka", oba muszą działać)', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Check, DoorOpen } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
@@ -100,8 +100,13 @@ export default function SceneHotspotsBlock({
   }, [visited, noted, review, hasDoor]);
 
   // Zmiana poziomu nakładki (otwarcie, zejście głębiej, "Wróć"): transkrypcja się zwija, fokus ląduje na nagłówku
-  // karty (kontekst dla czytnika ekranu przy zmianie treści w tej samej nakładce).
-  useEffect(() => {
+  // karty (kontekst dla czytnika ekranu przy zmianie treści w tej samej nakładce). useLayoutEffect (nie useEffect,
+  // code review po commicie 367743b): przycisk, który otworzył nakładkę, dostaje w TYM SAMYM renderze aria-hidden -
+  // gdyby przeglądarka zdążyła go najpierw namalować ze skupieniem (natywne "klik = fokus") i DOPIERO PÓŹNIEJ (po
+  // pierwszym malowaniu, useEffect) przenieść fokus na nagłówek, powstałaby klatka z aria-hidden="true" na
+  // skupionym elemencie (złamanie reguły WAI-ARIA/axe-core "aria-hidden-focus"). useLayoutEffect przenosi fokus
+  // synchronicznie, przed malowaniem.
+  useLayoutEffect(() => {
     setTranscriptOpen(false);
     if (current) headingRef.current?.focus();
   }, [activeId, nestedActiveId, current]);
@@ -189,6 +194,7 @@ export default function SceneHotspotsBlock({
             src={imageUrl}
             alt={block.imageAlt ?? ''}
             referrerPolicy="no-referrer"
+            aria-hidden={activeId ? true : undefined}
             className="block w-full"
             onError={() => setImageFailed(true)}
           />
@@ -253,7 +259,7 @@ export default function SceneHotspotsBlock({
               {/* Nakładka NA scenie, nie zamiast niej: na desktopie karta to najwyżej 80% kontenera (obraz widoczny i
                   lekko przyciemniony dookoła), przewijana w środku, gdy treść nie mieści się w 80%. Na telefonie
                   (<640px, sm:) karta zajmuje cały ekran - feedback z produkcji (`feat/scene-overlay-fix`). */}
-              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-auto sm:max-h-[80%] sm:w-auto sm:max-w-[80%] sm:min-w-[320px] sm:rounded sm:p-4">
+              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-auto sm:max-h-[80%] sm:w-auto sm:max-w-[80%] sm:rounded sm:p-4">
                 <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
                   {current.label}
                 </h3>
@@ -399,7 +405,7 @@ function NestedSceneImage({
   return (
     <div className="relative mt-3 overflow-hidden rounded border border-slate-200">
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
-      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" className="block w-full" />
+      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" aria-hidden={overlayOpen ? true : undefined} className="block w-full" />
       {scene.hotspots.map((hotspot) => {
         const seen = visited.includes(hotspot.id);
         return (

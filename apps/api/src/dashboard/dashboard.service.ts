@@ -54,24 +54,30 @@ export class DashboardService {
     // danych albo brak kampanii); żadnych danych osobowych.
     const phishing = await this.phishingResults.susceptibilityKpi(organizationId);
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // Wszędzie niżej: tylko AKTYWNE przypisania (D-069) - to jest zdjęcie BIEŻĄCEGO stanu zgodności/aktywności, nie
+      // historii. Przypisanie zarchiwizowane restartem (nawet jeśli było OVERDUE/COMPLETED) jest zastąpione nowym,
+      // aktywnym wierszem, który ma tu się liczyć - stare już nie (inaczej restart kursu obowiązkowego podwoiłby
+      // mandatoryTotal). Wyjątek: getCompletionTrends (historyczny trend) - patrz komentarz tam.
       const [totalUsers, mandatoryTotal, mandatoryCompleted, overdueCount, activeUserRows] =
         await Promise.all([
           tx.user.count({ where: { organizationId } }),
-          tx.courseAssignment.count({ where: { organizationId, mandatory: true } }),
+          tx.courseAssignment.count({ where: { organizationId, mandatory: true, archivedAt: null } }),
           tx.courseAssignment.count({
             where: {
               organizationId,
               mandatory: true,
               status: AssignmentStatus.COMPLETED,
+              archivedAt: null,
             },
           }),
           tx.courseAssignment.count({
-            where: { organizationId, status: AssignmentStatus.OVERDUE },
+            where: { organizationId, status: AssignmentStatus.OVERDUE, archivedAt: null },
           }),
           tx.courseAssignment.findMany({
             where: {
               organizationId,
               status: { in: [AssignmentStatus.IN_PROGRESS, AssignmentStatus.COMPLETED] },
+              archivedAt: null,
             },
             select: { userId: true },
             distinct: ['userId'],
@@ -93,8 +99,9 @@ export class DashboardService {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const [departments, assignments] = await Promise.all([
         tx.department.findMany({ where: { organizationId }, select: { id: true, name: true } }),
+        // Tylko AKTYWNE (D-069) - patrz komentarz w getOverview.
         tx.courseAssignment.findMany({
-          where: { organizationId, mandatory: true },
+          where: { organizationId, mandatory: true, archivedAt: null },
           select: { status: true, user: { select: { departmentId: true } } },
         }),
       ]);
@@ -144,6 +151,10 @@ export class DashboardService {
    * (organizationId WYŁĄCZNIE z JWT - patrz DashboardController).
    */
   async getCompletionTrends(organizationId: string, now: Date = new Date()): Promise<TrendPointDto[]> {
+    // Świadomy WYJĄTEK od "tylko aktywne" (D-069): to jest trend HISTORYCZNY, nie zdjęcie bieżącego stanu - przypisanie
+    // zarchiwizowane restartem naprawdę BYŁO ukończone w danym miesiącu i musi zostać w danych za ten miesiąc
+    // (archiwizacja to nie kasowanie, patrz D-069). Nowe przypisanie po restarcie dolicza się do mianownika od
+    // miesiąca restartu, więc trend nigdy się nie zmniejsza wstecznie.
     const assignments = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.courseAssignment.findMany({
         where: { organizationId, mandatory: true },
@@ -189,8 +200,10 @@ export class DashboardService {
           lastName: true,
           email: true,
           department: { select: { id: true, name: true } },
+          // Tylko AKTYWNE (D-069) - patrz komentarz w getOverview; status zgodności pracownika liczy się z jego
+          // BIEŻĄCYCH przypisań, nie z historii sprzed restartu.
           courseAssignments: {
-            where: { organizationId },
+            where: { organizationId, archivedAt: null },
             select: {
               status: true,
               dueDate: true,
@@ -248,6 +261,7 @@ export class DashboardService {
               status: true,
               completedAt: true,
               mandatory: true,
+              archivedAt: true,
             },
           },
         },
@@ -257,11 +271,13 @@ export class DashboardService {
       const header = ['Email', 'Dział', 'Ukończone/Wszystkie obowiązkowe', 'Ostatnie ukończenie kursu'];
       const rows = users.map((user) => {
         // "Ukończone/Wszystkie obowiązkowe" celowo liczy się TYLKO z kursów
-        // obowiązkowych (compliance) - ale "Ostatnie ukończenie kursu" to
-        // sygnał ogólnej aktywności usera, więc bierze pod uwagę WSZYSTKIE
-        // przypisania (też opcjonalne). To ta sama definicja, co w
-        // getOrganizationsOverview - patrz komentarz tam.
-        const mandatoryAssignments = user.courseAssignments.filter((a) => a.mandatory);
+        // obowiązkowych (compliance) i tylko AKTYWNYCH przypisań (D-069 - to
+        // bieżący stan, przypisanie zarchiwizowane restartem już się nie liczy) -
+        // ale "Ostatnie ukończenie kursu" to sygnał ogólnej aktywności usera w
+        // CAŁEJ historii (też opcjonalne, też zarchiwizowane restartem - to
+        // ukończenie naprawdę się zdarzyło i restart go nie unieważnia). To ta
+        // sama definicja, co w getOrganizationsOverview - patrz komentarz tam.
+        const mandatoryAssignments = user.courseAssignments.filter((a) => a.mandatory && a.archivedAt === null);
         const mandatoryCompleted = mandatoryAssignments.filter(
           (a) => a.status === AssignmentStatus.COMPLETED,
         ).length;
@@ -301,13 +317,16 @@ export class DashboardService {
         // liczy się tylko z obowiązkowych (compliance), ale
         // lastCourseCompletionAt to sygnał ogólnej aktywności organizacji,
         // więc musi widzieć też ukończenia kursów opcjonalnych - tak samo
-        // jak analogiczna kolumna w exportCsv.
+        // jak analogiczna kolumna w exportCsv. archivedAt pobrane, ale NIE
+        // wchodzi do filtra zapytania (świadomie: filtrowanie po nim jest w
+        // pętli niżej, osobno dla completionRate i lastCourseCompletionAt - D-069).
         tx.courseAssignment.findMany({
           select: {
             organizationId: true,
             status: true,
             completedAt: true,
             mandatory: true,
+            archivedAt: true,
           },
         }),
       ]);
@@ -329,7 +348,9 @@ export class DashboardService {
         mandatoryCompleted: 0,
         completionDates: [],
       };
-      if (assignment.mandatory) {
+      // completionRate: tylko AKTYWNE (D-069, bieżący stan compliance - patrz DashboardService.getOverview).
+      // lastCourseCompletionAt (niżej, poza tym if) celowo bierze WSZYSTKIE, też zarchiwizowane - historia.
+      if (assignment.mandatory && assignment.archivedAt === null) {
         stats.mandatoryTotal += 1;
         if (assignment.status === AssignmentStatus.COMPLETED) {
           stats.mandatoryCompleted += 1;

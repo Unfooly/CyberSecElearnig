@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
 import { toClientBlock } from '@cyberszkolo/content';
@@ -37,7 +43,8 @@ export class CoursesService {
   async listMyCourses(organizationId: string, userId: string): Promise<CourseAssignmentSummaryDto[]> {
     const assignments = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.courseAssignment.findMany({
-        where: { organizationId, userId },
+        // Tylko AKTYWNE (D-069): przypisanie zarchiwizowane restartem to historia, nie pozycja "moich kursów".
+        where: { organizationId, userId, archivedAt: null },
         include: {
           course: {
             select: {
@@ -79,7 +86,12 @@ export class CoursesService {
    */
   async listCatalog(organizationId: string, userId: string): Promise<CourseCatalogItemDto[]> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-      const assigned = await tx.courseAssignment.findMany({ where: { organizationId, userId }, select: { courseId: true } });
+      // Tylko AKTYWNE (D-069): kurs, którego jedyne przypisanie jest zarchiwizowane, nie może się zdarzyć (restart
+      // tworzy nowe od razu), ale filtr jest tu jawny z tego samego powodu co listMyCourses.
+      const assigned = await tx.courseAssignment.findMany({
+        where: { organizationId, userId, archivedAt: null },
+        select: { courseId: true },
+      });
       const assignedIds = assigned.map((a) => a.courseId);
       const courses = await tx.course.findMany({
         where: assignedIds.length > 0 ? { id: { notIn: assignedIds } } : undefined,
@@ -114,7 +126,8 @@ export class CoursesService {
    * Samodzielne rozpoczęcie kursu z katalogu: tworzy CourseAssignment TYLKO dla wywołującego, w JEGO organizacji
    * (zwykły zapis pod RLS - żadnego wyjątku od Zasady nr 1). ZAWSZE nieobowiązkowe (mandatory: false), niezależnie od
    * Course.mandatory - to pole jest domyślną wartością wyłącznie dla PRZYSZŁEGO ręcznego przypisania przez ORG_ADMIN
-   * (D-065). Idempotentne: powtórne wywołanie zwraca istniejące przypisanie (unikalność [userId, courseId]).
+   * (D-065). Idempotentne: powtórne wywołanie zwraca istniejące AKTYWNE przypisanie (częściowy unikalny indeks na
+   * (organizationId, userId, courseId) WHERE archivedAt IS NULL - D-069, patrz schema.prisma).
    */
   async selfAssign(organizationId: string, userId: string, courseId: string): Promise<{ assignmentId: string }> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
@@ -126,11 +139,65 @@ export class CoursesService {
         data: [{ organizationId, userId, courseId, mandatory: false }],
         skipDuplicates: true,
       });
-      const assignment = await tx.courseAssignment.findFirst({ where: { organizationId, userId, courseId }, select: { id: true } });
+      const assignment = await tx.courseAssignment.findFirst({
+        where: { organizationId, userId, courseId, archivedAt: null },
+        select: { id: true },
+      });
       if (!assignment) {
         throw new InternalServerErrorException('Nie udało się utworzyć przypisania.');
       }
       return { assignmentId: assignment.id };
+    });
+  }
+
+  /**
+   * "Rozpocznij od nowa" (D-069): tylko dla WŁASNEGO, AKTYWNEGO i UKOŃCZONEGO przypisania wywołującego. Stare
+   * przypisanie dostaje `archivedAt` i zostaje w bazie bez zmian (historia/raporty/XP/odznaki - GamificationService w
+   * ogóle nie jest tu wołany), powstaje nowe aktywne przypisanie tego samego kursu z `mandatory`/`dueDate`
+   * przepisanymi ze starego i przypiętą NAJNOWSZĄ wersją treści (nie tą, na której pracownik skończył poprzednio).
+   *
+   * Idempotencja/wyścig: `lockOwnAssignment` (FOR UPDATE) serializuje równoległe wywołania na wierszu AKTYWNEGO
+   * przypisania. Drugie wywołanie "od razu po pierwszym" (restart bez ponownego ukończenia) widzi już NOWE aktywne
+   * przypisanie (status NOT_STARTED, nie COMPLETED) i dostaje ten sam 409 co próba zrestartowania nieukończonego
+   * kursu - to jest oczekiwana idempotencja, nie osobna ścieżka kodu.
+   */
+  async restart(organizationId: string, userId: string, courseId: string): Promise<{ assignmentId: string }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+
+      if (assignment.status !== AssignmentStatus.COMPLETED) {
+        throw new ConflictException('Kurs nie jest ukończony - nie można rozpocząć go od nowa.');
+      }
+
+      // Warunek archivedAt: null - drugie równoległe wywołanie (gdyby jednak minęło blokadę FOR UPDATE) nie
+      // zarchiwizuje tego samego wiersza dwa razy ani nie utworzy dwóch nowych aktywnych przypisań.
+      const archived = await tx.courseAssignment.updateMany({
+        where: { id: assignment.id, organizationId, archivedAt: null },
+        data: { archivedAt: new Date() },
+      });
+      if (archived.count === 0) {
+        throw new ConflictException('Kurs nie jest ukończony - nie można rozpocząć go od nowa.');
+      }
+
+      const latestVersion = await tx.courseVersion.findFirst({
+        where: { courseId },
+        orderBy: { version: 'desc' },
+        select: { id: true },
+      });
+
+      const created = await tx.courseAssignment.create({
+        data: {
+          organizationId,
+          userId,
+          courseId,
+          mandatory: assignment.mandatory,
+          dueDate: assignment.dueDate,
+          courseVersionId: latestVersion?.id ?? null,
+        },
+        select: { id: true },
+      });
+      return { assignmentId: created.id };
     });
   }
 
@@ -371,14 +438,16 @@ export class CoursesService {
     return Array.isArray(contentBlocks) ? contentBlocks.length : 0;
   }
 
-  // Blokada wiersza przypisania do końca transakcji (RLS obowiązuje: widać tylko własną organizację).
+  // Blokada wiersza AKTYWNEGO przypisania do końca transakcji (RLS obowiązuje: widać tylko własną organizację).
+  // Tylko archivedAt IS NULL (D-069) - jak niżej w findOwnAssignment, historia (przypisania zarchiwizowane
+  // restartem) nie jest tym, co /start, /progress, /attempt ani restart mają widzieć czy blokować.
   private async lockOwnAssignment(
     tx: Prisma.TransactionClient,
     organizationId: string,
     userId: string,
     courseId: string,
   ): Promise<void> {
-    await tx.$queryRaw`SELECT "id" FROM "course_assignments" WHERE "organizationId" = ${organizationId} AND "userId" = ${userId} AND "courseId" = ${courseId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "course_assignments" WHERE "organizationId" = ${organizationId} AND "userId" = ${userId} AND "courseId" = ${courseId} AND "archivedAt" IS NULL FOR UPDATE`;
   }
 
   private async findOwnAssignment(
@@ -387,8 +456,10 @@ export class CoursesService {
     userId: string,
     courseId: string,
   ): Promise<AssignmentWithCourse> {
+    // Tylko AKTYWNE (D-069): przypisanie zarchiwizowane restartem nie jest dostępne pod /start, /progress, /attempt
+    // ani jako cel kolejnego restartu - "swój kurs" zawsze oznacza to jedno, aktualne przypisanie.
     const assignment = await tx.courseAssignment.findFirst({
-      where: { organizationId, userId, courseId },
+      where: { organizationId, userId, courseId, archivedAt: null },
       include: { course: true },
     });
 

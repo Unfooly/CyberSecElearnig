@@ -43,6 +43,16 @@ export class CoursesController {
     return this.coursesService.selfAssign(user.organizationId, user.userId, courseId);
   }
 
+  // "Rozpocznij od nowa" (D-069): tylko dla własnego, ukończonego przypisania - archiwizuje stare, tworzy nowe
+  // aktywne. Poza SUPER_ADMIN (operator platformy) tak jak katalog/self-assign; limit żądań to globalny domyślny
+  // per-IP throttler (app.module.ts) - ten sam, na którym opiera się już self-assign i /start.
+  @Post(':courseId/restart')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...COURSE_ROLES)
+  restart(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string) {
+    return this.coursesService.restart(user.organizationId, user.userId, courseId);
+  }
+
   // 200, nie domyślne 201 - obie akcje aktualizują istniejący
   // CourseAssignment, nie tworzą nowego zasobu (tak jak login/refresh w
   // auth.controller.ts).

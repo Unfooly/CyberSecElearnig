@@ -985,6 +985,12 @@ model CourseAssignment {
   // Ostatnia zmiana przypisania (postęp, ukończenie) - źródło "ostatniej
   // aktywności" w dashboardzie zarządu (DashboardService.getUsersStatus).
   updatedAt         DateTime         @default(now()) @updatedAt
+  // "Rozpocznij od nowa" (D-069, CoursesService.restart): ustawiane WYŁĄCZNIE na starym przypisaniu w momencie
+  // powtórki, które od tej chwili jest historią (wynik/XP/odznaki bez zmian) - nigdy nie kasujemy wiersza. null = to
+  // jest AKTYWNE przypisanie. Jedno aktywne przypisanie na (organizationId, userId, courseId) wymuszone częściowym
+  // unikalnym indeksem (WHERE "archivedAt" IS NULL) z migracji 20260922200000_course_restart - Prisma nie umie
+  // wyrazić WHERE w @@unique, więc (tak jak RLS) ta reguła istnieje tylko w SQL migracji, nie w tym schemacie.
+  archivedAt        DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Złożony FK: użytkownik musi należeć do TEJ SAMEJ organizacji (FK omijają RLS, więc bez tego przypisanie
@@ -994,7 +1000,9 @@ model CourseAssignment {
   course        Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
   courseVersion CourseVersion? @relation(fields: [courseVersionId], references: [id], onDelete: Restrict)
 
-  @@unique([userId, courseId])
+  // Uwaga: userId+courseId NIE jest tu już unikalne (restart tworzy kolejne wiersze) - prawdziwa unikalność
+  // (jedno aktywne przypisanie) to częściowy indeks w migracji, patrz komentarz przy archivedAt.
+  @@index([userId, courseId])
   @@index([courseVersionId])
   @@index([organizationId])
   @@index([userId])

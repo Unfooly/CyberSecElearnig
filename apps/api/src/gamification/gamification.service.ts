@@ -196,6 +196,12 @@ export class GamificationService {
     // Liczony PO tym, jak CoursesService.submitBlockProgress już zapisał ten
     // CourseAssignment jako COMPLETED (wołane w tej samej transakcji, w tej
     // kolejności) - więc właśnie ukończony kurs jest już wliczony.
+    //
+    // Celowo BEZ filtra archivedAt (D-069): to licznik UKOŃCZEŃ w całej historii, nie "ile różnych kursów mam
+    // teraz ukończonych" - powtórne ukończenie tego samego kursu po restarcie doliczy się tu ponownie, tak samo jak
+    // już wcześniej (przed D-069) każde kolejne ukończenie zwiększało XP (GamificationService.awardCourseCompletion
+    // nie ma parametru courseId - znany, udokumentowany kompromis, patrz B-091). Restart nie pogarsza tego stanu,
+    // tylko go po raz pierwszy realnie udostępnia (wcześniej ten sam kurs nie dał się ukończyć dwa razy).
     const completedCount = await tx.courseAssignment.count({
       where: { organizationId, userId, status: AssignmentStatus.COMPLETED },
     });

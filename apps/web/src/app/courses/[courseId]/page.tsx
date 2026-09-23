@@ -92,6 +92,10 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
       <Topbar userEmail={userEmail} role={payload?.role} focusMode />
       <main className="mx-auto max-w-7xl p-4 sm:p-8">
         <CoursePlayer
+          // key = assignmentId: po "Rozpocznij od nowa" (D-069) to jest NOWE przypisanie (inny id) - wymuszony
+          // remount resetuje CAŁY wewnętrzny stan klienta (notatki, dowody, reakcje maskotki, feedback), zamiast
+          // pozostawiać go z poprzedniego, ukończonego przebiegu po samym router.refresh().
+          key={course.assignmentId}
           courseId={params.courseId}
           initial={{ ...course, score }}
           scoreUnavailable={scoreUnavailable}

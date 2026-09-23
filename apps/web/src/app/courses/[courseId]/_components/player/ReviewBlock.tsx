@@ -21,7 +21,7 @@ export default function ReviewBlock({
     return (
       <div data-testid="review-block">
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
-        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} disabled review />
+        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} onReady={() => {}} disabled review />
       </div>
     );
   }

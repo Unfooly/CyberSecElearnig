@@ -111,11 +111,13 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getByText('Mamy dowód! Trafił do notatnika.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    // "Dalej" w pasku powłoki (nie osobny "Kontynuuj" w bloku): wymagane elementy zebrane, więc jest już aktywne.
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 0, answer: { visited: ['h1'], noted: ['h1'] } });
 
-    await screen.findByText('Blok ukończony.');
+    // Bez pośredniego ekranu "Blok ukończony." - od razu kolejny blok.
+    await screen.findByText('Pytanie?');
     // Liczby z serwera (1/1), bez podwójnego liczenia dowodu lokalnego.
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
   });
@@ -168,7 +170,8 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     // Ten sam blok, ten sam stan: "Dodano do notatnika", wszystko obejrzane, licznik bez zmian.
     expect(screen.getByText('Dodano do notatnika')).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    // Z powrotem na żywym bloku: ten sam "Dalej" w pasku (gotowość przetrwała powrót z podglądu) zapisuje odpowiedź.
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 1, answer: { visited: ['h1'], noted: ['h1'] } });
   });
@@ -211,6 +214,44 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Ukończ ten blok, aby przejść dalej.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wstecz/ })).toBeEnabled();
+  });
+
+  it('ukończenie kursu na SUMMARY: mimo że SUMMARY jest "eksploracyjne", zapis pokazuje FeedbackPanel ("Blok ukończony." + "Zobacz podsumowanie") - nie od razu SummaryScreen, tak jak przy QUIZ na końcu kursu', async () => {
+    const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'a1',
+        status: 'COMPLETED',
+        currentBlockIndex: 2,
+        score: 100,
+        completedAt: '2026-01-01T00:00:00.000Z',
+        lastResult: { blockIndex: 1, blockId: 'wnioski', type: 'SUMMARY' },
+        gamification: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={course({
+          currentBlockIndex: 1,
+          contentBlocks: [{ type: 'QUIZ', id: 'quiz1', prompt: 'Pytanie?', options: [{ text: 'A' }, { text: 'B' }] }, summary],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
+
+    // Ekran pośredni: dokładnie jak przy ocenianym bloku na końcu kursu - nie od razu SummaryScreen.
+    expect(await screen.findByText('Blok ukończony.')).toBeInTheDocument();
+    expect(screen.queryByText('Kurs ukończony')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
+    expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
   });
 
   it('dolny pasek: scroll-padding-bottom dokumentu z pomiaru paska (fokus nie ląduje pod paskiem), sprzątany przy odmontowaniu', () => {
@@ -378,7 +419,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     expect(screen.getByText(/Twoja odpowiedź:/)).toBeInTheDocument();
   });
 
-  it('zadanie tekstowe: próby idą na /attempt, a "Kontynuuj" po rozstrzygnięciu zapisuje postęp bez odpowiedzi', async () => {
+  it('zadanie tekstowe: próby idą na /attempt, a "Dalej" po rozstrzygnięciu zapisuje postęp i przechodzi dalej bez osobnego ekranu wyniku', async () => {
     const fetchMock = vi.fn().mockImplementation(async (url: string) => {
       if (String(url).endsWith('/attempt')) {
         return { ok: true, status: 200, json: async () => ({ correct: true, attempt: 1, attemptsLeft: 3, done: true, points: 1 }) };
@@ -408,10 +449,29 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     await screen.findByText(/Poprawna odpowiedź!/);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/courses/course-1/blocks/domena/attempt');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    // Jeden "Dalej": po rozstrzygnięciu pasek powłoki chowa swój (readySubmit nie dotyczy TEXT_INPUT_GUIDED) zamiast
+    // trzymać drugi, nieaktywny obok aktywnego pod wynikiem.
+    expect(screen.getAllByRole('button', { name: /^Dalej$/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock.mock.calls[1][0]).toBe('/api/courses/course-1/progress');
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ blockIndex: 0 });
+  });
+
+  it('zadanie tekstowe: przed rozstrzygnięciem (jeszcze bez własnego przycisku) "Dalej" w pasku jest nieaktywne z podpowiedzią', () => {
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={course({
+          currentBlockIndex: 0,
+          contentBlocks: [{ type: 'TEXT_INPUT_GUIDED', id: 'domena', prompt: 'Jaka domena?', maxAttempts: 3, hintCount: 1 }],
+        })}
+      />,
+    );
+    const forward = screen.getByRole('button', { name: /^Dalej$/ });
+    expect(forward).toBeDisabled();
+    expect(forward).toHaveAttribute('title', 'Ukończ ten blok, aby przejść dalej.');
   });
 });
 
@@ -421,30 +481,67 @@ describe('CoursePlayer: bloki eksploracyjne', () => {
     vi.restoreAllMocks();
   });
 
-  it('wysyła { opened } dla bloku TABS, a po "Dalej" i "Wstecz" można przejść blok ponownie bez żadnego zapisu na serwerze', async () => {
+  it('wysyła { opened } dla bloku TABS przez "Dalej" w pasku (bez osobnego "Kontynuuj" ani ekranu "Blok ukończony."), a po "Wstecz" można przejść blok ponownie bez żadnego zapisu na serwerze', async () => {
     const fetchMock = vi.fn().mockResolvedValue(progressResponse);
     vi.stubGlobal('fetch', fetchMock);
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Maile' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    // Wymagane zakładki (x, y) otwarte -> "Dalej" w pasku powłoki jest już aktywne, bez osobnego przycisku w bloku.
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/courses/course-1/progress');
     expect(JSON.parse(init.body)).toEqual({ blockIndex: 0, answer: { opened: ['x', 'y'] } });
 
-    // Wynik bloku, "Dalej" (pierwszy w DOM: pod wynikiem), następnie "Wstecz" do podglądu.
-    await screen.findByText('Blok ukończony.');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
+    // Bez pośredniego ekranu "Blok ukończony." - jeden klik i już kolejny blok.
     expect(await screen.findByText('Pytanie?')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
     expect(screen.getByTestId('review-block')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Maile' }));
     expect(screen.getByRole('tabpanel')).toHaveTextContent('Sprawdzaj linki.');
-    expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('NARRATIVE jako PIERWSZY blok (bez żadnej interakcji): "Dalej" w pasku jest aktywne od razu po zamontowaniu - regresja na wyścig efektów (dziecko rejestruje gotowość, rodzic ją zerował w OSOBNYM useEffect na tym samym renderze)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'a1',
+        status: 'IN_PROGRESS',
+        currentBlockIndex: 1,
+        score: null,
+        completedAt: null,
+        lastResult: { blockIndex: 0, blockId: 'n1', type: 'NARRATIVE' },
+        gamification: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={course({
+          contentBlocks: [
+            { type: 'NARRATIVE', id: 'n1', text: 'Pierwszy blok.' },
+            { type: 'NARRATIVE', id: 'n2', text: 'Drugi blok.' },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Pierwszy blok.')).toBeInTheDocument();
+    const next = screen.getByRole('button', { name: /^Dalej$/ });
+    expect(next).toBeEnabled();
+
+    fireEvent.click(next);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // Drugi NARRATIVE (też "od razu gotowy") musi zdążyć zarejestrować SWOJĄ gotowość po przejściu - "Dalej" znów aktywne.
+    await screen.findByText('Drugi blok.');
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
   });
 });

@@ -7,8 +7,9 @@ import { useMascotReaction } from '../player/mascot-reaction';
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
 // próbie) i po wyczerpaniu prób rozwiązanie. Klient nigdy nie zna wzorca, listy poprawnych odpowiedzi ani podpowiedzi z góry (do klienta
-// idzie tylko ich liczba). "Kontynuuj" po rozstrzygnięciu to zwykły zapis postępu (onContinue). Po odświeżeniu stan (próby, odsłonięte
-// podpowiedzi, rozwiązanie) wraca z /start (progress).
+// idzie tylko ich liczba). "Dalej" po rozstrzygnięciu to zwykły zapis postępu (onContinue) - CoursePlayer wie, że wynik już jest pokazany
+// tutaj (stan `done`), więc NIE pokazuje po nim osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, patrz handleAnswer).
+// Po odświeżeniu stan (próby, odsłonięte podpowiedzi, rozwiązanie) wraca z /start (progress).
 
 interface AttemptResponse {
   correct: boolean;
@@ -201,7 +202,7 @@ export default function TextInputBlock({
           )}
           {!readOnly && onContinue && (
             <button type="button" onClick={onContinue} disabled={disabled} className="mt-3 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              Kontynuuj
+              Dalej
             </button>
           )}
         </div>

@@ -72,7 +72,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByTestId('reaction')).toHaveTextContent('warning');
   });
 
-  it('poprawna próba: wynik, brak pola, "Kontynuuj" wywołuje onContinue (zapis postępu)', async () => {
+  it('poprawna próba: wynik, brak pola, "Dalej" wywołuje onContinue (zapis postępu)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt({ correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75 })));
     const onContinue = vi.fn();
     const onProgress = vi.fn();
@@ -84,7 +84,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText(/Wynik: 75%/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sprawdź' })).not.toBeInTheDocument();
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ done: true, correct: true, points: 0.75, attempts: 2 }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
@@ -194,14 +194,14 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText('Próba 3 z 3 (pozostało: 1).')).toBeInTheDocument();
   });
 
-  it('rozstrzygnięte przed odświeżeniem (poprawnie) => wynik i "Kontynuuj", bez pola', () => {
+  it('rozstrzygnięte przed odświeżeniem (poprawnie) => wynik i "Dalej", bez pola', () => {
     setup({ progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: true, points: 1, attempts: 1 }, onContinue: vi.fn() });
     expect(screen.getByText(/Poprawna odpowiedź!/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Jaka jest prawdziwa domena w linku?')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dalej' })).toBeInTheDocument();
   });
 
-  it('podgląd (readOnly): wynik i rozwiązanie, bez pola i bez "Kontynuuj"', () => {
+  it('podgląd (readOnly): wynik i rozwiązanie, bez pola i bez "Dalej"', () => {
     setup({
       readOnly: true,
       progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: false, attempts: 3, solution: { text: 'bank-0.pl' } },
@@ -210,6 +210,6 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText('Wykorzystano wszystkie próby.')).toBeInTheDocument();
     expect(screen.getByText('bank-0.pl')).toBeInTheDocument();
     expect(screen.queryByLabelText('Jaka jest prawdziwa domena w linku?')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
   });
 });

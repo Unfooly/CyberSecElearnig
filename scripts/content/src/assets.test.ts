@@ -237,6 +237,34 @@ describe('runAssetsPipeline', () => {
     expect(store.objects.get(avatar)!.options.contentType).toBe('image/svg+xml');
   });
 
+  it('SVG z CRLF (git core.autocrlf=true na Windows) daje TEN SAM skrót co LF - normalizacja przed haszowaniem/publikacją', async () => {
+    // Realny przypadek: autor treści na Windows checkoutuje LF-owy commit, git zamienia na CRLF, --assets policzyłby
+    // (bez normalizacji) inny skrót niż ten sam plik na Linuksie/Macu - osobny, zduplikowany klucz w magazynie dla
+    // treści, która się NIE zmieniła (znalezione przy publikacji zasobów modułu 1: avatary dostały nowy hash mimo
+    // braku edycji). Ten sam plik zapisany z \n i z \r\n musi dać identyczny klucz.
+    const svgLf = CLEAN_SVG.replace('><rect', '>\n<rect').replace('/></svg>', '/>\n</svg>'); // wieloliniowy, żeby \r\n miało co zastąpić
+    const svgCrlf = Buffer.from(svgLf.replace(/\n/g, '\r\n'), 'utf8');
+    expect(svgCrlf.includes(0x0d)).toBe(true); // sanity: fixtura faktycznie ma CRLF
+
+    const moduleLf = moduleWithAssets({ avatar: 'lf.svg' });
+    await writeFile(modulePath, JSON.stringify(moduleLf));
+    await writeFile(join(assetsDir, 'lf.svg'), svgLf);
+    const storeLf = new MemoryStore();
+    await runAssetsPipeline(params({ store: storeLf }));
+    const keyLf = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { type: string }) => b.type === 'DIALOGUE').character.avatar;
+
+    const moduleCrlf = moduleWithAssets({ avatar: 'crlf.svg' });
+    await writeFile(modulePath, JSON.stringify(moduleCrlf));
+    await writeFile(join(assetsDir, 'crlf.svg'), svgCrlf);
+    const storeCrlf = new MemoryStore();
+    await runAssetsPipeline(params({ store: storeCrlf }));
+    const keyCrlf = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { type: string }) => b.type === 'DIALOGUE').character.avatar;
+
+    expect(keyCrlf.match(/\.([0-9a-f]{8})\.svg$/)![1]).toBe(keyLf.match(/\.([0-9a-f]{8})\.svg$/)![1]);
+    // Opublikowana treść też jest znormalizowana (nie samo haszowanie) - magazyn nigdy nie dostaje CRLF.
+    expect(Buffer.from(storeCrlf.objects.get(keyCrlf)!.body).includes(0x0d)).toBe(false);
+  });
+
   it('plik zakodowany jako UTF-16 (z BOM) zamiast UTF-8: odrzucony (zła interpretacja kodowania omijałaby regexy lintu)', async () => {
     // "<script>alert(1)</script>" jako UTF-16LE z BOM: czytany jako UTF-8 (bajt po bajcie) dałby ciąg z bajtami NUL między znakami,
     // który żaden wzorzec dosłownego tekstu by nie złapał - dlatego lint wymaga ścisłego UTF-8 PRZED sprawdzeniem treści.

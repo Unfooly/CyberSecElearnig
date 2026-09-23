@@ -143,18 +143,38 @@ function resolveOriginal(ref: AssetRef, lock: AssetsLock | null): string {
   return entry && entry.key === ref.value ? entry.original : ref.value;
 }
 
+// \r\n -> \n, bajtowo (bezpieczne dla UTF-8: 0x0D/0x0A nigdy nie występują jako bajt kontynuacji wielobajtowego znaku,
+// więc nie trzeba dekodować). Tylko dla plików TEKSTOWYCH (dziś: SVG) - binarne (mp3, png, ...) nigdy nie są dotykane.
+function normalizeEol(bytes: Buffer): Buffer {
+  const out = Buffer.alloc(bytes.length);
+  let j = 0;
+  for (let i = 0; i < bytes.length; i += 1) {
+    if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) continue;
+    out[j] = bytes[i];
+    j += 1;
+  }
+  return out.subarray(0, j);
+}
+
 async function readSource(assetsDir: string, original: string, blockId: string): Promise<Buffer> {
   assertSafeKey(original); // bez "..", bez segmentów spoza wzorca: broni przed wyjściem poza assetsDir
   const target = resolve(assetsDir, ...original.split('/'));
   if (target !== assetsDir && !target.startsWith(`${assetsDir}${sep}`)) {
     throw new Error(`Zasób "${original}" (blok "${blockId}") wychodzi poza katalog zasobów.`);
   }
+  let bytes: Buffer;
   try {
-    return await readFile(target);
+    bytes = await readFile(target);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error(`Zasób "${original}" (blok "${blockId}") nie istnieje w katalogu assets/ modułu.`);
     throw error;
   }
+  // `git core.autocrlf=true` (domyślne na Windows) zamienia LF -> CRLF przy checkoucie: bez tej normalizacji ten sam
+  // commit dawałby RÓŻNY skrót treści (i osobny, zduplikowany klucz w magazynie) zależnie od checkoutu autora treści -
+  // realny przypadek, znaleziony przy publikacji zasobów modułu 1 (avatary Anny/Marka dostały nowy hash mimo braku
+  // realnej zmiany treści). `.gitattributes` (packages/content) wymusza LF na checkout dla nowych klonów - ta
+  // normalizacja jest drugą linią obrony dla checkoutów sprzed tej zmiany.
+  return assetExt(original) === 'svg' ? normalizeEol(bytes) : bytes;
 }
 
 export async function runAssetsPipeline(params: AssetsPipelineParams): Promise<AssetsPipelineResult> {

@@ -216,6 +216,50 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getByRole('button', { name: /Wstecz/ })).toBeEnabled();
   });
 
+  it('SCENE_HOTSPOTS z "drzwi" (action: "next", B-086/D-071): "Dalej" znika z paska, wyjście idzie przez klik w scenie', async () => {
+    const doorBlock = {
+      type: 'SCENE_HOTSPOTS' as const,
+      id: 'korytarz',
+      title: 'Korytarz',
+      image: 'scenes/korytarz.png',
+      imageAlt: 'Korytarz',
+      hotspots: [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 10, width: 8, height: 10, action: 'next' as const }],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'a1',
+        status: 'IN_PROGRESS',
+        currentBlockIndex: 1,
+        score: null,
+        completedAt: null,
+        lastResult: { blockIndex: 0, blockId: 'korytarz', type: 'SCENE_HOTSPOTS', points: undefined },
+        gamification: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={course({ currentBlockIndex: 0, contentBlocks: [doorBlock, { type: 'QUIZ', id: 'quiz1', prompt: 'Pytanie?', options: [{ text: 'A' }, { text: 'B' }] }] })}
+      />,
+    );
+
+    // Bez wymaganych elementów poza drzwiami: drzwi są od razu gotowe, ale "Dalej" w pasku NIGDY się nie pojawia
+    // (SceneHotspotsBlock z drzwiami nigdy nie woła onReady) - jedynym wyjściem jest klik w scenie.
+    expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Wyjście' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/courses/course-1/progress',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ blockIndex: 0, answer: { visited: [], noted: [] } }) }),
+      ),
+    );
+  });
+
   it('ukończenie kursu na SUMMARY: mimo że SUMMARY jest "eksploracyjne", zapis pokazuje FeedbackPanel ("Blok ukończony." + "Zobacz podsumowanie") - nie od razu SummaryScreen, tak jak przy QUIZ na końcu kursu', async () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     const fetchMock = vi.fn().mockResolvedValue({

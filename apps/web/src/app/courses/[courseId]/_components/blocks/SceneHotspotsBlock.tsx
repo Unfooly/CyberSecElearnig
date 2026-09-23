@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, DoorOpen, X } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -115,17 +115,28 @@ export default function SceneHotspotsBlock({
   const transcriptId = useId();
   const overlayTitleId = useId();
 
-  const required = requiredItemIds(flat, block.requiredHotspots);
+  // "Drzwi" (action:'next', B-086/D-071) WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie
+  // (klik od razu kończy blok) - inaczej scena z SAMYMI drzwiami (np. "korytarz", bez innych hotspotów) nigdy nie
+  // mogłaby się ukończyć (fallback bez jawnych flag required liczyłby "wszystkie", czyli same drzwi). Ta sama reguła
+  // co server-side (evaluate.ts) i walidacja modułu (semantics.ts).
+  const doorIds = new Set(hotspots.filter((hotspot) => hotspot.action === 'next').map((hotspot) => hotspot.id));
+  const required = requiredItemIds(
+    flat.filter((hotspot) => !doorIds.has(hotspot.id)),
+    block.requiredHotspots,
+  );
   const doneCount = required.filter((id) => visited.includes(id)).length;
   const ready = doneCount >= required.length;
+  const hasDoor = doorIds.size > 0;
   useCompleteReaction(block.reactions?.complete, ready, review);
 
   useEffect(() => {
     if (review) return;
-    onReady(ready ? () => onSubmit({ visited, noted }) : null);
+    // Z drzwiami blok NIGDY nie zgłasza gotowości przez pasek - jedynym wyjściem jest klik w drzwi (CoursePlayer.tsx
+    // chowa wtedy "Dalej" paska, hideForward).
+    onReady(!hasDoor && ready ? () => onSubmit({ visited, noted }) : null);
     // onReady/onSubmit celowo poza deps - patrz wyjaśnienie w SceneHotspotsBlock.tsx (remount przez `key` na zmianę bloku, nie "stabilność").
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visited, noted, review]);
+  }, [visited, noted, review, hasDoor]);
 
   // Zmiana aktywnego elementu (zewnętrznego albo wewnątrz zagnieżdżonej sceny): transkrypcja się zwija, nakładka zamyka.
   useEffect(() => {
@@ -150,6 +161,17 @@ export default function SceneHotspotsBlock({
     setInteracted(true);
     setActiveId(id);
     markVisited(id);
+  }
+
+  // Drzwi (action:'next'): nigdy nie otwierają kartę - gotowe (ready) kończą blok od razu, jak przycisk "Dalej" w
+  // pasku; przed tym klik nic nie robi (przycisk jest wtedy aria-disabled, ale klawiatura/dotyk i tak trafiają tutaj).
+  function clickDoor() {
+    if (!review && ready) onSubmit({ visited, noted });
+  }
+
+  function handleHotspotClick(hotspot: SceneHotspot) {
+    if (hotspot.action === 'next') clickDoor();
+    else open(hotspot.id);
   }
 
   function openNested(id: string) {
@@ -196,26 +218,34 @@ export default function SceneHotspotsBlock({
           />
           {hotspots.map((hotspot) => {
             const seen = visited.includes(hotspot.id);
+            const isDoor = hotspot.action === 'next';
             return (
               <button
                 key={hotspot.id}
                 type="button"
                 data-testid={`hotspot-overlay-${hotspot.id}`}
-                data-state={seen ? 'discovered' : interacted ? 'hidden' : 'hint'}
+                data-state={isDoor ? (ready ? 'ready' : 'blocked') : seen ? 'discovered' : interacted ? 'hidden' : 'hint'}
                 // Nakładka tylko dla myszy i dotyku; klawiatura i czytniki używają listy poniżej (jeden cel na punkt).
                 aria-hidden="true"
                 tabIndex={-1}
-                onClick={() => open(hotspot.id)}
+                disabled={isDoor && !ready}
+                onClick={() => handleHotspotClick(hotspot)}
                 style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
-                className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${
-                  seen
-                    ? 'border-green-600 bg-green-500/[0.07]'
-                    : interacted
-                      ? 'border-transparent'
-                      : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
+                className={`absolute min-h-[24px] min-w-[24px] rounded border-2 transition-colors ${
+                  isDoor
+                    ? ready
+                      ? 'border-amber-500 bg-amber-400/20 hover:border-amber-600 hover:bg-amber-400/30'
+                      : 'cursor-not-allowed border-slate-400/50 bg-slate-400/10'
+                    : `hover:border-indigo-600 hover:bg-indigo-500/20 ${
+                        seen
+                          ? 'border-green-600 bg-green-500/[0.07]'
+                          : interacted
+                            ? 'border-transparent'
+                            : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
+                      }`
                 }`}
               >
-                {seen && (
+                {!isDoor && seen && (
                   <span className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white">
                     <Check aria-hidden="true" className="h-3 w-3" />
                   </span>
@@ -227,22 +257,45 @@ export default function SceneHotspotsBlock({
       )}
 
       <ul aria-label="Elementy sceny" className="flex flex-wrap gap-2">
-        {hotspots.map((hotspot) => (
-          <li key={hotspot.id}>
-            <button
-              type="button"
-              aria-pressed={activeId === hotspot.id}
-              onClick={() => open(hotspot.id)}
-              className={`min-h-[44px] rounded border px-3 py-2 text-sm font-medium ${
-                activeId === hotspot.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-              }`}
-            >
-              {hotspot.label}
-              {visited.includes(hotspot.id) && <span className="sr-only"> (obejrzane)</span>}
-              {visited.includes(hotspot.id) && <span aria-hidden="true"> ✓</span>}
-            </button>
-          </li>
-        ))}
+        {hotspots.map((hotspot) =>
+          hotspot.action === 'next' ? (
+            <li key={hotspot.id}>
+              {/* Drzwi: gotowe (ready) kończą blok od razu, jak "Dalej" w pasku (który jest wtedy ukryty - hideForward
+                  w CoursePlayer.tsx). Nieaktywne zostaje SKUPIALNE (aria-disabled, nie disabled) - czytnik ekranu ma
+                  usłyszeć DLACZEGO, zamiast po prostu pominąć przycisk. */}
+              <button
+                type="button"
+                aria-disabled={!ready}
+                aria-label={ready ? undefined : `${hotspot.label}: zbierz najpierw dowody (${doneCount}/${required.length})`}
+                title={ready ? undefined : `Zbierz najpierw dowody: ${doneCount}/${required.length}`}
+                onClick={() => handleHotspotClick(hotspot)}
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium ${
+                  ready
+                    ? 'border-amber-600 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                    : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                }`}
+              >
+                <DoorOpen aria-hidden="true" className="h-4 w-4" />
+                {hotspot.label}
+              </button>
+            </li>
+          ) : (
+            <li key={hotspot.id}>
+              <button
+                type="button"
+                aria-pressed={activeId === hotspot.id}
+                onClick={() => open(hotspot.id)}
+                className={`min-h-[44px] rounded border px-3 py-2 text-sm font-medium ${
+                  activeId === hotspot.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                {hotspot.label}
+                {visited.includes(hotspot.id) && <span className="sr-only"> (obejrzane)</span>}
+                {visited.includes(hotspot.id) && <span aria-hidden="true"> ✓</span>}
+              </button>
+            </li>
+          ),
+        )}
       </ul>
 
       <div aria-live="polite" className="mt-4 min-h-[3rem]">

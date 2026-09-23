@@ -210,7 +210,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           });
         }
       });
-      checkRequiredFlags('hotspots', flattenHotspots(block.hotspots), errors);
+      // Drzwi (action:'next') WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie (klik od razu
+      // kończy blok, nie "odwiedza" siebie), więc licząc je "wszystkie required" (fallback, brak jawnych flag) scena
+      // z SAMYMI drzwiami (bez innych hotspotów - np. "korytarz") nigdy nie mogłaby się ukończyć.
+      const doorIds = new Set(block.hotspots.filter((h) => h.action === 'next').map((h) => h.id));
+      checkRequiredFlags('hotspots', flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id)), errors);
       break;
     }
     case 'DIALOGUE': {

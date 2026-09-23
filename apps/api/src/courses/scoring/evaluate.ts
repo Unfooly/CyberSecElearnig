@@ -101,7 +101,11 @@ export function evaluateSubmit(
       // modułu (semantics.ts), więc "ten sam zbiór id" jest dokładnie jedną definicją, nie dwiema, które mogłyby się rozjechać.
       const hotspots = flattenHotspots(block.hotspots as HotspotLike[]);
       const all = hotspots.map((h) => h.id);
-      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots, block.requiredHotspots));
+      // Drzwi (action:'next', B-086/D-071) WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie
+      // (klik od razu kończy blok) - inaczej scena z SAMYMI drzwiami nigdy nie mogłaby się ukończyć (semantics.ts ma
+      // tę samą wykluczenie przy walidacji modułu).
+      const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
+      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots.filter((h) => !doorIds.has(h.id)), block.requiredHotspots));
       // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
       const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
       if (!unique(noted) || noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id))) {

@@ -62,6 +62,13 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(submit(block, { visited: ['h1', 'h4-outlook'] }).entry.done).toBe(true);
   });
 
+  it('SCENE_HOTSPOTS: "drzwi" (action:"next", B-086/D-071) WYKLUCZONE z puli required - scena z samymi drzwiami (bez innych hotspotów, np. "korytarz") daje się ukończyć pustym visited', () => {
+    const block = { ...blocks().SCENE_HOTSPOTS, requiredHotspots: undefined, hotspots: [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' }] };
+    // Bez wykluczenia drzwi z required fallback ("wszystkie required", bo żaden hotspot nie ma jawnej flagi) liczyłby
+    // same drzwi jako wymagane - a drzwi nigdy nie trafiają do `visited` same z siebie, więc blok nigdy by się nie ukończył.
+    expect(submit(block, { visited: [] }).entry.done).toBe(true);
+  });
+
   it('SCENE_HOTSPOTS: nieznane id (spoza spłaszczonego zbioru zewnętrzne+wewnętrzne) jest odrzucone bez treści bloku', () => {
     const block = blocks().SCENE_HOTSPOTS;
     const rejected = () => submit(block, { visited: ['h1', 'wymyslone-id'] });

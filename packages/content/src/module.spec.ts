@@ -186,6 +186,14 @@ describe('parseModule: walidacja modułu', () => {
     }, 'nieznany identyfikator "h4-outlook"');
   });
 
+  it('scena z SAMYMI drzwiami (action:"next", bez innych hotspotów - np. "korytarz") przechodzi walidację: drzwi wykluczone z puli required, więc fallback "wszystkie" nie liczy ich samych', () => {
+    const module = fullModuleForTests();
+    const scene = blockOf(module, 'SCENE_HOTSPOTS');
+    delete scene.requiredHotspots;
+    scene.hotspots = [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' }];
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';

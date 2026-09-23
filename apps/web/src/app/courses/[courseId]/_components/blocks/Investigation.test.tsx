@@ -390,6 +390,60 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
   });
 });
 
+const doorScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'korytarz',
+  title: 'Korytarz',
+  image: 'scenes/korytarz.png',
+  imageAlt: 'Korytarz',
+  hotspots: [
+    {
+      id: 'dowod',
+      label: 'Kartka',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Coś ciekawego.',
+      required: true,
+      evidence: true,
+      note: { text: 'Dowód w korytarzu.', kind: 'item' },
+    },
+    { id: 'drzwi', label: 'Wyjście', x: 90, y: 10, width: 8, height: 10, action: 'next' },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
+  it('nieaktywne dopóki required nie zebrane: aria-disabled, tooltip/aria-label z licznikiem, klik nic nie robi', () => {
+    const { onSubmit } = setup(doorScene);
+    const door = screen.getByRole('button', { name: /Wyjście: zbierz najpierw dowody \(0\/1\)/ });
+    expect(door).toHaveAttribute('aria-disabled', 'true');
+    expect(door).toHaveAttribute('title', 'Zbierz najpierw dowody: 0/1');
+    fireEvent.click(door);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('hotspot-card')).not.toBeInTheDocument();
+  });
+
+  it('po zebraniu required: klik w drzwi kończy CAŁY blok (onSubmit), bez otwierania karty', () => {
+    const { onSubmit } = setup(doorScene);
+    pick('Kartka');
+    const door = screen.getByRole('button', { name: 'Wyjście' });
+    expect(door).toHaveAttribute('aria-disabled', 'false');
+    expect(door).not.toHaveAttribute('title');
+    fireEvent.click(door);
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
+    // Drzwi same nigdy nie otwierają karty (w odróżnieniu od zwykłego hotspotu) - klik w nie nie ustawia activeId.
+    expect(screen.queryByRole('heading', { name: 'Wyjście', level: 3 })).not.toBeInTheDocument();
+  });
+
+  it('blok z drzwiami NIGDY nie zgłasza gotowości przez onReady (pasek powłoki) - nawet po zebraniu required: jedynym wyjściem są drzwi na scenie', () => {
+    const { ready } = setup(doorScene);
+    expect(ready.current).toBeNull();
+    pick('Kartka');
+    expect(ready.current).toBeNull();
+  });
+});
+
 describe('DIALOGUE: kwestie po jednej', () => {
   it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
     const { onSubmit, ready } = setup(dialogue);

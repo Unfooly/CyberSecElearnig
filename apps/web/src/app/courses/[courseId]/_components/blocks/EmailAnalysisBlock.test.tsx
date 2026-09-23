@@ -31,7 +31,17 @@ const block: ContentBlock = {
   ],
 };
 
-const list = () => screen.getByRole('group', { name: /Zaznaczone oznaki/ });
+// Lista kryteriów jest domyślnie ZWINIĘTA podczas odpowiadania (za przyciskiem "Lista elementów (dla klawiatury)") -
+// helpery testowe otwierają ją w razie potrzeby, żeby istniejące asercje na checkboxach nie musiały tego robić same.
+// W widoku wyniku (readOnly, przycisk nie istnieje) lista jest od razu widoczna.
+function openCriteriaList() {
+  const toggle = screen.queryByRole('button', { name: 'Lista elementów (dla klawiatury)' });
+  if (toggle && toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle);
+}
+const list = () => {
+  openCriteriaList();
+  return screen.getByRole('group', { name: /Zaznaczone oznaki|Kryteria/ });
+};
 const checkbox = (name: RegExp | string) => within(list()).getByRole('checkbox', { name });
 
 function setup(overrides: { result?: Parameters<typeof EmailAnalysisBlock>[0]['result']; onContinue?: () => void; continueLabel?: string } = {}) {
@@ -99,6 +109,21 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     fireEvent.click(within(mail).getByRole('button', { name: /Bank Zaufany/ }));
     expect(checkbox(/Podejrzany adres nadawcy/)).not.toBeChecked();
     expect(within(mail).getByRole('button', { name: /Pilne: potwierdź/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('lista kryteriów jest domyślnie zwinięta podczas odpowiadania (zaznaczanie idzie przez klikanie w mailu); przycisk ją rozwija', () => {
+    setup();
+    const toggle = screen.getByRole('button', { name: 'Lista elementów (dla klawiatury)' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('checkbox', { name: /Podejrzany adres nadawcy/ })).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank Zaufany/ }));
+    // Zaznaczenie przez klik w mailu działa nawet ze zwiniętą listą.
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('checkbox', { name: /Podejrzany adres nadawcy/ })).toBeChecked();
   });
 
   it('checklista działa jak alternatywa (klawiatura): zaznaczenie kryterium podświetla fragment; kryterium bez fragmentu tylko na liście', () => {
@@ -190,6 +215,8 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
     expect(screen.queryByRole('button', { name: 'Sprawdź odpowiedź' })).not.toBeInTheDocument();
     for (const box of screen.getAllByRole('checkbox')) expect(box).toBeDisabled();
     expect(screen.getAllByRole('checkbox').filter((box) => (box as HTMLInputElement).checked)).toHaveLength(3);
+    // W wyniku lista jest od razu widoczna (nic do zaznaczania) - przycisk zwijający/rozwijający w ogóle nie istnieje.
+    expect(screen.queryByRole('button', { name: 'Lista elementów (dla klawiatury)' })).not.toBeInTheDocument();
   });
 
   it('w wyniku fragmenty są zablokowane (klik niczego nie zmienia)', () => {

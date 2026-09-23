@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Check, Info, Paperclip, X } from 'lucide-react';
 import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
 import { useMascotReaction } from '../player/mascot-reaction';
 
 // Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
-// linki). Kryteria zaznacza się
-// KLIKNIĘCIEM FRAGMENTU maila (nadawca, temat, link, załącznik, fragment tekstu); lista kryteriów pod mailem to ta sama zaznaczona lista
-// (checkbox per kryterium) i jest ścieżką dla klawiatury/czytników oraz dla kryteriów bez fragmentu w mailu.
+// linki). Kryteria zaznacza się PRZEDE WSZYSTKIM KLIKNIĘCIEM FRAGMENTU maila (nadawca, temat, link, załącznik, fragment tekstu); lista
+// kryteriów pod mailem to ta sama zaznaczona lista (checkbox per kryterium), ale podczas odpowiadania jest domyślnie ZWINIĘTA za
+// przyciskiem "Lista elementów (dla klawiatury)" - nie ma pokazywać z góry checklisty tego, czego szukać. Rozwinięta to ścieżka dla
+// klawiatury/czytników oraz dla kryteriów bez fragmentu w mailu. W widoku wyniku (readOnly) lista jest od razu widoczna.
 // Link w treści NIGDY nie nawiguje (to <button>): po najechaniu, fokusie i kliknięciu jego prawdziwy adres pokazuje pasek statusu u dołu
 // makiety, jak w przeglądarce. Załącznik jest klikalny tylko jako zaznaczenie: nie ma adresu pliku, więc nic się nie pobiera.
 // Odpowiedź dla serwera: { selected: [id kryterium (nieprzejrzyste)...] }. Tryb wyniku (`result`): to samo, tylko do odczytu, z oceną.
@@ -102,6 +103,12 @@ export default function EmailAnalysisBlock({
   const email = block.email;
   const criteria = useMemo(() => block.criteria ?? [], [block.criteria]);
   const mascot = useMascotReaction();
+  // Lista kryteriów domyślnie ZWINIĘTA podczas odpowiadania: zaznaczanie ma iść przez klikanie fragmentów maila, nie
+  // czytanie gotowej checklisty obok niego (zdradzałaby z góry, ile/jakich oznak szukać). Ścieżka dla klawiatury i
+  // kryteriów bez fragmentu w mailu zostaje - tylko schowana za przyciskiem. W widoku wyniku (readOnly) lista jest
+  // od razu widoczna: to już nie checklista do odgadnięcia, tylko rozstrzygnięcie.
+  const [listOpen, setListOpen] = useState(false);
+  const criteriaListId = useId();
   // Wybór gracza: z odpowiedzi serwera, a gdy jej brak (starszy zapis), z rozstrzygnięcia (detail.criteria[].selected).
   const [selected, setSelected] = useState<string[]>(
     result?.answer?.selected ?? (result?.detail?.criteria ?? []).filter((criterion) => criterion.selected).map((criterion) => criterion.id),
@@ -294,8 +301,19 @@ export default function EmailAnalysisBlock({
       </div>
 
       <fieldset className="mt-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">{readOnly ? 'Kryteria' : 'Zaznaczone oznaki (możesz też zaznaczać tutaj)'}</legend>
-        <ul className="space-y-2">
+        <legend className="mb-2 text-sm font-semibold text-slate-900">{readOnly ? 'Kryteria' : 'Zaznaczone oznaki'}</legend>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setListOpen((open) => !open)}
+            aria-expanded={listOpen}
+            aria-controls={criteriaListId}
+            className="mb-2 inline-flex min-h-[44px] items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            Lista elementów (dla klawiatury)
+          </button>
+        )}
+        <ul id={criteriaListId} hidden={!readOnly && !listOpen} className="space-y-2">
           {criteria.map((criterion) => {
             const verdict = verdictOf(criterion.id);
             const detail = details.get(criterion.id);

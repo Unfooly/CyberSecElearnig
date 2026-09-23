@@ -72,9 +72,9 @@ nie do repo (`.gitignore`: `*.preview.html`).
 | `monitor` | `screen: mail\|login\|locked\|blank\|spreadsheet, subject, sender, button, title, sticky[]` | `sticky` |
 | `laptop` | jak `monitor` bez `sticky` | |
 | `stickyNote` | `lines[] (max 3), color` | |
-| `phone` | `led, display[] (2), note` | |
+| `phone` | `led, display[] (2), note, body` | |
 | `printer` | `paper, paperText, ready` | |
-| `mug` | `label[] (2), color` | |
+| `mug` | `label[] (2), color, steam` | |
 | `smartphone` | `lines[] (3), badge` | |
 | `box` | `w, h, label` | |
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { Check, DoorOpen } from 'lucide-react';
+import { Check, DoorOpen, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -357,6 +357,12 @@ function HotspotDetailBody({
 
       {media?.kind === 'audio' && (
         <AudioMedia
+          // key: wymuszony remount (nie tylko re-render tej samej instancji) przy przejściu na INNY hotspot audio -
+          // stan (playing/currentTime) i autoodtwarzanie przy otwarciu mają zawsze dotyczyć aktualnego hotspotu, nie
+          // resztek po poprzednim. Dziś to i tak zawsze prawda strukturalnie (przejście między dwoma hotspotami audio
+          // idzie zawsze przez stan bez audio - zamknięcie nakładki albo widok sceny zagnieżdżonej), ale `key` nie
+          // polega na tym inwariancie (D-073: "to inwariant UI, nie coś, na czym stan POWINIEN polegać").
+          key={hotspot.id}
           contentBase={contentBase}
           media={media}
           transcriptOpen={transcriptOpen}
@@ -453,6 +459,19 @@ function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   );
 }
 
+// Czas w m:ss. `seconds` bywa NaN (metadane audio jeszcze się nie wczytały - preload="metadata") - wtedy "0:00", nie NaN:NaN.
+function formatAudioTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// Własny odtwarzacz (bez natywnych <audio controls>) - feedback z produkcji (feat/scene-overlay-fix): zbliżenie
+// (media.image, opcjonalne) nad małym przyciskiem play/pauza z cienkim paskiem postępu i czasem. Autoodtwarzanie przy
+// otwarciu hotspotu (klik = gest użytkownika, więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale
+// możliwe np. przy restrykcyjnych ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o
+// błędzie (inaczej niż NarrationPlayer.tsx, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
 function AudioMedia({
   contentBase,
   media,
@@ -469,13 +488,66 @@ function AudioMedia({
   onEnded: () => void;
 }) {
   const url = contentAssetUrl(contentBase, media.audioUrl, 'audio');
+  const imageUrl = contentAssetUrl(contentBase, media.image, 'image');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    audioRef.current?.play().catch(() => {});
+  }, []);
+
+  function togglePlay() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+  }
+
+  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
   return (
     <div className="mt-3">
       {url && (
-        // eslint-disable-next-line jsx-a11y/media-has-caption -- transkrypcja jest obok (przycisk niżej), nie <track>
-        <audio controls preload="none" src={url} onEnded={onEnded} className="w-full">
-          Twoja przeglądarka nie obsługuje odtwarzania dźwięku.
-        </audio>
+        <>
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
+            <img src={imageUrl} alt="" referrerPolicy="no-referrer" className="w-full rounded border border-slate-200 object-contain" />
+          )}
+          <audio
+            ref={audioRef}
+            src={url}
+            preload="metadata"
+            hidden
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+            onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+            onEnded={() => {
+              setPlaying(false);
+              onEnded();
+            }}
+          />
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pauza' : 'Odtwórz'}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-indigo-600 bg-indigo-50 text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
+            >
+              {playing ? <Pause aria-hidden="true" className="h-5 w-5" /> : <Play aria-hidden="true" className="h-5 w-5 translate-x-0.5" />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="mt-1 text-xs tabular-nums text-slate-500">
+                {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
+              </p>
+            </div>
+          </div>
+        </>
       )}
       {media.transcript && (
         <>

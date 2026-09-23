@@ -262,7 +262,7 @@ const mediaScene: ContentBlock = {
       width: 20,
       height: 20,
       content: 'Prawdziwy bank nigdy nie prosi o kod SMS przez telefon.',
-      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.' },
+      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.', image: 'img/telefon-zoom.png' },
       evidence: true,
       note: { text: 'Telefon z podejrzaną prośbą o kod SMS.', kind: 'item' },
     },
@@ -280,6 +280,17 @@ const mediaScene: ContentBlock = {
 };
 
 describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
+  // Własny odtwarzacz audio (feat/scene-overlay-fix) próbuje .play() przy otwarciu karty (autoodtwarzanie po geście
+  // kliknięcia) - jsdom nie implementuje HTMLMediaElement.play() (zwraca undefined, nie odrzucony Promise), więc bez
+  // mocka rzuca "Not implemented" (ten sam wzorzec co NarrationPlayer.test.tsx).
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('image: renderuje się powiększony wprost w karcie (bez osobnego przycisku/nakładki - karta sama JEST nakładką)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
@@ -295,16 +306,20 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(screen.queryByRole('button', { name: /Zobacz dokument/ })).not.toBeInTheDocument();
   });
 
-  it('audio: <audio> bez autoplay, transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
+  it('audio: zbliżenie (media.image) i własny odtwarzacz (bez natywnych controls, autoodtwarzanie po kliku hotspotu), transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
     setup(mediaScene);
     pick('Telefon');
 
     expect(screen.queryByText(/Prawdziwy bank nigdy nie prosi/)).not.toBeInTheDocument();
+    expect(within(dialog()).getByAltText('')).toHaveAttribute('src', expect.stringContaining('telefon-zoom.png')); // zbliżenie z media.image
 
     const audioEl = document.querySelector('audio')!;
     expect(audioEl).toBeInTheDocument();
-    expect(audioEl).not.toHaveAttribute('autoplay');
-    expect(audioEl).toHaveAttribute('controls');
+    expect(audioEl).not.toHaveAttribute('controls'); // własny odtwarzacz, nie natywny <audio controls> (feedback z produkcji)
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled(); // klik hotspotu = gest użytkownika -> autoplay
+
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // play() zmockowany, onPlay się nie odpala - stan startowy
+    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -315,6 +330,25 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
 
     fireEvent(audioEl, new Event('ended'));
     expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
+  });
+
+  it('audio: przycisk play/pauza przełącza odtwarzanie, pasek postępu i czas aktualizują się z zdarzeń <audio>', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    const audioEl = document.querySelector('audio')!;
+
+    Object.defineProperty(audioEl, 'paused', { value: false, configurable: true }); // jsdom nie synchronizuje .paused z play()/pause() zmockowanymi wyżej
+    fireEvent(audioEl, new Event('play'));
+    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
+
+    Object.defineProperty(audioEl, 'duration', { value: 60, configurable: true });
+    fireEvent(audioEl, new Event('loadedmetadata'));
+    Object.defineProperty(audioEl, 'currentTime', { value: 15, configurable: true });
+    fireEvent(audioEl, new Event('timeupdate'));
+    expect(screen.getByText('0:15 / 1:00')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Pauza' }));
+    expect(audioEl.pause).toHaveBeenCalled();
   });
 
   it('audio: dowód WYMAGA kliknięcia "Dodaj do notatnika" - samo otwarcie karty (ani odsłuchanie) nie wystarcza (zmiana: dowód zawsze przyciskiem, D-071)', () => {

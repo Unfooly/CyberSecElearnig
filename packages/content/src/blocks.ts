@@ -71,7 +71,11 @@ const embeddedHtmlSchema = z
 // TTS/cues narracji - inny głos niż lektor nagrywa się i publikuje osobno). `transcript` to zwykły tekst (jak `content`), nie
 // `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
 const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, alt: text(300) }).strict();
-const audioMediaSchema = z.object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000) }).strict();
+// image: opcjonalne zbliżenie pokazywane NAD własnym odtwarzaczem audio (zamiast natywnych <audio controls> - feedback z
+// produkcji po PR #32, PR feat/scene-overlay-fix), publikowane tym samym potokiem --assets co media.src.
+const audioMediaSchema = z
+  .object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000), image: imagePathSchema.optional() })
+  .strict();
 const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
 
 // Hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene'): jak hotspot najwyższego poziomu, ale BEZ `action` i BEZ
@@ -470,6 +474,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.alt',
       'hotspots[].media.audioUrl',
       'hotspots[].media.transcript',
+      'hotspots[].media.image',
       'hotspots[].media.title',
       'hotspots[].media.lines[]',
       'hotspots[].media.scene.image',
@@ -486,6 +491,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].media.alt',
       'hotspots[].media.scene.hotspots[].media.audioUrl',
       'hotspots[].media.scene.hotspots[].media.transcript',
+      'hotspots[].media.scene.hotspots[].media.image',
       'hotspots[].media.scene.hotspots[].media.title',
       'hotspots[].media.scene.hotspots[].media.lines[]',
       'hotspots[].media.scene.hotspots[].narration.text',

@@ -115,7 +115,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           width: 15,
           height: 15,
           content: 'Telefon z nieodebranym połączeniem.',
-          media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, tu dział bezpieczeństwa banku...' },
+          media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, tu dział bezpieczeństwa banku...', image: 'img/telefon-zoom.png' },
         },
         // Czwarty hotspot: media.kind "scene" (B-086/D-071) - zagnieżdżona mini-scena (np. pulpit komputera zza monitora).
         // Wewnętrzny hotspot NIESIE własne evidence/required (płaska lista dowodów całego bloku) - fixtura wypełnia go w
@@ -161,7 +161,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
                   width: 15,
                   height: 15,
                   content: 'Pusty kosz systemowy.',
-                  media: { kind: 'audio', audioUrl: 'audio/kosz.mp3', transcript: 'Kosz jest pusty.' },
+                  media: { kind: 'audio', audioUrl: 'audio/kosz.mp3', transcript: 'Kosz jest pusty.', image: 'img/kosz-zoom.png' },
                 },
                 {
                   id: 'h4-folder',

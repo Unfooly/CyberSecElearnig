@@ -16,19 +16,24 @@ import type { ObjectStore } from './types.js';
 
 /**
  * Pola-ścieżki zasobów w blokach (wzorce; `*` = każdy element tablicy). Zgodne ze schematem treści
- * (packages/content/src/blocks.ts). hotspots[].media.{src,audioUrl}: obraz/audio karty hotspotu (B-086/D-071) - audio
- * hotspotu to GOTOWY plik z --assets (jak obraz), NIE przechodzi przez silnik TTS/cues narracji (scripts/content/src/
- * pipeline.ts, osobny potok). Zagnieżdżona scena (media.kind:'scene') ma WŁASNY obraz i własne, wewnętrzne hotspoty -
- * zawsze dokładnie jeden poziom (packages/content's innerHotspotSchema), więc bez rekurencji tutaj też.
+ * (packages/content/src/blocks.ts). hotspots[].media.{src,audioUrl,image}: obraz/audio/zbliżenie NAD odtwarzaczem
+ * audio karty hotspotu (B-086/D-071, image: feat/scene-overlay-fix) - audio hotspotu to GOTOWY plik z --assets (jak
+ * obraz), NIE przechodzi przez silnik TTS/cues narracji (scripts/content/src/pipeline.ts, osobny potok). Zagnieżdżona
+ * scena (media.kind:'scene') ma WŁASNY obraz i własne, wewnętrzne hotspoty - zawsze dokładnie jeden poziom
+ * (packages/content's innerHotspotSchema), więc bez rekurencji tutaj też.
  */
 export const ASSET_PATHS: string[][] = [
   ['image'],
   ['character', 'avatar'],
   ['hotspots', '*', 'media', 'src'],
   ['hotspots', '*', 'media', 'audioUrl'],
+  // image: zbliżenie NAD odtwarzaczem audio (opcjonalne, feat/scene-overlay-fix) - osobne pole od media.src (tamto
+  // tylko dla kind:'image'), nie koliduje.
+  ['hotspots', '*', 'media', 'image'],
   ['hotspots', '*', 'media', 'scene', 'image'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'src'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

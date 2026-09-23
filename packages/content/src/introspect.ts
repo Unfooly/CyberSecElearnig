@@ -36,6 +36,12 @@ export function leafPaths(schema: z.ZodTypeAny, prefix = ''): string[] {
       const items = def.items as z.ZodTypeAny[];
       return [...new Set(items.flatMap((item) => leafPaths(item, `${prefix}[]`)))];
     }
+    case 'ZodDiscriminatedUnion': {
+      // Warianty dzielą pole dyskryminujące (np. `kind`) - Set scala je zamiast duplikować; pola specyficzne dla
+      // jednego wariantu i tak trafiają na listę (klasyfikacja musi zdecydować o KAŻDYM z nich, niezależnie od reszty).
+      const options = def.options as z.ZodTypeAny[];
+      return [...new Set(options.flatMap((option) => leafPaths(option, prefix)))];
+    }
     case 'ZodLiteral':
     case 'ZodString':
     case 'ZodNumber':

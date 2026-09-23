@@ -87,13 +87,36 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           width: 20,
           height: 20,
           content: 'Kartka z hasłem na monitorze.',
+          media: { kind: 'image', src: 'img/kartka-zoom.png', alt: 'Zbliżenie karteczki z hasłem' },
           narration: audio('h1'),
           required: true,
           evidence: true,
           note: { text: 'Hasło na kartce przy monitorze.', kind: 'item' },
         },
         // Opcjonalny "smaczek": bez required (inny hotspot ma jawne required, więc ten nie jest wymagany), bez dowodu.
-        { id: 'h2', label: 'Drzwi', x: 50, y: 50, width: 20, height: 20, content: 'Drzwi bez zamka.', required: false },
+        {
+          id: 'h2',
+          label: 'Drzwi',
+          x: 50,
+          y: 50,
+          width: 20,
+          height: 20,
+          content: 'Drzwi bez zamka.',
+          media: { kind: 'document', title: 'Karteczka na drzwiach', lines: ['Nie wchodzić bez pukania.'] },
+          required: false,
+        },
+        // Trzeci hotspot WYŁĄCZNIE po to, żeby fixtura pokrywała wszystkie warianty media (image/audio/document) - bez
+        // required/evidence, żeby nie zmieniać liczby dowodów tego bloku (apps/api e2e liczy je na sztywno).
+        {
+          id: 'h3',
+          label: 'Telefon',
+          x: 75,
+          y: 60,
+          width: 15,
+          height: 15,
+          content: 'Telefon z nieodebranym połączeniem.',
+          media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, tu dział bezpieczeństwa banku...' },
+        },
       ],
       // Przestarzała lista (zgodna z flagami; przy obu wygrywa `required`): fixtura wypełnia każde sklasyfikowane pole.
       requiredHotspots: ['h1'],

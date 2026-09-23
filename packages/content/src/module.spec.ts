@@ -122,6 +122,27 @@ describe('parseModule: walidacja modułu', () => {
     }, 'image');
   });
 
+  it('hotspots[].media (B-086): dyskryminator kind musi być jednym z image/audio/document, każdy wariant strict i ze swoim rozszerzeniem pliku', () => {
+    const media = (m: TestModule) => blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].media;
+    expectInvalid((m) => {
+      media(m).kind = 'video';
+    }, 'media');
+    expectInvalid((m) => {
+      media(m).extra = 'nieznane';
+    }, 'media');
+    expectInvalid((m) => {
+      media(m).src = 'https://evil.test/x.png';
+    }, 'media');
+    expectInvalid((m) => {
+      const audioHotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots[2];
+      audioHotspot.media.audioUrl = 'audio/x.wav';
+    }, 'media');
+    expectInvalid((m) => {
+      const documentHotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots[1];
+      documentHotspot.media.lines = [];
+    }, 'media');
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';

@@ -66,7 +66,8 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
   it('bez required i requiredHotspots wymagane są wszystkie', () => {
     const block = plainHotspots();
     expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
-    expect(submit(block, { visited: ['h2', 'h1'] }).entry.done).toBe(true);
+    expect(() => submit(block, { visited: ['h2', 'h1'] })).toThrow(BadRequestException); // fixtura ma trzeci hotspot (h3, media: audio)
+    expect(submit(block, { visited: ['h1', 'h2', 'h3'] }).entry.done).toBe(true);
   });
 
   it('hotspots[].required: wymagane tylko oznaczone, "smaczek" nie blokuje ukończenia; jawne required wygrywa ze starą listą', () => {

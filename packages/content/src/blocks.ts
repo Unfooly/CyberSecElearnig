@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
+import { audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -66,6 +66,16 @@ const embeddedHtmlSchema = z
 
 // --- Nowe bloki silnika scen -------------------------------------------------------------------------------------------
 
+// Zawartość karty hotspotu POZA zwykłym tekstem (`content`, zostaje niezależnie od `media` - karta pokazuje oba naraz).
+// B-086: `image`/`document` w pełnoekranowym podglądzie, `audio` z WŁASNYM odtwarzaczem (plik to gotowy zasób z --assets,
+// NIE przechodzi przez silnik TTS/cues narracji - inny głos niż lektor nagrywa się i publikuje osobno). `transcript` to
+// zwykły tekst (jak `content`), nie `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
+const hotspotMediaSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('image'), src: imagePathSchema, alt: text(300) }).strict(),
+  z.object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000) }).strict(),
+  z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict(),
+]);
+
 const hotspotsSchema = z
   .object({
     ...baseShape,
@@ -84,6 +94,7 @@ const hotspotsSchema = z
             width: z.number().min(1).max(100),
             height: z.number().min(1).max(100),
             content: text(2000),
+            media: hotspotMediaSchema.optional(),
             narration: baseShape.narration,
             // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Dodaj do notatnika"; wymaga `note` z `kind`) i wymagalność.
             evidence: z.boolean().optional(),
@@ -410,6 +421,13 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].width',
       'hotspots[].height',
       'hotspots[].content',
+      'hotspots[].media.kind',
+      'hotspots[].media.src',
+      'hotspots[].media.alt',
+      'hotspots[].media.audioUrl',
+      'hotspots[].media.transcript',
+      'hotspots[].media.title',
+      'hotspots[].media.lines[]',
       'hotspots[].narration.text',
       'hotspots[].narration.audioUrl',
       'hotspots[].narration.durationMs',

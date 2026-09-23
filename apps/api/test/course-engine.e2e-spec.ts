@@ -249,6 +249,9 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(resumed.currentBlockIndex).toBe(9);
       expect(resumed.progress.notes).toEqual([
         { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
+        // h4-outlook: dowód WEWNĄTRZ zagnieżdżonej sceny (media.kind:'scene' na h4, B-086/D-071) - drugi noted z tego
+        // samego submitu (visited/noted: ['h1', 'h4-outlook']), więc dopisuje się od razu po notatce h1.
+        { blockId: 'scena', text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
         { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
       ]);
       // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila). scena: 2
@@ -276,6 +279,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const progress = (await start(tokenA, engineCourseId).expect(200)).body.progress;
       expect(progress.notes.map((n: { text: string }) => n.text)).toEqual([
         'Hasło na kartce przy monitorze.',
+        'Mail otwarty w programie pocztowym.', // h4-outlook (wewnątrz zagnieżdżonej sceny h4, B-086/D-071)
         'Mail przyszedł rano.',
         `${SECRET_MARKER}-note-c1`,
         `${SECRET_MARKER}-note-c3`,

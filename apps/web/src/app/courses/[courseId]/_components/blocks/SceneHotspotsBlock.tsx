@@ -21,11 +21,13 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 // zablokowane"), widoczny focus-ring (FOCUS_RING) - klawiatura i czytnik ekranu działają WYŁĄCZNIE przez te punkty,
 // bez osobnej listy. Licznik "Obejrzano X z Y" (ExploreFooter) jest nad obrazem, mały.
 //
-// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE, NA obrazie (nie zamiast niego): na desktopie
-// position absolute w obrębie kontenera obrazu, karta max 80% szerokości/wysokości sceny i wyśrodkowana (tło
-// rgba(43,36,64,.55) - kolor `ink` z palety scen - lekko przyciemnia obraz WIDOCZNY dookoła karty), przewijana w
-// środku, gdy treść nie mieści się w 80% (feedback z produkcji po PR #32: wcześniej karta na h-full/w-full
-// całkowicie zasłaniała obraz). Pełny ekran na mobile (<640px). Zagnieżdżona
+// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE, NA obrazie (nie zamiast niego): position absolute;
+// inset:0 ZAWSZE w obrębie kontenera obrazu (nigdy fixed względem viewportu - inaczej na mobile nakładka zasłoniłaby
+// też licznik "Obejrzano X z Y" NAD obrazem, poza kontenerem sceny), tło rgba(43,36,64,.55) (kolor `ink` z palety
+// scen) lekko przyciemnia obraz WIDOCZNY dookoła karty, wyśrodkowana, przewijana w środku, gdy treść nie mieści się
+// w karcie (feedback z produkcji po PR #32: wcześniej karta na h-full/w-full całkowicie zasłaniała obraz). Karta to
+// max 80% szerokości/wysokości sceny na desktopie, pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie
+// viewport) na mobile (<640px). Zagnieżdżona
 // scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
 // wzorzec, rekurencyjnie): stos maks. 2 poziomy (zewnętrzny hotspot -> zagnieżdżona scena -> jej hotspot), bo
 // zagnieżdżanie ma zawsze dokładnie 1 poziom (innerHotspotSchema nie ma już własnego media.kind:'scene'). "Wróć"
@@ -254,7 +256,7 @@ export default function SceneHotspotsBlock({
               role="dialog"
               aria-modal="true"
               aria-labelledby={overlayTitleId}
-              className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(43,36,64,0.55)] sm:absolute"
+              className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(43,36,64,0.55)]"
             >
               {/* Nakładka NA scenie, nie zamiast niej: na desktopie karta to najwyżej 80% kontenera (obraz widoczny i
                   lekko przyciemniony dookoła), przewijana w środku, gdy treść nie mieści się w 80%. Na telefonie

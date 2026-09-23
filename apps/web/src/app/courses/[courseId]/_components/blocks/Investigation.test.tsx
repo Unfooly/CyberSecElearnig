@@ -147,6 +147,14 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(card.className).not.toMatch(/sm:h-full/);
     expect(card.className).not.toMatch(/sm:w-full/);
 
+    // Punkt 5 (feat/scene-overlay-fix): nakładka jest "absolute" (przypięta DO KONTENERA obrazu), NIGDY "fixed"
+    // (przypięta do viewportu) - inaczej na mobile zasłaniałaby licznik "Obejrzano X z Y", który jest NAD obrazem,
+    // poza kontenerem sceny. Sprawdzone też strukturalnie: licznik nie jest potomkiem nakładki.
+    expect(dialog().className).toMatch(/(^|\s)absolute(\s|$)/);
+    expect(dialog().className).not.toMatch(/(^|\s)fixed(\s|$)/);
+    const counter = screen.getByText('Wszystko obejrzane.'); // done >= total po kliknięciu jedynego required (h1)
+    expect(dialog().contains(counter)).toBe(false);
+
     const covered = screen.getByTestId('hotspot-overlay-h2'); // "Drzwi" - inny hotspot na tej samej scenie, zasłonięty
     expect(covered).toHaveAttribute('aria-hidden', 'true');
     expect(covered).toHaveAttribute('tabindex', '-1');

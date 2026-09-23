@@ -99,10 +99,10 @@ async function runViewport(viewport) {
   await page.goto(`${WEB}/courses/${courseId}`);
 
   // --- 1. NARRATIVE (otwarcie) ---------------------------------------------------------------------------------
+  // Bloki eksploracyjne nie mają już własnego "Kontynuuj": "Dalej" w pasku powłoki jest jedynym przyciskiem
+  // ukończenia (od razu aktywne, bez pośredniego ekranu "Blok ukończony.") - raport z pierwszego przejścia modułu 1.
   await page.getByText('Otwarcie sprawy').waitFor();
   await shot(page, '01-narrative', viewport.name);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- 2. SCENE_HOTSPOTS (biuro Anny, hotspoty odkryte + notatnik) --------------------------------------------
@@ -125,8 +125,6 @@ async function runViewport(viewport) {
   await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
   await page.keyboard.press('Escape').catch(() => {});
   await shot(page, '02-scene-hotspots', viewport.name);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- 3. DIALOGUE (Anna, w trakcie) ---------------------------------------------------------------------------
@@ -145,13 +143,14 @@ async function runViewport(viewport) {
   await askAll(['Kto dzwonił o 9:05?', 'To hasło na karteczce…']);
   await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- 4/5. EMAIL_ANALYSIS (przed i po) --------------------------------------------------------------------------
   await page.getByTestId('mail-client').waitFor();
   await shot(page, '04-email-przed', viewport.name);
+  // Lista kryteriów jest domyślnie zwinięta (zaznaczanie idzie przede wszystkim przez klikanie w mailu) - tu wygodniej
+  // otworzyć ją raz i zaznaczyć checkboxami, niż trafiać w konkretne fragmenty makiety maila.
+  await page.getByRole('button', { name: 'Lista elementów (dla klawiatury)' }).click();
   const criteriaList = page.getByRole('group', { name: /Zaznaczone oznaki/ });
   for (const label of [
     /Adres nadawcy: bankwektor-weryfikacja\.pl/,
@@ -174,8 +173,6 @@ async function runViewport(viewport) {
   await page.getByRole('tab', { name: 'Domeny' }).click();
   await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
   await page.getByRole('tab', { name: 'Jak zgłosić w Nortex' }).click();
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- DIALOGUE (Marek) - przechodzimy bez zrzutu (już mamy zrzut dialogu z Anną) ---------------------------------
@@ -183,8 +180,6 @@ async function runViewport(viewport) {
   await askAll(['Co mówią logi banku?', 'Ktoś z IT dzwonił do Anny o 9:05?']);
   await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- 6. ORDERING (rekonstrukcja kolejności, po ułożeniu) --------------------------------------------------------
@@ -226,8 +221,8 @@ async function runViewport(viewport) {
   await page.getByLabel(prompt).fill('bankwektor-weryfikacja.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText(/Poprawna odpowiedź!/).waitFor();
+  // Wynik już jest widoczny w bloku (bez osobnego ekranu "Blok ukończony."): jedyny klik to "Dalej" pod wynikiem -
+  // ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd ten sam nextEnabled() (wybiera włączony przycisk).
   await nextEnabled().click();
 
   // --- 8. SUMMARY (Rozwiązanie sprawy) -------------------------------------------------------------------------

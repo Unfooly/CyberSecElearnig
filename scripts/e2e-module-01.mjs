@@ -136,8 +136,8 @@ try {
   await page.getByText('Otwarcie sprawy').waitFor();
   step('NARRATIVE: pogrubiony nagłówek renderuje się jako <strong> (nie dosłowne **)', (await page.locator('strong', { hasText: 'Od czego zaczynamy?' }).count()) === 1);
   step('NARRATIVE: poza spoczynkowa maskotki z treści bloku (greeting)', (await mascotAlt('wita').count()) === 1);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
+  // Bloki eksploracyjne nie mają już własnego "Kontynuuj": "Dalej" w pasku powłoki jest jedynym przyciskiem
+  // ukończenia (od razu aktywne, bez pośredniego ekranu "Blok ukończony.") - raport z pierwszego przejścia modułu 1.
   await nextEnabled().click();
 
   // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS) -------------------------------------------------------------------------------
@@ -163,8 +163,6 @@ try {
   await addToNotepad();
   await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
   step('SCENE_HOTSPOTS: 5 dowodów w notatniku (kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 5/'), await page.getByTestId('evidence-counter').textContent());
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
@@ -182,13 +180,14 @@ try {
   await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
   step('DIALOGUE (Anna): reactions.complete (warning) po 3 wymaganych pytaniach', true);
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
   await page.getByTestId('mail-client').waitFor();
   step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@nortex.pl'));
+  // Lista kryteriów jest domyślnie zwinięta (zaznaczanie idzie przede wszystkim przez klikanie w mailu) - otwieramy ją
+  // raz, żeby zaznaczyć checkboxami (niezależnie od dokładnej pozycji fragmentów w makiecie maila).
+  await page.getByRole('button', { name: 'Lista elementów (dla klawiatury)' }).click();
   const criteriaList = page.getByRole('group', { name: /Zaznaczone oznaki/ });
   for (const label of [
     /Adres nadawcy: bankwektor-weryfikacja\.pl/,
@@ -215,8 +214,6 @@ try {
   step('TABS: lista wypunktowana w zakładce "Czego bank nigdy nie zrobi"', (await page.getByRole('list').locator('li', { hasText: 'Kod SMS' }).count()) === 1);
   await page.getByRole('tab', { name: 'Jak zgłosić w Nortex' }).click();
   step('TABS: `kod` w zakładce "Jak zgłosić w Nortex"', (await page.locator('code', { hasText: 'bezpieczenstwo@nortex.pl' }).count()) === 1);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
@@ -225,8 +222,6 @@ try {
   await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
   step('DIALOGUE (Marek): reactions.complete (thinking) po 2 wymaganych pytaniach', true);
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   // --- Blok 7: Rekonstrukcja zdarzeń (ORDERING, waga 2) --------------------------------------------------------------------
@@ -262,14 +257,14 @@ try {
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
   step('TEXT_INPUT_GUIDED: poprawna odpowiedź za pierwszym razem -> reaction cheer ("Domena, nie napis")', (await page.getByText('To jest to. Domena, nie napis.').count()) === 1);
+  // Wynik już jest widoczny w bloku (TextInputBlock, stan `done`): jedyny klik to "Dalej" pod wynikiem, który zapisuje
+  // postęp I OD RAZU przechodzi dalej, bez osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED,
+  // CoursePlayer.tsx::handleAnswer) - ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd nextEnabled()
+  // (wybiera włączony przycisk, pierwszy w DOM).
   const textDone = progressResponse();
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
+  await nextEnabled().click();
   const textBody = await (await textDone).json();
   step('TEXT_INPUT_GUIDED: pełne punkty za pierwszą próbę (bez kary)', textBody.lastResult?.points === 1, JSON.stringify(textBody.lastResult?.points));
-  // TEXT_INPUT_GUIDED nie ma wyniku inline (hasInlineResult, ScoredBlock.tsx): "Kontynuuj" wyżej to zapis postępu bloku,
-  // po nim powłoka pokazuje jeszcze generyczny ekran wyniku (FeedbackPanel: "Poprawna odpowiedź!" + WŁASNY "Dalej").
-  await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  await nextEnabled().click();
 
   // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
   await page.getByTestId('case-evidence').waitFor();

@@ -1,15 +1,18 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, Info, Paperclip, X } from 'lucide-react';
 import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
 import { useMascotReaction } from '../player/mascot-reaction';
 
 // Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
-// linki). Kryteria zaznacza się PRZEDE WSZYSTKIM KLIKNIĘCIEM FRAGMENTU maila (nadawca, temat, link, załącznik, fragment tekstu); lista
-// kryteriów pod mailem to ta sama zaznaczona lista (checkbox per kryterium), ale podczas odpowiadania jest domyślnie ZWINIĘTA za
-// przyciskiem "Lista elementów (dla klawiatury)" - nie ma pokazywać z góry checklisty tego, czego szukać. Rozwinięta to ścieżka dla
-// klawiatury/czytników oraz dla kryteriów bez fragmentu w mailu. W widoku wyniku (readOnly) lista jest od razu widoczna.
+// linki). Kryteria zaznacza się klikając FRAGMENT maila (nadawca, temat, link, załącznik, fragment tekstu) - to zwykłe, fokusowalne
+// <button> inline (role przyciskowa jest wprost z elementu, aria-pressed niesie stan zaznaczenia), więc klawiatura/czytnik ekranu
+// mają tę samą ścieżkę co mysz (feedback z produkcji: usunięty osobny przycisk "Lista elementów (dla klawiatury)" i chowana za nim
+// checklista - był zbędny, skoro fragmenty są prawdziwymi przyciskami). Kryteria BEZ fragmentu w mailu (np. "odliczanie czasu" jako
+// osobne zdanie, nieanchorowalne - patrz semantics.ts/D-056) nadal potrzebują OSOBNEJ listy, bo nie mają czego kliknąć w treści -
+// ta lista podczas odpowiadania pokazuje WYŁĄCZNIE takie kryteria (nie całą checklistę - zdradzałaby z góry wszystkie szukane oznaki),
+// w widoku wyniku (readOnly) pokazuje wszystkie, z wyjaśnieniami.
 // Link w treści NIGDY nie nawiguje (to <button>): po najechaniu, fokusie i kliknięciu jego prawdziwy adres pokazuje pasek statusu u dołu
 // makiety, jak w przeglądarce. Załącznik jest klikalny tylko jako zaznaczenie: nie ma adresu pliku, więc nic się nie pobiera.
 // Odpowiedź dla serwera: { selected: [id kryterium (nieprzejrzyste)...] }. Tryb wyniku (`result`): to samo, tylko do odczytu, z oceną.
@@ -103,12 +106,6 @@ export default function EmailAnalysisBlock({
   const email = block.email;
   const criteria = useMemo(() => block.criteria ?? [], [block.criteria]);
   const mascot = useMascotReaction();
-  // Lista kryteriów domyślnie ZWINIĘTA podczas odpowiadania: zaznaczanie ma iść przez klikanie fragmentów maila, nie
-  // czytanie gotowej checklisty obok niego (zdradzałaby z góry, ile/jakich oznak szukać). Ścieżka dla klawiatury i
-  // kryteriów bez fragmentu w mailu zostaje - tylko schowana za przyciskiem. W widoku wyniku (readOnly) lista jest
-  // od razu widoczna: to już nie checklista do odgadnięcia, tylko rozstrzygnięcie.
-  const [listOpen, setListOpen] = useState(false);
-  const criteriaListId = useId();
   // Wybór gracza: z odpowiedzi serwera, a gdy jej brak (starszy zapis), z rozstrzygnięcia (detail.criteria[].selected).
   const [selected, setSelected] = useState<string[]>(
     result?.answer?.selected ?? (result?.detail?.criteria ?? []).filter((criterion) => criterion.selected).map((criterion) => criterion.id),
@@ -300,57 +297,55 @@ export default function EmailAnalysisBlock({
         </div>
       </div>
 
-      <fieldset className="mt-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">{readOnly ? 'Kryteria' : 'Zaznaczone oznaki'}</legend>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => setListOpen((open) => !open)}
-            aria-expanded={listOpen}
-            aria-controls={criteriaListId}
-            className="mb-2 inline-flex min-h-[44px] items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-          >
-            Lista elementów (dla klawiatury)
-          </button>
-        )}
-        <ul id={criteriaListId} hidden={!readOnly && !listOpen} className="space-y-2">
-          {criteria.map((criterion) => {
-            const verdict = verdictOf(criterion.id);
-            const detail = details.get(criterion.id);
-            const checked = selected.includes(criterion.id);
-            return (
-              <li key={criterion.id} className={`rounded px-3 py-2 ${readOnly ? VERDICT_CLASS[verdict] || 'bg-slate-50' : 'bg-slate-50'}`}>
-                <label className="flex min-h-[32px] items-start gap-2 text-sm text-slate-900">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={readOnly}
-                    onChange={() => toggle(criterion.id)}
-                    className="mt-1 h-4 w-4 shrink-0"
-                  />
-                  <span>
-                    {criterion.label}
-                    {!readOnly && !criterion.target && <span className="text-xs text-slate-500"> (ogólna oznaka, bez fragmentu w mailu)</span>}
-                  </span>
-                  {readOnly && verdict !== 'neutral' && (
-                    <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-medium">
-                      {verdict === 'hit' ? (
-                        <Check aria-hidden="true" className="h-4 w-4 text-green-700" />
-                      ) : verdict === 'missed' ? (
-                        <Info aria-hidden="true" className="h-4 w-4 text-amber-700" />
-                      ) : (
-                        <X aria-hidden="true" className="h-4 w-4 text-red-700" />
+      {/* Podczas odpowiadania lista pokazuje WYŁĄCZNIE kryteria bez fragmentu w mailu (nie mają czego kliknąć w treści -
+          jedyna droga do zaznaczenia jest tu); reszta idzie przez fragment(), który jest już prawdziwym <button>em.
+          Pełna checklista dopiero w wyniku (readOnly), z wyjaśnieniami. Puste podczas odpowiadania (wszystkie kryteria
+          mają fragment) - fieldset się wtedy nie renderuje. */}
+      {(() => {
+        const listedCriteria = readOnly ? criteria : criteria.filter((criterion) => !criterion.target);
+        if (listedCriteria.length === 0) return null;
+        return (
+          <fieldset className="mt-4">
+            <legend className="mb-2 text-sm font-semibold text-slate-900">
+              {readOnly ? 'Kryteria' : 'Inne elementy (bez fragmentu w mailu)'}
+            </legend>
+            <ul className="space-y-2">
+              {listedCriteria.map((criterion) => {
+                const verdict = verdictOf(criterion.id);
+                const detail = details.get(criterion.id);
+                const checked = selected.includes(criterion.id);
+                return (
+                  <li key={criterion.id} className={`rounded px-3 py-2 ${readOnly ? VERDICT_CLASS[verdict] || 'bg-slate-50' : 'bg-slate-50'}`}>
+                    <label className="flex min-h-[32px] items-start gap-2 text-sm text-slate-900">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={readOnly}
+                        onChange={() => toggle(criterion.id)}
+                        className="mt-1 h-4 w-4 shrink-0"
+                      />
+                      <span>{criterion.label}</span>
+                      {readOnly && verdict !== 'neutral' && (
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-medium">
+                          {verdict === 'hit' ? (
+                            <Check aria-hidden="true" className="h-4 w-4 text-green-700" />
+                          ) : verdict === 'missed' ? (
+                            <Info aria-hidden="true" className="h-4 w-4 text-amber-700" />
+                          ) : (
+                            <X aria-hidden="true" className="h-4 w-4 text-red-700" />
+                          )}
+                          {VERDICT_LABEL[verdict]}
+                        </span>
                       )}
-                      {VERDICT_LABEL[verdict]}
-                    </span>
-                  )}
-                </label>
-                {readOnly && detail?.explanation && <p className="mt-1 pl-6 text-sm text-slate-700">{detail.explanation}</p>}
-              </li>
-            );
-          })}
-        </ul>
-      </fieldset>
+                    </label>
+                    {readOnly && detail?.explanation && <p className="mt-1 pl-6 text-sm text-slate-700">{detail.explanation}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        );
+      })()}
 
       {readOnly ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">

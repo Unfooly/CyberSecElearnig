@@ -75,7 +75,15 @@ export interface NarrationRef {
   blockId: string;
   holder: Record<string, unknown>;
   key: string;
+  /** Tekst WYŚWIETLANY (narration.text) - zawsze; napisy/cues, gdy są generowane, pochodzą wyłącznie z niego. */
   text: string;
+  /** Tekst do PRZECZYTANIA, gdy różni się od wyświetlanego (godziny, kwoty, domeny, hasła) - patrz ttsInputOf. */
+  spokenText?: string;
+}
+
+/** To, co faktycznie idzie do ElevenLabs i do hasha/lockfile: spokenText, gdy jest, inaczej tekst wyświetlany. */
+export function ttsInputOf(ref: Pick<NarrationRef, 'text' | 'spokenText'>): string {
+  return ref.spokenText ?? ref.text;
 }
 
 function expand(node: unknown, path: string[], trail: string[]): { holder: Json; key: string; trail: string[] }[] {
@@ -99,7 +107,14 @@ export function collectNarrations(raw: Json): NarrationRef[] {
         const narration = holder[key] as Json;
         seen.add(narration);
         if (typeof narration.text !== 'string' || narration.text.trim() === '') continue;
-        refs.push({ id: `${block.id}#${trail.join('.')}`, blockId: block.id, holder: narration, key: '', text: narration.text });
+        refs.push({
+          id: `${block.id}#${trail.join('.')}`,
+          blockId: block.id,
+          holder: narration,
+          key: '',
+          text: narration.text,
+          spokenText: typeof narration.spokenText === 'string' ? narration.spokenText : undefined,
+        });
       }
     }
     // Pola secret (podpowiedzi): tylko tekst; audio w takim polu to błąd (trafiłoby do publicznego magazynu razem z napisami).
@@ -258,7 +273,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (unknown.length > 0) throw new Error(`--only: brak narracji w blokach: ${unknown.join(', ')}.`);
   }
   for (const ref of selected) {
-    ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ref.text) });
+    ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ttsInputOf(ref)) });
   }
   // --only dopisuje do istniejącej partii: wpisy niewybranych narracji zostają ze starego locka, więc parametry partii muszą się zgadzać.
   if (only && lock && !params.dryRun) {
@@ -276,12 +291,14 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   for (const ref of selected) {
     if (params.dryRun) {
       const current = ref.holder;
-      if (current.audioUrl === ref.key && typeof current.durationMs === 'number' && Array.isArray(current.cues)) cachedIds.add(ref.id);
+      // Ze spokenText cues są ŚWIADOMIE nieobecne (patrz punkt 5.) - "już wygenerowane" nie może wymagać ich obecności.
+      const cuesOk = ref.spokenText ? current.cues === undefined : Array.isArray(current.cues);
+      if (current.audioUrl === ref.key && typeof current.durationMs === 'number' && cuesOk) cachedIds.add(ref.id);
       continue;
     }
     const audio = await params.store.head(ref.key);
     const sidecarBytes = audio ? await params.store.get(sidecarKey(ref.key)) : null;
-    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceId, ref.text) : null;
+    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceId, ttsInputOf(ref)) : null;
     if (audio && sidecar) {
       sidecars.set(ref.id, sidecar);
       cachedIds.add(ref.id);
@@ -291,7 +308,8 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   // Narracje o identycznym tekście w jednym bloku dzielą klucz (ten sam plik): planujemy, liczymy i generujemy je raz.
   const firstOfKey = new Set<string>();
   const unique = selected.filter((ref) => !firstOfKey.has(ref.key) && firstOfKey.add(ref.key));
-  const planned: PlannedNarration[] = unique.map((ref) => ({ blockId: ref.blockId, text: ref.text, cached: cachedIds.has(ref.id) }));
+  // Plan/limit znaków liczy to, co faktycznie idzie do ElevenLabs (spokenText, gdy jest) - to ono jest billowane.
+  const planned: PlannedNarration[] = unique.map((ref) => ({ blockId: ref.blockId, text: ttsInputOf(ref), cached: cachedIds.has(ref.id) }));
   const summary = summarizePlan(planned);
   say(params.output, formatPlan(summary));
   if (params.dryRun) {
@@ -313,16 +331,19 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   for (const ref of unique) {
     index += 1;
     if (cachedIds.has(ref.id)) continue;
-    say(params.output, `[${index}/${unique.length}] ${ref.id}: ${ref.text.length} znaków -> ${ref.key}`);
+    const spoken = ttsInputOf(ref);
+    say(params.output, `[${index}/${unique.length}] ${ref.id}: ${spoken.length} znaków -> ${ref.key}`);
     let result;
     try {
-      result = await params.tts!.synthesize({ text: ref.text, voiceId, model: params.model, language: params.language });
+      result = await params.tts!.synthesize({ text: spoken, voiceId, model: params.model, language: params.language });
     } catch (error) {
       throw new Error(`Blok "${ref.blockId}" (${ref.id}): ${(error as Error).message}`);
     }
     let cues;
     try {
-      cues = alignmentToCues(ref.text, result.alignment);
+      // Zawsze ze spoken (to, co naprawdę wybrzmiało w nagraniu - inaczej alignmentToCues rzuca, bo znaki się nie zgadzają).
+      // Gdy blok ma spokenText, napisy z TEJ funkcji nie trafiają do klienta (patrz niżej, punkt 5) - liczy się tylko durationMs.
+      cues = alignmentToCues(spoken, result.alignment);
     } catch (error) {
       throw new Error(`Blok "${ref.blockId}" (${ref.id}): napisy z timestampów: ${(error as Error).message}`);
     }
@@ -352,12 +373,18 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     sidecars.set(ref.id, sidecar);
     ref.holder.audioUrl = ref.key;
     ref.holder.durationMs = sidecar.durationMs;
-    ref.holder.cues = sidecar.cues;
+    // Napisy/cues ZAWSZE z tekstu wyświetlanego: gdy blok ma spokenText, sidecar.cues to fragmenty tego, co WYBRZMIAŁO
+    // (inny tekst niż na ekranie) i NIE mogą trafić do klienta jako podpis - zostają bez cues, odtwarzacz sam podzieli
+    // narration.text proporcjonalnie do czasu (istniejący fallback, patrz NarrationPlayer). Bez spokenText - jak dotąd.
+    if (ref.spokenText) delete ref.holder.cues;
+    else ref.holder.cues = sidecar.cues;
   }
   contentNode.parseModule(raw);
   const entries: Record<string, LockEntry> = only && lock ? { ...lock.entries } : {};
   for (const ref of selected) {
-    entries[ref.id] = { hash: hashFromKey(ref.key), key: ref.key, textSha: textSha(ref.text), durationMs: sidecars.get(ref.id)!.durationMs };
+    // hash/textSha z tego, co poszło do TTS (spokenText, gdy jest) - zmiana samego tekstu wyświetlanego (bez zmiany
+    // spokenText) nie unieważnia nagrania; zmiana spokenText (albo text, gdy spokenText nie ma) - unieważnia.
+    entries[ref.id] = { hash: hashFromKey(ref.key), key: ref.key, textSha: textSha(ttsInputOf(ref)), durationMs: sidecars.get(ref.id)!.durationMs };
   }
   const nextLock: Lock = { lockVersion: 1, slug, audioVersion: params.version, model: params.model, language: params.language, voiceId, entries };
   const moduleChanged = await writeIfChanged(modulePath, encode(raw));
@@ -388,13 +415,15 @@ function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineP
         problems.push(`${ref.id}: brak nagrania w audio.lock.json.`);
         continue;
       }
-      const expected = narrationHash({ text: ref.text, model: lock.model, language: lock.language, voiceId: lock.voiceId });
-      if (entry.hash !== expected || entry.textSha !== textSha(ref.text)) {
+      const expected = narrationHash({ text: ttsInputOf(ref), model: lock.model, language: lock.language, voiceId: lock.voiceId });
+      if (entry.hash !== expected || entry.textSha !== textSha(ttsInputOf(ref))) {
         problems.push(`${ref.id}: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`);
         continue;
       }
       const holder = ref.holder;
-      if (holder.audioUrl !== entry.key || holder.durationMs !== entry.durationMs || !Array.isArray(holder.cues)) {
+      // Ze spokenText cues są ŚWIADOMIE nieobecne w module.json (patrz runPipeline, punkt 5.), więc tu wymagamy ich BRAKU, nie obecności.
+      const cuesOk = ref.spokenText ? holder.cues === undefined : Array.isArray(holder.cues);
+      if (holder.audioUrl !== entry.key || holder.durationMs !== entry.durationMs || !cuesOk) {
         problems.push(`${ref.id}: audioUrl/durationMs/cues w module.json nie zgadzają się z audio.lock.json.`);
       }
     }

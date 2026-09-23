@@ -23,6 +23,7 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
 - podpowiedzi (hints) są wyłącznie tekstowe — bez audio (D-060/K1)
 - reakcje maskotki: pole `reactions` na bloku (`complete` dla eksploracyjnych, `result` dla ocenianych) — zastępuje dawne „Po ukończeniu: Fooli…"
+- media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 2 i Blok 3 niżej.
 
 ## Postaci
 
@@ -58,28 +59,92 @@ Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść
 
 ---
 
-## Blok 2 — Biuro Anny (SCENE_HOTSPOTS)
+## Blok 2 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
-- obraz: `scenes/biuro-anny.svg` (1600×1000, hotspoty w procentach)
-- imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą."
-- **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
-- **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
-- ukończenie: wymagane 4 z 6 hotspotów (oznaczone ✱)
+- obraz: `scenes/korytarz.svg` (1600×1000)
+- imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
+- **Lektor:** „Wtorek, 8:50. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
+- **Fooli:** brak (blok czysto przejściowy — bez dymka).
+- ukończenie: brak dowodów, bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`).
+- drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 7 (DIALOGUE), nie jako osobna lokacja.
 
-| id | Element | Karta po kliknięciu | Dowód | Notatka (kind) |
-|---|---|---|---|---|
-| `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Nortex2024!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." |
-| `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Na ekranie otwarta wiadomość: *Bank Wektor — pilna weryfikacja konta firmowego*. Przyszła dziś o 8:47." | tak | (mail) „Mail od »Banku Wektor« z 8:47, temat: pilna weryfikacja konta." |
-| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Nieodebrane połączenie z 9:05, numer zastrzeżony. Na wyświetlaczu notatka Anny: *informatyk, oddzwonić*." | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." |
-| `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." |
-| `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." |
-| `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — |
-
-**reactions.complete:** `{ pose: cheer, text: „Cztery ślady. Teraz porozmawiajmy z Anną." }`
+| id | x | y | w | h | action |
+|---|---|---|---|---|---|
+| `drzwi` | 43.8 | 36.6 | 12.4 | 42.8 | `next` |
 
 ---
 
-## Blok 3 — Rozmowa z Anną (DIALOGUE)
+## Blok 3 — Biuro Anny (SCENE_HOTSPOTS)
+
+- obraz: `scenes/biuro-anny.svg` (1600×1000, przekomponowana wersja: drzwi po prawej, biurko krótsze, roślina po lewej)
+- imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe."
+- **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
+- **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
+- ukończenie: wymagane 4 z 6 hotspotów-dowodów (oznaczone ✱); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
+
+| id | Element | Karta po kliknięciu | Dowód | Notatka (kind) | Media (B-086/D-071) |
+|---|---|---|---|---|---|
+| `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Nortex2024!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
+| `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Na ekranie otwarta wiadomość: *Bank Wektor — pilna weryfikacja konta firmowego*. Przyszła dziś o 8:47." | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
+| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Nieodebrane połączenie z 9:05, numer zastrzeżony. Na wyświetlaczu notatka Anny: *informatyk, oddzwonić*." | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej) |
+| `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
+| `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w stylu Fooli z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
+| `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | bez media (karta jak dziś, sam tekst) |
+| `drzwi` | wyjście z biura | — (`action: 'next'`, nigdy nie otwiera karty — patrz „ukończenie" wyżej) | — | — | — |
+
+**reactions.complete:** `{ pose: cheer, text: „Cztery ślady. Teraz porozmawiajmy z Anną." }`
+
+### Scena zagnieżdżona `pulpit` (media.kind: scene na hotspocie `monitor`, B-086/D-071)
+
+Zawsze dokładnie jeden poziom zagnieżdżenia (silnik to wymusza typami, nie tylko treścią): hotspoty wewnątrz `pulpit`
+nie mogą mieć własnego `action` ani własnej zagnieżdżonej sceny.
+
+- obraz: `scenes/pulpit.svg` (1200×800). Pulpit komputera z ikonami: Poczta (z odznaką „1"), Przelewy, Internet,
+  Faktury, Kosz; pasek zadań pokazuje 8:52.
+- hotspoty wewnętrzne:
+
+| id | x | y | w | h | Karta po kliknięciu | Dowód | Notatka (kind) | Media |
+|---|---|---|---|---|---|---|---|---|
+| `outlook` | 4.2 | 5.0 | 17.7 | 28.1 | „Na ekranie otwarta wiadomość: *Bank Wektor — pilna weryfikacja konta firmowego*. Przyszła dziś o 8:47." | **tak** — dowód `mail` przeniesiony tu z `monitor` (patrz tabela wyżej) | (mail) „Mail od »Banku Wektor« z 8:47, temat: pilna weryfikacja konta." | image `mail-na-ekranie.svg` (1200×800), alt: „Otwarta wiadomość od Banku Wektor z 8:47" |
+
+Uzasadnienie przeniesienia dowodu: prawdziwy dowód (treść maila) leży dopiero za Outlookiem — kredytowanie go samym
+kliknięciem `monitor` (otwarcie pulpitu) byłoby przedwczesne. Otwarcie samego pulpitu (klik `monitor`) niczego nie
+zalicza; dopiero klik w `outlook` (media.kind: image, jak każdy inny hotspot z mediami) zalicza dowód od razu przy
+otwarciu karty — te same zasady co dla hotspotów najwyższego poziomu (patrz `karteczka`/`kalendarz` wyżej).
+
+Pozostałe ikony pulpitu (Przelewy, Internet, Faktury, Kosz) są WYŁĄCZNIE dekoracją tła — bez hotspotów.
+
+### Media: wiadomość głosowa „informatyka" (hotspot `telefon`)
+
+Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — GOTOWY plik mp3 (nagrany osobno przez
+właściciela treści w ElevenLabs, publikowany przez `--assets` jak obraz; NIE przechodzi przez silnik TTS/cues narracji
+modułu, D-071).
+
+**Transkrypcja (ok. 35 s):**
+> Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.
+
+Insight (pole `content` hotspotu `telefon`, odsłaniany dopiero po odsłuchaniu do końca — onEnded, D-071): „Prawdziwy
+bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze **zatwierdza** operację, nigdy jej nie anuluje." —
+transkrypcja jest dostępna od razu (przycisk „Pokaż transkrypcję"), insight dopiero po pełnym odsłuchaniu.
+
+### Media: wydruk przelewu (hotspot `drukarka`)
+
+Treść, którą przedstawia grafika `wydruk.svg` (referencja dla kompozytora/regeneracji grafiki - sam plik jest gotową
+ilustracją, `media.kind: image`, nie tekstem w treści modułu):
+
+```
+BANK WEKTOR — POTWIERDZENIE WYKONANIA PRZELEWU
+Data i godzina:  wtorek, 09:12:41
+Z rachunku:      Nortex Sp. z o.o.  PL 61 …… 4412
+Na rachunek:     Wektor Rozliczenia Sp. z o.o.  PL 27 …… 9903
+Kwota:           14 000,00 PLN
+Tytuł:           weryfikacja salda
+Autoryzacja:     kod SMS, 09:06:58
+```
+
+---
+
+## Blok 4 — Rozmowa z Anną (DIALOGUE)
 
 - postać: Anna Kowalska, księgowa, `avatars/anna.svg`
 - **Lektor:** „Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
@@ -100,7 +165,7 @@ Blok tekstowy bez interakcji, ukończony po wyświetleniu. Tekst bloku = treść
 
 ---
 
-## Blok 4 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
+## Blok 5 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
 
 - **Lektor:** „Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
 - **Fooli (poza: pointing):** „Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
@@ -158,7 +223,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 5 — Akta sprawy (TABS) — bez oceny
+## Blok 6 — Akta sprawy (TABS) — bez oceny
 
 - **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
 - **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
@@ -179,7 +244,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 6 — Rozmowa z Markiem z IT (DIALOGUE)
+## Blok 7 — Rozmowa z Markiem z IT (DIALOGUE)
 
 - postać: Marek Zieliński, administrator IT, `avatars/marek.svg`
 - **Lektor:** „Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
@@ -199,7 +264,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 7 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
+## Blok 8 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
 
 - **Lektor:** „Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
 - **Fooli (pointing):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
@@ -219,7 +284,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 8 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
+## Blok 9 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
 
 - **Lektor:** „Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
 - **Fooli (thinking):** „Bez zaglądania do notatnika. Pamiętasz?"
@@ -236,7 +301,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 9 — Rozwiązanie sprawy (SUMMARY)
+## Blok 10 — Rozwiązanie sprawy (SUMMARY)
 
 - **Lektor:** „Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo »szybkie potwierdzenie«, przypomnij sobie wtorek, 8:47."
 - **mascot:** `{ pose: greeting, text: „Sprawa zamknięta. Dobra robota, detektywie." }`
@@ -256,47 +321,51 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ## Zasoby do przygotowania
 
-Sceny SVG (dostarczę osobno, styl płaski jak Fooli, paleta `#F0883A / #6C5CE7 / #2B2440` + neutralne):
-- `scenes/biuro-anny.svg` — biurko, monitor z otwartą skrzynką, karteczka na ramce, telefon z diodą, kalendarz na ścianie, drukarka, kubek. Hotspoty jako prostokąty w % (agent odczyta z warstwy `hotspots` w SVG lub z tabeli poniżej).
+Sceny SVG, styl płaski jak Fooli, paleta `#F0883A / #6C5CE7 / #2B2440` + neutralne. Źródła scen (JSON dla
+kompozytora) leżą w `scripts/content/scenes/examples/` — każda zmiana grafiki to edycja JSON + `build`, nigdy ręczna
+edycja SVG.
 
-Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` — półportrety w tym samym stylu.
+| plik | rozmiar | użycie |
+|---|---|---|
+| `scenes/korytarz.svg` | 1600×1000 | Blok 2 (korytarz) |
+| `scenes/biuro-anny.svg` | 1600×1000 | Blok 3 (Biuro Anny) |
+| `scenes/pulpit.svg` | 1200×800 | zagnieżdżona scena na hotspocie `monitor` |
+| `scenes/mail-na-ekranie.svg` | 1200×800 | media image na hotspocie `outlook` (wewnątrz `pulpit`) |
+| `scenes/karteczka-zoom.svg` | 800×800 | media image na hotspocie `karteczka` |
+| `scenes/kalendarz-zoom.svg` | 800×1000 | media image na hotspocie `kalendarz` |
+| `scenes/wydruk.svg` | 800×1100 | media image na hotspocie `drukarka` |
 
-Narracja (PR 3): każdy blok ma jedno nagranie lektora (tekst „Lektor" wyżej). Kwestie Fooli i postaci — tylko tekst (B-078). Głos: spokojny, męski lub żeński, bez „reklamowego" tonu.
+Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 
-## Współrzędne hotspotów (scenes/biuro-anny.svg, % szerokości/wysokości: x, y, w, h)
+Audio: `assets/audio/poczta-glosowa.mp3` (hotspot `telefon`, transkrypcja w Bloku 3 wyżej) — gotowy plik, publikowany
+przez `scripts/content --assets` (D-071), NIE przez silnik TTS narracji modułu (`scripts/content --tts`, PR 3, każdy
+blok ma jedno nagranie lektora — tekst „Lektor" wyżej). Kwestie Fooli i postaci — tylko tekst (B-078).
+
+## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
+
+**`scenes/korytarz.svg`** (Blok 2):
 
 | id | x | y | w | h |
 |---|---|---|---|---|
-| monitor | 30 | 28 | 26.5 | 29.5 |
-| karteczka | 52.5 | 25.5 | 7 | 9.5 |
-| telefon | 62 | 52 | 12 | 11.5 |
-| kalendarz | 79.5 | 11.5 | 12.5 | 23 |
-| drukarka | 6.5 | 51.5 | 15 | 14 |
-| kubek | 21 | 54 | 6 | 7 |
+| `drzwi` | 43.8 | 36.6 | 12.4 | 42.8 |
 
-Pliki: `modul-01-assets/scenes/biuro-anny.svg` (1600×1000), `modul-01-assets/avatars/anna.svg`, `modul-01-assets/avatars/marek.svg` (256×256). Docelowo w `packages/content/modules/wyludzone-haslo/assets/`. SVG bez skryptów, bez zewnętrznych odwołań, jedna animacja `<animate>` (dioda telefonu) - jeśli lint jej nie przepuści, usunąć element `<animate>`.
+**`scenes/biuro-anny.svg`** (Blok 3):
 
+| id | x | y | w | h |
+|---|---|---|---|---|
+| `kalendarz` | 73.3 | 11.2 | 13.0 | 23.6 |
+| `drzwi` | 87.9 | 36.6 | 12.1 | 42.8 |
+| `drukarka` | 8.9 | 51.2 | 15.4 | 14.6 |
+| `kubek` | 24.5 | 53.7 | 6.0 | 7.8 |
+| `monitor` | 30.8 | 27.2 | 27.3 | 34.8 |
+| `karteczka` | 53.3 | 24.2 | 7.9 | 11.6 |
+| `telefon` | 59.5 | 51.4 | 12.3 | 12.8 |
 
----
+**`scenes/pulpit.svg`** (zagnieżdżona scena na `monitor`):
 
-## Załącznik — PR 5 (media w hotspotach, B-084): wiadomość głosowa „informatyka"
+| id | x | y | w | h |
+|---|---|---|---|---|
+| `outlook` | 4.2 | 5.0 | 17.7 | 28.1 |
 
-Do dodania w wersji 2 modułu, gdy `hotspots[].media` będzie w schemacie. Hotspot `telefon` dostaje `media: { kind: audio, audioUrl, transcript }` — nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny; ElevenLabs, osobny `voiceId` w skrypcie TTS).
-
-**Transkrypcja (ok. 35 s):**
-> Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.
-
-Po odsłuchaniu karta hotspotu pokazuje pod odtwarzaczem: „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze **zatwierdza** operację, nigdy jej nie anuluje."
-
-Hotspot `drukarka` dostaje `media: { kind: document, title: „Potwierdzenie przelewu", lines: [...] }` — pełnoekranowy „wydruk":
-```
-BANK WEKTOR — POTWIERDZENIE WYKONANIA PRZELEWU
-Data i godzina:  wtorek, 09:12:41
-Z rachunku:      Nortex Sp. z o.o.  PL 61 …… 4412
-Na rachunek:     Wektor Rozliczenia Sp. z o.o.  PL 27 …… 9903
-Kwota:           14 000,00 PLN
-Tytuł:           weryfikacja salda
-Autoryzacja:     kod SMS, 09:06:58
-```
-
-Hotspot `monitor` dostaje `media: { kind: image, src: scenes/mail-na-ekranie.svg, alt: ... }` — powiększony podgląd skrzynki (SVG dostarczę przy PR 5).
+SVG bez skryptów, bez zewnętrznych odwołań. `biuro-anny.svg`: jedna animacja `<animate>` (dioda telefonu) - jeśli
+lint jej nie przepuści, usunąć element `<animate>`.

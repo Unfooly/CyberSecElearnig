@@ -176,6 +176,274 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
   });
 });
 
+const mediaScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'scena-media',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    {
+      id: 'obraz',
+      label: 'Zdjęcie',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Zbliżenie na kartkę.',
+      media: { kind: 'image', src: 'img/kartka-zoom.png', alt: 'Zbliżenie karteczki z hasłem' },
+      evidence: true,
+      note: { text: 'Hasło widoczne na zbliżeniu.', kind: 'item' },
+    },
+    {
+      id: 'audio',
+      label: 'Telefon',
+      x: 40,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Prawdziwy bank nigdy nie prosi o kod SMS przez telefon.',
+      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.' },
+      evidence: true,
+      note: { text: 'Telefon z podejrzaną prośbą o kod SMS.', kind: 'item' },
+    },
+    {
+      id: 'dokument',
+      label: 'Drukarka',
+      x: 70,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Wydruk przelewu.',
+      media: { kind: 'document', title: 'Potwierdzenie przelewu', lines: ['Kwota: 14 000,00 PLN', 'Odbiorca: Wektor Rozliczenia'] },
+    },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
+  it('image: karta pokazuje podgląd; klik otwiera pełnoekranową nakładkę (Escape zamyka, fokus wraca na przycisk)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    const preview = screen.getByRole('button', { name: /Powiększ/ });
+    fireEvent.click(preview);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByAltText('Zbliżenie karteczki z hasłem')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(preview);
+  });
+
+  it('document: karta ma przycisk "Zobacz dokument"; nakładka pokazuje tytuł i linie, przycisk zamknięcia oddaje fokus', () => {
+    setup(mediaScene);
+    pick('Drukarka');
+    const trigger = screen.getByRole('button', { name: /Zobacz dokument/ });
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Potwierdzenie przelewu')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Kwota: 14 000,00 PLN/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zamknij podgląd' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('audio: <audio> bez autoplay, transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
+    setup(mediaScene);
+    pick('Telefon');
+
+    expect(screen.queryByText(/Prawdziwy bank nigdy nie prosi/)).not.toBeInTheDocument();
+
+    const audioEl = document.querySelector('audio')!;
+    expect(audioEl).toBeInTheDocument();
+    expect(audioEl).not.toHaveAttribute('autoplay');
+    expect(audioEl).toHaveAttribute('controls');
+
+    const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Ukryj transkrypcję' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
+
+    fireEvent(audioEl, new Event('ended'));
+    expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
+  });
+
+  it('audio: dowód zaliczony PRZY OTWARCIU karty, nie po odsłuchaniu (bez przycisku "Dodaj do notatnika")', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    expect(screen.getByTestId('notes')).toHaveTextContent('item:Telefon z podejrzaną prośbą o kod SMS.');
+    expect(screen.queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+    expect(screen.getByText('Dodano do notatnika')).toBeInTheDocument();
+    // Bez odsłuchania (żaden `ended` nie poleciał) - dowód mimo to już zaliczony.
+    expect(document.querySelector('audio')).toBeInTheDocument();
+  });
+
+  it('image: dowód też zaliczony przy otwarciu, tak samo jak audio (spójne dla wszystkich mediów)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło widoczne na zbliżeniu.');
+    expect(screen.queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+  });
+});
+
+const nestedScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'scena-zagniezdzona',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    {
+      id: 'monitor',
+      label: 'Monitor',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Ekran z otwartym pulpitem.',
+      media: {
+        kind: 'scene',
+        scene: {
+          image: 'scenes/pulpit.png',
+          imageAlt: 'Pulpit komputera',
+          hotspots: [
+            {
+              id: 'outlook',
+              label: 'Outlook',
+              x: 5,
+              y: 5,
+              width: 15,
+              height: 15,
+              content: 'Program pocztowy.',
+              media: { kind: 'image', src: 'img/mail.png', alt: 'Podgląd maila' },
+              evidence: true,
+              note: { text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
+            },
+            { id: 'kosz', label: 'Kosz', x: 30, y: 5, width: 15, height: 15, content: 'Pusty kosz.' },
+          ],
+        },
+      },
+    },
+    { id: 'kubek', label: 'Kubek', x: 70, y: 10, width: 10, height: 10, content: 'Zwykły kubek.' },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D-071)', () => {
+  it('klik na hotspot z media.kind:"scene" pokazuje jej obraz i listę elementów w karcie', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    expect(screen.getByText('Ekran z otwartym pulpitem.')).toBeInTheDocument();
+    const inner = screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    expect(within(inner).getByRole('button', { name: 'Outlook' })).toBeInTheDocument();
+    expect(within(inner).getByRole('button', { name: 'Kosz' })).toBeInTheDocument();
+  });
+
+  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego własną kartę i zalicza dowód od razu (image)', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    const inner = screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    fireEvent.click(within(inner).getByRole('button', { name: 'Outlook' }));
+
+    expect(screen.getByRole('heading', { name: 'Outlook', level: 4 })).toBeInTheDocument();
+    expect(screen.getByText('Program pocztowy.')).toBeInTheDocument();
+    expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail otwarty w programie pocztowym.');
+    expect(screen.getByRole('button', { name: /Powiększ: Podgląd maila/ })).toBeInTheDocument();
+  });
+
+  it('visited/noted wysłane do serwera zawierają id z WEWNĄTRZ zagnieżdżonej sceny (spłaszczone, D-071)', () => {
+    const { onSubmit, ready } = setup(nestedScene);
+    pick('Monitor');
+    const inner = () => screen.getByRole('list', { name: 'Elementy: Pulpit komputera' });
+    fireEvent.click(within(inner()).getByRole('button', { name: 'Outlook' }));
+    // Wszystkie wymagane (żaden hotspot nie ma jawnego required -> fallback "wszystkie"): monitor, outlook, kosz, kubek.
+    expect(ready.current).toBeNull();
+    fireEvent.click(within(inner()).getByRole('button', { name: 'Kosz' }));
+    expect(ready.current).toBeNull(); // kubek (zewnętrzny) jeszcze nieodwiedzony
+    pick('Kubek');
+    expect(ready.current).not.toBeNull();
+    ready.current!();
+    expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'outlook', 'kosz', 'kubek']), noted: ['outlook'] });
+  });
+
+  it('licznik "Obejrzano X z Y" liczy Y ze spłaszczonego zbioru (4: monitor, outlook, kosz, kubek)', () => {
+    setup(nestedScene);
+    expect(screen.getByText('Obejrzano 0 z 4 elementów.')).toBeInTheDocument();
+  });
+
+  it('zmiana zewnętrznego hotspotu resetuje wybór wewnątrz JEGO zagnieżdżonej sceny', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    fireEvent.click(within(screen.getByRole('list', { name: 'Elementy: Pulpit komputera' })).getByRole('button', { name: 'Outlook' }));
+    expect(screen.getByRole('heading', { name: 'Outlook', level: 4 })).toBeInTheDocument();
+
+    pick('Kubek');
+    expect(screen.queryByRole('heading', { name: 'Outlook', level: 4 })).not.toBeInTheDocument();
+
+    // Monitor już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)" - dopasowanie dokładne ('pick') by go nie znalazło.
+    fireEvent.click(within(list()).getByRole('button', { name: /^Monitor/ }));
+    expect(screen.queryByRole('heading', { name: 'Outlook', level: 4 })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Elementy: Pulpit komputera' })).toBeInTheDocument();
+  });
+});
+
+const doorScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'korytarz',
+  title: 'Korytarz',
+  image: 'scenes/korytarz.png',
+  imageAlt: 'Korytarz',
+  hotspots: [
+    {
+      id: 'dowod',
+      label: 'Kartka',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Coś ciekawego.',
+      required: true,
+      evidence: true,
+      note: { text: 'Dowód w korytarzu.', kind: 'item' },
+    },
+    { id: 'drzwi', label: 'Wyjście', x: 90, y: 10, width: 8, height: 10, action: 'next' },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
+  it('nieaktywne dopóki required nie zebrane: aria-disabled, tooltip/aria-label z licznikiem, klik nic nie robi', () => {
+    const { onSubmit } = setup(doorScene);
+    const door = screen.getByRole('button', { name: /Wyjście: zbierz najpierw dowody \(0\/1\)/ });
+    expect(door).toHaveAttribute('aria-disabled', 'true');
+    expect(door).toHaveAttribute('title', 'Zbierz najpierw dowody: 0/1');
+    fireEvent.click(door);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('hotspot-card')).not.toBeInTheDocument();
+  });
+
+  it('po zebraniu required: klik w drzwi kończy CAŁY blok (onSubmit), bez otwierania karty', () => {
+    const { onSubmit } = setup(doorScene);
+    pick('Kartka');
+    const door = screen.getByRole('button', { name: 'Wyjście' });
+    expect(door).toHaveAttribute('aria-disabled', 'false');
+    expect(door).not.toHaveAttribute('title');
+    fireEvent.click(door);
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
+    // Drzwi same nigdy nie otwierają karty (w odróżnieniu od zwykłego hotspotu) - klik w nie nie ustawia activeId.
+    expect(screen.queryByRole('heading', { name: 'Wyjście', level: 3 })).not.toBeInTheDocument();
+  });
+
+  it('blok z drzwiami NIGDY nie zgłasza gotowości przez onReady (pasek powłoki) - nawet po zebraniu required: jedynym wyjściem są drzwi na scenie', () => {
+    const { ready } = setup(doorScene);
+    expect(ready.current).toBeNull();
+    pick('Kartka');
+    expect(ready.current).toBeNull();
+  });
+});
+
 describe('DIALOGUE: kwestie po jednej', () => {
   it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
     const { onSubmit, ready } = setup(dialogue);

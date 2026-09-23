@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
-import { compileAnswerRegex, SCORED_BLOCK_TYPES, WHEN_BASED_TYPES } from '@cyberszkolo/content/dist/node';
+import { HotspotLike, compileAnswerRegex, flattenHotspots, SCORED_BLOCK_TYPES, WHEN_BASED_TYPES } from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
 
 // Ocena odpowiedzi PO STRONIE SERWERA. Klient przesyła wyłącznie swój wybór (indeks, listę id, tekst) - nigdy ocenę ani
@@ -97,9 +97,15 @@ export function evaluateSubmit(
 
     case 'SCENE_HOTSPOTS': {
       const { visited, noted = [] } = parseAnswer(visitedAnswer, answer);
-      const hotspots = block.hotspots as { id: string; required?: boolean; evidence?: boolean; note?: unknown }[];
+      // Spłaszczone: zewnętrzne hotspoty + wewnętrzne z media.kind:'scene' (B-086/D-071) - ta sama funkcja co walidacja
+      // modułu (semantics.ts), więc "ten sam zbiór id" jest dokładnie jedną definicją, nie dwiema, które mogłyby się rozjechać.
+      const hotspots = flattenHotspots(block.hotspots as HotspotLike[]);
       const all = hotspots.map((h) => h.id);
-      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots, block.requiredHotspots));
+      // Drzwi (action:'next', B-086/D-071) WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie
+      // (klik od razu kończy blok) - inaczej scena z SAMYMI drzwiami nigdy nie mogłaby się ukończyć (semantics.ts ma
+      // tę samą wykluczenie przy walidacji modułu).
+      const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
+      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots.filter((h) => !doorIds.has(h.id)), block.requiredHotspots));
       // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
       const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
       if (!unique(noted) || noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id))) {

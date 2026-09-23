@@ -1,0 +1,7 @@
+{
+  "width": 800, "height": 1000,
+  "background": { "flat": true, "wall": "#2B2440" },
+  "items": [
+    { "id": "kalendarz", "prop": "calendar", "x": 55, "y": 60, "scale": 3.6, "params": { "month": "WRZESIEŃ", "markedDay": 15, "note": "PRZELEWY DO 15:00 !!!" } }
+  ]
+}

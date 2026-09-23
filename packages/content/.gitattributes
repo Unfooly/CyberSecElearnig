@@ -1,0 +1,9 @@
+# `git core.autocrlf=true` (domyślne na Windows) zamienia LF -> CRLF przy checkoucie: dla assetów modułów (SVG) i
+# treści (JSON) to zmienia skrót TREŚCI pliku (scripts/content/src/hash.ts's contentHash, sha256 surowych bajtów),
+# więc ten sam commit dawał RÓŻNY, zduplikowany klucz w magazynie zależnie od checkoutu autora treści - realny
+# przypadek, znaleziony przy publikacji zasobów modułu 1 (avatary Anny/Marka dostały nowy hash mimo braku realnej
+# zmiany treści). LF wymuszone na checkout niezależnie od `core.autocrlf` naprawia to dla nowych klonów; istniejące
+# checkouty odświeża `git add --renormalize` (scripts/content/src/assets.ts ma DRUGĄ linię obrony: normalizuje
+# CRLF -> LF przed haszowaniem/publikacją SVG, więc working tree z CRLF i tak publikuje poprawny, stabilny skrót).
+*.svg text eol=lf
+*.json text eol=lf

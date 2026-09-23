@@ -1,0 +1,79 @@
+{
+  "width": 1200,
+  "height": 800,
+  "background": {
+    "flat": true,
+    "wall": "#4E40B8"
+  },
+  "items": [
+    {
+      "id": "outlook",
+      "prop": "desktopIcon",
+      "x": 60,
+      "y": 50,
+      "hotspot": true,
+      "pad": 10,
+      "params": {
+        "icon": "outlook",
+        "label": "Poczta",
+        "badge": "1"
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "przegladarka",
+      "prop": "desktopIcon",
+      "x": 60,
+      "y": 270,
+      "params": {
+        "icon": "browser",
+        "label": "Internet"
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "faktury",
+      "prop": "desktopIcon",
+      "x": 60,
+      "y": 490,
+      "params": {
+        "icon": "folder",
+        "label": "Faktury"
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "arkusz",
+      "prop": "desktopIcon",
+      "x": 300,
+      "y": 50,
+      "params": {
+        "icon": "sheet",
+        "label": "Przelewy"
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "kosz",
+      "prop": "desktopIcon",
+      "x": 980,
+      "y": 50,
+      "params": {
+        "icon": "trash",
+        "label": "Kosz"
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "pasek",
+      "prop": "taskbar",
+      "x": 0,
+      "y": 744,
+      "params": {
+        "w": 1200,
+        "clock": "8:52",
+        "date": "wtorek"
+      }
+    }
+  ]
+}

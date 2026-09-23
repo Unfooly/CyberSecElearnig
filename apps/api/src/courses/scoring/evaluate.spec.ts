@@ -54,19 +54,70 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(() => submit(block, undefined)).toThrow(BadRequestException);
   });
 
+  it('SCENE_HOTSPOTS: hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind:"scene", B-086/D-071) liczy się do required na tych samych zasadach co zewnętrzny', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const gateway = (block.hotspots as unknown as Record<string, any>[]).find((h) => h.media?.kind === 'scene')!;
+    gateway.media.scene.hotspots[0].required = true; // h4-outlook required na tej próbie (w fixturze domyślnie false)
+    expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException); // brakuje wymaganego h4-outlook
+    expect(submit(block, { visited: ['h1', 'h4-outlook'] }).entry.done).toBe(true);
+  });
+
+  it('SCENE_HOTSPOTS: "drzwi" (action:"next", B-086/D-071) WYKLUCZONE z puli required - scena z samymi drzwiami (bez innych hotspotów, np. "korytarz") daje się ukończyć pustym visited', () => {
+    const block = { ...blocks().SCENE_HOTSPOTS, requiredHotspots: undefined, hotspots: [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' }] };
+    // Bez wykluczenia drzwi z required fallback ("wszystkie required", bo żaden hotspot nie ma jawnej flagi) liczyłby
+    // same drzwi jako wymagane - a drzwi nigdy nie trafiają do `visited` same z siebie, więc blok nigdy by się nie ukończył.
+    expect(submit(block, { visited: [] }).entry.done).toBe(true);
+  });
+
+  it('SCENE_HOTSPOTS: drzwi + INNY required hotspot naraz - wykluczenie drzwi z puli nie "zjada" pozostałych required', () => {
+    const block = {
+      ...blocks().SCENE_HOTSPOTS,
+      requiredHotspots: undefined,
+      hotspots: [
+        { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: true },
+        { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
+      ],
+    };
+    expect(() => submit(block, { visited: [] })).toThrow(BadRequestException); // dowod required:true, mimo wykluczenia drzwi
+    expect(submit(block, { visited: ['dowod'] }).entry.done).toBe(true); // drzwi same NIE muszą być w visited
+  });
+
+  it('SCENE_HOTSPOTS: nieznane id (spoza spłaszczonego zbioru zewnętrzne+wewnętrzne) jest odrzucone bez treści bloku', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const rejected = () => submit(block, { visited: ['h1', 'wymyslone-id'] });
+    expect(rejected).toThrow(BadRequestException);
+    try {
+      rejected();
+    } catch (e) {
+      expect(JSON.stringify((e as BadRequestException).getResponse())).not.toContain('SEKRET');
+    }
+  });
+
   const plainHotspots = () => {
     const block = blocks().SCENE_HOTSPOTS;
     return {
       ...block,
       requiredHotspots: undefined,
-      hotspots: block.hotspots.map((h: Record<string, unknown>) => ({ ...h, required: undefined })),
+      hotspots: block.hotspots.map((h: Record<string, any>) => ({
+        ...h,
+        required: undefined,
+        // required jest liczone na SPŁASZCZONEJ liście (flattenHotspots, B-086/D-071) - trzeba je zdjąć też z
+        // hotspotów WEWNĄTRZ media.kind:'scene', inaczej jedyny pozostały required:false (h4-outlook) sprawiłby,
+        // że "żaden element nie jest required" (pusty zbiór), zamiast "wszystkie są required" (fallback).
+        ...(h.media?.kind === 'scene'
+          ? { media: { ...h.media, scene: { ...h.media.scene, hotspots: h.media.scene.hotspots.map((ih: Record<string, any>) => ({ ...ih, required: undefined })) } } }
+          : {}),
+      })),
     };
   };
 
   it('bez required i requiredHotspots wymagane są wszystkie', () => {
     const block = plainHotspots();
     expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
-    expect(submit(block, { visited: ['h2', 'h1'] }).entry.done).toBe(true);
+    // Fixtura ma 5 hotspotów najwyższego poziomu + 3 wewnątrz zagnieżdżonej sceny h4 (h4-outlook/h4-kosz/h4-folder) -
+    // required liczone na spłaszczonej liście (B-086/D-071), więc wszystkich 8 trzeba odwiedzić.
+    expect(() => submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5'] })).toThrow(BadRequestException);
+    expect(submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5', 'h4-outlook', 'h4-kosz', 'h4-folder'] }).entry.done).toBe(true);
   });
 
   it('hotspots[].required: wymagane tylko oznaczone, "smaczek" nie blokuje ukończenia; jawne required wygrywa ze starą listą', () => {

@@ -105,27 +105,29 @@ async function runViewport(viewport) {
   await shot(page, '01-narrative', viewport.name);
   await nextEnabled().click();
 
-  // --- 2. SCENE_HOTSPOTS (biuro Anny, hotspoty odkryte + notatnik) --------------------------------------------
+  // --- Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) - przechodzimy bez zrzutu (jeden pusty kadr nie wnosi nic) ---
+  await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
+  await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
+
+  // --- 2. SCENE_HOTSPOTS (biuro Anny, hotspoty z mediami odkryte + notatnik, B-086/D-071) ----------------------
   await page.getByRole('list', { name: 'Elementy sceny' }).waitFor();
   const hotspotList = page.getByRole('list', { name: 'Elementy sceny' });
-  const addToNotepad = async () => {
-    if (await page.getByRole('button', { name: 'Dodaj do notatnika' }).count()) await page.getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  };
-  const requiredHotspots = ['Żółta karteczka', 'Monitor', 'Telefon stacjonarny', 'Kalendarz ścienny'];
+  // Hotspoty z mediami (karteczka/telefon/kalendarz/drukarka) zaliczają dowód od razu przy otwarciu karty - nie ma
+  // już osobnego "Dodaj do notatnika" do klikania w drugim przebiegu.
+  const requiredHotspots = ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny', 'Monitor'];
   for (const label of requiredHotspots) {
     await hotspotList.getByRole('button', { name: label }).click();
   }
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
-  for (const label of requiredHotspots) {
-    await hotspotList.getByRole('button', { name: label }).click();
-    await addToNotepad();
-  }
-  await hotspotList.getByRole('button', { name: 'Drukarka' }).click();
-  await addToNotepad();
-  await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
+  // Dowód maila jest dopiero za Outlookiem wewnątrz zagnieżdżonej sceny "pulpit" (karta "Monitor" zostaje active) -
+  // zrzut tuż po tym pokazuje nową zagnieżdżoną scenę (B-086/D-071), nie ostatnio klikniętą kartę.
+  await page.getByRole('list', { name: /Elementy: / }).getByRole('button', { name: 'Poczta' }).click();
   await page.keyboard.press('Escape').catch(() => {});
   await shot(page, '02-scene-hotspots', viewport.name);
-  await nextEnabled().click();
+  await hotspotList.getByRole('button', { name: 'Drukarka' }).click();
+  await hotspotList.getByRole('button', { name: 'Kubek z kawą' }).click();
+  // "drzwi" (Wyjście) kończy blok zamiast "Dalej" paska (ukryty - hideForward).
+  await hotspotList.getByRole('button', { name: 'Wyjście' }).click();
 
   // --- 3. DIALOGUE (Anna, w trakcie) ---------------------------------------------------------------------------
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
@@ -184,13 +186,14 @@ async function runViewport(viewport) {
 
   // --- 6. ORDERING (rekonstrukcja kolejności, po ułożeniu) --------------------------------------------------------
   await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara.
   const wanted = [
-    '8:47 — Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
-    '8:58 — Anna klika link i wpisuje login oraz hasło na fałszywej stronie.',
-    '9:03 — Oszust loguje się do prawdziwego banku danymi Anny.',
-    '9:05 — „Informatyk” dzwoni po kod SMS, żeby anulować operację.',
-    '9:06 — Anna podaje kod; oszust zatwierdza przelew.',
-    '9:12 — 14 000 zł wychodzi na konto „Wektor Rozliczenia”.',
+    'Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
+    'Anna klika link i wpisuje login oraz hasło na fałszywej stronie.',
+    'Oszust loguje się do prawdziwego banku danymi Anny.',
+    '„Informatyk” dzwoni po kod SMS, żeby anulować operację.',
+    'Anna podaje kod; oszust zatwierdza przelew.',
+    '14 000 zł wychodzi na konto „Wektor Rozliczenia”.',
   ];
   const orderingRows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
   for (let target = 0; target < wanted.length; target += 1) {

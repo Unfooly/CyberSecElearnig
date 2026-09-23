@@ -1,5 +1,6 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
+import { HotspotLike, flattenHotspots } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
 import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
 
@@ -48,10 +49,17 @@ interface NoteItem {
   note?: { text?: string; kind?: string };
 }
 
-/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila). */
+/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila). SCENE_HOTSPOTS spłaszczone
+ * (zewnętrzne + media.kind:'scene' wewnętrzne, B-086/D-071) - ta sama funkcja co evaluate.ts i walidacja modułu. */
 function noteItems(block: Block): NoteItem[] {
   const list: unknown =
-    block.type === 'SCENE_HOTSPOTS' ? block.hotspots : block.type === 'DIALOGUE' ? block.questions : block.type === 'EMAIL_ANALYSIS' ? block.criteria : [];
+    block.type === 'SCENE_HOTSPOTS'
+      ? flattenHotspots(block.hotspots as HotspotLike[])
+      : block.type === 'DIALOGUE'
+        ? block.questions
+        : block.type === 'EMAIL_ANALYSIS'
+          ? block.criteria
+          : [];
   return Array.isArray(list) ? (list as NoteItem[]) : [];
 }
 

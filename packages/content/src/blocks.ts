@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
+import { audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -66,6 +66,54 @@ const embeddedHtmlSchema = z
 
 // --- Nowe bloki silnika scen -------------------------------------------------------------------------------------------
 
+// Warianty media WSPÓLNE dla hotspotu najwyższego poziomu i hotspotu WEWNĄTRZ zagnieżdżonej sceny. B-086: `image`/`document`
+// w pełnoekranowym podglądzie, `audio` z WŁASNYM odtwarzaczem (plik to gotowy zasób z --assets, NIE przechodzi przez silnik
+// TTS/cues narracji - inny głos niż lektor nagrywa się i publikuje osobno). `transcript` to zwykły tekst (jak `content`), nie
+// `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
+const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, alt: text(300) }).strict();
+const audioMediaSchema = z.object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000) }).strict();
+const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
+
+// Hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene'): jak hotspot najwyższego poziomu, ale BEZ `action` i BEZ
+// wariantu media `scene` - limit 1 poziomu zagnieżdżenia wymuszony przez system typów (nie osobną walidacją w runtime).
+// Zawsze zachowuje się jak `action: 'card'` (klik otwiera kartę), więc `content` zostaje wymagane, tak jak dziś.
+const innerHotspotMediaSchema = z.discriminatedUnion('kind', [imageMediaSchema, audioMediaSchema, documentMediaSchema]);
+const innerHotspotSchema = z
+  .object({
+    id: idSchema,
+    label: text(100),
+    x: percent,
+    y: percent,
+    width: z.number().min(1).max(100),
+    height: z.number().min(1).max(100),
+    content: text(2000),
+    media: innerHotspotMediaSchema.optional(),
+    narration: baseShape.narration,
+    evidence: z.boolean().optional(),
+    note: noteSchema.optional(),
+    required: z.boolean().optional(),
+  })
+  .strict();
+
+// Zagnieżdżona mini-scena (B-086): własny obraz i własne hotspoty (innerHotspotSchema) - w module 1 np. pulpit komputera
+// zza monitora. Id hotspotów WEWNĄTRZ muszą być unikalne w obrębie CAŁEGO bloku SCENE_HOTSPOTS (razem z zewnętrznymi) i
+// mogą nieść evidence/required tak jak zewnętrzne - stan bloku (visited/noted) to jedna, płaska lista id (semantics.ts).
+const nestedSceneSchema = z
+  .object({
+    image: imagePathSchema,
+    imageAlt: text(300),
+    hotspots: z.array(innerHotspotSchema).min(1).max(20),
+  })
+  .strict();
+
+// Media hotspotu najwyższego poziomu: jak wewnątrz zagnieżdżonej sceny, plus wariant `scene` (patrz nestedSceneSchema).
+const hotspotMediaSchema = z.discriminatedUnion('kind', [
+  imageMediaSchema,
+  audioMediaSchema,
+  documentMediaSchema,
+  z.object({ kind: z.literal('scene'), scene: nestedSceneSchema }).strict(),
+]);
+
 const hotspotsSchema = z
   .object({
     ...baseShape,
@@ -83,7 +131,12 @@ const hotspotsSchema = z
             y: percent,
             width: z.number().min(1).max(100),
             height: z.number().min(1).max(100),
-            content: text(2000),
+            // 'card' (domyślnie, brak pola liczy się tak samo): klik otwiera kartę (content/media). 'next':
+            // "drzwi" - klik KOŃCZY blok (jak przycisk "Dalej" w pasku powłoki), gdy wymagane elementy są już zebrane; taki
+            // hotspot nie ma ani content, ani media, ani evidence/note (wzajemnie wykluczające, semantics.ts).
+            action: z.enum(['card', 'next']).optional(),
+            content: text(2000).optional(),
+            media: hotspotMediaSchema.optional(),
             narration: baseShape.narration,
             // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Dodaj do notatnika"; wymaga `note` z `kind`) i wymagalność.
             evidence: z.boolean().optional(),
@@ -94,7 +147,8 @@ const hotspotsSchema = z
       )
       .min(1)
       .max(20),
-    // PRZESTARZAŁE od schemaVersion 3 (zastąpione `hotspots[].required`); nadal działa. Domyślnie wszystkie.
+    // PRZESTARZAŁE od schemaVersion 3 (zastąpione `hotspots[].required`); nadal działa. Domyślnie wszystkie. Tylko hotspoty
+    // NAJWYŻSZEGO poziomu (zagnieżdżona scena jest nowsza niż ta lista, więc nigdy jej nie dotyczy).
     requiredHotspots: z.array(idSchema).max(20).optional(),
   })
   .strict();
@@ -409,7 +463,40 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].y',
       'hotspots[].width',
       'hotspots[].height',
+      'hotspots[].action',
       'hotspots[].content',
+      'hotspots[].media.kind',
+      'hotspots[].media.src',
+      'hotspots[].media.alt',
+      'hotspots[].media.audioUrl',
+      'hotspots[].media.transcript',
+      'hotspots[].media.title',
+      'hotspots[].media.lines[]',
+      'hotspots[].media.scene.image',
+      'hotspots[].media.scene.imageAlt',
+      'hotspots[].media.scene.hotspots[].id',
+      'hotspots[].media.scene.hotspots[].label',
+      'hotspots[].media.scene.hotspots[].x',
+      'hotspots[].media.scene.hotspots[].y',
+      'hotspots[].media.scene.hotspots[].width',
+      'hotspots[].media.scene.hotspots[].height',
+      'hotspots[].media.scene.hotspots[].content',
+      'hotspots[].media.scene.hotspots[].media.kind',
+      'hotspots[].media.scene.hotspots[].media.src',
+      'hotspots[].media.scene.hotspots[].media.alt',
+      'hotspots[].media.scene.hotspots[].media.audioUrl',
+      'hotspots[].media.scene.hotspots[].media.transcript',
+      'hotspots[].media.scene.hotspots[].media.title',
+      'hotspots[].media.scene.hotspots[].media.lines[]',
+      'hotspots[].media.scene.hotspots[].narration.text',
+      'hotspots[].media.scene.hotspots[].narration.audioUrl',
+      'hotspots[].media.scene.hotspots[].narration.durationMs',
+      'hotspots[].media.scene.hotspots[].narration.cues[].text',
+      'hotspots[].media.scene.hotspots[].narration.cues[].startMs',
+      'hotspots[].media.scene.hotspots[].evidence',
+      'hotspots[].media.scene.hotspots[].note.text',
+      'hotspots[].media.scene.hotspots[].note.kind',
+      'hotspots[].media.scene.hotspots[].required',
       'hotspots[].narration.text',
       'hotspots[].narration.audioUrl',
       'hotspots[].narration.durationMs',
@@ -421,7 +508,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].required',
       'requiredHotspots[]',
     ],
-    ['hotspots[].narration.spokenText'],
+    ['hotspots[].narration.spokenText', 'hotspots[].media.scene.hotspots[].narration.spokenText'],
   ),
   DIALOGUE: classify(
     [

@@ -122,6 +122,96 @@ describe('parseModule: walidacja modułu', () => {
     }, 'image');
   });
 
+  it('hotspots[].media (B-086): dyskryminator kind musi być jednym z image/audio/document, każdy wariant strict i ze swoim rozszerzeniem pliku', () => {
+    const media = (m: TestModule) => blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].media;
+    expectInvalid((m) => {
+      media(m).kind = 'video';
+    }, 'media');
+    expectInvalid((m) => {
+      media(m).extra = 'nieznane';
+    }, 'media');
+    expectInvalid((m) => {
+      media(m).src = 'https://evil.test/x.png';
+    }, 'media');
+    expectInvalid((m) => {
+      const audioHotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots[2];
+      audioHotspot.media.audioUrl = 'audio/x.wav';
+    }, 'media');
+    expectInvalid((m) => {
+      const documentHotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots[1];
+      documentHotspot.media.lines = [];
+    }, 'media');
+  });
+
+  it('hotspots[].action "next" (drzwi, B-086): nie może mieć content ani media; hotspot bez action wymaga content', () => {
+    expectInvalid((m) => {
+      // h5 to "drzwi" (action: 'next') w fixturze - bez content i media; dopisanie któregokolwiek jest błędem.
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.content = 'To nie powinno tu być.';
+    }, 'action "next"');
+    expectInvalid((m) => {
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.media = { kind: 'document', title: 'X', lines: ['x'] };
+    }, 'action "next"');
+    expectInvalid((m) => {
+      // required:true na drzwiach byłoby ślepym zaułkiem - drzwi nigdy nie trafiają do `visited` same z siebie.
+      const door = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.action === 'next');
+      door.required = true;
+    }, 'action "next"');
+    expectInvalid((m) => {
+      // Zwykły hotspot (action domyślne "card") bez content - dozwolone tylko dla "next".
+      delete blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].content;
+    }, 'content jest wymagane');
+  });
+
+  it('hotspots[].media.kind "scene" (zagnieżdżona mini-scena, B-086): id unikalne w CAŁYM bloku (zewnętrzne + wewnętrzne), obszar i evidence/note jak zewnętrzne', () => {
+    expectInvalid((m) => {
+      // h4-outlook (wewnątrz zagnieżdżonej sceny h4) dostaje id już zajęte przez zewnętrzny hotspot h1.
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      nested.media.scene.hotspots[0].id = 'h1';
+    }, 'powtórzony identyfikator');
+    expectInvalid((m) => {
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      nested.media.scene.hotspots[0].width = 96; // x: 5 + width: 96 > 100
+    }, 'obszar wychodzi poza obraz');
+    expectInvalid((m) => {
+      const nested = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      delete nested.media.scene.hotspots[0].note;
+    }, 'evidence wymaga pola note');
+  });
+
+  it('requiredHotspots[] (przestarzałe) nie widzi id hotspotów WEWNĄTRZ zagnieżdżonej sceny - lista jest starsza niż zagnieżdżanie', () => {
+    expectInvalid((m) => {
+      blockOf(m, 'SCENE_HOTSPOTS').requiredHotspots = ['h4-outlook'];
+    }, 'nieznany identyfikator "h4-outlook"');
+  });
+
+  it('scena z SAMYMI drzwiami (action:"next", bez innych hotspotów - np. "korytarz") przechodzi walidację: drzwi wykluczone z puli required, więc fallback "wszystkie" nie liczy ich samych', () => {
+    const module = fullModuleForTests();
+    const scene = blockOf(module, 'SCENE_HOTSPOTS');
+    delete scene.requiredHotspots;
+    scene.hotspots = [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' }];
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('drzwi + INNY hotspot z required: false (bez required: true nigdzie): wykluczenie drzwi z puli nie maskuje błędu "brak required: true"', () => {
+    const module = fullModuleForTests();
+    const scene = blockOf(module, 'SCENE_HOTSPOTS');
+    delete scene.requiredHotspots;
+    scene.hotspots = [
+      { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: false },
+      { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
+    ];
+    let error: unknown;
+    try {
+      parseModule(module);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ContentValidationError);
+    expect((error as ContentValidationError).issues.join('\n')).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+  });
+
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
     expectInvalid((m) => {
       (blockOf(m, 'QUIZ').options[0] as Record<string, unknown>).outcome = 'wrong';
@@ -255,6 +345,20 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
       delete hotspot.required;
       delete hotspot.evidence;
       delete hotspot.note;
+      // required/evidence/note są liczone na PŁASKIEJ liście (zewnętrzne + zagnieżdżone, semantics.ts) - trzeba je
+      // usunąć też z hotspotów WEWNĄTRZ media.kind: 'scene', inaczej drugi required:false/evidence tam zostaje.
+      if (hotspot.media?.kind === 'scene') {
+        for (const inner of hotspot.media.scene.hotspots) {
+          delete inner.required;
+          delete inner.evidence;
+          delete inner.note;
+        }
+      }
+      // action/media (B-086) to funkcje wersji 4 - w module w wersji 2 ich po prostu nie ma; drzwi (action: 'next') bez
+      // v4 wracają do zwykłej karty (jak w teście "wersja 3 bez pól z wersji 4" niżej).
+      if (hotspot.action === 'next') hotspot.content = 'Zwykły hotspot bez akcji "next" (drzwi to funkcja wersji 4).';
+      delete hotspot.action;
+      delete hotspot.media;
     }
     const d = dialogue(module);
     delete d.character.avatar;
@@ -436,6 +540,8 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     expect(message).toContain('pole reactions.complete wymaga schemaVersion 4');
     expect(message).toContain('pole reactions.result wymaga schemaVersion 4');
     expect(message).toContain('pole email.to wymaga schemaVersion 4');
+    expect(message).toContain('pole hotspots[].action wymaga schemaVersion 4');
+    expect(message).toContain('pole hotspots[].media wymaga schemaVersion 4');
   });
 
   it('moduł w wersji 3 bez pól z wersji 4 nadal przechodzi (migracja jak dla wersji 2)', () => {
@@ -448,6 +554,12 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
     delete email(module).email.to;
+    for (const hotspot of blockOf(module, 'SCENE_HOTSPOTS').hotspots) {
+      // action: 'next' (drzwi) nie ma content - bez v4 drzwi nie istnieją, więc wraca do zwykłej karty (jak w wersji 3).
+      if (hotspot.action === 'next') hotspot.content = 'Zwykły hotspot bez akcji "next" (drzwi to funkcja wersji 4).';
+      delete hotspot.action;
+      delete hotspot.media;
+    }
     expect(() => parseModule(module)).not.toThrow();
   });
 

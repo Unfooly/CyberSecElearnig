@@ -224,13 +224,17 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
         expect(JSON.stringify(badNote.body)).not.toContain(fragment);
       }
       await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
-      const hotspots = (await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h1'] } }).expect(200)).body;
-      // Liczy serwer: 1 dowód zebrany; suma znana od startu, także dla bloku maila (D-055 pkt 2 - poprawka PR 4).
+      // h4-outlook: hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind:'scene' na h4, B-086/D-071) - id nie jest "nie-ma"
+      // dla serwera (spłaszczony zbiór, flattenHotspots), noted go zalicza jak zewnętrzny.
+      const hotspots = (
+        await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'h4-outlook'], noted: ['h1', 'h4-outlook'] } }).expect(200)
+      ).body;
+      // Liczy serwer: 2 dowody zebrane (h1 zewnętrzny + h4-outlook wewnętrzny); suma "scena" też uwzględnia oba (2, nie 1).
       expect(hotspots.evidence).toEqual({
-        collected: 1,
-        total: 3,
+        collected: 2,
+        total: 4,
         perBlock: [
-          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'scena', collected: 2, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
         ],
@@ -245,10 +249,14 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(resumed.currentBlockIndex).toBe(9);
       expect(resumed.progress.notes).toEqual([
         { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
+        // h4-outlook: dowód WEWNĄTRZ zagnieżdżonej sceny (media.kind:'scene' na h4, B-086/D-071) - drugi noted z tego
+        // samego submitu (visited/noted: ['h1', 'h4-outlook']), więc dopisuje się od razu po notatce h1.
+        { blockId: 'scena', text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
         { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
       ]);
-      // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila).
-      expect(resumed.progress.evidence).toMatchObject({ collected: 2, total: 3 });
+      // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila). scena: 2
+      // zebrane/2 razem (h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071) - patrz test wyżej.
+      expect(resumed.progress.evidence).toMatchObject({ collected: 3, total: 4 });
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });
@@ -271,6 +279,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const progress = (await start(tokenA, engineCourseId).expect(200)).body.progress;
       expect(progress.notes.map((n: { text: string }) => n.text)).toEqual([
         'Hasło na kartce przy monitorze.',
+        'Mail otwarty w programie pocztowym.', // h4-outlook (wewnątrz zagnieżdżonej sceny h4, B-086/D-071)
         'Mail przyszedł rano.',
         `${SECRET_MARKER}-note-c1`,
         `${SECRET_MARKER}-note-c3`,
@@ -278,18 +287,19 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       // Brak id z treści w progress.notes: klient dostaje blockId, treść i (opcjonalnie) rodzaj, bez klucza "<blockId>.<itemId>" (np. mail.c1).
       for (const note of progress.notes) expect(Object.keys(note).sort()).toEqual(expect.arrayContaining(['blockId', 'text']));
       for (const note of progress.notes) expect(Object.keys(note).every((k) => ['blockId', 'text', 'kind'].includes(k))).toBe(true);
-      expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|scena\.h1|"c[123]"|"h[12]"/);
+      expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|scena\.h1|scena\.h4-outlook|"c[123]"|"h[12]"|"h4-outlook"/);
       // Podgląd ukończonego bloku po wznowieniu: własny wybór i rozstrzygnięcie, wyłącznie jako id nieprzejrzyste z /start.
       expect(progress.blocks.mail.answer).toEqual({ selected: [c1, c3] });
       expect(progress.blocks.mail.detail.criteria.map((c: { id: string; selected: boolean }) => [c.id, c.selected])).toEqual(
         expect.arrayContaining([[c1, true], [c3, true]]),
       );
-      // Suma (3 dowody: hotspot, pytanie, kryterium c1) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
+      // Suma (4 dowody: 2x hotspot - h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071 - pytanie,
+      // kryterium c1) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
       expect(result.evidence).toEqual({
-        collected: 3,
-        total: 3,
+        collected: 4,
+        total: 4,
         perBlock: [
-          { blockId: 'scena', collected: 1, total: 1 },
+          { blockId: 'scena', collected: 2, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
         ],

@@ -24,6 +24,9 @@ import type { ObjectStore, TtsProvider } from './types.js';
 export const NARRATION_PATHS: string[][] = [
   ['narration'],
   ['hotspots', '*', 'narration'],
+  // Hotspot WEWNĄTRZ zagnieżdżonej sceny (hotspots[].media.kind: 'scene', B-086/D-071) - dla hotspotów, których media NIE
+  // jest 'scene', `expand()` po prostu nie trafi na klucz `scene` pod `media` i zwróci [] (bez błędu).
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'narration'],
   ['questions', '*', 'answerNarration'],
   ['questions', '*', 'lines', '*', 'narration'],
 ];

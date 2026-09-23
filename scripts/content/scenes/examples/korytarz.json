@@ -1,0 +1,14 @@
+{
+  "width": 1600, "height": 1000,
+  "background": { "floorY": 780 },
+  "items": [
+    { "id": "okno", "prop": "window", "x": 120, "y": 110 },
+    { "id": "tablica", "prop": "noticeBoard", "x": 1020, "y": 130,
+      "params": { "notes": ["Szkolenie BHP|czwartek, 10:00", "Kuchnia|myjemy po sobie!", "Hasła|nie na karteczkach", "Parking|nowe miejsca"] } },
+    { "id": "kierunek", "prop": "wallSign", "x": 470, "y": 250, "params": { "text": "Księgowość", "arrow": "right" } },
+    { "id": "drzwi", "prop": "door", "x": 715, "y": 380, "hotspot": true, "pad": 14, "params": { "label": "KSIĘGOWOŚĆ" } },
+    { "id": "drzwi-it", "prop": "door", "x": 1290, "y": 380, "params": { "label": "IT" } },
+    { "id": "roslina", "prop": "plant", "x": 560, "y": 600 },
+    { "id": "roslina2", "prop": "plant", "x": 60, "y": 600 }
+  ]
+}

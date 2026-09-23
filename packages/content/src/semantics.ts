@@ -17,6 +17,29 @@ function duplicates(ids: string[]): string[] {
 }
 
 /**
+ * Kształt hotspotu SCENE_HOTSPOTS wystarczający do spłaszczenia (id, required, evidence, note, zagnieżdżona scena) -
+ * strukturalnie zgodny zarówno z `ServerBlock`'s wariantem SCENE_HOTSPOTS (blocks.ts), jak i z luźno typowanym `Block`
+ * w apps/api (evaluate.ts, client-view.ts), które NIE importują pełnych typów zod (unikają zależności od `zod` w API).
+ */
+export interface HotspotLike {
+  id: string;
+  required?: boolean;
+  evidence?: boolean;
+  note?: { text: string; kind?: string };
+  media?: { kind?: string; scene?: { hotspots?: readonly HotspotLike[] } };
+}
+
+/**
+ * Spłaszcza hotspoty SCENE_HOTSPOTS (zewnętrzne + WEWNĘTRZNE z `media.kind: 'scene'`, B-086/D-071) do JEDNEJ listy -
+ * DZIELONA definicja między walidacją modułu (poniżej) a apps/api (liczenie dowodów, walidacja `visited`/`noted`):
+ * jedno miejsce decyduje, co się liczy, żeby te dwie strony nigdy nie rozjechały się w tym, co uznają za "ten sam zbiór".
+ * Zawsze dokładnie jeden poziom (innerHotspotSchema nie ma już własnego `media.kind: 'scene'`), więc bez rekurencji.
+ */
+export function flattenHotspots(hotspots: readonly HotspotLike[]): HotspotLike[] {
+  return hotspots.flatMap((h) => [h, ...(h.media?.kind === 'scene' ? (h.media.scene?.hotspots ?? []) : [])]);
+}
+
+/**
  * Notatka i dowód. Dowód (evidence: true) musi mieć `note`. Od schemaVersion 3 KAŻDA notatka ma `kind` (ikona w notatniku; jedna reguła
  * zamiast "kind tylko przy dowodzie"); moduły w wersji 2 nie mają tego pola, więc są zwolnione.
  */
@@ -71,8 +94,10 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
   'questions[].lines', 'questions[].note.kind', 'character.avatar', 'criteria[].evidence', 'criteria[].note.kind', 'criteria[].target', 'email.date', 'email.attachment'];
 
 // Pola dostępne dopiero od schemaVersion 4 (poziom bloku; metadane modułu - subtitle/level/objectives - i blok NARRATIVE mają
-// osobne sprawdzenie w parseModule, bo nie są ścieżkami WEWNĄTRZ bloku).
-const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to'];
+// osobne sprawdzenie w parseModule, bo nie są ścieżkami WEWNĄTRZ bloku). `hotspots[].media` obejmuje też zagnieżdżoną
+// scenę (każda ścieżka `hotspots[].media.scene.hotspots[].*` zaczyna się od tego samego prefiksu - jeden wpis wystarcza,
+// featuresUsed dopasowuje po prefiksie, nie dokładnym stringu).
+const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to', 'hotspots[].action', 'hotspots[].media'];
 
 function featuresUsed(block: ServerBlock, features: string[]): string[] {
   const paths = new Set(collectPaths(block));
@@ -159,14 +184,37 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       break;
     }
     case 'SCENE_HOTSPOTS': {
-      const ids = block.hotspots.map((h) => h.id);
-      checkUnique('hotspots', ids);
-      checkSubset('requiredHotspots', block.requiredHotspots, ids);
+      // Id i required liczone na SPŁASZCZONEJ liście (ta sama funkcja co apps/api - flattenHotspots wyżej w tym pliku).
+      const outerIds = block.hotspots.map((h) => h.id);
+      checkUnique('hotspots', flattenHotspots(block.hotspots).map((h) => h.id));
+      checkSubset('requiredHotspots', block.requiredHotspots, outerIds); // lista jest PRZESTARZAŁA i starsza niż zagnieżdżanie: tylko zewnętrzne.
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
-        errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
+        if (h.action === 'next') {
+          // "Drzwi": klik kończy blok jak przycisk "Dalej" - nigdy nie otwiera karty, więc content/media/evidence/note
+          // byłyby martwą konfiguracją (autor mógłby pomyśleć, że działają). `required` też zakazane: drzwi nigdy nie
+          // trafiają do `visited` (klik od razu wysyła submit, nie "odwiedza" siebie samych) - required:true na nich
+          // byłoby ślepym zaułkiem (blok nigdy nie mógłby się ukończyć: warunek gotowości nigdy nie zostałby spełniony).
+          if (h.content !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined || h.required !== undefined) {
+            errors.push(`hotspots[${i}]: action "next" (drzwi) nie może mieć content, media, evidence, note ani required`);
+          }
+        } else {
+          if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);
+          errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
+        }
+        if (h.media?.kind === 'scene') {
+          h.media.scene.hotspots.forEach((ih, j) => {
+            const label = `hotspots[${i}].media.scene.hotspots[${j}]`;
+            if (ih.x + ih.width > 100 || ih.y + ih.height > 100) errors.push(`${label}: obszar wychodzi poza obraz`);
+            errors.push(...evidenceErrors(label, ih, kindRequired));
+          });
+        }
       });
-      checkRequiredFlags('hotspots', block.hotspots, errors);
+      // Drzwi (action:'next') WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie (klik od razu
+      // kończy blok, nie "odwiedza" siebie), więc licząc je "wszystkie required" (fallback, brak jawnych flag) scena
+      // z SAMYMI drzwiami (bez innych hotspotów - np. "korytarz") nigdy nie mogłaby się ukończyć.
+      const doorIds = new Set(block.hotspots.filter((h) => h.action === 'next').map((h) => h.id));
+      checkRequiredFlags('hotspots', flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id)), errors);
       break;
     }
     case 'DIALOGUE': {
@@ -233,6 +281,13 @@ export function moduleWarnings(contentModule: ContentModule): string[] {
     }
     if (block.type === 'SCENE_HOTSPOTS') {
       block.hotspots.forEach((h, i) => {
+        if (h.media?.kind === 'scene') {
+          h.media.scene.hotspots.forEach((ih, j) => {
+            if (ih.note && ih.evidence !== true) {
+              warnings.push(`${where}: hotspots[${i}].media.scene.hotspots[${j}].note bez evidence: true nigdy nie trafi do notatnika`);
+            }
+          });
+        }
         if (h.note && h.evidence !== true) warnings.push(`${where}: hotspots[${i}].note bez evidence: true nigdy nie trafi do notatnika`);
       });
     }

@@ -55,8 +55,11 @@ const tabs: ContentBlock = {
   requiredTabs: ['x', 'y'],
 };
 
+// "Dalej" żyje w pasku powłoki (CoursePlayer), nie w bloku - blok zgłasza gotowość przez onReady (funkcja submit albo
+// null). `ready` to referencja na ostatnio zgłoszoną funkcję; testy "klikają Dalej" wywołując ready.current().
 function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: (a?: unknown) => void; notes?: { blockId: string; text: string }[] } = {}) {
   const onSubmit = props.onSubmit ?? vi.fn();
+  const ready: { current: (() => void) | null } = { current: null };
   function NotesProbe() {
     const { notes } = useNotes();
     return <output data-testid="notes">{notes.map((n) => n.text).join('|')}</output>;
@@ -67,31 +70,39 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
   render(
     <MascotReactionProvider resetKey="k">
       <NotesProvider initial={props.notes ?? []}>
-        <ExploratoryBlock block={block} contentBase={BASE} onSubmit={onSubmit} disabled={false} review={props.review} />
+        <ExploratoryBlock
+          block={block}
+          contentBase={BASE}
+          onSubmit={onSubmit}
+          onReady={(submit) => {
+            ready.current = submit;
+          }}
+          disabled={false}
+          review={props.review}
+        />
         <NotesProbe />
         <ReactionProbe />
       </NotesProvider>
     </MascotReactionProvider>,
   );
-  return onSubmit;
+  return { onSubmit, ready };
 }
 
 describe('SCENE_HOTSPOTS', () => {
-  it('ukończenie dopiero po wymaganych punktach i odpowiedź { visited }', async () => {
+  it('ukończenie (onReady) dopiero po wymaganych punktach i odpowiedź { visited }', async () => {
     const user = userEvent.setup();
-    const onSubmit = renderBlock(hotspots);
-    const submit = screen.getByRole('button', { name: 'Kontynuuj' });
-    expect(submit).toBeDisabled();
+    const { onSubmit, ready } = renderBlock(hotspots);
+    expect(ready.current).toBeNull();
     expect(screen.getByText('Obejrzano 0 z 2 elementów.')).toBeInTheDocument();
 
     const list = screen.getByRole('list', { name: 'Elementy sceny' });
     await user.click(within(list).getByRole('button', { name: 'Monitor' }));
     expect(screen.getByText('Zablokuj ekran.')).toBeInTheDocument();
-    expect(submit).toBeDisabled();
+    expect(ready.current).toBeNull();
 
     await user.click(within(list).getByRole('button', { name: 'Biurko' }));
-    expect(submit).toBeEnabled();
-    await user.click(submit);
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['a', 'b'], noted: [] });
   });
 
@@ -110,20 +121,20 @@ describe('SCENE_HOTSPOTS', () => {
 
   it('bez requiredHotspots wymagane są wszystkie', async () => {
     const user = userEvent.setup();
-    renderBlock({ ...hotspots, requiredHotspots: undefined });
+    const { ready } = renderBlock({ ...hotspots, requiredHotspots: undefined });
     expect(screen.getByText('Obejrzano 0 z 3 elementów.')).toBeInTheDocument();
     const list = screen.getByRole('list', { name: 'Elementy sceny' });
     await user.click(within(list).getByRole('button', { name: 'Monitor' }));
     await user.click(within(list).getByRole('button', { name: 'Biurko' }));
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
   });
 
-  it('podgląd: interaktywny, bez przycisku ukończenia i bez wywołania onSubmit', async () => {
+  it('podgląd: interaktywny, ale nigdy nie zgłasza gotowości ani nie woła onSubmit', async () => {
     const user = userEvent.setup();
-    const onSubmit = renderBlock(hotspots, { review: true });
-    expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
+    const { onSubmit, ready } = renderBlock(hotspots, { review: true });
     await user.click(within(screen.getByRole('list', { name: 'Elementy sceny' })).getByRole('button', { name: 'Drzwi' }));
     expect(screen.getByText('Nie wpuszczaj obcych.')).toBeInTheDocument();
+    expect(ready.current).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -151,17 +162,19 @@ describe('SCENE_HOTSPOTS', () => {
 });
 
 describe('DIALOGUE', () => {
-  it('zadane pytanie znika z listy, trafia do rozmowy, notatka do notatnika; odpowiedź { asked }', async () => {
+  it('zadane pytanie znika z listy chipów, trafia do rozmowy, notatka do notatnika; odpowiedź { asked }', async () => {
     const user = userEvent.setup();
-    const onSubmit = renderBlock(dialogue);
+    const { onSubmit, ready } = renderBlock(dialogue);
     await user.click(screen.getByRole('button', { name: 'Co się stało?' }));
     expect(screen.getByText('Dostałam dziwny mail.')).toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).getByRole('button', { name: /Co się stało\?/ })).toHaveAttribute('aria-disabled', 'true');
+    // Zadane pytanie znika z listy chipów (zostaje tylko w wątku rozmowy powyżej).
+    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Co się stało\?/ })).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('Sprawdź nadawcę.');
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Kliknęłaś?' }));
-    await user.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1', 'q2'] });
   });
 
@@ -172,7 +185,7 @@ describe('DIALOGUE', () => {
     expect(screen.getByTestId('notes')).toHaveTextContent('');
   });
 
-  it('character.opening (schemaVersion 4) pokazuje pierwszą kwestię postaci, zanim padnie jakiekolwiek pytanie', () => {
+  it('character.opening (schemaVersion 4) pokazuje pierwszą kwestię postaci (z avatarem, gdy jest), zanim padnie jakiekolwiek pytanie', () => {
     renderBlock({ ...dialogue, character: { ...dialogue.character!, opening: 'Cześć, potrzebuję pomocy.' } });
     expect(screen.getByText('Cześć, potrzebuję pomocy.')).toBeInTheDocument();
   });
@@ -188,10 +201,10 @@ describe('DIALOGUE', () => {
 describe('TABS', () => {
   it('pierwsza zakładka liczy się jako otwarta; nawigacja strzałkami/Home/End; odpowiedź { opened }', async () => {
     const user = userEvent.setup();
-    const onSubmit = renderBlock(tabs);
+    const { onSubmit, ready } = renderBlock(tabs);
     expect(screen.getByRole('tab', { name: 'Hasła' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveTextContent('Długie hasła.');
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
 
     screen.getByRole('tab', { name: 'Hasła' }).focus();
     await user.keyboard('{ArrowRight}');
@@ -204,7 +217,8 @@ describe('TABS', () => {
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Hasła' })).toHaveFocus();
 
-    await user.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ opened: ['x', 'y', 'z'] });
   });
 
@@ -222,18 +236,20 @@ describe('TABS', () => {
 });
 
 describe('NOTEPAD i SUMMARY', () => {
-  it('NOTEPAD pokazuje notatki, ukończenie bez odpowiedzi', async () => {
-    const user = userEvent.setup();
-    const onSubmit = renderBlock({ type: 'NOTEPAD', id: 'n1', prompt: 'Zapisz wnioski' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
+  it('NOTEPAD pokazuje notatki, gotowy (onReady) od razu po zamontowaniu, bez odpowiedzi', () => {
+    const { onSubmit, ready } = renderBlock({ type: 'NOTEPAD', id: 'n1', prompt: 'Zapisz wnioski' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
     expect(screen.getByText('Zapisz wnioski')).toBeInTheDocument();
     expect(screen.getAllByText('Sprawdź nadawcę.').length).toBeGreaterThan(0);
-    await user.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith();
   });
 
+  // SUMMARY zostaje wyjątkiem: ma WŁASNY, jedyny przycisk ukończenia (Dalej w pasku powłoki jest dla niego ukryty w
+  // CoursePlayer), bez onReady - patrz ExploratoryBlock.tsx.
   it('SUMMARY pokazuje tekst i notatki; w podglądzie bez przycisku', async () => {
     const user = userEvent.setup();
-    const onSubmit = renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
+    const { onSubmit } = renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
     expect(screen.getByText('Dobra robota.')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Twoje notatki' })).getByText('Sprawdź nadawcę.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
@@ -253,18 +269,18 @@ describe('NOTEPAD i SUMMARY', () => {
 });
 
 describe('NARRATIVE (schemaVersion 4)', () => {
-  it('pokazuje tytuł i tekst, ukończenie bez odpowiedzi', async () => {
-    const user = userEvent.setup();
-    const onSubmit = renderBlock({ type: 'NARRATIVE', id: 'n1', title: 'Sprawa', text: 'To się wydarzyło...' });
+  it('pokazuje tytuł i tekst, gotowy (onReady) od razu po zamontowaniu, bez odpowiedzi', () => {
+    const { onSubmit, ready } = renderBlock({ type: 'NARRATIVE', id: 'n1', title: 'Sprawa', text: 'To się wydarzyło...' });
     expect(screen.getByText('Sprawa')).toBeInTheDocument();
     expect(screen.getByText('To się wydarzyło...')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith();
   });
 
-  it('w podglądzie nie ma przycisku ukończenia', () => {
-    renderBlock({ type: 'NARRATIVE', id: 'n1', text: 'To się wydarzyło...' }, { review: true });
-    expect(screen.queryByRole('button', { name: 'Kontynuuj' })).not.toBeInTheDocument();
+  it('w podglądzie nigdy nie zgłasza gotowości (nie da się ukończyć bloku ponownie)', () => {
+    const { ready } = renderBlock({ type: 'NARRATIVE', id: 'n1', text: 'To się wydarzyło...' }, { review: true });
+    expect(ready.current).toBeNull();
   });
 
   it('renderuje tekst przez wąski markdown (pogrubienie)', () => {

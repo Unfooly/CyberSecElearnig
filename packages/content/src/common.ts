@@ -55,6 +55,11 @@ export const cueSchema = z
 export const narrationSchema = z
   .object({
     text: text(4000),
+    // Tekst do PRZECZYTANIA przez lektora, gdy różni się od `text` wyświetlanego na ekranie (godziny, kwoty, domeny, hasła -
+    // np. "9:00" wyświetlane, ale "dziewiąta zero zero" ma przeczytać TTS). Bez spokenText skrypt TTS czyta `text` wprost.
+    // Wyłącznie wejście do nagrania: odtwarzacz go nie używa (napisy/cues zawsze z `text`), więc nie idzie do klienta
+    // (FIELD_CLASSIFICATION: secret - nie dlatego, że to klucz odpowiedzi, tylko dlatego, że klient go w ogóle nie potrzebuje).
+    spokenText: text(4000).optional(),
     audioUrl: audioPathSchema.optional(),
     durationMs: z.number().int().min(0).max(1_800_000).optional(),
     cues: z.array(cueSchema).min(1).max(200).optional(),

@@ -615,3 +615,102 @@ describe('--dry-run z lockfile', () => {
     expect(result.cached).toBe(generated.generated);
   });
 });
+
+describe('narration.spokenText (tekst do przeczytania różny od wyświetlanego)', () => {
+  async function withSpokenText(spokenText: string): Promise<{ id: string }> {
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const narration = module.blocks[0].narration;
+    narration.spokenText = spokenText;
+    await writeFile(modulePath, JSON.stringify(module));
+    return { id: module.blocks[0].id as string };
+  }
+
+  it('TTS i hash dostają spokenText, nie text; cues NIE trafiają do module.json (napisy zostają fallbackiem klienta z text)', async () => {
+    await withSpokenText('dziewiąta zero zero');
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ tts }));
+    expect(result.generated).toBe(tts.calls.length);
+    // Blok 0 (pierwszy zebrany, patrz collectNarrations) to pierwsze wywołanie TTS w nowym przebiegu.
+    expect(tts.calls[0].text).toBe('dziewiąta zero zero');
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const narration = module.blocks[0].narration;
+    expect(narration.audioUrl).toMatch(/\.mp3$/);
+    expect(typeof narration.durationMs).toBe('number');
+    expect(narration.cues).toBeUndefined();
+    expect(narration.text).toContain('Narracja'); // text wyświetlany bez zmian
+
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    const entryId = Object.keys(lock.entries).find((id) => id.startsWith(`${module.blocks[0].id}#narration`))!;
+    expect(lock.entries[entryId].hash).toBe(narration.audioUrl.split('/').pop().replace('.mp3', ''));
+  });
+
+  it('drugi przebieg (bez zmian): zero wywołań TTS, cues zostają nieobecne (dry-run i realny przebieg zgadzają się co do "już wygenerowane")', async () => {
+    await withSpokenText('dziewiąta zero zero');
+    const store = new MemoryStore();
+    await runPipeline(params({ store }));
+    const dryRun = await runPipeline(params({ store, tts: undefined, dryRun: true }));
+    expect(dryRun.cached).toBeGreaterThan(0);
+
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts }));
+    expect(result.generated).toBe(0);
+    expect(tts.calls).toEqual([]);
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    expect(module.blocks[0].narration.cues).toBeUndefined();
+  });
+
+  it('zmiana TYLKO text (wyświetlanego), bez zmiany spokenText: nagranie zostaje aktualne (--check OK, bez TTS)', async () => {
+    await withSpokenText('dziewiąta zero zero');
+    const store = new MemoryStore();
+    await runPipeline(params({ store }));
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    module.blocks[0].narration.text = 'Spotkanie o 9:00, nie spóźnij się.';
+    await writeFile(modulePath, JSON.stringify(module));
+
+    const offlineStore = new MemoryStore();
+    expect((await runPipeline(params({ tts: undefined, check: true, store: offlineStore }))).problems).toEqual([]);
+    expect(offlineStore.calls).toEqual({ head: 0, get: 0, put: 0 });
+
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts }));
+    expect(result.generated).toBe(0);
+    expect(tts.calls).toEqual([]);
+  });
+
+  it('blok, który WCZEŚNIEJ miał prawdziwe cues (wygenerowane bez spokenText), traci je po dopisaniu spokenText - realne skasowanie, nie tylko pominięcie ustawienia', async () => {
+    const store = new MemoryStore();
+    await runPipeline(params({ store })); // bez spokenText: cues z prawdziwego alignmentu (patrz test wyżej w pliku)
+    const before = JSON.parse(await readFile(modulePath, 'utf8'));
+    expect(Array.isArray(before.blocks[0].narration.cues)).toBe(true);
+    expect(before.blocks[0].narration.cues.length).toBeGreaterThan(0);
+
+    await withSpokenText('dziewiąta zero zero'); // zmienia ttsInputOf -> nowy hash -> pełna regeneracja, nie trafienie w cache
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts }));
+    expect(result.generated).toBeGreaterThan(0);
+
+    const after = JSON.parse(await readFile(modulePath, 'utf8'));
+    expect(after.blocks[0].narration.cues).toBeUndefined();
+  });
+
+  it('zmiana spokenText (text wyświetlany bez zmian): nagranie jest nieaktualne (--check wykrywa, drugi przebieg generuje od nowa)', async () => {
+    await withSpokenText('dziewiąta zero zero');
+    const store = new MemoryStore();
+    await runPipeline(params({ store }));
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    module.blocks[0].narration.spokenText = 'dziesiąta trzydzieści';
+    await writeFile(modulePath, JSON.stringify(module));
+
+    const checkResult = await runPipeline(params({ tts: undefined, check: true, store: new MemoryStore() }));
+    expect(checkResult.problems).toHaveLength(1);
+    expect(checkResult.problems[0]).toMatch(/nieaktualne/);
+
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts }));
+    expect(result.generated).toBe(1);
+    expect(tts.calls[0].text).toBe('dziesiąta trzydzieści');
+  });
+});

@@ -20,28 +20,32 @@ export default function ExploratoryBlock({
   block,
   contentBase,
   onSubmit,
+  onReady,
   disabled,
   review = false,
 }: {
   block: ContentBlock;
   contentBase: string;
   onSubmit: (answer?: unknown) => void;
+  /** Zgłasza gotowość do "Dalej" w pasku powłoki (SCENE_HOTSPOTS/DIALOGUE/TABS/NOTEPAD/NARRATIVE) - SUMMARY ma własny, jedyny przycisk. */
+  onReady: (submit: (() => void) | null) => void;
+  /** Tylko SUMMARY: reszta typów nie ma już własnego przycisku ukończenia (patrz ExploreFooter, onReady). */
   disabled: boolean;
   review?: boolean;
 }) {
   switch (block.type) {
     case 'SCENE_HOTSPOTS':
-      return <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} review={review} />;
+      return <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'DIALOGUE':
-      return <DialogueBlock block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} review={review} />;
+      return <DialogueBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'TABS':
-      return <TabsBlock block={block} onSubmit={onSubmit} disabled={disabled} review={review} />;
+      return <TabsBlock block={block} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'NOTEPAD':
-      return <NotepadBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
+      return <NotepadBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     case 'SUMMARY':
       return <SummaryBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
     case 'NARRATIVE':
-      return <NarrativeBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
+      return <NarrativeBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     default:
       return null;
   }

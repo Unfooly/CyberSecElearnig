@@ -4,6 +4,10 @@ import { BlockType } from './blocks';
 // sekretne ma wartość z markerem SEKRET (testy szukają go w odpowiedzi /start) albo jest liczbą/boolem (sprawdzane po ścieżkach).
 export const SECRET_MARKER = 'SEKRET';
 
+// Celowo BEZ spokenText: to jedyna fixtura, z której korzysta też scripts/content (packages/content/dist/fixtures.js,
+// przez fullModule()) - jej testy sidecar/cues zakładają, że każda narracja tego modułu NAPRAWDĘ generuje cues z TTS
+// (spokenText, gdy jest, celowo je pomija - patrz pipeline.ts). spokenText do testów klasyfikacji dokłada WYŁĄCZNIE
+// leakProbeBlocks() niżej (osobna funkcja, ten sam wzorzec co nadpisanie reactions.result).
 const audio = (name: string) => ({
   text: `Narracja ${name}. Drugie zdanie.`,
   audioUrl: `audio/${name}.mp3`,
@@ -229,7 +233,28 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     const reactions = block.reactions as { complete?: unknown; result?: unknown };
     reactions.result = [{ minScore: 0, when: 'incorrect', pose: 'thinking', text: `${SECRET_MARKER}-reaction-${type}` }];
   }
+  // spokenText (narration.spokenText, FIELD_CLASSIFICATION: secret) dokładany TYLKO tutaj, nie w audio() - inaczej
+  // fullModule() (używany też przez scripts/content) miałby WSZĘDZIE spokenText, a wtedy jego testy sidecar/cues
+  // (które zakładają realne, wielozdaniowe cues z TTS) przestałyby mieć czego testować (spokenText celowo pomija cues).
+  for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;
+}
+
+/** Dokłada narration.spokenText (marker SEKRET) do KAŻDEGO obiektu narracji (rozpoznawanego jak w scripts/content: ma
+ * `text` i `audioUrl`) w drzewie bloku - rekurencyjnie, więc obejmuje narration, hotspots[].narration,
+ * questions[].lines[].narration, questions[].answerNarration i hints[].narration bez wymieniania ich z osobna. */
+function injectSpokenText(node: unknown): void {
+  if (Array.isArray(node)) {
+    node.forEach(injectSpokenText);
+    return;
+  }
+  if (node && typeof node === 'object') {
+    const object = node as Record<string, unknown>;
+    if (typeof object.text === 'string' && 'audioUrl' in object && !('spokenText' in object)) {
+      object.spokenText = `${SECRET_MARKER}-spoken-${String(object.audioUrl).replace(/\W+/g, '-')}`;
+    }
+    Object.values(object).forEach(injectSpokenText);
+  }
 }
 
 /** Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. */

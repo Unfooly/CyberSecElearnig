@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 import { useCompleteReaction } from '../player/mascot-reaction';
 import { SimpleMarkdown } from '../simple-markdown';
@@ -11,12 +11,13 @@ import ExploreFooter from './ExploreFooter';
 export default function TabsBlock({
   block,
   onSubmit,
-  disabled,
+  onReady,
   review = false,
 }: {
   block: ContentBlock;
   onSubmit: (answer: { opened: string[] }) => void;
-  disabled: boolean;
+  /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane zakładki otwarte) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
+  onReady: (submit: (() => void) | null) => void;
   review?: boolean;
 }) {
   const tabs = block.tabs ?? [];
@@ -29,7 +30,15 @@ export default function TabsBlock({
   const required = block.requiredTabs ?? tabs.map((tab) => tab.id);
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
-  useCompleteReaction(block.reactions?.complete, doneCount >= required.length, review);
+  const ready = doneCount >= required.length;
+  useCompleteReaction(block.reactions?.complete, ready, review);
+
+  useEffect(() => {
+    if (review) return;
+    onReady(ready ? () => onSubmit({ opened }) : null);
+    // onReady/onSubmit celowo poza deps - patrz wyjaśnienie w SceneHotspotsBlock.tsx (remount przez `key` na zmianę bloku, nie "stabilność").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, review]);
 
   function select(id: string, focus = false) {
     setActiveId(id);
@@ -89,14 +98,7 @@ export default function TabsBlock({
           </div>
         </div>
       )}
-      <ExploreFooter
-        done={doneCount}
-        total={required.length}
-        noun="zakładek"
-        onSubmit={() => onSubmit({ opened })}
-        disabled={disabled}
-        review={review}
-      />
+      <ExploreFooter done={doneCount} total={required.length} noun="zakładek" review={review} />
     </div>
   );
 }

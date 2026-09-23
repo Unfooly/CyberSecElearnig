@@ -49,13 +49,15 @@ interface RenderContext {
   onProgress: (blockId: string, patch: Partial<ClientProgressBlock>) => void;
   /** Trwa podgląd wcześniejszego bloku: blok z kodem z zewnątrz (EMBEDDED_HTML) odmontowuje swój iframe zamiast go ukrywać. */
   suspended: boolean;
+  /** Tylko bloki eksploracyjne: zgłasza gotowość do "Dalej" w pasku powłoki zamiast własnego "Kontynuuj". */
+  onReady: (submit: (() => void) | null) => void;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
   const { onSubmit, disabled, contentBase } = ctx;
   if (isExploratory(block.type)) {
     // key: stan wewnętrzny (odwiedzone elementy) nie może przechodzić między kolejnymi blokami tego samego typu.
-    return <ExploratoryBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} />;
+    return <ExploratoryBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={ctx.onReady} disabled={disabled} />;
   }
   if (isScored(block.type)) {
     return (
@@ -174,6 +176,16 @@ export default function CoursePlayer({
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
   const [serverNotes, setServerNotes] = useState<ClientNote[]>([]);
+  // Gotowość bieżącego bloku eksploracyjnego do "Dalej" w pasku powłoki (wymagane elementy pokryte) - funkcja, którą
+  // "Dalej" wywoła zamiast osobnego "Kontynuuj" wewnątrz bloku (raport z pierwszego przejścia modułu 1). null = jeszcze
+  // nie gotowy (albo bieżący blok w ogóle nie zgłasza gotowości - np. QUIZ, SUMMARY). Zerowane WPROST w handleAnswer
+  // (nie osobnym useEffect na state.currentBlockIndex!): efekty dziecka (rejestracja gotowości NOWEGO bloku zaraz po
+  // zamontowaniu, np. NARRATIVE/NOTEPAD - gotowe od razu) i efekt rodzica idący po tym samym zdarzeniu biegną w tym
+  // samym commicie w kolejności dziecko-przed-rodzicem, więc reset w osobnym useEffect zawsze nadpisywałby świeżo
+  // zarejestrowaną gotowość NOWEGO bloku z powrotem na null (znaleziono na żywym przebiegu, nie w testach jsdom -
+  // te testowały blok i powłokę osobno, bez tego wyścigu).
+  const [readySubmit, setReadySubmit] = useState<(() => void) | null>(null);
+  const handleReady = (submit: (() => void) | null) => setReadySubmit(() => submit);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false);
@@ -249,7 +261,26 @@ export default function CoursePlayer({
       const progress = data as CourseProgressResponse;
       // Po zapisie wracamy do bieżącego bloku z serwera: ewentualny podgląd ("Wstecz") z czasu oczekiwania nie może przetrwać.
       setViewIndex(null);
-      setFeedback(progress.lastResult);
+      // WPROST tutaj, nie w osobnym useEffect na state.currentBlockIndex (patrz komentarz przy readySubmit wyżej) -
+      // gdy NOWY blok sam zgłosi gotowość w swoim efekcie montowania (onReady), zrobi to PO tym resecie w tym samym
+      // commitcie, więc jego wynik się ostaje; gdy nie zgłosi (QUIZ, SUMMARY), zostaje poprawnie null.
+      setReadySubmit(null);
+      // Bloki eksploracyjne i TEXT_INPUT_GUIDED pokazują swój wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle
+      // ruszy (mascot-reaction.tsx: useCompleteReaction; TextInputBlock: stan `done`) - osobny ekran "Blok ukończony."
+      // z jeszcze jednym "Dalej" byłby powtórzeniem tego, co user już widział (raport z pierwszego przejścia modułu
+      // 1). Dla nich ZOSTAJE feedback=null: state niżej sam przenosi na kolejny blok. SUMMARY WYŁĄCZONE mimo że
+      // isExploratory() je obejmuje: to zawsze ostatni blok kursu, jego własny przycisk ("Zakończ sprawę"/"Zakończ
+      // szkolenie") kończy kurs wprost - pośredni FeedbackPanel + "Zobacz podsumowanie" ma tu sens (inne niż w
+      // trakcie kursu podsumowanie samego wyniku), więc zachowanie sprzed tego PR zostaje bez zmian.
+      const skipsFeedbackScreen =
+        (isExploratory(progress.lastResult.type) && progress.lastResult.type !== 'SUMMARY') ||
+        progress.lastResult.type === 'TEXT_INPUT_GUIDED';
+      if (skipsFeedbackScreen) {
+        setFeedback(null);
+        setAutoPlayFor(hasAudio(progress.lastResult.blockIndex) ? keyOf(progress.currentBlockIndex) : null);
+      } else {
+        setFeedback(progress.lastResult);
+      }
       setResults((current) => {
         const blockId = progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex);
         return {
@@ -298,7 +329,12 @@ export default function CoursePlayer({
   }
 
   function goForward() {
-    if (viewIndex === null) return;
+    if (viewIndex === null) {
+      // Nie podglądamy historii: "Dalej" tu znaczy "zgłoś gotowość bieżącego bloku eksploracyjnego" (patrz onReady) -
+      // ten sam zapis, który wcześniej uruchamiał wewnętrzny przycisk "Kontynuuj" bloku.
+      readySubmit?.();
+      return;
+    }
     const next = viewIndex + 1;
     setAutoPlayFor(hasAudio(viewIndex) ? keyOf(next) : null);
     setViewIndex(next >= state.currentBlockIndex ? null : next);
@@ -349,6 +385,7 @@ export default function CoursePlayer({
               progress: results[keyOf(state.currentBlockIndex)],
               onProgress,
               suspended: reviewing,
+              onReady: handleReady,
             })}
           </div>
         )}
@@ -405,8 +442,16 @@ export default function CoursePlayer({
             onForward={goForward}
             canBack={displayedIndex > 0 && !showingFeedback && !submitting}
             // Na SUMMARY jedynym wyjściem jest "Zakończ sprawę" w bloku: "Dalej" z paska znika (jedno CTA zamiast dwóch).
-            hideForward={!showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY'}
-            canForward={reviewing && !showingFeedback}
+            // TEXT_INPUT_GUIDED po rozstrzygnięciu (done) pokazuje własny, aktywny "Dalej" pod wynikiem (onReady go nie
+            // dotyczy - patrz handleAnswer) - z tego samego powodu pasek chowa swój, zamiast trzymać drugi, nieaktywny
+            // obok niego.
+            hideForward={
+              !showingFeedback &&
+              !reviewing &&
+              (currentBlock?.type === 'SUMMARY' ||
+                (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true))
+            }
+            canForward={(reviewing || readySubmit !== null) && !showingFeedback && !submitting}
             forwardHint={
               showingFeedback
                 ? 'Użyj przycisku pod wynikiem.'

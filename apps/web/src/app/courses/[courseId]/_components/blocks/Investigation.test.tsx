@@ -72,24 +72,36 @@ function Probe() {
   );
 }
 
+// "Dalej" żyje w pasku powłoki (CoursePlayer), nie w bloku - blok zgłasza gotowość przez onReady (funkcja submit albo
+// null). `ready` to referencja na ostatnio zgłoszoną funkcję; testy "klikają Dalej" wywołując ready.current().
 function setup(
   block: ContentBlock,
   options: { review?: boolean; summary?: EvidenceSummary; titles?: Record<string, string>; onSubmit?: (a?: unknown) => void } = {},
 ) {
   const onSubmit = options.onSubmit ?? vi.fn();
+  const ready: { current: (() => void) | null } = { current: null };
   render(
     <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
       <EvidenceProvider summary={options.summary}>
         <MascotReactionProvider resetKey="k">
           <EvidenceCounter />
-          <ExploratoryBlock block={block} contentBase="/content" onSubmit={onSubmit} disabled={false} review={options.review} />
+          <ExploratoryBlock
+            block={block}
+            contentBase="/content"
+            onSubmit={onSubmit}
+            onReady={(submit) => {
+              ready.current = submit;
+            }}
+            disabled={false}
+            review={options.review}
+          />
           <Probe />
           <NotesPanel id="panel" />
         </MascotReactionProvider>
       </EvidenceProvider>
     </NotesProvider>,
   );
-  return onSubmit;
+  return { onSubmit, ready };
 }
 
 const list = () => screen.getByRole('list', { name: 'Elementy sceny' });
@@ -118,7 +130,7 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
   });
 
   it('kliknięty punkt otwiera kartę; "Dodaj do notatnika" tylko przy dowodzie, wpis z ikoną rodzaju, licznik i maskotka reagują', () => {
-    const onSubmit = setup(scene, { summary });
+    const { onSubmit, ready } = setup(scene, { summary });
     pick('Monitor');
     const card = screen.getByTestId('hotspot-card');
     expect(card).toHaveTextContent('Kartka z hasłem.');
@@ -135,7 +147,7 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(within(panel).getByRole('region', { name: 'Biuro' })).toHaveTextContent('Przedmiot: Hasło na kartce.');
 
     pick('Drzwi'); // wymagany tylko Monitor
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1', 'h2'], noted: ['h1'] });
   });
 
@@ -146,12 +158,12 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
   });
 
   it('ukończenie po wymaganych (required), nie po wszystkich: opcjonalne punkty ("smaczki") nie blokują', () => {
-    const onSubmit = setup(scene, { summary });
+    const { onSubmit, ready } = setup(scene, { summary });
     expect(screen.getByText('Obejrzano 0 z 1 elementów.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
     pick('Monitor');
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1'], noted: [] });
   });
 
@@ -165,14 +177,14 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
 });
 
 describe('DIALOGUE: kwestie po jednej', () => {
-  it('odpowiedź pojawia się kwestia po kwestii (klik "Dalej"); pytanie liczy się po ostatniej, wtedy notatka i dowód', () => {
-    const onSubmit = setup(dialogue);
+  it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
+    const { onSubmit, ready } = setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
 
     expect(screen.getByText('Przyszedł rano.')).toBeInTheDocument();
     expect(screen.queryByText('Wyglądał jak od banku.')).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
     expect(screen.getByText('Zadano 0 z 1 pytań.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
@@ -185,11 +197,12 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(screen.queryByRole('button', { name: 'Następna kwestia' })).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail przyszedł rano.');
     expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
-    // Zadane pytanie ma znacznik ✓ jak odkryte hotspoty; licznik "Zadano".
-    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).getByRole('button', { name: /Skąd ten mail/ })).toHaveTextContent('✓');
+    // Zadane pytanie znika z listy chipów (zostaje tylko w wątku rozmowy powyżej); nieaskane q2 zostaje na liście.
+    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Skąd ten mail/ })).not.toBeInTheDocument();
     expect(screen.getByText('Wszystkie wymagane pytania zadane.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }));
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
   });
 
@@ -211,10 +224,10 @@ describe('DIALOGUE: kwestie po jednej', () => {
   });
 
   it('porzucona rozmowa nie liczy się: bez ostatniej kwestii pytanie nie jest w odpowiedzi', () => {
-    const onSubmit = setup(dialogue); // q1 (3 kwestie) jest wymagane
+    const { onSubmit, ready } = setup(dialogue); // q1 (3 kwestie) jest wymagane
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
     fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // 2 z 3 kwestii i koniec
-    expect(screen.getByRole('button', { name: 'Kontynuuj' })).toBeDisabled();
+    expect(ready.current).toBeNull();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -227,11 +240,21 @@ describe('DIALOGUE: kwestie po jednej', () => {
         { id: 'q2', text: 'Drugie?', lines: [{ text: 'Raz.' }, { text: 'Dwa.' }], required: false },
       ],
     };
-    const onSubmit = setup(block);
+    const { onSubmit, ready } = setup(block);
     fireEvent.click(screen.getByRole('button', { name: 'Pierwsze?' }));
     fireEvent.click(screen.getByRole('button', { name: 'Drugie?' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' })); // wymagane q1 zrobione, q2 w połowie
+    ready.current!(); // wymagane q1 zrobione, q2 w połowie
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
+  });
+
+  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus wraca na wątek rozmowy, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu chipa', async () => {
+    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByRole('list', { name: 'Rozmowa' })).toHaveFocus();
   });
 
   it('avatar tylko przez <img> z bazy zasobów; niepoprawna ścieżka = brak obrazu', () => {
@@ -239,7 +262,7 @@ describe('DIALOGUE: kwestie po jednej', () => {
       <NotesProvider initial={[]}>
         <EvidenceProvider summary={undefined}>
           <MascotReactionProvider resetKey="k">
-            <ExploratoryBlock block={dialogue} contentBase="/content" onSubmit={() => {}} disabled={false} />
+            <ExploratoryBlock block={dialogue} contentBase="/content" onSubmit={() => {}} onReady={() => {}} disabled={false} />
           </MascotReactionProvider>
         </EvidenceProvider>
       </NotesProvider>,
@@ -257,6 +280,7 @@ describe('DIALOGUE: kwestie po jednej', () => {
               block={{ ...dialogue, character: { name: 'Anna', avatar: 'https://evil.example/a.png' } }}
               contentBase="/content"
               onSubmit={() => {}}
+              onReady={() => {}}
               disabled={false}
             />
           </MascotReactionProvider>
@@ -279,7 +303,7 @@ describe('SUMMARY: rozwiązanie sprawy', () => {
   };
 
   it('zebrane vs wszystkie, przeoczone tylko liczbowo per scena (bez treści), przycisk "Zakończ sprawę"', () => {
-    const onSubmit = setup({ type: 'SUMMARY', id: 's', text: 'Wnioski: zawsze sprawdzaj nadawcę.' }, { summary, titles: { scena: 'Biuro', rozmowa: 'Rozmowa z Anną', mail: 'Analiza maila' } });
+    const { onSubmit } = setup({ type: 'SUMMARY', id: 's', text: 'Wnioski: zawsze sprawdzaj nadawcę.' }, { summary, titles: { scena: 'Biuro', rozmowa: 'Rozmowa z Anną', mail: 'Analiza maila' } });
     const evidence = screen.getByTestId('case-evidence');
     expect(evidence).toHaveTextContent('Zebrane dowody: 3 z 6');
     expect(evidence).toHaveTextContent('Biuro: 1 z 3 (2 dowody w tej scenie pozostały nieodkryte)');

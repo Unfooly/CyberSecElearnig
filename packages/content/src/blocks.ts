@@ -374,6 +374,10 @@ const BASE_SECRET = [
   'reactions.result[].text',
   'reactions.result[].when',
   'reactions.result[].minScore',
+  // narration.spokenText: wyłącznie wejście skryptu TTS (common.ts, narrationSchema) - odtwarzacz go nie czyta (napisy zawsze
+  // z narration.text), więc nie ma powodu wysyłać go do klienta. SEKRET tu znaczy tylko "niepotrzebne klientowi", nie "klucz
+  // odpowiedzi" - tak samo jak EMBEDDED_HTML.html niżej.
+  'narration.spokenText',
 ];
 
 export interface FieldClassification {
@@ -417,7 +421,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].required',
       'requiredHotspots[]',
     ],
-    [],
+    ['hotspots[].narration.spokenText'],
   ),
   DIALOGUE: classify(
     [
@@ -446,7 +450,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'questions[].note.text',
       'requiredQuestions[]',
     ],
-    [],
+    ['questions[].lines[].narration.spokenText', 'questions[].answerNarration.spokenText'],
   ),
   NOTEPAD: classify(['prompt'], []),
   NARRATIVE: classify(['text'], []),
@@ -487,6 +491,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hints[].narration.durationMs',
       'hints[].narration.cues[].text',
       'hints[].narration.cues[].startMs',
+      'hints[].narration.spokenText',
       'scoring.attemptPenalty',
       'scoring.floor',
       'solution.text',

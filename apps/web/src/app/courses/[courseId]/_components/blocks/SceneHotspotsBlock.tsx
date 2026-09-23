@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
@@ -19,13 +19,14 @@ export default function SceneHotspotsBlock({
   block,
   contentBase,
   onSubmit,
-  disabled,
+  onReady,
   review = false,
 }: {
   block: ContentBlock;
   contentBase: string;
   onSubmit: (answer: { visited: string[]; noted: string[] }) => void;
-  disabled: boolean;
+  /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane elementy pokryte) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
+  onReady: (submit: (() => void) | null) => void;
   review?: boolean;
 }) {
   const hotspots = block.hotspots ?? [];
@@ -42,7 +43,17 @@ export default function SceneHotspotsBlock({
 
   const required = requiredItemIds(hotspots, block.requiredHotspots);
   const doneCount = required.filter((id) => visited.includes(id)).length;
-  useCompleteReaction(block.reactions?.complete, doneCount >= required.length, review);
+  const ready = doneCount >= required.length;
+  useCompleteReaction(block.reactions?.complete, ready, review);
+
+  useEffect(() => {
+    if (review) return;
+    onReady(ready ? () => onSubmit({ visited, noted }) : null);
+    // onReady/onSubmit CELOWO poza deps: nie są opakowane w useCallback (nową tożsamość dostają przy każdym renderze CoursePlayer), ale
+    // blok dostaje nowy `key` (blockId) dokładnie wtedy, gdy zmienia się bieżący blok - React go wtedy odmontowuje, więc "stara" domknięta
+    // funkcja nigdy nie przeżywa realnej zmiany bloku. Jedyne prawdziwe zależności to to, co faktycznie zmienia gotowość albo ładunek odpowiedzi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visited, noted, review]);
 
   function open(id: string) {
     setInteracted(true);
@@ -154,14 +165,7 @@ export default function SceneHotspotsBlock({
         )}
       </div>
 
-      <ExploreFooter
-        done={doneCount}
-        total={required.length}
-        noun="elementów"
-        onSubmit={() => onSubmit({ visited, noted })}
-        disabled={disabled}
-        review={review}
-      />
+      <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} />
     </div>
   );
 }

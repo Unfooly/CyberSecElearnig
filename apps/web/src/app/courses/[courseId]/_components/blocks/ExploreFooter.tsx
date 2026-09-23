@@ -1,13 +1,13 @@
-// Wspólna stopka bloków eksploracyjnych (hotspoty, dialog, zakładki): licznik wymaganych elementów i przycisk ukończenia bloku.
-// W podglądzie ("Wstecz") przycisku nie ma: blok jest już ukończony, a ponowne przejście nie ma skutku na serwerze.
+// Wspólny licznik postępu bloków eksploracyjnych (hotspoty, dialog, zakładki): tylko tekst, żaden przycisk. Ukończenie (wymagane
+// elementy pokryte) aktywuje "Dalej" w PASKU NAWIGACJI powłoki (CoursePlayer: onReady/canForward) - nie ma tu osobnego "Kontynuuj",
+// żeby przejście do kolejnego bloku nie wymagało dwóch kliknięć (raport z pierwszego przejścia modułu 1). W podglądzie ("Wstecz")
+// nawet licznika nie pokazujemy: blok jest już ukończony, ponowne przejście nie ma skutku na serwerze.
 export default function ExploreFooter({
   done,
   total,
   noun,
   verb = 'Obejrzano',
   readyText = 'Wszystko obejrzane.',
-  onSubmit,
-  disabled,
   review,
 }: {
   done: number;
@@ -18,8 +18,6 @@ export default function ExploreFooter({
   verb?: string;
   /** Tekst po spełnieniu wymagań (dialog: "Wszystkie wymagane pytania zadane."). */
   readyText?: string;
-  onSubmit: () => void;
-  disabled: boolean;
   review: boolean;
 }) {
   if (review) {
@@ -27,18 +25,8 @@ export default function ExploreFooter({
   }
   const ready = done >= total;
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={!ready || disabled}
-        className="min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        Kontynuuj
-      </button>
-      <p className="text-sm text-slate-600" aria-live="polite">
-        {ready ? readyText : `${verb} ${done} z ${total} ${noun}.`}
-      </p>
-    </div>
+    <p className="mt-4 text-sm text-slate-600" aria-live="polite">
+      {ready ? readyText : `${verb} ${done} z ${total} ${noun}.`}
+    </p>
   );
 }

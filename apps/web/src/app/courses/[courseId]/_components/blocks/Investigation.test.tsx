@@ -176,6 +176,120 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
   });
 });
 
+const mediaScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'scena-media',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    {
+      id: 'obraz',
+      label: 'Zdjęcie',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Zbliżenie na kartkę.',
+      media: { kind: 'image', src: 'img/kartka-zoom.png', alt: 'Zbliżenie karteczki z hasłem' },
+      evidence: true,
+      note: { text: 'Hasło widoczne na zbliżeniu.', kind: 'item' },
+    },
+    {
+      id: 'audio',
+      label: 'Telefon',
+      x: 40,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Prawdziwy bank nigdy nie prosi o kod SMS przez telefon.',
+      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.' },
+      evidence: true,
+      note: { text: 'Telefon z podejrzaną prośbą o kod SMS.', kind: 'item' },
+    },
+    {
+      id: 'dokument',
+      label: 'Drukarka',
+      x: 70,
+      y: 10,
+      width: 20,
+      height: 20,
+      content: 'Wydruk przelewu.',
+      media: { kind: 'document', title: 'Potwierdzenie przelewu', lines: ['Kwota: 14 000,00 PLN', 'Odbiorca: Wektor Rozliczenia'] },
+    },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
+  it('image: karta pokazuje podgląd; klik otwiera pełnoekranową nakładkę (Escape zamyka, fokus wraca na przycisk)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    const preview = screen.getByRole('button', { name: /Powiększ/ });
+    fireEvent.click(preview);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByAltText('Zbliżenie karteczki z hasłem')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(preview);
+  });
+
+  it('document: karta ma przycisk "Zobacz dokument"; nakładka pokazuje tytuł i linie, przycisk zamknięcia oddaje fokus', () => {
+    setup(mediaScene);
+    pick('Drukarka');
+    const trigger = screen.getByRole('button', { name: /Zobacz dokument/ });
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Potwierdzenie przelewu')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Kwota: 14 000,00 PLN/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zamknij podgląd' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('audio: <audio> bez autoplay, transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
+    setup(mediaScene);
+    pick('Telefon');
+
+    expect(screen.queryByText(/Prawdziwy bank nigdy nie prosi/)).not.toBeInTheDocument();
+
+    const audioEl = document.querySelector('audio')!;
+    expect(audioEl).toBeInTheDocument();
+    expect(audioEl).not.toHaveAttribute('autoplay');
+    expect(audioEl).toHaveAttribute('controls');
+
+    const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Ukryj transkrypcję' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
+
+    fireEvent(audioEl, new Event('ended'));
+    expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
+  });
+
+  it('audio: dowód zaliczony PRZY OTWARCIU karty, nie po odsłuchaniu (bez przycisku "Dodaj do notatnika")', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    expect(screen.getByTestId('notes')).toHaveTextContent('item:Telefon z podejrzaną prośbą o kod SMS.');
+    expect(screen.queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+    expect(screen.getByText('Dodano do notatnika')).toBeInTheDocument();
+    // Bez odsłuchania (żaden `ended` nie poleciał) - dowód mimo to już zaliczony.
+    expect(document.querySelector('audio')).toBeInTheDocument();
+  });
+
+  it('image: dowód też zaliczony przy otwarciu, tak samo jak audio (spójne dla wszystkich mediów)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło widoczne na zbliżeniu.');
+    expect(screen.queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+  });
+});
+
 describe('DIALOGUE: kwestie po jednej', () => {
   it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
     const { onSubmit, ready } = setup(dialogue);

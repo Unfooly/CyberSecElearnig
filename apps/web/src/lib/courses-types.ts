@@ -136,7 +136,39 @@ export interface EmailCriterion {
   target?: { kind: 'sender' | 'subject' | 'link' | 'attachment' | 'text'; linkId?: string; quote?: string };
 }
 
-export interface SceneHotspot {
+// Media karty hotspotu OBOK zwykłego tekstu (B-086/D-071): image/document w pełnoekranowym podglądzie, audio z WŁASNYM
+// odtwarzaczem (plik z --assets, nie z silnika TTS/narracji), scene to zagnieżdżona mini-scena (zawsze 1 poziom -
+// InnerSceneHotspot nie ma już własnego media.kind: "scene"). Jeden płaski interfejs z opcjonalnymi polami wariantów,
+// tak jak EmailCriterion.target niżej - to samo API zwraca (toClientBlock), więc kształt jest identyczny.
+export interface HotspotMedia {
+  kind: 'image' | 'audio' | 'document' | 'scene';
+  src?: string;
+  alt?: string;
+  audioUrl?: string;
+  transcript?: string;
+  title?: string;
+  lines?: string[];
+  scene?: NestedScene;
+}
+
+export interface NestedScene {
+  image: string;
+  imageAlt: string;
+  hotspots: InnerSceneHotspot[];
+}
+
+/** Media WEWNĄTRZ zagnieżdżonej sceny: jak HotspotMedia, ale bez wariantu "scene" (limit 1 poziomu). */
+export interface InnerHotspotMedia {
+  kind: 'image' | 'audio' | 'document';
+  src?: string;
+  alt?: string;
+  audioUrl?: string;
+  transcript?: string;
+  title?: string;
+  lines?: string[];
+}
+
+export interface InnerSceneHotspot {
   id: string;
   label: string;
   x: number;
@@ -144,6 +176,25 @@ export interface SceneHotspot {
   width: number;
   height: number;
   content: string;
+  media?: InnerHotspotMedia;
+  narration?: Narration;
+  evidence?: boolean;
+  note?: { text: string; kind?: NoteKind };
+  required?: boolean;
+}
+
+export interface SceneHotspot {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  // 'card' (domyślnie): klik otwiera kartę (content/media). 'next': "drzwi" - klik kończy CAŁY blok jak przycisk
+  // "Dalej" w pasku powłoki; taki hotspot nie ma ani content, ani media, ani evidence/note (serwer to wymusza).
+  action?: 'card' | 'next';
+  content?: string;
+  media?: HotspotMedia;
   narration?: Narration;
   // schemaVersion 3: dowód (wpis w notatniku po "Dodaj do notatnika") i wymagalność.
   evidence?: boolean;

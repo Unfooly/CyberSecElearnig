@@ -299,6 +299,45 @@ const mediaScene: ContentBlock = {
   ],
 };
 
+// Bug na produkcji: hotspot "karteczka" (mały, PIERWSZY w tablicy) jest geometrycznie zagnieżdżony w hotspocie
+// "monitor" (duży, DRUGI w tablicy, jak w prawdziwej treści modułu 1) - bez jawnego z-index klik w część wspólną
+// trafiał w "monitor" (renderowany później w DOM = na wierzchu), nie w "karteczkę".
+const overlappingScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'zagniezdzone-geometrycznie',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    { id: 'karteczka', label: 'Mała karteczka', x: 20, y: 20, width: 8, height: 8, content: 'Mała, w środku dużego.' },
+    { id: 'monitor', label: 'Duży monitor', x: 10, y: 10, width: 30, height: 30, content: 'Duży, obejmuje karteczkę.' },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotów', () => {
+  it('mniejszy hotspot dostaje WYŻSZY z-index niż większy, mimo że jest PRZED nim w DOM (kolejność DOM/Tab zostaje jak w treści)', () => {
+    setup(overlappingScene);
+    const karteczka = screen.getByTestId('hotspot-overlay-karteczka');
+    const monitor = screen.getByTestId('hotspot-overlay-monitor');
+
+    expect(Number(karteczka.style.zIndex)).toBeGreaterThan(Number(monitor.style.zIndex));
+
+    const buttons = [...document.querySelectorAll('[data-testid^="hotspot-overlay-"]')];
+    expect(buttons.indexOf(karteczka)).toBeLessThan(buttons.indexOf(monitor)); // Tab: nadal w kolejności treści
+  });
+
+  // Sanity check identyfikacji (jsdom nie ma prawdziwego layoutu/hit-testingu po współrzędnych, więc to NIE jest
+  // dowód poprawnego stackowania - ten jest w teście wyżej, przez wartości z-index; prawdziwy klik po współrzędnych
+  // w miejsce wspólne obu prostokątów wymaga przeglądarki, np. scripts/e2e-module-01.mjs, którego domyślny
+  // Playwright .click() odrzuciłby klik na "karteczkę" zasłonięte przez "monitor" - stąd ten bug w ogóle dotarł na
+  // produkcję: skrypt e2e nie dało się dotąd uruchomić lokalnie, B-085).
+  it('klik we WŁASNY przycisk "karteczki" otwiera jej kartę (identyfikacja per-hotspot nie miesza się z "monitor")', () => {
+    setup(overlappingScene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-karteczka'));
+    expect(within(dialog()).getByRole('heading', { name: 'Mała karteczka' })).toBeInTheDocument();
+  });
+});
+
 describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
   // Własny odtwarzacz audio (feat/scene-overlay-fix) próbuje .play() przy otwarciu karty (autoodtwarzanie po geście
   // kliknięcia) - jsdom nie implementuje HTMLMediaElement.play() (zwraca undefined, nie odrzucony Promise), więc bez

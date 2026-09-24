@@ -15,6 +15,17 @@ type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
 
+// Hotspoty bywają geometrycznie zagnieżdżone (np. "karteczka" przyklejona do ramki "monitora" - mniejszy prostokąt
+// częściowo/całkowicie wewnątrz większego). Bez jawnego z-index stackowanie idzie po kolejności DOM (= kolejności w
+// treści modułu), nie po rozmiarze - większy hotspot renderowany PO mniejszym przykrywał mu klik w części wspólnej
+// (produkcja: klik w "karteczkę" otwierał "monitor", bo monitor jest dalej w tablicy hotspots). z-index odwrotnie
+// proporcjonalny do powierzchni (mniejszy = wyższy) naprawia to NIEZALEŻNIE od kolejności w treści - kolejność DOM
+// (więc i Tab) zostaje dokładnie taka, jaką zdefiniował autor treści.
+function hotspotStackZIndex<T extends { id: string; width: number; height: number }>(all: T[]): Map<string, number> {
+  const byAreaDesc = [...all].sort((a, b) => b.width * b.height - a.width * a.height);
+  return new Map(byAreaDesc.map((hotspot, index) => [hotspot.id, index + 1]));
+}
+
 // Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu - JEDYNA
 // interakcja (feedback z produkcji po PR #32: usunięta lista przycisków-chipów pod obrazem). Każdy hotspot jest
 // niewidocznym <button> nałożonym na obraz, w pełni dostępny: aria-label z tytułu (+ stan "obejrzane"/"drzwi
@@ -54,6 +65,7 @@ export default function SceneHotspotsBlock({
   review?: boolean;
 }) {
   const hotspots = block.hotspots ?? [];
+  const hotspotZIndex = hotspotStackZIndex(hotspots);
   const flat = flattenHotspots(hotspots);
   const { addNote } = useNotes();
   const evidence = useEvidence();
@@ -226,7 +238,7 @@ export default function SceneHotspotsBlock({
                 title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}
                 tabIndex={activeId ? -1 : undefined}
                 onClick={(event) => handleHotspotClick(hotspot, event.currentTarget)}
-                style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
+                style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: hotspotZIndex.get(hotspot.id) }}
                 className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors ${FOCUS_RING} ${
                   isDoor
                     ? ready
@@ -410,6 +422,7 @@ function NestedSceneImage({
 }) {
   const url = contentAssetUrl(contentBase, scene.image, 'image');
   if (!url) return null;
+  const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
     <div className="relative mt-3 overflow-hidden rounded border border-slate-200">
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
@@ -424,7 +437,7 @@ function NestedSceneImage({
             aria-hidden={overlayOpen ? true : undefined}
             tabIndex={overlayOpen ? -1 : undefined}
             onClick={() => onPick(hotspot.id)}
-            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
+            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: zIndex.get(hotspot.id) }}
             className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${
               seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
             }`}

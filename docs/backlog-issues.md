@@ -598,6 +598,22 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   weryfikacja, czy w ogóle trzeba je dotykać, czy tylko potwierdzić że zostają `null`) tego konkretnego `courseId`;
   przypisania z `currentBlockIndex > 0` i `status = COMPLETED` niezmienione; test w `apps/api` (happy path + granica
   `currentBlockIndex = 0` vs `1` + test izolacji A/B, jeśli `UPDATE` dotyka więcej niż jednej organizacji na raz).
+
+### B-095 `CoursePlayer.exploratory.test.tsx` - test "mail: odpowiedź { selected }..." raz nie przeszedł w CI (na tym samym commicie zielony lokalnie i po ponownym uruchomieniu CI)
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: CI PR #35 (`docs/backlog-course-version-repin` - PR WYŁĄCZNIE
+  dokumentacyjny, `docs/backlog-issues.md`, zero zmian w kodzie - test nie ma nic wspólnego z treścią PR-a)
+- Opis: `lint + testy` (job `apps/web`) padł na teście `CoursePlayer.exploratory.test.tsx > ... > mail: odpowiedź
+  { selected }, wynik w bloku, notatki z serwera od razu w notatniku, a po "Wstecz" wybór gracza i rozstrzygnięcie`
+  (1 z 1282 testów). Lokalnie (ten sam commit, w izolacji i w całym pliku) przechodzi za każdym razem; ponowne
+  uruchomienie TEGO SAMEGO joba CI (`gh run rerun --failed`) też przeszło bez zmian w kodzie - jednorazowy flake,
+  nie deterministyczna regresja. Podejrzany fragment (niepotwierdzony, tylko obserwacja z lektury testu): test robi
+  dwa `fireEvent.click` pod rząd bez `await`/`waitFor` między nimi (klik "Dalej" -> od razu klik "Wstecz" -> odczyt
+  `review-block`, linie ~448-451) - jeśli przejście bloku ma cokolwiek asynchronicznego w drodze (efekt, mikrotaska),
+  różnica w harmonogramowaniu między lokalną maszyną a runnerem CI (mniej rdzeni - CLAUDE.md reguła 8) mogłaby to
+  ujawnić sporadycznie. Nie zweryfikowane debugerem/wielokrotnym powtórzeniem w CI - może się już nie powtórzyć.
+- Akceptacja: jeśli to się powtórzy - dodać `await waitFor(...)` (albo `act()`) między klikiem "Dalej" a "Wstecz" w
+  tym teście i sprawdzić, czy problem znika; jeśli NIE powtórzy się w rozsądnym oknie (np. kilka kolejnych PR-ów), ten
+  wpis można zamknąć jako jednorazowy szum infrastruktury CI.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

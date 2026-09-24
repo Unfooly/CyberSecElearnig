@@ -1,0 +1,25 @@
+{
+  "width": 800,
+  "height": 600,
+  "background": {
+    "flat": true,
+    "wall": "#EEF0FA"
+  },
+  "items": [
+    {
+      "id": "telefon",
+      "prop": "phone",
+      "x": 40,
+      "y": 120,
+      "scale": 4,
+      "params": {
+        "led": true,
+        "display": [
+          "1 nieodebrane",
+          "nr zastrzeżony"
+        ],
+        "body": "#2B2440"
+      }
+    }
+  ]
+}

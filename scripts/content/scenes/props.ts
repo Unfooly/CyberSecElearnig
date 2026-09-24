@@ -181,14 +181,14 @@ export const stickyNote: PropFn<{ lines?: string[]; color?: string }> = ({ lines
   };
 };
 
-export const phone: PropFn<{ led?: boolean; display?: string[]; note?: string }> = ({ led = false, display = [], note }) => {
+export const phone: PropFn<{ led?: boolean; display?: string[]; note?: string; body?: string }> = ({ led = false, display = [], note, body = P.ink }) => {
   const w = 180, h = note ? 112 : 90;
   let keys = '';
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) keys += `<rect x="${96 + c * 24}" y="${32 + r * 15}" width="18" height="10" rx="2" fill="${P.greyDark}"/>`;
   return {
     w, h,
     svg:
-      `<rect y="18" width="180" height="70" rx="12" fill="${P.ink}"/><rect width="180" height="22" rx="11" fill="${P.greyDark}"/>` +
+      `<rect y="18" width="180" height="70" rx="12" fill="${esc(body)}"/><rect width="180" height="22" rx="11" fill="${P.greyDark}"/>` +
       `<rect x="12" y="30" width="70" height="46" rx="6" fill="${P.sky}"/>` +
       display.slice(0, 2).map((l, i) => text(47, 49 + i * 15, l, 9, { anchor: 'middle', bold: i === 1 })).join('') + keys +
       (led ? `<circle cx="166" cy="30" r="7" fill="${P.red}"><animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/></circle>` : '') +
@@ -210,9 +210,14 @@ export const printer: PropFn<{ paper?: boolean; paperText?: string; ready?: bool
   };
 };
 
-export const mug: PropFn<{ label?: string[]; color?: string }> = ({ label = [], color = P.teal }) => ({
+export const mug: PropFn<{ label?: string[]; color?: string; steam?: boolean }> = ({ label = [], color = P.teal, steam = false }) => ({
   w: 80, h: 62,
   svg:
+    (steam
+      ? `<path d="M18 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>` +
+        `<path d="M33 -10 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>` +
+        `<path d="M48 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>`
+      : '') +
     `<rect x="52" y="15" width="26" height="30" rx="10" fill="none" stroke="${esc(color)}" stroke-width="7"/><rect width="66" height="60" rx="8" fill="${esc(color)}"/>` +
     `<ellipse cx="33" cy="0" rx="33" ry="8" fill="${P.ink}" opacity="0.25"/>` +
     label.slice(0, 2).map((l, i) => text(33, 35 + i * 11, l, 8, { fill: P.white, bold: true, anchor: 'middle' })).join(''),

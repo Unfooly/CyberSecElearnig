@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
-import { Check, DoorOpen } from 'lucide-react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Check, DoorOpen, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -21,8 +21,13 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 // zablokowane"), widoczny focus-ring (FOCUS_RING) - klawiatura i czytnik ekranu działają WYŁĄCZNIE przez te punkty,
 // bez osobnej listy. Licznik "Obejrzano X z Y" (ExploreFooter) jest nad obrazem, mały.
 //
-// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE (nie pod obrazem): position absolute w obrębie
-// kontenera obrazu na desktopie (tło półprzezroczyste ciemni obraz pod spodem), pełny ekran na mobile. Zagnieżdżona
+// Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE, NA obrazie (nie zamiast niego): position absolute;
+// inset:0 ZAWSZE w obrębie kontenera obrazu (nigdy fixed względem viewportu - inaczej na mobile nakładka zasłoniłaby
+// też licznik "Obejrzano X z Y" NAD obrazem, poza kontenerem sceny), tło rgba(43,36,64,.55) (kolor `ink` z palety
+// scen) lekko przyciemnia obraz WIDOCZNY dookoła karty, wyśrodkowana, przewijana w środku, gdy treść nie mieści się
+// w karcie (feedback z produkcji po PR #32: wcześniej karta na h-full/w-full całkowicie zasłaniała obraz). Karta to
+// max 80% szerokości/wysokości sceny na desktopie, pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie
+// viewport) na mobile (<640px). Zagnieżdżona
 // scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
 // wzorzec, rekurencyjnie): stos maks. 2 poziomy (zewnętrzny hotspot -> zagnieżdżona scena -> jej hotspot), bo
 // zagnieżdżanie ma zawsze dokładnie 1 poziom (innerHotspotSchema nie ma już własnego media.kind:'scene'). "Wróć"
@@ -97,8 +102,13 @@ export default function SceneHotspotsBlock({
   }, [visited, noted, review, hasDoor]);
 
   // Zmiana poziomu nakładki (otwarcie, zejście głębiej, "Wróć"): transkrypcja się zwija, fokus ląduje na nagłówku
-  // karty (kontekst dla czytnika ekranu przy zmianie treści w tej samej nakładce).
-  useEffect(() => {
+  // karty (kontekst dla czytnika ekranu przy zmianie treści w tej samej nakładce). useLayoutEffect (nie useEffect,
+  // code review po commicie 367743b): przycisk, który otworzył nakładkę, dostaje w TYM SAMYM renderze aria-hidden -
+  // gdyby przeglądarka zdążyła go najpierw namalować ze skupieniem (natywne "klik = fokus") i DOPIERO PÓŹNIEJ (po
+  // pierwszym malowaniu, useEffect) przenieść fokus na nagłówek, powstałaby klatka z aria-hidden="true" na
+  // skupionym elemencie (złamanie reguły WAI-ARIA/axe-core "aria-hidden-focus"). useLayoutEffect przenosi fokus
+  // synchronicznie, przed malowaniem.
+  useLayoutEffect(() => {
     setTranscriptOpen(false);
     if (current) headingRef.current?.focus();
   }, [activeId, nestedActiveId, current]);
@@ -186,6 +196,7 @@ export default function SceneHotspotsBlock({
             src={imageUrl}
             alt={block.imageAlt ?? ''}
             referrerPolicy="no-referrer"
+            aria-hidden={activeId ? true : undefined}
             className="block w-full"
             onError={() => setImageFailed(true)}
           />
@@ -207,8 +218,11 @@ export default function SceneHotspotsBlock({
                 aria-label={label}
                 // Nieaktywne drzwi zostają SKUPIALNE (aria-disabled, nie natywne disabled) - czytnik ekranu ma usłyszeć
                 // DLACZEGO, zamiast po prostu pominąć przycisk. Gdy nakładka jest otwarta, punkty pod nią wychodzą z
-                // kolejności Tab (są wizualnie przykryte, bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx).
+                // kolejności Tab i dostają aria-hidden (kontener sceny z obrazem i hotspotami ZOSTAJE w DOM pod
+                // nakładką - feedback z produkcji; aria-hidden to dodatkowa, bardziej niezawodna warstwa niż samo
+                // poleganie na aria-modal czytnika), bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx.
                 aria-disabled={blocked}
+                aria-hidden={activeId ? true : undefined}
                 title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}
                 tabIndex={activeId ? -1 : undefined}
                 onClick={(event) => handleHotspotClick(hotspot, event.currentTarget)}
@@ -242,9 +256,12 @@ export default function SceneHotspotsBlock({
               role="dialog"
               aria-modal="true"
               aria-labelledby={overlayTitleId}
-              className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/70 sm:absolute"
+              className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(43,36,64,0.55)]"
             >
-              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 sm:h-full sm:rounded sm:p-4">
+              {/* Nakładka NA scenie, nie zamiast niej: na desktopie karta to najwyżej 80% kontenera (obraz widoczny i
+                  lekko przyciemniony dookoła), przewijana w środku, gdy treść nie mieści się w 80%. Na telefonie
+                  (<640px, sm:) karta zajmuje cały ekran - feedback z produkcji (`feat/scene-overlay-fix`). */}
+              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-auto sm:max-h-[80%] sm:w-auto sm:max-w-[80%] sm:rounded sm:p-4">
                 <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
                   {current.label}
                 </h3>
@@ -342,6 +359,12 @@ function HotspotDetailBody({
 
       {media?.kind === 'audio' && (
         <AudioMedia
+          // key: wymuszony remount (nie tylko re-render tej samej instancji) przy przejściu na INNY hotspot audio -
+          // stan (playing/currentTime) i autoodtwarzanie przy otwarciu mają zawsze dotyczyć aktualnego hotspotu, nie
+          // resztek po poprzednim. Dziś to i tak zawsze prawda strukturalnie (przejście między dwoma hotspotami audio
+          // idzie zawsze przez stan bez audio - zamknięcie nakładki albo widok sceny zagnieżdżonej), ale `key` nie
+          // polega na tym inwariancie (D-073: "to inwariant UI, nie coś, na czym stan POWINIEN polegać").
+          key={hotspot.id}
           contentBase={contentBase}
           media={media}
           transcriptOpen={transcriptOpen}
@@ -390,7 +413,7 @@ function NestedSceneImage({
   return (
     <div className="relative mt-3 overflow-hidden rounded border border-slate-200">
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
-      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" className="block w-full" />
+      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" aria-hidden={overlayOpen ? true : undefined} className="block w-full" />
       {scene.hotspots.map((hotspot) => {
         const seen = visited.includes(hotspot.id);
         return (
@@ -398,6 +421,7 @@ function NestedSceneImage({
             key={hotspot.id}
             type="button"
             aria-label={`${hotspot.label}${seen ? ' (obejrzane)' : ''}`}
+            aria-hidden={overlayOpen ? true : undefined}
             tabIndex={overlayOpen ? -1 : undefined}
             onClick={() => onPick(hotspot.id)}
             style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
@@ -437,6 +461,19 @@ function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   );
 }
 
+// Czas w m:ss. `seconds` bywa NaN (metadane audio jeszcze się nie wczytały - preload="metadata") - wtedy "0:00", nie NaN:NaN.
+function formatAudioTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// Własny odtwarzacz (bez natywnych <audio controls>) - feedback z produkcji (feat/scene-overlay-fix): zbliżenie
+// (media.image, opcjonalne) nad małym przyciskiem play/pauza z cienkim paskiem postępu i czasem. Autoodtwarzanie przy
+// otwarciu hotspotu (klik = gest użytkownika, więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale
+// możliwe np. przy restrykcyjnych ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o
+// błędzie (inaczej niż NarrationPlayer.tsx, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
 function AudioMedia({
   contentBase,
   media,
@@ -453,13 +490,66 @@ function AudioMedia({
   onEnded: () => void;
 }) {
   const url = contentAssetUrl(contentBase, media.audioUrl, 'audio');
+  const imageUrl = contentAssetUrl(contentBase, media.image, 'image');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    audioRef.current?.play().catch(() => {});
+  }, []);
+
+  function togglePlay() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+  }
+
+  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
   return (
     <div className="mt-3">
       {url && (
-        // eslint-disable-next-line jsx-a11y/media-has-caption -- transkrypcja jest obok (przycisk niżej), nie <track>
-        <audio controls preload="none" src={url} onEnded={onEnded} className="w-full">
-          Twoja przeglądarka nie obsługuje odtwarzania dźwięku.
-        </audio>
+        <>
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
+            <img src={imageUrl} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="w-full rounded border border-slate-200 object-contain" />
+          )}
+          <audio
+            ref={audioRef}
+            src={url}
+            preload="metadata"
+            hidden
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+            onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+            onEnded={() => {
+              setPlaying(false);
+              onEnded();
+            }}
+          />
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pauza' : 'Odtwórz'}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-indigo-600 bg-indigo-50 text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
+            >
+              {playing ? <Pause aria-hidden="true" className="h-5 w-5" /> : <Play aria-hidden="true" className="h-5 w-5 translate-x-0.5" />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="mt-1 text-xs tabular-nums text-slate-500">
+                {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
+              </p>
+            </div>
+          </div>
+        </>
       )}
       {media.transcript && (
         <>

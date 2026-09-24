@@ -146,6 +146,8 @@ export interface HotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
+  image?: string;
   title?: string;
   lines?: string[];
   scene?: NestedScene;
@@ -164,6 +166,8 @@ export interface InnerHotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
+  image?: string;
   title?: string;
   lines?: string[];
 }

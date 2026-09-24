@@ -1,0 +1,24 @@
+{
+  "width": 800,
+  "height": 800,
+  "background": {
+    "flat": true,
+    "wall": "#EEF0FA"
+  },
+  "items": [
+    {
+      "id": "kubek",
+      "prop": "mug",
+      "x": 80,
+      "y": 250,
+      "scale": 8,
+      "params": {
+        "label": [
+          "Najlepsza",
+          "księgowa"
+        ],
+        "steam": true
+      }
+    }
+  ]
+}

@@ -551,6 +551,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   plików (np. tymczasowe pliki + rename obu przed potwierdzeniem sukcesu) zamiast dwóch niezależnych
   `writeIfChanged`, żeby crash między nimi był strukturalnie niemożliwy, nie tylko wykrywalny post factum. Test z
   tego PR-u (`it.fails`) zamieniony na zwykłą asercję (bez `.fails`) i przechodzi.
+- **Pokrewne (2026-09-24, zgłoszenie produkcyjne "audio nie gra, 0:00/0:00" - `feat/scene-overlay-fix`):** sprawdzone
+  w kodzie - `media-src` w CSP już zawiera `CONTENT_BASE_URL` (`security-headers.ts:62`, test
+  `security-headers.test.ts:59`) i `runAssetsPipeline` już mapuje `mp3` → `audio/mpeg` na `PUT` (`assets.ts:44,239`,
+  test `r2.test.ts:53-67`) - żadne z tych dwóch podejrzeń nie jest dziś błędem w kodzie. Realne ryzyko tej samej klasy
+  co powyżej: `store.head(key)` (`assets.ts:236`) pomija `PUT` (a więc i `ContentType`) dla KAŻDEGO klucza, który już
+  istnieje w magazynie - jeśli obiekt trafił do R2 pod danym kluczem przed poprawką/wdrożeniem `Content-Type` (albo
+  wgrany poza tym skryptem), kolejne `--assets` nigdy nie naprawi jego metadanych, bo `HEAD` się powiedzie. Nie
+  potwierdzone bez dostępu do produkcji - do sprawdzenia: rzeczywisty nagłówek `Content-Type` zwracany dziś przez
+  `content.unfooly.com` dla `assets/wyludzone-haslo/audio/poczta-glosowa.513da5fc.mp3` (DevTools/`curl -I`) i czy
+  `CONTENT_BASE_URL` był ustawiony w env `apps/web` w momencie obserwacji. Jeśli metadane są faktycznie złe: naprawa
+  to ręczny re-upload tego jednego obiektu (albo rozszerzenie naprawy z akceptacji wyżej o wymuszony `PUT` metadanych
+  przy niezgodności, nie tylko o pole `module.json`).
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

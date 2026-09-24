@@ -64,15 +64,18 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 - **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
 - **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
 - ukończenie: wymagane 4 z 6 hotspotów-dowodów (oznaczone ✱); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
+- **Reguła tej sceny (feedback z produkcji, `feat/scene-overlay-fix`): każdy hotspot ma powiększenie (media).** Tekst
+  karty jest zawsze POD obrazem, nigdy samodzielną kartą bez media — nawet gdy hotspot nie niesie dowodu (`kubek`).
+  Wyjątek: `drzwi` (action:'next') nigdy nie otwiera karty, więc nie dotyczy tej reguły.
 
 | id | Element | Karta po kliknięciu | Dowód | Notatka (kind) | Media (B-086/D-071) |
 |---|---|---|---|---|---|
 | `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Nortex2024!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
 | `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte." (celowo TEASER, nie ujawnienie — treść maila jest dopiero za Outlookiem, patrz „Scena zagnieżdżona" niżej; poprawione po przeglądzie kodu, wcześniej to pole miało tu przez pomyłkę tę samą treść co `outlook`) | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
-| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej) |
+| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
 | `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
 | `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w stylu Fooli z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
-| `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | bez media (karta jak dziś, sam tekst) |
+| `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | image `kubek-zoom.svg` (800×800) — zbliżenie kubka (feat/scene-overlay-fix: bez dowodu, ale jak każdy hotspot tej sceny dostaje powiększenie) |
 | `drzwi` | wyjście z biura | — (`action: 'next'`, nigdy nie otwiera karty — patrz „ukończenie" wyżej) | — | — | — |
 
 **reactions.complete:** `{ pose: cheer, text: „Cztery ślady. Teraz porozmawiajmy z Anną." }`
@@ -101,7 +104,9 @@ Pozostałe ikony pulpitu (Przelewy, Internet, Faktury, Kosz) są WYŁĄCZNIE dek
 
 Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — GOTOWY plik mp3 (nagrany osobno przez
 właściciela treści w ElevenLabs, publikowany przez `--assets` jak obraz; NIE przechodzi przez silnik TTS/cues narracji
-modułu, D-071).
+modułu, D-071). Nad własnym odtwarzaczem (przycisk play/pauza, pasek postępu, czas — bez natywnych `<audio controls>`,
+feat/scene-overlay-fix) renderuje się zbliżenie `telefon-zoom.svg` (`media.image`, alt: „Telefon stacjonarny Anny z
+jedną nieodebraną rozmową"); odtwarzanie startuje automatycznie po kliknięciu hotspotu.
 
 **Transkrypcja (ok. 35 s):**
 > Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.
@@ -320,6 +325,8 @@ edycja SVG.
 | `scenes/karteczka-zoom.svg` | 800×800 | media image na hotspocie `karteczka` |
 | `scenes/kalendarz-zoom.svg` | 800×1000 | media image na hotspocie `kalendarz` |
 | `scenes/wydruk.svg` | 800×1100 | media image na hotspocie `drukarka` |
+| `scenes/telefon-zoom.svg` | 800×600 | media.image (zbliżenie nad odtwarzaczem audio) na hotspocie `telefon` |
+| `scenes/kubek-zoom.svg` | 800×800 | media image na hotspocie `kubek` |
 
 Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 

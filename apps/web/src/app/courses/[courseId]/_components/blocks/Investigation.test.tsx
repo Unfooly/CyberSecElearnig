@@ -137,6 +137,38 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
+  it('nakładka leży NA scenie: karta ograniczona do 80% na desktopie (nie h-full/w-full - obraz ma być widoczny dookoła), punkty pod nią dostają aria-hidden (feedback z produkcji, poprawka po PR #32)', () => {
+    setup(scene, { summary });
+    fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
+
+    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).parentElement!;
+    expect(card.className).toMatch(/sm:max-h-\[80%\]/);
+    expect(card.className).toMatch(/sm:max-w-\[80%\]/);
+    expect(card.className).not.toMatch(/sm:h-full/);
+    expect(card.className).not.toMatch(/sm:w-full/);
+
+    // Punkt 5 (feat/scene-overlay-fix): nakładka jest "absolute" (przypięta DO KONTENERA obrazu), NIGDY "fixed"
+    // (przypięta do viewportu) - inaczej na mobile zasłaniałaby licznik "Obejrzano X z Y", który jest NAD obrazem,
+    // poza kontenerem sceny. Sprawdzone też strukturalnie: licznik nie jest potomkiem nakładki.
+    expect(dialog().className).toMatch(/(^|\s)absolute(\s|$)/);
+    expect(dialog().className).not.toMatch(/(^|\s)fixed(\s|$)/);
+    const counter = screen.getByText('Wszystko obejrzane.'); // done >= total po kliknięciu jedynego required (h1)
+    expect(dialog().contains(counter)).toBe(false);
+
+    const covered = screen.getByTestId('hotspot-overlay-h2'); // "Drzwi" - inny hotspot na tej samej scenie, zasłonięty
+    expect(covered).toHaveAttribute('aria-hidden', 'true');
+    expect(covered).toHaveAttribute('tabindex', '-1');
+
+    // Code review po commicie 367743b: samo ukrycie przycisków nie wystarczy - obraz sceny pod nimi (z niepustym alt)
+    // musi też dostać aria-hidden, inaczej czytnik ekranu w trybie przeglądania (virtual cursor) i tak "wejdzie" na
+    // jego opis mimo otwartego role="dialog" aria-modal="true".
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+
+    back();
+    expect(screen.getByTestId('hotspot-overlay-h2')).not.toHaveAttribute('aria-hidden');
+    expect(screen.getByRole('img')).not.toHaveAttribute('aria-hidden');
+  });
+
   it('błąd wczytania OBRAZU (poprawna ścieżka, np. 404 z CDN - onError, nie zła ścieżka od startu) chowa punkty: bez chipów jako zapasowej ścieżki są teraz nieosiągalne (code review: to inny warunek niż "zła ścieżka", oba muszą działać)', () => {
     setup(scene, { summary });
     expect(screen.getByRole('img')).toBeInTheDocument();
@@ -238,7 +270,7 @@ const mediaScene: ContentBlock = {
       width: 20,
       height: 20,
       content: 'Prawdziwy bank nigdy nie prosi o kod SMS przez telefon.',
-      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.' },
+      media: { kind: 'audio', audioUrl: 'audio/poczta-glosowa.mp3', transcript: 'Dzień dobry, dzwonię z banku.', image: 'img/telefon-zoom.png' },
       evidence: true,
       note: { text: 'Telefon z podejrzaną prośbą o kod SMS.', kind: 'item' },
     },
@@ -252,10 +284,33 @@ const mediaScene: ContentBlock = {
       content: 'Wydruk przelewu.',
       media: { kind: 'document', title: 'Potwierdzenie przelewu', lines: ['Kwota: 14 000,00 PLN', 'Odbiorca: Wektor Rozliczenia'] },
     },
+    // Drugi hotspot audio WYŁĄCZNIE po to, żeby przetestować key={hotspot.id} na AudioMedia (code review commitu
+    // 1ff5939): stan (playing/currentTime) między dwoma RÓŻNYMI hotspotami audio nie może "przeciekać".
+    {
+      id: 'radio',
+      label: 'Radio',
+      x: 40,
+      y: 40,
+      width: 20,
+      height: 20,
+      content: 'Radio gra w tle.',
+      media: { kind: 'audio', audioUrl: 'audio/radio.mp3', transcript: 'Muzyka w tle.' },
+    },
   ],
 };
 
 describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
+  // Własny odtwarzacz audio (feat/scene-overlay-fix) próbuje .play() przy otwarciu karty (autoodtwarzanie po geście
+  // kliknięcia) - jsdom nie implementuje HTMLMediaElement.play() (zwraca undefined, nie odrzucony Promise), więc bez
+  // mocka rzuca "Not implemented" (ten sam wzorzec co NarrationPlayer.test.tsx).
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('image: renderuje się powiększony wprost w karcie (bez osobnego przycisku/nakładki - karta sama JEST nakładką)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
@@ -271,16 +326,20 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(screen.queryByRole('button', { name: /Zobacz dokument/ })).not.toBeInTheDocument();
   });
 
-  it('audio: <audio> bez autoplay, transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
+  it('audio: zbliżenie (media.image) i własny odtwarzacz (bez natywnych controls, autoodtwarzanie po kliku hotspotu), transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
     setup(mediaScene);
     pick('Telefon');
 
     expect(screen.queryByText(/Prawdziwy bank nigdy nie prosi/)).not.toBeInTheDocument();
+    expect(within(dialog()).getByAltText('')).toHaveAttribute('src', expect.stringContaining('telefon-zoom.png')); // zbliżenie z media.image
 
     const audioEl = document.querySelector('audio')!;
     expect(audioEl).toBeInTheDocument();
-    expect(audioEl).not.toHaveAttribute('autoplay');
-    expect(audioEl).toHaveAttribute('controls');
+    expect(audioEl).not.toHaveAttribute('controls'); // własny odtwarzacz, nie natywny <audio controls> (feedback z produkcji)
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled(); // klik hotspotu = gest użytkownika -> autoplay
+
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // play() zmockowany, onPlay się nie odpala - stan startowy
+    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -291,6 +350,54 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
 
     fireEvent(audioEl, new Event('ended'));
     expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
+  });
+
+  it('audio: przycisk play/pauza przełącza odtwarzanie, pasek postępu i czas aktualizują się z zdarzeń <audio>', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    const audioEl = document.querySelector('audio')!;
+
+    Object.defineProperty(audioEl, 'paused', { value: false, configurable: true }); // jsdom nie synchronizuje .paused z play()/pause() zmockowanymi wyżej
+    fireEvent(audioEl, new Event('play'));
+    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
+
+    Object.defineProperty(audioEl, 'duration', { value: 60, configurable: true });
+    fireEvent(audioEl, new Event('loadedmetadata'));
+    Object.defineProperty(audioEl, 'currentTime', { value: 15, configurable: true });
+    fireEvent(audioEl, new Event('timeupdate'));
+    expect(screen.getByText('0:15 / 1:00')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Pauza' }));
+    expect(audioEl.pause).toHaveBeenCalled();
+  });
+
+  it('audio: stan (playing/czas) nie przecieka między dwoma RÓŻNYMI hotspotami audio - key={hotspot.id} wymusza remount', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    const firstAudio = document.querySelector('audio')!;
+    Object.defineProperty(firstAudio, 'paused', { value: false, configurable: true });
+    Object.defineProperty(firstAudio, 'duration', { value: 60, configurable: true });
+    Object.defineProperty(firstAudio, 'currentTime', { value: 30, configurable: true });
+    fireEvent(firstAudio, new Event('play'));
+    fireEvent(firstAudio, new Event('loadedmetadata'));
+    fireEvent(firstAudio, new Event('timeupdate'));
+    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
+    expect(screen.getByText('0:30 / 1:00')).toBeInTheDocument();
+
+    back();
+    pick('Radio');
+    const secondAudio = document.querySelector('audio')!;
+    expect(secondAudio).not.toBe(firstAudio); // inny <audio> - świeży <AudioMedia>, nie ta sama instancja
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // stan playing zresetowany
+    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument(); // czas zresetowany, nie "0:30 / 1:00" z Telefonu
+  });
+
+  it('audio: przeglądarka odrzuca play() (autoplay zablokowany) - przycisk zostaje "Odtwórz", bez komunikatu błędu i bez wywalenia komponentu', () => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockRejectedValue(new DOMException('blocked', 'NotAllowedError'));
+    setup(mediaScene);
+    pick('Telefon');
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
+    expect(screen.queryByText(/autoodtwarzanie|zablokował/i)).not.toBeInTheDocument(); // celowo BEZ komunikatu (inaczej niż NarrationPlayer.tsx)
   });
 
   it('audio: dowód WYMAGA kliknięcia "Dodaj do notatnika" - samo otwarcie karty (ani odsłuchanie) nie wystarcza (zmiana: dowód zawsze przyciskiem, D-071)', () => {

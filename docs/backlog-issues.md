@@ -563,6 +563,32 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `CONTENT_BASE_URL` był ustawiony w env `apps/web` w momencie obserwacji. Jeśli metadane są faktycznie złe: naprawa
   to ręczny re-upload tego jednego obiektu (albo rozszerzenie naprawy z akceptacji wyżej o wymuszony `PUT` metadanych
   przy niezgodności, nie tylko o pole `module.json`).
+
+### B-094 Przypisania NOT_STARTED/IN_PROGRESS przy bloku 0 mają się automatycznie przepinać na najnowszą wersję kursu przy imporcie
+- Etykiety: `P2`, `feature`, `mod:kursy` · Źródło: zgłoszone przez właściciela produktu
+- Opis: dziś `content-import` (`apps/api/src/scripts/content-import.ts`) po utworzeniu nowego `CourseVersion` (linie
+  ~102-105, `tx.courseVersion.createMany`) NIE dotyka istniejących `CourseAssignment` - przypisanie pina się do
+  wersji dopiero przy pierwszym `/start` (`CourseAssignment.courseVersionId`, nullable - "Wersja treści, na której
+  pracownik zaczął kurs (null = jeszcze nie przypięta: pierwszy /start przypina)", `schema.prisma:980`), więc
+  przypisania `NOT_STARTED` z `courseVersionId: null` i tak dostają NAJNOWSZĄ wersję automatycznie przy pierwszym
+  starcie - to już działa. Realny brakujący przypadek to `IN_PROGRESS` z `currentBlockIndex = 0` (użytkownik
+  zawołał `/start`, `courseVersionId` jest już przypięte, ale nie zdążył ukończyć nawet pierwszego bloku, czyli
+  praktycznie nic z treści starej wersji nie widział) - dla takich przypisań `content-import` powinien nadpisać
+  `courseVersionId` na nowo utworzoną wersję. Przypisania dalej niż blok 0 (choćby jeden ukończony blok) i
+  `COMPLETED` zostają na swojej wersji bez zmian - to jest już bieżące, zamierzone zachowanie
+  (`CLAUDE.md`/"Silnik szkoleń": "Treść jest wersjonowana i niemutowalna... zmiana treści = nowa wersja, przypisanie
+  zostaje na swojej [wersji]") i to zachowanie NIE ma się zmieniać dla tych przypadków.
+- **Uwaga projektowa:** `CourseAssignment` ma RLS po `organizationId` (Zasada nr 1) - `courses`/`course_versions` są
+  globalne bez RLS (komentarz w `content-import.ts:13`), ale sam `UPDATE` przypisań musi iść przez bezpieczny wzorzec
+  wielotenantowy (np. pętla `runInOrgContext` po organizacjach, które mają aktywne przypisania tego kursu, albo nowy,
+  jawnie opisany i uzasadniony wyjątek w `TenantPrismaService`, zgodnie z listą wyjątków w `CLAUDE.md`) - `content-
+  import` dziś pisze wyłącznie do tabel globalnych, więc to będzie pierwszy zapis do danych klienckich w tym skrypcie
+  i wymaga jawnej decyzji, nie automatycznego dopisania.
+- Akceptacja: po imporcie nowej wersji kursu `UPDATE` obejmuje WYŁĄCZNIE przypisania `status IN (NOT_STARTED,
+  IN_PROGRESS)` AND `currentBlockIndex = 0` (dla `IN_PROGRESS`; `NOT_STARTED` i tak ma `courseVersionId: null` -
+  weryfikacja, czy w ogóle trzeba je dotykać, czy tylko potwierdzić że zostają `null`) tego konkretnego `courseId`;
+  przypisania z `currentBlockIndex > 0` i `status = COMPLETED` niezmienione; test w `apps/api` (happy path + granica
+  `currentBlockIndex = 0` vs `1` + test izolacji A/B, jeśli `UPDATE` dotyka więcej niż jednej organizacji na raz).
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

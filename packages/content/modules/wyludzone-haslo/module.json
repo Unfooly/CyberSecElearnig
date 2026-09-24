@@ -139,7 +139,7 @@
             "kind": "audio",
             "audioUrl": "assets/wyludzone-haslo/audio/poczta-glosowa.513da5fc.mp3",
             "transcript": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.",
-            "image": "scenes/telefon-zoom.svg",
+            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.6d63d5dc.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
           },
           "evidence": true,
@@ -199,7 +199,7 @@
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "media": {
             "kind": "image",
-            "src": "scenes/kubek-zoom.svg",
+            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.e625fdb8.svg",
             "alt": "Kubek Anny z napisem Najlepsza księgowa"
           },
           "required": false

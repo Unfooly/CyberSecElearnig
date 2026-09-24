@@ -15,6 +15,23 @@ type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
 
+// Hotspoty bywają geometrycznie zagnieżdżone (np. "karteczka" przyklejona do ramki "monitora" - mniejszy prostokąt
+// częściowo/całkowicie wewnątrz większego). Bez jawnego z-index stackowanie idzie po kolejności DOM (= kolejności w
+// treści modułu), nie po rozmiarze - większy hotspot renderowany PO mniejszym przykrywał mu klik w części wspólnej
+// (produkcja: klik w "karteczkę" otwierał "monitor", bo monitor jest dalej w tablicy hotspots). z-index odwrotnie
+// proporcjonalny do POLU ZADEKLAROWANEMU w treści (procenty szerokości×wysokości, nie wyrenderowanym pikselom -
+// wystarczające, bo wszystkie hotspoty jednej sceny leżą na tym samym obrazie) naprawia to NIEZALEŻNIE od kolejności
+// w treści - kolejność DOM (więc i Tab) zostaje dokładnie taka, jaką zdefiniował autor treści. Remis (dokładnie to
+// samo pole): `Array.prototype.sort` jest stabilny (ES2019+), więc remisy zostają w kolejności z tablicy treści -
+// późniejszy dostaje wyższy z-index, dokładnie odtwarzając wcześniejsze zachowanie po kolejności DOM. `Math.min(...,
+// 29)`: hotspoty mają dziś twardy limit 20 w schemacie (`packages/content/src/blocks.ts`, `.max(20)`), więc nigdy nie
+// osiągną z-index 30 nakładki karty (`z-30` niżej) - ale nic w tym pliku tego nie wymusza, więc obcinamy jawnie,
+// zamiast polegać wyłącznie na limicie w innym pakiecie.
+export function hotspotStackZIndex<T extends { id: string; width: number; height: number }>(all: T[]): Map<string, number> {
+  const byAreaDesc = [...all].sort((a, b) => b.width * b.height - a.width * a.height);
+  return new Map(byAreaDesc.map((hotspot, index) => [hotspot.id, Math.min(index + 1, 29)]));
+}
+
 // Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu - JEDYNA
 // interakcja (feedback z produkcji po PR #32: usunięta lista przycisków-chipów pod obrazem). Każdy hotspot jest
 // niewidocznym <button> nałożonym na obraz, w pełni dostępny: aria-label z tytułu (+ stan "obejrzane"/"drzwi
@@ -54,6 +71,7 @@ export default function SceneHotspotsBlock({
   review?: boolean;
 }) {
   const hotspots = block.hotspots ?? [];
+  const hotspotZIndex = hotspotStackZIndex(hotspots);
   const flat = flattenHotspots(hotspots);
   const { addNote } = useNotes();
   const evidence = useEvidence();
@@ -190,7 +208,13 @@ export default function SceneHotspotsBlock({
       <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
 
       {imageUrl && !imageFailed && (
-        <div className="relative overflow-hidden rounded border border-slate-200">
+        // isolate (code review PR #36): hotspoty dostały jawny z-index (1..20, hotspotStackZIndex) i bez WŁASNEGO
+        // kontekstu stackowania (isolation: isolate) ten numeryczny z-index konkurowałby z ROOT kontekstem strony -
+        // konkretnie z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bottom-0, bez z-index): hotspot
+        // malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
+        // zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
+        // znów maluje się po prostu w kolejności DOM, jak przed tym z-index.
+        <div className="relative isolate overflow-hidden rounded border border-slate-200">
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
           <img
             src={imageUrl}
@@ -226,7 +250,7 @@ export default function SceneHotspotsBlock({
                 title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}
                 tabIndex={activeId ? -1 : undefined}
                 onClick={(event) => handleHotspotClick(hotspot, event.currentTarget)}
-                style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
+                style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: hotspotZIndex.get(hotspot.id) }}
                 className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors ${FOCUS_RING} ${
                   isDoor
                     ? ready
@@ -410,8 +434,12 @@ function NestedSceneImage({
 }) {
   const url = contentAssetUrl(contentBase, scene.image, 'image');
   if (!url) return null;
+  const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    <div className="relative mt-3 overflow-hidden rounded border border-slate-200">
+    // isolate: patrz komentarz przy analogicznym kontenerze wyżej (scena najwyższego poziomu) - ten kontener jest już
+    // zagnieżdżony w karcie nakładki (z-30), ale jego WŁASNE hotspoty (z-index 1..20) i tak nie powinny wyciekać poza
+    // niego, dla spójności i na wypadek przyszłych zmian layoutu karty.
+    <div className="relative isolate mt-3 overflow-hidden rounded border border-slate-200">
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
       <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" aria-hidden={overlayOpen ? true : undefined} className="block w-full" />
       {scene.hotspots.map((hotspot) => {
@@ -424,7 +452,7 @@ function NestedSceneImage({
             aria-hidden={overlayOpen ? true : undefined}
             tabIndex={overlayOpen ? -1 : undefined}
             onClick={() => onPick(hotspot.id)}
-            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%` }}
+            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: zIndex.get(hotspot.id) }}
             className={`absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${
               seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
             }`}

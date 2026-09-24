@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
+import { hotspotStackZIndex } from './SceneHotspotsBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
@@ -298,6 +299,102 @@ const mediaScene: ContentBlock = {
     },
   ],
 };
+
+// Bug na produkcji: hotspot "karteczka" (mały, PIERWSZY w tablicy) jest geometrycznie zagnieżdżony w hotspocie
+// "monitor" (duży, DRUGI w tablicy, jak w prawdziwej treści modułu 1) - bez jawnego z-index klik w część wspólną
+// trafiał w "monitor" (renderowany później w DOM = na wierzchu), nie w "karteczkę".
+const overlappingScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'zagniezdzone-geometrycznie',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    { id: 'karteczka', label: 'Mała karteczka', x: 20, y: 20, width: 8, height: 8, content: 'Mała, w środku dużego.' },
+    { id: 'monitor', label: 'Duży monitor', x: 10, y: 10, width: 30, height: 30, content: 'Duży, obejmuje karteczkę.' },
+  ],
+};
+
+// To samo co overlappingScene, ale ZAGNIEŻDŻONE (media.kind: 'scene') - code review PR #36: pierwsza wersja testowała
+// wyłącznie scenę najwyższego poziomu, więc regresja WYŁĄCZNIE w NestedSceneImage (drugie miejsce stosujące
+// hotspotStackZIndex) nie miałaby żadnego testu.
+const overlappingNestedScene: ContentBlock = {
+  type: 'SCENE_HOTSPOTS',
+  id: 'zagniezdzone-w-scenie',
+  title: 'Biuro',
+  image: 'scenes/office.png',
+  imageAlt: 'Biuro',
+  hotspots: [
+    {
+      id: 'monitor',
+      label: 'Monitor',
+      x: 10,
+      y: 10,
+      width: 30,
+      height: 30,
+      content: 'Ekran z pulpitem.',
+      media: {
+        kind: 'scene',
+        scene: {
+          image: 'scenes/pulpit.png',
+          imageAlt: 'Pulpit',
+          hotspots: [
+            { id: 'mala-ikona', label: 'Mała ikona', x: 20, y: 20, width: 8, height: 8, content: 'Mała, w środku dużego.' },
+            { id: 'duzy-folder', label: 'Duży folder', x: 10, y: 10, width: 30, height: 30, content: 'Duży, obejmuje ikonę.' },
+          ],
+        },
+      },
+    },
+  ],
+};
+
+describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotów', () => {
+  it('hotspotStackZIndex (czysta funkcja): remis dostaje kolejność z tablicy, pojedynczy element i pusta tablica nie wywalają', () => {
+    const tie = hotspotStackZIndex([
+      { id: 'a', width: 10, height: 10 },
+      { id: 'b', width: 10, height: 10 }, // dokładnie to samo pole co "a"
+    ]);
+    expect(tie.get('b')).toBeGreaterThan(tie.get('a')!); // stabilny sort: PÓŹNIEJSZY w tablicy wygrywa remis (jak dawniej DOM)
+
+    expect(hotspotStackZIndex([{ id: 'jedyny', width: 5, height: 5 }]).get('jedyny')).toBe(1);
+    expect(hotspotStackZIndex([]).size).toBe(0);
+  });
+
+  it('mniejszy hotspot dostaje WYŻSZY z-index niż większy, mimo że jest PRZED nim w DOM (kolejność DOM/Tab zostaje jak w treści)', () => {
+    setup(overlappingScene);
+    const karteczka = screen.getByTestId('hotspot-overlay-karteczka');
+    const monitor = screen.getByTestId('hotspot-overlay-monitor');
+
+    expect(Number(karteczka.style.zIndex)).toBeGreaterThan(Number(monitor.style.zIndex));
+
+    const buttons = [...document.querySelectorAll('[data-testid^="hotspot-overlay-"]')];
+    expect(buttons.indexOf(karteczka)).toBeLessThan(buttons.indexOf(monitor)); // Tab: nadal w kolejności treści
+  });
+
+  it('to samo WEWNĄTRZ zagnieżdżonej sceny (NestedSceneImage - drugie miejsce stosujące hotspotStackZIndex)', () => {
+    setup(overlappingNestedScene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-monitor'));
+    const mala = within(dialog()).getByRole('button', { name: 'Mała ikona' });
+    const duzy = within(dialog()).getByRole('button', { name: 'Duży folder' });
+    expect(Number(mala.style.zIndex)).toBeGreaterThan(Number(duzy.style.zIndex));
+  });
+
+  it('kontener sceny ma isolate (code review PR #36): bez WŁASNEGO kontekstu stackowania z-index 1..20 hotspotów konkurowałby z ROOT kontekstem strony - np. z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bez z-index), który hotspot mógłby przykryć i przechwycić mu kliknięcia po przewinięciu', () => {
+    setup(overlappingScene);
+    expect(screen.getByRole('img').parentElement).toHaveClass('isolate');
+  });
+
+  // Sanity check identyfikacji (jsdom nie ma prawdziwego layoutu/hit-testingu po współrzędnych, więc to NIE jest
+  // dowód poprawnego stackowania - ten jest w teście wyżej, przez wartości z-index; prawdziwy klik po współrzędnych
+  // w miejsce wspólne obu prostokątów wymaga przeglądarki, np. scripts/e2e-module-01.mjs, którego domyślny
+  // Playwright .click() odrzuciłby klik na "karteczkę" zasłonięte przez "monitor" - stąd ten bug w ogóle dotarł na
+  // produkcję: skrypt e2e nie dało się dotąd uruchomić lokalnie, B-085).
+  it('klik we WŁASNY przycisk "karteczki" otwiera jej kartę (identyfikacja per-hotspot nie miesza się z "monitor")', () => {
+    setup(overlappingScene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-karteczka'));
+    expect(within(dialog()).getByRole('heading', { name: 'Mała karteczka' })).toBeInTheDocument();
+  });
+});
 
 describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
   // Własny odtwarzacz audio (feat/scene-overlay-fix) próbuje .play() przy otwarciu karty (autoodtwarzanie po geście

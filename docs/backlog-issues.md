@@ -419,6 +419,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   tej samej sieci Dockera co te kontenery, np. przez `docker compose run`), żeby pełny `npm run test:e2e --workspace=apps/api`
   dało się uruchomić lokalnie przed pushem, bez polegania wyłącznie na CI. Rozważyć też timeout/`--forceExit` w `test:e2e`,
   żeby błąd połączenia z bazą kończył się szybko, a nie wielogodzinnym zawieszeniem.
+- **Podpunkt (2026-09-24, code review PR #36 `fix/hotspot-stacking-order`):** produkcyjny bug hotspotu "karteczka"
+  przysłoniętego przez "monitor" (naprawiony w tym PR - `hotspotStackZIndex`, z-index odwrotnie proporcjonalny do
+  powierzchni) to DOKŁADNIE ten rodzaj regresji, którego jsdom (testy jednostkowe) nie wykrywa - brak realnego
+  layoutu/hit-testingu po współrzędnych. Prawdziwą przeglądarkę ma `scripts/e2e-module-01.mjs` (Playwright, którego
+  domyślny `.click()` odrzuca klik na element zasłonięty innym - złapałby ten błąd), ale skryptu nie dało się dotąd
+  uruchomić lokalnie z powodu tego zgłoszenia. Gdy B-085 się rozwiąże: dopisać do `e2e-module-01.mjs` (albo osobnego
+  testu wizualnego) scenariusz kliknięcia w "karteczkę" na scenie ze scrollem pod lepkim dolnym paskiem
+  "Wstecz/Dalej" (viewport mobilny) - regresja z-index/`isolate` (patrz `docs/decisions.md` D-073 pkt 5) inaczej
+  może wrócić niezauważona.
 
 ### B-086 Media w hotspotach (audio/obraz/dokument) sceny z punktami - CZĘŚCIOWO ROZWIĄZANE (D-071, schemat)
 - Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: PR 4, decyzja właściciela 2026-09-22 (nie implementować teraz); podjęte:

@@ -55,6 +55,16 @@ describe('Topbar', () => {
       expect(nav.className).toMatch(/min-w-0/);
     });
 
+    it('grupa "Zgłoś"/avatar/hamburger ma ml-auto (bez tego, gdy <nav> jest ukryty poniżej lg, nic nie pcha jej do prawej krawędzi) i hamburger jest jej ostatnim dzieckiem', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      const hamburger = screen.getByRole('button', { name: 'Otwórz menu' });
+      const group = hamburger.parentElement as HTMLElement;
+      expect(group.className.split(' ')).toContain('ml-auto');
+      expect(group.lastElementChild).toBe(hamburger);
+    });
+
     it('focusMode (odtwarzacz): na wąskich ekranach menu jest ukryte, zostaje logo, "Zgłoś" i avatar; od sm menu wraca', () => {
       usePathnameMock.mockReturnValue('/courses/abc');
       const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} focusMode />);

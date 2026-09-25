@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Role } from '@cyberszkolo/shared';
 import PageHeader from '@/components/ui/PageHeader';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import AdminInbox from './_components/AdminInbox';
@@ -26,13 +27,13 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={payload.email ?? null} role={payload.role} />
-      <main className="mx-auto max-w-[1080px] px-6 pb-12 pt-9 sm:px-10">
+      <PageContainer size={1080}>
         <PageHeader
           title="Zgłoszenia podejrzanych wiadomości"
           subtitle={isAdmin ? 'Zgłoszenia pracowników do analizy. Zgłoszenia ćwiczebnych symulacji nie trafiają do tej listy.' : 'Zgłoszenia z Twojego działu (widok ograniczony).'}
         />
         {isAdmin ? <AdminInbox /> : <DepartmentInbox />}
-      </main>
+      </PageContainer>
     </div>
   );
 }

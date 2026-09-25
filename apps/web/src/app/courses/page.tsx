@@ -6,6 +6,7 @@ import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
 import type { GamificationOverview, LeaderboardEntry } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import CourseLibrary from './_components/CourseLibrary';
 import CourseCatalog from './_components/CourseCatalog';
 import LearningPath from './_components/LearningPath';
@@ -61,7 +62,7 @@ export default async function CoursesPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} role={payload?.role} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <div className="space-y-4">
             {coursesResult.ok && <WelcomeBanner courses={coursesResult.data} userEmail={userEmail} />}
@@ -95,7 +96,7 @@ export default async function CoursesPage() {
             )}
           </div>
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

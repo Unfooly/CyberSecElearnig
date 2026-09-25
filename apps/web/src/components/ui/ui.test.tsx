@@ -7,6 +7,8 @@ import ProgressBar from './ProgressBar';
 import EmptyState from './EmptyState';
 import InitialsAvatar, { initialsFrom } from './InitialsAvatar';
 import Card, { CardHeader } from './Card';
+import PageContainer from './PageContainer';
+import PageHeader from './PageHeader';
 
 describe('Button', () => {
   it('primary domyślnie, type=button i reaguje na klik', () => {
@@ -112,5 +114,27 @@ describe('Card', () => {
     );
     expect(screen.getByRole('heading', { name: 'Działy' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Zobacz' })).toBeInTheDocument();
+  });
+});
+
+describe('PageHeader', () => {
+  it('tytuł ma text-[24px], od sm rośnie do text-[28px] (feat/mobile-app-shell)', () => {
+    render(<PageHeader title="Kampanie" />);
+    expect(screen.getByRole('heading', { name: 'Kampanie' })).toHaveClass('text-[24px]', 'sm:text-[28px]');
+  });
+
+  it('blok akcji ma flex-wrap i jest pełnej szerokości poniżej sm (przyciski flex-1), od sm wraca do naturalnej szerokości', () => {
+    render(<PageHeader title="Kampanie" actions={<button type="button">Nowa</button>} />);
+    const actionsBlock = screen.getByRole('button', { name: 'Nowa' }).parentElement!;
+    expect(actionsBlock).toHaveClass('flex-wrap', 'w-full', 'sm:w-auto', '[&>*]:flex-1', 'sm:[&>*]:flex-none');
+  });
+});
+
+describe('PageContainer', () => {
+  it.each([760, 900, 1080, 1280] as const)('size=%d ustawia max-w-[%dpx] i gutter 16 px na telefonie, 40 px od lg (jak dziś na desktopie)', (size) => {
+    render(<PageContainer size={size}>x</PageContainer>);
+    const main = screen.getByText('x');
+    expect(main.tagName).toBe('MAIN');
+    expect(main).toHaveClass(`max-w-[${size}px]`, 'mx-auto', 'w-full', 'px-4', 'pb-12', 'pt-6', 'sm:px-6', 'sm:pt-9', 'lg:px-10');
   });
 });

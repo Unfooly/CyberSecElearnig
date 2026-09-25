@@ -7,6 +7,7 @@ import { decodeJwtPayload } from '@/lib/jwt';
 import { redirectIfPending } from '@/lib/organization';
 import type { PhishingTemplate } from '@/lib/phishing-types';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import { buttonClasses } from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import TemplatesList from './_components/TemplatesList';
@@ -33,7 +34,7 @@ export default async function PhishingTemplatesPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <PageHeader
           title="Szablony symulacji phishingowych"
           actions={
@@ -49,7 +50,7 @@ export default async function PhishingTemplatesPage() {
             Nie udało się załadować szablonów. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

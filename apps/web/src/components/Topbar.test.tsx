@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
 import { Role } from '@cyberszkolo/shared';
 import Topbar from './Topbar';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
@@ -42,13 +42,15 @@ describe('Topbar', () => {
       expect(link).toHaveTextContent('Zgłoś');
     });
 
-    it('domyślnie menu główne jest widoczne także na wąskich ekranach (przewijane w pasku, nie wypycha strony)', () => {
+    it('poniżej lg pasek menu jest ukryty (hamburger zajmuje jego miejsce - patrz opisy niżej), od lg wraca w pasku', () => {
       usePathnameMock.mockReturnValue('/courses');
       const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
 
+      // Dwa <nav> w drzewie od tego PR-u (pasek desktopowy + lista w panelu mobilnym) - pierwszy w DOM to zawsze
+      // pasek desktopowy (panel renderuje się PO nim); rozróżnia je też overflow-x-auto (tylko pasek) niżej.
       const nav = container.querySelector('nav') as HTMLElement;
-      expect(nav.className).toMatch(/\bflex\b/);
-      expect(nav.className).not.toMatch(/\bhidden\b/);
+      expect(nav.className).toMatch(/\bhidden\b/);
+      expect(nav.className).toMatch(/lg:flex/);
       expect(nav.className).toMatch(/overflow-x-auto/);
       expect(nav.className).toMatch(/min-w-0/);
     });
@@ -64,15 +66,170 @@ describe('Topbar', () => {
       expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
     });
 
-    it('adres e-mail jest wyłącznie w menu użytkownika, w całości (w pasku go nie ma, więc nic się nie ucina)', () => {
+    it('adres e-mail jest wyłącznie w menu użytkownika, w całości (nic się nie ucina); kopia w panelu mobilnym jest aria-hidden, dopóki panel zamknięty', () => {
       usePathnameMock.mockReturnValue('/courses');
       const email = 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test';
       render(<Topbar userEmail={email} role={Role.EMPLOYEE} />);
 
-      expect(screen.queryByText(email)).not.toBeInTheDocument();
+      // Panel mobilny renderuje się od razu (animacja wjazdu/wyjazdu wymaga trwałego montowania), więc ma WŁASNĄ
+      // kopię adresu - ale panel jest aria-hidden, dopóki go nikt nie otworzy, więc czytnik/użytkownik jej nie widzi.
+      const dialog = screen.getByRole('dialog', { hidden: true });
+      expect(dialog).toHaveAttribute('aria-hidden', 'true');
+      expect(within(dialog).getByText(email)).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
-      expect(screen.getByText(email).className).toMatch(/break-all/);
+      expect(within(screen.getByRole('menu')).getByText(email).className).toMatch(/break-all/);
+    });
+  });
+
+  describe('panel mobilny (hamburger)', () => {
+    function openDrawer() {
+      fireEvent.click(screen.getByRole('button', { name: 'Otwórz menu' }));
+    }
+
+    it('hamburger renderuje się, aria-expanded=false, otwiera panel (aria-expanded=true, dialog przestaje być aria-hidden, ikona zmienia się na X/"Zamknij menu")', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      const hamburger = screen.getByRole('button', { name: 'Otwórz menu' });
+      expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+
+      fireEvent.click(hamburger);
+
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveAttribute('aria-hidden', 'false');
+      expect(screen.getByRole('button', { name: 'Zamknij menu' })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('filtr ról w panelu jest identyczny jak w pasku desktopowym: EMPLOYEE nie widzi pozycji adminOnly', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByRole('link', { name: 'Kursy' })).toBeInTheDocument();
+      expect(within(dialog).queryByRole('link', { name: 'Zespół' })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('link', { name: 'Kampanie phishingowe' })).not.toBeInTheDocument();
+    });
+
+    it('panel ma NAV_ITEMS widoczne dla roli, separator, "Zgłoś podejrzany mail", "Ustawienia konta", e-mail i "Wyloguj" - w tej kolejności', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      const labels = [...dialog.querySelectorAll('a, button')].map((el) => el.textContent);
+      const dashboardIndex = labels.findIndex((label) => label?.includes('Dashboard'));
+      const reportIndex = labels.findIndex((label) => label?.includes('Zgłoś podejrzany mail'));
+      const settingsIndex = labels.findIndex((label) => label?.includes('Ustawienia konta'));
+      const logoutIndex = labels.findIndex((label) => label?.includes('Wyloguj'));
+      expect(dashboardIndex).toBeGreaterThanOrEqual(0);
+      expect(reportIndex).toBeGreaterThan(dashboardIndex);
+      expect(settingsIndex).toBeGreaterThan(reportIndex);
+      expect(logoutIndex).toBeGreaterThan(settingsIndex);
+      expect(within(dialog).getByText('jan@example.test')).toHaveClass('break-all');
+    });
+
+    it('zamyka się przyciskiem hamburgera (teraz "Zamknij menu"), fokus wraca na ten sam przycisk', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij menu' }));
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+      expect(screen.getByRole('button', { name: 'Otwórz menu' })).toHaveFocus();
+    });
+
+    it('zamyka się kliknięciem w tło', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      const { container } = render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const backdrop = container.querySelector('[aria-hidden="true"].fixed.inset-0') as HTMLElement;
+      fireEvent.click(backdrop);
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('zamyka się klawiszem Escape', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('zamyka się kliknięciem w dowolny link wewnątrz (np. "Kursy")', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'Kursy' }));
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('zamyka się przy zmianie ścieżki (np. nawigacja przyciskiem "wstecz" przeglądarki w trakcie otwarcia)', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      const { rerender } = render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-hidden', 'false');
+
+      usePathnameMock.mockReturnValue('/dashboard');
+      rerender(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('blokuje przewijanie body, dopóki panel jest otwarty', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('trap fokusu: Tab na ostatnim elemencie zawija na pierwszy, Shift+Tab na pierwszym zawija na ostatni', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      last.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(first).toHaveFocus();
+
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(last).toHaveFocus();
+    });
+
+    it('focusMode: hamburger nie renderuje się w ogóle (zachowanie jak dziś - bez nowego sposobu otwarcia menu)', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} focusMode />);
+
+      expect(screen.queryByRole('button', { name: 'Otwórz menu' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
+    });
+
+    it('bez zalogowanego użytkownika panel nie pokazuje sekcji "Zgłoś"/"Ustawienia"/"Wyloguj", ale pozycje NAV_ITEMS zostają', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail={null} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByRole('link', { name: 'Kursy' })).toBeInTheDocument();
+      expect(within(dialog).queryByRole('link', { name: 'Zgłoś podejrzany mail' })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: 'Wyloguj' })).not.toBeInTheDocument();
     });
   });
 

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import ReportForm from './_components/ReportForm';
@@ -19,10 +20,10 @@ export default function ReportPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={payload?.email ?? null} role={payload?.role} />
-      <main className="mx-auto max-w-[760px] px-6 pb-12 pt-9 sm:px-10">
+      <PageContainer size={760}>
         <PageHeader title="Zgłoś podejrzaną wiadomość" subtitle="Dostałeś/-aś e-mail, który wygląda podejrzanie? Zgłoś go - to najlepsze, co możesz zrobić." />
         <ReportForm />
-      </main>
+      </PageContainer>
     </div>
   );
 }

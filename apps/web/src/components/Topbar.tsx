@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { Role } from '@cyberszkolo/shared';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { LogOut, Menu, Settings, X } from 'lucide-react';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+import { useLogout } from '@/lib/use-logout';
 import { buttonClasses } from './ui/Button';
 import Logo from './Logo';
 import UserMenu from './UserMenu';
@@ -34,6 +36,21 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Zgłoszenia', href: '/reports', built: true, visibleFor: [Role.ORG_ADMIN, Role.DEPARTMENT_MANAGER] },
 ];
 
+// Wydzielone (feat/mobile-app-shell): ta sama logika filtrowania po roli używana w pasku (lg+) i w panelu
+// mobilnym (poniżej lg) - jedno miejsce prawdy, żeby oba widoki nie rozjechały się przy kolejnej zmianie ról/pozycji.
+function visibleNavItems(role: Role | undefined): NavItem[] {
+  return NAV_ITEMS.filter((item) =>
+    item.visibleFor ? role === undefined || item.visibleFor.includes(role) : !item.adminOnly || role === undefined || role === Role.ORG_ADMIN,
+  );
+}
+
+// j.w. dla podświetlenia aktywnej pozycji - najdłuższy pasujący prefiks wygrywa (bez tego /courses/achievements
+// podświetlałoby jednocześnie "Kursy" i "Osiągnięcia", oba są prefiksami).
+function activeNavHref(items: NavItem[], pathname: string): string | undefined {
+  const builtHrefs = items.filter((item) => item.built).map((item) => item.href);
+  return builtHrefs.filter((href) => pathname === href || pathname.startsWith(`${href}/`)).sort((a, b) => b.length - a.length)[0];
+}
+
 function initialsFromEmail(email: string): string {
   const localPart = email.split('@')[0] ?? '';
   const segments = localPart.split(/[._-]+/).filter(Boolean);
@@ -49,11 +66,17 @@ export default function Topbar({
 }: {
   userEmail: string | null;
   role?: Role;
-  /** Tryb skupienia (odtwarzacz szkolenia): na wąskich ekranach ukrywa pozycje menu, zostaje logo, "Zgłoś" i avatar. Na desktopie bez zmian. */
+  /** Tryb skupienia (odtwarzacz szkolenia): na wąskich ekranach ukrywa pozycje menu i hamburger, zostaje logo, "Zgłoś" i avatar. Na desktopie bez zmian. */
   focusMode?: boolean;
 }) {
   const pathname = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerId = useId();
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const wasOpenRef = useRef(false);
 
   // Własny avatar pobieramy po stronie klienta (Topbar jest współdzielony
   // przez wszystkie strony), a zmianę z ustawień konta łapiemy przez
@@ -92,15 +115,70 @@ export default function Topbar({
   }, [userEmail]);
 
   // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    item.visibleFor ? role === undefined || item.visibleFor.includes(role) : !item.adminOnly || role === undefined || role === Role.ORG_ADMIN,
-  );
-  const builtHrefs = visibleItems.filter((item) => item.built).map((item) => item.href);
-  // Najdłuższy pasujący prefiks wygrywa - bez tego /courses/achievements
-  // podświetlałoby jednocześnie "Kursy" i "Osiągnięcia" (oba są prefiksami).
-  const activeHref = builtHrefs
-    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
-    .sort((a, b) => b.length - a.length)[0];
+  const visibleItems = visibleNavItems(role);
+  const activeHref = activeNavHref(visibleItems, pathname);
+  // Pierwszy ZBUDOWANY element dostaje fokus po otwarciu panelu - nie zawsze index 0 (mogłaby nim być
+  // nieklikalna pozycja "Wkrótce", na której .focus() jest no-opem).
+  const firstBuiltIndex = visibleItems.findIndex((item) => item.built);
+
+  // Panel zamyka się przy zmianie ścieżki - klik w link i tak zamyka natychmiast (onClick niżej), ale to też
+  // łapie nawigację, która nie idzie przez klik wewnątrz panelu (np. przycisk "wstecz" przeglądarki w trakcie otwarcia).
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  // Blokada przewijania body, Escape i trap fokusu (Tab/Shift+Tab zawinięte na granicach panelu) - tylko gdy otwarty.
+  useEffect(() => {
+    if (!drawerOpen) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setDrawerOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') {
+        return;
+      }
+      const panel = drawerRef.current;
+      if (!panel) {
+        return;
+      }
+      const focusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      if (focusable.length === 0) {
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [drawerOpen]);
+
+  // Fokus na pierwszy link po otwarciu; po zamknięciu wraca na hamburger (nie przy pierwszym renderze - wasOpenRef
+  // pilnuje, żeby to zadziałało tylko na przejściu otwarty -> zamknięty, nie na starcie strony).
+  useEffect(() => {
+    if (drawerOpen) {
+      wasOpenRef.current = true;
+      firstLinkRef.current?.focus();
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      hamburgerRef.current?.focus();
+    }
+  }, [drawerOpen]);
 
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-4 sm:px-10">
@@ -109,11 +187,11 @@ export default function Topbar({
           <Logo variant="dark" />
         </Link>
 
-        {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska: wiele pozycji menu (rola ORG_ADMIN) nie może wypychać strony poza okno na telefonie. */}
+        {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska (od lg w górę - poniżej lg pasek zastępuje hamburger). */}
         {focusMode && <div className="flex-1 sm:hidden" aria-hidden="true" />}
         <nav
           className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
-            focusMode ? 'hidden sm:flex' : 'flex'
+            focusMode ? 'hidden sm:flex' : 'hidden lg:flex'
           }`}
         >
           {visibleItems.map((item) => {
@@ -154,7 +232,140 @@ export default function Topbar({
         )}
 
         {userEmail && <UserMenu userEmail={userEmail} avatarUrl={avatarUrl} initials={initialsFromEmail(userEmail)} />}
+
+        {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności. */}
+        {!focusMode && (
+          <button
+            ref={hamburgerRef}
+            type="button"
+            onClick={() => setDrawerOpen((open) => !open)}
+            aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
+            aria-expanded={drawerOpen}
+            aria-controls={drawerId}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
+          >
+            {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
+          </button>
+        )}
       </div>
+
+      {!focusMode && (
+        <>
+          {/* Tło: pod paskiem (z-30 < header z-40, avatar/hamburger zostają klikalne), nad resztą strony. */}
+          <div
+            aria-hidden="true"
+            onClick={() => setDrawerOpen(false)}
+            className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
+              drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+          />
+          <div
+            id={drawerId}
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            aria-hidden={!drawerOpen}
+            className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-[320px] flex-col overflow-y-auto bg-surface shadow-card transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
+              drawerOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            {/* Bez osobnego przycisku zamknięcia tutaj - hamburger w pasku ZMIENIA SIĘ w X (ten sam przycisk, ten sam
+                stały punkt na ekranie - pasek jest sticky) i to jest "X" z listy sposobów zamknięcia; drugi przycisk
+                o tej samej nazwie dostępnej ("Zamknij menu") obok tego pierwszego byłby mylący dla czytnika ekranu. */}
+            <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
+              <span className="font-bold text-ink">Menu</span>
+            </div>
+
+            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+              {visibleItems.map((item, index) => {
+                if (!item.built) {
+                  return (
+                    <span key={item.label} className="flex items-center gap-2 rounded-btn px-3 py-2 font-semibold text-muted-2">
+                      {item.label}
+                      <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
+                        Wkrótce
+                      </span>
+                    </span>
+                  );
+                }
+                const isActive = item.href === activeHref;
+                return (
+                  <Link
+                    key={item.label}
+                    ref={index === firstBuiltIndex ? firstLinkRef : undefined}
+                    href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => setDrawerOpen(false)}
+                    tabIndex={drawerOpen ? undefined : -1}
+                    className={`rounded-btn px-3 py-2 font-semibold ${isActive ? 'bg-accent-soft text-ink' : 'text-muted hover:bg-paper hover:text-ink'}`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {userEmail && (
+              <DrawerUserSection userEmail={userEmail} drawerOpen={drawerOpen} onNavigate={() => setDrawerOpen(false)} />
+            )}
+          </div>
+        </>
+      )}
     </header>
+  );
+}
+
+// Wydzielone z Topbar: useLogout() (a więc i useRouter()) ma się wywoływać WYŁĄCZNIE, gdy ta sekcja faktycznie się
+// montuje (userEmail prawdziwe) - dokładnie tak jak już robi to UserMenu. Wywołanie useLogout() wprost w Topbar,
+// niezależnie od userEmail, wymagałoby useRouter w KAŻDYM teście renderującym Topbar (także z userEmail: null) -
+// złapane przez testy stron (dashboard/achievements/users), które mockują next/navigation bez useRouter.
+function DrawerUserSection({
+  userEmail,
+  drawerOpen,
+  onNavigate,
+}: {
+  userEmail: string;
+  drawerOpen: boolean;
+  onNavigate: () => void;
+}) {
+  const { logout, isLoggingOut } = useLogout();
+
+  async function handleLogout() {
+    onNavigate();
+    await logout();
+  }
+
+  return (
+    <div className="shrink-0 border-t border-border p-3">
+      <Link
+        href="/report"
+        onClick={onNavigate}
+        tabIndex={drawerOpen ? undefined : -1}
+        className="block rounded-btn px-3 py-2 font-semibold text-muted hover:bg-paper hover:text-ink"
+      >
+        Zgłoś podejrzany mail
+      </Link>
+      <Link
+        href="/account"
+        onClick={onNavigate}
+        tabIndex={drawerOpen ? undefined : -1}
+        className="flex items-center gap-2 rounded-btn px-3 py-2 font-semibold text-muted hover:bg-paper hover:text-ink"
+      >
+        <Settings size={16} strokeWidth={2} aria-hidden="true" />
+        Ustawienia konta
+      </Link>
+      <p className="break-all px-3 pb-1 pt-2 text-[13px] font-semibold text-muted">{userEmail}</p>
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        tabIndex={drawerOpen ? undefined : -1}
+        className="flex w-full items-center gap-2 rounded-btn px-3 py-2 text-left font-semibold text-muted hover:bg-paper hover:text-ink disabled:cursor-default disabled:opacity-50"
+      >
+        <LogOut size={16} strokeWidth={2} aria-hidden="true" />
+        {isLoggingOut ? 'Wylogowywanie...' : 'Wyloguj'}
+      </button>
+    </div>
   );
 }

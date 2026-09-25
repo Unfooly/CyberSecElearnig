@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import UsersPageClient from './_components/UsersPageClient';
 
 export default function UsersPage() {
@@ -19,9 +20,9 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <UsersPageClient />
-      </main>
+      </PageContainer>
     </div>
   );
 }

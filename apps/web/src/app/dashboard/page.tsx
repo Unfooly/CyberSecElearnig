@@ -6,6 +6,7 @@ import { formatDateLong } from '@/lib/datetime';
 import { decodeJwtPayload } from '@/lib/jwt';
 import Topbar from '@/components/Topbar';
 import PageHeader from '@/components/ui/PageHeader';
+import PageContainer from '@/components/ui/PageContainer';
 import KpiCard from './_components/KpiCard';
 import DepartmentsTable, { type DepartmentRow } from './_components/DepartmentsTable';
 import CompletionTrendChart from './_components/CompletionTrendChart';
@@ -74,12 +75,12 @@ export default async function DashboardPage() {
     return (
       <div className="min-h-screen bg-paper">
         <Topbar userEmail={userEmail} />
-        <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+        <PageContainer size={1280}>
           <PageHeader title="Dashboard" />
           <p role="alert" className="rounded-card border border-border bg-danger-soft p-4 text-sm text-danger">
             Nie udało się załadować danych dashboardu. Spróbuj odświeżyć stronę za chwilę.
           </p>
-        </main>
+        </PageContainer>
       </div>
     );
   }
@@ -100,7 +101,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <PageHeader title="Dashboard" subtitle={`Stan organizacji na dziś, ${today}`} actions={<ReportActions />} />
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -161,7 +162,7 @@ export default async function DashboardPage() {
         </div>
 
         <DepartmentsTable rows={departments} />
-      </main>
+      </PageContainer>
     </div>
   );
 }

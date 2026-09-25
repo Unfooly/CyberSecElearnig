@@ -7,6 +7,7 @@ import { redirectIfPending } from '@/lib/organization';
 import type { PhishingConfig, PhishingTemplate } from '@/lib/phishing-types';
 import type { DepartmentOption } from '@/lib/users-types';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import PageHeader from '@/components/ui/PageHeader';
 import CampaignWizard from '../_components/CampaignWizard';
 
@@ -36,7 +37,7 @@ export default async function NewPhishingCampaignPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1080px] px-10 pb-12 pt-9">
+      <PageContainer size={1080}>
         <PageHeader title="Nowa kampania phishingowa" />
         {templates.ok && departments.ok && config.ok ? (
           <CampaignWizard templates={templates.data} departments={departments.data} config={config.data} />
@@ -45,7 +46,7 @@ export default async function NewPhishingCampaignPage() {
             Nie udało się załadować danych kreatora. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

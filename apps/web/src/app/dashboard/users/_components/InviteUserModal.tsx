@@ -111,9 +111,11 @@ export default function InviteUserModal({
       aria-labelledby="invite-user-title"
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
     >
-      {/* Poniżej sm bez tła dookoła (p-0) - panel dosunięty do krawędzi jak natywny arkusz od dołu, nie
-          "wisząca" karta; pb dokłada bezpieczny margines pod grzybkiem/paskiem gestów iOS (poza nim env() = 0). */}
-      <div className="max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-card border border-border bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-card sm:rounded-card">
+      {/* Poniżej sm bez tła dookoła (p-0) i bez ograniczenia szerokości (max-w-sm dopiero od sm) - panel dosunięty
+          do WSZYSTKICH krawędzi jak natywny arkusz od dołu, nie "wisząca" karta z paskami tła po bokach.
+          Bez safe-area-inset-bottom: bez viewportFit: 'cover' w layoucie env() zawsze zwraca 0 - to wchodzi
+          dopiero w PR feat/player-stage razem z przeglądem nakładania na notch. */}
+      <div className="max-h-[92dvh] w-full overflow-y-auto rounded-t-card border border-border bg-surface p-6 shadow-card sm:max-w-sm sm:rounded-card">
         <h2 id="invite-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Zaproś pracownika
         </h2>

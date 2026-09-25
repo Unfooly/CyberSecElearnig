@@ -311,7 +311,7 @@ export default function ImportUsersModal({ onClose, onChanged }: { onClose: () =
             {preview.errors.length > 0 && (
               <div>
                 <h3 className="mb-1 text-sm font-bold">Błędy w pliku (te wiersze zostaną pominięte)</h3>
-                <div className="max-h-48 overflow-y-auto rounded-btn border border-border">
+                <div className="max-h-48 overflow-auto rounded-btn border border-border">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-border uppercase tracking-wide text-muted">
@@ -342,7 +342,7 @@ export default function ImportUsersModal({ onClose, onChanged }: { onClose: () =
             {preview.sample.length > 0 && (
               <div>
                 <h3 className="mb-1 text-sm font-bold">Przykładowe wiersze do dodania</h3>
-                <div className="max-h-40 overflow-y-auto rounded-btn border border-border">
+                <div className="max-h-40 overflow-auto rounded-btn border border-border">
                   <table className="w-full text-left text-xs">
                     <tbody>
                       {preview.sample.map((row) => (

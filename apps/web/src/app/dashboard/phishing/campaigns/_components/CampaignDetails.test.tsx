@@ -69,6 +69,13 @@ describe('CampaignDetails', () => {
     render(<CampaignDetails campaign={{ ...campaign, status: 'COMPLETED' }} />);
     expect(screen.queryByRole('button', { name: 'Anuluj kampanię' })).not.toBeInTheDocument();
   });
+
+  it('tabela nieudanych wysyłek przewija się poziomo wewnątrz karty (mobile)', () => {
+    render(<CampaignDetails campaign={campaign} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+  });
 });
 
 describe('CampaignsList', () => {
@@ -84,5 +91,21 @@ describe('CampaignsList', () => {
     expect(screen.getByRole('link', { name: 'Kampania jesienna' })).toHaveAttribute('href', '/dashboard/phishing/campaigns/c1');
     expect(screen.getByText('W trakcie')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
+  });
+
+  it('przewija się poziomo wewnątrz karty; poniżej md ukrywa kolumny drugorzędne, zostawia nazwę i status', () => {
+    render(<CampaignsList campaigns={[campaign]} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+    const nameCell = screen.getByRole('link', { name: 'Kampania jesienna' }).closest('td') as HTMLElement;
+    const statusCell = screen.getByText('W trakcie').closest('td') as HTMLElement;
+    expect(nameCell.className).not.toMatch(/hidden/);
+    expect(statusCell.className).not.toMatch(/hidden/);
+    for (const header of ['Okno wysyłki', 'Odbiorcy', 'Wysłano', 'Niepewne']) {
+      const className = screen.getByRole('columnheader', { name: header }).className;
+      expect(className).toMatch(/\bhidden\b/);
+      expect(className).toMatch(/\bmd:table-cell\b/);
+    }
   });
 });

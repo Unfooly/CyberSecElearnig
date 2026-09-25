@@ -48,6 +48,17 @@ describe('UsersTable', () => {
     expect(screen.getByText('jan@test.pl')).toBeInTheDocument();
   });
 
+  it('poniżej md ukrywa E-mail, Dział i Rolę; Status, Pracownik i Akcje zostają', () => {
+    render(<UsersTable users={users} isLoading={false} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    for (const header of ['E-mail', 'Dział', 'Rola']) {
+      expect(screen.getByRole('columnheader', { name: header }).className).toMatch(/hidden md:table-cell/);
+    }
+    for (const header of ['Status', 'Pracownik', 'Akcje']) {
+      expect(screen.getByRole('columnheader', { name: header }).className).not.toMatch(/hidden/);
+    }
+  });
+
   it('woła onEdit z klikniętym userem', () => {
     const onEdit = vi.fn();
     render(<UsersTable users={users} isLoading={false} onEdit={onEdit} onDelete={vi.fn()} />);

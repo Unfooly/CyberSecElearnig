@@ -86,9 +86,9 @@ export default function UsersTable({
         <tr>
           <Th className="w-[130px]">Status</Th>
           <Th>Pracownik</Th>
-          <Th>E-mail</Th>
-          <Th>Dział</Th>
-          <Th>Rola</Th>
+          <Th className="hidden md:table-cell">E-mail</Th>
+          <Th className="hidden md:table-cell">Dział</Th>
+          <Th className="hidden md:table-cell">Rola</Th>
           <Th className="text-right">Akcje</Th>
         </tr>
       </thead>
@@ -113,9 +113,9 @@ export default function UsersTable({
                     {fullName ? fullName : <span className="font-medium text-muted">Nie uzupełniono</span>}
                   </div>
                 </Td>
-                <Td className="text-muted">{user.email}</Td>
-                <Td>{user.department ? <Pill tone="acc">{user.department.name}</Pill> : <Pill tone="off">Brak działu</Pill>}</Td>
-                <Td>{ROLE_LABELS[user.role]}</Td>
+                <Td className="hidden text-muted md:table-cell">{user.email}</Td>
+                <Td className="hidden md:table-cell">{user.department ? <Pill tone="acc">{user.department.name}</Pill> : <Pill tone="off">Brak działu</Pill>}</Td>
+                <Td className="hidden md:table-cell">{ROLE_LABELS[user.role]}</Td>
                 <Td className="whitespace-nowrap text-right">
                   <button type="button" onClick={() => onEdit(user)} className={`${ACTION} text-accent-ink`}>
                     Edytuj

@@ -32,7 +32,7 @@ export default async function PhishingCampaignsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={userEmail} />
       <PageContainer size={1280}>
         <PageHeader

@@ -262,7 +262,7 @@ export default function UsersComplianceTable({ departments }: { departments: Dep
         </Table>
       )}
 
-      <div className="flex items-center justify-between px-5 py-3.5 text-[13px] text-muted print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 text-[13px] text-muted print:hidden">
         <span>
           Razem: {total} · Strona {Math.min(page, lastPage)} z {lastPage}
         </span>

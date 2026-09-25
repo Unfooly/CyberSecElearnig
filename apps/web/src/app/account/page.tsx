@@ -29,7 +29,7 @@ export default async function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={payload?.email ?? null} role={payload?.role} />
       <main className="mx-auto max-w-3xl px-6 pb-12 pt-9">
         <PageHeader title="Ustawienia konta" subtitle="Ustawienia Twojego konta w Unfooly." />

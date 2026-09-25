@@ -119,26 +119,28 @@ export default function CampaignDetails({ campaign }: { campaign: Campaign }) {
       {campaign.failures.length > 0 && (
         <Card>
           <CardHeader title="Nieudane i niepewne wysyłki" />
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-                <th className="px-5 py-3">Przyczyna</th>
-                <th className="px-5 py-3">Typ</th>
-                <th className="px-5 py-3 text-right">Liczba</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaign.failures.map((failure) => (
-                <tr key={failure.code} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3">{failureLabel(failure.code)}</td>
-                  <td className="px-5 py-3">
-                    <Pill tone={failure.uncertain ? 'warn' : 'off'}>{failure.uncertain ? 'Niepewne' : 'Nieudane'}</Pill>
-                  </td>
-                  <td className="px-5 py-3 text-right">{failure.count}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                  <th className="px-5 py-3">Przyczyna</th>
+                  <th className="px-5 py-3">Typ</th>
+                  <th className="px-5 py-3 text-right">Liczba</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {campaign.failures.map((failure) => (
+                  <tr key={failure.code} className="border-b border-border last:border-0">
+                    <td className="px-5 py-3">{failureLabel(failure.code)}</td>
+                    <td className="px-5 py-3">
+                      <Pill tone={failure.uncertain ? 'warn' : 'off'}>{failure.uncertain ? 'Niepewne' : 'Nieudane'}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-right">{failure.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
     </div>

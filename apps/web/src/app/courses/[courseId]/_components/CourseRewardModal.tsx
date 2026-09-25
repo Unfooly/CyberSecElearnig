@@ -27,9 +27,9 @@ export default function CourseRewardModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="course-reward-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-lg">
+      <div className="max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-lg bg-white p-6 text-center shadow-lg sm:rounded-lg">
         <p className="mb-1 text-3xl">🎉</p>
         <h2 id="course-reward-title" className="mb-2 text-xl font-semibold text-slate-900">
           Zdobyłeś +{reward.xpGained} XP!
@@ -55,7 +55,7 @@ export default function CourseRewardModal({
         <button
           type="button"
           onClick={onClose}
-          className="mt-2 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          className="mt-2 w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 sm:w-auto"
         >
           Super!
         </button>

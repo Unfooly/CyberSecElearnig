@@ -249,7 +249,7 @@ export default function UsersPageClient() {
         />
 
         {total > 0 && (
-          <div className="flex items-center justify-between px-5 py-3.5 text-[13px] text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 text-[13px] text-muted">
             <span>
               Strona {page} z {totalPages} ({total} {total === 1 ? 'pracownik' : 'pracowników'})
             </span>

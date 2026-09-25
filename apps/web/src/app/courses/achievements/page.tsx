@@ -33,7 +33,7 @@ export default async function AchievementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-dvh bg-slate-50">
       <Topbar userEmail={userEmail} role={payload?.role} />
       <main className="mx-auto max-w-7xl p-8">
         <div className="mb-6 flex items-center justify-between">

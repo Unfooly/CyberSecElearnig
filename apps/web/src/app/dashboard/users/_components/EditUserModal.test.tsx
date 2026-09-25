@@ -69,6 +69,14 @@ describe('EditUserModal', () => {
     );
   });
 
+  it('panel ma ograniczoną wysokość z przewijaniem (mobile: długi formularz nie wychodzi poza ekran)', () => {
+    render(<EditUserModal user={user} departments={departments} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    const panel = screen.getByRole('dialog').firstElementChild as HTMLElement;
+    expect(panel.className).toMatch(/max-h-\[92dvh\]/);
+    expect(panel.className).toMatch(/overflow-y-auto/);
+  });
+
   it('blokuje wysyłkę, gdy imię lub nazwisko jest puste', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

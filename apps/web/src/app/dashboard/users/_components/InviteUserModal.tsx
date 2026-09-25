@@ -109,9 +109,9 @@ export default function InviteUserModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="invite-user-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
     >
-      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-card">
+      <div className="max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-card border border-border bg-surface p-6 shadow-card sm:rounded-card">
         <h2 id="invite-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Zaproś pracownika
         </h2>
@@ -211,7 +211,7 @@ export default function InviteUserModal({
             </p>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
             <button
               type="button"
               onClick={onClose}

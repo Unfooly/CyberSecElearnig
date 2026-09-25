@@ -24,6 +24,13 @@ describe('TemplatesList', () => {
     expect(screen.getByRole('link', { name: 'Edytuj' })).toHaveAttribute('href', '/dashboard/phishing/templates/o1');
   });
 
+  it('tabela przewija się poziomo wewnątrz karty (mobile)', () => {
+    render(<TemplatesList initialTemplates={[base]} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+  });
+
   it('Klonuj: POST i przejście do edytora nowego szablonu', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'nowy' }) });
     vi.stubGlobal('fetch', fetchMock);

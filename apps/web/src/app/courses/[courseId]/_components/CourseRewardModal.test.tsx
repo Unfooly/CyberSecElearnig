@@ -46,6 +46,15 @@ describe('CourseRewardModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('panel ma ograniczoną wysokość z przewijaniem (mobile: dużo odznak nie wychodzi poza ekran)', () => {
+    const reward: CourseCompletionReward = { xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] };
+    render(<CourseRewardModal reward={reward} onClose={vi.fn()} />);
+
+    const panel = screen.getByRole('dialog').firstElementChild as HTMLElement;
+    expect(panel.className).toMatch(/max-h-\[92dvh\]/);
+    expect(panel.className).toMatch(/overflow-y-auto/);
+  });
+
   it('woła onClose po naciśnięciu Escape', () => {
     const onClose = vi.fn();
     const reward: CourseCompletionReward = { xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] };

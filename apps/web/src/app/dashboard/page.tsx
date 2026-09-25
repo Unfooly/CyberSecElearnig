@@ -73,7 +73,7 @@ export default async function DashboardPage() {
   // który myliłby admina co do przyczyny.
   if (!overviewResult.ok || !departmentsResult.ok) {
     return (
-      <div className="min-h-screen bg-paper">
+      <div className="min-h-dvh bg-paper">
         <Topbar userEmail={userEmail} />
         <PageContainer size={1280}>
           <PageHeader title="Dashboard" />
@@ -99,7 +99,7 @@ export default async function DashboardPage() {
     overview.activeUsers.total > 0 ? Math.round((overview.activeUsers.count / overview.activeUsers.total) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={userEmail} />
       <PageContainer size={1280}>
         <PageHeader title="Dashboard" subtitle={`Stan organizacji na dziś, ${today}`} actions={<ReportActions />} />

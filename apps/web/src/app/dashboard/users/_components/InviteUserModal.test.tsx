@@ -128,6 +128,14 @@ describe('InviteUserModal', () => {
     });
   });
 
+  it('panel ma ograniczoną wysokość z przewijaniem (mobile: długi formularz nie wychodzi poza ekran)', () => {
+    render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const panel = screen.getByRole('dialog').firstElementChild as HTMLElement;
+    expect(panel.className).toMatch(/max-h-\[92dvh\]/);
+    expect(panel.className).toMatch(/overflow-y-auto/);
+  });
+
   it('Escape zamyka modal', () => {
     const onClose = vi.fn();
     render(<InviteUserModal departments={departments} onClose={onClose} onCreated={vi.fn()} />);

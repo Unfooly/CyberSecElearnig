@@ -18,7 +18,7 @@ export default function ReportPage() {
   const payload = decodeJwtPayload(accessToken);
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={payload?.email ?? null} role={payload?.role} />
       <PageContainer size={760}>
         <PageHeader title="Zgłoś podejrzaną wiadomość" subtitle="Dostałeś/-aś e-mail, który wygląda podejrzanie? Zgłoś go - to najlepsze, co możesz zrobić." />

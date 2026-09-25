@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
@@ -5,7 +6,23 @@ import { hotspotStackZIndex } from './SceneHotspotsBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { OverlayStackProvider, useCloseTopOverlay } from '../player/overlay-stack';
 import type { ContentBlock, EvidenceSummary } from '@/lib/courses-types';
+
+// Karta hotspotu rejestruje swój Escape w overlay-stack (feat/player-stage) zamiast WŁASNEGO
+// document.addEventListener - w produkcji PlayerStage ma jeden nasłuch Escape na całą ramkę i woła closeTop(); ten
+// most odtwarza DOKŁADNIE to samo okablowanie w izolowanym renderze tego pliku (bez prawdziwego PlayerStage).
+function EscapeCascadeBridge() {
+  const closeTop = useCloseTopOverlay();
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeTop();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [closeTop]);
+  return null;
+}
 
 // Mechaniki "śledztwa": dowody, hotspoty z kartą, dialog po jednej kwestii, rozwiązanie sprawy.
 
@@ -82,25 +99,28 @@ function setup(
   const onSubmit = options.onSubmit ?? vi.fn();
   const ready: { current: (() => void) | null } = { current: null };
   render(
-    <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
-      <EvidenceProvider summary={options.summary}>
-        <MascotReactionProvider resetKey="k">
-          <EvidenceCounter />
-          <ExploratoryBlock
-            block={block}
-            contentBase="/content"
-            onSubmit={onSubmit}
-            onReady={(submit) => {
-              ready.current = submit;
-            }}
-            disabled={false}
-            review={options.review}
-          />
-          <Probe />
-          <NotesPanel id="panel" />
-        </MascotReactionProvider>
-      </EvidenceProvider>
-    </NotesProvider>,
+    <OverlayStackProvider>
+      <EscapeCascadeBridge />
+      <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
+        <EvidenceProvider summary={options.summary}>
+          <MascotReactionProvider resetKey="k">
+            <EvidenceCounter />
+            <ExploratoryBlock
+              block={block}
+              contentBase="/content"
+              onSubmit={onSubmit}
+              onReady={(submit) => {
+                ready.current = submit;
+              }}
+              disabled={false}
+              review={options.review}
+            />
+            <Probe />
+            <NotesPanel id="panel" />
+          </MascotReactionProvider>
+        </EvidenceProvider>
+      </NotesProvider>
+    </OverlayStackProvider>,
   );
   return { onSubmit, ready };
 }

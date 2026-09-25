@@ -273,9 +273,11 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
 
       expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
-      expect(container.querySelector('section[aria-label="Narracja"]')).toBeNull();
+      expect(container.querySelector('audio')).toBeNull();
       expect(screen.queryByRole('switch')).toBeNull();
-      expect(screen.queryByRole('progressbar')).toBeNull();
+      // Pasek postępu ZOSTAJE na 100% (feat/player-stage: "górny pasek jak w kursie" - X, tytuł, postęp - także na
+      // ekranie podsumowania), tylko odtwarzacz narracji i przełącznik Lektor znikają (blok SUMMARY bez narracji).
+      expect(screen.getByRole('progressbar', { name: 'Postęp szkolenia' })).toHaveAttribute('aria-valuenow', '100');
     });
   });
 
@@ -310,11 +312,18 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       const toggle = screen.getByRole('button', { name: /Notatnik \(2\)/ });
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
       expect(toggle).not.toHaveAttribute('aria-controls');
-      expect(screen.queryByText('Mail przyszedł rano.')).toBeNull();
+      // Panel notatnika (jak drawer Topbara, PR #39) jest zamontowany od razu - animacja wysuwania wymaga
+      // trwałego montowania - ale jest aria-hidden, dopóki zamknięty, więc czytnik ekranu go nie widzi. Bez
+      // filtra name: element aria-hidden="true" liczy nazwę dostępną jako pustą niezależnie od aria-label
+      // (ten sam wzorzec co drawer Topbara, PR #39).
+      const drawer = screen.getByRole('dialog', { hidden: true });
+      expect(drawer).toHaveAttribute('aria-hidden', 'true');
+      expect(drawer).toHaveTextContent('Mail przyszedł rano.');
 
       fireEvent.click(toggle);
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
       expect(toggle.getAttribute('aria-controls')).toBe(screen.getByRole('complementary', { name: 'Notatnik' }).id);
+      expect(drawer).toHaveAttribute('aria-hidden', 'false');
       expect(screen.getByText('Mail przyszedł rano.')).toBeInTheDocument();
       expect(screen.getByText('Adres bank-0.pl')).toBeInTheDocument();
     });

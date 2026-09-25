@@ -9,6 +9,7 @@ import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
+import { useOverlayLayer } from '../player/overlay-stack';
 import ExploreFooter from './ExploreFooter';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
@@ -83,6 +84,11 @@ export default function SceneHotspotsBlock({
   const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [interacted, setInteracted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  // object-contain wyśrodkowany (feat/player-stage, PlayerStage contentLayout='scene'): kontener dostaje
+  // aspect-ratio zmierzone z prawdziwego obrazu (onLoad), więc hotspoty w % pozycjonują się DOKŁADNIE na
+  // wyrenderowanym obrazie, bez liczenia offsetów w JS. Domyślne 16/10 (obrazy modułu 1 mają tę proporcję) - tylko
+  // na czas ładowania, żeby kontener nie zapadał się do zera wysokości, zanim <img onLoad> poda prawdziwą wartość.
+  const [aspectRatio, setAspectRatio] = useState(16 / 10);
   // Audio: id hotspotów (dowolnego poziomu), których nagranie zostało odsłuchane do końca (onEnded) - odsłania insight (content).
   const [listenedIds, setListenedIds] = useState<string[]>([]);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
@@ -131,16 +137,11 @@ export default function SceneHotspotsBlock({
     if (current) headingRef.current?.focus();
   }, [activeId, nestedActiveId, current]);
 
-  // Escape zdejmuje jeden poziom nakładki - ten sam handler co przycisk "Wróć".
-  useEffect(() => {
-    if (!activeId) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') goBack();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, nestedActiveId]);
+  // Escape zdejmuje jeden poziom nakładki - ten sam handler co przycisk "Wróć". Zarejestrowane w overlay-stack
+  // (priorytet 'hotspotCard', najwyższy) zamiast WŁASNEGO document.addEventListener - PlayerStage ma JEDEN
+  // nasłuch Escape na całą ramkę i woła closeTop(), który trafia dokładnie tutaj, dopóki karta jest otwarta
+  // (na którymkolwiek z dwóch poziomów - goBack sam zdejmuje tylko jeden, więc drugi Escape trafi tu ponownie).
+  useOverlayLayer('hotspotCard', activeId !== null, goBack);
 
   function markVisited(id: string) {
     setVisited((current) => (current.includes(id) ? current : [...current, id]));
@@ -214,14 +215,21 @@ export default function SceneHotspotsBlock({
         // malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
         // zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
         // znów maluje się po prostu w kolejności DOM, jak przed tym z-index.
-        <div className="relative isolate overflow-hidden rounded border border-slate-200">
+        <div
+          className="relative isolate mx-auto max-h-full max-w-full overflow-hidden rounded border border-slate-200"
+          style={{ aspectRatio: String(aspectRatio) }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
           <img
             src={imageUrl}
             alt={block.imageAlt ?? ''}
             referrerPolicy="no-referrer"
             aria-hidden={activeId ? true : undefined}
-            className="block w-full"
+            className="block h-full w-full object-contain"
+            onLoad={(event) => {
+              const { naturalWidth, naturalHeight } = event.currentTarget;
+              if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
+            }}
             onError={() => setImageFailed(true)}
           />
           {hotspots.map((hotspot) => {
@@ -501,7 +509,7 @@ function formatAudioTime(seconds: number): string {
 // (media.image, opcjonalne) nad małym przyciskiem play/pauza z cienkim paskiem postępu i czasem. Autoodtwarzanie przy
 // otwarciu hotspotu (klik = gest użytkownika, więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale
 // możliwe np. przy restrykcyjnych ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o
-// błędzie (inaczej niż NarrationPlayer.tsx, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
+// błędzie (inaczej niż NarrationBar.tsx/useNarrationBar.ts, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
 function AudioMedia({
   contentBase,
   media,

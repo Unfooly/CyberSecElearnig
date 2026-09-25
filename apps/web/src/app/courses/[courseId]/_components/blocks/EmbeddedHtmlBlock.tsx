@@ -39,12 +39,15 @@ export default function EmbeddedHtmlBlock({
         Interaktywna gra
       </p>
       {suspended ? null : src ? (
+        // h-[min(70dvh,640px)] zamiast stałego h-[640px] (feat/player-stage): panel slajdu w ramce nie ma pełnej
+        // wysokości viewportu jak dawny <main> strony, więc sztywne 640px potrafiłoby wystawać poza ramkę na
+        // niskich ekranach (telefon w poziomie) - iframe skaluje się z dostępną wysokością, przewija się w środku.
         <iframe
           src={src}
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
           title="Interaktywny moduł szkoleniowy"
-          className="mb-4 h-[640px] w-full rounded-lg border border-slate-200 bg-white"
+          className="mb-4 h-[min(70dvh,640px)] w-full rounded-lg border border-slate-200 bg-white"
         />
       ) : (
         <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">

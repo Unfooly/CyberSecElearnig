@@ -13,7 +13,6 @@ import type {
   LastResult,
 } from '@/lib/courses-types';
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
-import MascotSays from '@/components/MascotSays';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -23,10 +22,12 @@ import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import ScoredBlock, { hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
 import SummaryScreen from './SummaryScreen';
-import PlayerShell from './player/PlayerShell';
-import NarrationPlayer from './player/NarrationPlayer';
+import PlayerStage from './player/PlayerStage';
+import NarrationBar from './player/NarrationBar';
+import TranscriptPanel from './player/TranscriptPanel';
+import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
-import { NotesPanel, NotesProvider, useNotes } from './player/notes';
+import { NotesProvider, useNotes } from './player/notes';
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
 import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
@@ -91,29 +92,24 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   }
 }
 
-// Powłoka z licznikiem notatek (kontekst notatnika): osobny komponent, bo hook useNotes musi być pod NotesProvider.
 const NOTES_ID = 'notes-panel';
 
-function ShellWithNotes({
+// Woła hooki, które MUSZĄ być dziećmi NotesProvider/MascotReactionProvider (useNotes, useMascotReaction) - liczbę
+// notatek i bieżącą maskotkę PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
+function StageWithContext({
   idleMascot,
+  showMascot,
   ...props
-}: Omit<React.ComponentProps<typeof PlayerShell>, 'notesCount' | 'notesPanel' | 'notesId' | 'mascot' | 'evidence'> & {
+}: Omit<React.ComponentProps<typeof PlayerStage>, 'notesCount' | 'mascot'> & {
   /** Poza spoczynkowa maskotki bieżącego bloku (z treści albo domyślna dla typu); reakcja na zdarzenie (np. nowy dowód) ją chwilowo zastępuje. */
   idleMascot?: { pose: string; text?: string };
+  /** false w trybie podsumowania - Fooli nie nakłada się na ekran wyniku. */
+  showMascot: boolean;
 }) {
   const { notes } = useNotes();
   const { reaction } = useMascotReaction();
-  const shown = reaction ?? idleMascot;
-  return (
-    <PlayerShell
-      {...props}
-      notesCount={notes.length}
-      notesId={NOTES_ID}
-      notesPanel={<NotesPanel id={NOTES_ID} />}
-      mascot={shown ? <MascotSays pose={shown.pose} text={shown.text} /> : undefined}
-      evidence={<EvidenceCounter />}
-    />
-  );
+  const shown = showMascot ? (reaction ?? idleMascot) : undefined;
+  return <PlayerStage {...props} notesCount={notes.length} mascot={shown} />;
 }
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
@@ -176,6 +172,10 @@ export default function CoursePlayer({
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
   const [serverNotes, setServerNotes] = useState<ClientNote[]>([]);
+  // "Rozpocznij od nowa" na ekranie podsumowania (D-069, B-091) - przycisk jest teraz dolnym paskiem PlayerStage
+  // (miejsce "Wstecz"), logika zostaje tu (feat/player-stage: przeniesiona z SummaryScreen.tsx).
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState(false);
   // Gotowość bieżącego bloku eksploracyjnego do "Dalej" w pasku powłoki (wymagane elementy pokryte) - funkcja, którą
   // "Dalej" wywoła zamiast osobnego "Kontynuuj" wewnątrz bloku (raport z pierwszego przejścia modułu 1). null = jeszcze
   // nie gotowy (albo bieżący blok w ogóle nie zgłasza gotowości - np. QUIZ, SUMMARY). Zerowane WPROST w handleAnswer
@@ -195,6 +195,7 @@ export default function CoursePlayer({
 
   const blocks = initial.contentBlocks;
   const displayedIndex = viewIndex ?? state.currentBlockIndex;
+  const isSummaryMode = state.status === 'COMPLETED' && !feedback;
   // Nagłówki grup w notatniku i podsumowaniu sprawy: tytuł bloku (albo opis obrazu sceny, albo numer).
   const blockTitles = useMemo(
     () => Object.fromEntries(blocks.map((block, index) => [block.id ?? `b${index}`, block.title ?? block.imageAlt ?? `Blok ${index + 1}`])),
@@ -208,23 +209,7 @@ export default function CoursePlayer({
       return;
     }
     headingRef.current?.focus();
-  }, [displayedIndex, feedback]);
-
-  // Kurs już ukończony (świeżo albo user wrócił do starego) - podsumowanie
-  // zamiast pozwalania przejść przez bloki jeszcze raz. scoreUnavailable
-  // dotyczy tylko ścieżki "wrócił do starego" - po świeżym ukończeniu w tej
-  // sesji state.score zawsze pochodzi wprost z odpowiedzi /progress.
-  if (state.status === 'COMPLETED' && !feedback) {
-    return (
-      <SummaryScreen
-        courseId={courseId}
-        title={initial.title}
-        score={state.score}
-        scoreUnavailable={scoreUnavailable}
-        reward={reward}
-      />
-    );
-  }
+  }, [displayedIndex, feedback, isSummaryMode]);
 
   const hasAudio = (index: number) =>
     preference.enabled && contentAssetUrl(contentBase, blocks[index]?.narration?.audioUrl, 'audio') !== null;
@@ -340,16 +325,45 @@ export default function CoursePlayer({
     setViewIndex(next >= state.currentBlockIndex ? null : next);
   }
 
+  // "Rozpocznij od nowa" (D-069, B-091): archiwizuje to przypisanie i tworzy nowe (POST .../restart), potem
+  // router.refresh() - strona jest już pod /courses/[courseId], więc to NIE nawigacja, tylko ponowne pobranie
+  // danych servera (nowe /start w page.tsx). page.tsx nadaje <CoursePlayer key={assignmentId}>, więc zmiana
+  // assignmentId po restarcie wymusza pełny remount i czysty stan klienta - stąd brak dodatkowej logiki resetu tutaj.
+  async function restartCourse() {
+    if (!window.confirm('Twój wynik zostanie zachowany w historii, kurs zacznie się od początku. Kontynuować?')) {
+      return;
+    }
+    setRestarting(true);
+    setRestartError(false);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/restart`, { method: 'POST' });
+      if (!response.ok) {
+        setRestartError(true);
+        setRestarting(false);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setRestartError(true);
+      setRestarting(false);
+    }
+  }
+
   const reviewing = viewIndex !== null;
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
   const continueLabel = state.status === 'COMPLETED' ? 'Zobacz podsumowanie' : 'Dalej';
+  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); reszta bloków (i FeedbackPanel/
+  // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
+  const contentLayout: 'scene' | 'slide' = !isSummaryMode && !showingFeedback && currentBlock?.type === 'SCENE_HOTSPOTS' ? 'scene' : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
   let stage: React.ReactNode;
-  if (showingFeedback) {
+  if (isSummaryMode) {
+    stage = <SummaryScreen title={initial.title} score={state.score} scoreUnavailable={scoreUnavailable} reward={reward} restartError={restartError} />;
+  } else if (showingFeedback) {
     const answered = blocks[feedback.blockIndex];
     const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
     // Mail i kolejność pokazują wynik w samym bloku (wybór gracza, trafienia, wyjaśnienia); reszta ogólny komunikat.
@@ -394,26 +408,40 @@ export default function CoursePlayer({
     );
   }
 
-  const narrationBlock = showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
+  // Narracja: bloku podsumowania (tryb summary), bloku z wyniku (feedback) albo bieżącego/podglądanego bloku - JEDNO
+  // wywołanie hooka niezależnie od trybu (zasady hooków), NarrationBar/TranscriptPanel same nic nie pokazują bez
+  // narration.
+  const summaryBlock = useMemo(() => blocks.find((block) => block.type === 'SUMMARY'), [blocks]);
+  const narrationBlock = isSummaryMode ? summaryBlock : showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
+  const narrationBarState = useNarrationBar({
+    narration: narrationBlock?.narration,
+    contentBase,
+    enabled: preference.enabled,
+    autoPlay: !isSummaryMode && !showingFeedback && autoPlayFor === keyOf(displayedIndex),
+    resetKey: isSummaryMode ? 'summary' : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`,
+  });
 
   return (
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
       <EvidenceProvider summary={evidence}>
-        <MascotReactionProvider resetKey={`${displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
+        <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
           <ApplyServerNotes notes={serverNotes} />
-          <ShellWithNotes
+          <StageWithContext
             title={initial.title}
-            blockNumber={Math.min(displayedIndex + 1, blocks.length)}
+            blockNumber={isSummaryMode ? blocks.length : Math.min(displayedIndex + 1, blocks.length)}
             totalBlocks={blocks.length}
-            completedBlocks={state.currentBlockIndex}
+            completedBlocks={isSummaryMode ? blocks.length : state.currentBlockIndex}
             headingRef={headingRef}
+            showMascot={!isSummaryMode}
+            evidence={<EvidenceCounter />}
             idleMascot={
-              currentBlock && !showingFeedback
+              currentBlock && !showingFeedback && !isSummaryMode
                 ? currentBlock.mascot
                   ? { pose: currentBlock.mascot.pose, text: currentBlock.mascot.text }
                   : DEFAULT_IDLE[currentBlock.type]
                 : undefined
             }
+            contentLayout={contentLayout}
             stage={
               <>
                 {error && (
@@ -424,43 +452,55 @@ export default function CoursePlayer({
                 {stage}
               </>
             }
-            narration={
-              <NarrationPlayer
-                key={`${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`}
+            narrationBar={
+              <NarrationBar
                 narration={narrationBlock?.narration}
-                contentBase={contentBase}
+                state={narrationBarState}
                 enabled={preference.enabled}
                 onToggleEnabled={preference.toggle}
                 togglePending={preference.pending}
                 toggleError={preference.error}
-                autoPlay={!showingFeedback && autoPlayFor === keyOf(displayedIndex)}
+              />
+            }
+            transcriptPanel={
+              <TranscriptPanel
+                text={narrationBlock?.narration?.text ?? ''}
+                open={narrationBarState.transcriptOpen}
+                onClose={narrationBarState.toggleTranscript}
               />
             }
             notesOpen={notesOpen}
             onToggleNotes={() => setNotesOpen((open) => !open)}
-            onBack={goBack}
-            onForward={goForward}
-            canBack={displayedIndex > 0 && !showingFeedback && !submitting}
+            notesId={NOTES_ID}
+            onBack={isSummaryMode ? restartCourse : goBack}
+            onForward={isSummaryMode ? () => router.push('/courses') : goForward}
+            canBack={isSummaryMode ? !restarting : displayedIndex > 0 && !showingFeedback && !submitting}
+            canForward={isSummaryMode ? true : (reviewing || readySubmit !== null) && !showingFeedback && !submitting}
+            backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
+            forwardLabel={isSummaryMode ? 'Wróć do biblioteki' : undefined}
             // Na SUMMARY jedynym wyjściem jest "Zakończ sprawę" w bloku: "Dalej" z paska znika (jedno CTA zamiast dwóch).
             // TEXT_INPUT_GUIDED po rozstrzygnięciu (done) pokazuje własny, aktywny "Dalej" pod wynikiem (onReady go nie
             // dotyczy - patrz handleAnswer) - z tego samego powodu pasek chowa swój, zamiast trzymać drugi, nieaktywny
             // obok niego. SCENE_HOTSPOTS z hotspotem action:'next' ("drzwi", B-086/D-071): blok nigdy nie woła onReady
             // (SceneHotspotsBlock), więc wyjściem jest wyłącznie klik w drzwi na scenie - pasek chowa swój "Dalej" tak
-            // samo jak przy SUMMARY.
+            // samo jak przy SUMMARY. Tryb podsumowania: NIGDY nie chowamy - to tu żyją "Rozpocznij od nowa"/"Wróć do
+            // biblioteki".
             hideForward={
+              !isSummaryMode &&
               !showingFeedback &&
               !reviewing &&
               (currentBlock?.type === 'SUMMARY' ||
                 (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true) ||
                 (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next')))
             }
-            canForward={(reviewing || readySubmit !== null) && !showingFeedback && !submitting}
             forwardHint={
-              showingFeedback
-                ? 'Użyj przycisku pod wynikiem.'
-                : !reviewing
-                  ? 'Ukończ ten blok, aby przejść dalej.'
-                  : undefined
+              isSummaryMode
+                ? undefined
+                : showingFeedback
+                  ? 'Użyj przycisku pod wynikiem.'
+                  : !reviewing
+                    ? 'Ukończ ten blok, aby przejść dalej.'
+                    : undefined
             }
           />
         </MascotReactionProvider>

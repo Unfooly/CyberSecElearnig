@@ -50,3 +50,44 @@
     background: white !important;
   }
 }
+
+/* Odtwarzacz kursu (PlayerStage.tsx, feat/player-stage): dwa tryby dopasowania ramki do ekranu, których nie da się
+   wygodnie wyrazić zwykłymi wariantami Tailwind (złożone zapytania max-height+orientation na wielu właściwościach
+   naraz). Nadpisują STYL INLINE (formuła min()/aspect-ratio 16:9 liczona w PlayerStage.tsx) - stąd !important,
+   jedyne miejsce w repo, gdzie jest potrzebny. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .player-outer {
+    padding: 0 !important;
+  }
+  .player-frame {
+    width: 100dvw !important;
+    height: 100dvh !important;
+    aspect-ratio: unset !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .player-topbar {
+    min-height: 40px !important;
+  }
+  .player-bottombar {
+    min-height: 48px !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .player-outer {
+    padding: 0 !important;
+  }
+  .player-frame {
+    width: 100dvw !important;
+    height: 100dvh !important;
+    aspect-ratio: unset !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  /* Licznik dowodów i etykieta "Notatnik" zwijają się do samej ikony - mało miejsca w górnym pasku na telefonie
+     w pionie (PR feat/player-stage, sekcja B częściowo: tylko układ paska, bez panoramy sceny - to PR B). */
+  .player-compact-label {
+    display: none;
+  }
+}

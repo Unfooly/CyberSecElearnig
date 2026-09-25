@@ -65,21 +65,6 @@ describe('Topbar', () => {
       expect(group.lastElementChild).toBe(hamburger);
     });
 
-    it('focusMode (odtwarzacz): na wąskich ekranach menu jest ukryte, zostaje logo, "Zgłoś" i avatar; od sm menu wraca', () => {
-      usePathnameMock.mockReturnValue('/courses/abc');
-      const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} focusMode />);
-
-      const nav = container.querySelector('nav') as HTMLElement;
-      expect(nav.className).toMatch(/\bhidden\b/);
-      expect(nav.className).toMatch(/sm:flex/);
-      expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toBeInTheDocument();
-      // Bez hamburgera (focusMode) grupa to tylko "Zgłoś" + avatar - ml-auto musi pchać do prawej krawędzi też
-      // wtedy, nie tylko gdy hamburger jest jej ostatnim dzieckiem (patrz test wyżej).
-      const group = screen.getByRole('link', { name: 'Zgłoś podejrzany mail' }).parentElement as HTMLElement;
-      expect(group.className.split(' ')).toContain('ml-auto');
-      expect(screen.queryByRole('button', { name: 'Otwórz menu' })).not.toBeInTheDocument();
-    });
-
     it('adres e-mail jest wyłącznie w menu użytkownika, w całości (nic się nie ucina); kopia w panelu mobilnym jest aria-hidden, dopóki panel zamknięty', () => {
       usePathnameMock.mockReturnValue('/courses');
       const email = 'bardzo.dlugi.adres.uzytkownika@bardzo-dluga-domena-firmy.example.test';
@@ -161,7 +146,10 @@ describe('Topbar', () => {
       const { container } = render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
       openDrawer();
 
-      const backdrop = container.querySelector('[aria-hidden="true"].fixed.top-16') as HTMLElement;
+      // Bez .top-16 w selektorze: pozycja paska to teraz wyrażenie calc() (safe-area), nie da się go dopasować
+      // literalną klasą CSS - aria-hidden="true" (zawsze, w przeciwieństwie do panelu, którego aria-hidden zależy
+      // od drawerOpen) wystarcza, żeby jednoznacznie trafić w tło.
+      const backdrop = container.querySelector('[aria-hidden="true"].fixed') as HTMLElement;
       fireEvent.click(backdrop);
 
       expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
@@ -359,14 +347,6 @@ describe('Topbar', () => {
       expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
       expect(screen.getByRole('menu')).toBeInTheDocument();
       expect(avatar).toHaveFocus(); // fokus zostaje na avatarze - drawer NIE oddaje go na hamburger w tym przypadku
-    });
-
-    it('focusMode: hamburger nie renderuje się w ogóle (zachowanie jak dziś - bez nowego sposobu otwarcia menu)', () => {
-      usePathnameMock.mockReturnValue('/courses');
-      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} focusMode />);
-
-      expect(screen.queryByRole('button', { name: 'Otwórz menu' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument();
     });
 
     it('bez zalogowanego użytkownika panel nie pokazuje sekcji "Zgłoś"/"Ustawienia"/"Wyloguj", ale pozycje NAV_ITEMS zostają', () => {

@@ -65,9 +65,15 @@ export function EvidenceCounter() {
   const total = summary.total;
 
   return (
-    <div data-testid="evidence-counter" className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-800">
+    <div
+      data-testid="evidence-counter"
+      aria-label={`Dowody ${collected} z ${total}`}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-800"
+    >
       <Search aria-hidden="true" className="h-4 w-4 text-indigo-700" />
-      <span>
+      {/* player-compact-label: zwinięte do samej ikony na telefonie w pionie (PlayerStage, globals.css) - aria-label
+          na kontenerze wyżej zostaje niezależnie od tego, czy tekst jest widoczny. */}
+      <span aria-hidden="true" className="player-compact-label">
         Dowody {collected}/{total}
       </span>
       {/* "+1" w wierszu licznika, po prawej, w zarezerwowanym miejscu (bez przesuwania układu i bez wystawania poza pasek postępu);

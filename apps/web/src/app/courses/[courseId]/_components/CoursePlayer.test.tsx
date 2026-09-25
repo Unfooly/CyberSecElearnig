@@ -77,7 +77,8 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText('Rozpoznawanie phishingu')).toBeInTheDocument();
+    // Tytuł kursu widać teraz dwa razy: w pasku górnym PlayerStage (zawsze) i w treści SummaryScreen.
+    expect(screen.getAllByText('Rozpoznawanie phishingu').length).toBeGreaterThanOrEqual(1);
     // gamification: null w odpowiedzi (badge się nie odblokował w tym
     // scenariuszu testowym) -> brak modala nagrody.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

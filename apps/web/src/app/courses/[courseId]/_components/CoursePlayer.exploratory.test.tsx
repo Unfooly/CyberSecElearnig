@@ -298,21 +298,24 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
   });
 
-  it('dolny pasek: scroll-padding-bottom dokumentu z pomiaru paska (fokus nie ląduje pod paskiem), sprzątany przy odmontowaniu', () => {
-    // jsdom nie zna właściwości scroll-padding-*, więc sprawdzamy wywołania (ustawienie z pomiaru + sprzątanie).
-    const setProperty = vi.spyOn(document.documentElement.style, 'setProperty');
-    const removeProperty = vi.spyOn(document.documentElement.style, 'removeProperty');
+  it('dolny pasek: scroll-padding-bottom obszaru treści (nie całego dokumentu - ramka jest jedynym przewijanym obszarem) z pomiaru paska, sprzątany przy odmontowaniu', () => {
+    // Element treści dostajemy PO renderze (setProperty szpiegujemy na jego prototypie, jak dawny test na
+    // document.documentElement.style - jsdom bywa niekonsekwentne w zapamiętywaniu nierozpoznanych właściwości
+    // CSS, więc sprawdzamy samo wywołanie, nie odczyt wartości).
+    const setProperty = vi.spyOn(window.CSSStyleDeclaration.prototype, 'setProperty');
+    const removeProperty = vi.spyOn(window.CSSStyleDeclaration.prototype, 'removeProperty');
     const { unmount } = render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
     expect(setProperty).toHaveBeenCalledWith('scroll-padding-bottom', expect.stringMatching(/^\d+px$/));
     unmount();
     expect(removeProperty).toHaveBeenCalledWith('scroll-padding-bottom');
   });
 
-  it('fokus na elemencie zasłoniętym przez dolny pasek przewija stronę nad pasek; element nad paskiem i elementy paska nie przewijają', () => {
-    const scrollBy = vi.fn();
-    vi.stubGlobal('scrollBy', scrollBy);
+  it('fokus na elemencie zasłoniętym przez dolny pasek przewija OBSZAR TREŚCI (nie window - strona się nie przewija) nad pasek; element nad paskiem i elementy paska nie przewijają', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
-    const bar = screen.getByRole('navigation', { name: 'Nawigacja po blokach' }).parentElement!.parentElement as HTMLElement;
+    const bar = screen.getByRole('navigation', { name: 'Nawigacja po blokach' }).parentElement as HTMLElement;
+    const content = bar.previousElementSibling as HTMLElement;
+    const scrollBy = vi.fn();
+    content.scrollBy = scrollBy;
     vi.spyOn(bar, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 760, height: 60 } as DOMRect);
     const monitor = screen.getByRole('button', { name: 'Monitor' });
 

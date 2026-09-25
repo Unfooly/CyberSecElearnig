@@ -100,12 +100,22 @@ describe('CampaignsList', () => {
     expect(table.closest('.overflow-x-auto')).not.toBeNull();
     const nameCell = screen.getByRole('link', { name: 'Kampania jesienna' }).closest('td') as HTMLElement;
     const statusCell = screen.getByText('W trakcie').closest('td') as HTMLElement;
-    expect(nameCell.className).not.toMatch(/hidden/);
-    expect(statusCell.className).not.toMatch(/hidden/);
+    expect(nameCell.className.split(' ')).not.toContain('hidden');
+    expect(statusCell.className.split(' ')).not.toContain('hidden');
     for (const header of ['Okno wysyłki', 'Odbiorcy', 'Wysłano', 'Niepewne']) {
-      const className = screen.getByRole('columnheader', { name: header }).className;
-      expect(className).toMatch(/\bhidden\b/);
-      expect(className).toMatch(/\bmd:table-cell\b/);
+      const classes = screen.getByRole('columnheader', { name: header }).className.split(' ');
+      expect(classes).toContain('hidden');
+      expect(classes).toContain('md:table-cell');
+    }
+
+    // Nagłówek "hidden" bez odpowiadającej komórki (albo odwrotnie) przesuwałby kolumny na telefonie - stąd
+    // sprawdzenie też <td>, nie tylko <th>. Jeden wiersz danych: komórki w kolejności kolumn nagłówka.
+    const [nameTd, statusTd, windowTd, recipientsTd, sentTd, uncertainTd] = screen.getAllByRole('cell');
+    expect([nameTd, statusTd]).toEqual([nameCell, statusCell]);
+    for (const cell of [windowTd, recipientsTd, sentTd, uncertainTd]) {
+      const classes = cell.className.split(' ');
+      expect(classes).toContain('hidden');
+      expect(classes).toContain('md:table-cell');
     }
   });
 });

@@ -77,6 +77,23 @@ describe('EditUserModal', () => {
     expect(panel.className).toMatch(/overflow-y-auto/);
   });
 
+  it('poniżej sm modal jest arkuszem przyklejonym do dołu ekranu (bez tła dookoła), od sm wyśrodkowany jak dziś', () => {
+    render(<EditUserModal user={user} departments={departments} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    const backdropClasses = screen.getByRole('dialog').className.split(' ');
+    expect(backdropClasses).toContain('items-end');
+    expect(backdropClasses).toContain('sm:items-center');
+    expect(backdropClasses).toContain('p-0');
+    expect(backdropClasses).toContain('sm:p-4');
+  });
+
+  it('przyciski w stopce dzielą pełną szerokość na telefonie (flex-wrap)', () => {
+    render(<EditUserModal user={user} departments={departments} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    const footer = screen.getByRole('button', { name: 'Zapisz' }).closest('div') as HTMLElement;
+    expect(footer.className.split(' ')).toContain('flex-wrap');
+  });
+
   it('blokuje wysyłkę, gdy imię lub nazwisko jest puste', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

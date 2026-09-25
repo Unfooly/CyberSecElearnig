@@ -74,9 +74,11 @@ export default function EditUserModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-user-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
     >
-      <div className="max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-card border border-border bg-surface p-6 shadow-card sm:rounded-card">
+      {/* Poniżej sm bez tła dookoła (p-0) - panel dosunięty do krawędzi jak natywny arkusz od dołu, nie
+          "wisząca" karta; pb dokłada bezpieczny margines pod grzybkiem/paskiem gestów iOS (poza nim env() = 0). */}
+      <div className="max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-t-card border border-border bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-card sm:rounded-card">
         <h2 id="edit-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Edytuj pracownika
         </h2>
@@ -150,7 +152,7 @@ export default function EditUserModal({
             </p>
           )}
 
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
+          <div className="flex flex-wrap gap-2 sm:justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
             <button
               type="button"
               onClick={onClose}

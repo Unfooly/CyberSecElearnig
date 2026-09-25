@@ -27,17 +27,15 @@ function stubFetch(body: Page<AdminInboxItem>) {
 describe('AdminInbox', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('tabela przewija się poziomo wewnątrz karty; poniżej md ukrywa "Zgłoszono", zostawia temat i status', async () => {
+  it('tabela przewija się poziomo wewnątrz karty; żadna kolumna nie jest ukryta (tylko 3, data jest jedynym porządkującym elementem - temat nie ma daty w sobie)', async () => {
     stubFetch(page([item()]));
     render(<AdminInbox />);
 
     const table = await screen.findByRole('table');
     expect(table.closest('.overflow-x-auto')).not.toBeNull();
-    const zgloszono = screen.getByRole('columnheader', { name: 'Zgłoszono' }).className;
-    expect(zgloszono).toMatch(/\bhidden\b/);
-    expect(zgloszono).toMatch(/\bmd:table-cell\b/);
-    expect(screen.getByRole('columnheader', { name: 'Temat i nadawca' }).className).not.toMatch(/hidden/);
-    expect(screen.getByRole('columnheader', { name: 'Status' }).className).not.toMatch(/hidden/);
+    for (const header of ['Zgłoszono', 'Temat i nadawca', 'Status']) {
+      expect(screen.getByRole('columnheader', { name: header }).className.split(' ')).not.toContain('hidden');
+    }
   });
 
   it('pasek stronicowania zawija się (mobile: numer strony + przyciski nie wychodzą poza ekran)', async () => {

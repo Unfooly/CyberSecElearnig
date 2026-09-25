@@ -72,7 +72,7 @@ export default function DepartmentInbox() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-              <th className="hidden px-5 py-3 md:table-cell">Zgłoszono</th>
+              <th className="px-5 py-3">Zgłoszono</th>
               <th className="px-5 py-3">Domena nadawcy</th>
               <th className="hidden px-5 py-3 md:table-cell">Symulacja</th>
               <th className="px-5 py-3">Status</th>
@@ -81,7 +81,7 @@ export default function DepartmentInbox() {
           <tbody>
             {data?.items.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-0">
-                <td className="hidden whitespace-nowrap px-5 py-3 text-muted md:table-cell">{formatDateTime(item.createdAt)}</td>
+                <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(item.createdAt)}</td>
                 <td className="px-5 py-3">{item.senderDomain ?? '-'}</td>
                 <td className="hidden px-5 py-3 md:table-cell">{item.isSimulation ? 'Tak' : 'Nie'}</td>
                 <td className="px-5 py-3">

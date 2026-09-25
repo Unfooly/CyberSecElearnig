@@ -25,19 +25,26 @@ function stubFetch(body: DepartmentInboxData) {
 describe('DepartmentInbox', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('tabela przewija się poziomo wewnątrz karty; poniżej md ukrywa "Zgłoszono" i "Symulacja", zostawia domenę i status', async () => {
+  it('tabela przewija się poziomo wewnątrz karty; poniżej md ukrywa TYLKO "Symulacja" (nagłówek ORAZ komórka) - data zostaje zawsze widoczna jako jedyny element porządkujący wiersze z tej samej domeny', async () => {
     stubFetch(data([item()]));
     render(<DepartmentInbox />);
 
     const table = await screen.findByRole('table');
     expect(table.closest('.overflow-x-auto')).not.toBeNull();
-    for (const header of ['Zgłoszono', 'Symulacja']) {
-      const className = screen.getByRole('columnheader', { name: header }).className;
-      expect(className).toMatch(/\bhidden\b/);
-      expect(className).toMatch(/\bmd:table-cell\b/);
+
+    const symulacjaHeader = screen.getByRole('columnheader', { name: 'Symulacja' }).className.split(' ');
+    expect(symulacjaHeader).toContain('hidden');
+    expect(symulacjaHeader).toContain('md:table-cell');
+    const symulacjaCell = screen.getByText('Nie').closest('td') as HTMLElement;
+    const symulacjaCellClasses = symulacjaCell.className.split(' ');
+    expect(symulacjaCellClasses).toContain('hidden');
+    expect(symulacjaCellClasses).toContain('md:table-cell');
+
+    for (const header of ['Zgłoszono', 'Domena nadawcy', 'Status']) {
+      expect(screen.getByRole('columnheader', { name: header }).className.split(' ')).not.toContain('hidden');
     }
-    expect(screen.getByRole('columnheader', { name: 'Domena nadawcy' }).className).not.toMatch(/hidden/);
-    expect(screen.getByRole('columnheader', { name: 'Status' }).className).not.toMatch(/hidden/);
+    const domainCell = screen.getByText('obcadomena.example').closest('td') as HTMLElement;
+    expect(domainCell.className.split(' ')).not.toContain('hidden');
   });
 
   it('pasek stronicowania zawija się (mobile: numer strony + przyciski nie wychodzą poza ekran)', async () => {

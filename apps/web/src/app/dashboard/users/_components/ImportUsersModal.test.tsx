@@ -103,9 +103,9 @@ describe('ImportUsersModal', () => {
     // Obie tabele podglądu przewijają się w obu osiach (pion I poziom) wewnątrz swojego ograniczonego wrappera -
     // sam scroll-y (jak w dawnym overflow-y-auto) obcinałby szerokie wiersze na wąskim ekranie.
     const errorsTable = screen.getByText('Nieprawidłowy adres e-mail.').closest('table') as HTMLElement;
-    expect((errorsTable.parentElement as HTMLElement).className).toMatch(/overflow-auto/);
+    expect((errorsTable.parentElement as HTMLElement).className.split(' ')).toContain('overflow-auto');
     const sampleTable = screen.getByText('jan@firma.pl').closest('table') as HTMLElement;
-    expect((sampleTable.parentElement as HTMLElement).className).toMatch(/overflow-auto/);
+    expect((sampleTable.parentElement as HTMLElement).className.split(' ')).toContain('overflow-auto');
     fireEvent.click(screen.getByRole('button', { name: 'Zaimportuj 2 osób' }));
 
     expect(await screen.findByText(/Import w toku/)).toBeInTheDocument();

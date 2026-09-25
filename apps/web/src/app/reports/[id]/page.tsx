@@ -25,7 +25,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={payload.email ?? null} role={payload.role} />
       <PageContainer size={900}>
         <ReportDetail id={params.id} />

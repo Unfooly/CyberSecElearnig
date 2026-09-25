@@ -98,34 +98,36 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
           podejrzaną (w tym: zgłosiły dopiero po kliknięciu). Grupy mniejsze niż {view.minGroupSize} osoby są łączone w „Pozostałe działy” albo ukrywane,
           żeby nie identyfikować pojedynczych osób.
         </p>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-              <th className="px-5 py-3">Dział</th>
-              <th className="px-5 py-3 text-right">Dostarczono</th>
-              <th className="px-5 py-3 text-right">Kliknęło</th>
-              <th className="px-5 py-3 text-right">% kliknęło</th>
-              <th className="px-5 py-3 text-right">Wysłało formularz</th>
-              <th className="px-5 py-3 text-right">% formularz</th>
-              <th className="px-5 py-3 text-right">Zgłosiło</th>
-              <th className="px-5 py-3 text-right">% zgłosiło</th>
-              <th className="px-5 py-3 text-right">W tym po kliknięciu</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.total && <DepartmentRow row={{ ...view.total, name: 'Cała organizacja' }} minGroupSize={view.minGroupSize} />}
-            {view.departments.filter((row) => row.kind !== 'ALL').map((row) => (
-              <DepartmentRow key={`${row.kind}-${row.departmentId ?? row.name}`} row={row} minGroupSize={view.minGroupSize} />
-            ))}
-            {view.departments.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-5 py-4 text-muted">
-                  Brak danych do pokazania.
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                <th className="px-5 py-3">Dział</th>
+                <th className="px-5 py-3 text-right">Dostarczono</th>
+                <th className="px-5 py-3 text-right">Kliknęło</th>
+                <th className="px-5 py-3 text-right">% kliknęło</th>
+                <th className="px-5 py-3 text-right">Wysłało formularz</th>
+                <th className="px-5 py-3 text-right">% formularz</th>
+                <th className="px-5 py-3 text-right">Zgłosiło</th>
+                <th className="px-5 py-3 text-right">% zgłosiło</th>
+                <th className="px-5 py-3 text-right">W tym po kliknięciu</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {view.total && <DepartmentRow row={{ ...view.total, name: 'Cała organizacja' }} minGroupSize={view.minGroupSize} />}
+              {view.departments.filter((row) => row.kind !== 'ALL').map((row) => (
+                <DepartmentRow key={`${row.kind}-${row.departmentId ?? row.name}`} row={row} minGroupSize={view.minGroupSize} />
+              ))}
+              {view.departments.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-5 py-4 text-muted">
+                    Brak danych do pokazania.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         {insufficientOnly && view.departments.length > 0 && <p className="px-5 pb-4 text-xs text-muted">Za mało dostarczonych wiadomości, żeby pokazać wyniki.</p>}
       </Card>
 
@@ -177,50 +179,52 @@ export default function CampaignResults({ campaignId, view, personalResultsEnabl
               </p>
             )}
             {people && (
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-                    <th className="px-3 py-2">Pracownik</th>
-                    <th className="px-3 py-2">Dział</th>
-                    <th className="px-3 py-2">Dostarczenie</th>
-                    <th className="px-3 py-2">Kliknięcie</th>
-                    <th className="px-3 py-2">Formularz</th>
-                    <th className="px-3 py-2">Zgłoszenie</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {people.map((person, index) => (
-                    <tr key={person.userId ?? `deleted-${index}`} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2">
-                        <div className="font-semibold">{person.name ?? person.email ?? '(usunięty pracownik)'}</div>
-                        {person.name && person.email && <div className="text-xs text-muted">{person.email}</div>}
-                      </td>
-                      <td className="px-3 py-2 text-muted">{person.departmentName ?? 'Bez działu'}</td>
-                      <td className="px-3 py-2">
-                        <Pill tone={person.delivery === 'SENT' ? 'ok' : person.delivery === 'UNCERTAIN' ? 'warn' : 'off'}>{DELIVERY_LABELS[person.delivery]}</Pill>
-                        {person.failureCode && <div className="mt-1 text-xs text-muted">{failureLabel(person.failureCode)}</div>}
-                      </td>
-                      <td className="px-3 py-2 text-muted">{person.clickedAt ? formatDateTime(person.clickedAt) : '-'}</td>
-                      <td className="px-3 py-2 text-muted">{person.submittedAt ? formatDateTime(person.submittedAt) : '-'}</td>
-                      <td className="px-3 py-2 text-muted">
-                        {person.reportedAt ? formatDateTime(person.reportedAt) : '-'}
-                        {person.reportedAfterClick && (
-                          <div className="mt-1">
-                            <Pill tone="warn">Po kliknięciu</Pill>
-                          </div>
-                        )}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                      <th className="px-3 py-2">Pracownik</th>
+                      <th className="px-3 py-2">Dział</th>
+                      <th className="px-3 py-2">Dostarczenie</th>
+                      <th className="px-3 py-2">Kliknięcie</th>
+                      <th className="px-3 py-2">Formularz</th>
+                      <th className="px-3 py-2">Zgłoszenie</th>
                     </tr>
-                  ))}
-                  {people.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-3 py-4 text-muted">
-                        Brak osób w wybranym zakresie.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {people.map((person, index) => (
+                      <tr key={person.userId ?? `deleted-${index}`} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2">
+                          <div className="font-semibold">{person.name ?? person.email ?? '(usunięty pracownik)'}</div>
+                          {person.name && person.email && <div className="text-xs text-muted">{person.email}</div>}
+                        </td>
+                        <td className="px-3 py-2 text-muted">{person.departmentName ?? 'Bez działu'}</td>
+                        <td className="px-3 py-2">
+                          <Pill tone={person.delivery === 'SENT' ? 'ok' : person.delivery === 'UNCERTAIN' ? 'warn' : 'off'}>{DELIVERY_LABELS[person.delivery]}</Pill>
+                          {person.failureCode && <div className="mt-1 text-xs text-muted">{failureLabel(person.failureCode)}</div>}
+                        </td>
+                        <td className="px-3 py-2 text-muted">{person.clickedAt ? formatDateTime(person.clickedAt) : '-'}</td>
+                        <td className="px-3 py-2 text-muted">{person.submittedAt ? formatDateTime(person.submittedAt) : '-'}</td>
+                        <td className="px-3 py-2 text-muted">
+                          {person.reportedAt ? formatDateTime(person.reportedAt) : '-'}
+                          {person.reportedAfterClick && (
+                            <div className="mt-1">
+                              <Pill tone="warn">Po kliknięciu</Pill>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {people.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-muted">
+                          Brak osób w wybranym zakresie.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

@@ -69,6 +69,13 @@ describe('CampaignDetails', () => {
     render(<CampaignDetails campaign={{ ...campaign, status: 'COMPLETED' }} />);
     expect(screen.queryByRole('button', { name: 'Anuluj kampanię' })).not.toBeInTheDocument();
   });
+
+  it('tabela nieudanych wysyłek przewija się poziomo wewnątrz karty (mobile)', () => {
+    render(<CampaignDetails campaign={campaign} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+  });
 });
 
 describe('CampaignsList', () => {
@@ -84,5 +91,31 @@ describe('CampaignsList', () => {
     expect(screen.getByRole('link', { name: 'Kampania jesienna' })).toHaveAttribute('href', '/dashboard/phishing/campaigns/c1');
     expect(screen.getByText('W trakcie')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
+  });
+
+  it('przewija się poziomo wewnątrz karty; poniżej md ukrywa kolumny drugorzędne, zostawia nazwę i status', () => {
+    render(<CampaignsList campaigns={[campaign]} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+    const nameCell = screen.getByRole('link', { name: 'Kampania jesienna' }).closest('td') as HTMLElement;
+    const statusCell = screen.getByText('W trakcie').closest('td') as HTMLElement;
+    expect(nameCell.className.split(' ')).not.toContain('hidden');
+    expect(statusCell.className.split(' ')).not.toContain('hidden');
+    for (const header of ['Okno wysyłki', 'Odbiorcy', 'Wysłano', 'Niepewne']) {
+      const classes = screen.getByRole('columnheader', { name: header }).className.split(' ');
+      expect(classes).toContain('hidden');
+      expect(classes).toContain('md:table-cell');
+    }
+
+    // Nagłówek "hidden" bez odpowiadającej komórki (albo odwrotnie) przesuwałby kolumny na telefonie - stąd
+    // sprawdzenie też <td>, nie tylko <th>. Jeden wiersz danych: komórki w kolejności kolumn nagłówka.
+    const [nameTd, statusTd, windowTd, recipientsTd, sentTd, uncertainTd] = screen.getAllByRole('cell');
+    expect([nameTd, statusTd]).toEqual([nameCell, statusCell]);
+    for (const cell of [windowTd, recipientsTd, sentTd, uncertainTd]) {
+      const classes = cell.className.split(' ');
+      expect(classes).toContain('hidden');
+      expect(classes).toContain('md:table-cell');
+    }
   });
 });

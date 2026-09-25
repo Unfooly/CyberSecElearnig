@@ -74,9 +74,13 @@ export default function EditUserModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-user-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
     >
-      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-card">
+      {/* Poniżej sm bez tła dookoła (p-0) i bez ograniczenia szerokości (max-w-sm dopiero od sm) - panel dosunięty
+          do WSZYSTKICH krawędzi jak natywny arkusz od dołu, nie "wisząca" karta z paskami tła po bokach.
+          Bez safe-area-inset-bottom: bez viewportFit: 'cover' w layoucie env() zawsze zwraca 0 - to wchodzi
+          dopiero w PR feat/player-stage razem z przeglądem nakładania na notch. */}
+      <div className="max-h-[92dvh] w-full overflow-y-auto rounded-t-card border border-border bg-surface p-6 shadow-card sm:max-w-sm sm:rounded-card">
         <h2 id="edit-user-title" className="mb-4 text-lg font-bold tracking-[-0.01em]">
           Edytuj pracownika
         </h2>
@@ -150,7 +154,7 @@ export default function EditUserModal({
             </p>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
             <button
               type="button"
               onClick={onClose}

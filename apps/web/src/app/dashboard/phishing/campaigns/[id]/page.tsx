@@ -46,7 +46,7 @@ export default async function PhishingCampaignPage({ params }: { params: { id: s
     : [null, null];
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={userEmail} />
       <PageContainer size={1280}>
         <PageHeader title={result.ok ? result.data.name : 'Kampania'} />

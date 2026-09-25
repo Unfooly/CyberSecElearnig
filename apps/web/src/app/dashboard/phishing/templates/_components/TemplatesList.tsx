@@ -46,52 +46,54 @@ export default function TemplatesList({ initialTemplates }: { initialTemplates: 
         </p>
       )}
       <Card>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-              <th className="px-5 py-3">Nazwa</th>
-              <th className="px-5 py-3">Typ</th>
-              <th className="px-5 py-3">Nadawca</th>
-              <th className="px-5 py-3">Temat</th>
-              <th className="px-5 py-3 text-right">Akcje</th>
-            </tr>
-          </thead>
-          <tbody>
-            {initialTemplates.map((template) => (
-              <tr key={template.id} className="border-b border-border last:border-0">
-                <td className="px-5 py-3 font-semibold">{template.name}</td>
-                <td className="px-5 py-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      template.scope === 'GLOBAL' ? 'bg-paper text-muted' : 'bg-accent-soft text-accent-ink'
-                    }`}
-                  >
-                    {template.scope === 'GLOBAL' ? 'Globalny' : 'Własny'}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-muted">
-                  {template.senderName}
-                  <br />
-                  <span className="text-xs">{template.senderAddress ?? `${template.senderLocalPart}@(domena nieskonfigurowana)`}</span>
-                </td>
-                <td className="px-5 py-3 text-muted">{template.subject}</td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-2">
-                    <Link
-                      href={`/dashboard/phishing/templates/${template.id}`}
-                      className="inline-flex h-8 items-center rounded-btn border border-border bg-surface px-3 text-[13px] font-bold hover:bg-paper"
-                    >
-                      {template.scope === 'GLOBAL' ? 'Podgląd' : 'Edytuj'}
-                    </Link>
-                    <Button size="sm" variant="secondary" onClick={() => handleClone(template)} disabled={busyId === template.id}>
-                      {busyId === template.id ? 'Klonowanie...' : 'Klonuj'}
-                    </Button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                <th className="px-5 py-3">Nazwa</th>
+                <th className="px-5 py-3">Typ</th>
+                <th className="px-5 py-3">Nadawca</th>
+                <th className="px-5 py-3">Temat</th>
+                <th className="px-5 py-3 text-right">Akcje</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {initialTemplates.map((template) => (
+                <tr key={template.id} className="border-b border-border last:border-0">
+                  <td className="px-5 py-3 font-semibold">{template.name}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        template.scope === 'GLOBAL' ? 'bg-paper text-muted' : 'bg-accent-soft text-accent-ink'
+                      }`}
+                    >
+                      {template.scope === 'GLOBAL' ? 'Globalny' : 'Własny'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-muted">
+                    {template.senderName}
+                    <br />
+                    <span className="text-xs">{template.senderAddress ?? `${template.senderLocalPart}@(domena nieskonfigurowana)`}</span>
+                  </td>
+                  <td className="px-5 py-3 text-muted">{template.subject}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/dashboard/phishing/templates/${template.id}`}
+                        className="inline-flex h-8 items-center rounded-btn border border-border bg-surface px-3 text-[13px] font-bold hover:bg-paper"
+                      >
+                        {template.scope === 'GLOBAL' ? 'Podgląd' : 'Edytuj'}
+                      </Link>
+                      <Button size="sm" variant="secondary" onClick={() => handleClone(template)} disabled={busyId === template.id}>
+                        {busyId === template.id ? 'Klonowanie...' : 'Klonuj'}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );

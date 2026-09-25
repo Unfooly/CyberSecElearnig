@@ -47,6 +47,14 @@ describe('UsersPageClient', () => {
     expect(await screen.findByText('jan@test.pl')).toBeInTheDocument();
   });
 
+  it('pasek stronicowania zawija się (mobile: liczba stron + przyciski nie wychodzą poza ekran)', async () => {
+    vi.stubGlobal('fetch', mockFetch());
+    render(<UsersPageClient />);
+
+    const nextButton = await screen.findByRole('button', { name: 'Następna' });
+    expect((nextButton.closest('div.justify-between') as HTMLElement).className).toMatch(/flex-wrap/);
+  });
+
   it('pokazuje komunikat błędu, gdy /api/users odpowiada błędem', async () => {
     vi.stubGlobal(
       'fetch',

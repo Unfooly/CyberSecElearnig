@@ -25,7 +25,7 @@ export default function ReportsPage() {
   const isAdmin = payload.role === Role.ORG_ADMIN;
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={payload.email ?? null} role={payload.role} />
       <PageContainer size={1080}>
         <PageHeader

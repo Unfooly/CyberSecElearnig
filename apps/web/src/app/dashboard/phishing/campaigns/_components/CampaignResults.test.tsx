@@ -59,6 +59,13 @@ describe('CampaignResults', () => {
     expect(screen.getByRole('link', { name: 'Pobierz CSV' })).toHaveAttribute('href', '/api/phishing/results/campaigns/c1/departments.csv');
   });
 
+  it('tabela "Wyniki per dział" przewija się poziomo wewnątrz karty (mobile)', () => {
+    render(<CampaignResults campaignId="c1" view={view} personalResultsEnabled={false} />);
+
+    const table = screen.getByRole('table');
+    expect(table.closest('.overflow-x-auto')).not.toBeNull();
+  });
+
   it('pokazuje, z kiedy są agregaty i że odświeżają się najwyżej raz na godzinę (bez tej informacji, gdy API jej nie zwraca)', () => {
     const { rerender } = render(<CampaignResults campaignId="c1" view={{ ...view, dataAsOf: '2027-01-01T10:00:00Z' }} personalResultsEnabled={false} />);
 
@@ -110,6 +117,9 @@ describe('CampaignResults', () => {
     expect(screen.getByText('Anna Nowak').closest('tr')).toHaveTextContent('Po kliknięciu');
     expect(screen.getByText('Jan Kowalski').closest('tr')).not.toHaveTextContent('Po kliknięciu');
     expect(screen.getByText('Ewa Nowa').closest('tr')).toHaveTextContent('-');
+
+    const peopleTable = screen.getByText('Anna Nowak').closest('table') as HTMLElement;
+    expect(peopleTable.closest('.overflow-x-auto')).not.toBeNull();
   });
 
   it('wyniki osobowe WYŁĄCZONE: tylko informacja z linkiem do ustawień; nie ma przycisku, listy ani CSV osobowego, nic nie jest pobierane', () => {

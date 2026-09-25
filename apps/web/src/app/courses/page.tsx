@@ -60,7 +60,7 @@ export default async function CoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <Topbar userEmail={userEmail} role={payload?.role} />
       <PageContainer size={1280}>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">

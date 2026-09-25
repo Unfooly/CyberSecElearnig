@@ -79,49 +79,51 @@ export default function AdminInbox() {
       )}
 
       {!error && (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
-              <th className="px-5 py-3">Zgłoszono</th>
-              <th className="px-5 py-3">Temat i nadawca</th>
-              <th className="px-5 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.items.map((item) => (
-              <tr key={item.id} className="border-b border-border last:border-0">
-                <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(item.createdAt)}</td>
-                <td className="px-5 py-3">
-                  <Link href={`/reports/${item.id}`} className="font-semibold text-accent-ink hover:underline">
-                    {item.subject ?? '(treść usunięta po 90 dniach)'}
-                  </Link>
-                  <div className="text-xs text-muted">{item.senderText ?? (item.senderDomain ? `domena: ${item.senderDomain}` : '-')}</div>
-                </td>
-                <td className="px-5 py-3">
-                  <Pill tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Pill>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
+                <th className="px-5 py-3">Zgłoszono</th>
+                <th className="px-5 py-3">Temat i nadawca</th>
+                <th className="px-5 py-3">Status</th>
               </tr>
-            ))}
-            {data && data.items.length === 0 && (
-              <tr>
-                <td colSpan={3} className="px-5 py-6 text-muted">
-                  Brak zgłoszeń w wybranym zakresie.
-                </td>
-              </tr>
-            )}
-            {loading && !data && (
-              <tr>
-                <td colSpan={3} className="px-5 py-6 text-muted">
-                  Ładowanie...
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data?.items.map((item) => (
+                <tr key={item.id} className="border-b border-border last:border-0">
+                  <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(item.createdAt)}</td>
+                  <td className="px-5 py-3">
+                    <Link href={`/reports/${item.id}`} className="font-semibold text-accent-ink hover:underline">
+                      {item.subject ?? '(treść usunięta po 90 dniach)'}
+                    </Link>
+                    <div className="text-xs text-muted">{item.senderText ?? (item.senderDomain ? `domena: ${item.senderDomain}` : '-')}</div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <Pill tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Pill>
+                  </td>
+                </tr>
+              ))}
+              {data && data.items.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-5 py-6 text-muted">
+                    Brak zgłoszeń w wybranym zakresie.
+                  </td>
+                </tr>
+              )}
+              {loading && !data && (
+                <tr>
+                  <td colSpan={3} className="px-5 py-6 text-muted">
+                    Ładowanie...
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {data && pages > 1 && (
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-3 text-sm">
           <Button variant="secondary" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>
             Poprzednia
           </Button>

@@ -128,6 +128,31 @@ describe('InviteUserModal', () => {
     });
   });
 
+  it('panel ma ograniczoną wysokość z przewijaniem (mobile: długi formularz nie wychodzi poza ekran)', () => {
+    render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const panel = screen.getByRole('dialog').firstElementChild as HTMLElement;
+    expect(panel.className).toMatch(/max-h-\[92dvh\]/);
+    expect(panel.className).toMatch(/overflow-y-auto/);
+  });
+
+  it('poniżej sm modal jest arkuszem przyklejonym do dołu ekranu (bez tła dookoła), od sm wyśrodkowany jak dziś', () => {
+    render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const backdropClasses = screen.getByRole('dialog').className.split(' ');
+    expect(backdropClasses).toContain('items-end');
+    expect(backdropClasses).toContain('sm:items-center');
+    expect(backdropClasses).toContain('p-0');
+    expect(backdropClasses).toContain('sm:p-4');
+  });
+
+  it('przyciski w stopce dzielą pełną szerokość na telefonie (flex-wrap)', () => {
+    render(<InviteUserModal departments={departments} onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    const footer = screen.getByRole('button', { name: /zaproś$/i }).closest('div') as HTMLElement;
+    expect(footer.className.split(' ')).toContain('flex-wrap');
+  });
+
   it('Escape zamyka modal', () => {
     const onClose = vi.fn();
     render(<InviteUserModal departments={departments} onClose={onClose} onCreated={vi.fn()} />);

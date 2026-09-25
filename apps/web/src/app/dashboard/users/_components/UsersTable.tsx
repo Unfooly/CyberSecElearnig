@@ -29,7 +29,9 @@ function DeleteAction({ user, onConfirm }: { user: UserListItem; onConfirm: (use
   if (confirming) {
     return (
       <span className="inline-flex items-center gap-2">
-        <span className="text-xs text-muted">Na pewno?</span>
+        {/* Usunięcie konta jest nieodwracalne - e-mail w pytaniu, nie tylko "Na pewno?", żeby na telefonie (gdzie
+            kolumna E-mail jest ukryta) nie dało się pomylić osoby po samym imieniu/nazwisku. */}
+        <span className="text-xs text-muted">Usunąć {user.email}?</span>
         <button type="button" onClick={() => onConfirm(user)} className={`${ACTION} text-danger`}>
           Usuń
         </button>
@@ -86,9 +88,9 @@ export default function UsersTable({
         <tr>
           <Th className="w-[130px]">Status</Th>
           <Th>Pracownik</Th>
-          <Th>E-mail</Th>
-          <Th>Dział</Th>
-          <Th>Rola</Th>
+          <Th className="hidden md:table-cell">E-mail</Th>
+          <Th className="hidden md:table-cell">Dział</Th>
+          <Th className="hidden md:table-cell">Rola</Th>
           <Th className="text-right">Akcje</Th>
         </tr>
       </thead>
@@ -108,14 +110,22 @@ export default function UsersTable({
                   <StatusBadge status={user.status} />
                 </Td>
                 <Td>
-                  <div className="flex items-center gap-2.5 whitespace-nowrap font-semibold">
+                  <div className="flex items-center gap-2.5">
                     <InitialsAvatar initials={initialsFrom(user.firstName, user.lastName, user.email)} />
-                    {fullName ? fullName : <span className="font-medium text-muted">Nie uzupełniono</span>}
+                    <div>
+                      <div className="whitespace-nowrap font-semibold">
+                        {fullName ? fullName : <span className="font-medium text-muted">Nie uzupełniono</span>}
+                      </div>
+                      {/* Kolumna E-mail jest ukryta poniżej md (item 2) - bez imienia/nazwiska wiersz nie miałby na
+                          telefonie NIC odróżniającego go od innych ("Nie uzupełniono" + status + akcje wszędzie
+                          takie same). Gdy imię jest, samo ono już odróżnia wiersz - dodatkowa podlinia niepotrzebna. */}
+                      {!fullName && <div className="break-all text-xs text-muted md:hidden">{user.email}</div>}
+                    </div>
                   </div>
                 </Td>
-                <Td className="text-muted">{user.email}</Td>
-                <Td>{user.department ? <Pill tone="acc">{user.department.name}</Pill> : <Pill tone="off">Brak działu</Pill>}</Td>
-                <Td>{ROLE_LABELS[user.role]}</Td>
+                <Td className="hidden text-muted md:table-cell">{user.email}</Td>
+                <Td className="hidden md:table-cell">{user.department ? <Pill tone="acc">{user.department.name}</Pill> : <Pill tone="off">Brak działu</Pill>}</Td>
+                <Td className="hidden md:table-cell">{ROLE_LABELS[user.role]}</Td>
                 <Td className="whitespace-nowrap text-right">
                   <button type="button" onClick={() => onEdit(user)} className={`${ACTION} text-accent-ink`}>
                     Edytuj

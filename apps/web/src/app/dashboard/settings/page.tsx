@@ -39,7 +39,7 @@ export default async function SettingsPage() {
       : [null, null];
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       {isPending ? <PendingHeader /> : <Topbar userEmail={userEmail} />}
       <main className="mx-auto max-w-3xl px-6 pb-12 pt-9">
         <PageHeader title="Ustawienia organizacji" />

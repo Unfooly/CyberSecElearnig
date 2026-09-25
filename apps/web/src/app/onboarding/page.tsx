@@ -26,7 +26,7 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-dvh bg-paper">
       <PendingHeader />
       <main className="mx-auto max-w-3xl px-6 pb-12 pt-9">
         {result.ok ? (

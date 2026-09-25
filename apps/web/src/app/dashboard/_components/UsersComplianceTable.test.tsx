@@ -46,6 +46,15 @@ describe('UsersComplianceTable', () => {
     expect(screen.getByText('Zaległości')).toBeInTheDocument();
   });
 
+  it('pasek stronicowania zawija się (mobile: liczba stron + przyciski nie wychodzą poza ekran)', async () => {
+    stubFetch([row({})]);
+    render(<UsersComplianceTable departments={[]} />);
+    await screen.findByText('Jan Kowalski');
+
+    const nextButton = screen.getByRole('button', { name: 'Następna' });
+    expect((nextButton.closest('div.justify-between') as HTMLElement).className).toMatch(/flex-wrap/);
+  });
+
   it('pokazuje pusty stan i błąd ładowania', async () => {
     stubFetch([]);
     const { unmount } = render(<UsersComplianceTable departments={[]} />);

@@ -295,7 +295,7 @@ export default function SceneHotspotsBlock({
                 // DLACZEGO, zamiast po prostu pominąć przycisk. Gdy nakładka jest otwarta, punkty pod nią wychodzą z
                 // kolejności Tab i dostają aria-hidden (kontener sceny z obrazem i hotspotami ZOSTAJE w DOM pod
                 // nakładką - feedback z produkcji; aria-hidden to dodatkowa, bardziej niezawodna warstwa niż samo
-                // poleganie na aria-modal czytnika), bez pełnego focus trapu w nakładce - jak CourseRewardModal.tsx.
+                // poleganie na aria-modal czytnika), bez pełnego focus trapu w nakładce.
                 aria-disabled={blocked}
                 aria-hidden={activeId ? true : undefined}
                 title={blocked ? `Zbierz najpierw dowody: ${doneCount}/${required.length}` : undefined}

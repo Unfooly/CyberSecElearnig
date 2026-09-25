@@ -29,12 +29,18 @@ export class CourseProgressResponseDto {
     perBlock: { blockId: string; collected: number; total: number }[];
   };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
-  // CoursesService) - front (CourseRewardModal) pokazuje modal nagrody
-  // tylko wtedy, nie przy każdym zapisie postępu.
+  // CoursesService) - front (karta nagrody na SummaryScreen,
+  // fix/course-finish-flow) pokazuje ją tylko wtedy, nie przy każdym zapisie postępu.
   gamification!: {
     xpGained: number;
     newLevel: number;
+    // Poziom SPRZED tego przyznania XP - front pokazuje "Poziom {previousLevel}" obok paska.
+    previousLevel: number;
     leveledUp: boolean;
     unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
+    // Pasek poziomu "przed -> po" (SummaryScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
+    // przy awansie `After` jest przycięty do 100 (patrz GamificationService.awardCourseCompletion).
+    levelProgressBeforePercent: number;
+    levelProgressAfterPercent: number;
   } | null;
 }

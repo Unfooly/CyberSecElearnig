@@ -20,10 +20,20 @@ const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 export interface CourseCompletionResult {
   xpGained: number;
   newLevel: number;
-  // true tylko gdy newLevel > poziom SPRZED tego przyznania XP - front
-  // (CourseRewardModal) pokazuje osobny komunikat o awansie tylko wtedy.
+  // Poziom SPRZED tego przyznania XP (fix/course-finish-flow) - front pokazuje "Poziom {previousLevel}" obok paska,
+  // a przy awansie osobno "Poziom {newLevel}". Nie zakładamy newLevel-1: przy bardzo niskim poziomie start (progi
+  // level.util.ts rosną kwadratowo) pojedyncze ukończenie kursu w teorii mogłoby przeskoczyć więcej niż jeden poziom.
+  previousLevel: number;
+  // true tylko gdy newLevel > poziom SPRZED tego przyznania XP - front (karta nagrody na SummaryScreen,
+  // fix/course-finish-flow) pokazuje osobny komunikat o awansie tylko wtedy.
   leveledUp: boolean;
   unlockedBadges: Badge[];
+  // Pasek poziomu "przed -> po" (fix/course-finish-flow, SummaryScreen): procent 0..100 w SKALI POZIOMU SPRZED tego
+  // przyznania XP - przy awansie `After` jest przycięty do 100 (pasek "napełnia się" do końca starego poziomu;
+  // sam awans i numer nowego poziomu pokazuje osobny komunikat z `leveledUp`/`newLevel`, nie ten pasek). Liczone tu
+  // (nie na froncie), żeby wzór poziomu (level.util.ts) miał jedno źródło prawdy.
+  levelProgressBeforePercent: number;
+  levelProgressAfterPercent: number;
 }
 
 @Injectable()
@@ -73,7 +83,20 @@ export class GamificationService {
       await tx.user.update({ where: { id: userId }, data: { level: newLevel } });
     }
 
-    return { xpGained, newLevel, leveledUp: newLevel > previousLevel, unlockedBadges };
+    const xpBefore = updatedUser.xp - xpGained;
+    const levelProgressBeforePercent = currentLevelProgressPercent(xpBefore, previousLevel);
+    const levelProgressAfterPercent =
+      newLevel > previousLevel ? 100 : currentLevelProgressPercent(updatedUser.xp, previousLevel);
+
+    return {
+      xpGained,
+      newLevel,
+      previousLevel,
+      leveledUp: newLevel > previousLevel,
+      unlockedBadges,
+      levelProgressBeforePercent,
+      levelProgressAfterPercent,
+    };
   }
 
   async getMyGamificationSummary(organizationId: string, userId: string): Promise<UserGamificationSummaryDto> {

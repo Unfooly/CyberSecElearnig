@@ -315,7 +315,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     );
   });
 
-  it('ukończenie kursu na SUMMARY: mimo że SUMMARY jest "eksploracyjne", zapis pokazuje FeedbackPanel ("Blok ukończony." + "Zobacz podsumowanie") - nie od razu SummaryScreen, tak jak przy QUIZ na końcu kursu', async () => {
+  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na SummaryScreen (jak przy QUIZ na końcu kursu) - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie", które SUMMARY wcześniej celowo dostawało (usunięty wyjątek)', async () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -345,12 +345,9 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
 
-    // Ekran pośredni: dokładnie jak przy ocenianym bloku na końcu kursu - nie od razu SummaryScreen.
-    expect(await screen.findByText('Blok ukończony.')).toBeInTheDocument();
-    expect(screen.queryByText('Kurs ukończony')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
-    expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
   });
 
   it('dolny pasek: scroll-padding-bottom obszaru treści (nie całego dokumentu - ramka jest jedynym przewijanym obszarem) z pomiaru paska, sprzątany przy odmontowaniu', () => {

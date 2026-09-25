@@ -34,7 +34,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     refreshMock.mockClear();
   });
 
-  it('start -> odpowiedź -> feedback -> podsumowanie z wynikiem z API', async () => {
+  it('start -> odpowiedź -> OD RAZU podsumowanie z wynikiem z API (fix/course-finish-flow: bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie" - grep na te dwa napisy w tym pliku i CAŁYM apps/web powinien nic nie zwracać)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -70,25 +70,19 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
       ),
     );
 
-    // Feedback przed przejściem dalej.
-    expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
-
-    // Ostatni blok + status COMPLETED z API -> przycisk kontynuacji mówi
-    // "Zobacz podsumowanie", nie "Dalej".
-    const continueButton = screen.getByRole('button', { name: 'Zobacz podsumowanie' });
-    fireEvent.click(continueButton);
-
-    expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
+    // OD RAZU podsumowanie - żaden pośredni ekran feedbacku, żaden przycisk "Zobacz podsumowanie" do kliknięcia.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    expect(screen.queryByText('Poprawna odpowiedź!')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
     // Tytuł kursu widać DOKŁADNIE dwa razy: w pasku górnym PlayerStage (zawsze) i w treści SummaryScreen (kod
     // review PR #44: asercja >=1 przechodziłaby nawet, gdyby jedno z tych dwóch miejsc zniknęło).
     expect(screen.getAllByText('Rozpoznawanie phishingu')).toHaveLength(2);
-    // gamification: null w odpowiedzi (badge się nie odblokował w tym
-    // scenariuszu testowym) -> brak modala nagrody.
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // gamification: null w odpowiedzi (badge się nie odblokował w tym scenariuszu testowym) -> brak karty nagrody.
+    expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
   });
 
-  it('pokazuje CourseRewardModal z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification', async () => {
+  it('pokazuje kartę nagrody (RewardCard, inline na SummaryScreen) z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -102,24 +96,26 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
         gamification: {
           xpGained: 150,
           newLevel: 2,
+          previousLevel: 1,
           leveledUp: true,
           unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+          levelProgressBeforePercent: 0,
+          levelProgressAfterPercent: 100,
         },
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList); // XP od razu wartość końcowa, bez animacji
 
     render(<CoursePlayer courseId="course-1" initial={singleQuizBlockCourse} />);
 
     fireEvent.click(screen.getByText('wsparcie@bank-0ficjalny.pl'));
     fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Zobacz podsumowanie' }));
 
-    await screen.findByText('Kurs ukończony');
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveTextContent('Zdobyłeś +150 XP!');
-    expect(dialog).toHaveTextContent('Awans na poziom 2!');
-    expect(dialog).toHaveTextContent('Pierwszy Krok');
+    await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' });
+    expect(screen.getByText('+150 XP')).toBeInTheDocument();
+    expect(screen.getByText('Awans na poziom 2!')).toBeInTheDocument();
+    expect(screen.getByText(/Pierwszy Krok/)).toBeInTheDocument();
   });
 
   it('kurs już COMPLETED przy wejściu -> od razu podsumowanie, bez renderowania bloków', () => {
@@ -132,7 +128,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
 
-    expect(screen.getByText('Kurs ukończony')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.queryByText('Który e-mail jest podejrzany?')).not.toBeInTheDocument();
   });
@@ -151,23 +147,27 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     expect(screen.queryByText('Ten kurs nie zawierał ocenianych pytań.')).not.toBeInTheDocument();
   });
 
-  it('błędna odpowiedź: feedback pokazuje "Niepoprawna odpowiedź."', async () => {
+  it('błędna odpowiedź MID-KURSU (nie kończy go - fix/course-finish-flow skipsFeedbackScreen zależy od status==="COMPLETED", nie tylko typu bloku) pokazuje ekran feedbacku "Niepoprawna odpowiedź."', async () => {
+    const twoQuizBlockCourse: CoursePlayerInitialState = {
+      ...singleQuizBlockCourse,
+      contentBlocks: [...singleQuizBlockCourse.contentBlocks, { ...singleQuizBlockCourse.contentBlocks[0] }],
+    };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({
         assignmentId: 'assignment-1',
-        status: 'COMPLETED',
+        status: 'IN_PROGRESS',
         currentBlockIndex: 1,
-        score: 0,
-        completedAt: '2026-01-01T00:00:00.000Z',
+        score: null,
+        completedAt: null,
         lastResult: { blockIndex: 0, type: 'QUIZ', correct: false },
         gamification: null,
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<CoursePlayer courseId="course-1" initial={singleQuizBlockCourse} />);
+    render(<CoursePlayer courseId="course-1" initial={twoQuizBlockCourse} />);
 
     fireEvent.click(screen.getByText('wsparcie@bank-oficjalny.pl'));
     fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));

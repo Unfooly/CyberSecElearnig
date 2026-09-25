@@ -261,7 +261,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
   });
 
   describe('ukończenie kursu', () => {
-    it('ostatni blok: "Zobacz podsumowanie" pokazuje podsumowanie bez odtwarzacza i przełącznika', async () => {
+    it('ostatni blok: zapis OD RAZU pokazuje podsumowanie (fix/course-finish-flow - bez ekranu "Poprawna odpowiedź!"/przycisku "Zobacz podsumowanie"), bez odtwarzacza i przełącznika', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(
@@ -271,10 +271,10 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       const { container } = render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [audioBlock('one', 'Pytanie pierwsze')] })} />);
 
       answerFirstOption();
-      expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
 
-      expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+      expect(screen.queryByText('Poprawna odpowiedź!')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
       expect(container.querySelector('audio')).toBeNull();
       expect(screen.queryByRole('switch')).toBeNull();
       // Pasek postępu ZOSTAJE na 100% (feat/player-stage: "górny pasek jak w kursie" - X, tytuł, postęp - także na

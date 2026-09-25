@@ -171,8 +171,13 @@ describe('GamificationService', () => {
       const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', { score: 80 });
 
       expect(result.newLevel).toBe(2);
+      expect(result.previousLevel).toBe(1);
       expect(result.leveledUp).toBe(true);
       expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { level: 2 } });
+      // Pasek "przed -> po" (SummaryScreen): 0 XP sprzed = 0% starego poziomu (1); awans przycina "po" do 100 -
+      // pasek pokazuje "napełnienie" starego poziomu, sam awans/numer nowego poziomu pokazuje leveledUp/newLevel.
+      expect(result.levelProgressBeforePercent).toBe(0);
+      expect(result.levelProgressAfterPercent).toBe(100);
     });
 
     it('NIE zapisuje poziomu drugi raz, jeśli XP nie przekroczyło progu następnego levelu, i leveledUp=false', async () => {
@@ -183,6 +188,9 @@ describe('GamificationService', () => {
       expect(result.leveledUp).toBe(false);
       const levelUpdateCalls = tx.user.update.mock.calls.filter((call) => call[0].data.level !== undefined);
       expect(levelUpdateCalls).toHaveLength(0);
+      // Bez awansu: "przed"/"po" liczone w TEJ SAMEJ skali (poziom 3, próg 400..900) - 500 XP = 20%, +100 XP = 40%.
+      expect(result.levelProgressBeforePercent).toBe(20);
+      expect(result.levelProgressAfterPercent).toBe(40);
     });
   });
 

@@ -6,6 +6,7 @@ import type {
   ClientNote,
   ClientProgressBlock,
   ContentBlock,
+  ContentReaction,
   CourseCompletionReward,
   CourseDetail,
   CourseProgressResponse,
@@ -156,9 +157,14 @@ export default function CoursePlayer({
   const [feedback, setFeedback] = useState<LastResult | null>(null);
   // Obecne WYŁĄCZNIE po świeżym ukończeniu w TEJ sesji (ustawiane w
   // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
-  // wrócił do wcześniej ukończonego kursu, więc CourseRewardModal wtedy się
-  // nie pokazuje.
+  // wrócił do wcześniej ukończonego kursu, więc karta nagrody (RewardCard,
+  // SummaryScreen.tsx) wtedy się nie pokazuje.
   const [reward, setReward] = useState<CourseCompletionReward | null>(null);
+  // Reakcja Fooli NA WYNIK ostatniego bloku (reactions.result), gdy TA ODPOWIEDŹ kończy kurs (fix/course-finish-flow) -
+  // SummaryScreen pokazuje ją jako zwykłą treść ekranu (MascotSays), zamiast pośredniego FeedbackPanel/ScoredBlock,
+  // które normalnie by ją pokazały (skipsFeedbackScreen niżej omija ten ekran przy ukończeniu). Ten sam cykl życia
+  // co `reward`: null, dopóki user nie ukończy kursu W TEJ SESJI.
+  const [finalReaction, setFinalReaction] = useState<ContentReaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
@@ -255,11 +261,15 @@ export default function CoursePlayer({
       // Bloki eksploracyjne i TEXT_INPUT_GUIDED pokazują swój wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle
       // ruszy (mascot-reaction.tsx: useCompleteReaction; TextInputBlock: stan `done`) - osobny ekran "Blok ukończony."
       // z jeszcze jednym "Dalej" byłby powtórzeniem tego, co user już widział (raport z pierwszego przejścia modułu
-      // 1). Dla nich ZOSTAJE feedback=null: state niżej sam przenosi na kolejny blok. SUMMARY WYŁĄCZONE mimo że
-      // isExploratory() je obejmuje: to zawsze ostatni blok kursu, jego własny przycisk ("Zakończ sprawę"/"Zakończ
-      // szkolenie") kończy kurs wprost - pośredni FeedbackPanel + "Zobacz podsumowanie" ma tu sens (inne niż w
-      // trakcie kursu podsumowanie samego wyniku), więc zachowanie sprzed tego PR zostaje bez zmian.
+      // 1). Dla nich ZOSTAJE feedback=null: state niżej sam przenosi na kolejny blok. `progress.status ===
+      // 'COMPLETED'` (fix/course-finish-flow, zastępuje dawny wyjątek "SUMMARY WYŁĄCZONE"): TA odpowiedź kończy
+      // kurs (SUMMARY - zawsze ostatni blok - ALBO dowolny inny typ, gdy to on jest ostatnim blokiem kursu) - pomija
+      // pośredni ekran "Blok ukończony."/"Zobacz podsumowanie" i przechodzi PROSTO na SummaryScreen (isSummaryMode
+      // liczy się z samego `state.status`, niżej). Reakcja maskotki na wynik TEGO bloku (reactions.result), którą
+      // normalnie pokazałby ten pominięty ekran, idzie do `finalReaction` - SummaryScreen pokazuje ją sama.
+      const isCompleting = progress.status === 'COMPLETED';
       const skipsFeedbackScreen =
+        isCompleting ||
         (isExploratory(progress.lastResult.type) && progress.lastResult.type !== 'SUMMARY') ||
         progress.lastResult.type === 'TEXT_INPUT_GUIDED';
       if (skipsFeedbackScreen) {
@@ -268,6 +278,7 @@ export default function CoursePlayer({
       } else {
         setFeedback(progress.lastResult);
       }
+      setFinalReaction(isCompleting ? (progress.lastResult.reaction ?? null) : null);
       setResults((current) => {
         const blockId = progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex);
         return {
@@ -355,7 +366,10 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
-  const continueLabel = state.status === 'COMPLETED' ? 'Zobacz podsumowanie' : 'Dalej';
+  // Zawsze "Dalej" (fix/course-finish-flow): "Zobacz podsumowanie" było tu WYŁĄCZNIE, gdy TEN zapis kończył kurs -
+  // ten przypadek teraz zawsze pomija ekran feedbacku w ogóle (skipsFeedbackScreen wyżej), więc showingFeedback
+  // (jedyne miejsce, gdzie ta etykieta trafia na ekran) i state.status==='COMPLETED' nie zdarzają się już razem.
+  const continueLabel = 'Dalej';
   // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
   const contentLayout: 'scene' | 'slide' = !isSummaryMode && !showingFeedback && currentBlock?.type === 'SCENE_HOTSPOTS' ? 'scene' : 'slide';
@@ -364,7 +378,16 @@ export default function CoursePlayer({
 
   let stage: React.ReactNode;
   if (isSummaryMode) {
-    stage = <SummaryScreen title={initial.title} score={state.score} scoreUnavailable={scoreUnavailable} reward={reward} restartError={restartError} />;
+    stage = (
+      <SummaryScreen
+        title={initial.title}
+        score={state.score}
+        scoreUnavailable={scoreUnavailable}
+        reward={reward}
+        reaction={finalReaction}
+        restartError={restartError}
+      />
+    );
   } else if (showingFeedback) {
     const answered = blocks[feedback.blockIndex];
     const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
@@ -447,6 +470,10 @@ export default function CoursePlayer({
             totalBlocks={blocks.length}
             completedBlocks={isSummaryMode ? blocks.length : state.currentBlockIndex}
             headingRef={headingRef}
+            // Fokus po przejściu na SummaryScreen ląduje na TYM nagłówku (headingRef, PlayerStage.tsx) - zastępuje
+            // domyślne "Blok X z Y" nazwą ekranu, którą SummaryScreen powtarza jako swój WIDOCZNY <h1> (nie tylko
+            // sr-only ogłoszenie).
+            headingOverride={isSummaryMode ? 'Sprawa zamknięta.' : undefined}
             showMascot={!isSummaryMode}
             evidence={<EvidenceCounter />}
             idleMascot={

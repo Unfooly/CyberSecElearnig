@@ -60,6 +60,9 @@ export interface PlayerStageProps {
   hideForward?: boolean;
   forwardHint?: string;
   headingRef: RefObject<HTMLHeadingElement>;
+  /** Nadpisuje treść sr-only nagłówka "Blok X z Y" pod `headingRef` (fix/course-finish-flow: SummaryScreen -
+      "Sprawa zamknięta." - ten sam, jedyny fokus po zmianie bloku/trybu, tylko z inną treścią ogłoszenia). */
+  headingOverride?: string;
   /** Etykiety Wstecz/Dalej - domyślne "Wstecz"/"Dalej", na SUMMARY podmienione na "Rozpocznij od nowa"/"Wróć do biblioteki". */
   backLabel?: string;
   forwardLabel?: string;
@@ -91,6 +94,7 @@ function PlayerStageInner({
   hideForward = false,
   forwardHint,
   headingRef,
+  headingOverride,
   backLabel = 'Wstecz',
   forwardLabel = 'Dalej',
   forwardHref,
@@ -277,7 +281,7 @@ function PlayerStageInner({
             }`}
           >
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">
-              Blok {blockNumber} z {totalBlocks}
+              {headingOverride ?? `Blok ${blockNumber} z ${totalBlocks}`}
             </h2>
             {contentLayout === 'scene' ? (
               <div className="flex h-full min-h-full flex-col items-center justify-center p-3">{stage}</div>

@@ -19,9 +19,11 @@ export default function UserMenu({
   userEmail: string;
   avatarUrl: string | null;
   initials: string;
-  /** Wołane przy KAŻDEJ zmianie stanu (otwarcie i zamknięcie) - Topbar używa tego, żeby zamknąć panel mobilny, gdy
-      to menu się otwiera (oba nie mogą być otwarte naraz - kod review PR #39, punkt 2: dropdown tego menu i panel
-      dzielą tę samą kolumnę z prawej, dropdown (z-50 w kontekście nakładania headera) i tak ląduje POD panelem). */
+  /** Wołane przy zmianach stanu (otwarcie i zamknięcie; przy zamknięciu czasem dwukrotnie - np. pointerdown i
+      następujący po nim focusout - to nieszkodliwe, wywołujący nie powinien zakładać dokładnie jednego wywołania
+      na przejście) - Topbar używa tego, żeby zamknąć panel mobilny, gdy to menu się otwiera (oba nie mogą być
+      otwarte naraz - kod review PR #39, punkt 2: dropdown tego menu i panel dzielą tę samą kolumnę z prawej,
+      dropdown (z-50 w kontekście nakładania headera) i tak ląduje POD panelem). */
   onOpenChange?: (open: boolean) => void;
   /** Gdy zmieni się na true, a menu jest otwarte - zamyka je (odwrotny kierunek: panel mobilny się otwiera). */
   forceClose?: boolean;
@@ -92,13 +94,16 @@ export default function UserMenu({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() =>
-          setIsOpen((open) => {
-            const next = !open;
-            onOpenChange?.(next);
-            return next;
-          })
-        }
+        onClick={() => {
+          // NIE funkcyjny updater setIsOpen(open => ...) - w StrictMode/React 18 updater bywa wywoływany poza
+          // przebiegiem commitu (albo dwa razy w StrictMode), a efekt uboczny (onOpenChange, czyli setDrawerOpen w
+          // Topbar) w środku takiego wywołania ryzykuje aktualizacją rodzica w trakcie renderu dziecka. Zwykłe
+          // domknięcie na `isOpen` wystarcza - ten handler i tak tworzy się na nowo przy każdym renderze, więc
+          // zawsze widzi aktualną wartość (kod review PR #39, drobiazgi).
+          const next = !isOpen;
+          setIsOpen(next);
+          onOpenChange?.(next);
+        }}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-controls={isOpen ? menuId : undefined}

@@ -80,6 +80,11 @@ export default function Topbar({
   const drawerRef = useRef<HTMLDivElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const wasOpenRef = useRef(false);
+  // Gdy drawer zamyka się, bo otworzyło się UserMenu (nie Escape/tło/link) - fokus MA zostać na avatarze (tam, gdzie
+  // go realnie postawił klik w prawdziwej przeglądarce; fireEvent.click w jsdom fokusu nie przenosi, więc test tego
+  // nie łapał). Bez tej flagi efekt niżej i tak oddawałby fokus na hamburger, co wychodzi POZA kontener UserMenu i
+  // od razu je zamyka jego własnym handlerem focusout - code review PR #39, drobiazgi.
+  const skipFocusReturnRef = useRef(false);
 
   // Własny avatar pobieramy po stronie klienta (Topbar jest współdzielony
   // przez wszystkie strony), a zmianę z ustawień konta łapiemy przez
@@ -169,6 +174,11 @@ export default function Topbar({
       // którego wciągamy z powrotem" - użytkownik klawiatury ma się do niego dostać w obu kierunkach Tab, nie tylko
       // przez Escape. Pełny, jawny cykl (nie tylko zawijanie na krańcach) - jsdom nie ma natywnego porządku Tab, więc
       // to jedyny sposób, żeby zachowanie było takie samo i testowalne w każdym miejscu cyklu, nie tylko na brzegach.
+      // Selektor nie odfiltrowuje elementów UKRYTYCH (display:none/hidden) - dziś w panelu nie ma takich (pozycje
+      // "Wkrótce" to nieinteraktywne <span>, nie <a>/<button>), więc nie ma czego pomijać. Gdyby kiedyś doszedł tu
+      // link ukryty jakimś wariantem responsywnym, .focus() na nim byłoby no-opem i pętla by się zacięła w tym
+      // miejscu - wcześniej chronił przed tym natywny porządek Tab przeglądarki, którego ta jawna pętla nie ma
+      // (code review PR #39, drobiazgi).
       const drawerFocusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
       const cycle = hamburgerRef.current ? [hamburgerRef.current, ...drawerFocusable] : drawerFocusable;
       if (cycle.length === 0) {
@@ -203,12 +213,17 @@ export default function Topbar({
       firstLinkRef.current?.focus();
     } else if (wasOpenRef.current) {
       wasOpenRef.current = false;
-      hamburgerRef.current?.focus();
+      if (skipFocusReturnRef.current) {
+        skipFocusReturnRef.current = false;
+      } else {
+        hamburgerRef.current?.focus();
+      }
     }
   }, [drawerOpen]);
 
   const closeDrawerForUserMenu = useCallback((open: boolean) => {
     if (open) {
+      skipFocusReturnRef.current = true;
       setDrawerOpen(false);
     }
   }, []);
@@ -312,7 +327,11 @@ export default function Topbar({
             id={drawerId}
             ref={drawerRef}
             role="dialog"
-            aria-modal="true"
+            // Celowo BEZ aria-modal="true" (code review PR #39, drobiazgi): pętla fokusu obejmuje hamburger, który
+            // jest POZA tym elementem (rodzeństwo headera) - aria-modal każe czytnikom ekranu (np. VoiceOver)
+            // traktować wszystko poza dialogiem jako nieaktywne, co zrobiłoby hamburger nieosiągalnym w ich własnej
+            // nawigacji, sprzecznie z tym, co faktycznie robi nasza pętla Tab. To panel typu disclosure (jak
+            // UserMenu), nie prawdziwy modal - `aria-expanded`/`aria-controls` na hamburgerze już to opisują.
             aria-label="Menu"
             aria-hidden={!drawerOpen}
             tabIndex={-1}

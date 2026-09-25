@@ -233,6 +233,30 @@ describe('Topbar', () => {
       expect(hamburger).toHaveFocus();
     });
 
+    it('trap fokusu: pozycja ŚRODKOWA pętli (nie hamburger, nie pierwszy/ostatni element drawera) też przesuwa się o ±1', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      // EMPLOYEE: Kursy, Osiągnięcia, Zgłoś podejrzany mail, Ustawienia konta, Wyloguj - "Osiągnięcia" (indeks 1) jest
+      // ŚRODKOWĄ pozycją całej pętli [hamburger, Kursy, Osiągnięcia, ...], nie brzegiem, którego dotyczą inne testy.
+      const middle = focusable[1];
+      const before = focusable[0];
+      const after = focusable[2];
+
+      middle.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(after).toHaveFocus();
+
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(middle).toHaveFocus();
+
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(before).toHaveFocus();
+    });
+
     it('trap fokusu: gdy fokus jest CAŁKOWICIE poza pętlą (hamburger + drawer), Tab wciąga go na hamburger, Shift+Tab na ostatni element drawera', () => {
       usePathnameMock.mockReturnValue('/courses');
       render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
@@ -244,19 +268,22 @@ describe('Topbar', () => {
       const last = focusable[focusable.length - 1];
 
       // document.body samo z siebie nie jest fokusowalne (brak tabindex) - .focus() na nim jest no-opem w jsdom,
-      // więc do symulacji "fokus poza pętlą" trzeba realnie fokusowalnego, ale spoza Topbara, elementu.
+      // więc do symulacji "fokus poza pętlą" trzeba realnie fokusowalnego, ale spoza Topbara, elementu. try/finally:
+      // sprzątanie MUSI się wykonać nawet gdy któraś asercja padnie - inaczej bezimienny <button> zostaje w body na
+      // kolejne testy w pliku (RTL czyści tylko własne kontenery renderu, nie ręcznie dodane węzły).
       const outside = document.createElement('button');
       document.body.appendChild(outside);
+      try {
+        outside.focus();
+        fireEvent.keyDown(document, { key: 'Tab' });
+        expect(hamburger).toHaveFocus();
 
-      outside.focus();
-      fireEvent.keyDown(document, { key: 'Tab' });
-      expect(hamburger).toHaveFocus();
-
-      outside.focus();
-      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
-      expect(last).toHaveFocus();
-
-      outside.remove();
+        outside.focus();
+        fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+        expect(last).toHaveFocus();
+      } finally {
+        outside.remove();
+      }
     });
 
     it('zamyka się przy przejściu przez breakpoint lg (obrót telefonu/tabletu, zmiana rozmiaru okna) - inaczej blokada scrolla i nasłuch Tab/Escape zostałyby aktywne bez widocznego panelu', () => {
@@ -302,15 +329,22 @@ describe('Topbar', () => {
       expect(screen.getByRole('dialog')).toHaveAttribute('aria-hidden', 'false');
     });
 
-    it('otwarty drawer → klik w avatar → drawer się zamyka, menu użytkownika się otwiera', () => {
+    it('otwarty drawer → klik w avatar → drawer się zamyka, menu użytkownika się otwiera i ZOSTAJE otwarte (nie znika natychmiast)', () => {
       usePathnameMock.mockReturnValue('/courses');
       render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
       openDrawer();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+      const avatar = screen.getByRole('button', { name: 'Menu użytkownika' });
+      // avatar.focus() PRZED klikiem: prawdziwa przeglądarka daje fokus klikniętemu <button>, fireEvent.click w
+      // jsdom tego nie robi - bez tego test nie łapał realnego buga (code review PR #39, drobiazgi): drawer,
+      // zamykając się, oddawał fokus na hamburger (POZA kontenerem UserMenu), co jego własny handler focusout
+      // odbierał jako "wyjście fokusem poza menu" i zamykał je natychmiast po otwarciu.
+      avatar.focus();
+      fireEvent.click(avatar);
 
       expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
       expect(screen.getByRole('menu')).toBeInTheDocument();
+      expect(avatar).toHaveFocus(); // fokus zostaje na avatarze - drawer NIE oddaje go na hamburger w tym przypadku
     });
 
     it('focusMode: hamburger nie renderuje się w ogóle (zachowanie jak dziś - bez nowego sposobu otwarcia menu)', () => {

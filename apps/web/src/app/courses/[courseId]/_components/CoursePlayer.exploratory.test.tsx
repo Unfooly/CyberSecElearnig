@@ -176,6 +176,61 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 1, answer: { visited: ['h1'], noted: ['h1'] } });
   });
 
+  it('łańcuch wysokości sceny (hotfix fix/player-scene-fit/B-100): komórka obszaru bloku ma overflow-clip; wrapper żywego bloku I wrapper podglądu "Wstecz" niosą flex-1/min-h-0/flex-col do korzenia SceneHotspotsBlock - bez tego dostawałby wysokość auto (przed hotfixem: rosła ponad ramkę; z [container-type:size] bez tej poprawki: zapadałaby się do zera)', () => {
+    function flexChainDepth(el: HTMLElement): number {
+      let depth = 0;
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        if (['flex-1', 'min-h-0', 'flex-col'].every((c) => node!.classList.contains(c))) depth += 1;
+      }
+      return depth;
+    }
+
+    const base = sceneCourse();
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={sceneCourse({
+          currentBlockIndex: 1,
+          contentBlocks: [base.contentBlocks[0], { ...base.contentBlocks[0], id: 'scena2' }],
+          progress: {
+            v: 2,
+            blocks: { scena: { type: 'SCENE_HOTSPOTS', done: true } },
+            notes: [],
+            evidence: { collected: 1, total: 1, perBlock: [{ blockId: 'scena', collected: 1, total: 1 }] },
+          },
+        })}
+      />,
+    );
+
+    // Żywy blok (drugi hotspot sceny - id inny niż "scena", ale ten sam widoczny "Monitor"): komórka obszaru bloku
+    // (contentRef w PlayerStage.tsx) i CO NAJMNIEJ dwa ogniwa flex-1/min-h-0/flex-col między nim a przyciskiem
+    // hotspotu - własny korzeń SceneHotspotsBlock ORAZ wrapper w CoursePlayer.tsx (bez tego drugiego ogniwa łańcuch
+    // byłby przerwany zwykłym blokowym divem).
+    const liveMonitor = screen.getByRole('button', { name: 'Monitor' });
+    expect(liveMonitor.closest('.overflow-clip')).not.toBeNull();
+    expect(flexChainDepth(liveMonitor)).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+
+    // Podgląd ("Wstecz") pokazuje WCZEŚNIEJSZY, ukończony blok sceny - ten sam wymóg dotyczy wrappera ReviewBlock.tsx.
+    const reviewBlock = screen.getByTestId('review-block');
+    expect(reviewBlock.classList.contains('flex-1')).toBe(true);
+    expect(reviewBlock.classList.contains('min-h-0')).toBe(true);
+    expect(reviewBlock.classList.contains('flex-col')).toBe(true);
+    const reviewMonitor = within(reviewBlock).getByRole('button', { name: 'Monitor' });
+    expect(reviewMonitor.closest('.overflow-clip')).not.toBeNull();
+    expect(flexChainDepth(reviewMonitor)).toBeGreaterThanOrEqual(2);
+
+    // Wrapper żywego bloku zostaje w DOM (stan przeżywa Wstecz), ale MUSI zostać naprawdę ukryty - kod review tego
+    // hotfixu: Tailwind [hidden]{display:none} (preflight) i .flex (utilities) mają RÓWNĄ specyficzność, a .flex
+    // ładuje się PO preflight w wygenerowanym CSS, więc .flex by WYGRAŁ z [hidden], gdyby klasa była tu bezwarunkowa
+    // - stąd className jest warunkowe na !reviewing, nie samo contentLayout==='scene'. Dwa "Monitor" muszą istnieć w
+    // DOM (żywy ukryty + podgląd widoczny), ale tylko jeden jest OSIĄGALNY dla roli bez { hidden: true }.
+    expect(screen.getAllByRole('button', { name: 'Monitor', hidden: true })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Monitor' })).toHaveLength(1);
+  });
+
   it('autor może nadpisać pozę spoczynkową w treści (block.mascot wygrywa z domyślną dla typu)', () => {
     const base = sceneCourse();
     const blocks = [{ ...base.contentBlocks[0], mascot: { pose: 'thinking', text: 'Rozejrzyj się.' } }, base.contentBlocks[1]];

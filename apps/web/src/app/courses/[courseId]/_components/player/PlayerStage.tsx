@@ -254,18 +254,26 @@ function PlayerStageInner({
           {/* Obszar bloku (wiersz 1fr). Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej
               w scenie. Dwa układy:
               'scene' (SCENE_HOTSPOTS, hotfix fix/player-scene-fit/B-100): scena ma się ZAWSZE zmieścić w całości,
-              bez przewijania obszaru bloku - overflow-hidden (nie -auto) + [container-type:size] daje SceneHotspotsBlock
-              jednostki cqw/cqh do policzenia rozmiaru w czystym CSS (bez ResizeObservera/max-h-full, które nie
-              radziły sobie z przypadkami z produkcji - pasek przewijania w obszarze bloku, bo scena była wyższa niż
-              dostępne miejsce). Kontener sceny sam liczy swój rozmiar formułą "contain" (min(100cqw, 100cqh*proporcja));
-              treść karty hotspotu (nakładka NA scenie) nadal przewija się WEWNĄTRZ siebie, niezależnie od tego.
+              bez przewijania obszaru bloku - overflow-clip, NIE overflow-hidden (druga runda code review tego
+              hotfixu): `hidden` ucina WIDOK, ale zostaje scroll containerem - `content.scrollBy` z efektu
+              keepFocusAboveBar niżej (odziedziczony po layoucie 'slide', gdzie faktycznie przewija) mógłby wtedy
+              przesunąć scrollport sceny programowo, bez żadnego widocznego paska, którym dałoby się to cofnąć.
+              `clip` blokuje też przewijanie programowe - scena naprawdę NIGDY się nie przesuwa. Bez ResizeObservera/
+              max-h-full, które nie radziły sobie z przypadkami z produkcji - pasek przewijania w obszarze bloku, bo
+              scena była wyższa niż dostępne miejsce. [container-type:size] NIE tutaj (ta sama runda) - nic w tym
+              poddrzewie nie czyta cqw/cqh względem TEJ komórki (najbliższy kontener zapytań dla kwadratu
+              aspect-ratio to WŁASNY, zagnieżdżony [container-type:size] SceneHotspotsBlock.tsx, PO odjęciu
+              wysokości jego nagłówka przez flexbox), a "size containment" ma cichy koszt na przyszłość: robi z tej
+              komórki containing block dla potomków position:fixed. Kontener sceny sam liczy swój rozmiar formułą
+              "contain" (min(100cqw, 100cqh*proporcja)); treść karty hotspotu (nakładka NA scenie) nadal przewija
+              się WEWNĄTRZ siebie, niezależnie od tego.
               'slide' (reszta bloków - wyśrodkowany panel max-w-3xl, jak slajd): przewijanie zostaje, ale cienkie i
               bez przeskoku treści przy pojawieniu się paska (scrollbar-gutter: stable). */}
           <div
             ref={contentRef}
             onFocusCapture={keepFocusAboveBar}
             className={`relative min-h-0 flex-1 ${
-              contentLayout === 'scene' ? 'overflow-hidden [container-type:size]' : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
+              contentLayout === 'scene' ? 'overflow-clip' : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
             }`}
           >
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">

@@ -251,12 +251,23 @@ function PlayerStageInner({
             Blok {blockNumber} z {totalBlocks}
           </p>
 
-          {/* Obszar bloku (wiersz 1fr): jedyne miejsce, które się przewija, gdy treść nie mieści się w ramce.
-              Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej w scenie. Dwa układy:
-              'scene' (SCENE_HOTSPOTS - blok sam wypełnia całą dostępną przestrzeń, object-contain; flex-col, nie
-              flex-row - kod review PR #44: komunikat błędu nad sceną, nie OBOK niej, ściskając ją w bok) i 'slide'
-              (reszta bloków - wyśrodkowany panel max-w-3xl, jak slajd). */}
-          <div ref={contentRef} onFocusCapture={keepFocusAboveBar} className="relative min-h-0 flex-1 overflow-y-auto">
+          {/* Obszar bloku (wiersz 1fr). Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej
+              w scenie. Dwa układy:
+              'scene' (SCENE_HOTSPOTS, hotfix fix/player-scene-fit/B-100): scena ma się ZAWSZE zmieścić w całości,
+              bez przewijania obszaru bloku - overflow-hidden (nie -auto) + [container-type:size] daje SceneHotspotsBlock
+              jednostki cqw/cqh do policzenia rozmiaru w czystym CSS (bez ResizeObservera/max-h-full, które nie
+              radziły sobie z przypadkami z produkcji - pasek przewijania w obszarze bloku, bo scena była wyższa niż
+              dostępne miejsce). Kontener sceny sam liczy swój rozmiar formułą "contain" (min(100cqw, 100cqh*proporcja));
+              treść karty hotspotu (nakładka NA scenie) nadal przewija się WEWNĄTRZ siebie, niezależnie od tego.
+              'slide' (reszta bloków - wyśrodkowany panel max-w-3xl, jak slajd): przewijanie zostaje, ale cienkie i
+              bez przeskoku treści przy pojawieniu się paska (scrollbar-gutter: stable). */}
+          <div
+            ref={contentRef}
+            onFocusCapture={keepFocusAboveBar}
+            className={`relative min-h-0 flex-1 ${
+              contentLayout === 'scene' ? 'overflow-hidden [container-type:size]' : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
+            }`}
+          >
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">
               Blok {blockNumber} z {totalBlocks}
             </h2>

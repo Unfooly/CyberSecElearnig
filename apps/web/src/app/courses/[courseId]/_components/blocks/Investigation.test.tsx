@@ -368,9 +368,9 @@ const overlappingNestedScene: ContentBlock = {
   ],
 };
 
-describe('SCENE_HOTSPOTS: łańcuch wysokości (kod review PR #44 - "sedno 16:9": bez tego max-h-full na kwadracie aspect-ratio liczy się względem rodzica o wysokości auto, czyli "none", i scena dopasowuje się WYŁĄCZNIE szerokością, nigdy nie mieszcząc się w ramce w pionie)', () => {
-  it('korzeń przekazuje pełną wysokość w dół: shrink-0 na nagłówku, flex-1 min-h-0 na kontenerze obrazu', () => {
-    const { container } = render(
+describe('SCENE_HOTSPOTS: łańcuch wysokości (hotfix fix/player-scene-fit/B-100 - scena ma się ZAWSZE zmieścić w całości, bez przewijania obszaru bloku; produkcja: pasek przewijania w obszarze bloku, bo scena była wyższa niż dostępne miejsce)', () => {
+  function renderScene() {
+    return render(
       <OverlayStackProvider>
         <EscapeCascadeBridge />
         <NotesProvider initial={[]} blockTitles={{ scena: 'Biuro' }}>
@@ -382,6 +382,10 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (kod review PR #44 - "sedno 16:9"
         </NotesProvider>
       </OverlayStackProvider>,
     );
+  }
+
+  it('korzeń przekazuje pełną wysokość w dół: shrink-0 na nagłówku, flex-1 min-h-0 + [container-type:size] na kontenerze obrazu', () => {
+    const { container } = renderScene();
 
     const root = container.firstElementChild as HTMLElement;
     expect(root.className).toMatch(/\bflex\b/);
@@ -399,12 +403,28 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (kod review PR #44 - "sedno 16:9"
     expect(imageArea.className).toMatch(/flex-1/);
     expect(imageArea.className).toMatch(/items-center/);
     expect(imageArea.className).toMatch(/justify-center/);
+    // Kontener zapytań rozmiaru MUSI być TUTAJ (po flex-1 min-h-0 - a więc PO odjęciu wysokości nagłówka przez
+    // flexbox), nie na komórce bloku w PlayerStage.tsx - inaczej cqw/cqh liczyłyby się względem WIĘKSZEJ komórki
+    // sprzed odjęcia nagłówka i scena mogłaby wyjść wyższa niż realnie dostępne miejsce.
+    expect(imageArea.className).toMatch(/\[container-type:size\]/);
+  });
 
-    // Kwadrat aspect-ratio wewnątrz: max-h-full/max-w-full mają teraz JAWNĄ wysokość rodzica (imageArea, flex-1
-    // min-h-0), żeby cokolwiek znaczyć - wcześniej rodzicem był korzeń bloku bez własnej wysokości (auto).
+  it('kontener sceny (kwadrat aspect-ratio): rozmiar formułą CSS "contain" z jednostek cqw/cqh, bez max-h-full/max-w-full i bez JS (ResizeObserver)', () => {
+    const { container } = renderScene();
+
+    const root = container.firstElementChild as HTMLElement;
+    const imageArea = root.firstElementChild!.nextElementSibling as HTMLElement;
     const aspectBox = imageArea.firstElementChild as HTMLElement;
-    expect(aspectBox.className).toMatch(/max-h-full/);
-    expect(aspectBox.className).toMatch(/max-w-full/);
+
+    expect(aspectBox.className).not.toMatch(/max-h-full/);
+    expect(aspectBox.className).not.toMatch(/max-w-full/);
+    expect(aspectBox.style.width).toBe('min(100cqw, calc(100cqh * var(--scene-ratio)))');
+    expect(aspectBox.style.height).toBe('auto');
+    expect(aspectBox.style.aspectRatio).toBe('var(--scene-ratio)');
+    expect(aspectBox.style.margin).toBe('auto');
+    // --scene-ratio pochodzi z wymiarów obrazu (domyślnie 16/10 do czasu załadowania prawdziwego pliku - fixtures
+    // testowe nie mają realnych plików, więc to zawsze domyślna wartość tutaj).
+    expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(16 / 10));
   });
 });
 

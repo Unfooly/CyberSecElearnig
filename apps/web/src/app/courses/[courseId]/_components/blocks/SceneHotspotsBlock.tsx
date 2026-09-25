@@ -9,6 +9,7 @@ import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
+import { useOverlayLayer } from '../player/overlay-stack';
 import ExploreFooter from './ExploreFooter';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
@@ -83,6 +84,14 @@ export default function SceneHotspotsBlock({
   const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [interacted, setInteracted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  // object-contain wyśrodkowany (feat/player-stage, PlayerStage contentLayout='scene'): kontener dostaje
+  // aspect-ratio zmierzone z prawdziwego obrazu (onLoad ALBO - obraz z cache, kod review PR #44 - sprawdzenie
+  // img.complete zaraz po zamontowaniu, bo React 18 nie odtwarza zdarzenia load dla <img>, które załadowało się z
+  // cache PRZED hydratacją), więc hotspoty w % pozycjonują się DOKŁADNIE na wyrenderowanym obrazie, bez liczenia
+  // offsetów w JS. Domyślne 16/10 (obrazy modułu 1 mają tę proporcję) - tylko na czas ładowania, żeby kontener nie
+  // zapadał się do zera wysokości, zanim poznamy prawdziwą wartość.
+  const [aspectRatio, setAspectRatio] = useState(16 / 10);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   // Audio: id hotspotów (dowolnego poziomu), których nagranie zostało odsłuchane do końca (onEnded) - odsłania insight (content).
   const [listenedIds, setListenedIds] = useState<string[]>([]);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
@@ -131,16 +140,22 @@ export default function SceneHotspotsBlock({
     if (current) headingRef.current?.focus();
   }, [activeId, nestedActiveId, current]);
 
-  // Escape zdejmuje jeden poziom nakładki - ten sam handler co przycisk "Wróć".
+  // Escape zdejmuje jeden poziom nakładki - ten sam handler co przycisk "Wróć". Zarejestrowane w overlay-stack
+  // (LIFO wg kolejności otwarcia - overlay-stack.tsx) zamiast WŁASNEGO document.addEventListener - PlayerStage ma
+  // JEDEN nasłuch Escape na całą ramkę i woła closeTop(), który trafia dokładnie tutaj, dopóki karta jest otwarta
+  // (na którymkolwiek z dwóch poziomów - goBack sam zdejmuje tylko jeden, więc drugi Escape trafi tu ponownie).
+  useOverlayLayer('hotspotCard', activeId !== null, goBack);
+
+  // Obraz z cache przeglądarki: React 18 nie odtwarza zdarzenia `load` dla <img>, które załadowało się PRZED
+  // hydratacją (React #15446) - samo onLoad niżej by tego nie złapało. Sprawdzenie zaraz po (re)montowaniu tego
+  // bloku (deps: imageUrl - nowa scena to nowy obraz) łapie ten przypadek; gdy obraz jeszcze się ładuje, complete
+  // jest false i zostaje domyślne 16/10 do czasu prawdziwego onLoad.
   useEffect(() => {
-    if (!activeId) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') goBack();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, nestedActiveId]);
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setAspectRatio(img.naturalWidth / img.naturalHeight);
+    }
+  }, [imageUrl]);
 
   function markVisited(id: string) {
     setVisited((current) => (current.includes(id) ? current : [...current, id]));
@@ -202,26 +217,42 @@ export default function SceneHotspotsBlock({
   const isNoted = (id: string) => noted.includes(id);
 
   return (
-    <div>
-      {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
-      <p className="mb-2 text-sm text-slate-600">Wybierz elementy sceny, aby dowiedzieć się więcej.</p>
-      <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
+    // flex h-full flex-col (kod review PR #44): PlayerStage (contentLayout='scene') daje temu blokowi PEŁNĄ
+    // wysokość obszaru treści - żeby scena faktycznie się w niej ZMIEŚCIŁA (nie tylko dopasowała szerokością), ten
+    // korzeń musi przekazać tę wysokość w dół: nagłówek (prompt/licznik) shrink-0, kontener obrazu flex-1 min-h-0
+    // (dopiero to daje mu JAWNĄ wysokość, żeby max-h-full na kwadracie aspect-ratio niżej cokolwiek znaczyło -
+    // wcześniej max-h-full liczyło się względem rodzica o wysokości auto, czyli "none").
+    <div className="flex min-h-0 w-full flex-1 flex-col">
+      <div className="shrink-0">
+        {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
+        <p className="mb-2 text-sm text-slate-600">Wybierz elementy sceny, aby dowiedzieć się więcej.</p>
+        <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
+      </div>
 
       {imageUrl && !imageFailed && (
-        // isolate (code review PR #36): hotspoty dostały jawny z-index (1..20, hotspotStackZIndex) i bez WŁASNEGO
-        // kontekstu stackowania (isolation: isolate) ten numeryczny z-index konkurowałby z ROOT kontekstem strony -
-        // konkretnie z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bottom-0, bez z-index): hotspot
-        // malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
-        // zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
-        // znów maluje się po prostu w kolejności DOM, jak przed tym z-index.
-        <div className="relative isolate overflow-hidden rounded border border-slate-200">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center">
+          {/* isolate (code review PR #36): hotspoty dostały jawny z-index (1..20, hotspotStackZIndex) i bez WŁASNEGO
+              kontekstu stackowania (isolation: isolate) ten numeryczny z-index konkurowałby z ROOT kontekstem strony -
+              konkretnie z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bottom-0, bez z-index): hotspot
+              malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
+              zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
+              znów maluje się po prostu w kolejności DOM, jak przed tym z-index. */}
+          <div
+            className="relative isolate max-h-full max-w-full overflow-hidden rounded border border-slate-200"
+            style={{ aspectRatio: String(aspectRatio) }}
+          >
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
           <img
+            ref={imgRef}
             src={imageUrl}
             alt={block.imageAlt ?? ''}
             referrerPolicy="no-referrer"
             aria-hidden={activeId ? true : undefined}
-            className="block w-full"
+            className="block h-full w-full object-contain"
+            onLoad={(event) => {
+              const { naturalWidth, naturalHeight } = event.currentTarget;
+              if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
+            }}
             onError={() => setImageFailed(true)}
           />
           {hotspots.map((hotspot) => {
@@ -333,6 +364,7 @@ export default function SceneHotspotsBlock({
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
@@ -501,7 +533,7 @@ function formatAudioTime(seconds: number): string {
 // (media.image, opcjonalne) nad małym przyciskiem play/pauza z cienkim paskiem postępu i czasem. Autoodtwarzanie przy
 // otwarciu hotspotu (klik = gest użytkownika, więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale
 // możliwe np. przy restrykcyjnych ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o
-// błędzie (inaczej niż NarrationPlayer.tsx, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
+// błędzie (inaczej niż NarrationBar.tsx/useNarrationBar.ts, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
 function AudioMedia({
   contentBase,
   media,

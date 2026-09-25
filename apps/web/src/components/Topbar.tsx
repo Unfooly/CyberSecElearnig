@@ -62,12 +62,9 @@ function initialsFromEmail(email: string): string {
 export default function Topbar({
   userEmail,
   role,
-  focusMode = false,
 }: {
   userEmail: string | null;
   role?: Role;
-  /** Tryb skupienia (odtwarzacz szkolenia): na wąskich ekranach ukrywa pozycje menu i hamburger, zostaje logo, "Zgłoś" i avatar. Na desktopie bez zmian. */
-  focusMode?: boolean;
 }) {
   const pathname = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -230,18 +227,18 @@ export default function Topbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-4 sm:px-10">
-        <div className="flex h-full items-center gap-3 sm:gap-9">
+      {/* Insety lewy/prawy (kod review PR #44 - wcześniej był tylko górny): telefon w poziomie z wcięciem
+          (notch) ma niezerowy safe-area-inset-left/right, nie tylko -top. Jawne pl-/pr- zamiast px- (i osobno na
+          sm:), bo sm:px-10 nadpisywałby CAŁE padding-left/right skrótem, gubiąc wcięcie na szerszych telefonach w
+          poziomie (iPhone w poziomie i tak trafia w breakpoint sm). */}
+      <header className="sticky top-0 z-40 min-h-[calc(4rem+env(safe-area-inset-top))] border-b border-border bg-surface pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] sm:pl-[calc(2.5rem+env(safe-area-inset-left))] sm:pr-[calc(2.5rem+env(safe-area-inset-right))]">
+        <div className="flex h-16 items-center gap-3 sm:gap-9">
           <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
             <Logo variant="dark" />
           </Link>
 
           {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska (od lg w górę - poniżej lg pasek zastępuje hamburger). */}
-          <nav
-            className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
-              focusMode ? 'hidden sm:flex' : 'hidden lg:flex'
-            }`}
-          >
+          <nav className="hidden h-16 min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 lg:flex">
             {visibleItems.map((item) => {
               if (!item.built) {
                 return (
@@ -272,10 +269,10 @@ export default function Topbar({
             })}
           </nav>
 
-          {/* ml-auto zamiast polegania na flex-1 z <nav>: <nav> jest ukryty poniżej lg (albo poniżej sm w
-              focusMode), więc bez tego ta grupa nie miała NICZEGO, co pchałoby ją do prawej krawędzi - lądowała
-              tuż przy logo zamiast przy prawym brzegu paska. Od lg (albo sm w focusMode) <nav> ma flex-1 i tak
-              zajmuje całą wolną przestrzeń przed tą grupą, więc ml-auto tam nic nie zmienia - wygląd bez zmian. */}
+          {/* ml-auto zamiast polegania na flex-1 z <nav>: <nav> jest ukryty poniżej lg, więc bez tego ta grupa nie
+              miała niczego, co pchałoby ją do prawej krawędzi - lądowała tuż przy logo zamiast przy prawym
+              brzegu paska. Od lg <nav> ma flex-1 i tak zajmuje całą wolną przestrzeń przed tą grupą, więc
+              ml-auto tam nic nie zmienia - wygląd bez zmian. */}
           <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-9">
             {userEmail && (
               <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
@@ -298,19 +295,17 @@ export default function Topbar({
                 44x44 (h-11 w-11, nie h-10 w-10) - docelowy rozmiar dotykowego celu; -mr-2 pozwala celowi sięgać
                 w padding paska (px-4), więc jest bliżej prawdziwej krawędzi ekranu niż wcześniej (kod review PR
                 #41: ikona w środku i tak przesuwa się z nim o ok. 6 px - to zamierzone, nie efekt uboczny). */}
-            {!focusMode && (
-              <button
-                ref={hamburgerRef}
-                type="button"
-                onClick={() => setDrawerOpen((open) => !open)}
-                aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
-                aria-expanded={drawerOpen}
-                aria-controls={drawerId}
-                className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
-              >
-                {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
-              </button>
-            )}
+            <button
+              ref={hamburgerRef}
+              type="button"
+              onClick={() => setDrawerOpen((open) => !open)}
+              aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
+              aria-expanded={drawerOpen}
+              aria-controls={drawerId}
+              className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
+            >
+              {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
+            </button>
           </div>
         </div>
       </header>
@@ -319,71 +314,69 @@ export default function Topbar({
           z-index), więc jego potomkowie z jawnym z-index (np. to tło) i tak biją niepozycjonowane/z-auto
           rodzeństwo (hamburger, UserMenu) WEWNĄTRZ tego kontekstu, niezależnie od z-index samego headera - kod
           review PR #39: hamburger/avatar były niedostępne pod otwartym tłem. Dodatkowo tło i panel zaczynają się
-          POD paskiem (top-16, nie inset-0/inset-y-0) - pasek (z logo/Zgłoś/avatar/hamburgerem) zostaje w pełni
-          widoczny i klikalny nad nimi przez cały czas, więc hamburger jest niezawodnym, zawsze osiągalnym
-          przyciskiem zamknięcia (bez potrzeby drugiego przycisku "X" w środku panelu). */}
-      {!focusMode && (
-        <>
-          <div
-            aria-hidden="true"
-            onClick={() => setDrawerOpen(false)}
-            className={`fixed inset-x-0 top-16 bottom-0 z-30 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
-              drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          />
-          <div
-            id={drawerId}
-            ref={drawerRef}
-            role="dialog"
-            // Celowo BEZ aria-modal="true" (code review PR #39, drobiazgi): pętla fokusu obejmuje hamburger, który
-            // jest POZA tym elementem (rodzeństwo headera) - aria-modal każe czytnikom ekranu (np. VoiceOver)
-            // traktować wszystko poza dialogiem jako nieaktywne, co zrobiłoby hamburger nieosiągalnym w ich własnej
-            // nawigacji, sprzecznie z tym, co faktycznie robi nasza pętla Tab. To panel typu disclosure (jak
-            // UserMenu), nie prawdziwy modal - `aria-expanded`/`aria-controls` na hamburgerze już to opisują.
-            aria-label="Menu"
-            aria-hidden={!drawerOpen}
-            tabIndex={-1}
-            className={`fixed right-0 top-16 bottom-0 z-40 flex w-full max-w-[320px] flex-col overflow-y-auto bg-surface shadow-card transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
-              drawerOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-              {visibleItems.map((item, index) => {
-                // Celowo widoczne tu ZAWSZE (w pasku desktopowym "Wkrótce" jest ukryte poniżej md, bo pasek ma mało
-                // miejsca) - pełna lista modułów MVP w rozwijanym panelu jest czytelniejsza niż ucinanie jej.
-                if (!item.built) {
-                  return (
-                    <span key={item.label} className="flex items-center gap-2 rounded-btn px-3 py-2 font-semibold text-muted-2">
-                      {item.label}
-                      <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
-                        Wkrótce
-                      </span>
-                    </span>
-                  );
-                }
-                const isActive = item.href === activeHref;
-                return (
-                  <Link
-                    key={item.label}
-                    ref={index === firstBuiltIndex ? firstLinkRef : undefined}
-                    href={item.href}
-                    aria-current={isActive ? 'page' : undefined}
-                    onClick={() => setDrawerOpen(false)}
-                    tabIndex={drawerOpen ? undefined : -1}
-                    className={`rounded-btn px-3 py-2 font-semibold ${isActive ? 'bg-accent-soft text-ink' : 'text-muted hover:bg-paper hover:text-ink'}`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
+          POD paskiem (top-[calc(4rem+env(safe-area-inset-top))], nie inset-0/inset-y-0 - ta sama wysokość paska co
+          jego min-h powyżej, bo notch/wyspa powiększają pasek o safe-area-inset-top) - pasek (z logo/Zgłoś/avatar/
+          hamburgerem) zostaje w pełni widoczny i klikalny nad nimi przez cały czas, więc hamburger jest
+          niezawodnym, zawsze osiągalnym przyciskiem zamknięcia (bez potrzeby drugiego przycisku "X" w środku
+          panelu). */}
+      <div
+        aria-hidden="true"
+        onClick={() => setDrawerOpen(false)}
+        className={`fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] bottom-0 z-30 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
+          drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
+      <div
+        id={drawerId}
+        ref={drawerRef}
+        role="dialog"
+        // Celowo BEZ aria-modal="true" (code review PR #39, drobiazgi): pętla fokusu obejmuje hamburger, który
+        // jest POZA tym elementem (rodzeństwo headera) - aria-modal każe czytnikom ekranu (np. VoiceOver)
+        // traktować wszystko poza dialogiem jako nieaktywne, co zrobiłoby hamburger nieosiągalnym w ich własnej
+        // nawigacji, sprzecznie z tym, co faktycznie robi nasza pętla Tab. To panel typu disclosure (jak
+        // UserMenu), nie prawdziwy modal - `aria-expanded`/`aria-controls` na hamburgerze już to opisują.
+        aria-label="Menu"
+        aria-hidden={!drawerOpen}
+        tabIndex={-1}
+        className={`fixed right-0 top-[calc(4rem+env(safe-area-inset-top))] bottom-0 z-40 flex w-full max-w-[320px] flex-col overflow-y-auto bg-surface shadow-card transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
+          drawerOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {visibleItems.map((item, index) => {
+            // Celowo widoczne tu ZAWSZE (w pasku desktopowym "Wkrótce" jest ukryte poniżej md, bo pasek ma mało
+            // miejsca) - pełna lista modułów MVP w rozwijanym panelu jest czytelniejsza niż ucinanie jej.
+            if (!item.built) {
+              return (
+                <span key={item.label} className="flex items-center gap-2 rounded-btn px-3 py-2 font-semibold text-muted-2">
+                  {item.label}
+                  <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
+                    Wkrótce
+                  </span>
+                </span>
+              );
+            }
+            const isActive = item.href === activeHref;
+            return (
+              <Link
+                key={item.label}
+                ref={index === firstBuiltIndex ? firstLinkRef : undefined}
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => setDrawerOpen(false)}
+                tabIndex={drawerOpen ? undefined : -1}
+                className={`rounded-btn px-3 py-2 font-semibold ${isActive ? 'bg-accent-soft text-ink' : 'text-muted hover:bg-paper hover:text-ink'}`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-            {userEmail && (
-              <DrawerUserSection userEmail={userEmail} drawerOpen={drawerOpen} onNavigate={() => setDrawerOpen(false)} />
-            )}
-          </div>
-        </>
-      )}
+        {userEmail && (
+          <DrawerUserSection userEmail={userEmail} drawerOpen={drawerOpen} onNavigate={() => setDrawerOpen(false)} />
+        )}
+      </div>
     </>
   );
 }

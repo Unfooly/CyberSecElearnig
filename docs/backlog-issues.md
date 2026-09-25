@@ -233,6 +233,62 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: frontend ręcznie duplikuje typy DTO z API (dashboard, kursy, import, phishing) - ryzyko rozjazdu przy zmianie backendu.
 - Akceptacja: przeniesienie współdzielonych DTO, kompilacja obu workspace'ów, brak duplikatów.
 
+### B-096 Dymek Fooli (`MascotOverlay.tsx`) może nie ogłosić PIERWSZEGO komunikatu na bloku
+- Etykiety: `P2`, `bug`, `mod:web` · Źródło: dwa niezależne review (code-reviewer + a11y) fix-passu `feat/player-stage` po PR #44
+- Opis: `<p role="status" aria-live="polite">` montuje się RAZEM z treścią (`{mascot && <MascotOverlay .../>}` w
+  `PlayerStage.tsx`, `{text && <p role="status">...}` w środku) - czytniki ekranu z reguły NIE ogłaszają żywego
+  regionu, który pojawił się w DOM już wypełniony, tylko kolejne ZMIANY treści już zamontowanego regionu. Blok bez
+  `idleMascot` (np. QUIZ, `showingFeedback`) nie renderuje `MascotOverlay` wcale, więc PIERWSZA reakcja maskotki na
+  takim bloku montuje komponent od zera z tekstem już w środku - i może przepaść dla czytnika ekranu.
+- Akceptacja: `role="status"` (pusty, bez tekstu) montuje się i zostaje w DOM niezależnie od tego, czy jest aktualnie
+  `pose`/`text` (albo świadomie inny mechanizm dający ten sam efekt); tekst wstawiany PO montażu regionu, nie razem z
+  nim; test odtwarzający przejście "brak maskotki -> pierwsza reakcja z tekstem" (nie tylko "maskotka od razu z
+  tekstem", jak dziś w `MascotOverlay.test.tsx`).
+
+### B-097 Zamknięcie transkrypcji/notatnika przy zmianie bloku może ukraść fokus nowo ustawionemu nagłówkowi
+- Etykiety: `P2`, `bug`, `mod:web` · Źródło: j.w.
+- Opis: `TranscriptPanel.tsx`/`NotesDrawer.tsx` oddają fokus na swój `triggerRef` przy KAŻDYM przejściu otwarty ->
+  zamknięty, także gdy zamknięcie nie jest efektem bezpośredniej akcji użytkownika (np. `useNarrationBar.ts` zamyka
+  transkrypcję przy zmianie `resetKey` - nowy blok). `CoursePlayer.tsx` w tym samym cyklu renderu przenosi fokus na
+  nagłówek nowego bloku (`headingRef`) - jeśli transkrypcja była otwarta, efekt zwracający fokus na "Transkrypcja"
+  odpala się PO tym i przestawia fokus z powrotem na dolny pasek, więc czytnik ekranu nie ogłasza nowego bloku.
+- Akceptacja: fokus wraca na trigger WYŁĄCZNIE, gdy zamknięcie jest efektem interakcji użytkownika z samym panelem
+  (np. fokus w chwili zamknięcia leżał wewnątrz panelu) - nie przy zamknięciu "z zewnątrz" (zmiana bloku); test na
+  oba przypadki.
+
+### B-098 `MascotOverlay`: po "Zwiń" fokus zostaje na niewidocznym przycisku, bez wskaźnika fokusu
+- Etykiety: `P3`, `decision-needed`, `mod:web` · Źródło: a11y review fix-passu `feat/player-stage` po PR #44
+- Opis: świadoma decyzja tej rundy poprawek - zwinięcie dymka NIE przenosi fokusu (nie jest to modal, brak
+  semantyki "powrotu"). Skutek uboczny: klawiaturowy użytkownik, który aktywował "Zwiń" (albo miał tam fokus, gdy
+  odpalił się 8-sekundowy auto-collapse), zostaje z fokusem na przycisku, który zaraz potem znika wizualnie
+  (`opacity-0`, `max-h-0`) - WCAG 2.4.7/2.4.11 (widoczny fokus). Przeniesienie fokusu na (widoczną) ikonę maskotki
+  rozwiązałoby to bez łamania decyzji "nie przenoś fokusu przy zwinięciu" w duchu (ikona to SIBLING, nie "powrót" do
+  triggera modala) - wymaga jednak decyzji właściciela produktu, bo to zmiana zachowania ustalonego w tej rundzie.
+- Akceptacja: decyzja w `docs/decisions.md`, potem implementacja i test.
+
+### B-099 Drobne porządki w odtwarzaczu kursu (`feat/player-stage`) - bez wpływu na zachowanie
+- Etykiety: `P3`, `tech-debt`, `mod:web` · Źródło: code review fix-passu `feat/player-stage` po PR #44
+- Opis: kilka drobiazgów znalezionych przy okazji, żaden nie zmienia obserwowalnego zachowania: (1) `MascotOverlay.tsx`
+  dymek w stanie zwiniętym ma jednocześnie bazowe `pointer-events-auto` i warunkowe `pointer-events-none` - w
+  Tailwind v3 klasa zdefiniowana później w arkuszu wygrywa niezależnie od kolejności w `className`, więc efekt jest
+  dziś poprawny, ale zapis wprowadza w błąd przy czytaniu. (2) `MascotOverlay.tsx`: `aria-label="Fooli - pokaż
+  wiadomość"` na ikonie zostaje taki sam też przy ROZWINIĘTYM dymku, gdzie klik w ikonę nic nie robi. (3)
+  `PlayerStage.tsx`: klasa `w-full` na `<main>` jest martwa (`.player-frame` w `globals.css` i tak narzuca szerokość);
+  `titleId` jest sztywnym stringiem zamiast `useId()`. (4) `NotesDrawer.tsx`: selektor pułapki fokusu
+  (`a[href], button:not([disabled])`) pominie `input`/`textarea`/`select`/`[tabindex]`, gdyby `NotesPanel` kiedyś
+  dostał taką zawartość.
+- Akceptacja: każdy punkt osobnym, małym PR-em albo przy najbliższej zmianie dotykającej dany plik.
+
+### B-100 Łańcuch wysokości sceny (SCENE_HOTSPOTS, 16:9) - weryfikacja w prawdziwej przeglądarce
+- Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: code review fix-passu `feat/player-stage` po PR #44; zależne od `B-085`
+- Opis: `SceneHotspotsBlock.tsx` dostał w tym PR-ie pełny łańcuch `min-h-0`/`flex-1`, pokryty testem na KLASACH
+  (`Investigation.test.tsx`), ale pudełko aspect-ratio jest elementem flex w wierszu (szerokość `auto`, zależna od
+  intrinsic size obrazu) - test jednostkowy w jsdom nie może potwierdzić, że scena faktycznie mieści się w pionie
+  na niskim/wąskim viewporcie (telefon w poziomie, tryb pełnoekranowy). Wymaga realnej przeglądarki
+  (`scripts/e2e-module-01.mjs` albo ręcznego sprawdzenia) - dziś zablokowane przez B-085.
+- Akceptacja: po odblokowaniu B-085, przebieg e2e/ręczny na niskim viewporcie (telefon w poziomie) potwierdzający,
+  że scena mieści się w pionie, nie tylko szerokością.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import type { CourseCompletionReward } from '@/lib/courses-types';
+import { useOverlayLayer } from './player/overlay-stack';
 
 export default function CourseRewardModal({
   reward,
@@ -10,17 +10,11 @@ export default function CourseRewardModal({
   reward: CourseCompletionReward;
   onClose: () => void;
 }) {
-  // a11y: Escape zamyka modal (WAI-ARIA dialog pattern) - jedyny sposób
-  // zamknięcia bez myszki, dopóki nie ma pełnego focus trapu w tym repo.
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  // a11y: Escape zamyka modal (WAI-ARIA dialog pattern) - jedyny sposób zamknięcia bez myszki, dopóki nie ma
+  // pełnego focus trapu w tym repo. Rejestracja w overlay-stack (kod review PR #44) zamiast WŁASNEGO
+  // document.addEventListener('keydown', ...): ten modal renderuje się WEWNĄTRZ PlayerStage (przez SummaryScreen),
+  // więc własny listener konkurowałby o to samo zdarzenie z kaskadą LIFO innych warstw (notatnik, transkrypcja).
+  useOverlayLayer('reward', true, onClose);
 
   return (
     <div

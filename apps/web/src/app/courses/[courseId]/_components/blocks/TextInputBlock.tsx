@@ -138,6 +138,10 @@ export default function TextInputBlock({
             type="text"
             value={value}
             onChange={(event) => setValue(event.target.value)}
+            // Klawiatura ekranowa na telefonie (feat/player-stage, ramka bez przewijania strony - iOS nie zmniejsza
+            // 100dvh, gdy klawiatura się otwiera): bez tego pole zostaje POD klawiaturą, niewidoczne w obszarze
+            // treści ramki.
+            onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'center' })}
             maxLength={500}
             placeholder={block.placeholder}
             autoComplete="off"

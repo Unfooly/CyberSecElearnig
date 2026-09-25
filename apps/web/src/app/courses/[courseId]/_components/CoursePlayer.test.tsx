@@ -3,9 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 
 const pushMock = vi.fn();
+const refreshMock = vi.fn();
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
 }));
 
 const singleQuizBlockCourse: CoursePlayerInitialState = {
@@ -28,7 +29,9 @@ const singleQuizBlockCourse: CoursePlayerInitialState = {
 describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     pushMock.mockClear();
+    refreshMock.mockClear();
   });
 
   it('start -> odpowiedź -> feedback -> podsumowanie z wynikiem z API', async () => {
@@ -77,7 +80,9 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     expect(await screen.findByText('Kurs ukończony')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText('Rozpoznawanie phishingu')).toBeInTheDocument();
+    // Tytuł kursu widać DOKŁADNIE dwa razy: w pasku górnym PlayerStage (zawsze) i w treści SummaryScreen (kod
+    // review PR #44: asercja >=1 przechodziłaby nawet, gdyby jedno z tych dwóch miejsc zniknęło).
+    expect(screen.getAllByText('Rozpoznawanie phishingu')).toHaveLength(2);
     // gamification: null w odpowiedzi (badge się nie odblokował w tym
     // scenariuszu testowym) -> brak modala nagrody.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -211,5 +216,74 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Bloki trzeba ukończyć po kolei');
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  // "Rozpocznij od nowa" (D-069, B-091): przycisk "Wstecz" w pasku PlayerStage, gdy kurs jest w trybie podsumowania.
+  // Kod review PR #44: te testy zniknęły bez zastąpienia przy przenosinach logiki z (usuniętego) SummaryScreen do
+  // CoursePlayer.tsx - fałszywy komentarz w SummaryScreen.test.tsx twierdził, że "przeniesiono" je tutaj.
+  describe('"Rozpocznij od nowa" na ekranie podsumowania (restartCourse w CoursePlayer.tsx)', () => {
+    const completedCourse: CoursePlayerInitialState = {
+      ...singleQuizBlockCourse,
+      status: 'COMPLETED',
+      currentBlockIndex: 1,
+      score: 80,
+    };
+
+    it('anulowanie potwierdzenia (window.confirm -> false) nie woła API', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij od nowa' }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(refreshMock).not.toHaveBeenCalled();
+    });
+
+    it('potwierdzenie -> POST /api/courses/:id/restart, sukces odświeża stronę (router.refresh(), NIE nawigacja)', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204, json: async () => ({}) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij od nowa' }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/restart', { method: 'POST' }));
+      await waitFor(() => expect(refreshMock).toHaveBeenCalledTimes(1));
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    it('błąd z API (np. 409 - przypisanie już zarchiwizowane w międzyczasie) pokazuje komunikat i odblokowuje przycisk', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({}) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij od nowa' }));
+
+      expect(await screen.findByText(/nie udało się rozpocząć kursu od nowa/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Rozpocznij od nowa' })).toBeEnabled();
+      expect(refreshMock).not.toHaveBeenCalled();
+    });
+
+    it('w trakcie zapytania przycisk pokazuje "Uruchamianie od nowa…" i jest zablokowany', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      let resolveFetch: (value: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+      const pending = new Promise((resolve) => {
+        resolveFetch = resolve;
+      });
+      const fetchMock = vi.fn().mockReturnValue(pending);
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij od nowa' }));
+
+      const pendingButton = await screen.findByRole('button', { name: 'Uruchamianie od nowa…' });
+      expect(pendingButton).toBeDisabled();
+
+      resolveFetch!({ ok: true, status: 204, json: async () => ({}) });
+      await waitFor(() => expect(refreshMock).toHaveBeenCalledTimes(1));
+    });
   });
 });

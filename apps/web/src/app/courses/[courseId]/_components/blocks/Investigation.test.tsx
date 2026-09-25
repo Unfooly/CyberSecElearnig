@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
@@ -5,7 +6,23 @@ import { hotspotStackZIndex } from './SceneHotspotsBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { OverlayStackProvider, useCloseTopOverlay } from '../player/overlay-stack';
 import type { ContentBlock, EvidenceSummary } from '@/lib/courses-types';
+
+// Karta hotspotu rejestruje swój Escape w overlay-stack (feat/player-stage) zamiast WŁASNEGO
+// document.addEventListener - w produkcji PlayerStage ma jeden nasłuch Escape na całą ramkę i woła closeTop(); ten
+// most odtwarza DOKŁADNIE to samo okablowanie w izolowanym renderze tego pliku (bez prawdziwego PlayerStage).
+function EscapeCascadeBridge() {
+  const closeTop = useCloseTopOverlay();
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeTop();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [closeTop]);
+  return null;
+}
 
 // Mechaniki "śledztwa": dowody, hotspoty z kartą, dialog po jednej kwestii, rozwiązanie sprawy.
 
@@ -82,25 +99,28 @@ function setup(
   const onSubmit = options.onSubmit ?? vi.fn();
   const ready: { current: (() => void) | null } = { current: null };
   render(
-    <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
-      <EvidenceProvider summary={options.summary}>
-        <MascotReactionProvider resetKey="k">
-          <EvidenceCounter />
-          <ExploratoryBlock
-            block={block}
-            contentBase="/content"
-            onSubmit={onSubmit}
-            onReady={(submit) => {
-              ready.current = submit;
-            }}
-            disabled={false}
-            review={options.review}
-          />
-          <Probe />
-          <NotesPanel id="panel" />
-        </MascotReactionProvider>
-      </EvidenceProvider>
-    </NotesProvider>,
+    <OverlayStackProvider>
+      <EscapeCascadeBridge />
+      <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
+        <EvidenceProvider summary={options.summary}>
+          <MascotReactionProvider resetKey="k">
+            <EvidenceCounter />
+            <ExploratoryBlock
+              block={block}
+              contentBase="/content"
+              onSubmit={onSubmit}
+              onReady={(submit) => {
+                ready.current = submit;
+              }}
+              disabled={false}
+              review={options.review}
+            />
+            <Probe />
+            <NotesPanel id="panel" />
+          </MascotReactionProvider>
+        </EvidenceProvider>
+      </NotesProvider>
+    </OverlayStackProvider>,
   );
   return { onSubmit, ready };
 }
@@ -347,6 +367,46 @@ const overlappingNestedScene: ContentBlock = {
     },
   ],
 };
+
+describe('SCENE_HOTSPOTS: łańcuch wysokości (kod review PR #44 - "sedno 16:9": bez tego max-h-full na kwadracie aspect-ratio liczy się względem rodzica o wysokości auto, czyli "none", i scena dopasowuje się WYŁĄCZNIE szerokością, nigdy nie mieszcząc się w ramce w pionie)', () => {
+  it('korzeń przekazuje pełną wysokość w dół: shrink-0 na nagłówku, flex-1 min-h-0 na kontenerze obrazu', () => {
+    const { container } = render(
+      <OverlayStackProvider>
+        <EscapeCascadeBridge />
+        <NotesProvider initial={[]} blockTitles={{ scena: 'Biuro' }}>
+          <EvidenceProvider summary={undefined}>
+            <MascotReactionProvider resetKey="k">
+              <ExploratoryBlock block={scene} contentBase="/content" onSubmit={vi.fn()} onReady={vi.fn()} disabled={false} />
+            </MascotReactionProvider>
+          </EvidenceProvider>
+        </NotesProvider>
+      </OverlayStackProvider>,
+    );
+
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toMatch(/\bflex\b/);
+    expect(root.className).toMatch(/min-h-0/);
+    expect(root.className).toMatch(/w-full/);
+    expect(root.className).toMatch(/flex-1/);
+    expect(root.className).toMatch(/flex-col/);
+
+    const header = root.firstElementChild as HTMLElement;
+    expect(header.className).toMatch(/shrink-0/);
+
+    const imageArea = header.nextElementSibling as HTMLElement;
+    expect(imageArea.className).toMatch(/flex/);
+    expect(imageArea.className).toMatch(/min-h-0/);
+    expect(imageArea.className).toMatch(/flex-1/);
+    expect(imageArea.className).toMatch(/items-center/);
+    expect(imageArea.className).toMatch(/justify-center/);
+
+    // Kwadrat aspect-ratio wewnątrz: max-h-full/max-w-full mają teraz JAWNĄ wysokość rodzica (imageArea, flex-1
+    // min-h-0), żeby cokolwiek znaczyć - wcześniej rodzicem był korzeń bloku bez własnej wysokości (auto).
+    const aspectBox = imageArea.firstElementChild as HTMLElement;
+    expect(aspectBox.className).toMatch(/max-h-full/);
+    expect(aspectBox.className).toMatch(/max-w-full/);
+  });
+});
 
 describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotów', () => {
   it('hotspotStackZIndex (czysta funkcja): remis dostaje kolejność z tablicy, pojedynczy element i pusta tablica nie wywalają', () => {

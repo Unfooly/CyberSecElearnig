@@ -73,7 +73,11 @@ describe('Topbar', () => {
       expect(nav.className).toMatch(/\bhidden\b/);
       expect(nav.className).toMatch(/sm:flex/);
       expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
+      // Bez hamburgera (focusMode) grupa to tylko "Zgłoś" + avatar - ml-auto musi pchać do prawej krawędzi też
+      // wtedy, nie tylko gdy hamburger jest jej ostatnim dzieckiem (patrz test wyżej).
+      const group = screen.getByRole('link', { name: 'Zgłoś podejrzany mail' }).parentElement as HTMLElement;
+      expect(group.className.split(' ')).toContain('ml-auto');
+      expect(screen.queryByRole('button', { name: 'Otwórz menu' })).not.toBeInTheDocument();
     });
 
     it('adres e-mail jest wyłącznie w menu użytkownika, w całości (nic się nie ucina); kopia w panelu mobilnym jest aria-hidden, dopóki panel zamknięty', () => {

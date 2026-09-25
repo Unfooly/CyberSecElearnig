@@ -295,9 +295,9 @@ export default function Topbar({
             )}
 
             {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności.
-                44x44 (h-11 w-11, nie h-10 w-10) - docelowy rozmiar dotykowego celu; -mr-2 przybliża go do
-                prawdziwej krawędzi ekranu, nie przesuwając wizualnie samej ikony (padding wewnątrz przycisku
-                zostaje wyśrodkowany). */}
+                44x44 (h-11 w-11, nie h-10 w-10) - docelowy rozmiar dotykowego celu; -mr-2 pozwala celowi sięgać
+                w padding paska (px-4), więc jest bliżej prawdziwej krawędzi ekranu niż wcześniej (kod review PR
+                #41: ikona w środku i tak przesuwa się z nim o ok. 6 px - to zamierzone, nie efekt uboczny). */}
             {!focusMode && (
               <button
                 ref={hamburgerRef}

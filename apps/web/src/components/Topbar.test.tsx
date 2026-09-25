@@ -147,7 +147,7 @@ describe('Topbar', () => {
       const { container } = render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
       openDrawer();
 
-      const backdrop = container.querySelector('[aria-hidden="true"].fixed.inset-0') as HTMLElement;
+      const backdrop = container.querySelector('[aria-hidden="true"].fixed.top-16') as HTMLElement;
       fireEvent.click(backdrop);
 
       expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
@@ -211,6 +211,46 @@ describe('Topbar', () => {
 
       fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
       expect(last).toHaveFocus();
+    });
+
+    it('trap fokusu: gdy fokus jest POZA panelem (np. na hamburgerze, wciąż widocznym i klikalnym nad panelem), Tab wciąga go z powrotem do środka', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const dialog = screen.getByRole('dialog');
+      const first = dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')[0];
+      screen.getByRole('button', { name: 'Zamknij menu' }).focus(); // hamburger - poza dialogiem, ale wciąż fokusowalny
+
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(first).toHaveFocus();
+    });
+
+    it('zamyka się przy przejściu przez breakpoint lg (obrót telefonu/tabletu, zmiana rozmiaru okna) - inaczej blokada scrolla i nasłuch Tab/Escape zostałyby aktywne bez widocznego panelu', () => {
+      const listeners: ((event: MediaQueryListEvent) => void)[] = [];
+      const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockReturnValue({
+        matches: false,
+        media: '(min-width: 1024px)',
+        onchange: null,
+        addEventListener: (_: string, listener: (event: MediaQueryListEvent) => void) => listeners.push(listener),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      } as unknown as MediaQueryList);
+
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      act(() => {
+        listeners.forEach((listener) => listener({ matches: true } as MediaQueryListEvent));
+      });
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+      expect(document.body.style.overflow).toBe('');
+      matchMediaSpy.mockRestore();
     });
 
     it('focusMode: hamburger nie renderuje się w ogóle (zachowanie jak dziś - bez nowego sposobu otwarcia menu)', () => {

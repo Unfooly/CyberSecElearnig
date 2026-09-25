@@ -127,6 +127,20 @@ export default function Topbar({
     setDrawerOpen(false);
   }, [pathname]);
 
+  // Panel zamyka się też przy przejściu przez breakpoint lg (obrót telefonu/tabletu, zmiana rozmiaru okna) - inaczej
+  // panel/tło dostają lg:hidden, ale drawerOpen zostaje true, więc blokada scrolla body i nasłuch Tab/Escape z efektu
+  // niżej zostają aktywne na desktopie bez żadnego widocznego panelu (code review PR #39).
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    function handleChange(event: MediaQueryListEvent) {
+      if (event.matches) {
+        setDrawerOpen(false);
+      }
+    }
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
   // Blokada przewijania body, Escape i trap fokusu (Tab/Shift+Tab zawinięte na granicach panelu) - tylko gdy otwarty.
   useEffect(() => {
     if (!drawerOpen) {
@@ -149,11 +163,20 @@ export default function Topbar({
       }
       const focusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
       if (focusable.length === 0) {
+        // Nie powinno się zdarzyć (panel zawsze ma bary z linkami), ale gdyby - fokus zostaje w panelu, nie ucieka na stronę.
+        event.preventDefault();
+        panel.focus();
         return;
       }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      // Fokus poza panelem (np. po kliku myszą w tło, albo brak zbudowanych pozycji więc firstLinkRef.current jest
+      // null i fokus po otwarciu zostaje na hamburgerze - code review PR #39): Tab/Shift+Tab wciąga go z powrotem,
+      // zamiast pozwolić mu wyjść na stronę pod spodem.
+      if (!panel.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -181,81 +204,89 @@ export default function Topbar({
   }, [drawerOpen]);
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-4 sm:px-10">
-      <div className="flex h-full items-center gap-3 sm:gap-9">
-        <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
-          <Logo variant="dark" />
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface px-4 sm:px-10">
+        <div className="flex h-full items-center gap-3 sm:gap-9">
+          <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
+            <Logo variant="dark" />
+          </Link>
 
-        {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska (od lg w górę - poniżej lg pasek zastępuje hamburger). */}
-        {focusMode && <div className="flex-1 sm:hidden" aria-hidden="true" />}
-        <nav
-          className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
-            focusMode ? 'hidden sm:flex' : 'hidden lg:flex'
-          }`}
-        >
-          {visibleItems.map((item) => {
-            if (!item.built) {
+          {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska (od lg w górę - poniżej lg pasek zastępuje hamburger). */}
+          {focusMode && <div className="flex-1 sm:hidden" aria-hidden="true" />}
+          <nav
+            className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
+              focusMode ? 'hidden sm:flex' : 'hidden lg:flex'
+            }`}
+          >
+            {visibleItems.map((item) => {
+              if (!item.built) {
+                return (
+                  <span
+                    key={item.label}
+                    className="hidden h-full cursor-default items-center gap-2 border-b-2 border-transparent px-3 font-semibold text-muted-2 md:flex"
+                  >
+                    {item.label}
+                    <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
+                      Wkrótce
+                    </span>
+                  </span>
+                );
+              }
+              const isActive = item.href === activeHref;
               return (
-                <span
+                <Link
                   key={item.label}
-                  className="hidden h-full cursor-default items-center gap-2 border-b-2 border-transparent px-3 font-semibold text-muted-2 md:flex"
+                  href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex h-full items-center border-b-2 px-3 font-semibold ${
+                    isActive ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
+                  }`}
                 >
                   {item.label}
-                  <span className="rounded-full border border-border bg-paper px-[7px] py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-muted">
-                    Wkrótce
-                  </span>
-                </span>
+                </Link>
               );
-            }
-            const isActive = item.href === activeHref;
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex h-full items-center border-b-2 px-3 font-semibold ${
-                  isActive ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+            })}
+          </nav>
 
-        {userEmail && (
-          <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
-            <span className="sm:hidden">Zgłoś</span>
-            <span className="hidden sm:inline">Zgłoś podejrzany mail</span>
-          </Link>
-        )}
+          {userEmail && (
+            <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
+              <span className="sm:hidden">Zgłoś</span>
+              <span className="hidden sm:inline">Zgłoś podejrzany mail</span>
+            </Link>
+          )}
 
-        {userEmail && <UserMenu userEmail={userEmail} avatarUrl={avatarUrl} initials={initialsFromEmail(userEmail)} />}
+          {userEmail && <UserMenu userEmail={userEmail} avatarUrl={avatarUrl} initials={initialsFromEmail(userEmail)} />}
 
-        {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności. */}
-        {!focusMode && (
-          <button
-            ref={hamburgerRef}
-            type="button"
-            onClick={() => setDrawerOpen((open) => !open)}
-            aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
-            aria-expanded={drawerOpen}
-            aria-controls={drawerId}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
-          >
-            {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
-          </button>
-        )}
-      </div>
+          {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności. */}
+          {!focusMode && (
+            <button
+              ref={hamburgerRef}
+              type="button"
+              onClick={() => setDrawerOpen((open) => !open)}
+              aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
+              aria-expanded={drawerOpen}
+              aria-controls={drawerId}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
+            >
+              {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
+            </button>
+          )}
+        </div>
+      </header>
 
+      {/* Tło i panel są RODZEŃSTWEM headera, nie jego dziećmi: header ma WŁASNY kontekst nakładania (sticky +
+          z-index), więc jego potomkowie z jawnym z-index (np. to tło) i tak biją niepozycjonowane/z-auto
+          rodzeństwo (hamburger, UserMenu) WEWNĄTRZ tego kontekstu, niezależnie od z-index samego headera - kod
+          review PR #39: hamburger/avatar były niedostępne pod otwartym tłem. Dodatkowo tło i panel zaczynają się
+          POD paskiem (top-16, nie inset-0/inset-y-0) - pasek (z logo/Zgłoś/avatar/hamburgerem) zostaje w pełni
+          widoczny i klikalny nad nimi przez cały czas, więc hamburger jest niezawodnym, zawsze osiągalnym
+          przyciskiem zamknięcia (bez potrzeby drugiego przycisku "X" w środku panelu). */}
       {!focusMode && (
         <>
-          {/* Tło: pod paskiem (z-30 < header z-40, avatar/hamburger zostają klikalne), nad resztą strony. */}
           <div
             aria-hidden="true"
             onClick={() => setDrawerOpen(false)}
-            className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
+            className={`fixed inset-x-0 top-16 bottom-0 z-30 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none lg:hidden ${
               drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           />
@@ -266,19 +297,15 @@ export default function Topbar({
             aria-modal="true"
             aria-label="Menu"
             aria-hidden={!drawerOpen}
-            className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-[320px] flex-col overflow-y-auto bg-surface shadow-card transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
+            tabIndex={-1}
+            className={`fixed right-0 top-16 bottom-0 z-40 flex w-full max-w-[320px] flex-col overflow-y-auto bg-surface shadow-card transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
               drawerOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-            {/* Bez osobnego przycisku zamknięcia tutaj - hamburger w pasku ZMIENIA SIĘ w X (ten sam przycisk, ten sam
-                stały punkt na ekranie - pasek jest sticky) i to jest "X" z listy sposobów zamknięcia; drugi przycisk
-                o tej samej nazwie dostępnej ("Zamknij menu") obok tego pierwszego byłby mylący dla czytnika ekranu. */}
-            <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
-              <span className="font-bold text-ink">Menu</span>
-            </div>
-
             <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
               {visibleItems.map((item, index) => {
+                // Celowo widoczne tu ZAWSZE (w pasku desktopowym "Wkrótce" jest ukryte poniżej md, bo pasek ma mało
+                // miejsca) - pełna lista modułów MVP w rozwijanym panelu jest czytelniejsza niż ucinanie jej.
                 if (!item.built) {
                   return (
                     <span key={item.label} className="flex items-center gap-2 rounded-btn px-3 py-2 font-semibold text-muted-2">
@@ -312,7 +339,7 @@ export default function Topbar({
           </div>
         </>
       )}
-    </header>
+    </>
   );
 }
 
@@ -331,9 +358,14 @@ function DrawerUserSection({
 }) {
   const { logout, isLoggingOut } = useLogout();
 
+  // Jak UserMenu: NAJPIERW await logout() (użytkownik widzi "Wylogowywanie..." w OTWARTYM panelu przez czas
+  // żądania), dopiero potem zamknięcie - odwrotna kolejność chowała stan ładowania w zamkniętym, aria-hidden
+  // panelu i dawała brak jakiejkolwiek informacji zwrotnej na czas fetch()a (code review PR #39). Panel i tak
+  // zamknie się sam przez efekt zmiany pathname (logout() kończy się router.push('/login')), ale onNavigate()
+  // tutaj też - na wypadek błędu sieci, po którym useLogout i tak przechodzi na /login (patrz jego komentarz).
   async function handleLogout() {
-    onNavigate();
     await logout();
+    onNavigate();
   }
 
   return (

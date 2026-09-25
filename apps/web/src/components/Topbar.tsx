@@ -237,7 +237,6 @@ export default function Topbar({
           </Link>
 
           {/* min-w-0 + przewijanie poziome WEWNĄTRZ paska (od lg w górę - poniżej lg pasek zastępuje hamburger). */}
-          {focusMode && <div className="flex-1 sm:hidden" aria-hidden="true" />}
           <nav
             className={`h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap [&>*]:shrink-0 ${
               focusMode ? 'hidden sm:flex' : 'hidden lg:flex'
@@ -273,37 +272,46 @@ export default function Topbar({
             })}
           </nav>
 
-          {userEmail && (
-            <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
-              <span className="sm:hidden">Zgłoś</span>
-              <span className="hidden sm:inline">Zgłoś podejrzany mail</span>
-            </Link>
-          )}
+          {/* ml-auto zamiast polegania na flex-1 z <nav>: <nav> jest ukryty poniżej lg (albo poniżej sm w
+              focusMode), więc bez tego ta grupa nie miała NICZEGO, co pchałoby ją do prawej krawędzi - lądowała
+              tuż przy logo zamiast przy prawym brzegu paska. Od lg (albo sm w focusMode) <nav> ma flex-1 i tak
+              zajmuje całą wolną przestrzeń przed tą grupą, więc ml-auto tam nic nie zmienia - wygląd bez zmian. */}
+          <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-9">
+            {userEmail && (
+              <Link href="/report" aria-label="Zgłoś podejrzany mail" className={`shrink-0 ${buttonClasses('secondary', 'sm')}`}>
+                <span className="sm:hidden">Zgłoś</span>
+                <span className="hidden sm:inline">Zgłoś podejrzany mail</span>
+              </Link>
+            )}
 
-          {userEmail && (
-            <UserMenu
-              userEmail={userEmail}
-              avatarUrl={avatarUrl}
-              initials={initialsFromEmail(userEmail)}
-              forceClose={drawerOpen}
-              onOpenChange={closeDrawerForUserMenu}
-            />
-          )}
+            {userEmail && (
+              <UserMenu
+                userEmail={userEmail}
+                avatarUrl={avatarUrl}
+                initials={initialsFromEmail(userEmail)}
+                forceClose={drawerOpen}
+                onOpenChange={closeDrawerForUserMenu}
+              />
+            )}
 
-          {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności. */}
-          {!focusMode && (
-            <button
-              ref={hamburgerRef}
-              type="button"
-              onClick={() => setDrawerOpen((open) => !open)}
-              aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
-              aria-expanded={drawerOpen}
-              aria-controls={drawerId}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
-            >
-              {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
-            </button>
-          )}
+            {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności.
+                44x44 (h-11 w-11, nie h-10 w-10) - docelowy rozmiar dotykowego celu; -mr-2 pozwala celowi sięgać
+                w padding paska (px-4), więc jest bliżej prawdziwej krawędzi ekranu niż wcześniej (kod review PR
+                #41: ikona w środku i tak przesuwa się z nim o ok. 6 px - to zamierzone, nie efekt uboczny). */}
+            {!focusMode && (
+              <button
+                ref={hamburgerRef}
+                type="button"
+                onClick={() => setDrawerOpen((open) => !open)}
+                aria-label={drawerOpen ? 'Zamknij menu' : 'Otwórz menu'}
+                aria-expanded={drawerOpen}
+                aria-controls={drawerId}
+                className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-paper focus:outline-none focus:ring-2 focus:ring-accent-soft lg:hidden"
+              >
+                {drawerOpen ? <X aria-hidden="true" className="h-5 w-5" /> : <Menu aria-hidden="true" className="h-5 w-5" />}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

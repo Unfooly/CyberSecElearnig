@@ -55,6 +55,16 @@ describe('Topbar', () => {
       expect(nav.className).toMatch(/min-w-0/);
     });
 
+    it('grupa "Zgłoś"/avatar/hamburger ma ml-auto (bez tego, gdy <nav> jest ukryty poniżej lg, nic nie pcha jej do prawej krawędzi) i hamburger jest jej ostatnim dzieckiem', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      const hamburger = screen.getByRole('button', { name: 'Otwórz menu' });
+      const group = hamburger.parentElement as HTMLElement;
+      expect(group.className.split(' ')).toContain('ml-auto');
+      expect(group.lastElementChild).toBe(hamburger);
+    });
+
     it('focusMode (odtwarzacz): na wąskich ekranach menu jest ukryte, zostaje logo, "Zgłoś" i avatar; od sm menu wraca', () => {
       usePathnameMock.mockReturnValue('/courses/abc');
       const { container } = render(<Topbar userEmail="jan@example.test" role={Role.ORG_ADMIN} focusMode />);
@@ -63,7 +73,11 @@ describe('Topbar', () => {
       expect(nav.className).toMatch(/\bhidden\b/);
       expect(nav.className).toMatch(/sm:flex/);
       expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Zgłoś podejrzany mail' })).toBeInTheDocument();
+      // Bez hamburgera (focusMode) grupa to tylko "Zgłoś" + avatar - ml-auto musi pchać do prawej krawędzi też
+      // wtedy, nie tylko gdy hamburger jest jej ostatnim dzieckiem (patrz test wyżej).
+      const group = screen.getByRole('link', { name: 'Zgłoś podejrzany mail' }).parentElement as HTMLElement;
+      expect(group.className.split(' ')).toContain('ml-auto');
+      expect(screen.queryByRole('button', { name: 'Otwórz menu' })).not.toBeInTheDocument();
     });
 
     it('adres e-mail jest wyłącznie w menu użytkownika, w całości (nic się nie ucina); kopia w panelu mobilnym jest aria-hidden, dopóki panel zamknięty', () => {

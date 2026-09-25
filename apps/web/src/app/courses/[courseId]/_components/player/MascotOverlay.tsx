@@ -29,9 +29,11 @@ import { useAnyOverlayOpen } from './overlay-stack';
 // "z-10 < z-30" nie wystarcza (patrz komentarz przy z-index niżej) - główną poprawką jest PEŁNE chowanie ikonki
 // (nie tylko dymka) na czas otwartej JAKIEJKOLWIEK warstwy overlay-stack (karta hotspotu, notatnik, transkrypcja,
 // nagroda kursu) - `useAnyOverlayOpen()`. Gdy którakolwiek jest otwarta: dymek zwija się natychmiast (bez animacji -
-// nie może być momentu, w którym zasłania/łapie klik), a ikonka dostaje opacity-0 + pointer-events-none (zostaje w
-// DOM/drzewie dostępności, po prostu nic nie robi i nic nie zasłania). Po zamknięciu OSTATNIEJ warstwy ikonka wraca,
-// ale dymek ZOSTAJE zwinięty - nie rozwija się sam (rozwija go tylko nowy pose/text albo klik w ikonę, patrz niżej).
+// nie może być momentu, w którym zasłania/łapie klik), a ikonka dostaje `invisible` (visibility:hidden - usuwa ją
+// też z kolejności Tab i z drzewa dostępności, nie tylko z widoku - kod review, druga runda: samo opacity-0 nie
+// wystarczało, klawiatura i czytnik ekranu wciąż mogły na nią trafić) + `aria-hidden`/`tabIndex=-1` jako dodatkowa,
+// jawna warstwa. Po zamknięciu OSTATNIEJ warstwy ikonka wraca, ale dymek ZOSTAJE zwinięty - nie rozwija się sam
+// (rozwija go tylko nowy pose/text albo klik w ikonę, patrz niżej).
 export default function MascotOverlay({ pose, text }: { pose?: string; text?: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const bubbleId = useId();
@@ -53,8 +55,18 @@ export default function MascotOverlay({ pose, text }: { pose?: string; text?: st
     if (anyOverlayOpen) setCollapsed(true);
   }, [anyOverlayOpen]);
 
-  // Pierwsza interakcja z BLOKIEM (klik w hotspot, fokus w polu, wybór w quizie/dialogu, ...) zwija dymek od razu,
-  // bez czekania na 8 s - user, który już wchodzi w interakcję z treścią, nie potrzebuje podpowiedzi na oczach.
+  // Pierwsza interakcja z BLOKIEM (klik w hotspot, fokus w polu klawiaturą, wybór w quizie/dialogu, ...) zwija
+  // dymek od razu, bez czekania na 8 s - user, który już wchodzi w interakcję z treścią, nie potrzebuje podpowiedzi
+  // na oczach. `pointerdown` (klik/dotyk) + `keydown` (klawiatura - Tab w pole, Enter/Spacja) + `change` (natywne
+  // radio/checkbox/select) - CELOWO BEZ `focusin` (kod review, druga runda: prawdziwy regres): zmiana bloku i wiele
+  // reakcji treści przenoszą fokus PROGRAMOWO (CoursePlayer.tsx - fokus na nagłówek nowego bloku po zmianie
+  // displayedIndex/feedback; DialogueBlock.tsx, SceneHotspotsBlock.tsx, OrderingBlock.tsx, TabsBlock.tsx - fokus po
+  // własnych zdarzeniach) - `element.focus()` wywołane z JS daje TRUSTED `focusin`, nierozróżnialne od fokusu
+  // użytkownika, więc `focusin` zwijał dymek NATYCHMIAST po każdej zmianie bloku/reakcji, zanim user w ogóle go
+  // zobaczył (wyścig z efektem NOWY POSE/TEXT wyżej - oba lecą w tym samym flushu, oba w tym samym komponencie
+  // potomnym względem efektu CoursePlayer.tsx, więc `setCollapsed(true)` z focusin wygrywał). `keydown` NIE fatal
+  // dla samego .focus() - odpala się WYŁĄCZNIE na prawdziwym naciśnięciu klawisza, więc Tab w pole (klawiatura)
+  // nadal się liczy, a programowe przeniesienie fokusu bez klawisza - nie.
   // Nasłuch na document (capture) zamiast na konkretnym kontenerze bloku: MascotOverlay jest RODZEŃSTWEM treści
   // bloku (sibling w PlayerStage.tsx), nie jej rodzicem, więc nie ma własnego refa do "obszaru bloku" - jedyny
   // wyjątek to WŁASNE UI tej nakładki (klik w ikonę/X), świadomie wykluczone przez rootRef.contains poniżej, żeby
@@ -62,20 +74,17 @@ export default function MascotOverlay({ pose, text }: { pose?: string; text?: st
   // handler nie zależy od żadnego z nich (setCollapsed(true) jest bezwarunkowe i no-opem, gdy już zwinięty), więc
   // jeden nasłuch na cały czas życia komponentu wystarcza: kolejna interakcja po KAŻDYM nowym komunikacie (który
   // osobno rozwija dymek na nowo, efekt wyżej) zwinie go ponownie, dokładnie tak samo jak za pierwszym razem.
-  // (Efekt uboczny w istniejących testach spoza tego hotfixu: test wywołujący element.focus() WPROST, bez
-  // fireEvent.focus()/act(), teraz też trafia w ten nasłuch i React ostrzega "not wrapped in act" w konsoli - to
-  // niegroźny szum tamtego testu (nie owija swojej własnej interakcji), nie regresja; test i tak przechodzi.)
   useEffect(() => {
     function handleInteraction(event: Event) {
       if (rootRef.current?.contains(event.target as Node)) return;
       setCollapsed(true);
     }
     document.addEventListener('pointerdown', handleInteraction, true);
-    document.addEventListener('focusin', handleInteraction, true);
+    document.addEventListener('keydown', handleInteraction, true);
     document.addEventListener('change', handleInteraction, true);
     return () => {
       document.removeEventListener('pointerdown', handleInteraction, true);
-      document.removeEventListener('focusin', handleInteraction, true);
+      document.removeEventListener('keydown', handleInteraction, true);
       document.removeEventListener('change', handleInteraction, true);
     };
   }, []);
@@ -98,11 +107,17 @@ export default function MascotOverlay({ pose, text }: { pose?: string; text?: st
         aria-label={text ? 'Fooli - pokaż wiadomość' : 'Fooli'}
         aria-expanded={text ? !collapsed : undefined}
         aria-controls={text ? bubbleId : undefined}
-        // Gdy nakładka jest otwarta: opacity-0 + pointer-events-none, BEZ przejścia (żadnej klatki, w której ikonka
-        // jeszcze zasłania/łapie klik) - inaczej niż zwijanie dymku (transition-[max-height,opacity] niżej), które
-        // MOŻE się animować, bo nigdy nie zasłania niczego poza sobą.
+        aria-hidden={anyOverlayOpen ? true : undefined}
+        tabIndex={anyOverlayOpen ? -1 : undefined}
+        // Gdy nakładka jest otwarta: `invisible` (visibility:hidden), NIE opacity-0 (kod review, druga runda) -
+        // opacity nie wyjmuje elementu z kolejności Tab ani z drzewa dostępności, więc klawiatura mogła wciąż na
+        // niego trafić (niewidoczny, ale "w grze") i czytnik ekranu wciąż go ogłaszał. `invisible` usuwa go z
+        // obu na czas otwartej nakładki; `aria-hidden`/`tabIndex=-1` wyżej to dodatkowa, jawna warstwa (na wypadek
+        // przeglądarek/AT, które i tak próbowałyby dotrzeć do elementu przez inną ścieżkę niż drzewo renderowania).
+        // BEZ przejścia (żadnej klatki, w której ikonka jeszcze zasłania/łapie klik) - inaczej niż zwijanie dymku
+        // (transition-[max-height,opacity] niżej), które MOŻE się animować, bo nigdy nie zasłania niczego poza sobą.
         className={`pointer-events-auto shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
-          anyOverlayOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
+          anyOverlayOpen ? 'invisible pointer-events-none' : 'visible'
         }`}
       >
         <Mascot pose={pose} size={96} className="h-[76px] w-[76px] sm:h-24 sm:w-24" />

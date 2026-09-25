@@ -106,6 +106,27 @@ describe('MascotOverlay', () => {
     expect(bubble.className).toMatch(/opacity-0/);
   });
 
+  it('hotfix fix/mascot-overlap (kod review, druga runda - regresja): PROGRAMOWE przeniesienie fokusu (np. na nagłówek nowego bloku, jak robi CoursePlayer.tsx po każdej zmianie bloku) NIE zwija świeżo rozwiniętego dymku - tylko prawdziwa interakcja użytkownika (pointerdown/keydown/change) to robi', () => {
+    render(
+      <>
+        <h2 tabIndex={-1}>Nagłówek nowego bloku</h2>
+        <MascotOverlay pose="pointing" text="Rozejrzyj się." />
+      </>,
+    );
+    const bubble = screen.getByRole('status').parentElement as HTMLElement;
+    expect(bubble.className).toMatch(/opacity-100/);
+
+    // element.focus() bezpośrednio (nie fireEvent.keyDown/pointerDown) - dokładnie to, co CoursePlayer.tsx robi
+    // programowo po zmianie displayedIndex/feedback/isSummaryMode (headingRef.current?.focus()). Wcześniej nasłuch
+    // obejmował też `focusin`, więc TEN sam scenariusz zwijał dymek natychmiast po KAŻDEJ zmianie bloku - user nigdy
+    // nie zdążył go zobaczyć.
+    act(() => {
+      screen.getByText('Nagłówek nowego bloku').focus();
+    });
+
+    expect(bubble.className).toMatch(/opacity-100/);
+  });
+
   it('animacja zwijania jest wyłączona pod prefers-reduced-motion (motion-reduce:transition-none)', () => {
     render(<MascotOverlay pose="greeting" text="Cześć! Zaczynamy." />);
     const bubble = screen.getByRole('status').parentElement as HTMLElement;
@@ -122,22 +143,26 @@ describe('MascotOverlay', () => {
       );
     }
 
-    it('otwarta nakładka: dymek znika BEZ animacji, ikonka dostaje opacity-0 pointer-events-none (nie zasłania, nie łapie kliknięć)', () => {
+    it('otwarta nakładka: dymek znika BEZ animacji, ikonka dostaje invisible (visibility:hidden - usuwa ją też z kolejności Tab i drzewa dostępności, nie tylko z widoku) + aria-hidden/tabIndex=-1, pointer-events-none', () => {
       renderWithOverlay();
       const iconButton = screen.getByRole('button', { name: 'Fooli - pokaż wiadomość' });
       const bubble = screen.getByRole('status').parentElement as HTMLElement;
-      expect(iconButton.className).toMatch(/opacity-100/);
+      expect(iconButton.className).toMatch(/\bvisible\b/);
+      expect(iconButton).not.toHaveAttribute('aria-hidden');
+      expect(iconButton).not.toHaveAttribute('tabindex');
       expect(bubble.className).toMatch(/opacity-100/);
 
       fireEvent.click(screen.getByRole('button', { name: 'przełącz nakładkę' }));
 
+      expect(iconButton.className).toMatch(/invisible/);
       expect(iconButton.className).toMatch(/pointer-events-none/);
-      expect(iconButton.className).toMatch(/opacity-0/);
+      expect(iconButton).toHaveAttribute('aria-hidden', 'true');
+      expect(iconButton).toHaveAttribute('tabindex', '-1');
       expect(bubble.className).toMatch(/opacity-0/);
       expect(bubble.className).toMatch(/pointer-events-none/);
     });
 
-    it('zamknięcie nakładki: ikonka wraca (opacity-100), ale dymek ZOSTAJE zwinięty - nie rozwija się sam', () => {
+    it('zamknięcie nakładki: ikonka wraca (visible, osiągalna dla Tab i czytnika ekranu), ale dymek ZOSTAJE zwinięty - nie rozwija się sam; klik w ikonę go rozwija', () => {
       renderWithOverlay();
       const iconButton = screen.getByRole('button', { name: 'Fooli - pokaż wiadomość' });
       const bubble = screen.getByRole('status').parentElement as HTMLElement;
@@ -146,9 +171,16 @@ describe('MascotOverlay', () => {
       fireEvent.click(toggle); // otwórz
       fireEvent.click(toggle); // zamknij
 
-      expect(iconButton.className).toMatch(/opacity-100/);
+      expect(iconButton.className).toMatch(/\bvisible\b/);
+      expect(iconButton.className).not.toMatch(/invisible/);
       expect(iconButton.className).not.toMatch(/pointer-events-none/);
+      expect(iconButton).not.toHaveAttribute('aria-hidden');
+      expect(iconButton).not.toHaveAttribute('tabindex');
       expect(bubble.className).toMatch(/opacity-0/);
+
+      // Jedyna ścieżka powrotu dymku poza nowym komunikatem: klik w ikonę.
+      fireEvent.click(iconButton);
+      expect(bubble.className).toMatch(/opacity-100/);
     });
   });
 

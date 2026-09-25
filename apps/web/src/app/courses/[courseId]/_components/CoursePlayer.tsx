@@ -392,7 +392,20 @@ export default function CoursePlayer({
     stage = (
       <>
         {liveBlock && (
-          <div key={keyOf(state.currentBlockIndex)} hidden={reviewing}>
+          // Łańcuch wysokości dla contentLayout='scene' (hotfix fix/player-scene-fit/B-100, druga runda code
+          // review): ten div siedzi MIĘDZY PlayerStage.tsx (flex-col wrapper 'scene') a SceneHotspotsBlock.tsx
+          // (flex-1 min-h-0 na WŁASNYM korzeniu) - bez własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem,
+          // przerywającym łańcuch: SceneHotspotsBlock dostawałby wysokość auto zamiast realnej wysokości obszaru
+          // bloku, a z nowym [container-type:size] (size containment) zapadałby się do WYSOKOŚCI 0 zamiast (jak
+          // przed tym hotfixem) rosnąć ponad dostępne miejsce. className TYLKO gdy !reviewing (nie tylko warunek
+          // contentLayout==='scene'): Tailwind [hidden]{display:none} z preflightu i .flex z warstwy utilities mają
+          // RÓWNĄ specyficzność, a utilities ładują się PO base w wygenerowanym CSS - .flex by WYGRAŁ z [hidden] i
+          // ukryty (podczas Wstecz) blok zostałby widoczny, gdyby klasa flex była tu bezwarunkowa.
+          <div
+            key={keyOf(state.currentBlockIndex)}
+            hidden={reviewing}
+            className={!reviewing && contentLayout === 'scene' ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}
+          >
             {renderBlock(liveBlock, {
               courseId,
               contentBase,

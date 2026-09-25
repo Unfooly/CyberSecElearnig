@@ -230,16 +230,36 @@ export default function SceneHotspotsBlock({
       </div>
 
       {imageUrl && !imageFailed && (
-        <div className="relative flex min-h-0 flex-1 items-center justify-center">
+        // [container-type:size] TUTAJ, nie tylko na komórce bloku w PlayerStage.tsx (hotfix fix/player-scene-fit):
+        // ten div jest JUŻ flex-1 min-h-0 PO odjęciu wysokości nagłówka (shrink-0) wyżej przez flexbox - gdyby
+        // kwadrat aspect-ratio niżej liczył cqw/cqh względem WIĘKSZEJ komórki bloku w PlayerStage (przed odjęciem
+        // nagłówka), mógłby wyjść wyższy niż realnie dostępne miejsce i i tak by się nie zmieścił (ucięty przez
+        // overflow-hidden komórki, zamiast poprawnie dopasowany). Zagnieżdżony kontener zapytań to poprawia: cqw/cqh
+        // wewnątrz odnoszą się do NAJBLIŻSZEGO przodka z container-type, czyli do TEGO diva.
+        <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
           {/* isolate (code review PR #36): hotspoty dostały jawny z-index (1..20, hotspotStackZIndex) i bez WŁASNEGO
               kontekstu stackowania (isolation: isolate) ten numeryczny z-index konkurowałby z ROOT kontekstem strony -
               konkretnie z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bottom-0, bez z-index): hotspot
               malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
               zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
-              znów maluje się po prostu w kolejności DOM, jak przed tym z-index. */}
+              znów maluje się po prostu w kolejności DOM, jak przed tym z-index.
+              Rozmiar (hotfix fix/player-scene-fit/B-100): CZYSTY CSS "contain" bez JS (bez max-h-full - liczyło się
+              względem rodzica, którego wysokość zależy od NIEGO SAMEGO w niektórych trybach - i bez ResizeObservera).
+              width: min(100cqw, 100cqh*proporcja) - mniejsza z dwóch możliwych szerokości (ograniczona szerokością
+              albo wysokością kontenera zapytań), height: auto + aspect-ratio dopełnia resztę. margin: auto centruje
+              w obu osiach (oprócz i tak już centrującego items-center/justify-center wyżej - należy do tej samej
+              formuły, nie jest zbędne, gdyby te dwie klasy kiedyś zniknęły). */}
           <div
-            className="relative isolate max-h-full max-w-full overflow-hidden rounded border border-slate-200"
-            style={{ aspectRatio: String(aspectRatio) }}
+            className="relative isolate overflow-hidden rounded border border-slate-200"
+            style={
+              {
+                '--scene-ratio': String(aspectRatio),
+                width: 'min(100cqw, calc(100cqh * var(--scene-ratio)))',
+                height: 'auto',
+                aspectRatio: 'var(--scene-ratio)',
+                margin: 'auto',
+              } as React.CSSProperties
+            }
           >
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
           <img

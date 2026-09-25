@@ -7,6 +7,7 @@ import { redirectIfPending } from '@/lib/organization';
 import type { PhishingTemplate, PhishingTemplateEdit } from '@/lib/phishing-types';
 import { isSafeId } from '@/lib/safe-id';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import PageHeader from '@/components/ui/PageHeader';
 import TemplateEditor from '../_components/TemplateEditor';
 
@@ -38,7 +39,7 @@ export default async function PhishingTemplatePage({ params }: { params: { id: s
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <PageHeader title={templateResult.ok ? templateResult.data.name : 'Szablon'} />
         {templateResult.ok ? (
           <TemplateEditor template={templateResult.data} edits={editsResult.ok ? editsResult.data : []} />
@@ -47,7 +48,7 @@ export default async function PhishingTemplatePage({ params }: { params: { id: s
             Nie udało się załadować szablonu. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

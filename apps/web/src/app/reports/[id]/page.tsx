@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { Role } from '@cyberszkolo/shared';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import { isSafeId } from '@/lib/safe-id';
@@ -26,9 +27,9 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={payload.email ?? null} role={payload.role} />
-      <main className="mx-auto max-w-[900px] px-6 pb-12 pt-9 sm:px-10">
+      <PageContainer size={900}>
         <ReportDetail id={params.id} />
-      </main>
+      </PageContainer>
     </div>
   );
 }

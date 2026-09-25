@@ -7,6 +7,7 @@ import { decodeJwtPayload } from '@/lib/jwt';
 import { redirectIfPending } from '@/lib/organization';
 import type { Campaign } from '@/lib/phishing-types';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import { buttonClasses } from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import CampaignsList from './_components/CampaignsList';
@@ -33,7 +34,7 @@ export default async function PhishingCampaignsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <PageHeader
           title="Kampanie phishingowe"
           subtitle="Symulacje wysyłane do pracowników w wybranym oknie czasowym."
@@ -55,7 +56,7 @@ export default async function PhishingCampaignsPage() {
             Nie udało się załadować kampanii. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

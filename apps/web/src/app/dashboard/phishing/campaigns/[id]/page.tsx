@@ -7,6 +7,7 @@ import { redirectIfPending } from '@/lib/organization';
 import type { Campaign, PersonalResultsSettings, ResultsView } from '@/lib/phishing-types';
 import { isSafeId } from '@/lib/safe-id';
 import Topbar from '@/components/Topbar';
+import PageContainer from '@/components/ui/PageContainer';
 import PageHeader from '@/components/ui/PageHeader';
 import CampaignDetails from '../_components/CampaignDetails';
 import CampaignResults from '../_components/CampaignResults';
@@ -47,7 +48,7 @@ export default async function PhishingCampaignPage({ params }: { params: { id: s
   return (
     <div className="min-h-screen bg-paper">
       <Topbar userEmail={userEmail} />
-      <main className="mx-auto max-w-[1280px] px-10 pb-12 pt-9">
+      <PageContainer size={1280}>
         <PageHeader title={result.ok ? result.data.name : 'Kampania'} />
         {result.ok ? (
           <div className="space-y-6">
@@ -65,7 +66,7 @@ export default async function PhishingCampaignPage({ params }: { params: { id: s
             Nie udało się załadować kampanii. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

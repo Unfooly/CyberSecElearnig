@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { formatYear } from '@/lib/datetime';
 import {
@@ -22,6 +21,8 @@ import Pill from '@/components/ui/Pill';
 import { LANDING_PRICING } from '@/lib/landing-config';
 import DashboardPreview from './DashboardPreview';
 import DemoForm from './DemoForm';
+
+export { LandingNav } from './LandingNav';
 
 const WRAP = 'mx-auto w-full max-w-[1160px] px-5 sm:px-10';
 const H2 = 'text-[30px] font-extrabold leading-[1.12] tracking-[-0.03em] sm:text-[36px] lg:text-[40px]';
@@ -60,32 +61,6 @@ function IconBox({ icon: Icon, dark = false }: { icon: LucideIcon; dark?: boolea
     >
       <Icon size={22} strokeWidth={2} />
     </span>
-  );
-}
-
-export function LandingNav() {
-  return (
-    <header className="sticky top-0 z-40 h-[72px] border-b border-border bg-paper/90 backdrop-blur">
-      <div className={`${WRAP} flex h-full items-center gap-6 sm:gap-10`}>
-        <Link href="/" aria-label="Unfooly - strona główna" className="shrink-0">
-          <Logo variant="dark" height={28} />
-        </Link>
-        <nav aria-label="Sekcje strony" className="hidden flex-1 gap-7 text-[15px] font-semibold text-muted md:flex">
-          <a href="#produkt" className="hover:text-ink">Produkt</a>
-          <a href="#jak" className="hover:text-ink">Jak to działa</a>
-          <a href="#funkcje" className="hover:text-ink">Funkcje</a>
-          <a href="#cennik" className="hover:text-ink">Cennik</a>
-        </nav>
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <ButtonLink href="/login" variant="ghost" className="text-ink hover:bg-transparent hover:underline">
-            Zaloguj się
-          </ButtonLink>
-          <ButtonLink href="#demo" size="sm" className="h-10">
-            Umów demo
-          </ButtonLink>
-        </div>
-      </div>
-    </header>
   );
 }
 

@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { Menu, X } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { ButtonLink } from '@/components/ui/Button';
-
-const WRAP = 'mx-auto w-full max-w-[1160px] px-5 sm:px-10';
+import { WRAP } from './layout-constants';
 
 const SECTION_LINKS = [
   { href: '#produkt', label: 'Produkt' },
@@ -22,31 +21,46 @@ const SECTION_LINKS = [
 export function LandingNav() {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const headerRef = useRef<HTMLElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (!open) {
-      return;
+    if (open) {
+      firstLinkRef.current?.focus();
     }
-    firstLinkRef.current?.focus();
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        hamburgerRef.current?.focus();
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
   function closePanel() {
     setOpen(false);
   }
 
+  // Escape na klawiaturze WEWNĄTRZ headera (nie document - header nie ma pułapki fokusu, więc Tab spokojnie
+  // wychodzi dalej w stronę; Escape naciśnięty tam, np. żeby zamknąć podpowiedzi przeglądarki w DemoForm, nie
+  // powinien nagle zamykać panelu i porywać fokusu z powrotem na hamburger - code review PR #42).
+  function handleHeaderKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape' && open) {
+      setOpen(false);
+      hamburgerRef.current?.focus();
+    }
+  }
+
+  // Header jest sticky - otwarty panel zostawiony "za sobą" (fokus/klik poza headerem, np. Tab w Hero) zasłaniałby
+  // treść pod nim zamiast tylko ją przesuwać (code review PR #42, WCAG 2.4.11). Zamyka BEZ przenoszenia fokusu -
+  // użytkownik już go przeniósł gdzie indziej.
+  function handleHeaderBlur(event: FocusEvent<HTMLElement>) {
+    if (open && (!event.relatedTarget || !headerRef.current?.contains(event.relatedTarget as Node))) {
+      setOpen(false);
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur">
+    <header
+      ref={headerRef}
+      onKeyDown={handleHeaderKeyDown}
+      onBlur={handleHeaderBlur}
+      className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur"
+    >
       <div className={`${WRAP} flex h-[72px] items-center gap-6 sm:gap-10`}>
         <Link href="/" aria-label="Unfooly - strona główna" className="shrink-0">
           <Logo variant="dark" height={28} />
@@ -108,5 +122,3 @@ export function LandingNav() {
     </header>
   );
 }
-
-export default LandingNav;

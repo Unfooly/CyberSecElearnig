@@ -21,10 +21,10 @@ import Pill from '@/components/ui/Pill';
 import { LANDING_PRICING } from '@/lib/landing-config';
 import DashboardPreview from './DashboardPreview';
 import DemoForm from './DemoForm';
+import { WRAP } from './layout-constants';
 
 export { LandingNav } from './LandingNav';
 
-const WRAP = 'mx-auto w-full max-w-[1160px] px-5 sm:px-10';
 const H2 = 'text-[30px] font-extrabold leading-[1.12] tracking-[-0.03em] sm:text-[36px] lg:text-[40px]';
 const LEAD = 'text-lg text-muted sm:text-xl';
 // Większe przyciski niż w aplikacji (mockup landingu: 56 px / 48 px).

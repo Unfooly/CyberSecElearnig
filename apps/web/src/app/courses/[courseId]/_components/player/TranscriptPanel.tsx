@@ -1,21 +1,43 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { useOverlayLayer } from './overlay-stack';
 import { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 
 // Panel transkrypcji NARRACJI BLOKU (nie mylić z transkrypcją audio hotspotu w SceneHotspotsBlock, osobny
 // mechanizm): pełny tekst narracji, nad dolnym paskiem, WEWNĄTRZ ramki (bottom-full względem paska - zawsze tuż nad
-// nim, niezależnie od jego wysokości). Zarejestrowany w overlay-stack (priorytet 'transcript') - Escape w
-// PlayerStage zamyka go, o ile karta hotspotu nie jest akurat wyżej w kolejności (D-075: poza fullscreenem).
-export default function TranscriptPanel({ text, open, onClose }: { text: string; open: boolean; onClose: () => void }) {
+// nim, niezależnie od jego wysokości). Zarejestrowany w overlay-stack (LIFO wg kolejności otwarcia) - Escape w
+// PlayerStage zamyka go, o ile inna warstwa nie jest akurat otwarta później (D-075: poza fullscreenem).
+export default function TranscriptPanel({
+  text,
+  open,
+  onClose,
+  triggerRef,
+}: {
+  text: string;
+  open: boolean;
+  onClose: () => void;
+  /** Przycisk "Transkrypcja" w NarrationBar - dostaje fokus z powrotem przy KAŻDYM zamknięciu tego panelu. */
+  triggerRef: RefObject<HTMLButtonElement>;
+}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
   useOverlayLayer('transcript', open, onClose);
 
+  // Ten sam wzorzec co NotesDrawer.tsx (bez trzeciej drogi - ten panel, w przeciwieństwie do NotesDrawer, nie ma
+  // WŁASNEGO tła/kliknięcia poza sobą): fokus na X po otwarciu, po zamknięciu (X albo Escape z overlay-stack) wraca
+  // na przycisk "Transkrypcja". Hooki są NAD `if (!open) return null` poniżej, więc ten efekt i tak odpala się przy
+  // przejściu open -> false, zanim komponent zwróci null.
   useEffect(() => {
-    if (open) closeButtonRef.current?.focus();
-  }, [open]);
+    if (open) {
+      wasOpenRef.current = true;
+      closeButtonRef.current?.focus();
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [open, triggerRef]);
 
   if (!open) return null;
 

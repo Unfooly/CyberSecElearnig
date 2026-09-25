@@ -96,9 +96,11 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       expect(screen.getByText('Pytanie trzecie')).toBeInTheDocument();
     });
 
-    it('powłoka nie tworzy własnego landmarku <main> (jest w page.tsx): brak zagnieżdżonych <main>', () => {
+    it('powłoka JEST landmarkiem <main> (kod review PR #44: trasa nie ma już Topbara/page.tsx <main> na ścieżce sukcesu - PlayerStage to CAŁY chrom strony), dokładnie jeden, oznaczony tytułem kursu', () => {
       const { container } = render(<CoursePlayer courseId="course-1" initial={course()} />);
-      expect(container.querySelector('main')).toBeNull();
+      const mains = container.querySelectorAll('main');
+      expect(mains).toHaveLength(1);
+      expect(mains[0]).toHaveAccessibleName('Sprawa testowa');
     });
 
     it('maskotka i dymek z treści bloku jako jedna jednostka', () => {

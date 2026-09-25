@@ -25,6 +25,20 @@ describe('Topbar', () => {
     expect(screen.getByRole('link', { name: 'Osiągnięcia' })).toHaveAttribute('href', '/courses/achievements');
   });
 
+  it('nagłówek ma safe-area insety GÓRA/LEWO/PRAWO (kod review PR #44: wcześniej tylko góra - telefon w poziomie z wcięciem ma niezerowy inset-left/right)', () => {
+    usePathnameMock.mockReturnValue('/dashboard');
+    const { container } = render(<Topbar userEmail="jan@example.test" />);
+
+    const header = container.querySelector('header') as HTMLElement;
+    expect(header.className).toMatch(/pt-\[env\(safe-area-inset-top\)\]/);
+    expect(header.className).toMatch(/pl-\[calc\(1rem\+env\(safe-area-inset-left\)\)\]/);
+    expect(header.className).toMatch(/pr-\[calc\(1rem\+env\(safe-area-inset-right\)\)\]/);
+    // Osobno na sm: (nie sm:px-10) - skrót px- nadpisywałby CAŁE padding-left/right, gubiąc insety na szerszych
+    // telefonach w poziomie (iPhone w poziomie i tak trafia w breakpoint sm).
+    expect(header.className).toMatch(/sm:pl-\[calc\(2\.5rem\+env\(safe-area-inset-left\)\)\]/);
+    expect(header.className).toMatch(/sm:pr-\[calc\(2\.5rem\+env\(safe-area-inset-right\)\)\]/);
+  });
+
   it.each([Role.EMPLOYEE, Role.DEPARTMENT_MANAGER, Role.ORG_ADMIN])('rola %s widzi przycisk "Zgłoś podejrzany mail" prowadzący do /report', (role) => {
     usePathnameMock.mockReturnValue('/courses');
     render(<Topbar userEmail="jan@example.test" role={role} />);

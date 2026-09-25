@@ -227,7 +227,11 @@ export default function Topbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 min-h-[calc(4rem+env(safe-area-inset-top))] border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)] sm:px-10">
+      {/* Insety lewy/prawy (kod review PR #44 - wcześniej był tylko górny): telefon w poziomie z wcięciem
+          (notch) ma niezerowy safe-area-inset-left/right, nie tylko -top. Jawne pl-/pr- zamiast px- (i osobno na
+          sm:), bo sm:px-10 nadpisywałby CAŁE padding-left/right skrótem, gubiąc wcięcie na szerszych telefonach w
+          poziomie (iPhone w poziomie i tak trafia w breakpoint sm). */}
+      <header className="sticky top-0 z-40 min-h-[calc(4rem+env(safe-area-inset-top))] border-b border-border bg-surface pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] sm:pl-[calc(2.5rem+env(safe-area-inset-left))] sm:pr-[calc(2.5rem+env(safe-area-inset-right))]">
         <div className="flex h-16 items-center gap-3 sm:gap-9">
           <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
             <Logo variant="dark" />

@@ -92,7 +92,11 @@ export function useNarrationBar({
     autoStarted.current = true;
     setAutoplayBlocked(false);
     audioRef.current.play().catch(handlePlayError);
-  }, [autoPlay, hasAudio]);
+    // resetKey w deps: dwa kolejne bloki eksploracyjne mogą mieć IDENTYCZNE autoPlay=true i hasAudio=true, więc bez
+    // resetKey efekt nie odpaliłby się ponownie przy przejściu A -> B (autoStarted.current z bloku A resetuje się w
+    // efekcie wyżej przy zmianie resetKey, ale bez resetKey TU React w ogóle by tego efektu nie przeliczył, skoro
+    // autoPlay/hasAudio się nie zmieniły).
+  }, [autoPlay, hasAudio, resetKey]);
 
   // Wyłączenie lektora w trakcie odtwarzania zatrzymuje nagranie (element audio znika z DOM, a stan wraca do
   // "wstrzymane"). Pozycję zerujemy: po ponownym włączeniu powstaje nowy element audio od 0 s, więc suwak/napisy

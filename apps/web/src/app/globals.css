@@ -51,39 +51,65 @@
   }
 }
 
-/* Odtwarzacz kursu (PlayerStage.tsx, feat/player-stage): dwa tryby dopasowania ramki do ekranu, których nie da się
-   wygodnie wyrazić zwykłymi wariantami Tailwind (złożone zapytania max-height+orientation na wielu właściwościach
-   naraz). Nadpisują STYL INLINE (formuła min()/aspect-ratio 16:9 liczona w PlayerStage.tsx) - stąd !important,
-   jedyne miejsce w repo, gdzie jest potrzebny. */
-@media (max-height: 500px) and (orientation: landscape) {
+/* Odtwarzacz kursu (PlayerStage.tsx, feat/player-stage): formuła rozmiaru ramki i dwa tryby dopasowania do ekranu,
+   których nie da się wygodnie wyrazić zwykłymi wariantami Tailwind (złożone zapytania max-height/max-width +
+   orientation + pointer na wielu właściwościach naraz). CELOWO zwykłe (nie inline) style na .player-frame - dzięki
+   temu poniższe @media wygrywają zwykłą specyficznością/kolejnością (te same selektory klas, ale NIŻEJ w pliku niż
+   @tailwind utilities powyżej), BEZ !important - kod review PR #44: inline style (poprzednia wersja) dawał się
+   nadpisać wyłącznie przez !important, bo żadna specyficzność zewnętrznego arkusza nie bije stylu inline.
+   (pointer: coarse) w obu trybach telefonowych: dotykowy wskaźnik, nie tylko wymiar okna - bez tego wąskie/niskie
+   okno na DESKTOPIE (mysz/trackpad) też łapałoby te tryby (kod review PR #44). */
+.player-frame {
+  width: min(calc(100vw - 32px), calc((100dvh - 32px) * 16 / 9), 1280px);
+  aspect-ratio: 16 / 9;
+  max-height: calc(100dvh - 32px);
+}
+
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   .player-outer {
-    padding: 0 !important;
+    padding: 0;
   }
   .player-frame {
-    width: 100dvw !important;
-    height: 100dvh !important;
-    aspect-ratio: unset !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+    width: 100dvw;
+    max-width: 100dvw;
+    height: 100dvh;
+    max-height: 100dvh;
+    aspect-ratio: unset;
+    border-radius: 0;
+    box-shadow: none;
   }
   .player-topbar {
-    min-height: 40px !important;
+    min-height: 40px;
+    padding-top: env(safe-area-inset-top);
+    padding-left: calc(0.75rem + env(safe-area-inset-left));
+    padding-right: calc(0.75rem + env(safe-area-inset-right));
   }
   .player-bottombar {
-    min-height: 48px !important;
+    min-height: 48px;
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: calc(0.75rem + env(safe-area-inset-left));
+    padding-right: calc(0.75rem + env(safe-area-inset-right));
   }
 }
 
-@media (max-width: 767px) and (orientation: portrait) {
+@media (max-width: 767px) and (orientation: portrait) and (pointer: coarse) {
   .player-outer {
-    padding: 0 !important;
+    padding: 0;
   }
   .player-frame {
-    width: 100dvw !important;
-    height: 100dvh !important;
-    aspect-ratio: unset !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+    width: 100dvw;
+    max-width: 100dvw;
+    height: 100dvh;
+    max-height: 100dvh;
+    aspect-ratio: unset;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .player-topbar {
+    padding-top: env(safe-area-inset-top);
+  }
+  .player-bottombar {
+    padding-bottom: env(safe-area-inset-bottom);
   }
   /* Licznik dowodów i etykieta "Notatnik" zwijają się do samej ikony - mało miejsca w górnym pasku na telefonie
      w pionie (PR feat/player-stage, sekcja B częściowo: tylko układ paska, bez panoramy sceny - to PR B). */

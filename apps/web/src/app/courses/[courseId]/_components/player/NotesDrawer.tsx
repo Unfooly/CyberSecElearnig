@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { NotesPanel } from './notes';
 import { useOverlayLayer } from './overlay-stack';
@@ -9,14 +9,67 @@ import { useOverlayLayer } from './overlay-stack';
 // PlayerShell.tsx (notesOpen zmieniało też max-w sceny na 1200px; ta zmiana szerokości znika, scena ma stałą
 // szerokość niezależnie od stanu notatnika). `absolute` (nie `fixed`): zostaje w granicach ramki PlayerStage
 // (position: relative), nie całego viewportu - w trybie 16:9 ramka nie wypełnia ekranu, więc `fixed` wystawałby
-// poza jej krawędzie. Treść (nagłówek "Notatnik", lista wpisów) to bez zmian NotesPanel z notes.tsx - tu dokłada
-// się tylko przycisk zamknięcia i sam mechanizm wysuwania/tła.
-export default function NotesDrawer({ id, open, onClose }: { id: string; open: boolean; onClose: () => void }) {
+// poza jej krawędzie. Treść (nagłówek "Notatnik", lista wpisów) to bez zmian NotesPanel z notes.tsx.
+//
+// PRAWDZIWY modal (kod review PR #44 - poprzednia wersja miała tło i wygląd modala, ale bez aria-modal, pułapki
+// fokusu i bez oddawania fokusu przy zamknięciu, co gubiło go na body/ukrytym elemencie): aria-modal="true",
+// jawna pętla fokusu (Tab/Shift+Tab, jak drawer Topbar.tsx) - reszta ramki jest DODATKOWO inert (PlayerStage.tsx),
+// więc pętla dziś praktycznie zawsze ma tylko przycisk X (jedyny interaktywny element w NotesPanel), ale zostaje
+// ogólna na wypadek przyszłej zawartości. Fokus wraca na przycisk "Notatnik" (triggerRef, przekazany przez
+// PlayerStage) przy KAŻDYM zamknięciu - X, Escape (przez overlay-stack) i klik w tło - nie tylko przy X jak
+// wcześniej.
+export default function NotesDrawer({
+  id,
+  open,
+  onClose,
+  triggerRef,
+}: {
+  id: string;
+  open: boolean;
+  onClose: () => void;
+  /** Przycisk "Notatnik" w PlayerStage - dostaje fokus z powrotem przy KAŻDYM zamknięciu tego panelu. */
+  triggerRef: RefObject<HTMLButtonElement>;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
   useOverlayLayer('notebook', open, onClose);
 
+  // Fokus na X po otwarciu; po zamknięciu (którąkolwiek drogą - X, Escape z overlay-stack, klik w tło) wraca na
+  // przycisk "Notatnik" (ten sam wzorzec co drawer Topbar.tsx: wasOpenRef odróżnia PRAWDZIWE zamknięcie od
+  // pierwszego renderu, gdzie open zaczyna się jako false).
   useEffect(() => {
-    if (open) closeButtonRef.current?.focus();
+    if (open) {
+      wasOpenRef.current = true;
+      closeButtonRef.current?.focus();
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [open, triggerRef]);
+
+  // Pułapka fokusu: Tab/Shift+Tab krąży WYŁĄCZNIE po elementach wewnątrz panelu. Reszta ramki jest już inert
+  // (PlayerStage.tsx), więc to głównie zabezpieczenie na wypadek przeglądarek/trybów bez wsparcia dla inert, oraz
+  // gdy NotesPanel kiedyś dostanie więcej niż jeden interaktywny element.
+  useEffect(() => {
+    if (!open) return undefined;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      if (focusable.length === 0) return;
+      event.preventDefault();
+      const activeIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      if (activeIndex === -1) {
+        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+        return;
+      }
+      const nextIndex = event.shiftKey ? (activeIndex - 1 + focusable.length) % focusable.length : (activeIndex + 1) % focusable.length;
+      focusable[nextIndex].focus();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
   return (
@@ -29,7 +82,9 @@ export default function NotesDrawer({ id, open, onClose }: { id: string; open: b
         }`}
       />
       <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Notatnik"
         aria-hidden={!open}
         tabIndex={-1}

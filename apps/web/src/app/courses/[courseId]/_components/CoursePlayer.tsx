@@ -188,6 +188,8 @@ export default function CoursePlayer({
   const handleReady = (submit: (() => void) | null) => setReadySubmit(() => submit);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Dzielony z TranscriptPanel.tsx: fokus wraca na przycisk "Transkrypcja" (NarrationBar) po zamknięciu panelu.
+  const transcriptButtonRef = useRef<HTMLButtonElement>(null);
   const mounted = useRef(false);
   // Synchroniczna blokada podwójnego wysłania (stan `submitting` aktualizuje się asynchronicznie, więc dwa kliknięcia w tym samym ticku
   // by go ominęły): każdy blok oceniany korzysta z handleAnswer, więc wzorzec jest w powłoce.
@@ -460,6 +462,7 @@ export default function CoursePlayer({
                 onToggleEnabled={preference.toggle}
                 togglePending={preference.pending}
                 toggleError={preference.error}
+                transcriptButtonRef={transcriptButtonRef}
               />
             }
             transcriptPanel={
@@ -467,13 +470,15 @@ export default function CoursePlayer({
                 text={narrationBlock?.narration?.text ?? ''}
                 open={narrationBarState.transcriptOpen}
                 onClose={narrationBarState.toggleTranscript}
+                triggerRef={transcriptButtonRef}
               />
             }
             notesOpen={notesOpen}
             onToggleNotes={() => setNotesOpen((open) => !open)}
             notesId={NOTES_ID}
             onBack={isSummaryMode ? restartCourse : goBack}
-            onForward={isSummaryMode ? () => router.push('/courses') : goForward}
+            onForward={isSummaryMode ? undefined : goForward}
+            forwardHref={isSummaryMode ? '/courses' : undefined}
             canBack={isSummaryMode ? !restarting : displayedIndex > 0 && !showingFeedback && !submitting}
             canForward={isSummaryMode ? true : (reviewing || readySubmit !== null) && !showingFeedback && !submitting}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}

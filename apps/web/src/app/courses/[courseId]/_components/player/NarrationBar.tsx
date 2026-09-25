@@ -2,12 +2,8 @@
 
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import type { Narration } from '@cyberszkolo/content';
+import { formatNarrationTime } from './useNarrationBar';
 import type { NarrationBarState } from './useNarrationBar';
-
-function formatTime(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
-}
 
 export const TRANSCRIPT_TOGGLE_ID = 'narration-transcript-toggle';
 
@@ -24,6 +20,7 @@ export default function NarrationBar({
   onToggleEnabled,
   togglePending = false,
   toggleError = null,
+  transcriptButtonRef,
 }: {
   narration?: Narration;
   state: NarrationBarState;
@@ -31,6 +28,8 @@ export default function NarrationBar({
   onToggleEnabled: () => void;
   togglePending?: boolean;
   toggleError?: string | null;
+  /** CoursePlayer.tsx dzieli ten sam ref z TranscriptPanel.tsx - fokus wraca tutaj przy zamknięciu panelu. */
+  transcriptButtonRef?: React.RefObject<HTMLButtonElement>;
 }) {
   const { audioRef, audioUrl, playing, positionMs, durationMs, hasAudio, loadFailed, autoplayBlocked, showCaption, active, transcriptOpen, toggleTranscript, togglePlay, seek, onPlay, onPause, onEnded, onTimeUpdate, onError } = state;
 
@@ -64,7 +63,7 @@ export default function NarrationBar({
             <input
               type="range"
               aria-label="Postęp nagrania"
-              aria-valuetext={`${formatTime(positionMs)} z ${formatTime(durationMs)}`}
+              aria-valuetext={`${formatNarrationTime(positionMs)} z ${formatNarrationTime(durationMs)}`}
               min={0}
               max={Math.max(durationMs, 1)}
               step={1000}
@@ -73,7 +72,7 @@ export default function NarrationBar({
               className="h-2 w-full accent-slate-900"
             />
             <span className="block text-[11px] tabular-nums text-slate-600" aria-hidden="true">
-              {formatTime(positionMs)} / {formatTime(durationMs)}
+              {formatNarrationTime(positionMs)} / {formatNarrationTime(durationMs)}
             </span>
           </div>
         </>
@@ -97,10 +96,11 @@ export default function NarrationBar({
           )}
         </div>
         <button
+          ref={transcriptButtonRef}
           type="button"
           onClick={toggleTranscript}
           aria-expanded={transcriptOpen}
-          aria-controls={TRANSCRIPT_TOGGLE_ID}
+          aria-controls={transcriptOpen ? TRANSCRIPT_TOGGLE_ID : undefined}
           className="shrink-0 text-xs font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
         >
           Transkrypcja

@@ -12,6 +12,45 @@ function Layer({ layer, log }: { layer: OverlayLayer; log: string[] }) {
   return <output data-testid={`open-${layer}`}>{String(open)}</output>;
 }
 
+// Warstwa, którą można otworzyć/zamknąć z testu (do symulacji kolejności otwarcia - LIFO zależy od TEGO, nie od typu warstwy).
+function ToggleLayer({ layer, log }: { layer: OverlayLayer; log: string[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <output data-testid={`open-${layer}`}>{String(open)}</output>
+      <button type="button" onClick={() => setOpen(true)}>
+        otwórz {layer}
+      </button>
+      <RegisteredToggleLayer layer={layer} open={open} onClose={() => { log.push(layer); setOpen(false); }} />
+    </>
+  );
+}
+function RegisteredToggleLayer({ layer, open, onClose }: { layer: OverlayLayer; open: boolean; onClose: () => void }) {
+  useOverlayLayer(layer, open, onClose);
+  return null;
+}
+
+// Jak ToggleLayer, ale z przyciskiem wymuszającym re-render TEGO komponentu z NOWĄ tożsamością onClose (dokładnie
+// to, co robi każdy prawdziwy wołający z inline funkcją - CoursePlayer.tsx `onToggleNotes`, useNarrationBar.ts
+// `toggleTranscript`) - bez zmiany `open`. Regresja z kod review PR #44: kolejność LIFO nie może zależeć od TEGO,
+// czy rodzic warstwy się przerenderował, tylko wyłącznie od PRAWDZIWEJ zmiany otwarta<->zamknięta.
+function ReRenderableToggleLayer({ layer, log }: { layer: OverlayLayer; log: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [, forceRerender] = useState(0);
+  return (
+    <>
+      <output data-testid={`open-${layer}`}>{String(open)}</output>
+      <button type="button" onClick={() => setOpen(true)}>
+        otwórz {layer}
+      </button>
+      <button type="button" onClick={() => forceRerender((n) => n + 1)}>
+        wymuś re-render {layer}
+      </button>
+      <RegisteredToggleLayer layer={layer} open={open} onClose={() => { log.push(layer); setOpen(false); }} />
+    </>
+  );
+}
+
 function CloseTopButton() {
   const closeTop = useCloseTopOverlay();
   return (
@@ -21,37 +60,55 @@ function CloseTopButton() {
   );
 }
 
-describe('overlay-stack: closeTop() zamyka WYŁĄCZNIE najwyższą priorytetowo otwartą warstwę', () => {
-  it('kolejność priorytetu: karta hotspotu -> transkrypcja -> notatnik -> pełny ekran, jeden Escape/wywołanie = jedno zamknięcie', () => {
+describe('overlay-stack: closeTop() zamyka WYŁĄCZNIE najpóźniej otwartą, wciąż otwartą warstwę (LIFO)', () => {
+  it('kolejność otwarcia decyduje, NIE typ warstwy: otwarte w kolejności notebook -> hotspotCard -> transcript, closeTop() zamyka transcript jako pierwszy', () => {
     const log: string[] = [];
     render(
       <OverlayStackProvider>
         <Layer layer="notebook" log={log} />
         <Layer layer="hotspotCard" log={log} />
         <Layer layer="transcript" log={log} />
-        <Layer layer="fullscreen" log={log} />
         <CloseTopButton />
       </OverlayStackProvider>,
     );
 
     const button = screen.getByRole('button', { name: 'zamknij górną warstwę' });
     fireEvent.click(button);
-    expect(log).toEqual(['hotspotCard']);
-    expect(screen.getByTestId('open-hotspotCard')).toHaveTextContent('false');
-    expect(screen.getByTestId('open-transcript')).toHaveTextContent('true');
+    // Wszystkie trzy montują się otwarte w TEJ kolejności JSX (notebook, hotspotCard, transcript) - ostatnia w
+    // kolejności montowania/otwarcia (transcript) jest na wierzchu stosu.
+    expect(log).toEqual(['transcript']);
+    expect(screen.getByTestId('open-transcript')).toHaveTextContent('false');
+    expect(screen.getByTestId('open-hotspotCard')).toHaveTextContent('true');
 
     fireEvent.click(button);
-    expect(log).toEqual(['hotspotCard', 'transcript']);
+    expect(log).toEqual(['transcript', 'hotspotCard']);
 
     fireEvent.click(button);
-    expect(log).toEqual(['hotspotCard', 'transcript', 'notebook']);
-
-    fireEvent.click(button);
-    expect(log).toEqual(['hotspotCard', 'transcript', 'notebook', 'fullscreen']);
-    expect(screen.getByTestId('open-fullscreen')).toHaveTextContent('false');
+    expect(log).toEqual(['transcript', 'hotspotCard', 'notebook']);
   });
 
-  it('pomija warstwy zamknięte i trafia od razu w pierwszą otwartą wg priorytetu', () => {
+  it('scenariusz z code review: karta hotspotu otwarta, potem notatnik NAD nią - Escape zamyka notatnik (nie kartę pod spodem)', () => {
+    const log: string[] = [];
+    render(
+      <OverlayStackProvider>
+        <ToggleLayer layer="hotspotCard" log={log} />
+        <ToggleLayer layer="notebook" log={log} />
+        <CloseTopButton />
+      </OverlayStackProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz hotspotCard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz notebook' }));
+    fireEvent.click(screen.getByRole('button', { name: 'zamknij górną warstwę' }));
+
+    expect(log).toEqual(['notebook']);
+    expect(screen.getByTestId('open-notebook')).toHaveTextContent('false');
+    // Karta hotspotu, otwarta WCZEŚNIEJ, zostaje otwarta - to jest sedno LIFO (kod review PR #44: stały priorytet
+    // zamykał tu kartę pod tłem zamiast widocznego notatnika).
+    expect(screen.getByTestId('open-hotspotCard')).toHaveTextContent('true');
+  });
+
+  it('pomija warstwy zamknięte i trafia od razu w jedyną otwartą', () => {
     const log: string[] = [];
     render(
       <OverlayStackProvider>
@@ -110,14 +167,14 @@ describe('overlay-stack: closeTop() zamyka WYŁĄCZNIE najwyższą priorytetowo 
     expect(result).toBe(false);
   });
 
-  it('odmontowanie warstwy usuwa ją z rejestru - closeTop() jej już nie widzi', () => {
+  it('odmontowanie warstwy usuwa ją z rejestru i ze stosu kolejności - closeTop() jej już nie widzi', () => {
     const log: string[] = [];
     function Harness() {
       const [mounted, setMounted] = useState(true);
       return (
         <OverlayStackProvider>
-          {mounted && <Layer layer="hotspotCard" log={log} />}
           <Layer layer="notebook" log={log} />
+          {mounted && <Layer layer="hotspotCard" log={log} />}
           <button type="button" onClick={() => setMounted(false)}>
             odmontuj kartę
           </button>

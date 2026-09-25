@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import NarrationBar from './NarrationBar';
+import NarrationBar, { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 import { useNarrationBar } from './useNarrationBar';
 
 // Port z dawnego NarrationPlayer.test.tsx (usunięty razem z NarrationPlayer.tsx, feat/player-stage) - logika w
@@ -25,11 +25,12 @@ interface HarnessProps {
   enabled?: boolean;
   togglePending?: boolean;
   toggleError?: string | null;
+  resetKey?: string;
 }
 
-function Harness({ narrationProp, autoPlay, enabled = true, togglePending, toggleError = null }: HarnessProps = {}) {
+function Harness({ narrationProp, autoPlay, enabled = true, togglePending, toggleError = null, resetKey = 'b1' }: HarnessProps = {}) {
   const resolvedNarration = narrationProp === 'none' ? undefined : (narrationProp ?? narration);
-  const state = useNarrationBar({ narration: resolvedNarration, contentBase: BASE, enabled, resetKey: 'b1', autoPlay });
+  const state = useNarrationBar({ narration: resolvedNarration, contentBase: BASE, enabled, resetKey, autoPlay });
   const onToggle = vi.fn();
   return (
     <NarrationBar
@@ -151,14 +152,15 @@ describe('NarrationBar', () => {
       expect(screen.getByText('Pierwsze zdanie.')).toHaveAttribute('title', 'Pierwsze zdanie.');
     });
 
-    it('przycisk "Transkrypcja" ma aria-expanded i aria-controls wskazujący na panel (renderowany gdzie indziej - TranscriptPanel)', () => {
+    it('przycisk "Transkrypcja" ma aria-expanded zawsze, a aria-controls (wzorzec UserMenu.tsx) TYLKO gdy panel jest otwarty', () => {
       renderBar();
       const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      expect(toggle).toHaveAttribute('aria-controls');
+      expect(toggle).not.toHaveAttribute('aria-controls');
 
       fireEvent.click(toggle);
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(toggle).toHaveAttribute('aria-controls', TRANSCRIPT_TOGGLE_ID);
     });
 
     it('przycisk "Transkrypcja" jest widoczny nawet gdy nie ma aktywnego napisu (np. lektor wyłączony)', () => {
@@ -205,5 +207,20 @@ describe('NarrationBar', () => {
 
       expect(playSpy).toHaveBeenCalledTimes(1);
     });
+
+    it('krytyczny błąd z code review PR #44: przejście blok eksploracyjny A -> B, oba z narracją i autoPlay=true (autoPlay/hasAudio się NIE zmieniają) - autostart musi odpalić się OSOBNO dla każdego bloku, bo resetKey jest w deps efektu autostartu', async () => {
+        const { rerender } = await act(async () => {
+          return renderBar({ autoPlay: true, resetKey: 'block-a' });
+        });
+        expect(playSpy).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          rerender(<Harness autoPlay resetKey="block-b" />);
+        });
+
+        // Bez resetKey w deps efektu autostartu (Krytyczny błąd #3, kod review PR #44) autoPlay/hasAudio zostają
+        // niezmienione między blokami, więc efekt w ogóle by się nie przeliczył i drugie play() nigdy by nie padło.
+        expect(playSpy).toHaveBeenCalledTimes(2);
+      });
   });
 });

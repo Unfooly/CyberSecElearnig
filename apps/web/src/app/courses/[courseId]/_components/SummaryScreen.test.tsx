@@ -4,9 +4,12 @@ import SummaryScreen from './SummaryScreen';
 import type { CourseCompletionReward } from '@/lib/courses-types';
 
 // feat/player-stage: SummaryScreen straciło własne przyciski ("Rozpocznij od nowa"/"Wróć do biblioteki") - są
-// teraz dolnym paskiem PlayerStage (CoursePlayer.tsx), w miejscu Wstecz/Dalej. Testy tamtych zachowań (restart,
-// potwierdzenie, błąd, stan "w trakcie") przeniesione do CoursePlayer.test.tsx, opisane w PR. Ten plik sprawdza już
-// tylko TREŚĆ podsumowania (wynik/nagroda/komunikat błędu restartu).
+// teraz dolnym paskiem PlayerStage, logika restartu (restartCourse(), stan restarting/restartError) jest w
+// CoursePlayer.tsx. Testy TEGO przepływu (potwierdzenie, POST + router.refresh(), błąd/409, stan "w trakcie") są w
+// CoursePlayer.test.tsx - kod review PR #44: wcześniejszy komentarz tutaj twierdził, że zostały tam "przeniesione",
+// ale nigdy nie zostały napisane (SummaryScreen po prostu straciło przyciski, a testy dawnych zachowań zniknęły
+// bez zastąpienia). Ten plik sprawdza już tylko TREŚĆ podsumowania (wynik/nagroda/komunikat błędu restartu), nie
+// samą logikę restartu.
 
 const sampleReward: CourseCompletionReward = {
   xpGained: 150,

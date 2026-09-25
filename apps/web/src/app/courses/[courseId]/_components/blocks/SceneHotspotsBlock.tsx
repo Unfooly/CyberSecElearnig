@@ -242,7 +242,12 @@ export default function SceneHotspotsBlock({
               konkretnie z lepkim dolnym paskiem "Wstecz/Dalej" (PlayerShell.tsx, sticky bottom-0, bez z-index): hotspot
               malowałby się NAD paskiem i przechwytywał jego kliknięcia, gdy scena przewinie się pod pasek. isolate
               zamyka 1..20 (hotspoty) i 30 (nakładka karty) w jednej, lokalnej warstwie - na zewnątrz kontener sceny
-              znów maluje się po prostu w kolejności DOM, jak przed tym z-index.
+              znów maluje się po prostu w kolejności DOM, jak przed tym z-index. WAŻNE (hotfix fix/mascot-overlap):
+              ta izolacja oznacza, że z-30 karty NIE JEST w ogóle porównywane z z-index poza tym kontenerem (np.
+              MascotOverlay.tsx, z-10) - z punktu widzenia reszty strony cała wyizolowana scena liczy się jako jedna
+              warstwa bez własnego z-index. Dlatego to NIE z-index chroni dymek Fooli przed przykryciem karty - robi
+              to `useAnyOverlayOpen()` w MascotOverlay.tsx (chowa ikonkę/dymek całkowicie, gdy karta jest otwarta).
+              Podniesienie samego z-30 tutaj by tego nie naprawiło.
               Rozmiar (hotfix fix/player-scene-fit/B-100): CZYSTY CSS "contain" bez JS (bez max-h-full - liczyło się
               względem rodzica, którego wysokość zależy od NIEGO SAMEGO w niektórych trybach - i bez ResizeObservera).
               width: min(100cqw, 100cqh*proporcja) - mniejsza z dwóch możliwych szerokości (ograniczona szerokością

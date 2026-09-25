@@ -231,6 +231,66 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getAllByRole('button', { name: 'Monitor' })).toHaveLength(1);
   });
 
+  it('hotfix fix/mascot-overlap: otwarta karta hotspotu chowa maskotkę (nie zasłania "Dodaj do notatnika"/"Wróć", nie łapie kliknięć); klik w hotspot zwija dymek od razu; zamknięcie karty przywraca WYŁĄCZNIE ikonkę (zwiniętą)', () => {
+    render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
+
+    const mascotIcon = screen.getByRole('button', { name: 'Fooli - pokaż wiadomość' });
+    const bubble = screen.getByRole('status').parentElement as HTMLElement;
+    // Domyślna poza sceny z punktami (DEFAULT_IDLE) - dymek widoczny od startu.
+    expect(mascotIcon.className).toMatch(/opacity-100/);
+    expect(mascotIcon.className).not.toMatch(/pointer-events-none/);
+    expect(bubble.className).toMatch(/opacity-100/);
+
+    // Klik w hotspot otwiera kartę - overlay-stack niepusty, więc dymek zwija się i ikonka chowa się/przestaje
+    // łapać kliknięcia (punkty 1-2; punkt 3, "sama interakcja bez żadnej nakładki też zwija dymek", ma osobny test
+    // niżej na bloku bez overlay-stack - tu fireEvent.click nie wysyła pointerdown, więc nie odróżniłby przyczyny).
+    fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
+
+    expect(bubble.className).toMatch(/opacity-0/);
+    expect(mascotIcon.className).toMatch(/opacity-0/);
+    expect(mascotIcon.className).toMatch(/pointer-events-none/);
+
+    // Przyciski karty ("Dodaj do notatnika", "Wróć") są osiągalne i klikalne - maskotka faktycznie ich nie zasłania
+    // ani nie przechwytuje kliknięcia (gdyby przechwytywała, fireEvent.click poniżej i tak by "trafił" w DOM-owy
+    // element pod wskazanym testowym selektorem - to RTL, nie prawdziwy hit-testing przeglądarki - ale asercja na
+    // pointer-events-none wyżej jest tym, co faktycznie to gwarantuje w prawdziwej przeglądarce).
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Dodaj do notatnika' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Wróć' })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Wróć' }));
+
+    // Ikonka wraca (widoczna, klikalna), ale dymek ZOSTAJE zwinięty - nie rozwija się sam po zamknięciu karty.
+    expect(mascotIcon.className).toMatch(/opacity-100/);
+    expect(mascotIcon.className).not.toMatch(/pointer-events-none/);
+    expect(bubble.className).toMatch(/opacity-0/);
+  });
+
+  it('hotfix fix/mascot-overlap: interakcja z blokiem BEZ żadnej nakładki overlay-stack (wybór w quizie) też zwija dymek od razu, nie czeka 8 s', () => {
+    const quizWithMascot = course({
+      contentBlocks: [
+        {
+          type: 'QUIZ',
+          id: 'quiz1',
+          prompt: 'Pytanie?',
+          options: [{ text: 'A' }, { text: 'B' }],
+          mascot: { pose: 'pointing', text: 'Wybierz uważnie.' },
+        },
+      ],
+    });
+    render(<CoursePlayer courseId="course-1" initial={quizWithMascot} narrationEnabled={false} />);
+
+    const bubble = screen.getByRole('status').parentElement as HTMLElement;
+    expect(bubble.className).toMatch(/opacity-100/);
+
+    // Klik w radio wysyła prawdziwe change (jsdom odtwarza natywne zachowanie inputa) - to właśnie ono, nie żadna
+    // nakładka overlay-stack (blok oceniany nie rejestruje żadnej), zwija dymek tutaj.
+    fireEvent.click(screen.getByRole('radio', { name: 'A' }));
+
+    expect(bubble.className).toMatch(/opacity-0/);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('autor może nadpisać pozę spoczynkową w treści (block.mascot wygrywa z domyślną dla typu)', () => {
     const base = sceneCourse();
     const blocks = [{ ...base.contentBlocks[0], mascot: { pose: 'thinking', text: 'Rozejrzyj się.' } }, base.contentBlocks[1]];

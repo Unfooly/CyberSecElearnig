@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Role } from '@cyberszkolo/shared';
 import { usePathname } from 'next/navigation';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { LogOut, Menu, Settings, X } from 'lucide-react';
 import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
 import { useLogout } from '@/lib/use-logout';
@@ -72,6 +72,9 @@ export default function Topbar({
   const pathname = usePathname();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Drawer i dropdown UserMenu dzielą tę samą kolumnę z prawej - nie mogą być otwarte naraz (dropdown, z-50 w
+  // kontekście nakładania headera, i tak lądowałby POD panelem, z-40 poza tym kontekstem - code review PR #39,
+  // punkt 2). UserMenu.forceClose zamyka je, gdy otwiera się drawer; onOpenChange zamyka drawer w drugą stronę.
   const drawerId = useId();
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -161,28 +164,29 @@ export default function Topbar({
       if (!panel) {
         return;
       }
-      const focusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
-      if (focusable.length === 0) {
-        // Nie powinno się zdarzyć (panel zawsze ma bary z linkami), ale gdyby - fokus zostaje w panelu, nie ucieka na stronę.
+      // Hamburger jest teraz POZA panelem (rodzeństwo headera, nie jego dziecko - code review PR #39, punkt 1), ale
+      // zostaje jedynym przyciskiem zamknięcia w pasku, więc musi być CZĘŚCIĄ pętli fokusu, nie tylko "miejscem, z
+      // którego wciągamy z powrotem" - użytkownik klawiatury ma się do niego dostać w obu kierunkach Tab, nie tylko
+      // przez Escape. Pełny, jawny cykl (nie tylko zawijanie na krańcach) - jsdom nie ma natywnego porządku Tab, więc
+      // to jedyny sposób, żeby zachowanie było takie samo i testowalne w każdym miejscu cyklu, nie tylko na brzegach.
+      const drawerFocusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      const cycle = hamburgerRef.current ? [hamburgerRef.current, ...drawerFocusable] : drawerFocusable;
+      if (cycle.length === 0) {
+        // Nie powinno się zdarzyć (hamburger zawsze istnieje, gdy panel istnieje), ale gdyby - fokus zostaje w panelu.
         event.preventDefault();
         panel.focus();
         return;
       }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      // Fokus poza panelem (np. po kliku myszą w tło, albo brak zbudowanych pozycji więc firstLinkRef.current jest
-      // null i fokus po otwarciu zostaje na hamburgerze - code review PR #39): Tab/Shift+Tab wciąga go z powrotem,
-      // zamiast pozwolić mu wyjść na stronę pod spodem.
-      if (!panel.contains(document.activeElement)) {
-        event.preventDefault();
-        (event.shiftKey ? last : first).focus();
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+      event.preventDefault();
+      const activeIndex = cycle.indexOf(document.activeElement as HTMLElement);
+      if (activeIndex === -1) {
+        // Fokus poza calą pętlą (np. klik myszą w tło) - wciąga go z powrotem na jej brzeg, zamiast pozwolić mu
+        // uciec na stronę pod spodem.
+        (event.shiftKey ? cycle[cycle.length - 1] : cycle[0]).focus();
+        return;
       }
+      const nextIndex = event.shiftKey ? (activeIndex - 1 + cycle.length) % cycle.length : (activeIndex + 1) % cycle.length;
+      cycle[nextIndex].focus();
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -202,6 +206,12 @@ export default function Topbar({
       hamburgerRef.current?.focus();
     }
   }, [drawerOpen]);
+
+  const closeDrawerForUserMenu = useCallback((open: boolean) => {
+    if (open) {
+      setDrawerOpen(false);
+    }
+  }, []);
 
   return (
     <>
@@ -255,7 +265,15 @@ export default function Topbar({
             </Link>
           )}
 
-          {userEmail && <UserMenu userEmail={userEmail} avatarUrl={avatarUrl} initials={initialsFromEmail(userEmail)} />}
+          {userEmail && (
+            <UserMenu
+              userEmail={userEmail}
+              avatarUrl={avatarUrl}
+              initials={initialsFromEmail(userEmail)}
+              forceClose={drawerOpen}
+              onOpenChange={closeDrawerForUserMenu}
+            />
+          )}
 
           {/* Ostatni (najbardziej po prawej) na telefonie: logo, "Zgłoś", avatar, HAMBURGER - w tej kolejności. */}
           {!focusMode && (

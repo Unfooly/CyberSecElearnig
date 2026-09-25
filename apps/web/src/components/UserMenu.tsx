@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, LogOut, Settings } from 'lucide-react';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
@@ -13,16 +13,35 @@ export default function UserMenu({
   userEmail,
   avatarUrl,
   initials,
+  onOpenChange,
+  forceClose,
 }: {
   userEmail: string;
   avatarUrl: string | null;
   initials: string;
+  /** Wołane przy KAŻDEJ zmianie stanu (otwarcie i zamknięcie) - Topbar używa tego, żeby zamknąć panel mobilny, gdy
+      to menu się otwiera (oba nie mogą być otwarte naraz - kod review PR #39, punkt 2: dropdown tego menu i panel
+      dzielą tę samą kolumnę z prawej, dropdown (z-50 w kontekście nakładania headera) i tak ląduje POD panelem). */
+  onOpenChange?: (open: boolean) => void;
+  /** Gdy zmieni się na true, a menu jest otwarte - zamyka je (odwrotny kierunek: panel mobilny się otwiera). */
+  forceClose?: boolean;
 }) {
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const { logout, isLoggingOut } = useLogout();
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    onOpenChange?.(false);
+  }, [onOpenChange]);
+
+  useEffect(() => {
+    if (forceClose && isOpen) {
+      close();
+    }
+  }, [forceClose, isOpen, close]);
 
   // Menu zamyka się przy kliknięciu poza nim, Escape i wyjściu fokusem (Tab) poza
   // kontener - inaczej użytkownik klawiatury zostawia za sobą wiszący dropdown.
@@ -33,12 +52,12 @@ export default function UserMenu({
     }
     function handlePointerDown(event: MouseEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setIsOpen(false);
+        close();
         // Fokus wraca na przycisk - inaczej po zamknięciu klawiaturą ląduje na <body>.
         triggerRef.current?.focus();
       }
@@ -46,7 +65,7 @@ export default function UserMenu({
     function handleFocusOut(event: FocusEvent) {
       // relatedTarget === null (np. przełączenie karty przeglądarki) też zamyka.
       if (!containerRef.current?.contains(event.relatedTarget as Node | null)) {
-        setIsOpen(false);
+        close();
       }
     }
     // Węzeł zapamiętany na czas efektu - w sprzątaniu containerRef.current może już być null.
@@ -59,11 +78,11 @@ export default function UserMenu({
       document.removeEventListener('keydown', handleKeyDown);
       container?.removeEventListener('focusout', handleFocusOut);
     };
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   async function handleLogout() {
     await logout();
-    setIsOpen(false);
+    close();
   }
 
   return (
@@ -73,7 +92,13 @@ export default function UserMenu({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() =>
+          setIsOpen((open) => {
+            const next = !open;
+            onOpenChange?.(next);
+            return next;
+          })
+        }
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-controls={isOpen ? menuId : undefined}
@@ -103,7 +128,7 @@ export default function UserMenu({
           <Link
             href="/account"
             role="menuitem"
-            onClick={() => setIsOpen(false)}
+            onClick={close}
             className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
           >
             <Settings size={16} strokeWidth={2} aria-hidden="true" />

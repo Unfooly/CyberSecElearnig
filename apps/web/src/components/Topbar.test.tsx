@@ -195,35 +195,68 @@ describe('Topbar', () => {
       expect(document.body.style.overflow).toBe('');
     });
 
-    it('trap fokusu: Tab na ostatnim elemencie zawija na pierwszy, Shift+Tab na pierwszym zawija na ostatni', () => {
+    // Pętla fokusu (code review PR #39, punkt 2): hamburger jest teraz POZA panelem (rodzeństwo headera), ale
+    // zostaje jedynym przyciskiem zamknięcia w pasku - użytkownik klawiatury ma się do niego dostać przez Tab, nie
+    // tylko przez Escape. Pełny cykl: [hamburger, ...elementy drawera], zawijany w obie strony.
+    it('trap fokusu: pętla obejmuje hamburger - Tab z ostatniego elementu drawera wraca na hamburger, Shift+Tab z hamburgera wraca na ostatni element drawera', () => {
       usePathnameMock.mockReturnValue('/courses');
       render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
       openDrawer();
 
+      const hamburger = screen.getByRole('button', { name: 'Zamknij menu' });
       const dialog = screen.getByRole('dialog');
       const focusable = [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
-      const first = focusable[0];
       const last = focusable[focusable.length - 1];
 
       last.focus();
       fireEvent.keyDown(document, { key: 'Tab' });
-      expect(first).toHaveFocus();
+      expect(hamburger).toHaveFocus();
 
       fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
       expect(last).toHaveFocus();
     });
 
-    it('trap fokusu: gdy fokus jest POZA panelem (np. na hamburgerze, wciąż widocznym i klikalnym nad panelem), Tab wciąga go z powrotem do środka', () => {
+    it('trap fokusu: Tab z hamburgera wchodzi w pierwszy element drawera; Shift+Tab z pierwszego elementu drawera wraca na hamburger', () => {
       usePathnameMock.mockReturnValue('/courses');
       render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
       openDrawer();
 
+      const hamburger = screen.getByRole('button', { name: 'Zamknij menu' });
       const dialog = screen.getByRole('dialog');
       const first = dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')[0];
-      screen.getByRole('button', { name: 'Zamknij menu' }).focus(); // hamburger - poza dialogiem, ale wciąż fokusowalny
 
+      hamburger.focus();
       fireEvent.keyDown(document, { key: 'Tab' });
       expect(first).toHaveFocus();
+
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(hamburger).toHaveFocus();
+    });
+
+    it('trap fokusu: gdy fokus jest CAŁKOWICIE poza pętlą (hamburger + drawer), Tab wciąga go na hamburger, Shift+Tab na ostatni element drawera', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      const hamburger = screen.getByRole('button', { name: 'Zamknij menu' });
+      const dialog = screen.getByRole('dialog');
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      const last = focusable[focusable.length - 1];
+
+      // document.body samo z siebie nie jest fokusowalne (brak tabindex) - .focus() na nim jest no-opem w jsdom,
+      // więc do symulacji "fokus poza pętlą" trzeba realnie fokusowalnego, ale spoza Topbara, elementu.
+      const outside = document.createElement('button');
+      document.body.appendChild(outside);
+
+      outside.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(hamburger).toHaveFocus();
+
+      outside.focus();
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(last).toHaveFocus();
+
+      outside.remove();
     });
 
     it('zamyka się przy przejściu przez breakpoint lg (obrót telefonu/tabletu, zmiana rozmiaru okna) - inaczej blokada scrolla i nasłuch Tab/Escape zostałyby aktywne bez widocznego panelu', () => {
@@ -251,6 +284,33 @@ describe('Topbar', () => {
       expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
       expect(document.body.style.overflow).toBe('');
       matchMediaSpy.mockRestore();
+    });
+
+    // Drawer i dropdown UserMenu dzielą tę samą kolumnę z prawej (code review PR #39, punkt 2) - dropdown (z-50 w
+    // kontekście nakładania headera) ląduje POD panelem (z-40, poza tym kontekstem), więc oba naraz otwarte
+    // wyglądałyby jak zepsute menu. Jedno zamyka drugie w obie strony.
+    it('otwarcie drawera zamyka otwarte menu użytkownika', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+
+      openDrawer();
+
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-hidden', 'false');
+    });
+
+    it('otwarty drawer → klik w avatar → drawer się zamyka, menu użytkownika się otwiera', () => {
+      usePathnameMock.mockReturnValue('/courses');
+      render(<Topbar userEmail="jan@example.test" role={Role.EMPLOYEE} />);
+      openDrawer();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Menu użytkownika' }));
+
+      expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
+      expect(screen.getByRole('menu')).toBeInTheDocument();
     });
 
     it('focusMode: hamburger nie renderuje się w ogóle (zachowanie jak dziś - bez nowego sposobu otwarcia menu)', () => {

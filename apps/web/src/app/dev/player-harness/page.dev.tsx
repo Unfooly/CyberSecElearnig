@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
-import { moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
+import { moduleSchema, normalizeObjectives, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
 import type { ContentBlock } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
@@ -68,7 +68,7 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     }
   }
 
-  // Ani SCENE_HOTSPOTS, ani DIALOGUE nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/
+  // Ani SCENE_HOTSPOTS, ani DIALOGUE, ani BRIEFING nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/
   // TEXT_INPUT_GUIDED w client.ts) - wartości poniżej nigdy nie trafiają do wyniku dla tych typów bloku, są tu
   // wyłącznie, żeby zaspokoić sygnaturę wspólną dla WSZYSTKICH typów.
   const contentBlock = toClientBlock(blockForClient, {
@@ -83,6 +83,9 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     status: 'IN_PROGRESS',
     currentBlockIndex: 0,
     contentBlocks: [contentBlock],
+    // Zadania pod kartą sprawy w odprawie (`?block=odprawa`, D-081) - te same cele co z /start. completeWhen wskazuje bloki
+    // spoza podglądu (jeden blok), więc nic się tu nie odhacza.
+    objectives: normalizeObjectives(parsedModule.objectives),
     progress: null,
     score: null,
   };

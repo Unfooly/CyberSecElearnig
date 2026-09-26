@@ -23,8 +23,10 @@ import { useCompleteReaction } from '../player/mascot-reaction';
 
 const TYPE_INTERVAL_MS = 32;
 
+// Start ZAWSZE od false, odczyt dopiero w efekcie: serwer nie zna preferencji, a inicjalizator czytający matchMedia dawał inny
+// pierwszy render w przeglądarce niż na serwerze (błąd hydratacji, złapany przez layout-check z reducedMotion:'reduce').
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true);
+  const [reduced, setReduced] = useState(false);
   useEffect(() => {
     const query = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : undefined;
     if (!query) return undefined;
@@ -38,7 +40,7 @@ function usePrefersReducedMotion(): boolean {
 
 /** Tekst "wystukiwany" znak po znaku; z reduced-motion od razu w całości. Zwraca widoczną część i czy już skończył. */
 function useTypewriter(text: string, reducedMotion: boolean): { shown: string; done: boolean; finish: () => void } {
-  const [count, setCount] = useState(reducedMotion ? text.length : 0);
+  const [count, setCount] = useState(0);
   useEffect(() => {
     if (reducedMotion) {
       setCount(text.length);
@@ -75,19 +77,28 @@ function Cta({ label, onClick, disabled }: { label: string; onClick: () => void;
 function TypewriterStep({ step, reducedMotion, headingId }: { step: Extract<BriefingStep, { kind: 'typewriter' }>; reducedMotion: boolean; headingId: string }) {
   const { shown, done, finish } = useTypewriter(step.text, reducedMotion);
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      {/* Klik w tekst kończy pisanie od razu (dla niecierpliwych); czytnik ekranu dostaje pełny tekst od razu (sr-only). */}
+    <div className="flex flex-col items-center gap-4 text-center [@media(max-height:500px)]:gap-2">
+      {/* Klik w tekst kończy pisanie od razu (dla niecierpliwych); czytnik ekranu dostaje pełny tekst od razu (sr-only).
+          min-h rezerwuje miejsce na 2 linie, żeby przycisk nie skakał w trakcie pisania - poza niskim ekranem (telefon w
+          poziomie), gdzie każdy piksel wysokości jest potrzebny, a skok jest mniejszym złem niż przewijanie. */}
       <p id={headingId} className="sr-only">
         {step.text}
       </p>
-      <p aria-hidden="true" onClick={finish} className="min-h-[3em] max-w-prose whitespace-pre-line text-xl font-bold leading-snug text-ink sm:text-2xl">
+      <p
+        aria-hidden="true"
+        onClick={finish}
+        className="min-h-[3em] max-w-prose whitespace-pre-line text-xl font-bold leading-snug text-ink sm:text-2xl [@media(max-height:500px)]:min-h-0 [@media(max-height:500px)]:text-xl"
+      >
         {shown}
         {!done && <span className="briefing-caret ml-0.5 inline-block w-[0.5ch] border-b-2 border-ink" />}
       </p>
       {done && step.sub && <p className="briefing-step-enter text-sm text-muted">{step.sub}</p>}
       {done && (
-        <span className="briefing-step-enter flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">
-          <Phone className="briefing-phone-ring h-7 w-7" />
+        <span
+          className="briefing-step-enter flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent [@media(max-height:500px)]:h-10 [@media(max-height:500px)]:w-10"
+          aria-hidden="true"
+        >
+          <Phone className="briefing-phone-ring h-7 w-7 [@media(max-height:500px)]:h-5 [@media(max-height:500px)]:w-5" />
         </span>
       )}
     </div>
@@ -262,7 +273,7 @@ export default function BriefingBlock({
 
   return (
     <div data-testid="briefing-block" className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded-card bg-paper [scrollbar-width:thin]">
-      <div className="m-auto flex w-full max-w-xl flex-col items-center gap-5 p-4 sm:p-6">
+      <div className="m-auto flex w-full max-w-xl flex-col items-center gap-5 p-4 sm:p-6 [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:py-2">
         <p className="sr-only" aria-live="polite">
           Odprawa, krok {index + 1} z {steps.length}
         </p>

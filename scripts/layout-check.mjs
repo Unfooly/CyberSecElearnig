@@ -50,6 +50,9 @@
 // (scrollHeight>clientHeight - dowód, że test w ogóle wygenerował przepełnienie) i jest przewinięty do najnowszej
 // wiadomości (<=80px od dołu) - w PRAWDZIWEJ przeglądarce łapie regres autoprzewijania (np. wyścig ze
 // `scrollTo({behavior:'smooth'})`), którego jsdom nie jest w stanie zaobserwować.
+//
+// BRIEFING (feat/module-briefing, D-081): OSOBNA pętla (BRIEFING_VIEWPORTS: 1920x1080, 1366x768, 844x390, 390x844) po
+// wszystkich krokach odprawy modułu 1 (`?block=odprawa`) - (m-o) w komentarzu przy checkBriefingStep.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -80,6 +83,17 @@ const DIALOGUE_VIEWPORTS = [
   { name: '1366x768', width: 1366, height: 768 },
   { name: '390x844', width: 390, height: 844, isMobile: true },
 ];
+
+// BRIEFING (feat/module-briefing, D-081) - `?block=odprawa`, cztery rozdzielczości z planu PR 1. reducedMotion:'reduce':
+// każdy krok od razu w stanie końcowym (pisanie, spadająca karta, pieczątka), więc pomiar nie zależy od czasu animacji.
+const BRIEFING_VIEWPORTS = [
+  { name: '1920x1080', width: 1920, height: 1080 },
+  { name: '1366x768', width: 1366, height: 768 },
+  { name: '844x390', width: 844, height: 390 },
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+];
+// Przyciski kolejnych kroków modułu 1 (packages/content/modules/wyludzone-haslo, blok "odprawa").
+const BRIEFING_CTAS = ['Odbierz', 'Przyjmuję', 'Biorę sprawę', 'Ruszam na miejsce'];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
@@ -445,6 +459,44 @@ async function clickAllDialogueQuestions(page) {
   fail('clickAllDialogueQuestions: przekroczono limit iteracji - podejrzenie nieskończonej pętli.');
 }
 
+// BRIEFING (D-081), dla każdego kroku: (m) strona się nie przewija, obszar bloku (overflow-clip) nie przewija się, a
+// odprawa nie ma poziomego przewijania (przewija się - jeśli w ogóle - tylko w pionie, wewnątrz siebie); (n) przycisk kroku
+// po przewinięciu do niego leży w CAŁOŚCI w obszarze bloku i w ramce (osiągalny, nie przycięty przez overflow-clip);
+// (o) "Pomiń odprawę" w całości w górnym pasku, a sam pasek nie wypycha treści poza siebie (tytuł się skraca, nie
+// przycisk/Notatnik). Wraca też nazwę kroku, który przewija się wewnętrznie (informacyjnie w wyniku, nie błąd).
+async function checkBriefingStep(page, cta, label) {
+  await checkNoPageScroll(page, label);
+  await checkMainSceneFits(page, label);
+  const briefing = page.getByTestId('briefing-block');
+  const { scrollWidth, clientWidth, scrollHeight, clientHeight } = await briefing.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  if (scrollWidth > clientWidth + 1) fail(`${label}: (m) odprawa przewija się w poziomie - scrollWidth=${scrollWidth} clientWidth=${clientWidth}.`);
+
+  const button = page.getByRole('button', { name: cta, exact: true });
+  await button.scrollIntoViewIfNeeded();
+  const buttonBox = await button.boundingBox();
+  if (!buttonBox) fail(`${label}: (n) przycisk "${cta}" niewidoczny.`);
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  const frameBox = await boxOf(page, '.player-frame');
+  if (!contains(contentAreaBox, buttonBox) || !contains(frameBox, buttonBox)) {
+    fail(`${label}: (n) przycisk "${cta}" wychodzi poza obszar bloku/ramkę - przycisk=${JSON.stringify(buttonBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  }
+
+  const skipBox = await page.getByRole('button', { name: 'Pomiń odprawę' }).boundingBox();
+  const topbar = page.locator('.player-topbar');
+  const topbarBox = await boxOf(page, '.player-topbar');
+  if (!skipBox || !contains(topbarBox, skipBox)) {
+    fail(`${label}: (o) "Pomiń odprawę" poza górnym paskiem - przycisk=${JSON.stringify(skipBox)} pasek=${JSON.stringify(topbarBox)}.`);
+  }
+  const topbarOverflow = await topbar.evaluate((el) => el.scrollWidth - el.clientWidth);
+  if (topbarOverflow > 1) fail(`${label}: (o) górny pasek przepełniony w poziomie o ${topbarOverflow}px.`);
+  return scrollHeight > clientHeight + 1;
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -591,6 +643,36 @@ try {
     await checkThreadScrolledToBottom(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
     step(`${viewport.name} / rozmowa-anna: (k, l) strona/obszar bloku nie przewijają się, wątek przewinięty do dołu po >=8 wiadomościach`, true);
 
+    await context.close();
+  }
+
+  // BRIEFING (feat/module-briefing, D-081) - patrz checkBriefingStep.
+  for (const viewport of BRIEFING_VIEWPORTS) {
+    console.log(`\n--- viewport (BRIEFING): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    // (p) Błędy strony (np. niezgodność hydratacji) - geometria bywa wtedy poprawna, a nakładka błędu next dev i tak wisi
+    // (tak było przy pierwszej wersji usePrefersReducedMotion w BriefingBlock.tsx).
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
+    await page.getByTestId('briefing-block').waitFor();
+    for (const [index, cta] of BRIEFING_CTAS.entries()) {
+      const label = `${viewport.name} / odprawa krok ${index + 1} (${cta})`;
+      await page.getByRole('button', { name: cta, exact: true }).waitFor();
+      await page.waitForTimeout(100);
+      await shot(page, `${viewport.name}-odprawa-${index + 1}`);
+      if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
+      const scrolls = await checkBriefingStep(page, cta, label);
+      step(`${label}: (a, e, m-p) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
+      // Ostatni krok zapisuje blok - w podglądzie dev nie ma backendu, więc nie klikamy go.
+      if (index < BRIEFING_CTAS.length - 1) await page.getByRole('button', { name: cta, exact: true }).click();
+    }
     await context.close();
   }
 

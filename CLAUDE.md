@@ -199,6 +199,14 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     PreToolUse `.claude/hooks/block-destructive-git.js` (bo `permissions.deny` bywa pomijane w trybie auto); jest to bariera przed odruchem,
     nie sandbox (nie wykryje m.in. poleceń ze zmiennych, skryptów i aliasów z `~/.gitconfig`; fail-open przy uszkodzonym wejściu hooka). Jeśli coś z listy jest naprawdę potrzebne, zatrzymaj się i zapytaj użytkownika.
 
+12. **Zmiana układu odtwarzacza = `layout-check` przed pushem.** PR dotykający `PlayerStage.tsx`, `SceneHotspotsBlock.tsx`, kart
+    hotspotu (i przyszłego bottom sheet) uruchamia lokalnie `node scripts/layout-check.mjs` (Playwright, prawdziwa przeglądarka -
+    jsdom nie liczy layoutu CSS: container query, grid, `cqw`/`cqh` - nie złapie regresji, które łapie ten skrypt; poznane na
+    fix/hotspot-card-fit/B-101, druga runda code review) przed pushem i wkleja wynik (tabela viewport × przypadek → OK/błąd) do
+    opisu PR. Skrypt spawnuje `next dev` z `NEXT_PUBLIC_DEV_HARNESS=1` (strona `apps/web/src/app/dev/player-harness/page.tsx` -
+    treść wprost z `packages/content`, bez backendu/logowania) - nie wymaga Postgresa/Redisa/apps/api. Jeszcze NIE jest częścią
+    CI (B-101 w backlogu: „layout-check w CI”) - do czasu tamtej zmiany to lokalny, ręczny krok, nie automatyczna bramka.
+
 ## Praca zespołowa: branże i pull requesty
 
 Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/pull_request_template.md` (szablon opisu PR),

@@ -119,24 +119,42 @@
 }
 
 /* Karta hotspotu (SceneHotspotsBlock.tsx, hotfix fix/hotspot-card-fit/B-101): na >=640px (ten sam próg co reszta
-   pliku i co dawne sm: na karcie) karta ma STAŁY rozmiar względem sceny (92% x 92%, wyśrodkowana) i sama się NIE
-   przewija - przewija się (jeśli w ogóle) wyłącznie POLE DOKUMENTU wewnątrz karty (DocumentMedia, jedyny wyjątek).
-   Układ (dwie kolumny na karcie szerokiej vs jedna kolumna na wąskiej/wysokiej) zależy od WŁASNYCH proporcji KARTY,
-   nie okna przeglądarki - stąd container query (container-type: size) na samej karcie, nie zwykły @media: ta sama
-   karta bywa "szeroka" na dużym ekranie i "wąska" na wąskim tablecie w pionie, niezależnie od orientacji całego
-   ekranu. container-name (nie tylko container-type) - żeby ta reguła jednoznacznie celowała w NAJBLIŻSZĄ kartę,
-   niezależnie od innych kontenerów zapytań zagnieżdżonych GŁĘBIEJ w niej (np. scena zagnieżdżona wewnątrz karty
-   dostaje WŁASNY, osobny [container-type:size] - patrz NestedSceneImage w SceneHotspotsBlock.tsx). Telefon w pionie
-   (<640px) zostaje bez zmian w tym PR (pełny ekran, cała karta się przewija jak dawniej) - panorama/bottom sheet to
-   PR B; poniżej tego progu .hotspot-card-layout jest zwykłym div (klasy Tailwind bez `sm:` w JSX). */
+   pliku i co dawne sm: na karcie) karta z mediami ma STAŁY rozmiar względem sceny (92% x 92%, wyśrodkowana) i sama
+   się NIE przewija - przewija się (jeśli w ogóle) wyłącznie POLE DOKUMENTU (DocumentMedia) albo TRANSKRYPCJA audio
+   wewnątrz karty, nigdy cała karta. Hotspot BEZ mediów (`.hotspot-card--no-media`, druga runda code review, punkt 9)
+   dostaje kartę auto-size do treści (max 92% x 92%) - bez pustej kolumny/wiersza na nieistniejące media. Układ (dwie
+   kolumny na karcie szerokiej vs jedna kolumna na wąskiej/wysokiej) zależy od WŁASNYCH proporcji KARTY, nie okna
+   przeglądarki - stąd container query (container-type: size) na samej karcie, nie zwykły @media: ta sama karta bywa
+   "szeroka" na dużym ekranie i "wąska" na wąskim tablecie w pionie, niezależnie od orientacji całego ekranu.
+   container-name (nie tylko container-type) - żeby ta reguła jednoznacznie celowała w NAJBLIŻSZĄ kartę, niezależnie
+   od innych kontenerów zapytań zagnieżdżonych GŁĘBIEJ w niej (np. scena zagnieżdżona wewnątrz karty dostaje WŁASNY,
+   osobny [container-type:size] - patrz NestedSceneImage w SceneHotspotsBlock.tsx, TYLKO od 640px wzwyż - poniżej
+   [container-type:size] nie ma jawnej wysokości do zapytania (żaden przodek jej nie ma na mobile, gdzie karta się
+   przewija jako całość zamiast mieć 100% wysokości) i cqw/cqh liczyłyby się jako zero (druga runda code review,
+   punkt 1) - formuła "contain" tam działa WYŁĄCZNIE od 640px, `w-full` (Tailwind, bez zapytań kontenera) na mobile.
+   .hotspot-card-layout MUSI dostać `flex: 1 1 0%` (nie tylko display:grid) - sam .hotspot-card jest flex (Tailwind,
+   wszystkie breakpointy), więc bez tego .hotspot-card-layout jako flex item domyślnie sizuje się do TREŚCI (flex: 0
+   1 auto), a nie do 100% wysokości karty - wiersz `1fr` siatki nie miałby więc żadnej realnej wysokości do podziału
+   (druga runda code review, punkt 2 - dokładnie to sprawiało, że scena zagnieżdżona i tak wychodziła zerowej albo
+   miniaturowej wysokości, NAWET z poprawką punktu 1). Telefon w pionie (<640px) zostaje bez zmian w tym PR (pełny
+   ekran, cała karta się przewija jak dawniej) - panorama/bottom sheet to PR B; poniżej tego progu .hotspot-card-layout
+   jest zwykłym div (klasy Tailwind bez `sm:` w JSX). */
 @media (min-width: 640px) {
   .hotspot-card {
     container-type: size;
     container-name: hotspot-card;
   }
 
+  .hotspot-card--no-media {
+    height: auto;
+    width: auto;
+    max-height: 92%;
+    max-width: 92%;
+  }
+
   .hotspot-card-layout {
     display: grid;
+    flex: 1 1 0%;
     min-height: 0;
     gap: 0.75rem;
     grid-template-columns: 1fr;
@@ -144,9 +162,21 @@
     grid-template-areas: 'text' 'media' 'buttons';
   }
 
+  /* Bez mediów: brak wiersza "media" - tekst nad przyciskami, karta auto-size (.hotspot-card--no-media powyżej)
+     dopasowuje się do tej krótszej treści zamiast trzymać pustą kolumnę/wiersz na nieistniejący obszar mediów. */
+  .hotspot-card--no-media .hotspot-card-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas: 'text' 'buttons';
+  }
+
+  /* Własny scroll (nie cała karta) - druga runda code review, punkt 4/5: dotyczy RÓWNIEŻ karty szerokiej (ten sam
+     obszar "text", inaczej ułożony przez @container niżej) - wyjątkowo długi tekst przewija się TUTAJ, nie wylewa
+     się na przyciski ani poza kartę. */
   .hotspot-card-text {
     grid-area: text;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .hotspot-card-media {
@@ -163,8 +193,12 @@
     grid-area: buttons;
   }
 
-  /* Tekst karty jest przycięty do 4 linii (line-clamp-4, klasa Tailwind sm:line-clamp-4 w JSX) TYLKO w tym,
-     wąskim/wysokim układzie - w układzie szerokim (niżej) prawa kolumna ma zwykle dość miejsca na pełny tekst. */
+  /* Scena zagnieżdżona (NestedSceneImage) - formuła "contain" jak scena najwyższego poziomu, WYŁĄCZNIE od 640px
+     (patrz komentarz w SceneHotspotsBlock.tsx: poniżej tego progu kontener nie ma jawnej wysokości do zapytania,
+     cqh liczyłby się jako 0). Nadpisuje `w-full` (Tailwind) tą samą specyficznością/kolejnością co .player-frame. */
+  .hotspot-nested-scene-box {
+    width: min(100cqw, calc(100cqh * var(--scene-ratio)));
+  }
 
   /* Karta szeroka (szerokość > 1.3x wysokości - zwykle desktop): dwie kolumny. Media po lewej na CAŁĄ wysokość
      obu wierszy (ta sama nazwa obszaru w dwóch wierszach = grid ją automatycznie rozciąga - standardowy idiom
@@ -175,13 +209,6 @@
       grid-template-columns: minmax(0, 1fr) minmax(240px, 34%);
       grid-template-rows: minmax(0, 1fr) auto;
       grid-template-areas: 'media text' 'media buttons';
-    }
-
-    /* W kolumnie (nie samej karcie) jest już dość miejsca na pełny tekst - klamra 4 linii tylko na wąskiej karcie. */
-    .hotspot-card-text-content {
-      -webkit-line-clamp: unset;
-      overflow: visible;
-      display: block;
     }
   }
 }

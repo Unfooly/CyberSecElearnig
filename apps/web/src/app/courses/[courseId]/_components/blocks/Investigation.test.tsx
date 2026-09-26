@@ -162,7 +162,7 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     setup(scene, { summary });
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
 
-    // Karta to teraz .hotspot-card (2 poziomy wyżej niż nagłówek: h3 -> .hotspot-card-text -> .hotspot-card-layout -> .hotspot-card).
+    // Karta to teraz .hotspot-card (3 poziomy wyżej niż nagłówek: h3 -> .hotspot-card-text -> .hotspot-card-layout -> .hotspot-card).
     const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).closest('.hotspot-card')!;
     expect(card.className).toMatch(/sm:h-\[92%\]/);
     expect(card.className).toMatch(/sm:w-\[92%\]/);
@@ -323,6 +323,18 @@ const mediaScene: ContentBlock = {
       height: 20,
       content: 'Radio gra w tle.',
       media: { kind: 'audio', audioUrl: 'audio/radio.mp3', transcript: 'Muzyka w tle.' },
+    },
+    // Transkrypcja bez audioUrl (druga runda code review, punkt 7): plik audio się nie wczytał/nie ma go w treści,
+    // ale transkrypcja - tekstowa alternatywa - musi zostać dostępna niezależnie.
+    {
+      id: 'dyktafon',
+      label: 'Zepsuty dyktafon',
+      x: 60,
+      y: 40,
+      width: 15,
+      height: 15,
+      content: 'Dyktafon nie działa.',
+      media: { kind: 'audio', transcript: 'Zapisana rozmowa z klientem.' },
     },
   ],
 };
@@ -525,20 +537,25 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // play() zmockowany, onPlay się nie odpala - stan startowy
     expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument();
 
-    const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    // Stała etykieta "Transkrypcja" + aria-pressed (druga runda code review, punkt 6) - nie "Pokaż/Ukryj"/aria-expanded.
+    const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
     fireEvent.click(toggle);
     // Widok się ZAMIENIŁ: transkrypcja w miejscu obrazka, obrazek zniknął, play/pauza i pasek postępu zostały.
-    expect(screen.getByRole('button', { name: 'Pokaż obraz' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
+    // Region z transkrypcją jest dostępny i przewijalny samodzielnie (role=region, tabIndex=0), nie tylko widoczny.
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    const transcriptRegion = screen.getByRole('region', { name: 'Transkrypcja' });
+    expect(transcriptRegion).toHaveAttribute('tabindex', '0');
+    expect(within(transcriptRegion).getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
     expect(within(dialog()).queryByAltText('')).not.toBeInTheDocument();
     expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
 
-    // "Pokaż obraz" wraca do zbliżenia (zamiana widoku w drugą stronę), nie dokłada transkrypcji pod nim.
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż obraz' }));
-    expect(screen.getByRole('button', { name: 'Pokaż transkrypcję' })).toHaveAttribute('aria-expanded', 'false');
+    // Kliknięcie ponownie wraca do zbliżenia (zamiana widoku w drugą stronę), nie dokłada transkrypcji pod nim.
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
     expect(within(dialog()).getByAltText('')).toHaveAttribute('src', expect.stringContaining('telefon-zoom.png'));
+    expect(screen.queryByRole('region', { name: 'Transkrypcja' })).not.toBeInTheDocument();
     expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
 
     fireEvent(audioEl, new Event('ended'));
@@ -605,6 +622,21 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(within(dialog()).getByText('W notatniku ✓')).toBeInTheDocument();
   });
 
+  it('audio: transkrypcja działa NIEZALEŻNIE od audioUrl - dostępna i klikalna nawet, gdy plik audio się nie wczytał/nie ma go w treści (druga runda code review, punkt 7 - regresja pierwszej wersji tego hotfixu: przycisk transkrypcji stawał się "martwy", bo widok transkrypcji był zagnieżdżony w tym samym warunku co odtwarzacz)', () => {
+    setup(mediaScene);
+    pick('Zepsuty dyktafon');
+
+    expect(document.querySelector('audio')).not.toBeInTheDocument(); // brak audioUrl -> brak elementu <audio>
+    expect(screen.queryByRole('button', { name: 'Odtwórz' })).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(within(screen.getByRole('region', { name: 'Transkrypcja' })).getByText('Zapisana rozmowa z klientem.')).toBeVisible();
+  });
+
   it('image: dowód też wymaga kliknięcia "Dodaj do notatnika", tak samo jak audio (spójne dla wszystkich mediów)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
@@ -632,7 +664,7 @@ describe('SCENE_HOTSPOTS: karta się mieści bez przewijania na desktopie (hotfi
     expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
   });
 
-  it('image: <img> ma object-contain i leży w .hotspot-card-media (dostaje flex-1/min-height:0 z globals.css od 640px wzwyż - zwykła klasa CSS, jak .player-frame, nie inline utility, żeby mobile <640px zostało zwykłym, przewijanym przepływem bez zmian w tym PR)', () => {
+  it('image: <img> ma object-contain i leży w .hotspot-card-media (dostaje display:flex/min-height/min-width:0 z globals.css od 640px wzwyż - zwykła klasa CSS, jak .player-frame, nie inline utility, żeby mobile <640px zostało zwykłym, przewijanym przepływem bez zmian w tym PR)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
     const img = within(dialog()).getByAltText('Zbliżenie karteczki z hasłem');
@@ -648,6 +680,23 @@ describe('SCENE_HOTSPOTS: karta się mieści bez przewijania na desktopie (hotfi
     expect(pre.className).toMatch(/min-h-0/);
     expect(pre.className).toMatch(/flex-1/);
     expect(pre.closest('.hotspot-card-media')).not.toBeNull();
+  });
+
+  it('tekst karty (.hotspot-card-text) ma WŁASNY scroll (druga runda code review, punkt 4/5) - bez line-clamp/title, tekst długi się przewija SAM, nigdy cała karta', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    const paragraph = within(dialog()).getByText('Zbliżenie na kartkę.');
+    expect(paragraph).not.toHaveAttribute('title');
+    expect(paragraph.className).not.toMatch(/line-clamp/);
+    expect(paragraph.closest('.hotspot-card-text')).not.toBeNull();
+  });
+
+  it('hotspot BEZ mediów: karta dostaje .hotspot-card--no-media (auto-size do treści, max 92%x92% - globals.css), bez pustego/osieroconego obszaru "media" w siatce', () => {
+    setup(scene); // fixture bez media na żadnym hotspocie (h1/h2/h3)
+    pick('Monitor');
+    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).closest('.hotspot-card')!;
+    expect(card.className).toMatch(/(^|\s)hotspot-card--no-media(\s|$)/);
+    expect(card.querySelector('.hotspot-card-media')).toBeNull();
   });
 });
 
@@ -705,23 +754,57 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
   });
 
-  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit): własny [container-type:size], rozmiar z jednostek cqw/cqh, bez max-h-full/max-w-full', () => {
+  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit), WYŁĄCZNIE od 640px (druga runda code review, punkt 1 - poniżej tego progu kontener nie ma jawnej wysokości do zapytania, formuła dałaby szerokość 0): [container-type:size] i szerokość z cqw/cqh dopiero od sm:, bez max-h-full/max-w-full', () => {
     setup(nestedScene);
     pick('Monitor');
     const img = within(dialog()).getByAltText('Pulpit komputera');
     const aspectBox = img.parentElement!;
     const queryContainer = aspectBox.parentElement!;
 
-    expect(queryContainer.className).toMatch(/\[container-type:size\]/);
+    // sm: (nie bezpośrednio [container-type:size]) - na mobile ten kontener NIE dostaje containment rozmiaru.
+    expect(queryContainer.className).toMatch(/sm:\[container-type:size\]/);
+    // .hotspot-nested-scene-box (globals.css, od 640px) nadpisuje bazowe w-full formułą "contain" z cqw/cqh -
+    // szerokość NIE jest inline (jak w scenie najwyższego poziomu), żeby na mobile zostało zwykłe w-full bez cq.
+    expect(aspectBox.className).toMatch(/(^|\s)hotspot-nested-scene-box(\s|$)/);
+    expect(aspectBox.className).toMatch(/(^|\s)w-full(\s|$)/);
     expect(aspectBox.className).not.toMatch(/max-h-full/);
     expect(aspectBox.className).not.toMatch(/max-w-full/);
-    expect(aspectBox.style.width).toBe('min(100cqw, calc(100cqh * var(--scene-ratio)))');
+    expect(aspectBox.style.width).toBe('');
     expect(aspectBox.style.height).toBe('auto');
     expect(aspectBox.style.aspectRatio).toBe('var(--scene-ratio)');
     expect(aspectBox.style.margin).toBe('auto');
     // Fixture testowa nie ma prawdziwego pliku obrazu - domyślne 16/10 do czasu (nigdy nadchodzącego tu) onLoad.
     expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(16 / 10));
     expect(img.className).toMatch(/object-contain/);
+  });
+
+  it('scena zagnieżdżona: --scene-ratio się aktualizuje po wczytaniu obrazu (onLoad), nie zostaje na domyślnym 16/10 (druga runda code review, punkt 10 - test wykrywa zerwane okablowanie efektu/onLoad, nie tylko nazwy klas)', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    const img = within(dialog()).getByAltText('Pulpit komputera') as HTMLImageElement;
+    const aspectBox = img.parentElement!;
+    Object.defineProperty(img, 'naturalWidth', { value: 800, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 500, configurable: true });
+
+    fireEvent.load(img);
+
+    expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(800 / 500));
+    expect(aspectBox.style.aspectRatio).toBe('var(--scene-ratio)');
+  });
+
+  it('scena zagnieżdżona: obraz już wczytany z cache PRZY MONTOWANIU (img.complete - React 18 nie odtwarza `load` dla tego przypadku, React #15446) też aktualizuje --scene-ratio, bez czekania na onLoad', () => {
+    vi.spyOn(window.HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    vi.spyOn(window.HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(400);
+    vi.spyOn(window.HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(200);
+
+    setup(nestedScene);
+    pick('Monitor');
+    const img = within(dialog()).getByAltText('Pulpit komputera');
+    const aspectBox = img.parentElement!;
+
+    expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(400 / 200));
+
+    vi.restoreAllMocks();
   });
 
   it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego kartę (drugi poziom TEJ SAMEJ nakładki); dowód wymaga kliknięcia', () => {

@@ -347,7 +347,9 @@ export default function SceneHotspotsBlock({
                   fix/hotspot-card-fit): rozmiar 92%x92% i `.hotspot-card`/`.hotspot-card-layout` (globals.css) -
                   container query na WŁASNYCH proporcjach karty przełącza dwie kolumny (media|tekst+przyciski) na
                   szerokiej karcie w jedną kolumnę (tekst, media, przyciski) na wąskiej/wysokiej. */}
-              <div className="hotspot-card flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-[92%] sm:w-[92%] sm:overflow-visible sm:rounded sm:p-4">
+              <div
+                className={`hotspot-card ${current.media ? '' : 'hotspot-card--no-media'} flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-[92%] sm:w-[92%] sm:overflow-visible sm:rounded sm:p-4`}
+              >
                 {/* .hotspot-card-layout/-text/-media/-buttons: BEZ własnych klas flex/grid Tailwind (poza spacingiem
                     mobile niżej) - poniżej 640px to zwykłe divy w naturalnym przepływie (mt-3/mt-4 odtwarzają dawny
                     odstęp, karta CAŁA się przewija jak przed tym hotfixem); grid/container query (display:grid,
@@ -363,20 +365,27 @@ export default function SceneHotspotsBlock({
                     <HotspotText hotspot={current} listened={listenedIds.includes(current.id)} />
                   </div>
 
-                  <div className="hotspot-card-media mt-3 sm:mt-0">
-                    <HotspotMediaArea
-                      hotspot={current}
-                      contentBase={contentBase}
-                      transcriptOpen={transcriptOpen}
-                      transcriptId={transcriptId}
-                      onToggleTranscript={() => setTranscriptOpen((open) => !open)}
-                      onEnded={() => setListenedIds((list) => (list.includes(current.id) ? list : [...list, current.id]))}
-                      visited={visited}
-                      interacted={interacted}
-                      nestedOverlayOpen={!!nestedActiveId}
-                      onPickNested={openNested}
-                    />
-                  </div>
+                  {/* Bez mediów (druga runda code review, punkt 9): TEN div w ogóle nie renderuje się - nie tylko
+                      HotspotMediaArea zwraca null wewnątrz niego. Puste .hotspot-card-media zostałoby elementem
+                      siatki bez odpowiednika w grid-template-areas karty bez mediów (.hotspot-card--no-media, tam
+                      nie ma obszaru "media") - CSS Grid umieściłby taki "osierocony" element w niejawnej siatce w
+                      nieprzewidywalnym miejscu, zamiast po prostu go nie mieć. */}
+                  {current.media && (
+                    <div className="hotspot-card-media mt-3 sm:mt-0">
+                      <HotspotMediaArea
+                        hotspot={current}
+                        contentBase={contentBase}
+                        transcriptOpen={transcriptOpen}
+                        transcriptId={transcriptId}
+                        onToggleTranscript={() => setTranscriptOpen((open) => !open)}
+                        onEnded={() => setListenedIds((list) => (list.includes(current.id) ? list : [...list, current.id]))}
+                        visited={visited}
+                        interacted={interacted}
+                        nestedOverlayOpen={!!nestedActiveId}
+                        onPickNested={openNested}
+                      />
+                    </div>
+                  )}
 
                   <div className="hotspot-card-buttons mt-4 flex flex-wrap gap-2 sm:mt-0">
                     {current.evidence && current.note && !review && (
@@ -417,20 +426,16 @@ export default function SceneHotspotsBlock({
 
 // Tekst karty (bez tytułu, renderowanego osobno przez rodzica) - hotspot.content, WYŁĄCZNIE gdy media nie jest audio
 // (audio odsłania go dopiero po odsłuchaniu, patrz `listened` niżej - to samo bramkowanie co przed rozdzieleniem
-// tekstu i mediów na osobne obszary siatki, fix/hotspot-card-fit). Przycięty do 4 linii (line-clamp-4) TYLKO na
-// wąskiej/wysokiej karcie (globals.css, `.hotspot-card-text-content` w @container - karta szeroka ma dość miejsca w
-// prawej kolumnie na pełny tekst); `title` daje pełny tekst na hover/tooltip niezależnie od przycięcia. Bez osobnej
-// kopii sr-only: `-webkit-line-clamp` przycina WYŁĄCZNIE WYGLĄD (overflow wizualny), węzeł DOM i drzewo dostępności
-// mają cały tekst - czytnik ekranu i tak odczyta go w całości.
+// tekstu i mediów na osobne obszary siatki, fix/hotspot-card-fit). BEZ line-clamp/title (druga runda code review,
+// punkt 4: `title` jako sposób doczytania przyciętego tekstu działa tylko na hover myszą - na dotyku/klawiaturze,
+// gdzie układ wąski/wysoki się typowo włącza, nie da się go w ogóle zobaczyć). Obszar .hotspot-card-text ma WŁASNY
+// overflow-y-auto (globals.css) - długi tekst przewija się SAM, karta i pozostałe obszary (media, przyciski)
+// zostają nietknięte.
 function HotspotText({ hotspot, listened }: { hotspot: AnyHotspot; listened: boolean }) {
   const isAudio = hotspot.media?.kind === 'audio';
   if (isAudio && !listened) return null;
   if (!hotspot.content) return null;
-  return (
-    <p title={hotspot.content} className="hotspot-card-text-content whitespace-pre-line text-slate-800 sm:line-clamp-4">
-      {hotspot.content}
-    </p>
-  );
+  return <p className="whitespace-pre-line text-slate-800">{hotspot.content}</p>;
 }
 
 // Media (bez tekstu - HotspotText renderuje się osobno, w INNYM obszarze siatki karty) współdzielone przez kartę
@@ -508,9 +513,14 @@ function HotspotMediaArea({
 // Obraz zagnieżdżonej sceny z klikalnymi prostokątami - ten sam wzorzec dostępności co główna ilustracja bloku
 // (aria-label, focus-ring, bez chipów): klik otwiera KOLEJNY poziom tej samej nakładki (SceneHotspotsBlock's
 // nestedActiveId), nie nową nakładkę. Rozmiar (hotfix fix/hotspot-card-fit) - TA SAMA formuła "contain" co scena
-// najwyższego poziomu (min(100cqw, 100cqh*proporcja) we WŁASNYM, zagnieżdżonym [container-type:size]): zagnieżdżony
-// obraz ma się zmieścić w dostępnym miejscu obszaru mediów karty, bez przewijania, tak samo jak scena główna w
-// obszarze bloku.
+// najwyższego poziomu (min(100cqw, 100cqh*proporcja) we WŁASNYM, zagnieżdżonym [container-type:size]) - ale TYLKO od
+// 640px wzwyż (druga runda code review, punkt 1): poniżej tego progu karta się przewija jako całość i NIE ma jawnej
+// wysokości do zapytania (100cqh liczyłoby się jako 0, więc formuła "contain" dałaby szerokość 0 - gorzej niż przed
+// tym hotfixem). Na mobile zostaje zwykłe `w-full` (Tailwind, bez jednostek kontenera zapytań) z aspect-ratio -
+// naturalna wysokość z proporcji obrazu, bez cqh. `sm:[container-type:size]` na kontenerze + `.hotspot-nested-scene-box`
+// (globals.css) nadpisujący `width` formułą "contain" WYŁĄCZNIE od 640px (ten sam wzorzec co .player-frame - zwykła
+// klasa CSS niżej w arkuszu niż @tailwind utilities wygrywa bez !important) - inline style zostaje tylko dla
+// aspect-ratio/height/margin, które są poprawne na KAŻDYM breakpoincie.
 function NestedSceneImage({
   contentBase,
   scene,
@@ -540,16 +550,15 @@ function NestedSceneImage({
   if (!url) return null;
   const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    <div className="relative flex h-full min-h-0 w-full items-center justify-center [container-type:size]">
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center sm:[container-type:size]">
       {/* isolate: patrz komentarz przy analogicznym kontenerze wyżej (scena najwyższego poziomu) - ten kontener jest już
           zagnieżdżony w karcie nakładki (z-30), ale jego WŁASNE hotspoty (z-index 1..20) i tak nie powinny wyciekać poza
           niego, dla spójności i na wypadek przyszłych zmian layoutu karty. */}
       <div
-        className="relative isolate overflow-hidden rounded border border-slate-200"
+        className="hotspot-nested-scene-box relative isolate w-full overflow-hidden rounded border border-slate-200"
         style={
           {
             '--scene-ratio': String(aspectRatio),
-            width: 'min(100cqw, calc(100cqh * var(--scene-ratio)))',
             height: 'auto',
             aspectRatio: 'var(--scene-ratio)',
             margin: 'auto',
@@ -575,6 +584,7 @@ function NestedSceneImage({
           <button
             key={hotspot.id}
             type="button"
+            data-testid={`hotspot-overlay-${hotspot.id}`}
             aria-label={`${hotspot.label}${seen ? ' (obejrzane)' : ''}`}
             aria-hidden={overlayOpen ? true : undefined}
             tabIndex={overlayOpen ? -1 : undefined}
@@ -678,33 +688,42 @@ function AudioMedia({
   // Transkrypcja ZAMIENIA widok zbliżenia (media.image), nie dokłada się pod nim (hotfix fix/hotspot-card-fit,
   // wcześniej: transkrypcja zawsze w DOM, tylko `hidden` - dokładała wysokość pod obrazkiem i odtwarzaczem, karta
   // się wtedy wydłużała/przewijała). Play/pauza i pasek postępu ZOSTAJĄ zawsze widoczne pod tym widokiem - sterują
-  // odtwarzaniem niezależnie od tego, co jest akurat pokazane w miejscu obrazka.
+  // odtwarzaniem niezależnie od tego, co jest akurat pokazane w miejscu obrazka. NIEZALEŻNA od `url` (druga runda
+  // code review, punkt 7): transkrypcja jest tekstową alternatywą dla audio (WCAG 1.2.1) - jest najbardziej
+  // potrzebna właśnie wtedy, gdy plik audio się nie wczytał; wcześniejsza wersja tego hotfixu chowała cały ten
+  // blok razem z odtwarzaczem pod `{url && ...}`, więc przycisk "Transkrypcja" nic nie pokazywał, gdy `url` było
+  // puste - regresja względem kodu SPRZED tego hotfixu, gdzie transkrypcja była zawsze niezależna.
   const showingTranscript = transcriptOpen && !!media.transcript;
 
   return (
     <div className="flex h-full w-full flex-col">
+      <div className="min-h-0 flex-1">
+        {showingTranscript ? (
+          // role="region" aria-label (nie aria-controls/aria-expanded na przycisku niżej - stała etykieta +
+          // aria-pressed, druga runda code review punkt 6): tabIndex=0 + overflow-y-auto - transkrypcja bywa
+          // dłuższa niż dostępna wysokość obszaru mediów karty, MUSI się przewijać sama (jak DocumentMedia), nie
+          // ucinać (WCAG 1.2.1 - to jedyna tekstowa alternatywa dla audio, obcięcie części to utrata treści).
+          <div id={transcriptId} role="region" aria-label="Transkrypcja" tabIndex={0} className="h-full overflow-y-auto rounded border border-slate-200 bg-white p-3">
+            <p className="whitespace-pre-line text-sm text-slate-700">{media.transcript}</p>
+          </div>
+        ) : (
+          // Mobile: bez max-h (bez zmian - jak przed tym hotfixem, zbliżenie audio nigdy nie miało limitu
+          // wysokości, w przeciwieństwie do ImageMedia); sm:h-full/sm:max-h-full wypełnia obszar mediów karty od
+          // 640px.
+          url &&
+          imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
+            <img
+              src={imageUrl}
+              alt={media.alt ?? ''}
+              referrerPolicy="no-referrer"
+              className="w-full rounded border border-slate-200 object-contain sm:h-full sm:max-h-full"
+            />
+          )
+        )}
+      </div>
       {url && (
         <>
-          <div className="min-h-0 flex-1">
-            {showingTranscript ? (
-              <div id={transcriptId} className="h-full overflow-hidden rounded border border-slate-200 bg-white p-3">
-                <p className="whitespace-pre-line text-sm text-slate-700">{media.transcript}</p>
-              </div>
-            ) : (
-              // Mobile: bez max-h (bez zmian - jak przed tym hotfixem, zbliżenie audio nigdy nie miało limitu
-              // wysokości, w przeciwieństwie do ImageMedia); sm:h-full/sm:max-h-full wypełnia obszar mediów karty
-              // od 640px.
-              imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
-                <img
-                  src={imageUrl}
-                  alt={media.alt ?? ''}
-                  referrerPolicy="no-referrer"
-                  className="w-full rounded border border-slate-200 object-contain sm:h-full sm:max-h-full"
-                />
-              )
-            )}
-          </div>
           <audio
             ref={audioRef}
             src={url}
@@ -740,14 +759,16 @@ function AudioMedia({
         </>
       )}
       {media.transcript && (
+        // Stała etykieta + aria-pressed (druga runda code review, punkt 6): "Pokaż obraz"/"Pokaż transkrypcję" z
+        // aria-expanded brzmiało niejednoznacznie po rozwinięciu ("Pokaż obraz, rozwinięty") - to przycisk-przełącznik
+        // widoku (dwa stany, nic więcej się nie "rozwija"), nie ujawnianie treści.
         <button
           type="button"
           onClick={onToggleTranscript}
-          aria-expanded={transcriptOpen}
-          aria-controls={transcriptId}
+          aria-pressed={transcriptOpen}
           className={`mt-2 min-h-[44px] shrink-0 text-sm font-medium text-indigo-700 underline outline-none hover:text-indigo-900 ${FOCUS_RING}`}
         >
-          {transcriptOpen ? 'Pokaż obraz' : 'Pokaż transkrypcję'}
+          Transkrypcja
         </button>
       )}
     </div>

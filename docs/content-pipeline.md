@@ -24,7 +24,8 @@ Wymaga wcześniej zbudowanego `packages/content` (`npm ci` w rootcie repo robi t
 ```bash
 npm ci --prefix scripts/content
 cp scripts/content/.env.local.example scripts/content/.env.local
-# wypełnij scripts/content/.env.local (poza gitem): ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID i, dla --storage r2, R2_*
+# wypełnij scripts/content/.env.local (poza gitem): ELEVENLABS_API_KEY i, dla --storage r2, R2_*
+# (ID głosów NIE są w .env.local - są w commitowanym scripts/content/voices.json, patrz „Głosy” niżej)
 ```
 
 Tryby, które potrzebują kluczy i sieci (generowanie audio, `--storage r2`, `--assets` bez `--check`/`--dry-run`), **odmawiają
@@ -67,8 +68,25 @@ listę pól z audio z klasyfikacją przy każdym uruchomieniu (fail-closed: nowe
 błąd, nie ciche audio). Backlog B-082: audio podpowiedzi przez API po odblokowaniu (podpisany URL).
 
 Manifest partii (`audio/<slug>/<wersja>/manifest.json`, publiczny, mutowalny: `manifestVersion`, `slug`, `audioVersion`,
-`model`, `language`, `voiceId`, `files`) NIE zawiera ścieżek pól - `files` to tylko posortowana lista kluczy plików, bez
-informacji, którego pola narracji dotyczy który plik (to mapowanie trzyma wyłącznie `module.json` i `audio.lock.json` w repo).
+`model`, `language`, `voices` (rola -> voiceId użyte w partii), `files`) NIE zawiera ścieżek pól - `files` to tylko posortowana
+lista kluczy plików, bez informacji, którego pola narracji dotyczy który plik (to mapowanie trzyma wyłącznie `module.json` i
+`audio.lock.json` w repo).
+
+### Głosy (D-082)
+
+Każda narracja (także nagranie media audio hotspotu, `media.narration`) może mieć `voice`: `narrator` (domyślny, brak pola),
+`fooli`, `bank`, `marek` - lista ról jest w schemacie treści (`VOICE_ROLES`, `packages/content/src/common.ts`), nieznana rola to
+błąd walidacji modułu. Rola -> voiceId ElevenLabs: **`scripts/content/voices.json`** (commitowany; ID głosu nie jest sekretem,
+jest też w locku i manifeście; klucz API zostaje wyłącznie w `.env.local`). Plik musi mieć dokładnie role ze schematu.
+
+- Skrót nagrania (nazwa pliku i wpis w locku) obejmuje voiceId + model + język + tekst: zmiana ID roli w `voices.json` = nagrania
+  tej roli nieaktualne w `--check` (`głos roli zmieniony`) i nowe pliki przy generowaniu; pozostałe role bez zmian.
+- `audio.lock.json` `lockVersion: 2`: `voice` i `voiceId` przy KAŻDYM wpisie. Lock w wersji 1 (jeden `voiceId` partii) jest czytany
+  jako narrator - dotychczasowe nagrania zostają aktualne, gdy `voices.json` ma ten sam głos narratora.
+- `--check`, plan i log generowania wypisują rolę przy każdej pozycji (`[fooli] odprawa#steps.1.narration: ...`).
+- Placeholder zamiast ID (wszystko, co nie wygląda jak ID ElevenLabs, np. `<WKLEJ-ID>`, `TODO`): generowanie tą rolą jest
+  odrzucane czytelnym błędem PRZED limitem znaków, potwierdzeniem i jakimkolwiek wywołaniem ElevenLabs; `--check` zgłasza pozycje
+  tej roli, `--dry-run` tylko ostrzega.
 
 ## Zasoby modułu (`npm run tts -- <slug> --assets`)
 

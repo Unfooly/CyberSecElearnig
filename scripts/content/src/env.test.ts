@@ -34,7 +34,7 @@ describe('resolveConfig', () => {
   });
 
   it('środowisko procesu nadpisuje plik (te same nazwy); puste wartości to brak', () => {
-    const config = resolveConfig({ R2_BUCKET: 'z-pliku', ELEVENLABS_VOICE_ID: '  ' }, { R2_BUCKET: 'ze-srodowiska' } as NodeJS.ProcessEnv);
+    const config = resolveConfig({ R2_BUCKET: 'z-pliku', R2_ENDPOINT: '  ' }, { R2_BUCKET: 'ze-srodowiska' } as NodeJS.ProcessEnv);
     expect(config).toEqual({ R2_BUCKET: 'ze-srodowiska' });
   });
 });
@@ -43,11 +43,11 @@ describe('requireVars', () => {
   it('błąd wymienia NAZWY brakujących zmiennych, nigdy wartości', () => {
     const config = { ELEVENLABS_API_KEY: 'super-tajny-klucz-123' };
     try {
-      requireVars(config, ['ELEVENLABS_API_KEY', 'ELEVENLABS_VOICE_ID', 'R2_BUCKET']);
+      requireVars(config, ['ELEVENLABS_API_KEY', 'R2_ENDPOINT', 'R2_BUCKET']);
       throw new Error('powinno rzucić');
     } catch (error) {
       const message = (error as Error).message;
-      expect(message).toContain('ELEVENLABS_VOICE_ID');
+      expect(message).toContain('R2_ENDPOINT');
       expect(message).toContain('R2_BUCKET');
       expect(message).not.toContain('ELEVENLABS_API_KEY,');
       expect(message).not.toContain('super-tajny-klucz-123');

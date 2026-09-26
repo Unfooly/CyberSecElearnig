@@ -65,13 +65,16 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
+// Głosy ról (voices.json, D-082) - kształt prawdziwych ID (placeholder byłby odrzucony przy generowaniu).
+const VOICES = { narrator: 'voice-narrator', fooli: 'voice-fooli01', bank: 'voice-bank001', marek: 'voice-marek01' };
+
 function params(overrides: Partial<PipelineParams> = {}): PipelineParams {
   return {
     moduleDir: dir,
     version: 'v1',
     model: 'eleven_multilingual_v2',
     language: 'pl',
-    voiceId: 'voice-1',
+    voices: VOICES,
     store: new MemoryStore(),
     tts: new FakeTts(),
     maxChars: 100_000,
@@ -126,7 +129,10 @@ describe('runPipeline', () => {
     const manifest = store.objects.get('audio/sprawa-testowa/v1/manifest.json');
     expect(manifest?.options.cacheControl).toBe('no-cache');
     const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
-    expect(lock.voiceId).toBe('voice-1');
+    // lockVersion 2 (D-082): głos per wpis zamiast jednego głosu partii.
+    expect(lock.lockVersion).toBe(2);
+    expect(lock).not.toHaveProperty('voiceId');
+    expect(lock.entries[`${module.blocks[0].id}#narration`]).toMatchObject({ voice: 'narrator', voiceId: 'voice-narrator' });
     expect(Object.keys(lock.entries)).toHaveLength(result.generated);
   });
 
@@ -298,10 +304,12 @@ describe('kompletność i spójność', () => {
     expect(store.calls.put).toBe(0);
   });
 
-  it('puste voiceId w trybie z generowaniem: błąd przed TTS', async () => {
+  it('placeholder zamiast ID głosu roli w voices.json: czytelny błąd PRZED TTS i zapisami (nazwa roli w komunikacie)', async () => {
     const tts = new FakeTts();
-    await expect(runPipeline(params({ tts, voiceId: '' }))).rejects.toThrow(/VOICE_ID/);
+    const store = new MemoryStore();
+    await expect(runPipeline(params({ tts, store, voices: { ...VOICES, fooli: '<WKLEJ-ID-FOOLI>' } }))).rejects.toThrow(/rola "fooli" ma placeholder/);
     expect(tts.calls).toEqual([]);
+    expect(store.calls.put).toBe(0);
   });
 
   it('identyczne teksty w jednym bloku dzielą plik: TTS raz, plan i manifest liczą raz, lock ma osobne wpisy z tym samym kluczem', async () => {
@@ -532,7 +540,8 @@ describe('audio tylko dla pól client (K1)', () => {
     await runPipeline(params({ store }));
     const text = new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body);
     const manifest = JSON.parse(text);
-    expect(Object.keys(manifest).sort()).toEqual(['audioVersion', 'files', 'language', 'manifestVersion', 'model', 'slug', 'voiceId']);
+    expect(Object.keys(manifest).sort()).toEqual(['audioVersion', 'files', 'language', 'manifestVersion', 'model', 'slug', 'voices']);
+    expect(manifest.voices).toEqual({ fooli: 'voice-fooli01', narrator: 'voice-narrator' });
     expect(text).not.toMatch(/#|hints|narration|answerNarration|lines/);
     for (const key of manifest.files) expect(key).toMatch(/^audio\/sprawa-testowa\/v1\/[A-Za-z0-9._-]+\/[0-9a-f]{16}\.mp3$/);
     expect(manifest.files).toEqual([...manifest.files].sort());
@@ -573,7 +582,6 @@ describe('sidecar i para plików w magazynie', () => {
 describe('--only z innymi parametrami partii', () => {
   it.each([
     ['wersja', { version: 'v2' }],
-    ['głos', { voiceId: 'voice-2' }],
     ['model', { model: 'inny-model' }],
   ])('zmieniona %s względem locka: błąd (pełny przebieg zamiast mieszania partii)', async (_name, override) => {
     const store = new MemoryStore();
@@ -606,19 +614,97 @@ describe('--check: rozjazdy', () => {
     expect((await runPipeline(params(offline()))).problems[0]).toMatch(/bez narracji w module/);
   });
 
-  it('zmiana głosu w locku unieważnia skróty (nieaktualne)', async () => {
+  it('zmiana voiceId roli w voices.json: nieaktualne WYŁĄCZNIE nagrania tej roli, z rolą w komunikacie', async () => {
+    await runPipeline(params());
+    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, fooli: 'voice-fooli02' } }));
+    expect(result.problems).toEqual(['[fooli] odprawa#steps.1.narration: głos roli zmieniony od ostatniego generowania (nagranie nieaktualne).']);
+  });
+
+  it('każda pozycja --check ma rolę głosu (brak nagrania i zmieniony tekst)', async () => {
     await runPipeline(params());
     const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
-    lock.voiceId = 'voice-2';
+    delete lock.entries['odprawa#steps.1.narration'];
     await writeFile(join(dir, 'audio.lock.json'), JSON.stringify(lock));
-    expect((await runPipeline(params(offline()))).problems.length).toBeGreaterThan(0);
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    module.blocks[0].narration.text = 'Inny tekst.';
+    await writeFile(modulePath, JSON.stringify(module));
+    const result = await runPipeline(params(offline()));
+    expect(result.problems).toEqual([
+      `[narrator] ${module.blocks[0].id}#narration: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`,
+      '[fooli] odprawa#steps.1.narration: brak nagrania w audio.lock.json.',
+    ]);
+  });
+
+  it('placeholder roli w voices.json: --check zgłasza pozycje tej roli (nie da się ich sprawdzić)', async () => {
+    await runPipeline(params());
+    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, fooli: 'TODO' } }));
+    expect(result.problems).toEqual(['[fooli] odprawa#steps.1.narration: rola głosu ma placeholder w voices.json (nie da się sprawdzić ani nagrać).']);
+  });
+
+  it('lock w wersji 1 (jeden głos partii) czytany jako narrator: nic nie jest nieaktualne, gdy głos narratora się zgadza', async () => {
+    await runPipeline(params());
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    const narratorOnly = Object.fromEntries(
+      Object.entries(lock.entries as Record<string, { voice: string; voiceId?: string }>)
+        .filter(([, entry]) => entry.voice === 'narrator')
+        .map(([id, entry]) => {
+          const { voice: _voice, voiceId: _voiceId, ...rest } = entry;
+          return [id, rest];
+        }),
+    );
+    // Moduł bez narracji Fooli (jak przed D-082), lock w starym formacie z voiceId partii.
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    delete module.blocks.find((b: { id: string }) => b.id === 'odprawa').steps[1].narration;
+    await writeFile(modulePath, JSON.stringify(module));
+    await writeFile(join(dir, 'audio.lock.json'), JSON.stringify({ ...lock, lockVersion: 1, voiceId: 'voice-narrator', entries: narratorOnly }));
+    expect((await runPipeline(params(offline()))).problems).toEqual([]);
+  });
+});
+
+describe('głosy ról (voices.json, D-082)', () => {
+  it('brak pola voice = narrator; voice z treści wybiera voiceId roli (TTS i skrót)', async () => {
+    const tts = new FakeTts();
+    await runPipeline(params({ tts }));
+    const byText = (text: string) => tts.calls.find((call) => call.text === text)!;
+    expect(byText('Narracja odprawa-1. Drugie zdanie.').voiceId).toBe('voice-fooli01');
+    expect(byText('Narracja odprawa-0. Drugie zdanie.').voiceId).toBe('voice-narrator');
+    const refs = collectNarrations(bareModule());
+    expect(refs.find((ref) => ref.id === 'odprawa#steps.1.narration')!.voice).toBe('fooli');
+    expect(refs.find((ref) => ref.id === 'odprawa#steps.0.narration')!.voice).toBe('narrator');
+  });
+
+  it('ten sam tekst innym głosem to inny plik (voiceId w skrócie); pozostałe role bez ponownego TTS', async () => {
+    const store = new MemoryStore();
+    await runPipeline(params({ store }));
+    const before = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { id: string }) => b.id === 'odprawa').steps[1].narration.audioUrl;
+    const tts = new FakeTts();
+    await runPipeline(params({ store, tts, voices: { ...VOICES, fooli: 'voice-fooli02' } }));
+    const after = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { id: string }) => b.id === 'odprawa').steps[1].narration.audioUrl;
+    expect(after).not.toBe(before);
+    expect(tts.calls.map((call) => call.voiceId)).toEqual(['voice-fooli02']);
+  });
+
+  it('media audio hotspotu z narration (poczta głosowa) jest nagrywane potokiem z głosem roli', async () => {
+    const module = bareModule();
+    const scene = (module.blocks as Record<string, any>[]).find((b) => b.type === 'SCENE_HOTSPOTS')!;
+    const telefon = scene.hotspots.find((h: Record<string, any>) => h.media?.kind === 'audio');
+    telefon.media = { kind: 'audio', narration: { text: 'Dzień dobry, tu bank.', voice: 'bank' } };
+    await writeFile(modulePath, JSON.stringify(module));
+    const tts = new FakeTts();
+    await runPipeline(params({ tts }));
+    expect(tts.calls.find((call) => call.text === 'Dzień dobry, tu bank.')!.voiceId).toBe('voice-bank001');
+    const saved = JSON.parse(await readFile(modulePath, 'utf8'));
+    const media = saved.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS').hotspots.find((h: { id: string }) => h.id === telefon.id).media;
+    expect(media.narration.audioUrl).toMatch(/\.mp3$/);
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    expect(lock.entries[`${scene.id}#hotspots.${scene.hotspots.indexOf(telefon)}.media.narration`]).toMatchObject({ voice: 'bank' });
   });
 });
 
 describe('--dry-run z lockfile', () => {
-  it('bez voiceId bierze głos z locka: po generowaniu wszystko jest "istniejące"', async () => {
+  it('po generowaniu wszystko jest "istniejące" (głosy z voices.json, bez kluczy)', async () => {
     const generated = await runPipeline(params());
-    const result = await runPipeline(params({ tts: undefined, dryRun: true, voiceId: '' }));
+    const result = await runPipeline(params({ tts: undefined, dryRun: true }));
     expect(result.cached).toBe(generated.generated);
   });
 });

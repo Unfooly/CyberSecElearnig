@@ -401,7 +401,7 @@ Audio narracji (ElevenLabs) i zasoby modułów (obrazy scen, avatary) publikuje 
 | Zmienna | Gdzie | Wartość |
 |---|---|---|
 | `CONTENT_BASE_URL` | `.env.prod` (serwer) | `https://content.twoja-domena.pl` (publiczna domena R2 z kroku 1 niżej), konkretny origin, tylko https (D-053). |
-| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `R2_*` | `scripts/content/.env.local` (**maszyna autora treści**, poza gitem) | Wzór: `scripts/content/.env.local.example`. Nigdy w `.env.prod`, w repo ani w CI. |
+| `ELEVENLABS_API_KEY`, `R2_*` | `scripts/content/.env.local` (**maszyna autora treści**, poza gitem) | Wzór: `scripts/content/.env.local.example`. Nigdy w `.env.prod`, w repo ani w CI. ID głosów (nie sekrety): `scripts/content/voices.json` (D-082). |
 
 ### Kolejność
 

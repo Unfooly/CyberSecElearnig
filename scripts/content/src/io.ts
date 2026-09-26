@@ -53,4 +53,6 @@ export const contentNode = requireCjs('../../../packages/content/dist/node.js') 
 /** Klasyfikacja pól client/secret (packages/content/src/blocks.ts): co wolno wysłać do publicznego magazynu (audio, zasoby). */
 export const contentIndex = requireCjs('../../../packages/content/dist/index.js') as {
   FIELD_CLASSIFICATION: Record<string, { client: string[]; secret: string[] }>;
+  /** Role głosu nagrań (narration.voice, D-082) - jedno źródło listy dla schematu treści i voices.json. */
+  VOICE_ROLES: readonly string[];
 };

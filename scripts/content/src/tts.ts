@@ -10,6 +10,7 @@ import { DEFAULT_LANGUAGE, DEFAULT_MODEL, ElevenLabsProvider } from './providers
 import { LocalStore } from './stores/local.js';
 import { createR2Store } from './stores/r2.js';
 import type { ObjectStore } from './types.js';
+import { loadVoices } from './voices.js';
 
 // Użycie: npm run tts --prefix scripts/content -- <slug> [--storage local|r2] [--version v1] [--only blockId,...] [--max-chars 20000]
 //                                                    [--yes] [--dry-run] [--check] [--assets]
@@ -19,6 +20,8 @@ import type { ObjectStore } from './types.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = resolve(HERE, '..');
 const REPO_ROOT = resolve(PACKAGE_ROOT, '..', '..');
+/** Rola głosu -> voiceId ElevenLabs (commitowane, bez sekretów; D-082). Czytane także offline (--check/--dry-run). */
+const VOICES_PATH = join(PACKAGE_ROOT, 'voices.json');
 
 const USAGE = `Użycie: npm run tts --prefix scripts/content -- <slug> [opcje]
   --storage local|r2    gdzie zapisać nagrania (domyślnie local: apps/web/public/content)
@@ -129,18 +132,17 @@ async function execute(args: Parsed, processEnv: NodeJS.ProcessEnv): Promise<num
     }
 
     let tts: ElevenLabsProvider | undefined;
-    let voiceId = '';
     if (!offline) {
-      requireVars(config, ['ELEVENLABS_API_KEY', 'ELEVENLABS_VOICE_ID']);
+      // Głos NIE jest już w .env.local: rola z treści -> voiceId z commitowanego voices.json (D-082). W .env.local zostaje klucz.
+      requireVars(config, ['ELEVENLABS_API_KEY']);
       tts = new ElevenLabsProvider({ apiKey: config.ELEVENLABS_API_KEY!, redact });
-      voiceId = config.ELEVENLABS_VOICE_ID!;
     }
     const result = await runPipeline({
       moduleDir: join(REPO_ROOT, 'packages', 'content', 'modules', args.slug),
       version: args.version,
       model: DEFAULT_MODEL,
       language: DEFAULT_LANGUAGE,
-      voiceId,
+      voices: loadVoices(VOICES_PATH),
       store,
       tts,
       maxChars: args.maxChars,

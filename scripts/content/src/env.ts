@@ -10,9 +10,9 @@ import { parse } from 'dotenv';
 //  - tryby, które wołają sieć albo potrzebują kluczy, odmawiają startu w CI;
 //  - komunikaty błędów wymieniają NAZWY zmiennych, nigdy wartości; ewentualne logi przechodzą przez redactSecrets.
 
+// ID głosów NIE są tu od D-082: rola -> voiceId jest w commitowanym scripts/content/voices.json (to nie sekret).
 export const CONFIG_NAMES = [
   'ELEVENLABS_API_KEY',
-  'ELEVENLABS_VOICE_ID',
   'R2_ACCOUNT_ID',
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',

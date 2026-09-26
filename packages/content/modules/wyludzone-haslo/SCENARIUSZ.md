@@ -231,7 +231,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 > Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila.
 
 **Zakładka „Jak zgłosić w Unfooly":**
-> Podejrzany mail: przycisk **„Zgłoś podejrzany mail"** w programie pocztowym albo przekaż do `bezpieczenstwo@unfooly.com`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
+> Zgłoś przyciskiem **„Zgłoś podejrzany mail"** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
 
 ---
 

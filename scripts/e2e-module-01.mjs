@@ -232,7 +232,7 @@ try {
   await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
   step('TABS: lista wypunktowana w zakładce "Czego bank nigdy nie zrobi"', (await page.getByRole('list').locator('li', { hasText: 'Kod SMS' }).count()) === 1);
   await page.getByRole('tab', { name: 'Jak zgłosić w Unfooly' }).click();
-  step('TABS: `kod` w zakładce "Jak zgłosić w Unfooly"', (await page.locator('code', { hasText: 'bezpieczenstwo@unfooly.com' }).count()) === 1);
+  step('TABS: pogrubienie w zakładce "Jak zgłosić w Unfooly"', (await page.locator('strong', { hasText: 'Zgłoś podejrzany mail' }).count()) === 1);
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------

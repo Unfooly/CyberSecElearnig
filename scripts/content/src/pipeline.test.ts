@@ -541,7 +541,7 @@ describe('audio tylko dla pól client (K1)', () => {
     const text = new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body);
     const manifest = JSON.parse(text);
     expect(Object.keys(manifest).sort()).toEqual(['audioVersion', 'files', 'language', 'manifestVersion', 'model', 'slug', 'voices']);
-    expect(manifest.voices).toEqual({ fooli: 'voice-fooli01', narrator: 'voice-narrator' });
+    expect(manifest.voices).toEqual({ fooli: ['voice-fooli01'], narrator: ['voice-narrator'] });
     expect(text).not.toMatch(/#|hints|narration|answerNarration|lines/);
     for (const key of manifest.files) expect(key).toMatch(/^audio\/sprawa-testowa\/v1\/[A-Za-z0-9._-]+\/[0-9a-f]{16}\.mp3$/);
     expect(manifest.files).toEqual([...manifest.files].sort());
@@ -617,7 +617,9 @@ describe('--check: rozjazdy', () => {
   it('zmiana voiceId roli w voices.json: nieaktualne WYŁĄCZNIE nagrania tej roli, z rolą w komunikacie', async () => {
     await runPipeline(params());
     const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, fooli: 'voice-fooli02' } }));
-    expect(result.problems).toEqual(['[fooli] odprawa#steps.1.narration: głos roli zmieniony od ostatniego generowania (nagranie nieaktualne).']);
+    expect(result.problems).toEqual([
+      '[fooli] odprawa#steps.1.narration: głos (rola lub ID w voices.json) zmieniony od ostatniego generowania (nagranie nieaktualne).',
+    ]);
   });
 
   it('każda pozycja --check ma rolę głosu (brak nagrania i zmieniony tekst)', async () => {
@@ -658,6 +660,52 @@ describe('--check: rozjazdy', () => {
     await writeFile(modulePath, JSON.stringify(module));
     await writeFile(join(dir, 'audio.lock.json'), JSON.stringify({ ...lock, lockVersion: 1, voiceId: 'voice-narrator', entries: narratorOnly }));
     expect((await runPipeline(params(offline()))).problems).toEqual([]);
+  });
+});
+
+describe('lock w wersji 1 -> zapis w wersji 2 (D-082)', () => {
+  // Stan jak w module 1 przed D-082: same narracje narratora, lock v1 z jednym voiceId partii.
+  async function v1State(store: MemoryStore) {
+    const module = bareModule();
+    delete (module.blocks as Record<string, any>[]).find((b) => b.id === 'odprawa')!.steps[1].narration;
+    await writeFile(modulePath, JSON.stringify(module));
+    await runPipeline(params({ store }));
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    const entries = Object.fromEntries(
+      Object.entries(lock.entries as Record<string, Record<string, unknown>>).map(([id, { voice: _v, voiceId: _i, ...rest }]) => [id, rest]),
+    );
+    const { voices: _manifestVoices, ...rest } = lock;
+    await writeFile(join(dir, 'audio.lock.json'), JSON.stringify({ ...rest, lockVersion: 1, voiceId: 'voice-narrator', entries }));
+    return JSON.parse(await readFile(modulePath, 'utf8')) as { blocks: { id: string }[] };
+  }
+
+  it('pełny przebieg: lockVersion 2, głos przy każdym wpisie, bez top-level voiceId i bez ponownego TTS narratora', async () => {
+    const store = new MemoryStore();
+    await v1State(store);
+    const tts = new FakeTts();
+    await runPipeline(params({ store, tts }));
+    expect(tts.calls).toEqual([]);
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    expect(lock.lockVersion).toBe(2);
+    expect(lock).not.toHaveProperty('voiceId');
+    for (const entry of Object.values(lock.entries)) expect(entry).toMatchObject({ voice: 'narrator', voiceId: 'voice-narrator' });
+  });
+
+  it('--only na locku v1: wpisy niewybranych bloków dostają narratora i dawny voiceId partii', async () => {
+    const store = new MemoryStore();
+    const module = await v1State(store);
+    const [first, second] = module.blocks.map((block) => block.id);
+    await runPipeline(params({ store, only: [first] }));
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    expect(lock.lockVersion).toBe(2);
+    expect(lock.entries[`${second}#narration`]).toMatchObject({ voice: 'narrator', voiceId: 'voice-narrator' });
+  });
+
+  it('nieznany lockVersion: jawny błąd zamiast zgadywania formatu', async () => {
+    await runPipeline(params());
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    await writeFile(join(dir, 'audio.lock.json'), JSON.stringify({ ...lock, lockVersion: 3 }));
+    await expect(runPipeline(params({ tts: undefined, check: true }))).rejects.toThrow(/nieznany lockVersion 3/);
   });
 });
 

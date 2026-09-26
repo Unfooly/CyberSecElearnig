@@ -17,8 +17,9 @@ import type { ObjectStore } from './types.js';
 /**
  * Pola-ścieżki zasobów w blokach (wzorce; `*` = każdy element tablicy). Zgodne ze schematem treści
  * (packages/content/src/blocks.ts). hotspots[].media.{src,audioUrl,image}: obraz/audio/zbliżenie NAD odtwarzaczem
- * audio karty hotspotu (B-086/D-071, image: feat/scene-overlay-fix) - audio hotspotu to GOTOWY plik z --assets (jak
- * obraz), NIE przechodzi przez silnik TTS/cues narracji (scripts/content/src/pipeline.ts, osobny potok). Zagnieżdżona
+ * audio karty hotspotu (B-086/D-071, image: feat/scene-overlay-fix) - media.audioUrl to GOTOWY plik z --assets (jak
+ * obraz), NIE przechodzi przez silnik TTS/cues narracji. Od D-082 media audio może zamiast tego mieć `narration` (nagranie z
+ * potoku TTS z własnym głosem, scripts/content/src/pipeline.ts) - to pole NIE jest zasobem tego potoku. Zagnieżdżona
  * scena (media.kind:'scene') ma WŁASNY obraz i własne, wewnętrzne hotspoty - zawsze dokładnie jeden poziom
  * (packages/content's innerHotspotSchema), więc bez rekurencji tutaj też.
  */

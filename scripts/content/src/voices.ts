@@ -13,9 +13,12 @@ export const DEFAULT_VOICE_ROLE = 'narrator';
 // Kształt prawdziwego ID głosu (ten sam zakres znaków co walidacja w providers/elevenlabs.ts). Wszystko inne (np. "<WKLEJ-ID>",
 // "TODO", puste) to placeholder: --check i --dry-run działają dalej, ale generowanie takim głosem jest odrzucane czytelnym błędem.
 const VOICE_ID = /^[A-Za-z0-9_-]{8,64}$/;
+// Typowe słowa zastępcze, które mieszczą się w kształcie ID (np. "WKLEJ_ID_FOOLI", "PLACEHOLDER") - bez tej listy dotarłyby aż do
+// wywołania ElevenLabs po potwierdzeniu (code review D-082).
+const PLACEHOLDER_WORDS = /todo|wklej|placeholder|xxx|obecny|paste|changeme/i;
 
 export function isPlaceholderVoiceId(voiceId: string): boolean {
-  return !VOICE_ID.test(voiceId);
+  return !VOICE_ID.test(voiceId) || PLACEHOLDER_WORDS.test(voiceId);
 }
 
 /** Waliduje zawartość voices.json: obiekt z dokładnie rolami VOICE_ROLES, każda wartość to tekst (ID albo placeholder). */

@@ -764,6 +764,27 @@ describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
     ).toContain('bez transcript');
   });
 
+  it('media audio w zagnieżdżonej scenie: te same reguły (dokładnie jedno z audioUrl/narration, transcript przy audioUrl)', () => {
+    const nestedAudio = (m: TestModule) =>
+      m.blocks
+        .find((b) => b.type === 'SCENE_HOTSPOTS')!
+        .hotspots.flatMap((h: Record<string, any>) => h.media?.scene?.hotspots ?? [])
+        .find((h: Record<string, any>) => h.media?.kind === 'audio');
+    const noTranscript = invalid((m) => delete nestedAudio(m).media.transcript);
+    expect(noTranscript).toMatch(/hotspots\[\d+\]\.media\.scene\.hotspots\[\d+\]\.media: audioUrl wymaga transcript/);
+    expect(invalid((m) => (nestedAudio(m).media.narration = { text: 'x' }))).toMatch(
+      /media\.scene\.hotspots\[\d+\]\.media: audio wymaga dokładnie jednego z pól audioUrl\/narration/,
+    );
+    expect(
+      invalid((m) => {
+        const media = nestedAudio(m).media;
+        media.narration = { text: media.transcript, voice: 'bank' };
+        delete media.audioUrl;
+        delete media.transcript;
+      }),
+    ).toBe('');
+  });
+
   it('voice i media.narration w module w wersji 4 są odrzucone (nazwane w błędzie)', () => {
     const message = invalid((m) => {
       m.schemaVersion = 4;

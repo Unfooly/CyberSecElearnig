@@ -21,7 +21,9 @@ describe('voices.json (rola głosu -> voiceId, D-082)', () => {
   });
 
   it('placeholder rozpoznawany po kształcie (nie ID ElevenLabs)', () => {
-    for (const placeholder of ['<WKLEJ-ID-FOOLI>', '<obecny voiceId>', 'TODO', '', 'abc']) expect(isPlaceholderVoiceId(placeholder)).toBe(true);
+    for (const placeholder of ['<WKLEJ-ID-FOOLI>', '<obecny voiceId>', 'TODO', '', 'abc', 'WKLEJ_ID_FOOLI', 'PLACEHOLDER', 'wklej-id-fooli', 'xxxxxxxxxx']) {
+      expect(isPlaceholderVoiceId(placeholder)).toBe(true);
+    }
     for (const id of ['o2xdfKUpc1Bwq7RchZuW', 'voice-narrator']) expect(isPlaceholderVoiceId(id)).toBe(false);
   });
 

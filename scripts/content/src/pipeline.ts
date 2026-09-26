@@ -279,6 +279,10 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   if (slug !== basename(resolve(params.moduleDir))) throw new Error(`Slug w module.json ("${slug}") różni się od nazwy katalogu modułu.`);
   const refs = collectNarrations(raw);
   const lock = (await readJsonFile(lockPath)) as Lock | null;
+  // Znane formaty: 1 (jeden głos partii) i 2 (głos per wpis, D-082). Nowszego nie zgadujemy - mógłby mieć inną semantykę skrótów.
+  if (lock && lock.lockVersion !== 1 && lock.lockVersion !== 2) {
+    throw new Error(`audio.lock.json: nieznany lockVersion ${String(lock.lockVersion)} (obsługiwane: 1, 2).`);
+  }
 
   if (params.check) return checkOffline(refs, lock, params, findOrphanAudio(raw));
 
@@ -436,10 +440,17 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (entry.voiceId === undefined && lock) Object.assign(entry, { voice: entry.voice ?? 'narrator', voiceId: entryVoiceId(entry, lock) });
   }
   const nextLock: Lock = { lockVersion: 2, slug, audioVersion: params.version, model: params.model, language: params.language, entries };
-  // Głosy użyte w partii (rola -> voiceId), tylko informacyjnie w publicznym manifeście.
-  const usedVoices = Object.fromEntries(
-    [...new Set(Object.values(entries).map((entry) => `${entry.voice}\u0000${entry.voiceId}`))].sort().map((pair) => pair.split('\u0000')),
-  );
+  // Głosy użyte w partii (rola -> posortowane voiceId), informacyjnie w publicznym manifeście. Tablica, nie jedno ID: po --only ze
+  // zmienionym ID roli ta sama rola może mieć w partii dwa głosy - manifest ma to pokazać, nie ukryć (code review D-082).
+  const usedVoices: Record<string, string[]> = {};
+  for (const entry of Object.values(entries)) {
+    const ids = (usedVoices[entry.voice!] ??= []);
+    if (!ids.includes(entry.voiceId!)) ids.push(entry.voiceId!);
+  }
+  for (const [role, ids] of Object.entries(usedVoices)) {
+    ids.sort();
+    if (ids.length > 1) say(params.output, `Uwaga: rola "${role}" ma w partii nagrania kilkoma głosami (${ids.join(', ')}) - pełny przebieg bez --only ujednolici.`);
+  }
   const moduleChanged = await writeIfChanged(modulePath, encode(raw));
   const lockChanged = await writeIfChanged(lockPath, encode(nextLock));
 
@@ -475,12 +486,12 @@ function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineP
         problems.push(`${label}: rola głosu ma placeholder w voices.json (nie da się sprawdzić ani nagrać).`);
         continue;
       }
-      // Skrót obejmuje voiceId + model + język + tekst: głos roli zmieniony w voices.json = nagranie nieaktualne.
-      const expected = narrationHash({ text: ttsInputOf(ref), model: lock.model, language: lock.language, voiceId });
+      // Skrót obejmuje voiceId + model + język + tekst: zmieniony głos (ID roli w voices.json albo sama rola w treści) = nagranie nieaktualne.
       if (entryVoiceId(entry, lock) !== voiceId) {
-        problems.push(`${label}: głos roli zmieniony od ostatniego generowania (nagranie nieaktualne).`);
+        problems.push(`${label}: głos (rola lub ID w voices.json) zmieniony od ostatniego generowania (nagranie nieaktualne).`);
         continue;
       }
+      const expected = narrationHash({ text: ttsInputOf(ref), model: lock.model, language: lock.language, voiceId });
       if (entry.hash !== expected || entry.textSha !== textSha(ttsInputOf(ref))) {
         problems.push(`${label}: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`);
         continue;

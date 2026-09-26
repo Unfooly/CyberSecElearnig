@@ -131,11 +131,11 @@ Pozostałe ikony pulpitu (Przelewy, Internet, Faktury, Kosz) są WYŁĄCZNIE dek
 
 ### Media: wiadomość głosowa „informatyka" (hotspot `telefon`)
 
-Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — GOTOWY plik mp3 (nagrany osobno przez
-właściciela treści w ElevenLabs, publikowany przez `--assets` jak obraz; NIE przechodzi przez silnik TTS/cues narracji
-modułu, D-071). Nad własnym odtwarzaczem (przycisk play/pauza, pasek postępu, czas — bez natywnych `<audio controls>`,
-feat/scene-overlay-fix) renderuje się zbliżenie `telefon-zoom.svg` (`media.image`, alt: „Telefon stacjonarny Anny z
-jedną nieodebraną rozmową"); odtwarzanie startuje automatycznie po kliknięciu hotspotu.
+Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — od D-082 generowane potokiem TTS modułu
+głosem `bank` (`media.narration`, `voice: "bank"`, voiceId w `scripts/content/voices.json`; wcześniej, D-071, gotowy plik mp3
+z `--assets`). Tekst nagrania = transkrypcja poniżej. Nad własnym odtwarzaczem (sam przycisk play/pauza, bez paska postępu i
+czasu - D-080; bez natywnych `<audio controls>`) renderuje się zbliżenie `telefon-zoom.svg` (`media.image`, alt: „Telefon
+stacjonarny Anny z jedną nieodebraną rozmową"); odtwarzanie startuje automatycznie po kliknięciu hotspotu.
 
 **Transkrypcja (ok. 35 s):**
 > Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.

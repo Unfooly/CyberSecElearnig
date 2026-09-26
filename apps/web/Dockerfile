@@ -63,18 +63,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
-# apps/web/src/app/dev/player-harness/page.tsx (fix/hotspot-card-fit) czyta packages/content/modules/*/module.json
-# z dysku (fs.readFileSync) - @vercel/nft (output:'standalone' w next.config.mjs) śledzi to STATYCZNIE, niezależnie
-# od runtime sprawdzenia NEXT_PUBLIC_DEV_HARNESS (ta strona zwraca notFound() bez flagi, ale sam fs.readFileSync
-# jest i tak "osiągalny" dla analizy grafu zależności) - bez tego usunięcia CAŁA treść modułu (ze WSZYSTKIMI
-# sekretami wszystkich bloków: klucze odpowiedzi, reactions.result, podpowiedzi) trafiałaby do obrazu produkcyjnego
-# razem z .next/standalone wyżej. To NIE jest wyciek do przeglądarki (Zasada silnika nr 1 dotyczy tego, co dostaje
-# KLIENT przez toClientBlock - to zostaje nienaruszone niezależnie od tego kroku, patrz
+# DRUGA warstwa obrony (pierwsza: next.config.mjs `pageExtensions`, D-077). Strona
+# apps/web/src/app/dev/player-harness/page.dev.tsx czyta packages/content/modules/*/module.json z dysku
+# (fs.readFileSync, sekrety wszystkich bloków WŁĄCZNIE: klucze odpowiedzi, reactions.result, podpowiedzi). Bez
+# NEXT_PUBLIC_DEV_HARNESS=1 na buildzie (tak jak w tym Dockerfile - zmienna nigdy nieustawiona) rozszerzenie
+# `.dev.tsx` nie jest w pageExtensions, więc Next w ogóle nie kompiluje tego pliku jako strony - nie ma trasy, nie ma
+# fs.readFileSync w grafie, @vercel/nft (output:'standalone') nie ma czego skopiować do .next/standalone. To `rm -rf`
+# zostaje jako druga warstwa na wypadek błędu w tamtym mechanizmie albo przyszłej strony dev-only, która zapomni o
+# rozszerzeniu `.dev.` - NIE jest to już jedyna linia obrony. To NIE jest wyciek do przeglądarki (Zasada silnika nr 1
+# dotyczy tego, co dostaje KLIENT przez toClientBlock - to zostaje nienaruszone niezależnie od tego kroku, patrz
 # scripts/check-no-secrets-in-bundle.mjs), ale zbędne zwiększenie powierzchni ataku kontenera web - surowe sekrety
 # treści kursów na dysku serwera WWW, który wcześniej ich w ogóle nie miał (tylko apps/api je czyta, do importu).
 # Bezpieczne: żaden inny kod w apps/web nie czyta packages/content/modules w runtime (prawdziwa treść kursu idzie
-# z bazy przez API, nie z tych plików) - jedynym konsumentem jest strona harnessu, która i tak jest wyłączona bez
-# NEXT_PUBLIC_DEV_HARNESS=1 (nigdy nieustawione w tym obrazie).
+# z bazy przez API, nie z tych plików) - jedynym konsumentem jest strona harnessu.
 RUN rm -rf packages/content/modules
 
 EXPOSE 3000

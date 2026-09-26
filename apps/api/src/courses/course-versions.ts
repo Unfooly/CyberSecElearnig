@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { AssignmentStatus, Course, CourseAssignment, CourseVersion, Prisma } from '@prisma/client';
-import { withLegacyIds } from '@cyberszkolo/content';
+import { ModuleObjective, normalizeObjectives, withLegacyIds } from '@cyberszkolo/content';
 import { hashContent } from '@cyberszkolo/content/dist/node';
 import { Block } from './scoring/evaluate';
 
@@ -10,6 +10,8 @@ export interface ResolvedVersion {
   schemaVersion: number;
   // Bloki z id (dla wersji 1 nadanymi deterministycznie: b<indeks>).
   blocks: Block[];
+  // Cele TEJ wersji w jednej postaci (D-081); completeWhen okrojone do bloków, które w tej wersji istnieją.
+  objectives: ModuleObjective[];
 }
 
 function toResolved(version: CourseVersion): ResolvedVersion {
@@ -19,7 +21,14 @@ function toResolved(version: CourseVersion): ResolvedVersion {
   }
   const raw = version.contentBlocks as unknown[];
   const blocks = (version.schemaVersion === 1 ? withLegacyIds(raw) : raw) as Block[];
-  return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks };
+  // Import waliduje completeWhen (parseModule), ale wiersz mógł powstać inną drogą (testy, skrypty) - klient dostaje
+  // wyłącznie id bloków, które i tak zna z contentBlocks, nigdy dowolny tekst z bazy w roli id.
+  const blockIds = new Set(blocks.map((block) => block.id));
+  const objectives = normalizeObjectives(version.objectives).map(({ text, completeWhen }) => {
+    const known = (completeWhen ?? []).filter((id) => blockIds.has(id));
+    return known.length > 0 ? { text, completeWhen: known } : { text };
+  });
+  return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks, objectives };
 }
 
 /**

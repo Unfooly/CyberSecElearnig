@@ -4,8 +4,8 @@ import * as path from 'node:path';
 import { Prisma } from '@prisma/client';
 import { ContentValidationError } from '@cyberszkolo/content';
 import { fullModule } from '@cyberszkolo/content/dist/fixtures';
-import { parseModule } from '@cyberszkolo/content/dist/node';
-import { importModule, loadModules } from './content-import';
+import { hashContent, parseModule } from '@cyberszkolo/content/dist/node';
+import { importModule, loadModules, versionContentHash } from './content-import';
 
 // Zapis do prawdziwej bazy (upsert kursu, tworzenie CourseVersion) jest sprawdzany na realnym Postgresie w
 // content-import.e2e-spec.ts (CI, patrz CLAUDE.md reguła 9 - B-085). Tu: (1) czysta logika wczytywania/walidacji
@@ -58,6 +58,23 @@ describe('content-import: importModule (szpieg Prisma - wyłącznie course/cours
     expect(result).toEqual({ slug: 'nowy-kurs', courseId: 'course-1', courseCreated: true, versionCreated: true, version: 1 });
   });
 
+  it('cele (D-081): pełne (z completeWhen) do wersji, same teksty do kursu (katalog)', async () => {
+    const { tx, course, courseVersion } = spyTx();
+    const content = validModule({ slug: 'cele' });
+    await importModule(tx, content);
+
+    expect(courseVersion.createMany.mock.calls[0][0].data[0].objectives).toEqual(content.objectives);
+    expect(course.create.mock.calls[0][0].data.objectives).toEqual(['Rozpoznać phishing', 'Nie klikać podejrzanych linków']);
+  });
+
+  it('versionContentHash: od schemaVersion 5 obejmuje cele, dla starszych same bloki (bez nowej wersji starego modułu)', () => {
+    const v5 = validModule();
+    expect(versionContentHash(v5)).toBe(hashContent({ blocks: v5.blocks, objectives: v5.objectives }));
+    expect(versionContentHash({ ...v5, objectives: ['Inny cel'] })).not.toBe(versionContentHash(v5));
+    const v4 = { ...v5, schemaVersion: 4 as const };
+    expect(versionContentHash(v4)).toBe(hashContent(v4.blocks));
+  });
+
   it('dostęp do modelu spoza course/courseVersion rzuca (kontrola zakresu skryptu)', () => {
     const { tx } = spyTx();
     expect(() => (tx as unknown as { user: unknown }).user).toThrow(/nieoczekiwany dostęp/);
@@ -76,7 +93,7 @@ describe('content-import: importModule (szpieg Prisma - wyłącznie course/cours
     expect(courseVersion.createMany).toHaveBeenCalledTimes(2);
     const [legacyCall, newCall] = courseVersion.createMany.mock.calls;
     expect(legacyCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 1, schemaVersion: 1, contentBlocks: legacyBlocks });
-    expect(newCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 2, schemaVersion: 4 });
+    expect(newCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 2, schemaVersion: 5 });
     expect(course.update).toHaveBeenCalledTimes(1);
     expect(course.create).not.toHaveBeenCalled();
     expect(result).toMatchObject({ courseCreated: false, versionCreated: true, version: 2 });

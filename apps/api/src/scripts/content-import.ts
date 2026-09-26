@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { ContentModule, ContentValidationError } from '@cyberszkolo/content';
+import { ContentModule, ContentValidationError, normalizeObjectives } from '@cyberszkolo/content';
 import { hashContent, moduleWarnings, parseModule } from '@cyberszkolo/content/dist/node';
 import { buildLegacyVersionData } from '../courses/course-versions';
 
@@ -67,6 +67,17 @@ export async function loadModules(dir: string): Promise<ContentModule[]> {
 }
 
 /**
+ * Skrót treści wersji (unikalny w obrębie kursu - identyczna treść nie tworzy nowej wersji). Od schemaVersion 5 obejmuje też
+ * `objectives`: cele są częścią wersji (completeWhen wskazuje jej bloki, D-081), więc zmiana samych celów to nowa wersja.
+ * Moduły w wersji <= 4 liczą skrót jak dotąd (same bloki) - ponowny import niezmienionego starego modułu nie tworzy wersji.
+ */
+export function versionContentHash(contentModule: ContentModule): string {
+  return contentModule.schemaVersion >= 5
+    ? hashContent({ blocks: contentModule.blocks, objectives: contentModule.objectives ?? null })
+    : hashContent(contentModule.blocks);
+}
+
+/**
  * Zapisuje JEDEN moduł w JEDNEJ transakcji (`tx`): upsert kursu po `slug` + nowa wersja treści (idempotentnie -
  * identyczna treść, unikalność `(courseId, contentHash)`, nie tworzy nowej wersji). Dla kursu, który już istnieje, ale
  * nie ma jeszcze ŻADNEJ wersji (utworzony wprost, sprzed importu - D-051 pkt 11), NAJPIERW zapisuje jego DOTYCHCZASOWĄ
@@ -85,6 +96,8 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
     }
   }
 
+  // Kurs (katalog, D-065) dostaje same TEKSTY celów; pełne cele (z completeWhen, schemaVersion 5) idą do wersji niżej (D-081).
+  const objectiveTexts = contentModule.objectives ? normalizeObjectives(contentModule.objectives).map((objective) => objective.text) : undefined;
   const courseData = {
     title: contentModule.title,
     subtitle: contentModule.subtitle ?? null,
@@ -92,7 +105,7 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
     level: contentModule.level ?? null,
     durationMinutes: contentModule.durationMinutes,
     mandatory: contentModule.mandatory,
-    objectives: (contentModule.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
+    objectives: objectiveTexts ?? Prisma.JsonNull,
     contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
   };
   const courseId = existing
@@ -101,16 +114,16 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
 
   const maxVersion = await tx.courseVersion.aggregate({ where: { courseId }, _max: { version: true } });
   const nextVersion = (maxVersion._max.version ?? 0) + 1;
-  const contentHash = hashContent(contentModule.blocks);
   const created = await tx.courseVersion.createMany({
     data: [
       {
         courseId,
         version: nextVersion,
         schemaVersion: contentModule.schemaVersion,
-        contentHash,
+        contentHash: versionContentHash(contentModule),
         contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
         blockCount: contentModule.blocks.length,
+        objectives: (contentModule.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
       },
     ],
     skipDuplicates: true,

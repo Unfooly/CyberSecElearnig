@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
-import { toClientBlock } from '@cyberszkolo/content';
+import { normalizeObjectives, toClientBlock } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
@@ -114,7 +114,8 @@ export class CoursesService {
         title: course.title,
         subtitle: course.subtitle,
         level: course.level,
-        objectives: Array.isArray(course.objectives) ? (course.objectives as string[]) : [],
+        // Import zapisuje tu same teksty; normalizeObjectives na wypadek wiersza z obiektami (schemaVersion 5) spoza importu.
+        objectives: normalizeObjectives(course.objectives).map((objective) => objective.text),
         category: course.category,
         durationMinutes: course.durationMinutes,
         totalBlocks: course.versions[0]?.blockCount ?? this.countBlocks(course.contentBlocks),
@@ -235,6 +236,8 @@ export class CoursesService {
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
+        // Cele/zadania wersji, na której pracuje TO przypisanie (D-081) - nie Course.objectives (ten jest z ostatniego importu).
+        objectives: version.objectives,
         progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
       };
     });

@@ -46,8 +46,9 @@ export function hotspotStackZIndex<T extends { id: string; width: number; height
 // STAŁY rozmiar 92% x 92% sceny i SAMA SIĘ NIE PRZEWIJA (produkcja: media wysokie - mail na ekranie, wydruk, zoom
 // kalendarza, karteczka - wypychały kartę poza dostępne miejsce i ona się przewijała, zamiast zmieścić się jak
 // scena) - układ (dwie kolumny na karcie szerokiej vs jedna na wąskiej/wysokiej) reaguje na WŁASNE proporcje karty
-// przez container query (globals.css, `.hotspot-card`/`.hotspot-card-layout`), jedyny wyjątek od "karta się nie
-// przewija" to pole dokumentu (DocumentMedia). Pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie viewport)
+// przez container query (globals.css, `.hotspot-card`/`.hotspot-card-layout`) - tekst karty (.hotspot-card-text),
+// pole dokumentu (DocumentMedia) i transkrypcja audio mają WŁASNY overflow-y-auto (przewijają się SAME, w swoim
+// obszarze), gdy treść jest wyjątkowo długa; nic z tego nie rozciąga/przewija całej karty. Pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie viewport)
 // na mobile (<640px, bez zmian w tym PR - panorama/bottom sheet to PR B), tam karta nadal przewija się jako całość
 // jak dawniej. Zagnieżdżona
 // scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
@@ -626,9 +627,9 @@ function ImageMedia({ contentBase, media }: { contentBase: string; media: Hotspo
 
 function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   return (
-    // Jedyny wyjątek od "karta się nie przewija" (hotfix fix/hotspot-card-fit): TYLKO pole dokumentu (ten <pre>)
-    // przewija się wewnątrz siebie, nie cała karta - max-h-[35vh] na mobile (bez zmian), sm:max-h-full wypełnia
-    // realną wysokość obszaru mediów karty (.hotspot-card-media, globals.css) od 640px wzwyż.
+    // Pole dokumentu (ten <pre>) przewija się wewnątrz siebie (jak .hotspot-card-text/transkrypcja audio), nie
+    // cała karta - max-h-[35vh] na mobile (bez zmian), sm:max-h-full wypełnia realną wysokość obszaru mediów
+    // karty (.hotspot-card-media, globals.css) od 640px wzwyż.
     <div className="flex h-full min-h-0 w-full flex-col">
       {media.title && <h4 className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">{media.title}</h4>}
       <pre className="min-h-0 max-h-[35vh] flex-1 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-3 font-mono text-sm leading-relaxed text-slate-100 sm:max-h-full">

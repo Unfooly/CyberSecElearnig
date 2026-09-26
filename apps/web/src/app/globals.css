@@ -119,9 +119,10 @@
 }
 
 /* Karta hotspotu (SceneHotspotsBlock.tsx, hotfix fix/hotspot-card-fit/B-101): na >=640px (ten sam próg co reszta
-   pliku i co dawne sm: na karcie) karta z mediami ma STAŁY rozmiar względem sceny (92% x 92%, wyśrodkowana) i sama
-   się NIE przewija - przewija się (jeśli w ogóle) wyłącznie POLE DOKUMENTU (DocumentMedia) albo TRANSKRYPCJA audio
-   wewnątrz karty, nigdy cała karta. Hotspot BEZ mediów (`.hotspot-card--no-media`, druga runda code review, punkt 9)
+   pliku i co dawne sm: na karcie) karta z mediami ma STAŁY rozmiar względem sceny (92% x 92%, wyśrodkowana) i SAMA
+   się nie przewija - tekst karty (.hotspot-card-text), pole dokumentu (DocumentMedia) i transkrypcja audio mają
+   WŁASNY overflow-y-auto (przewijają się same, u siebie), gdy treść jest wyjątkowo długa. Hotspot BEZ mediów
+   (`.hotspot-card--no-media`, druga runda code review, punkt 9)
    dostaje kartę auto-size do treści (max 92% x 92%) - bez pustej kolumny/wiersza na nieistniejące media. Układ (dwie
    kolumny na karcie szerokiej vs jedna kolumna na wąskiej/wysokiej) zależy od WŁASNYCH proporcji KARTY, nie okna
    przeglądarki - stąd container query (container-type: size) na samej karcie, nie zwykły @media: ta sama karta bywa
@@ -145,7 +146,24 @@
     container-name: hotspot-card;
   }
 
-  .hotspot-card--no-media {
+  /* .hotspot-card.hotspot-card--no-media (SKŁADNIA DWÓCH KLAS, nie sama .hotspot-card--no-media) - trzecia runda
+     code review, znalezisko przy weryfikacji w przeglądarce: pod `next dev` Tailwind dopisuje świeżo odkryte,
+     rzadko używane klasy (jak `sm:h-[92%]`/`sm:w-[92%]` - używane WYŁĄCZNIE tutaj) na KONIEC wygenerowanego CSS
+     w trakcie odświeżania w locie, więc w trybie deweloperskim mogą wylądować PO tym bloku, mimo że ten blok jest
+     w pliku źródłowym NIŻEJ niż `@tailwind utilities` - odwrotnie niż zakłada wzorzec .player-frame (który działa
+     dla klas obecnych od pierwszej kompilacji). Podniesienie specyficzności (dwie klasy zamiast jednej, 0,2,0
+     zamiast 0,1,0) wygrywa niezależnie od kolejności w pliku, więc nie polega na tym, kiedy Tailwind akurat
+     dopisał daną klasę - bez tego karta wyglądała OK w statycznym HTML/teście klas, ale w prawdziwej przeglądarce
+     `sm:h-[92%]` i tak wygrywał, zostawiając dużą pustą przestrzeń pod treścią. */
+  .hotspot-card.hotspot-card--no-media {
+    /* container-type: normal (trzecia runda code review - KRYTYCZNE): .hotspot-card wyżej ustawia
+       container-type:size bezwarunkowo - na karcie BEZ mediów (height/width:auto, wewnątrz nakładki flex z
+       items-center) size containment liczy rozmiar WŁASNY karty tak, jakby nie miała treści (stąd zapadanie się
+       do 0x0 + padding, zanim jeszcze cokolwiek zdąży zapytać cqw/cqh) - okrężna zależność: rozmiar zależny od
+       containment, containment zależny od (nieistniejącego) rozmiaru. Ta karta i tak nie ma czego układać w dwie
+       kolumny (nie ma mediów), więc container-type jej niepotrzebny - normal wyłącza containment i przywraca
+       zwykłe auto-size do treści (potwierdzone w Chromium: bez tego 32x32px, z tym prawidłowy rozmiar). */
+    container-type: normal;
     height: auto;
     width: auto;
     max-height: 92%;
@@ -163,8 +181,17 @@
   }
 
   /* Bez mediów: brak wiersza "media" - tekst nad przyciskami, karta auto-size (.hotspot-card--no-media powyżej)
-     dopasowuje się do tej krótszej treści zamiast trzymać pustą kolumnę/wiersz na nieistniejący obszar mediów. */
+     dopasowuje się do tej krótszej treści zamiast trzymać pustą kolumnę/wiersz na nieistniejący obszar mediów.
+     flex:0 1 auto (nadpisuje flex:1 1 0% wyżej) + align-content:start (trzecia runda code review, wizualne
+     znalezisko przy weryfikacji poprawki punktu 9): bez żadnego z tych dwóch oba wiersze "auto" (bez "fr", w
+     przeciwieństwie do wariantu Z mediami) i tak dostawały się rozciągnięte na równe części dostępnej wysokości
+     karty (Chromium: `align-content:normal` dla grida zachowuje się jak "stretch" na torach "auto", gdy sam
+     kontener siatki dostanie jakąkolwiek dodatkową wysokość z zewnątrz - tu z `flex:1 1 0%` na kontenerze flex,
+     nawet przy `height:auto` na karcie) - przyciski wychodziły grubo wyższe, niż wymaga ich treść, zamiast
+     naturalnie hugować tekst i przyciski od góry. */
   .hotspot-card--no-media .hotspot-card-layout {
+    flex: 0 1 auto;
+    align-content: start;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     grid-template-areas: 'text' 'buttons';

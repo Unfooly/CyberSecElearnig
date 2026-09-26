@@ -34,7 +34,7 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
   return null;
 }
 
-export default function PlayerHarnessPage({ searchParams }: { searchParams: { hotspot?: string } }) {
+export default function PlayerHarnessPage({ searchParams }: { searchParams: { hotspot?: string; stripMedia?: string } }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
   }
@@ -47,15 +47,26 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { ho
   );
   if (!rawBlock) notFound();
 
+  const hotspotParam = searchParams.hotspot;
+  const clickPath = hotspotParam ? findHotspotPath(rawBlock.hotspots, hotspotParam) : null;
+
+  // ?stripMedia=1: treść modułu 1 nie ma dziś hotspotu bez mediów, który otwiera kartę ("drzwi" jej w ogóle nie
+  // otwiera) - scripts/layout-check.mjs i tak musi sprawdzić kartę BEZ mediów (.hotspot-card--no-media, trzecia
+  // runda code review - tam był krytyczny błąd). Zamiast wymyślać syntetyczną treść, bierzemy PRAWDZIWY hotspot z
+  // `?hotspot=` i usuwamy mu pole `media` (na kopii, TYLKO w tym procesie renderowania) - toClientBlock i tak
+  // przechodzi przez tę samą białą listę pól co produkcja, ten krok dzieje się wcześniej, na surowych danych.
+  const stripMedia = searchParams.stripMedia === '1';
+  const blockForClient =
+    stripMedia && hotspotParam
+      ? { ...rawBlock, hotspots: rawBlock.hotspots.map((h) => (h.id === hotspotParam ? { ...h, media: undefined } : h)) }
+      : rawBlock;
+
   // SCENE_HOTSPOTS nie używa shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/TEXT_INPUT_GUIDED w client.ts) -
   // wartości poniżej nigdy nie trafiają do wyniku dla tego typu bloku, są tu wyłącznie, żeby zaspokoić sygnaturę.
-  const contentBlock = toClientBlock(rawBlock, {
+  const contentBlock = toClientBlock(blockForClient, {
     shuffleSeed: () => [1, 2, 3, 4],
     opaqueId: (_blockId, itemId) => itemId,
   }) as unknown as ContentBlock;
-
-  const hotspotParam = searchParams.hotspot;
-  const clickPath = hotspotParam ? findHotspotPath(rawBlock.hotspots, hotspotParam) : null;
 
   const initial: CoursePlayerInitialState = {
     assignmentId: 'dev-harness',

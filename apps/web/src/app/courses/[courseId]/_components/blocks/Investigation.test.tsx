@@ -170,7 +170,7 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
     expect(card.className).not.toMatch(/sm:h-full/);
     expect(card.className).not.toMatch(/sm:w-full/);
-    // Karta się NIE przewija na desktopie (przewija się tylko pole dokumentu - DocumentMedia, osobny test niżej).
+    // Karta SAMA się NIE przewija na desktopie (tekst/dokument/transkrypcja mają WŁASNY scroll, osobne testy niżej).
     expect(card.className).toMatch(/sm:overflow-visible/);
     // Container query na WŁASNYCH proporcjach karty (nie zwykły @media) - globals.css, .hotspot-card/.hotspot-card-layout.
     expect(card.className).toMatch(/(^|\s)hotspot-card(\s|$)/);
@@ -672,7 +672,7 @@ describe('SCENE_HOTSPOTS: karta się mieści bez przewijania na desktopie (hotfi
     expect(img.closest('.hotspot-card-media')).not.toBeNull();
   });
 
-  it('document: pole dokumentu (<pre>) ma WŁASNE overflow-auto flex-1 min-h-0 (jedyny wyjątek od "karta się nie przewija") - wypełnia dostępną wysokość obszaru mediów karty i przewija się samo, nie cała karta', () => {
+  it('document: pole dokumentu (<pre>) ma WŁASNE overflow-auto flex-1 min-h-0 - wypełnia dostępną wysokość obszaru mediów karty i przewija się samo, nie cała karta', () => {
     setup(mediaScene);
     pick('Drukarka');
     const pre = within(dialog()).getByText(/Kwota: 14 000,00 PLN/).closest('pre')!;
@@ -793,18 +793,22 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
   });
 
   it('scena zagnieżdżona: obraz już wczytany z cache PRZY MONTOWANIU (img.complete - React 18 nie odtwarza `load` dla tego przypadku, React #15446) też aktualizuje --scene-ratio, bez czekania na onLoad', () => {
-    vi.spyOn(window.HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
-    vi.spyOn(window.HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(400);
-    vi.spyOn(window.HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(200);
+    // try/finally (nie tylko vi.restoreAllMocks() na końcu testu): bez tego nieudana asercja zostawiłaby zmockowane
+    // complete/naturalWidth/naturalHeight na prototypie HTMLImageElement, przeciekając do KOLEJNYCH testów w tym pliku.
+    try {
+      vi.spyOn(window.HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+      vi.spyOn(window.HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(400);
+      vi.spyOn(window.HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(200);
 
-    setup(nestedScene);
-    pick('Monitor');
-    const img = within(dialog()).getByAltText('Pulpit komputera');
-    const aspectBox = img.parentElement!;
+      setup(nestedScene);
+      pick('Monitor');
+      const img = within(dialog()).getByAltText('Pulpit komputera');
+      const aspectBox = img.parentElement!;
 
-    expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(400 / 200));
-
-    vi.restoreAllMocks();
+      expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(400 / 200));
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 
   it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego kartę (drugi poziom TEJ SAMEJ nakładki); dowód wymaga kliknięcia', () => {

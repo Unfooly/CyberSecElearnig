@@ -286,13 +286,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   sceny głównej mieści się w obszarze bloku bez przewijania (sprawdzenie „e” tego skryptu) - NIEZALEŻNIE od B-085,
   bo strona `apps/web/src/app/dev/player-harness/page.tsx` nie potrzebuje backendu (treść wprost z packages/content).
   Uruchamiane dziś ręcznie przed pushem (CLAUDE.md, reguła 12), nie automatycznie w CI - patrz B-101.
-- Opis: `SceneHotspotsBlock.tsx` dostał w tym PR-ie pełny łańcuch `min-h-0`/`flex-1`, pokryty testem na KLASACH
-  (`Investigation.test.tsx`), ale pudełko aspect-ratio jest elementem flex w wierszu (szerokość `auto`, zależna od
-  intrinsic size obrazu) - test jednostkowy w jsdom nie może potwierdzić, że scena faktycznie mieści się w pionie
-  na niskim/wąskim viewporcie (telefon w poziomie, tryb pełnoekranowy). Wymaga realnej przeglądarki
-  (`scripts/e2e-module-01.mjs` albo ręcznego sprawdzenia) - dziś zablokowane przez B-085.
-- Akceptacja: po odblokowaniu B-085, przebieg e2e/ręczny na niskim viewporcie (telefon w poziomie) potwierdzający,
-  że scena mieści się w pionie, nie tylko szerokością.
+- Opis: `SceneHotspotsBlock.tsx` dostał w PR-ie `feat/player-stage` pełny łańcuch `min-h-0`/`flex-1`, pokryty testem
+  na KLASACH (`Investigation.test.tsx`), ale pudełko aspect-ratio jest elementem flex w wierszu (szerokość `auto`,
+  zależna od intrinsic size obrazu) - test jednostkowy w jsdom nie może potwierdzić, że scena faktycznie mieści się
+  w pionie na niskim/wąskim viewporcie (telefon w poziomie, tryb pełnoekranowy). Wymagało realnej przeglądarki;
+  `scripts/e2e-module-01.mjs` było wtedy zablokowane przez B-085 - `layout-check.mjs` (`fix/hotspot-card-fit`)
+  obchodzi to ograniczenie, bo w ogóle nie potrzebuje backendu.
+- Akceptacja: ✅ przebieg `layout-check.mjs` na niskim viewporcie (844x390, telefon w poziomie) potwierdza, że scena
+  mieści się w pionie, nie tylko szerokością (sprawdzenie „e”) - zamiast e2e/ręcznego sprawdzenia z pierwotnej
+  akceptacji, które nadal blokuje B-085.
 
 ### B-101 `layout-check.mjs` w CI
 - Etykiety: `P2`, `tech-debt`, `mod:web`, `mod:ci` · Źródło: code review `fix/hotspot-card-fit` (druga runda) - bugi w

@@ -11,7 +11,8 @@
 //  b) karta hotspotu (.hotspot-card) się nie przewija (scrollHeight <= clientHeight) - poza kartą BEZ mediów, gdzie
 //     "karta się nie przewija" nie ma sensu sprawdzać tak samo (auto-size do treści, patrz .hotspot-card--no-media).
 //  c) obszar mediów karty (.hotspot-card-media) ma wysokość >0 i >=35% wysokości karty (łapie regresję z drugiej
-//     rundy review: scena zagnieżdżona/media wychodziły zerowej albo miniaturowej wysokości).
+//     rundy review: scena zagnieżdżona/media wychodziły zerowej albo miniaturowej wysokości) - pomijane dla karty
+//     BEZ mediów (case "karteczka-bez-mediow", ?stripMedia=1), gdzie obszar mediów w ogóle nie istnieje.
 //  d) przyciski karty (.hotspot-card-buttons button) są W CAŁOŚCI wewnątrz karty i wewnątrz ramki odtwarzacza
 //     (.player-frame) - nie wychodzą poza żadną z tych dwóch granic.
 //  e) (raz na viewport, przed otwarciem jakiejkolwiek karty) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
@@ -38,6 +39,11 @@ const VIEWPORTS = [
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
 // karty (transkrypcja audio nie ma własnego ?parametru - to zwykła interakcja w karcie, jak zrobiłby to gracz).
+// noMedia: hotspot BEZ mediów (.hotspot-card--no-media) - treść modułu 1 nie ma dziś takiego, który otwiera kartę
+// ("drzwi" jej w ogóle nie otwierają), więc ?stripMedia=1 (page.tsx) bierze prawdziwy hotspot i usuwa mu media na
+// serwerze przed renderem - żeby sprawdzić DOKŁADNIE tę gałąź CSS, która miała krytyczny błąd w trzeciej rundzie
+// code review (karta zapadała się do 32x32px). Obszar mediów w ogóle nie istnieje w tym przypadku - sprawdzenie
+// (c) pomija go celowo (patrz pętla niżej), nie tylko "nie wymaga 35%".
 const HOTSPOT_CASES = [
   { name: 'karteczka', hotspotId: 'karteczka' },
   { name: 'kalendarz', hotspotId: 'kalendarz' },
@@ -57,6 +63,7 @@ const HOTSPOT_CASES = [
   },
   { name: 'monitor-pulpit', hotspotId: 'monitor' },
   { name: 'outlook-mail', hotspotId: 'outlook' },
+  { name: 'karteczka-bez-mediow', hotspotId: 'karteczka', extraQuery: 'stripMedia=1', noMedia: true },
 ];
 
 async function waitForServer(url, what, timeoutMs = 60000) {
@@ -151,7 +158,7 @@ async function checkButtonsInsideCardAndFrame(page, label) {
 // (e) Scena GŁÓWNA (nie karta) mieści się w obszarze bloku, bez paska przewijania w tym obszarze - hotfix
 // fix/player-scene-fit/B-100. Sprawdzane raz na viewport, PRZED otwarciem jakiejkolwiek karty hotspotu.
 async function checkMainSceneFits(page, label) {
-  const sceneArea = page.locator('[class*="overflow-clip"]').first();
+  const sceneArea = page.getByTestId('player-content-area');
   const { scrollHeight, clientHeight, scrollWidth, clientWidth } = await sceneArea.evaluate((el) => ({
     scrollHeight: el.scrollHeight,
     clientHeight: el.clientHeight,
@@ -170,14 +177,36 @@ async function shot(page, name) {
   return path;
 }
 
+// (844x390, "telefon w poziomie") hasTouch:true na kontekście MA sprawić, że (pointer: coarse) faktycznie
+// pasuje - bez tego sprawdzenia zmiana emulacji w przyszłej wersji Playwrighta po cichu wyłączyłaby testowaną
+// gałąź globals.css (trzecia runda code review), a skrypt nadal zielono przechodziłby zwykłą, wyśrodkowaną ramkę
+// biurkową zamiast pełnoekranowej ramki telefonu.
+async function checkPointerCoarse(page, label) {
+  const coarse = await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches);
+  if (!coarse) fail(`${label}: (pointer: coarse) nie pasuje mimo hasTouch:true - viewport NIE wchodzi w tryb "telefon w poziomie" (globals.css).`);
+}
+
 const children = [];
 let webLog = '';
-function start(name, command, args, env, cwd) {
+function start(command, args, env, cwd) {
   const child = spawn(command, args, { env: { ...process.env, ...env }, cwd, shell: false });
   children.push(child);
   child.stdout.on('data', (chunk) => (webLog += chunk.toString()));
   child.stderr.on('data', (chunk) => (webLog += chunk.toString()));
   return child;
+}
+
+// next dev (Next 14) forkuje osobny proces serwera i sprząta go WYŁĄCZNIE na SIGTERM/exit - child.kill() na
+// Windows to TerminateProcess (nie SIGTERM), więc te handlery się nie wykonują i serwer zostaje osierocony na
+// porcie. taskkill /T (drzewo procesów) /F (wymuszony) naprawia to na Windows; gdzie indziej zwykły SIGTERM
+// wystarcza (next dev go obsługuje poprawnie).
+function killTree(child) {
+  if (!child.pid) return;
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { shell: false, stdio: 'ignore' });
+  } else {
+    child.kill();
+  }
 }
 
 const results = [];
@@ -191,7 +220,6 @@ try {
   await mkdir(OUT_DIR, { recursive: true });
 
   start(
-    'web',
     process.execPath,
     [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '-p', WEB_PORT],
     { NEXT_PUBLIC_DEV_HARNESS: '1' },
@@ -213,14 +241,20 @@ try {
     const page = await context.newPage();
 
     await page.goto(`${WEB}/dev/player-harness`);
-    await page.locator('[class*="overflow-clip"]').first().waitFor();
+    await page.getByTestId('player-content-area').waitFor();
     await shot(page, `${viewport.name}-00-scena-glowna`);
     await checkMainSceneFits(page, `${viewport.name} / scena główna`);
     step(`${viewport.name} / scena główna: (e) mieści się bez przewijania`, true);
+    if (viewport.name === '844x390') {
+      await checkPointerCoarse(page, `${viewport.name} / scena główna`);
+      step(`${viewport.name}: (pointer: coarse) faktycznie pasuje (hasTouch:true działa)`, true);
+    }
 
     for (const testCase of HOTSPOT_CASES) {
       const label = `${viewport.name} / ${testCase.name}`;
-      await page.goto(`${WEB}/dev/player-harness?hotspot=${encodeURIComponent(testCase.hotspotId)}`);
+      const query = new URLSearchParams({ hotspot: testCase.hotspotId });
+      if (testCase.extraQuery) new URLSearchParams(testCase.extraQuery).forEach((v, k) => query.set(k, v));
+      await page.goto(`${WEB}/dev/player-harness?${query.toString()}`);
       await page.locator('.hotspot-card').first().waitFor();
       if (testCase.postOpen) await testCase.postOpen(page);
       // Jedna klatka na ustabilizowanie layoutu (przejście paska poziomu/animacje nie dotyczą tej karty, ale kolejne
@@ -230,7 +264,8 @@ try {
       await shot(page, `${viewport.name}-${testCase.name}`);
       await checkNoPageScroll(page, label);
       await checkCardDoesNotScroll(page, label);
-      await checkMediaHeight(page, label);
+      // (c) nie dotyczy karty bez mediów (.hotspot-card--no-media) - nie ma obszaru mediów do zmierzenia z definicji.
+      if (!testCase.noMedia) await checkMediaHeight(page, label);
       await checkButtonsInsideCardAndFrame(page, label);
       step(`${label}: (a-d) OK`, true);
     }
@@ -249,5 +284,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  for (const child of children) child.kill();
+  for (const child of children) killTree(child);
 }

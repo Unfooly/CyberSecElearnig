@@ -284,6 +284,7 @@ function PlayerStageInner({
           <div
             ref={contentRef}
             onFocusCapture={keepFocusAboveBar}
+            data-testid="player-content-area"
             className={`relative min-h-0 flex-1 ${
               contentLayout === 'scene' ? 'overflow-clip' : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
             }`}

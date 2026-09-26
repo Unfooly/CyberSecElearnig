@@ -314,6 +314,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: oba skrypty w CI, czerwony blokuje merge tak samo jak `lint + testy`; CLAUDE.md reguła 12
   zaktualizowana (uruchomienie ręczne przestaje być jedyną linią obrony).
 
+### B-102 Dymek maskotki (MascotOverlay.tsx) za wąski na telefonie w pionie
+- Etykiety: `P3`, `bug`, `mod:web` · Źródło: `feat/player-portrait` - zauważone przy okazji (zrzuty
+  `scripts/layout-check.mjs` dla 390x844/360x800), PRE-EXISTING (niezależne od tego PR-a - nikt wcześniej nie
+  testował `MascotOverlay.tsx` na tak wąskim viewporcie, `max-w-[30%]` istniało już wcześniej).
+- Opis: wrapper avatara+dymka ma `max-w-[30%]` (`MascotOverlay.tsx`) - na telefonie w pionie (scena ~390px
+  szerokości) to ~117px na avatar (76px) + dymek razem, więc tekst dymka wychodzi skrajnie wąski i ucięty (jedno-
+  dwuznakowa kolumna). `min-w-0`/`max-w-[280px]` na samym dymku nie pomaga, bo rodzic i tak ogranicza dostępną
+  przestrzeń wcześniej.
+- Akceptacja: dymek czytelny (rozsądna szerokość, bez wielowierszowego przycinania pojedynczych słów) na telefonie
+  w pionie; test regresyjny albo dopisanie do `scripts/layout-check.mjs`.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

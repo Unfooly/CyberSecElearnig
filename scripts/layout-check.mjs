@@ -20,15 +20,18 @@
 //     (.player-frame) - nie wychodzą poza żadną z tych dwóch granic.
 //  e) (raz na viewport, przed otwarciem jakiejkolwiek karty) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
 //     paska przewijania w tym obszarze (hotfix fix/player-scene-fit/B-100, ta sama rodzina bugów).
-// Dla telefonu w pionie (390x844/360x800, feat/player-portrait, sekcja B) DODATKOWO (f-i), przez
+// Dla telefonu w pionie (390x844/360x800, feat/player-portrait, sekcja B) DODATKOWO (f-j), przez
 // PORTRAIT_VIEWPORT_NAMES:
 //  f) scena panuje WYŁĄCZNIE w poziomie (.scene-pan-container: scrollWidth>clientWidth, scrollHeight<=clientHeight) -
 //     panorama faktycznie się włączyła, nie cichy fallback do "contain" (checkScenePansHorizontallyOnly).
 //  g) startowa pozycja panoramy (scrollLeft) odpowiada data-initial-pan-x, które ScenePanContainer.tsx sam ustawił
 //     na sobie (checkInitialPanX - nie duplikuje formuły centroidu hotspotów w tym skrypcie).
 //  h) każdy hotspot (`[data-testid^="hotspot-overlay-"]`) ma cel dotyku >=44x44px (checkTouchTargetSize).
-//  i) po otwarciu karty: bottom sheet (.hotspot-card) ma wysokość <=85% wysokości viewportu, przyciski w całości
-//     wewnątrz karty I viewportu (checkBottomSheetFits) - te same HOTSPOT_CASES co dla innych viewportów.
+//  i) po otwarciu karty: bottom sheet (.hotspot-card) ma wysokość <=85% wysokości viewportu i NIE nachodzi na
+//     górny/dolny pasek odtwarzacza, przyciski w całości wewnątrz karty I viewportu (checkBottomSheetFits) - te
+//     same HOTSPOT_CASES co dla innych viewportów.
+//  j) cienie krawędzi panoramy/podpowiedź "przesuń" mieszczą się w viewporcie, nie przewijają się razem ze sceną
+//     (checkPanoramaChromeInViewport - regresja znaleziona w code review, patrz ScenePanContainer.tsx).
 // Zrzuty każdej sprawdzonej kombinacji trafiają do docs/brand/screens/layout-check/ (poza gitem, jak resztka
 // docs/brand/screens/) - do wizualnej weryfikacji, niezależnie od wyniku. Pierwsze niepowodzenie zatrzymuje skrypt
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
@@ -289,16 +292,45 @@ async function checkTouchTargetSize(page, label) {
   }
 }
 
+// (j) Cienie krawędzi panoramy i podpowiedź "przesuń" NIE przewijają się razem ze sceną (kod review - realny bug:
+// pierwsza wersja miała je jako dzieci PRZEWIJANEGO kontenera zamiast osobnej, nieprzewijanej ramki dookoła niego,
+// więc po starcie ze scrollLeft>0 wypadały w złym miejscu/poza ekranem) - ich bounding boxy muszą mieścić się w
+// całości wewnątrz viewportu, niezależnie od aktualnej pozycji panoramy.
+async function checkPanoramaChromeInViewport(page, label) {
+  const viewport = page.viewportSize();
+  const selectors = ['.scene-pan-edge--right', '.scene-pan-hint'];
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if ((await locator.count()) === 0) continue; // prawy cień/podpowiedź mogą nie istnieć (canPan=false) - pomijamy.
+    const box = await locator.boundingBox();
+    if (!box) continue; // element w DOM, ale niewidoczny (np. opacity:0 - cień jeszcze nieujawniony) - nic do sprawdzenia.
+    if (box.x < -0.5 || box.x + box.width > viewport.width + 0.5) {
+      fail(`${label}: (j) "${selector}" wychodzi poza szerokość viewportu (x=${box.x}, width=${box.width}, viewport=${viewport.width}) - podejrzenie, że przewija się razem ze sceną.`);
+    }
+  }
+}
+
 // (i) Bottom sheet (.hotspot-card, telefon w pionie) mieści się w 85% wysokości viewportu (globals.css:
-// position:fixed; max-height:85dvh) - inny punkt odniesienia niż checkButtonsInsideCardAndFrame (.player-frame,
-// który na tym breakpoincie i tak wypełnia cały viewport, więc "wewnątrz ramki" nic dodatkowego by nie sprawdziło
-// ponad "wewnątrz viewportu"), stąd osobne sprawdzenie wysokości względem viewportu.
+// position:fixed; height: min(85dvh, ...)) - inny punkt odniesienia niż checkButtonsInsideCardAndFrame
+// (.player-frame, który na tym breakpoincie i tak wypełnia cały viewport, więc "wewnątrz ramki" nic dodatkowego by
+// nie sprawdziło ponad "wewnątrz viewportu"), stąd osobne sprawdzenie wysokości względem viewportu. DODATKOWO (kod
+// review, regresja znaleziona i naprawiona w tej samej sesji): karta nie może nachodzić na .player-bottombar (dół)
+// ani wchodzić pod .player-topbar (góra) - .player-frame jako "ramka" tego by nie złapał, bo obie te belki są W
+// JEGO OBRĘBIE (position:fixed karty liczy się względem CAŁEGO viewportu, nie samej ramki).
 async function checkBottomSheetFits(page, label) {
   const viewport = page.viewportSize();
   const cardBox = await boxOf(page, '.hotspot-card');
+  const bottombarBox = await boxOf(page, '.player-bottombar');
+  const topbarBox = await boxOf(page, '.player-topbar');
   const maxHeight = viewport.height * 0.85 + 1;
   if (cardBox.height > maxHeight) {
     fail(`${label}: (i) bottom sheet (.hotspot-card) ma wysokość ${cardBox.height}px > 85% viewportu (${maxHeight.toFixed(1)}px, viewport=${viewport.height}px).`);
+  }
+  if (cardBox.y + cardBox.height > bottombarBox.y + 0.5) {
+    fail(`${label}: (i) bottom sheet nachodzi na dolny pasek odtwarzacza - dół karty=${cardBox.y + cardBox.height} góra paska=${bottombarBox.y}.`);
+  }
+  if (cardBox.y < topbarBox.y + topbarBox.height - 0.5) {
+    fail(`${label}: (i) bottom sheet wchodzi pod górny pasek - góra karty=${cardBox.y} dół paska=${topbarBox.y + topbarBox.height}.`);
   }
 }
 
@@ -375,7 +407,8 @@ try {
       await checkScenePansHorizontallyOnly(page, `${viewport.name} / scena główna`);
       await checkInitialPanX(page, `${viewport.name} / scena główna`);
       await checkTouchTargetSize(page, `${viewport.name} / scena główna`);
-      step(`${viewport.name} / scena główna: (f-h) panorama OK`, true);
+      await checkPanoramaChromeInViewport(page, `${viewport.name} / scena główna`);
+      step(`${viewport.name} / scena główna: (f-h, j) panorama OK`, true);
     }
 
     for (const testCase of HOTSPOT_CASES) {

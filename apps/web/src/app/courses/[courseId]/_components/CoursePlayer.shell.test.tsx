@@ -261,7 +261,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
   });
 
   describe('ukończenie kursu', () => {
-    it('ostatni blok: zapis OD RAZU pokazuje podsumowanie (fix/course-finish-flow - bez ekranu "Poprawna odpowiedź!"/przycisku "Zobacz podsumowanie"), bez odtwarzacza i przełącznika', async () => {
+    it('ostatni blok OCENIANY (QUIZ): zapis pokazuje normalny ekran feedbacku "Poprawna odpowiedź!" (D-076 - blok oceniany kończący kurs NIE pomija ekranu feedbacku), "Dalej" prowadzi do podsumowania bez odtwarzacza i przełącznika (blok SUMMARY, którego tu nie ma, bez narracji)', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(
@@ -272,13 +272,22 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
 
       answerFirstOption();
 
-      expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+      // Blok OCENIANY kończący kurs: ekran feedbacku zostaje (z narracją tego bloku - miał audio) - jeszcze NIE podsumowanie.
+      expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
+
+      const summaryHeading = await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
+      // Fokus ląduje na WIDOCZNYM nagłówku SummaryScreen (nie na sr-only nagłówku PlayerStage.tsx - D-076).
+      expect(document.activeElement).toBe(summaryHeading);
       expect(screen.queryByText('Poprawna odpowiedź!')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
+      // Kurs bez bloku SUMMARY - SummaryScreen nie ma własnej narracji do odtworzenia.
       expect(container.querySelector('audio')).toBeNull();
       expect(screen.queryByRole('switch')).toBeNull();
       // Pasek postępu ZOSTAJE na 100% (feat/player-stage: "górny pasek jak w kursie" - X, tytuł, postęp - także na
-      // ekranie podsumowania), tylko odtwarzacz narracji i przełącznik Lektor znikają (blok SUMMARY bez narracji).
+      // ekranie podsumowania).
       expect(screen.getByRole('progressbar', { name: 'Postęp szkolenia' })).toHaveAttribute('aria-valuenow', '100');
     });
   });

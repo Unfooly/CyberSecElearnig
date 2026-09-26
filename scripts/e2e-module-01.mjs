@@ -302,7 +302,7 @@ try {
 
   // --- fix/course-finish-flow: zapis kończący kurs OD RAZU przełącza na SummaryScreen, bez ekranu pośredniego
   // "Blok ukończony."/przycisku "Zobacz podsumowanie" (usunięty) --------------------------------------------------
-  await page.getByRole('heading', { level: 1, name: 'Sprawa zamknięta' }).waitFor();
+  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
   step('SummaryScreen: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
   step('SummaryScreen: wynik 100% widoczny od razu', (await page.getByText('100%').count()) >= 1);
   // Karta nagrody INLINE (RewardCard.tsx, zastępuje dawny modal): pierwsze ukończenie tego przypisania w tej

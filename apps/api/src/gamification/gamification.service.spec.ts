@@ -192,6 +192,22 @@ describe('GamificationService', () => {
       expect(result.levelProgressBeforePercent).toBe(20);
       expect(result.levelProgressAfterPercent).toBe(40);
     });
+
+    it('przeskakuje WIĘCEJ niż jeden poziom w jednym ukończeniu (previousLevel != newLevel-1), gdy suma XP+bonusy+odznaki przebija próg kolejnego poziomu', async () => {
+      // 99 XP (szczyt poziomu 1) + 100 (bazowe) + 50 (perfect score) + 100 (KNOWLEDGE_HUNTER, completedCount=5) +
+      // 50 (odznaka PERFECT_SCORE) + 75 (PHISHING_SPOTTER) = 474 XP -> poziom 3 (próg 400), NIE poziom 2 (próg 100).
+      const tx = buildTx({ completedCount: 5, phishingTotal: 2, phishingCompleted: 2, userXpBefore: 99, userLevelBefore: 1 });
+
+      const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', { score: 100 });
+
+      expect(result.previousLevel).toBe(1);
+      expect(result.newLevel).toBe(3);
+      expect(result.leveledUp).toBe(true);
+      // Skok: newLevel (3) - previousLevel (1) > 1 - front (RewardCard.tsx) nie może zakładać newLevel===previousLevel+1.
+      expect(result.newLevel - result.previousLevel).toBeGreaterThan(1);
+      expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { level: 3 } });
+      expect(result.levelProgressAfterPercent).toBe(100);
+    });
   });
 
   describe('getMyGamificationSummary', () => {

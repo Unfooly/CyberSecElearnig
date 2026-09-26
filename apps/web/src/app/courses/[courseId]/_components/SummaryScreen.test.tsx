@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
+import type { RefObject } from 'react';
 import SummaryScreen from './SummaryScreen';
 import { EvidenceProvider } from './player/evidence';
 import { NotesProvider } from './player/notes';
@@ -7,9 +8,11 @@ import type { ContentReaction, CourseCompletionReward } from '@/lib/courses-type
 
 // fix/course-finish-flow: SummaryScreen pokazuje się od razu po zapisie bloku, który kończy kurs (bez pośredniego
 // ekranu "Blok ukończony."/"Zobacz podsumowanie" - CoursePlayer.test.tsx sprawdza TĘ część, przez PRAWDZIWY zapis).
-// Ten plik sprawdza wyłącznie TREŚĆ ekranu: nagłówek, wynik, kartę nagrody INLINE (zastępuje dawny modal
-// CourseRewardModal.tsx - usunięty, testy jego zachowań są tu, przeniesione na RewardCard renderowany w tym
-// komponencie), reakcję Fooli i listę dowodów.
+// Ten plik sprawdza wyłącznie TREŚĆ ekranu: nagłówek (h2 - jedyny h1 strony to tytuł kursu w PlayerStage.tsx), wynik,
+// kartę nagrody INLINE (zastępuje dawny modal CourseRewardModal.tsx - usunięty, testy jego zachowań są tu,
+// przeniesione na RewardCard renderowany w tym komponencie), reakcję Fooli i listę dowodów. Ogłoszenie aria-live
+// zdobytego XP żyje w PlayerStage.tsx (propem z CoursePlayer.tsx) - CoursePlayer.test.tsx/shell.test.tsx sprawdzają
+// TĘ część.
 
 function mockReducedMotion(matches: boolean) {
   return vi.spyOn(window, 'matchMedia').mockReturnValue({
@@ -42,11 +45,18 @@ describe('SummaryScreen', () => {
     vi.useRealTimers();
   });
 
-  it('nagłówek "Sprawa zamknięta" i tytuł kursu', () => {
+  it('nagłówek "Sprawa zamknięta" (h2) i tytuł kursu', () => {
     render(<SummaryScreen title="Rozpoznawanie phishingu" score={75} />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).toBeInTheDocument();
     expect(screen.getByText('Rozpoznawanie phishingu')).toBeInTheDocument();
+  });
+
+  it('headingRef trafia na WIDOCZNY nagłówek "Sprawa zamknięta" (fokus po przejściu na ten ekran - CoursePlayer.tsx)', () => {
+    const headingRef = { current: null } as RefObject<HTMLHeadingElement>;
+    render(<SummaryScreen title="Kurs" score={100} headingRef={headingRef} />);
+
+    expect(headingRef.current).toBe(screen.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }));
   });
 
   it('pokazuje wynik procentowy, gdy score nie jest null', () => {
@@ -122,6 +132,63 @@ describe('SummaryScreen', () => {
 
       expect(screen.getByText('+0 XP')).toBeInTheDocument();
     });
+
+    it('bez reduced motion: licznik XP DOCHODZI do wartości końcowej po zakończeniu animacji (nie tylko startuje od 0 i tam zostaje)', () => {
+      mockReducedMotion(false);
+      // requestAnimationFrame/performance.now kontrolowane wprost (nie vi.useFakeTimers()+advanceTimersToNextFrame:
+      // niedeterministyczne przy pętli wielu klatek liczącej upływ czasu z performance.now) - każde wywołanie RAF
+      // woła callback SYNCHRONICZNIE z czasem o 100ms większym niż poprzednie, więc cała pętla tick() (RewardCard.tsx,
+      // 900ms trwania) domyka się w jednym, deterministycznym przebiegu.
+      let now = 0;
+      vi.spyOn(performance, 'now').mockImplementation(() => now);
+      vi.stubGlobal(
+        'requestAnimationFrame',
+        vi.fn((callback: (time: number) => void) => {
+          now += 100;
+          callback(now);
+          return 0;
+        }),
+      );
+      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+      render(<SummaryScreen title="Kurs" score={100} reward={sampleReward} />);
+
+      expect(screen.getByText('+150 XP')).toBeInTheDocument();
+    });
+
+    it('pasek poziomu: renderuje się na levelProgressBeforePercent, po klatce animacji przechodzi na levelProgressAfterPercent (przejście CSS szerokości, nie skok)', () => {
+      mockReducedMotion(true); // licznik XP nieistotny dla tego testu - bez animacji, żeby nie zależał od RAF licznika
+      // requestAnimationFrame kontrolowane wprost (nie automatyczne/fake timery - w tym środowisku jsdom rAF
+      // rozstrzyga się zanim zdąży zadziałać asercja "przed", więc test niczego by nie sprawdzał): przechwytujemy
+      // callback i wołamy go RĘCZNIE, żeby zobaczyć stan "przed" osobno od stanu "po".
+      let pendingFrame: ((time: number) => void) | null = null;
+      vi.stubGlobal(
+        'requestAnimationFrame',
+        vi.fn((callback: (time: number) => void) => {
+          pendingFrame = callback;
+          return 0;
+        }),
+      );
+      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+      render(
+        <SummaryScreen
+          title="Kurs"
+          score={100}
+          reward={{ ...sampleReward, leveledUp: false, levelProgressBeforePercent: 20, levelProgressAfterPercent: 40 }}
+        />,
+      );
+
+      const bar = screen.getByRole('progressbar', { name: 'Postęp do następnego poziomu' });
+      const fill = bar.firstElementChild as HTMLElement;
+      expect(fill.style.width).toBe('20%');
+
+      act(() => {
+        pendingFrame?.(0);
+      });
+
+      expect(fill.style.width).toBe('40%');
+    });
   });
 
   describe('reakcja Fooli na wynik ostatniego bloku (MascotSays - zwykła treść, nie floating overlay)', () => {
@@ -168,31 +235,5 @@ describe('SummaryScreen', () => {
     render(<SummaryScreen title="Kurs" score={100} />);
 
     expect(screen.queryByText(/nie udało się rozpocząć kursu od nowa/i)).not.toBeInTheDocument();
-  });
-
-  it('aria-live ogłasza zdobyte XP jednym zdaniem - region istnieje PUSTY od montażu, wypełnia się WKRÓTCE PO (nie w tym samym renderze - ten sam wniosek co przy MascotOverlay.tsx: region wypełniony już przy wstawieniu do DOM często nie jest ogłaszany)', async () => {
-    vi.useFakeTimers();
-    mockReducedMotion(true);
-    render(<SummaryScreen title="Kurs" score={100} reward={sampleReward} />);
-
-    const region = screen.getByTestId('xp-announcement');
-    expect(region).toHaveTextContent('');
-
-    await act(async () => {
-      vi.advanceTimersByTime(0);
-    });
-
-    expect(region).toHaveTextContent('Zdobyłeś 150 punktów doświadczenia.');
-  });
-
-  it('bez reward (albo xpGained<=0): region aria-live zostaje pusty, nic nie ogłasza', async () => {
-    vi.useFakeTimers();
-    render(<SummaryScreen title="Kurs" score={100} />);
-
-    await act(async () => {
-      vi.advanceTimersByTime(0);
-    });
-
-    expect(screen.getByTestId('xp-announcement')).toHaveTextContent('');
   });
 });

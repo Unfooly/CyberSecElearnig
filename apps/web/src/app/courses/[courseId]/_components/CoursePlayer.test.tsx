@@ -34,7 +34,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     refreshMock.mockClear();
   });
 
-  it('start -> odpowiedź -> OD RAZU podsumowanie z wynikiem z API (fix/course-finish-flow: bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie" - grep na te dwa napisy w tym pliku i CAŁYM apps/web powinien nic nie zwracać)', async () => {
+  it('start -> odpowiedź -> blok OCENIANY (QUIZ) kończący kurs: normalny ekran feedbacku z wyjaśnieniem, "Dalej" prowadzi do podsumowania z wynikiem z API (D-076: skipsFeedbackScreen omija ekran feedbacku WYŁĄCZNIE przy zakończeniu na SUMMARY/bloku eksploracyjnym - QUIZ na końcu kursu, jak tu, zostaje przy normalnym ekranie; grep "Blok ukończony."/"Zobacz podsumowanie" - dawnym, usuniętym ekranie pośrednim - w CAŁYM apps/web nie powinien znaleźć nic POZA tym tytułem testu i legalnym, osobnym użyciem "Zobacz podsumowanie" jako etykiety linku na liście kursów/CourseCard.tsx/LearningPath.tsx)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -70,19 +70,31 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
       ),
     );
 
-    // OD RAZU podsumowanie - żaden pośredni ekran feedbacku, żaden przycisk "Zobacz podsumowanie" do kliknięcia.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    // Blok OCENIANY kończący kurs: zostaje normalny ekran feedbacku (D-076) - jeszcze NIE podsumowanie.
+    expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).not.toBeInTheDocument();
+
+    // Dwa przyciski "Dalej" na ekranie feedbacku: aktywny pod wynikiem (pierwszy w DOM) i nieaktywny w powłoce -
+    // ten sam wzorzec co continueFromFeedback w CoursePlayer.shell.test.tsx.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
+
+    // "Dalej" samo przechodzi na podsumowanie (state.status już 'COMPLETED' z tego zapisu) - bez dodatkowego zapytania.
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Poprawna odpowiedź!')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
     // Tytuł kursu widać DOKŁADNIE dwa razy: w pasku górnym PlayerStage (zawsze) i w treści SummaryScreen (kod
     // review PR #44: asercja >=1 przechodziłaby nawet, gdyby jedno z tych dwóch miejsc zniknęło).
     expect(screen.getAllByText('Rozpoznawanie phishingu')).toHaveLength(2);
     // gamification: null w odpowiedzi (badge się nie odblokował w tym scenariuszu testowym) -> brak karty nagrody.
     expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
+    // Reakcja Fooli na wynik TEGO bloku była już pokazana w ekranie feedbacku wyżej (przez FeedbackPanel/
+    // useMascotReaction) - SummaryScreen jej NIE powtarza (finalReaction zostaje null, gdy ekran feedbacku nie był
+    // pominięty - CoursePlayer.tsx, D-076).
+    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
   });
 
-  it('pokazuje kartę nagrody (RewardCard, inline na SummaryScreen) z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification', async () => {
+  it('pokazuje kartę nagrody (RewardCard, inline na SummaryScreen) z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification (po ekranie feedbacku bloku ocenianego - D-076)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -111,8 +123,10 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     fireEvent.click(screen.getByText('wsparcie@bank-0ficjalny.pl'));
     fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
+    await screen.findByText('Poprawna odpowiedź!');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
 
-    await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' });
+    await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
     expect(screen.getByText('+150 XP')).toBeInTheDocument();
     expect(screen.getByText('Awans na poziom 2!')).toBeInTheDocument();
     expect(screen.getByText(/Pierwszy Krok/)).toBeInTheDocument();
@@ -128,7 +142,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
 
     render(<CoursePlayer courseId="course-1" initial={completedCourse} />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.queryByText('Który e-mail jest podejrzany?')).not.toBeInTheDocument();
   });
@@ -147,7 +161,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     expect(screen.queryByText('Ten kurs nie zawierał ocenianych pytań.')).not.toBeInTheDocument();
   });
 
-  it('błędna odpowiedź MID-KURSU (nie kończy go - fix/course-finish-flow skipsFeedbackScreen zależy od status==="COMPLETED", nie tylko typu bloku) pokazuje ekran feedbacku "Niepoprawna odpowiedź."', async () => {
+  it('błędna odpowiedź na blok QUIZ (blok oceniany - nie jest w skipsFeedbackScreen niezależnie od tego, czy kończy kurs) pokazuje ekran feedbacku "Niepoprawna odpowiedź."', async () => {
     const twoQuizBlockCourse: CoursePlayerInitialState = {
       ...singleQuizBlockCourse,
       contentBlocks: [...singleQuizBlockCourse.contentBlocks, { ...singleQuizBlockCourse.contentBlocks[0] }],

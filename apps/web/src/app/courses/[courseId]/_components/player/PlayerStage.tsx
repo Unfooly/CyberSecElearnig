@@ -60,9 +60,14 @@ export interface PlayerStageProps {
   hideForward?: boolean;
   forwardHint?: string;
   headingRef: RefObject<HTMLHeadingElement>;
-  /** Nadpisuje treść sr-only nagłówka "Blok X z Y" pod `headingRef` (fix/course-finish-flow: SummaryScreen -
-      "Sprawa zamknięta." - ten sam, jedyny fokus po zmianie bloku/trybu, tylko z inną treścią ogłoszenia). */
-  headingOverride?: string;
+  /** Ogłoszenie aria-live wyniku ukończenia kursu (XP), jedno zdanie (fix/course-finish-flow, D-076 poprawka po code
+      review) - region PUSTY od zamontowania ramki (przez CAŁY kurs, nie tylko ekran podsumowania) i wypełniany
+      dopiero przy ukończeniu, bez setTimeout: skoro sam region istnieje w DOM od dawna, wypełnienie go treścią przy
+      zmianie propa to zwykła aktualizacja aria-live, nie "wstawienie już wypełnionego" - ten problem (czytnik często
+      nie ogłasza regionu wstawionego do DOM już z treścią) dotyczyłby regionu montowanego od zera RAZ, w chwili
+      ukończenia (pierwsza wersja tej poprawki, w samym SummaryScreen.tsx, właśnie to robiła i wymagała hacka z
+      setTimeout). Puste (undefined/'') poza tym momentem. */
+  resultAnnouncement?: string;
   /** Etykiety Wstecz/Dalej - domyślne "Wstecz"/"Dalej", na SUMMARY podmienione na "Rozpocznij od nowa"/"Wróć do biblioteki". */
   backLabel?: string;
   forwardLabel?: string;
@@ -94,7 +99,7 @@ function PlayerStageInner({
   hideForward = false,
   forwardHint,
   headingRef,
-  headingOverride,
+  resultAnnouncement,
   backLabel = 'Wstecz',
   forwardLabel = 'Dalej',
   forwardHref,
@@ -254,6 +259,9 @@ function PlayerStageInner({
           <p className="sr-only" aria-live="polite">
             Blok {blockNumber} z {totalBlocks}
           </p>
+          <p className="sr-only" aria-live="polite">
+            {resultAnnouncement}
+          </p>
 
           {/* Obszar bloku (wiersz 1fr). Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej
               w scenie. Dwa układy:
@@ -281,7 +289,7 @@ function PlayerStageInner({
             }`}
           >
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">
-              {headingOverride ?? `Blok ${blockNumber} z ${totalBlocks}`}
+              Blok {blockNumber} z {totalBlocks}
             </h2>
             {contentLayout === 'scene' ? (
               <div className="flex h-full min-h-full flex-col items-center justify-center p-3">{stage}</div>

@@ -7,7 +7,7 @@ import type { CourseCompletionReward } from '@/lib/courses-types';
 // Licznik XP animowany od 0 (JS, nie CSS - w przeciwieństwie do reszty tego pliku, tekstu liczby nie da się
 // animować samym CSS): prefers-reduced-motion sprawdzone WPROST przez matchMedia (nie motion-safe:/motion-reduce:
 // - te klasy WYŁĄCZAJĄ WYGLĄD animacji, ale same w sobie nie zatrzymują pętli requestAnimationFrame). Bez
-// window (SSR) albo target<=0 (revanche: xpGained zawsze >0 dla prawdziwego ukończenia, ale broni się defensywnie)
+// window (SSR) albo target<=0 (xpGained zawsze >0 dla prawdziwego ukończenia, ale broni się defensywnie)
 // - od razu wynik końcowy, bez pętli.
 function useCountUp(target: number, durationMs = 900): number {
   const [value, setValue] = useState(0);
@@ -39,8 +39,18 @@ function useCountUp(target: number, durationMs = 900): number {
 // wyłączone pod prefers-reduced-motion przez motion-reduce:transition-none (ten sam, ustalony w tym repo wzorzec co
 // NotesDrawer.tsx/TranscriptPanel.tsx - w przeciwieństwie do licznika XP wyżej, SZEROKOŚĆ da się zatrzymać samym CSS,
 // nie trzeba JS-owego sprawdzenia matchMedia). aria-valuenow to zawsze KOŃCOWA wartość (afterPercent), nie
-// pośrednia - czytnik ekranu nie ma ogłaszać wartości przejściowych animacji.
-function LevelProgressBar({ beforePercent, afterPercent }: { beforePercent: number; afterPercent: number }) {
+// pośrednia - czytnik ekranu nie ma ogłaszać wartości przejściowych animacji. `valueText` (tylko przy awansie,
+// RewardCard niżej) nadpisuje odczyt "100%" na coś zrozumiałego - bez tego czytnik ogłosiłby "100% do następnego
+// poziomu", choć user właśnie WESZŁ na nowy poziom, nie zbliża się do niego.
+function LevelProgressBar({
+  beforePercent,
+  afterPercent,
+  valueText,
+}: {
+  beforePercent: number;
+  afterPercent: number;
+  valueText?: string;
+}) {
   const [width, setWidth] = useState(beforePercent);
   useEffect(() => {
     const frameId = requestAnimationFrame(() => setWidth(afterPercent));
@@ -52,6 +62,7 @@ function LevelProgressBar({ beforePercent, afterPercent }: { beforePercent: numb
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={afterPercent}
+      aria-valuetext={valueText}
       aria-label="Postęp do następnego poziomu"
       className="h-1.5 w-full overflow-hidden rounded-full border border-slate-200 bg-white"
     >
@@ -76,8 +87,11 @@ export default function RewardCard({ reward }: { reward: CourseCompletionReward 
   // udokumentowany wybór, nie coś do naprawienia tutaj). xpGained===0 nigdy dziś nie wychodzi z API - ten branch
   // istnieje dla kontraktu typu (xpGained: number, teoretycznie mogłoby być 0) i na wypadek przyszłej zmiany API.
   if (reward.xpGained === 0) {
+    // Bez aria-live/role="status" (kod review D-076): ten branch jest nieosiągalny dziś, ale gdyby kiedyś
+    // przestał być, ogłoszenie i tak idzie przez resultAnnouncement w PlayerStage.tsx (CoursePlayer.tsx) - własny
+    // aria-live tutaj wstawiałby się do DOM od razu wypełniony, ten sam antywzorzec, który PlayerStage.tsx omija.
     return (
-      <div role="status" aria-live="polite" className="mb-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 ring-1 ring-slate-200">
+      <div className="mb-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 ring-1 ring-slate-200">
         Kurs ukończony ponownie. XP naliczone przy pierwszym ukończeniu.
       </div>
     );
@@ -93,7 +107,11 @@ export default function RewardCard({ reward }: { reward: CourseCompletionReward 
         <span>Poziom {reward.previousLevel}</span>
         {reward.leveledUp && <span>Poziom {reward.newLevel}</span>}
       </div>
-      <LevelProgressBar beforePercent={reward.levelProgressBeforePercent} afterPercent={reward.levelProgressAfterPercent} />
+      <LevelProgressBar
+        beforePercent={reward.levelProgressBeforePercent}
+        afterPercent={reward.levelProgressAfterPercent}
+        valueText={reward.leveledUp ? `Poziom ${reward.previousLevel} ukończony, awans na poziom ${reward.newLevel}` : undefined}
+      />
 
       {reward.leveledUp && (
         <p className="mt-3 rounded bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700">Awans na poziom {reward.newLevel}!</p>

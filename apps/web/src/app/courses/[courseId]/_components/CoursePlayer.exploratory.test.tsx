@@ -315,7 +315,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     );
   });
 
-  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na SummaryScreen (jak przy QUIZ na końcu kursu) - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie", które SUMMARY wcześniej celowo dostawało (usunięty wyjątek)', async () => {
+  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na SummaryScreen (jak przy QUIZ na końcu kursu) - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie", które SUMMARY wcześniej celowo dostawało (usunięty wyjątek); reakcja Fooli z reactions.result trafia na ekran jako finalReaction (MascotSays, treść, NIE floating overlay)', async () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -326,7 +326,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
         currentBlockIndex: 2,
         score: 100,
         completedAt: '2026-01-01T00:00:00.000Z',
-        lastResult: { blockIndex: 1, blockId: 'wnioski', type: 'SUMMARY' },
+        lastResult: { blockIndex: 1, blockId: 'wnioski', type: 'SUMMARY', reaction: { pose: 'cheer', text: 'Sprawa zamknięta na 100%!' } },
         gamification: null,
       }),
     });
@@ -345,9 +345,14 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Sprawa zamknięta' })).toBeInTheDocument();
+    const summaryHeading = await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
     expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
+    // Ekran feedbacku dla SUMMARY jest pominięty (skipsFeedbackScreen) - fokus ląduje WPROST na widocznym nagłówku
+    // SummaryScreen (headingOverride/pośredni ekran usunięte - D-076), a reakcja z reactions.result idzie na
+    // SummaryScreen samą (finalReaction, CoursePlayer.tsx), nie ginie.
+    expect(document.activeElement).toBe(summaryHeading);
+    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Sprawa zamknięta na 100%!');
   });
 
   it('dolny pasek: scroll-padding-bottom obszaru treści (nie całego dokumentu - ramka jest jedynym przewijanym obszarem) z pomiaru paska, sprzątany przy odmontowaniu', () => {

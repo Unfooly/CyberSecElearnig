@@ -1074,14 +1074,31 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
   });
 
-  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus wraca na wątek rozmowy, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu chipa', async () => {
-    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu
+  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus przechodzi na PIERWSZY pozostały chip, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu klikniętego (fix/dialogue-sticky-questions: NIE na wątek - stopka z chipami zostaje poza obszarem przewijania, fokus tam, gdzie jest "co dalej")', async () => {
+    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu; q1 zostaje na liście
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
     expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(screen.getByRole('list', { name: 'Rozmowa' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Skąd ten mail?' })).toHaveFocus();
+  });
+
+  it('pytanie JEDNOKWESTYJNE OSTATNIE (bez pozostałych chipów): fokus na kontenerze stopki (bez nowego przycisku "Zakończ rozmowę" - ustalone z właścicielem produktu)', async () => {
+    const block: ContentBlock = {
+      ...dialogue,
+      questions: [{ id: 'q2', text: 'Kto go wysłał?', answer: 'Nie znam nadawcy.', required: false, note: { text: 'Nieznany nadawca.', kind: 'person' } }],
+    };
+    setup(block);
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Pytania do zadania' })).not.toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // ExploreFooter (jedyna widoczna treść stopki po zniknięciu ostatniego chipa) jest wewnątrz kontenera stopki -
+    // q2 required:false explicite -> required=[] -> done=0>=total=0 -> ExploreFooter pokazuje readyText.
+    expect(screen.getByText('Wszystkie wymagane pytania zadane.').closest('[tabindex="-1"]')).toHaveFocus();
   });
 
   it('avatar tylko przez <img> z bazy zasobów; niepoprawna ścieżka = brak obrazu', () => {
@@ -1115,6 +1132,99 @@ describe('DIALOGUE: kwestie po jednej', () => {
       </NotesProvider>,
     );
     expect(document.querySelector('img')).toBeNull();
+  });
+});
+
+describe('DIALOGUE: sticky pytania i autoprzewijanie wątku (fix/dialogue-sticky-questions)', () => {
+  // jsdom nie liczy layoutu (scrollHeight/clientHeight/scrollTop zawsze 0) - ustawiamy ręcznie przez
+  // Object.defineProperty (ten sam wzorzec co ScenePanContainer.test.tsx), Element.prototype.scrollTo jest no-opem
+  // z vitest.setup.ts - tu podmieniamy go na vi.fn(), żeby sprawdzić WOŁANIE, nie efekt.
+  function stubLogDimensions(log: HTMLElement, { scrollHeight, clientHeight, scrollTop = 0 }: { scrollHeight: number; clientHeight: number; scrollTop?: number }) {
+    Object.defineProperty(log, 'scrollHeight', { value: scrollHeight, configurable: true });
+    Object.defineProperty(log, 'clientHeight', { value: clientHeight, configurable: true });
+    Object.defineProperty(log, 'scrollTop', { value: scrollTop, configurable: true, writable: true });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('nowa wiadomość (klik chipa) przewija wątek do najnowszej (scrollTo z top=scrollHeight)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+  });
+
+  it('user przewinął w górę (>80px od dołu): kolejna wiadomość NIE przewija wątku, pokazuje się "Nowe wiadomości"; klik w przycisk przewija i go chowa', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    // User przewija do scrollTop=200: odległość od dołu = 1000-200-300=500 > 80px.
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 200 });
+    fireEvent.scroll(log);
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '↓ Nowe wiadomości' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '↓ Nowe wiadomości' }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+  });
+
+  it('user samodzielnie doscrollował do dołu (fireEvent.scroll z odległością <=80px): "Nowe wiadomości" nie pojawia się przy kolejnej wiadomości', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    // Odjechał, potem sam wrócił blisko dołu (odległość 50px <= 80px).
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 300 });
+    fireEvent.scroll(log);
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 650 });
+    fireEvent.scroll(log);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+  });
+
+  it('prefers-reduced-motion: scrollTo z behavior "auto" zamiast "smooth"', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false, onchange: null }) as unknown as MediaQueryList;
+    try {
+      setup(dialogue);
+      const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+      stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+      const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+      fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+      expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'auto' });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it('lista pytań (chipy) NIE jest potomkiem wątku (role="log") - poza obszarem przewijania, zawsze widoczna', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    expect(within(log).queryByRole('list', { name: 'Pytania do zadania' })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Pytania do zadania' })).toBeInTheDocument();
+  });
+
+  it('wątek: role="log", aria-live="polite", tabIndex=0 (przewijalny klawiaturą/Tab, nie tylko programowo)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    expect(log).toHaveAttribute('aria-live', 'polite');
+    expect(log.tabIndex).toBe(0);
   });
 });
 

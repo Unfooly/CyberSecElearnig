@@ -30,3 +30,10 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
+
+// jsdom nie implementuje Element.prototype.scrollTo (fix/dialogue-sticky-questions, DialogueBlock.tsx - autoprzewijanie
+// wątku rozmowy) - no-op wystarcza, bo jsdom nie liczy layoutu (scrollHeight/scrollTop testy ustawiają ręcznie przez
+// Object.defineProperty i sprawdzają WOŁANIE tej funkcji, vi.spyOn, nie jej efekt na prawdziwym scrollu).
+if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = function scrollTo() {};
+}

@@ -18,16 +18,18 @@ export default function ReviewBlock({
   courseId: string;
 }) {
   if (isExploratory(block.type)) {
-    // Łańcuch wysokości dla SCENE_HOTSPOTS (hotfix fix/player-scene-fit/B-100, druga runda code review): ten div
-    // jest bezpośrednim dzieckiem flex-col wrappera PlayerStage.tsx (contentLayout='scene') w trybie "Wstecz" - bez
-    // własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem, przerywającym łańcuch do SceneHotspotsBlock.tsx
-    // (który ma flex-1 min-h-0 na WŁASNYM korzeniu). Pozostałe typy eksploracyjne (DIALOGUE, NOTEPAD, ...) mają
-    // contentLayout='slide' - klasy tu nic im nie zmieniają (rodzic nie jest flex-col), ale i tak ograniczamy je do
-    // SCENE_HOTSPOTS, żeby diff dokładnie odzwierciedlał, co faktycznie tego wymaga.
-    const isScene = block.type === 'SCENE_HOTSPOTS';
+    // Łańcuch wysokości dla SCENE_HOTSPOTS/DIALOGUE (hotfix fix/player-scene-fit/B-100, druga runda code review;
+    // DIALOGUE dołączony w fix/dialogue-sticky-questions - ten sam contentLayout='fill' co 'scene', ten sam powód):
+    // ten div jest bezpośrednim dzieckiem flex-col wrappera PlayerStage.tsx w trybie "Wstecz" - bez własnych
+    // flex-1/min-h-0/w-full byłby zwykłym blokowym divem, przerywającym łańcuch do SceneHotspotsBlock.tsx/
+    // DialogueBlock.tsx (które mają flex-1 min-h-0/h-full na WŁASNYM korzeniu). Pozostałe typy eksploracyjne
+    // (NOTEPAD, TABS, NARRATIVE) mają contentLayout='slide' - klasy tu nic im nie zmieniają (rodzic nie jest
+    // flex-col), ale i tak ograniczamy je do SCENE_HOTSPOTS/DIALOGUE, żeby diff dokładnie odzwierciedlał, co
+    // faktycznie tego wymaga.
+    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE';
     return (
-      <div data-testid="review-block" className={isScene ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
-        <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isScene ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
+      <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
+        <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
         <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} onReady={() => {}} disabled review />
       </div>
     );

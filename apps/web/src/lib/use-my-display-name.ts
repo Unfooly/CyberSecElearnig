@@ -30,12 +30,15 @@ export function displayNameFromEmail(email: string): DisplayName {
   };
 }
 
+/** Legitymacja bez żadnych danych gracza (brak sesji, np. podgląd dev). */
+export const ANONYMOUS_IDENTITY: PlayerIdentity = { label: 'Detektyw', initials: 'D' };
+
 /** Tożsamość na legitymacji: profil, a gdy w nim pusto - e-mail; bez żadnego z nich neutralne "Detektyw". */
 export function playerIdentity(fromProfile: DisplayName | null, email: string | null): PlayerIdentity {
   const fallback = email ? displayNameFromEmail(email) : { firstName: null, lastInitial: null };
   const firstName = fromProfile?.firstName ?? fallback.firstName;
   const lastInitial = fromProfile?.firstName ? fromProfile.lastInitial : fallback.lastInitial;
-  if (!firstName) return { label: 'Detektyw', initials: 'D' };
+  if (!firstName) return ANONYMOUS_IDENTITY;
   return {
     label: lastInitial ? `${firstName} ${lastInitial}.` : firstName,
     initials: `${firstName.charAt(0).toLocaleUpperCase('pl-PL')}${lastInitial ?? ''}`,

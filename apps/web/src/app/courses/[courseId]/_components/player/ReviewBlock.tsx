@@ -1,5 +1,6 @@
-import type { ClientProgressBlock, ContentBlock, CourseObjective } from '@/lib/courses-types';
+import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
 import type { PlayerIdentity } from '@/lib/use-my-display-name';
+import type { NotebookTask } from './notes';
 import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 import ScoredBlock, { hasInlineResult, isScored } from '../blocks/ScoredBlock';
 
@@ -14,7 +15,7 @@ export default function ReviewBlock({
   courseId,
   myAvatarUrl = null,
   myInitials,
-  objectives,
+  tasks,
   identity,
   onBriefingStep,
 }: {
@@ -24,7 +25,7 @@ export default function ReviewBlock({
   courseId: string;
   myAvatarUrl?: string | null;
   myInitials?: string;
-  objectives?: CourseObjective[];
+  tasks?: NotebookTask[];
   identity?: PlayerIdentity;
   onBriefingStep?: (index: number, byGesture: boolean) => void;
 }) {
@@ -51,7 +52,7 @@ export default function ReviewBlock({
           review
           myAvatarUrl={myAvatarUrl}
           myInitials={myInitials}
-          objectives={objectives}
+          tasks={tasks}
           identity={identity}
           onBriefingStep={onBriefingStep}
         />

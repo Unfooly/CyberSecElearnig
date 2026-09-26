@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Phone, Square } from 'lucide-react';
-import type { BriefingStep, ContentBlock, CourseObjective } from '@/lib/courses-types';
+import { CheckSquare, Phone, Square } from 'lucide-react';
+import type { BriefingStep, ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import Mascot from '@/components/Mascot';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useCompleteReaction } from '../player/mascot-reaction';
+import type { NotebookTask } from '../player/notes';
 
 // Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków na jasnym tle (paper) - maszyna do pisania z dzwoniącym
 // telefonem, rozmowa (Fooli jako Komisarz albo postać), karta sprawy z listą zadań, legitymacja gracza. Blok nieoceniany,
@@ -40,24 +41,18 @@ function usePrefersReducedMotion(): boolean {
 
 /** Tekst "wystukiwany" znak po znaku; z reduced-motion od razu w całości. Zwraca widoczną część i czy już skończył. */
 function useTypewriter(text: string, reducedMotion: boolean): { shown: string; done: boolean; finish: () => void } {
+  // Krok (a z nim `text`) montuje się od nowa przy każdej zmianie (key w BriefingBlock), więc start od 0 wystarcza.
   const [count, setCount] = useState(0);
+  // Jeden znak na timeout; po końcu tekstu efekt nie planuje już nic (bez interwału do zatrzymywania w updaterze stanu).
   useEffect(() => {
     if (reducedMotion) {
       setCount(text.length);
       return undefined;
     }
-    setCount(0);
-    const timer = window.setInterval(() => {
-      setCount((current) => {
-        if (current >= text.length) {
-          window.clearInterval(timer);
-          return current;
-        }
-        return current + 1;
-      });
-    }, TYPE_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [text, reducedMotion]);
+    if (count >= text.length) return undefined;
+    const timer = window.setTimeout(() => setCount((current) => current + 1), TYPE_INTERVAL_MS);
+    return () => window.clearTimeout(timer);
+  }, [count, text, reducedMotion]);
   return { shown: text.slice(0, count), done: count >= text.length, finish: () => setCount(text.length) };
 }
 
@@ -82,7 +77,7 @@ function TypewriterStep({ step, reducedMotion, headingId }: { step: Extract<Brie
           min-h rezerwuje miejsce na 2 linie, żeby przycisk nie skakał w trakcie pisania - poza niskim ekranem (telefon w
           poziomie), gdzie każdy piksel wysokości jest potrzebny, a skok jest mniejszym złem niż przewijanie. */}
       <p id={headingId} className="sr-only">
-        {step.text}
+        {step.sub ? `${step.text} ${step.sub}` : step.text}
       </p>
       <p
         aria-hidden="true"
@@ -92,7 +87,11 @@ function TypewriterStep({ step, reducedMotion, headingId }: { step: Extract<Brie
         {shown}
         {!done && <span className="briefing-caret ml-0.5 inline-block w-[0.5ch] border-b-2 border-ink" />}
       </p>
-      {done && step.sub && <p className="briefing-step-enter text-sm text-muted">{step.sub}</p>}
+      {done && step.sub && (
+        <p aria-hidden="true" className="briefing-step-enter text-sm text-muted">
+          {step.sub}
+        </p>
+      )}
       {done && (
         <span
           className="briefing-step-enter flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent [@media(max-height:500px)]:h-10 [@media(max-height:500px)]:w-10"
@@ -133,18 +132,20 @@ function CallStep({ step, contentBase, headingId }: { step: Extract<BriefingStep
           {step.caller.role && <p className="text-sm text-muted">{step.caller.role}</p>}
         </div>
       </div>
-      <p className="briefing-step-enter max-w-prose rounded-card border border-border bg-surface px-4 py-3 text-base text-ink shadow-card">{step.text}</p>
+      <p id={`${headingId}-text`} className="briefing-step-enter max-w-prose rounded-card border border-border bg-surface px-4 py-3 text-base text-ink shadow-card">
+        {step.text}
+      </p>
     </div>
   );
 }
 
 function CaseFileStep({
   step,
-  objectives,
+  tasks,
   headingId,
 }: {
   step: Extract<BriefingStep, { kind: 'caseFile' }>;
-  objectives: CourseObjective[];
+  tasks: NotebookTask[];
   headingId: string;
 }) {
   return (
@@ -164,23 +165,32 @@ function CaseFileStep({
         ))}
       </dl>
       {step.stamp && (
-        <span
-          aria-label={`Pieczątka: ${step.stamp}`}
-          className="briefing-stamp absolute right-4 top-4 -rotate-6 rounded border-2 border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-widest text-danger"
-        >
+        <span className="briefing-stamp absolute right-4 top-4 -rotate-6 rounded border-2 border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-widest text-danger">
+          <span className="sr-only">Pieczątka: </span>
           {step.stamp}
         </span>
       )}
-      {objectives.length > 0 && (
+      {/* Ten sam stan zadań co sekcja "Zadania" w notatniku (notes.tsx, notebookTasks) - w podglądzie ukończonego kursu
+          wykonane są odhaczone; cel bez completeWhen to zwykły punkt, nie pole do odhaczenia. */}
+      {tasks.length > 0 && (
         <section aria-labelledby={`${headingId}-tasks`} className="mt-4 border-t border-border pt-3">
           <h4 id={`${headingId}-tasks`} className="text-xs font-bold uppercase tracking-wide text-muted">
             Zadania
           </h4>
           <ul className="mt-2 space-y-1.5 text-sm text-ink">
-            {objectives.map((objective, index) => (
+            {tasks.map((task, index) => (
               <li key={index} className="flex items-start gap-2">
-                <Square aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-                <span>{objective.text}</span>
+                {task.done === undefined ? (
+                  <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted" />
+                ) : task.done ? (
+                  <CheckSquare aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                ) : (
+                  <Square aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+                )}
+                <span>
+                  {task.done !== undefined && <span className="sr-only">{task.done ? 'Wykonane: ' : 'Do zrobienia: '}</span>}
+                  {task.text}
+                </span>
               </li>
             ))}
           </ul>
@@ -226,7 +236,7 @@ export default function BriefingBlock({
   onSubmit,
   review = false,
   disabled = false,
-  objectives = [],
+  tasks = [],
   identity,
   myAvatarUrl = null,
   onStepChange,
@@ -236,7 +246,8 @@ export default function BriefingBlock({
   onSubmit: () => void;
   review?: boolean;
   disabled?: boolean;
-  objectives?: CourseObjective[];
+  /** Zadania (cele z completeWhen) ze stanem - ten sam co w notatniku. */
+  tasks?: NotebookTask[];
   identity: PlayerIdentity;
   myAvatarUrl?: string | null;
   /** Zmiana kroku (narracja w pasku powłoki idzie za krokiem); byGesture=true, gdy kliknięciem gracza. */
@@ -274,18 +285,28 @@ export default function BriefingBlock({
   return (
     <div data-testid="briefing-block" className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded-card bg-paper [scrollbar-width:thin]">
       <div className="m-auto flex w-full max-w-xl flex-col items-center gap-5 p-4 sm:p-6 [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:py-2">
-        <p className="sr-only" aria-live="polite">
-          Odprawa, krok {index + 1} z {steps.length}
-        </p>
         <div aria-hidden="true" className="flex gap-1.5">
           {steps.map((_, dot) => (
             <span key={dot} className={`h-1.5 w-6 rounded-full ${dot <= index ? 'bg-accent' : 'bg-border'}`} />
           ))}
         </div>
-        <div key={index} ref={headingRef} tabIndex={-1} aria-labelledby={headingId} role="group" className="briefing-step-enter flex w-full flex-col items-center outline-none">
+        {/* Numer kroku i treść ogłasza sam fokus na grupie (etykieta = "krok X z Y" + nagłówek kroku, opis = wypowiedź w kroku
+            call) - bez osobnego aria-live, który w części czytników dublowałby komunikat (code review PR 1). */}
+        <div
+          key={index}
+          ref={headingRef}
+          tabIndex={-1}
+          aria-labelledby={`${headingId}-pos ${headingId}`}
+          aria-describedby={step.kind === 'call' ? `${headingId}-text` : undefined}
+          role="group"
+          className="briefing-step-enter flex w-full flex-col items-center outline-none"
+        >
+          <span id={`${headingId}-pos`} className="sr-only">
+            Odprawa, krok {index + 1} z {steps.length}.
+          </span>
           {step.kind === 'typewriter' && <TypewriterStep step={step} reducedMotion={reducedMotion} headingId={headingId} />}
           {step.kind === 'call' && <CallStep step={step} contentBase={contentBase} headingId={headingId} />}
-          {step.kind === 'caseFile' && <CaseFileStep step={step} objectives={objectives} headingId={headingId} />}
+          {step.kind === 'caseFile' && <CaseFileStep step={step} tasks={tasks} headingId={headingId} />}
           {step.kind === 'badge' && <BadgeStep identity={identity} myAvatarUrl={myAvatarUrl} caseNo={caseNo} headingId={headingId} />}
         </div>
         {!(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />}

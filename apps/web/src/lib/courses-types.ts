@@ -3,7 +3,7 @@
 // sekcja "Backlog frontendu"). Trzymane tu, w jednym miejscu, żeby biblioteka
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
-import type { Narration } from '@cyberszkolo/content';
+import type { MascotPose, ModuleObjective, Narration } from '@cyberszkolo/content';
 
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
 export type ContentBlockType =
@@ -31,7 +31,7 @@ export type BriefingStep =
   | { kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration }
   | {
       kind: 'call';
-      caller: { name: string; role?: string; avatar?: string; mascot?: string };
+      caller: { name: string; role?: string; avatar?: string; mascot?: MascotPose };
       text: string;
       cta: string;
       narration?: Narration;
@@ -40,10 +40,7 @@ export type BriefingStep =
   | { kind: 'badge'; cta: string; narration?: Narration };
 
 /** Cel/zadanie modułu z wersji przypisania (/start, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
-export interface CourseObjective {
-  text: string;
-  completeWhen?: string[];
-}
+export type CourseObjective = ModuleObjective;
 
 /** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
 export interface ContentReaction {

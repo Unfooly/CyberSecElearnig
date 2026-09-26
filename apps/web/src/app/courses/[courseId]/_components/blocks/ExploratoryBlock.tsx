@@ -1,7 +1,8 @@
 'use client';
 
-import type { ContentBlock, CourseObjective } from '@/lib/courses-types';
-import type { PlayerIdentity } from '@/lib/use-my-display-name';
+import type { ContentBlock } from '@/lib/courses-types';
+import { ANONYMOUS_IDENTITY, type PlayerIdentity } from '@/lib/use-my-display-name';
+import type { NotebookTask } from '../player/notes';
 import SceneHotspotsBlock from './SceneHotspotsBlock';
 import DialogueBlock from './DialogueBlock';
 import TabsBlock from './TabsBlock';
@@ -13,8 +14,6 @@ import BriefingBlock from './BriefingBlock';
 // Bloki eksploracyjne (nieoceniane): po przejrzeniu wymaganych elementów blok się kończy bez punktów. Ten sam komponent służy do
 // podglądu ("Wstecz", review=true: bez zapisu i przycisku ukończenia), więc ukończony blok można przejść ponownie bez skutku na serwerze.
 export const EXPLORATORY_TYPES = ['SCENE_HOTSPOTS', 'DIALOGUE', 'NOTEPAD', 'TABS', 'SUMMARY', 'NARRATIVE', 'BRIEFING'] as const;
-
-const ANONYMOUS: PlayerIdentity = { label: 'Detektyw', initials: 'D' };
 
 export function isExploratory(type: string): boolean {
   return (EXPLORATORY_TYPES as readonly string[]).includes(type);
@@ -29,7 +28,7 @@ export default function ExploratoryBlock({
   review = false,
   myAvatarUrl,
   myInitials,
-  objectives,
+  tasks,
   identity,
   onBriefingStep,
 }: {
@@ -44,7 +43,7 @@ export default function ExploratoryBlock({
   myAvatarUrl?: string | null;
   myInitials?: string;
   /** BRIEFING: zadania pod kartą sprawy, tożsamość gracza (tylko z sesji) i zmiana kroku (narracja w pasku powłoki). */
-  objectives?: CourseObjective[];
+  tasks?: NotebookTask[];
   identity?: PlayerIdentity;
   onBriefingStep?: (index: number, byGesture: boolean) => void;
 }) {
@@ -79,8 +78,8 @@ export default function ExploratoryBlock({
           onSubmit={() => onSubmit()}
           review={review}
           disabled={disabled}
-          objectives={objectives}
-          identity={identity ?? ANONYMOUS}
+          tasks={tasks}
+          identity={identity ?? ANONYMOUS_IDENTITY}
           myAvatarUrl={myAvatarUrl ?? null}
           onStepChange={onBriefingStep}
         />

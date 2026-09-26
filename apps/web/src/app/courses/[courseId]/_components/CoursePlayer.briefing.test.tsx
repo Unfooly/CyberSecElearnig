@@ -97,7 +97,7 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);
 
     // Tekst "maszyny do pisania" dla czytnika od razu w całości (widoczny jest wystukiwany znak po znaku).
-    expect(screen.getByText('Wtorek, 7:58. Dzwoni telefon.')).toHaveClass('sr-only');
+    expect(screen.getByText('Wtorek, 7:58. Dzwoni telefon. Numer zastrzeżony.')).toHaveClass('sr-only');
     // Wyjściem jest odprawa (ostatni krok albo "Pomiń"), nie "Dalej" z paska.
     expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
 
@@ -109,7 +109,7 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Słucham' }));
     expect(screen.getByText('SPR-2026-0412')).toHaveClass('font-typewriter');
     expect(screen.getByText('Unfooly Sp. z o.o., Kraków')).toBeInTheDocument();
-    expect(screen.getByLabelText('Pieczątka: PILNE')).toBeInTheDocument();
+    expect(screen.getByText('PILNE')).toHaveTextContent('Pieczątka: PILNE');
     // Zadania pod kartą sprawy - z celów modułu (wersja przypisania), nie z treści kroku.
     const tasks = within(screen.getByRole('region', { name: 'Zadania' }));
     expect(tasks.getByText('Zabezpiecz dowody w biurze.')).toBeInTheDocument();
@@ -219,6 +219,92 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(screen.queryByRole('button', { name: 'Transkrypcja' })).not.toBeInTheDocument();
   });
 
+  describe('autoodtwarzanie narracji kroków (lektor włączony)', () => {
+    const withAudio: ContentBlock = {
+      ...briefing,
+      steps: briefing.steps!.map((step, index) => ({
+        ...step,
+        narration: { text: `Narracja kroku ${index}.`, audioUrl: `audio/odprawa/krok-${index}.mp3`, durationMs: 1000 },
+      })),
+    };
+    const next: ContentBlock = { type: 'NARRATIVE', id: 'biuro', text: 'Biuro Anny.', narration: { text: 'Biuro.', audioUrl: 'audio/biuro.mp3', durationMs: 1000 } };
+    const audioCourse = (overrides: Partial<CoursePlayerInitialState> = {}) =>
+      course({ contentBlocks: [withAudio, next, { type: 'NARRATIVE', id: 'rozmowa', text: 'Rozmowa z IT.' }], ...overrides });
+    // Który plik próbowano odtworzyć (src elementu audio w chwili play()).
+    function spyPlay() {
+      const played: string[] = [];
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+        played.push(this.getAttribute('src') ?? '');
+        return Promise.resolve();
+      });
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+      return played;
+    }
+
+    it('krok 0 bez gestu nie gra sam; przycisk kroku odtwarza narrację NASTĘPNEGO kroku', async () => {
+      stubFetch();
+      const played = spyPlay();
+      render(<CoursePlayer courseId="course-1" initial={audioCourse()} narrationEnabled />);
+      expect(played).toEqual([]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+      await waitFor(() => expect(played).toEqual([expect.stringContaining('krok-1.mp3')]));
+    });
+
+    it('"Pomiń odprawę" (odprawa ma nagrania w krokach) odtwarza narrację kolejnego bloku', async () => {
+      stubFetch();
+      const played = spyPlay();
+      render(<CoursePlayer courseId="course-1" initial={audioCourse()} narrationEnabled />);
+      fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+      await screen.findByText('Biuro Anny.');
+      await waitFor(() => expect(played).toEqual([expect.stringContaining('biuro.mp3')]));
+    });
+
+    it('ponowne wejście w podgląd ukończonej odprawy startuje od kroku 0 bez odtwarzania (bez narracji starego kroku)', async () => {
+      stubFetch();
+      const played = spyPlay();
+      render(
+        <CoursePlayer
+          courseId="course-1"
+          initial={audioCourse({ currentBlockIndex: 1, progress: { v: 2, blocks: { odprawa: { type: 'BRIEFING', done: true } }, notes: [] } })}
+          narrationEnabled
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Słucham' }));
+      await waitFor(() => expect(played.at(-1)).toContain('krok-2.mp3'));
+      fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+      const before = played.length;
+
+      fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+      expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
+      expect(within(screen.getByRole('region', { name: 'Transkrypcja narracji' })).getByText('Narracja kroku 0.')).toBeInTheDocument();
+      expect(played.slice(before).filter((src) => src.includes('krok-2.mp3'))).toEqual([]);
+    });
+  });
+
+  it('karta sprawy w podglądzie ukończonego kursu pokazuje ten sam stan zadań co notatnik', () => {
+    stubFetch();
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={course({
+          currentBlockIndex: 2,
+          progress: { v: 2, blocks: { odprawa: { type: 'BRIEFING', done: true }, biuro: { type: 'NARRATIVE', done: true } }, notes: [] },
+        })}
+        narrationEnabled={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+    for (const cta of ['Odbierz', 'Słucham']) fireEvent.click(screen.getByRole('button', { name: cta }));
+    expect(notebookTask('Zabezpiecz dowody w biurze.')).toHaveTextContent('Wykonane:');
+    expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
+    expect(notebookTask('Cel bez completeWhen.').textContent).toBe('Cel bez completeWhen.');
+  });
+
   it('imię nie jest pobierane w module bez odprawy', () => {
     const fetchMock = stubFetch();
     render(
@@ -238,9 +324,12 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     const { unmount } = render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
     const typed = () => screen.getByTestId('briefing-block').querySelector('p[aria-hidden="true"]')!.textContent ?? '';
     expect(typed()).toBe('');
-    act(() => {
-      vi.advanceTimersByTime(32 * 7);
-    });
+    // Jeden znak na timeout (kolejny planuje efekt po renderze), więc każdy tik we własnym act().
+    for (let tick = 0; tick < 7; tick += 1) {
+      act(() => {
+        vi.advanceTimersByTime(32);
+      });
+    }
     expect(typed()).toBe('Wtorek,');
     unmount();
 

@@ -12,12 +12,11 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut
 - level: `basic`
-- objectives (4) - zarazem zadania śledztwa (karta sprawy w odprawie, sekcja „Zadania" w notatniku); w nawiasie `completeWhen`
-  (zadanie odhacza się, gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
-  1. „Rozpoznać fałszywą domenę w adresie nadawcy i w linku." (`ten-mail`)
-  2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS." (`rozmowa-marek`)
-  3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach." (`biuro-anny`)
-  4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie." (`akta-sprawy`)
+- objectives (3) - zadania śledztwa (karta sprawy w odprawie, sekcja „Zadania" w notatniku, katalog kursów); w nawiasie
+  `completeWhen` (zadanie odhacza się, gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
+  1. „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
+  2. „Zbierz dowody w biurze Anny." (`biuro-anny`)
+  3. „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
 - dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
@@ -35,6 +34,7 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 | Marek Zieliński | administrator IT (jednoosobowy dział) | `avatars/marek.svg` |
 | „Bank Wektor" | fikcyjny bank; prawdziwa domena `bankwektor.pl`, fałszywa `bankwektor-weryfikacja.pl` | — |
 | Gracz | „detektyw" — nowy audytor bezpieczeństwa w Unfooly | — |
+| Komisarz Adam Wolski | Wydział Cyberbezpieczeństwa (odprawa, Blok 0) | inicjały „AW" |
 
 Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak narrator kryminału, bez żartów.
 
@@ -42,29 +42,30 @@ Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak
 
 ## Blok 0 — Odprawa (BRIEFING) — D-081
 
-> **PROJEKT TEKSTÓW DO POTWIERDZENIA.** Teksty kroków miały pochodzić z makiety odprawy, której nie ma w repo. Poniższe
-> treści zostały ułożone z tego scenariusza (postaci, godziny, firma) i czekają na potwierdzenie albo podmianę na teksty z
-> makiety. **TTS dopiero po potwierdzeniu.**
+Teksty kroków: decyzja właściciela produktu (PR #55). Odprawa jest **bez maskotki** - dzwoni postać: **Komisarz Adam Wolski**,
+Wydział Cyberbezpieczeństwa (bez avatara: inicjały „AW" na `accent-soft`). „Napis" = tekst na ekranie i w napisach nagrania,
+„TTS" = `spokenText` (to, co czyta głos), rola = `voice`.
 
 Blok nieoceniany, bez dowodów, na jasnym tle (`paper`). Zaliczany po ostatnim kroku albo „Pomiń odprawę" (górny pasek ramki,
-widoczny od razu - także przy ponownym wejściu); pominięcie nie odhacza zadań. Animacje (pisanie, telefon, spadająca karta,
-pieczątka) tylko bez `prefers-reduced-motion`.
+widoczny zawsze, przy każdym wejściu - jak w makiecie); pominięcie nie odhacza zadań. Animacje (pisanie, telefon, spadająca
+karta, pieczątka) tylko bez `prefers-reduced-motion`.
 
-1. **typewriter** — tekst: „Wtorek, 9:35. Unfooly Sp. z o.o., Kraków."; pod spodem: „W biurze audytu dzwoni telefon.";
-   przycisk: „Odbierz".
-   **Lektor:** „Wtorek, 9:35. W biurze audytu dzwoni telefon." (spokenText: „Wtorek, dziewiąta trzydzieści pięć. …")
-2. **call** — dzwoni: Fooli (poza `greeting`) jako „Komisarz Fooli", rola „Zespół reagowania na incydenty".
-   Dymek: „Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że »coś jest nie tak z kontem«. Przejmij sprawę i ustal, co się
-   stało."; przycisk: „Przyjmuję".
-   **Nagranie (głos `fooli`, D-082):** ten sam tekst co dymek - mówi Komisarz, nie lektor.
-3. **caseFile** — nr sprawy `UNF/2026/0412` (font maszynowy), tytuł „Wyłudzone hasło"; pola: Firma „Unfooly Sp. z o.o.,
-   Kraków", Zgłaszająca „Anna Kowalska, księgowość", Zgłoszono „wtorek, 9:40", Status „w toku"; pieczątka „Pilne";
-   pod kartą lista zadań (objectives); przycisk: „Biorę sprawę".
-   **Lektor:** „Akta sprawy. Firma Unfooly w Krakowie, zgłaszająca: Anna Kowalska z księgowości. Na dole karty masz listę zadań."
-4. **badge** — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback: inicjały),
-   nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0412-AK`). **Żadnych danych gracza w treści modułu ani w
-   progress** - liczy wyłącznie przeglądarka. Przycisk: „Ruszam na miejsce".
-   **Lektor:** „Legitymacja wydana. Sprawa jest twoja."
+0. **typewriter** (narrator) — napis: „Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy."; TTS: „Wtorek, dziewiąta
+   czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy."; przycisk: „Odbierz".
+1. **call** (komisarz) — napis (dymek): „Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska,
+   twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało."; TTS: „Detektywie, mamy zgłoszenie z Unfooly. Z konta
+   firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się
+   naprawdę stało."; przycisk: „Przyjmuję".
+2. **caseFile** (komisarz) — karta: nr sprawy `CS/2026/0915` (font maszynowy), „Nieautoryzowany przelew"; Poszkodowana „Anna
+   Kowalska (księgowa, Unfooly Sp. z o.o.)", Strata „14 000,00 PLN", Kiedy „wtorek 9:12", Zgłosił „Marek Nowak (dział IT)";
+   pieczątka „Pilne"; pod kartą zadania (objectives, wyżej); przycisk: „Biorę sprawę". Napis: „Tu masz wszystko, co wiemy.
+   Reszta jest w biurze Anny."; TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go
+   Marek Nowak z działu IT. Reszta jest w biurze Anny."
+3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
+   inicjały), nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
+   w progress** - liczy wyłącznie przeglądarka. Napis/TTS: „Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa.
+   Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą."; przycisk: „Ruszam na miejsce".
+4. **start** (narrator) — napis/TTS: „Unfooly, drugie piętro."; przycisk: „Wchodzę".
 
 ---
 
@@ -364,7 +365,8 @@ transkrypcja z Bloku 2 bez zmian. Stary gotowy plik `assets/audio/poczta-glosowa
 do czasu opublikowania i podpięcia nowego nagrania, potem do usunięcia.
 
 Głosy (D-082, `narration.voice`, mapowanie rola → voiceId w `scripts/content/voices.json`): `narrator` (domyślny - lektor
-wszystkich bloków), `fooli` (Komisarz w odprawie, krok `call`), `bank` (poczta głosowa), `marek` (dziś nieużywany: kwestie
+wszystkich bloków, w odprawie kroki typewriter i start), `komisarz` (odprawa: kroki call, caseFile, badge), `bank` (poczta
+głosowa), `marek` (dziś nieużywany: kwestie
 Marka nie mają nagrań). Pozostałe kwestie Fooli i postaci - tylko tekst (B-078).
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)

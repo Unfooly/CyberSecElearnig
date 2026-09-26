@@ -586,8 +586,11 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       ];
       // Wersja 1 (jak z migracji dla istniejących kursów) + późniejszy import nowej treści (wersja 2).
       legacyCourseId = await createCourse(`Legacy ${suffix}`, legacyBlocks, 1);
+      // Cele z fixtury (schemaVersion 5) wskazują w completeWhen bloki pełnego modułu (mail, kolejnosc), których tu nie ma -
+      // walidacja słusznie by je odrzuciła, a ten test dotyczy wyłącznie wersji treści: same teksty celów.
       const v2Blocks = parseModule({
         ...JSON.parse(JSON.stringify(fullModule())),
+        objectives: ['Rozpoznać phishing'],
         blocks: [{ id: 'nowy', type: 'NOTEPAD' }, { id: 'drugi', type: 'NOTEPAD' }, { id: 'koniec', type: 'SUMMARY' }],
       }).blocks;
       await prisma.courseVersion.create({

@@ -281,7 +281,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 
 ### B-100 Łańcuch wysokości sceny (SCENE_HOTSPOTS, 16:9) - weryfikacja w prawdziwej przeglądarce
 - Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: code review fix-passu `feat/player-stage` po PR #44; zależne od `B-085`
-- Status: zrobione (PR fix/hotspot-card-fit, `scripts/layout-check.mjs`) - `layout-check.mjs` sprawdza w prawdziwej
+- Status: zrobione (PR #49, `scripts/layout-check.mjs`) - `layout-check.mjs` sprawdza w prawdziwej
   przeglądarce (Playwright, nie jsdom) na wszystkich 4 viewportach (w tym 844x390, telefon w poziomie), że obraz
   sceny głównej mieści się w obszarze bloku bez przewijania (sprawdzenie „e” tego skryptu) - NIEZALEŻNIE od B-085,
   bo strona `apps/web/src/app/dev/player-harness/page.tsx` nie potrzebuje backendu (treść wprost z packages/content).

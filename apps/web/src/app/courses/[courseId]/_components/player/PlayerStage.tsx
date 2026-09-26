@@ -20,7 +20,7 @@ import NotesDrawer from './NotesDrawer';
 //    nie łapać wąskiego okna na desktopie): pełny ekran bez marginesów i zaokrągleń, paski ściśnięte.
 //  - telefon w pionie (max-width:767px, orientation:portrait, pointer:coarse): pełny ekran (100dvh) bez 16:9, te
 //    same 3 strefy; licznik dowodów/Notatnik zwijają się do ikon (.player-compact-label). Scena SCENE_HOTSPOTS w tym
-//    trybie w PR A zostaje object-contain (dopasowana szerokością do ekranu) - panorama i bottom sheet to PR B.
+//    trybie panuje w poziomie (ScenePanContainer.tsx), karta hotspotu jest bottom sheetem (feat/player-portrait).
 //
 // Strona NIGDY się nie przewija: <html>/<body> owija page.tsx w overflow-hidden h-dvh, ramka ma fixed grid rows
 // (auto 1fr auto) i TYLKO obszar treści (środkowy wiersz) przewija się w środku, gdy blok się nie mieści.
@@ -162,13 +162,22 @@ function PlayerStageInner({
   // pilnuje), ale mierzymy go i tak: TranscriptPanel pozycjonuje się względem niego (bottom-full), a obszar treści
   // (środkowy wiersz grid, NIE document.documentElement jak w dawnym PlayerShell - ramka jest teraz jedynym
   // przewijanym obszarem, nie cała strona) ma własny scroll-padding-bottom na wypadek elementu z fokusem tuż nad
-  // paskiem.
+  // paskiem. --player-bottombar-height (feat/player-portrait, na ramce - custom property dziedziczy w dół DOM) -
+  // bottom sheet karty hotspotu (SceneHotspotsBlock.tsx, globals.css) jest position:fixed WZGLĘDEM CAŁEGO
+  // viewportu (musi być - scena pod nim bywa przescrollowana panoramą), więc bottom:0 nachodziłby na TEN pasek
+  // (który zajmuje dolne piksele TEGO SAMEGO viewportu, position:relative w normalnym przepływie ramki, nie
+  // fixed) - zweryfikowane empirycznie (scratch, nie w repo): bez tego przyciski karty (.hotspot-card-buttons)
+  // nakładały się na "Transkrypcja"/"Lektor"/"Wstecz". Fallback 56px w CSS (var(...,56px)) na wypadek renderu
+  // przed pierwszym pomiarem (min-h-[56px] paska - ta sama wartość).
   useEffect(() => {
     const bar = bottomBarRef.current;
     const content = contentRef.current;
+    const frame = frameRef.current;
     if (!bar || !content) return undefined;
     const apply = () => {
-      content.style.setProperty('scroll-padding-bottom', `${Math.ceil(bar.getBoundingClientRect().height) + 8}px`);
+      const height = Math.ceil(bar.getBoundingClientRect().height);
+      content.style.setProperty('scroll-padding-bottom', `${height + 8}px`);
+      frame?.style.setProperty('--player-bottombar-height', `${height}px`);
     };
     apply();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
@@ -176,6 +185,7 @@ function PlayerStageInner({
     return () => {
       observer?.disconnect();
       content.style.removeProperty('scroll-padding-bottom');
+      frame?.style.removeProperty('--player-bottombar-height');
     };
   }, []);
 

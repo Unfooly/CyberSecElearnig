@@ -112,10 +112,95 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   /* Licznik dowodów i etykieta "Notatnik" zwijają się do samej ikony - mało miejsca w górnym pasku na telefonie
-     w pionie (PR feat/player-stage, sekcja B częściowo: tylko układ paska, bez panoramy sceny - to PR B). */
+     w pionie (PR feat/player-stage, sekcja B). */
   .player-compact-label {
     display: none;
   }
+
+  /* Panorama sceny (feat/player-portrait, sekcja B) - patrz ScenePanContainer.tsx dla wyjaśnienia całego
+     mechanizmu (BEZ JS matchMedia, tylko pomiar rzeczywistego overflow). Tutaj WYŁĄCZNIE CSS-owa strona: kontener
+     dostaje jawny rozmiar (żeby overflow-x:auto miało co przewijać) i formuła szerokości .scene-box (niżej, przy
+     definicji domyślnej) zmienia się z "contain" na "fit-height" - scena celowo może wyjść szerzej niż ekran. */
+  .scene-pan-container {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+  }
+  .scene-pan-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+  .scene-pan-edge--left {
+    left: 0;
+    background: linear-gradient(to right, rgba(15, 15, 20, 0.35), transparent);
+  }
+  .scene-pan-edge--right {
+    right: 0;
+    background: linear-gradient(to left, rgba(15, 15, 20, 0.35), transparent);
+  }
+  .scene-pan-edge--visible {
+    opacity: 1;
+  }
+  .scene-pan-hint {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(15, 15, 20, 0.65);
+    color: #fff;
+    font-size: 0.75rem;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out;
+  }
+
+  /* Touch target >=44px (WCAG 2.5.5/2.5.8) - hotspoty mają dziś min-h/w-[24px] (Tailwind, wszystkie breakpointy),
+     wystarczające na desktop z myszą, ale za małe do wygodnego dotyku. Nadpisuje tylko na tym breakpoincie -
+     desktop/tablet/telefon w poziomie bez zmian (24px tam był świadomym wyborem gęstej sceny, kod review PR #36). */
+  [data-testid^='hotspot-overlay-'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Scena (SceneHotspotsBlock.tsx, ScenePanContainer.tsx) - formuła szerokości ".scene-box" jest KLASĄ, nie inline
+   style (feat/player-portrait: inline style ma wyższą specyficzność niż każda reguła @media poza !important, więc
+   telefon w pionie nie mógłby jej nadpisać, gdyby została inline - ten sam wzorzec co .player-frame). Domyślnie
+   (wszystkie breakpointy) "contain": mniejsza z dwóch możliwych szerokości (ograniczona szerokością albo
+   wysokością kontenera zapytań, hotfix fix/player-scene-fit/B-100) - scena NIGDY nie wychodzi poza dostępne
+   miejsce. Telefon w pionie (niżej, przy .scene-pan-container) nadpisuje to na "fit-height" - scena CELOWO może
+   wyjść szerzej niż ekran (panorama, ScenePanContainer.tsx daje wtedy overflow-x:auto do przewijania). */
+.scene-box {
+  width: min(100cqw, calc(100cqh * var(--scene-ratio)));
+}
+
+/* Uchwyt bottom sheeta (SceneHotspotsBlock.tsx, .hotspot-card-handle) - domyślnie niewidoczny. Widoczny WYŁĄCZNIE
+   na telefonie w pionie - reguła w NOWYM, OSOBNYM @media POD kartą hotspotu niżej (nie w tym samym miejscu co
+   .scene-pan-container wyżej), bo musi być TEKSTOWO PO tej regule (ten sam wzorzec "kolejność w pliku" co
+   .player-frame/.hotspot-card--no-media - inaczej ta reguła, mimo trafiającego @media, przegrałaby z default). */
+.hotspot-card-handle {
+  display: none;
+}
+
+/* Pierścień postępu lektora (NarrationBar.tsx) - domyślnie (desktop/tablet/telefon w poziomie) pasek liniowy
+   (<input type="range">, istniejący od feat/player-stage), pierścień dekoracyjny schowany. Telefon w pionie
+   (nowy @media pod kartą hotspotu niżej, TEKSTOWO PO tej regule) odwraca to - ten sam element <input> zostaje
+   WSPÓLNY, chowany tylko wizualnie. */
+.narration-progress-linear {
+  display: flex;
+}
+.narration-progress-ring {
+  display: none;
 }
 
 /* Karta hotspotu (SceneHotspotsBlock.tsx, hotfix fix/hotspot-card-fit/B-101): na >=640px (ten sam próg co reszta
@@ -137,14 +222,29 @@
    wszystkie breakpointy), więc bez tego .hotspot-card-layout jako flex item domyślnie sizuje się do TREŚCI (flex: 0
    1 auto), a nie do 100% wysokości karty - wiersz `1fr` siatki nie miałby więc żadnej realnej wysokości do podziału
    (druga runda code review, punkt 2 - dokładnie to sprawiało, że scena zagnieżdżona i tak wychodziła zerowej albo
-   miniaturowej wysokości, NAWET z poprawką punktu 1). Telefon w pionie (<640px) zostaje bez zmian w tym PR (pełny
-   ekran, cała karta się przewija jak dawniej) - panorama/bottom sheet to PR B; poniżej tego progu .hotspot-card-layout
-   jest zwykłym div (klasy Tailwind bez `sm:` w JSX). */
+   miniaturowej wysokości, NAWET z poprawką punktu 1).
+   Telefon w pionie (feat/player-portrait, sekcja B - poprzednio PR B, teraz zaimplementowane): SAMA SIATKA
+   (display:grid, grid-area, .hotspot-card-media itd. niżej) dostaje TERAZ (media query LISTA, nie tylko
+   min-width:640px) także breakpoint max-width:767px/orientation:portrait/pointer:coarse - karta na telefonie w
+   pionie przestaje być "zwykłym divem bez własnych klas" i dostaje tę samą, już przetestowaną siatkę co
+   desktop/tablet. `container-type:size`/`container-name` NIE wchodzi do tej listy (zostaje WYŁĄCZNIE >=640px,
+   osobna reguła niżej) - na bottom sheecie karta ma `height:auto` (auto-size do treści, capped 85dvh, osobna
+   reguła dalej w pliku), a `container-type:size` wymaga DEFINITYWNEGO rozmiaru w obu osiach (ta sama okrężna
+   zależność co przy .hotspot-card--no-media niżej: containment liczyłby rozmiar karty tak, jakby nie miała
+   treści, karta zapadałaby się do samego paddingu - zweryfikowane empirycznie: scripts/layout-check.mjs, karta
+   32px wysoka). Bottom sheet i tak NIE POTRZEBUJE tego kontenera zapytań - wpada naturalnie w jednokolumnowy
+   wariant siatki (@container niżej po prostu nie ma czego dopasować bez kontenera-przodka, więc się nie włącza -
+   dokładnie efekt, którego chcemy, bez żadnego dodatkowego CSS). Pozycjonowanie na bottom sheet (position:fixed,
+   zaokrąglone górne rogi, max-height:85dvh) to OSOBNA, PÓŹNIEJSZA i bardziej specyficzna reguła (patrz niżej, ten
+   sam breakpoint) - nadpisuje TYLKO pozycję/rozmiar zewnętrzny, siatka wewnątrz zostaje wspólna. */
 @media (min-width: 640px) {
   .hotspot-card {
     container-type: size;
     container-name: hotspot-card;
   }
+}
+
+@media (min-width: 640px), (max-width: 767px) and (orientation: portrait) and (pointer: coarse) {
 
   /* .hotspot-card.hotspot-card--no-media (SKŁADNIA DWÓCH KLAS, nie sama .hotspot-card--no-media) - trzecia runda
      code review, znalezisko przy weryfikacji w przeglądarce: pod `next dev` Tailwind dopisuje świeżo odkryte,
@@ -223,9 +323,16 @@
     grid-area: buttons;
   }
 
-  /* Scena zagnieżdżona (NestedSceneImage) - formuła "contain" jak scena najwyższego poziomu, WYŁĄCZNIE od 640px
-     (patrz komentarz w SceneHotspotsBlock.tsx: poniżej tego progu kontener nie ma jawnej wysokości do zapytania,
-     cqh liczyłby się jako 0). Nadpisuje `w-full` (Tailwind) tą samą specyficznością/kolejnością co .player-frame. */
+  /* Scena zagnieżdżona (NestedSceneImage) - formuła "contain" jak scena najwyższego poziomu, WYŁĄCZNIE w tym samym
+     scalonym breakpoincie co siatka karty wyżej (poza nim kontener nie ma jawnej wysokości do zapytania, cqh
+     liczyłby się jako 0). .hotspot-nested-scene-frame dostaje container-type:size TUTAJ (nie Tailwind `sm:` -
+     warunek już nie jest jednym prostym breakpointem) - .hotspot-nested-scene-box nadpisuje `w-full` (Tailwind) tą
+     samą specyficznością/kolejnością co .player-frame. Formuła "contain" tutaj jest WSPÓLNA baza (desktop/tablet
+     I telefon w pionie) - "fit-height"/panorama (telefon w pionie WYŁĄCZNIE) nadpisuje ją niżej, osobną, bardziej
+     specyficzną regułą w tym samym miejscu co dla .scene-box. */
+  .hotspot-nested-scene-frame {
+    container-type: size;
+  }
   .hotspot-nested-scene-box {
     width: min(100cqw, calc(100cqh * var(--scene-ratio)));
   }
@@ -240,5 +347,83 @@
       grid-template-rows: minmax(0, 1fr) auto;
       grid-template-areas: 'media text' 'media buttons';
     }
+  }
+}
+
+/* Telefon w pionie (feat/player-portrait) - OSOBNY @media, TEKSTOWO PO blokach wyżej, żeby te reguły (ten sam
+   breakpoint jak .scene-pan-container, ale muszą wygrać z regułami zdefiniowanymi PÓŹNIEJ w PLIKU niż on: .scene-box
+   default, .hotspot-card-handle default, .hotspot-card--no-media max-height z bloku scalonego wyżej) rzeczywiście
+   nadpisały - kolejność w PLIKU decyduje o wygranej przy równej specyficzności, niezależnie od tego, czy dana
+   reguła jest w @media, czy nie (ten sam wzorzec co .player-frame/.hotspot-card.hotspot-card--no-media). */
+@media (max-width: 767px) and (orientation: portrait) and (pointer: coarse) {
+  /* Panorama: "fit-height" zamiast "contain" - scena (i zagnieżdżona scena) CELOWO może wyjść szerzej niż ekran,
+     .scene-pan-container (wyżej) daje overflow-x:auto do przewijania. Hotspoty pozycjonowane w % - ta sama formuła
+     działa identycznie dla obrazu głównego i zagnieżdżonego, niezależnie od jego natywnych wymiarów. */
+  .scene-box,
+  .hotspot-nested-scene-box {
+    width: calc(100cqh * var(--scene-ratio));
+  }
+
+  /* Bottom sheet: karta wysuwa się z dołu, nie z wyśrodkowanej nakładki - nadpisuje TYLKO pozycję/rozmiar
+     zewnętrzny (siatka wewnątrz, .hotspot-card-layout/-text/-media/-buttons, zostaje ta sama co >=640px, patrz
+     blok scalony wyżej). max-height:85dvh (nie 92% jak >=640px - inny punkt odniesienia: position:fixed liczy
+     procenty względem viewportu, nie względem sceny) - zamykanie WYŁĄCZNIE przez "Wróć"/tło/Escape
+     (overlay-stack.tsx), bez gestu przesuwania (ustalone z właścicielem produktu) - .hotspot-card-handle (niżej)
+     jest czysto wizualną afordancją. */
+  /* height:85dvh STAŁA (nie auto+max-height) - z mediami .hotspot-card-layout musi dostać REALNĄ wysokość do
+     rozdzielenia (flex:1 1 0%/minmax(0,1fr), patrz blok scalony wyżej) - z height:auto (hug-content) nie ma "wolnej
+     przestrzeni" do rozdania, więc obszar mediów wychodziłby przy minimalnym (treściowym) rozmiarze, nie
+     wypełniałby dostępnego miejsca (zweryfikowane empirycznie: scripts/layout-check.mjs, obszar mediów 44px/17%
+     zamiast oczekiwanych >=35%) - TA SAMA przyczyna co przy >=640px, gdzie karta z mediami ma zawsze DEFINITYWNE
+     92% (sm:h-[92%], nigdy auto). Karta BEZ mediów (niżej) zostaje przy auto-size do treści, tak jak >=640px -
+     tam nie ma obszaru mediów do wypełnienia, hug-content jest właściwym zachowaniem. */
+  .hotspot-card {
+    position: fixed;
+    /* bottom: var(--player-bottombar-height) (PlayerStage.tsx, mierzone ResizeObserverem) - NIE 0: karta jest
+       fixed względem CAŁEGO viewportu (musi być - scena pod nią bywa przescrollowana panoramą, position:absolute
+       liczyłby się względem sceny, nie ekranu), a dolny pasek odtwarzacza (Transkrypcja/Lektor/Wstecz) zajmuje
+       DOLNE piksele tego samego viewportu w normalnym przepływie (nie fixed) - bez tego offsetu przyciski karty
+       nachodziłyby na pasek. Fallback 56px (ta sama wartość co min-h-[56px] paska, PlayerStage.tsx) na wypadek
+       renderu przed pierwszym pomiarem. */
+    bottom: var(--player-bottombar-height, 56px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 85dvh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: 1rem;
+  }
+
+  /* .hotspot-card.hotspot-card--no-media (SKŁADNIA DWÓCH KLAS - patrz komentarz w bloku scalonym wyżej, ta sama
+     specyficzność 0,2,0) - nadpisuje height:85dvh (wyżej) i max-height/max-width:92% z bloku scalonego (tam
+     liczone względem sceny, tu karta jest position:fixed więc procenty liczyłyby się względem viewportu - 92%
+     viewportu byłoby WIĘKSZE niż zamierzony limit bottom sheeta) - auto-size do treści, capped 85dvh, bez pustej
+     przestrzeni (ten sam powód co .hotspot-card--no-media na >=640px). Bottom sheet bez mediów zostaje PEŁNEJ
+     szerokości ekranu (jak z mediami) - natywny wzorzec bottom sheet, nie wyśrodkowana wąska karta. */
+  .hotspot-card.hotspot-card--no-media {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 85dvh;
+  }
+
+  .hotspot-card-handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 0.5rem;
+    border-radius: 999px;
+    background: #cbd5e1; /* slate-300 (Tailwind) - literał, nie theme(), ta reguła jest w zwykłym pliku CSS */
+  }
+
+  /* Pierścień postępu lektora (NarrationBar.tsx, feat/player-portrait) - czysto dekoracyjny (aria-hidden),
+     przewijanie zostaje na WSPÓLNYM <input type="range"> (ten sam element na każdym breakpoincie, tylko chowany
+     wizualnie tutaj) - ustalone z właścicielem produktu: bez duplikowania elementów dostępności. */
+  .narration-progress-linear {
+    display: none;
+  }
+  .narration-progress-ring {
+    display: flex;
   }
 }

@@ -10,6 +10,8 @@ import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
 import { useOverlayLayer } from '../player/overlay-stack';
+import ScenePanContainer from '../player/ScenePanContainer';
+import { vibrate } from '@/lib/vibrate';
 import ExploreFooter from './ExploreFooter';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
@@ -31,6 +33,17 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 export function hotspotStackZIndex<T extends { id: string; width: number; height: number }>(all: T[]): Map<string, number> {
   const byAreaDesc = [...all].sort((a, b) => b.width * b.height - a.width * a.height);
   return new Map(byAreaDesc.map((hotspot, index) => [hotspot.id, Math.min(index + 1, 29)]));
+}
+
+// Startowa pozycja panoramy (feat/player-portrait, ScenePanContainer initialPanX) - centroid (średnia środków x%)
+// hotspotów DANEJ sceny, nie środek obrazu, żeby coś interaktywnego było widoczne bez panowania od razu. 0..1
+// (fraction szerokości), nie piksele - ScenePanContainer sam przelicza na scrollLeft po zmierzeniu WŁASNEGO
+// scrollWidth/clientWidth. Scena bez hotspotów (nie powinna się zdarzyć w treści, ale defensywnie) -> 0.5 (środek).
+export function computeHotspotCentroid(hotspots: readonly { x: number; width: number }[]): number {
+  if (hotspots.length === 0) return 0.5;
+  const centersPercent = hotspots.map((hotspot) => hotspot.x + hotspot.width / 2);
+  const averagePercent = centersPercent.reduce((sum, value) => sum + value, 0) / centersPercent.length;
+  return Math.min(1, Math.max(0, averagePercent / 100));
 }
 
 // Scena z punktami: ilustracja (tylko <img>, nigdy inline SVG - D-051) z klikalnymi prostokątami w % obrazu - JEDYNA
@@ -79,6 +92,9 @@ export default function SceneHotspotsBlock({
   const hotspots = block.hotspots ?? [];
   const hotspotZIndex = hotspotStackZIndex(hotspots);
   const flat = flattenHotspots(hotspots);
+  // Bez useMemo (tablica jest mała, kilkanaście elementów - jedno przejście, taniej niż koszt memoizacji): liczone
+  // na nowo co render, ten sam wzorzec co hotspotStackZIndex/flattenHotspots wyżej.
+  const initialPanX = computeHotspotCentroid(hotspots);
   const { addNote } = useNotes();
   const evidence = useEvidence();
   const mascot = useMascotReaction();
@@ -167,6 +183,7 @@ export default function SceneHotspotsBlock({
   }
 
   function open(id: string, trigger: HTMLButtonElement | null) {
+    vibrate(10);
     setInteracted(true);
     overlayTriggerRef.current = trigger;
     setActiveId(id);
@@ -191,6 +208,7 @@ export default function SceneHotspotsBlock({
   }
 
   function openNested(id: string) {
+    vibrate(10);
     setInteracted(true);
     setNestedActiveId(id);
     markVisited(id);
@@ -258,13 +276,19 @@ export default function SceneHotspotsBlock({
               width: min(100cqw, 100cqh*proporcja) - mniejsza z dwóch możliwych szerokości (ograniczona szerokością
               albo wysokością kontenera zapytań), height: auto + aspect-ratio dopełnia resztę. margin: auto centruje
               w obu osiach (oprócz i tak już centrującego items-center/justify-center wyżej - należy do tej samej
-              formuły, nie jest zbędne, gdyby te dwie klasy kiedyś zniknęły). */}
+              formuły, nie jest zbędne, gdyby te dwie klasy kiedyś zniknęły). Formuła szerokości jest KLASĄ CSS
+              (.scene-box, globals.css), NIE inline style (feat/player-portrait) - inline style ma wyższą
+              specyficzność niż każda reguła @media w arkuszu (poza !important), więc telefon w pionie (panorama,
+              formuła "fit-height" zamiast "contain") nie mógłby jej nadpisać, gdyby została inline (ten sam wzorzec
+              co .player-frame/.hotspot-nested-scene-box). ScenePanContainer (panorama na telefonie w pionie, poza
+              tym breakpointem zwykły, bierny wrapper - patrz jego własny komentarz) owija tylko TĘ sizowaną
+              skrzynkę, nie cały kontener zapytań wyżej. */}
+          <ScenePanContainer initialPanX={initialPanX}>
           <div
-            className="relative isolate overflow-hidden rounded border border-slate-200"
+            className="scene-box relative isolate overflow-hidden rounded border border-slate-200"
             style={
               {
                 '--scene-ratio': String(aspectRatio),
-                width: 'min(100cqw, calc(100cqh * var(--scene-ratio)))',
                 height: 'auto',
                 aspectRatio: 'var(--scene-ratio)',
                 margin: 'auto',
@@ -351,6 +375,11 @@ export default function SceneHotspotsBlock({
               <div
                 className={`hotspot-card ${current.media ? '' : 'hotspot-card--no-media'} flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-[92%] sm:w-[92%] sm:overflow-visible sm:rounded sm:p-4`}
               >
+                {/* Uchwyt bottom sheeta (feat/player-portrait, telefon w pionie) - CZYSTO wizualna afordancja
+                    (aria-hidden, bez śledzenia dotyku/gestu przesuwania - ustalone z właścicielem produktu:
+                    zamykanie zostaje przez istniejące "Wróć"/tło/Escape, overlay-stack.tsx). Niewidoczny
+                    (display:none) poza tym breakpointem. */}
+                <div className="hotspot-card-handle" aria-hidden="true" />
                 {/* .hotspot-card-layout/-text/-media/-buttons: BEZ własnych klas flex/grid Tailwind (poza spacingiem
                     mobile niżej) - poniżej 640px to zwykłe divy w naturalnym przepływie (mt-3/mt-4 odtwarzają dawny
                     odstęp, karta CAŁA się przewija jak przed tym hotfixem); grid/container query (display:grid,
@@ -419,6 +448,7 @@ export default function SceneHotspotsBlock({
             </div>
           )}
           </div>
+          </ScenePanContainer>
         </div>
       )}
     </div>
@@ -515,13 +545,16 @@ function HotspotMediaArea({
 // (aria-label, focus-ring, bez chipów): klik otwiera KOLEJNY poziom tej samej nakładki (SceneHotspotsBlock's
 // nestedActiveId), nie nową nakładkę. Rozmiar (hotfix fix/hotspot-card-fit) - TA SAMA formuła "contain" co scena
 // najwyższego poziomu (min(100cqw, 100cqh*proporcja) we WŁASNYM, zagnieżdżonym [container-type:size]) - ale TYLKO od
-// 640px wzwyż (druga runda code review, punkt 1): poniżej tego progu karta się przewija jako całość i NIE ma jawnej
-// wysokości do zapytania (100cqh liczyłoby się jako 0, więc formuła "contain" dałaby szerokość 0 - gorzej niż przed
-// tym hotfixem). Na mobile zostaje zwykłe `w-full` (Tailwind, bez jednostek kontenera zapytań) z aspect-ratio -
-// naturalna wysokość z proporcji obrazu, bez cqh. `sm:[container-type:size]` na kontenerze + `.hotspot-nested-scene-box`
-// (globals.css) nadpisujący `width` formułą "contain" WYŁĄCZNIE od 640px (ten sam wzorzec co .player-frame - zwykła
-// klasa CSS niżej w arkuszu niż @tailwind utilities wygrywa bez !important) - inline style zostaje tylko dla
-// aspect-ratio/height/margin, które są poprawne na KAŻDYM breakpoincie.
+// 640px wzwyż ALBO na telefonie w pionie (feat/player-portrait: druga runda code review fix/hotspot-card-fit, punkt
+// 1 - poniżej tego progu karta się przewija jako całość i NIE ma jawnej wysokości do zapytania, 100cqh liczyłoby się
+// jako 0; ten warunek teraz obejmuje TAKŻE portretowy bottom sheet, bo TAM siatka karty - .hotspot-card-layout -
+// dostaje jawną wysokość, patrz globals.css, ten sam scalony @media co .hotspot-card). Poza oboma tymi przypadkami
+// (np. wąskie okno desktopu) zostaje zwykłe `w-full` (Tailwind, bez jednostek kontenera zapytań) z aspect-ratio -
+// naturalna wysokość z proporcji obrazu, bez cqh. `.hotspot-nested-scene-frame` (KLASA, nie Tailwind `sm:` arbitrary
+// value - ten warunek nie da się już wyrazić jednym breakpointem Tailmind) ustawia `container-type:size` w tym samym
+// scalonym @media; `.hotspot-nested-scene-box` (globals.css) nadpisuje `width` formułą "contain"/"fit-height" (na
+// telefonie w pionie - panorama, ScenePanContainer poniżej) tym samym wzorcem co .player-frame. Inline style zostaje
+// tylko dla aspect-ratio/height/margin, poprawnych na KAŻDYM breakpoincie.
 function NestedSceneImage({
   contentBase,
   scene,
@@ -542,6 +575,7 @@ function NestedSceneImage({
   // React 18 nie odtwarza zdarzenia `load` dla obrazu załadowanego z cache PRZED hydratacją (React #15446).
   const [aspectRatio, setAspectRatio] = useState(16 / 10);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const initialPanX = computeHotspotCentroid(scene.hotspots);
   useEffect(() => {
     const img = imgRef.current;
     if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -551,10 +585,11 @@ function NestedSceneImage({
   if (!url) return null;
   const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    <div className="relative flex h-full min-h-0 w-full items-center justify-center sm:[container-type:size]">
+    <div className="hotspot-nested-scene-frame relative flex h-full min-h-0 w-full items-center justify-center">
       {/* isolate: patrz komentarz przy analogicznym kontenerze wyżej (scena najwyższego poziomu) - ten kontener jest już
           zagnieżdżony w karcie nakładki (z-30), ale jego WŁASNE hotspoty (z-index 1..20) i tak nie powinny wyciekać poza
           niego, dla spójności i na wypadek przyszłych zmian layoutu karty. */}
+      <ScenePanContainer initialPanX={initialPanX}>
       <div
         className="hotspot-nested-scene-box relative isolate w-full overflow-hidden rounded border border-slate-200"
         style={
@@ -604,6 +639,7 @@ function NestedSceneImage({
         );
       })}
       </div>
+      </ScenePanContainer>
     </div>
   );
 }

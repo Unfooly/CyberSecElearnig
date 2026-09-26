@@ -105,7 +105,9 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
 
     it('maskotka i dymek z treści bloku jako jedna jednostka', () => {
       render(<CoursePlayer courseId="course-1" initial={course()} />);
-      const unit = screen.getByTestId('mascot-says');
+      // course() domyślnie NIE jest SCENE_HOTSPOTS -> contentLayout='slide' -> MascotBanner (pasek), nie floating
+      // MascotOverlay/mascot-says (fix/dialogue-polish).
+      const unit = screen.getByTestId('mascot-banner');
       expect(unit).toContainElement(screen.getByText('Cześć! Zaczynamy.'));
       expect(unit).toContainElement(screen.getByAltText('Maskotka Unfooly wita'));
       expect(screen.getByAltText('Maskotka Unfooly wita')).toHaveAttribute('src', '/mascot/fooli-greeting.svg');

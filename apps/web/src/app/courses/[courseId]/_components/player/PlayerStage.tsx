@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 
 import { useFullscreen } from './useFullscreen';
 import { OverlayStackProvider, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
 import MascotOverlay from './MascotOverlay';
+import MascotBanner from './MascotBanner';
 import NotesDrawer from './NotesDrawer';
 
 // Ramka odtwarzacza kursu (feat/player-stage) - zastępuje PlayerShell.tsx. Trasa /courses/[courseId] NIE ma już
@@ -308,12 +309,29 @@ function PlayerStageInner({
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">
               Blok {blockNumber} z {totalBlocks}
             </h2>
-            {contentLayout === 'scene' || contentLayout === 'fill' ? (
-              <div className="flex h-full min-h-full flex-col items-center justify-center p-3">{stage}</div>
-            ) : (
-              <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">{stage}</div>
-            )}
-            {mascot && <MascotOverlay pose={mascot.pose} text={mascot.text} />}
+            {/* JEDEN <div> ze WSPÓLNĄ, stałą tablicą dzieci (className tylko przełącza się warunkowo) - NIE
+                ternary między DWOMA różnymi elementami <div> (kod review, realna regresja): gdy `stage` jest
+                jedynym dzieckiem w jednej gałęzi, a `{mascot && <MascotBanner/>}{stage}` (dwa sloty) w drugiej,
+                przejście 'scene'<->'slide' (np. "Wstecz" na blok INNEGO typu niż żywy - `contentLayout` liczy się z
+                `currentBlock` PODGLĄDANEGO bloku, nie żywego) przesuwa `stage` z indeksu 0 na indeks 1 w tablicy
+                dzieci - React reconciluje sloty WEDŁUG POZYCJI, więc widzi w slocie 0 zupełnie inny typ (Fragment
+                `stage` vs `false`/`null` z warunku maskotki) i ODMONTOWUJE CAŁY poddrzewo `stage` (żywy,
+                ukryty SceneHotspotsBlock WŁĄCZNIE, mimo jego własnego `key`) tylko po to, żeby zamontować je na
+                nowo w slocie 1 - stan bloku (odwiedzone hotspoty, otwarta karta) gubił się przy każdym Wstecz/Dalej
+                między blokami różnych typów. Trzymając JEDEN <div> i DWA STAŁE sloty (banner zawsze pierwszy,
+                `stage` zawsze drugi, niezależnie od contentLayout) `stage` zostaje w TYM SAMYM miejscu tablicy
+                zawsze - reconciliacja aktualizuje tylko className i widoczność bannera, nie odmontowuje `stage`. */}
+            <div
+              className={
+                contentLayout === 'scene' || contentLayout === 'fill'
+                  ? 'flex h-full min-h-full flex-col items-center justify-center p-3'
+                  : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
+              }
+            >
+              {mascot && contentLayout !== 'scene' && contentLayout !== 'fill' && <MascotBanner pose={mascot.pose} text={mascot.text} />}
+              {stage}
+            </div>
+            {mascot && contentLayout === 'scene' && <MascotOverlay pose={mascot.pose} text={mascot.text} />}
           </div>
 
           {/* Pasek dolny (~56px, ściśnięty do 48px w telefonie w poziomie): narracja (lewo+środek, NarrationBar samo

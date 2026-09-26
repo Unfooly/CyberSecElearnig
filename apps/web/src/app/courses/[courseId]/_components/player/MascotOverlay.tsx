@@ -1,25 +1,22 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId } from 'react';
 import { X } from 'lucide-react';
 import Mascot from '@/components/Mascot';
-import { useAnyOverlayOpen } from './overlay-stack';
+import { useMascotCollapse } from './useMascotCollapse';
 
-// Nakładka Fooli w lewym dolnym rogu obszaru bloku (feat/player-stage) - zastępuje dawny osobny wiersz NAD sceną w
-// PlayerShell.tsx.
+// Nakładka Fooli w lewym dolnym rogu obszaru bloku (feat/player-stage) - WYŁĄCZNIE SCENE_HOTSPOTS od
+// fix/dialogue-polish (PlayerStage.tsx renderuje ją tylko dla contentLayout==='scene' - Fooli "stoi" na scenie, więc
+// floating nakładka ma sens; wszędzie indziej to była zwykła nakładka na treść bloku, patrz MascotBanner.tsx i
+// B-103). Stan zwijania/rozwijania (timer 8s, zwijanie na otwartą nakładkę/pierwszą interakcję z blokiem) jest we
+// WSPÓLNYM hooku `useMascotCollapse` (dzielonym z MascotBanner.tsx) - ten plik zajmuje się WYŁĄCZNIE markupem
+// floating nakładki, patrz useMascotCollapse.ts po wyjaśnienie samego zachowania.
 //
-// Kod review PR #44 (a11y): dawna wersja chowała CAŁĄ nakładkę (ikonę + dymek RAZEM, jako jeden <button>) po 6 s
-// albo kliknięciu - dymek znikał bezpowrotnie, a tekst leżał WEWNĄTRZ przycisku, więc czytnik ekranu odczytywał go
-// jako etykietę przycisku, nie jako ogłoszenie. Teraz ikona i dymek to DWA oddzielne elementy:
-//  - dymek to zwykły tekst w <p role="status" aria-live="polite"> (poza jakimkolwiek przyciskiem) - czytnik ekranu
-//    ogłasza go jak żywy region za każdym nowym komunikatem;
-//  - po 8 s dymek WIZUALNIE zwija się do samej ikony (max-height/opacity, NIE unmount/aria-hidden - zostaje w
-//    drzewie dostępności, `mascot-says` z testId niżej trzyma testy z poprzedniej wersji);
-//  - klik w ikonę rozwija dymek z powrotem; osobny mały X "Zwiń" zwija go ręcznie;
-//  - zwinięcie NIE przenosi fokusu (inaczej niż NotesDrawer/TranscriptPanel - to nie modal, nie ma "powrotu");
-//  - nowy komunikat (zmiana pose/text - CoursePlayer.tsx przekazuje `reaction ?? idleMascot`, więc każde zdarzenie
-//    zmienia przynajmniej jedną z tych wartości) zawsze rozwija dymek od nowa i resetuje odliczanie 8 s;
-//  - prefers-reduced-motion wyłącza animację zwijania (motion-reduce:transition-none, jak NotesDrawer/TranscriptPanel).
+// Kod review PR #44 (a11y): dymek to zwykły tekst w <p role="status" aria-live="polite"> (poza jakimkolwiek
+// przyciskiem) - czytnik ekranu ogłasza go jak żywy region za każdym nowym komunikatem; ikona i dymek to DWA
+// oddzielne elementy (dawna wersja chowała oba razem jako jeden <button>, tekst wewnątrz przycisku czytany jako
+// jego etykieta, nie jako ogłoszenie). Klik w ikonę rozwija dymek z powrotem; osobny mały X "Zwiń" zwija go
+// ręcznie; zwinięcie NIE przenosi fokusu (inaczej niż NotesDrawer/TranscriptPanel - to nie modal, nie ma "powrotu").
 //
 // Hotfix fix/mascot-overlap (dymek zasłaniał przyciski karty hotspotu "Dodaj do notatnika"/"Wróć"): PRZYCZYNA -
 // karta hotspotu leży w z-30 WEWNĄTRZ własnego `isolate` (SceneHotspotsBlock.tsx) - `isolate` tworzy LOKALNY
@@ -28,72 +25,16 @@ import { useAnyOverlayOpen } from './overlay-stack';
 // Fooli (jawny z-index) malował się WYŻEJ niż ta warstwa, mimo że karta w środku deklaruje z-30. Dlatego samo
 // "z-10 < z-30" nie wystarcza (patrz komentarz przy z-index niżej) - główną poprawką jest PEŁNE chowanie ikonki
 // (nie tylko dymka) na czas otwartej JAKIEJKOLWIEK warstwy overlay-stack (karta hotspotu, notatnik, transkrypcja,
-// nagroda kursu) - `useAnyOverlayOpen()`. Gdy którakolwiek jest otwarta: dymek zwija się natychmiast (bez animacji -
-// nie może być momentu, w którym zasłania/łapie klik), a ikonka dostaje `invisible` (visibility:hidden - usuwa ją
-// też z kolejności Tab i z drzewa dostępności, nie tylko z widoku - kod review, druga runda: samo opacity-0 nie
-// wystarczało, klawiatura i czytnik ekranu wciąż mogły na nią trafić) + `aria-hidden`/`tabIndex=-1` jako dodatkowa,
-// jawna warstwa. Po zamknięciu OSTATNIEJ warstwy ikonka wraca, ale dymek ZOSTAJE zwinięty - nie rozwija się sam
-// (rozwija go tylko nowy pose/text albo klik w ikonę, patrz niżej).
+// nagroda kursu) - dymek zwija się natychmiast (bez animacji - nie może być momentu, w którym zasłania/łapie klik),
+// a ikonka dostaje `invisible` (visibility:hidden - usuwa ją też z kolejności Tab i z drzewa dostępności, nie tylko
+// z widoku - kod review, druga runda: samo opacity-0 nie wystarczało, klawiatura i czytnik ekranu wciąż mogły na
+// nią trafić) + `aria-hidden`/`tabIndex=-1` jako dodatkowa, jawna warstwa. Po zamknięciu OSTATNIEJ warstwy ikonka
+// wraca, ale dymek ZOSTAJE zwinięty - nie rozwija się sam.
 export default function MascotOverlay({ pose, text }: { pose?: string; text?: string }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed, bubbleVisible, rootRef, anyOverlayOpen } = useMascotCollapse({ pose, text });
   const bubbleId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const anyOverlayOpen = useAnyOverlayOpen();
-
-  useEffect(() => {
-    setCollapsed(false);
-    if (!pose || !text) return undefined;
-    const timer = setTimeout(() => setCollapsed(true), 8000);
-    return () => clearTimeout(timer);
-  }, [pose, text]);
-
-  // Otwarcie JAKIEJKOLWIEK nakładki zwija dymek TRWALE (nie tylko wizualnie przez `bubbleVisible` niżej) - inaczej
-  // po zamknięciu nakładki `collapsed` wróciłoby do swojej WCZEŚNIEJSZEJ wartości (np. false, jeśli overlay otworzył
-  // się przed upływem 8 s), a dymek rozwinąłby się sam wbrew wymogowi "nie rozwija się ponownie sam". `bubbleVisible`
-  // niżej i tak dodatkowo maskuje ten SAM render (efekt commit'uje dopiero PO nim) - to działa razem, nie zamiast.
-  useEffect(() => {
-    if (anyOverlayOpen) setCollapsed(true);
-  }, [anyOverlayOpen]);
-
-  // Pierwsza interakcja z BLOKIEM (klik w hotspot, fokus w polu klawiaturą, wybór w quizie/dialogu, ...) zwija
-  // dymek od razu, bez czekania na 8 s - user, który już wchodzi w interakcję z treścią, nie potrzebuje podpowiedzi
-  // na oczach. `pointerdown` (klik/dotyk) + `keydown` (klawiatura - Tab w pole, Enter/Spacja) + `change` (natywne
-  // radio/checkbox/select) - CELOWO BEZ `focusin` (kod review, druga runda: prawdziwy regres): zmiana bloku i wiele
-  // reakcji treści przenoszą fokus PROGRAMOWO (CoursePlayer.tsx - fokus na nagłówek nowego bloku po zmianie
-  // displayedIndex/feedback; DialogueBlock.tsx, SceneHotspotsBlock.tsx, OrderingBlock.tsx, TabsBlock.tsx - fokus po
-  // własnych zdarzeniach) - `element.focus()` wywołane z JS daje TRUSTED `focusin`, nierozróżnialne od fokusu
-  // użytkownika, więc `focusin` zwijał dymek NATYCHMIAST po każdej zmianie bloku/reakcji, zanim user w ogóle go
-  // zobaczył (wyścig z efektem NOWY POSE/TEXT wyżej - oba lecą w tym samym flushu, oba w tym samym komponencie
-  // potomnym względem efektu CoursePlayer.tsx, więc `setCollapsed(true)` z focusin wygrywał). `keydown` NIE fatal
-  // dla samego .focus() - odpala się WYŁĄCZNIE na prawdziwym naciśnięciu klawisza, więc Tab w pole (klawiatura)
-  // nadal się liczy, a programowe przeniesienie fokusu bez klawisza - nie.
-  // Nasłuch na document (capture) zamiast na konkretnym kontenerze bloku: MascotOverlay jest RODZEŃSTWEM treści
-  // bloku (sibling w PlayerStage.tsx), nie jej rodzicem, więc nie ma własnego refa do "obszaru bloku" - jedyny
-  // wyjątek to WŁASNE UI tej nakładki (klik w ikonę/X), świadomie wykluczone przez rootRef.contains poniżej, żeby
-  // rozwinięcie dymku klikiem w ikonę nie zwijało go w tej samej klatce. Bez tablicy zależności z pose/text -
-  // handler nie zależy od żadnego z nich (setCollapsed(true) jest bezwarunkowe i no-opem, gdy już zwinięty), więc
-  // jeden nasłuch na cały czas życia komponentu wystarcza: kolejna interakcja po KAŻDYM nowym komunikacie (który
-  // osobno rozwija dymek na nowo, efekt wyżej) zwinie go ponownie, dokładnie tak samo jak za pierwszym razem.
-  useEffect(() => {
-    function handleInteraction(event: Event) {
-      if (rootRef.current?.contains(event.target as Node)) return;
-      setCollapsed(true);
-    }
-    document.addEventListener('pointerdown', handleInteraction, true);
-    document.addEventListener('keydown', handleInteraction, true);
-    document.addEventListener('change', handleInteraction, true);
-    return () => {
-      document.removeEventListener('pointerdown', handleInteraction, true);
-      document.removeEventListener('keydown', handleInteraction, true);
-      document.removeEventListener('change', handleInteraction, true);
-    };
-  }, []);
 
   if (!pose) return null;
-
-  // Dymek: zwinięty (bez dymka) też, gdy JAKAKOLWIEK warstwa overlay-stack jest otwarta - NIE tylko `collapsed`
-  // (broni przed wyścigiem klatek, gdyby oba stany zmieniły się w tym samym renderze inaczej niż zamierzone).
-  const bubbleVisible = Boolean(text) && !collapsed && !anyOverlayOpen;
 
   return (
     <div

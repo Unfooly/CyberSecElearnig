@@ -100,8 +100,29 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
 const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to', 'hotspots[].action', 'hotspots[].media'];
 
 // schemaVersion 5: blok BRIEFING w całości i cel jako obiekt w `objectives` mają osobne sprawdzenie w parseModule (jak
-// blok NARRATIVE i subtitle/level/objectives przy v4) - nie ma tu nowych POJEDYNCZYCH pól wewnątrz innych typów bloków,
-// więc nie potrzeba osobnej listy V5_FEATURES/featuresUsed.
+// blok NARRATIVE i subtitle/level/objectives przy v4). Pola WEWNĄTRZ innych bloków z v5 (D-082): nagranie media audio z
+// potoku TTS (`media.narration`, także w zagnieżdżonej scenie) i rola głosu `voice` w KAŻDEJ narracji (dowolna ścieżka
+// kończąca się na `narration.voice`/`Narration.voice` - dlatego osobna funkcja, nie lista prefiksów jak v3/v4).
+export function v5FeaturesUsed(block: ServerBlock): string[] {
+  const paths = collectPaths(block);
+  const used: string[] = [];
+  if (paths.some((path) => /(^|\.)media\.narration(\.|$)/.test(path))) used.push('media.narration');
+  if (paths.some((path) => /[nN]arration\.voice$/.test(path))) used.push('narration.voice');
+  return used;
+}
+
+/**
+ * Media audio (D-082): dokładnie jedno z `audioUrl` (plik z --assets) / `narration` (nagranie z potoku TTS); `transcript` tylko
+ * przy `audioUrl` - przy `narration` transkrypcją jest `narration.text` (jeden tekst, bez rozjazdu dwóch kopii).
+ */
+function audioMediaErrors(label: string, media: { kind: string; audioUrl?: string; transcript?: string; narration?: unknown } | undefined): string[] {
+  if (media?.kind !== 'audio') return [];
+  const errors: string[] = [];
+  if ((media.audioUrl === undefined) === (media.narration === undefined)) errors.push(`${label}.media: audio wymaga dokładnie jednego z pól audioUrl/narration`);
+  if (media.audioUrl !== undefined && media.transcript === undefined) errors.push(`${label}.media: audioUrl wymaga transcript`);
+  if (media.narration !== undefined && media.transcript !== undefined) errors.push(`${label}.media: przy narration transkrypcją jest narration.text (bez transcript)`);
+  return errors;
+}
 
 function featuresUsed(block: ServerBlock, features: string[]): string[] {
   const paths = new Set(collectPaths(block));
@@ -206,11 +227,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);
           errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
         }
+        errors.push(...audioMediaErrors(`hotspots[${i}]`, h.media));
         if (h.media?.kind === 'scene') {
           h.media.scene.hotspots.forEach((ih, j) => {
             const label = `hotspots[${i}].media.scene.hotspots[${j}]`;
             if (ih.x + ih.width > 100 || ih.y + ih.height > 100) errors.push(`${label}: obszar wychodzi poza obraz`);
             errors.push(...evidenceErrors(label, ih, kindRequired));
+            errors.push(...audioMediaErrors(label, ih.media));
           });
         }
       });
@@ -353,8 +376,9 @@ export function parseModule(input: unknown): ContentModule {
         errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 4`);
       }
     }
-    if (contentModule.schemaVersion < 5 && block.type === 'BRIEFING') {
-      errors.push(`blocks[${index}] (${block.id}): blok BRIEFING wymaga schemaVersion 5`);
+    if (contentModule.schemaVersion < 5) {
+      if (block.type === 'BRIEFING') errors.push(`blocks[${index}] (${block.id}): blok BRIEFING wymaga schemaVersion 5`);
+      for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
     }
   });
 

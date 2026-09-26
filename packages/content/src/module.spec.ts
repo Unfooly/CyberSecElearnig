@@ -719,6 +719,64 @@ describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', (
   });
 });
 
+// Wersja 5: rola głosu nagrania i nagranie media audio z potoku TTS (D-082).
+describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const telefon = (m: TestModule) =>
+    m.blocks.find((b) => b.type === 'SCENE_HOTSPOTS')!.hotspots.find((h: Record<string, any>) => h.media?.kind === 'audio');
+  const toTts = (m: TestModule) => {
+    const media = telefon(m).media;
+    media.narration = { text: media.transcript, voice: 'bank' };
+    delete media.audioUrl;
+    delete media.transcript;
+  };
+
+  it('voice: znane role przechodzą (fooli w odprawie fixtury), nieznana rola to błąd walidacji', () => {
+    expect(() => parseModule(fullModuleForTests())).not.toThrow();
+    for (const voice of ['narrator', 'fooli', 'bank', 'marek']) {
+      expect(invalid((m) => (m.blocks[0].narration.voice = voice))).toBe('');
+    }
+    expect(invalid((m) => (m.blocks[0].narration.voice = 'lektor2'))).toContain('narration.voice');
+  });
+
+  it('media audio z nagraniem z potoku TTS (narration + voice) przechodzi; transkrypcją jest narration.text', () => {
+    expect(invalid(toTts)).toBe('');
+  });
+
+  it('media audio: dokładnie jedno z audioUrl/narration, transcript tylko przy audioUrl', () => {
+    expect(invalid((m) => (telefon(m).media.narration = { text: 'x' }))).toContain('dokładnie jednego z pól audioUrl/narration');
+    expect(invalid((m) => delete telefon(m).media.audioUrl)).toContain('dokładnie jednego z pól audioUrl/narration');
+    expect(invalid((m) => delete telefon(m).media.transcript)).toContain('audioUrl wymaga transcript');
+    expect(
+      invalid((m) => {
+        toTts(m);
+        telefon(m).media.transcript = 'druga kopia';
+      }),
+    ).toContain('bez transcript');
+  });
+
+  it('voice i media.narration w module w wersji 4 są odrzucone (nazwane w błędzie)', () => {
+    const message = invalid((m) => {
+      m.schemaVersion = 4;
+      m.blocks = m.blocks.filter((b) => b.type !== 'BRIEFING');
+      m.objectives = ['Rozpoznać phishing'];
+      m.blocks[0].narration.voice = 'narrator';
+      toTts(m);
+    });
+    expect(message).toContain('pole narration.voice wymaga schemaVersion 5');
+    expect(message).toContain('pole media.narration wymaga schemaVersion 5');
+  });
+});
+
 describe('normalizeObjectives', () => {
   it('tekst z v4 i obiekt z v5 w jednej postaci; śmieci z bazy pomijane', () => {
     expect(

@@ -315,7 +315,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           caller: { name: 'Komisarz Fooli', role: 'Wydział cyber', mascot: 'greeting' },
           text: 'Mamy sprawę.',
           cta: 'Słucham',
-          narration: audio('odprawa-1'),
+          // Rola głosu (schemaVersion 5, D-082): Komisarz mówi głosem maskotki.
+          narration: { ...audio('odprawa-1'), voice: 'fooli' as const },
         },
         { kind: 'call', caller: { name: 'Marek', avatar: 'avatars/marek.svg' }, text: 'Czekam w IT.', cta: 'Dalej' },
         {
@@ -356,6 +357,13 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   // spokenText (narration.spokenText, FIELD_CLASSIFICATION: secret) dokładany TYLKO tutaj, nie w audio() - inaczej
   // fullModule() (używany też przez scripts/content) miałby WSZĘDZIE spokenText, a wtedy jego testy sidecar/cues
   // (które zakładają realne, wielozdaniowe cues z TTS) przestałyby mieć czego testować (spokenText celowo pomija cues).
+  // media.narration (schemaVersion 5, D-082): nagranie z potoku TTS zamiast pliku. Semantycznie wyklucza się z audioUrl, ale tu
+  // (bez parseModule) oba warianty na tych samych hotspotach, żeby test kompletności widział wszystkie ścieżki klasyfikacji.
+  const scene = blocks.SCENE_HOTSPOTS as { hotspots: { id: string; media?: Record<string, unknown> }[] };
+  const telefon = scene.hotspots.find((h) => h.media?.kind === 'audio')!;
+  telefon.media!.narration = audio('telefon-media');
+  const inner = scene.hotspots.flatMap((h) => ((h.media?.scene as { hotspots?: { media?: Record<string, unknown> }[] })?.hotspots ?? []));
+  inner.find((h) => h.media?.kind === 'audio')!.media!.narration = audio('kosz-media');
   for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;
 }
@@ -370,8 +378,10 @@ function injectSpokenText(node: unknown): void {
   }
   if (node && typeof node === 'object') {
     const object = node as Record<string, unknown>;
-    if (typeof object.text === 'string' && 'audioUrl' in object && !('spokenText' in object)) {
+    if (typeof object.text === 'string' && 'audioUrl' in object && 'durationMs' in object && !('spokenText' in object)) {
       object.spokenText = `${SECRET_MARKER}-spoken-${String(object.audioUrl).replace(/\W+/g, '-')}`;
+      // voice (schemaVersion 5, D-082): tak samo "tylko dla TTS" jak spokenText - ścieżka musi istnieć, żeby test ją widział.
+      object.voice = 'bank';
     }
     Object.values(object).forEach(injectSpokenText);
   }

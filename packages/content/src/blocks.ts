@@ -76,8 +76,18 @@ const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSche
 // imageMediaSchema - opcjonalny, bo zbliżenie bywa czysto ilustracyjne (treść i tak jest w transkrypcie), ale gdy niesie
 // informację NIEOBECNĄ w transkrypcie (np. tekst widoczny na zdjęciu telefonu), autor może ją opisać. `alt` to WSPÓLNA
 // ścieżka klasyfikacji z imageMediaSchema (hotspots[].media.alt) - nie potrzeba osobnego wpisu w FIELD_CLASSIFICATION.
+// schemaVersion 5 (D-082): nagranie z potoku TTS zamiast gotowego pliku - `narration` (tekst = transkrypcja, zwykle z własnym
+// `voice`, np. poczta głosowa głosem "bank") ALBO `audioUrl` + `transcript` (plik z --assets, jak dotąd). Dokładnie jedno z
+// audioUrl/narration, a transcript tylko przy audioUrl - przy narration transkrypcją jest narration.text (semantics.ts).
 const audioMediaSchema = z
-  .object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000), image: imagePathSchema.optional(), alt: text(300).optional() })
+  .object({
+    kind: z.literal('audio'),
+    audioUrl: audioPathSchema.optional(),
+    transcript: text(4000).optional(),
+    narration: narrationSchema.optional(),
+    image: imagePathSchema.optional(),
+    alt: text(300).optional(),
+  })
   .strict();
 const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
 
@@ -506,6 +516,8 @@ const BASE_SECRET = [
   // z narration.text), więc nie ma powodu wysyłać go do klienta. SEKRET tu znaczy tylko "niepotrzebne klientowi", nie "klucz
   // odpowiedzi" - tak samo jak EMBEDDED_HTML.html niżej.
   'narration.spokenText',
+  // narration.voice (schemaVersion 5, D-082): rola głosu dla skryptu TTS - odtwarzacz jej nie potrzebuje, jak spokenText.
+  'narration.voice',
 ];
 
 export interface FieldClassification {
@@ -544,6 +556,12 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.alt',
       'hotspots[].media.audioUrl',
       'hotspots[].media.transcript',
+      // schemaVersion 5: nagranie media audio z potoku TTS (D-082) - te same pola co narracja bloku.
+      'hotspots[].media.narration.text',
+      'hotspots[].media.narration.audioUrl',
+      'hotspots[].media.narration.durationMs',
+      'hotspots[].media.narration.cues[].text',
+      'hotspots[].media.narration.cues[].startMs',
       'hotspots[].media.image',
       'hotspots[].media.title',
       'hotspots[].media.lines[]',
@@ -561,6 +579,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].media.alt',
       'hotspots[].media.scene.hotspots[].media.audioUrl',
       'hotspots[].media.scene.hotspots[].media.transcript',
+      'hotspots[].media.scene.hotspots[].media.narration.text',
+      'hotspots[].media.scene.hotspots[].media.narration.audioUrl',
+      'hotspots[].media.scene.hotspots[].media.narration.durationMs',
+      'hotspots[].media.scene.hotspots[].media.narration.cues[].text',
+      'hotspots[].media.scene.hotspots[].media.narration.cues[].startMs',
       'hotspots[].media.scene.hotspots[].media.image',
       'hotspots[].media.scene.hotspots[].media.title',
       'hotspots[].media.scene.hotspots[].media.lines[]',
@@ -584,7 +607,16 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].required',
       'requiredHotspots[]',
     ],
-    ['hotspots[].narration.spokenText', 'hotspots[].media.scene.hotspots[].narration.spokenText'],
+    [
+      'hotspots[].narration.spokenText',
+      'hotspots[].narration.voice',
+      'hotspots[].media.scene.hotspots[].narration.spokenText',
+      'hotspots[].media.scene.hotspots[].narration.voice',
+      'hotspots[].media.narration.spokenText',
+      'hotspots[].media.narration.voice',
+      'hotspots[].media.scene.hotspots[].media.narration.spokenText',
+      'hotspots[].media.scene.hotspots[].media.narration.voice',
+    ],
   ),
   DIALOGUE: classify(
     [
@@ -613,7 +645,12 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'questions[].note.text',
       'requiredQuestions[]',
     ],
-    ['questions[].lines[].narration.spokenText', 'questions[].answerNarration.spokenText'],
+    [
+      'questions[].lines[].narration.spokenText',
+      'questions[].lines[].narration.voice',
+      'questions[].answerNarration.spokenText',
+      'questions[].answerNarration.voice',
+    ],
   ),
   NOTEPAD: classify(['prompt'], []),
   NARRATIVE: classify(['text'], []),
@@ -655,6 +692,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hints[].narration.cues[].text',
       'hints[].narration.cues[].startMs',
       'hints[].narration.spokenText',
+      'hints[].narration.voice',
       'scoring.attemptPenalty',
       'scoring.floor',
       'solution.text',
@@ -685,7 +723,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].narration.cues[].text',
       'steps[].narration.cues[].startMs',
     ],
-    ['steps[].narration.spokenText'],
+    ['steps[].narration.spokenText', 'steps[].narration.voice'],
   ),
 };
 

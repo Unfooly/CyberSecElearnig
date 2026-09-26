@@ -51,6 +51,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   odprawie, sekcja „Zadania” w notatniku). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są ukończone (to nie ocena).
   `completeWhen` nie może wskazywać bloku `BRIEFING` (pominięcie odprawy nie odhacza zadań). Cele są zapisywane razem z wersją treści
   (`course_versions.objectives`), bo `completeWhen` wskazuje bloki konkretnej wersji; katalog kursów dostaje z nich tylko teksty.
+- `narration.voice` (D-082): rola głosu nagrania - `narrator` (domyślnie), `fooli`, `bank`, `marek` (`VOICE_ROLES`); pole tylko dla
+  skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
+- Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z
+  `voice`; transkrypcją jest `narration.text`) - dokładnie jedno z nich.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

@@ -23,18 +23,17 @@ const briefing: ContentBlock = {
       title: 'Wyłudzone hasło',
       fields: [{ label: 'Firma', value: 'Unfooly Sp. z o.o., Kraków' }],
       stamp: 'PILNE',
+      // Zadania sprawy żyją w treści bloku (D-081), nie w celach modułu.
+      tasks: [
+        { id: 'dowody', text: 'Zabezpiecz dowody w biurze.', completeWhen: ['biuro'] },
+        { id: 'it', text: 'Porozmawiaj z IT.', completeWhen: ['biuro', 'rozmowa'] },
+      ],
       cta: 'Przyjmuję sprawę',
     },
     { kind: 'badge', cta: 'Do dzieła' },
     { kind: 'start', text: 'Unfooly, drugie piętro.', cta: 'Wchodzę' },
   ],
 };
-
-const objectives = [
-  { text: 'Zabezpiecz dowody w biurze.', completeWhen: ['biuro'] },
-  { text: 'Porozmawiaj z IT.', completeWhen: ['biuro', 'rozmowa'] },
-  { text: 'Cel bez completeWhen.' },
-];
 
 function course(overrides: Partial<CoursePlayerInitialState> = {}): CoursePlayerInitialState {
   return {
@@ -48,7 +47,6 @@ function course(overrides: Partial<CoursePlayerInitialState> = {}): CoursePlayer
       { type: 'NARRATIVE', id: 'biuro', text: 'Biuro Anny.' },
       { type: 'NARRATIVE', id: 'rozmowa', text: 'Rozmowa z IT.' },
     ],
-    objectives,
     progress: null,
     score: null,
     ...overrides,
@@ -114,10 +112,10 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(screen.getByText('SPR-2026-0412')).toHaveClass('font-typewriter');
     expect(screen.getByText('Unfooly Sp. z o.o., Kraków')).toBeInTheDocument();
     expect(screen.getByText('PILNE')).toHaveTextContent('Pieczątka: PILNE');
-    // Zadania pod kartą sprawy - z celów modułu (wersja przypisania), nie z treści kroku.
+    // Zadania pod kartą sprawy - z treści kroku caseFile (tasks), nie z celów modułu.
     const tasks = within(screen.getByRole('region', { name: 'Zadania' }));
     expect(tasks.getByText('Zabezpiecz dowody w biurze.')).toBeInTheDocument();
-    expect(tasks.getByText('Cel bez completeWhen.')).toBeInTheDocument();
+    expect(tasks.getAllByRole('listitem')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'Przyjmuję sprawę' }));
     await screen.findByText('Anna K.');
@@ -184,8 +182,6 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Notatnik/ }));
     expect(notebookTask('Zabezpiecz dowody w biurze.')).toHaveTextContent('Wykonane:');
     expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
-    // Cel bez completeWhen: zwykła pozycja, bez stanu.
-    expect(notebookTask('Cel bez completeWhen.').textContent).toBe('Cel bez completeWhen.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Zamknij notatnik' }));
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
@@ -310,7 +306,6 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     for (const cta of ['Odbierz', 'Słucham']) fireEvent.click(screen.getByRole('button', { name: cta }));
     expect(notebookTask('Zabezpiecz dowody w biurze.')).toHaveTextContent('Wykonane:');
     expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
-    expect(notebookTask('Cel bez completeWhen.').textContent).toBe('Cel bez completeWhen.');
   });
 
   it('imię nie jest pobierane w module bez odprawy', () => {
@@ -361,13 +356,12 @@ describe('tożsamość na legitymacji i zadania (funkcje czyste)', () => {
     expect(badgeNumber(undefined, 'AK')).toBe('AK');
   });
 
-  it('notebookTasks: odhaczone, gdy WSZYSTKIE bloki z completeWhen są ukończone', () => {
-    expect(
-      notebookTasks(objectives, { biuro: { type: 'NARRATIVE', done: true }, rozmowa: { type: 'NARRATIVE', done: false } }),
-    ).toEqual([
+  it('notebookTasks: zadania z bloku BRIEFING, odhaczone, gdy WSZYSTKIE bloki z completeWhen są ukończone; moduł bez odprawy = brak', () => {
+    const blocks = course().contentBlocks;
+    expect(notebookTasks(blocks, { biuro: { type: 'NARRATIVE', done: true }, rozmowa: { type: 'NARRATIVE', done: false } })).toEqual([
       { text: 'Zabezpiecz dowody w biurze.', done: true },
       { text: 'Porozmawiaj z IT.', done: false },
-      { text: 'Cel bez completeWhen.' },
     ]);
+    expect(notebookTasks(blocks.filter((block) => block.type !== 'BRIEFING'), {})).toEqual([]);
   });
 });

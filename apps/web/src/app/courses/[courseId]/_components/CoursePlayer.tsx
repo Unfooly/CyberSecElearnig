@@ -10,7 +10,6 @@ import type {
   ContentReaction,
   CourseCompletionReward,
   CourseDetail,
-  CourseObjective,
   CourseProgressResponse,
   EvidenceSummary,
   LastResult,
@@ -140,7 +139,6 @@ function StageWithContext({
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
 
-const NO_OBJECTIVES: CourseObjective[] = [];
 
 /** Czy blok ma jakiekolwiek nagranie - dla BRIEFING także w krokach (narracja odprawy jest per krok, D-081). */
 const blockNarrations = (block: ContentBlock | undefined): (Narration | undefined)[] =>
@@ -182,7 +180,6 @@ export default function CoursePlayer({
   const hasBriefing = initial.contentBlocks.some((block) => block.type === 'BRIEFING');
   const displayName = useMyDisplayName(userEmail, hasBriefing);
   const identity = useMemo(() => playerIdentity(displayName, userEmail), [displayName, userEmail]);
-  const objectives = initial.objectives ?? NO_OBJECTIVES;
   // Bieżący krok odprawy per zamontowana instancja bloku ("l-<id>" żywy, "r-<id>" podgląd "Wstecz") - narracja w pasku
   // powłoki idzie za krokiem; gesture = krok zmieniony kliknięciem gracza (wolno wtedy autoodtworzyć jego narrację).
   const [briefingSteps, setBriefingSteps] = useState<Record<string, { index: number; gesture: boolean }>>({});
@@ -231,8 +228,8 @@ export default function CoursePlayer({
   const [autoPlayFor, setAutoPlayFor] = useState<string | null>(null);
   // Wyniki bloków po id: początkowe z /start, uzupełniane po każdej odpowiedzi w tej sesji (dla podglądu "Wstecz").
   const [results, setResults] = useState<Record<string, ClientProgressBlock>>(initial.progress?.blocks ?? {});
-  // Zadania (cele z completeWhen, D-081): jeden stan dla notatnika i karty sprawy w odprawie.
-  const tasks = useMemo(() => notebookTasks(objectives, results), [objectives, results]);
+  // Zadania sprawy (BRIEFING, krok caseFile, D-081) z treści TEJ wersji: jeden stan dla notatnika i karty sprawy w odprawie.
+  const tasks = useMemo(() => notebookTasks(initial.contentBlocks, results), [initial.contentBlocks, results]);
   // Dowody śledztwa: liczby z serwera (start i każda odpowiedź /progress); dowody z niezapisanego bloku dolicza EvidenceProvider.
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).

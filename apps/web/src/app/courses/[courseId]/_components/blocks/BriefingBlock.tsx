@@ -185,7 +185,7 @@ function CaseFileStep({
         </span>
       )}
       {/* Ten sam stan zadań co sekcja "Zadania" w notatniku (notes.tsx, notebookTasks) - w podglądzie ukończonego kursu
-          wykonane są odhaczone; cel bez completeWhen to zwykły punkt, nie pole do odhaczenia. */}
+          wykonane są odhaczone. */}
       {tasks.length > 0 && (
         <section aria-labelledby={`${headingId}-tasks`} className="mt-4 border-t border-border pt-3">
           <h4 id={`${headingId}-tasks`} className="text-xs font-bold uppercase tracking-wide text-muted">
@@ -194,15 +194,13 @@ function CaseFileStep({
           <ul className="mt-2 space-y-1.5 text-sm text-ink">
             {tasks.map((task, index) => (
               <li key={index} className="flex items-start gap-2">
-                {task.done === undefined ? (
-                  <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted" />
-                ) : task.done ? (
+                {task.done ? (
                   <CheckSquare aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                 ) : (
                   <Square aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
                 )}
                 <span>
-                  {task.done !== undefined && <span className="sr-only">{task.done ? 'Wykonane: ' : 'Do zrobienia: '}</span>}
+                  <span className="sr-only">{task.done ? 'Wykonane: ' : 'Do zrobienia: '}</span>
                   {task.text}
                 </span>
               </li>

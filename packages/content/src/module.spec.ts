@@ -1,4 +1,4 @@
-import { ContentValidationError, MODULE_SCHEMA_VERSION, normalizeObjectives, requiredItemIds, withLegacyIds } from './index';
+import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, withLegacyIds } from './index';
 import { fullModule } from './fixtures';
 import { hashContent, moduleWarnings, parseModule } from './node';
 
@@ -645,8 +645,8 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
   });
 });
 
-// Wersja 5: blok BRIEFING (odprawa) i cel modułu jako obiekt { text, completeWhen } (zadanie śledztwa), D-081.
-describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', () => {
+// Wersja 5: blok BRIEFING (odprawa) z zadaniami sprawy w kroku caseFile (tasks[] { id, text, completeWhen }), D-081.
+describe('parseModule: schemaVersion 5 (BRIEFING, zadania sprawy)', () => {
   const invalid = (mutate: (m: TestModule) => void): string => {
     const module = fullModuleForTests();
     mutate(module);
@@ -658,33 +658,32 @@ describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', (
     return '';
   };
   const briefing = (m: TestModule) => m.blocks.find((b) => b.type === 'BRIEFING') as Record<string, any>;
+  const tasks = (m: TestModule) => briefing(m).steps.find((s: Record<string, any>) => s.kind === 'caseFile').tasks as Record<string, any>[];
 
-  it('moduł w wersji 4 z blokiem BRIEFING i celem-obiektem jest odrzucony (oba nazwane w błędzie)', () => {
-    const message = invalid((m) => {
-      m.schemaVersion = 4;
-    });
-    expect(message).toContain('blok BRIEFING wymaga schemaVersion 5');
-    expect(message).toContain('objectives[1]: cel jako obiekt wymaga schemaVersion 5');
-  });
-
-  it('moduł w wersji 4 bez BRIEFING i z celami-tekstami nadal przechodzi', () => {
+  it('moduł w wersji 4 z blokiem BRIEFING jest odrzucony; bez niego przechodzi (cele to zawsze teksty)', () => {
+    expect(invalid((m) => (m.schemaVersion = 4))).toContain('blok BRIEFING wymaga schemaVersion 5');
     const module = fullModuleForTests();
     module.schemaVersion = 4;
     module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING');
-    module.objectives = ['Rozpoznać phishing', 'Nie klikać podejrzanych linków'];
     expect(() => parseModule(module)).not.toThrow();
   });
 
-  it('completeWhen: nieznany blok, powtórzony blok i blok BRIEFING to błędy', () => {
-    expect(invalid((m) => (m.objectives[1].completeWhen = ['nie-ma']))).toContain('objectives[1].completeWhen: nieznany blok "nie-ma"');
-    expect(invalid((m) => (m.objectives[1].completeWhen = ['mail', 'mail']))).toContain('objectives[1].completeWhen: powtórzony blok "mail"');
-    // "Pomiń odprawę" zalicza blok BRIEFING - gdyby odprawa odhaczała zadanie, pominięcie by je odhaczało.
-    expect(invalid((m) => (m.objectives[1].completeWhen = [briefing(m).id]))).toContain('blok odprawy (BRIEFING) nie może odhaczać zadań');
+  it('cele modułu (objectives) to wyłącznie teksty - obiekt z completeWhen jest odrzucony (zadania są w odprawie)', () => {
+    expect(invalid((m) => (m.objectives[1] = { text: 'Cel', completeWhen: ['mail'] }))).toContain('objectives.1');
   });
 
-  it('completeWhen: pusta lista i pole spoza schematu celu są odrzucone', () => {
-    expect(invalid((m) => (m.objectives[1].completeWhen = []))).toContain('objectives.1');
-    expect(invalid((m) => (m.objectives[1].done = true))).toContain('objectives.1');
+  it('zadania sprawy: completeWhen z nieznanym blokiem, powtórzonym blokiem albo blokiem BRIEFING to błąd', () => {
+    expect(invalid((m) => (tasks(m)[0].completeWhen = ['nie-ma']))).toMatch(/steps\[3\]\.tasks\[0\]\.completeWhen: nieznany blok "nie-ma"/);
+    expect(invalid((m) => (tasks(m)[0].completeWhen = ['mail', 'mail']))).toContain('tasks[0].completeWhen: powtórzony blok "mail"');
+    // "Pomiń odprawę" zalicza blok BRIEFING - gdyby odprawa odhaczała zadanie, pominięcie by je odhaczało.
+    expect(invalid((m) => (tasks(m)[0].completeWhen = [briefing(m).id]))).toContain('blok odprawy (BRIEFING) nie może odhaczać zadań');
+  });
+
+  it('zadania sprawy: powtórzone id, pusta lista completeWhen i pole spoza schematu są odrzucone', () => {
+    expect(invalid((m) => tasks(m).push({ ...tasks(m)[0] }))).toContain('tasks: powtórzony identyfikator "linki"');
+    expect(invalid((m) => (tasks(m)[0].completeWhen = []))).toContain('tasks.0.completeWhen');
+    expect(invalid((m) => delete tasks(m)[0].completeWhen)).toContain('tasks.0.completeWhen');
+    expect(invalid((m) => (tasks(m)[0].done = true))).toContain('tasks.0');
   });
 
   it('BRIEFING: waga > 0 to błąd (blok nieoceniany zaniżałby wynik modułu)', () => {
@@ -784,22 +783,11 @@ describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
     const message = invalid((m) => {
       m.schemaVersion = 4;
       m.blocks = m.blocks.filter((b) => b.type !== 'BRIEFING');
-      m.objectives = ['Rozpoznać phishing'];
       m.blocks[0].narration.voice = 'narrator';
       toTts(m);
     });
     expect(message).toContain('pole narration.voice wymaga schemaVersion 5');
     expect(message).toContain('pole media.narration wymaga schemaVersion 5');
-  });
-});
-
-describe('normalizeObjectives', () => {
-  it('tekst z v4 i obiekt z v5 w jednej postaci; śmieci z bazy pomijane', () => {
-    expect(
-      normalizeObjectives(['A', { text: 'B', completeWhen: ['x', 7] }, { text: 'C', completeWhen: [] }, 5, null, { nie: 'tekst' }]),
-    ).toEqual([{ text: 'A' }, { text: 'B', completeWhen: ['x'] }, { text: 'C' }]);
-    expect(normalizeObjectives(null)).toEqual([]);
-    expect(normalizeObjectives({ text: 'nie lista' })).toEqual([]);
   });
 });
 

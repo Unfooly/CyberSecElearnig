@@ -324,6 +324,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           title: 'Wyłudzone hasło',
           fields: [{ label: 'Firma', value: 'Firma Testowa' }],
           stamp: 'PILNE',
+          // Zadanie sprawy (D-081): odhaczane, gdy ukończone są oba bloki (mail i kolejność).
+          tasks: [{ id: 'linki', text: 'Nie klikaj podejrzanych linków.', completeWhen: ['mail', 'kolejnosc'] }],
           cta: 'Przyjmuję',
           narration: audio('odprawa-3'),
         },
@@ -402,8 +404,7 @@ export function fullModule() {
     level: 'basic' as const,
     durationMinutes: 10,
     mandatory: false,
-    // Oba kształty celu: tekst (v4) i zadanie z completeWhen (v5).
-    objectives: ['Rozpoznać phishing', { text: 'Nie klikać podejrzanych linków', completeWhen: ['mail', 'kolejnosc'] }],
+    objectives: ['Rozpoznać phishing', 'Nie klikać podejrzanych linków'],
     blocks: [
       blocks.NARRATIVE,
       blocks.VIDEO,

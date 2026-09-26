@@ -3,7 +3,7 @@
 // sekcja "Backlog frontendu"). Trzymane tu, w jednym miejscu, żeby biblioteka
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
-import type { ModuleObjective, Narration } from '@cyberszkolo/content';
+import type { Narration } from '@cyberszkolo/content';
 
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
 export type ContentBlockType =
@@ -36,12 +36,25 @@ export type BriefingStep =
       cta: string;
       narration?: Narration;
     }
-  | { kind: 'caseFile'; caseNo: string; title: string; fields: { label: string; value: string }[]; stamp?: string; cta: string; narration?: Narration }
+  | {
+      kind: 'caseFile';
+      caseNo: string;
+      title: string;
+      fields: { label: string; value: string }[];
+      stamp?: string;
+      tasks?: BriefingTask[];
+      cta: string;
+      narration?: Narration;
+    }
   | { kind: 'badge'; cta: string; narration?: Narration }
   | { kind: 'start'; text: string; cta: string; narration?: Narration };
 
-/** Cel/zadanie modułu z wersji przypisania (/start, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
-export type CourseObjective = ModuleObjective;
+/** Zadanie sprawy z karty w odprawie (BRIEFING, krok caseFile, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
+export interface BriefingTask {
+  id: string;
+  text: string;
+  completeWhen: string[];
+}
 
 /** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
 export interface ContentReaction {
@@ -294,8 +307,6 @@ export interface CourseDetail {
   status: AssignmentStatus;
   currentBlockIndex: number;
   contentBlocks: ContentBlock[];
-  // Brak w odpowiedziach starszego API - klient traktuje to jak pustą listę.
-  objectives?: CourseObjective[];
   progress: ClientProgress | null;
 }
 

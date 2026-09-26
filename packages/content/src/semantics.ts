@@ -99,8 +99,8 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
 // featuresUsed dopasowuje po prefiksie, nie dokładnym stringu).
 const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to', 'hotspots[].action', 'hotspots[].media'];
 
-// schemaVersion 5: blok BRIEFING w całości i cel jako obiekt w `objectives` mają osobne sprawdzenie w parseModule (jak
-// blok NARRATIVE i subtitle/level/objectives przy v4). Pola WEWNĄTRZ innych bloków z v5 (D-082): nagranie media audio z
+// schemaVersion 5: blok BRIEFING w całości (z zadaniami sprawy) ma osobne sprawdzenie w parseModule (jak blok NARRATIVE i
+// subtitle/level/objectives przy v4). Pola WEWNĄTRZ innych bloków z v5 (D-082): nagranie media audio z
 // potoku TTS (`media.narration`, także w zagnieżdżonej scenie) i rola głosu `voice` w KAŻDEJ narracji (dowolna ścieżka
 // kończąca się na `narration.voice`/`Narration.voice` - dlatego osobna funkcja, nie lista prefiksów jak v3/v4).
 export function v5FeaturesUsed(block: ServerBlock): string[] {
@@ -383,19 +383,25 @@ export function parseModule(input: unknown): ContentModule {
     if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
     if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
   }
-  // Cel jako obiekt { text, completeWhen } (zadanie śledztwa) - od wersji 5. completeWhen wskazuje istniejące bloki, ale nie
-  // BRIEFING: "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań (D-081).
+  // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
+  // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
+  // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).
   const blockTypes = new Map(contentModule.blocks.map((b) => [b.id, b.type]));
-  (contentModule.objectives ?? []).forEach((objective, i) => {
-    if (typeof objective === 'string') return;
-    if (contentModule.schemaVersion < 5) errors.push(`objectives[${i}]: cel jako obiekt wymaga schemaVersion 5`);
-    const ids = objective.completeWhen ?? [];
-    for (const id of duplicates(ids)) errors.push(`objectives[${i}].completeWhen: powtórzony blok "${id}"`);
-    for (const id of ids) {
-      const type = blockTypes.get(id);
-      if (type === undefined) errors.push(`objectives[${i}].completeWhen: nieznany blok "${id}"`);
-      else if (type === 'BRIEFING') errors.push(`objectives[${i}].completeWhen: blok odprawy (BRIEFING) nie może odhaczać zadań`);
-    }
+  contentModule.blocks.forEach((block, index) => {
+    if (block.type !== 'BRIEFING') return;
+    block.steps.forEach((step, s) => {
+      if (step.kind !== 'caseFile' || !step.tasks) return;
+      const where = `blocks[${index}] (${block.id}): steps[${s}].tasks`;
+      for (const id of duplicates(step.tasks.map((task) => task.id))) errors.push(`${where}: powtórzony identyfikator "${id}"`);
+      step.tasks.forEach((task, t) => {
+        for (const id of duplicates(task.completeWhen)) errors.push(`${where}[${t}].completeWhen: powtórzony blok "${id}"`);
+        for (const id of task.completeWhen) {
+          const type = blockTypes.get(id);
+          if (type === undefined) errors.push(`${where}[${t}].completeWhen: nieznany blok "${id}"`);
+          else if (type === 'BRIEFING') errors.push(`${where}[${t}].completeWhen: blok odprawy (BRIEFING) nie może odhaczać zadań`);
+        }
+      });
+    });
   });
 
   const summaries = contentModule.blocks.map((b, i) => (b.type === 'SUMMARY' ? i : -1)).filter((i) => i >= 0);

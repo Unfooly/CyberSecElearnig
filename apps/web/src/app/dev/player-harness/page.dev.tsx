@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
-import { moduleSchema, normalizeObjectives, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
+import { moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
 import type { ContentBlock } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
@@ -82,10 +82,9 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     title: 'Podgląd bloku (dev harness)',
     status: 'IN_PROGRESS',
     currentBlockIndex: 0,
+    // Zadania sprawy (`?block=odprawa`, D-081) są w samym bloku BRIEFING; completeWhen wskazuje bloki spoza podglądu (jeden
+    // blok), więc nic się tu nie odhacza.
     contentBlocks: [contentBlock],
-    // Zadania pod kartą sprawy w odprawie (`?block=odprawa`, D-081) - te same cele co z /start. completeWhen wskazuje bloki
-    // spoza podglądu (jeden blok), więc nic się tu nie odhacza.
-    objectives: normalizeObjectives(parsedModule.objectives),
     progress: null,
     score: null,
   };

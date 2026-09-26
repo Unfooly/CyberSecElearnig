@@ -390,7 +390,10 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       narration: narrationSchema.optional(),
     })
     .strict(),
-  // caseFile: karta sprawy; lista zadań pod nią to `objectives` modułu (module.ts), nie pole kroku.
+  // caseFile: karta sprawy z zadaniami sprawy (`tasks`) - te same zadania pokazuje sekcja "Zadania" notatnika przez cały
+  // moduł (czyta je z bloku BRIEFING bieżącej wersji treści, D-081). `completeWhen`: zadanie odhacza KLIENT, gdy wszystkie
+  // wskazane bloki są ukończone (progress) - to nie ocena. Id muszą istnieć w module i nie mogą wskazywać bloku BRIEFING
+  // (pominięcie odprawy nie odhacza zadań) - semantics.ts. Cele szkoleniowe modułu (`objectives`) to osobna lista tekstów.
   z
     .object({
       kind: z.literal('caseFile'),
@@ -398,6 +401,10 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       title: text(120),
       fields: z.array(z.object({ label: text(60), value: text(200) }).strict()).min(1).max(8),
       stamp: text(30).optional(),
+      tasks: z
+        .array(z.object({ id: idSchema, text: text(200), completeWhen: z.array(idSchema).min(1).max(10) }).strict())
+        .max(6)
+        .optional(),
       cta: text(60),
       narration: narrationSchema.optional(),
     })
@@ -724,6 +731,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].fields[].label',
       'steps[].fields[].value',
       'steps[].stamp',
+      // Zadania sprawy: tekst i id bloków do odhaczenia - id bloków klient i tak zna z contentBlocks, nic tu nie jest sekretem.
+      'steps[].tasks[].id',
+      'steps[].tasks[].text',
+      'steps[].tasks[].completeWhen[]',
       'steps[].narration.text',
       'steps[].narration.audioUrl',
       'steps[].narration.durationMs',

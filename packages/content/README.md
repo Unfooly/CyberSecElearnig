@@ -48,10 +48,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany po
   ostatnim kroku albo po „Pomiń odprawę”. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
   wyłącznie klient z sesji (nigdy `module.json` ani `progress`).
-- `objectives[]`: element to tekst (jak w v4) ALBO `{ text, completeWhen?: blockId[] }` - zadanie śledztwa (lista pod kartą sprawy w
-  odprawie, sekcja „Zadania” w notatniku). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są ukończone (to nie ocena).
-  `completeWhen` nie może wskazywać bloku `BRIEFING` (pominięcie odprawy nie odhacza zadań). Cele są zapisywane razem z wersją treści
-  (`course_versions.objectives`), bo `completeWhen` wskazuje bloki konkretnej wersji; katalog kursów dostaje z nich tylko teksty.
+- Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
+  notatniku (czytana z bloku BRIEFING bieżącej wersji treści). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są
+  ukończone (to nie ocena). `completeWhen` wskazuje istniejące bloki modułu, nigdy `BRIEFING` (pominięcie odprawy nie odhacza
+  zadań). Cele szkoleniowe modułu (`objectives[]`) zostają listą tekstów (katalog kursów), jak w v4.
 - `narration.voice` (D-082): rola głosu nagrania - `narrator` (domyślnie), `komisarz`, `bank`, `marek` (`VOICE_ROLES`); pole tylko dla
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
 - Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z

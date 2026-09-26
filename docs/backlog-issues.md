@@ -325,6 +325,41 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: dymek czytelny (rozsądna szerokość, bez wielowierszowego przycinania pojedynczych słów) na telefonie
   w pionie; test regresyjny albo dopisanie do `scripts/layout-check.mjs`.
 
+### B-103 Dymek maskotki może wizualnie zachodzić na pierwszy chip stopki DIALOGUE
+- Etykiety: `P3`, `bug`, `mod:web` · Źródło: `fix/dialogue-sticky-questions` - zauważone przy okazji (zrzuty
+  `scripts/layout-check.mjs`, `1366x768-dialogue-00-start.png`), PRE-EXISTING geometria `MascotOverlay.tsx`
+  (`bottom-3 left-3`, dymek rozwija się do ~280px w prawo od ikonki) w połączeniu z NOWĄ, zawsze widoczną stopką
+  DIALOGUE (chipy pytań, `.pl-24 sm:pl-28` w `DialogueBlock.tsx` rezerwuje miejsce WYŁĄCZNIE na samą ikonkę, nie na
+  rozwinięty dymek). Numer B-103 nadany przy rebase na `main` po zmergowaniu PR #51, który równolegle zajął B-102
+  (`feat/player-portrait`) innym, niezależnym zgłoszeniem o tym samym komponencie.
+- Opis: na starcie rozmowy (dymek jeszcze rozwinięty, przed 8 s auto-zwinięciem/pierwszym kliknięciem) pierwszy chip
+  listy pytań bywa częściowo przykryty dymkiem maskotki - wizualnie nieczytelny/trudny do trafienia w tym miejscu
+  (użytkownik klikający w przykrytą część widzi/dotyka dymek, nie chip - drugi klik trafia już poprawnie, bo pierwszy
+  zwija dymek). Zautomatyzowany `scripts/layout-check.mjs` tego NIE łapie (Playwright klika w ŚRODEK bounding boksa
+  chipa, który zwykle wychodzi poza obszar zachodzenia) - to czysto wizualny/UX problem, nie twardy blocker kliknięcia.
+  Pełne rozwiązanie wymaga albo zarezerwowania ~400px (ikonka+pełna szerokość dymka - marnotrawne, gdy dymek
+  zwinięty) albo zmiany w `MascotOverlay.tsx` (współdzielony przez wszystkie typy bloków - poza zakresem tego PR-a).
+- Akceptacja: pierwszy chip nigdy nie jest wizualnie przykryty dymkiem maskotki, niezależnie od długości jego tekstu;
+  test regresyjny (layout-check.mjs albo jsdom - bounding boxy się nie nakładają).
+
+### B-104 DIALOGUE na bardzo niskich/poziomych viewportach - pełne pokrycie WCAG 1.4.10
+- Etykiety: `P3`, `a11y`, `mod:web` · Źródło: code review `fix/dialogue-sticky-questions` - `DialogueBlock.tsx`'s
+  prompt/nagłówek rozmowy/stopka (chipy + ExploreFooter) są `shrink-0` (nie oddają miejsca wątkowi), więc na bardzo
+  niskich viewportach (telefon w poziomie o małej wysokości) albo przy dużym powiększeniu przeglądarki suma ich
+  wysokości może przekroczyć dostępną wysokość obszaru bloku (`overflow-clip`, bez fallbackowego scrolla całego
+  panelu - to świadoma cecha `contentLayout='fill'`, nie bug). Rozważana doraźna rezerwacja minimalnej wysokości
+  wątku (`min-h-[…]`) świadomie ODRZUCONA (druga runda code review): obcinałaby stopkę (JEDYNE kontrolki rozmowy -
+  chipy, "Następna kwestia") WCZEŚNIEJ niż zwykłe `min-h-0`, tracąc kontrolki zamiast tylko historii wątku - zostaje
+  `min-h-0`, priorytet ma stopka, wątek jako pierwszy oddaje miejsce.
+- Opis: żaden test (`layout-check.mjs`, `DIALOGUE_VIEWPORTS`) nie sprawdza dziś niskiego/poziomego viewportu ani
+  symulacji powiększenia przeglądarki w trakcie rozmowy z wieloma pytaniami - nieznana jest faktyczna dolna granica,
+  przy której wątek (a docelowo i stopka) staje się nieosiągalny. Pełne rozwiązanie wymaga decyzji projektowej (np.
+  składany/mniejszy nagłówek rozmowy poniżej pewnej wysokości, albo dodatkowy fallback scroll całego bloku na bardzo
+  małych viewportach) - poza zakresem tego PR-a.
+- Akceptacja: zmierzona i udokumentowana najniższa obsługiwana wysokość viewportu (albo poziom powiększenia) dla
+  DIALOGUE; test w `layout-check.mjs` pokrywający tę granicę; jeśli granica jest zbyt wysoka (WCAG 1.4.10 wymaga
+  wsparcia do 256px wysokości przy standardowym zoomie), projekt UI stopki/nagłówka na niskich wysokościach.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

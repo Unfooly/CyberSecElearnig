@@ -35,6 +35,21 @@
 // Zrzuty każdej sprawdzonej kombinacji trafiają do docs/brand/screens/layout-check/ (poza gitem, jak resztka
 // docs/brand/screens/) - do wizualnej weryfikacji, niezależnie od wyniku. Pierwsze niepowodzenie zatrzymuje skrypt
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
+//
+// DIALOGUE (fix/dialogue-sticky-questions): OSOBNA, mniejsza pętla (DIALOGUE_VIEWPORTS - 1366x768 i 390x844
+// wprost z zadania, NIE cała lista VIEWPORTS wyżej) - `?block=rozmowa-anna` (packages/content/modules/wyludzone-haslo,
+// 5 pytań, >=8 wiadomości po zadaniu wszystkich). Sprawdza NA STARCIE, W TRAKCIE (po 2 pytaniach) i PO ZAKOŃCZENIU
+// (kod review: pierwsza wersja sprawdzała tylko start/koniec - stopka ma NAJWIĘKSZĄ wysokość akurat na starcie
+// (wszystkie chipy naraz), więc same skrajne stany razem nie gwarantowały pokrycia stanu pośredniego):
+// (j) lista pytań (chipy) w całości widoczna wewnątrz .player-frame ORAZ player-content-area (to drugie faktycznie
+// przycina treść - overflow-clip - .player-frame samo nie gwarantuje, że coś w nim widoczne NIE jest obcięte);
+// (e/k) obszar bloku (data-testid="player-content-area") się NIE przewija na żadnym z trzech etapów (reuse
+// checkMainSceneFits, generyczny, nie SCENE_HOTSPOTS-specyficzny), strona się nie przewija PO zakończeniu (reuse
+// checkNoPageScroll) - dokładnie to, co ten branch naprawia: wątek ma WŁASNY scroll, blok/strona nie muszą się już
+// przewijać, żeby dotrzeć do kolejnego pytania; (l) PO zakończeniu: wątek faktycznie przewinął się wewnętrznie
+// (scrollHeight>clientHeight - dowód, że test w ogóle wygenerował przepełnienie) i jest przewinięty do najnowszej
+// wiadomości (<=80px od dołu) - w PRAWDZIWEJ przeglądarce łapie regres autoprzewijania (np. wyścig ze
+// `scrollTo({behavior:'smooth'})`), którego jsdom nie jest w stanie zaobserwować.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -57,6 +72,14 @@ const VIEWPORTS = [
   { name: '360x800', width: 360, height: 800, isMobile: true },
 ];
 const PORTRAIT_VIEWPORT_NAMES = new Set(['390x844', '360x800']);
+
+// DIALOGUE (fix/dialogue-sticky-questions) - dwa konkretne viewporty z zadania, NIE cała lista VIEWPORTS wyżej
+// (desktop szeroki + telefon w pionie - dwa skrajne kształty, w których lista pytań najłatwiej nie zmieściłaby się
+// w całości).
+const DIALOGUE_VIEWPORTS = [
+  { name: '1366x768', width: 1366, height: 768 },
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
@@ -334,6 +357,94 @@ async function checkBottomSheetFits(page, label) {
   }
 }
 
+// (j) Lista pytań (DialogueBlock.tsx, "Pytania do zadania") w CAŁOŚCI wewnątrz .player-frame ORAZ wewnątrz
+// player-content-area (kod review: .player-frame nie odzwierciedla faktycznego przycinania - to
+// player-content-area ma `overflow-clip`, więc TO ono jest granicą, która realnie obcina/ukrywa treść; sprawdzamy
+// OBA, żeby regres w którymkolwiek złapał test). Sprawdzane na starcie rozmowy (wszystkie chipy naraz, najtrudniejszy
+// przypadek). Lista może nie istnieć w DOM wcale (wszystkie pytania już zadane) - to nie jest błąd tego sprawdzenia,
+// po prostu nic do sprawdzenia.
+async function checkQuestionListVisible(page, label) {
+  const list = page.getByRole('list', { name: 'Pytania do zadania' });
+  if ((await list.count()) === 0) return;
+  const frameBox = await boxOf(page, '.player-frame');
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  const box = await list.first().boundingBox();
+  if (!box) fail(`${label}: (j) lista pytań istnieje w DOM, ale nie jest widoczna.`);
+  if (!contains(frameBox, box)) {
+    fail(`${label}: (j) lista pytań ("Pytania do zadania") wychodzi poza ramkę odtwarzacza - lista=${JSON.stringify(box)} ramka=${JSON.stringify(frameBox)}.`);
+  }
+  if (!contains(contentAreaBox, box)) {
+    fail(`${label}: (j) lista pytań wychodzi poza obszar bloku (player-content-area, overflow-clip) - lista=${JSON.stringify(box)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  }
+}
+
+// (l) Wątek (DialogueBlock.tsx, role="log"/aria-label="Historia rozmowy") faktycznie przewija się WEWNĘTRZNIE
+// (scrollHeight>clientHeight - dowód, że test wygenerował więcej wiadomości niż mieści się na ekranie, inaczej
+// pozostałe sprawdzenia przechodziłyby trywialnie na krótkiej treści) i BEZ ZBĘDNEGO OPÓŹNIENIA kończy przewinięty
+// BLISKO DOŁU (odległość <=STICK_TO_BOTTOM_THRESHOLD_PX z DialogueBlock.tsx) - to sprawdzenie w PRAWDZIWEJ
+// przeglądarce złapałoby regres autoprzewijania (np. wyścig ze `scrollTo({behavior:'smooth'})`, kod review), którego
+// jsdom (testy jednostkowe) nie jest w stanie zaobserwować (nie liczy layoutu/animacji scrolla). POLLING zamiast
+// jednorazowego odczytu po stałym `waitForTimeout` (kod review, druga runda: stałe opóźnienie jest niestabilne -
+// ostatnie kliknięcie odpala `scrollTo({behavior:'smooth'})`, którego czas trwania w Chromium zależy od dystansu i
+// wydajności maszyny, więc mogła nie zdążyć dobiec końca w 200ms na wolniejszym CI).
+async function checkThreadScrolledToBottom(page, label, timeoutMs = 5000) {
+  const log = page.getByRole('log', { name: 'Historia rozmowy' });
+  const first = await log.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
+  if (first.scrollHeight <= first.clientHeight + 1) {
+    fail(`${label}: (l) wątek NIE przewija się wewnętrznie (scrollHeight=${first.scrollHeight}, clientHeight=${first.clientHeight}) - test nie wygenerował dość wiadomości, żeby sprawdzić autoprzewijanie.`);
+  }
+  const start = Date.now();
+  let last;
+  do {
+    last = await log.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, scrollTop: el.scrollTop }));
+    const distanceFromBottom = last.scrollHeight - last.scrollTop - last.clientHeight;
+    if (distanceFromBottom <= 80) return;
+    await page.waitForTimeout(50);
+  } while (Date.now() - start < timeoutMs);
+  const distanceFromBottom = last.scrollHeight - last.scrollTop - last.clientHeight;
+  fail(`${label}: (l) wątek nie przewinął się do najnowszej wiadomości w ciągu ${timeoutMs}ms - odległość od dołu ${distanceFromBottom}px (>80px).`);
+}
+
+// Klika NAJWYŻEJ `maxQuestions` kolejnych dostępnych pytań (w tym "Następna kwestia" dla pytań wielokwestyjnych,
+// pętla wewnętrzna z WŁASNYM limitem iteracji - kod review: dawna wersja nie miała tu żadnego capu, DRUGA runda:
+// wyczerpanie limitu ma się głośno zgłosić, nie po cichu przejść dalej z niekompletnym stanem). Kończy wcześniej,
+// gdy lista "Pytania do zadania" znika z DOM (wszystkie zadane).
+async function clickSomeDialogueQuestions(page, maxQuestions) {
+  const nextButton = page.getByRole('button', { name: 'Następna kwestia' });
+  const questionList = page.getByRole('list', { name: 'Pytania do zadania' });
+  for (let asked = 0; asked < maxQuestions; asked += 1) {
+    let innerGuard = 0;
+    while ((await nextButton.count()) > 0) {
+      if (innerGuard >= 20) {
+        fail('clickSomeDialogueQuestions: przekroczono limit iteracji pętli "Następna kwestia" - podejrzenie nieskończonej pętli.');
+      }
+      await nextButton.click();
+      await page.waitForTimeout(30);
+      innerGuard += 1;
+    }
+    if ((await questionList.count()) === 0) return;
+    const chips = questionList.getByRole('button');
+    if ((await chips.count()) === 0) return;
+    await chips.first().click();
+    await page.waitForTimeout(30);
+  }
+}
+
+// Klika WSZYSTKIE dostępne pytania rozmowy po kolei - generuje realną, długą rozmowę (>=8 wiadomości dla
+// rozmowa-anna, 5 pytań) do sprawdzenia (k)/(l) niżej.
+async function clickAllDialogueQuestions(page) {
+  const questionList = page.getByRole('list', { name: 'Pytania do zadania' });
+  // Limit iteracji jako zabezpieczenie przed nieskończoną pętlą, gdyby stan się kiedyś nie zgadzał (nigdy nie
+  // powinien zostać osiągnięty - rozmowa-anna ma dziś 5 pytań).
+  for (let guard = 0; guard < 50; guard += 1) {
+    if ((await questionList.count()) === 0) return;
+    const chips = questionList.getByRole('button');
+    if ((await chips.count()) === 0) return;
+    await clickSomeDialogueQuestions(page, 1);
+  }
+  fail('clickAllDialogueQuestions: przekroczono limit iteracji - podejrzenie nieskończonej pętli.');
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -439,6 +550,46 @@ try {
       }
       step(`${label}: (a-d${isPortrait ? ', i' : ''}) OK`, true);
     }
+
+    await context.close();
+  }
+
+  // DIALOGUE (fix/dialogue-sticky-questions) - patrz komentarz na górze pliku.
+  for (const viewport of DIALOGUE_VIEWPORTS) {
+    console.log(`\n--- viewport (DIALOGUE): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+    });
+    const page = await context.newPage();
+
+    await page.goto(`${WEB}/dev/player-harness?block=rozmowa-anna`);
+    await page.getByTestId('player-content-area').waitFor();
+    await shot(page, `${viewport.name}-dialogue-00-start`);
+    await checkQuestionListVisible(page, `${viewport.name} / rozmowa-anna (start)`);
+    // (e/k na starcie) sprawdzane też TERAZ, nie tylko po zakończeniu rozmowy (kod review: stopka na starcie ma
+    // WSZYSTKIE chipy naraz, czyli NAJWIĘKSZĄ wysokość - "po rozmowie" (poniżej) ma akurat najmniejszą stopkę i sam
+    // by nie złapał regresu widocznego tylko przy dużej liczbie chipów).
+    await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (start)`);
+    step(`${viewport.name} / rozmowa-anna: (j, e) lista pytań mieści się w ramce/obszarze bloku na starcie`, true);
+
+    // Stan POŚREDNI (kod review: sprawdzenia tylko na starcie i po pełnym zakończeniu pomijały stan "część chipów
+    // zadana, część zostaje, wątek już ma kilka wiadomości") - `clickSomeDialogueQuestions(page, 2)` na rozmowa-anna
+    // (5 pytań) kończy z JEDNYM pytaniem w pełni zadanym i DRUGIM w trakcie (jego "Następna kwestia" wciąż widoczna) -
+    // stopka ma więc na tym etapie 3-4 pozostałe chipy + przycisk "Następna kwestia" naraz, dobry przypadek pośredni.
+    await clickSomeDialogueQuestions(page, 2);
+    await page.waitForTimeout(200);
+    await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (w trakcie)`);
+    step(`${viewport.name} / rozmowa-anna: (e) obszar bloku nie przewija się w trakcie rozmowy`, true);
+
+    await clickAllDialogueQuestions(page);
+    await page.waitForTimeout(200);
+    await shot(page, `${viewport.name}-dialogue-01-po-rozmowie`);
+    await checkNoPageScroll(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    await checkThreadScrolledToBottom(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    step(`${viewport.name} / rozmowa-anna: (k, l) strona/obszar bloku nie przewijają się, wątek przewinięty do dołu po >=8 wiadomościach`, true);
 
     await context.close();
   }

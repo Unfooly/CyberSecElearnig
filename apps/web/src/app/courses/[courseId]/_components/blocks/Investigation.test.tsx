@@ -1074,14 +1074,42 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
   });
 
-  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus wraca na wątek rozmowy, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu chipa', async () => {
-    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu
+  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus przechodzi na PIERWSZY pozostały chip, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu klikniętego (fix/dialogue-sticky-questions: NIE na wątek - stopka z chipami zostaje poza obszarem przewijania, fokus tam, gdzie jest "co dalej")', async () => {
+    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu; q1 zostaje na liście
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
     expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(screen.getByRole('list', { name: 'Rozmowa' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Skąd ten mail?' })).toHaveFocus();
+  });
+
+  it('next() (ostatnia kwestia pytania WIELOKWESTYJNEGO, nie ask()): fokus przechodzi na PIERWSZY pozostały chip', async () => {
+    setup(dialogue); // q1 "Skąd ten mail?" ma 3 kwestie (linie) - kończy się przez next(), nie od razu w ask(); q2 zostaje na liście
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // ostatnia kwestia - finish() woła się z next(), nie z ask()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByRole('button', { name: 'Kto go wysłał?' })).toHaveFocus();
+  });
+
+  it('pytanie JEDNOKWESTYJNE OSTATNIE (bez pozostałych chipów): fokus na kontenerze stopki (bez nowego przycisku "Zakończ rozmowę" - ustalone z właścicielem produktu)', async () => {
+    const block: ContentBlock = {
+      ...dialogue,
+      questions: [{ id: 'q2', text: 'Kto go wysłał?', answer: 'Nie znam nadawcy.', required: false, note: { text: 'Nieznany nadawca.', kind: 'person' } }],
+    };
+    setup(block);
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Pytania do zadania' })).not.toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // ExploreFooter (jedyna widoczna treść stopki po zniknięciu ostatniego chipa) jest wewnątrz kontenera stopki -
+    // q2 required:false explicite -> required=[] -> done=0>=total=0 -> ExploreFooter pokazuje readyText.
+    expect(screen.getByText('Wszystkie wymagane pytania zadane.').closest('[tabindex="-1"]')).toHaveFocus();
   });
 
   it('avatar tylko przez <img> z bazy zasobów; niepoprawna ścieżka = brak obrazu', () => {
@@ -1115,6 +1143,139 @@ describe('DIALOGUE: kwestie po jednej', () => {
       </NotesProvider>,
     );
     expect(document.querySelector('img')).toBeNull();
+  });
+});
+
+describe('DIALOGUE: sticky pytania i autoprzewijanie wątku (fix/dialogue-sticky-questions)', () => {
+  // jsdom nie liczy layoutu (scrollHeight/clientHeight/scrollTop zawsze 0) - ustawiamy ręcznie przez
+  // Object.defineProperty (ten sam wzorzec co ScenePanContainer.test.tsx), Element.prototype.scrollTo jest no-opem
+  // z vitest.setup.ts - tu podmieniamy go na vi.fn(), żeby sprawdzić WOŁANIE, nie efekt.
+  function stubLogDimensions(log: HTMLElement, { scrollHeight, clientHeight, scrollTop = 0 }: { scrollHeight: number; clientHeight: number; scrollTop?: number }) {
+    Object.defineProperty(log, 'scrollHeight', { value: scrollHeight, configurable: true });
+    Object.defineProperty(log, 'clientHeight', { value: clientHeight, configurable: true });
+    Object.defineProperty(log, 'scrollTop', { value: scrollTop, configurable: true, writable: true });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('nowa wiadomość (klik chipa) przewija wątek do najnowszej (scrollTo z top=scrollHeight)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+  });
+
+  it('user przewinął w górę (>80px od dołu): kolejna wiadomość NIE przewija wątku, pokazuje się "Nowe wiadomości"; klik w przycisk przewija i go chowa', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    // Realistyczny punkt startowy "przy dole" (w prawdziwej przeglądarce scrollTo automatycznie przesuwa scrollTop
+    // i odpala zdarzenia scroll po drodze - tu symulujemy TEN sam stan jawnym zdarzeniem), żeby kolejny ruch był
+    // faktycznym, WYKRYWALNYM ruchem W GÓRĘ (kierunek, nie tylko próg 80px - kod review, wyścig ze scrollTo smooth).
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 700 });
+    fireEvent.scroll(log);
+
+    // User przewija W GÓRĘ do scrollTop=200: odległość od dołu = 1000-200-300=500 > 80px.
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 200 });
+    fireEvent.scroll(log);
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '↓ Nowe wiadomości' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '↓ Nowe wiadomości' }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+  });
+
+  it('user samodzielnie doscrollował do dołu (fireEvent.scroll z odległością <=80px): "Nowe wiadomości" nie pojawia się, a kolejna wiadomość DALEJ autoprzewija (scrollTo faktycznie wołane)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    // Baseline "przy dole", potem genuinie odjechał (ruch w górę - scrollTop maleje względem poprzedniego odczytu),
+    // potem sam wrócił blisko dołu (ruch w dół, odległość 50px <= 80px).
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 700 });
+    fireEvent.scroll(log);
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 300 });
+    fireEvent.scroll(log);
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 650 });
+    fireEvent.scroll(log);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+  });
+
+  it('kod review (druga runda - test MUSI odróżniać starą logikę od nowej): kilka zdarzeń scroll o NIEMALEJĄCYM scrollTop (symulacja klatek animacji scrollTo({behavior:"smooth"}) JESZCZE W TOKU) NIE wyłącza autoprzewijania, mimo że w chwili nadejścia kolejnej wiadomości bieżąca klatka wciąż jest >80px od dołu', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 0 });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+    // scrollTop rośnie klatka po klatce w stronę celu (700) - w połowie drogi odległość od dołu bywa >80px, mimo że
+    // to NIE jest user odjeżdżający od dołu, tylko WŁASNA animacja jeszcze w toku. Kluczowe: NIE dojeżdżamy do
+    // scrollTop=700 (dist=0) przed kliknięciem - stara logika (`stickToBottomRef.current = atBottom` bezwarunkowo
+    // przy KAŻDYM zdarzeniu) i tak "naprawiłaby się" na ostatniej klatce, gdyby ta akurat trafiła w próg 80px, więc
+    // test kończący się na klatce z dist<=80 NIE odróżniałby starej logiki od nowej (kod review, druga runda).
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 300 }); // dist=400>80
+    fireEvent.scroll(log);
+    stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300, scrollTop: 600 }); // dist=100>80 - WCIĄŻ nie przy dole
+    fireEvent.scroll(log);
+
+    // Kolejna wiadomość przychodzi W TRAKCIE animacji (bieżąca klatka: dist=100>80px). Stara logika ustawiłaby tu
+    // stickToBottomRef=false (atBottom=false) i NIE wywołałaby scrollTo - to jest dokładnie błąd, który ten test ma
+    // łapać. Nowa (kierunkowa) logika: scrollTop przez cały czas rósł, więc przyklejenie NIGDY nie zostało wyłączone.
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+    expect(screen.queryByRole('button', { name: '↓ Nowe wiadomości' })).not.toBeInTheDocument();
+  });
+
+  it('prefers-reduced-motion: scrollTo z behavior "auto" zamiast "smooth"', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false, onchange: null }) as unknown as MediaQueryList;
+    try {
+      setup(dialogue);
+      const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+      stubLogDimensions(log, { scrollHeight: 1000, clientHeight: 300 });
+      const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+
+      fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+      expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'auto' });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it('lista pytań (chipy) NIE jest potomkiem wątku (role="log") - poza obszarem przewijania, zawsze widoczna', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    expect(within(log).queryByRole('list', { name: 'Pytania do zadania' })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Pytania do zadania' })).toBeInTheDocument();
+  });
+
+  it('wątek: role="log", aria-live="polite", tabIndex=0 (przewijalny klawiaturą/Tab, nie tylko programowo)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    expect(log).toHaveAttribute('aria-live', 'polite');
+    expect(log.tabIndex).toBe(0);
+  });
+
+  it('role="log" idzie na kontener WOKÓŁ wątku, NIE bezpośrednio na <ol> - <ol> w środku zachowuje domyślną rolę listy (kod review: role="log" na <ol> nadpisywałoby ją i osierocało <li>)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    expect(within(log).getByRole('list')).toBeInTheDocument();
   });
 });
 

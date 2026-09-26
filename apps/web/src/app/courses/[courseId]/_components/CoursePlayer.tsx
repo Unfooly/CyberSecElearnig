@@ -378,9 +378,18 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
-  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); reszta bloków (i FeedbackPanel/
+  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE też wypełnia (własny,
+  // wewnętrzny scroll wątku zamiast przewijania całego panelu - fix/dialogue-sticky-questions), ale to NIE jest
+  // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
-  const contentLayout: 'scene' | 'slide' = !isSummaryMode && !showingFeedback && currentBlock?.type === 'SCENE_HOTSPOTS' ? 'scene' : 'slide';
+  const contentLayout: 'scene' | 'slide' | 'fill' =
+    isSummaryMode || showingFeedback
+      ? 'slide'
+      : currentBlock?.type === 'SCENE_HOTSPOTS'
+        ? 'scene'
+        : currentBlock?.type === 'DIALOGUE'
+          ? 'fill'
+          : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
@@ -427,19 +436,20 @@ export default function CoursePlayer({
     stage = (
       <>
         {liveBlock && (
-          // Łańcuch wysokości dla contentLayout='scene' (hotfix fix/player-scene-fit/B-100, druga runda code
-          // review): ten div siedzi MIĘDZY PlayerStage.tsx (flex-col wrapper 'scene') a SceneHotspotsBlock.tsx
-          // (flex-1 min-h-0 na WŁASNYM korzeniu) - bez własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem,
-          // przerywającym łańcuch: SceneHotspotsBlock dostawałby wysokość auto zamiast realnej wysokości obszaru
-          // bloku, a z nowym [container-type:size] (size containment) zapadałby się do WYSOKOŚCI 0 zamiast (jak
-          // przed tym hotfixem) rosnąć ponad dostępne miejsce. className TYLKO gdy !reviewing (nie tylko warunek
-          // contentLayout==='scene'): Tailwind [hidden]{display:none} z preflightu i .flex z warstwy utilities mają
-          // RÓWNĄ specyficzność, a utilities ładują się PO base w wygenerowanym CSS - .flex by WYGRAŁ z [hidden] i
-          // ukryty (podczas Wstecz) blok zostałby widoczny, gdyby klasa flex była tu bezwarunkowa.
+          // Łańcuch wysokości dla contentLayout='scene'/'fill' (hotfix fix/player-scene-fit/B-100, druga runda code
+          // review; 'fill'/DIALOGUE dołączone w fix/dialogue-sticky-questions, ten sam powód): ten div siedzi
+          // MIĘDZY PlayerStage.tsx (flex-col wrapper) a SceneHotspotsBlock.tsx/DialogueBlock.tsx (flex-1 min-h-0
+          // na WŁASNYM korzeniu obu) - bez własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem,
+          // przerywającym łańcuch: blok dostawałby wysokość auto zamiast realnej wysokości obszaru bloku, a
+          // z [container-type:size] (size containment, SceneHotspotsBlock.tsx) zapadałby się do WYSOKOŚCI 0 zamiast
+          // (jak przed tym hotfixem) rosnąć ponad dostępne miejsce. className TYLKO gdy !reviewing (nie tylko
+          // warunek contentLayout==='scene'/'fill'): Tailwind [hidden]{display:none} z preflightu i .flex z warstwy
+          // utilities mają RÓWNĄ specyficzność, a utilities ładują się PO base w wygenerowanym CSS - .flex by
+          // WYGRAŁ z [hidden] i ukryty (podczas Wstecz) blok zostałby widoczny, gdyby klasa flex była tu bezwarunkowa.
           <div
             key={keyOf(state.currentBlockIndex)}
             hidden={reviewing}
-            className={!reviewing && contentLayout === 'scene' ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}
+            className={!reviewing && (contentLayout === 'scene' || contentLayout === 'fill') ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}
           >
             {renderBlock(liveBlock, {
               courseId,

@@ -38,8 +38,9 @@ export interface PlayerStageProps {
   totalBlocks: number;
   completedBlocks: number;
   stage: ReactNode;
-  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń) albo 'slide' (domyślny - wyśrodkowany panel max-w-3xl). */
-  contentLayout?: 'scene' | 'slide';
+  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE - to samo CSS co 'scene', osobna
+      nazwa: czat nie jest "sceną", fix/dialogue-sticky-questions) albo 'slide' (domyślny - wyśrodkowany panel max-w-3xl). */
+  contentLayout?: 'scene' | 'slide' | 'fill';
   mascot?: { pose: string; text?: string };
   /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
   evidence?: ReactNode;
@@ -274,7 +275,10 @@ function PlayerStageInner({
           </p>
 
           {/* Obszar bloku (wiersz 1fr). Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej
-              w scenie. Dwa układy:
+              w scenie. Trzy układy ('scene' i 'fill' dzielą DOKŁADNIE ten sam CSS - patrz warunki niżej - osobna
+              nazwa dla DIALOGUE, fix/dialogue-sticky-questions, bo czat nie jest "sceną", tylko potrzebuje tego
+              samego traktowania: brak przewijania panelu, blok wypełnia dostępną wysokość, sam sobie zarządza
+              wewnętrznym scrollem wątku):
               'scene' (SCENE_HOTSPOTS, hotfix fix/player-scene-fit/B-100): scena ma się ZAWSZE zmieścić w całości,
               bez przewijania obszaru bloku - overflow-clip, NIE overflow-hidden (druga runda code review tego
               hotfixu): `hidden` ucina WIDOK, ale zostaje scroll containerem - `content.scrollBy` z efektu
@@ -296,13 +300,15 @@ function PlayerStageInner({
             onFocusCapture={keepFocusAboveBar}
             data-testid="player-content-area"
             className={`relative min-h-0 flex-1 ${
-              contentLayout === 'scene' ? 'overflow-clip' : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
+              contentLayout === 'scene' || contentLayout === 'fill'
+                ? 'overflow-clip'
+                : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
             }`}
           >
             <h2 ref={headingRef} tabIndex={-1} className="sr-only">
               Blok {blockNumber} z {totalBlocks}
             </h2>
-            {contentLayout === 'scene' ? (
+            {contentLayout === 'scene' || contentLayout === 'fill' ? (
               <div className="flex h-full min-h-full flex-col items-center justify-center p-3">{stage}</div>
             ) : (
               <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">{stage}</div>

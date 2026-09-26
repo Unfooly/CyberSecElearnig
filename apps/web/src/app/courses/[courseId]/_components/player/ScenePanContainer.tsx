@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+
+// Czysta funkcja (bez domknięcia nad stanem komponentu) - poza komponentem, żeby applyEdgeState niżej (useCallback)
+// mogło mieć stabilną tożsamość (puste deps, bez ostrzeżenia exhaustive-deps) mimo że jej wywołuje.
+function edgeStateOf(container: HTMLElement) {
+  return { left: container.scrollLeft > 0, right: container.scrollLeft < container.scrollWidth - container.clientWidth - 1 };
+}
 
 // Panorama sceny na telefonie w pionie (feat/player-portrait, sekcja B specyfikacji feat/player-stage). BEZ JS
 // matchMedia (patrz komentarz w PlayerStage.tsx przy .player-frame - migotanie przy starcie/obrocie ekranu): CAŁA
@@ -10,89 +16,107 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 // (scrollWidth > clientWidth) przez ResizeObserver. Dzięki temu przy obrocie na poziomy formuła CSS sama wraca do
 // "contain" (brak overflow), pomiar wykrywa 0 i komponent staje się w pełni bierny - bez osobnej logiki orientacji.
 //
-// Poza tym breakpointem (`.scene-pan-container` bez `overflow-x:auto` w CSS) scena i tak nie ma overflow, więc
-// `canPan` zawsze wychodzi `false` - ten wrapper jest wtedy niewidoczny funkcjonalnie (zwykły flex-centering div,
-// identyczny z tym, co było przed jego dodaniem).
+// Poza tym breakpointem (`.scene-pan-frame`/`.scene-pan-container` bez CSS-owej treści w tym breakpoincie) scena i
+// tak nie ma overflow, więc `canPan` zawsze wychodzi `false` - te wrappery są wtedy niewidoczne funkcjonalnie
+// (zwykłe divy w naturalnym przepływie, identyczne z tym, co było przed ich dodaniem).
+//
+// DWA zagnieżdżone divy, nie jeden (code review): `.scene-pan-frame` (zewnętrzny, NIEPRZEWIJANY, position:relative)
+// i `.scene-pan-container` (wewnętrzny, PRZEWIJANY, overflow-x:auto) - cienie krawędzi/podpowiedź "przesuń" są
+// dziećmi ZEWNĘTRZNEGO, bo position:absolute wewnątrz PRZEWIJANEGO kontenera pozycjonowałoby się względem jego
+// scrollowanej treści i przesuwało razem ze sceną (real bug: prawy cień/podpowiedź wypadały poza ekranem albo w
+// środku po starcie z przesunięciem od centroidu, złapane dopiero w code review, layout-check tego nie sprawdzał).
 //
 // `initialPanX` (0..1, fraction szerokości do przescrollowania, NIE piksele - liczone przez wołający na podstawie
-// WŁASNYCH danych treści, np. centroid hotspotów danej sceny) - ustawiane RAZ po zmierzeniu scrollWidth/clientWidth
-// (nie zależy od natywnych wymiarów obrazu). `data-initial-pan-x` na kontenerze - do odczytu przez
-// scripts/layout-check.mjs (sprawdza, że kontener zastosował wartość, którą dostał, bez duplikowania formuły
-// centroidu w skrypcie testowym).
+// WŁASNYCH danych treści, np. centroid hotspotów danej sceny) - kontener sam przelicza na scrollLeft po zmierzeniu
+// WŁASNEGO scrollWidth/clientWidth. Obserwujemy ZARÓWNO kontener, JAK I jego pierwsze dziecko (sizowana skrzynka
+// sceny, .scene-box/.hotspot-nested-scene-box) - samo `.scene-pan-container` ma stały width/height:100% (nie
+// zależy od --scene-ratio), więc ResizeObserver na NIM SAMYM nie wykryłby późniejszej zmiany szerokości dziecka po
+// poznaniu prawdziwego aspect-ratio obrazu (onLoad w SceneHotspotsBlock.tsx) - realny bug złapany w code review:
+// startowa pozycja i stan "czy panować" zostawały policzone na domyślnym 16/10, nie na prawdziwej proporcji.
+// Dopóki user sam nie przewinie (pannedRef), KAŻDY pomiar (także ten po poznaniu prawdziwych wymiarów) na nowo
+// ustawia scrollLeft na initialPanX - nie tylko pierwszy.
 export default function ScenePanContainer({ initialPanX = 0.5, children }: { initialPanX?: number; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [canPan, setCanPan] = useState(false);
   const [edge, setEdge] = useState({ left: false, right: false });
   const [hintVisible, setHintVisible] = useState(false);
-  const initializedRef = useRef(false);
   const pannedRef = useRef(false);
+  // Programowe ustawienie scrollLeft (niżej) wysyła natywne zdarzenie "scroll" asynchronicznie (następna klatka) -
+  // bez tej flagi handleScroll (onScroll na kontenerze) mylił je z prawdziwym gestem usera i chował podpowiedź
+  // natychmiast po starcie, zanim user zdążył cokolwiek przewinąć sam (real bug, code review - wyścig między
+  // ustawieniem stanu `canPan` a podpięciem `onScroll`, oba w tym samym renderze).
+  const programmaticScrollRef = useRef(false);
+
+  // setEdge tylko gdy wartość FAKTYCZNIE się zmienia (kod review - optymalizacja, nie poprawność) - bez tego każdy
+  // scroll/pomiar tworzy nowy obiekt i re-renderuje komponent nawet wtedy, gdy oba cienie zostają w tym samym stanie
+  // widoczności (np. środek długiej panoramy, daleko od obu krawędzi). useCallback z pustymi deps (setEdge ze
+  // useState jest gwarantowanie stabilne między renderami) - stabilna tożsamość, żeby dep-array efektu niżej mogło
+  // ją bezpiecznie zawierać bez ryzyka pętli re-tworzenia ResizeObservera co render.
+  const applyEdgeState = useCallback((container: HTMLElement) => {
+    const next = edgeStateOf(container);
+    setEdge((prev) => (prev.left === next.left && prev.right === next.right ? prev : next));
+  }, []);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    function measureEdges() {
-      if (!el) return;
-      setEdge({ left: el.scrollLeft > 0, right: el.scrollLeft < el.scrollWidth - el.clientWidth - 1 });
-    }
+    const container = containerRef.current;
+    if (!container) return undefined;
+    const child = container.firstElementChild as HTMLElement | null;
 
     function measure() {
-      if (!el) return;
-      const overflow = el.scrollWidth > el.clientWidth + 1;
+      if (!container) return;
+      const overflow = container.scrollWidth > container.clientWidth + 1;
       setCanPan(overflow);
       if (!overflow) {
         setEdge({ left: false, right: false });
         return;
       }
-      // Startowa pozycja ustawiona RAZ (initializedRef) - kolejne pomiary (np. po zmianie rozmiaru okna) nie mają
-      // przestawiać scrolla, o który user może już zdążyć samodzielnie zawalczyć.
-      if (!initializedRef.current) {
-        initializedRef.current = true;
-        el.scrollLeft = initialPanX * (el.scrollWidth - el.clientWidth);
+      if (!pannedRef.current) {
+        const target = initialPanX * (container.scrollWidth - container.clientWidth);
+        if (Math.abs(container.scrollLeft - target) > 0.5) {
+          programmaticScrollRef.current = true;
+          container.scrollLeft = target;
+        }
       }
-      measureEdges();
+      applyEdgeState(container);
     }
 
     measure();
-    // ResizeObserver (nie tylko window resize) - łapie też zmianę rozmiaru samej sceny niezależną od okna (np.
-    // późniejsze poznanie prawdziwego aspect-ratio obrazu, SceneHotspotsBlock.tsx onLoad).
+    if (typeof ResizeObserver === 'undefined') return undefined;
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(container);
+    if (child) observer.observe(child);
     return () => observer.disconnect();
-    // initialPanX celowo NIE w deps poza montażem - zmiana treści remountuje ten komponent przez `key` u wołającego
-    // (ten sam wzorzec co AudioMedia), nie oczekujemy zmiany initialPanX na już zamontowanej scenie.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialPanX, applyEdgeState]);
 
   useEffect(() => {
     if (!canPan || pannedRef.current) {
       setHintVisible(false);
-      return;
+      return undefined;
     }
     setHintVisible(true);
     const timeout = setTimeout(() => setHintVisible(false), 3000);
     return () => clearTimeout(timeout);
   }, [canPan]);
 
-  function handleUserPan() {
-    if (!pannedRef.current) {
+  function handleScroll() {
+    const container = containerRef.current;
+    if (!container) return;
+    if (programmaticScrollRef.current) {
+      // Ten scroll to skutek naszego WŁASNEGO container.scrollLeft = ... wyżej, nie gest usera - policz cienie, ale
+      // NIE licz tego jako "user zaczął panować" (podpowiedź ma zostać widoczna).
+      programmaticScrollRef.current = false;
+    } else if (!pannedRef.current) {
       pannedRef.current = true;
       setHintVisible(false);
     }
-    const el = ref.current;
-    if (!el) return;
-    setEdge({ left: el.scrollLeft > 0, right: el.scrollLeft < el.scrollWidth - el.clientWidth - 1 });
+    applyEdgeState(container);
   }
 
   return (
-    <div
-      ref={ref}
-      className="scene-pan-container"
-      data-initial-pan-x={initialPanX}
-      onScroll={canPan ? handleUserPan : undefined}
-      onTouchStart={canPan ? handleUserPan : undefined}
-    >
-      {children}
+    <div className="scene-pan-frame">
+      <div ref={containerRef} className="scene-pan-container" data-initial-pan-x={initialPanX} onScroll={canPan ? handleScroll : undefined}>
+        {children}
+      </div>
       {canPan && (
         <>
           <div aria-hidden="true" className={`scene-pan-edge scene-pan-edge--left ${edge.left ? 'scene-pan-edge--visible' : ''}`} />

@@ -104,7 +104,21 @@ async function runViewport(viewport) {
   const dialog = () => page.getByRole('dialog');
   const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
 
-  // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) - moduł zaczyna się TUTAJ (NARRATIVE "Otwarcie sprawy" wypadło) ---
+  // --- 0. Odprawa (BRIEFING, D-081) - każdy krok osobno ----------------------------------------------------------------
+  await page.getByRole('button', { name: 'Odbierz' }).waitFor();
+  await page.waitForTimeout(2500); // maszyna do pisania dopisuje tekst
+  await shot(page, '00a-odprawa-telefon', viewport.name);
+  await page.getByRole('button', { name: 'Odbierz' }).click();
+  await shot(page, '00b-odprawa-komisarz', viewport.name);
+  await page.getByRole('button', { name: 'Przyjmuję' }).click();
+  await page.waitForTimeout(1000); // spadająca karta i pieczątka
+  await shot(page, '00c-odprawa-akta', viewport.name);
+  await page.getByRole('button', { name: 'Biorę sprawę' }).click();
+  await page.waitForTimeout(600);
+  await shot(page, '00d-odprawa-legitymacja', viewport.name);
+  await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
+
+  // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) --------------------------------------------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
   await shot(page, '01-korytarz', viewport.name);
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();

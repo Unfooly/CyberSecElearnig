@@ -1,7 +1,7 @@
 # Moduł 1 — „Sprawa: wyłudzone hasło"
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
-Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
+Agent mapuje ten dokument na schemat modułu (wersja 5: jak 4 + blok BRIEFING i objectives z completeWhen, D-081): bloki, dowody, notatki, narrację,
 pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
 
 ## Metadane
@@ -9,14 +9,15 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - slug: `wyludzone-haslo`
 - tytuł: „Sprawa: wyłudzone hasło"
 - subtitle: „Phishing, hasła i jedna karteczka"
-- category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 4
+- category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut
 - level: `basic`
-- objectives (4):
-  1. „Rozpoznać fałszywą domenę w adresie nadawcy i w linku."
-  2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
-  3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
-  4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
+- objectives (4) - zarazem zadania śledztwa (karta sprawy w odprawie, sekcja „Zadania" w notatniku); w nawiasie `completeWhen`
+  (zadanie odhacza się, gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
+  1. „Rozpoznać fałszywą domenę w adresie nadawcy i w linku." (`ten-mail`)
+  2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS." (`rozmowa-marek`)
+  3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach." (`biuro-anny`)
+  4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie." (`akta-sprawy`)
 - dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
@@ -39,9 +40,37 @@ Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak
 
 ---
 
+## Blok 0 — Odprawa (BRIEFING) — D-081
+
+> **PROJEKT TEKSTÓW DO POTWIERDZENIA.** Teksty kroków miały pochodzić z makiety odprawy, której nie ma w repo. Poniższe
+> treści zostały ułożone z tego scenariusza (postaci, godziny, firma) i czekają na potwierdzenie albo podmianę na teksty z
+> makiety. **TTS dopiero po potwierdzeniu.**
+
+Blok nieoceniany, bez dowodów, na jasnym tle (`paper`). Zaliczany po ostatnim kroku albo „Pomiń odprawę" (górny pasek ramki,
+widoczny od razu - także przy ponownym wejściu); pominięcie nie odhacza zadań. Animacje (pisanie, telefon, spadająca karta,
+pieczątka) tylko bez `prefers-reduced-motion`.
+
+1. **typewriter** — tekst: „Wtorek, 9:35. Unfooly Sp. z o.o., Kraków."; pod spodem: „W biurze audytu dzwoni telefon.";
+   przycisk: „Odbierz".
+   **Lektor:** „Wtorek, 9:35. W biurze audytu dzwoni telefon." (spokenText: „Wtorek, dziewiąta trzydzieści pięć. …")
+2. **call** — dzwoni: Fooli (poza `greeting`) jako „Komisarz Fooli", rola „Zespół reagowania na incydenty".
+   Dymek: „Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że »coś jest nie tak z kontem«. Przejmij sprawę i ustal, co się
+   stało."; przycisk: „Przyjmuję".
+   **Lektor:** „Po drugiej stronie komisarz Fooli. Księgowość zgłasza, że coś jest nie tak z kontem. Sprawa trafia do ciebie."
+3. **caseFile** — nr sprawy `UNF/2026/0412` (font maszynowy), tytuł „Wyłudzone hasło"; pola: Firma „Unfooly Sp. z o.o.,
+   Kraków", Zgłaszająca „Anna Kowalska, księgowość", Zgłoszono „wtorek, 9:40", Status „w toku"; pieczątka „Pilne";
+   pod kartą lista zadań (objectives); przycisk: „Biorę sprawę".
+   **Lektor:** „Akta sprawy. Firma Unfooly w Krakowie, zgłaszająca: Anna Kowalska z księgowości. Na dole karty masz listę zadań."
+4. **badge** — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback: inicjały),
+   nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0412-AK`). **Żadnych danych gracza w treści modułu ani w
+   progress** - liczy wyłącznie przeglądarka. Przycisk: „Ruszam na miejsce".
+   **Lektor:** „Legitymacja wydana. Sprawa jest twoja."
+
+---
+
 ## Blok 1 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
-Moduł zaczyna się TUTAJ (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
+Pierwsza scena po odprawie (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
 przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią modułu).
 
 - obraz: `scenes/korytarz.svg` (1600×1000)

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "slug": "wyludzone-haslo",
   "title": "Sprawa: wyłudzone hasło",
   "subtitle": "Phishing, hasła i jedna karteczka",
@@ -8,12 +8,77 @@
   "durationMinutes": 12,
   "mandatory": true,
   "objectives": [
-    "Rozpoznać fałszywą domenę w adresie nadawcy i w linku.",
-    "Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS.",
-    "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
-    "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
+    {
+      "text": "Rozpoznać fałszywą domenę w adresie nadawcy i w linku.",
+      "completeWhen": ["ten-mail"]
+    },
+    {
+      "text": "Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS.",
+      "completeWhen": ["rozmowa-marek"]
+    },
+    {
+      "text": "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
+      "completeWhen": ["biuro-anny"]
+    },
+    {
+      "text": "Zgłosić podejrzany mail przyciskiem, zanim się kliknie.",
+      "completeWhen": ["akta-sprawy"]
+    }
   ],
   "blocks": [
+    {
+      "id": "odprawa",
+      "type": "BRIEFING",
+      "title": "Odprawa",
+      "steps": [
+        {
+          "kind": "typewriter",
+          "text": "Wtorek, 9:35. Unfooly Sp. z o.o., Kraków.",
+          "sub": "W biurze audytu dzwoni telefon.",
+          "cta": "Odbierz",
+          "narration": {
+            "text": "Wtorek, 9:35. W biurze audytu dzwoni telefon.",
+            "spokenText": "Wtorek, dziewiąta trzydzieści pięć. W biurze audytu dzwoni telefon."
+          }
+        },
+        {
+          "kind": "call",
+          "caller": {
+            "name": "Komisarz Fooli",
+            "role": "Zespół reagowania na incydenty",
+            "mascot": "greeting"
+          },
+          "text": "Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że „coś jest nie tak z kontem”. Przejmij sprawę i ustal, co się stało.",
+          "cta": "Przyjmuję",
+          "narration": {
+            "text": "Po drugiej stronie komisarz Fooli. Księgowość zgłasza, że coś jest nie tak z kontem. Sprawa trafia do ciebie."
+          }
+        },
+        {
+          "kind": "caseFile",
+          "caseNo": "UNF/2026/0412",
+          "title": "Wyłudzone hasło",
+          "fields": [
+            { "label": "Firma", "value": "Unfooly Sp. z o.o., Kraków" },
+            { "label": "Zgłaszająca", "value": "Anna Kowalska, księgowość" },
+            { "label": "Zgłoszono", "value": "wtorek, 9:40" },
+            { "label": "Status", "value": "w toku" }
+          ],
+          "stamp": "Pilne",
+          "cta": "Biorę sprawę",
+          "narration": {
+            "text": "Akta sprawy. Firma Unfooly w Krakowie, zgłaszająca: Anna Kowalska z księgowości. Na dole karty masz listę zadań."
+          }
+        },
+        {
+          "kind": "badge",
+          "cta": "Ruszam na miejsce",
+          "narration": {
+            "text": "Legitymacja wydana. Sprawa jest twoja."
+          }
+        }
+      ]
+    },
     {
       "id": "korytarz",
       "type": "SCENE_HOTSPOTS",

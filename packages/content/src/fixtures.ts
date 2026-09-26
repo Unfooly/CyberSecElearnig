@@ -301,8 +301,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       ],
       requiredTabs: ['t1'],
     },
-    // schemaVersion 5. Dwa kroki "call": jeden z avatarem postaci, drugi z maskotką (wykluczają się w jednym kroku, a test
-    // klasyfikacji potrzebuje obu ścieżek w fixturze).
+    // schemaVersion 5. Dwa kroki "call": postać bez avatara (inicjały) i postać z avatarem; każdy rodzaj kroku co najmniej raz.
     BRIEFING: {
       ...base('odprawa'),
       // Nieoceniany: waga musi być 0 (semantics.ts) - pole zostaje, żeby test klasyfikacji widział ścieżkę `weight`.
@@ -312,11 +311,11 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { kind: 'typewriter', text: 'Wtorek, 7:58.', sub: 'Dzwoni telefon.', cta: 'Odbierz', narration: audio('odprawa-0') },
         {
           kind: 'call',
-          caller: { name: 'Komisarz Fooli', role: 'Wydział cyber', mascot: 'greeting' },
+          caller: { name: 'Komisarz Adam Wolski', role: 'Wydział Cyberbezpieczeństwa' },
           text: 'Mamy sprawę.',
           cta: 'Słucham',
-          // Rola głosu (schemaVersion 5, D-082): Komisarz mówi głosem maskotki.
-          narration: { ...audio('odprawa-1'), voice: 'fooli' as const },
+          // Rola głosu (schemaVersion 5, D-082): Komisarz mówi własnym głosem.
+          narration: { ...audio('odprawa-1'), voice: 'komisarz' as const },
         },
         { kind: 'call', caller: { name: 'Marek', avatar: 'avatars/marek.svg' }, text: 'Czekam w IT.', cta: 'Dalej' },
         {
@@ -329,6 +328,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           narration: audio('odprawa-3'),
         },
         { kind: 'badge', cta: 'Do dzieła', narration: audio('odprawa-4') },
+        { kind: 'start', text: 'Firma Testowa, drugie piętro.', cta: 'Wchodzę', narration: audio('odprawa-5') },
       ],
     },
     SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },

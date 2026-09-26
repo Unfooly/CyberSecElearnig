@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MASCOT_POSES, audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
+import { audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -375,15 +375,14 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('call'),
-      // Kto dzwoni: postać zapisana w treści (jak DIALOGUE.character - moduł nie ma wspólnego rejestru postaci) ALBO
-      // maskotka (`mascot`: poza Fooli, np. jako "Komisarz"). avatar i mascot wykluczają się (semantics.ts); bez żadnego
-      // z nich klient pokazuje inicjały z `name`.
+      // Kto dzwoni: postać zapisana w treści (jak DIALOGUE.character - moduł nie ma wspólnego rejestru postaci). Bez avatara
+      // klient pokazuje inicjały z `name` (na accent-soft). Maskotki tu nie ma (decyzja właściciela, D-081: maskotka wychodzi
+      // z odtwarzacza - refactor/remove-mascot-player).
       caller: z
         .object({
           name: text(80),
           role: text(120).optional(),
           avatar: imagePathSchema.optional(),
-          mascot: z.enum(MASCOT_POSES).optional(),
         })
         .strict(),
       text: text(500),
@@ -408,6 +407,15 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('badge'),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // start: ostatni ekran odprawy - miejsce akcji (np. "Unfooly, drugie piętro.") i przycisk rozpoczęcia śledztwa.
+  z
+    .object({
+      kind: z.literal('start'),
+      text: text(200),
       cta: text(60),
       narration: narrationSchema.optional(),
     })
@@ -711,7 +719,6 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].caller.name',
       'steps[].caller.role',
       'steps[].caller.avatar',
-      'steps[].caller.mascot',
       'steps[].caseNo',
       'steps[].title',
       'steps[].fields[].label',

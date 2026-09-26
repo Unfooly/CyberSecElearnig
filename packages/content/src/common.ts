@@ -56,7 +56,7 @@ export const cueSchema = z
  * Role głosu nagrań (schemaVersion 5, D-082). Rola, nie ID głosu: mapowanie rola -> voiceId ElevenLabs trzyma
  * scripts/content/voices.json (commitowane, bez sekretów), więc treść modułu nie zależy od konta TTS. Brak pola = narrator.
  */
-export const VOICE_ROLES = ['narrator', 'fooli', 'bank', 'marek'] as const;
+export const VOICE_ROLES = ['narrator', 'komisarz', 'bank', 'marek'] as const;
 export type VoiceRole = (typeof VOICE_ROLES)[number];
 
 export const narrationSchema = z

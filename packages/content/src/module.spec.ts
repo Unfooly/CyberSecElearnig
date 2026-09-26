@@ -691,23 +691,17 @@ describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', (
     expect(invalid((m) => (briefing(m).weight = 1))).toContain('blok BRIEFING jest nieoceniany');
   });
 
-  it('BRIEFING: krok call nie może mieć naraz avatara i maskotki', () => {
+  it('BRIEFING: mówca kroku call to wyłącznie postać { name, role, avatar } - maskotki w odprawie nie ma (schemat strict)', () => {
     expect(
       invalid((m) => {
-        const call = briefing(m).steps.find((s: Record<string, any>) => s.kind === 'call');
-        call.caller.avatar = 'avatars/x.svg';
-        call.caller.mascot = 'greeting';
+        briefing(m).steps.find((s: Record<string, any>) => s.kind === 'call').caller.mascot = 'greeting';
       }),
-    ).toContain('caller: avatar i mascot wykluczają się');
+    ).toContain('caller');
   });
 
-  it('BRIEFING: nieznany rodzaj kroku i nieznana poza maskotki to błąd schematu', () => {
+  it('BRIEFING: nieznany rodzaj kroku to błąd schematu; krok start wymaga tekstu i przycisku', () => {
     expect(invalid((m) => (briefing(m).steps[0].kind = 'video'))).toContain('steps.0');
-    expect(
-      invalid((m) => {
-        briefing(m).steps.find((s: Record<string, any>) => s.caller?.mascot).caller.mascot = 'dancing';
-      }),
-    ).toContain('caller.mascot');
+    expect(invalid((m) => delete briefing(m).steps.find((s: Record<string, any>) => s.kind === 'start').cta)).toContain('cta');
   });
 
   it('BRIEFING: krok badge nie przyjmuje danych gracza z treści (strict - imię liczy wyłącznie klient)', () => {
@@ -740,9 +734,10 @@ describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
     delete media.transcript;
   };
 
-  it('voice: znane role przechodzą (fooli w odprawie fixtury), nieznana rola to błąd walidacji', () => {
+  it('voice: znane role przechodzą (komisarz w odprawie fixtury), nieznana rola to błąd walidacji', () => {
     expect(() => parseModule(fullModuleForTests())).not.toThrow();
-    for (const voice of ['narrator', 'fooli', 'bank', 'marek']) {
+    expect(invalid((m) => (m.blocks[0].narration.voice = 'fooli'))).toContain('narration.voice');
+    for (const voice of ['narrator', 'komisarz', 'bank', 'marek']) {
       expect(invalid((m) => (m.blocks[0].narration.voice = voice))).toBe('');
     }
     expect(invalid((m) => (m.blocks[0].narration.voice = 'lektor2'))).toContain('narration.voice');

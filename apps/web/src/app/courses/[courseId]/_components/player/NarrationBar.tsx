@@ -7,12 +7,19 @@ import type { NarrationBarState } from './useNarrationBar';
 
 export const TRANSCRIPT_TOGGLE_ID = 'narration-transcript-toggle';
 
-// Pasek narracji dla desktopu/tabletu/telefonu w poziomie (PR A) - jeden rząd: play/pause + cienki postęp + czas
+// Pasek narracji dla desktopu/tabletu/telefonu w poziomie - jeden rząd: play/pause + cienki postęp + czas
 // (lewo), bieżąca linijka napisów w jednej linii z ellipsis + przycisk "Transkrypcja" (środek, flex-1 - sama treść
 // panelu renderuje TranscriptPanel.tsx NAD paskiem, nie tutaj), przełącznik "Lektor" (prawo - Wstecz/Dalej dokłada
 // PlayerStage, nie ten komponent, bo działają niezależnie od tego, czy blok ma w ogóle narrację).
-// NarrationBarPortrait.tsx (PR B) renderuje TĘ SAMĄ logikę (useNarrationBar w CoursePlayer, przekazaną tu jako
-// `state`) z okrągłym wskaźnikiem postępu zamiast paska liniowego.
+// Telefon w pionie (feat/player-portrait): TA SAMA logika (useNarrationBar w CoursePlayer, przekazana tu jako
+// `state`) - BEZ osobnego pliku/komponentu (ustalone z właścicielem produktu, patrz decyzja niżej). Play/pause,
+// przełącznik "Lektor", <audio>, przycisk "Transkrypcja" - WSPÓLNE, renderowane RAZ (tylko przestawiane CSS-em w
+// wąskim pasku). Jedyna różnica: `.narration-progress-linear` (ten `<input type="range">` + czas) chowany,
+// `.narration-progress-ring` (dekoracyjny pierścień SVG, aria-hidden) pokazywany - globals.css, breakpoint
+// max-width:767px/orientation:portrait/pointer:coarse. Pierścień jest CZYSTO dekoracyjny (bez interakcji) -
+// przewijanie nagrania zostaje na JEDNYM, współdzielonym <input type="range"> (ustalone z właścicielem produktu:
+// zero zduplikowanych elementów dostępności, istniejące testy getByRole('slider'/'switch') - dokładnie jeden
+// wynik - nie wymagają zmian w zapytaniach).
 export default function NarrationBar({
   narration,
   state,
@@ -59,7 +66,7 @@ export default function NarrationBar({
           >
             {playing ? <Pause aria-hidden="true" className="h-5 w-5" /> : <Play aria-hidden="true" className="h-5 w-5" />}
           </button>
-          <div className="w-28 shrink-0 sm:w-40">
+          <div className="narration-progress-linear w-28 shrink-0 sm:w-40">
             <input
               type="range"
               aria-label="Postęp nagrania"
@@ -75,6 +82,7 @@ export default function NarrationBar({
               {formatNarrationTime(positionMs)} / {formatNarrationTime(durationMs)}
             </span>
           </div>
+          <NarrationProgressRing positionMs={positionMs} durationMs={durationMs} />
         </>
       )}
 
@@ -120,6 +128,36 @@ export default function NarrationBar({
         {enabled ? <Volume2 aria-hidden="true" className="h-4 w-4" /> : <VolumeX aria-hidden="true" className="h-4 w-4" />}
         Lektor
       </button>
+    </div>
+  );
+}
+
+const RING_RADIUS = 16;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+// Dekoracyjny pierścień postępu (feat/player-portrait, telefon w pionie) - aria-hidden, BEZ interakcji (przewijanie
+// zostaje na współdzielonym <input type="range"> wyżej, patrz komentarz nad komponentem). Chowany/pokazywany
+// wyłącznie CSS-em (.narration-progress-ring, globals.css) - renderuje się ZAWSZE, żeby przełączenie nie było
+// zależne od JS matchMedia (ten sam wzorzec co .player-frame).
+function NarrationProgressRing({ positionMs, durationMs }: { positionMs: number; durationMs: number }) {
+  const progress = durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0;
+  return (
+    <div className="narration-progress-ring shrink-0 items-center justify-center" aria-hidden="true" data-testid="narration-progress-ring">
+      <svg width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r={RING_RADIUS} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+        <circle
+          cx="20"
+          cy="20"
+          r={RING_RADIUS}
+          fill="none"
+          stroke="#4338ca"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress)}
+          transform="rotate(-90 20 20)"
+        />
+      </svg>
     </div>
   );
 }

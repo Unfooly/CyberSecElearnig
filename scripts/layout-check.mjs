@@ -2,11 +2,11 @@
 // druga runda code review fix/hotspot-card-fit/B-101 znalazła bugi, których żaden test jsdom (Investigation.test.tsx)
 // nie mógł wykryć, bo jsdom nie liczy layoutu CSS (container query, grid, cqw/cqh) - tylko prawdziwy Chromium to
 // widzi. Użycie: `node scripts/layout-check.mjs` (spawnuje `next dev` z NEXT_PUBLIC_DEV_HARNESS=1, strona
-// apps/web/src/app/dev/player-harness/page.tsx renderuje PlayerStage z prawdziwą treścią modułu 1 - wyłącznie
+// apps/web/src/app/dev/player-harness/page.dev.tsx renderuje PlayerStage z prawdziwą treścią modułu 1 - wyłącznie
 // packages/content, bez importu do bazy). NIE jest częścią CI (B-101 w backlogu: "layout-check w CI") - uruchamiany
 // RĘCZNIE, lokalnie, przed pushem każdego PR-a zmieniającego układ odtwarzacza (CLAUDE.md, reguła 12).
 //
-// Sprawdza dla każdej kombinacji (viewport x hotspot) pięć rzeczy (a-e w opisie zadania/PR):
+// Sprawdza dla każdej kombinacji (viewport x hotspot) pięć rzeczy (a-e w opisie zadania/PR fix/hotspot-card-fit):
 //  a) <html> się nie przewija (scrollHeight/Width <= innerHeight/Width) - cała strona, nie tylko ramka.
 //  b) karta hotspotu (.hotspot-card) się nie przewija (scrollHeight <= clientHeight) - poza kartą BEZ mediów, gdzie
 //     "karta się nie przewija" nie ma sensu sprawdzać tak samo (auto-size do treści, patrz .hotspot-card--no-media).
@@ -20,6 +20,15 @@
 //     (.player-frame) - nie wychodzą poza żadną z tych dwóch granic.
 //  e) (raz na viewport, przed otwarciem jakiejkolwiek karty) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
 //     paska przewijania w tym obszarze (hotfix fix/player-scene-fit/B-100, ta sama rodzina bugów).
+// Dla telefonu w pionie (390x844/360x800, feat/player-portrait, sekcja B) DODATKOWO (f-i), przez
+// PORTRAIT_VIEWPORT_NAMES:
+//  f) scena panuje WYŁĄCZNIE w poziomie (.scene-pan-container: scrollWidth>clientWidth, scrollHeight<=clientHeight) -
+//     panorama faktycznie się włączyła, nie cichy fallback do "contain" (checkScenePansHorizontallyOnly).
+//  g) startowa pozycja panoramy (scrollLeft) odpowiada data-initial-pan-x, które ScenePanContainer.tsx sam ustawił
+//     na sobie (checkInitialPanX - nie duplikuje formuły centroidu hotspotów w tym skrypcie).
+//  h) każdy hotspot (`[data-testid^="hotspot-overlay-"]`) ma cel dotyku >=44x44px (checkTouchTargetSize).
+//  i) po otwarciu karty: bottom sheet (.hotspot-card) ma wysokość <=85% wysokości viewportu, przyciski w całości
+//     wewnątrz karty I viewportu (checkBottomSheetFits) - te same HOTSPOT_CASES co dla innych viewportów.
 // Zrzuty każdej sprawdzonej kombinacji trafiają do docs/brand/screens/layout-check/ (poza gitem, jak resztka
 // docs/brand/screens/) - do wizualnej weryfikacji, niezależnie od wyniku. Pierwsze niepowodzenie zatrzymuje skrypt
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
@@ -37,7 +46,14 @@ const VIEWPORTS = [
   { name: '1366x768', width: 1366, height: 768 },
   { name: '1024x768', width: 1024, height: 768 },
   { name: '844x390', width: 844, height: 390 }, // telefon w poziomie, niska wysokość (globals.css: pełny ekran bez marginesów)
+  // Telefon w pionie (feat/player-portrait, sekcja B) - panorama sceny + bottom sheet. isMobile:true (nie tylko
+  // hasTouch) - Playwright ustawia wtedy też meta viewport/user-agent mobilny, bliżej prawdziwego telefonu niż
+  // samo emulowanie dotyku na zwykłym oknie desktopowym (844x390 wyżej celowo NIE ma isMobile - to inny, wcześniej
+  // ustalony przypadek testowy "wąskie okno desktopu z dotykiem", kod review PR #44).
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+  { name: '360x800', width: 360, height: 800, isMobile: true },
 ];
+const PORTRAIT_VIEWPORT_NAMES = new Set(['390x844', '360x800']);
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
@@ -217,6 +233,75 @@ async function checkPointerCoarse(page, label) {
   if (!coarse) fail(`${label}: (pointer: coarse) nie pasuje mimo hasTouch:true - viewport NIE wchodzi w tryb "telefon w poziomie" (globals.css).`);
 }
 
+// (f) Telefon w pionie: scena panuje WYŁĄCZNIE w poziomie - .scene-pan-container (ScenePanContainer.tsx) musi mieć
+// scrollWidth>clientWidth (panorama faktycznie włączona przez formułę "fit-height" w globals.css, nie cichy
+// fallback do "contain" - w tym drugim przypadku scrollWidth==clientWidth i cała reszta sprawdzeń panoramy (g-i
+// część) nie miałaby sensu) i scrollHeight<=clientHeight (bez przewijania w pionie - to strona/karta ma się
+// przewijać, nie sama scena).
+async function checkScenePansHorizontallyOnly(page, label) {
+  const box = page.locator('.scene-pan-container').first();
+  const { scrollWidth, clientWidth, scrollHeight, clientHeight } = await box.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  if (scrollWidth <= clientWidth + 1) {
+    fail(`${label}: (f) panorama się nie włączyła - .scene-pan-container scrollWidth=${scrollWidth} clientWidth=${clientWidth} (oczekiwano overflow).`);
+  }
+  if (scrollHeight > clientHeight + 1) {
+    fail(`${label}: (f) scena przewija się w PIONIE - scrollHeight=${scrollHeight} clientHeight=${clientHeight} (panorama ma być wyłącznie pozioma).`);
+  }
+}
+
+// (g) Startowa pozycja panoramy - scrollLeft po starcie ma odpowiadać data-initial-pan-x (fraction 0..1), które
+// ScenePanContainer.tsx SAM ustawił na sobie po zmierzeniu WŁASNEGO scrollWidth/clientWidth - to sprawdzenie NIE
+// duplikuje formuły centroidu hotspotów (computeHotspotCentroid, SceneHotspotsBlock.tsx) w tym skrypcie, tylko
+// potwierdza, że kontener zastosował wartość, którą sam wyliczył.
+async function checkInitialPanX(page, label) {
+  const box = page.locator('.scene-pan-container').first();
+  const { scrollLeft, scrollWidth, clientWidth, initialPanX } = await box.evaluate((el) => ({
+    scrollLeft: el.scrollLeft,
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    initialPanX: Number(el.dataset.initialPanX),
+  }));
+  const expected = initialPanX * (scrollWidth - clientWidth);
+  if (Math.abs(scrollLeft - expected) > 2) {
+    fail(`${label}: (g) startowy scrollLeft=${scrollLeft} nie odpowiada data-initial-pan-x=${initialPanX} (oczekiwano ~${expected.toFixed(1)}).`);
+  }
+}
+
+// (h) Touch target >=44x44px (WCAG 2.5.5/2.5.8) - każdy hotspot na scenie głównej, niezależnie od tego, czy jest
+// akurat widoczny w scrollowanym obszarze (boundingBox Playwrighta liczy rzeczywisty rozmiar niezależnie od tego,
+// czy element jest w danej chwili przescrollowany poza widok - CSS min-width/height, globals.css, obowiązuje
+// zawsze, nie tylko dla widocznej części panoramy).
+async function checkTouchTargetSize(page, label) {
+  const buttons = await page.locator('[data-testid^="hotspot-overlay-"]').all();
+  if (buttons.length === 0) fail(`${label}: (h) nie znaleziono żadnego hotspotu na scenie.`);
+  for (const button of buttons) {
+    const box = await button.boundingBox();
+    if (!box) continue;
+    if (box.width < 44 || box.height < 44) {
+      const name = await button.getAttribute('aria-label');
+      fail(`${label}: (h) hotspot "${name}" ma cel dotyku ${box.width}x${box.height}px (<44x44px).`);
+    }
+  }
+}
+
+// (i) Bottom sheet (.hotspot-card, telefon w pionie) mieści się w 85% wysokości viewportu (globals.css:
+// position:fixed; max-height:85dvh) - inny punkt odniesienia niż checkButtonsInsideCardAndFrame (.player-frame,
+// który na tym breakpoincie i tak wypełnia cały viewport, więc "wewnątrz ramki" nic dodatkowego by nie sprawdziło
+// ponad "wewnątrz viewportu"), stąd osobne sprawdzenie wysokości względem viewportu.
+async function checkBottomSheetFits(page, label) {
+  const viewport = page.viewportSize();
+  const cardBox = await boxOf(page, '.hotspot-card');
+  const maxHeight = viewport.height * 0.85 + 1;
+  if (cardBox.height > maxHeight) {
+    fail(`${label}: (i) bottom sheet (.hotspot-card) ma wysokość ${cardBox.height}px > 85% viewportu (${maxHeight.toFixed(1)}px, viewport=${viewport.height}px).`);
+  }
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -268,8 +353,13 @@ try {
     // dotyku Playwright zostaje przy (pointer: fine) i 844x390 dostałoby zwykłą, wyśrodkowaną ramkę biurkową zamiast
     // pełnoekranowej ramki telefonu, którą layout-check ma sprawdzać. Nieszkodliwe dla większych viewportów - żaden
     // z pozostałych nie spełnia warunków max-height/max-width tych reguł niezależnie od typu wskaźnika.
-    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true });
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+    });
     const page = await context.newPage();
+    const isPortrait = PORTRAIT_VIEWPORT_NAMES.has(viewport.name);
 
     await page.goto(`${WEB}/dev/player-harness`);
     await page.getByTestId('player-content-area').waitFor();
@@ -279,6 +369,13 @@ try {
     if (viewport.name === '844x390') {
       await checkPointerCoarse(page, `${viewport.name} / scena główna`);
       step(`${viewport.name}: (pointer: coarse) faktycznie pasuje (hasTouch:true działa)`, true);
+    }
+    if (isPortrait) {
+      await checkPointerCoarse(page, `${viewport.name} / scena główna`);
+      await checkScenePansHorizontallyOnly(page, `${viewport.name} / scena główna`);
+      await checkInitialPanX(page, `${viewport.name} / scena główna`);
+      await checkTouchTargetSize(page, `${viewport.name} / scena główna`);
+      step(`${viewport.name} / scena główna: (f-h) panorama OK`, true);
     }
 
     for (const testCase of HOTSPOT_CASES) {
@@ -304,7 +401,10 @@ try {
         await checkMediaHeight(page, label);
       }
       await checkButtonsInsideCardAndFrame(page, label);
-      step(`${label}: (a-d) OK`, true);
+      if (isPortrait) {
+        await checkBottomSheetFits(page, label);
+      }
+      step(`${label}: (a-d${isPortrait ? ', i' : ''}) OK`, true);
     }
 
     await context.close();

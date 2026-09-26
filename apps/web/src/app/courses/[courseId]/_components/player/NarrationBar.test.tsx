@@ -137,6 +137,33 @@ describe('NarrationBar', () => {
     });
   });
 
+  describe('pierścień postępu (telefon w pionie, feat/player-portrait) - dekoracyjny, bez roli', () => {
+    it('renderuje się (aria-hidden), niezależnie od breakpointu - jsdom nie liczy CSS, przełączenie jest wyłącznie w globals.css', () => {
+      const { container } = renderBar();
+      const ring = container.querySelector('[data-testid="narration-progress-ring"]');
+      expect(ring).toBeInTheDocument();
+      expect(ring).toHaveAttribute('aria-hidden', 'true');
+      // Bez roli/etykiety dostępności (czysto wizualny) - istniejący współdzielony slider zostaje JEDYNYM
+      // interaktywnym kontrolerem postępu (zero duplikatów ról).
+      expect(screen.getAllByRole('slider')).toHaveLength(1);
+    });
+
+    it('wypełnienie łuku odpowiada positionMs/durationMs (strokeDashoffset)', () => {
+      const { container } = renderBar();
+      const slider = screen.getByRole('slider', { name: 'Postęp nagrania' });
+      fireEvent.change(slider, { target: { value: '2000' } }); // 2000/4000 = 50%
+
+      const progressCircle = container.querySelectorAll('[data-testid="narration-progress-ring"] circle')[1];
+      const circumference = 2 * Math.PI * 16;
+      expect(progressCircle).toHaveAttribute('stroke-dashoffset', String(circumference * 0.5));
+    });
+
+    it('brak audio (hasAudio=false): pierścień się nie renderuje (ten sam warunek co pasek liniowy/przycisk play)', () => {
+      const { container } = renderBar({ narrationProp: { ...narration, audioUrl: 'https://evil.test/a.mp3' } });
+      expect(container.querySelector('[data-testid="narration-progress-ring"]')).toBeNull();
+    });
+  });
+
   describe('napisy (jedna linia, ellipsis) i przycisk transkrypcji', () => {
     it('aktywne zdanie zależy od pozycji nagrania (cues)', () => {
       const { container } = renderBar();

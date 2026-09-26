@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
-import { hotspotStackZIndex } from './SceneHotspotsBlock';
+import { computeHotspotCentroid, hotspotStackZIndex } from './SceneHotspotsBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
@@ -433,11 +433,18 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (hotfix fix/player-scene-fit/B-10
 
     const root = container.firstElementChild as HTMLElement;
     const imageArea = root.firstElementChild!.nextElementSibling as HTMLElement;
-    const aspectBox = imageArea.firstElementChild as HTMLElement;
+    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę - jeden poziom głębiej niż przed tym PR.
+    const panContainer = imageArea.firstElementChild as HTMLElement;
+    const aspectBox = panContainer.firstElementChild as HTMLElement;
 
+    expect(panContainer.className).toBe('scene-pan-container');
     expect(aspectBox.className).not.toMatch(/max-h-full/);
     expect(aspectBox.className).not.toMatch(/max-w-full/);
-    expect(aspectBox.style.width).toBe('min(100cqw, calc(100cqh * var(--scene-ratio)))');
+    // Formuła szerokości ("contain"/"fit-height" na telefonie w pionie) jest KLASĄ .scene-box (globals.css), NIE
+    // inline style (feat/player-portrait - inline style nie dałoby się nadpisać z @media bez !important, ten sam
+    // wzorzec co .player-frame) - stąd .style.width jest tu puste, sprawdzamy samą klasę.
+    expect(aspectBox.className).toMatch(/\bscene-box\b/);
+    expect(aspectBox.style.width).toBe('');
     expect(aspectBox.style.height).toBe('auto');
     expect(aspectBox.style.aspectRatio).toBe('var(--scene-ratio)');
     expect(aspectBox.style.margin).toBe('auto');
@@ -492,6 +499,39 @@ describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotó
     setup(overlappingScene);
     fireEvent.click(screen.getByTestId('hotspot-overlay-karteczka'));
     expect(within(dialog()).getByRole('heading', { name: 'Mała karteczka' })).toBeInTheDocument();
+  });
+});
+
+describe('SCENE_HOTSPOTS: panorama telefonu w pionie (feat/player-portrait)', () => {
+  it('computeHotspotCentroid (czysta funkcja): średnia środków x% hotspotów, 0..1; pusta lista -> 0.5 (środek)', () => {
+    expect(computeHotspotCentroid([])).toBe(0.5);
+    // Jeden hotspot: centroid = jego własny środek (x + width/2), przeskalowany na 0..1.
+    expect(computeHotspotCentroid([{ x: 10, width: 20 }])).toBeCloseTo(0.2); // środek 20% -> 0.2
+    // Dwa hotspoty po przeciwnych stronach - średnia ich środków.
+    expect(computeHotspotCentroid([{ x: 0, width: 10 }, { x: 90, width: 10 }])).toBeCloseTo(0.5); // środki 5% i 95% -> 0.5
+    // Wynik zawsze w [0,1] - defensywnie, nawet dla danych poza zwykłym zakresem 0..100.
+    expect(computeHotspotCentroid([{ x: 200, width: 10 }])).toBe(1);
+    expect(computeHotspotCentroid([{ x: -50, width: 10 }])).toBe(0);
+  });
+
+  it('otwarcie hotspotu woła navigator.vibrate (informacja dotykowa) - feature-detected, nie wywala się bez API', () => {
+    const vibrateSpy = vi.fn();
+    vi.stubGlobal('navigator', { ...window.navigator, vibrate: vibrateSpy });
+    setup(scene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
+    expect(vibrateSpy).toHaveBeenCalledWith(10);
+    vi.unstubAllGlobals();
+  });
+
+  it('otwarcie hotspotu WEWNĄTRZ zagnieżdżonej sceny też woła navigator.vibrate', () => {
+    const vibrateSpy = vi.fn();
+    vi.stubGlobal('navigator', { ...window.navigator, vibrate: vibrateSpy });
+    setup(nestedScene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-monitor'));
+    vibrateSpy.mockClear(); // otwarcie zewnętrznego hotspotu już woła raz - liczy się TYLKO drugie, zagnieżdżone
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
+    expect(vibrateSpy).toHaveBeenCalledWith(10);
+    vi.unstubAllGlobals();
   });
 });
 
@@ -754,17 +794,22 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
   });
 
-  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit), WYŁĄCZNIE od 640px (druga runda code review, punkt 1 - poniżej tego progu kontener nie ma jawnej wysokości do zapytania, formuła dałaby szerokość 0): [container-type:size] i szerokość z cqw/cqh dopiero od sm:, bez max-h-full/max-w-full', () => {
+  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit), WYŁĄCZNIE w tym samym scalonym breakpoincie co siatka karty (feat/player-portrait - poza nim kontener nie ma jawnej wysokości do zapytania, formuła dałaby szerokość 0): .hotspot-nested-scene-frame ma container-type:size (klasa, nie Tailwind sm:), szerokość z cqw/cqh z globals.css, bez max-h-full/max-w-full', () => {
     setup(nestedScene);
     pick('Monitor');
     const img = within(dialog()).getByAltText('Pulpit komputera');
     const aspectBox = img.parentElement!;
-    const queryContainer = aspectBox.parentElement!;
+    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę - jeden poziom głębiej niż przed tym PR.
+    const panContainer = aspectBox.parentElement!;
+    const queryContainer = panContainer.parentElement!;
 
-    // sm: (nie bezpośrednio [container-type:size]) - na mobile ten kontener NIE dostaje containment rozmiaru.
-    expect(queryContainer.className).toMatch(/sm:\[container-type:size\]/);
-    // .hotspot-nested-scene-box (globals.css, od 640px) nadpisuje bazowe w-full formułą "contain" z cqw/cqh -
-    // szerokość NIE jest inline (jak w scenie najwyższego poziomu), żeby na mobile zostało zwykłe w-full bez cq.
+    expect(panContainer.className).toBe('scene-pan-container');
+    // .hotspot-nested-scene-frame (klasa, nie Tailwind sm: - warunek już nie jest jednym prostym breakpointem,
+    // patrz globals.css) dostaje container-type:size w tym samym scalonym @media co siatka karty.
+    expect(queryContainer.className).toMatch(/(^|\s)hotspot-nested-scene-frame(\s|$)/);
+    // .hotspot-nested-scene-box (globals.css) nadpisuje bazowe w-full formułą "contain" z cqw/cqh -
+    // szerokość NIE jest inline (jak w scenie najwyższego poziomu), żeby poza tym breakpointem zostało zwykłe
+    // w-full bez cq.
     expect(aspectBox.className).toMatch(/(^|\s)hotspot-nested-scene-box(\s|$)/);
     expect(aspectBox.className).toMatch(/(^|\s)w-full(\s|$)/);
     expect(aspectBox.className).not.toMatch(/max-h-full/);

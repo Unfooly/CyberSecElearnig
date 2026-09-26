@@ -118,17 +118,26 @@
   }
 
   /* Panorama sceny (feat/player-portrait, sekcja B) - patrz ScenePanContainer.tsx dla wyjaśnienia całego
-     mechanizmu (BEZ JS matchMedia, tylko pomiar rzeczywistego overflow). Tutaj WYŁĄCZNIE CSS-owa strona: kontener
-     dostaje jawny rozmiar (żeby overflow-x:auto miało co przewijać) i formuła szerokości .scene-box (niżej, przy
-     definicji domyślnej) zmienia się z "contain" na "fit-height" - scena celowo może wyjść szerzej niż ekran. */
-  .scene-pan-container {
+     mechanizmu (BEZ JS matchMedia, tylko pomiar rzeczywistego overflow). Tutaj WYŁĄCZNIE CSS-owa strona: formuła
+     szerokości .scene-box (niżej, przy definicji domyślnej) zmienia się z "contain" na "fit-height" - scena celowo
+     może wyjść szerzej niż ekran. DWIE warstwy (code review - realny bug): .scene-pan-frame (zewnętrzna,
+     NIEPRZEWIJANA, position:relative - punkt odniesienia dla cieni/podpowiedzi) i .scene-pan-container (wewnętrzna,
+     PRZEWIJANA, overflow-x:auto) - cienie/podpowiedź jako position:absolute wewnątrz PRZEWIJANEGO kontenera
+     przesuwałyby się razem ze sceną (widoczne w złym miejscu po starcie z przesunięciem od centroidu). */
+  .scene-pan-frame {
     position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .scene-pan-container {
     display: block;
     width: 100%;
     height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
-    touch-action: pan-x;
+    /* pinch-zoom (nie tylko pan-x) - WCAG 1.4.4: sceny mają drobne detale (treść ćwiczenia), słabowidzący user musi
+       móc je powiększyć gestem szczypania nawet w trybie panoramy (kod review). */
+    touch-action: pan-x pinch-zoom;
   }
   .scene-pan-edge {
     position: absolute;
@@ -165,9 +174,14 @@
   }
 
   /* Touch target >=44px (WCAG 2.5.5/2.5.8) - hotspoty mają dziś min-h/w-[24px] (Tailwind, wszystkie breakpointy),
-     wystarczające na desktop z myszą, ale za małe do wygodnego dotyku. Nadpisuje tylko na tym breakpoincie -
-     desktop/tablet/telefon w poziomie bez zmian (24px tam był świadomym wyborem gęstej sceny, kod review PR #36). */
-  [data-testid^='hotspot-overlay-'] {
+     wystarczające na desktop z myszą, ale za małe do wygodnego dotyku. `.scene-hotspot[type='button']` (klasa +
+     atrybut, specyficzność 0,2,0 - NIE `[data-testid^=...]` samo, 0,1,0, ani samo dowiązanie do test-id: kruche,
+     zmiana identyfikatora testowego cicho psułaby dostępność produkcji) wygrywa niezależnie od tego, kiedy Tailwind
+     dopisze `min-h-[24px]`/`min-w-[24px]` w trybie dev (ten sam wzorzec co .hotspot-card.hotspot-card--no-media
+     niżej - kod review: sam @media, bez podniesienia specyficzności, nie wystarczał). Nadpisuje tylko na tym
+     breakpoincie - desktop/tablet/telefon w poziomie bez zmian (24px tam był świadomym wyborem gęstej sceny, kod
+     review PR #36). */
+  .scene-hotspot[type='button'] {
     min-width: 44px;
     min-height: 44px;
   }
@@ -366,18 +380,37 @@
 
   /* Bottom sheet: karta wysuwa się z dołu, nie z wyśrodkowanej nakładki - nadpisuje TYLKO pozycję/rozmiar
      zewnętrzny (siatka wewnątrz, .hotspot-card-layout/-text/-media/-buttons, zostaje ta sama co >=640px, patrz
-     blok scalony wyżej). max-height:85dvh (nie 92% jak >=640px - inny punkt odniesienia: position:fixed liczy
-     procenty względem viewportu, nie względem sceny) - zamykanie WYŁĄCZNIE przez "Wróć"/tło/Escape
-     (overlay-stack.tsx), bez gestu przesuwania (ustalone z właścicielem produktu) - .hotspot-card-handle (niżej)
-     jest czysto wizualną afordancją. */
-  /* height:85dvh STAŁA (nie auto+max-height) - z mediami .hotspot-card-layout musi dostać REALNĄ wysokość do
-     rozdzielenia (flex:1 1 0%/minmax(0,1fr), patrz blok scalony wyżej) - z height:auto (hug-content) nie ma "wolnej
-     przestrzeni" do rozdania, więc obszar mediów wychodziłby przy minimalnym (treściowym) rozmiarze, nie
-     wypełniałby dostępnego miejsca (zweryfikowane empirycznie: scripts/layout-check.mjs, obszar mediów 44px/17%
-     zamiast oczekiwanych >=35%) - TA SAMA przyczyna co przy >=640px, gdzie karta z mediami ma zawsze DEFINITYWNE
-     92% (sm:h-[92%], nigdy auto). Karta BEZ mediów (niżej) zostaje przy auto-size do treści, tak jak >=640px -
-     tam nie ma obszaru mediów do wypełnienia, hug-content jest właściwym zachowaniem. */
-  .hotspot-card {
+     blok scalony wyżej). Zamykanie WYŁĄCZNIE przez "Wróć"/tło/Escape (overlay-stack.tsx), bez gestu przesuwania
+     (ustalone z właścicielem produktu) - .hotspot-card-handle (niżej) jest czysto wizualną afordancją.
+     `[role='dialog'] .hotspot-card` (nie sama `.hotspot-card`, 0,2,0 zamiast 0,1,0 - kod review): na szerokościach
+     640-767px W PIONIE (np. tablet mini) trafiają NARAZ ten @media ORAZ >=640px (dwie kolumny/`sm:h-[92%]`
+     Tailwind) - ten sam wzorzec ryzyka co `.hotspot-card.hotspot-card--no-media` niżej (Tailwind dev-mode potrafi
+     dopisać `sm:h-[92%]`/`sm:w-[92%]` na koniec arkusza), więc SAMA `.hotspot-card` (0,1,0) mogłaby przegrać z
+     `sm:h-[92%]` zależnie od kolejności kompilacji. `[role='dialog']` (rodzic karty w SceneHotspotsBlock.tsx) jest
+     zawsze obecny, więc ten selektor jest bezpieczny niezależnie od tego.
+     ZNANA LUKA WERYFIKACJI (kod review, nierozwiązana w tym PR): `position:fixed` zakłada, że jego containing
+     block to CAŁY viewport - w drzewie DOM nad `.hotspot-card` jest jednak przodek z bezwarunkowym
+     `[container-type:size]` (scena, SceneHotspotsBlock.tsx), a CSS Containment (layout containment, którą
+     `container-type:size` implikuje) może w niektórych silnikach ustanawiać containing block TAKŻE dla
+     `position:fixed`, nie tylko `position:absolute`. Zmierzone empirycznie W CHROMIUM (scripts/layout-check.mjs +
+     ręczny pomiar bounding boksów): karta poprawnie sięga do PRAWDZIWEGO viewportu, nie do mniejszego pudełka
+     sceny - ale WebKit/Safari (główna przeglądarka iOS, najpopularniejszego telefonu w pionie) nie był dostępny do
+     testu w tym środowisku (offline, brak pobrania binarki Playwright). Jeśli na Safari bottom sheet okaże się
+     przycięty/źle pozycjonowany, najpierw sprawdź TU - kandydat na naprawę: przenieść `.hotspot-card` portalem
+     (`createPortal`) poza kontener zapytań, zamiast polegać na `position:fixed` przebijającym się przez niego. */
+  /* height STAŁA (nie auto+max-height) - z mediami .hotspot-card-layout musi dostać REALNĄ wysokość do rozdzielenia
+     (flex:1 1 0%/minmax(0,1fr), patrz blok scalony wyżej) - z height:auto (hug-content) nie ma "wolnej przestrzeni"
+     do rozdania, więc obszar mediów wychodziłby przy minimalnym (treściowym) rozmiarze, nie wypełniałby dostępnego
+     miejsca (zweryfikowane empirycznie: scripts/layout-check.mjs, obszar mediów 44px/17% zamiast oczekiwanych
+     >=35%) - TA SAMA przyczyna co przy >=640px, gdzie karta z mediami ma zawsze DEFINITYWNE 92% (sm:h-[92%], nigdy
+     auto). Karta BEZ mediów (niżej) zostaje przy auto-size do treści, tak jak >=640px - tam nie ma obszaru mediów
+     do wypełnienia, hug-content jest właściwym zachowaniem.
+     min(85dvh, ...) (nie zwykłe 85dvh - kod review): 85% CAŁEGO viewportu może wystawać POD górny pasek
+     (.player-topbar, min-height:48px + safe-area-inset-top) przy wysokim dolnym pasku (var(--player-bottombar-height),
+     np. safe-area-inset-bottom na iPhone) albo niskim viewporcie (pasek adresu przeglądarki widoczny) - druga część
+     min() liczy realnie dostępną wysokość MIĘDZY paskami (100dvh minus dolny pasek minus górny pasek minus 8px
+     oddechu) i bierze mniejszą z dwóch wartości. */
+  [role='dialog'] .hotspot-card {
     position: fixed;
     /* bottom: var(--player-bottombar-height) (PlayerStage.tsx, mierzone ResizeObserverem) - NIE 0: karta jest
        fixed względem CAŁEGO viewportu (musi być - scena pod nią bywa przescrollowana panoramą, position:absolute
@@ -390,22 +423,22 @@
     right: 0;
     width: 100%;
     max-width: 100%;
-    height: 85dvh;
+    height: min(85dvh, calc(100dvh - var(--player-bottombar-height, 56px) - 48px - env(safe-area-inset-top) - 8px));
     border-radius: 16px 16px 0 0;
-    padding-bottom: 1rem;
   }
 
-  /* .hotspot-card.hotspot-card--no-media (SKŁADNIA DWÓCH KLAS - patrz komentarz w bloku scalonym wyżej, ta sama
-     specyficzność 0,2,0) - nadpisuje height:85dvh (wyżej) i max-height/max-width:92% z bloku scalonego (tam
-     liczone względem sceny, tu karta jest position:fixed więc procenty liczyłyby się względem viewportu - 92%
-     viewportu byłoby WIĘKSZE niż zamierzony limit bottom sheeta) - auto-size do treści, capped 85dvh, bez pustej
-     przestrzeni (ten sam powód co .hotspot-card--no-media na >=640px). Bottom sheet bez mediów zostaje PEŁNEJ
-     szerokości ekranu (jak z mediami) - natywny wzorzec bottom sheet, nie wyśrodkowana wąska karta. */
-  .hotspot-card.hotspot-card--no-media {
+  /* .hotspot-card.hotspot-card--no-media (SKŁADNIA DWÓCH KLAS - patrz komentarz w bloku scalonym wyżej), scoped
+     dodatkowo pod [role='dialog'] (patrz komentarz wyżej) - nadpisuje height (wyżej) i max-height/max-width:92% z
+     bloku scalonego (tam liczone względem sceny, tu karta jest position:fixed więc procenty liczyłyby się względem
+     viewportu - 92% viewportu byłoby WIĘKSZE niż zamierzony limit bottom sheeta) - auto-size do treści, capped tą
+     samą formułą co karta z mediami, bez pustej przestrzeni (ten sam powód co .hotspot-card--no-media na >=640px).
+     Bottom sheet bez mediów zostaje PEŁNEJ szerokości ekranu (jak z mediami) - natywny wzorzec bottom sheet, nie
+     wyśrodkowana wąska karta. */
+  [role='dialog'] .hotspot-card.hotspot-card--no-media {
     width: 100%;
     max-width: 100%;
     height: auto;
-    max-height: 85dvh;
+    max-height: min(85dvh, calc(100dvh - var(--player-bottombar-height, 56px) - 48px - env(safe-area-inset-top) - 8px));
   }
 
   .hotspot-card-handle {
@@ -418,10 +451,23 @@
   }
 
   /* Pierścień postępu lektora (NarrationBar.tsx, feat/player-portrait) - czysto dekoracyjny (aria-hidden),
-     przewijanie zostaje na WSPÓLNYM <input type="range"> (ten sam element na każdym breakpoincie, tylko chowany
-     wizualnie tutaj) - ustalone z właścicielem produktu: bez duplikowania elementów dostępności. */
+     przewijanie zostaje na WSPÓLNYM <input type="range"> - ustalone z właścicielem produktu: bez duplikowania
+     elementów dostępności. `display:none` (pierwsza wersja, code review) usuwałby ten <input> Z DRZEWA
+     DOSTĘPNOŚCI CAŁKOWICIE - czytnik ekranu zostawałby bez suwaka i bez odczytu czasu, a nikt nie mógłby przewinąć
+     nagrania dotykiem (pierścień jest aria-hidden, nie reaguje na dotyk) - to PRZECZY intencji "element wspólny,
+     chowany TYLKO wizualnie". Wzorzec Tailwind `sr-only` (ten sam już używany gdzie indziej w repo, np.
+     DialogueBlock.tsx) zamiast `display:none` - wizualnie niewidoczny, ale nadal w drzewie dostępności i
+     interaktywny (czytnik ekranu i klawiatura/dotyk przez natywne fokusowanie inputu nadal działają). */
   .narration-progress-linear {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
   .narration-progress-ring {
     display: flex;

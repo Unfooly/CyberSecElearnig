@@ -155,7 +155,8 @@ describe('NarrationBar', () => {
 
       const progressCircle = container.querySelectorAll('[data-testid="narration-progress-ring"] circle')[1];
       const circumference = 2 * Math.PI * 16;
-      expect(progressCircle).toHaveAttribute('stroke-dashoffset', String(circumference * 0.5));
+      // toBeCloseTo (nie dokładny string) - porównanie floatów jako tekstu jest kruche, nawet gdy dziś się zgadza.
+      expect(parseFloat(progressCircle.getAttribute('stroke-dashoffset') ?? 'NaN')).toBeCloseTo(circumference * 0.5, 5);
     });
 
     it('brak audio (hasAudio=false): pierścień się nie renderuje (ten sam warunek co pasek liniowy/przycisk play)', () => {

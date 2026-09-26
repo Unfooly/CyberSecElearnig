@@ -144,13 +144,13 @@ function NarrationProgressRing({ positionMs, durationMs }: { positionMs: number;
   return (
     <div className="narration-progress-ring shrink-0 items-center justify-center" aria-hidden="true" data-testid="narration-progress-ring">
       <svg width="40" height="40" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r={RING_RADIUS} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+        <circle cx="20" cy="20" r={RING_RADIUS} fill="none" className="stroke-slate-200" strokeWidth="4" />
         <circle
           cx="20"
           cy="20"
           r={RING_RADIUS}
           fill="none"
-          stroke="#4338ca"
+          className="stroke-indigo-700"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={RING_CIRCUMFERENCE}

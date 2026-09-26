@@ -433,10 +433,13 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (hotfix fix/player-scene-fit/B-10
 
     const root = container.firstElementChild as HTMLElement;
     const imageArea = root.firstElementChild!.nextElementSibling as HTMLElement;
-    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę - jeden poziom głębiej niż przed tym PR.
-    const panContainer = imageArea.firstElementChild as HTMLElement;
+    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę DWOMA divami - .scene-pan-frame (zewnętrzny,
+    // nieprzewijany - punkt odniesienia dla cieni/podpowiedzi) i .scene-pan-container (wewnętrzny, przewijany).
+    const panFrame = imageArea.firstElementChild as HTMLElement;
+    const panContainer = panFrame.firstElementChild as HTMLElement;
     const aspectBox = panContainer.firstElementChild as HTMLElement;
 
+    expect(panFrame.className).toBe('scene-pan-frame');
     expect(panContainer.className).toBe('scene-pan-container');
     expect(aspectBox.className).not.toMatch(/max-h-full/);
     expect(aspectBox.className).not.toMatch(/max-w-full/);
@@ -503,6 +506,13 @@ describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotó
 });
 
 describe('SCENE_HOTSPOTS: panorama telefonu w pionie (feat/player-portrait)', () => {
+  // afterEach (nie tylko na końcu każdego testu z osobna) - kod review: nieudana asercja W ŚRODKU testu zostawiała
+  // podmienionego navigator dla KOLEJNYCH testów (odsłonięty vi.unstubAllGlobals() na końcu testu nigdy by się nie
+  // wykonał, gdyby expect() wcześniej rzucił).
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('computeHotspotCentroid (czysta funkcja): średnia środków x% hotspotów, 0..1; pusta lista -> 0.5 (środek)', () => {
     expect(computeHotspotCentroid([])).toBe(0.5);
     // Jeden hotspot: centroid = jego własny środek (x + width/2), przeskalowany na 0..1.
@@ -516,22 +526,22 @@ describe('SCENE_HOTSPOTS: panorama telefonu w pionie (feat/player-portrait)', ()
 
   it('otwarcie hotspotu woła navigator.vibrate (informacja dotykowa) - feature-detected, nie wywala się bez API', () => {
     const vibrateSpy = vi.fn();
-    vi.stubGlobal('navigator', { ...window.navigator, vibrate: vibrateSpy });
+    // { vibrate: spy }, NIE { ...window.navigator, vibrate: spy } (kod review) - właściwości navigator są getterami
+    // na prototypie, spread ich nie kopiuje (nic by nie skopiował poza tym, co i tak nadpisujemy).
+    vi.stubGlobal('navigator', { vibrate: vibrateSpy });
     setup(scene);
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
     expect(vibrateSpy).toHaveBeenCalledWith(10);
-    vi.unstubAllGlobals();
   });
 
   it('otwarcie hotspotu WEWNĄTRZ zagnieżdżonej sceny też woła navigator.vibrate', () => {
     const vibrateSpy = vi.fn();
-    vi.stubGlobal('navigator', { ...window.navigator, vibrate: vibrateSpy });
+    vi.stubGlobal('navigator', { vibrate: vibrateSpy });
     setup(nestedScene);
     fireEvent.click(screen.getByTestId('hotspot-overlay-monitor'));
     vibrateSpy.mockClear(); // otwarcie zewnętrznego hotspotu już woła raz - liczy się TYLKO drugie, zagnieżdżone
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
     expect(vibrateSpy).toHaveBeenCalledWith(10);
-    vi.unstubAllGlobals();
   });
 });
 
@@ -799,10 +809,13 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     pick('Monitor');
     const img = within(dialog()).getByAltText('Pulpit komputera');
     const aspectBox = img.parentElement!;
-    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę - jeden poziom głębiej niż przed tym PR.
+    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę DWOMA divami - .scene-pan-frame (zewnętrzny)
+    // i .scene-pan-container (wewnętrzny, przewijany).
     const panContainer = aspectBox.parentElement!;
-    const queryContainer = panContainer.parentElement!;
+    const panFrame = panContainer.parentElement!;
+    const queryContainer = panFrame.parentElement!;
 
+    expect(panFrame.className).toBe('scene-pan-frame');
     expect(panContainer.className).toBe('scene-pan-container');
     // .hotspot-nested-scene-frame (klasa, nie Tailwind sm: - warunek już nie jest jednym prostym breakpointem,
     // patrz globals.css) dostaje container-type:size w tym samym scalonym @media co siatka karty.

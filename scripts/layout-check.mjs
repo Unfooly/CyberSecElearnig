@@ -35,6 +35,15 @@
 // Zrzuty każdej sprawdzonej kombinacji trafiają do docs/brand/screens/layout-check/ (poza gitem, jak resztka
 // docs/brand/screens/) - do wizualnej weryfikacji, niezależnie od wyniku. Pierwsze niepowodzenie zatrzymuje skrypt
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
+//
+// DIALOGUE (fix/dialogue-sticky-questions): OSOBNA, mniejsza pętla (DIALOGUE_VIEWPORTS - 1366x768 i 390x844
+// wprost z zadania, NIE cała lista VIEWPORTS wyżej) - `?block=rozmowa-anna` (packages/content/modules/wyludzone-haslo,
+// 5 pytań, >=8 wiadomości po zadaniu wszystkich). Sprawdza: (j) lista pytań (chipy) w całości widoczna wewnątrz
+// .player-frame - sprawdzane NA STARCIE (wszystkie chipy naraz, najtrudniejszy przypadek - ich liczba tylko maleje
+// w miarę rozmowy); (k) strona/obszar bloku się NIE przewijają PO wygenerowaniu >=8 wiadomości (reuse
+// checkNoPageScroll/checkMainSceneFits - ten drugi jest już generyczny, nie SCENE_HOTSPOTS-specyficzny, celuje w
+// data-testid="player-content-area") - dokładnie to, co ten branch naprawia: wątek ma WŁASNY scroll, blok/strona
+// nie muszą się już przewijać, żeby dotrzeć do kolejnego pytania.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -57,6 +66,14 @@ const VIEWPORTS = [
   { name: '360x800', width: 360, height: 800, isMobile: true },
 ];
 const PORTRAIT_VIEWPORT_NAMES = new Set(['390x844', '360x800']);
+
+// DIALOGUE (fix/dialogue-sticky-questions) - dwa konkretne viewporty z zadania, NIE cała lista VIEWPORTS wyżej
+// (desktop szeroki + telefon w pionie - dwa skrajne kształty, w których lista pytań najłatwiej nie zmieściłaby się
+// w całości).
+const DIALOGUE_VIEWPORTS = [
+  { name: '1366x768', width: 1366, height: 768 },
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
@@ -334,6 +351,42 @@ async function checkBottomSheetFits(page, label) {
   }
 }
 
+// (j) Lista pytań (DialogueBlock.tsx, "Pytania do zadania") w CAŁOŚCI wewnątrz .player-frame - sprawdzane na
+// starcie rozmowy (wszystkie chipy naraz, najtrudniejszy przypadek). Lista może nie istnieć w DOM wcale (wszystkie
+// pytania już zadane) - to nie jest błąd tego sprawdzenia, po prostu nic do sprawdzenia.
+async function checkQuestionListVisible(page, label) {
+  const list = page.getByRole('list', { name: 'Pytania do zadania' });
+  if ((await list.count()) === 0) return;
+  const frameBox = await boxOf(page, '.player-frame');
+  const box = await list.first().boundingBox();
+  if (!box) fail(`${label}: (j) lista pytań istnieje w DOM, ale nie jest widoczna.`);
+  if (!contains(frameBox, box)) {
+    fail(`${label}: (j) lista pytań ("Pytania do zadania") wychodzi poza ramkę odtwarzacza - lista=${JSON.stringify(box)} ramka=${JSON.stringify(frameBox)}.`);
+  }
+}
+
+// Klika WSZYSTKIE dostępne pytania rozmowy po kolei (w tym "Następna kwestia" dla pytań wielokwestyjnych) - generuje
+// realną, długą rozmowę (>=8 wiadomości dla rozmowa-anna, 5 pytań) do sprawdzenia (k) niżej. Kończy, gdy lista
+// "Pytania do zadania" znika z DOM (wszystkie zadane) - ten sam sygnał co checkQuestionListVisible wyżej.
+async function clickAllDialogueQuestions(page) {
+  const nextButton = page.getByRole('button', { name: 'Następna kwestia' });
+  const questionList = page.getByRole('list', { name: 'Pytania do zadania' });
+  // Limit iteracji jako zabezpieczenie przed nieskończoną pętlą, gdyby stan się kiedyś nie zgadzał (nigdy nie
+  // powinien zostać osiągnięty - rozmowa-anna ma dziś 5 pytań).
+  for (let guard = 0; guard < 50; guard += 1) {
+    while ((await nextButton.count()) > 0) {
+      await nextButton.click();
+      await page.waitForTimeout(30);
+    }
+    if ((await questionList.count()) === 0) return;
+    const chips = questionList.getByRole('button');
+    if ((await chips.count()) === 0) return;
+    await chips.first().click();
+    await page.waitForTimeout(30);
+  }
+  fail('clickAllDialogueQuestions: przekroczono limit iteracji - podejrzenie nieskończonej pętli.');
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -439,6 +492,32 @@ try {
       }
       step(`${label}: (a-d${isPortrait ? ', i' : ''}) OK`, true);
     }
+
+    await context.close();
+  }
+
+  // DIALOGUE (fix/dialogue-sticky-questions) - patrz komentarz na górze pliku.
+  for (const viewport of DIALOGUE_VIEWPORTS) {
+    console.log(`\n--- viewport (DIALOGUE): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+    });
+    const page = await context.newPage();
+
+    await page.goto(`${WEB}/dev/player-harness?block=rozmowa-anna`);
+    await page.getByTestId('player-content-area').waitFor();
+    await shot(page, `${viewport.name}-dialogue-00-start`);
+    await checkQuestionListVisible(page, `${viewport.name} / rozmowa-anna (start)`);
+    step(`${viewport.name} / rozmowa-anna: (j) lista pytań mieści się w ramce na starcie`, true);
+
+    await clickAllDialogueQuestions(page);
+    await page.waitForTimeout(200);
+    await shot(page, `${viewport.name}-dialogue-01-po-rozmowie`);
+    await checkNoPageScroll(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    step(`${viewport.name} / rozmowa-anna: (k) strona/obszar bloku nie przewijają się po >=8 wiadomościach`, true);
 
     await context.close();
   }

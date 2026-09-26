@@ -675,19 +675,12 @@ function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   );
 }
 
-// Czas w m:ss. `seconds` bywa NaN (metadane audio jeszcze się nie wczytały - preload="metadata") - wtedy "0:00", nie NaN:NaN.
-function formatAudioTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
 // Własny odtwarzacz (bez natywnych <audio controls>) - feedback z produkcji (feat/scene-overlay-fix): zbliżenie
-// (media.image, opcjonalne) nad małym przyciskiem play/pauza z cienkim paskiem postępu i czasem. Autoodtwarzanie przy
-// otwarciu hotspotu (klik = gest użytkownika, więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale
-// możliwe np. przy restrykcyjnych ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o
-// błędzie (inaczej niż NarrationBar.tsx/useNarrationBar.ts, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
+// (media.image, opcjonalne) nad małym przyciskiem play/pauza (fix/dialogue-polish: bez paska postępu/czasu - to
+// samo uproszczenie co NarrationBar.tsx, D-080). Autoodtwarzanie przy otwarciu hotspotu (klik = gest użytkownika,
+// więc dozwolone); gdy przeglądarka i tak odrzuci play() (rzadkie, ale możliwe np. przy restrykcyjnych
+// ustawieniach), przycisk zostaje po prostu w stanie "play" - BEZ komunikatu o błędzie (inaczej niż
+// NarrationBar.tsx/useNarrationBar.ts, na życzenie: to poboczny efekt dźwiękowy w karcie, nie główna narracja).
 function AudioMedia({
   contentBase,
   media,
@@ -707,25 +700,28 @@ function AudioMedia({
   const imageUrl = contentAssetUrl(contentBase, media.image, 'image');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
     audioRef.current?.play().catch(() => {});
   }, []);
 
+  // fix/dialogue-polish (poprawka po code review): jawny reset DEFENSYWNY, nie naprawa zaobserwowanego błędu - ten
+  // sam powód co `togglePlay` w useNarrationBar.ts (algorytm `play()` w spec HTML sam przewija do początku po
+  // zakończeniu playbacku w przód; nigdy nie zweryfikowano empirycznie, że bez tego było inaczej).
   function togglePlay() {
     const audio = audioRef.current;
     if (!audio) return;
-    if (audio.paused) audio.play().catch(() => {});
-    else audio.pause();
+    if (audio.paused) {
+      if (audio.ended) audio.currentTime = 0;
+      audio.play().catch(() => {});
+    } else audio.pause();
   }
 
-  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   // Transkrypcja ZAMIENIA widok zbliżenia (media.image), nie dokłada się pod nim (hotfix fix/hotspot-card-fit,
   // wcześniej: transkrypcja zawsze w DOM, tylko `hidden` - dokładała wysokość pod obrazkiem i odtwarzaczem, karta
-  // się wtedy wydłużała/przewijała). Play/pauza i pasek postępu ZOSTAJĄ zawsze widoczne pod tym widokiem - sterują
-  // odtwarzaniem niezależnie od tego, co jest akurat pokazane w miejscu obrazka. NIEZALEŻNA od `url` (druga runda
+  // się wtedy wydłużała/przewijała). Przycisk play/pauza ZOSTAJE zawsze widoczny pod tym widokiem (fix/dialogue-polish:
+  // bez paska postępu od tej pory, patrz komentarz nad AudioMedia) - steruje odtwarzaniem niezależnie od tego, co
+  // jest akurat pokazane w miejscu obrazka. NIEZALEŻNA od `url` (druga runda
   // code review, punkt 7): transkrypcja jest tekstową alternatywą dla audio (WCAG 1.2.1) - jest najbardziej
   // potrzebna właśnie wtedy, gdy plik audio się nie wczytał; wcześniejsza wersja tego hotfixu chowała cały ten
   // blok razem z odtwarzaczem pod `{url && ...}`, więc przycisk "Transkrypcja" nic nie pokazywał, gdy `url` było
@@ -768,8 +764,6 @@ function AudioMedia({
             hidden
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
-            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-            onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
             onEnded={() => {
               setPlaying(false);
               onEnded();
@@ -779,19 +773,11 @@ function AudioMedia({
             <button
               type="button"
               onClick={togglePlay}
-              aria-label={playing ? 'Pauza' : 'Odtwórz'}
+              aria-label={playing ? 'Wstrzymaj nagranie' : 'Odtwórz nagranie'}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-indigo-600 bg-indigo-50 text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
             >
               {playing ? <Pause aria-hidden="true" className="h-5 w-5" /> : <Play aria-hidden="true" className="h-5 w-5 translate-x-0.5" />}
             </button>
-            <div className="min-w-0 flex-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${progress}%` }} />
-              </div>
-              <p className="mt-1 text-xs tabular-nums text-slate-500">
-                {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
-              </p>
-            </div>
           </div>
         </>
       )}

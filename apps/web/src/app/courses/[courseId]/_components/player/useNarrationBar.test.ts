@@ -141,15 +141,29 @@ describe('useNarrationBar', () => {
     expect(result.current.loadFailed).toBe(true);
   });
 
-  it('seek() ustawia currentTime na elemencie i positionMs w stanie', () => {
+  it('fix/dialogue-polish: togglePlay() po zakończeniu nagrania (audio.ended) resetuje currentTime na 0 PRZED play() - reset defensywny (kod review: play() samo przewija do początku per spec HTML), nie naprawa zaobserwowanego błędu', () => {
     const { result } = setup();
     const audio = document.createElement('audio');
     Object.defineProperty(result.current.audioRef, 'current', { value: audio, configurable: true, writable: true });
+    Object.defineProperty(audio, 'ended', { value: true, configurable: true });
+    Object.defineProperty(audio, 'currentTime', { value: 4, configurable: true, writable: true });
 
-    act(() => result.current.seek(3000));
+    act(() => result.current.togglePlay());
 
-    expect(audio.currentTime).toBe(3);
-    expect(result.current.positionMs).toBe(3000);
+    expect(audio.currentTime).toBe(0);
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('togglePlay() gdy audio NIE jest ended nie rusza currentTime (odtwarzanie od zwykłej pauzy zostaje od miejsca, w którym stanęło)', () => {
+    const { result } = setup();
+    const audio = document.createElement('audio');
+    Object.defineProperty(result.current.audioRef, 'current', { value: audio, configurable: true, writable: true });
+    Object.defineProperty(audio, 'ended', { value: false, configurable: true });
+    Object.defineProperty(audio, 'currentTime', { value: 1.5, configurable: true, writable: true });
+
+    act(() => result.current.togglePlay());
+
+    expect(audio.currentTime).toBe(1.5);
   });
 
   it('wyłączenie lektora (enabled: true -> false) zatrzymuje odtwarzanie i zeruje pozycję', () => {

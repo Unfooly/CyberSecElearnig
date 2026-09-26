@@ -94,7 +94,7 @@ describe('NarrationBar', () => {
       const { container } = renderBar({ enabled: false });
       expect(lektor()).not.toBeChecked();
       expect(container.querySelector('audio')).toBeNull();
-      expect(screen.queryByRole('button', { name: /Odtwórz narrację/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Odtwórz nagranie/ })).toBeNull();
     });
 
     it('błąd zapisu ustawienia jest ogłaszany (role=alert), przełącznik zablokowany w trakcie zapisu', () => {
@@ -105,13 +105,13 @@ describe('NarrationBar', () => {
   });
 
   describe('odtwarzanie', () => {
-    it('play/pauza przełącza odtwarzanie i etykietę przycisku', () => {
+    it('play/pauza przełącza odtwarzanie i etykietę przycisku ("Odtwórz nagranie"/"Wstrzymaj nagranie" - fix/dialogue-polish)', () => {
       const { container } = renderBar();
-      fireEvent.click(screen.getByRole('button', { name: 'Odtwórz narrację' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Odtwórz nagranie' }));
       expect(playSpy).toHaveBeenCalledTimes(1);
 
       fireEvent.play(audioEl(container));
-      const pause = screen.getByRole('button', { name: 'Wstrzymaj narrację' });
+      const pause = screen.getByRole('button', { name: 'Wstrzymaj nagranie' });
       Object.defineProperty(audioEl(container), 'paused', { value: false, configurable: true });
       fireEvent.click(pause);
       expect(pauseSpy).toHaveBeenCalledTimes(1);
@@ -125,43 +125,28 @@ describe('NarrationBar', () => {
       expect(screen.getByRole('button', { name: 'Transkrypcja' })).toBeInTheDocument();
     });
 
-    it('pasek postępu: zmiana ustawia currentTime, opis wartości pokazuje czas, krok 1 s', () => {
-      const { container } = renderBar();
-      const slider = screen.getByRole('slider', { name: 'Postęp nagrania' });
-      expect(slider).toHaveAttribute('aria-valuetext', '0:00 z 0:04');
-      expect(slider).toHaveAttribute('step', '1000');
-
-      fireEvent.change(slider, { target: { value: '3000' } });
-      expect(audioEl(container).currentTime).toBe(3);
-      expect(screen.getByRole('slider', { name: 'Postęp nagrania' })).toHaveAttribute('aria-valuetext', '0:03 z 0:04');
-    });
-  });
-
-  describe('pierścień postępu (telefon w pionie, feat/player-portrait) - dekoracyjny, bez roli', () => {
-    it('renderuje się (aria-hidden), niezależnie od breakpointu - jsdom nie liczy CSS, przełączenie jest wyłącznie w globals.css', () => {
-      const { container } = renderBar();
-      const ring = container.querySelector('[data-testid="narration-progress-ring"]');
-      expect(ring).toBeInTheDocument();
-      expect(ring).toHaveAttribute('aria-hidden', 'true');
-      // Bez roli/etykiety dostępności (czysto wizualny) - istniejący współdzielony slider zostaje JEDYNYM
-      // interaktywnym kontrolerem postępu (zero duplikatów ról).
-      expect(screen.getAllByRole('slider')).toHaveLength(1);
+    it('fix/dialogue-polish: bez paska postępu/suwaka/czasu i bez pierścienia dekoracyjnego - sam przycisk play/pause renderuje się', () => {
+      renderBar();
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('narration-progress-ring')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument();
     });
 
-    it('wypełnienie łuku odpowiada positionMs/durationMs (strokeDashoffset)', () => {
+    it('fix/dialogue-polish: po zakończeniu nagrania przycisk wraca do "Odtwórz nagranie", klik odtwarza od początku (currentTime resetowany na 0)', () => {
       const { container } = renderBar();
-      const slider = screen.getByRole('slider', { name: 'Postęp nagrania' });
-      fireEvent.change(slider, { target: { value: '2000' } }); // 2000/4000 = 50%
+      const audio = audioEl(container);
+      fireEvent.click(screen.getByRole('button', { name: 'Odtwórz nagranie' }));
+      fireEvent.play(audio);
+      Object.defineProperty(audio, 'paused', { value: true, configurable: true });
+      Object.defineProperty(audio, 'ended', { value: true, configurable: true });
+      Object.defineProperty(audio, 'currentTime', { value: 4, configurable: true, writable: true });
+      fireEvent.ended(audio);
 
-      const progressCircle = container.querySelectorAll('[data-testid="narration-progress-ring"] circle')[1];
-      const circumference = 2 * Math.PI * 16;
-      // toBeCloseTo (nie dokładny string) - porównanie floatów jako tekstu jest kruche, nawet gdy dziś się zgadza.
-      expect(parseFloat(progressCircle.getAttribute('stroke-dashoffset') ?? 'NaN')).toBeCloseTo(circumference * 0.5, 5);
-    });
+      const replay = screen.getByRole('button', { name: 'Odtwórz nagranie' });
+      fireEvent.click(replay);
 
-    it('brak audio (hasAudio=false): pierścień się nie renderuje (ten sam warunek co pasek liniowy/przycisk play)', () => {
-      const { container } = renderBar({ narrationProp: { ...narration, audioUrl: 'https://evil.test/a.mp3' } });
-      expect(container.querySelector('[data-testid="narration-progress-ring"]')).toBeNull();
+      expect(audio.currentTime).toBe(0);
+      expect(playSpy).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -212,7 +197,7 @@ describe('NarrationBar', () => {
         renderBar({ autoPlay: true });
       });
       expect(await screen.findByText(/zablokowała autoodtwarzanie/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Odtwórz narrację' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument();
     });
 
     it('bez autoPlay nic nie startuje samo', () => {

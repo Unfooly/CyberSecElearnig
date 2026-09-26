@@ -182,13 +182,16 @@
 
   /* Bez mediów: brak wiersza "media" - tekst nad przyciskami, karta auto-size (.hotspot-card--no-media powyżej)
      dopasowuje się do tej krótszej treści zamiast trzymać pustą kolumnę/wiersz na nieistniejący obszar mediów.
-     flex:0 1 auto (nadpisuje flex:1 1 0% wyżej) + align-content:start (trzecia runda code review, wizualne
-     znalezisko przy weryfikacji poprawki punktu 9): bez żadnego z tych dwóch oba wiersze "auto" (bez "fr", w
-     przeciwieństwie do wariantu Z mediami) i tak dostawały się rozciągnięte na równe części dostępnej wysokości
-     karty (Chromium: `align-content:normal` dla grida zachowuje się jak "stretch" na torach "auto", gdy sam
-     kontener siatki dostanie jakąkolwiek dodatkową wysokość z zewnątrz - tu z `flex:1 1 0%` na kontenerze flex,
-     nawet przy `height:auto` na karcie) - przyciski wychodziły grubo wyższe, niż wymaga ich treść, zamiast
-     naturalnie hugować tekst i przyciski od góry. */
+     flex:0 1 auto (nadpisuje flex:1 1 0% wyżej) + align-content:start - czwarta runda code review, weryfikacja w
+     przeglądarce PRZED podniesieniem specyficzności `.hotspot-card--no-media` (patrz komentarz wyżej): dopóki
+     `height:auto` na karcie przegrywał z `sm:h-[92%]`, ta sama karta miała dodatkową wysokość z zewnątrz, a
+     `flex:1 1 0%` na tym kontenerze siatki + `align-content:normal` (zachowuje się jak "stretch" na torach "auto",
+     gdy grid dostanie jakąkolwiek dodatkową wysokość) rozciągały tekst i przyciski na równe części tej wysokości -
+     przyciski wychodziły ~148px zamiast naturalnych ~44px. Po podniesieniu specyficzności karta poprawnie hugowała
+     treść i sam ten objaw zniknął (potwierdzone: cofnięcie SAMEGO flex/align-content, bez cofania specyficzności,
+     NIE odtwarza już rozciągnięcia - scripts/layout-check.mjs nadal przechodzi). Zostaje jako drugi, niezależny
+     bezpiecznik: karta bez mediów nie powinna próbować rosnąć poza własną treść, niezależnie od tego, skąd akurat
+     wzięłaby się dodatkowa wysokość z zewnątrz. */
   .hotspot-card--no-media .hotspot-card-layout {
     flex: 0 1 auto;
     align-content: start;

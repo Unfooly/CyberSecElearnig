@@ -11,8 +11,11 @@
 //  b) karta hotspotu (.hotspot-card) się nie przewija (scrollHeight <= clientHeight) - poza kartą BEZ mediów, gdzie
 //     "karta się nie przewija" nie ma sensu sprawdzać tak samo (auto-size do treści, patrz .hotspot-card--no-media).
 //  c) obszar mediów karty (.hotspot-card-media) ma wysokość >0 i >=35% wysokości karty (łapie regresję z drugiej
-//     rundy review: scena zagnieżdżona/media wychodziły zerowej albo miniaturowej wysokości) - pomijane dla karty
-//     BEZ mediów (case "karteczka-bez-mediow", ?stripMedia=1), gdzie obszar mediów w ogóle nie istnieje.
+//     rundy review: scena zagnieżdżona/media wychodziły zerowej albo miniaturowej wysokości) - dla karty BEZ mediów
+//     (case "karteczka-bez-mediow", ?stripMedia=1), gdzie obszar mediów w ogóle nie istnieje, ZASTĄPIONE przez
+//     checkNoMediaCardSizing: karta auto-size do treści (bez dużej pustej przestrzeni) i przyciski o naturalnej
+//     wysokości - bez tego (a)/(d) nie łapały ani rozciągniętych przycisków, ani karty zostającej przy 92% wysokości
+//     (oba mieszczą się w karcie/ramce) - czwarta runda code review, znalezione dopiero pomiarem w przeglądarce.
 //  d) przyciski karty (.hotspot-card-buttons button) są W CAŁOŚCI wewnątrz karty i wewnątrz ramki odtwarzacza
 //     (.player-frame) - nie wychodzą poza żadną z tych dwóch granic.
 //  e) (raz na viewport, przed otwarciem jakiejkolwiek karty) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
@@ -125,6 +128,34 @@ async function checkMediaHeight(page, label) {
   const ratio = mediaBox.height / cardBox.height;
   if (ratio < 0.35) {
     fail(`${label}: (c) obszar mediów ma ${(ratio * 100).toFixed(1)}% wysokości karty (${mediaBox.height}px z ${cardBox.height}px) - poniżej wymaganych 35%.`);
+  }
+}
+
+// Karta BEZ mediów (.hotspot-card--no-media) ma auto-size do treści - checkMediaHeight (c) i część checkCardDoesNotScroll
+// (b) jej nie dotyczą z definicji (nie ma obszaru mediów, "się nie przewija" nie ma sensu tak samo). Bez WŁASNEGO
+// sprawdzenia żaden z dwóch bugów czwartej rundy code review nie miałby stałej ochrony przed regresją - oba mieściły
+// się w kartę/ramkę, więc (a)/(d) by ich nie złapały:
+//  - przyciski rozciągnięte przez align-content (grid "auto auto" bez fr) do ~148px zamiast naturalnych ~44px;
+//  - `.hotspot-card--no-media { height:auto }` przegrywający z Tailwind `sm:h-[92%]` (karta zostawała 92%-wysoka z
+//    dużą pustą przestrzenią pod treścią, mimo że treść była już poprawnego rozmiaru).
+async function checkNoMediaCardSizing(page, label) {
+  const cardBox = await boxOf(page, '.hotspot-card');
+  const layoutBox = await boxOf(page, '.hotspot-card-layout');
+  // Różnica karta-treść to góra/dół paddingu karty (p-4 x2 = 32px) - duży naddatek ponad to zdradza, że height:auto
+  // nie wygrał (karta zostaje przy 92% wysokości sceny, treść dużo krótsza).
+  const slack = cardBox.height - layoutBox.height;
+  if (slack > 80) {
+    fail(
+      `${label}: karta bez mediów ma dużo pustej przestrzeni pod treścią (karta=${cardBox.height}px, treść=${layoutBox.height}px, różnica=${slack}px > 80px) - podejrzenie, że .hotspot-card--no-media nie wygrywa z sm:h-[92%].`,
+    );
+  }
+  const buttons = await page.locator('.hotspot-card-buttons button').all();
+  for (const button of buttons) {
+    const box = await button.boundingBox();
+    if (box && box.height > 70) {
+      const name = (await button.textContent())?.trim() ?? '?';
+      fail(`${label}: przycisk "${name}" ma nienaturalną wysokość ${box.height}px (>70px, oczekiwane ~44px) - podejrzenie, że wiersze "auto" siatki są rozciągane (align-content).`);
+    }
   }
 }
 
@@ -264,8 +295,14 @@ try {
       await shot(page, `${viewport.name}-${testCase.name}`);
       await checkNoPageScroll(page, label);
       await checkCardDoesNotScroll(page, label);
-      // (c) nie dotyczy karty bez mediów (.hotspot-card--no-media) - nie ma obszaru mediów do zmierzenia z definicji.
-      if (!testCase.noMedia) await checkMediaHeight(page, label);
+      if (testCase.noMedia) {
+        // (c) nie dotyczy karty bez mediów - nie ma obszaru mediów do zmierzenia z definicji. WŁASNE sprawdzenie
+        // zamiast tego (czwarta runda code review: bez niego (a)/(d) nie łapią ani rozciągniętych przycisków, ani
+        // karty zostającej przy 92% z pustą przestrzenią - oba mieszczą się w karcie/ramce).
+        await checkNoMediaCardSizing(page, label);
+      } else {
+        await checkMediaHeight(page, label);
+      }
       await checkButtonsInsideCardAndFrame(page, label);
       step(`${label}: (a-d) OK`, true);
     }

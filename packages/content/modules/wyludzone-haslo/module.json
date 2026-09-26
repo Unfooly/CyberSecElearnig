@@ -65,7 +65,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.9752d64b.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.c8d122b6.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
@@ -78,7 +78,7 @@
           "content": "Na karteczce: „Unfooly24!” —a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e0f18a.svg",
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e34fa7.svg",
             "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
           },
           "evidence": true,
@@ -112,7 +112,7 @@
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.2767b4f1.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.a6396621.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -179,7 +179,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.34985292.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.fede98f8.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -524,8 +524,8 @@
       "title": "Akta sprawy",
       "narration": {
         "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać.",
-        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/2e4796ce9e4b1181.mp3",
-        "durationMs": 7152,
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/b95c830fe00e754f.mp3",
+        "durationMs": 6734,
         "cues": [
           {
             "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt.",
@@ -533,7 +533,7 @@
           },
           {
             "text": "Trzy rzeczy, które każdy w Unfooly powinien znać.",
-            "startMs": 3796
+            "startMs": 3564
           }
         ]
       },
@@ -555,7 +555,7 @@
         {
           "id": "zgloszenie",
           "title": "Jak zgłosić w Unfooly",
-          "content": "Podejrzany mail: przycisk **„Zgłoś podejrzany mail”** w Unfooly albo przekaż do `bezpieczenstwo@unfooly.com`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+          "content": "Podejrzany mail: przycisk **„Zgłoś podejrzany mail”** w programie pocztowym albo przekaż do `bezpieczenstwo@unfooly.com`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
         }
       ]
     },

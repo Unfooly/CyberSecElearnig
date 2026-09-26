@@ -12,11 +12,11 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut
 - level: `basic`
-- objectives (3) - zadania śledztwa (karta sprawy w odprawie, sekcja „Zadania" w notatniku, katalog kursów); w nawiasie
-  `completeWhen` (zadanie odhacza się, gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
-  1. „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
-  2. „Zbierz dowody w biurze Anny." (`biuro-anny`)
-  3. „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
+- objectives (4) - cele szkoleniowe (katalog kursów), same teksty; zadania sprawy są osobno, w odprawie (Blok 0, karta sprawy):
+  1. „Rozpoznać fałszywą domenę w adresie nadawcy i w linku."
+  2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
+  3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
+  4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
 - dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
@@ -57,10 +57,15 @@ karta, pieczątka) tylko bez `prefers-reduced-motion`.
    firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się
    naprawdę stało."; przycisk: „Przyjmuję".
 2. **caseFile** (komisarz) — karta: nr sprawy `CS/2026/0915` (font maszynowy), „Nieautoryzowany przelew"; Poszkodowana „Anna
-   Kowalska (księgowa, Unfooly Sp. z o.o.)", Strata „14 000,00 PLN", Kiedy „wtorek 9:12", Zgłosił „Marek Nowak (dział IT)";
-   pieczątka „Pilne"; pod kartą zadania (objectives, wyżej); przycisk: „Biorę sprawę". Napis: „Tu masz wszystko, co wiemy.
-   Reszta jest w biurze Anny."; TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go
-   Marek Nowak z działu IT. Reszta jest w biurze Anny."
+   Kowalska (księgowa, Unfooly Sp. z o.o.)", Strata „14 000,00 PLN", Kiedy „wtorek 9:12", Zgłosił „Marek Zieliński, dział IT";
+   pieczątka „Priorytet" (`danger`); przycisk: „Biorę sprawę". Napis: „Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.";
+   TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT.
+   Reszta jest w biurze Anny."
+   **Zadania sprawy** (`tasks` kroku caseFile; też sekcja „Zadania" notatnika; w nawiasie `completeWhen` - zadanie odhacza się,
+   gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
+   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
+   - `dowody`: „Zbierz dowody w biurze Anny." (`biuro-anny`)
+   - `zapobieganie`: „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
 3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
    inicjały), nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
    w progress** - liczy wyłącznie przeglądarka. Napis/TTS: „Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa.

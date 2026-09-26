@@ -393,16 +393,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   wyłączająca ładowanie w `main()`), żeby wynik nie zależał od maszyny.
 - Akceptacja: `npm run test --prefix scripts/content` zielone także z uzupełnionym `scripts/content/.env.local`.
 
-### B-107 Usunięcie `Course.objectives` (cele czyta się już z wersji treści)
-- Etykiety: `P4`, `tech-debt`, `mod:kursy`, `mod:db` · Źródło: `feat/module-briefing` (D-081, decyzja właściciela: kolumna zostaje
-  na razie dla katalogu)
-- Opis: od D-081 cele modułu (z `completeWhen`) są zapisywane przy wersji (`course_versions.objectives`), a odtwarzacz czyta je
-  wyłącznie stamtąd. `courses.objectives` (same teksty z ostatniego importu) czyta już tylko katalog (`GET /courses/catalog`) -
-  to druga kopia tych samych danych, utrzymywana przez `content-import`.
-- Akceptacja: katalog bierze teksty celów z NAJNOWSZEJ wersji kursu (jak `blockCount`), migracja usuwa `courses.objectives`,
-  `content-import` przestaje ją zapisywać; testy katalogu (`course-catalog.e2e-spec.ts`) i importu zaktualizowane.
-
-### B-108 Trasy BFF przepuszczają do przeglądarki pełną treść błędu z apps/api
+### B-107 Trasy BFF przepuszczają do przeglądarki pełną treść błędu z apps/api
 - Etykiety: `P3`, `security`, `mod:web` · Źródło: security-review PR #55 (`feat/module-briefing`, uwaga L2), decyzja właściciela 2026-09-26
 - Opis: trasy `apps/web/src/app/api/**` przy odpowiedzi błędu z API zwracają klientowi całe ciało (`NextResponse.json(data, { status })`).
   Dziś to standardowe błędy Nest (`message`, `code`) bez danych osobowych, ale przyszły błąd backendu z dodatkowymi polami trafiłby

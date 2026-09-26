@@ -8,18 +8,10 @@
   "durationMinutes": 12,
   "mandatory": true,
   "objectives": [
-    {
-      "text": "Ustal, jak przestępca dostał się do konta.",
-      "completeWhen": ["rekonstrukcja"]
-    },
-    {
-      "text": "Zbierz dowody w biurze Anny.",
-      "completeWhen": ["biuro-anny"]
-    },
-    {
-      "text": "Wskaż, co mogło zatrzymać atak.",
-      "completeWhen": ["rozmowa-marek"]
-    }
+    "Rozpoznać fałszywą domenę w adresie nadawcy i w linku.",
+    "Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS.",
+    "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
+    "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
   ],
   "blocks": [
     {
@@ -58,13 +50,30 @@
             { "label": "Poszkodowana", "value": "Anna Kowalska (księgowa, Unfooly Sp. z o.o.)" },
             { "label": "Strata", "value": "14 000,00 PLN" },
             { "label": "Kiedy", "value": "wtorek 9:12" },
-            { "label": "Zgłosił", "value": "Marek Nowak (dział IT)" }
+            { "label": "Zgłosił", "value": "Marek Zieliński, dział IT" }
           ],
-          "stamp": "Pilne",
+          "stamp": "Priorytet",
+          "tasks": [
+            {
+              "id": "dostep",
+              "text": "Ustal, jak przestępca dostał się do konta.",
+              "completeWhen": ["rekonstrukcja"]
+            },
+            {
+              "id": "dowody",
+              "text": "Zbierz dowody w biurze Anny.",
+              "completeWhen": ["biuro-anny"]
+            },
+            {
+              "id": "zapobieganie",
+              "text": "Wskaż, co mogło zatrzymać atak.",
+              "completeWhen": ["rozmowa-marek"]
+            }
+          ],
           "cta": "Biorę sprawę",
           "narration": {
             "text": "Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.",
-            "spokenText": "Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Nowak z działu IT. Reszta jest w biurze Anny.",
+            "spokenText": "Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT. Reszta jest w biurze Anny.",
             "voice": "komisarz"
           }
         },

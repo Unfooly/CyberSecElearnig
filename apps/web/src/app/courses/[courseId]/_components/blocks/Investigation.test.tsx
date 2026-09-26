@@ -158,15 +158,22 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
-  it('nakładka leży NA scenie: karta ograniczona do 80% na desktopie (nie h-full/w-full - obraz ma być widoczny dookoła), punkty pod nią dostają aria-hidden (feedback z produkcji, poprawka po PR #32)', () => {
+  it('nakładka leży NA scenie: karta ma STAŁY rozmiar 92%x92% na desktopie (nie h-full/w-full - obraz ma być widoczny dookoła; hotfix fix/hotspot-card-fit, zastępuje dawne sm:max-h/max-w-[80%] - karta z wysokimi mediami się przewijała, zamiast zmieścić się jak scena), punkty pod nią dostają aria-hidden (feedback z produkcji, poprawka po PR #32)', () => {
     setup(scene, { summary });
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
 
-    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).parentElement!;
-    expect(card.className).toMatch(/sm:max-h-\[80%\]/);
-    expect(card.className).toMatch(/sm:max-w-\[80%\]/);
+    // Karta to teraz .hotspot-card (2 poziomy wyżej niż nagłówek: h3 -> .hotspot-card-text -> .hotspot-card-layout -> .hotspot-card).
+    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).closest('.hotspot-card')!;
+    expect(card.className).toMatch(/sm:h-\[92%\]/);
+    expect(card.className).toMatch(/sm:w-\[92%\]/);
+    expect(card.className).not.toMatch(/sm:max-h-\[80%\]/);
+    expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
     expect(card.className).not.toMatch(/sm:h-full/);
     expect(card.className).not.toMatch(/sm:w-full/);
+    // Karta się NIE przewija na desktopie (przewija się tylko pole dokumentu - DocumentMedia, osobny test niżej).
+    expect(card.className).toMatch(/sm:overflow-visible/);
+    // Container query na WŁASNYCH proporcjach karty (nie zwykły @media) - globals.css, .hotspot-card/.hotspot-card-layout.
+    expect(card.className).toMatch(/(^|\s)hotspot-card(\s|$)/);
 
     // Punkt 5 (feat/scene-overlay-fix): nakładka jest "absolute" (przypięta DO KONTENERA obrazu), NIGDY "fixed"
     // (przypięta do viewportu) - inaczej na mobile zasłaniałaby licznik "Obejrzano X z Y", który jest NAD obrazem,
@@ -503,7 +510,7 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(screen.queryByRole('button', { name: /Zobacz dokument/ })).not.toBeInTheDocument();
   });
 
-  it('audio: zbliżenie (media.image) i własny odtwarzacz (bez natywnych controls, autoodtwarzanie po kliku hotspotu), transkrypcja dostępna OD RAZU (nie czeka na onEnded), insight (content) dopiero po odsłuchaniu', () => {
+  it('audio: zbliżenie (media.image) i własny odtwarzacz (bez natywnych controls, autoodtwarzanie po kliku hotspotu), transkrypcja ZASTĘPUJE obrazek (hotfix fix/hotspot-card-fit - nie dokłada się pod nim), insight (content) dopiero po odsłuchaniu', () => {
     setup(mediaScene);
     pick('Telefon');
 
@@ -520,10 +527,19 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
 
     const toggle = screen.getByRole('button', { name: 'Pokaż transkrypcję' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByText('Dzień dobry, dzwonię z banku.')).not.toBeVisible();
+    expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
     fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: 'Ukryj transkrypcję' })).toHaveAttribute('aria-expanded', 'true');
+    // Widok się ZAMIENIŁ: transkrypcja w miejscu obrazka, obrazek zniknął, play/pauza i pasek postępu zostały.
+    expect(screen.getByRole('button', { name: 'Pokaż obraz' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
+    expect(within(dialog()).queryByAltText('')).not.toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
+
+    // "Pokaż obraz" wraca do zbliżenia (zamiana widoku w drugą stronę), nie dokłada transkrypcji pod nim.
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż obraz' }));
+    expect(screen.getByRole('button', { name: 'Pokaż transkrypcję' })).toHaveAttribute('aria-expanded', 'false');
+    expect(within(dialog()).getByAltText('')).toHaveAttribute('src', expect.stringContaining('telefon-zoom.png'));
+    expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
 
     fireEvent(audioEl, new Event('ended'));
     expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
@@ -598,6 +614,43 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
   });
 });
 
+describe('SCENE_HOTSPOTS: karta się mieści bez przewijania na desktopie (hotfix fix/hotspot-card-fit/B-101 - media wysokie: mail na ekranie, wydruk, zoom kalendarza, karteczka - wcześniej wypychały kartę poza dostępne miejsce i CAŁA karta się przewijała)', () => {
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('klasy karty: .hotspot-card (container-type:size w globals.css - układ dwu-/jednokolumnowy reaguje na WŁASNE proporcje karty, nie na okno) i sm:overflow-visible (karta się NIE przewija na >=640px), bez sm:overflow-y-auto/sm:max-h/max-w-[80%] (dawny, usunięty limit)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    const card = within(dialog()).getByRole('heading', { name: 'Zdjęcie' }).closest('.hotspot-card')!;
+    expect(card.className).toMatch(/(^|\s)hotspot-card(\s|$)/);
+    expect(card.className).toMatch(/sm:overflow-visible/);
+    expect(card.className).not.toMatch(/sm:overflow-y-auto/);
+    expect(card.className).not.toMatch(/sm:max-h-\[80%\]/);
+    expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
+  });
+
+  it('image: <img> ma object-contain i leży w .hotspot-card-media (dostaje flex-1/min-height:0 z globals.css od 640px wzwyż - zwykła klasa CSS, jak .player-frame, nie inline utility, żeby mobile <640px zostało zwykłym, przewijanym przepływem bez zmian w tym PR)', () => {
+    setup(mediaScene);
+    pick('Zdjęcie');
+    const img = within(dialog()).getByAltText('Zbliżenie karteczki z hasłem');
+    expect(img.className).toMatch(/object-contain/);
+    expect(img.closest('.hotspot-card-media')).not.toBeNull();
+  });
+
+  it('document: pole dokumentu (<pre>) ma WŁASNE overflow-auto flex-1 min-h-0 (jedyny wyjątek od "karta się nie przewija") - wypełnia dostępną wysokość obszaru mediów karty i przewija się samo, nie cała karta', () => {
+    setup(mediaScene);
+    pick('Drukarka');
+    const pre = within(dialog()).getByText(/Kwota: 14 000,00 PLN/).closest('pre')!;
+    expect(pre.className).toMatch(/overflow-auto/);
+    expect(pre.className).toMatch(/min-h-0/);
+    expect(pre.className).toMatch(/flex-1/);
+    expect(pre.closest('.hotspot-card-media')).not.toBeNull();
+  });
+});
+
 const nestedScene: ContentBlock = {
   type: 'SCENE_HOTSPOTS',
   id: 'scena-zagniezdzona',
@@ -650,6 +703,25 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     expect(within(dialog()).getByRole('button', { name: 'Kosz' })).toBeInTheDocument();
     // Monitor sam nie ma evidence - tylko "Wróć".
     expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+  });
+
+  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit): własny [container-type:size], rozmiar z jednostek cqw/cqh, bez max-h-full/max-w-full', () => {
+    setup(nestedScene);
+    pick('Monitor');
+    const img = within(dialog()).getByAltText('Pulpit komputera');
+    const aspectBox = img.parentElement!;
+    const queryContainer = aspectBox.parentElement!;
+
+    expect(queryContainer.className).toMatch(/\[container-type:size\]/);
+    expect(aspectBox.className).not.toMatch(/max-h-full/);
+    expect(aspectBox.className).not.toMatch(/max-w-full/);
+    expect(aspectBox.style.width).toBe('min(100cqw, calc(100cqh * var(--scene-ratio)))');
+    expect(aspectBox.style.height).toBe('auto');
+    expect(aspectBox.style.aspectRatio).toBe('var(--scene-ratio)');
+    expect(aspectBox.style.margin).toBe('auto');
+    // Fixture testowa nie ma prawdziwego pliku obrazu - domyślne 16/10 do czasu (nigdy nadchodzącego tu) onLoad.
+    expect(aspectBox.style.getPropertyValue('--scene-ratio')).toBe(String(16 / 10));
+    expect(img.className).toMatch(/object-contain/);
   });
 
   it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego kartę (drugi poziom TEJ SAMEJ nakładki); dowód wymaga kliknięcia', () => {

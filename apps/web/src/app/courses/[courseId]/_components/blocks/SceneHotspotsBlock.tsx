@@ -42,10 +42,14 @@ export function hotspotStackZIndex<T extends { id: string; width: number; height
 // Karta hotspotu i media otwierają się jako NAKŁADKA NA SCENIE, NA obrazie (nie zamiast niego): position absolute;
 // inset:0 ZAWSZE w obrębie kontenera obrazu (nigdy fixed względem viewportu - inaczej na mobile nakładka zasłoniłaby
 // też licznik "Obejrzano X z Y" NAD obrazem, poza kontenerem sceny), tło rgba(43,36,64,.55) (kolor `ink` z palety
-// scen) lekko przyciemnia obraz WIDOCZNY dookoła karty, wyśrodkowana, przewijana w środku, gdy treść nie mieści się
-// w karcie (feedback z produkcji po PR #32: wcześniej karta na h-full/w-full całkowicie zasłaniała obraz). Karta to
-// max 80% szerokości/wysokości sceny na desktopie, pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie
-// viewport) na mobile (<640px). Zagnieżdżona
+// scen) lekko przyciemnia obraz WIDOCZNY dookoła karty. Na >=640px (hotfix fix/hotspot-card-fit/B-101) karta ma
+// STAŁY rozmiar 92% x 92% sceny i SAMA SIĘ NIE PRZEWIJA (produkcja: media wysokie - mail na ekranie, wydruk, zoom
+// kalendarza, karteczka - wypychały kartę poza dostępne miejsce i ona się przewijała, zamiast zmieścić się jak
+// scena) - układ (dwie kolumny na karcie szerokiej vs jedna na wąskiej/wysokiej) reaguje na WŁASNE proporcje karty
+// przez container query (globals.css, `.hotspot-card`/`.hotspot-card-layout`), jedyny wyjątek od "karta się nie
+// przewija" to pole dokumentu (DocumentMedia). Pełna scena (100%, nie pełny EKRAN - kontener obrazu, nie viewport)
+// na mobile (<640px, bez zmian w tym PR - panorama/bottom sheet to PR B), tam karta nadal przewija się jako całość
+// jak dawniej. Zagnieżdżona
 // scena (media.kind:'scene') renderuje się w TEJ SAMEJ nakładce - jej hotspoty otwierają kolejny poziom (ten sam
 // wzorzec, rekurencyjnie): stos maks. 2 poziomy (zewnętrzny hotspot -> zagnieżdżona scena -> jej hotspot), bo
 // zagnieżdżanie ma zawsze dokładnie 1 poziom (innerHotspotSchema nie ma już własnego media.kind:'scene'). "Wróć"
@@ -338,53 +342,68 @@ export default function SceneHotspotsBlock({
               aria-labelledby={overlayTitleId}
               className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(43,36,64,0.55)]"
             >
-              {/* Nakładka NA scenie, nie zamiast niej: na desktopie karta to najwyżej 80% kontenera (obraz widoczny i
-                  lekko przyciemniony dookoła), przewijana w środku, gdy treść nie mieści się w 80%. Na telefonie
-                  (<640px, sm:) karta zajmuje cały ekran - feedback z produkcji (`feat/scene-overlay-fix`). */}
-              <div className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-auto sm:max-h-[80%] sm:w-auto sm:max-w-[80%] sm:rounded sm:p-4">
-                <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
-                  {current.label}
-                </h3>
+              {/* Nakładka NA scenie, nie zamiast niej. Mobile (<640px, bez zmian w tym PR): karta zajmuje cały ekran
+                  i przewija się jako całość - feedback z produkcji (`feat/scene-overlay-fix`). >=640px (hotfix
+                  fix/hotspot-card-fit): rozmiar 92%x92% i `.hotspot-card`/`.hotspot-card-layout` (globals.css) -
+                  container query na WŁASNYCH proporcjach karty przełącza dwie kolumny (media|tekst+przyciski) na
+                  szerokiej karcie w jedną kolumnę (tekst, media, przyciski) na wąskiej/wysokiej. */}
+              <div className="hotspot-card flex h-full w-full flex-col overflow-y-auto bg-white p-4 shadow-xl sm:h-[92%] sm:w-[92%] sm:overflow-visible sm:rounded sm:p-4">
+                {/* .hotspot-card-layout/-text/-media/-buttons: BEZ własnych klas flex/grid Tailwind (poza spacingiem
+                    mobile niżej) - poniżej 640px to zwykłe divy w naturalnym przepływie (mt-3/mt-4 odtwarzają dawny
+                    odstęp, karta CAŁA się przewija jak przed tym hotfixem); grid/container query (display:grid,
+                    grid-area, min-height/width, wyśrodkowanie mediów) to WYŁĄCZNIE globals.css od 640px wzwyż - tak,
+                    żeby żadna klasa Tailwind nie konkurowała z `display:grid` z @media (ten sam wzorzec co
+                    .player-frame: zwykłe klasy CSS NIŻEJ w wygenerowanym arkuszu niż @tailwind utilities wygrywają
+                    bez !important). */}
+                <div className="hotspot-card-layout">
+                  <div className="hotspot-card-text">
+                    <h3 id={overlayTitleId} ref={headingRef} tabIndex={-1} className="mb-2 text-sm font-semibold text-slate-900 outline-none">
+                      {current.label}
+                    </h3>
+                    <HotspotText hotspot={current} listened={listenedIds.includes(current.id)} />
+                  </div>
 
-                <HotspotDetailBody
-                  hotspot={current}
-                  contentBase={contentBase}
-                  listened={listenedIds.includes(current.id)}
-                  transcriptOpen={transcriptOpen}
-                  transcriptId={transcriptId}
-                  onToggleTranscript={() => setTranscriptOpen((open) => !open)}
-                  onEnded={() => setListenedIds((list) => (list.includes(current.id) ? list : [...list, current.id]))}
-                  visited={visited}
-                  interacted={interacted}
-                  nestedOverlayOpen={!!nestedActiveId}
-                  onPickNested={openNested}
-                />
+                  <div className="hotspot-card-media mt-3 sm:mt-0">
+                    <HotspotMediaArea
+                      hotspot={current}
+                      contentBase={contentBase}
+                      transcriptOpen={transcriptOpen}
+                      transcriptId={transcriptId}
+                      onToggleTranscript={() => setTranscriptOpen((open) => !open)}
+                      onEnded={() => setListenedIds((list) => (list.includes(current.id) ? list : [...list, current.id]))}
+                      visited={visited}
+                      interacted={interacted}
+                      nestedOverlayOpen={!!nestedActiveId}
+                      onPickNested={openNested}
+                    />
+                  </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {current.evidence && current.note && !review && (
-                    <>
-                      {isNoted(current.id) ? (
-                        <p className="inline-flex min-h-[44px] items-center gap-2 rounded px-1 text-sm font-medium text-green-700">
-                          <NoteKindIcon kind={current.note.kind} />W notatniku ✓
-                        </p>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => addToNotepad(current.id)}
-                          className={`min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
-                        >
-                          Dodaj do notatnika
-                        </button>
-                      )}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={goBack}
-                    className={`min-h-[44px] rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none hover:bg-slate-50 ${FOCUS_RING}`}
-                  >
-                    Wróć
-                  </button>
+                  <div className="hotspot-card-buttons mt-4 flex flex-wrap gap-2 sm:mt-0">
+                    {current.evidence && current.note && !review && (
+                      <>
+                        {isNoted(current.id) ? (
+                          <p className="inline-flex min-h-[44px] items-center gap-2 rounded px-1 text-sm font-medium text-green-700">
+                            <NoteKindIcon kind={current.note.kind} />W notatniku ✓
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => addToNotepad(current.id)}
+                            className={`min-h-[44px] rounded border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 outline-none hover:bg-indigo-100 ${FOCUS_RING}`}
+                          >
+                            Dodaj do notatnika
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      className={`min-h-[44px] rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none hover:bg-slate-50 ${FOCUS_RING}`}
+                    >
+                      Wróć
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -396,14 +415,32 @@ export default function SceneHotspotsBlock({
   );
 }
 
-// Treść (tekst + media) współdzielona przez kartę zewnętrznego hotspotu i kartę hotspotu wewnątrz zagnieżdżonej sceny -
-// obie zachowują się identycznie poza tym, że wewnętrzna nigdy nie ma media.kind:'scene' (typ to wymusza, więc ta
-// gałąź po prostu nie występuje dla InnerSceneHotspot). Przycisk dowodu i "Wróć" renderuje RODZIC (SceneHotspotsBlock),
-// nie ten komponent - "pod spodem dwa przyciski" jest wspólne dla wszystkich poziomów nakładki, nie część "treści".
-function HotspotDetailBody({
+// Tekst karty (bez tytułu, renderowanego osobno przez rodzica) - hotspot.content, WYŁĄCZNIE gdy media nie jest audio
+// (audio odsłania go dopiero po odsłuchaniu, patrz `listened` niżej - to samo bramkowanie co przed rozdzieleniem
+// tekstu i mediów na osobne obszary siatki, fix/hotspot-card-fit). Przycięty do 4 linii (line-clamp-4) TYLKO na
+// wąskiej/wysokiej karcie (globals.css, `.hotspot-card-text-content` w @container - karta szeroka ma dość miejsca w
+// prawej kolumnie na pełny tekst); `title` daje pełny tekst na hover/tooltip niezależnie od przycięcia. Bez osobnej
+// kopii sr-only: `-webkit-line-clamp` przycina WYŁĄCZNIE WYGLĄD (overflow wizualny), węzeł DOM i drzewo dostępności
+// mają cały tekst - czytnik ekranu i tak odczyta go w całości.
+function HotspotText({ hotspot, listened }: { hotspot: AnyHotspot; listened: boolean }) {
+  const isAudio = hotspot.media?.kind === 'audio';
+  if (isAudio && !listened) return null;
+  if (!hotspot.content) return null;
+  return (
+    <p title={hotspot.content} className="hotspot-card-text-content whitespace-pre-line text-slate-800 sm:line-clamp-4">
+      {hotspot.content}
+    </p>
+  );
+}
+
+// Media (bez tekstu - HotspotText renderuje się osobno, w INNYM obszarze siatki karty) współdzielone przez kartę
+// zewnętrznego hotspotu i kartę hotspotu wewnątrz zagnieżdżonej sceny - obie zachowują się identycznie poza tym, że
+// wewnętrzna nigdy nie ma media.kind:'scene' (typ to wymusza, więc ta gałąź po prostu nie występuje dla
+// InnerSceneHotspot). Przycisk dowodu i "Wróć" renderuje RODZIC (SceneHotspotsBlock) - "pod spodem dwa przyciski"
+// jest wspólne dla wszystkich poziomów nakładki, nie część "mediów".
+function HotspotMediaArea({
   hotspot,
   contentBase,
-  listened,
   transcriptOpen,
   transcriptId,
   onToggleTranscript,
@@ -415,7 +452,6 @@ function HotspotDetailBody({
 }: {
   hotspot: AnyHotspot;
   contentBase: string;
-  listened: boolean;
   transcriptOpen: boolean;
   transcriptId: string;
   onToggleTranscript: () => void;
@@ -430,21 +466,21 @@ function HotspotDetailBody({
   // (courses-types.ts), nie prawdziwa unia dyskryminowana - sprawdzenie .kind nie zawęża TypeScriptowi opcjonalności
   // .scene. Prawda/fałsz osobnej stałej TS już zawęża poprawnie (ten sam wzorzec co wcześniej nestedScene w rodzicu).
   const scene = media?.kind === 'scene' ? media.scene : undefined;
+  if (!media) return null;
   return (
     <>
-      {media?.kind !== 'audio' && hotspot.content && <p className="whitespace-pre-line text-slate-800">{hotspot.content}</p>}
+      {media.kind === 'image' && <ImageMedia contentBase={contentBase} media={media} />}
 
-      {media?.kind === 'image' && <ImageMedia contentBase={contentBase} media={media} />}
+      {media.kind === 'document' && <DocumentMedia media={media} />}
 
-      {media?.kind === 'document' && <DocumentMedia media={media} />}
-
-      {media?.kind === 'audio' && (
+      {media.kind === 'audio' && (
         <AudioMedia
           // key: wymuszony remount (nie tylko re-render tej samej instancji) przy przejściu na INNY hotspot audio -
-          // stan (playing/currentTime) i autoodtwarzanie przy otwarciu mają zawsze dotyczyć aktualnego hotspotu, nie
-          // resztek po poprzednim. Dziś to i tak zawsze prawda strukturalnie (przejście między dwoma hotspotami audio
-          // idzie zawsze przez stan bez audio - zamknięcie nakładki albo widok sceny zagnieżdżonej), ale `key` nie
-          // polega na tym inwariancie (D-073: "to inwariant UI, nie coś, na czym stan POWINIEN polegać").
+          // stan (playing/currentTime/pokazanaTranskrypcja) i autoodtwarzanie przy otwarciu mają zawsze dotyczyć
+          // aktualnego hotspotu, nie resztek po poprzednim. Dziś to i tak zawsze prawda strukturalnie (przejście
+          // między dwoma hotspotami audio idzie zawsze przez stan bez audio - zamknięcie nakładki albo widok sceny
+          // zagnieżdżonej), ale `key` nie polega na tym inwariancie (D-073: "to inwariant UI, nie coś, na czym stan
+          // POWINIEN polegać").
           key={hotspot.id}
           contentBase={contentBase}
           media={media}
@@ -454,8 +490,6 @@ function HotspotDetailBody({
           onEnded={onEnded}
         />
       )}
-
-      {media?.kind === 'audio' && listened && hotspot.content && <p className="mt-3 whitespace-pre-line text-slate-800">{hotspot.content}</p>}
 
       {scene && (
         <NestedSceneImage
@@ -473,7 +507,10 @@ function HotspotDetailBody({
 
 // Obraz zagnieżdżonej sceny z klikalnymi prostokątami - ten sam wzorzec dostępności co główna ilustracja bloku
 // (aria-label, focus-ring, bez chipów): klik otwiera KOLEJNY poziom tej samej nakładki (SceneHotspotsBlock's
-// nestedActiveId), nie nową nakładkę.
+// nestedActiveId), nie nową nakładkę. Rozmiar (hotfix fix/hotspot-card-fit) - TA SAMA formuła "contain" co scena
+// najwyższego poziomu (min(100cqw, 100cqh*proporcja) we WŁASNYM, zagnieżdżonym [container-type:size]): zagnieżdżony
+// obraz ma się zmieścić w dostępnym miejscu obszaru mediów karty, bez przewijania, tak samo jak scena główna w
+// obszarze bloku.
 function NestedSceneImage({
   contentBase,
   scene,
@@ -490,15 +527,48 @@ function NestedSceneImage({
   onPick: (id: string) => void;
 }) {
   const url = contentAssetUrl(contentBase, scene.image, 'image');
+  // Domyślne 16/10 tylko na czas ładowania (jak w scenie najwyższego poziomu) - cache-check zaraz po zamontowaniu:
+  // React 18 nie odtwarza zdarzenia `load` dla obrazu załadowanego z cache PRZED hydratacją (React #15446).
+  const [aspectRatio, setAspectRatio] = useState(16 / 10);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setAspectRatio(img.naturalWidth / img.naturalHeight);
+    }
+  }, [url]);
   if (!url) return null;
   const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    // isolate: patrz komentarz przy analogicznym kontenerze wyżej (scena najwyższego poziomu) - ten kontener jest już
-    // zagnieżdżony w karcie nakładki (z-30), ale jego WŁASNE hotspoty (z-index 1..20) i tak nie powinny wyciekać poza
-    // niego, dla spójności i na wypadek przyszłych zmian layoutu karty.
-    <div className="relative isolate mt-3 overflow-hidden rounded border border-slate-200">
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center [container-type:size]">
+      {/* isolate: patrz komentarz przy analogicznym kontenerze wyżej (scena najwyższego poziomu) - ten kontener jest już
+          zagnieżdżony w karcie nakładki (z-30), ale jego WŁASNE hotspoty (z-index 1..20) i tak nie powinny wyciekać poza
+          niego, dla spójności i na wypadek przyszłych zmian layoutu karty. */}
+      <div
+        className="relative isolate overflow-hidden rounded border border-slate-200"
+        style={
+          {
+            '--scene-ratio': String(aspectRatio),
+            width: 'min(100cqw, calc(100cqh * var(--scene-ratio)))',
+            height: 'auto',
+            aspectRatio: 'var(--scene-ratio)',
+            margin: 'auto',
+          } as React.CSSProperties
+        }
+      >
       {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
-      <img src={url} alt={scene.imageAlt} referrerPolicy="no-referrer" aria-hidden={overlayOpen ? true : undefined} className="block w-full" />
+      <img
+        ref={imgRef}
+        src={url}
+        alt={scene.imageAlt}
+        referrerPolicy="no-referrer"
+        aria-hidden={overlayOpen ? true : undefined}
+        className="block h-full w-full object-contain"
+        onLoad={(event) => {
+          const { naturalWidth, naturalHeight } = event.currentTarget;
+          if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
+        }}
+      />
       {scene.hotspots.map((hotspot) => {
         const seen = visited.includes(hotspot.id);
         return (
@@ -522,6 +592,7 @@ function NestedSceneImage({
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -529,17 +600,28 @@ function NestedSceneImage({
 function ImageMedia({ contentBase, media }: { contentBase: string; media: HotspotMedia | InnerHotspotMedia }) {
   const url = contentAssetUrl(contentBase, media.src, 'image');
   if (!url) return null;
+  // Powiększenie wprost w karcie (bez osobnej nakładki). max-h-[45vh] na mobile (bez zmian - karta się tam przewija
+  // jak dawniej); od 640px wzwyż .hotspot-card-media (globals.css) daje mu realną, ograniczoną wysokość obszaru
+  // mediów karty (92%x92%, bez przewijania) - sm:h-full/sm:max-h-full wypełnia ją, object-contain robi resztę.
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL, powiększenie wprost w karcie (bez osobnej nakładki)
-    <img src={url} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="mt-3 max-h-[45vh] w-full rounded border border-slate-200 object-contain" />
+    // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
+    <img
+      src={url}
+      alt={media.alt ?? ''}
+      referrerPolicy="no-referrer"
+      className="w-full max-h-[45vh] rounded border border-slate-200 object-contain sm:h-full sm:max-h-full"
+    />
   );
 }
 
 function DocumentMedia({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
   return (
-    <div className="mt-3">
-      {media.title && <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{media.title}</h4>}
-      <pre className="max-h-[35vh] overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-3 font-mono text-sm leading-relaxed text-slate-100">
+    // Jedyny wyjątek od "karta się nie przewija" (hotfix fix/hotspot-card-fit): TYLKO pole dokumentu (ten <pre>)
+    // przewija się wewnątrz siebie, nie cała karta - max-h-[35vh] na mobile (bez zmian), sm:max-h-full wypełnia
+    // realną wysokość obszaru mediów karty (.hotspot-card-media, globals.css) od 640px wzwyż.
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {media.title && <h4 className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">{media.title}</h4>}
+      <pre className="min-h-0 max-h-[35vh] flex-1 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-3 font-mono text-sm leading-relaxed text-slate-100 sm:max-h-full">
         {media.lines?.join('\n')}
       </pre>
     </div>
@@ -593,15 +675,36 @@ function AudioMedia({
   }
 
   const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  // Transkrypcja ZAMIENIA widok zbliżenia (media.image), nie dokłada się pod nim (hotfix fix/hotspot-card-fit,
+  // wcześniej: transkrypcja zawsze w DOM, tylko `hidden` - dokładała wysokość pod obrazkiem i odtwarzaczem, karta
+  // się wtedy wydłużała/przewijała). Play/pauza i pasek postępu ZOSTAJĄ zawsze widoczne pod tym widokiem - sterują
+  // odtwarzaniem niezależnie od tego, co jest akurat pokazane w miejscu obrazka.
+  const showingTranscript = transcriptOpen && !!media.transcript;
 
   return (
-    <div className="mt-3">
+    <div className="flex h-full w-full flex-col">
       {url && (
         <>
-          {imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
-            <img src={imageUrl} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="w-full rounded border border-slate-200 object-contain" />
-          )}
+          <div className="min-h-0 flex-1">
+            {showingTranscript ? (
+              <div id={transcriptId} className="h-full overflow-hidden rounded border border-slate-200 bg-white p-3">
+                <p className="whitespace-pre-line text-sm text-slate-700">{media.transcript}</p>
+              </div>
+            ) : (
+              // Mobile: bez max-h (bez zmian - jak przed tym hotfixem, zbliżenie audio nigdy nie miało limitu
+              // wysokości, w przeciwieństwie do ImageMedia); sm:h-full/sm:max-h-full wypełnia obszar mediów karty
+              // od 640px.
+              imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
+                <img
+                  src={imageUrl}
+                  alt={media.alt ?? ''}
+                  referrerPolicy="no-referrer"
+                  className="w-full rounded border border-slate-200 object-contain sm:h-full sm:max-h-full"
+                />
+              )
+            )}
+          </div>
           <audio
             ref={audioRef}
             src={url}
@@ -616,7 +719,7 @@ function AudioMedia({
               onEnded();
             }}
           />
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex shrink-0 items-center gap-3">
             <button
               type="button"
               onClick={togglePlay}
@@ -637,20 +740,15 @@ function AudioMedia({
         </>
       )}
       {media.transcript && (
-        <>
-          <button
-            type="button"
-            onClick={onToggleTranscript}
-            aria-expanded={transcriptOpen}
-            aria-controls={transcriptId}
-            className={`mt-2 min-h-[44px] text-sm font-medium text-indigo-700 underline outline-none hover:text-indigo-900 ${FOCUS_RING}`}
-          >
-            {transcriptOpen ? 'Ukryj transkrypcję' : 'Pokaż transkrypcję'}
-          </button>
-          <p id={transcriptId} hidden={!transcriptOpen} className="mt-2 whitespace-pre-line rounded bg-white p-2 text-sm text-slate-700 ring-1 ring-slate-200">
-            {media.transcript}
-          </p>
-        </>
+        <button
+          type="button"
+          onClick={onToggleTranscript}
+          aria-expanded={transcriptOpen}
+          aria-controls={transcriptId}
+          className={`mt-2 min-h-[44px] shrink-0 text-sm font-medium text-indigo-700 underline outline-none hover:text-indigo-900 ${FOCUS_RING}`}
+        >
+          {transcriptOpen ? 'Pokaż obraz' : 'Pokaż transkrypcję'}
+        </button>
       )}
     </div>
   );

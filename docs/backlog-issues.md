@@ -281,13 +281,38 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 
 ### B-100 Łańcuch wysokości sceny (SCENE_HOTSPOTS, 16:9) - weryfikacja w prawdziwej przeglądarce
 - Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: code review fix-passu `feat/player-stage` po PR #44; zależne od `B-085`
-- Opis: `SceneHotspotsBlock.tsx` dostał w tym PR-ie pełny łańcuch `min-h-0`/`flex-1`, pokryty testem na KLASACH
-  (`Investigation.test.tsx`), ale pudełko aspect-ratio jest elementem flex w wierszu (szerokość `auto`, zależna od
-  intrinsic size obrazu) - test jednostkowy w jsdom nie może potwierdzić, że scena faktycznie mieści się w pionie
-  na niskim/wąskim viewporcie (telefon w poziomie, tryb pełnoekranowy). Wymaga realnej przeglądarki
-  (`scripts/e2e-module-01.mjs` albo ręcznego sprawdzenia) - dziś zablokowane przez B-085.
-- Akceptacja: po odblokowaniu B-085, przebieg e2e/ręczny na niskim viewporcie (telefon w poziomie) potwierdzający,
-  że scena mieści się w pionie, nie tylko szerokością.
+- Status: zrobione (PR #49, `scripts/layout-check.mjs`) - `layout-check.mjs` sprawdza w prawdziwej
+  przeglądarce (Playwright, nie jsdom) na wszystkich 4 viewportach (w tym 844x390, telefon w poziomie), że obraz
+  sceny głównej mieści się w obszarze bloku bez przewijania (sprawdzenie „e” tego skryptu) - NIEZALEŻNIE od B-085,
+  bo strona `apps/web/src/app/dev/player-harness/page.tsx` nie potrzebuje backendu (treść wprost z packages/content).
+  Uruchamiane dziś ręcznie przed pushem (CLAUDE.md, reguła 12), nie automatycznie w CI - patrz B-101.
+- Opis: `SceneHotspotsBlock.tsx` dostał w PR-ie `feat/player-stage` pełny łańcuch `min-h-0`/`flex-1`, pokryty testem
+  na KLASACH (`Investigation.test.tsx`), ale pudełko aspect-ratio jest elementem flex w wierszu (szerokość `auto`,
+  zależna od intrinsic size obrazu) - test jednostkowy w jsdom nie może potwierdzić, że scena faktycznie mieści się
+  w pionie na niskim/wąskim viewporcie (telefon w poziomie, tryb pełnoekranowy). Wymagało realnej przeglądarki;
+  `scripts/e2e-module-01.mjs` było wtedy zablokowane przez B-085 - `layout-check.mjs` (`fix/hotspot-card-fit`)
+  obchodzi to ograniczenie, bo w ogóle nie potrzebuje backendu.
+- Akceptacja: ✅ przebieg `layout-check.mjs` na niskim viewporcie (844x390, telefon w poziomie) potwierdza, że scena
+  mieści się w pionie, nie tylko szerokością (sprawdzenie „e”) - zamiast e2e/ręcznego sprawdzenia z pierwotnej
+  akceptacji, które nadal blokuje B-085.
+
+### B-101 `layout-check.mjs` i `check-no-secrets-in-bundle.mjs` w CI
+- Etykiety: `P2`, `tech-debt`, `security`, `mod:web`, `mod:ci` · Źródło: code review `fix/hotspot-card-fit` (druga
+  runda) - bugi w container query/grid karty hotspotu, których żaden test jsdom nie mógł wykryć (jsdom nie liczy
+  layoutu CSS); `scripts/check-no-secrets-in-bundle.mjs` dopisany przy przeglądzie bezpieczeństwa tego samego PR-a
+  (dev/player-harness czyta treść modułu wprost z `packages/content` - test na stałe pilnuje, że sekrety treści
+  (klucz odpowiedzi, `reactions.result`, podpowiedzi) nie trafiają do klienckiego bundla `apps/web/.next/static/`,
+  niezależnie od tego, co ktoś zmieni w `page.tsx` w przyszłości).
+- Opis: `scripts/layout-check.mjs` (Playwright, `apps/web/src/app/dev/player-harness/page.tsx` za
+  `NEXT_PUBLIC_DEV_HARNESS=1`, bez backendu) i `scripts/check-no-secrets-in-bundle.mjs` (wymaga
+  `npm run build --workspace=apps/web`, bez i z `NEXT_PUBLIC_DEV_HARNESS=1` - patrz opis PR) uruchamiane dziś
+  WYŁĄCZNIE ręcznie przed pushem PR-ów zmieniających układ odtwarzacza (CLAUDE.md, reguła 12) - nic nie pilnuje, że
+  ktoś o tym nie zapomni. Docelowo osobne joby w `.github/workflows/build-images.yml` (albo kroki w `lint + testy`) -
+  `layout-check.mjs` uruchamiany zawsze (tani - nie potrzebuje Postgresa/Redisa) albo warunkowo (pliki
+  PlayerStage/SceneHotspotsBlock/karty/bottom sheet w diffie PR-a); `check-no-secrets-in-bundle.mjs` po
+  `npm run build --workspace=apps/web` (oba warianty flagi) - zawsze, bo to bramka bezpieczeństwa, nie tylko UX.
+- Akceptacja: oba skrypty w CI, czerwony blokuje merge tak samo jak `lint + testy`; CLAUDE.md reguła 12
+  zaktualizowana (uruchomienie ręczne przestaje być jedyną linią obrony).
 
 ## F. Symulacje phishingowe i zgłoszenia
 

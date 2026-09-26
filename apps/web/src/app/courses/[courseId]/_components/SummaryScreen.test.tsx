@@ -11,8 +11,8 @@ import type { ContentReaction, CourseCompletionReward } from '@/lib/courses-type
 // Ten plik sprawdza wyłącznie TREŚĆ ekranu: nagłówek (h2 - jedyny h1 strony to tytuł kursu w PlayerStage.tsx), wynik,
 // kartę nagrody INLINE (zastępuje dawny modal CourseRewardModal.tsx - usunięty, testy jego zachowań są tu,
 // przeniesione na RewardCard renderowany w tym komponencie), reakcję Fooli i listę dowodów. Ogłoszenie aria-live
-// zdobytego XP żyje w PlayerStage.tsx (propem z CoursePlayer.tsx) - CoursePlayer.test.tsx/shell.test.tsx sprawdzają
-// TĘ część.
+// zdobytego XP żyje w PlayerStage.tsx (propem `resultAnnouncement` z CoursePlayer.tsx) - CoursePlayer.test.tsx
+// sprawdza TĘ część (region pusty przed ukończeniem, jedno zdanie po, pusty gdy gamification jest null).
 
 function mockReducedMotion(matches: boolean) {
   return vi.spyOn(window, 'matchMedia').mockReturnValue({
@@ -43,6 +43,7 @@ describe('SummaryScreen', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('nagłówek "Sprawa zamknięta" (h2) i tytuł kursu', () => {

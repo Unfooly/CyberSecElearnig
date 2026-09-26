@@ -34,7 +34,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     refreshMock.mockClear();
   });
 
-  it('start -> odpowiedź -> blok OCENIANY (QUIZ) kończący kurs: normalny ekran feedbacku z wyjaśnieniem, "Dalej" prowadzi do podsumowania z wynikiem z API (D-076: skipsFeedbackScreen omija ekran feedbacku WYŁĄCZNIE przy zakończeniu na SUMMARY/bloku eksploracyjnym - QUIZ na końcu kursu, jak tu, zostaje przy normalnym ekranie; grep "Blok ukończony."/"Zobacz podsumowanie" - dawnym, usuniętym ekranie pośrednim - w CAŁYM apps/web nie powinien znaleźć nic POZA tym tytułem testu i legalnym, osobnym użyciem "Zobacz podsumowanie" jako etykiety linku na liście kursów/CourseCard.tsx/LearningPath.tsx)', async () => {
+  it('start -> odpowiedź -> blok OCENIANY (QUIZ) kończący kurs: normalny ekran feedbacku z wyjaśnieniem, "Dalej" prowadzi do podsumowania z wynikiem z API (D-076: skipsFeedbackScreen omija ekran feedbacku WYŁĄCZNIE przy zakończeniu na SUMMARY/bloku eksploracyjnym - QUIZ na końcu kursu, jak tu, zostaje przy normalnym ekranie)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -44,7 +44,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
         currentBlockIndex: 1,
         score: 100,
         completedAt: '2026-01-01T00:00:00.000Z',
-        lastResult: { blockIndex: 0, type: 'QUIZ', correct: true },
+        lastResult: { blockIndex: 0, type: 'QUIZ', correct: true, reaction: { pose: 'cheer', text: 'Świetna robota!' } },
         gamification: null,
       }),
     });
@@ -70,8 +70,10 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
       ),
     );
 
-    // Blok OCENIANY kończący kurs: zostaje normalny ekran feedbacku (D-076) - jeszcze NIE podsumowanie.
+    // Blok OCENIANY kończący kurs: zostaje normalny ekran feedbacku (D-076) - jeszcze NIE podsumowanie. Reakcja z
+    // lastResult.reaction pokazuje się TUTAJ (FeedbackPanel woła mascot.show(), MascotOverlay ją renderuje).
     expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
+    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Świetna robota!');
     expect(screen.queryByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).not.toBeInTheDocument();
 
     // Dwa przyciski "Dalej" na ekranie feedbacku: aktywny pod wynikiem (pierwszy w DOM) i nieaktywny w powłoce -
@@ -89,8 +91,9 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     // gamification: null w odpowiedzi (badge się nie odblokował w tym scenariuszu testowym) -> brak karty nagrody.
     expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
     // Reakcja Fooli na wynik TEGO bloku była już pokazana w ekranie feedbacku wyżej (przez FeedbackPanel/
-    // useMascotReaction) - SummaryScreen jej NIE powtarza (finalReaction zostaje null, gdy ekran feedbacku nie był
-    // pominięty - CoursePlayer.tsx, D-076).
+    // useMascotReaction, asercja powyżej) - SummaryScreen jej NIE powtarza (finalReaction zostaje null, gdy ekran
+    // feedbacku nie był pominięty - CoursePlayer.tsx, D-076; bez `&& skipsFeedbackScreen` w tym warunku ten
+    // mascot-says by tu wrócił, bo status jest już 'COMPLETED').
     expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
   });
 
@@ -130,6 +133,72 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     expect(screen.getByText('+150 XP')).toBeInTheDocument();
     expect(screen.getByText('Awans na poziom 2!')).toBeInTheDocument();
     expect(screen.getByText(/Pierwszy Krok/)).toBeInTheDocument();
+  });
+
+  it('ogłoszenie aria-live w PlayerStage.tsx (resultAnnouncement) jest puste przed ukończeniem i dostaje jedno zdanie o zdobytym XP po przejściu na podsumowanie; puste, gdy gamification jest null', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'assignment-1',
+        status: 'COMPLETED',
+        currentBlockIndex: 1,
+        score: 100,
+        completedAt: '2026-01-01T00:00:00.000Z',
+        lastResult: { blockIndex: 0, type: 'QUIZ', correct: true },
+        gamification: {
+          xpGained: 150,
+          newLevel: 2,
+          previousLevel: 1,
+          leveledUp: true,
+          unlockedBadges: [],
+          levelProgressBeforePercent: 0,
+          levelProgressAfterPercent: 100,
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+
+    render(<CoursePlayer courseId="course-1" initial={singleQuizBlockCourse} />);
+
+    expect(screen.queryByText(/Zdobyto/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('wsparcie@bank-0ficjalny.pl'));
+    fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
+    await screen.findByText('Poprawna odpowiedź!');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
+
+    await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
+    expect(screen.getByText('Kurs ukończony. Zdobyto 150 punktów doświadczenia.')).toBeInTheDocument();
+  });
+
+  it('ogłoszenie aria-live zostaje puste, gdy kurs kończy się bez gamification (badge się nie odblokował - brak reward)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'assignment-1',
+        status: 'COMPLETED',
+        currentBlockIndex: 1,
+        score: 100,
+        completedAt: '2026-01-01T00:00:00.000Z',
+        lastResult: { blockIndex: 0, type: 'QUIZ', correct: true },
+        gamification: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<CoursePlayer courseId="course-1" initial={singleQuizBlockCourse} />);
+
+    fireEvent.click(screen.getByText('wsparcie@bank-0ficjalny.pl'));
+    fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
+    await screen.findByText('Poprawna odpowiedź!');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
+
+    await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
+    expect(screen.queryByText(/Zdobyto/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kurs ukończony/)).not.toBeInTheDocument();
   });
 
   it('kurs już COMPLETED przy wejściu -> od razu podsumowanie, bez renderowania bloków', () => {

@@ -438,8 +438,8 @@ export default function CoursePlayer({
         {liveBlock && (
           // Łańcuch wysokości dla contentLayout='scene'/'fill' (hotfix fix/player-scene-fit/B-100, druga runda code
           // review; 'fill'/DIALOGUE dołączone w fix/dialogue-sticky-questions, ten sam powód): ten div siedzi
-          // MIĘDZY PlayerStage.tsx (flex-col wrapper) a SceneHotspotsBlock.tsx/DialogueBlock.tsx (flex-1 min-h-0/
-          // h-full na WŁASNYM korzeniu) - bez własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem,
+          // MIĘDZY PlayerStage.tsx (flex-col wrapper) a SceneHotspotsBlock.tsx/DialogueBlock.tsx (flex-1 min-h-0
+          // na WŁASNYM korzeniu obu) - bez własnych flex-1/min-h-0/w-full byłby zwykłym blokowym divem,
           // przerywającym łańcuch: blok dostawałby wysokość auto zamiast realnej wysokości obszaru bloku, a
           // z [container-type:size] (size containment, SceneHotspotsBlock.tsx) zapadałby się do WYSOKOŚCI 0 zamiast
           // (jak przed tym hotfixem) rosnąć ponad dostępne miejsce. className TYLKO gdy !reviewing (nie tylko

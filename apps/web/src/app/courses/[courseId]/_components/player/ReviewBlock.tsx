@@ -22,7 +22,7 @@ export default function ReviewBlock({
     // DIALOGUE dołączony w fix/dialogue-sticky-questions - ten sam contentLayout='fill' co 'scene', ten sam powód):
     // ten div jest bezpośrednim dzieckiem flex-col wrappera PlayerStage.tsx w trybie "Wstecz" - bez własnych
     // flex-1/min-h-0/w-full byłby zwykłym blokowym divem, przerywającym łańcuch do SceneHotspotsBlock.tsx/
-    // DialogueBlock.tsx (które mają flex-1 min-h-0/h-full na WŁASNYM korzeniu). Pozostałe typy eksploracyjne
+    // DialogueBlock.tsx (które mają flex-1 min-h-0 na WŁASNYM korzeniu obu). Pozostałe typy eksploracyjne
     // (NOTEPAD, TABS, NARRATIVE) mają contentLayout='slide' - klasy tu nic im nie zmieniają (rodzic nie jest
     // flex-col), ale i tak ograniczamy je do SCENE_HOTSPOTS/DIALOGUE, żeby diff dokładnie odzwierciedlał, co
     // faktycznie tego wymaga.

@@ -342,6 +342,24 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: pierwszy chip nigdy nie jest wizualnie przykryty dymkiem maskotki, niezależnie od długości jego tekstu;
   test regresyjny (layout-check.mjs albo jsdom - bounding boxy się nie nakładają).
 
+### B-104 DIALOGUE na bardzo niskich/poziomych viewportach - pełne pokrycie WCAG 1.4.10
+- Etykiety: `P3`, `a11y`, `mod:web` · Źródło: code review `fix/dialogue-sticky-questions` - `DialogueBlock.tsx`'s
+  prompt/nagłówek rozmowy/stopka (chipy + ExploreFooter) są `shrink-0` (nie oddają miejsca wątkowi), więc na bardzo
+  niskich viewportach (telefon w poziomie o małej wysokości) albo przy dużym powiększeniu przeglądarki suma ich
+  wysokości może przekroczyć dostępną wysokość obszaru bloku (`overflow-clip`, bez fallbackowego scrolla całego
+  panelu - to świadoma cecha `contentLayout='fill'`, nie bug). Rozważana doraźna rezerwacja minimalnej wysokości
+  wątku (`min-h-[…]`) świadomie ODRZUCONA (druga runda code review): obcinałaby stopkę (JEDYNE kontrolki rozmowy -
+  chipy, "Następna kwestia") WCZEŚNIEJ niż zwykłe `min-h-0`, tracąc kontrolki zamiast tylko historii wątku - zostaje
+  `min-h-0`, priorytet ma stopka, wątek jako pierwszy oddaje miejsce.
+- Opis: żaden test (`layout-check.mjs`, `DIALOGUE_VIEWPORTS`) nie sprawdza dziś niskiego/poziomego viewportu ani
+  symulacji powiększenia przeglądarki w trakcie rozmowy z wieloma pytaniami - nieznana jest faktyczna dolna granica,
+  przy której wątek (a docelowo i stopka) staje się nieosiągalny. Pełne rozwiązanie wymaga decyzji projektowej (np.
+  składany/mniejszy nagłówek rozmowy poniżej pewnej wysokości, albo dodatkowy fallback scroll całego bloku na bardzo
+  małych viewportach) - poza zakresem tego PR-a.
+- Akceptacja: zmierzona i udokumentowana najniższa obsługiwana wysokość viewportu (albo poziom powiększenia) dla
+  DIALOGUE; test w `layout-check.mjs` pokrywający tę granicę; jeśli granica jest zbyt wysoka (WCAG 1.4.10 wymaga
+  wsparcia do 256px wysokości przy standardowym zoomie), projekt UI stopki/nagłówka na niskich wysokościach.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

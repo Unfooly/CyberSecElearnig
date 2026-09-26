@@ -1,4 +1,4 @@
-import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, withLegacyIds } from './index';
+import { ContentValidationError, MODULE_SCHEMA_VERSION, normalizeObjectives, requiredItemIds, withLegacyIds } from './index';
 import { fullModule } from './fixtures';
 import { hashContent, moduleWarnings, parseModule } from './node';
 
@@ -326,8 +326,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
   const dialogue = (m: TestModule) => m.blocks.find((b) => b.type === 'DIALOGUE') as Record<string, any>;
   const email = (m: TestModule) => m.blocks.find((b) => b.type === 'EMAIL_ANALYSIS') as Record<string, any>;
 
-  it('fixtura przechodzi; bieżąca wersja to 4', () => {
-    expect(MODULE_SCHEMA_VERSION).toBe(4);
+  it('fixtura przechodzi; bieżąca wersja to 5', () => {
+    expect(MODULE_SCHEMA_VERSION).toBe(5);
     expect(() => parseModule(fullModuleForTests())).not.toThrow();
   });
 
@@ -337,8 +337,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     delete module.subtitle;
     delete module.level;
     delete module.objectives;
-    // NARRATIVE to CAŁY nowy typ (wersja 4), nie pojedyncze pole - w module w wersji 2 go po prostu nie ma.
-    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE');
+    // NARRATIVE (wersja 4) i BRIEFING (wersja 5) to CAŁE nowe typy, nie pojedyncze pola - w module w wersji 2 ich po prostu nie ma.
+    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
     for (const block of module.blocks) delete block.reactions;
     const h = hotspots(module);
     for (const hotspot of h.hotspots) {
@@ -396,8 +396,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     }
   });
 
-  it('wersja spoza 2, 3 i 4 jest odrzucona', () => {
-    expect(invalid((m) => (m.schemaVersion = 5))).toContain('schemaVersion');
+  it('wersja spoza 2-5 jest odrzucona', () => {
+    expect(invalid((m) => (m.schemaVersion = 6))).toContain('schemaVersion');
   });
 
   it('evidence bez note to błąd', () => {
@@ -550,7 +550,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     delete module.subtitle;
     delete module.level;
     delete module.objectives;
-    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE');
+    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
     delete email(module).email.to;
@@ -642,6 +642,86 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     module.blocks.unshift({ ...JSON.parse(JSON.stringify(narrative)), id: 'otwarcie-2' });
     expect(module.blocks.filter((b: Record<string, any>) => b.type === 'NARRATIVE')).toHaveLength(2);
     expect(() => parseModule(module)).not.toThrow();
+  });
+});
+
+// Wersja 5: blok BRIEFING (odprawa) i cel modułu jako obiekt { text, completeWhen } (zadanie śledztwa), D-081.
+describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const briefing = (m: TestModule) => m.blocks.find((b) => b.type === 'BRIEFING') as Record<string, any>;
+
+  it('moduł w wersji 4 z blokiem BRIEFING i celem-obiektem jest odrzucony (oba nazwane w błędzie)', () => {
+    const message = invalid((m) => {
+      m.schemaVersion = 4;
+    });
+    expect(message).toContain('blok BRIEFING wymaga schemaVersion 5');
+    expect(message).toContain('objectives[1]: cel jako obiekt wymaga schemaVersion 5');
+  });
+
+  it('moduł w wersji 4 bez BRIEFING i z celami-tekstami nadal przechodzi', () => {
+    const module = fullModuleForTests();
+    module.schemaVersion = 4;
+    module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING');
+    module.objectives = ['Rozpoznać phishing', 'Nie klikać podejrzanych linków'];
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('completeWhen: nieznany blok, powtórzony blok i blok BRIEFING to błędy', () => {
+    expect(invalid((m) => (m.objectives[1].completeWhen = ['nie-ma']))).toContain('objectives[1].completeWhen: nieznany blok "nie-ma"');
+    expect(invalid((m) => (m.objectives[1].completeWhen = ['mail', 'mail']))).toContain('objectives[1].completeWhen: powtórzony blok "mail"');
+    // "Pomiń odprawę" zalicza blok BRIEFING - gdyby odprawa odhaczała zadanie, pominięcie by je odhaczało.
+    expect(invalid((m) => (m.objectives[1].completeWhen = [briefing(m).id]))).toContain('blok odprawy (BRIEFING) nie może odhaczać zadań');
+  });
+
+  it('completeWhen: pusta lista i pole spoza schematu celu są odrzucone', () => {
+    expect(invalid((m) => (m.objectives[1].completeWhen = []))).toContain('objectives.1');
+    expect(invalid((m) => (m.objectives[1].done = true))).toContain('objectives.1');
+  });
+
+  it('BRIEFING: krok call nie może mieć naraz avatara i maskotki', () => {
+    expect(
+      invalid((m) => {
+        const call = briefing(m).steps.find((s: Record<string, any>) => s.kind === 'call');
+        call.caller.avatar = 'avatars/x.svg';
+        call.caller.mascot = 'greeting';
+      }),
+    ).toContain('caller: avatar i mascot wykluczają się');
+  });
+
+  it('BRIEFING: nieznany rodzaj kroku i nieznana poza maskotki to błąd schematu', () => {
+    expect(invalid((m) => (briefing(m).steps[0].kind = 'video'))).toContain('steps.0');
+    expect(
+      invalid((m) => {
+        briefing(m).steps.find((s: Record<string, any>) => s.caller?.mascot).caller.mascot = 'dancing';
+      }),
+    ).toContain('caller.mascot');
+  });
+
+  it('BRIEFING: krok badge nie przyjmuje danych gracza z treści (strict - imię liczy wyłącznie klient)', () => {
+    expect(
+      invalid((m) => {
+        briefing(m).steps.find((s: Record<string, any>) => s.kind === 'badge').name = 'Jan K.';
+      }),
+    ).toContain('steps.4');
+  });
+});
+
+describe('normalizeObjectives', () => {
+  it('tekst z v4 i obiekt z v5 w jednej postaci; śmieci z bazy pomijane', () => {
+    expect(
+      normalizeObjectives(['A', { text: 'B', completeWhen: ['x', 7] }, { text: 'C', completeWhen: [] }, 5, null, { nie: 'tekst' }]),
+    ).toEqual([{ text: 'A' }, { text: 'B', completeWhen: ['x'] }, { text: 'C' }]);
+    expect(normalizeObjectives(null)).toEqual([]);
+    expect(normalizeObjectives({ text: 'nie lista' })).toEqual([]);
   });
 });
 

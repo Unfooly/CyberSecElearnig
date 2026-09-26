@@ -29,6 +29,8 @@ export const NARRATION_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'narration'],
   ['questions', '*', 'answerNarration'],
   ['questions', '*', 'lines', '*', 'narration'],
+  // BRIEFING (schemaVersion 5): narracja per krok odprawy.
+  ['steps', '*', 'narration'],
 ];
 
 /** Narracje w polach `secret`: bez audio (tylko tekst). Wpisane audioUrl/durationMs/cues w takim polu to błąd modułu. */

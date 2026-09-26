@@ -301,6 +301,33 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       ],
       requiredTabs: ['t1'],
     },
+    // schemaVersion 5. Dwa kroki "call": jeden z avatarem postaci, drugi z maskotką (wykluczają się w jednym kroku, a test
+    // klasyfikacji potrzebuje obu ścieżek w fixturze).
+    BRIEFING: {
+      ...base('odprawa'),
+      type: 'BRIEFING',
+      steps: [
+        { kind: 'typewriter', text: 'Wtorek, 7:58.', sub: 'Dzwoni telefon.', cta: 'Odbierz', narration: audio('odprawa-0') },
+        {
+          kind: 'call',
+          caller: { name: 'Komisarz Fooli', role: 'Wydział cyber', mascot: 'greeting' },
+          text: 'Mamy sprawę.',
+          cta: 'Słucham',
+          narration: audio('odprawa-1'),
+        },
+        { kind: 'call', caller: { name: 'Marek', avatar: 'avatars/marek.svg' }, text: 'Czekam w IT.', cta: 'Dalej' },
+        {
+          kind: 'caseFile',
+          caseNo: 'SPR-2026-0412',
+          title: 'Wyłudzone hasło',
+          fields: [{ label: 'Firma', value: 'Firma Testowa' }],
+          stamp: 'PILNE',
+          cta: 'Przyjmuję',
+          narration: audio('odprawa-3'),
+        },
+        { kind: 'badge', cta: 'Do dzieła', narration: audio('odprawa-4') },
+      ],
+    },
     SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },
   };
 }
@@ -348,11 +375,14 @@ function injectSpokenText(node: unknown): void {
   }
 }
 
-/** Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. */
+/**
+ * Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. BRIEFING (schemaVersion 5) stoi TUŻ PRZED
+ * SUMMARY, nie na początku: apps/api/test/course-engine.e2e-spec.ts ma twardo zakodowane indeksy bloków (CLAUDE.md, reguła 9).
+ */
 export function fullModule() {
   const blocks = fullBlocks();
   return {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     slug: 'sprawa-testowa',
     title: 'Sprawa testowa',
     subtitle: 'Podtytuł testowy',
@@ -360,7 +390,8 @@ export function fullModule() {
     level: 'basic' as const,
     durationMinutes: 10,
     mandatory: false,
-    objectives: ['Rozpoznać phishing', 'Nie klikać podejrzanych linków'],
+    // Oba kształty celu: tekst (v4) i zadanie z completeWhen (v5).
+    objectives: ['Rozpoznać phishing', { text: 'Nie klikać podejrzanych linków', completeWhen: ['mail', 'kolejnosc'] }],
     blocks: [
       blocks.NARRATIVE,
       blocks.VIDEO,
@@ -375,6 +406,7 @@ export function fullModule() {
       blocks.TEXT_INPUT_GUIDED,
       blocks.ORDERING,
       blocks.TABS,
+      blocks.BRIEFING,
       blocks.SUMMARY,
     ],
   };

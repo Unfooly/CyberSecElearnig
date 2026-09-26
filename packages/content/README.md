@@ -37,10 +37,22 @@ Część izomorficzna (`@cyberszkolo/content`, bez modułów Node) jest bezpiecz
   i przy obowiązującym CSP; sprawdzenie tego to warunek PR 2 (odtwarzacz).
 
 Typy bloków: dotychczasowe `VIDEO`, `QUIZ`, `BRANCHING_SCENARIO`, `DRAG_AND_DROP`, `EMBEDDED_HTML` oraz `SCENE_HOTSPOTS`, `DIALOGUE`,
-`NOTEPAD`, `EMAIL_ANALYSIS`, `TEXT_INPUT_GUIDED`, `ORDERING`, `TABS`, `SUMMARY` (ostatni, co najwyżej jeden). Pełny wzór każdego typu:
-`src/fixtures.ts` (`fullBlocks()`).
+`NOTEPAD`, `EMAIL_ANALYSIS`, `TEXT_INPUT_GUIDED`, `ORDERING`, `TABS`, `NARRATIVE` (v4), `BRIEFING` (v5), `SUMMARY` (ostatni, co najwyżej
+jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 
-### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`)
+### schemaVersion 5: odprawa (`BRIEFING`) i zadania (D-081)
+
+- `BRIEFING`: `steps[]` (1-8) zamkniętego typu `kind`: `typewriter { text, sub?, cta }`, `call { caller { name, role?, avatar? | mascot? },
+  text, cta }`, `caseFile { caseNo, title, fields[{ label, value }], stamp?, cta }`, `badge { cta }`. Każdy krok może mieć własne
+  `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany po
+  ostatnim kroku albo po „Pomiń odprawę”. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
+  wyłącznie klient z sesji (nigdy `module.json` ani `progress`).
+- `objectives[]`: element to tekst (jak w v4) ALBO `{ text, completeWhen?: blockId[] }` - zadanie śledztwa (lista pod kartą sprawy w
+  odprawie, sekcja „Zadania” w notatniku). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są ukończone (to nie ocena).
+  `completeWhen` nie może wskazywać bloku `BRIEFING` (pominięcie odprawy nie odhacza zadań). Cele są zapisywane razem z wersją treści
+  (`course_versions.objectives`), bo `completeWhen` wskazuje bloki konkretnej wersji; katalog kursów dostaje z nich tylko teksty.
+
+### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 
 Renderer po stronie klienta (`apps/web/src/app/courses/[courseId]/_components/simple-markdown.tsx`) obsługuje ZAMKNIĘTY,
 wąski podzbiór: pogrubienie (`**tekst**`), kod (`` `tekst` ``), listy wypunktowane (`- `/`* `) i numerowane (`1. `, `2. `),

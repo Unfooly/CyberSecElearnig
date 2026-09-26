@@ -90,6 +90,13 @@ describe('collectNarrations', () => {
     expect(refs.some((ref) => ref.id.includes('hotspots.'))).toBe(true);
     expect(refs.some((ref) => ref.id.includes('answerNarration'))).toBe(true);
     expect(refs.some((ref) => ref.id.includes('lines.'))).toBe(true);
+    // BRIEFING (schemaVersion 5): narracja per krok odprawy, id jak `odprawa#steps.0.narration`; krok bez narracji nie ma wpisu.
+    expect(refs.filter((ref) => ref.id.startsWith('odprawa#steps.')).map((ref) => ref.id)).toEqual([
+      'odprawa#steps.0.narration',
+      'odprawa#steps.1.narration',
+      'odprawa#steps.3.narration',
+      'odprawa#steps.4.narration',
+    ]);
     // Podpowiedzi (pole secret) nigdy nie dostają audio.
     expect(refs.some((ref) => ref.id.includes('hints'))).toBe(false);
     expect(new Set(refs.map((ref) => ref.id)).size).toBe(refs.length);

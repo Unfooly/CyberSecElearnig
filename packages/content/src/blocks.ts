@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
+import { MASCOT_POSES, audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -348,6 +348,70 @@ const summarySchema = z
   })
   .strict();
 
+// schemaVersion 5: "odprawa" na start modułu - ciąg kroków zamkniętego typu, każdy z własną (opcjonalną) narracją.
+// Osobny typ bloku, nie wariant NARRATIVE: struktura (kroki, krok "badge" z danymi z profilu gracza) jest zupełnie inna
+// niż jednorazowa narracja NARRATIVE, więc nie warto naciągać jej umowy dla wszystkich pozostałych użyć tego typu.
+// Nieoceniany, bez dowodów - zaliczany po ostatnim kroku albo po kliknięciu "Pomiń odprawę" (obsługa w apps/web, D-081).
+const briefingStepSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('typewriter'),
+      text: text(300),
+      sub: text(300).optional(),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('call'),
+      // Kto dzwoni: postać zapisana w treści (jak DIALOGUE.character - moduł nie ma wspólnego rejestru postaci) ALBO
+      // maskotka (`mascot`: poza Fooli, np. jako "Komisarz"). avatar i mascot wykluczają się (semantics.ts); bez żadnego
+      // z nich klient pokazuje inicjały z `name`.
+      caller: z
+        .object({
+          name: text(80),
+          role: text(120).optional(),
+          avatar: imagePathSchema.optional(),
+          mascot: z.enum(MASCOT_POSES).optional(),
+        })
+        .strict(),
+      text: text(500),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // caseFile: karta sprawy; lista zadań pod nią to `objectives` modułu (module.ts), nie pole kroku.
+  z
+    .object({
+      kind: z.literal('caseFile'),
+      caseNo: text(30),
+      title: text(120),
+      fields: z.array(z.object({ label: text(60), value: text(200) }).strict()).min(1).max(8),
+      stamp: text(30).optional(),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // badge: legitymacja gracza. Bez żadnych danych osobowych w treści - imię, avatar i numer odznaki liczy WYŁĄCZNIE
+  // klient z sesji (apps/web, BriefingBlock.tsx), nigdy z module.json ani z progress.
+  z
+    .object({
+      kind: z.literal('badge'),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+]);
+
+const briefingSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('BRIEFING'),
+    steps: z.array(briefingStepSchema).min(1).max(8),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -363,6 +427,7 @@ export const BLOCK_SCHEMAS = {
   ORDERING: orderingSchema,
   TABS: tabsSchema,
   SUMMARY: summarySchema,
+  BRIEFING: briefingSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -383,6 +448,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   orderingSchema,
   tabsSchema,
   summarySchema,
+  briefingSchema,
 ]);
 export type ServerBlock = z.infer<typeof blockSchema>;
 
@@ -404,6 +470,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   ORDERING: 1,
   TABS: 0,
   SUMMARY: 0,
+  BRIEFING: 0,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -597,6 +664,29 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   ORDERING: classify(['prompt', 'items[].id', 'items[].text'], ['scoring', 'explanation']),
   TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]'], []),
   SUMMARY: classify(['text'], []),
+  BRIEFING: classify(
+    [
+      'steps[].kind',
+      'steps[].text',
+      'steps[].sub',
+      'steps[].cta',
+      'steps[].caller.name',
+      'steps[].caller.role',
+      'steps[].caller.avatar',
+      'steps[].caller.mascot',
+      'steps[].caseNo',
+      'steps[].title',
+      'steps[].fields[].label',
+      'steps[].fields[].value',
+      'steps[].stamp',
+      'steps[].narration.text',
+      'steps[].narration.audioUrl',
+      'steps[].narration.durationMs',
+      'steps[].narration.cues[].text',
+      'steps[].narration.cues[].startMs',
+    ],
+    ['steps[].narration.spokenText'],
+  ),
 };
 
 // Walidacja semantyczna (relacje między polami, kompilacja wzorców RE2) jest w semantics.ts: to kod tylko dla Node (natywny

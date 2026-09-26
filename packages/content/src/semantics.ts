@@ -99,6 +99,10 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
 // featuresUsed dopasowuje po prefiksie, nie dokładnym stringu).
 const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to', 'hotspots[].action', 'hotspots[].media'];
 
+// schemaVersion 5: blok BRIEFING w całości i cel jako obiekt w `objectives` mają osobne sprawdzenie w parseModule (jak
+// blok NARRATIVE i subtitle/level/objectives przy v4) - nie ma tu nowych POJEDYNCZYCH pól wewnątrz innych typów bloków,
+// więc nie potrzeba osobnej listy V5_FEATURES/featuresUsed.
+
 function featuresUsed(block: ServerBlock, features: string[]): string[] {
   const paths = new Set(collectPaths(block));
   return features.filter((feature) => [...paths].some((path) => path === feature || path.startsWith(`${feature}.`) || path.startsWith(`${feature}[]`)));
@@ -262,6 +266,14 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       checkSubset('requiredTabs', block.requiredTabs, ids);
       break;
     }
+    case 'BRIEFING': {
+      block.steps.forEach((step, i) => {
+        if (step.kind === 'call' && step.caller.avatar !== undefined && step.caller.mascot !== undefined) {
+          errors.push(`steps[${i}].caller: avatar i mascot wykluczają się (dzwoni postać ALBO maskotka)`);
+        }
+      });
+      break;
+    }
     default:
       break;
   }
@@ -339,6 +351,9 @@ export function parseModule(input: unknown): ContentModule {
         errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 4`);
       }
     }
+    if (contentModule.schemaVersion < 5 && block.type === 'BRIEFING') {
+      errors.push(`blocks[${index}] (${block.id}): blok BRIEFING wymaga schemaVersion 5`);
+    }
   });
 
   // Metadane modułu z wersji 4 (nie są ścieżką WEWNĄTRZ bloku, więc osobne sprawdzenie od v3FeaturesUsed/v4FeaturesUsed).
@@ -347,6 +362,20 @@ export function parseModule(input: unknown): ContentModule {
     if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
     if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
   }
+  // Cel jako obiekt { text, completeWhen } (zadanie śledztwa) - od wersji 5. completeWhen wskazuje istniejące bloki, ale nie
+  // BRIEFING: "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań (D-081).
+  const blockTypes = new Map(contentModule.blocks.map((b) => [b.id, b.type]));
+  (contentModule.objectives ?? []).forEach((objective, i) => {
+    if (typeof objective === 'string') return;
+    if (contentModule.schemaVersion < 5) errors.push(`objectives[${i}]: cel jako obiekt wymaga schemaVersion 5`);
+    const ids = objective.completeWhen ?? [];
+    for (const id of duplicates(ids)) errors.push(`objectives[${i}].completeWhen: powtórzony blok "${id}"`);
+    for (const id of ids) {
+      const type = blockTypes.get(id);
+      if (type === undefined) errors.push(`objectives[${i}].completeWhen: nieznany blok "${id}"`);
+      else if (type === 'BRIEFING') errors.push(`objectives[${i}].completeWhen: blok odprawy (BRIEFING) nie może odhaczać zadań`);
+    }
+  });
 
   const summaries = contentModule.blocks.map((b, i) => (b.type === 'SUMMARY' ? i : -1)).filter((i) => i >= 0);
   if (summaries.length > 1) errors.push('SUMMARY: co najwyżej jeden blok podsumowania');

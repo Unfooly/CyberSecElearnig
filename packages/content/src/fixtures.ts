@@ -305,6 +305,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
     // klasyfikacji potrzebuje obu ścieżek w fixturze).
     BRIEFING: {
       ...base('odprawa'),
+      // Nieoceniany: waga musi być 0 (semantics.ts) - pole zostaje, żeby test klasyfikacji widział ścieżkę `weight`.
+      weight: 0,
       type: 'BRIEFING',
       steps: [
         { kind: 'typewriter', text: 'Wtorek, 7:58.', sub: 'Dzwoni telefon.', cta: 'Odbierz', narration: audio('odprawa-0') },

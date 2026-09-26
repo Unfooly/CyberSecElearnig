@@ -23,7 +23,11 @@ export async function GET() {
     }
     // Do przeglądarki wyłącznie te dwa pola, jako tekst albo null - nawet gdyby backend kiedyś zwrócił więcej.
     const text = (value: unknown) => (typeof value === 'string' && value.length > 0 ? value : null);
-    return NextResponse.json({ firstName: text(data?.firstName), lastInitial: text(data?.lastInitial) });
+    // no-store: dane osobowe nie zostają w cache przeglądarki (np. współdzielony komputer).
+    return NextResponse.json(
+      { firstName: text(data?.firstName), lastInitial: text(data?.lastInitial) },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (error) {
     console.error('Nie udało się połączyć z apps/api przy pobieraniu imienia:', (error as Error).message);
     return NextResponse.json({ message: 'Nie udało się połączyć z serwerem.' }, { status: 502 });

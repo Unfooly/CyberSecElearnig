@@ -48,6 +48,7 @@ describe('GET /api/users/me/display-name', () => {
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer access-token-value' }) }),
     );
     expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(await response.json()).toEqual({ firstName: 'Anna', lastInitial: 'K' });
   });
 

@@ -267,6 +267,8 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       break;
     }
     case 'BRIEFING': {
+      // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
+      if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
       block.steps.forEach((step, i) => {
         if (step.kind === 'call' && step.caller.avatar !== undefined && step.caller.mascot !== undefined) {
           errors.push(`steps[${i}].caller: avatar i mascot wykluczają się (dzwoni postać ALBO maskotka)`);

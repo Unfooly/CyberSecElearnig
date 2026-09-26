@@ -687,6 +687,10 @@ describe('parseModule: schemaVersion 5 (BRIEFING, objectives z completeWhen)', (
     expect(invalid((m) => (m.objectives[1].done = true))).toContain('objectives.1');
   });
 
+  it('BRIEFING: waga > 0 to błąd (blok nieoceniany zaniżałby wynik modułu)', () => {
+    expect(invalid((m) => (briefing(m).weight = 1))).toContain('blok BRIEFING jest nieoceniany');
+  });
+
   it('BRIEFING: krok call nie może mieć naraz avatara i maskotki', () => {
     expect(
       invalid((m) => {

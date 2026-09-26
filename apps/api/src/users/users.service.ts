@@ -427,7 +427,6 @@ export class UsersService {
     return { narrationEnabled: preferences.narrationEnabled };
   }
 
-  /** Własny avatar (Topbar) - organizationId/userId wyłącznie z tokena JWT. */
   /**
    * Imię i INICJAŁ nazwiska własnego konta (legitymacja w odprawie odtwarzacza, D-081) - nic więcej: pełne nazwisko nie jest
    * potrzebne, więc nie wychodzi. organizationId i userId WYŁĄCZNIE z tokena (UsersController, bez parametru userId); jawny
@@ -446,6 +445,7 @@ export class UsersService {
     return { firstName, lastInitial };
   }
 
+  /** Własny avatar (Topbar) - organizationId/userId wyłącznie z tokena JWT. */
   async getAvatar(organizationId: string, userId: string): Promise<{ avatarUrl: string | null }> {
     const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
       tx.user.findFirst({ where: { id: userId, organizationId }, select: { avatarUrl: true } }),

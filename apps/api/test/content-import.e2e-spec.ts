@@ -43,35 +43,7 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(course).toMatchObject({ slug: slug('nowy'), title: content.title, category: content.category, mandatory: content.mandatory });
     const versions = await prisma.courseVersion.findMany({ where: { courseId: result.courseId } });
     expect(versions).toHaveLength(1);
-    // schemaVersion 5: skrót obejmuje bloki I cele (versionContentHash), a pełne cele (z completeWhen) są przy wersji (D-081).
-    expect(versions[0]).toMatchObject({
-      version: 1,
-      schemaVersion: 5,
-      contentHash: hashContent({ blocks: content.blocks, objectives: content.objectives }),
-      blockCount: content.blocks.length,
-      objectives: content.objectives,
-    });
-    // Kurs (katalog) dostaje same teksty celów.
-    expect(course.objectives).toEqual(['Rozpoznać phishing', 'Nie klikać podejrzanych linków']);
-  });
-
-  it('schemaVersion 5: zmiana SAMYCH celów (completeWhen) tworzy nową wersję; moduł w wersji 4 liczy skrót jak dotąd (same bloki)', async () => {
-    const content = moduleFixture('cele');
-    const first = await prisma.$transaction((tx) => importModule(tx, content));
-    const changed = moduleFixture('cele', { objectives: ['Rozpoznać phishing', { text: 'Nie klikać podejrzanych linków', completeWhen: ['mail'] }] });
-    const second = await prisma.$transaction((tx) => importModule(tx, changed));
-    expect(second).toMatchObject({ courseId: first.courseId, versionCreated: true, version: 2 });
-    const latest = await prisma.courseVersion.findFirstOrThrow({ where: { courseId: first.courseId, version: 2 } });
-    expect(latest.objectives).toEqual(changed.objectives);
-
-    const legacyFormat = moduleFixture('cele-v4', {
-      schemaVersion: 4,
-      objectives: ['Rozpoznać phishing'],
-      blocks: fullModule().blocks.filter((block) => block.type !== 'BRIEFING'),
-    });
-    const v4 = await prisma.$transaction((tx) => importModule(tx, legacyFormat));
-    const v4Version = await prisma.courseVersion.findFirstOrThrow({ where: { courseId: v4.courseId } });
-    expect(v4Version.contentHash).toBe(hashContent(legacyFormat.blocks));
+    expect(versions[0]).toMatchObject({ version: 1, schemaVersion: 5, contentHash: hashContent(content.blocks), blockCount: content.blocks.length });
   });
 
   it('ponowny import identycznej treści jest idempotentny: bez nowej wersji', async () => {

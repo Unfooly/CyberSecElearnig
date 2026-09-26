@@ -912,8 +912,7 @@ model Course {
   category        CourseCategory
   durationMinutes Int
   mandatory       Boolean        @default(false)
-  // Cele szkolenia (lista TEKSTÓW, packages/content) z ostatniego importu - wyłącznie dla katalogu kursów (D-065). Odtwarzacz
-  // czyta cele z wersji (CourseVersion.objectives, D-081); usunięcie tej kolumny: backlog B-107.
+  // Cele szkolenia (lista tekstów, packages/content), do SUMMARY "Czego się nauczyłeś" - opcjonalne.
   objectives      Json?
   // Uporządkowana lista bloków treści (VIDEO/QUIZ/BRANCHING_SCENARIO/
   // DRAG_AND_DROP) - patrz docs/content-backlog-elearning.md. Dla QUIZ i
@@ -947,10 +946,6 @@ model CourseVersion {
   contentHash   String   @db.VarChar(80)
   contentBlocks Json
   blockCount    Int
-  // Cele modułu TEJ wersji (schemaVersion 5: tekst albo { text, completeWhen: blockId[] } - D-081). Przy wersji, a nie tylko
-  // w Course.objectives, bo completeWhen wskazuje bloki konkretnej wersji. Null = moduł bez celów (albo wersja sprzed
-  // importu z celami).
-  objectives    Json?
   createdAt     DateTime @default(now())
 
   // CASCADE tylko z kursu bez przypisań: przypisanie ma RESTRICT na kurs i na wersję (B-032), więc nie da się skasować

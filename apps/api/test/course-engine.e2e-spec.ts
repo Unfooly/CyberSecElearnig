@@ -66,7 +66,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     return parseModule(module).blocks;
   }
 
-  async function createCourse(title: string, blocks: unknown[], schemaVersion: 1 | 2 | 5, withVersion = true, objectives?: unknown) {
+  async function createCourse(title: string, blocks: unknown[], schemaVersion: 1 | 2 | 5, withVersion = true) {
     const course = await prisma.course.create({
       data: { title, category: 'EMAIL_SECURITY', durationMinutes: 5, contentBlocks: blocks as never },
     });
@@ -80,7 +80,6 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
           contentHash: hashContent(blocks),
           contentBlocks: blocks as never,
           blockCount: blocks.length,
-          ...(objectives !== undefined ? { objectives: objectives as never } : {}),
         },
       });
     }
@@ -125,11 +124,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     userAId = userA.id;
     userBId = userB.id;
 
-    // Cele wersji (schemaVersion 5, D-081): tekst z v4, zadanie z completeWhen i jedno id bloku, którego w wersji NIE ma.
-    engineCourseId = await createCourse(`Silnik scen ${suffix}`, engineBlocks(), 5, true, [
-      'Rozpoznać phishing',
-      { text: 'Nie klikać podejrzanych linków', completeWhen: ['mail', 'nie-ma-takiego-bloku', 'kolejnosc'] },
-    ]);
+    engineCourseId = await createCourse(`Silnik scen ${suffix}`, engineBlocks(), 5);
     textCourseId = await createCourse(`Zadanie tekstowe ${suffix}`, [textBlock(), videoBlock('wideo')], 2);
     // Celowo BRAK przypisania kursów silnika dla organizacji B (testy izolacji).
     await assign(orgAId, userAId, engineCourseId);
@@ -166,14 +161,10 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       }
     });
 
-    it('cele/zadania z WERSJI przypisania w jednej postaci; completeWhen tylko z id bloków tej wersji (D-081)', async () => {
-      const body = (await start(tokenA, engineCourseId).expect(200)).body;
-      expect(body.objectives).toEqual([
-        { text: 'Rozpoznać phishing' },
-        { text: 'Nie klikać podejrzanych linków', completeWhen: ['mail', 'kolejnosc'] },
-      ]);
-      // Wersja bez celów (kurs sprzed schemaVersion 5): pusta lista, nie null ani brak pola.
-      expect((await start(tokenA, textCourseId).expect(200)).body.objectives).toEqual([]);
+    it('zadania sprawy (BRIEFING, karta sprawy) docierają do klienta w treści wersji: id, tekst i completeWhen (D-081)', async () => {
+      const blocks = (await start(tokenA, engineCourseId).expect(200)).body.contentBlocks as { type: string; steps?: Record<string, unknown>[] }[];
+      const caseFile = blocks.find((b) => b.type === 'BRIEFING')!.steps!.find((s) => s.kind === 'caseFile')!;
+      expect(caseFile.tasks).toEqual([{ id: 'linki', text: 'Nie klikaj podejrzanych linków.', completeWhen: ['mail', 'kolejnosc'] }]);
     });
 
     it('klient nie dostaje podpowiedzi, rozwiązania ani poprawnych odpowiedzi zadania tekstowego, tylko liczbę podpowiedzi', async () => {
@@ -586,11 +577,8 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       ];
       // Wersja 1 (jak z migracji dla istniejących kursów) + późniejszy import nowej treści (wersja 2).
       legacyCourseId = await createCourse(`Legacy ${suffix}`, legacyBlocks, 1);
-      // Cele z fixtury (schemaVersion 5) wskazują w completeWhen bloki pełnego modułu (mail, kolejnosc), których tu nie ma -
-      // walidacja słusznie by je odrzuciła, a ten test dotyczy wyłącznie wersji treści: same teksty celów.
       const v2Blocks = parseModule({
         ...JSON.parse(JSON.stringify(fullModule())),
-        objectives: ['Rozpoznać phishing'],
         blocks: [{ id: 'nowy', type: 'NOTEPAD' }, { id: 'drugi', type: 'NOTEPAD' }, { id: 'koniec', type: 'SUMMARY' }],
       }).blocks;
       await prisma.courseVersion.create({

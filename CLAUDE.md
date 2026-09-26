@@ -200,7 +200,8 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     nie sandbox (nie wykryje m.in. poleceń ze zmiennych, skryptów i aliasów z `~/.gitconfig`; fail-open przy uszkodzonym wejściu hooka). Jeśli coś z listy jest naprawdę potrzebne, zatrzymaj się i zapytaj użytkownika.
 
 12. **Zmiana układu odtwarzacza = `layout-check` przed pushem.** PR dotykający `PlayerStage.tsx`, `SceneHotspotsBlock.tsx`,
-    `ScenePanContainer.tsx`, kart hotspotu/bottom sheeta uruchamia lokalnie `node scripts/layout-check.mjs` (Playwright, prawdziwa
+    `ScenePanContainer.tsx`, `DialogueBlock.tsx`, kart hotspotu/bottom sheeta/wątku rozmowy uruchamia lokalnie
+    `node scripts/layout-check.mjs` (Playwright, prawdziwa
     przeglądarka - jsdom nie liczy layoutu CSS: container query, grid, `cqw`/`cqh` - nie złapie regresji, które łapie ten skrypt;
     poznane na fix/hotspot-card-fit/B-101, druga runda code review) przed pushem i wkleja wynik (tabela viewport × przypadek →
     OK/błąd) do opisu PR. Skrypt spawnuje `next dev` z `NEXT_PUBLIC_DEV_HARNESS=1` (strona

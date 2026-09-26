@@ -325,6 +325,23 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: dymek czytelny (rozsądna szerokość, bez wielowierszowego przycinania pojedynczych słów) na telefonie
   w pionie; test regresyjny albo dopisanie do `scripts/layout-check.mjs`.
 
+### B-103 Dymek maskotki może wizualnie zachodzić na pierwszy chip stopki DIALOGUE
+- Etykiety: `P3`, `bug`, `mod:web` · Źródło: `fix/dialogue-sticky-questions` - zauważone przy okazji (zrzuty
+  `scripts/layout-check.mjs`, `1366x768-dialogue-00-start.png`), PRE-EXISTING geometria `MascotOverlay.tsx`
+  (`bottom-3 left-3`, dymek rozwija się do ~280px w prawo od ikonki) w połączeniu z NOWĄ, zawsze widoczną stopką
+  DIALOGUE (chipy pytań, `.pl-24 sm:pl-28` w `DialogueBlock.tsx` rezerwuje miejsce WYŁĄCZNIE na samą ikonkę, nie na
+  rozwinięty dymek). Numer B-103 nadany przy rebase na `main` po zmergowaniu PR #51, który równolegle zajął B-102
+  (`feat/player-portrait`) innym, niezależnym zgłoszeniem o tym samym komponencie.
+- Opis: na starcie rozmowy (dymek jeszcze rozwinięty, przed 8 s auto-zwinięciem/pierwszym kliknięciem) pierwszy chip
+  listy pytań bywa częściowo przykryty dymkiem maskotki - wizualnie nieczytelny/trudny do trafienia w tym miejscu
+  (użytkownik klikający w przykrytą część widzi/dotyka dymek, nie chip - drugi klik trafia już poprawnie, bo pierwszy
+  zwija dymek). Zautomatyzowany `scripts/layout-check.mjs` tego NIE łapie (Playwright klika w ŚRODEK bounding boksa
+  chipa, który zwykle wychodzi poza obszar zachodzenia) - to czysto wizualny/UX problem, nie twardy blocker kliknięcia.
+  Pełne rozwiązanie wymaga albo zarezerwowania ~400px (ikonka+pełna szerokość dymka - marnotrawne, gdy dymek
+  zwinięty) albo zmiany w `MascotOverlay.tsx` (współdzielony przez wszystkie typy bloków - poza zakresem tego PR-a).
+- Akceptacja: pierwszy chip nigdy nie jest wizualnie przykryty dymkiem maskotki, niezależnie od długości jego tekstu;
+  test regresyjny (layout-check.mjs albo jsdom - bounding boxy się nie nakładają).
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -25,7 +25,9 @@
           "cta": "Odbierz",
           "narration": {
             "text": "Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy.",
-            "spokenText": "Wtorek, dziewiąta czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy."
+            "spokenText": "Wtorek, dziewiąta czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy.",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
+            "durationMs": 6037
           }
         },
         {
@@ -39,7 +41,9 @@
           "narration": {
             "text": "Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
             "spokenText": "Detektywie, mamy zgłoszenie z Unfooly. Z konta firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
-            "voice": "komisarz"
+            "voice": "komisarz",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
+            "durationMs": 13050
           }
         },
         {
@@ -47,34 +51,54 @@
           "caseNo": "CS/2026/0915",
           "title": "Nieautoryzowany przelew",
           "fields": [
-            { "label": "Poszkodowana", "value": "Anna Kowalska (księgowa, Unfooly Sp. z o.o.)" },
-            { "label": "Strata", "value": "14 000,00 PLN" },
-            { "label": "Kiedy", "value": "wtorek 9:12" },
-            { "label": "Zgłosił", "value": "Marek Zieliński, dział IT" }
+            {
+              "label": "Poszkodowana",
+              "value": "Anna Kowalska (księgowa, Unfooly Sp. z o.o.)"
+            },
+            {
+              "label": "Strata",
+              "value": "14 000,00 PLN"
+            },
+            {
+              "label": "Kiedy",
+              "value": "wtorek 9:12"
+            },
+            {
+              "label": "Zgłosił",
+              "value": "Marek Zieliński, dział IT"
+            }
           ],
           "stamp": "Priorytet",
           "tasks": [
             {
               "id": "dostep",
               "text": "Ustal, jak przestępca dostał się do konta.",
-              "completeWhen": ["rekonstrukcja"]
+              "completeWhen": [
+                "rekonstrukcja"
+              ]
             },
             {
               "id": "dowody",
               "text": "Zbierz dowody w biurze Anny.",
-              "completeWhen": ["biuro-anny"]
+              "completeWhen": [
+                "biuro-anny"
+              ]
             },
             {
               "id": "zapobieganie",
               "text": "Wskaż, co mogło zatrzymać atak.",
-              "completeWhen": ["rozmowa-marek"]
+              "completeWhen": [
+                "rozmowa-marek"
+              ]
             }
           ],
           "cta": "Biorę sprawę",
           "narration": {
             "text": "Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.",
             "spokenText": "Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT. Reszta jest w biurze Anny.",
-            "voice": "komisarz"
+            "voice": "komisarz",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
+            "durationMs": 10217
           }
         },
         {
@@ -82,7 +106,23 @@
           "cta": "Ruszam na miejsce",
           "narration": {
             "text": "Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa. Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą.",
-            "voice": "komisarz"
+            "voice": "komisarz",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/997fd2d0bbdbec16.mp3",
+            "durationMs": 7616,
+            "cues": [
+              {
+                "text": "Legitymacja gotowa.",
+                "startMs": 0
+              },
+              {
+                "text": "Od dziś jesteś w Wydziale Cyberbezpieczeństwa.",
+                "startMs": 1521
+              },
+              {
+                "text": "Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą.",
+                "startMs": 4400
+              }
+            ]
           }
         },
         {
@@ -90,7 +130,15 @@
           "text": "Unfooly, drugie piętro.",
           "cta": "Wchodzę",
           "narration": {
-            "text": "Unfooly, drugie piętro."
+            "text": "Unfooly, drugie piętro.",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/8db1d7b01f2d1bdc.mp3",
+            "durationMs": 1718,
+            "cues": [
+              {
+                "text": "Unfooly, drugie piętro.",
+                "startMs": 0
+              }
+            ]
           }
         }
       ]
@@ -220,7 +268,43 @@
             "kind": "audio",
             "narration": {
               "voice": "bank",
-              "text": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot."
+              "text": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.",
+              "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/59cb257a096700d9.mp3",
+              "durationMs": 36224,
+              "cues": [
+                {
+                  "text": "Dzień dobry, pani Anno.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor.",
+                  "startMs": 1846
+                },
+                {
+                  "text": "Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji.",
+                  "startMs": 5573
+                },
+                {
+                  "text": "Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony.",
+                  "startMs": 12121
+                },
+                {
+                  "text": "Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony.",
+                  "startMs": 18158
+                },
+                {
+                  "text": "To zajmie minutę.",
+                  "startMs": 27121
+                },
+                {
+                  "text": "Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie.",
+                  "startMs": 28503
+                },
+                {
+                  "text": "Dziękuję i przepraszam za kłopot.",
+                  "startMs": 34320
+                }
+              ]
             },
             "image": "assets/wyludzone-haslo/scenes/telefon-zoom.6d63d5dc.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"

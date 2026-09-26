@@ -366,8 +366,8 @@ edycja SVG.
 Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 
 Audio poczty głosowej (hotspot `telefon`): od D-082 nagrywane potokiem TTS (`media.narration`, głos `bank`), tekst =
-transkrypcja z Bloku 2 bez zmian. Stary gotowy plik `assets/audio/poczta-glosowa.mp3` (D-071, `--assets`) zostaje w repo
-do czasu opublikowania i podpięcia nowego nagrania, potem do usunięcia.
+transkrypcja z Bloku 2 bez zmian. Dawny gotowy plik `assets/audio/poczta-glosowa.mp3` (D-071, `--assets`) usunięty z repo po
+opublikowaniu i podpięciu nowego nagrania (w magazynie zostaje - starsze wersje kursu mogą na niego wskazywać).
 
 Głosy (D-082, `narration.voice`, mapowanie rola → voiceId w `scripts/content/voices.json`): `narrator` (domyślny - lektor
 wszystkich bloków, w odprawie kroki typewriter i start), `komisarz` (odprawa: kroki call, caseFile, badge), `bank` (poczta

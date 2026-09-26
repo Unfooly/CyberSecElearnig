@@ -1,64 +1,129 @@
 {
-  "lockVersion": 1,
+  "lockVersion": 2,
   "slug": "wyludzone-haslo",
   "audioVersion": "v1",
   "model": "eleven_multilingual_v2",
   "language": "pl",
-  "voiceId": "o2xdfKUpc1Bwq7RchZuW",
   "entries": {
+    "odprawa#steps.0.narration": {
+      "hash": "046cb6b2872551f0",
+      "key": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
+      "textSha": "2dceb65435e1c781",
+      "durationMs": 6037,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "odprawa#steps.1.narration": {
+      "hash": "d07f51b5ba3647d7",
+      "key": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
+      "textSha": "4b6adc318e5aa13f",
+      "durationMs": 13050,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.2.narration": {
+      "hash": "bcc46163499f84a1",
+      "key": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
+      "textSha": "7370db00fbe0c3c6",
+      "durationMs": 10217,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.3.narration": {
+      "hash": "997fd2d0bbdbec16",
+      "key": "audio/wyludzone-haslo/v1/odprawa/997fd2d0bbdbec16.mp3",
+      "textSha": "301f4d0f6e4e0a9e",
+      "durationMs": 7616,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.4.narration": {
+      "hash": "8db1d7b01f2d1bdc",
+      "key": "audio/wyludzone-haslo/v1/odprawa/8db1d7b01f2d1bdc.mp3",
+      "textSha": "3e273ed3025a212b",
+      "durationMs": 1718,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
     "korytarz#narration": {
       "hash": "c5289f58af9023ab",
       "key": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
       "textSha": "2e22962e2098b76b",
-      "durationMs": 10031
+      "durationMs": 10031,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "biuro-anny#narration": {
       "hash": "7a5f0aeb354f1d3f",
       "key": "audio/wyludzone-haslo/v1/biuro-anny/7a5f0aeb354f1d3f.mp3",
       "textSha": "3429b1f7f758a6a8",
-      "durationMs": 10913
+      "durationMs": 10913,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "biuro-anny#hotspots.2.media.narration": {
+      "hash": "59cb257a096700d9",
+      "key": "audio/wyludzone-haslo/v1/biuro-anny/59cb257a096700d9.mp3",
+      "textSha": "998e1ab9235fcf38",
+      "durationMs": 36224,
+      "voice": "bank",
+      "voiceId": "B9cNwbQXN3s6l3nU6fqz"
     },
     "rozmowa-anna#narration": {
       "hash": "06ac7fb55530441f",
       "key": "audio/wyludzone-haslo/v1/rozmowa-anna/06ac7fb55530441f.mp3",
       "textSha": "2414d7a8618116cf",
-      "durationMs": 11656
+      "durationMs": 11656,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "ten-mail#narration": {
       "hash": "3c9b7959f45165eb",
       "key": "audio/wyludzone-haslo/v1/ten-mail/3c9b7959f45165eb.mp3",
       "textSha": "4d4e9148bdc1a9d5",
-      "durationMs": 12028
+      "durationMs": 12028,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "akta-sprawy#narration": {
       "hash": "b95c830fe00e754f",
       "key": "audio/wyludzone-haslo/v1/akta-sprawy/b95c830fe00e754f.mp3",
       "textSha": "36f6fb08300fde7d",
-      "durationMs": 6734
+      "durationMs": 6734,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "rozmowa-marek#narration": {
       "hash": "8f7ee5eba0bbea22",
       "key": "audio/wyludzone-haslo/v1/rozmowa-marek/8f7ee5eba0bbea22.mp3",
       "textSha": "ccacdec78159673d",
-      "durationMs": 7988
+      "durationMs": 7988,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "rekonstrukcja#narration": {
       "hash": "c7eb9bb462503fd0",
       "key": "audio/wyludzone-haslo/v1/rekonstrukcja/c7eb9bb462503fd0.mp3",
       "textSha": "94f725566bad6d2a",
-      "durationMs": 5805
+      "durationMs": 5805,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "ostatnie-pytanie#narration": {
       "hash": "046e257f21ea0267",
       "key": "audio/wyludzone-haslo/v1/ostatnie-pytanie/046e257f21ea0267.mp3",
       "textSha": "a769aef3797f2fb0",
-      "durationMs": 5619
+      "durationMs": 5619,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "rozwiazanie-sprawy#narration": {
       "hash": "01c92de143a8711c",
       "key": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/01c92de143a8711c.mp3",
       "textSha": "1330fba869b0d6f4",
-      "durationMs": 21734
+      "durationMs": 21734,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     }
   }
 }

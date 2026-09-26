@@ -19,7 +19,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useCallback, use
 // tego nie obchodzimy (Keyboard Lock API działa tylko w Chromium i wymaga dodatkowych uprawnień/kontekstu) -
 // 'fullscreen' to warstwa jak każda inna w LIFO (dotyczy ścieżek innych niż "Escape w trakcie fullscreena", np.
 // programowe wywołanie closeTop()), nie zmienia natywnego zachowania przeglądarki.
-export type OverlayLayer = 'hotspotCard' | 'transcript' | 'notebook' | 'fullscreen' | 'reward';
+// 'reward' USUNIĘTE (fix/course-finish-flow): CourseRewardModal.tsx (jedyny konsument tej warstwy) skasowany -
+// karta nagrody na SummaryScreen (RewardCard.tsx) jest zwykłą treścią ekranu, nie nakładką overlay-stack.
+export type OverlayLayer = 'hotspotCard' | 'transcript' | 'notebook' | 'fullscreen';
 
 interface OverlayEntry {
   isOpen: boolean;

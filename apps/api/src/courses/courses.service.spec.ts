@@ -506,8 +506,11 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     awardCourseCompletion.mockResolvedValue({
       xpGained: 150,
       newLevel: 2,
+      previousLevel: 1,
       leveledUp: true,
       unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+      levelProgressBeforePercent: 90,
+      levelProgressAfterPercent: 100,
     });
 
     const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
@@ -515,8 +518,11 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     expect(result.gamification).toEqual({
       xpGained: 150,
       newLevel: 2,
+      previousLevel: 1,
       leveledUp: true,
       unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+      levelProgressBeforePercent: 90,
+      levelProgressAfterPercent: 100,
     });
   });
 

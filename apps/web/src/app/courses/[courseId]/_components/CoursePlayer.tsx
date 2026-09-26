@@ -6,6 +6,7 @@ import type {
   ClientNote,
   ClientProgressBlock,
   ContentBlock,
+  ContentReaction,
   CourseCompletionReward,
   CourseDetail,
   CourseProgressResponse,
@@ -156,9 +157,15 @@ export default function CoursePlayer({
   const [feedback, setFeedback] = useState<LastResult | null>(null);
   // Obecne WYŁĄCZNIE po świeżym ukończeniu w TEJ sesji (ustawiane w
   // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
-  // wrócił do wcześniej ukończonego kursu, więc CourseRewardModal wtedy się
-  // nie pokazuje.
+  // wrócił do wcześniej ukończonego kursu, więc karta nagrody (RewardCard,
+  // SummaryScreen.tsx) wtedy się nie pokazuje.
   const [reward, setReward] = useState<CourseCompletionReward | null>(null);
+  // Reakcja Fooli NA WYNIK ostatniego bloku (reactions.result), gdy TA ODPOWIEDŹ kończy kurs (fix/course-finish-flow)
+  // ORAZ pominięty jest ekran feedbacku (blok SUMMARY/eksploracyjny - skipsFeedbackScreen niżej) - SummaryScreen
+  // pokazuje ją wtedy jako zwykłą treść ekranu (MascotSays), zamiast tego pominiętego ekranu, który normalnie by ją
+  // pokazał. Gdy kurs kończy blok OCENIANY (D-076): ekran feedbacku ZOSTAJE i sam pokazuje reakcję - null tutaj, bez
+  // powtórki na SummaryScreen. Ten sam cykl życia co `reward`: null, dopóki user nie ukończy kursu W TEJ SESJI.
+  const [finalReaction, setFinalReaction] = useState<ContentReaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
@@ -188,6 +195,10 @@ export default function CoursePlayer({
   const handleReady = (submit: (() => void) | null) => setReadySubmit(() => submit);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Fokus po przejściu na SummaryScreen ląduje na JEJ WŁASNYM, widocznym nagłówku "Sprawa zamknięta" (h2), nie na
+  // sr-only nagłówku PlayerStage.tsx (ten drugi zostaje wyłącznie dla zmiany bloku - D-076, poprawka po code review:
+  // wcześniejszy `headingOverride` dublował ten sam tekst w dwóch miejscach, jednym ukrytym).
+  const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
   // Dzielony z TranscriptPanel.tsx: fokus wraca na przycisk "Transkrypcja" (NarrationBar) po zamknięciu panelu.
   const transcriptButtonRef = useRef<HTMLButtonElement>(null);
   const mounted = useRef(false);
@@ -204,13 +215,19 @@ export default function CoursePlayer({
     [blocks],
   );
 
-  // Po zmianie bloku fokus na nagłówek sceny (czytniki ekranu i klawiatura zaczynają od nowej treści); nie przy pierwszym renderze.
+  // Po zmianie bloku (albo przejściu na SummaryScreen) fokus na nagłówek nowej treści (czytniki ekranu i klawiatura
+  // zaczynają od niej); nie przy pierwszym renderze. W trybie podsumowania cel to WIDOCZNY nagłówek SummaryScreen
+  // (summaryHeadingRef), poza nim - sr-only nagłówek PlayerStage.tsx (headingRef).
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
     }
-    headingRef.current?.focus();
+    if (isSummaryMode) {
+      summaryHeadingRef.current?.focus();
+    } else {
+      headingRef.current?.focus();
+    }
   }, [displayedIndex, feedback, isSummaryMode]);
 
   const hasAudio = (index: number) =>
@@ -252,22 +269,28 @@ export default function CoursePlayer({
       // gdy NOWY blok sam zgłosi gotowość w swoim efekcie montowania (onReady), zrobi to PO tym resecie w tym samym
       // commitcie, więc jego wynik się ostaje; gdy nie zgłosi (QUIZ, SUMMARY), zostaje poprawnie null.
       setReadySubmit(null);
-      // Bloki eksploracyjne i TEXT_INPUT_GUIDED pokazują swój wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle
-      // ruszy (mascot-reaction.tsx: useCompleteReaction; TextInputBlock: stan `done`) - osobny ekran "Blok ukończony."
-      // z jeszcze jednym "Dalej" byłby powtórzeniem tego, co user już widział (raport z pierwszego przejścia modułu
-      // 1). Dla nich ZOSTAJE feedback=null: state niżej sam przenosi na kolejny blok. SUMMARY WYŁĄCZONE mimo że
-      // isExploratory() je obejmuje: to zawsze ostatni blok kursu, jego własny przycisk ("Zakończ sprawę"/"Zakończ
-      // szkolenie") kończy kurs wprost - pośredni FeedbackPanel + "Zobacz podsumowanie" ma tu sens (inne niż w
-      // trakcie kursu podsumowanie samego wyniku), więc zachowanie sprzed tego PR zostaje bez zmian.
-      const skipsFeedbackScreen =
-        (isExploratory(progress.lastResult.type) && progress.lastResult.type !== 'SUMMARY') ||
-        progress.lastResult.type === 'TEXT_INPUT_GUIDED';
+      // Bloki eksploracyjne (SCENE_HOTSPOTS/DIALOGUE/NOTEPAD/TABS/NARRATIVE/SUMMARY) i TEXT_INPUT_GUIDED pokazują swój
+      // wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle ruszy (mascot-reaction.tsx: useCompleteReaction;
+      // TextInputBlock: stan `done`) - osobny ekran "Blok ukończony." z jeszcze jednym "Dalej" byłby powtórzeniem
+      // tego, co user już widział (raport z pierwszego przejścia modułu 1). Dla nich ZOSTAJE feedback=null: state
+      // niżej sam przenosi na kolejny blok ALBO (gdy to była TA odpowiedź, co kończy kurs - `state.status` już
+      // 'COMPLETED') na SummaryScreen wprost (isSummaryMode liczy się z samego `state.status` i `feedback`, niżej) -
+      // BEZ pośredniego ekranu "Blok ukończony."/"Zobacz podsumowanie" (fix/course-finish-flow).
+      //
+      // Blok OCENIANY (QUIZ, EMAIL_ANALYSIS, ORDERING...), gdy TO ON kończy kurs: decyzja produktu D-076 (poprawka
+      // po code review) - zostaje normalny ekran feedbacku z wyjaśnieniem odpowiedzi (bez niego user by je stracił -
+      // SummaryScreen ma tylko zagregowany wynik procentowy). "Dalej" na tym ekranie (continueAfterFeedback czyści
+      // `feedback`) samo przechodzi na SummaryScreen, bo `state.status` jest już 'COMPLETED' z TEGO zapisu -
+      // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Reakcja maskotki na wynik (reactions.result) jest już
+      // pokazana w TYM ekranie feedbacku, więc `finalReaction` (SummaryScreen) jej nie powtarza.
+      const skipsFeedbackScreen = isExploratory(progress.lastResult.type) || progress.lastResult.type === 'TEXT_INPUT_GUIDED';
       if (skipsFeedbackScreen) {
         setFeedback(null);
         setAutoPlayFor(hasAudio(progress.lastResult.blockIndex) ? keyOf(progress.currentBlockIndex) : null);
       } else {
         setFeedback(progress.lastResult);
       }
+      setFinalReaction(progress.status === 'COMPLETED' && skipsFeedbackScreen ? (progress.lastResult.reaction ?? null) : null);
       setResults((current) => {
         const blockId = progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex);
         return {
@@ -355,7 +378,6 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
-  const continueLabel = state.status === 'COMPLETED' ? 'Zobacz podsumowanie' : 'Dalej';
   // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
   const contentLayout: 'scene' | 'slide' = !isSummaryMode && !showingFeedback && currentBlock?.type === 'SCENE_HOTSPOTS' ? 'scene' : 'slide';
@@ -364,11 +386,24 @@ export default function CoursePlayer({
 
   let stage: React.ReactNode;
   if (isSummaryMode) {
-    stage = <SummaryScreen title={initial.title} score={state.score} scoreUnavailable={scoreUnavailable} reward={reward} restartError={restartError} />;
+    stage = (
+      <SummaryScreen
+        title={initial.title}
+        score={state.score}
+        scoreUnavailable={scoreUnavailable}
+        reward={reward}
+        reaction={finalReaction}
+        restartError={restartError}
+        headingRef={summaryHeadingRef}
+      />
+    );
   } else if (showingFeedback) {
     const answered = blocks[feedback.blockIndex];
     const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
     // Mail i kolejność pokazują wynik w samym bloku (wybór gracza, trafienia, wyjaśnienia); reszta ogólny komunikat.
+    // "Dalej" (etykieta zawsze taka sama - fix/course-finish-flow zdjął dawne "Zobacz podsumowanie"): gdy TA
+    // odpowiedź kończy kurs (blok oceniany jako ostatni, D-076), state.status jest już 'COMPLETED', więc kliknięcie
+    // samo przechodzi na SummaryScreen (continueAfterFeedback czyści `feedback`, isSummaryMode przejmuje).
     stage =
       answered && hasInlineResult(answered.type) && feedback.detail ? (
         <ScoredBlock
@@ -377,10 +412,10 @@ export default function CoursePlayer({
           courseId={courseId}
           result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
           onContinue={continueAfterFeedback}
-          continueLabel={continueLabel}
+          continueLabel="Dalej"
         />
       ) : (
-        <FeedbackPanel feedback={feedback} onContinue={continueAfterFeedback} continueLabel={continueLabel} />
+        <FeedbackPanel feedback={feedback} onContinue={continueAfterFeedback} continueLabel="Dalej" />
       );
   } else if (!currentBlock) {
     stage = <p className="text-slate-500">Nie znaleziono treści tego bloku.</p>;
@@ -436,6 +471,16 @@ export default function CoursePlayer({
     resetKey: isSummaryMode ? 'summary' : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`,
   });
 
+  // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
+  // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
+  // tym gdy user wraca do już dawno ukończonego kursu (reward null, RewardCard się wtedy też nie renderuje).
+  const resultAnnouncement =
+    isSummaryMode && reward
+      ? reward.xpGained > 0
+        ? `Kurs ukończony. Zdobyto ${reward.xpGained} punktów doświadczenia.`
+        : 'Kurs ukończony ponownie. Punkty doświadczenia naliczone przy pierwszym ukończeniu.'
+      : '';
+
   return (
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
       <EvidenceProvider summary={evidence}>
@@ -447,6 +492,7 @@ export default function CoursePlayer({
             totalBlocks={blocks.length}
             completedBlocks={isSummaryMode ? blocks.length : state.currentBlockIndex}
             headingRef={headingRef}
+            resultAnnouncement={resultAnnouncement}
             showMascot={!isSummaryMode}
             evidence={<EvidenceCounter />}
             idleMascot={

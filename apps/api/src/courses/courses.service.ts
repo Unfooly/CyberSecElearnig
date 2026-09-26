@@ -342,6 +342,7 @@ export class CoursesService {
           ? {
               xpGained: gamification.xpGained,
               newLevel: gamification.newLevel,
+              previousLevel: gamification.previousLevel,
               leveledUp: gamification.leveledUp,
               unlockedBadges: gamification.unlockedBadges.map((badge) => ({
                 code: badge.code,
@@ -349,6 +350,8 @@ export class CoursesService {
                 icon: badge.icon,
                 xpReward: badge.xpReward,
               })),
+              levelProgressBeforePercent: gamification.levelProgressBeforePercent,
+              levelProgressAfterPercent: gamification.levelProgressAfterPercent,
             }
           : null,
       };

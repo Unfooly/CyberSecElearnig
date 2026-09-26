@@ -299,13 +299,19 @@ export interface LastResult {
 }
 
 // Obecne WYŁĄCZNIE gdy dana odpowiedź /progress ukończyła kurs - patrz
-// apps/api CourseProgressResponseDto. CourseRewardModal pokazuje się tylko
-// wtedy.
+// apps/api CourseProgressResponseDto. Karta nagrody na SummaryScreen
+// (fix/course-finish-flow) pokazuje się tylko wtedy.
 export interface CourseCompletionReward {
   xpGained: number;
   newLevel: number;
+  // Poziom SPRZED tego przyznania XP.
+  previousLevel: number;
   leveledUp: boolean;
   unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
+  // Pasek poziomu "przed -> po" (SummaryScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
+  // przy awansie `levelProgressAfterPercent` jest przycięty do 100 przez API.
+  levelProgressBeforePercent: number;
+  levelProgressAfterPercent: number;
 }
 
 export interface CourseProgressResponse {

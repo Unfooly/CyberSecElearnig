@@ -300,6 +300,18 @@ try {
   // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)), nie ułamek 0-1.
   step('Kurs ukończony po stronie serwera ze 100% wyniku (3+2+1 wag, wszystko poprawne)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
 
+  // --- fix/course-finish-flow: zapis kończący kurs OD RAZU przełącza na SummaryScreen, bez ekranu pośredniego
+  // "Blok ukończony."/przycisku "Zobacz podsumowanie" (usunięty) --------------------------------------------------
+  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
+  step('SummaryScreen: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
+  step('SummaryScreen: wynik 100% widoczny od razu', (await page.getByText('100%').count()) >= 1);
+  // Karta nagrody INLINE (RewardCard.tsx, zastępuje dawny modal): pierwsze ukończenie tego przypisania w tej
+  // organizacji zawsze dolicza co najmniej COURSE_COMPLETION_XP (100) - GamificationService.awardCourseCompletion.
+  step('SummaryScreen: karta nagrody (XP) widoczna, bez modala (role=dialog)', (await page.getByText(/XP$/).count()) >= 1 && (await page.getByRole('dialog').count()) === 0);
+  // Ta sama lista dowodów, którą user widział chwilę wcześniej na bloku SUMMARY (CaseEvidenceSection.tsx, dzielona).
+  const finalEvidenceText = (await page.getByTestId('case-evidence').textContent()) ?? '';
+  step('SummaryScreen: lista zebranych dowodów (16 z 16) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 16 z 16'), finalEvidenceText.slice(0, 120));
+
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {
   console.error(`\nBŁĄD: ${error.message}`);

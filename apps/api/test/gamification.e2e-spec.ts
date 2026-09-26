@@ -196,8 +196,13 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(progressResponse.body.gamification).toEqual({
         xpGained: 150,
         newLevel: 2,
+        previousLevel: 1,
         leveledUp: true,
         unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+        // Konto zaczyna od 0 XP/poziom 1: 0% postępu SPRZED tego ukończenia; awans na poziom 2, więc pasek "przed
+        // -> po" (SummaryScreen) kończy się na 100% (przycięty - sam awans/nowy poziom pokazuje osobny komunikat).
+        levelProgressBeforePercent: 0,
+        levelProgressAfterPercent: 100,
       });
 
       const summary = await request(app.getHttpServer())

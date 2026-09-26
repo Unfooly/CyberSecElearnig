@@ -5,7 +5,7 @@ import { contentIndex } from './io.js';
 import { isPlaceholderVoiceId, loadVoices, parseVoices, voiceRoleOf } from './voices.js';
 
 const VOICES_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'voices.json');
-const valid = { narrator: 'voice-narrator', fooli: 'voice-fooli01', bank: 'voice-bank001', marek: 'voice-marek01' };
+const valid = { narrator: 'voice-narrator', komisarz: 'voice-komisarz01', bank: 'voice-bank001', marek: 'voice-marek01' };
 
 describe('voices.json (rola głosu -> voiceId, D-082)', () => {
   it('role w voices.json to dokładnie role ze schematu treści (VOICE_ROLES)', () => {
@@ -21,7 +21,7 @@ describe('voices.json (rola głosu -> voiceId, D-082)', () => {
   });
 
   it('placeholder rozpoznawany po kształcie (nie ID ElevenLabs)', () => {
-    for (const placeholder of ['<WKLEJ-ID-FOOLI>', '<obecny voiceId>', 'TODO', '', 'abc', 'WKLEJ_ID_FOOLI', 'PLACEHOLDER', 'wklej-id-fooli', 'xxxxxxxxxx']) {
+    for (const placeholder of ['<WKLEJ-ID-KOMISARZ>', '<obecny voiceId>', 'TODO', '', 'abc', 'WKLEJ_ID_KOMISARZ', 'PLACEHOLDER', 'wklej-id-komisarz', 'xxxxxxxxxx']) {
       expect(isPlaceholderVoiceId(placeholder)).toBe(true);
     }
     for (const id of ['o2xdfKUpc1Bwq7RchZuW', 'voice-narrator']) expect(isPlaceholderVoiceId(id)).toBe(false);

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { contentIndex, isObject } from './io.js';
 
-// Głosy nagrań (D-082): rola z treści (narration.voice: narrator | fooli | bank | marek, brak = narrator) -> voiceId ElevenLabs z
+// Głosy nagrań (D-082): rola z treści (narration.voice: narrator | komisarz | bank | marek, brak = narrator) -> voiceId ElevenLabs z
 // scripts/content/voices.json. Plik jest COMMITOWANY: ID głosu nie jest sekretem (trafia też do audio.lock.json i publicznego
 // manifestu); klucz API zostaje wyłącznie w .env.local. Lista ról pochodzi ze schematu treści (VOICE_ROLES), więc voices.json musi
 // mieć DOKŁADNIE te klucze - brakująca rola albo nieznany klucz to błąd od razu, nie cichy fallback na narratora.

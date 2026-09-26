@@ -66,7 +66,7 @@ afterEach(async () => {
 });
 
 // Głosy ról (voices.json, D-082) - kształt prawdziwych ID (placeholder byłby odrzucony przy generowaniu).
-const VOICES = { narrator: 'voice-narrator', fooli: 'voice-fooli01', bank: 'voice-bank001', marek: 'voice-marek01' };
+const VOICES = { narrator: 'voice-narrator', komisarz: 'voice-komisarz01', bank: 'voice-bank001', marek: 'voice-marek01' };
 
 function params(overrides: Partial<PipelineParams> = {}): PipelineParams {
   return {
@@ -99,6 +99,7 @@ describe('collectNarrations', () => {
       'odprawa#steps.1.narration',
       'odprawa#steps.3.narration',
       'odprawa#steps.4.narration',
+      'odprawa#steps.5.narration',
     ]);
     // Podpowiedzi (pole secret) nigdy nie dostają audio.
     expect(refs.some((ref) => ref.id.includes('hints'))).toBe(false);
@@ -307,7 +308,7 @@ describe('kompletność i spójność', () => {
   it('placeholder zamiast ID głosu roli w voices.json: czytelny błąd PRZED TTS i zapisami (nazwa roli w komunikacie)', async () => {
     const tts = new FakeTts();
     const store = new MemoryStore();
-    await expect(runPipeline(params({ tts, store, voices: { ...VOICES, fooli: '<WKLEJ-ID-FOOLI>' } }))).rejects.toThrow(/rola "fooli" ma placeholder/);
+    await expect(runPipeline(params({ tts, store, voices: { ...VOICES, komisarz: '<WKLEJ-ID-KOMISARZ>' } }))).rejects.toThrow(/rola "komisarz" ma placeholder/);
     expect(tts.calls).toEqual([]);
     expect(store.calls.put).toBe(0);
   });
@@ -541,7 +542,7 @@ describe('audio tylko dla pól client (K1)', () => {
     const text = new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body);
     const manifest = JSON.parse(text);
     expect(Object.keys(manifest).sort()).toEqual(['audioVersion', 'files', 'language', 'manifestVersion', 'model', 'slug', 'voices']);
-    expect(manifest.voices).toEqual({ fooli: ['voice-fooli01'], narrator: ['voice-narrator'] });
+    expect(manifest.voices).toEqual({ komisarz: ['voice-komisarz01'], narrator: ['voice-narrator'] });
     expect(text).not.toMatch(/#|hints|narration|answerNarration|lines/);
     for (const key of manifest.files) expect(key).toMatch(/^audio\/sprawa-testowa\/v1\/[A-Za-z0-9._-]+\/[0-9a-f]{16}\.mp3$/);
     expect(manifest.files).toEqual([...manifest.files].sort());
@@ -616,9 +617,9 @@ describe('--check: rozjazdy', () => {
 
   it('zmiana voiceId roli w voices.json: nieaktualne WYŁĄCZNIE nagrania tej roli, z rolą w komunikacie', async () => {
     await runPipeline(params());
-    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, fooli: 'voice-fooli02' } }));
+    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, komisarz: 'voice-komisarz02' } }));
     expect(result.problems).toEqual([
-      '[fooli] odprawa#steps.1.narration: głos (rola lub ID w voices.json) zmieniony od ostatniego generowania (nagranie nieaktualne).',
+      '[komisarz] odprawa#steps.1.narration: głos (rola lub ID w voices.json) zmieniony od ostatniego generowania (nagranie nieaktualne).',
     ]);
   });
 
@@ -633,14 +634,14 @@ describe('--check: rozjazdy', () => {
     const result = await runPipeline(params(offline()));
     expect(result.problems).toEqual([
       `[narrator] ${module.blocks[0].id}#narration: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`,
-      '[fooli] odprawa#steps.1.narration: brak nagrania w audio.lock.json.',
+      '[komisarz] odprawa#steps.1.narration: brak nagrania w audio.lock.json.',
     ]);
   });
 
   it('placeholder roli w voices.json: --check zgłasza pozycje tej roli (nie da się ich sprawdzić)', async () => {
     await runPipeline(params());
-    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, fooli: 'TODO' } }));
-    expect(result.problems).toEqual(['[fooli] odprawa#steps.1.narration: rola głosu ma placeholder w voices.json (nie da się sprawdzić ani nagrać).']);
+    const result = await runPipeline(params({ ...offline(), voices: { ...VOICES, komisarz: 'TODO' } }));
+    expect(result.problems).toEqual(['[komisarz] odprawa#steps.1.narration: rola głosu ma placeholder w voices.json (nie da się sprawdzić ani nagrać).']);
   });
 
   it('lock w wersji 1 (jeden głos partii) czytany jako narrator: nic nie jest nieaktualne, gdy głos narratora się zgadza', async () => {
@@ -714,10 +715,10 @@ describe('głosy ról (voices.json, D-082)', () => {
     const tts = new FakeTts();
     await runPipeline(params({ tts }));
     const byText = (text: string) => tts.calls.find((call) => call.text === text)!;
-    expect(byText('Narracja odprawa-1. Drugie zdanie.').voiceId).toBe('voice-fooli01');
+    expect(byText('Narracja odprawa-1. Drugie zdanie.').voiceId).toBe('voice-komisarz01');
     expect(byText('Narracja odprawa-0. Drugie zdanie.').voiceId).toBe('voice-narrator');
     const refs = collectNarrations(bareModule());
-    expect(refs.find((ref) => ref.id === 'odprawa#steps.1.narration')!.voice).toBe('fooli');
+    expect(refs.find((ref) => ref.id === 'odprawa#steps.1.narration')!.voice).toBe('komisarz');
     expect(refs.find((ref) => ref.id === 'odprawa#steps.0.narration')!.voice).toBe('narrator');
   });
 
@@ -726,10 +727,10 @@ describe('głosy ról (voices.json, D-082)', () => {
     await runPipeline(params({ store }));
     const before = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { id: string }) => b.id === 'odprawa').steps[1].narration.audioUrl;
     const tts = new FakeTts();
-    await runPipeline(params({ store, tts, voices: { ...VOICES, fooli: 'voice-fooli02' } }));
+    await runPipeline(params({ store, tts, voices: { ...VOICES, komisarz: 'voice-komisarz02' } }));
     const after = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { id: string }) => b.id === 'odprawa').steps[1].narration.audioUrl;
     expect(after).not.toBe(before);
-    expect(tts.calls.map((call) => call.voiceId)).toEqual(['voice-fooli02']);
+    expect(tts.calls.map((call) => call.voiceId)).toEqual(['voice-komisarz02']);
   });
 
   it('media audio hotspotu z narration (poczta głosowa) jest nagrywane potokiem z głosem roli', async () => {

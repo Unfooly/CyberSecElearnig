@@ -75,7 +75,7 @@ lista kluczy plików, bez informacji, którego pola narracji dotyczy który plik
 ### Głosy (D-082)
 
 Każda narracja (także nagranie media audio hotspotu, `media.narration`) może mieć `voice`: `narrator` (domyślny, brak pola),
-`fooli`, `bank`, `marek` - lista ról jest w schemacie treści (`VOICE_ROLES`, `packages/content/src/common.ts`), nieznana rola to
+`komisarz`, `bank`, `marek` - lista ról jest w schemacie treści (`VOICE_ROLES`, `packages/content/src/common.ts`), nieznana rola to
 błąd walidacji modułu. Rola -> voiceId ElevenLabs: **`scripts/content/voices.json`** (commitowany; ID głosu nie jest sekretem,
 jest też w locku i manifeście; klucz API zostaje wyłącznie w `.env.local`). Plik musi mieć dokładnie role ze schematu.
 
@@ -83,7 +83,7 @@ jest też w locku i manifeście; klucz API zostaje wyłącznie w `.env.local`). 
   tej roli nieaktualne w `--check` (`głos roli zmieniony`) i nowe pliki przy generowaniu; pozostałe role bez zmian.
 - `audio.lock.json` `lockVersion: 2`: `voice` i `voiceId` przy KAŻDYM wpisie. Lock w wersji 1 (jeden `voiceId` partii) jest czytany
   jako narrator - dotychczasowe nagrania zostają aktualne, gdy `voices.json` ma ten sam głos narratora.
-- `--check`, plan i log generowania wypisują rolę przy każdej pozycji (`[fooli] odprawa#steps.1.narration: ...`).
+- `--check`, plan i log generowania wypisują rolę przy każdej pozycji (`[komisarz] odprawa#steps.1.narration: ...`).
 - Placeholder zamiast ID (wszystko, co nie wygląda jak ID ElevenLabs, np. `<WKLEJ-ID>`, `TODO`): generowanie tą rolą jest
   odrzucane czytelnym błędem PRZED limitem znaków, potwierdzeniem i jakimkolwiek wywołaniem ElevenLabs; `--check` zgłasza pozycje
   tej roli, `--dry-run` tylko ostrzega.

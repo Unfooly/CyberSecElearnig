@@ -109,7 +109,7 @@ async function runViewport(viewport) {
   await page.waitForTimeout(2500); // maszyna do pisania dopisuje tekst
   await shot(page, '00a-odprawa-telefon', viewport.name);
   await page.getByRole('button', { name: 'Odbierz' }).click();
-  await shot(page, '00b-odprawa-komisarz', viewport.name);
+  await shot(page, '00b-odprawa-komisarz', viewport.name); // komisarz Adam Wolski (postać, bez maskotki)
   await page.getByRole('button', { name: 'Przyjmuję' }).click();
   await page.waitForTimeout(1000); // spadająca karta i pieczątka
   await shot(page, '00c-odprawa-akta', viewport.name);
@@ -117,6 +117,8 @@ async function runViewport(viewport) {
   await page.waitForTimeout(600);
   await shot(page, '00d-odprawa-legitymacja', viewport.name);
   await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
+  await shot(page, '00e-odprawa-start', viewport.name);
+  await page.getByRole('button', { name: 'Wchodzę' }).click();
 
   // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) --------------------------------------------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();

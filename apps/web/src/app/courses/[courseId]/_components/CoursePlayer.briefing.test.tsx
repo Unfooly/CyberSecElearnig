@@ -16,7 +16,7 @@ const briefing: ContentBlock = {
   id: 'odprawa',
   steps: [
     { kind: 'typewriter', text: 'Wtorek, 7:58. Dzwoni telefon.', sub: 'Numer zastrzeżony.', cta: 'Odbierz' },
-    { kind: 'call', caller: { name: 'Komisarz Fooli', role: 'Wydział cyber', mascot: 'greeting' }, text: 'Mamy sprawę w Unfooly.', cta: 'Słucham' },
+    { kind: 'call', caller: { name: 'Komisarz Adam Wolski', role: 'Wydział Cyberbezpieczeństwa' }, text: 'Mamy sprawę w Unfooly.', cta: 'Słucham' },
     {
       kind: 'caseFile',
       caseNo: 'SPR-2026-0412',
@@ -26,6 +26,7 @@ const briefing: ContentBlock = {
       cta: 'Przyjmuję sprawę',
     },
     { kind: 'badge', cta: 'Do dzieła' },
+    { kind: 'start', text: 'Unfooly, drugie piętro.', cta: 'Wchodzę' },
   ],
 };
 
@@ -102,9 +103,12 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
-    expect(screen.getByText('Komisarz Fooli')).toBeInTheDocument();
+    expect(screen.getByText('Komisarz Adam Wolski')).toBeInTheDocument();
+    expect(screen.getByText('Wydział Cyberbezpieczeństwa')).toBeInTheDocument();
     expect(screen.getByText('Mamy sprawę w Unfooly.')).toBeInTheDocument();
-    expect(screen.getByAltText('Maskotka Unfooly wita')).toBeInTheDocument();
+    // Postać bez avatara: inicjały z imienia i nazwiska (bez tytułu), bez maskotki.
+    expect(screen.getByText('AW')).toHaveClass('bg-accent-soft');
+    expect(screen.queryByAltText(/Maskotka/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Słucham' }));
     expect(screen.getByText('SPR-2026-0412')).toHaveClass('font-typewriter');
@@ -121,6 +125,10 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(progressCalls(fetchMock)).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Do dzieła' }));
+    expect(screen.getByText('Unfooly, drugie piętro.')).toBeInTheDocument();
+    expect(progressCalls(fetchMock)).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wchodzę' }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
     await screen.findByText('Biuro Anny.');

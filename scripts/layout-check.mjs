@@ -93,7 +93,7 @@ const BRIEFING_VIEWPORTS = [
   { name: '390x844', width: 390, height: 844, isMobile: true },
 ];
 // Przyciski kolejnych kroków modułu 1 (packages/content/modules/wyludzone-haslo, blok "odprawa").
-const BRIEFING_CTAS = ['Odbierz', 'Przyjmuję', 'Biorę sprawę', 'Ruszam na miejsce'];
+const BRIEFING_CTAS = ['Odbierz', 'Przyjmuję', 'Biorę sprawę', 'Ruszam na miejsce', 'Wchodzę'];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu

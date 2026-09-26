@@ -3,7 +3,7 @@
 // sekcja "Backlog frontendu"). Trzymane tu, w jednym miejscu, żeby biblioteka
 // kursów i odtwarzacz nie duplikowały własnych kopii.
 
-import type { MascotPose, ModuleObjective, Narration } from '@cyberszkolo/content';
+import type { ModuleObjective, Narration } from '@cyberszkolo/content';
 
 export type AssignmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
 export type ContentBlockType =
@@ -31,13 +31,14 @@ export type BriefingStep =
   | { kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration }
   | {
       kind: 'call';
-      caller: { name: string; role?: string; avatar?: string; mascot?: MascotPose };
+      caller: { name: string; role?: string; avatar?: string };
       text: string;
       cta: string;
       narration?: Narration;
     }
   | { kind: 'caseFile'; caseNo: string; title: string; fields: { label: string; value: string }[]; stamp?: string; cta: string; narration?: Narration }
-  | { kind: 'badge'; cta: string; narration?: Narration };
+  | { kind: 'badge'; cta: string; narration?: Narration }
+  | { kind: 'start'; text: string; cta: string; narration?: Narration };
 
 /** Cel/zadanie modułu z wersji przypisania (/start, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
 export type CourseObjective = ModuleObjective;

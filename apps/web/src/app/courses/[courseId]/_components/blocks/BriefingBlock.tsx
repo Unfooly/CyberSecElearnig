@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CheckSquare, Phone, Square } from 'lucide-react';
+import { CheckSquare, MapPin, Phone, Square } from 'lucide-react';
 import type { BriefingStep, ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
-import Mascot from '@/components/Mascot';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useCompleteReaction } from '../player/mascot-reaction';
 import type { NotebookTask } from '../player/notes';
 
 // Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków na jasnym tle (paper) - maszyna do pisania z dzwoniącym
-// telefonem, rozmowa (Fooli jako Komisarz albo postać), karta sprawy z listą zadań, legitymacja gracza. Blok nieoceniany,
+// telefonem, rozmowa z postacią (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran
+// startu (miejsce akcji). Blok nieoceniany,
 // bez dowodów: przycisk ostatniego kroku zapisuje blok (ten sam zapis co "Dalej" bloku eksploracyjnego). "Pomiń odprawę"
 // jest w górnym pasku ramki (PlayerStage.tsx, CoursePlayer) - to ten sam zapis, więc serwer nie odróżnia pominięcia od
 // przejścia, a zadania i tak nie mogą wskazywać tego bloku (walidacja treści).
@@ -104,25 +104,39 @@ function TypewriterStep({ step, reducedMotion, headingId }: { step: Extract<Brie
   );
 }
 
+/** Inicjały postaci z DWÓCH OSTATNICH członów nazwy - tytuł przed imieniem ("Komisarz Adam Wolski") nie trafia do inicjałów: "AW". */
+export function callerInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(-2)
+    .map((part) => part.charAt(0).toLocaleUpperCase('pl-PL'))
+    .join('');
+}
+
+// start: ostatni ekran odprawy - miejsce akcji dużym tekstem i przycisk rozpoczęcia śledztwa (bez animacji poza wejściem kroku).
+function StartStep({ step, headingId }: { step: Extract<BriefingStep, { kind: 'start' }>; headingId: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <MapPin aria-hidden="true" className="h-8 w-8 text-accent" />
+      <p id={headingId} className="text-2xl font-extrabold text-ink sm:text-3xl">
+        {step.text}
+      </p>
+    </div>
+  );
+}
+
 function CallStep({ step, contentBase, headingId }: { step: Extract<BriefingStep, { kind: 'call' }>; contentBase: string; headingId: string }) {
   const avatarSrc = contentAssetUrl(contentBase, step.caller.avatar, 'image');
-  const initials = step.caller.name
-    .split(/\s+/)
-    .map((part) => part.charAt(0))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
   return (
     <div className="flex w-full flex-col items-center gap-4">
       <div className="flex items-center gap-3">
-        {step.caller.mascot ? (
-          <Mascot pose={step.caller.mascot} size={72} className="h-16 w-16 sm:h-[72px] sm:w-[72px]" />
-        ) : avatarSrc ? (
+        {avatarSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG wyłącznie przez <img> (D-051)
           <img src={avatarSrc} alt="" className="h-16 w-16 rounded-full border border-border bg-surface object-cover" />
         ) : (
           <span aria-hidden="true" className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft text-lg font-bold text-accent-ink">
-            {initials}
+            {callerInitials(step.caller.name)}
           </span>
         )}
         <div>
@@ -308,6 +322,7 @@ export default function BriefingBlock({
           {step.kind === 'call' && <CallStep step={step} contentBase={contentBase} headingId={headingId} />}
           {step.kind === 'caseFile' && <CaseFileStep step={step} tasks={tasks} headingId={headingId} />}
           {step.kind === 'badge' && <BadgeStep identity={identity} myAvatarUrl={myAvatarUrl} caseNo={caseNo} headingId={headingId} />}
+          {step.kind === 'start' && <StartStep step={step} headingId={headingId} />}
         </div>
         {!(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />}
       </div>

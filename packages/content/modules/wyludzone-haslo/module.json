@@ -51,7 +51,8 @@
           "text": "Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że „coś jest nie tak z kontem”. Przejmij sprawę i ustal, co się stało.",
           "cta": "Przyjmuję",
           "narration": {
-            "text": "Po drugiej stronie komisarz Fooli. Księgowość zgłasza, że coś jest nie tak z kontem. Sprawa trafia do ciebie."
+            "text": "Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że „coś jest nie tak z kontem”. Przejmij sprawę i ustal, co się stało.",
+            "voice": "fooli"
           }
         },
         {
@@ -202,8 +203,10 @@
           "content": "Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje.",
           "media": {
             "kind": "audio",
-            "audioUrl": "assets/wyludzone-haslo/audio/poczta-glosowa.513da5fc.mp3",
-            "transcript": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.",
+            "narration": {
+              "voice": "bank",
+              "text": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot."
+            },
             "image": "assets/wyludzone-haslo/scenes/telefon-zoom.6d63d5dc.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
           },

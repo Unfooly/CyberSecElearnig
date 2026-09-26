@@ -56,7 +56,7 @@ pieczątka) tylko bez `prefers-reduced-motion`.
 2. **call** — dzwoni: Fooli (poza `greeting`) jako „Komisarz Fooli", rola „Zespół reagowania na incydenty".
    Dymek: „Mamy zgłoszenie z księgowości: Anna Kowalska mówi, że »coś jest nie tak z kontem«. Przejmij sprawę i ustal, co się
    stało."; przycisk: „Przyjmuję".
-   **Lektor:** „Po drugiej stronie komisarz Fooli. Księgowość zgłasza, że coś jest nie tak z kontem. Sprawa trafia do ciebie."
+   **Nagranie (głos `fooli`, D-082):** ten sam tekst co dymek - mówi Komisarz, nie lektor.
 3. **caseFile** — nr sprawy `UNF/2026/0412` (font maszynowy), tytuł „Wyłudzone hasło"; pola: Firma „Unfooly Sp. z o.o.,
    Kraków", Zgłaszająca „Anna Kowalska, księgowość", Zgłoszono „wtorek, 9:40", Status „w toku"; pieczątka „Pilne";
    pod kartą lista zadań (objectives); przycisk: „Biorę sprawę".
@@ -101,7 +101,7 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 |---|---|---|---|---|---|
 | `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Unfooly24!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
 | `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte." (celowo TEASER, nie ujawnienie — treść maila jest dopiero za Outlookiem, patrz „Scena zagnieżdżona" niżej; poprawione po przeglądzie kodu, wcześniej to pole miało tu przez pomyłkę tę samą treść co `outlook`) | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
-| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
+| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio z potoku TTS, głos `bank` (`media.narration`, D-082; tekst = transkrypcja, patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
 | `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
 | `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w stylu Fooli z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
 | `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | image `kubek-zoom.svg` (800×800) — zbliżenie kubka (feat/scene-overlay-fix: bez dowodu, ale jak każdy hotspot tej sceny dostaje powiększenie) |
@@ -359,9 +359,13 @@ edycja SVG.
 
 Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 
-Audio: `assets/audio/poczta-glosowa.mp3` (hotspot `telefon`, transkrypcja w Bloku 3 wyżej) — gotowy plik, publikowany
-przez `scripts/content --assets` (D-071), NIE przez silnik TTS narracji modułu (`scripts/content --tts`, PR 3, każdy
-blok ma jedno nagranie lektora — tekst „Lektor" wyżej). Kwestie Fooli i postaci — tylko tekst (B-078).
+Audio poczty głosowej (hotspot `telefon`): od D-082 nagrywane potokiem TTS (`media.narration`, głos `bank`), tekst =
+transkrypcja z Bloku 2 bez zmian. Stary gotowy plik `assets/audio/poczta-glosowa.mp3` (D-071, `--assets`) zostaje w repo
+do czasu opublikowania i podpięcia nowego nagrania, potem do usunięcia.
+
+Głosy (D-082, `narration.voice`, mapowanie rola → voiceId w `scripts/content/voices.json`): `narrator` (domyślny - lektor
+wszystkich bloków), `fooli` (Komisarz w odprawie, krok `call`), `bank` (poczta głosowa), `marek` (dziś nieużywany: kwestie
+Marka nie mają nagrań). Pozostałe kwestie Fooli i postaci - tylko tekst (B-078).
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
 

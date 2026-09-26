@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Narration } from '@cyberszkolo/content';
 import type {
   ClientNote,
   ClientProgressBlock,
@@ -9,6 +10,7 @@ import type {
   ContentReaction,
   CourseCompletionReward,
   CourseDetail,
+  CourseObjective,
   CourseProgressResponse,
   EvidenceSummary,
   LastResult,
@@ -16,6 +18,7 @@ import type {
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import { initialsFromEmail } from '@/lib/avatar';
 import { useMyAvatar } from '@/lib/use-my-avatar';
+import { playerIdentity, useMyDisplayName, type PlayerIdentity } from '@/lib/use-my-display-name';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -30,7 +33,7 @@ import NarrationBar from './player/NarrationBar';
 import TranscriptPanel from './player/TranscriptPanel';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
-import { NotesProvider, useNotes } from './player/notes';
+import { NotesProvider, notebookTasks, useNotes } from './player/notes';
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
 import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
@@ -57,6 +60,10 @@ interface RenderContext {
   onReady: (submit: (() => void) | null) => void;
   myAvatarUrl?: string | null;
   myInitials?: string;
+  /** BRIEFING (D-081): zadania pod kartą sprawy, tożsamość gracza (z sesji) i zmiana kroku odprawy. */
+  objectives: CourseObjective[];
+  identity: PlayerIdentity;
+  onBriefingStep: (index: number, byGesture: boolean) => void;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -73,6 +80,9 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         disabled={disabled}
         myAvatarUrl={ctx.myAvatarUrl}
         myInitials={ctx.myInitials}
+        objectives={ctx.objectives}
+        identity={ctx.identity}
+        onBriefingStep={ctx.onBriefingStep}
       />
     );
   }
@@ -130,6 +140,12 @@ function StageWithContext({
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
 
+const NO_OBJECTIVES: CourseObjective[] = [];
+
+/** Czy blok ma jakiekolwiek nagranie - dla BRIEFING także w krokach (narracja odprawy jest per krok, D-081). */
+const blockNarrations = (block: ContentBlock | undefined): (Narration | undefined)[] =>
+  block ? [block.narration, ...(block.steps ?? []).map((step) => step.narration)] : [];
+
 // Notatki dopisane przez serwer przy zapisie bloku (np. trafione kryteria maila) trafiają do notatnika od razu; dedup w addNote.
 function ApplyServerNotes({ notes }: { notes: ClientNote[] }) {
   const { addNote } = useNotes();
@@ -162,6 +178,16 @@ export default function CoursePlayer({
   const router = useRouter();
   const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
   const myInitials = userEmail ? initialsFromEmail(userEmail) : undefined;
+  // Legitymacja w odprawie (BRIEFING, D-081): imię z profilu pobierane tylko, gdy moduł ma odprawę; fallback z e-maila.
+  const hasBriefing = initial.contentBlocks.some((block) => block.type === 'BRIEFING');
+  const displayName = useMyDisplayName(userEmail, hasBriefing);
+  const identity = useMemo(() => playerIdentity(displayName, userEmail), [displayName, userEmail]);
+  const objectives = initial.objectives ?? NO_OBJECTIVES;
+  // Bieżący krok odprawy per zamontowana instancja bloku ("l-<id>" żywy, "r-<id>" podgląd "Wstecz") - narracja w pasku
+  // powłoki idzie za krokiem; gesture = krok zmieniony kliknięciem gracza (wolno wtedy autoodtworzyć jego narrację).
+  const [briefingSteps, setBriefingSteps] = useState<Record<string, { index: number; gesture: boolean }>>({});
+  const trackBriefingStep = (instance: string) => (index: number, gesture: boolean) =>
+    setBriefingSteps((current) => ({ ...current, [instance]: { index, gesture } }));
   // Stan postępu (status/currentBlockIndex/score) pochodzi WYŁĄCZNIE z API -
   // po każdej odpowiedzi jest CAŁKOWICIE nadpisywany odpowiedzią z
   // /progress, nigdy inkrementowany lokalnie. `feedback` to jedyny czysto
@@ -250,7 +276,7 @@ export default function CoursePlayer({
   }, [displayedIndex, feedback, isSummaryMode]);
 
   const hasAudio = (index: number) =>
-    preference.enabled && contentAssetUrl(contentBase, blocks[index]?.narration?.audioUrl, 'audio') !== null;
+    preference.enabled && blockNarrations(blocks[index]).some((narration) => contentAssetUrl(contentBase, narration?.audioUrl, 'audio') !== null);
   const keyOf = (index: number) => blockIdOf(blocks, index);
 
   async function handleAnswer(answer?: unknown) {
@@ -406,7 +432,7 @@ export default function CoursePlayer({
       ? 'slide'
       : currentBlock?.type === 'SCENE_HOTSPOTS'
         ? 'scene'
-        : currentBlock?.type === 'DIALOGUE'
+        : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING'
           ? 'fill'
           : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
@@ -481,6 +507,9 @@ export default function CoursePlayer({
               onReady: handleReady,
               myAvatarUrl,
               myInitials,
+              objectives,
+              identity,
+              onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
             })}
           </div>
         )}
@@ -493,6 +522,9 @@ export default function CoursePlayer({
             courseId={courseId}
             myAvatarUrl={myAvatarUrl}
             myInitials={myInitials}
+            objectives={objectives}
+            identity={identity}
+            onBriefingStep={trackBriefingStep(`r-${keyOf(displayedIndex)}`)}
           />
         )}
       </>
@@ -504,13 +536,42 @@ export default function CoursePlayer({
   // narration.
   const summaryBlock = useMemo(() => blocks.find((block) => block.type === 'SUMMARY'), [blocks]);
   const narrationBlock = isSummaryMode ? summaryBlock : showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
+  // BRIEFING (D-081): narracja BIEŻĄCEGO KROKU odprawy (steps[].narration), nie bloku - pasek, napisy i transkrypcja idą za
+  // krokiem. Kolejny krok po kliknięciu gracza (gest) odtwarza się sam, jak kolejny blok po "Dalej".
+  const briefingStep =
+    !isSummaryMode && !showingFeedback && currentBlock?.type === 'BRIEFING'
+      ? (briefingSteps[`${reviewing ? 'r' : 'l'}-${keyOf(displayedIndex)}`] ?? { index: 0, gesture: false })
+      : null;
+  const narration = briefingStep ? currentBlock?.steps?.[briefingStep.index]?.narration : narrationBlock?.narration;
   const narrationBarState = useNarrationBar({
-    narration: narrationBlock?.narration,
+    narration,
     contentBase,
     enabled: preference.enabled,
-    autoPlay: !isSummaryMode && !showingFeedback && autoPlayFor === keyOf(displayedIndex),
-    resetKey: isSummaryMode ? 'summary' : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`,
+    autoPlay:
+      !isSummaryMode &&
+      !showingFeedback &&
+      (briefingStep && briefingStep.index > 0 ? briefingStep.gesture : autoPlayFor === keyOf(displayedIndex)),
+    resetKey: isSummaryMode
+      ? 'summary'
+      : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}${briefingStep ? `-s${briefingStep.index}` : ''}`,
   });
+
+  // "Pomiń odprawę" (D-081): widoczny od razu na KAŻDYM wejściu w blok BRIEFING, także ponownym (podgląd "Wstecz" ukończonej
+  // odprawy - tam przewija dalej jak "Dalej"). Na żywym bloku to ten sam zapis co ostatni krok: blok zaliczony, a zadania
+  // się nie odhaczają (żadne nie może wskazywać bloku odprawy - walidacja treści).
+  const skipBriefing =
+    briefingStep !== null ? (
+      <button
+        type="button"
+        onClick={() => (reviewing ? goForward() : handleAnswer())}
+        disabled={submitting}
+        className="inline-flex h-10 shrink-0 items-center rounded border border-slate-300 bg-white px-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-3"
+      >
+        Pomiń odprawę
+      </button>
+    ) : undefined;
+
+  const tasks = useMemo(() => notebookTasks(objectives, results), [objectives, results]);
 
   // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
   // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
@@ -523,7 +584,7 @@ export default function CoursePlayer({
       : '';
 
   return (
-    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
+    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
           <ApplyServerNotes notes={serverNotes} />
@@ -536,6 +597,7 @@ export default function CoursePlayer({
             resultAnnouncement={resultAnnouncement}
             showMascot={!isSummaryMode}
             evidence={<EvidenceCounter />}
+            topAction={skipBriefing}
             idleMascot={
               currentBlock && !showingFeedback && !isSummaryMode
                 ? currentBlock.mascot
@@ -556,7 +618,7 @@ export default function CoursePlayer({
             }
             narrationBar={
               <NarrationBar
-                narration={narrationBlock?.narration}
+                narration={narration}
                 state={narrationBarState}
                 enabled={preference.enabled}
                 onToggleEnabled={preference.toggle}
@@ -567,7 +629,7 @@ export default function CoursePlayer({
             }
             transcriptPanel={
               <TranscriptPanel
-                text={narrationBlock?.narration?.text ?? ''}
+                text={narration?.text ?? ''}
                 open={narrationBarState.transcriptOpen}
                 onClose={narrationBarState.toggleTranscript}
                 triggerRef={transcriptButtonRef}
@@ -595,6 +657,8 @@ export default function CoursePlayer({
               !showingFeedback &&
               !reviewing &&
               (currentBlock?.type === 'SUMMARY' ||
+                // BRIEFING: wyjściem jest przycisk ostatniego kroku albo "Pomiń odprawę" w pasku górnym (D-081).
+                currentBlock?.type === 'BRIEFING' ||
                 (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true) ||
                 (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next')))
             }

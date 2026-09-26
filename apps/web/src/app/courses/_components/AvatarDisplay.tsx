@@ -5,9 +5,11 @@ import { isUploadedAvatar, uploadedAvatarSrc } from '@/lib/avatar';
 const SIZE_CLASSES = {
   sm: 'h-8 w-8 text-xs',
   md: 'h-12 w-12 text-sm',
+  // lg: legitymacja gracza w odprawie (BriefingBlock, D-081).
+  lg: 'h-20 w-20 text-2xl',
 } as const;
 
-const ICON_SIZES = { sm: 16, md: 24 } as const;
+const ICON_SIZES = { sm: 16, md: 24, lg: 40 } as const;
 
 // Współdzielone między UserGamificationCard, ustawieniami konta, Topbar i
 // LeaderboardTable - jeden punkt prawdy o tym, jak rysujemy avatar (preset

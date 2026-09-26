@@ -19,6 +19,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-jakarta)', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        // Wyłącznie numer sprawy i treść dokumentów w teczce (BRAND.md) - nie do nagłówków ani UI.
+        typewriter: ['var(--font-typewriter)', '"Courier Prime"', 'ui-monospace', 'monospace'],
       },
       borderRadius: { card: '16px', btn: '10px' },
       boxShadow: {

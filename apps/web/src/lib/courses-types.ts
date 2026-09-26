@@ -22,7 +22,28 @@ export type ContentBlockType =
   | 'TABS'
   | 'SUMMARY'
   // schemaVersion 4: blok narracyjny (tekst, bez interakcji poza "Dalej") - patrz packages/content D-061.
-  | 'NARRATIVE';
+  | 'NARRATIVE'
+  // schemaVersion 5: odprawa (kroki typewriter/call/caseFile/badge), nieoceniana - D-081.
+  | 'BRIEFING';
+
+/** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */
+export type BriefingStep =
+  | { kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration }
+  | {
+      kind: 'call';
+      caller: { name: string; role?: string; avatar?: string; mascot?: string };
+      text: string;
+      cta: string;
+      narration?: Narration;
+    }
+  | { kind: 'caseFile'; caseNo: string; title: string; fields: { label: string; value: string }[]; stamp?: string; cta: string; narration?: Narration }
+  | { kind: 'badge'; cta: string; narration?: Narration };
+
+/** Cel/zadanie modułu z wersji przypisania (/start, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
+export interface CourseObjective {
+  text: string;
+  completeWhen?: string[];
+}
 
 /** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
 export interface ContentReaction {
@@ -103,6 +124,8 @@ export interface ContentBlock {
   // TABS
   tabs?: ContentTab[];
   requiredTabs?: string[];
+  // BRIEFING
+  steps?: BriefingStep[];
   // SUMMARY
   text?: string;
   // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).
@@ -270,6 +293,8 @@ export interface CourseDetail {
   status: AssignmentStatus;
   currentBlockIndex: number;
   contentBlocks: ContentBlock[];
+  // Brak w odpowiedziach starszego API - klient traktuje to jak pustą listę.
+  objectives?: CourseObjective[];
   progress: ClientProgress | null;
 }
 

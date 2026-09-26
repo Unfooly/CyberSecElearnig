@@ -209,6 +209,10 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     Postgresa/Redisa/apps/api. Jeszcze NIE jest częścią
     CI (B-101 w backlogu: „layout-check w CI”) - do czasu tamtej zmiany to lokalny, ręczny krok, nie automatyczna bramka.
 
+13. **Jeden katalog roboczy jest współdzielony.** Nie przełączaj gałęzi, gdy prosisz mnie o publikację assetów/TTS. W prośbie o
+    publikację zawsze podawaj gałąź i wynik `--check`; publikacja tylko z gałęzi PR. (Poznane na fix/company-name: publikacja
+    uruchomiona po przełączeniu katalogu na gałąź z `main` widziała stare pliki i nic nie opublikowała.)
+
 ## Praca zespołowa: branże i pull requesty
 
 Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/pull_request_template.md` (szablon opisu PR),

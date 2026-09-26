@@ -84,4 +84,18 @@ describe('źródło grafik maskotki (packages/content/mascot)', () => {
       expect(svg, file).not.toMatch(/<script|on\w+\s*=|javascript:|xlink:href\s*=\s*["']https?:|href\s*=\s*["']https?:/i);
     }
   });
+
+  // hotfix fix/mascot-viewbox: rysunek każdej pozy sięga do y≈-30 (uszy), ale viewBox zaczynał się od "0 0 260
+  // 260" - obcinał je wszystkie. Zmierzone getBBox: zakres treści x 27..245, y -30..216 dla każdej pozy. min-y
+  // musi zejść przynajmniej do -30, inaczej nowa/zmieniona poza znowu wraca z ciętymi uszami.
+  it('viewBox każdej pozy zaczyna się od min-y <= -30 (uszy nie są cięte)', () => {
+    for (const pose of MASCOT_POSES) {
+      const file = `fooli-${pose}.svg`;
+      const svg = readFileSync(join(dir, file), 'utf8');
+      const match = svg.match(/viewBox="(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)"/);
+      expect(match, file).not.toBeNull();
+      const minY = Number(match![2]);
+      expect(minY, file).toBeLessThanOrEqual(-30);
+    }
+  });
 });

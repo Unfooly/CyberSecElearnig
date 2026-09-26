@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useCallback, useState, type ReactNode } from 'react';
 
 // Kaskada Escape w PlayerStage: LIFO wg kolejności OTWARCIA (Escape zamyka to, co zostało otwarte NAJPÓŹNIEJ), nie
 // stały priorytet typu warstwy (kod review PR #44: stała kolejność potrafiła zamknąć niewidoczną warstwę pod spodem,
@@ -31,6 +31,10 @@ interface OverlayStackContextValue {
   unregister: (layer: OverlayLayer) => void;
   /** Zamyka najpóźniej otwartą, wciąż otwartą warstwę (LIFO); zwraca true, jeśli coś zamknęła. */
   closeTop: () => boolean;
+  /** true, gdy JAKAKOLWIEK warstwa jest aktualnie otwarta - MascotOverlay.tsx: dymek/ikonka Fooli nie mogą
+      zasłaniać ani łapać kliknięć, gdy nad sceną leży karta hotspotu/notatnik/transkrypcja/nagroda (hotfix
+      fix/mascot-overlap). */
+  anyOpen: boolean;
 }
 
 const OverlayStackContext = createContext<OverlayStackContextValue | null>(null);
@@ -41,6 +45,12 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
   // pierwszy). Osobno od `entries`, bo `entries` trzyma AKTUALNY stan/onClose każdej warstwy (nadpisywany przy
   // każdej zmianie), a `order` pamięta TYLKO kolejność przejść zamknięta->otwarta.
   const order = useRef<OverlayLayer[]>([]);
+  // `order` jest refem (celowo - patrz komentarze w register/closeTop), więc nic reaktywnie nie subskrybuje jego
+  // długości. `anyOpen` to jedyny kawałek PRAWDZIWEGO stanu Reacta w tym providerze - React sam bailuje
+  // (Object.is) re-render, gdy wartość się nie zmienia, więc wołanie setAnyOpen() na KAŻDYM register() (m.in. z
+  // efektu bez tablicy zależności w useOverlayLayer, patrz niżej) nie re-renderuje subskrybentów przy
+  // niepowiązanych zmianach - tylko przy prawdziwym przejściu pusty<->niepusty.
+  const [anyOpen, setAnyOpen] = useState(false);
 
   const register = useCallback((layer: OverlayLayer, entry: OverlayEntry) => {
     entries.current.set(layer, entry);
@@ -50,11 +60,13 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
     } else if (index !== -1) {
       order.current.splice(index, 1);
     }
+    setAnyOpen(order.current.length > 0);
   }, []);
   const unregister = useCallback((layer: OverlayLayer) => {
     entries.current.delete(layer);
     const index = order.current.indexOf(layer);
     if (index !== -1) order.current.splice(index, 1);
+    setAnyOpen(order.current.length > 0);
   }, []);
   const closeTop = useCallback(() => {
     const layer = order.current[order.current.length - 1];
@@ -64,11 +76,12 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
     // wołać dokładnie jedną warstwę na jedno wywołanie, nawet gdyby coś (błąd w onClose, kolejne zdarzenie) sprawiło,
     // że closeTop() wywoła się ponownie zanim React zdąży przeliczyć stan.
     order.current.pop();
+    setAnyOpen(order.current.length > 0);
     entry?.onClose();
     return true;
   }, []);
 
-  const value = useMemo(() => ({ register, unregister, closeTop }), [register, unregister, closeTop]);
+  const value = useMemo(() => ({ register, unregister, closeTop, anyOpen }), [register, unregister, closeTop, anyOpen]);
   return <OverlayStackContext.Provider value={value}>{children}</OverlayStackContext.Provider>;
 }
 
@@ -114,4 +127,10 @@ export function useOverlayLayer(layer: OverlayLayer, isOpen: boolean, onClose: (
 export function useCloseTopOverlay(): () => boolean {
   const ctx = useContext(OverlayStackContext);
   return ctx?.closeTop ?? (() => false);
+}
+
+/** true, gdy jakakolwiek warstwa overlay-stack jest otwarta - false (bez wybuchu) poza providerem. */
+export function useAnyOverlayOpen(): boolean {
+  const ctx = useContext(OverlayStackContext);
+  return ctx?.anyOpen ?? false;
 }

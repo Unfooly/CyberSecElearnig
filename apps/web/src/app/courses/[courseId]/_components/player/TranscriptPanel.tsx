@@ -9,6 +9,13 @@ import { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 // mechanizm): pełny tekst narracji, nad dolnym paskiem, WEWNĄTRZ ramki (bottom-full względem paska - zawsze tuż nad
 // nim, niezależnie od jego wysokości). Zarejestrowany w overlay-stack (LIFO wg kolejności otwarcia) - Escape w
 // PlayerStage zamyka go, o ile inna warstwa nie jest akurat otwarta później (D-075: poza fullscreenem).
+// z-30 (hotfix fix/mascot-overlap - wcześniej z-10, tak samo jak MascotOverlay.tsx; poprawiony opis po kodzie
+// review, druga runda): ten panel i dymek Fooli leżą w TYM SAMYM kontekście warstw (ani bottomBarRef, ani
+// contentRef nie mają własnego z-index/isolate - oba są zwykłymi potomkami `<main>`'s isolate w PlayerStage.tsx),
+// więc przy równym z-index o tym, co maluje się na wierzchu, decydowała kolejność w DOM (bottomBarRef PO
+// contentRef) - działało dziś przypadkiem, ale krucho, bo niezależnie od tego, co user faktycznie otworzył jako
+// ostatnie. z-30 dorównuje karcie hotspotu/panelowi notatnika - wszystkie "nakładki" overlay-stack są teraz jawnie,
+// nie przez przypadek kolejności DOM, ponad dymkiem (z-10).
 export default function TranscriptPanel({
   text,
   open,
@@ -46,7 +53,7 @@ export default function TranscriptPanel({
       id={TRANSCRIPT_TOGGLE_ID}
       role="region"
       aria-label="Transkrypcja narracji"
-      className="absolute bottom-full left-0 right-0 z-10 mb-2 max-h-[40dvh] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
+      className="absolute bottom-full left-0 right-0 z-30 mb-2 max-h-[40dvh] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">Transkrypcja</h3>

@@ -303,7 +303,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (dev/player-harness czyta treść modułu wprost z `packages/content` - test na stałe pilnuje, że sekrety treści
   (klucz odpowiedzi, `reactions.result`, podpowiedzi) nie trafiają do klienckiego bundla `apps/web/.next/static/`,
   niezależnie od tego, co ktoś zmieni w `page.tsx` w przyszłości).
-- Opis: `scripts/layout-check.mjs` (Playwright, `apps/web/src/app/dev/player-harness/page.tsx` za
+- Opis: `scripts/layout-check.mjs` (Playwright, `apps/web/src/app/dev/player-harness/page.dev.tsx` za
   `NEXT_PUBLIC_DEV_HARNESS=1`, bez backendu) i `scripts/check-no-secrets-in-bundle.mjs` (wymaga
   `npm run build --workspace=apps/web`, bez i z `NEXT_PUBLIC_DEV_HARNESS=1` - patrz opis PR) uruchamiane dziś
   WYŁĄCZNIE ręcznie przed pushem PR-ów zmieniających układ odtwarzacza (CLAUDE.md, reguła 12) - nic nie pilnuje, że

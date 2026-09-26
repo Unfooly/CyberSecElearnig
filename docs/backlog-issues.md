@@ -385,6 +385,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: jedno żądanie `GET /api/users/me/avatar` na wejście na stronę, niezależnie od liczby konsumentów hooka;
   `AVATAR_CHANGED_EVENT` zawsze wygrywa z później rozstrzygającą się odpowiedzią fetch-a sprzed zdarzenia.
 
+### B-106 Testy `scripts/content` czytają lokalny `.env.local`
+- Etykiety: `P4`, `tech-debt`, `mod:content` · Źródło: `fix/company-name` - lokalnie 2 faile w `src/tts.test.ts`
+  („tryb z kluczami bez konfiguracji”, „--assets --check --remote --storage r2 bez konfiguracji”), bo autor treści ma
+  skonfigurowany `scripts/content/.env.local` i CLI ładuje z niego klucze, zamiast zgłosić ich brak. W CI (bez pliku) zielone.
+- Opis: testy CLI mają izolować środowisko - nie czytać `.env.local` (np. wstrzykiwana ścieżka pliku env / flaga
+  wyłączająca ładowanie w `main()`), żeby wynik nie zależał od maszyny.
+- Akceptacja: `npm run test --prefix scripts/content` zielone także z uzupełnionym `scripts/content/.env.local`.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -39,7 +39,7 @@ nie do repo (`.gitignore`: `*.preview.html`).
       "params": { "month": "WRZESIEŃ", "markedDay": 15, "note": "PRZELEWY DO 15:00 !!!" } },
     { "id": "monitor", "prop": "monitor", "x": 480, "y": 280, "hotspot": true,
       "partHotspots": { "sticky": "karteczka" },
-      "params": { "screen": "mail", "sticky": ["Nortex2024!", "bank: to samo"] } },
+      "params": { "screen": "mail", "sticky": ["Unfooly24!", "bank: to samo"] } },
     { "id": "roslina", "prop": "plant", "x": 1410, "y": 600 }
   ]
 }

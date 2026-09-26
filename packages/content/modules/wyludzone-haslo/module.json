@@ -65,7 +65,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.9752d64b.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.c8d122b6.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
@@ -75,11 +75,11 @@
           "y": 24.2,
           "width": 7.9,
           "height": 11.6,
-          "content": "Na karteczce: „Nortex2024!” — a niżej dopisek długopisem: bank: to samo.",
+          "content": "Na karteczce: „Unfooly24!” — a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e0f18a.svg",
-            "alt": "Zbliżenie żółtej karteczki: hasło „Nortex2024!” i dopisek „bank: to samo”"
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e34fa7.svg",
+            "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
           },
           "evidence": true,
           "note": {
@@ -112,7 +112,7 @@
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.2767b4f1.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.a6396621.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -179,7 +179,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.34985292.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.fede98f8.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -250,7 +250,7 @@
       },
       "character": {
         "name": "Anna Kowalska",
-        "role": "księgowa w Nortex Sp. z o.o.",
+        "role": "księgowa w Unfooly Sp. z o.o.",
         "avatar": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg",
         "opening": "Ja naprawdę nic nie zrobiłam. Znaczy… zrobiłam to, co kazali."
       },
@@ -385,7 +385,7 @@
       "email": {
         "fromName": "Bank Wektor — Dział Bezpieczeństwa",
         "fromAddress": "bezpieczenstwo@bankwektor-weryfikacja.pl",
-        "to": "a.kowalska@nortex.pl",
+        "to": "a.kowalska@unfooly.com",
         "subject": "PILNE: weryfikacja konta firmowego — blokada o 10:00",
         "date": "wtorek, 8:47",
         "body": "Szanowna Kliencie,\n\nW związku z aktualizacją systemów bezpieczeństwa Twoje konto firmowe wymaga natychmiastowej weryfikacji. W przypadku braku potwierdzenia do godziny 10:00 dostęp do rachunku zostanie tymczasowo zablokowany.\n\nPozostało: 01:12:33\n\nAby potwierdzić dane, kliknij: Przejdź do weryfikacji\n\nProsimy o nie odpowiadanie na tę wiadomość.\n\nZ poważaniem,\nZespół Bezpieczeństwa Bank Wektor\nBank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa",
@@ -523,17 +523,17 @@
       "type": "TABS",
       "title": "Akta sprawy",
       "narration": {
-        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać.",
-        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/2e4796ce9e4b1181.mp3",
-        "durationMs": 7152,
+        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać.",
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/b95c830fe00e754f.mp3",
+        "durationMs": 6734,
         "cues": [
           {
             "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt.",
             "startMs": 0
           },
           {
-            "text": "Trzy rzeczy, które każdy w Nortex powinien znać.",
-            "startMs": 3796
+            "text": "Trzy rzeczy, które każdy w Unfooly powinien znać.",
+            "startMs": 3564
           }
         ]
       },
@@ -554,8 +554,8 @@
         },
         {
           "id": "zgloszenie",
-          "title": "Jak zgłosić w Nortex",
-          "content": "Podejrzany mail: przycisk **„Zgłoś podejrzany mail”** w Unfooly albo przekaż do `bezpieczenstwo@nortex.pl`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+          "title": "Jak zgłosić w Unfooly",
+          "content": "Zgłoś przyciskiem **„Zgłoś podejrzany mail”** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
         }
       ]
     },
@@ -834,7 +834,7 @@
         "pose": "greeting",
         "text": "Sprawa zamknięta. Dobra robota, detektywie."
       },
-      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmienił Nortex po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”."
+      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”."
     }
   ]
 }

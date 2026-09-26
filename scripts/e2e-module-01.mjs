@@ -205,7 +205,7 @@ try {
 
   // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
   await page.getByTestId('mail-client').waitFor();
-  step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@nortex.pl'));
+  step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@unfooly.com'));
   // Fragmenty maila są prawdziwymi <button>-ami inline (aria-pressed) - klikamy bezpośrednio, bez osobnej "Listy
   // elementów (dla klawiatury)" (usunięta, feedback z produkcji). "presja" (groźba blokady) NIE ma fragmentu w treści
   // (nie sąsiaduje z licznikiem "Pozostało: 01:12:33", który dostał WŁASNE, anchorowalne kryterium "odliczanie") -
@@ -231,8 +231,8 @@ try {
   step('TABS: `kod` w zakładce "Domeny" trafia do <code>', (await page.locator('code', { hasText: '@bankwektor.pl' }).count()) === 1);
   await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
   step('TABS: lista wypunktowana w zakładce "Czego bank nigdy nie zrobi"', (await page.getByRole('list').locator('li', { hasText: 'Kod SMS' }).count()) === 1);
-  await page.getByRole('tab', { name: 'Jak zgłosić w Nortex' }).click();
-  step('TABS: `kod` w zakładce "Jak zgłosić w Nortex"', (await page.locator('code', { hasText: 'bezpieczenstwo@nortex.pl' }).count()) === 1);
+  await page.getByRole('tab', { name: 'Jak zgłosić w Unfooly' }).click();
+  step('TABS: pogrubienie w zakładce "Jak zgłosić w Unfooly"', (await page.locator('strong', { hasText: 'Zgłoś podejrzany mail' }).count()) === 1);
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------

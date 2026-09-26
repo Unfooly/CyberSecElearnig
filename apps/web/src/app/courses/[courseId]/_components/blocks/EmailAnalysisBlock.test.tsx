@@ -68,11 +68,11 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     expect(screen.queryByText('Do:')).not.toBeInTheDocument();
     render(
       <MascotReactionProvider resetKey="k2">
-        <EmailAnalysisBlock block={{ ...block, email: { ...block.email!, to: 'jan.kowalski@nortex.pl' } }} onSubmit={vi.fn()} disabled={false} />
+        <EmailAnalysisBlock block={{ ...block, email: { ...block.email!, to: 'jan.kowalski@unfooly.com' } }} onSubmit={vi.fn()} disabled={false} />
       </MascotReactionProvider>,
     );
     expect(screen.getByText('Do:')).toBeInTheDocument();
-    expect(screen.getByText('jan.kowalski@nortex.pl')).toBeInTheDocument();
+    expect(screen.getByText('jan.kowalski@unfooly.com')).toBeInTheDocument();
   });
 
   it('nic w makiecie nie nawiguje ani nie pobiera: brak <a>, href i download', () => {

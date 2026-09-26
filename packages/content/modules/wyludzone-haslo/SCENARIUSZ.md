@@ -30,10 +30,10 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 
 | Postać | Rola | Avatar |
 |---|---|---|
-| Anna Kowalska | księgowa w Nortex Sp. z o.o. | `avatars/anna.svg` |
+| Anna Kowalska | księgowa w Unfooly Sp. z o.o. | `avatars/anna.svg` |
 | Marek Zieliński | administrator IT (jednoosobowy dział) | `avatars/marek.svg` |
 | „Bank Wektor" | fikcyjny bank; prawdziwa domena `bankwektor.pl`, fałszywa `bankwektor-weryfikacja.pl` | — |
-| Gracz | „detektyw" — nowy audytor bezpieczeństwa w Nortex | — |
+| Gracz | „detektyw" — nowy audytor bezpieczeństwa w Unfooly | — |
 
 Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak narrator kryminału, bez żartów.
 
@@ -70,7 +70,7 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 
 | id | Element | Karta po kliknięciu | Dowód | Notatka (kind) | Media (B-086/D-071) |
 |---|---|---|---|---|---|
-| `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Nortex2024!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
+| `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Unfooly24!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
 | `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte." (celowo TEASER, nie ujawnienie — treść maila jest dopiero za Outlookiem, patrz „Scena zagnieżdżona" niżej; poprawione po przeglądzie kodu, wcześniej to pole miało tu przez pomyłkę tę samą treść co `outlook`) | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
 | `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
 | `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
@@ -123,7 +123,7 @@ ilustracją, `media.kind: image`, nie tekstem w treści modułu):
 ```
 BANK WEKTOR — POTWIERDZENIE WYKONANIA PRZELEWU
 Data i godzina:  wtorek, 09:12:41
-Z rachunku:      Nortex Sp. z o.o.  PL 61 …… 4412
+Z rachunku:      Unfooly Sp. z o.o.  PL 61 …… 4412
 Na rachunek:     Wektor Rozliczenia Sp. z o.o.  PL 27 …… 9903
 Kwota:           14 000,00 PLN
 Tytuł:           weryfikacja salda
@@ -161,7 +161,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 ```
 Od:       Bank Wektor — Dział Bezpieczeństwa <bezpieczenstwo@bankwektor-weryfikacja.pl>
-Do:       a.kowalska@nortex.pl
+Do:       a.kowalska@unfooly.com
 Data:     wtorek, 8:47
 Temat:    PILNE: weryfikacja konta firmowego — blokada o 10:00
 Załącznik: Regulamin_weryfikacji.pdf.exe (412 KB)
@@ -216,7 +216,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ## Blok 5 — Akta sprawy (TABS) — bez oceny
 
-- **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Nortex powinien znać."
+- **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać."
 - **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
 - ukończenie: otwarte wszystkie 3 zakładki
 
@@ -230,8 +230,8 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 > - Nie wyśle programu (`.exe`, `.scr`, `.bat`) w załączniku.
 > Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila.
 
-**Zakładka „Jak zgłosić w Nortex":**
-> Podejrzany mail: przycisk **„Zgłoś podejrzany mail"** w Unfooly albo przekaż do `bezpieczenstwo@nortex.pl`. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
+**Zakładka „Jak zgłosić w Unfooly":**
+> Zgłoś przyciskiem **„Zgłoś podejrzany mail"** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
 
 ---
 
@@ -304,7 +304,7 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 > 2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować".
 > 3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail" jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.
 >
-> **Co zmienił Nortex po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty".
+> **Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty".
 
 - przycisk: „Zakończ sprawę" → ekran wyniku (istniejący)
 

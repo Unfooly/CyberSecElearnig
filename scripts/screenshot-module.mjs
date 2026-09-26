@@ -183,7 +183,7 @@ async function runViewport(viewport) {
   await page.getByRole('tablist').waitFor();
   await page.getByRole('tab', { name: 'Domeny' }).click();
   await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
-  await page.getByRole('tab', { name: 'Jak zgłosić w Nortex' }).click();
+  await page.getByRole('tab', { name: 'Jak zgłosić w Unfooly' }).click();
   await nextEnabled().click();
 
   // --- DIALOGUE (Marek) - przechodzimy bez zrzutu ------------------------------------------------------------------

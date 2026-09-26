@@ -14,6 +14,8 @@ import type {
   LastResult,
 } from '@/lib/courses-types';
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
+import { initialsFromEmail } from '@/lib/avatar';
+import { useMyAvatar } from '@/lib/use-my-avatar';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -53,13 +55,26 @@ interface RenderContext {
   suspended: boolean;
   /** Tylko bloki eksploracyjne: zgłasza gotowość do "Dalej" w pasku powłoki zamiast własnego "Kontynuuj". */
   onReady: (submit: (() => void) | null) => void;
+  myAvatarUrl?: string | null;
+  myInitials?: string;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
   const { onSubmit, disabled, contentBase } = ctx;
   if (isExploratory(block.type)) {
     // key: stan wewnętrzny (odwiedzone elementy) nie może przechodzić między kolejnymi blokami tego samego typu.
-    return <ExploratoryBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={ctx.onReady} disabled={disabled} />;
+    return (
+      <ExploratoryBlock
+        key={block.id}
+        block={block}
+        contentBase={contentBase}
+        onSubmit={onSubmit}
+        onReady={ctx.onReady}
+        disabled={disabled}
+        myAvatarUrl={ctx.myAvatarUrl}
+        myInitials={ctx.myInitials}
+      />
+    );
   }
   if (isScored(block.type)) {
     return (
@@ -130,6 +145,7 @@ export default function CoursePlayer({
   scoreUnavailable = false,
   narrationEnabled = true,
   contentBase = LOCAL_CONTENT_BASE,
+  userEmail = null,
 }: {
   courseId: string;
   initial: CoursePlayerInitialState;
@@ -141,8 +157,11 @@ export default function CoursePlayer({
   narrationEnabled?: boolean;
   // Baza adresów zasobów (CONTENT_BASE_URL albo /content lokalnie), z page.tsx.
   contentBase?: string;
+  userEmail?: string | null;
 }) {
   const router = useRouter();
+  const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
+  const myInitials = userEmail ? initialsFromEmail(userEmail) : undefined;
   // Stan postępu (status/currentBlockIndex/score) pochodzi WYŁĄCZNIE z API -
   // po każdej odpowiedzi jest CAŁKOWICIE nadpisywany odpowiedzią z
   // /progress, nigdy inkrementowany lokalnie. `feedback` to jedyny czysto
@@ -460,10 +479,22 @@ export default function CoursePlayer({
               onProgress,
               suspended: reviewing,
               onReady: handleReady,
+              myAvatarUrl,
+              myInitials,
             })}
           </div>
         )}
-        {reviewing && <ReviewBlock key={keyOf(displayedIndex)} block={currentBlock} result={results[keyOf(displayedIndex)]} contentBase={contentBase} courseId={courseId} />}
+        {reviewing && (
+          <ReviewBlock
+            key={keyOf(displayedIndex)}
+            block={currentBlock}
+            result={results[keyOf(displayedIndex)]}
+            contentBase={contentBase}
+            courseId={courseId}
+            myAvatarUrl={myAvatarUrl}
+            myInitials={myInitials}
+          />
+        )}
       </>
     );
   }

@@ -71,9 +71,10 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     );
 
     // Blok OCENIANY kończący kurs: zostaje normalny ekran feedbacku (D-076) - jeszcze NIE podsumowanie. Reakcja z
-    // lastResult.reaction pokazuje się TUTAJ (FeedbackPanel woła mascot.show(), MascotOverlay ją renderuje).
+    // lastResult.reaction pokazuje się TUTAJ (FeedbackPanel woła mascot.show(), MascotBanner ją renderuje - ekran
+    // feedbacku to contentLayout='slide', fix/dialogue-polish: pasek, NIE floating MascotOverlay/mascot-says).
     expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
-    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Świetna robota!');
+    expect(screen.getByTestId('mascot-banner')).toHaveTextContent('Świetna robota!');
     expect(screen.queryByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).not.toBeInTheDocument();
 
     // Dwa przyciski "Dalej" na ekranie feedbacku: aktywny pod wynikiem (pierwszy w DOM) i nieaktywny w powłoce -
@@ -93,8 +94,8 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     // Reakcja Fooli na wynik TEGO bloku była już pokazana w ekranie feedbacku wyżej (przez FeedbackPanel/
     // useMascotReaction, asercja powyżej) - SummaryScreen jej NIE powtarza (finalReaction zostaje null, gdy ekran
     // feedbacku nie był pominięty - CoursePlayer.tsx, D-076; bez `&& skipsFeedbackScreen` w tym warunku ten
-    // mascot-says by tu wrócił, bo status jest już 'COMPLETED').
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+    // mascot-banner by tu wrócił, bo status jest już 'COMPLETED').
+    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
   });
 
   it('pokazuje kartę nagrody (RewardCard, inline na SummaryScreen) z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification (po ekranie feedbacku bloku ocenianego - D-076)', async () => {

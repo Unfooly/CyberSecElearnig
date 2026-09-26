@@ -3,14 +3,15 @@ import type { Narration } from '@cyberszkolo/content';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { activeCaptionIndex, buildCaptions, type Caption } from '@/lib/narration-captions';
 
-// Logika odtwarzania narracji bloku (bez prezentacji - to NarrationBar.tsx dla desktopu/tabletu/telefonu w poziomie
-// i NarrationBarPortrait.tsx dla telefonu w pionie, PR B). Wydzielone z dawnego NarrationPlayer.tsx (usunięty w
-// feat/player-stage), żeby DWIE różne prezentacje (liniowy pasek postępu vs okrągły wskaźnik) dzieliły JEDNĄ logikę
-// audio/napisów/transkrypcji, zamiast duplikować ją albo trzymać w jednym komponencie z gałęziami na orientację.
+// Logika odtwarzania narracji bloku (bez prezentacji - to NarrationBar.tsx, jeden komponent dla wszystkich
+// breakpointów, D-078). Wydzielone z dawnego NarrationPlayer.tsx (usunięty w feat/player-stage).
 export interface NarrationBarState {
   audioRef: React.RefObject<HTMLAudioElement>;
   audioUrl: string | null;
   playing: boolean;
+  /** fix/dialogue-polish: BEZ paska postępu/czasu w UI (usunięty razem z seek()/formatNarrationTime()) - te dwa
+      pola ZOSTAJĄ, bo napisy (showCaption/active/activeIndex niżej) wciąż muszą wiedzieć, KTÓRA linijka jest
+      aktywna w danym momencie odtwarzania. */
   positionMs: number;
   durationMs: number;
   /** Nagranie istnieje, lektor włączony i się załadowało (nie loadFailed). */
@@ -25,7 +26,6 @@ export interface NarrationBarState {
   transcriptOpen: boolean;
   toggleTranscript: () => void;
   togglePlay: () => void;
-  seek: (valueMs: number) => void;
   onPlay: () => void;
   onPause: () => void;
   onEnded: () => void;
@@ -109,20 +109,24 @@ export function useNarrationBar({
     }
   }, [enabled]);
 
+  // fix/dialogue-polish (poprawka po code review): jawny `currentTime = 0` przed `play()` po zakończeniu nagrania.
+  // Reset DEFENSYWNY, nie naprawa zaobserwowanego błędu - algorytm `play()` w spec HTML (i Chromium/Firefox/Safari)
+  // SAM przewija do początku, gdy playback się zakończył i kierunek jest w przód (bez tego jawnego resetu przycisk
+  // "Odtwórz" po zakończeniu nagrania i tak działałby poprawnie w prawdziwej przeglądarce - nigdy tego NIE
+  // zweryfikowano empirycznie w tym PR-ze, testy tego pliku mockują `play()`). Zostaje jako dodatkowa gwarancja
+  // (bez paska/suwaka jest to jedyne miejsce, gdzie moglibyśmy to kontrolować, gdyby jakiś silnik/wersja się od tego
+  // odchyliła) i żeby stan `positionMs`/napisy (patrz `onEnded` niżej) były zgodne z `currentTime` od razu, bez
+  // czekania na własny algorytm przeglądarki.
   function togglePlay() {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      if (audio.ended) audio.currentTime = 0;
       setAutoplayBlocked(false);
       audio.play().catch(handlePlayError);
     } else {
       audio.pause();
     }
-  }
-
-  function seek(valueMs: number) {
-    if (audioRef.current) audioRef.current.currentTime = valueMs / 1000;
-    setPositionMs(valueMs);
   }
 
   return {
@@ -141,7 +145,6 @@ export function useNarrationBar({
     transcriptOpen,
     toggleTranscript: () => setTranscriptOpen((open) => !open),
     togglePlay,
-    seek,
     onPlay: () => setPlaying(true),
     onPause: () => setPlaying(false),
     onEnded: () => {
@@ -151,9 +154,4 @@ export function useNarrationBar({
     onTimeUpdate: (currentTimeSeconds: number) => setPositionMs(Math.round(currentTimeSeconds * 1000)),
     onError: () => setLoadFailed(true),
   };
-}
-
-export function formatNarrationTime(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 }

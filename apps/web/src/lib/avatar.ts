@@ -18,3 +18,11 @@ export function uploadedAvatarSrc(avatarUrl: string, userId?: string | null): st
   const who = userId && userId.length > 0 ? encodeURIComponent(userId) : 'me';
   return `/api/users/${who}/avatar/image${hash ? `?v=${encodeURIComponent(hash)}` : ''}`;
 }
+
+export function initialsFromEmail(email: string): string {
+  const localPart = email.split('@')[0] ?? '';
+  const segments = localPart.split(/[._-]+/).filter(Boolean);
+  const first = segments[0]?.[0]?.toUpperCase() ?? '?';
+  const second = segments[1]?.[0]?.toUpperCase() ?? '';
+  return `${first}${second}`;
+}

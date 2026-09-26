@@ -5,7 +5,8 @@ import { Role } from '@cyberszkolo/shared';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { LogOut, Menu, Settings, X } from 'lucide-react';
-import { AVATAR_CHANGED_EVENT } from '@/lib/avatar-events';
+import { initialsFromEmail } from '@/lib/avatar';
+import { useMyAvatar } from '@/lib/use-my-avatar';
 import { useLogout } from '@/lib/use-logout';
 import { buttonClasses } from './ui/Button';
 import Logo from './Logo';
@@ -51,14 +52,6 @@ function activeNavHref(items: NavItem[], pathname: string): string | undefined {
   return builtHrefs.filter((href) => pathname === href || pathname.startsWith(`${href}/`)).sort((a, b) => b.length - a.length)[0];
 }
 
-function initialsFromEmail(email: string): string {
-  const localPart = email.split('@')[0] ?? '';
-  const segments = localPart.split(/[._-]+/).filter(Boolean);
-  const first = segments[0]?.[0]?.toUpperCase() ?? '?';
-  const second = segments[1]?.[0]?.toUpperCase() ?? '';
-  return `${first}${second}`;
-}
-
 export default function Topbar({
   userEmail,
   role,
@@ -67,7 +60,7 @@ export default function Topbar({
   role?: Role;
 }) {
   const pathname = usePathname();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { avatarUrl } = useMyAvatar(userEmail);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Drawer i dropdown UserMenu dzielą tę samą kolumnę z prawej - nie mogą być otwarte naraz (dropdown, z-50 w
   // kontekście nakładania headera, i tak lądowałby POD panelem, z-40 poza tym kontekstem - code review PR #39,
@@ -83,41 +76,9 @@ export default function Topbar({
   // od razu je zamyka jego własnym handlerem focusout - code review PR #39, drobiazgi.
   const skipFocusReturnRef = useRef(false);
 
-  // Własny avatar pobieramy po stronie klienta (Topbar jest współdzielony
-  // przez wszystkie strony), a zmianę z ustawień konta łapiemy przez
-  // zdarzenie - bez przeładowania strony. Błąd/brak avatara = inicjały.
-  useEffect(() => {
-    // Nowy użytkownik nie może widzieć avatara poprzedniego do czasu odpowiedzi.
-    setAvatarUrl(null);
-    if (!userEmail) {
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch('/api/users/me/avatar');
-        if (!response?.ok) {
-          return;
-        }
-        const data = await response.json();
-        if (!cancelled && typeof data?.avatarUrl === 'string') {
-          setAvatarUrl(data.avatarUrl);
-        }
-      } catch {
-        // inicjały jako fallback
-      }
-    })();
-
-    function handleChanged(event: Event) {
-      const next = (event as CustomEvent<string | null>).detail;
-      setAvatarUrl(typeof next === 'string' ? next : null);
-    }
-    window.addEventListener(AVATAR_CHANGED_EVENT, handleChanged);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(AVATAR_CHANGED_EVENT, handleChanged);
-    };
-  }, [userEmail]);
+  // Własny avatar: useMyAvatar (fix/dialogue-polish, wydzielone z tego pliku - Topbar jest współdzielony przez
+  // wszystkie strony, ten sam hook używany też w odtwarzaczu kursu dla dymków gracza w DIALOGUE). Błąd/brak
+  // avatara = inicjały.
 
   // Rola nieznana (strony administratora, do których middleware wpuszcza tylko ORG_ADMIN) = wszystkie pozycje.
   const visibleItems = visibleNavItems(role);

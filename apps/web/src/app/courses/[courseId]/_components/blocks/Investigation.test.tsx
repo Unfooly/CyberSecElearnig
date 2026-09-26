@@ -94,7 +94,14 @@ function Probe() {
 // null). `ready` to referencja na ostatnio zgłoszoną funkcję; testy "klikają Dalej" wywołując ready.current().
 function setup(
   block: ContentBlock,
-  options: { review?: boolean; summary?: EvidenceSummary; titles?: Record<string, string>; onSubmit?: (a?: unknown) => void } = {},
+  options: {
+    review?: boolean;
+    summary?: EvidenceSummary;
+    titles?: Record<string, string>;
+    onSubmit?: (a?: unknown) => void;
+    myAvatarUrl?: string | null;
+    myInitials?: string;
+  } = {},
 ) {
   const onSubmit = options.onSubmit ?? vi.fn();
   const ready: { current: (() => void) | null } = { current: null };
@@ -114,6 +121,8 @@ function setup(
               }}
               disabled={false}
               review={options.review}
+              myAvatarUrl={options.myAvatarUrl}
+              myInitials={options.myInitials}
             />
             <Probe />
             <NotesPanel id="panel" />
@@ -313,7 +322,7 @@ const mediaScene: ContentBlock = {
       media: { kind: 'document', title: 'Potwierdzenie przelewu', lines: ['Kwota: 14 000,00 PLN', 'Odbiorca: Wektor Rozliczenia'] },
     },
     // Drugi hotspot audio WYŁĄCZNIE po to, żeby przetestować key={hotspot.id} na AudioMedia (code review commitu
-    // 1ff5939): stan (playing/currentTime) między dwoma RÓŻNYMI hotspotami audio nie może "przeciekać".
+    // 1ff5939): stan (playing) między dwoma RÓŻNYMI hotspotami audio nie może "przeciekać".
     {
       id: 'radio',
       label: 'Radio',
@@ -584,22 +593,21 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(audioEl).not.toHaveAttribute('controls'); // własny odtwarzacz, nie natywny <audio controls> (feedback z produkcji)
     expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled(); // klik hotspotu = gest użytkownika -> autoplay
 
-    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // play() zmockowany, onPlay się nie odpala - stan startowy
-    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument(); // play() zmockowany, onPlay się nie odpala - stan startowy
 
     // Stała etykieta "Transkrypcja" + aria-pressed (druga runda code review, punkt 6) - nie "Pokaż/Ukryj"/aria-expanded.
     const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
     fireEvent.click(toggle);
-    // Widok się ZAMIENIŁ: transkrypcja w miejscu obrazka, obrazek zniknął, play/pauza i pasek postępu zostały.
+    // Widok się ZAMIENIŁ: transkrypcja w miejscu obrazka, obrazek zniknął, przycisk play/pauza zostaje.
     // Region z transkrypcją jest dostępny i przewijalny samodzielnie (role=region, tabIndex=0), nie tylko widoczny.
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
     const transcriptRegion = screen.getByRole('region', { name: 'Transkrypcja' });
     expect(transcriptRegion).toHaveAttribute('tabindex', '0');
     expect(within(transcriptRegion).getByText('Dzień dobry, dzwonię z banku.')).toBeVisible();
     expect(within(dialog()).queryByAltText('')).not.toBeInTheDocument();
-    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument();
 
     // Kliknięcie ponownie wraca do zbliżenia (zamiana widoku w drugą stronę), nie dokłada transkrypcji pod nim.
     fireEvent.click(toggle);
@@ -612,51 +620,54 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
   });
 
-  it('audio: przycisk play/pauza przełącza odtwarzanie, pasek postępu i czas aktualizują się z zdarzeń <audio>', () => {
+  it('audio: przycisk play/pauza przełącza odtwarzanie i etykietę ("Odtwórz nagranie"/"Wstrzymaj nagranie" - fix/dialogue-polish, bez paska postępu/czasu)', () => {
     setup(mediaScene);
     pick('Telefon');
     const audioEl = document.querySelector('audio')!;
 
     Object.defineProperty(audioEl, 'paused', { value: false, configurable: true }); // jsdom nie synchronizuje .paused z play()/pause() zmockowanymi wyżej
     fireEvent(audioEl, new Event('play'));
-    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Wstrzymaj nagranie' })).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
 
-    Object.defineProperty(audioEl, 'duration', { value: 60, configurable: true });
-    fireEvent(audioEl, new Event('loadedmetadata'));
-    Object.defineProperty(audioEl, 'currentTime', { value: 15, configurable: true });
-    fireEvent(audioEl, new Event('timeupdate'));
-    expect(screen.getByText('0:15 / 1:00')).toBeInTheDocument();
-
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Pauza' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Wstrzymaj nagranie' }));
     expect(audioEl.pause).toHaveBeenCalled();
   });
 
-  it('audio: stan (playing/czas) nie przecieka między dwoma RÓŻNYMI hotspotami audio - key={hotspot.id} wymusza remount', () => {
+  it('audio: fix/dialogue-polish - po zakończeniu nagrania (ended) przycisk wraca do "Odtwórz nagranie", klik odtwarza od początku (currentTime resetowany na 0)', () => {
+    setup(mediaScene);
+    pick('Telefon');
+    const audioEl = document.querySelector('audio')!;
+    Object.defineProperty(audioEl, 'paused', { value: true, configurable: true });
+    Object.defineProperty(audioEl, 'ended', { value: true, configurable: true });
+    Object.defineProperty(audioEl, 'currentTime', { value: 30, configurable: true, writable: true });
+    fireEvent(audioEl, new Event('ended'));
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Odtwórz nagranie' }));
+
+    expect(audioEl.currentTime).toBe(0);
+  });
+
+  it('audio: stan (playing) nie przecieka między dwoma RÓŻNYMI hotspotami audio - key={hotspot.id} wymusza remount', () => {
     setup(mediaScene);
     pick('Telefon');
     const firstAudio = document.querySelector('audio')!;
     Object.defineProperty(firstAudio, 'paused', { value: false, configurable: true });
-    Object.defineProperty(firstAudio, 'duration', { value: 60, configurable: true });
-    Object.defineProperty(firstAudio, 'currentTime', { value: 30, configurable: true });
     fireEvent(firstAudio, new Event('play'));
-    fireEvent(firstAudio, new Event('loadedmetadata'));
-    fireEvent(firstAudio, new Event('timeupdate'));
-    expect(within(dialog()).getByRole('button', { name: 'Pauza' })).toBeInTheDocument();
-    expect(screen.getByText('0:30 / 1:00')).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Wstrzymaj nagranie' })).toBeInTheDocument();
 
     back();
     pick('Radio');
     const secondAudio = document.querySelector('audio')!;
     expect(secondAudio).not.toBe(firstAudio); // inny <audio> - świeży <AudioMedia>, nie ta sama instancja
-    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument(); // stan playing zresetowany
-    expect(screen.getByText('0:00 / 0:00')).toBeInTheDocument(); // czas zresetowany, nie "0:30 / 1:00" z Telefonu
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument(); // stan playing zresetowany
   });
 
-  it('audio: przeglądarka odrzuca play() (autoplay zablokowany) - przycisk zostaje "Odtwórz", bez komunikatu błędu i bez wywalenia komponentu', () => {
+  it('audio: przeglądarka odrzuca play() (autoplay zablokowany) - przycisk zostaje "Odtwórz nagranie", bez komunikatu błędu i bez wywalenia komponentu', () => {
     vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockRejectedValue(new DOMException('blocked', 'NotAllowedError'));
     setup(mediaScene);
     pick('Telefon');
-    expect(within(dialog()).getByRole('button', { name: 'Odtwórz' })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Odtwórz nagranie' })).toBeInTheDocument();
     expect(screen.queryByText(/autoodtwarzanie|zablokował/i)).not.toBeInTheDocument(); // celowo BEZ komunikatu (inaczej niż NarrationPlayer.tsx)
   });
 
@@ -677,7 +688,7 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     pick('Zepsuty dyktafon');
 
     expect(document.querySelector('audio')).not.toBeInTheDocument(); // brak audioUrl -> brak elementu <audio>
-    expect(screen.queryByRole('button', { name: 'Odtwórz' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Odtwórz nagranie' })).not.toBeInTheDocument();
 
     const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -1276,6 +1287,74 @@ describe('DIALOGUE: sticky pytania i autoprzewijanie wątku (fix/dialogue-sticky
     setup(dialogue);
     const log = screen.getByRole('log', { name: 'Historia rozmowy' });
     expect(within(log).getByRole('list')).toBeInTheDocument();
+  });
+});
+
+describe('DIALOGUE: dymki w-fit/max-w-[70%], avatar gracza, pasek Fooli (fix/dialogue-polish)', () => {
+  it('dymek gracza (pytanie) ma w-fit max-w-[70%] (dopasowany do treści, nie rozciągnięty na pełne 70%)', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    const bubble = screen.getByText('Kto go wysłał?').closest('p') as HTMLElement;
+    expect(bubble.className).toMatch(/\bw-fit\b/);
+    expect(bubble.className).toMatch(/max-w-\[70%\]/);
+    expect(bubble.className).toMatch(/\bbreak-words\b/);
+  });
+
+  it('dymek postaci ma w-fit max-w-[70%]', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    const bubble = screen.getByText('Nie znam nadawcy.').closest('p') as HTMLElement;
+    expect(bubble.className).toMatch(/\bw-fit\b/);
+    expect(bubble.className).toMatch(/max-w-\[70%\]/);
+  });
+
+  it('avatar gracza renderuje się z myAvatarUrl (AvatarDisplay - preset), po prawej dymka, dekoracyjny (aria-hidden)', () => {
+    setup(dialogue, { myAvatarUrl: 'fox' });
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    const bubble = screen.getByText('Kto go wysłał?').closest('div') as HTMLElement;
+    const avatarWrapper = bubble.querySelector('[aria-hidden="true"]');
+    expect(avatarWrapper).toBeInTheDocument();
+    // AVATAR_PRESETS renderuje ikonę Lucide w <span role="img"> - potomek wrappera aria-hidden, więc niewidoczny dla AT.
+    expect(avatarWrapper?.querySelector('[role="img"]')).toBeInTheDocument();
+  });
+
+  it('bez myAvatarUrl: fallback na inicjały z myInitials (AvatarDisplay)', () => {
+    setup(dialogue, { myAvatarUrl: null, myInitials: 'JK' });
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    const bubble = screen.getByText('Kto go wysłał?').closest('div') as HTMLElement;
+    expect(bubble).toHaveTextContent('JK');
+  });
+
+  it('pytanie WIELOKWESTYJNE (q1, 3 linie): avatar postaci TYLKO przy OSTATNIEJ kwestii serii, wcześniejsze mają pustą rezerwację miejsca', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // wszystkie 3 kwestie pokazane
+
+    // <img alt=""> dostaje implicit role="presentation" (HTML-AAM), nie "img" - getByRole nic by nie znalazł;
+    // zwykłe querySelectorAll wewnątrz wątku, jak w istniejącym teście "avatar tylko przez <img> z bazy zasobów".
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    const avatarImgs = log.querySelectorAll('img');
+    // Awatar Anny (character.avatar='img/anna.png') pojawia się dokładnie RAZ (przy ostatniej kwestii serii), mimo
+    // że seria ma 3 kwestie - wcześniejsze dwie dostają pustą rezerwację miejsca (aria-hidden <span>, nie <img>).
+    expect(avatarImgs).toHaveLength(1);
+    // Ten JEDEN <img> stoi przy OSTATNIEJ kwestii serii ("Kliknęłam w link.", trzecia z trzech linii q1) - nie przy
+    // pierwszej/drugiej. CharacterBubble renderuje avatar i tekst jako rodzeństwo w tym samym <div> (flex items-end
+    // gap-2), więc wspólny przodek z tekstem trzeciej kwestii jest wystarczającym, precyzyjnym dowodem pozycji.
+    expect(avatarImgs[0].closest('div')).toContainElement(screen.getByText('Kliknęłam w link.'));
+    expect(avatarImgs[0].closest('div')).not.toContainElement(screen.getByText('Przyszedł rano.'));
+    expect(avatarImgs[0].closest('div')).not.toContainElement(screen.getByText('Wyglądał jak od banku.'));
+  });
+
+  it('pasek Fooli (MascotBanner) w DIALOGUE renderuje się z block.mascot - NIE MascotOverlay (floating)', () => {
+    setup({ ...dialogue, mascot: { pose: 'pointing', text: 'Zapytaj o nadawcę.' } });
+    expect(screen.getByTestId('mascot-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+  });
+
+  it('podgląd "Wstecz" (review=true): pasek Fooli NIE renderuje się (unika przecieku reakcji z żywego bloku, dzieli ten sam MascotReactionProvider)', () => {
+    setup({ ...dialogue, mascot: { pose: 'pointing', text: 'Zapytaj o nadawcę.' } }, { review: true });
+    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
   });
 });
 

@@ -206,17 +206,6 @@
   display: none;
 }
 
-/* Pierścień postępu lektora (NarrationBar.tsx) - domyślnie (desktop/tablet/telefon w poziomie) pasek liniowy
-   (<input type="range">, istniejący od feat/player-stage), pierścień dekoracyjny schowany. Telefon w pionie
-   (nowy @media pod kartą hotspotu niżej, TEKSTOWO PO tej regule) odwraca to - ten sam element <input> zostaje
-   WSPÓLNY, chowany tylko wizualnie. */
-.narration-progress-linear {
-  display: flex;
-}
-.narration-progress-ring {
-  display: none;
-}
-
 /* Karta hotspotu (SceneHotspotsBlock.tsx, hotfix fix/hotspot-card-fit/B-101): na >=640px (ten sam próg co reszta
    pliku i co dawne sm: na karcie) karta z mediami ma STAŁY rozmiar względem sceny (92% x 92%, wyśrodkowana) i SAMA
    się nie przewija - tekst karty (.hotspot-card-text), pole dokumentu (DocumentMedia) i transkrypcja audio mają
@@ -450,26 +439,4 @@
     background: #cbd5e1; /* slate-300 (Tailwind) - literał, nie theme(), ta reguła jest w zwykłym pliku CSS */
   }
 
-  /* Pierścień postępu lektora (NarrationBar.tsx, feat/player-portrait) - czysto dekoracyjny (aria-hidden),
-     przewijanie zostaje na WSPÓLNYM <input type="range"> - ustalone z właścicielem produktu: bez duplikowania
-     elementów dostępności. `display:none` (pierwsza wersja, code review) usuwałby ten <input> Z DRZEWA
-     DOSTĘPNOŚCI CAŁKOWICIE - czytnik ekranu zostawałby bez suwaka i bez odczytu czasu, a nikt nie mógłby przewinąć
-     nagrania dotykiem (pierścień jest aria-hidden, nie reaguje na dotyk) - to PRZECZY intencji "element wspólny,
-     chowany TYLKO wizualnie". Wzorzec Tailwind `sr-only` (ten sam już używany gdzie indziej w repo, np.
-     DialogueBlock.tsx) zamiast `display:none` - wizualnie niewidoczny, ale nadal w drzewie dostępności i
-     interaktywny (czytnik ekranu i klawiatura/dotyk przez natywne fokusowanie inputu nadal działają). */
-  .narration-progress-linear {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
-  .narration-progress-ring {
-    display: flex;
-  }
 }

@@ -102,6 +102,8 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         scoreUnavailable={scoreUnavailable}
         narrationEnabled={narrationEnabled}
         contentBase={contentBase}
+        // Avatar gracza w dymkach DIALOGUE (fix/dialogue-polish, useMyAvatar) - z tego samego JWT co Topbar.tsx.
+        userEmail={userEmail}
       />
     </div>
   );

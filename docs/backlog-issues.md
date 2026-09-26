@@ -341,6 +341,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   zwinięty) albo zmiany w `MascotOverlay.tsx` (współdzielony przez wszystkie typy bloków - poza zakresem tego PR-a).
 - Akceptacja: pierwszy chip nigdy nie jest wizualnie przykryty dymkiem maskotki, niezależnie od długości jego tekstu;
   test regresyjny (layout-check.mjs albo jsdom - bounding boxy się nie nakładają).
+- **Rozwiązane (D-080, gałąź `fix/dialogue-polish`):** Fooli w DIALOGUE (`contentLayout='fill'`) nie jest już floating
+  nakładką (`MascotOverlay.tsx`) - `DialogueBlock.tsx` renderuje `MascotBanner.tsx`, pasek w normalnym przepływie NAD
+  nagłówkiem rozmowy, poza obszarem przewijania. Nic nie może już zachodzić na chipy, bo dymek nie jest już
+  `position:absolute` - usunięty jest sam mechanizm, który powodował ten problem, nie tylko jego symptom. `.pl-24
+  sm:pl-28` (rezerwacja miejsca na ikonkę we wcześniejszej wersji stopki) stała się zbędna i została usunięta razem
+  z tą zmianą.
 
 ### B-104 DIALOGUE na bardzo niskich/poziomych viewportach - pełne pokrycie WCAG 1.4.10
 - Etykiety: `P3`, `a11y`, `mod:web` · Źródło: code review `fix/dialogue-sticky-questions` - `DialogueBlock.tsx`'s
@@ -350,7 +356,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   panelu - to świadoma cecha `contentLayout='fill'`, nie bug). Rozważana doraźna rezerwacja minimalnej wysokości
   wątku (`min-h-[…]`) świadomie ODRZUCONA (druga runda code review): obcinałaby stopkę (JEDYNE kontrolki rozmowy -
   chipy, "Następna kwestia") WCZEŚNIEJ niż zwykłe `min-h-0`, tracąc kontrolki zamiast tylko historii wątku - zostaje
-  `min-h-0`, priorytet ma stopka, wątek jako pierwszy oddaje miejsce.
+  `min-h-0`, priorytet ma stopka, wątek jako pierwszy oddaje miejsce. **Zaktualizowane (`fix/dialogue-polish`,
+  D-080):** przybył JESZCZE JEDEN `shrink-0` element nad nagłówkiem rozmowy - `MascotBanner` (`{!review &&
+  <MascotBanner/>}`, `mb-3`), renderowany gdy blok ma mascota - suma `shrink-0` elementów rośnie, więc dolna granica
+  wysokości viewportu, przy której wątek/stopka stają się nieosiągalne, jest teraz WYŻSZA (problem bardziej
+  prawdopodobny, nie mniej) niż w chwili zgłoszenia tego wpisu. Nie zmienia to akceptacji niżej, tylko fakt, że
+  zmierzona granica musi uwzględnić też ten pasek.
 - Opis: żaden test (`layout-check.mjs`, `DIALOGUE_VIEWPORTS`) nie sprawdza dziś niskiego/poziomego viewportu ani
   symulacji powiększenia przeglądarki w trakcie rozmowy z wieloma pytaniami - nieznana jest faktyczna dolna granica,
   przy której wątek (a docelowo i stopka) staje się nieosiągalny. Pełne rozwiązanie wymaga decyzji projektowej (np.
@@ -359,6 +370,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: zmierzona i udokumentowana najniższa obsługiwana wysokość viewportu (albo poziom powiększenia) dla
   DIALOGUE; test w `layout-check.mjs` pokrywający tę granicę; jeśli granica jest zbyt wysoka (WCAG 1.4.10 wymaga
   wsparcia do 256px wysokości przy standardowym zoomie), projekt UI stopki/nagłówka na niskich wysokościach.
+
+### B-105 Dwa niezależne żądania `GET /api/users/me/avatar` na każde wejście na `/courses/[id]`
+- Etykiety: `P4`, `tech-debt`, `mod:web` · Źródło: code review `fix/dialogue-polish` - `Topbar.tsx` i `CoursePlayer.tsx`
+  wołają `useMyAvatar()` NIEZALEŻNIE od siebie (żaden nie renderuje się na trasie odtwarzacza równocześnie z drugim
+  dziś - `/courses/[courseId]` nie ma Topbara - ale każde WEJŚCIE na tę trasę z innej strony, która ma Topbar, to
+  jedno żądanie tam + jedno tutaj, osobno). Nie jest to błąd (oba poprawnie się fetch'ują, oba poprawnie łapią
+  `AVATAR_CHANGED_EVENT`), tylko zbędny duplikat żądania.
+- Opis: naprawa wymaga wspólnego kontekstu/cache (np. `AvatarProvider` wysoko w drzewie, `useMyAvatar` czytający z
+  kontekstu zamiast fetchować samodzielnie) - większa zmiana niż jest to wart ten PR. Przy tej samej okazji: `useMyAvatar`
+  dziedziczy z `Topbar.tsx` istniejący, drobny wyścig - `AVATAR_CHANGED_EVENT`, który przyjdzie PRZED odpowiedzią
+  własnego `fetch()`, zostaje nadpisany starszą wartością z tej odpowiedzi, gdy ona wreszcie dojdzie (potrzebna flaga
+  "zdarzenie wygrało" albo ignorowanie odpowiedzi fetcha, gdy zdarzenie już nadpisało stan).
+- Akceptacja: jedno żądanie `GET /api/users/me/avatar` na wejście na stronę, niezależnie od liczby konsumentów hooka;
+  `AVATAR_CHANGED_EVENT` zawsze wygrywa z później rozstrzygającą się odpowiedzią fetch-a sprzed zdarzenia.
 
 ## F. Symulacje phishingowe i zgłoszenia
 

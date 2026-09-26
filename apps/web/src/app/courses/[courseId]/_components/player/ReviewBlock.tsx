@@ -11,11 +11,15 @@ export default function ReviewBlock({
   result,
   contentBase,
   courseId,
+  myAvatarUrl = null,
+  myInitials,
 }: {
   block: ContentBlock;
   result?: ClientProgressBlock;
   contentBase: string;
   courseId: string;
+  myAvatarUrl?: string | null;
+  myInitials?: string;
 }) {
   if (isExploratory(block.type)) {
     // Łańcuch wysokości dla SCENE_HOTSPOTS/DIALOGUE (hotfix fix/player-scene-fit/B-100, druga runda code review;
@@ -30,7 +34,7 @@ export default function ReviewBlock({
     return (
       <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
-        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} onReady={() => {}} disabled review />
+        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} onReady={() => {}} disabled review myAvatarUrl={myAvatarUrl} myInitials={myInitials} />
       </div>
     );
   }

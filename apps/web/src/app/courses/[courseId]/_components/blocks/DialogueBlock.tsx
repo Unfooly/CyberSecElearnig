@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
+import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
-import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
+import { DEFAULT_IDLE, useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
+import MascotBanner from '../player/MascotBanner';
 import ExploreFooter from './ExploreFooter';
 
 // Odległość od dołu wątku (px), poniżej której uznajemy usera za "trzymającego się dołu" - autoprzewijanie po
@@ -19,22 +21,28 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 // MODUŁU (nie wewnątrz DialogueBlock): zdefiniowany w ciele komponentu dostawałby nową tożsamość przy KAŻDYM renderze
 // rodzica, więc React odmontowywałby i montował na nowo WSZYSTKIE dymki wątku przy każdej zmianie stanu (progress,
 // avatarFailed), nie tylko nowy - zbędna praca uzgadniania.
+// `showAvatar` (fix/dialogue-polish): kolejne kwestie POD RZĄD (kilka linii jednego pytania wielokwestyjnego, ten
+// sam `<li>`) pokazują avatar TYLKO przy OSTATNIEJ - jak w komunikatorach (wywołujący przekazuje
+// `index === lines.length - 1`). Gdy `false`, w miejscu avatara zostaje TA SAMA pusta rezerwacja miejsca
+// (`h-8 w-8`) co przy braku/błędzie obrazka - dymki wcześniejszych kwestii serii zostają wyrównane z ostatnią.
 function CharacterBubble({
   avatarUrl,
   avatarFailed,
   onAvatarError,
   speakerName,
+  showAvatar = true,
   children,
 }: {
   avatarUrl: string | null;
   avatarFailed: boolean;
   onAvatarError: () => void;
   speakerName: string;
+  showAvatar?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-end gap-2">
-      {avatarUrl && !avatarFailed ? (
+      {showAvatar && avatarUrl && !avatarFailed ? (
         // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src)
         <img
           src={avatarUrl}
@@ -46,7 +54,7 @@ function CharacterBubble({
       ) : (
         <span aria-hidden="true" className="h-8 w-8 shrink-0" />
       )}
-      <p className="max-w-[75%] rounded-lg bg-slate-100 px-3 py-2 text-slate-900">
+      <p className="w-fit max-w-[70%] break-words rounded-lg bg-slate-100 px-3 py-2 text-slate-900">
         <span className="sr-only">{speakerName}: </span>
         {children}
       </p>
@@ -54,13 +62,34 @@ function CharacterBubble({
   );
 }
 
+// Dymek gracza (fix/dialogue-polish) - lustrzane odbicie CharacterBubble: avatar PO PRAWEJ (ten sam rozmiar, `size="sm"`
+// w AvatarDisplay = h-8 w-8, jak avatar postaci), dymek w kolorze akcentu bez tła obrazka. Avatar dekoracyjny
+// (`aria-hidden` na wrapperze - działa niezależnie od tego, którą gałąź renderuje AvatarDisplay: preset/upload/
+// inicjały) - wiadomość i tak ma `sr-only` "Ty: " dla czytników ekranu, avatar nie niesie żadnej DODATKOWEJ
+// informacji. Gracz w tym modelu treści ma zawsze DOKŁADNIE jedną wiadomość na pytanie (patrz DialogueBlock niżej),
+// więc - w przeciwieństwie do CharacterBubble - nie ma tu serii do grupowania: avatar jest zawsze widoczny.
+function PlayerBubble({ avatarUrl, initials, children }: { avatarUrl: string | null; initials?: string; children: ReactNode }) {
+  return (
+    <div className="flex items-end gap-2">
+      <p className="ml-auto w-fit max-w-[70%] break-words rounded-lg bg-indigo-600 px-3 py-2 text-white">
+        <span className="sr-only">Ty: </span>
+        {children}
+      </p>
+      <span aria-hidden="true" className="shrink-0">
+        <AvatarDisplay avatarUrl={avatarUrl} size="sm" initials={initials} />
+      </span>
+    </div>
+  );
+}
+
 // Rozmowa z postacią w stylu komunikatora: kwestie postaci Z LEWEJ z jej avatarem PRZY KAŻDEJ kwestii (nie tylko w nagłówku), pytania
-// gracza Z PRAWEJ w kolorze akcentu bez avatara (jak "Ty" w czacie). Gracz wybiera pytanie z listy "chipów" pod rozmową; zadane pytanie
+// gracza Z PRAWEJ w kolorze akcentu, z avatarem gracza po prawej (PlayerBubble, fix/dialogue-polish - wcześniej bez
+// avatara, tylko sr-only "Ty: "). Gracz wybiera pytanie z listy "chipów" pod rozmową; zadane pytanie
 // znika z listy chipów (zostaje widoczne w wątku rozmowy). Postać odpowiada KWESTIAMI PO KOLEI (klik "Następna kwestia" w dymku, nie cały
 // tekst naraz; odpowiedź bez `lines` to jedna kwestia). Pytanie liczy się jako zadane, gdy wszystkie kwestie zostały wypowiedziane;
 // dopiero wtedy pytanie z notatką dopisuje wpis do notatnika (dowód, gdy `evidence`). Podczas rozmowy pozostałe pytania są nieaktywne.
 // Notatki dopisywane są tylko poza podglądem (serwer i tak sam wylicza je przy zapisie bloku). Avatar postaci tylko przez <img> z bazy
-// zasobów. Odpowiedź dla serwera: { asked: [id...] } w kolejności ukończenia.
+// zasobów, avatar gracza przez AvatarDisplay (preset/upload/inicjały - `useMyAvatar`). Odpowiedź dla serwera: { asked: [id...] } w kolejności ukończenia.
 //
 // Układ komunikatora (fix/dialogue-sticky-questions): korzeń flex-1 flex-col (PlayerStage.tsx, contentLayout='fill'
 // - ten sam CSS co scena SCENE_HOTSPOTS, patrz komentarz tam) - nagłówek/prompt shrink-0, WĄTEK jest JEDYNYM
@@ -74,6 +103,8 @@ export default function DialogueBlock({
   onSubmit,
   onReady,
   review = false,
+  myAvatarUrl = null,
+  myInitials,
 }: {
   block: ContentBlock;
   contentBase: string;
@@ -81,12 +112,24 @@ export default function DialogueBlock({
   /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane pytania zadane) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
   onReady: (submit: (() => void) | null) => void;
   review?: boolean;
+  /** Avatar gracza (dymki po prawej, fix/dialogue-polish) - z useMyAvatar w CoursePlayer.tsx, pobrany RAZ na wejście
+      do kursu (nie tutaj - ten komponent remountuje się przy każdej zmianie bloku, patrz ExploratoryBlock.tsx). */
+  myAvatarUrl?: string | null;
+  myInitials?: string;
 }) {
   const questions = block.questions ?? [];
   const character = block.character;
   const { addNote } = useNotes();
   const evidence = useEvidence();
   const mascot = useMascotReaction();
+  // Fooli jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish) - PlayerStage.tsx nic nie renderuje dla
+  // contentLayout='fill' (DIALOGUE), bo tylko TEN komponent zna granicę "poza obszarem przewijania wątku"; ten sam
+  // wzorzec co StageWithContext w CoursePlayer.tsx (reakcja zdarzenia wygrywa z pozą spoczynkową bloku/domyślną dla
+  // typu - DEFAULT_IDLE nie ma dziś wpisu dla DIALOGUE, więc bez reakcji i bez `block.mascot` pasek po prostu się
+  // nie renderuje, jak dziś). Gated `!review`: podgląd "Wstecz" dzieli TEN SAM MascotReactionProvider co żywy blok
+  // (CoursePlayer.tsx), więc reakcja z live bloku mogłaby "przeciekać" do podglądu bez tego warunku.
+  const idleMascot = block.mascot ? { pose: block.mascot.pose, text: block.mascot.text } : DEFAULT_IDLE.DIALOGUE;
+  const bannerMascot = mascot.reaction ?? idleMascot;
   // Postęp rozmowy: ile kwestii każdego pytania już padło (kolejność = kolejność wyboru).
   const [progress, setProgress] = useState<{ id: string; shown: number }[]>([]);
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -250,6 +293,7 @@ export default function DialogueBlock({
     // definitywnej wysokości liczy się jako "none" (bez efektu) per spec CSS - cqh celuje w NAJBLIŻSZEGO PRZODKA
     // z container-type, czyli w TEN korzeń, pomijając stopkę po drodze.
     <div className="flex min-h-0 w-full flex-1 flex-col [container-type:size]">
+      {!review && <MascotBanner pose={bannerMascot?.pose} text={bannerMascot?.text} />}
       {block.prompt && <p className="mb-3 shrink-0 text-lg text-slate-900">{block.prompt}</p>}
       {character && (
         <div className="mb-3 flex shrink-0 items-center gap-3">
@@ -327,12 +371,18 @@ export default function DialogueBlock({
             const lines = linesOf(entry.id).slice(0, entry.shown);
             return (
               <li key={entry.id} className="space-y-2">
-                <p className="ml-auto max-w-[75%] rounded-lg bg-indigo-600 px-3 py-2 text-white">
-                  <span className="sr-only">Ty: </span>
+                <PlayerBubble avatarUrl={myAvatarUrl} initials={myInitials}>
                   {question.text}
-                </p>
+                </PlayerBubble>
                 {lines.map((line, index) => (
-                  <CharacterBubble key={index} avatarUrl={avatarUrl} avatarFailed={avatarFailed} onAvatarError={onAvatarError} speakerName={speakerName}>
+                  <CharacterBubble
+                    key={index}
+                    avatarUrl={avatarUrl}
+                    avatarFailed={avatarFailed}
+                    onAvatarError={onAvatarError}
+                    speakerName={speakerName}
+                    showAvatar={index === lines.length - 1}
+                  >
                     {line}
                   </CharacterBubble>
                 ))}
@@ -347,21 +397,17 @@ export default function DialogueBlock({
           jest ich dużo, na WSZYSTKICH breakpointach), ExploreFooter. role="group"/aria-label - czytnik ekranu
           ogłasza to jako spójną grupę akcji, nie luźne przyciski. tabIndex=-1 + FOCUS_RING na kontenerze - cel
           fokusu, gdy po ostatnim pytaniu nie zostały żadne chipy (focusFooterAfterQuestionEnds wyżej).
-          pl-24 sm:pl-28 (kod review/layout-check.mjs - realna kolizja, nie estetyka): MascotOverlay.tsx renderuje
-          ikonkę Fooli jako PRAWDZIWY, klikalny <button> (pointer-events-auto) w LEWYM DOLNYM rogu OBSZARU BLOKU
-          (position:absolute, bottom-3 left-3, 76px/96px, z-10, ponad treścią bloku niezależnie od jej DOM-u) -
-          ikonka jest tam PRZEZ CAŁY czas trwania bloku eksploracyjnego (DEFAULT_IDLE daje pozę nawet bez własnej
-          reakcji treści), nie tylko chwilowo. Zanim stopka była przyklejona do dołu (ten branch), pierwszy chip
-          mógł wylądować DOKŁADNIE pod nią i łapać jej kliknięcia zamiast pytania (złapane przez
-          scripts/layout-check.mjs: locator.click timeout, "subtree intercepts pointer events"). Rezerwujemy
-          miejsce na ikonkę (bez niej sama stopka nie wie o mascocie - siostrzany element w PlayerStage.tsx, nie
-          potomek) - te same wymiary co `h-[76px] w-[76px] sm:h-24 sm:w-24` + `left-3` + mały margines. */}
+          BEZ `pl-24 sm:pl-28` (fix/dialogue-polish, B-103 rozwiązane w D-080) - ta rezerwacja miejsca istniała
+          wyłącznie z powodu floating ikonki `MascotOverlay.tsx` (position:absolute, mogła wylądować dokładnie pod
+          pierwszym chipem i łapać jego kliknięcia). Fooli w DIALOGUE nie jest już floating nakładką - PlayerStage.tsx
+          nic nie renderuje dla contentLayout='fill', DialogueBlock renderuje WŁASNY MascotBanner NAD nagłówkiem
+          rozmowy (patrz wyżej), w normalnym przepływie - nic nie może już wylądować pod stopką. */}
       <div
         ref={footerRef}
         role="group"
         aria-label="Pytania i postęp rozmowy"
         tabIndex={-1}
-        className={`shrink-0 pl-24 outline-none sm:pl-28 ${FOCUS_RING}`}
+        className={`shrink-0 outline-none ${FOCUS_RING}`}
       >
         {current && (
           <button

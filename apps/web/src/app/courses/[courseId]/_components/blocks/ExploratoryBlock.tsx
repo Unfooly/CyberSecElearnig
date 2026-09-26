@@ -23,6 +23,8 @@ export default function ExploratoryBlock({
   onReady,
   disabled,
   review = false,
+  myAvatarUrl,
+  myInitials,
 }: {
   block: ContentBlock;
   contentBase: string;
@@ -32,12 +34,24 @@ export default function ExploratoryBlock({
   /** Tylko SUMMARY: reszta typów nie ma już własnego przycisku ukończenia (patrz ExploreFooter, onReady). */
   disabled: boolean;
   review?: boolean;
+  myAvatarUrl?: string | null;
+  myInitials?: string;
 }) {
   switch (block.type) {
     case 'SCENE_HOTSPOTS':
       return <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'DIALOGUE':
-      return <DialogueBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
+      return (
+        <DialogueBlock
+          block={block}
+          contentBase={contentBase}
+          onSubmit={onSubmit}
+          onReady={onReady}
+          review={review}
+          myAvatarUrl={myAvatarUrl}
+          myInitials={myInitials}
+        />
+      );
     case 'TABS':
       return <TabsBlock block={block} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'NOTEPAD':

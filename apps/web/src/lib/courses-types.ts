@@ -166,6 +166,8 @@ export interface HotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  /** kind:'audio' nagrane potokiem TTS (schemaVersion 5, D-082) zamiast audioUrl/transcript: plik w narration.audioUrl, transkrypcja w narration.text. */
+  narration?: Narration;
   /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
   image?: string;
   title?: string;
@@ -186,6 +188,7 @@ export interface InnerHotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  narration?: Narration;
   /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
   image?: string;
   title?: string;

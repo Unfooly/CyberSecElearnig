@@ -204,6 +204,39 @@
   width: min(100cqw, calc(100cqh * var(--scene-ratio)));
 }
 
+/* Tablica śledcza (OrderingBlock.tsx, D-088). Tokeny wyłącznie dla tego bloku (korek, rama, kartka) - nić to --danger z palety.
+   Scena "contain" jak odprawa (bez przewijania), sama jest kontenerem inline-size: jednostka --u = szerokość sceny / szerokość
+   projektu (evidence-board.ts), więc czcionki skalują się z tablicą. */
+.evidence-board {
+  --board-cork: #c9a06a;
+  --board-frame: #8b6a45;
+  --board-card: #fffdf6;
+}
+.board-box {
+  width: min(100cqw, calc(100cqh * var(--board-ratio)));
+  container-type: inline-size;
+}
+.board-cork {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.06) 0 2px, transparent 3px) 0 0 / 23px 19px,
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.08) 0 2px, transparent 3px) 0 0 / 17px 21px,
+    radial-gradient(circle at 40% 80%, rgba(0, 0, 0, 0.05) 0 1.5px, transparent 2.5px) 0 0 / 13px 11px,
+    var(--board-cork);
+}
+.board-card {
+  border-radius: 4px;
+  background-color: var(--board-card);
+  background-image: repeating-linear-gradient(var(--board-card) 0 calc(var(--u, 1px) * 27), #dde7f7 calc(var(--u, 1px) * 27) calc(var(--u, 1px) * 28));
+  box-shadow: 0 8px 16px rgba(19, 19, 19, 0.22);
+}
+.board-pin {
+  background: radial-gradient(circle at 35% 35%, #ff8f86, var(--danger) 60%, #9d2a21);
+  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.35);
+}
+.board-pin--good {
+  background: radial-gradient(circle at 35% 35%, #7fe0b5, var(--success) 60%, #12704a);
+}
+
 /* Zagnieżdżona scena w nakładce zbliżenia (SceneHotspotsBlock.tsx, NestedSceneImage, D-086): ramka z jawnym rozmiarem (część nakładki,
    max 88% sceny) jest kontenerem zapytań, obraz "contain" jak scena główna - także na telefonie w pionie (bez panoramy: pulpit ma
    zmieścić się w całości razem z ikoną "Wróć"). */
@@ -267,6 +300,19 @@
   .chat-typing-dot:nth-child(3) {
     animation-delay: 0.3s;
   }
+  /* Tablica śledcza (D-088): pinezka "wbija się" przy przypięciu, zła karta drga po sprawdzeniu, karty przelatują na poprawne pola. */
+  .board-pin {
+    animation: board-pin-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .board-card-wrong {
+    animation: scene-zoom-shake 420ms ease-in-out 2;
+  }
+  .board-fly {
+    transition:
+      left 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      top 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }
 
 .chat-typing-dot {
@@ -294,6 +340,17 @@
 @media (prefers-reduced-motion: reduce) {
   .briefing-hotspot--idle {
     box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+@keyframes board-pin-in {
+  from {
+    transform: translateY(-40%) scale(1.6);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
   }
 }
 

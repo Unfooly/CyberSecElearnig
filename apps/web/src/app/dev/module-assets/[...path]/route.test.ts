@@ -1,0 +1,38 @@
+// @vitest-environment node
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GET } from './route.dev';
+
+// Trasa dev harnessu (D-084): tylko z NEXT_PUBLIC_DEV_HARNESS=1, tylko obrazy z assets/ modułu 1 (plik źródłowy albo klucz
+// z assets.lock.json), nic spoza katalogu. Next dekoduje segmenty przed wywołaniem (`%2e%2e` przychodzi jako `..`).
+const get = (...path: string[]) => GET(new Request('http://localhost/dev/module-assets'), { params: { path } });
+
+describe('GET /dev/module-assets/[...path]', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('bez flagi harnessu: 404 nawet dla istniejącego pliku', async () => {
+    vi.stubEnv('NEXT_PUBLIC_DEV_HARNESS', '');
+    expect((await get('scenes', 'odprawa-biurko.svg')).status).toBe(404);
+  });
+
+  it('plik źródłowy i opublikowany klucz (assets.lock.json) -> obraz z bezpiecznymi nagłówkami', async () => {
+    vi.stubEnv('NEXT_PUBLIC_DEV_HARNESS', '1');
+    const source = await get('scenes', 'odprawa-biurko.svg');
+    expect(source.status).toBe(200);
+    expect(source.headers.get('content-type')).toBe('image/svg+xml');
+    expect(source.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(source.headers.get('content-security-policy')).toContain("default-src 'none'");
+    expect(await source.text()).toMatch(/^<svg /);
+
+    const published = await get('assets', 'wyludzone-haslo', 'scenes', 'korytarz.4c9c37ad.svg');
+    expect(published.status).toBe(200);
+  });
+
+  it('wyjście poza assets/, backslash, niedozwolone rozszerzenie i brak pliku -> 404', async () => {
+    vi.stubEnv('NEXT_PUBLIC_DEV_HARNESS', '1');
+    for (const path of [['..', 'module.json'], ['scenes', '..', '..', 'module.json'], ['scenes\\..\\..\\module.json'], ['scenes', 'odprawa-biurko.svg.json'], ['scenes', 'nie-ma.svg'], ['.', 'scenes', 'odprawa-biurko.svg']]) {
+      expect((await get(...path)).status, path.join('/')).toBe(404);
+    }
+  });
+});

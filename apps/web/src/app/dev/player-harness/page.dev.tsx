@@ -8,7 +8,8 @@ import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[cour
 import HarnessAutoOpen from './HarnessAutoOpen';
 
 // Podgląd układu bloku w PRAWDZIWYM PlayerStage, bez backendu (bez /courses/:id/start, bez logowania) - treść
-// wprost z packages/content (module.json), obrazy z CONTENT_BASE_URL jak na produkcji. Wyłącznie do
+// wprost z packages/content (module.json), obrazy z CONTENT_BASE_URL jak na produkcji (bez niej - z lokalnych assets/ modułu,
+// trasa dev /dev/module-assets). Wyłącznie do
 // scripts/layout-check.mjs (Playwright) i ręcznego podglądu przy pracy nad układem bloku - NIE jest to część
 // produktu. Dostępne TYLKO gdy NEXT_PUBLIC_DEV_HARNESS=1 (notFound() w każdym innym przypadku, także na produkcji -
 // zmienna nie jest ustawiona tam z definicji). Trasa NIE jest na liście PROTECTED_ROUTES (middleware.ts), więc i tak
@@ -89,7 +90,12 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     score: null,
   };
 
-  const contentBase = contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development');
+  // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze
+  // nieopublikowane w magazynie; z CONTENT_BASE_URL - z magazynu, jak na produkcji. Trasa zna tylko MODULE_SLUG (jak ta
+  // strona) - harness z innym modułem wymaga zmiany w obu miejscach.
+  const contentBase = process.env.CONTENT_BASE_URL
+    ? contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development')
+    : '/dev/module-assets';
 
   return (
     <div className="h-dvh overflow-hidden bg-paper">

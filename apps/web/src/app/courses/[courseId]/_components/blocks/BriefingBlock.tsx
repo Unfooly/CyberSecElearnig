@@ -8,10 +8,11 @@ import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useCompleteReaction } from '../player/mascot-reaction';
 import type { NotebookTask } from '../player/notes';
+import BriefingSceneStep, { singleClick } from './BriefingScene';
 
-// Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków na jasnym tle (paper) - maszyna do pisania z dzwoniącym
-// telefonem, rozmowa z postacią (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran
-// startu (miejsce akcji). Blok nieoceniany,
+// Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków - maszyna do pisania z dzwoniącym telefonem, rozmowa z postacią
+// (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran startu (miejsce akcji). Krok z `image`
+// (D-084) jest sceną z grafiką (BriefingScene.tsx); bez niej - karta na jasnym tle (paper), jak dotąd. Blok nieoceniany,
 // bez dowodów: przycisk ostatniego kroku zapisuje blok (ten sam zapis co "Dalej" bloku eksploracyjnego). "Pomiń odprawę"
 // jest w górnym pasku ramki (PlayerStage.tsx, CoursePlayer) - to ten sam zapis, więc serwer nie odróżnia pominięcia od
 // przejścia, a zadania i tak nie mogą wskazywać tego bloku (walidacja treści).
@@ -60,7 +61,7 @@ function Cta({ label, onClick, disabled }: { label: string; onClick: () => void;
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={singleClick(onClick)}
       disabled={disabled}
       className="inline-flex min-h-[44px] items-center justify-center rounded-btn bg-accent px-5 py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
     >
@@ -242,6 +243,12 @@ function BadgeStep({
   );
 }
 
+// Scena kroku (D-084) - osobny komponent, bo typewriter potrzebuje hooka pisania (montowany od nowa z kluczem kroku).
+function SceneStepHost(props: Omit<Parameters<typeof BriefingSceneStep>[0], 'typed'>) {
+  const typed = useTypewriter(props.step.kind === 'typewriter' ? props.step.text : '', props.reducedMotion);
+  return <BriefingSceneStep {...props} typed={props.step.kind === 'typewriter' ? typed : undefined} />;
+}
+
 export default function BriefingBlock({
   block,
   contentBase,
@@ -267,6 +274,8 @@ export default function BriefingBlock({
 }) {
   const steps = block.steps ?? [];
   const [index, setIndex] = useState(0);
+  // Krok caseFile ze sceną w dwóch fazach (D-084): zamknięta teczka -> otwarte akta. Reset przy każdej zmianie kroku.
+  const [caseOpen, setCaseOpen] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
   const headingRef = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -290,9 +299,65 @@ export default function BriefingBlock({
   if (!step) return null;
 
   const advance = () => {
+    setCaseOpen(false);
     if (!isLast) setIndex((current) => Math.min(current + 1, steps.length - 1));
     else if (!review) onSubmit();
   };
+
+  // Krok ze sceną (D-084): grafika zamiast karty na jasnym tle; bez `image` - dotychczasowy widok (moduły bez grafik odprawy).
+  if (step.image) {
+    const closedPhase = step.kind === 'caseFile' && Boolean(step.closedImage) && !caseOpen;
+    const openCase = () => {
+      setCaseOpen(true);
+      // Przycisk "Otwórz teczkę" zmienia się w przycisk kroku - fokus na treść kroku (akta z zadaniami), jak przy zmianie kroku.
+      headingRef.current?.focus();
+    };
+    // Hotspot = przycisk pod sceną, z tymi samymi ograniczeniami: na ostatnim kroku nie ma go w podglądzie (przycisku też nie ma)
+    // ani w trakcie zapisu (przycisk jest wtedy wyłączony) - inaczej klik w scenę zapisałby blok drugi raz.
+    const hotspotAction = closedPhase ? openCase : isLast && (review || disabled) ? undefined : advance;
+    return (
+      <div data-testid="briefing-block" data-scene="true" className="flex min-h-0 w-full flex-1 flex-col rounded-card bg-paper">
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 p-2 sm:gap-3 sm:p-3 [@media(max-height:500px)]:gap-1 [@media(max-height:500px)]:p-1">
+          <div aria-hidden="true" className="flex shrink-0 gap-1.5">
+            {steps.map((_, dot) => (
+              <span key={dot} className={`h-1.5 w-6 rounded-full ${dot <= index ? 'bg-accent' : 'bg-border'}`} />
+            ))}
+          </div>
+          <div
+            key={index}
+            ref={headingRef}
+            tabIndex={-1}
+            aria-labelledby={`${headingId}-pos ${headingId}`}
+            aria-describedby={step.kind === 'call' ? `${headingId}-text` : undefined}
+            role="group"
+            className="briefing-step-enter flex min-h-0 w-full flex-1 flex-col outline-none"
+          >
+            <span id={`${headingId}-pos`} className="sr-only">
+              Odprawa, krok {index + 1} z {steps.length}.
+            </span>
+            <SceneStepHost
+              step={step}
+              contentBase={contentBase}
+              reducedMotion={reducedMotion}
+              headingId={headingId}
+              caseOpen={caseOpen}
+              onHotspot={hotspotAction}
+              tasks={tasks}
+              identity={identity}
+              caseNo={caseNo}
+            />
+          </div>
+          <div className="shrink-0">
+            {closedPhase ? (
+              <Cta label="Otwórz teczkę" onClick={openCase} />
+            ) : (
+              !(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div data-testid="briefing-block" className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded-card bg-paper [scrollbar-width:thin]">

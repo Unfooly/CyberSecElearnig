@@ -97,7 +97,9 @@ patrz `docs/decisions.md`), nie powód do improwizowania treści bez formatowani
   lookbehind (`(?=`, `(?!`, `(?<=`)** - walidacja odrzuca je z komunikatem. Wzorce, które w zwykłym silniku powodują ReDoS
   (`^(a+)+$`), są tu bezpieczne.
 - `ORDERING`: co najmniej 3 elementy. Klient nie zna id z treści: dostaje nieprzejrzyste, inne w każdym przypisaniu (dotyczy też
-  `criteria` w `EMAIL_ANALYSIS`), więc nazwy id w JSON-ie (`krok1`, `poprawne-1`) nie zdradzają klucza.
+  `criteria` w `EMAIL_ANALYSIS`), więc nazwy id w JSON-ie (`krok1`, `poprawne-1`) nie zdradzają klucza. Opcjonalnie (D-088, tablica
+  śledcza) `start` i `end` `{ label, caption }` - „zdjęcia” na początku i końcu łańcucha (np. ofiara i strata); pola `client` -
+  pamiętaj, że gracz je widzi: parafraza pierwszego/ostatniego kroku podpowiada jego pozycję.
 - Bloki eksploracyjne (hotspoty, dialog, zakładki) wymagają odwiedzenia wskazanych elementów; to bramka UX (serwer sprawdza zgodność zgłoszonych
   id z treścią, nie faktyczne kliknięcia).
 

@@ -155,6 +155,14 @@ describe('seededShuffle', () => {
     const criteriaIds = (email.criteria as { id: string }[]).map((c) => c.id);
     for (const realId of ['c1', 'c2', 'c3']) expect(criteriaIds).not.toContain(realId);
   });
+
+  it('ORDERING: start/end tablicy śledczej (D-088) trafiają do klienta, wyjaśnienie i punktacja nie', () => {
+    const projected = toClientBlock(leakProbeBlocks().ORDERING, context);
+    expect(projected.start).toEqual({ label: 'A.K.', caption: 'Pracownik' });
+    expect(projected.end).toEqual({ label: '−1 000 zł', caption: 'Strata' });
+    expect(projected.explanation).toBeUndefined();
+    expect(projected.scoring).toBeUndefined();
+  });
 });
 
 describe('pickByPaths', () => {

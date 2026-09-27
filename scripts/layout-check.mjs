@@ -82,12 +82,6 @@ const DIALOGUE_VIEWPORTS = [
 ];
 const DIALOGUE_MIN_MESSAGES = 12;
 
-// Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=dialogue,briefing. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier'];
-const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
-for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
-const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
-
 // BRIEFING (feat/module-briefing, D-081) - `?block=odprawa`, cztery rozdzielczości z planu PR 1. reducedMotion:'reduce':
 // każdy krok od razu w stanie końcowym (pisanie, spadająca karta, pieczątka), więc pomiar nie zależy od czasu animacji.
 const BRIEFING_VIEWPORTS = [

@@ -338,12 +338,12 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string }> = ({ 
       `<rect x="${R}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
       t(R + 40, top + 62, 'DOWODY RZECZOWE', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
       `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>` +
-      /* woreczki na dowody */
-      [[0, 0, 'mail'], [1, 0, 'karteczka'], [2, 0, 'SMS'], [0, 1, 'wydruk'], [1, 1, 'logi'], [2, 1, 'WHOIS']].map(([c, r, l]) => {
-        const x = R + 40 + (c as number) * 185, y = top + 110 + (r as number) * 170;
-        return `<g transform="rotate(${((c as number) + (r as number)) % 2 ? 2 : -2} ${x + 80} ${y + 70})"><rect x="${x}" y="${y}" width="160" height="140" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
-          `<rect x="${x}" y="${y}" width="160" height="22" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 80, y + 16, 'DOWÓD', 12, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
-          `<rect x="${x + 30}" y="${y + 40}" width="100" height="62" rx="4" fill="${P.white}"/>` + t(x + 80, y + 78, l as string, 16, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
+      /* woreczki na dowody: siatka 3×3, prawa kolumna strony wolna na liścik */
+      [['mail', 0, 0], ['karteczka', 1, 0], ['wydruk', 2, 0], ['poczta głos.', 0, 1], ['kalendarz', 1, 1], ['logi', 2, 1], ['WHOIS', 0, 2], ['SMS', 1, 2], ['tablica', 2, 2]].map(([l, c, r]) => {
+        const x = R + 36 + (c as number) * 132, y = top + 106 + (r as number) * 128;
+        return `<g transform="rotate(${((c as number) + (r as number)) % 2 ? 2 : -2} ${x + 58} ${y + 54})"><rect x="${x}" y="${y}" width="116" height="110" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
+          `<rect x="${x}" y="${y}" width="116" height="20" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 58, y + 15, 'DOWÓD', 11, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
+          `<rect x="${x + 14}" y="${y + 34}" width="88" height="56" rx="4" fill="${P.white}"/>` + t(x + 58, y + 68, l as string, 14, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
       }).join(''),
     parts: {
       'slot-dowody': { x: L + 40, y: top + 236, w: 170, h: 56 },
@@ -351,9 +351,9 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string }> = ({ 
       'slot-xp': { x: L + 410, y: top + 236, w: 170, h: 56 },
       'slot-wnioski': { x: L + 40, y: top + 366, w: pw - 80, h: 240 },
       'slot-podpis': { x: L + 250, y: top + 620, w: pw - 290, h: 50 },
-      'slot-pieczec': { x: R + 70, y: top + 505, w: 480, h: 172 },
+      'slot-pieczec': { x: R + 60, y: top + 520, w: 500, h: 180 },
       'slot-odznaka': { x: L + 470, y: top + 18, w: 120, h: 164 },
-      'slot-liscik': { x: R + 395, y: top + 250, w: 205, h: 190 },
+      'slot-liscik': { x: R + 440, y: top + 150, w: 170, h: 158 },
     },
   };
 };

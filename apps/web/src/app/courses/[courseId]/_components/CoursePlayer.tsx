@@ -7,7 +7,6 @@ import type {
   ClientNote,
   ClientProgressBlock,
   ContentBlock,
-  ContentReaction,
   CourseCompletionReward,
   CourseDetail,
   CourseProgressResponse,
@@ -26,7 +25,8 @@ import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
 import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import ScoredBlock, { hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
-import SummaryScreen from './SummaryScreen';
+import CaseClosedScreen from './CaseClosedScreen';
+import { SfxProvider } from '@/lib/sfx';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
 import TranscriptPanel from './player/TranscriptPanel';
@@ -178,7 +178,9 @@ export default function CoursePlayer({
   const myInitials = userEmail ? initialsFromEmail(userEmail) : undefined;
   // Legitymacja w odprawie (BRIEFING, D-081): imię z profilu pobierane tylko, gdy moduł ma odprawę; fallback z e-maila.
   const hasBriefing = initial.contentBlocks.some((block) => block.type === 'BRIEFING');
-  const displayName = useMyDisplayName(userEmail, hasBriefing);
+  // Zamknięcie sprawy (SUMMARY.closing, D-089): raport z podpisem gracza - też potrzebuje imienia z profilu.
+  const closingBlock = initial.contentBlocks.find((block) => block.type === 'SUMMARY' && block.closing);
+  const displayName = useMyDisplayName(userEmail, hasBriefing || !!closingBlock);
   const identity = useMemo(() => playerIdentity(displayName, userEmail), [displayName, userEmail]);
   // Bieżący krok odprawy per zamontowana instancja bloku ("l-<id>" żywy, "r-<id>" podgląd "Wstecz") - narracja w pasku
   // powłoki idzie za krokiem; gesture = krok zmieniony kliknięciem gracza (wolno wtedy autoodtworzyć jego narrację).
@@ -210,15 +212,11 @@ export default function CoursePlayer({
   const [feedback, setFeedback] = useState<LastResult | null>(null);
   // Obecne WYŁĄCZNIE po świeżym ukończeniu w TEJ sesji (ustawiane w
   // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
-  // wrócił do wcześniej ukończonego kursu, więc karta nagrody (RewardCard,
-  // SummaryScreen.tsx) wtedy się nie pokazuje.
+  // wrócił do wcześniej ukończonego kursu (ekran zamknięcia bez ceremonii i bez XP).
   const [reward, setReward] = useState<CourseCompletionReward | null>(null);
-  // Reakcja Fooli NA WYNIK ostatniego bloku (reactions.result), gdy TA ODPOWIEDŹ kończy kurs (fix/course-finish-flow)
-  // ORAZ pominięty jest ekran feedbacku (blok SUMMARY/eksploracyjny - skipsFeedbackScreen niżej) - SummaryScreen
-  // pokazuje ją wtedy jako zwykłą treść ekranu (MascotSays), zamiast tego pominiętego ekranu, który normalnie by ją
-  // pokazał. Gdy kurs kończy blok OCENIANY (D-076): ekran feedbacku ZOSTAJE i sam pokazuje reakcję - null tutaj, bez
-  // powtórki na SummaryScreen. Ten sam cykl życia co `reward`: null, dopóki user nie ukończy kursu W TEJ SESJI.
-  const [finalReaction, setFinalReaction] = useState<ContentReaction | null>(null);
+  // Ukończenie w TEJ sesji (ceremonia ekranu zamknięcia sprawy, D-089) i moment ukończenia (czas śledztwa).
+  const [completedNow, setCompletedNow] = useState(false);
+  const [completedAt, setCompletedAt] = useState<string | null>(initial.completedAt ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
@@ -235,7 +233,7 @@ export default function CoursePlayer({
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
   const [serverNotes, setServerNotes] = useState<ClientNote[]>([]);
   // "Rozpocznij od nowa" na ekranie podsumowania (D-069, B-091) - przycisk jest teraz dolnym paskiem PlayerStage
-  // (miejsce "Wstecz"), logika zostaje tu (feat/player-stage: przeniesiona z SummaryScreen.tsx).
+  // (miejsce "Wstecz"), logika zostaje tu (feat/player-stage: przeniesiona z dawnego SummaryScreen.tsx).
   const [restarting, setRestarting] = useState(false);
   const [restartError, setRestartError] = useState(false);
   // Gotowość bieżącego bloku eksploracyjnego do "Dalej" w pasku powłoki (wymagane elementy pokryte) - funkcja, którą
@@ -250,7 +248,7 @@ export default function CoursePlayer({
   const handleReady = (submit: (() => void) | null) => setReadySubmit(() => submit);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  // Fokus po przejściu na SummaryScreen ląduje na JEJ WŁASNYM, widocznym nagłówku "Sprawa zamknięta" (h2), nie na
+  // Fokus po przejściu na ekran zamknięcia (CaseClosedScreen, D-089) ląduje na JEGO WŁASNYM, widocznym nagłówku "Sprawa zamknięta" (h2), nie na
   // sr-only nagłówku PlayerStage.tsx (ten drugi zostaje wyłącznie dla zmiany bloku - D-076, poprawka po code review:
   // wcześniejszy `headingOverride` dublował ten sam tekst w dwóch miejscach, jednym ukrytym).
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -270,9 +268,9 @@ export default function CoursePlayer({
     [blocks],
   );
 
-  // Po zmianie bloku (albo przejściu na SummaryScreen) fokus na nagłówek nowej treści (czytniki ekranu i klawiatura
-  // zaczynają od niej); nie przy pierwszym renderze. W trybie podsumowania cel to WIDOCZNY nagłówek SummaryScreen
-  // (summaryHeadingRef), poza nim - sr-only nagłówek PlayerStage.tsx (headingRef).
+  // Po zmianie bloku (albo przejściu na ekran zamknięcia) fokus na nagłówek nowej treści (czytniki ekranu i klawiatura
+  // zaczynają od niej); nie przy pierwszym renderze. W trybie podsumowania cel to WIDOCZNY nagłówek CaseClosedScreen
+  // (summaryHeadingRef; w ceremonii fokus przejmuje potem przycisk podpisu), poza nim - sr-only nagłówek PlayerStage.tsx (headingRef).
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
@@ -329,15 +327,14 @@ export default function CoursePlayer({
       // TextInputBlock: stan `done`) - osobny ekran "Blok ukończony." z jeszcze jednym "Dalej" byłby powtórzeniem
       // tego, co user już widział (raport z pierwszego przejścia modułu 1). Dla nich ZOSTAJE feedback=null: state
       // niżej sam przenosi na kolejny blok ALBO (gdy to była TA odpowiedź, co kończy kurs - `state.status` już
-      // 'COMPLETED') na SummaryScreen wprost (isSummaryMode liczy się z samego `state.status` i `feedback`, niżej) -
+      // 'COMPLETED') na ekran zamknięcia wprost (isSummaryMode liczy się z samego `state.status` i `feedback`, niżej) -
       // BEZ pośredniego ekranu "Blok ukończony."/"Zobacz podsumowanie" (fix/course-finish-flow).
       //
       // Blok OCENIANY (QUIZ, EMAIL_ANALYSIS, ORDERING...), gdy TO ON kończy kurs: decyzja produktu D-076 (poprawka
       // po code review) - zostaje normalny ekran feedbacku z wyjaśnieniem odpowiedzi (bez niego user by je stracił -
-      // SummaryScreen ma tylko zagregowany wynik procentowy). "Dalej" na tym ekranie (continueAfterFeedback czyści
-      // `feedback`) samo przechodzi na SummaryScreen, bo `state.status` jest już 'COMPLETED' z TEGO zapisu -
-      // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Reakcja maskotki na wynik (reactions.result) jest już
-      // pokazana w TYM ekranie feedbacku, więc `finalReaction` (SummaryScreen) jej nie powtarza.
+      // ekran zamknięcia ma tylko zagregowany wynik procentowy). "Dalej" na tym ekranie (continueAfterFeedback czyści
+      // `feedback`) samo przechodzi na ekran zamknięcia, bo `state.status` jest już 'COMPLETED' z TEGO zapisu -
+      // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Ekran zamknięcia nie ma reakcji maskotki (D-089).
       const skipsFeedbackScreen = isExploratory(progress.lastResult.type) || progress.lastResult.type === 'TEXT_INPUT_GUIDED';
       if (skipsFeedbackScreen) {
         setFeedback(null);
@@ -345,7 +342,10 @@ export default function CoursePlayer({
       } else {
         setFeedback(progress.lastResult);
       }
-      setFinalReaction(progress.status === 'COMPLETED' && skipsFeedbackScreen ? (progress.lastResult.reaction ?? null) : null);
+      if (progress.status === 'COMPLETED') {
+        setCompletedNow(true);
+        setCompletedAt(progress.completedAt);
+      }
       setResults((current) => {
         const blockId = progress.lastResult.blockId ?? blockIdOf(blocks, progress.lastResult.blockIndex);
         return {
@@ -438,9 +438,12 @@ export default function CoursePlayer({
   // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE, BRIEFING i DOSSIER też wypełniają (własny,
   // wewnętrzny scroll wątku/odprawy zamiast przewijania całego panelu - fix/dialogue-sticky-questions, D-081), ale to NIE jest
   // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
-  // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
+  // prosty ekran zamknięcia/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
+  // Ekran zamknięcia sprawy z raportem (D-089) wypełnia ramkę jak scena; bez `closing` - panel jak slajd.
   const contentLayout: 'scene' | 'slide' | 'fill' =
-    isSummaryMode || showingFeedback
+    isSummaryMode && closingBlock
+      ? 'fill'
+      : isSummaryMode || showingFeedback
       ? 'slide'
       : currentBlock?.type === 'SCENE_HOTSPOTS'
         ? 'scene'
@@ -453,14 +456,21 @@ export default function CoursePlayer({
   let stage: React.ReactNode;
   if (isSummaryMode) {
     stage = (
-      <SummaryScreen
+      <CaseClosedScreen
         title={initial.title}
         score={state.score}
         scoreUnavailable={scoreUnavailable}
         reward={reward}
-        reaction={finalReaction}
         restartError={restartError}
         headingRef={summaryHeadingRef}
+        closing={closingBlock?.closing}
+        lessons={closingBlock?.lessons}
+        evidence={evidence}
+        startedAt={initial.startedAt}
+        completedAt={completedAt}
+        signer={identity.label}
+        contentBase={contentBase}
+        fresh={completedNow}
       />
     );
   } else if (showingFeedback) {
@@ -469,7 +479,7 @@ export default function CoursePlayer({
     // Mail i kolejność pokazują wynik w samym bloku (wybór gracza, trafienia, wyjaśnienia); reszta ogólny komunikat.
     // "Dalej" (etykieta zawsze taka sama - fix/course-finish-flow zdjął dawne "Zobacz podsumowanie"): gdy TA
     // odpowiedź kończy kurs (blok oceniany jako ostatni, D-076), state.status jest już 'COMPLETED', więc kliknięcie
-    // samo przechodzi na SummaryScreen (continueAfterFeedback czyści `feedback`, isSummaryMode przejmuje).
+    // samo przechodzi na ekran zamknięcia (continueAfterFeedback czyści `feedback`, isSummaryMode przejmuje).
     stage =
       answered && hasInlineResult(answered.type) && feedback.detail ? (
         <ScoredBlock
@@ -586,7 +596,7 @@ export default function CoursePlayer({
 
   // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
   // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
-  // tym gdy user wraca do już dawno ukończonego kursu (reward null, RewardCard się wtedy też nie renderuje).
+  // tym gdy user wraca do już dawno ukończonego kursu (reward null, raport pokazuje wtedy XP jako "—").
   const resultAnnouncement =
     isSummaryMode && reward
       ? reward.xpGained > 0
@@ -595,6 +605,8 @@ export default function CoursePlayer({
       : '';
 
   return (
+    // Dźwięki interfejsu (zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-089).
+    <SfxProvider enabled={preference.enabled}>
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
@@ -651,40 +663,31 @@ export default function CoursePlayer({
             notesId={NOTES_ID}
             onBack={isSummaryMode ? restartCourse : goBack}
             onForward={isSummaryMode ? undefined : goForward}
-            forwardHref={isSummaryMode ? '/courses' : undefined}
             canBack={isSummaryMode ? !restarting : displayedIndex > 0 && !showingFeedback && !submitting}
-            canForward={isSummaryMode ? true : (reviewing || readySubmit !== null) && !showingFeedback && !submitting}
+            canForward={(reviewing || readySubmit !== null) && !showingFeedback && !submitting}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
-            forwardLabel={isSummaryMode ? 'Wróć do biblioteki' : undefined}
             // Na SUMMARY jedynym wyjściem jest "Zakończ sprawę" w bloku: "Dalej" z paska znika (jedno CTA zamiast dwóch).
             // TEXT_INPUT_GUIDED po rozstrzygnięciu (done) pokazuje własny, aktywny "Dalej" pod wynikiem (onReady go nie
             // dotyczy - patrz handleAnswer) - z tego samego powodu pasek chowa swój, zamiast trzymać drugi, nieaktywny
             // obok niego. SCENE_HOTSPOTS z hotspotem action:'next' ("drzwi", B-086/D-071): blok nigdy nie woła onReady
             // (SceneHotspotsBlock), więc wyjściem jest wyłącznie klik w drzwi na scenie - pasek chowa swój "Dalej" tak
-            // samo jak przy SUMMARY. Tryb podsumowania: NIGDY nie chowamy - to tu żyją "Rozpocznij od nowa"/"Wróć do
-            // biblioteki".
+            // samo jak przy SUMMARY. Tryb podsumowania: "Wróć do biblioteki" jest na ekranie zamknięcia sprawy (obok "Następna sprawa",
+            // D-089) - pasek go chowa; "Rozpocznij od nowa" (Wstecz) zostaje w pasku.
             hideForward={
-              !isSummaryMode &&
-              !showingFeedback &&
+              isSummaryMode ||
+              (!showingFeedback &&
               !reviewing &&
               (currentBlock?.type === 'SUMMARY' ||
                 // BRIEFING: wyjściem jest przycisk ostatniego kroku albo "Pomiń odprawę" w pasku górnym (D-081).
                 currentBlock?.type === 'BRIEFING' ||
                 (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true) ||
-                (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next')))
+                (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next'))))
             }
-            forwardHint={
-              isSummaryMode
-                ? undefined
-                : showingFeedback
-                  ? 'Użyj przycisku pod wynikiem.'
-                  : !reviewing
-                    ? 'Ukończ ten blok, aby przejść dalej.'
-                    : undefined
-            }
+            forwardHint={showingFeedback ? 'Użyj przycisku pod wynikiem.' : !reviewing ? 'Ukończ ten blok, aby przejść dalej.' : undefined}
           />
         </MascotReactionProvider>
       </EvidenceProvider>
     </NotesProvider>
+    </SfxProvider>
   );
 }

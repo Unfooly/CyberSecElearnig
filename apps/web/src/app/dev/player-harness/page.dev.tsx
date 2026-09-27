@@ -39,7 +39,7 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
   return null;
 }
 
-export default function PlayerHarnessPage({ searchParams }: { searchParams: { block?: string; hotspot?: string; stripMedia?: string } }) {
+export default function PlayerHarnessPage({ searchParams }: { searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string } }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
   }
@@ -76,11 +76,17 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     opaqueId: (_blockId, itemId) => itemId,
   }) as unknown as ContentBlock;
 
+  // `?completed=1` (feat/case-closed, D-089): przypisanie już ukończone - ekran zamknięcia sprawy w stanie końcowym (powrót do
+  // ukończonego kursu). Czas sprawy (startedAt -> completedAt) stały: 14 min.
+  const completed = searchParams.completed === '1';
+  const now = Date.now();
   const initial: CoursePlayerInitialState = {
     assignmentId: 'dev-harness',
     courseId: 'dev-harness',
     title: 'Podgląd bloku (dev harness)',
-    status: 'IN_PROGRESS',
+    status: completed ? 'COMPLETED' : 'IN_PROGRESS',
+    startedAt: new Date(now - 14 * 60_000).toISOString(),
+    completedAt: completed ? new Date(now).toISOString() : null,
     currentBlockIndex: 0,
     // Zadania sprawy (`?block=odprawa`, D-081) są w samym bloku BRIEFING; completeWhen wskazuje bloki spoza podglądu (jeden
     // blok), więc nic się tu nie odhacza.

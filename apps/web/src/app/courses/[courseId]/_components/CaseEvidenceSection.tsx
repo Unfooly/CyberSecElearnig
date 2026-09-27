@@ -14,9 +14,8 @@ function missedPhrase(count: number): string {
 }
 
 // Lista zebranych dowodów: zebrane vs wszystkie (liczby z serwera), przeoczone WYŁĄCZNIE liczbowo per scena (bez
-// treści i nazw elementów). Wydzielone z SummaryBlock.tsx (fix/course-finish-flow) - SummaryScreen.tsx pokazuje TĘ
-// SAMĄ listę po ukończeniu kursu (user widział ją już na bloku SUMMARY chwilę wcześniej, ale ten ekran całkiem
-// zastępuje treść bloku, więc bez tego dowody by "zniknęły" z widoku). Moduły bez dowodów (hasEvidence=false) -
+// treści i nazw elementów). Wydzielone z SummaryBlock.tsx (fix/course-finish-flow); dawny ekran ukończenia
+// pokazywał tę samą listę - od D-089 ekran zamknięcia ma tylko liczbę dowodów w raporcie, lista żyje w bloku SUMMARY. Moduły bez dowodów (hasEvidence=false) -
 // null, tak jak SummaryBlock.tsx.
 export default function CaseEvidenceSection({ className = '' }: { className?: string }) {
   const { blockTitles } = useNotes();

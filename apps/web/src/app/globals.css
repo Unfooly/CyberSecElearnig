@@ -204,6 +204,41 @@
   width: min(100cqw, calc(100cqh * var(--scene-ratio)));
 }
 
+/* Ekran zamknięcia sprawy (CaseClosedScreen.tsx, D-089): raport 16:9 "contain" bez przewijania; sam jest kontenerem inline-size, więc
+   tekst w slotach (cqw) skaluje się z raportem. */
+.closing-frame {
+  container-type: size;
+  /* Liścik wlatuje spoza raportu - bez mignięcia paska przewijania w przodku. */
+  overflow: clip;
+}
+.closing-box {
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  container-type: inline-size;
+}
+/* Telefon w pionie: "contain" dałby raport ~360 px szerokości (wnioski ~5 px) - panorama jak w scenie (.scene-box wyżej): raport do
+   wysokości (najwyżej 2,5 szerokości ekranu), przewijany w poziomie; ceremonia sama przesuwa widok do pieczęci (CaseClosedScreen). */
+@media (max-width: 767px) and (orientation: portrait) and (pointer: coarse) {
+  .closing-frame {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pinch-zoom;
+  }
+  .closing-box {
+    width: min(calc(100cqh * 16 / 9), 250cqw);
+  }
+}
+/* Miejsce na podpis bywa na telefonie niższe niż 44 px (slot sceny w %) - niewidoczny obszar dotyku co najmniej 44x44 wokół środka. */
+.closing-sign-hit::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* Zagnieżdżona scena w nakładce zbliżenia (SceneHotspotsBlock.tsx, NestedSceneImage, D-086): ramka z jawnym rozmiarem (część nakładki,
    max 88% sceny) jest kontenerem zapytań, obraz "contain" jak scena główna - także na telefonie w pionie (bez panoramy: pulpit ma
    zmieścić się w całości razem z ikoną "Wróć"). */
@@ -256,6 +291,75 @@
   /* "Zabierz" przy przedmiocie, który nie jest dowodem (SceneHotspotsBlock.tsx, D-086): krótkie potrząśnięcie, bez kary. */
   .scene-zoom-shake {
     animation: scene-zoom-shake 360ms ease-in-out;
+  }
+  /* Zamknięcie sprawy (D-089): teczka z lekkim zoomem, pieczęć spada (1.6 -> 1), drgnięcie teczki, liścik wlatuje, podpis się "rysuje",
+     pulsująca obwódka miejsca na podpis. Bez tej preferencji (reduced-motion) - stan końcowy od razu (komponent i tak pomija ceremonię). */
+  .closing-folder-in {
+    animation: closing-folder-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .closing-stamp-in {
+    animation: closing-stamp-in 350ms cubic-bezier(0.3, 1.4, 0.6, 1) both;
+  }
+  .closing-shake {
+    animation: scene-zoom-shake 300ms ease-in-out 120ms;
+  }
+  .closing-note-in {
+    animation: closing-note-in 550ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .closing-sign-draw {
+    animation: closing-sign-draw 600ms ease-out both;
+  }
+  .closing-sign-pulse {
+    animation: briefing-hotspot-hint 1.6s ease-in-out infinite;
+  }
+}
+
+/* reduced-motion: miejsce na podpis z obwódką bez pulsu. */
+@media (prefers-reduced-motion: reduce) {
+  .closing-sign-pulse {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+@keyframes closing-folder-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes closing-stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes closing-note-in {
+  from {
+    opacity: 0;
+    transform: translate(60%, -40%) rotate(12deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes closing-sign-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 

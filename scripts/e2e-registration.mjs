@@ -617,28 +617,26 @@ try {
   await noHScroll('desktop, wynik maila');
   await nextEnabled().click();
 
-  // Kolejność: cała obsługa z klawiatury (Enter na przyciskach "w górę / w dół"), ostatnie dwa kroki celowo zamienione.
-  await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  // Kolejność (tablica śledcza, D-088): cała obsługa z klawiatury (Enter na śladzie, Enter na polu), ostatnie dwa kroki celowo zamienione.
+  await page.getByTestId('evidence-board').waitFor();
   await shoot('kolejnosc-przed');
   const wanted = ['Nie klikam w link ani w załącznik', 'Usuwam wiadomość ze skrzynki', 'Zgłaszam wiadomość do działu bezpieczeństwa'];
-  const rows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
-  for (let target = 0; target < wanted.length; target += 1) {
-    for (let guard = 0; guard < 6; guard += 1) {
-      const texts = await rows();
-      const at = texts.findIndex((t) => t.includes(wanted[target]));
-      if (at === target) break;
-      const button = page.getByRole('button', { name: `Przesuń w górę: ${wanted[target]}` });
-      await button.focus();
-      await button.press('Enter');
-    }
+  const boardTray = page.getByRole('group', { name: 'Ślady do przypięcia' });
+  for (const [index, text] of wanted.entries()) {
+    const card = boardTray.getByRole('button', { name: new RegExp(`^Ślad: ${text}`) });
+    await card.focus();
+    await card.press('Enter');
+    const slot = page.getByRole('button', { name: new RegExp(`^Pole ${index + 1}, puste`) });
+    await slot.focus();
+    await slot.press('Enter');
   }
-  const finalRows = await rows();
-  step('śledztwo: kolejność ułożona z klawiatury (Enter na przyciskach w górę/w dół)', wanted.every((text, i) => finalRows[i].includes(text)), finalRows.join(' | ').slice(0, 200));
+  const finalRows = await Promise.all(wanted.map((_, i) => page.getByRole('button', { name: new RegExp(`^Pole ${i + 1}: `) }).textContent()));
+  step('śledztwo: kolejność ułożona z klawiatury (Enter na śladzie i na polu)', wanted.every((text, i) => (finalRows[i] ?? '').includes(text)), finalRows.join(' | ').slice(0, 200));
   const orderAnswered = progressResponse();
-  await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
+  await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   const orderBody = await (await orderAnswered).json();
   step('śledztwo: serwer ocenił kolejność (1/3 na miejscu), poprawna kolejność w wyniku jako id nieprzejrzyste', Math.abs(orderBody.lastResult?.points - 1 / 3) < 1e-9 && orderBody.lastResult?.detail?.correctOrder?.length === 3 && !JSON.stringify(orderBody.lastResult.detail).match(/"(stop|zglos|usun)"/), JSON.stringify(orderBody.lastResult?.points));
-  await page.getByRole('region', { name: 'Poprawna kolejność' }).waitFor();
+  await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
   await shoot('kolejnosc-wynik');
   await nextEnabled().click();
 

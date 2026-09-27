@@ -421,7 +421,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     );
   });
 
-  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na SummaryScreen (jak przy QUIZ na końcu kursu) - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie", które SUMMARY wcześniej celowo dostawało (usunięty wyjątek); reakcja Fooli z reactions.result trafia na ekran jako finalReaction (MascotSays, treść, NIE floating overlay)', async () => {
+  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na ekran zamknięcia sprawy - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie"; od D-089 bez dymka Fooli (zamiast niego liścik komisarza na raporcie)', async () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -455,10 +455,74 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
     // Ekran feedbacku dla SUMMARY jest pominięty (skipsFeedbackScreen) - fokus ląduje WPROST na widocznym nagłówku
-    // SummaryScreen (headingOverride/pośredni ekran usunięte - D-076), a reakcja z reactions.result idzie na
-    // SummaryScreen samą (finalReaction, CoursePlayer.tsx), nie ginie.
+    // ekranu zamknięcia (D-076).
     expect(document.activeElement).toBe(summaryHeading);
-    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Sprawa zamknięta na 100%!');
+    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+  });
+
+  it('D-089: SUMMARY z `closing` - świeże ukończenie uruchamia ceremonię raportu, podpis z imienia gracza (moduł bez odprawy też pyta o imię), pasek bez "Wróć do biblioteki", "Rozpocznij od nowa" zostaje', async () => {
+    const summary = {
+      type: 'SUMMARY' as const,
+      id: 'rozwiazanie',
+      text: 'Koniec.',
+      lessons: ['Sprawdzaj domenę.'],
+      closing: {
+        image: 'scenes/raport.svg',
+        stamp: 'scenes/pieczec.svg',
+        note: 'scenes/liscik.svg',
+        slots: {
+          evidence: { x: 5, y: 30, w: 10, h: 6 },
+          time: { x: 20, y: 30, w: 10, h: 6 },
+          xp: { x: 35, y: 30, w: 10, h: 6 },
+          lessons: { x: 5, y: 45, w: 40, h: 30 },
+          signature: { x: 20, y: 80, w: 20, h: 6 },
+          stamp: { x: 55, y: 60, w: 30, h: 20 },
+          note: { x: 75, y: 30, w: 15, h: 20 },
+        },
+      },
+    };
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url === '/api/users/me/display-name') return { ok: true, status: 200, json: async () => ({ firstName: 'Anna', lastInitial: 'K' }) };
+      if (url === '/api/courses/course-1/progress') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            assignmentId: 'a1',
+            status: 'COMPLETED',
+            currentBlockIndex: 1,
+            score: null,
+            completedAt: '2026-01-01T10:14:00.000Z',
+            lastResult: { blockIndex: 0, blockId: 'rozwiazanie', type: 'SUMMARY' },
+            gamification: { xpGained: 120, newLevel: 1, previousLevel: 1, leveledUp: false, unlockedBadges: [], levelProgressBeforePercent: 0, levelProgressAfterPercent: 40 },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    // Ceremonia wymaga ruchu - bez reduced-motion z beforeEach tego opisu.
+    window.matchMedia = originalMatchMedia;
+
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        userEmail="anna.kowalska@firma.pl"
+        initial={course({ currentBlockIndex: 0, startedAt: '2026-01-01T10:00:00.000Z', contentBlocks: [summary] })}
+      />,
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/users/me/display-name'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
+
+    const closed = await screen.findByTestId('case-closed');
+    expect(closed).toHaveAttribute('data-stage', 'intro');
+    expect(screen.getByTestId('case-closed-scene')).toBeInTheDocument();
+    expect(screen.getByText(/Czas śledztwa: 14 min\. Zdobyte doświadczenie: 120 XP\..*Podpis prowadzącego: Anna K\.$/)).toHaveClass('sr-only');
+    expect(screen.getAllByRole('link', { name: 'Wróć do biblioteki' })).toHaveLength(1);
+    expect(within(closed).getByRole('link', { name: 'Wróć do biblioteki' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rozpocznij od nowa' })).toBeInTheDocument();
   });
 
   it('dolny pasek: scroll-padding-bottom obszaru treści (nie całego dokumentu - ramka jest jedynym przewijanym obszarem) z pomiaru paska, sprzątany przy odmontowaniu', () => {

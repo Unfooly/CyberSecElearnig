@@ -50,6 +50,14 @@ export interface DossierDocument {
 }
 
 /** Prostokąt na scenie kroku odprawy, w % sceny (D-084). */
+/** Ekran zamknięcia sprawy (SUMMARY.closing, D-089): raport w teczce (16:9), pieczęć i liścik komisarza, sloty HTML w % sceny. */
+export interface CaseClosing {
+  image: string;
+  stamp: string;
+  note: string;
+  slots: Record<'evidence' | 'time' | 'xp' | 'lessons' | 'signature' | 'stamp' | 'note', BriefingRect>;
+}
+
 export interface BriefingRect {
   x: number;
   y: number;
@@ -163,6 +171,9 @@ export interface ContentBlock {
   // QUIZ / BRANCHING_SCENARIO
   prompt?: string;
   options?: ContentBlockOption[];
+  // SUMMARY - zamknięcie sprawy (D-089): wnioski śledczego i grafika ekranu zamknięcia ze slotami w % sceny raportu.
+  lessons?: string[];
+  closing?: CaseClosing;
   // DRAG_AND_DROP (i ORDERING: te same pola id/text)
   items?: DragAndDropItem[];
   // ORDERING - tablica śledcza (D-088): "zdjęcia" na początku i końcu łańcucha.
@@ -358,6 +369,9 @@ export interface CourseDetail {
   title: string;
   status: AssignmentStatus;
   currentBlockIndex: number;
+  /** Pierwsze rozpoczęcie i ukończenie przypisania (ISO) - czas śledztwa na ekranie zamknięcia (D-089); starsze odpowiedzi bez pól. */
+  startedAt?: string | null;
+  completedAt?: string | null;
   contentBlocks: ContentBlock[];
   progress: ClientProgress | null;
 }
@@ -388,8 +402,8 @@ export interface LastResult {
 }
 
 // Obecne WYŁĄCZNIE gdy dana odpowiedź /progress ukończyła kurs - patrz
-// apps/api CourseProgressResponseDto. Karta nagrody na SummaryScreen
-// (fix/course-finish-flow) pokazuje się tylko wtedy.
+// apps/api CourseProgressResponseDto. XP, awans i odznaki na ekranie zamknięcia
+// sprawy (CaseClosedScreen, D-089) pokazują się tylko wtedy.
 export interface CourseCompletionReward {
   xpGained: number;
   newLevel: number;
@@ -397,7 +411,7 @@ export interface CourseCompletionReward {
   previousLevel: number;
   leveledUp: boolean;
   unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
-  // Pasek poziomu "przed -> po" (SummaryScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
+  // Pasek poziomu "przed -> po" (dziś nieużywany przez web, D-089) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
   // przy awansie `levelProgressAfterPercent` jest przycięty do 100 przez API.
   levelProgressBeforePercent: number;
   levelProgressAfterPercent: number;

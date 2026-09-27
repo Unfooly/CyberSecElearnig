@@ -231,8 +231,9 @@ async function runViewport(viewport) {
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
   await nextEnabled().click();
 
-  // --- ORDERING (rekonstrukcja kolejności) - przechodzimy bez zrzutu (poza zakresem tej rundy) ---------------------
-  await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  // --- ORDERING (tablica śledcza, D-088) - pusta, pełna i po sprawdzeniu -------------------------------------------
+  await page.getByTestId('evidence-board').waitFor();
+  await shot(page, '07a-tablica-pusta', viewport.name);
   // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara.
   const wanted = [
     'Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
@@ -242,20 +243,18 @@ async function runViewport(viewport) {
     'Anna podaje kod; oszust zatwierdza przelew.',
     '14 000 zł wychodzi na konto „Wektor Rozliczenia”.',
   ];
-  const orderingRows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
-  for (let target = 0; target < wanted.length; target += 1) {
-    for (let guard = 0; guard < wanted.length + 1; guard += 1) {
-      const texts = await orderingRows();
-      const at = texts.findIndex((t) => t.includes(wanted[target]));
-      if (at === target) break;
-      const button = page.getByRole('button', { name: `Przesuń w górę: ${wanted[target]}` });
-      await button.focus();
-      await button.press('Enter');
-    }
+  const boardTray = page.getByRole('group', { name: 'Ślady do przypięcia' });
+  for (const [index, text] of wanted.entries()) {
+    await boardTray.getByRole('button', { name: `Ślad: ${text}` }).click();
+    await page.getByRole('button', { name: new RegExp(`^Pole ${index + 1}, puste`) }).click();
   }
+  await shot(page, '07b-tablica-pelna', viewport.name);
   const orderingAnswered = progressResponse();
-  await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
+  await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   await orderingAnswered;
+  await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
+  await page.waitForTimeout(900);
+  await shot(page, '07c-tablica-po-sprawdzeniu', viewport.name);
   await nextEnabled().click();
 
   // --- TEXT_INPUT_GUIDED - przechodzimy bez zrzutu (poza zakresem tej rundy) --------------------------------------

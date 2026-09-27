@@ -294,7 +294,9 @@ try {
   await nextEnabled().click();
 
   // --- Blok 7: Rekonstrukcja zdarzeń (ORDERING, waga 2) --------------------------------------------------------------------
-  await page.getByRole('list', { name: 'Kroki do uporządkowania' }).waitFor();
+  // Tablica śledcza (D-088): ślady z tacki na pola 1..6 - klawiaturą (Enter na śladzie, Enter na polu), jak gracz bez myszy.
+  await page.getByTestId('evidence-board').waitFor();
+  step('ORDERING: tablica śledcza z numerem sprawy i zdjęciami początku/końca', (await page.getByRole('region', { name: 'Tablica śledcza · CS/2026/0915' }).count()) === 1 && (await page.getByText('−14 000 zł').count()) === 1);
   // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara,
   // nie rekonstrukcją zdarzeń.
   const wanted = [
@@ -305,21 +307,23 @@ try {
     'Anna podaje kod; oszust zatwierdza przelew.',
     '14 000 zł wychodzi na konto „Wektor Rozliczenia”.',
   ];
-  const orderingRows = () => page.getByRole('list', { name: 'Kroki do uporządkowania' }).getByRole('listitem').allTextContents();
-  for (let target = 0; target < wanted.length; target += 1) {
-    for (let guard = 0; guard < wanted.length + 1; guard += 1) {
-      const texts = await orderingRows();
-      const at = texts.findIndex((t) => t.includes(wanted[target]));
-      if (at === target) break;
-      const button = page.getByRole('button', { name: `Przesuń w górę: ${wanted[target]}` });
-      await button.focus();
-      await button.press('Enter');
-    }
+  const boardTray = page.getByRole('group', { name: 'Ślady do przypięcia' });
+  step('ORDERING: 6 śladów na tacce, bez "Sprawdź trop" przed zapełnieniem', (await boardTray.getByRole('button', { name: /^Ślad: / }).count()) === 6 && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0);
+  for (const [index, text] of wanted.entries()) {
+    const card = boardTray.getByRole('button', { name: `Ślad: ${text}` });
+    await card.focus();
+    await card.press('Enter');
+    const slot = page.getByRole('button', { name: new RegExp(`^Pole ${index + 1}, puste`) });
+    await slot.focus();
+    await slot.press('Enter');
   }
+  step('ORDERING: pełna tablica - nić ciągła, "Sprawdź trop" widoczne', (await page.locator('[data-yarn="dashed"]').count()) === 0 && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 1);
   const orderingAnswered = progressResponse();
-  await page.getByRole('button', { name: 'Sprawdź kolejność' }).click();
+  await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   const orderingBody = await (await orderingAnswered).json();
   step('ORDERING: pełna poprawna kolejność (6/6) -> reaction cheer', orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(orderingBody.lastResult));
+  await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
+  step('ORDERING: po sprawdzeniu 6 zielonych pinezek i zdanie pod tablicą (bez listy "Poprawna kolejność")', (await page.locator('.board-pin--good').count()) === 6 && ((await page.getByTestId('board-feedback').textContent()) ?? '').length > 0 && (await page.getByRole('region', { name: 'Poprawna kolejność' }).count()) === 0);
   await nextEnabled().click();
 
   // --- Blok 8: Ostatnie pytanie (TEXT_INPUT_GUIDED, waga 1) ----------------------------------------------------------------

@@ -50,6 +50,8 @@
 // wszystkich krokach odprawy modułu 1 (`?block=odprawa`) - (m-o) w komentarzu przy checkBriefingStep.
 // DOSSIER (feat/dossier-folder, D-083): ta sama lista rozdzielczości, każdy dokument teczki (`?block=akta-sprawy`) - (q-u)
 // w komentarzu przy checkDossierDocument.
+// ZAMKNIĘCIE SPRAWY (feat/case-closed, D-089): ta sama lista rozdzielczości, `?block=rozwiazanie-sprawy` w trakcie ceremonii i w
+// stanie końcowym (`&completed=1`) - (z1-z7) w komentarzu przy checkCaseClosed. Tylko ta sekcja: LAYOUT_CHECK_SECTION=closing.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -105,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
@@ -669,6 +671,72 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
 }
 
+// ZAMKNIĘCIE SPRAWY (feat/case-closed, D-089), w trakcie ceremonii (etap podpisu) i w stanie końcowym: (z1) strona i obszar bloku się
+// nie przewijają; (z2) raport (16:9) w całości w obszarze bloku, obraz załadowany; (z3) każdy element w slocie (liczby, wnioski, podpis,
+// pieczęć, liścik) leży w raporcie; (z4) liczby i każda linijka wniosków bez przepełnienia (tekst w slocie, nowrap - obcięty byłby
+// niewidoczny); (z5) cel dotyku podpisu >= 44x44 (niewidoczne rozszerzenie .closing-sign-hit - slot na telefonie jest niższy); (z6)
+// "Wróć do biblioteki" i "Następna sprawa" w całości w obszarze bloku i w viewporcie, >= 44 px wysokości; (z7) błędy strony.
+const CLOSING_SLOTS = ['closing-evidence', 'closing-time', 'closing-xp', 'closing-lessons', 'closing-signature', 'closing-stamp', 'closing-note'];
+async function checkCaseClosed(page, label, portrait) {
+  await checkNoPageScroll(page, label);
+  await checkMainSceneFits(page, label);
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');
+  if (!contains(contentAreaBox, frameBox)) fail(`${label}: (z2) ramka raportu wychodzi poza obszar bloku - ramka=${JSON.stringify(frameBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  const pan = await page.getByTestId('case-closed-frame').evaluate((el) => ({ x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight }));
+  if (pan.y > 1) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
+  if (portrait) {
+    // Panorama: raport szerszy niż ekran (przewijanie w poziomie), wnioski czytelne (>= 11 px).
+    if (pan.x <= 1) fail(`${label}: (z2) telefon w pionie bez panoramy raportu (contain - tekst nieczytelny).`);
+    const fontPx = await page.getByTestId('closing-lessons').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    if (fontPx < 11) fail(`${label}: (z2) wnioski ${fontPx.toFixed(1)} px (< 11 px) w panoramie.`);
+  } else {
+    if (pan.x > 1) fail(`${label}: (z2) ramka raportu przewija się w poziomie o ${pan.x}px (poza telefonem w pionie raport ma się mieścić).`);
+  }
+  const sceneBox = await boxOf(page, '[data-testid="case-closed-scene"]');
+  if (!portrait && !contains(contentAreaBox, sceneBox)) fail(`${label}: (z2) raport wychodzi poza obszar bloku - raport=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  const loaded = await page.locator('[data-testid="case-closed-scene"] img').evaluateAll((els) => els.every((img) => img.naturalWidth > 0));
+  if (!loaded) fail(`${label}: (z2) obraz raportu/pieczęci/liściku się nie załadował.`);
+  for (const testId of CLOSING_SLOTS) {
+    const locator = page.getByTestId(testId);
+    if ((await locator.count()) === 0) continue;
+    const box = await locator.boundingBox();
+    if (!box || !contains(sceneBox, box)) fail(`${label}: (z3) ${testId} poza raportem - ${JSON.stringify(box)} raport=${JSON.stringify(sceneBox)}.`);
+  }
+  const overflows = await page.evaluate(() => {
+    const out = [];
+    for (const id of ['closing-evidence', 'closing-time', 'closing-xp']) {
+      const el = document.querySelector(`[data-testid="${id}"]`);
+      if (el && el.scrollWidth > el.clientWidth + 1) out.push(`${id}: ${el.scrollWidth} > ${el.clientWidth}`);
+    }
+    const list = document.querySelector('[data-testid="closing-lessons"]');
+    if (list) {
+      if (list.scrollHeight > list.clientHeight + 1) out.push(`wnioski w pionie: ${list.scrollHeight} > ${list.clientHeight}`);
+      for (const item of list.querySelectorAll('li')) {
+        if (item.scrollWidth > list.clientWidth + 1) out.push(`"${item.textContent}": ${item.scrollWidth} > ${list.clientWidth}`);
+      }
+    }
+    return out;
+  });
+  if (overflows.length > 0) fail(`${label}: (z4) tekst wychodzi poza slot - ${overflows.join('; ')}.`);
+  // (z5) tylko na etapie podpisu (później przycisku już nie ma - sam podpis).
+  if ((await page.getByRole('button', { name: 'Podpisz raport' }).count()) > 0) {
+    const signBox = await boxOf(page, '[data-testid="closing-signature"]');
+    const hits = await page.evaluate(({ x, y }) => [[x, y - 21], [x, y + 21], [x - 21, y], [x + 21, y]].map(([px, py]) => !!document.elementFromPoint(px, py)?.closest('[data-testid="closing-signature"]')), {
+      x: signBox.x + signBox.width / 2,
+      y: signBox.y + signBox.height / 2,
+    });
+    if (hits.includes(false)) fail(`${label}: (z5) cel dotyku podpisu < 44x44 (trafienia ±21 px od środka: ${hits.join(', ')}; slot ${JSON.stringify(signBox)}).`);
+  }
+  const viewport = page.viewportSize();
+  for (const name of ['Wróć do biblioteki', /Następna sprawa/]) {
+    const control = page.getByTestId('case-closed').getByRole(typeof name === 'string' ? 'link' : 'button', { name });
+    const box = await control.boundingBox();
+    const inViewport = box && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
+    if (!box || !contains(contentAreaBox, box) || !inViewport || box.height < 44) fail(`${label}: (z6) przycisk "${name}" poza obszarem bloku/viewportem albo < 44 px - ${JSON.stringify(box)}.`);
+  }
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -1043,6 +1111,82 @@ try {
     await checkEvidenceBoard(page, `${viewport.name} / tablica po sprawdzeniu`, { trayCards: 0, result: true });
     step(`${viewport.name} / tablica po sprawdzeniu: (a, e, b1-b5) OK`, true);
     await context.close();
+  }
+
+  // ZAMKNIĘCIE SPRAWY (feat/case-closed, D-089) - patrz checkCaseClosed. W trakcie: prawdziwa ceremonia (bez reduced-motion) po
+  // "Zakończ sprawę" z odpowiedzią /progress podstawioną przez page.route (harness nie ma backendu) - pomiar na etapie podpisu, potem
+  // klik w podpis i stan końcowy po pieczęci i liściku. Końcowe: `?completed=1` (powrót do ukończonego kursu) z reduced-motion.
+  for (const viewport of runs('closing') ? BRIEFING_VIEWPORTS : []) {
+    console.log(`\n--- viewport (ZAMKNIĘCIE): ${viewport.name} ---`);
+    const portrait = PORTRAIT_VIEWPORT_NAMES.has(viewport.name);
+    for (const mode of ['ceremonia', 'końcowe']) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: true,
+        isMobile: viewport.isMobile ?? false,
+        reducedMotion: mode === 'końcowe' ? 'reduce' : 'no-preference',
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+      await page.route('**/api/courses/*/progress', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            assignmentId: 'dev-harness',
+            status: 'COMPLETED',
+            currentBlockIndex: 1,
+            score: 83,
+            completedAt: new Date().toISOString(),
+            lastResult: { blockIndex: 0, blockId: 'rozwiazanie-sprawy', type: 'SUMMARY' },
+            evidence: { collected: 20, total: 22, perBlock: [] },
+            gamification: {
+              xpGained: 350,
+              newLevel: 2,
+              previousLevel: 1,
+              leveledUp: true,
+              unlockedBadges: [],
+              levelProgressBeforePercent: 40,
+              levelProgressAfterPercent: 100,
+            },
+          }),
+        }),
+      );
+      const label = `${viewport.name} / zamknięcie: ${mode}`;
+      if (mode === 'ceremonia') {
+        await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
+        // Harness ma jeden blok (bez dowodów w notatniku) - SummaryBlock pokazuje wtedy "Zakończ szkolenie" zamiast "Zakończ sprawę".
+        await page.getByRole('button', { name: /^Zakończ (sprawę|szkolenie)$/ }).click();
+        await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 15000 });
+        await page.waitForTimeout(700); // wejście teczki (600 ms) - pomiar bez transformu animacji
+        await shot(page, `${viewport.name}-zamkniecie-1-podpis`);
+        if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
+        await checkCaseClosed(page, `${label} (podpis)`, portrait);
+        step(`${label} (etap podpisu): (z1-z7) OK`, true);
+        await page.getByRole('button', { name: 'Podpisz raport' }).click();
+      } else {
+        await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
+      }
+      await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
+      await page.waitForTimeout(700); // animacje pieczęci/liściku/drgnięcia dobiegają końca
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
+      await shot(page, `${viewport.name}-zamkniecie-2-${mode === 'ceremonia' ? 'po-ceremonii' : 'koncowe'}`);
+      if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
+      if ((await page.getByTestId('closing-stamp').count()) !== 1 || (await page.getByTestId('closing-note').count()) !== 1) fail(`${label}: brak pieczęci albo liściku w stanie końcowym.`);
+      if (portrait && mode === 'ceremonia') {
+        // (z8) ceremonia w panoramie sama przesunęła widok: pieczęć i liścik w całości w widocznej części ramki.
+        const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');
+        for (const testId of ['closing-stamp', 'closing-note']) {
+          const box = await page.getByTestId(testId).boundingBox();
+          if (!box || !contains(frameBox, box)) fail(`${label}: (z8) ${testId} poza widokiem panoramy po ceremonii - ${JSON.stringify(box)} ramka=${JSON.stringify(frameBox)}.`);
+        }
+        step(`${label}: (z8) panorama przesunięta na pieczęć i liścik`, true);
+      }
+      await checkCaseClosed(page, label, portrait);
+      step(`${label} (stan końcowy): (z1-z7) OK`, true);
+      await context.close();
+    }
   }
 
   console.log(`\nWSZYSTKIE SPRAWDZENIA OK (${results.length})`);

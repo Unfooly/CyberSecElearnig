@@ -383,7 +383,26 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { id: 'procedury', tab: 'Procedury', org: 'FIRMA', title: 'Procedury', columns: ['Zasada'], rows: [{ id: 'p1', cells: ['Zgłaszaj.'], message: 'To zasada, nie ślad.' }] },
       ],
     },
-    SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },
+    SUMMARY: {
+      ...base('podsumowanie'),
+      type: 'SUMMARY',
+      text: 'Dziękujemy.',
+      lessons: ['Sprawdzaj nadawcę.', 'Zgłaszaj podejrzane maile.'],
+      closing: {
+        image: 'scenes/raport.svg',
+        stamp: 'scenes/pieczec.svg',
+        note: 'scenes/liscik.svg',
+        slots: {
+          evidence: { x: 8.8, y: 34.8, w: 11.7, h: 6.8 },
+          time: { x: 21.5, y: 34.8, w: 11.7, h: 6.8 },
+          xp: { x: 34.2, y: 34.8, w: 11.7, h: 6.8 },
+          lessons: { x: 8.8, y: 50.7, w: 37.1, h: 29.3 },
+          signature: { x: 23.2, y: 81.8, w: 22.7, h: 6.1 },
+          stamp: { x: 56.2, y: 67.7, w: 33, h: 21 },
+          note: { x: 78.5, y: 36.6, w: 14.1, h: 23.2 },
+        },
+      },
+    },
   };
 }
 

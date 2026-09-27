@@ -28,6 +28,9 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   // To samo z grafiką kroków odprawy (D-084): własne testy niżej (moduleWithBriefingScenes).
   const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
   for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'openHotspot', 'slots']) delete step[field];
+  // I z raportem zamknięcia sprawy (SUMMARY.closing, D-089): własny test niżej.
+  const summary = module.blocks.find((block) => block.type === 'SUMMARY') as Record<string, unknown>;
+  delete summary.closing;
   return module as unknown as Record<string, unknown>;
 }
 
@@ -123,6 +126,23 @@ function moduleWithBriefingScenes(): Record<string, unknown> {
   Object.assign(caseFile, { closedImage: 'teczka.png', image: 'akta.png', hotspot: { id: 'teczka', x: 1, y: 1, w: 10, h: 10 } });
   return module;
 }
+
+describe('raport zamknięcia sprawy (SUMMARY.closing, D-089)', () => {
+  it('collectAssetRefs znajduje closing.image, closing.stamp i closing.note', () => {
+    const module = moduleWithAssets();
+    const summary = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'SUMMARY')!;
+    const slot = { x: 1, y: 1, w: 10, h: 10 };
+    summary.closing = {
+      image: 'raport.svg',
+      stamp: 'pieczec.svg',
+      note: 'liscik.svg',
+      slots: { evidence: slot, time: slot, xp: slot, lessons: slot, signature: slot, stamp: slot, note: slot },
+    };
+    const refs = collectAssetRefs(module);
+    expect(refs.map((ref) => ref.value).sort()).toEqual(['anna.png', 'liscik.svg', 'pieczec.svg', 'raport.svg', 'scena.png']);
+    expect(refs.map((ref) => ref.id)).toEqual(expect.arrayContaining([expect.stringMatching(/#closing\.image$/), expect.stringMatching(/#closing\.stamp$/), expect.stringMatching(/#closing\.note$/)]));
+  });
+});
 
 describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
   it('collectAssetRefs znajduje steps[].image i closedImage', () => {

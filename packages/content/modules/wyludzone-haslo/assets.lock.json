@@ -91,6 +91,21 @@
       "original": "avatars/marek.svg",
       "hash": "27eb889f",
       "key": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg"
+    },
+    "rozwiazanie-sprawy#closing.image": {
+      "original": "scenes/zamkniecie-raport.svg",
+      "hash": "a9536a3e",
+      "key": "assets/wyludzone-haslo/scenes/zamkniecie-raport.a9536a3e.svg"
+    },
+    "rozwiazanie-sprawy#closing.stamp": {
+      "original": "scenes/zamkniecie-pieczec.svg",
+      "hash": "85d8d56a",
+      "key": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.85d8d56a.svg"
+    },
+    "rozwiazanie-sprawy#closing.note": {
+      "original": "scenes/zamkniecie-liscik.svg",
+      "hash": "111db7c8",
+      "key": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.111db7c8.svg"
     }
   }
 }

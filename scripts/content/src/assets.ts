@@ -38,6 +38,10 @@ export const ASSET_PATHS: string[][] = [
   // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.
   ['steps', '*', 'image'],
   ['steps', '*', 'closedImage'],
+  // Ekran zamknięcia sprawy (SUMMARY.closing, D-089): raport w teczce, pieczęć i liścik komisarza.
+  ['closing', 'image'],
+  ['closing', 'stamp'],
+  ['closing', 'note'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

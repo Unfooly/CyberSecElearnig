@@ -97,9 +97,9 @@ const BRIEFING_VIEWPORTS = [
 // Sceny odprawy (feat/briefing-scenes, D-084): kolejne widoki (krok caseFile ma dwie fazy: zamknięta teczka -> akta). `fits` -
 // elementy tekstowe/sloty na scenie (FitText), które muszą się zmieścić bez przepełnienia i leżeć w scenie; `via: 'hotspot'` -
 // dalej klikiem w hotspot na scenie (sprawdza, że klik = cta), inaczej przyciskiem `cta`; `image` - fragment nazwy pliku
-// widocznego obrazu (reducedMotion:'reduce' w kontekście -> statyczny wariant biurka).
+// widocznego obrazu (reducedMotion:'reduce' w kontekście -> adres z #static, sprawdzane w checkBriefingScene).
 const BRIEFING_SCENE_VIEWS = [
-  { cta: 'Odbierz', fits: ['briefing-scene-text'], hotspot: true, via: 'hotspot', image: 'odprawa-biurko-static' },
+  { cta: 'Odbierz', fits: ['briefing-scene-text'], hotspot: true, via: 'hotspot', image: 'odprawa-biurko' },
   { cta: 'Przyjmuję', fits: ['briefing-bubble'], image: 'odprawa-rozmowa' },
   { cta: 'Otwórz teczkę', fits: [], hotspot: true, via: 'hotspot', image: 'odprawa-teczka', phase: 'closed' },
   { cta: 'Biorę sprawę', fits: ['briefing-slot-tasks'], image: 'odprawa-akta', phase: 'open' },
@@ -513,7 +513,7 @@ async function checkBriefingStep(page, cta, label) {
 }
 
 // Sceny odprawy (D-084), dla każdego widoku: (v) obraz sceny załadowany (lokalne assets/ przez /dev/module-assets) i to ten
-// właściwy (wariant statyczny przy reduced-motion, faza teczki); (w) scena w CAŁOŚCI w obszarze bloku, a krok ze sceną nie
+// właściwy (faza teczki), z #static przy reduced-motion; (w) scena w CAŁOŚCI w obszarze bloku, a krok ze sceną nie
 // przewija się wcale; (x) każdy tekst/slot (FitText) bez przepełnienia i w granicach sceny; (y) dymek rozmowy w prawej połowie
 // sceny (x >= 45%) i bez części wspólnej z telefonem (lewa część sceny, x < 40%); pasek tekstu nad hotspotem telefonu, bez
 // części wspólnej; (z) hotspot (gdy jest) w scenie.
@@ -533,6 +533,7 @@ async function checkBriefingScene(page, view, label) {
   });
   if (!visibleImage?.loaded) fail(`${label}: (v) obraz sceny się nie załadował - ${JSON.stringify(visibleImage)}.`);
   if (!visibleImage.src.includes(view.image)) fail(`${label}: (v) widoczny obraz "${visibleImage.src}" zamiast "${view.image}".`);
+  if (!visibleImage.src.endsWith('#static')) fail(`${label}: (v) reduced-motion, a obraz sceny bez #static: ${visibleImage.src}.`);
 
   const rel = (box) => ({ x: ((box.x - sceneBox.x) / sceneBox.width) * 100, y: ((box.y - sceneBox.y) / sceneBox.height) * 100, right: ((box.x + box.width - sceneBox.x) / sceneBox.width) * 100, bottom: ((box.y + box.height - sceneBox.y) / sceneBox.height) * 100 });
   const overlaps = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
@@ -729,6 +730,70 @@ try {
     await checkThreadScrolledToBottom(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
     step(`${viewport.name} / rozmowa-anna: (k, l) strona/obszar bloku nie przewijają się, wątek przewinięty do dołu po >=8 wiadomościach`, true);
 
+    await context.close();
+  }
+
+  // Miniatury kursów (D-084, /dev/courses-harness): (c1) każda miniatura załadowana, 16:9 (±2%), w całości w swojej karcie;
+  // (c2) karta bez miniatury nie ma obrazka (dotychczasowy wygląd); (c3) strona bez poziomego przewijania.
+  for (const viewport of BRIEFING_VIEWPORTS) {
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
+    const page = await context.newPage();
+    const label = `${viewport.name} / katalog kursów`;
+    await page.goto(`${WEB}/dev/courses-harness`);
+    const thumbs = page.getByRole('img', { name: 'Sprawa: wyłudzone hasło' });
+    await thumbs.first().waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete));
+    await shot(page, `${viewport.name}-katalog`);
+    const count = await thumbs.count();
+    if (count !== 2) fail(`${label}: (c1) oczekiwane 2 miniatury (biblioteka + katalog), jest ${count}.`);
+    for (const thumb of await thumbs.all()) {
+      const info = await thumb.evaluate((img) => {
+        const card = img.closest('.rounded-card:not(img)') ?? img.parentElement;
+        const r = img.getBoundingClientRect();
+        const c = card.getBoundingClientRect();
+        return { loaded: img.naturalWidth > 0, ratio: r.width / r.height, inside: r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1 && r.bottom <= c.bottom + 1 };
+      });
+      if (!info.loaded) fail(`${label}: (c1) miniatura się nie załadowała.`);
+      if (Math.abs(info.ratio - 16 / 9) > 0.04) fail(`${label}: (c1) proporcja miniatury ${info.ratio.toFixed(3)} zamiast 16:9.`);
+      if (!info.inside) fail(`${label}: (c1) miniatura wychodzi poza kartę.`);
+    }
+    if ((await page.getByRole('img', { name: 'Kurs bez miniatury' }).count()) !== 0) fail(`${label}: (c2) karta bez miniatury ma obrazek.`);
+    const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (overflowX > 1) fail(`${label}: (c3) strona przewija się w poziomie o ${overflowX}px.`);
+    step(`${label}: (c1-c3) OK`, true);
+    await context.close();
+  }
+
+  // Animacje scen (D-084) przy reducedMotion:'reduce': (r1) KAŻDY obraz SVG w obszarze bloku (scena, zagnieżdżona scena
+  // pulpitu, zbliżenie maila w karcie) ma w adresie #static - zatrzymuje animacje CSS w pliku - i się ładuje; (r2) scena
+  // nadal mieści się w obszarze bloku.
+  for (const viewport of BRIEFING_VIEWPORTS) {
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    for (const [name, query] of [['scena główna', ''], ['pulpit + mail', '?hotspot=outlook']]) {
+      const label = `${viewport.name} / reduced-motion: ${name}`;
+      await page.goto(`${WEB}/dev/player-harness${query}`);
+      await page.getByTestId('player-content-area').waitFor();
+      if (query) await page.locator('.hotspot-card').first().waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="player-content-area"] img')].every((img) => img.complete));
+      const images = await page.locator('[data-testid="player-content-area"] img').evaluateAll((els) =>
+        els.map((img) => ({ src: img.getAttribute('src') ?? '', loaded: img.naturalWidth > 0 })),
+      );
+      // Tylko obrazy scen z modułu (lokalne assets/ przez /dev/module-assets albo magazyn treści) - nie grafiki aplikacji (maskotka).
+      const svgs = images.filter((img) => /\.svg(#|$)/i.test(img.src) && /(module-assets|\/assets\/)/.test(img.src));
+      if (svgs.length === 0) fail(`${label}: (r1) brak obrazów SVG sceny.`);
+      for (const img of svgs) {
+        if (!img.src.endsWith('#static')) fail(`${label}: (r1) obraz bez #static: ${img.src}`);
+        if (!img.loaded) fail(`${label}: (r1) obraz się nie załadował: ${img.src}`);
+      }
+      if (!query) await checkMainSceneFits(page, label);
+      step(`${label}: (r1-r2) ${svgs.length} obraz(y) z #static OK`, true);
+    }
     await context.close();
   }
 

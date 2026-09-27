@@ -690,7 +690,19 @@
       "type": "DOSSIER",
       "title": "Teczka sprawy",
       "narration": {
-        "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku."
+        "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/aa781dfd2261b00c.mp3",
+        "durationMs": 7848,
+        "cues": [
+          {
+            "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy.",
+            "startMs": 0
+          },
+          {
+            "text": "Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
+            "startMs": 3529
+          }
+        ]
       },
       "stamp": "Poufne",
       "documents": [
@@ -700,18 +712,50 @@
           "org": "BANK WEKTOR S.A.",
           "title": "Wyciąg z rachunku firmowego",
           "meta": "Unfooly Sp. z o.o. · wtorek",
-          "columns": ["Godzina", "Opis operacji", "Kwota"],
+          "columns": [
+            "Godzina",
+            "Opis operacji",
+            "Kwota"
+          ],
           "rows": [
-            { "id": "w-0802", "cells": ["08:02", "Opłata za prowadzenie rachunku", "−25,00 PLN"] },
-            { "id": "w-0831", "cells": ["08:31", "Wpływ: płatność za fakturę od klienta", "+3 200,00 PLN"] },
+            {
+              "id": "w-0802",
+              "cells": [
+                "08:02",
+                "Opłata za prowadzenie rachunku",
+                "−25,00 PLN"
+              ]
+            },
+            {
+              "id": "w-0831",
+              "cells": [
+                "08:31",
+                "Wpływ: płatność za fakturę od klienta",
+                "+3 200,00 PLN"
+              ]
+            },
             {
               "id": "w-0912",
-              "cells": ["09:12", "Przelew: Wektor Rozliczenia Sp. z o.o.", "−14 000,00 PLN"],
+              "cells": [
+                "09:12",
+                "Przelew: Wektor Rozliczenia Sp. z o.o.",
+                "−14 000,00 PLN"
+              ],
               "evidence": true,
               "required": true,
-              "note": { "text": "9:12 — przelew 14 000 PLN do Wektor Rozliczenia Sp. z o.o.", "kind": "item" }
+              "note": {
+                "text": "9:12 — przelew 14 000 PLN do Wektor Rozliczenia Sp. z o.o.",
+                "kind": "item"
+              }
             },
-            { "id": "w-1005", "cells": ["10:05", "Przelew: dostawca materiałów biurowych", "−412,50 PLN"] }
+            {
+              "id": "w-1005",
+              "cells": [
+                "10:05",
+                "Przelew: dostawca materiałów biurowych",
+                "−412,50 PLN"
+              ]
+            }
           ]
         },
         {
@@ -720,23 +764,55 @@
           "org": "BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA",
           "title": "Historia logowań",
           "meta": "Użytkownik: a.kowalska · wtorek",
-          "columns": ["Godzina", "Zdarzenie", "Miejsce i urządzenie"],
+          "columns": [
+            "Godzina",
+            "Zdarzenie",
+            "Miejsce i urządzenie"
+          ],
           "rows": [
-            { "id": "l-0758", "cells": ["07:58", "Logowanie", "Kraków, komputer biurowy"] },
+            {
+              "id": "l-0758",
+              "cells": [
+                "07:58",
+                "Logowanie",
+                "Kraków, komputer biurowy"
+              ]
+            },
             {
               "id": "l-0853",
-              "cells": ["08:53", "Logowanie", "Bukareszt, nowe urządzenie"],
+              "cells": [
+                "08:53",
+                "Logowanie",
+                "Bukareszt, nowe urządzenie"
+              ],
               "evidence": true,
               "required": true,
-              "note": { "text": "8:53 — logowanie z Bukaresztu, z nowego urządzenia.", "kind": "place" }
+              "note": {
+                "text": "8:53 — logowanie z Bukaresztu, z nowego urządzenia.",
+                "kind": "place"
+              }
             },
             {
               "id": "l-0906",
-              "cells": ["09:06", "Autoryzacja przelewu kodem SMS", "Bukareszt, nowe urządzenie"],
+              "cells": [
+                "09:06",
+                "Autoryzacja przelewu kodem SMS",
+                "Bukareszt, nowe urządzenie"
+              ],
               "evidence": true,
-              "note": { "text": "9:06 — przelew zatwierdzony kodem SMS.", "kind": "item" }
+              "note": {
+                "text": "9:06 — przelew zatwierdzony kodem SMS.",
+                "kind": "item"
+              }
             },
-            { "id": "l-0912", "cells": ["09:12", "Przelew wysłany", "Bukareszt, nowe urządzenie"] }
+            {
+              "id": "l-0912",
+              "cells": [
+                "09:12",
+                "Przelew wysłany",
+                "Bukareszt, nowe urządzenie"
+              ]
+            }
           ]
         },
         {
@@ -745,23 +821,45 @@
           "org": "UNFOOLY SP. Z O.O. · DZIAŁ IT",
           "title": "Notatka po incydencie",
           "meta": "Autor: Marek Zieliński",
-          "columns": ["Ustalenie"],
+          "columns": [
+            "Ustalenie"
+          ],
           "rows": [
             {
               "id": "n-3-osoby",
-              "cells": ["Ten sam mail trafił do 3 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."],
+              "cells": [
+                "Ten sam mail trafił do 3 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."
+              ],
               "evidence": true,
-              "note": { "text": "Ten sam mail z bankwektor-weryfikacja.pl dostały 3 osoby.", "kind": "mail" }
+              "note": {
+                "text": "Ten sam mail z bankwektor-weryfikacja.pl dostały 3 osoby.",
+                "kind": "mail"
+              }
             },
             {
               "id": "n-whois",
-              "cells": ["Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS)."],
+              "cells": [
+                "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS)."
+              ],
               "evidence": true,
               "required": true,
-              "note": { "text": "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS).", "kind": "item" }
+              "note": {
+                "text": "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS).",
+                "kind": "item"
+              }
             },
-            { "id": "n-filtr", "cells": ["Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji."] },
-            { "id": "n-rekomendacje", "cells": ["Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie."] }
+            {
+              "id": "n-filtr",
+              "cells": [
+                "Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji."
+              ]
+            },
+            {
+              "id": "n-rekomendacje",
+              "cells": [
+                "Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie."
+              ]
+            }
           ]
         },
         {
@@ -769,26 +867,80 @@
           "tab": "Procedury",
           "org": "UNFOOLY SP. Z O.O.",
           "title": "Procedury bezpieczeństwa",
-          "columns": ["Temat", "Zasada"],
+          "columns": [
+            "Temat",
+            "Zasada"
+          ],
           "rows": [
-            { "id": "p-domeny-1", "cells": ["Domeny", "Prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl."] },
+            {
+              "id": "p-domeny-1",
+              "cells": [
+                "Domeny",
+                "Prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl."
+              ]
+            },
             {
               "id": "p-domeny-2",
-              "cells": ["Domeny", "Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://."]
+              "cells": [
+                "Domeny",
+                "Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://."
+              ]
             },
-            { "id": "p-bank-haslo", "cells": ["Bank", "Nie poprosi o hasło — mailem, telefonem ani SMS-em."] },
-            { "id": "p-bank-sms", "cells": ["Bank", "Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS zawsze zatwierdza, nigdy nie anuluje."] },
-            { "id": "p-bank-telefon", "cells": ["Bank", "Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie."] },
-            { "id": "p-bank-zalacznik", "cells": ["Bank", "Nie wyśle programu (.exe, .scr, .bat) w załączniku."] },
-            { "id": "p-bank-watpliwosc", "cells": ["Bank", "Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila."] },
+            {
+              "id": "p-bank-haslo",
+              "cells": [
+                "Bank",
+                "Nie poprosi o hasło — mailem, telefonem ani SMS-em."
+              ]
+            },
+            {
+              "id": "p-bank-sms",
+              "cells": [
+                "Bank",
+                "Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS zawsze zatwierdza, nigdy nie anuluje."
+              ]
+            },
+            {
+              "id": "p-bank-telefon",
+              "cells": [
+                "Bank",
+                "Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie."
+              ]
+            },
+            {
+              "id": "p-bank-zalacznik",
+              "cells": [
+                "Bank",
+                "Nie wyśle programu (.exe, .scr, .bat) w załączniku."
+              ]
+            },
+            {
+              "id": "p-bank-watpliwosc",
+              "cells": [
+                "Bank",
+                "Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila."
+              ]
+            },
             {
               "id": "p-zgloszenie-mail",
-              "cells": ["Zgłaszanie", "Zgłoś przyciskiem „Zgłoś podejrzany mail” w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT."]
+              "cells": [
+                "Zgłaszanie",
+                "Zgłoś przyciskiem „Zgłoś podejrzany mail” w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT."
+              ]
             },
-            { "id": "p-zgloszenie-telefon", "cells": ["Zgłaszanie", "Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka."] },
+            {
+              "id": "p-zgloszenie-telefon",
+              "cells": [
+                "Zgłaszanie",
+                "Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka."
+              ]
+            },
             {
               "id": "p-zgloszenie-zasada",
-              "cells": ["Zgłaszanie", "Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."]
+              "cells": [
+                "Zgłaszanie",
+                "Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+              ]
             }
           ]
         }

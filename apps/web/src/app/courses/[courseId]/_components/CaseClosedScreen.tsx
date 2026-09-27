@@ -346,7 +346,7 @@ export default function CaseClosedScreen({
         >
           Wróć do biblioteki
         </Link>
-        {/* Kolejnej sprawy w API jeszcze nie ma (B-115) - zamknięta teczka z kłódką. aria-disabled (nie disabled): osiągalny Tabem,
+        {/* Kolejnej sprawy w API nie ma (B-115: zachowanie MVP) - zamknięta teczka z kłódką. aria-disabled (nie disabled): osiągalny Tabem,
             więc użytkownik klawiatury/czytnika też usłyszy "wkrótce"; bez obsługi kliku (type=button poza formularzem nic nie robi). */}
         <button
           type="button"

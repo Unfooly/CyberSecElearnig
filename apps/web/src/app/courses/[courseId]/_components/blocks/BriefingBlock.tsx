@@ -322,7 +322,8 @@ export default function BriefingBlock({
             aria-labelledby={`${headingId}-pos ${headingId}`}
             aria-describedby={step.kind === 'call' ? `${headingId}-text` : undefined}
             role="group"
-            className="briefing-step-enter flex min-h-0 w-full flex-1 flex-col outline-none"
+            // Krok legitymacji ma własne wejście z dołu na scenie (BriefingScene, D-090) - bez drugiej, nakładającej się animacji kroku.
+            className={`${step.kind === 'badge' ? '' : 'briefing-step-enter'} flex min-h-0 w-full flex-1 flex-col outline-none`}
           >
             <span id={`${headingId}-pos`} className="sr-only">
               Odprawa, krok {index + 1} z {steps.length}.

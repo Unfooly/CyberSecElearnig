@@ -186,7 +186,8 @@ export default function BriefingSceneStep({
       <div
         data-testid="briefing-scene"
         data-phase={closedSrc ? (closedPhase ? 'closed' : 'open') : undefined}
-        className="briefing-scene-box relative isolate overflow-hidden rounded-card border border-border bg-surface"
+        // Ruch (D-090): legitymacja wysuwa się z dołu (400 ms ease-out-soft) razem ze slotami imienia i numeru; reduced-motion - od razu.
+        className={`briefing-scene-box relative isolate overflow-hidden rounded-card border border-border bg-surface ${step.kind === 'badge' ? 'motion-safe:animate-rise-in' : ''}`}
         style={{ '--scene-ratio': String(aspectRatio), aspectRatio: 'var(--scene-ratio)', height: 'auto', margin: 'auto' } as CSSProperties}
       >
         {imageSrc && (

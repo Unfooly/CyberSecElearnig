@@ -8,6 +8,7 @@ import { requiredItemIds } from '@/lib/required-items';
 import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { sceneZoom, sceneZoomStyle } from '@/lib/scene-zoom';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { flyEvidence } from '@/lib/motion';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
@@ -311,7 +312,7 @@ export default function SceneHotspotsBlock({
     if (!review && ready) onSubmit({ visited, noted });
   }
 
-  function take(hotspot: AnyHotspot) {
+  function take(hotspot: AnyHotspot, from?: Element) {
     if (review || noted.includes(hotspot.id) || !block.id) return;
     if (!hotspot.evidence || !hotspot.note) {
       setShake((n) => n + 1);
@@ -322,6 +323,8 @@ export default function SceneHotspotsBlock({
     setNoted((list) => [...list, hotspot.id]);
     addNote({ blockId: block.id, text: hotspot.note.text, kind: hotspot.note.kind });
     evidence.addPending(`${block.id}.${hotspot.id}`);
+    // Ruch (D-090): nazwa przedmiotu leci od "Zabierz" do Notatnika (przed odłożeniem - przycisk jeszcze stoi na miejscu).
+    flyEvidence(from, hotspot.label);
     mascot.react('evidence');
     goBack();
   }
@@ -429,7 +432,8 @@ export default function SceneHotspotsBlock({
                     tabIndex={overlayOpen ? -1 : undefined}
                     onClick={(event) => (isDoor ? clickDoor() : open(hotspot, event.currentTarget))}
                     style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: hotspotZIndex.get(hotspot.id) }}
-                    className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors ${FOCUS_RING} ${
+                    // Ruch (D-090): wciśnięcie przedmiotu - scale .98 (100 ms), tylko bez reduced-motion i nie na zablokowanych drzwiach.
+                    className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-[color,background-color,border-color,transform] duration-[100ms] ${blocked ? '' : 'motion-safe:active:scale-[.98]'} ${FOCUS_RING} ${
                       isDoor
                         ? ready
                           ? 'border-amber-500 bg-amber-400/20 hover:border-amber-600 hover:bg-amber-400/30'
@@ -525,7 +529,7 @@ export default function SceneHotspotsBlock({
                         shake={shake}
                         transcriptOpen={transcriptOpen}
                         onToggleTranscript={() => setTranscriptOpen((v) => !v)}
-                        onTake={() => take(activeInner)}
+                        onTake={(from) => take(activeInner, from)}
                         onPutDown={closeNested}
                         onBackdrop={onBackdrop}
                       />
@@ -543,7 +547,7 @@ export default function SceneHotspotsBlock({
                   shake={shake}
                   transcriptOpen={transcriptOpen}
                   onToggleTranscript={() => setTranscriptOpen((v) => !v)}
-                  onTake={() => take(active)}
+                  onTake={(from) => take(active, from)}
                   onPutDown={close}
                   onBackdrop={onBackdrop}
                 />
@@ -580,7 +584,7 @@ function ZoomContent({
   shake: number;
   transcriptOpen: boolean;
   onToggleTranscript: () => void;
-  onTake: () => void;
+  onTake: (from: HTMLElement) => void;
   onPutDown: () => void;
   onBackdrop: (event: MouseEvent<HTMLElement>) => void;
 }) {
@@ -613,7 +617,7 @@ function ZoomContent({
                 ref={takeRef}
                 type="button"
                 data-autofocus
-                onClick={onTake}
+                onClick={(event) => onTake(event.currentTarget)}
                 className={`${shake > 0 ? 'scene-zoom-shake' : ''} min-h-[44px] rounded-btn bg-accent px-5 text-sm font-bold text-white hover:bg-accent-hover ${LIGHT_FOCUS}`}
               >
                 Zabierz
@@ -816,7 +820,7 @@ function NestedSceneImage({
               tabIndex={overlayOpen ? -1 : undefined}
               onClick={(event) => onPick(hotspot, event.currentTarget)}
               style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: zIndex.get(hotspot.id) }}
-              className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-colors hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${overlayOpen ? 'pointer-events-none' : ''} ${
+              className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-[color,background-color,border-color,transform] duration-[100ms] motion-safe:active:scale-[.98] hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${overlayOpen ? 'pointer-events-none' : ''} ${
                 seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
               }`}
             >

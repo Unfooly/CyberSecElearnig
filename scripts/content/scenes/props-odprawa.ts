@@ -1,0 +1,309 @@
+/**
+ * Klocki odprawy (BRIEFING) — widok z góry na biurko detektywa.
+ * Te same zasady co props.ts: lokalny układ (0,0)→(w,h), paleta P, bez zewnętrznych zasobów.
+ * Części `slot-*` to miejsca, w które player wstawia dane z treści/gracza (imię, numer, zadania).
+ */
+import { P } from './palette.js';
+import type { PropFn } from './types.js';
+
+const esc = (s: unknown) =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const t = (x: number, y: number, s: unknown, size: number, o: { fill?: string; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; spacing?: number; opacity?: number } = {}) =>
+  `<text x="${x}" y="${y}" font-size="${size}" fill="${o.fill ?? P.ink}"${o.bold ? ' font-weight="bold"' : ''}${o.anchor ? ` text-anchor="${o.anchor}"` : ''}${o.spacing ? ` letter-spacing="${o.spacing}"` : ''}${o.opacity !== undefined ? ` opacity="${o.opacity}"` : ''}>${esc(s)}</text>`;
+
+const shadow = (w: number, h: number, rx: number, dx = 10, dy = 14) =>
+  `<rect x="${dx}" y="${dy}" width="${w}" height="${h}" rx="${rx}" fill="${P.ink}" opacity="0.18"/>`;
+
+const bars = (x: number, y: number, widths: number[], gap = 18, h = 7, fill = P.grey) =>
+  widths.map((w, i) => `<rect x="${x}" y="${y + i * gap}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}"/>`).join('');
+
+const FOLDER = '#C9C1FA';
+const FOLDER_EDGE = '#A99CF2';
+const LEATHER = '#3B3354';
+const COFFEE = '#6B4A2E';
+const NEWSPRINT = '#FAF8F2';
+
+/* ---------- tło: słoje drewna ---------- */
+
+export const woodGrain: PropFn<{ w?: number; h?: number }> = ({ w = 1600, h = 900 }) => {
+  let g = '';
+  for (let i = 0; i < 16; i++) {
+    const y = 30 + i * (h / 16) + (i % 3) * 7;
+    const a = 6 + (i % 4) * 3;
+    g += `<path d="M0 ${y} C ${w * 0.25} ${y - a}, ${w * 0.5} ${y + a}, ${w * 0.75} ${y - a / 2} S ${w} ${y + a / 2}, ${w} ${y}" fill="none" stroke="${P.deskDark}" stroke-width="${i % 2 ? 2 : 3}" opacity="0.28"/>`;
+  }
+  g += `<ellipse cx="${w * 0.72}" cy="${h * 0.3}" rx="46" ry="14" fill="none" stroke="${P.deskDark}" stroke-width="3" opacity="0.3"/>`;
+  g += `<ellipse cx="${w * 0.72}" cy="${h * 0.3}" rx="24" ry="6" fill="none" stroke="${P.deskDark}" stroke-width="2" opacity="0.3"/>`;
+  return { w, h, svg: g };
+};
+
+/* ---------- telefon z góry ---------- */
+
+const handset = (cx: number, cy: number, rot: number) =>
+  `<g transform="translate(${cx} ${cy}) rotate(${rot})"><path d="M-14 4 a14 14 0 0 1 28 0" fill="none" stroke="${P.white}" stroke-width="7" stroke-linecap="round"/><rect x="-19" y="1" width="11" height="8" rx="3" fill="${P.white}"/><rect x="8" y="1" width="11" height="8" rx="3" fill="${P.white}"/></g>`;
+
+export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: string; role?: string; initials?: string; timer?: string; animated?: boolean }> = ({
+  state = 'ringing', animated = true, caller = 'Komisarz A. Wolski', role = 'Wydział Cyberbezpieczeństwa', initials = 'AW', timer = '00:12',
+}) => {
+  const w = 240, h = 480;
+  const avatar = `<circle cx="120" cy="170" r="50" fill="#EEEBFF"/>` + t(120, 184, initials, 36, { anchor: 'middle', bold: true, fill: P.purple });
+  let screen = '';
+  if (state === 'ringing') {
+    screen =
+      `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.purpleDark}"/>` +
+      `<rect x="12" y="14" width="216" height="240" rx="26" fill="${P.purple}"/>` +
+      t(120, 64, 'Połączenie przychodzące', 13, { anchor: 'middle', fill: P.white, opacity: 0.85 }) + avatar +
+      t(120, 256, caller, 17, { anchor: 'middle', bold: true, fill: P.white }) +
+      t(120, 278, role, 11, { anchor: 'middle', fill: P.white, opacity: 0.8 }) +
+      `<circle cx="66" cy="396" r="30" fill="${P.red}"/>${handset(66, 396, 135)}` +
+      `<g${animated ? ' class="a-grow"' : ''}><circle cx="174" cy="396" r="30" fill="${P.green}"/>${handset(174, 400, 0)}</g>` +
+      t(66, 446, 'Odrzuć', 11, { anchor: 'middle', fill: P.white, opacity: 0.85 }) + t(174, 446, 'Odbierz', 11, { anchor: 'middle', fill: P.white, opacity: 0.85 });
+  } else if (state === 'call') {
+    const btn = (cx: number, cy: number, label: string) =>
+      `<circle cx="${cx}" cy="${cy}" r="24" fill="${P.white}" opacity="0.16"/>` + t(cx, cy + 40, label, 10, { anchor: 'middle', fill: P.white, opacity: 0.8 });
+    screen =
+      `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.ink}"/>` +
+      t(120, 64, timer, 15, { anchor: 'middle', fill: P.white, opacity: 0.85 }) + avatar +
+      t(120, 256, caller, 17, { anchor: 'middle', bold: true, fill: P.white }) +
+      t(120, 278, role, 11, { anchor: 'middle', fill: P.white, opacity: 0.75 }) +
+      btn(60, 330, 'wycisz') + btn(120, 330, 'klawiatura') + btn(180, 330, 'głośnik') +
+      `<rect x="54" y="322" width="12" height="16" rx="6" fill="${P.white}"/>` +
+      `<g fill="${P.white}">${[0, 1, 2].map(r => [0, 1, 2].map(c => `<circle cx="${112 + c * 8}" cy="${322 + r * 8}" r="2.4"/>`).join('')).join('')}</g>` +
+      `<path d="M172 324 h6 l7 -6 v24 l-7 -6 h-6 z" fill="${P.white}"/>` +
+      `<circle cx="120" cy="420" r="30" fill="${P.red}"/>${handset(120, 420, 135)}`;
+  } else {
+    screen = `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.ink}"/>` + t(120, 120, '9:40', 44, { anchor: 'middle', fill: P.white, opacity: 0.9 }) + t(120, 146, 'wtorek', 13, { anchor: 'middle', fill: P.white, opacity: 0.7 });
+  }
+  const rings = state === 'ringing'
+    ? [0, 1].map(i => {
+        const d = 30 + i * 26;
+        const cls = animated ? ` class="a-wave${i ? ' d1' : ''}"` : ' opacity="0.8"';
+        return `<path${cls} d="M${-d + 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 0 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round"/>` +
+          `<path${cls} d="M${w + d - 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 1 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round"/>`;
+      }).join('')
+    : '';
+  const ringCls = state === 'ringing' && animated ? ' class="a-ring"' : '';
+  return {
+    w, h,
+    svg: rings + `<g${ringCls}>${shadow(w, h, 36)}<rect width="${w}" height="${h}" rx="36" fill="${P.ink}"/>${screen}<rect x="92" y="22" width="56" height="10" rx="5" fill="${P.ink}"/></g>`,
+    parts: { screen: { x: 12, y: 14, w: 216, h: 452 } },
+  };
+};
+
+/* ---------- drobiazgi na biurku ---------- */
+
+export const mugTop: PropFn<{ color?: string }> = ({ color = P.teal }) => ({
+  w: 150, h: 120,
+  svg:
+    `<circle cx="66" cy="68" r="56" fill="${P.ink}" opacity="0.15"/>` +
+    `<rect x="100" y="44" width="46" height="26" rx="13" fill="${color}"/>` +
+    `<circle cx="60" cy="60" r="56" fill="${color}"/><circle cx="60" cy="60" r="44" fill="${COFFEE}"/>` +
+    `<ellipse cx="46" cy="46" rx="14" ry="7" fill="${P.white}" opacity="0.25" transform="rotate(-30 46 46)"/>` +
+    `<g class="a-shimmer"><path d="M44 70 q10 -10 22 -2 q10 8 20 -4" fill="none" stroke="${P.white}" stroke-width="4" stroke-linecap="round" opacity="0.35"/></g>`,
+});
+
+export const coffeeRing: PropFn<Record<string, never>> = () => ({
+  w: 110, h: 110,
+  svg: `<circle cx="55" cy="55" r="46" fill="none" stroke="${COFFEE}" stroke-width="6" opacity="0.18"/><path d="M20 40 a46 46 0 0 1 30 -30" fill="none" stroke="${COFFEE}" stroke-width="9" opacity="0.12"/>`,
+});
+
+// Domyślne dopiski neutralne: detektyw o 9:40 nie zna jeszcze sprawy, a telefon „informatyka” był o 9:05 (oś czasu modułu 1, D-084).
+export const notepadTop: PropFn<{ lines?: string[] }> = ({ lines = ['raport — poniedziałek', 'szkolenie IT 14:00', 'oddać lupę'] }) => {
+  const w = 250, h = 320;
+  let spiral = '';
+  for (let i = 0; i < 9; i++) spiral += `<circle cx="${30 + i * 24}" cy="14" r="8" fill="none" stroke="${P.greyDark}" stroke-width="4"/>`;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 8) + `<rect width="${w}" height="${h}" rx="8" fill="${P.white}"/>` + spiral +
+      Array.from({ length: 10 }, (_, i) => `<line x1="18" y1="${60 + i * 26}" x2="${w - 18}" y2="${60 + i * 26}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
+      `<line x1="44" y1="30" x2="44" y2="${h - 10}" stroke="#F4B6B8" stroke-width="2"/>` +
+      lines.slice(0, 4).map((l, i) => t(54, 81 + i * 52, l, 17, { fill: P.purpleDark })).join('') +
+      `<path d="M54 ${96} q60 10 120 -2" fill="none" stroke="${P.red}" stroke-width="3" stroke-linecap="round"/>` +
+      `<circle cx="200" cy="${240}" r="22" fill="none" stroke="${P.red}" stroke-width="3"/>` + t(200, 248, '?', 24, { anchor: 'middle', bold: true, fill: P.red }),
+  };
+};
+
+export const penTop: PropFn<{ color?: string }> = ({ color = P.purple }) => ({
+  w: 240, h: 24,
+  svg: `<rect x="6" y="6" width="220" height="16" rx="8" fill="${P.ink}" opacity="0.15"/><rect width="200" height="16" rx="8" fill="${color}"/><path d="M200 0 l36 8 l-36 8 z" fill="${P.grey}"/><path d="M226 6 l10 2 l-10 2 z" fill="${P.ink}"/><rect x="24" y="-4" width="70" height="6" rx="3" fill="${P.greyDark}"/>`,
+});
+
+export const glassesTop: PropFn<Record<string, never>> = () => ({
+  w: 230, h: 110,
+  svg:
+    `<g opacity="0.15" transform="translate(6 8)"><circle cx="55" cy="55" r="42" fill="${P.ink}"/><circle cx="175" cy="55" r="42" fill="${P.ink}"/></g>` +
+    `<circle cx="55" cy="55" r="42" fill="${P.sky}" opacity="0.55" stroke="${P.ink}" stroke-width="7"/>` +
+    `<circle cx="175" cy="55" r="42" fill="${P.sky}" opacity="0.55" stroke="${P.ink}" stroke-width="7"/>` +
+    `<path d="M97 50 q18 -14 36 0" fill="none" stroke="${P.ink}" stroke-width="7"/>` +
+    `<path d="M14 40 l-14 -34 M216 40 l14 -34" stroke="${P.ink}" stroke-width="7" stroke-linecap="round"/>` +
+    `<path d="M36 36 q10 -10 22 -8 M156 36 q10 -10 22 -8" stroke="${P.white}" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>`,
+});
+
+export const keysTop: PropFn<{ tag?: string }> = ({ tag = 'BIURO' }) => ({
+  w: 220, h: 150,
+  svg:
+    `<circle cx="60" cy="60" r="34" fill="none" stroke="${P.greyDark}" stroke-width="7"/>` +
+    `<g transform="rotate(20 60 60)"><rect x="90" y="52" width="110" height="16" rx="5" fill="${P.grey}"/><circle cx="96" cy="60" r="20" fill="${P.grey}"/><circle cx="96" cy="60" r="7" fill="${P.desk}"/><path d="M160 68 v12 h10 v-12 M180 68 v8 h10 v-8" fill="${P.grey}"/></g>` +
+    `<g transform="rotate(-35 60 60)"><rect x="-10" y="100" width="80" height="44" rx="8" fill="${P.purple}"/>${t(30, 128, tag, 14, { anchor: 'middle', bold: true, fill: P.white })}</g>`,
+});
+
+export const magnifier: PropFn<Record<string, never>> = () => ({
+  w: 240, h: 240,
+  svg:
+    `<g transform="translate(8 10)" opacity="0.15"><circle cx="90" cy="90" r="74" fill="${P.ink}"/><rect x="150" y="140" width="90" height="30" rx="14" transform="rotate(45 150 140)" fill="${P.ink}"/></g>` +
+    `<rect x="148" y="136" width="100" height="32" rx="15" transform="rotate(45 148 136)" fill="${LEATHER}"/>` +
+    `<circle cx="90" cy="90" r="74" fill="${P.sky}" opacity="0.5" stroke="${P.greyDark}" stroke-width="12"/>` +
+    `<path d="M50 60 q20 -28 52 -26" fill="none" stroke="${P.white}" stroke-width="8" stroke-linecap="round" opacity="0.8"/>`,
+});
+
+export const laptopTopClosed: PropFn<Record<string, never>> = () => ({
+  w: 460, h: 310,
+  svg:
+    shadow(460, 310, 18) + `<rect width="460" height="310" rx="18" fill="#A7AAC4"/><rect x="10" y="10" width="440" height="290" rx="12" fill="#B8BAD0"/>` +
+    `<circle cx="230" cy="155" r="30" fill="${P.white}" opacity="0.35"/>` +
+    `<g transform="rotate(-10 360 90)"><rect x="320" y="60" width="90" height="60" rx="10" fill="${P.purple}"/><rect x="351" y="80" width="28" height="22" rx="4" fill="${P.white}"/><path d="M356 80 v-7 a9 9 0 0 1 18 0 v7" fill="none" stroke="${P.white}" stroke-width="4"/></g>` +
+    `<g transform="rotate(8 90 240)"><circle cx="90" cy="240" r="30" fill="${P.yellow}"/>${t(90, 248, ':)', 22, { anchor: 'middle', bold: true })}</g>`,
+});
+
+export const newspaper: PropFn<{ title?: string; headline?: string[] }> = ({ title = 'GAZETA MIEJSKA', headline = ['Fala oszustw', '„na pracownika banku”'] }) => {
+  const w = 340, h = 420;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 4) + `<rect width="${w}" height="${h}" rx="4" fill="${NEWSPRINT}"/><line x1="${w / 2}" y1="0" x2="${w / 2}" y2="${h}" stroke="${P.grey}" stroke-width="2" opacity="0.5"/>` +
+      t(w / 2, 50, title, 26, { anchor: 'middle', bold: true, spacing: 2 }) +
+      `<line x1="20" y1="64" x2="${w - 20}" y2="64" stroke="${P.ink}" stroke-width="3"/>` +
+      headline.slice(0, 2).map((l, i) => t(24, 104 + i * 30, l, 24, { bold: true })).join('') +
+      `<rect x="24" y="160" width="140" height="100" rx="4" fill="${P.wall2}"/><path d="M40 244 l36 -40 l28 26 l20 -18 l30 32 z" fill="${P.grey}"/>` +
+      bars(180, 164, [130, 120, 130, 100, 126, 90], 16, 6) + bars(24, 282, [292, 280, 292, 260, 292, 240, 292, 200], 16, 6),
+  };
+};
+
+/* ---------- teczka ---------- */
+
+export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string }> = ({ caseNo = 'CS/2026/0915', stamp = 'PRIORYTET' }) => {
+  const w = 620, h = 440;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 14, 14, 18) +
+      `<rect x="16" y="-14" width="${w - 30}" height="${h}" rx="6" fill="${P.white}" transform="rotate(1.5 ${w / 2} ${h / 2})"/>` +
+      `<rect x="10" y="-6" width="${w - 20}" height="${h}" rx="6" fill="#F4F4F8" transform="rotate(-1 ${w / 2} ${h / 2})"/>` +
+      `<rect width="${w}" height="${h}" rx="14" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      `<path d="M30 0 h180 l20 -26 h140 l20 26" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      `<rect x="70" y="80" width="340" height="120" rx="8" fill="${P.white}"/>` +
+      t(90, 118, 'AKTA SPRAWY', 20, { bold: true, spacing: 3, fill: P.greyDark }) +
+      t(90, 164, caseNo, 34, { bold: true }) +
+      bars(90, 180, [220], 14, 5) +
+      `<g transform="rotate(-10 440 310)"><rect x="340" y="270" width="230" height="74" rx="10" fill="none" stroke="${P.red}" stroke-width="6"/>${t(455, 320, stamp, 30, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })}</g>` +
+      `<rect x="${w - 110}" y="0" width="16" height="${h}" fill="${P.ink}" opacity="0.85"/>` +
+      `<rect x="70" y="${h - 90}" width="200" height="14" rx="7" fill="${FOLDER_EDGE}"/>`,
+    parts: { cover: { x: 0, y: -26, w, h: h + 26 } },
+  };
+};
+
+const field = (x: number, y: number, k: string, v: string, vBold = false) =>
+  t(x, y, k.toUpperCase(), 13, { bold: true, fill: P.greyDark, spacing: 1 }) + t(x, y + 26, v, 20, { bold: vBold });
+
+export const caseFolderOpen: PropFn<{
+  caseNo?: string; title?: string; victim?: string; victimRole?: string; loss?: string; when?: string; reporter?: string; stamp?: string;
+}> = ({
+  caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew', victim = 'Anna Kowalska', victimRole = 'księgowa · Unfooly Sp. z o.o.',
+  loss = '14 000,00 PLN', when = 'wtorek, 9:12', reporter = 'Marek Zieliński, dział IT', stamp = 'PRIORYTET',
+}) => {
+  const w = 1340, h = 780;
+  const pw = 620, ph = 720;
+  const L = 30, R = w - 30 - pw, top = 30;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 18, 16, 20) +
+      `<rect width="${w}" height="${h}" rx="18" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      `<line x1="${w / 2}" y1="10" x2="${w / 2}" y2="${h - 10}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      /* lewa kartka: karta sprawy */
+      `<rect x="${L + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
+      `<rect x="${L}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
+      t(L + 40, top + 62, 'AKTA SPRAWY', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
+      t(L + 40, top + 104, caseNo, 36, { bold: true }) +
+      t(L + 40, top + 146, title, 26, { bold: true, fill: P.purpleDark }) +
+      `<line x1="${L + 40}" y1="${top + 172}" x2="${L + pw - 40}" y2="${top + 172}" stroke="${P.grey}" stroke-width="2"/>` +
+      field(L + 40, top + 214, 'Poszkodowana', victim, true) + t(L + 40, top + 262, victimRole, 16, { fill: P.greyDark }) +
+      field(L + 40, top + 318, 'Strata', loss, true) +
+      field(L + 330, top + 318, 'Kiedy', when) +
+      field(L + 40, top + 408, 'Zgłosił', reporter) +
+      `<g transform="rotate(-9 ${L + 440} ${top + 560})"><rect x="${L + 320}" y="${top + 520}" width="240" height="76" rx="10" fill="none" stroke="${P.red}" stroke-width="6"/>${t(L + 440, top + 571, stamp, 30, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })}</g>` +
+      /* polaroid biura */
+      `<g transform="rotate(-6 ${L + 150} ${top + 590})"><rect x="${L + 50}" y="${top + 490}" width="200" height="200" rx="4" fill="${P.white}" stroke="${P.grey}" stroke-width="2"/><rect x="${L + 64}" y="${top + 504}" width="172" height="140" fill="${P.wall}"/>` +
+      `<rect x="${L + 80}" y="${top + 590}" width="140" height="10" fill="${P.desk}"/><rect x="${L + 120}" y="${top + 540}" width="60" height="44" rx="4" fill="${P.ink}"/><rect x="${L + 126}" y="${top + 546}" width="48" height="32" fill="${P.sky}"/><rect x="${L + 186}" y="${top + 548}" width="14" height="12" fill="${P.yellow}"/>` +
+      t(L + 150, top + 672, 'biuro A.K.', 15, { anchor: 'middle', fill: P.greyDark }) + `</g>` +
+      /* spinacz */
+      `<path d="M${L + 520} ${top - 18} v70 a14 14 0 0 0 28 0 v-60 a8 8 0 0 0 -16 0 v52" fill="none" stroke="${P.greyDark}" stroke-width="5" stroke-linecap="round"/>` +
+      /* prawa kartka: zadania (tekst wstawia player w slot-zadania) */
+      `<rect x="${R + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
+      `<rect x="${R}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
+      t(R + 40, top + 62, 'ZADANIA', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
+      `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>` +
+      Array.from({ length: 12 }, (_, i) => `<line x1="${R + 40}" y1="${top + 150 + i * 44}" x2="${R + pw - 40}" y2="${top + 150 + i * 44}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
+      `<g transform="rotate(4 ${R + 480} ${top + 640})"><rect x="${R + 380}" y="${top + 600}" width="200" height="70" rx="4" fill="${P.yellow}"/>${t(R + 480, top + 644, 'dowody → notatnik', 17, { anchor: 'middle', bold: true, fill: P.purpleDark })}</g>`,
+    parts: {
+      'slot-zadania': { x: R + 40, y: top + 110, w: pw - 80, h: 460 },
+    },
+  };
+};
+
+/* ---------- legitymacja ---------- */
+
+export const badgeWallet: PropFn<{ unit?: string }> = ({ unit = 'WYDZIAŁ CYBERBEZPIECZEŃSTWA' }) => {
+  const w = 1100, h = 660;
+  const half = w / 2;
+  const cardX = half + 40, cardY = 70, cardW = half - 80, cardH = h - 140;
+  let stitch = `<rect x="18" y="18" width="${w - 36}" height="${h - 36}" rx="26" fill="none" stroke="${P.yellowDark}" stroke-width="3" stroke-dasharray="12 9" opacity="0.7"/>`;
+  stitch += `<line x1="${half}" y1="20" x2="${half}" y2="${h - 20}" stroke="${P.ink}" stroke-width="6" opacity="0.4"/>`;
+  /* odznaka: tarcza z kłódką */
+  const bx = half / 2, by = h / 2 - 10;
+  const shield = `M${bx} ${by - 190} L${bx + 150} ${by - 130} V${by + 10} C${bx + 150} ${by + 120}, ${bx + 70} ${by + 180}, ${bx} ${by + 210} C${bx - 70} ${by + 180}, ${bx - 150} ${by + 120}, ${bx - 150} ${by + 10} V${by - 130} Z`;
+  const badge =
+    `<path d="${shield}" transform="translate(8 12)" fill="${P.ink}" opacity="0.3"/>` +
+    `<path d="${shield}" fill="${P.yellowDark}"/>` +
+    `<path d="${shield}" transform="translate(${bx} ${by}) scale(0.86) translate(${-bx} ${-by})" fill="${P.yellow}"/>` +
+    `<circle cx="${bx}" cy="${by - 10}" r="78" fill="${P.purple}"/><circle cx="${bx}" cy="${by - 10}" r="66" fill="none" stroke="${P.white}" stroke-width="3" opacity="0.6"/>` +
+    `<rect x="${bx - 30}" y="${by - 16}" width="60" height="48" rx="8" fill="${P.white}"/>` +
+    `<path d="M${bx - 19} ${by - 16} v-14 a19 19 0 0 1 38 0 v14" fill="none" stroke="${P.white}" stroke-width="9"/>` +
+    `<circle cx="${bx}" cy="${by + 4}" r="7" fill="${P.purple}"/><rect x="${bx - 3}" y="${by + 6}" width="6" height="14" fill="${P.purple}"/>` +
+    t(bx, by + 110, unit.split(' ')[0] ?? '', 16, { anchor: 'middle', bold: true, fill: P.purpleDark, spacing: 2 }) +
+    t(bx, by + 132, unit.split(' ').slice(1).join(' '), 13, { anchor: 'middle', bold: true, fill: P.purpleDark, spacing: 1 }) +
+    [-1, 1].map(s => `<path d="M${bx + s * 100} ${by - 100} l${s * 8} 18 l${s * -8} 18 l${s * -8} -18 z" fill="${P.white}" opacity="0.7"/>`).join('');
+  const card =
+    `<rect x="${cardX + 6}" y="${cardY + 8}" width="${cardW}" height="${cardH}" rx="18" fill="${P.ink}" opacity="0.3"/>` +
+    `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${cardH}" rx="18" fill="${P.white}"/>` +
+    `<path d="M${cardX} ${cardY + 18} a18 18 0 0 1 18 -18 h${cardW - 36} a18 18 0 0 1 18 18 v58 h-${cardW} z" fill="${P.purple}"/>` +
+    t(cardX + 28, cardY + 48, 'LEGITYMACJA SŁUŻBOWA', 20, { bold: true, fill: P.white, spacing: 2 }) +
+    `<rect x="${cardX + 28}" y="${cardY + 110}" width="150" height="190" rx="10" fill="#EEEBFF"/>` +
+    t(cardX + 210, cardY + 128, 'IMIĘ I NAZWISKO', 12, { bold: true, fill: P.greyDark, spacing: 1 }) +
+    `<line x1="${cardX + 210}" y1="${cardY + 180}" x2="${cardX + cardW - 28}" y2="${cardY + 180}" stroke="${P.grey}" stroke-width="2"/>` +
+    t(cardX + 210, cardY + 214, 'NR LEGITYMACJI', 12, { bold: true, fill: P.greyDark, spacing: 1 }) +
+    `<line x1="${cardX + 210}" y1="${cardY + 262}" x2="${cardX + cardW - 28}" y2="${cardY + 262}" stroke="${P.grey}" stroke-width="2"/>` +
+    t(cardX + 28, cardY + 346, 'STOPIEŃ', 12, { bold: true, fill: P.greyDark, spacing: 1 }) + t(cardX + 28, cardY + 372, 'detektyw', 20, { bold: true }) +
+    t(cardX + 210, cardY + 346, 'JEDNOSTKA', 12, { bold: true, fill: P.greyDark, spacing: 1 }) + t(cardX + 210, cardY + 372, 'Wydz. Cyberbezpieczeństwa', 18, { bold: true }) +
+    `<path d="M${cardX + 30} ${cardY + 450} q20 -30 40 0 t40 -6 q14 -18 30 4" fill="none" stroke="${P.purpleDark}" stroke-width="3" stroke-linecap="round"/>` +
+    t(cardX + 30, cardY + 478, 'podpis wystawcy', 11, { fill: P.greyDark }) +
+    `<g class="a-shimmer"><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="44" fill="${P.sky}" opacity="0.8"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="30" fill="#EEEBFF" opacity="0.9"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="16" fill="${P.sun}"/></g>`;
+  return {
+    w, h,
+    svg:
+      `<rect x="14" y="18" width="${w}" height="${h}" rx="34" fill="${P.ink}" opacity="0.22"/>` +
+      `<rect width="${w}" height="${h}" rx="34" fill="${LEATHER}"/>` + stitch + badge + card,
+    parts: {
+      'slot-zdjecie': { x: cardX + 28, y: cardY + 110, w: 150, h: 190 },
+      'slot-imie': { x: cardX + 210, y: cardY + 138, w: cardW - 238, h: 40 },
+      'slot-numer': { x: cardX + 210, y: cardY + 222, w: cardW - 238, h: 40 },
+    },
+  };
+};
+
+export const ODPRAWA_PROPS = {
+  woodGrain, phoneTop, mugTop, coffeeRing, notepadTop, penTop, glassesTop, keysTop, magnifier,
+  laptopTopClosed, newspaper, caseFolderClosed, caseFolderOpen, badgeWallet,
+};

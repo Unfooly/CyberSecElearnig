@@ -13,6 +13,7 @@
     "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
     "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
   ],
+  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.0b9ba84e.svg",
   "blocks": [
     {
       "id": "odprawa",
@@ -28,6 +29,14 @@
             "spokenText": "Wtorek, dziewiąta czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy.",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
             "durationMs": 6037
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.67b3cbbb.svg",
+          "hotspot": {
+            "id": "telefon",
+            "x": 49,
+            "y": 21.6,
+            "w": 16.3,
+            "h": 54.2
           }
         },
         {
@@ -44,7 +53,8 @@
             "voice": "komisarz",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
             "durationMs": 13050
-          }
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.fce7635a.svg"
         },
         {
           "kind": "caseFile",
@@ -100,6 +110,23 @@
             "voice": "komisarz",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
             "durationMs": 10217
+          },
+          "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka.e7ab6b52.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-akta.d0f90bd7.svg",
+          "hotspot": {
+            "id": "teczka",
+            "x": 24.4,
+            "y": 17.4,
+            "w": 51.6,
+            "h": 69.5
+          },
+          "slots": {
+            "tasks": {
+              "x": 54.1,
+              "y": 19.4,
+              "w": 37.1,
+              "h": 56.2
+            }
           }
         },
         {
@@ -124,6 +151,27 @@
                 "startMs": 4400
               }
             ]
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.242f34bc.svg",
+          "slots": {
+            "photo": {
+              "x": 55.1,
+              "y": 30,
+              "w": 11.2,
+              "h": 25.3
+            },
+            "name": {
+              "x": 68.8,
+              "y": 33.7,
+              "w": 17.4,
+              "h": 5.3
+            },
+            "number": {
+              "x": 68.8,
+              "y": 44.9,
+              "w": 17.4,
+              "h": 5.3
+            }
           }
         },
         {
@@ -140,7 +188,8 @@
                 "startMs": 0
               }
             ]
-          }
+          },
+          "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg"
         }
       ]
     },
@@ -154,7 +203,7 @@
         "audioUrl": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
         "durationMs": 10031
       },
-      "image": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg",
+      "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
       "hotspots": [
         {
@@ -195,7 +244,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.c8d122b6.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.d43bc84d.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
@@ -208,7 +257,7 @@
           "content": "Na karteczce: „Unfooly24!” — a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.a2e34fa7.svg",
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.3274e293.svg",
             "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
           },
           "evidence": true,
@@ -229,7 +278,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.c3e94060.svg",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.2f51e00d.svg",
               "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Przelewy, Internet, Faktury, Kosz; pasek zadań pokazuje 8:52.",
               "hotspots": [
                 {
@@ -242,7 +291,7 @@
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.a6396621.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.c7b30be0.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -307,7 +356,7 @@
                 }
               ]
             },
-            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.6d63d5dc.svg",
+            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.4321f249.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
           },
           "evidence": true,
@@ -327,7 +376,7 @@
           "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.06cb2820.svg",
+            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.ed89372b.svg",
             "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
           },
           "evidence": true,
@@ -347,7 +396,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.fede98f8.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.86a17288.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -367,7 +416,7 @@
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.e625fdb8.svg",
+            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.73e1c727.svg",
             "alt": "Kubek Anny z napisem Najlepsza księgowa"
           },
           "required": false

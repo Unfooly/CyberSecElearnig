@@ -49,17 +49,32 @@ export interface DossierDocument {
   rows: DossierRow[];
 }
 
+/** Prostokąt na scenie kroku odprawy, w % sceny (D-084). */
+export interface BriefingRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Grafika kroku odprawy (D-084): scena, hotspot = cta, sloty na HTML (zadania, dane gracza). */
+export interface BriefingScene {
+  image?: string;
+  hotspot?: BriefingRect & { id: string };
+  slots?: Partial<Record<'tasks' | 'name' | 'number' | 'photo', BriefingRect>>;
+}
+
 /** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */
 export type BriefingStep =
-  | { kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration }
-  | {
+  | ({ kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration } & BriefingScene)
+  | ({
       kind: 'call';
       caller: { name: string; role?: string; avatar?: string };
       text: string;
       cta: string;
       narration?: Narration;
-    }
-  | {
+    } & BriefingScene)
+  | ({
       kind: 'caseFile';
       caseNo: string;
       title: string;
@@ -68,9 +83,11 @@ export type BriefingStep =
       tasks?: BriefingTask[];
       cta: string;
       narration?: Narration;
-    }
-  | { kind: 'badge'; cta: string; narration?: Narration }
-  | { kind: 'start'; text: string; cta: string; narration?: Narration };
+      /** Faza zamknięta (teczka) - klik w hotspot otwiera akta (`image`). */
+      closedImage?: string;
+    } & BriefingScene)
+  | ({ kind: 'badge'; cta: string; narration?: Narration } & BriefingScene)
+  | ({ kind: 'start'; text: string; cta: string; narration?: Narration } & BriefingScene);
 
 /** Zadanie sprawy z karty w odprawie (BRIEFING, krok caseFile, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
 export interface BriefingTask {
@@ -89,6 +106,8 @@ export interface CourseAssignmentSummary {
   assignmentId: string;
   courseId: string;
   title: string;
+  /** Ścieżka zasobu miniatury 16:9 (D-084); brak/null = karta z ikoną kategorii. */
+  thumbnail?: string | null;
   category: string;
   durationMinutes: number;
   mandatory: boolean;
@@ -106,6 +125,8 @@ export interface CourseCatalogItem {
   courseId: string;
   title: string;
   subtitle: string | null;
+  /** Ścieżka zasobu miniatury 16:9 (D-084); brak/null = karta z ikoną kategorii. */
+  thumbnail?: string | null;
   level: string | null;
   objectives: string[];
   category: string;

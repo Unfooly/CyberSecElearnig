@@ -362,6 +362,26 @@ const summarySchema = z
 // Osobny typ bloku, nie wariant NARRATIVE: struktura (kroki, krok "badge" z danymi z profilu gracza) jest zupełnie inna
 // niż jednorazowa narracja NARRATIVE, więc nie warto naciągać jej umowy dla wszystkich pozostałych użyć tego typu.
 // Nieoceniany, bez dowodów - zaliczany po ostatnim kroku albo po kliknięciu "Pomiń odprawę" (obsługa w apps/web, D-081).
+// Grafika kroku odprawy (feat/briefing-scenes, D-084, addytywnie w v5): scena 16:9 zamiast karty na jasnym tle. `image` - tło
+// kroku (plik z assets/ modułu, potok --assets; animacje CSS w SVG zatrzymuje odtwarzacz fragmentem #static przy reduced-motion),
+// `hotspot` - prostokąt na scenie, którego klik = `cta` kroku (przycisk cta zostaje dla klawiatury i czytników ekranu), `slots` -
+// miejsca na scenie (w % sceny), w które odtwarzacz wstawia HTML: zadania sprawy (`tasks`), dane gracza z sesji (`name`, `number`,
+// `photo`). Prostokąty w 0-100 i w granicach sceny, zgodność pól z rodzajem kroku - semantics.ts.
+const briefingRectSchema = z.object({ x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) }).strict();
+const briefingSceneShape = {
+  image: imagePathSchema.optional(),
+  hotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
+  slots: z
+    .object({
+      tasks: briefingRectSchema.optional(),
+      name: briefingRectSchema.optional(),
+      number: briefingRectSchema.optional(),
+      photo: briefingRectSchema.optional(),
+    })
+    .strict()
+    .optional(),
+};
+
 const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
@@ -370,6 +390,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       sub: text(300).optional(),
       cta: text(60),
       narration: narrationSchema.optional(),
+      ...briefingSceneShape,
     })
     .strict(),
   z
@@ -388,6 +409,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       text: text(500),
       cta: text(60),
       narration: narrationSchema.optional(),
+      ...briefingSceneShape,
     })
     .strict(),
   // caseFile: karta sprawy z zadaniami sprawy (`tasks`) - te same zadania pokazuje sekcja "Zadania" notatnika przez cały
@@ -407,6 +429,10 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
         .optional(),
       cta: text(60),
       narration: narrationSchema.optional(),
+      ...briefingSceneShape,
+      // Dwie fazy (D-084): zamknięta teczka (`closedImage`, klik w `hotspot` ją otwiera) -> otwarte akta (`image`, crossfade,
+      // bez animacji przy reduced-motion). Przy closedImage `hotspot` dotyczy fazy zamkniętej, a `cta` przechodzi dalej z otwartych.
+      closedImage: imagePathSchema.optional(),
     })
     .strict(),
   // badge: legitymacja gracza. Bez żadnych danych osobowych w treści - imię, avatar i numer odznaki liczy WYŁĄCZNIE
@@ -416,6 +442,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       kind: z.literal('badge'),
       cta: text(60),
       narration: narrationSchema.optional(),
+      ...briefingSceneShape,
     })
     .strict(),
   // start: ostatni ekran odprawy - miejsce akcji (np. "Unfooly, drugie piętro.") i przycisk rozpoczęcia śledztwa.
@@ -425,6 +452,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       text: text(200),
       cta: text(60),
       narration: narrationSchema.optional(),
+      ...briefingSceneShape,
     })
     .strict(),
 ]);
@@ -788,6 +816,15 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].narration.durationMs',
       'steps[].narration.cues[].text',
       'steps[].narration.cues[].startMs',
+      // Grafika kroku (D-084): obrazy sceny i prostokąty (hotspot, sloty) - układ, nic tu nie jest sekretem.
+      'steps[].image',
+      'steps[].closedImage',
+      'steps[].hotspot.id',
+      'steps[].hotspot.x',
+      'steps[].hotspot.y',
+      'steps[].hotspot.w',
+      'steps[].hotspot.h',
+      ...['tasks', 'name', 'number', 'photo'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((axis) => `steps[].slots.${slot}.${axis}`)),
     ],
     ['steps[].narration.spokenText', 'steps[].narration.voice'],
   ),

@@ -28,6 +28,14 @@ describe('CourseCard', () => {
     expect(link).toHaveAttribute('href', '/courses/course-1');
   });
 
+  it('miniatura modułu (alt = tytuł) zamiast ikony kategorii; bez miniatury - bez obrazka', () => {
+    const { unmount } = render(<CourseCard course={{ ...base, thumbnail: 'assets/m/miniatura.1a2b3c4d.svg' }} contentBase="https://content.unfooly.com" />);
+    expect(screen.getByRole('img', { name: 'Rozpoznawanie phishingu' })).toHaveAttribute('src', 'https://content.unfooly.com/assets/m/miniatura.1a2b3c4d.svg');
+    unmount();
+    render(<CourseCard course={base} contentBase="https://content.unfooly.com" />);
+    expect(screen.queryByRole('img', { name: 'Rozpoznawanie phishingu' })).not.toBeInTheDocument();
+  });
+
   it('pokazuje pasek postępu i "Kontynuuj" dla IN_PROGRESS', () => {
     render(<CourseCard course={{ ...base, status: 'IN_PROGRESS', currentBlockIndex: 2 }} />);
 

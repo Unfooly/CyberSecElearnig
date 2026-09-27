@@ -93,6 +93,8 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
     durationMinutes: contentModule.durationMinutes,
     mandatory: contentModule.mandatory,
     objectives: (contentModule.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
+    // Miniatura (D-084): ścieżka zasobu po publikacji (--assets) - moduł bez miniatury czyści ją (null), jak subtitle.
+    thumbnail: contentModule.thumbnail ?? null,
     contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
   };
   const courseId = existing

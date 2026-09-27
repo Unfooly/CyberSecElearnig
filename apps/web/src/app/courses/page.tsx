@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
+import { contentAssetBase } from '@/lib/content-assets';
 import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
 import type { GamificationOverview, LeaderboardEntry } from '@/lib/gamification-types';
@@ -31,6 +32,9 @@ export default async function CoursesPage() {
   // weryfikuje podpisu (to nie jest linia obrony), tylko odczytuje `sub`,
   // dokładnie jak middleware.ts.
   const currentUserId = payload?.sub ?? null;
+
+  // Baza adresów zasobów treści (miniatury kursów, D-084) - ta sama co w odtwarzaczu (courses/[courseId]/page.tsx).
+  const contentBase = contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development');
 
   const [coursesResult, catalogResult, gamificationResult, leaderboardResult] = await Promise.all([
     fetchJson<CourseAssignmentSummary[]>(`${API_URL}/courses/my`, {
@@ -82,9 +86,9 @@ export default async function CoursesPage() {
               )}
             </section>
 
-            {coursesResult.ok && <CourseLibrary courses={coursesResult.data} />}
+            {coursesResult.ok && <CourseLibrary courses={coursesResult.data} contentBase={contentBase} />}
 
-            {catalogResult.ok && <CourseCatalog courses={catalogResult.data} />}
+            {catalogResult.ok && <CourseCatalog courses={catalogResult.data} contentBase={contentBase} />}
 
             {leaderboardResult.ok && currentUserId && (
               <Card>

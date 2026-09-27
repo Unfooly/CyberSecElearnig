@@ -111,13 +111,17 @@ async function runViewport(viewport) {
   await page.getByRole('button', { name: 'Odbierz' }).click();
   await shot(page, '00b-odprawa-komisarz', viewport.name); // komisarz Adam Wolski (postać, bez maskotki)
   await page.getByRole('button', { name: 'Przyjmuję' }).click();
-  await page.waitForTimeout(1000); // spadająca karta i pieczątka
-  await shot(page, '00c-odprawa-akta', viewport.name);
+  // Karta sprawy w dwóch fazach (D-084): zamknięta teczka, klik w teczkę na scenie -> akta z zadaniami (crossfade).
+  await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
+  await shot(page, '00c-odprawa-teczka', viewport.name);
+  await page.getByTestId('briefing-hotspot').click();
+  await page.waitForTimeout(700);
+  await shot(page, '00d-odprawa-akta', viewport.name);
   await page.getByRole('button', { name: 'Biorę sprawę' }).click();
   await page.waitForTimeout(600);
-  await shot(page, '00d-odprawa-legitymacja', viewport.name);
+  await shot(page, '00e-odprawa-legitymacja', viewport.name);
   await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
-  await shot(page, '00e-odprawa-start', viewport.name);
+  await shot(page, '00f-odprawa-start', viewport.name);
   await page.getByRole('button', { name: 'Wchodzę' }).click();
 
   // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) --------------------------------------------------------------

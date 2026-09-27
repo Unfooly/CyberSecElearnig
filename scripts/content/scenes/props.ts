@@ -1,4 +1,5 @@
 import { P } from './palette.js';
+import { ODPRAWA_PROPS } from './props-odprawa.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -27,7 +28,7 @@ export const window_: PropFn<{ w?: number; h?: number; sun?: boolean }> = ({ w =
     `<rect x="12" y="12" width="${w - 24}" height="${h - 24}" fill="${P.sky}"/>` +
     `<rect x="${w / 2 - 4}" y="12" width="8" height="${h - 24}" fill="${P.grey}"/>` +
     `<rect x="12" y="${h / 2 - 4}" width="${w - 24}" height="8" fill="${P.grey}"/>` +
-    (sun ? `<circle cx="${w * 0.77}" cy="${h * 0.25}" r="${Math.min(w, h) * 0.09}" fill="${P.sun}"/>` : ''),
+    (sun ? `<circle class="a-glow" cx="${w * 0.77}" cy="${h * 0.25}" r="${Math.min(w, h) * 0.09}" fill="${P.sun}"/>` : ''),
 });
 
 export const calendar: PropFn<{ month?: string; markedDay?: number; note?: string; markedCell?: [number, number] }> = ({
@@ -46,7 +47,7 @@ export const calendar: PropFn<{ month?: string; markedDay?: number; note?: strin
       `<rect width="${w}" height="44" rx="8" fill="${P.purple}"/><rect y="30" width="${w}" height="14" fill="${P.purple}"/>` +
       text(w / 2, 31, month, 22, { fill: P.white, bold: true, anchor: 'middle' }) + cells +
       (markedDay != null
-        ? `<circle cx="${cx}" cy="${cy}" r="17" fill="none" stroke="${P.red}" stroke-width="5"/>` + text(cx, cy + 6, markedDay, 16, { fill: P.red, bold: true, anchor: 'middle' })
+        ? `<circle class="a-pulse" cx="${cx}" cy="${cy}" r="17" fill="none" stroke="${P.red}" stroke-width="5"/>` + text(cx, cy + 6, markedDay, 16, { fill: P.red, bold: true, anchor: 'middle' })
         : '') +
       (note ? text(w / 2, 210, note, 12, { fill: P.red, bold: true, anchor: 'middle' }) : ''),
   };
@@ -110,8 +111,10 @@ export const plant: PropFn<Record<string, never>> = () => ({
   w: 120, h: 190,
   svg:
     `<rect x="30" y="110" width="60" height="80" rx="8" fill="${P.orange}"/>` +
+    `<g class="a-sway">` +
     [[-30, -40, 34], [30, -46, 30], [0, -70, 36], [-10, -20, 26], [22, -14, 24]]
-      .map(([dx, dy, r]) => `<circle cx="${60 + dx}" cy="${110 + dy}" r="${r}" fill="${P.green}"/>`).join(''),
+      .map(([dx, dy, r]) => `<circle cx="${60 + dx}" cy="${110 + dy}" r="${r}" fill="${P.green}"/>`).join('') +
+    `</g>`,
 });
 
 /* ---------- urządzenia ---------- */
@@ -125,7 +128,7 @@ function screenContent(kind: ScreenKind, o: { subject?: string; sender?: string;
       return bar + text(14, 23, o.title ?? 'Poczta — Skrzynka odbiorcza', 16, { fill: P.white, bold: true }) +
         `<rect y="34" width="110" height="${h - 34}" fill="${P.wall2}"/>` + lines(12, 48, [60, 72, 84, 60, 72, 84], 30, 10) +
         `<rect x="110" y="34" width="${w - 110}" height="${h - 34}" fill="${P.white}"/><rect x="110" y="34" width="${w - 110}" height="42" fill="#FFF1F1"/>` +
-        text(122, 52, o.subject ?? 'PILNE: weryfikacja konta', 13, { fill: P.red, bold: true }) +
+        `<g class="a-pulse">` + text(122, 52, o.subject ?? 'PILNE: weryfikacja konta', 13, { fill: P.red, bold: true }) + `</g>` +
         text(122, 68, o.sender ?? 'nadawca · 8:47', 11, { fill: P.greyDark }) +
         lines(122, 90, [250, 227, 204, 250, 181, 227, 204], 20, 8) +
         `<rect x="122" y="${h - 30}" width="150" height="20" rx="5" fill="${P.purple}"/>` +
@@ -175,9 +178,9 @@ export const stickyNote: PropFn<{ lines?: string[]; color?: string }> = ({ lines
   return {
     w, h,
     svg:
-      `<rect width="${w}" height="${h}" fill="${esc(color)}"/><rect width="${w}" height="12" fill="${P.yellowDark}" opacity="0.6"/>` +
+      `<g class="a-flutter"><rect width="${w}" height="${h}" fill="${esc(color)}"/><rect width="${w}" height="12" fill="${P.yellowDark}" opacity="0.6"/>` +
       `<rect x="32" y="-6" width="28" height="12" rx="3" fill="${P.ink}" opacity="0.25"/>` +
-      ls.slice(0, 3).map((l, i) => text(w / 2, 34 + i * 22, l, i === 0 ? 15 : 11, { anchor: 'middle', bold: i === 0, fill: i === 0 ? P.ink : P.purpleDark })).join(''),
+      ls.slice(0, 3).map((l, i) => text(w / 2, 34 + i * 22, l, i === 0 ? 15 : 11, { anchor: 'middle', bold: i === 0, fill: i === 0 ? P.ink : P.purpleDark })).join('') + `</g>`,
   };
 };
 
@@ -191,7 +194,7 @@ export const phone: PropFn<{ led?: boolean; display?: string[]; note?: string; b
       `<rect y="18" width="180" height="70" rx="12" fill="${esc(body)}"/><rect width="180" height="22" rx="11" fill="${P.greyDark}"/>` +
       `<rect x="12" y="30" width="70" height="46" rx="6" fill="${P.sky}"/>` +
       display.slice(0, 2).map((l, i) => text(47, 49 + i * 15, l, 9, { anchor: 'middle', bold: i === 1 })).join('') + keys +
-      (led ? `<circle cx="166" cy="30" r="7" fill="${P.red}"><animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/></circle>` : '') +
+      (led ? `<circle class="a-blink" cx="166" cy="30" r="7" fill="${P.red}"/>` : '') +
       (note ? `<g transform="rotate(-4 50 79)"><rect x="4" y="68" width="92" height="22" rx="4" fill="${P.yellow}"/>${text(50, 83, note, 9, { anchor: 'middle', bold: true })}</g>` : ''),
   };
 };
@@ -206,7 +209,7 @@ export const printer: PropFn<{ paper?: boolean; paperText?: string; ready?: bool
       (paper
         ? `<g transform="rotate(-4 115 85)"><rect x="40" y="40" width="150" height="90" rx="4" fill="${P.white}" stroke="${P.grey}" stroke-width="3"/>${lines(55, 55, [110, 98, 86, 74, 62], 13, 5)}${paperText ? text(66, 120, paperText, 11, { fill: P.red, bold: true }) : ''}</g>`
         : '') +
-      `<circle cx="210" cy="40" r="6" fill="${ready ? P.green : P.red}"/>`,
+      `<circle class="a-blink-slow" cx="210" cy="40" r="6" fill="${ready ? P.green : P.red}"/>`,
   };
 };
 
@@ -214,9 +217,9 @@ export const mug: PropFn<{ label?: string[]; color?: string; steam?: boolean }> 
   w: 80, h: 62,
   svg:
     (steam
-      ? `<path d="M18 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>` +
-        `<path d="M33 -10 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>` +
-        `<path d="M48 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>`
+      ? `<g class="a-steam"><path d="M18 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>` +
+        `<g class="a-steam d1"><path d="M33 -10 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>` +
+        `<g class="a-steam d2"><path d="M48 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>`
       : '') +
     `<rect x="52" y="15" width="26" height="30" rx="10" fill="none" stroke="${esc(color)}" stroke-width="7"/><rect width="66" height="60" rx="8" fill="${esc(color)}"/>` +
     `<ellipse cx="33" cy="0" rx="33" ry="8" fill="${P.ink}" opacity="0.25"/>` +
@@ -248,7 +251,7 @@ export const smartphone: PropFn<{ lines?: string[]; badge?: string }> = ({ lines
       `<rect x="14" y="22" width="62" height="40" rx="6" fill="${P.wall2}"/>` +
       ls.slice(0, 3).map((l, i) => text(45, 36 + i * 12, l, 8, { anchor: 'middle', bold: i === 0 })).join('') +
       lines(14, 72, [62, 50, 62, 40], 14, 6) +
-      (badge ? `<circle cx="76" cy="20" r="9" fill="${P.red}"/>` + text(76, 24, badge, 10, { fill: P.white, bold: true, anchor: 'middle' }) : ''),
+      (badge ? `<g class="a-bounce"><circle cx="76" cy="20" r="9" fill="${P.red}"/>` + text(76, 24, badge, 10, { fill: P.white, bold: true, anchor: 'middle' }) + `</g>` : ''),
   };
 };
 
@@ -312,7 +315,7 @@ export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: stri
   return {
     w, h,
     svg: g + (label ? `<rect x="6" y="98" width="108" height="24" rx="6" fill="${P.ink}" opacity="0.35"/>` + text(60, 115, label, 14, { fill: P.white, bold: true, anchor: 'middle' }) : '') +
-      (badge ? `<circle cx="98" cy="20" r="14" fill="${P.red}"/>` + text(98, 25, badge, 14, { fill: P.white, bold: true, anchor: 'middle' }) : ''),
+      (badge ? `<g class="a-bounce"><circle cx="98" cy="20" r="14" fill="${P.red}"/>` + text(98, 25, badge, 14, { fill: P.white, bold: true, anchor: 'middle' }) + `</g>` : ''),
   };
 };
 
@@ -380,4 +383,6 @@ export const PROPS: Record<string, PropFn<any>> = {
   desk, drawerUnit, chair, plant,
   monitor, stickyNote, phone, printer, mug, keyboardMouse, laptop, smartphone, box,
   wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper,
+  // Odprawa (BRIEFING) - widok z góry na biurko detektywa (props-odprawa.ts); nazwy nie kolidują z powyższymi.
+  ...ODPRAWA_PROPS,
 };

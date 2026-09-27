@@ -101,6 +101,48 @@ export function flattenDossierRows(documents: readonly { rows?: readonly Dossier
   return documents.flatMap((document) => [...(document.rows ?? [])]);
 }
 
+// Sloty sceny odprawy (D-084): które rodzaje kroku mogą je mieć - zadania sprawy są w karcie (caseFile), dane gracza na legitymacji.
+const BRIEFING_SLOT_KINDS: Record<string, string> = { tasks: 'caseFile', name: 'badge', number: 'badge', photo: 'badge' };
+
+interface BriefingSceneLike {
+  kind: string;
+  image?: string;
+  closedImage?: string;
+  hotspot?: { id: string; x: number; y: number; w: number; h: number };
+  slots?: Partial<Record<string, { x: number; y: number; w: number; h: number }>>;
+  tasks?: unknown[];
+}
+
+/**
+ * Grafika kroku odprawy (D-084): prostokąty w granicach sceny (x + w <= 100, y + h <= 100 - schemat pilnuje tylko 0-100 każdego pola),
+ * każde pole sceny wymaga obrazu tła, `closedImage` (tylko caseFile - schemat) zawsze z hotspotem (klik otwiera teczkę), sloty zgodne z
+ * rodzajem kroku. Istnienie plików obrazów sprawdza potok zasobów (scripts/content, --assets: plik w assets/ modułu).
+ */
+function briefingSceneErrors(label: string, step: BriefingSceneLike): string[] {
+  const errors: string[] = [];
+  const inScene = (name: string, rect: { x: number; y: number; w: number; h: number }) => {
+    if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`${label}.${name}: prostokąt wychodzi poza scenę (x + w i y + h najwyżej 100)`);
+  };
+  const needsImage = (name: string) => errors.push(`${label}.${name} wymaga pola image (obrazu sceny kroku)`);
+  // closedImage istnieje tylko w schemacie kroku caseFile (inne kroki odrzuca .strict()).
+  if (step.closedImage !== undefined) {
+    if (step.image === undefined) needsImage('closedImage');
+    if (step.hotspot === undefined) errors.push(`${label}.closedImage wymaga hotspotu (klik otwiera teczkę)`);
+  }
+  if (step.hotspot) {
+    if (step.image === undefined) needsImage('hotspot');
+    inScene('hotspot', step.hotspot);
+  }
+  for (const [slot, rect] of Object.entries(step.slots ?? {})) {
+    if (!rect) continue;
+    if (step.image === undefined) needsImage(`slots.${slot}`);
+    if (BRIEFING_SLOT_KINDS[slot] !== step.kind) errors.push(`${label}.slots.${slot}: dotyczy wyłącznie kroku ${BRIEFING_SLOT_KINDS[slot]}`);
+    if (slot === 'tasks' && !(step.tasks && step.tasks.length > 0)) errors.push(`${label}.slots.tasks wymaga listy tasks`);
+    inScene(`slots.${slot}`, rect);
+  }
+  return errors;
+}
+
 /** `required` jawnie ustawione co najmniej na jednym elemencie musi zostawiać co najmniej jeden element wymagany (przy obu sposobach wygrywa `required`). */
 function checkRequiredFlags(label: string, items: { required?: boolean }[], errors: string[]) {
   if (!items.some((item) => item.required !== undefined)) return;
@@ -337,6 +379,7 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
     case 'BRIEFING': {
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
+      block.steps.forEach((step, index) => errors.push(...briefingSceneErrors(`steps[${index}]`, step)));
       break;
     }
     default:
@@ -429,6 +472,8 @@ export function parseModule(input: unknown): ContentModule {
     if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
     if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
   }
+  // Miniatura modułu (D-084) - addytywnie w v5. Istnienie pliku sprawdza potok zasobów (--assets), jak obrazy bloków.
+  if (contentModule.schemaVersion < 5 && contentModule.thumbnail !== undefined) errors.push('thumbnail: wymaga schemaVersion 5');
   // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
   // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
   // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).

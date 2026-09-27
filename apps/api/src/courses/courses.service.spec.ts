@@ -44,6 +44,7 @@ describe('CoursesService.listMyCourses', () => {
         course: {
           id: 'course-1',
           title: 'Rozpoznawanie phishingu',
+          thumbnail: null,
           category: 'EMAIL_SECURITY',
           durationMinutes: 8,
           contentBlocks: [{ type: 'VIDEO' }, { type: 'QUIZ' }, { type: 'QUIZ' }, { type: 'DRAG_AND_DROP' }],
@@ -55,6 +56,8 @@ describe('CoursesService.listMyCourses', () => {
 
     expect(result.currentBlockIndex).toBe(2);
     expect(result.totalBlocks).toBe(4);
+    // Miniatura (D-084): kurs bez miniatury - jawne null, karta pokazuje ikonę kategorii.
+    expect(result).toHaveProperty('thumbnail', null);
   });
 
   it('mandatory pochodzi z PRZYPISANIA (D-065), nie z course.mandatory - samoobsługowy kurs zostaje nieobowiązkowy nawet gdy treść jest mandatory:true', async () => {
@@ -184,6 +187,7 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
         id: 'course-nowy',
         title: 'Sprawa: wyłudzone hasło',
         subtitle: 'Prawdziwy przypadek phishingu',
+        thumbnail: 'assets/wyludzone-haslo/miniatura-wyludzone-haslo.1a2b3c4d.svg',
         level: 'basic',
         objectives: ['Rozpoznaj fałszywy mail'],
         category: 'PHISHING_SOCIAL_ENGINEERING',
@@ -202,12 +206,14 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
       courseId: 'course-nowy',
       title: 'Sprawa: wyłudzone hasło',
       subtitle: 'Prawdziwy przypadek phishingu',
+      thumbnail: 'assets/wyludzone-haslo/miniatura-wyludzone-haslo.1a2b3c4d.svg',
       level: 'basic',
       objectives: ['Rozpoznaj fałszywy mail'],
       category: 'PHISHING_SOCIAL_ENGINEERING',
       durationMinutes: 12,
       totalBlocks: 9,
     });
+    expect(courseFindMany).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ thumbnail: true }) }));
   });
 
   it('listCatalog: bez przypisań wywołującego, zapytanie idzie bez filtra notIn (pusta lista courseId byłaby błędem Prisma)', async () => {

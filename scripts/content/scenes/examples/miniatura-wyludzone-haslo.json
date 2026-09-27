@@ -1,0 +1,10 @@
+{"width":1600,"height":900,"background":{"flat":true,"wall":"#D9C3A5"},"items":[
+{"id":"sloje","prop":"woodGrain","x":0,"y":0},
+{"id":"kubek","prop":"mugTop","x":90,"y":80},
+{"id":"gazeta","prop":"newspaper","x":1210,"y":-60},
+{"id":"teczka","prop":"caseFolderClosed","x":250,"y":250,"scale":1.15},
+{"id":"karteczka","prop":"stickyNote","x":700,"y":300,"scale":2.6,"params":{"lines":["Unfooly24!","bank: to samo"]}},
+{"id":"lupa","prop":"magnifier","x":772,"y":282,"scale":1.2},
+{"id":"telefon","prop":"phoneTop","x":1150,"y":390,"scale":0.9,"params":{"state":"ringing","animated":false,"caller":"Nr zastrzeżony","role":"Połączenie przychodzące","initials":"?"}},
+{"id":"klucze","prop":"keysTop","x":60,"y":700}
+]}

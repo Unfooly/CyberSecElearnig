@@ -32,7 +32,7 @@ function matchesTab(course: CourseAssignmentSummary, tab: Tab): boolean {
   return true;
 }
 
-export default function CourseLibrary({ courses }: { courses: CourseAssignmentSummary[] }) {
+export default function CourseLibrary({ courses, contentBase }: { courses: CourseAssignmentSummary[]; contentBase?: string }) {
   // Zakładki i kategoria filtrują po stronie klienta jeden już pobrany
   // zestaw danych - brak dodatkowych zapytań przy przełączaniu. Biblioteka
   // pokazuje WYŁĄCZNIE kursy już przypisane userowi (apps/api nie ma dziś
@@ -93,7 +93,7 @@ export default function CourseLibrary({ courses }: { courses: CourseAssignmentSu
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((course) => (
-            <CourseCard key={course.assignmentId} course={course} />
+            <CourseCard key={course.assignmentId} course={course} contentBase={contentBase} />
           ))}
         </div>
       )}

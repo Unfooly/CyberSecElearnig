@@ -12,6 +12,23 @@ describe('lintSvg', () => {
     expect(lintSvg(CLEAN)).toEqual([]);
   });
 
+  it('CSS w SVG (animacje scen, D-084): keyframes i url(#...) OK; @import i zewnętrzny url(...) to naruszenie', () => {
+    const anim = `<svg id="static"><style>.a{animation:a 1s infinite}@keyframes a{50%{opacity:.2}}#static:target *{animation:none!important}</style><rect fill="url(#g)"/></svg>`;
+    expect(lintSvg(anim)).toEqual([]);
+    const rules = (svg: string) => lintSvg(svg).map((v) => v.rule);
+    expect(rules(`<svg><style>@import "https://evil.example/a.css";</style></svg>`)).toContain('css-at-rule');
+    expect(rules(`<svg><style>@font-face{font-family:x}</style></svg>`)).toContain('css-at-rule');
+    expect(rules(`<svg><style>rect{fill:url(https://evil.example/x.svg#p)}</style></svg>`)).toContain('css-url');
+    expect(rules(`<svg><rect style="fill:url( '//evil.example/x' )"/></svg>`)).toContain('css-url');
+    expect(rules(`<svg><rect fill="url(x.svg#g)"/></svg>`)).toContain('css-url');
+    // Obejścia czarnej listy (security review): escape'y CSS, komentarz XML rozcinający słowo, funkcje ładujące bez url(.
+    expect(rules(`<svg><style>rect{fill:\\75rl(https://evil.example/x)}</style></svg>`)).toContain('css-escape');
+    expect(rules(`<svg><style>@\\69mport "https://evil.example/a.css";</style></svg>`)).toContain('css-escape');
+    expect(rules(`<svg><style>@im<!---->port "https://evil.example/a.css";</style></svg>`)).toContain('css-comment');
+    expect(rules(`<svg><style>rect{background:image-set("https://evil.example/x.png" 1x)}</style></svg>`)).toContain('css-loader');
+    expect(rules(`<svg><style>rect{fill:url(#ok)}` )).toEqual([]);
+  });
+
   it('<script>: naruszenie', () => {
     const violations = lintSvg(`<svg><script>alert(1)</script></svg>`);
     expect(violations.map((v) => v.rule)).toContain('script');

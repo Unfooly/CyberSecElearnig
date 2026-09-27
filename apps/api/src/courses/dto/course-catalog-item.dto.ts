@@ -6,6 +6,8 @@ export class CourseCatalogItemDto {
   courseId!: string;
   title!: string;
   subtitle!: string | null;
+  // Ścieżka zasobu miniatury (D-084) - klient składa adres z CONTENT_BASE_URL (contentAssetUrl); null = karta bez miniatury.
+  thumbnail!: string | null;
   level!: string | null;
   objectives!: string[];
   category!: CourseCategory;

@@ -199,6 +199,12 @@
   width: min(100cqw, calc(100cqh * var(--scene-ratio)));
 }
 
+/* Scena kroku odprawy (BriefingScene.tsx, D-084): ta sama formuła "contain", ale osobna klasa - telefon w pionie NIE
+   przechodzi tu na panoramę (reguła .scene-box niżej), bo teksty i sloty kroku muszą być widoczne w całości, bez przewijania. */
+.briefing-scene-box {
+  width: min(100cqw, calc(100cqh * var(--scene-ratio)));
+}
+
 /* Uchwyt bottom sheeta (SceneHotspotsBlock.tsx, .hotspot-card-handle) - domyślnie niewidoczny. Widoczny WYŁĄCZNIE
    na telefonie w pionie - reguła w NOWYM, OSOBNYM @media POD kartą hotspotu niżej (nie w tym samym miejscu co
    .scene-pan-container wyżej), bo musi być TEKSTOWO PO tej regule (ten sam wzorzec "kolejność w pliku" co
@@ -467,6 +473,27 @@
   }
   .briefing-caret {
     animation: briefing-caret 900ms steps(1) infinite;
+  }
+  /* Hotspot sceny odprawy (BriefingScene.tsx, D-084): pulsująca obwódka podpowiada, że telefon/teczkę można kliknąć. */
+  .briefing-hotspot {
+    animation: briefing-hotspot-hint 1.8s ease-in-out infinite;
+  }
+}
+
+/* Z prefers-reduced-motion podpowiedź hotspotu odprawy jest statyczną obwódką zamiast pulsu. */
+@media (prefers-reduced-motion: reduce) {
+  .briefing-hotspot {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+@keyframes briefing-hotspot-hint {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--accent);
   }
 }
 

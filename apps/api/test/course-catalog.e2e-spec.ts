@@ -59,6 +59,7 @@ describe('Katalog kursów: GET /courses/catalog, POST /courses/:id/self-assign (
       data: {
         title: `Katalog Test - kurs ${uniqueSuffix}`,
         subtitle: 'Podtytuł testowy',
+        thumbnail: 'assets/katalog-test/miniatura.1a2b3c4d.svg',
         level: 'basic',
         category: 'GENERAL_AWARENESS',
         durationMinutes: 7,
@@ -98,13 +99,14 @@ describe('Katalog kursów: GET /courses/catalog, POST /courses/:id/self-assign (
     await app.close();
   });
 
-  it('katalog pokazuje kurs z metadanymi (subtitle/level/objectives) przed przypisaniem, dla obu organizacji niezależnie', async () => {
+  it('katalog pokazuje kurs z metadanymi (subtitle/thumbnail/level/objectives) przed przypisaniem, dla obu organizacji niezależnie', async () => {
     for (const token of [employeeAToken, employeeBToken]) {
       const response = await request(app.getHttpServer()).get('/courses/catalog').set('Authorization', `Bearer ${token}`).expect(200);
       expect(response.body).toContainEqual({
         courseId: mandatoryCourseId,
         title: `Katalog Test - kurs ${uniqueSuffix}`,
         subtitle: 'Podtytuł testowy',
+        thumbnail: 'assets/katalog-test/miniatura.1a2b3c4d.svg',
         level: 'basic',
         objectives: ['Cel 1', 'Cel 2'],
         category: 'GENERAL_AWARENESS',

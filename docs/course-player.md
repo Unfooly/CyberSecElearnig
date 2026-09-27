@@ -32,6 +32,10 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 
 Bloki eksploracyjne mają wagę 0; `weight` w treści może im nadać udział w wyniku.
 
+Po ukończeniu kursu odtwarzacz pokazuje ekran zamknięcia sprawy (`CaseClosedScreen`, D-089): raport z `SUMMARY.closing` (dowody, czas
+od `startedAt` przypisania do `completedAt`, +XP, `lessons`, podpis gracza, pieczęć, liścik). Ceremonia z animacją i dźwiękami tylko przy
+ukończeniu w tej sesji; reduced-motion i powrót do ukończonego kursu - od razu stan końcowy. Bez `closing` - prosty ekran z wynikiem.
+
 ## Co jest `client`, a co `secret`
 
 Każde pole schematu bloku jest sklasyfikowane w `packages/content/src/blocks.ts` (`FIELD_CLASSIFICATION`); test kompletności wywala CI dla nowego, niesklasyfikowanego pola.

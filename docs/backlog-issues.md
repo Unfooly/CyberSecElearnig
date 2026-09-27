@@ -473,6 +473,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: układ kompaktowy dla niskiej sceny (np. tacka jako panel boczny) albo decyzja „tylko pion”; tokeny cieniowania; helper
   `caseNoOf(blocks)`; walidacja treści: limit długości elementu ORDERING dopasowany do karty albo auto-dopasowanie czcionki (FitText).
 
+### B-115 Zamknięcie sprawy (D-089): następna sprawa i odłożone uwagi
+- Etykiety: `P3`, `mod:web`, `mod:api`, `mod:content` · Źródło: `feat/case-closed` (K), D-089
+- Opis: (1) „Następna sprawa” jest zawsze zamknięta („wkrótce”) - API nie zna kolejności spraw ani następnego przypisania; (2) przypisania
+  rozpoczęte przed migracją `startedAt` pokazują czas „—”; (3) woreczki dowodów w grafice raportu (mail, karteczka, SMS, wydruk, logi,
+  WHOIS) to wybór - dowody z telefonu, kalendarza i tablicy nie mają woreczka, a liścik komisarza (slot z treści) przykrywa szósty
+  woreczek (WHOIS); (4) panorama raportu na telefonie w pionie nie ma podpowiedzi „przesuń” (jak `.scene-pan-hint` w scenie).
+- Akceptacja: pole/endpoint „następna sprawa” (kolejność kursów w katalogu organizacji) i aktywny przycisk; decyzja treściowa o
+  woreczkach/pozycji liściku (grafika albo slot); podpowiedź przesuwania w panoramie raportu z testem w layout-check.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

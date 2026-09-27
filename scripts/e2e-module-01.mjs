@@ -356,17 +356,27 @@ try {
   // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)), nie ułamek 0-1.
   step('Kurs ukończony po stronie serwera ze 100% wyniku (3+2+1 wag, wszystko poprawne)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
 
-  // --- fix/course-finish-flow: zapis kończący kurs OD RAZU przełącza na SummaryScreen, bez ekranu pośredniego
-  // "Blok ukończony."/przycisku "Zobacz podsumowanie" (usunięty) --------------------------------------------------
+  // --- Zamknięcie sprawy (feat/case-closed, D-089): zapis kończący kurs OD RAZU przełącza na raport końcowy (bez ekranu pośredniego
+  // "Blok ukończony."/"Zobacz podsumowanie"); ceremonia: liczby, wnioski, podpis, pieczęć, liścik ---------------------------------
   await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
-  step('SummaryScreen: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
-  step('SummaryScreen: wynik 100% widoczny od razu', (await page.getByText('100%').count()) >= 1);
-  // Karta nagrody INLINE (RewardCard.tsx, zastępuje dawny modal): pierwsze ukończenie tego przypisania w tej
-  // organizacji zawsze dolicza co najmniej COURSE_COMPLETION_XP (100) - GamificationService.awardCourseCompletion.
-  step('SummaryScreen: karta nagrody (XP) widoczna, bez modala (role=dialog)', (await page.getByText(/XP$/).count()) >= 1 && (await page.getByRole('dialog').count()) === 0);
-  // Ta sama lista dowodów, którą user widział chwilę wcześniej na bloku SUMMARY (CaseEvidenceSection.tsx, dzielona).
-  const finalEvidenceText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SummaryScreen: lista zebranych dowodów (22 z 22) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 22 z 22'), finalEvidenceText.slice(0, 120));
+  step('Zamknięcie: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
+  step('Zamknięcie: "Wynik zadań: 100%" widoczny od razu', ((await page.getByText(/Wynik zadań:/).textContent()) ?? '').includes('100%'));
+  await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
+  const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
+  step('Zamknięcie: dowody 22/22 w raporcie', (await slotText('closing-evidence')) === '22/22', await slotText('closing-evidence'));
+  // startedAt (nowa kolumna przypisania) -> czas sprawy w minutach; pierwsze ukończenie dolicza XP (COURSE_COMPLETION_XP >= 100).
+  step('Zamknięcie: czas sprawy w minutach (startedAt z /start)', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
+  step('Zamknięcie: +XP w raporcie', /^\+[1-9]\d*$/.test(await slotText('closing-xp')), await slotText('closing-xp'));
+  step('Zamknięcie: trzy wnioski śledczego wpisane', ((await slotText('closing-lessons')).match(/\d\. /g) ?? []).length === 3, await slotText('closing-lessons'));
+  await page.getByRole('button', { name: 'Podpisz raport' }).click();
+  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
+  step('Zamknięcie: po podpisie pieczęć i liścik, bez modala (role=dialog)', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1 && (await page.getByRole('dialog').count()) === 0);
+  step('Zamknięcie: "Następna sprawa" zamknięta (wkrótce)', (await page.getByRole('button', { name: /Następna sprawa/ }).getAttribute('aria-disabled')) === 'true');
+
+  // Powrót do ukończonego kursu: stan końcowy od razu (bez ceremonii), czas sprawy nadal znany (startedAt/completedAt z /start).
+  await page.reload();
+  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
+  step('Zamknięcie po odświeżeniu: stan końcowy od razu, czas sprawy z /start', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

@@ -6,10 +6,10 @@
   "language": "pl",
   "entries": {
     "odprawa#steps.0.narration": {
-      "hash": "046cb6b2872551f0",
-      "key": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
-      "textSha": "2dceb65435e1c781",
-      "durationMs": 6037,
+      "hash": "fb0479081fc6a6af",
+      "key": "audio/wyludzone-haslo/v1/odprawa/fb0479081fc6a6af.mp3",
+      "textSha": "70698dda1d513739",
+      "durationMs": 6780,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
@@ -37,19 +37,11 @@
       "voice": "komisarz",
       "voiceId": "o11yegU3CL24TZ1qcm6b"
     },
-    "odprawa#steps.4.narration": {
-      "hash": "8db1d7b01f2d1bdc",
-      "key": "audio/wyludzone-haslo/v1/odprawa/8db1d7b01f2d1bdc.mp3",
-      "textSha": "3e273ed3025a212b",
-      "durationMs": 1718,
-      "voice": "narrator",
-      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
-    },
     "korytarz#narration": {
-      "hash": "c5289f58af9023ab",
-      "key": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
-      "textSha": "2e22962e2098b76b",
-      "durationMs": 10031,
+      "hash": "ba03fb91dcbec77a",
+      "key": "audio/wyludzone-haslo/v1/korytarz/ba03fb91dcbec77a.mp3",
+      "textSha": "3420ce9655a42f2f",
+      "durationMs": 9195,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },

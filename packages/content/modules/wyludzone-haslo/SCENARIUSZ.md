@@ -17,11 +17,13 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **21** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
+- dowody łącznie: **22** (korytarz: 1 - tablica ogłoszeń, opcjonalny; Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka,
+  outlook w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - nowy odbiorca 9:04, Bukareszt 9:03, kod SMS
   z Bukaresztu 9:06, nagłówki maila z Bukaresztu, WHOIS; rozmowa z Markiem: 3)
 - oś czasu (źródło prawdy - rozmowa z Markiem, wydruk przelewu i rekonstrukcja): mail 8:47 → Anna wpisuje hasło 8:58 →
-  logowanie oszusta 9:03 → nowy odbiorca 9:04 → telefon „informatyka" 9:05 → kod SMS 9:06 (wydruk: 09:06:58) → przelew 9:12
+  logowanie oszusta 9:03 → nowy odbiorca 9:04 → telefon „informatyka" 9:05 → kod SMS 9:06 (wydruk: 09:06:58) → przelew 9:12;
+  śledztwo: telefon komisarza 9:40 (odprawa, Wydział Cyberbezpieczeństwa, Kraków) → gracz w Unfooly 10:05 (korytarz)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
@@ -54,29 +56,32 @@ wejściu - jak w makiecie); pominięcie nie odhacza zadań. Animacje (pisanie, d
 `prefers-reduced-motion`.
 
 **Sceny (D-084, feat/briefing-scenes):** każdy krok to scena 1600×900 (widok z góry na biurko detektywa, klocki
-`scripts/content/scenes/props-odprawa.ts`, źródła `scripts/content/scenes/examples/odprawa-*.json`). Hotspot na scenie = przycisk
-kroku (przycisk zostaje dla klawiatury); sloty = HTML w % sceny, tekst dopasowany do slotu.
+`scripts/content/scenes/props-odprawa.ts`, źródła `scripts/content/scenes/examples/odprawa-*.json`); sloty = HTML w % sceny, tekst
+dopasowany do slotu.
 
-| krok | scena (`assets/scenes/`) | hotspot / sloty |
+**Bez przycisków (D-086, feat/scene-zoom):** postęp WYŁĄCZNIE klikiem w przedmiot kroku. Przedmiot to przycisk z etykietą = `cta`
+kroku (czytnik, klawiatura: Tab + Enter), z widocznym focusem; po 4 s bez akcji delikatnie pulsuje obrysem w kolorze akcentu
+(reduced-motion: obrys statyczny). „Dalej" w stopce - jak dotąd (podgląd ukończonej odprawy).
+
+| krok | scena (`assets/scenes/`) | przedmiot (etykieta) / sloty |
 |---|---|---|
-| 0 typewriter | `odprawa-biurko.svg` (animacje; reduced-motion: ten sam plik z `#static`) | `telefon` (49 / 21,6 / 16,3 × 54,2) = „Odbierz"; napis w górnym pasie |
-| 1 call | `odprawa-rozmowa.svg` | dymek komisarza w prawej połowie (x ≥ 45%) |
-| 2 caseFile | `odprawa-teczka.svg` → klik `teczka` (24,4 / 17,4 / 51,6 × 69,5) → `odprawa-akta.svg` | `tasks` (54,1 / 19,4 / 37,1 × 56,2) |
-| 3 badge | `odprawa-legitymacja.svg` | `photo` (inicjały na `accent-soft`), `name` (imię + inicjał nazwiska), `number` (0915-XX) |
-| 4 start | `korytarz.svg` (scena Bloku 1) | napis w górnym pasie |
+| 0 typewriter | `odprawa-biurko.svg` (animacje; reduced-motion: ten sam plik z `#static`) | `telefon` (49 / 21,6 / 16,3 × 54,2) „Odbierz telefon"; napis w górnym pasie |
+| 1 call | `odprawa-rozmowa.svg` | `rozlacz` - czerwona słuchawka (21,4 / 72,4 / 8,5 × 15,1) „Rozłącz"; dymek komisarza w prawej połowie (x ≥ 45%) |
+| 2 caseFile | `odprawa-teczka.svg` → klik `teczka` (24,4 / 17,4 / 51,6 × 69,5) „Otwórz teczkę" → `odprawa-akta.svg` → klik `akta` (3,9 / 2,3 / 92,1 × 95,3, `openHotspot`) „Zamknij teczkę" | `tasks` (54,1 / 19,4 / 37,1 × 56,2) |
+| 3 badge | `odprawa-legitymacja.svg` | `legitymacja` (8,8 / 6 / 82,5 × 88) „Zabierz legitymację" - kończy blok; `photo` (inicjały na `accent-soft`), `name` (imię + inicjał nazwiska), `number` (0915-XX) |
 
 Dane karty sprawy są narysowane w `odprawa-akta.svg` (i numer + pieczątka w `odprawa-teczka.svg`) - muszą się zgadzać z polami
 kroku caseFile niżej; czytnik ekranu dostaje je z pól kroku.
 
-0. **typewriter** (narrator) — napis: „Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy."; TTS: „Wtorek, dziewiąta
-   czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy."; przycisk: „Odbierz".
+0. **typewriter** (narrator) — napis: „Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy."; TTS: „Wtorek,
+   dziewiąta czterdzieści. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy."; przedmiot: „Odbierz telefon".
 1. **call** (komisarz) — napis (dymek): „Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska,
    twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało."; TTS: „Detektywie, mamy zgłoszenie z Unfooly. Z konta
    firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się
-   naprawdę stało."; przycisk: „Przyjmuję".
+   naprawdę stało."; przedmiot: „Rozłącz".
 2. **caseFile** (komisarz) — karta: nr sprawy `CS/2026/0915` (font maszynowy), „Nieautoryzowany przelew"; Poszkodowana „Anna
    Kowalska (księgowa, Unfooly Sp. z o.o.)", Strata „14 000,00 PLN", Kiedy „wtorek 9:12", Zgłosił „Marek Zieliński, dział IT";
-   pieczątka „Priorytet" (`danger`); przycisk: „Biorę sprawę". Napis: „Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.";
+   pieczątka „Priorytet" (`danger`); przedmioty: „Otwórz teczkę", potem „Zamknij teczkę". Napis: „Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.";
    TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT.
    Reszta jest w biurze Anny."
    **Zadania sprawy** (`tasks` kroku caseFile; też sekcja „Zadania" notatnika; w nawiasie `completeWhen` - zadanie odhacza się,
@@ -87,8 +92,9 @@ kroku caseFile niżej; czytnik ekranu dostaje je z pól kroku.
 3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), w miejscu zdjęcia
    inicjały gracza, nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
    w progress** - liczy wyłącznie przeglądarka. Napis/TTS: „Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa.
-   Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą."; przycisk: „Ruszam na miejsce".
-4. **start** (narrator) — napis/TTS: „Unfooly, drugie piętro."; przycisk: „Wchodzę".
+   Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą."; przedmiot: „Zabierz legitymację" (kończy odprawę).
+
+Krok „start" („Unfooly, drugie piętro.") usunięty w D-086 - miejsce i godzinę podaje narracja korytarza (Blok 1).
 
 ---
 
@@ -99,13 +105,19 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
 - imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
-- **Lektor:** „Wtorek, 9:40. Anna z księgowości zgłosiła, że »coś jest nie tak z kontem«. Zacznij od jej biura — drzwi są przed tobą."
+- **Lektor:** „Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą." (TTS: „Wtorek,
+  dziesiąta zero pięć. …")
 - **Fooli:** brak (blok czysto przejściowy — bez dymka).
-- ukończenie: brak dowodów, bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`).
+- ukończenie: bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`), gotowy od razu (tablica jest
+  opcjonalna: `required: false`).
 - drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 6 (DIALOGUE), nie jako osobna lokacja.
+- `tablica` (D-086) — dowód opcjonalny; zbliżenie `scenes/tablica-zoom.svg` (alt: „Tablica ogłoszeń: szkolenie BHP w czwartek
+  o 10:00, kuchnia - myjemy po sobie, hasła - nie na karteczkach, parking - nowe miejsca."); notatka (`item`): „Na tablicy w
+  korytarzu: »Hasła — nie na karteczkach«. Zasada była znana."
 
-| id | x | y | w | h | action |
+| id | x | y | w | h | action / dowód |
 |---|---|---|---|---|---|
+| `tablica` | 63.2 | 12.2 | 23.5 | 25.6 | dowód, `required: false` |
 | `drzwi` | 43.8 | 36.6 | 12.4 | 42.8 | `next` |
 
 ---
@@ -117,9 +129,12 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 - **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
 - **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
 - ukończenie: wymagane 4 z 6 hotspotów-dowodów (oznaczone ✱); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
-- **Reguła tej sceny (feedback z produkcji, `feat/scene-overlay-fix`): każdy hotspot ma powiększenie (media).** Tekst
-  karty jest zawsze POD obrazem, nigdy samodzielną kartą bez media — nawet gdy hotspot nie niesie dowodu (`kubek`).
-  Wyjątek: `drzwi` (action:'next') nigdy nie otwiera karty, więc nie dotyczy tej reguły.
+- **Reguła tej sceny (feedback z produkcji, `feat/scene-overlay-fix`): każdy hotspot ma powiększenie (media).** Wyjątek: `drzwi`
+  (action:'next') nigdy nie otwiera zbliżenia.
+- **Zbliżenie przedmiotu (D-086, feat/scene-zoom):** klik = kamera przybliża scenę do przedmiotu, crossfade do grafiki (bez karty i
+  bez tekstu), pod nią „Zabierz" / „Odłóż". „Zabierz" przy dowodzie dopisuje notatkę; przy przedmiocie bez dowodu (`kubek`) -
+  potrząśnięcie i „To nie jest dowód w tej sprawie.". Kolumna „Karta po kliknięciu" niżej to tekst `content` - od D-086 gracz go NIE
+  widzi (zostaje w treści jako opis przedmiotu; wiedzę niesie grafika i notatka), poza przedmiotem bez grafiki.
 
 | id | Element | Karta po kliknięciu | Dowód | Notatka (kind) | Media (B-086/D-071) |
 |---|---|---|---|---|---|

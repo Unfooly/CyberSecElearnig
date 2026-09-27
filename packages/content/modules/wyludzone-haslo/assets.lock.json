@@ -14,8 +14,8 @@
     },
     "odprawa#steps.1.image": {
       "original": "scenes/odprawa-rozmowa.svg",
-      "hash": "fce7635a",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.fce7635a.svg"
+      "hash": "4bcf8d68",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.4bcf8d68.svg"
     },
     "odprawa#steps.2.image": {
       "original": "scenes/odprawa-akta.svg",
@@ -27,11 +27,6 @@
       "hash": "242f34bc",
       "key": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.242f34bc.svg"
     },
-    "odprawa#steps.4.image": {
-      "original": "scenes/korytarz.svg",
-      "hash": "b4abcdeb",
-      "key": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg"
-    },
     "odprawa#steps.2.closedImage": {
       "original": "scenes/odprawa-teczka.svg",
       "hash": "e7ab6b52",
@@ -41,6 +36,11 @@
       "original": "scenes/korytarz.svg",
       "hash": "b4abcdeb",
       "key": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg"
+    },
+    "korytarz#hotspots.0.media.src": {
+      "original": "scenes/tablica-zoom.svg",
+      "hash": "d59afe0e",
+      "key": "assets/wyludzone-haslo/scenes/tablica-zoom.d59afe0e.svg"
     },
     "biuro-anny#image": {
       "original": "scenes/biuro-anny.svg",

@@ -486,6 +486,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: pole/endpoint „następna sprawa” (kolejność kursów w katalogu organizacji) i aktywny przycisk; decyzja treściowa o
   woreczkach/pozycji liściku (grafika albo slot); podpowiedź przesuwania w panoramie raportu z testem w layout-check.
 
+### B-116 Ruch w odtwarzaczu - część 2 (D-090)
+- Etykiety: `P2`, `mod:web`, `mod:content` · Źródło: `feat/player-motion` (B), plan właściciela
+- Opis: czekało na merge zamknięcia sprawy (#65 - te same pliki): (1) stempel PRIORYTET w grafice akt spada (scale 1.4 → 1, rotate −12°,
+  lekki bounce, 350 ms) - animacja jednorazowa w klocku sceny (`props-odprawa.ts`, klasa w `compose.ts`, rebuild i publikacja scen);
+  (2) koniec modułu: pasek postępu poziomu (600 ms), pop odznaki (.6 → 1.08 → 1), jednorazowe konfetti w kolorach marki (accent,
+  accent-soft, success, #FFE066), max 30 cząstek, 1,2 s - na ekranie zamknięcia (`CaseClosedScreen`); reduced-motion bez konfetti.
+  (3) Drobne z części 1: szuflada notatnika bez fade (zostaje wysuwana, 200 ms); starsze animacje (odprawa, teczka, czat: 260/280 ms,
+  `ease-out`) i zmienne `--motion-*` jeszcze nie czytane przez CSS - przejście na tokeny; lot dowodu startuje ze środka przycisku, nie
+  z punktu kursora.
+- Akceptacja: jak w specyfikacji B; test reduced-motion, layout-check (brak przesunięć układu przy konfetti), e2e modułu 1.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -164,6 +164,38 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(played).toEqual([]);
   });
 
+  it('koniec modułu (D-090, B-116): konfetti (≤ 30 cząstek) przy pieczęci znika po 1,2 s; pasek poziomu rośnie od stanu sprzed nagrody; odznaki z pop', () => {
+    renderScreen({ reward: { ...reward, levelProgressBeforePercent: 40, levelProgressAfterPercent: 90, unlockedBadges: [{ code: 'first', title: 'Pierwsza sprawa', icon: 'x', xpReward: 50 }] } });
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-60%)' });
+    expect(screen.getByText('Pierwsza sprawa')).toHaveClass('motion-safe:animate-badge-pop');
+    advance(300);
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-10%)' });
+
+    for (let i = 0; i < 70; i += 1) advance(250);
+    expect(screen.queryByTestId('closing-confetti')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Podpisz raport' }));
+    advance(600);
+    const confetti = screen.getByTestId('closing-confetti');
+    expect(confetti).toHaveAttribute('aria-hidden', 'true');
+    const pieces = confetti.querySelectorAll('.closing-confetti-piece').length;
+    expect(pieces).toBeGreaterThan(0);
+    expect(pieces).toBeLessThanOrEqual(30);
+    expect(confetti).toHaveClass('overflow-hidden', 'inset-0'); // przycinane do raportu
+    advance(1200);
+    expect(screen.queryByTestId('closing-confetti')).not.toBeInTheDocument();
+  });
+
+  it('pasek poziomu: wartości spoza 0-100 przycięte (także aria-valuenow), awans = pełny pasek, bez zmiany (ponowne ukończenie) - bez ruchu', () => {
+    const { unmount } = renderScreen({ fresh: false, reward: { ...reward, levelProgressBeforePercent: -20, levelProgressAfterPercent: 140 } });
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(0%)' });
+    expect(screen.getByRole('progressbar', { name: 'Poziom 1' })).toHaveAttribute('aria-valuenow', '100');
+    unmount();
+    renderScreen({ reward: { ...reward, levelProgressBeforePercent: 30, levelProgressAfterPercent: 30 } });
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-70%)' });
+    advance(300);
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-70%)' });
+  });
+
   it('Lektor wyłączony: ceremonia bez dźwięków', () => {
     renderScreen({}, false);
     advance(1300);
@@ -193,9 +225,13 @@ describe('CaseClosedScreen: stan końcowy od razu', () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({ ...original(query), matches: query.includes('prefers-reduced-motion: reduce') })) as typeof window.matchMedia;
     try {
-      renderScreen();
+      renderScreen({ reward: { ...reward, levelProgressBeforePercent: 40, levelProgressAfterPercent: 90, unlockedBadges: [{ code: 'first', title: 'Pierwsza sprawa', icon: 'x', xpReward: 50 }] } });
       expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
       expect(screen.getByTestId('closing-xp')).toHaveTextContent('+350');
+      // Bez ruchu: pasek poziomu od razu w stanie końcowym, odznaka bez pop, bez konfetti.
+      expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-10%)' });
+      expect(screen.getByText('Pierwsza sprawa').className).not.toMatch(/badge-pop/);
+      expect(screen.queryByTestId('closing-confetti')).not.toBeInTheDocument();
       expect(screen.getByTestId('closing-evidence')).toHaveTextContent('20/22');
     } finally {
       window.matchMedia = original;

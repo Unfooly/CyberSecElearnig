@@ -28,6 +28,15 @@
             "spokenText": "Wtorek, dziewiąta czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy.",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
             "durationMs": 6037
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.142020c2.svg",
+          "imageReducedMotion": "assets/wyludzone-haslo/scenes/odprawa-biurko-static.f08cd89b.svg",
+          "hotspot": {
+            "id": "telefon",
+            "x": 49,
+            "y": 21.6,
+            "w": 16.3,
+            "h": 54.2
           }
         },
         {
@@ -44,7 +53,8 @@
             "voice": "komisarz",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
             "durationMs": 13050
-          }
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.c959d1ab.svg"
         },
         {
           "kind": "caseFile",
@@ -100,6 +110,23 @@
             "voice": "komisarz",
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
             "durationMs": 10217
+          },
+          "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka.c5717ce1.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-akta.90e75978.svg",
+          "hotspot": {
+            "id": "teczka",
+            "x": 24.4,
+            "y": 17.4,
+            "w": 51.6,
+            "h": 69.5
+          },
+          "slots": {
+            "tasks": {
+              "x": 54.1,
+              "y": 19.4,
+              "w": 37.1,
+              "h": 56.2
+            }
           }
         },
         {
@@ -124,6 +151,27 @@
                 "startMs": 4400
               }
             ]
+          },
+          "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.70821190.svg",
+          "slots": {
+            "photo": {
+              "x": 55.1,
+              "y": 30,
+              "w": 11.2,
+              "h": 25.3
+            },
+            "name": {
+              "x": 68.8,
+              "y": 33.7,
+              "w": 17.4,
+              "h": 5.3
+            },
+            "number": {
+              "x": 68.8,
+              "y": 44.9,
+              "w": 17.4,
+              "h": 5.3
+            }
           }
         },
         {
@@ -140,7 +188,8 @@
                 "startMs": 0
               }
             ]
-          }
+          },
+          "image": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg"
         }
       ]
     },

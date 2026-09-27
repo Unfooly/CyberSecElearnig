@@ -49,9 +49,24 @@ Teksty kroków: decyzja właściciela produktu (PR #55). Odprawa jest **bez mask
 Wydział Cyberbezpieczeństwa (bez avatara: inicjały „AW" na `accent-soft`). „Napis" = tekst na ekranie i w napisach nagrania,
 „TTS" = `spokenText` (to, co czyta głos), rola = `voice`.
 
-Blok nieoceniany, bez dowodów, na jasnym tle (`paper`). Zaliczany po ostatnim kroku albo „Pomiń odprawę" (górny pasek ramki,
-widoczny zawsze, przy każdym wejściu - jak w makiecie); pominięcie nie odhacza zadań. Animacje (pisanie, telefon, spadająca
-karta, pieczątka) tylko bez `prefers-reduced-motion`.
+Blok nieoceniany, bez dowodów. Zaliczany po ostatnim kroku albo „Pomiń odprawę" (górny pasek ramki, widoczny zawsze, przy każdym
+wejściu - jak w makiecie); pominięcie nie odhacza zadań. Animacje (pisanie, dzwoniący telefon, crossfade teczki) tylko bez
+`prefers-reduced-motion`.
+
+**Sceny (D-084, feat/briefing-scenes):** każdy krok to scena 1600×900 (widok z góry na biurko detektywa, klocki
+`scripts/content/scenes/props-odprawa.ts`, źródła `scripts/content/scenes/examples/odprawa-*.json`). Hotspot na scenie = przycisk
+kroku (przycisk zostaje dla klawiatury); sloty = HTML w % sceny, tekst dopasowany do slotu.
+
+| krok | scena (`assets/scenes/`) | hotspot / sloty |
+|---|---|---|
+| 0 typewriter | `odprawa-biurko.svg` (reduced-motion: `odprawa-biurko-static.svg`) | `telefon` (49 / 21,6 / 16,3 × 54,2) = „Odbierz"; napis w górnym pasie |
+| 1 call | `odprawa-rozmowa.svg` | dymek komisarza w prawej połowie (x ≥ 45%) |
+| 2 caseFile | `odprawa-teczka.svg` → klik `teczka` (24,4 / 17,4 / 51,6 × 69,5) → `odprawa-akta.svg` | `tasks` (54,1 / 19,4 / 37,1 × 56,2) |
+| 3 badge | `odprawa-legitymacja.svg` | `photo` (inicjały na `accent-soft`), `name` (imię + inicjał nazwiska), `number` (0915-XX) |
+| 4 start | `korytarz.svg` (scena Bloku 1) | napis w górnym pasie |
+
+Dane karty sprawy są narysowane w `odprawa-akta.svg` (i numer + pieczątka w `odprawa-teczka.svg`) - muszą się zgadzać z polami
+kroku caseFile niżej; czytnik ekranu dostaje je z pól kroku.
 
 0. **typewriter** (narrator) — napis: „Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy."; TTS: „Wtorek, dziewiąta
    czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy."; przycisk: „Odbierz".
@@ -69,8 +84,8 @@ karta, pieczątka) tylko bez `prefers-reduced-motion`.
    - `dostep`: „Ustal, jak przestępca dostał się do konta." (`akta-sprawy`, `rekonstrukcja`)
    - `dowody`: „Zbierz dowody w biurze Anny." (`biuro-anny`)
    - `zapobieganie`: „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
-3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
-   inicjały), nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
+3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), w miejscu zdjęcia
+   inicjały gracza, nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
    w progress** - liczy wyłącznie przeglądarka. Napis/TTS: „Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa.
    Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą."; przycisk: „Ruszam na miejsce".
 4. **start** (narrator) — napis/TTS: „Unfooly, drugie piętro."; przycisk: „Wchodzę".

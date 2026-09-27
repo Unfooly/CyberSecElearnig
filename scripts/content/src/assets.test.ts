@@ -1,8 +1,9 @@
 import { createRequire } from 'node:module';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { Writable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertAssetPathsClassified, collectAssetRefs, runAssetsPipeline, type AssetsPipelineParams } from './assets.js';
 import { MemoryStore } from './stores/memory.js';
@@ -24,6 +25,9 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   // Fixtura (packages/content) ma media (image/audio/scene, B-086/D-071) na hotspotach h1/h3/h4/... - poza zakresem
   // TYCH testów (ogólny potok publikacji), więc zdjęte tu; hotspots[].media.* ma własne testy niżej (moduleWithHotspotMedia).
   for (const hotspot of scene.hotspots) delete hotspot.media;
+  // To samo z grafiką kroków odprawy (D-084): własne testy niżej (moduleWithBriefingScenes).
+  const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
+  for (const step of briefing.steps) for (const field of ['image', 'imageReducedMotion', 'closedImage', 'hotspot', 'slots']) delete step[field];
   return module as unknown as Record<string, unknown>;
 }
 
@@ -106,6 +110,44 @@ describe('collectAssetRefs: hotspots[].media (B-086/D-071)', () => {
     expect(refs).toHaveLength(6);
     const values = refs.map((ref) => ref.value).sort();
     expect(values).toEqual(['anna.png', 'kartka.png', 'mail.png', 'poczta.mp3', 'pulpit.png', 'scena.png']);
+  });
+});
+
+// Grafika kroków odprawy (BRIEFING, D-084): scena kroku, wariant bez animacji i zamknięta teczka to zasoby potoku.
+function moduleWithBriefingScenes(): Record<string, unknown> {
+  const module = moduleWithAssets();
+  const briefing = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
+  const typewriter = briefing.steps.find((s) => s.kind === 'typewriter')!;
+  const caseFile = briefing.steps.find((s) => s.kind === 'caseFile')!;
+  Object.assign(typewriter, { image: 'biurko.png', imageReducedMotion: 'biurko-static.png', hotspot: { id: 'telefon', x: 1, y: 1, w: 10, h: 10 } });
+  Object.assign(caseFile, { closedImage: 'teczka.png', image: 'akta.png', hotspot: { id: 'teczka', x: 1, y: 1, w: 10, h: 10 } });
+  return module;
+}
+
+describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
+  it('collectAssetRefs znajduje steps[].image, imageReducedMotion i closedImage', () => {
+    const values = collectAssetRefs(moduleWithBriefingScenes()).map((ref) => ref.value).sort();
+    expect(values).toEqual(['akta.png', 'anna.png', 'biurko-static.png', 'biurko.png', 'scena.png', 'teczka.png']);
+  });
+
+  it('brak pliku obrazu kroku w assets/ przerywa publikację (bez zapisu locka)', async () => {
+    await writeFile(modulePath, JSON.stringify(moduleWithBriefingScenes()));
+    for (const file of ['biurko.png', 'biurko-static.png', 'akta.png']) await writeFile(join(assetsDir, file), PNG); // bez teczka.png
+    await expect(runAssetsPipeline(params())).rejects.toThrow(/Zasób "teczka\.png" \(blok "odprawa"\) nie istnieje w katalogu assets\/ modułu/);
+    await expect(readFile(join(dir, 'assets.lock.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('moduł 1: każdy obraz odprawy wskazuje istniejący plik w assets/ (przed publikacją nazwa pliku, po - klucz z locka)', async () => {
+    const moduleDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules', 'wyludzone-haslo');
+    const raw = JSON.parse(await readFile(join(moduleDir, 'module.json'), 'utf8'));
+    const lock = JSON.parse(await readFile(join(moduleDir, 'assets.lock.json'), 'utf8')) as { entries: Record<string, { original: string; key: string }> };
+    const refs = collectAssetRefs(raw).filter((ref) => ref.blockId === 'odprawa');
+    expect(refs.length).toBeGreaterThan(0);
+    for (const ref of refs) {
+      const entry = lock.entries[ref.id];
+      const original = entry && entry.key === ref.value ? entry.original : ref.value;
+      await expect(readFile(join(moduleDir, 'assets', ...original.split('/'))), ref.id).resolves.toBeInstanceOf(Buffer);
+    }
   });
 });
 

@@ -2,6 +2,41 @@
   "lockVersion": 1,
   "slug": "wyludzone-haslo",
   "entries": {
+    "odprawa#steps.0.image": {
+      "original": "scenes/odprawa-biurko.svg",
+      "hash": "142020c2",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-biurko.142020c2.svg"
+    },
+    "odprawa#steps.1.image": {
+      "original": "scenes/odprawa-rozmowa.svg",
+      "hash": "c959d1ab",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.c959d1ab.svg"
+    },
+    "odprawa#steps.2.image": {
+      "original": "scenes/odprawa-akta.svg",
+      "hash": "90e75978",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-akta.90e75978.svg"
+    },
+    "odprawa#steps.3.image": {
+      "original": "scenes/odprawa-legitymacja.svg",
+      "hash": "70821190",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.70821190.svg"
+    },
+    "odprawa#steps.4.image": {
+      "original": "scenes/korytarz.svg",
+      "hash": "4c9c37ad",
+      "key": "assets/wyludzone-haslo/scenes/korytarz.4c9c37ad.svg"
+    },
+    "odprawa#steps.0.imageReducedMotion": {
+      "original": "scenes/odprawa-biurko-static.svg",
+      "hash": "f08cd89b",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-biurko-static.f08cd89b.svg"
+    },
+    "odprawa#steps.2.closedImage": {
+      "original": "scenes/odprawa-teczka.svg",
+      "hash": "c5717ce1",
+      "key": "assets/wyludzone-haslo/scenes/odprawa-teczka.c5717ce1.svg"
+    },
     "korytarz#image": {
       "original": "scenes/korytarz.svg",
       "hash": "4c9c37ad",

@@ -308,7 +308,17 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       weight: 0,
       type: 'BRIEFING',
       steps: [
-        { kind: 'typewriter', text: 'Wtorek, 7:58.', sub: 'Dzwoni telefon.', cta: 'Odbierz', narration: audio('odprawa-0') },
+        {
+          kind: 'typewriter',
+          text: 'Wtorek, 7:58.',
+          sub: 'Dzwoni telefon.',
+          cta: 'Odbierz',
+          narration: audio('odprawa-0'),
+          // Grafika kroku (D-084): scena, wariant bez animacji i hotspot = cta.
+          image: 'scenes/biurko.svg',
+          imageReducedMotion: 'scenes/biurko-static.svg',
+          hotspot: { id: 'telefon', x: 49, y: 21.6, w: 16.3, h: 54.2 },
+        },
         {
           kind: 'call',
           caller: { name: 'Komisarz Adam Wolski', role: 'Wydział Cyberbezpieczeństwa' },
@@ -328,8 +338,23 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           tasks: [{ id: 'linki', text: 'Nie klikaj podejrzanych linków.', completeWhen: ['mail', 'kolejnosc'] }],
           cta: 'Przyjmuję',
           narration: audio('odprawa-3'),
+          // Dwie fazy (D-084): zamknięta teczka z hotspotem -> otwarte akta ze slotem na zadania.
+          closedImage: 'scenes/teczka.svg',
+          image: 'scenes/akta.svg',
+          hotspot: { id: 'teczka', x: 24.4, y: 17.4, w: 51.6, h: 69.5 },
+          slots: { tasks: { x: 54.1, y: 19.4, w: 37.1, h: 56.2 } },
         },
-        { kind: 'badge', cta: 'Do dzieła', narration: audio('odprawa-4') },
+        {
+          kind: 'badge',
+          cta: 'Do dzieła',
+          narration: audio('odprawa-4'),
+          image: 'scenes/legitymacja.svg',
+          slots: {
+            photo: { x: 55.1, y: 30, w: 11.2, h: 25.3 },
+            name: { x: 68.8, y: 33.7, w: 17.4, h: 5.3 },
+            number: { x: 68.8, y: 44.9, w: 17.4, h: 5.3 },
+          },
+        },
         { kind: 'start', text: 'Firma Testowa, drugie piętro.', cta: 'Wchodzę', narration: audio('odprawa-5') },
       ],
     },

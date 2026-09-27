@@ -35,6 +35,10 @@ export const ASSET_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'src'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
+  // Grafika kroków odprawy (BRIEFING, D-084): scena kroku, jej wariant bez animacji i zamknięta teczka kroku caseFile.
+  ['steps', '*', 'image'],
+  ['steps', '*', 'imageReducedMotion'],
+  ['steps', '*', 'closedImage'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

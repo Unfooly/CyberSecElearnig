@@ -556,15 +556,16 @@ try {
 
   await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
   await page.getByRole('button', { name: 'Skąd był ten mail?' }).click();
-  step('śledztwo: dialog pokazuje pierwszą kwestię, nie całość', (await page.getByText('Przyszedł dziś rano, podpisany jako bank.').count()) === 1 && (await page.getByText('Kliknęłam w link, zanim to sprawdziłam.').count()) === 0);
+  // Komunikator (D-087): kwestie przychodzą po "pisaniu" rozmówcy, jedna po drugiej.
+  await page.getByText('Przyszedł dziś rano, podpisany jako bank.').waitFor();
+  step('śledztwo: dialog pokazuje pierwszą kwestię, nie całość', (await page.getByText('Kliknęłam w link, zanim to sprawdziłam.').count()) === 0);
   step('śledztwo: avatar rozmówcy ładuje się przez <img>', (await page.locator('img[src$="/content/img/anna.svg"]').count()) === 1);
   await shoot('dialog-w-trakcie');
   await page.setViewportSize({ width: 390, height: 844 });
   await noHScroll('telefon, dialog');
   await shoot('dialog-w-trakcie-390');
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.getByRole('button', { name: 'Następna kwestia' }).click();
-  await page.getByRole('button', { name: 'Następna kwestia' }).click();
+  await page.locator('[role="log"][data-typing="false"]').waitFor();
   step('śledztwo: po ostatniej kwestii dowód (Dowody 3/?)', (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
   await page.getByRole('button', { name: 'Kontynuuj' }).click();
   await page.getByText('Blok ukończony.').waitFor();

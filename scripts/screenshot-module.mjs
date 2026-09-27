@@ -180,11 +180,12 @@ async function runViewport(viewport) {
 
   // --- DIALOGUE (Anna) - przechodzimy bez zrzutu (poza zakresem tej rundy) ---------------------------------------
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
+  // Komunikator (D-087): czekamy, aż rozmówca skończy "pisać" (data-typing na wątku), przed i po każdym pytaniu.
+  const chatIdle = () => page.locator('[role="log"][data-typing="false"]').waitFor();
   const askOne = async (text) => {
+    await chatIdle();
     await page.getByRole('button', { name: text, exact: true }).click();
-    while (await page.getByRole('button', { name: 'Następna kwestia' }).count()) {
-      await page.getByRole('button', { name: 'Następna kwestia' }).click();
-    }
+    await chatIdle();
   };
   const askAll = async (questions) => {
     for (const text of questions) await askOne(text);

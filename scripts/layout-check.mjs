@@ -30,9 +30,10 @@
 // docs/brand/screens/) - do wizualnej weryfikacji, niezależnie od wyniku. Pierwsze niepowodzenie zatrzymuje skrypt
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
 //
-// DIALOGUE (fix/dialogue-sticky-questions): OSOBNA, mniejsza pętla (DIALOGUE_VIEWPORTS - 1366x768 i 390x844
-// wprost z zadania, NIE cała lista VIEWPORTS wyżej) - `?block=rozmowa-anna` (packages/content/modules/wyludzone-haslo,
-// 5 pytań, >=8 wiadomości po zadaniu wszystkich). Sprawdza NA STARCIE, W TRAKCIE (po 2 pytaniach) i PO ZAKOŃCZENIU
+// DIALOGUE (fix/dialogue-sticky-questions, komunikator D-087): OSOBNA pętla (DIALOGUE_VIEWPORTS - 1920x1080, 1366x768, 844x390,
+// 390x844) - `?block=rozmowa-anna` (packages/content/modules/wyludzone-haslo, 5 pytań, >= 12 wiadomości po zadaniu wszystkich).
+// (g2) kolumna wątku max 760 px, wyśrodkowana; wskaźnik pisania w wątku, chipy nieaktywne, gdy rozmówca pisze. Sprawdza NA STARCIE
+// (także w trakcie "pisania" kwestii otwierającej), W TRAKCIE (drugie pytanie, rozmówca pisze) i PO ZAKOŃCZENIU
 // (kod review: pierwsza wersja sprawdzała tylko start/koniec - stopka ma NAJWIĘKSZĄ wysokość akurat na starcie
 // (wszystkie chipy naraz), więc same skrajne stany razem nie gwarantowały pokrycia stanu pośredniego):
 // (j) lista pytań (chipy) w całości widoczna wewnątrz .player-frame ORAZ player-content-area (to drugie faktycznie
@@ -72,13 +73,20 @@ const VIEWPORTS = [
 ];
 const PORTRAIT_VIEWPORT_NAMES = new Set(['390x844', '360x800']);
 
-// DIALOGUE (fix/dialogue-sticky-questions) - dwa konkretne viewporty z zadania, NIE cała lista VIEWPORTS wyżej
-// (desktop szeroki + telefon w pionie - dwa skrajne kształty, w których lista pytań najłatwiej nie zmieściłaby się
-// w całości).
+// DIALOGUE (fix/dialogue-sticky-questions; komunikator feat/dialogue-chat, D-087) - cztery rozdzielczości jak odprawa.
 const DIALOGUE_VIEWPORTS = [
+  { name: '1920x1080', width: 1920, height: 1080 },
   { name: '1366x768', width: 1366, height: 768 },
+  { name: '844x390', width: 844, height: 390 },
   { name: '390x844', width: 390, height: 844, isMobile: true },
 ];
+const DIALOGUE_MIN_MESSAGES = 12;
+
+// Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=dialogue,briefing. Bez zmiennej - wszystko (tak do opisu PR).
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier'];
+const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
+for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
+const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
 
 // BRIEFING (feat/module-briefing, D-081) - `?block=odprawa`, cztery rozdzielczości z planu PR 1. reducedMotion:'reduce':
 // każdy krok od razu w stanie końcowym (pisanie, spadająca karta, pieczątka), więc pomiar nie zależy od czasu animacji.
@@ -393,28 +401,63 @@ async function checkThreadScrolledToBottom(page, label, timeoutMs = 5000) {
   fail(`${label}: (l) wątek nie przewinął się do najnowszej wiadomości w ciągu ${timeoutMs}ms - odległość od dołu ${distanceFromBottom}px (>80px).`);
 }
 
-// Klika NAJWYŻEJ `maxQuestions` kolejnych dostępnych pytań (w tym "Następna kwestia" dla pytań wielokwestyjnych,
-// pętla wewnętrzna z WŁASNYM limitem iteracji - kod review: dawna wersja nie miała tu żadnego capu, DRUGA runda:
-// wyczerpanie limitu ma się głośno zgłosić, nie po cichu przejść dalej z niekompletnym stanem). Kończy wcześniej,
-// gdy lista "Pytania do zadania" znika z DOM (wszystkie zadane).
-async function clickSomeDialogueQuestions(page, maxQuestions) {
-  const nextButton = page.getByRole('button', { name: 'Następna kwestia' });
+// Komunikator (D-087): rozmówca "pisze" przed każdą kwestią - `data-typing` na wątku mówi, czy właśnie pisze.
+async function waitChatIdle(page) {
+  await page.locator('[role="log"][data-typing="false"]').waitFor({ timeout: 20000 });
+}
+
+// Klika NAJWYŻEJ `maxQuestions` kolejnych dostępnych pytań, za każdym razem czekając, aż rozmówca skończy pisać (wszystkie kwestie
+// pytania). `stopWhileTyping`: po ostatnim kliknięciu NIE czeka - stan pośredni ze wskaźnikiem pisania. Kończy wcześniej, gdy lista
+// "Pytania do zadania" znika z DOM (wszystkie zadane).
+async function clickSomeDialogueQuestions(page, maxQuestions, { stopWhileTyping = false } = {}) {
   const questionList = page.getByRole('list', { name: 'Pytania do zadania' });
   for (let asked = 0; asked < maxQuestions; asked += 1) {
-    let innerGuard = 0;
-    while ((await nextButton.count()) > 0) {
-      if (innerGuard >= 20) {
-        fail('clickSomeDialogueQuestions: przekroczono limit iteracji pętli "Następna kwestia" - podejrzenie nieskończonej pętli.');
-      }
-      await nextButton.click();
-      await page.waitForTimeout(30);
-      innerGuard += 1;
-    }
+    await waitChatIdle(page);
     if ((await questionList.count()) === 0) return;
     const chips = questionList.getByRole('button');
     if ((await chips.count()) === 0) return;
     await chips.first().click();
-    await page.waitForTimeout(30);
+    if (stopWhileTyping && asked === maxQuestions - 1) {
+      await page.getByTestId('dialogue-typing').waitFor();
+      return;
+    }
+  }
+  await waitChatIdle(page);
+}
+
+// (g2) Kolumna wątku: max 760 px i wyśrodkowana w wątku (tolerancja na pasek przewijania); wskaźnik pisania (gdy jest) w obszarze
+// wątku; chipy nieaktywne (aria-disabled), gdy rozmówca pisze.
+async function checkChatColumn(page, label) {
+  const log = await boxOf(page, '[role="log"]');
+  const thread = await boxOf(page, '[data-testid="dialogue-thread"]');
+  if (thread.width > 760 + 0.5) fail(`${label}: (g2) kolumna wątku ma ${thread.width}px (> 760px).`);
+  if (log.height < 80) fail(`${label}: (g2) wątek ma tylko ${log.height}px wysokości (< 80px) - rozmowy nie widać.`);
+  const left = thread.x - log.x;
+  const right = log.x + log.width - (thread.x + thread.width);
+  if (Math.abs(left - right) > 20) fail(`${label}: (g2) kolumna wątku nie jest wyśrodkowana (lewy margines ${left.toFixed(1)}px, prawy ${right.toFixed(1)}px).`);
+  const typing = page.getByTestId('dialogue-typing');
+  if ((await typing.count()) > 0) {
+    // Chipy od razu po wykryciu wskaźnika (krótka kwestia może skończyć się "pisać" w czasie czekania na przewinięcie niżej).
+    for (const chip of await page.getByRole('list', { name: 'Pytania do zadania' }).getByRole('button').all()) {
+      if ((await typing.count()) === 0) break;
+      if ((await chip.getAttribute('aria-disabled')) !== 'true') fail(`${label}: (g2) chip "${await chip.textContent()}" aktywny, gdy rozmówca pisze.`);
+    }
+    // Autoprzewijanie (smooth) do wskaźnika może jeszcze trwać - do 3 s na dojechanie, zanim zmierzymy.
+    await page
+      .waitForFunction(
+        () => {
+          const logEl = document.querySelector('[role="log"]');
+          const typingEl = document.querySelector('[data-testid="dialogue-typing"]');
+          if (!logEl || !typingEl) return true;
+          return typingEl.getBoundingClientRect().bottom <= logEl.getBoundingClientRect().bottom + 0.5;
+        },
+        undefined,
+        { timeout: 3000 },
+      )
+      .catch(() => {});
+    const box = await typing.boundingBox();
+    // Wskaźnik mógł w międzyczasie zniknąć (kwestia przyszła) - wtedy nie ma czego mierzyć.
+    if (box && !contains(log, box)) fail(`${label}: (g2) wskaźnik pisania poza wątkiem - ${JSON.stringify(box)}, wątek=${JSON.stringify(log)}.`);
   }
 }
 
@@ -589,7 +632,7 @@ try {
 
   browser = await chromium.launch();
 
-  for (const viewport of VIEWPORTS) {
+  for (const viewport of runs('hotspots') ? VIEWPORTS : []) {
     console.log(`\n--- viewport: ${viewport.name} ---`);
     // hasTouch: true - globals.css rozstrzyga tryb "telefon w poziomie" (844x390) po (pointer: coarse), nie tylko
     // wymiarach (kod review PR #44: wąskie/niskie okno na DESKTOPIE z myszą nie ma łapać tego trybu) - bez emulacji
@@ -646,7 +689,7 @@ try {
   }
 
   // DIALOGUE (fix/dialogue-sticky-questions) - patrz komentarz na górze pliku.
-  for (const viewport of DIALOGUE_VIEWPORTS) {
+  for (const viewport of runs('dialogue') ? DIALOGUE_VIEWPORTS : []) {
     console.log(`\n--- viewport (DIALOGUE): ${viewport.name} ---`);
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
@@ -657,6 +700,13 @@ try {
 
     await page.goto(`${WEB}/dev/player-harness?block=rozmowa-anna`);
     await page.getByTestId('player-content-area').waitFor();
+    // Kwestia otwierająca też jest "pisana" (D-087) - stan ze wskaźnikiem, potem start z wiadomością.
+    // Wskaźnik otwarcia żyje 0,7-2,2 s - przy wolnym starcie next dev może już zniknąć; wtedy ten stan pomijamy (sprawdza go "w trakcie").
+    if (await page.getByTestId('dialogue-typing').waitFor({ timeout: 5000 }).then(() => true, () => false)) {
+      await shot(page, `${viewport.name}-dialogue-00-pisze-otwarcie`);
+      await checkChatColumn(page, `${viewport.name} / rozmowa-anna (pisze - otwarcie)`);
+    }
+    await waitChatIdle(page);
     await shot(page, `${viewport.name}-dialogue-00-start`);
     await checkQuestionListVisible(page, `${viewport.name} / rozmowa-anna (start)`);
     // (e/k na starcie) sprawdzane też TERAZ, nie tylko po zakończeniu rozmowy (kod review: stopka na starcie ma
@@ -665,29 +715,30 @@ try {
     await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (start)`);
     step(`${viewport.name} / rozmowa-anna: (j, e) lista pytań mieści się w ramce/obszarze bloku na starcie`, true);
 
-    // Stan POŚREDNI (kod review: sprawdzenia tylko na starcie i po pełnym zakończeniu pomijały stan "część chipów
-    // zadana, część zostaje, wątek już ma kilka wiadomości") - `clickSomeDialogueQuestions(page, 2)` na rozmowa-anna
-    // (5 pytań) kończy z JEDNYM pytaniem w pełni zadanym i DRUGIM w trakcie (jego "Następna kwestia" wciąż widoczna) -
-    // stopka ma więc na tym etapie 3-4 pozostałe chipy + przycisk "Następna kwestia" naraz, dobry przypadek pośredni.
-    await clickSomeDialogueQuestions(page, 2);
-    await page.waitForTimeout(200);
+    // Stan POŚREDNI: jedno pytanie w pełni zadane, drugie w trakcie - rozmówca pisze (wskaźnik), chipy nieaktywne.
+    await clickSomeDialogueQuestions(page, 2, { stopWhileTyping: true });
+    await shot(page, `${viewport.name}-dialogue-01-pisze`);
     await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (w trakcie)`);
-    step(`${viewport.name} / rozmowa-anna: (e) obszar bloku nie przewija się w trakcie rozmowy`, true);
+    await checkChatColumn(page, `${viewport.name} / rozmowa-anna (w trakcie, pisze)`);
+    step(`${viewport.name} / rozmowa-anna: (e, g2) w trakcie - obszar bloku bez przewijania, wskaźnik pisania w wątku, chipy nieaktywne`, true);
 
     await clickAllDialogueQuestions(page);
     await page.waitForTimeout(200);
-    await shot(page, `${viewport.name}-dialogue-01-po-rozmowie`);
+    await shot(page, `${viewport.name}-dialogue-02-po-rozmowie`);
+    const messages = await page.getByTestId('dialogue-thread').getByRole('listitem').count();
+    if (messages < DIALOGUE_MIN_MESSAGES) fail(`${viewport.name} / rozmowa-anna: po rozmowie tylko ${messages} wiadomości (< ${DIALOGUE_MIN_MESSAGES}).`);
     await checkNoPageScroll(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
     await checkMainSceneFits(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
+    await checkChatColumn(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
     await checkThreadScrolledToBottom(page, `${viewport.name} / rozmowa-anna (po rozmowie)`);
-    step(`${viewport.name} / rozmowa-anna: (k, l) strona/obszar bloku nie przewijają się, wątek przewinięty do dołu po >=8 wiadomościach`, true);
+    step(`${viewport.name} / rozmowa-anna: (k, l, g2) ${messages} wiadomości - strona/obszar bloku bez przewijania, kolumna ≤ 760 px wyśrodkowana, wątek na dole`, true);
 
     await context.close();
   }
 
   // Miniatury kursów (D-084, /dev/courses-harness): (c1) każda miniatura załadowana, 16:9 (±2%), w całości w swojej karcie;
   // (c2) karta bez miniatury nie ma obrazka (dotychczasowy wygląd); (c3) strona bez poziomego przewijania.
-  for (const viewport of BRIEFING_VIEWPORTS) {
+  for (const viewport of runs('catalog') ? BRIEFING_VIEWPORTS : []) {
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
     const page = await context.newPage();
     const label = `${viewport.name} / katalog kursów`;
@@ -719,7 +770,7 @@ try {
   // Animacje scen (D-084) przy reducedMotion:'reduce': (r1) KAŻDY obraz SVG w obszarze bloku (scena, zagnieżdżona scena
   // pulpitu, zbliżenie maila) ma w adresie #static - zatrzymuje animacje CSS w pliku - i się ładuje; (r2) scena nadal mieści się w
   // obszarze bloku; (r3) zbliżenie bez ruchu kamery (pudełko sceny bez transformu), grafika i przyciski się mieszczą.
-  for (const viewport of BRIEFING_VIEWPORTS) {
+  for (const viewport of runs('reduced-motion') ? BRIEFING_VIEWPORTS : []) {
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       hasTouch: true,
@@ -755,7 +806,7 @@ try {
   }
 
   // BRIEFING (feat/module-briefing, D-081) - patrz checkBriefingStep.
-  for (const viewport of BRIEFING_VIEWPORTS) {
+  for (const viewport of runs('briefing') ? BRIEFING_VIEWPORTS : []) {
     console.log(`\n--- viewport (BRIEFING): ${viewport.name} ---`);
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
@@ -790,7 +841,7 @@ try {
   }
 
   // DOSSIER (feat/dossier-folder, D-083) - patrz checkDossierDocument.
-  for (const viewport of BRIEFING_VIEWPORTS) {
+  for (const viewport of runs('dossier') ? BRIEFING_VIEWPORTS : []) {
     console.log(`\n--- viewport (DOSSIER): ${viewport.name} ---`);
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },

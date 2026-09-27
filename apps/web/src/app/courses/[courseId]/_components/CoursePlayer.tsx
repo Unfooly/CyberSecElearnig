@@ -33,7 +33,7 @@ import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
 import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './player/notes';
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
-import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
+import { DEFAULT_HINT, HintProvider, useHints } from './player/hints';
 import { useNarrationPreference } from './player/useNarrationPreference';
 import { SfxProvider } from '@/lib/sfx';
 
@@ -122,22 +122,22 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
 
 const NOTES_ID = 'notes-panel';
 
-// Woła hooki, które MUSZĄ być dziećmi NotesProvider/MascotReactionProvider (useNotes, useMascotReaction) - liczbę
-// notatek i bieżącą maskotkę PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
+// Woła hooki, które MUSZĄ być dziećmi NotesProvider/HintProvider (useNotes, useHints) - liczbę notatek i bieżącą podpowiedź
+// PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
 function StageWithContext({
-  idleMascot,
-  showMascot,
+  idleHint,
+  showHint,
   ...props
-}: Omit<React.ComponentProps<typeof PlayerStage>, 'notesCount' | 'mascot'> & {
-  /** Poza spoczynkowa maskotki bieżącego bloku (z treści albo domyślna dla typu); reakcja na zdarzenie (np. nowy dowód) ją chwilowo zastępuje. */
-  idleMascot?: { pose: string; text?: string };
-  /** false w trybie podsumowania - Fooli nie nakłada się na ekran wyniku. */
-  showMascot: boolean;
+}: Omit<React.ComponentProps<typeof PlayerStage>, 'notesCount' | 'hint'> & {
+  /** Stała podpowiedź bieżącego bloku (z treści albo domyślna dla typu); podpowiedź zdarzenia (np. nowy dowód) ją chwilowo zastępuje. */
+  idleHint?: string;
+  /** false w trybie podsumowania - podpowiedź nie nakłada się na ekran zamknięcia sprawy. */
+  showHint: boolean;
 }) {
   const { notes } = useNotes();
-  const { reaction } = useMascotReaction();
-  const shown = showMascot ? (reaction ?? idleMascot) : undefined;
-  return <PlayerStage {...props} notesCount={notes.length} mascot={shown} />;
+  const { hint } = useHints();
+  const shown = showHint ? (hint ?? idleHint) : undefined;
+  return <PlayerStage {...props} notesCount={notes.length} hint={shown} />;
 }
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
@@ -331,7 +331,7 @@ export default function CoursePlayer({
       // commitcie, więc jego wynik się ostaje; gdy nie zgłosi (QUIZ, SUMMARY), zostaje poprawnie null.
       setReadySubmit(null);
       // Bloki eksploracyjne (SCENE_HOTSPOTS/DIALOGUE/NOTEPAD/TABS/NARRATIVE/SUMMARY/BRIEFING) i TEXT_INPUT_GUIDED pokazują swój
-      // wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle ruszy (mascot-reaction.tsx: useCompleteReaction;
+      // wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle ruszy (player/hints.tsx: useCompleteHint;
       // TextInputBlock: stan `done`) - osobny ekran "Blok ukończony." z jeszcze jednym "Dalej" byłby powtórzeniem
       // tego, co user już widział (raport z pierwszego przejścia modułu 1). Dla nich ZOSTAJE feedback=null: state
       // niżej sam przenosi na kolejny blok ALBO (gdy to była TA odpowiedź, co kończy kurs - `state.status` już
@@ -342,7 +342,7 @@ export default function CoursePlayer({
       // po code review) - zostaje normalny ekran feedbacku z wyjaśnieniem odpowiedzi (bez niego user by je stracił -
       // ekran zamknięcia ma tylko zagregowany wynik procentowy). "Dalej" na tym ekranie (continueAfterFeedback czyści
       // `feedback`) samo przechodzi na ekran zamknięcia, bo `state.status` jest już 'COMPLETED' z TEGO zapisu -
-      // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Ekran zamknięcia nie ma reakcji maskotki (D-089).
+      // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Ekran zamknięcia nie ma podpowiedzi ani reakcji (D-089, D-093).
       const skipsFeedbackScreen = isExploratory(progress.lastResult.type) || progress.lastResult.type === 'TEXT_INPUT_GUIDED';
       if (skipsFeedbackScreen) {
         setFeedback(null);
@@ -449,7 +449,7 @@ export default function CoursePlayer({
   // prosty ekran zamknięcia/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
   // Ekran zamknięcia sprawy z raportem (D-089) wypełnia ramkę jak scena; bez `closing` - panel jak slajd.
   // ORDERING (tablica śledcza, D-088) też 'fill' - także jej wynik zaraz po zapisie (wynik jest na tej samej tablicy); w 'fill'
-  // PlayerStage nie dokłada paska maskotki, zdanie informacji zwrotnej jest pod tablicą.
+  // PlayerStage nie dokłada paska podpowiedzi, zdanie informacji zwrotnej jest pod tablicą.
   const boardFeedback = showingFeedback && blocks[feedback.blockIndex]?.type === 'ORDERING' && !!feedback.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
@@ -625,7 +625,7 @@ export default function CoursePlayer({
     <SfxProvider enabled={preference.enabled}>
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
-        <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
+        <HintProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
           <ApplyServerNotes notes={serverNotes} />
           <StageWithContext
             title={initial.title}
@@ -634,16 +634,11 @@ export default function CoursePlayer({
             completedBlocks={isSummaryMode ? blocks.length : state.currentBlockIndex}
             headingRef={headingRef}
             resultAnnouncement={resultAnnouncement}
-            showMascot={!isSummaryMode}
+            showHint={!isSummaryMode}
             evidence={<EvidenceCounter />}
             topAction={skipBriefing}
-            idleMascot={
-              currentBlock && !showingFeedback && !isSummaryMode
-                ? currentBlock.mascot
-                  ? { pose: currentBlock.mascot.pose, text: currentBlock.mascot.text }
-                  : DEFAULT_IDLE[currentBlock.type]
-                : undefined
-            }
+            // `block.mascot` z treści: liczy się tylko tekst (poza przestarzała, D-093); bez tekstu - domyślna dla typu (jeśli jest).
+            idleHint={currentBlock && !showingFeedback && !isSummaryMode ? (currentBlock.mascot?.text ?? DEFAULT_HINT[currentBlock.type]) : undefined}
             contentLayout={contentLayout}
             stage={
               <>
@@ -701,7 +696,7 @@ export default function CoursePlayer({
             }
             forwardHint={showingFeedback ? 'Użyj przycisku pod wynikiem.' : !reviewing ? 'Ukończ ten blok, aby przejść dalej.' : undefined}
           />
-        </MascotReactionProvider>
+        </HintProvider>
       </EvidenceProvider>
     </NotesProvider>
     </SfxProvider>

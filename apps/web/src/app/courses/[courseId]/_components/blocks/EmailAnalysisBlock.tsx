@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, Info, Paperclip, X } from 'lucide-react';
 import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
-import { useMascotReaction } from '../player/mascot-reaction';
+import { useHints } from '../player/hints';
 
 // Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
 // linki). Kryteria zaznacza się klikając FRAGMENT maila (nadawca, temat, link, załącznik, fragment tekstu) - to zwykłe, fokusowalne
@@ -105,7 +105,7 @@ export default function EmailAnalysisBlock({
 }) {
   const email = block.email;
   const criteria = useMemo(() => block.criteria ?? [], [block.criteria]);
-  const mascot = useMascotReaction();
+  const hints = useHints();
   // Wybór gracza: z odpowiedzi serwera, a gdy jej brak (starszy zapis), z rozstrzygnięcia (detail.criteria[].selected).
   const [selected, setSelected] = useState<string[]>(
     result?.answer?.selected ?? (result?.detail?.criteria ?? []).filter((criterion) => criterion.selected).map((criterion) => criterion.id),
@@ -122,12 +122,12 @@ export default function EmailAnalysisBlock({
     return detail.correct ? 'missed' : 'neutral';
   };
 
-  // Reakcja maskotki na wynik (tylko w fazie wyniku po zapisie, czyli gdy jest `onContinue`; nie w podglądzie "Wstecz"). Reakcja z
+  // Podpowiedź-reakcja na wynik (tylko w fazie wyniku po zapisie, czyli gdy jest `onContinue`; nie w podglądzie "Wstecz"). Reakcja z
   // treści (schemaVersion 4, reactions.result) ma pierwszeństwo; starsza treść bez niej dostaje ogólne ostrzeżenie przy błędzie.
   useEffect(() => {
     if (!onContinue || !result) return;
-    if (result.reaction) mascot.show(result.reaction);
-    else if (result.correct === false) mascot.react('wrong');
+    if (result.reaction) hints.show(result.reaction);
+    else if (result.correct === false) hints.notify('wrong');
     // Jednorazowo przy pokazaniu wyniku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

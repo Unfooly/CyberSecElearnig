@@ -45,7 +45,7 @@ const progressResponse = {
   }),
 };
 
-describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
+describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
   // prefers-reduced-motion: zbliżenie przedmiotu (D-086) otwiera się i zamyka bez ruchu kamery, więc synchronicznie.
   const originalMatchMedia = window.matchMedia;
   beforeEach(() => {
@@ -90,7 +90,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
       ...overrides,
     });
 
-  it('licznik startuje z serwera, dowód z hotspotu podbija go od razu, maskotka się cieszy, odpowiedź niesie noted, a po zapisie liczby są z serwera', async () => {
+  it('licznik startuje z serwera, dowód z hotspotu podbija go od razu, podpowiedź o dowodzie, odpowiedź niesie noted, a po zapisie liczby są z serwera', async () => {
     const response = {
       ok: true,
       status: 200,
@@ -110,14 +110,13 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
 
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/1');
-    // Domyślna poza spoczynkowa dla scen z punktami.
-    expect(screen.getByAltText('Maskotka Unfooly wskazuje')).toBeInTheDocument();
+    // Domyślna podpowiedź dla scen z punktami (bez postaci, D-093).
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
-    expect(screen.getByAltText('Maskotka Unfooly się cieszy')).toBeInTheDocument();
-    expect(screen.getByText('Mamy dowód! Trafił do notatnika.')).toBeInTheDocument();
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Mamy dowód! Trafił do notatnika.');
     expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
 
     // "Dalej" w pasku powłoki (nie osobny "Kontynuuj" w bloku): wymagane elementy zebrane, więc jest już aktywne.
@@ -301,28 +300,32 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getAllByRole('button', { name: 'Monitor' })).toHaveLength(1);
   });
 
-  it('hotfix fix/mascot-overlap: otwarte zbliżenie przedmiotu chowa maskotkę (nie zasłania "Zabierz"/"Odłóż", nie łapie kliknięć); klik w hotspot zwija dymek od razu; zamknięcie przywraca WYŁĄCZNIE ikonkę (zwiniętą)', () => {
+  it('hotfix fix/mascot-overlap: otwarte zbliżenie przedmiotu chowa podpowiedź (nie zasłania "Zabierz"/"Odłóż", nie łapie kliknięć); klik w hotspot zwija dymek od razu; zamknięcie przywraca WYŁĄCZNIE ikonkę (zwiniętą)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
 
-    const mascotIcon = screen.getByRole('button', { name: 'Fooli - pokaż wiadomość' });
+    const hintRoot = screen.getByTestId('hint-overlay');
+    const hintIcon = screen.getByRole('button', { name: 'Pokaż podpowiedź' });
     const bubble = screen.getByRole('status').parentElement as HTMLElement;
-    // Domyślna poza sceny z punktami (DEFAULT_IDLE) - dymek widoczny od startu.
-    expect(mascotIcon.className).toMatch(/\bvisible\b/);
-    expect(mascotIcon.className).not.toMatch(/pointer-events-none/);
-    expect(mascotIcon).not.toHaveAttribute('aria-hidden');
+    // Domyślna podpowiedź sceny z punktami (DEFAULT_HINT) - dymek widoczny od startu. Korzeń ma pointer-events-none
+    // (nie łapie kliknięć w scenę), klikalne są tylko ikona i dymek; przy rozwiniętym dymku ikona jest poza Tab.
+    expect(hintRoot.className).toMatch(/pointer-events-none/);
+    expect(hintIcon).not.toHaveAttribute('aria-hidden');
     expect(bubble.className).toMatch(/opacity-100/);
 
-    // Klik w hotspot otwiera kartę - overlay-stack niepusty, więc dymek zwija się i ikonka chowa się/przestaje
-    // łapać kliknięcia (punkty 1-2; punkt 3, "sama interakcja bez żadnej nakładki też zwija dymek", ma osobny test
-    // niżej na bloku bez overlay-stack - tu fireEvent.click nie wysyła pointerdown, więc nie odróżniłby przyczyny).
+    // Klik w hotspot otwiera kartę - overlay-stack niepusty, więc dymek zwija się, a ikonka chowa się/przestaje
+    // łapać kliknięcia (punkt 3, "sama interakcja bez żadnej nakładki też zwija dymek", ma osobny test niżej).
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
 
     expect(bubble.className).toMatch(/opacity-0/);
-    expect(mascotIcon.className).toMatch(/invisible/);
-    expect(mascotIcon.className).toMatch(/pointer-events-none/);
-    expect(mascotIcon).toHaveAttribute('aria-hidden', 'true');
+    expect(bubble.className).toMatch(/pointer-events-none/);
+    expect(hintIcon.className).toMatch(/invisible/);
+    expect(hintIcon).toHaveAttribute('aria-hidden', 'true');
+    expect(hintIcon).toHaveAttribute('tabindex', '-1');
+    // Region aria-live zostaje w drzewie dostępności (reakcja pod zbliżeniem zostanie ogłoszona).
+    expect(hintRoot).not.toHaveAttribute('aria-hidden');
+    expect(within(hintRoot).getByRole('status')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
 
-    // Przyciski zbliżenia ("Zabierz", "Odłóż") są osiągalne i klikalne - maskotka faktycznie ich nie zasłania
+    // Przyciski zbliżenia ("Zabierz", "Odłóż") są osiągalne i klikalne - podpowiedź faktycznie ich nie zasłania
     // ani nie przechwytuje kliknięcia (gdyby przechwytywała, fireEvent.click poniżej i tak by "trafił" w DOM-owy
     // element pod wskazanym testowym selektorem - to RTL, nie prawdziwy hit-testing przeglądarki - ale asercja na
     // invisible/pointer-events-none wyżej jest tym, co faktycznie to gwarantuje w prawdziwej przeglądarce).
@@ -333,13 +336,13 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Odłóż' }));
 
     // Ikonka wraca (widoczna, klikalna, osiągalna), ale dymek ZOSTAJE zwinięty - nie rozwija się sam po zamknięciu karty.
-    expect(mascotIcon.className).toMatch(/\bvisible\b/);
-    expect(mascotIcon.className).not.toMatch(/pointer-events-none/);
-    expect(mascotIcon).not.toHaveAttribute('aria-hidden');
+    expect(hintIcon.className).not.toMatch(/invisible/);
+    expect(hintIcon).not.toHaveAttribute('aria-hidden');
+    expect(hintIcon).not.toHaveAttribute('tabindex');
     expect(bubble.className).toMatch(/opacity-0/);
   });
 
-  it('hotfix fix/mascot-overlap (kod review, druga runda - regresja): przejście "Dalej" na nowy blok z INNYM komunikatem maskotki pokazuje dymek od razu, mimo że CoursePlayer.tsx w tym samym momencie programowo przenosi fokus na nagłówek nowego bloku', async () => {
+  it('hotfix fix/mascot-overlap (kod review, druga runda - regresja): przejście "Dalej" na nowy blok z INNĄ podpowiedzią pokazuje dymek od razu, mimo że CoursePlayer.tsx w tym samym momencie programowo przenosi fokus na nagłówek nowego bloku', async () => {
     const response = {
       ok: true,
       status: 200,
@@ -366,8 +369,8 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await screen.findByText('Pytanie?');
 
-    // Nowy blok, nowy komunikat maskotki - dymek MUSI być rozwinięty, nie zwinięty przez programowy fokus na
-    // nagłówek nowego bloku (headingRef.current?.focus() w CoursePlayer.tsx, ten sam commit co zmiana pose/text).
+    // Nowy blok, nowa podpowiedź - dymek MUSI być rozwinięty, nie zwinięty przez programowy fokus na
+    // nagłówek nowego bloku (headingRef.current?.focus() w CoursePlayer.tsx, ten sam commit co zmiana tekstu).
     expect(screen.getByText('Zastanów się chwilę.')).toBeInTheDocument();
     const bubble = screen.getByRole('status').parentElement as HTMLElement;
     expect(bubble.className).toMatch(/opacity-100/);
@@ -398,25 +401,25 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('autor może nadpisać pozę spoczynkową w treści (block.mascot wygrywa z domyślną dla typu)', () => {
+  it('przestarzała poza z treści (block.mascot.pose) jest ignorowana - żadnego obrazka postaci', () => {
     const base = sceneCourse();
     const blocks = [{ ...base.contentBlocks[0], mascot: { pose: 'thinking', text: 'Rozejrzyj się.' } }, base.contentBlocks[1]];
     render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: blocks })} narrationEnabled={false} />);
-    expect(screen.getByAltText('Maskotka Unfooly się zastanawia')).toBeInTheDocument();
-    expect(screen.queryByAltText('Maskotka Unfooly wskazuje')).not.toBeInTheDocument();
-    expect(screen.getByText('Rozejrzyj się.')).toBeInTheDocument();
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się.');
+    expect(screen.queryByAltText(/Maskotka/)).not.toBeInTheDocument();
+    expect(document.querySelector('img[src^="/mascot/"]')).toBeNull();
   });
 
-  it('maskotka sceny bez tekstu w treści dostaje domyślny tekst dymka (nigdy sama, jakby wskazywała w pustkę)', () => {
+  it('scena bez podpowiedzi w treści dostaje domyślny tekst dymka', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
-    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
   });
 
-  it('tekst maskotki z treści bloku nadpisuje domyślny', () => {
+  it('tekst podpowiedzi z treści bloku nadpisuje domyślny', () => {
     const base = sceneCourse();
     const blocks = [{ ...base.contentBlocks[0], mascot: { pose: 'pointing', text: 'Zajrzyj pod biurko.' } }, base.contentBlocks[1]];
     render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: blocks })} narrationEnabled={false} />);
-    expect(screen.getByTestId('mascot-says')).toHaveTextContent('Zajrzyj pod biurko.');
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Zajrzyj pod biurko.');
     expect(screen.queryByText('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.')).not.toBeInTheDocument();
   });
 
@@ -482,7 +485,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     );
   });
 
-  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na ekran zamknięcia sprawy - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie"; od D-089 bez dymka Fooli (zamiast niego liścik komisarza na raporcie)', async () => {
+  it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na ekran zamknięcia sprawy - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie"; od D-089 bez dymka podpowiedzi (zamiast niego liścik komisarza na raporcie)', async () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -518,7 +521,8 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     // Ekran feedbacku dla SUMMARY jest pominięty (skipsFeedbackScreen) - fokus ląduje WPROST na widocznym nagłówku
     // ekranu zamknięcia (D-076).
     expect(document.activeElement).toBe(summaryHeading);
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 
   it('D-089: SUMMARY z `closing` - świeże ukończenie uruchamia ceremonię raportu, podpis z imienia gracza (moduł bez odprawy też pyta o imię), pasek bez "Wróć do biblioteki", "Rozpocznij od nowa" zostaje', async () => {
@@ -733,7 +737,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     expect(screen.getByText(/Wynik: 50%/)).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
-    expect(screen.getByAltText('Maskotka Unfooly ostrzega')).toBeInTheDocument(); // zła odpowiedź: warning
+    expect(screen.getByTestId('hint-bar')).toHaveTextContent('Uważaj, coś tu nie gra.'); // zła odpowiedź
 
     // Dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem (pierwszy w DOM).
     fireEvent.click(screen.getAllByRole('button', { name: /^Dalej$/ })[0]);

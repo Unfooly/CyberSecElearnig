@@ -2,12 +2,12 @@
 
 import { useEffect } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
-import { useCompleteReaction } from '../player/mascot-reaction';
+import { useCompleteHint } from '../player/hints';
 import { SimpleMarkdown } from '../simple-markdown';
 
 // Blok narracyjny (schemaVersion 4): sam tekst, bez interakcji poza "Dalej" - w przeciwieństwie do SUMMARY może wystąpić wielokrotnie,
-// w dowolnym miejscu modułu (np. wprowadzenie do sceny). Reakcja maskotki na ukończenie (reactions.complete) odpala się od razu po
-// zamontowaniu: blok nie ma nic do "pokrycia" (patrz mascot-reaction.tsx, useCompleteReaction). "Dalej" jest wyłącznie w pasku powłoki
+// w dowolnym miejscu modułu (np. wprowadzenie do sceny). Reakcja (podpowiedź) na ukończenie (reactions.complete) odpala się od razu po
+// zamontowaniu: blok nie ma nic do "pokrycia" (patrz player/hints.tsx, useCompleteHint). "Dalej" jest wyłącznie w pasku powłoki
 // (bez osobnego przycisku tutaj), gotowe od razu po zamontowaniu - patrz ExploreFooter.
 export default function NarrativeBlock({
   block,
@@ -21,7 +21,7 @@ export default function NarrativeBlock({
   onReady: (submit: (() => void) | null) => void;
   review?: boolean;
 }) {
-  useCompleteReaction(block.reactions?.complete, true, review);
+  useCompleteHint(block.reactions?.complete, true, review);
 
   useEffect(() => {
     if (review) return;

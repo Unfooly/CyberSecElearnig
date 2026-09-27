@@ -71,10 +71,9 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     );
 
     // Blok OCENIANY kończący kurs: zostaje normalny ekran feedbacku (D-076) - jeszcze NIE podsumowanie. Reakcja z
-    // lastResult.reaction pokazuje się TUTAJ (FeedbackPanel woła mascot.show(), MascotBanner ją renderuje - ekran
-    // feedbacku to contentLayout='slide', fix/dialogue-polish: pasek, NIE floating MascotOverlay/mascot-says).
+    // lastResult.reaction pokazuje się TUTAJ - od D-093 jako zwykły tekst pod wynikiem w FeedbackPanel (bez maskotki).
     expect(await screen.findByText('Poprawna odpowiedź!')).toBeInTheDocument();
-    expect(screen.getByTestId('mascot-banner')).toHaveTextContent('Świetna robota!');
+    expect(screen.getByTestId('feedback-reaction')).toHaveTextContent('Świetna robota!');
     expect(screen.queryByRole('heading', { level: 2, name: 'Sprawa zamknięta' })).not.toBeInTheDocument();
 
     // Dwa przyciski "Dalej" na ekranie feedbacku: aktywny pod wynikiem (pierwszy w DOM) i nieaktywny w powłoce -
@@ -91,11 +90,11 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     expect(screen.getAllByText('Rozpoznawanie phishingu')).toHaveLength(2);
     // gamification: null w odpowiedzi (badge się nie odblokował w tym scenariuszu testowym) -> brak karty nagrody.
     expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
-    // Reakcja Fooli na wynik TEGO bloku była już pokazana w ekranie feedbacku wyżej (przez FeedbackPanel/
-    // useMascotReaction, asercja powyżej) - SummaryScreen jej NIE powtarza (finalReaction zostaje null, gdy ekran
-    // feedbacku nie był pominięty - CoursePlayer.tsx, D-076; bez `&& skipsFeedbackScreen` w tym warunku ten
-    // mascot-banner by tu wrócił, bo status jest już 'COMPLETED').
-    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
+    // Reakcja na wynik TEGO bloku była już pokazana w ekranie feedbacku wyżej - ekran zamknięcia sprawy jej NIE
+    // powtarza i nie ma na nim podpowiedzi (showHint=false w trybie podsumowania).
+    expect(screen.queryByTestId('feedback-reaction')).not.toBeInTheDocument();
+    expect(screen.queryByText('Świetna robota!')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 
   it('pokazuje kartę nagrody (RewardCard, inline na SummaryScreen) z danymi z odpowiedzi /progress, gdy kurs kończy się z gamification (po ekranie feedbacku bloku ocenianego - D-076)', async () => {

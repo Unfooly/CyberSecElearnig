@@ -6,7 +6,7 @@ import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST } from '
 import { typingDelayMs } from './DialogueBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
-import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { HINT_EVENT_TEXT, HintProvider, useHints } from '../player/hints';
 import { OverlayStackProvider, useCloseTopOverlay } from '../player/overlay-stack';
 import type { ContentBlock, EvidenceSummary } from '@/lib/courses-types';
 
@@ -82,11 +82,11 @@ const dialogue: ContentBlock = {
 
 function Probe() {
   const { notes } = useNotes();
-  const { reaction } = useMascotReaction();
+  const { hint } = useHints();
   return (
     <>
       <output data-testid="notes">{notes.map((n) => `${n.kind ?? '-'}:${n.text}`).join('|')}</output>
-      <output data-testid="reaction">{reaction?.pose ?? ''}</output>
+      <output data-testid="reaction">{hint ?? ''}</output>
     </>
   );
 }
@@ -111,7 +111,7 @@ function setup(
       <EscapeCascadeBridge />
       <NotesProvider initial={[]} blockTitles={options.titles ?? { scena: 'Biuro', rozmowa: 'Rozmowa z Anną' }}>
         <EvidenceProvider summary={options.summary}>
-          <MascotReactionProvider resetKey="k">
+          <HintProvider resetKey="k">
             <EvidenceCounter />
             <ExploratoryBlock
               block={block}
@@ -127,7 +127,7 @@ function setup(
             />
             <Probe />
             <NotesPanel id="panel" />
-          </MascotReactionProvider>
+          </HintProvider>
         </EvidenceProvider>
       </NotesProvider>
     </OverlayStackProvider>,
@@ -238,7 +238,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument();
   });
 
-  it('klik w punkt otwiera zbliżenie z fokusem na "Zabierz"; "Zabierz" zalicza dowód (notatnik z ikoną rodzaju, licznik, maskotka), odkłada przedmiot i oddaje fokus; ponowne otwarcie: tylko "Odłóż" i "W notatniku"', () => {
+  it('klik w punkt otwiera zbliżenie z fokusem na "Zabierz"; "Zabierz" zalicza dowód (notatnik z ikoną rodzaju, licznik, podpowiedź), odkłada przedmiot i oddaje fokus; ponowne otwarcie: tylko "Odłóż" i "W notatniku"', () => {
     const { onSubmit, ready } = setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
     fireEvent.click(trigger);
@@ -251,7 +251,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(document.activeElement).toBe(trigger);
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło na kartce.');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
-    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.evidence);
 
     // Panel notatnika: grupa z nazwą sceny, ikona (etykieta) rodzaju.
     const panel = screen.getByRole('complementary', { name: 'Notatnik' });
@@ -453,9 +453,9 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (hotfix fix/player-scene-fit/B-10
         <EscapeCascadeBridge />
         <NotesProvider initial={[]} blockTitles={{ scena: 'Biuro' }}>
           <EvidenceProvider summary={undefined}>
-            <MascotReactionProvider resetKey="k">
+            <HintProvider resetKey="k">
               <ExploratoryBlock block={scene} contentBase="/content" onSubmit={vi.fn()} onReady={vi.fn()} disabled={false} />
-            </MascotReactionProvider>
+            </HintProvider>
           </EvidenceProvider>
         </NotesProvider>
       </OverlayStackProvider>,
@@ -1153,7 +1153,7 @@ describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
     expect(screen.getByText('Kliknęłam w link.')).toBeInTheDocument();
     expect(screen.queryByTestId('dialogue-typing')).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail przyszedł rano.');
-    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.evidence);
     expect(screen.getByText('Wszystkie wymagane pytania zadane.')).toBeInTheDocument();
 
     expect(ready.current).not.toBeNull();
@@ -1319,9 +1319,9 @@ describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
     const { unmount } = render(
       <NotesProvider initial={[]}>
         <EvidenceProvider summary={undefined}>
-          <MascotReactionProvider resetKey="k">
+          <HintProvider resetKey="k">
             <ExploratoryBlock block={dialogue} contentBase="/content" onSubmit={() => {}} onReady={() => {}} disabled={false} />
-          </MascotReactionProvider>
+          </HintProvider>
         </EvidenceProvider>
       </NotesProvider>,
     );
@@ -1333,7 +1333,7 @@ describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
     render(
       <NotesProvider initial={[]}>
         <EvidenceProvider summary={undefined}>
-          <MascotReactionProvider resetKey="k">
+          <HintProvider resetKey="k">
             <ExploratoryBlock
               block={{ ...dialogue, character: { name: 'Anna', avatar: 'https://evil.example/a.png' } }}
               contentBase="/content"
@@ -1341,7 +1341,7 @@ describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
               onReady={() => {}}
               disabled={false}
             />
-          </MascotReactionProvider>
+          </HintProvider>
         </EvidenceProvider>
       </NotesProvider>,
     );
@@ -1482,7 +1482,7 @@ describe('DIALOGUE: sticky pytania i autoprzewijanie wątku (fix/dialogue-sticky
   });
 });
 
-describe('DIALOGUE: dymki w-fit/max-w-[75%], avatar gracza, pasek Fooli (fix/dialogue-polish)', () => {
+describe('DIALOGUE: dymki w-fit/max-w-[75%], avatar gracza, pasek podpowiedzi (fix/dialogue-polish)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -1545,15 +1545,21 @@ describe('DIALOGUE: dymki w-fit/max-w-[75%], avatar gracza, pasek Fooli (fix/dia
     expect(avatarImgs[0].closest('div')).not.toContainElement(screen.getByText('Wyglądał jak od banku.'));
   });
 
-  it('pasek Fooli (MascotBanner) w DIALOGUE renderuje się z block.mascot - NIE MascotOverlay (floating)', () => {
+  it('pasek podpowiedzi (Hint bar) w DIALOGUE renderuje się z tekstem block.mascot (pose ignorowana) - NIE nakładka sceny', () => {
     setup({ ...dialogue, mascot: { pose: 'pointing', text: 'Zapytaj o nadawcę.' } });
-    expect(screen.getByTestId('mascot-banner')).toBeInTheDocument();
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hint-bar')).toHaveTextContent('Zapytaj o nadawcę.');
+    expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /maskotka/i })).not.toBeInTheDocument();
   });
 
-  it('podgląd "Wstecz" (review=true): pasek Fooli NIE renderuje się (unika przecieku reakcji z żywego bloku, dzieli ten sam MascotReactionProvider)', () => {
+  it('DIALOGUE bez block.mascot i bez zdarzenia: brak paska (rozmowa nie ma domyślnej podpowiedzi)', () => {
+    setup(dialogue);
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
+  });
+
+  it('podgląd "Wstecz" (review=true): pasek podpowiedzi NIE renderuje się (unika przecieku reakcji z żywego bloku, dzieli ten sam HintProvider)', () => {
     setup({ ...dialogue, mascot: { pose: 'pointing', text: 'Zapytaj o nadawcę.' } }, { review: true });
-    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 });
 

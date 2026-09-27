@@ -20,7 +20,7 @@ export interface ScoredResult {
   detail?: ResultDetail;
   correct?: boolean;
   points?: number;
-  // Reakcja maskotki na wynik (schemaVersion 4), dopiero po ukończeniu - patrz packages/content D-061.
+  // Reakcja na wynik (schemaVersion 4; od D-093 tylko tekst), dopiero po ukończeniu - patrz packages/content D-061.
   reaction?: ContentReaction;
 }
 

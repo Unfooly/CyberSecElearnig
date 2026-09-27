@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import FeedbackPanel from './FeedbackPanel';
-import { MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 
 describe('FeedbackPanel', () => {
   it('pokazuje "Poprawna odpowiedź!" dla correct=true', () => {
@@ -55,16 +54,17 @@ describe('FeedbackPanel', () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  it('reaction z treści (schemaVersion 4, np. QUIZ/BRANCHING_SCENARIO) pokazuje się przez dymek maskotki w powłoce', () => {
-    function Probe() {
-      return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
-    }
+  it('reaction z treści (schemaVersion 4, np. QUIZ/BRANCHING_SCENARIO): sam tekst pod wynikiem, bez postaci (pose ignorowana)', () => {
     render(
-      <MascotReactionProvider resetKey="k">
-        <FeedbackPanel feedback={{ blockIndex: 0, type: 'QUIZ', correct: true, reaction: { pose: 'cheer', text: 'Brawo!' } }} onContinue={vi.fn()} continueLabel="Dalej" />
-        <Probe />
-      </MascotReactionProvider>,
+      <FeedbackPanel feedback={{ blockIndex: 0, type: 'QUIZ', correct: true, reaction: { pose: 'cheer', text: 'Brawo!' } }} onContinue={vi.fn()} continueLabel="Dalej" />,
     );
-    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    expect(screen.getByTestId('feedback-reaction')).toHaveTextContent('Brawo!');
+    expect(screen.queryByText('cheer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('bez reaction: brak akapitu reakcji', () => {
+    render(<FeedbackPanel feedback={{ blockIndex: 0, type: 'QUIZ', correct: false }} onContinue={vi.fn()} continueLabel="Dalej" />);
+    expect(screen.queryByTestId('feedback-reaction')).not.toBeInTheDocument();
   });
 });

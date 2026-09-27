@@ -10,8 +10,8 @@ import { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 // mechanizm): pełny tekst narracji, nad dolnym paskiem, WEWNĄTRZ ramki (bottom-full względem paska - zawsze tuż nad
 // nim, niezależnie od jego wysokości). Zarejestrowany w overlay-stack (LIFO wg kolejności otwarcia) - Escape w
 // PlayerStage zamyka go, o ile inna warstwa nie jest akurat otwarta później (D-075: poza fullscreenem).
-// z-30 (hotfix fix/mascot-overlap - wcześniej z-10, tak samo jak MascotOverlay.tsx; poprawiony opis po kodzie
-// review, druga runda): ten panel i dymek Fooli leżą w TYM SAMYM kontekście warstw (ani bottomBarRef, ani
+// z-30 (hotfix fix/mascot-overlap - wcześniej z-10, tak samo jak nakładka podpowiedzi Hint.tsx; poprawiony opis po kodzie
+// review, druga runda): ten panel i dymek podpowiedzi leżą w TYM SAMYM kontekście warstw (ani bottomBarRef, ani
 // contentRef nie mają własnego z-index/isolate - oba są zwykłymi potomkami `<main>`'s isolate w PlayerStage.tsx),
 // więc przy równym z-index o tym, co maluje się na wierzchu, decydowała kolejność w DOM (bottomBarRef PO
 // contentRef) - działało dziś przypadkiem, ale krucho, bo niezależnie od tego, co user faktycznie otworzył jako

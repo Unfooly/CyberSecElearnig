@@ -10,7 +10,7 @@ import { useEvidence } from '../player/evidence';
 // Teczka sprawy (DOSSIER, schemaVersion 5, D-083): dokumenty na przekładkach (po prawej; na telefonie w pionie poziomy
 // pasek nad arkuszem), arkusz z nagłówkiem wystawcy i wierszami tabeli. Wiersz to przycisk-zakreślacz (aria-pressed):
 // wiersz-dowód zakreśla się na żółto i dopisuje notatkę do notatnika (ta sama ścieżka co "Dodaj do notatnika" hotspotu:
-// addNote + licznik dowodów; bez reakcji maskotki - przy contentLayout 'fill' PlayerStage jej nie pokazuje, a teczka nie
+// addNote + licznik dowodów; bez podpowiedzi - przy contentLayout 'fill' PlayerStage jej nie pokazuje, a teczka nie
 // ma własnego banera), zwykła linijka pokazuje tylko "Ta linijka wygląda na zwykłą operację." i się nie zaznacza. Odpowiedź dla serwera: { opened: [id dokumentu...], noted: [id wiersza...] } - serwer sprawdza wszystko
 // jeszcze raz (evaluate.ts), więc to, co tu jest "wymagane", jest tylko bramką UX, tak jak przy scenach.
 //

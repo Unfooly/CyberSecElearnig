@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import OrderingBlock from './OrderingBlock';
-import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { HintProvider, useHints } from '../player/hints';
 import type { ContentBlock } from '@/lib/courses-types';
 
 // jsdom nie ma PointerEvent - fireEvent.pointer* tworzyłby zwykłe Event bez clientX/pointerId. Minimalny odpowiednik na MouseEvent.
@@ -35,13 +35,13 @@ const block: ContentBlock = {
 function setup(props: Partial<Parameters<typeof OrderingBlock>[0]> = {}) {
   const onSubmit = vi.fn();
   function Probe() {
-    return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+    return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
   }
   render(
-    <MascotReactionProvider resetKey="k">
+    <HintProvider resetKey="k">
       <OrderingBlock block={block} onSubmit={onSubmit} disabled={false} caseNo="CS/2026/0915" {...props} />
       <Probe />
-    </MascotReactionProvider>,
+    </HintProvider>,
   );
   return onSubmit;
 }
@@ -247,7 +247,8 @@ describe('OrderingBlock: tablica śledcza', () => {
     expect(screen.getByTestId('board-feedback')).toHaveTextContent('Blisko. Najpierw zgłoś, potem usuń.');
     expect(screen.getByText(/Na właściwym miejscu: 1 z 3 · Wynik: 33%/)).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Poprawna kolejność' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    // Zdanie z reakcji jest pod tablicą - bez osobnej podpowiedzi w powłoce.
+    expect(screen.getByTestId('reaction').textContent).toBe('');
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
     expect(onContinue).toHaveBeenCalled();
   });

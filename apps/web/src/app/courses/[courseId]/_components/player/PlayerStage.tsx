@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 'lucide-react';
 import { useFullscreen } from './useFullscreen';
 import { OverlayStackProvider, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
-import MascotOverlay from './MascotOverlay';
-import MascotBanner from './MascotBanner';
+import Hint from './Hint';
 import NotesDrawer from './NotesDrawer';
 
 // Ramka odtwarzacza kursu (feat/player-stage) - zastępuje PlayerShell.tsx. Trasa /courses/[courseId] NIE ma już
@@ -43,7 +42,8 @@ export interface PlayerStageProps {
       osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
       panel max-w-3xl). */
   contentLayout?: 'scene' | 'slide' | 'fill';
-  mascot?: { pose: string; text?: string };
+  /** Tekst podpowiedzi (D-093, zamiast maskotki): neutralny dymek - na scenie w rogu, w układzie 'slide' nad treścią. */
+  hint?: string;
   /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
   evidence?: ReactNode;
   /** Akcja bieżącego bloku w pasku górnym, przed licznikiem dowodów - dziś tylko "Pomiń odprawę" (BRIEFING, D-081). */
@@ -89,7 +89,7 @@ function PlayerStageInner({
   completedBlocks,
   stage,
   contentLayout = 'slide',
-  mascot,
+  hint,
   evidence,
   topAction,
   narrationBar,
@@ -316,11 +316,11 @@ function PlayerStageInner({
             </h2>
             {/* JEDEN <div> ze WSPÓLNĄ, stałą tablicą dzieci (className tylko przełącza się warunkowo) - NIE
                 ternary między DWOMA różnymi elementami <div> (kod review, realna regresja): gdy `stage` jest
-                jedynym dzieckiem w jednej gałęzi, a `{mascot && <MascotBanner/>}{stage}` (dwa sloty) w drugiej,
+                jedynym dzieckiem w jednej gałęzi, a `{hint && <Hint variant="bar"/>}{stage}` (dwa sloty) w drugiej,
                 przejście 'scene'<->'slide' (np. "Wstecz" na blok INNEGO typu niż żywy - `contentLayout` liczy się z
                 `currentBlock` PODGLĄDANEGO bloku, nie żywego) przesuwa `stage` z indeksu 0 na indeks 1 w tablicy
                 dzieci - React reconciluje sloty WEDŁUG POZYCJI, więc widzi w slocie 0 zupełnie inny typ (Fragment
-                `stage` vs `false`/`null` z warunku maskotki) i ODMONTOWUJE CAŁY poddrzewo `stage` (żywy,
+                `stage` vs `false`/`null` z warunku podpowiedzi) i ODMONTOWUJE CAŁY poddrzewo `stage` (żywy,
                 ukryty SceneHotspotsBlock WŁĄCZNIE, mimo jego własnego `key`) tylko po to, żeby zamontować je na
                 nowo w slocie 1 - stan bloku (odwiedzone hotspoty, otwarta karta) gubił się przy każdym Wstecz/Dalej
                 między blokami różnych typów. Trzymając JEDEN <div> i DWA STAŁE sloty (banner zawsze pierwszy,
@@ -333,10 +333,10 @@ function PlayerStageInner({
                   : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
               }
             >
-              {mascot && contentLayout !== 'scene' && contentLayout !== 'fill' && <MascotBanner pose={mascot.pose} text={mascot.text} />}
+              {hint && contentLayout !== 'scene' && contentLayout !== 'fill' && <Hint variant="bar" text={hint} />}
               {stage}
             </div>
-            {mascot && contentLayout === 'scene' && <MascotOverlay pose={mascot.pose} text={mascot.text} />}
+            {hint && contentLayout === 'scene' && <Hint variant="overlay" text={hint} />}
           </div>
 
           {/* Pasek dolny (~56px, ściśnięty do 48px w telefonie w poziomie): narracja (lewo+środek, NarrationBar samo

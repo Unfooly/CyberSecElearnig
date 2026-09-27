@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
 import { NotesProvider, useNotes } from '../player/notes';
-import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { HintProvider, useHints } from '../player/hints';
 import type { ContentBlock } from '@/lib/courses-types';
 
 const BASE = '/content';
@@ -65,10 +65,10 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
     return <output data-testid="notes">{notes.map((n) => n.text).join('|')}</output>;
   }
   function ReactionProbe() {
-    return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+    return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
   }
   render(
-    <MascotReactionProvider resetKey="k">
+    <HintProvider resetKey="k">
       <NotesProvider initial={props.notes ?? []}>
         <ExploratoryBlock
           block={block}
@@ -83,7 +83,7 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
         <NotesProbe />
         <ReactionProbe />
       </NotesProvider>
-    </MascotReactionProvider>,
+    </HintProvider>,
   );
   return { onSubmit, ready };
 }
@@ -152,16 +152,16 @@ describe('SCENE_HOTSPOTS', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('reactions.complete (schemaVersion 4) odpala reakcję maskotki dopiero po wymaganych punktach, nigdy w podglądzie', async () => {
+  it('reactions.complete (schemaVersion 4) pokazuje podpowiedź dopiero po wymaganych punktach, nigdy w podglądzie', async () => {
     const user = userEvent.setup();
     const withReaction: ContentBlock = { ...hotspots, reactions: { complete: { pose: 'cheer', text: 'Wszystko widziane!' } } };
     renderBlock(withReaction);
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction')).not.toHaveTextContent('Wszystko widziane!');
     await user.click(screen.getByRole('button', { name: 'Monitor' }));
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction')).not.toHaveTextContent('Wszystko widziane!');
     back();
     await user.click(screen.getByRole('button', { name: 'Biurko' }));
-    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('Wszystko widziane!');
   });
 
   it('reactions.complete nie odpala się w podglądzie ("Wstecz")', async () => {
@@ -171,7 +171,7 @@ describe('SCENE_HOTSPOTS', () => {
     await user.click(screen.getByRole('button', { name: 'Monitor' }));
     back();
     await user.click(screen.getByRole('button', { name: 'Biurko' }));
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction')).not.toHaveTextContent('Wszystko widziane!');
   });
 });
 
@@ -313,7 +313,7 @@ describe('NARRATIVE (schemaVersion 4)', () => {
       reactions: { complete: { pose: 'thinking', text: 'Ciekawe...' } },
     };
     renderBlock(withReaction);
-    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('Ciekawe...');
   });
 
   it('reactions.complete nie odpala się w podglądzie', () => {
@@ -324,6 +324,6 @@ describe('NARRATIVE (schemaVersion 4)', () => {
       reactions: { complete: { pose: 'thinking', text: 'Ciekawe...' } },
     };
     renderBlock(withReaction, { review: true });
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction').textContent).toBe('');
   });
 });

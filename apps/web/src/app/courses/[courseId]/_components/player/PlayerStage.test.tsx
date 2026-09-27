@@ -43,7 +43,7 @@ function HotspotCardStub() {
   );
 }
 
-function Harness({ contentLayout, mascot }: { contentLayout?: 'scene' | 'slide' | 'fill'; mascot?: { pose: string; text?: string } } = {}) {
+function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string } = {}) {
   const [notesOpen, setNotesOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const transcriptTriggerRef = useRef<HTMLButtonElement>(null);
@@ -55,7 +55,7 @@ function Harness({ contentLayout, mascot }: { contentLayout?: 'scene' | 'slide' 
       completedBlocks={0}
       stage={<HotspotCardStub />}
       contentLayout={contentLayout}
-      mascot={mascot}
+      hint={hint}
       narrationBar={null}
       transcriptPanel={<TranscriptPanel text="" open={false} onClose={() => {}} triggerRef={transcriptTriggerRef} />}
       notesCount={0}
@@ -126,42 +126,43 @@ describe('PlayerStage: kaskada Escape na PRAWDZIWYM, zamontowanym drzewie (bez m
   });
 });
 
-describe('PlayerStage: Fooli - nakładka (MascotOverlay) TYLKO na SCENE_HOTSPOTS, pasek (MascotBanner) na "slide", nic na "fill" (fix/dialogue-polish)', () => {
-  it("contentLayout='scene': MascotOverlay obecny, MascotBanner nieobecny", () => {
-    render(<Harness contentLayout="scene" mascot={{ pose: 'pointing', text: 'Rozejrzyj się.' }} />);
-    expect(screen.getByTestId('mascot-says')).toBeInTheDocument();
-    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
+describe('PlayerStage: podpowiedź - nakładka TYLKO na SCENE_HOTSPOTS, pasek na "slide", nic na "fill" (D-093, dawniej Fooli)', () => {
+  it("contentLayout='scene': nakładka obecna, pasek nieobecny; bez obrazka postaci", () => {
+    render(<Harness contentLayout="scene" hint="Rozejrzyj się." />);
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się.');
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /maskotka/i })).not.toBeInTheDocument();
   });
 
-  it("contentLayout='slide': MascotBanner obecny, MascotOverlay nieobecny", () => {
-    render(<Harness contentLayout="slide" mascot={{ pose: 'pointing', text: 'Sprawdź nadawcę.' }} />);
-    expect(screen.getByTestId('mascot-banner')).toBeInTheDocument();
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
+  it("contentLayout='slide': pasek obecny, nakładka nieobecna", () => {
+    render(<Harness contentLayout="slide" hint="Sprawdź nadawcę." />);
+    expect(screen.getByTestId('hint-bar')).toHaveTextContent('Sprawdź nadawcę.');
+    expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
   });
 
-  it("contentLayout='fill' (DIALOGUE): PlayerStage NIE renderuje ani nakładki, ani paska - DialogueBlock.tsx renderuje własny MascotBanner", () => {
-    render(<Harness contentLayout="fill" mascot={{ pose: 'pointing', text: 'Rozmawiaj dalej.' }} />);
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
+  it("contentLayout='fill' (DIALOGUE): PlayerStage NIE renderuje ani nakładki, ani paska - DialogueBlock.tsx renderuje własny pasek", () => {
+    render(<Harness contentLayout="fill" hint="Rozmawiaj dalej." />);
+    expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 
-  it('bez mascot (undefined) nic się nie renderuje, niezależnie od contentLayout', () => {
+  it('bez hint (undefined) nic się nie renderuje, niezależnie od contentLayout', () => {
     render(<Harness contentLayout="scene" />);
-    expect(screen.queryByTestId('mascot-says')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mascot-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 });
 
 // Regresja realnie złapana w CoursePlayer.exploratory.test.tsx ("Wstecz z niezapisanego bloku i powrót"): dodanie
-// `{mascot && <MascotBanner/>}` jako NOWEGO, warunkowego slotu PRZED `{stage}` w gałęzi 'slide' - podczas gdy
+// warunkowego paska (dawniej `{mascot && <MascotBanner/>}`) jako NOWEGO slotu PRZED `{stage}` w gałęzi 'slide' - podczas gdy
 // gałąź 'scene'/'fill' miała `{stage}` jako JEDYNE dziecko - przesuwało `stage` z indeksu 0 na indeks 1 w tablicy
 // dzieci w chwili, gdy `contentLayout` zmieniał się między 'scene' i 'slide' (np. CoursePlayer.tsx: "Wstecz" na
 // blok INNEGO typu niż żywy blok liczy contentLayout z PODGLĄDANEGO bloku, nie żywego). React reconciluje dzieci
 // WEDŁUG POZYCJI - przesunięcie slotu odmontowywało CAŁE poddrzewo `stage` (żywy, ukryty blok włącznie, MIMO
 // własnego `key`), tracąc jego wewnętrzny stan. Naprawka: JEDEN <div> z DWOMA STAŁYMI slotami (banner zawsze
 // pierwszy, `stage` zawsze drugi) - ten test pilnuje, żeby `stage` NIGDY nie remontował się przy zmianie
-// contentLayout, niezależnie od tego, czy dzieje się to razem ze zmianą obecności `mascot` (jak w produkcji).
-describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fix/dialogue-polish, regresja ze slotu MascotBanner przesuwającego pozycję {stage} w tablicy dzieci)', () => {
+// contentLayout, niezależnie od tego, czy dzieje się to razem ze zmianą obecności `hint` (jak w produkcji).
+describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fix/dialogue-polish, regresja ze slotu paska przesuwającego pozycję {stage} w tablicy dzieci)', () => {
   function StatefulStage() {
     const [clicks, setClicks] = useState(0);
     return (
@@ -171,7 +172,7 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
     );
   }
 
-  function ContentLayoutHarness({ contentLayout, mascot }: { contentLayout: 'scene' | 'slide' | 'fill'; mascot?: { pose: string; text?: string } }) {
+  function ContentLayoutHarness({ contentLayout, hint }: { contentLayout: 'scene' | 'slide' | 'fill'; hint?: string }) {
     const headingRef = useRef<HTMLHeadingElement>(null);
     return (
       <PlayerStage
@@ -181,7 +182,7 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
         completedBlocks={0}
         stage={<StatefulStage />}
         contentLayout={contentLayout}
-        mascot={mascot}
+        hint={hint}
         narrationBar={null}
         transcriptPanel={null}
         notesCount={0}
@@ -197,30 +198,30 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
     );
   }
 
-  it('przejście "scene" (z mascot) -> "slide" (bez mascot) - jak "Wstecz" z żywego SCENE_HOTSPOTS na podgląd bloku innego typu bez idle mascota - zachowuje stan {stage}', () => {
-    const { rerender } = render(<ContentLayoutHarness contentLayout="scene" mascot={{ pose: 'pointing', text: 'Rozejrzyj się.' }} />);
+  it('przejście "scene" (z hint) -> "slide" (bez hint) - jak "Wstecz" z żywego SCENE_HOTSPOTS na podgląd bloku innego typu bez podpowiedzi - zachowuje stan {stage}', () => {
+    const { rerender } = render(<ContentLayoutHarness contentLayout="scene" hint="Rozejrzyj się." />);
     fireEvent.click(screen.getByRole('button', { name: /Klik/ }));
     expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
 
-    rerender(<ContentLayoutHarness contentLayout="slide" mascot={undefined} />);
-
-    expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
-  });
-
-  it('przejście "slide" -> "scene", oba z mascot - zachowuje stan {stage}', () => {
-    const { rerender } = render(<ContentLayoutHarness contentLayout="slide" mascot={{ pose: 'pointing', text: 'A' }} />);
-    fireEvent.click(screen.getByRole('button', { name: /Klik/ }));
-
-    rerender(<ContentLayoutHarness contentLayout="scene" mascot={{ pose: 'pointing', text: 'B' }} />);
+    rerender(<ContentLayoutHarness contentLayout="slide" hint={undefined} />);
 
     expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
   });
 
-  it('przejście "fill" -> "slide" (z mascot) - zachowuje stan {stage}', () => {
-    const { rerender } = render(<ContentLayoutHarness contentLayout="fill" mascot={{ pose: 'pointing', text: 'A' }} />);
+  it('przejście "slide" -> "scene", oba z hint - zachowuje stan {stage}', () => {
+    const { rerender } = render(<ContentLayoutHarness contentLayout="slide" hint="A" />);
     fireEvent.click(screen.getByRole('button', { name: /Klik/ }));
 
-    rerender(<ContentLayoutHarness contentLayout="slide" mascot={{ pose: 'pointing', text: 'B' }} />);
+    rerender(<ContentLayoutHarness contentLayout="scene" hint="B" />);
+
+    expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
+  });
+
+  it('przejście "fill" -> "slide" (z hint) - zachowuje stan {stage}', () => {
+    const { rerender } = render(<ContentLayoutHarness contentLayout="fill" hint="A" />);
+    fireEvent.click(screen.getByRole('button', { name: /Klik/ }));
+
+    rerender(<ContentLayoutHarness contentLayout="slide" hint="B" />);
 
     expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
   });

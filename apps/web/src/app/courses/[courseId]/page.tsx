@@ -94,7 +94,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
     <div className="h-dvh overflow-hidden bg-paper">
       <CoursePlayer
         // key = assignmentId: po "Rozpocznij od nowa" (D-069) to jest NOWE przypisanie (inny id) - wymuszony
-        // remount resetuje CAŁY wewnętrzny stan klienta (notatki, dowody, reakcje maskotki, feedback), zamiast
+        // remount resetuje CAŁY wewnętrzny stan klienta (notatki, dowody, podpowiedzi, feedback), zamiast
         // pozostawiać go z poprzedniego, ukończonego przebiegu po samym router.refresh().
         key={course.assignmentId}
         courseId={params.courseId}

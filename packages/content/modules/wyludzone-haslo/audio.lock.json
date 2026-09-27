@@ -38,10 +38,10 @@
       "voiceId": "o11yegU3CL24TZ1qcm6b"
     },
     "korytarz#narration": {
-      "hash": "ba03fb91dcbec77a",
-      "key": "audio/wyludzone-haslo/v1/korytarz/ba03fb91dcbec77a.mp3",
-      "textSha": "3420ce9655a42f2f",
-      "durationMs": 9195,
+      "hash": "fa82944590190eef",
+      "key": "audio/wyludzone-haslo/v1/korytarz/fa82944590190eef.mp3",
+      "textSha": "4001a0c6d0a288b0",
+      "durationMs": 11378,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },

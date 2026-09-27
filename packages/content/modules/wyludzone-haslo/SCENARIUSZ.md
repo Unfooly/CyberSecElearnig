@@ -105,8 +105,8 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
 - imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
-- **Lektor:** „Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą." (TTS: „Wtorek,
-  dziesiąta zero pięć. …")
+- **Lektor:** „Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są
+  przed tobą." (TTS: „Wtorek, dziesiąta zero pięć. …"; D-087 - wcześniejsze „czeka w swoim biurze" gryzło się z pustym biurem w Bloku 2)
 - **Fooli:** brak (blok czysto przejściowy — bez dymka).
 - ukończenie: bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`), gotowy od razu (tablica jest
   opcjonalna: `required: false`).

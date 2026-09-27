@@ -189,8 +189,13 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 11. **Żadnych poleceń niszczących na origin ani na main.** Nie uruchamiasz: `git push --force`/`-f`/`--force-with-lease`, `git push --delete`/`-d`,
     `git push <remote> :<ref>` (usunięcie refu), `--mirror`/`--all`, pushu NA `main`, `git branch -D`, `git reset --hard`, `git clean -f`,
     `git checkout -- .`/`git restore .` (odrzucenie zmian z całego drzewa), rebase gałęzi `main` (będąc na `main` albo z `main` jako rebasowaną
-    gałęzią), aliasów gita ukrywających takie polecenia, ani `gh repo delete`, `gh release delete`, `gh pr merge`, `gh api` z metodą DELETE
-    lub zmieniającego refy - także „na próbę”, także z `--dry-run` w tej formie. **Do sprawdzania hooków i uprawnień służy
+    gałęzią), aliasów gita ukrywających takie polecenia, ani `gh repo delete`, `gh release delete`, `gh pr merge` (poza wyjątkiem niżej), `gh api`
+    z metodą DELETE lub zmieniającego refy - także „na próbę”, także z `--dry-run` w tej formie.
+    **Wyjątek - merge przez agenta (decyzja właściciela, 2026-09-27):** agent może zmergować PR („Rebase and merge”), gdy: CI zielone na HEAD,
+    code-reviewer = gotowy, security-reviewer = gotowy (jeśli PR dotyka API/bazy/auth/walidacji), layout-check zielony (jeśli player/UI),
+    `--check` i `--assets --check` zielone, opis PR kompletny. Nigdy nie merguje PR, który zmienia migracje usuwające dane, CI/deploy workflow
+    albo sekrety - te czekają na człowieka. Mechaniczna blokada (`permissions.deny` i hook niżej) zostaje, dopóki właściciel jej nie zmieni;
+    do tego czasu agent zgłasza „gotowe do merge” zamiast mergować. **Do sprawdzania hooków i uprawnień służy
     wyłącznie:** `--dry-run` (gdy polecenie go obsługuje i nie jest z powyższej listy), tymczasowe repozytorium (`git init` w katalogu
     tymczasowym z lokalnym „origin” w tym katalogu) albo test jednostkowy hooka (`.githooks/pre-push.test.js`,
     `.claude/hooks/block-destructive-git.test.js`) - **nigdy prawdziwy origin**. Rebase własnego brancha roboczego na `origin/main` jest dozwolony
@@ -224,7 +229,7 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
   gałęzi w GitHub wymaga planu Team (dziś Free), więc **do czasu upgrade'u działa blokada lokalna: hook `.githooks/pre-push` odrzuca
   każdy push na `refs/heads/main`** (też usunięcie i force-push). Włącz go raz na klon: `git config core.hooksPath .githooks` (albo
   `npm run hooks:install`); to krok 0 w `docs/onboarding.md`. Nie omijaj go `--no-verify`. Merge do `main` robi właściciel w GitHub po
-  zielonym CI, potem `git switch main && git pull`. Agent też pracuje na branchu i otwiera PR (reguła 8: po pushu podajesz hash i
+  zielonym CI (albo agent na warunkach wyjątku z reguły 11), potem `git switch main && git pull`. Agent też pracuje na branchu i otwiera PR (reguła 8: po pushu podajesz hash i
   prosisz o status CI).
 - **Nazwa brancha:** `<typ>/<numer-zgłoszenia>-<krótki-opis>`, np. `feat/142-import-csv`, `fix/155-limit-zaproszen`. Typy: `feat`, `fix`,
   `refactor`, `test`, `docs`, `chore`. Bez zgłoszenia pomijasz numer (`chore/typecheck-web`). Branch żyje krótko (dni, nie tygodnie); większe

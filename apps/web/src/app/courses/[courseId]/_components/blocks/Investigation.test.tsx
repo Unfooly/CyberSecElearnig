@@ -698,6 +698,22 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(within(screen.getByRole('region', { name: 'Transkrypcja' })).getByText('Zapisana rozmowa z klientem.')).toBeVisible();
   });
 
+  it('audio z potoku TTS (media.narration, D-082): odtwarza narration.audioUrl, transkrypcją jest narration.text', () => {
+    const tts: ContentBlock = {
+      ...mediaScene,
+      hotspots: mediaScene.hotspots!.map((hotspot) =>
+        hotspot.id === 'audio'
+          ? { ...hotspot, media: { kind: 'audio', narration: { text: 'Dzień dobry, tu bank Wektor.', audioUrl: 'audio/m/v1/b/0123456789abcdef.mp3', durationMs: 1000 }, image: 'img/telefon-zoom.png' } }
+          : hotspot,
+      ),
+    };
+    setup(tts);
+    pick('Telefon');
+    expect(document.querySelector('audio')!.getAttribute('src')).toContain('audio/m/v1/b/0123456789abcdef.mp3');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Transkrypcja' }));
+    expect(within(screen.getByRole('region', { name: 'Transkrypcja' })).getByText('Dzień dobry, tu bank Wektor.')).toBeVisible();
+  });
+
   it('image: dowód też wymaga kliknięcia "Dodaj do notatnika", tak samo jak audio (spójne dla wszystkich mediów)', () => {
     setup(mediaScene);
     pick('Zdjęcie');

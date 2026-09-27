@@ -99,6 +99,31 @@ const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].requi
 // featuresUsed dopasowuje po prefiksie, nie dokładnym stringu).
 const V4_FEATURES = ['character.opening', 'reactions.complete', 'reactions.result', 'email.to', 'hotspots[].action', 'hotspots[].media'];
 
+// schemaVersion 5: blok BRIEFING w całości (z zadaniami sprawy) ma osobne sprawdzenie w parseModule (jak blok NARRATIVE i
+// subtitle/level/objectives przy v4). Pola WEWNĄTRZ innych bloków z v5 (D-082): nagranie media audio z
+// potoku TTS (`media.narration`, także w zagnieżdżonej scenie) i rola głosu `voice` w KAŻDEJ narracji (dowolna ścieżka
+// kończąca się na `narration.voice`/`Narration.voice` - dlatego osobna funkcja, nie lista prefiksów jak v3/v4).
+export function v5FeaturesUsed(block: ServerBlock): string[] {
+  const paths = collectPaths(block);
+  const used: string[] = [];
+  if (paths.some((path) => /(^|\.)media\.narration(\.|$)/.test(path))) used.push('media.narration');
+  if (paths.some((path) => /[nN]arration\.voice$/.test(path))) used.push('narration.voice');
+  return used;
+}
+
+/**
+ * Media audio (D-082): dokładnie jedno z `audioUrl` (plik z --assets) / `narration` (nagranie z potoku TTS); `transcript` tylko
+ * przy `audioUrl` - przy `narration` transkrypcją jest `narration.text` (jeden tekst, bez rozjazdu dwóch kopii).
+ */
+function audioMediaErrors(label: string, media: { kind: string; audioUrl?: string; transcript?: string; narration?: unknown } | undefined): string[] {
+  if (media?.kind !== 'audio') return [];
+  const errors: string[] = [];
+  if ((media.audioUrl === undefined) === (media.narration === undefined)) errors.push(`${label}.media: audio wymaga dokładnie jednego z pól audioUrl/narration`);
+  if (media.audioUrl !== undefined && media.transcript === undefined) errors.push(`${label}.media: audioUrl wymaga transcript`);
+  if (media.narration !== undefined && media.transcript !== undefined) errors.push(`${label}.media: przy narration transkrypcją jest narration.text (bez transcript)`);
+  return errors;
+}
+
 function featuresUsed(block: ServerBlock, features: string[]): string[] {
   const paths = new Set(collectPaths(block));
   return features.filter((feature) => [...paths].some((path) => path === feature || path.startsWith(`${feature}.`) || path.startsWith(`${feature}[]`)));
@@ -202,11 +227,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);
           errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
         }
+        errors.push(...audioMediaErrors(`hotspots[${i}]`, h.media));
         if (h.media?.kind === 'scene') {
           h.media.scene.hotspots.forEach((ih, j) => {
             const label = `hotspots[${i}].media.scene.hotspots[${j}]`;
             if (ih.x + ih.width > 100 || ih.y + ih.height > 100) errors.push(`${label}: obszar wychodzi poza obraz`);
             errors.push(...evidenceErrors(label, ih, kindRequired));
+            errors.push(...audioMediaErrors(label, ih.media));
           });
         }
       });
@@ -260,6 +287,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const ids = block.tabs.map((t) => t.id);
       checkUnique('tabs', ids);
       checkSubset('requiredTabs', block.requiredTabs, ids);
+      break;
+    }
+    case 'BRIEFING': {
+      // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
+      if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
       break;
     }
     default:
@@ -339,6 +371,10 @@ export function parseModule(input: unknown): ContentModule {
         errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 4`);
       }
     }
+    if (contentModule.schemaVersion < 5) {
+      if (block.type === 'BRIEFING') errors.push(`blocks[${index}] (${block.id}): blok BRIEFING wymaga schemaVersion 5`);
+      for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
+    }
   });
 
   // Metadane modułu z wersji 4 (nie są ścieżką WEWNĄTRZ bloku, więc osobne sprawdzenie od v3FeaturesUsed/v4FeaturesUsed).
@@ -347,6 +383,26 @@ export function parseModule(input: unknown): ContentModule {
     if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
     if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
   }
+  // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
+  // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
+  // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).
+  const blockTypes = new Map(contentModule.blocks.map((b) => [b.id, b.type]));
+  contentModule.blocks.forEach((block, index) => {
+    if (block.type !== 'BRIEFING') return;
+    block.steps.forEach((step, s) => {
+      if (step.kind !== 'caseFile' || !step.tasks) return;
+      const where = `blocks[${index}] (${block.id}): steps[${s}].tasks`;
+      for (const id of duplicates(step.tasks.map((task) => task.id))) errors.push(`${where}: powtórzony identyfikator "${id}"`);
+      step.tasks.forEach((task, t) => {
+        for (const id of duplicates(task.completeWhen)) errors.push(`${where}[${t}].completeWhen: powtórzony blok "${id}"`);
+        for (const id of task.completeWhen) {
+          const type = blockTypes.get(id);
+          if (type === undefined) errors.push(`${where}[${t}].completeWhen: nieznany blok "${id}"`);
+          else if (type === 'BRIEFING') errors.push(`${where}[${t}].completeWhen: blok odprawy (BRIEFING) nie może odhaczać zadań`);
+        }
+      });
+    });
+  });
 
   const summaries = contentModule.blocks.map((b, i) => (b.type === 'SUMMARY' ? i : -1)).filter((i) => i >= 0);
   if (summaries.length > 1) errors.push('SUMMARY: co najwyżej jeden blok podsumowania');

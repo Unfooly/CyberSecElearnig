@@ -43,7 +43,7 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(course).toMatchObject({ slug: slug('nowy'), title: content.title, category: content.category, mandatory: content.mandatory });
     const versions = await prisma.courseVersion.findMany({ where: { courseId: result.courseId } });
     expect(versions).toHaveLength(1);
-    expect(versions[0]).toMatchObject({ version: 1, schemaVersion: 4, contentHash: hashContent(content.blocks), blockCount: content.blocks.length });
+    expect(versions[0]).toMatchObject({ version: 1, schemaVersion: 5, contentHash: hashContent(content.blocks), blockCount: content.blocks.length });
   });
 
   it('ponowny import identycznej treści jest idempotentny: bez nowej wersji', async () => {
@@ -89,7 +89,7 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     const versions = await prisma.courseVersion.findMany({ where: { courseId: legacy.id }, orderBy: { version: 'asc' } });
     expect(versions).toHaveLength(2);
     expect(versions[0]).toMatchObject({ version: 1, schemaVersion: 1, contentBlocks: legacyBlocks });
-    expect(versions[1]).toMatchObject({ version: 2, schemaVersion: 4 });
+    expect(versions[1]).toMatchObject({ version: 2, schemaVersion: 5 });
     // Przypisanie rozpoczęte PRZED importem (nieprzypięte) miałoby wciąż resolveVersion -> wersja 1 = ta sama treść, na
     // której zaczęło (course-versions.ts): stąd wymóg, żeby wersja 1 była kopią STAREJ treści, nie nowo zaimportowanej.
     expect((versions[0].contentBlocks as unknown[])[0]).toMatchObject({ url: 'legacy.mp4' });

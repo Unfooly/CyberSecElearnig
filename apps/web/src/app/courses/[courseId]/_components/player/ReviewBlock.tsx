@@ -1,4 +1,6 @@
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
+import type { PlayerIdentity } from '@/lib/use-my-display-name';
+import type { NotebookTask } from './notes';
 import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 import ScoredBlock, { hasInlineResult, isScored } from '../blocks/ScoredBlock';
 
@@ -13,6 +15,9 @@ export default function ReviewBlock({
   courseId,
   myAvatarUrl = null,
   myInitials,
+  tasks,
+  identity,
+  onBriefingStep,
 }: {
   block: ContentBlock;
   result?: ClientProgressBlock;
@@ -20,6 +25,9 @@ export default function ReviewBlock({
   courseId: string;
   myAvatarUrl?: string | null;
   myInitials?: string;
+  tasks?: NotebookTask[];
+  identity?: PlayerIdentity;
+  onBriefingStep?: (index: number, byGesture: boolean) => void;
 }) {
   if (isExploratory(block.type)) {
     // Łańcuch wysokości dla SCENE_HOTSPOTS/DIALOGUE (hotfix fix/player-scene-fit/B-100, druga runda code review;
@@ -30,11 +38,24 @@ export default function ReviewBlock({
     // (NOTEPAD, TABS, NARRATIVE) mają contentLayout='slide' - klasy tu nic im nie zmieniają (rodzic nie jest
     // flex-col), ale i tak ograniczamy je do SCENE_HOTSPOTS/DIALOGUE, żeby diff dokładnie odzwierciedlał, co
     // faktycznie tego wymaga.
-    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE';
+    // BRIEFING (D-081) też 'fill' - odprawa wypełnia ramkę jak rozmowa.
+    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE' || block.type === 'BRIEFING';
     return (
       <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
-        <ExploratoryBlock block={block} contentBase={contentBase} onSubmit={() => {}} onReady={() => {}} disabled review myAvatarUrl={myAvatarUrl} myInitials={myInitials} />
+        <ExploratoryBlock
+          block={block}
+          contentBase={contentBase}
+          onSubmit={() => {}}
+          onReady={() => {}}
+          disabled
+          review
+          myAvatarUrl={myAvatarUrl}
+          myInitials={myInitials}
+          tasks={tasks}
+          identity={identity}
+          onBriefingStep={onBriefingStep}
+        />
       </div>
     );
   }

@@ -74,6 +74,9 @@ theme: {
 - H1 strony: 28 px / 800 / letter-spacing -0.02em. H2 sekcji/karty: 18 px / 700. Tekst: 14 px / 500, line-height 1.5.
 - Liczby KPI: 32 px / 800 / letter-spacing -0.03em; jednostka obok w 16 px / 600 / muted.
 - Nagłówki tabel: 12 px / 700 / uppercase / letter-spacing 0.04em / muted.
+- Font „maszynowy” (wyjątek, D-081): **Courier Prime** (`next/font/google`, self-hosted, klasa Tailwind `font-typewriter`),
+  wagi 400 i 700 - WYŁĄCZNIE numer sprawy w odprawie i treść dokumentów w teczce sprawy. Nigdzie indziej (nagłówki, przyciski,
+  tekst maszyny do pisania w odprawie - ten jest w Plus Jakarta Sans, „maszynowość” daje sama animacja pisania).
 
 ## Komponenty (zobacz `mockups/*.html` — tam jest gotowy CSS dla każdego)
 

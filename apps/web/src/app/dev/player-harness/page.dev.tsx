@@ -68,7 +68,7 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     }
   }
 
-  // Ani SCENE_HOTSPOTS, ani DIALOGUE nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/
+  // Ani SCENE_HOTSPOTS, ani DIALOGUE, ani BRIEFING nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/
   // TEXT_INPUT_GUIDED w client.ts) - wartości poniżej nigdy nie trafiają do wyniku dla tych typów bloku, są tu
   // wyłącznie, żeby zaspokoić sygnaturę wspólną dla WSZYSTKICH typów.
   const contentBlock = toClientBlock(blockForClient, {
@@ -82,6 +82,8 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
     title: 'Podgląd bloku (dev harness)',
     status: 'IN_PROGRESS',
     currentBlockIndex: 0,
+    // Zadania sprawy (`?block=odprawa`, D-081) są w samym bloku BRIEFING; completeWhen wskazuje bloki spoza podglądu (jeden
+    // blok), więc nic się tu nie odhacza.
     contentBlocks: [contentBlock],
     progress: null,
     score: null,

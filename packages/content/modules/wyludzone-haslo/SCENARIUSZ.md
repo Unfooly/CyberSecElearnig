@@ -1,7 +1,7 @@
 # Moduł 1 — „Sprawa: wyłudzone hasło"
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
-Agent mapuje ten dokument na schemat modułu (wersja 4: reactions, character.opening, subtitle/level/objectives): bloki, dowody, notatki, narrację,
+Agent mapuje ten dokument na schemat modułu (wersja 5: jak 4 + blok BRIEFING i objectives z completeWhen, D-081): bloki, dowody, notatki, narrację,
 pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
 
 ## Metadane
@@ -9,10 +9,10 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 - slug: `wyludzone-haslo`
 - tytuł: „Sprawa: wyłudzone hasło"
 - subtitle: „Phishing, hasła i jedna karteczka"
-- category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 4
+- category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut
 - level: `basic`
-- objectives (4):
+- objectives (4) - cele szkoleniowe (katalog kursów), same teksty; zadania sprawy są osobno, w odprawie (Blok 0, karta sprawy):
   1. „Rozpoznać fałszywą domenę w adresie nadawcy i w linku."
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
@@ -34,14 +34,49 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 | Marek Zieliński | administrator IT (jednoosobowy dział) | `avatars/marek.svg` |
 | „Bank Wektor" | fikcyjny bank; prawdziwa domena `bankwektor.pl`, fałszywa `bankwektor-weryfikacja.pl` | — |
 | Gracz | „detektyw" — nowy audytor bezpieczeństwa w Unfooly | — |
+| Komisarz Adam Wolski | Wydział Cyberbezpieczeństwa (odprawa, Blok 0) | inicjały „AW" |
 
 Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak narrator kryminału, bez żartów.
 
 ---
 
+## Blok 0 — Odprawa (BRIEFING) — D-081
+
+Teksty kroków: decyzja właściciela produktu (PR #55). Odprawa jest **bez maskotki** - dzwoni postać: **Komisarz Adam Wolski**,
+Wydział Cyberbezpieczeństwa (bez avatara: inicjały „AW" na `accent-soft`). „Napis" = tekst na ekranie i w napisach nagrania,
+„TTS" = `spokenText` (to, co czyta głos), rola = `voice`.
+
+Blok nieoceniany, bez dowodów, na jasnym tle (`paper`). Zaliczany po ostatnim kroku albo „Pomiń odprawę" (górny pasek ramki,
+widoczny zawsze, przy każdym wejściu - jak w makiecie); pominięcie nie odhacza zadań. Animacje (pisanie, telefon, spadająca
+karta, pieczątka) tylko bez `prefers-reduced-motion`.
+
+0. **typewriter** (narrator) — napis: „Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy."; TTS: „Wtorek, dziewiąta
+   czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy."; przycisk: „Odbierz".
+1. **call** (komisarz) — napis (dymek): „Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska,
+   twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało."; TTS: „Detektywie, mamy zgłoszenie z Unfooly. Z konta
+   firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się
+   naprawdę stało."; przycisk: „Przyjmuję".
+2. **caseFile** (komisarz) — karta: nr sprawy `CS/2026/0915` (font maszynowy), „Nieautoryzowany przelew"; Poszkodowana „Anna
+   Kowalska (księgowa, Unfooly Sp. z o.o.)", Strata „14 000,00 PLN", Kiedy „wtorek 9:12", Zgłosił „Marek Zieliński, dział IT";
+   pieczątka „Priorytet" (`danger`); przycisk: „Biorę sprawę". Napis: „Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.";
+   TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT.
+   Reszta jest w biurze Anny."
+   **Zadania sprawy** (`tasks` kroku caseFile; też sekcja „Zadania" notatnika; w nawiasie `completeWhen` - zadanie odhacza się,
+   gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
+   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
+   - `dowody`: „Zbierz dowody w biurze Anny." (`biuro-anny`)
+   - `zapobieganie`: „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
+3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
+   inicjały), nr odznaki = ostatnie 4 znaki nr sprawy + inicjały (np. `0915-AK`). **Żadnych danych gracza w treści modułu ani
+   w progress** - liczy wyłącznie przeglądarka. Napis/TTS: „Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa.
+   Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą."; przycisk: „Ruszam na miejsce".
+4. **start** (narrator) — napis/TTS: „Unfooly, drugie piętro."; przycisk: „Wchodzę".
+
+---
+
 ## Blok 1 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
-Moduł zaczyna się TUTAJ (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
+Pierwsza scena po odprawie (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
 przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią modułu).
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
@@ -72,7 +107,7 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 |---|---|---|---|---|---|
 | `karteczka` ✱ | żółta karteczka przyklejona do ramki monitora | „Na karteczce: `Unfooly24!` — a niżej dopisek długopisem: *bank: to samo*." | tak | (item) „Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku." | image `karteczka-zoom.svg` (800×800) — zbliżenie karteczki |
 | `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte." (celowo TEASER, nie ujawnienie — treść maila jest dopiero za Outlookiem, patrz „Scena zagnieżdżona" niżej; poprawione po przeglądzie kodu, wcześniej to pole miało tu przez pomyłkę tę samą treść co `outlook`) | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
-| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio `assets/audio/poczta-glosowa.mp3` + transkrypcja (patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
+| `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio z potoku TTS, głos `bank` (`media.narration`, D-082; tekst = transkrypcja, patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
 | `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
 | `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w stylu Fooli z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
 | `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | image `kubek-zoom.svg` (800×800) — zbliżenie kubka (feat/scene-overlay-fix: bez dowodu, ale jak każdy hotspot tej sceny dostaje powiększenie) |
@@ -102,11 +137,11 @@ Pozostałe ikony pulpitu (Przelewy, Internet, Faktury, Kosz) są WYŁĄCZNIE dek
 
 ### Media: wiadomość głosowa „informatyka" (hotspot `telefon`)
 
-Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — GOTOWY plik mp3 (nagrany osobno przez
-właściciela treści w ElevenLabs, publikowany przez `--assets` jak obraz; NIE przechodzi przez silnik TTS/cues narracji
-modułu, D-071). Nad własnym odtwarzaczem (przycisk play/pauza, pasek postępu, czas — bez natywnych `<audio controls>`,
-feat/scene-overlay-fix) renderuje się zbliżenie `telefon-zoom.svg` (`media.image`, alt: „Telefon stacjonarny Anny z
-jedną nieodebraną rozmową"); odtwarzanie startuje automatycznie po kliknięciu hotspotu.
+Nagranie z **innym głosem** niż lektor (męski, uprzejmy, lekko pospieszny) — od D-082 generowane potokiem TTS modułu
+głosem `bank` (`media.narration`, `voice: "bank"`, voiceId w `scripts/content/voices.json`; wcześniej, D-071, gotowy plik mp3
+z `--assets`). Tekst nagrania = transkrypcja poniżej. Nad własnym odtwarzaczem (sam przycisk play/pauza, bez paska postępu i
+czasu - D-080; bez natywnych `<audio controls>`) renderuje się zbliżenie `telefon-zoom.svg` (`media.image`, alt: „Telefon
+stacjonarny Anny z jedną nieodebraną rozmową"); odtwarzanie startuje automatycznie po kliknięciu hotspotu.
 
 **Transkrypcja (ok. 35 s):**
 > Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.
@@ -330,9 +365,14 @@ edycja SVG.
 
 Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 
-Audio: `assets/audio/poczta-glosowa.mp3` (hotspot `telefon`, transkrypcja w Bloku 3 wyżej) — gotowy plik, publikowany
-przez `scripts/content --assets` (D-071), NIE przez silnik TTS narracji modułu (`scripts/content --tts`, PR 3, każdy
-blok ma jedno nagranie lektora — tekst „Lektor" wyżej). Kwestie Fooli i postaci — tylko tekst (B-078).
+Audio poczty głosowej (hotspot `telefon`): od D-082 nagrywane potokiem TTS (`media.narration`, głos `bank`), tekst =
+transkrypcja z Bloku 2 bez zmian. Dawny gotowy plik `assets/audio/poczta-glosowa.mp3` (D-071, `--assets`) usunięty z repo po
+opublikowaniu i podpięciu nowego nagrania (w magazynie zostaje - starsze wersje kursu mogą na niego wskazywać).
+
+Głosy (D-082, `narration.voice`, mapowanie rola → voiceId w `scripts/content/voices.json`): `narrator` (domyślny - lektor
+wszystkich bloków, w odprawie kroki typewriter i start), `komisarz` (odprawa: kroki call, caseFile, badge), `bank` (poczta
+głosowa), `marek` (dziś nieużywany: kwestie
+Marka nie mają nagrań). Pozostałe kwestie Fooli i postaci - tylko tekst (B-078).
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
 

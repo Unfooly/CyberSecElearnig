@@ -393,6 +393,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   wyłączająca ładowanie w `main()`), żeby wynik nie zależał od maszyny.
 - Akceptacja: `npm run test --prefix scripts/content` zielone także z uzupełnionym `scripts/content/.env.local`.
 
+### B-107 Trasy BFF przepuszczają do przeglądarki pełną treść błędu z apps/api
+- Etykiety: `P3`, `security`, `mod:web` · Źródło: security-review PR #55 (`feat/module-briefing`, uwaga L2), decyzja właściciela 2026-09-26
+- Opis: trasy `apps/web/src/app/api/**` przy odpowiedzi błędu z API zwracają klientowi całe ciało (`NextResponse.json(data, { status })`).
+  Dziś to standardowe błędy Nest (`message`, `code`) bez danych osobowych, ale przyszły błąd backendu z dodatkowymi polami trafiłby
+  do przeglądarki bez filtra. Wzorzec jest wspólny dla wszystkich tras BFF (np. `users/me/avatar`, `users/me/display-name`).
+- Akceptacja: wspólna funkcja w `apps/web/src/lib` przepuszczająca przy błędzie wyłącznie `message`/`code` (i status), użyta we
+  wszystkich trasach BFF; test, że dodatkowe pola z ciała błędu API nie docierają do klienta.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

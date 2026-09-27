@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Narration } from '@cyberszkolo/content';
 import type {
   ClientNote,
   ClientProgressBlock,
@@ -16,6 +17,7 @@ import type {
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import { initialsFromEmail } from '@/lib/avatar';
 import { useMyAvatar } from '@/lib/use-my-avatar';
+import { playerIdentity, useMyDisplayName, type PlayerIdentity } from '@/lib/use-my-display-name';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -30,7 +32,7 @@ import NarrationBar from './player/NarrationBar';
 import TranscriptPanel from './player/TranscriptPanel';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
-import { NotesProvider, useNotes } from './player/notes';
+import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './player/notes';
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
 import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
@@ -57,6 +59,10 @@ interface RenderContext {
   onReady: (submit: (() => void) | null) => void;
   myAvatarUrl?: string | null;
   myInitials?: string;
+  /** BRIEFING (D-081): zadania pod kartą sprawy, tożsamość gracza (z sesji) i zmiana kroku odprawy. */
+  tasks: NotebookTask[];
+  identity: PlayerIdentity;
+  onBriefingStep: (index: number, byGesture: boolean) => void;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -73,6 +79,9 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         disabled={disabled}
         myAvatarUrl={ctx.myAvatarUrl}
         myInitials={ctx.myInitials}
+        tasks={ctx.tasks}
+        identity={ctx.identity}
+        onBriefingStep={ctx.onBriefingStep}
       />
     );
   }
@@ -130,6 +139,11 @@ function StageWithContext({
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
 
+
+/** Czy blok ma jakiekolwiek nagranie - dla BRIEFING także w krokach (narracja odprawy jest per krok, D-081). */
+const blockNarrations = (block: ContentBlock | undefined): (Narration | undefined)[] =>
+  block ? [block.narration, ...(block.steps ?? []).map((step) => step.narration)] : [];
+
 // Notatki dopisane przez serwer przy zapisie bloku (np. trafione kryteria maila) trafiają do notatnika od razu; dedup w addNote.
 function ApplyServerNotes({ notes }: { notes: ClientNote[] }) {
   const { addNote } = useNotes();
@@ -162,6 +176,26 @@ export default function CoursePlayer({
   const router = useRouter();
   const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
   const myInitials = userEmail ? initialsFromEmail(userEmail) : undefined;
+  // Legitymacja w odprawie (BRIEFING, D-081): imię z profilu pobierane tylko, gdy moduł ma odprawę; fallback z e-maila.
+  const hasBriefing = initial.contentBlocks.some((block) => block.type === 'BRIEFING');
+  const displayName = useMyDisplayName(userEmail, hasBriefing);
+  const identity = useMemo(() => playerIdentity(displayName, userEmail), [displayName, userEmail]);
+  // Bieżący krok odprawy per zamontowana instancja bloku ("l-<id>" żywy, "r-<id>" podgląd "Wstecz") - narracja w pasku
+  // powłoki idzie za krokiem; gesture = krok zmieniony kliknięciem gracza (wolno wtedy autoodtworzyć jego narrację).
+  const [briefingSteps, setBriefingSteps] = useState<Record<string, { index: number; gesture: boolean }>>({});
+  const trackBriefingStep = (instance: string) => (index: number, gesture: boolean) =>
+    setBriefingSteps((current) => ({ ...current, [instance]: { index, gesture } }));
+  // "Wstecz"/"Dalej" (przejście między podglądem a żywym blokiem) to nie gest na KROKU odprawy: bez tego po powrocie do żywej
+  // odprawy na kroku >= 1 jej narracja ruszałaby od nowa sama, a wpis z poprzedniego podglądu ("r-") mógłby na jedną klatkę
+  // podsunąć narrację starego kroku nowo zamontowanemu podglądowi (code review PR 1).
+  const quietBriefingSteps = () =>
+    setBriefingSteps((current) =>
+      Object.fromEntries(
+        Object.entries(current)
+          .filter(([instance]) => instance.startsWith('l-'))
+          .map(([instance, step]) => [instance, { ...step, gesture: false }]),
+      ),
+    );
   // Stan postępu (status/currentBlockIndex/score) pochodzi WYŁĄCZNIE z API -
   // po każdej odpowiedzi jest CAŁKOWICIE nadpisywany odpowiedzią z
   // /progress, nigdy inkrementowany lokalnie. `feedback` to jedyny czysto
@@ -194,6 +228,8 @@ export default function CoursePlayer({
   const [autoPlayFor, setAutoPlayFor] = useState<string | null>(null);
   // Wyniki bloków po id: początkowe z /start, uzupełniane po każdej odpowiedzi w tej sesji (dla podglądu "Wstecz").
   const [results, setResults] = useState<Record<string, ClientProgressBlock>>(initial.progress?.blocks ?? {});
+  // Zadania sprawy (BRIEFING, krok caseFile, D-081) z treści TEJ wersji: jeden stan dla notatnika i karty sprawy w odprawie.
+  const tasks = useMemo(() => notebookTasks(initial.contentBlocks, results), [initial.contentBlocks, results]);
   // Dowody śledztwa: liczby z serwera (start i każda odpowiedź /progress); dowody z niezapisanego bloku dolicza EvidenceProvider.
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
@@ -250,7 +286,7 @@ export default function CoursePlayer({
   }, [displayedIndex, feedback, isSummaryMode]);
 
   const hasAudio = (index: number) =>
-    preference.enabled && contentAssetUrl(contentBase, blocks[index]?.narration?.audioUrl, 'audio') !== null;
+    preference.enabled && blockNarrations(blocks[index]).some((narration) => contentAssetUrl(contentBase, narration?.audioUrl, 'audio') !== null);
   const keyOf = (index: number) => blockIdOf(blocks, index);
 
   async function handleAnswer(answer?: unknown) {
@@ -288,7 +324,7 @@ export default function CoursePlayer({
       // gdy NOWY blok sam zgłosi gotowość w swoim efekcie montowania (onReady), zrobi to PO tym resecie w tym samym
       // commitcie, więc jego wynik się ostaje; gdy nie zgłosi (QUIZ, SUMMARY), zostaje poprawnie null.
       setReadySubmit(null);
-      // Bloki eksploracyjne (SCENE_HOTSPOTS/DIALOGUE/NOTEPAD/TABS/NARRATIVE/SUMMARY) i TEXT_INPUT_GUIDED pokazują swój
+      // Bloki eksploracyjne (SCENE_HOTSPOTS/DIALOGUE/NOTEPAD/TABS/NARRATIVE/SUMMARY/BRIEFING) i TEXT_INPUT_GUIDED pokazują swój
       // wynik/reakcję WEWNĄTRZ siebie, zanim ten zapis w ogóle ruszy (mascot-reaction.tsx: useCompleteReaction;
       // TextInputBlock: stan `done`) - osobny ekran "Blok ukończony." z jeszcze jednym "Dalej" byłby powtórzeniem
       // tego, co user już widział (raport z pierwszego przejścia modułu 1). Dla nich ZOSTAJE feedback=null: state
@@ -354,6 +390,7 @@ export default function CoursePlayer({
   function goBack() {
     if (displayedIndex <= 0) return;
     setAutoPlayFor(null);
+    quietBriefingSteps();
     setViewIndex(displayedIndex - 1);
   }
 
@@ -365,6 +402,7 @@ export default function CoursePlayer({
       return;
     }
     const next = viewIndex + 1;
+    quietBriefingSteps();
     setAutoPlayFor(hasAudio(viewIndex) ? keyOf(next) : null);
     setViewIndex(next >= state.currentBlockIndex ? null : next);
   }
@@ -397,8 +435,8 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
-  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE też wypełnia (własny,
-  // wewnętrzny scroll wątku zamiast przewijania całego panelu - fix/dialogue-sticky-questions), ale to NIE jest
+  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE i BRIEFING też wypełniają (własny,
+  // wewnętrzny scroll wątku/odprawy zamiast przewijania całego panelu - fix/dialogue-sticky-questions, D-081), ale to NIE jest
   // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
   const contentLayout: 'scene' | 'slide' | 'fill' =
@@ -406,7 +444,7 @@ export default function CoursePlayer({
       ? 'slide'
       : currentBlock?.type === 'SCENE_HOTSPOTS'
         ? 'scene'
-        : currentBlock?.type === 'DIALOGUE'
+        : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING'
           ? 'fill'
           : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
@@ -481,6 +519,9 @@ export default function CoursePlayer({
               onReady: handleReady,
               myAvatarUrl,
               myInitials,
+              tasks,
+              identity,
+              onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
             })}
           </div>
         )}
@@ -493,6 +534,9 @@ export default function CoursePlayer({
             courseId={courseId}
             myAvatarUrl={myAvatarUrl}
             myInitials={myInitials}
+            tasks={tasks}
+            identity={identity}
+            onBriefingStep={trackBriefingStep(`r-${keyOf(displayedIndex)}`)}
           />
         )}
       </>
@@ -504,13 +548,41 @@ export default function CoursePlayer({
   // narration.
   const summaryBlock = useMemo(() => blocks.find((block) => block.type === 'SUMMARY'), [blocks]);
   const narrationBlock = isSummaryMode ? summaryBlock : showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
+  // BRIEFING (D-081): narracja BIEŻĄCEGO KROKU odprawy (steps[].narration), nie bloku - pasek, napisy i transkrypcja idą za
+  // krokiem. Krok >= 1 odtwarza się sam wyłącznie wtedy, gdy gracz przeszedł na niego przyciskiem kroku (gest w tej samej
+  // instancji bloku); powrót z podglądu "Wstecz"/"Dalej" gest zeruje (quietBriefingSteps). Krok 0 jak każdy blok (autoPlayFor).
+  const briefingStep =
+    !isSummaryMode && !showingFeedback && currentBlock?.type === 'BRIEFING'
+      ? (briefingSteps[`${reviewing ? 'r' : 'l'}-${keyOf(displayedIndex)}`] ?? { index: 0, gesture: false })
+      : null;
+  const narration = briefingStep ? currentBlock?.steps?.[briefingStep.index]?.narration : narrationBlock?.narration;
   const narrationBarState = useNarrationBar({
-    narration: narrationBlock?.narration,
+    narration,
     contentBase,
     enabled: preference.enabled,
-    autoPlay: !isSummaryMode && !showingFeedback && autoPlayFor === keyOf(displayedIndex),
-    resetKey: isSummaryMode ? 'summary' : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}`,
+    autoPlay:
+      !isSummaryMode &&
+      !showingFeedback &&
+      (briefingStep && briefingStep.index > 0 ? briefingStep.gesture : autoPlayFor === keyOf(displayedIndex)),
+    resetKey: isSummaryMode
+      ? 'summary'
+      : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}${briefingStep ? `-s${briefingStep.index}` : ''}`,
   });
+
+  // "Pomiń odprawę" (D-081): widoczny od razu na KAŻDYM wejściu w blok BRIEFING, także ponownym (podgląd "Wstecz" ukończonej
+  // odprawy - tam przewija dalej jak "Dalej"). Na żywym bloku to ten sam zapis co ostatni krok: blok zaliczony, a zadania
+  // się nie odhaczają (żadne nie może wskazywać bloku odprawy - walidacja treści).
+  const skipBriefing =
+    briefingStep !== null ? (
+      <button
+        type="button"
+        onClick={() => (reviewing ? goForward() : handleAnswer())}
+        disabled={submitting}
+        className="inline-flex h-10 shrink-0 items-center rounded border border-slate-300 bg-white px-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-3"
+      >
+        Pomiń odprawę
+      </button>
+    ) : undefined;
 
   // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
   // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
@@ -523,7 +595,7 @@ export default function CoursePlayer({
       : '';
 
   return (
-    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles}>
+    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
           <ApplyServerNotes notes={serverNotes} />
@@ -536,6 +608,7 @@ export default function CoursePlayer({
             resultAnnouncement={resultAnnouncement}
             showMascot={!isSummaryMode}
             evidence={<EvidenceCounter />}
+            topAction={skipBriefing}
             idleMascot={
               currentBlock && !showingFeedback && !isSummaryMode
                 ? currentBlock.mascot
@@ -556,7 +629,7 @@ export default function CoursePlayer({
             }
             narrationBar={
               <NarrationBar
-                narration={narrationBlock?.narration}
+                narration={narration}
                 state={narrationBarState}
                 enabled={preference.enabled}
                 onToggleEnabled={preference.toggle}
@@ -567,7 +640,7 @@ export default function CoursePlayer({
             }
             transcriptPanel={
               <TranscriptPanel
-                text={narrationBlock?.narration?.text ?? ''}
+                text={narration?.text ?? ''}
                 open={narrationBarState.transcriptOpen}
                 onClose={narrationBarState.toggleTranscript}
                 triggerRef={transcriptButtonRef}
@@ -595,6 +668,8 @@ export default function CoursePlayer({
               !showingFeedback &&
               !reviewing &&
               (currentBlock?.type === 'SUMMARY' ||
+                // BRIEFING: wyjściem jest przycisk ostatniego kroku albo "Pomiń odprawę" w pasku górnym (D-081).
+                currentBlock?.type === 'BRIEFING' ||
                 (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true) ||
                 (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next')))
             }

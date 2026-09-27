@@ -7,6 +7,7 @@ import { contentIndex, contentNode, encode, isObject, type Json, readJsonFile, s
 import { confirm, enforceMaxChars, formatPlan, summarizePlan, type PlannedNarration } from './plan.js';
 import { AUDIO_CONTENT_TYPE, IMMUTABLE_CACHE, JSON_CONTENT_TYPE, MUTABLE_CACHE } from './stores/key.js';
 import type { ObjectStore, TtsProvider } from './types.js';
+import { isPlaceholderVoiceId, voiceRoleOf, type Voices } from './voices.js';
 
 // Potok audio narracji dla jednego modułu (packages/content/modules/<slug>/module.json): zbiera narracje, dla każdej liczy skrót wejścia
 // (tekst, model, język, głos), sprawdza magazyn (HEAD) i generuje TYLKO to, czego brakuje. Wyniki (audioUrl, durationMs, cues) wpisuje do
@@ -29,6 +30,11 @@ export const NARRATION_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'narration'],
   ['questions', '*', 'answerNarration'],
   ['questions', '*', 'lines', '*', 'narration'],
+  // BRIEFING (schemaVersion 5): narracja per krok odprawy.
+  ['steps', '*', 'narration'],
+  // Media audio hotspotu nagrywane potokiem zamiast gotowego pliku (schemaVersion 5, D-082), np. poczta głosowa głosem "bank".
+  ['hotspots', '*', 'media', 'narration'],
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'narration'],
 ];
 
 /** Narracje w polach `secret`: bez audio (tylko tekst). Wpisane audioUrl/durationMs/cues w takim polu to błąd modułu. */
@@ -82,6 +88,8 @@ export interface NarrationRef {
   text: string;
   /** Tekst do PRZECZYTANIA, gdy różni się od wyświetlanego (godziny, kwoty, domeny, hasła) - patrz ttsInputOf. */
   spokenText?: string;
+  /** Rola głosu (narration.voice, brak = narrator) - voiceId z voices.json (D-082). */
+  voice: string;
 }
 
 /** To, co faktycznie idzie do ElevenLabs i do hasha/lockfile: spokenText, gdy jest, inaczej tekst wyświetlany. */
@@ -117,6 +125,7 @@ export function collectNarrations(raw: Json): NarrationRef[] {
           key: '',
           text: narration.text,
           spokenText: typeof narration.spokenText === 'string' ? narration.spokenText : undefined,
+          voice: voiceRoleOf(narration),
         });
       }
     }
@@ -170,7 +179,8 @@ export interface PipelineParams {
   version: string;
   model: string;
   language: string;
-  voiceId: string;
+  /** Rola głosu -> voiceId (scripts/content/voices.json, D-082). Placeholder zamiast ID: generowanie tą rolą odrzucone. */
+  voices: Voices;
   store: ObjectStore;
   /** Brak w trybach --dry-run i --check (bez kluczy i sieci). */
   tts?: TtsProvider;
@@ -188,17 +198,24 @@ interface LockEntry {
   key: string;
   textSha: string;
   durationMs: number;
+  /** lockVersion 2 (D-082): rola i voiceId, którym nagrano TEN wpis. W lockVersion 1 brak - wtedy narrator i Lock.voiceId. */
+  voice?: string;
+  voiceId?: string;
 }
 
 interface Lock {
-  lockVersion: 1;
+  lockVersion: 1 | 2;
   slug: string;
   audioVersion: string;
   model: string;
   language: string;
-  voiceId: string;
+  /** Tylko lockVersion 1: jeden głos całej partii (dziś głos per wpis). */
+  voiceId?: string;
   entries: Record<string, LockEntry>;
 }
+
+/** Głos, którym nagrano wpis locka (lockVersion 1: jeden głos partii, narrator). */
+const entryVoiceId = (entry: LockEntry, lock: Lock) => entry.voiceId ?? lock.voiceId ?? '';
 
 interface Sidecar {
   hash: string;
@@ -262,13 +279,21 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   if (slug !== basename(resolve(params.moduleDir))) throw new Error(`Slug w module.json ("${slug}") różni się od nazwy katalogu modułu.`);
   const refs = collectNarrations(raw);
   const lock = (await readJsonFile(lockPath)) as Lock | null;
+  // Znane formaty: 1 (jeden głos partii) i 2 (głos per wpis, D-082). Nowszego nie zgadujemy - mógłby mieć inną semantykę skrótów.
+  if (lock && lock.lockVersion !== 1 && lock.lockVersion !== 2) {
+    throw new Error(`audio.lock.json: nieznany lockVersion ${String(lock.lockVersion)} (obsługiwane: 1, 2).`);
+  }
 
   if (params.check) return checkOffline(refs, lock, params, findOrphanAudio(raw));
 
-  // Dry-run bez kluczy nie zna głosu z .env.local: bierze go z lockfile (ten sam skrót co przy generowaniu).
-  const voiceId = params.voiceId || (params.dryRun ? lock?.voiceId ?? '' : '');
-  if (!params.dryRun && !voiceId) throw new Error('Brak ELEVENLABS_VOICE_ID: nie da się policzyć skrótów nagrań.');
-  const hashOf = (text: string) => narrationHash({ text, model: params.model, language: params.language, voiceId });
+  // Głos per narracja z roli (voices.json, D-082) - skrót obejmuje voiceId, więc zmiana głosu roli to nowe nagranie.
+  const voiceIdOf = (ref: NarrationRef) => {
+    const voiceId = params.voices[ref.voice];
+    if (voiceId === undefined) throw new Error(`${ref.id}: rola głosu "${ref.voice}" nie ma wpisu w voices.json.`);
+    return voiceId;
+  };
+  const hashOf = (ref: NarrationRef) =>
+    narrationHash({ text: ttsInputOf(ref), model: params.model, language: params.language, voiceId: voiceIdOf(ref) });
   const only = params.only && params.only.length > 0 ? new Set(params.only) : null;
   const selected = refs.filter((ref) => !only || only.has(ref.blockId));
   if (only) {
@@ -276,12 +301,13 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (unknown.length > 0) throw new Error(`--only: brak narracji w blokach: ${unknown.join(', ')}.`);
   }
   for (const ref of selected) {
-    ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ttsInputOf(ref)) });
+    ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ref) });
   }
   // --only dopisuje do istniejącej partii: wpisy niewybranych narracji zostają ze starego locka, więc parametry partii muszą się zgadzać.
+  // Głos nie jest już parametrem partii (każdy wpis ma własny voiceId, D-082), więc tu tylko wersja, model i język.
   if (only && lock && !params.dryRun) {
-    const same = lock.audioVersion === params.version && lock.model === params.model && lock.language === params.language && lock.voiceId === voiceId;
-    if (!same) throw new Error('--only wymaga tej samej wersji partii, modelu, języka i głosu co audio.lock.json; zmiana któregoś wymaga pełnego przebiegu (bez --only).');
+    const same = lock.audioVersion === params.version && lock.model === params.model && lock.language === params.language;
+    if (!same) throw new Error('--only wymaga tej samej wersji partii, modelu i języka co audio.lock.json; zmiana któregoś wymaga pełnego przebiegu (bez --only).');
   }
 
   if (lock && lock.audioVersion !== params.version) {
@@ -301,7 +327,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     }
     const audio = await params.store.head(ref.key);
     const sidecarBytes = audio ? await params.store.get(sidecarKey(ref.key)) : null;
-    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceId, ttsInputOf(ref)) : null;
+    const sidecar = sidecarBytes ? parseSidecar(sidecarBytes, ref.key, voiceIdOf(ref), ttsInputOf(ref)) : null;
     if (audio && sidecar) {
       sidecars.set(ref.id, sidecar);
       cachedIds.add(ref.id);
@@ -315,6 +341,18 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   const planned: PlannedNarration[] = unique.map((ref) => ({ blockId: ref.blockId, text: ttsInputOf(ref), cached: cachedIds.has(ref.id) }));
   const summary = summarizePlan(planned);
   say(params.output, formatPlan(summary));
+  // Pozycje do wygenerowania z rolą głosu i liczbą znaków (to, co idzie do ElevenLabs).
+  for (const ref of unique.filter((candidate) => !cachedIds.has(candidate.id))) {
+    say(params.output, `  [${ref.voice}] ${ref.id}: ${ttsInputOf(ref).length} znaków`);
+  }
+  // Placeholder w voices.json zamiast ID: generowanie tą rolą odrzucone PRZED limitem, potwierdzeniem i jakimkolwiek wywołaniem
+  // ElevenLabs (D-082). Dry-run tylko o tym informuje (plan ma pokazać, co by się stało).
+  const placeholderRoles = [...new Set(unique.filter((ref) => !cachedIds.has(ref.id) && isPlaceholderVoiceId(voiceIdOf(ref))).map((ref) => ref.voice))];
+  if (placeholderRoles.length > 0) {
+    const message = `voices.json: rola ${placeholderRoles.map((role) => `"${role}"`).join(', ')} ma placeholder zamiast ID głosu ElevenLabs - wklej prawdziwe ID przed generowaniem.`;
+    if (!params.dryRun) throw new Error(message);
+    say(params.output, `Uwaga: ${message}`);
+  }
   if (params.dryRun) {
     say(params.output, '(--dry-run: bez sieci i bez zapisów; „istniejące” = moduł już wskazuje na to nagranie)');
     return { generated: 0, cached: summary.cached, chars: summary.chars, problems: [], warnings: [] };
@@ -335,7 +373,8 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     index += 1;
     if (cachedIds.has(ref.id)) continue;
     const spoken = ttsInputOf(ref);
-    say(params.output, `[${index}/${unique.length}] ${ref.id}: ${spoken.length} znaków -> ${ref.key}`);
+    const voiceId = voiceIdOf(ref);
+    say(params.output, `[${index}/${unique.length}] [${ref.voice}] ${ref.id}: ${spoken.length} znaków -> ${ref.key}`);
     let result;
     try {
       result = await params.tts!.synthesize({ text: spoken, voiceId, model: params.model, language: params.language });
@@ -387,16 +426,38 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   for (const ref of selected) {
     // hash/textSha z tego, co poszło do TTS (spokenText, gdy jest) - zmiana samego tekstu wyświetlanego (bez zmiany
     // spokenText) nie unieważnia nagrania; zmiana spokenText (albo text, gdy spokenText nie ma) - unieważnia.
-    entries[ref.id] = { hash: hashFromKey(ref.key), key: ref.key, textSha: textSha(ttsInputOf(ref)), durationMs: sidecars.get(ref.id)!.durationMs };
+    entries[ref.id] = {
+      hash: hashFromKey(ref.key),
+      key: ref.key,
+      textSha: textSha(ttsInputOf(ref)),
+      durationMs: sidecars.get(ref.id)!.durationMs,
+      voice: ref.voice,
+      voiceId: voiceIdOf(ref),
+    };
   }
-  const nextLock: Lock = { lockVersion: 1, slug, audioVersion: params.version, model: params.model, language: params.language, voiceId, entries };
+  // --only na locku w wersji 1: wpisy niewybranych narracji nie mają voiceId - uzupełniamy głosem partii, żeby lockVersion 2 był pełny.
+  for (const entry of Object.values(entries)) {
+    if (entry.voiceId === undefined && lock) Object.assign(entry, { voice: entry.voice ?? 'narrator', voiceId: entryVoiceId(entry, lock) });
+  }
+  const nextLock: Lock = { lockVersion: 2, slug, audioVersion: params.version, model: params.model, language: params.language, entries };
+  // Głosy użyte w partii (rola -> posortowane voiceId), informacyjnie w publicznym manifeście. Tablica, nie jedno ID: po --only ze
+  // zmienionym ID roli ta sama rola może mieć w partii dwa głosy - manifest ma to pokazać, nie ukryć (code review D-082).
+  const usedVoices: Record<string, string[]> = {};
+  for (const entry of Object.values(entries)) {
+    const ids = (usedVoices[entry.voice!] ??= []);
+    if (!ids.includes(entry.voiceId!)) ids.push(entry.voiceId!);
+  }
+  for (const [role, ids] of Object.entries(usedVoices)) {
+    ids.sort();
+    if (ids.length > 1) say(params.output, `Uwaga: rola "${role}" ma w partii nagrania kilkoma głosami (${ids.join(', ')}) - pełny przebieg bez --only ujednolici.`);
+  }
   const moduleChanged = await writeIfChanged(modulePath, encode(raw));
   const lockChanged = await writeIfChanged(lockPath, encode(nextLock));
 
   // Manifest jest PUBLICZNY: bez ścieżek pól (mapowanie narracja -> plik trzyma tylko module.json i audio.lock.json w repo). Tylko klucze
   // plików (blockId i skrót są w nazwie), posortowane, żeby dwa przebiegi dawały identyczny plik.
   const files = [...new Set(Object.values(entries).map((entry) => entry.key))].sort();
-  const manifest = { manifestVersion: 1, slug, audioVersion: params.version, model: params.model, language: params.language, voiceId, files };
+  const manifest = { manifestVersion: 2, slug, audioVersion: params.version, model: params.model, language: params.language, voices: usedVoices, files };
   const manifestBytes = encode(manifest);
   const existing = await params.store.get(manifestKey(slug, params.version));
   if (!existing || Buffer.compare(Buffer.from(existing), Buffer.from(manifestBytes)) !== 0) {
@@ -413,21 +474,33 @@ function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineP
     problems.push('Brak audio.lock.json: uruchom generowanie audio dla modułu.');
   } else {
     for (const ref of refs) {
+      // Każda pozycja z rolą głosu (D-082): autor od razu widzi, którym głosem trzeba ją nagrać.
+      const label = `[${ref.voice}] ${ref.id}`;
+      const voiceId = params.voices[ref.voice];
       const entry = lock.entries[ref.id];
       if (!entry) {
-        problems.push(`${ref.id}: brak nagrania w audio.lock.json.`);
+        problems.push(`${label}: brak nagrania w audio.lock.json.`);
         continue;
       }
-      const expected = narrationHash({ text: ttsInputOf(ref), model: lock.model, language: lock.language, voiceId: lock.voiceId });
+      if (voiceId === undefined || isPlaceholderVoiceId(voiceId)) {
+        problems.push(`${label}: rola głosu ma placeholder w voices.json (nie da się sprawdzić ani nagrać).`);
+        continue;
+      }
+      // Skrót obejmuje voiceId + model + język + tekst: zmieniony głos (ID roli w voices.json albo sama rola w treści) = nagranie nieaktualne.
+      if (entryVoiceId(entry, lock) !== voiceId) {
+        problems.push(`${label}: głos (rola lub ID w voices.json) zmieniony od ostatniego generowania (nagranie nieaktualne).`);
+        continue;
+      }
+      const expected = narrationHash({ text: ttsInputOf(ref), model: lock.model, language: lock.language, voiceId });
       if (entry.hash !== expected || entry.textSha !== textSha(ttsInputOf(ref))) {
-        problems.push(`${ref.id}: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`);
+        problems.push(`${label}: tekst narracji zmieniony od ostatniego generowania (nagranie nieaktualne).`);
         continue;
       }
       const holder = ref.holder;
       // Ze spokenText cues są ŚWIADOMIE nieobecne w module.json (patrz runPipeline, punkt 5.), więc tu wymagamy ich BRAKU, nie obecności.
       const cuesOk = ref.spokenText ? holder.cues === undefined : Array.isArray(holder.cues);
       if (holder.audioUrl !== entry.key || holder.durationMs !== entry.durationMs || !cuesOk) {
-        problems.push(`${ref.id}: audioUrl/durationMs/cues w module.json nie zgadzają się z audio.lock.json.`);
+        problems.push(`${label}: audioUrl/durationMs/cues w module.json nie zgadzają się z audio.lock.json.`);
       }
     }
     const known = new Set(refs.map((ref) => ref.id));

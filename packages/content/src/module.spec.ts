@@ -326,8 +326,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
   const dialogue = (m: TestModule) => m.blocks.find((b) => b.type === 'DIALOGUE') as Record<string, any>;
   const email = (m: TestModule) => m.blocks.find((b) => b.type === 'EMAIL_ANALYSIS') as Record<string, any>;
 
-  it('fixtura przechodzi; bieżąca wersja to 4', () => {
-    expect(MODULE_SCHEMA_VERSION).toBe(4);
+  it('fixtura przechodzi; bieżąca wersja to 5', () => {
+    expect(MODULE_SCHEMA_VERSION).toBe(5);
     expect(() => parseModule(fullModuleForTests())).not.toThrow();
   });
 
@@ -337,8 +337,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     delete module.subtitle;
     delete module.level;
     delete module.objectives;
-    // NARRATIVE to CAŁY nowy typ (wersja 4), nie pojedyncze pole - w module w wersji 2 go po prostu nie ma.
-    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE');
+    // NARRATIVE (wersja 4) i BRIEFING (wersja 5) to CAŁE nowe typy, nie pojedyncze pola - w module w wersji 2 ich po prostu nie ma.
+    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
     for (const block of module.blocks) delete block.reactions;
     const h = hotspots(module);
     for (const hotspot of h.hotspots) {
@@ -396,8 +396,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     }
   });
 
-  it('wersja spoza 2, 3 i 4 jest odrzucona', () => {
-    expect(invalid((m) => (m.schemaVersion = 5))).toContain('schemaVersion');
+  it('wersja spoza 2-5 jest odrzucona', () => {
+    expect(invalid((m) => (m.schemaVersion = 6))).toContain('schemaVersion');
   });
 
   it('evidence bez note to błąd', () => {
@@ -550,7 +550,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     delete module.subtitle;
     delete module.level;
     delete module.objectives;
-    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE');
+    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
     delete email(module).email.to;
@@ -642,6 +642,152 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     module.blocks.unshift({ ...JSON.parse(JSON.stringify(narrative)), id: 'otwarcie-2' });
     expect(module.blocks.filter((b: Record<string, any>) => b.type === 'NARRATIVE')).toHaveLength(2);
     expect(() => parseModule(module)).not.toThrow();
+  });
+});
+
+// Wersja 5: blok BRIEFING (odprawa) z zadaniami sprawy w kroku caseFile (tasks[] { id, text, completeWhen }), D-081.
+describe('parseModule: schemaVersion 5 (BRIEFING, zadania sprawy)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const briefing = (m: TestModule) => m.blocks.find((b) => b.type === 'BRIEFING') as Record<string, any>;
+  const tasks = (m: TestModule) => briefing(m).steps.find((s: Record<string, any>) => s.kind === 'caseFile').tasks as Record<string, any>[];
+
+  it('moduł w wersji 4 z blokiem BRIEFING jest odrzucony; bez niego przechodzi (cele to zawsze teksty)', () => {
+    expect(invalid((m) => (m.schemaVersion = 4))).toContain('blok BRIEFING wymaga schemaVersion 5');
+    const module = fullModuleForTests();
+    module.schemaVersion = 4;
+    module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING');
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('cele modułu (objectives) to wyłącznie teksty - obiekt z completeWhen jest odrzucony (zadania są w odprawie)', () => {
+    expect(invalid((m) => (m.objectives[1] = { text: 'Cel', completeWhen: ['mail'] }))).toContain('objectives.1');
+  });
+
+  it('zadania sprawy: completeWhen z nieznanym blokiem, powtórzonym blokiem albo blokiem BRIEFING to błąd', () => {
+    expect(invalid((m) => (tasks(m)[0].completeWhen = ['nie-ma']))).toMatch(/steps\[3\]\.tasks\[0\]\.completeWhen: nieznany blok "nie-ma"/);
+    expect(invalid((m) => (tasks(m)[0].completeWhen = ['mail', 'mail']))).toContain('tasks[0].completeWhen: powtórzony blok "mail"');
+    // "Pomiń odprawę" zalicza blok BRIEFING - gdyby odprawa odhaczała zadanie, pominięcie by je odhaczało.
+    expect(invalid((m) => (tasks(m)[0].completeWhen = [briefing(m).id]))).toContain('blok odprawy (BRIEFING) nie może odhaczać zadań');
+  });
+
+  it('zadania sprawy: powtórzone id, pusta lista completeWhen i pole spoza schematu są odrzucone', () => {
+    expect(invalid((m) => tasks(m).push({ ...tasks(m)[0] }))).toContain('tasks: powtórzony identyfikator "linki"');
+    expect(invalid((m) => (tasks(m)[0].completeWhen = []))).toContain('tasks.0.completeWhen');
+    expect(invalid((m) => delete tasks(m)[0].completeWhen)).toContain('tasks.0.completeWhen');
+    expect(invalid((m) => (tasks(m)[0].done = true))).toContain('tasks.0');
+  });
+
+  it('BRIEFING: waga > 0 to błąd (blok nieoceniany zaniżałby wynik modułu)', () => {
+    expect(invalid((m) => (briefing(m).weight = 1))).toContain('blok BRIEFING jest nieoceniany');
+  });
+
+  it('BRIEFING: mówca kroku call to wyłącznie postać { name, role, avatar } - maskotki w odprawie nie ma (schemat strict)', () => {
+    expect(
+      invalid((m) => {
+        briefing(m).steps.find((s: Record<string, any>) => s.kind === 'call').caller.mascot = 'greeting';
+      }),
+    ).toContain('caller');
+  });
+
+  it('BRIEFING: nieznany rodzaj kroku to błąd schematu; krok start wymaga tekstu i przycisku', () => {
+    expect(invalid((m) => (briefing(m).steps[0].kind = 'video'))).toContain('steps.0');
+    expect(invalid((m) => delete briefing(m).steps.find((s: Record<string, any>) => s.kind === 'start').cta)).toContain('cta');
+  });
+
+  it('BRIEFING: krok badge nie przyjmuje danych gracza z treści (strict - imię liczy wyłącznie klient)', () => {
+    expect(
+      invalid((m) => {
+        briefing(m).steps.find((s: Record<string, any>) => s.kind === 'badge').name = 'Jan K.';
+      }),
+    ).toContain('steps.4');
+  });
+});
+
+// Wersja 5: rola głosu nagrania i nagranie media audio z potoku TTS (D-082).
+describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const telefon = (m: TestModule) =>
+    m.blocks.find((b) => b.type === 'SCENE_HOTSPOTS')!.hotspots.find((h: Record<string, any>) => h.media?.kind === 'audio');
+  const toTts = (m: TestModule) => {
+    const media = telefon(m).media;
+    media.narration = { text: media.transcript, voice: 'bank' };
+    delete media.audioUrl;
+    delete media.transcript;
+  };
+
+  it('voice: znane role przechodzą (komisarz w odprawie fixtury), nieznana rola to błąd walidacji', () => {
+    expect(() => parseModule(fullModuleForTests())).not.toThrow();
+    expect(invalid((m) => (m.blocks[0].narration.voice = 'fooli'))).toContain('narration.voice');
+    for (const voice of ['narrator', 'komisarz', 'bank', 'marek']) {
+      expect(invalid((m) => (m.blocks[0].narration.voice = voice))).toBe('');
+    }
+    expect(invalid((m) => (m.blocks[0].narration.voice = 'lektor2'))).toContain('narration.voice');
+  });
+
+  it('media audio z nagraniem z potoku TTS (narration + voice) przechodzi; transkrypcją jest narration.text', () => {
+    expect(invalid(toTts)).toBe('');
+  });
+
+  it('media audio: dokładnie jedno z audioUrl/narration, transcript tylko przy audioUrl', () => {
+    expect(invalid((m) => (telefon(m).media.narration = { text: 'x' }))).toContain('dokładnie jednego z pól audioUrl/narration');
+    expect(invalid((m) => delete telefon(m).media.audioUrl)).toContain('dokładnie jednego z pól audioUrl/narration');
+    expect(invalid((m) => delete telefon(m).media.transcript)).toContain('audioUrl wymaga transcript');
+    expect(
+      invalid((m) => {
+        toTts(m);
+        telefon(m).media.transcript = 'druga kopia';
+      }),
+    ).toContain('bez transcript');
+  });
+
+  it('media audio w zagnieżdżonej scenie: te same reguły (dokładnie jedno z audioUrl/narration, transcript przy audioUrl)', () => {
+    const nestedAudio = (m: TestModule) =>
+      m.blocks
+        .find((b) => b.type === 'SCENE_HOTSPOTS')!
+        .hotspots.flatMap((h: Record<string, any>) => h.media?.scene?.hotspots ?? [])
+        .find((h: Record<string, any>) => h.media?.kind === 'audio');
+    const noTranscript = invalid((m) => delete nestedAudio(m).media.transcript);
+    expect(noTranscript).toMatch(/hotspots\[\d+\]\.media\.scene\.hotspots\[\d+\]\.media: audioUrl wymaga transcript/);
+    expect(invalid((m) => (nestedAudio(m).media.narration = { text: 'x' }))).toMatch(
+      /media\.scene\.hotspots\[\d+\]\.media: audio wymaga dokładnie jednego z pól audioUrl\/narration/,
+    );
+    expect(
+      invalid((m) => {
+        const media = nestedAudio(m).media;
+        media.narration = { text: media.transcript, voice: 'bank' };
+        delete media.audioUrl;
+        delete media.transcript;
+      }),
+    ).toBe('');
+  });
+
+  it('voice i media.narration w module w wersji 4 są odrzucone (nazwane w błędzie)', () => {
+    const message = invalid((m) => {
+      m.schemaVersion = 4;
+      m.blocks = m.blocks.filter((b) => b.type !== 'BRIEFING');
+      m.blocks[0].narration.voice = 'narrator';
+      toTts(m);
+    });
+    expect(message).toContain('pole narration.voice wymaga schemaVersion 5');
+    expect(message).toContain('pole media.narration wymaga schemaVersion 5');
   });
 });
 

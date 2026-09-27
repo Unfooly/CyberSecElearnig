@@ -22,7 +22,39 @@ export type ContentBlockType =
   | 'TABS'
   | 'SUMMARY'
   // schemaVersion 4: blok narracyjny (tekst, bez interakcji poza "Dalej") - patrz packages/content D-061.
-  | 'NARRATIVE';
+  | 'NARRATIVE'
+  // schemaVersion 5: odprawa (kroki typewriter/call/caseFile/badge), nieoceniana - D-081.
+  | 'BRIEFING';
+
+/** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */
+export type BriefingStep =
+  | { kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration }
+  | {
+      kind: 'call';
+      caller: { name: string; role?: string; avatar?: string };
+      text: string;
+      cta: string;
+      narration?: Narration;
+    }
+  | {
+      kind: 'caseFile';
+      caseNo: string;
+      title: string;
+      fields: { label: string; value: string }[];
+      stamp?: string;
+      tasks?: BriefingTask[];
+      cta: string;
+      narration?: Narration;
+    }
+  | { kind: 'badge'; cta: string; narration?: Narration }
+  | { kind: 'start'; text: string; cta: string; narration?: Narration };
+
+/** Zadanie sprawy z karty w odprawie (BRIEFING, krok caseFile, D-081): completeWhen = id bloków, których ukończenie odhacza zadanie. */
+export interface BriefingTask {
+  id: string;
+  text: string;
+  completeWhen: string[];
+}
 
 /** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
 export interface ContentReaction {
@@ -103,6 +135,8 @@ export interface ContentBlock {
   // TABS
   tabs?: ContentTab[];
   requiredTabs?: string[];
+  // BRIEFING
+  steps?: BriefingStep[];
   // SUMMARY
   text?: string;
   // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).
@@ -146,6 +180,8 @@ export interface HotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  /** kind:'audio' nagrane potokiem TTS (schemaVersion 5, D-082) zamiast audioUrl/transcript: plik w narration.audioUrl, transkrypcja w narration.text. */
+  narration?: Narration;
   /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
   image?: string;
   title?: string;
@@ -166,6 +202,7 @@ export interface InnerHotspotMedia {
   alt?: string;
   audioUrl?: string;
   transcript?: string;
+  narration?: Narration;
   /** Zbliżenie nad własnym odtwarzaczem audio (tylko kind:'audio', opcjonalne, feat/scene-overlay-fix). */
   image?: string;
   title?: string;

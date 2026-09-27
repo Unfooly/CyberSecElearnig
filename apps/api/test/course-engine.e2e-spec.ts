@@ -66,7 +66,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     return parseModule(module).blocks;
   }
 
-  async function createCourse(title: string, blocks: unknown[], schemaVersion: 1 | 2, withVersion = true) {
+  async function createCourse(title: string, blocks: unknown[], schemaVersion: 1 | 2 | 5, withVersion = true) {
     const course = await prisma.course.create({
       data: { title, category: 'EMAIL_SECURITY', durationMinutes: 5, contentBlocks: blocks as never },
     });
@@ -124,7 +124,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     userAId = userA.id;
     userBId = userB.id;
 
-    engineCourseId = await createCourse(`Silnik scen ${suffix}`, engineBlocks(), 2);
+    engineCourseId = await createCourse(`Silnik scen ${suffix}`, engineBlocks(), 5);
     textCourseId = await createCourse(`Zadanie tekstowe ${suffix}`, [textBlock(), videoBlock('wideo')], 2);
     // Celowo BRAK przypisania kursów silnika dla organizacji B (testy izolacji).
     await assign(orgAId, userAId, engineCourseId);
@@ -151,7 +151,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const response = await start(tokenA, engineCourseId).expect(200);
       const blocks = response.body.contentBlocks as { id: string; type: BlockType }[];
 
-      expect(blocks).toHaveLength(14);
+      expect(blocks).toHaveLength(15);
       expect(JSON.stringify(response.body)).not.toContain(SECRET_MARKER);
 
       for (const block of blocks) {
@@ -159,6 +159,12 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
         for (const path of collectPaths(block)) expect(allowed).toContain(path);
         for (const secret of FIELD_CLASSIFICATION[block.type].secret) expect(collectPaths(block)).not.toContain(secret);
       }
+    });
+
+    it('zadania sprawy (BRIEFING, karta sprawy) docierają do klienta w treści wersji: id, tekst i completeWhen (D-081)', async () => {
+      const blocks = (await start(tokenA, engineCourseId).expect(200)).body.contentBlocks as { type: string; steps?: Record<string, unknown>[] }[];
+      const caseFile = blocks.find((b) => b.type === 'BRIEFING')!.steps!.find((s) => s.kind === 'caseFile')!;
+      expect(caseFile.tasks).toEqual([{ id: 'linki', text: 'Nie klikaj podejrzanych linków.', completeWhen: ['mail', 'kolejnosc'] }]);
     });
 
     it('klient nie dostaje podpowiedzi, rozwiązania ani poprawnych odpowiedzi zadania tekstowego, tylko liczbę podpowiedzi', async () => {
@@ -333,14 +339,20 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const ordering = (await submit(tokenA, engineCourseId, { blockIndex: 11, answer: { order: steps } }).expect(200)).body;
       expect(ordering.lastResult).toMatchObject({ points: 1, detail: { correctOrder: steps } });
       await submit(tokenA, engineCourseId, { blockIndex: 12, answer: { opened: ['t1'] } }).expect(200);
+      // BRIEFING (schemaVersion 5, indeks 13 - fixtura stawia go tuż przed SUMMARY): nieoceniany, zaliczany samym zapisem
+      // (ostatni krok albo "Pomiń odprawę" w kliencie - dla serwera to ten sam zapis bez odpowiedzi).
+      const briefing = (await submit(tokenA, engineCourseId, { blockIndex: 13 }).expect(200)).body;
+      expect(briefing.lastResult).toMatchObject({ blockId: 'odprawa', type: 'BRIEFING' });
+      expect(briefing.lastResult).not.toHaveProperty('points');
+      expect(briefing.status).toBe('IN_PROGRESS');
 
-      const done = (await submit(tokenA, engineCourseId, { blockIndex: 13 }).expect(200)).body;
+      const done = (await submit(tokenA, engineCourseId, { blockIndex: 14 }).expect(200)).body;
       expect(done.status).toBe('COMPLETED');
-      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne i NARRATIVE poza wynikiem) = 4.75 / 5.
+      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne, NARRATIVE i BRIEFING poza wynikiem) = 4.75 / 5.
       expect(done.score).toBe(95);
       expect(done.gamification).not.toBeNull();
 
-      await submit(tokenA, engineCourseId, { blockIndex: 13 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 14 }).expect(400);
       await attempt(tokenA, engineCourseId, 'domena', 'x').expect(400);
       // /start na ukończonym kursie nie cofa statusu.
       expect((await start(tokenA, engineCourseId).expect(200)).body.status).toBe('COMPLETED');

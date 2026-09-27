@@ -301,6 +301,38 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       ],
       requiredTabs: ['t1'],
     },
+    // schemaVersion 5. Dwa kroki "call": postać bez avatara (inicjały) i postać z avatarem; każdy rodzaj kroku co najmniej raz.
+    BRIEFING: {
+      ...base('odprawa'),
+      // Nieoceniany: waga musi być 0 (semantics.ts) - pole zostaje, żeby test klasyfikacji widział ścieżkę `weight`.
+      weight: 0,
+      type: 'BRIEFING',
+      steps: [
+        { kind: 'typewriter', text: 'Wtorek, 7:58.', sub: 'Dzwoni telefon.', cta: 'Odbierz', narration: audio('odprawa-0') },
+        {
+          kind: 'call',
+          caller: { name: 'Komisarz Adam Wolski', role: 'Wydział Cyberbezpieczeństwa' },
+          text: 'Mamy sprawę.',
+          cta: 'Słucham',
+          // Rola głosu (schemaVersion 5, D-082): Komisarz mówi własnym głosem.
+          narration: { ...audio('odprawa-1'), voice: 'komisarz' as const },
+        },
+        { kind: 'call', caller: { name: 'Marek', avatar: 'avatars/marek.svg' }, text: 'Czekam w IT.', cta: 'Dalej' },
+        {
+          kind: 'caseFile',
+          caseNo: 'SPR-2026-0412',
+          title: 'Wyłudzone hasło',
+          fields: [{ label: 'Firma', value: 'Firma Testowa' }],
+          stamp: 'PILNE',
+          // Zadanie sprawy (D-081): odhaczane, gdy ukończone są oba bloki (mail i kolejność).
+          tasks: [{ id: 'linki', text: 'Nie klikaj podejrzanych linków.', completeWhen: ['mail', 'kolejnosc'] }],
+          cta: 'Przyjmuję',
+          narration: audio('odprawa-3'),
+        },
+        { kind: 'badge', cta: 'Do dzieła', narration: audio('odprawa-4') },
+        { kind: 'start', text: 'Firma Testowa, drugie piętro.', cta: 'Wchodzę', narration: audio('odprawa-5') },
+      ],
+    },
     SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },
   };
 }
@@ -327,6 +359,13 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   // spokenText (narration.spokenText, FIELD_CLASSIFICATION: secret) dokładany TYLKO tutaj, nie w audio() - inaczej
   // fullModule() (używany też przez scripts/content) miałby WSZĘDZIE spokenText, a wtedy jego testy sidecar/cues
   // (które zakładają realne, wielozdaniowe cues z TTS) przestałyby mieć czego testować (spokenText celowo pomija cues).
+  // media.narration (schemaVersion 5, D-082): nagranie z potoku TTS zamiast pliku. Semantycznie wyklucza się z audioUrl, ale tu
+  // (bez parseModule) oba warianty na tych samych hotspotach, żeby test kompletności widział wszystkie ścieżki klasyfikacji.
+  const scene = blocks.SCENE_HOTSPOTS as { hotspots: { id: string; media?: Record<string, unknown> }[] };
+  const telefon = scene.hotspots.find((h) => h.media?.kind === 'audio')!;
+  telefon.media!.narration = audio('telefon-media');
+  const inner = scene.hotspots.flatMap((h) => ((h.media?.scene as { hotspots?: { media?: Record<string, unknown> }[] })?.hotspots ?? []));
+  inner.find((h) => h.media?.kind === 'audio')!.media!.narration = audio('kosz-media');
   for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;
 }
@@ -341,18 +380,23 @@ function injectSpokenText(node: unknown): void {
   }
   if (node && typeof node === 'object') {
     const object = node as Record<string, unknown>;
-    if (typeof object.text === 'string' && 'audioUrl' in object && !('spokenText' in object)) {
+    if (typeof object.text === 'string' && 'audioUrl' in object && 'durationMs' in object && !('spokenText' in object)) {
       object.spokenText = `${SECRET_MARKER}-spoken-${String(object.audioUrl).replace(/\W+/g, '-')}`;
+      // voice (schemaVersion 5, D-082): tak samo "tylko dla TTS" jak spokenText - ścieżka musi istnieć, żeby test ją widział.
+      object.voice = 'bank';
     }
     Object.values(object).forEach(injectSpokenText);
   }
 }
 
-/** Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. */
+/**
+ * Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. BRIEFING (schemaVersion 5) stoi TUŻ PRZED
+ * SUMMARY, nie na początku: apps/api/test/course-engine.e2e-spec.ts ma twardo zakodowane indeksy bloków (CLAUDE.md, reguła 9).
+ */
 export function fullModule() {
   const blocks = fullBlocks();
   return {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     slug: 'sprawa-testowa',
     title: 'Sprawa testowa',
     subtitle: 'Podtytuł testowy',
@@ -375,6 +419,7 @@ export function fullModule() {
       blocks.TEXT_INPUT_GUIDED,
       blocks.ORDERING,
       blocks.TABS,
+      blocks.BRIEFING,
       blocks.SUMMARY,
     ],
   };

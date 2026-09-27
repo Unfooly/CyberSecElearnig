@@ -76,8 +76,18 @@ const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSche
 // imageMediaSchema - opcjonalny, bo zbliżenie bywa czysto ilustracyjne (treść i tak jest w transkrypcie), ale gdy niesie
 // informację NIEOBECNĄ w transkrypcie (np. tekst widoczny na zdjęciu telefonu), autor może ją opisać. `alt` to WSPÓLNA
 // ścieżka klasyfikacji z imageMediaSchema (hotspots[].media.alt) - nie potrzeba osobnego wpisu w FIELD_CLASSIFICATION.
+// schemaVersion 5 (D-082): nagranie z potoku TTS zamiast gotowego pliku - `narration` (tekst = transkrypcja, zwykle z własnym
+// `voice`, np. poczta głosowa głosem "bank") ALBO `audioUrl` + `transcript` (plik z --assets, jak dotąd). Dokładnie jedno z
+// audioUrl/narration, a transcript tylko przy audioUrl - przy narration transkrypcją jest narration.text (semantics.ts).
 const audioMediaSchema = z
-  .object({ kind: z.literal('audio'), audioUrl: audioPathSchema, transcript: text(4000), image: imagePathSchema.optional(), alt: text(300).optional() })
+  .object({
+    kind: z.literal('audio'),
+    audioUrl: audioPathSchema.optional(),
+    transcript: text(4000).optional(),
+    narration: narrationSchema.optional(),
+    image: imagePathSchema.optional(),
+    alt: text(300).optional(),
+  })
   .strict();
 const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
 
@@ -348,6 +358,85 @@ const summarySchema = z
   })
   .strict();
 
+// schemaVersion 5: "odprawa" na start modułu - ciąg kroków zamkniętego typu, każdy z własną (opcjonalną) narracją.
+// Osobny typ bloku, nie wariant NARRATIVE: struktura (kroki, krok "badge" z danymi z profilu gracza) jest zupełnie inna
+// niż jednorazowa narracja NARRATIVE, więc nie warto naciągać jej umowy dla wszystkich pozostałych użyć tego typu.
+// Nieoceniany, bez dowodów - zaliczany po ostatnim kroku albo po kliknięciu "Pomiń odprawę" (obsługa w apps/web, D-081).
+const briefingStepSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('typewriter'),
+      text: text(300),
+      sub: text(300).optional(),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('call'),
+      // Kto dzwoni: postać zapisana w treści (jak DIALOGUE.character - moduł nie ma wspólnego rejestru postaci). Bez avatara
+      // klient pokazuje inicjały z `name` (na accent-soft). Maskotki tu nie ma (decyzja właściciela, D-081: maskotka wychodzi
+      // z odtwarzacza - refactor/remove-mascot-player).
+      caller: z
+        .object({
+          name: text(80),
+          role: text(120).optional(),
+          avatar: imagePathSchema.optional(),
+        })
+        .strict(),
+      text: text(500),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // caseFile: karta sprawy z zadaniami sprawy (`tasks`) - te same zadania pokazuje sekcja "Zadania" notatnika przez cały
+  // moduł (czyta je z bloku BRIEFING bieżącej wersji treści, D-081). `completeWhen`: zadanie odhacza KLIENT, gdy wszystkie
+  // wskazane bloki są ukończone (progress) - to nie ocena. Id muszą istnieć w module i nie mogą wskazywać bloku BRIEFING
+  // (pominięcie odprawy nie odhacza zadań) - semantics.ts. Cele szkoleniowe modułu (`objectives`) to osobna lista tekstów.
+  z
+    .object({
+      kind: z.literal('caseFile'),
+      caseNo: text(30),
+      title: text(120),
+      fields: z.array(z.object({ label: text(60), value: text(200) }).strict()).min(1).max(8),
+      stamp: text(30).optional(),
+      tasks: z
+        .array(z.object({ id: idSchema, text: text(200), completeWhen: z.array(idSchema).min(1).max(10) }).strict())
+        .max(6)
+        .optional(),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // badge: legitymacja gracza. Bez żadnych danych osobowych w treści - imię, avatar i numer odznaki liczy WYŁĄCZNIE
+  // klient z sesji (apps/web, BriefingBlock.tsx), nigdy z module.json ani z progress.
+  z
+    .object({
+      kind: z.literal('badge'),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+  // start: ostatni ekran odprawy - miejsce akcji (np. "Unfooly, drugie piętro.") i przycisk rozpoczęcia śledztwa.
+  z
+    .object({
+      kind: z.literal('start'),
+      text: text(200),
+      cta: text(60),
+      narration: narrationSchema.optional(),
+    })
+    .strict(),
+]);
+
+const briefingSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('BRIEFING'),
+    steps: z.array(briefingStepSchema).min(1).max(8),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -363,6 +452,7 @@ export const BLOCK_SCHEMAS = {
   ORDERING: orderingSchema,
   TABS: tabsSchema,
   SUMMARY: summarySchema,
+  BRIEFING: briefingSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -383,6 +473,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   orderingSchema,
   tabsSchema,
   summarySchema,
+  briefingSchema,
 ]);
 export type ServerBlock = z.infer<typeof blockSchema>;
 
@@ -404,6 +495,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   ORDERING: 1,
   TABS: 0,
   SUMMARY: 0,
+  BRIEFING: 0,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -439,6 +531,8 @@ const BASE_SECRET = [
   // z narration.text), więc nie ma powodu wysyłać go do klienta. SEKRET tu znaczy tylko "niepotrzebne klientowi", nie "klucz
   // odpowiedzi" - tak samo jak EMBEDDED_HTML.html niżej.
   'narration.spokenText',
+  // narration.voice (schemaVersion 5, D-082): rola głosu dla skryptu TTS - odtwarzacz jej nie potrzebuje, jak spokenText.
+  'narration.voice',
 ];
 
 export interface FieldClassification {
@@ -477,6 +571,12 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.alt',
       'hotspots[].media.audioUrl',
       'hotspots[].media.transcript',
+      // schemaVersion 5: nagranie media audio z potoku TTS (D-082) - te same pola co narracja bloku.
+      'hotspots[].media.narration.text',
+      'hotspots[].media.narration.audioUrl',
+      'hotspots[].media.narration.durationMs',
+      'hotspots[].media.narration.cues[].text',
+      'hotspots[].media.narration.cues[].startMs',
       'hotspots[].media.image',
       'hotspots[].media.title',
       'hotspots[].media.lines[]',
@@ -494,6 +594,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].media.alt',
       'hotspots[].media.scene.hotspots[].media.audioUrl',
       'hotspots[].media.scene.hotspots[].media.transcript',
+      'hotspots[].media.scene.hotspots[].media.narration.text',
+      'hotspots[].media.scene.hotspots[].media.narration.audioUrl',
+      'hotspots[].media.scene.hotspots[].media.narration.durationMs',
+      'hotspots[].media.scene.hotspots[].media.narration.cues[].text',
+      'hotspots[].media.scene.hotspots[].media.narration.cues[].startMs',
       'hotspots[].media.scene.hotspots[].media.image',
       'hotspots[].media.scene.hotspots[].media.title',
       'hotspots[].media.scene.hotspots[].media.lines[]',
@@ -517,7 +622,16 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].required',
       'requiredHotspots[]',
     ],
-    ['hotspots[].narration.spokenText', 'hotspots[].media.scene.hotspots[].narration.spokenText'],
+    [
+      'hotspots[].narration.spokenText',
+      'hotspots[].narration.voice',
+      'hotspots[].media.scene.hotspots[].narration.spokenText',
+      'hotspots[].media.scene.hotspots[].narration.voice',
+      'hotspots[].media.narration.spokenText',
+      'hotspots[].media.narration.voice',
+      'hotspots[].media.scene.hotspots[].media.narration.spokenText',
+      'hotspots[].media.scene.hotspots[].media.narration.voice',
+    ],
   ),
   DIALOGUE: classify(
     [
@@ -546,7 +660,12 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'questions[].note.text',
       'requiredQuestions[]',
     ],
-    ['questions[].lines[].narration.spokenText', 'questions[].answerNarration.spokenText'],
+    [
+      'questions[].lines[].narration.spokenText',
+      'questions[].lines[].narration.voice',
+      'questions[].answerNarration.spokenText',
+      'questions[].answerNarration.voice',
+    ],
   ),
   NOTEPAD: classify(['prompt'], []),
   NARRATIVE: classify(['text'], []),
@@ -588,6 +707,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hints[].narration.cues[].text',
       'hints[].narration.cues[].startMs',
       'hints[].narration.spokenText',
+      'hints[].narration.voice',
       'scoring.attemptPenalty',
       'scoring.floor',
       'solution.text',
@@ -597,6 +717,32 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   ORDERING: classify(['prompt', 'items[].id', 'items[].text'], ['scoring', 'explanation']),
   TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]'], []),
   SUMMARY: classify(['text'], []),
+  BRIEFING: classify(
+    [
+      'steps[].kind',
+      'steps[].text',
+      'steps[].sub',
+      'steps[].cta',
+      'steps[].caller.name',
+      'steps[].caller.role',
+      'steps[].caller.avatar',
+      'steps[].caseNo',
+      'steps[].title',
+      'steps[].fields[].label',
+      'steps[].fields[].value',
+      'steps[].stamp',
+      // Zadania sprawy: tekst i id bloków do odhaczenia - id bloków klient i tak zna z contentBlocks, nic tu nie jest sekretem.
+      'steps[].tasks[].id',
+      'steps[].tasks[].text',
+      'steps[].tasks[].completeWhen[]',
+      'steps[].narration.text',
+      'steps[].narration.audioUrl',
+      'steps[].narration.durationMs',
+      'steps[].narration.cues[].text',
+      'steps[].narration.cues[].startMs',
+    ],
+    ['steps[].narration.spokenText', 'steps[].narration.voice'],
+  ),
 };
 
 // Walidacja semantyczna (relacje między polami, kompilacja wzorców RE2) jest w semantics.ts: to kod tylko dla Node (natywny

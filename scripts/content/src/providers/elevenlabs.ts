@@ -114,7 +114,7 @@ export class ElevenLabsProvider implements TtsProvider {
   }
 
   async synthesize(request: SynthesisRequest): Promise<SynthesisResult> {
-    if (!VOICE_ID.test(request.voiceId)) throw new Error('Niepoprawny ELEVENLABS_VOICE_ID.');
+    if (!VOICE_ID.test(request.voiceId)) throw new Error('Niepoprawny voiceId (scripts/content/voices.json, VOICE_ID).');
     if (request.text.trim() === '') throw new Error('Pusty tekst narracji.');
     if (request.text.length > MAX_TEXT_CHARS) throw new Error(`Tekst narracji ma ${request.text.length} znaków (limit żądania: ${MAX_TEXT_CHARS}).`);
 

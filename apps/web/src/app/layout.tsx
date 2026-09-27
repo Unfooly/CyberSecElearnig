@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Courier_Prime, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { SITE_URL } from '@/lib/landing-config';
 
@@ -8,6 +8,17 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ['500', '600', '700', '800'],
   display: 'swap',
   variable: '--font-jakarta',
+});
+
+// Font "maszynowy" WYŁĄCZNIE do numeru sprawy (odprawa) i treści dokumentów w teczce (docs/brand/BRAND.md, D-081). next/font
+// pobiera plik przy buildzie i serwuje go z naszego originu - zero żądań do Google w przeglądarce (CSP font-src 'self').
+// preload: false - używany na jednym ekranie odtwarzacza, nie ma powodu dociągać go na każdej stronie.
+const typewriter = Courier_Prime({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '700'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-typewriter',
 });
 
 export const metadata: Metadata = {
@@ -33,7 +44,7 @@ export const dynamic = 'force-dynamic';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={jakarta.variable}>
+    <html lang="pl" className={`${jakarta.variable} ${typewriter.variable}`}>
       <body className="font-sans">{children}</body>
     </html>
   );

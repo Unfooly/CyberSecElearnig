@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { UsersService } from './users.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -423,6 +423,26 @@ describe('UsersService', () => {
 
       expect(userFindFirst).toHaveBeenCalledWith({ where: { id: 'user-2', organizationId: 'org-a' } });
       expect(userDelete).toHaveBeenCalledWith({ where: { id: 'user-2' } });
+    });
+  });
+
+  describe('getDisplayName (legitymacja w odprawie, D-081)', () => {
+    it('imię i sam inicjał nazwiska; zapytanie w kontekście i z filtrem organizacji wywołującego', async () => {
+      userFindFirst.mockResolvedValue({ firstName: ' Anna ', lastName: 'łukasiewicz' });
+
+      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: 'Anna', lastInitial: 'Ł' });
+      expect(runInOrgContext).toHaveBeenCalledWith('org-a', expect.any(Function));
+      expect(userFindFirst).toHaveBeenCalledWith({ where: { id: 'user-1', organizationId: 'org-a' }, select: { firstName: true, lastName: true } });
+    });
+
+    it('brak imienia/nazwiska (pusty albo null) = null, klient bierze wtedy imię z e-maila', async () => {
+      userFindFirst.mockResolvedValue({ firstName: '  ', lastName: null });
+      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: null, lastInitial: null });
+    });
+
+    it('użytkownik spoza organizacji (RLS/filtr nic nie zwraca): 404', async () => {
+      userFindFirst.mockResolvedValue(null);
+      await expect(service.getDisplayName('org-a', 'user-b')).rejects.toThrow(NotFoundException);
     });
   });
 });

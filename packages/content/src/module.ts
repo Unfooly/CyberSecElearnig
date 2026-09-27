@@ -6,17 +6,19 @@ import { COURSE_CATEGORIES, idSchema, text } from './common';
  * Wersja formatu modułu z silnikiem scen (bieżąca). Wersja 1 to "legacy": bloki bez `id`, zapisane przed silnikiem (patrz
  * withLegacyIds). Wersja 3 dodaje pola "śledztwa" (evidence, note.kind, required, dialog `lines`, `character.avatar`). Wersja 4
  * dodaje metadane modułu (subtitle, level, objectives), `character.opening`, reakcje maskotki (`reactions`) i blok NARRATIVE.
- * Wszystkie pola v3/v4 są opcjonalne, więc starszy moduł nadal się waliduje, ale NIE może używać pól z nowszej wersji
- * (semantics.ts: V3_FEATURES/V4_FEATURES i sprawdzenia na poziomie modułu/typu bloku).
+ * Wersja 5 dodaje blok BRIEFING (z zadaniami sprawy w kroku caseFile), rolę głosu nagrań i nagranie media audio z potoku
+ * TTS (D-081, D-082). Wszystkie pola
+ * v3/v4/v5 są opcjonalne, więc starszy moduł nadal się waliduje, ale NIE może używać pól z nowszej wersji (semantics.ts:
+ * V3_FEATURES/V4_FEATURES i sprawdzenia na poziomie modułu/typu bloku).
  */
-export const MODULE_SCHEMA_VERSION = 4;
-export const SUPPORTED_SCHEMA_VERSIONS = [2, 3, 4] as const;
+export const MODULE_SCHEMA_VERSION = 5;
+export const SUPPORTED_SCHEMA_VERSIONS = [2, 3, 4, 5] as const;
 
 export const MODULE_LEVELS = ['basic', 'intermediate', 'advanced'] as const;
 
 export const moduleSchema = z
   .object({
-    schemaVersion: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+    schemaVersion: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
     // Stabilny klucz modułu (import robi po nim upsert kursu).
     slug: idSchema,
     title: text(200),
@@ -27,7 +29,8 @@ export const moduleSchema = z
     level: z.enum(MODULE_LEVELS).optional(),
     durationMinutes: z.number().int().min(1).max(600),
     mandatory: z.boolean().default(false),
-    // schemaVersion 4: cele szkolenia (lista), np. do SUMMARY "Czego się nauczyłeś".
+    // schemaVersion 4: cele szkoleniowe (lista tekstów), np. do katalogu kursów. Zadania sprawy (odhaczane w notatniku) to
+    // co innego: `tasks` kroku caseFile bloku BRIEFING (blocks.ts, D-081).
     objectives: z.array(text(200)).max(6).optional(),
     blocks: z.array(blockSchema).min(1).max(200),
   })

@@ -427,6 +427,24 @@ export class UsersService {
     return { narrationEnabled: preferences.narrationEnabled };
   }
 
+  /**
+   * Imię i INICJAŁ nazwiska własnego konta (legitymacja w odprawie odtwarzacza, D-081) - nic więcej: pełne nazwisko nie jest
+   * potrzebne, więc nie wychodzi. organizationId i userId WYŁĄCZNIE z tokena (UsersController, bez parametru userId); jawny
+   * filtr po organizationId (Zasada nr 1), RLS jako druga linia obrony. Brak imienia (np. konto z importu bez imienia) = null -
+   * wtedy klient bierze imię z e-maila (jak Topbar). Wynik nie trafia do treści modułu ani do progress.
+   */
+  async getDisplayName(organizationId: string, userId: string): Promise<{ firstName: string | null; lastInitial: string | null }> {
+    const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
+      tx.user.findFirst({ where: { id: userId, organizationId }, select: { firstName: true, lastName: true } }),
+    );
+    if (!user) {
+      throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+    }
+    const firstName = user.firstName?.trim() || null;
+    const lastInitial = user.lastName?.trim().charAt(0).toLocaleUpperCase('pl-PL') || null;
+    return { firstName, lastInitial };
+  }
+
   /** Własny avatar (Topbar) - organizationId/userId wyłącznie z tokena JWT. */
   async getAvatar(organizationId: string, userId: string): Promise<{ avatarUrl: string | null }> {
     const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>

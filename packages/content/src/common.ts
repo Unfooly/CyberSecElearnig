@@ -52,9 +52,19 @@ export const cueSchema = z
   })
   .strict();
 
+/**
+ * Role głosu nagrań (schemaVersion 5, D-082). Rola, nie ID głosu: mapowanie rola -> voiceId ElevenLabs trzyma
+ * scripts/content/voices.json (commitowane, bez sekretów), więc treść modułu nie zależy od konta TTS. Brak pola = narrator.
+ */
+export const VOICE_ROLES = ['narrator', 'komisarz', 'bank', 'marek'] as const;
+export type VoiceRole = (typeof VOICE_ROLES)[number];
+
 export const narrationSchema = z
   .object({
     text: text(4000),
+    // schemaVersion 5: czyim głosem nagrać (patrz VOICE_ROLES). Wyłącznie wejście skryptu TTS, jak spokenText - klient go nie
+    // dostaje (FIELD_CLASSIFICATION: secret w znaczeniu "niepotrzebne klientowi").
+    voice: z.enum(VOICE_ROLES).optional(),
     // Tekst do PRZECZYTANIA przez lektora, gdy różni się od `text` wyświetlanego na ekranie (godziny, kwoty, domeny, hasła -
     // np. "9:00" wyświetlane, ale "dziewiąta zero zero" ma przeczytać TTS). Bez spokenText skrypt TTS czyta `text` wprost.
     // Wyłącznie wejście do nagrania: odtwarzacz go nie używa (napisy/cues zawsze z `text`), więc nie idzie do klienta

@@ -76,7 +76,7 @@ describe('content-import: importModule (szpieg Prisma - wyłącznie course/cours
     expect(courseVersion.createMany).toHaveBeenCalledTimes(2);
     const [legacyCall, newCall] = courseVersion.createMany.mock.calls;
     expect(legacyCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 1, schemaVersion: 1, contentBlocks: legacyBlocks });
-    expect(newCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 2, schemaVersion: 4 });
+    expect(newCall[0].data[0]).toMatchObject({ courseId: 'course-1', version: 2, schemaVersion: 5 });
     expect(course.update).toHaveBeenCalledTimes(1);
     expect(course.create).not.toHaveBeenCalled();
     expect(result).toMatchObject({ courseCreated: false, versionCreated: true, version: 2 });

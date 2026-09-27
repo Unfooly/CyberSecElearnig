@@ -93,7 +93,7 @@ try {
   const wyludzoneHaslo = modules.find((m) => m.slug === 'wyludzone-haslo');
   step('content-import: moduł "wyludzone-haslo" wczytany i zwalidowany', !!wyludzoneHaslo, `${modules.length} modułów łącznie`);
   const importResult = await prisma.$transaction((tx) => contentImport.importModule(tx, wyludzoneHaslo));
-  step('content-import: moduł zaimportowany do bazy (9 bloków)', importResult.courseId != null && importResult.slug === 'wyludzone-haslo', JSON.stringify(importResult));
+  step('content-import: moduł zaimportowany do bazy (10 bloków)', importResult.courseId != null && importResult.slug === 'wyludzone-haslo', JSON.stringify(importResult));
   courseId = importResult.courseId;
   courseCreatedByThisRun = importResult.courseCreated;
 
@@ -138,9 +138,28 @@ try {
   const dialog = () => page.getByRole('dialog');
   const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
 
+  // --- Blok 0: Odprawa (BRIEFING, schemaVersion 5, D-081) --------------------------------------------------------------------
+  // Moduł zaczyna się od odprawy: pięć kroków przyciskami, "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej".
+  await page.getByRole('button', { name: 'Odbierz' }).waitFor();
+  step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, bez "Dalej" w dolnym', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
+  await page.getByRole('button', { name: 'Odbierz' }).click();
+  step('BRIEFING: dzwoni komisarz (postać z inicjałami, bez maskotki)', (await page.getByText('Komisarz Adam Wolski').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0);
+  await page.getByRole('button', { name: 'Przyjmuję' }).click();
+  await page.getByText('CS/2026/0915').waitFor();
+  step('BRIEFING: karta sprawy z listą 3 zadań', (await page.getByRole('region', { name: 'Zadania' }).getByRole('listitem').count()) === 3);
+  await page.getByRole('button', { name: 'Biorę sprawę' }).click();
+  // Legitymacja: imię wyłącznie z danych sesji (konto testowe bez imienia -> z e-maila), numer odznaki z numeru sprawy.
+  await page.getByText('Legitymacja śledczego').waitFor();
+  step('BRIEFING: legitymacja z numerem odznaki 0915-*', (await page.getByText(/^0915-/).count()) === 1);
+  await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
+  await page.getByText('Unfooly, drugie piętro.').waitFor();
+  const briefingSaved = progressResponse();
+  await page.getByRole('button', { name: 'Wchodzę' }).click();
+  step('BRIEFING: ostatni krok zapisuje blok', (await briefingSaved).ok());
+
   // --- Blok 1: Korytarz (SCENE_HOTSPOTS, tylko drzwi) - B-086/D-071 -------------------------------------------------------
-  // Moduł zaczyna się TUTAJ - blok NARRATIVE "Otwarcie sprawy" wypadł (feedback z produkcji), jego zdanie otwierające
-  // przeniesione na początek narracji tego bloku.
+  // Blok NARRATIVE "Otwarcie sprawy" wypadł (feedback z produkcji), jego zdanie otwierające przeniesione na początek narracji
+  // tego bloku; od schemaVersion 5 przed korytarzem jest odprawa (wyżej).
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): brak "Dalej" w pasku - jedynym wyjściem są drzwi (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
   // Scena bez wymaganych dowodów (poza drzwiami samymi) - "drzwi" (action:'next') są gotowe od razu, bez odwiedzania

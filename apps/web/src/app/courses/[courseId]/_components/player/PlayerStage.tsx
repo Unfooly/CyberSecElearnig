@@ -39,12 +39,15 @@ export interface PlayerStageProps {
   totalBlocks: number;
   completedBlocks: number;
   stage: ReactNode;
-  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE - to samo CSS co 'scene', osobna
-      nazwa: czat nie jest "sceną", fix/dialogue-sticky-questions) albo 'slide' (domyślny - wyśrodkowany panel max-w-3xl). */
+  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE i BRIEFING - to samo CSS co 'scene',
+      osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
+      panel max-w-3xl). */
   contentLayout?: 'scene' | 'slide' | 'fill';
   mascot?: { pose: string; text?: string };
   /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
   evidence?: ReactNode;
+  /** Akcja bieżącego bloku w pasku górnym, przed licznikiem dowodów - dziś tylko "Pomiń odprawę" (BRIEFING, D-081). */
+  topAction?: ReactNode;
   /** <NarrationBar .../> (CoursePlayer woła useNarrationBar i przekazuje wynik jemu ORAZ transcriptPanel poniżej - jedno źródło stanu). */
   narrationBar: ReactNode;
   /** <TranscriptPanel .../> - renderuje się NAD dolnym paskiem (bottom-full), rejestruje się sama w overlay-stack. */
@@ -88,6 +91,7 @@ function PlayerStageInner({
   contentLayout = 'slide',
   mascot,
   evidence,
+  topAction,
   narrationBar,
   transcriptPanel,
   notesCount,
@@ -250,6 +254,7 @@ function PlayerStageInner({
                   <div className="h-full rounded-full bg-indigo-600 motion-safe:transition-all" style={{ width: `${percent}%` }} />
                 </div>
               </div>
+              {topAction}
               {evidence}
               <button
                 ref={notesButtonRef}

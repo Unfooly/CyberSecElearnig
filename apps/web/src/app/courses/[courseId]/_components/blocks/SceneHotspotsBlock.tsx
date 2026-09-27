@@ -696,7 +696,10 @@ function AudioMedia({
   onToggleTranscript: () => void;
   onEnded: () => void;
 }) {
-  const url = contentAssetUrl(contentBase, media.audioUrl, 'audio');
+  // Nagranie: gotowy plik (media.audioUrl + transcript) ALBO nagranie z potoku TTS (media.narration, schemaVersion 5, D-082) -
+  // wtedy transkrypcją jest narration.text. Dalej w komponencie wyłącznie te dwie stałe, bez rozróżniania źródła.
+  const url = contentAssetUrl(contentBase, media.audioUrl ?? media.narration?.audioUrl, 'audio');
+  const transcript = media.transcript ?? media.narration?.text;
   const imageUrl = contentAssetUrl(contentBase, media.image, 'image');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -726,7 +729,7 @@ function AudioMedia({
   // potrzebna właśnie wtedy, gdy plik audio się nie wczytał; wcześniejsza wersja tego hotfixu chowała cały ten
   // blok razem z odtwarzaczem pod `{url && ...}`, więc przycisk "Transkrypcja" nic nie pokazywał, gdy `url` było
   // puste - regresja względem kodu SPRZED tego hotfixu, gdzie transkrypcja była zawsze niezależna.
-  const showingTranscript = transcriptOpen && !!media.transcript;
+  const showingTranscript = transcriptOpen && !!transcript;
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -737,7 +740,7 @@ function AudioMedia({
           // dłuższa niż dostępna wysokość obszaru mediów karty, MUSI się przewijać sama (jak DocumentMedia), nie
           // ucinać (WCAG 1.2.1 - to jedyna tekstowa alternatywa dla audio, obcięcie części to utrata treści).
           <div id={transcriptId} role="region" aria-label="Transkrypcja" tabIndex={0} className="h-full overflow-y-auto rounded border border-slate-200 bg-white p-3">
-            <p className="whitespace-pre-line text-sm text-slate-700">{media.transcript}</p>
+            <p className="whitespace-pre-line text-sm text-slate-700">{transcript}</p>
           </div>
         ) : (
           // Mobile: bez max-h (bez zmian - jak przed tym hotfixem, zbliżenie audio nigdy nie miało limitu
@@ -781,7 +784,7 @@ function AudioMedia({
           </div>
         </>
       )}
-      {media.transcript && (
+      {transcript && (
         // Stała etykieta + aria-pressed (druga runda code review, punkt 6): "Pokaż obraz"/"Pokaż transkrypcję" z
         // aria-expanded brzmiało niejednoznacznie po rozwinięciu ("Pokaż obraz, rozwinięty") - to przycisk-przełącznik
         // widoku (dwa stany, nic więcej się nie "rozwija"), nie ujawnianie treści.

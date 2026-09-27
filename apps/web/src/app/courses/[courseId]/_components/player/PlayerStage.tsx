@@ -168,22 +168,15 @@ function PlayerStageInner({
   // pilnuje), ale mierzymy go i tak: TranscriptPanel pozycjonuje się względem niego (bottom-full), a obszar treści
   // (środkowy wiersz grid, NIE document.documentElement jak w dawnym PlayerShell - ramka jest teraz jedynym
   // przewijanym obszarem, nie cała strona) ma własny scroll-padding-bottom na wypadek elementu z fokusem tuż nad
-  // paskiem. --player-bottombar-height (feat/player-portrait, na ramce - custom property dziedziczy w dół DOM) -
-  // bottom sheet karty hotspotu (SceneHotspotsBlock.tsx, globals.css) jest position:fixed WZGLĘDEM CAŁEGO
-  // viewportu (musi być - scena pod nim bywa przescrollowana panoramą), więc bottom:0 nachodziłby na TEN pasek
-  // (który zajmuje dolne piksele TEGO SAMEGO viewportu, position:relative w normalnym przepływie ramki, nie
-  // fixed) - zweryfikowane empirycznie (scratch, nie w repo): bez tego przyciski karty (.hotspot-card-buttons)
-  // nakładały się na "Transkrypcja"/"Lektor"/"Wstecz". Fallback 56px w CSS (var(...,56px)) na wypadek renderu
-  // przed pierwszym pomiarem (min-h-[56px] paska - ta sama wartość).
+  // paskiem. (Dawne --player-bottombar-height dla bottom sheeta karty hotspotu usunięte razem z kartą - D-086: zbliżenie
+  // przedmiotu leży wewnątrz sceny, nie przy krawędzi viewportu.)
   useEffect(() => {
     const bar = bottomBarRef.current;
     const content = contentRef.current;
-    const frame = frameRef.current;
     if (!bar || !content) return undefined;
     const apply = () => {
       const height = Math.ceil(bar.getBoundingClientRect().height);
       content.style.setProperty('scroll-padding-bottom', `${height + 8}px`);
-      frame?.style.setProperty('--player-bottombar-height', `${height}px`);
     };
     apply();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
@@ -191,7 +184,6 @@ function PlayerStageInner({
     return () => {
       observer?.disconnect();
       content.style.removeProperty('scroll-padding-bottom');
-      frame?.style.removeProperty('--player-bottombar-height');
     };
   }, []);
 

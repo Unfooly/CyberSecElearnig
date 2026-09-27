@@ -85,6 +85,8 @@ export type BriefingStep =
       narration?: Narration;
       /** Faza zamknięta (teczka) - klik w hotspot otwiera akta (`image`). */
       closedImage?: string;
+      /** Klikalne otwarte akta (D-086): klik zamyka teczkę i przechodzi dalej. */
+      openHotspot?: BriefingRect & { id: string };
     } & BriefingScene)
   | ({ kind: 'badge'; cta: string; narration?: Narration } & BriefingScene)
   | ({ kind: 'start'; text: string; cta: string; narration?: Narration } & BriefingScene);

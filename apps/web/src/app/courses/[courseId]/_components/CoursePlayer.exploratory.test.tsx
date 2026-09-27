@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 
@@ -46,7 +46,16 @@ const progressResponse = {
 };
 
 describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
+  // prefers-reduced-motion: zbliżenie przedmiotu (D-086) otwiera się i zamyka bez ruchu kamery, więc synchronicznie.
+  const originalMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes('prefers-reduced-motion: reduce'),
+    })) as typeof window.matchMedia;
+  });
   afterEach(() => {
+    window.matchMedia = originalMatchMedia;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -105,7 +114,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getByAltText('Maskotka Unfooly wskazuje')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatnika' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     expect(screen.getByAltText('Maskotka Unfooly się cieszy')).toBeInTheDocument();
     expect(screen.getByText('Mamy dowód! Trafił do notatnika.')).toBeInTheDocument();
@@ -159,7 +168,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatnika' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
 
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
@@ -167,8 +176,8 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument(); // Wstecz pokazuje INNY (wcześniejszy) blok
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
 
-    // Ten sam blok, ten sam stan: "W notatniku ✓", wszystko obejrzane, licznik bez zmian.
-    expect(screen.getByText('W notatniku ✓')).toBeInTheDocument();
+    // Ten sam blok, ten sam stan: przedmiot "w notatniku", wszystko obejrzane, licznik bez zmian.
+    expect(screen.getByRole('button', { name: 'Monitor (w notatniku)' })).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     // Z powrotem na żywym bloku: ten sam "Dalej" w pasku (gotowość przetrwała powrót z podglądu) zapisuje odpowiedź.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
@@ -231,7 +240,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getAllByRole('button', { name: 'Monitor' })).toHaveLength(1);
   });
 
-  it('hotfix fix/mascot-overlap: otwarta karta hotspotu chowa maskotkę (nie zasłania "Dodaj do notatnika"/"Wróć", nie łapie kliknięć); klik w hotspot zwija dymek od razu; zamknięcie karty przywraca WYŁĄCZNIE ikonkę (zwiniętą)', () => {
+  it('hotfix fix/mascot-overlap: otwarte zbliżenie przedmiotu chowa maskotkę (nie zasłania "Zabierz"/"Odłóż", nie łapie kliknięć); klik w hotspot zwija dymek od razu; zamknięcie przywraca WYŁĄCZNIE ikonkę (zwiniętą)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
 
     const mascotIcon = screen.getByRole('button', { name: 'Fooli - pokaż wiadomość' });
@@ -252,15 +261,15 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(mascotIcon.className).toMatch(/pointer-events-none/);
     expect(mascotIcon).toHaveAttribute('aria-hidden', 'true');
 
-    // Przyciski karty ("Dodaj do notatnika", "Wróć") są osiągalne i klikalne - maskotka faktycznie ich nie zasłania
+    // Przyciski zbliżenia ("Zabierz", "Odłóż") są osiągalne i klikalne - maskotka faktycznie ich nie zasłania
     // ani nie przechwytuje kliknięcia (gdyby przechwytywała, fireEvent.click poniżej i tak by "trafił" w DOM-owy
     // element pod wskazanym testowym selektorem - to RTL, nie prawdziwy hit-testing przeglądarki - ale asercja na
     // invisible/pointer-events-none wyżej jest tym, co faktycznie to gwarantuje w prawdziwej przeglądarce).
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('button', { name: 'Dodaj do notatnika' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Wróć' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Zabierz' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Odłóż' })).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Wróć' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Odłóż' }));
 
     // Ikonka wraca (widoczna, klikalna, osiągalna), ale dymek ZOSTAJE zwinięty - nie rozwija się sam po zamknięciu karty.
     expect(mascotIcon.className).toMatch(/\bvisible\b/);
@@ -291,7 +300,7 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: [base.contentBlocks[0], quizWithMascot] })} narrationEnabled={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatnika' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await screen.findByText('Pytanie?');

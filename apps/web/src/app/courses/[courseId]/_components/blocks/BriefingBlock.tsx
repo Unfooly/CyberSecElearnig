@@ -9,7 +9,7 @@ import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useCompleteReaction } from '../player/mascot-reaction';
 import type { NotebookTask } from '../player/notes';
-import BriefingSceneStep, { singleClick } from './BriefingScene';
+import BriefingSceneStep, { activeHotspot, OPEN_CASE_LABEL, singleClick } from './BriefingScene';
 
 // Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków - maszyna do pisania z dzwoniącym telefonem, rozmowa z postacią
 // (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran startu (miejsce akcji). Krok z `image`
@@ -262,6 +262,8 @@ export default function BriefingBlock({
   const [index, setIndex] = useState(0);
   // Krok caseFile ze sceną w dwóch fazach (D-084): zamknięta teczka -> otwarte akta. Reset przy każdej zmianie kroku.
   const [caseOpen, setCaseOpen] = useState(false);
+  // Krok, którego obraz sceny się nie wczytał (fallback na przycisk cta).
+  const [failedStep, setFailedStep] = useState<number | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const headingRef = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -298,9 +300,13 @@ export default function BriefingBlock({
       // Przycisk "Otwórz teczkę" zmienia się w przycisk kroku - fokus na treść kroku (akta z zadaniami), jak przy zmianie kroku.
       headingRef.current?.focus();
     };
-    // Hotspot = przycisk pod sceną, z tymi samymi ograniczeniami: na ostatnim kroku nie ma go w podglądzie (przycisku też nie ma)
-    // ani w trakcie zapisu (przycisk jest wtedy wyłączony) - inaczej klik w scenę zapisałby blok drugi raz.
-    const hotspotAction = closedPhase ? openCase : isLast && (review || disabled) ? undefined : advance;
+    // Przedmiot kroku (D-086) jest JEDYNYM przejściem dalej (bez przycisków cta). Na ostatnim kroku nie działa w podglądzie ani w
+    // trakcie zapisu - inaczej klik zapisałby blok drugi raz. Krok ze sceną, ale bez przedmiotu (treść sprzed D-086) - przycisk cta.
+    // Obraz sceny się nie wczytał (404 z CDN, zła ścieżka): przedmiot jest przezroczystym prostokątem na pustej ramce, więc wracamy
+    // do przycisku cta pod sceną (awaryjna ścieżka, code review D-086).
+    const imageFailed = failedStep === index;
+    const hotspotAction = imageFailed ? undefined : closedPhase ? openCase : isLast && (review || disabled) ? undefined : advance;
+    const hasTarget = !imageFailed && activeHotspot(step, caseOpen) !== null;
     return (
       <div data-testid="briefing-block" data-scene="true" className="flex min-h-0 w-full flex-1 flex-col rounded-card bg-paper">
         <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 p-2 sm:gap-3 sm:p-3 [@media(max-height:500px)]:gap-1 [@media(max-height:500px)]:p-1">
@@ -328,18 +334,21 @@ export default function BriefingBlock({
               headingId={headingId}
               caseOpen={caseOpen}
               onHotspot={hotspotAction}
+              onImageError={() => setFailedStep(index)}
               tasks={tasks}
               identity={identity}
               caseNo={caseNo}
             />
           </div>
-          <div className="shrink-0">
-            {closedPhase ? (
-              <Cta label="Otwórz teczkę" onClick={openCase} />
-            ) : (
-              !(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />
-            )}
-          </div>
+          {!hasTarget && (
+            <div className="shrink-0">
+              {closedPhase ? (
+                <Cta label={OPEN_CASE_LABEL} onClick={openCase} />
+              ) : (
+                !(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

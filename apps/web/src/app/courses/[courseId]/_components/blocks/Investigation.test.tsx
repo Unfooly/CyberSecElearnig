@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
-import { computeHotspotCentroid, hotspotStackZIndex } from './SceneHotspotsBlock';
+import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST } from './SceneHotspotsBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
@@ -134,15 +134,43 @@ function setup(
   return { onSubmit, ready };
 }
 
-// Feedback z produkcji po PR #32: chipy pod obrazem usunięte, jedyna interakcja to klik w punkt na obrazie (teraz w
-// pełni dostępny: aria-label, focus-ring, bez aria-hidden/tabIndex=-1) - karta otwiera się jako nakładka NA scenie
-// (role="dialog"), z "Wróć" zamiast osobnego zamknięcia, a dowód zalicza WYŁĄCZNIE przycisk "Dodaj do notatnika"
-// (dla wszystkich hotspotów jednolicie, także z mediami - zmiana względem wcześniejszej wersji tego bloku).
+// Zbliżenie przedmiotu (D-086): klik w punkt na obrazie (w pełni dostępny: aria-label, focus-ring) - kamera przybliża scenę, na
+// niej nakładka role="dialog" z grafiką zbliżenia i przyciskami "Zabierz"/"Odłóż"; dowód zalicza WYŁĄCZNIE "Zabierz".
+// Testy komponentu idą z prefers-reduced-motion (bez ruchu kamery nakładka jest od razu otwarta - synchronicznie); ścieżka z
+// animacją (450/350 ms) ma osobny test z fałszywym zegarem.
 const pick = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const dialog = () => screen.getByRole('dialog');
+const putDown = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+const takeIt = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Zabierz' }));
 const back = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Wróć' }));
 
-describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
+function stubMotion(reduce: boolean) {
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: reduce && query.includes('prefers-reduced-motion: reduce'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
+function withReducedMotion() {
+  let restore = () => {};
+  beforeEach(() => {
+    restore = stubMotion(true);
+  });
+  afterEach(() => restore());
+}
+
+describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
+  withReducedMotion();
   const summary: EvidenceSummary = { collected: 0, total: 2, perBlock: [{ blockId: 'scena', collected: 0, total: 2 }] };
 
   it('puls-podpowiedź do pierwszego kliknięcia: potem nakładki są niewidoczne, odkryta ma znacznik', () => {
@@ -167,22 +195,16 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
-  it('nakładka leży NA scenie: karta ma STAŁY rozmiar 92%x92% na desktopie (nie h-full/w-full - obraz ma być widoczny dookoła; hotfix fix/hotspot-card-fit, zastępuje dawne sm:max-h/max-w-[80%] - karta z wysokimi mediami się przewijała, zamiast zmieścić się jak scena), punkty pod nią dostają aria-hidden (feedback z produkcji, poprawka po PR #32)', () => {
+  it('zbliżenie leży NA scenie (role=dialog, aria-label = nazwa przedmiotu, ink 40% + blur), bez białej karty i bez bloków tekstu; punkty i obraz pod nim dostają aria-hidden', () => {
     setup(scene, { summary });
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
 
-    // Karta to teraz .hotspot-card (3 poziomy wyżej niż nagłówek: h3 -> .hotspot-card-text -> .hotspot-card-layout -> .hotspot-card).
-    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).closest('.hotspot-card')!;
-    expect(card.className).toMatch(/sm:h-\[92%\]/);
-    expect(card.className).toMatch(/sm:w-\[92%\]/);
-    expect(card.className).not.toMatch(/sm:max-h-\[80%\]/);
-    expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
-    expect(card.className).not.toMatch(/sm:h-full/);
-    expect(card.className).not.toMatch(/sm:w-full/);
-    // Karta SAMA się NIE przewija na desktopie (tekst/dokument/transkrypcja mają WŁASNY scroll, osobne testy niżej).
-    expect(card.className).toMatch(/sm:overflow-visible/);
-    // Container query na WŁASNYCH proporcjach karty (nie zwykły @media) - globals.css, .hotspot-card/.hotspot-card-layout.
-    expect(card.className).toMatch(/(^|\s)hotspot-card(\s|$)/);
+    expect(dialog()).toHaveAttribute('aria-label', 'Monitor');
+    expect(dialog()).toHaveAttribute('aria-modal', 'true');
+    expect(dialog().className).toMatch(/bg-ink\/40/);
+    expect(dialog().className).toMatch(/backdrop-blur/);
+    expect(dialog().querySelector('.hotspot-card, .bg-white, h3')).toBeNull();
+    expect(within(dialog()).getByTestId('scene-zoom-graphic').className).toMatch(/max-h-\[88%\]/);
 
     // Punkt 5 (feat/scene-overlay-fix): nakładka jest "absolute" (przypięta DO KONTENERA obrazu), NIGDY "fixed"
     // (przypięta do viewportu) - inaczej na mobile zasłaniałaby licznik "Obejrzano X z Y", który jest NAD obrazem,
@@ -201,7 +223,7 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     // jego opis mimo otwartego role="dialog" aria-modal="true".
     expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
 
-    back();
+    putDown();
     expect(screen.getByTestId('hotspot-overlay-h2')).not.toHaveAttribute('aria-hidden');
     expect(screen.getByRole('img')).not.toHaveAttribute('aria-hidden');
   });
@@ -215,16 +237,17 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument();
   });
 
-  it('kliknięty punkt otwiera nakładkę NA scenie (role=dialog); "Dodaj do notatnika" zalicza dowód, wpis z ikoną rodzaju, licznik i maskotka reagują; "Wróć" zamyka i oddaje fokus', () => {
+  it('klik w punkt otwiera zbliżenie z fokusem na "Zabierz"; "Zabierz" zalicza dowód (notatnik z ikoną rodzaju, licznik, maskotka), odkłada przedmiot i oddaje fokus; ponowne otwarcie: tylko "Odłóż" i "W notatniku"', () => {
     const { onSubmit, ready } = setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
     fireEvent.click(trigger);
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Zabierz' }));
+    // Treść przedmiotu bez grafiki (fixture bez media) - opis w ciemnym panelu zamiast pustego zbliżenia.
     expect(dialog()).toHaveTextContent('Kartka z hasłem.');
-    expect(within(dialog()).getByRole('heading', { name: 'Monitor' })).toBeInTheDocument();
 
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' }));
-    expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
-    expect(within(dialog()).getByText('W notatniku ✓')).toBeInTheDocument();
+    takeIt();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło na kartce.');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
@@ -233,17 +256,50 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     const panel = screen.getByRole('complementary', { name: 'Notatnik' });
     expect(within(panel).getByRole('region', { name: 'Biuro' })).toHaveTextContent('Przedmiot: Hasło na kartce.');
 
-    back();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(trigger);
+    fireEvent.click(trigger);
+    expect(within(dialog()).queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
+    expect(within(dialog()).getByText('W notatniku')).toBeInTheDocument();
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+    putDown();
 
     pick('Drzwi'); // wymagany tylko Monitor
-    back();
+    putDown();
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1', 'h2'], noted: ['h1'] });
   });
 
-  it('Escape = "Wróć" (zamyka nakładkę, oddaje fokus przyciskowi, który ją otworzył)', () => {
+  it('klik w tło (poza grafiką i przyciskami) = "Odłóż"; focus trap: Tab z ostatniego przycisku wraca na pierwszy', () => {
+    setup(scene, { summary });
+    const trigger = screen.getByTestId('hotspot-overlay-h1');
+    fireEvent.click(trigger);
+    const take = within(dialog()).getByRole('button', { name: 'Zabierz' });
+    const put = within(dialog()).getByRole('button', { name: 'Odłóż' });
+    put.focus();
+    fireEvent.keyDown(put, { key: 'Tab' });
+    expect(document.activeElement).toBe(take);
+    fireEvent.keyDown(take, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(put);
+
+    fireEvent.click(within(dialog()).getByText('Kartka z hasłem.')); // klik w samą treść nie zamyka
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(dialog());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('"Zabierz" przy przedmiocie, który nie jest dowodem: potrząśnięcie i toast, bez notatki i bez zamknięcia', () => {
+    setup(scene, { summary });
+    pick('Drzwi');
+    takeIt();
+    expect(within(dialog()).getByRole('status')).toHaveTextContent(NOT_EVIDENCE_TOAST);
+    expect(within(dialog()).getByRole('button', { name: 'Zabierz' }).className).toMatch(/scene-zoom-shake/);
+    // Przycisk jest montowany od nowa (restart animacji) - fokus zostaje na nim, w nakładce.
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Zabierz' }));
+    expect(screen.getByTestId('notes')).toHaveTextContent('');
+    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
+  });
+
+  it('Escape = "Odłóż" (zamyka zbliżenie, oddaje fokus przyciskowi, który je otworzył)', () => {
     setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
     fireEvent.click(trigger);
@@ -253,28 +309,21 @@ describe('SCENE_HOTSPOTS: punkty, karta i dowody', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('punkt bez evidence ma TYLKO "Wróć" (bez "Dodaj do notatnika")', () => {
-    setup(scene, { summary });
-    pick('Drzwi');
-    expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
-    expect(within(dialog()).getByRole('button', { name: 'Wróć' })).toBeInTheDocument();
-  });
-
   it('ukończenie po wymaganych (required), nie po wszystkich: opcjonalne punkty ("smaczki") nie blokują', () => {
     const { onSubmit, ready } = setup(scene, { summary });
     expect(screen.getByText('Obejrzano 0 z 1 elementów.')).toBeInTheDocument();
     expect(ready.current).toBeNull();
     pick('Monitor');
-    back();
+    putDown();
     expect(ready.current).not.toBeNull();
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1'], noted: [] });
   });
 
-  it('podgląd: brak dodawania do notatnika, brak zmian w notatniku i liczniku', () => {
+  it('podgląd: brak "Zabierz", brak zmian w notatniku i liczniku', () => {
     setup(scene, { summary, review: true });
     pick('Monitor');
-    expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+    expect(within(dialog()).queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
   });
@@ -467,6 +516,7 @@ describe('SCENE_HOTSPOTS: łańcuch wysokości (hotfix fix/player-scene-fit/B-10
 });
 
 describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotów', () => {
+  withReducedMotion();
   it('hotspotStackZIndex (czysta funkcja): remis dostaje kolejność z tablicy, pojedynczy element i pusta tablica nie wywalają', () => {
     const tie = hotspotStackZIndex([
       { id: 'a', width: 10, height: 10 },
@@ -510,11 +560,96 @@ describe('SCENE_HOTSPOTS: kolejność stackowania nakładających się hotspotó
   it('klik we WŁASNY przycisk "karteczki" otwiera jej kartę (identyfikacja per-hotspot nie miesza się z "monitor")', () => {
     setup(overlappingScene);
     fireEvent.click(screen.getByTestId('hotspot-overlay-karteczka'));
-    expect(within(dialog()).getByRole('heading', { name: 'Mała karteczka' })).toBeInTheDocument();
+    expect(dialog()).toHaveAttribute('aria-label', 'Mała karteczka');
+  });
+});
+
+describe('SCENE_HOTSPOTS: ruch kamery (bez prefers-reduced-motion)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('przybliżenie 450 ms (transform na pudełku sceny, fazy in -> open), grafika i przyciski dopiero po dojechaniu; "Odłóż" oddala 350 ms i dopiero wtedy zamyka', () => {
+    vi.useFakeTimers();
+    setup(scene);
+    const box = screen.getByRole('img').parentElement!;
+    fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'in');
+    expect(box.style.transition).toContain('450ms');
+    expect(box.style.transform).toMatch(/scale\(/);
+    expect(screen.queryByTestId('scene-zoom-actions')).not.toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(450));
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'open');
+    expect(within(dialog()).getByRole('button', { name: 'Zabierz' })).toBeInTheDocument();
+
+    putDown();
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'out');
+    expect(box.style.transition).toContain('350ms');
+    expect(box.style.transform).toBe('');
+    act(() => vi.advanceTimersByTime(350));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('podwójny klik w przedmiot nie zamyka zbliżenia; drugi "Odłóż"/Esc w trakcie oddalania nic nie psuje; stary timer nie skraca ponownego otwarcia', () => {
+    vi.useFakeTimers();
+    setup(scene);
+    const trigger = screen.getByTestId('hotspot-overlay-h1');
+    fireEvent.click(trigger);
+    // Drugi klik serii trafia już w nakładkę (faza "in") - ignorowany.
+    fireEvent.click(screen.getByTestId('scene-zoom-graphic'));
+    fireEvent.click(dialog());
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'in');
+    act(() => vi.advanceTimersByTime(450));
+
+    putDown();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'out');
+    act(() => vi.advanceTimersByTime(350));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+
+    // Otwarcie -> Esc w fazie "in" -> natychmiastowe ponowne otwarcie: timer pierwszego zamknięcia nie zamyka drugiego zbliżenia.
+    // (fireEvent klika przedmiot pod nakładką - w przeglądarce niemożliwe; test pilnuje licznika generacji, nie ścieżki gracza.)
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(trigger);
+    act(() => vi.advanceTimersByTime(350));
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'in');
+    act(() => vi.advanceTimersByTime(100));
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'open');
+  });
+
+  it('scena zagnieżdżona: przedmioty pulpitu nieaktywne, dopóki kamera nie dojedzie na monitor', () => {
+    vi.useFakeTimers();
+    setup(nestedScene);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-monitor'));
+    const outlook = screen.getByTestId('hotspot-overlay-outlook');
+    expect(outlook).toHaveAttribute('aria-hidden', 'true');
+    expect(outlook.className).toMatch(/pointer-events-none/);
+    fireEvent.click(outlook);
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'in');
+
+    act(() => vi.advanceTimersByTime(450));
+    fireEvent.click(screen.getByTestId('hotspot-overlay-outlook'));
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'inner-in');
+  });
+
+  it('prefers-reduced-motion: bez ruchu kamery (brak transform i transition), zbliżenie od razu otwarte', () => {
+    const restore = stubMotion(true);
+    try {
+      setup(scene);
+      const box = screen.getByRole('img').parentElement!;
+      fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
+      expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'open');
+      expect(box.style.transform).toBe('');
+      expect(box.style.transition).toBe('');
+    } finally {
+      restore();
+    }
   });
 });
 
 describe('SCENE_HOTSPOTS: panorama telefonu w pionie (feat/player-portrait)', () => {
+  withReducedMotion();
   // afterEach (nie tylko na końcu każdego testu z osobna) - kod review: nieudana asercja W ŚRODKU testu zostawiała
   // podmienionego navigator dla KOLEJNYCH testów (odsłonięty vi.unstubAllGlobals() na końcu testu nigdy by się nie
   // wykonał, gdyby expect() wcześniej rzucił).
@@ -554,7 +689,8 @@ describe('SCENE_HOTSPOTS: panorama telefonu w pionie (feat/player-portrait)', ()
   });
 });
 
-describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', () => {
+describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)', () => {
+  withReducedMotion();
   // Własny odtwarzacz audio (feat/scene-overlay-fix) próbuje .play() przy otwarciu karty (autoodtwarzanie po geście
   // kliknięcia) - jsdom nie implementuje HTMLMediaElement.play() (zwraca undefined, nie odrzucony Promise), więc bez
   // mocka rzuca "Not implemented" (ten sam wzorzec co NarrationPlayer.test.tsx).
@@ -566,22 +702,27 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     vi.restoreAllMocks();
   });
 
-  it('image: renderuje się powiększony wprost w karcie (bez osobnego przycisku/nakładki - karta sama JEST nakładką)', () => {
+  it('image: sama grafika (object-contain, cień, max 88%) - bez tekstu przedmiotu (content) i bez tytułu', () => {
     setup(mediaScene);
     pick('Zdjęcie');
-    expect(within(dialog()).getByAltText('Zbliżenie karteczki z hasłem')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Powiększ/ })).not.toBeInTheDocument();
+    const img = within(dialog()).getByAltText('Zbliżenie karteczki z hasłem');
+    expect(img.className).toMatch(/object-contain/);
+    expect(img.className).toMatch(/shadow-card/);
+    expect(img.className).toMatch(/max-w-\[88%\]/);
+    expect(within(dialog()).queryByText('Zbliżenie na kartkę.')).not.toBeInTheDocument();
+    expect(within(dialog()).queryByRole('heading')).not.toBeInTheDocument();
   });
 
-  it('document: tytuł i linie renderują się wprost w karcie (bez osobnego przycisku/nakładki)', () => {
+  it('document: tytuł i linie w ciemnym panelu z własnym przewijaniem (<pre> overflow-auto)', () => {
     setup(mediaScene);
     pick('Drukarka');
     expect(within(dialog()).getByText('Potwierdzenie przelewu')).toBeInTheDocument();
-    expect(within(dialog()).getByText(/Kwota: 14 000,00 PLN/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Zobacz dokument/ })).not.toBeInTheDocument();
+    const pre = within(dialog()).getByText(/Kwota: 14 000,00 PLN/).closest('pre')!;
+    expect(pre.className).toMatch(/overflow-auto/);
+    expect(pre.className).toMatch(/min-h-0/);
   });
 
-  it('audio: zbliżenie (media.image) i własny odtwarzacz (bez natywnych controls, autoodtwarzanie po kliku hotspotu), transkrypcja ZASTĘPUJE obrazek (hotfix fix/hotspot-card-fit - nie dokłada się pod nim), insight (content) dopiero po odsłuchaniu', () => {
+  it('audio: zbliżenie (media.image) i play/pauza pod nim (bez natywnych controls, autoodtwarzanie po kliku), transkrypcja ZASTĘPUJE obrazek', () => {
     setup(mediaScene);
     pick('Telefon');
 
@@ -615,9 +756,6 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(within(dialog()).getByAltText('')).toHaveAttribute('src', expect.stringContaining('telefon-zoom.png'));
     expect(screen.queryByRole('region', { name: 'Transkrypcja' })).not.toBeInTheDocument();
     expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
-
-    fireEvent(audioEl, new Event('ended'));
-    expect(screen.getByText(/Prawdziwy bank nigdy nie prosi/)).toBeInTheDocument();
   });
 
   it('audio: przycisk play/pauza przełącza odtwarzanie i etykietę ("Odtwórz nagranie"/"Wstrzymaj nagranie" - fix/dialogue-polish, bez paska postępu/czasu)', () => {
@@ -656,7 +794,7 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     fireEvent(firstAudio, new Event('play'));
     expect(within(dialog()).getByRole('button', { name: 'Wstrzymaj nagranie' })).toBeInTheDocument();
 
-    back();
+    putDown();
     pick('Radio');
     const secondAudio = document.querySelector('audio')!;
     expect(secondAudio).not.toBe(firstAudio); // inny <audio> - świeży <AudioMedia>, nie ta sama instancja
@@ -671,16 +809,14 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(screen.queryByText(/autoodtwarzanie|zablokował/i)).not.toBeInTheDocument(); // celowo BEZ komunikatu (inaczej niż NarrationPlayer.tsx)
   });
 
-  it('audio: dowód WYMAGA kliknięcia "Dodaj do notatnika" - samo otwarcie karty (ani odsłuchanie) nie wystarcza (zmiana: dowód zawsze przyciskiem, D-071)', () => {
+  it('audio: dowód WYMAGA "Zabierz" - samo otwarcie (ani odsłuchanie) nie wystarcza (D-071)', () => {
     setup(mediaScene);
     pick('Telefon');
     expect(screen.getByTestId('notes')).toHaveTextContent('');
-    const addButton = within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' });
     fireEvent(document.querySelector('audio')!, new Event('ended')); // odsłuchanie samo z siebie też nie zalicza dowodu
-    expect(within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' })).toBeInTheDocument();
-    fireEvent.click(addButton);
+    expect(screen.getByTestId('notes')).toHaveTextContent('');
+    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Telefon z podejrzaną prośbą o kod SMS.');
-    expect(within(dialog()).getByText('W notatniku ✓')).toBeInTheDocument();
   });
 
   it('audio: transkrypcja działa NIEZALEŻNIE od audioUrl - dostępna i klikalna nawet, gdy plik audio się nie wczytał/nie ma go w treści (druga runda code review, punkt 7 - regresja pierwszej wersji tego hotfixu: przycisk transkrypcji stawał się "martwy", bo widok transkrypcji był zagnieżdżony w tym samym warunku co odtwarzacz)', () => {
@@ -714,66 +850,12 @@ describe('SCENE_HOTSPOTS: media w karcie (image/audio/document, B-086/D-071)', (
     expect(within(screen.getByRole('region', { name: 'Transkrypcja' })).getByText('Dzień dobry, tu bank Wektor.')).toBeVisible();
   });
 
-  it('image: dowód też wymaga kliknięcia "Dodaj do notatnika", tak samo jak audio (spójne dla wszystkich mediów)', () => {
+  it('image: dowód też wymaga "Zabierz", tak samo jak audio (spójne dla wszystkich mediów)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
     expect(screen.getByTestId('notes')).toHaveTextContent('');
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' }));
+    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło widoczne na zbliżeniu.');
-  });
-});
-
-describe('SCENE_HOTSPOTS: karta się mieści bez przewijania na desktopie (hotfix fix/hotspot-card-fit/B-101 - media wysokie: mail na ekranie, wydruk, zoom kalendarza, karteczka - wcześniej wypychały kartę poza dostępne miejsce i CAŁA karta się przewijała)', () => {
-  beforeEach(() => {
-    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
-    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it('klasy karty: .hotspot-card (container-type:size w globals.css - układ dwu-/jednokolumnowy reaguje na WŁASNE proporcje karty, nie na okno) i sm:overflow-visible (karta się NIE przewija na >=640px), bez sm:overflow-y-auto/sm:max-h/max-w-[80%] (dawny, usunięty limit)', () => {
-    setup(mediaScene);
-    pick('Zdjęcie');
-    const card = within(dialog()).getByRole('heading', { name: 'Zdjęcie' }).closest('.hotspot-card')!;
-    expect(card.className).toMatch(/(^|\s)hotspot-card(\s|$)/);
-    expect(card.className).toMatch(/sm:overflow-visible/);
-    expect(card.className).not.toMatch(/sm:overflow-y-auto/);
-    expect(card.className).not.toMatch(/sm:max-h-\[80%\]/);
-    expect(card.className).not.toMatch(/sm:max-w-\[80%\]/);
-  });
-
-  it('image: <img> ma object-contain i leży w .hotspot-card-media (dostaje display:flex/min-height/min-width:0 z globals.css od 640px wzwyż - zwykła klasa CSS, jak .player-frame, nie inline utility, żeby mobile <640px zostało zwykłym, przewijanym przepływem bez zmian w tym PR)', () => {
-    setup(mediaScene);
-    pick('Zdjęcie');
-    const img = within(dialog()).getByAltText('Zbliżenie karteczki z hasłem');
-    expect(img.className).toMatch(/object-contain/);
-    expect(img.closest('.hotspot-card-media')).not.toBeNull();
-  });
-
-  it('document: pole dokumentu (<pre>) ma WŁASNE overflow-auto flex-1 min-h-0 - wypełnia dostępną wysokość obszaru mediów karty i przewija się samo, nie cała karta', () => {
-    setup(mediaScene);
-    pick('Drukarka');
-    const pre = within(dialog()).getByText(/Kwota: 14 000,00 PLN/).closest('pre')!;
-    expect(pre.className).toMatch(/overflow-auto/);
-    expect(pre.className).toMatch(/min-h-0/);
-    expect(pre.className).toMatch(/flex-1/);
-    expect(pre.closest('.hotspot-card-media')).not.toBeNull();
-  });
-
-  it('tekst karty (.hotspot-card-text) ma WŁASNY scroll (druga runda code review, punkt 4/5) - bez line-clamp/title, tekst długi się przewija SAM, nigdy cała karta', () => {
-    setup(mediaScene);
-    pick('Zdjęcie');
-    const paragraph = within(dialog()).getByText('Zbliżenie na kartkę.');
-    expect(paragraph).not.toHaveAttribute('title');
-    expect(paragraph.className).not.toMatch(/line-clamp/);
-    expect(paragraph.closest('.hotspot-card-text')).not.toBeNull();
-  });
-
-  it('hotspot BEZ mediów: karta dostaje .hotspot-card--no-media (auto-size do treści, max 92%x92% - globals.css), bez pustego/osieroconego obszaru "media" w siatce', () => {
-    setup(scene); // fixture bez media na żadnym hotspocie (h1/h2/h3)
-    pick('Monitor');
-    const card = within(dialog()).getByRole('heading', { name: 'Monitor' }).closest('.hotspot-card')!;
-    expect(card.className).toMatch(/(^|\s)hotspot-card--no-media(\s|$)/);
-    expect(card.querySelector('.hotspot-card-media')).toBeNull();
   });
 });
 
@@ -820,38 +902,28 @@ const nestedScene: ContentBlock = {
 };
 
 describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D-071)', () => {
-  it('klik na hotspot z media.kind:"scene" pokazuje jej obraz z klikalnymi punktami W TEJ SAMEJ nakładce (bez osobnej listy)', () => {
+  withReducedMotion();
+
+  it('klik na hotspot z media.kind:"scene": zbliżenie przechodzi w scenę zagnieżdżoną z klikalnymi punktami i ikoną "Wróć" - bez "Zabierz"/"Odłóż"', () => {
     setup(nestedScene);
     pick('Monitor');
-    expect(screen.getByText('Ekran z otwartym pulpitem.')).toBeInTheDocument();
     expect(within(dialog()).getByAltText('Pulpit komputera')).toBeInTheDocument();
     expect(within(dialog()).getByRole('button', { name: 'Outlook' })).toBeInTheDocument();
     expect(within(dialog()).getByRole('button', { name: 'Kosz' })).toBeInTheDocument();
-    // Monitor sam nie ma evidence - tylko "Wróć".
-    expect(within(dialog()).queryByRole('button', { name: 'Dodaj do notatnika' })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Wróć' }));
+    expect(within(dialog()).queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
+    expect(within(dialog()).queryByRole('button', { name: 'Odłóż' })).not.toBeInTheDocument();
   });
 
-  it('scena zagnieżdżona ma TĘ SAMĄ formułę "contain" co scena najwyższego poziomu (hotfix fix/hotspot-card-fit), WYŁĄCZNIE w tym samym scalonym breakpoincie co siatka karty (feat/player-portrait - poza nim kontener nie ma jawnej wysokości do zapytania, formuła dałaby szerokość 0): .hotspot-nested-scene-frame ma container-type:size (klasa, nie Tailwind sm:), szerokość z cqw/cqh z globals.css, bez max-h-full/max-w-full', () => {
+  it('scena zagnieżdżona ma formułę "contain" (.hotspot-nested-scene-frame z container-type:size, .hotspot-nested-scene-box z cqw/cqh w globals.css), bez max-h-full/max-w-full', () => {
     setup(nestedScene);
     pick('Monitor');
     const img = within(dialog()).getByAltText('Pulpit komputera');
     const aspectBox = img.parentElement!;
-    // ScenePanContainer (feat/player-portrait) owija sizowaną skrzynkę DWOMA divami - .scene-pan-frame (zewnętrzny)
-    // i .scene-pan-container (wewnętrzny, przewijany).
-    const panContainer = aspectBox.parentElement!;
-    const panFrame = panContainer.parentElement!;
-    const queryContainer = panFrame.parentElement!;
+    const queryContainer = aspectBox.parentElement!;
 
-    expect(panFrame.className).toBe('scene-pan-frame');
-    expect(panContainer.className).toBe('scene-pan-container');
-    // .hotspot-nested-scene-frame (klasa, nie Tailwind sm: - warunek już nie jest jednym prostym breakpointem,
-    // patrz globals.css) dostaje container-type:size w tym samym scalonym @media co siatka karty.
     expect(queryContainer.className).toMatch(/(^|\s)hotspot-nested-scene-frame(\s|$)/);
-    // .hotspot-nested-scene-box (globals.css) nadpisuje bazowe w-full formułą "contain" z cqw/cqh -
-    // szerokość NIE jest inline (jak w scenie najwyższego poziomu), żeby poza tym breakpointem zostało zwykłe
-    // w-full bez cq.
     expect(aspectBox.className).toMatch(/(^|\s)hotspot-nested-scene-box(\s|$)/);
-    expect(aspectBox.className).toMatch(/(^|\s)w-full(\s|$)/);
     expect(aspectBox.className).not.toMatch(/max-h-full/);
     expect(aspectBox.className).not.toMatch(/max-w-full/);
     expect(aspectBox.style.width).toBe('');
@@ -896,30 +968,30 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     }
   });
 
-  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego kartę (drugi poziom TEJ SAMEJ nakładki); dowód wymaga kliknięcia', () => {
+  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego zbliżenie (drugi poziom TEJ SAMEJ nakładki); dowód wymaga "Zabierz"', () => {
     setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
 
-    expect(within(dialog()).getByRole('heading', { name: 'Outlook' })).toBeInTheDocument();
-    expect(screen.getByText('Program pocztowy.')).toBeInTheDocument();
+    expect(dialog()).toHaveAttribute('aria-label', 'Outlook');
     expect(screen.getByAltText('Podgląd maila')).toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' }));
+    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail otwarty w programie pocztowym.');
+    // "Zabierz" odkłada TYLKO przedmiot - pulpit zostaje otwarty.
+    expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Monitor');
   });
 
-  it('"Wróć" z poziomu maila cofa do pulpitu (nakładka zostaje otwarta), z pulpitu zamyka nakładkę', () => {
+  it('"Odłóż" z poziomu maila cofa do pulpitu (nakładka zostaje otwarta), "Wróć" z pulpitu zamyka nakładkę', () => {
     setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
-    expect(within(dialog()).getByRole('heading', { name: 'Outlook' })).toBeInTheDocument();
+    expect(dialog()).toHaveAttribute('aria-label', 'Outlook');
 
-    back(); // z maila -> pulpit
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(within(dialog()).queryByRole('heading', { name: 'Outlook' })).not.toBeInTheDocument();
-    // Outlook już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)".
-    expect(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' })).toBeInTheDocument(); // znów na pulpicie
+    putDown(); // z maila -> pulpit
+    expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Monitor');
+    // Outlook już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)", fokus wraca na niego.
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' }));
 
     back(); // z pulpitu -> zamyka
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -940,16 +1012,15 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     const { onSubmit, ready } = setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Dodaj do notatnika' }));
-    back(); // mail -> pulpit
+    takeIt(); // mail -> pulpit
     // Wszystkie wymagane (żaden hotspot nie ma jawnego required -> fallback "wszystkie"): monitor, outlook, kosz, kubek.
     expect(ready.current).toBeNull();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Kosz' }));
     expect(ready.current).toBeNull(); // kubek (zewnętrzny) jeszcze nieodwiedzony
-    back(); // kosz (mail-level karta) -> pulpit
+    putDown(); // kosz -> pulpit
     back(); // pulpit -> zamyka nakładkę całkowicie
     pick('Kubek');
-    back();
+    putDown();
     expect(ready.current).not.toBeNull();
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'outlook', 'kosz', 'kubek']), noted: ['outlook'] });
@@ -964,13 +1035,13 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
-    expect(within(dialog()).getByRole('heading', { name: 'Outlook' })).toBeInTheDocument();
-    back();
+    expect(dialog()).toHaveAttribute('aria-label', 'Outlook');
+    fireEvent.keyDown(document, { key: 'Escape' });
     back(); // zamyka nakładkę całkowicie
 
     // Monitor już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)".
     fireEvent.click(screen.getByRole('button', { name: 'Monitor (obejrzane)' }));
-    expect(within(dialog()).queryByRole('heading', { name: 'Outlook' })).not.toBeInTheDocument();
+    expect(dialog()).toHaveAttribute('aria-label', 'Monitor');
     expect(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' })).toBeInTheDocument();
   });
 });
@@ -999,6 +1070,7 @@ const doorScene: ContentBlock = {
 };
 
 describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
+  withReducedMotion();
   it('nieaktywne dopóki required nie zebrane: aria-disabled, tooltip/aria-label z licznikiem, klik nic nie robi (jedyny przycisk - bez osobnej listy)', () => {
     const { onSubmit } = setup(doorScene);
     const door = screen.getByRole('button', { name: /Wyjście: zbierz najpierw dowody \(0\/1\)/ });
@@ -1012,7 +1084,7 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
   it('po zebraniu required: klik w drzwi kończy CAŁY blok (onSubmit), bez otwierania nakładki', () => {
     const { onSubmit } = setup(doorScene);
     pick('Kartka');
-    back();
+    putDown();
     const door = screen.getByRole('button', { name: 'Wyjście' });
     expect(door).toHaveAttribute('aria-disabled', 'false');
     expect(door).not.toHaveAttribute('title');

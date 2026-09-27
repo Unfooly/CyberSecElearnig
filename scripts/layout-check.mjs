@@ -110,6 +110,16 @@ const BRIEFING_SCENE_VIEWS = [
   { item: 'Zabierz legitymację', fits: LEGITYMACJA_SLOTS, clear: [], image: 'odprawa-legitymacja', last: true },
 ];
 
+// Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board'];
+const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
+for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
+const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
+
+// TABLICA ŚLEDCZA (ORDERING, feat/evidence-board, D-088) - `?block=rekonstrukcja`, te same cztery rozdzielczości; stany: pusta, w trakcie
+// (3 ślady przypięte), po sprawdzeniu (odpowiedź serwera podstawiona przez page.route - harness nie ma backendu).
+const BOARD_CORRECT_ORDER = ['mail', 'link', 'login', 'telefon', 'kod', 'przelew'];
+
 // DOSSIER (feat/dossier-folder, D-083) - `?block=akta-sprawy`, te same cztery rozdzielczości co odprawa, każdy dokument.
 const DOSSIER_TABS = ['Wyciąg bankowy', 'Logi logowania', 'Notatka IT', 'Procedury'];
 
@@ -588,6 +598,83 @@ async function checkDossierDocument(page, label) {
   return rows.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
 }
 
+// TABLICA ŚLEDCZA (D-088), w każdym stanie: (a) strona się nie przewija, (e) obszar bloku się nie przewija; (b1) tablica w całości w
+// obszarze bloku, bez przewijania samej tablicy; (b2) każde pole, przypięta karta, zdjęcie i tacka w całości w tablicy, pola i karty
+// się nie nakładają; (b3) tekst żadnej karty (na polu i na tacce) nie jest ucięty; (b4) liczba kart na tacce, "Sprawdź trop" tylko przy
+// pełnej tablicy, cel dotyku kart >= 24 px; (b5) po sprawdzeniu: nić cała ciągła, zdanie informacji zwrotnej i "Dalej" w tacce.
+// Informacyjnie: najmniejsza czcionka karty w px.
+async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
+  await checkNoPageScroll(page, label);
+  await checkMainSceneFits(page, label);
+  const boardBox = await boxOf(page, '[data-testid="evidence-board"]');
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  if (!contains(contentAreaBox, boardBox)) fail(`${label}: (b1) tablica poza obszarem bloku - ${JSON.stringify(boardBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  const info = await page.evaluate(() => {
+    const board = document.querySelector('[data-testid="evidence-board"]');
+    const rect = (el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    };
+    const pieces = [
+      ...[...board.querySelectorAll('[data-slot-index]')].map((el) => ({ kind: el.dataset.cardId ? 'karta' : 'pole', index: el.dataset.slotIndex, box: rect(el) })),
+      ...[...board.querySelectorAll('[data-board-photo]')].map((el, i) => ({ kind: 'zdjęcie', index: String(i), box: rect(el) })),
+    ];
+    const texts = [...board.querySelectorAll('.board-card > span')].map((span) => ({
+      text: span.textContent.slice(0, 30),
+      clipped: span.scrollHeight > span.clientHeight + 1 || span.scrollWidth > span.clientWidth + 1,
+      font: parseFloat(getComputedStyle(span).fontSize),
+    }));
+    const tray = board.querySelector('[data-board-tray]');
+    return {
+      pieces,
+      texts,
+      tray: rect(tray),
+      trayCards: tray.querySelectorAll('[data-card-id]').length,
+      check: !!board.querySelector('button') && [...board.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Sprawdź trop'),
+      dashed: board.querySelectorAll('[data-yarn="dashed"]').length,
+      feedback: board.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
+      next: [...board.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Dalej'),
+      nextBox: (() => {
+        const b = [...board.querySelectorAll('button')].find((el) => el.textContent.trim() === 'Dalej');
+        return b ? rect(b) : null;
+      })(),
+      overflow: board.scrollHeight - board.clientHeight,
+    };
+  });
+  if (info.overflow > 1) fail(`${label}: (b1) tablica przewija się o ${info.overflow}px.`);
+  if (!contains(boardBox, info.tray)) fail(`${label}: (b2) tacka poza tablicą - ${JSON.stringify(info.tray)}.`);
+  for (const piece of info.pieces) {
+    // Karty są lekko obrócone (±2°) - tolerancja kilku pikseli na narożniki.
+    const grown = { x: boardBox.x - 4, y: boardBox.y - 4, width: boardBox.width + 8, height: boardBox.height + 8 };
+    if (!contains(grown, piece.box)) fail(`${label}: (b2) ${piece.kind} ${Number(piece.index) + 1} poza tablicą - ${JSON.stringify(piece.box)}.`);
+  }
+  for (let i = 0; i < info.pieces.length; i += 1) {
+    for (let j = i + 1; j < info.pieces.length; j += 1) {
+      const a = info.pieces[i].box;
+      const b = info.pieces[j].box;
+      const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+      const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+      if (overlapX > 4 && overlapY > 4) {
+        fail(`${label}: (b2) ${info.pieces[i].kind} ${Number(info.pieces[i].index) + 1} i ${info.pieces[j].kind} ${Number(info.pieces[j].index) + 1} nachodzą na siebie.`);
+      }
+    }
+  }
+  const clipped = info.texts.filter((t) => t.clipped);
+  if (clipped.length > 0) fail(`${label}: (b3) ucięty tekst karty: ${clipped.map((t) => `„${t.text}…” (${t.font}px)`).join(', ')}.`);
+  if (info.trayCards !== trayCards) fail(`${label}: (b4) na tacce ${info.trayCards} kart, oczekiwano ${trayCards}.`);
+  if (!result && info.check !== (trayCards === 0)) fail(`${label}: (b4) "Sprawdź trop" ${info.check ? 'widoczne' : 'niewidoczne'} przy ${trayCards} kartach na tacce.`);
+  for (const piece of info.pieces) {
+    if (piece.box.width < 24 || piece.box.height < 24) fail(`${label}: (b4) ${piece.kind} ${Number(piece.index) + 1} ma cel dotyku ${piece.box.width}x${piece.box.height}px.`);
+  }
+  if (result) {
+    if (info.dashed !== 0) fail(`${label}: (b5) po sprawdzeniu nić ma ${info.dashed} przerywanych odcinków.`);
+    if (!info.feedback.trim()) fail(`${label}: (b5) brak zdania informacji zwrotnej.`);
+    if (!info.nextBox || !contains(info.tray, info.nextBox)) fail(`${label}: (b5) "Dalej" poza tacką - ${JSON.stringify(info.nextBox)}.`);
+  }
+  const minFont = Math.min(...info.texts.map((t) => t.font));
+  if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -870,6 +957,97 @@ try {
       const scrolls = await checkDossierDocument(page, label);
       step(`${label}: (a, e, q-u) OK${scrolls ? ' - lista wierszy przewija się wewnątrz arkusza' : ''}`, true);
     }
+    await context.close();
+  }
+
+  // TABLICA ŚLEDCZA (D-088) - patrz checkEvidenceBoard.
+  for (const viewport of runs('board') ? BRIEFING_VIEWPORTS : []) {
+    console.log(`\n--- viewport (TABLICA): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+    });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    // Odpowiedź serwera na "Sprawdź trop": 4 z 6 na miejscu (zamienione dwa środkowe), jak z prawdziwego /progress.
+    await page.route('**/api/courses/*/progress', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          assignmentId: 'dev-harness',
+          status: 'IN_PROGRESS',
+          currentBlockIndex: 1,
+          score: null,
+          completedAt: null,
+          lastResult: {
+            blockIndex: 0,
+            blockId: 'rekonstrukcja',
+            type: 'ORDERING',
+            points: 4 / 6,
+            correct: false,
+            detail: { correctOrder: BOARD_CORRECT_ORDER },
+            reaction: { pose: 'thinking', text: 'Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku.' },
+          },
+          gamification: null,
+        }),
+      }),
+    );
+    await page.goto(`${WEB}/dev/player-harness?block=rekonstrukcja`);
+    const board = page.getByTestId('evidence-board');
+    await board.waitFor();
+    const expectedOrientation = viewport.name === '390x844' ? 'portrait' : 'landscape';
+    await page.waitForFunction((orientation) => document.querySelector('[data-testid="evidence-board"]')?.getAttribute('data-orientation') === orientation, expectedOrientation);
+
+    const tray = page.getByRole('group', { name: 'Ślady do przypięcia' });
+    const pinFirstTrayCardTo = async (slot) => {
+      await tray.getByRole('button', { name: /^Ślad: / }).first().click();
+      await page.getByRole('button', { name: new RegExp(`^Pole ${slot}, puste`) }).click();
+    };
+
+    await shot(page, `${viewport.name}-tablica-1-pusta`);
+    await checkEvidenceBoard(page, `${viewport.name} / tablica pusta`, { trayCards: 6 });
+    step(`${viewport.name} / tablica pusta: (a, e, b1-b4) OK`, true);
+
+    // (b6) Przeciąganie myszą w prawdziwej przeglądarce: klon karty ma tło kartki (tokeny poza drzewem tablicy - portal) i ląduje na polu.
+    // Ruch pionowy - na telefonie poziomy ruch na tacce przewija tackę.
+    const firstCard = tray.getByRole('button', { name: /^Ślad: / }).first();
+    const cardText = ((await firstCard.getAttribute('aria-label')) ?? '').replace(/^Ślad: /, '');
+    const from = await firstCard.boundingBox();
+    const to = await page.getByRole('button', { name: /^Pole 1, puste/ }).boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 40, { steps: 4 });
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    const clone = await page.evaluate(() => {
+      const el = document.querySelector('body > .board-card');
+      return el ? { background: getComputedStyle(el).backgroundColor, font: parseFloat(getComputedStyle(el.querySelector('span')).fontSize) } : null;
+    });
+    await shot(page, `${viewport.name}-tablica-1b-przeciaganie`);
+    await page.mouse.up();
+    if (!clone) fail(`${viewport.name} / tablica: (b6) brak klonu karty w trakcie przeciągania.`);
+    if (/rgba\(0, 0, 0, 0\)|transparent/.test(clone.background)) fail(`${viewport.name} / tablica: (b6) klon karty bez tła (${clone.background}).`);
+    const pinned = await page.getByRole('button', { name: /^Pole 1: / }).getAttribute('aria-label');
+    if (!pinned?.includes(cardText)) fail(`${viewport.name} / tablica: (b6) po upuszczeniu na polu 1 jest „${pinned}”, oczekiwano „${cardText}”.`);
+    step(`${viewport.name} / tablica: (b6) przeciąganie myszą - klon z tłem (${clone.background}, ${clone.font.toFixed(1)}px), ślad na polu 1`, true);
+
+    for (const slot of [2, 3]) await pinFirstTrayCardTo(slot);
+    await page.waitForTimeout(300);
+    await shot(page, `${viewport.name}-tablica-2-w-trakcie`);
+    await checkEvidenceBoard(page, `${viewport.name} / tablica w trakcie`, { trayCards: 3 });
+    step(`${viewport.name} / tablica w trakcie (3 z 6): (a, e, b1-b4) OK`, true);
+
+    // Reszta pól po kolei (odpowiedź serwera jest podstawiona - kolejność gracza nie ma tu znaczenia).
+    for (const slot of [4, 5, 6]) await pinFirstTrayCardTo(slot);
+    await page.getByRole('button', { name: 'Sprawdź trop' }).click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="evidence-board"]')?.getAttribute('data-phase') === 'settled', undefined, { timeout: 10000 });
+    await page.waitForTimeout(900); // przelot kart (700 ms)
+    await shot(page, `${viewport.name}-tablica-3-po-sprawdzeniu`);
+    if (pageErrors.length > 0) fail(`${viewport.name} / tablica: błąd strony: ${pageErrors.join(' | ')}`);
+    await checkEvidenceBoard(page, `${viewport.name} / tablica po sprawdzeniu`, { trayCards: 0, result: true });
+    step(`${viewport.name} / tablica po sprawdzeniu: (a, e, b1-b5) OK`, true);
     await context.close();
   }
 

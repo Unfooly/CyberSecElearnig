@@ -94,6 +94,30 @@ theme: {
 - **Progress bar**: 6 px, tło `--paper` + border, wypełnienie accent / success / warning.
 - **Empty state**: ikona liniowa 28 px w kółku `--accent-soft`, jeden nagłówek, jedno zdanie, jeden przycisk primary. Nie zostawiaj pustej tabeli z „Brak danych do wyświetlenia".
 
+## Ruch
+
+Tokeny (D-090): `tailwind.config.ts` (`duration-fast|base|slow`, `ease-out-soft|in-out-soft`, `animate-*`), `globals.css` (`--motion-*`,
+`--ease-*`) i `apps/web/src/lib/motion.ts` (animacje z JS) - te same wartości.
+
+| token | wartość | do czego |
+|---|---|---|
+| `fast` | 120 ms | drobne stany (hover); wciśnięcie przedmiotu na scenie to celowo krótsze 100 ms (scale .98) |
+| `base` | 200 ms | zmiana cyfry licznika, kolor tekstu, zamiany stanu |
+| `slow` | 400 ms | przeloty (dowód do Notatnika), wejścia elementów sceny (legitymacja z dołu) |
+| `ease-out-soft` | `cubic-bezier(.2,.8,.2,1)` | wejścia i przeloty (domyślna) |
+| `ease-in-out-soft` | `cubic-bezier(.65,0,.35,1)` | wyjścia i powroty |
+
+Zasady:
+- Animujemy **`transform` i `opacity`** - zero przesunięć układu (np. pasek postępu wysuwa się `translateX`, nie rośnie `width`).
+  Dozwolone wyjątki, bo nie ruszają układu: kolor (np. tekst wykonanego zadania → `muted`) i `stroke-dashoffset` rysowanego ptaszka.
+- Każda animacja ma wariant **`prefers-reduced-motion`**: stan końcowy od razu albo sama opacity; bez przelotów, konfetti i drgań
+  (Tailwind `motion-safe:`, w JS `prefersReducedMotion()`).
+- Nakładki: wejście fade + scale .96 → 1 (180 ms, `ease-out-soft`), wyjście 140 ms (`ease-in-out-soft`). Zbliżenie przedmiotu na scenie
+  ma własny ruch kamery (D-086) - nie dublujemy go.
+- Znaleziony dowód: etykieta leci od klikniętego elementu do przycisku Notatnika (400 ms), ikona podskakuje 1 → 1.15 → 1 (250 ms),
+  cyfra licznika „Dowody x/N” przewija się (200 ms). Zakreślacz w teczce wjeżdża od lewej (350 ms), ptaszek zadania się rysuje (300 ms).
+- Dźwięk nigdy nie zastępuje ruchu ani odwrotnie - oba są ozdobą, stan i tak jest widoczny od razu.
+
 ## Ikony
 
 Ikony liniowe (stroke 2 px, zaokrąglone końce) — np. Lucide. Bez emoji w interfejsie (obecny „Czy wiedziałeś?" z sową i ikony avatarów zastępujemy inicjałami lub ikonami Lucide).

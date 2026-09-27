@@ -22,6 +22,19 @@ describe('composeScene', () => {
     expect(k.y).toBeCloseTo(14, 0);
   });
 
+  it('jednorazowa animacja stempla (D-090): reguły a-stamp tylko w scenie, która jej używa, przed regułami zatrzymującymi', () => {
+    const plain = composeScene({ ...base, items: [{ id: 'teczka', prop: 'caseFolderClosed', x: 0, y: 0 }] });
+    expect(plain.svg).not.toContain('a-stamp');
+    const drop = composeScene({ ...base, items: [{ id: 'teczka', prop: 'caseFolderClosed', x: 0, y: 0, params: { stampDrop: true } }] });
+    expect(drop.svg).toContain('<g class="a-stamp">');
+    expect(drop.svg.indexOf('@keyframes a-stamp')).toBeGreaterThan(-1);
+    // W pierwszym <style>, razem z regułami zatrzymującymi (reduced-motion, #static) - te mają !important.
+    expect(drop.svg.indexOf('@keyframes a-stamp')).toBeLessThan(drop.svg.indexOf('</style>'));
+    expect(drop.svg).toContain('#static:target *{animation:none!important}');
+    // Obrót stempla zostaje na zewnętrznej grupie (transform z CSS nie nadpisuje atrybutu).
+    expect(drop.svg).toMatch(/<g transform="rotate\(-10 440 310\)"><g class="a-stamp">/);
+  });
+
   it('obcina hotspot do granic sceny', () => {
     const res = composeScene({ ...base, items: [{ id: 'k', prop: 'mug', x: 990, y: 490, hotspot: true }] });
     const h = res.hotspots[0];

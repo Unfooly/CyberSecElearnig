@@ -184,8 +184,10 @@ export const newspaper: PropFn<{ title?: string; headline?: string[] }> = ({ tit
 
 /* ---------- teczka ---------- */
 
-export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string }> = ({ caseNo = 'CS/2026/0915', stamp = 'PRIORYTET' }) => {
+/** `stampDrop` (D-090): stempel "spada" przy pojawieniu się sceny (jednorazowa animacja a-stamp z compose.ts). */
+export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string; stampDrop?: boolean }> = ({ caseNo = 'CS/2026/0915', stamp = 'PRIORYTET', stampDrop = false }) => {
   const w = 620, h = 440;
+  const stampSvg = `<rect x="340" y="270" width="230" height="74" rx="10" fill="none" stroke="${P.red}" stroke-width="6"/>${t(455, 320, stamp, 30, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })}`;
   return {
     w, h,
     svg:
@@ -198,7 +200,8 @@ export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string }> = ({ 
       t(90, 118, 'AKTA SPRAWY', 20, { bold: true, spacing: 3, fill: P.greyDark }) +
       t(90, 164, caseNo, 34, { bold: true }) +
       bars(90, 180, [220], 14, 5) +
-      `<g transform="rotate(-10 440 310)"><rect x="340" y="270" width="230" height="74" rx="10" fill="none" stroke="${P.red}" stroke-width="6"/>${t(455, 320, stamp, 30, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })}</g>` +
+      // Animacja na wewnętrznej grupie: transform z CSS zastąpiłby atrybut transform (obrót stempla) na tej samej grupie.
+      `<g transform="rotate(-10 440 310)">${stampDrop ? `<g class="a-stamp">${stampSvg}</g>` : stampSvg}</g>` +
       `<rect x="${w - 110}" y="0" width="16" height="${h}" fill="${P.ink}" opacity="0.85"/>` +
       `<rect x="70" y="${h - 90}" width="200" height="14" rx="7" fill="${FOLDER_EDGE}"/>`,
     parts: { cover: { x: 0, y: -26, w, h: h + 26 } },

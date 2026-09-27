@@ -63,6 +63,8 @@ interface RenderContext {
   tasks: NotebookTask[];
   identity: PlayerIdentity;
   onBriefingStep: (index: number, byGesture: boolean) => void;
+  /** Numer sprawy z odprawy - tabliczka tablicy śledczej (ORDERING, D-088). */
+  caseNo?: string;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -96,6 +98,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         progress={ctx.progress}
         onContinue={() => onSubmit()}
         onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+        caseNo={ctx.caseNo}
       />
     );
   }
@@ -230,6 +233,11 @@ export default function CoursePlayer({
   const [results, setResults] = useState<Record<string, ClientProgressBlock>>(initial.progress?.blocks ?? {});
   // Zadania sprawy (BRIEFING, krok caseFile, D-081) z treści TEJ wersji: jeden stan dla notatnika i karty sprawy w odprawie.
   const tasks = useMemo(() => notebookTasks(initial.contentBlocks, results), [initial.contentBlocks, results]);
+  // Numer sprawy z karty sprawy w odprawie (tabliczka tablicy śledczej, D-088); moduł bez odprawy - brak numeru.
+  const caseNo = useMemo(() => {
+    for (const block of initial.contentBlocks) for (const step of block.steps ?? []) if (step.kind === 'caseFile') return step.caseNo;
+    return undefined;
+  }, [initial.contentBlocks]);
   // Dowody śledztwa: liczby z serwera (start i każda odpowiedź /progress); dowody z niezapisanego bloku dolicza EvidenceProvider.
   const [evidence, setEvidence] = useState<EvidenceSummary | undefined>(initial.progress?.evidence);
   // Notatki dopisane przez serwer ostatnim zapisem (ApplyServerNotes przenosi je do notatnika).
@@ -439,14 +447,19 @@ export default function CoursePlayer({
   // wewnętrzny scroll wątku/odprawy zamiast przewijania całego panelu - fix/dialogue-sticky-questions, D-081), ale to NIE jest
   // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
+  // ORDERING (tablica śledcza, D-088) też 'fill' - także jej wynik zaraz po zapisie (wynik jest na tej samej tablicy); w 'fill'
+  // PlayerStage nie dokłada paska maskotki, zdanie informacji zwrotnej jest pod tablicą.
+  const boardFeedback = showingFeedback && blocks[feedback.blockIndex]?.type === 'ORDERING' && !!feedback.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
-    isSummaryMode || showingFeedback
+    isSummaryMode || (showingFeedback && !boardFeedback)
       ? 'slide'
-      : currentBlock?.type === 'SCENE_HOTSPOTS'
-        ? 'scene'
-        : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING' || currentBlock?.type === 'DOSSIER'
-          ? 'fill'
-          : 'slide';
+      : boardFeedback
+        ? 'fill'
+        : currentBlock?.type === 'SCENE_HOTSPOTS'
+          ? 'scene'
+          : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING' || currentBlock?.type === 'DOSSIER' || currentBlock?.type === 'ORDERING'
+            ? 'fill'
+            : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
@@ -479,6 +492,7 @@ export default function CoursePlayer({
           result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
           onContinue={continueAfterFeedback}
           continueLabel="Dalej"
+          caseNo={caseNo}
         />
       ) : (
         <FeedbackPanel feedback={feedback} onContinue={continueAfterFeedback} continueLabel="Dalej" />
@@ -522,6 +536,7 @@ export default function CoursePlayer({
               tasks,
               identity,
               onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
+              caseNo,
             })}
           </div>
         )}
@@ -537,6 +552,7 @@ export default function CoursePlayer({
             tasks={tasks}
             identity={identity}
             onBriefingStep={trackBriefingStep(`r-${keyOf(displayedIndex)}`)}
+            caseNo={caseNo}
           />
         )}
       </>

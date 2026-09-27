@@ -18,7 +18,9 @@ export default function ReviewBlock({
   tasks,
   identity,
   onBriefingStep,
+  caseNo,
 }: {
+  caseNo?: string;
   block: ContentBlock;
   result?: ClientProgressBlock;
   contentBase: string;
@@ -61,16 +63,19 @@ export default function ReviewBlock({
   }
 
   if (isScored(block.type) && result && (block.type === 'TEXT_INPUT_GUIDED' || (hasInlineResult(block.type) && result.detail))) {
+    // Tablica śledcza (ORDERING, D-088) wypełnia ramkę jak scena - ten sam łańcuch wysokości co bloki 'fill' wyżej.
+    const isBoard = block.type === 'ORDERING';
     return (
-      <div data-testid="review-block">
-        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
+      <div data-testid="review-block" className={isBoard ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
+        <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
         <ScoredBlock
           block={block}
           courseId={courseId}
           progress={result}
           result={{ answer: result.answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction }}
+          caseNo={caseNo}
         />
-        <p className="mt-2 text-xs text-slate-500">Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
+        <p className={`mt-2 text-xs text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
       </div>
     );
   }

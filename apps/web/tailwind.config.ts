@@ -39,6 +39,7 @@ const config: Config = {
         'rise-in': { from: { opacity: '0', transform: 'translateY(24px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
         'overlay-in': { from: { opacity: '0', transform: 'scale(.96)' }, to: { opacity: '1', transform: 'scale(1)' } },
         'overlay-out': { from: { opacity: '1', transform: 'scale(1)' }, to: { opacity: '0', transform: 'scale(.96)' } },
+        'badge-pop': { '0%': { opacity: '0', transform: 'scale(.6)' }, '70%': { opacity: '1', transform: 'scale(1.08)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
       },
       animation: {
         'digit-roll': 'digit-roll 200ms cubic-bezier(.2,.8,.2,1) both',
@@ -47,6 +48,7 @@ const config: Config = {
         'rise-in': 'rise-in 400ms cubic-bezier(.2,.8,.2,1) both',
         'overlay-in': 'overlay-in 180ms cubic-bezier(.2,.8,.2,1) both',
         'overlay-out': 'overlay-out 140ms cubic-bezier(.65,0,.35,1) both',
+        'badge-pop': 'badge-pop 400ms cubic-bezier(.2,.8,.2,1) both',
       },
     },
   },

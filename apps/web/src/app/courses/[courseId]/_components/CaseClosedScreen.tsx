@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary } from '@/lib/courses-types';
@@ -60,6 +60,88 @@ function useCountUp(target: number, active: boolean, delayMs: number): number {
 
 const place = (rect: BriefingRect): CSSProperties => ({ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` });
 
+const CONFETTI_MS = 1200;
+const CONFETTI_COLORS = ['var(--accent)', 'var(--accent-soft)', 'var(--success)', 'var(--highlight)'];
+
+/** Kierunki i obroty (max 30) cząstek - deterministycznie (bez Math.random: ten sam wygląd przy każdym renderze i w testach). */
+function confettiPieces(count = 30): { dx: number; dy: number; rot: number; color: string; size: number }[] {
+  const n = Math.min(count, 30);
+  return Array.from({ length: n }, (_, i) => {
+    const angle = (i / n) * Math.PI * 2 + (i % 3) * 0.35;
+    const distance = 14 + ((i * 37) % 11);
+    return {
+      dx: Math.cos(angle) * distance,
+      dy: Math.sin(angle) * distance - 6,
+      rot: ((i * 53) % 360) - 180,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      size: 0.8 + ((i * 7) % 5) * 0.15,
+    };
+  });
+}
+
+/**
+ * Jednorazowe konfetti przy pieczęci (D-090, B-116): max 30 cząstek w kolorach marki, 1,2 s, wyłącznie transform/opacity, w obrębie ramki
+ * raportu (własna warstwa z overflow-hidden); aria-hidden. Renderowane tylko w ceremonii bez reduced-motion (decyduje wywołujący; CSS i tak pod no-preference).
+ */
+function Confetti({ at }: { at: BriefingRect }) {
+  // Warstwa na cały raport, przycinana do niego: cząstki nie wychodzą na nagłówek/przyciski ani nie poszerzają przewijania panoramy.
+  return (
+    <div aria-hidden="true" data-testid="closing-confetti" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute" style={{ left: `${at.x + at.w / 2}%`, top: `${at.y + at.h / 2}%` }}>
+        {confettiPieces().map((piece, index) => (
+          <span
+            key={index}
+            className="closing-confetti-piece absolute rounded-[1px]"
+            style={
+              {
+                width: `${piece.size}cqw`,
+                height: `${piece.size * 0.5}cqw`,
+                background: piece.color,
+                '--dx': `${piece.dx}cqw`,
+                '--dy': `${piece.dy}cqw`,
+                '--rot': `${piece.rot}deg`,
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Pasek poziomu (D-090, B-116): wypełnienie przesuwa się od stanu sprzed nagrody do stanu po (translateX, 600 ms); reduced-motion - od razu. */
+function LevelProgress({ reward, animate }: { reward: CourseCompletionReward; animate: boolean }) {
+  const [grown, setGrown] = useState(!animate);
+  useEffect(() => {
+    if (!animate) return undefined;
+    const timer = window.setTimeout(() => setGrown(true), 300);
+    return () => window.clearTimeout(timer);
+  }, [animate]);
+  const clamp = (value: number) => Math.max(0, Math.min(100, value));
+  // Bez animacji (także reduced-motion włączone w trakcie pierwszych 300 ms) - od razu stan po nagrodzie.
+  const percent = clamp(!animate || grown ? reward.levelProgressAfterPercent : reward.levelProgressBeforePercent);
+  const labelId = useId();
+  return (
+    <div className="flex items-center gap-2 text-xs font-bold text-muted">
+      <span id={labelId}>Poziom {reward.previousLevel}</span>
+      <div
+        role="progressbar"
+        aria-labelledby={labelId}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={clamp(reward.levelProgressAfterPercent)}
+        className="h-1.5 w-24 overflow-hidden rounded-full bg-border"
+      >
+        <div
+          data-testid="level-progress-fill"
+          className="h-full w-full rounded-full bg-accent motion-safe:transition-transform motion-safe:duration-[600ms] motion-safe:ease-out-soft"
+          style={{ transform: `translateX(${percent - 100}%)` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function CaseClosedScreen({
   title,
   score,
@@ -107,6 +189,13 @@ export default function CaseClosedScreen({
   const signRef = useRef<HTMLButtonElement>(null);
   const libraryRef = useRef<HTMLAnchorElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  // Konfetti przy pieczęci - raz, na CONFETTI_MS (potem cząstki znikają z DOM).
+  const [confetti, setConfetti] = useState(false);
+  useEffect(() => {
+    if (!confetti) return undefined;
+    const timer = window.setTimeout(() => setConfetti(false), CONFETTI_MS);
+    return () => window.clearTimeout(timer);
+  }, [confetti]);
   const sceneRef = useRef<HTMLDivElement>(null);
   const minutes = caseMinutes(startedAt, completedAt);
   // Ponowne ukończenie po restarcie nie dolicza XP (0) - "—" zamiast "+0".
@@ -158,6 +247,7 @@ export default function CaseClosedScreen({
     if (stage === 'signing') {
       const timer = window.setTimeout(() => {
         setStage('stamp');
+        setConfetti(true);
         play('stamp');
         // Panorama (telefon w pionie): widok przesuwa się na prawą kartkę, gdzie spada pieczęć i wlatuje liścik. Poza panoramą no-op.
         const frame = frameRef.current;
@@ -220,7 +310,7 @@ export default function CaseClosedScreen({
   });
 
   const levelUp = reward?.leveledUp ? `Awans na poziom ${reward.newLevel}!` : null;
-  const badges = reward?.unlockedBadges.length ? `Nowe odznaki: ${reward.unlockedBadges.map((badge) => badge.title).join(', ')}.` : null;
+  const newBadges = reward?.unlockedBadges ?? [];
 
   return (
     <div data-testid="case-closed" data-stage={stage} className="flex min-h-0 w-full flex-1 flex-col">
@@ -319,6 +409,7 @@ export default function CaseClosedScreen({
                 style={{ ...place(closing.slots.note), transform: 'rotate(-5deg)' }}
               />
             )}
+            {confetti && ceremony && <Confetti at={closing.slots.stamp} />}
           </div>
         </div>
       ) : (
@@ -336,8 +427,31 @@ export default function CaseClosedScreen({
         <p className="text-sm text-muted">
           {scoreLine}
           {levelUp && <span className="ml-2 font-semibold text-accent-ink">{levelUp}</span>}
-          {badges && <span className="ml-2">{badges}</span>}
         </p>
+        {reward && <LevelProgress reward={reward} animate={ceremony} />}
+        {newBadges.length > 0 && (
+          <p className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
+            {/* Wąski ekran: jedna zbiorcza plakietka (wiersz nazw odznak odbierałby wysokość raportowi); od sm - każda odznaka osobno. */}
+            <span
+              aria-hidden="true"
+              className={`inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent-ink sm:hidden ${ceremony ? 'motion-safe:animate-badge-pop' : ''}`}
+              style={ceremony ? { animationDelay: '600ms' } : undefined}
+            >
+              {newBadges.length === 1 ? 'Nowa odznaka' : `Nowe odznaki: ${newBadges.length}`}
+            </span>
+            <span className="sr-only sm:not-sr-only">Nowe odznaki:</span>
+            {newBadges.map((badge, index) => (
+              // Pop odznaki (D-090, B-116): .6 -> 1.08 -> 1, kolejne z opóźnieniem; reduced-motion - od razu. Na wąskim ekranie tylko dla czytnika.
+              <span
+                key={badge.code}
+                className={`sr-only sm:not-sr-only sm:inline-flex sm:items-center sm:rounded-full sm:bg-accent-soft sm:px-2 sm:py-0.5 sm:text-xs sm:font-bold sm:text-accent-ink ${ceremony ? 'motion-safe:animate-badge-pop' : ''}`}
+                style={ceremony ? { animationDelay: `${600 + index * 120}ms` } : undefined}
+              >
+                {badge.title}
+              </span>
+            ))}
+          </p>
+        )}
         {restartError && <p className="text-sm font-medium text-danger">Nie udało się rozpocząć kursu od nowa. Spróbuj ponownie.</p>}
         <Link
           ref={libraryRef}

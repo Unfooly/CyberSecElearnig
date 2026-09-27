@@ -247,8 +247,9 @@
    tekst w slotach (cqw) skaluje się z raportem. */
 .closing-frame {
   container-type: size;
-  /* Liścik wlatuje spoza raportu - bez mignięcia paska przewijania w przodku. */
-  overflow: clip;
+  /* Bez przycinania na ramce: obszar bloku w układzie 'fill' ma overflow-clip (PlayerStage), więc wlatujący liścik nie da paska przewijania,
+     a niewidoczny obszar dotyku podpisu (≥ 44x44, .closing-sign-hit) przy niskim raporcie może wyjść poza ramkę bez ucięcia (także w
+     Safari - overflow-clip-margin tam nie działa). Konfetti ma własną, przycinaną warstwę w raporcie. */
 }
 .closing-box {
   width: min(100cqw, calc(100cqh * 16 / 9));
@@ -374,6 +375,10 @@
   .closing-sign-pulse {
     animation: briefing-hotspot-hint 1.6s ease-in-out infinite;
   }
+  /* Konfetti przy pieczęci (D-090, B-116): rozrzut z CSS-owych zmiennych cząstki, 1,2 s, tylko transform/opacity. */
+  .closing-confetti-piece {
+    animation: closing-confetti 1.2s var(--ease-out-soft) forwards;
+  }
 }
 
 /* reduced-motion: miejsce na podpis z obwódką bez pulsu. */
@@ -434,6 +439,20 @@
   to {
     opacity: 1;
     transform: rotate(-5deg);
+  }
+}
+
+@keyframes closing-confetti {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot));
   }
 }
 

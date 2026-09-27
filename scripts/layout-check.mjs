@@ -683,7 +683,13 @@ async function checkCaseClosed(page, label, portrait) {
   const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
   const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');
   if (!contains(contentAreaBox, frameBox)) fail(`${label}: (z2) ramka raportu wychodzi poza obszar bloku - ramka=${JSON.stringify(frameBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
-  const pan = await page.getByTestId('case-closed-frame').evaluate((el) => ({ x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight }));
+  // Ramka jest kontenerem przewijania tylko w panoramie (telefon w pionie, overflow-x: auto); poza nią nie przycina (D-090: obszar dotyku
+  // podpisu może wystawać), więc scrollHeight liczy wystające elementy, ale przewijania nie ma - pilnuje go (e) na obszarze bloku.
+  const pan = await page.getByTestId('case-closed-frame').evaluate((el) => {
+    const style = getComputedStyle(el);
+    const scrolls = (value) => value === 'auto' || value === 'scroll';
+    return { x: scrolls(style.overflowX) ? el.scrollWidth - el.clientWidth : 0, y: scrolls(style.overflowY) ? el.scrollHeight - el.clientHeight : 0 };
+  });
   if (pan.y > 1) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
   if (portrait) {
     // Panorama: raport szerszy niż ekran (przewijanie w poziomie), wnioski czytelne (>= 11 px).
@@ -1146,7 +1152,12 @@ try {
               newLevel: 2,
               previousLevel: 1,
               leveledUp: true,
-              unlockedBadges: [],
+              // Najgorszy przypadek dolnego rzędu (D-090, B-116): pasek poziomu + 3 odznaki z długimi nazwami.
+              unlockedBadges: [
+                { code: 'pierwsza-sprawa', title: 'Pierwsza zamknięta sprawa', icon: 'badge', xpReward: 50 },
+                { code: 'tropiciel', title: 'Tropiciel wszystkich dowodów', icon: 'badge', xpReward: 50 },
+                { code: 'bez-bledu', title: 'Rekonstrukcja bez jednego błędu', icon: 'badge', xpReward: 50 },
+              ],
               levelProgressBeforePercent: 40,
               levelProgressAfterPercent: 100,
             },
@@ -1165,6 +1176,16 @@ try {
         await checkCaseClosed(page, `${label} (podpis)`, portrait);
         step(`${label} (etap podpisu): (z1-z7) OK`, true);
         await page.getByRole('button', { name: 'Podpisz raport' }).click();
+        // (z9, D-090) konfetti przy pieczęci: pojawia się, max 30 cząstek, strona i obszar bloku się nie przewijają (konfetti w warstwie przycinanej do raportu).
+        const confetti = page.getByTestId('closing-confetti');
+        // "attached", nie "visible": warstwa jest aria-hidden i przezroczysta (widoczne są tylko cząstki).
+        await confetti.waitFor({ state: 'attached', timeout: 3000 });
+        const pieces = await confetti.locator('span').count();
+        if (pieces === 0 || pieces > 30) fail(`${label}: (z9) konfetti ma ${pieces} cząstek (oczekiwane 1-30).`);
+        await page.waitForTimeout(400);
+        await checkNoPageScroll(page, `${label} (konfetti)`);
+        await checkMainSceneFits(page, `${label} (konfetti)`);
+        step(`${label}: (z9) konfetti (${pieces} cząstek) bez przewijania`, true);
       } else {
         await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
       }

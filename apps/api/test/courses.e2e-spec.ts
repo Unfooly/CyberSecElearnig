@@ -156,6 +156,9 @@ describe('Kursy e-learningowe (e2e)', () => {
 
     expect(response.body.status).toBe('IN_PROGRESS');
     expect(response.body.currentBlockIndex).toBe(0);
+    // Pierwszy start zapisuje moment rozpoczęcia (czas sprawy na ekranie zamknięcia, D-089); ukończenia jeszcze nie ma.
+    expect(Number.isNaN(Date.parse(response.body.startedAt))).toBe(false);
+    expect(response.body.completedAt).toBeNull();
 
     const blocks = response.body.contentBlocks;
     expect(blocks).toHaveLength(contentBlocks.length);

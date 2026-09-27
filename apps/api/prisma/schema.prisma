@@ -984,6 +984,9 @@ model CourseAssignment {
   score             Int?
   dueDate           DateTime?
   completedAt       DateTime?
+  // Pierwsze rozpoczęcie (NOT_STARTED -> IN_PROGRESS w /start) - czas śledztwa na ekranie zamknięcia sprawy (D-089). null =
+  // przypisanie rozpoczęte przed tą kolumną albo jeszcze nierozpoczęte (createdAt to data PRZYPISANIA, nie startu).
+  startedAt         DateTime?
   createdAt         DateTime         @default(now())
   // Ostatnia zmiana przypisania (postęp, ukończenie) - źródło "ostatniej
   // aktywności" w dashboardzie zarządu (DashboardService.getUsersStatus).

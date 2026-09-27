@@ -18,8 +18,10 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
 - dowody łącznie: **21** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
-  analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - przelew 9:12, Bukareszt 8:53, SMS 9:06, mail do
-  3 osób, WHOIS; rozmowa z Markiem: 3)
+  analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - nowy odbiorca 9:04, Bukareszt 9:03, kod SMS
+  z Bukaresztu 9:06, nagłówki maila z Bukaresztu, WHOIS; rozmowa z Markiem: 3)
+- oś czasu (źródło prawdy - rozmowa z Markiem, wydruk przelewu i rekonstrukcja): mail 8:47 → Anna wpisuje hasło 8:58 →
+  logowanie oszusta 9:03 → nowy odbiorca 9:04 → telefon „informatyka" 9:05 → kod SMS 9:06 (wydruk: 09:06:58) → przelew 9:12
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
@@ -63,8 +65,8 @@ karta, pieczątka) tylko bez `prefers-reduced-motion`.
    TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT.
    Reszta jest w biurze Anny."
    **Zadania sprawy** (`tasks` kroku caseFile; też sekcja „Zadania" notatnika; w nawiasie `completeWhen` - zadanie odhacza się,
-   gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
-   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
+   gdy wszystkie wskazane bloki są ukończone; odprawa nigdy nie odhacza zadań):
+   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`akta-sprawy`, `rekonstrukcja`)
    - `dowody`: „Zbierz dowody w biurze Anny." (`biuro-anny`)
    - `zapobieganie`: „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
 3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
@@ -254,34 +256,35 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 Id bloku bez zmian (`akta-sprawy`, dawniej TABS). Teczka `accent-soft`, pieczątka „Poufne" (`danger`), przekładki po prawej
 (telefon w pionie: pasek nad arkuszem), treść dokumentów font maszynowy. Klik w wiersz = zakreślacz: wiersz-dowód zakreśla się
-na żółto (`highlight`) i trafia do notatnika; zwykła linijka: „Ta linijka wygląda na zwykłą operację." (bez zaznaczenia).
+na żółto (`highlight`) i trafia do notatnika; zwykła linijka: „Ta linijka wygląda na zwykłą operację." (bez zaznaczenia) albo
+własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 - **Lektor (narrator):** „Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do
   zwykłego wtorku."
 - ukończenie: otwarte wszystkie 4 dokumenty + zakreślone 3 wymagane dowody (✱); dowody z teczki to NOWE fakty (5), bez
-  powtarzania dowodów ze scen.
-
-> **Do potwierdzenia z makietą:** z makiety znane są godziny i dowody; opisy zwykłych linijek (08:02, 08:31, 10:05, 07:58,
-> 09:12 w logach, „filtr spamu", „rekomendacje") są uzupełnione tak, żeby były zwykłymi operacjami, i czekają na podmianę na
-> teksty z makiety.
+  powtarzania dowodów ze scen i z rozmowy z Markiem (przelew 9:12 zna gracz z odprawy, 7 adresatów i 2 kliknięcia - od Marka,
+  więc te wiersze są zwykłymi linijkami z komunikatem naprowadzającym).
+- ukończona teczka (razem z rekonstrukcją) odhacza zadanie „Ustal, jak przestępca dostał się do konta."
 
 **„Wyciąg bankowy"** — BANK WEKTOR S.A., „Wyciąg z rachunku firmowego", Unfooly Sp. z o.o. · wtorek (Godzina | Opis | Kwota):
 - 08:02 Opłata za prowadzenie rachunku, −25,00 PLN
 - 08:31 Wpływ: płatność za fakturę od klienta, +3 200,00 PLN
-- ✱ 09:12 Przelew: Wektor Rozliczenia Sp. z o.o., −14 000,00 PLN — dowód (item): „9:12 — przelew 14 000 PLN do Wektor Rozliczenia Sp. z o.o."
+- ✱ 09:04 Dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o., — — dowód (item): „9:04 — dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o."
+- 09:12 Przelew: Wektor Rozliczenia Sp. z o.o., −14 000,00 PLN — komunikat: „Ten przelew już znasz. Szukaj tego, co go przygotowało."
 - 10:05 Przelew: dostawca materiałów biurowych, −412,50 PLN
 
 **„Logi logowania"** — BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA, „Historia logowań", Użytkownik: a.kowalska (Godzina | Zdarzenie | Miejsce i urządzenie):
 - 07:58 Logowanie, Kraków, komputer biurowy
-- ✱ 08:53 Logowanie, Bukareszt, nowe urządzenie — dowód (place): „8:53 — logowanie z Bukaresztu, z nowego urządzenia."
-- 09:06 Autoryzacja przelewu kodem SMS, Bukareszt, nowe urządzenie — dowód (item): „9:06 — przelew zatwierdzony kodem SMS."
-- 09:12 Przelew wysłany, Bukareszt, nowe urządzenie
+- ✱ 09:03 Logowanie, Bukareszt, nowe urządzenie — dowód (place): „9:03 — logowanie z Bukaresztu, z nowego urządzenia."
+- 09:06 Kod SMS wpisany, Bukareszt, nowe urządzenie — dowód (place): „9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny."
+- 09:12 Przelew wysłany, Bukareszt, nowe urządzenie — komunikat: „Ten przelew już znasz. Szukaj tego, co go przygotowało."
 
 **„Notatka IT"** — UNFOOLY SP. Z O.O. · DZIAŁ IT, „Notatka po incydencie", Autor: Marek Zieliński:
-- Ten sam mail trafił do 3 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl. — dowód (mail)
+- Ten sam mail trafił do 7 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl. — komunikat: „O adresatach maila opowie ci Marek. W notatce szukaj tego, czego jeszcze nie wiesz."
+- Nagłówki maila z 8:47: wysłany z adresu IP w Bukareszcie — z tej samej sieci, z której o 9:03 zalogowano się do banku. — dowód (mail): „Mail z 8:47 wysłano z sieci w Bukareszcie — tej samej, z której o 9:03 zalogowano się do banku."
 - ✱ Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS). — dowód (item)
-- Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji.
-- Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie.
+- Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji. — komunikat: „To wniosek z notatki, nie ślad."
+- Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie. — komunikat: „To wniosek z notatki, nie ślad."
 
 **„Procedury"** — UNFOOLY SP. Z O.O., „Procedury bezpieczeństwa" (Temat | Zasada), dotychczasowa wiedza z akt, bez dowodów:
 - Domeny: prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl.

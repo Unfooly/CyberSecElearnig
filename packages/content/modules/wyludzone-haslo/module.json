@@ -74,6 +74,7 @@
               "id": "dostep",
               "text": "Ustal, jak przestępca dostał się do konta.",
               "completeWhen": [
+                "akta-sprawy",
                 "rekonstrukcja"
               ]
             },
@@ -735,18 +736,27 @@
               ]
             },
             {
+              "id": "w-0904",
+              "cells": [
+                "09:04",
+                "Dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
+                "—"
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": "9:04 — dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
+                "kind": "item"
+              }
+            },
+            {
               "id": "w-0912",
               "cells": [
                 "09:12",
                 "Przelew: Wektor Rozliczenia Sp. z o.o.",
                 "−14 000,00 PLN"
               ],
-              "evidence": true,
-              "required": true,
-              "note": {
-                "text": "9:12 — przelew 14 000 PLN do Wektor Rozliczenia Sp. z o.o.",
-                "kind": "item"
-              }
+              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
             },
             {
               "id": "w-1005",
@@ -779,16 +789,16 @@
               ]
             },
             {
-              "id": "l-0853",
+              "id": "l-0903",
               "cells": [
-                "08:53",
+                "09:03",
                 "Logowanie",
                 "Bukareszt, nowe urządzenie"
               ],
               "evidence": true,
               "required": true,
               "note": {
-                "text": "8:53 — logowanie z Bukaresztu, z nowego urządzenia.",
+                "text": "9:03 — logowanie z Bukaresztu, z nowego urządzenia.",
                 "kind": "place"
               }
             },
@@ -796,13 +806,13 @@
               "id": "l-0906",
               "cells": [
                 "09:06",
-                "Autoryzacja przelewu kodem SMS",
+                "Kod SMS wpisany",
                 "Bukareszt, nowe urządzenie"
               ],
               "evidence": true,
               "note": {
-                "text": "9:06 — przelew zatwierdzony kodem SMS.",
-                "kind": "item"
+                "text": "9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny.",
+                "kind": "place"
               }
             },
             {
@@ -811,7 +821,8 @@
                 "09:12",
                 "Przelew wysłany",
                 "Bukareszt, nowe urządzenie"
-              ]
+              ],
+              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
             }
           ]
         },
@@ -826,13 +837,20 @@
           ],
           "rows": [
             {
-              "id": "n-3-osoby",
+              "id": "n-7-osob",
               "cells": [
-                "Ten sam mail trafił do 3 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."
+                "Ten sam mail trafił do 7 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."
+              ],
+              "message": "O adresatach maila opowie ci Marek. W notatce szukaj tego, czego jeszcze nie wiesz."
+            },
+            {
+              "id": "n-naglowki",
+              "cells": [
+                "Nagłówki maila z 8:47: wysłany z adresu IP w Bukareszcie — z tej samej sieci, z której o 9:03 zalogowano się do banku."
               ],
               "evidence": true,
               "note": {
-                "text": "Ten sam mail z bankwektor-weryfikacja.pl dostały 3 osoby.",
+                "text": "Mail z 8:47 wysłano z sieci w Bukareszcie — tej samej, z której o 9:03 zalogowano się do banku.",
                 "kind": "mail"
               }
             },
@@ -852,13 +870,15 @@
               "id": "n-filtr",
               "cells": [
                 "Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji."
-              ]
+              ],
+              "message": "To wniosek z notatki, nie ślad."
             },
             {
               "id": "n-rekomendacje",
               "cells": [
                 "Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie."
-              ]
+              ],
+              "message": "To wniosek z notatki, nie ślad."
             }
           ]
         },

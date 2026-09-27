@@ -250,13 +250,16 @@ try {
   await row('Opłata za prowadzenie rachunku').click();
   step('DOSSIER: zwykła linijka - komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ta linijka wygląda na zwykłą operację.') && (await row('Opłata za prowadzenie rachunku').getAttribute('aria-pressed')) === 'false');
   step('DOSSIER: "Dalej" nieaktywne przed wymaganymi', (await nextEnabled().count()) === 0);
-  await row('Wektor Rozliczenia').click();
-  step('DOSSIER: wiersz-dowód zakreślony (aria-pressed)', (await row('Wektor Rozliczenia').getAttribute('aria-pressed')) === 'true');
+  // Przelew 9:12 zna gracz z odprawy - zwykła linijka z własnym komunikatem (`message`), dowodem jest nowy odbiorca 9:04.
+  await row('Przelew: Wektor Rozliczenia').click();
+  step('DOSSIER: przelew 9:12 - własny komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ten przelew już znasz.') && (await row('Przelew: Wektor Rozliczenia').getAttribute('aria-pressed')) === 'false');
+  await row('Dodano nowego odbiorcę').click();
+  step('DOSSIER: wiersz-dowód zakreślony (aria-pressed)', (await row('Dodano nowego odbiorcę').getAttribute('aria-pressed')) === 'true');
   await page.getByRole('tab', { name: 'Logi logowania' }).click();
-  await row('Bukareszt, nowe urządzenie').filter({ hasText: '08:53' }).click();
-  await row('Autoryzacja przelewu kodem SMS').click();
+  await row('Logowanie').filter({ hasText: '09:03' }).click();
+  await row('Kod SMS wpisany').click();
   await page.getByRole('tab', { name: 'Notatka IT' }).click();
-  await row('Ten sam mail trafił do 3 osób').click();
+  await row('Nagłówki maila').click();
   await row('zarejestrowana 2 dni przed atakiem').click();
   await page.getByRole('tab', { name: 'Procedury' }).click();
   step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);

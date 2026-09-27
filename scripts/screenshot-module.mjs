@@ -198,10 +198,10 @@ async function runViewport(viewport) {
   // --- DOSSIER (teczka, D-083): zrzut arkusza z zakreśleniem, potem wszystkie dokumenty i wymagane dowody -----------
   await page.getByRole('tablist', { name: 'Dokumenty w teczce' }).waitFor();
   const row = (text) => page.getByRole('button', { name: new RegExp(text) });
-  await row('Wektor Rozliczenia').click();
+  await row('Dodano nowego odbiorcę').click();
   await shot(page, '06-teczka-wyciag', viewport.name);
   await page.getByRole('tab', { name: 'Logi logowania' }).click();
-  await row('Bukareszt, nowe urządzenie').filter({ hasText: '08:53' }).click();
+  await row('Logowanie').filter({ hasText: '09:03' }).click();
   await page.getByRole('tab', { name: 'Notatka IT' }).click();
   await row('zarejestrowana 2 dni przed atakiem').click();
   await shot(page, '06-teczka-notatka', viewport.name);

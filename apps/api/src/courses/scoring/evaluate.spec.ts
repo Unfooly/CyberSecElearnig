@@ -40,6 +40,45 @@ describe('evaluateSubmit: bloki wyborów (QUIZ / BRANCHING_SCENARIO)', () => {
   });
 });
 
+describe('evaluateSubmit: DOSSIER (teczka sprawy, D-083)', () => {
+  const block = () => ({ ...blocks().DOSSIER, weight: 0 });
+
+  it('wszystkie dokumenty otwarte + wymagany dowód zakreślony: zaliczony, nieoceniany, notatka pod kluczem <blok>.<wiersz>', () => {
+    const result = submit(block(), { opened: ['wyciag', 'procedury'], noted: ['w2'] });
+    expect(result.entry).toMatchObject({ done: true, type: 'DOSSIER' });
+    expect(result.entry.points).toBeUndefined();
+    expect(result.notesAdded).toEqual(['akta.w2']);
+  });
+
+  it('nieotwarty dokument albo niezakreślony wymagany dowód: 400', () => {
+    expect(() => submit(block(), { opened: ['wyciag'], noted: ['w2'] })).toThrow(BadRequestException);
+    expect(() => submit(block(), { opened: ['wyciag', 'procedury'], noted: [] })).toThrow(/wymaganych elementów/);
+  });
+
+  it('zwykła linijka, nieznany wiersz, id dokumentu, duplikat w noted albo pole spoza DTO: 400 bez treści bloku', () => {
+    const opened = ['wyciag', 'procedury'];
+    for (const answer of [
+      { opened, noted: ['w2', 'w1'] }, // w1 to zwykła operacja - nie dowód
+      { opened, noted: ['w2', 'nie-ma'] },
+      { opened, noted: ['w2', 'wyciag'] },
+      { opened, noted: ['w2', 'w2'] },
+      { opened: [...opened, 'nie-ma'], noted: ['w2'] },
+      { opened, noted: ['w2'], visited: [] },
+      { opened },
+      undefined,
+    ]) {
+      let message = '';
+      try {
+        submit(block(), answer);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).not.toBe('');
+      expect(message).not.toMatch(/Przelew|Opłata|SEKRET/);
+    }
+  });
+});
+
 describe('evaluateSubmit: bloki eksploracyjne', () => {
   it('SCENE_HOTSPOTS: wymaga wszystkich wskazanych hotspotów, nie ocenia', () => {
     const block = { ...blocks().SCENE_HOTSPOTS, weight: 0 };

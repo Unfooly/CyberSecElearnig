@@ -333,6 +333,27 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { kind: 'start', text: 'Firma Testowa, drugie piętro.', cta: 'Wchodzę', narration: audio('odprawa-5') },
       ],
     },
+    // schemaVersion 5 (D-083): teczka - dwa dokumenty, jeden wiersz-dowód (wymagany) i zwykłe linijki.
+    DOSSIER: {
+      ...base('akta'),
+      type: 'DOSSIER',
+      stamp: 'POUFNE',
+      documents: [
+        {
+          id: 'wyciag',
+          tab: 'Wyciąg',
+          org: 'BANK TESTOWY',
+          title: 'Wyciąg z rachunku',
+          meta: 'Rachunek firmowy, wtorek',
+          columns: ['Godzina', 'Opis', 'Kwota'],
+          rows: [
+            { id: 'w1', cells: ['08:02', 'Opłata', '-5,00 PLN'] },
+            { id: 'w2', cells: ['09:12', 'Przelew', '-100,00 PLN'], evidence: true, required: true, note: { text: 'Przelew 9:12.', kind: 'item' } },
+          ],
+        },
+        { id: 'procedury', tab: 'Procedury', org: 'FIRMA', title: 'Procedury', columns: ['Zasada'], rows: [{ id: 'p1', cells: ['Zgłaszaj.'] }] },
+      ],
+    },
     SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },
   };
 }
@@ -390,8 +411,8 @@ function injectSpokenText(node: unknown): void {
 }
 
 /**
- * Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. BRIEFING (schemaVersion 5) stoi TUŻ PRZED
- * SUMMARY, nie na początku: apps/api/test/course-engine.e2e-spec.ts ma twardo zakodowane indeksy bloków (CLAUDE.md, reguła 9).
+ * Kompletny moduł (każdy typ raz, SUMMARY na końcu) - do testów walidacji i importu. BRIEFING i DOSSIER (schemaVersion 5) stoją
+ * TUŻ PRZED SUMMARY, nie na początku: apps/api/test/course-engine.e2e-spec.ts ma twardo zakodowane indeksy bloków (CLAUDE.md, reguła 9).
  */
 export function fullModule() {
   const blocks = fullBlocks();
@@ -420,6 +441,7 @@ export function fullModule() {
       blocks.ORDERING,
       blocks.TABS,
       blocks.BRIEFING,
+      blocks.DOSSIER,
       blocks.SUMMARY,
     ],
   };

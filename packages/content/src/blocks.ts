@@ -437,6 +437,48 @@ const briefingSchema = z
   })
   .strict();
 
+// schemaVersion 5: "teczka sprawy" (D-083) - dokumenty (przekładki) z wierszami tabeli. Zastępuje w module 1 akta w TABS: tam
+// zakładka była tekstem, tu dokument to tabela, a wiersz może być DOWODEM (zakreślenie dopisuje notatkę do notatnika tą samą
+// ścieżką co hotspot: klucz `<blockId>.<rowId>`). Jak SCENE_HOTSPOTS, `evidence`/`note`/`required` są polami client: blok jest
+// eksploracyjny, nie oceniany - klient i tak musi wiedzieć, który wiersz jest dowodem, żeby pokazać "zwykłą operację"
+// dla pozostałych. Id dokumentów i wierszy są unikalne w całym bloku (semantics.ts); liczba komórek = liczba kolumn.
+const dossierRowSchema = z
+  .object({
+    id: idSchema,
+    cells: z.array(text(300)).min(1).max(4),
+    evidence: z.boolean().optional(),
+    note: noteSchema.optional(),
+    required: z.boolean().optional(),
+  })
+  .strict();
+
+const dossierSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('DOSSIER'),
+    // Pieczątka na teczce (np. "POUFNE").
+    stamp: text(30).optional(),
+    documents: z
+      .array(
+        z
+          .object({
+            id: idSchema,
+            // Napis na przekładce.
+            tab: text(40),
+            // Nagłówek arkusza: wystawca (np. "UNFOOLY SP. Z O.O. · DZIAŁ IT"), tytuł i metryka (autor, data, konto).
+            org: text(80),
+            title: text(120),
+            meta: text(200).optional(),
+            columns: z.array(text(40)).min(1).max(4),
+            rows: z.array(dossierRowSchema).min(1).max(30),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(6),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -453,6 +495,7 @@ export const BLOCK_SCHEMAS = {
   TABS: tabsSchema,
   SUMMARY: summarySchema,
   BRIEFING: briefingSchema,
+  DOSSIER: dossierSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -474,6 +517,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   tabsSchema,
   summarySchema,
   briefingSchema,
+  dossierSchema,
 ]);
 export type ServerBlock = z.infer<typeof blockSchema>;
 
@@ -496,6 +540,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   TABS: 0,
   SUMMARY: 0,
   BRIEFING: 0,
+  DOSSIER: 0,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -742,6 +787,25 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].narration.cues[].startMs',
     ],
     ['steps[].narration.spokenText', 'steps[].narration.voice'],
+  ),
+  // Wszystko client - jak hotspoty SCENE_HOTSPOTS (evidence/note/required też): blok eksploracyjny, bez klucza odpowiedzi.
+  DOSSIER: classify(
+    [
+      'stamp',
+      'documents[].id',
+      'documents[].tab',
+      'documents[].org',
+      'documents[].title',
+      'documents[].meta',
+      'documents[].columns[]',
+      'documents[].rows[].id',
+      'documents[].rows[].cells[]',
+      'documents[].rows[].evidence',
+      'documents[].rows[].note.text',
+      'documents[].rows[].note.kind',
+      'documents[].rows[].required',
+    ],
+    [],
   ),
 };
 

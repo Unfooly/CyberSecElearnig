@@ -225,13 +225,23 @@ describe('client-view', () => {
         collected: 0,
         // scena: 2 - h1 (zewnętrzny) + h4-outlook (wewnątrz zagnieżdżonej sceny media.kind:'scene', B-086/D-071) - dowody
         // z zagnieżdżonej sceny LICZĄ SIĘ do bloku (spłaszczone id, ta sama funkcja co semantics.ts).
-        total: 4,
+        // + akta: 1 - wiersz-dowód teczki (DOSSIER, D-083).
+        total: 5,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
+          { blockId: 'akta', collected: 0, total: 1 },
         ],
       });
+    });
+
+    it('DOSSIER: zakreślony wiersz-dowód liczy się po notatce <blok>.<wiersz>, a notatka rozwiązuje się z treści', () => {
+      const summary = evidenceSummary({ v: 2, blocks: {}, notes: ['akta.w2', 'akta.w1'] }, blocks());
+      expect(summary.perBlock.find((b) => b.blockId === 'akta')).toEqual({ blockId: 'akta', collected: 1, total: 1 });
+      expect(resolveNote(blocks(), 'akta.w2')).toEqual({ key: 'akta.w2', blockId: 'akta', text: 'Przelew 9:12.', kind: 'item' });
+      // Zwykła linijka nie ma notatki - klucz nic nie rozwiązuje.
+      expect(resolveNote(blocks(), 'akta.w1')).toBeNull();
     });
 
     it('zebrane dowody sumują się poprawnie (bez oglądania nieznanych kluczy)', () => {
@@ -243,11 +253,12 @@ describe('client-view', () => {
       // więc liczy się do total, ale nie do collected.
       expect(summary).toEqual({
         collected: 3,
-        total: 4,
+        total: 5,
         perBlock: [
           { blockId: 'scena', collected: 1, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
+          { blockId: 'akta', collected: 0, total: 1 },
         ],
       });
     });

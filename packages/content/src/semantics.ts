@@ -84,6 +84,21 @@ function emailTargetErrors(block: Extract<ServerBlock, { type: 'EMAIL_ANALYSIS' 
 }
 
 /** `required` jawnie ustawione co najmniej na jednym elemencie musi zostawiać co najmniej jeden element wymagany (przy obu sposobach wygrywa `required`). */
+export interface DossierRowLike {
+  id: string;
+  evidence?: boolean;
+  note?: { text?: string; kind?: string };
+  required?: boolean;
+}
+
+/**
+ * Wiersze wszystkich dokumentów teczki (DOSSIER, D-083) w JEDNEJ liście - ta sama definicja dla walidacji modułu i apps/api
+ * (liczenie dowodów, walidacja `noted`, notatki), jak flattenHotspots dla scen.
+ */
+export function flattenDossierRows(documents: readonly { rows?: readonly DossierRowLike[] }[]): DossierRowLike[] {
+  return documents.flatMap((document) => [...(document.rows ?? [])]);
+}
+
 function checkRequiredFlags(label: string, items: { required?: boolean }[], errors: string[]) {
   if (!items.some((item) => item.required !== undefined)) return;
   if (!items.some((item) => item.required === true)) errors.push(`${label}: co najmniej jeden element musi mieć required: true`);
@@ -289,6 +304,24 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       checkSubset('requiredTabs', block.requiredTabs, ids);
       break;
     }
+    case 'DOSSIER': {
+      // Id dokumentów i wierszy unikalne w CAŁYM bloku (jedna przestrzeń kluczy notatek `<blockId>.<id>` i odpowiedzi opened/noted).
+      const rows = flattenDossierRows(block.documents);
+      checkUnique('documents/rows', [...block.documents.map((d) => d.id), ...rows.map((r) => r.id)]);
+      block.documents.forEach((document, d) => {
+        document.rows.forEach((row, r) => {
+          const label = `documents[${d}].rows[${r}]`;
+          if (row.cells.length !== document.columns.length) {
+            errors.push(`${label}: liczba komórek (${row.cells.length}) różna od liczby kolumn (${document.columns.length})`);
+          }
+          errors.push(...evidenceErrors(label, row, kindRequired));
+          // Zwykła linijka nie trafia do notatnika (zakreślenie pokazuje tylko "zwykłą operację") - notatka bez evidence byłaby martwa.
+          if (row.note && row.evidence !== true) errors.push(`${label}: note bez evidence: true nigdy nie trafi do notatnika`);
+          if (row.required === true && row.evidence !== true) errors.push(`${label}: required dotyczy wyłącznie wierszy-dowodów`);
+        });
+      });
+      break;
+    }
     case 'BRIEFING': {
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
@@ -373,6 +406,7 @@ export function parseModule(input: unknown): ContentModule {
     }
     if (contentModule.schemaVersion < 5) {
       if (block.type === 'BRIEFING') errors.push(`blocks[${index}] (${block.id}): blok BRIEFING wymaga schemaVersion 5`);
+      if (block.type === 'DOSSIER') errors.push(`blocks[${index}] (${block.id}): blok DOSSIER wymaga schemaVersion 5`);
       for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
     }
   });

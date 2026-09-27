@@ -338,7 +338,7 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     delete module.level;
     delete module.objectives;
     // NARRATIVE (wersja 4) i BRIEFING (wersja 5) to CAŁE nowe typy, nie pojedyncze pola - w module w wersji 2 ich po prostu nie ma.
-    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
+    module.blocks = module.blocks.filter((b) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING' && b.type !== 'DOSSIER');
     for (const block of module.blocks) delete block.reactions;
     const h = hotspots(module);
     for (const hotspot of h.hotspots) {
@@ -550,7 +550,7 @@ describe('parseModule: schemaVersion 4 (metadane modułu, character.opening, rea
     delete module.subtitle;
     delete module.level;
     delete module.objectives;
-    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING');
+    module.blocks = module.blocks.filter((b: Record<string, any>) => b.type !== 'NARRATIVE' && b.type !== 'BRIEFING' && b.type !== 'DOSSIER');
     for (const block of module.blocks) delete block.reactions;
     delete dialogue(module).character.opening;
     delete email(module).email.to;
@@ -664,7 +664,7 @@ describe('parseModule: schemaVersion 5 (BRIEFING, zadania sprawy)', () => {
     expect(invalid((m) => (m.schemaVersion = 4))).toContain('blok BRIEFING wymaga schemaVersion 5');
     const module = fullModuleForTests();
     module.schemaVersion = 4;
-    module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING');
+    module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING' && b.type !== 'DOSSIER');
     expect(() => parseModule(module)).not.toThrow();
   });
 
@@ -782,12 +782,54 @@ describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
   it('voice i media.narration w module w wersji 4 są odrzucone (nazwane w błędzie)', () => {
     const message = invalid((m) => {
       m.schemaVersion = 4;
-      m.blocks = m.blocks.filter((b) => b.type !== 'BRIEFING');
+      m.blocks = m.blocks.filter((b) => b.type !== 'BRIEFING' && b.type !== 'DOSSIER');
       m.blocks[0].narration.voice = 'narrator';
       toTts(m);
     });
     expect(message).toContain('pole narration.voice wymaga schemaVersion 5');
     expect(message).toContain('pole media.narration wymaga schemaVersion 5');
+  });
+});
+
+// Wersja 5: teczka sprawy (DOSSIER), D-083.
+describe('parseModule: DOSSIER (teczka sprawy)', () => {
+  const invalid = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const dossier = (m: TestModule) => m.blocks.find((b) => b.type === 'DOSSIER') as Record<string, any>;
+  const row = (m: TestModule, d: number, r: number) => dossier(m).documents[d].rows[r];
+
+  it('fixtura przechodzi; w module w wersji 4 blok DOSSIER jest odrzucony', () => {
+    expect(invalid(() => {})).toBe('');
+    expect(invalid((m) => (m.schemaVersion = 4))).toContain('blok DOSSIER wymaga schemaVersion 5');
+  });
+
+  it('id dokumentów i wierszy są unikalne w całym bloku (jedna przestrzeń kluczy notatek)', () => {
+    expect(invalid((m) => (row(m, 1, 0).id = 'w1'))).toContain('documents/rows: powtórzony identyfikator "w1"');
+    expect(invalid((m) => (row(m, 0, 0).id = 'procedury'))).toContain('powtórzony identyfikator "procedury"');
+  });
+
+  it('liczba komórek wiersza = liczba kolumn dokumentu', () => {
+    expect(invalid((m) => row(m, 0, 0).cells.pop())).toContain('documents[0].rows[0]: liczba komórek (2) różna od liczby kolumn (3)');
+  });
+
+  it('dowód wymaga notatki z kind; notatka i required tylko na wierszu-dowodzie', () => {
+    expect(invalid((m) => delete row(m, 0, 1).note)).toContain('documents[0].rows[1]: evidence wymaga pola note');
+    expect(invalid((m) => delete row(m, 0, 1).note.kind)).toContain('note wymaga note.kind');
+    expect(invalid((m) => (row(m, 0, 0).note = { text: 'x', kind: 'item' }))).toContain('note bez evidence: true');
+    expect(invalid((m) => (row(m, 0, 0).required = true))).toContain('required dotyczy wyłącznie wierszy-dowodów');
+  });
+
+  it('pole spoza schematu i pusta lista dokumentów są odrzucone (strict)', () => {
+    expect(invalid((m) => (row(m, 0, 0).highlight = true))).toContain('documents.0.rows.0');
+    expect(invalid((m) => (dossier(m).documents = []))).toContain('documents');
   });
 });
 

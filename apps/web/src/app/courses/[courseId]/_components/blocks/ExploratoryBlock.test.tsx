@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
 import { NotesProvider, useNotes } from '../player/notes';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
@@ -180,14 +180,15 @@ describe('DIALOGUE', () => {
     const user = userEvent.setup();
     const { onSubmit, ready } = renderBlock(dialogue);
     await user.click(screen.getByRole('button', { name: 'Co się stało?' }));
-    expect(screen.getByText('Dostałam dziwny mail.')).toBeInTheDocument();
+    // Rozmówca najpierw "pisze" (D-087), odpowiedź przychodzi po chwili.
+    expect(await screen.findByText('Dostałam dziwny mail.', {}, { timeout: 3000 })).toBeInTheDocument();
     // Zadane pytanie znika z listy chipów (zostaje tylko w wątku rozmowy powyżej).
     expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Co się stało\?/ })).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('Sprawdź nadawcę.');
     expect(ready.current).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Kliknęłaś?' }));
-    expect(ready.current).not.toBeNull();
+    await waitFor(() => expect(ready.current).not.toBeNull(), { timeout: 3000 });
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1', 'q2'] });
   });
@@ -199,15 +200,16 @@ describe('DIALOGUE', () => {
     expect(screen.getByTestId('notes')).toHaveTextContent('');
   });
 
-  it('character.opening (schemaVersion 4) pokazuje pierwszą kwestię postaci (z avatarem, gdy jest), zanim padnie jakiekolwiek pytanie', () => {
+  it('character.opening (schemaVersion 4) pokazuje pierwszą kwestię postaci (po "pisaniu"), zanim padnie jakiekolwiek pytanie', async () => {
     renderBlock({ ...dialogue, character: { ...dialogue.character!, opening: 'Cześć, potrzebuję pomocy.' } });
-    expect(screen.getByText('Cześć, potrzebuję pomocy.')).toBeInTheDocument();
+    expect(await screen.findByText('Cześć, potrzebuję pomocy.', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it('notatka nie dubluje się z notatką już zapisaną przez serwer', async () => {
     const user = userEvent.setup();
     renderBlock(dialogue, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
     await user.click(screen.getByRole('button', { name: 'Co się stało?' }));
+    await screen.findByText('Dostałam dziwny mail.', {}, { timeout: 3000 });
     expect(screen.getByTestId('notes').textContent).toBe('Sprawdź nadawcę.');
   });
 });

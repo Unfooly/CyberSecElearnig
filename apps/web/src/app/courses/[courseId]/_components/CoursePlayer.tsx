@@ -36,6 +36,7 @@ import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './pla
 import { EvidenceCounter, EvidenceProvider } from './player/evidence';
 import { DEFAULT_IDLE, MascotReactionProvider, useMascotReaction } from './player/mascot-reaction';
 import { useNarrationPreference } from './player/useNarrationPreference';
+import { SfxProvider } from '@/lib/sfx';
 
 export interface CoursePlayerInitialState extends CourseDetail {
   // Wzbogacone server-side (page.tsx) o wynik z GET /courses/my, gdy user
@@ -595,6 +596,8 @@ export default function CoursePlayer({
       : '';
 
   return (
+    // Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087).
+    <SfxProvider enabled={preference.enabled}>
     <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <MascotReactionProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
@@ -686,5 +689,6 @@ export default function CoursePlayer({
         </MascotReactionProvider>
       </EvidenceProvider>
     </NotesProvider>
+    </SfxProvider>
   );
 }

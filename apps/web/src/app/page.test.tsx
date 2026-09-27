@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -21,6 +21,12 @@ function jwtWithRole(role: string): string {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
   return `${encode({ alg: 'none' })}.${encode({ sub: 'u1', email: 'a@b.pl', role, organizationId: 'o1', exp: 9999999999 })}.sig`;
 }
+
+// Film na stronie (FilmSection, D-091): jsdom nie implementuje odtwarzania mediów - atrapa, żeby nie zaśmiecać wyniku błędem jsdom.
+beforeEach(() => {
+  vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
+  vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+});
 
 describe('HomePage (landing)', () => {
   afterEach(() => vi.mocked(redirect).mockClear());

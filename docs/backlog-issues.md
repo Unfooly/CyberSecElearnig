@@ -360,7 +360,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   D-080):** przybył JESZCZE JEDEN `shrink-0` element nad nagłówkiem rozmowy - `MascotBanner` (`{!review &&
   <MascotBanner/>}`, `mb-3`), renderowany gdy blok ma mascota - suma `shrink-0` elementów rośnie, więc dolna granica
   wysokości viewportu, przy której wątek/stopka stają się nieosiągalne, jest teraz WYŻSZA (problem bardziej
-  prawdopodobny, nie mniej) niż w chwili zgłoszenia tego wpisu. Nie zmienia to akceptacji niżej, tylko fakt, że
+  prawdopodobny, nie mniej) niż w chwili zgłoszenia tego wpisu. **Zaktualizowane (`feat/dialogue-chat`, D-087):** „Następna kwestia”
+  usunięte; przy wysokości ≤ 500 px nagłówek rozmowy znika, a chipy są w jednym przewijanym rzędzie - na 844x390 wątek ma ~120 px
+  (layout-check sprawdza ≥ 80 px); zostaje duże powiększenie przeglądarki. Nie zmienia to akceptacji niżej, tylko fakt, że
   zmierzona granica musi uwzględnić też ten pasek.
 - Opis: żaden test (`layout-check.mjs`, `DIALOGUE_VIEWPORTS`) nie sprawdza dziś niskiego/poziomego viewportu ani
   symulacji powiększenia przeglądarki w trakcie rozmowy z wieloma pytaniami - nieznana jest faktyczna dolna granica,
@@ -451,6 +453,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela; propozycja: `apps/api/src/scripts/**`, `apps/api/prisma/*.{ts,js}` i `apps/api/package.json` w
   `PROTECTED_PATHS` (docelowo własna rola bez DDL dla content-import); atrapa rzuca na `git show` inny niż skrypt; test `failures = []`
   dla samego `schema.prisma`; pełna lista w regule 11; wzmianka o oknie `main` w D-085.
+
+### B-113 Komunikator (DIALOGUE, D-087): odłożone uwagi z code review
+- Etykiety: `P3`, `mod:web` · Źródło: `feat/dialogue-chat` (I), code review
+- Opis: (1) krok e2e „kwestia otwierająca jest pisana” usunięty ze `scripts/e2e-module-01.mjs` (wskaźnik żyje 0,7-2,2 s - wyścig przy wolnym
+  starcie strony); pokrywa to test komponentu; (2) `__setGestureSeenForTests` eksportowany z modułu produkcyjnego `sfx.tsx`; (3) brak testu
+  odmontowania bloku w trakcie „pisania” (onReady/notatka); (4) `aria-live` przy `role="log"` nadmiarowe.
+- Akceptacja: e2e z wydłużonym opóźnieniem (parametr testowy) albo bez; helper testowy poza modułem; test odmontowania.
 
 ## F. Symulacje phishingowe i zgłoszenia
 

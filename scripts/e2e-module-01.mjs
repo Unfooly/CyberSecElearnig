@@ -225,14 +225,16 @@ try {
   step('SCENE_HOTSPOTS: "drzwi" (Wyjście) kończy blok zamiast "Dalej"', true);
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
+  // Komunikator (D-087): rozmówca "pisze" (wskaźnik), potem kwestia; data-typing na wątku mówi, czy ktoś właśnie pisze.
+  const chatIdle = () => page.locator('[role="log"][data-typing="false"]').waitFor();
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
   step('DIALOGUE: character.opening pokazuje się przed jakimkolwiek pytaniem', true);
+  step('DIALOGUE: bez przycisku "Następna kwestia"', (await page.getByRole('button', { name: 'Następna kwestia' }).count()) === 0);
   const askAll = async (questions) => {
     for (const text of questions) {
+      await chatIdle();
       await page.getByRole('button', { name: text, exact: true }).click();
-      while (await page.getByRole('button', { name: 'Następna kwestia' }).count()) {
-        await page.getByRole('button', { name: 'Następna kwestia' }).click();
-      }
+      await chatIdle();
     }
   };
   await askAll(['Opowiedz o tym mailu z banku.', 'Kto dzwonił o 9:05?', 'To hasło na karteczce…']);

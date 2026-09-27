@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
@@ -1268,6 +1268,65 @@ try {
       if (Math.abs(layoutWidth - bar.track) > 1) fail(`${label}: (m6) pasek postępu zmienia szerokość układu (${layoutWidth} px zamiast toru ${bar.track} px).`);
       if (pageErrors.length > 0) fail(`${label}: (m7) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: (m1-m7) OK`, true);
+      await context.close();
+    }
+  }
+
+  // STRONA GŁÓWNA - film (feat/marketing-film, D-091): (f1) strona bez poziomego przewijania; (f2) film w całości w szerokości viewportu,
+  // proporcja 16:9 (±2%), plakat i plik filmu serwowane z własnego originu (200); (f3) bez reduced-motion film sam gra (wyciszony), z
+  // reduced-motion stoi, a „Odtwórz film” uruchamia go z kontrolkami; (f4) CTA do rejestracji widoczne; (f5) CSP ma media-src 'self';
+  // (f6) błędy strony.
+  for (const viewport of runs('home') ? BRIEFING_VIEWPORTS : []) {
+    console.log(`\n--- viewport (STRONA GŁÓWNA): ${viewport.name} ---`);
+    for (const reduce of [false, true]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: true,
+        isMobile: viewport.isMobile ?? false,
+        reducedMotion: reduce ? 'reduce' : 'no-preference',
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+      const label = `${viewport.name} / strona główna, film${reduce ? ' (reduced-motion)' : ''}`;
+      const response = await page.goto(`${WEB}/`);
+      const csp = response?.headers()['content-security-policy'] ?? '';
+      if (!/media-src 'self'/.test(csp)) fail(`${label}: (f5) CSP bez media-src 'self': ${csp.slice(0, 200)}`);
+      const video = page.getByTestId('landing-film');
+      await video.scrollIntoViewIfNeeded();
+      const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (overflowX > 1) fail(`${label}: (f1) strona przewija się w poziomie o ${overflowX}px.`);
+      const box = await video.boundingBox();
+      if (!box || box.x < -1 || box.x + box.width > viewport.width + 1) fail(`${label}: (f2) film poza szerokością viewportu - ${JSON.stringify(box)}.`);
+      if (box && Math.abs(box.width / box.height - 16 / 9) > 0.04) fail(`${label}: (f2) proporcja filmu ${(box.width / box.height).toFixed(3)} zamiast 16:9.`);
+      for (const attr of ['src', 'poster']) {
+        const url = await video.getAttribute(attr);
+        const res = await page.request.get(new URL(url, WEB).toString());
+        if (!url?.startsWith('/') || res.status() !== 200) fail(`${label}: (f2) ${attr} ${url} -> ${res.status()} (oczekiwany własny origin, 200).`);
+      }
+      if (!reduce) {
+        await page.waitForFunction(() => { const v = document.querySelector('[data-testid="landing-film"]'); return v && !v.paused && v.currentTime > 0.3; }, null, { timeout: 8000 }).catch(() => null);
+        const state = await video.evaluate((v) => ({ paused: v.paused, t: v.currentTime, muted: v.muted }));
+        if (state.paused || state.t <= 0.3 || !state.muted) fail(`${label}: (f3) film nie gra sam (wyciszony) - ${JSON.stringify(state)}.`);
+        // WCAG 2.2.2: autostartujący film da się zatrzymać przyciskiem (cel dotyku >= 44 px, w obrębie filmu).
+        const toggle = page.getByRole('button', { name: 'Wstrzymaj film' });
+        const toggleBox = await toggle.boundingBox();
+        if (!toggleBox || toggleBox.height < 44 || !contains(box, toggleBox)) fail(`${label}: (f3) przycisk pauzy poza filmem albo < 44 px - ${JSON.stringify(toggleBox)}.`);
+        await toggle.click();
+        await page.waitForFunction(() => document.querySelector('[data-testid="landing-film"]')?.paused === true, null, { timeout: 3000 });
+      } else {
+        await page.waitForTimeout(1200);
+        const state = await video.evaluate((v) => ({ paused: v.paused, t: v.currentTime }));
+        if (!state.paused || state.t > 0) fail(`${label}: (f3) reduced-motion, a film gra sam - ${JSON.stringify(state)}.`);
+        await page.getByRole('button', { name: 'Odtwórz film' }).click();
+        await page.waitForFunction(() => { const v = document.querySelector('[data-testid="landing-film"]'); return v && !v.paused; }, null, { timeout: 5000 });
+        if (!(await video.evaluate((v) => v.controls))) fail(`${label}: (f3) po „Odtwórz film” brak kontrolek.`);
+      }
+      await shot(page, `${viewport.name}-strona-glowna-film${reduce ? '-rm' : ''}`);
+      const cta = page.getByRole('link', { name: /Załóż konto firmy/ });
+      if (!(await cta.isVisible()) || (await cta.getAttribute('href')) !== '/register') fail(`${label}: (f4) brak CTA do rejestracji.`);
+      if (pageErrors.length > 0) fail(`${label}: (f6) błąd strony: ${pageErrors.join(' | ')}`);
+      step(`${label}: (f1-f6) OK`, true);
       await context.close();
     }
   }

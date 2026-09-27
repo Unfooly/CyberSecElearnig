@@ -354,6 +354,9 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 - **Lektor:** „Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
 - **Fooli (pointing):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
+  (od D-088 tablica śledcza wypełnia ramkę - pasek Fooli się nie wyświetla; pole zostaje w treści.)
+- **Tablica śledcza (D-088):** tabliczka „Tablica śledcza · CS/2026/0915", zdjęcia łańcucha: `start` „A.K." / „Anna Kowalska",
+  `end` „−14 000 zł" / „Wektor Rozliczenia"; po sprawdzeniu pod tablicą jedno zdanie z reakcji wyniku (`reactions.result`).
 - elementy (podane wymieszane; poprawna kolejność jak niżej):
 
 1. `mail` — 8:47 — Do skrzynki Anny trafia mail z domeny `bankwektor-weryfikacja.pl`.

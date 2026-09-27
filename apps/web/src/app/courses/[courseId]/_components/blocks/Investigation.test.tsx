@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
 import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST } from './SceneHotspotsBlock';
+import { typingDelayMs } from './DialogueBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
 import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
@@ -1102,29 +1103,57 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
   });
 });
 
-describe('DIALOGUE: kwestie po jednej', () => {
-  it('odpowiedź pojawia się kwestia po kwestii (klik "Następna kwestia"); pytanie liczy się po ostatniej, wtedy notatka, dowód i znika z listy chipów', () => {
+// Rozmowa jak w komunikatorze (feat/dialogue-chat, D-087): po pytaniu rozmówca "pisze" (typingDelayMs), potem przychodzi jego kwestia;
+// każda kwestia z własnym pisaniem. Fałszywy zegar: typeNext() przesuwa czas o maksymalne opóźnienie (2200 ms) - jedna kwestia.
+const typeNext = () =>
+  act(() => {
+    vi.advanceTimersByTime(2200);
+  });
+const typeAll = (count = 8) => {
+  for (let i = 0; i < count; i += 1) typeNext();
+};
+
+describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('typingDelayMs: clamp(500 + 18 ms × znaki, 700, 2200); reduced-motion 300 ms', () => {
+    expect(typingDelayMs('ab')).toBe(700);
+    expect(typingDelayMs('x'.repeat(50))).toBe(1400);
+    expect(typingDelayMs('x'.repeat(500))).toBe(2200);
+    expect(typingDelayMs('x'.repeat(500), true)).toBe(300);
+  });
+
+  it('pytanie: dymek gracza od razu, potem "pisze" i kwestie po kolei (każda z własnym pisaniem); pytanie liczy się po ostatniej - notatka, dowód, chip znika; bez "Następna kwestia"', () => {
     const { onSubmit, ready } = setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
 
-    expect(screen.getByText('Przyszedł rano.')).toBeInTheDocument();
-    expect(screen.queryByText('Wyglądał jak od banku.')).not.toBeInTheDocument();
-    expect(screen.getByTestId('notes')).toHaveTextContent('');
+    expect(within(screen.getByRole('log')).getByText('Skąd ten mail?')).toBeInTheDocument();
+    expect(screen.getByTestId('dialogue-typing')).toBeInTheDocument();
+    expect(screen.queryByText('Przyszedł rano.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Następna kwestia' })).not.toBeInTheDocument();
+    // Kliknięty chip znika od razu z listy (jest w wątku).
+    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Skąd ten mail/ })).not.toBeInTheDocument();
     expect(ready.current).toBeNull();
     expect(screen.getByText('Zadano 0 z 1 pytań.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
-    expect(screen.getByText('Wyglądał jak od banku.')).toBeInTheDocument();
-    expect(screen.queryByText('Kliknęłam w link.')).not.toBeInTheDocument();
+    typeNext();
+    expect(screen.getByText('Przyszedł rano.')).toBeInTheDocument();
+    expect(screen.queryByText('Wyglądał jak od banku.')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dialogue-typing')).toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
+    typeNext();
+    expect(screen.getByText('Wyglądał jak od banku.')).toBeInTheDocument();
+    typeNext();
     expect(screen.getByText('Kliknęłam w link.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Następna kwestia' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dialogue-typing')).not.toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail przyszedł rano.');
     expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
-    // Zadane pytanie znika z listy chipów (zostaje tylko w wątku rozmowy powyżej); nieaskane q2 zostaje na liście.
-    expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Skąd ten mail/ })).not.toBeInTheDocument();
     expect(screen.getByText('Wszystkie wymagane pytania zadane.')).toBeInTheDocument();
 
     expect(ready.current).not.toBeNull();
@@ -1132,27 +1161,117 @@ describe('DIALOGUE: kwestie po jednej', () => {
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
   });
 
-  it('podczas rozmowy inne pytania są nieaktywne, po niej znów dostępne; odpowiedź bez lines to jedna kwestia', () => {
+  it('gdy rozmówca pisze, pozostałe pytania są nieaktywne (klik nic nie robi), po odpowiedzi znów dostępne; odpowiedź bez lines to jedna kwestia', () => {
     setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
     const other = screen.getByRole('button', { name: 'Kto go wysłał?' });
     expect(other).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(other);
-    expect(screen.queryByText('Nie znam nadawcy.')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('log')).queryByText('Kto go wysłał?')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
+    typeAll(3);
     expect(screen.getByRole('button', { name: 'Kto go wysłał?' })).toHaveAttribute('aria-disabled', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    typeNext();
     expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('person:Nieznany nadawca.');
-    // Notatka bez evidence nie rusza licznika (brak reakcji poza tą z q1).
+  });
+
+  it('klik we wskaźnik pisania albo Spacja = kwestia od razu, bez czekania', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    fireEvent.click(screen.getByTestId('dialogue-typing'));
+    expect(screen.getByText('Przyszedł rano.')).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('log'), { key: ' ' });
+    expect(screen.getByText('Wyglądał jak od banku.')).toBeInTheDocument();
+  });
+
+  it('Spacja, która pokazała ostatnią kwestię, nie zadaje kolejnego pytania (chip dostaje fokus, jego aktywacja do keyup zablokowana); przytrzymana Spacja nic nie robi', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    fireEvent.keyDown(screen.getByRole('log'), { key: ' ' });
+    expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    const chip = screen.getByRole('button', { name: 'Skąd ten mail?' });
+    expect(chip).toHaveFocus();
+    fireEvent.keyDown(chip, { key: ' ', repeat: true });
+    fireEvent.click(chip);
+    expect(within(screen.getByRole('log')).queryByText('Skąd ten mail?')).not.toBeInTheDocument();
+    fireEvent.keyUp(chip, { key: ' ' });
+    fireEvent.click(chip);
+    expect(within(screen.getByRole('log')).getByText('Skąd ten mail?')).toBeInTheDocument();
+  });
+
+  it('prefers-reduced-motion: statyczne „pisze…” i kwestia po 300 ms', () => {
+    const restore = stubMotion(true);
+    try {
+      setup(dialogue);
+      fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+      expect(screen.getByTestId('dialogue-typing')).toHaveTextContent('pisze…');
+      expect(screen.getByTestId('dialogue-typing').querySelector('.chat-typing-dot')).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(299);
+      });
+      expect(screen.queryByText('Nie znam nadawcy.')).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it('autoprzewijanie także wtedy, gdy wskaźnik pisania zamienia się w kwestię (ta sama liczba wiadomości)', () => {
+    setup(dialogue);
+    const log = screen.getByRole('log', { name: 'Historia rozmowy' });
+    Object.defineProperty(log, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(log, 'clientHeight', { value: 300, configurable: true });
+    const scrollTo = vi.spyOn(log, 'scrollTo').mockImplementation(() => {});
+    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    expect(scrollTo).toHaveBeenCalled();
+    scrollTo.mockClear();
+    typeNext(); // [pytanie, pisze] -> [pytanie, kwestia]
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+  });
+
+  it('kwestia otwierająca też jest "pisana"; chipy nieaktywne, dopóki nie przyjdzie', () => {
+    setup({ ...dialogue, character: { ...dialogue.character!, opening: 'Ja naprawdę nic nie zrobiłam.' } });
+    expect(screen.getByTestId('dialogue-typing')).toBeInTheDocument();
+    expect(screen.queryByText('Ja naprawdę nic nie zrobiłam.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skąd ten mail?' })).toHaveAttribute('aria-disabled', 'true');
+    typeNext();
+    expect(screen.getByText('Ja naprawdę nic nie zrobiłam.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skąd ten mail?' })).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('podgląd ukończonego bloku: bez pisania i opóźnień (kwestia otwierająca od razu, odpowiedzi od razu)', () => {
+    setup({ ...dialogue, character: { ...dialogue.character!, opening: 'Ja naprawdę nic nie zrobiłam.' } }, { review: true });
+    expect(screen.getByText('Ja naprawdę nic nie zrobiłam.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    expect(screen.queryByTestId('dialogue-typing')).not.toBeInTheDocument();
+    expect(screen.getByText('Kliknęłam w link.')).toBeInTheDocument();
+  });
+
+  it('odstępy: 6 px w obrębie osoby, 12 px między osobami; kolumna wątku max 760 px, wyśrodkowana', () => {
+    setup(dialogue);
+    fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
+    typeAll(3);
+    const items = within(screen.getByTestId('dialogue-thread')).getAllByRole('listitem');
+    expect(items.map((item) => item.dataset.speaker)).toEqual(['player', 'character', 'character', 'character']);
+    expect(items[0].className).not.toMatch(/mt-/);
+    expect(items[1].className).toMatch(/\bmt-3\b/);
+    expect(items[2].className).toMatch(/\bmt-1\.5\b/);
+    expect(screen.getByTestId('dialogue-thread').className).toMatch(/max-w-\[760px\]/);
+    expect(screen.getByTestId('dialogue-thread').className).toMatch(/\bmx-auto\b/);
   });
 
   it('porzucona rozmowa nie liczy się: bez ostatniej kwestii pytanie nie jest w odpowiedzi', () => {
     const { onSubmit, ready } = setup(dialogue); // q1 (3 kwestie) jest wymagane
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // 2 z 3 kwestii i koniec
+    typeAll(2); // 2 z 3 kwestii i koniec
     expect(ready.current).toBeNull();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(onSubmit).not.toHaveBeenCalled();
@@ -1168,47 +1287,32 @@ describe('DIALOGUE: kwestie po jednej', () => {
     };
     const { onSubmit, ready } = setup(block);
     fireEvent.click(screen.getByRole('button', { name: 'Pierwsze?' }));
+    typeNext();
     fireEvent.click(screen.getByRole('button', { name: 'Drugie?' }));
+    typeNext();
     ready.current!(); // wymagane q1 zrobione, q2 w połowie
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['q1'] });
   });
 
-  it('pytanie JEDNOKWESTYJNE (bez "Następna kwestia"): fokus przechodzi na PIERWSZY pozostały chip, żeby klawiatura/czytnik ekranu nie zgubiły miejsca po zniknięciu klikniętego (fix/dialogue-sticky-questions: NIE na wątek - stopka z chipami zostaje poza obszarem przewijania, fokus tam, gdzie jest "co dalej")', async () => {
-    setup(dialogue); // q2 "Kto go wysłał?" ma tylko `answer`, bez `lines` - kończy się w tym samym kliknięciu; q1 zostaje na liście
-    fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
-    expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    expect(screen.getByRole('button', { name: 'Skąd ten mail?' })).toHaveFocus();
-  });
-
-  it('next() (ostatnia kwestia pytania WIELOKWESTYJNEGO, nie ask()): fokus przechodzi na PIERWSZY pozostały chip', async () => {
-    setup(dialogue); // q1 "Skąd ten mail?" ma 3 kwestie (linie) - kończy się przez next(), nie od razu w ask(); q2 zostaje na liście
+  it('fokus: po kliknięciu chip znika - fokus na stopce; po ostatniej kwestii - na PIERWSZYM pozostałym chipie', () => {
+    setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // ostatnia kwestia - finish() woła się z next(), nie z ask()
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    expect(screen.getByRole('group', { name: 'Pytania i postęp rozmowy' })).toHaveFocus();
+    typeAll(3);
     expect(screen.getByRole('button', { name: 'Kto go wysłał?' })).toHaveFocus();
   });
 
-  it('pytanie JEDNOKWESTYJNE OSTATNIE (bez pozostałych chipów): fokus na kontenerze stopki (bez nowego przycisku "Zakończ rozmowę" - ustalone z właścicielem produktu)', async () => {
+  it('ostatnie pytanie (bez pozostałych chipów): fokus na kontenerze stopki (bez przycisku "Zakończ rozmowę")', () => {
     const block: ContentBlock = {
       ...dialogue,
       questions: [{ id: 'q2', text: 'Kto go wysłał?', answer: 'Nie znam nadawcy.', required: false, note: { text: 'Nieznany nadawca.', kind: 'person' } }],
     };
     setup(block);
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    typeNext();
     expect(screen.getByText('Nie znam nadawcy.')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Pytania do zadania' })).not.toBeInTheDocument();
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    // ExploreFooter (jedyna widoczna treść stopki po zniknięciu ostatniego chipa) jest wewnątrz kontenera stopki -
-    // q2 required:false explicite -> required=[] -> done=0>=total=0 -> ExploreFooter pokazuje readyText.
-    expect(screen.getByText('Wszystkie wymagane pytania zadane.').closest('[tabindex="-1"]')).toHaveFocus();
+    expect(screen.getByRole('group', { name: 'Pytania i postęp rozmowy' })).toHaveFocus();
   });
 
   it('avatar tylko przez <img> z bazy zasobów; niepoprawna ścieżka = brak obrazu', () => {
@@ -1378,22 +1482,30 @@ describe('DIALOGUE: sticky pytania i autoprzewijanie wątku (fix/dialogue-sticky
   });
 });
 
-describe('DIALOGUE: dymki w-fit/max-w-[70%], avatar gracza, pasek Fooli (fix/dialogue-polish)', () => {
-  it('dymek gracza (pytanie) ma w-fit max-w-[70%] (dopasowany do treści, nie rozciągnięty na pełne 70%)', () => {
+describe('DIALOGUE: dymki w-fit/max-w-[75%], avatar gracza, pasek Fooli (fix/dialogue-polish)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('dymek gracza (pytanie) ma w-fit max-w-[75%] (dopasowany do treści)', () => {
     setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
     const bubble = screen.getByText('Kto go wysłał?').closest('p') as HTMLElement;
     expect(bubble.className).toMatch(/\bw-fit\b/);
-    expect(bubble.className).toMatch(/max-w-\[70%\]/);
+    expect(bubble.className).toMatch(/max-w-\[75%\]/);
     expect(bubble.className).toMatch(/\bbreak-words\b/);
   });
 
-  it('dymek postaci ma w-fit max-w-[70%]', () => {
+  it('dymek postaci ma w-fit max-w-[75%]', () => {
     setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Kto go wysłał?' }));
+    typeNext();
     const bubble = screen.getByText('Nie znam nadawcy.').closest('p') as HTMLElement;
     expect(bubble.className).toMatch(/\bw-fit\b/);
-    expect(bubble.className).toMatch(/max-w-\[70%\]/);
+    expect(bubble.className).toMatch(/max-w-\[75%\]/);
   });
 
   it('avatar gracza renderuje się z myAvatarUrl (AvatarDisplay - preset), po prawej dymka, dekoracyjny (aria-hidden)', () => {
@@ -1416,8 +1528,7 @@ describe('DIALOGUE: dymki w-fit/max-w-[70%], avatar gracza, pasek Fooli (fix/dia
   it('pytanie WIELOKWESTYJNE (q1, 3 linie): avatar postaci TYLKO przy OSTATNIEJ kwestii serii, wcześniejsze mają pustą rezerwację miejsca', () => {
     setup(dialogue);
     fireEvent.click(screen.getByRole('button', { name: 'Skąd ten mail?' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Następna kwestia' })); // wszystkie 3 kwestie pokazane
+    typeAll(3); // wszystkie 3 kwestie pokazane
 
     // <img alt=""> dostaje implicit role="presentation" (HTML-AAM), nie "img" - getByRole nic by nie znalazł;
     // zwykłe querySelectorAll wewnątrz wątku, jak w istniejącym teście "avatar tylko przez <img> z bazy zasobów".

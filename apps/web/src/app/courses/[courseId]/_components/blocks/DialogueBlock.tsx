@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
+import { useSfx } from '@/lib/sfx';
+import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
@@ -14,47 +16,53 @@ import ExploreFooter from './ExploreFooter';
 // Odległość od dołu wątku (px), poniżej której uznajemy usera za "trzymającego się dołu" - autoprzewijanie po
 // nowej wiadomości działa; powyżej tego progu user CZYTA historię, więc nie szarpiemy go w dół (fix/dialogue-sticky-questions).
 const STICK_TO_BOTTOM_THRESHOLD_PX = 80;
-// Ten sam wzorzec co SceneHotspotsBlock.tsx (FOCUS_RING) - duplikowany per plik (prywatny const), nie importowany.
-const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
+const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+// "Pisanie" rozmówcy (feat/dialogue-chat, D-087): czas zależny od długości kwestii, w granicach; przy reduced-motion stałe 300 ms.
+const TYPING_BASE_MS = 500;
+const TYPING_PER_CHAR_MS = 18;
+const TYPING_MIN_MS = 700;
+const TYPING_MAX_MS = 2200;
+const TYPING_REDUCED_MS = 300;
 
-// Kwestia postaci: avatar PRZY KAŻDEJ wiadomości (nie tylko w nagłówku) - jak w prawdziwym komunikatorze. Na poziomie
-// MODUŁU (nie wewnątrz DialogueBlock): zdefiniowany w ciele komponentu dostawałby nową tożsamość przy KAŻDYM renderze
-// rodzica, więc React odmontowywałby i montował na nowo WSZYSTKIE dymki wątku przy każdej zmianie stanu (progress,
-// avatarFailed), nie tylko nowy - zbędna praca uzgadniania.
-// `showAvatar` (fix/dialogue-polish): kolejne kwestie POD RZĄD (kilka linii jednego pytania wielokwestyjnego, ten
-// sam `<li>`) pokazują avatar TYLKO przy OSTATNIEJ - jak w komunikatorach (wywołujący przekazuje
-// `index === lines.length - 1`). Gdy `false`, w miejscu avatara zostaje TA SAMA pusta rezerwacja miejsca
-// (`h-8 w-8`) co przy braku/błędzie obrazka - dymki wcześniejszych kwestii serii zostają wyrównane z ostatnią.
+/** Czas wskaźnika pisania przed kwestią: clamp(500 + 18 ms × znaki, 700, 2200) ms. */
+export function typingDelayMs(text: string, reducedMotion = false): number {
+  if (reducedMotion) return TYPING_REDUCED_MS;
+  return Math.min(TYPING_MAX_MS, Math.max(TYPING_MIN_MS, TYPING_BASE_MS + TYPING_PER_CHAR_MS * text.length));
+}
+
+type Speaker = 'character' | 'player';
+type Message = { key: string; speaker: Speaker; text: string; typing?: boolean };
+
+function reducedMotionNow(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
+
+// Dymek rozmówcy (lewa strona): avatar tylko przy OSTATNIEJ wiadomości grupy (kolejne wiadomości tej samej osoby) - w jego miejscu
+// przy wcześniejszych ta sama pusta rezerwacja (dymki wyrównane). Na poziomie modułu (stała tożsamość komponentu między renderami).
 function CharacterBubble({
   avatarUrl,
   avatarFailed,
   onAvatarError,
   speakerName,
-  showAvatar = true,
+  showAvatar,
   children,
 }: {
   avatarUrl: string | null;
   avatarFailed: boolean;
   onAvatarError: () => void;
   speakerName: string;
-  showAvatar?: boolean;
+  showAvatar: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-end gap-2">
       {showAvatar && avatarUrl && !avatarFailed ? (
         // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src)
-        <img
-          src={avatarUrl}
-          alt=""
-          referrerPolicy="no-referrer"
-          className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
-          onError={onAvatarError}
-        />
+        <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border" onError={onAvatarError} />
       ) : (
         <span aria-hidden="true" className="h-8 w-8 shrink-0" />
       )}
-      <p className="w-fit max-w-[70%] break-words rounded-lg bg-slate-100 px-3 py-2 text-slate-900">
+      <p className="w-fit max-w-[75%] break-words rounded-card rounded-bl-md border border-border bg-surface px-3 py-2 text-ink shadow-card">
         <span className="sr-only">{speakerName}: </span>
         {children}
       </p>
@@ -62,41 +70,70 @@ function CharacterBubble({
   );
 }
 
-// Dymek gracza (fix/dialogue-polish) - lustrzane odbicie CharacterBubble: avatar PO PRAWEJ (ten sam rozmiar, `size="sm"`
-// w AvatarDisplay = h-8 w-8, jak avatar postaci), dymek w kolorze akcentu bez tła obrazka. Avatar dekoracyjny
-// (`aria-hidden` na wrapperze - działa niezależnie od tego, którą gałąź renderuje AvatarDisplay: preset/upload/
-// inicjały) - wiadomość i tak ma `sr-only` "Ty: " dla czytników ekranu, avatar nie niesie żadnej DODATKOWEJ
-// informacji. Gracz w tym modelu treści ma zawsze DOKŁADNIE jedną wiadomość na pytanie (patrz DialogueBlock niżej),
-// więc - w przeciwieństwie do CharacterBubble - nie ma tu serii do grupowania: avatar jest zawsze widoczny.
-function PlayerBubble({ avatarUrl, initials, children }: { avatarUrl: string | null; initials?: string; children: ReactNode }) {
+// Dymek gracza (prawa strona, akcent) z jego avatarem przy ostatniej wiadomości grupy.
+function PlayerBubble({ avatarUrl, initials, showAvatar, children }: { avatarUrl: string | null; initials?: string; showAvatar: boolean; children: ReactNode }) {
   return (
     <div className="flex items-end gap-2">
-      <p className="ml-auto w-fit max-w-[70%] break-words rounded-lg bg-indigo-600 px-3 py-2 text-white">
+      <p className="ml-auto w-fit max-w-[75%] break-words rounded-card rounded-br-md bg-accent px-3 py-2 text-white">
         <span className="sr-only">Ty: </span>
         {children}
       </p>
-      <span aria-hidden="true" className="shrink-0">
-        <AvatarDisplay avatarUrl={avatarUrl} size="sm" initials={initials} />
+      <span aria-hidden="true" className="h-8 w-8 shrink-0">
+        {showAvatar && <AvatarDisplay avatarUrl={avatarUrl} size="sm" initials={initials} />}
       </span>
     </div>
   );
 }
 
-// Rozmowa z postacią w stylu komunikatora: kwestie postaci Z LEWEJ z jej avatarem PRZY KAŻDEJ kwestii (nie tylko w nagłówku), pytania
-// gracza Z PRAWEJ w kolorze akcentu, z avatarem gracza po prawej (PlayerBubble, fix/dialogue-polish - wcześniej bez
-// avatara, tylko sr-only "Ty: "). Gracz wybiera pytanie z listy "chipów" pod rozmową; zadane pytanie
-// znika z listy chipów (zostaje widoczne w wątku rozmowy). Postać odpowiada KWESTIAMI PO KOLEI (klik "Następna kwestia" w dymku, nie cały
-// tekst naraz; odpowiedź bez `lines` to jedna kwestia). Pytanie liczy się jako zadane, gdy wszystkie kwestie zostały wypowiedziane;
-// dopiero wtedy pytanie z notatką dopisuje wpis do notatnika (dowód, gdy `evidence`). Podczas rozmowy pozostałe pytania są nieaktywne.
-// Notatki dopisywane są tylko poza podglądem (serwer i tak sam wylicza je przy zapisie bloku). Avatar postaci tylko przez <img> z bazy
-// zasobów, avatar gracza przez AvatarDisplay (preset/upload/inicjały - `useMyAvatar`). Odpowiedź dla serwera: { asked: [id...] } w kolejności ukończenia.
+// Wskaźnik pisania rozmówcy: trzy animowane kropki z jego avatarem (reduced-motion: statyczne „pisze…”). Dla czytnika ukryty - wątek
+// jest regionem live i ogłasza gotową wiadomość; klik (albo Spacja w bloku) pokazuje wiadomość od razu.
+function TypingBubble({
+  avatarUrl,
+  avatarFailed,
+  onAvatarError,
+  reducedMotion,
+  onSkip,
+}: {
+  avatarUrl: string | null;
+  avatarFailed: boolean;
+  onAvatarError: () => void;
+  reducedMotion: boolean;
+  onSkip: () => void;
+}) {
+  return (
+    <div aria-hidden="true" data-testid="dialogue-typing" onClick={onSkip} className="flex cursor-pointer items-end gap-2">
+      {avatarUrl && !avatarFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- jak wyżej
+        <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border" onError={onAvatarError} />
+      ) : (
+        <span className="h-8 w-8 shrink-0" />
+      )}
+      <span className="flex h-9 items-center gap-1 rounded-card rounded-bl-md border border-border bg-surface px-3 text-sm text-muted shadow-card">
+        {reducedMotion ? (
+          'pisze…'
+        ) : (
+          <>
+            <span className="chat-typing-dot" />
+            <span className="chat-typing-dot" />
+            <span className="chat-typing-dot" />
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
+// Rozmowa z postacią jak w komunikatorze (feat/dialogue-chat, D-087). Gracz wybiera pytanie z chipów pod wątkiem: jego dymek pojawia się
+// od razu (dźwięk msg-send), potem rozmówca „pisze” (wskaźnik z kropkami, typingDelayMs) i przychodzi jego wiadomość (msg-receive) -
+// każda kwestia z własnym „pisaniem”, tak samo kwestia otwierająca. Klik we wskaźnik albo Spacja = wiadomość od razu. Gdy rozmówca
+// pisze, chipy są nieaktywne. Pytanie liczy się jako zadane po ostatniej kwestii; dopiero wtedy notatka do notatnika (dowód, gdy
+// `evidence`). Wiadomości tej samej osoby są grupowane (6 px odstępu, avatar przy ostatniej), między osobami 12 px; kolumna wątku max
+// 760 px, wyśrodkowana. Podgląd ukończonego bloku: bez opóźnień i dźwięków. Odpowiedź dla serwera: { asked: [id...] } w kolejności
+// ukończenia.
 //
-// Układ komunikatora (fix/dialogue-sticky-questions): korzeń flex-1 flex-col (PlayerStage.tsx, contentLayout='fill'
-// - ten sam CSS co scena SCENE_HOTSPOTS, patrz komentarz tam) - nagłówek/prompt shrink-0, WĄTEK jest JEDYNYM
-// elementem, który się przewija (`<div role="log">` flex-1 overflow-y-auto opakowujący zwykły `<ol>` - NIE `<ol>`
-// bezpośrednio, patrz komentarz przy tym divie niżej), stopka (przycisk "Następna kwestia", "Nowe wiadomości",
-// chipy pytań, ExploreFooter) zostaje POZA obszarem przewijania - user nie musi już przewijać CAŁEGO bloku, żeby
-// zobaczyć/kliknąć kolejne pytanie.
+// Układ (fix/dialogue-sticky-questions): korzeń flex-1 flex-col, WĄTEK (`role="log"`, aria-live) jest jedynym przewijanym elementem,
+// stopka z chipami zostaje poza obszarem przewijania. `relative` na wątku: sr-only spany dymków (position:absolute) muszą mieć
+// containing block w nim, inaczej nadymały scrollHeight obszaru bloku (layout-check).
 export default function DialogueBlock({
   block,
   contentBase,
@@ -112,8 +149,7 @@ export default function DialogueBlock({
   /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane pytania zadane) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
   onReady: (submit: (() => void) | null) => void;
   review?: boolean;
-  /** Avatar gracza (dymki po prawej, fix/dialogue-polish) - z useMyAvatar w CoursePlayer.tsx, pobrany RAZ na wejście
-      do kursu (nie tutaj - ten komponent remountuje się przy każdej zmianie bloku, patrz ExploratoryBlock.tsx). */
+  /** Avatar gracza (dymki po prawej) - z useMyAvatar w CoursePlayer.tsx, pobrany RAZ na wejście do kursu. */
   myAvatarUrl?: string | null;
   myInitials?: string;
 }) {
@@ -122,34 +158,23 @@ export default function DialogueBlock({
   const { addNote } = useNotes();
   const evidence = useEvidence();
   const mascot = useMascotReaction();
-  // Fooli jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish) - PlayerStage.tsx nic nie renderuje dla
-  // contentLayout='fill' (DIALOGUE), bo tylko TEN komponent zna granicę "poza obszarem przewijania wątku"; ten sam
-  // wzorzec co StageWithContext w CoursePlayer.tsx (reakcja zdarzenia wygrywa z pozą spoczynkową bloku/domyślną dla
-  // typu - DEFAULT_IDLE nie ma dziś wpisu dla DIALOGUE, więc bez reakcji i bez `block.mascot` pasek po prostu się
-  // nie renderuje, jak dziś). Gated `!review`: podgląd "Wstecz" dzieli TEN SAM MascotReactionProvider co żywy blok
-  // (CoursePlayer.tsx), więc reakcja z live bloku mogłaby "przeciekać" do podglądu bez tego warunku.
+  const reducedMotion = usePrefersReducedMotion();
+  const play = useSfx(['msg-send', 'msg-receive']);
+  // Fooli jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish); w podglądzie "Wstecz" nie (wspólny MascotReactionProvider).
   const idleMascot = block.mascot ? { pose: block.mascot.pose, text: block.mascot.text } : DEFAULT_IDLE.DIALOGUE;
   const bannerMascot = mascot.reaction ?? idleMascot;
-  // Postęp rozmowy: ile kwestii każdego pytania już padło (kolejność = kolejność wyboru).
+  // Kwestia otwierająca: w podglądzie od razu, w żywym bloku też „pisana”.
+  const [openingShown, setOpeningShown] = useState(review || !character?.opening);
+  // Postęp rozmowy: ile kwestii każdego pytania już przyszło (kolejność = kolejność wyboru).
   const [progress, setProgress] = useState<{ id: string; shown: number }[]>([]);
   const [avatarFailed, setAvatarFailed] = useState(false);
-  // Nowe wiadomości doszły, gdy user NIE był "przy dole" wątku (patrz stickToBottomRef) - przycisk "Nowe wiadomości"
-  // zamiast szarpania scrolla.
   const [hasNewMessages, setHasNewMessages] = useState(false);
-  // Wątek (przewijany kontener - `role="log"` idzie na TEN div, NIE na `<ol>` poniżej, żeby nie nadpisać jego
-  // domyślnej roli "list" i nie osierocić `<li>` - kod review).
+  const rootRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
-  // Stopka (przycisk "Następna kwestia"/"Nowe wiadomości"/chipy/ExploreFooter) - ZAWSZE w DOM (w przeciwieństwie do
-  // samych chipów, renderowanych warunkowo), żeby mieć stabilny cel fokusu nawet gdy nie zostały już żadne pytania.
+  // Stopka - zawsze w DOM: stabilny cel fokusu, gdy kliknięty chip znika albo nie zostały już żadne pytania.
   const footerRef = useRef<HTMLDivElement>(null);
-  // Lista chipów pytań - dedykowany ref zamiast szukania po `aria-label` (kod review: fragile na zmianę tekstu/i18n).
   const chipsRef = useRef<HTMLUListElement>(null);
-  // Domyślnie true (świeżo otwarty blok jest "na dole" - jeszcze nic nie ma do przewinięcia) - aktualizowane w
-  // handleScroll, czytane w efekcie autoprzewijania. Ref (nie state): odczyt/zapis w handlerach zdarzeń i efekcie,
-  // bez potrzeby wywoływania re-renderu przy każdym scrollu.
   const stickToBottomRef = useRef(true);
-  // Ostatni odczytany scrollTop wątku (handleScroll) - wyłącznie do wykrycia KIERUNKU kolejnego zdarzenia scroll,
-  // patrz komentarz w handleScroll niżej (kod review: wyścig z animacją `scrollTo({behavior:'smooth'})`).
   const lastScrollTopRef = useRef(0);
   const avatarUrl = contentAssetUrl(contentBase, character?.avatar, 'image');
 
@@ -162,10 +187,10 @@ export default function DialogueBlock({
   const isComplete = (entry: { id: string; shown: number }) => entry.shown >= linesOf(entry.id).length;
   const asked = progress.filter(isComplete).map((entry) => entry.id);
   const current = progress.find((entry) => !isComplete(entry)) ?? null;
-  // Liczba aktualnie POKAZANYCH wiadomości (opening + pytanie gracza + każda odsłonięta kwestia postaci) - deps
-  // efektu autoprzewijania niżej: rośnie o 1 przy KAŻDYM kliknięciu (ask/next), niezależnie od tego, czy to
-  // pytanie/kwestia kończy całe pytanie.
-  const messageCount = (character?.opening ? 1 : 0) + progress.reduce((sum, entry) => sum + 1 + entry.shown, 0);
+  // Następna wiadomość rozmówcy, która właśnie się „pisze” (null = nikt nie pisze).
+  const pendingText = !openingShown ? (character?.opening ?? null) : current ? (linesOf(current.id)[current.shown] ?? null) : null;
+  const typing = pendingText !== null;
+  const pendingKey = !openingShown ? 'opening' : current ? `${current.id}#${current.shown}` : '';
 
   const required = requiredItemIds(questions, block.requiredQuestions);
   const doneCount = required.filter((id) => asked.includes(id)).length;
@@ -175,68 +200,83 @@ export default function DialogueBlock({
   useEffect(() => {
     if (review) return;
     onReady(ready ? () => onSubmit({ asked }) : null);
-    // onReady/onSubmit celowo poza deps - patrz wyjaśnienie w SceneHotspotsBlock.tsx (remount przez `key` na zmianę bloku, nie "stabilność").
+    // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku, nie "stabilność".
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress, review]);
 
-  // Autoprzewijanie do najnowszej wiadomości (fix/dialogue-sticky-questions) - WYŁĄCZNIE gdy user był "przy dole"
-  // (stickToBottomRef, aktualizowane w handleScroll) w chwili dojścia nowej wiadomości; w przeciwnym razie pokazuje
-  // przycisk "Nowe wiadomości" zamiast szarpać scrollem czytającego historię usera. prefers-reduced-motion
-  // sprawdzane W MOMENCIE akcji (nie subskrypcja) - ten sam wzorzec co RewardCard.tsx (D-076).
+  // Wiadomości wątku w kolejności (z grupowaniem liczonym niżej).
+  const messages: Message[] = [];
+  if (character?.opening && openingShown) messages.push({ key: 'opening', speaker: 'character', text: character.opening });
+  for (const entry of progress) {
+    const question = questions.find((candidate) => candidate.id === entry.id);
+    if (!question) continue;
+    messages.push({ key: `${entry.id}-q`, speaker: 'player', text: question.text });
+    linesOf(entry.id)
+      .slice(0, entry.shown)
+      .forEach((line, index) => messages.push({ key: `${entry.id}-${index}`, speaker: 'character', text: line }));
+  }
+  if (typing && !review) messages.push({ key: `typing-${pendingKey}`, speaker: 'character', text: '', typing: true });
+  // Klucz ostatniej wiadomości: zmienia się także wtedy, gdy wskaźnik pisania zamienia się w gotową kwestię (długość listy ta sama).
+  const lastMessageKey = messages[messages.length - 1]?.key ?? '';
+  // Wiadomość, która się właśnie "pisze" - reveal() działa tylko dla niej (stary timer po skipie nie dubluje kwestii ani notatki).
+  const pendingKeyRef = useRef(pendingKey);
+  pendingKeyRef.current = pendingKey;
+  // Spacja pokazała kwestię: aktywacja przycisku na keyup (chip, który właśnie dostał fokus) nie może zadać kolejnego pytania.
+  const swallowSpaceKeyUp = useRef(false);
+
+  // „Pisanie”: po typingDelayMs pokazuje następną wiadomość rozmówcy (każda kwestia osobno). Podgląd - bez opóźnień.
+  useEffect(() => {
+    if (!typing) return undefined;
+    if (review) {
+      reveal(false, pendingKey);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => reveal(true, pendingKey), typingDelayMs(pendingText ?? '', reducedMotion || reducedMotionNow()));
+    return () => window.clearTimeout(timer);
+    // reveal/pendingText wynikają z pendingKey - nowy klucz = nowy timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingKey, review]);
+
+  // Autoprzewijanie do najnowszej wiadomości, gdy user był "przy dole" (inaczej przycisk "Nowe wiadomości").
   useEffect(() => {
     const log = logRef.current;
-    if (!log || messageCount === 0) return;
+    if (!log || messages.length === 0) return;
     if (stickToBottomRef.current) {
-      const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      log.scrollTo({ top: log.scrollHeight, behavior: reducedMotion ? 'auto' : 'smooth' });
+      log.scrollTo({ top: log.scrollHeight, behavior: reducedMotionNow() ? 'auto' : 'smooth' });
       setHasNewMessages(false);
     } else {
       setHasNewMessages(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageCount]);
+  }, [lastMessageKey, messages.length]);
 
-  // Kod review (fix/dialogue-sticky-questions): `scrollTo({behavior:'smooth'})` odpala zdarzenie `scroll` na KAŻDEJ
-  // klatce animacji, nie raz na jej koniec - gdy user szybko klika kolejne pytania, nowa wiadomość (efekt wyżej)
-  // może wystartować własny `scrollTo` w trakcie jeszcze trwającej animacji poprzedniego, a `scrollTop` w połowie
-  // takiej klatki bywa >80px od (starego) dołu, mimo że to NIE jest user odjeżdżający od dołu, tylko nasza własna
-  // animacja W TRAKCIE dojeżdżania. Odróżniamy to po KIERUNKU: tylko zdarzenie, w którym `scrollTop` ZMALAŁ
-  // względem poprzedniego odczytu, jest prawdziwym "user przewinął w górę, czyta historię" i wolno mu wyłączyć
-  // przyklejenie do dołu; każdy ruch w dół (czy to nasza animacja, czy user przewijający w dół ręcznie) nigdy go
-  // nie wyłącza, może go najwyżej z powrotem włączyć po wejściu w próg 80px.
+  // Tylko zdarzenie, w którym scrollTop ZMALAŁ, jest prawdziwym "user przewinął w górę" (animacja `smooth` odpala scroll na każdej
+  // klatce - kod review fix/dialogue-sticky-questions); 1 px tolerancji na ułamkowy scrollTop.
   function handleScroll() {
     const log = logRef.current;
     if (!log) return;
-    const distanceFromBottom = log.scrollHeight - log.scrollTop - log.clientHeight;
-    const atBottom = distanceFromBottom <= STICK_TO_BOTTOM_THRESHOLD_PX;
-    // "< poprzedni - 1", nie tylko "<" (kod review, druga runda): przy ułamkowym scrollTop (zoom/HiDPI) albo
-    // przycięciu scrolla po zmniejszeniu scrollHeight bywa spadek o ułamek piksela, który NIE jest prawdziwym
-    // ruchem w górę - 1px tolerancji odfiltrowuje taki szum, nie wpływając na wykrycie prawdziwego przewinięcia.
+    const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight <= STICK_TO_BOTTOM_THRESHOLD_PX;
     const scrolledUp = log.scrollTop < lastScrollTopRef.current - 1;
     lastScrollTopRef.current = log.scrollTop;
-    if (scrolledUp) {
-      stickToBottomRef.current = atBottom;
-    } else if (atBottom) {
-      stickToBottomRef.current = true;
-    }
+    if (scrolledUp) stickToBottomRef.current = atBottom;
+    else if (atBottom) stickToBottomRef.current = true;
     if (stickToBottomRef.current) setHasNewMessages(false);
   }
 
   function scrollToLatest() {
     const log = logRef.current;
     if (!log) return;
-    const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    log.scrollTo({ top: log.scrollHeight, behavior: reducedMotion ? 'auto' : 'smooth' });
+    log.scrollTo({ top: log.scrollHeight, behavior: reducedMotionNow() ? 'auto' : 'smooth' });
     stickToBottomRef.current = true;
     setHasNewMessages(false);
   }
 
-  // Fokus po zakończeniu pytania (ask()/next() niżej): na PIERWSZYM pozostałym chipie, gdy jakieś zostały (naturalne
-  // "co dalej" - skupialny mimo aria-disabled, bo to nie prawdziwy atrybut disabled), inaczej na kontenerze stopki
-  // (footerRef - "bezpieczny" cel, żeby czytnik ekranu/klawiatura nie zgubiły fokusu, ten sam powód co dawne
-  // logRef.current.focus(), ale TERAZ w stopce, nie w wątku - ustalone z właścicielem produktu: bez nowego
-  // przycisku "Zakończ rozmowę", kończenie zostaje wyłącznie przez zewnętrzne "Dalej" paska powłoki).
+  // Fokus po zakończeniu pytania: na pierwszym pozostałym chipie, inaczej na stopce (bez przycisku "Zakończ rozmowę"). Kwestia przychodzi
+  // po opóźnieniu - fokus przenosimy tylko, gdy wciąż jest w bloku (stopka po kliknięciu chipa); gdy gracz w międzyczasie przeszedł
+  // Tabem gdzie indziej (notatnik, pasek), nie zabieramy mu go.
   function focusFooterAfterQuestionEnds() {
+    const active = document.activeElement;
+    if (active && active !== document.body && !rootRef.current?.contains(active)) return;
     const nextChip = chipsRef.current?.querySelector<HTMLButtonElement>('button');
     if (nextChip) nextChip.focus();
     else footerRef.current?.focus();
@@ -252,195 +292,147 @@ export default function DialogueBlock({
     }
   }
 
-  function ask(id: string) {
-    if (current || progress.some((entry) => entry.id === id)) return;
-    setProgress((list) => [...list, { id, shown: 1 }]);
-    if (linesOf(id).length <= 1) {
-      finish(id);
-      // Pytanie JEDNOKWESTYJNE kończy się od razu w TYM kliknięciu: jego chip znika z listy w tym samym renderze, co
-      // klikany przycisk - bez przeniesienia fokusu klawiatura/czytnik ekranu zgubiłby fokus (ląduje na <body>), tak
-      // samo jak przy ostatniej kwestii pytania wielokwestyjnego (patrz next() niżej - ten sam fix, ten sam powód).
-      if (!review) setTimeout(focusFooterAfterQuestionEnds, 0);
+  // Pokazuje wiadomość, która się „pisała” (koniec opóźnienia albo klik/Spacja) - tylko jeśli to wciąż ta sama wiadomość.
+  function reveal(withSound: boolean, forKey: string = pendingKeyRef.current) {
+    if (!forKey || forKey !== pendingKeyRef.current) return;
+    pendingKeyRef.current = '';
+    if (!openingShown) {
+      setOpeningShown(true);
+      if (withSound) play('msg-receive');
+      return;
     }
-  }
-
-  function next() {
     if (!current) return;
     const shown = current.shown + 1;
     setProgress((list) => list.map((entry) => (entry.id === current.id ? { ...entry, shown } : entry)));
+    if (withSound) play('msg-receive');
     if (shown >= linesOf(current.id).length) {
       finish(current.id);
-      // Przycisk "Następna kwestia" znika po ostatniej kwestii: fokus na stopkę, żeby klawiatura nie wracała na początek strony.
-      if (!review) setTimeout(focusFooterAfterQuestionEnds, 0);
+      if (!review) window.setTimeout(focusFooterAfterQuestionEnds, 0);
     }
   }
 
-  const availableQuestions = questions.filter((question) => !asked.includes(question.id));
+  function ask(id: string) {
+    if (typing || swallowSpaceKeyUp.current || progress.some((entry) => entry.id === id)) return;
+    setProgress((list) => [...list, { id, shown: 0 }]);
+    if (!review) {
+      play('msg-send');
+      // Kliknięty chip znika z listy od razu - fokus na stopkę, żeby klawiatura/czytnik go nie zgubiły.
+      footerRef.current?.focus();
+    }
+  }
+
+  function skipOnSpace(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== ' ' || review) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, [contenteditable="true"]')) return;
+    if (event.repeat) {
+      // Przytrzymana Spacja po pokazaniu kwestii nie klika pytań; poza tym (np. fokus na wątku) przewija jak zwykle.
+      if (typing || swallowSpaceKeyUp.current) event.preventDefault();
+      return;
+    }
+    if (!typing) return;
+    event.preventDefault();
+    swallowSpaceKeyUp.current = true;
+    // Bezpiecznik: keyup mógł trafić poza blok (fokus przeniesiony) - blokada nie może zostać na stałe.
+    window.setTimeout(() => {
+      swallowSpaceKeyUp.current = false;
+    }, 600);
+    reveal(true);
+  }
+
+  function releaseSpace(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== ' ' || !swallowSpaceKeyUp.current) return;
+    // Keyup tej samej Spacji aktywowałby przycisk z fokusem (chip po ostatniej kwestii) - blokujemy tę jedną aktywację.
+    event.preventDefault();
+    swallowSpaceKeyUp.current = false;
+  }
+
+  const availableQuestions = questions.filter((question) => !progress.some((entry) => entry.id === question.id));
   const speakerName = character?.name ?? 'Postać';
   const onAvatarError = () => setAvatarFailed(true);
 
   return (
-    // flex-1 (NIE h-full) - ten sam, już sprawdzony wzorzec co korzeń SceneHotspotsBlock.tsx (`flex min-h-0 w-full
-    // flex-1 flex-col`): flex-basis:0%+flex-grow:1 dostaje CAŁĄ dostępną przestrzeń przez algorytm flex, bez
-    // polegania na procentowej wysokości (`h-full`/`height:100%`), która w zagnieżdżonym łańcuchu flex-column
-    // WYMAGA definitywnej wysokości KAŻDEGO przodka po drodze, żeby się poprawnie rozwiązać - łatwiej się pomylić
-    // (kod review: pierwotna wersja z `h-full` faktycznie działała TU poprawnie po naprawieniu właściwej przyczyny
-    // niżej - sr-only w wątku - ale `flex-1` zostaje jako bardziej odporny, sprawdzony wzorzec, nie jako "the fix").
-    // [container-type:size] - flex-1 DAJE mu definitywny rozmiar w obu osiach (bez okrężnej zależności - w
-    // przeciwieństwie do karty hotspotu z height:auto, patrz globals.css), więc wystarczy, żeby chipy pytań niżej
-    // mogły użyć jednostek cqh (max-h-[40cqh]) - zwykłe "%" NIC by nie dało: ich BEZPOŚREDNI rodzic (stopka,
-    // shrink-0) nie ma definitywnej wysokości (sizuje się do treści), a procentowa max-height względem rodzica bez
-    // definitywnej wysokości liczy się jako "none" (bez efektu) per spec CSS - cqh celuje w NAJBLIŻSZEGO PRZODKA
-    // z container-type, czyli w TEN korzeń, pomijając stopkę po drodze.
-    <div className="flex min-h-0 w-full flex-1 flex-col [container-type:size]">
+    // flex-1 (nie h-full) i [container-type:size]: chipy niżej używają cqh (max-h-[40cqh]) względem TEGO korzenia.
+    <div ref={rootRef} onKeyDown={skipOnSpace} onKeyUp={releaseSpace} className="flex min-h-0 w-full flex-1 flex-col [container-type:size]">
       {!review && <MascotBanner pose={bannerMascot?.pose} text={bannerMascot?.text} />}
-      {block.prompt && <p className="mb-3 shrink-0 text-lg text-slate-900">{block.prompt}</p>}
+      {block.prompt && <p className="mx-auto mb-3 w-full max-w-[760px] shrink-0 text-lg text-ink">{block.prompt}</p>}
+      {/* Niska wysokość (telefon w poziomie): nagłówek rozmowy znika (imię i avatar są przy wiadomościach), chipy w jednym przewijanym
+          rzędzie - inaczej wątek kurczył się do kilkunastu pikseli (layout-check, 844x390). */}
       {character && (
-        <div className="mb-3 flex shrink-0 items-center gap-3">
+        <div className="mx-auto mb-3 flex w-full max-w-[760px] shrink-0 items-center gap-3 [@media(max-height:500px)]:hidden">
           {avatarUrl && !avatarFailed && (
             // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next
-            <img
-              src={avatarUrl}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
-              onError={() => setAvatarFailed(true)}
-            />
+            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-border" onError={() => setAvatarFailed(true)} />
           )}
-          <p className="text-sm text-slate-600">
-            Rozmawiasz z: <span className="font-semibold text-slate-900">{character.name}</span>
+          <p className="text-sm text-muted">
+            Rozmawiasz z: <span className="font-semibold text-ink">{character.name}</span>
             {character.role && <span>, {character.role}</span>}
           </p>
         </div>
       )}
 
-      {/* Wątek: JEDYNY przewijany element bloku (fix/dialogue-sticky-questions) - role="log"/aria-live IDZIE NA TEN
-          <div> (NIE na <ol> poniżej - role="log" na <ol> nadpisywałby jego domyślną rolę "list" i osierocał <li>,
-          axe-core "listitem without list parent"; kod review), tabIndex=0 (nie -1: ma być osiągalny Tab-em i
-          przewijalny klawiaturą/strzałkami/PageDown, nie tylko celem programowego .focus()) + widoczny FOCUS_RING -
-          ten kontener NIE dostaje fokusu programowo (po zadanym pytaniu fokus ląduje na chipie albo na stopce, patrz
-          focusFooterAfterQuestionEnds niżej), więc ring pokazuje się wyłącznie przy prawdziwej nawigacji Tab, zgodnie
-          z domyślną heurystyką :focus-visible przeglądarki - ten sam wzorzec co SceneHotspotsBlock.tsx.
-          `relative` (kod review/layout-check.mjs - realny, subtelny bug): `<span className="sr-only">` wewnątrz
-          każdego dymku (CharacterBubble, "Ty: ") to Tailwind `position:absolute` BEZ ustawionych
-          top/left/right/bottom - bez top/left przeglądarka liczy jego pozycję jako "statyczną" (tam, gdzie
-          wylądowałby, gdyby był position:static), ale będąc position:absolute jest WYJĘTY z normalnego przepływu i
-          szuka NAJBLIŻSZEGO PRZODKA Z WŁASNYM position (nie static) jako "containing block". Bez `relative` TUTAJ
-          tym przodkiem było content-area w PlayerStage.tsx (position:relative, kilka poziomów wyżej) - sr-only
-          spany z KAŻDEJ wiadomości (nawet dawno przewiniętej poza widoczny obszar tego kontenera) ROSŁY w
-          nieskończoność w dół (każda kolejna wiadomość przesuwa ich "statyczną" pozycję), NIE PRZYCINANE przez
-          `overflow-y-auto` TEGO diva (bo ich containing block leżał POZA nim) - to WŁAŚNIE one nadymały scrollHeight
-          obszaru bloku w PlayerStage.tsx (checkMainSceneFits w scripts/layout-check.mjs łapał to po wygenerowaniu
-          >=8 wiadomości: obszar bloku zaczynał się przewijać, dokładnie to, co ten branch ma naprawić). Ten sam bug
-          był DROBNY i niewidoczny w starym layoucie (`contentLayout='slide'`) - CAŁY panel i tak się przewijał,
-          więc "wyciek" poza ten konkretny kontener nie miał znaczenia; ujawnił się dopiero z wewnętrznym scrollem.
-          `relative` czyni ten div containing blockiem dla WŁASNYCH potomków position:absolute - sr-only spany
-          zostają poprawnie przycięte razem z resztą wątku.
-          `min-h-0` (NIE `min-h-[6rem]` - kod review, finding #2, druga runda): prompt/nagłówek/stopka są `shrink-0`
-          (nie oddają miejsca), więc na bardzo niskich/poziomych viewportach (albo dużym powiększeniu przeglądarki)
-          wątek MOŻE skurczyć się do 0px i zniknąć całkowicie. Rozważaliśmy rezerwację minimalnej wysokości (np.
-          `min-h-[6rem]`), ale to pogarsza sprawę: stopka zawiera JEDYNE kontrolki do prowadzenia rozmowy (chipy
-          pytań, "Następna kwestia") - wymuszona minimalna wysokość wątku obcina stopkę WCZEŚNIEJ (przy większej
-          dostępnej wysokości) niż bez niej, tracąc kontrolki zamiast tylko historii. `min-h-0` (zwykłe zachowanie
-          flex - pozwala się skurczyć do zera zamiast domyślnego `min-height:auto` liczonego z treści) zostawia
-          priorytet stopce: ginie NAJPIERW historia (mniej dotkliwe - da się przewinąć z powrotem po zwiększeniu
-          wysokości), kontrolki tracą miejsce dopiero, gdy sama suma shrink-0 elementów przekroczy dostępną wysokość.
-          Pełne pokrycie WCAG 1.4.10 na wszystkich poziomach zoomu (np. składany nagłówek przy bardzo niskiej
-          wysokości) to osobna decyzja projektowa, zgłoszona do backlogu (B-104 - numeracja po rebase na `main`,
-          patrz D-079), nie hotfix na tym branchu. */}
       <div
         ref={logRef}
         role="log"
         aria-live="polite"
         aria-label="Historia rozmowy"
+        data-typing={typing && !review ? 'true' : 'false'}
         tabIndex={0}
         onScroll={handleScroll}
         className={`relative min-h-0 flex-1 overflow-y-auto outline-none ${FOCUS_RING}`}
       >
-        <ol className="space-y-3">
-          {character?.opening && (
-            <li>
-              <CharacterBubble avatarUrl={avatarUrl} avatarFailed={avatarFailed} onAvatarError={onAvatarError} speakerName={speakerName}>
-                {character.opening}
-              </CharacterBubble>
-            </li>
-          )}
-          {progress.map((entry) => {
-            const question = questions.find((candidate) => candidate.id === entry.id);
-            if (!question) return null;
-            const lines = linesOf(entry.id).slice(0, entry.shown);
+        <ol data-testid="dialogue-thread" className="mx-auto w-full max-w-[760px] pb-1">
+          {messages.map((message, index) => {
+            const previous = messages[index - 1];
+            const next = messages[index + 1];
+            // 6 px w obrębie osoby, 12 px między osobami; avatar przy ostatniej wiadomości grupy.
+            const gap = !previous ? '' : previous.speaker === message.speaker ? 'mt-1.5' : 'mt-3';
+            const lastOfGroup = !next || next.speaker !== message.speaker;
             return (
-              <li key={entry.id} className="space-y-2">
-                <PlayerBubble avatarUrl={myAvatarUrl} initials={myInitials}>
-                  {question.text}
-                </PlayerBubble>
-                {lines.map((line, index) => (
-                  <CharacterBubble
-                    key={index}
-                    avatarUrl={avatarUrl}
-                    avatarFailed={avatarFailed}
-                    onAvatarError={onAvatarError}
-                    speakerName={speakerName}
-                    showAvatar={index === lines.length - 1}
-                  >
-                    {line}
+              <li key={message.key} data-speaker={message.speaker} className={gap}>
+                {message.typing ? (
+                  <TypingBubble avatarUrl={avatarUrl} avatarFailed={avatarFailed} onAvatarError={onAvatarError} reducedMotion={reducedMotion} onSkip={() => reveal(true)} />
+                ) : message.speaker === 'player' ? (
+                  <PlayerBubble avatarUrl={myAvatarUrl} initials={myInitials} showAvatar={lastOfGroup}>
+                    {message.text}
+                  </PlayerBubble>
+                ) : (
+                  <CharacterBubble avatarUrl={avatarUrl} avatarFailed={avatarFailed} onAvatarError={onAvatarError} speakerName={speakerName} showAvatar={lastOfGroup}>
+                    {message.text}
                   </CharacterBubble>
-                ))}
+                )}
               </li>
             );
           })}
         </ol>
       </div>
 
-      {/* Stopka (poza obszarem przewijania - zawsze widoczna, jak lista akcji w komunikatorze): "Następna kwestia",
-          "Nowe wiadomości" (gdy user czyta historię i doszła nowa), chipy pytań (max-h-[40cqh] - własny scroll, gdy
-          jest ich dużo, na WSZYSTKICH breakpointach), ExploreFooter. role="group"/aria-label - czytnik ekranu
-          ogłasza to jako spójną grupę akcji, nie luźne przyciski. tabIndex=-1 + FOCUS_RING na kontenerze - cel
-          fokusu, gdy po ostatnim pytaniu nie zostały żadne chipy (focusFooterAfterQuestionEnds wyżej).
-          BEZ `pl-24 sm:pl-28` (fix/dialogue-polish, B-103 rozwiązane w D-080) - ta rezerwacja miejsca istniała
-          wyłącznie z powodu floating ikonki `MascotOverlay.tsx` (position:absolute, mogła wylądować dokładnie pod
-          pierwszym chipem i łapać jego kliknięcia). Fooli w DIALOGUE nie jest już floating nakładką - PlayerStage.tsx
-          nic nie renderuje dla contentLayout='fill', DialogueBlock renderuje WŁASNY MascotBanner NAD nagłówkiem
-          rozmowy (patrz wyżej), w normalnym przepływie - nic nie może już wylądować pod stopką. */}
-      <div
-        ref={footerRef}
-        role="group"
-        aria-label="Pytania i postęp rozmowy"
-        tabIndex={-1}
-        className={`shrink-0 outline-none ${FOCUS_RING}`}
-      >
-        {current && (
-          <button
-            type="button"
-            onClick={next}
-            className="mb-4 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            {/* Nie "Dalej": ten napis ma przycisk nawigacji powłoki (dwa "Dalej" obok siebie myliłyby też czytniki ekranu). */}
-            Następna kwestia
-          </button>
-        )}
-
+      {/* Stopka poza obszarem przewijania: "Nowe wiadomości", chipy pytań (własny scroll, gdy dużo), postęp. */}
+      <div ref={footerRef} role="group" aria-label="Pytania i postęp rozmowy" tabIndex={-1} className={`mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING}`}>
         {hasNewMessages && (
           <button
             type="button"
             onClick={scrollToLatest}
-            className="mb-4 min-h-[44px] rounded-full border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
+            className={`mb-3 min-h-[44px] rounded-full border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent/15 ${FOCUS_RING}`}
           >
             ↓ Nowe wiadomości
           </button>
         )}
 
         {availableQuestions.length > 0 && (
-          <ul ref={chipsRef} aria-label="Pytania do zadania" className="flex max-h-[40cqh] flex-wrap gap-2 overflow-y-auto">
-            {/* Chipy: zadane pytanie znika stąd (zostaje w wątku wyżej) - lista pokazuje tylko to, co jeszcze można zapytać. */}
+          <ul
+            ref={chipsRef}
+            aria-label="Pytania do zadania"
+            className="flex max-h-[40cqh] flex-wrap gap-2 overflow-y-auto [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto [@media(max-height:500px)]:overflow-y-hidden [@media(max-height:500px)]:pb-1"
+          >
             {availableQuestions.map((question) => (
-              <li key={question.id}>
+              <li key={question.id} className="shrink-0">
                 <button
                   type="button"
                   onClick={() => ask(question.id)}
-                  aria-disabled={current !== null}
-                  className={`min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium ${
-                    current !== null ? 'border-slate-200 bg-slate-50 text-slate-400' : 'border-indigo-300 bg-indigo-50 text-indigo-900 hover:bg-indigo-100'
+                  aria-disabled={typing}
+                  className={`min-h-[44px] rounded-full border px-4 py-2 text-sm font-semibold ${FOCUS_RING} ${
+                    typing ? 'cursor-default border-border bg-paper text-muted' : 'border-accent/40 bg-accent-soft text-accent-ink hover:bg-accent/15'
                   }`}
                 >
                   {question.text}

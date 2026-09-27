@@ -498,20 +498,21 @@ try {
   step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
   await shoot('hotspoty-przed');
 
-  // Punkt na obrazie jest teraz jedyną, w pełni dostępną ścieżką (bez osobnej listy-chipów pod obrazem, feedback z
-  // produkcji po PR #32) - klik otwiera kartę jako nakładkę NA scenie (role="dialog"); dowód dodaje "Dodaj do
-  // notatnika" w nakładce, "Wróć" ją zamyka (trzeba zamknąć, zanim klika się kolejny punkt - nakładka zasłania scenę).
+  // Punkt na obrazie jest jedyną, w pełni dostępną ścieżką - klik otwiera zbliżenie NA scenie (role="dialog", D-086); dowód dodaje
+  // "Zabierz", które też odkłada przedmiot (oddalenie 350 ms - czekamy na zniknięcie nakładki, zanim klikniemy kolejny punkt).
   const dialog = () => page.getByRole('dialog');
+  const take = async () => {
+    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
+  };
   await page.getByTestId('hotspot-overlay-drzwi').click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await dialog().getByRole('button', { name: 'Wróć' }).click();
+  await take();
   await page.getByRole('button', { name: 'Monitor' }).click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
+  await take();
   step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/?') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
   step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-po');
   await noHScroll('desktop, hotspoty');
-  await dialog().getByRole('button', { name: 'Wróć' }).click();
 
   // Treść bloku nie może zostać pod lepkim paskiem: po przewinięciu do końca ostatni element ("Kontynuuj") leży nad paskiem, a element
   // z fokusem klawiatury przewija się nad pasek (scroll-padding-bottom z pomiaru). Sprawdzane na desktopie i na telefonie.

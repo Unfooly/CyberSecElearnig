@@ -401,7 +401,22 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 >
 > **Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty".
 
-- przycisk: „Zakończ sprawę" → ekran wyniku (istniejący)
+- przycisk: „Zakończ sprawę" → ekran zamknięcia sprawy (D-089)
+
+### Zamknięcie sprawy (D-089)
+
+Raport końcowy w teczce `scenes/zamkniecie-raport.svg` z HTML w slotach (`closing.slots`): dowody x/N, czas (minuty od
+pierwszego startu), +XP, wnioski śledczego (`lessons`, wpisywane linijka po linijce), podpis prowadzącego (imię i inicjał
+gracza po kliknięciu „Podpisz raport”), pieczęć `scenes/zamkniecie-pieczec.svg` i liścik komisarza `scenes/zamkniecie-liscik.svg`.
+
+`lessons`:
+1. „Sprawdzaj domenę nadawcy, nie nazwę.”
+2. „Kod SMS zatwierdza, nigdy nie anuluje.”
+3. „Hasło nie na karteczce — i nigdy przez telefon.”
+
+Woreczki dowodów na prawej kartce (mail, karteczka, SMS, wydruk, logi, WHOIS) odpowiadają dowodom modułu (mail w Outlooku,
+karteczka, kod SMS z teczki, wydruk, logi logowania, WHOIS domeny); telefon, kalendarz i tablica nie mają woreczka, a liścik
+przykrywa szósty (B-115).
 
 ---
 
@@ -422,6 +437,9 @@ edycja SVG.
 | `scenes/wydruk.svg` | 800×1100 | media image na hotspocie `drukarka` |
 | `scenes/telefon-zoom.svg` | 800×600 | media.image (zbliżenie nad odtwarzaczem audio) na hotspocie `telefon` |
 | `scenes/kubek-zoom.svg` | 800×800 | media image na hotspocie `kubek` |
+| `scenes/zamkniecie-raport.svg` | 16:9 | Blok 9: raport końcowy (`closing.image`) |
+| `scenes/zamkniecie-pieczec.svg` | - | Blok 9: pieczęć „Sprawa zamknięta” (`closing.stamp`) |
+| `scenes/zamkniecie-liscik.svg` | - | Blok 9: liścik komisarza (`closing.note`) |
 
 Avatary SVG: `avatars/anna.svg`, `avatars/marek.svg` (256×256) — półportrety w tym samym stylu.
 

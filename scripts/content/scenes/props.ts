@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { ODPRAWA_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -385,4 +385,6 @@ export const PROPS: Record<string, PropFn<any>> = {
   wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper,
   // Odprawa (BRIEFING) - widok z góry na biurko detektywa (props-odprawa.ts); nazwy nie kolidują z powyższymi.
   ...ODPRAWA_PROPS,
+  // Zamknięcie sprawy (SUMMARY.closing, D-089) - raport w teczce, pieczęć, liścik komisarza.
+  ...ZAMKNIECIE_PROPS,
 };

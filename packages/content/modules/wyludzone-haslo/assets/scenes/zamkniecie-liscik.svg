@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="static" viewBox="0 0 270 250" width="270" height="250" font-family="Arial, Helvetica, sans-serif">
+<style>
+.a-blink{animation:a-blink 1.2s ease-in-out infinite}
+.a-blink-slow{animation:a-blink 3s ease-in-out infinite}
+.a-glow{animation:a-glow 5s ease-in-out infinite}
+.a-pulse{animation:a-pulse 2.2s ease-in-out infinite}
+.a-steam{animation:a-steam 2.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.a-sway{animation:a-sway 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.a-flutter{animation:a-flutter 4.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center top}
+.a-bounce{animation:a-bounce 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-ring{animation:a-ring 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-wave{animation:a-wave 1.2s ease-out infinite}
+.a-grow{animation:a-grow .9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-shimmer{animation:a-shimmer 3.5s ease-in-out infinite}
+.d1{animation-delay:.35s}.d2{animation-delay:.7s}
+@keyframes a-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes a-glow{0%,100%{opacity:1}50%{opacity:.65}}
+@keyframes a-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes a-steam{0%{opacity:0;transform:translateY(6px)}40%{opacity:.9}100%{opacity:0;transform:translateY(-10px)}}
+@keyframes a-sway{0%,100%{transform:rotate(0)}50%{transform:rotate(1.6deg)}}
+@keyframes a-flutter{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.4deg)}}
+@keyframes a-bounce{0%,70%,100%{transform:scale(1)}80%{transform:scale(1.18)}90%{transform:scale(.95)}}
+@keyframes a-ring{0%,100%{transform:rotate(0)}10%{transform:rotate(-2.5deg)}20%{transform:rotate(2.5deg)}30%{transform:rotate(-2.5deg)}40%{transform:rotate(0)}}
+@keyframes a-wave{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+@keyframes a-grow{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes a-shimmer{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+#static:target *{animation:none!important}
+</style>
+<rect width="270" height="250" fill="none"/>
+<g id="item-liscik" transform="translate(0 0) scale(1)"><g class="a-flutter"><rect x="8" y="10" width="250" height="228" fill="#2B2440" opacity="0.15"/><rect width="250" height="228" fill="#FFE066"/><rect width="250" height="26" fill="#E6C845" opacity="0.6"/><text x="22" y="64" font-size="22" fill="#4E40B8" font-weight="bold">Dobra robota,</text><text x="22" y="98" font-size="22" fill="#4E40B8" font-weight="bold">detektywie.</text><text x="22" y="132" font-size="22" fill="#4E40B8">Następna sprawa</text><text x="22" y="166" font-size="22" fill="#4E40B8">czeka.</text><text x="228" y="214" font-size="20" fill="#4E40B8" font-weight="bold" text-anchor="end">— A.W.</text></g></g>
+</svg>

@@ -72,6 +72,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   całym bloku (klucz notatki `<blockId>.<rowId>`), `note`/`required` tylko na dowodzie, najwyżej `MAX_DOSSIER_EVIDENCE` (50) dowodów.
   Nieoceniany (waga 0), wszystkie pola publiczne (bez klucza odpowiedzi, jak `evidence`/`note` scen). Odpowiedź
   `{ opened, noted }`: wszystkie dokumenty otwarte, wszystkie `required` zakreślone (sprawdza serwer, `evaluate.ts`).
+- `SUMMARY` - zamknięcie sprawy (D-089, opcjonalne): `lessons[]` (1-5 zdań, ≤120 znaków; wnioski śledczego w raporcie) i
+  `closing { image, stamp, note, slots { evidence, time, xp, lessons, signature, stamp, note } }` - raport 16:9, pieczęć i liścik z
+  `assets/` (potok `--assets`), sloty `{ x, y, w, h }` w % raportu, w jego granicach. Wszystko publiczne (podsumowanie, nie klucz).
+  Bez `closing` odtwarzacz pokazuje prosty ekran ukończenia.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

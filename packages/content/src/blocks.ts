@@ -350,13 +350,6 @@ const tabsSchema = z
   })
   .strict();
 
-const summarySchema = z
-  .object({
-    ...baseShape,
-    type: z.literal('SUMMARY'),
-    text: text(2000).optional(),
-  })
-  .strict();
 
 // schemaVersion 5: "odprawa" na start modułu - ciąg kroków zamkniętego typu, każdy z własną (opcjonalną) narracją.
 // Osobny typ bloku, nie wariant NARRATIVE: struktura (kroki, krok "badge" z danymi z profilu gracza) jest zupełnie inna
@@ -368,6 +361,39 @@ const summarySchema = z
 // miejsca na scenie (w % sceny), w które odtwarzacz wstawia HTML: zadania sprawy (`tasks`), dane gracza z sesji (`name`, `number`,
 // `photo`). Prostokąty w 0-100 i w granicach sceny, zgodność pól z rodzajem kroku - semantics.ts.
 const briefingRectSchema = z.object({ x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) }).strict();
+
+// Podsumowanie modułu. Zamknięcie sprawy (feat/case-closed, D-089, addytywnie w v5): `lessons` - wnioski śledczego wpisywane w raport
+// (linijka po linijce), `closing` - grafika ekranu zamknięcia: raport w teczce (scena 16:9), pieczęć i liścik komisarza (osobne pliki,
+// wlatują na raport) oraz sloty HTML w % sceny (liczby, wnioski, podpis gracza, miejsce pieczęci i liściku).
+const closingSlotsSchema = z
+  .object({
+    evidence: briefingRectSchema,
+    time: briefingRectSchema,
+    xp: briefingRectSchema,
+    lessons: briefingRectSchema,
+    signature: briefingRectSchema,
+    stamp: briefingRectSchema,
+    note: briefingRectSchema,
+  })
+  .strict();
+
+const summarySchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('SUMMARY'),
+    text: text(2000).optional(),
+    lessons: z.array(text(120)).min(1).max(5).optional(),
+    closing: z
+      .object({
+        image: imagePathSchema,
+        stamp: imagePathSchema,
+        note: imagePathSchema,
+        slots: closingSlotsSchema,
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 const briefingSceneShape = {
   image: imagePathSchema.optional(),
   hotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
@@ -794,7 +820,17 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   ),
   ORDERING: classify(['prompt', 'items[].id', 'items[].text'], ['scoring', 'explanation']),
   TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]'], []),
-  SUMMARY: classify(['text'], []),
+  SUMMARY: classify(
+    [
+      'text',
+      'lessons[]',
+      'closing.image',
+      'closing.stamp',
+      'closing.note',
+      ...['evidence', 'time', 'xp', 'lessons', 'signature', 'stamp', 'note'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((key) => `closing.slots.${slot}.${key}`)),
+    ],
+    [],
+  ),
   BRIEFING: classify(
     [
       'steps[].kind',

@@ -308,3 +308,72 @@ export const ODPRAWA_PROPS = {
   woodGrain, phoneTop, mugTop, coffeeRing, notepadTop, penTop, glassesTop, keysTop, magnifier,
   laptopTopClosed, newspaper, caseFolderClosed, caseFolderOpen, badgeWallet,
 };
+
+/* ---------- zamknięcie sprawy (feat/case-closed, D-089) ---------- */
+
+export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew' }) => {
+  const w = 1340, h = 780, pw = 620, ph = 720, L = 30, R = w - 30 - pw, top = 30;
+  const statBox = (x: number, y: number, label: string) =>
+    `<rect x="${x}" y="${y}" width="170" height="96" rx="8" fill="#F6F6F4"/>` + t(x + 16, y + 28, label, 13, { bold: true, fill: P.greyDark, spacing: 1 });
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 18, 16, 20) +
+      `<rect width="${w}" height="${h}" rx="18" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      `<line x1="${w / 2}" y1="10" x2="${w / 2}" y2="${h - 10}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      /* lewa: raport końcowy */
+      `<rect x="${L + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
+      `<rect x="${L}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
+      t(L + 40, top + 62, 'RAPORT KOŃCOWY', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
+      t(L + 40, top + 104, caseNo, 36, { bold: true }) +
+      t(L + 40, top + 146, title, 26, { bold: true, fill: P.purpleDark }) +
+      `<line x1="${L + 40}" y1="${top + 172}" x2="${L + pw - 40}" y2="${top + 172}" stroke="${P.grey}" stroke-width="2"/>` +
+      statBox(L + 40, top + 200, 'DOWODY') + statBox(L + 225, top + 200, 'CZAS') + statBox(L + 410, top + 200, 'XP') +
+      t(L + 40, top + 346, 'WNIOSKI ŚLEDCZEGO', 13, { bold: true, fill: P.greyDark, spacing: 1 }) +
+      Array.from({ length: 6 }, (_, i) => `<line x1="${L + 40}" y1="${top + 400 + i * 40}" x2="${L + pw - 40}" y2="${top + 400 + i * 40}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
+      t(L + 40, top + 668, 'PODPIS PROWADZĄCEGO', 12, { bold: true, fill: P.greyDark, spacing: 1 }) +
+      `<line x1="${L + 250}" y1="${top + 670}" x2="${L + pw - 40}" y2="${top + 670}" stroke="${P.ink}" stroke-width="2" stroke-dasharray="6 6"/>` +
+      /* prawa: dowody rzeczowe (miniatury) + miejsce na pieczęć */
+      `<rect x="${R + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
+      `<rect x="${R}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
+      t(R + 40, top + 62, 'DOWODY RZECZOWE', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
+      `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>` +
+      /* woreczki na dowody */
+      [[0, 0, 'mail'], [1, 0, 'karteczka'], [2, 0, 'SMS'], [0, 1, 'wydruk'], [1, 1, 'logi'], [2, 1, 'WHOIS']].map(([c, r, l]) => {
+        const x = R + 40 + (c as number) * 185, y = top + 110 + (r as number) * 170;
+        return `<g transform="rotate(${((c as number) + (r as number)) % 2 ? 2 : -2} ${x + 80} ${y + 70})"><rect x="${x}" y="${y}" width="160" height="140" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
+          `<rect x="${x}" y="${y}" width="160" height="22" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 80, y + 16, 'DOWÓD', 12, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
+          `<rect x="${x + 30}" y="${y + 40}" width="100" height="62" rx="4" fill="${P.white}"/>` + t(x + 80, y + 78, l as string, 16, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
+      }).join(''),
+    parts: {
+      'slot-dowody': { x: L + 40, y: top + 236, w: 170, h: 56 },
+      'slot-czas': { x: L + 225, y: top + 236, w: 170, h: 56 },
+      'slot-xp': { x: L + 410, y: top + 236, w: 170, h: 56 },
+      'slot-wnioski': { x: L + 40, y: top + 366, w: pw - 80, h: 240 },
+      'slot-podpis': { x: L + 250, y: top + 620, w: pw - 290, h: 50 },
+      'slot-pieczec': { x: R + 70, y: top + 505, w: 480, h: 172 },
+      'slot-odznaka': { x: L + 470, y: top + 18, w: 120, h: 164 },
+      'slot-liscik': { x: R + 395, y: top + 250, w: 205, h: 190 },
+    },
+  };
+};
+
+export const closedStamp: PropFn<{ text?: string; sub?: string }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa' }) => ({
+  w: 600, h: 260,
+  svg:
+    `<g transform="translate(20 30) rotate(-8 280 100)" opacity="0.92"><rect x="10" y="20" width="540" height="160" rx="18" fill="none" stroke="${P.red}" stroke-width="10"/>` +
+    `<rect x="26" y="36" width="508" height="128" rx="10" fill="none" stroke="${P.red}" stroke-width="3"/>` +
+    t(280, 108, tx, 40, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 }) +
+    t(280, 148, sub.toUpperCase(), 18, { anchor: 'middle', bold: true, fill: P.red, spacing: 3 }) + `</g>`,
+});
+
+export const commissionerNote: PropFn<{ lines?: string[]; sign?: string }> = ({ lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.' }) => ({
+  w: 260, h: 240,
+  svg:
+    `<g class="a-flutter"><rect x="8" y="10" width="250" height="228" fill="${P.ink}" opacity="0.15"/><rect width="250" height="228" fill="${P.yellow}"/>` +
+    `<rect width="250" height="26" fill="${P.yellowDark}" opacity="0.6"/>` +
+    lines.slice(0, 4).map((l, i) => t(22, 64 + i * 34, l, 22, { fill: P.purpleDark, bold: i < 2 })).join('') +
+    t(228, 214, sign, 20, { anchor: 'end', fill: P.purpleDark, bold: true }) + `</g>`,
+});
+
+export const ZAMKNIECIE_PROPS = { reportFolderOpen, closedStamp, commissionerNote };

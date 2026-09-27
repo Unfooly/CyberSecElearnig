@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { ODPRAWA_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -22,12 +22,13 @@ const build = (name: string) => composeScene(JSON.parse(readFileSync(join(exampl
 const svgPath = (name: string) => (existsSync(join(assets, 'scenes', `${name}.svg`)) ? join(assets, 'scenes', `${name}.svg`) : join(assets, `${name}.svg`));
 
 describe('sceny modułu 1 z kompozytora', () => {
-  it('klocki odprawy są zarejestrowane w PROPS kompozytora', () => {
+  it('klocki odprawy i zamknięcia sprawy są zarejestrowane w PROPS kompozytora', () => {
     for (const name of Object.keys(ODPRAWA_PROPS)) expect(PROPS[name], name).toBe(ODPRAWA_PROPS[name as keyof typeof ODPRAWA_PROPS]);
+    for (const name of Object.keys(ZAMKNIECIE_PROPS)) expect(PROPS[name], name).toBe(ZAMKNIECIE_PROPS[name as keyof typeof ZAMKNIECIE_PROPS]);
   });
 
-  it('każde źródło ma swoją scenę w module (10 scen modułu z zbliżeniem tablicy, 5 odprawy, miniatura)', () => {
-    expect(scenes).toHaveLength(16);
+  it('każde źródło ma swoją scenę w module (10 scen modułu z zbliżeniem tablicy, 5 odprawy, 3 zamknięcia sprawy, miniatura)', () => {
+    expect(scenes).toHaveLength(19);
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 

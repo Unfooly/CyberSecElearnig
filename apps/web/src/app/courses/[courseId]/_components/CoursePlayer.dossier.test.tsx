@@ -25,6 +25,7 @@ const dossier: ContentBlock = {
       rows: [
         { id: 'w1', cells: ['08:02', 'Opłata za kartę', '−5,00 PLN'] },
         { id: 'w2', cells: ['09:12', 'Wektor Rozliczenia', '−14 000,00 PLN'], evidence: true, required: true, note: { text: 'Przelew 9:12.', kind: 'item' } },
+        { id: 'w3', cells: ['09:30', 'Przelew znany z odprawy', '−1,00 PLN'], message: 'Ten przelew już znasz.' },
       ],
     },
     {
@@ -35,7 +36,7 @@ const dossier: ContentBlock = {
       columns: ['Godzina', 'Zdarzenie'],
       rows: [
         { id: 'l1', cells: ['07:58', 'Logowanie, Kraków'] },
-        { id: 'l2', cells: ['08:53', 'Logowanie, Bukareszt'], evidence: true, note: { text: 'Bukareszt 8:53.', kind: 'place' } },
+        { id: 'l2', cells: ['09:03', 'Logowanie, Bukareszt'], evidence: true, note: { text: 'Bukareszt 9:03.', kind: 'place' } },
       ],
     },
   ],
@@ -91,6 +92,10 @@ describe('CoursePlayer: teczka sprawy (DOSSIER)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Ta linijka wygląda na zwykłą operację.');
     expect(row('Opłata za kartę')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
+    // Zwykła linijka z własnym komunikatem (`message`) zamiast domyślnego.
+    fireEvent.click(row('Przelew znany z odprawy'));
+    expect(screen.getByRole('status')).toHaveTextContent('Ten przelew już znasz.');
+    expect(row('Przelew znany z odprawy')).toHaveAttribute('aria-pressed', 'false');
 
     fireEvent.click(row('Wektor Rozliczenia'));
     expect(row('Wektor Rozliczenia')).toHaveAttribute('aria-pressed', 'true');

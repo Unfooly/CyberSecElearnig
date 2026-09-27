@@ -35,6 +35,8 @@ export interface DossierRow {
   evidence?: boolean;
   note?: { text: string; kind?: NoteKind };
   required?: boolean;
+  /** Komunikat po kliknięciu zwykłej linijki (brak = „Ta linijka wygląda na zwykłą operację.”). */
+  message?: string;
 }
 
 export interface DossierDocument {

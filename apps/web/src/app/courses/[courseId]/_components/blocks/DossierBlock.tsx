@@ -74,7 +74,7 @@ export default function DossierBlock({
 
   function mark(row: DossierRow) {
     if (!row.evidence || !row.note) {
-      setMessage(ORDINARY);
+      setMessage(row.message ?? ORDINARY);
       return;
     }
     if (noted.includes(row.id)) {

@@ -826,6 +826,8 @@ describe('parseModule: DOSSIER (teczka sprawy)', () => {
     expect(invalid((m) => delete row(m, 0, 1).note.kind)).toContain('note wymaga note.kind');
     expect(invalid((m) => (row(m, 0, 0).note = { text: 'x', kind: 'item' }))).toContain('note bez evidence: true');
     expect(invalid((m) => (row(m, 0, 0).required = true))).toContain('required dotyczy wyłącznie wierszy-dowodów');
+    expect(invalid((m) => (row(m, 0, 0).message = 'Znany przelew.'))).toBe('');
+    expect(invalid((m) => (row(m, 0, 1).message = 'x'))).toContain('documents[0].rows[1]: message dotyczy wyłącznie zwykłych linijek');
   });
 
   it('pole spoza schematu i pusta lista dokumentów są odrzucone (strict)', () => {

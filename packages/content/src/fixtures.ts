@@ -353,7 +353,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
             { id: 'w2', cells: ['09:12', 'Przelew', '-100,00 PLN'], evidence: true, required: true, note: { text: 'Przelew 9:12.', kind: 'item' } },
           ],
         },
-        { id: 'procedury', tab: 'Procedury', org: 'FIRMA', title: 'Procedury', columns: ['Zasada'], rows: [{ id: 'p1', cells: ['Zgłaszaj.'] }] },
+        { id: 'procedury', tab: 'Procedury', org: 'FIRMA', title: 'Procedury', columns: ['Zasada'], rows: [{ id: 'p1', cells: ['Zgłaszaj.'], message: 'To zasada, nie ślad.' }] },
       ],
     },
     SUMMARY: { ...base('podsumowanie'), type: 'SUMMARY', text: 'Dziękujemy.' },

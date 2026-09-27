@@ -328,6 +328,8 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           // Zwykła linijka nie trafia do notatnika (zakreślenie pokazuje tylko "zwykłą operację") - notatka bez evidence byłaby martwa.
           if (row.note && row.evidence !== true) errors.push(`${label}: note bez evidence: true nigdy nie trafi do notatnika`);
           if (row.required === true && row.evidence !== true) errors.push(`${label}: required dotyczy wyłącznie wierszy-dowodów`);
+          // Wiersz-dowód ma stały komunikat („Zakreślone…”) - własny message byłby martwy.
+          if (row.message !== undefined && row.evidence === true) errors.push(`${label}: message dotyczy wyłącznie zwykłych linijek`);
         });
       });
       break;

@@ -449,6 +449,9 @@ const dossierRowSchema = z
     evidence: z.boolean().optional(),
     note: noteSchema.optional(),
     required: z.boolean().optional(),
+    // Komunikat po kliknięciu ZWYKŁEJ linijki (domyślnie „Ta linijka wygląda na zwykłą operację.”) - np. naprowadzenie, gdy wiersz
+    // pokazuje fakt znany już z innej sceny. Tylko bez evidence (semantics.ts); publiczny jak reszta wiersza.
+    message: text(200).optional(),
   })
   .strict();
 
@@ -804,6 +807,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'documents[].rows[].note.text',
       'documents[].rows[].note.kind',
       'documents[].rows[].required',
+      'documents[].rows[].message',
     ],
     [],
   ),

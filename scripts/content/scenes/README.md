@@ -78,6 +78,29 @@ nie do repo (`.gitignore`: `*.preview.html`).
 | `smartphone` | `lines[] (3), badge` | |
 | `box` | `w, h, label` | |
 
+### Klocki odprawy (`props-odprawa.ts`, widok z góry na biurko, D-084)
+
+Zarejestrowane w tym samym `PROPS` (`...ODPRAWA_PROPS`). Sceny 1600×900 z jednolitym tłem biurka
+(`"background": { "flat": true, "wall": "#D9C3A5" }`); źródła: `examples/odprawa-*.json`. Części `slot-*` to miejsca, w które
+odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots.json`) trafiają do `steps[].slots` bloku BRIEFING.
+
+| prop | parametry | części |
+|---|---|---|
+| `woodGrain` | `w, h` | |
+| `phoneTop` | `state: ringing\|call\|idle, animated, caller, role, initials, timer` | `screen` |
+| `mugTop`, `penTop` | `color` | |
+| `coffeeRing`, `glassesTop`, `magnifier`, `laptopTopClosed` | — | |
+| `notepadTop` | `lines[] (max 4)` | |
+| `keysTop` | `tag` | |
+| `newspaper` | `title, headline[] (2)` | |
+| `caseFolderClosed` | `caseNo, stamp` | `cover` |
+| `caseFolderOpen` | `caseNo, title, victim, victimRole, loss, when, reporter, stamp` | `slot-zadania` |
+| `badgeWallet` | `unit` | `slot-zdjecie`, `slot-imie`, `slot-numer` |
+
+`phoneTop` w stanie `ringing` ma animację SMIL (dzwonienie) - scena z nim ma wariant statyczny (`animated: false`,
+`odprawa-biurko-static.json`) dla `prefers-reduced-motion` (`steps[].imageReducedMotion`). Test `odprawa.test.ts` pilnuje,
+że build każdej `odprawa-*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` - po zmianie klocka przebuduj sceny.
+
 Nowy klocek = jedna funkcja w `props.ts` zwracająca `{ svg, w, h, parts? }` w lokalnych
 współrzędnych od (0,0) + wpis w `PROPS` + wiersz w tej tabeli. Test „każdy klocek renderuje
 się z domyślnymi parametrami" łapie brakujące domyślne.
@@ -86,8 +109,8 @@ się z domyślnymi parametrami" łapie brakujące domyślne.
 
 - Cały tekst z JSON jest escapowany; SVG nie zawiera `<script>`, `on*=`, `href`, `foreignObject`
   ani `javascript:` — test to sprawdza. Lint SVG ze skryptu TTS (`--assets`) i tak przejdzie.
-- Jedyna animacja to `<animate>` diody telefonu (`phone.led`). Jeśli lint jej nie przepuści,
-  usuń animację w `props.ts` — hotspot się nie zmieni.
+- Animacje to wyłącznie SMIL (`<animate>`, `<animateTransform>`): dioda telefonu (`phone.led`) i dzwoniący telefon odprawy
+  (`phoneTop`, `state: ringing`). Jeśli lint ich nie przepuści, usuń animację w klocku — hotspot się nie zmieni.
 - Id `clipPath` są prefiksowane id elementu, więc dwa monitory w jednej scenie nie kolidują.
 
 ## Paleta

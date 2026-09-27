@@ -1,4 +1,5 @@
 import { P } from './palette.js';
+import { ODPRAWA_PROPS } from './props-odprawa.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -380,4 +381,6 @@ export const PROPS: Record<string, PropFn<any>> = {
   desk, drawerUnit, chair, plant,
   monitor, stickyNote, phone, printer, mug, keyboardMouse, laptop, smartphone, box,
   wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper,
+  // Odprawa (BRIEFING) - widok z góry na biurko detektywa (props-odprawa.ts); nazwy nie kolidują z powyższymi.
+  ...ODPRAWA_PROPS,
 };

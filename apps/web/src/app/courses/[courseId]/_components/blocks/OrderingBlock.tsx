@@ -301,7 +301,9 @@ export default function OrderingBlock({
     },
   });
 
-  const cardText = { fontSize: u(orientation === 'portrait' ? 18 : 15), lineHeight: 1.3 } as CSSProperties;
+  // Pion: 17 (nie 18) - przy 18 najdłuższy ślad modułu 1 mieścił się w karcie bez zapasu i zaokrąglenia glifów (390x844, ~11 px)
+  // dawały dodatkową linię ucinaną przez overflow (layout-check b3).
+  const cardText = { fontSize: u(orientation === 'portrait' ? 17 : 15), lineHeight: 1.3 } as CSSProperties;
   // Zdanie pod tablicą: z reakcji wyniku, a bez niej z wyjaśnienia autora (`explanation` z serwera), na końcu - zdanie ogólne.
   const feedback = feedbackSentence(result?.reaction?.text ?? result?.detail?.explanation, result?.correct);
   const titleText = caseNo ? `Tablica śledcza · ${caseNo}` : 'Tablica śledcza';

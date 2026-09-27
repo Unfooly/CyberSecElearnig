@@ -234,9 +234,11 @@ Wszystkie polecenia z VPS-a (lub z dowolnego miejsca, gdzie jest publiczny adres
 
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml down          # zatrzymuje kontenery, dane zostają
-docker compose --env-file .env.prod -f docker-compose.prod.yml down -v       # UWAGA: kasuje wolumeny (baza!)
-docker image prune -a                                   # stare obrazy po kilku wdrożeniach (oszczędza dysk)
+bash scripts/ops/disk-cleanup.sh                        # stare obrazy (> 7 dni), cache buildera, journald - docs/ops/DISK.md
 ```
+
+Nigdy nie czyść wolumenów (`down -v`, `volume prune`, `system prune`, `--volumes`) - `postgres_data` to baza bez kopii zapasowej
+(B-117). Jedyny wyjątek to jednorazowy reset przed publicznym startem (sekcja 9), świadomie i ręcznie.
 
 Rotacja tokenu tunelu: w panelu Cloudflare wygeneruj nowy token, podmień `TUNNEL_TOKEN` w `.env.prod`
 i `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d cloudflared`. Rotacja tokenu GHCR: załóż nowy

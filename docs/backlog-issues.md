@@ -498,6 +498,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   z punktu kursora.
 - Akceptacja: jak w specyfikacji B; test reduced-motion, layout-check (brak przesunięć układu przy konfetti), e2e modułu 1.
 
+### B-117 Kopia zapasowa bazy produkcyjnej (postgres_data)
+- Etykiety: `P1`, `ops`, `mod:db` · Źródło: `chore/disk-hygiene` (D), docs/ops/DISK.md
+- Opis: wolumen `postgres_data` na VPS nie ma kopii zapasowej - awaria dysku, pomyłka (`down -v`, `volume prune`) albo błąd migracji
+  oznacza nieodwracalną utratę danych klientów. Skrypty w `scripts/ops` mają zakaz czyszczenia wolumenów (test w CI), ale to tylko
+  bariera przed pomyłką.
+- Akceptacja: codzienny `pg_dump` (rola z prawem odczytu, poza RLS tylko przez jawny wyjątek) do magazynu poza VPS (np. R2, szyfrowany,
+  retencja 14 dni), procedura odtworzenia sprawdzona na kopii, alarm przy nieudanym backupie; wpis w checkliście RODO (retencja kopii).
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

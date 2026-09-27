@@ -44,6 +44,15 @@ const ANIM_CSS = `<style>
 #static:target *{animation:none!important}
 </style>`;
 
+// Jednorazowe animacje wejścia (D-090, B-116): dopisywane do <style> TYLKO w scenach, które ich używają - reszta scen (i ich
+// opublikowane pliki) się nie zmienia. Stempel spada: scale 1.4 -> 1 z obrotem -12deg, lekkie przestrzelenie krzywej (350 ms, po 0,5 s).
+// reduced-motion / #static: animation:none z ANIM_CSS - stempel stoi od razu (opacity domyślna 1).
+const ONCE_CSS: Record<string, string> = {
+  'a-stamp':
+    '.a-stamp{animation:a-stamp .35s cubic-bezier(.3,1.4,.6,1) .5s both;transform-box:fill-box;transform-origin:center}\n' +
+    '@keyframes a-stamp{from{opacity:0;transform:scale(1.4) rotate(-12deg)}to{opacity:1;transform:none}}\n',
+};
+
 export function validateScene(spec: SceneSpec): string[] {
   const errors: string[] = [];
   const ids = new Set<string>();
@@ -107,7 +116,19 @@ export function composeScene(spec: SceneSpec): ComposeResult {
     }
   }
   parts.push('</svg>');
-  return { svg: parts.join('\n'), hotspots, width: W, height: H };
+  let svg = parts.join('\n');
+  const once = Object.entries(ONCE_CSS)
+    // Pełna nazwa klasy w liście klas (nie "a-stamp-cos" - myślnik to granica słowa dla \b).
+    .filter(([cls]) => new RegExp(`class="(?:[^"]*\\s)?${cls}(?:\\s[^"]*)?"`).test(svg))
+    .map(([, css]) => css)
+    .join('');
+  if (once) {
+    // Do pierwszego <style> (ANIM_CSS). Reguły zatrzymujące (reduced-motion, #static) mają !important, więc wygrywają niezależnie od
+    // kolejności. Brak kotwicy = błąd builda (inaczej klasa zostałaby po cichu bez reguł).
+    if (!svg.includes('</style>')) throw new Error('Brak <style> w scenie - nie da się dopisać animacji jednorazowych');
+    svg = svg.replace('</style>', `${once}</style>`);
+  }
+  return { svg, hotspots, width: W, height: H };
 }
 
 /** Podgląd HTML z zaznaczonymi hotspotami — do sprawdzenia oka, nie do repo. */

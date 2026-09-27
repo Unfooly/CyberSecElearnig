@@ -48,12 +48,14 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany po
   ostatnim kroku albo po „Pomiń odprawę”. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
   wyłącznie klient z sesji (nigdy `module.json` ani `progress`).
-- Grafika kroku (D-084, opcjonalna): `image` (scena, plik z `assets/`, potok `--assets`), `imageReducedMotion` (wariant bez animacji
-  SMIL), `hotspot { id, x, y, w, h }` (klik = `cta`; przycisk zostaje dla klawiatury), `slots { tasks?, name?, number?, photo? }`
+- Grafika kroku (D-084, opcjonalna): `image` (scena, plik z `assets/`, potok `--assets`; animacje CSS w SVG zatrzymuje odtwarzacz
+  fragmentem `#static` przy reduced-motion), `hotspot { id, x, y, w, h }` (klik = `cta`; przycisk zostaje dla klawiatury), `slots { tasks?, name?, number?, photo? }`
   (prostokąty na HTML: `tasks` tylko w caseFile z `tasks`, reszta tylko w badge), w caseFile także `closedImage` (zamknięta teczka,
   wymaga `hotspot`, klik otwiera `image`). Prostokąty w % sceny, w jej granicach; każde z tych pól wymaga `image`. Krok bez `image`
   wygląda jak dotąd (karta na jasnym tle). W scenie nie są używane `caller.avatar` (postać jest w grafice) ani avatar gracza
   (w slocie `photo` są jego inicjały).
+- Miniatura modułu (D-084, opcjonalna): `thumbnail` na poziomie modułu - obraz 16:9 z `assets/` (potok `--assets`, klucz locka
+  `module#thumbnail`), zapisywany przez import w `courses.thumbnail` i pokazywany na kartach katalogu i „moich kursów”.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
   notatniku (czytana z bloku BRIEFING bieżącej wersji treści). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są
   ukończone (to nie ocena). `completeWhen` wskazuje istniejące bloki modułu, nigdy `BRIEFING` (pominięcie odprawy nie odhacza

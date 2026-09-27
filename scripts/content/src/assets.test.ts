@@ -27,7 +27,7 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   for (const hotspot of scene.hotspots) delete hotspot.media;
   // To samo z grafiką kroków odprawy (D-084): własne testy niżej (moduleWithBriefingScenes).
   const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
-  for (const step of briefing.steps) for (const field of ['image', 'imageReducedMotion', 'closedImage', 'hotspot', 'slots']) delete step[field];
+  for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'slots']) delete step[field];
   return module as unknown as Record<string, unknown>;
 }
 
@@ -119,29 +119,41 @@ function moduleWithBriefingScenes(): Record<string, unknown> {
   const briefing = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
   const typewriter = briefing.steps.find((s) => s.kind === 'typewriter')!;
   const caseFile = briefing.steps.find((s) => s.kind === 'caseFile')!;
-  Object.assign(typewriter, { image: 'biurko.png', imageReducedMotion: 'biurko-static.png', hotspot: { id: 'telefon', x: 1, y: 1, w: 10, h: 10 } });
+  Object.assign(typewriter, { image: 'biurko.png', hotspot: { id: 'telefon', x: 1, y: 1, w: 10, h: 10 } });
   Object.assign(caseFile, { closedImage: 'teczka.png', image: 'akta.png', hotspot: { id: 'teczka', x: 1, y: 1, w: 10, h: 10 } });
   return module;
 }
 
 describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
-  it('collectAssetRefs znajduje steps[].image, imageReducedMotion i closedImage', () => {
+  it('collectAssetRefs znajduje steps[].image i closedImage', () => {
     const values = collectAssetRefs(moduleWithBriefingScenes()).map((ref) => ref.value).sort();
-    expect(values).toEqual(['akta.png', 'anna.png', 'biurko-static.png', 'biurko.png', 'scena.png', 'teczka.png']);
+    expect(values).toEqual(['akta.png', 'anna.png', 'biurko.png', 'scena.png', 'teczka.png']);
   });
 
   it('brak pliku obrazu kroku w assets/ przerywa publikację (bez zapisu locka)', async () => {
     await writeFile(modulePath, JSON.stringify(moduleWithBriefingScenes()));
-    for (const file of ['biurko.png', 'biurko-static.png', 'akta.png']) await writeFile(join(assetsDir, file), PNG); // bez teczka.png
+    for (const file of ['biurko.png', 'akta.png']) await writeFile(join(assetsDir, file), PNG); // bez teczka.png
     await expect(runAssetsPipeline(params())).rejects.toThrow(/Zasób "teczka\.png" \(blok "odprawa"\) nie istnieje w katalogu assets\/ modułu/);
     await expect(readFile(join(dir, 'assets.lock.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('miniatura modułu (thumbnail) to zasób potoku: klucz module#thumbnail, publikowana z wersjonowaną nazwą', async () => {
+    const module = { ...moduleWithAssets(), thumbnail: 'miniatura.png' };
+    expect(collectAssetRefs(module).find((ref) => ref.id === 'module#thumbnail')?.value).toBe('miniatura.png');
+    await writeFile(modulePath, JSON.stringify(module));
+    await writeFile(join(assetsDir, 'miniatura.png'), PNG);
+    await runAssetsPipeline(params());
+    const saved = JSON.parse(await readFile(modulePath, 'utf8'));
+    expect(saved.thumbnail).toMatch(/^assets\/sprawa-testowa\/miniatura\.[0-9a-f]{8}\.png$/);
+    expect(JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8')).entries['module#thumbnail'].original).toBe('miniatura.png');
   });
 
   it('moduł 1: każdy obraz odprawy wskazuje istniejący plik w assets/ (przed publikacją nazwa pliku, po - klucz z locka)', async () => {
     const moduleDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules', 'wyludzone-haslo');
     const raw = JSON.parse(await readFile(join(moduleDir, 'module.json'), 'utf8'));
     const lock = JSON.parse(await readFile(join(moduleDir, 'assets.lock.json'), 'utf8')) as { entries: Record<string, { original: string; key: string }> };
-    const refs = collectAssetRefs(raw).filter((ref) => ref.blockId === 'odprawa');
+    const refs = collectAssetRefs(raw).filter((ref) => ref.blockId === 'odprawa' || ref.id === 'module#thumbnail');
+    expect(refs.some((ref) => ref.id === 'module#thumbnail')).toBe(true);
     expect(refs.length).toBeGreaterThan(0);
     for (const ref of refs) {
       const entry = lock.entries[ref.id];

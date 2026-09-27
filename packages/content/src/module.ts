@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { blockSchema } from './blocks';
-import { COURSE_CATEGORIES, idSchema, text } from './common';
+import { COURSE_CATEGORIES, idSchema, imagePathSchema, text } from './common';
 
 /**
  * Wersja formatu modułu z silnikiem scen (bieżąca). Wersja 1 to "legacy": bloki bez `id`, zapisane przed silnikiem (patrz
@@ -32,6 +32,8 @@ export const moduleSchema = z
     // schemaVersion 4: cele szkoleniowe (lista tekstów), np. do katalogu kursów. Zadania sprawy (odhaczane w notatniku) to
     // co innego: `tasks` kroku caseFile bloku BRIEFING (blocks.ts, D-081).
     objectives: z.array(text(200)).max(6).optional(),
+    // Miniatura modułu 16:9 do katalogu i karty kursu (plik z assets/ modułu, potok --assets; D-084) - addytywnie w v5.
+    thumbnail: imagePathSchema.optional(),
     blocks: z.array(blockSchema).min(1).max(200),
   })
   .strict();

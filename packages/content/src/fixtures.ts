@@ -314,9 +314,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           sub: 'Dzwoni telefon.',
           cta: 'Odbierz',
           narration: audio('odprawa-0'),
-          // Grafika kroku (D-084): scena, wariant bez animacji i hotspot = cta.
+          // Grafika kroku (D-084): scena i hotspot = cta.
           image: 'scenes/biurko.svg',
-          imageReducedMotion: 'scenes/biurko-static.svg',
           hotspot: { id: 'telefon', x: 49, y: 21.6, w: 16.3, h: 54.2 },
         },
         {

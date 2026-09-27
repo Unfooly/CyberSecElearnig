@@ -107,7 +107,6 @@ const BRIEFING_SLOT_KINDS: Record<string, string> = { tasks: 'caseFile', name: '
 interface BriefingSceneLike {
   kind: string;
   image?: string;
-  imageReducedMotion?: string;
   closedImage?: string;
   hotspot?: { id: string; x: number; y: number; w: number; h: number };
   slots?: Partial<Record<string, { x: number; y: number; w: number; h: number }>>;
@@ -125,7 +124,6 @@ function briefingSceneErrors(label: string, step: BriefingSceneLike): string[] {
     if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`${label}.${name}: prostokąt wychodzi poza scenę (x + w i y + h najwyżej 100)`);
   };
   const needsImage = (name: string) => errors.push(`${label}.${name} wymaga pola image (obrazu sceny kroku)`);
-  if (step.imageReducedMotion !== undefined && step.image === undefined) needsImage('imageReducedMotion');
   // closedImage istnieje tylko w schemacie kroku caseFile (inne kroki odrzuca .strict()).
   if (step.closedImage !== undefined) {
     if (step.image === undefined) needsImage('closedImage');
@@ -474,6 +472,8 @@ export function parseModule(input: unknown): ContentModule {
     if (contentModule.level !== undefined) errors.push('level: wymaga schemaVersion 4');
     if (contentModule.objectives !== undefined) errors.push('objectives: wymaga schemaVersion 4');
   }
+  // Miniatura modułu (D-084) - addytywnie w v5. Istnienie pliku sprawdza potok zasobów (--assets), jak obrazy bloków.
+  if (contentModule.schemaVersion < 5 && contentModule.thumbnail !== undefined) errors.push('thumbnail: wymaga schemaVersion 5');
   // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
   // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
   // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).

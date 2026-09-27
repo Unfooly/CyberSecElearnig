@@ -792,6 +792,31 @@ describe('parseModule: schemaVersion 5 (voice, media.narration)', () => {
   });
 });
 
+describe('parseModule: miniatura modułu (thumbnail, D-084)', () => {
+  const issues = (mutate: (m: TestModule) => void): string => {
+    const module = fullModuleForTests();
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  it('ścieżka zasobu obrazu jest przyjmowana; zewnętrzny adres, ".." i złe rozszerzenie - nie; wymaga schemaVersion 5', () => {
+    expect(issues((m) => ((m as Record<string, unknown>).thumbnail = 'miniatura-sprawa.svg'))).toBe('');
+    expect(issues((m) => ((m as Record<string, unknown>).thumbnail = 'https://evil.example/x.svg'))).toContain('thumbnail');
+    expect(issues((m) => ((m as Record<string, unknown>).thumbnail = '../x.svg'))).toContain('thumbnail');
+    expect(issues((m) => ((m as Record<string, unknown>).thumbnail = 'miniatura.gif'))).toContain('thumbnail');
+    expect(
+      issues((m) => {
+        (m as Record<string, unknown>).thumbnail = 'miniatura.svg';
+        m.schemaVersion = 4;
+      }),
+    ).toContain('thumbnail: wymaga schemaVersion 5');
+  });
+});
+
 // Grafika kroków odprawy (D-084): scena, hotspot = cta, sloty, dwie fazy caseFile.
 describe('parseModule: BRIEFING - grafika kroków', () => {
   const invalid = (mutate: (m: TestModule) => void): string => {
@@ -820,7 +845,7 @@ describe('parseModule: BRIEFING - grafika kroków', () => {
 
   it('pola sceny wymagają obrazu; nieznany slot i pole spoza schematu są odrzucone', () => {
     expect(invalid((m) => delete step(m, 0).image)).toContain('steps[0].hotspot wymaga pola image');
-    expect(invalid((m) => delete step(m, 0).image)).toContain('steps[0].imageReducedMotion wymaga pola image');
+    expect(invalid((m) => (step(m, 0).imageReducedMotion = 'scenes/x.svg'))).toContain("Unrecognized key(s) in object: 'imageReducedMotion'");
     expect(invalid((m) => (step(m, 4).slots.avatar = { x: 1, y: 1, w: 1, h: 1 }))).toContain('slots');
     expect(invalid((m) => (step(m, 0).hotspot.label = 'Telefon'))).toContain('hotspot');
   });

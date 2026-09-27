@@ -35,9 +35,8 @@ export const ASSET_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'src'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
-  // Grafika kroków odprawy (BRIEFING, D-084): scena kroku, jej wariant bez animacji i zamknięta teczka kroku caseFile.
+  // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.
   ['steps', '*', 'image'],
-  ['steps', '*', 'imageReducedMotion'],
   ['steps', '*', 'closedImage'],
 ];
 
@@ -100,6 +99,12 @@ function expandAsset(node: unknown, path: string[], trail: string[]): { holder: 
 export function collectAssetRefs(raw: Json): AssetRef[] {
   const blocks = Array.isArray(raw.blocks) ? raw.blocks : [];
   const refs: AssetRef[] = [];
+  // Miniatura modułu (poziom modułu, nie bloku - D-084): klucz w lockfile `module#thumbnail` - nie koliduje z `<blockId>#...`, bo
+  // żaden typ bloku nie ma pola `thumbnail`. Publiczna jak obrazy bloków (katalog kursów). `blockId: 'module'` to pseudo-blok: w
+  // komunikatach potoku pojawia się jako (blok "module"), a `--only module` wybiera samą miniaturę.
+  if (typeof raw.thumbnail === 'string' && raw.thumbnail.trim() !== '') {
+    refs.push({ id: 'module#thumbnail', blockId: 'module', holder: raw, key: 'thumbnail', value: raw.thumbnail });
+  }
   for (const block of blocks) {
     if (!isObject(block) || typeof block.id !== 'string') continue;
     for (const path of ASSET_PATHS) {

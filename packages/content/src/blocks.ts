@@ -363,14 +363,13 @@ const summarySchema = z
 // niż jednorazowa narracja NARRATIVE, więc nie warto naciągać jej umowy dla wszystkich pozostałych użyć tego typu.
 // Nieoceniany, bez dowodów - zaliczany po ostatnim kroku albo po kliknięciu "Pomiń odprawę" (obsługa w apps/web, D-081).
 // Grafika kroku odprawy (feat/briefing-scenes, D-084, addytywnie w v5): scena 16:9 zamiast karty na jasnym tle. `image` - tło
-// kroku (plik z assets/ modułu, potok --assets), `imageReducedMotion` - wariant bez animacji SMIL dla prefers-reduced-motion,
+// kroku (plik z assets/ modułu, potok --assets; animacje CSS w SVG zatrzymuje odtwarzacz fragmentem #static przy reduced-motion),
 // `hotspot` - prostokąt na scenie, którego klik = `cta` kroku (przycisk cta zostaje dla klawiatury i czytników ekranu), `slots` -
 // miejsca na scenie (w % sceny), w które odtwarzacz wstawia HTML: zadania sprawy (`tasks`), dane gracza z sesji (`name`, `number`,
 // `photo`). Prostokąty w 0-100 i w granicach sceny, zgodność pól z rodzajem kroku - semantics.ts.
 const briefingRectSchema = z.object({ x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) }).strict();
 const briefingSceneShape = {
   image: imagePathSchema.optional(),
-  imageReducedMotion: imagePathSchema.optional(),
   hotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
   slots: z
     .object({
@@ -819,7 +818,6 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].narration.cues[].startMs',
       // Grafika kroku (D-084): obrazy sceny i prostokąty (hotspot, sloty) - układ, nic tu nie jest sekretem.
       'steps[].image',
-      'steps[].imageReducedMotion',
       'steps[].closedImage',
       'steps[].hotspot.id',
       'steps[].hotspot.x',

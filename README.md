@@ -628,9 +628,9 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
   nadal nie ma dedykowanego pola "dlaczego" dla QUIZ/BRANCHING_SCENARIO — `contentBlocks` z `/start`
   ma celowo usunięte `correct`/`outcome`/ewentualny `feedback` z opcji (nie ujawniać klucza odpowiedzi
   przed odpowiedzią). PR 4 (schemaVersion 4, `reactions.result` - D-061/D-062) dodało jednak
-  autorski komentarz maskotki zależny od wyniku (`lastResult.reaction: {pose, text}`), pokazywany
-  przez dymek w powłoce niezależnie od `FeedbackPanel`'a (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`
-  wywołuje `mascot.show(feedback.reaction)`) - dla modułów, które go definiują (jak "Sprawa: wyłudzone
+  autorski komentarz zależny od wyniku (`lastResult.reaction: {pose, text}`; od D-093 liczy się tylko tekst),
+  pokazywany jako zwykły tekst pod wynikiem (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`,
+  `data-testid="feedback-reaction"`) - dla modułów, które go definiują (jak "Sprawa: wyłudzone
   hasło"), generyczne "Poprawna odpowiedź!"/"Niepoprawna odpowiedź." NIE jest już jedynym feedbackiem.
   To nadal nie jest pełne wyjaśnienie konkretnej odpowiedzi (poziom bloku, nie opcji) - starsza treść
   bez `reactions.result` zostaje przy samym komunikacie generycznym.

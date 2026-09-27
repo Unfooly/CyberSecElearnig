@@ -233,8 +233,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: frontend ręcznie duplikuje typy DTO z API (dashboard, kursy, import, phishing) - ryzyko rozjazdu przy zmianie backendu.
 - Akceptacja: przeniesienie współdzielonych DTO, kompilacja obu workspace'ów, brak duplikatów.
 
-### B-096 Dymek Fooli (`MascotOverlay.tsx`) może nie ogłosić PIERWSZEGO komunikatu na bloku
+### B-096 Dymek podpowiedzi (`Hint.tsx`, dawniej `MascotOverlay.tsx`) może nie ogłosić PIERWSZEGO komunikatu na bloku
 - Etykiety: `P2`, `bug`, `mod:web` · Źródło: dwa niezależne review (code-reviewer + a11y) fix-passu `feat/player-stage` po PR #44
+- Aktualizacja (D-093): problem przeszedł 1:1 na `player/Hint.tsx` - `Hint` zwraca `null` bez tekstu, a `PlayerStage.tsx` przekazuje
+  `hint` tylko wtedy, gdy jest; poniższy opis (nazwy sprzed D-093) dotyczy dziś `Hint`/`hint` zamiast `MascotOverlay`/`mascot`.
 - Opis: `<p role="status" aria-live="polite">` montuje się RAZEM z treścią (`{mascot && <MascotOverlay .../>}` w
   `PlayerStage.tsx`, `{text && <p role="status">...}` w środku) - czytniki ekranu z reguły NIE ogłaszają żywego
   regionu, który pojawił się w DOM już wypełniony, tylko kolejne ZMIANY treści już zamontowanego regionu. Blok bez
@@ -256,8 +258,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (np. fokus w chwili zamknięcia leżał wewnątrz panelu) - nie przy zamknięciu "z zewnątrz" (zmiana bloku); test na
   oba przypadki.
 
-### B-098 `MascotOverlay`: po "Zwiń" fokus zostaje na niewidocznym przycisku, bez wskaźnika fokusu
+### B-098 `Hint.tsx` (dawniej `MascotOverlay`): po "Zwiń" fokus zostaje na niewidocznym przycisku, bez wskaźnika fokusu
 - Etykiety: `P3`, `decision-needed`, `mod:web` · Źródło: a11y review fix-passu `feat/player-stage` po PR #44
+- Aktualizacja (D-093): dotyczy dziś przycisku „Zwiń podpowiedź” w `player/Hint.tsx` (oba warianty); „ikona maskotki” niżej = ikona
+  żarówki „Pokaż podpowiedź”.
 - Opis: świadoma decyzja tej rundy poprawek - zwinięcie dymka NIE przenosi fokusu (nie jest to modal, brak
   semantyki "powrotu"). Skutek uboczny: klawiaturowy użytkownik, który aktywował "Zwiń" (albo miał tam fokus, gdy
   odpalił się 8-sekundowy auto-collapse), zostaje z fokusem na przycisku, który zaraz potem znika wizualnie
@@ -278,6 +282,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (`a[href], button:not([disabled])`) pominie `input`/`textarea`/`select`/`[tabindex]`, gdyby `NotesPanel` kiedyś
   dostał taką zawartość.
 - Akceptacja: każdy punkt osobnym, małym PR-em albo przy najbliższej zmianie dotykającej dany plik.
+- Aktualizacja (D-093): `MascotOverlay.tsx` zastąpił `player/Hint.tsx`. (1) dotyczy dziś dymku w `Hint.tsx` (ten sam zapis klas);
+  (2) zrobione - przy rozwiniętym dymku ikona „Pokaż podpowiedź” jest `sr-only` i poza kolejnością Tab (`tabIndex=-1`).
 
 ### B-100 Łańcuch wysokości sceny (SCENE_HOTSPOTS, 16:9) - weryfikacja w prawdziwej przeglądarce
 - Etykiety: `P2`, `tech-debt`, `mod:web` · Źródło: code review fix-passu `feat/player-stage` po PR #44; zależne od `B-085`
@@ -324,6 +330,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   przestrzeń wcześniej.
 - Akceptacja: dymek czytelny (rozsądna szerokość, bez wielowierszowego przycinania pojedynczych słów) na telefonie
   w pionie; test regresyjny albo dopisanie do `scripts/layout-check.mjs`.
+- Aktualizacja (D-093): nakładka to dziś `player/Hint.tsx` (wariant `overlay`, dalej `max-w-[30%]`); zamiast avatara 76 px jest ikona
+  36 px, a przy rozwiniętym dymku ikona jest `sr-only` - dymek ma więc prawie całe ~117 px, nadal wąsko. Otwarte.
 
 ### B-103 Dymek maskotki może wizualnie zachodzić na pierwszy chip stopki DIALOGUE
 - Etykiety: `P3`, `bug`, `mod:web` · Źródło: `fix/dialogue-sticky-questions` - zauważone przy okazji (zrzuty
@@ -346,7 +354,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   nagłówkiem rozmowy, poza obszarem przewijania. Nic nie może już zachodzić na chipy, bo dymek nie jest już
   `position:absolute` - usunięty jest sam mechanizm, który powodował ten problem, nie tylko jego symptom. `.pl-24
   sm:pl-28` (rezerwacja miejsca na ikonkę we wcześniejszej wersji stopki) stała się zbędna i została usunięta razem
-  z tą zmianą.
+  z tą zmianą. (D-093: `MascotBanner.tsx` zastąpił pasek `player/Hint.tsx`, wariant `bar` - dalej w przepływie.)
 
 ### B-104 DIALOGUE na bardzo niskich/poziomych viewportach - pełne pokrycie WCAG 1.4.10
 - Etykiety: `P3`, `a11y`, `mod:web` · Źródło: code review `fix/dialogue-sticky-questions` - `DialogueBlock.tsx`'s
@@ -360,7 +368,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   D-080):** przybył JESZCZE JEDEN `shrink-0` element nad nagłówkiem rozmowy - `MascotBanner` (`{!review &&
   <MascotBanner/>}`, `mb-3`), renderowany gdy blok ma mascota - suma `shrink-0` elementów rośnie, więc dolna granica
   wysokości viewportu, przy której wątek/stopka stają się nieosiągalne, jest teraz WYŻSZA (problem bardziej
-  prawdopodobny, nie mniej) niż w chwili zgłoszenia tego wpisu. **Zaktualizowane (`feat/dialogue-chat`, D-087):** „Następna kwestia”
+  prawdopodobny, nie mniej) niż w chwili zgłoszenia tego wpisu (od D-093 ten pasek to `Hint` wariant `bar` - niższy, bez avatara).
+  **Zaktualizowane (`feat/dialogue-chat`, D-087):** „Następna kwestia”
   usunięte; przy wysokości ≤ 500 px nagłówek rozmowy znika, a chipy są w jednym przewijanym rzędzie - na 844x390 wątek ma ~120 px
   (layout-check sprawdza ≥ 80 px); zostaje duże powiększenie przeglądarki. Nie zmienia to akceptacji niżej, tylko fakt, że
   zmierzona granica musi uwzględnić też ten pasek.

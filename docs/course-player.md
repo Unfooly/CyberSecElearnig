@@ -60,10 +60,15 @@ Każde pole schematu bloku jest sklasyfikowane w `packages/content/src/blocks.ts
 - Autoodtwarzanie tylko po „Dalej”, gdy poprzedni blok miał nagranie i lektor jest włączony. Blok bez narracji nie ma rzędu odtwarzacza ani przełącznika (zamierzone).
 - Narracja pojedynczych elementów (punkt sceny, kwestia dialogu): B-078.
 
-## Maskotka
+## Podpowiedzi (D-093, dawniej maskotka)
 
-Pozy: `greeting`, `thinking`, `pointing`, `cheer`, `warning` (SVG w `packages/content/mascot`, kopiowane do `public/mascot` w buildzie, ładowane przez `<img>`).
-Poza spoczynkowa: `block.mascot` z treści albo domyślna dla typu (sceny z punktami: `pointing` z domyślnym tekstem). Reakcje na zdarzenia (`player/mascot-reaction.tsx`): nowy dowód = `cheer`, zła odpowiedź = `warning`, podpowiedź = `thinking`; reakcja trwa kilka sekund i dotyczy tylko bieżącego widoku.
+Odtwarzacz nie pokazuje postaci. Podpowiedź to sam tekst w neutralnym dymku z ikoną żarówki (`player/Hint.tsx`): na scenie z punktami w
+lewym dolnym rogu (chowa się, gdy otwarta jest nakładka), w blokach „slide” jako pasek nad treścią, w rozmowie nad wątkiem. Dymek zwija
+się po 8 s albo przy pierwszej interakcji z blokiem; ikona rozwija go z powrotem.
+Stała podpowiedź: tekst `block.mascot.text` z treści albo domyślna dla typu (sceny z punktami: „Rozejrzyj się. Kliknij to, co wygląda
+podejrzanie.”). Zdarzenia (`player/hints.tsx`): nowy dowód, zła odpowiedź, podpowiedź w zadaniu tekstowym - stałe teksty; reakcje z treści
+(`reactions.complete/result`) - ich tekst. Podpowiedź zdarzenia trwa 5 s i dotyczy tylko bieżącego widoku. Pole `pose` z treści i API jest
+przestarzałe i ignorowane. Reakcja na wynik bloku ocenianego (ekran informacji zwrotnej) to zwykły tekst pod wynikiem.
 
 ## Testy
 

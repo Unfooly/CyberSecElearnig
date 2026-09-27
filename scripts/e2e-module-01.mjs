@@ -125,10 +125,11 @@ try {
   await page.goto(`${WEB}/courses/${courseId}`);
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
   const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
-  const mascotAlt = (label) => page.getByAltText(`Maskotka Unfooly ${label}`);
-  // reactions.complete (klient) może na chwilę "przegrać" wyścig z inną reakcją zdarzeniową (np. mascot.react('evidence') przy
+  // D-093: odtwarzacz nie pokazuje postaci - żadnego obrazka maskotki (alt ani plik z /mascot/).
+  const noMascot = async () => (await page.getByAltText(/Maskotka/).count()) === 0 && (await page.locator('img[src*="/mascot/"]').count()) === 0;
+  // reactions.complete (klient) może na chwilę "przegrać" wyścig z inną reakcją zdarzeniową (np. hints.notify('evidence') przy
   // ostatnim wymaganym elemencie, który JEST też dowodem - DialogueBlock.tsx/SceneHotspotsBlock.tsx) w tym samym cyklu renderowania:
-  // druga reakcja (z useCompleteReaction) nadpisuje pierwszą w KOLEJNYM, natychmiastowym cyklu efektów. getByText(...).waitFor()
+  // druga reakcja (z useCompleteHint) nadpisuje pierwszą w KOLEJNYM, natychmiastowym cyklu efektów. getByText(...).waitFor()
   // (auto-retry Playwrighta) czeka na TEN docelowy tekst zamiast zgadywać z arbitralnym opóźnieniem.
   const reactionText = (text) => page.getByText(text, { exact: true }).waitFor();
 
@@ -160,7 +161,7 @@ try {
   step('BRIEFING: odprawa jako scena z grafiką, jedynym przyciskiem kroku jest przedmiot (telefon)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByRole('button', { name: 'Odbierz telefon' }).count()) === 1);
   step('BRIEFING: krok 0 - "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków."', (await page.getByText(/Wtorek, 9:40\. Wydział Cyberbezpieczeństwa, Kraków\. Dzwoni telefon służbowy\./).count()) >= 1);
   await briefingItem('Odbierz telefon');
-  step('BRIEFING: dzwoni komisarz - dymek w scenie, bez maskotki', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0);
+  step('BRIEFING: dzwoni komisarz - dymek w scenie, bez maskotki', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1 && (await noMascot()));
   await briefingItem('Rozłącz');
   // Karta sprawy w dwóch fazach: zamknięta teczka ("Otwórz teczkę") -> akta z zadaniami w slocie; klik w akta zamyka teczkę.
   await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
@@ -348,7 +349,10 @@ try {
   const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
   step('SUMMARY: wszystkie 22 dowody zebrane (1+5+4+4+5+3)', summaryText.includes('Zebrane dowody: 22 z 22'), summaryText.slice(0, 120));
   step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
-  step('SUMMARY: poza spoczynkowa maskotki (greeting, "Sprawa zamknięta")', (await mascotAlt('wita').count()) === 1);
+  step(
+    'SUMMARY: podpowiedź z treści ("Sprawa zamknięta..."), bez maskotki (D-093)',
+    (await page.getByText('Sprawa zamknięta. Dobra robota, detektywie.', { exact: true }).count()) === 1 && (await noMascot()),
+  );
 
   const completion = progressResponse();
   await page.getByRole('button', { name: 'Zakończ sprawę' }).click();

@@ -509,7 +509,13 @@ try {
   await take();
   await page.getByRole('button', { name: 'Monitor' }).click();
   await take();
-  step('śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i maskotka się cieszy', (await counter().textContent())?.includes('Dowody 2/?') === true && (await page.getByAltText('Maskotka Unfooly się cieszy').count()) === 1, await counter().textContent());
+  step(
+    'śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i podpowiedź o dowodzie (bez maskotki, D-093)',
+    (await counter().textContent())?.includes('Dowody 2/?') === true &&
+      (await page.getByTestId('hint-overlay').getByText('Mamy dowód! Trafił do notatnika.').count()) === 1 &&
+      (await page.getByAltText(/Maskotka/).count()) === 0,
+    await counter().textContent(),
+  );
   step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-po');
   await noHScroll('desktop, hotspoty');
@@ -612,7 +618,7 @@ try {
   step('śledztwo: serwer ocenił mail (25%), rozstrzygnięcie po id nieprzejrzystych, dowody 5/6 i notatki od razu', mailBody.lastResult?.points === 0.25 && mailBody.lastResult?.detail?.criteria?.length === 5 && mailBody.evidence?.collected === 5 && mailBody.evidence?.total === 6 && mailBody.notes?.length === 2 && !JSON.stringify(mailBody.lastResult.detail).match(/"(adres|link|zalacznik|grozba|ogolny)"/), JSON.stringify({ points: mailBody.lastResult?.points, evidence: mailBody.evidence?.collected + '/' + mailBody.evidence?.total, notes: mailBody.notes?.length }));
   await page.getByText(/Wynik: 25%/).waitFor();
   step('śledztwo: wynik maila w bloku: trafione, fałszywy alarm i przeoczone; licznik 5/6, notatnik (5)', (await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).textContent())?.includes('(trafione)') === true && (await page.getByTestId('mail-client').getByRole('button', { name: /Załącznik/ }).textContent())?.includes('(fałszywy alarm)') === true && (await counter().textContent())?.includes('Dowody 5/6') === true && (await page.getByRole('button', { name: /Notatnik \(5\)/ }).count()) === 1, await counter().textContent());
-  step('śledztwo: zła odpowiedź maila: maskotka ostrzega', (await page.getByAltText('Maskotka Unfooly ostrzega').count()) === 1);
+  step('śledztwo: zła odpowiedź maila: podpowiedź ostrzega', (await page.getByTestId('hint-bar').getByText('Uważaj, coś tu nie gra.').count()) === 1);
   await shoot('mail-wynik');
   await noHScroll('desktop, wynik maila');
   await nextEnabled().click();
@@ -648,7 +654,10 @@ try {
   await attemptInput.fill('bank-0ficjalny.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Prawdziwa domena to ostatni człon/).waitFor();
-  step('śledztwo: po błędnej próbie podpowiedź i maskotka "thinking"', (await page.getByAltText('Maskotka Unfooly się zastanawia').count()) === 1 && (await page.getByText(/Pozostało prób: 2/).count()) === 1);
+  step(
+    'śledztwo: po błędnej próbie podpowiedź w bloku i w pasku powłoki',
+    (await page.getByTestId('hint-bar').getByText('Hmm, zastanówmy się jeszcze raz.').count()) === 1 && (await page.getByText(/Pozostało prób: 2/).count()) === 1,
+  );
   await shoot('tekst-podpowiedz');
   await noHScroll('desktop, zadanie tekstowe');
   await attemptInput.fill('weryfikacja-konta.example');

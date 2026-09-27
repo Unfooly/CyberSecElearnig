@@ -21,14 +21,12 @@ import Pill from '@/components/ui/Pill';
 import { LANDING_PRICING } from '@/lib/landing-config';
 import DashboardPreview from './DashboardPreview';
 import DemoForm from './DemoForm';
-import { WRAP } from './layout-constants';
+import { BTN_LG, WRAP } from './layout-constants';
 
 export { LandingNav } from './LandingNav';
 
 const H2 = 'text-[30px] font-extrabold leading-[1.12] tracking-[-0.03em] sm:text-[36px] lg:text-[40px]';
 const LEAD = 'text-lg text-muted sm:text-xl';
-// Większe przyciski niż w aplikacji (mockup landingu: 56 px / 48 px).
-const BTN_LG = 'h-14 rounded-[14px] px-7 text-base';
 
 function Eyebrow({ children, light = false }: { children: ReactNode; light?: boolean }) {
   return (

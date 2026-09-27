@@ -16,6 +16,7 @@ import {
   PricingSection,
   WhySection,
 } from './_landing/sections';
+import FilmSection from './_landing/FilmSection';
 
 const TITLE = 'Unfooly — szkolenia z cyberbezpieczeństwa i symulacje phishingu dla firm';
 const DESCRIPTION =
@@ -61,6 +62,7 @@ export default function HomePage() {
       <LandingNav />
       <main>
         <Hero />
+        <FilmSection />
         <WhySection />
         <HowSection />
         <FeaturesSection />

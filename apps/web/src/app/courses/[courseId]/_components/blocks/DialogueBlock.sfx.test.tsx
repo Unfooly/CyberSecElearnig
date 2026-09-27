@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import DialogueBlock from './DialogueBlock';
 import { NotesProvider } from '../player/notes';
 import { EvidenceProvider } from '../player/evidence';
-import { MascotReactionProvider } from '../player/mascot-reaction';
+import { HintProvider } from '../player/hints';
 import { SfxProvider, SFX_VOLUME, __setGestureSeenForTests } from '@/lib/sfx';
 import type { ContentBlock } from '@/lib/courses-types';
 
@@ -22,9 +22,9 @@ function renderChat({ enabled = true, review = false }: { enabled?: boolean; rev
     <SfxProvider enabled={enabled}>
       <NotesProvider initial={[]}>
         <EvidenceProvider summary={undefined}>
-          <MascotReactionProvider resetKey="k">
+          <HintProvider resetKey="k">
             <DialogueBlock block={dialogue} contentBase="/content" onSubmit={() => {}} onReady={() => {}} review={review} />
-          </MascotReactionProvider>
+          </HintProvider>
         </EvidenceProvider>
       </NotesProvider>
     </SfxProvider>,

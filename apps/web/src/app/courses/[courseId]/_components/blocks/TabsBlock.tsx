@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
-import { useCompleteReaction } from '../player/mascot-reaction';
+import { useCompleteHint } from '../player/hints';
 import { SimpleMarkdown } from '../simple-markdown';
 import ExploreFooter from './ExploreFooter';
 
@@ -31,7 +31,7 @@ export default function TabsBlock({
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
   const ready = doneCount >= required.length;
-  useCompleteReaction(block.reactions?.complete, ready, review);
+  useCompleteHint(block.reactions?.complete, ready, review);
 
   useEffect(() => {
     if (review) return;

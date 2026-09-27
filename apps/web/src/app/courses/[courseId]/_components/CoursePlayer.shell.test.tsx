@@ -103,14 +103,14 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       expect(mains[0]).toHaveAccessibleName('Sprawa testowa');
     });
 
-    it('maskotka i dymek z treści bloku jako jedna jednostka', () => {
+    it('tekst `block.mascot` z treści jako podpowiedź w pasku, bez postaci (D-093: poza ignorowana)', () => {
       render(<CoursePlayer courseId="course-1" initial={course()} />);
-      // course() domyślnie NIE jest SCENE_HOTSPOTS -> contentLayout='slide' -> MascotBanner (pasek), nie floating
-      // MascotOverlay/mascot-says (fix/dialogue-polish).
-      const unit = screen.getByTestId('mascot-banner');
+      // course() domyślnie NIE jest SCENE_HOTSPOTS -> contentLayout='slide' -> pasek, nie nakładka sceny.
+      const unit = screen.getByTestId('hint-bar');
       expect(unit).toContainElement(screen.getByText('Cześć! Zaczynamy.'));
-      expect(unit).toContainElement(screen.getByAltText('Maskotka Unfooly wita'));
-      expect(screen.getByAltText('Maskotka Unfooly wita')).toHaveAttribute('src', '/mascot/fooli-greeting.svg');
+      expect(screen.queryByTestId('hint-overlay')).not.toBeInTheDocument();
+      expect(unit.querySelector('img')).toBeNull();
+      expect(document.querySelector('img[src^="/mascot/"]')).toBeNull();
     });
 
     it('podpowiedź przy nieaktywnym "Dalej" jest w tym samym rzędzie nawigacji (aria-describedby), nie pod przyciskiem', () => {

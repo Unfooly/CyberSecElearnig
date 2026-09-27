@@ -3,7 +3,7 @@
 import type { ContentBlock } from '@/lib/courses-types';
 import { GroupedNotes, useNotes } from '../player/notes';
 import { hasEvidence, useEvidence } from '../player/evidence';
-import { useCompleteReaction } from '../player/mascot-reaction';
+import { useCompleteHint } from '../player/hints';
 import { SimpleMarkdown } from '../simple-markdown';
 import CaseEvidenceSection from '../CaseEvidenceSection';
 
@@ -25,7 +25,7 @@ export default function SummaryBlock({
   const { notes, blockTitles } = useNotes();
   const { summary } = useEvidence();
   const investigation = hasEvidence(summary);
-  useCompleteReaction(block.reactions?.complete, true, review);
+  useCompleteHint(block.reactions?.complete, true, review);
 
   return (
     <div>

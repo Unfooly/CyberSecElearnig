@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from 'react';
 import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/courses-types';
-import { useMascotReaction } from '../player/mascot-reaction';
+import { useHints } from '../player/hints';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
@@ -43,7 +43,8 @@ export default function TextInputBlock({
   onProgress?: (patch: Partial<ClientProgressBlock>) => void;
 }) {
   const inputId = useId();
-  const mascot = useMascotReaction();
+  // Dymek podpowiedzi powłoki (D-093) - `hints` niżej to co innego: odsłonięte podpowiedzi zadania.
+  const hintBar = useHints();
   const maxAttempts = block.maxAttempts ?? 4;
   const [value, setValue] = useState('');
   const [attempts, setAttempts] = useState(progress?.attempts ?? 0);
@@ -103,12 +104,12 @@ export default function TextInputBlock({
       });
       if (data.hint) {
         setHints((list) => [...list, data.hint!.text]);
-        mascot.react('hint');
+        hintBar.notify('hint');
       } else if (data.done && data.reaction) {
         // Reakcja z treści (schemaVersion 4, reactions.result: when correct/incorrect) ma pierwszeństwo nad ogólnym ostrzeżeniem.
-        mascot.show(data.reaction);
+        hintBar.show(data.reaction);
       } else if (!data.correct) {
-        mascot.react('wrong');
+        hintBar.notify('wrong');
       }
       if (!data.correct && !data.done) {
         setMessage(`To nie ta odpowiedź. Pozostało prób: ${data.attemptsLeft}.`);

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import TextInputBlock from './TextInputBlock';
-import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { HINT_EVENT_TEXT, HintProvider, useHints } from '../player/hints';
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
 
 const block: ContentBlock = {
@@ -20,15 +20,15 @@ const attempt = (over: Record<string, unknown> = {}) => ({
 });
 
 function Probe() {
-  return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+  return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
 }
 
 function setup(props: { progress?: ClientProgressBlock; onContinue?: () => void; onProgress?: (p: Partial<ClientProgressBlock>) => void; readOnly?: boolean } = {}) {
   render(
-    <MascotReactionProvider resetKey="k">
+    <HintProvider resetKey="k">
       <TextInputBlock block={block} courseId="course-1" {...props} />
       <Probe />
-    </MascotReactionProvider>,
+    </HintProvider>,
   );
 }
 
@@ -41,7 +41,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     vi.restoreAllMocks();
   });
 
-  it('wysyła próbę na BFF (bez oceny i bez punktów), błędna próba pokazuje podpowiedź, licznik i maskotka "thinking"', async () => {
+  it('wysyła próbę na BFF (bez oceny i bez punktów), błędna próba pokazuje podpowiedź, licznik i podpowiedź w powłoce', async () => {
     const fetchMock = vi.fn().mockResolvedValue(attempt({ hint: { text: 'Spójrz na to, co jest tuż przed pierwszym ukośnikiem.' } }));
     vi.stubGlobal('fetch', fetchMock);
     setup();
@@ -58,18 +58,18 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(JSON.parse(init.body)).toEqual({ answer: 'bank.pl' });
     expect(screen.getByText('To nie ta odpowiedź. Pozostało prób: 2.')).toBeInTheDocument();
     expect(screen.getByText('Próba 2 z 3 (pozostało: 2).')).toBeInTheDocument();
-    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.hint);
     // Pole czyści się po błędnej próbie (nie zostaje stara odpowiedź).
     expect((screen.getByLabelText('Jaka jest prawdziwa domena w linku?') as HTMLInputElement).value).toBe('');
   });
 
-  it('błędna próba bez podpowiedzi: maskotka "warning"', async () => {
+  it('błędna próba bez podpowiedzi: ostrzeżenie w powłoce', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt()));
     setup();
     type('zle');
     check();
     await screen.findByText(/Pozostało prób: 2/);
-    expect(screen.getByTestId('reaction')).toHaveTextContent('warning');
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
   });
 
   it('poprawna próba: wynik, brak pola, "Dalej" wywołuje onContinue (zapis postępu)', async () => {
@@ -97,7 +97,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     type('bank.pl');
     check();
     await screen.findByText(/Poprawna odpowiedź!/);
-    expect(screen.getByTestId('reaction')).toHaveTextContent('cheer');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('Świetnie!');
   });
 
   it('wyczerpane próby: rozwiązanie z wyjaśnieniem', async () => {
@@ -149,9 +149,9 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     render(
-      <MascotReactionProvider resetKey="k">
+      <HintProvider resetKey="k">
         <TextInputBlock block={{ ...block, id: undefined }} courseId="course-1" />
-      </MascotReactionProvider>,
+      </HintProvider>,
     );
     type('a');
     check();

@@ -11,7 +11,7 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { flyEvidence } from '@/lib/motion';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
-import { useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
+import { useCompleteHint, useHints } from '../player/hints';
 import { useOverlayLayer } from '../player/overlay-stack';
 import ScenePanContainer from '../player/ScenePanContainer';
 import { vibrate } from '@/lib/vibrate';
@@ -106,7 +106,7 @@ export default function SceneHotspotsBlock({
   const initialPanX = computeHotspotCentroid(hotspots);
   const { addNote } = useNotes();
   const evidence = useEvidence();
-  const mascot = useMascotReaction();
+  const hints = useHints();
   const reducedMotion = usePrefersReducedMotion();
   const [visited, setVisited] = useState<string[]>([]);
   const [noted, setNoted] = useState<string[]>([]);
@@ -159,7 +159,7 @@ export default function SceneHotspotsBlock({
   const doneCount = required.filter((id) => visited.includes(id)).length;
   const ready = doneCount >= required.length;
   const hasDoor = doorIds.size > 0;
-  useCompleteReaction(block.reactions?.complete, ready, review);
+  useCompleteHint(block.reactions?.complete, ready, review);
 
   useEffect(() => {
     if (review) return;
@@ -325,7 +325,7 @@ export default function SceneHotspotsBlock({
     evidence.addPending(`${block.id}.${hotspot.id}`);
     // Ruch (D-090): nazwa przedmiotu leci od "Zabierz" do Notatnika (przed odłożeniem - przycisk jeszcze stoi na miejscu).
     flyEvidence(from, hotspot.label);
-    mascot.react('evidence');
+    hints.notify('evidence');
     goBack();
   }
 

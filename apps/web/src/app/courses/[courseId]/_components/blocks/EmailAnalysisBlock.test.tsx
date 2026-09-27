@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import EmailAnalysisBlock, { bodySegments } from './EmailAnalysisBlock';
-import { MascotReactionProvider, useMascotReaction } from '../player/mascot-reaction';
+import { HINT_EVENT_TEXT, HintProvider, useHints } from '../player/hints';
 import type { ContentBlock } from '@/lib/courses-types';
 
 // Id kryteriów są nieprzejrzyste (jak z /start); tu proste, byle nie "c1".
@@ -40,13 +40,13 @@ const checkbox = (name: RegExp | string) => within(list()).getByRole('checkbox',
 function setup(overrides: { result?: Parameters<typeof EmailAnalysisBlock>[0]['result']; onContinue?: () => void; continueLabel?: string } = {}) {
   const onSubmit = vi.fn();
   function Probe() {
-    return <output data-testid="reaction">{useMascotReaction().reaction?.pose ?? ''}</output>;
+    return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
   }
   render(
-    <MascotReactionProvider resetKey="k">
+    <HintProvider resetKey="k">
       <EmailAnalysisBlock block={block} onSubmit={onSubmit} disabled={false} {...overrides} />
       <Probe />
-    </MascotReactionProvider>,
+    </HintProvider>,
   );
   return onSubmit;
 }
@@ -67,9 +67,9 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     setup();
     expect(screen.queryByText('Do:')).not.toBeInTheDocument();
     render(
-      <MascotReactionProvider resetKey="k2">
+      <HintProvider resetKey="k2">
         <EmailAnalysisBlock block={{ ...block, email: { ...block.email!, to: 'jan.kowalski@unfooly.com' } }} onSubmit={vi.fn()} disabled={false} />
-      </MascotReactionProvider>,
+      </HintProvider>,
     );
     expect(screen.getByText('Do:')).toBeInTheDocument();
     expect(screen.getByText('jan.kowalski@unfooly.com')).toBeInTheDocument();
@@ -221,36 +221,36 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
   it('link z pustym napisem pokazuje adres jako napis (nie znika)', () => {
     const empty: ContentBlock = { ...block, email: { ...block.email!, links: [{ id: 'l3', text: '', url: 'https://pusty.example/x' }] }, criteria: [] };
     render(
-      <MascotReactionProvider resetKey="k">
+      <HintProvider resetKey="k">
         <EmailAnalysisBlock block={empty} onSubmit={vi.fn()} disabled={false} />
-      </MascotReactionProvider>,
+      </HintProvider>,
     );
     expect(within(screen.getByTestId('mail-client')).getByRole('button', { name: /pusty\.example/ })).toBeInTheDocument();
   });
 
-  it('po zapisie: przycisk dalej z etykietą z powłoki; zła odpowiedź uruchamia reakcję "warning" maskotki', () => {
+  it('po zapisie: przycisk dalej z etykietą z powłoki; zła odpowiedź pokazuje podpowiedź-ostrzeżenie', () => {
     const onContinue = vi.fn();
     setup({ result, onContinue, continueLabel: 'Zobacz podsumowanie' });
     fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
     expect(onContinue).toHaveBeenCalled();
-    expect(screen.getByTestId('reaction')).toHaveTextContent('warning');
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
   });
 
-  it('podgląd (bez onContinue): bez przycisku dalej i bez reakcji maskotki', () => {
+  it('podgląd (bez onContinue): bez przycisku dalej i bez podpowiedzi', () => {
     setup({ result });
     expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction').textContent).toBe('');
   });
 
-  it('poprawna odpowiedź nie wywołuje ostrzeżenia maskotki', () => {
+  it('poprawna odpowiedź nie wywołuje ostrzeżenia', () => {
     setup({ result: { ...result, correct: true, points: 1 }, onContinue: vi.fn() });
-    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    expect(screen.getByTestId('reaction').textContent).toBe('');
     expect(screen.getByText(/wszystkie oznaki trafione/)).toBeInTheDocument();
   });
 
-  it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem', () => {
+  it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem; poza ignorowana (D-093)', () => {
     setup({ result: { ...result, reaction: { pose: 'thinking', text: 'Prawie się udało.' } }, onContinue: vi.fn() });
-    expect(screen.getByTestId('reaction')).toHaveTextContent('thinking');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('Prawie się udało.');
   });
 });
 

@@ -7,7 +7,7 @@ import { contentAssetUrl } from '@/lib/content-assets';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
-import { useCompleteReaction } from '../player/mascot-reaction';
+import { useCompleteHint } from '../player/hints';
 import type { NotebookTask } from '../player/notes';
 import BriefingSceneStep, { activeHotspot, OPEN_CASE_LABEL, singleClick } from './BriefingScene';
 
@@ -273,7 +273,7 @@ export default function BriefingBlock({
   const caseNo = steps.find((candidate): candidate is Extract<BriefingStep, { kind: 'caseFile' }> => candidate.kind === 'caseFile')?.caseNo;
 
   // Reakcja na ukończenie (reactions.complete) dopiero na ostatnim kroku - wcześniej odprawa nie jest "zebrana".
-  useCompleteReaction(block.reactions?.complete, isLast, review);
+  useCompleteHint(block.reactions?.complete, isLast, review);
 
   useEffect(() => {
     onStepChange?.(index, !firstRender.current);

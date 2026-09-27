@@ -9,8 +9,8 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
-import { DEFAULT_IDLE, useCompleteReaction, useMascotReaction } from '../player/mascot-reaction';
-import MascotBanner from '../player/MascotBanner';
+import { DEFAULT_HINT, useCompleteHint, useHints } from '../player/hints';
+import Hint from '../player/Hint';
 import ExploreFooter from './ExploreFooter';
 
 // Odległość od dołu wątku (px), poniżej której uznajemy usera za "trzymającego się dołu" - autoprzewijanie po
@@ -157,12 +157,12 @@ export default function DialogueBlock({
   const character = block.character;
   const { addNote } = useNotes();
   const evidence = useEvidence();
-  const mascot = useMascotReaction();
+  const hints = useHints();
   const reducedMotion = usePrefersReducedMotion();
   const play = useSfx(['msg-send', 'msg-receive']);
-  // Fooli jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish); w podglądzie "Wstecz" nie (wspólny MascotReactionProvider).
-  const idleMascot = block.mascot ? { pose: block.mascot.pose, text: block.mascot.text } : DEFAULT_IDLE.DIALOGUE;
-  const bannerMascot = mascot.reaction ?? idleMascot;
+  // Podpowiedź (D-093, dawniej Fooli) jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish); w podglądzie "Wstecz" nie (wspólny
+  // HintProvider). Z treści liczy się tylko tekst `block.mascot` (poza przestarzała).
+  const bannerHint = hints.hint ?? block.mascot?.text ?? DEFAULT_HINT.DIALOGUE;
   // Kwestia otwierająca: w podglądzie od razu, w żywym bloku też „pisana”.
   const [openingShown, setOpeningShown] = useState(review || !character?.opening);
   // Postęp rozmowy: ile kwestii każdego pytania już przyszło (kolejność = kolejność wyboru).
@@ -195,7 +195,7 @@ export default function DialogueBlock({
   const required = requiredItemIds(questions, block.requiredQuestions);
   const doneCount = required.filter((id) => asked.includes(id)).length;
   const ready = doneCount >= required.length;
-  useCompleteReaction(block.reactions?.complete, ready, review);
+  useCompleteHint(block.reactions?.complete, ready, review);
 
   useEffect(() => {
     if (review) return;
@@ -288,7 +288,7 @@ export default function DialogueBlock({
     addNote({ blockId: block.id, text: question.note.text, kind: question.note.kind });
     if (question.evidence) {
       evidence.addPending(`${block.id}.${id}`);
-      mascot.react('evidence');
+      hints.notify('evidence');
     }
   }
 
@@ -354,7 +354,7 @@ export default function DialogueBlock({
   return (
     // flex-1 (nie h-full) i [container-type:size]: chipy niżej używają cqh (max-h-[40cqh]) względem TEGO korzenia.
     <div ref={rootRef} onKeyDown={skipOnSpace} onKeyUp={releaseSpace} className="flex min-h-0 w-full flex-1 flex-col [container-type:size]">
-      {!review && <MascotBanner pose={bannerMascot?.pose} text={bannerMascot?.text} />}
+      {!review && <Hint variant="bar" text={bannerHint} />}
       {block.prompt && <p className="mx-auto mb-3 w-full max-w-[760px] shrink-0 text-lg text-ink">{block.prompt}</p>}
       {/* Niska wysokość (telefon w poziomie): nagłówek rozmowy znika (imię i avatar są przy wiadomościach), chipy w jednym przewijanym
           rzędzie - inaczej wątek kurczył się do kilkunastu pikseli (layout-check, 844x390). */}

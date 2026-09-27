@@ -33,9 +33,9 @@ interface OverlayStackContextValue {
   unregister: (layer: OverlayLayer) => void;
   /** Zamyka najpóźniej otwartą, wciąż otwartą warstwę (LIFO); zwraca true, jeśli coś zamknęła. */
   closeTop: () => boolean;
-  /** true, gdy JAKAKOLWIEK warstwa jest aktualnie otwarta - MascotOverlay.tsx: dymek/ikonka Fooli nie mogą
+  /** true, gdy JAKAKOLWIEK warstwa jest aktualnie otwarta - Hint.tsx: dymek/ikonka podpowiedzi nie mogą
       zasłaniać ani łapać kliknięć, gdy nad sceną leży karta hotspotu/notatnik/transkrypcja/nagroda (hotfix
-      fix/mascot-overlap). */
+      fix/mascot-overlap, D-093). */
   anyOpen: boolean;
 }
 

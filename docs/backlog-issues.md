@@ -415,11 +415,19 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: (1) telefon w pionie: scena 16:9 w trybie „contain” ma ~200 px wysokości, więc tekst dymka i zadań dopasowuje się do ok. 8 px -
   mieści się, ale jest drobny (pod sceną zostaje dużo pustego miejsca); (2) karta sprawy: lista zadań (w scenie) jest w DOM przed
   sr-only „Sprawa nr …” i etykietą „Zadania” - czytnik czyta zadania przed nagłówkiem; (3) hotspot `telefon` obejmuje cały ekran
-  telefonu z narysowanym „Odrzuć”, więc klik w „Odrzuć” odbiera połączenie (UX grafiki); (4) layout-check mierzy tylko wariant
-  reduced-motion (statyczne biurko), animowanego nie.
+  telefonu z narysowanym „Odrzuć”, więc klik w „Odrzuć” odbiera połączenie (UX grafiki); (4) layout-check mierzy tylko kontekst
+  reduced-motion (Chromium): sprawdza, że adres ma `#static` i obraz się ładuje, ale nie że animacja naprawdę stoi, ani zachowania
+  `#static:target` w `<img>` w Safari/WebKit (drugą ochroną jest `@media (prefers-reduced-motion)` wewnątrz SVG).
 - Akceptacja: na telefonie w pionie tekst kroku czytelny (np. dymek/zadania pod sceną przy małej wysokości sceny, decyzja UX); kolejność
   DOM: nagłówek sprawy przed zadaniami (test RTL); hotspot tylko na „Odbierz” albo „Odrzuć” usunięte z grafiki; przypadek bez
   reduced-motion w layout-check.
+
+### B-110 Podgląd linku kursu (og:image) z miniatury PNG
+- Etykiety: `P3`, `mod:web`, `mod:content` · Źródło: `feat/briefing-scenes` (F, miniatura modułu), D-084
+- Opis: właściciel dostarczył `miniatura-wyludzone-haslo.png` (1600×900) na `og:image`, ale strona kursu nie ma dziś żadnych meta
+  (`generateMetadata`), a karty kursu używają SVG. PNG nie jest w repo ani w magazynie (plik lokalny u właściciela).
+- Akceptacja: `generateMetadata` dla strony kursu (tytuł, opis, `og:image` z PNG opublikowanego potokiem `--assets`, np. osobne pole
+  `thumbnailPng` albo konwencja nazwy), test, że strony wymagające logowania nie ujawniają w meta treści kursu poza tytułem i miniaturą.
 
 ## F. Symulacje phishingowe i zgłoszenia
 

@@ -243,15 +243,27 @@ try {
   await page.getByText(/Wynik: 100%/).waitFor();
   await nextEnabled().click();
 
-  // --- Blok 5: Akta sprawy (TABS) ------------------------------------------------------------------------------------------
-  await page.getByRole('tablist').waitFor();
-  await page.getByRole('tab', { name: 'Domeny' }).click();
-  step('TABS: pogrubienie w zakładce "Domeny"', (await page.locator('strong', { hasText: 'tuż przed pierwszym ukośnikiem' }).count()) === 1);
-  step('TABS: `kod` w zakładce "Domeny" trafia do <code>', (await page.locator('code', { hasText: '@bankwektor.pl' }).count()) === 1);
-  await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
-  step('TABS: lista wypunktowana w zakładce "Czego bank nigdy nie zrobi"', (await page.getByRole('list').locator('li', { hasText: 'Kod SMS' }).count()) === 1);
-  await page.getByRole('tab', { name: 'Jak zgłosić w Unfooly' }).click();
-  step('TABS: pogrubienie w zakładce "Jak zgłosić w Unfooly"', (await page.locator('strong', { hasText: 'Zgłoś podejrzany mail' }).count()) === 1);
+  // --- Blok 5: Teczka sprawy (DOSSIER, D-083) -----------------------------------------------------------------------------
+  // Zwykła linijka: komunikat bez zaznaczenia; wiersze-dowody: zakreślenie = notatka + licznik. Wymagane: 3 z 5 (✱), zbieramy wszystkie 5.
+  await page.getByRole('tablist', { name: 'Dokumenty w teczce' }).waitFor();
+  const row = (text) => page.getByRole('button', { name: new RegExp(text) });
+  await row('Opłata za prowadzenie rachunku').click();
+  step('DOSSIER: zwykła linijka - komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ta linijka wygląda na zwykłą operację.') && (await row('Opłata za prowadzenie rachunku').getAttribute('aria-pressed')) === 'false');
+  step('DOSSIER: "Dalej" nieaktywne przed wymaganymi', (await nextEnabled().count()) === 0);
+  // Przelew 9:12 zna gracz z odprawy - zwykła linijka z własnym komunikatem (`message`), dowodem jest nowy odbiorca 9:04.
+  await row('Przelew: Wektor Rozliczenia').click();
+  step('DOSSIER: przelew 9:12 - własny komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ten przelew już znasz.') && (await row('Przelew: Wektor Rozliczenia').getAttribute('aria-pressed')) === 'false');
+  await row('Dodano nowego odbiorcę').click();
+  step('DOSSIER: wiersz-dowód zakreślony (aria-pressed)', (await row('Dodano nowego odbiorcę').getAttribute('aria-pressed')) === 'true');
+  await page.getByRole('tab', { name: 'Logi logowania' }).click();
+  await row('Logowanie').filter({ hasText: '09:03' }).click();
+  await row('Kod SMS wpisany').click();
+  await page.getByRole('tab', { name: 'Notatka IT' }).click();
+  await row('Nagłówki maila').click();
+  await row('zarejestrowana 2 dni przed atakiem').click();
+  await page.getByRole('tab', { name: 'Procedury' }).click();
+  step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);
+  step('DOSSIER: licznik 5 dowodów z teczki (razem 18 po biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 18/21'), await page.getByTestId('evidence-counter').textContent());
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
@@ -309,7 +321,7 @@ try {
   // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
   await page.getByTestId('case-evidence').waitFor();
   const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SUMMARY: wszystkie 16 dowodów zebrane (5+4+4+3)', summaryText.includes('Zebrane dowody: 16 z 16'), summaryText.slice(0, 120));
+  step('SUMMARY: wszystkie 21 dowodów zebrane (5+4+4+5+3)', summaryText.includes('Zebrane dowody: 21 z 21'), summaryText.slice(0, 120));
   step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
   step('SUMMARY: poza spoczynkowa maskotki (greeting, "Sprawa zamknięta")', (await mascotAlt('wita').count()) === 1);
 
@@ -329,7 +341,7 @@ try {
   step('SummaryScreen: karta nagrody (XP) widoczna, bez modala (role=dialog)', (await page.getByText(/XP$/).count()) >= 1 && (await page.getByRole('dialog').count()) === 0);
   // Ta sama lista dowodów, którą user widział chwilę wcześniej na bloku SUMMARY (CaseEvidenceSection.tsx, dzielona).
   const finalEvidenceText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SummaryScreen: lista zebranych dowodów (16 z 16) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 16 z 16'), finalEvidenceText.slice(0, 120));
+  step('SummaryScreen: lista zebranych dowodów (21 z 21) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 21 z 21'), finalEvidenceText.slice(0, 120));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

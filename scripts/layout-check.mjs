@@ -53,6 +53,8 @@
 //
 // BRIEFING (feat/module-briefing, D-081): OSOBNA pętla (BRIEFING_VIEWPORTS: 1920x1080, 1366x768, 844x390, 390x844) po
 // wszystkich krokach odprawy modułu 1 (`?block=odprawa`) - (m-o) w komentarzu przy checkBriefingStep.
+// DOSSIER (feat/dossier-folder, D-083): ta sama lista rozdzielczości, każdy dokument teczki (`?block=akta-sprawy`) - (q-u)
+// w komentarzu przy checkDossierDocument.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
@@ -94,6 +96,9 @@ const BRIEFING_VIEWPORTS = [
 ];
 // Przyciski kolejnych kroków modułu 1 (packages/content/modules/wyludzone-haslo, blok "odprawa").
 const BRIEFING_CTAS = ['Odbierz', 'Przyjmuję', 'Biorę sprawę', 'Ruszam na miejsce', 'Wchodzę'];
+
+// DOSSIER (feat/dossier-folder, D-083) - `?block=akta-sprawy`, te same cztery rozdzielczości co odprawa, każdy dokument.
+const DOSSIER_TABS = ['Wyciąg bankowy', 'Logi logowania', 'Notatka IT', 'Procedury'];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
 // zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
@@ -497,6 +502,32 @@ async function checkBriefingStep(page, cta, label) {
   return scrollHeight > clientHeight + 1;
 }
 
+// DOSSIER (D-083), dla każdego dokumentu: (q) strona i obszar bloku się nie przewijają, a teczka nie ma poziomego
+// przewijania; (r) przewija się WYŁĄCZNIE lista wierszy - arkusz jako całość mieści się w teczce, a teczka w obszarze
+// bloku; (s) wszystkie przekładki w całości w ramce (na telefonie w pionie pasek przekładek może przewijać się poziomo -
+// wtedy każda przekładka ma być osiągalna po przewinięciu); (t) cel dotyku wiersza >= 44px wysokości; (u) błędy strony.
+async function checkDossierDocument(page, label) {
+  await checkNoPageScroll(page, label);
+  await checkMainSceneFits(page, label);
+  const dossier = page.getByTestId('dossier-block');
+  const overflowX = await dossier.evaluate((el) => el.scrollWidth - el.clientWidth);
+  if (overflowX > 1) fail(`${label}: (q) teczka przewija się w poziomie o ${overflowX}px.`);
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  const dossierBox = await boxOf(page, '[data-testid="dossier-block"]');
+  const sheetBox = await boxOf(page, '[role="tabpanel"]');
+  if (!contains(contentAreaBox, dossierBox)) fail(`${label}: (r) teczka wychodzi poza obszar bloku - teczka=${JSON.stringify(dossierBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  if (!contains(dossierBox, sheetBox)) fail(`${label}: (r) arkusz wychodzi poza teczkę - arkusz=${JSON.stringify(sheetBox)} teczka=${JSON.stringify(dossierBox)}.`);
+  for (const tab of await page.getByRole('tab').all()) {
+    await tab.scrollIntoViewIfNeeded();
+    const box = await tab.boundingBox();
+    if (!box || !contains(dossierBox, box)) fail(`${label}: (s) przekładka "${await tab.textContent()}" poza teczką po przewinięciu - ${JSON.stringify(box)}.`);
+  }
+  const firstRow = await page.getByTestId('dossier-rows').locator('button').first().boundingBox();
+  if (!firstRow || firstRow.height < 44) fail(`${label}: (t) wiersz ma cel dotyku ${firstRow?.height}px (<44px).`);
+  const rows = page.getByTestId('dossier-rows');
+  return rows.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+}
+
 const children = [];
 let webLog = '';
 function start(command, args, env, cwd) {
@@ -672,6 +703,39 @@ try {
       step(`${label}: (a, e, m-p) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
       // Ostatni krok zapisuje blok - w podglądzie dev nie ma backendu, więc nie klikamy go.
       if (index < BRIEFING_CTAS.length - 1) await page.getByRole('button', { name: cta, exact: true }).click();
+    }
+    await context.close();
+  }
+
+  // DOSSIER (feat/dossier-folder, D-083) - patrz checkDossierDocument.
+  for (const viewport of BRIEFING_VIEWPORTS) {
+    console.log(`\n--- viewport (DOSSIER): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    await page.goto(`${WEB}/dev/player-harness?block=akta-sprawy`);
+    await page.getByTestId('dossier-block').waitFor();
+    for (const [index, tab] of DOSSIER_TABS.entries()) {
+      const label = `${viewport.name} / teczka: ${tab}`;
+      await page.getByRole('tab', { name: tab }).click();
+      await page.waitForTimeout(100);
+      // Klikamy wiersze po kolei aż do pierwszego zakreślonego (aria-pressed=true) - stan z żółtym tłem i komunikatem
+      // „Zakreślone…” też ma się zmieścić. Dokument bez dowodów (Procedury) kończy na komunikacie zwykłej linijki.
+      const rowButtons = await page.getByTestId('dossier-rows').locator('button').all();
+      for (const rowButton of rowButtons) {
+        await rowButton.click();
+        if ((await rowButton.getAttribute('aria-pressed')) === 'true') break;
+      }
+      await shot(page, `${viewport.name}-teczka-${index + 1}`);
+      if (pageErrors.length > 0) fail(`${label}: (u) błąd strony: ${pageErrors.join(' | ')}`);
+      const scrolls = await checkDossierDocument(page, label);
+      step(`${label}: (a, e, q-u) OK${scrolls ? ' - lista wierszy przewija się wewnątrz arkusza' : ''}`, true);
     }
     await context.close();
   }

@@ -43,10 +43,14 @@ Zasady:
   --success: #1E9E6A;  --success-soft: #E6F6EE;
   --warning: #C77C0F;  --warning-soft: #FFF3DF;
   --danger:  #D9483B;  --danger-soft:  #FDECEA;
+
+  --highlight: #FFE066;    /* zakreślacz: WYŁĄCZNIE zakreślony wiersz-dowód w teczce sprawy (D-083) */
 }
 ```
 
-Semantyka: **accent** = akcja i postęp, **success** = komplet/ukończone, **warning** = zaległe/terminy, **danger** = tylko akcje destrukcyjne (Usuń). Nie używaj zieleni jako koloru marki — zieleń zostaje wyłącznie statusem.
+Semantyka: **accent** = akcja i postęp, **success** = komplet/ukończone, **warning** = zaległe/terminy, **danger** = tylko akcje destrukcyjne (Usuń) oraz pieczątki w treści szkoleń (POUFNE, PRIORYTET). Nie używaj zieleni jako koloru marki — zieleń zostaje wyłącznie statusem. **highlight** to kolor funkcyjny zakreślacza, nie tło ani akcent interfejsu.
+
+Teczka sprawy (odtwarzacz, D-083): teczka `accent-soft` z krawędzią `border`, arkusze `surface`, aktywna przekładka `accent`, pieczątka POUFNE `danger`, zakreślony wiersz `highlight`; treść dokumentów w Courier Prime (`font-typewriter`).
 
 Tailwind (jeśli projekt używa Tailwinda) — `tailwind.config.js`:
 
@@ -60,6 +64,7 @@ theme: {
       success: { DEFAULT: '#1E9E6A', soft: '#E6F6EE' },
       warning: { DEFAULT: '#C77C0F', soft: '#FFF3DF' },
       danger:  { DEFAULT: '#D9483B', soft: '#FDECEA' },
+      highlight: '#FFE066',
     },
     fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
     borderRadius: { card: '16px', btn: '10px' },

@@ -1,6 +1,6 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
-import { HotspotLike, flattenHotspots } from '@cyberszkolo/content/dist/node';
+import { DossierRowLike, HotspotLike, flattenDossierRows, flattenHotspots } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
 import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
 
@@ -49,7 +49,7 @@ interface NoteItem {
   note?: { text?: string; kind?: string };
 }
 
-/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila). SCENE_HOTSPOTS spłaszczone
+/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila, wiersze teczki). SCENE_HOTSPOTS spłaszczone
  * (zewnętrzne + media.kind:'scene' wewnętrzne, B-086/D-071) - ta sama funkcja co evaluate.ts i walidacja modułu. */
 function noteItems(block: Block): NoteItem[] {
   const list: unknown =
@@ -59,7 +59,10 @@ function noteItems(block: Block): NoteItem[] {
         ? block.questions
         : block.type === 'EMAIL_ANALYSIS'
           ? block.criteria
-          : [];
+          : block.type === 'DOSSIER' && Array.isArray(block.documents)
+            ? // Teczka (D-083): wiersze wszystkich dokumentów - ta sama funkcja co evaluate.ts i walidacja modułu.
+              flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[])
+            : [];
   return Array.isArray(list) ? (list as NoteItem[]) : [];
 }
 

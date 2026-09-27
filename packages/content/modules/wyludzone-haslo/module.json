@@ -74,6 +74,7 @@
               "id": "dostep",
               "text": "Ustal, jak przestępca dostał się do konta.",
               "completeWhen": [
+                "akta-sprawy",
                 "rekonstrukcja"
               ]
             },
@@ -687,42 +688,281 @@
     },
     {
       "id": "akta-sprawy",
-      "type": "TABS",
-      "title": "Akta sprawy",
+      "type": "DOSSIER",
+      "title": "Teczka sprawy",
       "narration": {
-        "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać.",
-        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/b95c830fe00e754f.mp3",
-        "durationMs": 6734,
+        "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
+        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/aa781dfd2261b00c.mp3",
+        "durationMs": 7848,
         "cues": [
           {
-            "text": "Zanim porozmawiasz z Markiem z IT, zajrzyj do akt.",
+            "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy.",
             "startMs": 0
           },
           {
-            "text": "Trzy rzeczy, które każdy w Unfooly powinien znać.",
-            "startMs": 3564
+            "text": "Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
+            "startMs": 3529
           }
         ]
       },
-      "mascot": {
-        "pose": "thinking",
-        "text": "Krótka lektura. Przyda się za chwilę."
-      },
-      "tabs": [
+      "stamp": "Poufne",
+      "documents": [
         {
-          "id": "domeny",
-          "title": "Domeny",
-          "content": "Prawdziwe adresy Banku Wektor kończą się na `@bankwektor.pl`, a strona logowania to `https://www.bankwektor.pl`. Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (`.com`, `.net`, `.pl.info`) — nie jest bankiem. Sprawdzaj to, co jest **tuż przed pierwszym ukośnikiem** po `https://`."
+          "id": "wyciag",
+          "tab": "Wyciąg bankowy",
+          "org": "BANK WEKTOR S.A.",
+          "title": "Wyciąg z rachunku firmowego",
+          "meta": "Unfooly Sp. z o.o. · wtorek",
+          "columns": [
+            "Godzina",
+            "Opis operacji",
+            "Kwota"
+          ],
+          "rows": [
+            {
+              "id": "w-0802",
+              "cells": [
+                "08:02",
+                "Opłata za prowadzenie rachunku",
+                "−25,00 PLN"
+              ]
+            },
+            {
+              "id": "w-0831",
+              "cells": [
+                "08:31",
+                "Wpływ: płatność za fakturę od klienta",
+                "+3 200,00 PLN"
+              ]
+            },
+            {
+              "id": "w-0904",
+              "cells": [
+                "09:04",
+                "Dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
+                "—"
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": "9:04 — dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
+                "kind": "item"
+              }
+            },
+            {
+              "id": "w-0912",
+              "cells": [
+                "09:12",
+                "Przelew: Wektor Rozliczenia Sp. z o.o.",
+                "−14 000,00 PLN"
+              ],
+              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
+            },
+            {
+              "id": "w-1005",
+              "cells": [
+                "10:05",
+                "Przelew: dostawca materiałów biurowych",
+                "−412,50 PLN"
+              ]
+            }
+          ]
         },
         {
-          "id": "zasady-banku",
-          "title": "Czego bank nigdy nie zrobi",
-          "content": "- Nie poprosi o hasło — mailem, telefonem ani SMS-em.\n- Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS **zawsze zatwierdza**, nigdy nie anuluje.\n- Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.\n- Nie wyśle programu (`.exe`, `.scr`, `.bat`) w załączniku.\n\nJeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila."
+          "id": "logi",
+          "tab": "Logi logowania",
+          "org": "BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA",
+          "title": "Historia logowań",
+          "meta": "Użytkownik: a.kowalska · wtorek",
+          "columns": [
+            "Godzina",
+            "Zdarzenie",
+            "Miejsce i urządzenie"
+          ],
+          "rows": [
+            {
+              "id": "l-0758",
+              "cells": [
+                "07:58",
+                "Logowanie",
+                "Kraków, komputer biurowy"
+              ]
+            },
+            {
+              "id": "l-0903",
+              "cells": [
+                "09:03",
+                "Logowanie",
+                "Bukareszt, nowe urządzenie"
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": "9:03 — logowanie z Bukaresztu, z nowego urządzenia.",
+                "kind": "place"
+              }
+            },
+            {
+              "id": "l-0906",
+              "cells": [
+                "09:06",
+                "Kod SMS wpisany",
+                "Bukareszt, nowe urządzenie"
+              ],
+              "evidence": true,
+              "note": {
+                "text": "9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny.",
+                "kind": "place"
+              }
+            },
+            {
+              "id": "l-0912",
+              "cells": [
+                "09:12",
+                "Przelew wysłany",
+                "Bukareszt, nowe urządzenie"
+              ],
+              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
+            }
+          ]
         },
         {
-          "id": "zgloszenie",
-          "title": "Jak zgłosić w Unfooly",
-          "content": "Zgłoś przyciskiem **„Zgłoś podejrzany mail”** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+          "id": "notatka-it",
+          "tab": "Notatka IT",
+          "org": "UNFOOLY SP. Z O.O. · DZIAŁ IT",
+          "title": "Notatka po incydencie",
+          "meta": "Autor: Marek Zieliński",
+          "columns": [
+            "Ustalenie"
+          ],
+          "rows": [
+            {
+              "id": "n-7-osob",
+              "cells": [
+                "Ten sam mail trafił do 7 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."
+              ],
+              "message": "O adresatach maila opowie ci Marek. W notatce szukaj tego, czego jeszcze nie wiesz."
+            },
+            {
+              "id": "n-naglowki",
+              "cells": [
+                "Nagłówki maila z 8:47: wysłany z adresu IP w Bukareszcie — z tej samej sieci, z której o 9:03 zalogowano się do banku."
+              ],
+              "evidence": true,
+              "note": {
+                "text": "Mail z 8:47 wysłano z sieci w Bukareszcie — tej samej, z której o 9:03 zalogowano się do banku.",
+                "kind": "mail"
+              }
+            },
+            {
+              "id": "n-whois",
+              "cells": [
+                "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS)."
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS).",
+                "kind": "item"
+              }
+            },
+            {
+              "id": "n-filtr",
+              "cells": [
+                "Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji."
+              ],
+              "message": "To wniosek z notatki, nie ślad."
+            },
+            {
+              "id": "n-rekomendacje",
+              "cells": [
+                "Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie."
+              ],
+              "message": "To wniosek z notatki, nie ślad."
+            }
+          ]
+        },
+        {
+          "id": "procedury",
+          "tab": "Procedury",
+          "org": "UNFOOLY SP. Z O.O.",
+          "title": "Procedury bezpieczeństwa",
+          "columns": [
+            "Temat",
+            "Zasada"
+          ],
+          "rows": [
+            {
+              "id": "p-domeny-1",
+              "cells": [
+                "Domeny",
+                "Prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl."
+              ]
+            },
+            {
+              "id": "p-domeny-2",
+              "cells": [
+                "Domeny",
+                "Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://."
+              ]
+            },
+            {
+              "id": "p-bank-haslo",
+              "cells": [
+                "Bank",
+                "Nie poprosi o hasło — mailem, telefonem ani SMS-em."
+              ]
+            },
+            {
+              "id": "p-bank-sms",
+              "cells": [
+                "Bank",
+                "Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS zawsze zatwierdza, nigdy nie anuluje."
+              ]
+            },
+            {
+              "id": "p-bank-telefon",
+              "cells": [
+                "Bank",
+                "Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie."
+              ]
+            },
+            {
+              "id": "p-bank-zalacznik",
+              "cells": [
+                "Bank",
+                "Nie wyśle programu (.exe, .scr, .bat) w załączniku."
+              ]
+            },
+            {
+              "id": "p-bank-watpliwosc",
+              "cells": [
+                "Bank",
+                "Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila."
+              ]
+            },
+            {
+              "id": "p-zgloszenie-mail",
+              "cells": [
+                "Zgłaszanie",
+                "Zgłoś przyciskiem „Zgłoś podejrzany mail” w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT."
+              ]
+            },
+            {
+              "id": "p-zgloszenie-telefon",
+              "cells": [
+                "Zgłaszanie",
+                "Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka."
+              ]
+            },
+            {
+              "id": "p-zgloszenie-zasada",
+              "cells": [
+                "Zgłaszanie",
+                "Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+              ]
+            }
+          ]
         }
       ]
     },

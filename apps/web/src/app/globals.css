@@ -22,6 +22,7 @@
   --warning-soft: #fff3df;
   --danger: #d9483b;
   --danger-soft: #fdecea;
+  --highlight: #ffe066;
 
   --r-card: 16px;
   --r-btn: 10px;
@@ -446,6 +447,11 @@
    od razu stoi w stanie końcowym (klasy nic nie robią), a tekst "maszyny do pisania" pokazuje się w całości (logika w
    komponencie, usePrefersReducedMotion). Kolory z tokenów (var(--...)), bez nowych. */
 @media (prefers-reduced-motion: no-preference) {
+  /* Teczka sprawy (DossierBlock.tsx, D-083): przewrócenie kartki przy zmianie przekładki. */
+  .dossier-sheet-enter {
+    animation: dossier-sheet-enter 260ms ease-out both;
+    transform-origin: 0 50%;
+  }
   .briefing-step-enter {
     animation: briefing-step-enter 280ms ease-out both;
   }
@@ -461,6 +467,17 @@
   }
   .briefing-caret {
     animation: briefing-caret 900ms steps(1) infinite;
+  }
+}
+
+@keyframes dossier-sheet-enter {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateY(-8deg) translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

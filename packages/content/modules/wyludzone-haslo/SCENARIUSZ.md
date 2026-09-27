@@ -17,8 +17,11 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
-  analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
+- dowody łącznie: **21** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
+  analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - nowy odbiorca 9:04, Bukareszt 9:03, kod SMS
+  z Bukaresztu 9:06, nagłówki maila z Bukaresztu, WHOIS; rozmowa z Markiem: 3)
+- oś czasu (źródło prawdy - rozmowa z Markiem, wydruk przelewu i rekonstrukcja): mail 8:47 → Anna wpisuje hasło 8:58 →
+  logowanie oszusta 9:03 → nowy odbiorca 9:04 → telefon „informatyka" 9:05 → kod SMS 9:06 (wydruk: 09:06:58) → przelew 9:12
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
@@ -62,8 +65,8 @@ karta, pieczątka) tylko bez `prefers-reduced-motion`.
    TTS: „Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT.
    Reszta jest w biurze Anny."
    **Zadania sprawy** (`tasks` kroku caseFile; też sekcja „Zadania" notatnika; w nawiasie `completeWhen` - zadanie odhacza się,
-   gdy wskazany blok jest ukończony; odprawa nigdy nie odhacza zadań):
-   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`rekonstrukcja`)
+   gdy wszystkie wskazane bloki są ukończone; odprawa nigdy nie odhacza zadań):
+   - `dostep`: „Ustal, jak przestępca dostał się do konta." (`akta-sprawy`, `rekonstrukcja`)
    - `dowody`: „Zbierz dowody w biurze Anny." (`biuro-anny`)
    - `zapobieganie`: „Wskaż, co mogło zatrzymać atak." (`rozmowa-marek`)
 3. **badge** (komisarz) — legitymacja gracza: imię i inicjał nazwiska z profilu (fallback: z e-maila), avatar gracza (fallback:
@@ -249,24 +252,51 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 5 — Akta sprawy (TABS) — bez oceny
+## Blok 5 — Teczka sprawy (DOSSIER) — bez oceny — D-083
 
-- **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać."
-- **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
-- ukończenie: otwarte wszystkie 3 zakładki
+Id bloku bez zmian (`akta-sprawy`, dawniej TABS). Teczka `accent-soft`, pieczątka „Poufne" (`danger`), przekładki po prawej
+(telefon w pionie: pasek nad arkuszem), treść dokumentów font maszynowy. Klik w wiersz = zakreślacz: wiersz-dowód zakreśla się
+na żółto (`highlight`) i trafia do notatnika; zwykła linijka: „Ta linijka wygląda na zwykłą operację." (bez zaznaczenia) albo
+własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
-**Zakładka „Domeny":**
-> Prawdziwe adresy Banku Wektor kończą się na `@bankwektor.pl`, a strona logowania to `https://www.bankwektor.pl`. Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (`.com`, `.net`, `.pl.info`) — nie jest bankiem. Sprawdzaj to, co jest **tuż przed pierwszym ukośnikiem** po `https://`.
+- **Lektor (narrator):** „Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do
+  zwykłego wtorku."
+- ukończenie: otwarte wszystkie 4 dokumenty + zakreślone 3 wymagane dowody (✱); dowody z teczki to NOWE fakty (5), bez
+  powtarzania dowodów ze scen i z rozmowy z Markiem (przelew 9:12 zna gracz z odprawy, 7 adresatów i 2 kliknięcia - od Marka,
+  więc te wiersze są zwykłymi linijkami z komunikatem naprowadzającym).
+- ukończona teczka (razem z rekonstrukcją) odhacza zadanie „Ustal, jak przestępca dostał się do konta."
 
-**Zakładka „Czego bank nigdy nie zrobi":**
-> - Nie poprosi o hasło — mailem, telefonem ani SMS-em.
-> - Nie poprosi o kod SMS „żeby anulować operację". Kod SMS **zawsze zatwierdza**, nigdy nie anuluje.
-> - Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.
-> - Nie wyśle programu (`.exe`, `.scr`, `.bat`) w załączniku.
-> Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila.
+**„Wyciąg bankowy"** — BANK WEKTOR S.A., „Wyciąg z rachunku firmowego", Unfooly Sp. z o.o. · wtorek (Godzina | Opis | Kwota):
+- 08:02 Opłata za prowadzenie rachunku, −25,00 PLN
+- 08:31 Wpływ: płatność za fakturę od klienta, +3 200,00 PLN
+- ✱ 09:04 Dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o., — — dowód (item): „9:04 — dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o."
+- 09:12 Przelew: Wektor Rozliczenia Sp. z o.o., −14 000,00 PLN — komunikat: „Ten przelew już znasz. Szukaj tego, co go przygotowało."
+- 10:05 Przelew: dostawca materiałów biurowych, −412,50 PLN
 
-**Zakładka „Jak zgłosić w Unfooly":**
-> Zgłoś przyciskiem **„Zgłoś podejrzany mail"** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
+**„Logi logowania"** — BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA, „Historia logowań", Użytkownik: a.kowalska (Godzina | Zdarzenie | Miejsce i urządzenie):
+- 07:58 Logowanie, Kraków, komputer biurowy
+- ✱ 09:03 Logowanie, Bukareszt, nowe urządzenie — dowód (place): „9:03 — logowanie z Bukaresztu, z nowego urządzenia."
+- 09:06 Kod SMS wpisany, Bukareszt, nowe urządzenie — dowód (place): „9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny."
+- 09:12 Przelew wysłany, Bukareszt, nowe urządzenie — komunikat: „Ten przelew już znasz. Szukaj tego, co go przygotowało."
+
+**„Notatka IT"** — UNFOOLY SP. Z O.O. · DZIAŁ IT, „Notatka po incydencie", Autor: Marek Zieliński:
+- Ten sam mail trafił do 7 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl. — komunikat: „O adresatach maila opowie ci Marek. W notatce szukaj tego, czego jeszcze nie wiesz."
+- Nagłówki maila z 8:47: wysłany z adresu IP w Bukareszcie — z tej samej sieci, z której o 9:03 zalogowano się do banku. — dowód (mail): „Mail z 8:47 wysłano z sieci w Bukareszcie — tej samej, z której o 9:03 zalogowano się do banku."
+- ✱ Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS). — dowód (item)
+- Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji. — komunikat: „To wniosek z notatki, nie ślad."
+- Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie. — komunikat: „To wniosek z notatki, nie ślad."
+
+**„Procedury"** — UNFOOLY SP. Z O.O., „Procedury bezpieczeństwa" (Temat | Zasada), dotychczasowa wiedza z akt, bez dowodów:
+- Domeny: prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl.
+- Domeny: każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://.
+- Bank: nie poprosi o hasło — mailem, telefonem ani SMS-em.
+- Bank: nie poprosi o kod SMS „żeby anulować operację". Kod SMS zawsze zatwierdza, nigdy nie anuluje.
+- Bank: nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.
+- Bank: nie wyśle programu (.exe, .scr, .bat) w załączniku.
+- Bank: jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila.
+- Zgłaszanie: zgłoś przyciskiem „Zgłoś podejrzany mail" w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT.
+- Zgłaszanie: podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka.
+- Zgłaszanie: nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
 
 ---
 

@@ -151,7 +151,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const response = await start(tokenA, engineCourseId).expect(200);
       const blocks = response.body.contentBlocks as { id: string; type: BlockType }[];
 
-      expect(blocks).toHaveLength(15);
+      expect(blocks).toHaveLength(16);
       expect(JSON.stringify(response.body)).not.toContain(SECRET_MARKER);
 
       for (const block of blocks) {
@@ -236,13 +236,15 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
         await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'h4-outlook'], noted: ['h1', 'h4-outlook'] } }).expect(200)
       ).body;
       // Liczy serwer: 2 dowody zebrane (h1 zewnętrzny + h4-outlook wewnętrzny); suma "scena" też uwzględnia oba (2, nie 1).
+      // + akta: wiersz-dowód teczki (DOSSIER, D-083), znany od startu.
       expect(hotspots.evidence).toEqual({
         collected: 2,
-        total: 4,
+        total: 5,
         perBlock: [
           { blockId: 'scena', collected: 2, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
+          { blockId: 'akta', collected: 0, total: 1 },
         ],
       });
     });
@@ -262,7 +264,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       ]);
       // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila). scena: 2
       // zebrane/2 razem (h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071) - patrz test wyżej.
-      expect(resumed.progress.evidence).toMatchObject({ collected: 3, total: 4 });
+      expect(resumed.progress.evidence).toMatchObject({ collected: 3, total: 5 });
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });
@@ -299,15 +301,16 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(progress.blocks.mail.detail.criteria.map((c: { id: string; selected: boolean }) => [c.id, c.selected])).toEqual(
         expect.arrayContaining([[c1, true], [c3, true]]),
       );
-      // Suma (4 dowody: 2x hotspot - h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071 - pytanie,
-      // kryterium c1) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
+      // Suma (5 dowodów: 2x hotspot - h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071 - pytanie,
+      // kryterium c1, wiersz teczki w2) była znana od startu; c3 to zwykła notatka. Perblock bez id elementów.
       expect(result.evidence).toEqual({
         collected: 4,
-        total: 4,
+        total: 5,
         perBlock: [
           { blockId: 'scena', collected: 2, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
+          { blockId: 'akta', collected: 0, total: 1 },
         ],
       });
     });
@@ -346,13 +349,25 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(briefing.lastResult).not.toHaveProperty('points');
       expect(briefing.status).toBe('IN_PROGRESS');
 
-      const done = (await submit(tokenA, engineCourseId, { blockIndex: 14 }).expect(200)).body;
+      // DOSSIER (indeks 14, D-083): wszystkie dokumenty otwarte + wymagany wiersz-dowód zakreślony; zwykła linijka w `noted`
+      // i brak wymaganego to 400 bez treści bloku; notatka wiersza wraca od razu, licznik dowodów obejmuje teczkę.
+      const opened = ['wyciag', 'procedury'];
+      for (const bad of [{ opened, noted: ['w2', 'w1'] }, { opened, noted: [] }, { opened: ['wyciag'], noted: ['w2'] }]) {
+        const response = await submit(tokenA, engineCourseId, { blockIndex: 14, answer: bad }).expect(400);
+        expect(JSON.stringify(response.body)).not.toMatch(/Przelew|Opłata/);
+      }
+      const dossier = (await submit(tokenA, engineCourseId, { blockIndex: 14, answer: { opened, noted: ['w2'] } }).expect(200)).body;
+      expect(dossier.lastResult).toMatchObject({ blockId: 'akta', type: 'DOSSIER' });
+      expect(dossier.notes).toEqual([{ blockId: 'akta', text: 'Przelew 9:12.', kind: 'item' }]);
+      expect(dossier.evidence).toMatchObject({ collected: 5, total: 5 });
+
+      const done = (await submit(tokenA, engineCourseId, { blockIndex: 15 }).expect(200)).body;
       expect(done.status).toBe('COMPLETED');
-      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne, NARRATIVE i BRIEFING poza wynikiem) = 4.75 / 5.
+      // quiz 1, scenariusz 1, mail 1, tekst 0.75, kolejność 1 (waga 1 każdy; eksploracyjne, NARRATIVE, BRIEFING i DOSSIER poza wynikiem) = 4.75 / 5.
       expect(done.score).toBe(95);
       expect(done.gamification).not.toBeNull();
 
-      await submit(tokenA, engineCourseId, { blockIndex: 14 }).expect(400);
+      await submit(tokenA, engineCourseId, { blockIndex: 15 }).expect(400);
       await attempt(tokenA, engineCourseId, 'domena', 'x').expect(400);
       // /start na ukończonym kursie nie cofa statusu.
       expect((await start(tokenA, engineCourseId).expect(200)).body.status).toBe('COMPLETED');

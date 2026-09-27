@@ -39,7 +39,7 @@ export interface PlayerStageProps {
   totalBlocks: number;
   completedBlocks: number;
   stage: ReactNode;
-  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE i BRIEFING - to samo CSS co 'scene',
+  /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE, BRIEFING i DOSSIER - to samo CSS co 'scene',
       osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
       panel max-w-3xl). */
   contentLayout?: 'scene' | 'slide' | 'fill';

@@ -435,7 +435,7 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
-  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE i BRIEFING też wypełniają (własny,
+  // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE, BRIEFING i DOSSIER też wypełniają (własny,
   // wewnętrzny scroll wątku/odprawy zamiast przewijania całego panelu - fix/dialogue-sticky-questions, D-081), ale to NIE jest
   // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
   // SummaryScreen/wynik ScoredBlock) to wyśrodkowany panel jak slajd (PlayerStage.tsx, contentLayout).
@@ -444,7 +444,7 @@ export default function CoursePlayer({
       ? 'slide'
       : currentBlock?.type === 'SCENE_HOTSPOTS'
         ? 'scene'
-        : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING'
+        : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING' || currentBlock?.type === 'DOSSIER'
           ? 'fill'
           : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>

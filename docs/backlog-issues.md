@@ -401,6 +401,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: wspólna funkcja w `apps/web/src/lib` przepuszczająca przy błędzie wyłącznie `message`/`code` (i status), użyta we
   wszystkich trasach BFF; test, że dodatkowe pola z ciała błędu API nie docierają do klienta.
 
+### B-108 Teczka sprawy (DOSSIER): dostępność i podgląd ukończonego bloku
+- Etykiety: `P3`, `a11y`, `mod:web` · Źródło: code-review PR 2 (`feat/dossier-folder`, uwagi 8-9), D-083
+- Opis: (1) `role="tablist"` bez `aria-orientation` - przekładki są pionowe od `sm`, poziome na telefonie (strzałki działają w obu
+  osiach, brakuje tylko atrybutu zależnego od układu); (2) `aria-pressed` na wierszu sugeruje przełącznik, którego nie da się
+  wyłączyć, a ponowny klik w tę samą zwykłą linijkę nie ogłasza się (ten sam tekst w `role="status"`); (3) w trybie „Wstecz”
+  wcześniej zebrane dowody nie są zakreślone (`noted` to stan lokalny), choć w teczce zakreślenie jest główną informacją.
+- Akceptacja: `aria-orientation` zgodny z układem, semantyka wiersza bez fałszywego przełącznika i ponowne ogłoszenie komunikatu
+  (test RTL); w podglądzie zakreślone wiersze z `progress.notes`/dowodów (test).
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

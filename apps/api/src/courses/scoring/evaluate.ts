@@ -1,7 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
-import { HotspotLike, compileAnswerRegex, flattenHotspots, SCORED_BLOCK_TYPES, WHEN_BASED_TYPES } from '@cyberszkolo/content/dist/node';
+import {
+  DossierRowLike,
+  HotspotLike,
+  MAX_DOSSIER_EVIDENCE,
+  compileAnswerRegex,
+  flattenDossierRows,
+  flattenHotspots,
+  SCORED_BLOCK_TYPES,
+  WHEN_BASED_TYPES,
+} from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
 
 // Ocena odpowiedzi PO STRONIE SERWERA. Klient przesyła wyłącznie swój wybór (indeks, listę id, tekst) - nigdy ocenę ani
@@ -24,6 +33,9 @@ const ids = z.array(idSchema).max(50);
 const visitedAnswer = z.object({ visited: ids, noted: ids.optional() }).strict();
 const askedAnswer = z.object({ asked: ids }).strict();
 const openedAnswer = z.object({ opened: ids }).strict();
+// DOSSIER (D-083): otwarte dokumenty i zakreślone wiersze-dowody (bez domyślnego [] - klient zawsze wysyła oba pola). Limit
+// `noted` = ta sama stała, którą walidacja modułu ogranicza liczbę wierszy-dowodów w teczce (inaczej blok byłby nie do ukończenia).
+const dossierAnswer = z.object({ opened: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE) }).strict();
 const selectedAnswer = z.object({ selected: ids }).strict();
 const orderAnswer = z.object({ order: ids }).strict();
 
@@ -120,6 +132,25 @@ export function evaluateSubmit(
       requireCoverage('pytania', asked, questions.map((q) => q.id), requiredItemIds(questions, block.requiredQuestions));
       const notesAdded = questions.filter((q) => q.note && asked.includes(q.id)).map((q) => noteKey(block.id, q.id));
       return { entry: baseEntry(block, now, weightPoints(block)), notesAdded };
+    }
+
+    case 'DOSSIER': {
+      // Teczka (D-083): wszystkie dokumenty otwarte (jak zakładki TABS), `noted` = zakreślone wiersze-dowody - ta sama ścieżka
+      // notatek co hotspoty (klucz `<blockId>.<rowId>`). Zwykła linijka nigdy nie trafia do `noted` (400 bez treści bloku).
+      const { opened, noted } = parseAnswer(dossierAnswer, answer);
+      const documents = block.documents as { id: string; rows: DossierRowLike[] }[];
+      requireCoverage('dokumenty', opened, documents.map((d) => d.id), undefined);
+      const rows = flattenDossierRows(documents);
+      const evidenceIds = rows.filter((r) => r.evidence === true && r.note).map((r) => r.id);
+      if (!unique(noted) || noted.some((id) => !evidenceIds.includes(id))) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      // Wymagane wiersze (required: true, tylko dowody - walidacja treści) muszą być zakreślone - ta sama reguła co klient.
+      const required = rows.filter((r) => r.required === true).map((r) => r.id);
+      if (required.some((id) => !noted.includes(id))) {
+        throw new BadRequestException('Nie ukończono wymaganych elementów (dowody w teczce)');
+      }
+      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: noted.map((id) => noteKey(block.id, id)) };
     }
 
     case 'TABS': {

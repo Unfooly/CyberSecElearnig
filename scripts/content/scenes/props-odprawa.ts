@@ -47,7 +47,6 @@ export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: st
   state = 'ringing', animated = true, caller = 'Komisarz A. Wolski', role = 'Wydział Cyberbezpieczeństwa', initials = 'AW', timer = '00:12',
 }) => {
   const w = 240, h = 480;
-  const anim = (a: string) => (animated ? a : '');
   const avatar = `<circle cx="120" cy="170" r="50" fill="#EEEBFF"/>` + t(120, 184, initials, 36, { anchor: 'middle', bold: true, fill: P.purple });
   let screen = '';
   if (state === 'ringing') {
@@ -58,7 +57,7 @@ export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: st
       t(120, 256, caller, 17, { anchor: 'middle', bold: true, fill: P.white }) +
       t(120, 278, role, 11, { anchor: 'middle', fill: P.white, opacity: 0.8 }) +
       `<circle cx="66" cy="396" r="30" fill="${P.red}"/>${handset(66, 396, 135)}` +
-      `<circle cx="174" cy="396" r="30" fill="${P.green}">${anim('<animate attributeName="r" values="30;34;30" dur="0.9s" repeatCount="indefinite"/>')}</circle>${handset(174, 400, 0)}` +
+      `<g${animated ? ' class="a-grow"' : ''}><circle cx="174" cy="396" r="30" fill="${P.green}"/>${handset(174, 400, 0)}</g>` +
       t(66, 446, 'Odrzuć', 11, { anchor: 'middle', fill: P.white, opacity: 0.85 }) + t(174, 446, 'Odbierz', 11, { anchor: 'middle', fill: P.white, opacity: 0.85 });
   } else if (state === 'call') {
     const btn = (cx: number, cy: number, label: string) =>
@@ -79,16 +78,15 @@ export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: st
   const rings = state === 'ringing'
     ? [0, 1].map(i => {
         const d = 30 + i * 26;
-        return `<path d="M${-d + 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 0 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round" opacity="${animated ? 1 : 0.8}">${anim(`<animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="${i * 0.3}s" repeatCount="indefinite"/>`)}</path>` +
-          `<path d="M${w + d - 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 1 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round" opacity="${animated ? 1 : 0.8}">${anim(`<animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="${i * 0.3}s" repeatCount="indefinite"/>`)}</path>`;
+        const cls = animated ? ` class="a-wave${i ? ' d1' : ''}"` : ' opacity="0.8"';
+        return `<path${cls} d="M${-d + 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 0 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round"/>` +
+          `<path${cls} d="M${w + d - 10} ${h / 2 - 50 - i * 14} a${60 + i * 26} ${60 + i * 26} 0 0 1 0 ${100 + i * 28}" fill="none" stroke="${P.purple}" stroke-width="7" stroke-linecap="round"/>`;
       }).join('')
     : '';
-  const shake = state === 'ringing' && animated
-    ? `<animateTransform attributeName="transform" type="rotate" values="0 120 240;-2.5 120 240;2.5 120 240;-2.5 120 240;0 120 240;0 120 240" dur="1.2s" repeatCount="indefinite"/>`
-    : '';
+  const ringCls = state === 'ringing' && animated ? ' class="a-ring"' : '';
   return {
     w, h,
-    svg: rings + `<g>${shake}${shadow(w, h, 36)}<rect width="${w}" height="${h}" rx="36" fill="${P.ink}"/>${screen}<rect x="92" y="22" width="56" height="10" rx="5" fill="${P.ink}"/></g>`,
+    svg: rings + `<g${ringCls}>${shadow(w, h, 36)}<rect width="${w}" height="${h}" rx="36" fill="${P.ink}"/>${screen}<rect x="92" y="22" width="56" height="10" rx="5" fill="${P.ink}"/></g>`,
     parts: { screen: { x: 12, y: 14, w: 216, h: 452 } },
   };
 };
@@ -101,7 +99,8 @@ export const mugTop: PropFn<{ color?: string }> = ({ color = P.teal }) => ({
     `<circle cx="66" cy="68" r="56" fill="${P.ink}" opacity="0.15"/>` +
     `<rect x="100" y="44" width="46" height="26" rx="13" fill="${color}"/>` +
     `<circle cx="60" cy="60" r="56" fill="${color}"/><circle cx="60" cy="60" r="44" fill="${COFFEE}"/>` +
-    `<ellipse cx="46" cy="46" rx="14" ry="7" fill="${P.white}" opacity="0.25" transform="rotate(-30 46 46)"/>`,
+    `<ellipse cx="46" cy="46" rx="14" ry="7" fill="${P.white}" opacity="0.25" transform="rotate(-30 46 46)"/>` +
+    `<g class="a-shimmer"><path d="M44 70 q10 -10 22 -2 q10 8 20 -4" fill="none" stroke="${P.white}" stroke-width="4" stroke-linecap="round" opacity="0.35"/></g>`,
 });
 
 export const coffeeRing: PropFn<Record<string, never>> = () => ({
@@ -109,7 +108,8 @@ export const coffeeRing: PropFn<Record<string, never>> = () => ({
   svg: `<circle cx="55" cy="55" r="46" fill="none" stroke="${COFFEE}" stroke-width="6" opacity="0.18"/><path d="M20 40 a46 46 0 0 1 30 -30" fill="none" stroke="${COFFEE}" stroke-width="9" opacity="0.12"/>`,
 });
 
-export const notepadTop: PropFn<{ lines?: string[] }> = ({ lines = ['podejrzany mail?', 'kto dzwonił 8:50', 'sprawdzić logi'] }) => {
+// Domyślne dopiski neutralne: detektyw o 9:40 nie zna jeszcze sprawy, a telefon „informatyka” był o 9:05 (oś czasu modułu 1, D-084).
+export const notepadTop: PropFn<{ lines?: string[] }> = ({ lines = ['raport — poniedziałek', 'szkolenie IT 14:00', 'oddać lupę'] }) => {
   const w = 250, h = 320;
   let spiral = '';
   for (let i = 0; i < 9; i++) spiral += `<circle cx="${30 + i * 24}" cy="14" r="8" fill="none" stroke="${P.greyDark}" stroke-width="4"/>`;
@@ -289,7 +289,7 @@ export const badgeWallet: PropFn<{ unit?: string }> = ({ unit = 'WYDZIAŁ CYBERB
     t(cardX + 210, cardY + 346, 'JEDNOSTKA', 12, { bold: true, fill: P.greyDark, spacing: 1 }) + t(cardX + 210, cardY + 372, 'Wydz. Cyberbezpieczeństwa', 18, { bold: true }) +
     `<path d="M${cardX + 30} ${cardY + 450} q20 -30 40 0 t40 -6 q14 -18 30 4" fill="none" stroke="${P.purpleDark}" stroke-width="3" stroke-linecap="round"/>` +
     t(cardX + 30, cardY + 478, 'podpis wystawcy', 11, { fill: P.greyDark }) +
-    `<circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="44" fill="${P.sky}" opacity="0.8"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="30" fill="#EEEBFF" opacity="0.9"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="16" fill="${P.sun}"/>`;
+    `<g class="a-shimmer"><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="44" fill="${P.sky}" opacity="0.8"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="30" fill="#EEEBFF" opacity="0.9"/><circle cx="${cardX + cardW - 80}" cy="${cardY + 440}" r="16" fill="${P.sun}"/></g>`;
   return {
     w, h,
     svg:

@@ -97,9 +97,17 @@ odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots
 | `caseFolderOpen` | `caseNo, title, victim, victimRole, loss, when, reporter, stamp` | `slot-zadania` |
 | `badgeWallet` | `unit` | `slot-zdjecie`, `slot-imie`, `slot-numer` |
 
-`phoneTop` w stanie `ringing` ma animację SMIL (dzwonienie) - scena z nim ma wariant statyczny (`animated: false`,
-`odprawa-biurko-static.json`) dla `prefers-reduced-motion` (`steps[].imageReducedMotion`). Test `odprawa.test.ts` pilnuje,
-że build każdej `odprawa-*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` - po zmianie klocka przebuduj sceny.
+`phoneTop` w stanie `ringing` dzwoni (klasy animacji `a-ring`, `a-wave`, `a-grow`; `animated: false` je wyłącza). Test
+`odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` -
+po zmianie klocka albo kompozytora przebuduj sceny (`cli.ts build ... --out <assets>/scenes`) i opublikuj (`--assets`).
+
+## Animacje
+
+Każda scena ma na `<svg>` `id="static"` i blok `<style>` z animacjami CSS (`ANIM_CSS` w `compose.ts`); klocki dostają klasy
+`a-blink`, `a-blink-slow`, `a-glow`, `a-pulse`, `a-steam`, `a-sway`, `a-flutter`, `a-bounce`, `a-ring`, `a-wave`, `a-grow`,
+`a-shimmer` (opóźnienia `d1`, `d2`). Animacje działają też w `<img>` (bez skryptów). Zatrzymują je `prefers-reduced-motion` w samym
+SVG oraz fragment `#static` w adresie obrazu (`#static:target`) - odtwarzacz dopisuje go przy reduced-motion do każdego obrazu sceny,
+więc nie trzeba osobnych wariantów statycznych. Tylko `opacity`/`transform` - kształty i hotspoty się nie przesuwają.
 
 Nowy klocek = jedna funkcja w `props.ts` zwracająca `{ svg, w, h, parts? }` w lokalnych
 współrzędnych od (0,0) + wpis w `PROPS` + wiersz w tej tabeli. Test „każdy klocek renderuje
@@ -109,8 +117,8 @@ się z domyślnymi parametrami" łapie brakujące domyślne.
 
 - Cały tekst z JSON jest escapowany; SVG nie zawiera `<script>`, `on*=`, `href`, `foreignObject`
   ani `javascript:` — test to sprawdza. Lint SVG ze skryptu TTS (`--assets`) i tak przejdzie.
-- Animacje to wyłącznie SMIL (`<animate>`, `<animateTransform>`): dioda telefonu (`phone.led`) i dzwoniący telefon odprawy
-  (`phoneTop`, `state: ringing`). Jeśli lint ich nie przepuści, usuń animację w klocku — hotspot się nie zmieni.
+- Animacje to wyłącznie CSS w `<style>` sceny (bez SMIL i bez skryptów). Lint SVG (`--assets`) odrzuca w CSS `@import` i `url(...)`
+  z zewnętrznym adresem.
 - Id `clipPath` są prefiksowane id elementu, więc dwa monitory w jednej scenie nie kolidują.
 
 ## Paleta

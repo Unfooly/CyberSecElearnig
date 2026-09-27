@@ -121,6 +121,20 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(submit(block, { visited: ['dowod'] }).entry.done).toBe(true); // drzwi same NIE muszą być w visited
   });
 
+  it('SCENE_HOTSPOTS: drzwi + dowód OPCJONALNY (required:false, D-086 - tablica w korytarzu): pusty visited kończy blok, noted bez visited = 400', () => {
+    const block = {
+      ...blocks().SCENE_HOTSPOTS,
+      requiredHotspots: undefined,
+      hotspots: [
+        { id: 'tablica', label: 'Tablica', x: 60, y: 10, width: 20, height: 20, content: 'x', evidence: true, note: { text: 'Zasada była znana.', kind: 'item' }, required: false },
+        { id: 'drzwi', label: 'Wyjście', x: 40, y: 30, width: 10, height: 40, action: 'next' },
+      ],
+    };
+    expect(submit(block, { visited: [] }).entry.done).toBe(true);
+    expect(() => submit(block, { visited: [], noted: ['tablica'] })).toThrow(BadRequestException);
+    expect(submit(block, { visited: ['tablica'], noted: ['tablica'] }).entry.done).toBe(true);
+  });
+
   it('SCENE_HOTSPOTS: nieznane id (spoza spłaszczonego zbioru zewnętrzne+wewnętrzne) jest odrzucone bez treści bloku', () => {
     const block = blocks().SCENE_HOTSPOTS;
     const rejected = () => submit(block, { visited: ['h1', 'wymyslone-id'] });

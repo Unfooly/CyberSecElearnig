@@ -109,6 +109,7 @@ interface BriefingSceneLike {
   image?: string;
   closedImage?: string;
   hotspot?: { id: string; x: number; y: number; w: number; h: number };
+  openHotspot?: { id: string; x: number; y: number; w: number; h: number };
   slots?: Partial<Record<string, { x: number; y: number; w: number; h: number }>>;
   tasks?: unknown[];
 }
@@ -132,6 +133,11 @@ function briefingSceneErrors(label: string, step: BriefingSceneLike): string[] {
   if (step.hotspot) {
     if (step.image === undefined) needsImage('hotspot');
     inScene('hotspot', step.hotspot);
+  }
+  // openHotspot (tylko caseFile - schemat): klik w otwarte akta; ma sens wyłącznie przy dwóch fazach (closedImage).
+  if (step.openHotspot) {
+    if (step.closedImage === undefined) errors.push(`${label}.openHotspot wymaga closedImage (dwie fazy teczki)`);
+    inScene('openHotspot', step.openHotspot);
   }
   for (const [slot, rect] of Object.entries(step.slots ?? {})) {
     if (!rect) continue;
@@ -284,7 +290,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
             errors.push(`hotspots[${i}]: action "next" (drzwi) nie może mieć content, media, evidence, note ani required`);
           }
         } else {
-          if (h.content === undefined) errors.push(`hotspots[${i}]: content jest wymagane (chyba że action: "next")`);
+          // Zbliżenie przedmiotu (D-086) pokazuje grafikę, nie tekst karty - content jest wymagane tylko przy przedmiocie bez mediów.
+          if (h.content === undefined && h.media === undefined) errors.push(`hotspots[${i}]: content albo media jest wymagane (chyba że action: "next")`);
+          // Przedmiot ze sceną zagnieżdżoną nie ma "Zabierz" (zbliżenie przechodzi w scenę) - dowód byłby niemożliwy do zebrania.
+          if (h.media?.kind === 'scene' && (h.evidence !== undefined || h.note !== undefined)) {
+            errors.push(`hotspots[${i}]: przedmiot ze sceną zagnieżdżoną (media.kind "scene") nie może mieć evidence ani note - dowody są w jego scenie`);
+          }
           errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
         }
         errors.push(...audioMediaErrors(`hotspots[${i}]`, h.media));
@@ -301,7 +312,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // kończy blok, nie "odwiedza" siebie), więc licząc je "wszystkie required" (fallback, brak jawnych flag) scena
       // z SAMYMI drzwiami (bez innych hotspotów - np. "korytarz") nigdy nie mogłaby się ukończyć.
       const doorIds = new Set(block.hotspots.filter((h) => h.action === 'next').map((h) => h.id));
-      checkRequiredFlags('hotspots', flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id)), errors);
+      // Scena z drzwiami może mieć ZERO wymaganych przedmiotów (D-086: korytarz - tablica jest dowodem opcjonalnym, wyjściem są drzwi),
+      // ale tylko gdy KAŻDY przedmiot ma jawnie required: false (świadoma decyzja autora). Częściowe `false` przy reszcie nieustawionej
+      // to dalej błąd (pomyłka), a bez drzwi co najmniej jeden przedmiot musi być wymagany.
+      const items = flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id));
+      const optionalByDesign = doorIds.size > 0 && items.length > 0 && items.every((h) => h.required === false);
+      if (!optionalByDesign) checkRequiredFlags('hotspots', items, errors);
       break;
     }
     case 'DIALOGUE': {

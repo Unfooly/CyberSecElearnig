@@ -341,6 +341,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           closedImage: 'scenes/teczka.svg',
           image: 'scenes/akta.svg',
           hotspot: { id: 'teczka', x: 24.4, y: 17.4, w: 51.6, h: 69.5 },
+          openHotspot: { id: 'akta', x: 3.9, y: 2.3, w: 92.1, h: 95.3 },
           slots: { tasks: { x: 54.1, y: 19.4, w: 37.1, h: 56.2 } },
         },
         {

@@ -160,9 +160,11 @@ describe('parseModule: walidacja modułu', () => {
       door.required = true;
     }, 'action "next"');
     expectInvalid((m) => {
-      // Zwykły hotspot (action domyślne "card") bez content - dozwolone tylko dla "next".
-      delete blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].content;
-    }, 'content jest wymagane');
+      // Zwykły hotspot (action domyślne "card") bez content i bez mediów - dozwolone tylko dla "next".
+      const plain = blockOf(m, 'SCENE_HOTSPOTS').hotspots[0];
+      delete plain.media;
+      delete plain.content;
+    }, 'content albo media jest wymagane');
   });
 
   it('hotspots[].media.kind "scene" (zagnieżdżona mini-scena, B-086): id unikalne w CAŁYM bloku (zewnętrzne + wewnętrzne), obszar i evidence/note jak zewnętrzne', () => {
@@ -195,22 +197,39 @@ describe('parseModule: walidacja modułu', () => {
     expect(() => parseModule(module)).not.toThrow();
   });
 
-  it('drzwi + INNY hotspot z required: false (bez required: true nigdzie): wykluczenie drzwi z puli nie maskuje błędu "brak required: true"', () => {
+  it('drzwi + przedmioty WSZYSTKIE z jawnym required: false: scena bez wymaganych (D-086, korytarz z opcjonalną tablicą); bez drzwi albo z częściowym false - błąd', () => {
+    const issues = (hotspotList: Record<string, unknown>[]) => {
+      const module = fullModuleForTests();
+      const scene = blockOf(module, 'SCENE_HOTSPOTS');
+      delete scene.requiredHotspots;
+      scene.hotspots = hotspotList;
+      try {
+        parseModule(module);
+        return '';
+      } catch (e) {
+        return (e as ContentValidationError).issues.join('\n');
+      }
+    };
+    const door = { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' };
+    const optional = { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: false };
+    expect(issues([optional, door])).toBe('');
+    expect(issues([optional])).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+    expect(issues([optional, { ...optional, id: 'drugi', required: undefined }, door])).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+  });
+
+  it('przedmiot z mediami nie wymaga content (zbliżenie pokazuje grafikę, D-086); bez mediów - wymaga', () => {
     const module = fullModuleForTests();
     const scene = blockOf(module, 'SCENE_HOTSPOTS');
-    delete scene.requiredHotspots;
-    scene.hotspots = [
-      { id: 'dowod', label: 'Kartka', x: 10, y: 10, width: 20, height: 20, content: 'x', required: false },
-      { id: 'drzwi', label: 'Wyjście', x: 90, y: 5, width: 8, height: 10, action: 'next' },
-    ];
-    let error: unknown;
-    try {
-      parseModule(module);
-    } catch (e) {
-      error = e;
-    }
-    expect(error).toBeInstanceOf(ContentValidationError);
-    expect((error as ContentValidationError).issues.join('\n')).toContain('hotspots: co najmniej jeden element musi mieć required: true');
+    const withMedia = scene.hotspots.find((h: Record<string, any>) => h.media?.kind === 'image');
+    delete withMedia.content;
+    expect(() => parseModule(module)).not.toThrow();
+  });
+
+  it('przedmiot ze sceną zagnieżdżoną nie może być dowodem (bez "Zabierz", D-086)', () => {
+    expectInvalid((m) => {
+      const outer = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+      Object.assign(outer, { evidence: true, note: { text: 'Monitor.', kind: 'item' } });
+    }, 'nie może mieć evidence ani note');
   });
 
   it('QUIZ z opcją mającą i correct, i outcome, oraz bez poprawnej opcji', () => {
@@ -854,6 +873,10 @@ describe('parseModule: BRIEFING - grafika kroków', () => {
     expect(invalid((m) => (step(m, 0).closedImage = 'scenes/x.svg'))).toContain("steps.0: Unrecognized key(s) in object: 'closedImage'");
     expect(invalid((m) => delete step(m, 3).image)).toContain('steps[3].closedImage wymaga pola image');
     expect(invalid((m) => delete step(m, 3).hotspot)).toContain('steps[3].closedImage wymaga hotspotu');
+    // openHotspot (D-086): klik w otwarte akta - tylko przy dwóch fazach i w granicach sceny.
+    expect(invalid((m) => delete step(m, 3).closedImage)).toContain('steps[3].openHotspot wymaga closedImage');
+    expect(invalid((m) => (step(m, 3).openHotspot.x = 50))).toContain('steps[3].openHotspot: prostokąt wychodzi poza scenę');
+    expect(invalid((m) => (step(m, 0).openHotspot = { id: 'x', x: 1, y: 1, w: 1, h: 1 }))).toContain("Unrecognized key(s) in object: 'openHotspot'");
     expect(invalid((m) => (step(m, 3).closedImage = 'https://evil.example/x.svg'))).toContain('closedImage');
   });
 

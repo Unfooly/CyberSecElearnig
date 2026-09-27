@@ -27,7 +27,7 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   for (const hotspot of scene.hotspots) delete hotspot.media;
   // To samo z grafiką kroków odprawy (D-084): własne testy niżej (moduleWithBriefingScenes).
   const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
-  for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'slots']) delete step[field];
+  for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'openHotspot', 'slots']) delete step[field];
   return module as unknown as Record<string, unknown>;
 }
 

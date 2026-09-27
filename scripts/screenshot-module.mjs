@@ -195,11 +195,17 @@ async function runViewport(viewport) {
   await page.getByText(/Wynik: 100%/).waitFor();
   await nextEnabled().click();
 
-  // --- TABS (przechodzimy, blok trzeba ukończyć - wymaga odwiedzenia WSZYSTKICH zakładek) -------------------------
-  await page.getByRole('tablist').waitFor();
-  await page.getByRole('tab', { name: 'Domeny' }).click();
-  await page.getByRole('tab', { name: 'Czego bank nigdy nie zrobi' }).click();
-  await page.getByRole('tab', { name: 'Jak zgłosić w Unfooly' }).click();
+  // --- DOSSIER (teczka, D-083): zrzut arkusza z zakreśleniem, potem wszystkie dokumenty i wymagane dowody -----------
+  await page.getByRole('tablist', { name: 'Dokumenty w teczce' }).waitFor();
+  const row = (text) => page.getByRole('button', { name: new RegExp(text) });
+  await row('Wektor Rozliczenia').click();
+  await shot(page, '06-teczka-wyciag', viewport.name);
+  await page.getByRole('tab', { name: 'Logi logowania' }).click();
+  await row('Bukareszt, nowe urządzenie').filter({ hasText: '08:53' }).click();
+  await page.getByRole('tab', { name: 'Notatka IT' }).click();
+  await row('zarejestrowana 2 dni przed atakiem').click();
+  await shot(page, '06-teczka-notatka', viewport.name);
+  await page.getByRole('tab', { name: 'Procedury' }).click();
   await nextEnabled().click();
 
   // --- DIALOGUE (Marek) - przechodzimy bez zrzutu ------------------------------------------------------------------

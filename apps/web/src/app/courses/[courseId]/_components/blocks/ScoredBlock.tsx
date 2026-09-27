@@ -34,9 +34,12 @@ export default function ScoredBlock({
   onContinue,
   continueLabel,
   onProgress,
+  caseNo,
 }: {
   block: ContentBlock;
   courseId: string;
+  /** Numer sprawy z odprawy (tabliczka tablicy śledczej, ORDERING). */
+  caseNo?: string;
   onSubmit?: (answer?: unknown) => void;
   disabled?: boolean;
   /** Ustawione = widok wyniku (po zapisie z `onContinue`, w podglądzie bez). */
@@ -72,6 +75,7 @@ export default function ScoredBlock({
           result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
           onContinue={onContinue}
           continueLabel={continueLabel}
+          caseNo={caseNo}
         />
       );
     }

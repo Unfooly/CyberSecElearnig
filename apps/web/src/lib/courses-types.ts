@@ -163,8 +163,11 @@ export interface ContentBlock {
   // QUIZ / BRANCHING_SCENARIO
   prompt?: string;
   options?: ContentBlockOption[];
-  // DRAG_AND_DROP
+  // DRAG_AND_DROP (i ORDERING: te same pola id/text)
   items?: DragAndDropItem[];
+  // ORDERING - tablica śledcza (D-088): "zdjęcia" na początku i końcu łańcucha.
+  start?: { label: string; caption: string };
+  end?: { label: string; caption: string };
   // Etykiety dwóch koszyków klasyfikacji (domyślnie "Bezpieczne"/"Phishing").
   categories?: [string, string];
   // EMBEDDED_HTML: dokument HTML NIE jest częścią treści bloku (pole sekretne po stronie serwera); iframe ładuje go z osobnej trasy embed

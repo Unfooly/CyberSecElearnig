@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { Highlighter, Paperclip } from 'lucide-react';
 import type { ContentBlock, DossierRow } from '@/lib/courses-types';
+import { flyEvidence } from '@/lib/motion';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 
@@ -33,6 +34,8 @@ export default function DossierBlock({
   const [activeId, setActiveId] = useState<string | null>(documents[0]?.id ?? null);
   const [opened, setOpened] = useState<string[]>(documents[0] ? [documents[0].id] : []);
   const [noted, setNoted] = useState<string[]>([]);
+  // Ostatnio zakreślony wiersz - tylko on dostaje pociągnięcie zakreślacza (powrót na przekładkę nie powtarza animacji).
+  const [lastNoted, setLastNoted] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('');
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const baseId = `dossier-${useId()}`;
@@ -54,6 +57,7 @@ export default function DossierBlock({
 
   function select(id: string, focus = false) {
     setActiveId(id);
+    setLastNoted(null);
     setMessage('');
     setOpened((current) => (current.includes(id) ? current : [...current, id]));
     if (focus) tabRefs.current[id]?.focus();
@@ -72,7 +76,7 @@ export default function DossierBlock({
     select(documents[target].id, true);
   }
 
-  function mark(row: DossierRow) {
+  function mark(row: DossierRow, from?: Element) {
     if (!row.evidence || !row.note) {
       setMessage(row.message ?? ORDINARY);
       return;
@@ -86,8 +90,11 @@ export default function DossierBlock({
       return;
     }
     setNoted((current) => [...current, row.id]);
+    setLastNoted(row.id);
     addNote({ blockId: block.id, text: row.note.text, kind: row.note.kind });
     evidence.addPending(`${block.id}.${row.id}`);
+    // Ruch (D-090): treść notatki leci od wiersza do Notatnika.
+    flyEvidence(from, row.note.text);
     setMessage('Zakreślone. Dowód trafił do notatnika.');
   }
 
@@ -174,12 +181,20 @@ export default function DossierBlock({
                       <button
                         type="button"
                         aria-pressed={isNoted}
-                        onClick={() => mark(row)}
+                        onClick={(event) => mark(row, event.currentTarget)}
                         style={columnsStyle(active.columns.length)}
-                        className={`my-0.5 grid min-h-[44px] w-full content-center gap-x-3 rounded px-1.5 py-2 text-left font-typewriter text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:[grid-template-columns:var(--dossier-cols)] ${
-                          isNoted ? 'bg-highlight' : 'hover:bg-paper'
+                        className={`relative isolate my-0.5 grid min-h-[44px] w-full content-center gap-x-3 rounded px-1.5 py-2 text-left font-typewriter text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:[grid-template-columns:var(--dossier-cols)] ${
+                          isNoted ? '' : 'hover:bg-paper'
                         }`}
                       >
+                        {/* Zakreślacz: osobna warstwa pod tekstem; świeżo zakreślony wiersz - pociągnięcie od lewej (scaleX, 350 ms, D-090). */}
+                        {isNoted && (
+                          <span
+                            aria-hidden="true"
+                            data-testid="dossier-highlight"
+                            className={`absolute inset-0 -z-10 origin-left rounded bg-highlight ${lastNoted === row.id ? 'motion-safe:animate-highlight-in' : ''}`}
+                          />
+                        )}
                         {row.cells.map((cell, index) => (
                           <span key={index} className={index === 0 ? 'font-bold' : undefined}>
                             <span className="sr-only">{active.columns[index]}: </span>

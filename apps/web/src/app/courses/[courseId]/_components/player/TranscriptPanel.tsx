@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from 'react';
 import { X } from 'lucide-react';
+import { usePresence } from '@/lib/use-presence';
 import { useOverlayLayer } from './overlay-stack';
 import { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 
@@ -46,20 +47,27 @@ export default function TranscriptPanel({
     }
   }, [open, triggerRef]);
 
-  if (!open) return null;
+  // Ruch (D-090): wejście fade + scale .96 -> 1 (180 ms), wyjście 140 ms (panel zostaje na chwilę, bez interakcji).
+  const { mounted, closing } = usePresence(open, 140);
+  if (!mounted) return null;
 
   return (
     <div
       id={TRANSCRIPT_TOGGLE_ID}
       role="region"
       aria-label="Transkrypcja narracji"
-      className="absolute bottom-full left-0 right-0 z-30 mb-2 max-h-[40dvh] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
+      aria-hidden={closing || undefined}
+      data-state={closing ? 'closing' : 'open'}
+      className={`absolute bottom-full left-0 right-0 z-30 mb-2 max-h-[40dvh] origin-bottom overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-lg ${
+        closing ? 'pointer-events-none motion-safe:animate-overlay-out' : 'motion-safe:animate-overlay-in'
+      }`}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">Transkrypcja</h3>
         <button
           ref={closeButtonRef}
           type="button"
+          tabIndex={closing ? -1 : undefined}
           onClick={onClose}
           aria-label="Zamknij transkrypcję"
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900"

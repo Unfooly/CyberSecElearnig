@@ -105,7 +105,7 @@ export default function NotesDrawer({
           </button>
         </div>
         <div className="flex-1 px-3 pb-3">
-          <NotesPanel id={id} />
+          <NotesPanel id={id} open={open} />
         </div>
       </div>
     </>

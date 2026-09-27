@@ -28,6 +28,26 @@ const config: Config = {
       boxShadow: {
         card: '0 1px 2px rgba(19,19,19,.04), 0 8px 24px -16px rgba(19,19,19,.18)',
       },
+      // Ruch (BRAND.md, „Ruch”; D-090): czasy i krzywe - te same wartości w src/lib/motion.ts (animacje z JS) i globals.css (--motion-*).
+      // Animować wyłącznie transform/opacity; każda animacja pod motion-safe albo z obsługą prefers-reduced-motion.
+      transitionDuration: { fast: '120ms', base: '200ms', slow: '400ms' },
+      transitionTimingFunction: { 'out-soft': 'cubic-bezier(.2,.8,.2,1)', 'in-out-soft': 'cubic-bezier(.65,0,.35,1)' },
+      keyframes: {
+        'digit-roll': { from: { opacity: '0', transform: 'translateY(60%)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+        'highlight-in': { from: { transform: 'scaleX(0)' }, to: { transform: 'scaleX(1)' } },
+        'check-draw': { from: { strokeDashoffset: '24' }, to: { strokeDashoffset: '0' } },
+        'rise-in': { from: { opacity: '0', transform: 'translateY(24px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+        'overlay-in': { from: { opacity: '0', transform: 'scale(.96)' }, to: { opacity: '1', transform: 'scale(1)' } },
+        'overlay-out': { from: { opacity: '1', transform: 'scale(1)' }, to: { opacity: '0', transform: 'scale(.96)' } },
+      },
+      animation: {
+        'digit-roll': 'digit-roll 200ms cubic-bezier(.2,.8,.2,1) both',
+        'highlight-in': 'highlight-in 350ms cubic-bezier(.2,.8,.2,1) both',
+        'check-draw': 'check-draw 300ms cubic-bezier(.2,.8,.2,1) both',
+        'rise-in': 'rise-in 400ms cubic-bezier(.2,.8,.2,1) both',
+        'overlay-in': 'overlay-in 180ms cubic-bezier(.2,.8,.2,1) both',
+        'overlay-out': 'overlay-out 140ms cubic-bezier(.65,0,.35,1) both',
+      },
     },
   },
   plugins: [],

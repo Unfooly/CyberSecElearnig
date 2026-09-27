@@ -16,6 +16,8 @@ const config: Config = {
         success: { DEFAULT: '#1E9E6A', soft: '#E6F6EE' },
         warning: { DEFAULT: '#C77C0F', soft: '#FFF3DF' },
         danger: { DEFAULT: '#D9483B', soft: '#FDECEA' },
+        // Zakreślacz (kolor funkcyjny, D-083): wyłącznie zakreślony wiersz-dowód w teczce sprawy - nie tło ani akcent UI.
+        highlight: '#FFE066',
       },
       fontFamily: {
         sans: ['var(--font-jakarta)', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],

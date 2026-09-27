@@ -38,8 +38,8 @@ export default function ReviewBlock({
     // (NOTEPAD, TABS, NARRATIVE) mają contentLayout='slide' - klasy tu nic im nie zmieniają (rodzic nie jest
     // flex-col), ale i tak ograniczamy je do SCENE_HOTSPOTS/DIALOGUE, żeby diff dokładnie odzwierciedlał, co
     // faktycznie tego wymaga.
-    // BRIEFING (D-081) też 'fill' - odprawa wypełnia ramkę jak rozmowa.
-    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE' || block.type === 'BRIEFING';
+    // BRIEFING (D-081) i DOSSIER (D-083) też 'fill' - odprawa i teczka wypełniają ramkę jak rozmowa.
+    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE' || block.type === 'BRIEFING' || block.type === 'DOSSIER';
     return (
       <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>

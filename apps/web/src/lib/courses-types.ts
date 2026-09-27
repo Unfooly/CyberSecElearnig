@@ -24,7 +24,28 @@ export type ContentBlockType =
   // schemaVersion 4: blok narracyjny (tekst, bez interakcji poza "Dalej") - patrz packages/content D-061.
   | 'NARRATIVE'
   // schemaVersion 5: odprawa (kroki typewriter/call/caseFile/badge), nieoceniana - D-081.
-  | 'BRIEFING';
+  | 'BRIEFING'
+  // schemaVersion 5: teczka sprawy (dokumenty z wierszami, zakreślanie dowodów), nieoceniana - D-083.
+  | 'DOSSIER';
+
+/** Wiersz dokumentu w teczce (DOSSIER). evidence/note/required są jawne (jak hotspoty) - blok nie jest oceniany. */
+export interface DossierRow {
+  id: string;
+  cells: string[];
+  evidence?: boolean;
+  note?: { text: string; kind?: NoteKind };
+  required?: boolean;
+}
+
+export interface DossierDocument {
+  id: string;
+  tab: string;
+  org: string;
+  title: string;
+  meta?: string;
+  columns: string[];
+  rows: DossierRow[];
+}
 
 /** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */
 export type BriefingStep =
@@ -137,6 +158,9 @@ export interface ContentBlock {
   requiredTabs?: string[];
   // BRIEFING
   steps?: BriefingStep[];
+  // DOSSIER: pieczątka teczki i dokumenty (przekładki).
+  stamp?: string;
+  documents?: DossierDocument[];
   // SUMMARY
   text?: string;
   // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).

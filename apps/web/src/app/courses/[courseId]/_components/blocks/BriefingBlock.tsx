@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckSquare, MapPin, Phone, Square } from 'lucide-react';
 import type { BriefingStep, ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
+import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import AvatarDisplay from '@/app/courses/_components/AvatarDisplay';
 import { useCompleteReaction } from '../player/mascot-reaction';
@@ -24,21 +25,6 @@ import BriefingSceneStep, { singleClick } from './BriefingScene';
 // stoi w stanie końcowym (globals.css + usePrefersReducedMotion niżej dla samego pisania, które jest w JS).
 
 const TYPE_INTERVAL_MS = 32;
-
-// Start ZAWSZE od false, odczyt dopiero w efekcie: serwer nie zna preferencji, a inicjalizator czytający matchMedia dawał inny
-// pierwszy render w przeglądarce niż na serwerze (błąd hydratacji, złapany przez layout-check z reducedMotion:'reduce').
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const query = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : undefined;
-    if (!query) return undefined;
-    const update = () => setReduced(query.matches);
-    update();
-    query.addEventListener?.('change', update);
-    return () => query.removeEventListener?.('change', update);
-  }, []);
-  return reduced;
-}
 
 /** Tekst "wystukiwany" znak po znaku; z reduced-motion od razu w całości. Zwraca widoczną część i czy już skończył. */
 function useTypewriter(text: string, reducedMotion: boolean): { shown: string; done: boolean; finish: () => void } {

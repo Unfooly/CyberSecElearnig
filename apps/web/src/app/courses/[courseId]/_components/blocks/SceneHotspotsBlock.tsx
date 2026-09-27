@@ -3,7 +3,8 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Check, DoorOpen, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
-import { contentAssetUrl } from '@/lib/content-assets';
+import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
+import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { requiredItemIds } from '@/lib/required-items';
 import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { useNotes, NoteKindIcon } from '../player/notes';
@@ -118,7 +119,9 @@ export default function SceneHotspotsBlock({
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const overlayTriggerRef = useRef<HTMLButtonElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
-  const imageUrl = contentAssetUrl(contentBase, block.image, 'image');
+  // Przy prefers-reduced-motion każdy obraz sceny dostaje #static - zatrzymuje animacje CSS w SVG (D-084, content-assets.ts).
+  const reducedMotion = usePrefersReducedMotion();
+  const imageUrl = withStaticFragment(contentAssetUrl(contentBase, block.image, 'image'), reducedMotion);
   const active = hotspots.find((hotspot) => hotspot.id === activeId) ?? null;
   const nestedScene = active?.media?.kind === 'scene' ? active.media.scene : undefined;
   const activeInner = nestedScene?.hotspots.find((hotspot) => hotspot.id === nestedActiveId) ?? null;
@@ -570,7 +573,7 @@ function NestedSceneImage({
   overlayOpen: boolean;
   onPick: (id: string) => void;
 }) {
-  const url = contentAssetUrl(contentBase, scene.image, 'image');
+  const url = withStaticFragment(contentAssetUrl(contentBase, scene.image, 'image'), usePrefersReducedMotion());
   // Domyślne 16/10 tylko na czas ładowania (jak w scenie najwyższego poziomu) - cache-check zaraz po zamontowaniu:
   // React 18 nie odtwarza zdarzenia `load` dla obrazu załadowanego z cache PRZED hydratacją (React #15446).
   const [aspectRatio, setAspectRatio] = useState(16 / 10);
@@ -645,7 +648,7 @@ function NestedSceneImage({
 }
 
 function ImageMedia({ contentBase, media }: { contentBase: string; media: HotspotMedia | InnerHotspotMedia }) {
-  const url = contentAssetUrl(contentBase, media.src, 'image');
+  const url = withStaticFragment(contentAssetUrl(contentBase, media.src, 'image'), usePrefersReducedMotion());
   if (!url) return null;
   // Powiększenie wprost w karcie (bez osobnej nakładki). max-h-[45vh] na mobile (bez zmian - karta się tam przewija
   // jak dawniej); od 640px wzwyż .hotspot-card-media (globals.css) daje mu realną, ograniczoną wysokość obszaru
@@ -700,7 +703,7 @@ function AudioMedia({
   // wtedy transkrypcją jest narration.text. Dalej w komponencie wyłącznie te dwie stałe, bez rozróżniania źródła.
   const url = contentAssetUrl(contentBase, media.audioUrl ?? media.narration?.audioUrl, 'audio');
   const transcript = media.transcript ?? media.narration?.text;
-  const imageUrl = contentAssetUrl(contentBase, media.image, 'image');
+  const imageUrl = withStaticFragment(contentAssetUrl(contentBase, media.image, 'image'), usePrefersReducedMotion());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 

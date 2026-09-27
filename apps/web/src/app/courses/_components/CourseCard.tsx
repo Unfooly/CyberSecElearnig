@@ -2,7 +2,9 @@ import { ButtonLink } from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Pill from '@/components/ui/Pill';
 import type { CourseAssignmentSummary } from '@/lib/courses-types';
+import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import CourseCategoryIcon, { type CourseIconTone } from './CourseCategoryIcon';
+import CourseThumbnail from './CourseThumbnail';
 import ProgressBar from './ProgressBar';
 import StatusBadge from './StatusBadge';
 
@@ -27,12 +29,17 @@ function toneFor(status: CourseAssignmentSummary['status']): CourseIconTone {
   return 'acc';
 }
 
-export default function CourseCard({ course }: { course: CourseAssignmentSummary }) {
+export default function CourseCard({ course, contentBase = LOCAL_CONTENT_BASE }: { course: CourseAssignmentSummary; contentBase?: string }) {
   const showProgress = course.status === 'IN_PROGRESS' || course.status === 'OVERDUE';
 
   return (
     <Card className="flex h-full flex-col gap-3 p-[18px]">
-      <CourseCategoryIcon category={course.category} tone={toneFor(course.status)} />
+      {/* Miniatura modułu (D-084) zamiast ikony kategorii; kurs bez miniatury - dotychczasowy wygląd. */}
+      {contentAssetUrl(contentBase, course.thumbnail, 'image') ? (
+        <CourseThumbnail contentBase={contentBase} thumbnail={course.thumbnail} title={course.title} />
+      ) : (
+        <CourseCategoryIcon category={course.category} tone={toneFor(course.status)} />
+      )}
 
       <h3 className="line-clamp-2 text-[15px] font-bold leading-snug">{course.title}</h3>
 

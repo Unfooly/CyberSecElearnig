@@ -39,3 +39,13 @@ export function contentAssetUrl(base: string, path: string | undefined | null, k
   if (!path.includes('.') || !EXTENSIONS[kind].includes(extension)) return null;
   return `${base.replace(/\/+$/, '')}/${path}`;
 }
+
+/**
+ * Obraz sceny przy prefers-reduced-motion: do adresu SVG dopisuje fragment `#static`, który zatrzymuje animacje CSS wewnątrz pliku
+ * (sceny z kompozytora mają `id="static"` na `<svg>` i regułę `#static:target *{animation:none}` - scripts/content/scenes/compose.ts;
+ * D-084). Inne formaty i brak preferencji - adres bez zmian. Fragment nie zmienia zasobu (ten sam plik w cache, bez nowego żądania).
+ */
+export function withStaticFragment(url: string | null, reducedMotion: boolean): string | null {
+  if (!url || !reducedMotion || url.includes('#')) return url;
+  return url.toLowerCase().endsWith('.svg') ? `${url}#static` : url;
+}

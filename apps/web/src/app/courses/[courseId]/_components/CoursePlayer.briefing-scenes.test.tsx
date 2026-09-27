@@ -19,7 +19,6 @@ const briefing: ContentBlock = {
       text: 'Wtorek, 9:40. Dzwoni telefon.',
       cta: 'Odbierz',
       image: 'scenes/biurko.svg',
-      imageReducedMotion: 'scenes/biurko-static.svg',
       hotspot: { id: 'telefon', x: 49, y: 21.6, w: 16.3, h: 54.2 },
     },
     { kind: 'call', caller: { name: 'Komisarz Adam Wolski', role: 'Wydział Cyberbezpieczeństwa' }, text: 'Mamy sprawę w Unfooly.', cta: 'Przyjmuję', image: 'scenes/rozmowa.svg' },
@@ -103,11 +102,14 @@ describe('CoursePlayer: odprawa ze scenami (D-084)', () => {
     expect(sceneImages()).toEqual(['https://cdn.example/scenes/rozmowa.svg']);
   });
 
-  it('prefers-reduced-motion: statyczny wariant sceny (bez animacji SMIL)', async () => {
+  it('prefers-reduced-motion: obraz sceny z #static (zatrzymuje animacje CSS w SVG), także obie fazy teczki', async () => {
     stubFetch();
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} contentBase="https://cdn.example" />);
-    await waitFor(() => expect(sceneImages()).toEqual(['https://cdn.example/scenes/biurko-static.svg']));
+    await waitFor(() => expect(sceneImages()).toEqual(['https://cdn.example/scenes/biurko.svg#static']));
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Przyjmuję' }));
+    expect(sceneImages()).toEqual(['https://cdn.example/scenes/akta.svg#static', 'https://cdn.example/scenes/teczka.svg#static']);
   });
 
   it('karta sprawy: zamknięta teczka ("Otwórz teczkę" albo hotspot) -> akta z zadaniami w slocie; dane karty dla czytnika', () => {

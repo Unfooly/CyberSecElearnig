@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { audioPathSchema, imagePathSchema } from '@cyberszkolo/content';
-import { LOCAL_CONTENT_BASE, contentAssetBase, contentAssetUrl } from './content-assets';
+import { LOCAL_CONTENT_BASE, contentAssetBase, contentAssetUrl, withStaticFragment } from './content-assets';
+
+describe('withStaticFragment (reduced-motion: animacje scen SVG zatrzymane, D-084)', () => {
+  const svg = 'https://content.example.com/assets/m/scenes/biuro.1a2b3c4d.svg';
+  it('przy reduced-motion dopisuje #static do SVG', () => {
+    expect(withStaticFragment(svg, true)).toBe(`${svg}#static`);
+    expect(withStaticFragment('/dev/module-assets/scenes/A.SVG', true)).toBe('/dev/module-assets/scenes/A.SVG#static');
+  });
+  it('bez preferencji, dla innych formatów, null i adresu z fragmentem - bez zmian', () => {
+    expect(withStaticFragment(svg, false)).toBe(svg);
+    expect(withStaticFragment('https://content.example.com/a.png', true)).toBe('https://content.example.com/a.png');
+    expect(withStaticFragment(null, true)).toBeNull();
+    expect(withStaticFragment(`${svg}#static`, true)).toBe(`${svg}#static`);
+  });
+});
 
 describe('contentAssetBase', () => {
   it('bez CONTENT_BASE_URL albo z niepoprawną wartością: lokalny katalog /content', () => {

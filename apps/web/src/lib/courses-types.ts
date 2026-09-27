@@ -57,10 +57,9 @@ export interface BriefingRect {
   h: number;
 }
 
-/** Grafika kroku odprawy (D-084): scena, wariant bez animacji, hotspot = cta, sloty na HTML (zadania, dane gracza). */
+/** Grafika kroku odprawy (D-084): scena, hotspot = cta, sloty na HTML (zadania, dane gracza). */
 export interface BriefingScene {
   image?: string;
-  imageReducedMotion?: string;
   hotspot?: BriefingRect & { id: string };
   slots?: Partial<Record<'tasks' | 'name' | 'number' | 'photo', BriefingRect>>;
 }
@@ -107,6 +106,8 @@ export interface CourseAssignmentSummary {
   assignmentId: string;
   courseId: string;
   title: string;
+  /** Ścieżka zasobu miniatury 16:9 (D-084); brak/null = karta z ikoną kategorii. */
+  thumbnail?: string | null;
   category: string;
   durationMinutes: number;
   mandatory: boolean;
@@ -124,6 +125,8 @@ export interface CourseCatalogItem {
   courseId: string;
   title: string;
   subtitle: string | null;
+  /** Ścieżka zasobu miniatury 16:9 (D-084); brak/null = karta z ikoną kategorii. */
+  thumbnail?: string | null;
   level: string | null;
   objectives: string[];
   category: string;

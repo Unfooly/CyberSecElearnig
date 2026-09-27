@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { CheckSquare, Square } from 'lucide-react';
 import type { BriefingRect, BriefingStep } from '@/lib/courses-types';
-import { contentAssetUrl } from '@/lib/content-assets';
+import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
 import type { NotebookTask } from '../player/notes';
 
@@ -132,10 +132,10 @@ export default function BriefingSceneStep({
   caseNo?: string;
 }) {
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  // reducedMotion startuje od false (zgodność z renderem serwera, usePrefersReducedMotion w BriefingBlock.tsx), więc przy
-  // prefers-reduced-motion pierwsza klatka ładuje wariant animowany i zaraz podmienia go na statyczny - świadomy koszt.
-  const imageSrc = contentAssetUrl(contentBase, reducedMotion && step.imageReducedMotion ? step.imageReducedMotion : step.image, 'image');
-  const closedSrc = step.kind === 'caseFile' ? contentAssetUrl(contentBase, step.closedImage, 'image') : null;
+  // Przy prefers-reduced-motion animacje CSS w SVG zatrzymuje fragment #static (withStaticFragment). reducedMotion startuje od
+  // false (zgodność z renderem serwera, usePrefersReducedMotion), więc pierwsza klatka może chwilę się animować - świadomy koszt.
+  const imageSrc = withStaticFragment(contentAssetUrl(contentBase, step.image, 'image'), reducedMotion);
+  const closedSrc = step.kind === 'caseFile' ? withStaticFragment(contentAssetUrl(contentBase, step.closedImage, 'image'), reducedMotion) : null;
   const closedPhase = closedSrc !== null && !caseOpen;
   const slots = step.slots ?? {};
   const measure = (event: React.SyntheticEvent<HTMLImageElement>) => {

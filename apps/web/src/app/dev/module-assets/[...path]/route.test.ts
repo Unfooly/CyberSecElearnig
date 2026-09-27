@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route.dev';
 
@@ -25,7 +27,10 @@ describe('GET /dev/module-assets/[...path]', () => {
     expect(source.headers.get('content-security-policy')).toContain("default-src 'none'");
     expect(await source.text()).toMatch(/^<svg /);
 
-    const published = await get('assets', 'wyludzone-haslo', 'scenes', 'korytarz.4c9c37ad.svg');
+    // Klucz bieżącej publikacji z locka (zmienia się przy każdej zmianie pliku), nie wpisany na sztywno.
+    const lock = JSON.parse(readFileSync(join(process.cwd(), '..', '..', 'packages', 'content', 'modules', 'wyludzone-haslo', 'assets.lock.json'), 'utf8'));
+    const key: string = lock.entries['korytarz#image'].key;
+    const published = await get(...key.split('/'));
     expect(published.status).toBe(200);
   });
 

@@ -6,12 +6,14 @@ import { Compass } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import type { CourseCatalogItem } from '@/lib/courses-types';
+import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import CourseCategoryIcon from './CourseCategoryIcon';
+import CourseThumbnail from './CourseThumbnail';
 
 // Katalog: kursy globalne, na które NIE mamy jeszcze przypisania (D-065) - "Rozpocznij" tworzy WŁASNE, zawsze
 // nieobowiązkowe przypisanie (POST /courses/:id/self-assign), potem wchodzi prosto do odtwarzacza (który i tak woła
 // /start - patrz courses/[courseId]/page.tsx). Puste (wszystko już przypisane) = sekcja się nie renderuje.
-export default function CourseCatalog({ courses }: { courses: CourseCatalogItem[] }) {
+export default function CourseCatalog({ courses, contentBase = LOCAL_CONTENT_BASE }: { courses: CourseCatalogItem[]; contentBase?: string }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
@@ -48,7 +50,12 @@ export default function CourseCatalog({ courses }: { courses: CourseCatalogItem[
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {courses.map((course) => (
           <Card key={course.courseId} className="flex h-full flex-col gap-3 p-[18px]">
-            <CourseCategoryIcon category={course.category} />
+            {/* Miniatura modułu (D-084) zamiast ikony kategorii; kurs bez miniatury - dotychczasowy wygląd. */}
+            {contentAssetUrl(contentBase, course.thumbnail, 'image') ? (
+              <CourseThumbnail contentBase={contentBase} thumbnail={course.thumbnail} title={course.title} />
+            ) : (
+              <CourseCategoryIcon category={course.category} />
+            )}
             <div>
               <h3 className="line-clamp-2 text-[15px] font-bold leading-snug">{course.title}</h3>
               {course.subtitle && <p className="mt-1 line-clamp-2 text-xs text-muted">{course.subtitle}</p>}

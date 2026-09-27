@@ -440,6 +440,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: fade-out grafiki 200 ms przed oddaleniem (bez ruchu przy reduced-motion); przeliczenie kamery na `resize` albo
   zamknięcie zbliżenia; nazwa warstwy `sceneZoom`; test unikalności w `module.spec.ts`; decyzja treściowa co do `content`.
 
+### B-112 safe-merge (D-085): uwagi z recenzji, poza zgodą na zmianę skryptu
+- Etykiety: `P2`, `security`, `mod:infra` · Źródło: `chore/safe-merge` (G), security + code review, runda 3
+- Opis: (1) **DDL poza katalogiem migracji:** `apps/api/src/scripts/content-import.ts` działa rolą migracyjną (`DATABASE_URL`, DDL) i
+  rusza automatycznie po `migrate` przy wdrożeniu - PR dodający tam (albo w imporcie) `$executeRawUnsafe` z np. `DISABLE ROW LEVEL
+  SECURITY` przeszedłby przez warunek 5; to samo dotyczy seedów (`apps/api/prisma/*.ts`) i przeniesienia schematu przez `apps/api/package.json`
+  (pole `prisma.schema`). (2) Atrapa w `safe-merge.test.mjs` nadal obsługuje `git show` dowolnego pliku, a testy z SQL sugerują, że treść
+  migracji ma znaczenie. (3) Lista chronionych ścieżek w CLAUDE.md (reguła 11) jest krótsza niż w kodzie/D-085. (4) `main` może się
+  przesunąć między sprawdzeniem a merge (`--match-head-commit` przypina tylko HEAD PR).
+- Akceptacja: decyzja właściciela; propozycja: `apps/api/src/scripts/**`, `apps/api/prisma/*.{ts,js}` i `apps/api/package.json` w
+  `PROTECTED_PATHS` (docelowo własna rola bez DDL dla content-import); atrapa rzuca na `git show` inny niż skrypt; test `failures = []`
+  dla samego `schema.prisma`; pełna lista w regule 11; wzmianka o oknie `main` w D-085.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

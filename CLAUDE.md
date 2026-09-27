@@ -191,11 +191,19 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
     `git checkout -- .`/`git restore .` (odrzucenie zmian z całego drzewa), rebase gałęzi `main` (będąc na `main` albo z `main` jako rebasowaną
     gałęzią), aliasów gita ukrywających takie polecenia, ani `gh repo delete`, `gh release delete`, `gh pr merge` (poza wyjątkiem niżej), `gh api`
     z metodą DELETE lub zmieniającego refy - także „na próbę”, także z `--dry-run` w tej formie.
-    **Wyjątek - merge przez agenta (decyzja właściciela, 2026-09-27):** agent może zmergować PR („Rebase and merge”), gdy: CI zielone na HEAD,
-    code-reviewer = gotowy, security-reviewer = gotowy (jeśli PR dotyka API/bazy/auth/walidacji), layout-check zielony (jeśli player/UI),
-    `--check` i `--assets --check` zielone, opis PR kompletny. Nigdy nie merguje PR, który zmienia migracje usuwające dane, CI/deploy workflow
-    albo sekrety - te czekają na człowieka. Mechaniczna blokada (`permissions.deny` i hook niżej) zostaje, dopóki właściciel jej nie zmieni;
-    do tego czasu agent zgłasza „gotowe do merge” zamiast mergować. **Do sprawdzania hooków i uprawnień służy
+    **Wyjątek - merge przez agenta (decyzja właściciela, 2026-09-27): WYŁĄCZNIE `node scripts/dev/safe-merge.mjs <nr PR>`.** `gh pr merge`
+    wprost zostaje w `permissions.deny` i w hooku; w `permissions.allow` jest tylko wywołanie tego skryptu, a jego edycja przez agenta
+    (`Edit`/`Write` na `scripts/dev/safe-merge*`) jest w deny. Skrypt odmawia (i wypisuje, który warunek zablokował), jeśli: PR nie jest
+    otwarty/mergeable do `main` albo nie jest aktualny względem `main`; wymagane sprawdzenia (`lint + testy`, `testy e2e (api)` z workflow
+    `build-images`) nie są zielone na HEAD PR albo jakieś sprawdzenie jest czerwone/w toku; HEAD PR różni się od lokalnego HEAD po `git fetch`,
+    drzewo ma niezacommitowane zmiany albo uruchomiony skrypt różni się od wersji z `origin/main`; PR zmienia `.github/**`, `.claude/**`,
+    `.githooks/**`, `CLAUDE.md`, `scripts/dev/safe-merge*`, `docker/**`, compose, Dockerfile/`.dockerignore`, `Caddyfile`, pliki env/sekretów,
+    dowiązania symboliczne; PR zmienia cokolwiek pod `apps/api/prisma/migrations/` (każda migracja, także addytywna, idzie do człowieka -
+    bez analizy SQL); opis PR nie ma niepustych sekcji „Decyzje autopilota” i „Jak to sprawdzono”. Dopiero wtedy woła
+    `gh pr merge <nr> --rebase --delete-branch --match-head-commit <sprawdzony sha> -R <repo>` (bez ruszania lokalnego katalogu). To bariera
+    przed odruchem, nie sandbox. **Przed wywołaniem** agent i tak musi mieć: code-reviewer = gotowy,
+    security-reviewer = gotowy (jeśli PR dotyka API/bazy/auth/walidacji), layout-check zielony (jeśli player/UI), `--check` i
+    `--assets --check` zielone - tych warunków skrypt nie sprawdza. PR-y, których skrypt nie przepuszcza, czekają na człowieka. **Do sprawdzania hooków i uprawnień służy
     wyłącznie:** `--dry-run` (gdy polecenie go obsługuje i nie jest z powyższej listy), tymczasowe repozytorium (`git init` w katalogu
     tymczasowym z lokalnym „origin” w tym katalogu) albo test jednostkowy hooka (`.githooks/pre-push.test.js`,
     `.claude/hooks/block-destructive-git.test.js`) - **nigdy prawdziwy origin**. Rebase własnego brancha roboczego na `origin/main` jest dozwolony
@@ -229,7 +237,7 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
   gałęzi w GitHub wymaga planu Team (dziś Free), więc **do czasu upgrade'u działa blokada lokalna: hook `.githooks/pre-push` odrzuca
   każdy push na `refs/heads/main`** (też usunięcie i force-push). Włącz go raz na klon: `git config core.hooksPath .githooks` (albo
   `npm run hooks:install`); to krok 0 w `docs/onboarding.md`. Nie omijaj go `--no-verify`. Merge do `main` robi właściciel w GitHub po
-  zielonym CI (albo agent na warunkach wyjątku z reguły 11), potem `git switch main && git pull`. Agent też pracuje na branchu i otwiera PR (reguła 8: po pushu podajesz hash i
+  zielonym CI (albo agent przez `scripts/dev/safe-merge.mjs`, reguła 11), potem `git switch main && git pull`. Agent też pracuje na branchu i otwiera PR (reguła 8: po pushu podajesz hash i
   prosisz o status CI).
 - **Nazwa brancha:** `<typ>/<numer-zgłoszenia>-<krótki-opis>`, np. `feat/142-import-csv`, `fix/155-limit-zaproszen`. Typy: `feat`, `fix`,
   `refactor`, `test`, `docs`, `chore`. Bez zgłoszenia pomijasz numer (`chore/typecheck-web`). Branch żyje krótko (dni, nie tygodnie); większe
@@ -240,7 +248,9 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
   wysyłka maili, dane osobowe). Nie usuwaj sekcji; wpisz „nie dotyczy”, jeśli punkt nie ma zastosowania.
 - **Review:** co najmniej jedna osoba poza autorem. Przed otwarciem PR dotykającego auth, guardów, RLS, zapytań na danych klienckich,
   wysyłki maili, wyników symulacji albo importu: przegląd `security-reviewer`; w pozostałych przypadkach `code-reviewer`. Werdykt „nie
-  gotowy” blokuje merge do decyzji właściciela produktu (reguła 10); uwagi wklejasz do opisu PR razem z rozstrzygnięciem.
+  gotowy” blokuje merge do decyzji właściciela produktu (reguła 10); uwagi wklejasz do opisu PR razem z rozstrzygnięciem. W trybie
+  autopilota (merge przez `safe-merge`, reguła 11) rolę recenzenta pełnią agenci `code-reviewer`/`security-reviewer` z werdyktem „gotowy”;
+  PR-y, których skrypt nie przepuszcza, dalej przegląda i merguje człowiek.
 - **PR bez zielonych sprawdzeń nie jest mergowany.** Workflow `build-images` uruchamia na KAŻDYM pull requeście do `main` (także tylko z
   dokumentami) dwa sprawdzenia: `lint + testy` (lint API i web, testy jednostkowe API i web, `typecheck` web, testy skryptów i hooków: reguła 7
   oraz blokada pushu na `main`) i `testy e2e (api)` (Postgres + Redis, szeregowo). PR nie buduje ani nie publikuje obrazów (to tylko po
@@ -248,7 +258,8 @@ Dotyczy ludzi i agentów (Claude Code) tak samo. Powiązane dokumenty: `.github/
   Czerwone CI blokuje też start następnego kroku (reguła 8). Sporadyczne „Jest did not exit” przy
   zielonych testach nie blokuje (patrz `docs/phishing-simulations.md`, „Znane ograniczenia”); każdy inny błąd tak.
 - **Sposób scalania:** „Rebase and merge” dla PR z małymi, opisowymi commitami (zachowuje historię z reguły 6); „Squash and merge” tylko
-  wtedy, gdy commity w PR to szum (poprawki, WIP). Nigdy merge commit z `main` do brancha - aktualizujesz przez rebase.
+  wtedy, gdy commity w PR to szum (poprawki, WIP) - squash robi wyłącznie człowiek (`safe-merge` zawsze robi rebase, więc agent przed
+  merge sam porządkuje commity). Nigdy merge commit z `main` do brancha - aktualizujesz przez rebase.
 - **Migracje w równoległych branchach:** nazwy migracji mają znacznik czasu, więc dwa branche mogą dodać migracje w dowolnej kolejności.
   Po zmergowaniu cudzej migracji robisz rebase i, jeśli twoja jest starsza niż zmergowana, zmieniasz jej znacznik czasu na nowszy.
   Nigdy nie edytujesz migracji, która trafiła na `main` - dodajesz nową.

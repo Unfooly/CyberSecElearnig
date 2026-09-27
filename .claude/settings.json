@@ -1,5 +1,9 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(node scripts/dev/safe-merge.mjs *)",
+      "PowerShell(node scripts/dev/safe-merge.mjs *)"
+    ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
@@ -55,7 +59,9 @@
       "PowerShell(git restore .)",
       "PowerShell(gh repo delete*)",
       "PowerShell(gh release delete*)",
-      "PowerShell(gh pr merge*)"
+      "PowerShell(gh pr merge*)",
+      "Edit(scripts/dev/safe-merge*)",
+      "Write(scripts/dev/safe-merge*)"
     ]
   },
   "hooks": {

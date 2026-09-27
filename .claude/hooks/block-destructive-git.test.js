@@ -283,6 +283,9 @@ const ALLOWED = [
   'git switch chore/x && git rebase origin/main',
   'git switch main && git switch -c chore/x && git rebase origin/main',
   'git checkout -b feature/x && git rebase origin/main',
+  // Merge przez agenta wyłącznie skryptem sprawdzającym warunki (CLAUDE.md reguła 11); `gh pr merge` wprost zostaje zablokowane (BLOCKED).
+  'node scripts/dev/safe-merge.mjs 58',
+  'node scripts/dev/safe-merge.mjs 58 --dry-run',
 ];
 
 for (const command of BLOCKED) {

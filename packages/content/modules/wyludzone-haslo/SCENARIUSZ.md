@@ -17,8 +17,9 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **16** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
-  analiza maila: 4 - domena, link, zalacznik, odliczanie; rozmowa z Markiem: 3)
+- dowody łącznie: **21** (Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka, outlook w pulpicie; rozmowa z Anną: 4;
+  analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - przelew 9:12, Bukareszt 8:53, SMS 9:06, mail do
+  3 osób, WHOIS; rozmowa z Markiem: 3)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
@@ -249,24 +250,50 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
 
 ---
 
-## Blok 5 — Akta sprawy (TABS) — bez oceny
+## Blok 5 — Teczka sprawy (DOSSIER) — bez oceny — D-083
 
-- **Lektor:** „Zanim porozmawiasz z Markiem z IT, zajrzyj do akt. Trzy rzeczy, które każdy w Unfooly powinien znać."
-- **Fooli (thinking):** „Krótka lektura. Przyda się za chwilę."
-- ukończenie: otwarte wszystkie 3 zakładki
+Id bloku bez zmian (`akta-sprawy`, dawniej TABS). Teczka `accent-soft`, pieczątka „Poufne" (`danger`), przekładki po prawej
+(telefon w pionie: pasek nad arkuszem), treść dokumentów font maszynowy. Klik w wiersz = zakreślacz: wiersz-dowód zakreśla się
+na żółto (`highlight`) i trafia do notatnika; zwykła linijka: „Ta linijka wygląda na zwykłą operację." (bez zaznaczenia).
 
-**Zakładka „Domeny":**
-> Prawdziwe adresy Banku Wektor kończą się na `@bankwektor.pl`, a strona logowania to `https://www.bankwektor.pl`. Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (`.com`, `.net`, `.pl.info`) — nie jest bankiem. Sprawdzaj to, co jest **tuż przed pierwszym ukośnikiem** po `https://`.
+- **Lektor (narrator):** „Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do
+  zwykłego wtorku."
+- ukończenie: otwarte wszystkie 4 dokumenty + zakreślone 3 wymagane dowody (✱); dowody z teczki to NOWE fakty (5), bez
+  powtarzania dowodów ze scen.
 
-**Zakładka „Czego bank nigdy nie zrobi":**
-> - Nie poprosi o hasło — mailem, telefonem ani SMS-em.
-> - Nie poprosi o kod SMS „żeby anulować operację". Kod SMS **zawsze zatwierdza**, nigdy nie anuluje.
-> - Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.
-> - Nie wyśle programu (`.exe`, `.scr`, `.bat`) w załączniku.
-> Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z **odwrotu swojej karty**, nie z maila.
+> **Do potwierdzenia z makietą:** z makiety znane są godziny i dowody; opisy zwykłych linijek (08:02, 08:31, 10:05, 07:58,
+> 09:12 w logach, „filtr spamu", „rekomendacje") są uzupełnione tak, żeby były zwykłymi operacjami, i czekają na podmianę na
+> teksty z makiety.
 
-**Zakładka „Jak zgłosić w Unfooly":**
-> Zgłoś przyciskiem **„Zgłoś podejrzany mail"** w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT. Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka. Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
+**„Wyciąg bankowy"** — BANK WEKTOR S.A., „Wyciąg z rachunku firmowego", Unfooly Sp. z o.o. · wtorek (Godzina | Opis | Kwota):
+- 08:02 Opłata za prowadzenie rachunku, −25,00 PLN
+- 08:31 Wpływ: płatność za fakturę od klienta, +3 200,00 PLN
+- ✱ 09:12 Przelew: Wektor Rozliczenia Sp. z o.o., −14 000,00 PLN — dowód (item): „9:12 — przelew 14 000 PLN do Wektor Rozliczenia Sp. z o.o."
+- 10:05 Przelew: dostawca materiałów biurowych, −412,50 PLN
+
+**„Logi logowania"** — BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA, „Historia logowań", Użytkownik: a.kowalska (Godzina | Zdarzenie | Miejsce i urządzenie):
+- 07:58 Logowanie, Kraków, komputer biurowy
+- ✱ 08:53 Logowanie, Bukareszt, nowe urządzenie — dowód (place): „8:53 — logowanie z Bukaresztu, z nowego urządzenia."
+- 09:06 Autoryzacja przelewu kodem SMS, Bukareszt, nowe urządzenie — dowód (item): „9:06 — przelew zatwierdzony kodem SMS."
+- 09:12 Przelew wysłany, Bukareszt, nowe urządzenie
+
+**„Notatka IT"** — UNFOOLY SP. Z O.O. · DZIAŁ IT, „Notatka po incydencie", Autor: Marek Zieliński:
+- Ten sam mail trafił do 3 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl. — dowód (mail)
+- ✱ Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS). — dowód (item)
+- Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji.
+- Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie.
+
+**„Procedury"** — UNFOOLY SP. Z O.O., „Procedury bezpieczeństwa" (Temat | Zasada), dotychczasowa wiedza z akt, bez dowodów:
+- Domeny: prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl.
+- Domeny: każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://.
+- Bank: nie poprosi o hasło — mailem, telefonem ani SMS-em.
+- Bank: nie poprosi o kod SMS „żeby anulować operację". Kod SMS zawsze zatwierdza, nigdy nie anuluje.
+- Bank: nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie.
+- Bank: nie wyśle programu (.exe, .scr, .bat) w załączniku.
+- Bank: jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila.
+- Zgłaszanie: zgłoś przyciskiem „Zgłoś podejrzany mail" w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT.
+- Zgłaszanie: podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka.
+- Zgłaszanie: nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy.
 
 ---
 

@@ -102,6 +102,10 @@ jobs:
       - name: Testy hooka block-destructive-git (reguła 11)
         run: node --test .claude/hooks/block-destructive-git.test.js
 
+      # Merge przez agenta wyłącznie przez scripts/dev/safe-merge.mjs (CLAUDE.md reguła 11): każdy warunek odmowy ma test.
+      - name: Testy safe-merge (reguła 11)
+        run: node --test scripts/dev/safe-merge.test.mjs
+
   # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
   # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
   # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga

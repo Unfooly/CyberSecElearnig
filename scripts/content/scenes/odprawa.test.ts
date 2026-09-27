@@ -26,8 +26,8 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(ODPRAWA_PROPS)) expect(PROPS[name], name).toBe(ODPRAWA_PROPS[name as keyof typeof ODPRAWA_PROPS]);
   });
 
-  it('każde źródło ma swoją scenę w module (9 scen modułu, 5 odprawy, miniatura)', () => {
-    expect(scenes).toHaveLength(15);
+  it('każde źródło ma swoją scenę w module (10 scen modułu z zbliżeniem tablicy, 5 odprawy, miniatura)', () => {
+    expect(scenes).toHaveLength(16);
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 

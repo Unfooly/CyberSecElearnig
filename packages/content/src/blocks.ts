@@ -155,7 +155,7 @@ const hotspotsSchema = z
             content: text(2000).optional(),
             media: hotspotMediaSchema.optional(),
             narration: baseShape.narration,
-            // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Dodaj do notatnika"; wymaga `note` z `kind`) i wymagalność.
+            // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Zabierz" w zbliżeniu, D-086; wymaga `note` z `kind`) i wymagalność.
             evidence: z.boolean().optional(),
             note: noteSchema.optional(),
             required: z.boolean().optional(),
@@ -431,8 +431,10 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
       // Dwie fazy (D-084): zamknięta teczka (`closedImage`, klik w `hotspot` ją otwiera) -> otwarte akta (`image`, crossfade,
-      // bez animacji przy reduced-motion). Przy closedImage `hotspot` dotyczy fazy zamkniętej, a `cta` przechodzi dalej z otwartych.
+      // bez animacji przy reduced-motion). Przy closedImage `hotspot` dotyczy fazy zamkniętej, a `openHotspot` (D-086) - otwartych akt:
+      // klik zamyka teczkę i przechodzi dalej (etykieta = `cta`).
       closedImage: imagePathSchema.optional(),
+      openHotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
     })
     .strict(),
   // badge: legitymacja gracza. Bez żadnych danych osobowych w treści - imię, avatar i numer odznaki liczy WYŁĄCZNIE
@@ -824,6 +826,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].hotspot.y',
       'steps[].hotspot.w',
       'steps[].hotspot.h',
+      'steps[].openHotspot.id',
+      'steps[].openHotspot.x',
+      'steps[].openHotspot.y',
+      'steps[].openHotspot.w',
+      'steps[].openHotspot.h',
       ...['tasks', 'name', 'number', 'photo'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((axis) => `steps[].slots.${slot}.${axis}`)),
     ],
     ['steps[].narration.spokenText', 'steps[].narration.voice'],

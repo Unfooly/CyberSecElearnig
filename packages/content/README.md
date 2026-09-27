@@ -49,9 +49,11 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   ostatnim kroku albo po „Pomiń odprawę”. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
   wyłącznie klient z sesji (nigdy `module.json` ani `progress`).
 - Grafika kroku (D-084, opcjonalna): `image` (scena, plik z `assets/`, potok `--assets`; animacje CSS w SVG zatrzymuje odtwarzacz
-  fragmentem `#static` przy reduced-motion), `hotspot { id, x, y, w, h }` (klik = `cta`; przycisk zostaje dla klawiatury), `slots { tasks?, name?, number?, photo? }`
+  fragmentem `#static` przy reduced-motion), `hotspot { id, x, y, w, h }` (przedmiot kroku - D-086: JEDYNE przejście dalej, przycisk
+  z etykietą `cta`; krok ze sceną bez `hotspot` ma przycisk cta pod sceną), `slots { tasks?, name?, number?, photo? }`
   (prostokąty na HTML: `tasks` tylko w caseFile z `tasks`, reszta tylko w badge), w caseFile także `closedImage` (zamknięta teczka,
-  wymaga `hotspot`, klik otwiera `image`). Prostokąty w % sceny, w jej granicach; każde z tych pól wymaga `image`. Krok bez `image`
+  wymaga `hotspot`, klik otwiera `image`) i `openHotspot { id, x, y, w, h }` (D-086: przedmiot otwartych akt = `cta`, wymaga
+  `closedImage`). Prostokąty w % sceny, w jej granicach; każde z tych pól wymaga `image`. Krok bez `image`
   wygląda jak dotąd (karta na jasnym tle). W scenie nie są używane `caller.avatar` (postać jest w grafice) ani avatar gracza
   (w slocie `photo` są jego inicjały).
 - Miniatura modułu (D-084, opcjonalna): `thumbnail` na poziomie modułu - obraz 16:9 z `assets/` (potok `--assets`, klucz locka

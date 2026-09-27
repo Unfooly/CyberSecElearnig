@@ -22,13 +22,13 @@
       "steps": [
         {
           "kind": "typewriter",
-          "text": "Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy.",
-          "cta": "Odbierz",
+          "text": "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
+          "cta": "Odbierz telefon",
           "narration": {
-            "text": "Wtorek, 9:40. Unfooly, Kraków. Dzwoni telefon służbowy.",
-            "spokenText": "Wtorek, dziewiąta czterdzieści. Unfooly, Kraków. Dzwoni telefon służbowy.",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/046cb6b2872551f0.mp3",
-            "durationMs": 6037
+            "text": "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
+            "spokenText": "Wtorek, dziewiąta czterdzieści. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
+            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/fb0479081fc6a6af.mp3",
+            "durationMs": 6780
           },
           "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.67b3cbbb.svg",
           "hotspot": {
@@ -46,7 +46,7 @@
             "role": "Wydział Cyberbezpieczeństwa"
           },
           "text": "Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
-          "cta": "Przyjmuję",
+          "cta": "Rozłącz",
           "narration": {
             "text": "Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
             "spokenText": "Detektywie, mamy zgłoszenie z Unfooly. Z konta firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
@@ -54,7 +54,14 @@
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
             "durationMs": 13050
           },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.fce7635a.svg"
+          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.4bcf8d68.svg",
+          "hotspot": {
+            "id": "rozlacz",
+            "x": 21.4,
+            "y": 72.4,
+            "w": 8.5,
+            "h": 15.1
+          }
         },
         {
           "kind": "caseFile",
@@ -103,7 +110,7 @@
               ]
             }
           ],
-          "cta": "Biorę sprawę",
+          "cta": "Zamknij teczkę",
           "narration": {
             "text": "Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.",
             "spokenText": "Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT. Reszta jest w biurze Anny.",
@@ -120,6 +127,13 @@
             "w": 51.6,
             "h": 69.5
           },
+          "openHotspot": {
+            "id": "akta",
+            "x": 3.9,
+            "y": 2.3,
+            "w": 92.1,
+            "h": 95.3
+          },
           "slots": {
             "tasks": {
               "x": 54.1,
@@ -131,7 +145,7 @@
         },
         {
           "kind": "badge",
-          "cta": "Ruszam na miejsce",
+          "cta": "Zabierz legitymację",
           "narration": {
             "text": "Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa. Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą.",
             "voice": "komisarz",
@@ -153,6 +167,13 @@
             ]
           },
           "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.242f34bc.svg",
+          "hotspot": {
+            "id": "legitymacja",
+            "x": 8.8,
+            "y": 6,
+            "w": 82.5,
+            "h": 88
+          },
           "slots": {
             "photo": {
               "x": 55.1,
@@ -173,23 +194,6 @@
               "h": 5.3
             }
           }
-        },
-        {
-          "kind": "start",
-          "text": "Unfooly, drugie piętro.",
-          "cta": "Wchodzę",
-          "narration": {
-            "text": "Unfooly, drugie piętro.",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/8db1d7b01f2d1bdc.mp3",
-            "durationMs": 1718,
-            "cues": [
-              {
-                "text": "Unfooly, drugie piętro.",
-                "startMs": 0
-              }
-            ]
-          },
-          "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg"
         }
       ]
     },
@@ -198,14 +202,33 @@
       "type": "SCENE_HOTSPOTS",
       "title": "Korytarz",
       "narration": {
-        "text": "Wtorek, 9:40. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "spokenText": "Wtorek, dziewiąta czterdzieści. Anna z księgowości zgłosiła, że „coś jest nie tak z kontem”. Zacznij od jej biura — drzwi są przed tobą.",
-        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/c5289f58af9023ab.mp3",
-        "durationMs": 10031
+        "text": "Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą.",
+        "spokenText": "Wtorek, dziesiąta zero pięć. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą.",
+        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/ba03fb91dcbec77a.mp3",
+        "durationMs": 9195
       },
       "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
       "hotspots": [
+        {
+          "id": "tablica",
+          "label": "Tablica ogłoszeń",
+          "x": 63.2,
+          "y": 12.2,
+          "width": 23.5,
+          "height": 25.6,
+          "media": {
+            "kind": "image",
+            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.d59afe0e.svg",
+            "alt": "Tablica ogłoszeń: szkolenie BHP w czwartek o 10:00, kuchnia - myjemy po sobie, hasła - nie na karteczkach, parking - nowe miejsca."
+          },
+          "evidence": true,
+          "required": false,
+          "note": {
+            "text": "Na tablicy w korytarzu: »Hasła — nie na karteczkach«. Zasada była znana.",
+            "kind": "item"
+          }
+        },
         {
           "id": "drzwi",
           "label": "Drzwi do księgowości",

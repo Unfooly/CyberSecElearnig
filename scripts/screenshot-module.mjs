@@ -100,69 +100,81 @@ async function runViewport(viewport) {
 
   await page.goto(`${WEB}/courses/${courseId}`);
 
-  // Karta hotspotu otwiera się jako nakładka NA scenie (role="dialog", feedback z produkcji po PR #32).
+  // Zbliżenie przedmiotu (D-086): nakładka role="dialog" NA scenie, "Zabierz"/"Odłóż"; kamera 450 ms w, 350 ms z powrotem.
   const dialog = () => page.getByRole('dialog');
-  const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
+  const closed = () => page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
+  const opened = () => page.locator('[data-testid="scene-zoom"][data-phase$="open"]').waitFor();
+  const take = async () => {
+    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await closed();
+  };
 
-  // --- 0. Odprawa (BRIEFING, D-081) - każdy krok osobno ----------------------------------------------------------------
-  await page.getByRole('button', { name: 'Odbierz' }).waitFor();
+  // --- 0. Odprawa (BRIEFING, D-081/D-084/D-086) - każdy krok osobno, postęp klikiem w przedmiot ------------------------------
+  await page.getByRole('button', { name: 'Odbierz telefon' }).waitFor();
   await page.waitForTimeout(2500); // maszyna do pisania dopisuje tekst
   await shot(page, '00a-odprawa-telefon', viewport.name);
-  await page.getByRole('button', { name: 'Odbierz' }).click();
+  await page.getByRole('button', { name: 'Odbierz telefon' }).click();
   await shot(page, '00b-odprawa-komisarz', viewport.name); // komisarz Adam Wolski (postać, bez maskotki)
-  await page.getByRole('button', { name: 'Przyjmuję' }).click();
+  await page.getByRole('button', { name: 'Rozłącz' }).click();
   // Karta sprawy w dwóch fazach (D-084): zamknięta teczka, klik w teczkę na scenie -> akta z zadaniami (crossfade).
   await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
   await shot(page, '00c-odprawa-teczka', viewport.name);
-  await page.getByTestId('briefing-hotspot').click();
+  await page.getByRole('button', { name: 'Otwórz teczkę' }).click();
   await page.waitForTimeout(700);
   await shot(page, '00d-odprawa-akta', viewport.name);
-  await page.getByRole('button', { name: 'Biorę sprawę' }).click();
+  await page.getByRole('button', { name: 'Zamknij teczkę' }).click();
   await page.waitForTimeout(600);
   await shot(page, '00e-odprawa-legitymacja', viewport.name);
-  await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
-  await shot(page, '00f-odprawa-start', viewport.name);
-  await page.getByRole('button', { name: 'Wchodzę' }).click();
+  await page.getByRole('button', { name: 'Zabierz legitymację' }).click();
 
-  // --- 1. Korytarz (SCENE_HOTSPOTS, tylko drzwi, B-086/D-071) --------------------------------------------------------------
+  // --- 1. Korytarz (SCENE_HOTSPOTS: tablica + drzwi, B-086/D-071/D-086) ------------------------------------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
   await shot(page, '01-korytarz', viewport.name);
+  await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
+  await opened();
+  await shot(page, '01b-korytarz-tablica-zoom', viewport.name);
+  await take();
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
 
-  // --- 2. Biuro Anny: karteczka - overlay NA scenie (nie pod obrazem) -------------------------------------------
+  // --- 2. Biuro Anny: karteczka - zbliżenie NA scenie ---------------------------------------------------------------------
   await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
   await page.getByRole('button', { name: 'Żółta karteczka' }).click();
-  await shot(page, '02-biuro-karteczka-overlay', viewport.name);
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back();
+  await opened();
+  await shot(page, '02-biuro-karteczka-zoom', viewport.name);
+  await take();
 
-  // --- 3. Biuro Anny: telefon - overlay z odtwarzaczem audio -----------------------------------------------------
+  // --- 3. Biuro Anny: telefon - zbliżenie z play/pauzą ------------------------------------------------------------------
   await page.getByRole('button', { name: 'Telefon stacjonarny' }).click();
+  await opened();
   await shot(page, '03-biuro-telefon-audio', viewport.name);
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back();
+  await take();
 
   await page.getByRole('button', { name: 'Kalendarz ścienny' }).click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back();
+  await take();
 
-  // --- 4. Biuro Anny: monitor -> zagnieżdżona scena "pulpit" (drugi ekran TEJ SAMEJ nakładki, B-086/D-071) --------
+  // --- 4. Biuro Anny: monitor -> zagnieżdżona scena "pulpit" (B-086/D-071) ---------------------------------------------
   await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
-  await shot(page, '04-biuro-pulpit-overlay', viewport.name);
+  await opened();
+  await shot(page, '04-biuro-pulpit-zoom', viewport.name);
 
-  // --- 5. Biuro Anny: "Poczta" wewnątrz pulpitu -> mail na ekranie (trzeci poziom tej samej nakładki) --------------
+  // --- 5. Biuro Anny: "Poczta" wewnątrz pulpitu -> mail na ekranie (drugi poziom tej samej nakładki) --------------------
   await dialog().getByRole('button', { name: 'Poczta' }).click();
-  await shot(page, '05-biuro-mail-overlay', viewport.name);
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back(); // mail -> pulpit
-  await back(); // pulpit -> zamyka nakładkę
+  await page.locator('[data-testid="scene-zoom"][data-phase="inner-open"]').waitFor();
+  await shot(page, '05-biuro-mail-zoom', viewport.name);
+  await dialog().getByRole('button', { name: 'Zabierz' }).click(); // mail -> pulpit
+  await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
+  await closed();
 
   await page.getByRole('button', { name: 'Drukarka' }).click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back();
+  await take();
+  // Kubek nie jest dowodem: "Zabierz" = potrząśnięcie i toast.
   await page.getByRole('button', { name: 'Kubek z kawą' }).click();
-  await back(); // kubek nie ma evidence - tylko "Wróć"
+  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('status').waitFor();
+  await shot(page, '06-biuro-kubek-nie-dowod', viewport.name);
+  await dialog().getByRole('button', { name: 'Odłóż' }).click();
+  await closed();
   // "drzwi" (Wyjście) kończy blok zamiast "Dalej" paska (ukryty - hideForward).
   await page.getByRole('button', { name: 'Wyjście' }).click();
 

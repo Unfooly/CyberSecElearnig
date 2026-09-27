@@ -429,6 +429,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: `generateMetadata` dla strony kursu (tytuł, opis, `og:image` z PNG opublikowanego potokiem `--assets`, np. osobne pole
   `thumbnailPng` albo konwencja nazwy), test, że strony wymagające logowania nie ujawniają w meta treści kursu poza tytułem i miniaturą.
 
+### B-111 Zbliżenie przedmiotu (D-086): odłożone uwagi z code review
+- Etykiety: `P3`, `mod:web`, `mod:content` · Źródło: `feat/scene-zoom` (H), code review
+- Opis: (1) przy oddalaniu grafika i przyciski znikają od razu (montowane warunkowo) - crossfade działa tylko przy wejściu;
+  (2) transform kamery liczony raz w px - obrót telefonu/resize przy otwartym zbliżeniu zostawia przesunięcie; (3) warstwa
+  overlay-stack nadal nazywa się `hotspotCard`; (4) walidacja nie sprawdza unikalności `openHotspot.id` względem `hotspot.id`;
+  (5) CLAUDE.md reguła 12 wymienia „karty hotspotu/bottom sheeta” (do zmiany przez właściciela); (6) `content` przedmiotów z grafiką
+  nie jest już pokazywany - wiedza z dawnych kart (np. „bank nigdy nie prosi o kod SMS”) żyje tylko w notatkach/rozmowach - przegląd
+  treści modułu 1 pod tym kątem.
+- Akceptacja: fade-out grafiki 200 ms przed oddaleniem (bez ruchu przy reduced-motion); przeliczenie kamery na `resize` albo
+  zamknięcie zbliżenia; nazwa warstwy `sceneZoom`; test unikalności w `module.spec.ts`; decyzja treściowa co do `content`.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -1,4 +1,4 @@
 {"width":1600,"height":900,"background":{"flat":true,"wall":"#D9C3A5"},"items":[
 {"id":"sloje","prop":"woodGrain","x":0,"y":0},
-{"id":"legitymacja","prop":"badgeWallet","x":140,"y":54,"scale":1.2,"partHotspots":{"slot-zdjecie":"slot-zdjecie","slot-imie":"slot-imie","slot-numer":"slot-numer"},"pad":0}
+{"id":"legitymacja","prop":"badgeWallet","x":140,"y":54,"scale":1.2,"partHotspots":{"slot-zdjecie":"slot-zdjecie","slot-imie":"slot-imie","slot-numer":"slot-numer"},"pad":0,"hotspot":true}
 ]}

@@ -87,7 +87,8 @@ export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: st
   return {
     w, h,
     svg: rings + `<g${ringCls}>${shadow(w, h, 36)}<rect width="${w}" height="${h}" rx="36" fill="${P.ink}"/>${screen}<rect x="92" y="22" width="56" height="10" rx="5" fill="${P.ink}"/></g>`,
-    parts: { screen: { x: 12, y: 14, w: 216, h: 452 } },
+    // endCall / answer: czerwona i zielona słuchawka na ekranie - osobne hotspoty kroków odprawy (Rozłącz, Odbierz).
+    parts: { screen: { x: 12, y: 14, w: 216, h: 452 }, endCall: { x: 84, y: 384, w: 72, h: 72 }, answer: { x: 138, y: 360, w: 72, h: 72 } },
   };
 };
 

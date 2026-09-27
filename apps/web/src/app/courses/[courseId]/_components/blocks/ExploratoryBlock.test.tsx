@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
 import { NotesProvider, useNotes } from '../player/notes';
@@ -88,11 +88,20 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
   return { onSubmit, ready };
 }
 
-// Feedback z produkcji po PR #32: bez listy-chipów, jedyna interakcja to klik w punkt na obrazie (w pełni dostępny);
-// karta otwiera się jako nakładka (role="dialog") NA scenie, więc "Wróć" trzeba kliknąć, zanim klika się kolejny punkt
-// (nakładka wizualnie zasłania resztę obrazu, tak jak dla prawdziwego użytkownika).
+// Jedyna interakcja to klik w punkt na obrazie (w pełni dostępny); zbliżenie (role="dialog", D-086) leży NA scenie, więc "Odłóż"
+// trzeba kliknąć, zanim klika się kolejny punkt. prefers-reduced-motion: bez ruchu kamery zbliżenie otwiera się i zamyka od razu.
 describe('SCENE_HOTSPOTS', () => {
-  const back = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Wróć' }));
+  const back = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Odłóż' }));
+  const originalMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes('prefers-reduced-motion: reduce'),
+    })) as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
 
   it('ukończenie (onReady) dopiero po wymaganych punktach i odpowiedź { visited }', async () => {
     const user = userEvent.setup();

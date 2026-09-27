@@ -132,78 +132,92 @@ try {
   // (auto-retry Playwrighta) czeka na TEN docelowy tekst zamiast zgadywać z arbitralnym opóźnieniem.
   const reactionText = (text) => page.getByText(text, { exact: true }).waitFor();
 
-  // Karta hotspotu otwiera się jako nakładka NA scenie (role="dialog", feedback z produkcji po PR #32) - "Wróć" zamyka ją
-  // (albo zdejmuje jeden poziom w zagnieżdżonej scenie); trzeba ją zamknąć, zanim kliknie się kolejny punkt (nakładka
-  // wizualnie zasłania resztę obrazu, tak jak dla prawdziwego użytkownika).
+  // Zbliżenie przedmiotu (D-086): klik w przedmiot -> kamera przybliża scenę (450 ms), nakładka role="dialog" z grafiką i
+  // "Zabierz"/"Odłóż". "Zabierz" przy dowodzie dopisuje notatkę i odkłada przedmiot, "Odłóż" tylko odkłada; oddalenie trwa 350 ms -
+  // czekamy, aż nakładka zniknie, zanim klikniemy kolejny przedmiot (zasłania scenę, tak jak dla prawdziwego użytkownika).
   const dialog = () => page.getByRole('dialog');
-  const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
+  const closed = () => page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
+  const take = async () => {
+    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await closed();
+  };
+  const putDown = async () => {
+    await dialog().getByRole('button', { name: 'Odłóż' }).click();
+    await closed();
+  };
+  const briefingItem = async (name) => {
+    const item = page.getByRole('button', { name, exact: true });
+    await item.waitFor();
+    if ((await item.getAttribute('data-testid')) !== 'briefing-hotspot') throw new Error(`"${name}" nie jest przedmiotem na scenie odprawy`);
+    await item.click();
+  };
 
-  // --- Blok 0: Odprawa (BRIEFING, schemaVersion 5, D-081) --------------------------------------------------------------------
-  // Moduł zaczyna się od odprawy: pięć kroków (scen), "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej".
-  await page.getByRole('button', { name: 'Odbierz' }).waitFor();
+  // --- Blok 0: Odprawa (BRIEFING, D-081/D-084/D-086) -----------------------------------------------------------------------
+  // Moduł zaczyna się od odprawy: cztery kroki (sceny), "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej". Bez przycisków
+  // cta - postęp WYŁĄCZNIE klikiem w przedmiot kroku.
+  await page.getByRole('button', { name: 'Odbierz telefon' }).waitFor();
   step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, bez "Dalej" w dolnym', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
-  // Sceny odprawy (D-084): krok jest sceną z grafiką; telefon na biurku to hotspot = "Odbierz" (klikamy hotspot, nie przycisk).
-  step('BRIEFING: odprawa jako scena z grafiką (hotspot telefonu)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByTestId('briefing-hotspot').count()) === 1);
-  await page.getByTestId('briefing-hotspot').click();
+  step('BRIEFING: odprawa jako scena z grafiką, jedynym przyciskiem kroku jest przedmiot (telefon)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByRole('button', { name: 'Odbierz telefon' }).count()) === 1);
+  step('BRIEFING: krok 0 - "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków."', (await page.getByText(/Wtorek, 9:40\. Wydział Cyberbezpieczeństwa, Kraków\. Dzwoni telefon służbowy\./).count()) >= 1);
+  await briefingItem('Odbierz telefon');
   step('BRIEFING: dzwoni komisarz - dymek w scenie, bez maskotki', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0);
-  await page.getByRole('button', { name: 'Przyjmuję' }).click();
-  // Karta sprawy w dwóch fazach: zamknięta teczka ("Otwórz teczkę") -> akta z zadaniami w slocie.
+  await briefingItem('Rozłącz');
+  // Karta sprawy w dwóch fazach: zamknięta teczka ("Otwórz teczkę") -> akta z zadaniami w slocie; klik w akta zamyka teczkę.
   await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
   step('BRIEFING: zamknięta teczka, dane karty dla czytnika (CS/2026/0915)', (await page.getByTestId('briefing-scene').getAttribute('data-phase')) === 'closed' && (await page.getByText(/CS\/2026\/0915/).count()) === 1);
-  await page.getByRole('button', { name: 'Otwórz teczkę' }).click();
+  await briefingItem('Otwórz teczkę');
   step('BRIEFING: akta z listą 3 zadań w slocie', (await page.getByTestId('briefing-slot-tasks').getByRole('listitem').count()) === 3);
-  await page.getByRole('button', { name: 'Biorę sprawę' }).click();
+  await briefingItem('Zamknij teczkę');
   // Legitymacja: imię wyłącznie z danych sesji (konto testowe bez imienia -> z e-maila), numer odznaki z numeru sprawy.
   await page.getByTestId('briefing-slot-number').waitFor();
   step('BRIEFING: legitymacja z numerem odznaki 0915-* w slocie', /^0915-/.test((await page.getByTestId('briefing-slot-number').textContent()) ?? ''));
-  await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
-  await page.getByTestId('briefing-scene-text').getByText('Unfooly, drugie piętro.').waitFor();
   const briefingSaved = progressResponse();
-  await page.getByRole('button', { name: 'Wchodzę' }).click();
-  step('BRIEFING: ostatni krok zapisuje blok', (await briefingSaved).ok());
+  await briefingItem('Zabierz legitymację');
+  step('BRIEFING: klik w legitymację (ostatni krok) zapisuje blok', (await briefingSaved).ok());
 
-  // --- Blok 1: Korytarz (SCENE_HOTSPOTS, tylko drzwi) - B-086/D-071 -------------------------------------------------------
-  // Blok NARRATIVE "Otwarcie sprawy" wypadł (feedback z produkcji), jego zdanie otwierające przeniesione na początek narracji
-  // tego bloku; od schemaVersion 5 przed korytarzem jest odprawa (wyżej).
+  // --- Blok 1: Korytarz (SCENE_HOTSPOTS: tablica - dowód opcjonalny, drzwi) - B-086/D-071/D-086 -----------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): brak "Dalej" w pasku - jedynym wyjściem są drzwi (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
-  // Scena bez wymaganych dowodów (poza drzwiami samymi) - "drzwi" (action:'next') są gotowe od razu, bez odwiedzania
-  // żadnego innego hotspotu; klik od razu kończy blok (jak "Dalej"), więc nie czekamy na żadną reakcję pośrednią.
+  await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
+  await dialog().getByRole('img', { name: /hasła - nie na karteczkach/ }).waitFor();
+  step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
+  await take();
+  step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/22'), await page.getByTestId('evidence-counter').textContent());
+  // Tablica jest opcjonalna (required:false) - drzwi są gotowe od razu; klik kończy blok (jak "Dalej").
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
-  step('SCENE_HOTSPOTS (korytarz): "drzwi" gotowe bez dowodów, klik kończy blok', true);
+  step('SCENE_HOTSPOTS (korytarz): "drzwi" kończą blok', true);
 
-  // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071 --------------
+  // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071/D-086 -------------
   await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
-  // Punkty na obrazie są teraz jedyną, w pełni dostępną ścieżką (bez osobnej listy-chipów pod obrazem, feedback z
-  // produkcji). Dowód zalicza WYŁĄCZNIE przycisk "Dodaj do notatnika" w nakładce (odwraca część D-071: media już NIE
-  // zaliczają dowodu samym otwarciem) - jednolicie, także dla hotspotów z mediami.
+  // Dowód zalicza WYŁĄCZNIE "Zabierz" w zbliżeniu - jednolicie, także dla przedmiotów z nagraniem.
   for (const label of ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny']) {
     await page.getByRole('button', { name: label }).click();
-    await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-    await back();
+    await take();
   }
 
-  // "Monitor" jest 4. i ostatnim wymaganym punktem - jego karta pokazuje TEASER i zagnieżdżoną scenę "pulpit" (bez
-  // własnego dowodu; otwarcie samego pulpitu niczego nie zalicza). reactions.complete odpala się od razu po tym kliku.
+  // "Monitor" jest 4. i ostatnim wymaganym punktem - zbliżenie przechodzi w zagnieżdżoną scenę "pulpit" (bez własnego dowodu,
+  // bez Zabierz/Odłóż - ikona "Wróć"). reactions.complete odpala się od razu po tym kliku.
   await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
   step('SCENE_HOTSPOTS: reactions.complete (cheer) po wymaganych 4 punktach', true);
   step('SCENE_HOTSPOTS: "drzwi" chowa "Dalej" z paska nawet gdy ready (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
 
-  // Prawdziwy dowód maila jest dopiero za Outlookiem wewnątrz zagnieżdżonej sceny "pulpit" - dopiero "Dodaj do
-  // notatnika" na karcie "Poczta" (drugi poziom TEJ SAMEJ nakładki) go zalicza.
+  // Prawdziwy dowód maila jest dopiero za Pocztą wewnątrz zagnieżdżonej sceny "pulpit" - "Zabierz" w jej zbliżeniu go zalicza.
   await dialog().getByRole('button', { name: 'Poczta' }).click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  step('SCENE_HOTSPOTS: zagnieżdżona scena "pulpit" - dowód z hotspotu "outlook" (media image, B-086/D-071)', true);
-  await back(); // mail -> pulpit
-  await back(); // pulpit -> zamyka nakładkę
+  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  step('SCENE_HOTSPOTS: zagnieżdżona scena "pulpit" - dowód z przedmiotu "Poczta" (media image, B-086/D-071)', true);
+  await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
+  await closed();
 
   await page.getByRole('button', { name: 'Drukarka' }).click();
-  await dialog().getByRole('button', { name: 'Dodaj do notatnika' }).click();
-  await back();
-  step('SCENE_HOTSPOTS: 5 dowodów w notatniku (kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 5/'), await page.getByTestId('evidence-counter').textContent());
+  await take();
+  step('SCENE_HOTSPOTS: 6 dowodów w notatniku (tablica + 5 z biura, kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 6/'), await page.getByTestId('evidence-counter').textContent());
+  // Kubek nie jest dowodem: "Zabierz" = potrząśnięcie i toast, bez notatki.
   await page.getByRole('button', { name: 'Kubek z kawą' }).click();
-  await back(); // kubek nie ma evidence - tylko "Wróć"
+  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('status').getByText('To nie jest dowód w tej sprawie.').waitFor();
+  step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 6/'));
+  await putDown();
 
   // "drzwi" (action:'next', label "Wyjście") kończy blok jak "Dalej" w pasku (który jest ukryty - patrz krok wyżej):
   // gotowe od razu, bo wymagane 4 są już odwiedzone.
@@ -268,7 +282,7 @@ try {
   await row('zarejestrowana 2 dni przed atakiem').click();
   await page.getByRole('tab', { name: 'Procedury' }).click();
   step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);
-  step('DOSSIER: licznik 5 dowodów z teczki (razem 18 po biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 18/21'), await page.getByTestId('evidence-counter').textContent());
+  step('DOSSIER: licznik 5 dowodów z teczki (razem 19 po korytarzu, biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 19/22'), await page.getByTestId('evidence-counter').textContent());
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
@@ -326,7 +340,7 @@ try {
   // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
   await page.getByTestId('case-evidence').waitFor();
   const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SUMMARY: wszystkie 21 dowodów zebrane (5+4+4+5+3)', summaryText.includes('Zebrane dowody: 21 z 21'), summaryText.slice(0, 120));
+  step('SUMMARY: wszystkie 22 dowody zebrane (1+5+4+4+5+3)', summaryText.includes('Zebrane dowody: 22 z 22'), summaryText.slice(0, 120));
   step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
   step('SUMMARY: poza spoczynkowa maskotki (greeting, "Sprawa zamknięta")', (await mascotAlt('wita').count()) === 1);
 
@@ -346,7 +360,7 @@ try {
   step('SummaryScreen: karta nagrody (XP) widoczna, bez modala (role=dialog)', (await page.getByText(/XP$/).count()) >= 1 && (await page.getByRole('dialog').count()) === 0);
   // Ta sama lista dowodów, którą user widział chwilę wcześniej na bloku SUMMARY (CaseEvidenceSection.tsx, dzielona).
   const finalEvidenceText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SummaryScreen: lista zebranych dowodów (21 z 21) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 21 z 21'), finalEvidenceText.slice(0, 120));
+  step('SummaryScreen: lista zebranych dowodów (22 z 22) pokazuje się ponownie po ukończeniu', finalEvidenceText.includes('Zebrane dowody: 22 z 22'), finalEvidenceText.slice(0, 120));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

@@ -31,7 +31,8 @@ export default function HarnessAutoOpen({ path }: { path: string[] }) {
     let mounted = true;
     (async () => {
       for (const id of path) {
-        const el = await waitForElement(`[data-testid="hotspot-overlay-${id}"]`);
+        // :not([aria-hidden]) - przedmioty sceny zagnieżdżonej są nieaktywne, dopóki kamera nie dojedzie na monitor (D-086).
+        const el = await waitForElement(`[data-testid="hotspot-overlay-${id}"]:not([aria-hidden="true"])`);
         if (!mounted || !el) return;
         el.click();
       }

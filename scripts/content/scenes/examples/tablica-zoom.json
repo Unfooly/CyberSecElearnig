@@ -1,0 +1,25 @@
+{
+  "width": 1200,
+  "height": 800,
+  "background": {
+    "flat": true,
+    "wall": "#EEF0FA"
+  },
+  "items": [
+    {
+      "id": "tablica",
+      "prop": "noticeBoard",
+      "x": 24,
+      "y": 16,
+      "scale": 3.2,
+      "params": {
+        "notes": [
+          "Szkolenie BHP|czwartek, 10:00",
+          "Kuchnia|myjemy po sobie!",
+          "Hasła|nie na karteczkach",
+          "Parking|nowe miejsca"
+        ]
+      }
+    }
+  ]
+}

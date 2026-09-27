@@ -6,19 +6,15 @@
 // packages/content, bez importu do bazy). NIE jest częścią CI (B-101 w backlogu: "layout-check w CI") - uruchamiany
 // RĘCZNIE, lokalnie, przed pushem każdego PR-a zmieniającego układ odtwarzacza (CLAUDE.md, reguła 12).
 //
-// Sprawdza dla każdej kombinacji (viewport x hotspot) pięć rzeczy (a-e w opisie zadania/PR fix/hotspot-card-fit):
+// Sprawdza dla każdej kombinacji (viewport x przedmiot) stan ZBLIŻENIA przedmiotu (feat/scene-zoom, D-086 - zastąpiło kartę hotspotu):
 //  a) <html> się nie przewija (scrollHeight/Width <= innerHeight/Width) - cała strona, nie tylko ramka.
-//  b) karta hotspotu (.hotspot-card) się nie przewija (scrollHeight <= clientHeight) - poza kartą BEZ mediów, gdzie
-//     "karta się nie przewija" nie ma sensu sprawdzać tak samo (auto-size do treści, patrz .hotspot-card--no-media).
-//  c) obszar mediów karty (.hotspot-card-media) ma wysokość >0 i >=35% wysokości karty (łapie regresję z drugiej
-//     rundy review: scena zagnieżdżona/media wychodziły zerowej albo miniaturowej wysokości) - dla karty BEZ mediów
-//     (case "karteczka-bez-mediow", ?stripMedia=1), gdzie obszar mediów w ogóle nie istnieje, ZASTĄPIONE przez
-//     checkNoMediaCardSizing: karta auto-size do treści (bez dużej pustej przestrzeni) i przyciski o naturalnej
-//     wysokości - bez tego (a)/(d) nie łapały ani rozciągniętych przycisków, ani karty zostającej przy 92% wysokości
-//     (oba mieszczą się w karcie/ramce) - czwarta runda code review, znalezione dopiero pomiarem w przeglądarce.
-//  d) przyciski karty (.hotspot-card-buttons button) są W CAŁOŚCI wewnątrz karty i wewnątrz ramki odtwarzacza
-//     (.player-frame) - nie wychodzą poza żadną z tych dwóch granic.
-//  e) (raz na viewport, przed otwarciem jakiejkolwiek karty) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
+//  b) nakładka zbliżenia ([data-testid="scene-zoom"]) w całości w obszarze bloku i w viewporcie.
+//  c) grafika zbliżenia (obraz, dokument, transkrypcja, scena zagnieżdżona, opis przedmiotu bez grafiki) ma wysokość > 0, leży w
+//     nakładce i nie przekracza 88% jej wymiarów.
+//  d) przyciski nakładki (Zabierz/Odłóż, play/pauza, Transkrypcja, Wróć) W CAŁOŚCI w nakładce, w ramce odtwarzacza i w viewporcie,
+//     cel dotyku >= 44px wysokości.
+//  k) kamera (bez reduced-motion): środek klikniętego przedmiotu w środku nakładki (±2px), pudełko sceny z transformem.
+//  e) (raz na viewport, przed otwarciem jakiegokolwiek zbliżenia) obraz GŁÓWNEJ sceny mieści się w obszarze bloku - bez
 //     paska przewijania w tym obszarze (hotfix fix/player-scene-fit/B-100, ta sama rodzina bugów).
 // Dla telefonu w pionie (390x844/360x800, feat/player-portrait, sekcja B) DODATKOWO (f-j), przez
 // PORTRAIT_VIEWPORT_NAMES:
@@ -27,9 +23,7 @@
 //  g) startowa pozycja panoramy (scrollLeft) odpowiada data-initial-pan-x, które ScenePanContainer.tsx sam ustawił
 //     na sobie (checkInitialPanX - nie duplikuje formuły centroidu hotspotów w tym skrypcie).
 //  h) każdy hotspot (`[data-testid^="hotspot-overlay-"]`) ma cel dotyku >=44x44px (checkTouchTargetSize).
-//  i) po otwarciu karty: bottom sheet (.hotspot-card) ma wysokość <=85% wysokości viewportu i NIE nachodzi na
-//     górny/dolny pasek odtwarzacza, przyciski w całości wewnątrz karty I viewportu (checkBottomSheetFits) - te
-//     same HOTSPOT_CASES co dla innych viewportów.
+//  (b-d, k) jak wyżej - grafika i przyciski zbliżenia mieszczą się w WIDOCZNEJ części sceny (panorama jest szersza od ekranu).
 //  j) cienie krawędzi panoramy/podpowiedź "przesuń" mieszczą się w viewporcie, nie przewijają się razem ze sceną
 //     (checkPanoramaChromeInViewport - regresja znaleziona w code review, patrz ScenePanContainer.tsx).
 // Zrzuty każdej sprawdzonej kombinacji trafiają do docs/brand/screens/layout-check/ (poza gitem, jak resztka
@@ -94,36 +88,43 @@ const BRIEFING_VIEWPORTS = [
   { name: '844x390', width: 844, height: 390 },
   { name: '390x844', width: 390, height: 844, isMobile: true },
 ];
-// Sceny odprawy (feat/briefing-scenes, D-084): kolejne widoki (krok caseFile ma dwie fazy: zamknięta teczka -> akta). `fits` -
-// elementy tekstowe/sloty na scenie (FitText), które muszą się zmieścić bez przepełnienia i leżeć w scenie; `via: 'hotspot'` -
-// dalej klikiem w hotspot na scenie (sprawdza, że klik = cta), inaczej przyciskiem `cta`; `image` - fragment nazwy pliku
-// widocznego obrazu (reducedMotion:'reduce' w kontekście -> adres z #static, sprawdzane w checkBriefingScene).
+// Sceny odprawy (feat/briefing-scenes, D-084; bez przycisków cta od D-086): kolejne widoki (krok caseFile ma dwie fazy: zamknięta
+// teczka -> akta). `item` - etykieta przedmiotu kroku (JEDYNE przejście dalej, przycisk na scenie); `fits` - elementy tekstowe/sloty
+// na scenie (FitText), które muszą się zmieścić bez przepełnienia i leżeć w scenie; `clear` - elementy, które NIE mogą nachodzić na
+// przedmiot (pasek tekstu nad telefonem, dymek obok czerwonej słuchawki); `image` - fragment nazwy pliku widocznego obrazu
+// (reducedMotion:'reduce' w kontekście -> adres z #static, sprawdzane w checkBriefingScene).
+const LEGITYMACJA_SLOTS = ['briefing-slot-photo', 'briefing-slot-name', 'briefing-slot-number'];
 const BRIEFING_SCENE_VIEWS = [
-  { cta: 'Odbierz', fits: ['briefing-scene-text'], hotspot: true, via: 'hotspot', image: 'odprawa-biurko' },
-  { cta: 'Przyjmuję', fits: ['briefing-bubble'], image: 'odprawa-rozmowa' },
-  { cta: 'Otwórz teczkę', fits: [], hotspot: true, via: 'hotspot', image: 'odprawa-teczka', phase: 'closed' },
-  { cta: 'Biorę sprawę', fits: ['briefing-slot-tasks'], image: 'odprawa-akta', phase: 'open' },
-  { cta: 'Ruszam na miejsce', fits: ['briefing-slot-photo', 'briefing-slot-name', 'briefing-slot-number'], image: 'odprawa-legitymacja' },
-  { cta: 'Wchodzę', fits: ['briefing-scene-text'], image: 'korytarz', last: true },
+  { item: 'Odbierz telefon', fits: ['briefing-scene-text'], clear: ['briefing-scene-text'], image: 'odprawa-biurko' },
+  { item: 'Rozłącz', fits: ['briefing-bubble'], clear: ['briefing-bubble'], image: 'odprawa-rozmowa' },
+  { item: 'Otwórz teczkę', fits: [], clear: [], image: 'odprawa-teczka', phase: 'closed' },
+  { item: 'Zamknij teczkę', fits: ['briefing-slot-tasks'], clear: [], image: 'odprawa-akta', phase: 'open' },
+  { item: 'Zabierz legitymację', fits: LEGITYMACJA_SLOTS, clear: [], image: 'odprawa-legitymacja', last: true },
 ];
 
 // DOSSIER (feat/dossier-folder, D-083) - `?block=akta-sprawy`, te same cztery rozdzielczości co odprawa, każdy dokument.
 const DOSSIER_TABS = ['Wyciąg bankowy', 'Logi logowania', 'Notatka IT', 'Procedury'];
 
 // hotspotId: parametr ?hotspot= strony harnessu (HarnessAutoOpen.tsx klika przez niego, drilling w głąb dla
-// zagnieżdżonych - "outlook" samo dociera do karty maila przez monitor). postOpen: dodatkowa interakcja PO otwarciu
-// karty (transkrypcja audio nie ma własnego ?parametru - to zwykła interakcja w karcie, jak zrobiłby to gracz).
-// noMedia: hotspot BEZ mediów (.hotspot-card--no-media) - treść modułu 1 nie ma dziś takiego, który otwiera kartę
-// ("drzwi" jej w ogóle nie otwierają), więc ?stripMedia=1 (page.tsx) bierze prawdziwy hotspot i usuwa mu media na
-// serwerze przed renderem - żeby sprawdzić DOKŁADNIE tę gałąź CSS, która miała krytyczny błąd w trzeciej rundzie
-// code review (karta zapadała się do 32x32px). Obszar mediów w ogóle nie istnieje w tym przypadku - sprawdzenie
-// (c) pomija go celowo (patrz pętla niżej), nie tylko "nie wymaga 35%".
+// zagnieżdżonych - "outlook" samo dociera do zbliżenia maila przez monitor). block: inny blok modułu niż domyślny (biuro).
+// postOpen: dodatkowa interakcja PO otwarciu (transkrypcja, "Zabierz" przy przedmiocie bez dowodu - toast). nested: przedmiot
+// WEWNĄTRZ sceny zagnieżdżonej (faza "inner-open", kamera na pulpicie - bez sprawdzenia (k) na scenie głównej). scene: zbliżenie
+// przechodzi w scenę zagnieżdżoną (bez Zabierz/Odłóż). noMedia: ?stripMedia=1 (page.tsx) usuwa media prawdziwemu przedmiotowi -
+// gałąź "opis zamiast grafiki" (treść sprzed D-086).
 const HOTSPOT_CASES = [
   { name: 'karteczka', hotspotId: 'karteczka' },
   { name: 'kalendarz', hotspotId: 'kalendarz' },
   { name: 'drukarka', hotspotId: 'drukarka' },
   { name: 'kubek', hotspotId: 'kubek' },
-  { name: 'telefon', hotspotId: 'telefon' },
+  {
+    name: 'kubek+zabierz (nie dowód)',
+    hotspotId: 'kubek',
+    async postOpen(page) {
+      await page.getByRole('dialog').getByRole('button', { name: 'Zabierz' }).click();
+      await page.getByRole('dialog').getByRole('status').waitFor();
+    },
+  },
+  { name: 'telefon (audio)', hotspotId: 'telefon' },
   {
     name: 'telefon+transkrypcja',
     hotspotId: 'telefon',
@@ -135,9 +136,10 @@ const HOTSPOT_CASES = [
       await dialog.getByRole('region', { name: 'Transkrypcja' }).waitFor();
     },
   },
-  { name: 'monitor-pulpit', hotspotId: 'monitor' },
-  { name: 'outlook-mail', hotspotId: 'outlook' },
-  { name: 'karteczka-bez-mediow', hotspotId: 'karteczka', extraQuery: 'stripMedia=1', noMedia: true },
+  { name: 'monitor-pulpit (scena)', hotspotId: 'monitor', scene: true },
+  { name: 'outlook-mail', hotspotId: 'outlook', nested: true },
+  { name: 'tablica (korytarz)', hotspotId: 'tablica', block: 'korytarz' },
+  { name: 'karteczka-bez-mediow', hotspotId: 'karteczka', extraQuery: 'stripMedia=1' },
 ];
 
 async function waitForServer(url, what, timeoutMs = 60000) {
@@ -176,60 +178,6 @@ async function checkNoPageScroll(page, label) {
   }
 }
 
-async function checkCardDoesNotScroll(page, label) {
-  const card = page.locator('.hotspot-card').first();
-  const { scrollHeight, clientHeight, hasNoMedia } = await card.evaluate((el) => ({
-    scrollHeight: el.scrollHeight,
-    clientHeight: el.clientHeight,
-    hasNoMedia: el.classList.contains('hotspot-card--no-media'),
-  }));
-  // Karta bez mediów jest auto-size do treści (.hotspot-card--no-media, globals.css) - "się nie przewija" nie
-  // dotyczy jej w ten sam sposób (nic tam nie ma do przewijania z definicji), pomijamy w tym przypadku.
-  if (!hasNoMedia && scrollHeight > clientHeight) {
-    fail(`${label}: (b) karta (.hotspot-card) się przewija - scrollHeight=${scrollHeight} clientHeight=${clientHeight}.`);
-  }
-}
-
-async function checkMediaHeight(page, label) {
-  const cardBox = await boxOf(page, '.hotspot-card');
-  const mediaBox = await boxOf(page, '.hotspot-card-media');
-  if (mediaBox.height <= 0) {
-    fail(`${label}: (c) obszar mediów (.hotspot-card-media) ma wysokość ${mediaBox.height} (<=0).`);
-  }
-  const ratio = mediaBox.height / cardBox.height;
-  if (ratio < 0.35) {
-    fail(`${label}: (c) obszar mediów ma ${(ratio * 100).toFixed(1)}% wysokości karty (${mediaBox.height}px z ${cardBox.height}px) - poniżej wymaganych 35%.`);
-  }
-}
-
-// Karta BEZ mediów (.hotspot-card--no-media) ma auto-size do treści - checkMediaHeight (c) i część checkCardDoesNotScroll
-// (b) jej nie dotyczą z definicji (nie ma obszaru mediów, "się nie przewija" nie ma sensu tak samo). Bez WŁASNEGO
-// sprawdzenia żaden z dwóch bugów czwartej rundy code review nie miałby stałej ochrony przed regresją - oba mieściły
-// się w kartę/ramkę, więc (a)/(d) by ich nie złapały:
-//  - przyciski rozciągnięte przez align-content (grid "auto auto" bez fr) do ~148px zamiast naturalnych ~44px;
-//  - `.hotspot-card--no-media { height:auto }` przegrywający z Tailwind `sm:h-[92%]` (karta zostawała 92%-wysoka z
-//    dużą pustą przestrzenią pod treścią, mimo że treść była już poprawnego rozmiaru).
-async function checkNoMediaCardSizing(page, label) {
-  const cardBox = await boxOf(page, '.hotspot-card');
-  const layoutBox = await boxOf(page, '.hotspot-card-layout');
-  // Różnica karta-treść to góra/dół paddingu karty (p-4 x2 = 32px) - duży naddatek ponad to zdradza, że height:auto
-  // nie wygrał (karta zostaje przy 92% wysokości sceny, treść dużo krótsza).
-  const slack = cardBox.height - layoutBox.height;
-  if (slack > 80) {
-    fail(
-      `${label}: karta bez mediów ma dużo pustej przestrzeni pod treścią (karta=${cardBox.height}px, treść=${layoutBox.height}px, różnica=${slack}px > 80px) - podejrzenie, że .hotspot-card--no-media nie wygrywa z sm:h-[92%].`,
-    );
-  }
-  const buttons = await page.locator('.hotspot-card-buttons button').all();
-  for (const button of buttons) {
-    const box = await button.boundingBox();
-    if (box && box.height > 70) {
-      const name = (await button.textContent())?.trim() ?? '?';
-      fail(`${label}: przycisk "${name}" ma nienaturalną wysokość ${box.height}px (>70px, oczekiwane ~44px) - podejrzenie, że wiersze "auto" siatki są rozciągane (align-content).`);
-    }
-  }
-}
-
 function contains(outer, inner) {
   return (
     inner.x >= outer.x - 0.5 &&
@@ -239,22 +187,57 @@ function contains(outer, inner) {
   );
 }
 
-async function checkButtonsInsideCardAndFrame(page, label) {
-  const cardBox = await boxOf(page, '.hotspot-card');
+// Zbliżenie przedmiotu (D-086) - (b-d) z komentarza na górze pliku. Grafika: ostatni widoczny element treści zbliżenia (dla
+// przedmiotu w scenie zagnieżdżonej - jego zbliżenie, nie pulpit pod spodem), dla sceny zagnieżdżonej - pudełko pulpitu.
+async function checkZoomFits(page, testCase, label) {
+  const viewport = page.viewportSize();
+  const viewportBox = { x: 0, y: 0, width: viewport.width, height: viewport.height };
+  const zoomBox = await boxOf(page, '[data-testid="scene-zoom"]');
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
   const frameBox = await boxOf(page, '.player-frame');
-  const buttons = await page.locator('.hotspot-card-buttons button').all();
-  if (buttons.length === 0) fail(`${label}: (d) nie znaleziono żadnego przycisku w .hotspot-card-buttons.`);
+  if (!contains(contentAreaBox, zoomBox) || !contains(viewportBox, zoomBox)) {
+    fail(`${label}: (b) nakładka zbliżenia poza obszarem bloku/viewportem - nakładka=${JSON.stringify(zoomBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  }
+
+  const dialog = page.getByRole('dialog');
+  const graphic = testCase.scene
+    ? dialog.locator('.hotspot-nested-scene-box')
+    : dialog.getByTestId('scene-zoom-graphic').last().locator(':scope > img, :scope > div, :scope > p, :scope > [role="region"]').first();
+  const graphicBox = await graphic.boundingBox();
+  if (!graphicBox || graphicBox.height <= 0) fail(`${label}: (c) grafika zbliżenia niewidoczna albo zerowej wysokości - ${JSON.stringify(graphicBox)}.`);
+  if (!contains(zoomBox, graphicBox)) fail(`${label}: (c) grafika wychodzi poza nakładkę - grafika=${JSON.stringify(graphicBox)} nakładka=${JSON.stringify(zoomBox)}.`);
+  if (graphicBox.height > zoomBox.height * 0.88 + 1 || graphicBox.width > zoomBox.width * 0.88 + 1) {
+    fail(`${label}: (c) grafika większa niż 88% nakładki - grafika=${graphicBox.width}x${graphicBox.height} nakładka=${zoomBox.width}x${zoomBox.height}.`);
+  }
+
+  const buttons = await dialog.getByRole('button').all();
+  const names = [];
   for (const button of buttons) {
+    if ((await button.getAttribute('data-testid'))?.startsWith('hotspot-overlay-')) continue; // przedmioty sceny zagnieżdżonej - (h)
     const box = await button.boundingBox();
     if (!box) continue;
-    const name = (await button.textContent())?.trim() ?? '?';
-    if (!contains(cardBox, box)) {
-      fail(`${label}: (d) przycisk "${name}" wychodzi poza kartę - przycisk=${JSON.stringify(box)} karta=${JSON.stringify(cardBox)}.`);
+    const name = (await button.getAttribute('aria-label')) ?? (await button.textContent())?.trim() ?? '?';
+    names.push(name);
+    if (!contains(zoomBox, box) || !contains(frameBox, box) || !contains(viewportBox, box)) {
+      fail(`${label}: (d) przycisk "${name}" wychodzi poza nakładkę/ramkę/viewport - przycisk=${JSON.stringify(box)} nakładka=${JSON.stringify(zoomBox)}.`);
     }
-    if (!contains(frameBox, box)) {
-      fail(`${label}: (d) przycisk "${name}" wychodzi poza ramkę odtwarzacza - przycisk=${JSON.stringify(box)} ramka=${JSON.stringify(frameBox)}.`);
-    }
+    if (box.height < 44 - 0.5) fail(`${label}: (d) przycisk "${name}" ma ${box.height}px wysokości (<44px).`);
   }
+  const expected = testCase.scene ? ['Wróć'] : ['Odłóż'];
+  for (const name of expected) if (!names.includes(name)) fail(`${label}: (d) brak przycisku "${name}" (są: ${names.join(', ')}).`);
+  return names;
+}
+
+// (k) Kamera: środek klikniętego przedmiotu (sceny głównej) w środku nakładki - przedmiot "podjechał" na środek widoku.
+async function checkCameraCentersItem(page, hotspotId, label) {
+  const zoomBox = await boxOf(page, '[data-testid="scene-zoom"]');
+  const itemBox = await page.getByTestId(`hotspot-overlay-${hotspotId}`).first().boundingBox();
+  if (!itemBox) fail(`${label}: (k) przedmiot "${hotspotId}" niewidoczny.`);
+  const dx = itemBox.x + itemBox.width / 2 - (zoomBox.x + zoomBox.width / 2);
+  const dy = itemBox.y + itemBox.height / 2 - (zoomBox.y + zoomBox.height / 2);
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) fail(`${label}: (k) środek przedmiotu przesunięty względem środka nakładki o (${dx.toFixed(1)}, ${dy.toFixed(1)})px.`);
+  const transform = await page.locator('.scene-box').first().evaluate((el) => getComputedStyle(el).transform);
+  if (!transform || transform === 'none') fail(`${label}: (k) pudełko sceny bez transformu kamery.`);
 }
 
 // (e) Scena GŁÓWNA (nie karta) mieści się w obszarze bloku, bez paska przewijania w tym obszarze - hotfix
@@ -359,30 +342,6 @@ async function checkPanoramaChromeInViewport(page, label) {
     if (box.x < -0.5 || box.x + box.width > viewport.width + 0.5) {
       fail(`${label}: (j) "${selector}" wychodzi poza szerokość viewportu (x=${box.x}, width=${box.width}, viewport=${viewport.width}) - podejrzenie, że przewija się razem ze sceną.`);
     }
-  }
-}
-
-// (i) Bottom sheet (.hotspot-card, telefon w pionie) mieści się w 85% wysokości viewportu (globals.css:
-// position:fixed; height: min(85dvh, ...)) - inny punkt odniesienia niż checkButtonsInsideCardAndFrame
-// (.player-frame, który na tym breakpoincie i tak wypełnia cały viewport, więc "wewnątrz ramki" nic dodatkowego by
-// nie sprawdziło ponad "wewnątrz viewportu"), stąd osobne sprawdzenie wysokości względem viewportu. DODATKOWO (kod
-// review, regresja znaleziona i naprawiona w tej samej sesji): karta nie może nachodzić na .player-bottombar (dół)
-// ani wchodzić pod .player-topbar (góra) - .player-frame jako "ramka" tego by nie złapał, bo obie te belki są W
-// JEGO OBRĘBIE (position:fixed karty liczy się względem CAŁEGO viewportu, nie samej ramki).
-async function checkBottomSheetFits(page, label) {
-  const viewport = page.viewportSize();
-  const cardBox = await boxOf(page, '.hotspot-card');
-  const bottombarBox = await boxOf(page, '.player-bottombar');
-  const topbarBox = await boxOf(page, '.player-topbar');
-  const maxHeight = viewport.height * 0.85 + 1;
-  if (cardBox.height > maxHeight) {
-    fail(`${label}: (i) bottom sheet (.hotspot-card) ma wysokość ${cardBox.height}px > 85% viewportu (${maxHeight.toFixed(1)}px, viewport=${viewport.height}px).`);
-  }
-  if (cardBox.y + cardBox.height > bottombarBox.y + 0.5) {
-    fail(`${label}: (i) bottom sheet nachodzi na dolny pasek odtwarzacza - dół karty=${cardBox.y + cardBox.height} góra paska=${bottombarBox.y}.`);
-  }
-  if (cardBox.y < topbarBox.y + topbarBox.height - 0.5) {
-    fail(`${label}: (i) bottom sheet wchodzi pod górny pasek - góra karty=${cardBox.y} dół paska=${topbarBox.y + topbarBox.height}.`);
   }
 }
 
@@ -491,7 +450,10 @@ async function checkBriefingStep(page, cta, label) {
   }));
   if (scrollWidth > clientWidth + 1) fail(`${label}: (m) odprawa przewija się w poziomie - scrollWidth=${scrollWidth} clientWidth=${clientWidth}.`);
 
+  // D-086: jedynym przyciskiem kroku jest przedmiot na scenie (bez osobnego cta pod sceną).
   const button = page.getByRole('button', { name: cta, exact: true });
+  if ((await button.count()) !== 1) fail(`${label}: (n) oczekiwany dokładnie jeden przycisk "${cta}" (przedmiot), jest ${await button.count()}.`);
+  if ((await button.getAttribute('data-testid')) !== 'briefing-hotspot') fail(`${label}: (n) "${cta}" nie jest przedmiotem na scenie.`);
   await button.scrollIntoViewIfNeeded();
   const buttonBox = await button.boundingBox();
   if (!buttonBox) fail(`${label}: (n) przycisk "${cta}" niewidoczny.`);
@@ -550,11 +512,10 @@ async function checkBriefingScene(page, view, label) {
       if (overlaps(r, { x: 0, y: 0, right: 40, bottom: 100 })) fail(`${label}: (y) dymek nachodzi na telefon (lewa część sceny).`);
     }
   }
-  if (view.hotspot) {
-    const hotspotBox = await page.getByTestId('briefing-hotspot').boundingBox();
-    if (!hotspotBox || !contains(sceneBox, hotspotBox)) fail(`${label}: (z) hotspot poza sceną - ${JSON.stringify(hotspotBox)}.`);
-    const textBand = page.getByTestId('briefing-scene-text');
-    if ((await textBand.count()) === 1 && overlaps(rel(await textBand.boundingBox()), rel(hotspotBox))) fail(`${label}: (y) pasek tekstu nachodzi na hotspot telefonu.`);
+  const hotspotBox = await page.getByTestId('briefing-hotspot').boundingBox();
+  if (!hotspotBox || !contains(sceneBox, hotspotBox)) fail(`${label}: (z) przedmiot poza sceną - ${JSON.stringify(hotspotBox)}.`);
+  for (const testId of view.clear) {
+    if (overlaps(rel(await page.getByTestId(testId).boundingBox()), rel(hotspotBox))) fail(`${label}: (y) "${testId}" nachodzi na przedmiot "${view.item}".`);
   }
 }
 
@@ -664,30 +625,21 @@ try {
     for (const testCase of HOTSPOT_CASES) {
       const label = `${viewport.name} / ${testCase.name}`;
       const query = new URLSearchParams({ hotspot: testCase.hotspotId });
+      if (testCase.block) query.set('block', testCase.block);
       if (testCase.extraQuery) new URLSearchParams(testCase.extraQuery).forEach((v, k) => query.set(k, v));
       await page.goto(`${WEB}/dev/player-harness?${query.toString()}`);
-      await page.locator('.hotspot-card').first().waitFor();
+      // Kamera dojeżdża 450 ms (bez reduced-motion) - czekamy na fazę "open" (dla przedmiotu w scenie zagnieżdżonej "inner-open").
+      await page.locator(`[data-testid="scene-zoom"][data-phase="${testCase.nested ? 'inner-open' : 'open'}"]`).waitFor();
       if (testCase.postOpen) await testCase.postOpen(page);
-      // Jedna klatka na ustabilizowanie layoutu (przejście paska poziomu/animacje nie dotyczą tej karty, ale kolejne
-      // klatki po kliknięciu z HarnessAutoOpen.tsx czasem jeszcze się układają).
-      await page.waitForTimeout(200);
+      // Crossfade grafiki (200 ms) i ładowanie obrazu zbliżenia.
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="scene-zoom"] img')].every((img) => img.complete));
+      await page.waitForTimeout(300);
 
       await shot(page, `${viewport.name}-${testCase.name}`);
       await checkNoPageScroll(page, label);
-      await checkCardDoesNotScroll(page, label);
-      if (testCase.noMedia) {
-        // (c) nie dotyczy karty bez mediów - nie ma obszaru mediów do zmierzenia z definicji. WŁASNE sprawdzenie
-        // zamiast tego (czwarta runda code review: bez niego (a)/(d) nie łapią ani rozciągniętych przycisków, ani
-        // karty zostającej przy 92% z pustą przestrzenią - oba mieszczą się w karcie/ramce).
-        await checkNoMediaCardSizing(page, label);
-      } else {
-        await checkMediaHeight(page, label);
-      }
-      await checkButtonsInsideCardAndFrame(page, label);
-      if (isPortrait) {
-        await checkBottomSheetFits(page, label);
-      }
-      step(`${label}: (a-d${isPortrait ? ', i' : ''}) OK`, true);
+      const names = await checkZoomFits(page, testCase, label);
+      if (!testCase.nested) await checkCameraCentersItem(page, testCase.hotspotId, label);
+      step(`${label}: (a-d${testCase.nested ? '' : ', k'}) OK - przyciski: ${names.join(', ')}`, true);
     }
 
     await context.close();
@@ -765,8 +717,8 @@ try {
   }
 
   // Animacje scen (D-084) przy reducedMotion:'reduce': (r1) KAŻDY obraz SVG w obszarze bloku (scena, zagnieżdżona scena
-  // pulpitu, zbliżenie maila w karcie) ma w adresie #static - zatrzymuje animacje CSS w pliku - i się ładuje; (r2) scena
-  // nadal mieści się w obszarze bloku.
+  // pulpitu, zbliżenie maila) ma w adresie #static - zatrzymuje animacje CSS w pliku - i się ładuje; (r2) scena nadal mieści się w
+  // obszarze bloku; (r3) zbliżenie bez ruchu kamery (pudełko sceny bez transformu), grafika i przyciski się mieszczą.
   for (const viewport of BRIEFING_VIEWPORTS) {
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
@@ -779,7 +731,12 @@ try {
       const label = `${viewport.name} / reduced-motion: ${name}`;
       await page.goto(`${WEB}/dev/player-harness${query}`);
       await page.getByTestId('player-content-area').waitFor();
-      if (query) await page.locator('.hotspot-card').first().waitFor();
+      if (query) {
+        await page.locator('[data-testid="scene-zoom"][data-phase="inner-open"]').waitFor();
+        const transform = await page.locator('.scene-box').first().evaluate((el) => getComputedStyle(el).transform);
+        if (transform !== 'none') fail(`${label}: (r3) reduced-motion, a pudełko sceny ma transform kamery: ${transform}.`);
+        await checkZoomFits(page, { nested: true }, label);
+      }
       await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="player-content-area"] img')].every((img) => img.complete));
       const images = await page.locator('[data-testid="player-content-area"] img').evaluateAll((els) =>
         els.map((img) => ({ src: img.getAttribute('src') ?? '', loaded: img.naturalWidth > 0 })),
@@ -814,7 +771,7 @@ try {
     await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
     await page.getByTestId('briefing-block').waitFor();
     for (const [index, view] of BRIEFING_SCENE_VIEWS.entries()) {
-      const { cta } = view;
+      const { item: cta } = view;
       const label = `${viewport.name} / odprawa widok ${index + 1} (${cta})`;
       await page.getByRole('button', { name: cta, exact: true }).waitFor();
       // Obraz sceny i dopasowanie tekstu (ResizeObserver) - chwila na załadowanie przed pomiarem.
@@ -827,8 +784,7 @@ try {
       step(`${label}: (a, e, m-p, v-z) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
       // Ostatni krok zapisuje blok - w podglądzie dev nie ma backendu, więc nie klikamy go.
       if (view.last) break;
-      if (view.via === 'hotspot') await page.getByTestId('briefing-hotspot').click();
-      else await page.getByRole('button', { name: cta, exact: true }).click();
+      await page.getByTestId('briefing-hotspot').click();
     }
     await context.close();
   }

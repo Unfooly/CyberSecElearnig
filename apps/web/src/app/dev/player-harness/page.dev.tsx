@@ -59,9 +59,8 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
   let blockForClient: ServerBlock = rawBlock;
   if (rawBlock.type === 'SCENE_HOTSPOTS' && hotspotParam) {
     clickPath = findHotspotPath(rawBlock.hotspots, hotspotParam);
-    // ?stripMedia=1: treść modułu 1 nie ma dziś hotspotu bez mediów, który otwiera kartę ("drzwi" jej w ogóle nie
-    // otwiera) - scripts/layout-check.mjs i tak musi sprawdzić kartę BEZ mediów (.hotspot-card--no-media, trzecia
-    // runda code review - tam był krytyczny błąd). Zamiast wymyślać syntetyczną treść, bierzemy PRAWDZIWY hotspot z
+    // ?stripMedia=1: treść modułu 1 nie ma dziś przedmiotu bez mediów (drzwi nie otwierają zbliżenia) - scripts/layout-check.mjs i
+    // tak sprawdza gałąź "opis zamiast grafiki" w zbliżeniu (D-086). Zamiast wymyślać syntetyczną treść, bierzemy PRAWDZIWY hotspot z
     // `?hotspot=` i usuwamy mu pole `media` (na kopii, TYLKO w tym procesie renderowania) - toClientBlock i tak
     // przechodzi przez tę samą białą listę pól co produkcja, ten krok dzieje się wcześniej, na surowych danych.
     if (stripMedia) {

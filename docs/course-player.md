@@ -21,7 +21,7 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |
 | `QUIZ`, `BRANCHING_SCENARIO` | `SingleChoiceBlock` | indeks opcji | poprawność z serwera; w podglądzie „Twoja odpowiedź” |
-| `SCENE_HOTSPOTS` | `SceneHotspotsBlock` | `{ visited, noted }` | ukończenie po punktach `required`; „Dodaj do notatnika” tylko dla `evidence` |
+| `SCENE_HOTSPOTS` | `SceneHotspotsBlock` | `{ visited, noted }` | ukończenie po punktach `required`; klik = zbliżenie przedmiotu (D-086), „Zabierz” zalicza dowód tylko dla `evidence` (inaczej toast „To nie jest dowód w tej sprawie.”) |
 | `DIALOGUE` | `DialogueBlock` | `{ asked }` | kwestie po jednej; pytanie liczy się po ostatniej kwestii |
 | `TABS` | `TabsBlock` | `{ opened }` | wzorzec ARIA tabs |
 | `NOTEPAD`, `SUMMARY` | `NotepadBlock`, `SummaryBlock` | brak | `SUMMARY` z dowodami to „Rozwiązanie sprawy” (przeoczone tylko liczbowo) |

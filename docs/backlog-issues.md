@@ -487,6 +487,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   woreczkach/pozycji liściku (grafika albo slot); podpowiedź przesuwania w panoramie raportu z testem w layout-check.
 
 ### B-116 Ruch w odtwarzaczu - część 2 (D-090)
+- **Status: (1) i (2) zrobione (`feat/player-motion-2`); (3) otwarte.**
 - Etykiety: `P2`, `mod:web`, `mod:content` · Źródło: `feat/player-motion` (B), plan właściciela
 - Opis: czekało na merge zamknięcia sprawy (#65 - te same pliki): (1) stempel PRIORYTET w grafice akt spada (scale 1.4 → 1, rotate −12°,
   lekki bounce, 350 ms) - animacja jednorazowa w klocku sceny (`props-odprawa.ts`, klasa w `compose.ts`, rebuild i publikacja scen);

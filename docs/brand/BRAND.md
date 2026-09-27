@@ -116,6 +116,12 @@ Zasady:
   ma własny ruch kamery (D-086) - nie dublujemy go.
 - Znaleziony dowód: etykieta leci od klikniętego elementu do przycisku Notatnika (400 ms), ikona podskakuje 1 → 1.15 → 1 (250 ms),
   cyfra licznika „Dowody x/N” przewija się (200 ms). Zakreślacz w teczce wjeżdża od lewej (350 ms), ptaszek zadania się rysuje (300 ms).
+- Odprawa: stempel PRIORYTET na zamkniętej teczce spada (scale 1.4 → 1, obrót −12°, lekkie przestrzelenie, 350 ms) - animacja
+  jednorazowa w SVG sceny (`a-stamp`, zatrzymywana przez reduced-motion i `#static`); legitymacja wysuwa się z dołu (400 ms).
+- Koniec modułu (ekran zamknięcia): liczby nabijają się (900 ms, D-089), pasek poziomu przesuwa się od stanu sprzed nagrody (600 ms),
+  odznaki „wyskakują” (.6 → 1.08 → 1), przy pieczęci jednorazowe konfetti: max 30 cząstek, 1,2 s, w obrębie raportu.
+  **Wyjątek kolorów:** konfetti używa `accent`, `accent-soft`, `success` i `highlight` (#FFE066) - jedyne miejsce, gdzie `success`
+  i `highlight` są dekoracją, a nie statusem/zakreślaczem.
 - Dźwięk nigdy nie zastępuje ruchu ani odwrotnie - oba są ozdobą, stan i tak jest widoczny od razu.
 
 ## Ikony

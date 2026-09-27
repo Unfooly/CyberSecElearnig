@@ -7,10 +7,20 @@
 # Dev-owy `.env` NIE jest tu czytany przez kontenery. Brak flagi kończy się błędem
 # "required variable POSTGRES_PASSWORD is missing" (celowo, patrz niżej).
 # Lokalny stack (docker-compose.prodlocal.yml) wskazuje swój plik przez ENV_FILE.
+
+# Rotacja logów kontenerów (chore/disk-hygiene, docs/ops/DISK.md): bez limitu json-file rośnie w nieskończoność
+# i zapchał już dysk VPS. Każda usługa niżej MUSI mieć `logging: *default-logging` (test: scripts/ops/disk-hygiene.test.mjs).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: cyberszkolo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Brak POSTGRES_PASSWORD - uruchom compose z --env-file .env.prod i ustaw go w .env.prod}
@@ -30,6 +40,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
     # Trwałość (AOF) i BRAK eviction: w Redisie leży m.in. unieważnienie sesji ("wyloguj wszędzie"
     # - klucz sessions-revoked:*) i limiter maili. Restart bez trwałości albo wyparcie klucza (LRU)
     # po cichu cofnęłoby unieważnienie access tokenów (guard jest wtedy fail-open). Przy zapełnieniu
@@ -60,6 +71,7 @@ services:
   migrate:
     image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: "no"
+    logging: *default-logging
     env_file: ${ENV_FILE:-.env.prod}
     entrypoint: []
     command: ["npx", "prisma", "migrate", "deploy", "--schema=apps/api/prisma/schema.prisma"]
@@ -74,6 +86,7 @@ services:
   content-import:
     image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: "no"
+    logging: *default-logging
     env_file: ${ENV_FILE:-.env.prod}
     entrypoint: []
     command: ["node", "apps/api/dist/scripts/content-import.js"]
@@ -84,6 +97,7 @@ services:
   api:
     image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     env_file: ${ENV_FILE:-.env.prod}
     depends_on:
       migrate:
@@ -98,6 +112,7 @@ services:
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/unfooly/cybersecelearnig}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     env_file: ${ENV_FILE:-.env.prod}
     depends_on:
       - api
@@ -113,6 +128,7 @@ services:
     image: cloudflare/cloudflared:latest # na produkcji przypnij konkretną wersję
     profiles: ["tunnel"]
     restart: unless-stopped
+    logging: *default-logging
     command: tunnel --no-autoupdate run
     environment:
       # Bez ":?" celowo - compose interpoluje cały plik także dla usług
@@ -128,6 +144,7 @@ services:
     image: caddy:2-alpine
     profiles: ["caddy"]
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"

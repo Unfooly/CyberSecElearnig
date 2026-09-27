@@ -202,10 +202,10 @@
       "type": "SCENE_HOTSPOTS",
       "title": "Korytarz",
       "narration": {
-        "text": "Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą.",
-        "spokenText": "Wtorek, dziesiąta zero pięć. Unfooly, drugie piętro. Anna z księgowości czeka w swoim biurze — drzwi są przed tobą.",
-        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/ba03fb91dcbec77a.mp3",
-        "durationMs": 9195
+        "text": "Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są przed tobą.",
+        "spokenText": "Wtorek, dziesiąta zero pięć. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są przed tobą.",
+        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/fa82944590190eef.mp3",
+        "durationMs": 11378
       },
       "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",

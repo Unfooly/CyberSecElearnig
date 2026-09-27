@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
@@ -1185,6 +1185,68 @@ try {
       }
       await checkCaseClosed(page, label, portrait);
       step(`${label} (stan końcowy): (z1-z7) OK`, true);
+      await context.close();
+    }
+  }
+
+  // RUCH (feat/player-motion, D-090): "Zabierz" przy dowodzie (karteczka) w prawdziwej przeglądarce. Bez reduced-motion: (m1) etykieta
+  // lotu pojawia się, leży w viewporcie, a strona się nie przewija w trakcie lotu; (m2) po locie etykieta znika z DOM; (m3) przycisk
+  // Notatnika po podskoku wraca do skali 1. Z reduced-motion: (m4) bez etykiety lotu. Zawsze: (m5) liczba wpisów notatnika rośnie; (m6) pasek
+  // postępu przesuwa się transformem na pełnej szerokości toru (translateX, nie width); (m7) błędy strony.
+  for (const viewport of runs('motion') ? BRIEFING_VIEWPORTS : []) {
+    console.log(`\n--- viewport (RUCH): ${viewport.name} ---`);
+    for (const reduce of [false, true]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: true,
+        isMobile: viewport.isMobile ?? false,
+        reducedMotion: reduce ? 'reduce' : 'no-preference',
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+      const label = `${viewport.name} / ruch${reduce ? ' (reduced-motion)' : ''}: Zabierz karteczkę`;
+      await page.goto(`${WEB}/dev/player-harness?hotspot=karteczka`);
+      await page.locator('[data-testid="scene-zoom"][data-phase="open"]').waitFor();
+      // Harness nie ma progress.evidence (licznik "Dowody x/N" się nie pokazuje) - wzrost liczy się po etykiecie przycisku Notatnika.
+      const notesCount = async () => Number(((await page.locator('[data-evidence-target]').getAttribute('aria-label')) ?? '').match(/\((\d+)\)/)?.[1] ?? NaN);
+      const before = await notesCount();
+      await page.getByRole('dialog').getByRole('button', { name: 'Zabierz' }).click();
+      const chip = page.getByTestId('evidence-flight');
+      if (!reduce) {
+        // Pomiar w JEDNEJ klatce przeglądarki (polling raf), póki etykieta leci - osobne wywołania mogłyby trafić już po jej zniknięciu (400 ms).
+        const flight = await (
+          await page.waitForFunction(
+            () => {
+              const el = document.querySelector('[data-testid="evidence-flight"]');
+              if (!el) return null;
+              const r = el.getBoundingClientRect();
+              const doc = document.documentElement;
+              return { x: r.left, y: r.top, right: r.right, bottom: r.bottom, vw: window.innerWidth, vh: window.innerHeight, scrollX: doc.scrollWidth - doc.clientWidth, scrollY: doc.scrollHeight - doc.clientHeight };
+            },
+            null,
+            { timeout: 2000, polling: 'raf' },
+          )
+        ).jsonValue();
+        if (flight.scrollX > 1 || flight.scrollY > 1) fail(`${label}: (m1) strona przewija się w trakcie lotu - ${JSON.stringify(flight)}.`);
+        if (flight.x < -1 || flight.y < -1 || flight.right > flight.vw + 1 || flight.bottom > flight.vh + 1) fail(`${label}: (m1) etykieta lotu poza viewportem - ${JSON.stringify(flight)}.`);
+        await shot(page, `${viewport.name}-ruch-lot`);
+        await chip.waitFor({ state: 'detached', timeout: 2000 });
+        await page.waitForTimeout(350);
+        const transform = await page.locator('[data-evidence-target]').evaluate((el) => getComputedStyle(el).transform);
+        if (transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)') fail(`${label}: (m3) przycisk Notatnika po podskoku ma transform ${transform}.`);
+      } else {
+        await page.waitForTimeout(500);
+        if ((await chip.count()) !== 0) fail(`${label}: (m4) reduced-motion, a etykieta lotu jest w DOM.`);
+      }
+      const after = await notesCount();
+      if (after !== before + 1) fail(`${label}: (m5) notatnik ${before} -> ${after} (oczekiwane +1).`);
+      const bar = await page.getByTestId('progress-fill').evaluate((el) => ({ width: el.getBoundingClientRect().width, track: el.parentElement.clientWidth, transform: getComputedStyle(el).transform }));
+      if (Math.abs(bar.width - 0) > 1 && !bar.transform.startsWith('matrix')) fail(`${label}: (m6) pasek postępu bez transformu: ${JSON.stringify(bar)}.`);
+      const layoutWidth = await page.getByTestId('progress-fill').evaluate((el) => el.offsetWidth);
+      if (Math.abs(layoutWidth - bar.track) > 1) fail(`${label}: (m6) pasek postępu zmienia szerokość układu (${layoutWidth} px zamiast toru ${bar.track} px).`);
+      if (pageErrors.length > 0) fail(`${label}: (m7) błąd strony: ${pageErrors.join(' | ')}`);
+      step(`${label}: (m1-m7) OK`, true);
       await context.close();
     }
   }

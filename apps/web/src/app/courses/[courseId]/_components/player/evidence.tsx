@@ -48,6 +48,9 @@ export function EvidenceCounter() {
   const collected = summary.collected + pending;
   const previous = useRef(collected);
   const [flash, setFlash] = useState(false);
+  // Przewinięcie cyfry (D-090, 200 ms) tylko po zmianie względem wartości z pierwszego renderu (dowody z /start przychodzą w `initial`
+  // synchronicznie, więc wejście do modułu nie animuje).
+  const initial = useRef(collected);
 
   useEffect(() => {
     if (collected > previous.current) {
@@ -74,7 +77,17 @@ export function EvidenceCounter() {
       {/* player-compact-label: zwinięte do samej ikony na telefonie w pionie (PlayerStage, globals.css) - aria-label
           na kontenerze wyżej zostaje niezależnie od tego, czy tekst jest widoczny. */}
       <span aria-hidden="true" className="player-compact-label">
-        Dowody {collected}/{total}
+        Dowody{' '}
+        <span className="inline-block overflow-hidden align-bottom tabular-nums">
+          <span
+            key={collected}
+            data-testid="evidence-count"
+            className={`inline-block ${collected !== initial.current ? 'motion-safe:animate-digit-roll' : ''}`}
+          >
+            {collected}
+          </span>
+        </span>
+        /{total}
       </span>
       {/* "+1" w wierszu licznika, po prawej, w zarezerwowanym miejscu (bez przesuwania układu i bez wystawania poza pasek postępu);
           animacja tylko bez prefers-reduced-motion (motion-safe), inaczej po prostu jest widoczny. */}

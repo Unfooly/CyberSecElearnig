@@ -243,7 +243,13 @@ function PlayerStageInner({
                   aria-valuetext={`Ukończono ${completedBlocks} z ${totalBlocks} bloków`}
                   className="h-1.5 w-[140px] overflow-hidden rounded-full bg-slate-200 sm:w-[220px]"
                 >
-                  <div className="h-full rounded-full bg-indigo-600 motion-safe:transition-all" style={{ width: `${percent}%` }} />
+                  {/* Ruch (D-090): pełnej szerokości wypełnienie wysuwa się zza lewej krawędzi toru (translateX, overflow-hidden) - transform
+                      bez przeliczania układu i bez spłaszczania zaokrąglonego końca (scaleX skalowałby też promień); 600 ms ease-out-soft. */}
+                  <div
+                    data-testid="progress-fill"
+                    className="h-full w-full rounded-full bg-accent motion-safe:transition-transform motion-safe:duration-[600ms] motion-safe:ease-out-soft"
+                    style={{ transform: `translateX(${percent - 100}%)` }}
+                  />
                 </div>
               </div>
               {topAction}
@@ -251,6 +257,8 @@ function PlayerStageInner({
               <button
                 ref={notesButtonRef}
                 type="button"
+                // Cel lotu znalezionego dowodu (lib/motion.ts flyEvidence, D-090).
+                data-evidence-target=""
                 onClick={onToggleNotes}
                 aria-expanded={notesOpen}
                 aria-controls={notesOpen ? notesId : undefined}

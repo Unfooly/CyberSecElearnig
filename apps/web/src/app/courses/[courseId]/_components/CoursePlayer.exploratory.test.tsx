@@ -131,6 +131,67 @@ describe('CoursePlayer: śledztwo (dowody, maskotka)', () => {
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
   });
 
+  // Wymiary (jsdom liczy 0x0) tylko dla "Zabierz" i celu lotu; prostokąt nad krawędzią ekranu (y < 0), żeby fokus na "Zabierz" nie
+  // uruchamiał przewijania nad dolny pasek (PlayerStage keepFocusAboveBar - jsdom nie ma scrollBy).
+  function mockFlightRects() {
+    const original = Element.prototype.getBoundingClientRect;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this.textContent === 'Zabierz' || this.hasAttribute('data-evidence-target')) {
+        return { left: 10, top: -100, width: 100, height: 40, right: 110, bottom: -60, x: 10, y: -100, toJSON: () => ({}) } as DOMRect;
+      }
+      return original.call(this);
+    });
+  }
+
+  it('ruch (D-090): przedmiot bez dowodu i reduced-motion - bez lotu', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    const animate = vi.fn(() => ({ onfinish: null, oncancel: null }));
+    (Element.prototype as unknown as { animate: unknown }).animate = animate;
+    mockFlightRects();
+    const flights = () => [...document.querySelectorAll('[data-testid="evidence-flight"]')].map((chip) => chip.textContent);
+    const base = sceneCourse();
+    const scene = base.contentBlocks[0];
+    const withMug = { ...base, contentBlocks: [{ ...scene, hotspots: [...(scene.hotspots ?? []), { id: 'h2', label: 'Kubek', x: 50, y: 50, width: 10, height: 10, content: 'Kubek.' }] }, base.contentBlocks[1]] };
+    try {
+      const { unmount } = render(<CoursePlayer courseId="course-1" initial={withMug} narrationEnabled={false} />);
+      // reduced-motion (beforeEach): dowód trafia do notatnika bez lotu.
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      expect(flights()).toEqual([]);
+      unmount();
+
+      window.matchMedia = originalMatchMedia;
+      render(<CoursePlayer courseId="course-1" initial={withMug} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Zabierz' }));
+      expect(await screen.findByText('To nie jest dowód w tej sprawie.')).toBeInTheDocument();
+      expect(flights()).toEqual([]); // nie dowód - potrząśnięcie, bez lotu
+    } finally {
+      delete (Element.prototype as unknown as { animate?: unknown }).animate;
+      document.querySelectorAll('[data-testid="evidence-flight"]').forEach((chip) => chip.remove());
+    }
+  });
+
+  it('ruch (D-090): "Zabierz" przy dowodzie bez reduced-motion - lot z nazwą przedmiotu do przycisku Notatnika', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    window.matchMedia = originalMatchMedia;
+    const animate = vi.fn((..._args: unknown[]) => ({ onfinish: null, oncancel: null }));
+    (Element.prototype as unknown as { animate: unknown }).animate = animate;
+    mockFlightRects();
+    try {
+      render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
+      const take = await screen.findByRole('button', { name: 'Zabierz' });
+      fireEvent.click(take);
+      const chip = document.querySelector('[data-testid="evidence-flight"]');
+      expect(chip).toHaveTextContent('Monitor');
+      expect(animate.mock.calls[0][1]).toMatchObject({ duration: 400 });
+    } finally {
+      delete (Element.prototype as unknown as { animate?: unknown }).animate;
+      document.querySelectorAll('[data-testid="evidence-flight"]').forEach((chip) => chip.remove());
+    }
+  });
+
   it('Wstecz z niezapisanego bloku i powrót: stan bloku (odwiedzone, noted) przeżywa, licznik i notatnik zgadzają się z tym, co poleci na serwer', async () => {
     const response = {
       ok: true,

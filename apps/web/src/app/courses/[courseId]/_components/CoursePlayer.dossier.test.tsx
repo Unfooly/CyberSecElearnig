@@ -99,12 +99,36 @@ describe('CoursePlayer: teczka sprawy (DOSSIER)', () => {
 
     fireEvent.click(row('Wektor Rozliczenia'));
     expect(row('Wektor Rozliczenia')).toHaveAttribute('aria-pressed', 'true');
-    expect(row('Wektor Rozliczenia')).toHaveClass('bg-highlight');
+    // Zakreślacz to osobna warstwa pod tekstem (D-090): pociągnięcie od lewej tylko bez reduced-motion (motion-safe).
+    const highlight = within(row('Wektor Rozliczenia')).getByTestId('dossier-highlight');
+    expect(highlight).toHaveClass('bg-highlight', 'origin-left', 'motion-safe:animate-highlight-in');
+    expect(within(row('Opłata za kartę')).queryByTestId('dossier-highlight')).not.toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
     // Drugi klik niczego nie dubluje.
     fireEvent.click(row('Wektor Rozliczenia'));
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
+  });
+
+  it('ruch (D-090): zakreślony dowód leci z wiersza do przycisku Notatnika (Web Animations API); zwykła linijka - bez lotu', () => {
+    stubFetch();
+    const animate = vi.fn(() => ({ onfinish: null, oncancel: null }));
+    (Element.prototype as unknown as { animate: unknown }).animate = animate;
+    // jsdom nie liczy układu (prostokąty 0x0) - lot startuje tylko z elementu, który ma wymiary.
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ left: 10, top: 10, width: 100, height: 40, right: 110, bottom: 50, x: 10, y: 10, toJSON: () => ({}) } as DOMRect);
+    try {
+      render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
+      fireEvent.click(row('Opłata za kartę'));
+      expect(document.querySelector('[data-testid="evidence-flight"]')).toBeNull();
+      fireEvent.click(row('Wektor Rozliczenia'));
+      expect(document.querySelector('[data-testid="evidence-flight"]')).not.toBeNull();
+      expect(document.querySelector('[data-evidence-target]')).toBe(screen.getByRole('button', { name: /Notatnik \(1\)/ }));
+      expect(animate).toHaveBeenCalledTimes(1);
+    } finally {
+      rect.mockRestore();
+      delete (Element.prototype as unknown as { animate?: unknown }).animate;
+      document.querySelector('[data-testid="evidence-flight"]')?.remove();
+    }
   });
 
   it('"Dalej" dopiero po otwarciu wszystkich dokumentów i zakreśleniu wymaganych; odpowiedź { opened, noted }', async () => {

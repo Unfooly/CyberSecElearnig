@@ -27,6 +27,12 @@
   --r-card: 16px;
   --r-btn: 10px;
   --shadow-card: 0 1px 2px rgba(19, 19, 19, 0.04), 0 8px 24px -16px rgba(19, 19, 19, 0.18);
+  /* Ruch (BRAND.md „Ruch”, D-090) - te same wartości w tailwind.config.ts i src/lib/motion.ts. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 400ms;
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 @layer base {

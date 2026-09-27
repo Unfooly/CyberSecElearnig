@@ -338,6 +338,10 @@ const orderingSchema = z
     items: z.array(z.object({ id: idSchema, text: text(300) }).strict()).min(3).max(12),
     scoring: z.enum(['partial', 'exact']).default('partial'),
     explanation: text(1000).optional(),
+    // Tablica śledcza (feat/evidence-board, D-088, addytywnie w v5): "zdjęcia" na początku i końcu łańcucha (np. ofiara i strata) -
+    // sam opis, nie element oceniany (nie zdradza kolejności kroków).
+    start: z.object({ label: text(40), caption: text(60) }).strict().optional(),
+    end: z.object({ label: text(40), caption: text(60) }).strict().optional(),
   })
   .strict();
 
@@ -792,7 +796,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'solution.explanation',
     ],
   ),
-  ORDERING: classify(['prompt', 'items[].id', 'items[].text'], ['scoring', 'explanation']),
+  ORDERING: classify(['prompt', 'items[].id', 'items[].text', 'start.label', 'start.caption', 'end.label', 'end.caption'], ['scoring', 'explanation']),
   TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]'], []),
   SUMMARY: classify(['text'], []),
   BRIEFING: classify(

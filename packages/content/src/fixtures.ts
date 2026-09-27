@@ -285,6 +285,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { id: 'o2', text: 'Zgłoś' },
         { id: 'o3', text: 'Usuń' },
       ],
+      start: { label: 'A.K.', caption: 'Pracownik' },
+      end: { label: '−1 000 zł', caption: 'Strata' },
       scoring: 'partial',
       reactions: scoredReactions([
         { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-ordering-cheer` },

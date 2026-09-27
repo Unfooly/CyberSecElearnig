@@ -59,7 +59,7 @@ kroku (przycisk zostaje dla klawiatury); sloty = HTML w % sceny, tekst dopasowan
 
 | krok | scena (`assets/scenes/`) | hotspot / sloty |
 |---|---|---|
-| 0 typewriter | `odprawa-biurko.svg` (reduced-motion: `odprawa-biurko-static.svg`) | `telefon` (49 / 21,6 / 16,3 × 54,2) = „Odbierz"; napis w górnym pasie |
+| 0 typewriter | `odprawa-biurko.svg` (animacje; reduced-motion: ten sam plik z `#static`) | `telefon` (49 / 21,6 / 16,3 × 54,2) = „Odbierz"; napis w górnym pasie |
 | 1 call | `odprawa-rozmowa.svg` | dymek komisarza w prawej połowie (x ≥ 45%) |
 | 2 caseFile | `odprawa-teczka.svg` → klik `teczka` (24,4 / 17,4 / 51,6 × 69,5) → `odprawa-akta.svg` | `tasks` (54,1 / 19,4 / 37,1 × 56,2) |
 | 3 badge | `odprawa-legitymacja.svg` | `photo` (inicjały na `accent-soft`), `name` (imię + inicjał nazwiska), `number` (0915-XX) |

@@ -7,10 +7,10 @@ import { useCompleteReaction } from '../player/mascot-reaction';
 import { SimpleMarkdown } from '../simple-markdown';
 import CaseEvidenceSection from '../CaseEvidenceSection';
 
-// Podsumowanie modułu. Gdy moduł ma dowody, to "Rozwiązanie sprawy": zebrane dowody vs wszystkie (CaseEvidenceSection.tsx
-// - dzielony z SummaryScreen.tsx, fix/course-finish-flow), wnioski (tekst z treści), zebrane notatki i przycisk
-// "Zakończ sprawę". Bez dowodów: zwykłe podsumowanie. Wynik punktowy i nagrody pokazuje ekran po ukończeniu
-// (SummaryScreen), bo wynik jest znany dopiero po zapisie ostatniego bloku. Certyfikat: B-069.
+// Podsumowanie modułu. Gdy moduł ma dowody, to "Rozwiązanie sprawy": zebrane dowody vs wszystkie (CaseEvidenceSection.tsx),
+// wnioski (tekst z treści), zebrane notatki i przycisk "Zakończ sprawę". Bez dowodów: zwykłe podsumowanie. Wynik punktowy
+// i nagrody pokazuje ekran zamknięcia sprawy (CaseClosedScreen, D-089), bo wynik jest znany dopiero po zapisie ostatniego
+// bloku. Certyfikat: B-069.
 export default function SummaryBlock({
   block,
   onSubmit,

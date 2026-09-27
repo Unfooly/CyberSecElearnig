@@ -2,13 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 
-// Krótkie dźwięki interfejsu odtwarzacza (feat/dialogue-chat, D-087): pliki z apps/web/public/sfx/, głośność 0.35, wczytane z góry
-// (preload), grane dopiero po pierwszym geście użytkownika na stronie (przeglądarki i tak blokują dźwięk przed gestem - bez tego
-// warunku dostalibyśmy odrzucone play() i ostrzeżenia w konsoli) i WYCISZONE, gdy Lektor jest wyłączony (jedno ustawienie dźwięku
+// Krótkie dźwięki interfejsu odtwarzacza (feat/dialogue-chat, D-087; zamknięcie sprawy, D-089): pliki z apps/web/public/sfx/, głośność
+// 0.35, wczytane z góry (preload), grane dopiero po pierwszym geście użytkownika na stronie (przeglądarki i tak blokują dźwięk przed gestem -
+// bez tego warunku dostalibyśmy odrzucone play() i ostrzeżenia w konsoli) i WYCISZONE, gdy Lektor jest wyłączony (jedno ustawienie dźwięku
 // dla gracza, zapisane na koncie - useNarrationPreference). Podgląd ukończonego bloku gra bez dźwięków - decyduje wywołujący.
 
 // Nazwa = plik apps/web/public/sfx/<nazwa>.mp3 (nowe dźwięki dopisuj razem z plikiem).
-export type SfxName = 'msg-send' | 'msg-receive';
+export type SfxName = 'msg-send' | 'msg-receive' | 'paper' | 'stamp';
 export const SFX_VOLUME = 0.35;
 
 const SfxEnabledContext = createContext(false);
@@ -29,8 +29,8 @@ function trackGesture() {
   document.addEventListener('keydown', mark, true);
 }
 
-// Nasłuch od załadowania modułu (nie od montowania pierwszego komponentu z dźwiękiem): gest, który OTWORZYŁ rozmowę (klik w drzwi), też się
-// liczy - inaczej kwestia otwierająca pierwszej rozmowy grałaby bez dźwięku.
+// Nasłuch od załadowania modułu (nie od montowania pierwszego komponentu z dźwiękiem): gest, który OTWORZYŁ rozmowę (klik w drzwi) albo
+// ekran zamknięcia, też się liczy - inaczej kwestia otwierająca pierwszej rozmowy grałaby bez dźwięku.
 trackGesture();
 
 function hasGesture(): boolean {
@@ -68,7 +68,8 @@ export function useSfx(names: readonly SfxName[]): (name: SfxName) => void {
     return () => {
       map.forEach((audio) => {
         try {
-          audio.pause();
+          // jsdom: pause() na nieodtwarzanym elemencie zgłasza "Not implemented" - tylko gdy gra.
+          if (!audio.paused) audio.pause();
         } catch {
           // jsdom - bez odtwarzania.
         }

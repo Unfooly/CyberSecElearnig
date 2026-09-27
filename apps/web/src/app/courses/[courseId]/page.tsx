@@ -57,7 +57,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   let score: number | null = null;
   // Odróżnia "kurs naprawdę nie miał ocenianych bloków" (score=null to
   // poprawna odpowiedź) od "nie udało się pobrać wyniku" (score=null byłoby
-  // mylące - SummaryScreen pokazałby fałszywe "ten kurs nie miał pytań").
+  // mylące - ekran zamknięcia sprawy pokazałby fałszywe "ten kurs nie miał pytań").
   let scoreUnavailable = false;
   if (course.status === 'COMPLETED') {
     const myCoursesResult = await fetchJson<CourseAssignmentSummary[]>(`${API_URL}/courses/my`, {

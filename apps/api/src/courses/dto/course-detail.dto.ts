@@ -6,6 +6,9 @@ export class CourseDetailDto {
   title!: string;
   status!: AssignmentStatus;
   currentBlockIndex!: number;
+  /** Pierwsze rozpoczęcie i ukończenie przypisania - czas śledztwa na ekranie zamknięcia sprawy (D-089); null = nieznane / jeszcze nie. */
+  startedAt!: Date | null;
+  completedAt!: Date | null;
   contentBlocks!: Prisma.JsonValue;
   progress!: Prisma.JsonValue;
 }

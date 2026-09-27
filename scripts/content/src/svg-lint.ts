@@ -65,6 +65,15 @@ function hrefsOf(svg: string, tagName: string): string[] {
  */
 const isExternalRef = (value: string) => (/^[a-z][a-z0-9+.-]*:/i.test(value.trim()) && !/^data:/i.test(value.trim())) || value.trim().startsWith('//');
 
+/** Treść CSS pliku: zawartość każdego <style> (także z prefiksem przestrzeni nazw) i wartości atrybutów style oraz fill/stroke z url(). */
+function cssOf(svg: string): string[] {
+  const blocks = [...svg.matchAll(new RegExp(`<\\s*${NS_PREFIX}style\\b[^>]*>([\\s\\S]*?)<\\s*/\\s*${NS_PREFIX}style\\s*>`, 'gi'))].map((m) => m[1]);
+  const attrs = [...svg.matchAll(/\s(?:style|fill|stroke|filter|mask|clip-path|marker-(?:start|mid|end))\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((m) => m[1] ?? m[2] ?? '');
+  // Niedomknięty <style> (błąd albo próba ukrycia treści przed regexem wyżej) - cała reszta pliku po nim liczy się jako CSS.
+  const unclosed = svg.match(new RegExp(`<\\s*${NS_PREFIX}style\\b[^>]*>(?![\\s\\S]*<\\s*/\\s*${NS_PREFIX}style\\s*>)([\\s\\S]*)$`, 'i'));
+  return [...blocks, ...attrs, ...(unclosed ? [unclosed[1]] : [])];
+}
+
 export function lintSvg(source: string): SvgViolation[] {
   // Wszystkie sprawdzenia na wersji z rozkodowanymi encjami: encja mogłaby ukryć nazwę tagu/atrybutu albo schemat adresu (obrona w głąb,
   // nie parser XML - fałszywy alarm na dosłownym tekście "&#106;..." w treści SVG jest akceptowalnym kosztem tej warstwy).
@@ -79,6 +88,20 @@ export function lintSvg(source: string): SvgViolation[] {
   }
   for (const value of hrefsOf(decoded, 'image')) {
     if (isExternalRef(value)) violations.push({ rule: 'image-external-href', detail: `<image href="${value}"> wskazuje na zewnętrzny host` });
+  }
+  // CSS w SVG (animacje scen z kompozytora, D-084): wolno keyframes i reguły, nie wolno pobierać niczego z zewnątrz, gdy plik otworzy się
+  // wprost jako dokument. BIAŁA LISTA na treści CSS (<style> i atrybuty style), nie czarna lista adresów - regexy nie rozumieją escape'ów
+  // CSS (\75rl(), komentarzy XML rozcinających słowo (@im<!---->port) ani innych funkcji ładujących zasób, więc zabronione są same
+  // te konstrukcje: backslash, komentarz XML, @import/@font-face, image-set()/src() i każde url(...) inne niż do fragmentu (#id).
+  for (const css of cssOf(decoded)) {
+    if (/\\/.test(css)) violations.push({ rule: 'css-escape', detail: 'escape CSS (\\) w stylach' });
+    if (/<!--/.test(css)) violations.push({ rule: 'css-comment', detail: 'komentarz XML wewnątrz stylów' });
+    if (/@import\b|@font-face\b/i.test(css)) violations.push({ rule: 'css-at-rule', detail: 'CSS @import albo @font-face' });
+    if (/\b(?:image-set|src)\s*\(/i.test(css)) violations.push({ rule: 'css-loader', detail: 'CSS image-set() albo src()' });
+    for (const match of css.matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi)) {
+      const value = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+      if (!value.startsWith('#')) violations.push({ rule: 'css-url', detail: `CSS url(${value}) - dozwolone tylko odwołania do fragmentu (#id)` });
+    }
   }
   return violations;
 }

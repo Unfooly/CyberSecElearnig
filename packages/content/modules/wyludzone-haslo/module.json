@@ -1205,6 +1205,14 @@
           "text": "14 000 zł wychodzi na konto „Wektor Rozliczenia”."
         }
       ],
+      "start": {
+        "label": "A.K.",
+        "caption": "Anna Kowalska"
+      },
+      "end": {
+        "label": "−14 000 zł",
+        "caption": "Wektor Rozliczenia"
+      },
       "scoring": "partial",
       "reactions": {
         "result": [

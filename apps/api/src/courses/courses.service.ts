@@ -221,7 +221,8 @@ export class CoursesService {
       if (assignment.status === AssignmentStatus.NOT_STARTED) {
         await tx.courseAssignment.updateMany({
           where: { id: assignment.id, organizationId, status: AssignmentStatus.NOT_STARTED },
-          data: { status: AssignmentStatus.IN_PROGRESS },
+          // startedAt tylko przy PIERWSZYM starcie (ten sam warunek NOT_STARTED) - czas śledztwa na ekranie zamknięcia (D-089).
+          data: { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() },
         });
         const fresh = await tx.courseAssignment.findFirst({ where: { id: assignment.id, organizationId } });
         if (fresh) current = { ...assignment, ...fresh };
@@ -238,6 +239,8 @@ export class CoursesService {
         title: assignment.course.title,
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
+        startedAt: current.startedAt,
+        completedAt: current.completedAt,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
         progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
       };
@@ -424,7 +427,8 @@ export class CoursesService {
         where: { id: assignment.id },
         data: {
           progress: toJson(progress),
-          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS } : {}),
+          // Jak w startOrContinue: pierwsze przejście w IN_PROGRESS zapisuje moment startu (czas sprawy, D-089).
+          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() } : {}),
         },
       });
 

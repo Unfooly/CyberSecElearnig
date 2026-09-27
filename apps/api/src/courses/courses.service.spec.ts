@@ -590,6 +590,26 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     expect(result.currentBlockIndex).toBe(1);
   });
 
+  it('/start pierwszy raz: NOT_STARTED -> IN_PROGRESS zapisuje startedAt (czas sprawy na ekranie zamknięcia, D-089) i zwraca go', async () => {
+    const startedAt = new Date('2026-09-27T10:00:00.000Z');
+    findFirst
+      .mockResolvedValueOnce(assignmentFixture({ status: 'NOT_STARTED' }))
+      .mockResolvedValueOnce(assignmentFixture({ status: 'NOT_STARTED' }))
+      .mockResolvedValueOnce(assignmentFixture({ status: 'IN_PROGRESS', startedAt, completedAt: null }));
+    updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.startOrContinue('org-1', 'user-1', 'course-1');
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'assignment-1', status: 'NOT_STARTED' }),
+        data: expect.objectContaining({ status: 'IN_PROGRESS', startedAt: expect.any(Date) }),
+      }),
+    );
+    expect(result.startedAt).toEqual(startedAt);
+    expect(result.completedAt).toBeNull();
+  });
+
   it('lastResult niesie reaction (schemaVersion 4) dopiero po ocenie, dobraną wg wyniku', async () => {
     findFirst.mockResolvedValue(
       assignmentFixture({
@@ -649,6 +669,16 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       const exhausted = await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'zla-domena');
       expect(exhausted).toMatchObject({ correct: false, done: true });
       expect(exhausted.reaction).toEqual({ pose: 'warning', text: 'Spróbuj ponownie.' });
+    });
+
+    it('próba na przypisaniu NOT_STARTED przechodzi w IN_PROGRESS i zapisuje startedAt (D-089); na IN_PROGRESS startedAt bez zmian', async () => {
+      findFirst.mockResolvedValue(assignmentFixture({ status: 'NOT_STARTED', course: { id: 'course-1', contentBlocks: [textBlock] } }));
+      await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'zla-domena');
+      expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'IN_PROGRESS', startedAt: expect.any(Date) }) }));
+
+      findFirst.mockResolvedValue(assignmentFixture({ course: { id: 'course-1', contentBlocks: [textBlock] } }));
+      await service.attemptBlock('org-1', 'user-1', 'course-1', 'b0', 'zla-domena');
+      expect(update.mock.calls.at(-1)[0].data).not.toHaveProperty('startedAt');
     });
   });
 });

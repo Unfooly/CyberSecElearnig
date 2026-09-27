@@ -516,6 +516,13 @@ export function parseModule(input: unknown): ContentModule {
   if (summaries.length === 1 && summaries[0] !== contentModule.blocks.length - 1) {
     errors.push('SUMMARY: blok podsumowania musi być ostatni');
   }
+  // Ekran zamknięcia sprawy (D-089): sloty w granicach sceny raportu.
+  for (const block of contentModule.blocks) {
+    if (block.type !== 'SUMMARY' || !block.closing) continue;
+    for (const [name, rect] of Object.entries(block.closing.slots)) {
+      if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`SUMMARY: closing.slots.${name} wychodzi poza scenę raportu`);
+    }
+  }
 
   if (errors.length > 0) throw new ContentValidationError(errors);
   return contentModule;

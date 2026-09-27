@@ -317,6 +317,22 @@ describe('parseModule: walidacja modułu', () => {
     }, 'co najwyżej jeden');
   });
 
+  it('SUMMARY: zamknięcie sprawy (D-089) - sloty w granicach sceny, wnioski 1-5, grafiki tylko z assets (bez adresów zewnętrznych)', () => {
+    expect(() => parseModule(fullModuleForTests())).not.toThrow();
+    expectInvalid((m) => {
+      blockOf(m, 'SUMMARY').closing.slots.stamp = { x: 80, y: 10, w: 30, h: 10 };
+    }, 'closing.slots.stamp wychodzi poza scenę');
+    expectInvalid((m) => {
+      blockOf(m, 'SUMMARY').lessons = [];
+    }, 'lessons');
+    expectInvalid((m) => {
+      blockOf(m, 'SUMMARY').closing.note = 'https://evil.example/x.svg';
+    }, 'closing');
+    expectInvalid((m) => {
+      delete blockOf(m, 'SUMMARY').closing.slots.signature;
+    }, 'signature');
+  });
+
   it('nieznany typ bloku, zła kategoria, zła wersja schematu', () => {
     expectInvalid((m) => {
       (m.blocks[0] as Record<string, unknown>).type = 'NOWY';

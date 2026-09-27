@@ -1321,7 +1321,61 @@
         "pose": "greeting",
         "text": "Sprawa zamknięta. Dobra robota, detektywie."
       },
-      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”."
+      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”.",
+      "lessons": [
+        "Sprawdzaj domenę nadawcy, nie nazwę.",
+        "Kod SMS zatwierdza, nigdy nie anuluje.",
+        "Hasło nie na karteczce — i nigdy przez telefon."
+      ],
+      "closing": {
+        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.a9536a3e.svg",
+        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.85d8d56a.svg",
+        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.111db7c8.svg",
+        "slots": {
+          "evidence": {
+            "x": 8.8,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "time": {
+            "x": 21.5,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "xp": {
+            "x": 34.2,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "lessons": {
+            "x": 8.8,
+            "y": 50.7,
+            "w": 37.1,
+            "h": 29.3
+          },
+          "signature": {
+            "x": 23.2,
+            "y": 81.8,
+            "w": 22.7,
+            "h": 6.1
+          },
+          "stamp": {
+            "x": 56.2,
+            "y": 67.7,
+            "w": 33,
+            "h": 21
+          },
+          "note": {
+            "x": 78.5,
+            "y": 36.6,
+            "w": 14.1,
+            "h": 23.2
+          }
+        }
+      }
     }
   ]
 }

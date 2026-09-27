@@ -26,7 +26,6 @@ import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import ScoredBlock, { hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
 import CaseClosedScreen from './CaseClosedScreen';
-import { SfxProvider } from '@/lib/sfx';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
 import TranscriptPanel from './player/TranscriptPanel';

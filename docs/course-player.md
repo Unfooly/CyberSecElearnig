@@ -26,7 +26,7 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 | `TABS` | `TabsBlock` | `{ opened }` | wzorzec ARIA tabs |
 | `NOTEPAD`, `SUMMARY` | `NotepadBlock`, `SummaryBlock` | brak | `SUMMARY` z dowodami to „Rozwiązanie sprawy” (przeoczone tylko liczbowo) |
 | `EMAIL_ANALYSIS` | `EmailAnalysisBlock` | `{ selected }` (id nieprzejrzyste) | klik we fragment maila zaznacza kryterium; link nigdy nie nawiguje; wynik z `detail` |
-| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | przyciski w górę/w dół (ścieżka główna) i przeciąganie |
+| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | tablica śledcza (D-088): ślady z tacki na pola 1..N - przeciąganie, klik ślad → klik pole albo klawiatura; zajęte pole = zamiana; „Sprawdź trop”, gdy pełna |
 | `TEXT_INPUT_GUIDED` | `TextInputBlock` | brak (próby: `POST /api/courses/:id/blocks/:blockId/attempt`, `{ answer }`) | podpowiedź po błędnej próbie, rozwiązanie po wyczerpaniu prób |
 | `EMBEDDED_HTML` | `EmbeddedHtmlBlock` | brak | osobny dokument w iframe (niżej) |
 

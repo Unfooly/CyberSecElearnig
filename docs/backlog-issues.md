@@ -461,6 +461,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   odmontowania bloku w trakcie „pisania” (onReady/notatka); (4) `aria-live` przy `role="log"` nadmiarowe.
 - Akceptacja: e2e z wydłużonym opóźnieniem (parametr testowy) albo bez; helper testowy poza modułem; test odmontowania.
 
+### B-114 Tablica śledcza (ORDERING, D-088): odłożone uwagi z code review
+- Etykiety: `P3`, `mod:web`, `mod:content` · Źródło: `feat/evidence-board` (J), code review
+- Opis: (1) telefon w poziomie (844x390): scena 16:9 ograniczona wysokością - tekst kart ~5 px (jest podpowiedź „Obróć telefon”, bez
+  alternatywnego układu); (2) kolory spoza tokenów w cieniowaniu pinezek i liniaturze karty (`globals.css`), promień karty 4 px nie
+  skaluje się z `--u`; (3) wyszukiwanie `caseNo` zdublowane (`CoursePlayer.tsx` i `BriefingBlock.tsx`) - wspólny helper; (4) warunek
+  `boardFeedback` powiela warunek wyboru `stage`; (5) podgląd ORDERING bez `result.detail` (stary postęp) w układzie `fill` - tekst przy
+  górnej krawędzi; (6) `feedbackSentence` dzieli zdania po kropce - skróty („np.”, „A.K.”) rozbiją zdanie; (7) długie elementy (schemat do
+  300 znaków) i napisy zdjęć (40/60 znaków) ucinane bez ostrzeżenia - layout-check (b3) sprawdza tylko moduł 1; (8) wskaźnik
+  przewijania tacki (dziś tylko licznik w etykiecie).
+- Akceptacja: układ kompaktowy dla niskiej sceny (np. tacka jako panel boczny) albo decyzja „tylko pion”; tokeny cieniowania; helper
+  `caseNoOf(blocks)`; walidacja treści: limit długości elementu ORDERING dopasowany do karty albo auto-dopasowanie czcionki (FitText).
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

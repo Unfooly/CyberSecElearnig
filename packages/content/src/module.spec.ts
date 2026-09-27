@@ -1,4 +1,5 @@
 import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, withLegacyIds } from './index';
+import { MAX_DOSSIER_EVIDENCE } from './semantics';
 import { fullModule } from './fixtures';
 import { hashContent, moduleWarnings, parseModule } from './node';
 
@@ -830,6 +831,27 @@ describe('parseModule: DOSSIER (teczka sprawy)', () => {
   it('pole spoza schematu i pusta lista dokumentów są odrzucone (strict)', () => {
     expect(invalid((m) => (row(m, 0, 0).highlight = true))).toContain('documents.0.rows.0');
     expect(invalid((m) => (dossier(m).documents = []))).toContain('documents');
+  });
+
+  it('blok jest nieoceniany (waga 0) i ma najwyżej MAX_DOSSIER_EVIDENCE wierszy-dowodów (limit odpowiedzi noted)', () => {
+    expect(invalid((m) => (dossier(m).weight = 1))).toContain('weight: blok DOSSIER jest nieoceniany (waga musi być 0)');
+    expect(invalid((m) => (dossier(m).weight = 0))).toBe('');
+    const evidenceRows = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `${prefix}${i}`,
+        cells: ['08:00', 'Operacja', '1 PLN'],
+        evidence: true,
+        note: { text: 'Dowód.', kind: 'item' },
+      }));
+    const withEvidence = (count: number) => (m: TestModule) => {
+      const [first] = dossier(m).documents;
+      dossier(m).documents = [
+        { ...first, id: 'd1', rows: evidenceRows('a', Math.min(count, 30)) },
+        { ...first, id: 'd2', rows: evidenceRows('b', count - 30) },
+      ];
+    };
+    expect(invalid(withEvidence(MAX_DOSSIER_EVIDENCE))).toBe('');
+    expect(invalid(withEvidence(MAX_DOSSIER_EVIDENCE + 1))).toContain(`51 wierszy-dowodów, najwyżej ${MAX_DOSSIER_EVIDENCE}`);
   });
 });
 

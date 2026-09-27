@@ -83,7 +83,9 @@ function emailTargetErrors(block: Extract<ServerBlock, { type: 'EMAIL_ANALYSIS' 
   return errors;
 }
 
-/** `required` jawnie ustawione co najmniej na jednym elemencie musi zostawiać co najmniej jeden element wymagany (przy obu sposobach wygrywa `required`). */
+/** Najwięcej wierszy-dowodów w jednej teczce - apps/api (evaluate.ts, `dossierAnswer`) używa tej samej stałej jako limitu `noted`. */
+export const MAX_DOSSIER_EVIDENCE = 50;
+
 export interface DossierRowLike {
   id: string;
   evidence?: boolean;
@@ -99,6 +101,7 @@ export function flattenDossierRows(documents: readonly { rows?: readonly Dossier
   return documents.flatMap((document) => [...(document.rows ?? [])]);
 }
 
+/** `required` jawnie ustawione co najmniej na jednym elemencie musi zostawiać co najmniej jeden element wymagany (przy obu sposobach wygrywa `required`). */
 function checkRequiredFlags(label: string, items: { required?: boolean }[], errors: string[]) {
   if (!items.some((item) => item.required !== undefined)) return;
   if (!items.some((item) => item.required === true)) errors.push(`${label}: co najmniej jeden element musi mieć required: true`);
@@ -308,6 +311,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Id dokumentów i wierszy unikalne w CAŁYM bloku (jedna przestrzeń kluczy notatek `<blockId>.<id>` i odpowiedzi opened/noted).
       const rows = flattenDossierRows(block.documents);
       checkUnique('documents/rows', [...block.documents.map((d) => d.id), ...rows.map((r) => r.id)]);
+      // Teczka jest nieoceniana, a wszystkie jej pola są publiczne (D-083) - waga > 0 dawałaby punkty za samo przejście.
+      if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok DOSSIER jest nieoceniany (waga musi być 0)');
+      // Odpowiedź `noted` przyjmuje najwyżej MAX_DOSSIER_EVIDENCE id (evaluate.ts) - więcej dowodów = bloku nie da się ukończyć.
+      const evidenceCount = rows.filter((r) => r.evidence === true).length;
+      if (evidenceCount > MAX_DOSSIER_EVIDENCE) {
+        errors.push(`documents: ${evidenceCount} wierszy-dowodów, najwyżej ${MAX_DOSSIER_EVIDENCE} (limit odpowiedzi noted)`);
+      }
       block.documents.forEach((document, d) => {
         document.rows.forEach((row, r) => {
           const label = `documents[${d}].rows[${r}]`;

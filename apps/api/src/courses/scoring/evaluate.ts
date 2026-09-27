@@ -4,6 +4,7 @@ import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszko
 import {
   DossierRowLike,
   HotspotLike,
+  MAX_DOSSIER_EVIDENCE,
   compileAnswerRegex,
   flattenDossierRows,
   flattenHotspots,
@@ -32,8 +33,9 @@ const ids = z.array(idSchema).max(50);
 const visitedAnswer = z.object({ visited: ids, noted: ids.optional() }).strict();
 const askedAnswer = z.object({ asked: ids }).strict();
 const openedAnswer = z.object({ opened: ids }).strict();
-// DOSSIER (D-083): otwarte dokumenty i zakreślone wiersze-dowody (bez domyślnego [] - klient zawsze wysyła oba pola).
-const dossierAnswer = z.object({ opened: ids, noted: ids }).strict();
+// DOSSIER (D-083): otwarte dokumenty i zakreślone wiersze-dowody (bez domyślnego [] - klient zawsze wysyła oba pola). Limit
+// `noted` = ta sama stała, którą walidacja modułu ogranicza liczbę wierszy-dowodów w teczce (inaczej blok byłby nie do ukończenia).
+const dossierAnswer = z.object({ opened: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE) }).strict();
 const selectedAnswer = z.object({ selected: ids }).strict();
 const orderAnswer = z.object({ order: ids }).strict();
 

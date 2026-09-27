@@ -6,8 +6,8 @@ import { COURSE_CATEGORIES, idSchema, text } from './common';
  * Wersja formatu modułu z silnikiem scen (bieżąca). Wersja 1 to "legacy": bloki bez `id`, zapisane przed silnikiem (patrz
  * withLegacyIds). Wersja 3 dodaje pola "śledztwa" (evidence, note.kind, required, dialog `lines`, `character.avatar`). Wersja 4
  * dodaje metadane modułu (subtitle, level, objectives), `character.opening`, reakcje maskotki (`reactions`) i blok NARRATIVE.
- * Wersja 5 dodaje blok BRIEFING (z zadaniami sprawy w kroku caseFile), rolę głosu nagrań i nagranie media audio z potoku
- * TTS (D-081, D-082). Wszystkie pola
+ * Wersja 5 dodaje blok BRIEFING (z zadaniami sprawy w kroku caseFile), rolę głosu nagrań, nagranie media audio z potoku
+ * TTS i blok DOSSIER - teczkę sprawy (D-081, D-082, D-083). Wszystkie pola
  * v3/v4/v5 są opcjonalne, więc starszy moduł nadal się waliduje, ale NIE może używać pól z nowszej wersji (semantics.ts:
  * V3_FEATURES/V4_FEATURES i sprawdzenia na poziomie modułu/typu bloku).
  */

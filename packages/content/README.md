@@ -37,7 +37,7 @@ Część izomorficzna (`@cyberszkolo/content`, bez modułów Node) jest bezpiecz
   i przy obowiązującym CSP; sprawdzenie tego to warunek PR 2 (odtwarzacz).
 
 Typy bloków: dotychczasowe `VIDEO`, `QUIZ`, `BRANCHING_SCENARIO`, `DRAG_AND_DROP`, `EMBEDDED_HTML` oraz `SCENE_HOTSPOTS`, `DIALOGUE`,
-`NOTEPAD`, `EMAIL_ANALYSIS`, `TEXT_INPUT_GUIDED`, `ORDERING`, `TABS`, `NARRATIVE` (v4), `BRIEFING` (v5), `SUMMARY` (ostatni, co najwyżej
+`NOTEPAD`, `EMAIL_ANALYSIS`, `TEXT_INPUT_GUIDED`, `ORDERING`, `TABS`, `NARRATIVE` (v4), `BRIEFING` (v5), `DOSSIER` (v5), `SUMMARY` (ostatni, co najwyżej
 jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 
 ### schemaVersion 5: odprawa (`BRIEFING`) i zadania (D-081)
@@ -56,6 +56,12 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
 - Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z
   `voice`; transkrypcją jest `narration.text`) - dokładnie jedno z nich.
+- `DOSSIER` (D-083): teczka sprawy - `stamp?` (pieczątka), `documents[]` (1-6) `{ id, tab, org, title, meta?, columns[] (1-4),
+  rows[] (1-30) { id, cells[] (tyle, ile kolumn), evidence?, note?, required? } }`. Wiersz-dowód (`evidence` + `note`) zakreśla się i
+  trafia do notatnika, zwykła linijka pokazuje tylko „Ta linijka wygląda na zwykłą operację.”. Id dokumentów i wierszy unikalne w
+  całym bloku (klucz notatki `<blockId>.<rowId>`), `note`/`required` tylko na dowodzie, najwyżej `MAX_DOSSIER_EVIDENCE` (50) dowodów.
+  Nieoceniany (waga 0), wszystkie pola publiczne (bez klucza odpowiedzi, jak `evidence`/`note` scen). Odpowiedź
+  `{ opened, noted }`: wszystkie dokumenty otwarte, wszystkie `required` zakreślone (sprawdza serwer, `evaluate.ts`).
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

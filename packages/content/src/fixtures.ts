@@ -337,6 +337,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
     DOSSIER: {
       ...base('akta'),
       type: 'DOSSIER',
+      // Nieoceniany: waga musi być 0 (semantics.ts, D-083) - pole zostaje, żeby test klasyfikacji widział ścieżkę `weight`.
+      weight: 0,
       stamp: 'POUFNE',
       documents: [
         {

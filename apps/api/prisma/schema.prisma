@@ -914,6 +914,9 @@ model Course {
   mandatory       Boolean        @default(false)
   // Cele szkolenia (lista tekstów, packages/content), do SUMMARY "Czego się nauczyłeś" - opcjonalne.
   objectives      Json?
+  // Miniatura 16:9 do katalogu i karty kursu (D-084): ścieżka zasobu modułu (klucz w magazynie treści, jak obrazy bloków),
+  // wypełniana wyłącznie przez content-import. NULL = karta bez miniatury (ikona kategorii).
+  thumbnail       String?        @db.VarChar(300)
   // Uporządkowana lista bloków treści (VIDEO/QUIZ/BRANCHING_SCENARIO/
   // DRAG_AND_DROP) - patrz docs/content-backlog-elearning.md. Dla QUIZ i
   // BRANCHING_SCENARIO każda opcja niesie poprawność (`correct: boolean`

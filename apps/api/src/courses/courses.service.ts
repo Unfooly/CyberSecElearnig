@@ -50,6 +50,7 @@ export class CoursesService {
             select: {
               id: true,
               title: true,
+              thumbnail: true,
               category: true,
               durationMinutes: true,
               contentBlocks: true,
@@ -65,6 +66,7 @@ export class CoursesService {
       assignmentId: assignment.id,
       courseId: assignment.course.id,
       title: assignment.course.title,
+      thumbnail: assignment.course.thumbnail,
       category: assignment.course.category,
       durationMinutes: assignment.course.durationMinutes,
       // PER PRZYPISANIE (D-065), nie course.mandatory: ten sam kurs bywa jednocześnie samoobsługowy (zawsze false) i
@@ -100,6 +102,7 @@ export class CoursesService {
           id: true,
           title: true,
           subtitle: true,
+          thumbnail: true,
           level: true,
           objectives: true,
           category: true,
@@ -113,6 +116,7 @@ export class CoursesService {
         courseId: course.id,
         title: course.title,
         subtitle: course.subtitle,
+        thumbnail: course.thumbnail,
         level: course.level,
         objectives: Array.isArray(course.objectives) ? (course.objectives as string[]) : [],
         category: course.category,

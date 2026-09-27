@@ -46,6 +46,15 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(versions[0]).toMatchObject({ version: 1, schemaVersion: 5, contentHash: hashContent(content.blocks), blockCount: content.blocks.length });
   });
 
+  it('miniatura modułu (D-084) trafia do Course.thumbnail; moduł bez miniatury czyści ją (null)', async () => {
+    const withThumbnail = moduleFixture('miniatura', { thumbnail: 'assets/x/miniatura.1a2b3c4d.svg' });
+    const result = await prisma.$transaction((tx) => importModule(tx, withThumbnail));
+    expect((await prisma.course.findUniqueOrThrow({ where: { id: result.courseId } })).thumbnail).toBe('assets/x/miniatura.1a2b3c4d.svg');
+
+    await prisma.$transaction((tx) => importModule(tx, moduleFixture('miniatura')));
+    expect((await prisma.course.findUniqueOrThrow({ where: { id: result.courseId } })).thumbnail).toBeNull();
+  });
+
   it('ponowny import identycznej treści jest idempotentny: bez nowej wersji', async () => {
     const content = moduleFixture('idempotentny');
     const first = await prisma.$transaction((tx) => importModule(tx, content));

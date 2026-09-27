@@ -1320,7 +1320,7 @@
         "Hasło nie na karteczce — i nigdy przez telefon."
       ],
       "closing": {
-        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.a9536a3e.svg",
+        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.eba1cee9.svg",
         "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.85d8d56a.svg",
         "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.111db7c8.svg",
         "slots": {
@@ -1355,16 +1355,16 @@
             "h": 6.1
           },
           "stamp": {
-            "x": 56.2,
-            "y": 67.7,
-            "w": 33,
-            "h": 21
+            "x": 55.5,
+            "y": 69.6,
+            "w": 34.4,
+            "h": 22
           },
           "note": {
-            "x": 78.5,
-            "y": 36.6,
-            "w": 14.1,
-            "h": 23.2
+            "x": 81.6,
+            "y": 24.3,
+            "w": 11.7,
+            "h": 19.3
           }
         }
       }

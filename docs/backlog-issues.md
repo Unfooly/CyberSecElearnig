@@ -441,6 +441,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   zamknięcie zbliżenia; nazwa warstwy `sceneZoom`; test unikalności w `module.spec.ts`; decyzja treściowa co do `content`.
 
 ### B-115 Zamknięcie sprawy (D-089): następna sprawa i odłożone uwagi
+- **Status: zrobione (PR #62)** - rozstrzygnięte przez właściciela 2026-09-27: (3) nowa grafika raportu - 9 woreczków (mail, karteczka,
+  wydruk, poczta głos., kalendarz, logi, WHOIS, SMS, tablica), liścik w prawej kolumnie strony (nic nie zasłania), nowe sloty pieczęci i
+  liściku; (4) panorama raportu w pionie zatwierdzona bez podpowiedzi; (1) „Następna sprawa · wkrótce” i (2) czas „—” dla starych
+  przypisań zostają jako zachowanie MVP.
 - Etykiety: `P3`, `mod:web`, `mod:api`, `mod:content` · Źródło: `feat/case-closed` (K), D-089
 - Opis: (1) „Następna sprawa” jest zawsze zamknięta („wkrótce”) - API nie zna kolejności spraw ani następnego przypisania; (2) przypisania
   rozpoczęte przed migracją `startedAt` pokazują czas „—”; (3) woreczki dowodów w grafice raportu (mail, karteczka, SMS, wydruk, logi,

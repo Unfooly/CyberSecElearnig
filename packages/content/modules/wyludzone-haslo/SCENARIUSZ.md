@@ -414,9 +414,9 @@ gracza po kliknięciu „Podpisz raport”), pieczęć `scenes/zamkniecie-piecze
 2. „Kod SMS zatwierdza, nigdy nie anuluje.”
 3. „Hasło nie na karteczce — i nigdy przez telefon.”
 
-Woreczki dowodów na prawej kartce (mail, karteczka, SMS, wydruk, logi, WHOIS) odpowiadają dowodom modułu (mail w Outlooku,
-karteczka, kod SMS z teczki, wydruk, logi logowania, WHOIS domeny); telefon, kalendarz i tablica nie mają woreczka, a liścik
-przykrywa szósty (B-115).
+Woreczki dowodów na prawej kartce, siatka 3×3 (mail, karteczka, wydruk, poczta głos., kalendarz, logi, WHOIS, SMS, tablica),
+odpowiadają dowodom modułu (mail w Outlooku, karteczka, wydruk, poczta głosowa w telefonie, kalendarz, logi logowania, WHOIS
+domeny, kod SMS z teczki, tablica w korytarzu). Liścik komisarza leży w wolnej prawej kolumnie strony, pieczęć pod woreczkami (B-115).
 
 ---
 

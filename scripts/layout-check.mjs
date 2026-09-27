@@ -94,8 +94,18 @@ const BRIEFING_VIEWPORTS = [
   { name: '844x390', width: 844, height: 390 },
   { name: '390x844', width: 390, height: 844, isMobile: true },
 ];
-// Przyciski kolejnych kroków modułu 1 (packages/content/modules/wyludzone-haslo, blok "odprawa").
-const BRIEFING_CTAS = ['Odbierz', 'Przyjmuję', 'Biorę sprawę', 'Ruszam na miejsce', 'Wchodzę'];
+// Sceny odprawy (feat/briefing-scenes, D-084): kolejne widoki (krok caseFile ma dwie fazy: zamknięta teczka -> akta). `fits` -
+// elementy tekstowe/sloty na scenie (FitText), które muszą się zmieścić bez przepełnienia i leżeć w scenie; `via: 'hotspot'` -
+// dalej klikiem w hotspot na scenie (sprawdza, że klik = cta), inaczej przyciskiem `cta`; `image` - fragment nazwy pliku
+// widocznego obrazu (reducedMotion:'reduce' w kontekście -> statyczny wariant biurka).
+const BRIEFING_SCENE_VIEWS = [
+  { cta: 'Odbierz', fits: ['briefing-scene-text'], hotspot: true, via: 'hotspot', image: 'odprawa-biurko-static' },
+  { cta: 'Przyjmuję', fits: ['briefing-bubble'], image: 'odprawa-rozmowa' },
+  { cta: 'Otwórz teczkę', fits: [], hotspot: true, via: 'hotspot', image: 'odprawa-teczka', phase: 'closed' },
+  { cta: 'Biorę sprawę', fits: ['briefing-slot-tasks'], image: 'odprawa-akta', phase: 'open' },
+  { cta: 'Ruszam na miejsce', fits: ['briefing-slot-photo', 'briefing-slot-name', 'briefing-slot-number'], image: 'odprawa-legitymacja' },
+  { cta: 'Wchodzę', fits: ['briefing-scene-text'], image: 'korytarz', last: true },
+];
 
 // DOSSIER (feat/dossier-folder, D-083) - `?block=akta-sprawy`, te same cztery rozdzielczości co odprawa, każdy dokument.
 const DOSSIER_TABS = ['Wyciąg bankowy', 'Logi logowania', 'Notatka IT', 'Procedury'];
@@ -502,6 +512,51 @@ async function checkBriefingStep(page, cta, label) {
   return scrollHeight > clientHeight + 1;
 }
 
+// Sceny odprawy (D-084), dla każdego widoku: (v) obraz sceny załadowany (lokalne assets/ przez /dev/module-assets) i to ten
+// właściwy (wariant statyczny przy reduced-motion, faza teczki); (w) scena w CAŁOŚCI w obszarze bloku, a krok ze sceną nie
+// przewija się wcale; (x) każdy tekst/slot (FitText) bez przepełnienia i w granicach sceny; (y) dymek rozmowy w prawej połowie
+// sceny (x >= 45%) i bez części wspólnej z telefonem (lewa część sceny, x < 40%); pasek tekstu nad hotspotem telefonu, bez
+// części wspólnej; (z) hotspot (gdy jest) w scenie.
+async function checkBriefingScene(page, view, label) {
+  const scene = page.getByTestId('briefing-scene');
+  const sceneBox = await boxOf(page, '[data-testid="briefing-scene"]');
+  const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
+  if (!contains(contentAreaBox, sceneBox)) fail(`${label}: (w) scena wychodzi poza obszar bloku - scena=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  const briefingScroll = await page.getByTestId('briefing-block').evaluate((el) => el.scrollHeight - el.clientHeight);
+  if (briefingScroll > 1) fail(`${label}: (w) krok ze sceną przewija się o ${briefingScroll}px.`);
+  if (view.phase && (await scene.getAttribute('data-phase')) !== view.phase) fail(`${label}: (v) faza teczki inna niż "${view.phase}".`);
+
+  const visibleImage = await scene.evaluate((el) => {
+    const images = [...el.querySelectorAll('img')].filter((img) => getComputedStyle(img).opacity !== '0');
+    const top = images[images.length - 1];
+    return top ? { src: top.getAttribute('src'), loaded: top.complete && top.naturalWidth > 0 } : null;
+  });
+  if (!visibleImage?.loaded) fail(`${label}: (v) obraz sceny się nie załadował - ${JSON.stringify(visibleImage)}.`);
+  if (!visibleImage.src.includes(view.image)) fail(`${label}: (v) widoczny obraz "${visibleImage.src}" zamiast "${view.image}".`);
+
+  const rel = (box) => ({ x: ((box.x - sceneBox.x) / sceneBox.width) * 100, y: ((box.y - sceneBox.y) / sceneBox.height) * 100, right: ((box.x + box.width - sceneBox.x) / sceneBox.width) * 100, bottom: ((box.y + box.height - sceneBox.y) / sceneBox.height) * 100 });
+  const overlaps = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
+  for (const testId of view.fits) {
+    const element = page.getByTestId(testId);
+    if ((await element.count()) !== 1) fail(`${label}: (x) brak elementu "${testId}" na scenie.`);
+    const box = await element.boundingBox();
+    if (!box || !contains(sceneBox, box)) fail(`${label}: (x) "${testId}" poza sceną - ${JSON.stringify(box)} scena=${JSON.stringify(sceneBox)}.`);
+    const overflow = await element.evaluate((el) => ({ x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight, font: parseFloat(getComputedStyle(el).fontSize) }));
+    if (overflow.x > 1 || overflow.y > 1) fail(`${label}: (x) "${testId}" przepełniony (x=${overflow.x}px, y=${overflow.y}px, czcionka ${overflow.font}px).`);
+    if (testId === 'briefing-bubble') {
+      const r = rel(box);
+      if (r.x < 45 - 0.5) fail(`${label}: (y) dymek zaczyna się na ${r.x.toFixed(1)}% szerokości sceny (ma być >= 45%).`);
+      if (overlaps(r, { x: 0, y: 0, right: 40, bottom: 100 })) fail(`${label}: (y) dymek nachodzi na telefon (lewa część sceny).`);
+    }
+  }
+  if (view.hotspot) {
+    const hotspotBox = await page.getByTestId('briefing-hotspot').boundingBox();
+    if (!hotspotBox || !contains(sceneBox, hotspotBox)) fail(`${label}: (z) hotspot poza sceną - ${JSON.stringify(hotspotBox)}.`);
+    const textBand = page.getByTestId('briefing-scene-text');
+    if ((await textBand.count()) === 1 && overlaps(rel(await textBand.boundingBox()), rel(hotspotBox))) fail(`${label}: (y) pasek tekstu nachodzi na hotspot telefonu.`);
+  }
+}
+
 // DOSSIER (D-083), dla każdego dokumentu: (q) strona i obszar bloku się nie przewijają, a teczka nie ma poziomego
 // przewijania; (r) przewija się WYŁĄCZNIE lista wierszy - arkusz jako całość mieści się w teczce, a teczka w obszarze
 // bloku; (s) wszystkie przekładki w całości w ramce (na telefonie w pionie pasek przekładek może przewijać się poziomo -
@@ -693,16 +748,22 @@ try {
     page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
     await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
     await page.getByTestId('briefing-block').waitFor();
-    for (const [index, cta] of BRIEFING_CTAS.entries()) {
-      const label = `${viewport.name} / odprawa krok ${index + 1} (${cta})`;
+    for (const [index, view] of BRIEFING_SCENE_VIEWS.entries()) {
+      const { cta } = view;
+      const label = `${viewport.name} / odprawa widok ${index + 1} (${cta})`;
       await page.getByRole('button', { name: cta, exact: true }).waitFor();
-      await page.waitForTimeout(100);
+      // Obraz sceny i dopasowanie tekstu (ResizeObserver) - chwila na załadowanie przed pomiarem.
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="briefing-scene"] img')].every((img) => img.complete));
+      await page.waitForTimeout(150);
       await shot(page, `${viewport.name}-odprawa-${index + 1}`);
       if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
       const scrolls = await checkBriefingStep(page, cta, label);
-      step(`${label}: (a, e, m-p) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
+      await checkBriefingScene(page, view, label);
+      step(`${label}: (a, e, m-p, v-z) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
       // Ostatni krok zapisuje blok - w podglądzie dev nie ma backendu, więc nie klikamy go.
-      if (index < BRIEFING_CTAS.length - 1) await page.getByRole('button', { name: cta, exact: true }).click();
+      if (view.last) break;
+      if (view.via === 'hotspot') await page.getByTestId('briefing-hotspot').click();
+      else await page.getByRole('button', { name: cta, exact: true }).click();
     }
     await context.close();
   }

@@ -139,20 +139,25 @@ try {
   const back = () => dialog().getByRole('button', { name: 'Wróć' }).click();
 
   // --- Blok 0: Odprawa (BRIEFING, schemaVersion 5, D-081) --------------------------------------------------------------------
-  // Moduł zaczyna się od odprawy: pięć kroków przyciskami, "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej".
+  // Moduł zaczyna się od odprawy: pięć kroków (scen), "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej".
   await page.getByRole('button', { name: 'Odbierz' }).waitFor();
   step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, bez "Dalej" w dolnym', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
-  await page.getByRole('button', { name: 'Odbierz' }).click();
-  step('BRIEFING: dzwoni komisarz (postać z inicjałami, bez maskotki)', (await page.getByText('Komisarz Adam Wolski').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0);
+  // Sceny odprawy (D-084): krok jest sceną z grafiką; telefon na biurku to hotspot = "Odbierz" (klikamy hotspot, nie przycisk).
+  step('BRIEFING: odprawa jako scena z grafiką (hotspot telefonu)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByTestId('briefing-hotspot').count()) === 1);
+  await page.getByTestId('briefing-hotspot').click();
+  step('BRIEFING: dzwoni komisarz - dymek w scenie, bez maskotki', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0);
   await page.getByRole('button', { name: 'Przyjmuję' }).click();
-  await page.getByText('CS/2026/0915').waitFor();
-  step('BRIEFING: karta sprawy z listą 3 zadań', (await page.getByRole('region', { name: 'Zadania' }).getByRole('listitem').count()) === 3);
+  // Karta sprawy w dwóch fazach: zamknięta teczka ("Otwórz teczkę") -> akta z zadaniami w slocie.
+  await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
+  step('BRIEFING: zamknięta teczka, dane karty dla czytnika (CS/2026/0915)', (await page.getByTestId('briefing-scene').getAttribute('data-phase')) === 'closed' && (await page.getByText(/CS\/2026\/0915/).count()) === 1);
+  await page.getByRole('button', { name: 'Otwórz teczkę' }).click();
+  step('BRIEFING: akta z listą 3 zadań w slocie', (await page.getByTestId('briefing-slot-tasks').getByRole('listitem').count()) === 3);
   await page.getByRole('button', { name: 'Biorę sprawę' }).click();
   // Legitymacja: imię wyłącznie z danych sesji (konto testowe bez imienia -> z e-maila), numer odznaki z numeru sprawy.
-  await page.getByText('Legitymacja śledczego').waitFor();
-  step('BRIEFING: legitymacja z numerem odznaki 0915-*', (await page.getByText(/^0915-/).count()) === 1);
+  await page.getByTestId('briefing-slot-number').waitFor();
+  step('BRIEFING: legitymacja z numerem odznaki 0915-* w slocie', /^0915-/.test((await page.getByTestId('briefing-slot-number').textContent()) ?? ''));
   await page.getByRole('button', { name: 'Ruszam na miejsce' }).click();
-  await page.getByText('Unfooly, drugie piętro.').waitFor();
+  await page.getByTestId('briefing-scene-text').getByText('Unfooly, drugie piętro.').waitFor();
   const briefingSaved = progressResponse();
   await page.getByRole('button', { name: 'Wchodzę' }).click();
   step('BRIEFING: ostatni krok zapisuje blok', (await briefingSaved).ok());

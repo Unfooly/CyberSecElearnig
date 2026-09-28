@@ -576,3 +576,152 @@
     opacity: 0;
   }
 }
+
+/* Dolny pasek odtwarzacza na wąskiej scenie (fix/mobile-player-bar). Kontener zapytań `pbar` to opakowanie paska w PlayerStage
+   (`player-bottombar-cq`; szerokość SCENY, nie viewportu - pasek ma tę samą szerokość co ramka). Poniżej 640 px: jeden rząd, po lewej [Odtwórz]
+   [Transkrypcja] [Lektor] jako przyciski-ikony 44x44, po prawej [Wstecz] (ikona) i [Dalej] - jedyny przycisk z tekstem, zajmuje
+   resztę miejsca (min. 120 px). Wiersz 60 px (1 px krawędzi + 7 + 44 + 8) + dolny margines bezpieczeństwa. Linijka napisów przechodzi
+   do własnego wiersza NAD przyciskami (sam napis znika przy otwartej transkrypcji; komunikaty błędów zostają). Powyżej 640 px bez zmian.
+   Selektory z `.player-bottombar` na początku (specyficzność 0,2,0) - wygrywają z klasami Tailwinda na tych samych elementach
+   niezależnie od kolejności warstw. Obsługiwana szerokość od 360 px: przy 320 px z narracją „Dalej” (min. 120) schodzi do drugiego
+   wiersza (bez nakładania się). */
+.player-bottombar-cq {
+  container: pbar / inline-size;
+}
+.pbar-compact-only {
+  display: none;
+}
+@container pbar (max-width: 639px) {
+  .player-bottombar-cq .player-bottombar {
+    flex-wrap: wrap;
+    column-gap: 8px;
+    row-gap: 0;
+    min-height: 60px;
+    padding-top: 7px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    padding-left: calc(12px + env(safe-area-inset-left));
+    padding-right: calc(12px + env(safe-area-inset-right));
+    box-shadow: none;
+  }
+  .player-bottombar .pbar-contents {
+    display: contents;
+  }
+  .player-bottombar .pbar-caption {
+    order: -1;
+    flex: 0 0 100%;
+    padding-bottom: 6px;
+  }
+  .player-bottombar .pbar-caption:empty {
+    display: none;
+  }
+  /* Osobna reguła: przeglądarka bez :has odrzuca całą listę selektorów - :empty wyżej musi działać niezależnie. */
+  .player-bottombar .pbar-narration[data-transcript-open] .pbar-caption:not(:has(> :not(.pbar-caption-text))) {
+    display: none;
+  }
+  /* Przy otwartej transkrypcji znika tylko linijka napisów - komunikaty (błąd zapisu „Lektora”, role=alert) zostają. */
+  .player-bottombar .pbar-narration[data-transcript-open] .pbar-caption-text {
+    display: none;
+  }
+  .player-bottombar .pbar-caption-text {
+    font-size: 12px;
+    line-height: 16px;
+    color: theme('colors.muted.DEFAULT');
+  }
+  .player-bottombar .pbar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .player-bottombar .pbar-compact-only {
+    display: block;
+  }
+  .player-bottombar .pbar-icon,
+  .player-bottombar .pbar-transcript {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    margin-left: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .player-bottombar .pbar-transcript {
+    border: 1px solid theme('colors.slate.300');
+    border-radius: 4px;
+    text-decoration: none;
+  }
+  .player-bottombar .pbar-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+  .player-bottombar .pbar-next {
+    flex: 1 1 auto;
+    min-width: 120px;
+    height: 44px;
+    justify-content: center;
+  }
+  .player-bottombar .pbar-hint {
+    display: none;
+  }
+}
+
+/* Chipy pytań w rozmowie na wąskiej scenie (fix/mobile-player-bar). Kontener zapytań to korzeń DialogueBlock ([container-type:size]).
+   Poniżej 640 px: jeden poziomy rząd z przewijaniem (scroll-snap, bez paska przewijania, zanikanie przy prawej krawędzi) zamiast
+   listy zawijanej na pół ekranu; licznik „Zadano x z y pytań” w jednej linii nad chipami. */
+@container (max-width: 639px) {
+  .dialogue-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* „↓ Nowe wiadomości” zostaje na górze stopki (nad licznikiem), bez rozciągania na całą szerokość. */
+  .dialogue-footer .dialogue-new {
+    order: -2;
+  }
+  .dialogue-footer .dialogue-chips {
+    align-self: stretch;
+    flex-wrap: nowrap;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Miejsce na pierścień fokusu (2 px + odstęp) - overflow-y:hidden inaczej by go ucinał. */
+    padding: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .dialogue-footer .dialogue-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .dialogue-footer .dialogue-chips > li {
+    scroll-snap-align: start;
+  }
+  .dialogue-footer .dialogue-chips button {
+    white-space: nowrap;
+  }
+  .dialogue-footer .dialogue-progress {
+    order: -1;
+    max-width: 100%;
+    margin: 0 0 2px;
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Podgląd „Wstecz”: długi tekst o podglądzie zawija się zamiast ucinać. */
+  .dialogue-footer .dialogue-progress-review {
+    white-space: normal;
+  }
+}

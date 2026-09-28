@@ -407,13 +407,14 @@ export default function DialogueBlock({
         </ol>
       </div>
 
-      {/* Stopka poza obszarem przewijania: "Nowe wiadomości", chipy pytań (własny scroll, gdy dużo), postęp. */}
-      <div ref={footerRef} role="group" aria-label="Pytania i postęp rozmowy" tabIndex={-1} className={`mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING}`}>
+      {/* Stopka poza obszarem przewijania: "Nowe wiadomości", chipy pytań (własny scroll, gdy dużo), postęp. Na scenie węższej niż 640 px
+          (fix/mobile-player-bar, globals.css .dialogue-footer): chipy w jednym poziomym rzędzie, postęp jedną linijką nad nimi. */}
+      <div ref={footerRef} role="group" aria-label="Pytania i postęp rozmowy" tabIndex={-1} className={`dialogue-footer mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING}`}>
         {hasNewMessages && (
           <button
             type="button"
             onClick={scrollToLatest}
-            className={`mb-3 min-h-[44px] rounded-full border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent/15 ${FOCUS_RING}`}
+            className={`dialogue-new mb-3 min-h-[44px] rounded-full border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent/15 ${FOCUS_RING}`}
           >
             ↓ Nowe wiadomości
           </button>
@@ -423,7 +424,7 @@ export default function DialogueBlock({
           <ul
             ref={chipsRef}
             aria-label="Pytania do zadania"
-            className="flex max-h-[40cqh] flex-wrap gap-2 overflow-y-auto [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto [@media(max-height:500px)]:overflow-y-hidden [@media(max-height:500px)]:pb-1"
+            className="dialogue-chips flex max-h-[40cqh] flex-wrap gap-2 overflow-y-auto [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto [@media(max-height:500px)]:overflow-y-hidden [@media(max-height:500px)]:pb-1"
           >
             {availableQuestions.map((question) => (
               <li key={question.id} className="shrink-0">
@@ -442,7 +443,16 @@ export default function DialogueBlock({
           </ul>
         )}
 
-        <ExploreFooter done={doneCount} total={required.length} noun="pytań" verb="Zadano" readyText="Wszystkie wymagane pytania zadane." review={review} />
+        {/* dialogue-progress (globals.css): na wąskiej scenie jedna linijka NAD chipami. */}
+        <ExploreFooter
+          done={doneCount}
+          total={required.length}
+          noun="pytań"
+          verb="Zadano"
+          readyText="Wszystkie wymagane pytania zadane."
+          review={review}
+          className={`dialogue-progress mt-4 ${review ? 'dialogue-progress-review text-xs text-slate-500' : 'text-sm text-slate-600'}`}
+        />
       </div>
     </div>
   );

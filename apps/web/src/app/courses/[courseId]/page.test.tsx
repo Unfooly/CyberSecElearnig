@@ -156,7 +156,7 @@ describe('CoursePlayerPage', () => {
 
     render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
 
-    expect(screen.getByRole('switch', { name: 'Lektor' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Lektor' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('błąd odczytu preferencji nie blokuje kursu: domyślnie lektor włączony', async () => {
@@ -172,7 +172,7 @@ describe('CoursePlayerPage', () => {
 
     render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
 
-    expect(screen.getByRole('switch', { name: 'Lektor' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Lektor' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('kurs COMPLETED: dociąga wynik z /courses/my i NIE pobiera preferencji (podsumowanie nie ma odtwarzacza)', async () => {
@@ -192,7 +192,7 @@ describe('CoursePlayerPage', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls.map((call) => String(call[0])).some((url) => url.includes('/users/me/preferences'))).toBe(false);
     expect(screen.getByText('80%')).toBeInTheDocument();
-    expect(screen.queryByRole('switch', { name: 'Lektor' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lektor' })).toBeNull();
   });
 
   it('kurs COMPLETED, /courses/my zwraca 401: przekierowuje do /login zamiast pokazać mylący wynik', async () => {

@@ -16,7 +16,9 @@ import { TRANSCRIPT_TOGGLE_ID } from './NarrationBar';
 // więc przy równym z-index o tym, co maluje się na wierzchu, decydowała kolejność w DOM (bottomBarRef PO
 // contentRef) - działało dziś przypadkiem, ale krucho, bo niezależnie od tego, co user faktycznie otworzył jako
 // ostatnie. z-30 dorównuje karcie hotspotu/panelowi notatnika - wszystkie "nakładki" overlay-stack są teraz jawnie,
-// nie przez przypadek kolejności DOM, ponad dymkiem (z-10).
+// nie przez przypadek kolejności DOM, ponad dymkiem (z-10). Od D-097 panel jest renderowany w opakowaniu paska
+// (`player-bottombar-host`), ale POZA kontenerem zapytań paska (`player-bottombar-cq` - zawieranie tworzy własny kontekst
+// warstw), więc zasada wyżej się nie zmienia.
 export default function TranscriptPanel({
   text,
   open,

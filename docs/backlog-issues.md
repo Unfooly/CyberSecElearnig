@@ -515,6 +515,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: codzienny `pg_dump` (rola z prawem odczytu, poza RLS tylko przez jawny wyjątek) do magazynu poza VPS (np. R2, szyfrowany,
   retencja 14 dni), procedura odtworzenia sprawdzona na kopii, alarm przy nieudanym backupie; wpis w checkliście RODO (retencja kopii).
 
+### B-118 Okno przeglądarki (D-094): tekst ostrzeżenia z treści i odłożone uwagi z code review
+- Etykiety: `P3`, `feature`, `mod:kursy` · Źródło: code review `feat/browser-evidence` (D-094)
+- Opis: (1) ostrzeżenie po rozstrzygnięciu zadania z `frame: "browser"` ma stały tekst odtwarzacza („Ta strona podszywa się pod bank”,
+  „kodów z SMS-ów”) - każde przyszłe zadanie z tą oprawą (np. fałszywe logowanie do poczty albo kuriera) dostałoby komunikat o banku,
+  a wersje treści są niemutowalne; (2) w oknie komunikat złej próby (`role="status"`, montowany warunkowo), licznik prób (`aria-live`) i
+  pasek podpowiedzi mogą ogłosić złą próbę 2-3 razy - lepszy jeden stały region; (3) layout-check nie sprawdza ścieżki „wyczerpane próby
+  z rozwiązaniem w pasku adresu” (dziś ten sam adres co przy poprawnej odpowiedzi); (4) `browserHistory` ma martwą gałąź `hot` (bez
+  wpływu na SVG).
+- Akceptacja: (1) opcjonalny tekst ostrzeżenia w treści (np. `frame: { kind: "browser", warning: {...} }`, pole ujawniane dopiero po
+  rozstrzygnięciu - z odpowiedzi `/attempt`, bo może zawierać fałszywą domenę) albo neutralny tekst domyślny; (2) jeden region live w
+  oknie z testem; (3) przypadek w sekcji `browser`; (4) uproszczenie bez zmiany SVG (test identyczności).
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

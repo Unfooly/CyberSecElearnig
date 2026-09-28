@@ -1,16 +1,28 @@
 {
-  "width": 1200,
-  "height": 800,
+  "width": 1332,
+  "height": 1022,
   "background": {
     "flat": true,
-    "wall": "#4E40B8"
+    "wall": "none"
   },
   "items": [
     {
+      "id": "ramka-ekranu",
+      "prop": "screenFrame",
+      "x": 30,
+      "y": 30,
+      "params": {
+        "sw": 1200,
+        "sh": 800,
+        "wallpaper": "#4E40B8",
+        "bezel": 28
+      }
+    },
+    {
       "id": "outlook",
       "prop": "desktopIcon",
-      "x": 60,
-      "y": 50,
+      "x": 118,
+      "y": 108,
       "hotspot": true,
       "pad": 10,
       "params": {
@@ -23,8 +35,8 @@
     {
       "id": "przegladarka",
       "prop": "desktopIcon",
-      "x": 60,
-      "y": 270,
+      "x": 118,
+      "y": 328,
       "params": {
         "icon": "browser",
         "label": "Internet"
@@ -35,8 +47,8 @@
     {
       "id": "faktury",
       "prop": "desktopIcon",
-      "x": 60,
-      "y": 490,
+      "x": 118,
+      "y": 548,
       "params": {
         "icon": "folder",
         "label": "Faktury"
@@ -46,8 +58,8 @@
     {
       "id": "arkusz",
       "prop": "desktopIcon",
-      "x": 300,
-      "y": 50,
+      "x": 358,
+      "y": 108,
       "params": {
         "icon": "sheet",
         "label": "Przelewy"
@@ -57,8 +69,8 @@
     {
       "id": "gra",
       "prop": "desktopIcon",
-      "x": 300,
-      "y": 270,
+      "x": 358,
+      "y": 328,
       "scale": 1.6,
       "params": {
         "icon": "game",
@@ -69,8 +81,8 @@
     {
       "id": "kosz",
       "prop": "desktopIcon",
-      "x": 980,
-      "y": 50,
+      "x": 1038,
+      "y": 108,
       "params": {
         "icon": "trash",
         "label": "Kosz"
@@ -80,8 +92,8 @@
     {
       "id": "pasek",
       "prop": "taskbar",
-      "x": 0,
-      "y": 744,
+      "x": 58,
+      "y": 802,
       "params": {
         "w": 1200,
         "clock": "10:06",

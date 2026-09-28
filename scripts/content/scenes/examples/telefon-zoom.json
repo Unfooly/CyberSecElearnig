@@ -1,16 +1,16 @@
 {
-  "width": 800,
-  "height": 600,
+  "width": 808,
+  "height": 448,
   "background": {
     "flat": true,
-    "wall": "#EEF0FA"
+    "wall": "none"
   },
   "items": [
     {
       "id": "telefon",
       "prop": "phone",
-      "x": 40,
-      "y": 120,
+      "x": 36,
+      "y": 36,
       "scale": 4,
       "params": {
         "led": true,

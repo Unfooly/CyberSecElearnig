@@ -1,20 +1,31 @@
 {
-  "width": 800, "height": 1100,
-  "background": { "flat": true, "wall": "#2B2440" },
+  "width": 788,
+  "height": 1068,
+  "background": {
+    "flat": true,
+    "wall": "none"
+  },
   "items": [
-    { "id": "wydruk", "prop": "paper", "x": 46, "y": 50, "params": {
-      "title": "POTWIERDZENIE PRZELEWU",
-      "lines": [
-        "Data i godzina|wtorek, 09:12:41",
-        "Z rachunku|Unfooly Sp. z o.o.",
-        "|PL 61 …… 4412",
-        "Na rachunek|Wektor Rozliczenia Sp. z o.o.",
-        "|PL 27 …… 9903",
-        "Kwota|14 000,00 PLN",
-        "Tytuł|weryfikacja salda",
-        "Autoryzacja|kod SMS, 09:06:58",
-        "Status|WYKONANY"
-      ],
-      "stamp": "WYKONANY" } }
+    {
+      "id": "wydruk",
+      "prop": "paper",
+      "x": 36,
+      "y": 36,
+      "params": {
+        "title": "POTWIERDZENIE PRZELEWU",
+        "lines": [
+          "Data i godzina|wtorek, 09:12:41",
+          "Z rachunku|Unfooly Sp. z o.o.",
+          "|PL 61 …… 4412",
+          "Na rachunek|Wektor Rozliczenia Sp. z o.o.",
+          "|PL 27 …… 9903",
+          "Kwota|14 000,00 PLN",
+          "Tytuł|weryfikacja salda",
+          "Autoryzacja|kod SMS, 09:06:58",
+          "Status|WYKONANY"
+        ],
+        "stamp": "WYKONANY"
+      }
+    }
   ]
 }

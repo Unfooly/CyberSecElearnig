@@ -115,10 +115,10 @@ describe('sceny modułu 1 z kompozytora', () => {
     const office = moduleJson.blocks.find((block: { id: string }) => block.id === 'biuro-anny');
     const desktop = office.hotspots.find((h: { id: string }) => h.id === 'monitor').media.scene.hotspots as Record<string, unknown>[];
     const built = JSON.parse(readFileSync(join(examples, 'pulpit.hotspots.json'), 'utf8')) as Record<string, number | string>[];
-    // Pozycje ikon Poczty i Internetu sprzed dodania kolejnych ikon (przeglądarka, gra - Q) - nowa ikona nie może ich przesunąć.
-    expect(built.find((h) => h.id === 'outlook')).toEqual({ id: 'outlook', x: 4.2, y: 5, w: 17.7, h: 28.1 });
-    expect(built.find((h) => h.id === 'przegladarka')).toEqual({ id: 'przegladarka', x: 4.3, y: 32.8, w: 17.3, h: 27.6 });
-    expect(built.find((h) => h.id === 'gra')).toEqual({ id: 'gra', x: 24.3, y: 32.8, w: 17.3, h: 27.6 });
+    // Pozycje ikon po owinięciu pulpitu ramką monitora (D-101, wrap-in-monitor.ts) - nowa ikona nie może ich przesunąć.
+    expect(built.find((h) => h.id === 'outlook')).toEqual({ id: 'outlook', x: 8.1, y: 9.6, w: 15.9, h: 22 });
+    expect(built.find((h) => h.id === 'przegladarka')).toEqual({ id: 'przegladarka', x: 8.3, y: 31.3, w: 15.6, h: 21.6 });
+    expect(built.find((h) => h.id === 'gra')).toEqual({ id: 'gra', x: 26.3, y: 31.3, w: 15.6, h: 21.6 });
     for (const b of built) {
       const inModule = desktop.find((h) => h.id === b.id);
       expect(inModule, String(b.id)).toBeDefined();

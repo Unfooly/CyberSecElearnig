@@ -21,6 +21,14 @@ export const CURIOUS_DETECTIVE_EASTER_EGG = 'ciekawski-detektyw';
 export const COURSE_COMPLETION_XP = 100;
 export const PERFECT_SCORE_XP = 50;
 
-export const LEADERBOARD_LIMIT = 20;
+// Ranking organizacji (D-112): pierwsza dziesiątka + pozycja pytającego.
+export const LEADERBOARD_LIMIT = 10;
+
+// Przypięte osiągnięcia na profilu i przy nazwisku w rankingu (D-112).
+export const MAX_PINNED_ACHIEVEMENTS = 3;
+export const PIN_LIMIT_MESSAGE = 'Możesz przypiąć maksymalnie 3 odznaki.';
+
+// Neutralna grafika tajnego osiągnięcia (ta sama co zablokowana na profilu) - dla przypiętego tajnego u osoby, która go nie zdobyła.
+export const SECRET_LOCKED_ICON = 'osiagniecie-tajne-zablokowane';
 
 export type LeaderboardScope = 'organization' | 'department';

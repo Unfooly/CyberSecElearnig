@@ -22,6 +22,11 @@ export class UpdateOrganizationSettingsDto {
   @IsBoolean()
   selfJoinEnabled?: boolean;
 
+  // Ranking pracowników organizacji (XP, przypięte osiągnięcia; D-112) - domyślnie włączony.
+  @IsOptional()
+  @IsBoolean()
+  leaderboardEnabled?: boolean;
+
   // Strefa czasowa organizacji (IANA); serwis zapisuje nazwę kanoniczną.
   @IsOptional()
   @IsIanaTimeZone()

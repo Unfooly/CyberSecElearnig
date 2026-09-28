@@ -6,21 +6,22 @@ import { contentAssetBase } from '@/lib/content-assets';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
 import CourseCatalog from '../../courses/_components/CourseCatalog';
 import CourseLibrary from '../../courses/_components/CourseLibrary';
+import { harnessModuleDir } from '../harness-module';
 
 // Podgląd kart kursów (katalog i "moje kursy") z miniaturą modułu 1 (D-084), bez backendu i logowania - WYŁĄCZNIE do
 // scripts/layout-check.mjs i ręcznego podglądu. Jak player-harness: plik `.dev.tsx` istnieje w routingu tylko z
 // NEXT_PUBLIC_DEV_HARNESS=1 (next.config.mjs), notFound() to druga linia obrony. Z modułu bierze wyłącznie metadane (tytuł,
 // podtytuł, miniatura, czas) - treść bloków nie trafia do klienta. Obok karta kursu BEZ miniatury (dotychczasowy wygląd).
-const MODULE_SLUG = 'wyludzone-haslo';
-
-export default function CoursesHarnessPage() {
+// `?module=<slug>` (B-128): dowolny moduł, domyślnie moduł 1 (harness-module.ts).
+export default function CoursesHarnessPage({ searchParams = {} }: { searchParams?: { module?: string } }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') notFound();
 
-  const modulePath = path.join(process.cwd(), '..', '..', 'packages', 'content', 'modules', MODULE_SLUG, 'module.json');
-  const contentModule = moduleSchema.parse(JSON.parse(fs.readFileSync(modulePath, 'utf8')));
+  const harnessModule = harnessModuleDir(searchParams.module);
+  if (!harnessModule) notFound();
+  const contentModule = moduleSchema.parse(JSON.parse(fs.readFileSync(path.join(harnessModule.dir, 'module.json'), 'utf8')));
   const contentBase = process.env.CONTENT_BASE_URL
     ? contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development')
-    : '/dev/module-assets';
+    : `/dev/module-assets/${harnessModule.slug}`;
 
   const catalog: CourseCatalogItem[] = [
     {

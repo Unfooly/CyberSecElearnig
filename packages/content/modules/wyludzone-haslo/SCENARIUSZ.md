@@ -21,8 +21,11 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   outlook i historia przeglądarki w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - nowy odbiorca 9:04, Bukareszt 9:03, kod SMS
   z Bukaresztu 9:06, nagłówki maila z Bukaresztu, WHOIS; rozmowa z Markiem: 3)
-- oś czasu (źródło prawdy - rozmowa z Markiem, wydruk przelewu i rekonstrukcja): mail 8:47 → Anna wpisuje hasło 8:58 →
-  logowanie oszusta 9:03 → nowy odbiorca 9:04 → telefon „informatyka" 9:05 → kod SMS 9:06 (wydruk: 09:06:58) → przelew 9:12;
+- oś czasu (źródło prawdy - rozmowa z Markiem, logi, wydruk przelewu i rekonstrukcja; `fix/login-2fa-timeline`): mail 8:47 →
+  Anna wpisuje login i hasło na fałszywej stronie 8:58 → 9:02 bank wysyła SMS z kodem logowania z nowego urządzenia, fałszywa
+  strona prosi o „kod weryfikacyjny", Anna go wpisuje → logowanie oszusta z Bukaresztu 9:03 (kod poprawny) → nowy odbiorca 9:04 →
+  telefon „informatyka" 9:05 → 9:06 SMS z kodem autoryzującym przelew, Anna czyta cyfry przez telefon (wydruk: 09:06:58) →
+  przelew zaksięgowany 9:12;
   śledztwo: telefon komisarza 9:40 (odprawa, Wydział Cyberbezpieczeństwa, Kraków) → gracz w Unfooly 10:05 (korytarz)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
 - maskotka: Fooli; pozy z `packages/content/mascot/`
@@ -160,7 +163,7 @@ nie mogą mieć własnego `action` ani własnej zagnieżdżonej sceny.
 | id | x | y | w | h | Karta po kliknięciu | Dowód | Notatka (kind) | Media |
 |---|---|---|---|---|---|---|---|---|
 | `outlook` | 4.2 | 5.0 | 17.7 | 28.1 | „Na ekranie otwarta wiadomość: *Bank Wektor — pilna weryfikacja konta firmowego*. Przyszła dziś o 8:47." | **tak** — dowód `mail` przeniesiony tu z `monitor` (patrz tabela wyżej) | (mail) „Mail od »Banku Wektor« z 8:47, temat: pilna weryfikacja konta." | image `mail-na-ekranie.svg` (1200×800), alt: „Otwarta wiadomość od Banku Wektor z 8:47" |
-| `przegladarka` (ikona „Internet", feat/browser-evidence) | 4.3 | 32.8 | 17.3 | 27.6 | „Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka." | tak (niewymagany) | (item) „Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiło hasło." | image `historia-przegladarki.svg` (1200×800; klocek `browserHistory`) — historia z dziś: 9:04 intranet (przed telefonem o 9:05 - potem Anna wyszła od biurka), **8:58 bankwektor-weryfikacja.pl/login** („Weryfikacja konta firmowego"), 8:47 poczta, 8:31 kalendarz, 8:05 stołówka; bez wyróżnienia - gracz sam ma wyłapać domenę. Alt wymienia wszystkie wpisy (odpowiednik tekstowy). |
+| `przegladarka` (ikona „Internet", feat/browser-evidence) | 4.3 | 32.8 | 17.3 | 27.6 | „Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka." | tak (niewymagany) | (item) „Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiły hasło i kod z SMS-a." | image `historia-przegladarki.svg` (1200×800; klocek `browserHistory`) — historia z dziś: 9:04 intranet (przed telefonem o 9:05 - potem Anna wyszła od biurka), **8:58 bankwektor-weryfikacja.pl/login** („Weryfikacja konta firmowego"), 8:47 poczta, 8:31 kalendarz, 8:05 stołówka; bez wyróżnienia - gracz sam ma wyłapać domenę. Alt wymienia wszystkie wpisy (odpowiednik tekstowy). |
 
 Uzasadnienie przeniesienia dowodu: prawdziwy dowód (treść maila) leży dopiero za Outlookiem — kredytowanie go samym
 kliknięciem `monitor` (otwarcie pulpitu) byłoby przedwczesne. Otwarcie samego pulpitu (klik `monitor`) niczego nie
@@ -213,7 +216,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 | id | Pytanie gracza | Kwestie Anny (po jednej) | Dowód | Notatka (kind) |
 |---|---|---|---|---|
-| `mail` ✱ | „Opowiedz o tym mailu z banku." | 1. „Przyszedł rano, wyglądał normalnie — logo, stopka, wszystko." 2. „Pisali, że konto firmowe będzie zablokowane do 10:00, jeśli nie potwierdzę danych." 3. „Kliknęłam w link, strona wyglądała jak nasz bank. Wpisałam login i hasło." | tak | (person) „Anna kliknęła link z maila i wpisała login oraz hasło na stronie »banku«." |
+| `mail` ✱ | „Opowiedz o tym mailu z banku." | 1. „Przyszedł rano, wyglądał normalnie — logo, stopka, wszystko." 2. „Pisali, że konto firmowe będzie zablokowane do 10:00, jeśli nie potwierdzę danych." 3. „Kliknęłam w link, strona wyglądała jak nasz bank. Wpisałam login i hasło." 4. „Potem strona poprosiła jeszcze o kod z SMS-a, więc go wpisałam." | tak | (person) „Anna kliknęła link z maila i wpisała na stronie »banku« login, hasło i kod z SMS-a." |
 | `telefon` ✱ | „Kto dzwonił o 9:05?" | 1. „Informatyk z banku. Powiedział, że wykryli podejrzaną próbę logowania i muszą to zatrzymać." 2. „Poprosił o kod SMS, który właśnie przyszedł. Żeby *anulować* operację." 3. „Podałam. Był bardzo uprzejmy. Miał mój numer, znał nazwę firmy…" | tak | (person) „Anna podała przez telefon kod SMS »informatykowi z banku«, który miał anulować operację." |
 | `haslo` ✱ | „To hasło na karteczce…" | 1. „Wiem, wiem. Ale mamy dwanaście systemów i każdy chce innego hasła." 2. „Marek z IT mówił, żebym używała menedżera haseł. Nie miałam kiedy." | tak | (person) „Anna używa tego samego hasła do systemu księgowego i banku; nie ma menedżera haseł." |
 | `presja` | „Dlaczego działałaś tak szybko?" | 1. „Do 15:00 muszę puścić wszystkie przelewy do dostawców. Jak konto by zablokowali, nie zdążyłabym." 2. „W mailu był zegar. Odliczał." | tak (opcjonalny) | (person) „Mail zawierał odliczanie; Anna działała pod presją terminu przelewów." |
@@ -307,8 +310,12 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 **„Logi logowania"** — BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA, „Historia logowań", Użytkownik: a.kowalska (Godzina | Zdarzenie | Miejsce i urządzenie):
 - 07:58 Logowanie, Kraków, komputer biurowy
-- ✱ 09:03 Logowanie, Bukareszt, nowe urządzenie — dowód (place): „9:03 — logowanie z Bukaresztu, z nowego urządzenia."
-- 09:06 Kod SMS wpisany, Bukareszt, nowe urządzenie — dowód (place): „9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny."
+- 09:02 Wysłano SMS: kod logowania z nowego urządzenia, SMS na telefon Anny — zwykły wiersz (NIE dowód), komunikat: „Bank wysłał
+  Annie kod do logowania z nowego urządzenia. Sprawdź, co stało się minutę później."
+- ✱ 09:03 Logowanie, kod SMS poprawny, Bukareszt, nowe urządzenie — dowód (place): „9:03 — logowanie z Bukaresztu, z nowego
+  urządzenia, z poprawnym kodem SMS."
+- 09:06 Kod SMS (autoryzacja przelewu) wpisany, Bukareszt, nowe urządzenie — dowód (place): „9:06 — kod SMS autoryzujący przelew
+  wpisany z urządzenia w Bukareszcie, nie z komputera Anny."
 - 09:12 Przelew wysłany, Bukareszt, nowe urządzenie — komunikat: „Ten przelew już znasz. Szukaj tego, co go przygotowało."
 
 **„Notatka IT"** — UNFOOLY SP. Z O.O. · DZIAŁ IT, „Notatka po incydencie", Autor: Marek Zieliński:
@@ -343,7 +350,7 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 | id | Pytanie gracza | Kwestie Marka | Dowód | Notatka (kind) |
 |---|---|---|---|---|
-| `logi` ✱ | „Co mówią logi banku?" | 1. „Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login, poprawne hasło — bo Anna je wpisała na ich stronie o 8:58." 2. „Przelew o 9:12, zatwierdzony kodem SMS. Tym, który Anna podała przez telefon." | tak | (item) „Logi: logowanie z zagranicy o 9:03 po wpisaniu danych przez Annę o 8:58; przelew 9:12 zatwierdzony kodem SMS podanym przez telefon." |
+| `logi` ✱ | „Co mówią logi banku?" | 1. „Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login i hasło — Anna wpisała je na ich stronie o 8:58. I poprawny kod logowania z SMS-a z 9:02, też wpisany na ich stronie." 2. „Przelew o 9:12, zatwierdzony drugim kodem SMS. Tym, który Anna podała przez telefon." | tak | (item) „Logi: logowanie z zagranicy o 9:03 po wpisaniu przez Annę loginu i hasła (8:58) oraz kodu logowania z SMS-a (9:02); przelew 9:12 zatwierdzony drugim kodem SMS, podanym przez telefon." |
 | `dzwonil` ✱ | „Ktoś z IT dzwonił do Anny o 9:05?" | 1. „Nikt. Jestem jedynym informatykiem w tej firmie, a o 9:05 stałem w korku." 2. „Bank też nie dzwoni z zastrzeżonego. Ten »informatyk« to był oszust — i to on wtedy siedział zalogowany na koncie Anny, czekając na kod." | tak | (person) „Nikt z IT ani z banku nie dzwonił o 9:05 — dzwonił oszust, już zalogowany, po kod SMS." |
 | `inni` | „Czy ktoś jeszcze dostał ten mail?" | 1. „Sprawdziłem: siedem osób. Dwie kliknęły w link, ale nie wpisały danych — strona wydała im się dziwna." 2. „Nikt nie zgłosił. Ani jedna osoba. Gdyby pierwsza kliknęła »Zgłoś«, zablokowałbym domenę przed 8:55." | tak (opcjonalny) | (mail) „Mail trafił do 7 osób, 2 kliknęły, nikt nie zgłosił." |
 | `co_teraz` | „Co robimy teraz?" | 1. „Bank próbuje cofnąć przelew — czasem się udaje, jeśli zgłosisz w ciągu godziny. Tu minęło pięć." 2. „Zmieniamy hasła Anny — wszystkie, bo były takie same. Włączamy menedżer haseł dla całej księgowości." 3. „I zgłaszamy na policję. To przestępstwo, nie wpadka." | nie | — |
@@ -362,7 +369,7 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 - elementy (podane wymieszane; poprawna kolejność jak niżej):
 
 1. `mail` — 8:47 — Do skrzynki Anny trafia mail z domeny `bankwektor-weryfikacja.pl`.
-2. `link` — 8:58 — Anna klika link i wpisuje login oraz hasło na fałszywej stronie.
+2. `link` — 8:58-9:02 — Anna wpisuje login, hasło i kod z SMS na fałszywej stronie.
 3. `login` — 9:03 — Oszust loguje się do prawdziwego banku danymi Anny.
 4. `telefon` — 9:05 — „Informatyk" dzwoni po kod SMS, „żeby anulować operację".
 5. `kod` — 9:06 — Anna podaje kod; oszust zatwierdza przelew.

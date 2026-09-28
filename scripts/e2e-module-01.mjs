@@ -285,8 +285,16 @@ try {
   await row('Dodano nowego odbiorcę').click();
   step('DOSSIER: wiersz-dowód zakreślony (aria-pressed)', (await row('Dodano nowego odbiorcę').getAttribute('aria-pressed')) === 'true');
   await page.getByRole('tab', { name: 'Logi logowania' }).click();
+  // 09:02 (fix/login-2fa-timeline): SMS z kodem logowania - zwykły wiersz z własnym komunikatem, NIE dowód.
+  await row('Wysłano SMS: kod logowania').click();
+  step(
+    'DOSSIER: 09:02 SMS z kodem logowania - własny komunikat, bez zaznaczenia (nie dowód)',
+    (await page.getByRole('status').textContent())?.includes('Bank wysłał Annie kod do logowania') && (await row('Wysłano SMS: kod logowania').getAttribute('aria-pressed')) === 'false',
+  );
+  step('DOSSIER: 09:03 - logowanie z poprawnym kodem SMS', (await row('Logowanie, kod SMS poprawny').filter({ hasText: '09:03' }).count()) === 1);
   await row('Logowanie').filter({ hasText: '09:03' }).click();
-  await row('Kod SMS wpisany').click();
+  // row() buduje regex - fragment bez nawiasów z etykiety „Kod SMS (autoryzacja przelewu) wpisany”.
+  await row('autoryzacja przelewu').click();
   await page.getByRole('tab', { name: 'Notatka IT' }).click();
   await row('Nagłówki maila').click();
   await row('zarejestrowana 2 dni przed atakiem').click();
@@ -311,7 +319,7 @@ try {
   // nie rekonstrukcją zdarzeń.
   const wanted = [
     'Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
-    'Anna klika link i wpisuje login oraz hasło na fałszywej stronie.',
+    'Anna wpisuje login, hasło i kod z SMS na fałszywej stronie.',
     'Oszust loguje się do prawdziwego banku danymi Anny.',
     '„Informatyk” dzwoni po kod SMS, żeby anulować operację.',
     'Anna podaje kod; oszust zatwierdza przelew.',

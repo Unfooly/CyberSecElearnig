@@ -49,10 +49,12 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
         const data = await response.json().catch(() => null);
         const text = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
         setPinned(previous);
+        setAnnouncement('');
         setMessage(typeof text === 'string' && text.length > 0 ? text : 'Nie udało się zapisać przypiętych odznak.');
       }
     } catch {
       setPinned(previous);
+      setAnnouncement('');
       setMessage('Nie udało się połączyć z serwerem. Spróbuj ponownie później.');
     } finally {
       setSaving(false);
@@ -155,7 +157,9 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                     <button
                       type="button"
                       aria-label={`Przesuń ${badge.title} w lewo`}
-                      disabled={index === 0 || saving}
+                      // W czasie zapisu tylko aria-disabled (strażnik w move): natywne `disabled` zdejmowało fokus na body.
+                      disabled={index === 0}
+                      aria-disabled={saving || undefined}
                       data-move="left"
                       onClick={() => move(index, index - 1, '[data-move="left"]')}
                       className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30"
@@ -165,7 +169,8 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                     <button
                       type="button"
                       aria-label={`Przesuń ${badge.title} w prawo`}
-                      disabled={index === pinnedBadges.length - 1 || saving}
+                      disabled={index === pinnedBadges.length - 1}
+                      aria-disabled={saving || undefined}
                       data-move="right"
                       onClick={() => move(index, index + 1, '[data-move="right"]')}
                       className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30"
@@ -175,7 +180,7 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                     <button
                       type="button"
                       aria-label={`Odepnij ${badge.title}`}
-                      disabled={saving}
+                      aria-disabled={saving || undefined}
                       onClick={() => togglePin(badge.code)}
                       className="min-h-[44px] rounded-btn px-2 text-sm font-semibold text-accent-ink hover:bg-paper disabled:opacity-50"
                     >

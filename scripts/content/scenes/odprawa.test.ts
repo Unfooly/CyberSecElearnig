@@ -110,13 +110,15 @@ describe('sceny modułu 1 z kompozytora', () => {
     });
   });
 
-  it('module.json (scena pulpitu w monitorze) ma te same współrzędne hotspotów co pulpit.hotspots.json; „outlook” bez zmian', () => {
+  it('module.json (scena pulpitu w monitorze) ma te same współrzędne hotspotów co pulpit.hotspots.json; „outlook” i „przegladarka” bez zmian, „gra” nowa', () => {
     const moduleJson = JSON.parse(readFileSync(join(assets, '..', 'module.json'), 'utf8'));
     const office = moduleJson.blocks.find((block: { id: string }) => block.id === 'biuro-anny');
     const desktop = office.hotspots.find((h: { id: string }) => h.id === 'monitor').media.scene.hotspots as Record<string, unknown>[];
     const built = JSON.parse(readFileSync(join(examples, 'pulpit.hotspots.json'), 'utf8')) as Record<string, number | string>[];
-    // Pozycja ikony Poczty sprzed dodania przeglądarki - nowa ikona nie może jej przesunąć.
+    // Pozycje ikon Poczty i Internetu sprzed dodania kolejnych ikon (przeglądarka, gra - Q) - nowa ikona nie może ich przesunąć.
     expect(built.find((h) => h.id === 'outlook')).toEqual({ id: 'outlook', x: 4.2, y: 5, w: 17.7, h: 28.1 });
+    expect(built.find((h) => h.id === 'przegladarka')).toEqual({ id: 'przegladarka', x: 4.3, y: 32.8, w: 17.3, h: 27.6 });
+    expect(built.find((h) => h.id === 'gra')).toEqual({ id: 'gra', x: 24.3, y: 32.8, w: 17.3, h: 27.6 });
     for (const b of built) {
       const inModule = desktop.find((h) => h.id === b.id);
       expect(inModule, String(b.id)).toBeDefined();

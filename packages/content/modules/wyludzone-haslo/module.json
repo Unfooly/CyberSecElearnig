@@ -1,7 +1,7 @@
 {
   "schemaVersion": 5,
   "slug": "wyludzone-haslo",
-  "title": "Sprawa: wyłudzone hasło",
+  "title": "Wyłudzone hasło",
   "subtitle": "Phishing, hasła i jedna karteczka",
   "category": "PHISHING_SOCIAL_ENGINEERING",
   "level": "basic",
@@ -13,7 +13,7 @@
     "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
     "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
   ],
-  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.0b9ba84e.svg",
+  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.f22bdca6.svg",
   "blocks": [
     {
       "id": "odprawa",

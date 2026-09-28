@@ -8,7 +8,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
 
 const item = (overrides: Partial<CourseCatalogItem> = {}): CourseCatalogItem => ({
   courseId: 'course-1',
-  title: 'Sprawa: wyłudzone hasło',
+  title: 'Wyłudzone hasło',
   subtitle: 'Prawdziwy przypadek phishingu',
   level: 'basic',
   objectives: [],
@@ -35,7 +35,7 @@ describe('CourseCatalog', () => {
 
   it('renderuje kartę kursu z tytułem, podtytułem i czasem trwania', () => {
     render(<CourseCatalog courses={[item()]} />);
-    expect(screen.getByText('Sprawa: wyłudzone hasło')).toBeInTheDocument();
+    expect(screen.getByText('Wyłudzone hasło')).toBeInTheDocument();
     expect(screen.getByText('Prawdziwy przypadek phishingu')).toBeInTheDocument();
     expect(screen.getByText('12 min')).toBeInTheDocument();
   });
@@ -43,14 +43,14 @@ describe('CourseCatalog', () => {
   it('miniatura modułu 16:9 (alt = tytuł) z magazynu treści; bez miniatury albo z niepoprawną ścieżką - brak obrazka', () => {
     const thumbnail = 'assets/wyludzone-haslo/miniatura-wyludzone-haslo.1a2b3c4d.svg';
     const { unmount } = render(<CourseCatalog courses={[item({ thumbnail })]} contentBase="https://content.unfooly.com" />);
-    const img = screen.getByRole('img', { name: 'Sprawa: wyłudzone hasło' });
+    const img = screen.getByRole('img', { name: 'Wyłudzone hasło' });
     expect(img).toHaveAttribute('src', `https://content.unfooly.com/${thumbnail}`);
     expect(img).toHaveClass('aspect-video', 'object-cover', 'rounded-card');
     unmount();
 
     for (const bad of [null, 'https://evil.example/x.svg', '../x.svg']) {
       const { unmount: again } = render(<CourseCatalog courses={[item({ thumbnail: bad })]} contentBase="https://content.unfooly.com" />);
-      expect(screen.queryByRole('img', { name: 'Sprawa: wyłudzone hasło' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('img', { name: 'Wyłudzone hasło' })).not.toBeInTheDocument();
       again();
     }
   });
@@ -58,7 +58,7 @@ describe('CourseCatalog', () => {
   it('miniatura przy prefers-reduced-motion: adres z #static (zatrzymuje animacje w SVG)', async () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(<CourseCatalog courses={[item({ thumbnail: 'assets/m/miniatura.1a2b3c4d.svg' })]} contentBase="https://content.unfooly.com" />);
-    await waitFor(() => expect(screen.getByRole('img', { name: 'Sprawa: wyłudzone hasło' })).toHaveAttribute('src', 'https://content.unfooly.com/assets/m/miniatura.1a2b3c4d.svg#static'));
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Wyłudzone hasło' })).toHaveAttribute('src', 'https://content.unfooly.com/assets/m/miniatura.1a2b3c4d.svg#static'));
   });
 
   it('"Rozpocznij": POST na self-assign, potem nawigacja do odtwarzacza', async () => {

@@ -1,6 +1,6 @@
 # Playbook modułu szkoleniowego
 
-Jak zbudować moduł-śledztwo od zera, na wzór modułu 1 („Sprawa: wyłudzone hasło”, `packages/content/modules/wyludzone-haslo`). Ten plik
+Jak zbudować moduł-śledztwo od zera, na wzór modułu 1 („Wyłudzone hasło”, `packages/content/modules/wyludzone-haslo`). Ten plik
 to przewodnik i lista kontrolna; szczegóły formatu są w `packages/content/README.md`, potok nagrań i zasobów w `docs/content-pipeline.md`,
 klocki i kompozytor scen w `scripts/content/scenes/README.md`, zachowanie odtwarzacza w `docs/course-player.md`, a uzasadnienia w
 `docs/decisions.md` (tu tylko odnośniki D-xxx - nie powtarzamy decyzji). Reguły treści z tego pliku (dowody, nazwy, zakazy) to D-108.

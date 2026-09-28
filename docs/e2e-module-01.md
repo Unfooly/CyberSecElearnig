@@ -1,4 +1,4 @@
-# E2E: pełne przejście modułu 1 ("Sprawa: wyłudzone hasło", przeglądarka)
+# E2E: pełne przejście modułu 1 ("Wyłudzone hasło", przeglądarka)
 
 ## Automatyczny scenariusz (Playwright)
 

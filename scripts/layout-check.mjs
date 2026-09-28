@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -1850,6 +1850,39 @@ try {
       await checkNoPageScroll(page, label);
       if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: (e1-e4, e6-e8) OK`, true);
+      await context.close();
+    }
+  }
+
+  // POWRÓT FOKUSU PO ZBLIŻENIU (D-101, code review): punkty pod zbliżeniem są schowane przez CSS (data-zoom-open) - w prawdziwej
+  // przeglądarce (jsdom nie ładuje globals.css) fokus po „Odłóż” ma wrócić na przedmiot, na obu poziomach: (o1) scena główna - kalendarz,
+  // (o2) pulpit - Poczta; z animacją i przy reduced-motion (zamknięcie synchroniczne).
+  for (const viewport of runs('zoom-focus') ? [EASTER_VIEWPORTS[1], EASTER_VIEWPORTS[3]] : []) {
+    console.log(`\n--- viewport (FOKUS PO ZBLIŻENIU): ${viewport.name} ---`);
+    for (const reduced of [false, true]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: !viewport.mouse, isMobile: viewport.isMobile ?? false, reducedMotion: reduced ? 'reduce' : 'no-preference' });
+      const page = await context.newPage();
+      const label = `${viewport.name} / fokus po zbliżeniu${reduced ? ' (reduced-motion)' : ''}`;
+      const zoom = page.getByTestId('scene-zoom');
+      const phase = (value) => page.waitForFunction((v) => document.querySelector('[data-testid="scene-zoom"]')?.getAttribute('data-phase') === v, value, { timeout: 10000 });
+      const focused = () => page.evaluate(() => ({ testid: document.activeElement?.getAttribute('data-testid'), label: document.activeElement?.getAttribute('aria-label') }));
+      await page.goto(`${WEB}/dev/player-harness?block=biuro-anny`);
+      await page.getByTestId('hotspot-overlay-kalendarz').click();
+      await phase('open');
+      await zoom.getByRole('button', { name: 'Odłóż' }).click();
+      await zoom.waitFor({ state: 'detached' });
+      const outer = await focused();
+      if (outer.testid !== 'hotspot-overlay-kalendarz') fail(`${label}: (o1) po Odłóż fokus na ${JSON.stringify(outer)}, oczekiwany przedmiot „kalendarz”.`);
+      await page.getByTestId('hotspot-overlay-monitor').click();
+      await phase('open');
+      await zoom.getByRole('button', { name: /^Poczta/ }).click();
+      await phase('inner-open');
+      await zoom.getByRole('button', { name: 'Odłóż' }).click();
+      await phase('open');
+      await page.waitForTimeout(100);
+      const inner = await focused();
+      if (!inner.label?.startsWith('Poczta')) fail(`${label}: (o2) po Odłóż w pulpicie fokus na ${JSON.stringify(inner)}, oczekiwana ikona „Poczta”.`);
+      step(`${label}: (o1-o2) fokus wraca na przedmiot na obu poziomach`, true);
       await context.close();
     }
   }

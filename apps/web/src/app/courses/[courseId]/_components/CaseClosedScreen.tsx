@@ -361,6 +361,8 @@ export default function CaseClosedScreen({
                 key={slot}
                 aria-hidden="true"
                 data-testid={`closing-${slot}`}
+                // Pionowy raport (D-099): wartość w slocie grafiki to ozdoba jak tekst wypalony w SVG - czytelna kopia (15 px) jest pod raportem.
+                data-graphic-text={portrait ? '' : undefined}
                 className="absolute flex items-center whitespace-nowrap font-extrabold tabular-nums text-ink"
                 style={{ ...place(slots[slot]), fontSize: cqw(2.2), paddingLeft: cqw(1) }}
               >
@@ -396,6 +398,7 @@ export default function CaseClosedScreen({
               <div aria-hidden="true" data-testid="closing-signature" className="absolute flex items-end" style={place(slots.signature)}>
                 {signed && (
                   <span
+                    data-graphic-text={portrait ? '' : undefined}
                     className={`block whitespace-nowrap font-semibold italic text-accent-ink ${ceremony && stage === 'signing' ? 'closing-sign-draw' : ''}`}
                     style={{ fontSize: cqw(2.4), lineHeight: 1.1, paddingLeft: cqw(1) }}
                   >
@@ -454,6 +457,12 @@ export default function CaseClosedScreen({
             <span>Czas: {minutes !== null ? `${minutesCount} min` : '—'}</span>
             <span>XP: {xp !== null ? `+${xpCount}` : '—'}</span>
           </p>
+          {/* Podpis w grafice jest ozdobą (7 px na telefonie) - czytelnie tutaj, po podpisaniu. */}
+          {signed && (
+            <p data-testid="closing-signed" className="text-center text-muted">
+              Podpis: <span className="font-semibold italic text-accent-ink">{signer}</span>
+            </p>
+          )}
           {lessons.length > 0 && (
             <ol data-testid="closing-lessons" className="mt-1 max-h-[30dvh] space-y-1 overflow-y-auto">
               {lessons.map((line, index) => (

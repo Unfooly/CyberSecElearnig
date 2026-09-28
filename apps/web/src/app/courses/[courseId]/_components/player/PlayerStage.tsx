@@ -46,6 +46,8 @@ export interface PlayerStageProps {
       osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
       panel max-w-3xl). */
   contentLayout?: 'scene' | 'slide' | 'fill';
+  /** Końcowe podsumowanie (D-099): na telefonie drobny tekst bloku (text-xs/text-sm) ma min. 15 px - klasa .mobile-readable w globals.css. */
+  readableOnPhone?: boolean;
   /** Tekst podpowiedzi (D-093, zamiast maskotki): neutralny dymek - na scenie w rogu, w układzie 'slide' nad treścią. */
   hint?: string;
   /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
@@ -93,6 +95,7 @@ function PlayerStageInner({
   completedBlocks,
   stage,
   contentLayout = 'slide',
+  readableOnPhone = false,
   hint,
   evidence,
   topAction,
@@ -310,7 +313,7 @@ function PlayerStageInner({
             ref={contentRef}
             onFocusCapture={keepFocusAboveBar}
             data-testid="player-content-area"
-            className={`relative min-h-0 flex-1 ${
+            className={`relative min-h-0 flex-1 ${readableOnPhone ? 'mobile-readable' : ''} ${
               contentLayout === 'scene' || contentLayout === 'fill'
                 ? 'overflow-clip'
                 : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'

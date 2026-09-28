@@ -43,6 +43,10 @@ export interface CoursePlayerInitialState extends CourseDetail {
   score: number | null;
 }
 
+/** Typy bloków końcowego podsumowania (D-099; w module 1 - od rekonstrukcji do końca): na ekranie < 640 px tekst min. 15 px (PlayerStage
+    readableOnPhone). Działa według typu - w każdym module i także na ekranie wyniku tych bloków. */
+const READABLE_ON_PHONE = new Set(['ORDERING', 'TEXT_INPUT_GUIDED', 'SUMMARY']);
+
 type PlayerState = Pick<CoursePlayerInitialState, 'status' | 'currentBlockIndex' | 'score'>;
 
 interface RenderContext {
@@ -463,6 +467,8 @@ export default function CoursePlayer({
           : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING' || currentBlock?.type === 'DOSSIER' || currentBlock?.type === 'ORDERING'
             ? 'fill'
             : 'slide';
+  // Końcowe podsumowanie na telefonie (D-099): bloki z READABLE_ON_PHONE (także ich ekran wyniku) i ekran zamknięcia sprawy.
+  const readableOnPhone = isSummaryMode || READABLE_ON_PHONE.has((showingFeedback ? blocks[feedback.blockIndex] : currentBlock)?.type ?? '');
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
@@ -644,6 +650,7 @@ export default function CoursePlayer({
                 : undefined
             }
             contentLayout={contentLayout}
+            readableOnPhone={readableOnPhone}
             stage={
               <>
                 {error && (

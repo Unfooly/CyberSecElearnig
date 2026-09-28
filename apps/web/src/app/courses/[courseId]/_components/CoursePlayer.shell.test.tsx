@@ -438,3 +438,30 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
     });
   });
 });
+
+// D-099: tekst min. 15 px na telefonie (.mobile-readable) tylko w blokach końcowego podsumowania i na ekranie zamknięcia.
+describe('CoursePlayer: readableOnPhone według typu bloku', () => {
+  const ending = [
+    silentBlock('one', 'Pytanie pierwsze'),
+    { id: 'kolejnosc', type: 'ORDERING' as const, prompt: 'Ułóż.', items: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] },
+    { id: 'adres', type: 'TEXT_INPUT_GUIDED' as const, prompt: 'Wpisz adres.', hintCount: 0, maxAttempts: 3 },
+    { id: 'wnioski', type: 'SUMMARY' as const, text: 'Koniec.' },
+  ];
+  const area = () => screen.getByTestId('player-content-area');
+
+  it('QUIZ - bez klasy; ORDERING, TEXT_INPUT_GUIDED, SUMMARY - z klasą', () => {
+    const { unmount } = render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: ending, currentBlockIndex: 0 })} />);
+    expect(area()).not.toHaveClass('mobile-readable');
+    unmount();
+    for (const index of [1, 2, 3]) {
+      const view = render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: ending, currentBlockIndex: index })} />);
+      expect(area()).toHaveClass('mobile-readable');
+      view.unmount();
+    }
+  });
+
+  it('ukończony kurs (ekran zamknięcia) - z klasą', () => {
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: ending, status: 'COMPLETED', currentBlockIndex: 4, score: 100 })} />);
+    expect(area()).toHaveClass('mobile-readable');
+  });
+});

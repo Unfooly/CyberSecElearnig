@@ -277,6 +277,19 @@
 .closing-frame[data-orientation='portrait'] .closing-box {
   width: min(100cqw, calc(100cqh * 9 / 16));
 }
+/* Końcowe podsumowanie na telefonie (D-099): w blokach od rekonstrukcji do zamknięcia sprawy (PlayerStage readableOnPhone) drobny
+   tekst interfejsu (text-xs 12 px, text-sm 14 px) ma na telefonie 15 px. Jedna reguła zamiast wariantów w każdym komponencie; na
+   szerszych ekranach bez zmian. Nadpisuje też leading-* na tych elementach (1.4); rozmiarów arbitralnych (text-[13px]) i stylów inline
+   nie łapie - te wyłapuje layout-check mobile-summary (s2). */
+@media (max-width: 639px) {
+  .mobile-readable {
+    font-size: 15px;
+  }
+  .mobile-readable :is(.text-xs, .text-sm) {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+}
 /* Miejsce na podpis bywa na telefonie niższe niż 44 px (slot sceny w %) - niewidoczny obszar dotyku co najmniej 44x44 wokół środka. */
 .closing-sign-hit::after {
   content: '';

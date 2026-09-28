@@ -43,7 +43,7 @@ function HotspotCardStub() {
   );
 }
 
-function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string } = {}) {
+function Harness({ contentLayout, hint, readableOnPhone }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string; readableOnPhone?: boolean } = {}) {
   const [notesOpen, setNotesOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const transcriptTriggerRef = useRef<HTMLButtonElement>(null);
@@ -55,6 +55,7 @@ function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 
       completedBlocks={0}
       stage={<HotspotCardStub />}
       contentLayout={contentLayout}
+      readableOnPhone={readableOnPhone}
       hint={hint}
       narrationBar={null}
       transcriptPanel={<TranscriptPanel text="" open={false} onClose={() => {}} triggerRef={transcriptTriggerRef} />}
@@ -70,6 +71,16 @@ function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 
     />
   );
 }
+
+describe('PlayerStage: tekst końcowego podsumowania na telefonie (D-099)', () => {
+  it('readableOnPhone dokłada klasę .mobile-readable (globals.css: min. 15 px na telefonie) do obszaru bloku; domyślnie jej nie ma', () => {
+    const { unmount } = render(<Harness readableOnPhone />);
+    expect(screen.getByTestId('player-content-area')).toHaveClass('mobile-readable');
+    unmount();
+    render(<Harness />);
+    expect(screen.getByTestId('player-content-area')).not.toHaveClass('mobile-readable');
+  });
+});
 
 describe('PlayerStage: powrót fokusu z NotesDrawer musi wygrać wyścig z restRef.inert (kod review PR #44, druga runda)', () => {
   afterEach(() => {

@@ -273,6 +273,9 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
     expect(screen.getByTestId('case-closed-scene')).not.toContainElement(stats);
     expect(screen.getByTestId('closing-portrait-details').className).toMatch(/text-\[15px\]/);
     expect(stats).toHaveTextContent('Dowody: —');
+    // D-099: podpis czytelnie pod raportem; wartości i podpis w slotach grafiki oznaczone jako tekst grafiki (layout-check je pomija).
+    expect(screen.getByTestId('closing-signed')).toHaveTextContent('Podpis: Jan P.');
+    expect(screen.getByTestId('closing-evidence')).toHaveAttribute('data-graphic-text');
   });
 
   it('wnioski w pionie rezerwują wysokość pełnego tekstu w trakcie wystukiwania', () => {

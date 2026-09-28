@@ -81,7 +81,7 @@ nie do repo (`.gitignore`: `*.preview.html`).
 ### Klocki odprawy (`props-odprawa.ts`, widok z góry na biurko, D-084)
 
 Zarejestrowane w tym samym `PROPS` (`...ODPRAWA_PROPS`). Sceny 1600×900 z jednolitym tłem biurka
-(`"background": { "flat": true, "wall": "#D9C3A5" }`); źródła: `examples/odprawa-*.json`. Części `slot-*` to miejsca, w które
+(`"background": { "flat": true, "wall": "#D9C3A5" }`); źródła: `examples/wyludzone-haslo/odprawa-*.json`. Części `slot-*` to miejsca, w które
 odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots.json`) trafiają do `steps[].slots` bloku BRIEFING.
 
 | prop | parametry | części |
@@ -97,7 +97,7 @@ odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots
 | `caseFolderOpen` | `caseNo, title, victim, victimRole, loss, when, reporter, stamp` | `slot-zadania` |
 | `badgeWallet` | `unit` | `slot-zdjecie`, `slot-imie`, `slot-numer` |
 
-Warianty pionowe (telefon, D-098): sceny 900×1600 (`examples/*-pion.json`, `PION_PROPS`), ich współrzędne trafiają do
+Warianty pionowe (telefon, D-098): sceny 900×1600 (`examples/<slug>/*-pion.json`, `PION_PROPS`), ich współrzędne trafiają do
 `steps[].portrait` bloku BRIEFING i `closing.portrait` (test w `odprawa.test.ts` pilnuje zgodności z `*-pion.hotspots.json`):
 
 | prop | parametry | części |
@@ -110,14 +110,17 @@ cyklicznym importem `PROPS` (kolejność importów modułów nie ma znaczenia). 
 część przecinająca środek klocka (`stackedHalves`) to czytelny błąd.
 
 `phoneTop` w stanie `ringing` dzwoni (klasy animacji `a-ring`, `a-wave`, `a-grow`; `animated: false` je wyłącza). Test
-`odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` -
-po zmianie klocka albo kompozytora przebuduj sceny (`cli.ts build ... --out <assets>/scenes`) i opublikuj (`--assets`).
+`odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/<cel>/*.json` daje identyczny plik i identyczne `*.hotspots.json`
+(B-128: jeden katalog na cel - `examples/<slug>/` dla modułu, wynik w `packages/content/modules/<slug>/assets/scenes` albo `assets/`
+dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/achievements`), i że każda grafika w tych katalogach ma
+źródło. Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny
+(`cli.ts build examples/<slug>/<scena>.json --out <assets>/scenes`) i opublikuj (`--assets`).
 
 ### Przezroczyste tło grafik otwieranych kliknięciem (D-101)
 
 `"background": { "flat": true, "wall": "none" }` - scena bez prostokąta tła (tylko z `flat`). Narzędzia (z `scripts/content`):
-`npx tsx scenes/crop-zooms.ts scenes/examples <scena...>` (zbliżenie przedmiotu/dokumentu/okna: przezroczyste tło, ciasny kadr jedynego
-elementu) i `npx tsx scenes/wrap-in-monitor.ts scenes/examples <scena...>` (ekran komputera w ramce monitora `screenFrame`, tapeta = dawny
+`npx tsx scenes/crop-zooms.ts scenes/examples/<slug> <scena...>` (zbliżenie przedmiotu/dokumentu/okna: przezroczyste tło, ciasny kadr jedynego
+elementu) i `npx tsx scenes/wrap-in-monitor.ts scenes/examples/<slug> <scena...>` (ekran komputera w ramce monitora `screenFrame`, tapeta = dawny
 kolor tła). Zmieniają tylko tło, kadr i przesunięcia; są idempotentne (logika: `scene-tools.ts`, testy: `scene-tools.test.ts`). Klocek,
 który rysuje coś NAD swoim pudełkiem (para z kubka, taśma karteczki), musi być w `OVERFLOW_TOP` - inaczej kadr go utnie. Reguła i test
 w CI: `docs/content/MODULE-PLAYBOOK.md`.

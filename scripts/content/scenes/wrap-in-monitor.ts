@@ -2,7 +2,7 @@
  * Owija scenę „ekranową” (pulpit, okno aplikacji na monitorze) w ramkę monitora z przezroczystym tłem (D-101) - przekształcenie
  * `wrapInMonitor` (scene-tools.ts). Tapeta = dotychczasowy kolor tła sceny; wszystkie elementy przesuwają się o (PAD + bezel), hotspoty
  * przeliczą się przy buildzie. Idempotentne: scena już owinięta (element „ramka-ekranu”) jest pomijana.
- * Uruchom z katalogu scripts/content:  npx tsx scenes/wrap-in-monitor.ts scenes/examples <scena1> [scena2 ...]
+ * Uruchom z katalogu scripts/content:  npx tsx scenes/wrap-in-monitor.ts scenes/examples/<slug> <scena1> [scena2 ...]
  * Potem build do assets, przeliczenie hotspotów w module.json (współrzędne z *.hotspots.json) i publikacja --assets.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -12,7 +12,7 @@ import type { SceneSpec } from './types.js';
 
 const [dir, ...names] = process.argv.slice(2);
 if (!dir || names.length === 0) {
-  console.error('Użycie: npx tsx scenes/wrap-in-monitor.ts <katalog-examples> <scena> [scena ...]');
+  console.error('Użycie: npx tsx scenes/wrap-in-monitor.ts scenes/examples/<slug> <scena> [scena ...]');
   process.exit(1);
 }
 

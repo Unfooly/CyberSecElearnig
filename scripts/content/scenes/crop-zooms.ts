@@ -1,7 +1,7 @@
 /**
  * Przezroczyste tło + ciasne kadrowanie zbliżeń przedmiotów (media image, D-101) - przekształcenie `cropZoom` (scene-tools.ts).
  * Zmienia TYLKO background, width/height oraz x/y jedynego elementu — treść zostaje nietknięta. Idempotentne.
- * Uruchom z katalogu scripts/content:  npx tsx scenes/crop-zooms.ts scenes/examples <plik1> <plik2> ...
+ * Uruchom z katalogu scripts/content:  npx tsx scenes/crop-zooms.ts scenes/examples/<slug> <plik1> <plik2> ...
  * Potem zwykły build tych scen do assets (cli.ts build ... --out <assets>/scenes) i publikacja --assets.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ import type { SceneSpec } from './types.js';
 
 const [dir, ...names] = process.argv.slice(2);
 if (!dir || names.length === 0) {
-  console.error('Użycie: npx tsx scenes/crop-zooms.ts <katalog-examples> <scena> [scena ...]');
+  console.error('Użycie: npx tsx scenes/crop-zooms.ts scenes/examples/<slug> <scena> [scena ...]');
   process.exit(1);
 }
 

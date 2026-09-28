@@ -16,6 +16,7 @@ import { useOverlayLayer } from '../player/overlay-stack';
 import ScenePanContainer from '../player/ScenePanContainer';
 import { vibrate } from '@/lib/vibrate';
 import ExploreFooter from './ExploreFooter';
+import PopupsEasterEgg, { type PopupsHandle } from './PopupsEasterEgg';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 type Phase = 'in' | 'open' | 'out';
@@ -104,7 +105,9 @@ export default function SceneHotspotsBlock({
   const hotspotZIndex = hotspotStackZIndex(hotspots);
   const flat = flattenHotspots(hotspots);
   const initialPanX = computeHotspotCentroid(hotspots);
-  const { addNote } = useNotes();
+  const { addNote, addDistinction, distinctions } = useNotes();
+  // Otwarte okienka easter egga (D-100): Esc zamyka górne okienko, tło i „Odłóż” nie zamykają niczego, dopóki są otwarte.
+  const popupsRef = useRef<PopupsHandle | null>(null);
   const evidence = useEvidence();
   const hints = useHints();
   const reducedMotion = usePrefersReducedMotion();
@@ -150,10 +153,10 @@ export default function SceneHotspotsBlock({
 
   // "Drzwi" (action:'next', B-086/D-071) WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie (klik od razu
   // kończy blok) - inaczej scena z SAMYMI drzwiami (np. "korytarz") nigdy nie mogłaby się ukończyć. Ta sama reguła co server-side
-  // (evaluate.ts) i walidacja modułu (semantics.ts).
+  // (evaluate.ts) i walidacja modułu (semantics.ts). Okienka easter egga (D-100) też poza pulą - nigdy nie są warunkiem ukończenia.
   const doorIds = new Set(hotspots.filter((hotspot) => hotspot.action === 'next').map((hotspot) => hotspot.id));
   const required = requiredItemIds(
-    flat.filter((hotspot) => !doorIds.has(hotspot.id)),
+    flat.filter((hotspot) => !doorIds.has(hotspot.id) && hotspot.media?.kind !== 'popups'),
     block.requiredHotspots,
   );
   const doneCount = required.filter((id) => visited.includes(id)).length;
@@ -223,7 +226,8 @@ export default function SceneHotspotsBlock({
     setNestedActiveId(null);
     setNestedPhase(null);
     setNestedCamera(null);
-    markVisited(hotspot.id);
+    // Easter egg (D-100) liczy się jako odwiedzony dopiero po zamknięciu wszystkich okienek (foundEasterEgg).
+    if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
     if (reducedMotionNow(reducedMotion)) {
       setCamera(null);
       setPhase('open');
@@ -270,7 +274,7 @@ export default function SceneHotspotsBlock({
     setShake(0);
     nestedTriggerRef.current = trigger;
     setNestedActiveId(hotspot.id);
-    markVisited(hotspot.id);
+    if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
     if (reducedMotionNow(reducedMotion)) {
       setNestedPhase('open');
       return;
@@ -301,10 +305,28 @@ export default function SceneHotspotsBlock({
     }
   }
 
-  // "Odłóż" / Esc / klik w tło: zdejmuje jeden poziom.
+  // "Odłóż" / Esc / klik w tło: zdejmuje jeden poziom. Otwarte okienka easter egga: Esc zamyka górne (jak krzyżyk), nic więcej.
   function goBack() {
+    if (popupsRef.current?.pending()) {
+      popupsRef.current.closeTop();
+      return;
+    }
     if (nestedActiveId) closeNested();
     else if (activeId) close();
+  }
+
+  // Wszystkie okienka easter egga zamknięte (D-100): przedmiot odwiedzony (serwer zapisze flagę wyróżnienia przy ukończeniu bloku) i
+  // wyróżnienie w notatniku od razu. Bez dowodu, notatki i wpływu na licznik. W podglądzie ukończonego bloku - bez wyróżnienia.
+  // Wyróżnienie już w notatniku (z /start albo znalezione wcześniej w tej sesji) - outro bez „Nowe”.
+  function hasDistinction(hotspot: AnyHotspot): boolean {
+    const badge = hotspot.media?.kind === 'popups' ? hotspot.media.badge : undefined;
+    return !!badge && distinctions.some((d) => d.blockId === block.id && d.label === badge.label);
+  }
+
+  function foundEasterEgg(hotspot: AnyHotspot) {
+    markVisited(hotspot.id);
+    const badge = hotspot.media?.kind === 'popups' ? hotspot.media.badge : undefined;
+    if (badge && !review && block.id) addDistinction({ blockId: block.id, label: badge.label });
   }
 
   // Drzwi (action:'next'): bez zoomu - gotowe (ready) kończą blok od razu, jak przycisk "Dalej" w pasku; wcześniej klik nic nie robi.
@@ -354,6 +376,8 @@ export default function SceneHotspotsBlock({
   // nakładkę w fazie 'in' - nie może jej od razu zamknąć) i nie jako drugi klik serii.
   function onBackdrop(event: MouseEvent<HTMLElement>) {
     if (event.target !== event.currentTarget || event.detail > 1) return;
+    // Okienka easter egga zamyka tylko krzyżyk (D-100).
+    if (popupsRef.current?.pending()) return;
     const levelPhase = nestedActiveId ? nestedPhaseRef.current : phaseRef.current;
     if (levelPhase === 'open') goBack();
   }
@@ -519,23 +543,52 @@ export default function SceneHotspotsBlock({
                       onClick={onBackdrop}
                       className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${nestedPhase === 'out' ? 'bg-transparent' : 'bg-ink/40 backdrop-blur-[2px]'}`}
                     >
-                      <ZoomContent
-                        hotspot={activeInner}
-                        contentBase={contentBase}
-                        visible={showInner}
-                        reducedMotion={reducedMotion}
-                        noted={noted.includes(activeInner.id)}
-                        review={review}
-                        shake={shake}
-                        transcriptOpen={transcriptOpen}
-                        onToggleTranscript={() => setTranscriptOpen((v) => !v)}
-                        onTake={(from) => take(activeInner, from)}
-                        onPutDown={closeNested}
-                        onBackdrop={onBackdrop}
-                      />
+                      {activeInner.media?.kind === 'popups' ? (
+                        showInner && (
+                          <PopupsEasterEgg
+                            ref={popupsRef}
+                            items={activeInner.media.items ?? []}
+                            outro={activeInner.media.outro ?? ''}
+                            badge={activeInner.media.badge}
+                            reducedMotion={reducedMotion}
+                            onFound={() => foundEasterEgg(activeInner)}
+                            onDone={closeNested}
+                            backLabel="Wróć do pulpitu"
+                            alreadyFound={hasDistinction(activeInner)}
+                          />
+                        )
+                      ) : (
+                        <ZoomContent
+                          hotspot={activeInner}
+                          contentBase={contentBase}
+                          visible={showInner}
+                          reducedMotion={reducedMotion}
+                          noted={noted.includes(activeInner.id)}
+                          review={review}
+                          shake={shake}
+                          transcriptOpen={transcriptOpen}
+                          onToggleTranscript={() => setTranscriptOpen((v) => !v)}
+                          onTake={(from) => take(activeInner, from)}
+                          onPutDown={closeNested}
+                          onBackdrop={onBackdrop}
+                        />
+                      )}
                     </div>
                   )}
                 </>
+              ) : active.media?.kind === 'popups' ? (
+                showOuter && (
+                  <PopupsEasterEgg
+                    ref={popupsRef}
+                    items={active.media.items ?? []}
+                    outro={active.media.outro ?? ''}
+                    badge={active.media.badge}
+                    reducedMotion={reducedMotion}
+                    onFound={() => foundEasterEgg(active)}
+                    onDone={close}
+                    alreadyFound={hasDistinction(active)}
+                  />
+                )
               ) : (
                 <ZoomContent
                   hotspot={active}

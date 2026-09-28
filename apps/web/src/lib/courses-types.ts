@@ -251,8 +251,26 @@ export interface EmailCriterion {
 // odtwarzaczem (plik z --assets, nie z silnika TTS/narracji), scene to zagnieżdżona mini-scena (zawsze 1 poziom -
 // InnerSceneHotspot nie ma już własnego media.kind: "scene"). Jeden płaski interfejs z opcjonalnymi polami wariantów,
 // tak jak EmailCriterion.target niżej - to samo API zwraca (toClientBlock), więc kształt jest identyczny.
-export interface HotspotMedia {
-  kind: 'image' | 'audio' | 'document' | 'scene';
+/** Okienko easter egga (D-100, media.kind "popups"). */
+export interface PopupItem {
+  title: string;
+  body: string;
+  button: string;
+  /** 'dodge': przycisk ucieka przed kursorem (2 razy, nie na dotyku). */
+  behavior?: 'dodge' | 'none';
+  /** Kosmetyczne odliczanie w dół (GG:MM:SS). */
+  countdown?: string;
+}
+
+/** Pola wariantu "popups" (D-100) - wspólne dla HotspotMedia i InnerHotspotMedia. */
+interface PopupsFields {
+  items?: PopupItem[];
+  outro?: string;
+  badge?: { id: string; label: string };
+}
+
+export interface HotspotMedia extends PopupsFields {
+  kind: 'image' | 'audio' | 'document' | 'scene' | 'popups';
   src?: string;
   alt?: string;
   audioUrl?: string;
@@ -273,8 +291,8 @@ export interface NestedScene {
 }
 
 /** Media WEWNĄTRZ zagnieżdżonej sceny: jak HotspotMedia, ale bez wariantu "scene" (limit 1 poziomu). */
-export interface InnerHotspotMedia {
-  kind: 'image' | 'audio' | 'document';
+export interface InnerHotspotMedia extends PopupsFields {
+  kind: 'image' | 'audio' | 'document' | 'popups';
   src?: string;
   alt?: string;
   audioUrl?: string;
@@ -369,12 +387,20 @@ export interface ClientNote {
   kind?: NoteKind;
 }
 
+/** Ukryte wyróżnienie easter egga (D-100): etykieta z treści, rozwiązana przez serwer (bez id z treści). */
+export interface ClientDistinction {
+  blockId: string;
+  label: string;
+}
+
 export interface ClientProgress {
   v: 2;
   blocks: Record<string, ClientProgressBlock>;
   notes: ClientNote[];
   // Dowody liczone przez serwer (brak w odpowiedziach starszego API).
   evidence?: EvidenceSummary;
+  // Wyróżnienia easter egga (D-100; brak w odpowiedziach starszego API).
+  distinctions?: ClientDistinction[];
 }
 
 export interface CourseDetail {

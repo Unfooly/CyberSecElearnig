@@ -629,7 +629,7 @@ export default function CoursePlayer({
   return (
     // Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087/D-089).
     <SfxProvider enabled={preference.enabled}>
-    <NotesProvider initial={initial.progress?.notes ?? []} blockTitles={blockTitles} tasks={tasks}>
+    <NotesProvider initial={initial.progress?.notes ?? []} initialDistinctions={initial.progress?.distinctions} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <HintProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
           <ApplyServerNotes notes={serverNotes} />

@@ -277,6 +277,32 @@
 .closing-frame[data-orientation='portrait'] .closing-box {
   width: min(100cqw, calc(100cqh * 9 / 16));
 }
+/* Okienka easter egga (PopupsEasterEgg.tsx, D-100): kaskada w procentach nakładki zbliżenia (--i = numer okienka). Niska nakładka
+   (telefon w poziomie, < 360 px wysokości): kaskada bardziej w bok niż w dół i ciaśniejsze okienko - trzy okienka mieszczą się w całości. */
+.easter-popups {
+  container: easter / size;
+}
+.easter-popup {
+  left: calc(6% + var(--i) * 6%);
+  top: calc(6% + var(--i) * 11%);
+}
+@container easter (max-height: 360px) {
+  .easter-popup {
+    left: calc(3% + var(--i) * 14%);
+    /* 5%: zapas na róg okienka obróconego o 3°. */
+    top: calc(5% + var(--i) * 5%);
+  }
+  .easter-popup-body {
+    gap: 6px;
+    padding-top: 6px;
+    padding-bottom: 8px;
+  }
+  .easter-popup-countdown {
+    font-size: 18px;
+    line-height: 26px;
+  }
+}
+
 /* Końcowe podsumowanie na telefonie (D-099): w blokach od rekonstrukcji do zamknięcia sprawy (PlayerStage readableOnPhone) drobny
    tekst interfejsu (text-xs 12 px, text-sm 14 px) ma na telefonie 15 px. Jedna reguła zamiast wariantów w każdym komponencie; na
    szerszych ekranach bez zmian. Nadpisuje też leading-* na tych elementach (1.4); rozmiarów arbitralnych (text-[13px]) i stylów inline
@@ -325,6 +351,17 @@
    od razu stoi w stanie końcowym (klasy nic nie robią), a tekst "maszyny do pisania" pokazuje się w całości (logika w
    komponencie, usePrefersReducedMotion). Kolory z tokenów (var(--...)), bez nowych. */
 @media (prefers-reduced-motion: no-preference) {
+  /* Easter egg (PopupsEasterEgg.tsx, D-100): okienko wyskakuje z przesadnym odbiciem, drga po kliknięciu przycisku, ekran mruga
+     przy otwarciu. */
+  .popup-in {
+    animation: popup-in 260ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+  .popup-shake {
+    animation: scene-zoom-shake 320ms ease-in-out;
+  }
+  .popup-blink {
+    animation: popup-blink 200ms ease-out both;
+  }
   /* Teczka sprawy (DossierBlock.tsx, D-083): przewrócenie kartki przy zmianie przekładki. */
   .dossier-sheet-enter {
     animation: dossier-sheet-enter 260ms ease-out both;
@@ -527,6 +564,26 @@
   40%,
   80% {
     transform: translateX(6px);
+  }
+}
+
+@keyframes popup-in {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes popup-blink {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
   }
 }
 

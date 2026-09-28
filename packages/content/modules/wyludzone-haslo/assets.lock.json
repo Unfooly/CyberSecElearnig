@@ -112,6 +112,16 @@
       "hash": "3ad51f7e",
       "key": "assets/wyludzone-haslo/scenes/historia-przegladarki.3ad51f7e.svg"
     },
+    "biuro-anny#hotspots.1.media.scene.hotspots.0.media.imagePortrait": {
+      "original": "scenes/mail-na-ekranie-pion.svg",
+      "hash": "7e4cd257",
+      "key": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.7e4cd257.svg"
+    },
+    "biuro-anny#hotspots.1.media.scene.hotspots.1.media.imagePortrait": {
+      "original": "scenes/historia-przegladarki-pion.svg",
+      "hash": "cf750033",
+      "key": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.cf750033.svg"
+    },
     "rozmowa-anna#character.avatar": {
       "original": "avatars/anna.svg",
       "hash": "a31c9500",

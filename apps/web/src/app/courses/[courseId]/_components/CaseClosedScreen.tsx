@@ -138,12 +138,12 @@ function RewardToast({ levelUp, badges, show, animate }: { levelUp: string | nul
     <div
       aria-hidden="true"
       data-testid="reward-toast"
-      className={`pointer-events-none absolute inset-x-3 bottom-3 z-20 mx-auto flex max-w-sm items-center gap-3 rounded-card bg-[#261D7A] px-4 py-3 text-white shadow-card ${animate ? 'motion-safe:animate-rise-in' : ''}`}
+      className={`pointer-events-none absolute inset-x-3 bottom-3 z-20 mx-auto flex max-w-sm items-center gap-3 rounded-card bg-rank-milestone px-4 py-3 text-white shadow-card ${animate ? 'motion-safe:animate-rise-in' : ''}`}
     >
       <Trophy aria-hidden="true" className="h-7 w-7 shrink-0 text-[#FFD36E]" />
       <div className="min-w-0 text-[15px] leading-snug">
         {levelUp && <p className="font-extrabold">{levelUp}</p>}
-        {badges.length > 0 && <p className="font-semibold text-white/90">{badges.length === 1 ? `Nowa odznaka: ${badges[0]}` : `Nowe odznaki: ${badges.join(', ')}`}</p>}
+        {badges.length > 0 && <p className="font-semibold text-white/90">{badges.length === 1 ? `Nowe osiągnięcie: ${badges[0]}` : `Nowe osiągnięcia: ${badges.join(', ')}`}</p>}
       </div>
     </div>
   );

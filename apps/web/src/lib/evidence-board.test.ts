@@ -19,8 +19,8 @@ describe('boardLayout', () => {
     const pieces = [...layout.slots, layout.start!, layout.end!];
     for (const piece of pieces) expect(inside(layout.cork, piece)).toBe(true);
     for (let i = 0; i < pieces.length; i += 1) for (let j = i + 1; j < pieces.length; j += 1) expect(overlaps(pieces[i], pieces[j])).toBe(false);
-    expect(layout.tray.y).toBeGreaterThanOrEqual(layout.frame.y + layout.frame.h);
-    expect(layout.tray.y + layout.tray.h).toBeLessThanOrEqual(layout.height);
+    expect(layout.tray!.y).toBeGreaterThanOrEqual(layout.frame.y + layout.frame.h);
+    expect(layout.tray!.y + layout.tray!.h).toBeLessThanOrEqual(layout.height);
   });
 
   it('poziomo: więcej pól = węższe karty, nadal bez nakładania (3..12)', () => {
@@ -32,17 +32,38 @@ describe('boardLayout', () => {
     }
   });
 
-  it('pionowo (telefon): zygzak w dwóch kolumnach z góry na dół, tacka pod ramą', () => {
+  it('pionowo (telefon, D-105): jedna kolumna szerokich kart na przemian przy lewej i prawej krawędzi, tacka poza sceną', () => {
     const layout = boardLayout(6, 'portrait', { start: true, end: true });
     expect(layout.width).toBeLessThan(layout.height);
     const xs = layout.slots.map((slot) => slot.x);
     expect(new Set(xs).size).toBe(2);
-    expect(xs[0]).not.toBe(xs[1]);
-    for (let i = 1; i < 6; i += 1) expect(layout.slots[i].y).toBeGreaterThan(layout.slots[i - 1].y);
+    expect(xs[0]).toBeLessThan(xs[1]);
+    // Szerokie karty (ponad 70% sceny) - jedna "kolumna", nie dwie obok siebie.
+    expect(layout.card.w / layout.width).toBeGreaterThan(0.7);
+    for (let i = 1; i < 6; i += 1) expect(layout.slots[i].y).toBeGreaterThanOrEqual(layout.slots[i - 1].y + layout.slots[i - 1].h);
     for (const piece of [...layout.slots, layout.start!, layout.end!]) expect(inside(layout.cork, piece)).toBe(true);
-    // Sąsiednie pola są w różnych kolumnach, więc się nie nakładają.
-    for (let i = 1; i < 6; i += 1) expect(overlaps(layout.slots[i], layout.slots[i - 1])).toBe(false);
-    expect(layout.tray.y).toBeGreaterThan(layout.frame.y + layout.frame.h);
+    // Koniec łańcucha po stronie przeciwnej do ostatniego pola (6. pole - prawa strona, zdjęcie z lewej).
+    expect(layout.end!.x).toBeLessThan(layout.slots[5].x);
+    expect(layout.tray).toBeNull();
+  });
+
+  it('pionowo: długi tekst śladu i podpis zdjęcia = wyższe karty i zdjęcia (tekst 15 px się nie ucina), nadal bez nakładania', () => {
+    const short = boardLayout(6, 'portrait', { start: true, end: true, maxChars: 64, photoChars: { label: 10, caption: 18 } });
+    const long = boardLayout(6, 'portrait', { start: true, end: true, maxChars: 300, photoChars: { label: 40, caption: 60 } });
+    // Moduł 1 (najdłuższy ślad 64 znaki) - minimalne 150 j.
+    expect(short.card.h).toBe(150);
+    expect(long.card.h).toBeGreaterThanOrEqual(30 + Math.ceil(300 / 26) * 36);
+    expect(long.start!.h).toBeGreaterThan(short.start!.h);
+    const pieces = [...long.slots, long.start!, long.end!];
+    for (const piece of pieces) expect(inside(long.cork, piece)).toBe(true);
+    for (let i = 0; i < pieces.length; i += 1) for (let j = i + 1; j < pieces.length; j += 1) expect(overlaps(pieces[i], pieces[j])).toBe(false);
+  });
+
+  it('pionowo: wysokość sceny rośnie z liczbą pól (scena przewija się, karty zawsze tej samej wielkości)', () => {
+    const three = boardLayout(3, 'portrait', { start: true, end: true });
+    const nine = boardLayout(9, 'portrait', { start: true, end: true });
+    expect(nine.height).toBeGreaterThan(three.height);
+    expect(nine.card).toEqual(three.card);
   });
 
   it('pionowo, 3..12 pól ze zdjęciami i bez: nic na siebie nie nachodzi (pola, zdjęcia), wszystko w korku', () => {
@@ -69,8 +90,7 @@ describe('boardLayout', () => {
     expect(boardOrientation(390, 700)).toBe('portrait');
     expect(boardOrientation(1300, 600)).toBe('landscape');
     expect(boardOrientation(500, 520)).toBe('landscape');
-    expect(boardRatio('landscape')).toBeCloseTo(16 / 9);
-    expect(boardRatio('portrait')).toBeCloseTo(0.6);
+    expect(boardRatio()).toBeCloseTo(16 / 9);
   });
 });
 

@@ -287,10 +287,12 @@ describe('OrderingBlock: tablica śledcza', () => {
   });
 });
 
-// Telefon w pionie (D-099): miejsce wyraźnie wyższe niż szersze -> lista pól (tekst 15 px, cele dotyku 44 px).
-describe('OrderingBlock: lista na telefonie w pionie', () => {
+// Telefon w pionie (D-105, zastępuje listę z D-099): miejsce wyraźnie wyższe niż szersze -> tablica z korkiem w jednej kolumnie
+// zygzakiem, tacka jako pasek pod sceną, tekst min. 15 px; palcem tylko stuknięcia.
+describe('OrderingBlock: tablica zygzakiem na telefonie w pionie', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
   // Region ogłoszeń bloku (Probe z setup() to też role=status - <output>).
@@ -298,94 +300,165 @@ describe('OrderingBlock: lista na telefonie w pionie', () => {
   const portrait = () =>
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) }) as DOMRect);
 
-  it('lista zamiast tablicy: pola po kolei, ślady na tacce 15 px, bez nici i korka 16:9', () => {
+  it('tablica z korkiem i nicią (nie lista): pola w jednej kolumnie zygzakiem, tacka POZA sceną, tekst kart i tacki min. 15 px', () => {
     portrait();
     setup();
     const board = screen.getByTestId('evidence-board');
-    expect(board).toHaveAttribute('data-layout', 'list');
-    expect(board.querySelector('svg [data-yarn]')).toBeNull();
-    expect(emptySlot(1)).toHaveTextContent('Puste pole');
+    expect(board).toHaveAttribute('data-layout', 'zigzag');
+    expect(board.querySelector('.board-cork')).not.toBeNull();
+    expect(board.querySelectorAll('svg [data-yarn]').length).toBeGreaterThan(0);
+    // Zygzak: sąsiednie pola na przemian przy lewej i prawej krawędzi, każde niżej od poprzedniego.
+    const lefts = [1, 2, 3].map((n) => parseFloat(emptySlot(n).style.left));
+    const tops = [1, 2, 3].map((n) => parseFloat(emptySlot(n).style.top));
+    expect(lefts[0]).toBeLessThan(lefts[1]);
+    expect(lefts[2]).toBe(lefts[0]);
+    expect(tops[1]).toBeGreaterThan(tops[0]);
+    expect(tops[2]).toBeGreaterThan(tops[1]);
+    // Tacka - pasek pod sceną (nie w niej), karty tacki 15 px.
+    expect(board).not.toContainElement(tray());
     expect(trayCard('Usuń mail')).toHaveStyle({ fontSize: '15px' });
     expect(screen.getByText('A.K.')).toBeInTheDocument();
   });
 
-  it('stuknięcie śladu przypina go do pierwszego pustego pola; dwa przypięte - zamiana; pełna lista - „Sprawdź trop” wysyła kolejność', () => {
+  it('karty i zdjęcia na scenie: czcionka max(15px, …) - na wąskim telefonie nie mniej niż 15 px', () => {
+    portrait();
+    setup();
+    pin('Usuń mail', 1);
+    expect(placed(1).querySelector('span')!.style.fontSize).toMatch(/^max\(15px,/);
+    expect(screen.getByText('Anna Kowalska').style.fontSize).toMatch(/^max\(15px,/);
+    expect(screen.getByText('Tablica śledcza · CS/2026/0915').style.fontSize).toMatch(/^max\(15px,/);
+  });
+
+  it('stuknięcie: ślad z tacki, potem pole (nie auto-przypięcie); dwa przypięte - zamiana; pełna tablica - „Sprawdź trop” wysyła kolejność', () => {
     portrait();
     const onSubmit = setup();
     fireEvent.click(trayCard('Nie klikaj w link'));
-    expect(placed(1)).toHaveTextContent('Nie klikaj w link');
-    fireEvent.click(trayCard('Usuń mail'));
-    fireEvent.click(trayCard('Zgłoś wiadomość'));
-    expect(placed(3)).toHaveTextContent('Zgłoś wiadomość');
-    // Zamiana: wybór pola 2, potem pole 3.
-    fireEvent.click(placed(2));
+    // Samo stuknięcie śladu tylko go wybiera - pole wybiera gracz.
+    expect(trayCard('Nie klikaj w link')).toHaveAttribute('aria-pressed', 'true');
+    expect(emptySlot(1)).toBeInTheDocument();
+    fireEvent.click(emptySlot(2));
+    expect(placed(2)).toHaveTextContent('Nie klikaj w link');
+    pin('Usuń mail', 1);
+    pin('Zgłoś wiadomość', 3);
+    // Zamiana: wybór pola 1, potem pole 3.
+    fireEvent.click(placed(1));
     fireEvent.click(placed(3));
-    expect(placed(2)).toHaveTextContent('Zgłoś wiadomość');
+    expect(placed(1)).toHaveTextContent('Zgłoś wiadomość');
     expect(placed(3)).toHaveTextContent('Usuń mail');
     fireEvent.click(screen.getByRole('button', { name: 'Sprawdź trop' }));
-    expect(onSubmit).toHaveBeenCalledWith({ order: ['x1', 'x2', 'x3'] });
+    expect(onSubmit).toHaveBeenCalledWith({ order: ['x2', 'x1', 'x3'] });
   });
 
-  it('wybrany przypięty ślad: „Odłóż na tackę” zwraca go na tackę, a puste pola mówią „Przypnij tutaj”', () => {
+  it('wybór śladu z tacki przewija KONTENER SCENY (tylko w pionie) do pierwszego pustego pola poza widokiem', () => {
+    // Blok i scena 360×600 od góry ekranu, pola niżej (700..780) - poza widokiem kontenera sceny.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const slot = this.hasAttribute('data-slot-index');
+      return { width: 360, height: slot ? 80 : 600, x: 0, y: slot ? 700 : 0, top: slot ? 700 : 0, left: 0, right: 360, bottom: slot ? 780 : 600, toJSON: () => ({}) } as DOMRect;
+    });
+    setup();
+    const scroll = vi.fn();
+    screen.getByTestId('board-outer').scrollTo = scroll;
+    // detail 1 = stuknięcie (detail 0 to aktywacja klawiaturą - fokus zamiast przewijania).
+    fireEvent.click(trayCard('Zgłoś wiadomość'), { detail: 1 });
+    // Pole na środku kontenera: 700 - (600 - 80) / 2; bez przewijania w poziomie (bez `left`).
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.calls[0][0]).toEqual({ top: 440, behavior: 'smooth' });
+    // Aktywacja klawiaturą (detail 0) nie przewija - fokus przechodzi na pole (przeglądarka sama je pokaże).
+    scroll.mockClear();
+    fireEvent.click(trayCard('Zgłoś wiadomość'), { detail: 1 });
+    fireEvent.click(trayCard('Usuń mail'), { detail: 0 });
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('pole już widoczne w kontenerze sceny - bez przewijania', () => {
     portrait();
     setup();
-    fireEvent.click(trayCard('Usuń mail'));
+    const scroll = vi.fn();
+    screen.getByTestId('board-outer').scrollTo = scroll;
+    fireEvent.click(trayCard('Zgłoś wiadomość'), { detail: 1 });
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('obrót w trakcie gry: przypięte ślady zostają, przeciągany klon znika (karta zmienia rodzica - pointerup już nie przyjdzie)', () => {
+    let size = { width: 1280, height: 720 };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ ...size, x: 0, y: 0, top: 0, left: 0, right: size.width, bottom: size.height, toJSON: () => ({}) }) as DOMRect,
+    );
+    let resize = () => {};
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resize = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    setup();
+    expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-layout', 'u');
+    pin('Usuń mail', 1);
+    const card = trayCard('Zgłoś wiadomość');
+    fireEvent.pointerDown(card, { pointerType: 'mouse', clientX: 10, clientY: 10, button: 0 });
+    fireEvent.pointerMove(card, { pointerType: 'mouse', clientX: 10, clientY: 80 });
+    expect(document.querySelector('body > .board-card')).not.toBeNull();
+    size = { width: 360, height: 600 };
+    act(() => resize());
+    expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-layout', 'zigzag');
+    expect(document.querySelector('body > .board-card')).toBeNull();
+    expect(placed(1)).toHaveTextContent('Usuń mail');
+    expect(trayCard('Zgłoś wiadomość')).toBeInTheDocument();
+  });
+
+  it('wybrany przypięty ślad: „Odłóż na tackę” w pasku tacki zwraca go na tackę', () => {
+    portrait();
+    setup();
+    pin('Usuń mail', 1);
     fireEvent.click(placed(1));
-    expect(emptySlot(2)).toHaveTextContent('Przypnij tutaj');
-    fireEvent.click(screen.getByRole('button', { name: 'Odłóż na tackę' }));
+    fireEvent.click(within(tray()).getByRole('button', { name: 'Odłóż na tackę' }));
     expect(trayCard('Usuń mail')).toBeInTheDocument();
     expect(emptySlot(1)).toBeInTheDocument();
+    expect(live()).toHaveTextContent('Ślad „Usuń mail” wrócił na tackę.');
   });
 
-  it('klawiatura: po przypięciu fokus na następny ślad z tacki, po ostatnim - „Sprawdź trop”; ogłoszenie mówi, na którym polu', () => {
-    portrait();
-    setup();
-    expect(trayCard('Zgłoś wiadomość')).toHaveAccessibleName(/przypnij do pola 1$/);
-    fireEvent.click(trayCard('Zgłoś wiadomość'));
-    expect(live()).toHaveTextContent('Ślad „Zgłoś wiadomość” przypięty do pola 1.');
-    expect(trayCard('Usuń mail')).toHaveFocus();
-    expect(trayCard('Usuń mail')).toHaveAccessibleName(/przypnij do pola 2$/);
-    fireEvent.click(trayCard('Usuń mail'));
-    fireEvent.click(trayCard('Nie klikaj w link'));
-    expect(screen.getByRole('button', { name: 'Sprawdź trop' })).toHaveFocus();
-  });
-
-  it('klawiatura: wybrany przypięty ślad -> fokus na pierwsze puste pole, Enter przenosi; Escape anuluje wybór', () => {
+  it('klawiatura: wybór śladu -> fokus na pierwsze puste pole; po ostatnim przypięciu - „Sprawdź trop”; Escape anuluje wybór', () => {
     vi.useFakeTimers();
     portrait();
     setup();
-    fireEvent.click(trayCard('Usuń mail'));
-    // Aktywacja klawiaturą (detail 0): fokus na pierwsze puste pole.
-    fireEvent.click(placed(1), { detail: 0 });
+    fireEvent.click(trayCard('Usuń mail'), { detail: 0 });
     act(() => {
       vi.runAllTimers();
     });
-    expect(emptySlot(2)).toHaveFocus();
-    fireEvent.click(emptySlot(2));
-    expect(placed(2)).toHaveTextContent('Usuń mail');
-    expect(emptySlot(1)).toBeInTheDocument();
-    fireEvent.click(placed(2), { detail: 0 });
-    expect(live()).toHaveTextContent(/Wybrano ślad „Usuń mail”.*Odłóż na tackę/);
-    fireEvent.keyDown(placed(2), { key: 'Escape' });
+    expect(emptySlot(1)).toHaveFocus();
+    fireEvent.click(emptySlot(1));
+    pin('Zgłoś wiadomość', 2);
+    fireEvent.click(trayCard('Nie klikaj w link'), { detail: 0 });
+    fireEvent.keyDown(trayCard('Nie klikaj w link'), { key: 'Escape' });
     expect(live()).toHaveTextContent('Anulowano wybór śladu.');
-    expect(screen.queryByRole('button', { name: 'Odłóż na tackę' })).not.toBeInTheDocument();
+    pin('Nie klikaj w link', 3);
+    expect(screen.getByRole('button', { name: 'Sprawdź trop' })).toHaveFocus();
   });
 
-  it('dotyk nie przeciąga (ruch palca przewija listę) - tylko stuknięcia', () => {
+  it('dotyk nie przeciąga (ruch palca przewija scenę i tackę) - tylko stuknięcia; mysz przeciąga jak na tablicy poziomej', () => {
     portrait();
     setup();
     const card = trayCard('Usuń mail');
     fireEvent.pointerDown(card, { pointerType: 'touch', clientX: 10, clientY: 10, button: 0 });
     fireEvent.pointerMove(card, { pointerType: 'touch', clientX: 10, clientY: 80 });
     expect(document.querySelector('body > .board-card')).toBeNull();
+    fireEvent.pointerDown(card, { pointerType: 'mouse', clientX: 10, clientY: 10, button: 0 });
+    fireEvent.pointerMove(card, { pointerType: 'mouse', clientX: 10, clientY: 80 });
+    expect(document.querySelector('body > .board-card')).not.toBeNull();
+    fireEvent.pointerCancel(card);
   });
 
-  it('wynik: zdanie, liczba trafień i „Dalej” NAD polami (widoczne od razu po sprawdzeniu)', () => {
+  it('wynik: zdanie, liczba trafień i „Dalej” NAD sceną (widoczne od razu po sprawdzeniu), bez tacki', () => {
     portrait();
     setup({ result: { answer: { order: ['x2', 'x1', 'x3'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 }, onContinue: vi.fn() });
-    const next = screen.getByRole('button', { name: 'Dalej' });
-    const firstSlot = placed(1);
-    expect(next.compareDocumentPosition(firstSlot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole('group', { name: 'Wynik' })).toContainElement(screen.getByTestId('board-feedback'));
+    const result = screen.getByRole('group', { name: 'Wynik' });
+    expect(result).toContainElement(screen.getByTestId('board-feedback'));
+    expect(result).toContainElement(screen.getByRole('button', { name: 'Dalej' }));
+    expect(result.compareDocumentPosition(screen.getByTestId('evidence-board')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Ślady do przypięcia' })).not.toBeInTheDocument();
   });
 });

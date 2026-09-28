@@ -19,9 +19,11 @@ import {
 } from '@/lib/evidence-board';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 
-// Układanie kroków w kolejności jako TABLICA ŚLEDCZA (feat/evidence-board, D-088). Telefon w pionie (D-099): lista pól 1..N (tekst 15 px,
-// stuknięcie śladu przypina go do pierwszego pustego pola, wynik nad polami) zamiast tablicy - reszta opisu dotyczy tablicy.
-// Korek w drewnianej ramie, pola 1..N w kształcie U, czerwona nić między pinezkami (ciągła między przypiętymi, przerywana do pustych), "zdjęcia" początku i
+// Układanie kroków w kolejności jako TABLICA ŚLEDCZA (feat/evidence-board, D-088). Telefon w pionie (D-105, zastępuje listę z D-099):
+// ta sama tablica z korkiem, pinezkami i nicią, ale pola w jednej kolumnie zygzakiem (szerokie karty, tekst min. 15 px), scena
+// przewijana w pionie, tacka jako poziomy pasek pod sceną, wynik nad sceną; palcem tylko stuknięcia (ślad -> pole, dwa przypięte =
+// zamiana), ruch palca przewija. Poziomo:
+// korek w drewnianej ramie, pola 1..N w kształcie U, czerwona nić między pinezkami (ciągła między przypiętymi, przerywana do pustych), "zdjęcia" początku i
 // końca łańcucha z treści (start/end). Ślady leżą na tacce (kolejność przetasowana przez serwer - seed przypisania, D-051). Trzy
 // sposoby przypięcia: przeciąganie (pointer events), klik ślad -> klik pole, klawiatura (te same przyciski; Esc anuluje wybór).
 // Upuszczenie na zajęte pole = zamiana. "Sprawdź trop", gdy wszystkie pola są pełne; ocenę liczy wyłącznie serwer.
@@ -83,12 +85,19 @@ export default function OrderingBlock({
   const textOf = (id: string) => items.find((item) => (item.id ?? item.text) === id)?.text ?? '';
   const readOnly = !!result;
   const reducedMotion = usePrefersReducedMotion();
-  const outerRef = useRef<HTMLDivElement>(null);
   const [orientation, setOrientation] = useState<BoardOrientation>('landscape');
   const [cramped, setCramped] = useState(false);
-  const layout = boardLayout(ids.length, orientation, { start: !!block.start, end: !!block.end });
-  // Telefon w pionie (D-099): lista pól zamiast tablicy - na korku 9:16 szerokości telefonu tekst kart miał 7-10 px.
-  const list = orientation === 'portrait';
+  // Pionowo wysokość kart i zdjęć rośnie z najdłuższym tekstem (tekst 15 px nie jest ucinany, D-105).
+  const photos = [block.start, block.end].filter((photo) => !!photo);
+  const layout = boardLayout(ids.length, orientation, {
+    start: !!block.start,
+    end: !!block.end,
+    maxChars: Math.max(0, ...items.map((item) => item.text.length)),
+    photoChars: { label: Math.max(0, ...photos.map((photo) => photo.label.length)), caption: Math.max(0, ...photos.map((photo) => photo.caption.length)) },
+  });
+  // Telefon w pionie (D-105): zygzak w jednej kolumnie, scena przewijana, tacka pod sceną, czcionki min. 15 px.
+  const portrait = orientation === 'portrait';
+  const fs = (value: number) => (portrait ? `max(15px, ${u(value)})` : u(value));
 
   const [placements, setPlacements] = useState<(string | null)[]>(() => ids.map(() => null));
   const [selected, setSelected] = useState<string | null>(null);
@@ -102,6 +111,8 @@ export default function OrderingBlock({
   const suppressClick = useRef(false);
   const checkRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Kontener sceny (pionowo przewijany - D-105).
+  const outerRef = useRef<HTMLDivElement>(null);
 
   // Wynik: najpierw werdykt na układzie gracza, potem (po VERDICT_MS) karty lecą na poprawne miejsca. Podgląd bez "Dalej" i
   // reduced-motion - od razu stan końcowy.
@@ -122,9 +133,10 @@ export default function OrderingBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Orientacja z WŁASNEGO dostępnego miejsca (nie z okna): telefon w pionie -> lista (D-099).
+  // Orientacja z WŁASNEGO dostępnego miejsca (nie z okna): cały obszar bloku (rootRef) - nie scena, której wysokość zależy od układu
+  // (pionowo tacka jest pod sceną; pomiar samej sceny mógłby przełączać orientację w kółko).
   useLayoutEffect(() => {
-    const element = outerRef.current;
+    const element = rootRef.current;
     if (!element) return undefined;
     const update = () => {
       const { width, height } = element.getBoundingClientRect();
@@ -135,7 +147,7 @@ export default function OrderingBlock({
       // zygzak jest dla tego ekranu). Szerokość sceny = min(szerokość, wysokość × 16/9). Tylko przy dotyku (pointer: coarse) - wąskie
       // okno desktopu z myszą nie jest telefonem (ta sama zasada co PlayerStage, PR #44).
       const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
-      setCramped(touch && next === 'landscape' && Math.min(width, height * boardRatio('landscape')) < COMPACT_BOARD_PX);
+      setCramped(touch && next === 'landscape' && Math.min(width, height * boardRatio()) < COMPACT_BOARD_PX);
     };
     update();
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -193,37 +205,35 @@ export default function OrderingBlock({
   function clickCard(id: string, byKeyboard: boolean) {
     if (suppressClick.current || readOnly || disabled) return;
     const slotIndex = placements.indexOf(id);
-    // Lista (telefon w pionie, D-099): stuknięcie śladu z tacki przypina go do pierwszego pustego pola - ślady układa się po kolei
-    // (także gdy wybrany jest przypięty ślad - wybór znika, ogłoszenie z move() mówi, na którym polu wylądował nowy).
-    if (list && slotIndex < 0) {
-      const firstEmpty = placements.findIndex((candidate) => candidate === null);
-      if (firstEmpty >= 0) move(id, firstEmpty);
-      return;
-    }
     if (selected && selected !== id && slotIndex >= 0) {
       move(selected, slotIndex);
       return;
     }
     const next = selected === id ? null : id;
     setSelected(next);
-    setAnnouncement(
-      next
-        ? list
-          ? `Wybrano ślad „${textOf(id)}”. Wybierz inny przypięty ślad, żeby je zamienić, puste pole albo „Odłóż na tackę”.`
-          : `Wybrano ślad „${textOf(id)}”. Wybierz pole na tablicy.`
-        : 'Anulowano wybór śladu.',
-    );
+    setAnnouncement(next ? `Wybrano ślad „${textOf(id)}”. Wybierz pole na tablicy.` : 'Anulowano wybór śladu.');
+    const firstEmpty = placements.findIndex((candidate) => candidate === null);
+    if (!next || firstEmpty < 0) return;
+    const emptySlot = () => rootRef.current?.querySelector<HTMLElement>(`[data-slot-index="${firstEmpty}"]:not([data-card-id])`);
     // Klawiatura: pola są w DOM przed tacką - po wyborze śladu fokus od razu na pierwsze puste pole (Tab/Shift+Tab między polami).
-    if (next && byKeyboard) {
-      const firstEmpty = placements.findIndex((candidate) => candidate === null);
-      if (firstEmpty >= 0) window.setTimeout(() => rootRef.current?.querySelector<HTMLElement>(`[data-slot-index="${firstEmpty}"]:not([data-card-id])`)?.focus(), 0);
+    if (byKeyboard) window.setTimeout(() => emptySlot()?.focus(), 0);
+    // Telefon w pionie: tacka jest pod przewijaną sceną - po wyborze śladu z tacki pierwsze puste pole przewija się w widok. Tylko
+    // kontener sceny i tylko w pionie (scrollIntoView przewijałby też przodków, także w poziomie - strona "uciekała" w bok).
+    else if (portrait && slotIndex < 0) {
+      const outer = outerRef.current;
+      const slot = emptySlot();
+      if (!outer || !slot) return;
+      const box = outer.getBoundingClientRect();
+      const target = slot.getBoundingClientRect();
+      if (target.top >= box.top && target.bottom <= box.bottom) return;
+      outer.scrollTo?.({ top: outer.scrollTop + target.top - box.top - Math.max(0, (box.height - target.height) / 2), behavior: reducedMotionNow() ? 'auto' : 'smooth' });
     }
   }
 
   function clickSlot(index: number) {
     if (readOnly || disabled) return;
     if (!selected) {
-      setAnnouncement(list ? 'Stuknij ślad z listy „Ślady do przypięcia” - trafi na pierwsze puste pole.' : 'Najpierw wybierz ślad z tacki.');
+      setAnnouncement('Najpierw wybierz ślad z tacki.');
       return;
     }
     move(selected, index);
@@ -244,8 +254,8 @@ export default function OrderingBlock({
 
   // Przeciąganie (mysz, dotyk, pióro): dopiero po przesunięciu o DRAG_THRESHOLD_PX - krótki klik zostaje wyborem.
   function pointerDown(event: PointerEvent<HTMLButtonElement>, id: string) {
-    // Tylko główny przycisk (prawy/środkowy nie przeciąga). Lista na telefonie: palcem tylko stuknięcia (ruch palca przewija listę).
-    if (readOnly || disabled || event.button > 0 || (list && event.pointerType === 'touch')) return;
+    // Tylko główny przycisk (prawy/środkowy nie przeciąga). Telefon w pionie: palcem tylko stuknięcia (ruch palca przewija scenę i tackę).
+    if (readOnly || disabled || event.button > 0 || (portrait && event.pointerType === 'touch')) return;
     const fromTray = placements.indexOf(id) < 0;
     dragStart.current = { id, x: event.clientX, y: event.clientY, rect: event.currentTarget.getBoundingClientRect(), touchTray: fromTray && event.pointerType === 'touch' };
     // Na tacce przy dotyku przechwytujemy dopiero, gdy ruch okaże się przeciąganiem (pionowym) - poziomy ruch przewija tackę.
@@ -304,6 +314,15 @@ export default function OrderingBlock({
     setHoverTarget(null);
   }
 
+  // Obrót w trakcie przeciągania: karta przechodzi do innego rodzica (tacka w scenie <-> pasek pod sceną), przeciągany przycisk się
+  // odmontowuje i jego pointerup/lostpointercapture już nie przyjdą - bez tego klon zostałby na ekranie, a następne puszczenie
+  // wskaźnika przeniosłoby starą kartę.
+  useEffect(() => {
+    pointerCancel();
+    // Tylko przy zmianie orientacji (pointerCancel czyści refy i stan, nie zależy od renderu).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orientation]);
+
   const cardHandlers = (id: string) => ({
     // detail 0 = aktywacja klawiaturą (Enter/Spacja).
     onClick: (event: { detail: number }) => clickCard(id, event.detail === 0),
@@ -317,186 +336,134 @@ export default function OrderingBlock({
     },
   });
 
-  // Tablica skaluje tekst z szerokością sceny; lista (telefon w pionie) ma stałe 15 px - także klon przeciąganej karty.
-  const cardText = { fontSize: list ? 15 : u(15), lineHeight: 1.3 } as CSSProperties;
+  // Tablica skaluje tekst z szerokością sceny; na telefonie w pionie nie mniej niż 15 px (D-105) - także klon przeciąganej karty.
+  const cardText = { fontSize: fs(15), lineHeight: 1.3 } as CSSProperties;
   // Zdanie pod tablicą: z reakcji wyniku, a bez niej z wyjaśnienia autora (`explanation` z serwera), na końcu - zdanie ogólne.
   const feedback = feedbackSentence(result?.reaction?.text ?? result?.detail?.explanation, result?.correct);
   const titleText = caseNo ? `Tablica śledcza · ${caseNo}` : 'Tablica śledcza';
+  const scoreLine = `Na właściwym miejscu: ${inPlaceCount} z ${ids.length}${typeof result?.points === 'number' ? ` · Wynik: ${Math.round(result.points * 100)}%` : ''}`;
 
-  // Telefon w pionie (D-099): te same pola, ślady i wynik jako lista (tekst 15 px, cele dotyku >= 44 px), przewijana w pionie wewnątrz
-  // bloku. Kolejność DOM = kolejność pól; data-slot-index/data-card-id jak na tablicy (przeciąganie myszą i fokus działają tak samo).
-  // Bez linii kartki (tło w liniach co 28 j. tablicy przecinałoby wiersze tekstu o innej wysokości).
-  const listCard = { fontSize: 15, lineHeight: 1.3, backgroundImage: 'none' } as CSSProperties;
-  // Tacka w trakcie gry jest pod polami; wynik (zdanie, liczba trafień, „Dalej”) - NAD nimi, żeby był widoczny od razu po sprawdzeniu.
-  const listTray = (
-    <div
-      data-board-tray
-      role="group"
-      aria-label={readOnly ? 'Wynik' : 'Ślady do przypięcia'}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) clickTray();
-      }}
-      className={`flex flex-col gap-2 rounded-[8px] border border-border bg-paper p-3 ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
-    >
-      {readOnly ? (
-        <>
-          <p data-testid="board-feedback" className="font-semibold text-ink">
-            {feedback}
-          </p>
-          <p className="text-muted">
-            Na właściwym miejscu: {inPlaceCount} z {ids.length}
-            {typeof result?.points === 'number' && ` · Wynik: ${Math.round(result.points * 100)}%`}
-          </p>
-          {onContinue && (
-            <button
-              type="button"
-              onClick={onContinue}
-              className="min-h-[44px] w-full rounded-btn bg-ink px-4 font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {continueLabel}
-            </button>
-          )}
-        </>
-      ) : (
-        <>
-          <p className="font-bold text-muted">Ślady do przypięcia · {tray.length}</p>
-          {tray.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {tray.map((id) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    data-card-id={id}
-                    aria-label={`Ślad: ${textOf(id)} - przypnij do pola ${placements.indexOf(null) + 1}`}
-                    disabled={disabled}
-                    {...cardHandlers(id)}
-                    className={`board-card block min-h-[44px] w-full cursor-pointer touch-pan-y px-3 py-2 text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${drag?.id === id ? 'opacity-40' : ''}`}
-                    style={listCard}
-                  >
-                    {textOf(id)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {selected && placements.includes(selected) && (
-            <button
-              type="button"
-              onClick={clickTray}
-              className="min-h-[44px] w-full rounded-btn border border-border bg-surface px-4 font-semibold text-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              Odłóż na tackę
-            </button>
-          )}
-          {full && (
-            <button
-              ref={checkRef}
-              type="button"
-              disabled={disabled}
-              onClick={() => onSubmit?.({ order: placements as string[] })}
-              className="min-h-[44px] w-full rounded-btn bg-accent px-4 font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              Sprawdź trop
-            </button>
-          )}
-        </>
+  // Telefon w pionie (D-105): wynik NAD sceną (widoczny od razu po sprawdzeniu, scena się przewija), tacka - poziomy pasek POD sceną.
+  const portraitResult = portrait && readOnly && (
+    <div role="group" aria-label="Wynik" className="mb-2 flex shrink-0 flex-col gap-2 rounded-[8px] border border-border bg-paper p-3 text-[15px] leading-snug">
+      <p data-testid="board-feedback" className="font-semibold text-ink">
+        {feedback}
+      </p>
+      <p className="text-muted">{scoreLine}</p>
+      {onContinue && (
+        <button
+          type="button"
+          onClick={onContinue}
+          className="min-h-[44px] w-full rounded-btn bg-ink px-4 font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {continueLabel}
+        </button>
       )}
     </div>
   );
-  const listBoard = (
-    <section
-      aria-label={titleText}
-      data-testid="evidence-board"
-      data-orientation={orientation}
-      data-layout="list"
-      data-phase={readOnly ? phase : 'play'}
-      className="flex select-none flex-col gap-3 rounded-card bg-[var(--board-frame)] p-2 text-[15px] leading-snug"
+  // Karty paska tacki: stałe 15 px, bez linii kartki (linie co 28 j. sceny przecinałyby wiersze tekstu o innej wysokości).
+  const stripCard = { fontSize: 15, lineHeight: 1.3, backgroundImage: 'none' } as CSSProperties;
+  const portraitTray = portrait && !readOnly && (
+    <div
+      data-board-tray
+      role="group"
+      aria-label="Ślady do przypięcia"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) clickTray();
+      }}
+      className={`mt-2 flex shrink-0 flex-col gap-2 rounded-[8px] border border-border bg-paper p-2 text-[15px] leading-snug ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
     >
-      {readOnly && listTray}
-      <div className="board-cork flex flex-col gap-2 rounded-[8px] p-3">
-        <p className="self-start -rotate-1 rounded-[6px] bg-surface px-3 py-1 font-extrabold text-ink shadow-card">{titleText}</p>
-        {block.prompt && <p className="rounded-[6px] bg-surface/90 px-3 py-2 text-ink">{block.prompt}</p>}
-        {!readOnly && <p className="rounded-[6px] bg-surface/90 px-3 py-2 text-muted">Stuknij ślady po kolei, od najwcześniejszego. Stuknij dwa przypięte, żeby je zamienić.</p>}
-        {block.start && <ListPhoto label={block.start.label} caption={block.start.caption} tone="accent" />}
-        <ol className="flex flex-col gap-2">
-          {shown.map((id, index) => {
-            const good = id !== null && readOnly && inPlace(id);
-            const wrong = id !== null && readOnly && phase === 'verdict' && correctOrder.length > 0 && !inPlace(id);
-            return (
-              <li key={index} className="flex items-stretch gap-2">
-                <span aria-hidden="true" className={`board-pin flex w-9 shrink-0 items-center justify-center self-center rounded-full font-extrabold text-white ${good ? 'board-pin--good' : ''}`} style={{ height: 36 }}>
-                  {good ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
-                </span>
-                {id === null ? (
-                  <button
-                    type="button"
-                    data-slot-index={index}
-                    aria-label={`Pole ${index + 1}, puste${selected ? ' - przypnij tu wybrany ślad' : ''}`}
-                    disabled={readOnly || disabled}
-                    onClick={() => clickSlot(index)}
-                    className={`min-h-[44px] flex-1 rounded-[6px] border-[3px] border-dashed px-3 text-left font-semibold outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                      selected || (drag !== null && hoverTarget === index) ? 'border-accent bg-accent/15 text-accent-ink' : 'border-ink/30 bg-white/20 text-ink/70'
-                    }`}
-                  >
-                    {selected ? 'Przypnij tutaj' : 'Puste pole'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    data-slot-index={index}
-                    data-card-id={id}
-                    aria-label={`Pole ${index + 1}: ${textOf(id)}${good ? ' (na właściwym miejscu)' : ''}${selected === id ? ' - wybrany' : ''}`}
-                    aria-pressed={readOnly ? undefined : selected === id}
-                    aria-disabled={readOnly ? true : undefined}
-                    disabled={disabled && !readOnly}
-                    {...(readOnly ? {} : cardHandlers(id))}
-                    className={`board-card min-h-[44px] flex-1 px-3 py-2 text-left text-ink outline-none touch-pan-y focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                      selected === id ? 'ring-4 ring-accent' : ''
-                    } ${wrong ? 'board-card-wrong ring-2 ring-danger' : ''} ${drag?.id === id ? 'opacity-40' : ''} ${readOnly ? 'cursor-default' : 'cursor-grab'}`}
-                    style={listCard}
-                  >
-                    {textOf(id)}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {block.end && <ListPhoto label={block.end.label} caption={block.end.caption} tone="danger" />}
-      </div>
-      {!readOnly && listTray}
-    </section>
+      <p className="px-1 font-bold text-muted">
+        Ślady do przypięcia · {tray.length}
+        {tray.length > 0 && <span className="font-semibold"> · wybierz ślad, potem pole</span>}
+      </p>
+      {tray.length > 0 && (
+        <ul className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
+          {tray.map((id) => (
+            <li key={id} className="w-[min(210px,72%)] shrink-0">
+              <button
+                type="button"
+                data-card-id={id}
+                aria-label={`Ślad: ${textOf(id)}${selected === id ? ' - wybrany, wybierz pole' : ''}`}
+                aria-pressed={selected === id}
+                disabled={disabled}
+                {...cardHandlers(id)}
+                className={`board-card block h-full min-h-[44px] w-full cursor-pointer touch-pan-x px-3 py-2 text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  selected === id ? 'ring-4 ring-accent' : ''
+                } ${drag?.id === id ? 'opacity-40' : ''}`}
+                style={stripCard}
+              >
+                <span className="block">{textOf(id)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {selected && placements.includes(selected) && (
+        <button
+          type="button"
+          onClick={clickTray}
+          className="min-h-[44px] w-full rounded-btn border border-border bg-surface px-4 font-semibold text-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          Odłóż na tackę
+        </button>
+      )}
+      {full && (
+        <button
+          ref={checkRef}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSubmit?.({ order: placements as string[] })}
+          className="min-h-[44px] w-full rounded-btn bg-accent px-4 font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          Sprawdź trop
+        </button>
+      )}
+    </div>
   );
+
+  // Pudełko sceny: poziomo "contain" w obszarze bloku (proporcja 16:9), pionowo pełna szerokość i proporcja z układu (scena dłuższa niż
+  // ekran - przewija się w obszarze bloku).
+  const boxStyle = (
+    portrait
+      ? { width: '100%', aspectRatio: `${layout.width} / ${layout.height}` }
+      : { '--board-ratio': String(boardRatio()), aspectRatio: 'var(--board-ratio)' }
+  ) as CSSProperties;
 
   return (
     <div ref={rootRef} className="evidence-board flex min-h-0 w-full flex-1 flex-col" onKeyDown={onKeyDown}>
-      {block.prompt && !list && <p className="mb-2 shrink-0 text-sm text-muted [@media(max-height:500px)]:sr-only">{block.prompt}</p>}
+      {block.prompt && !portrait && <p className="mb-2 shrink-0 text-sm text-muted [@media(max-height:500px)]:sr-only">{block.prompt}</p>}
       {cramped && (
         <p data-testid="board-rotate-hint" className="mb-1 shrink-0 text-center text-xs font-semibold text-accent-ink">
           Obróć telefon pionowo, żeby wygodniej czytać i przypinać ślady.
         </p>
       )}
-      {/* Jeden element mierzony (outerRef) w obu układach - obserwator rozmiaru zostaje na tym samym węźle przy obrocie. */}
+      {portraitResult}
       <div
         ref={outerRef}
         data-testid="board-outer"
-        className={list ? 'min-h-0 w-full flex-1 overflow-y-auto overscroll-contain' : 'relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]'}
+        className={
+          portrait
+            ? 'min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [container-type:inline-size]'
+            : 'relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]'
+        }
       >
-        {list ? listBoard : (
+        {block.prompt && portrait && <p className="mb-2 text-[15px] leading-snug text-muted">{block.prompt}</p>}
         <section
           aria-label={titleText}
           data-testid="evidence-board"
           data-orientation={orientation}
+          data-layout={portrait ? 'zigzag' : 'u'}
           data-phase={readOnly ? phase : 'play'}
           className="board-box relative select-none"
-          style={{ '--board-ratio': String(boardRatio(orientation)), aspectRatio: 'var(--board-ratio)' } as CSSProperties}
+          style={boxStyle}
         >
           <div className="absolute inset-0" style={{ '--u': `calc(100cqw / ${layout.width})` } as CSSProperties}>
             <div aria-hidden="true" className="absolute rounded-[calc(var(--u)*18)] bg-[var(--board-frame)] shadow-card" style={place(layout.frame, layout)} />
             <div aria-hidden="true" className="board-cork absolute rounded-[calc(var(--u)*8)]" style={place(layout.cork, layout)} />
             <p
               className="absolute z-[3] -rotate-[1.5deg] rounded-[calc(var(--u)*6)] bg-surface font-extrabold text-ink shadow-card"
-              style={{ left: `${(layout.title.x / layout.width) * 100}%`, top: `${(layout.title.y / layout.height) * 100}%`, fontSize: u(18), padding: `${u(6)} ${u(12)}` }}
+              style={{ left: `${(layout.title.x / layout.width) * 100}%`, top: `${(layout.title.y / layout.height) * 100}%`, fontSize: fs(18), padding: `${u(6)} ${u(12)}` }}
             >
               {titleText}
             </p>
@@ -517,8 +484,8 @@ export default function OrderingBlock({
               ))}
             </svg>
 
-            {block.start && layout.start && <Photo rect={layout.start} layout={layout} label={block.start.label} caption={block.start.caption} tone="accent" tilt={-4} />}
-            {block.end && layout.end && <Photo rect={layout.end} layout={layout} label={block.end.label} caption={block.end.caption} tone="danger" tilt={3} />}
+            {block.start && layout.start && <Photo rect={layout.start} layout={layout} label={block.start.label} caption={block.start.caption} tone="accent" tilt={-4} fs={fs} />}
+            {block.end && layout.end && <Photo rect={layout.end} layout={layout} label={block.end.label} caption={block.end.caption} tone="danger" tilt={3} fs={fs} />}
 
             {layout.slots.map((slot, index) => {
               const id = shown[index] ?? null;
@@ -562,10 +529,12 @@ export default function OrderingBlock({
                     aria-disabled={readOnly ? true : undefined}
                     disabled={disabled && !readOnly}
                     {...(readOnly ? {} : cardHandlers(id))}
+                    // Pionowo palec przewija scenę (pan-y) - przypięcie stuknięciami; poziomo karta przeciągana palcem (touch-none).
                     className={`board-card absolute z-[4] text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
                       flying ? 'board-fly' : ''
-                    } ${selected === id ? 'ring-4 ring-accent' : ''} ${drag?.id === id ? 'opacity-40' : ''} ${readOnly ? 'cursor-default' : 'cursor-grab touch-none'}`}
-                    style={{ ...place(slot, layout), transform: `rotate(${tiltOf(index)}deg)` }}
+                    } ${selected === id ? 'ring-4 ring-accent' : ''} ${drag?.id === id ? 'opacity-40' : ''} ${readOnly ? 'cursor-default' : portrait ? 'cursor-grab touch-pan-y' : 'cursor-grab touch-none'}`}
+                    // Pionowo bez linii kartki: linie co 28 j. sceny nie trafiają w wiersze tekstu 15 px i przecinają litery.
+                    style={{ ...place(slot, layout), transform: `rotate(${tiltOf(index)}deg)`, ...(portrait ? { backgroundImage: 'none' } : {}) }}
                   >
                     <span className={`block h-full w-full overflow-hidden ${wrong ? 'board-card-wrong' : ''}`} style={{ ...cardText, padding: `${u(20)} ${u(12)} ${u(8)}` }}>
                       {textOf(id)}
@@ -583,98 +552,99 @@ export default function OrderingBlock({
               );
             })}
 
-            <div
-              data-board-tray
-              role="group"
-              aria-label="Ślady do przypięcia"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) clickTray();
-              }}
-              className={`absolute z-[3] flex flex-col rounded-[calc(var(--u)*14)] border border-border bg-paper ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
-              style={{ ...place(layout.tray, layout), padding: `${u(8)} ${u(14)}` }}
-            >
-              {readOnly ? (
-                <div className="flex min-h-0 flex-1 flex-wrap items-center justify-between gap-[calc(var(--u)*10)]">
-                  <div className="min-w-0 flex-1" style={{ fontSize: u(18) }}>
-                    <p data-testid="board-feedback" className="font-semibold text-ink">
-                      {feedback}
-                    </p>
-                    <p className="text-muted" style={{ fontSize: u(14) }}>
-                      Na właściwym miejscu: {inPlaceCount} z {ids.length}
-                      {typeof result?.points === 'number' && ` · Wynik: ${Math.round(result.points * 100)}%`}
-                    </p>
-                  </div>
-                  {onContinue && (
-                    <button
-                      type="button"
-                      onClick={onContinue}
-                      className="shrink-0 rounded-btn bg-ink font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      style={{ fontSize: u(16), padding: `${u(10)} ${u(20)}`, minHeight: 44 }}
-                    >
-                      {continueLabel}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <p className="shrink-0 font-bold uppercase tracking-[0.08em] text-muted" style={{ fontSize: u(12) }}>
-                    Ślady do przypięcia · {tray.length}
-                  </p>
-                  <div className="flex min-h-0 flex-1 items-center gap-[calc(var(--u)*16)]">
-                    <ul className="flex h-full min-w-0 flex-1 items-center gap-[calc(var(--u)*16)] overflow-x-auto overflow-y-hidden">
-                      {tray.map((id) => (
-                        <li key={id} className="shrink-0" style={{ width: u(layout.card.w), height: u(layout.card.h) }}>
-                          <button
-                            type="button"
-                            data-card-id={id}
-                            aria-label={`Ślad: ${textOf(id)}${selected === id ? ' - wybrany, wybierz pole' : ''}`}
-                            aria-pressed={selected === id}
-                            disabled={disabled}
-                            {...cardHandlers(id)}
-                            // pan-x: palcem w poziomie przewija się tacka; przeciąganie śladu - ruchem pionowym (pointerMove).
-                            className={`board-card block h-full w-full cursor-grab touch-pan-x text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                              selected === id ? 'ring-4 ring-accent' : ''
-                            } ${drag?.id === id ? 'opacity-40' : ''}`}
-                          >
-                            <span className="block h-full w-full overflow-hidden" style={{ ...cardText, padding: `${u(18)} ${u(12)} ${u(8)}` }}>
-                              {textOf(id)}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                      {selected && placements.includes(selected) && (
-                        <li className="shrink-0">
-                          <button
-                            type="button"
-                            onClick={clickTray}
-                            className="rounded-btn border border-border bg-surface font-semibold text-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                            style={{ fontSize: u(14), padding: `${u(8)} ${u(14)}`, minHeight: 44 }}
-                          >
-                            Odłóż na tackę
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                    {full && (
+            {layout.tray && (
+              <div
+                data-board-tray
+                role="group"
+                aria-label="Ślady do przypięcia"
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) clickTray();
+                }}
+                className={`absolute z-[3] flex flex-col rounded-[calc(var(--u)*14)] border border-border bg-paper ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
+                style={{ ...place(layout.tray, layout), padding: `${u(8)} ${u(14)}` }}
+              >
+                {readOnly ? (
+                  <div className="flex min-h-0 flex-1 flex-wrap items-center justify-between gap-[calc(var(--u)*10)]">
+                    <div className="min-w-0 flex-1" style={{ fontSize: u(18) }}>
+                      <p data-testid="board-feedback" className="font-semibold text-ink">
+                        {feedback}
+                      </p>
+                      <p className="text-muted" style={{ fontSize: u(14) }}>
+                        {scoreLine}
+                      </p>
+                    </div>
+                    {onContinue && (
                       <button
-                        ref={checkRef}
                         type="button"
-                        disabled={disabled}
-                        onClick={() => onSubmit?.({ order: placements as string[] })}
-                        className="shrink-0 rounded-btn bg-accent font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                        style={{ fontSize: u(17), padding: `${u(12)} ${u(22)}`, minHeight: 44 }}
+                        onClick={onContinue}
+                        className="shrink-0 rounded-btn bg-ink font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        style={{ fontSize: u(16), padding: `${u(10)} ${u(20)}`, minHeight: 44 }}
                       >
-                        Sprawdź trop
+                        {continueLabel}
                       </button>
                     )}
                   </div>
-                </>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <p className="shrink-0 font-bold uppercase tracking-[0.08em] text-muted" style={{ fontSize: u(12) }}>
+                      Ślady do przypięcia · {tray.length}
+                    </p>
+                    <div className="flex min-h-0 flex-1 items-center gap-[calc(var(--u)*16)]">
+                      <ul className="flex h-full min-w-0 flex-1 items-center gap-[calc(var(--u)*16)] overflow-x-auto overflow-y-hidden">
+                        {tray.map((id) => (
+                          <li key={id} className="shrink-0" style={{ width: u(layout.card.w), height: u(layout.card.h) }}>
+                            <button
+                              type="button"
+                              data-card-id={id}
+                              aria-label={`Ślad: ${textOf(id)}${selected === id ? ' - wybrany, wybierz pole' : ''}`}
+                              aria-pressed={selected === id}
+                              disabled={disabled}
+                              {...cardHandlers(id)}
+                              // pan-x: palcem w poziomie przewija się tacka; przeciąganie śladu - ruchem pionowym (pointerMove).
+                              className={`board-card block h-full w-full cursor-grab touch-pan-x text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                                selected === id ? 'ring-4 ring-accent' : ''
+                              } ${drag?.id === id ? 'opacity-40' : ''}`}
+                            >
+                              <span className="block h-full w-full overflow-hidden" style={{ ...cardText, padding: `${u(18)} ${u(12)} ${u(8)}` }}>
+                                {textOf(id)}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                        {selected && placements.includes(selected) && (
+                          <li className="shrink-0">
+                            <button
+                              type="button"
+                              onClick={clickTray}
+                              className="rounded-btn border border-border bg-surface font-semibold text-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                              style={{ fontSize: u(14), padding: `${u(8)} ${u(14)}`, minHeight: 44 }}
+                            >
+                              Odłóż na tackę
+                            </button>
+                          </li>
+                        )}
+                      </ul>
+                      {full && (
+                        <button
+                          ref={checkRef}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => onSubmit?.({ order: placements as string[] })}
+                          className="shrink-0 rounded-btn bg-accent font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                          style={{ fontSize: u(17), padding: `${u(12)} ${u(22)}`, minHeight: 44 }}
+                        >
+                          Sprawdź trop
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </section>
-        )}
       </div>
+      {portraitTray}
       {/* Jeden region ogłoszeń: przy wyniku zdanie + liczba trafień, w trakcie - ruchy śladów. */}
       <p className="sr-only" role="status" aria-live="polite">
         {readOnly ? `${feedback} Na właściwym miejscu: ${inPlaceCount} z ${ids.length}.` : announcement}
@@ -707,20 +677,24 @@ export default function OrderingBlock({
   );
 }
 
-/** Początek/koniec łańcucha w liście (telefon w pionie, D-099): etykieta i podpis w jednym wierszu, 15 px. */
-function ListPhoto({ label, caption, tone }: { label: string; caption: string; tone: 'accent' | 'danger' }) {
-  return (
-    <div data-board-photo className="flex items-center gap-3 rounded-[6px] bg-surface px-3 py-2 shadow-card">
-      <span className={`shrink-0 font-extrabold ${tone === 'danger' ? 'text-danger' : 'text-accent'}`}>
-        <span className="sr-only">{tone === 'danger' ? 'Koniec łańcucha: ' : 'Początek łańcucha: '}</span>
-        {label}
-      </span>
-      <span className="min-w-0 font-bold text-ink">{caption}</span>
-    </div>
-  );
-}
-
-function Photo({ rect, layout, label, caption, tone, tilt }: { rect: Rect; layout: BoardLayout; label: string; caption: string; tone: 'accent' | 'danger'; tilt: number }) {
+function Photo({
+  rect,
+  layout,
+  label,
+  caption,
+  tone,
+  tilt,
+  fs,
+}: {
+  rect: Rect;
+  layout: BoardLayout;
+  label: string;
+  caption: string;
+  tone: 'accent' | 'danger';
+  tilt: number;
+  /** Rozmiar czcionki w jednostkach sceny (na telefonie w pionie min. 15 px, D-105). */
+  fs: (value: number) => string;
+}) {
   const pin = pinOf(rect);
   return (
     <>
@@ -731,12 +705,12 @@ function Photo({ rect, layout, label, caption, tone, tilt }: { rect: Rect; layou
       >
         <span
           className={`flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-accent-soft font-extrabold ${tone === 'danger' ? 'text-danger' : 'text-accent'}`}
-          style={{ fontSize: u(26) }}
+          style={{ fontSize: fs(26) }}
         >
           <span className="sr-only">{tone === 'danger' ? 'Koniec łańcucha: ' : 'Początek łańcucha: '}</span>
           {label}
         </span>
-        <span className="shrink-0 font-bold text-ink" style={{ fontSize: u(13), paddingTop: u(4) }}>
+        <span className="shrink-0 font-bold text-ink" style={{ fontSize: fs(13), paddingTop: u(4) }}>
           {caption}
         </span>
       </div>

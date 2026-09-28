@@ -1,6 +1,7 @@
 // Geometria tablicy śledczej (ORDERING, feat/evidence-board, D-088): czyste funkcje, bez Reacta - łatwe do testów jednostkowych.
-// Wszystkie wymiary w "jednostkach projektu" sceny (poziomo 1280×720 = 16:9, telefon w pionie 600×1000); komponent przelicza je na
-// procenty sceny, a czcionki na cqw pudełka sceny - scena skaluje się jak obraz ("contain"), bez przewijania.
+// Wszystkie wymiary w "jednostkach projektu" sceny (poziomo 1280×720 = 16:9, telefon w pionie szerokość 600, wysokość z liczby pól);
+// komponent przelicza je na procenty sceny, a czcionki na cqw pudełka sceny. Poziomo scena skaluje się jak obraz ("contain"), bez
+// przewijania; pionowo (D-105) ma szerokość bloku i przewija się w pionie - karty są dość duże na tekst 15 px.
 
 export type BoardOrientation = 'landscape' | 'portrait';
 
@@ -30,18 +31,18 @@ export interface BoardLayout {
   /** "Zdjęcia" początku i końca łańcucha (null, gdy treść ich nie ma). */
   start: Rect | null;
   end: Rect | null;
-  /** Tacka "Ślady do przypięcia" z kartami i przyciskiem "Sprawdź trop". */
-  tray: Rect;
+  /** Tacka "Ślady do przypięcia" z kartami i przyciskiem "Sprawdź trop" (pionowo: null - tacka to pasek pod sceną, D-105). */
+  tray: Rect | null;
   /** Rozmiar karty śladu (w polu i na tacce). */
   card: { w: number; h: number };
 }
 
 const LANDSCAPE = { width: 1280, height: 720 } as const;
-const PORTRAIT = { width: 600, height: 1000 } as const;
+const PORTRAIT_WIDTH = 600;
 
-/** Proporcja sceny (szerokość / wysokość) dla danej orientacji. */
-export function boardRatio(orientation: BoardOrientation): number {
-  return orientation === 'portrait' ? PORTRAIT.width / PORTRAIT.height : LANDSCAPE.width / LANDSCAPE.height;
+/** Proporcja sceny poziomej (szerokość / wysokość); pionowa ma proporcję z układu (wysokość zależy od liczby pól). */
+export function boardRatio(): number {
+  return LANDSCAPE.width / LANDSCAPE.height;
 }
 
 /**
@@ -52,44 +53,73 @@ export function boardOrientation(width: number, height: number): BoardOrientatio
   return height > width * 1.15 ? 'portrait' : 'landscape';
 }
 
+// Pionowo (D-105): jedna kolumna szerokich kart na przemian przesuniętych w lewo i w prawo (zygzak). Karta 440 j. szerokości przy
+// najwęższym telefonie (scena ~340 px, 1 j. ~0.57 px) mieści ok. 26 znaków tekstu 15 px w linii; linia 15 px × 1.3 to ~36 j. Wysokość
+// karty i zdjęcia rośnie z najdłuższym tekstem (schemat pozwala na 300 znaków śladu) - tekst nie jest ucinany; min. 150 j. = 3 linie.
+const PORTRAIT_CARD_W = 440;
+const PORTRAIT_LINE = 36;
+const PORTRAIT_GAP = 34;
+const PORTRAIT_PHOTO_W = 300;
+
+/** Wysokość karty pionowej (j.) dla najdłuższego tekstu śladu: padding 28 j. + linie, min. 150 j. */
+export function portraitCardHeight(maxChars: number): number {
+  return Math.max(150, 30 + Math.ceil(maxChars / 26) * PORTRAIT_LINE);
+}
+
+/** Wysokość zdjęcia pionowego (j.): etykieta (~14 znaków w linii) + podpis (~16 znaków w linii), min. 130 j. */
+export function portraitPhotoHeight(labelChars: number, captionChars: number): number {
+  const lines = Math.max(1, Math.ceil(labelChars / 14)) + Math.max(1, Math.ceil(captionChars / 16));
+  return Math.max(130, 24 + lines * PORTRAIT_LINE);
+}
+
 /**
  * Układ tablicy dla `count` pól. Poziomo: pola w kształcie U - górny rząd od lewej do prawej, dolny od prawej do lewej, zdjęcie
- * początku po lewej u góry, końca po lewej na dole. Pionowo (telefon): zygzak w dwóch kolumnach z góry na dół, początek u góry z
- * lewej, koniec na dole w kolumnie PRZECIWNEJ do ostatniego pola (wysokość kart dobierana tak, by nic się nie nakładało).
+ * początku po lewej u góry, końca po lewej na dole. Pionowo (telefon, D-105): jedna kolumna kart z góry na dół na przemian przy lewej
+ * i prawej krawędzi (zygzak), początek u góry z lewej, koniec pod ostatnim polem po stronie przeciwnej; wysokość sceny rośnie z
+ * liczbą pól (scena przewija się w pionie), tacka jest paskiem pod sceną (tray: null).
  */
-export function boardLayout(count: number, orientation: BoardOrientation, options: { start?: boolean; end?: boolean } = {}): BoardLayout {
+export function boardLayout(
+  count: number,
+  orientation: BoardOrientation,
+  options: {
+    start?: boolean;
+    end?: boolean;
+    /** Tylko pionowo: najdłuższy tekst śladu i etykiety/podpisu zdjęć (znaki) - wysokość kart i zdjęć (D-105). */
+    maxChars?: number;
+    photoChars?: { label: number; caption: number };
+  } = {},
+): BoardLayout {
   const n = Math.max(1, count);
   if (orientation === 'portrait') {
-    const frame = { x: 10, y: 10, w: 580, h: 740 };
-    const cork = { x: 22, y: 22, w: 556, h: 716 };
-    const columns = [38, 312];
-    const top = options.start ? 196 : 90;
-    const floor = cork.y + cork.h - 8; // dolna krawędź ostatniej karty
-    // Zdjęcie końca stoi w kolumnie PRZECIWNEJ do ostatniego pola, na dole - pola jego kolumny muszą kończyć się nad nim.
-    const endColumn = (n - 1) % 2 === 0 ? 1 : 0;
-    const end = options.end ? { x: endColumn === 0 ? 38 : 412, y: floor - 92, w: 150, h: 92 } : null;
-    // Wysokość karty i odstęp: karty tej samej kolumny (co drugie pole) nie mogą na siebie nachodzić (2 × krok >= wysokość + 8).
-    let h = 110;
-    let step = 0;
-    for (; h >= 56; h -= 2) {
-      const spans = [(floor - top - h) / Math.max(1, n - 1)];
-      if (end && n > 1) spans.push((end.y - 8 - top - h) / Math.max(1, n - 2));
-      step = Math.max(0, Math.min(...spans));
-      if (n === 1 || 2 * step >= h + 8) break;
-    }
-    const card = { w: 250, h };
-    const slots = Array.from({ length: n }, (_, index) => ({ x: columns[index % 2], y: top + index * step, w: card.w, h: card.h }));
+    const margin = 40;
+    const card = { w: PORTRAIT_CARD_W, h: portraitCardHeight(options.maxChars ?? 0) };
+    const photo = { w: PORTRAIT_PHOTO_W, h: portraitPhotoHeight(options.photoChars?.label ?? 0, options.photoChars?.caption ?? 0) };
+    const columns = [margin, PORTRAIT_WIDTH - margin - card.w];
+    // Tabliczka z tytułem ma na telefonie min. 15 px (~55 j. wysokości przy najwęższej scenie) - pod nią zdjęcie albo pierwsze pole.
+    const start = options.start ? { x: margin, y: 100, ...photo } : null;
+    const top = start ? start.y + start.h + 40 : 110;
+    const slots = Array.from({ length: n }, (_, index) => ({
+      x: columns[index % 2],
+      y: top + index * (card.h + PORTRAIT_GAP),
+      w: card.w,
+      h: card.h,
+    }));
+    const last = slots[n - 1];
+    // Zdjęcie końca po stronie przeciwnej do ostatniego pola - nić schodzi ukosem jak między polami.
+    const end = options.end ? { x: (n - 1) % 2 === 0 ? PORTRAIT_WIDTH - margin - photo.w : margin, y: last.y + last.h + 40, ...photo } : null;
+    const bottom = end ? end.y + end.h : last.y + last.h;
+    const height = bottom + 40;
     return {
       orientation,
-      width: PORTRAIT.width,
-      height: PORTRAIT.height,
-      frame,
-      cork,
+      width: PORTRAIT_WIDTH,
+      height,
+      frame: { x: 10, y: 10, w: PORTRAIT_WIDTH - 20, h: height - 20 },
+      cork: { x: 22, y: 22, w: PORTRAIT_WIDTH - 44, h: height - 44 },
       title: { x: 36, y: 32 },
       slots,
-      start: options.start ? { x: 38, y: 88, w: 150, h: 92 } : null,
+      start,
       end,
-      tray: { x: 10, y: 762, w: 580, h: 228 },
+      tray: null,
       card,
     };
   }

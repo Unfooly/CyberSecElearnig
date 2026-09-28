@@ -597,6 +597,27 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   6. layout-check nie sprawdza przewinięcia kontenera sceny po wyborze śladu (Playwright sam przewija pole przed kliknięciem).
 - Akceptacja: poprawki z testem albo decyzja, że zostają.
 
+### B-125 `scripts/e2e-registration.mjs` nieaktualny względem odtwarzacza
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: `fix/single-next` (D-106)
+- Opis: skrypt (ręczny, poza CI) klika „Kontynuuj” w blokach eksploracyjnych i czeka na „Blok ukończony.” po nich, a mierzy pasek
+  przez `.sticky`. Tego wszystkiego odtwarzacz nie ma od czasu gotowości przez pasek (`onReady`) i ramki `PlayerStage`. W D-106
+  poprawione tylko miejsca jednego „Dalej” (zadanie tekstowe, „Ukończyłem”, „Zakończ sprawę”).
+- Akceptacja: pełne przejście skryptu na lokalnym stosie.
+
+### B-126 Jeden „Dalej” (D-106): odłożone uwagi z review
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `fix/single-next` (D-106)
+- Opis:
+  1. Fokus po podpisie raportu (`CaseClosedScreen.sign`) szuka „Wróć do biblioteki” w DOM powłoki (`querySelector`) - czyściej ref
+     z `PlayerStage`/`CoursePlayer`.
+  2. Puls „Dalej” pojawia się też przy wejściu w podgląd „Wstecz” (tam „Dalej” staje się aktywny) - można ograniczyć do gotowości
+     i wyniku.
+  3. `readySubmit` zamyka `preference.enabled` z chwili zgłoszenia gotowości - przełączenie lektora przed „Dalej” daje nieaktualną
+     decyzję o autoodtwarzaniu następnego bloku (kosmetyka).
+  4. Nieaktywny „Dalej” (`disabled`) nie jest osiągalny Tabem, więc podpowiedź w `aria-describedby` słyszy tylko ktoś, kto do niego
+     trafi - rozważyć `aria-disabled` z fokusem.
+  5. Brak testu ostatniego kroku odprawy z niewczytanym obrazem (gotowy od wejścia, bez cta).
+- Akceptacja: poprawki z testem albo decyzja, że zostają.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

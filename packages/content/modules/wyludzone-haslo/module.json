@@ -339,7 +339,7 @@
                   },
                   "evidence": true,
                   "note": {
-                    "text": "Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiło hasło.",
+                    "text": "Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiły hasło i kod z SMS-a.",
                     "kind": "item"
                   },
                   "required": false
@@ -527,11 +527,14 @@
             },
             {
               "text": "Kliknęłam w link, strona wyglądała jak nasz bank. Wpisałam login i hasło."
+            },
+            {
+              "text": "Potem strona poprosiła jeszcze o kod z SMS-a, więc go wpisałam."
             }
           ],
           "evidence": true,
           "note": {
-            "text": "Anna kliknęła link z maila i wpisała login oraz hasło na stronie „banku”.",
+            "text": "Anna kliknęła link z maila i wpisała na stronie „banku” login, hasło i kod z SMS-a.",
             "kind": "person"
           },
           "required": true
@@ -881,16 +884,25 @@
               ]
             },
             {
+              "id": "l-0902",
+              "cells": [
+                "09:02",
+                "Wysłano SMS: kod logowania z nowego urządzenia",
+                "SMS na telefon Anny"
+              ],
+              "message": "Bank wysłał Annie kod do logowania z nowego urządzenia. Sprawdź, co stało się minutę później."
+            },
+            {
               "id": "l-0903",
               "cells": [
                 "09:03",
-                "Logowanie",
+                "Logowanie, kod SMS poprawny",
                 "Bukareszt, nowe urządzenie"
               ],
               "evidence": true,
               "required": true,
               "note": {
-                "text": "9:03 — logowanie z Bukaresztu, z nowego urządzenia.",
+                "text": "9:03 — logowanie z Bukaresztu, z nowego urządzenia, z poprawnym kodem SMS.",
                 "kind": "place"
               }
             },
@@ -898,12 +910,12 @@
               "id": "l-0906",
               "cells": [
                 "09:06",
-                "Kod SMS wpisany",
+                "Kod SMS (autoryzacja przelewu) wpisany",
                 "Bukareszt, nowe urządzenie"
               ],
               "evidence": true,
               "note": {
-                "text": "9:06 — kod SMS wpisany z urządzenia w Bukareszcie, nie z komputera Anny.",
+                "text": "9:06 — kod SMS autoryzujący przelew wpisany z urządzenia w Bukareszcie, nie z komputera Anny.",
                 "kind": "place"
               }
             },
@@ -1097,15 +1109,15 @@
           "text": "Co mówią logi banku?",
           "lines": [
             {
-              "text": "Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login, poprawne hasło — bo Anna je wpisała na ich stronie o 8:58."
+              "text": "Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login i hasło — Anna wpisała je na ich stronie o 8:58. I poprawny kod logowania z SMS-a z 9:02, też wpisany na ich stronie."
             },
             {
-              "text": "Przelew o 9:12, zatwierdzony kodem SMS. Tym, który Anna podała przez telefon."
+              "text": "Przelew o 9:12, zatwierdzony drugim kodem SMS. Tym, który Anna podała przez telefon."
             }
           ],
           "evidence": true,
           "note": {
-            "text": "Logi: logowanie z zagranicy o 9:03 po wpisaniu danych przez Annę o 8:58; przelew 9:12 zatwierdzony kodem SMS podanym przez telefon.",
+            "text": "Logi: logowanie z zagranicy o 9:03 po wpisaniu przez Annę loginu i hasła (8:58) oraz kodu logowania z SMS-a (9:02); przelew 9:12 zatwierdzony drugim kodem SMS, podanym przez telefon.",
             "kind": "item"
           },
           "required": true
@@ -1206,7 +1218,7 @@
         },
         {
           "id": "link",
-          "text": "Anna klika link i wpisuje login oraz hasło na fałszywej stronie."
+          "text": "Anna wpisuje login, hasło i kod z SMS na fałszywej stronie."
         },
         {
           "id": "login",

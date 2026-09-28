@@ -238,7 +238,7 @@ async function runViewport(viewport) {
   // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara.
   const wanted = [
     'Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
-    'Anna klika link i wpisuje login oraz hasło na fałszywej stronie.',
+    'Anna wpisuje login, hasło i kod z SMS na fałszywej stronie.',
     'Oszust loguje się do prawdziwego banku danymi Anny.',
     '„Informatyk” dzwoni po kod SMS, żeby anulować operację.',
     'Anna podaje kod; oszust zatwierdza przelew.',

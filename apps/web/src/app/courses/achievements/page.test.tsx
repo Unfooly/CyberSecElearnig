@@ -77,26 +77,29 @@ describe('AchievementsPage', () => {
     const jsx = await AchievementsPage();
     render(jsx);
 
-    expect(screen.getByText(/nie udało się załadować odznak/i)).toBeInTheDocument();
+    expect(screen.getByText(/nie udało się załadować osiągnięć/i)).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it('renderuje odznaki z realnymi danymi z API', async () => {
+  it('renderuje osiągnięcia z API i licznik „zdobyte / wszystkie”', async () => {
     mockCookieValue('some-token');
+    const achievement = {
+      description: 'Twoja pierwsza zamknięta sprawa.',
+      conditionText: 'Ukończ dowolne szkolenie.',
+      lockedIcon: 'osiagniecie-pierwsza-sprawa-zablokowane',
+      rank: 'MILESTONE',
+      hidden: false,
+      scope: 'GLOBAL',
+      xpReward: 50,
+    };
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => [
-          {
-            code: 'FIRST_STEP',
-            title: 'Pierwszy Krok',
-            description: 'Ukończono pierwszy kurs.',
-            icon: 'first-step',
-            xpReward: 50,
-            isUnlocked: true,
-            unlockedAt: '2026-01-01T00:00:00.000Z',
-          },
+          { ...achievement, code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', isUnlocked: true, unlockedAt: '2026-09-28T10:00:00.000Z' },
+          { ...achievement, code: 'flawless-case', title: 'Flawless Case', icon: 'osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY', isUnlocked: false, unlockedAt: null },
+          { ...achievement, code: 'secret-3', title: null, description: null, conditionText: null, scope: null, hidden: true, rank: 'SECRET', icon: 'osiagniecie-tajne-zablokowane', isUnlocked: false, unlockedAt: null },
         ],
       }),
     );
@@ -104,7 +107,9 @@ describe('AchievementsPage', () => {
     const jsx = await AchievementsPage();
     render(jsx);
 
-    expect(screen.getByText('Pierwszy Krok')).toBeInTheDocument();
+    expect(screen.getAllByTestId('achievement-card')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: /^First Case Closed \(Milestone\), zdobyte/ })).toBeInTheDocument();
+    expect(screen.getByTestId('achievements-counter')).toHaveTextContent('1 / 3');
   });
 
   it('ma link powrotu do /courses', async () => {

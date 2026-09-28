@@ -1163,7 +1163,7 @@ const easterScene: ContentBlock = {
                       { title: 'Gratulacje!', body: 'Wygrałeś smartfon!', button: 'Odbierz nagrodę' },
                     ],
                     outro: 'Pirackie gry to częsta droga wirusów do firm.',
-                    badge: { id: 'ciekawski-detektyw', label: 'Ciekawski detektyw' },
+                    badge: { id: 'ciekawski-detektyw', label: 'Curious Detective' },
                   },
                   required: false,
                 },
@@ -1242,7 +1242,9 @@ describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () 
     closePopup('Gratulacje!');
     closePopup('Wykryto 147 wirusów!');
     expect(screen.getByTestId('easter-outro')).toHaveTextContent('Pirackie gry');
-    expect(screen.getByTestId('notebook-distinctions')).toHaveTextContent('Ciekawski detektyw');
+    // Pierwsze znalezienie: „Nowe” mimo że onFound już dopisał osiągnięcie do notatnika (stan zamrożony przy otwarciu).
+    expect(screen.getByTestId('easter-badge')).toHaveTextContent(/^Nowe osiągnięcie: Curious Detective$/);
+    expect(screen.getByTestId('notebook-distinctions')).toHaveTextContent('Curious Detective');
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     fireEvent.click(screen.getByRole('button', { name: 'Wróć do pulpitu' }));
     expect(within(dialog()).getByRole('button', { name: 'GTA6_PL.exe (obejrzane)' })).toBeInTheDocument();

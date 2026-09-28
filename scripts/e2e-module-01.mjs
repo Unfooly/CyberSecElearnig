@@ -244,7 +244,8 @@ try {
   }
   await page.getByTestId('easter-outro').waitFor();
   const eggCounter = await page.getByTestId('evidence-counter').textContent();
-  step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z wyróżnieniem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && (await page.getByTestId('easter-badge').textContent())?.includes('Ciekawski detektyw'), eggCounter);
+  const eggBadge = await page.getByTestId('easter-badge').textContent();
+  step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && eggBadge?.includes('Nowe osiągnięcie: Curious Detective'), `${eggCounter} | ${eggBadge}`);
   await page.getByRole('button', { name: 'Wróć do pulpitu' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
   await closed();
@@ -419,6 +420,9 @@ try {
   const completionBody = await (await completion).json();
   // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)), nie ułamek 0-1.
   step('Kurs ukończony po stronie serwera ze 100% wyniku (3+2+1 wag, wszystko poprawne)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
+  // Osiągnięcia „na żywo” (D-111) w odpowiedzi ukończenia - zanim profil zrobi cokolwiek (przyznanie wsteczne tego nie maskuje).
+  const liveCodes = (completionBody.gamification?.unlockedBadges ?? []).map((badge) => badge.code).sort();
+  step('Osiągnięcia na żywo przy ukończeniu: First Case Closed i Flawless Case', JSON.stringify(liveCodes) === JSON.stringify(['first-case-closed', 'flawless-case']), JSON.stringify(liveCodes));
 
   // --- Zamknięcie sprawy (feat/case-closed, D-089): zapis kończący kurs OD RAZU przełącza na raport końcowy (bez ekranu pośredniego
   // "Blok ukończony."/"Zobacz podsumowanie"); ceremonia: liczby, wnioski, podpis, pieczęć, liścik ---------------------------------
@@ -450,7 +454,17 @@ try {
   await page.getByRole('button', { name: /^Notatnik/ }).click();
   const distinctions = page.getByTestId('notebook-distinctions');
   await distinctions.waitFor();
-  step('EASTER EGG: wyróżnienie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Ciekawski detektyw'));
+  step('EASTER EGG: osiągnięcie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Curious Detective'));
+
+  // Osiągnięcia (D-111): pełne przejście - easter egg, 23/23 dowodów, 100% - daje na profilu wszystkie trzy, przyznane przez serwer.
+  await page.goto(`${WEB}/courses/achievements`);
+  await page.getByTestId('achievements-counter').waitFor();
+  step('Osiągnięcia: licznik 3 / 3 na profilu', ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '') === '3/3');
+  for (const name of ['First Case Closed', 'Flawless Case', 'Curious Detective']) {
+    step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\(\\w+\\), zdobyte`) }).count()) === 1);
+  }
+  await page.getByRole('button', { name: /^Curious Detective/ }).click();
+  step('Osiągnięcia: rewers Curious Detective z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

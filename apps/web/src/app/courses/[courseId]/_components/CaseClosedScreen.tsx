@@ -320,7 +320,7 @@ export default function CaseClosedScreen({
     // dla czytnika (błąd pobrania wyniku jest też widoczny pod raportem).
     portrait && !scoreUnavailable && score !== null ? `Wynik zadań: ${score}%.` : null,
     portrait && reward?.leveledUp ? `Awans na poziom ${reward.newLevel}.` : null,
-    portrait && (reward?.unlockedBadges?.length ?? 0) > 0 ? `Nowe odznaki: ${reward!.unlockedBadges.map((badge) => badge.title).join(', ')}.` : null,
+    portrait && (reward?.unlockedBadges?.length ?? 0) > 0 ? `Nowe osiągnięcia: ${reward!.unlockedBadges.map((badge) => badge.title).join(', ')}.` : null,
   ]
     .filter(Boolean)
     .join(' ');
@@ -488,9 +488,9 @@ export default function CaseClosedScreen({
               className={`inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent-ink sm:hidden ${ceremony ? 'motion-safe:animate-badge-pop' : ''}`}
               style={ceremony ? { animationDelay: '600ms' } : undefined}
             >
-              {newBadges.length === 1 ? 'Nowa odznaka' : `Nowe odznaki: ${newBadges.length}`}
+              {newBadges.length === 1 ? 'Nowe osiągnięcie' : `Nowe osiągnięcia: ${newBadges.length}`}
             </span>
-            <span className="sr-only sm:not-sr-only">Nowe odznaki:</span>
+            <span className="sr-only sm:not-sr-only">Nowe osiągnięcia:</span>
             {newBadges.map((badge, index) => (
               // Pop odznaki (D-090, B-116): .6 -> 1.08 -> 1, kolejne z opóźnieniem; reduced-motion - od razu. Na wąskim ekranie tylko dla czytnika.
               <span

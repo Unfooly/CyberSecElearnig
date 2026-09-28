@@ -32,7 +32,7 @@ function setup(reducedMotion = false, extra: { backLabel?: string; alreadyFound?
       ref={ref}
       items={items}
       outro="Pirackie gry to częsta droga wirusów do firm."
-      badge={{ id: 'ciekawski-detektyw', label: 'Ciekawski detektyw' }}
+      badge={{ id: 'ciekawski-detektyw', label: 'Curious Detective' }}
       reducedMotion={reducedMotion}
       onFound={onFound}
       onDone={onDone}
@@ -133,18 +133,18 @@ describe('PopupsEasterEgg', () => {
     closeAll();
     expect(onFound).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('status')).toBe(live);
-    expect(live).toHaveTextContent('Pirackie gry to częsta droga wirusów do firm. Nowe wyróżnienie w notatniku: Ciekawski detektyw');
-    expect(screen.getByTestId('easter-badge')).toHaveTextContent('Nowe wyróżnienie w notatniku: Ciekawski detektyw');
+    expect(live).toHaveTextContent('Pirackie gry to częsta droga wirusów do firm. Nowe osiągnięcie: Curious Detective');
+    expect(screen.getByTestId('easter-badge')).toHaveTextContent('Nowe osiągnięcie: Curious Detective');
     const back = screen.getByRole('button', { name: 'Wróć do pulpitu' });
     expect(back).toHaveFocus();
     fireEvent.click(back);
     expect(onDone).toHaveBeenCalled();
   });
 
-  it('ponowne otwarcie po znalezieniu: „Wyróżnienie w notatniku” (bez „Nowe”); domyślny przycisk „Wróć”', () => {
+  it('ponowne otwarcie po znalezieniu: „Osiągnięcie” (bez „Nowe”); domyślny przycisk „Wróć”', () => {
     setup(true, { alreadyFound: true });
     closeAll();
-    expect(screen.getByTestId('easter-badge')).toHaveTextContent(/^Wyróżnienie w notatniku: Ciekawski detektyw$/);
+    expect(screen.getByTestId('easter-badge')).toHaveTextContent(/^Osiągnięcie: Curious Detective$/);
     expect(screen.getByRole('button', { name: 'Wróć' })).toBeInTheDocument();
   });
 

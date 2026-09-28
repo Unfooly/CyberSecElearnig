@@ -22,6 +22,11 @@ export function formatDateLong(iso: string | Date, timeZone: string = DEFAULT_TI
   return new Intl.DateTimeFormat(LOCALE, { year: 'numeric', month: 'long', day: 'numeric', timeZone }).format(new Date(iso));
 }
 
+/** Data cyframi, np. "28.09.2026" (rewers osiągnięcia, D-111). */
+export function formatDateShort(iso: string | Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat(LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(new Date(iso));
+}
+
 /** Rok kalendarzowy w strefie (stopka: przełom roku nie rozjeżdża SSR i klienta). */
 export function formatYear(iso: string | Date = new Date(), timeZone: string = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat(LOCALE, { year: 'numeric', timeZone }).format(new Date(iso));

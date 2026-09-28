@@ -6,7 +6,7 @@ import { fetchJson } from '@/lib/fetch-json';
 import { decodeJwtPayload } from '@/lib/jwt';
 import type { Badge } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
-import BadgeGrid from './_components/BadgeGrid';
+import AchievementGrid from './_components/AchievementGrid';
 import { redirectIfPending } from '@/lib/organization';
 
 export default async function AchievementsPage() {
@@ -36,18 +36,25 @@ export default async function AchievementsPage() {
     <div className="min-h-dvh bg-slate-50">
       <Topbar userEmail={userEmail} role={payload?.role} />
       <main className="mx-auto max-w-7xl p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900">Osiągnięcia</h1>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <h1 className="flex items-baseline gap-3 text-2xl font-semibold text-slate-900">
+            Osiągnięcia
+            {result.ok && (
+              <span className="text-base font-bold text-muted" data-testid="achievements-counter">
+                {result.data.filter((badge) => badge.isUnlocked).length} / {result.data.length}
+              </span>
+            )}
+          </h1>
           <Link href="/courses" className="text-sm font-medium text-slate-600 hover:underline">
             ← Wróć do kursów
           </Link>
         </div>
 
         {result.ok ? (
-          <BadgeGrid badges={result.data} />
+          <AchievementGrid badges={result.data} />
         ) : (
           <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
-            Nie udało się załadować odznak. Spróbuj odświeżyć stronę za chwilę.
+            Nie udało się załadować osiągnięć. Spróbuj odświeżyć stronę za chwilę.
           </p>
         )}
       </main>

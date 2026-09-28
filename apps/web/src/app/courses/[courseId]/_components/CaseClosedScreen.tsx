@@ -19,8 +19,10 @@ import { usePortraitContainer } from '@/lib/use-portrait-container';
 //      „Dalej” dolnego paska (D-106 - jeden przycisk dalej w całym odtwarzaczu).
 // Ukończenie i XP są zapisane już przy wejściu na ten ekran (ostatni blok) - podpis to ceremonia, nie warunek. reduced-motion i podgląd
 // (powrót do ukończonego kursu, bez świeżej nagrody) - od razu stan końcowy, bez dźwięków. Moduł bez `closing` - prosty ekran z wynikiem.
-// Telefon w pionie: z `closing.portrait` w treści (D-098) - pionowy raport 9:16 w całości, przyciski pod nim na pełną szerokość; bez niego
-// raport jako panorama przewijana w poziomie (globals.css .closing-frame), ceremonia przesuwa widok do pieczęci.
+// Telefon w pionie: z `closing.portrait` w treści (D-098, D-107) - pionowy raport jako jedna duża strona 9:16 wypełniająca wolną
+// wysokość (contain), WSZYSTKIE dane w slotach grafiki (liczby 18 px pogrubione, podpis min. 16 px, wnioski min. 15 px), pod sceną tylko
+// „Następna sprawa · wkrótce”; bez niego raport jako panorama przewijana w poziomie (globals.css .closing-frame), ceremonia przesuwa
+// widok do pieczęci.
 // Ogłoszenie zdobytego XP żyje w PlayerStage (region persystentny, D-076) - tu tylko pełny opis raportu dla czytnika.
 
 type Stage = 'intro' | 'lessons' | 'sign' | 'signing' | 'stamp' | 'note' | 'done';
@@ -202,6 +204,9 @@ export default function CaseClosedScreen({
   const slots = portrait ? closing!.portrait!.slots : closing?.slots;
   const k = portrait ? 1600 / 900 : 1;
   const cqw = (value: number) => `${(value * k).toFixed(3)}cqw`;
+  // Pionowo (telefon, D-107) tekst w slotach ma dolną granicę czytelności: liczby 18 px, podpis 16 px, wnioski 15 px (wnioski w slocie
+  // z overflow-hidden - bardzo długie wnioski innego modułu mogłyby się uciąć; layout-check pilnuje modułu 1, limit w treści: B-127).
+  const font = (value: number, minPx: number) => (portrait ? `max(${minPx}px, ${cqw(value)})` : cqw(value));
   // Konfetti przy pieczęci - raz, na CONFETTI_MS (potem cząstki znikają z DOM).
   const [confetti, setConfetti] = useState(false);
   useEffect(() => {
@@ -311,6 +316,11 @@ export default function CaseClosedScreen({
     lessons.length > 0 ? `Wnioski śledczego: ${lessons.join(' ')}` : null,
     // Podpis z inicjałem kończy się kropką ("Anna K.") - bez podwójnej.
     `Podpis prowadzącego: ${signer.replace(/\.$/, '')}.`,
+    // Pionowo (D-107) pod raportem nie ma linijki wyniku, paska poziomu ani odznak - wynik, awans i nowe odznaki są w opisie raportu
+    // dla czytnika (błąd pobrania wyniku jest też widoczny pod raportem).
+    portrait && !scoreUnavailable && score !== null ? `Wynik zadań: ${score}%.` : null,
+    portrait && reward?.leveledUp ? `Awans na poziom ${reward.newLevel}.` : null,
+    portrait && (reward?.unlockedBadges?.length ?? 0) > 0 ? `Nowe odznaki: ${reward!.unlockedBadges.map((badge) => badge.title).join(', ')}.` : null,
   ]
     .filter(Boolean)
     .join(' ');
@@ -361,17 +371,29 @@ export default function CaseClosedScreen({
                 key={slot}
                 aria-hidden="true"
                 data-testid={`closing-${slot}`}
-                // Pionowy raport (D-099): wartość w slocie grafiki to ozdoba jak tekst wypalony w SVG - czytelna kopia (15 px) jest pod raportem.
-                data-graphic-text={portrait ? '' : undefined}
                 className="absolute flex items-center whitespace-nowrap font-extrabold tabular-nums text-ink"
-                style={{ ...place(slots[slot]), fontSize: cqw(2.2), paddingLeft: cqw(1) }}
+                style={{ ...place(slots[slot]), fontSize: font(2.2, 18), paddingLeft: cqw(1) }}
               >
                 {value}
               </p>
             ))}
 
-            {/* W pionie wnioski są pod raportem (HTML, 15 px) - w slocie pionowej grafiki byłyby nieczytelne (~6 px). */}
-            {!portrait && (
+            {/* Wnioski w slocie raportu. Pionowo (D-107) min. 15 px i zawijane (duża strona raportu); każda linijka rezerwuje wysokość
+                pełnego tekstu (niewidoczna kopia w tej samej komórce siatki), więc wystukiwanie nie przesuwa kolejnych linijek. */}
+            {portrait ? (
+              <ol aria-hidden="true" data-testid="closing-lessons" className="absolute flex flex-col overflow-hidden text-ink" style={{ ...place(slots.lessons), fontSize: font(1.3, 15), lineHeight: 1.25, gap: cqw(0.3) }}>
+                {lessons.map((line, index) => (
+                  <li key={index} className="grid">
+                    <span className="invisible col-start-1 row-start-1">
+                      {index + 1}. {line}
+                    </span>
+                    <span data-testid="closing-lesson-typed" className="col-start-1 row-start-1">
+                      {shownLessons[index] ? `${index + 1}. ${shownLessons[index]}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
               <ol aria-hidden="true" data-testid="closing-lessons" className="absolute overflow-hidden text-ink" style={{ ...place(slots.lessons), fontSize: cqw(1.3), lineHeight: cqw(2.5), paddingTop: cqw(1.6) }}>
                 {shownLessons.map((line, index) =>
                   line ? (
@@ -398,9 +420,9 @@ export default function CaseClosedScreen({
               <div aria-hidden="true" data-testid="closing-signature" className="absolute flex items-end" style={place(slots.signature)}>
                 {signed && (
                   <span
-                    data-graphic-text={portrait ? '' : undefined}
+                    data-testid="closing-signed"
                     className={`block whitespace-nowrap font-semibold italic text-accent-ink ${ceremony && stage === 'signing' ? 'closing-sign-draw' : ''}`}
-                    style={{ fontSize: cqw(2.4), lineHeight: 1.1, paddingLeft: cqw(1) }}
+                    style={{ fontSize: font(2.4, 16), lineHeight: 1.1, paddingLeft: cqw(1) }}
                   >
                     {signer}
                   </span>
@@ -445,52 +467,20 @@ export default function CaseClosedScreen({
         </div>
       )}
 
-      {/* Pionowy raport (D-098): liczby i wnioski śledczego pod raportem jako zwykły tekst (min. 15 px, zawijany) - w slotach pionowej
-          grafiki miałyby 7-10 px. Te same wartości (nabijane liczby, wystukiwana część wniosków) co w raporcie; czytnik dostaje je z opisu
-          raportu (aria-hidden). Każda linijka wniosków rezerwuje wysokość pełnego tekstu (niewidoczna kopia w tej samej komórce siatki),
-          więc raport nie kurczy się w trakcie wystukiwania; lista ma limit wysokości i przewija się w pionie przy długich wnioskach,
-          żeby przyciski pod nią zawsze się mieściły. */}
-      {portrait && (
-        <div aria-hidden="true" data-testid="closing-portrait-details" className="mx-auto mt-2 w-full max-w-md shrink-0 text-[15px] leading-snug text-ink">
-          <p data-testid="closing-stats" className="flex flex-wrap justify-center gap-x-4 font-bold tabular-nums">
-            <span>Dowody: {hasEvidence ? `${evidenceCount}/${evidence!.total}` : '—'}</span>
-            <span>Czas: {minutes !== null ? `${minutesCount} min` : '—'}</span>
-            <span>XP: {xp !== null ? `+${xpCount}` : '—'}</span>
-          </p>
-          {/* Podpis w grafice jest ozdobą (7 px na telefonie) - czytelnie tutaj, po podpisaniu. */}
-          {signed && (
-            <p data-testid="closing-signed" className="text-center text-muted">
-              Podpis: <span className="font-semibold italic text-accent-ink">{signer}</span>
-            </p>
-          )}
-          {lessons.length > 0 && (
-            <ol data-testid="closing-lessons" className="mt-1 max-h-[30dvh] space-y-1 overflow-y-auto">
-              {lessons.map((line, index) => (
-                <li key={index} className="grid">
-                  <span className="invisible col-start-1 row-start-1">
-                    {index + 1}. {line}
-                  </span>
-                  <span data-testid="closing-lesson-typed" className="col-start-1 row-start-1">
-                    {shownLessons[index] ? `${index + 1}. ${shownLessons[index]}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
-
-      {/* Pionowy raport (D-098): „Następna sprawa” pod sceną, na pełną szerokość („Wróć do biblioteki” - w dolnym pasku, D-106). */}
+      {/* Pod raportem: poziomo - wynik zadań, poziom, odznaki i „Następna sprawa”; pionowo (D-107) TYLKO „Następna sprawa” na pełną
+          szerokość (dane są na grafice, wynik zadań - w opisie raportu dla czytnika; „Wróć do biblioteki” - w dolnym pasku, D-106). */}
       <div
         data-testid="case-closed-actions"
         className={`mt-2 flex shrink-0 gap-y-2 ${portrait ? 'flex-col items-stretch text-center' : 'flex-wrap items-center justify-center gap-x-4'}`}
       >
-        <p className="text-sm text-muted">
-          {scoreLine}
-          {levelUp && <span className="ml-2 font-semibold text-accent-ink">{levelUp}</span>}
-        </p>
-        {reward && <LevelProgress reward={reward} animate={ceremony} />}
-        {newBadges.length > 0 && (
+        {!portrait && (
+          <p className="text-sm text-muted">
+            {scoreLine}
+            {levelUp && <span className="ml-2 font-semibold text-accent-ink">{levelUp}</span>}
+          </p>
+        )}
+        {reward && !portrait && <LevelProgress reward={reward} animate={ceremony} />}
+        {newBadges.length > 0 && !portrait && (
           <p className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
             {/* Wąski ekran: jedna zbiorcza plakietka (wiersz nazw odznak odbierałby wysokość raportowi); od sm - każda odznaka osobno. */}
             <span
@@ -513,6 +503,8 @@ export default function CaseClosedScreen({
             ))}
           </p>
         )}
+        {/* Błąd pobrania wyniku to nie dubel danych z grafiki - pionowo też widoczny (poziomo jest w linijce wyniku wyżej). */}
+        {portrait && scoreUnavailable && <p className="text-sm font-medium text-danger">Nie udało się pobrać wyniku. Spróbuj odświeżyć stronę.</p>}
         {restartError && <p className="text-sm font-medium text-danger">Nie udało się rozpocząć kursu od nowa. Spróbuj ponownie.</p>}
         {/* Kolejnej sprawy w API nie ma (B-115: zachowanie MVP) - zamknięta teczka z kłódką. aria-disabled (nie disabled): osiągalny Tabem,
             więc użytkownik klawiatury/czytnika też usłyszy "wkrótce"; bez obsługi kliku (type=button poza formularzem nic nie robi). */}

@@ -5,7 +5,7 @@ import BriefingSceneStep, { sceneForOrientation } from './BriefingScene';
 import { PORTRAIT_THRESHOLD } from '@/lib/use-portrait-container';
 import CaseClosedScreen from '../CaseClosedScreen';
 import { SfxProvider } from '@/lib/sfx';
-import type { BriefingStep, CaseClosing } from '@/lib/courses-types';
+import type { BriefingStep, CaseClosing, CourseCompletionReward } from '@/lib/courses-types';
 
 vi.mock('next/link', async () => {
   const { forwardRef } = await import('react');
@@ -261,21 +261,82 @@ describe('obrót telefonu (D-098, ResizeObserver)', () => {
 describe('CaseClosedScreen w pionie (D-098)', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('wnioski pod raportem jako tekst min. 15 px (nie w slocie grafiki)', () => {
+  it('D-107: wszystkie dane w slotach grafiki (liczby min. 18 px, podpis min. 16 px, wnioski min. 15 px); pod raportem tylko „Następna sprawa”', () => {
     mockContainer(360, 600);
     renderClosing(closing);
+    const scene = screen.getByTestId('case-closed-scene');
     const lessons = screen.getByTestId('closing-lessons');
-    expect(screen.getByTestId('case-closed-scene')).not.toContainElement(lessons);
-    expect(screen.getByTestId('closing-portrait-details')).toContainElement(lessons);
+    expect(scene).toContainElement(lessons);
     expect(lessons).toHaveTextContent('1. Wniosek.');
-    // Liczby raportu też pod nim (w slotach pionowej grafiki byłyby 7-10 px).
-    const stats = screen.getByTestId('closing-stats');
-    expect(screen.getByTestId('case-closed-scene')).not.toContainElement(stats);
-    expect(screen.getByTestId('closing-portrait-details').className).toMatch(/text-\[15px\]/);
-    expect(stats).toHaveTextContent('Dowody: —');
-    // D-099: podpis czytelnie pod raportem; wartości i podpis w slotach grafiki oznaczone jako tekst grafiki (layout-check je pomija).
-    expect(screen.getByTestId('closing-signed')).toHaveTextContent('Podpis: Jan P.');
-    expect(screen.getByTestId('closing-evidence')).toHaveAttribute('data-graphic-text');
+    expect(lessons.style.fontSize).toMatch(/^max\(15px,/);
+    for (const id of ['closing-evidence', 'closing-time', 'closing-xp']) {
+      const value = screen.getByTestId(id);
+      expect(scene).toContainElement(value);
+      expect(value.style.fontSize).toMatch(/^max\(18px,/);
+      // Prawdziwy tekst raportu (czytelny), nie ozdoba wypalona w grafice.
+      expect(value).not.toHaveAttribute('data-graphic-text');
+    }
+    expect(screen.getByTestId('closing-evidence')).toHaveTextContent('—');
+    const signed = screen.getByTestId('closing-signed');
+    expect(scene).toContainElement(signed);
+    expect(signed).toHaveTextContent('Jan P.');
+    expect(signed.style.fontSize).toMatch(/^max\(16px,/);
+    // Pod raportem nic poza „Następna sprawa” (bez liczb, wniosków, wyniku zadań i paska poziomu).
+    expect(screen.queryByTestId('closing-portrait-details')).not.toBeInTheDocument();
+    const actions = screen.getByTestId('case-closed-actions');
+    expect(actions).not.toHaveTextContent(/Wynik zadań|Dowody|Czas|Poziom/);
+    expect(actions.querySelectorAll('button, a, p, [role="progressbar"]')).toHaveLength(1);
+    expect(actions).toHaveTextContent('Następna sprawa · wkrótce');
+    // Wynik zadań zostaje dla czytnika - w opisie raportu.
+    expect(screen.getByText(/Wynik zadań: 100%\./)).toHaveClass('sr-only');
+  });
+
+  const reward: CourseCompletionReward = {
+    xpGained: 325,
+    previousLevel: 1,
+    newLevel: 2,
+    leveledUp: true,
+    levelProgressBeforePercent: 40,
+    levelProgressAfterPercent: 100,
+    unlockedBadges: [{ code: 'tropiciel', title: 'Tropiciel wszystkich dowodów', icon: 'badge', xpReward: 50 }],
+  };
+
+  it('D-107 z nagrodą: pod raportem nadal tylko „Następna sprawa”, a awans i nowe odznaki są w opisie raportu dla czytnika', () => {
+    mockContainer(360, 600);
+    render(
+      <SfxProvider enabled={false}>
+        <CaseClosedScreen title="Sprawa" score={90} reward={reward} closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+      </SfxProvider>,
+    );
+    const actions = screen.getByTestId('case-closed-actions');
+    expect(actions.querySelectorAll('button, a, p, [role="progressbar"]')).toHaveLength(1);
+    expect(actions).not.toHaveTextContent(/Awans|Poziom|odznak/i);
+    const report = screen.getByText(/Podpis prowadzącego: Jan P\./);
+    expect(report).toHaveClass('sr-only');
+    expect(report).toHaveTextContent('Wynik zadań: 90%. Awans na poziom 2. Nowe odznaki: Tropiciel wszystkich dowodów.');
+    expect(screen.getByTestId('closing-xp')).toHaveTextContent('+325');
+  });
+
+  it('D-107: błąd pobrania wyniku zostaje widoczny pod pionowym raportem (to nie dubel danych z grafiki)', () => {
+    mockContainer(360, 600);
+    render(
+      <SfxProvider enabled={false}>
+        <CaseClosedScreen title="Sprawa" score={null} scoreUnavailable closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+      </SfxProvider>,
+    );
+    expect(screen.getByTestId('case-closed-actions')).toHaveTextContent('Nie udało się pobrać wyniku. Spróbuj odświeżyć stronę.');
+  });
+
+  it('poziomo bez zmian: wynik zadań widoczny pod raportem, bez dubla w opisie dla czytnika', () => {
+    mockContainer(1280, 720);
+    render(
+      <SfxProvider enabled={false}>
+        <CaseClosedScreen title="Sprawa" score={90} reward={reward} closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+      </SfxProvider>,
+    );
+    expect(screen.getByTestId('case-closed-actions')).toHaveTextContent('Wynik zadań: 90%');
+    expect(screen.getByTestId('case-closed-actions')).toHaveTextContent('Awans na poziom 2!');
+    expect(screen.getByText(/Podpis prowadzącego: Jan P\./)).not.toHaveTextContent('Wynik zadań');
   });
 
   it('wnioski w pionie rezerwują wysokość pełnego tekstu w trakcie wystukiwania', () => {
@@ -295,7 +356,7 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
     vi.useRealTimers();
   });
 
-  it('pionowy raport 9:16 z pionowymi slotami, przyciski pod raportem jeden pod drugim', () => {
+  it('pionowy raport 9:16 z pionowymi slotami, „Następna sprawa” pod raportem na pełną szerokość', () => {
     mockContainer(360, 600);
     renderClosing(closing);
     expect(screen.getByTestId('case-closed-frame')).toHaveAttribute('data-orientation', 'portrait');

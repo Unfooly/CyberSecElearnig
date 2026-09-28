@@ -412,6 +412,11 @@ export function moduleWarnings(contentModule: ContentModule): string[] {
   const warnings: string[] = [];
   contentModule.blocks.forEach((block, index) => {
     const where = `blocks[${index}] (${block.id})`;
+    // D-096: odtwarzacz nie pokazuje postaci (D-093) - mascot i pose są przestarzałe.
+    if (block.mascot !== undefined) warnings.push(`${where}: mascot jest przestarzałe, użyj tip (sam tekst podpowiedzi)`);
+    if (block.reactions?.complete?.pose !== undefined || block.reactions?.result?.some((entry) => entry.pose !== undefined)) {
+      warnings.push(`${where}: reactions[].pose jest przestarzałe i ignorowane - zostaw sam text`);
+    }
     if (block.type === 'SCENE_HOTSPOTS' && block.requiredHotspots !== undefined) {
       warnings.push(`${where}: requiredHotspots[] jest przestarzałe, użyj hotspots[].required`);
     }

@@ -532,7 +532,9 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
 
   it('ostrzeżenia (nie błędy) o przestarzałych requiredHotspots[] / requiredQuestions[]', () => {
     const parsed = parseModule(fullModuleForTests());
-    expect(moduleWarnings(parsed)).toEqual([
+    // Fixtura celowo wypełnia też przestarzałe mascot/pose (D-096) - te ostrzeżenia sprawdza osobny test niżej.
+    const notMascot = (warnings: string[]) => warnings.filter((w) => !/mascot jest przestarzałe|pose jest przestarzałe/.test(w));
+    expect(notMascot(moduleWarnings(parsed))).toEqual([
       expect.stringContaining('requiredHotspots[] jest przestarzałe'),
       expect.stringContaining('requiredQuestions[] jest przestarzałe'),
     ]);
@@ -542,7 +544,24 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     const clean = fullModuleForTests();
     delete hotspots(clean).requiredHotspots;
     delete dialogue(clean).requiredQuestions;
-    expect(moduleWarnings(parseModule(clean))).toEqual([]);
+    expect(notMascot(moduleWarnings(parseModule(clean)))).toEqual([]);
+  });
+
+  it('D-096: mascot i reactions[].pose - ostrzeżenie „przestarzałe”, nie błąd; tip i reakcje bez pose - bez ostrzeżeń', () => {
+    const legacy = fullModuleForTests();
+    const warnings = moduleWarnings(parseModule(legacy));
+    expect(warnings).toContainEqual(expect.stringContaining('mascot jest przestarzałe, użyj tip'));
+    expect(warnings).toContainEqual(expect.stringContaining('reactions[].pose jest przestarzałe'));
+
+    const modern = fullModuleForTests();
+    for (const block of modern.blocks as Record<string, any>[]) {
+      delete block.mascot;
+      if (block.reactions?.complete) delete block.reactions.complete.pose;
+      for (const entry of block.reactions?.result ?? []) delete entry.pose;
+    }
+    const parsed = parseModule(modern);
+    expect(moduleWarnings(parsed).filter((w) => /mascot|pose/.test(w))).toEqual([]);
+    expect((parsed.blocks[0] as Record<string, unknown>).tip).toBe('Sprawdź nadawcę.');
   });
 });
 

@@ -23,7 +23,10 @@ Część izomorficzna (`@cyberszkolo/content`, bez modułów Node) jest bezpiecz
 
 - `blocks[].id` jest stały i unikalny w module (klucz w postępie pracownika, notatkach i wersjach). Litery, cyfry, `-`, `_`; bez nazw z
   `Object.prototype` i `__proto__`.
-- Każdy blok może mieć `title`, `narration { text, audioUrl, durationMs }`, `mascot { pose, text }` i `weight`.
+- Każdy blok może mieć `title`, `narration { text, audioUrl, durationMs }`, `tip` (stała podpowiedź - sam tekst w dymku odtwarzacza,
+  pole `client`, **publiczne od `/start` - nigdy odpowiedź ani wskazówka do niej**; nie mylić z sekretnymi `hints` zadania tekstowego;
+  dozwolone w każdej `schemaVersion`) i `weight`. `mascot { pose, text }` i `pose` w `reactions` są
+  przestarzałe (D-096): nadal przechodzą walidację (starsze wersje treści), import wypisuje ostrzeżenie, odtwarzacz czyta tylko tekst.
 - Ścieżki zasobów (`image`, `character.avatar`, `narration.audioUrl`) są WZGLĘDNE względem `CONTENT_BASE_URL`: bez schematu, hosta, `..` i
   ścieżki bezwzględnej (walidacja odrzuca `https://`, `//`, `javascript:`). `audioUrl` i `durationMs` występują razem, a `image`/`avatar`
   jest wersjonowaną nazwą (`nazwa.<hash8>.ext`) - oba wpisuje skrypt `scripts/content` (`npm run tts`, `--assets`), NIE autor ręcznie po

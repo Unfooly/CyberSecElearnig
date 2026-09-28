@@ -10,6 +10,8 @@ export const COURSE_CATEGORIES = [
   'GENERAL_AWARENESS',
 ] as const;
 
+// Pozy maskotki Fooli - PRZESTARZAŁE (D-096): odtwarzacz od D-093 nie pokazuje postaci. Enum zostaje, żeby starsze wersje treści
+// dalej przechodziły walidację; nowa treść nie powinna używać `pose` (moduleWarnings).
 export const MASCOT_POSES = ['greeting', 'thinking', 'pointing', 'cheer', 'warning'] as const;
 export type MascotPose = (typeof MASCOT_POSES)[number];
 
@@ -94,6 +96,7 @@ export const narrationSchema = z
   });
 export type Narration = z.infer<typeof narrationSchema>;
 
+// PRZESTARZAŁE (D-096): `mascot` zastąpione przez `tip` (sam tekst). Odtwarzacz czyta `tip`, a dla starszych wersji treści `mascot.text`.
 export const mascotSchema = z
   .object({
     pose: z.enum(MASCOT_POSES),
@@ -121,12 +124,12 @@ export function requiredItemIds(
   return legacyRequired ? [...legacyRequired] : items.map((item) => item.id);
 }
 
-// Reakcja maskotki: własna poza i tekst zamiast domyślnej reakcji powłoki (mascot-reaction.tsx). `complete` (schemaVersion 4)
+// Reakcja (od D-093 sam tekst w podpowiedzi odtwarzacza, player/hints.tsx; `pose` przestarzała i opcjonalna - D-096). `complete` (schemaVersion 4)
 // to zdarzenie "blok ukończony" - pole dostępne na KAŻDYM typie bloku (baseShape), choć w PR 4 wywołuje je klient tylko dla
 // bloków eksploracyjnych (po zebraniu wymaganych elementów; SCENE_HOTSPOTS/DIALOGUE/TABS/NARRATIVE). Jest polem `client`
 // niezależnie od typu bloku: to KLIENT wywołuje je sam po stronie przeglądarki, więc nie zdradza niczego (komentarz PO fakcie,
 // nie klucz odpowiedzi) - nic nie stoi na przeszkodzie, żeby w przyszłości użył go też inny typ bloku (np. VIDEO po obejrzeniu).
-export const reactionMomentSchema = z.object({ pose: z.enum(MASCOT_POSES), text: text(300) }).strict();
+export const reactionMomentSchema = z.object({ pose: z.enum(MASCOT_POSES).optional(), text: text(300) }).strict();
 
 /**
  * Jeden wpis reakcji na WYNIK bloku ocenianego (schemaVersion 4): dokładnie jedno z `when`/`minScore`, zależnie od typu bloku
@@ -137,7 +140,7 @@ export const reactionMomentSchema = z.object({ pose: z.enum(MASCOT_POSES), text:
  */
 export const reactionResultEntrySchema = z
   .object({
-    pose: z.enum(MASCOT_POSES),
+    pose: z.enum(MASCOT_POSES).optional(),
     text: text(300),
     when: z.enum(['correct', 'incorrect']).optional(),
     // Próg wyniku (0-1): wpis pasuje, gdy minScore <= wynik. Lista musi być malejąca (semantics.ts) - wygrywa pierwszy pasujący.
@@ -160,6 +163,10 @@ export const baseShape = {
   id: idSchema,
   title: text(200).optional(),
   narration: narrationSchema.optional(),
+  // Stała podpowiedź bloku (D-096): tekst w dymku odtwarzacza (player/Hint.tsx), pole `client`. NIE mylić z `hints` zadania
+  // tekstowego (sekret, odsłaniany po błędnych próbach).
+  tip: text(300).optional(),
+  // PRZESTARZAŁE (D-096) - użyj `tip`; zostaje dla starszych wersji treści.
   mascot: mascotSchema.optional(),
   // Waga w wyniku modułu; domyślnie z DEFAULT_WEIGHT (bloki oceniane 1, eksploracyjne 0).
   weight: z.number().min(0).max(10).optional(),

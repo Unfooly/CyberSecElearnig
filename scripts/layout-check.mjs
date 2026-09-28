@@ -748,29 +748,66 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
 }
 
-// TABLICA JAKO LISTA (telefon w pionie, D-099): (a) strona się nie przewija; (s1-s5) audyt telefonu; (l1) liczba śladów na tacce,
-// „Sprawdź trop” tylko przy pełnej liście; (l2) po sprawdzeniu: zdanie informacji zwrotnej i „Dalej” NAD polami (widoczne bez przewijania).
-async function checkEvidenceList(page, label, { trayCards, result = false }) {
+// TABLICA ZYGZAKIEM (telefon w pionie, D-105, zastępuje listę z D-099): (a) strona się nie przewija; (s1-s5) audyt telefonu (pasek tacki
+// przewija się w poziomie celowo); (g1) tablica z korkiem i nicią (data-layout=zigzag), pola na przemian przy lewej i prawej krawędzi,
+// każde pod poprzednim (bez nakładania); (g2) tekst każdej karty na scenie >= 15 px i nieucięty; (g3) w trakcie: tacka to pasek POD
+// przewijaną sceną (nie w niej), w ekranie, z oczekiwaną liczbą śladów, „Sprawdź trop” tylko przy pustej tacce; (g4) po sprawdzeniu:
+// nić ciągła, zdanie informacji zwrotnej i „Dalej” NAD sceną, w ekranie (widoczne bez przewijania).
+async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
   await checkNoPageScroll(page, label);
-  await auditMobileView(page, label);
+  await auditMobileView(page, label, { scrollX: '[data-board-tray] ul' });
   const info = await page.evaluate(() => {
     const board = document.querySelector('[data-testid="evidence-board"]');
-    const tray = board.querySelector('[data-board-tray]');
-    const firstSlot = board.querySelector('[data-slot-index]');
-    const next = [...board.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Dalej');
+    const outer = document.querySelector('[data-testid="board-outer"]');
+    const rect = (el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    };
+    const buttons = [...document.querySelectorAll('[data-testid="player-content-area"] button')];
+    const next = buttons.find((b) => b.textContent.trim() === 'Dalej');
+    const tray = document.querySelector('[data-board-tray]');
     return {
       layout: board.dataset.layout,
-      trayCards: tray.querySelectorAll('[data-card-id]').length,
-      check: [...board.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Sprawdź trop'),
-      feedback: board.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
-      nextAboveSlots: next && firstSlot ? next.getBoundingClientRect().bottom <= firstSlot.getBoundingClientRect().top : false,
-      nextInView: next ? next.getBoundingClientRect().bottom <= innerHeight : false,
+      cork: !!board.querySelector('.board-cork'),
+      yarn: board.querySelectorAll('[data-yarn]').length,
+      dashed: board.querySelectorAll('[data-yarn="dashed"]').length,
+      slots: [...board.querySelectorAll('[data-slot-index]')].sort((a, b) => Number(a.dataset.slotIndex) - Number(b.dataset.slotIndex)).map(rect),
+      texts: [...board.querySelectorAll('.board-card > span')].map((span) => ({
+        text: span.textContent.slice(0, 30),
+        clipped: span.scrollHeight > span.clientHeight + 1 || span.scrollWidth > span.clientWidth + 1,
+        font: parseFloat(getComputedStyle(span).fontSize),
+      })),
+      outer: rect(outer),
+      tray: tray ? rect(tray) : null,
+      trayInBoard: tray ? board.contains(tray) : false,
+      trayCards: tray ? tray.querySelectorAll('[data-card-id]').length : 0,
+      check: buttons.some((b) => b.textContent.trim() === 'Sprawdź trop'),
+      feedback: document.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
+      next: next ? rect(next) : null,
+      viewportHeight: innerHeight,
     };
   });
-  if (info.layout !== 'list') fail(`${label}: tablica nie jest listą (data-layout=${info.layout}).`);
-  if (info.trayCards !== trayCards) fail(`${label}: (l1) na tacce ${info.trayCards} śladów, oczekiwano ${trayCards}.`);
-  if (!result && info.check !== (trayCards === 0)) fail(`${label}: (l1) "Sprawdź trop" ${info.check ? 'widoczne' : 'niewidoczne'} przy ${trayCards} śladach na tacce.`);
-  if (result && (!info.feedback.trim() || !info.nextAboveSlots || !info.nextInView)) fail(`${label}: (l2) wynik - ${JSON.stringify(info)} (oczekiwane zdanie i „Dalej” nad polami, w ekranie).`);
+  if (info.layout !== 'zigzag' || !info.cork || info.yarn === 0) fail(`${label}: (g1) nie tablica zygzakiem z korkiem i nicią - ${JSON.stringify({ layout: info.layout, cork: info.cork, yarn: info.yarn })}.`);
+  for (let i = 1; i < info.slots.length; i += 1) {
+    const [a, b] = [info.slots[i - 1], info.slots[i]];
+    if (Math.abs(a.x - b.x) < 10) fail(`${label}: (g1) pola ${i} i ${i + 1} nie na przemian (x ${Math.round(a.x)} i ${Math.round(b.x)}).`);
+    // Karty lekko obrócone (±2°) - tolerancja kilku pikseli.
+    if (b.y < a.y + a.height - 6) fail(`${label}: (g1) pole ${i + 1} nachodzi na pole ${i}.`);
+  }
+  const bad = info.texts.filter((t) => t.clipped || t.font < MOBILE_MIN_FONT_PX - 0.05);
+  if (bad.length > 0) fail(`${label}: (g2) karty ucięte albo < 15 px: ${bad.map((t) => `„${t.text}…” (${t.font}px${t.clipped ? ', ucięta' : ''})`).join(', ')}.`);
+  if (!result) {
+    if (!info.tray || info.trayInBoard) fail(`${label}: (g3) tacka nie jest paskiem pod sceną.`);
+    else if (info.tray.y < info.outer.y + info.outer.height - 1 || info.tray.y + info.tray.height > info.viewportHeight + 1) fail(`${label}: (g3) tacka nie pod sceną albo poza ekranem - tacka=${JSON.stringify(info.tray)} scena=${JSON.stringify(info.outer)}.`);
+    if (info.trayCards !== trayCards) fail(`${label}: (g3) na tacce ${info.trayCards} śladów, oczekiwano ${trayCards}.`);
+    if (info.check !== (trayCards === 0)) fail(`${label}: (g3) "Sprawdź trop" ${info.check ? 'widoczne' : 'niewidoczne'} przy ${trayCards} śladach na tacce.`);
+  } else {
+    if (info.dashed !== 0) fail(`${label}: (g4) po sprawdzeniu nić ma ${info.dashed} przerywanych odcinków.`);
+    const nextOk = info.next && info.next.y + info.next.height <= info.outer.y + 1 && info.next.y + info.next.height <= info.viewportHeight + 1;
+    if (!info.feedback.trim() || !nextOk) fail(`${label}: (g4) wynik - zdanie „${info.feedback}”, „Dalej” ${JSON.stringify(info.next)} (oczekiwane nad sceną ${JSON.stringify(info.outer)}, w ekranie).`);
+  }
+  const minFont = Math.min(...info.texts.map((t) => t.font));
+  if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
 }
 
 // ZAMKNIĘCIE SPRAWY (feat/case-closed, D-089), w trakcie ceremonii (etap podpisu) i w stanie końcowym: (z1) strona i obszar bloku się
@@ -1339,8 +1376,8 @@ try {
     await context.close();
   }
 
-  // TABLICA ŚLEDCZA (D-088) - patrz checkEvidenceBoard.
-  for (const viewport of runs('board') ? BRIEFING_VIEWPORTS : []) {
+  // TABLICA ŚLEDCZA (D-088) - patrz checkEvidenceBoard; telefony w pionie (D-105) - checkEvidenceZigzag.
+  for (const viewport of runs('board') ? [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }] : []) {
     console.log(`\n--- viewport (TABLICA): ${viewport.name} ---`);
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
@@ -1377,21 +1414,22 @@ try {
     await page.goto(`${WEB}/dev/player-harness?block=rekonstrukcja`);
     const board = page.getByTestId('evidence-board');
     await board.waitFor();
-    const expectedOrientation = viewport.name === '390x844' ? 'portrait' : 'landscape';
+    const expectedOrientation = viewport.height > viewport.width ? 'portrait' : 'landscape';
     await page.waitForFunction((orientation) => document.querySelector('[data-testid="evidence-board"]')?.getAttribute('data-orientation') === orientation, expectedOrientation);
-    // Telefon w pionie (D-099): lista pól zamiast tablicy - stuknięcie śladu przypina go do pierwszego pustego pola.
-    const isList = expectedOrientation === 'portrait';
-    const checkBoard = isList ? checkEvidenceList : checkEvidenceBoard;
+    // Telefon w pionie (D-105): tablica zygzakiem, tacka pod sceną; przypięcie jak na tablicy poziomej - ślad, potem pole.
+    const zigzag = expectedOrientation === 'portrait';
+    const checkBoard = zigzag ? checkEvidenceZigzag : checkEvidenceBoard;
+    const checks = zigzag ? '(a, s1-s5, g1-g3)' : '(a, e, b1-b4)';
 
     const tray = page.getByRole('group', { name: 'Ślady do przypięcia' });
     const pinFirstTrayCardTo = async (slot) => {
       await tray.getByRole('button', { name: /^Ślad: / }).first().click();
-      if (!isList) await page.getByRole('button', { name: new RegExp(`^Pole ${slot}, puste`) }).click();
+      await page.getByRole('button', { name: new RegExp(`^Pole ${slot}, puste`) }).click();
     };
 
     await shot(page, `${viewport.name}-tablica-1-pusta`);
     await checkBoard(page, `${viewport.name} / tablica pusta`, { trayCards: 6 });
-    step(`${viewport.name} / tablica pusta: (a, e, b1-b4) OK`, true);
+    step(`${viewport.name} / tablica pusta: ${checks} OK`, true);
 
     // (b6) Przeciąganie myszą w prawdziwej przeglądarce: klon karty ma tło kartki (tokeny poza drzewem tablicy - portal) i ląduje na polu.
     // Ruch pionowy - na telefonie poziomy ruch na tacce przewija tackę.
@@ -1419,7 +1457,7 @@ try {
     await page.waitForTimeout(300);
     await shot(page, `${viewport.name}-tablica-2-w-trakcie`);
     await checkBoard(page, `${viewport.name} / tablica w trakcie`, { trayCards: 3 });
-    step(`${viewport.name} / tablica w trakcie (3 z 6): (a, e, b1-b4) OK`, true);
+    step(`${viewport.name} / tablica w trakcie (3 z 6): ${checks} OK`, true);
 
     // Reszta pól po kolei (odpowiedź serwera jest podstawiona - kolejność gracza nie ma tu znaczenia).
     for (const slot of [4, 5, 6]) await pinFirstTrayCardTo(slot);
@@ -1429,7 +1467,7 @@ try {
     await shot(page, `${viewport.name}-tablica-3-po-sprawdzeniu`);
     if (pageErrors.length > 0) fail(`${viewport.name} / tablica: błąd strony: ${pageErrors.join(' | ')}`);
     await checkBoard(page, `${viewport.name} / tablica po sprawdzeniu`, { trayCards: 0, result: true });
-    step(`${viewport.name} / tablica po sprawdzeniu: (a, e, b1-b5) OK`, true);
+    step(`${viewport.name} / tablica po sprawdzeniu: ${zigzag ? '(a, s1-s5, g1, g2, g4)' : '(a, e, b1-b5)'} OK`, true);
     await context.close();
   }
 
@@ -1668,7 +1706,8 @@ try {
       try {
         if (pageErrors.length > 0) fail(`${label}: błąd strony: ${pageErrors.join(' | ')}`);
         await checkNoPageScroll(page, label);
-        await auditMobileView(page, label);
+        // Pasek tacki tablicy (D-105) przewija się w poziomie celowo.
+        await auditMobileView(page, label, { scrollX: '[data-board-tray] ul' });
         step(`${label}: (s1-s5) OK`, true);
       } catch (error) {
         if (!error.isLayoutCheckFailure) throw error;
@@ -1696,12 +1735,15 @@ try {
       gamification: null,
     };
     await page.goto(`${WEB}/dev/player-harness?block=rekonstrukcja`);
-    await page.locator('[data-testid="evidence-board"][data-layout="list"]').waitFor();
+    await page.locator('[data-testid="evidence-board"][data-layout="zigzag"]').waitFor();
     await audit('tablica pusta');
-    // Lista: stuknięcie śladu przypina go do pierwszego pustego pola.
-    const pin = () => page.getByRole('group', { name: 'Ślady do przypięcia' }).getByRole('button', { name: /^Ślad: / }).first().click();
+    // Tablica zygzakiem (D-105): stuknięcie śladu z tacki, potem pierwszego pustego pola.
+    const pin = async () => {
+      await page.getByRole('group', { name: 'Ślady do przypięcia' }).getByRole('button', { name: /^Ślad: / }).first().click();
+      await page.getByRole('button', { name: /^Pole \d+, puste/ }).first().click();
+    };
     for (let i = 0; i < 3; i += 1) await pin();
-    // Wybrany przypięty ślad: w liście pojawia się „Odłóż na tackę” i „Przypnij tutaj” na pustych polach.
+    // Wybrany przypięty ślad: w pasku tacki pojawia się „Odłóż na tackę”, puste pola podświetlone.
     await page.getByRole('button', { name: /^Pole 1: / }).click();
     await audit('tablica w trakcie (wybrany ślad)');
     await page.getByRole('button', { name: /^Pole 1: / }).click();
@@ -1766,7 +1808,7 @@ try {
   // poziomego przewijania poza celowo przewijanymi (MODULE_SCROLL_X), (s5) pasek w ekranie; bez (s4). Zbiera wszystkie stany.
   // Celowo przewijane w poziomie (chipy rozmowy, panorama, zakładki teczki) i celowo skracany wielokropkiem tytuł kursu w górnym pasku
   // (pełny tytuł jest w bibliotece kursów; pasek ma jedną linijkę).
-  const MODULE_SCROLL_X = '.dialogue-chips, .scene-pan-container, [role="tablist"], .player-topbar h1';
+  const MODULE_SCROLL_X = '.dialogue-chips, .scene-pan-container, [role="tablist"], .player-topbar h1, [data-board-tray] ul';
   const moduleFailures = [];
   for (const viewport of runs('mobile-module') ? MOBILE_SUMMARY_VIEWPORTS : []) {
     console.log(`\n--- viewport (CAŁY MODUŁ NA TELEFONIE): ${viewport.name} ---`);

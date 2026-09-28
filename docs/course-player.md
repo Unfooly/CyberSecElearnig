@@ -21,7 +21,7 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |
 | `QUIZ`, `BRANCHING_SCENARIO` | `SingleChoiceBlock` | indeks opcji | poprawność z serwera; w podglądzie „Twoja odpowiedź” |
-| `SCENE_HOTSPOTS` | `SceneHotspotsBlock` | `{ visited, noted }` | ukończenie po punktach `required`; klik = zbliżenie przedmiotu (D-086), „Zabierz” zalicza dowód tylko dla `evidence` (inaczej toast „To nie jest dowód w tej sprawie.”); `media.kind: "popups"` - okienka easter egga (`PopupsEasterEgg`, D-100): do `visited` dopiero po zamknięciu wszystkich, wyróżnienie w notatniku, bez dowodu i XP |
+| `SCENE_HOTSPOTS` | `SceneHotspotsBlock` | `{ visited, noted }` | ukończenie po punktach `required`; klik = zbliżenie przedmiotu (D-086; przezroczysta grafika z cieniem po kształcie, bez przyciemnienia - D-101), „Zabierz” zalicza dowód tylko dla `evidence` (inaczej toast „To nie jest dowód w tej sprawie.”); `media.kind: "popups"` - okienka easter egga (`PopupsEasterEgg`, D-100): do `visited` dopiero po zamknięciu wszystkich, wyróżnienie w notatniku, bez dowodu i XP |
 | `DIALOGUE` | `DialogueBlock` | `{ asked }` | komunikator (D-087): rozmówca „pisze” przed każdą kwestią (także otwierającą), dźwięki przy włączonym Lektorze; pytanie liczy się po ostatniej kwestii |
 | `TABS` | `TabsBlock` | `{ opened }` | wzorzec ARIA tabs |
 | `NOTEPAD`, `SUMMARY` | `NotepadBlock`, `SummaryBlock` | brak | `SUMMARY` z dowodami to „Rozwiązanie sprawy” (przeoczone tylko liczbowo) |

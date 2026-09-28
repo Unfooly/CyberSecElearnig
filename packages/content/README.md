@@ -72,6 +72,12 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
 - Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z
   `voice`; transkrypcją jest `narration.text`) - dokładnie jedno z nich.
+- Easter egg (D-100): `media.kind: "popups"` (hotspot na zewnątrz albo w scenie zagnieżdżonej) - `items[]` (1-5) `{ title, body, button,
+  behavior?: "dodge" | "none", countdown?: "GG:MM:SS" }`, `outro`, `badge? { id, label }`. Komiksowe okienka zamykane krzyżykiem, po
+  nich `outro` i ukryte wyróżnienie w notatniku. To nie dowód: bez `evidence`/`note`, nigdy `required: true` i poza pulą wymaganych
+  (także w domyślnym „wszystkie”). Serwer zapisuje przy ukończeniu bloku tylko flagę wyróżnienia (`progress.blocks[].easterEggs`, widok
+  klienta `progress.distinctions`) - bez punktów, dowodów i XP. Wszystkie pola publiczne. `badge.id` unikalne w bloku, `requiredHotspots`
+  nie może wskazać takiego hotspotu. `content` hotspotu z okienkami (wymagany w scenie zagnieżdżonej) nie jest wyświetlany.
 - `DOSSIER` (D-083): teczka sprawy - `stamp?` (pieczątka), `documents[]` (1-6) `{ id, tab, org, title, meta?, columns[] (1-4),
   rows[] (1-30) { id, cells[] (tyle, ile kolumn), evidence?, note?, required? } }`. Wiersz-dowód (`evidence` + `note`) zakreśla się i
   trafia do notatnika, zwykła linijka pokazuje tylko „Ta linijka wygląda na zwykłą operację.”. Id dokumentów i wierszy unikalne w

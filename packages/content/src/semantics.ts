@@ -203,7 +203,20 @@ export function v5FeaturesUsed(block: ServerBlock): string[] {
   const used: string[] = [];
   if (paths.some((path) => /(^|\.)media\.narration(\.|$)/.test(path))) used.push('media.narration');
   if (paths.some((path) => /[nN]arration\.voice$/.test(path))) used.push('narration.voice');
+  // Okienka easter egga (D-100): `outro` jest wymagane i występuje tylko w media.kind "popups".
+  if (paths.some((path) => /(^|\.)media\.outro$/.test(path))) used.push('media.popups');
   return used;
+}
+
+/**
+ * Okienka easter egga (D-100) to nie dowód: hotspot z media.kind "popups" nie ma evidence ani note i nie jest wymagany (znalezienie
+ * go nie może być warunkiem ukończenia bloku ani zmieniać licznika dowodów).
+ */
+function popupsHotspotErrors(label: string, h: { media?: { kind: string }; evidence?: boolean; note?: unknown; required?: boolean }): string[] {
+  if (h.media?.kind !== 'popups') return [];
+  return h.evidence !== undefined || h.note !== undefined || h.required === true
+    ? [`${label}: okienka (media.kind "popups") nie są dowodem - bez evidence, note i required: true`]
+    : [];
 }
 
 /**
@@ -308,6 +321,18 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const outerIds = block.hotspots.map((h) => h.id);
       checkUnique('hotspots', flattenHotspots(block.hotspots).map((h) => h.id));
       checkSubset('requiredHotspots', block.requiredHotspots, outerIds); // lista jest PRZESTARZAŁA i starsza niż zagnieżdżanie: tylko zewnętrzne.
+      // Okienka easter egga (D-100) nigdy nie są wymagane - także przez przestarzałą listę; wyróżnienia unikalne w bloku (etykieta po id).
+      const popupsHotspots = flattenHotspots(block.hotspots).filter((h) => h.media?.kind === 'popups');
+      for (const h of popupsHotspots) {
+        if (block.requiredHotspots?.includes(h.id)) errors.push(`requiredHotspots: "${h.id}" to okienka (media.kind "popups") - nie mogą być wymagane`);
+      }
+      checkUnique(
+        'media.badge.id',
+        popupsHotspots.flatMap((h) => {
+          const badge = (h.media as { badge?: { id: string } }).badge;
+          return badge ? [badge.id] : [];
+        }),
+      );
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
         if (h.action === 'next') {
@@ -328,12 +353,14 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           errors.push(...evidenceErrors(`hotspots[${i}]`, h, kindRequired));
         }
         errors.push(...audioMediaErrors(`hotspots[${i}]`, h.media));
+        errors.push(...popupsHotspotErrors(`hotspots[${i}]`, h));
         if (h.media?.kind === 'scene') {
           h.media.scene.hotspots.forEach((ih, j) => {
             const label = `hotspots[${i}].media.scene.hotspots[${j}]`;
             if (ih.x + ih.width > 100 || ih.y + ih.height > 100) errors.push(`${label}: obszar wychodzi poza obraz`);
             errors.push(...evidenceErrors(label, ih, kindRequired));
             errors.push(...audioMediaErrors(label, ih.media));
+            errors.push(...popupsHotspotErrors(label, ih));
           });
         }
       });
@@ -344,7 +371,8 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Scena z drzwiami może mieć ZERO wymaganych przedmiotów (D-086: korytarz - tablica jest dowodem opcjonalnym, wyjściem są drzwi),
       // ale tylko gdy KAŻDY przedmiot ma jawnie required: false (świadoma decyzja autora). Częściowe `false` przy reszcie nieustawionej
       // to dalej błąd (pomyłka), a bez drzwi co najmniej jeden przedmiot musi być wymagany.
-      const items = flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id));
+      // Okienka easter egga (D-100) nigdy nie są wymagane (także w domyślnym „wszystkie”) - poza pulą jak drzwi (apps/api evaluate.ts).
+      const items = flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id) && h.media?.kind !== 'popups');
       const optionalByDesign = doorIds.size > 0 && items.length > 0 && items.every((h) => h.required === false);
       if (!optionalByDesign) checkRequiredFlags('hotspots', items, errors);
       break;

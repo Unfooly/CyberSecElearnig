@@ -181,8 +181,44 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
                   content: 'Folder "Faktury".',
                   media: { kind: 'document', title: 'Zawartość folderu', lines: ['faktura_marzec.pdf', 'faktura_kwiecien.pdf'] },
                 },
+                // Easter egg (D-100) WEWNĄTRZ zagnieżdżonej sceny - okienka z wyróżnieniem; nie dowód, nie wymagany.
+                {
+                  id: 'h4-gra',
+                  label: 'Gra',
+                  x: 30,
+                  y: 30,
+                  width: 15,
+                  height: 15,
+                  content: 'Ikona gry na służbowym komputerze.',
+                  media: {
+                    kind: 'popups',
+                    items: [
+                      { title: 'Wykryto 147 wirusów!', body: 'Twój komputer jest bardzo chory.', button: 'Wylecz za 0 zł', behavior: 'dodge' },
+                      { title: 'Pliki zaszyfrowane', body: 'Zapłać, żeby je odzyskać.', button: 'Zapłać teraz', behavior: 'none', countdown: '23:59:59' },
+                    ],
+                    outro: 'Pirackie gry to częsta droga wirusów do firm.',
+                    badge: { id: 'ciekawski', label: 'Ciekawski detektyw' },
+                  },
+                },
               ],
             },
+          },
+        },
+        // Okienka easter egga (D-100) na hotspocie NAJWYŻSZEGO poziomu (te same pola co wewnątrz sceny). `content` - moduły starszych
+        // wersji w testach migracji tracą `media` (pole v4).
+        {
+          id: 'h6',
+          label: 'Laptop',
+          x: 40,
+          y: 10,
+          width: 10,
+          height: 10,
+          content: 'Laptop z otwartą przeglądarką.',
+          media: {
+            kind: 'popups',
+            items: [{ title: 'Gratulacje!', body: 'Wygrałeś smartfon!', button: 'Odbierz nagrodę', behavior: 'none', countdown: '0:10:00' }],
+            outro: 'To tylko ćwiczenie.',
+            badge: { id: 'laptop', label: 'Uważny obserwator' },
           },
         },
         // Piąty hotspot: action "next" (drzwi) - kończy blok jak przycisk "Dalej", bez content/media/evidence/note.

@@ -374,8 +374,8 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.837640da.svg",
-              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, Kosz; pasek zadań pokazuje 10:06.",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.e579d3c9.svg",
+              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe, Kosz; pasek zadań pokazuje 10:06.",
               "hotspots": [
                 {
                   "id": "outlook",
@@ -414,6 +414,43 @@
                   "note": {
                     "text": "Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiły hasło i kod z SMS-a.",
                     "kind": "item"
+                  },
+                  "required": false
+                },
+                {
+                  "id": "gra",
+                  "label": "GTA6_PL.exe",
+                  "x": 24.3,
+                  "y": 32.8,
+                  "width": 17.3,
+                  "height": 27.6,
+                  "content": "Ikona „GTA6_PL.exe” na służbowym pulpicie. Skąd się tu wzięła?",
+                  "media": {
+                    "kind": "popups",
+                    "items": [
+                      {
+                        "title": "⚠ Wykryto 147 wirusów!",
+                        "body": "Twój komputer jest bardzo chory.",
+                        "button": "Wylecz za 0 zł",
+                        "behavior": "dodge"
+                      },
+                      {
+                        "title": "🎉 Gratulacje!",
+                        "body": "Wygrałeś smartfon!",
+                        "button": "Odbierz nagrodę"
+                      },
+                      {
+                        "title": "🔒 Pliki zaszyfrowane",
+                        "body": "Zapłać, żeby je odzyskać.",
+                        "button": "Zapłać teraz",
+                        "countdown": "23:59:59"
+                      }
+                    ],
+                    "outro": "Pirackie gry to jedna z najczęstszych dróg, którymi wirusy trafiają do firm. Dobrze, że to tylko ćwiczenie.",
+                    "badge": {
+                      "id": "ciekawski-detektyw",
+                      "label": "Ciekawski detektyw"
+                    }
                   },
                   "required": false
                 }

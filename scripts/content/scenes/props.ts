@@ -302,7 +302,7 @@ export const noticeBoard: PropFn<{ w?: number; h?: number; title?: string; notes
 
 /* ---------- pulpit komputera ---------- */
 
-export type IconKind = 'outlook' | 'trash' | 'folder' | 'browser' | 'sheet';
+export type IconKind = 'outlook' | 'trash' | 'folder' | 'browser' | 'game' | 'sheet';
 
 export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: string }> = ({ icon = 'folder', label, badge }) => {
   const w = 120, h = 128;
@@ -316,6 +316,19 @@ export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: stri
       break;
     case 'browser':
       g = `<circle cx="60" cy="52" r="38" fill="${P.teal}"/><ellipse cx="60" cy="52" rx="16" ry="38" fill="none" stroke="${P.white}" stroke-width="4"/><line x1="22" y1="52" x2="98" y2="52" stroke="${P.white}" stroke-width="4"/>`;
+      break;
+    case 'game':
+      /* własna ikona gry „miejski zachód słońca”: gradient, słońce w paski, palma, auto; bez cudzych logotypów */
+      g = `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B2A7A"/><stop offset="0.55" stop-color="#E0527E"/><stop offset="1" stop-color="#F7A24B"/></linearGradient>` +
+        `<clipPath id="ic"><rect x="18" y="12" width="84" height="80" rx="16"/></clipPath></defs>` +
+        `<g clip-path="url(#ic)"><rect x="18" y="12" width="84" height="80" fill="url(#sky)"/>` +
+        `<circle cx="60" cy="62" r="20" fill="#FFD36E"/>` +
+        [0, 1, 2].map(k => `<rect x="36" y="${60 + k * 6}" width="48" height="${2 + k}" fill="#E0527E"/>`).join('') +
+        `<rect x="18" y="76" width="84" height="16" fill="#2B2440"/><rect x="30" y="83" width="12" height="2" fill="#FFD36E"/><rect x="54" y="83" width="12" height="2" fill="#FFD36E"/><rect x="78" y="83" width="12" height="2" fill="#FFD36E"/>` +
+        `<path d="M30 76 q2 -22 -2 -40" stroke="#2B2440" stroke-width="3" fill="none"/>` +
+        `<path d="M28 36 q-12 -2 -16 8 M28 36 q-10 -8 -18 -4 M28 36 q4 -12 14 -12 M28 36 q12 -4 16 6 M28 36 q2 -10 -2 -16" stroke="#2B2440" stroke-width="4" fill="none" stroke-linecap="round"/>` +
+        `<path d="M58 76 l4 -7 h18 l6 5 h8 v4 z" fill="#2B2440"/></g>` +
+        `<rect x="74" y="14" width="26" height="22" rx="5" fill="${P.white}"/>` + text(87, 31, '6', 17, { bold: true, anchor: 'middle', fill: '#E0527E' });
       break;
     case 'sheet':
       g = `<rect x="26" y="14" width="68" height="78" rx="6" fill="${P.green}"/>` + [0, 1, 2, 3].map(i => `<rect x="36" y="${28 + i * 16}" width="48" height="10" fill="${P.white}" opacity="0.9"/>`).join('');

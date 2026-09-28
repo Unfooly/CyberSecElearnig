@@ -62,7 +62,7 @@ nie do repo (`.gitignore`: `*.preview.html`).
 | `door` | `open, label` | |
 | `wallSign` | `text, arrow: left\|right\|none` | |
 | `noticeBoard` | `w, h, title, notes[] ("tytuł|podtytuł", max 4)` | |
-| `desktopIcon` | `icon: outlook\|trash\|folder\|browser\|sheet, label, badge` | |
+| `desktopIcon` | `icon: outlook\|trash\|folder\|browser\|game\|sheet, label, badge` (`game` - własna ikona gry, bez cudzych logotypów) | |
 | `taskbar` | `w, clock, date` | |
 | `mailWindow` | `from, to, date, subject, attachment, body[] ("!" = czerwona linia), button, link, footer[]` | |
 | `paper` | `title, lines[] ("etykieta|wartość"), stamp` | |

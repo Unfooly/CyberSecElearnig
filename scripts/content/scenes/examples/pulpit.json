@@ -55,6 +55,18 @@
       "scale": 1.6
     },
     {
+      "id": "gra",
+      "prop": "desktopIcon",
+      "x": 300,
+      "y": 270,
+      "scale": 1.6,
+      "params": {
+        "icon": "game",
+        "label": "GTA6_PL.exe"
+      },
+      "hotspot": true
+    },
+    {
       "id": "kosz",
       "prop": "desktopIcon",
       "x": 980,

@@ -521,6 +521,12 @@ describe('pickReaction: reakcja maskotki na wynik (schemaVersion 4, reactions.re
     expect(pickReaction(block, right.entry)?.text).toContain(`${SECRET_MARKER}-text-cheer`);
   });
 
+  it('D-096: reakcja bez pose (nowa treść) - sam text, bez klucza pose; ze starszą treścią pose przechodzi dalej', () => {
+    const quiz: Block = { ...blocks().QUIZ, reactions: { result: [{ minScore: 0, text: 'Sam tekst.' }] } };
+    expect(pickReaction(quiz, { points: 1 })).toEqual({ text: 'Sam tekst.' });
+    expect(pickReaction(blocks().QUIZ, { points: 1 })).toEqual({ pose: 'cheer', text: expect.stringContaining('quiz-cheer') });
+  });
+
   it('blok bez wyniku 0-1 (eksploracyjny, bez oceny): brak reakcji niezależnie od reactions.result', () => {
     expect(pickReaction(blocks().SCENE_HOTSPOTS, { points: 1, correct: true })).toBeUndefined();
     expect(pickReaction({ ...blocks().NOTEPAD, reactions: { result: [{ minScore: 0, pose: 'cheer', text: 'x' }] } }, { points: 1 })).toBeUndefined();

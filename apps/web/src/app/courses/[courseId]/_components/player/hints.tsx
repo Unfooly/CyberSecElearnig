@@ -3,12 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 // Podpowiedzi odtwarzacza (refactor/remove-mascot-player, D-093) - dawne reakcje maskotki bez postaci: sam tekst w neutralnym dymku
-// (player/Hint.tsx). Źródła tekstu: stała podpowiedź bloku (`block.mascot.text` z treści albo DEFAULT_HINT dla typu), zdarzenia powłoki
+// (player/Hint.tsx). Źródła tekstu: stała podpowiedź bloku (`block.tip`, w starszej treści `block.mascot.text`, albo DEFAULT_HINT dla typu), zdarzenia powłoki
 // (nowy dowód, zła odpowiedź, podpowiedź) i reakcje z treści (`reactions.complete/result`). Poza (`pose`) z treści i API jest ignorowana
 // - zostaje w schemacie jako przestarzała (zgodność ze starszymi wersjami kursów).
 export type HintEvent = 'evidence' | 'wrong' | 'hint';
 
-/** Stała podpowiedź dla typu bloku, gdy autor jej nie ustawił (`block.mascot.text` wygrywa). Tylko sceny z punktami. */
+/** Stała podpowiedź dla typu bloku, gdy autor jej nie ustawił (`block.tip` / `block.mascot.text` wygrywa). Tylko sceny z punktami. */
 export const DEFAULT_HINT: Record<string, string> = {
   SCENE_HOTSPOTS: 'Rozejrzyj się. Kliknij to, co wygląda podejrzanie.',
 };

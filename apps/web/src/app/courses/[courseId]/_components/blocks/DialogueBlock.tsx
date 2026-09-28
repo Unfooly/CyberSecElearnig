@@ -161,8 +161,8 @@ export default function DialogueBlock({
   const reducedMotion = usePrefersReducedMotion();
   const play = useSfx(['msg-send', 'msg-receive']);
   // Podpowiedź (D-093, dawniej Fooli) jako pasek NAD nagłówkiem rozmowy (fix/dialogue-polish); w podglądzie "Wstecz" nie (wspólny
-  // HintProvider). Z treści liczy się tylko tekst `block.mascot` (poza przestarzała).
-  const bannerHint = hints.hint ?? block.mascot?.text ?? DEFAULT_HINT.DIALOGUE;
+  // HintProvider). Z treści: `tip` (D-096), dla starszych wersji `mascot.text` (poza przestarzała).
+  const bannerHint = hints.hint ?? block.tip ?? block.mascot?.text ?? DEFAULT_HINT.DIALOGUE;
   // Kwestia otwierająca: w podglądzie od razu, w żywym bloku też „pisana”.
   const [openingShown, setOpeningShown] = useState(review || !character?.opening);
   // Postęp rozmowy: ile kwestii każdego pytania już przyszło (kolejność = kolejność wyboru).

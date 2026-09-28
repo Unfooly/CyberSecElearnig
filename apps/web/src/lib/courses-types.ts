@@ -106,9 +106,9 @@ export interface BriefingTask {
   completeWhen: string[];
 }
 
-/** Poza i tekst reakcji maskotki z treści (schemaVersion 4): patrz packages/content D-061. */
+/** Reakcja z treści (schemaVersion 4, D-061): liczy się tekst; `pose` przestarzała (D-096), tylko ze starszych wersji treści. */
 export interface ContentReaction {
-  pose: string;
+  pose?: string;
   text: string;
 }
 
@@ -164,7 +164,9 @@ export interface ContentBlock {
   title?: string;
   // Narracja (lektor): tekst, nagranie (ścieżka względna wobec CONTENT_BASE_URL), czas i opcjonalne napisy z czasami.
   narration?: Narration;
-  // Poza maskotki i dymek z tekstem (poza jest enumem w schemacie; klient i tak traktuje ją jako niezaufany tekst).
+  // Stała podpowiedź bloku (D-096) - tekst w dymku odtwarzacza.
+  tip?: string;
+  // Przestarzałe (D-096): starsze wersje treści; odtwarzacz czyta `mascot.text`, gdy brak `tip` (poza ignorowana).
   mascot?: { pose: string; text?: string };
   // VIDEO
   url?: string;

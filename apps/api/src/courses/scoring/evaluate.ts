@@ -245,12 +245,13 @@ function weightPoints(block: Block): Partial<BlockEntry> {
 }
 
 export interface Reaction {
-  pose: string;
+  /** Przestarzałe (D-096): tylko ze starszych wersji treści; odtwarzacz od D-093 pokazuje sam tekst. */
+  pose?: string;
   text: string;
 }
 
 interface ReactionResultEntry {
-  pose: string;
+  pose?: string;
   text: string;
   when?: 'correct' | 'incorrect';
   minScore?: number;
@@ -277,9 +278,10 @@ export function pickReaction(block: Block, entry: Pick<BlockEntry, 'correct' | '
     // Lista malejąca (semantics.ts to waliduje przy imporcie): pierwszy wpis, którego próg jest osiągnięty, wygrywa.
     match = result.find((candidate) => typeof candidate.minScore === 'number' && candidate.minScore <= points);
   }
-  // Wyłącznie pose+text: `when`/`minScore` to wewnętrzny klucz doboru reakcji, nie treść do pokazania (i tak jest tylko w
-  // sekrecie serwera, ale odpowiedź API ma nieść dokładnie to, co ma pokazać klient, nic więcej - biała lista jak toClientBlock).
-  return match ? { pose: match.pose, text: match.text } : undefined;
+  // Wyłącznie text (+ przestarzała pose, jeśli treść ją ma - D-096): `when`/`minScore` to wewnętrzny klucz doboru reakcji, nie
+  // treść do pokazania (i tak jest tylko w sekrecie serwera, ale odpowiedź API ma nieść dokładnie to, co ma pokazać klient, nic
+  // więcej - biała lista jak toClientBlock).
+  return match ? { ...(match.pose !== undefined ? { pose: match.pose } : {}), text: match.text } : undefined;
 }
 
 export function emailPoints(scoring: string | undefined, totalCorrect: number, hits: number, wrong: number): number {

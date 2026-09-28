@@ -618,6 +618,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   5. Brak testu ostatniego kroku odprawy z niewczytanym obrazem (gotowy od wejścia, bez cta).
 - Akceptacja: poprawki z testem albo decyzja, że zostają.
 
+### B-127 Zamknięcie sprawy w pionie (D-107): odłożone
+- Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review `fix/phone-review-closing` (D-107)
+- Opis:
+  1. Nagroda (awans na poziom, nowe odznaki) na telefonie w pionie jest tylko w opisie dla czytnika - wzrokowo niewidoczna (spod
+     raportu zniknął pasek poziomu i odznaki, D-107). Pomysł: slot na odznakę/awans w grafice raportu albo krótki toast przy ceremonii.
+  2. Wnioski w slocie pionowego raportu (min. 15 px, `overflow-hidden`) - bardzo długie wnioski innego modułu ucięłyby się bez
+     sygnału; layout-check pilnuje tylko modułu 1. Limit długości `lessons` w walidacji treści albo test w `odprawa.test`.
+- Akceptacja: (1) decyzja właściciela; (2) walidacja albo test.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

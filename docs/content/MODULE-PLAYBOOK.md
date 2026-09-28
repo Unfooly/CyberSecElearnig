@@ -12,7 +12,8 @@ Każda grafika otwierana kliknięciem (zbliżenie przedmiotu, dokument, okno, ek
 - **ekrany komputera** (pulpit, okno aplikacji na monitorze) → `scripts/content/scenes/wrap-in-monitor.ts` (ramka monitora `screenFrame`,
   tapeta = dawny kolor tła, tło wokół przezroczyste).
 
-Odtwarzacz pokazuje taką grafikę na scenie bez karty i bez przyciemnienia, z samym cieniem po kształcie (`drop-shadow`), max 88% sceny.
+Odtwarzacz pokazuje taką grafikę bez karty, z samym cieniem po kształcie (`drop-shadow`), max 88% sceny, na przyciemnionej i
+rozmytej scenie (ink 35% + blur 3 px, D-102).
 
 Kolejność pracy dla nowej albo zmienionej grafiki:
 

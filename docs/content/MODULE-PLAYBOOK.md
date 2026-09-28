@@ -7,11 +7,11 @@ klocki i kompozytor scen w `scripts/content/scenes/README.md`, zachowanie odtwar
 
 Zasady z tego pliku obowiązują każdy nowy moduł i każdą zmianę treści albo grafik istniejącego.
 
-> **Uwaga - narzędzia weryfikacji są dziś napisane pod moduł 1** (B-128): `odprawa.test.ts` porównuje WSZYSTKIE `scenes/examples/*.json`
-> z grafikami `wyludzone-haslo` (i liczy je), harness odtwarzacza ma na sztywno `MODULE_SLUG = 'wyludzone-haslo'`
-> (`apps/web/src/app/dev/player-harness/page.dev.tsx`), a `e2e-module-01.mjs` przechodzi tylko moduł 1. Drugi moduł zaczyna się od
-> uogólnienia tych trzech miejsc (źródła scen w `scenes/examples/<slug>/`, slug w harnessie i w e2e) - inaczej testy są czerwone albo
-> niczego nie sprawdzają.
+> **Narzędzia weryfikacji przyjmują slug modułu** (B-128): źródła scen w `scripts/content/scenes/examples/<slug>/` (test scen obejmuje
+> nowy katalog sam), harness odtwarzacza i katalogu `?module=<slug>` (zasoby `/dev/module-assets/<slug>/…`), layout-check
+> `LAYOUT_CHECK_MODULE=<slug>` (sekcja `module`: każdy blok na 4 rozdzielczościach + pion), e2e smoke `node scripts/e2e-module.mjs <slug>`
+> (import → logowanie → katalog → pierwszy ekran odtwarzacza). Pełne przejście treści to osobny skrypt modułu na wzór `e2e-module-01.mjs`.
+> Kolejność: najpierw szkielet `module.json` (test scen wymaga go dla każdego katalogu `scenes/examples/<slug>/`), potem sceny.
 
 ## 1. Kolejność pracy
 
@@ -35,13 +35,13 @@ packages/content/modules/<slug>/
     miniatura-<slug>.svg miniatura modułu (pole `thumbnail`)
   assets.lock.json       generowany przez --assets (nie edytuj ręcznie)
   audio.lock.json        generowany przez tts (nie edytuj ręcznie)
-scripts/content/scenes/examples/   źródła scen (<scena>.json) i kanoniczne <scena>.hotspots.json - dziś WSPÓLNY katalog (uwaga wyżej)
+scripts/content/scenes/examples/<slug>/   źródła scen modułu (<scena>.json) i kanoniczne <scena>.hotspots.json (achievements/ - trofea)
 ```
 
 `module.json` przechowuje w polach grafik i nagrań klucze opublikowanych plików (`assets/<slug>/scenes/<nazwa>.<skrót>.svg`); przy nowym
 zasobie wpisz ścieżkę źródłową (`scenes/<nazwa>.svg`) - `--assets` podmieni ją na klucz i dopisze wpis w `assets.lock.json`. Potok zna pola
-z plikami z RĘCZNEJ listy `ASSET_PATHS` (`scripts/content/src/assets.ts`) - nowe pole schematu z plikiem trzeba tam dopisać. Uwaga:
-`steps[].caller.avatar` (avatar dzwoniącego w odprawie) nie jest dziś na tej liście (B-128) - moduł 1 go nie używa (inicjały).
+z plikami z RĘCZNEJ listy `ASSET_PATHS` (`scripts/content/src/assets.ts`) - nowe pole schematu z plikiem trzeba tam dopisać (z testem w
+`assets.test.ts`). `steps[].caller.avatar` (avatar dzwoniącego w odprawie) jest na liście od B-128; moduł 1 go nie używa (inicjały).
 
 Metadane modułu (v5): `slug`, `title`, `subtitle`, `category`, `level`, `durationMinutes`, `mandatory`, `objectives[]`, `thumbnail`.
 `objectives` to cele szkoleniowe w katalogu kursów - co innego niż zadania sprawy (`caseFile.tasks` w odprawie, D-081).
@@ -106,12 +106,12 @@ cudzych grafik. Klocek = funkcja w `props.ts` / `props-odprawa.ts`, wpis w `PROP
 
 - **Rozmiary:** sceny z przedmiotami 1600×1000, odprawa i raport 1600×900, warianty pionowe 900×1600, miniatura 1600×900 (16:9).
   Zbliżenia i ekrany (po `crop-zooms` / `wrap-in-monitor`) mają rozmiar z kadru (np. pulpit 1332×1022) - nie wymuszaj 1600×1000.
-- **Build:** `npx tsx scenes/cli.ts build scenes/examples/<scena>.json --out <katalog>` zapisuje SVG i `<scena>.hotspots.json` do
-  katalogu `--out`. Kanoniczny `hotspots.json` leży w `scenes/examples/` (z nim porównuje `odprawa.test.ts`) - po zmianie sceny skopiuj
+- **Build:** `npx tsx scenes/cli.ts build scenes/examples/<slug>/<scena>.json --out <katalog>` zapisuje SVG i `<scena>.hotspots.json` do
+  katalogu `--out`. Kanoniczny `hotspots.json` leży w `scenes/examples/<slug>/` (z nim porównuje `odprawa.test.ts`) - po zmianie sceny skopiuj
   go tam. Hotspoty SCENE_HOTSPOTS może przepisać `--module` (`--block`, `--nested`); sloty i prostokąty BRIEFING/SUMMARY przepisuje się do
   `module.json` ręcznie (`odprawa.test.ts` pilnuje dziś slotów odprawy i `closing.portrait.slots` modułu 1 - poziomych `closing.slots`
   nie sprawdza).
-- **Miniatura:** źródło `examples/miniatura-<slug>.json`, build z `scripts/content` z `--out ../../packages/content/modules/<slug>/assets`
+- **Miniatura:** źródło `examples/<slug>/miniatura-<slug>.json`, build z `scripts/content` z `--out ../../packages/content/modules/<slug>/assets`
   (nie `assets/scenes`), pole `thumbnail` w `module.json`. Podgląd PNG nie trafia do repo (`.gitignore` go nie obejmuje - dodawaj pliki
   do commitu jawnie, po ścieżkach).
 - **Animacje:** tylko CSS w SVG (klasy `a-*`), zatrzymywane przez `prefers-reduced-motion` i fragment `#static`, który odtwarzacz dopisuje
@@ -143,9 +143,9 @@ Kolejność pracy dla nowej albo zmienionej grafiki:
 
 ```
 cd scripts/content
-npx tsx scenes/crop-zooms.ts scenes/examples <scena> [...]        # albo wrap-in-monitor.ts dla ekranów
-npx tsx scenes/cli.ts build scenes/examples/<scena>.json --out ../../packages/content/modules/<slug>/assets/scenes
-# <scena>.hotspots.json z katalogu --out -> scenes/examples/ (kanoniczny); współrzędne do module.json (--module albo ręcznie)
+npx tsx scenes/crop-zooms.ts scenes/examples/<slug> <scena> [...]        # albo wrap-in-monitor.ts dla ekranów
+npx tsx scenes/cli.ts build scenes/examples/<slug>/<scena>.json --out ../../packages/content/modules/<slug>/assets/scenes
+# <scena>.hotspots.json z katalogu --out -> scenes/examples/<slug>/ (kanoniczny); współrzędne do module.json (--module albo ręcznie)
 npm run tts -- <slug> --assets --storage r2 --yes                  # publikacja z gałęzi PR
 npm run tts -- <slug> --assets --check
 ```
@@ -180,10 +180,25 @@ albo jest owinięty ramką monitora.
   więc bezpieczna w fabule. Kolejne moduły też używają domen produktu (albo `.example`), nigdy wymyślonej domeny, która może należeć do
   kogoś innego. Postaci są fikcyjne; nie używamy nazwisk prawdziwych osób.
 - **Banki, firmy i domeny spoza produktu - wyłącznie fikcyjne i sprawdzone:** przed użyciem nazwy banku i każdej domeny (tej „prawdziwej”
-  w fabule i fałszywej) sprawdź, że nie należy do istniejącej instytucji albo marki (wyszukiwarka, WHOIS, rejestr banków), i zapisz wynik
-  z datą w `SCENARIUSZ.md`. Moduł 1 („Bank Wektor”, `bankwektor.pl`, `bankwektor-weryfikacja.pl`) nie ma jeszcze zapisu sprawdzenia -
-  B-128.
+  w fabule i fałszywej) sprawdź, że nie należy do istniejącej instytucji albo marki (wyszukiwarka, WHOIS, rejestr banków), i **dopisz ją do
+  rejestru niżej** (każdy nowy moduł dopisuje swoje nazwy w tym samym PR co treść).
 - Kwoty, numery spraw i kont - wymyślone, bez prawdziwych numerów rachunków czy telefonów.
+- Cudze marki w nazwach (np. gier, aplikacji) tylko za decyzją właściciela, zapisaną w decyzji modułu - wzorzec: „GTA6_PL.exe” w module 1
+  (D-100).
+
+### Rejestr nazw fikcyjnych
+
+Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzenia. Domeny `.pl` sprawdza właściciel w rejestrze NASK
+(dns.pl) i wpisuje wynik z datą; do tego czasu status „do sprawdzenia”, a moduł nie idzie na produkcję z nową nazwą bez tego wpisu.
+
+| Nazwa | Rodzaj | Moduł | Status sprawdzenia |
+|---|---|---|---|
+| Unfooly Sp. z o.o., `unfooly.com` | firma ofiary, domena | 1 `wyludzone-haslo` | własna marka i domena produktu - bezpieczne |
+| Bank Wektor | bank (fikcyjny) | 1 `wyludzone-haslo` | fikcyjna; do sprawdzenia przez właściciela (rejestr banków KNF, wyszukiwarka) |
+| Wektor Rozliczenia Sp. z o.o. | firma (fikcyjna) | 1 `wyludzone-haslo` | fikcyjna; do sprawdzenia przez właściciela (KRS, wyszukiwarka) |
+| `bankwektor.pl` | domena „prawdziwego” banku w fabule | 1 `wyludzone-haslo` | fikcyjna; status rejestracji domeny do sprawdzenia przez właściciela (dns.pl) |
+| `bankwektor-weryfikacja.pl` | domena fałszywa (phishing) | 1 `wyludzone-haslo` | fikcyjna; status rejestracji domeny do sprawdzenia przez właściciela (dns.pl) |
+| „GTA6_PL.exe” | nazwa pliku gry (easter egg) | 1 `wyludzone-haslo` | nawiązanie do cudzej marki - zostaje, decyzja właściciela (D-100): świadome ryzyko, ikona własna, bez logo |
 
 ## 9. Zakazy (D-108)
 
@@ -191,26 +206,26 @@ albo jest owinięty ramką monitora.
   historii, adres w pasku i ostrzeżenie „Ta strona podszywa się pod bank” (D-094). Symulacje phishingowe to osobny moduł platformy.
 - **Żadnych cudzych logotypów ani grafik marek** (banki, aplikacje, gry) - ikony i grafiki tylko z kompozytora, w stylu Unfooly (np. własna
   ikona gry w easter eggu, D-100). Nazwy cudzych marek w tekście (także nazwy plików na pulpicie) - tylko za decyzją właściciela; moduł 1
-  ma „GTA6_PL.exe” (D-100) - do przeglądu w B-128.
+  ma „GTA6_PL.exe” - zostaje, decyzja właściciela (D-100, rejestr nazw w rozdziale 8).
 - Klucz odpowiedzi, podpowiedzi i rozwiązania nigdy w polach `client`; SVG tylko przez `<img>`; `EMBEDDED_HTML` tylko w `<iframe sandbox>`
   (CLAUDE.md „Silnik szkoleń”).
 - Bez przycisków dalej w treści i scenach (D-106) i bez tekstu, który na telefonie miałby mniej niż 15 px (D-103).
 
 ## 10. Lista kontrolna przed PR
 
-- [ ] `SCENARIUSZ.md` zatwierdzony; oś czasu spójna we wszystkich blokach i grafikach; sprawdzenie nazw i domen zapisane z datą.
+- [ ] `SCENARIUSZ.md` zatwierdzony; oś czasu spójna we wszystkich blokach i grafikach; nazwy i domeny w rejestrze nazw (rozdział 8).
 - [ ] Moduł przechodzi walidację: `npm run tts --prefix scripts/content -- <slug> --check` i `--assets --check` (`parseModule` na
       `module.json`), a na lokalnej bazie `content-import` (także ostrzeżenia `moduleWarnings`). Testy pakietu (`npm run test
       --workspace=packages/content`) sprawdzają schemat na fixturach - nowe pole schematu wymaga też fixtury i klasyfikacji.
 - [ ] Dowody: każdy z `note` i `kind`, N zgodne ze scenariuszem, bez duplikatów, wymagane przedmioty ustawione świadomie.
 - [ ] Grafiki z kompozytora; zbliżenia z przezroczystym tłem (`crop-zooms` / `wrap-in-monitor`); warianty pionowe tam, gdzie tekst jest
-      drobny; kanoniczne `*.hotspots.json` w `scenes/examples/`; `npm test` w `scripts/content` zielone (sceny, zasoby).
+      drobny; źródła i kanoniczne `*.hotspots.json` w `scenes/examples/<slug>/`; `npm test` w `scripts/content` zielone (sceny, zasoby).
 - [ ] Zasoby i nagrania opublikowane z gałęzi PR (`--storage r2`), `--assets --check` (+ `--remote`) i `tts --check` zielone.
 - [ ] Nagrania: role z `VOICE_ROLES`, `spokenText` przy liczbach, godzinach i domenach (słownie, w dobrym przypadku;
       `spoken-digits.test.ts` zielony).
-- [ ] Nazwy fikcyjne i sprawdzone; brak formularzy logowania i cudzych logotypów.
-- [ ] layout-check (`node scripts/layout-check.mjs`) zielony i wklejony do PR (CLAUDE.md, reguła 12) - dla nowego modułu po uogólnieniu
-      harnessu (B-128).
-- [ ] e2e modułu (wzór: `scripts/e2e-module-01.mjs`, przejście wyłącznie dolnym „Dalej”) zielone lokalnie; w opisie PR linia
-      „DEPLOY: <co weszło> — content-import: tak”.
+- [ ] Nazwy fikcyjne i sprawdzone, dopisane do rejestru nazw (rozdział 8); brak formularzy logowania i cudzych logotypów.
+- [ ] layout-check zielony i wklejony do PR (CLAUDE.md, reguła 12): dla nowego modułu `LAYOUT_CHECK_MODULE=<slug> node
+      scripts/layout-check.mjs` (sekcja `module`) plus sekcje z elementami specyficznymi dla modułu, jeśli je dodasz.
+- [ ] e2e: smoke `node scripts/e2e-module.mjs <slug>` i pełne przejście modułu (wzór: `scripts/e2e-module-01.mjs`, przejście wyłącznie
+      dolnym „Dalej”) zielone lokalnie; w opisie PR linia „DEPLOY: <co weszło> — content-import: tak”.
 - [ ] Decyzje zmieniające zachowanie w `docs/decisions.md`, odłożone uwagi w `docs/backlog-issues.md`.

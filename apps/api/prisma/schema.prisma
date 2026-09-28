@@ -85,6 +85,8 @@ model Organization {
   // Zweryfikowana domena pozwala włączyć "pracownicy z adresem @domena mogą sami
   // dołączyć". Tu tylko przełącznik - sam przepływ dołączania to osobne zadanie.
   selfJoinEnabled         Boolean            @default(false)
+  // Ranking pracowników organizacji (XP, przypięte osiągnięcia) - admin organizacji może go wyłączyć (X, część 3).
+  leaderboardEnabled      Boolean            @default(true)
   // Ustawiane raz, gdy job sprzątania wysłał ostrzeżenie o usunięciu
   // niezweryfikowanej organizacji (po 7 dniach) - chroni przed duplikatami maila.
   unverifiedWarningSentAt DateTime?
@@ -770,6 +772,9 @@ model User {
   level             Int        @default(1)
   // Wersja zasad, dla której przeszło już przyznanie wsteczne osiągnięć (D-111, GamificationService.syncAchievements).
   achievementsSyncVersion Int @default(0)
+  // Przypięte osiągnięcia (X, część 3): kody z katalogu `badges`, maks. 3, kolejność = kolejność przypięcia/ułożenia.
+  // Zapisuje WYŁĄCZNIE GamificationService.setPinnedAchievements (tylko zdobyte, bez duplikatów).
+  pinnedAchievements String[] @default([])
   // Ustawiane WYŁĄCZNIE przez "wyloguj wszędzie" i reset hasła (SessionsService):
   // access tokeny wydane wcześniej są odrzucane (guard), a refresh tokeny unieważnione.
   // Źródło prawdy; odbicie z TTL w Redisie służy tylko szybkiemu sprawdzeniu w guardzie.

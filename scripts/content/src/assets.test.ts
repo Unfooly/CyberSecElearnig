@@ -29,6 +29,8 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
   // Także wariant pionowy (D-098) - własny test niżej.
   for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'openHotspot', 'slots', 'portrait']) delete step[field];
+  // Avatar dzwoniącego (B-128) - własny test niżej.
+  for (const step of briefing.steps) if (step.caller) delete (step.caller as Record<string, unknown>).avatar;
   // I z raportem zamknięcia sprawy (SUMMARY.closing, D-089): własny test niżej.
   const summary = module.blocks.find((block) => block.type === 'SUMMARY') as Record<string, unknown>;
   delete summary.closing;
@@ -65,6 +67,15 @@ describe('collectAssetRefs', () => {
     const refs = collectAssetRefs(moduleWithAssets());
     expect(refs).toHaveLength(2);
     expect(refs.map((ref) => ref.id).sort()).toEqual(expect.arrayContaining([expect.stringContaining('#image'), expect.stringContaining('#character.avatar')]));
+  });
+
+  it('B-128: avatar dzwoniącego w kroku `call` odprawy (BRIEFING) jest zasobem potoku', () => {
+    const module = moduleWithAssets();
+    const briefing = (module.blocks as Record<string, unknown>[]).find((b) => b.type === 'BRIEFING') as { id: string; steps: { kind: string; caller?: Record<string, unknown> }[] };
+    const callIndex = briefing.steps.findIndex((step) => step.kind === 'call');
+    briefing.steps[callIndex].caller!.avatar = 'avatars/komisarz.svg';
+    const refs = collectAssetRefs(module);
+    expect(refs.find((ref) => ref.id === `${briefing.id}#steps.${callIndex}.caller.avatar`)?.value).toBe('avatars/komisarz.svg');
   });
 
   it('puste albo brakujące pole (avatar jest opcjonalny) nie jest zasobem', () => {

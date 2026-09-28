@@ -41,6 +41,8 @@ export const ASSET_PATHS: string[][] = [
   // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.
   ['steps', '*', 'image'],
   ['steps', '*', 'closedImage'],
+  // Avatar dzwoniącego w kroku `call` odprawy (B-128: wcześniej pominięty - zasób nie zostałby opublikowany).
+  ['steps', '*', 'caller', 'avatar'],
   // Ekran zamknięcia sprawy (SUMMARY.closing, D-089): raport w teczce, pieczęć i liścik komisarza.
   ['closing', 'image'],
   ['closing', 'stamp'],

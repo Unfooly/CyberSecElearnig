@@ -17,8 +17,9 @@ export class CourseProgressResponseDto {
     points?: number;
     // Wynik po ukończeniu bloku (np. rozstrzygnięcie kryteriów maila, poprawna kolejność).
     detail?: Record<string, unknown>;
-    // Reakcja maskotki na WYNIK (schemaVersion 4, packages/content: baseShape.reactions.result) - dopiero tutaj, po ocenie.
-    reaction?: { pose: string; text: string };
+    // Reakcja na WYNIK (schemaVersion 4, packages/content: baseShape.reactions.result) - dopiero tutaj, po ocenie. `pose` - przestarzała
+    // (D-096), tylko ze starszych wersji treści.
+    reaction?: { pose?: string; text: string };
   };
   // Notatki dopisane tym zapisem (blockId, treść, rodzaj); bez kluczy elementów.
   notes!: { blockId: string; text: string; kind?: string }[];

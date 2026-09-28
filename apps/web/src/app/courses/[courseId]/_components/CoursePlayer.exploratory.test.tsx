@@ -415,6 +415,22 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
   });
 
+  it('D-096: sam `tip` (bez mascot) - podpowiedź z treści zamiast domyślnej', () => {
+    const base = sceneCourse();
+    const blocks = [{ ...base.contentBlocks[0], tip: 'Zajrzyj za monitor.' }, base.contentBlocks[1]];
+    render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: blocks })} narrationEnabled={false} />);
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Zajrzyj za monitor.');
+    expect(screen.queryByText('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.')).not.toBeInTheDocument();
+  });
+
+  it('D-096: `tip` wygrywa z przestarzałym `mascot.text` i z domyślną podpowiedzią', () => {
+    const base = sceneCourse();
+    const blocks = [{ ...base.contentBlocks[0], tip: 'Najpierw monitor.', mascot: { pose: 'pointing', text: 'Stary tekst.' } }, base.contentBlocks[1]];
+    render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: blocks })} narrationEnabled={false} />);
+    expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Najpierw monitor.');
+    expect(screen.queryByText('Stary tekst.')).not.toBeInTheDocument();
+  });
+
   it('tekst podpowiedzi z treści bloku nadpisuje domyślny', () => {
     const base = sceneCourse();
     const blocks = [{ ...base.contentBlocks[0], mascot: { pose: 'pointing', text: 'Zajrzyj pod biurko.' } }, base.contentBlocks[1]];

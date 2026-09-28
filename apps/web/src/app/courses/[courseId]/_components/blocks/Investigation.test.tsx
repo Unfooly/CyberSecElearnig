@@ -1552,6 +1552,11 @@ describe('DIALOGUE: dymki w-fit/max-w-[75%], avatar gracza, pasek podpowiedzi (f
     expect(screen.queryByRole('img', { name: /maskotka/i })).not.toBeInTheDocument();
   });
 
+  it('D-096: pasek w DIALOGUE z `tip` (wygrywa z przestarzałym mascot.text)', () => {
+    setup({ ...dialogue, tip: 'Pytaj o godziny.', mascot: { pose: 'pointing', text: 'Stary tekst.' } });
+    expect(screen.getByTestId('hint-bar')).toHaveTextContent('Pytaj o godziny.');
+  });
+
   it('DIALOGUE bez block.mascot i bez zdarzenia: brak paska (rozmowa nie ma domyślnej podpowiedzi)', () => {
     setup(dialogue);
     expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();

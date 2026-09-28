@@ -637,8 +637,12 @@ export default function CoursePlayer({
             showHint={!isSummaryMode}
             evidence={<EvidenceCounter />}
             topAction={skipBriefing}
-            // `block.mascot` z treści: liczy się tylko tekst (poza przestarzała, D-093); bez tekstu - domyślna dla typu (jeśli jest).
-            idleHint={currentBlock && !showingFeedback && !isSummaryMode ? (currentBlock.mascot?.text ?? DEFAULT_HINT[currentBlock.type]) : undefined}
+            // Stała podpowiedź: `tip` (D-096), dla starszych wersji treści `mascot.text` (poza ignorowana, D-093); bez niej - domyślna dla typu.
+            idleHint={
+              currentBlock && !showingFeedback && !isSummaryMode
+                ? (currentBlock.tip ?? currentBlock.mascot?.text ?? DEFAULT_HINT[currentBlock.type])
+                : undefined
+            }
             contentLayout={contentLayout}
             stage={
               <>

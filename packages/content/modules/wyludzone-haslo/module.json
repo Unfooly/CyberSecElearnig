@@ -1413,30 +1413,9 @@
       "title": "Rozwiązanie sprawy",
       "narration": {
         "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/01c92de143a8711c.mp3",
-        "durationMs": 21734,
-        "cues": [
-          {
-            "text": "Sprawa Anny nie była sprawą o głupotę.",
-            "startMs": 0
-          },
-          {
-            "text": "Była sprawą o pośpiech, zaufanie i jedną karteczkę.",
-            "startMs": 3100
-          },
-          {
-            "text": "Oszust nie złamał żadnego zabezpieczenia.",
-            "startMs": 7279
-          },
-          {
-            "text": "Poprosił — i dostał.",
-            "startMs": 10368
-          },
-          {
-            "text": "Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
-            "startMs": 12434
-          }
-        ]
+        "spokenText": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, ósmą czterdzieści siedem.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/d70acddda535e9d7.mp3",
+        "durationMs": 23127
       },
       "tip": "Sprawa zamknięta. Dobra robota, detektywie.",
       "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”.",

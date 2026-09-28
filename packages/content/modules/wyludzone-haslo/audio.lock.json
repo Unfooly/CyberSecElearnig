@@ -110,10 +110,10 @@
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
     "rozwiazanie-sprawy#narration": {
-      "hash": "01c92de143a8711c",
-      "key": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/01c92de143a8711c.mp3",
-      "textSha": "1330fba869b0d6f4",
-      "durationMs": 21734,
+      "hash": "d70acddda535e9d7",
+      "key": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/d70acddda535e9d7.mp3",
+      "textSha": "e125da18cafdfdd1",
+      "durationMs": 23127,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     }

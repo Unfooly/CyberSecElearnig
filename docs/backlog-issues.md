@@ -571,6 +571,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   potwierdzenia przez właściciela).
 - Akceptacja: (2) decyzja właściciela.
 
+### B-123 Okna na ekranach i w pionie (D-104): odłożone uwagi z review
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `fix/phone-review-windows` (D-104)
+- Opis:
+  1. `SceneHotspotsBlock` mierzy pion sceny własnym `ResizeObserver` (widok montuje się warunkowo), a nie przez `usePortraitContainer`.
+     Warto rozszerzyć hook o zewnętrzny ref/zależności i używać go w obu miejscach.
+  2. Klocki `mailWindowPortrait` i `browserHistoryPortrait` zawijają tekst po liczbie znaków. Tytuły i adresy historii w ogóle się nie
+     zawijają, a `📎` zależy od czcionki emoji urządzenia. Przy treści modułu 1 wszystko się mieści.
+- Akceptacja:
+  - (1) jeden hook, testy bez zmian;
+  - (2) zawijanie po szacowanej szerokości albo walidacja długości w teście kompozytora; spinacz narysowany ścieżką.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

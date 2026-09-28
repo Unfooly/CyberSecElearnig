@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -596,8 +596,16 @@ async function checkBriefingScene(page, view, label, expectPortrait = false) {
     if ((await element.count()) !== 1) fail(`${label}: (x) brak elementu "${testId}" na scenie.`);
     const box = await element.boundingBox();
     if (!box || !contains(sceneBox, box)) fail(`${label}: (x) "${testId}" poza sceną - ${JSON.stringify(box)} scena=${JSON.stringify(sceneBox)}.`);
-    const overflow = await element.evaluate((el) => ({ x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight, font: parseFloat(getComputedStyle(el).fontSize) }));
-    if (overflow.x > 1 || overflow.y > 1) fail(`${label}: (x) "${testId}" przepełniony (x=${overflow.x}px, y=${overflow.y}px, czcionka ${overflow.font}px).`);
+    const overflow = await element.evaluate((el) => ({
+      x: el.scrollWidth - el.clientWidth,
+      y: el.scrollHeight - el.clientHeight,
+      font: parseFloat(getComputedStyle(el).fontSize),
+      visible: getComputedStyle(el).overflow === 'visible',
+    }));
+    // D-103: tekst na czytelnym minimum (FitText minPx, >= 15 px) może być wyższy niż niski slot - jest wtedy widoczny w całości
+    // (overflow visible, pudełko elementu i tak musi leżeć w scenie - wyżej). Szerokość zawsze musi się mieścić.
+    const readableOverflow = overflow.visible && overflow.font >= 14.9 && overflow.y <= overflow.font * 0.5;
+    if (overflow.x > 1 || (overflow.y > 1 && !readableOverflow)) fail(`${label}: (x) "${testId}" przepełniony (x=${overflow.x}px, y=${overflow.y}px, czcionka ${overflow.font}px).`);
     if (testId === 'briefing-bubble') {
       const r = rel(box);
       if (orientation === 'portrait') {
@@ -872,20 +880,29 @@ let webLog = '';
 //       każdy taki kontener przewijany musi się mieścić w przycinających przodkach;
 //  (s4) każdy widoczny przycisk/link/pole w obszarze bloku i w dolnym pasku >= 44 px wysokości i szerokości;
 //  (s5) dolny pasek w całości w ekranie.
-async function auditMobileView(page, label) {
-  const problems = await page.evaluate(
-    ({ minFont, minTarget }) => {
+// Opcje (D-103, cały moduł): frame - obszar audytu to cała ramka odtwarzacza (paski, notatnik; zamknięty notatnik pomijany);
+// scrollX - selektor kontenerów CELOWO przewijanych w poziomie (chipy rozmowy D-097, zakładki teczki, panorama sceny): bez (s1) dla nich
+// i bez poziomego (s3) dla ich treści; skipTargets - bez (s4) (cele dotyku poza zakresem B-121, np. fragmenty maila).
+async function auditMobileView(page, label, { frame = false, scrollX = null, skipTargets = false } = {}) {
+  const all = await page.evaluate(
+    ({ minFont, minTarget, frame, scrollX }) => {
+      const intentional = (el) => !!scrollX && !!el.closest(scrollX);
       const out = [];
       const doc = document.documentElement;
-      const area = document.querySelector('[data-testid="player-content-area"]');
+      const contentArea = document.querySelector('[data-testid="player-content-area"]');
       const bar = document.querySelector('[data-testid="player-bottombar"]');
-      if (!area) return ['brak obszaru bloku'];
+      if (!contentArea) return ['brak obszaru bloku'];
       const shown = (el) => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && el.getBoundingClientRect().width > 1 && el.getBoundingClientRect().height > 1;
       const describe = (el, text) => `${el.tagName.toLowerCase()}${el.dataset.testid ? `[${el.dataset.testid}]` : ''} „${(text ?? el.textContent ?? '').trim().slice(0, 40)}”`;
       if (doc.scrollWidth > doc.clientWidth + 1) out.push(`(s1) strona przewija się w poziomie o ${doc.scrollWidth - doc.clientWidth}px`);
+      // Obszary audytu: treść bloku i - gdy otwarty - notatnik (D-103: tekst min. 15 px w całym module, także w notatniku).
+      const drawer = document.querySelector('[data-testid="notes-drawer"]');
+      const playerFrame = document.querySelector('.player-frame');
+      const roots = frame && playerFrame ? [playerFrame] : [contentArea, ...(drawer && drawer.getAttribute('aria-hidden') !== 'true' && shown(drawer) ? [drawer] : [])];
+      for (const area of roots) {
       for (const el of [area, ...area.querySelectorAll('*')]) {
         const s = getComputedStyle(el);
-        if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && shown(el)) out.push(`(s1) ${describe(el)} przewija się w poziomie (${el.scrollWidth} > ${el.clientWidth})`);
+        if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && shown(el) && !intentional(el)) out.push(`(s1) ${describe(el)} przewija się w poziomie (${el.scrollWidth} > ${el.clientWidth})`);
       }
       const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT);
       const seen = new Set();
@@ -893,7 +910,8 @@ async function auditMobileView(page, label) {
         const text = node.textContent.trim();
         const el = node.parentElement;
         // [data-graphic-text]: tekst w slocie grafiki z czytelną kopią (>= 15 px) obok - jak napis wypalony w SVG (D-099).
-        if (!text || !el || !shown(el) || el.closest('svg, .sr-only, [data-graphic-text]')) continue;
+        if (!text || !el || !shown(el) || el.closest('svg, .sr-only, [data-graphic-text], [data-testid="notes-drawer"][aria-hidden="true"]')) continue;
+        const scrollsX = intentional(el);
         const range = document.createRange();
         range.selectNodeContents(node);
         const rects = [...range.getClientRects()].filter((r) => r.width > 0.5 && r.height > 0.5);
@@ -905,7 +923,7 @@ async function auditMobileView(page, label) {
           out.push(`(s2) ${key} ma ${font.toFixed(1)}px`);
         }
         for (const r of rects) {
-          if (r.left < -0.5 || r.right > innerWidth + 0.5) {
+          if (!scrollsX && (r.left < -0.5 || r.right > innerWidth + 0.5)) {
             if (!seen.has(`x${key}`)) out.push(`(s3) ${key} poza ekranem w poziomie (${Math.round(r.left)}..${Math.round(r.right)})`);
             seen.add(`x${key}`);
           }
@@ -913,7 +931,7 @@ async function auditMobileView(page, label) {
           for (let anc = el; anc && anc !== doc; anc = anc.parentElement) {
             const s = getComputedStyle(anc);
             const a = anc.getBoundingClientRect();
-            if (s.overflowX !== 'visible' && (r.left < a.left - 1 || r.right > a.right + 1) && !seen.has(`c${key}`)) {
+            if (!scrollsX && s.overflowX !== 'visible' && (r.left < a.left - 1 || r.right > a.right + 1) && !seen.has(`c${key}`)) {
               seen.add(`c${key}`);
               out.push(`(s3) ${key} ucięty w poziomie przez ${describe(anc)}`);
             }
@@ -958,8 +976,13 @@ async function auditMobileView(page, label) {
         if (!text || !shown(graphic)) continue;
         if (!readableTexts.has(text)) out.push(`(s2) ${describe(graphic)} (tekst grafiki) bez czytelnej kopii >= ${minFont}px`);
       }
-      const controls = [...area.querySelectorAll('button, a[href], input, textarea, select, [role="button"]'), ...(bar ? bar.querySelectorAll('button, a[href]') : [])];
-      for (const el of controls) {
+      for (const el of area.querySelectorAll('button, a[href], input, textarea, select, [role="button"]')) {
+        if (!shown(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.height < minTarget - 0.5 || r.width < minTarget - 0.5) out.push(`(s4) ${describe(el, el.getAttribute('aria-label') ?? el.textContent)} ${Math.round(r.width)}x${Math.round(r.height)} (< ${minTarget})`);
+      }
+      }
+      for (const el of bar ? bar.querySelectorAll('button, a[href]') : []) {
         if (!shown(el)) continue;
         const r = el.getBoundingClientRect();
         if (r.height < minTarget - 0.5 || r.width < minTarget - 0.5) out.push(`(s4) ${describe(el, el.getAttribute('aria-label') ?? el.textContent)} ${Math.round(r.width)}x${Math.round(r.height)} (< ${minTarget})`);
@@ -970,8 +993,10 @@ async function auditMobileView(page, label) {
       }
       return out;
     },
-    { minFont: MOBILE_MIN_FONT_PX, minTarget: MOBILE_MIN_TARGET_PX },
+    { minFont: MOBILE_MIN_FONT_PX, minTarget: MOBILE_MIN_TARGET_PX, frame, scrollX },
   );
+  // Bez duplikatów (w trybie frame przyciski paska są i w ramce, i w pętli paska).
+  const problems = [...new Set(skipTargets ? all.filter((problem) => !problem.startsWith('(s4)')) : all)];
   if (problems.length > 0) fail(`${label}:\n  ${problems.join('\n  ')}`);
 }
 
@@ -1736,6 +1761,100 @@ try {
   }
   if (mobileFailures.length > 0) fail(`mobile-summary: ${mobileFailures.length} stanów z problemami - ${mobileFailures.join('; ')}`);
 
+  // CAŁY MODUŁ NA TELEFONIE (B-121, D-103): bloki od odprawy do teczki w kolejnych stanach (końcówkę modułu - pełny audyt s1-s5 - sprawdza
+  // mobile-summary) w CAŁEJ ramce odtwarzacza (treść, notatnik, górny i dolny pasek): (s2) tekst >= 15 px, (s3) nic nieucięte, (s1) bez
+  // poziomego przewijania poza celowo przewijanymi (MODULE_SCROLL_X), (s5) pasek w ekranie; bez (s4). Zbiera wszystkie stany.
+  // Celowo przewijane w poziomie (chipy rozmowy, panorama, zakładki teczki) i celowo skracany wielokropkiem tytuł kursu w górnym pasku
+  // (pełny tytuł jest w bibliotece kursów; pasek ma jedną linijkę).
+  const MODULE_SCROLL_X = '.dialogue-chips, .scene-pan-container, [role="tablist"], .player-topbar h1';
+  const moduleFailures = [];
+  for (const viewport of runs('mobile-module') ? MOBILE_SUMMARY_VIEWPORTS : []) {
+    console.log(`\n--- viewport (CAŁY MODUŁ NA TELEFONIE): ${viewport.name} ---`);
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    // Rozmowy i mail wysyłają odpowiedź dopiero przy „Dalej” - tu jej nie potrzeba; harness bez backendu.
+    const audit = async (name) => {
+      const label = `${viewport.name} / ${name}`;
+      await page.waitForTimeout(400);
+      await shot(page, `${viewport.name}-modul-${name.replace(/[^a-z0-9ąćęłńóśźż]+/gi, '-').toLowerCase()}`);
+      try {
+        if (pageErrors.length > 0) fail(`${label}: błąd strony: ${pageErrors.join(' | ')}`);
+        await checkNoPageScroll(page, label);
+        await auditMobileView(page, label, { frame: true, scrollX: MODULE_SCROLL_X, skipTargets: true });
+        step(`${label}: (s1-s3, s5) OK - cały tekst ramki >= 15 px, nic nieucięte`, true);
+      } catch (error) {
+        if (!error.isLayoutCheckFailure) throw error;
+        step(`${label}: ${error.message.replace(`${label}: `, '')}`, false);
+        moduleFailures.push(label);
+      }
+    };
+
+    // Odprawa: każdy widok (klik w przedmiot kroku prowadzi dalej).
+    await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
+    await page.getByTestId('briefing-block').waitFor();
+    for (const [index, view] of BRIEFING_SCENE_VIEWS.entries()) {
+      await page.getByRole('button', { name: view.item, exact: true }).waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="briefing-scene"] img')].every((img) => img.complete));
+      await audit(`odprawa ${index + 1} (${view.item})`);
+      if (view.last) break;
+      await page.getByTestId('briefing-hotspot').click();
+    }
+
+    // Sceny: sama scena i każde zbliżenie (?hotspot= - harness sam klika, także w głąb pulpitu).
+    for (const [block, hotspots] of [
+      ['korytarz', ['', 'tablica']],
+      ['biuro-anny', ['', 'karteczka', 'kalendarz', 'drukarka', 'kubek', 'telefon', 'monitor', 'outlook', 'przegladarka', 'gra']],
+    ]) {
+      for (const hotspot of hotspots) {
+        await page.goto(`${WEB}/dev/player-harness?block=${block}${hotspot ? `&hotspot=${hotspot}` : ''}`);
+        await page.getByTestId('player-content-area').waitFor();
+        if (hotspot) await page.getByTestId('scene-zoom').waitFor();
+        if (hotspot === 'gra') await page.getByTestId('easter-popup').first().waitFor();
+        await audit(`${block}${hotspot ? ` - ${hotspot}` : ''}`);
+        if (hotspot === 'telefon') {
+          await page.getByTestId('scene-zoom').getByRole('button', { name: 'Transkrypcja' }).click();
+          await audit(`${block} - telefon + transkrypcja`);
+        }
+      }
+    }
+    // Notatnik otwarty (panel nad sceną).
+    await page.goto(`${WEB}/dev/player-harness?block=biuro-anny`);
+    await page.getByRole('button', { name: /^Notatnik/ }).click();
+    await page.waitForTimeout(300);
+    await audit('notatnik');
+
+    // Rozmowy: start i po wszystkich pytaniach.
+    for (const block of ['rozmowa-anna', 'rozmowa-marek']) {
+      await page.goto(`${WEB}/dev/player-harness?block=${block}`);
+      await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
+      await audit(`${block} start`);
+      await clickAllDialogueQuestions(page);
+      await audit(`${block} koniec`);
+    }
+
+    // Mail: start i po zaznaczeniu fragmentu.
+    await page.goto(`${WEB}/dev/player-harness?block=ten-mail`);
+    await page.getByTestId('player-content-area').waitFor();
+    await audit('ten-mail start');
+    const fragment = page.getByTestId('player-content-area').locator('[aria-pressed]').first();
+    if ((await fragment.count()) > 0) {
+      await fragment.click();
+      await audit('ten-mail zaznaczony fragment');
+    }
+
+    // Teczka: każdy dokument.
+    await page.goto(`${WEB}/dev/player-harness?block=akta-sprawy`);
+    await page.getByTestId('player-content-area').waitFor();
+    for (const tab of DOSSIER_TABS) {
+      await page.getByRole('tab', { name: tab }).click();
+      await audit(`teczka - ${tab}`);
+    }
+    await context.close();
+  }
+  if (moduleFailures.length > 0) fail(`mobile-module: ${moduleFailures.length} stanów z problemami - ${moduleFailures.join('; ')}`);
+
   // EASTER EGG (D-100): (e1) wszystkie okienka w całości w ekranie i w nakładce zbliżenia; (e2) krzyżyk górnego okienka >= 44x44, w ekranie,
   // nieprzykryty (elementFromPoint), z fokusem; (e3) tekst okienek >= 15 px; (e4) Esc zamyka górne okienko, klik w tło niczego nie
   // zamyka; (e5, mysz) przycisk „dodge” ucieka dokładnie 2 razy, klik w przycisk - okienko drga i zostaje; (e6) po ostatnim krzyżyku:
@@ -2038,7 +2157,8 @@ try {
         // Bez napisów pasek to sam rząd przycisków: 60 px razem z górną krawędzią (margines bezpieczeństwa w emulatorze = 0).
         if (!m.caption && Math.abs(m.bar.h - 60) > 0.5) fail(`${label}: (n3) pasek ${m.bar.h.toFixed(1)} px zamiast 60.`);
         if (Math.abs(m.bar.y + m.bar.h - rowTop - 52) > 0.5) fail(`${label}: (n3) rząd przycisków nie 44 + 8 px od dołu paska.`);
-        if (m.caption && (m.caption.y + m.caption.h > rowTop + 0.5 || m.caption.h > 24)) fail(`${label}: (n3) napisy nie jedną linijką nad przyciskami - ${JSON.stringify(m.caption)}.`);
+        // Jedna linijka napisów 15 px (D-103: line-height 20 + odstępy 6) - dwie linijki miałyby >= 46 px.
+        if (m.caption && (m.caption.y + m.caption.h > rowTop + 0.5 || m.caption.h > 28)) fail(`${label}: (n3) napisy nie jedną linijką nad przyciskami - ${JSON.stringify(m.caption)}.`);
       } else if (m.controls.some((c) => c.name === 'Lektor') && !m.labels.includes('Lektor')) {
         fail(`${label}: (n3) scena >= 640 px - etykieta „Lektor” powinna być widoczna (układ bez zmian).`);
       }

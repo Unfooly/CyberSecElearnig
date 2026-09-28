@@ -107,7 +107,16 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar'];
+
+// DOLNY PASEK NA TELEFONIE (fix/mobile-player-bar): dwa telefony w pionie (scena < 640 px - jeden rząd ikon) i telefon w poziomie
+// (scena >= 640 px - układ jak na desktopie). Bloki: scena z narracją, rozmowa (chipy), zadanie tekstowe (slajd).
+const BAR_VIEWPORTS = [
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+  { name: '360x740', width: 360, height: 740, isMobile: true },
+  { name: '844x390', width: 844, height: 390 },
+];
+const BAR_BLOCKS = ['biuro-anny', 'rozmowa-anna', 'ostatnie-pytanie'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
@@ -1399,6 +1408,129 @@ try {
     await shot(page, `${viewport.name}-przegladarka-3-ostrzezenie`);
     if (pageErrors.length > 0) fail(`${label}: (p5) błąd strony: ${pageErrors.join(' | ')}`);
     step(`${label}: (p1-p5) OK`, true);
+    await context.close();
+  }
+
+  // DOLNY PASEK (fix/mobile-player-bar): (n1) strona bez poziomego przewijania; (n2) elementy paska (przyciski, linki, linijka napisów)
+  // widoczne, w granicach paska i ekranu, BEZ nakładania się parami; (n3) scena < 640 px: Odtwórz/Transkrypcja/Lektor/Wstecz = 44x44,
+  // „Dalej” 44 px wysokości i >= 120 px szerokości, jedyny widoczny tekst w rzędzie przycisków, bez ucięcia; rząd przycisków 60 px;
+  // napisy (jeśli są) jedną linijką NAD przyciskami; scena >= 640 px: etykieta „Lektor” widoczna (układ bez zmian); (n4) rozmowa na
+  // scenie < 640 px: chipy w jednym rzędzie (wspólna górna krawędź, poziome przewijanie), „Zadano x z y pytań” jedną linijką nad nimi;
+  // (n5) błędy strony.
+  for (const viewport of runs('bar') ? BAR_VIEWPORTS : []) {
+    console.log(`\n--- viewport (DOLNY PASEK): ${viewport.name} ---`);
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    // Nagranie narracji w harnessie (?narration=1) nie istnieje lokalnie - podstawiamy krótki dźwięk z apps/web/public/sfx, żeby
+    // pojawiły się przycisk odtwarzania i linijka napisów. Działa, gdy harness bierze zasoby z /dev/module-assets (bez
+    // CONTENT_BASE_URL - tak uruchamia go ten skrypt), a skrypt startuje z katalogu repo (jak next dev wyżej).
+    await page.route('**/dev/module-assets/audio/**', (route) => route.fulfill({ status: 200, contentType: 'audio/mpeg', path: join(process.cwd(), 'apps', 'web', 'public', 'sfx', 'msg-receive.mp3') }));
+    const variants = [...BAR_BLOCKS.map((blockId) => ({ blockId, narration: false })), { blockId: 'ostatnie-pytanie', narration: true }, { blockId: 'rozmowa-anna', narration: true }];
+    for (const { blockId, narration } of variants) {
+      const label = `${viewport.name} / dolny pasek: ${blockId}${narration ? ' (lektor, napisy)' : ''}`;
+      await page.goto(`${WEB}/dev/player-harness?block=${blockId}${narration ? '&narration=1' : ''}`);
+      const bar = page.getByTestId('player-bottombar');
+      await bar.waitFor();
+      await page.waitForTimeout(300);
+      if (narration) {
+        // Odtwórz, poczekaj na linijkę napisów i zatrzymaj - napisy zostają (aktywna linijka z bieżącego czasu nagrania).
+        await page.getByRole('button', { name: 'Odtwórz nagranie' }).click();
+        await page.waitForFunction(() => (document.querySelector('[data-testid="narration-caption"]')?.textContent ?? '').trim().length > 0, null, { timeout: 5000 });
+        const pause = page.getByRole('button', { name: 'Wstrzymaj nagranie' });
+        if (await pause.count()) await pause.click();
+        await page.waitForTimeout(200);
+      }
+      const m = await page.evaluate(() => {
+        const box = (el) => {
+          const r = el.getBoundingClientRect();
+          return { x: r.x, y: r.y, w: r.width, h: r.height };
+        };
+        const barEl = document.querySelector('[data-testid="player-bottombar"]');
+        const visible = (el) => {
+          const r = el.getBoundingClientRect();
+          const s = getComputedStyle(el);
+          return r.width > 1 && r.height > 1 && s.visibility !== 'hidden' && s.display !== 'none';
+        };
+        const controls = [...barEl.querySelectorAll('button, a')].filter((el) => visible(el) && !el.closest('[data-testid="transcript-panel"], [role="region"]'));
+        const caption = barEl.querySelector('[data-testid="narration-caption"]');
+        const next = [...barEl.querySelectorAll('.pbar-next')].find(visible);
+        const labels = [...barEl.querySelectorAll('.pbar-label')].filter((el) => el.getBoundingClientRect().width > 1).map((el) => el.textContent);
+        return {
+          overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          bar: box(barEl),
+          controls: controls.map((el) => ({ name: el.getAttribute('aria-label') || el.textContent.trim(), cls: el.className, ...box(el) })),
+          caption: caption && visible(caption) ? box(caption) : null,
+          next: next ? { ...box(next), clipped: next.scrollWidth > next.clientWidth + 1, text: next.textContent.trim() } : null,
+          labels,
+          compact: barEl.closest('.player-bottombar-host').getBoundingClientRect().width < 640,
+        };
+      });
+      if (m.overflowX > 1) fail(`${label}: (n1) strona przewija się w poziomie o ${m.overflowX}px.`);
+      const items = [...m.controls, ...(m.caption ? [{ name: 'napisy', ...m.caption }] : [])];
+      for (const item of items) {
+        if (item.x < -0.5 || item.x + item.w > viewport.width + 0.5) fail(`${label}: (n2) „${item.name}” poza ekranem - ${JSON.stringify(item)}.`);
+        if (!contains({ x: m.bar.x, y: m.bar.y, width: m.bar.w, height: m.bar.h }, { x: item.x, y: item.y, width: item.w, height: item.h })) fail(`${label}: (n2) „${item.name}” wystaje poza pasek - ${JSON.stringify({ item, bar: m.bar })}.`);
+      }
+      for (let i = 0; i < items.length; i += 1) {
+        for (let j = i + 1; j < items.length; j += 1) {
+          const a = items[i];
+          const b = items[j];
+          const overlap = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 0.5 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0.5;
+          if (overlap) fail(`${label}: (n2) nakładają się „${a.name}” i „${b.name}” - ${JSON.stringify({ a, b })}.`);
+        }
+      }
+      // Scena z „drzwiami” (biuro-anny) nie ma „Dalej” (hideForward) - wtedy sprawdzamy tylko ikony.
+      if (m.next?.clipped) fail(`${label}: (n3) tekst „${m.next.text}” ucięty.`);
+      if (m.compact) {
+        for (const c of m.controls.filter((c) => !/pbar-next|pbar-text/.test(c.cls))) {
+          if (Math.abs(c.w - 44) > 1 || Math.abs(c.h - 44) > 1) fail(`${label}: (n3) przycisk-ikona „${c.name}” nie 44x44 - ${JSON.stringify(c)}.`);
+        }
+        if (m.next && (Math.abs(m.next.h - 44) > 1 || m.next.w < 119.5)) fail(`${label}: (n3) „Dalej” ${m.next.w}x${m.next.h} (min. 120x44).`);
+        if (m.labels.length > 0) fail(`${label}: (n3) widoczne etykiety tekstowe w wąskim pasku: ${m.labels.join(', ')}.`);
+        const rowTop = Math.min(...m.controls.map((c) => c.y));
+        // Bez napisów pasek to sam rząd przycisków: 60 px razem z górną krawędzią (margines bezpieczeństwa w emulatorze = 0).
+        if (!m.caption && Math.abs(m.bar.h - 60) > 0.5) fail(`${label}: (n3) pasek ${m.bar.h.toFixed(1)} px zamiast 60.`);
+        if (Math.abs(m.bar.y + m.bar.h - rowTop - 52) > 0.5) fail(`${label}: (n3) rząd przycisków nie 44 + 8 px od dołu paska.`);
+        if (m.caption && (m.caption.y + m.caption.h > rowTop + 0.5 || m.caption.h > 24)) fail(`${label}: (n3) napisy nie jedną linijką nad przyciskami - ${JSON.stringify(m.caption)}.`);
+      } else if (m.controls.some((c) => c.name === 'Lektor') && !m.labels.includes('Lektor')) {
+        fail(`${label}: (n3) scena >= 640 px - etykieta „Lektor” powinna być widoczna (układ bez zmian).`);
+      }
+      if (narration && (!m.caption || !m.controls.some((c) => /nagranie/.test(c.name)))) fail(`${label}: (n3) brak przycisku odtwarzania albo linijki napisów.`);
+      if (blockId === 'rozmowa-anna' && m.compact) {
+        const chips = await page.evaluate(() => {
+          const ul = document.querySelector('.dialogue-chips');
+          const progress = document.querySelector('.dialogue-progress');
+          if (!ul || !progress) return null;
+          const tops = [...ul.children].map((li) => Math.round(li.getBoundingClientRect().top));
+          const u = ul.getBoundingClientRect();
+          const p = progress.getBoundingClientRect();
+          return { tops, ulTop: u.top, ulH: u.height, pBottom: p.bottom, pH: p.height, scrolls: ul.scrollWidth > ul.clientWidth };
+        });
+        if (!chips) fail(`${label}: (n4) brak chipów albo licznika pytań.`);
+        if (new Set(chips.tops).size !== 1) fail(`${label}: (n4) chipy nie w jednym rzędzie - górne krawędzie ${chips.tops.join(', ')}.`);
+        if (chips.ulH > 60) fail(`${label}: (n4) rząd chipów ${chips.ulH}px wysokości.`);
+        if (chips.pBottom > chips.ulTop + 0.5 || chips.pH > 20) fail(`${label}: (n4) licznik pytań nie jedną linijką nad chipami - ${JSON.stringify(chips)}.`);
+        step(`${label}: (n4) chipy w jednym rzędzie${chips.scrolls ? ' (przewijane w poziomie)' : ''}, licznik nad nimi`, true);
+      }
+      await shot(page, `${viewport.name}-pasek-${blockId}${narration ? '-lektor' : ''}`);
+      if (blockId === 'ostatnie-pytanie' && !narration) {
+        // (n6) Otwarty notatnik: tło notatnika przykrywa też dolny pasek (klik w pasek trafia w tło, nie w przycisk).
+        await page.getByRole('button', { name: /^Notatnik/ }).click();
+        await page.waitForTimeout(400);
+        const hit = await page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="player-bottombar"]').getBoundingClientRect();
+          const el = document.elementFromPoint(bar.x + 30, bar.y + bar.height / 2);
+          return el ? { inBar: !!el.closest('[data-testid="player-bottombar"]'), tag: el.tagName } : null;
+        });
+        if (!hit || hit.inBar) fail(`${label}: (n6) przy otwartym notatniku pasek nie jest przykryty tłem - ${JSON.stringify(hit)}.`);
+        await page.keyboard.press('Escape');
+        step(`${label}: (n6) otwarty notatnik przykrywa dolny pasek`, true);
+      }
+      if (pageErrors.length > 0) fail(`${label}: (n5) błąd strony: ${pageErrors.join(' | ')}`);
+      step(`${label}: (n1-n3, n5) OK - ${m.compact ? 'wąski' : 'szeroki'}, elementy: ${m.controls.map((c) => c.name).join(', ')}${m.caption ? ' + napisy' : ''}`, true);
+    }
     await context.close();
   }
 

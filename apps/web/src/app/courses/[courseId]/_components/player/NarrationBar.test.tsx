@@ -49,7 +49,7 @@ function renderBar(overrides: HarnessProps = {}) {
 }
 
 const audioEl = (container: HTMLElement) => container.querySelector('audio') as HTMLAudioElement;
-const lektor = () => screen.getByRole('switch', { name: 'Lektor' });
+const lektor = () => screen.getByRole('button', { name: 'Lektor' });
 
 describe('NarrationBar', () => {
   let playSpy: ReturnType<typeof vi.spyOn>;
@@ -80,19 +80,23 @@ describe('NarrationBar', () => {
   it('blok bez narracji: nic się nie renderuje', () => {
     const { container } = renderBar({ narrationProp: 'none' });
     expect(container).toBeEmptyDOMElement();
-    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lektor' })).toBeNull();
   });
 
-  describe('przełącznik "Lektor" (role=switch: stała nazwa, stan w aria-checked)', () => {
-    it('włączony: aria-checked=true, kliknięcie woła onToggleEnabled', () => {
+  describe('przełącznik "Lektor" (przycisk z aria-pressed: stała nazwa, stan w aria-pressed i na ikonie - fix/mobile-player-bar)', () => {
+    it('włączony: aria-pressed=true, ikona głośnika, podpowiedź „Lektor włączony”', () => {
       renderBar();
-      expect(lektor()).toBeChecked();
+      expect(lektor()).toHaveAttribute('aria-pressed', 'true');
       expect(lektor()).toHaveAccessibleName('Lektor');
+      expect(lektor()).toHaveAttribute('title', 'Lektor włączony');
+      expect(lektor().querySelector('.lucide-volume-2')).not.toBeNull();
     });
 
-    it('wyłączony: ta sama nazwa, aria-checked=false, bez audio/odtwarzania', () => {
+    it('wyłączony: ta sama nazwa, aria-pressed=false, przekreślony głośnik, bez audio/odtwarzania', () => {
       const { container } = renderBar({ enabled: false });
-      expect(lektor()).not.toBeChecked();
+      expect(lektor()).toHaveAttribute('aria-pressed', 'false');
+      expect(lektor()).toHaveAttribute('title', 'Lektor wyłączony');
+      expect(lektor().querySelector('.lucide-volume-off')).not.toBeNull();
       expect(container.querySelector('audio')).toBeNull();
       expect(screen.queryByRole('button', { name: /Odtwórz nagranie/ })).toBeNull();
     });
@@ -174,6 +178,17 @@ describe('NarrationBar', () => {
       fireEvent.click(toggle);
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
       expect(toggle).toHaveAttribute('aria-controls', TRANSCRIPT_TOGGLE_ID);
+    });
+
+    it('D-097: otwarta transkrypcja oznacza pasek (data-transcript-open) - CSS wąskiego paska chowa wtedy linijkę napisów; nazwa przycisku z tekstu (ikona CC dekoracyjna)', () => {
+      const { container } = renderBar();
+      const root = container.querySelector('.pbar-narration') as HTMLElement;
+      const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
+      expect(root).not.toHaveAttribute('data-transcript-open');
+      expect(toggle.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+
+      fireEvent.click(toggle);
+      expect(root).toHaveAttribute('data-transcript-open');
     });
 
     it('przycisk "Transkrypcja" jest widoczny nawet gdy nie ma aktywnego napisu (np. lektor wyłączony)', () => {

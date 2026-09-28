@@ -153,6 +153,49 @@ describe('PlayerStage: podpowiedź - nakładka TYLKO na SCENE_HOTSPOTS, pasek na
   });
 });
 
+describe('PlayerStage: przycisk „Wstecz” w wąskim pasku (D-097)', () => {
+  function BackHarness({ backLabel }: { backLabel?: string }) {
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    return (
+      <PlayerStage
+        title="Sprawa testowa"
+        blockNumber={1}
+        totalBlocks={1}
+        completedBlocks={0}
+        stage={<p>blok</p>}
+        narrationBar={null}
+        transcriptPanel={null}
+        notesCount={0}
+        notesOpen={false}
+        onToggleNotes={() => {}}
+        notesId="notes-panel"
+        onBack={() => {}}
+        onForward={() => {}}
+        canBack
+        canForward
+        backLabel={backLabel}
+        headingRef={headingRef}
+      />
+    );
+  }
+
+  it('domyślne „Wstecz”: przycisk-ikona (pbar-icon), tekst tylko dla czytnika (pbar-label)', () => {
+    render(<BackHarness />);
+    const back = screen.getByRole('button', { name: 'Wstecz' });
+    expect(back.className).toMatch(/\bpbar-icon\b/);
+    expect(back.querySelector('.pbar-label')).toHaveTextContent('Wstecz');
+  });
+
+  it('inna etykieta (SUMMARY „Rozpocznij od nowa”): tekst widoczny (pbar-text, bez pbar-label) - sam chevron sugerowałby cofnięcie', () => {
+    render(<BackHarness backLabel="Rozpocznij od nowa" />);
+    const back = screen.getByRole('button', { name: 'Rozpocznij od nowa' });
+    expect(back.className).toMatch(/\bpbar-text\b/);
+    expect(back.className).not.toMatch(/\bpbar-icon\b/);
+    expect(back.querySelector('.pbar-label')).toBeNull();
+    expect(back).toHaveTextContent('Rozpocznij od nowa');
+  });
+});
+
 // Regresja realnie złapana w CoursePlayer.exploratory.test.tsx ("Wstecz z niezapisanego bloku i powrót"): dodanie
 // warunkowego paska (dawniej `{mascot && <MascotBanner/>}`) jako NOWEGO slotu PRZED `{stage}` w gałęzi 'slide' - podczas gdy
 // gałąź 'scene'/'fill' miała `{stage}` jako JEDYNE dziecko - przesuwało `stage` z indeksu 0 na indeks 1 w tablicy

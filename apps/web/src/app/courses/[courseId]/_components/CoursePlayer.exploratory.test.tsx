@@ -620,8 +620,8 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
 
   it('fokus na elemencie zasłoniętym przez dolny pasek przewija OBSZAR TREŚCI (nie window - strona się nie przewija) nad pasek; element nad paskiem i elementy paska nie przewijają', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
-    const bar = screen.getByRole('navigation', { name: 'Nawigacja po blokach' }).parentElement as HTMLElement;
-    const content = bar.previousElementSibling as HTMLElement;
+    const bar = screen.getByTestId('player-bottombar');
+    const content = screen.getByTestId('player-content-area');
     const scrollBy = vi.fn();
     content.scrollBy = scrollBy;
     vi.spyOn(bar, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 760, height: 60 } as DOMRect);

@@ -130,7 +130,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       const { container } = render(<CoursePlayer courseId="course-1" initial={course({ currentBlockIndex: 2 })} />);
 
       expect(container.querySelector('section[aria-label="Narracja"]')).toBeNull();
-      expect(screen.queryByRole('switch')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Lektor' })).toBeNull();
       expect(screen.queryByText(/nie ma narracji/i)).toBeNull();
       expect(screen.getByRole('navigation', { name: 'Nawigacja po blokach' })).toBeInTheDocument();
     });
@@ -287,7 +287,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       expect(screen.queryByRole('button', { name: 'Zobacz podsumowanie' })).not.toBeInTheDocument();
       // Kurs bez bloku SUMMARY - SummaryScreen nie ma własnej narracji do odtworzenia.
       expect(container.querySelector('audio')).toBeNull();
-      expect(screen.queryByRole('switch')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Lektor' })).toBeNull();
       // Pasek postępu ZOSTAJE na 100% (feat/player-stage: "górny pasek jak w kursie" - X, tytuł, postęp - także na
       // ekranie podsumowania).
       expect(screen.getByRole('progressbar', { name: 'Postęp szkolenia' })).toHaveAttribute('aria-valuenow', '100');
@@ -348,18 +348,18 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
     });
   });
 
-  describe('przełącznik "Lektor" (role=switch, zapis od razu na koncie)', () => {
-    const lektor = () => screen.getByRole('switch', { name: 'Lektor' });
+  describe('przełącznik "Lektor" (przycisk z aria-pressed, zapis od razu na koncie)', () => {
+    const lektor = () => screen.getByRole('button', { name: 'Lektor' });
 
-    it('zapisuje wybór przez PATCH /api/users/me/preferences i zmienia stan (aria-checked)', async () => {
+    it('zapisuje wybór przez PATCH /api/users/me/preferences i zmienia stan (aria-pressed)', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ narrationEnabled: false }) });
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled />);
-      expect(lektor()).toBeChecked();
+      expect(lektor()).toHaveAttribute('aria-pressed', 'true');
 
       fireEvent.click(lektor());
 
-      await waitFor(() => expect(lektor()).not.toBeChecked());
+      await waitFor(() => expect(lektor()).toHaveAttribute('aria-pressed', 'false'));
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/users/me/preferences',
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ narrationEnabled: false }) }),
@@ -373,7 +373,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       fireEvent.click(lektor());
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/nie udało się zapisać ustawienia lektora/i);
-      expect(lektor()).toBeChecked();
+      expect(lektor()).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('401 przekierowuje do logowania', async () => {
@@ -388,7 +388,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
     it('wyłączony z konta: brak odtwarzacza audio, przełącznik niezaznaczony', () => {
       const { container } = render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
       expect(container.querySelector('audio')).toBeNull();
-      expect(lektor()).not.toBeChecked();
+      expect(lektor()).toHaveAttribute('aria-pressed', 'false');
     });
   });
 

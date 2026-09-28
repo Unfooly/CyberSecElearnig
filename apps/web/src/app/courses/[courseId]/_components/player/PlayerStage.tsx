@@ -24,6 +24,10 @@ import NotesDrawer from './NotesDrawer';
 //
 // Strona NIGDY się nie przewija: <html>/<body> owija page.tsx w overflow-hidden h-dvh, ramka ma fixed grid rows
 // (auto 1fr auto) i TYLKO obszar treści (środkowy wiersz) przewija się w środku, gdy blok się nie mieści.
+
+/** Domyślna etykieta „Wstecz” - w wąskim pasku tylko ona zwija się do samej ikony (D-097). */
+const DEFAULT_BACK_LABEL = 'Wstecz';
+
 export default function PlayerStage(props: PlayerStageProps) {
   return (
     <OverlayStackProvider>
@@ -106,7 +110,7 @@ function PlayerStageInner({
   forwardHint,
   headingRef,
   resultAnnouncement,
-  backLabel = 'Wstecz',
+  backLabel = DEFAULT_BACK_LABEL,
   forwardLabel = 'Dalej',
   forwardHref,
 }: PlayerStageProps) {
@@ -117,6 +121,7 @@ function PlayerStageInner({
   const restRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const bottomBarRef = useRef<HTMLDivElement>(null);
+  const backIsDefault = backLabel === DEFAULT_BACK_LABEL;
   const notesButtonRef = useRef<HTMLButtonElement>(null);
   const fullscreen = useFullscreen(frameRef);
   const closeTop = useCloseTopOverlay();
@@ -340,33 +345,47 @@ function PlayerStageInner({
           </div>
 
           {/* Pasek dolny (~56px, ściśnięty do 48px w telefonie w poziomie): narracja (lewo+środek, NarrationBar samo
-              zwraca null bez narracji bloku), Wstecz/Dalej (prawo). relative: TranscriptPanel pozycjonuje się
-              względem niego (bottom-full). */}
+              zwraca null bez narracji bloku), Wstecz/Dalej (prawo). TranscriptPanel pozycjonuje się względem opakowania
+              `player-bottombar-host` (relative, górna krawędź = górna krawędź paska; bottom-full).
+              fix/mobile-player-bar (D-097): `player-bottombar-cq` jest kontenerem zapytań `pbar` - poniżej 640 px szerokości SCENY
+              (nie viewportu) pasek przechodzi w jeden rząd ikon 44x44 + „Dalej” (globals.css). Kontener na osobnym opakowaniu,
+              nie na ramce: container-type daje zawieranie układu, które zmieniłoby blok zawierający dla elementów position:fixed
+              w scenie (np. przeciągany klon karty tablicy, OrderingBlock). Zawieranie tworzy też własny kontekst warstw, dlatego
+              panel transkrypcji jest POZA kontenerem (w `player-bottombar-host`, bottom-full nad paskiem) - zostaje w tym samym
+              kontekście warstw co nakładki sceny i tło notatnika, jak przed D-097 (kod review: kontener z z-index nad tłem
+              notatnika zostawiał pasek nieprzyciemniony przy otwartym notatniku). */}
+          <div className="player-bottombar-host relative shrink-0">
+          {transcriptPanel}
+          <div className="player-bottombar-cq">
           <div
             ref={bottomBarRef}
-            className="player-bottombar relative flex min-h-[56px] shrink-0 items-center gap-3 border-t border-slate-200 px-3"
+            data-testid="player-bottombar"
+            className="player-bottombar relative flex min-h-[56px] shrink-0 items-center gap-3 border-t border-slate-200 bg-surface px-3"
           >
-            {transcriptPanel}
             {narrationBar}
-            <nav aria-label="Nawigacja po blokach" className="ml-auto flex shrink-0 items-center gap-2">
+            <nav aria-label="Nawigacja po blokach" className="pbar-nav ml-auto flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={onBack}
                 disabled={!canBack}
-                className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-4"
+                aria-label={backLabel}
+                title={backLabel}
+                // Wąski pasek: domyślne „Wstecz” to sam chevron; inna etykieta (SUMMARY: „Rozpocznij od nowa” - jedyny przycisk, bez
+                // „Dalej”) zostaje z tekstem - sam chevron sugerowałby cofnięcie, nie restart (kod review D-097).
+                className={`${backIsDefault ? 'pbar-icon' : 'pbar-text'} inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-4`}
               >
                 <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                {backLabel}
+                <span className={backIsDefault ? 'pbar-label' : undefined}>{backLabel}</span>
               </button>
               {!hideForward && !canForward && forwardHint && (
-                <span id={hintId} className="hidden max-w-[160px] truncate text-xs text-slate-500 sm:inline" title={forwardHint}>
+                <span id={hintId} className="pbar-hint hidden max-w-[160px] truncate text-xs text-slate-500 sm:inline" title={forwardHint}>
                   {forwardHint}
                 </span>
               )}
               {!hideForward && forwardHref ? (
                 <Link
                   href={forwardHref}
-                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 sm:px-4"
+                  className="pbar-next inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 sm:px-4"
                 >
                   {forwardLabel}
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -379,7 +398,7 @@ function PlayerStageInner({
                     disabled={!canForward}
                     aria-describedby={!canForward && forwardHint ? hintId : undefined}
                     title={!canForward ? forwardHint : undefined}
-                    className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4"
+                    className="pbar-next inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4"
                   >
                     {forwardLabel}
                     <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -387,6 +406,8 @@ function PlayerStageInner({
                 )
               )}
             </nav>
+          </div>
+          </div>
           </div>
         </div>
 

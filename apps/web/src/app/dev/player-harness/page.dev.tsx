@@ -39,7 +39,11 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
   return null;
 }
 
-export default function PlayerHarnessPage({ searchParams }: { searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string } }) {
+export default function PlayerHarnessPage({
+  searchParams,
+}: {
+  searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string };
+}) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
   }
@@ -104,7 +108,9 @@ export default function PlayerHarnessPage({ searchParams }: { searchParams: { bl
 
   return (
     <div className="h-dvh overflow-hidden bg-paper">
-      <CoursePlayer courseId="dev-harness" initial={initial} contentBase={contentBase} narrationEnabled={false} />
+      {/* `?narration=1` (fix/mobile-player-bar): lektor włączony - layout-check podstawia nagranie (page.route) i mierzy przycisk
+          odtwarzania i linijkę napisów w dolnym pasku. Domyślnie wyłączony, jak dotąd (bez prób ładowania audio). */}
+      <CoursePlayer courseId="dev-harness" initial={initial} contentBase={contentBase} narrationEnabled={searchParams.narration === '1'} />
       {clickPath && <HarnessAutoOpen path={clickPath} />}
     </div>
   );

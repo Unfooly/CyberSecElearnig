@@ -7,6 +7,15 @@ import { hashContent, moduleWarnings, parseModule } from './node';
 type TestModule = { blocks: Record<string, any>[]; [key: string]: any };
 const fullModuleForTests = (): TestModule => JSON.parse(JSON.stringify(fullModule())) as TestModule;
 
+/** Usuwa hotspoty z okienkami easter egga (D-100, pole v5) - na zewnątrz i w scenie zagnieżdżonej. */
+function withoutPopups(module: TestModule) {
+  const notPopups = (h: Record<string, any>) => h.media?.kind !== 'popups';
+  for (const block of module.blocks.filter((b) => b.type === 'SCENE_HOTSPOTS')) {
+    block.hotspots = block.hotspots.filter(notPopups);
+    for (const h of block.hotspots) if (h.media?.kind === 'scene') h.media.scene.hotspots = h.media.scene.hotspots.filter(notPopups);
+  }
+}
+
 describe('parseModule: walidacja modułu', () => {
   const expectInvalid = (mutate: (m: TestModule) => void, fragment: string) => {
     const module = fullModuleForTests();
@@ -720,7 +729,51 @@ describe('parseModule: schemaVersion 5 (BRIEFING, zadania sprawy)', () => {
     const module = fullModuleForTests();
     module.schemaVersion = 4;
     module.blocks = module.blocks.filter((b) => b.type !== 'BRIEFING' && b.type !== 'DOSSIER');
+    // Okienka easter egga (D-100) też są z wersji 5 - bez nich moduł w wersji 4 przechodzi.
+    expect(() => parseModule(module)).toThrow(/pole media\.popups wymaga schemaVersion 5/);
+    withoutPopups(module);
     expect(() => parseModule(module)).not.toThrow();
+  });
+
+  describe('okienka easter egga (media.kind "popups", D-100)', () => {
+    const errorsOf = (mutate: (m: TestModule) => void): string => {
+      const module = fullModuleForTests();
+      mutate(module);
+      try {
+        parseModule(module);
+      } catch (error) {
+        return (error as ContentValidationError).issues.join('\n');
+      }
+      return '';
+    };
+    const scene = (m: TestModule) => m.blocks.find((b) => b.type === 'SCENE_HOTSPOTS') as Record<string, any>;
+    const outer = (m: TestModule) => scene(m).hotspots.find((h: { id: string }) => h.id === 'h6');
+    const inner = (m: TestModule) => scene(m).hotspots.find((h: { id: string }) => h.id === 'h4').media.scene.hotspots.find((h: { id: string }) => h.id === 'h4-gra');
+
+    it('poprawne okienka na obu poziomach przechodzą', () => {
+      expect(errorsOf(() => undefined)).toBe('');
+    });
+
+    it('nie są dowodem: evidence, note albo required: true to błąd (na zewnątrz i w scenie zagnieżdżonej)', () => {
+      expect(errorsOf((m) => (outer(m).evidence = true))).toMatch(/hotspots\[\d\]: okienka \(media.kind "popups"\) nie są dowodem/);
+      expect(errorsOf((m) => (inner(m).note = { text: 'x', kind: 'item' }))).toMatch(/media\.scene\.hotspots\[\d\]: okienka/);
+      expect(errorsOf((m) => (inner(m).required = true))).toMatch(/okienka \(media.kind "popups"\) nie są dowodem/);
+      // required: false jest dozwolone (jawnie opcjonalny).
+      expect(errorsOf((m) => (inner(m).required = false))).toBe('');
+      // Przestarzała lista requiredHotspots też nie może ich wymagać.
+      expect(errorsOf((m) => (scene(m).requiredHotspots = ['h1', 'h6']))).toContain('requiredHotspots: "h6" to okienka (media.kind "popups") - nie mogą być wymagane');
+    });
+
+    it('id wyróżnienia (badge.id) unikalne w bloku (etykieta w notatniku po id)', () => {
+      expect(errorsOf((m) => (outer(m).media.badge.id = 'ciekawski'))).toContain('media.badge.id: powtórzony identyfikator "ciekawski"');
+    });
+
+    it('countdown tylko GG:MM:SS; puste items, nieznane behavior i pole spoza schematu są odrzucone', () => {
+      expect(errorsOf((m) => (inner(m).media.items[1].countdown = '23:60:00'))).toContain('countdown');
+      expect(errorsOf((m) => (inner(m).media.items = []))).toContain('items');
+      expect(errorsOf((m) => (inner(m).media.items[0].behavior = 'shake'))).toContain('behavior');
+      expect(errorsOf((m) => (outer(m).media.sound = 'alarm.mp3'))).not.toBe('');
+    });
   });
 
   it('cele modułu (objectives) to wyłącznie teksty - obiekt z completeWhen jest odrzucony (zadania są w odprawie)', () => {

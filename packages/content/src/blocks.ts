@@ -90,11 +90,32 @@ const audioMediaSchema = z
   })
   .strict();
 const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
+// Easter egg (Q, D-100): seria komiksowych okienek („wirusy”, „wygrana”, „okup”) zamykanych tylko krzyżykiem, po nich `outro` i
+// opcjonalne ukryte wyróżnienie w notatniku. Nie jest dowodem (semantics.ts: bez evidence/note/required) i nie zmienia wyniku ani XP -
+// serwer zapisuje tylko flagę wyróżnienia (progress, `easterEggs`). `behavior: 'dodge'` - przycisk ucieka przed kursorem (2 razy, nie na
+// dotyku); `countdown` - kosmetyczne odliczanie w dół (GG:MM:SS). Treść okienek to fikcja szkoleniowa, bez imitacji prawdziwych okien.
+const popupItemSchema = z
+  .object({
+    title: text(80),
+    body: text(200),
+    button: text(60),
+    behavior: z.enum(['dodge', 'none']).optional(),
+    countdown: z.string().regex(/^\d{1,2}:[0-5]\d:[0-5]\d$/, 'format GG:MM:SS').optional(),
+  })
+  .strict();
+const popupsMediaSchema = z
+  .object({
+    kind: z.literal('popups'),
+    items: z.array(popupItemSchema).min(1).max(5),
+    outro: text(400),
+    badge: z.object({ id: idSchema, label: text(60) }).strict().optional(),
+  })
+  .strict();
 
 // Hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene'): jak hotspot najwyższego poziomu, ale BEZ `action` i BEZ
 // wariantu media `scene` - limit 1 poziomu zagnieżdżenia wymuszony przez system typów (nie osobną walidacją w runtime).
 // Zawsze zachowuje się jak `action: 'card'` (klik otwiera kartę), więc `content` zostaje wymagane, tak jak dziś.
-const innerHotspotMediaSchema = z.discriminatedUnion('kind', [imageMediaSchema, audioMediaSchema, documentMediaSchema]);
+const innerHotspotMediaSchema = z.discriminatedUnion('kind', [imageMediaSchema, audioMediaSchema, documentMediaSchema, popupsMediaSchema]);
 const innerHotspotSchema = z
   .object({
     id: idSchema,
@@ -128,6 +149,7 @@ const hotspotMediaSchema = z.discriminatedUnion('kind', [
   imageMediaSchema,
   audioMediaSchema,
   documentMediaSchema,
+  popupsMediaSchema,
   z.object({ kind: z.literal('scene'), scene: nestedSceneSchema }).strict(),
 ]);
 
@@ -712,6 +734,15 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.image',
       'hotspots[].media.title',
       'hotspots[].media.lines[]',
+      // Easter egg (D-100): okienka, outro i wyróżnienie to treść do pokazania (nic do odgadnięcia; znajomość z góry niczego nie daje).
+      'hotspots[].media.items[].title',
+      'hotspots[].media.items[].body',
+      'hotspots[].media.items[].button',
+      'hotspots[].media.items[].behavior',
+      'hotspots[].media.items[].countdown',
+      'hotspots[].media.outro',
+      'hotspots[].media.badge.id',
+      'hotspots[].media.badge.label',
       'hotspots[].media.scene.image',
       'hotspots[].media.scene.imageAlt',
       'hotspots[].media.scene.hotspots[].id',
@@ -734,6 +765,14 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].media.image',
       'hotspots[].media.scene.hotspots[].media.title',
       'hotspots[].media.scene.hotspots[].media.lines[]',
+      'hotspots[].media.scene.hotspots[].media.items[].title',
+      'hotspots[].media.scene.hotspots[].media.items[].body',
+      'hotspots[].media.scene.hotspots[].media.items[].button',
+      'hotspots[].media.scene.hotspots[].media.items[].behavior',
+      'hotspots[].media.scene.hotspots[].media.items[].countdown',
+      'hotspots[].media.scene.hotspots[].media.outro',
+      'hotspots[].media.scene.hotspots[].media.badge.id',
+      'hotspots[].media.scene.hotspots[].media.badge.label',
       'hotspots[].media.scene.hotspots[].narration.text',
       'hotspots[].media.scene.hotspots[].narration.audioUrl',
       'hotspots[].media.scene.hotspots[].narration.durationMs',

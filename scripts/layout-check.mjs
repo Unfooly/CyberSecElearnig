@@ -863,8 +863,8 @@ async function checkCaseClosed(page, label, portrait) {
     return { x: scrolls(style.overflowX) ? el.scrollWidth - el.clientWidth : 0, y: scrolls(style.overflowY) ? el.scrollHeight - el.clientHeight : 0 };
   });
   if (pan.y > 1) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
-  // Raport pionowy (D-098, closing.portrait w treści): na telefonie w pionie raport 9:16 w całości - bez panoramy, przyciski pod nim
-  // na pełną szerokość, jeden pod drugim.
+  // Raport pionowy (D-098, D-107, closing.portrait w treści): na telefonie w pionie raport 9:16 w całości (bez panoramy), wypełnia
+  // wolną wysokość, dane w slotach grafiki, pod nim tylko „Następna sprawa” na pełną szerokość (z8).
   const orientation = await page.getByTestId('case-closed-frame').getAttribute('data-orientation');
   if (portrait && orientation === 'portrait') {
     if (pan.x > 1) fail(`${label}: (z2) pionowy raport przewija się w poziomie o ${pan.x}px.`);
@@ -874,12 +874,32 @@ async function checkCaseClosed(page, label, portrait) {
     const next = await page.getByTestId('case-closed').getByRole('button', { name: /Następna sprawa/ }).boundingBox();
     const actions = await boxOf(page, '[data-testid="case-closed-actions"]');
     if (!next || Math.abs(next.width - actions.width) > 1) fail(`${label}: (z6) „Następna sprawa” nie na pełną szerokość (${next?.width} z ${actions.width}).`);
-    // Wnioski pod raportem (HTML) - czytelne, min. 15 px, bez przepełnienia w poziomie.
-    const lessons = await page.getByTestId('closing-lessons').evaluate((el) => ({ font: parseFloat(getComputedStyle(el).fontSize), overflow: el.scrollWidth - el.clientWidth, inScene: !!el.closest('[data-testid="case-closed-scene"]') }));
-    if (lessons.inScene || lessons.font < 15 || lessons.overflow > 1) fail(`${label}: (z4) wnioski w pionie - ${JSON.stringify(lessons)} (oczekiwane pod raportem, >= 15 px, bez przepełnienia).`);
-    // Liczby raportu (dowody/czas/XP) też pod raportem - w slotach pionowej grafiki miałyby 7-10 px.
-    const stats = await page.getByTestId('closing-stats').evaluate((el) => ({ font: parseFloat(getComputedStyle(el).fontSize), overflow: el.scrollWidth - el.clientWidth, inScene: !!el.closest('[data-testid="case-closed-scene"]') }));
-    if (stats.inScene || stats.font < 15 || stats.overflow > 1) fail(`${label}: (z4) liczby w pionie - ${JSON.stringify(stats)} (oczekiwane pod raportem, >= 15 px, bez przepełnienia).`);
+    // D-107: pod raportem TYLKO „Następna sprawa” (bez liczb, wniosków, wyniku zadań i paska poziomu).
+    // Dozwolony też komunikat błędu (pobranie wyniku, restart) - to nie dubel danych z grafiki.
+    const under = await page.getByTestId('case-closed-actions').evaluate((el) => ({
+      controls: el.querySelectorAll('button, a, [role="progressbar"]').length,
+      other: [...el.children].filter((child) => !child.matches('button') && !child.classList.contains('text-danger')).map((child) => child.textContent.trim()),
+      text: el.querySelector('button')?.textContent.trim() ?? '',
+    }));
+    if (under.controls !== 1 || under.other.length > 0 || !/^Następna sprawa/.test(under.text)) fail(`${label}: (z8) pod pionowym raportem coś poza „Następna sprawa” - ${JSON.stringify(under)}.`);
+    // D-107: wszystkie dane w slotach grafiki - liczby >= 18 px, wnioski i podpis >= 15 px, w raporcie, bez przepełnienia.
+    const data = await page.evaluate(() => {
+      const scene = document.querySelector('[data-testid="case-closed-scene"]');
+      const info = (id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        return el ? { font: parseFloat(getComputedStyle(el).fontSize), inScene: scene.contains(el), overflowX: el.scrollWidth - el.clientWidth, overflowY: el.scrollHeight - el.clientHeight } : null;
+      };
+      return { evidence: info('closing-evidence'), time: info('closing-time'), xp: info('closing-xp'), lessons: info('closing-lessons'), signed: info('closing-signed') };
+    });
+    for (const id of ['evidence', 'time', 'xp']) {
+      const d = data[id];
+      if (!d || !d.inScene || d.font < 18 - 0.05 || d.overflowX > 1) fail(`${label}: (z4) ${id} w pionie - ${JSON.stringify(d)} (oczekiwane w slocie raportu, >= 18 px, bez przepełnienia).`);
+    }
+    if (!data.lessons || !data.lessons.inScene || data.lessons.font < 15 - 0.05 || data.lessons.overflowY > 1 || data.lessons.overflowX > 1) fail(`${label}: (z4) wnioski w pionie - ${JSON.stringify(data.lessons)} (oczekiwane w slocie raportu, >= 15 px, bez przepełnienia).`);
+    if (data.signed && (!data.signed.inScene || data.signed.font < 16 - 0.05 || data.signed.overflowX > 1)) fail(`${label}: (z4) podpis w pionie - ${JSON.stringify(data.signed)} (oczekiwany w slocie raportu, >= 16 px, bez przepełnienia).`);
+    // D-107: grafika wypełnia wolną wysokość ramki (contain - ograniczona wysokością albo szerokością).
+    const frame = await boxOf(page, '[data-testid="case-closed-frame"]');
+    if (Math.abs(scene.height - frame.height) > 2 && Math.abs(scene.width - frame.width) > 2) fail(`${label}: (z8) raport ${Math.round(scene.width)}x${Math.round(scene.height)} nie wypełnia ramki ${Math.round(frame.width)}x${Math.round(frame.height)}.`);
   } else if (portrait) {
     // Panorama: raport szerszy niż ekran (przewijanie w poziomie), wnioski czytelne (>= 11 px).
     if (pan.x <= 1) fail(`${label}: (z2) telefon w pionie bez panoramy raportu (contain - tekst nieczytelny).`);
@@ -893,8 +913,6 @@ async function checkCaseClosed(page, label, portrait) {
   const loaded = await page.locator('[data-testid="case-closed-scene"] img').evaluateAll((els) => els.every((img) => img.naturalWidth > 0));
   if (!loaded) fail(`${label}: (z2) obraz raportu/pieczęci/liściku się nie załadował.`);
   for (const testId of CLOSING_SLOTS) {
-    // Pionowy raport (D-098): wnioski celowo POD raportem (HTML, >= 15 px) - sprawdza je (z4) wyżej.
-    if (testId === 'closing-lessons' && orientation === 'portrait') continue;
     const locator = page.getByTestId(testId);
     if ((await locator.count()) === 0) continue;
     const box = await locator.boundingBox();
@@ -908,8 +926,7 @@ async function checkCaseClosed(page, label, portrait) {
     }
     const list = document.querySelector('[data-testid="closing-lessons"]');
     if (list) {
-      // Lista pod pionowym raportem (D-098) ma limit wysokości i przewija się w pionie celowo - przepełnienie w pionie tylko w slocie raportu.
-      if (list.closest('[data-testid="case-closed-scene"]') && list.scrollHeight > list.clientHeight + 1) out.push(`wnioski w pionie: ${list.scrollHeight} > ${list.clientHeight}`);
+      if (list.scrollHeight > list.clientHeight + 1) out.push(`wnioski w pionie: ${list.scrollHeight} > ${list.clientHeight}`);
       for (const item of list.querySelectorAll('li')) {
         if (item.scrollWidth > list.clientWidth + 1) out.push(`"${item.textContent}": ${item.scrollWidth} > ${list.clientWidth}`);
       }
@@ -1997,6 +2014,8 @@ try {
     // Rozwiązanie sprawy: „Zakończ …” to etykieta przycisku w pasku.
     await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
     await page.getByTestId('player-content-area').waitFor();
+    // SUMMARY zgłasza gotowość w efekcie po zamontowaniu - chwila na aktywację przycisku w pasku.
+    await barNext().and(page.locator(':enabled')).waitFor({ timeout: 5000 }).catch(() => {});
     const summaryNext = await checkSingleNext(page, `${viewport.name} / rozwiazanie-sprawy`);
     if (!/^Zakończ (sprawę|szkolenie)$/.test(summaryNext ?? '') || (await barNext().isDisabled())) fail(`${viewport.name} / rozwiazanie-sprawy: (j4) przycisk w pasku „${summaryNext}” (oczekiwany aktywny „Zakończ sprawę/szkolenie”).`);
     step(`${viewport.name} / rozwiazanie-sprawy: (j1, j2, j4) OK - „${summaryNext}” w pasku`, true);

@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { EKRAN_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROP_REGISTRY } from './prop-registry.js';
 import type { PropFn, PropOutput } from './types.js';
 
@@ -419,5 +419,8 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...EKRAN_PROPS,
   // Okna w wersji pionowej (mail, historia przeglądarki) i raport zamknięcia jako jedna strona (telefon, D-104).
   ...PION_OKNA_PROPS,
+  // Trofea osiągnięć (512×512, wersja zdobyta i zablokowana) i key art miniatury: światło lampy, winieta, czerwona nić.
+  ...TROFEA_PROPS,
+  ...KEYART_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

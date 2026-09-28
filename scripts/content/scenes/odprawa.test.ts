@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -19,7 +19,14 @@ const scenes = readdirSync(examples)
   .sort();
 const lf = (s: string) => s.replace(/\r\n/g, '\n');
 const build = (name: string) => composeScene(JSON.parse(readFileSync(join(examples, `${name}.json`), 'utf8')) as SceneSpec);
-const svgPath = (name: string) => (existsSync(join(assets, 'scenes', `${name}.svg`)) ? join(assets, 'scenes', `${name}.svg`) : join(assets, `${name}.svg`));
+// Trofea osiągnięć (osiagniecie-*) są globalne, nie należą do modułu: leżą w statycznych plikach aplikacji web.
+const achievements = join(here, '..', '..', '..', 'apps', 'web', 'public', 'achievements');
+const svgPath = (name: string) =>
+  name.startsWith('osiagniecie-')
+    ? join(achievements, `${name}.svg`)
+    : existsSync(join(assets, 'scenes', `${name}.svg`))
+      ? join(assets, 'scenes', `${name}.svg`)
+      : join(assets, `${name}.svg`);
 
 describe('sceny modułu 1 z kompozytora', () => {
   it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
@@ -28,6 +35,19 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(PRZEGLADARKA_PROPS)) expect(PROPS[name], name).toBe(PRZEGLADARKA_PROPS[name as keyof typeof PRZEGLADARKA_PROPS]);
     for (const name of Object.keys(PION_PROPS)) expect(PROPS[name], name).toBe(PION_PROPS[name as keyof typeof PION_PROPS]);
     for (const name of Object.keys(PION_OKNA_PROPS)) expect(PROPS[name], name).toBe(PION_OKNA_PROPS[name as keyof typeof PION_OKNA_PROPS]);
+    for (const name of Object.keys(TROFEA_PROPS)) expect(PROPS[name], name).toBe(TROFEA_PROPS[name as keyof typeof TROFEA_PROPS]);
+    for (const name of Object.keys(KEYART_PROPS)) expect(PROPS[name], name).toBe(KEYART_PROPS[name as keyof typeof KEYART_PROPS]);
+  });
+
+  it('trophyBadge: wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {
+    const svg = (kind: 'curious' | 'perfect' | 'first', locked: boolean) => PROPS.trophyBadge({ kind, locked }).svg as string;
+    expect(svg('curious', true)).toContain('???');
+    expect(svg('curious', true)).not.toContain('CURIOUS DETECTIVE');
+    expect(svg('perfect', true)).not.toContain('FLAWLESS CASE');
+    expect(svg('first', true)).not.toContain('FIRST CASE CLOSED');
+    expect(svg('curious', false)).toContain('CURIOUS DETECTIVE');
+    expect(svg('perfect', false)).toContain('LEGENDARY');
+    expect(svg('first', false)).toContain('FIRST CASE CLOSED');
   });
 
   it('D-104: reportPortrait (jeszcze bez sceny w module) renderuje się z domyślnymi parametrami i ma wszystkie sloty raportu', () => {
@@ -41,8 +61,11 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(() => PROPS.stackedHalves({ prop: 'stackedHalves' })).toThrow(/nie może składać samego siebie/);
   });
 
-  it('każde źródło ma swoją scenę w module (11 scen modułu + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
-    expect(scenes).toHaveLength(28);
+  it('każde źródło ma swoją scenę (11 scen modułu + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura; 3 trofea × zdobyte/zablokowane)', () => {
+    expect(scenes).toHaveLength(34);
+    expect(readdirSync(achievements).filter((file) => file.endsWith('.svg')).sort()).toEqual(
+      scenes.filter((name) => name.startsWith('osiagniecie-')).map((name) => `${name}.svg`).sort(),
+    );
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 

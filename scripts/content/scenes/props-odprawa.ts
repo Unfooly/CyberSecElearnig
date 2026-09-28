@@ -663,3 +663,142 @@ export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: st
 };
 
 export const PION_OKNA_PROPS = { mailWindowPortrait, browserHistoryPortrait, reportPortrait };
+
+/* ---------- osiągnięcia v2: trofea z rangą ---------- */
+const star5 = (cx: number, cy: number, R: number, r: number) =>
+  Array.from({ length: 10 }, (_, i) => { const rr = i % 2 ? r : R, a = -Math.PI / 2 + i * Math.PI / 5; return `${(cx + rr * Math.cos(a)).toFixed(1)},${(cy + rr * Math.sin(a)).toFixed(1)}`; }).join(' ');
+const hexPts = (cx: number, cy: number, R: number) =>
+  Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return `${(cx + R * Math.cos(a)).toFixed(1)},${(cy + R * Math.sin(a)).toFixed(1)}`; }).join(' ');
+const banner = (cx: number, y: number, w: number, label: string, fill: string, dark: string, size = 26) =>
+  `<path d="M${cx - w / 2 - 34} ${y + 8} h34 v44 h-34 l14 -22 z" fill="${dark}"/><path d="M${cx + w / 2 + 34} ${y + 8} h-34 v44 h34 l-14 -22 z" fill="${dark}"/>` +
+  `<rect x="${cx - w / 2}" y="${y}" width="${w}" height="52" rx="6" fill="${fill}"/>` +
+  `<path d="M${cx - w / 2} ${y + 52} l20 12 v-12 z M${cx + w / 2} ${y + 52} l-20 12 v-12 z" fill="${P.ink}" opacity="0.45"/>` +
+  t(cx, y + 35, label, size, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 });
+const sparkle = (x: number, y: number, s: number, c: string = P.white) =>
+  `<path d="M${x} ${y - s} q${s * 0.18} ${s * 0.82} ${s} ${s} q${-s * 0.82} ${s * 0.18} ${-s} ${s} q${-s * 0.18} ${-s * 0.82} ${-s} ${-s} q${s * 0.82} ${-s * 0.18} ${s} ${-s} z" fill="${c}"/>`;
+
+export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locked?: boolean }> = ({ kind = 'first', locked = false }) => {
+  const w = 512, h = 512, cx = 256, cy = 236;
+  const defs =
+    `<defs>` +
+    `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset="0.45" stop-color="#F2C94C"/><stop offset="0.7" stop-color="#C9962B"/><stop offset="1" stop-color="#FFE38A"/></linearGradient>` +
+    `<linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.5" stop-color="#C9CBDA"/><stop offset="1" stop-color="#8C8FA8"/></linearGradient>` +
+    `<linearGradient id="neon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B1B5E"/><stop offset="0.5" stop-color="#C2417A"/><stop offset="1" stop-color="#F7A24B"/></linearGradient>` +
+    `<linearGradient id="enamel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A7BFF"/><stop offset="1" stop-color="#3F32B5"/></linearGradient>` +
+    `<radialGradient id="glow" cx="0.5" cy="0.45" r="0.55"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>` +
+    `<linearGradient id="shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.55"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>` +
+    `<clipPath id="hexc"><polygon points="${hexPts(cx, cy, 150)}"/></clipPath>` +
+    `<clipPath id="shc"><path d="M${cx} ${cy - 168} L${cx + 146} ${cy - 118} V${cy + 10} C${cx + 146} ${cy + 110}, ${cx + 70} ${cy + 160}, ${cx} ${cy + 190} C${cx - 70} ${cy + 160}, ${cx - 146} ${cy + 110}, ${cx - 146} ${cy + 10} V${cy - 118} Z"/></clipPath>` +
+    `<clipPath id="cc"><circle cx="${cx}" cy="${cy}" r="140"/></clipPath>` +
+    `</defs>`;
+  const halo = `<circle cx="${cx}" cy="${cy}" r="230" fill="url(#glow)"/>`;
+
+  if (locked) {
+    const shape = kind === 'curious' ? `<polygon points="${hexPts(cx, cy, 170)}" fill="#3A3550"/><polygon points="${hexPts(cx, cy, 150)}" fill="#4A4466"/>`
+      : kind === 'perfect' ? `<path d="M${cx} ${cy - 190} L${cx + 168} ${cy - 134} V${cy + 10} C${cx + 168} ${cy + 124}, ${cx + 80} ${cy + 180}, ${cx} ${cy + 214} C${cx - 80} ${cy + 180}, ${cx - 168} ${cy + 124}, ${cx - 168} ${cy + 10} V${cy - 134} Z" fill="#3A3550"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="162" fill="#3A3550"/><circle cx="${cx}" cy="${cy}" r="140" fill="#4A4466"/>`;
+    return {
+      w, h,
+      svg: defs + `<g opacity="0.9">${shape}</g>` +
+        `<rect x="${cx - 44}" y="${cy - 6}" width="88" height="72" rx="12" fill="#6F6A8A"/><path d="M${cx - 27} ${cy - 6} v-22 a27 27 0 0 1 54 0 v22" fill="none" stroke="#6F6A8A" stroke-width="14"/>` +
+        (kind === 'curious' ? t(cx, cy + 128, '???', 40, { anchor: 'middle', bold: true, fill: '#8C87A8', spacing: 8 }) : '') +
+        banner(cx, 420, 300, kind === 'curious' ? 'SECRET' : 'LOCKED', '#6F6A8A', '#4A4466', 24),
+    };
+  }
+
+  if (kind === 'curious') {
+    // SEKRET — heksagon z neonowym zachodem słońca, panoramą miasta i lupą
+    let city = '';
+    const bld = [[-150, 60], [-120, 95], [-92, 70], [-66, 120], [-40, 85], [-14, 140], [14, 100], [40, 130], [66, 80], [92, 110], [120, 72], [150, 90]];
+    bld.forEach(([dx, hh], i) => { city += `<rect x="${cx + dx - 14}" y="${cy + 150 - hh}" width="28" height="${hh}" fill="#1B1236"/>`; for (let k = 0; k < Math.floor(hh / 22); k++) if ((i + k) % 3) city += `<rect x="${cx + dx - 6}" y="${cy + 150 - hh + 10 + k * 22}" width="6" height="8" fill="#FFD36E" opacity="0.8"/>`; });
+    return {
+      w, h,
+      svg: defs + halo +
+        `<polygon points="${hexPts(cx, cy + 6, 178)}" fill="${P.ink}" opacity="0.25"/>` +
+        `<polygon points="${hexPts(cx, cy, 178)}" fill="url(#silver)"/><polygon points="${hexPts(cx, cy, 160)}" fill="#2B1B5E"/>` +
+        `<g clip-path="url(#hexc)"><rect x="${cx - 160}" y="${cy - 160}" width="320" height="320" fill="url(#neon)"/>` +
+        `<circle cx="${cx}" cy="${cy + 58}" r="74" fill="#FFD36E"/>` + [0, 1, 2, 3].map(k => `<rect x="${cx - 80}" y="${cy + 44 + k * 14}" width="160" height="${3 + k * 2}" fill="#C2417A"/>`).join('') +
+        city +
+        `<path d="M${cx - 118} ${cy + 150} q6 -80 -8 -150" stroke="#1B1236" stroke-width="8" fill="none"/>` +
+        `<path d="M${cx - 126} ${cy} q-40 -6 -52 26 M${cx - 126} ${cy} q-34 -28 -60 -14 M${cx - 126} ${cy} q14 -40 48 -40 M${cx - 126} ${cy} q40 -14 54 20" stroke="#1B1236" stroke-width="12" fill="none" stroke-linecap="round"/>` +
+        `<rect x="${cx - 160}" y="${cy - 160}" width="90" height="320" fill="url(#shine)" transform="rotate(18 ${cx} ${cy})" opacity="0.6"/></g>` +
+        `<g transform="translate(${cx + 20} ${cy - 40})"><circle r="62" fill="${P.white}" fill-opacity="0.18" stroke="${P.white}" stroke-width="16"/>` +
+        `<rect x="40" y="40" width="70" height="22" rx="11" transform="rotate(45 40 40)" fill="${P.white}"/>` + t(0, 22, '?', 64, { anchor: 'middle', bold: true, fill: P.white }) + `</g>` +
+        sparkle(cx + 130, cy - 120, 18) + sparkle(cx - 140, cy - 90, 12) + sparkle(cx + 150, cy + 40, 10, '#FFD36E') +
+        `<rect x="${cx - 60}" y="${cy - 204}" width="120" height="36" rx="18" fill="#C2417A"/>` + t(cx, cy - 179, 'SECRET', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
+        banner(cx, 420, 340, 'CURIOUS DETECTIVE', '#C2417A', '#7A2150', 24),
+    };
+  }
+
+  if (kind === 'perfect') {
+    // LEGENDARNE — złota tarcza z laurem, gwiazdą i tabliczką 100%
+    const laurel = (side: number) => Array.from({ length: 7 }, (_, i) => {
+      const a = (Math.PI * 0.62) + i * 0.2, R = 172;
+      const x = cx + side * R * Math.cos(a) * -1, y = cy + 40 - R * Math.sin(a) * -1 * -1;
+      return `<ellipse cx="${x.toFixed(1)}" cy="${(cy + 60 - i * 34).toFixed(1)}" rx="16" ry="34" transform="rotate(${side * (40 - i * 8)} ${x.toFixed(1)} ${(cy + 60 - i * 34).toFixed(1)})" fill="#2FB36B"/>`;
+    }).join('');
+    const sh = `M${cx} ${cy - 190} L${cx + 168} ${cy - 134} V${cy + 10} C${cx + 168} ${cy + 124}, ${cx + 80} ${cy + 180}, ${cx} ${cy + 214} C${cx - 80} ${cy + 180}, ${cx - 168} ${cy + 124}, ${cx - 168} ${cy + 10} V${cy - 134} Z`;
+    return {
+      w, h,
+      svg: defs + halo +
+        [-1, 1].map(sd => `<polygon points="${star5(cx + sd * 196, cy - 40, 22, 9)}" fill="url(#gold)"/><polygon points="${star5(cx + sd * 184, cy + 50, 14, 6)}" fill="url(#gold)"/>`).join('') +
+        `<path d="${sh}" transform="translate(0 8)" fill="${P.ink}" opacity="0.25"/>` +
+        `<path d="${sh}" fill="url(#gold)"/>` +
+        `<g clip-path="url(#shc)"><rect x="${cx - 160}" y="${cy - 170}" width="320" height="360" fill="#3F32B5"/>` +
+        `<rect x="${cx - 160}" y="${cy - 170}" width="320" height="360" fill="url(#enamel)"/>` +
+        Array.from({ length: 12 }, (_, i) => `<path d="M${cx} ${cy - 10} L${cx + 260 * Math.cos(i * Math.PI / 6)} ${cy - 10 + 260 * Math.sin(i * Math.PI / 6)} L${cx + 260 * Math.cos(i * Math.PI / 6 + 0.18)} ${cy - 10 + 260 * Math.sin(i * Math.PI / 6 + 0.18)} Z" fill="${P.white}" opacity="0.07"/>`).join('') +
+        `<rect x="${cx - 160}" y="${cy - 170}" width="80" height="360" fill="url(#shine)" transform="rotate(20 ${cx} ${cy})" opacity="0.5"/></g>` +
+        `<polygon points="${star5(cx, cy - 22, 86, 38)}" fill="url(#gold)" stroke="#C9962B" stroke-width="4"/>` +
+        `<polygon points="${star5(cx, cy - 22, 56, 25)}" fill="#FFF1A8" opacity="0.5"/>` +
+        `<rect x="${cx - 70}" y="${cy + 78}" width="140" height="56" rx="10" fill="url(#gold)" stroke="#C9962B" stroke-width="3"/>` +
+        t(cx, cy + 118, '100%', 36, { anchor: 'middle', bold: true, fill: '#5A3E0B' }) +
+        sparkle(cx + 118, cy - 150, 16, '#FFF1A8') + sparkle(cx - 128, cy - 118, 12, '#FFF1A8') + sparkle(cx + 150, cy + 60, 9) +
+        `<rect x="${cx - 96}" y="${cy - 234}" width="192" height="36" rx="18" fill="#C9962B"/>` + t(cx, cy - 209, 'LEGENDARY', 18, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
+        banner(cx, 426, 380, 'FLAWLESS CASE', '#C9962B', '#7A5A14', 22),
+    };
+  }
+
+  // KAMIEŃ MILOWY — medal z emaliowanym środkiem, teczką i pieczęcią
+  const teeth = Array.from({ length: 36 }, (_, i) => { const a = i * Math.PI / 18; return `<circle cx="${(cx + 170 * Math.cos(a)).toFixed(1)}" cy="${(cy + 170 * Math.sin(a)).toFixed(1)}" r="14" fill="url(#silver)"/>`; }).join('');
+  return {
+    w, h,
+    svg: defs + halo +
+      `<path d="M${cx - 90} ${cy + 120} l-40 170 l60 -30 l30 46 l40 -170 z" fill="#3F32B5"/><path d="M${cx + 90} ${cy + 120} l40 170 l-60 -30 l-30 46 l-40 -170 z" fill="#3F32B5"/>` +
+      `<circle cx="${cx}" cy="${cy + 8}" r="172" fill="${P.ink}" opacity="0.25"/>` + teeth +
+      `<circle cx="${cx}" cy="${cy}" r="164" fill="url(#silver)"/><circle cx="${cx}" cy="${cy}" r="140" fill="url(#enamel)"/>` +
+      `<circle cx="${cx}" cy="${cy}" r="126" fill="none" stroke="${P.white}" stroke-width="3" stroke-dasharray="6 9" opacity="0.5"/>` +
+      `<g clip-path="url(#cc)"><rect x="${cx - 150}" y="${cy - 150}" width="70" height="300" fill="url(#shine)" transform="rotate(22 ${cx} ${cy})" opacity="0.55"/></g>` +
+      `<g transform="rotate(-6 ${cx} ${cy})"><path d="M${cx - 92} ${cy - 58} h52 l14 -18 h46 l14 18 h58 v130 h-184 z" fill="#FFFFFF"/><rect x="${cx - 92}" y="${cy - 40}" width="184" height="112" rx="6" fill="#EEEBFF"/>` +
+      `<rect x="${cx - 70}" y="${cy - 22}" width="100" height="10" rx="5" fill="#B8BAD0"/><rect x="${cx - 70}" y="${cy - 4}" width="70" height="10" rx="5" fill="#B8BAD0"/></g>` +
+      `<g transform="rotate(-14 ${cx + 10} ${cy + 36})"><rect x="${cx - 80}" y="${cy + 12}" width="180" height="50" rx="8" fill="${P.white}" fill-opacity="0.9" stroke="${P.red}" stroke-width="6"/>` +
+      t(cx + 10, cy + 45, 'CLOSED', 26, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 }) + `</g>` +
+      t(cx, cy - 92, 'CASE', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 4 }) +
+      t(cx, cy + 112, '№ 1', 28, { anchor: 'middle', bold: true, fill: '#FFD36E' }) +
+      sparkle(cx + 132, cy - 132, 14) + sparkle(cx - 146, cy - 60, 10) +
+      banner(cx, 426, 340, 'FIRST CASE CLOSED', '#3F32B5', '#261D7A', 24),
+  };
+};
+export const TROFEA_PROPS = { trophyBadge };
+
+/* ---------- key art: światło lampy, winieta, czerwona nić z pinezkami ---------- */
+export const lampGlow: PropFn<{ w?: number; h?: number; cx?: number; cy?: number; r?: number }> = ({ w = 1600, h = 900, cx = 760, cy = 420, r = 700 }) => ({
+  w, h,
+  svg: `<defs><radialGradient id="lg" cx="${cx / w}" cy="${cy / h}" r="${r / w}" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#FFE8B0" stop-opacity="0.55"/><stop offset="0.45" stop-color="#FFD58A" stop-opacity="0.18"/><stop offset="1" stop-color="#FFD58A" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="${w}" height="${h}" fill="url(#lg)"/>`,
+});
+export const vignette: PropFn<{ w?: number; h?: number; strength?: number }> = ({ w = 1600, h = 900, strength = 0.72 }) => ({
+  w, h,
+  svg: `<defs><radialGradient id="vg" cx="0.5" cy="0.48" r="0.75"><stop offset="0.45" stop-color="#1B1236" stop-opacity="0"/><stop offset="1" stop-color="#1B1236" stop-opacity="${strength}"/></radialGradient></defs><rect width="${w}" height="${h}" fill="url(#vg)"/>`,
+});
+export const redString: PropFn<{ points?: number[][]; w?: number; h?: number }> = ({ points = [], w = 1600, h = 900 }) => {
+  let d = '';
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2 + Math.abs(x1 - x0) * 0.12 + 20;
+    d += `<path d="M${x0} ${y0} Q${mx} ${my} ${x1} ${y1}" fill="none" stroke="#7A1E1A" stroke-width="7" opacity="0.35" transform="translate(3 5)"/>` +
+      `<path d="M${x0} ${y0} Q${mx} ${my} ${x1} ${y1}" fill="none" stroke="${P.red}" stroke-width="5" stroke-linecap="round"/>`;
+  }
+  const pins = points.map(([x, y]) => `<circle cx="${x + 3}" cy="${y + 5}" r="13" fill="${P.ink}" opacity="0.3"/><circle cx="${x}" cy="${y}" r="13" fill="${P.red}"/><circle cx="${x - 4}" cy="${y - 4}" r="4.5" fill="${P.white}" opacity="0.7"/>`).join('');
+  return { w, h, svg: d + pins };
+};
+export const KEYART_PROPS = { lampGlow, vignette, redString };

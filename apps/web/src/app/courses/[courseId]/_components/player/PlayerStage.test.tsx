@@ -43,7 +43,7 @@ function HotspotCardStub() {
   );
 }
 
-function Harness({ contentLayout, hint, readableOnPhone }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string; readableOnPhone?: boolean } = {}) {
+function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string } = {}) {
   const [notesOpen, setNotesOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const transcriptTriggerRef = useRef<HTMLButtonElement>(null);
@@ -55,7 +55,6 @@ function Harness({ contentLayout, hint, readableOnPhone }: { contentLayout?: 'sc
       completedBlocks={0}
       stage={<HotspotCardStub />}
       contentLayout={contentLayout}
-      readableOnPhone={readableOnPhone}
       hint={hint}
       narrationBar={null}
       transcriptPanel={<TranscriptPanel text="" open={false} onClose={() => {}} triggerRef={transcriptTriggerRef} />}
@@ -72,13 +71,14 @@ function Harness({ contentLayout, hint, readableOnPhone }: { contentLayout?: 'sc
   );
 }
 
-describe('PlayerStage: tekst końcowego podsumowania na telefonie (D-099)', () => {
-  it('readableOnPhone dokłada klasę .mobile-readable (globals.css: min. 15 px na telefonie) do obszaru bloku; domyślnie jej nie ma', () => {
-    const { unmount } = render(<Harness readableOnPhone />);
-    expect(screen.getByTestId('player-content-area')).toHaveClass('mobile-readable');
-    unmount();
-    render(<Harness />);
-    expect(screen.getByTestId('player-content-area')).not.toHaveClass('mobile-readable');
+describe('PlayerStage: tekst min. 15 px na telefonie w całym module (D-103)', () => {
+  it('cała ramka odtwarzacza (treść, notatnik, paski) ma klasę .mobile-readable (globals.css) - w każdym układzie', () => {
+    for (const contentLayout of ['scene', 'slide', 'fill'] as const) {
+      const { unmount } = render(<Harness contentLayout={contentLayout} />);
+      expect(screen.getByRole('main')).toHaveClass('mobile-readable');
+      expect(screen.getByRole('main')).toContainElement(screen.getByTestId('player-content-area'));
+      unmount();
+    }
   });
 });
 

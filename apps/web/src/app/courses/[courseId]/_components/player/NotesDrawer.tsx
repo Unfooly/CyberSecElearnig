@@ -88,6 +88,7 @@ export default function NotesDrawer({
         aria-label="Notatnik"
         aria-hidden={!open}
         tabIndex={-1}
+        data-testid="notes-drawer"
         className={`absolute inset-y-0 right-0 z-30 flex w-full max-w-[320px] flex-col overflow-y-auto bg-white shadow-xl transition-transform duration-200 motion-reduce:transition-none ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
@@ -99,7 +100,7 @@ export default function NotesDrawer({
             onClick={onClose}
             aria-label="Zamknij notatnik"
             tabIndex={open ? undefined : -1}
-            className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 max-sm:h-11 max-sm:w-11"
           >
             <X aria-hidden="true" className="h-5 w-5" />
           </button>

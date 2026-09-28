@@ -46,8 +46,6 @@ export interface PlayerStageProps {
       osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
       panel max-w-3xl). */
   contentLayout?: 'scene' | 'slide' | 'fill';
-  /** Końcowe podsumowanie (D-099): na telefonie drobny tekst bloku (text-xs/text-sm) ma min. 15 px - klasa .mobile-readable w globals.css. */
-  readableOnPhone?: boolean;
   /** Tekst podpowiedzi (D-093, zamiast maskotki): neutralny dymek - na scenie w rogu, w układzie 'slide' nad treścią. */
   hint?: string;
   /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
@@ -95,7 +93,6 @@ function PlayerStageInner({
   completedBlocks,
   stage,
   contentLayout = 'slide',
-  readableOnPhone = false,
   hint,
   evidence,
   topAction,
@@ -210,7 +207,8 @@ function PlayerStageInner({
 
   return (
     <div className="player-outer flex h-full w-full items-center justify-center p-4">
-      <main ref={frameRef} aria-labelledby={titleId} className="player-frame relative isolate flex w-full flex-col overflow-hidden rounded-card bg-white shadow-card">
+      {/* .mobile-readable (globals.css, D-103): na telefonie cały tekst modułu min. 15 px - treść bloku, notatnik, paski; desktop bez zmian. */}
+      <main ref={frameRef} aria-labelledby={titleId} className="player-frame mobile-readable relative isolate flex w-full flex-col overflow-hidden rounded-card bg-white shadow-card">
         {/* Reszta ramki (wszystko poza NotesDrawer, wyżej) jest inert, dopóki notatnik jest otwarty - patrz efekt
             na restRef. h-full: NotesDrawer jest position:absolute (poza przepływem), więc to jedyne "prawdziwe"
             dziecko flex kolumny ramki i musi samo wypełnić jej wysokość. */}
@@ -313,7 +311,7 @@ function PlayerStageInner({
             ref={contentRef}
             onFocusCapture={keepFocusAboveBar}
             data-testid="player-content-area"
-            className={`relative min-h-0 flex-1 ${readableOnPhone ? 'mobile-readable' : ''} ${
+            className={`relative min-h-0 flex-1 ${
               contentLayout === 'scene' || contentLayout === 'fill'
                 ? 'overflow-clip'
                 : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'

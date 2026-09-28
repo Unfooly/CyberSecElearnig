@@ -548,6 +548,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) wnioski pod raportem w HTML także w panoramie (wszystkie moduły) albo próg per wysokość; (2) sloty z bieżącej orientacji
   w chwili przewijania; (3) po B-101; (4) wariant harnessu z najdłuższymi wnioskami (np. `?longLessons=1`) i (z6) na 360x740.
 
+### B-121 Końcowe podsumowanie na telefonie (D-099): odłożone
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: `feat/mobile-summary` (D-099)
+- Opis: (1) pionowy zygzak tablicy w `lib/evidence-board.ts` (`boardLayout(..., 'portrait')`) nie jest już używany przez UI (telefon w pionie
+  ma listę) - martwy kod z testami; (2) `.mobile-readable` obejmuje tylko bloki od rekonstrukcji do końca - reszta modułu na telefonie ma
+  nadal tekst 12-14 px (scena, rozmowa, teczka, mail) i nie jest objęta audytem `auditMobileView`; (3) lista tablicy nie ma przeciągania
+  palcem (tylko stuknięcia; myszą - tak).
+- Akceptacja: (1) usunięcie gałęzi portrait z `boardLayout` albo decyzja o jej zostawieniu; (2) decyzja właściciela, czy 15 px obowiązuje w
+  całym module - wtedy `readableOnPhone` dla wszystkich bloków i sekcja layout-check na cały moduł; (3) tylko jeśli testy z użytkownikami
+  pokażą potrzebę.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 
 /**
@@ -16,22 +17,30 @@ import type { ContentBlock } from '@/lib/courses-types';
  * ładuje się od nowa. Blok nie ma własnego stanu poza samym dokumentem (wynik w grze jest czysto informacyjny), więc nic nie ginie w powłoce.
  *
  * Wynik/punktacja policzone WEWNĄTRZ tego dokumentu są czysto kosmetyczne - backend nigdy się o nie nie pyta (postMessage stąd, gdyby się
- * pojawił, i tak byłby niezaufany). Ukończenie bloku = kliknięcie przycisku POZA iframe'em, jak VIDEO/DRAG_AND_DROP.
+ * pojawił, i tak byłby niezaufany). Ukończenie bloku = „Ukończyłem” POZA iframe'em (przełącznik): blok zgłasza gotowość, a zapis rusza
+ * „Dalej” w dolnym pasku - jedyne przejście dalej (D-106), jak VIDEO/DRAG_AND_DROP.
  */
 export default function EmbeddedHtmlBlock({
   block,
   courseId,
-  onSubmit,
+  onReady,
   disabled,
   suspended = false,
 }: {
   block: ContentBlock;
   courseId: string;
-  onSubmit: () => void;
+  /** true = gracz oznaczył grę jako ukończoną - „Dalej” w pasku aktywny. */
+  onReady: (ready: boolean) => void;
   disabled: boolean;
   suspended?: boolean;
 }) {
   const src = block.id ? `/api/courses/${encodeURIComponent(courseId)}/blocks/${encodeURIComponent(block.id)}/embed` : null;
+  const [finished, setFinished] = useState(false);
+  const toggleFinished = () => {
+    const next = !finished;
+    setFinished(next);
+    onReady(next);
+  };
 
   return (
     <div>
@@ -57,13 +66,16 @@ export default function EmbeddedHtmlBlock({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => onSubmit()}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        aria-pressed={finished}
+        onClick={toggleFinished}
+        className={`min-h-[44px] rounded px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${finished ? 'bg-accent' : 'bg-slate-900'}`}
       >
+        {/* Stała nazwa przełącznika (stan mówi aria-pressed); znacznik tylko wizualny. */}
         Ukończyłem
+        {finished && <span aria-hidden="true"> ✓</span>}
       </button>
       <p className="mt-2 text-xs text-slate-600">
-        Wynik w grze powyżej jest informacyjny - kliknij &quot;Ukończyłem&quot;, gdy skończysz.
+        Wynik w grze powyżej jest informacyjny - kliknij &quot;Ukończyłem&quot;, gdy skończysz, a potem &quot;Dalej&quot; na dole.
       </p>
     </div>
   );

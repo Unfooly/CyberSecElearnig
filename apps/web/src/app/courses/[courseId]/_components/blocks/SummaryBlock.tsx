@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 import { GroupedNotes, useNotes } from '../player/notes';
 import { hasEvidence, useEvidence } from '../player/evidence';
@@ -8,24 +9,30 @@ import { SimpleMarkdown } from '../simple-markdown';
 import CaseEvidenceSection from '../CaseEvidenceSection';
 
 // Podsumowanie modułu. Gdy moduł ma dowody, to "Rozwiązanie sprawy": zebrane dowody vs wszystkie (CaseEvidenceSection.tsx),
-// wnioski (tekst z treści), zebrane notatki i przycisk "Zakończ sprawę". Bez dowodów: zwykłe podsumowanie. Wynik punktowy
-// i nagrody pokazuje ekran zamknięcia sprawy (CaseClosedScreen, D-089), bo wynik jest znany dopiero po zapisie ostatniego
-// bloku. Certyfikat: B-069.
+// wnioski (tekst z treści) i zebrane notatki. Bez dowodów: zwykłe podsumowanie. Blok jest gotowy od razu: „Zakończ sprawę”
+// („Zakończ szkolenie”) to etykieta „Dalej” w dolnym pasku - jedynego przejścia dalej (D-106). Wynik punktowy i nagrody pokazuje
+// ekran zamknięcia sprawy (CaseClosedScreen, D-089), bo wynik jest znany dopiero po zapisie ostatniego bloku. Certyfikat: B-069.
 export default function SummaryBlock({
   block,
   onSubmit,
-  disabled,
+  onReady,
   review = false,
 }: {
   block: ContentBlock;
   onSubmit: () => void;
-  disabled: boolean;
+  onReady?: (submit: (() => void) | null) => void;
   review?: boolean;
 }) {
   const { notes, blockTitles } = useNotes();
   const { summary } = useEvidence();
   const investigation = hasEvidence(summary);
   useCompleteHint(block.reactions?.complete, true, review);
+
+  useEffect(() => {
+    if (!review) onReady?.(() => onSubmit());
+    // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [review]);
 
   return (
     <div>
@@ -41,19 +48,7 @@ export default function SummaryBlock({
         </section>
       )}
 
-      {!review && (
-        <>
-          {investigation && <p className="mt-4 text-sm text-slate-600">Wynik z zadań zobaczysz po zakończeniu sprawy.</p>}
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={disabled}
-            className="mt-4 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {investigation ? 'Zakończ sprawę' : 'Zakończ szkolenie'}
-          </button>
-        </>
-      )}
+      {!review && investigation && <p className="mt-4 text-sm text-slate-600">Wynik z zadań zobaczysz po zakończeniu sprawy.</p>}
     </div>
   );
 }

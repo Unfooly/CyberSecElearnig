@@ -67,16 +67,15 @@ export default function OrderingBlock({
   onSubmit,
   disabled,
   result,
-  onContinue,
-  continueLabel = 'Dalej',
+  live = false,
   caseNo,
 }: {
   block: ContentBlock;
   onSubmit?: (answer: { order: string[] }) => void;
   disabled?: boolean;
   result?: OrderingResult;
-  onContinue?: () => void;
-  continueLabel?: string;
+  /** Wynik zaraz po zapisie (werdykt, przelot kart) - nie podgląd "Wstecz". Dalej prowadzi wyłącznie dolny pasek (D-106). */
+  live?: boolean;
   /** Numer sprawy (karta sprawy w odprawie) na tabliczce tablicy. */
   caseNo?: string;
 }) {
@@ -114,12 +113,12 @@ export default function OrderingBlock({
   // Kontener sceny (pionowo przewijany - D-105).
   const outerRef = useRef<HTMLDivElement>(null);
 
-  // Wynik: najpierw werdykt na układzie gracza, potem (po VERDICT_MS) karty lecą na poprawne miejsca. Podgląd bez "Dalej" i
+  // Wynik: najpierw werdykt na układzie gracza, potem (po VERDICT_MS) karty lecą na poprawne miejsca. Podgląd (bez `live`) i
   // reduced-motion - od razu stan końcowy.
   const playerOrder = result?.answer?.order ?? [];
   const correctOrder = result?.detail?.correctOrder ?? [];
   // Bez poprawnej kolejności z serwera (starsza treść/postęp) nie ma czego pokazywać w werdykcie - od razu stan końcowy.
-  const [phase, setPhase] = useState<'verdict' | 'settled'>(() => (result && (!onContinue || !result.detail?.correctOrder?.length) ? 'settled' : 'verdict'));
+  const [phase, setPhase] = useState<'verdict' | 'settled'>(() => (result && (!live || !result.detail?.correctOrder?.length) ? 'settled' : 'verdict'));
   useEffect(() => {
     if (!result || phase !== 'verdict') return undefined;
     if (reducedMotionNow()) {
@@ -350,15 +349,6 @@ export default function OrderingBlock({
         {feedback}
       </p>
       <p className="text-muted">{scoreLine}</p>
-      {onContinue && (
-        <button
-          type="button"
-          onClick={onContinue}
-          className="min-h-[44px] w-full rounded-btn bg-ink px-4 font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {continueLabel}
-        </button>
-      )}
     </div>
   );
   // Karty paska tacki: stałe 15 px, bez linii kartki (linie co 28 j. sceny przecinałyby wiersze tekstu o innej wysokości).
@@ -573,16 +563,6 @@ export default function OrderingBlock({
                         {scoreLine}
                       </p>
                     </div>
-                    {onContinue && (
-                      <button
-                        type="button"
-                        onClick={onContinue}
-                        className="shrink-0 rounded-btn bg-ink font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                        style={{ fontSize: u(16), padding: `${u(10)} ${u(20)}`, minHeight: 44 }}
-                      >
-                        {continueLabel}
-                      </button>
-                    )}
                   </div>
                 ) : (
                   <>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 'lucide-react';
+import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { useFullscreen } from './useFullscreen';
-import { OverlayStackProvider, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
+import { OverlayStackProvider, useBlockingOverlayOpen, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
 import Hint from './Hint';
 import NotesDrawer from './NotesDrawer';
 
@@ -27,6 +28,26 @@ import NotesDrawer from './NotesDrawer';
 
 /** Domyślna etykieta „Wstecz” - w wąskim pasku tylko ona zwija się do samej ikony (D-097). */
 const DEFAULT_BACK_LABEL = 'Wstecz';
+
+// Skrót klawiatury „Dalej” (D-106): Enter i → uruchamiają „Dalej” z dolnego paska, gdy jest aktywny - ale nie, gdy klawisz ma już
+// własne znaczenie tam, gdzie jest fokus: pole tekstowe (Enter wysyła formularz, → przesuwa kursor), przycisk/link (Enter go
+// uruchamia), kontrolki ze strzałkami (zakładki, grupy opcji, suwak, chipy rozmowy, panorama sceny, odtwarzacz).
+const TYPING =
+  'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"], [role="combobox"]';
+const ENTER_OWNERS =
+  'button, a[href], summary, label, audio, video, [role="button"], [role="link"], [role="menuitem"], [role="option"], [role="tab"], [role="checkbox"], [role="radio"], [role="switch"]';
+/** Karencja po aktywacji „Dalej”: szybkie Enter, Enter (np. po wyniku) nie przeskakuje od razu kolejnego bloku gotowego od wejścia. */
+const SHORTCUT_GRACE_MS = 400;
+const ARROW_OWNERS =
+  '[role="tablist"], [role="radiogroup"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="tree"], [role="grid"], [role="toolbar"], audio, video, .dialogue-chips, .scene-pan-container';
+
+/** Czy Enter/→ na tym elemencie może znaczyć „Dalej” (element nie ma własnej obsługi tego klawisza). */
+export function forwardShortcutAllowed(target: EventTarget | null, key: string): boolean {
+  if (!(target instanceof Element)) return true;
+  if (target.closest(TYPING)) return false;
+  if (key === 'Enter') return !target.closest(ENTER_OWNERS);
+  return !target.closest(ARROW_OWNERS);
+}
 
 export default function PlayerStage(props: PlayerStageProps) {
   return (
@@ -64,9 +85,8 @@ export interface PlayerStageProps {
   /** Ignorowane, gdy forwardHref jest podane (patrz niżej). */
   onForward?: () => void;
   canBack: boolean;
+  /** „Dalej” w pasku - jedyne przejście dalej (D-106), zawsze widoczny; nieaktywny, dopóki blok nie jest gotowy. */
   canForward: boolean;
-  /** Ukrywa "Dalej" i jego podpowiedź (blok ma własne, jedyne wyjście, np. "Zakończ sprawę"). */
-  hideForward?: boolean;
   forwardHint?: string;
   headingRef: RefObject<HTMLHeadingElement>;
   /** Ogłoszenie aria-live wyniku ukończenia kursu (XP), jedno zdanie (fix/course-finish-flow, D-076 poprawka po code
@@ -106,7 +126,6 @@ function PlayerStageInner({
   onForward,
   canBack,
   canForward,
-  hideForward = false,
   forwardHint,
   headingRef,
   resultAnnouncement,
@@ -156,8 +175,7 @@ function PlayerStageInner({
 
   // Jedyny nasłuch Escape w całej ramce: zamyka WYŁĄCZNIE najpóźniej otwartą, wciąż otwartą warstwę (LIFO wg
   // overlay-stack.tsx - karta hotspotu rejestruje się sama z bloku SCENE_HOTSPOTS; transkrypcja i notatnik - niżej
-  // w tym komponencie/w NotesDrawer). Strzałki celowo NIE zmieniają bloków (decyzja produktu - "Dalej"/"Wstecz"
-  // tylko przyciskiem albo klikiem w scenie).
+  // w tym komponencie/w NotesDrawer).
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') closeTop();
@@ -165,6 +183,48 @@ function PlayerStageInner({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [closeTop]);
+
+  // Jeden „Dalej” (D-106): jedyne przejście dalej to przycisk w dolnym pasku. Enter i → uruchamiają go, gdy jest aktywny, żadna
+  // nakładka zasłaniająca treść (zbliżenie, notatnik, transkrypcja - pełny ekran nie blokuje) nie jest otwarta, a klawisz nie ma
+  // własnego znaczenia tam, gdzie jest fokus (forwardShortcutAllowed). Bez skrótu, gdy „Dalej” jest wyjściem z modułu (forwardHref -
+  // „Wróć do biblioteki” na ekranie zamknięcia: Enter po „Zakończ sprawę” nie może pominąć ceremonii i wyrzucić do biblioteki) i przez
+  // SHORTCUT_GRACE_MS po aktywacji. "Wstecz" nie ma skrótu (← w scenie/rozmowie ma własne znaczenie).
+  const shortcutActive = forwardHref === undefined && canForward;
+  const blockingOverlayOpen = useBlockingOverlayOpen();
+  useEffect(() => {
+    if (!shortcutActive || blockingOverlayOpen) return undefined;
+    const armedAt = Date.now() + SHORTCUT_GRACE_MS;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Enter' && event.key !== 'ArrowRight') return;
+      if (event.defaultPrevented || event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (Date.now() < armedAt) return;
+      if (!forwardShortcutAllowed(event.target, event.key)) return;
+      const next = bottomBarRef.current?.querySelector<HTMLElement>('.pbar-next');
+      if (!next || (next instanceof HTMLButtonElement && next.disabled)) return;
+      event.preventDefault();
+      next.click();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [shortcutActive, blockingOverlayOpen]);
+
+  // Puls „Dalej”, gdy przycisk się aktywuje (blok gotowy, wynik pokazany) - krótko, bez ruchu przy reduced-motion; bez pulsu na linku
+  // wyjścia z modułu (ekran zamknięcia - tam trwa ceremonia raportu). Ta sama chwila jest ogłaszana czytnikom (region aria-live).
+  const reducedMotion = usePrefersReducedMotion();
+  const [pulsing, setPulsing] = useState(false);
+  const [readyAnnouncement, setReadyAnnouncement] = useState('');
+  const wasActive = useRef(shortcutActive);
+  useEffect(() => {
+    if (shortcutActive && !wasActive.current) {
+      if (!reducedMotion) setPulsing(true);
+      setReadyAnnouncement(`Możesz przejść dalej: przycisk „${forwardLabel}” na dole.`);
+    }
+    if (!shortcutActive) {
+      setPulsing(false);
+      setReadyAnnouncement('');
+    }
+    wasActive.current = shortcutActive;
+  }, [shortcutActive, reducedMotion, forwardLabel]);
 
   // Warstwa 'notebook' rejestruje się WYŁĄCZNIE w NotesDrawer.tsx (kod review PR #44: podwójna rejestracja pod tym
   // samym kluczem tutaj i tam była krucha - unregister jednej instancji kasował wpis drugiej).
@@ -285,6 +345,9 @@ function PlayerStageInner({
           <p className="sr-only" aria-live="polite">
             {resultAnnouncement}
           </p>
+          <p className="sr-only" aria-live="polite" data-testid="forward-ready">
+            {readyAnnouncement}
+          </p>
 
           {/* Obszar bloku (wiersz 1fr). Nagłówek dla czytników/fokusu (sr-only) - bez duplikowania treści widocznej
               w scenie. Trzy układy ('scene' i 'fill' dzielą DOKŁADNIE ten sam CSS - patrz warunki niżej - osobna
@@ -378,12 +441,12 @@ function PlayerStageInner({
                 <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                 <span className={backIsDefault ? 'pbar-label' : undefined}>{backLabel}</span>
               </button>
-              {!hideForward && !canForward && forwardHint && (
+              {!canForward && forwardHint && (
                 <span id={hintId} className="pbar-hint hidden max-w-[160px] truncate text-xs text-slate-500 sm:inline" title={forwardHint}>
                   {forwardHint}
                 </span>
               )}
-              {!hideForward && forwardHref ? (
+              {forwardHref ? (
                 <Link
                   href={forwardHref}
                   className="pbar-next inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 sm:px-4"
@@ -392,19 +455,21 @@ function PlayerStageInner({
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Link>
               ) : (
-                !hideForward && (
-                  <button
-                    type="button"
-                    onClick={onForward}
-                    disabled={!canForward}
-                    aria-describedby={!canForward && forwardHint ? hintId : undefined}
-                    title={!canForward ? forwardHint : undefined}
-                    className="pbar-next inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4"
-                  >
-                    {forwardLabel}
-                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                )
+                <button
+                  type="button"
+                  onClick={onForward}
+                  disabled={!canForward}
+                  aria-describedby={!canForward && forwardHint ? hintId : undefined}
+                  // Skrót Enter/→ (D-106) - opisany dla czytników i w podpowiedzi przeglądarki.
+                  aria-keyshortcuts="Enter ArrowRight"
+                  title={!canForward ? forwardHint : `${forwardLabel} (Enter lub →)`}
+                  data-pulse={pulsing ? 'true' : undefined}
+                  onAnimationEnd={() => setPulsing(false)}
+                  className={`pbar-next inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40 sm:px-4 ${pulsing ? 'pbar-pulse' : ''}`}
+                >
+                  {forwardLabel}
+                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                </button>
               )}
             </nav>
           </div>

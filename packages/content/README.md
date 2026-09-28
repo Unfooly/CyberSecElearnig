@@ -48,12 +48,14 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - `BRIEFING`: `steps[]` (1-8) zamkniętego typu `kind`: `typewriter { text, sub?, cta }`, `call { caller { name, role?, avatar? },
   text, cta }` (postać; bez maskotki), `caseFile { caseNo, title, fields[{ label, value }], stamp?, cta }`, `badge { cta }`,
   `start { text, cta }` (miejsce akcji na koniec odprawy). Każdy krok może mieć własne
-  `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany po
-  ostatnim kroku albo po „Pomiń odprawę”. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
+  `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany
+  „Dalej” w dolnym pasku odtwarzacza, aktywnym na ostatnim kroku (po akcji na jego przedmiocie, jeśli go ma) albo po „Pomiń odprawę”
+  (przeskok na ostatni krok) - D-106. Krok `badge` nie ma w treści żadnych danych gracza: imię, avatar i numer odznaki liczy
   wyłącznie klient z sesji (nigdy `module.json` ani `progress`).
 - Grafika kroku (D-084, opcjonalna): `image` (scena, plik z `assets/`, potok `--assets`; animacje CSS w SVG zatrzymuje odtwarzacz
-  fragmentem `#static` przy reduced-motion), `hotspot { id, x, y, w, h }` (przedmiot kroku - D-086: JEDYNE przejście dalej, przycisk
-  z etykietą `cta`; krok ze sceną bez `hotspot` ma przycisk cta pod sceną), `slots { tasks?, name?, number?, photo? }`
+  fragmentem `#static` przy reduced-motion), `hotspot { id, x, y, w, h }` (przedmiot kroku - D-086: przejście do kolejnego kroku, przycisk
+  z etykietą `cta`; na ostatnim kroku to akcja aktywująca „Dalej” w pasku, D-106; krok ze sceną bez `hotspot` ma przycisk cta pod
+  sceną - poza ostatnim krokiem, który nie ma przycisku, więc jego `cta` bez `hotspot` nie jest wyświetlany), `slots { tasks?, name?, number?, photo? }`
   (prostokąty na HTML: `tasks` tylko w caseFile z `tasks`, reszta tylko w badge), w caseFile także `closedImage` (zamknięta teczka,
   wymaga `hotspot`, klik otwiera `image`) i `openHotspot { id, x, y, w, h }` (D-086: przedmiot otwartych akt = `cta`, wymaga
   `closedImage`). Prostokąty w % sceny, w jej granicach; każde z tych pól wymaga `image`. Krok bez `image`

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/courses-types';
 import { TriangleAlert } from 'lucide-react';
 import { useHints } from '../player/hints';
@@ -9,8 +9,9 @@ import BrowserWindow, { DeceptiveSiteWarning } from './BrowserWindow';
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
 // próbie) i po wyczerpaniu prób rozwiązanie. Klient nigdy nie zna wzorca, listy poprawnych odpowiedzi ani podpowiedzi z góry (do klienta
-// idzie tylko ich liczba). "Dalej" po rozstrzygnięciu to zwykły zapis postępu (onContinue) - CoursePlayer wie, że wynik już jest pokazany
-// tutaj (stan `done`), więc NIE pokazuje po nim osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, patrz handleAnswer).
+// idzie tylko ich liczba). Po rozstrzygnięciu blok zgłasza gotowość (onReady), a zwykły zapis postępu rusza „Dalej” w dolnym pasku -
+// jedyne przejście dalej (D-106). CoursePlayer wie, że wynik już jest pokazany tutaj (stan `done`), więc NIE pokazuje po nim osobnego
+// ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, patrz handleAnswer).
 // Po odświeżeniu stan (próby, odsłonięte podpowiedzi, rozwiązanie) wraca z /start (progress).
 // `frame: 'browser'` (feat/browser-evidence): pole jest paskiem adresu w oknie przeglądarki (BrowserWindow.tsx), zła próba to komunikat
 // w obrębie okna, a po rozstrzygnięciu okno pokazuje ostrzeżenie o stronie podszywającej się pod bank - nigdy formularza ani pól na dane.
@@ -30,7 +31,7 @@ export default function TextInputBlock({
   block,
   courseId,
   progress,
-  onContinue,
+  onReady,
   disabled,
   readOnly = false,
   onProgress,
@@ -39,7 +40,8 @@ export default function TextInputBlock({
   courseId: string;
   /** Stan z serwera (próby, podpowiedzi, rozwiązanie): z /start albo ostatnia odpowiedź /attempt. */
   progress?: ClientProgressBlock;
-  onContinue?: () => void;
+  /** true = zadanie rozstrzygnięte - „Dalej” w pasku aktywny (D-106). */
+  onReady?: (ready: boolean) => void;
   disabled?: boolean;
   /** Podgląd "Wstecz": wynik bez pola i bez wysyłania. */
   readOnly?: boolean;
@@ -63,6 +65,13 @@ export default function TextInputBlock({
   const [submitted, setSubmitted] = useState<string | null>(null);
   const submitting = useRef(false);
   const browser = block.frame === 'browser';
+
+  // Rozstrzygnięte (także po odświeżeniu - `done` z /start): „Dalej” w pasku aktywny.
+  useEffect(() => {
+    if (!readOnly && done) onReady?.(true);
+    // onReady celowo poza deps - remount przez `key` na zmianę bloku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, readOnly]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -257,11 +266,6 @@ export default function TextInputBlock({
                 </>
               )}
             </div>
-          )}
-          {!readOnly && onContinue && (
-            <button type="button" onClick={onContinue} disabled={disabled} className="mt-3 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              Dalej
-            </button>
           )}
         </div>
       )}

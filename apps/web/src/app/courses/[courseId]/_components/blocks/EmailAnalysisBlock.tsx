@@ -93,15 +93,14 @@ export default function EmailAnalysisBlock({
   onSubmit,
   disabled,
   result,
-  onContinue,
-  continueLabel = 'Dalej',
+  live = false,
 }: {
   block: ContentBlock;
   onSubmit?: (answer: { selected: string[] }) => void;
   disabled?: boolean;
   result?: EmailResult;
-  onContinue?: () => void;
-  continueLabel?: string;
+  /** Wynik zaraz po zapisie (reakcja) - nie podgląd "Wstecz". Dalej prowadzi wyłącznie dolny pasek (D-106). */
+  live?: boolean;
 }) {
   const email = block.email;
   const criteria = useMemo(() => block.criteria ?? [], [block.criteria]);
@@ -122,10 +121,10 @@ export default function EmailAnalysisBlock({
     return detail.correct ? 'missed' : 'neutral';
   };
 
-  // Podpowiedź-reakcja na wynik (tylko w fazie wyniku po zapisie, czyli gdy jest `onContinue`; nie w podglądzie "Wstecz"). Reakcja z
+  // Podpowiedź-reakcja na wynik (tylko w fazie wyniku po zapisie - `live`; nie w podglądzie "Wstecz"). Reakcja z
   // treści (schemaVersion 4, reactions.result) ma pierwszeństwo; starsza treść bez niej dostaje ogólne ostrzeżenie przy błędzie.
   useEffect(() => {
-    if (!onContinue || !result) return;
+    if (!live || !result) return;
     if (result.reaction) hints.show(result.reaction);
     else if (result.correct === false) hints.notify('wrong');
     // Jednorazowo przy pokazaniu wyniku.
@@ -353,11 +352,6 @@ export default function EmailAnalysisBlock({
             {result?.correct ? 'Świetnie: wszystkie oznaki trafione.' : 'Nie wszystkie oznaki zostały trafione.'}
             {typeof result?.points === 'number' && ` Wynik: ${Math.round(result.points * 100)}%.`}
           </p>
-          {onContinue && (
-            <button type="button" onClick={onContinue} className="min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              {continueLabel}
-            </button>
-          )}
         </div>
       ) : (
         <button

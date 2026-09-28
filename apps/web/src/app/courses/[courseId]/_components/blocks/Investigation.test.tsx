@@ -1316,20 +1316,24 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('po zebraniu required: klik w drzwi kończy CAŁY blok (onSubmit), bez otwierania nakładki', () => {
-    const { onSubmit } = setup(doorScene);
+  it('po zebraniu required: klik w drzwi NIE nawiguje, tylko zgłasza gotowość - zapis rusza „Dalej” w pasku (D-106); bez nakładki', () => {
+    const { onSubmit, ready } = setup(doorScene);
     pick('Kartka');
     putDown();
     const door = screen.getByRole('button', { name: 'Wyjście' });
     expect(door).toHaveAttribute('aria-disabled', 'false');
     expect(door).not.toHaveAttribute('title');
+    expect(ready.current).toBeNull();
     fireEvent.click(door);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
     // Drzwi same nigdy nie otwierają nakładki (w odróżnieniu od zwykłego hotspotu) - klik w nie nie ustawia activeId.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('blok z drzwiami NIGDY nie zgłasza gotowości przez onReady (pasek powłoki) - nawet po zebraniu required: jedynym wyjściem są drzwi na scenie', () => {
+  it('blok z drzwiami nie zgłasza gotowości przed podejściem do drzwi - nawet po zebraniu required', () => {
     const { ready } = setup(doorScene);
     expect(ready.current).toBeNull();
     pick('Kartka');
@@ -1813,8 +1817,8 @@ describe('SUMMARY: rozwiązanie sprawy', () => {
     ],
   };
 
-  it('zebrane vs wszystkie, przeoczone tylko liczbowo per scena (bez treści), przycisk "Zakończ sprawę"', () => {
-    const { onSubmit } = setup({ type: 'SUMMARY', id: 's', text: 'Wnioski: zawsze sprawdzaj nadawcę.' }, { summary, titles: { scena: 'Biuro', rozmowa: 'Rozmowa z Anną', mail: 'Analiza maila' } });
+  it('zebrane vs wszystkie, przeoczone tylko liczbowo per scena (bez treści); bez własnego przycisku - gotowy od razu (D-106)', () => {
+    const { onSubmit, ready } = setup({ type: 'SUMMARY', id: 's', text: 'Wnioski: zawsze sprawdzaj nadawcę.' }, { summary, titles: { scena: 'Biuro', rozmowa: 'Rozmowa z Anną', mail: 'Analiza maila' } });
     const evidence = screen.getByTestId('case-evidence');
     expect(evidence).toHaveTextContent('Zebrane dowody: 3 z 6');
     expect(evidence).toHaveTextContent('Biuro: 1 z 3 (2 dowody w tej scenie pozostały nieodkryte)');
@@ -1825,9 +1829,9 @@ describe('SUMMARY: rozwiązanie sprawy', () => {
     expect(evidence.textContent).not.toMatch(/Kubek|Drzwi|Monitor/);
     expect(screen.getByText('Wnioski: zawsze sprawdzaj nadawcę.')).toBeInTheDocument();
     expect(screen.getByText('Wynik z zadań zobaczysz po zakończeniu sprawy.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Zakończ szkolenie' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ sprawę' }));
+    // „Zakończ sprawę” to etykieta „Dalej” w dolnym pasku (CoursePlayer), nie przycisk w bloku.
+    expect(screen.queryByRole('button', { name: /Zakończ/ })).not.toBeInTheDocument();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith();
   });
 
@@ -1855,10 +1859,10 @@ describe('SUMMARY: rozwiązanie sprawy', () => {
     expect(text).toContain('12 dowodów w tej scenie pozostało nieodkrytych');
   });
 
-  it('bez dowodów w module: "Zakończ szkolenie", bez sekcji dowodów', () => {
+  it('bez dowodów w module: bez sekcji dowodów i bez zdania o wyniku z zadań', () => {
     setup({ type: 'SUMMARY', id: 's', text: 'Dziękujemy.' });
     expect(screen.queryByTestId('case-evidence')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Zakończ szkolenie' })).toBeInTheDocument();
+    expect(screen.queryByText('Wynik z zadań zobaczysz po zakończeniu sprawy.')).not.toBeInTheDocument();
   });
 });
 

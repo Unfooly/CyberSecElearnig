@@ -220,7 +220,6 @@ describe('OrderingBlock: tablica śledcza', () => {
 
   it('wynik: dobre pole - zielona pinezka ✓, złe - drgnięcie; potem karty lecą na poprawne miejsca, jedno zdanie informacji zwrotnej, bez listy "Poprawna kolejność" i bez maskotki', () => {
     vi.useFakeTimers();
-    const onContinue = vi.fn();
     setup({
       result: {
         answer: { order: ['x1', 'x3', 'x2'] },
@@ -229,7 +228,7 @@ describe('OrderingBlock: tablica śledcza', () => {
         points: 1 / 3,
         reaction: { pose: 'thinking', text: 'Blisko. Najpierw zgłoś, potem usuń. Reszta się zgadza.' },
       },
-      onContinue,
+      live: true,
     });
     expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-phase', 'verdict');
     expect(placed(1)).toHaveAccessibleName(/na właściwym miejscu/);
@@ -249,11 +248,11 @@ describe('OrderingBlock: tablica śledcza', () => {
     expect(screen.queryByRole('region', { name: 'Poprawna kolejność' })).not.toBeInTheDocument();
     // Zdanie z reakcji jest pod tablicą - bez osobnej podpowiedzi w powłoce.
     expect(screen.getByTestId('reaction').textContent).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
-    expect(onContinue).toHaveBeenCalled();
+    // Jeden „Dalej” (D-106): wynik bez własnego przycisku dalej - prowadzi dolny pasek.
+    expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
   });
 
-  it('podgląd ukończonego bloku (bez "Dalej"): od razu stan końcowy, bez przycisku', () => {
+  it('podgląd ukończonego bloku (bez `live`): od razu stan końcowy, bez przycisku', () => {
     setup({ result: { answer: { order: ['x2', 'x1', 'x3'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 } });
     expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-phase', 'settled');
     expect(placed(1)).toHaveTextContent('Nie klikaj w link');
@@ -265,7 +264,7 @@ describe('OrderingBlock: tablica śledcza', () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({ ...original(query), matches: query.includes('prefers-reduced-motion: reduce') })) as typeof window.matchMedia;
     try {
-      setup({ result: { answer: { order: ['x3', 'x2', 'x1'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 }, onContinue: vi.fn() });
+      setup({ result: { answer: { order: ['x3', 'x2', 'x1'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 }, live: true });
       expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-phase', 'settled');
       expect(document.querySelector('.board-fly')).toBeNull();
     } finally {
@@ -274,7 +273,7 @@ describe('OrderingBlock: tablica śledcza', () => {
   });
 
   it('wynik bez correctOrder (starszy postęp): stan końcowy, żadna karta nie drga; zdanie z `explanation`, gdy brak reakcji', () => {
-    setup({ result: { answer: { order: ['x3', 'x2', 'x1'] }, detail: { explanation: 'Najpierw nie klikaj. Potem zgłoś.' }, correct: false, points: 0 }, onContinue: vi.fn() });
+    setup({ result: { answer: { order: ['x3', 'x2', 'x1'] }, detail: { explanation: 'Najpierw nie klikaj. Potem zgłoś.' }, correct: false, points: 0 }, live: true });
     expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-phase', 'settled');
     expect(document.querySelector('.board-card-wrong')).toBeNull();
     expect(screen.getByTestId('board-feedback')).toHaveTextContent('Najpierw nie klikaj.');
@@ -452,12 +451,12 @@ describe('OrderingBlock: tablica zygzakiem na telefonie w pionie', () => {
     fireEvent.pointerCancel(card);
   });
 
-  it('wynik: zdanie, liczba trafień i „Dalej” NAD sceną (widoczne od razu po sprawdzeniu), bez tacki', () => {
+  it('wynik: zdanie i liczba trafień NAD sceną (widoczne od razu po sprawdzeniu), bez tacki i bez własnego „Dalej” (D-106)', () => {
     portrait();
-    setup({ result: { answer: { order: ['x2', 'x1', 'x3'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 }, onContinue: vi.fn() });
+    setup({ result: { answer: { order: ['x2', 'x1', 'x3'] }, detail: { correctOrder: ['x1', 'x2', 'x3'] }, correct: false, points: 1 / 3 }, live: true });
     const result = screen.getByRole('group', { name: 'Wynik' });
     expect(result).toContainElement(screen.getByTestId('board-feedback'));
-    expect(result).toContainElement(screen.getByRole('button', { name: 'Dalej' }));
+    expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
     expect(result.compareDocumentPosition(screen.getByTestId('evidence-board')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Ślady do przypięcia' })).not.toBeInTheDocument();
   });

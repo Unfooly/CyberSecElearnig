@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import PlayerStage from './PlayerStage';
+import PlayerStage, { forwardShortcutAllowed } from './PlayerStage';
 import TranscriptPanel from './TranscriptPanel';
 import { useOverlayLayer } from './overlay-stack';
 
@@ -204,6 +204,173 @@ describe('PlayerStage: przycisk „Wstecz” w wąskim pasku (D-097)', () => {
     expect(back.className).not.toMatch(/\bpbar-icon\b/);
     expect(back.querySelector('.pbar-label')).toBeNull();
     expect(back).toHaveTextContent('Rozpocznij od nowa');
+  });
+});
+
+describe('PlayerStage: jeden „Dalej” - puls przy aktywacji i skróty Enter/→ (D-106)', () => {
+  // Skrót działa po karencji 400 ms od aktywacji - zegar Date przesuwany ręcznie (later()).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+  const later = () => vi.setSystemTime(Date.now() + 1000);
+  function FullscreenLayer() {
+    useOverlayLayer('fullscreen', true, () => {});
+    return null;
+  }
+  function ForwardHarness({ canForward, onForward, stage, forwardHref }: { canForward: boolean; onForward: () => void; stage?: React.ReactNode; forwardHref?: string }) {
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    return (
+      <PlayerStage
+        title="Sprawa testowa"
+        blockNumber={1}
+        totalBlocks={2}
+        completedBlocks={0}
+        stage={stage ?? <p>blok</p>}
+        narrationBar={null}
+        transcriptPanel={null}
+        notesCount={0}
+        notesOpen={false}
+        onToggleNotes={() => {}}
+        notesId="notes-panel"
+        onBack={() => {}}
+        onForward={onForward}
+        canBack
+        canForward={canForward}
+        forwardHref={forwardHref}
+        forwardLabel={forwardHref ? 'Wróć do biblioteki' : undefined}
+        headingRef={headingRef}
+      />
+    );
+  }
+  const next = () => screen.getByRole('button', { name: /^Dalej$/ });
+
+  it('„Dalej” pulsuje, gdy się aktywuje (nie przy montowaniu już aktywnego); koniec animacji zdejmuje puls', () => {
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={() => {}} />);
+    expect(next().className).not.toMatch(/pbar-pulse/);
+    rerender(<ForwardHarness canForward onForward={() => {}} />);
+    expect(next().className).toMatch(/\bpbar-pulse\b/);
+    fireEvent.animationEnd(next());
+    expect(next().className).not.toMatch(/pbar-pulse/);
+  });
+
+  it('bez pulsu przy reduced-motion', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={() => {}} />);
+    rerender(<ForwardHarness canForward onForward={() => {}} />);
+    expect(next().className).not.toMatch(/pbar-pulse/);
+  });
+
+  it('aktywacja jest ogłaszana czytnikom (aria-live), a przycisk opisuje skrót (aria-keyshortcuts)', () => {
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={() => {}} />);
+    expect(screen.getByTestId('forward-ready')).toHaveTextContent('');
+    rerender(<ForwardHarness canForward onForward={() => {}} />);
+    expect(screen.getByTestId('forward-ready')).toHaveTextContent('Możesz przejść dalej: przycisk „Dalej” na dole.');
+    expect(next()).toHaveAttribute('aria-keyshortcuts', 'Enter ArrowRight');
+  });
+
+  it('karencja: Enter zaraz po aktywacji (np. drugi Enter po wyniku) nie przechodzi dalej; po chwili - tak', () => {
+    const onForward = vi.fn();
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={onForward} />);
+    rerender(<ForwardHarness canForward onForward={onForward} />);
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    expect(onForward).not.toHaveBeenCalled();
+    later();
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    expect(onForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('pełny ekran (warstwa „fullscreen”) nie blokuje skrótu - to tryb, nie nakładka', () => {
+    const onForward = vi.fn();
+    render(<ForwardHarness canForward onForward={onForward} stage={<FullscreenLayer />} />);
+    later();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(onForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('link wyjścia z modułu („Wróć do biblioteki”, forwardHref): bez skrótu i bez pulsu - Enter nie pominie ceremonii zamknięcia', () => {
+    render(<ForwardHarness canForward onForward={() => {}} forwardHref="/courses" />);
+    const link = screen.getByRole('link', { name: /Wróć do biblioteki/ });
+    const click = vi.spyOn(link, 'click');
+    later();
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(click).not.toHaveBeenCalled();
+    expect(link.className).not.toMatch(/pbar-pulse/);
+  });
+
+  it('Enter i → (fokus poza polem/przyciskiem) uruchamiają aktywny „Dalej”; nieaktywny - nic', () => {
+    const onForward = vi.fn();
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={onForward} />);
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    expect(onForward).not.toHaveBeenCalled();
+    rerender(<ForwardHarness canForward onForward={onForward} />);
+    later();
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(onForward).toHaveBeenCalledTimes(2);
+    // Z modyfikatorem - nie (skróty przeglądarki/systemu); w trakcie kompozycji IME - nie.
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', altKey: true });
+    fireEvent.keyDown(document.body, { key: 'Enter', isComposing: true });
+    expect(onForward).toHaveBeenCalledTimes(2);
+  });
+
+  it('klawisz z własnym znaczeniem tam, gdzie fokus: pole tekstowe (Enter, →), przycisk (Enter), zakładki (→) - bez „Dalej”; → na zwykłym przycisku - „Dalej”', () => {
+    const onForward = vi.fn();
+    render(
+      <ForwardHarness
+        canForward
+        onForward={onForward}
+        stage={
+          <>
+            <input aria-label="pole" />
+            <button type="button">akcja</button>
+            <div role="tablist">
+              <button type="button" role="tab">
+                zakładka
+              </button>
+            </div>
+          </>
+        }
+      />,
+    );
+    later();
+    fireEvent.keyDown(screen.getByLabelText('pole'), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByLabelText('pole'), { key: 'ArrowRight' });
+    fireEvent.keyDown(screen.getByRole('button', { name: 'akcja' }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'zakładka' }), { key: 'ArrowRight' });
+    expect(onForward).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'akcja' }), { key: 'ArrowRight' });
+    expect(onForward).toHaveBeenCalledTimes(1);
+  });
+
+  it('otwarta nakładka (zbliżenie, notatnik) - skróty nie działają', () => {
+    const onForward = vi.fn();
+    render(<ForwardHarness canForward onForward={onForward} stage={<HotspotCardStub />} />);
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz kartę hotspotu' }));
+    later();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(onForward).not.toHaveBeenCalled();
+  });
+
+  it('forwardShortcutAllowed (czysta funkcja): brak elementu - tak; pola - nie; Enter na linku - nie; → w odtwarzaczu/chipach rozmowy - nie', () => {
+    const input = document.createElement('input');
+    const link = document.createElement('a');
+    link.href = '/x';
+    const chips = document.createElement('div');
+    chips.className = 'dialogue-chips';
+    const chip = document.createElement('span');
+    chips.appendChild(chip);
+    expect(forwardShortcutAllowed(null, 'Enter')).toBe(true);
+    expect(forwardShortcutAllowed(input, 'ArrowRight')).toBe(false);
+    expect(forwardShortcutAllowed(link, 'Enter')).toBe(false);
+    expect(forwardShortcutAllowed(link, 'ArrowRight')).toBe(true);
+    expect(forwardShortcutAllowed(chip, 'ArrowRight')).toBe(false);
+    expect(forwardShortcutAllowed(document.createElement('video'), 'ArrowRight')).toBe(false);
+    expect(forwardShortcutAllowed(document.createElement('video'), 'Enter')).toBe(false);
   });
 });
 

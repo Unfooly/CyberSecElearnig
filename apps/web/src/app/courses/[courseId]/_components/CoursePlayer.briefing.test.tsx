@@ -91,14 +91,14 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     vi.useRealTimers();
   });
 
-  it('kroki po kolei przyciskami, legitymacja z imieniem z profilu i numerem odznaki; ostatni krok zapisuje blok bez odpowiedzi', async () => {
+  it('kroki po kolei przyciskami, legitymacja z imieniem z profilu i numerem odznaki; ostatni krok bez przycisku - zapis „Dalej” w pasku (D-106)', async () => {
     const fetchMock = stubFetch();
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);
 
     // Tekst "maszyny do pisania" dla czytnika od razu w całości (widoczny jest wystukiwany znak po znaku).
     expect(screen.getByText('Wtorek, 7:58. Dzwoni telefon. Numer zastrzeżony.')).toHaveClass('sr-only');
-    // Wyjściem jest odprawa (ostatni krok albo "Pomiń"), nie "Dalej" z paska.
-    expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
+    // „Dalej” w pasku jest jedynym wyjściem z odprawy - nieaktywny do ostatniego kroku.
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
     expect(screen.getByText('Komisarz Adam Wolski')).toBeInTheDocument();
@@ -122,21 +122,30 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(screen.getByText('0412-AK')).toBeInTheDocument();
     expect(progressCalls(fetchMock)).toHaveLength(0);
 
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Do dzieła' }));
     expect(screen.getByText('Unfooly, drugie piętro.')).toBeInTheDocument();
     expect(progressCalls(fetchMock)).toHaveLength(0);
+    // Ostatni krok: bez własnego przycisku („Wchodzę” nie jest już przyciskiem), „Dalej” w pasku aktywny.
+    expect(screen.queryByRole('button', { name: 'Wchodzę' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Wchodzę' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
     await screen.findByText('Biuro Anny.');
   });
 
-  it('"Pomiń odprawę" w górnym pasku jest widoczny od razu i zapisuje blok; zadania się NIE odhaczają', async () => {
+  it('"Pomiń odprawę" w górnym pasku przeskakuje na ostatni krok (bez zapisu); zapis rusza „Dalej” w pasku (D-106); zadania się NIE odhaczają', async () => {
     const fetchMock = stubFetch();
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+    expect(screen.getByText('Unfooly, drugie piętro.')).toBeInTheDocument();
+    expect(progressCalls(fetchMock)).toHaveLength(0);
+    // Na ostatnim kroku nie ma już czego pomijać.
+    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
     await screen.findByText('Biuro Anny.');
@@ -147,7 +156,7 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
   });
 
-  it('ponowne wejście w ukończoną odprawę ("Wstecz"): "Pomiń odprawę" od razu, przewija dalej bez zapisu', async () => {
+  it('ponowne wejście w ukończoną odprawę ("Wstecz"): bez "Pomiń odprawę" - „Dalej” w pasku aktywny od razu, przewija dalej bez zapisu', async () => {
     const fetchMock = stubFetch();
     render(
       <CoursePlayer
@@ -160,8 +169,9 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
     expect(screen.getByTestId('review-block')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     expect(screen.queryByTestId('review-block')).not.toBeInTheDocument();
     expect(screen.getByText('Biuro Anny.')).toBeInTheDocument();
     expect(progressCalls(fetchMock)).toHaveLength(0);
@@ -255,13 +265,15 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
       await waitFor(() => expect(played).toEqual([expect.stringContaining('krok-1.mp3')]));
     });
 
-    it('"Pomiń odprawę" (odprawa ma nagrania w krokach) odtwarza narrację kolejnego bloku', async () => {
+    it('"Pomiń odprawę" + „Dalej” (odprawa ma nagrania w krokach) odtwarza narrację kolejnego bloku', async () => {
       stubFetch();
       const played = spyPlay();
       render(<CoursePlayer courseId="course-1" initial={audioCourse()} narrationEnabled />);
       fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+      fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await screen.findByText('Biuro Anny.');
-      await waitFor(() => expect(played).toEqual([expect.stringContaining('biuro.mp3')]));
+      // Pominięcie to gest - ekran startu (ostatni krok) może zacząć swoją narrację; po „Dalej” gra już kolejny blok.
+      await waitFor(() => expect(played.at(-1)).toContain('biuro.mp3'));
     });
 
     it('ponowne wejście w podgląd ukończonej odprawy startuje od kroku 0 bez odtwarzania (bez narracji starego kroku)', async () => {
@@ -278,7 +290,8 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
       fireEvent.click(screen.getByRole('button', { name: 'Słucham' }));
       await waitFor(() => expect(played.at(-1)).toContain('krok-2.mp3'));
-      fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+      // W podglądzie „Dalej” w pasku (bez "Pomiń odprawę", D-106) przewija na żywy blok.
+      fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       const before = played.length;
 
       fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));

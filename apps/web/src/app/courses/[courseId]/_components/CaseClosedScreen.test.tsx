@@ -58,6 +58,12 @@ function renderScreen(props: Partial<Parameters<typeof CaseClosedScreen>[0]> = {
         fresh
         {...props}
       />
+      {/* „Wróć do biblioteki” jest przyciskiem dolnego paska (D-106) - tu atrapa paska ramki, cel fokusu po podpisie. */}
+      <div data-testid="player-bottombar">
+        <a className="pbar-next" href="/courses">
+          Wróć do biblioteki
+        </a>
+      </div>
     </SfxProvider>,
   );
 }
@@ -118,7 +124,7 @@ describe('CaseClosedScreen: ceremonia', () => {
 
     fireEvent.click(signature);
     fireEvent.click(signature); // podwójny klik - jedna ceremonia
-    // Przycisk znika, zostaje sam podpis; fokus przechodzi na "Wróć do biblioteki" (nie spada na body).
+    // Przycisk znika, zostaje sam podpis; fokus przechodzi na "Wróć do biblioteki" w dolnym pasku (nie spada na body).
     expect(screen.queryByRole('button', { name: 'Podpisz raport' })).not.toBeInTheDocument();
     expect(screen.getByTestId('closing-signature')).toHaveTextContent('Jan P.');
     expect(screen.getByRole('link', { name: 'Wróć do biblioteki' })).toHaveFocus();
@@ -133,7 +139,8 @@ describe('CaseClosedScreen: ceremonia', () => {
     advance(600);
     expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
     expect(played).toEqual(['paper.mp3', 'stamp.mp3']);
-    expect(screen.getByRole('link', { name: 'Wróć do biblioteki' })).toHaveAttribute('href', '/courses');
+    // Ekran zamknięcia nie ma własnego „Wróć do biblioteki” (D-106) - jedyny link to atrapa paska.
+    expect(screen.getByTestId('case-closed')).not.toContainElement(screen.getByRole('link', { name: 'Wróć do biblioteki' }));
     expect(screen.getByRole('button', { name: /Następna sprawa/ })).toHaveAttribute('aria-disabled', 'true');
   });
 

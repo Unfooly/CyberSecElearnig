@@ -1,0 +1,127 @@
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
+import type { ContentBlock } from '@/lib/courses-types';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
+// Jeden „Dalej” (D-106) w KAŻDYM typie bloku (także spoza modułu 1): w obszarze bloku nie ma przycisku nawigacji dalej, w pasku jest
+// dokładnie jeden; VIDEO / DRAG_AND_DROP / EMBEDDED_HTML - akcja w bloku zgłasza gotowość, a zapis rusza dopiero „Dalej” w pasku.
+const IN_BLOCK_NEXT = /^(Dalej|Kontynuuj|Przejdź dalej|Zakończ scenę|Sprawdź i dalej|Zakończ sprawę|Zakończ szkolenie|Wróć do biblioteki|Wchodzę)$/;
+
+const next: ContentBlock = { type: 'NARRATIVE', id: 'dalej', text: 'Kolejny blok.' };
+
+function course(block: ContentBlock): CoursePlayerInitialState {
+  return {
+    assignmentId: 'a1',
+    courseId: 'course-1',
+    title: 'Sprawa testowa',
+    status: 'IN_PROGRESS',
+    currentBlockIndex: 0,
+    contentBlocks: [block, next],
+    progress: null,
+    score: null,
+  };
+}
+
+function stubProgress(block: ContentBlock) {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      assignmentId: 'a1',
+      status: 'IN_PROGRESS',
+      currentBlockIndex: 1,
+      score: null,
+      completedAt: null,
+      lastResult: { blockIndex: 0, blockId: block.id, type: block.type },
+      gamification: null,
+    }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const bar = () => screen.getByTestId('player-bottombar');
+const barNext = () => within(bar()).getByRole('button', { name: /^Dalej$/ });
+const inBlockNext = () =>
+  within(screen.getByTestId('player-content-area'))
+    .queryAllByRole('button')
+    .concat(within(screen.getByTestId('player-content-area')).queryAllByRole('link'))
+    .filter((el) => IN_BLOCK_NEXT.test((el.getAttribute('aria-label') || el.textContent || '').trim()));
+
+const video: ContentBlock = { type: 'VIDEO', id: 'wideo', url: 'https://example.test/video.mp4' };
+const dnd: ContentBlock = { type: 'DRAG_AND_DROP', id: 'segreguj', prompt: 'Posegreguj', items: [{ text: 'a@bank.pl' }, { text: 'b@nagroda.biz' }] };
+const embed: ContentBlock = { type: 'EMBEDDED_HTML', id: 'gra' };
+
+describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => {
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const blocks: ContentBlock[] = [
+    video,
+    dnd,
+    embed,
+    { type: 'QUIZ', id: 'quiz', prompt: 'Pytanie?', options: [{ text: 'A' }, { text: 'B' }] },
+    { type: 'BRANCHING_SCENARIO', id: 'wybor', prompt: 'Co robisz?', options: [{ text: 'Klikam' }, { text: 'Sprawdzam' }] },
+    { type: 'TABS', id: 'zakladki', title: 'Zasady', tabs: [{ id: 'x', title: 'Hasła', content: 'Długie hasła.' }] },
+    { type: 'NOTEPAD', id: 'notatnik', prompt: 'Zapisz wnioski' },
+    { type: 'NARRATIVE', id: 'narracja', text: 'Opowieść.' },
+    { type: 'SUMMARY', id: 'podsumowanie', text: 'Koniec.' },
+  ];
+  it.each(blocks.map((block) => [block.type, block] as const))('%s: brak przycisku dalej w bloku, dokładnie jeden w pasku', (_type, block) => {
+    stubProgress(block);
+    render(<CoursePlayer courseId="course-1" initial={course(block)} narrationEnabled={false} />);
+    expect(inBlockNext()).toEqual([]);
+    expect(bar().querySelectorAll('.pbar-next')).toHaveLength(1);
+  });
+
+  it('VIDEO: po obejrzeniu „Dalej” w pasku aktywny i zapisuje blok bez odpowiedzi', async () => {
+    const fetchMock = stubProgress(video);
+    render(<CoursePlayer courseId="course-1" initial={course(video)} narrationEnabled={false} />);
+    expect(barNext()).toBeDisabled();
+    fireEvent.ended(document.querySelector('video')!);
+    expect(barNext()).toBeEnabled();
+    fireEvent.click(barNext());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+    // Wynik (FeedbackPanel „Blok ukończony.”) bez własnego przycisku - dalej ten sam „Dalej” w pasku.
+    await screen.findByText('Blok ukończony.');
+    expect(inBlockNext()).toEqual([]);
+    fireEvent.click(barNext());
+    await screen.findByText('Kolejny blok.');
+  });
+
+  it('DRAG_AND_DROP: „Dalej” aktywny dopiero po posegregowaniu wszystkiego', async () => {
+    const fetchMock = stubProgress(dnd);
+    render(<CoursePlayer courseId="course-1" initial={course(dnd)} narrationEnabled={false} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bezpieczne' })[0]);
+    expect(barNext()).toBeDisabled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Phishing' })[1]);
+    expect(barNext()).toBeEnabled();
+    fireEvent.click(barNext());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+  });
+
+  it('EMBEDDED_HTML: „Ukończyłem” aktywuje „Dalej”, odznaczenie je wyłącza; zapis dopiero po „Dalej”', async () => {
+    const fetchMock = stubProgress(embed);
+    render(<CoursePlayer courseId="course-1" initial={course(embed)} narrationEnabled={false} />);
+    const finished = screen.getByRole('button', { name: 'Ukończyłem' });
+    expect(barNext()).toBeDisabled();
+    fireEvent.click(finished);
+    expect(barNext()).toBeEnabled();
+    fireEvent.click(finished);
+    expect(barNext()).toBeDisabled();
+    fireEvent.click(finished);
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(barNext());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+  });
+});

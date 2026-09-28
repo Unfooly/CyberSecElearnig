@@ -32,14 +32,17 @@ export default function ExploratoryBlock({
   tasks,
   identity,
   onBriefingStep,
+  briefingSkip = 0,
 }: {
   block: ContentBlock;
   contentBase: string;
   onSubmit: (answer?: unknown) => void;
-  /** Zgłasza gotowość do "Dalej" w pasku powłoki (SCENE_HOTSPOTS/DIALOGUE/TABS/NOTEPAD/NARRATIVE) - SUMMARY ma własny, jedyny przycisk. */
+  /** Zgłasza gotowość do "Dalej" w pasku powłoki - jedynego przejścia dalej (D-106), we wszystkich typach. */
   onReady: (submit: (() => void) | null) => void;
-  /** SUMMARY i ostatni krok BRIEFING: reszta typów nie ma już własnego przycisku ukończenia (patrz ExploreFooter, onReady). */
+  /** Zapis w toku - przedmiot ostatniego kroku BRIEFING nie reaguje. */
   disabled: boolean;
+  /** „Pomiń odprawę” (D-106): zmiana licznika = BRIEFING przeskakuje na ostatni krok. */
+  briefingSkip?: number;
   review?: boolean;
   myAvatarUrl?: string | null;
   myInitials?: string;
@@ -70,7 +73,7 @@ export default function ExploratoryBlock({
     case 'NOTEPAD':
       return <NotepadBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     case 'SUMMARY':
-      return <SummaryBlock block={block} onSubmit={() => onSubmit()} disabled={disabled} review={review} />;
+      return <SummaryBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     case 'NARRATIVE':
       return <NarrativeBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     case 'BRIEFING':
@@ -79,6 +82,8 @@ export default function ExploratoryBlock({
           block={block}
           contentBase={contentBase}
           onSubmit={() => onSubmit()}
+          onReady={onReady}
+          skipSignal={briefingSkip}
           review={review}
           disabled={disabled}
           tasks={tasks}

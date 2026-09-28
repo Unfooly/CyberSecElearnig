@@ -4,37 +4,38 @@ import VideoBlock from './VideoBlock';
 
 const block = { type: 'VIDEO' as const, url: 'https://example.test/video.mp4' };
 
+// Jeden „Dalej” (D-106): blok nie ma własnego przycisku - po obejrzeniu zgłasza gotowość do „Dalej” w pasku.
 describe('VideoBlock', () => {
-  it('renderuje odtwarzacz wideo z poprawnym źródłem', () => {
-    render(<VideoBlock block={block} onSubmit={vi.fn()} disabled={false} />);
+  it('renderuje odtwarzacz wideo z poprawnym źródłem, bez własnego przycisku dalej', () => {
+    render(<VideoBlock block={block} onReady={vi.fn()} />);
 
     const video = document.querySelector('video');
     expect(video).toHaveAttribute('src', block.url);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('przycisk "Dalej" jest domyślnie zablokowany, dopóki wideo się nie skończy', () => {
-    render(<VideoBlock block={block} onSubmit={vi.fn()} disabled={false} />);
+  it('przed obejrzeniem nie zgłasza gotowości (podpowiedź „Obejrzyj wideo do końca”)', () => {
+    const onReady = vi.fn();
+    render(<VideoBlock block={block} onReady={onReady} />);
 
-    expect(screen.getByRole('button', { name: 'Dalej' })).toBeDisabled();
+    expect(onReady).not.toHaveBeenCalled();
+    expect(screen.getByText(/Obejrzyj wideo do końca/)).toBeInTheDocument();
   });
 
-  it('odblokowuje "Dalej" i wywołuje onSubmit po zdarzeniu "ended"', () => {
-    const onSubmit = vi.fn();
-    render(<VideoBlock block={block} onSubmit={onSubmit} disabled={false} />);
+  it('po zdarzeniu "ended" zgłasza gotowość', () => {
+    const onReady = vi.fn();
+    render(<VideoBlock block={block} onReady={onReady} />);
 
     fireEvent.ended(document.querySelector('video')!);
-    const button = screen.getByRole('button', { name: 'Dalej' });
-    expect(button).not.toBeDisabled();
-
-    fireEvent.click(button);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onReady).toHaveBeenCalledWith(true);
   });
 
-  it('odblokowuje "Dalej" też przy błędzie wczytywania wideo (nie blokuje na stałe)', () => {
-    render(<VideoBlock block={block} onSubmit={vi.fn()} disabled={false} />);
+  it('zgłasza gotowość też przy błędzie wczytywania wideo (nie blokuje na stałe)', () => {
+    const onReady = vi.fn();
+    render(<VideoBlock block={block} onReady={onReady} />);
 
     fireEvent.error(document.querySelector('video')!);
 
-    expect(screen.getByRole('button', { name: 'Dalej' })).not.toBeDisabled();
+    expect(onReady).toHaveBeenCalledWith(true);
   });
 });

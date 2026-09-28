@@ -214,6 +214,18 @@ try {
   // Tablica 1 + karteczka, telefon, kalendarz 3 + Poczta 1 + historia przeglądarki 1 = 6.
   await page.waitForFunction(() => document.querySelector('[data-testid="evidence-counter"]')?.textContent?.includes('Dowody 6/23'));
   step('SCENE_HOTSPOTS: pulpit - dowód z historii przeglądarki (Internet, 8:58 bankwektor-weryfikacja.pl/login)', true);
+  // Easter egg (D-100): ikona gry - trzy okienka zamykane krzyżykiem, potem outro i ukryte wyróżnienie w notatniku. Licznik dowodów
+  // zostaje 6/23; końcowe 23/23 i +XP w raporcie (niżej) są takie same jak bez easter egga - znalezienie nie zmienia N ani XP.
+  await dialog().getByRole('button', { name: 'GTA6_PL.exe' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
+  // Etykieta krzyżyka bez ozdobnego symbolu z początku tytułu (spokenTitle).
+  for (const title of ['Pliki zaszyfrowane', 'Gratulacje!', 'Wykryto 147 wirusów!']) {
+    await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
+  }
+  await page.getByTestId('easter-outro').waitFor();
+  const eggCounter = await page.getByTestId('evidence-counter').textContent();
+  step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z wyróżnieniem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && (await page.getByTestId('easter-badge').textContent())?.includes('Ciekawski detektyw'), eggCounter);
+  await page.getByRole('button', { name: 'Wróć do pulpitu' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
   await closed();
 
@@ -405,6 +417,11 @@ try {
   await page.reload();
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie po odświeżeniu: stan końcowy od razu, czas sprawy z /start', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
+  // Wyróżnienie easter egga (D-100) zapisane po stronie serwera: po odświeżeniu nadal w notatniku (progress.distinctions z /start).
+  await page.getByRole('button', { name: /^Notatnik/ }).click();
+  const distinctions = page.getByTestId('notebook-distinctions');
+  await distinctions.waitFor();
+  step('EASTER EGG: wyróżnienie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Ciekawski detektyw'));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

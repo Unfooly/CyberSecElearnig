@@ -17,6 +17,15 @@ Kod: `apps/web/src/app/courses/[courseId]/_components/` (`CoursePlayer.tsx`, `bl
 
 Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`. Bloki ukończone po kolei; „Dalej” po wyniku to osobny krok w interfejsie.
 
+**Jeden „Dalej” (D-106).** Jedynym przejściem dalej w całym odtwarzaczu jest przycisk w dolnym pasku (`PlayerStage`). Bloki nie mają
+przycisków nawigacji; akcje w bloku („Sprawdź trop”, „Sprawdź odpowiedź”, Zabierz/Odłóż, drzwi na scenie, „Zabierz legitymację” na
+ostatnim kroku odprawy, „Ukończyłem”) tylko zgłaszają gotowość (`onReady`), a wynik bloku ocenianego aktywuje „Dalej” od razu. „Dalej”
+jest nieaktywny, dopóki blok nie jest kompletny, i krótko pulsuje przy aktywacji (bez pulsu przy reduced-motion; sam pierścień, bez
+`transform`). Etykieta: „Zakończ sprawę”/„Zakończ szkolenie” na SUMMARY, „Wróć do biblioteki” (link) na ekranie zamknięcia. Enter i →
+uruchamiają aktywny „Dalej”, o ile fokus nie jest w polu, na przycisku/linku (Enter) ani w kontrolce ze strzałkami (→), a żadna nakładka nie
+jest otwarta (`forwardShortcutAllowed`). „Pomiń odprawę” (górny pasek) przeskakuje na ostatni krok odprawy. layout-check: sekcja
+`single-next` i kontrole (j1, j2) w pozostałych sekcjach.
+
 | Typ | Komponent | `answer` | Wynik / uwagi |
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |

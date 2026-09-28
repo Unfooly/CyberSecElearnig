@@ -1813,6 +1813,14 @@ try {
         if (hotspot) await page.getByTestId('scene-zoom').waitFor();
         if (hotspot === 'gra') await page.getByTestId('easter-popup').first().waitFor();
         await audit(`${block}${hotspot ? ` - ${hotspot}` : ''}`);
+        // Okna na ekranie w pionie (D-104): mail i historia przeglądarki w wariancie -pion (duży, zawijany tekst).
+        if (hotspot === 'outlook' || hotspot === 'przegladarka') {
+          const src = await page.getByTestId('scene-zoom-graphic').locator('img').getAttribute('src');
+          if (!src?.includes('-pion')) {
+            step(`${viewport.name} / ${block} - ${hotspot}: okno nie w wariancie pionowym (${src})`, false);
+            moduleFailures.push(`${viewport.name} / ${hotspot} bez -pion`);
+          }
+        }
         if (hotspot === 'telefon') {
           await page.getByTestId('scene-zoom').getByRole('button', { name: 'Transkrypcja' }).click();
           await audit(`${block} - telefon + transkrypcja`);

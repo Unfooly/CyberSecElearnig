@@ -22,6 +22,8 @@ export interface BlockEntry {
   // TEXT_INPUT_GUIDED: zużyte próby i odsłonięte podpowiedzi.
   attempts?: number;
   hintsShown?: number;
+  // SCENE_HOTSPOTS: znalezione wyróżnienia easter egga (id `media.badge` z treści, D-100) - bez wpływu na wynik, dowody i XP.
+  easterEggs?: string[];
 }
 
 export interface ProgressV2 {

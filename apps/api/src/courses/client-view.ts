@@ -109,6 +109,28 @@ export function evidenceSummary(progress: ProgressV2, blocks: Block[]): Evidence
 }
 
 /**
+ * Wyróżnienia easter egga (D-100) do notatnika: etykiety z treści dla id zapisanych przy ukończeniu bloku (`easterEggs`). Nieznane id
+ * (np. usunięte w nowszej wersji treści - klient i tak dostaje etykietę wyłącznie z zapisanej wersji kursu) są pomijane.
+ */
+export function distinctions(progress: ProgressV2, blocks: Block[]): { blockId: string; label: string }[] {
+  const found: { blockId: string; label: string }[] = [];
+  for (const [blockId, entry] of Object.entries(progress.blocks)) {
+    if (!Array.isArray(entry.easterEggs)) continue;
+    const block = blocks.find((b) => b.id === blockId);
+    if (block?.type !== 'SCENE_HOTSPOTS' || !Array.isArray(block.hotspots)) continue;
+    const badges = flattenHotspots(block.hotspots as HotspotLike[])
+      .map((h) => h.media as { kind?: string; badge?: { id?: unknown; label?: unknown } } | undefined)
+      .filter((media) => media?.kind === 'popups' && typeof media.badge?.id === 'string' && typeof media.badge.label === 'string')
+      .map((media) => media!.badge as { id: string; label: string });
+    for (const id of entry.easterEggs) {
+      const badge = badges.find((b) => b.id === id);
+      if (badge) found.push({ blockId, label: badge.label });
+    }
+  }
+  return found;
+}
+
+/**
  * Widok postępu dla klienta: własne wyniki i stan, plus WYŁĄCZNIE ujawnione dotąd elementy zadań tekstowych (podpowiedzi
  * odsłonięte próbami; rozwiązanie po wyczerpaniu prób) i rozwiązane notatki. Niczego, co nie było jeszcze ujawnione.
  */
@@ -156,5 +178,5 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
     .map((key) => resolveNote(blocks, key))
     .filter((n): n is ClientNote => n !== null)
     .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) }));
-  return { v: 2 as const, blocks: view, notes, evidence: evidenceSummary(progress, blocks) };
+  return { v: 2 as const, blocks: view, notes, evidence: evidenceSummary(progress, blocks), distinctions: distinctions(progress, blocks) };
 }

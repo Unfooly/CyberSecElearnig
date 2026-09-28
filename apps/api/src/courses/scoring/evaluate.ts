@@ -71,6 +71,16 @@ function requireCoverage(label: string, given: string[], allIds: string[], requi
 
 const noteKey = (blockId: string, itemId: string) => `${blockId}.${itemId}`;
 
+/** Wyróżnienia easter egga (D-100): id `media.badge` odwiedzonych hotspotów z okienkami (media.kind "popups"), bez powtórzeń. */
+function easterEggIds(hotspots: HotspotLike[], visited: string[]): string[] {
+  const ids = hotspots
+    .filter((h) => visited.includes(h.id))
+    .map((h) => h.media as { kind?: string; badge?: { id?: unknown } } | undefined)
+    .filter((media) => media?.kind === 'popups' && typeof media.badge?.id === 'string')
+    .map((media) => media!.badge!.id as string);
+  return [...new Set(ids)];
+}
+
 /** Nieprzejrzyste id elementu widziane przez klienta (client-view.ts, shuffleContext.opaqueId). */
 export type OpaqueId = (blockId: string, itemId: string) => string;
 
@@ -117,13 +127,21 @@ export function evaluateSubmit(
       // (klik od razu kończy blok) - inaczej scena z SAMYMI drzwiami nigdy nie mogłaby się ukończyć (semantics.ts ma
       // tę samą wykluczenie przy walidacji modułu).
       const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
-      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots.filter((h) => !doorIds.has(h.id)), block.requiredHotspots));
+      // Okienka easter egga (D-100) też poza pulą required - także w domyślnym „wszystkie wymagane” (bez flag required).
+      const optional = (h: HotspotLike) => doorIds.has(h.id) || h.media?.kind === 'popups';
+      requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots.filter((h) => !optional(h)), block.requiredHotspots));
       // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
       const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
       if (!unique(noted) || noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id))) {
         throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
       }
-      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: noted.map((id) => noteKey(block.id, id)) };
+      // Easter egg (D-100): odwiedzony hotspot z okienkami i wyróżnieniem zapisuje TYLKO flagę wyróżnienia (id z treści) - bez
+      // punktów, dowodów i XP. Klient dopisuje hotspot do `visited` dopiero po zamknięciu wszystkich okienek (bramka UX, jak reszta).
+      const easterEggs = easterEggIds(hotspots, visited);
+      return {
+        entry: baseEntry(block, now, { ...weightPoints(block), ...(easterEggs.length > 0 ? { easterEggs } : {}) }),
+        notesAdded: noted.map((id) => noteKey(block.id, id)),
+      };
     }
 
     case 'DIALOGUE': {

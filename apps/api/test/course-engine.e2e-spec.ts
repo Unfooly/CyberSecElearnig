@@ -230,11 +230,18 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
         expect(JSON.stringify(badNote.body)).not.toContain(fragment);
       }
       await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1'], noted: ['h2'] } }).expect(400);
+      // Okienka easter egga (D-100) nie są dowodem: `noted` z nimi to 400.
+      await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'h4-gra'], noted: ['h1', 'h4-gra'] } }).expect(400);
       // h4-outlook: hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind:'scene' na h4, B-086/D-071) - id nie jest "nie-ma"
-      // dla serwera (spłaszczony zbiór, flattenHotspots), noted go zalicza jak zewnętrzny.
+      // dla serwera (spłaszczony zbiór, flattenHotspots), noted go zalicza jak zewnętrzny. h4-gra i h6: znalezione easter eggi
+      // (D-100) - zapisują wyłącznie flagę wyróżnienia; liczba dowodów niżej jest taka sama jak bez nich (N się nie zmienia).
       const hotspots = (
-        await submit(tokenA, engineCourseId, { blockIndex: 6, answer: { visited: ['h1', 'h4-outlook'], noted: ['h1', 'h4-outlook'] } }).expect(200)
+        await submit(tokenA, engineCourseId, {
+          blockIndex: 6,
+          answer: { visited: ['h1', 'h4-outlook', 'h4-gra', 'h6'], noted: ['h1', 'h4-outlook'] },
+        }).expect(200)
       ).body;
+      expect(hotspots.notes.map((n: { text: string }) => n.text)).toEqual(['Hasło na kartce przy monitorze.', 'Mail otwarty w programie pocztowym.']);
       // Liczy serwer: 2 dowody zebrane (h1 zewnętrzny + h4-outlook wewnętrzny); suma "scena" też uwzględnia oba (2, nie 1).
       // + akta: wiersz-dowód teczki (DOSSIER, D-083), znany od startu.
       expect(hotspots.evidence).toEqual({
@@ -265,6 +272,12 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila). scena: 2
       // zebrane/2 razem (h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071) - patrz test wyżej.
       expect(resumed.progress.evidence).toMatchObject({ collected: 3, total: 5 });
+      // Wyróżnienia easter egga (D-100) po wznowieniu: etykiety z treści, bez id z treści w widoku bloku.
+      expect(resumed.progress.distinctions).toEqual([
+        { blockId: 'scena', label: 'Ciekawski detektyw' },
+        { blockId: 'scena', label: 'Uważny obserwator' },
+      ]);
+      expect(JSON.stringify(resumed.progress.blocks.scena)).not.toMatch(/ciekawski|laptop|easterEggs/);
       expect(resumed.progress.v).toBe(2);
       expect(resumed.progress.blocks.quiz).toMatchObject({ done: true, correct: true, points: 1 });
     });

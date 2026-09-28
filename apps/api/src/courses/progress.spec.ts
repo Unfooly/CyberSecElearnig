@@ -154,6 +154,17 @@ describe('client-view', () => {
     expect(JSON.stringify(view)).not.toContain('rozmowa.q1');
   });
 
+  it('clientProgress: wyróżnienia easter egga (D-100) - etykiety z treści zapisanej wersji, nieznane id pominięte; dowody bez zmian', () => {
+    const scene = entry({ type: 'SCENE_HOTSPOTS', weight: 0, easterEggs: ['ciekawski', 'nie-ma'] });
+    const found = clientProgress({ v: 2, blocks: { scena: scene }, notes: [] }, blocks());
+    expect(found.distinctions).toEqual([{ blockId: 'scena', label: 'Ciekawski detektyw' }]);
+    const none = clientProgress({ v: 2, blocks: { scena: entry({ type: 'SCENE_HOTSPOTS', weight: 0 }) }, notes: [] }, blocks());
+    expect(none.distinctions).toEqual([]);
+    expect(found.evidence).toEqual(none.evidence);
+    // Flaga nie wychodzi w widoku bloku (do klienta idzie tylko lista etykiet).
+    expect(JSON.stringify(found.blocks)).not.toContain('ciekawski');
+  });
+
   describe('clientProgress: podgląd ukończonych bloków ocenianych (answer i detail)', () => {
     const opaque = (blockId: string, itemId: string) => `op-${blockId}-${itemId}`;
     const done = (over: Partial<BlockEntry>) => entry({ done: true, ...over });

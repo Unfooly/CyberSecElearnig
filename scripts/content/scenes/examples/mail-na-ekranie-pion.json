@@ -1,0 +1,43 @@
+{
+  "width": 868,
+  "height": 1356,
+  "background": {
+    "flat": true,
+    "wall": "none"
+  },
+  "items": [
+    {
+      "id": "mail",
+      "prop": "mailWindowPortrait",
+      "x": 36,
+      "y": 36,
+      "params": {
+        "from": "Bank Wektor — Dział Bezpieczeństwa <bezpieczenstwo@bankwektor-weryfikacja.pl>",
+        "to": "a.kowalska@unfooly.com",
+        "date": "wtorek, 8:47",
+        "subject": "PILNE: weryfikacja konta firmowego — blokada o 10:00",
+        "attachment": "Regulamin_weryfikacji.pdf.exe (412 KB)",
+        "body": [
+          "Szanowna Kliencie,",
+          "",
+          "W związku z aktualizacją systemów bezpieczeństwa Twoje konto firmowe",
+          "wymaga natychmiastowej weryfikacji. W przypadku braku potwierdzenia",
+          "do godziny 10:00 dostęp do rachunku zostanie tymczasowo zablokowany.",
+          "",
+          "!Pozostało: 01:12:33",
+          "",
+          "Aby potwierdzić dane, kliknij tutaj:"
+        ],
+        "button": "Przejdź do weryfikacji",
+        "link": "https://bankwektor-weryfikacja.pl/login?id=88213",
+        "footer": [
+          "Prosimy o nie odpowiadanie na tę wiadomość.",
+          "",
+          "Z poważaniem,",
+          "Zespół Bezpieczeństwa Bank Wektor",
+          "Bank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa"
+        ]
+      }
+    }
+  ]
+}

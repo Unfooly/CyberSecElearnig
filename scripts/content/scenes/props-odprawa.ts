@@ -493,3 +493,173 @@ export const screenFrame: PropFn<{ sw?: number; sh?: number; wallpaper?: string;
   };
 };
 export const EKRAN_PROPS = { screenFrame };
+
+/* ---------- okna w wersji pionowej (telefon, U/D-104): duży tekst, zawijanie ---------- */
+
+const wrapText = (s: string, max: number): string[] => {
+  const out: string[] = [];
+  let line = '';
+  for (const word of s.split(/\s+/).filter(Boolean)) {
+    if ((line + ' ' + word).trim().length > max) {
+      if (line) out.push(line);
+      line = word;
+    } else line = (line + ' ' + word).trim();
+  }
+  if (line) out.push(line);
+  return out;
+};
+/** Łączy linie złamane pod układ poziomy w akapity (pusta linia = nowy akapit; linie z „!” zostają osobno). */
+const paragraphs = (lines: string[]): string[] => {
+  const ps: string[] = [];
+  let cur = '';
+  for (const l of lines) {
+    if (!l) {
+      if (cur) ps.push(cur);
+      cur = '';
+      ps.push('');
+      continue;
+    }
+    if (l.startsWith('!')) {
+      if (cur) ps.push(cur);
+      cur = '';
+      ps.push(l);
+      continue;
+    }
+    cur = (cur + ' ' + l).trim();
+  }
+  if (cur) ps.push(cur);
+  return ps;
+};
+
+/** Mail na ekranie w pionie (te same parametry co `mailWindow`) - tekst 24-28 px w jednostkach grafiki, zawijany. */
+export const mailWindowPortrait: PropFn<{
+  from?: string; to?: string; date?: string; subject?: string; attachment?: string; body?: string[]; button?: string; link?: string; footer?: string[];
+}> = ({ from = '', to = '', date = '', subject = '', attachment, body = [], button, link, footer = [] }) => {
+  const w = 780, X = 36, F = 28, LH = 38, MAX = 40;
+  let y = 120, g = '';
+  const put = (s: string, o: Parameters<typeof t>[4] = {}, size = F, lh = LH) => {
+    g += t(X, y, s, size, o);
+    y += lh;
+  };
+  const field = (k: string, v: string, o: Parameters<typeof t>[4] = {}) => {
+    put(k, { fill: P.greyDark, bold: true }, 20, 30);
+    for (const l of wrapText(v, 44)) put(l, o, 24, 32);
+    y += 8;
+  };
+  field('Od', from);
+  field('Do', to);
+  field('Data', date);
+  field('Temat', subject, { bold: true, fill: P.red });
+  const hdrEnd = y + 4;
+  y += 36;
+  if (attachment) {
+    const aw = Math.min(w - 2 * X, 60 + attachment.length * 13);
+    g += `<rect x="${X}" y="${y - 30}" width="${aw}" height="46" rx="23" fill="${P.wall2}"/>` + t(X + 22, y + 1, '📎 ' + attachment, 20);
+    y += 50;
+  }
+  for (const p of paragraphs(body)) {
+    if (!p) {
+      y += 14;
+      continue;
+    }
+    const red = p.startsWith('!');
+    for (const l of wrapText(p.replace(/^!/, ''), MAX)) put(l, red ? { fill: P.red, bold: true } : {});
+  }
+  if (button) {
+    y += 10;
+    g += `<rect x="${X}" y="${y - 6}" width="${w - 2 * X}" height="70" rx="12" fill="${P.purple}"/>` + t(w / 2, y + 40, button, 28, { fill: P.white, bold: true, anchor: 'middle' });
+    y += 100;
+  }
+  if (link) for (const l of wrapText(link.replace(/([/?=])/g, '$1 '), 42)) put(l.replace(/ /g, ''), { fill: P.greyDark }, 20, 28);
+  y += 16;
+  for (const p of paragraphs(footer)) {
+    if (!p) {
+      y += 10;
+      continue;
+    }
+    for (const l of wrapText(p, 50)) put(l, { fill: P.greyDark }, 20, 28);
+  }
+  const h = y + 30;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 18) + `<rect width="${w}" height="${h}" rx="18" fill="${P.white}"/>` +
+      `<rect y="72" width="${w}" height="${hdrEnd - 72}" fill="#FFF6F6"/>` +
+      `<path d="M0 18 a18 18 0 0 1 18 -18 h${w - 36} a18 18 0 0 1 18 18 v54 h-${w} z" fill="${P.purple}"/>` +
+      t(X, 48, 'Poczta — wiadomość', 26, { fill: P.white, bold: true }) +
+      `<circle cx="${w - 40}" cy="36" r="10" fill="${P.red}"/><circle cx="${w - 72}" cy="36" r="10" fill="${P.yellow}"/><circle cx="${w - 104}" cy="36" r="10" fill="${P.green}"/>` + g,
+  };
+};
+
+/**
+ * Historia przeglądarki w pionie (te same wiersze co `browserHistory`: „godzina|adres|tytuł”, „!” na początku = wiersz wyróżniony -
+ * godzina i tytuł na czerwono, jak w wersji poziomej).
+ */
+export const browserHistoryPortrait: PropFn<{ rows?: string[] }> = ({ rows = [] }) => {
+  const w = 780, rowH = 150, h = 250 + rows.length * rowH;
+  return {
+    w, h,
+    svg:
+      shadow(w, h, 18) + `<rect width="${w}" height="${h}" rx="18" fill="${P.white}"/>` +
+      `<path d="M0 18 a18 18 0 0 1 18 -18 h${w - 36} a18 18 0 0 1 18 18 v54 h-${w} z" fill="#E3E4EE"/>` +
+      `<circle cx="36" cy="36" r="10" fill="${P.red}"/><circle cx="68" cy="36" r="10" fill="${P.yellow}"/><circle cx="100" cy="36" r="10" fill="${P.green}"/>` +
+      t(140, 46, 'Historia', 26, { bold: true }) +
+      `<rect x="30" y="92" width="${w - 60}" height="56" rx="28" fill="#F1F2F7"/>` + t(60, 130, 'historia przeglądania', 24, { fill: P.greyDark }) +
+      t(36, 214, 'Dzisiaj — wtorek', 32, { bold: true }) +
+      rows
+        .map((r, i) => {
+          const marked = r.startsWith('!');
+          const [time, url, title] = r.replace(/^!/, '').split('|');
+          const y = 250 + i * rowH;
+          return `<line x1="30" y1="${y}" x2="${w - 30}" y2="${y}" stroke="#E3E4EE" stroke-width="2"/>` +
+            t(36, y + 62, time, 30, { bold: true, fill: marked ? P.red : P.greyDark }) +
+            t(160, y + 58, title, 30, { bold: true, fill: marked ? P.red : P.ink }) + t(160, y + 100, url, 24, { fill: P.greyDark });
+        })
+        .join(''),
+  };
+};
+
+/* ---------- raport zamknięcia sprawy — pionowy, jedna duża strona (U/D-104) ---------- */
+export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: string[] }> = ({
+  caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'],
+}) => {
+  const w = 840, h = 1540, X = 50;
+  const box = (x: number, label: string) => `<rect x="${x}" y="250" width="232" height="120" rx="12" fill="#F6F6F4"/>` + t(x + 20, 284, label, 20, { bold: true, fill: P.greyDark, spacing: 2 });
+  return {
+    w, h,
+    svg:
+      `<rect x="14" y="18" width="${w}" height="${h}" rx="20" fill="${P.ink}" opacity="0.18"/>` +
+      `<rect width="${w}" height="${h}" rx="20" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+      `<rect x="24" y="24" width="${w - 48}" height="${h - 48}" rx="8" fill="${P.white}"/>` +
+      t(X, 92, 'RAPORT KOŃCOWY', 24, { bold: true, fill: P.greyDark, spacing: 4 }) +
+      t(X, 150, caseNo, 52, { bold: true }) + t(X, 204, title, 34, { bold: true, fill: P.purpleDark }) +
+      box(X, 'DOWODY') + box(X + 250, 'CZAS') + box(X + 500, 'XP') +
+      t(X, 432, 'WNIOSKI ŚLEDCZEGO', 22, { bold: true, fill: P.greyDark, spacing: 2 }) +
+      Array.from({ length: 8 }, (_, i) => `<line x1="${X}" y1="${500 + i * 50}" x2="${w - X}" y2="${500 + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
+      t(X, 940, 'PODPIS PROWADZĄCEGO', 20, { bold: true, fill: P.greyDark, spacing: 2 }) +
+      `<line x1="${X + 330}" y1="945" x2="${w - X}" y2="945" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>` +
+      `<line x1="${X}" y1="990" x2="${w - X}" y2="990" stroke="${P.grey}" stroke-width="2"/>` +
+      t(X, 1036, 'DOWODY RZECZOWE', 22, { bold: true, fill: P.greyDark, spacing: 2 }) +
+      bags
+        .slice(0, 9)
+        .map((l, i) => {
+          const c = i % 3, r = Math.floor(i / 3), x = X + c * 150, y = 1062 + r * 138;
+          return `<g transform="rotate(${(c + r) % 2 ? 2 : -2} ${x + 66} ${y + 60})"><rect x="${x}" y="${y}" width="132" height="120" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
+            `<rect x="${x}" y="${y}" width="132" height="24" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 66, y + 18, 'DOWÓD', 14, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
+            `<rect x="${x + 14}" y="${y + 38}" width="104" height="64" rx="4" fill="${P.white}"/>` + t(x + 66, y + 78, l, 17, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
+        })
+        .join(''),
+    parts: {
+      'slot-dowody': { x: X, y: 294, w: 232, h: 72 },
+      'slot-czas': { x: X + 250, y: 294, w: 232, h: 72 },
+      'slot-xp': { x: X + 500, y: 294, w: 232, h: 72 },
+      'slot-wnioski': { x: X, y: 452, w: w - 2 * X, h: 420 },
+      'slot-podpis': { x: X + 330, y: 880, w: w - 2 * X - 330, h: 64 },
+      'slot-pieczec': { x: 500, y: 1330, w: 320, h: 170 },
+      'slot-liscik': { x: 540, y: 1062, w: 250, h: 240 },
+    },
+  };
+};
+
+export const PION_OKNA_PROPS = { mailWindowPortrait, browserHistoryPortrait, reportPortrait };

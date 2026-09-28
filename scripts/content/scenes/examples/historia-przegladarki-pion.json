@@ -1,0 +1,25 @@
+{
+  "width": 868,
+  "height": 1088,
+  "background": {
+    "flat": true,
+    "wall": "none"
+  },
+  "items": [
+    {
+      "id": "historia",
+      "prop": "browserHistoryPortrait",
+      "x": 36,
+      "y": 36,
+      "params": {
+        "rows": [
+          "9:04|unfooly.com/intranet|Intranet Unfooly",
+          "!8:58|bankwektor-weryfikacja.pl/login|Weryfikacja konta firmowego",
+          "8:47|poczta.unfooly.com|Poczta — skrzynka odbiorcza",
+          "8:31|kalendarz.unfooly.com|Kalendarz zespołu",
+          "8:05|unfooly.com/stolowka|Menu stołówki"
+        ]
+      }
+    }
+  ]
+}

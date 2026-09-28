@@ -125,6 +125,9 @@ w CI: `docs/content/MODULE-PLAYBOOK.md`.
 | prop | parametry | części |
 |---|---|---|
 | `screenFrame` | `sw, sh` (ekran), `wallpaper` (#rgb/#rrggbb), `bezel` | |
+| `mailWindowPortrait` | jak `mailWindow` (okno maila w pionie, duży zawijany tekst, D-104) | |
+| `browserHistoryPortrait` | `rows[]` jak `browserHistory` („!” = wiersz wyróżniony) | |
+| `reportPortrait` | `caseNo, title, bags[]` (raport zamknięcia jako jedna strona) | `slot-dowody`, `slot-czas`, `slot-xp`, `slot-wnioski`, `slot-podpis`, `slot-pieczec`, `slot-liscik` |
 
 ## Animacje
 

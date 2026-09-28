@@ -627,6 +627,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
      sygnału; layout-check pilnuje tylko modułu 1. Limit długości `lessons` w walidacji treści albo test w `odprawa.test`.
 - Akceptacja: (1) decyzja właściciela; (2) walidacja albo test.
 
+### B-128 Drugi moduł: narzędzia i otwarte kwestie treści (D-108)
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: code review `docs/module-playbook` (D-108)
+- Opis:
+  1. Narzędzia weryfikacji są pod moduł 1: `scripts/content/scenes/odprawa.test.ts` bierze wszystkie `scenes/examples/*.json` i porównuje
+     je z grafikami `wyludzone-haslo` (`toHaveLength(28)`), harness `apps/web/src/app/dev/player-harness/page.dev.tsx` ma
+     `MODULE_SLUG = 'wyludzone-haslo'`, a `scripts/e2e-module-01.mjs` przechodzi tylko moduł 1. Uogólnić: źródła scen w
+     `scenes/examples/<slug>/`, slug w harnessie i layout-check, e2e per moduł.
+  2. `steps[].caller.avatar` (BRIEFING, krok `call`) nie jest w `ASSET_PATHS` (`scripts/content/src/assets.ts`) - avatar dzwoniącego nie
+     zostałby opublikowany.
+  3. Brak zapisu sprawdzenia fikcyjnych nazw modułu 1 („Bank Wektor”, `bankwektor.pl`, `bankwektor-weryfikacja.pl`) - wynik i data do
+     `SCENARIUSZ.md`.
+  4. Nazwa okienka easter egga „GTA6_PL.exe” (D-100) nawiązuje do cudzej marki - decyzja właściciela: zostaje czy zmiana nazwy.
+- Akceptacja: (1) drugi moduł przechodzi layout-check i e2e; (2) pole w `ASSET_PATHS` z testem; (3) zapis w scenariuszu; (4) decyzja.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

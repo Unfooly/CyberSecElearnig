@@ -196,14 +196,24 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(screen.queryByRole('list', { name: 'Elementy sceny' })).not.toBeInTheDocument();
   });
 
-  it('zbliżenie leży NA scenie (role=dialog, aria-label = nazwa przedmiotu, ink 40% + blur), bez białej karty i bez bloków tekstu; punkty i obraz pod nim dostają aria-hidden', () => {
+  it('data-zoom-open (D-101): przy otwartym zbliżeniu punkty i podpowiedź panoramy pod nim schowane (globals.css, opacity), po Odłóż - z powrotem i fokus na przedmiocie', () => {
+    setup(scene, { summary });
+    const hotspot = screen.getByTestId('hotspot-overlay-h1');
+    fireEvent.click(hotspot);
+    const view = dialog().parentElement!;
+    expect(view).toHaveAttribute('data-zoom-open');
+    putDown();
+    expect(view).not.toHaveAttribute('data-zoom-open');
+    expect(hotspot).toHaveFocus();
+  });
+
+  it('zbliżenie leży NA scenie (role=dialog, aria-label = nazwa przedmiotu) bez tła i przyciemnienia (D-101), bez białej karty i bez bloków tekstu; punkty i obraz pod nim dostają aria-hidden', () => {
     setup(scene, { summary });
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
 
     expect(dialog()).toHaveAttribute('aria-label', 'Monitor');
     expect(dialog()).toHaveAttribute('aria-modal', 'true');
-    expect(dialog().className).toMatch(/bg-ink\/40/);
-    expect(dialog().className).toMatch(/backdrop-blur/);
+    expect(dialog().className).not.toMatch(/bg-ink|backdrop-blur/);
     expect(dialog().querySelector('.hotspot-card, .bg-white, h3')).toBeNull();
     expect(within(dialog()).getByTestId('scene-zoom-graphic').className).toMatch(/max-h-\[88%\]/);
 
@@ -708,7 +718,9 @@ describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)
     pick('Zdjęcie');
     const img = within(dialog()).getByAltText('Zbliżenie karteczki z hasłem');
     expect(img.className).toMatch(/object-contain/);
-    expect(img.className).toMatch(/shadow-card/);
+    // Cień po kształcie przezroczystej grafiki (drop-shadow), nie prostokątny cień karty (D-101).
+    expect(img.className).toMatch(/\bzoom-shadow\b/);
+    expect(img.className).not.toMatch(/shadow-card|rounded/);
     expect(img.className).toMatch(/max-w-\[88%\]/);
     expect(within(dialog()).queryByText('Zbliżenie na kartkę.')).not.toBeInTheDocument();
     expect(within(dialog()).queryByRole('heading')).not.toBeInTheDocument();

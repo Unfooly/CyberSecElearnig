@@ -330,6 +330,19 @@
 /* Zagnieżdżona scena w nakładce zbliżenia (SceneHotspotsBlock.tsx, NestedSceneImage, D-086): ramka z jawnym rozmiarem (część nakładki,
    max 88% sceny) jest kontenerem zapytań, obraz "contain" jak scena główna - także na telefonie w pionie (bez panoramy: pulpit ma
    zmieścić się w całości razem z ikoną "Wróć"). */
+/* Grafika otwierana kliknięciem (zbliżenie przedmiotu, pulpit w ramce monitora - D-101) ma przezroczyste tło: cień po kształcie
+   grafiki (filter), nie prostokątny box-shadow karty. */
+.zoom-shadow {
+  filter: drop-shadow(0 18px 30px rgb(19 19 19 / 0.35));
+}
+/* Bez przyciemnienia pod zbliżeniem ramki i znaczniki punktów oraz podpowiedź panoramy przebijałyby spod grafiki - chowamy je, gdy
+   zbliżenie jest otwarte (scena główna), a punkty pulpitu - gdy otwarty jest jego przedmiot (poziom 2). Są i tak aria-hidden i poza Tab.
+   opacity, NIE visibility: przy zamykaniu fokus wraca na przedmiot, zanim React zdejmie atrybut - element z visibility:hidden nie
+   przyjąłby fokusu (focus() nic by nie zrobiło, fokus spadłby na body; code review D-101). */
+[data-zoom-open] .scene-pan-frame :is(.scene-hotspot, .scene-pan-hint, .scene-pan-edge),
+[data-testid='scene-zoom'][data-phase^='inner-'] .hotspot-nested-scene-box .scene-hotspot {
+  opacity: 0;
+}
 .hotspot-nested-scene-frame {
   container-type: size;
 }

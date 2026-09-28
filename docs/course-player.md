@@ -56,7 +56,7 @@ Każde pole schematu bloku jest sklasyfikowane w `packages/content/src/blocks.ts
 ## Narracja i napisy
 
 - Blok ma opcjonalne `narration` (tekst, `audioUrl`, `durationMs`, opcjonalne `cues` z czasami). Nagranie i `cues` wpisuje skrypt TTS (PR 3).
-- `NarrationPlayer` (dolny pasek): play, suwak, czas, przełącznik „Lektor” (`role="switch"`, zapis na koncie: `users.narrationEnabled`), napis w jednej linii przewijany z nagraniem, transkrypcja. Napisy z `cues`, a bez nich podział na zdania proporcjonalny do długości (`lib/narration-captions.ts`).
+- `NarrationBar` (dolny pasek): play, napis w jednej linii z nagraniem, transkrypcja, przełącznik „Lektor” (przycisk z `aria-pressed`, zapis na koncie: `users.narrationEnabled`). Na scenie węższej niż 640 px (D-097) pasek to jeden rząd ikon 44×44 + „Dalej”, a napis przechodzi do wiersza nad przyciskami. Napisy z `cues`, a bez nich podział na zdania proporcjonalny do długości (`lib/narration-captions.ts`).
 - Autoodtwarzanie tylko po „Dalej”, gdy poprzedni blok miał nagranie i lektor jest włączony. Blok bez narracji nie ma rzędu odtwarzacza ani przełącznika (zamierzone).
 - Narracja pojedynczych elementów (punkt sceny, kwestia dialogu): B-078.
 

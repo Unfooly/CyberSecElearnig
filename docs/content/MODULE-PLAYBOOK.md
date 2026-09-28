@@ -163,7 +163,12 @@ albo jest owinięty ramką monitora.
   mówiąca = nowa rola w schemacie i w `voices.json` (D-082). Klucz API tylko w `scripts/content/.env.local` (D-060).
 - **`text` a `spokenText`:** `text` to napis na ekranie i w transkrypcji; `spokenText` (opcjonalny, niewysyłany do klienta) to to, co
   czyta głos. Używaj go zawsze, gdy zapis różni się od wymowy: **liczby i godziny słownie** („9:40” → „dziewiąta czterdzieści”,
-  „14 000 zł” → „czternaście tysięcy złotych”), domeny i adresy tak, jak się je mówi, skróty rozwinięte.
+  „14 000 zł” → „czternaście tysięcy złotych”), domeny i adresy tak, jak się je mówi, skróty rozwinięte. Przypadek zależy od zdania:
+  „o 8:47” → „o ósmej czterdzieści siedem”, samodzielnie „ósma czterdzieści siedem”, „przypomnij sobie … 8:47” → „ósmą czterdzieści
+  siedem”. **Reguła (D-109):** tekst czytany przez głos (`spokenText`, a bez niego `text`) żadnej NAGRYWANEJ narracji (`NARRATION_PATHS`
+  potoku: bloki, kroki odprawy, hotspoty, media, sceny zagnieżdżone, kwestie i odpowiedzi rozmowy) nie ma cyfr - pilnuje tego walidacja
+  modułu (`parseModule`) i test w CI (`scripts/content/src/spoken-digits.test.ts`). Podpowiedzi (`hints`) są tylko tekstem - bez tej
+  reguły. Narracja ze `spokenText` nie ma `cues` - napisy dzieli odtwarzacz (zdania z `text`).
 - **Głos lektora:** spokojnie, jak narrator kryminału, bez żartów; opowiada w trzeciej osobie o postaciach, a do gracza zwraca się per
   „ty” („Zacznij od jej biura”). Podpowiedzi (`tip`, reakcje) mówią do gracza per „ty” i są tylko tekstem, bez nagrań.
 - **Publikacja:** `npm run tts --prefix scripts/content -- <slug> --storage r2` (tylko brakujące nagrania; bez `--storage r2` pliki
@@ -201,7 +206,8 @@ albo jest owinięty ramką monitora.
 - [ ] Grafiki z kompozytora; zbliżenia z przezroczystym tłem (`crop-zooms` / `wrap-in-monitor`); warianty pionowe tam, gdzie tekst jest
       drobny; kanoniczne `*.hotspots.json` w `scenes/examples/`; `npm test` w `scripts/content` zielone (sceny, zasoby).
 - [ ] Zasoby i nagrania opublikowane z gałęzi PR (`--storage r2`), `--assets --check` (+ `--remote`) i `tts --check` zielone.
-- [ ] Nagrania: role z `VOICE_ROLES`, `spokenText` przy liczbach, godzinach i domenach.
+- [ ] Nagrania: role z `VOICE_ROLES`, `spokenText` przy liczbach, godzinach i domenach (słownie, w dobrym przypadku;
+      `spoken-digits.test.ts` zielony).
 - [ ] Nazwy fikcyjne i sprawdzone; brak formularzy logowania i cudzych logotypów.
 - [ ] layout-check (`node scripts/layout-check.mjs`) zielony i wklejony do PR (CLAUDE.md, reguła 12) - dla nowego modułu po uogólnieniu
       harnessu (B-128).

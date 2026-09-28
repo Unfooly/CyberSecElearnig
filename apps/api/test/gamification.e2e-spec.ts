@@ -27,34 +27,12 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
   let departmentId: string;
   let firstStepCourseId: string;
   let perfectScoreCourseId: string;
+  // Moduł 1 (osiągnięcia D-111): kurs po slugu - tworzony tu tylko, jeśli nie ma go w bazie; własna wersja testowa zawsze.
+  let module1CourseId: string;
+  let module1CreatedHere = false;
+  let module1VersionId: string | undefined;
 
-  // Test NIE zależy od zewnętrznego `npm run seed:badges` - upsertuje
-  // wyłącznie te dwie odznaki, które faktycznie wykorzystuje, żeby przejście
-  // testów nie było uwarunkowane ręcznym krokiem operacyjnym.
-  async function seedRequiredBadges(): Promise<void> {
-    await prisma.badge.upsert({
-      where: { code: 'FIRST_STEP' },
-      update: {},
-      create: {
-        code: 'FIRST_STEP',
-        title: 'Pierwszy Krok',
-        description: 'Ukończono pierwszy kurs.',
-        icon: 'first-step',
-        xpReward: 50,
-      },
-    });
-    await prisma.badge.upsert({
-      where: { code: 'PERFECT_SCORE' },
-      update: {},
-      create: {
-        code: 'PERFECT_SCORE',
-        title: 'Sokole Oko',
-        description: 'Ukończono kurs z wynikiem 100%.',
-        icon: 'perfect-score',
-        xpReward: 50,
-      },
-    });
-  }
+  // Katalog osiągnięć (D-111) wstawia migracja 20260928200000_achievements - test NIE zależy od `npm run seed:badges`.
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -65,12 +43,11 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
-    await app.init();
+    // listen(0), nie init(): test idempotencji wysyła równoległe żądania (CLAUDE.md, reguła 9).
+    await app.listen(0);
 
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
-
-    await seedRequiredBadges();
 
     const orgAUser1Response = await registerVerified(app, tenantPrisma, {
         email: orgAUser1Email,
@@ -113,8 +90,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       }),
     );
 
-    // Kurs 1: pojedynczy blok VIDEO (bez oceny) - ukończenie odblokowuje
-    // FIRST_STEP, bez bonusu za perfect score (score zostaje null).
+    // Kurs 1: pojedynczy blok VIDEO (bez oceny) - ukończenie daje osiągnięcie
+    // First Case Closed, bez bonusu za perfect score (score zostaje null).
     const firstStepCourse = await prisma.course.create({
       data: {
         title: `Kurs FIRST_STEP ${uniqueSuffix}`,
@@ -126,7 +103,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     firstStepCourseId = firstStepCourse.id;
 
     // Kurs 2: pojedynczy QUIZ z jedną poprawną odpowiedzią - odpowiedź
-    // poprawna daje score=100 -> bonus +50 XP i odznakę PERFECT_SCORE.
+    // poprawna daje score=100 -> bonus +50 XP (bez osiągnięcia: to nie moduł 1).
     const perfectScoreCourse = await prisma.course.create({
       data: {
         title: `Kurs PERFECT_SCORE ${uniqueSuffix}`,
@@ -166,6 +143,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     await prisma.department.deleteMany({ where: { name: { startsWith: 'Dział Testowy' } } });
     await prisma.organization.deleteMany({ where: { name: { endsWith: 'gami-e2e-test.test' } } });
     await prisma.course.deleteMany({ where: { id: { in: [firstStepCourseId, perfectScoreCourseId] } } });
+    if (module1VersionId) await prisma.courseVersion.deleteMany({ where: { id: module1VersionId } });
+    if (module1CreatedHere) await prisma.course.deleteMany({ where: { id: module1CourseId } });
     await app.close();
   });
 
@@ -178,8 +157,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     });
   });
 
-  describe('Happy path: ukończenie kursu -> XP, level, odznaka', () => {
-    it('ukończenie pierwszego kursu (bez oceny) daje +100 XP i odblokowuje FIRST_STEP', async () => {
+  describe('Happy path: ukończenie kursu -> XP, level, osiągnięcie (D-111)', () => {
+    it('ukończenie pierwszego kursu (bez oceny) daje +100 XP i osiągnięcie First Case Closed (+50 XP)', async () => {
       await request(app.getHttpServer())
         .post(`/courses/${firstStepCourseId}/start`)
         .set('Authorization', `Bearer ${orgAUser1Token}`)
@@ -198,7 +177,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         newLevel: 2,
         previousLevel: 1,
         leveledUp: true,
-        unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+        unlockedBadges: [
+          { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' },
+        ],
         // Konto zaczyna od 0 XP/poziom 1: 0% postępu SPRZED tego ukończenia; awans na poziom 2, więc pasek "przed
         // -> po" (SummaryScreen) kończy się na 100% (przycięty - sam awans/nowy poziom pokazuje osobny komunikat).
         levelProgressBeforePercent: 0,
@@ -210,29 +191,39 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
 
-      // +100 (ukończenie) +50 (xpReward odznaki FIRST_STEP) = 150
+      // +100 (ukończenie) +50 (xpReward osiągnięcia First Case Closed) = 150
       expect(summary.body.xp).toBe(150);
       expect(summary.body.level).toBe(2); // floor(sqrt(150/100))+1 = 2
       expect(summary.body.badges).toContainEqual(
-        expect.objectContaining({ code: 'FIRST_STEP' }),
+        expect.objectContaining({ code: 'first-case-closed' }),
       );
     });
 
-    it('GET /gamification/badges pokazuje FIRST_STEP jako isUnlocked=true, PERFECT_SCORE jako false', async () => {
+    it('GET /gamification/badges: trzy osiągnięcia w kolejności katalogu, bez wycofanych odznak; tajne niezdobyte bez nazwy', async () => {
       const response = await request(app.getHttpServer())
         .get('/gamification/badges')
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
 
-      expect(response.body).toContainEqual(
-        expect.objectContaining({ code: 'FIRST_STEP', isUnlocked: true }),
-      );
-      expect(response.body).toContainEqual(
-        expect.objectContaining({ code: 'PERFECT_SCORE', isUnlocked: false, unlockedAt: null }),
-      );
+      expect(response.body.map((b: { code: string }) => b.code)).toEqual(['first-case-closed', 'flawless-case', 'secret-3']);
+      expect(response.body[0]).toMatchObject({ title: 'First Case Closed', rank: 'MILESTONE', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
+      expect(response.body[1]).toMatchObject({ title: 'Flawless Case', rank: 'LEGENDARY', isUnlocked: false, unlockedAt: null });
+      expect(response.body[2]).toMatchObject({
+        title: null,
+        description: null,
+        conditionText: null,
+        rank: 'SECRET',
+        hidden: true,
+        icon: 'osiagniecie-tajne-zablokowane',
+        lockedIcon: 'osiagniecie-tajne-zablokowane',
+        xpReward: 0,
+        isUnlocked: false,
+      });
+      // Nic w odpowiedzi nie zdradza tajnego osiągnięcia - także nazwa pliku grafiki (neutralna).
+      expect(JSON.stringify(response.body[2])).not.toMatch(/curious|ciekawsk|detekty|gr[ęa]/i);
     });
 
-    it('ukończenie drugiego kursu ze 100% wyniku dolicza bonus i odblokowuje PERFECT_SCORE', async () => {
+    it('ukończenie drugiego kursu ze 100% wyniku dolicza bonus 100%, bez nowego osiągnięcia (to nie moduł 1)', async () => {
       await request(app.getHttpServer())
         .post(`/courses/${perfectScoreCourseId}/start`)
         .set('Authorization', `Bearer ${orgAUser1Token}`)
@@ -250,23 +241,129 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
 
-      // 150 (z poprzedniego testu) + 100 (ukończenie) + 50 (bonus 100%) + 50
-      // (xpReward odznaki PERFECT_SCORE) = 350
-      expect(summary.body.xp).toBe(350);
-      expect(summary.body.badges.map((b: { code: string }) => b.code).sort()).toEqual([
-        'FIRST_STEP',
-        'PERFECT_SCORE',
-      ]);
+      // 150 (z poprzedniego testu) + 100 (ukończenie) + 50 (bonus 100%) = 300; First Case Closed już zdobyte (bez drugiego XP).
+      expect(response.body.gamification.unlockedBadges).toEqual([]);
+      expect(summary.body.xp).toBe(300);
+      expect(summary.body.badges.map((b: { code: string }) => b.code)).toEqual(['first-case-closed']);
     });
 
     it('UserBadge zapisuje prawidłowe organizationId (nie null, zgodne z organizacją usera)', async () => {
       const badges = await tenantPrisma.runInOrgContext(orgAId, (tx) =>
         tx.userBadge.findMany({ where: { userId: orgAUser1Id } }),
       );
-      expect(badges.length).toBeGreaterThanOrEqual(2);
+      expect(badges).toHaveLength(1);
       for (const badge of badges) {
         expect(badge.organizationId).toBe(orgAId);
       }
+    });
+  });
+
+  describe('Osiągnięcia: przyznanie wsteczne, idempotencja, izolacja A/B (D-111)', () => {
+    let orgBId: string;
+    let orgBUserId: string;
+    const completedAt = new Date('2026-09-01T10:00:00.000Z');
+    const easterEggAt = '2026-09-01T09:50:00.000Z';
+
+    beforeAll(async () => {
+      // Moduł 1 rozpoznajemy po slugu (D-062). W bazie deweloperskiej może już być zaimportowany - wtedy dokładamy tylko
+      // własną wersję testową (sprzątana na końcu), inaczej tworzymy kurs.
+      const existing = await prisma.course.findUnique({ where: { slug: 'wyludzone-haslo' } });
+      if (existing) {
+        module1CourseId = existing.id;
+      } else {
+        module1CourseId = (
+          await prisma.course.create({
+            data: { title: 'Wyłudzone hasło', slug: 'wyludzone-haslo', category: 'PHISHING_SOCIAL_ENGINEERING', durationMinutes: 12, contentBlocks: [] },
+          })
+        ).id;
+        module1CreatedHere = true;
+      }
+      const lastVersion = await prisma.courseVersion.findFirst({ where: { courseId: module1CourseId }, orderBy: { version: 'desc' } });
+      const blocks = [
+        {
+          id: 'scena',
+          type: 'SCENE_HOTSPOTS',
+          hotspots: [{ id: 'dowod', evidence: true, note: { text: 'Ślad' } }],
+        },
+      ];
+      module1VersionId = (
+        await prisma.courseVersion.create({
+          data: {
+            courseId: module1CourseId,
+            version: (lastVersion?.version ?? 0) + 1,
+            schemaVersion: 5,
+            contentHash: `gami-e2e-${uniqueSuffix}`,
+            contentBlocks: blocks,
+            blockCount: blocks.length,
+          },
+        })
+      ).id;
+
+      const orgBUser = await tenantPrisma.runAuthLookup({ email: orgBUserEmail });
+      orgBId = orgBUser!.organizationId;
+      orgBUserId = orgBUser!.id;
+      // Stan sprzed wdrożenia osiągnięć: sprawa zamknięta na 100%, komplet dowodów, easter egg znaleziony (wyróżnienie z Q).
+      await tenantPrisma.runInOrgContext(orgBId, (tx) =>
+        tx.courseAssignment.create({
+          data: {
+            organizationId: orgBId,
+            userId: orgBUserId,
+            courseId: module1CourseId,
+            courseVersionId: module1VersionId,
+            status: 'COMPLETED',
+            score: 100,
+            currentBlockIndex: 1,
+            completedAt,
+            progress: {
+              v: 2,
+              blocks: { scena: { type: 'SCENE_HOTSPOTS', done: true, answeredAt: easterEggAt, weight: 0, easterEggs: ['ciekawski-detektyw'] } },
+              notes: ['scena.dowod'],
+            },
+          },
+        }),
+      );
+    });
+
+    // Sprzątanie wersji i kursu: w afterAll całego pliku, PO organizacjach (przypisania znikają z nimi kaskadowo, a wersja
+    // z przypisaniem jest chroniona - RESTRICT).
+    it('przyznanie wsteczne: kto spełnił warunki wcześniej, dostaje wszystkie trzy, z datą spełnienia warunku i bez XP', async () => {
+      const xpBefore = (await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.user.findUniqueOrThrow({ where: { id: orgBUserId } }))).xp;
+      const response = await request(app.getHttpServer()).get('/gamification/badges').set('Authorization', `Bearer ${orgBToken}`).expect(200);
+
+      expect(response.body).toEqual([
+        expect.objectContaining({ code: 'first-case-closed', isUnlocked: true, unlockedAt: completedAt.toISOString() }),
+        expect.objectContaining({ code: 'flawless-case', isUnlocked: true, unlockedAt: completedAt.toISOString() }),
+        expect.objectContaining({
+          code: 'curious-detective',
+          title: 'Curious Detective',
+          description: 'Otworzyłeś podejrzaną grę na pulpicie Anny. Na szczęście tylko w ćwiczeniu.',
+          icon: 'osiagniecie-ciekawski-detektyw',
+          isUnlocked: true,
+          unlockedAt: easterEggAt,
+        }),
+      ]);
+      const xpAfter = (await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.user.findUniqueOrThrow({ where: { id: orgBUserId } }))).xp;
+      expect(xpAfter).toBe(xpBefore);
+    });
+
+    it('idempotentne: kolejne (także równoległe) wejścia nie dublują osiągnięć', async () => {
+      const results = await Promise.allSettled(
+        [1, 2, 3].map(() => request(app.getHttpServer()).get('/gamification/badges').set('Authorization', `Bearer ${orgBToken}`)),
+      );
+      for (const result of results) expect(result.status === 'fulfilled' && result.value.status).toBe(200);
+      const rows = await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.userBadge.findMany({ where: { userId: orgBUserId } }));
+      expect(rows).toHaveLength(3);
+    });
+
+    it('izolacja A/B: osiągnięcia użytkownika B są wyłącznie w organizacji B; A ich nie dostaje i nie widzi', async () => {
+      const inOrgA = await tenantPrisma.runInOrgContext(orgAId, (tx) => tx.userBadge.findMany({ where: { userId: orgBUserId } }));
+      expect(inOrgA).toEqual([]);
+      const orgBRows = await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.userBadge.findMany({ where: { userId: orgBUserId } }));
+      expect(orgBRows.every((row) => row.organizationId === orgBId)).toBe(true);
+
+      const orgA = await request(app.getHttpServer()).get('/gamification/badges').set('Authorization', `Bearer ${orgAUser1Token}`).expect(200);
+      expect(orgA.body.filter((b: { isUnlocked: boolean }) => b.isUnlocked).map((b: { code: string }) => b.code)).toEqual(['first-case-closed']);
+      expect(orgA.body[2].code).toBe('secret-3');
     });
   });
 
@@ -446,7 +543,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(userIds).toContain(orgAUser1Id);
 
       // orgAUser2 ma xp=500 (ustawione w fixture), więc powinien być przed
-      // orgAUser1 (350 XP w tym momencie) w rankingu malejącym po XP.
+      // orgAUser1 (300 XP w tym momencie) w rankingu malejącym po XP.
       const ranks = new Map(response.body.map((e: { userId: string; rank: number }) => [e.userId, e.rank]));
       const user2Entry = response.body.find((e: { xp: number }) => e.xp === 500);
       expect(user2Entry).toBeDefined();

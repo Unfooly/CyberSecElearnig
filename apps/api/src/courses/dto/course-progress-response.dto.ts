@@ -1,4 +1,4 @@
-import { AssignmentStatus } from '@prisma/client';
+import { AchievementRank, AssignmentStatus } from '@prisma/client';
 import { ContentBlockType } from '../content-block.types';
 
 export class CourseProgressResponseDto {
@@ -38,7 +38,7 @@ export class CourseProgressResponseDto {
     // Poziom SPRZED tego przyznania XP - front pokazuje "Poziom {previousLevel}" obok paska.
     previousLevel: number;
     leveledUp: boolean;
-    unlockedBadges: { code: string; title: string; icon: string; xpReward: number }[];
+    unlockedBadges: { code: string; title: string; icon: string; xpReward: number; rank: AchievementRank | null }[];
     // Pasek poziomu "przed -> po" (SummaryScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
     // przy awansie `After` jest przycięty do 100 (patrz GamificationService.awardCourseCompletion).
     levelProgressBeforePercent: number;

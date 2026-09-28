@@ -318,8 +318,24 @@ export class CoursesService {
       // być spójne z faktem ukończenia kursu, nie osobnym krokiem po fakcie
       // (patrz GamificationService.awardCourseCompletion i plan architektury
       // tego modułu: świadomie bez event emittera, właśnie z tego powodu).
+      const evidence = evidenceSummary(progress, blocks);
+      const courseSlug = assignment.course.slug ?? null;
+      // Osiągnięcie za easter egg (D-111) - od razu przy zapisie bloku, w tej samej transakcji; bez XP (D-100). Komunikat
+      // w playerze pokazuje outro easter egga (przed zapisem bloku), więc wynik nie wraca w odpowiedzi.
+      await this.gamificationService.awardEasterEggAchievements(
+        tx,
+        organizationId,
+        userId,
+        courseSlug,
+        result.entry.easterEggs,
+      );
       const gamification = isComplete
-        ? await this.gamificationService.awardCourseCompletion(tx, organizationId, userId, { score })
+        ? await this.gamificationService.awardCourseCompletion(tx, organizationId, userId, {
+            score,
+            courseSlug,
+            evidence,
+            assignmentId: assignment.id,
+          })
         : null;
 
       return {
@@ -339,7 +355,7 @@ export class CoursesService {
           ...(reaction ? { reaction } : {}),
         },
         // Dowody po tym zapisie (liczby liczy serwer; total znany od startu dla wszystkich bloków, D-055 pkt 2).
-        evidence: evidenceSummary(progress, blocks),
+        evidence,
         // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
         notes: result.notesAdded
           .map((key) => resolveNote(blocks, key))
@@ -356,6 +372,7 @@ export class CoursesService {
                 title: badge.title,
                 icon: badge.icon,
                 xpReward: badge.xpReward,
+                rank: badge.rank,
               })),
               levelProgressBeforePercent: gamification.levelProgressBeforePercent,
               levelProgressAfterPercent: gamification.levelProgressAfterPercent,

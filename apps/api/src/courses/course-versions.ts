@@ -12,7 +12,7 @@ export interface ResolvedVersion {
   blocks: Block[];
 }
 
-function toResolved(version: CourseVersion): ResolvedVersion {
+export function toResolved(version: CourseVersion): ResolvedVersion {
   if (!Array.isArray(version.contentBlocks)) {
     // Błąd danych administracyjnych (treść kursu), nie błąd wejścia klienta - stąd 500, nie 400.
     throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');

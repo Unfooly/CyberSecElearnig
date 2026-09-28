@@ -77,6 +77,8 @@ describe('toClientBlock: brak wycieku klucza odpowiedzi', () => {
     expect(projected).not.toHaveProperty('hints');
     expect(projected).not.toHaveProperty('solution');
     expect(projected).not.toHaveProperty('answer');
+    // Oprawa pola (feat/browser-evidence) jest czysto wizualna - idzie do klienta.
+    expect(projected.frame).toBe('browser');
   });
 
   it('opcje QUIZ/BRANCHING tracą correct, outcome i feedback (także w blokach starego formatu)', () => {

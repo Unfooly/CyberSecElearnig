@@ -80,7 +80,7 @@ describe('SettingsClient', () => {
       />,
     );
 
-    expect(screen.getByRole('switch')).toBeDisabled();
+    expect(screen.getByRole('switch', { name: /dołączać samodzielnie/ })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Zweryfikuj domenę' })).toHaveAttribute('href', '/onboarding');
     expect(screen.getByText(/dostępna po zweryfikowaniu domeny/i)).toBeInTheDocument();
   });
@@ -90,10 +90,10 @@ describe('SettingsClient', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<SettingsClient organization={BASE} />);
 
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('switch', { name: /dołączać samodzielnie/ }));
 
     expect(await screen.findByText('Ustawienie zapisane.')).toBeInTheDocument();
-    expect(screen.getByRole('switch')).toBeChecked();
+    expect(screen.getByRole('switch', { name: /dołączać samodzielnie/ })).toBeChecked();
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/organization/settings',
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ selfJoinEnabled: true }) }),
@@ -104,20 +104,20 @@ describe('SettingsClient', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ message: 'Nie można.' }) }));
     render(<SettingsClient organization={BASE} />);
 
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('switch', { name: /dołączać samodzielnie/ }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Nie można.');
-    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked());
+    await waitFor(() => expect(screen.getByRole('switch', { name: /dołączać samodzielnie/ })).not.toBeChecked());
   });
 
   it('sukces z nieoczekiwanym ciałem odpowiedzi NIE cofa przełącznika', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
     render(<SettingsClient organization={BASE} />);
 
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('switch', { name: /dołączać samodzielnie/ }));
 
     expect(await screen.findByText('Ustawienie zapisane.')).toBeInTheDocument();
-    expect(screen.getByRole('switch')).toBeChecked();
+    expect(screen.getByRole('switch', { name: /dołączać samodzielnie/ })).toBeChecked();
   });
 
   describe('"Wyloguj wszędzie"', () => {
@@ -155,14 +155,35 @@ describe('SettingsClient', () => {
     });
   });
 
+  it('D-112: ranking organizacji - domyślnie włączony; wyłączenie wysyła PATCH tylko z leaderboardEnabled; błąd przywraca stan', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ leaderboardEnabled: false }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ message: 'Brak uprawnień.' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<SettingsClient organization={BASE} />);
+
+    const toggle = () => screen.getByRole('switch', { name: /Pokazuj ranking organizacji/ });
+    expect(toggle()).toBeChecked();
+    fireEvent.click(toggle());
+    await waitFor(() => expect(toggle()).not.toBeChecked());
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/organization/settings');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ leaderboardEnabled: false });
+    expect(await screen.findByText('Ranking wyłączony.')).toBeInTheDocument();
+
+    fireEvent.click(toggle());
+    expect(await screen.findByRole('alert')).toHaveTextContent('Brak uprawnień.');
+    expect(toggle()).not.toBeChecked();
+  });
+
   it('wyłączenie działa, gdy było włączone', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ selfJoinEnabled: false }) });
     vi.stubGlobal('fetch', fetchMock);
     render(<SettingsClient organization={{ ...BASE, selfJoinEnabled: true }} />);
 
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('switch', { name: /dołączać samodzielnie/ }));
 
-    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked());
+    await waitFor(() => expect(screen.getByRole('switch', { name: /dołączać samodzielnie/ })).not.toBeChecked());
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ selfJoinEnabled: false });
   });
 });

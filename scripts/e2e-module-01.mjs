@@ -466,6 +466,20 @@ try {
   await page.getByRole('button', { name: /^Curious Detective/ }).click();
   step('Osiągnięcia: rewers Curious Detective z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
 
+  // Przypinanie (D-112): z rewersu dwóch zdobytych kart -> sekcja „Przypięte” i miniatury przy imieniu w rankingu na /courses.
+  for (const name of ['Flawless Case', 'First Case Closed']) {
+    const pinResponse = page.waitForResponse((r) => r.url().includes('/api/gamification/pinned') && r.request().method() === 'PUT');
+    await page.getByRole('button', { name: new RegExp(`^${name} \\(`) }).click();
+    await page.getByTestId('achievement-pin').click();
+    step(`Przypinanie: ${name} zapisane na serwerze`, (await pinResponse).ok());
+  }
+  step('Przypinanie: sekcja „Przypięte” w kolejności przypięcia', (await page.getByTestId('pinned-item').allTextContents()).map((t) => t.replace(/^\d+\.\s*/, '').split('Odepnij')[0].trim()).join('|') === 'Flawless Case|First Case Closed');
+  await page.goto(`${WEB}/courses`);
+  const myRow = page.getByRole('row').filter({ has: page.getByText('Ty', { exact: true }) });
+  await myRow.waitFor();
+  const rowBadges = await myRow.getByTestId('pinned-badge').evaluateAll((els) => els.map((el) => el.getAttribute('title')));
+  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Flawless Case|First Case Closed', rowBadges.join('|'));
+
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {
   console.error(`\nBŁĄD: ${error.message}`);

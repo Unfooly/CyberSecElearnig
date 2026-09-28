@@ -37,7 +37,21 @@ export function backText(badge: Badge): string {
     .join(' ');
 }
 
-function AchievementCard({ badge, flipped, onToggle }: { badge: Badge; flipped: boolean; onToggle: () => void }) {
+function AchievementCard({
+  badge,
+  flipped,
+  onToggle,
+  pinned,
+  onTogglePin,
+}: {
+  badge: Badge;
+  flipped: boolean;
+  onToggle: () => void;
+  pinned: boolean;
+  onTogglePin?: (code: string) => void;
+}) {
+  // Przycisk przypięcia (D-112) tylko na rewersie ZDOBYTEJ karty - obok przycisku obrotu (nie w nim: przycisk w przycisku).
+  const canPin = badge.isUnlocked && !!onTogglePin;
   const secretLocked = badge.hidden && !badge.isUnlocked;
   const name = secretLocked ? '???' : (badge.title ?? '');
   const image = achievementImage(badge.isUnlocked ? badge.icon : (badge.lockedIcon ?? badge.icon));
@@ -45,7 +59,7 @@ function AchievementCard({ badge, flipped, onToggle }: { badge: Badge; flipped: 
   const back = badge.rank ? RANK_BACK[badge.rank] : 'bg-ink';
 
   return (
-    <li>
+    <li className="relative">
       <button
         type="button"
         aria-pressed={flipped}
@@ -84,22 +98,46 @@ function AchievementCard({ badge, flipped, onToggle }: { badge: Badge; flipped: 
           <span
             data-testid="achievement-back"
             aria-hidden="true"
-            className={`absolute inset-0 flex flex-col gap-2 overflow-y-auto rounded-card p-4 text-white [backface-visibility:hidden] motion-safe:[transform:rotateY(180deg)] motion-reduce:transition-[opacity,visibility] motion-reduce:duration-150 ${back} ${
+            className={`absolute inset-0 flex flex-col rounded-card text-white [backface-visibility:hidden] motion-safe:[transform:rotateY(180deg)] motion-reduce:transition-[opacity,visibility] motion-reduce:duration-150 ${back} ${
               flipped ? '' : 'motion-reduce:invisible motion-reduce:opacity-0'
             }`}
           >
-            <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/80">{rank}</span>
-            {!secretLocked && <span className="text-[17px] font-extrabold leading-tight">{badge.title}</span>}
-            {!secretLocked && badge.description && <span className="text-[15px] leading-snug">{badge.description}</span>}
-            <span className="mt-auto text-[15px] font-semibold leading-snug">{backStatus(badge)}</span>
+            {/* Tekst przewija się w swojej części karty - nad miejscem na przycisk przypięcia (przycisk niczego nie zasłania). */}
+            <span data-testid="achievement-back-scroll" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/80">{rank}</span>
+              {!secretLocked && <span className="text-[17px] font-extrabold leading-tight">{badge.title}</span>}
+              {!secretLocked && badge.description && <span className="text-[15px] leading-snug">{badge.description}</span>}
+              <span className="mt-auto text-[15px] font-semibold leading-snug">{backStatus(badge)}</span>
+            </span>
+            {canPin && <span aria-hidden="true" className="h-[76px] shrink-0" />}
           </span>
         </span>
       </button>
+      {canPin && flipped && (
+        <button
+          type="button"
+          onClick={() => onTogglePin!(badge.code)}
+          aria-label={`${pinned ? 'Odepnij' : 'Przypnij do profilu'}: ${badge.title ?? ''}`}
+          data-testid="achievement-pin"
+          className="absolute inset-x-3 bottom-3 z-10 min-h-[44px] rounded-btn bg-white px-3 text-[15px] font-bold text-ink shadow-card hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:animate-overlay-in"
+        >
+          {pinned ? 'Odepnij' : 'Przypnij do profilu'}
+        </button>
+      )}
     </li>
   );
 }
 
-export default function AchievementGrid({ badges }: { badges: Badge[] }) {
+export default function AchievementGrid({
+  badges,
+  pinnedCodes = [],
+  onTogglePin,
+}: {
+  badges: Badge[];
+  // Przypięte kody (D-112) i przełączenie przypięcia - bez nich karty są tylko do oglądania.
+  pinnedCodes?: string[];
+  onTogglePin?: (code: string) => void;
+}) {
   const [flippedCode, setFlippedCode] = useState<string | null>(null);
 
   if (badges.length === 0) {
@@ -117,6 +155,8 @@ export default function AchievementGrid({ badges }: { badges: Badge[] }) {
             badge={badge}
             flipped={flippedCode === badge.code}
             onToggle={() => setFlippedCode((current) => (current === badge.code ? null : badge.code))}
+            pinned={pinnedCodes.includes(badge.code)}
+            onTogglePin={onTogglePin}
           />
         ))}
       </ul>

@@ -45,22 +45,43 @@ export interface Badge {
   xpReward: number;
   isUnlocked: boolean;
   unlockedAt: string | null;
+  // Pozycja wśród przypiętych (1..3, D-112) albo null.
+  pinned: number | null;
 }
+
+/** Przypięte osiągnięcie przy nazwisku (ranking, nagłówek profilu; D-112). */
+export interface PinnedAchievement {
+  code: string;
+  title: string;
+  icon: string;
+  rank: AchievementRank | null;
+}
+
+export const MAX_PINNED = 3;
+export const PIN_LIMIT_MESSAGE = 'Możesz przypiąć maksymalnie 3 odznaki.';
 
 /** Adres grafiki trofeum z nazwy pliku z API - tylko bezpieczne nazwy (litery, cyfry, myślnik), inaczej brak grafiki. */
 export function achievementImage(name: string | null | undefined): string | null {
   return name && /^[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.svg` : null;
 }
 
+/** Wpis rankingu organizacji (D-112): imię i inicjał nazwiska, bez działu. */
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
   firstName: string;
-  lastName: string;
+  lastInitial: string;
   avatarUrl: string | null;
   level: number;
   xp: number;
-  departmentName: string | null;
+  pinned: PinnedAchievement[];
+}
+
+/** Ranking: pierwsza dziesiątka + pozycja pytającego; `enabled: false` - admin organizacji wyłączył ranking. */
+export interface Leaderboard {
+  enabled: boolean;
+  top: LeaderboardEntry[];
+  me: LeaderboardEntry | null;
 }
 
 export type LeaderboardScope = 'organization' | 'department';

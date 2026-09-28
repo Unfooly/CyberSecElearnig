@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import AchievementGrid, { SECRET_TEXT } from './AchievementGrid';
 import type { Badge } from '@/lib/gamification-types';
 
-const base = { lockedIcon: null, hidden: false, scope: 'GLOBAL' as const, xpReward: 50 };
+const base = { lockedIcon: null, hidden: false, scope: 'GLOBAL' as const, xpReward: 50, pinned: null };
 const badges: Badge[] = [
   {
     ...base,
@@ -103,7 +103,7 @@ describe('AchievementGrid (D-111, karty z obrotem)', () => {
 
   it('tekst rewersu min. 15 px, a dłuższy przewija się w karcie', () => {
     render(<AchievementGrid badges={badges} />);
-    const back = within(card('flawless-case')).getByTestId('achievement-back');
+    const back = within(card('flawless-case')).getByTestId('achievement-back-scroll');
     expect(back).toHaveClass('overflow-y-auto');
     expect(back.querySelectorAll('.text-\\[15px\\]').length).toBeGreaterThanOrEqual(2);
   });

@@ -10,6 +10,8 @@ export interface OrganizationOverview {
   name: string;
   status: OrganizationStatus;
   selfJoinEnabled: boolean;
+  // Ranking pracowników (D-112); opcjonalny w typie dla zgodności ze starszymi odpowiedziami/testami (brak = włączony).
+  leaderboardEnabled?: boolean;
   // Strefa czasowa organizacji (IANA); opcjonalna w typie dla zgodności ze starszymi odpowiedziami/testami.
   timezone?: string;
   billing: {

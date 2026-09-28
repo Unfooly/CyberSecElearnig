@@ -1264,7 +1264,8 @@ try {
   // Karty osiągnięć (D-111, /dev/achievements-harness): (a1) trofea załadowane i w kartach, na telefonie w pionie 2 karty w
   // rzędzie; (a2) klik obraca kartę - po obrocie w środku karty widać rewers, rewers w granicach karty, tekst rewersu >= 15 px
   // (dłuższy przewija się w karcie); (a3) klik innej karty odwraca poprzednią z powrotem (jedna naraz); (a4) reduced-motion:
-  // bez obrotu (crossfade), rewers widoczny; (a5) strona bez poziomego przewijania.
+  // bez obrotu (crossfade), rewers widoczny; (a5) strona bez poziomego przewijania; (a6) przypinanie z rewersu, sekcja „Przypięte” i
+  // miniatury w nagłówku profilu (D-112); (a7) ranking: dziesiątka + „Ty”, miniatury 24 px, nazwa po stuknięciu w ekranie.
   for (const viewport of runs('achievements') ? VIEWPORTS.filter((v) => v.name !== '1024x768') : []) {
     for (const reduced of [false, true]) {
       const context = await browser.newContext({
@@ -1275,6 +1276,11 @@ try {
       });
       const page = await context.newPage();
       const label = `${viewport.name} / osiągnięcia${reduced ? ' (reduced-motion)' : ''}`;
+      // Błędy w konsoli (np. hydratacja przez niepoprawne zagnieżdżenie HTML) - strona ma się renderować bez nich.
+      const consoleErrors = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 200));
+      });
       await page.goto(`${WEB}/dev/achievements-harness`);
       const cards = page.getByTestId('achievement-card');
       await cards.first().waitFor();
@@ -1303,13 +1309,14 @@ try {
           const r = card.getBoundingClientRect();
           const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           const back = card.querySelector('[data-testid="achievement-back"]');
+          const scroll = card.querySelector('[data-testid="achievement-back-scroll"]');
           const b = back.getBoundingClientRect();
-          const texts = [...back.querySelectorAll('span')].filter((s) => s.textContent.trim().length > 0 && !/uppercase/.test(s.className));
+          const texts = [...scroll.querySelectorAll('span')].filter((s) => s.textContent.trim().length > 0 && !/uppercase/.test(s.className));
           return {
             hitBack: !!hit && back.contains(hit),
             inside: b.left >= r.left - 1 && b.right <= r.right + 1 && b.top >= r.top - 1 && b.bottom <= r.bottom + 1,
             minFont: Math.min(...texts.map((s) => parseFloat(getComputedStyle(s).fontSize))),
-            scrollable: back.scrollHeight <= back.clientHeight + 1 || getComputedStyle(back).overflowY === 'auto',
+            scrollable: scroll.scrollHeight <= scroll.clientHeight + 1 || getComputedStyle(scroll).overflowY === 'auto',
             opacity: parseFloat(getComputedStyle(back).opacity),
             innerTransform: getComputedStyle(back.parentElement).transform,
           };
@@ -1332,9 +1339,52 @@ try {
       }
       if ((await backShown(1)).hitBack) fail(`${label}: (a3) poprzednia karta nie wróciła na awers.`);
 
+      // (a6) przypinanie (D-112): na rewersie zdobytej karty „Przypnij do profilu” (>= 44 px, w karcie) -> sekcja „Przypięte” ma 2
+      // pozycje w ekranie, nagłówek profilu 2 miniatury 24 px. Zapis przechwycony (harness bez backendu).
+      await page.route('**/api/gamification/pinned', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"pinned":[]}' }));
+      await flip(1);
+      const pinButton = page.getByTestId('achievement-pin');
+      const pinBox = await pinButton.boundingBox();
+      const cardBox = await cards.nth(1).boundingBox();
+      if (!pinBox || pinBox.height < 43.5) fail(`${label}: (a6) przycisk przypięcia niższy niż 44 px.`);
+      if (pinBox && cardBox && (pinBox.x < cardBox.x - 1 || pinBox.x + pinBox.width > cardBox.x + cardBox.width + 1 || pinBox.y + pinBox.height > cardBox.y + cardBox.height + 1)) {
+        fail(`${label}: (a6) przycisk przypięcia wychodzi poza kartę.`);
+      }
+      // Przycisk nie zasłania tekstu rewersu: przewijana część kończy się nad nim.
+      const scrollBottom = await cards.nth(1).locator('[data-testid="achievement-back-scroll"]').evaluate((el) => el.getBoundingClientRect().bottom);
+      if (pinBox && scrollBottom > pinBox.y + 1) fail(`${label}: (a6) przycisk przypięcia zasłania tekst rewersu (${Math.round(scrollBottom - pinBox.y)}px).`);
+      await pinButton.click();
+      await page.getByTestId('pinned-item').nth(1).waitFor();
+      const pinnedInfo = await page.evaluate(() => ({
+        items: [...document.querySelectorAll('[data-testid="pinned-item"]')].map((el) => el.getBoundingClientRect().toJSON()),
+        header: [...document.querySelectorAll('[data-testid="profile-name"] [data-testid="pinned-badge"] img')].map((img) => img.getBoundingClientRect().width),
+        width: document.documentElement.clientWidth,
+      }));
+      if (pinnedInfo.items.length !== 2) fail(`${label}: (a6) w sekcji „Przypięte” ${pinnedInfo.items.length} zamiast 2.`);
+      const smallControls = await page.locator('[data-testid="pinned-item"] button').evaluateAll((buttons) =>
+        buttons.map((b) => b.getBoundingClientRect()).filter((r) => r.width < 43.5 || r.height < 43.5).length,
+      );
+      if (smallControls > 0) fail(`${label}: (a6) ${smallControls} przycisków w sekcji „Przypięte” mniejszych niż 44 × 44 px.`);
+      if (pinnedInfo.items.some((r) => r.left < -1 || r.right > pinnedInfo.width + 1)) fail(`${label}: (a6) przypięta pozycja wychodzi poza ekran.`);
+      if (pinnedInfo.header.length !== 2 || pinnedInfo.header.some((w) => Math.abs(w - 24) > 0.5)) fail(`${label}: (a6) nagłówek profilu: miniatury ${JSON.stringify(pinnedInfo.header)} zamiast 2 × 24 px.`);
+
+      // (a7) ranking: dziesiątka + „Ty” (14.), przy nazwiskach miniatury 24 px; stuknięcie miniatury pokazuje nazwę w ekranie.
+      const board = page.getByTestId('harness-leaderboard');
+      await board.scrollIntoViewIfNeeded();
+      const rows = board.locator('tbody tr');
+      if ((await rows.count()) !== 12) fail(`${label}: (a7) wierszy rankingu ${await rows.count()} zamiast 12 (10 + separator + Ty).`);
+      if (!((await rows.last().textContent()) ?? '').includes('Ola W.')) fail(`${label}: (a7) ostatni wiersz to nie „Ty”.`);
+      const miniWidths = await board.locator('[data-testid="pinned-badge"] img').evaluateAll((imgs) => imgs.map((img) => img.getBoundingClientRect().width));
+      if (miniWidths.length === 0 || miniWidths.some((w) => Math.abs(w - 24) > 0.5)) fail(`${label}: (a7) miniatury w rankingu: ${JSON.stringify(miniWidths.slice(0, 4))}.`);
+      await board.getByTestId('pinned-badge').first().click();
+      const tip = await board.getByRole('tooltip').boundingBox();
+      if (!tip || tip.x < -1 || tip.x + tip.width > viewport.width + 1) fail(`${label}: (a7) nazwa osiągnięcia po stuknięciu poza ekranem.`);
+      await shot(page, `${viewport.name}-ranking${reduced ? '-reduced' : ''}`);
+
       const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (overflowX > 1) fail(`${label}: (a5) strona przewija się w poziomie o ${overflowX}px.`);
-      step(`${label}: (a1-a5) OK`, true);
+      if (consoleErrors.length > 0) fail(`${label}: błędy w konsoli: ${consoleErrors.join(' | ')}`);
+      step(`${label}: (a1-a7) OK`, true);
       await context.close();
     }
   }

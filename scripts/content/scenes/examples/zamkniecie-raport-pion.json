@@ -1,0 +1,3 @@
+{"width":900,"height":1600,"background":{"flat":true,"wall":"#D9C3A5"},"items":[{"id":"sloje","prop":"woodGrain","x":0,"y":0,"params":{"w":900,"h":1600}},
+{"id":"raport","prop":"stackedHalves","x":115,"y":10,"params":{"prop":"reportFolderOpen"},"partHotspots":{"slot-dowody":"slot-dowody","slot-czas":"slot-czas","slot-xp":"slot-xp","slot-wnioski":"slot-wnioski","slot-podpis":"podpis","slot-pieczec":"slot-pieczec","slot-liscik":"slot-liscik"},"pad":0}
+]}

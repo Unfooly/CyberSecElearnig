@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { ODPRAWA_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -26,10 +26,16 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(ODPRAWA_PROPS)) expect(PROPS[name], name).toBe(ODPRAWA_PROPS[name as keyof typeof ODPRAWA_PROPS]);
     for (const name of Object.keys(ZAMKNIECIE_PROPS)) expect(PROPS[name], name).toBe(ZAMKNIECIE_PROPS[name as keyof typeof ZAMKNIECIE_PROPS]);
     for (const name of Object.keys(PRZEGLADARKA_PROPS)) expect(PROPS[name], name).toBe(PRZEGLADARKA_PROPS[name as keyof typeof PRZEGLADARKA_PROPS]);
+    for (const name of Object.keys(PION_PROPS)) expect(PROPS[name], name).toBe(PION_PROPS[name as keyof typeof PION_PROPS]);
   });
 
-  it('każde źródło ma swoją scenę w module (11 scen modułu z zbliżeniem tablicy i historią przeglądarki, 5 odprawy, 3 zamknięcia sprawy, miniatura)', () => {
-    expect(scenes).toHaveLength(20);
+  it('D-098: stackedHalves - czytelny błąd dla nieznanego klocka i samego siebie (zamiast "is not a function"/pętli)', () => {
+    expect(() => PROPS.stackedHalves({ prop: 'nieMaTakiego' })).toThrow(/Nieznany klocek "nieMaTakiego"/);
+    expect(() => PROPS.stackedHalves({ prop: 'stackedHalves' })).toThrow(/nie może składać samego siebie/);
+  });
+
+  it('każde źródło ma swoją scenę w module (11 scen modułu, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
+    expect(scenes).toHaveLength(26);
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 
@@ -67,6 +73,40 @@ describe('sceny modułu 1 z kompozytora', () => {
       photo: hotspot('odprawa-legitymacja', 'slot-zdjecie'),
       name: hotspot('odprawa-legitymacja', 'slot-imie'),
       number: hotspot('odprawa-legitymacja', 'slot-numer'),
+    });
+  });
+
+  it('D-098: warianty pionowe w module.json (odprawa i raport zamknięcia) mają współrzędne z *-pion.hotspots.json kompozytora', () => {
+    const moduleJson = JSON.parse(readFileSync(join(assets, '..', 'module.json'), 'utf8'));
+    const steps = moduleJson.blocks.find((block: { id: string }) => block.id === 'odprawa').steps as Record<string, any>[];
+    const rect = (scene: string, id: string) => {
+      const found = (JSON.parse(readFileSync(join(examples, `${scene}.hotspots.json`), 'utf8')) as Record<string, number | string>[]).find((h) => h.id === id);
+      if (!found) throw new Error(`${scene}: brak ${id}`);
+      const { x, y, w, h } = found as Record<string, number>;
+      return { x, y, w, h };
+    };
+    const byKind = (kind: string) => steps.find((step) => step.kind === kind)!.portrait;
+    expect(byKind('typewriter').hotspot).toEqual({ id: 'telefon', ...rect('odprawa-biurko-pion', 'telefon') });
+    expect(byKind('call').hotspot).toEqual({ id: 'rozlacz', ...rect('odprawa-rozmowa-pion', 'rozlacz') });
+    expect(byKind('caseFile').hotspot).toEqual({ id: 'teczka', ...rect('odprawa-teczka-pion', 'teczka') });
+    expect(byKind('caseFile').openHotspot).toEqual({ id: 'akta', ...rect('odprawa-akta-pion', 'akta') });
+    expect(byKind('caseFile').slots).toEqual({ tasks: rect('odprawa-akta-pion', 'slot-zadania') });
+    expect(byKind('badge').hotspot).toEqual({ id: 'legitymacja', ...rect('odprawa-legitymacja-pion', 'legitymacja') });
+    expect(byKind('badge').slots).toEqual({
+      photo: rect('odprawa-legitymacja-pion', 'slot-zdjecie'),
+      name: rect('odprawa-legitymacja-pion', 'slot-imie'),
+      number: rect('odprawa-legitymacja-pion', 'slot-numer'),
+    });
+    const closing = moduleJson.blocks.find((block: { type: string }) => block.type === 'SUMMARY').closing.portrait;
+    const report = (id: string) => rect('zamkniecie-raport-pion', id);
+    expect(closing.slots).toEqual({
+      evidence: report('slot-dowody'),
+      time: report('slot-czas'),
+      xp: report('slot-xp'),
+      lessons: report('slot-wnioski'),
+      signature: report('podpis'),
+      stamp: report('slot-pieczec'),
+      note: report('slot-liscik'),
     });
   });
 

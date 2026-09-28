@@ -97,6 +97,18 @@ odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots
 | `caseFolderOpen` | `caseNo, title, victim, victimRole, loss, when, reporter, stamp` | `slot-zadania` |
 | `badgeWallet` | `unit` | `slot-zdjecie`, `slot-imie`, `slot-numer` |
 
+Warianty pionowe (telefon, D-098): sceny 900×1600 (`examples/*-pion.json`, `PION_PROPS`), ich współrzędne trafiają do
+`steps[].portrait` bloku BRIEFING i `closing.portrait` (test w `odprawa.test.ts` pilnuje zgodności z `*-pion.hotspots.json`):
+
+| prop | parametry | części |
+|---|---|---|
+| `stackedHalves` | `prop` (klocek poziomy, domyślnie `caseFolderOpen`), `params`, `gap` | części klocka źródłowego (prawa połowa przesunięta pod lewą) |
+| `badgeWalletPortrait` | `unit` | `slot-zdjecie`, `slot-imie`, `slot-numer` |
+
+Oba składają inne klocki przez rejestr `prop-registry.ts` (`registeredProp`, wypełniany w `props.ts` po zbudowaniu `PROPS`) - nie
+cyklicznym importem `PROPS` (kolejność importów modułów nie ma znaczenia). Nieznana nazwa klocka, klocek składający sam siebie albo
+część przecinająca środek klocka (`stackedHalves`) to czytelny błąd.
+
 `phoneTop` w stanie `ringing` dzwoni (klasy animacji `a-ring`, `a-wave`, `a-grow`; `animated: false` je wyłącza). Test
 `odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` -
 po zmianie klocka albo kompozytora przebuduj sceny (`cli.ts build ... --out <assets>/scenes`) i opublikuj (`--assets`).

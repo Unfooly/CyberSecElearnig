@@ -4,6 +4,7 @@
  * Części `slot-*` to miejsca, w które player wstawia dane z treści/gracza (imię, numer, zadania).
  */
 import { P } from './palette.js';
+import { registeredProp } from './prop-registry.js';
 import type { PropFn } from './types.js';
 
 const esc = (s: unknown) =>
@@ -417,3 +418,56 @@ export const browserHistory: PropFn<{ w?: number; h?: number; rows?: string[] }>
 });
 
 export const PRZEGLADARKA_PROPS = { browserHistory };
+
+/* ---------- wersje pionowe (telefon, D-098): dwie połówki poziomego klocka jedna pod drugą ---------- */
+// Klocki składają INNE klocki - sięgają do nich przez rejestr (prop-registry.ts, wypełniany w props.ts), nie cyklicznym importem PROPS.
+
+export const stackedHalves: PropFn<{ prop?: string; params?: Record<string, unknown>; gap?: number }> = ({ prop = 'caseFolderOpen', params = {}, gap = 24 }) => {
+  const src = registeredProp(prop, 'stackedHalves')(params);
+  const half = src.w / 2;
+  // Część klocka przypisujemy do połówki po jej lewej krawędzi - część przecinająca środek wystawałaby poza przycięty obraz.
+  for (const [k, p] of Object.entries(src.parts ?? {})) {
+    if (p.x < half && p.x + p.w > half) throw new Error(`stackedHalves(${prop}): część "${k}" przecina środek klocka`);
+  }
+  const w = half, h = src.h * 2 + gap;
+  const parts: Record<string, { x: number; y: number; w: number; h: number }> = {};
+  for (const [k, p] of Object.entries(src.parts ?? {})) {
+    parts[k] = p.x >= half ? { x: p.x - half, y: p.y + src.h + gap, w: p.w, h: p.h } : { ...p };
+  }
+  return {
+    w, h,
+    svg:
+      `<clipPath id="lewa"><rect x="-20" y="-40" width="${half + 20}" height="${src.h + 60}"/></clipPath>` +
+      `<clipPath id="prawa"><rect x="${half}" y="-40" width="${half + 40}" height="${src.h + 60}"/></clipPath>` +
+      `<g clip-path="url(#lewa)">${src.svg}</g>` +
+      `<g transform="translate(${-half} ${src.h + gap})"><g clip-path="url(#prawa)">${src.svg}</g></g>`,
+    parts,
+  };
+};
+
+export const badgeWalletPortrait: PropFn<{ unit?: string }> = (params) => {
+  const src = registeredProp('badgeWallet', 'badgeWalletPortrait')(params);
+  const W = 600, H = 1240, fold = H / 2;
+  /* wycinki z poziomego etui: tarcza (lewa połowa) i karta (prawa połowa) */
+  const badgeClip = { x: 40, y: 70, w: 470, h: 520 };
+  const cardClip = { x: 580, y: 60, w: 480, h: 540 };
+  const bx = (W - badgeClip.w) / 2 - badgeClip.x, by = (fold - badgeClip.h) / 2 - badgeClip.y + 10;
+  const cx = (W - cardClip.w) / 2 - cardClip.x, cy = fold + (fold - cardClip.h) / 2 - cardClip.y - 10;
+  const parts: Record<string, { x: number; y: number; w: number; h: number }> = {};
+  for (const [k, p] of Object.entries(src.parts ?? {})) parts[k] = { x: p.x + cx, y: p.y + cy, w: p.w, h: p.h };
+  return {
+    w: W, h: H,
+    svg:
+      `<rect x="14" y="18" width="${W}" height="${H}" rx="34" fill="${P.ink}" opacity="0.22"/>` +
+      `<rect width="${W}" height="${H}" rx="34" fill="${LEATHER}"/>` +
+      `<rect x="18" y="18" width="${W - 36}" height="${H - 36}" rx="26" fill="none" stroke="${P.yellowDark}" stroke-width="3" stroke-dasharray="12 9" opacity="0.7"/>` +
+      `<line x1="20" y1="${fold}" x2="${W - 20}" y2="${fold}" stroke="${P.ink}" stroke-width="6" opacity="0.4"/>` +
+      `<clipPath id="odz"><rect x="${badgeClip.x}" y="${badgeClip.y}" width="${badgeClip.w}" height="${badgeClip.h}"/></clipPath>` +
+      `<clipPath id="kar"><rect x="${cardClip.x}" y="${cardClip.y}" width="${cardClip.w}" height="${cardClip.h}"/></clipPath>` +
+      `<g transform="translate(${bx} ${by})"><g clip-path="url(#odz)">${src.svg}</g></g>` +
+      `<g transform="translate(${cx} ${cy})"><g clip-path="url(#kar)">${src.svg}</g></g>`,
+    parts,
+  };
+};
+
+export const PION_PROPS = { stackedHalves, badgeWalletPortrait };

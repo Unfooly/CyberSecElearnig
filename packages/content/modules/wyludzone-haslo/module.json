@@ -37,6 +37,16 @@
             "y": 21.6,
             "w": 16.3,
             "h": 54.2
+          },
+          "portrait": {
+            "image": "assets/wyludzone-haslo/scenes/odprawa-biurko-pion.b3a15825.svg",
+            "hotspot": {
+              "id": "telefon",
+              "x": 31.1,
+              "y": 28.1,
+              "w": 37.8,
+              "h": 40
+            }
           }
         },
         {
@@ -61,6 +71,16 @@
             "y": 72.4,
             "w": 8.5,
             "h": 15.1
+          },
+          "portrait": {
+            "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa-pion.347fd034.svg",
+            "hotspot": {
+              "id": "rozlacz",
+              "x": 42,
+              "y": 44.4,
+              "w": 15.9,
+              "h": 9
+            }
           }
         },
         {
@@ -141,6 +161,32 @@
               "w": 37.1,
               "h": 56.2
             }
+          },
+          "portrait": {
+            "image": "assets/wyludzone-haslo/scenes/odprawa-akta-pion.4c4f4a2d.svg",
+            "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka-pion.fc743103.svg",
+            "hotspot": {
+              "id": "teczka",
+              "x": 4.1,
+              "y": 32.3,
+              "w": 91.8,
+              "h": 39.1
+            },
+            "openHotspot": {
+              "id": "akta",
+              "x": 12.8,
+              "y": 0.6,
+              "w": 74.4,
+              "h": 99
+            },
+            "slots": {
+              "tasks": {
+                "x": 19.4,
+                "y": 59.6,
+                "w": 60,
+                "h": 28.7
+              }
+            }
           }
         },
         {
@@ -192,6 +238,36 @@
               "y": 44.9,
               "w": 17.4,
               "h": 5.3
+            }
+          },
+          "portrait": {
+            "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja-pion.114362ac.svg",
+            "hotspot": {
+              "id": "legitymacja",
+              "x": 13.3,
+              "y": 6.9,
+              "w": 73.3,
+              "h": 85.3
+            },
+            "slots": {
+              "photo": {
+                "x": 25.3,
+                "y": 59.8,
+                "w": 18.3,
+                "h": 13.1
+              },
+              "name": {
+                "x": 47.6,
+                "y": 61.7,
+                "w": 28.4,
+                "h": 2.8
+              },
+              "number": {
+                "x": 47.6,
+                "y": 67.5,
+                "w": 28.4,
+                "h": 2.8
+              }
             }
           }
         }
@@ -1376,6 +1452,53 @@
             "y": 24.3,
             "w": 11.7,
             "h": 19.3
+          }
+        },
+        "portrait": {
+          "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport-pion.db8725b6.svg",
+          "slots": {
+            "evidence": {
+              "x": 20.6,
+              "y": 17.3,
+              "w": 18.9,
+              "h": 3.5
+            },
+            "time": {
+              "x": 41.1,
+              "y": 17.3,
+              "w": 18.9,
+              "h": 3.5
+            },
+            "xp": {
+              "x": 61.7,
+              "y": 17.3,
+              "w": 18.9,
+              "h": 3.5
+            },
+            "lessons": {
+              "x": 20.6,
+              "y": 25.4,
+              "w": 60,
+              "h": 15
+            },
+            "signature": {
+              "x": 43.9,
+              "y": 41.3,
+              "w": 36.7,
+              "h": 3.1
+            },
+            "stamp": {
+              "x": 21.7,
+              "y": 85.3,
+              "w": 55.6,
+              "h": 11.3
+            },
+            "note": {
+              "x": 63.9,
+              "y": 62.1,
+              "w": 18.9,
+              "h": 9.9
+            }
           }
         }
       }

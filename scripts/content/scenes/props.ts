@@ -1,5 +1,6 @@
 import { P } from './palette.js';
-import { ODPRAWA_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { PROP_REGISTRY } from './prop-registry.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -399,4 +400,7 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...ZAMKNIECIE_PROPS,
   // Przeglądarka Anny: historia odwiedzin (dowód z pulpitu, feat/browser-evidence).
   ...PRZEGLADARKA_PROPS,
+  // Warianty pionowe odprawy i zamknięcia sprawy (telefon, D-098): składają inne klocki przez PROP_REGISTRY.
+  ...PION_PROPS,
 };
+Object.assign(PROP_REGISTRY, PROPS);

@@ -207,6 +207,8 @@ export interface ContentBlock {
   criteria?: EmailCriterion[];
   // TEXT_INPUT_GUIDED
   placeholder?: string;
+  /** Oprawa pola: 'browser' = pasek adresu w oknie przeglądarki (feat/browser-evidence). */
+  frame?: 'browser';
   maxAttempts?: number;
   hintCount?: number;
   // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.

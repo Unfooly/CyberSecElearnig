@@ -178,8 +178,8 @@ export function TaskList({ tasks, open = true }: { tasks: NotebookTask[]; open?:
 export function DistinctionList({ distinctions }: { distinctions: ClientDistinction[] }) {
   if (distinctions.length === 0) return null;
   return (
-    <section aria-label="Wyróżnienia" data-testid="notebook-distinctions" className="mt-3">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">Wyróżnienia</h3>
+    <section aria-label="Osiągnięcia" data-testid="notebook-distinctions" className="mt-3">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">Osiągnięcia</h3>
       <ul className="space-y-1 text-sm text-slate-800">
         {distinctions.map((distinction, index) => (
           <li key={index} className="flex items-start gap-2">

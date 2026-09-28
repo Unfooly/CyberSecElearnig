@@ -113,7 +113,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
           newLevel: 2,
           previousLevel: 1,
           leveledUp: true,
-          unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+          unlockedBadges: [{ code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
           levelProgressBeforePercent: 0,
           levelProgressAfterPercent: 100,
         },
@@ -132,7 +132,7 @@ describe('CoursePlayer - przepływ kursu jednoblokowego', () => {
     await screen.findByRole('heading', { level: 2, name: 'Sprawa zamknięta' });
     expect(screen.getByText('+150 XP')).toBeInTheDocument();
     expect(screen.getByText('Awans na poziom 2!')).toBeInTheDocument();
-    expect(screen.getByText(/Pierwszy Krok/)).toBeInTheDocument();
+    expect(screen.getByText(/First Case Closed/)).toBeInTheDocument();
   });
 
   it('ogłoszenie aria-live w PlayerStage.tsx (resultAnnouncement) jest puste przed ukończeniem i dostaje jedno zdanie o zdobytym XP po przejściu na podsumowanie; puste, gdy gamification jest null', async () => {

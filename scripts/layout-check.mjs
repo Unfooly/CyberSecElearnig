@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -1261,6 +1261,84 @@ try {
     await context.close();
   }
 
+  // Karty osiągnięć (D-111, /dev/achievements-harness): (a1) trofea załadowane i w kartach, na telefonie w pionie 2 karty w
+  // rzędzie; (a2) klik obraca kartę - po obrocie w środku karty widać rewers, rewers w granicach karty, tekst rewersu >= 15 px
+  // (dłuższy przewija się w karcie); (a3) klik innej karty odwraca poprzednią z powrotem (jedna naraz); (a4) reduced-motion:
+  // bez obrotu (crossfade), rewers widoczny; (a5) strona bez poziomego przewijania.
+  for (const viewport of runs('achievements') ? VIEWPORTS.filter((v) => v.name !== '1024x768') : []) {
+    for (const reduced of [false, true]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: true,
+        isMobile: viewport.isMobile ?? false,
+        ...(reduced ? { reducedMotion: 'reduce' } : {}),
+      });
+      const page = await context.newPage();
+      const label = `${viewport.name} / osiągnięcia${reduced ? ' (reduced-motion)' : ''}`;
+      await page.goto(`${WEB}/dev/achievements-harness`);
+      const cards = page.getByTestId('achievement-card');
+      await cards.first().waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete && img.naturalWidth > 0));
+      const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+      const imagesInside = await cards.evaluateAll((els) =>
+        els.every((el) => {
+          const img = el.querySelector('img');
+          if (!img) return false;
+          const r = img.getBoundingClientRect();
+          const c = el.getBoundingClientRect();
+          return r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1 && r.bottom <= c.bottom + 1;
+        }),
+      );
+      if (!imagesInside) fail(`${label}: (a1) trofeum wychodzi poza kartę.`);
+      if (PORTRAIT_VIEWPORT_NAMES.has(viewport.name)) {
+        if (!(Math.abs(boxes[0].top - boxes[1].top) < 1 && boxes[2].top > boxes[0].bottom - 1)) fail(`${label}: (a1) na telefonie nie 2 karty w rzędzie.`);
+      }
+
+      const flip = async (index) => {
+        await cards.nth(index).click();
+        await page.waitForTimeout(reduced ? 250 : 650);
+      };
+      const backShown = (index) =>
+        cards.nth(index).evaluate((card) => {
+          const r = card.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          const back = card.querySelector('[data-testid="achievement-back"]');
+          const b = back.getBoundingClientRect();
+          const texts = [...back.querySelectorAll('span')].filter((s) => s.textContent.trim().length > 0 && !/uppercase/.test(s.className));
+          return {
+            hitBack: !!hit && back.contains(hit),
+            inside: b.left >= r.left - 1 && b.right <= r.right + 1 && b.top >= r.top - 1 && b.bottom <= r.bottom + 1,
+            minFont: Math.min(...texts.map((s) => parseFloat(getComputedStyle(s).fontSize))),
+            scrollable: back.scrollHeight <= back.clientHeight + 1 || getComputedStyle(back).overflowY === 'auto',
+            opacity: parseFloat(getComputedStyle(back).opacity),
+            innerTransform: getComputedStyle(back.parentElement).transform,
+          };
+        });
+
+      await flip(1);
+      const back = await backShown(1);
+      if ((await cards.nth(1).getAttribute('aria-pressed')) !== 'true') fail(`${label}: (a2) karta po kliknięciu bez aria-pressed=true.`);
+      if (!back.hitBack) fail(`${label}: (a2) po obrocie w środku karty nie widać rewersu.`);
+      if (!back.inside) fail(`${label}: (a2) rewers wychodzi poza kartę.`);
+      if (back.minFont < 15) fail(`${label}: (a2) tekst rewersu ${back.minFont}px (< 15 px).`);
+      if (!back.scrollable) fail(`${label}: (a2) dłuższy tekst rewersu nie przewija się w karcie.`);
+      if (reduced && (back.innerTransform !== 'none' || back.opacity < 0.99)) fail(`${label}: (a4) reduced-motion: obrót ${back.innerTransform}, krycie rewersu ${back.opacity}.`);
+      if (!reduced && back.innerTransform === 'none') fail(`${label}: (a2) karta bez obrotu (transform none).`);
+      await shot(page, `${viewport.name}-osiagniecia${reduced ? '-reduced' : ''}`);
+
+      await flip(0);
+      if ((await cards.nth(1).getAttribute('aria-pressed')) !== 'false' || (await cards.nth(0).getAttribute('aria-pressed')) !== 'true') {
+        fail(`${label}: (a3) odwrócona więcej niż jedna karta.`);
+      }
+      if ((await backShown(1)).hitBack) fail(`${label}: (a3) poprzednia karta nie wróciła na awers.`);
+
+      const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (overflowX > 1) fail(`${label}: (a5) strona przewija się w poziomie o ${overflowX}px.`);
+      step(`${label}: (a1-a5) OK`, true);
+      await context.close();
+    }
+  }
+
   // Animacje scen (D-084) przy reducedMotion:'reduce': (r1) KAŻDY obraz SVG w obszarze bloku (scena, zagnieżdżona scena
   // pulpitu, zbliżenie maila) ma w adresie #static - zatrzymuje animacje CSS w pliku - i się ładuje; (r2) scena nadal mieści się w
   // obszarze bloku; (r3) zbliżenie bez ruchu kamery (pudełko sceny bez transformu), grafika i przyciski się mieszczą.
@@ -2129,7 +2207,7 @@ try {
       const outroBox = await outro.boundingBox();
       const backBox = await back.boundingBox();
       if (!contains({ x: 0, y: 0, width: viewport.width, height: viewport.height }, outroBox) || backBox.height < 44) fail(`${label}: (e6) outro ${JSON.stringify({ outroBox, backBox })}.`);
-      if (!(await page.getByTestId('easter-badge').textContent())?.includes('Ciekawski detektyw')) fail(`${label}: (e6) brak wyróżnienia w outro.`);
+      if (!(await page.getByTestId('easter-badge').textContent())?.includes('Curious Detective')) fail(`${label}: (e6) brak wyróżnienia w outro.`);
       await back.click();
       await page.getByTestId('easter-outro').waitFor({ state: 'detached' });
       const icon = await page.getByRole('button', { name: /^GTA6_PL\.exe/ }).getAttribute('aria-label');
@@ -2138,7 +2216,7 @@ try {
       await page.getByRole('button', { name: /^Notatnik/ }).click();
       const distinctions = page.getByTestId('notebook-distinctions');
       await distinctions.waitFor();
-      if (!(await distinctions.textContent())?.includes('Ciekawski detektyw')) fail(`${label}: (e6) brak wyróżnienia w notatniku.`);
+      if (!(await distinctions.textContent())?.includes('Curious Detective')) fail(`${label}: (e6) brak wyróżnienia w notatniku.`);
       await shot(page, `${viewport.name}-easter-4-notatnik${reduced ? '-rm' : ''}`);
       await checkNoPageScroll(page, label);
       if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);

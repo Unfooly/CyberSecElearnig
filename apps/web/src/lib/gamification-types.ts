@@ -22,14 +22,34 @@ export interface GamificationOverview {
   badges: UnlockedBadge[];
 }
 
+export type AchievementRank = 'SECRET' | 'LEGENDARY' | 'MILESTONE';
+
+/** Etykiety rang w UI - po angielsku, jak na grafikach trofeów (D-111). */
+export const RANK_LABELS: Record<AchievementRank, string> = { SECRET: 'Secret', LEGENDARY: 'Legendary', MILESTONE: 'Milestone' };
+
+/**
+ * Osiągnięcie na profilu (GET /gamification/badges, D-111). Tajne niezdobyte przychodzi z kodem zastępczym, bez nazwy, opisu i
+ * warunku (null), z grafiką zablokowaną w `icon`.
+ */
 export interface Badge {
   code: string;
-  title: string;
-  description: string;
+  title: string | null;
+  description: string | null;
+  conditionText: string | null;
+  // Nazwa pliku w public/achievements (bez rozszerzenia).
   icon: string;
+  lockedIcon: string | null;
+  rank: AchievementRank | null;
+  hidden: boolean;
+  scope: 'MODULE' | 'GLOBAL' | null;
   xpReward: number;
   isUnlocked: boolean;
   unlockedAt: string | null;
+}
+
+/** Adres grafiki trofeum z nazwy pliku z API - tylko bezpieczne nazwy (litery, cyfry, myślnik), inaczej brak grafiki. */
+export function achievementImage(name: string | null | undefined): string | null {
+  return name && /^[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.svg` : null;
 }
 
 export interface LeaderboardEntry {

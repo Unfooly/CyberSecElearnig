@@ -301,7 +301,7 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
     unlockedBadges: [{ code: 'tropiciel', title: 'Tropiciel wszystkich dowodów', icon: 'badge', xpReward: 50 }],
   };
 
-  it('D-107 z nagrodą: pod raportem nadal tylko „Następna sprawa”, a awans i nowe odznaki są w opisie raportu dla czytnika', () => {
+  it('D-107 z nagrodą: pod raportem nadal tylko „Następna sprawa”, a awans i nowe osiągnięcia są w opisie raportu dla czytnika', () => {
     mockContainer(360, 600);
     render(
       <SfxProvider enabled={false}>
@@ -313,7 +313,7 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
     expect(actions).not.toHaveTextContent(/Awans|Poziom|odznak/i);
     const report = screen.getByText(/Podpis prowadzącego: Jan P\./);
     expect(report).toHaveClass('sr-only');
-    expect(report).toHaveTextContent('Wynik zadań: 90%. Awans na poziom 2. Nowe odznaki: Tropiciel wszystkich dowodów.');
+    expect(report).toHaveTextContent('Wynik zadań: 90%. Awans na poziom 2. Nowe osiągnięcia: Tropiciel wszystkich dowodów.');
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('+325');
   });
 

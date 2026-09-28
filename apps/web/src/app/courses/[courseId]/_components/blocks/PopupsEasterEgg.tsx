@@ -67,7 +67,11 @@ const PopupsEasterEgg = forwardRef<
   const openIndexes = items.map((_, index) => index).filter((index) => index < appeared && !closed.includes(index));
   const top = openIndexes.length > 0 ? openIndexes[openIndexes.length - 1] : null;
   const finished = closed.length === items.length;
-  const badgeText = badge ? `${alreadyFound ? 'Wyróżnienie w notatniku' : 'Nowe wyróżnienie w notatniku'}: ${badge.label}` : '';
+  // Stan z chwili OTWARCIA przedmiotu: onFound dopisuje wyróżnienie do notatnika, więc rodzic przelicza `alreadyFound` na true
+  // zaraz po znalezieniu - bez zamrożenia pierwsze znalezienie pokazywało outro bez „Nowe”.
+  const [foundBefore] = useState(alreadyFound);
+  // Wyróżnienie easter egga to osiągnięcie (D-111): serwer przyznaje je przy zapisie bloku, profil pokazuje je na stałe.
+  const badgeText = badge ? `${foundBefore ? 'Osiągnięcie' : 'Nowe osiągnięcie'}: ${badge.label}` : '';
 
   useEffect(() => {
     if (reducedMotion) return undefined;

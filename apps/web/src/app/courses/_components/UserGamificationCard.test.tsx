@@ -10,7 +10,7 @@ const overview: GamificationOverview = {
   nextLevelXp: 400,
   currentLevelProgressPercent: 25,
   badges: [
-    { code: 'FIRST_STEP', title: 'Pierwszy Krok', description: 'x', icon: 'a', xpReward: 50, unlockedAt: '2026-01-01T00:00:00.000Z' },
+    { code: 'first-case-closed', title: 'First Case Closed', description: 'x', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, unlockedAt: '2026-09-28T00:00:00.000Z' },
   ],
 };
 
@@ -19,12 +19,12 @@ describe('UserGamificationCard', () => {
     vi.unstubAllGlobals();
   });
 
-  it('pokazuje poziom, XP i link do odznak z ich liczbą', () => {
+  it('pokazuje poziom, XP i link do osiągnięć z ich liczbą', () => {
     render(<UserGamificationCard overview={overview} />);
 
     expect(screen.getByText('Poziom 2')).toBeInTheDocument();
     expect(screen.getByText('150 / 400 XP')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /zobacz odznaki \(1\)/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /zobacz osiągnięcia \(1\)/i })).toHaveAttribute(
       'href',
       '/courses/achievements',
     );

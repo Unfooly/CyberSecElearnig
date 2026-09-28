@@ -5,8 +5,15 @@ import { Award } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
-import type { GamificationOverview } from '@/lib/gamification-types';
+import { achievementImage, type GamificationOverview } from '@/lib/gamification-types';
 import AvatarDisplay from './AvatarDisplay';
+
+/** 1 osiągnięcie, 2-4 osiągnięcia (bez 12-14), reszta osiągnięć. */
+function achievementsWord(count: number): string {
+  if (count === 1) return 'osiągnięcie';
+  const lastTwo = count % 100;
+  return count % 10 >= 2 && count % 10 <= 4 && (lastTwo < 12 || lastTwo > 14) ? 'osiągnięcia' : 'osiągnięć';
+}
 
 const RING_RADIUS = 46;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -52,22 +59,26 @@ export default function UserGamificationCard({ overview }: { overview: Gamificat
             {overview.xp} / {overview.nextLevelXp} XP
           </span>
           <span>
-            {overview.badges.length} {overview.badges.length === 1 ? 'odznaka' : 'odznak'}
+            {overview.badges.length} {achievementsWord(overview.badges.length)}
           </span>
         </div>
       </div>
 
       {overview.badges.length > 0 && (
         <div className="flex justify-center gap-2">
-          {overview.badges.slice(0, 4).map((badge) => (
-            <span
-              key={badge.code}
-              title={badge.title}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-warning-soft text-warning"
-            >
-              <Award size={18} strokeWidth={2} aria-hidden="true" />
-            </span>
-          ))}
+          {overview.badges.slice(0, 4).map((badge) => {
+            const image = achievementImage(badge.icon);
+            return (
+              <span key={badge.code} title={badge.title} className="flex h-9 w-9 items-center justify-center rounded-full bg-warning-soft text-warning">
+                {image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- statyczny SVG z public/achievements; SVG wyłącznie przez <img> (D-051)
+                  <img src={image} alt={badge.title} className="h-9 w-9" />
+                ) : (
+                  <Award size={18} strokeWidth={2} aria-hidden="true" />
+                )}
+              </span>
+            );
+          })}
           {overview.badges.length > 4 && (
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-paper text-xs font-bold text-muted">
               +{overview.badges.length - 4}
@@ -77,7 +88,7 @@ export default function UserGamificationCard({ overview }: { overview: Gamificat
       )}
 
       <Link href="/courses/achievements" className="font-semibold text-accent-ink hover:underline">
-        Zobacz odznaki ({overview.badges.length})
+        Zobacz osiągnięcia ({overview.badges.length})
       </Link>
 
       {/* Wystawianie certyfikatów nie jest jeszcze zbudowane - wyszarzony

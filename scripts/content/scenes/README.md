@@ -1,6 +1,6 @@
 # Kompozytor scen (scripts/content/scenes)
 
-Scena szkoleniowa to plik JSON z listą klocków. Skrypt składa z nich SVG w stylu Fooli
+Scena szkoleniowa to plik JSON z listą klocków. Skrypt składa z nich SVG w płaskim stylu Unfooly
 i **sam wylicza hotspoty** (procenty względem obrazu), więc nikt nie przelicza
 współrzędnych ręcznie. Docelowe miejsce w repo: `scripts/content/scenes/`
 (ten sam projekt npm co skrypt TTS: tsx + vitest, zero zależności runtime).

@@ -2,7 +2,7 @@
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
 Agent mapuje ten dokument na schemat modułu (wersja 5: jak 4 + blok BRIEFING i objectives z completeWhen, D-081): bloki, dowody, notatki, narrację,
-pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
+podpowiedzi (`tip`). Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie improwizuje.
 
 ## Metadane
 
@@ -28,10 +28,10 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   przelew zaksięgowany 9:12;
   śledztwo: telefon komisarza 9:40 (odprawa, Wydział Cyberbezpieczeństwa, Kraków) → gracz w Unfooly 10:05 (korytarz)
 - bloki oceniane: EMAIL_ANALYSIS (weight 3), ORDERING (weight 2), TEXT_INPUT_GUIDED (weight 1); pozostałe weight 0
-- maskotka: Fooli; pozy z `packages/content/mascot/`
+- bez maskotki (D-093/D-096): stała podpowiedź bloku to pole `tip` (sam tekst w dymku odtwarzacza); `mascot` i `pose` przestarzałe
 - zasoby: `packages/content/modules/wyludzone-haslo/assets/` (sceny SVG, avatary SVG); audio przez `scripts/content` (tryb r2)
 - podpowiedzi (hints) są wyłącznie tekstowe — bez audio (D-060/K1)
-- reakcje maskotki: pole `reactions` na bloku (`complete` dla eksploracyjnych, `result` dla ocenianych) — zastępuje dawne „Po ukończeniu: Fooli…"
+- reakcje: pole `reactions` na bloku (`complete` dla eksploracyjnych, `result` dla ocenianych), sam `text` (bez `pose`, D-096)
 - media w hotspotach (B-086/D-071): `hotspots[].media` (image/audio/document/scene) i `hotspots[].action: 'next'` (drzwi) — patrz Blok 1 i Blok 2 niżej.
 
 ## Postaci
@@ -44,7 +44,7 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
 | Gracz | „detektyw" — nowy audytor bezpieczeństwa w Unfooly | — |
 | Komisarz Adam Wolski | Wydział Cyberbezpieczeństwa (odprawa, Blok 0) | inicjały „AW" |
 
-Fooli mówi do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak narrator kryminału, bez żartów.
+Podpowiedzi (`tip`, reakcje) mówią do gracza per „ty". Lektor mówi w trzeciej osobie, spokojnie, jak narrator kryminału, bez żartów.
 
 ---
 
@@ -104,13 +104,13 @@ Krok „start" („Unfooly, drugie piętro.") usunięty w D-086 - miejsce i godz
 ## Blok 1 — Korytarz (SCENE_HOTSPOTS) — B-086/D-071
 
 Pierwsza scena po odprawie (blok NARRATIVE „Otwarcie sprawy" wypadł z modułu — zdanie otwierające narracji
-przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią modułu).
+przeniesione poniżej).
 
 - obraz: `scenes/korytarz.svg` (1600×1000)
 - imageAlt: „Korytarz biurowy: okno, tabliczka »Księgowość →«, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny."
 - **Lektor:** „Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są
   przed tobą." (TTS: „Wtorek, dziesiąta zero pięć. …"; D-087 - wcześniejsze „czeka w swoim biurze" gryzło się z pustym biurem w Bloku 2)
-- **Fooli:** brak (blok czysto przejściowy — bez dymka).
+- **Podpowiedź (`tip`):** brak (blok czysto przejściowy — bez dymka).
 - ukończenie: bez przycisku „Dalej" — jedynym wyjściem jest hotspot `drzwi` (`action: 'next'`), gotowy od razu (tablica jest
   opcjonalna: `required: false`).
 - drugie drzwi (IT) na obrazie są WYŁĄCZNIE dekoracją sceny (bez hotspotu) — Marek z IT pojawia się dopiero w Bloku 6 (DIALOGUE), nie jako osobna lokacja.
@@ -130,7 +130,7 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 - obraz: `scenes/biuro-anny.svg` (1600×1000, przekomponowana wersja: drzwi po prawej, biurko krótsze, roślina po lewej)
 - imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe."
 - **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
-- **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
+- **Podpowiedź (`tip`):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
 - ukończenie: wymagane 4 z 6 hotspotów-dowodów najwyższego poziomu, oznaczone ✱ (plus 2 niewymagane dowody w pulpicie); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
 - **Reguła tej sceny (feedback z produkcji, `feat/scene-overlay-fix`): każdy hotspot ma powiększenie (media).** Wyjątek: `drzwi`
   (action:'next') nigdy nie otwiera zbliżenia.
@@ -145,11 +145,11 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 | `monitor` ✱ | ekran z otwartą skrzynką pocztową | „Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte." (celowo TEASER, nie ujawnienie — treść maila jest dopiero za Outlookiem, patrz „Scena zagnieżdżona" niżej; poprawione po przeglądzie kodu, wcześniej to pole miało tu przez pomyłkę tę samą treść co `outlook`) | **nie** (patrz niżej) | — | **scene** `pulpit` (patrz sekcja „Scena zagnieżdżona" niżej) — dowód `mail` przeniesiony na hotspot `outlook` wewnątrz pulpitu |
 | `telefon` ✱ | telefon stacjonarny z migającą diodą | „Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje." (insight, odsłaniany dopiero po odsłuchaniu do końca — patrz „Media: wiadomość głosowa" niżej; treść karty to insight, nie teaser — inaczej niż `monitor` powyżej, bo dla audio karta i tak nic nie pokazuje przed `onEnded`) | tak | (item) „Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała »informatyk«." | audio z potoku TTS, głos `bank` (`media.narration`, D-082; tekst = transkrypcja, patrz „Media: wiadomość głosowa" niżej), zbliżenie `telefon-zoom.svg` NAD własnym odtwarzaczem (`media.image`, feat/scene-overlay-fix) |
 | `kalendarz` ✱ | kalendarz ścienny z zakreśloną datą | „Wtorek zakreślony na czerwono: *PRZELEWY DO 15:00 — koniecznie!!!*. Anna miała dziś presję czasu." | tak | (place) „Anna miała dziś termin przelewów do 15:00 — działała pod presją." | image `kalendarz-zoom.svg` (800×1000) — zbliżenie kalendarza |
-| `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w stylu Fooli z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
+| `drukarka` | drukarka z kartką na tacy | „Wydruk potwierdzenia przelewu z 9:12. Odbiorca: *Wektor Rozliczenia Sp. z o.o.*, tytuł: *weryfikacja salda*. Anna nie zna tej firmy." | tak (opcjonalny) | (item) „Przelew z 9:12 na nieznaną firmę »Wektor Rozliczenia«, tytuł »weryfikacja salda«." | image `wydruk.svg` (800×1100) — **NIE** `document`: to gotowa grafika w płaskim stylu z pieczątką, nie linie tekstu (`document` zostaje w schemacie na przyszłość — dokumenty bez gotowej grafiki) |
 | `kubek` | kubek z napisem „Najlepsza księgowa" | „Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej." | nie | — | image `kubek-zoom.svg` (800×800) — zbliżenie kubka (feat/scene-overlay-fix: bez dowodu, ale jak każdy hotspot tej sceny dostaje powiększenie) |
 | `drzwi` | wyjście z biura | — (`action: 'next'`, nigdy nie otwiera karty — patrz „ukończenie" wyżej) | — | — | — |
 
-**reactions.complete:** `{ pose: cheer, text: „Cztery ślady. Teraz porozmawiajmy z Anną." }`
+**reactions.complete:** `{ text: „Cztery ślady. Teraz porozmawiajmy z Anną." }`
 
 ### Scena zagnieżdżona `pulpit` (media.kind: scene na hotspocie `monitor`, B-086/D-071)
 
@@ -209,7 +209,7 @@ Autoryzacja:     kod SMS, 09:06:58
 
 - postać: Anna Kowalska, księgowa, `avatars/anna.svg`
 - **Lektor:** „Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje."
-- **Fooli (poza: thinking):** „Nie oceniaj. Pytaj."
+- **Podpowiedź (`tip`):** „Nie oceniaj. Pytaj."
 - ukończenie: wymagane 3 z 5 pytań (✱)
 
 **character.opening:** „Ja naprawdę nic nie zrobiłam. Znaczy… zrobiłam to, co kazali."
@@ -222,14 +222,14 @@ Autoryzacja:     kod SMS, 09:06:58
 | `presja` | „Dlaczego działałaś tak szybko?" | 1. „Do 15:00 muszę puścić wszystkie przelewy do dostawców. Jak konto by zablokowali, nie zdążyłabym." 2. „W mailu był zegar. Odliczał." | tak (opcjonalny) | (person) „Mail zawierał odliczanie; Anna działała pod presją terminu przelewów." |
 | `zglosic` | „Pomyślałaś, żeby to komuś zgłosić?" | 1. „Komu? Marek był na urlopie do wczoraj." 2. „Poza tym… to był bank. Bank się nie zgłasza, bank się słucha." | nie | — |
 
-**reactions.complete:** `{ pose: warning, text: „Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail." }`
+**reactions.complete:** `{ text: „Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail." }`
 
 ---
 
 ## Blok 4 — Ten mail (EMAIL_ANALYSIS) — ocena, waga 3
 
 - **Lektor:** „Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę."
-- **Fooli (poza: pointing):** „Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
+- **Podpowiedź (`tip`):** „Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
 - makieta klienta pocztowego:
 
 ```
@@ -281,9 +281,9 @@ Kryteria (klikalne fragmenty; `correct` = powinno być zaznaczone):
   zaznaczalne tylko na liście pod mailem, bo nie ma osobnego przycisku-fragmentu w treści dla niego).
 - punktacja: trafione kryteria +1, fałszywe alarmy −0,5 (nie poniżej 0), wynik jako % z 6 poprawnych
 - **reactions.result** (progi po wzorze silnika; agent dopasuje minScore tak, by odpowiadały ≥5/6, 3–4/6, ≤2/6 trafień):
-  - `{ minScore: 0.8, pose: cheer, text: „Czytasz maile jak detektyw." }`
-  - `{ minScore: 0.4, pose: thinking, text: „Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je." }`
-  - `{ minScore: 0, pose: warning, text: „Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj." }`
+  - `{ minScore: 0.8, text: „Czytasz maile jak detektyw." }`
+  - `{ minScore: 0.4, text: „Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je." }`
+  - `{ minScore: 0, text: „Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj." }`
 
 ---
 
@@ -343,7 +343,7 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 - postać: Marek Zieliński, administrator IT, `avatars/marek.svg`
 - **Lektor:** „Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie."
-- **Fooli (pointing):** „Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego."
+- **Podpowiedź (`tip`):** „Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego."
 - ukończenie: wymagane 2 z 4 (✱)
 
 **character.opening:** „Nie mów mi, że karteczka. Błagam, nie karteczka."
@@ -355,15 +355,15 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 | `inni` | „Czy ktoś jeszcze dostał ten mail?" | 1. „Sprawdziłem: siedem osób. Dwie kliknęły w link, ale nie wpisały danych — strona wydała im się dziwna." 2. „Nikt nie zgłosił. Ani jedna osoba. Gdyby pierwsza kliknęła »Zgłoś«, zablokowałbym domenę przed 8:55." | tak (opcjonalny) | (mail) „Mail trafił do 7 osób, 2 kliknęły, nikt nie zgłosił." |
 | `co_teraz` | „Co robimy teraz?" | 1. „Bank próbuje cofnąć przelew — czasem się udaje, jeśli zgłosisz w ciągu godziny. Tu minęło pięć." 2. „Zmieniamy hasła Anny — wszystkie, bo były takie same. Włączamy menedżer haseł dla całej księgowości." 3. „I zgłaszamy na policję. To przestępstwo, nie wpadka." | nie | — |
 
-**reactions.complete:** `{ pose: thinking, text: „Masz już wszystko. Ułóżmy to w kolejności." }`
+**reactions.complete:** `{ text: „Masz już wszystko. Ułóżmy to w kolejności." }`
 
 ---
 
 ## Blok 7 — Rekonstrukcja zdarzeń (ORDERING) — ocena, waga 2
 
 - **Lektor:** „Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły."
-- **Fooli (pointing):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
-  (od D-088 tablica śledcza wypełnia ramkę - pasek Fooli się nie wyświetla; pole zostaje w treści.)
+- **Podpowiedź (`tip`):** „Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
+  (od D-088 tablica śledcza wypełnia ramkę - pasek podpowiedzi się nie wyświetla; pole zostaje w treści.)
 - **Tablica śledcza (D-088):** tabliczka „Tablica śledcza · CS/2026/0915", zdjęcia łańcucha: `start` „A.K." / „Anna Kowalska",
   `end` „−14 000 zł" / „Wektor Rozliczenia"; po sprawdzeniu pod tablicą jedno zdanie z reakcji wyniku (`reactions.result`).
 - elementy (podane wymieszane; poprawna kolejność jak niżej):
@@ -377,15 +377,15 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
 
 - punktacja: częściowa (liczba elementów na właściwej pozycji / 6); pełne punkty tylko za komplet
 - **reactions.result:**
-  - `{ minScore: 1, pose: cheer, text: „Dokładnie tak. I zauważ: łańcuch dało się przerwać w trzech miejscach — przy mailu, przy stronie i przy telefonie." }`
-  - `{ minScore: 0, pose: thinking, text: „Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku i brakowało mu tylko kodu." }`
+  - `{ minScore: 1, text: „Dokładnie tak. I zauważ: łańcuch dało się przerwać w trzech miejscach — przy mailu, przy stronie i przy telefonie." }`
+  - `{ minScore: 0, text: „Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku i brakowało mu tylko kodu." }`
 
 ---
 
 ## Blok 8 — Ostatnie pytanie (TEXT_INPUT_GUIDED) — ocena, waga 1
 
 - **Lektor:** „Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem."
-- **Fooli (thinking):** „Bez zaglądania do notatnika. Pamiętasz?"
+- **Podpowiedź (`tip`):** „Bez zaglądania do notatnika. Pamiętasz?"
 - polecenie: „Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez `https://` i bez adresu e-mail)."
 - odpowiedź: regex `^(www\.)?bankwektor-weryfikacja\.pl/?$`, caseSensitive: false, trim
 - maxAttempts: 3
@@ -394,15 +394,15 @@ własny komunikat wiersza (`message`, zaznaczony niżej jako „komunikat").
   2. „Prawdziwa domena to `bankwektor.pl`. Fałszywa miała coś dopisane po myślniku."
 - rozwiązanie po wyczerpaniu prób: „`bankwektor-weryfikacja.pl`. Jedno słowo po myślniku wystarczyło, żeby to nie był bank."
 - **reactions.result** (po `correct`, nie po progu):
-  - `{ when: correct, pose: cheer, text: „To jest to. Domena, nie napis. Zawsze domena." }`
-  - `{ when: incorrect, pose: warning, text: „Nic straconego — ale zapamiętaj ten adres. Następny będzie wyglądał podobnie." }`
+  - `{ when: correct, text: „To jest to. Domena, nie napis. Zawsze domena." }`
+  - `{ when: incorrect, text: „Nic straconego — ale zapamiętaj ten adres. Następny będzie wyglądał podobnie." }`
 
 ---
 
 ## Blok 9 — Rozwiązanie sprawy (SUMMARY)
 
 - **Lektor:** „Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo »szybkie potwierdzenie«, przypomnij sobie wtorek, 8:47."
-- **mascot:** `{ pose: greeting, text: „Sprawa zamknięta. Dobra robota, detektywie." }`
+- **tip:** „Sprawa zamknięta. Dobra robota, detektywie."
 - SUMMARY pokazuje też `objectives` jako „Czego się nauczyłeś".
 - tekst wniosków (sekcja „Najważniejsze wnioski", poza automatyczną listą dowodów):
 
@@ -434,7 +434,7 @@ domeny, kod SMS z teczki, tablica w korytarzu). Liścik komisarza leży w wolnej
 
 ## Zasoby do przygotowania
 
-Sceny SVG, styl płaski jak Fooli, paleta `#F0883A / #6C5CE7 / #2B2440` + neutralne. Źródła scen (JSON dla
+Sceny SVG, styl płaski, paleta `#F0883A / #6C5CE7 / #2B2440` + neutralne. Źródła scen (JSON dla
 kompozytora) leżą w `scripts/content/scenes/examples/` — każda zmiana grafiki to edycja JSON + `build`, nigdy ręczna
 edycja SVG.
 
@@ -462,7 +462,7 @@ opublikowaniu i podpięciu nowego nagrania (w magazynie zostaje - starsze wersje
 Głosy (D-082, `narration.voice`, mapowanie rola → voiceId w `scripts/content/voices.json`): `narrator` (domyślny - lektor
 wszystkich bloków, w odprawie kroki typewriter i start), `komisarz` (odprawa: kroki call, caseFile, badge), `bank` (poczta
 głosowa), `marek` (dziś nieużywany: kwestie
-Marka nie mają nagrań). Pozostałe kwestie Fooli i postaci - tylko tekst (B-078).
+Marka nie mają nagrań). Podpowiedzi (`tip`, reakcje) i pozostałe kwestie postaci - tylko tekst (B-078).
 
 ## Współrzędne hotspotów (% szerokości/wysokości: x, y, w, h)
 

@@ -268,10 +268,7 @@ try {
           { text: 'Zwróć uwagę na zero zamiast litery o.', startMs: 5400 },
         ],
       },
-      mascot: {
-        pose: 'pointing',
-        text: 'Sprawdź dokładnie każdy znak w adresie! Oszuści podmieniają pojedyncze litery, na przykład literę o na zero. Jeśli coś budzi wątpliwości, nie klikaj i zgłoś wiadomość.',
-      },
+      tip: 'Sprawdź dokładnie każdy znak w adresie! Oszuści podmieniają pojedyncze litery, na przykład literę o na zero. Jeśli coś budzi wątpliwości, nie klikaj i zgłoś wiadomość.',
     },
     { id: 'link', type: 'QUIZ', prompt: 'Co zrobisz z linkiem?', options: [{ text: 'Kliknę', correct: false }, { text: 'Zgłoszę', correct: true }] },
     { id: 'koniec', type: 'QUIZ', prompt: 'Ostatnie pytanie', options: [{ text: 'A', correct: true }, { text: 'B', correct: false }] },

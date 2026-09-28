@@ -200,7 +200,7 @@ try {
   // bez Zabierz/Odłóż - ikona "Wróć"). reactions.complete odpala się od razu po tym kliku.
   await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
-  step('SCENE_HOTSPOTS: reactions.complete (cheer) po wymaganych 4 punktach', true);
+  step('SCENE_HOTSPOTS: reactions.complete po wymaganych 4 punktach', true);
   step('SCENE_HOTSPOTS: "drzwi" chowa "Dalej" z paska nawet gdy ready (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
 
   // Prawdziwy dowód maila jest dopiero za Pocztą wewnątrz zagnieżdżonej sceny "pulpit" - "Zabierz" w jej zbliżeniu go zalicza.
@@ -247,7 +247,7 @@ try {
   };
   await askAll(['Opowiedz o tym mailu z banku.', 'Kto dzwonił o 9:05?', 'To hasło na karteczce…']);
   await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
-  step('DIALOGUE (Anna): reactions.complete (warning) po 3 wymaganych pytaniach', true);
+  step('DIALOGUE (Anna): reactions.complete po 3 wymaganych pytaniach', true);
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
   await nextEnabled().click();
 
@@ -268,7 +268,12 @@ try {
   const emailAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
   const emailBody = await (await emailAnswered).json();
-  step('EMAIL_ANALYSIS: wszystkie 6 poprawnych kryteriów -> 100%, reaction cheer', emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(emailBody.lastResult));
+  // D-096: reakcja to sam tekst (bez pose).
+  step(
+    'EMAIL_ANALYSIS: wszystkie 6 poprawnych kryteriów -> 100%, reakcja na wynik (bez pose)',
+    emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.text === 'Czytasz maile jak detektyw.' && emailBody.lastResult?.reaction?.pose === undefined,
+    JSON.stringify(emailBody.lastResult),
+  );
   await page.getByText(/Wynik: 100%/).waitFor();
   await nextEnabled().click();
 
@@ -307,7 +312,7 @@ try {
   await page.getByText('Nie mów mi, że karteczka').waitFor();
   await askAll(['Co mówią logi banku?', 'Ktoś z IT dzwonił do Anny o 9:05?']);
   await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
-  step('DIALOGUE (Marek): reactions.complete (thinking) po 2 wymaganych pytaniach', true);
+  step('DIALOGUE (Marek): reactions.complete po 2 wymaganych pytaniach', true);
   await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
   await nextEnabled().click();
 
@@ -339,7 +344,11 @@ try {
   const orderingAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   const orderingBody = await (await orderingAnswered).json();
-  step('ORDERING: pełna poprawna kolejność (6/6) -> reaction cheer', orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.pose === 'cheer', JSON.stringify(orderingBody.lastResult));
+  step(
+    'ORDERING: pełna poprawna kolejność (6/6) -> reakcja na wynik (bez pose)',
+    orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.text?.startsWith('Dokładnie tak.') && orderingBody.lastResult?.reaction?.pose === undefined,
+    JSON.stringify(orderingBody.lastResult),
+  );
   await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
   step('ORDERING: po sprawdzeniu 6 zielonych pinezek i zdanie pod tablicą (bez listy "Poprawna kolejność")', (await page.locator('.board-pin--good').count()) === 6 && ((await page.getByTestId('board-feedback').textContent()) ?? '').length > 0 && (await page.getByRole('region', { name: 'Poprawna kolejność' }).count()) === 0);
   await nextEnabled().click();
@@ -349,7 +358,7 @@ try {
   await page.getByLabel('Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).').fill('bankwektor-weryfikacja.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  step('TEXT_INPUT_GUIDED: poprawna odpowiedź za pierwszym razem -> reaction cheer ("Domena, nie napis")', (await page.getByText('To jest to. Domena, nie napis.').count()) === 1);
+  step('TEXT_INPUT_GUIDED: poprawna odpowiedź za pierwszym razem -> reakcja „Domena, nie napis”', (await page.getByText('To jest to. Domena, nie napis.').count()) === 1);
   // Wynik już jest widoczny w bloku (TextInputBlock, stan `done`): jedyny klik to "Dalej" pod wynikiem, który zapisuje
   // postęp I OD RAZU przechodzi dalej, bez osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED,
   // CoursePlayer.tsx::handleAnswer) - ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd nextEnabled()

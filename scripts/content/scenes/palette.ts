@@ -1,4 +1,4 @@
-/** Paleta scen Unfooly — spójna z maskotką Fooli (packages/content/mascot). */
+/** Paleta scen Unfooly (styl płaski; dawniej wspólna z maskotką Fooli, usuniętą w D-096). */
 export const P = {
   ink: '#2B2440',
   purple: '#6C5CE7',

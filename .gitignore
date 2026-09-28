@@ -34,7 +34,7 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# maskotka: kopia generowana z packages/content/mascot przez apps/web/scripts/sync-mascot.mjs (predev/prebuild)
+# dawna kopia SVG maskotki (sync-mascot, usunięty w D-096) - zostaje w ignore, żeby stare lokalne kopie nie trafiły do repo
 apps/web/public/mascot/
 
 # zasoby modułów treści przy `scripts/content --storage local` (domyślne, lokalny odpowiednik R2): lokalna kopia

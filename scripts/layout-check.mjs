@@ -107,7 +107,17 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter'];
+
+// EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
+// i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
+const EASTER_VIEWPORTS = [
+  { name: '1920x1080', width: 1920, height: 1080, mouse: true },
+  { name: '1366x768', width: 1366, height: 768, mouse: true },
+  { name: '844x390', width: 844, height: 390 },
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+  { name: '360x740', width: 360, height: 740, isMobile: true },
+];
 
 // KOŃCOWE PODSUMOWANIE NA TELEFONIE (feat/mobile-summary, D-099): dwa telefony w pionie, wszystkie bloki od rekonstrukcji do końca modułu
 // (tablica śledcza, ostatnie pytanie w oknie przeglądarki, rozwiązanie sprawy, zamknięcie) w kolejnych stanach - patrz auditMobileView.
@@ -1725,6 +1735,124 @@ try {
     await context.close();
   }
   if (mobileFailures.length > 0) fail(`mobile-summary: ${mobileFailures.length} stanów z problemami - ${mobileFailures.join('; ')}`);
+
+  // EASTER EGG (D-100): (e1) wszystkie okienka w całości w ekranie i w nakładce zbliżenia; (e2) krzyżyk górnego okienka >= 44x44, w ekranie,
+  // nieprzykryty (elementFromPoint), z fokusem; (e3) tekst okienek >= 15 px; (e4) Esc zamyka górne okienko, klik w tło niczego nie
+  // zamyka; (e5, mysz) przycisk „dodge” ucieka dokładnie 2 razy, klik w przycisk - okienko drga i zostaje; (e6) po ostatnim krzyżyku:
+  // outro z wyróżnieniem, „Wróć do pulpitu” >= 44 px, w ekranie; ikona gry na pulpicie obejrzana, wyróżnienie w notatniku; (e7) strona
+  // się nie przewija, błędy strony; (e8) reduced-motion (390x844): wszystkie okienka od razu, bez animacji wejścia i mrugnięcia.
+  for (const viewport of runs('easter') ? EASTER_VIEWPORTS : []) {
+    console.log(`\n--- viewport (EASTER EGG): ${viewport.name} ---`);
+    for (const reduced of viewport.name === '390x844' ? [false, true] : [false]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: !viewport.mouse,
+        isMobile: viewport.isMobile ?? false,
+        reducedMotion: reduced ? 'reduce' : 'no-preference',
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+      const label = `${viewport.name} / easter egg${reduced ? ' (reduced-motion)' : ''}`;
+      await page.goto(`${WEB}/dev/player-harness?block=biuro-anny&hotspot=gra`);
+      const popups = page.getByTestId('easter-popup');
+      if (reduced) {
+        await popups.first().waitFor({ timeout: 15000 });
+        const count = await popups.count();
+        const animated = await page.evaluate(() => document.querySelectorAll('.popup-in, .popup-blink').length);
+        if (count !== 3 || animated > 0) fail(`${label}: (e8) reduced-motion - okienek ${count} (oczekiwane 3 od razu), animacji ${animated}.`);
+      } else {
+        await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 15000 });
+        await page.waitForTimeout(500); // wejście ostatniego okienka (260 ms)
+      }
+      await shot(page, `${viewport.name}-easter-1-okienka${reduced ? '-rm' : ''}`);
+      const check = async (step) => {
+        const info = await page.evaluate(() => {
+          const rect = (el) => {
+            const r = el.getBoundingClientRect();
+            return { x: r.left, y: r.top, width: r.width, height: r.height };
+          };
+          const cards = [...document.querySelectorAll('[data-testid="easter-popup-card"]')].map(rect);
+          const closes = [...document.querySelectorAll('[data-popup-close]')];
+          const top = closes[closes.length - 1];
+          const topRect = top ? top.getBoundingClientRect() : null;
+          const hit = topRect ? document.elementFromPoint(topRect.left + topRect.width / 2, topRect.top + topRect.height / 2) : null;
+          const fonts = [...document.querySelectorAll('[data-testid="easter-popup"] :is(h2, p, button)')]
+            .filter((el) => el.textContent.trim() && !el.closest('.sr-only'))
+            .map((el) => parseFloat(getComputedStyle(el).fontSize));
+          return {
+            cards,
+            zoom: rect(document.querySelector('[data-testid="scene-zoom"]')),
+            top: topRect ? rect(top) : null,
+            topHit: !!hit && top.contains(hit),
+            topFocused: !!top && document.activeElement === top,
+            minFont: fonts.length ? Math.min(...fonts) : null,
+          };
+        });
+        const screen = { x: 0, y: 0, width: viewport.width, height: viewport.height };
+        info.cards.forEach((card, i) => {
+          if (!contains(screen, card) || !contains(info.zoom, card)) fail(`${label}: (e1) ${step}: okienko ${i + 1} poza ekranem/nakładką - ${JSON.stringify({ card, zoom: info.zoom })}.`);
+        });
+        if (info.top) {
+          if (info.top.width < 44 || info.top.height < 44 || !contains(screen, info.top)) fail(`${label}: (e2) ${step}: krzyżyk ${JSON.stringify(info.top)}.`);
+          if (!info.topHit) fail(`${label}: (e2) ${step}: krzyżyk górnego okienka przykryty.`);
+          if (!info.topFocused) fail(`${label}: (e2) ${step}: fokus nie na krzyżyku górnego okienka.`);
+        }
+        if (info.minFont !== null && info.minFont < 15) fail(`${label}: (e3) ${step}: tekst okienek ${info.minFont}px (< 15).`);
+      };
+      await check('3 okienka');
+      // (e4) Tło nie zamyka; Esc zamyka górne okienko.
+      const zoomBox = await boxOf(page, '[data-testid="scene-zoom"]');
+      await page.mouse.click(zoomBox.x + zoomBox.width - 6, zoomBox.y + zoomBox.height - 6);
+      if ((await popups.count()) !== 3) fail(`${label}: (e4) klik w tło zamknął okienko.`);
+      await page.keyboard.press('Escape');
+      if ((await popups.count()) !== 2) fail(`${label}: (e4) Esc nie zamknął górnego okienka (${await popups.count()}).`);
+      await check('2 okienka');
+      await page.locator('[data-popup-index="1"] [data-popup-close]').click();
+      await check('1 okienko');
+      const action = page.locator('[data-popup-index="0"] [data-testid="easter-popup-action"]');
+      if (viewport.mouse && !reduced) {
+        // (e5) Uciekanie: dwa najechania przesuwają przycisk, trzecie już nie.
+        const positions = [];
+        for (let i = 0; i < 3; i += 1) {
+          const before = await action.boundingBox();
+          await page.mouse.move(5, 5);
+          await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2, { steps: 3 });
+          await page.waitForTimeout(250);
+          const after = await action.boundingBox();
+          positions.push(Math.hypot(after.x - before.x, after.y - before.y) > 5);
+        }
+        if (positions.join() !== 'true,true,false') fail(`${label}: (e5) uciekanie ${positions.join()} (oczekiwane: ucieka 2 razy).`);
+        step(`${label}: (e5) przycisk ucieka 2 razy, potem zostaje`, true);
+      }
+      await action.click();
+      if ((await popups.count()) !== 1) fail(`${label}: (e5) klik w przycisk okienka je zamknął.`);
+      await shot(page, `${viewport.name}-easter-2-ostatnie${reduced ? '-rm' : ''}`);
+      await page.locator('[data-popup-index="0"] [data-popup-close]').click();
+      const outro = page.getByTestId('easter-outro');
+      await outro.waitFor();
+      await shot(page, `${viewport.name}-easter-3-outro${reduced ? '-rm' : ''}`);
+      const back = outro.getByRole('button', { name: 'Wróć do pulpitu' });
+      const outroBox = await outro.boundingBox();
+      const backBox = await back.boundingBox();
+      if (!contains({ x: 0, y: 0, width: viewport.width, height: viewport.height }, outroBox) || backBox.height < 44) fail(`${label}: (e6) outro ${JSON.stringify({ outroBox, backBox })}.`);
+      if (!(await page.getByTestId('easter-badge').textContent())?.includes('Ciekawski detektyw')) fail(`${label}: (e6) brak wyróżnienia w outro.`);
+      await back.click();
+      await page.getByTestId('easter-outro').waitFor({ state: 'detached' });
+      const icon = await page.getByRole('button', { name: /^GTA6_PL\.exe/ }).getAttribute('aria-label');
+      if (!icon?.includes('(obejrzane)')) fail(`${label}: (e6) ikona gry nie jest obejrzana („${icon}”).`);
+      await page.keyboard.press('Escape'); // pulpit -> scena
+      await page.getByRole('button', { name: /^Notatnik/ }).click();
+      const distinctions = page.getByTestId('notebook-distinctions');
+      await distinctions.waitFor();
+      if (!(await distinctions.textContent())?.includes('Ciekawski detektyw')) fail(`${label}: (e6) brak wyróżnienia w notatniku.`);
+      await shot(page, `${viewport.name}-easter-4-notatnik${reduced ? '-rm' : ''}`);
+      await checkNoPageScroll(page, label);
+      if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);
+      step(`${label}: (e1-e4, e6-e8) OK`, true);
+      await context.close();
+    }
+  }
 
   // OKNO PRZEGLĄDARKI (feat/browser-evidence) - `?block=ostatnie-pytanie` (TEXT_INPUT_GUIDED, frame: browser), odpowiedzi /attempt
   // podstawione przez page.route (harness nie ma backendu): (p1) strona i obszar bloku bez poziomego przewijania, okno w szerokości

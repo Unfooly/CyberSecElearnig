@@ -5,6 +5,7 @@ import { CheckSquare, Square } from 'lucide-react';
 import type { BriefingRect, BriefingStep } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { badgeNumber, type PlayerIdentity } from '@/lib/use-my-display-name';
+import { usePortraitContainer } from '@/lib/use-portrait-container';
 import type { NotebookTask } from '../player/notes';
 
 // Krok odprawy jako SCENA z grafiką (feat/briefing-scenes, D-084) zamiast karty na jasnym tle. Obraz sceny (1600x900) w pudełku
@@ -56,6 +57,21 @@ export function rectStyle(rect: BriefingRect): CSSProperties {
 // Pasek tekstu kroku u góry sceny (typewriter, start) i dymek rozmowy w prawej połowie (call, x >= 45%) - stałe układu, nie treść.
 const TOP_BAND: BriefingRect = { x: 4, y: 3, w: 92, h: 15 };
 const CALL_BUBBLE: BriefingRect = { x: 46, y: 12, w: 50, h: 64 };
+// Scena pionowa (9:16, D-098): pasek tekstu węższy w pionie (ta sama szerokość, mniejsza wysokość w % wyższej sceny), dymek komisarza
+// w DOLNEJ części sceny (y >= 62%), pod telefonem z czerwoną słuchawką.
+const TOP_BAND_PORTRAIT: BriefingRect = { x: 4, y: 2, w: 92, h: 11 };
+const CALL_BUBBLE_PORTRAIT: BriefingRect = { x: 5, y: 62, w: 90, h: 30 };
+
+/**
+ * Scena kroku w bieżącej orientacji (D-098): pola sceny poziomej albo - w trybie pionowym i przy `portrait` w treści - pionowej
+ * (obraz, zamknięta teczka, hotspoty, sloty). Reszta kroku (tekst, cta, zadania) bez zmian. Bez `portrait` - zawsze scena pozioma.
+ * `closedImage`/`openHotspot` pionu semantyka treści dopuszcza tylko tam, gdzie są w poziomie (czyli w caseFile).
+ */
+export function sceneForOrientation(step: BriefingStep, portrait: boolean): BriefingStep {
+  if (!portrait || !step.portrait) return step;
+  const { image, closedImage, hotspot, openHotspot, slots } = step.portrait;
+  return { ...step, image, hotspot, slots, ...(step.kind === 'caseFile' ? { closedImage, openHotspot } : {}) } as BriefingStep;
+}
 
 const MIN_FONT_PX = 6;
 
@@ -125,7 +141,7 @@ export function FitText({
 }
 
 export default function BriefingSceneStep({
-  step,
+  step: sourceStep,
   contentBase,
   reducedMotion,
   headingId,
@@ -153,7 +169,20 @@ export default function BriefingSceneStep({
   identity: PlayerIdentity;
   caseNo?: string;
 }) {
+  const [containerRef, portraitContainer] = usePortraitContainer<HTMLDivElement>();
+  // Do pierwszego pomiaru (null - także HTML z serwera) scena się nie renderuje: bez mignięcia i pobierania wariantu poziomego na
+  // telefonie. W przeglądarce pomiar jest w useLayoutEffect, więc scena pojawia się w tej samej klatce co krok.
+  const measured = portraitContainer !== null;
+  const portrait = portraitContainer === true && !!sourceStep.portrait;
+  // Dalej `step` = scena w bieżącej orientacji (obraz, hotspoty, sloty pionowe albo poziome).
+  const step = sceneForOrientation(sourceStep, portrait);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
+  // Zmiana orientacji: proporcje od razu z wariantu (9:16 / 16:9), zanim nowy obraz się wczyta i je zmierzy.
+  useLayoutEffect(() => {
+    setAspectRatio(portrait ? 9 / 16 : 16 / 9);
+  }, [portrait]);
+  const topBand = portrait ? TOP_BAND_PORTRAIT : TOP_BAND;
+  const callBubble = portrait ? CALL_BUBBLE_PORTRAIT : CALL_BUBBLE;
   // Przy prefers-reduced-motion animacje CSS w SVG zatrzymuje fragment #static (withStaticFragment). reducedMotion startuje od
   // false (zgodność z renderem serwera, usePrefersReducedMotion), więc pierwsza klatka może chwilę się animować - świadomy koszt.
   const imageSrc = withStaticFragment(contentAssetUrl(contentBase, step.image, 'image'), reducedMotion);
@@ -182,10 +211,12 @@ export default function BriefingSceneStep({
   };
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+    <div ref={containerRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+      {measured && (
       <div
         data-testid="briefing-scene"
         data-phase={closedSrc ? (closedPhase ? 'closed' : 'open') : undefined}
+        data-orientation={portrait ? 'portrait' : 'landscape'}
         // Ruch (D-090): legitymacja wysuwa się z dołu (400 ms ease-out-soft) razem ze slotami imienia i numeru; reduced-motion - od razu.
         className={`briefing-scene-box relative isolate overflow-hidden rounded-card border border-border bg-surface ${step.kind === 'badge' ? 'motion-safe:animate-rise-in' : ''}`}
         style={{ '--scene-ratio': String(aspectRatio), aspectRatio: 'var(--scene-ratio)', height: 'auto', margin: 'auto' } as CSSProperties}
@@ -221,7 +252,7 @@ export default function BriefingSceneStep({
         )}
 
         {step.kind === 'typewriter' && typed && (
-          <FitText testId="briefing-scene-text" fitKey={`${step.text}|${step.sub ?? ''}`} maxRatio={0.34} style={rectStyle(TOP_BAND)} className="z-20 rounded-card bg-surface/90 px-[1.5%] py-[0.8%] shadow-card">
+          <FitText testId="briefing-scene-text" fitKey={`${step.text}|${step.sub ?? ''}|${portrait}`} maxRatio={0.34} style={rectStyle(topBand)} className="z-20 rounded-card bg-surface/90 px-[1.5%] py-[0.8%] shadow-card">
             {/* Dwie warstwy w jednej komórce siatki: niewidoczny pełny tekst ustala rozmiar (dopasowanie liczone raz, nie co znak),
                 widoczna jest wystukana część. Klik kończy pisanie od razu. */}
             <div aria-hidden="true" onClick={typed.finish} className="grid text-center font-bold leading-snug text-ink">
@@ -239,7 +270,7 @@ export default function BriefingSceneStep({
         )}
 
         {step.kind === 'start' && (
-          <FitText testId="briefing-scene-text" fitKey={step.text} maxRatio={0.4} style={rectStyle(TOP_BAND)} className="z-20 flex items-center justify-center rounded-card bg-surface/90 px-[1.5%] shadow-card">
+          <FitText testId="briefing-scene-text" fitKey={`${step.text}|${portrait}`} maxRatio={0.4} style={rectStyle(topBand)} className="z-20 flex items-center justify-center rounded-card bg-surface/90 px-[1.5%] shadow-card">
             <p id={headingId} className="text-center font-extrabold leading-tight text-ink">
               {step.text}
             </p>
@@ -247,7 +278,7 @@ export default function BriefingSceneStep({
         )}
 
         {step.kind === 'call' && (
-          <FitText testId="briefing-bubble" fitKey={step.text} maxRatio={0.075} style={rectStyle(CALL_BUBBLE)} className="briefing-step-enter pointer-events-none z-20 rounded-card border border-border bg-surface px-[3%] py-[2.5%] shadow-card">
+          <FitText testId="briefing-bubble" fitKey={`${step.text}|${portrait}`} maxRatio={portrait ? 0.12 : 0.075} style={rectStyle(callBubble)} className="briefing-step-enter pointer-events-none z-20 rounded-card border border-border bg-surface px-[3%] py-[2.5%] shadow-card">
             <p id={headingId} className="font-bold leading-tight text-ink">
               {step.caller.name}
             </p>
@@ -305,6 +336,7 @@ export default function BriefingSceneStep({
           </>
         )}
       </div>
+      )}
 
       {/* Treść kroku dla czytnika ekranu tam, gdzie na scenie jest tylko grafika (karta sprawy, legitymacja) albo tekst
           animowany (pisanie). */}

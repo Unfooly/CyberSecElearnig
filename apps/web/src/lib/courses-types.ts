@@ -56,6 +56,8 @@ export interface CaseClosing {
   stamp: string;
   note: string;
   slots: Record<'evidence' | 'time' | 'xp' | 'lessons' | 'signature' | 'stamp' | 'note', BriefingRect>;
+  /** Wariant pionowy (telefon, D-098): raport 9:16 z tym samym zestawem slotów. */
+  portrait?: { image: string; slots: CaseClosing['slots'] };
 }
 
 export interface BriefingRect {
@@ -70,6 +72,14 @@ export interface BriefingScene {
   image?: string;
   hotspot?: BriefingRect & { id: string };
   slots?: Partial<Record<'tasks' | 'name' | 'number' | 'photo', BriefingRect>>;
+  /** Wariant pionowy (telefon, D-098): te same pola w % sceny 9:16; closedImage/openHotspot tylko przy teczce (caseFile). */
+  portrait?: {
+    image: string;
+    closedImage?: string;
+    hotspot?: BriefingRect & { id: string };
+    openHotspot?: BriefingRect & { id: string };
+    slots?: Partial<Record<'tasks' | 'name' | 'number' | 'photo', BriefingRect>>;
+  };
 }
 
 /** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */

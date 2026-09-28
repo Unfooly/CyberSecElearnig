@@ -7,6 +7,7 @@ import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { useSfx } from '@/lib/sfx';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { usePortraitContainer } from '@/lib/use-portrait-container';
 
 // Ekran zamknięcia sprawy (feat/case-closed, D-089) - zastępuje dawny ekran ukończenia (SummaryScreen). Raport końcowy w teczce (scena
 // 16:9 z treści modułu, SUMMARY.closing) z HTML w slotach sceny. Przebieg przy świeżym ukończeniu:
@@ -18,7 +19,8 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 //   6. pod raportem "Wróć do biblioteki" i "Następna sprawa" (brak następnej - zamknięta teczka z kłódką, "wkrótce").
 // Ukończenie i XP są zapisane już przy wejściu na ten ekran (ostatni blok) - podpis to ceremonia, nie warunek. reduced-motion i podgląd
 // (powrót do ukończonego kursu, bez świeżej nagrody) - od razu stan końcowy, bez dźwięków. Moduł bez `closing` - prosty ekran z wynikiem.
-// Telefon w pionie: raport jako panorama przewijana w poziomie (globals.css .closing-frame), ceremonia przesuwa widok do pieczęci.
+// Telefon w pionie: z `closing.portrait` w treści (D-098) - pionowy raport 9:16 w całości, przyciski pod nim na pełną szerokość; bez niego
+// raport jako panorama przewijana w poziomie (globals.css .closing-frame), ceremonia przesuwa widok do pieczęci.
 // Ogłoszenie zdobytego XP żyje w PlayerStage (region persystentny, D-076) - tu tylko pełny opis raportu dla czytnika.
 
 type Stage = 'intro' | 'lessons' | 'sign' | 'signing' | 'stamp' | 'note' | 'done';
@@ -188,7 +190,19 @@ export default function CaseClosedScreen({
   const [typedChars, setTypedChars] = useState(ceremony ? 0 : Number.POSITIVE_INFINITY);
   const signRef = useRef<HTMLButtonElement>(null);
   const libraryRef = useRef<HTMLAnchorElement>(null);
+  // Orientacja (D-098) z proporcji CAŁEGO ekranu zamknięcia (korzeń, flex-1), nie ramki raportu - wysokość ramki zależy od układu
+  // przycisków pod nią, który sam zależy od orientacji (sprzężenie). < 0.8 i `closing.portrait` w treści -> raport pionowy 9:16 zamiast
+  // panoramy 16:9; obrót telefonu przełącza wariant bez utraty etapu ceremonii (stan poniżej nie zależy od orientacji).
+  const [rootRef, portraitRoot] = usePortraitContainer<HTMLDivElement>();
+  // Do pierwszego pomiaru (null - także HTML z serwera) raport się nie renderuje - bez mignięcia panoramy i pobierania poziomej grafiki.
+  const measured = portraitRoot !== null;
+  const portrait = portraitRoot === true && !!closing?.portrait;
   const frameRef = useRef<HTMLDivElement>(null);
+  // Raport w bieżącej orientacji: obraz i sloty. Rozmiary tekstu w cqw skalowane do szerokości sceny (pionowa ma 900 zamiast 1600 j.).
+  const sceneImage = portrait ? closing!.portrait!.image : closing?.image;
+  const slots = portrait ? closing!.portrait!.slots : closing?.slots;
+  const k = portrait ? 1600 / 900 : 1;
+  const cqw = (value: number) => `${(value * k).toFixed(3)}cqw`;
   // Konfetti przy pieczęci - raz, na CONFETTI_MS (potem cząstki znikają z DOM).
   const [confetti, setConfetti] = useState(false);
   useEffect(() => {
@@ -252,8 +266,8 @@ export default function CaseClosedScreen({
         // Panorama (telefon w pionie): widok przesuwa się na prawą kartkę, gdzie spada pieczęć i wlatuje liścik. Poza panoramą no-op.
         const frame = frameRef.current;
         const scene = sceneRef.current;
-        if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && closing) {
-          frame.scrollTo?.({ left: scene.offsetLeft + (scene.offsetWidth * closing.slots.stamp.x) / 100 - 16, behavior: 'smooth' });
+        if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && slots) {
+          frame.scrollTo?.({ left: scene.offsetLeft + (scene.offsetWidth * slots.stamp.x) / 100 - 16, behavior: 'smooth' });
         }
       }, SIGN_MS);
       return () => window.clearTimeout(timer);
@@ -287,7 +301,7 @@ export default function CaseClosedScreen({
   ) : (
     'Ten kurs nie zawierał ocenianych pytań.'
   );
-  const imageUrl = closing ? withStaticFragment(contentAssetUrl(contentBase, closing.image, 'image'), !ceremony) : null;
+  const imageUrl = closing ? withStaticFragment(contentAssetUrl(contentBase, sceneImage, 'image'), !ceremony) : null;
   const stampUrl = closing ? withStaticFragment(contentAssetUrl(contentBase, closing.stamp, 'image'), !ceremony) : null;
   const noteUrl = closing ? withStaticFragment(contentAssetUrl(contentBase, closing.note, 'image'), !ceremony) : null;
   const report = [
@@ -313,7 +327,7 @@ export default function CaseClosedScreen({
   const newBadges = reward?.unlockedBadges ?? [];
 
   return (
-    <div data-testid="case-closed" data-stage={stage} className="flex min-h-0 w-full flex-1 flex-col">
+    <div ref={rootRef} data-testid="case-closed" data-stage={stage} className="flex min-h-0 w-full flex-1 flex-col">
       <div className="mb-2 flex shrink-0 flex-wrap items-baseline justify-center gap-x-2 text-center">
         <h2 ref={headingRef} tabIndex={-1} className="text-lg font-bold text-ink outline-none">
           Sprawa zamknięta
@@ -322,15 +336,16 @@ export default function CaseClosedScreen({
       </div>
       <p className="sr-only">{report}</p>
 
-      {closing && imageUrl ? (
-        <div ref={frameRef} data-testid="case-closed-frame" className="closing-frame relative flex min-h-0 w-full flex-1">
+      {closing && imageUrl && slots ? (
+        <div ref={frameRef} data-testid="case-closed-frame" data-orientation={portrait ? 'portrait' : 'landscape'} className="closing-frame relative flex min-h-0 w-full flex-1">
+          {measured && (
           <div
             data-testid="case-closed-scene"
             ref={sceneRef}
             // Wejście teczki tylko na etapie intro: klasa zdjęta później nie wraca (inaczej po drgnięciu przeglądarka odpaliłaby wejście
             // teczki drugi raz - obie klasy ustawiają `animation`).
             className={`closing-box relative m-auto shrink-0 ${ceremony && stage === 'intro' ? 'closing-folder-in' : ''} ${ceremony && stage === 'stamp' ? 'closing-shake' : ''}`}
-            style={{ aspectRatio: '16 / 9' }}
+            style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG tylko przez <img> (D-051) */}
             <img src={imageUrl} alt="" referrerPolicy="no-referrer" className="absolute inset-0 block h-full w-full object-contain" />
@@ -347,21 +362,24 @@ export default function CaseClosedScreen({
                 aria-hidden="true"
                 data-testid={`closing-${slot}`}
                 className="absolute flex items-center whitespace-nowrap font-extrabold tabular-nums text-ink"
-                style={{ ...place(closing.slots[slot]), fontSize: '2.2cqw', paddingLeft: '1cqw' }}
+                style={{ ...place(slots[slot]), fontSize: cqw(2.2), paddingLeft: cqw(1) }}
               >
                 {value}
               </p>
             ))}
 
-            <ol aria-hidden="true" data-testid="closing-lessons" className="absolute overflow-hidden text-ink" style={{ ...place(closing.slots.lessons), fontSize: '1.3cqw', lineHeight: '2.5cqw', paddingTop: '1.6cqw' }}>
-              {shownLessons.map((line, index) =>
-                line ? (
-                  <li key={index} className="whitespace-nowrap">
-                    {index + 1}. {line}
-                  </li>
-                ) : null,
-              )}
-            </ol>
+            {/* W pionie wnioski są pod raportem (HTML, 15 px) - w slocie pionowej grafiki byłyby nieczytelne (~6 px). */}
+            {!portrait && (
+              <ol aria-hidden="true" data-testid="closing-lessons" className="absolute overflow-hidden text-ink" style={{ ...place(slots.lessons), fontSize: cqw(1.3), lineHeight: cqw(2.5), paddingTop: cqw(1.6) }}>
+                {shownLessons.map((line, index) =>
+                  line ? (
+                    <li key={index} className="whitespace-nowrap">
+                      {index + 1}. {line}
+                    </li>
+                  ) : null,
+                )}
+              </ol>
+            )}
 
             {/* Przycisk tylko na etapie podpisu; potem sam podpis (dla czytnika jest w opisie raportu wyżej). */}
             {stage === 'sign' ? (
@@ -372,14 +390,14 @@ export default function CaseClosedScreen({
                 data-testid="closing-signature"
                 onClick={sign}
                 className="closing-sign-hit closing-sign-pulse absolute cursor-pointer rounded-[0.4cqw] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                style={place(closing.slots.signature)}
+                style={place(slots.signature)}
               />
             ) : (
-              <div aria-hidden="true" data-testid="closing-signature" className="absolute flex items-end" style={place(closing.slots.signature)}>
+              <div aria-hidden="true" data-testid="closing-signature" className="absolute flex items-end" style={place(slots.signature)}>
                 {signed && (
                   <span
                     className={`block whitespace-nowrap font-semibold italic text-accent-ink ${ceremony && stage === 'signing' ? 'closing-sign-draw' : ''}`}
-                    style={{ fontSize: '2.4cqw', lineHeight: 1.1, paddingLeft: '1cqw' }}
+                    style={{ fontSize: cqw(2.4), lineHeight: 1.1, paddingLeft: cqw(1) }}
                   >
                     {signer}
                   </span>
@@ -395,7 +413,7 @@ export default function CaseClosedScreen({
                 referrerPolicy="no-referrer"
                 data-testid="closing-stamp"
                 className={`absolute object-contain ${ceremony ? 'closing-stamp-in' : ''}`}
-                style={place(closing.slots.stamp)}
+                style={place(slots.stamp)}
               />
             )}
             {noted && noteUrl && (
@@ -406,11 +424,12 @@ export default function CaseClosedScreen({
                 referrerPolicy="no-referrer"
                 data-testid="closing-note"
                 className={`absolute object-contain ${ceremony ? 'closing-note-in' : ''}`}
-                style={{ ...place(closing.slots.note), transform: 'rotate(-5deg)' }}
+                style={{ ...place(slots.note), transform: 'rotate(-5deg)' }}
               />
             )}
-            {confetti && ceremony && <Confetti at={closing.slots.stamp} />}
+            {confetti && ceremony && <Confetti at={slots.stamp} />}
           </div>
+          )}
         </div>
       ) : (
         <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center rounded-card bg-surface p-8 text-center">
@@ -423,7 +442,40 @@ export default function CaseClosedScreen({
         </div>
       )}
 
-      <div className="mt-2 flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-2">
+      {/* Pionowy raport (D-098): liczby i wnioski śledczego pod raportem jako zwykły tekst (min. 15 px, zawijany) - w slotach pionowej
+          grafiki miałyby 7-10 px. Te same wartości (nabijane liczby, wystukiwana część wniosków) co w raporcie; czytnik dostaje je z opisu
+          raportu (aria-hidden). Każda linijka wniosków rezerwuje wysokość pełnego tekstu (niewidoczna kopia w tej samej komórce siatki),
+          więc raport nie kurczy się w trakcie wystukiwania; lista ma limit wysokości i przewija się w pionie przy długich wnioskach,
+          żeby przyciski pod nią zawsze się mieściły. */}
+      {portrait && (
+        <div aria-hidden="true" data-testid="closing-portrait-details" className="mx-auto mt-2 w-full max-w-md shrink-0 text-[15px] leading-snug text-ink">
+          <p data-testid="closing-stats" className="flex flex-wrap justify-center gap-x-4 font-bold tabular-nums">
+            <span>Dowody: {hasEvidence ? `${evidenceCount}/${evidence!.total}` : '—'}</span>
+            <span>Czas: {minutes !== null ? `${minutesCount} min` : '—'}</span>
+            <span>XP: {xp !== null ? `+${xpCount}` : '—'}</span>
+          </p>
+          {lessons.length > 0 && (
+            <ol data-testid="closing-lessons" className="mt-1 max-h-[30dvh] space-y-1 overflow-y-auto">
+              {lessons.map((line, index) => (
+                <li key={index} className="grid">
+                  <span className="invisible col-start-1 row-start-1">
+                    {index + 1}. {line}
+                  </span>
+                  <span data-testid="closing-lesson-typed" className="col-start-1 row-start-1">
+                    {shownLessons[index] ? `${index + 1}. ${shownLessons[index]}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+
+      {/* Pionowy raport (D-098): „Wróć do biblioteki” i „Następna sprawa” pod sceną, na pełną szerokość, jeden pod drugim. */}
+      <div
+        data-testid="case-closed-actions"
+        className={`mt-2 flex shrink-0 gap-y-2 ${portrait ? 'flex-col items-stretch text-center' : 'flex-wrap items-center justify-center gap-x-4'}`}
+      >
         <p className="text-sm text-muted">
           {scoreLine}
           {levelUp && <span className="ml-2 font-semibold text-accent-ink">{levelUp}</span>}
@@ -456,7 +508,7 @@ export default function CaseClosedScreen({
         <Link
           ref={libraryRef}
           href="/courses"
-          className="inline-flex min-h-[44px] items-center rounded-btn bg-ink px-4 text-sm font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-btn bg-ink px-4 text-sm font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           Wróć do biblioteki
         </Link>
@@ -465,7 +517,7 @@ export default function CaseClosedScreen({
         <button
           type="button"
           aria-disabled="true"
-          className="inline-flex min-h-[44px] cursor-not-allowed items-center gap-2 rounded-btn border border-border bg-paper px-4 text-sm font-bold text-muted"
+          className="inline-flex min-h-[44px] cursor-not-allowed items-center justify-center gap-2 rounded-btn border border-border bg-paper px-4 text-sm font-bold text-muted"
         >
           <Lock aria-hidden="true" className="h-4 w-4" />
           Następna sprawa · wkrótce

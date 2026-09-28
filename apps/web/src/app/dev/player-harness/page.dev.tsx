@@ -42,7 +42,7 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
 export default function PlayerHarnessPage({
   searchParams,
 }: {
-  searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string };
+  searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string; noPortrait?: string };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
@@ -70,6 +70,15 @@ export default function PlayerHarnessPage({
     if (stripMedia) {
       blockForClient = { ...rawBlock, hotspots: rawBlock.hotspots.map((h) => (h.id === hotspotParam ? { ...h, media: undefined } : h)) };
     }
+  }
+
+  // `?noPortrait=1` (feat/portrait-scenes, D-098): bez wariantów pionowych (odprawa, raport zamknięcia) - layout-check sprawdza nim ścieżkę
+  // zastępczą modułów bez `portrait` na telefonie (scena 16:9 w pasach, panorama raportu). Na kopii, tylko w tym procesie renderowania.
+  if (searchParams.noPortrait === '1') {
+    const copy = structuredClone(blockForClient) as ServerBlock & { steps?: { portrait?: unknown }[]; closing?: { portrait?: unknown } };
+    for (const step of copy.steps ?? []) delete step.portrait;
+    if (copy.closing) delete copy.closing.portrait;
+    blockForClient = copy;
   }
 
   // Ani SCENE_HOTSPOTS, ani DIALOGUE, ani BRIEFING nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/

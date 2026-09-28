@@ -576,7 +576,8 @@ try {
   await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
 
   // --- Bloki oceniane: mail (klik we fragmenty), kolejność (klawiatura), zadanie tekstowe z podpowiedzią; ocena po stronie serwera. ---
-  const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  // Jeden „Dalej” (D-106): wyłącznie przycisk dolnego paska.
+  const nextEnabled = () => page.getByTestId('player-bottombar').getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
   await page.setViewportSize({ width: 1280, height: 1100 });
 
@@ -661,10 +662,9 @@ try {
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
   const textDone = progressResponse();
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  const textBody = await (await textDone).json();
-  step('śledztwo: zadanie tekstowe rozstrzygnięte na serwerze (75%), "Kontynuuj" zapisuje postęp', textBody.lastResult?.points === 0.75, JSON.stringify(textBody.lastResult?.points));
   await nextEnabled().click();
+  const textBody = await (await textDone).json();
+  step('śledztwo: zadanie tekstowe rozstrzygnięte na serwerze (75%), „Dalej” w pasku zapisuje postęp (D-106)', textBody.lastResult?.points === 0.75, JSON.stringify(textBody.lastResult?.points));
 
   // --- EMBEDDED_HTML: osobny dokument z własnym CSP i sandboxem; nie ma go w treści modułu ani w stronie. ---
   const embedFrame = page.frameLocator('iframe[title="Interaktywny moduł szkoleniowy"]');
@@ -705,7 +705,9 @@ try {
   await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
   await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
   step('embed: po powrocie z podglądu iframe wraca', (await page.locator('iframe').count()) === 1);
+  // „Ukończyłem” to przełącznik gotowości (D-106) - zapis rusza „Dalej” w pasku.
   await page.getByRole('button', { name: 'Ukończyłem' }).click();
+  await nextEnabled().click();
   await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
@@ -719,7 +721,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 800 });
   // Odpowiedź /progress na "Zakończ sprawę" musi mieć status COMPLETED (kurs ukończony po stronie serwera), nie tylko zmianę ekranu.
   const completion = page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Zakończ sprawę' }).click();
+  await page.getByTestId('player-bottombar').getByRole('button', { name: 'Zakończ sprawę' }).click();
   const completionBody = await (await completion).json();
   step('śledztwo: "Zakończ sprawę" kończy kurs po stronie serwera (status COMPLETED)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status, evidence: completionBody.evidence?.collected }));
 

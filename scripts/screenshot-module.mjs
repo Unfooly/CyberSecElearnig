@@ -89,7 +89,8 @@ async function runViewport(viewport) {
   const page = await context.newPage();
 
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
-  const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  // Jeden „Dalej” (D-106): wyłącznie przycisk dolnego paska.
+  const nextEnabled = () => page.getByTestId('player-bottombar').getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
   const reactionText = (text) => page.getByText(text, { exact: true }).waitFor();
 
   await page.goto(`${WEB}/login`);
@@ -126,6 +127,7 @@ async function runViewport(viewport) {
   await page.waitForTimeout(600);
   await shot(page, '00e-odprawa-legitymacja', viewport.name);
   await page.getByRole('button', { name: 'Zabierz legitymację' }).click();
+  await nextEnabled().click();
 
   // --- 1. Korytarz (SCENE_HOTSPOTS: tablica + drzwi, B-086/D-071/D-086) ------------------------------------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
@@ -135,6 +137,7 @@ async function runViewport(viewport) {
   await shot(page, '01b-korytarz-tablica-zoom', viewport.name);
   await take();
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
+  await nextEnabled().click();
 
   // --- 2. Biuro Anny: karteczka - zbliżenie NA scenie ---------------------------------------------------------------------
   await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
@@ -175,8 +178,9 @@ async function runViewport(viewport) {
   await shot(page, '06-biuro-kubek-nie-dowod', viewport.name);
   await dialog().getByRole('button', { name: 'Odłóż' }).click();
   await closed();
-  // "drzwi" (Wyjście) kończy blok zamiast "Dalej" paska (ukryty - hideForward).
+  // "drzwi" (Wyjście) aktywują „Dalej” w pasku, który kończy blok (D-106).
   await page.getByRole('button', { name: 'Wyjście' }).click();
+  await nextEnabled().click();
 
   // --- DIALOGUE (Anna) - przechodzimy bez zrzutu (poza zakresem tej rundy) ---------------------------------------
   await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
@@ -264,8 +268,7 @@ async function runViewport(viewport) {
   await page.getByLabel(prompt).fill('bankwektor-weryfikacja.pl');
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  // Wynik już jest widoczny w bloku (bez osobnego ekranu "Blok ukończony."): jedyny klik to "Dalej" pod wynikiem -
-  // ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd ten sam nextEnabled() (wybiera włączony przycisk).
+  // Wynik już jest widoczny w bloku (bez osobnego ekranu "Blok ukończony."): „Dalej” w pasku zapisuje i przechodzi dalej.
   await nextEnabled().click();
 
   // --- SUMMARY (Rozwiązanie sprawy) - kończymy przejście, bez zrzutu (poza zakresem tej rundy) ---------------------

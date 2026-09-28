@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -522,9 +522,9 @@ async function clickAllDialogueQuestions(page) {
 // BRIEFING (D-081), dla każdego kroku: (m) strona się nie przewija, obszar bloku (overflow-clip) nie przewija się, a
 // odprawa nie ma poziomego przewijania (przewija się - jeśli w ogóle - tylko w pionie, wewnątrz siebie); (n) przycisk kroku
 // po przewinięciu do niego leży w CAŁOŚCI w obszarze bloku i w ramce (osiągalny, nie przycięty przez overflow-clip);
-// (o) "Pomiń odprawę" w całości w górnym pasku, a sam pasek nie wypycha treści poza siebie (tytuł się skraca, nie
-// przycisk/Notatnik). Wraca też nazwę kroku, który przewija się wewnętrznie (informacyjnie w wyniku, nie błąd).
-async function checkBriefingStep(page, cta, label) {
+// (o) "Pomiń odprawę" w całości w górnym pasku (na ostatnim kroku go nie ma - nie ma czego pomijać, D-106), a sam pasek nie wypycha
+// treści poza siebie (tytuł się skraca, nie przycisk/Notatnik). Wraca też nazwę kroku, który przewija się wewnętrznie (informacyjnie).
+async function checkBriefingStep(page, cta, label, last = false) {
   await checkNoPageScroll(page, label);
   await checkMainSceneFits(page, label);
   const briefing = page.getByTestId('briefing-block');
@@ -549,11 +549,16 @@ async function checkBriefingStep(page, cta, label) {
     fail(`${label}: (n) przycisk "${cta}" wychodzi poza obszar bloku/ramkę - przycisk=${JSON.stringify(buttonBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
   }
 
-  const skipBox = await page.getByRole('button', { name: 'Pomiń odprawę' }).boundingBox();
+  const skip = page.getByRole('button', { name: 'Pomiń odprawę' });
   const topbar = page.locator('.player-topbar');
   const topbarBox = await boxOf(page, '.player-topbar');
-  if (!skipBox || !contains(topbarBox, skipBox)) {
-    fail(`${label}: (o) "Pomiń odprawę" poza górnym paskiem - przycisk=${JSON.stringify(skipBox)} pasek=${JSON.stringify(topbarBox)}.`);
+  if (last) {
+    if ((await skip.count()) !== 0) fail(`${label}: (o) "Pomiń odprawę" na ostatnim kroku (nie ma czego pomijać).`);
+  } else {
+    const skipBox = await skip.boundingBox();
+    if (!skipBox || !contains(topbarBox, skipBox)) {
+      fail(`${label}: (o) "Pomiń odprawę" poza górnym paskiem - przycisk=${JSON.stringify(skipBox)} pasek=${JSON.stringify(topbarBox)}.`);
+    }
   }
   const topbarOverflow = await topbar.evaluate((el) => el.scrollWidth - el.clientWidth);
   if (topbarOverflow > 1) fail(`${label}: (o) górny pasek przepełniony w poziomie o ${topbarOverflow}px.`);
@@ -624,7 +629,8 @@ async function checkBriefingScene(page, view, label, expectPortrait = false) {
   }
 }
 
-// Przejście przez kroki odprawy (sceny D-084) z pomiarem każdego widoku; ostatniego kroku nie klikamy (zapisałby blok, harness nie ma backendu).
+// Przejście przez kroki odprawy (sceny D-084) z pomiarem każdego widoku. Przedmiot ostatniego kroku to akcja (D-106): aktywuje „Dalej”
+// w pasku, nie zapisuje bloku - sprawdzamy, że po nim jest dokładnie jeden, aktywny „Dalej” (w pasku), i na nim kończymy.
 async function walkBriefing(page, viewport, pageErrors, expectPortrait) {
   await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
   await page.getByTestId('briefing-block').waitFor();
@@ -637,11 +643,17 @@ async function walkBriefing(page, viewport, pageErrors, expectPortrait) {
     await page.waitForTimeout(150);
     await shot(page, `${viewport.name}-odprawa-${index + 1}`);
     if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
-    const scrolls = await checkBriefingStep(page, cta, label);
+    const scrolls = await checkBriefingStep(page, cta, label, !!view.last);
     await checkBriefingScene(page, view, label, expectPortrait);
-    step(`${label}: (a, e, m-p, v-z) OK - ${expectPortrait ? 'pion' : 'poziom'}${scrolls ? ', krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
-    if (view.last) break;
+    await checkSingleNext(page, label);
+    step(`${label}: (a, e, m-p, v-z, j1, j2) OK - ${expectPortrait ? 'pion' : 'poziom'}${scrolls ? ', krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
     await page.getByTestId('briefing-hotspot').click();
+    if (view.last) {
+      await page.getByTestId('player-bottombar').locator('.pbar-next:enabled').waitFor({ timeout: 3000 }).catch(() => fail(`${label}: (j) po „${cta}” „Dalej” w pasku nieaktywny.`));
+      await checkSingleNext(page, label);
+      step(`${label}: (j1, j2) „${cta}” to akcja - jeden aktywny „Dalej” w pasku`, true);
+      break;
+    }
   }
 }
 
@@ -674,8 +686,8 @@ async function checkDossierDocument(page, label) {
 // TABLICA ŚLEDCZA (D-088), w każdym stanie: (a) strona się nie przewija, (e) obszar bloku się nie przewija; (b1) tablica w całości w
 // obszarze bloku, bez przewijania samej tablicy; (b2) każde pole, przypięta karta, zdjęcie i tacka w całości w tablicy, pola i karty
 // się nie nakładają; (b3) tekst żadnej karty (na polu i na tacce) nie jest ucięty; (b4) liczba kart na tacce, "Sprawdź trop" tylko przy
-// pełnej tablicy, cel dotyku kart >= 24 px; (b5) po sprawdzeniu: nić cała ciągła, zdanie informacji zwrotnej i "Dalej" w tacce.
-// Informacyjnie: najmniejsza czcionka karty w px.
+// pełnej tablicy, cel dotyku kart >= 24 px; (b5) po sprawdzeniu: nić cała ciągła, zdanie informacji zwrotnej w tacce; (j1, j2) jeden
+// „Dalej” - w dolnym pasku, aktywny (D-106). Informacyjnie: najmniejsza czcionka karty w px.
 async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   await checkNoPageScroll(page, label);
   await checkMainSceneFits(page, label);
@@ -706,11 +718,7 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
       check: !!board.querySelector('button') && [...board.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Sprawdź trop'),
       dashed: board.querySelectorAll('[data-yarn="dashed"]').length,
       feedback: board.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
-      next: [...board.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Dalej'),
-      nextBox: (() => {
-        const b = [...board.querySelectorAll('button')].find((el) => el.textContent.trim() === 'Dalej');
-        return b ? rect(b) : null;
-      })(),
+      barNextEnabled: !document.querySelector('[data-testid="player-bottombar"] .pbar-next')?.disabled,
       overflow: board.scrollHeight - board.clientHeight,
     };
   });
@@ -742,17 +750,38 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   if (result) {
     if (info.dashed !== 0) fail(`${label}: (b5) po sprawdzeniu nić ma ${info.dashed} przerywanych odcinków.`);
     if (!info.feedback.trim()) fail(`${label}: (b5) brak zdania informacji zwrotnej.`);
-    if (!info.nextBox || !contains(info.tray, info.nextBox)) fail(`${label}: (b5) "Dalej" poza tacką - ${JSON.stringify(info.nextBox)}.`);
+    if (!info.barNextEnabled) fail(`${label}: (b5) „Dalej” w dolnym pasku nieaktywny po sprawdzeniu.`);
   }
+  await checkSingleNext(page, label);
   const minFont = Math.min(...info.texts.map((t) => t.font));
   if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
+}
+
+// JEDEN „DALEJ” (D-106): (j1) w obszarze bloku (treść, scena, nakładki, wynik) nie ma ŻADNEGO przycisku/linku nawigacji dalej
+// („Dalej”, „Kontynuuj”, „Przejdź dalej”, „Zakończ scenę”, „Sprawdź i dalej”, „Zakończ sprawę/szkolenie”, „Wróć do biblioteki”,
+// „Wchodzę”); (j2) w dolnym pasku jest dokładnie jeden przycisk dalej (.pbar-next). Akcje w bloku („Sprawdź trop”, „Zatwierdź”,
+// Zabierz/Odłóż, krzyżyki okienek) są dozwolone.
+const IN_BLOCK_NEXT = '^(Dalej|Kontynuuj|Przejdź dalej|Zakończ scenę|Sprawdź i dalej|Zakończ sprawę|Zakończ szkolenie|Wróć do biblioteki|Wchodzę)$';
+async function checkSingleNext(page, label) {
+  const info = await page.evaluate((pattern) => {
+    const re = new RegExp(pattern);
+    const content = document.querySelector('[data-testid="player-content-area"]');
+    const bar = document.querySelector('[data-testid="player-bottombar"]');
+    const name = (el) => (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
+    const inBlock = content ? [...content.querySelectorAll('button, a[href], [role="button"], [role="link"]')].filter((el) => re.test(name(el))).map(name) : ['brak obszaru bloku'];
+    return { inBlock, forward: bar ? [...bar.querySelectorAll('.pbar-next')].map(name) : [] };
+  }, IN_BLOCK_NEXT);
+  if (info.inBlock.length > 0) fail(`${label}: (j1) przycisk nawigacji dalej w bloku: ${info.inBlock.join(', ')}.`);
+  if (info.forward.length !== 1) fail(`${label}: (j2) w dolnym pasku ${info.forward.length} przycisków dalej (oczekiwany 1): ${info.forward.join(', ')}.`);
+  return info.forward[0];
 }
 
 // TABLICA ZYGZAKIEM (telefon w pionie, D-105, zastępuje listę z D-099): (a) strona się nie przewija; (s1-s5) audyt telefonu (pasek tacki
 // przewija się w poziomie celowo); (g1) tablica z korkiem i nicią (data-layout=zigzag), pola na przemian przy lewej i prawej krawędzi,
 // każde pod poprzednim (bez nakładania); (g2) tekst każdej karty na scenie >= 15 px i nieucięty; (g3) w trakcie: tacka to pasek POD
 // przewijaną sceną (nie w niej), w ekranie, z oczekiwaną liczbą śladów, „Sprawdź trop” tylko przy pustej tacce; (g4) po sprawdzeniu:
-// nić ciągła, zdanie informacji zwrotnej i „Dalej” NAD sceną, w ekranie (widoczne bez przewijania).
+// nić ciągła, zdanie informacji zwrotnej NAD sceną, w ekranie (widoczne bez przewijania), „Dalej” w dolnym pasku aktywny; (j1, j2)
+// jeden „Dalej” (D-106).
 async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
   await checkNoPageScroll(page, label);
   await auditMobileView(page, label, { scrollX: '[data-board-tray] ul' });
@@ -764,7 +793,7 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
       return { x: r.left, y: r.top, width: r.width, height: r.height };
     };
     const buttons = [...document.querySelectorAll('[data-testid="player-content-area"] button')];
-    const next = buttons.find((b) => b.textContent.trim() === 'Dalej');
+    const result = document.querySelector('[role="group"][aria-label="Wynik"]');
     const tray = document.querySelector('[data-board-tray]');
     return {
       layout: board.dataset.layout,
@@ -783,7 +812,8 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
       trayCards: tray ? tray.querySelectorAll('[data-card-id]').length : 0,
       check: buttons.some((b) => b.textContent.trim() === 'Sprawdź trop'),
       feedback: document.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
-      next: next ? rect(next) : null,
+      result: result ? rect(result) : null,
+      barNextEnabled: !document.querySelector('[data-testid="player-bottombar"] .pbar-next')?.disabled,
       viewportHeight: innerHeight,
     };
   });
@@ -803,9 +833,11 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
     if (info.check !== (trayCards === 0)) fail(`${label}: (g3) "Sprawdź trop" ${info.check ? 'widoczne' : 'niewidoczne'} przy ${trayCards} śladach na tacce.`);
   } else {
     if (info.dashed !== 0) fail(`${label}: (g4) po sprawdzeniu nić ma ${info.dashed} przerywanych odcinków.`);
-    const nextOk = info.next && info.next.y + info.next.height <= info.outer.y + 1 && info.next.y + info.next.height <= info.viewportHeight + 1;
-    if (!info.feedback.trim() || !nextOk) fail(`${label}: (g4) wynik - zdanie „${info.feedback}”, „Dalej” ${JSON.stringify(info.next)} (oczekiwane nad sceną ${JSON.stringify(info.outer)}, w ekranie).`);
+    const resultOk = info.result && info.result.y + info.result.height <= info.outer.y + 1 && info.result.y >= 0 && info.result.y + info.result.height <= info.viewportHeight + 1;
+    if (!info.feedback.trim() || !resultOk) fail(`${label}: (g4) wynik - zdanie „${info.feedback}”, panel ${JSON.stringify(info.result)} (oczekiwany nad sceną ${JSON.stringify(info.outer)}, w ekranie).`);
+    if (!info.barNextEnabled) fail(`${label}: (g4) „Dalej” w dolnym pasku nieaktywny po sprawdzeniu.`);
   }
+  await checkSingleNext(page, label);
   const minFont = Math.min(...info.texts.map((t) => t.font));
   if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
 }
@@ -814,7 +846,8 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
 // nie przewijają; (z2) raport (16:9) w całości w obszarze bloku, obraz załadowany; (z3) każdy element w slocie (liczby, wnioski, podpis,
 // pieczęć, liścik) leży w raporcie; (z4) liczby i każda linijka wniosków bez przepełnienia (tekst w slocie, nowrap - obcięty byłby
 // niewidoczny); (z5) cel dotyku podpisu >= 44x44 (niewidoczne rozszerzenie .closing-sign-hit - slot na telefonie jest niższy); (z6)
-// "Wróć do biblioteki" i "Następna sprawa" w całości w obszarze bloku i w viewporcie, >= 44 px wysokości; (z7) błędy strony.
+// "Następna sprawa" w całości w obszarze bloku i w viewporcie, >= 44 px wysokości, "Wróć do biblioteki" - link w dolnym pasku (D-106),
+// w viewporcie; (j1, j2) jeden „Dalej”; (z7) błędy strony.
 const CLOSING_SLOTS = ['closing-evidence', 'closing-time', 'closing-xp', 'closing-lessons', 'closing-signature', 'closing-stamp', 'closing-note'];
 async function checkCaseClosed(page, label, portrait) {
   await checkNoPageScroll(page, label);
@@ -838,13 +871,9 @@ async function checkCaseClosed(page, label, portrait) {
     const scene = await boxOf(page, '[data-testid="case-closed-scene"]');
     if (!contains(contentAreaBox, scene)) fail(`${label}: (z2) pionowy raport wychodzi poza obszar bloku - ${JSON.stringify(scene)}.`);
     if (Math.abs(scene.width / scene.height - 9 / 16) > 0.02) fail(`${label}: (z2) raport ${scene.width}x${scene.height} - nie 9:16.`);
-    const lib = await page.getByTestId('case-closed').getByRole('link', { name: 'Wróć do biblioteki' }).boundingBox();
     const next = await page.getByTestId('case-closed').getByRole('button', { name: /Następna sprawa/ }).boundingBox();
     const actions = await boxOf(page, '[data-testid="case-closed-actions"]');
-    if (!lib || !next || lib.y + lib.height > next.y + 0.5) fail(`${label}: (z6) przyciski nie jeden pod drugim - ${JSON.stringify({ lib, next })}.`);
-    for (const [name, box] of [['Wróć do biblioteki', lib], ['Następna sprawa', next]]) {
-      if (Math.abs(box.width - actions.width) > 1) fail(`${label}: (z6) „${name}” nie na pełną szerokość (${box.width} z ${actions.width}).`);
-    }
+    if (!next || Math.abs(next.width - actions.width) > 1) fail(`${label}: (z6) „Następna sprawa” nie na pełną szerokość (${next?.width} z ${actions.width}).`);
     // Wnioski pod raportem (HTML) - czytelne, min. 15 px, bez przepełnienia w poziomie.
     const lessons = await page.getByTestId('closing-lessons').evaluate((el) => ({ font: parseFloat(getComputedStyle(el).fontSize), overflow: el.scrollWidth - el.clientWidth, inScene: !!el.closest('[data-testid="case-closed-scene"]') }));
     if (lessons.inScene || lessons.font < 15 || lessons.overflow > 1) fail(`${label}: (z4) wnioski w pionie - ${JSON.stringify(lessons)} (oczekiwane pod raportem, >= 15 px, bez przepełnienia).`);
@@ -898,12 +927,13 @@ async function checkCaseClosed(page, label, portrait) {
     if (hits.includes(false)) fail(`${label}: (z5) cel dotyku podpisu < 44x44 (trafienia ±21 px od środka: ${hits.join(', ')}; slot ${JSON.stringify(signBox)}).`);
   }
   const viewport = page.viewportSize();
-  for (const name of ['Wróć do biblioteki', /Następna sprawa/]) {
-    const control = page.getByTestId('case-closed').getByRole(typeof name === 'string' ? 'link' : 'button', { name });
-    const box = await control.boundingBox();
-    const inViewport = box && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
-    if (!box || !contains(contentAreaBox, box) || !inViewport || box.height < 44) fail(`${label}: (z6) przycisk "${name}" poza obszarem bloku/viewportem albo < 44 px - ${JSON.stringify(box)}.`);
-  }
+  const inViewport = (box) => box && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
+  const nextCase = await page.getByTestId('case-closed').getByRole('button', { name: /Następna sprawa/ }).boundingBox();
+  if (!nextCase || !contains(contentAreaBox, nextCase) || !inViewport(nextCase) || nextCase.height < 44) fail(`${label}: (z6) przycisk "Następna sprawa" poza obszarem bloku/viewportem albo < 44 px - ${JSON.stringify(nextCase)}.`);
+  // „Wróć do biblioteki” (D-106): link w dolnym pasku, nie pod raportem.
+  const library = await page.getByTestId('player-bottombar').getByRole('link', { name: 'Wróć do biblioteki' }).boundingBox();
+  if (!library || !inViewport(library) || library.height < 44) fail(`${label}: (z6) „Wróć do biblioteki” w pasku poza viewportem albo < 44 px - ${JSON.stringify(library)}.`);
+  if ((await checkSingleNext(page, label)) !== 'Wróć do biblioteki') fail(`${label}: (j2) przycisk dalej w pasku ekranu zamknięcia to nie „Wróć do biblioteki”.`);
 }
 
 const children = [];
@@ -1708,7 +1738,8 @@ try {
         await checkNoPageScroll(page, label);
         // Pasek tacki tablicy (D-105) przewija się w poziomie celowo.
         await auditMobileView(page, label, { scrollX: '[data-board-tray] ul' });
-        step(`${label}: (s1-s5) OK`, true);
+        await checkSingleNext(page, label);
+        step(`${label}: (s1-s5, j1, j2) OK`, true);
       } catch (error) {
         if (!error.isLayoutCheckFailure) throw error;
         step(`${label}: ${error.message.replace(`${label}: `, '')}`, false);
@@ -1904,6 +1935,80 @@ try {
     await context.close();
   }
   if (moduleFailures.length > 0) fail(`mobile-module: ${moduleFailures.length} stanów z problemami - ${moduleFailures.join('; ')}`);
+
+  // JEDEN „DALEJ” (D-106) - każdy typ bloku modułu 1 na desktopie i telefonie (j1, j2 - checkSingleNext): w obszarze bloku (scena,
+  // zbliżenia, pulpit, rozmowa, mail, teczka, tablica, okno przeglądarki, rozwiązanie sprawy, zamknięcie) nie ma przycisku nawigacji
+  // dalej, w pasku jest dokładnie jeden. Dodatkowo: (j3) rozstrzygnięte zadanie w oknie przeglądarki - „Dalej” w pasku aktywny;
+  // (j4) rozwiązanie sprawy - przycisk w pasku to „Zakończ szkolenie/sprawę”, aktywny; (j5) zamknięcie - „Wróć do biblioteki” w pasku.
+  // Stany wyniku tablicy i raportu zamknięcia sprawdzają też sekcje board/closing/mobile-summary (checkSingleNext w ich kontrolach).
+  for (const viewport of runs('single-next') ? [{ name: '1366x768', width: 1366, height: 768 }, { name: '390x844', width: 390, height: 844, isMobile: true }] : []) {
+    console.log(`\n--- viewport (JEDEN „DALEJ”): ${viewport.name} ---`);
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: !!viewport.isMobile, isMobile: !!viewport.isMobile, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    await page.route('**/api/courses/*/blocks/*/attempt', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ correct: true, attempt: 1, attemptsLeft: 2, done: true, points: 1 }) }),
+    );
+    const barNext = () => page.getByTestId('player-bottombar').locator('.pbar-next');
+    const states = [
+      ['odprawa', null],
+      ['korytarz', null],
+      ['korytarz', 'tablica'],
+      ['biuro-anny', null],
+      ['biuro-anny', 'karteczka'],
+      ['biuro-anny', 'monitor'],
+      ['biuro-anny', 'outlook'],
+      ['biuro-anny', 'gra'],
+      ['rozmowa-anna', null],
+      ['ten-mail', null],
+      ['akta-sprawy', null],
+      ['rozmowa-marek', null],
+      ['rekonstrukcja', null],
+      ['ostatnie-pytanie', null],
+    ];
+    for (const [block, hotspot] of states) {
+      const label = `${viewport.name} / ${block}${hotspot ? ` - ${hotspot}` : ''}`;
+      await page.goto(`${WEB}/dev/player-harness?block=${block}${hotspot ? `&hotspot=${hotspot}` : ''}`);
+      await page.getByTestId('player-content-area').waitFor();
+      if (hotspot) await page.getByTestId('scene-zoom').waitFor();
+      if (hotspot === 'gra') await page.getByTestId('easter-popup').first().waitFor();
+      await page.waitForTimeout(300);
+      await checkSingleNext(page, label);
+      step(`${label}: (j1, j2) OK - jeden „Dalej”, w pasku`, true);
+    }
+    // Rozmowa po wszystkich pytaniach: blok gotowy - „Dalej” w pasku aktywny, w wątku brak przycisku dalej.
+    await page.goto(`${WEB}/dev/player-harness?block=rozmowa-anna`);
+    await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
+    await clickAllDialogueQuestions(page);
+    await checkSingleNext(page, `${viewport.name} / rozmowa-anna koniec`);
+    if (await barNext().isDisabled()) fail(`${viewport.name} / rozmowa-anna koniec: (j3) „Dalej” w pasku nieaktywny po wszystkich pytaniach.`);
+    step(`${viewport.name} / rozmowa-anna koniec: (j1-j3) OK - „Dalej” w pasku aktywny`, true);
+    // Zadanie w oknie przeglądarki rozstrzygnięte (odpowiedź /attempt podstawiona): wynik w oknie, „Dalej” tylko w pasku, aktywny.
+    await page.goto(`${WEB}/dev/player-harness?block=ostatnie-pytanie`);
+    const win = page.getByTestId('browser-window');
+    await win.waitFor();
+    await win.getByRole('textbox').fill('bankwektor-weryfikacja.pl');
+    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('text-input-result').waitFor();
+    await checkSingleNext(page, `${viewport.name} / ostatnie-pytanie rozstrzygnięte`);
+    if (await barNext().isDisabled()) fail(`${viewport.name} / ostatnie-pytanie rozstrzygnięte: (j3) „Dalej” w pasku nieaktywny.`);
+    step(`${viewport.name} / ostatnie-pytanie rozstrzygnięte: (j1-j3) OK`, true);
+    // Rozwiązanie sprawy: „Zakończ …” to etykieta przycisku w pasku.
+    await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
+    await page.getByTestId('player-content-area').waitFor();
+    const summaryNext = await checkSingleNext(page, `${viewport.name} / rozwiazanie-sprawy`);
+    if (!/^Zakończ (sprawę|szkolenie)$/.test(summaryNext ?? '') || (await barNext().isDisabled())) fail(`${viewport.name} / rozwiazanie-sprawy: (j4) przycisk w pasku „${summaryNext}” (oczekiwany aktywny „Zakończ sprawę/szkolenie”).`);
+    step(`${viewport.name} / rozwiazanie-sprawy: (j1, j2, j4) OK - „${summaryNext}” w pasku`, true);
+    // Zamknięcie sprawy (stan końcowy): „Wróć do biblioteki” wyłącznie w pasku.
+    await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
+    await page.getByTestId('case-closed').waitFor();
+    const closedNext = await checkSingleNext(page, `${viewport.name} / zamknięcie sprawy`);
+    if (closedNext !== 'Wróć do biblioteki') fail(`${viewport.name} / zamknięcie sprawy: (j5) przycisk w pasku „${closedNext}”.`);
+    step(`${viewport.name} / zamknięcie sprawy: (j1, j2, j5) OK - „Wróć do biblioteki” w pasku`, true);
+    if (pageErrors.length > 0) fail(`${viewport.name} / jeden „Dalej”: błąd strony: ${pageErrors.join(' | ')}`);
+    await context.close();
+  }
 
   // EASTER EGG (D-100): (e1) wszystkie okienka w całości w ekranie i w nakładce zbliżenia; (e2) krzyżyk górnego okienka >= 44x44, w ekranie,
   // nieprzykryty (elementFromPoint), z fokusem; (e3) tekst okienek >= 15 px; (e4) Esc zamyka górne okienko, klik w tło niczego nie
@@ -2195,7 +2300,7 @@ try {
           if (overlap) fail(`${label}: (n2) nakładają się „${a.name}” i „${b.name}” - ${JSON.stringify({ a, b })}.`);
         }
       }
-      // Scena z „drzwiami” (biuro-anny) nie ma „Dalej” (hideForward) - wtedy sprawdzamy tylko ikony.
+      // Każdy blok ma „Dalej” w pasku (D-106 - także scena z „drzwiami”); `m.next` może brakować tylko przy błędzie układu (n2).
       if (m.next?.clipped) fail(`${label}: (n3) tekst „${m.next.text}” ucięty.`);
       if (m.compact) {
         for (const c of m.controls.filter((c) => !/pbar-next|pbar-text/.test(c.cls))) {

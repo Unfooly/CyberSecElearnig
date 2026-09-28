@@ -124,7 +124,15 @@ try {
 
   await page.goto(`${WEB}/courses/${courseId}`);
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
-  const nextEnabled = () => page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  // Jeden „Dalej” (D-106): całe przejście modułu idzie WYŁĄCZNIE przez przycisk w dolnym pasku; w obszarze bloku nie ma żadnego
+  // przycisku nawigacji dalej (noInBlockNext - sprawdzane w każdym bloku).
+  const bar = () => page.getByTestId('player-bottombar');
+  const nextEnabled = () => bar().getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  const nextDisabled = async () => (await bar().getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':disabled')).count()) === 1;
+  const IN_BLOCK_NEXT = /^(Dalej|Kontynuuj|Przejdź dalej|Zakończ scenę|Sprawdź i dalej|Zakończ sprawę|Zakończ szkolenie|Wróć do biblioteki|Wchodzę)$/;
+  const noInBlockNext = async () =>
+    (await page.getByTestId('player-content-area').getByRole('button', { name: IN_BLOCK_NEXT }).count()) === 0 &&
+    (await page.getByTestId('player-content-area').getByRole('link', { name: IN_BLOCK_NEXT }).count()) === 0;
   // D-093: odtwarzacz nie pokazuje postaci - żadnego obrazka maskotki (alt ani plik z /mascot/).
   const noMascot = async () => (await page.getByAltText(/Maskotka/).count()) === 0 && (await page.locator('img[src*="/mascot/"]').count()) === 0;
   // reactions.complete (klient) może na chwilę "przegrać" wyścig z inną reakcją zdarzeniową (np. hints.notify('evidence') przy
@@ -154,10 +162,10 @@ try {
   };
 
   // --- Blok 0: Odprawa (BRIEFING, D-081/D-084/D-086) -----------------------------------------------------------------------
-  // Moduł zaczyna się od odprawy: cztery kroki (sceny), "Pomiń odprawę" w górnym pasku widoczny od razu, bez "Dalej". Bez przycisków
-  // cta - postęp WYŁĄCZNIE klikiem w przedmiot kroku.
+  // Moduł zaczyna się od odprawy: cztery kroki (sceny), "Pomiń odprawę" w górnym pasku widoczny od razu, „Dalej” w dolnym nieaktywny do
+  // ostatniego kroku. Bez przycisków cta - postęp między krokami WYŁĄCZNIE klikiem w przedmiot kroku.
   await page.getByRole('button', { name: 'Odbierz telefon' }).waitFor();
-  step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, bez "Dalej" w dolnym', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
+  step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, „Dalej” w dolnym nieaktywny, w bloku brak przycisku dalej', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await nextDisabled()) && (await noInBlockNext()));
   step('BRIEFING: odprawa jako scena z grafiką, jedynym przyciskiem kroku jest przedmiot (telefon)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByRole('button', { name: 'Odbierz telefon' }).count()) === 1);
   step('BRIEFING: krok 0 - "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków."', (await page.getByText(/Wtorek, 9:40\. Wydział Cyberbezpieczeństwa, Kraków\. Dzwoni telefon służbowy\./).count()) >= 1);
   await briefingItem('Odbierz telefon');
@@ -172,21 +180,26 @@ try {
   // Legitymacja: imię wyłącznie z danych sesji (konto testowe bez imienia -> z e-maila), numer odznaki z numeru sprawy.
   await page.getByTestId('briefing-slot-number').waitFor();
   step('BRIEFING: legitymacja z numerem odznaki 0915-* w slocie', /^0915-/.test((await page.getByTestId('briefing-slot-number').textContent()) ?? ''));
-  const briefingSaved = progressResponse();
   await briefingItem('Zabierz legitymację');
-  step('BRIEFING: klik w legitymację (ostatni krok) zapisuje blok', (await briefingSaved).ok());
+  // „Zabierz legitymację” to akcja (D-106) - odprawa gotowa, zapis rusza dopiero „Dalej” w pasku.
+  await nextEnabled().waitFor();
+  step('BRIEFING: legitymacja zabrana - „Dalej” w pasku aktywny, w bloku brak przycisku dalej', await noInBlockNext());
+  const briefingSaved = progressResponse();
+  await nextEnabled().click();
+  step('BRIEFING: „Dalej” w pasku zapisuje blok', (await briefingSaved).ok());
 
   // --- Blok 1: Korytarz (SCENE_HOTSPOTS: tablica - dowód opcjonalny, drzwi) - B-086/D-071/D-086 -----------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
-  step('SCENE_HOTSPOTS (korytarz): brak "Dalej" w pasku - jedynym wyjściem są drzwi (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
+  step('SCENE_HOTSPOTS (korytarz): „Dalej” nieaktywny, dopóki gracz nie podejdzie do drzwi (D-106)', (await nextDisabled()) && (await noInBlockNext()));
   await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
   await dialog().getByRole('img', { name: /hasła - nie na karteczkach/ }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
   await take();
   step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/23'), await page.getByTestId('evidence-counter').textContent());
-  // Tablica jest opcjonalna (required:false) - drzwi są gotowe od razu; klik kończy blok (jak "Dalej").
+  // Tablica jest opcjonalna (required:false) - drzwi są gotowe od razu; klik aktywuje „Dalej” w pasku (akcja, nie nawigacja).
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
-  step('SCENE_HOTSPOTS (korytarz): "drzwi" kończą blok', true);
+  await nextEnabled().click();
+  step('SCENE_HOTSPOTS (korytarz): drzwi aktywują „Dalej”, blok kończy „Dalej” w pasku', true);
 
   // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071/D-086 -------------
   await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
@@ -201,7 +214,7 @@ try {
   await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
   step('SCENE_HOTSPOTS: reactions.complete po wymaganych 4 punktach', true);
-  step('SCENE_HOTSPOTS: "drzwi" chowa "Dalej" z paska nawet gdy ready (hideForward)', (await page.getByRole('button', { name: 'Dalej', exact: true }).count()) === 0);
+  step('SCENE_HOTSPOTS: scena z drzwiami - „Dalej” nieaktywny mimo pokrytych wymaganych (czeka na drzwi)', (await nextDisabled()) && (await noInBlockNext()));
 
   // Prawdziwy dowód maila jest dopiero za Pocztą wewnątrz zagnieżdżonej sceny "pulpit" - "Zabierz" w jej zbliżeniu go zalicza.
   await dialog().getByRole('button', { name: 'Poczta' }).click();
@@ -239,10 +252,10 @@ try {
   step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/'));
   await putDown();
 
-  // "drzwi" (action:'next', label "Wyjście") kończy blok jak "Dalej" w pasku (który jest ukryty - patrz krok wyżej):
-  // gotowe od razu, bo wymagane 4 są już odwiedzone.
+  // "drzwi" (action:'next', label "Wyjście") aktywują „Dalej” w pasku (wymagane 4 są już odwiedzone) - blok kończy „Dalej” (D-106).
   await page.getByRole('button', { name: 'Wyjście' }).click();
-  step('SCENE_HOTSPOTS: "drzwi" (Wyjście) kończy blok zamiast "Dalej"', true);
+  await nextEnabled().click();
+  step('SCENE_HOTSPOTS: "drzwi" (Wyjście) aktywują „Dalej”, blok kończy „Dalej” w pasku', true);
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
   // Komunikator (D-087): rozmówca "pisze" (wskaźnik), potem kwestia; data-typing na wątku mówi, czy ktoś właśnie pisze.
@@ -261,6 +274,7 @@ try {
   await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
   step('DIALOGUE (Anna): reactions.complete po 3 wymaganych pytaniach', true);
   await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
+  step('DIALOGUE (Anna): w bloku brak przycisku dalej', await noInBlockNext());
   await nextEnabled().click();
 
   // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
@@ -287,6 +301,7 @@ try {
     JSON.stringify(emailBody.lastResult),
   );
   await page.getByText(/Wynik: 100%/).waitFor();
+  step('EMAIL_ANALYSIS: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();
 
   // --- Blok 5: Teczka sprawy (DOSSIER, D-083) -----------------------------------------------------------------------------
@@ -318,6 +333,7 @@ try {
   await page.getByRole('tab', { name: 'Procedury' }).click();
   step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);
   step('DOSSIER: licznik 5 dowodów z teczki (razem 20 po korytarzu, biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 20/23'), await page.getByTestId('evidence-counter').textContent());
+  step('DOSSIER: w bloku brak przycisku dalej', await noInBlockNext());
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
@@ -363,6 +379,7 @@ try {
   );
   await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
   step('ORDERING: po sprawdzeniu 6 zielonych pinezek i zdanie pod tablicą (bez listy "Poprawna kolejność")', (await page.locator('.board-pin--good').count()) === 6 && ((await page.getByTestId('board-feedback').textContent()) ?? '').length > 0 && (await page.getByRole('region', { name: 'Poprawna kolejność' }).count()) === 0);
+  step('ORDERING: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();
 
   // --- Blok 8: Ostatnie pytanie (TEXT_INPUT_GUIDED, waga 1) ----------------------------------------------------------------
@@ -371,10 +388,9 @@ try {
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
   step('TEXT_INPUT_GUIDED: poprawna odpowiedź za pierwszym razem -> reakcja „Domena, nie napis”', (await page.getByText('To jest to. Domena, nie napis.').count()) === 1);
-  // Wynik już jest widoczny w bloku (TextInputBlock, stan `done`): jedyny klik to "Dalej" pod wynikiem, który zapisuje
-  // postęp I OD RAZU przechodzi dalej, bez osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED,
-  // CoursePlayer.tsx::handleAnswer) - ten sam label co "Dalej" (nieaktywne) w pasku powłoki, stąd nextEnabled()
-  // (wybiera włączony przycisk, pierwszy w DOM).
+  // Wynik już jest widoczny w bloku (TextInputBlock, stan `done`): „Dalej” w pasku (D-106 - bez przycisku pod wynikiem) zapisuje
+  // postęp I OD RAZU przechodzi dalej, bez osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, handleAnswer).
+  step('TEXT_INPUT_GUIDED: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   const textDone = progressResponse();
   await nextEnabled().click();
   const textBody = await (await textDone).json();
@@ -390,8 +406,9 @@ try {
     (await page.getByText('Sprawa zamknięta. Dobra robota, detektywie.', { exact: true }).count()) === 1 && (await noMascot()),
   );
 
+  step('SUMMARY: „Zakończ sprawę” tylko w dolnym pasku (etykieta „Dalej”), nie w bloku', (await noInBlockNext()) && (await bar().getByRole('button', { name: 'Zakończ sprawę' }).count()) === 1);
   const completion = progressResponse();
-  await page.getByRole('button', { name: 'Zakończ sprawę' }).click();
+  await bar().getByRole('button', { name: 'Zakończ sprawę' }).click();
   const completionBody = await (await completion).json();
   // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)), nie ułamek 0-1.
   step('Kurs ukończony po stronie serwera ze 100% wyniku (3+2+1 wag, wszystko poprawne)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
@@ -412,6 +429,10 @@ try {
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie: po podpisie pieczęć i liścik, bez modala (role=dialog)', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1 && (await page.getByRole('dialog').count()) === 0);
   step('Zamknięcie: "Następna sprawa" zamknięta (wkrótce)', (await page.getByRole('button', { name: /Następna sprawa/ }).getAttribute('aria-disabled')) === 'true');
+  step(
+    'Zamknięcie: „Wróć do biblioteki” TYLKO w dolnym pasku (link do /courses), nie pod raportem (D-106)',
+    (await noInBlockNext()) && (await bar().getByRole('link', { name: 'Wróć do biblioteki' }).getAttribute('href')) === '/courses',
+  );
 
   // Powrót do ukończonego kursu: stan końcowy od razu (bez ceremonii), czas sprawy nadal znany (startedAt/completedAt z /start).
   await page.reload();

@@ -272,6 +272,8 @@ interface PopupsFields {
 export interface HotspotMedia extends PopupsFields {
   kind: 'image' | 'audio' | 'document' | 'scene' | 'popups';
   src?: string;
+  /** kind:'image' - wariant dla telefonu w pionie (D-104). */
+  imagePortrait?: string;
   alt?: string;
   audioUrl?: string;
   transcript?: string;
@@ -294,6 +296,8 @@ export interface NestedScene {
 export interface InnerHotspotMedia extends PopupsFields {
   kind: 'image' | 'audio' | 'document' | 'popups';
   src?: string;
+  /** kind:'image' - wariant dla telefonu w pionie (D-104). */
+  imagePortrait?: string;
   alt?: string;
   audioUrl?: string;
   transcript?: string;

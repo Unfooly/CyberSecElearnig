@@ -662,6 +662,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
      `afterAll`, ale przerwany test ją zostawi. Test izolacji A/B osiągnięć nie przechodzi lokalnie (superuser omija RLS, B-085) - tylko CI.
   4. Teoretyczne zakleszczenie (40P01): użytkownik bez przyznania wstecznego kończy kurs dokładnie w chwili ładowania profilu w innej
      karcie - oba ruszają `user_badges` i `users` w innej kolejności; Postgres przerwie jedno, odświeżenie naprawia (idempotentnie).
+  5. (D-112, review) Dymek z nazwą przypiętej miniatury (`PinnedBadges`, `role="tooltip"`) nie jest powiązany `aria-describedby` (nazwa i
+     tak jest w `aria-label`); miniatury mają 24 × 24 px z decyzji właściciela (WCAG 2.5.8 spełnione, mniej niż 44 px). Brak e2e na
+     prawdziwym Postgresie dla pozycji „Ty” spoza dziesiątki (11+ użytkowników) - dziś test jednostkowy kształtu zapytania.
 - Akceptacja: (1) /start (albo odpowiedź zapisu) mówi, czy osiągnięcie easter egga jest już zdobyte, outro bez „Nowe” w takim przypadku;
   (2) przewijanie rewersu klawiaturą (np. osobny, fokusowalny region po odwróceniu); (3) test na własnym kursie albo rollback wersji.
 

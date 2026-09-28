@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -7,28 +7,90 @@ import { KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
-// Sceny modułu 1 (scenes/, miniatura w assets/) to WYNIK kompozytora ze źródeł examples/*.json - build ze źródła musi dać
-// identyczny plik (inaczej ktoś poprawił SVG ręcznie albo zmienił klocek bez przebudowania scen) i identyczne *.hotspots.json.
-// Współrzędne hotspotów/slotów odprawy w module.json (przepisane ręcznie) muszą być równe *.hotspots.json - osobny test niżej.
+// Grafiki modułów i trofea to WYNIK kompozytora ze źródeł scenes/examples/<cel>/*.json (B-128: jeden katalog na cel, dowolny moduł) -
+// build ze źródła musi dać identyczny plik (inaczej ktoś poprawił SVG ręcznie albo zmienił klocek bez przebudowania scen) i identyczne
+// *.hotspots.json. Cel = slug modułu (packages/content/modules/<slug>: scenes/ albo assets/, np. miniatura) albo `achievements`
+// (trofea osiągnięć - globalne, statyczne pliki aplikacji web). Nowy moduł: katalog examples/<slug>/ - test obejmuje go sam.
+// Współrzędne hotspotów/slotów odprawy w module.json modułu 1 (przepisane ręcznie) muszą być równe *.hotspots.json - osobne testy niżej.
 const here = dirname(fileURLToPath(import.meta.url));
-const examples = join(here, 'examples');
-const assets = join(here, '..', '..', '..', 'packages', 'content', 'modules', 'wyludzone-haslo', 'assets');
-const scenes = readdirSync(examples)
-  .filter((file) => file.endsWith('.json') && !file.endsWith('.hotspots.json'))
-  .map((file) => file.replace(/\.json$/, ''))
-  .sort();
+const repo = join(here, '..', '..', '..');
+const examplesRoot = join(here, 'examples');
+const modulesRoot = join(repo, 'packages', 'content', 'modules');
+const achievements = join(repo, 'apps', 'web', 'public', 'achievements');
+const targets = readdirSync(examplesRoot).filter((dir) => statSync(join(examplesRoot, dir)).isDirectory()).sort();
+/** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); trofea - public/achievements. */
+const outputDirs = (target: string) =>
+  target === 'achievements' ? [achievements] : [join(modulesRoot, target, 'assets', 'scenes'), join(modulesRoot, target, 'assets')];
+interface Source {
+  target: string;
+  name: string;
+}
+const sources: Source[] = targets.flatMap((target) =>
+  readdirSync(join(examplesRoot, target))
+    .filter((file) => file.endsWith('.json') && !file.endsWith('.hotspots.json'))
+    .map((file) => ({ target, name: file.replace(/\.json$/, '') }))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+);
+const label = (source: Source) => `${source.target}/${source.name}`;
 const lf = (s: string) => s.replace(/\r\n/g, '\n');
-const build = (name: string) => composeScene(JSON.parse(readFileSync(join(examples, `${name}.json`), 'utf8')) as SceneSpec);
-// Trofea osiągnięć (osiagniecie-*) są globalne, nie należą do modułu: leżą w statycznych plikach aplikacji web.
-const achievements = join(here, '..', '..', '..', 'apps', 'web', 'public', 'achievements');
-const svgPath = (name: string) =>
-  name.startsWith('osiagniecie-')
-    ? join(achievements, `${name}.svg`)
-    : existsSync(join(assets, 'scenes', `${name}.svg`))
-      ? join(assets, 'scenes', `${name}.svg`)
-      : join(assets, `${name}.svg`);
+const build = (source: Source) => composeScene(JSON.parse(readFileSync(join(examplesRoot, source.target, `${source.name}.json`), 'utf8')) as SceneSpec);
+const svgPath = (source: Source) =>
+  outputDirs(source.target).map((dir) => join(dir, `${source.name}.svg`)).find((file) => existsSync(file)) ?? join(outputDirs(source.target)[0], `${source.name}.svg`);
+
+// Moduł 1 - testy współrzędnych (module.json vs *.hotspots.json).
+const examples = join(examplesRoot, 'wyludzone-haslo');
+const assets = join(modulesRoot, 'wyludzone-haslo', 'assets');
+
+describe('sceny z kompozytora (każdy moduł i trofea)', () => {
+  it('cele w scenes/examples: moduły z packages/content/modules albo achievements', () => {
+    expect(targets).toContain('wyludzone-haslo');
+    expect(targets).toContain('achievements');
+    for (const target of targets) expect(target === 'achievements' || existsSync(join(modulesRoot, target, 'module.json')), target).toBe(true);
+  });
+
+  // Kontrola „grafika bez źródła” obejmuje assets/scenes modułu (i public/achievements), nie korzeń assets/: tam leżą też avatary i
+  // pliki spoza kompozytora (miniatura ma źródło, ale obok bywa podgląd PNG).
+  it('każde źródło ma swój plik wynikowy; każda grafika w assets/scenes modułu i w public/achievements ma źródło (nic ręcznego)', () => {
+    for (const source of sources) expect(existsSync(svgPath(source)), label(source)).toBe(true);
+    for (const target of targets) {
+      const produced = new Set(sources.filter((s) => s.target === target).map((s) => `${s.name}.svg`));
+      const dir = outputDirs(target)[0];
+      if (!existsSync(dir)) continue;
+      const orphans = readdirSync(dir).filter((file) => file.endsWith('.svg') && !produced.has(file));
+      expect(orphans, `${target}: grafiki bez źródła w scenes/examples/${target}/`).toEqual([]);
+    }
+  });
+
+  it.each(sources.map((source) => [label(source), source] as const))('%s: build ze źródła daje identyczne SVG i hotspoty', (_label, source) => {
+    const res = build(source);
+    expect(res.svg).toBe(lf(readFileSync(svgPath(source), 'utf8')));
+    const hotspotsFile = join(examplesRoot, source.target, `${source.name}.hotspots.json`);
+    expect(res.hotspots).toEqual(existsSync(hotspotsFile) ? JSON.parse(readFileSync(hotspotsFile, 'utf8')) : []);
+  });
+
+  it('animacje: CSS w SVG, zatrzymywane przez reduced-motion i fragment #static (id="static" na <svg>), bez SMIL', () => {
+    for (const source of sources) {
+      const svg = build(source).svg;
+      expect(svg, label(source)).toMatch(/^<svg [^>]*id="static"/);
+      expect(svg, label(source)).toContain('#static:target *{animation:none!important}');
+      expect(svg, label(source)).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}');
+      expect(svg, label(source)).not.toMatch(/<animate/);
+    }
+  });
+
+  it('SVG scen nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych', () => {
+    for (const source of sources) {
+      expect(build(source).svg, label(source)).not.toMatch(/<script|\son\w+=|href=|foreignObject|javascript:|@import|url\((?!#)/i);
+    }
+  });
+});
 
 describe('sceny modułu 1 z kompozytora', () => {
+  it('moduł 1: komplet źródeł (11 scen + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea 3 × zdobyte/zablokowane', () => {
+    expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(28);
+    expect(sources.filter((s) => s.target === 'achievements')).toHaveLength(6);
+  });
+
   it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
     for (const name of Object.keys(ODPRAWA_PROPS)) expect(PROPS[name], name).toBe(ODPRAWA_PROPS[name as keyof typeof ODPRAWA_PROPS]);
     for (const name of Object.keys(ZAMKNIECIE_PROPS)) expect(PROPS[name], name).toBe(ZAMKNIECIE_PROPS[name as keyof typeof ZAMKNIECIE_PROPS]);
@@ -59,31 +121,6 @@ describe('sceny modułu 1 z kompozytora', () => {
   it('D-098: stackedHalves - czytelny błąd dla nieznanego klocka i samego siebie (zamiast "is not a function"/pętli)', () => {
     expect(() => PROPS.stackedHalves({ prop: 'nieMaTakiego' })).toThrow(/Nieznany klocek "nieMaTakiego"/);
     expect(() => PROPS.stackedHalves({ prop: 'stackedHalves' })).toThrow(/nie może składać samego siebie/);
-  });
-
-  it('każde źródło ma swoją scenę (11 scen modułu + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura; 3 trofea × zdobyte/zablokowane)', () => {
-    expect(scenes).toHaveLength(34);
-    expect(readdirSync(achievements).filter((file) => file.endsWith('.svg')).sort()).toEqual(
-      scenes.filter((name) => name.startsWith('osiagniecie-')).map((name) => `${name}.svg`).sort(),
-    );
-    for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
-  });
-
-  it.each(scenes)('%s: build ze źródła daje identyczne SVG i hotspoty', (name) => {
-    const res = build(name);
-    expect(res.svg).toBe(lf(readFileSync(svgPath(name), 'utf8')));
-    const hotspotsFile = join(examples, `${name}.hotspots.json`);
-    expect(res.hotspots).toEqual(existsSync(hotspotsFile) ? JSON.parse(readFileSync(hotspotsFile, 'utf8')) : []);
-  });
-
-  it('animacje: CSS w SVG, zatrzymywane przez reduced-motion i fragment #static (id="static" na <svg>), bez SMIL', () => {
-    for (const name of scenes) {
-      const svg = build(name).svg;
-      expect(svg, name).toMatch(/^<svg [^>]*id="static"/);
-      expect(svg, name).toContain('#static:target *{animation:none!important}');
-      expect(svg, name).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}');
-      expect(svg, name).not.toMatch(/<animate/);
-    }
   });
 
   it('module.json (blok odprawa) ma te same współrzędne hotspotów i slotów co *.hotspots.json kompozytora', () => {
@@ -153,12 +190,6 @@ describe('sceny modułu 1 z kompozytora', () => {
       const inModule = desktop.find((h) => h.id === b.id);
       expect(inModule, String(b.id)).toBeDefined();
       expect({ x: inModule!.x, y: inModule!.y, w: inModule!.width, h: inModule!.height }, String(b.id)).toEqual({ x: b.x, y: b.y, w: b.w, h: b.h });
-    }
-  });
-
-  it('SVG scen nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych', () => {
-    for (const name of scenes) {
-      expect(build(name).svg, name).not.toMatch(/<script|\son\w+=|href=|foreignObject|javascript:|@import|url\((?!#)/i);
     }
   });
 });

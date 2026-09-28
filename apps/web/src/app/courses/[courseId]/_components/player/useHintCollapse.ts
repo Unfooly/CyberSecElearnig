@@ -11,11 +11,13 @@ import { useAnyOverlayOpen } from './overlay-stack';
 // - Otwarcie JAKIEJKOLWIEK nakładki (overlay-stack) zwija dymek trwale. Reagujemy wyłącznie na PRZEJŚCIE zamknięta -> otwarta, nie na
 //   `true` widziane przy montowaniu (nowy blok montuje się w tym samym commicie, w którym poprzednia scena odrejestrowuje swoją
 //   nakładkę - render widzi jeszcze nieaktualne `true`; D-080).
-// - Pierwsza interakcja z blokiem (click/keydown/change na document, capture) zwija dymek od razu. Bez `focusin`: programowe
+// - Pierwsza interakcja z blokiem (click/keydown/input na document, capture) zwija dymek od razu. Bez `focusin`: programowe
 //   przeniesienie fokusu po zmianie bloku jest nierozróżnialne od fokusu użytkownika i zwijałoby dymek, zanim ktoś go zobaczy.
 //   `click`, nie `pointerdown` (D-093): pasek podpowiedzi jest w przepływie, więc jego zwinięcie przesuwa treść w górę - przy
 //   `pointerdown` działo się to PRZED `click` i dotyk na telefonie trafiał obok przycisku (np. „Zakończ szkolenie”). Przy `click`
-//   cel jest już ustalony, a przesunięcie następuje po nim.
+//   cel jest już ustalony, a przesunięcie następuje po nim. `input`, nie `change` (D-099): `change` pola tekstowego przychodzi przy
+//   jego blur, czyli w chwili wciśnięcia przycisku obok („Sprawdź”) - dymek zwijał się między wciśnięciem a puszczeniem i dotyk
+//   na telefonie (dwulinijkowy dymek, 360 px) trafiał obok przycisku. `input` przychodzi już przy pisaniu (także select/checkbox).
 //   Wyjątek: interakcja z WŁASNYM UI dymku (`rootRef` - przycisk rozwinięcia/zwinięcia).
 export function useHintCollapse(text: string | undefined) {
   const [collapsed, setCollapsed] = useState(false);
@@ -42,11 +44,11 @@ export function useHintCollapse(text: string | undefined) {
     }
     document.addEventListener('click', handleInteraction, true);
     document.addEventListener('keydown', handleInteraction, true);
-    document.addEventListener('change', handleInteraction, true);
+    document.addEventListener('input', handleInteraction, true);
     return () => {
       document.removeEventListener('click', handleInteraction, true);
       document.removeEventListener('keydown', handleInteraction, true);
-      document.removeEventListener('change', handleInteraction, true);
+      document.removeEventListener('input', handleInteraction, true);
     };
   }, []);
 

@@ -2,7 +2,9 @@
 
 import { useId, useRef, useState } from 'react';
 import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/courses-types';
+import { TriangleAlert } from 'lucide-react';
 import { useHints } from '../player/hints';
+import BrowserWindow, { DeceptiveSiteWarning } from './BrowserWindow';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
@@ -10,6 +12,8 @@ import { useHints } from '../player/hints';
 // idzie tylko ich liczba). "Dalej" po rozstrzygnięciu to zwykły zapis postępu (onContinue) - CoursePlayer wie, że wynik już jest pokazany
 // tutaj (stan `done`), więc NIE pokazuje po nim osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, patrz handleAnswer).
 // Po odświeżeniu stan (próby, odsłonięte podpowiedzi, rozwiązanie) wraca z /start (progress).
+// `frame: 'browser'` (feat/browser-evidence): pole jest paskiem adresu w oknie przeglądarki (BrowserWindow.tsx), zła próba to komunikat
+// w obrębie okna, a po rozstrzygnięciu okno pokazuje ostrzeżenie o stronie podszywającej się pod bank - nigdy formularza ani pól na dane.
 
 interface AttemptResponse {
   correct: boolean;
@@ -55,7 +59,10 @@ export default function TextInputBlock({
   const [solution, setSolution] = useState(progress?.solution);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Ostatnia wysłana odpowiedź - w oprawie przeglądarki pokazywana w pasku adresu po rozstrzygnięciu (po odświeżeniu nieznana).
+  const [submitted, setSubmitted] = useState<string | null>(null);
   const submitting = useRef(false);
+  const browser = block.frame === 'browser';
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -89,6 +96,7 @@ export default function TextInputBlock({
       }
       setAttempts(data.attempt);
       setDone(data.done);
+      setSubmitted(answer);
       if (data.done) {
         setCorrect(data.correct);
         setPoints(data.points);
@@ -125,6 +133,53 @@ export default function TextInputBlock({
 
   const attemptsLeft = Math.max(0, maxAttempts - attempts);
 
+  const form = !readOnly && !done && (
+    <form onSubmit={submit} className={browser ? 'flex min-w-0 flex-1 items-center gap-2' : 'flex flex-wrap items-center gap-2'}>
+      <input
+        id={inputId}
+        type="text"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        // Klawiatura ekranowa na telefonie (feat/player-stage, ramka bez przewijania strony - iOS nie zmniejsza
+        // 100dvh, gdy klawiatura się otwiera): bez tego pole zostaje POD klawiaturą, niewidoczne w obszarze
+        // treści ramki.
+        onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'center' })}
+        maxLength={500}
+        placeholder={block.placeholder}
+        autoComplete="off"
+        // Pasek adresu: bez autokorekty i wielkiej litery na telefonie (adres, nie zdanie).
+        autoCapitalize={browser ? 'none' : undefined}
+        autoCorrect={browser ? 'off' : undefined}
+        spellCheck={browser ? false : undefined}
+        inputMode={browser ? 'url' : undefined}
+        enterKeyHint={browser ? 'go' : undefined}
+        // readOnly zamiast disabled na czas wysyłki: pole zachowuje fokus (klawiatura nie wraca na początek strony po każdej próbie).
+        readOnly={pending}
+        disabled={disabled}
+        aria-busy={pending}
+        className={
+          browser
+            ? 'min-h-[40px] min-w-0 flex-1 bg-transparent px-1 text-sm text-ink placeholder:text-muted focus:outline-none disabled:opacity-60'
+            : 'min-h-[44px] min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-slate-900 disabled:opacity-60'
+        }
+      />
+      <button
+        type="submit"
+        disabled={pending || disabled || value.trim().length === 0}
+        className={
+          browser
+            ? 'min-h-[40px] shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white disabled:opacity-50'
+            : 'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50'
+        }
+      >
+        Sprawdź
+      </button>
+    </form>
+  );
+
+  // Adres pokazywany po rozstrzygnięciu: wpisana (poprawna) odpowiedź albo rozwiązanie po wyczerpaniu prób.
+  const shownAddress = done ? (correct ? (submitted ?? undefined) : solution?.text) : undefined;
+
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Zadanie</p>
@@ -132,34 +187,32 @@ export default function TextInputBlock({
         {block.prompt}
       </label>
 
-      {!readOnly && !done && (
-        <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
-          <input
-            id={inputId}
-            type="text"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            // Klawiatura ekranowa na telefonie (feat/player-stage, ramka bez przewijania strony - iOS nie zmniejsza
-            // 100dvh, gdy klawiatura się otwiera): bez tego pole zostaje POD klawiaturą, niewidoczne w obszarze
-            // treści ramki.
-            onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'center' })}
-            maxLength={500}
-            placeholder={block.placeholder}
-            autoComplete="off"
-            // readOnly zamiast disabled na czas wysyłki: pole zachowuje fokus (klawiatura nie wraca na początek strony po każdej próbie).
-            readOnly={pending}
-            disabled={disabled}
-            aria-busy={pending}
-            className="min-h-[44px] min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-slate-900 disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={pending || disabled || value.trim().length === 0}
-            className="min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            Sprawdź
-          </button>
-        </form>
+      {browser ? (
+        <BrowserWindow
+          tabTitle={shownAddress ?? 'Nowa karta'}
+          addressBar={
+            form || (
+              <span data-testid="browser-address" className="min-h-[40px] min-w-0 flex-1 truncate py-2 text-sm text-ink">
+                {shownAddress}
+              </span>
+            )
+          }
+        >
+          {done ? (
+            <DeceptiveSiteWarning address={shownAddress} />
+          ) : message ? (
+            // Zła próba (albo błąd sieci) jak strona błędu przeglądarki - w obrębie okna.
+            <div role="status" data-testid="browser-error" className="flex flex-col items-center gap-2 py-4 text-center">
+              <TriangleAlert aria-hidden="true" className="h-8 w-8 text-warning" />
+              <p className="text-sm font-medium text-ink">{message}</p>
+            </div>
+          ) : pending ? null : (
+            // W trakcie wysyłki pusto (bez mignięcia instrukcji między komunikatem złej próby a odpowiedzią).
+            <p className="py-6 text-center text-sm text-muted">Wpisz adres w pasku u góry i naciśnij „Sprawdź”.</p>
+          )}
+        </BrowserWindow>
+      ) : (
+        form
       )}
 
       {!done && !readOnly && (
@@ -168,7 +221,7 @@ export default function TextInputBlock({
           {attempts > 0 && ` (pozostało: ${attemptsLeft})`}.
         </p>
       )}
-      {message && (
+      {message && !browser && (
         <p role="status" className="mt-2 text-sm font-medium text-red-700">
           {message}
         </p>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import TextInputBlock from './TextInputBlock';
 import { HINT_EVENT_TEXT, HintProvider, useHints } from '../player/hints';
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
@@ -201,6 +201,17 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByRole('button', { name: 'Dalej' })).toBeInTheDocument();
   });
 
+  it('bez `frame`: zwykłe pole, bez okna przeglądarki; komunikat złej próby pod polem', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt()));
+    setup();
+    expect(screen.queryByTestId('browser-window')).not.toBeInTheDocument();
+    type('zle');
+    check();
+    const message = await screen.findByText('To nie ta odpowiedź. Pozostało prób: 2.');
+    expect(message).toHaveAttribute('role', 'status');
+    expect(screen.queryByTestId('browser-error')).not.toBeInTheDocument();
+  });
+
   it('podgląd (readOnly): wynik i rozwiązanie, bez pola i bez "Dalej"', () => {
     setup({
       readOnly: true,
@@ -211,5 +222,106 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText('bank-0.pl')).toBeInTheDocument();
     expect(screen.queryByLabelText('Jaka jest prawdziwa domena w linku?')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
+  });
+});
+
+describe('TextInputBlock: oprawa przeglądarki (frame: browser, feat/browser-evidence)', () => {
+  const browserBlock: ContentBlock = { ...block, frame: 'browser', placeholder: 'wpisz adres' };
+  function setupBrowser(props: { progress?: ClientProgressBlock; readOnly?: boolean } = {}) {
+    render(
+      <HintProvider resetKey="k">
+        <TextInputBlock block={browserBlock} courseId="course-1" onContinue={vi.fn()} {...props} />
+      </HintProvider>,
+    );
+  }
+  const win = () => screen.getByTestId('browser-window');
+  const noDataFields = () => {
+    // Nigdzie formularza logowania ani pól na dane: jedyne pole to pasek adresu (przed rozstrzygnięciem), żadnych haseł.
+    expect(document.querySelectorAll('input[type="password"]')).toHaveLength(0);
+    expect(document.querySelectorAll('input').length).toBeLessThanOrEqual(1);
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('pole jest paskiem adresu w oknie (etykieta = treść zadania), pusta karta z instrukcją', () => {
+    setupBrowser();
+    const input = screen.getByLabelText('Jaka jest prawdziwa domena w linku?');
+    expect(win()).toContainElement(input);
+    expect(input).toHaveAttribute('placeholder', 'wpisz adres');
+    expect(input).toHaveAttribute('autocapitalize', 'none');
+    expect(input).toHaveAttribute('inputmode', 'url');
+    expect(input).toHaveAttribute('enterkeyhint', 'go');
+    expect(within(win()).getByRole('button', { name: 'Sprawdź' })).toBeInTheDocument();
+    expect(win()).toHaveTextContent('Nowa karta');
+    expect(win()).toHaveTextContent('Wpisz adres w pasku u góry');
+    noDataFields();
+  });
+
+  it('zła próba: komunikat w obrębie okna (jak strona błędu przeglądarki), bez osobnego komunikatu pod oknem', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt()));
+    setupBrowser();
+    type('bank.pl');
+    check();
+    const error = await screen.findByTestId('browser-error');
+    expect(win()).toContainElement(error);
+    expect(error).toHaveAttribute('role', 'status');
+    expect(error).toHaveTextContent('To nie ta odpowiedź. Pozostało prób: 2.');
+    expect(screen.getAllByText('To nie ta odpowiedź. Pozostało prób: 2.')).toHaveLength(1);
+    noDataFields();
+  });
+
+  it('poprawna odpowiedź: ostrzeżenie „Ta strona podszywa się pod bank” z wpisanym adresem, bez żadnych pól', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt({ correct: true, done: true, points: 1 })));
+    setupBrowser();
+    type('bankwektor-weryfikacja.pl');
+    check();
+    const warning = await screen.findByTestId('browser-deceptive-warning');
+    expect(win()).toContainElement(warning);
+    expect(warning).toHaveTextContent('Ta strona podszywa się pod bank');
+    expect(warning).toHaveTextContent('bankwektor-weryfikacja.pl');
+    // Kłódka w pasku adresu nie oznacza uczciwej strony - ostrzeżenie mówi to wprost.
+    expect(warning).toHaveTextContent('Kłódka w pasku adresu oznacza tylko szyfrowane połączenie');
+    expect(screen.getByTestId('browser-address')).toHaveTextContent('bankwektor-weryfikacja.pl');
+    expect(document.querySelectorAll('input, textarea, select')).toHaveLength(0);
+    expect(screen.getByText(/Poprawna odpowiedź!/)).toBeInTheDocument();
+  });
+
+  it('błąd sieci: komunikat w obrębie okna, pole zostaje', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    setupBrowser();
+    type('bank.pl');
+    check();
+    expect(await screen.findByTestId('browser-error')).toHaveTextContent('Nie udało się połączyć z serwerem');
+    expect(within(win()).getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('podgląd „Wstecz” (readOnly, rozstrzygnięte): ostrzeżenie, bez pola i bez „Sprawdź”', () => {
+    setupBrowser({ readOnly: true, progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: false, attempts: 3, solution: { text: 'bankwektor-weryfikacja.pl' } } });
+    expect(screen.getByTestId('browser-deceptive-warning')).toBeInTheDocument();
+    expect(screen.getByTestId('browser-address')).toHaveTextContent('bankwektor-weryfikacja.pl');
+    expect(screen.queryByRole('button', { name: 'Sprawdź' })).not.toBeInTheDocument();
+  });
+
+  it('wyczerpane próby: w pasku adresu rozwiązanie, w oknie to samo ostrzeżenie', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(attempt({ attempt: 3, attemptsLeft: 0, done: true, points: 0, solution: { text: 'bankwektor-weryfikacja.pl' } })),
+    );
+    setupBrowser();
+    type('zle');
+    check();
+    await screen.findByTestId('browser-deceptive-warning');
+    expect(screen.getByTestId('browser-address')).toHaveTextContent('bankwektor-weryfikacja.pl');
+    expect(document.querySelectorAll('input, textarea, select')).toHaveLength(0);
+  });
+
+  it('po odświeżeniu (rozstrzygnięte poprawnie, adres nieznany): ostrzeżenie bez adresu, bez pól', () => {
+    setupBrowser({ progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: true, points: 1, attempts: 1 } });
+    expect(screen.getByTestId('browser-deceptive-warning')).toHaveTextContent('Nie wpisuj tu loginu, hasła ani kodów');
+    expect(win()).toHaveTextContent('Nowa karta');
+    expect(document.querySelectorAll('input, textarea, select')).toHaveLength(0);
   });
 });

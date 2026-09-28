@@ -562,6 +562,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   review D-103): `mobile-module` nie sprawdza ekranów wyniku bloków modułu 1 (FeedbackPanel, podgląd „Wstecz”) ani bloków spoza modułu 1
   (QUIZ, DRAG_AND_DROP, TABS, VIDEO, EMBEDDED_HTML) - reguła CSS je obejmuje, audyt nie; akceptacja: sekcja z fixturą `fullBlocks()` w
   harnessie.
+- **Pkt 1 nie dotyczy (D-105, `fix/phone-review-board`):** tablica w pionie wróciła na korek - gałąź portrait `boardLayout` (teraz jedna
+  kolumna zygzakiem) znowu jest używana. **Pkt 3 przeformułowany:** tablica zygzakiem na telefonie nie ma przeciągania palcem (tylko
+  stuknięcia: ślad, potem pole; myszą - tak) - bez zmian w akceptacji.
 
 ### B-122 Easter egg (D-100): odłożone uwagi z review
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `feat/easter-egg-game` (D-100)
@@ -581,6 +584,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja:
   - (1) jeden hook, testy bez zmian;
   - (2) zawijanie po szacowanej szerokości albo walidacja długości w teście kompozytora; spinacz narysowany ścieżką.
+
+### B-124 Tablica zygzakiem (D-105): odłożone uwagi z review
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `fix/phone-review-board` (D-105)
+- Opis:
+  1. Obrót (tablet z klawiaturą) montuje przyciski tacki i „Sprawdź trop” od nowa - fokus spada na `body`.
+  2. Podpowiedź obrotu (`cramped`) liczy szerokość sceny z korzenia bloku (z promptem), nie ze sceny - przy 844×390 bez skutku (prompt
+     `sr-only`).
+  3. Przeciąganie myszą w pionie nie przewija sceny przy krawędzi; pióro w pionie dostaje `pointercancel` (`touch-pan-y`).
+  4. Tabliczka tytułu bez limitu szerokości - bardzo długi `caseNo` nachodziłby na zdjęcie początku.
+  5. W pionie etykieta i podpis zdjęcia mają ten sam rozmiar (15 px) - słabsza hierarchia.
+  6. layout-check nie sprawdza przewinięcia kontenera sceny po wyborze śladu (Playwright sam przewija pole przed kliknięciem).
+- Akceptacja: poprawki z testem albo decyzja, że zostają.
 
 ## F. Symulacje phishingowe i zgłoszenia
 

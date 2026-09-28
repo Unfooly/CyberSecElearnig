@@ -26,7 +26,7 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 | `TABS` | `TabsBlock` | `{ opened }` | wzorzec ARIA tabs |
 | `NOTEPAD`, `SUMMARY` | `NotepadBlock`, `SummaryBlock` | brak | `SUMMARY` z dowodami to „Rozwiązanie sprawy” (przeoczone tylko liczbowo) |
 | `EMAIL_ANALYSIS` | `EmailAnalysisBlock` | `{ selected }` (id nieprzejrzyste) | klik we fragment maila zaznacza kryterium; link nigdy nie nawiguje; wynik z `detail` |
-| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | tablica śledcza (D-088): ślady z tacki na pola 1..N - przeciąganie, klik ślad → klik pole albo klawiatura; zajęte pole = zamiana; „Sprawdź trop”, gdy pełna |
+| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | tablica śledcza (D-088): ślady z tacki na pola 1..N - przeciąganie, klik ślad → klik pole albo klawiatura; zajęte pole = zamiana; „Sprawdź trop”, gdy pełna; telefon w pionie - lista (D-099) |
 | `TEXT_INPUT_GUIDED` | `TextInputBlock` | brak (próby: `POST /api/courses/:id/blocks/:blockId/attempt`, `{ answer }`) | podpowiedź po błędnej próbie, rozwiązanie po wyczerpaniu prób |
 | `EMBEDDED_HTML` | `EmbeddedHtmlBlock` | brak | osobny dokument w iframe (niżej) |
 
@@ -67,6 +67,13 @@ Odprawa (BRIEFING) i zamknięcie sprawy mają opcjonalny wariant pionowy (`portr
 wariantu poziomego po SSR) i bierze pionową grafikę z jej prostokątami; obrót telefonu przełącza wariant bez utraty stanu kroku ani
 etapu ceremonii. Zamknięcie w pionie: raport 9:16 w całości, liczby i wnioski pod nim jako tekst (min. 15 px, lista wniosków przewijana w pionie przy długiej treści), przyciski na pełną szerokość jeden
 pod drugim. Bez `portrait` - scena 16:9 w pasach i panorama raportu (jak wcześniej).
+
+## Końcowe podsumowanie na telefonie (D-099)
+
+Od rekonstrukcji do zamknięcia sprawy (ORDERING, TEXT_INPUT_GUIDED, SUMMARY, ekran zamknięcia) na ekranie węższym niż 640 px tekst bloku
+ma min. 15 px (`PlayerStage readableOnPhone` -> `.mobile-readable` w globals.css), a cele dotyku 44 px. Tablica śledcza w pionie jest
+listą pól: stuknięcie śladu przypina go do pierwszego pustego pola, dwa przypięte się zamieniają, wynik pokazuje się nad polami.
+Dłuższa treść przewija się w pionie wewnątrz bloku; dolny pasek zostaje. layout-check: sekcja `mobile-summary` (`auditMobileView`).
 
 ## Podpowiedzi (D-093, dawniej maskotka)
 

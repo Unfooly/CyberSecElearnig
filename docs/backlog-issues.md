@@ -641,6 +641,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   4. Nazwa okienka easter egga „GTA6_PL.exe” (D-100) nawiązuje do cudzej marki - decyzja właściciela: zostaje czy zmiana nazwy.
 - Akceptacja: (1) drugi moduł przechodzi layout-check i e2e; (2) pole w `ASSET_PATHS` z testem; (3) zapis w scenariuszu; (4) decyzja.
 
+### B-129 Nagrania ze `spokenText` (D-109): napisy i zgodność napisu z mową
+- Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review `fix/tts-numbers` (D-109)
+- Opis:
+  1. Narracja ze `spokenText` nie dostaje `cues` z TTS (potok celowo ich nie liczy - wyświetlałyby słowny zapis zamiast „8:47”);
+     odtwarzacz dzieli napisy proporcjonalnie do długości zdań, więc długie ostatnie zdanie może się rozjechać z mową. Pomysł: cues z
+     `spokenText` przemapowane na zdania z `text` (ta sama liczba zdań).
+  2. `odprawa` krok 1 (moduł 1): napis „Mamy zgłoszenie…” różni się od mowy „Detektywie, mamy zgłoszenie…” - różnica sprzed D-109 (poza
+     zakresem W: „nie zmieniaj treści poza spokenText”).
+- Akceptacja: (1) cues dla narracji ze `spokenText` z testem potoku; (2) decyzja właściciela - wyrównać napis czy zostawić.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

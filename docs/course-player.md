@@ -74,8 +74,9 @@ Każde pole schematu bloku jest sklasyfikowane w `packages/content/src/blocks.ts
 Odprawa (BRIEFING) i zamknięcie sprawy mają opcjonalny wariant pionowy (`portrait` w treści, grafiki 9:16). Odtwarzacz mierzy kontener
 (`lib/use-portrait-container.ts`: proporcje < 0.8 = telefon w pionie; do pierwszego pomiaru grafika się nie renderuje - bez mignięcia
 wariantu poziomego po SSR) i bierze pionową grafikę z jej prostokątami; obrót telefonu przełącza wariant bez utraty stanu kroku ani
-etapu ceremonii. Zamknięcie w pionie: raport 9:16 w całości, liczby i wnioski pod nim jako tekst (min. 15 px, lista wniosków przewijana w pionie przy długiej treści), przyciski na pełną szerokość jeden
-pod drugim. Bez `portrait` - scena 16:9 w pasach i panorama raportu (jak wcześniej).
+etapu ceremonii. Zamknięcie w pionie (D-107): raport jako jedna duża strona 9:16 wypełniająca wolną wysokość, wszystkie dane w slotach
+grafiki (liczby min. 18 px pogrubione, podpis min. 16 px, wnioski min. 15 px), pod raportem tylko „Następna sprawa · wkrótce” (i
+ewentualny komunikat błędu; „Wróć do biblioteki” w dolnym pasku, D-106). Wynik zadań, awans i nowe odznaki - w opisie raportu dla czytnika. Bez `portrait` - scena 16:9 w pasach i panorama raportu (jak wcześniej).
 
 ## Telefon: tekst min. 15 px w całym module (D-099, D-103)
 

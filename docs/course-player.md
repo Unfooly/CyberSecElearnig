@@ -26,7 +26,7 @@ Odpowiedź idzie `POST /api/courses/:id/progress` jako `{ blockIndex, answer? }`
 | `TABS` | `TabsBlock` | `{ opened }` | wzorzec ARIA tabs |
 | `NOTEPAD`, `SUMMARY` | `NotepadBlock`, `SummaryBlock` | brak | `SUMMARY` z dowodami to „Rozwiązanie sprawy” (przeoczone tylko liczbowo) |
 | `EMAIL_ANALYSIS` | `EmailAnalysisBlock` | `{ selected }` (id nieprzejrzyste) | klik we fragment maila zaznacza kryterium; link nigdy nie nawiguje; wynik z `detail` |
-| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | tablica śledcza (D-088): ślady z tacki na pola 1..N - przeciąganie, klik ślad → klik pole albo klawiatura; zajęte pole = zamiana; „Sprawdź trop”, gdy pełna; telefon w pionie - lista (D-099) |
+| `ORDERING` | `OrderingBlock` | `{ order }` (id nieprzejrzyste) | tablica śledcza (D-088): ślady z tacki na pola 1..N - przeciąganie, klik ślad → klik pole albo klawiatura; zajęte pole = zamiana; „Sprawdź trop”, gdy pełna; telefon w pionie - zygzak w jednej kolumnie, tacka pod tablicą (D-105) |
 | `TEXT_INPUT_GUIDED` | `TextInputBlock` | brak (próby: `POST /api/courses/:id/blocks/:blockId/attempt`, `{ answer }`) | podpowiedź po błędnej próbie, rozwiązanie po wyczerpaniu prób |
 | `EMBEDDED_HTML` | `EmbeddedHtmlBlock` | brak | osobny dokument w iframe (niżej) |
 
@@ -74,9 +74,9 @@ Na ekranie węższym niż 640 px cały tekst odtwarzacza ma min. 15 px - treść
 `.mobile-readable` na ramce `PlayerStage`, reguła w globals.css; napisy lektora, licznik pytań rozmowy i podpowiedź panoramy - 15 px w CSS;
 tekst w slotach scen odprawy - wyższe granice FitText w pionie, pola legitymacji z `minPx`). Desktop bez zmian. layout-check: sekcja
 `mobile-module` (tekst w całej ramce, każdy blok modułu 1). Końcówka modułu (od rekonstrukcji do zamknięcia sprawy) ma dodatkowo cele
-dotyku 44 px i brak poziomego przewijania (D-099). Tablica śledcza w pionie jest
-listą pól: stuknięcie śladu przypina go do pierwszego pustego pola, dwa przypięte się zamieniają, wynik pokazuje się nad polami.
-Dłuższa treść przewija się w pionie wewnątrz bloku; dolny pasek zostaje. layout-check: sekcja `mobile-summary` (`auditMobileView`).
+dotyku 44 px i brak poziomego przewijania (D-099). Tablica śledcza w pionie (D-105) to ta sama tablica z korkiem i nicią, z polami w
+jednej kolumnie zygzakiem (karty min. 15 px), przewijana w pionie; tacka jest paskiem pod nią, przypina się stuknięciami (ślad, potem
+pole; dwa przypięte się zamieniają), wynik pokazuje się nad tablicą. Dłuższa treść przewija się w pionie wewnątrz bloku; dolny pasek zostaje. layout-check: sekcja `mobile-summary` (`auditMobileView`).
 
 ## Podpowiedzi (D-093, dawniej maskotka)
 

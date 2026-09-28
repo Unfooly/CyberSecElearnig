@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Mail, MapPin, Package, Square, StickyNote, User, type LucideIcon } from 'lucide-react';
-import type { ClientNote, ClientProgressBlock, ContentBlock, NoteKind } from '@/lib/courses-types';
+import { Award, Mail, MapPin, Package, Square, StickyNote, User, type LucideIcon } from 'lucide-react';
+import type { ClientDistinction, ClientNote, ClientProgressBlock, ContentBlock, NoteKind } from '@/lib/courses-types';
 
 // Notatnik modułu: wspólny stan widoczny w wielu blokach (panel w powłoce). Wpisy dodają bloki (hotspoty, dialog, checklista maila);
 // początkowe pochodzą z progress.notes z /start (treść rozwiązana przez serwer, klient nigdy nie wysyła własnej).
@@ -30,30 +30,42 @@ interface NotesContextValue {
   /** Dodaje wpis (bez duplikatów tego samego bloku i tekstu). */
   addNote: (note: ClientNote) => void;
   tasks: NotebookTask[];
+  /** Ukryte wyróżnienia easter egga (D-100): z progress.distinctions (/start) i znalezione w tej sesji. Bez wpływu na dowody i XP. */
+  distinctions: ClientDistinction[];
+  addDistinction: (distinction: ClientDistinction) => void;
 }
 
-const NotesContext = createContext<NotesContextValue>({ notes: [], blockTitles: {}, addNote: () => {}, tasks: [] });
+const NotesContext = createContext<NotesContextValue>({ notes: [], blockTitles: {}, addNote: () => {}, tasks: [], distinctions: [], addDistinction: () => {} });
 
 const NO_TASKS: NotebookTask[] = [];
+const NO_DISTINCTIONS: ClientDistinction[] = [];
 
 export function NotesProvider({
   initial,
   blockTitles = {},
   tasks = NO_TASKS,
+  initialDistinctions = NO_DISTINCTIONS,
   children,
 }: {
   initial: ClientNote[];
   blockTitles?: Record<string, string>;
   tasks?: NotebookTask[];
+  initialDistinctions?: ClientDistinction[];
   children: ReactNode;
 }) {
   const [notes, setNotes] = useState<ClientNote[]>(initial);
+  const [distinctions, setDistinctions] = useState<ClientDistinction[]>(initialDistinctions);
   const addNote = useCallback((note: ClientNote) => {
     setNotes((current) =>
       current.some((existing) => existing.blockId === note.blockId && existing.text === note.text) ? current : [...current, note],
     );
   }, []);
-  const value = useMemo(() => ({ notes, blockTitles, addNote, tasks }), [notes, blockTitles, addNote, tasks]);
+  const addDistinction = useCallback((distinction: ClientDistinction) => {
+    setDistinctions((current) =>
+      current.some((existing) => existing.blockId === distinction.blockId && existing.label === distinction.label) ? current : [...current, distinction],
+    );
+  }, []);
+  const value = useMemo(() => ({ notes, blockTitles, addNote, tasks, distinctions, addDistinction }), [notes, blockTitles, addNote, tasks, distinctions, addDistinction]);
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>;
 }
 
@@ -162,8 +174,26 @@ export function TaskList({ tasks, open = true }: { tasks: NotebookTask[]; open?:
   );
 }
 
+/** Ukryte wyróżnienia (D-100) - sekcja pojawia się dopiero po znalezieniu pierwszego; nie są dowodami (bez licznika). */
+export function DistinctionList({ distinctions }: { distinctions: ClientDistinction[] }) {
+  if (distinctions.length === 0) return null;
+  return (
+    <section aria-label="Wyróżnienia" data-testid="notebook-distinctions" className="mt-3">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">Wyróżnienia</h3>
+      <ul className="space-y-1 text-sm text-slate-800">
+        {distinctions.map((distinction, index) => (
+          <li key={index} className="flex items-start gap-2">
+            <Award aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
+            <span className="font-semibold">{distinction.label}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function NotesPanel({ id, open = true }: { id: string; open?: boolean }) {
-  const { notes, blockTitles, tasks } = useNotes();
+  const { notes, blockTitles, tasks, distinctions } = useNotes();
   return (
     <aside id={id} aria-label="Notatnik" className="rounded-lg bg-amber-50 p-4 ring-1 ring-amber-200">
       <h2 className="mb-2 text-sm font-semibold text-amber-900">Notatnik</h2>
@@ -173,6 +203,7 @@ export function NotesPanel({ id, open = true }: { id: string; open?: boolean }) 
       ) : (
         <GroupedNotes notes={notes} blockTitles={blockTitles} />
       )}
+      <DistinctionList distinctions={distinctions} />
     </aside>
   );
 }

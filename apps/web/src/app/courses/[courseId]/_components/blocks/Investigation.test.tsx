@@ -1047,6 +1047,150 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
   });
 });
 
+// Easter egg (D-100): ikona gry na pulpicie (hotspot z media.kind "popups" WEWNĄTRZ zagnieżdżonej sceny).
+const easterScene: ContentBlock = {
+  ...nestedScene,
+  hotspots: nestedScene.hotspots!.map((hotspot) =>
+    hotspot.id === 'monitor'
+      ? {
+          ...hotspot,
+          media: {
+            ...hotspot.media!,
+            scene: {
+              ...hotspot.media!.scene!,
+              hotspots: [
+                ...hotspot.media!.scene!.hotspots,
+                {
+                  id: 'gra',
+                  label: 'GTA6_PL.exe',
+                  x: 50,
+                  y: 5,
+                  width: 15,
+                  height: 15,
+                  content: 'Ikona gry.',
+                  media: {
+                    kind: 'popups' as const,
+                    items: [
+                      { title: 'Wykryto 147 wirusów!', body: 'Twój komputer jest bardzo chory.', button: 'Wylecz za 0 zł', behavior: 'dodge' as const },
+                      { title: 'Gratulacje!', body: 'Wygrałeś smartfon!', button: 'Odbierz nagrodę' },
+                    ],
+                    outro: 'Pirackie gry to częsta droga wirusów do firm.',
+                    badge: { id: 'ciekawski-detektyw', label: 'Ciekawski detektyw' },
+                  },
+                  required: false,
+                },
+              ],
+            },
+          },
+        }
+      : hotspot,
+  ),
+};
+
+describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () => {
+  withReducedMotion();
+  const openGame = () => {
+    pick('Monitor');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'GTA6_PL.exe' }));
+  };
+  const closePopup = (title: string) => fireEvent.click(screen.getByRole('button', { name: `Zamknij okienko: ${title}` }));
+
+  it('okienka zamiast zbliżenia (bez Zabierz/Odłóż); przedmiot NIE jest obejrzany, dopóki okienka są otwarte', () => {
+    setup(easterScene);
+    openGame();
+    expect(screen.getAllByTestId('easter-popup')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Odłóż' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('notebook-distinctions')).not.toBeInTheDocument();
+    // Ikona pod okienkami (aria-hidden - nazwy dostępnej nie da się policzyć, stąd atrybut) nie ma sufiksu „(obejrzane)”, także po
+    // zamknięciu części okienek.
+    closePopup('Gratulacje!');
+    expect(document.querySelector('[aria-label="GTA6_PL.exe"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="GTA6_PL.exe (obejrzane)"]')).toBeNull();
+  });
+
+  it('okienka na przedmiocie SCENY GŁÓWNEJ: po wszystkich - outro z „Wróć” (bez pulpitu), zamyka nakładkę, przedmiot obejrzany', () => {
+    const outerScene: ContentBlock = {
+      ...nestedScene,
+      hotspots: [
+        ...nestedScene.hotspots!,
+        {
+          id: 'laptop',
+          label: 'Laptop',
+          x: 40,
+          y: 40,
+          width: 10,
+          height: 10,
+          content: 'Laptop.',
+          media: { kind: 'popups' as const, items: [{ title: 'Gratulacje!', body: 'Wygrałeś smartfon!', button: 'Odbierz nagrodę' }], outro: 'To tylko ćwiczenie.' },
+        },
+      ],
+    };
+    setup(outerScene);
+    pick('Laptop');
+    closePopup('Gratulacje!');
+    expect(screen.getByTestId('easter-outro')).toHaveTextContent('To tylko ćwiczenie.');
+    expect(screen.queryByTestId('easter-badge')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Wróć' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Laptop (obejrzane)' })).toBeInTheDocument();
+  });
+
+  it('Esc zamyka górne okienko (nie cały pulpit), klik w tło nie zamyka niczego', () => {
+    setup(easterScene);
+    openGame();
+    fireEvent.click(screen.getByTestId('scene-zoom'));
+    expect(screen.getAllByTestId('easter-popup')).toHaveLength(2);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getAllByTestId('easter-popup')).toHaveLength(1);
+    expect(screen.queryByRole('dialog', { name: 'Gratulacje!' })).not.toBeInTheDocument();
+  });
+
+  it('po zamknięciu wszystkich: outro, wyróżnienie w notatniku (bez notatki i dowodu), ikona obejrzana; do serwera idzie w visited', () => {
+    const { onSubmit, ready } = setup(easterScene);
+    openGame();
+    closePopup('Gratulacje!');
+    closePopup('Wykryto 147 wirusów!');
+    expect(screen.getByTestId('easter-outro')).toHaveTextContent('Pirackie gry');
+    expect(screen.getByTestId('notebook-distinctions')).toHaveTextContent('Ciekawski detektyw');
+    expect(screen.getByTestId('notes')).toHaveTextContent('');
+    fireEvent.click(screen.getByRole('button', { name: 'Wróć do pulpitu' }));
+    expect(within(dialog()).getByRole('button', { name: 'GTA6_PL.exe (obejrzane)' })).toBeInTheDocument();
+    // Ukończenie bloku: gra NIE jest wymagana (required: false i okienka poza pulą) - reszta tak.
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
+    putDown();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Kosz' }));
+    putDown();
+    back();
+    pick('Kubek');
+    putDown();
+    ready.current!();
+    expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'gra', 'outlook', 'kosz', 'kubek']), noted: [] });
+  });
+
+  it('easter egg nie jest wymagany: blok gotowy bez niego, licznik „Obejrzano” go nie liczy', () => {
+    const { ready } = setup(easterScene);
+    expect(screen.getByText('Obejrzano 0 z 4 elementów.')).toBeInTheDocument();
+    pick('Monitor');
+    for (const name of ['Outlook', 'Kosz']) {
+      fireEvent.click(within(dialog()).getByRole('button', { name }));
+      putDown();
+    }
+    back();
+    pick('Kubek');
+    putDown();
+    expect(ready.current).not.toBeNull();
+  });
+
+  it('w podglądzie ukończonego bloku (review) wyróżnienie nie trafia do notatnika', () => {
+    setup(easterScene, { review: true });
+    openGame();
+    closePopup('Gratulacje!');
+    closePopup('Wykryto 147 wirusów!');
+    expect(screen.queryByTestId('notebook-distinctions')).not.toBeInTheDocument();
+  });
+});
+
 const doorScene: ContentBlock = {
   type: 'SCENE_HOTSPOTS',
   id: 'korytarz',

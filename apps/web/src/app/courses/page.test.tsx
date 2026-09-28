@@ -50,9 +50,8 @@ const gamificationResponse = {
   badges: [],
 };
 
-const leaderboardResponse = [
-  { rank: 1, userId: 'user-1', firstName: 'J', lastName: 'K', avatarUrl: 'fox', level: 2, xp: 150, departmentName: null },
-];
+const leaderboardEntry = { rank: 1, userId: 'user-1', firstName: 'J', lastInitial: 'K', avatarUrl: 'fox', level: 2, xp: 150, pinned: [] };
+const leaderboardResponse = { enabled: true, top: [leaderboardEntry], me: leaderboardEntry };
 
 describe('CoursesPage', () => {
   afterEach(() => {
@@ -161,6 +160,24 @@ describe('CoursesPage', () => {
     expect(screen.getByText('Ranking organizacji')).toBeInTheDocument();
     // user-1 z leaderboardu to ten sam `sub` co w VALID_TOKEN - podświetlone jako "Ty".
     expect(screen.getByText('Ty')).toBeInTheDocument();
+  });
+
+  it('D-112: ranking wyłączony przez admina organizacji - bez sekcji rankingu', async () => {
+    mockCookieValue(VALID_TOKEN);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
+        .mockResolvedValueOnce({ ok: true, json: async () => [] })
+        .mockResolvedValueOnce({ ok: true, json: async () => gamificationResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ enabled: false, top: [], me: null }) }),
+    );
+
+    render(await CoursesPage());
+
+    expect(screen.getByText('Poziom 2')).toBeInTheDocument();
+    expect(screen.queryByText('Ranking organizacji')).not.toBeInTheDocument();
   });
 
   it('nie renderuje sekcji gamifikacji, gdy GET /users/me/gamification zawiedzie', async () => {

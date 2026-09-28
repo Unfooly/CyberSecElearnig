@@ -49,6 +49,8 @@ const PROTECTED: Row[] = [
   { route: './users/me/avatar/image/route.ts', method: 'POST', file: true },
   { route: './users/me/avatar/image/route.ts', method: 'DELETE' },
   { route: './users/me/preferences/route.ts', method: 'PATCH', body: { narrationEnabled: false } },
+  // Przypięte osiągnięcia (D-112)
+  { route: './gamification/pinned/route.ts', method: 'PUT', body: { codes: ['first-case-closed'] } },
   // Import pracowników
   { route: './users/import/preview/route.ts', method: 'POST', file: true },
   { route: './users/import/[id]/route.ts', method: 'DELETE', params: { id: 'i1' } },

@@ -32,7 +32,7 @@ export function isSameOriginRequest(): boolean {
  * obsługuje UI); awaria sieci = 502.
  */
 export async function proxyAuthenticated(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   apiPath: string,
   body?: Record<string, unknown>,
 ): Promise<NextResponse> {

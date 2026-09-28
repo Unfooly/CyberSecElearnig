@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { EKRAN_PROPS, ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { EKRAN_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROP_REGISTRY } from './prop-registry.js';
 import type { PropFn, PropOutput } from './types.js';
 
@@ -417,5 +417,7 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...PION_PROPS,
   // Ramka monitora dla scen „ekranowych” z przezroczystym tłem (D-101, wrap-in-monitor.ts).
   ...EKRAN_PROPS,
+  // Okna w wersji pionowej (mail, historia przeglądarki) i raport zamknięcia jako jedna strona (telefon, D-104).
+  ...PION_OKNA_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

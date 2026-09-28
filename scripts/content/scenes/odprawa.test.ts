@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -27,6 +27,13 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(ZAMKNIECIE_PROPS)) expect(PROPS[name], name).toBe(ZAMKNIECIE_PROPS[name as keyof typeof ZAMKNIECIE_PROPS]);
     for (const name of Object.keys(PRZEGLADARKA_PROPS)) expect(PROPS[name], name).toBe(PRZEGLADARKA_PROPS[name as keyof typeof PRZEGLADARKA_PROPS]);
     for (const name of Object.keys(PION_PROPS)) expect(PROPS[name], name).toBe(PION_PROPS[name as keyof typeof PION_PROPS]);
+    for (const name of Object.keys(PION_OKNA_PROPS)) expect(PROPS[name], name).toBe(PION_OKNA_PROPS[name as keyof typeof PION_OKNA_PROPS]);
+  });
+
+  it('D-104: reportPortrait (jeszcze bez sceny w module) renderuje się z domyślnymi parametrami i ma wszystkie sloty raportu', () => {
+    const report = PROPS.reportPortrait({});
+    expect(report.svg.length).toBeGreaterThan(0);
+    expect(Object.keys(report.parts ?? {}).sort()).toEqual(['slot-czas', 'slot-dowody', 'slot-liscik', 'slot-pieczec', 'slot-podpis', 'slot-wnioski', 'slot-xp']);
   });
 
   it('D-098: stackedHalves - czytelny błąd dla nieznanego klocka i samego siebie (zamiast "is not a function"/pętli)', () => {
@@ -34,8 +41,8 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(() => PROPS.stackedHalves({ prop: 'stackedHalves' })).toThrow(/nie może składać samego siebie/);
   });
 
-  it('każde źródło ma swoją scenę w module (11 scen modułu, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
-    expect(scenes).toHaveLength(26);
+  it('każde źródło ma swoją scenę w module (11 scen modułu + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
+    expect(scenes).toHaveLength(28);
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 

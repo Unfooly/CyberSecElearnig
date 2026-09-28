@@ -23,8 +23,10 @@ type Phase = 'in' | 'open' | 'out';
 type CameraStyle = { transformOrigin: string; transform: string } | null;
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
-// Przyciski nakładki leżą na scenie bez przyciemnienia (D-101): pierścień dwukolorowy - ciemny obrys na zewnątrz (widoczny na jasnej
-// scenie) i biały pierścień przy krawędzi (widoczny na ciemnym przycisku i ciemnych fragmentach sceny).
+// Przyciemnienie sceny pod zbliżeniem (D-102): ink 35% + rozmycie 3 px - pulpit i okienka easter egga leżą na tej samej nakładce.
+const ZOOM_DIM = 'bg-ink/35 backdrop-blur-[3px]';
+// Pierścień fokusu przycisków nakładki dwukolorowy (D-101): ciemny obrys na zewnątrz i biały pierścień przy krawędzi - widoczny
+// niezależnie od tego, co leży pod przyciskiem (przyciemniona scena, jasny fragment grafiki, ciemny przycisk).
 const LIGHT_FOCUS =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink focus-visible:ring-2 focus-visible:ring-white';
 // Ruch kamery (D-086): przybliżenie 450 ms, oddalenie 350 ms, krzywa "ease-out-soft"; grafika zbliżenia pojawia się crossfade'em.
@@ -81,10 +83,11 @@ function cameraTransition(reducedMotion: boolean, phase: Phase | null): string |
 // Scena z przedmiotami (SCENE_HOTSPOTS, D-086 "nowa interakcja przedmiotów"): ilustracja (tylko <img>, nigdy inline SVG - D-051) z
 // klikalnymi prostokątami w % obrazu. Każdy przedmiot to <button> z aria-label i widocznym focusem. Klik w przedmiot:
 //   1. "kamera" przybliża scenę do przedmiotu (scale + translate z sceneZoom - przedmiot ~70% widocznego obszaru, 450 ms); bez
-//      przyciemnienia (D-101) - ramki punktów i podpowiedź panoramy pod zbliżeniem są ukryte (data-zoom-open);
+//      reszta sceny przyciemniona (ink 35%) i rozmyta (3 px, D-102); ramki punktów i podpowiedź panoramy pod zbliżeniem są ukryte
+//      (data-zoom-open);
 //   2. crossfade do grafiki zbliżenia (media.image / media.src; przezroczyste tło - D-101) na środku, max 88% sceny - bez karty i bez
 //      bloków tekstu, tylko cień po kształcie (.zoom-shadow, drop-shadow);
-//   3. na dole "Zabierz" (accent) i "Odłóż" (jasny, pełny). Esc / klik w tło = Odłóż; wyjście - odwrotny zoom 350 ms.
+//   3. na dole "Zabierz" (accent) i "Odłóż" (jasny ghost). Esc / klik w tło = Odłóż; wyjście - odwrotny zoom 350 ms.
 // "Zabierz" przy dowodzie dopisuje notatkę do notatnika (tekst notatki jest TYLKO w notatniku) i odkłada; przy przedmiocie bez dowodu -
 // potrząśnięcie i toast NOT_EVIDENCE_TOAST, bez kary. Już zabrany - tylko "Odłóż" i znacznik "W notatniku". Nagranie (poczta głosowa):
 // play/pauza pod grafiką (i transkrypcja jako alternatywa tekstowa). Scena zagnieżdżona (monitor -> pulpit): przybliżenie na monitor i
@@ -406,7 +409,7 @@ export default function SceneHotspotsBlock({
         // kamerą, `isolate` zamyka z-indeksy hotspotów (1..29) i nakładki (30) w lokalnej warstwie (nie konkurują z paskami powłoki).
         // Nakładka zbliżenia leży TU (nie w pudełku obrazu) - na telefonie w pionie obraz jest szerszy od ekranu (panorama), a grafika i
         // przyciski muszą mieścić się w widocznej części.
-        // data-zoom-open (globals.css, D-101): zbliżenie nie ma przyciemnienia, więc ramki punktów i podpowiedź panoramy pod nim chowamy.
+        // data-zoom-open (globals.css, D-101): ramki punktów i podpowiedź panoramy pod zbliżeniem schowane (przebijałyby spod grafiki).
         <div
           ref={viewRef}
           data-zoom-open={overlayOpen ? '' : undefined}
@@ -499,8 +502,11 @@ export default function SceneHotspotsBlock({
               data-phase={nestedActiveId ? `inner-${nestedPhase}` : phase}
               onKeyDown={trapFocus}
               onClick={onBackdrop}
-              // Bez tła i przyciemnienia (D-101): grafika zbliżenia ma przezroczyste tło i leży na scenie z samym cieniem (.zoom-shadow).
-              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 p-3 outline-none"
+              // Scena pod zbliżeniem przyciemniona (ink 35%) i rozmyta (3 px) - D-102, przywrócone po D-101; sama grafika zbliżenia ma
+              // przezroczyste tło i cień po kształcie (.zoom-shadow). Przy oddalaniu (out) przyciemnienie znika razem z kamerą.
+              className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 p-3 outline-none ${
+                reducedMotion ? '' : 'transition-[background-color,backdrop-filter] duration-300'
+              } ${phase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
             >
               {/* Stały region live (czytniki ogłaszają zmianę treści, nie region wstawiony razem z nią); widoczny tylko z tekstem. */}
               <p
@@ -549,7 +555,7 @@ export default function SceneHotspotsBlock({
                   {activeInner && (
                     <div
                       onClick={onBackdrop}
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-3"
+                      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${nestedPhase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
                     >
                       {activeInner.media?.kind === 'popups' ? (
                         showInner && (
@@ -689,8 +695,8 @@ function ZoomContent({
             type="button"
             data-autofocus={noted || review ? true : undefined}
             onClick={onPutDown}
-            // Pełne, jasne tło (D-101): bez przyciemnienia sceny biały tekst na przezroczystym tle byłby nieczytelny.
-            className={`min-h-[44px] rounded-btn border border-ink/15 bg-surface px-5 text-sm font-bold text-ink shadow-card hover:bg-paper ${FOCUS_RING}`}
+            // Ghost - jasny tekst na przyciemnionej scenie (D-102).
+            className={`min-h-[44px] rounded-btn border border-white/70 bg-white/10 px-5 text-sm font-bold text-white hover:bg-white/20 ${LIGHT_FOCUS}`}
           >
             Odłóż
           </button>
@@ -802,8 +808,7 @@ function AudioZoom({
             type="button"
             onClick={onToggleTranscript}
             aria-pressed={transcriptOpen}
-            // Własne tło (D-101): bez przyciemnienia sceny sam biały tekst byłby nieczytelny.
-            className={`min-h-[44px] rounded-btn bg-ink/80 px-3 text-sm font-semibold text-white underline shadow-card ${LIGHT_FOCUS}`}
+            className={`min-h-[44px] px-2 text-sm font-semibold text-white underline ${LIGHT_FOCUS}`}
           >
             Transkrypcja
           </button>

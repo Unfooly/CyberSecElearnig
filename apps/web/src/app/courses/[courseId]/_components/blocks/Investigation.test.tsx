@@ -207,13 +207,15 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(hotspot).toHaveFocus();
   });
 
-  it('zbliżenie leży NA scenie (role=dialog, aria-label = nazwa przedmiotu) bez tła i przyciemnienia (D-101), bez białej karty i bez bloków tekstu; punkty i obraz pod nim dostają aria-hidden', () => {
+  it('zbliżenie leży NA scenie (role=dialog, aria-label = nazwa przedmiotu), scena przyciemniona ink 35% + blur 3 px (D-102), bez białej karty i bez bloków tekstu; punkty i obraz pod nim dostają aria-hidden', () => {
     setup(scene, { summary });
     fireEvent.click(screen.getByTestId('hotspot-overlay-h1'));
 
     expect(dialog()).toHaveAttribute('aria-label', 'Monitor');
     expect(dialog()).toHaveAttribute('aria-modal', 'true');
-    expect(dialog().className).not.toMatch(/bg-ink|backdrop-blur/);
+    expect(dialog().className).toMatch(/bg-ink\/35/);
+    expect(dialog().className).toMatch(/backdrop-blur-\[3px\]/);
+    expect(within(dialog()).getByRole('button', { name: 'Odłóż' }).className).toMatch(/text-white/);
     expect(dialog().querySelector('.hotspot-card, .bg-white, h3')).toBeNull();
     expect(within(dialog()).getByTestId('scene-zoom-graphic').className).toMatch(/max-h-\[88%\]/);
 

@@ -107,7 +107,16 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary'];
+
+// KOŃCOWE PODSUMOWANIE NA TELEFONIE (feat/mobile-summary, D-099): dwa telefony w pionie, wszystkie bloki od rekonstrukcji do końca modułu
+// (tablica śledcza, ostatnie pytanie w oknie przeglądarki, rozwiązanie sprawy, zamknięcie) w kolejnych stanach - patrz auditMobileView.
+const MOBILE_SUMMARY_VIEWPORTS = [
+  { name: '390x844', width: 390, height: 844, isMobile: true },
+  { name: '360x740', width: 360, height: 740, isMobile: true },
+];
+const MOBILE_MIN_FONT_PX = 15;
+const MOBILE_MIN_TARGET_PX = 44;
 
 // SCENY PIONOWE (feat/portrait-scenes, D-098): dwa telefony w pionie (pionowe grafiki) i telefon w poziomie (stare grafiki 16:9).
 const PORTRAIT_SCENE_VIEWPORTS = [
@@ -721,6 +730,31 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   if (Number.isFinite(minFont)) console.log(`     (informacyjnie) najmniejsza czcionka karty: ${minFont.toFixed(1)}px`);
 }
 
+// TABLICA JAKO LISTA (telefon w pionie, D-099): (a) strona się nie przewija; (s1-s5) audyt telefonu; (l1) liczba śladów na tacce,
+// „Sprawdź trop” tylko przy pełnej liście; (l2) po sprawdzeniu: zdanie informacji zwrotnej i „Dalej” NAD polami (widoczne bez przewijania).
+async function checkEvidenceList(page, label, { trayCards, result = false }) {
+  await checkNoPageScroll(page, label);
+  await auditMobileView(page, label);
+  const info = await page.evaluate(() => {
+    const board = document.querySelector('[data-testid="evidence-board"]');
+    const tray = board.querySelector('[data-board-tray]');
+    const firstSlot = board.querySelector('[data-slot-index]');
+    const next = [...board.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Dalej');
+    return {
+      layout: board.dataset.layout,
+      trayCards: tray.querySelectorAll('[data-card-id]').length,
+      check: [...board.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Sprawdź trop'),
+      feedback: board.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
+      nextAboveSlots: next && firstSlot ? next.getBoundingClientRect().bottom <= firstSlot.getBoundingClientRect().top : false,
+      nextInView: next ? next.getBoundingClientRect().bottom <= innerHeight : false,
+    };
+  });
+  if (info.layout !== 'list') fail(`${label}: tablica nie jest listą (data-layout=${info.layout}).`);
+  if (info.trayCards !== trayCards) fail(`${label}: (l1) na tacce ${info.trayCards} śladów, oczekiwano ${trayCards}.`);
+  if (!result && info.check !== (trayCards === 0)) fail(`${label}: (l1) "Sprawdź trop" ${info.check ? 'widoczne' : 'niewidoczne'} przy ${trayCards} śladach na tacce.`);
+  if (result && (!info.feedback.trim() || !info.nextAboveSlots || !info.nextInView)) fail(`${label}: (l2) wynik - ${JSON.stringify(info)} (oczekiwane zdanie i „Dalej” nad polami, w ekranie).`);
+}
+
 // ZAMKNIĘCIE SPRAWY (feat/case-closed, D-089), w trakcie ceremonii (etap podpisu) i w stanie końcowym: (z1) strona i obszar bloku się
 // nie przewijają; (z2) raport (16:9) w całości w obszarze bloku, obraz załadowany; (z3) każdy element w slocie (liczby, wnioski, podpis,
 // pieczęć, liścik) leży w raporcie; (z4) liczby i każda linijka wniosków bez przepełnienia (tekst w slocie, nowrap - obcięty byłby
@@ -819,6 +853,118 @@ async function checkCaseClosed(page, label, portrait) {
 
 const children = [];
 let webLog = '';
+// KOŃCOWE PODSUMOWANIE NA TELEFONIE (D-099) - ogólny audyt jednego stanu bloku w pionie:
+//  (s1) strona i obszar bloku bez przewijania w poziomie; żaden element w obszarze bloku nie przewija się w poziomie;
+//  (s2) każdy widoczny tekst w obszarze bloku >= 15 px (tekst z DOM - napisy wypalone w grafikach SVG nie są tekstem strony); tekst w
+//       slocie grafiki oznaczony [data-graphic-text] jest pominięty TYLKO, gdy ten sam tekst jest też widoczny obok w >= 15 px;
+//  (s3) żaden widoczny tekst nie jest ucięty: mieści się w ekranie w poziomie i w każdym przodku, który przycina (overflow inny niż
+//       visible); w pionie wolno wyjść poza przodka, który przewija się w pionie (overflow-y auto/scroll) - tekst jest osiągalny - ale
+//       każdy taki kontener przewijany musi się mieścić w przycinających przodkach;
+//  (s4) każdy widoczny przycisk/link/pole w obszarze bloku i w dolnym pasku >= 44 px wysokości i szerokości;
+//  (s5) dolny pasek w całości w ekranie.
+async function auditMobileView(page, label) {
+  const problems = await page.evaluate(
+    ({ minFont, minTarget }) => {
+      const out = [];
+      const doc = document.documentElement;
+      const area = document.querySelector('[data-testid="player-content-area"]');
+      const bar = document.querySelector('[data-testid="player-bottombar"]');
+      if (!area) return ['brak obszaru bloku'];
+      const shown = (el) => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && el.getBoundingClientRect().width > 1 && el.getBoundingClientRect().height > 1;
+      const describe = (el, text) => `${el.tagName.toLowerCase()}${el.dataset.testid ? `[${el.dataset.testid}]` : ''} „${(text ?? el.textContent ?? '').trim().slice(0, 40)}”`;
+      if (doc.scrollWidth > doc.clientWidth + 1) out.push(`(s1) strona przewija się w poziomie o ${doc.scrollWidth - doc.clientWidth}px`);
+      for (const el of [area, ...area.querySelectorAll('*')]) {
+        const s = getComputedStyle(el);
+        if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && shown(el)) out.push(`(s1) ${describe(el)} przewija się w poziomie (${el.scrollWidth} > ${el.clientWidth})`);
+      }
+      const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT);
+      const seen = new Set();
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent.trim();
+        const el = node.parentElement;
+        // [data-graphic-text]: tekst w slocie grafiki z czytelną kopią (>= 15 px) obok - jak napis wypalony w SVG (D-099).
+        if (!text || !el || !shown(el) || el.closest('svg, .sr-only, [data-graphic-text]')) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0.5 && r.height > 0.5);
+        if (rects.length === 0) continue;
+        const font = parseFloat(getComputedStyle(el).fontSize);
+        const key = `${describe(el, text)}`;
+        if (font < minFont - 0.05 && !seen.has(`f${key}`)) {
+          seen.add(`f${key}`);
+          out.push(`(s2) ${key} ma ${font.toFixed(1)}px`);
+        }
+        for (const r of rects) {
+          if (r.left < -0.5 || r.right > innerWidth + 0.5) {
+            if (!seen.has(`x${key}`)) out.push(`(s3) ${key} poza ekranem w poziomie (${Math.round(r.left)}..${Math.round(r.right)})`);
+            seen.add(`x${key}`);
+          }
+          let verticalScroller = false;
+          for (let anc = el; anc && anc !== doc; anc = anc.parentElement) {
+            const s = getComputedStyle(anc);
+            const a = anc.getBoundingClientRect();
+            if (s.overflowX !== 'visible' && (r.left < a.left - 1 || r.right > a.right + 1) && !seen.has(`c${key}`)) {
+              seen.add(`c${key}`);
+              out.push(`(s3) ${key} ucięty w poziomie przez ${describe(anc)}`);
+            }
+            // Wyjście poza przodka przewijanego w pionie jest dozwolone (tekst osiągalny przewinięciem) - wtedy wyższych przodków w pionie
+            // już nie sprawdzamy; sam kontener przewijany musi się mieścić w przodkach, które przycinają (pętla (s3) niżej).
+            if (!verticalScroller && s.overflowY !== 'visible' && (r.top < a.top - 1 || r.bottom > a.bottom + 1)) {
+              if (s.overflowY === 'auto' || s.overflowY === 'scroll') verticalScroller = true;
+              else if (!seen.has(`v${key}`)) {
+                seen.add(`v${key}`);
+                out.push(`(s3) ${key} ucięty w pionie przez ${describe(anc)}`);
+              }
+            }
+            if (anc === area) break;
+          }
+        }
+      }
+      // (s3) kontener przewijany w pionie (w obszarze bloku) w całości w każdym przycinającym przodku - inaczej dół jego treści jest nieosiągalny.
+      for (const scroller of [...area.querySelectorAll('*')].filter((el) => /auto|scroll/.test(getComputedStyle(el).overflowY) && shown(el))) {
+        const r = scroller.getBoundingClientRect();
+        for (let anc = scroller.parentElement; anc && anc !== doc; anc = anc.parentElement) {
+          const s = getComputedStyle(anc);
+          const a = anc.getBoundingClientRect();
+          const clipsY = s.overflowY !== 'visible' && !/auto|scroll/.test(s.overflowY);
+          if (clipsY && (r.top < a.top - 1 || r.bottom > a.bottom + 1)) {
+            out.push(`(s3) kontener przewijany ${describe(scroller)} wystaje poza ${describe(anc)}`);
+            break;
+          }
+          if (/auto|scroll/.test(s.overflowY) || anc === area) break;
+        }
+      }
+      // [data-graphic-text] (pominięty wyżej) wymaga czytelnej kopii: ten sam tekst w widocznym elemencie bez znacznika, >= 15 px.
+      // Porównanie po węzłach tekstowych (nie textContent przodków - ten zawierałby sam tekst grafiki).
+      const readableTexts = new Set();
+      const textWalker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT);
+      for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
+        const el = node.parentElement;
+        if (!el || el.closest('[data-graphic-text], .sr-only, svg') || !shown(el) || parseFloat(getComputedStyle(el).fontSize) < minFont - 0.05) continue;
+        readableTexts.add(node.textContent.replace(/\s+/g, ' ').trim());
+      }
+      for (const graphic of area.querySelectorAll('[data-graphic-text]')) {
+        const text = graphic.textContent.replace(/\s+/g, ' ').trim();
+        if (!text || !shown(graphic)) continue;
+        if (!readableTexts.has(text)) out.push(`(s2) ${describe(graphic)} (tekst grafiki) bez czytelnej kopii >= ${minFont}px`);
+      }
+      const controls = [...area.querySelectorAll('button, a[href], input, textarea, select, [role="button"]'), ...(bar ? bar.querySelectorAll('button, a[href]') : [])];
+      for (const el of controls) {
+        if (!shown(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.height < minTarget - 0.5 || r.width < minTarget - 0.5) out.push(`(s4) ${describe(el, el.getAttribute('aria-label') ?? el.textContent)} ${Math.round(r.width)}x${Math.round(r.height)} (< ${minTarget})`);
+      }
+      if (bar) {
+        const b = bar.getBoundingClientRect();
+        if (b.top < -0.5 || b.bottom > innerHeight + 0.5 || b.height < 1) out.push(`(s5) dolny pasek poza ekranem (${Math.round(b.top)}..${Math.round(b.bottom)} z ${innerHeight})`);
+      }
+      return out;
+    },
+    { minFont: MOBILE_MIN_FONT_PX, minTarget: MOBILE_MIN_TARGET_PX },
+  );
+  if (problems.length > 0) fail(`${label}:\n  ${problems.join('\n  ')}`);
+}
+
 function start(command, args, env, cwd) {
   const child = spawn(command, args, { env: { ...process.env, ...env }, cwd, shell: false });
   children.push(child);
@@ -1198,21 +1344,24 @@ try {
     await board.waitFor();
     const expectedOrientation = viewport.name === '390x844' ? 'portrait' : 'landscape';
     await page.waitForFunction((orientation) => document.querySelector('[data-testid="evidence-board"]')?.getAttribute('data-orientation') === orientation, expectedOrientation);
+    // Telefon w pionie (D-099): lista pól zamiast tablicy - stuknięcie śladu przypina go do pierwszego pustego pola.
+    const isList = expectedOrientation === 'portrait';
+    const checkBoard = isList ? checkEvidenceList : checkEvidenceBoard;
 
     const tray = page.getByRole('group', { name: 'Ślady do przypięcia' });
     const pinFirstTrayCardTo = async (slot) => {
       await tray.getByRole('button', { name: /^Ślad: / }).first().click();
-      await page.getByRole('button', { name: new RegExp(`^Pole ${slot}, puste`) }).click();
+      if (!isList) await page.getByRole('button', { name: new RegExp(`^Pole ${slot}, puste`) }).click();
     };
 
     await shot(page, `${viewport.name}-tablica-1-pusta`);
-    await checkEvidenceBoard(page, `${viewport.name} / tablica pusta`, { trayCards: 6 });
+    await checkBoard(page, `${viewport.name} / tablica pusta`, { trayCards: 6 });
     step(`${viewport.name} / tablica pusta: (a, e, b1-b4) OK`, true);
 
     // (b6) Przeciąganie myszą w prawdziwej przeglądarce: klon karty ma tło kartki (tokeny poza drzewem tablicy - portal) i ląduje na polu.
     // Ruch pionowy - na telefonie poziomy ruch na tacce przewija tackę.
     const firstCard = tray.getByRole('button', { name: /^Ślad: / }).first();
-    const cardText = ((await firstCard.getAttribute('aria-label')) ?? '').replace(/^Ślad: /, '');
+    const cardText = ((await firstCard.getAttribute('aria-label')) ?? '').replace(/^Ślad: /, '').replace(/ - przypnij do pola \d+$/, '');
     const from = await firstCard.boundingBox();
     const to = await page.getByRole('button', { name: /^Pole 1, puste/ }).boundingBox();
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -1234,7 +1383,7 @@ try {
     for (const slot of [2, 3]) await pinFirstTrayCardTo(slot);
     await page.waitForTimeout(300);
     await shot(page, `${viewport.name}-tablica-2-w-trakcie`);
-    await checkEvidenceBoard(page, `${viewport.name} / tablica w trakcie`, { trayCards: 3 });
+    await checkBoard(page, `${viewport.name} / tablica w trakcie`, { trayCards: 3 });
     step(`${viewport.name} / tablica w trakcie (3 z 6): (a, e, b1-b4) OK`, true);
 
     // Reszta pól po kolei (odpowiedź serwera jest podstawiona - kolejność gracza nie ma tu znaczenia).
@@ -1244,7 +1393,7 @@ try {
     await page.waitForTimeout(900); // przelot kart (700 ms)
     await shot(page, `${viewport.name}-tablica-3-po-sprawdzeniu`);
     if (pageErrors.length > 0) fail(`${viewport.name} / tablica: błąd strony: ${pageErrors.join(' | ')}`);
-    await checkEvidenceBoard(page, `${viewport.name} / tablica po sprawdzeniu`, { trayCards: 0, result: true });
+    await checkBoard(page, `${viewport.name} / tablica po sprawdzeniu`, { trayCards: 0, result: true });
     step(`${viewport.name} / tablica po sprawdzeniu: (a, e, b1-b5) OK`, true);
     await context.close();
   }
@@ -1462,6 +1611,120 @@ try {
       await context.close();
     }
   }
+
+  // KOŃCOWE PODSUMOWANIE NA TELEFONIE (D-099) - wszystkie bloki od rekonstrukcji do końca modułu, w kolejnych stanach, audyt
+  // auditMobileView (s1-s5) + strona bez przewijania i błędy strony. Odpowiedzi API podstawione przez page.route (harness bez backendu).
+  // Zbiera wszystkie stany i kończy się błędem dopiero po ostatnim (pełna lista problemów w jednym przebiegu).
+  const mobileFailures = [];
+  for (const viewport of runs('mobile-summary') ? MOBILE_SUMMARY_VIEWPORTS : []) {
+    console.log(`\n--- viewport (PODSUMOWANIE NA TELEFONIE): ${viewport.name} ---`);
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    let progressBody = null;
+    await page.route('**/api/courses/*/progress', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(progressBody) }));
+    let attemptBody = null;
+    await page.route('**/api/courses/*/blocks/*/attempt', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(attemptBody) }));
+    const audit = async (name) => {
+      const label = `${viewport.name} / ${name}`;
+      await page.waitForTimeout(400);
+      await shot(page, `${viewport.name}-podsumowanie-${name.replace(/[^a-z0-9ąćęłńóśźż]+/gi, '-').toLowerCase()}`);
+      try {
+        if (pageErrors.length > 0) fail(`${label}: błąd strony: ${pageErrors.join(' | ')}`);
+        await checkNoPageScroll(page, label);
+        await auditMobileView(page, label);
+        step(`${label}: (s1-s5) OK`, true);
+      } catch (error) {
+        if (!error.isLayoutCheckFailure) throw error;
+        step(`${label}: ${error.message.replace(`${label}: `, '')}`, false);
+        mobileFailures.push(label);
+      }
+    };
+
+    // Tablica śledcza: pusta, w trakcie, pełna (przed sprawdzeniem), po sprawdzeniu (4 z 6, reakcja).
+    progressBody = {
+      assignmentId: 'dev-harness',
+      status: 'IN_PROGRESS',
+      currentBlockIndex: 1,
+      score: null,
+      completedAt: null,
+      lastResult: {
+        blockIndex: 0,
+        blockId: 'rekonstrukcja',
+        type: 'ORDERING',
+        points: 4 / 6,
+        correct: false,
+        detail: { correctOrder: BOARD_CORRECT_ORDER },
+        reaction: { text: 'Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku.' },
+      },
+      gamification: null,
+    };
+    await page.goto(`${WEB}/dev/player-harness?block=rekonstrukcja`);
+    await page.locator('[data-testid="evidence-board"][data-layout="list"]').waitFor();
+    await audit('tablica pusta');
+    // Lista: stuknięcie śladu przypina go do pierwszego pustego pola.
+    const pin = () => page.getByRole('group', { name: 'Ślady do przypięcia' }).getByRole('button', { name: /^Ślad: / }).first().click();
+    for (let i = 0; i < 3; i += 1) await pin();
+    // Wybrany przypięty ślad: w liście pojawia się „Odłóż na tackę” i „Przypnij tutaj” na pustych polach.
+    await page.getByRole('button', { name: /^Pole 1: / }).click();
+    await audit('tablica w trakcie (wybrany ślad)');
+    await page.getByRole('button', { name: /^Pole 1: / }).click();
+    for (let i = 0; i < 3; i += 1) await pin();
+    await audit('tablica pełna');
+    await page.getByRole('button', { name: 'Sprawdź trop' }).click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="evidence-board"]')?.getAttribute('data-phase') === 'settled', undefined, { timeout: 10000 });
+    await audit('tablica po sprawdzeniu');
+
+    // Ostatnie pytanie (okno przeglądarki): start, zła próba z podpowiedzią, poprawna odpowiedź (ostrzeżenie).
+    await page.goto(`${WEB}/dev/player-harness?block=ostatnie-pytanie`);
+    const win = page.getByTestId('browser-window');
+    await win.waitFor();
+    await audit('ostatnie pytanie start');
+    attemptBody = { correct: false, attempt: 1, attemptsLeft: 2, done: false, hint: { text: 'Spójrz na to, co jest po @ w adresie nadawcy.' } };
+    await win.getByRole('textbox').fill('bank.pl');
+    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('browser-error').waitFor();
+    await audit('ostatnie pytanie zła próba');
+    attemptBody = { correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75 };
+    await win.getByRole('textbox').fill('bankwektor-weryfikacja.pl');
+    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('browser-deceptive-warning').waitFor();
+    await audit('ostatnie pytanie ostrzeżenie');
+
+    // Rozwiązanie sprawy (SUMMARY) i zamknięcie: świeże ukończenie (reduced-motion - od razu stan końcowy, z nagrodą) i powrót do
+    // ukończonego kursu. Etap podpisu w pionie sprawdza sekcja portrait/closing.
+    progressBody = {
+      assignmentId: 'dev-harness',
+      status: 'COMPLETED',
+      currentBlockIndex: 1,
+      score: 83,
+      completedAt: new Date().toISOString(),
+      lastResult: { blockIndex: 0, blockId: 'rozwiazanie-sprawy', type: 'SUMMARY' },
+      evidence: { collected: 20, total: 22, perBlock: [] },
+      gamification: {
+        xpGained: 350,
+        newLevel: 2,
+        previousLevel: 1,
+        leveledUp: true,
+        unlockedBadges: [{ code: 'pierwsza-sprawa', title: 'Pierwsza zamknięta sprawa', icon: 'badge', xpReward: 50 }],
+        levelProgressBeforePercent: 40,
+        levelProgressAfterPercent: 100,
+      },
+    };
+    await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
+    await page.getByRole('button', { name: /^Zakończ (sprawę|szkolenie)$/ }).waitFor();
+    await audit('rozwiązanie sprawy');
+    await page.getByRole('button', { name: /^Zakończ (sprawę|szkolenie)$/ }).click();
+    await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 15000 });
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
+    await audit('zamknięcie sprawy');
+    await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
+    await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
+    await audit('zamknięcie po powrocie');
+    await context.close();
+  }
+  if (mobileFailures.length > 0) fail(`mobile-summary: ${mobileFailures.length} stanów z problemami - ${mobileFailures.join('; ')}`);
 
   // OKNO PRZEGLĄDARKI (feat/browser-evidence) - `?block=ostatnie-pytanie` (TEXT_INPUT_GUIDED, frame: browser), odpowiedzi /attempt
   // podstawione przez page.route (harness nie ma backendu): (p1) strona i obszar bloku bez poziomego przewijania, okno w szerokości

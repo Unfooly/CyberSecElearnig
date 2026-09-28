@@ -558,6 +558,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   całym module - wtedy `readableOnPhone` dla wszystkich bloków i sekcja layout-check na cały moduł; (3) tylko jeśli testy z użytkownikami
   pokażą potrzebę.
 
+### B-122 Easter egg (D-100): odłożone uwagi z review
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `feat/easter-egg-game` (D-100)
+- Opis: (1) ikona `game` w kompozytorze (`scripts/content/scenes/props.ts`) ma ogólne id w SVG (`sky`, `ic`) - dwie ikony gry w jednej
+  scenie albo inny klocek z tym samym id dałyby zdublowane id i złe wypełnienie; zostawione, bo pulpit ma być identyczny z plikiem
+  właściciela (zmiana id = przebudowa i ponowna publikacja pulpitu); (2) sekcja „Wyróżnienia” jest tylko w panelu notatnika, nie w
+  blokach NOTEPAD/SUMMARY (zgodne z „ukrytym” charakterem - do potwierdzenia przez właściciela).
+- Akceptacja: (1) id z prefiksem klocka (`game-sky`, `game-clip`) albo prefiks id elementu w kompozytorze dla `<defs>` klocków, przebudowa
+  i publikacja pulpitu; (2) decyzja właściciela.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

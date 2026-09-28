@@ -107,7 +107,14 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait'];
+
+// SCENY PIONOWE (feat/portrait-scenes, D-098): dwa telefony w pionie (pionowe grafiki) i telefon w poziomie (stare grafiki 16:9).
+const PORTRAIT_SCENE_VIEWPORTS = [
+  { name: '390x844', width: 390, height: 844, isMobile: true, portrait: true },
+  { name: '360x740', width: 360, height: 740, isMobile: true, portrait: true },
+  { name: '844x390', width: 844, height: 390, portrait: false },
+];
 
 // DOLNY PASEK NA TELEFONIE (fix/mobile-player-bar): dwa telefony w pionie (scena < 640 px - jeden rząd ikon) i telefon w poziomie
 // (scena >= 640 px - układ jak na desktopie). Bloki: scena z narracją, rozmowa (chipy), zadanie tekstowe (slajd).
@@ -539,9 +546,14 @@ async function checkBriefingStep(page, cta, label) {
 // przewija się wcale; (x) każdy tekst/slot (FitText) bez przepełnienia i w granicach sceny; (y) dymek rozmowy w prawej połowie
 // sceny (x >= 45%) i bez części wspólnej z telefonem (lewa część sceny, x < 40%); pasek tekstu nad hotspotem telefonu, bez
 // części wspólnej; (z) hotspot (gdy jest) w scenie.
-async function checkBriefingScene(page, view, label) {
+async function checkBriefingScene(page, view, label, expectPortrait = false) {
   const scene = page.getByTestId('briefing-scene');
   const sceneBox = await boxOf(page, '[data-testid="briefing-scene"]');
+  // (v') Orientacja sceny (D-098): telefon w pionie - pionowa grafika (*-pion.svg, 9:16); poziomo - scena 16:9 jak dotąd.
+  const orientation = await scene.getAttribute('data-orientation');
+  if (orientation !== (expectPortrait ? 'portrait' : 'landscape')) fail(`${label}: (v') scena "${orientation}" zamiast "${expectPortrait ? 'portrait' : 'landscape'}".`);
+  const ratio = sceneBox.width / sceneBox.height;
+  if (Math.abs(ratio - (expectPortrait ? 9 / 16 : 16 / 9)) > 0.03) fail(`${label}: (v') proporcje sceny ${ratio.toFixed(3)}.`);
   const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
   if (!contains(contentAreaBox, sceneBox)) fail(`${label}: (w) scena wychodzi poza obszar bloku - scena=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
   const briefingScroll = await page.getByTestId('briefing-block').evaluate((el) => el.scrollHeight - el.clientHeight);
@@ -554,7 +566,8 @@ async function checkBriefingScene(page, view, label) {
     return top ? { src: top.getAttribute('src'), loaded: top.complete && top.naturalWidth > 0 } : null;
   });
   if (!visibleImage?.loaded) fail(`${label}: (v) obraz sceny się nie załadował - ${JSON.stringify(visibleImage)}.`);
-  if (!visibleImage.src.includes(view.image)) fail(`${label}: (v) widoczny obraz "${visibleImage.src}" zamiast "${view.image}".`);
+  const expectedImage = expectPortrait ? `${view.image}-pion` : `${view.image}.`;
+  if (!visibleImage.src.includes(expectedImage)) fail(`${label}: (v) widoczny obraz "${visibleImage.src}" zamiast "${expectedImage}".`);
   if (!visibleImage.src.endsWith('#static')) fail(`${label}: (v) reduced-motion, a obraz sceny bez #static: ${visibleImage.src}.`);
 
   const rel = (box) => ({ x: ((box.x - sceneBox.x) / sceneBox.width) * 100, y: ((box.y - sceneBox.y) / sceneBox.height) * 100, right: ((box.x + box.width - sceneBox.x) / sceneBox.width) * 100, bottom: ((box.y + box.height - sceneBox.y) / sceneBox.height) * 100 });
@@ -568,14 +581,40 @@ async function checkBriefingScene(page, view, label) {
     if (overflow.x > 1 || overflow.y > 1) fail(`${label}: (x) "${testId}" przepełniony (x=${overflow.x}px, y=${overflow.y}px, czcionka ${overflow.font}px).`);
     if (testId === 'briefing-bubble') {
       const r = rel(box);
-      if (r.x < 45 - 0.5) fail(`${label}: (y) dymek zaczyna się na ${r.x.toFixed(1)}% szerokości sceny (ma być >= 45%).`);
-      if (overlaps(r, { x: 0, y: 0, right: 40, bottom: 100 })) fail(`${label}: (y) dymek nachodzi na telefon (lewa część sceny).`);
+      if (orientation === 'portrait') {
+        // Scena pionowa (D-098): dymek komisarza w dolnej części sceny (y >= 62%), pod telefonem; nachodzenie na słuchawkę - `clear` niżej.
+        if (r.y < 62 - 0.5) fail(`${label}: (y) dymek zaczyna się na ${r.y.toFixed(1)}% wysokości pionowej sceny (ma być >= 62%).`);
+      } else {
+        if (r.x < 45 - 0.5) fail(`${label}: (y) dymek zaczyna się na ${r.x.toFixed(1)}% szerokości sceny (ma być >= 45%).`);
+        if (overlaps(r, { x: 0, y: 0, right: 40, bottom: 100 })) fail(`${label}: (y) dymek nachodzi na telefon (lewa część sceny).`);
+      }
     }
   }
   const hotspotBox = await page.getByTestId('briefing-hotspot').boundingBox();
   if (!hotspotBox || !contains(sceneBox, hotspotBox)) fail(`${label}: (z) przedmiot poza sceną - ${JSON.stringify(hotspotBox)}.`);
   for (const testId of view.clear) {
     if (overlaps(rel(await page.getByTestId(testId).boundingBox()), rel(hotspotBox))) fail(`${label}: (y) "${testId}" nachodzi na przedmiot "${view.item}".`);
+  }
+}
+
+// Przejście przez kroki odprawy (sceny D-084) z pomiarem każdego widoku; ostatniego kroku nie klikamy (zapisałby blok, harness nie ma backendu).
+async function walkBriefing(page, viewport, pageErrors, expectPortrait) {
+  await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
+  await page.getByTestId('briefing-block').waitFor();
+  for (const [index, view] of BRIEFING_SCENE_VIEWS.entries()) {
+    const { item: cta } = view;
+    const label = `${viewport.name} / odprawa widok ${index + 1} (${cta})`;
+    await page.getByRole('button', { name: cta, exact: true }).waitFor();
+    // Obraz sceny i dopasowanie tekstu (ResizeObserver) - chwila na załadowanie przed pomiarem.
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="briefing-scene"] img')].every((img) => img.complete));
+    await page.waitForTimeout(150);
+    await shot(page, `${viewport.name}-odprawa-${index + 1}`);
+    if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
+    const scrolls = await checkBriefingStep(page, cta, label);
+    await checkBriefingScene(page, view, label, expectPortrait);
+    step(`${label}: (a, e, m-p, v-z) OK - ${expectPortrait ? 'pion' : 'poziom'}${scrolls ? ', krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
+    if (view.last) break;
+    await page.getByTestId('briefing-hotspot').click();
   }
 }
 
@@ -702,7 +741,28 @@ async function checkCaseClosed(page, label, portrait) {
     return { x: scrolls(style.overflowX) ? el.scrollWidth - el.clientWidth : 0, y: scrolls(style.overflowY) ? el.scrollHeight - el.clientHeight : 0 };
   });
   if (pan.y > 1) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
-  if (portrait) {
+  // Raport pionowy (D-098, closing.portrait w treści): na telefonie w pionie raport 9:16 w całości - bez panoramy, przyciski pod nim
+  // na pełną szerokość, jeden pod drugim.
+  const orientation = await page.getByTestId('case-closed-frame').getAttribute('data-orientation');
+  if (portrait && orientation === 'portrait') {
+    if (pan.x > 1) fail(`${label}: (z2) pionowy raport przewija się w poziomie o ${pan.x}px.`);
+    const scene = await boxOf(page, '[data-testid="case-closed-scene"]');
+    if (!contains(contentAreaBox, scene)) fail(`${label}: (z2) pionowy raport wychodzi poza obszar bloku - ${JSON.stringify(scene)}.`);
+    if (Math.abs(scene.width / scene.height - 9 / 16) > 0.02) fail(`${label}: (z2) raport ${scene.width}x${scene.height} - nie 9:16.`);
+    const lib = await page.getByTestId('case-closed').getByRole('link', { name: 'Wróć do biblioteki' }).boundingBox();
+    const next = await page.getByTestId('case-closed').getByRole('button', { name: /Następna sprawa/ }).boundingBox();
+    const actions = await boxOf(page, '[data-testid="case-closed-actions"]');
+    if (!lib || !next || lib.y + lib.height > next.y + 0.5) fail(`${label}: (z6) przyciski nie jeden pod drugim - ${JSON.stringify({ lib, next })}.`);
+    for (const [name, box] of [['Wróć do biblioteki', lib], ['Następna sprawa', next]]) {
+      if (Math.abs(box.width - actions.width) > 1) fail(`${label}: (z6) „${name}” nie na pełną szerokość (${box.width} z ${actions.width}).`);
+    }
+    // Wnioski pod raportem (HTML) - czytelne, min. 15 px, bez przepełnienia w poziomie.
+    const lessons = await page.getByTestId('closing-lessons').evaluate((el) => ({ font: parseFloat(getComputedStyle(el).fontSize), overflow: el.scrollWidth - el.clientWidth, inScene: !!el.closest('[data-testid="case-closed-scene"]') }));
+    if (lessons.inScene || lessons.font < 15 || lessons.overflow > 1) fail(`${label}: (z4) wnioski w pionie - ${JSON.stringify(lessons)} (oczekiwane pod raportem, >= 15 px, bez przepełnienia).`);
+    // Liczby raportu (dowody/czas/XP) też pod raportem - w slotach pionowej grafiki miałyby 7-10 px.
+    const stats = await page.getByTestId('closing-stats').evaluate((el) => ({ font: parseFloat(getComputedStyle(el).fontSize), overflow: el.scrollWidth - el.clientWidth, inScene: !!el.closest('[data-testid="case-closed-scene"]') }));
+    if (stats.inScene || stats.font < 15 || stats.overflow > 1) fail(`${label}: (z4) liczby w pionie - ${JSON.stringify(stats)} (oczekiwane pod raportem, >= 15 px, bez przepełnienia).`);
+  } else if (portrait) {
     // Panorama: raport szerszy niż ekran (przewijanie w poziomie), wnioski czytelne (>= 11 px).
     if (pan.x <= 1) fail(`${label}: (z2) telefon w pionie bez panoramy raportu (contain - tekst nieczytelny).`);
     const fontPx = await page.getByTestId('closing-lessons').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
@@ -711,10 +771,12 @@ async function checkCaseClosed(page, label, portrait) {
     if (pan.x > 1) fail(`${label}: (z2) ramka raportu przewija się w poziomie o ${pan.x}px (poza telefonem w pionie raport ma się mieścić).`);
   }
   const sceneBox = await boxOf(page, '[data-testid="case-closed-scene"]');
-  if (!portrait && !contains(contentAreaBox, sceneBox)) fail(`${label}: (z2) raport wychodzi poza obszar bloku - raport=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  if ((!portrait || orientation === 'portrait') && !contains(contentAreaBox, sceneBox)) fail(`${label}: (z2) raport wychodzi poza obszar bloku - raport=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
   const loaded = await page.locator('[data-testid="case-closed-scene"] img').evaluateAll((els) => els.every((img) => img.naturalWidth > 0));
   if (!loaded) fail(`${label}: (z2) obraz raportu/pieczęci/liściku się nie załadował.`);
   for (const testId of CLOSING_SLOTS) {
+    // Pionowy raport (D-098): wnioski celowo POD raportem (HTML, >= 15 px) - sprawdza je (z4) wyżej.
+    if (testId === 'closing-lessons' && orientation === 'portrait') continue;
     const locator = page.getByTestId(testId);
     if ((await locator.count()) === 0) continue;
     const box = await locator.boundingBox();
@@ -728,7 +790,8 @@ async function checkCaseClosed(page, label, portrait) {
     }
     const list = document.querySelector('[data-testid="closing-lessons"]');
     if (list) {
-      if (list.scrollHeight > list.clientHeight + 1) out.push(`wnioski w pionie: ${list.scrollHeight} > ${list.clientHeight}`);
+      // Lista pod pionowym raportem (D-098) ma limit wysokości i przewija się w pionie celowo - przepełnienie w pionie tylko w slocie raportu.
+      if (list.closest('[data-testid="case-closed-scene"]') && list.scrollHeight > list.clientHeight + 1) out.push(`wnioski w pionie: ${list.scrollHeight} > ${list.clientHeight}`);
       for (const item of list.querySelectorAll('li')) {
         if (item.scrollWidth > list.clientWidth + 1) out.push(`"${item.textContent}": ${item.scrollWidth} > ${list.clientWidth}`);
       }
@@ -985,23 +1048,79 @@ try {
     // (tak było przy pierwszej wersji usePrefersReducedMotion w BriefingBlock.tsx).
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    await walkBriefing(page, viewport, pageErrors, PORTRAIT_VIEWPORT_NAMES.has(viewport.name));
+    await context.close();
+  }
+
+  // SCENY PIONOWE (feat/portrait-scenes, D-098): telefon w pionie (390x844, 360x740) - pionowe grafiki odprawy (9:16) i ich hotspoty/sloty,
+  // dymek komisarza w dolnej części (y >= 62%), bez nakładania na przedmiot; poziomo (844x390) - stare grafiki 16:9. (r1) Obrót telefonu w
+  // trakcie kroku (otwarta teczka): wariant się przełącza (pion <-> poziom), faza kroku zostaje. Zamknięcie sprawy w pionie - raport 9:16,
+  // przyciski pod nim jeden pod drugim (checkCaseClosed).
+  for (const viewport of runs('portrait') ? PORTRAIT_SCENE_VIEWPORTS : []) {
+    console.log(`\n--- viewport (SCENY PIONOWE): ${viewport.name} ---`);
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+      isMobile: viewport.isMobile ?? false,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    await walkBriefing(page, viewport, pageErrors, viewport.portrait);
+
+    // (r1) Obrót w trakcie kroku: teczka otwarta (faza "open"), obrót do drugiej orientacji i z powrotem - faza bez zmian, wariant zmienia się.
+    const label = `${viewport.name} / obrót w trakcie kroku`;
     await page.goto(`${WEB}/dev/player-harness?block=odprawa`);
     await page.getByTestId('briefing-block').waitFor();
-    for (const [index, view] of BRIEFING_SCENE_VIEWS.entries()) {
-      const { item: cta } = view;
-      const label = `${viewport.name} / odprawa widok ${index + 1} (${cta})`;
-      await page.getByRole('button', { name: cta, exact: true }).waitFor();
-      // Obraz sceny i dopasowanie tekstu (ResizeObserver) - chwila na załadowanie przed pomiarem.
+    for (const cta of ['Odbierz telefon', 'Rozłącz', 'Otwórz teczkę']) {
+      await page.getByRole('button', { name: cta, exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Zamknij teczkę', exact: true }).waitFor();
+    const scene = page.getByTestId('briefing-scene');
+    const rotate = async (width, height) => {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(250);
+    };
+    await rotate(viewport.height, viewport.width);
+    const rotated = { orientation: await scene.getAttribute('data-orientation'), phase: await scene.getAttribute('data-phase') };
+    await rotate(viewport.width, viewport.height);
+    const back = { orientation: await scene.getAttribute('data-orientation'), phase: await scene.getAttribute('data-phase') };
+    const expected = viewport.portrait ? ['landscape', 'portrait'] : ['portrait', 'landscape'];
+    if (rotated.orientation !== expected[0] || back.orientation !== expected[1]) fail(`${label}: (r1) orientacja po obrotach ${rotated.orientation} -> ${back.orientation} zamiast ${expected.join(' -> ')}.`);
+    if (rotated.phase !== 'open' || back.phase !== 'open') fail(`${label}: (r1) faza teczki zgubiona przy obrocie (${rotated.phase}, ${back.phase}).`);
+    if ((await page.getByTestId('briefing-slot-tasks').count()) !== 1) fail(`${label}: (r1) po obrocie brak zadań w slocie.`);
+    step(`${label}: (r1) wariant ${expected.join(' -> ')}, faza teczki "open" zachowana`, true);
+
+    // Zamknięcie sprawy (stan końcowy, `?completed=1`).
+    const closingLabel = `${viewport.name} / zamknięcie (pion: raport 9:16)`;
+    await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
+    await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
+    await page.waitForTimeout(300);
+    const frameOrientation = await page.getByTestId('case-closed-frame').getAttribute('data-orientation');
+    if (frameOrientation !== (viewport.portrait ? 'portrait' : 'landscape')) fail(`${closingLabel}: raport "${frameOrientation}".`);
+    await shot(page, `${viewport.name}-pion-zamkniecie`);
+    await checkCaseClosed(page, closingLabel, viewport.portrait);
+    if (pageErrors.length > 0) fail(`${closingLabel}: błąd strony: ${pageErrors.join(' | ')}`);
+    step(`${closingLabel}: (z1-z7) OK - ${frameOrientation}`, true);
+
+    // (f1) Ścieżka zastępcza (moduł bez `portrait`, `?noPortrait=1`) na telefonie w pionie: odprawa 16:9 w pasach, raport jako panorama.
+    // Tylko 390x844 - próg czytelności panoramy (11 px) ustalono dla tej wysokości; na niższym ekranie (360x740) panorama daje ~9,7 px
+    // (zachowanie sprzed D-098, dla modułów bez `portrait` - B-120).
+    if (viewport.portrait && viewport.name === '390x844') {
+      const fallback = `${viewport.name} / bez wariantu pionowego`;
+      await page.goto(`${WEB}/dev/player-harness?block=odprawa&noPortrait=1`);
+      await page.getByRole('button', { name: 'Odbierz telefon', exact: true }).waitFor();
       await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="briefing-scene"] img')].every((img) => img.complete));
-      await page.waitForTimeout(150);
-      await shot(page, `${viewport.name}-odprawa-${index + 1}`);
-      if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
-      const scrolls = await checkBriefingStep(page, cta, label);
-      await checkBriefingScene(page, view, label);
-      step(`${label}: (a, e, m-p, v-z) OK${scrolls ? ' - krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
-      // Ostatni krok zapisuje blok - w podglądzie dev nie ma backendu, więc nie klikamy go.
-      if (view.last) break;
-      await page.getByTestId('briefing-hotspot').click();
+      await checkBriefingScene(page, BRIEFING_SCENE_VIEWS[0], `${fallback}: odprawa`, false);
+      await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1&noPortrait=1`);
+      await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
+      await page.waitForTimeout(300);
+      if ((await page.getByTestId('case-closed-frame').getAttribute('data-orientation')) !== 'landscape') fail(`${fallback}: raport bez portrait nie jest poziomy.`);
+      await checkCaseClosed(page, `${fallback}: zamknięcie (panorama)`, true);
+      step(`${fallback}: (f1) odprawa 16:9 i panorama raportu OK`, true);
     }
     await context.close();
   }
@@ -1207,13 +1326,15 @@ try {
       if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
       if ((await page.getByTestId('closing-stamp').count()) !== 1 || (await page.getByTestId('closing-note').count()) !== 1) fail(`${label}: brak pieczęci albo liściku w stanie końcowym.`);
       if (portrait && mode === 'ceremonia') {
-        // (z8) ceremonia w panoramie sama przesunęła widok: pieczęć i liścik w całości w widocznej części ramki.
+        // (z8) ceremonia w panoramie sama przesunęła widok (a w pionowym raporcie, D-098, wszystko i tak jest widoczne): pieczęć i liścik w
+        // całości w widocznej części ramki.
         const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');
         for (const testId of ['closing-stamp', 'closing-note']) {
           const box = await page.getByTestId(testId).boundingBox();
           if (!box || !contains(frameBox, box)) fail(`${label}: (z8) ${testId} poza widokiem panoramy po ceremonii - ${JSON.stringify(box)} ramka=${JSON.stringify(frameBox)}.`);
         }
-        step(`${label}: (z8) panorama przesunięta na pieczęć i liścik`, true);
+        const orientation = await page.getByTestId('case-closed-frame').getAttribute('data-orientation');
+        step(`${label}: (z8) ${orientation === 'portrait' ? 'pionowy raport - pieczęć i liścik widoczne' : 'panorama przesunięta na pieczęć i liścik'}`, true);
       }
       await checkCaseClosed(page, label, portrait);
       step(`${label} (stan końcowy): (z1-z7) OK`, true);

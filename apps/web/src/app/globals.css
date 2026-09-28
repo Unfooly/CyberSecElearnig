@@ -175,7 +175,9 @@
     border-radius: 999px;
     background: rgba(15, 15, 20, 0.65);
     color: #fff;
-    font-size: 0.75rem;
+    /* D-103: min. 15 px na telefonie (panorama jest tylko na telefonie w pionie). */
+    font-size: 15px;
+    white-space: nowrap;
     pointer-events: none;
     transition: opacity 0.3s ease-out;
   }
@@ -303,10 +305,10 @@
   }
 }
 
-/* Końcowe podsumowanie na telefonie (D-099): w blokach od rekonstrukcji do zamknięcia sprawy (PlayerStage readableOnPhone) drobny
+/* Tekst min. 15 px na telefonie w całym module (D-099 dla końcówki modułu, rozszerzone na wszystkie bloki i notatnik w D-103): drobny
    tekst interfejsu (text-xs 12 px, text-sm 14 px) ma na telefonie 15 px. Jedna reguła zamiast wariantów w każdym komponencie; na
    szerszych ekranach bez zmian. Nadpisuje też leading-* na tych elementach (1.4); rozmiarów arbitralnych (text-[13px]) i stylów inline
-   nie łapie - te wyłapuje layout-check mobile-summary (s2). */
+   nie łapie - te wyłapuje layout-check mobile-summary / mobile-module (s2). */
 @media (max-width: 639px) {
   .mobile-readable {
     font-size: 15px;
@@ -715,8 +717,9 @@
     display: none;
   }
   .player-bottombar .pbar-caption-text {
-    font-size: 12px;
-    line-height: 16px;
+    /* D-103: napisy lektora to tekst modułu - min. 15 px także w wąskim pasku. */
+    font-size: 15px;
+    line-height: 20px;
     color: theme('colors.muted.DEFAULT');
   }
   .player-bottombar .pbar-label {
@@ -806,8 +809,9 @@
     order: -1;
     max-width: 100%;
     margin: 0 0 2px;
-    font-size: 12px;
-    line-height: 16px;
+    /* D-103: min. 15 px na telefonie. */
+    font-size: 15px;
+    line-height: 20px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

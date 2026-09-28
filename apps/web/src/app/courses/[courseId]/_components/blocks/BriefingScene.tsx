@@ -59,7 +59,14 @@ const TOP_BAND: BriefingRect = { x: 4, y: 3, w: 92, h: 15 };
 const CALL_BUBBLE: BriefingRect = { x: 46, y: 12, w: 50, h: 64 };
 // Scena pionowa (9:16, D-098): pasek tekstu węższy w pionie (ta sama szerokość, mniejsza wysokość w % wyższej sceny), dymek komisarza
 // w DOLNEJ części sceny (y >= 62%), pod telefonem z czerwoną słuchawką.
-const TOP_BAND_PORTRAIT: BriefingRect = { x: 4, y: 2, w: 92, h: 11 };
+// h 14 (D-103): tekst maszyny do pisania ma na telefonie min. 15 px - przy 11% sceny zwężał się do ~14 px na 360 px.
+const TOP_BAND_PORTRAIT: BriefingRect = { x: 4, y: 2, w: 92, h: 14 };
+// Górne granice czcionki (ułamek wysokości slotu) w scenie pionowej (D-103): sloty 9:16 na telefonie są niskie, a tekst ma mieć min.
+// 15 px - wyższa granica pozwala FitText dojść do 15 px, gdy treść się mieści (dłuższa - np. bardzo długie imię - nadal się zmniejszy).
+const TASKS_MAX_RATIO = { landscape: 0.08, portrait: 0.1 };
+const BADGE_TEXT_MAX_RATIO = { landscape: 0.62, portrait: 1 };
+// Czytelne minimum tekstu na telefonie (D-103) - pola legitymacji w pionowej grafice są niższe niż 15 px (FitText minPx).
+const READABLE_MIN_PX = 15;
 const CALL_BUBBLE_PORTRAIT: BriefingRect = { x: 5, y: 62, w: 90, h: 30 };
 
 /**
@@ -87,6 +94,7 @@ export function FitText({
   fitKey,
   children,
   testId,
+  minPx,
 }: {
   className?: string;
   style?: CSSProperties;
@@ -95,24 +103,43 @@ export function FitText({
   fitKey: string;
   children: ReactNode;
   testId?: string;
+  /**
+   * Czytelne minimum (D-103, np. 15 px na telefonie): rozmiar do `minPx` może wyjść poza WYSOKOŚĆ kontenera (overflow widoczny - niski
+   * slot w grafice, tekst rośnie w odstęp nad nim), ale nadal musi zmieścić się w szerokości - inaczej zmniejsza się jak zwykle.
+   * Tylko dla tekstu JEDNOLINIJKOWEGO (whitespace-nowrap) - zawijany tekst „mieści się” w szerokości zawsze i mógłby wyjść dowolnie wysoko.
+   */
+  minPx?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return undefined;
     const fit = () => {
-      const fits = () => element.scrollHeight <= element.clientHeight + 1 && element.scrollWidth <= element.clientWidth + 1;
-      let high = Math.max(MIN_FONT_PX, element.clientHeight * maxRatio);
+      const fitsWidth = () => element.scrollWidth <= element.clientWidth + 1;
+      const fitsHeight = () => element.scrollHeight <= element.clientHeight + 1;
+      const fits = (size: number) => fitsWidth() && (fitsHeight() || (minPx !== undefined && size <= minPx));
+      const setSize = (size: number) => {
+        element.style.fontSize = `${size}px`;
+      };
+      element.style.overflow = '';
+      let high = Math.max(MIN_FONT_PX, element.clientHeight * maxRatio, minPx ?? 0);
       let low = MIN_FONT_PX;
-      element.style.fontSize = `${high}px`;
-      if (fits()) return;
-      for (let step = 0; step < 10; step += 1) {
-        const middle = (low + high) / 2;
-        element.style.fontSize = `${middle}px`;
-        if (fits()) low = middle;
-        else high = middle;
+      setSize(high);
+      if (!fits(high)) {
+        for (let step = 0; step < 10; step += 1) {
+          const middle = (low + high) / 2;
+          setSize(middle);
+          if (fits(middle)) low = middle;
+          else high = middle;
+        }
+        // Wyszukiwanie binarne kończy tuż pod granicą - gdy samo minimum się mieści, dokładnie minPx (nie 14,99 px).
+        if (minPx !== undefined && low < minPx && fits(minPx)) low = minPx;
+        setSize(low);
       }
-      element.style.fontSize = `${low}px`;
+      // Tekst o czytelnym minimum wyższy niż slot - widoczny w całości (bez ucięcia przez overflow-hidden kontenera). Tylko z minPx:
+      // bez niego treść, która nie mieści się nawet przy MIN_FONT_PX, zostaje przycięta jak dotąd (nie wylewa się na scenę). Bez
+      // tolerancji 1 px z fitsHeight - ułamek piksela nad slotem też byłby ucięty.
+      if (minPx !== undefined && element.scrollHeight > element.clientHeight) element.style.overflow = 'visible';
     };
     fit();
     // Font (Plus Jakarta, display: swap) doładowany po pierwszym dopasowaniu zmienia wymiary tekstu, ale nie pudełka - ResizeObserver
@@ -132,7 +159,7 @@ export function FitText({
       active = false;
       observer.disconnect();
     };
-  }, [fitKey, maxRatio]);
+  }, [fitKey, maxRatio, minPx]);
   return (
     <div ref={ref} data-testid={testId} className={`absolute overflow-hidden ${className}`} style={style}>
       {children}
@@ -282,7 +309,8 @@ export default function BriefingSceneStep({
             <p id={headingId} className="font-bold leading-tight text-ink">
               {step.caller.name}
             </p>
-            {step.caller.role && <p className="text-[0.8em] leading-tight text-muted">{step.caller.role}</p>}
+            {/* W pionie rola tym samym rozmiarem co reszta dymka (D-103: min. 15 px na telefonie) - wyróżnia ją kolor. */}
+            {step.caller.role && <p className={`${portrait ? '' : 'text-[0.8em]'} leading-tight text-muted`}>{step.caller.role}</p>}
             <p id={`${headingId}-text`} className="mt-[0.6em] leading-snug text-ink">
               {step.text}
             </p>
@@ -290,7 +318,7 @@ export default function BriefingSceneStep({
         )}
 
         {step.kind === 'caseFile' && slots.tasks && !closedPhase && tasks.length > 0 && (
-          <FitText testId="briefing-slot-tasks" fitKey={tasks.map((task) => task.text).join('|')} maxRatio={0.08} style={rectStyle(slots.tasks)} className="briefing-step-enter pointer-events-none z-20 font-sans">
+          <FitText testId="briefing-slot-tasks" fitKey={`${tasks.map((task) => task.text).join('|')}|${portrait}`} maxRatio={portrait ? TASKS_MAX_RATIO.portrait : TASKS_MAX_RATIO.landscape} style={rectStyle(slots.tasks)} className="briefing-step-enter pointer-events-none z-20 font-sans">
             <ul className="space-y-[0.6em] text-ink" aria-labelledby={`${headingId}-tasks`}>
               {tasks.map((task, index) => (
                 <li key={index} className="flex items-start gap-[0.5em] leading-snug">
@@ -320,14 +348,14 @@ export default function BriefingSceneStep({
             )}
             {slots.name && (
               // aria-hidden: imię i numer czytnik dostaje raz, ze zdania sr-only pod sceną (inaczej przeczytałby je dwa razy).
-              <FitText testId="briefing-slot-name" fitKey={identity.label} maxRatio={0.62} style={rectStyle(slots.name)} className="pointer-events-none z-20 flex items-end">
+              <FitText testId="briefing-slot-name" fitKey={`${identity.label}|${portrait}`} maxRatio={portrait ? BADGE_TEXT_MAX_RATIO.portrait : BADGE_TEXT_MAX_RATIO.landscape} minPx={portrait ? READABLE_MIN_PX : undefined} style={rectStyle(slots.name)} className="pointer-events-none z-20 flex items-end">
                 <span aria-hidden="true" className="whitespace-nowrap font-bold leading-none text-ink">
                   {identity.label}
                 </span>
               </FitText>
             )}
             {slots.number && (
-              <FitText testId="briefing-slot-number" fitKey={`${caseNo ?? ''}|${identity.initials}`} maxRatio={0.62} style={rectStyle(slots.number)} className="pointer-events-none z-20 flex items-end">
+              <FitText testId="briefing-slot-number" fitKey={`${caseNo ?? ''}|${identity.initials}|${portrait}`} maxRatio={portrait ? BADGE_TEXT_MAX_RATIO.portrait : BADGE_TEXT_MAX_RATIO.landscape} minPx={portrait ? READABLE_MIN_PX : undefined} style={rectStyle(slots.number)} className="pointer-events-none z-20 flex items-end">
                 <span aria-hidden="true" className="whitespace-nowrap font-bold leading-none tabular-nums text-ink">
                   {badgeNumber(caseNo, identity.initials)}
                 </span>

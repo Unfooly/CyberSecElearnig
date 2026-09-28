@@ -397,23 +397,40 @@ const summarySchema = z
         stamp: imagePathSchema,
         note: imagePathSchema,
         slots: closingSlotsSchema,
+        // Wariant pionowy (feat/portrait-scenes, D-098, addytywnie w v5): raport 9:16 dla telefonu w pionie - ten sam zestaw slotów
+        // w % pionowej sceny. Pieczęć i liścik te same pliki (wlatują w sloty stamp/note). Bez `portrait` - panorama raportu 16:9 (D-089).
+        portrait: z.object({ image: imagePathSchema, slots: closingSlotsSchema }).strict().optional(),
       })
       .strict()
       .optional(),
   })
   .strict();
+const briefingSlotsSchema = z
+  .object({
+    tasks: briefingRectSchema.optional(),
+    name: briefingRectSchema.optional(),
+    number: briefingRectSchema.optional(),
+    photo: briefingRectSchema.optional(),
+  })
+  .strict();
+const briefingHotspotSchema = briefingRectSchema.extend({ id: idSchema }).strict();
+// Wariant pionowy sceny kroku (feat/portrait-scenes, D-098, addytywnie w v5): na scenie o proporcjach < 0.8 (telefon w pionie)
+// odtwarzacz bierze pionową grafikę (9:16) i jej prostokąty; bez `portrait` - scena 16:9 w pasach (jak dotąd). Te same pola co scena
+// pozioma: `closedImage`/`openHotspot` tylko przy dwóch fazach teczki (caseFile); zgodność z polami poziomymi - semantics.ts.
+const briefingPortraitSchema = z
+  .object({
+    image: imagePathSchema,
+    closedImage: imagePathSchema.optional(),
+    hotspot: briefingHotspotSchema.optional(),
+    openHotspot: briefingHotspotSchema.optional(),
+    slots: briefingSlotsSchema.optional(),
+  })
+  .strict();
 const briefingSceneShape = {
   image: imagePathSchema.optional(),
-  hotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
-  slots: z
-    .object({
-      tasks: briefingRectSchema.optional(),
-      name: briefingRectSchema.optional(),
-      number: briefingRectSchema.optional(),
-      photo: briefingRectSchema.optional(),
-    })
-    .strict()
-    .optional(),
+  hotspot: briefingHotspotSchema.optional(),
+  slots: briefingSlotsSchema.optional(),
+  portrait: briefingPortraitSchema.optional(),
 };
 
 const briefingStepSchema = z.discriminatedUnion('kind', [
@@ -468,7 +485,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       // bez animacji przy reduced-motion). Przy closedImage `hotspot` dotyczy fazy zamkniętej, a `openHotspot` (D-086) - otwartych akt:
       // klik zamyka teczkę i przechodzi dalej (etykieta = `cta`).
       closedImage: imagePathSchema.optional(),
-      openHotspot: briefingRectSchema.extend({ id: idSchema }).strict().optional(),
+      openHotspot: briefingHotspotSchema.optional(),
     })
     .strict(),
   // badge: legitymacja gracza. Bez żadnych danych osobowych w treści - imię, avatar i numer odznaki liczy WYŁĄCZNIE
@@ -839,6 +856,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'closing.stamp',
       'closing.note',
       ...['evidence', 'time', 'xp', 'lessons', 'signature', 'stamp', 'note'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((key) => `closing.slots.${slot}.${key}`)),
+      // Wariant pionowy (D-098): obraz i sloty - układ, jak wyżej.
+      'closing.portrait.image',
+      ...['evidence', 'time', 'xp', 'lessons', 'signature', 'stamp', 'note'].flatMap((slot) =>
+        ['x', 'y', 'w', 'h'].map((key) => `closing.portrait.slots.${slot}.${key}`),
+      ),
     ],
     [],
   ),
@@ -879,6 +901,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].openHotspot.w',
       'steps[].openHotspot.h',
       ...['tasks', 'name', 'number', 'photo'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((axis) => `steps[].slots.${slot}.${axis}`)),
+      // Wariant pionowy kroku (D-098): te same pola sceny w % pionowej grafiki - układ, nic tu nie jest sekretem.
+      'steps[].portrait.image',
+      'steps[].portrait.closedImage',
+      ...['hotspot', 'openHotspot'].flatMap((name) => ['id', 'x', 'y', 'w', 'h'].map((key) => `steps[].portrait.${name}.${key}`)),
+      ...['tasks', 'name', 'number', 'photo'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((axis) => `steps[].portrait.slots.${slot}.${axis}`)),
     ],
     ['steps[].narration.spokenText', 'steps[].narration.voice'],
   ),

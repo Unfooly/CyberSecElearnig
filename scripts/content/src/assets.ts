@@ -42,6 +42,10 @@ export const ASSET_PATHS: string[][] = [
   ['closing', 'image'],
   ['closing', 'stamp'],
   ['closing', 'note'],
+  // Warianty pionowe (telefon, D-098): scena kroku odprawy, zamknięta teczka i raport zamknięcia sprawy 9:16.
+  ['steps', '*', 'portrait', 'image'],
+  ['steps', '*', 'portrait', 'closedImage'],
+  ['closing', 'portrait', 'image'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

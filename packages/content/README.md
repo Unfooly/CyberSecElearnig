@@ -58,7 +58,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   wymaga `hotspot`, klik otwiera `image`) i `openHotspot { id, x, y, w, h }` (D-086: przedmiot otwartych akt = `cta`, wymaga
   `closedImage`). Prostokąty w % sceny, w jej granicach; każde z tych pól wymaga `image`. Krok bez `image`
   wygląda jak dotąd (karta na jasnym tle). W scenie nie są używane `caller.avatar` (postać jest w grafice) ani avatar gracza
-  (w slocie `photo` są jego inicjały).
+  (w slocie `photo` są jego inicjały). Wariant pionowy (D-098, opcjonalny): `portrait { image, closedImage?, hotspot?, openHotspot?,
+  slots? }` - te same pola w % pionowej sceny (9:16, telefon w pionie: kontener sceny o proporcjach < 0.8); musi mieć dokładnie te
+  same przedmioty, fazy teczki i sloty co scena pozioma (inaczej w pionie zniknęłoby przejście dalej albo dane gracza). Bez `portrait` -
+  scena 16:9 w pasach.
 - Miniatura modułu (D-084, opcjonalna): `thumbnail` na poziomie modułu - obraz 16:9 z `assets/` (potok `--assets`, klucz locka
   `module#thumbnail`), zapisywany przez import w `courses.thumbnail` i pokazywany na kartach katalogu i „moich kursów”.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
@@ -78,7 +81,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - `SUMMARY` - zamknięcie sprawy (D-089, opcjonalne): `lessons[]` (1-5 zdań, ≤120 znaków; wnioski śledczego w raporcie) i
   `closing { image, stamp, note, slots { evidence, time, xp, lessons, signature, stamp, note } }` - raport 16:9, pieczęć i liścik z
   `assets/` (potok `--assets`), sloty `{ x, y, w, h }` w % raportu, w jego granicach. Wszystko publiczne (podsumowanie, nie klucz).
-  Bez `closing` odtwarzacz pokazuje prosty ekran ukończenia.
+  Bez `closing` odtwarzacz pokazuje prosty ekran ukończenia. `closing.portrait { image, slots }` (D-098, opcjonalne): raport 9:16 dla
+  telefonu w pionie z kompletem slotów (pieczęć i liścik te same pliki); bez niego telefon pokazuje panoramę raportu 16:9.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

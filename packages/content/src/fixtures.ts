@@ -322,6 +322,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           // Grafika kroku (D-084): scena i hotspot = cta.
           image: 'scenes/biurko.svg',
           hotspot: { id: 'telefon', x: 49, y: 21.6, w: 16.3, h: 54.2 },
+          // Wariant pionowy (D-098): te same pola w % sceny 9:16.
+          portrait: { image: 'scenes/biurko-pion.svg', hotspot: { id: 'telefon', x: 31.1, y: 28.1, w: 37.8, h: 40 } },
         },
         {
           kind: 'call',
@@ -348,6 +350,13 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           hotspot: { id: 'teczka', x: 24.4, y: 17.4, w: 51.6, h: 69.5 },
           openHotspot: { id: 'akta', x: 3.9, y: 2.3, w: 92.1, h: 95.3 },
           slots: { tasks: { x: 54.1, y: 19.4, w: 37.1, h: 56.2 } },
+          portrait: {
+            image: 'scenes/akta-pion.svg',
+            closedImage: 'scenes/teczka-pion.svg',
+            hotspot: { id: 'teczka', x: 4.1, y: 32.3, w: 91.8, h: 39.1 },
+            openHotspot: { id: 'akta', x: 12.8, y: 0.6, w: 74.4, h: 99 },
+            slots: { tasks: { x: 19.4, y: 59.6, w: 60, h: 28.7 } },
+          },
         },
         {
           kind: 'badge',
@@ -358,6 +367,14 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
             photo: { x: 55.1, y: 30, w: 11.2, h: 25.3 },
             name: { x: 68.8, y: 33.7, w: 17.4, h: 5.3 },
             number: { x: 68.8, y: 44.9, w: 17.4, h: 5.3 },
+          },
+          portrait: {
+            image: 'scenes/legitymacja-pion.svg',
+            slots: {
+              photo: { x: 25.3, y: 59.8, w: 18.3, h: 13.1 },
+              name: { x: 47.6, y: 61.7, w: 28.4, h: 2.8 },
+              number: { x: 47.6, y: 67.5, w: 28.4, h: 2.8 },
+            },
           },
         },
         { kind: 'start', text: 'Firma Testowa, drugie piętro.', cta: 'Wchodzę', narration: audio('odprawa-5') },
@@ -403,6 +420,19 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           signature: { x: 23.2, y: 81.8, w: 22.7, h: 6.1 },
           stamp: { x: 56.2, y: 67.7, w: 33, h: 21 },
           note: { x: 78.5, y: 36.6, w: 14.1, h: 23.2 },
+        },
+        // Wariant pionowy (D-098).
+        portrait: {
+          image: 'scenes/raport-pion.svg',
+          slots: {
+            evidence: { x: 20.6, y: 17.3, w: 18.9, h: 3.5 },
+            time: { x: 41.1, y: 17.3, w: 18.9, h: 3.5 },
+            xp: { x: 61.7, y: 17.3, w: 18.9, h: 3.5 },
+            lessons: { x: 20.6, y: 25.4, w: 60, h: 15 },
+            signature: { x: 43.9, y: 41.3, w: 36.7, h: 3.1 },
+            stamp: { x: 21.7, y: 85.3, w: 55.6, h: 11.3 },
+            note: { x: 63.9, y: 62.1, w: 18.9, h: 9.9 },
+          },
         },
       },
     },

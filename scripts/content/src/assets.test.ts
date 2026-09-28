@@ -27,7 +27,8 @@ function moduleWithAssets(overrides: { image?: string; avatar?: string } = {}): 
   for (const hotspot of scene.hotspots) delete hotspot.media;
   // To samo z grafiką kroków odprawy (D-084): własne testy niżej (moduleWithBriefingScenes).
   const briefing = module.blocks.find((block) => block.type === 'BRIEFING') as { steps: Record<string, unknown>[] };
-  for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'openHotspot', 'slots']) delete step[field];
+  // Także wariant pionowy (D-098) - własny test niżej.
+  for (const step of briefing.steps) for (const field of ['image', 'closedImage', 'hotspot', 'openHotspot', 'slots', 'portrait']) delete step[field];
   // I z raportem zamknięcia sprawy (SUMMARY.closing, D-089): własny test niżej.
   const summary = module.blocks.find((block) => block.type === 'SUMMARY') as Record<string, unknown>;
   delete summary.closing;
@@ -155,6 +156,24 @@ describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
     for (const file of ['biurko.png', 'akta.png']) await writeFile(join(assetsDir, file), PNG); // bez teczka.png
     await expect(runAssetsPipeline(params())).rejects.toThrow(/Zasób "teczka\.png" \(blok "odprawa"\) nie istnieje w katalogu assets\/ modułu/);
     await expect(readFile(join(dir, 'assets.lock.json'), 'utf8')).rejects.toThrow();
+  });
+
+  it('D-098: collectAssetRefs znajduje obrazy wariantów pionowych (steps[].portrait.image/closedImage, closing.portrait.image)', () => {
+    const module = moduleWithBriefingScenes();
+    const briefing = (module.blocks as Record<string, any>[]).find((b) => b.type === 'BRIEFING')!;
+    const caseFile = briefing.steps.find((s: { kind: string }) => s.kind === 'caseFile');
+    caseFile.portrait = { image: 'akta-pion.png', closedImage: 'teczka-pion.png', hotspot: { ...caseFile.hotspot }, openHotspot: { ...caseFile.openHotspot } };
+    const summary = (module.blocks as Record<string, any>[]).find((b) => b.type === 'SUMMARY')!;
+    const slot = { x: 1, y: 1, w: 10, h: 10 };
+    const slots = { evidence: slot, time: slot, xp: slot, lessons: slot, signature: slot, stamp: slot, note: slot };
+    summary.closing = { image: 'raport.svg', stamp: 'pieczec.svg', note: 'liscik.svg', slots, portrait: { image: 'raport-pion.svg', slots } };
+    const refs = collectAssetRefs(module);
+    const byId = Object.fromEntries(refs.map((ref) => [ref.id.replace(/^[^#]+#/, ''), ref.value]));
+    expect(byId).toMatchObject({
+      [`steps.${briefing.steps.indexOf(caseFile)}.portrait.image`]: 'akta-pion.png',
+      [`steps.${briefing.steps.indexOf(caseFile)}.portrait.closedImage`]: 'teczka-pion.png',
+      'closing.portrait.image': 'raport-pion.svg',
+    });
   });
 
   it('miniatura modułu (thumbnail) to zasób potoku: klucz module#thumbnail, publikowana z wersjonowaną nazwą', async () => {

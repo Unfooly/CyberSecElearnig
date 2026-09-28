@@ -920,6 +920,30 @@ describe('parseModule: BRIEFING - grafika kroków', () => {
     expect(invalid((m) => (step(m, 4).slots.tasks = { x: 1, y: 1, w: 5, h: 5 }))).toContain('steps[4].slots.tasks: dotyczy wyłącznie kroku caseFile');
     expect(invalid((m) => delete step(m, 3).tasks)).toContain('steps[3].slots.tasks wymaga listy tasks');
   });
+
+  it('D-098 wariant pionowy: te same przedmioty, fazy i sloty co scena pozioma, w granicach sceny, tylko ze sceną poziomą', () => {
+    // Brak odpowiednika w pionie = w pionie znika jedyne przejście dalej albo dane gracza.
+    expect(invalid((m) => delete step(m, 0).portrait.hotspot)).toContain('steps[0].portrait.hotspot: musi być tam, gdzie w scenie poziomej');
+    expect(invalid((m) => delete step(m, 3).portrait.closedImage)).toContain('steps[3].portrait.closedImage: musi być tam, gdzie w scenie poziomej');
+    expect(invalid((m) => delete step(m, 3).portrait.openHotspot)).toContain('steps[3].portrait.openHotspot: musi być tam, gdzie w scenie poziomej');
+    expect(invalid((m) => delete step(m, 4).portrait.slots.name)).toContain('steps[4].portrait.slots: te same sloty co scena pozioma');
+    // Nic ponad scenę poziomą.
+    expect(invalid((m) => (step(m, 4).portrait.hotspot = { id: 'x', x: 1, y: 1, w: 5, h: 5 }))).toContain('steps[4].portrait.hotspot: musi być tam, gdzie w scenie poziomej');
+    // Ten sam przedmiot - to samo id.
+    expect(invalid((m) => (step(m, 0).portrait.hotspot.id = 'inny'))).toContain('steps[0].portrait.hotspot.id: "inny" zamiast "telefon"');
+    // Te same reguły co scena pozioma (granice, rodzaj slotu).
+    expect(invalid((m) => (step(m, 0).portrait.hotspot.y = 70))).toContain('steps[0].portrait.hotspot: prostokąt wychodzi poza scenę');
+    expect(invalid((m) => (step(m, 3).portrait.slots.name = { x: 1, y: 1, w: 5, h: 5 }))).toContain('steps[3].portrait.slots.name: dotyczy wyłącznie kroku badge');
+    // Wymaga sceny poziomej; zła ścieżka odrzucona schematem.
+    expect(invalid((m) => (step(m, 5).portrait = { image: 'scenes/start-pion.svg' }))).toContain('steps[5].portrait wymaga sceny poziomej');
+    expect(invalid((m) => (step(m, 0).portrait.image = 'https://evil.example/x.svg'))).toContain('portrait');
+  });
+
+  it('D-098 raport pionowy: komplet slotów (schemat) w granicach pionowej sceny', () => {
+    const summary = (m: TestModule) => m.blocks.find((b) => b.type === 'SUMMARY') as Record<string, any>;
+    expect(invalid((m) => delete summary(m).closing.portrait.slots.note)).toContain('note');
+    expect(invalid((m) => (summary(m).closing.portrait.slots.stamp.y = 95))).toContain('closing.portrait.slots.stamp wychodzi poza pionową scenę');
+  });
 });
 
 // Wersja 5: teczka sprawy (DOSSIER), D-083.

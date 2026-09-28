@@ -112,6 +112,7 @@ interface BriefingSceneLike {
   openHotspot?: { id: string; x: number; y: number; w: number; h: number };
   slots?: Partial<Record<string, { x: number; y: number; w: number; h: number }>>;
   tasks?: unknown[];
+  portrait?: Omit<BriefingSceneLike, 'kind' | 'tasks' | 'portrait'>;
 }
 
 /**
@@ -125,7 +126,8 @@ function briefingSceneErrors(label: string, step: BriefingSceneLike): string[] {
     if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`${label}.${name}: prostokąt wychodzi poza scenę (x + w i y + h najwyżej 100)`);
   };
   const needsImage = (name: string) => errors.push(`${label}.${name} wymaga pola image (obrazu sceny kroku)`);
-  // closedImage istnieje tylko w schemacie kroku caseFile (inne kroki odrzuca .strict()).
+  // closedImage w scenie poziomej istnieje tylko w schemacie kroku caseFile (inne kroki odrzuca .strict()); w wariancie pionowym schemat
+  // dopuszcza je przy każdym kroku, a odrzuca je dopiero zgodność ze sceną poziomą niżej (portrait).
   if (step.closedImage !== undefined) {
     if (step.image === undefined) needsImage('closedImage');
     if (step.hotspot === undefined) errors.push(`${label}.closedImage wymaga hotspotu (klik otwiera teczkę)`);
@@ -145,6 +147,33 @@ function briefingSceneErrors(label: string, step: BriefingSceneLike): string[] {
     if (BRIEFING_SLOT_KINDS[slot] !== step.kind) errors.push(`${label}.slots.${slot}: dotyczy wyłącznie kroku ${BRIEFING_SLOT_KINDS[slot]}`);
     if (slot === 'tasks' && !(step.tasks && step.tasks.length > 0)) errors.push(`${label}.slots.tasks wymaga listy tasks`);
     inScene(`slots.${slot}`, rect);
+  }
+  // Wariant pionowy (D-098): te same zasady co scena pozioma (rekurencyjnie) plus zgodność z nią - odtwarzacz w pionie korzysta
+  // WYŁĄCZNIE z pól portrait, więc każdy przedmiot i slot sceny poziomej musi mieć odpowiednik (inaczej w pionie zniknęłoby jedyne
+  // przejście dalej albo dane gracza), a pionowa nie może mieć niczego ponad poziomą.
+  if (step.portrait) {
+    const p = step.portrait;
+    if (step.image === undefined) errors.push(`${label}.portrait wymaga sceny poziomej (image)`);
+    errors.push(...briefingSceneErrors(`${label}.portrait`, { kind: step.kind, tasks: step.tasks, ...p }));
+    const pairs: [string, unknown, unknown][] = [
+      ['closedImage', step.closedImage, p.closedImage],
+      ['hotspot', step.hotspot, p.hotspot],
+      ['openHotspot', step.openHotspot, p.openHotspot],
+    ];
+    for (const [name, landscape, portrait] of pairs) {
+      if ((landscape === undefined) !== (portrait === undefined)) errors.push(`${label}.portrait.${name}: musi być tam, gdzie w scenie poziomej (i tylko tam)`);
+    }
+    // Ten sam przedmiot w obu orientacjach - to samo id (np. przyszła telemetria po id nie może rozjechać się między wariantami).
+    for (const name of ['hotspot', 'openHotspot'] as const) {
+      const landscapeId = step[name]?.id;
+      const portraitId = p[name]?.id;
+      if (landscapeId !== undefined && portraitId !== undefined && landscapeId !== portraitId) {
+        errors.push(`${label}.portrait.${name}.id: "${portraitId}" zamiast "${landscapeId}" (jak w scenie poziomej)`);
+      }
+    }
+    const landscapeSlots = Object.keys(step.slots ?? {}).sort().join(',');
+    const portraitSlots = Object.keys(p.slots ?? {}).sort().join(',');
+    if (landscapeSlots !== portraitSlots) errors.push(`${label}.portrait.slots: te same sloty co scena pozioma (${landscapeSlots || 'brak'})`);
   }
   return errors;
 }
@@ -526,6 +555,10 @@ export function parseModule(input: unknown): ContentModule {
     if (block.type !== 'SUMMARY' || !block.closing) continue;
     for (const [name, rect] of Object.entries(block.closing.slots)) {
       if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`SUMMARY: closing.slots.${name} wychodzi poza scenę raportu`);
+    }
+    // Wariant pionowy (D-098): komplet slotów wymusza schemat, tu - granice pionowej sceny.
+    for (const [name, rect] of Object.entries(block.closing.portrait?.slots ?? {})) {
+      if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`SUMMARY: closing.portrait.slots.${name} wychodzi poza pionową scenę raportu`);
     }
   }
 

@@ -144,6 +144,10 @@ Kursy to treść (JSON modułu zwalidowany zod), nie kod; szczegóły i format: 
    `<iframe sandbox>` bez `allow-same-origin`.
 5. **Kurs z przypisaniami nie da się usunąć** (`RESTRICT`). W testach e2e sprzątaj organizacje (kasują przypisania kaskadowo) PRZED kursami:
    `deleteMany` przypisań bez kontekstu organizacji ich nie widzi (FORCE RLS).
+6. **Każda grafika otwierana kliknięciem (zbliżenie przedmiotu, dokument, okno, ekran) ma przezroczyste tło** (D-101): przedmioty/dokumenty/okna →
+   `scripts/content/scenes/crop-zooms.ts` (`wall: 'none'`, ciasny kadr); ekrany komputera → `scripts/content/scenes/wrap-in-monitor.ts`. Test w CI
+   (`scripts/content/scenes/transparent-zooms.test.ts`): każdy plik z `media.image` i `media.scene` w module ma `<svg>` bez prostokąta tła na całą
+   scenę (albo jest owinięty ramką monitora - sama ramka takiego prostokąta nie rysuje). Szczegóły i kolejność pracy: `docs/content/MODULE-PLAYBOOK.md`.
 
 ## Role i uprawnienia
 

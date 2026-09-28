@@ -84,6 +84,27 @@ describe('AchievementsProfile (D-112, przypinanie)', () => {
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ codes: ['a'] });
   });
 
+  it('fokus zostaje na strzałce także wtedy, gdy zapis trwa (odpowiedź po przeniesieniu fokusu); błąd czyści ogłoszenie', async () => {
+    let respond: (value: unknown) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => (respond = resolve))));
+    render(<AchievementsProfile badges={[earned('a', 'Alfa', 1), earned('b', 'Beta', 2)]} displayName={null} />);
+
+    const right = screen.getByRole('button', { name: 'Przesuń Alfa w prawo' });
+    right.focus();
+    fireEvent.click(right);
+    // Zapis w toku: strzałki bez natywnego disabled (tylko aria-disabled), fokus na strzałce „w lewo” przesuniętej pozycji.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Przesuń Alfa w lewo' })).toHaveFocus());
+    expect(screen.getByRole('button', { name: 'Przesuń Alfa w lewo' })).toHaveAttribute('aria-disabled', 'true');
+    // Drugi klik w czasie zapisu nic nie wysyła.
+    fireEvent.click(screen.getByRole('button', { name: 'Przesuń Alfa w lewo' }));
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    respond({ ok: false, json: async () => ({ message: 'Błąd zapisu.' }) });
+    expect(await screen.findByTestId('pin-message')).toHaveTextContent('Błąd zapisu.');
+    expect(pinnedTitles()).toEqual(['Alfa', 'Beta']);
+    expect(screen.getByTestId('pin-announcement')).toBeEmptyDOMElement();
+  });
+
   it('przeciąganie zmienia kolejność', async () => {
     const fetchMock = ok();
     vi.stubGlobal('fetch', fetchMock);

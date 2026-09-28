@@ -23,6 +23,8 @@ function base(id: string) {
     id,
     title: `Blok ${id}`,
     narration: audio(id),
+    tip: 'Sprawdź nadawcę.',
+    // Przestarzałe (D-096), ale sklasyfikowane - fixtura musi je wypełniać (test wycieku).
     mascot: { pose: 'pointing' as const, text: 'Uważaj!' },
     weight: 2,
     // reactions.complete (schemaVersion 4): client, więc bezpieczne na KAŻDYM typie bloku (wywołuje je klient po ukończeniu).

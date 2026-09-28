@@ -625,6 +625,9 @@ const BASE_CLIENT = [
   'narration.durationMs',
   'narration.cues[].text',
   'narration.cues[].startMs',
+  // tip (D-096): stała podpowiedź bloku, pokazywana od startu - publiczna.
+  'tip',
+  // mascot.* - przestarzałe (D-096), zostaje dla starszych wersji treści (odtwarzacz czyta mascot.text, gdy brak tip).
   'mascot.pose',
   'mascot.text',
   // reactions.complete (schemaVersion 4): zdarzenie "blok ukończony", wywoływane przez klienta - nie zdradza niczego.

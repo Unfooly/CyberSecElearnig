@@ -647,11 +647,18 @@ describe('SCENE_HOTSPOTS: ruch kamery (bez prefers-reduced-motion)', () => {
 
     act(() => vi.advanceTimersByTime(450));
     fireEvent.click(screen.getByTestId('hotspot-overlay-outlook'));
-    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'inner-in');
-    // Przedmiot pulpitu też na przyciemnionym tle (D-102), z przejściem jak na poziomie 1.
-    const innerLayer = screen.getByTestId('scene-zoom-graphic').parentElement!;
+    // Ekran (D-104): klik w ikonę pulpitu NIE rusza kamerą - okno od razu otwarte, bez transformu pudełka pulpitu.
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'inner-open');
+    expect(document.querySelector<HTMLElement>('.hotspot-nested-scene-box')!.style.transform).toBe('');
+    // Okno nad przyciemnionym pulpitem (D-102/D-104), max 94% sceny.
+    const graphic = screen.getByTestId('scene-zoom-graphic');
+    const innerLayer = graphic.parentElement!;
     expect(innerLayer.className).toMatch(/bg-ink\/35/);
-    expect(innerLayer.className).toMatch(/transition-\[background-color,backdrop-filter\]/);
+    expect(graphic.className).toMatch(/max-h-\[94%\]/);
+    // Zamknięcie też bez oddalania - od razu pulpit, fokus na ikonie.
+    putDown();
+    expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'open');
+    expect(screen.getByTestId('hotspot-overlay-outlook')).toHaveFocus();
   });
 
   it('prefers-reduced-motion: bez ruchu kamery (brak transform i transition), zbliżenie od razu otwarte', () => {
@@ -721,6 +728,63 @@ describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)
   });
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  // imagePortrait (D-104): wariant pionowy tylko, gdy widok sceny jest węższy niż 0.8 wysokości. Mock rozmiaru sprząta afterEach.
+  const stageSize = (width: number, height: number) =>
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON: () => ({}) }) as DOMRect);
+  const withPortraitImage: ContentBlock = {
+    ...mediaScene,
+    hotspots: mediaScene.hotspots!.map((h) => (h.media?.kind === 'image' ? { ...h, media: { ...h.media, imagePortrait: 'img/zdjecie-pion.png' } } : h)),
+  };
+  const zoomSrc = () => within(dialog()).getByAltText('Zbliżenie karteczki z hasłem').getAttribute('src');
+
+  it('imagePortrait (D-104): telefon w pionie (widok sceny < 0.8) - wariant pionowy', () => {
+    stageSize(360, 600);
+    setup(withPortraitImage);
+    pick('Zdjęcie');
+    expect(zoomSrc()).toContain('zdjecie-pion.png');
+  });
+
+  it('imagePortrait (D-104): poziomo - zwykła grafika (src), mimo wariantu pionowego', () => {
+    stageSize(1280, 720);
+    setup(withPortraitImage);
+    pick('Zdjęcie');
+    expect(zoomSrc()).toContain('kartka-zoom.png');
+    expect(zoomSrc()).not.toContain('pion');
+  });
+
+  it('imagePortrait (D-104): pionowo bez wariantu pionowego - zwykła grafika (src)', () => {
+    stageSize(360, 600);
+    setup(mediaScene);
+    pick('Zdjęcie');
+    expect(zoomSrc()).toContain('kartka-zoom.png');
+  });
+
+  it('imagePortrait (D-104): okno na ekranie (poziom 2, pulpit) w pionie - wariant pionowy', () => {
+    stageSize(360, 600);
+    const monitor = nestedScene.hotspots![0];
+    const media = monitor.media!;
+    const portraitNested: ContentBlock = {
+      ...nestedScene,
+      hotspots: [
+        {
+          ...monitor,
+          media: {
+            ...media,
+            scene: {
+              ...media.scene!,
+              hotspots: media.scene!.hotspots.map((h) => (h.id === 'outlook' && h.media?.kind === 'image' ? { ...h, media: { ...h.media, imagePortrait: 'img/mail-pion.png' } } : h)),
+            },
+          },
+        },
+        ...nestedScene.hotspots!.slice(1),
+      ],
+    };
+    setup(portraitNested);
+    fireEvent.click(screen.getByTestId('hotspot-overlay-monitor'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
+    expect(within(dialog()).getByAltText('Podgląd maila').getAttribute('src')).toContain('mail-pion.png');
   });
 
   it('image: sama grafika (object-contain, cień, max 88%) - bez tekstu przedmiotu (content) i bez tytułu', () => {
@@ -1123,6 +1187,8 @@ describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () 
     setup(easterScene);
     openGame();
     expect(screen.getAllByTestId('easter-popup')).toHaveLength(2);
+    // Okienka wprost na pulpicie (D-104): bez przyciemnienia pod nimi.
+    expect(screen.getByTestId('easter-popups').parentElement!.className).not.toMatch(/bg-ink/);
     expect(screen.queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Odłóż' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('notebook-distinctions')).not.toBeInTheDocument();

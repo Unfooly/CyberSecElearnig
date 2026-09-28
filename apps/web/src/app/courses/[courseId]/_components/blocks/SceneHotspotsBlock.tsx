@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { ArrowLeft, Check, DoorOpen, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
@@ -8,6 +8,7 @@ import { requiredItemIds } from '@/lib/required-items';
 import { flattenHotspots } from '@/lib/flatten-hotspots';
 import { sceneZoom, sceneZoomStyle } from '@/lib/scene-zoom';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { PORTRAIT_THRESHOLD } from '@/lib/use-portrait-container';
 import { flyEvidence } from '@/lib/motion';
 import { useNotes, NoteKindIcon } from '../player/notes';
 import { useEvidence } from '../player/evidence';
@@ -91,7 +92,8 @@ function cameraTransition(reducedMotion: boolean, phase: Phase | null): string |
 // "Zabierz" przy dowodzie dopisuje notatkę do notatnika (tekst notatki jest TYLKO w notatniku) i odkłada; przy przedmiocie bez dowodu -
 // potrząśnięcie i toast NOT_EVIDENCE_TOAST, bez kary. Już zabrany - tylko "Odłóż" i znacznik "W notatniku". Nagranie (poczta głosowa):
 // play/pauza pod grafiką (i transkrypcja jako alternatywa tekstowa). Scena zagnieżdżona (monitor -> pulpit): przybliżenie na monitor i
-// przejście do sceny zagnieżdżonej z ikoną "Wróć" - jej przedmioty działają tak samo (kamera na pulpicie). Drzwi (action:'next') - bez
+// przejście do sceny zagnieżdżonej z ikoną "Wróć" - jej przedmioty (okna na ekranie, D-104) otwierają się BEZ ruchu kamery, od razu nad
+// przyciemnionym pulpitem (max 94% sceny), okienka easter egga bez przyciemnienia. Drzwi (action:'next') - bez
 // zoomu, klik kończy blok jak dotąd. reduced-motion: bez ruchu kamery, grafika od razu. A11y: role=dialog, aria-label = nazwa przedmiotu,
 // focus trap w nakładce, po zamknięciu fokus wraca na przedmiot.
 export default function SceneHotspotsBlock({
@@ -118,6 +120,8 @@ export default function SceneHotspotsBlock({
   const evidence = useEvidence();
   const hints = useHints();
   const reducedMotion = usePrefersReducedMotion();
+  // Telefon w pionie (widoczny obszar sceny < 0.8, jak D-098): zbliżenia z `imagePortrait` pokazują wariant pionowy (D-104).
+  const [portraitStage, setPortraitStage] = useState(false);
   const [visited, setVisited] = useState<string[]>([]);
   const [noted, setNoted] = useState<string[]>([]);
   const [interacted, setInteracted] = useState(false);
@@ -132,14 +136,11 @@ export default function SceneHotspotsBlock({
   const [camera, setCamera] = useState<CameraStyle>(null);
   const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [nestedPhase, setNestedPhase] = useState<Phase | null>(null);
-  const [nestedCamera, setNestedCamera] = useState<CameraStyle>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const viewRef = useRef<HTMLDivElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const nestedViewRef = useRef<HTMLDivElement | null>(null);
-  const nestedBoxRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const nestedTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -187,6 +188,23 @@ export default function SceneHotspotsBlock({
 
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
 
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!view) return undefined;
+    const measure = () => {
+      const { width, height } = view.getBoundingClientRect();
+      if (width > 0 && height > 0) setPortraitStage(width / height < PORTRAIT_THRESHOLD);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(view);
+    return () => observer.disconnect();
+    // Widok sceny (viewRef) montuje się warunkowo - dopiero z adresem obrazu i bez błędu ładowania - więc pomiar zależy od tych dwóch
+    // wartości, nie od refa (usePortraitContainer mierzy element zamontowany od razu, stąd osobny pomiar).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl, imageFailed]);
+
   // Fokus: przy otwarciu (w tym samym renderze, zanim przedmiot dostanie aria-hidden - reguła axe "aria-hidden-focus") na samą
   // nakładkę, a gdy grafika jest już na miejscu - na pierwszy przycisk (Zabierz/Odłóż albo Wróć).
   // Po odłożeniu przedmiotu sceny zagnieżdżonej fokus wraca na TEN przedmiot (closeNested), nie na "Wróć" - stąd flaga.
@@ -232,7 +250,6 @@ export default function SceneHotspotsBlock({
     setActiveId(hotspot.id);
     setNestedActiveId(null);
     setNestedPhase(null);
-    setNestedCamera(null);
     // Easter egg (D-100) liczy się jako odwiedzony dopiero po zamknięciu wszystkich okienek (foundEasterEgg).
     if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
     if (reducedMotionNow(reducedMotion)) {
@@ -258,7 +275,6 @@ export default function SceneHotspotsBlock({
       setPhase(null);
       setNestedActiveId(null);
       setNestedPhase(null);
-      setNestedCamera(null);
       setToast(null);
       trigger?.focus();
     };
@@ -273,7 +289,8 @@ export default function SceneHotspotsBlock({
   function openNested(hotspot: InnerSceneHotspot, trigger: HTMLButtonElement) {
     // Pulpit jest klikalny dopiero po dojechaniu kamery na monitor i gdy żaden jego przedmiot nie jest otwarty.
     if (phaseRef.current !== 'open' || nestedPhaseRef.current !== null) return;
-    nestedPhaseRef.current = 'in';
+    // Od razu w refie - drugi klik w tej samej klatce (przed renderem) nie otworzy drugiego okna.
+    nestedPhaseRef.current = 'open';
     generation.current += 1;
     returningFocus.current = false;
     vibrate(10);
@@ -282,34 +299,22 @@ export default function SceneHotspotsBlock({
     nestedTriggerRef.current = trigger;
     setNestedActiveId(hotspot.id);
     if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
-    if (reducedMotionNow(reducedMotion)) {
-      setNestedPhase('open');
-      return;
-    }
-    setNestedCamera(cameraFor(trigger, nestedBoxRef.current, nestedViewRef.current));
-    setNestedPhase('in');
-    later(ZOOM_IN_MS, () => setNestedPhase((p) => (p === 'in' ? 'open' : p)));
+    // Scena zagnieżdżona to ekran (pulpit w ramce monitora, D-104): klik w ikonę NIE rusza kamerą - okno otwiera się od razu nad
+    // pulpitem (bez przybliżenia, jak aplikacja na komputerze). Sam wjazd „w monitor” ze sceny głównej zostaje (open()).
+    setNestedPhase('open');
   }
 
   function closeNested() {
     if (nestedPhaseRef.current === 'out' || nestedPhaseRef.current === null) return;
     nestedPhaseRef.current = 'out';
     generation.current += 1;
-    overlayRef.current?.focus();
     const trigger = nestedTriggerRef.current;
-    const finish = () => {
-      returningFocus.current = true;
-      setNestedActiveId(null);
-      setNestedPhase(null);
-      setToast(null);
-      trigger?.focus();
-    };
-    setNestedCamera(null);
-    if (reducedMotionNow(reducedMotion)) finish();
-    else {
-      setNestedPhase('out');
-      later(ZOOM_OUT_MS, finish);
-    }
+    // Bez kamery na ekranie (D-104) - okno zamyka się od razu, fokus wraca na ikonę pulpitu.
+    returningFocus.current = true;
+    setNestedActiveId(null);
+    setNestedPhase(null);
+    setToast(null);
+    trigger?.focus();
   }
 
   // "Odłóż" / Esc / klik w tło: zdejmuje jeden poziom. Otwarte okienka easter egga: Esc zamyka górne (jak krzyżyk), nic więcej.
@@ -545,21 +550,15 @@ export default function SceneHotspotsBlock({
                       // Przedmioty pulpitu nieaktywne, dopóki kamera nie dojedzie na monitor (niewidoczne nie mogą być klikalne).
                       overlayOpen={nestedActiveId !== null || !showOuter}
                       onBackdrop={onBackdrop}
-                      viewRef={nestedViewRef}
-                      boxRef={nestedBoxRef}
-                      camera={nestedCamera}
-                      transition={cameraTransition(reducedMotion, nestedPhase)}
                       onPick={openNested}
                     />
                   </div>
                   {activeInner && (
                     <div
                       onClick={onBackdrop}
-                      // Drugie przyciemnienie nad już przyciemnionym pulpitem (celowo - przedmiot pulpitu wyróżnia się tak samo jak na
-                      // scenie głównej); przy oddalaniu znika razem z kamerą, jak na poziomie 1.
-                      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${
-                        reducedMotion ? '' : 'transition-[background-color,backdrop-filter] duration-300'
-                      } ${nestedPhase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
+                      // Okno na ekranie (D-104): nad pulpitem przyciemnienie jak przy zbliżeniu (ink 35% + blur 3 px), bez ruchu kamery;
+                      // okienka easter egga pojawiają się na pulpicie BEZ przyciemnienia (jak wyskakujące okna na komputerze).
+                      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${activeInner.media?.kind === 'popups' ? '' : ZOOM_DIM}`}
                     >
                       {activeInner.media?.kind === 'popups' ? (
                         showInner && (
@@ -579,6 +578,8 @@ export default function SceneHotspotsBlock({
                         <ZoomContent
                           hotspot={activeInner}
                           contentBase={contentBase}
+                          onScreen
+                          portrait={portraitStage}
                           visible={showInner}
                           reducedMotion={reducedMotion}
                           noted={noted.includes(activeInner.id)}
@@ -611,6 +612,7 @@ export default function SceneHotspotsBlock({
                 <ZoomContent
                   hotspot={active}
                   contentBase={contentBase}
+                  portrait={portraitStage}
                   visible={showOuter}
                   reducedMotion={reducedMotion}
                   noted={noted.includes(active.id)}
@@ -632,6 +634,7 @@ export default function SceneHotspotsBlock({
 }
 
 // Zawartość nakładki zbliżenia jednego przedmiotu: grafika (max 88% sceny, tylko cień) albo nagranie, pod nią Zabierz / Odłóż.
+// Okno na ekranie (przedmiot pulpitu, D-104) - max 94% sceny; na telefonie w pionie grafika `imagePortrait`, jeśli treść ją ma.
 function ZoomContent({
   hotspot,
   contentBase,
@@ -645,6 +648,8 @@ function ZoomContent({
   onTake,
   onPutDown,
   onBackdrop,
+  onScreen = false,
+  portrait = false,
 }: {
   hotspot: AnyHotspot;
   contentBase: string;
@@ -658,6 +663,8 @@ function ZoomContent({
   onTake: (from: HTMLElement) => void;
   onPutDown: () => void;
   onBackdrop: (event: MouseEvent<HTMLElement>) => void;
+  onScreen?: boolean;
+  portrait?: boolean;
 }) {
   const fade = `${reducedMotion ? '' : 'transition-opacity duration-200'} ${visible ? 'opacity-100' : 'opacity-0'}`;
   // `key={shake}` montuje "Zabierz" od nowa, żeby powtórzyć animację potrząśnięcia - fokus (był na tym przycisku) wraca na nowy egzemplarz,
@@ -668,8 +675,14 @@ function ZoomContent({
   }, [shake]);
   return (
     <>
-      <div data-testid="scene-zoom-graphic" onClick={onBackdrop} className={`flex max-h-[88%] min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 ${fade}`}>
-        {visible && hotspot.media && <ZoomGraphic media={hotspot.media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />}
+      <div
+        data-testid="scene-zoom-graphic"
+        onClick={onBackdrop}
+        className={`flex ${onScreen ? 'max-h-[94%]' : 'max-h-[88%]'} min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 ${fade}`}
+      >
+        {visible && hotspot.media && (
+          <ZoomGraphic media={hotspot.media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} onScreen={onScreen} portrait={portrait} />
+        )}
         {/* Przedmiot bez grafiki (treść sprzed D-086): opis zamiast pustego zbliżenia - ciemny panel z cieniem, bez białej karty. */}
         {visible && !hotspot.media && hotspot.content && (
           <p className="max-w-[88%] rounded-card bg-ink/90 p-4 text-base text-white shadow-card">{hotspot.content}</p>
@@ -716,13 +729,19 @@ function ZoomGraphic({
   contentBase,
   transcriptOpen,
   onToggleTranscript,
+  onScreen = false,
+  portrait = false,
 }: {
   media: HotspotMedia | InnerHotspotMedia;
   contentBase: string;
   transcriptOpen: boolean;
   onToggleTranscript: () => void;
+  onScreen?: boolean;
+  portrait?: boolean;
 }) {
-  if (media.kind === 'image') return <ZoomImage path={media.src} alt={media.alt} contentBase={contentBase} />;
+  if (media.kind === 'image') {
+    return <ZoomImage path={portrait && media.imagePortrait ? media.imagePortrait : media.src} alt={media.alt} contentBase={contentBase} wide={onScreen} />;
+  }
   if (media.kind === 'audio') return <AudioZoom media={media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />;
   if (media.kind === 'document') {
     return (
@@ -737,12 +756,12 @@ function ZoomGraphic({
   return null;
 }
 
-function ZoomImage({ path, alt, contentBase }: { path: string | undefined; alt: string | undefined; contentBase: string }) {
+function ZoomImage({ path, alt, contentBase, wide = false }: { path: string | undefined; alt: string | undefined; contentBase: string; wide?: boolean }) {
   const url = withStaticFragment(contentAssetUrl(contentBase, path, 'image'), usePrefersReducedMotion());
   if (!url) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
-    <img src={url} alt={alt ?? ''} referrerPolicy="no-referrer" className="zoom-shadow min-h-0 max-h-full max-w-[88%] object-contain" />
+    <img src={url} alt={alt ?? ''} referrerPolicy="no-referrer" className={`zoom-shadow min-h-0 max-h-full ${wide ? 'max-w-[94%]' : 'max-w-[88%]'} object-contain`} />
   );
 }
 
@@ -825,7 +844,7 @@ function AudioZoom({
 }
 
 // Scena zagnieżdżona (monitor -> pulpit) w nakładce: obraz "contain" w ramce z jawnym rozmiarem (.hotspot-nested-scene-frame/-box,
-// globals.css) z własnymi przedmiotami - ten sam wzorzec dostępności co scena główna; klik = kamera na pulpicie + zbliżenie.
+// globals.css) z własnymi przedmiotami - ten sam wzorzec dostępności co scena główna; klik = okno nad pulpitem (bez kamery, D-104).
 function NestedSceneImage({
   contentBase,
   scene,
@@ -833,10 +852,6 @@ function NestedSceneImage({
   noted,
   interacted,
   overlayOpen,
-  viewRef,
-  boxRef,
-  camera,
-  transition,
   onPick,
   onBackdrop,
 }: {
@@ -847,10 +862,6 @@ function NestedSceneImage({
   interacted: boolean;
   overlayOpen: boolean;
   onBackdrop: (event: MouseEvent<HTMLElement>) => void;
-  viewRef: RefObject<HTMLDivElement>;
-  boxRef: RefObject<HTMLDivElement>;
-  camera: CameraStyle;
-  transition: string | undefined;
   onPick: (hotspot: InnerSceneHotspot, trigger: HTMLButtonElement) => void;
 }) {
   const url = withStaticFragment(contentAssetUrl(contentBase, scene.image, 'image'), usePrefersReducedMotion());
@@ -863,11 +874,10 @@ function NestedSceneImage({
   if (!url) return null;
   const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    <div ref={viewRef} onClick={onBackdrop} className="hotspot-nested-scene-frame relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
+    <div onClick={onBackdrop} className="hotspot-nested-scene-frame relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
       <div
-        ref={boxRef}
         className="hotspot-nested-scene-box zoom-shadow relative isolate overflow-hidden"
-        style={{ '--scene-ratio': String(aspectRatio), height: 'auto', aspectRatio: 'var(--scene-ratio)', margin: 'auto', ...(camera ?? {}), transition } as CSSProperties}
+        style={{ '--scene-ratio': String(aspectRatio), height: 'auto', aspectRatio: 'var(--scene-ratio)', margin: 'auto' } as CSSProperties}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
         <img

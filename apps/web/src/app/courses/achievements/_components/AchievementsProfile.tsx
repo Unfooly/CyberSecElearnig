@@ -162,7 +162,7 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                       aria-disabled={saving || undefined}
                       data-move="left"
                       onClick={() => move(index, index - 1, '[data-move="left"]')}
-                      className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30 aria-disabled:opacity-50"
                     >
                       <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                     </button>
@@ -173,7 +173,7 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                       aria-disabled={saving || undefined}
                       data-move="right"
                       onClick={() => move(index, index + 1, '[data-move="right"]')}
-                      className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-btn text-muted hover:bg-paper disabled:opacity-30 aria-disabled:opacity-50"
                     >
                       <ArrowRight aria-hidden="true" className="h-4 w-4" />
                     </button>
@@ -182,7 +182,7 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                       aria-label={`Odepnij ${badge.title}`}
                       aria-disabled={saving || undefined}
                       onClick={() => togglePin(badge.code)}
-                      className="min-h-[44px] rounded-btn px-2 text-sm font-semibold text-accent-ink hover:bg-paper disabled:opacity-50"
+                      className="min-h-[44px] rounded-btn px-2 text-sm font-semibold text-accent-ink hover:bg-paper aria-disabled:opacity-50"
                     >
                       Odepnij
                     </button>

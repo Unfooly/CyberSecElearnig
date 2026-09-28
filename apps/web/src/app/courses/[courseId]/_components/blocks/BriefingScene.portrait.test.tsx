@@ -317,6 +317,49 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('+325');
   });
 
+  it('B-127: w pionie nagroda widoczna wzrokowo - toast nad dolnym paskiem przez 2,5 s (aria-hidden: dla czytnika jest opis raportu)', () => {
+    vi.useFakeTimers();
+    try {
+      mockContainer(360, 600);
+      render(
+        <SfxProvider enabled={false}>
+          <CaseClosedScreen title="Sprawa" score={90} reward={reward} closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+        </SfxProvider>,
+      );
+      const toast = screen.getByTestId('reward-toast');
+      expect(toast).toHaveTextContent('Awans na poziom 2!');
+      expect(toast).toHaveTextContent('Nowa odznaka: Tropiciel wszystkich dowodów');
+      expect(toast).toHaveAttribute('aria-hidden', 'true');
+      // Bez ceremonii (reduced-motion / powrót) - bez animacji wejścia.
+      expect(toast.className).not.toMatch(/animate-rise-in/);
+      act(() => vi.advanceTimersByTime(2499));
+      expect(screen.getByTestId('reward-toast')).toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(1));
+      expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('B-127: bez awansu i odznak - bez toastu; poziomo - bez toastu (nagroda pod raportem)', () => {
+    mockContainer(360, 600);
+    const { unmount } = render(
+      <SfxProvider enabled={false}>
+        <CaseClosedScreen title="Sprawa" score={90} reward={{ ...reward, leveledUp: false, unlockedBadges: [] }} closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+      </SfxProvider>,
+    );
+    expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+    unmount();
+    vi.restoreAllMocks();
+    mockContainer(1200, 700);
+    render(
+      <SfxProvider enabled={false}>
+        <CaseClosedScreen title="Sprawa" score={90} reward={reward} closing={closing} lessons={['Wniosek.']} signer="Jan P." contentBase="/content" fresh={false} />
+      </SfxProvider>,
+    );
+    expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+  });
+
   it('D-107: błąd pobrania wyniku zostaje widoczny pod pionowym raportem (to nie dubel danych z grafiki)', () => {
     mockContainer(360, 600);
     render(

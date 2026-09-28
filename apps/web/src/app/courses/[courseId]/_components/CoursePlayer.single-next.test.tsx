@@ -84,6 +84,25 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     expect(bar().querySelectorAll('.pbar-next')).toHaveLength(1);
   });
 
+  it('B-126: ostatni krok odprawy ze sceną, której obraz się nie wczytał - gotowy od razu (bez akcji na przedmiocie), bez cta w bloku', async () => {
+    const briefing = {
+      type: 'BRIEFING',
+      id: 'odprawa',
+      steps: [{ kind: 'badge', image: 'scenes/legitymacja.svg', hotspot: { id: 'legitymacja', x: 30, y: 30, w: 40, h: 40 }, cta: 'Zabierz legitymację' }],
+    } as unknown as ContentBlock;
+    stubProgress(briefing);
+    render(<CoursePlayer courseId="course-1" initial={course(briefing)} contentBase="/content" narrationEnabled={false} />);
+
+    // Obraz jest: przedmiot na scenie jest akcją - „Dalej” czeka na nią.
+    expect(barNext()).toBeDisabled();
+    const image = screen.getByTestId('player-content-area').querySelector('img');
+    expect(image).not.toBeNull();
+    fireEvent.error(image!);
+    // Obraz się nie wczytał: przedmiot to pusty prostokąt, więc odprawa jest gotowa od razu, a jedyne przejście to „Dalej” w pasku.
+    await waitFor(() => expect(barNext()).toBeEnabled());
+    expect(inBlockNext()).toEqual([]);
+  });
+
   it('VIDEO: po obejrzeniu „Dalej” w pasku aktywny i zapisuje blok bez odpowiedzi', async () => {
     const fetchMock = stubProgress(video);
     render(<CoursePlayer courseId="course-1" initial={course(video)} narrationEnabled={false} />);

@@ -104,6 +104,9 @@ export interface PlayerStageProps {
       ("Wróć do biblioteki" to prawdziwa nawigacja, kod review PR #44: button+router.push tracił otwieranie w nowej
       karcie/semantykę linku). onForward/canForward są wtedy ignorowane. */
   forwardHref?: string;
+  /** Puls „Dalej” i ogłoszenie gotowości tylko przy gotowości bloku i wyniku - nie w podglądzie „Wstecz” (tam „Dalej” też jest aktywny,
+      ale to nawigacja po historii, nie nowy stan; B-126). Domyślnie true. */
+  announceForward?: boolean;
 }
 
 function PlayerStageInner({
@@ -132,6 +135,7 @@ function PlayerStageInner({
   backLabel = DEFAULT_BACK_LABEL,
   forwardLabel = 'Dalej',
   forwardHref,
+  announceForward = true,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -215,16 +219,17 @@ function PlayerStageInner({
   const [readyAnnouncement, setReadyAnnouncement] = useState('');
   const wasActive = useRef(shortcutActive);
   useEffect(() => {
-    if (shortcutActive && !wasActive.current) {
+    const active = shortcutActive && announceForward;
+    if (active && !wasActive.current) {
       if (!reducedMotion) setPulsing(true);
       setReadyAnnouncement(`Możesz przejść dalej: przycisk „${forwardLabel}” na dole.`);
     }
-    if (!shortcutActive) {
+    if (!active) {
       setPulsing(false);
       setReadyAnnouncement('');
     }
-    wasActive.current = shortcutActive;
-  }, [shortcutActive, reducedMotion, forwardLabel]);
+    wasActive.current = active;
+  }, [shortcutActive, announceForward, reducedMotion, forwardLabel]);
 
   // Warstwa 'notebook' rejestruje się WYŁĄCZNIE w NotesDrawer.tsx (kod review PR #44: podwójna rejestracja pod tym
   // samym kluczem tutaj i tam była krucha - unregister jednej instancji kasował wpis drugiej).

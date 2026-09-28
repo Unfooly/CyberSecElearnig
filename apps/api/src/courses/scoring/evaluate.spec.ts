@@ -167,8 +167,9 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
   it('bez required i requiredHotspots wymagane są wszystkie', () => {
     const block = plainHotspots();
     expect(() => submit(block, { visited: ['h1'] })).toThrow(BadRequestException);
-    // Fixtura ma 5 hotspotów najwyższego poziomu + 3 wewnątrz zagnieżdżonej sceny h4 (h4-outlook/h4-kosz/h4-folder) -
-    // required liczone na spłaszczonej liście (B-086/D-071), więc wszystkich 8 trzeba odwiedzić.
+    // Fixtura ma 6 hotspotów najwyższego poziomu + 4 wewnątrz zagnieżdżonej sceny h4 - required liczone na spłaszczonej liście
+    // (B-086/D-071). Okienka easter egga (h6, h4-gra, D-100) są poza pulą także bez flag required, więc wymaganych jest 8:
+    // h1-h5 i h4-outlook/h4-kosz/h4-folder.
     expect(() => submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5'] })).toThrow(BadRequestException);
     expect(submit(block, { visited: ['h1', 'h2', 'h3', 'h4', 'h5', 'h4-outlook', 'h4-kosz', 'h4-folder'] }).entry.done).toBe(true);
   });
@@ -190,6 +191,22 @@ describe('evaluateSubmit: bloki eksploracyjne', () => {
     expect(submit(block, { visited: ['h1'], noted: ['h1'] }).notesAdded).toEqual(['scena.h1']);
     expect(submit(block, { visited: ['h1'] }).notesAdded).toEqual([]);
     expect(submit(block, { visited: ['h1'], noted: [] }).notesAdded).toEqual([]);
+  });
+
+  it('SCENE_HOTSPOTS: odwiedzony easter egg (media.kind "popups", D-100) zapisuje tylko flagę wyróżnienia - bez punktów, notatek i wpływu na required', () => {
+    const block = blocks().SCENE_HOTSPOTS;
+    const plain = submit(block, { visited: ['h1'] }).entry;
+    // h4-gra (w scenie zagnieżdżonej) i h6 (na zewnątrz) - oba z okienkami i wyróżnieniem.
+    const found = submit(block, { visited: ['h1', 'h4-gra', 'h6'] });
+    expect(found.entry.easterEggs).toEqual(['ciekawski', 'laptop']);
+    expect(found.notesAdded).toEqual([]);
+    // Poza flagą wpis identyczny jak bez easter egga (punkty, waga, done).
+    expect({ ...found.entry, easterEggs: undefined }).toEqual({ ...plain, easterEggs: undefined });
+    expect(plain).not.toHaveProperty('easterEggs');
+    // Easter egg nie może zastąpić wymaganego elementu.
+    expect(() => submit(block, { visited: ['h4-gra'] })).toThrow(BadRequestException);
+    // Okienka nie są dowodem - `noted` z nimi to 400.
+    expect(() => submit(block, { visited: ['h1', 'h6'], noted: ['h6'] })).toThrow(BadRequestException);
   });
 
   it.each([

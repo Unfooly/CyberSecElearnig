@@ -388,6 +388,7 @@
                   "media": {
                     "kind": "image",
                     "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.8b53547b.svg",
+                    "imagePortrait": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.7e4cd257.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -408,6 +409,7 @@
                   "media": {
                     "kind": "image",
                     "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.3ad51f7e.svg",
+                    "imagePortrait": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.cf750033.svg",
                     "alt": "Historia przeglądarki, dzisiaj (wtorek): 9:04 Intranet Unfooly, unfooly.com/intranet; 8:58 Weryfikacja konta firmowego, bankwektor-weryfikacja.pl/login; 8:47 Poczta — skrzynka odbiorcza, poczta.unfooly.com; 8:31 Kalendarz zespołu, kalendarz.unfooly.com; 8:05 Menu stołówki, unfooly.com/stolowka."
                   },
                   "evidence": true,

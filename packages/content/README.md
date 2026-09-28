@@ -94,7 +94,10 @@ patrz `docs/decisions.md`), nie powód do improwizowania treści bez formatowani
   `ORDERING` = 1; pozostałe (eksploracyjne) = 0 (wymagane do przejścia, poza wynikiem). Wagę można ustawić per blok.
 - `EMAIL_ANALYSIS` i `ORDERING`: punkty częściowe (`scoring: "partial"`, domyślnie) albo wszystko-albo-nic (`"exact"`).
 - `TEXT_INPUT_GUIDED`: `maxAttempts` (domyślnie 4), podpowiedzi po błędnych próbach (musi ich być mniej niż prób), punkty
-  `max(floor, 1 - (próba - 1) * attemptPenalty)`; po wyczerpaniu prób 0 punktów i odsłonięcie `solution`.
+  `max(floor, 1 - (próba - 1) * attemptPenalty)`; po wyczerpaniu prób 0 punktów i odsłonięcie `solution`. Opcjonalne
+  `frame: "browser"` (D-094, pole `client`, czysto wizualne): pole jako pasek adresu w oknie przeglądarki, zła próba jako komunikat w
+  oknie, po rozstrzygnięciu ostrzeżenie „Ta strona podszywa się pod bank” (stały tekst odtwarzacza, bez formularzy) - dla zadań „wpisz
+  fałszywą domenę **banku**”. Innego scenariusza (np. fałszywe logowanie do poczty) nie oprawiaj tak bez B-118 (tekst ostrzeżenia z treści).
   Odpowiedź porównywana po normalizacji (`normalize.trim`, `normalize.collapseWhitespace`); wielkość liter ignorowana, chyba że
   `answer.caseSensitive: true`. `answer.regex`: zapisany jako `^...$`, max 200 znaków, dopasowywany silnikiem **RE2** (czas liniowy,
   D-052) do całej odpowiedzi (max 500 znaków). Składnia ograniczona do tego, co RE2 obsługuje: **bez backreferencji (`\1`) i lookahead/

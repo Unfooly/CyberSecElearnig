@@ -265,6 +265,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       type: 'TEXT_INPUT_GUIDED',
       prompt: 'Jaka jest prawdziwa domena w linku?',
       placeholder: 'domena.pl',
+      frame: 'browser',
       answer: { accept: [`${SECRET_MARKER}-odp`], regex: `^${SECRET_MARKER}-re$`, caseSensitive: false },
       normalize: { trim: true, collapseWhitespace: true },
       hints: [{ text: `${SECRET_MARKER}-podpowiedz-1`, narration: audio('hint1') }],

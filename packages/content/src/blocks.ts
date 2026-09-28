@@ -296,6 +296,10 @@ const textInputSchema = z
     type: z.literal('TEXT_INPUT_GUIDED'),
     prompt: text(1000),
     placeholder: text(100).optional(),
+    // Oprawa pola (feat/browser-evidence): 'browser' = pole jako pasek adresu w oknie przeglądarki (zadanie „wpisz adres/domenę”).
+    // Czysto wizualne - ocena bez zmian (serwer). Po poprawnej odpowiedzi okno pokazuje ostrzeżenie o stronie podszywającej się pod
+    // bank (bez formularzy); tekst jest stały w odtwarzaczu, więc pole nie niesie żadnej treści zadania.
+    frame: z.enum(['browser']).optional(),
     answer: z
       .object({
         accept: z.array(text(200)).max(20).default([]),
@@ -801,7 +805,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'criteria[].note.kind', 'criteria[].evidence', 'scoring'],
   ),
   TEXT_INPUT_GUIDED: classify(
-    ['prompt', 'placeholder', 'maxAttempts'],
+    ['prompt', 'placeholder', 'frame', 'maxAttempts'],
     [
       'answer.accept[]',
       'answer.regex',

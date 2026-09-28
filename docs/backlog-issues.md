@@ -617,6 +617,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
      trafi - rozważyć `aria-disabled` z fokusem.
   5. Brak testu ostatniego kroku odprawy z niewczytanym obrazem (gotowy od wejścia, bez cta).
 - Akceptacja: poprawki z testem albo decyzja, że zostają.
+- **Status: (2) i (5) zrobione** (V, `chore/pre-module-2`): puls i ogłoszenie „Dalej” tylko przy gotowości i wyniku (`announceForward`,
+  bez podglądu „Wstecz”) z testem; test ostatniego kroku odprawy z niewczytanym obrazem. (1), (3), (4) otwarte (ponad 15 min każde).
 
 ### B-127 Zamknięcie sprawy w pionie (D-107): odłożone
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review `fix/phone-review-closing` (D-107)
@@ -626,6 +628,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   2. Wnioski w slocie pionowego raportu (min. 15 px, `overflow-hidden`) - bardzo długie wnioski innego modułu ucięłyby się bez
      sygnału; layout-check pilnuje tylko modułu 1. Limit długości `lessons` w walidacji treści albo test w `odprawa.test`.
 - Akceptacja: (1) decyzja właściciela; (2) walidacja albo test.
+- **Status: (1) zrobione** (V, `chore/pre-module-2`, decyzja właściciela): toast nagrody nad dolnym paskiem w pionie (awans poziomu i nowe
+  odznaki, 2,5 s, reduced-motion bez animacji, `aria-hidden` - czytnik ma opis raportu), styl jak karta trofeum. (2) otwarte.
 
 ### B-128 Drugi moduł: narzędzia i otwarte kwestie treści (D-108)
 - Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: code review `docs/module-playbook` (D-108)
@@ -640,6 +644,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
      `SCENARIUSZ.md`.
   4. Nazwa okienka easter egga „GTA6_PL.exe” (D-100) nawiązuje do cudzej marki - decyzja właściciela: zostaje czy zmiana nazwy.
 - Akceptacja: (1) drugi moduł przechodzi layout-check i e2e; (2) pole w `ASSET_PATHS` z testem; (3) zapis w scenariuszu; (4) decyzja.
+- **Status: zrobione** (V, `chore/pre-module-2`): (1) źródła scen w `scenes/examples/<slug>/` (i `achievements/`), test scen per cel z
+  kontrolą „grafika bez źródła”, harness `?module=<slug>` (zasoby `/dev/module-assets/<slug>/…`), layout-check `LAYOUT_CHECK_MODULE` (sekcja
+  `module`), e2e smoke `scripts/e2e-module.mjs <slug>`; (2) `steps[].caller.avatar` w `ASSET_PATHS` z testem; (3) rejestr nazw fikcyjnych w
+  `MODULE-PLAYBOOK.md` (rozdział 8) - status domen `.pl` do sprawdzenia przez właściciela (dns.pl); (4) „GTA6_PL.exe” zostaje (D-100).
 
 ### B-129 Nagrania ze `spokenText` (D-109): napisy i zgodność napisu z mową
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review `fix/tts-numbers` (D-109)

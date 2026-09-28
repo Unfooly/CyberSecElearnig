@@ -70,6 +70,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   zadań). Cele szkoleniowe modułu (`objectives[]`) zostają listą tekstów (katalog kursów), jak w v4.
 - `narration.voice` (D-082): rola głosu nagrania - `narrator` (domyślnie), `komisarz`, `bank`, `marek` (`VOICE_ROLES`); pole tylko dla
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
+- Media obrazu hotspotu (`kind: "image"`): opcjonalne `imagePortrait` (D-104) - wariant dla telefonu w pionie (np. okno maila z dużym,
+  zawijanym tekstem; kompozytor `mailWindowPortrait`/`browserHistoryPortrait` + `crop-zooms`), wspólne `alt`.
 - Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z
   `voice`; transkrypcją jest `narration.text`) - dokładnie jedno z nich.
 - Easter egg (D-100): `media.kind: "popups"` (hotspot na zewnątrz albo w scenie zagnieżdżonej) - `items[]` (1-5) `{ title, body, button,

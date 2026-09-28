@@ -89,7 +89,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           width: 20,
           height: 20,
           content: 'Kartka z hasłem na monitorze.',
-          media: { kind: 'image', src: 'img/kartka-zoom.png', alt: 'Zbliżenie karteczki z hasłem' },
+          media: { kind: 'image', src: 'img/kartka-zoom.png', imagePortrait: 'img/kartka-zoom-pion.png', alt: 'Zbliżenie karteczki z hasłem' },
           narration: audio('h1'),
           required: true,
           evidence: true,
@@ -150,7 +150,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
                   width: 20,
                   height: 20,
                   content: 'Ikona programu pocztowego.',
-                  media: { kind: 'image', src: 'img/mail-na-ekranie.png', alt: 'Podgląd wiadomości e-mail' },
+                  media: { kind: 'image', src: 'img/mail-na-ekranie.png', imagePortrait: 'img/mail-na-ekranie-pion.png', alt: 'Podgląd wiadomości e-mail' },
                   narration: audio('h4-outlook'),
                   // required: false (NIE true) - h1 zostaje JEDYNYM required:true w całej (płaskiej) fixturze: test w
                   // module.spec.ts ("required: co najmniej jeden element wymagany") ustawia h1.required = false i

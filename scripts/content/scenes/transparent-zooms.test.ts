@@ -12,7 +12,7 @@ import { composeScene } from './compose.js';
 
 const modulesDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules');
 
-type Media = { kind?: string; src?: string; image?: string; scene?: { image?: string; hotspots?: Hotspot[] } };
+type Media = { kind?: string; src?: string; imagePortrait?: string; image?: string; scene?: { image?: string; hotspots?: Hotspot[] } };
 type Hotspot = { id: string; media?: Media };
 
 /** Ścieżki grafik otwieranych kliknięciem w bloku SCENE_HOTSPOTS (z miejscem w treści - do komunikatu). */
@@ -21,6 +21,8 @@ function clickOpenedImages(blocks: { id: string; type: string; hotspots?: Hotspo
   const fromMedia = (where: string, media: Media | undefined) => {
     if (!media) return;
     if (media.kind === 'image' && media.src) found.push({ where: `${where}.media.src`, path: media.src });
+    // Wariant pionowy zbliżenia (D-104) - ta sama reguła.
+    if (media.kind === 'image' && media.imagePortrait) found.push({ where: `${where}.media.imagePortrait`, path: media.imagePortrait });
     if (media.kind === 'audio' && media.image) found.push({ where: `${where}.media.image`, path: media.image });
     if (media.kind === 'scene' && media.scene?.image) {
       found.push({ where: `${where}.media.scene.image`, path: media.scene.image });
@@ -73,7 +75,7 @@ describe('D-101: grafiki otwierane kliknięciem mają przezroczyste tło', () =>
     }
     expect(problems).toEqual([]);
     // Moduł bez scen z grafikami też przechodzi, ale moduł 1 ma ich kilka - test nie może być ślepy.
-    if (slug === 'wyludzone-haslo') expect(images.length).toBeGreaterThanOrEqual(9);
+    if (slug === 'wyludzone-haslo') expect(images.length).toBeGreaterThanOrEqual(11);
   });
 
   it('kompozytor: wall "none" nie rysuje tła, zwykły kolor - rysuje; "none" bez flat to błąd', () => {

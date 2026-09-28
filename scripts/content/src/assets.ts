@@ -27,12 +27,15 @@ export const ASSET_PATHS: string[][] = [
   ['image'],
   ['character', 'avatar'],
   ['hotspots', '*', 'media', 'src'],
+  // Wariant pionowy zbliżenia (telefon, D-104).
+  ['hotspots', '*', 'media', 'imagePortrait'],
   ['hotspots', '*', 'media', 'audioUrl'],
   // image: zbliżenie NAD odtwarzaczem audio (opcjonalne, feat/scene-overlay-fix) - osobne pole od media.src (tamto
   // tylko dla kind:'image'), nie koliduje.
   ['hotspots', '*', 'media', 'image'],
   ['hotspots', '*', 'media', 'scene', 'image'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'src'],
+  ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'imagePortrait'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
   // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.

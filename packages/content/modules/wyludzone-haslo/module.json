@@ -263,10 +263,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "pointing",
-        "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
-      },
+      "tip": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie.",
       "image": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
@@ -476,7 +473,6 @@
       ],
       "reactions": {
         "complete": {
-          "pose": "cheer",
           "text": "Cztery ślady. Teraz porozmawiajmy z Anną."
         }
       }
@@ -504,10 +500,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "thinking",
-        "text": "Nie oceniaj. Pytaj."
-      },
+      "tip": "Nie oceniaj. Pytaj.",
       "character": {
         "name": "Anna Kowalska",
         "role": "księgowa w Unfooly Sp. z o.o.",
@@ -612,7 +605,6 @@
       ],
       "reactions": {
         "complete": {
-          "pose": "warning",
           "text": "Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail."
         }
       }
@@ -641,10 +633,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "pointing",
-        "text": "Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy."
-      },
+      "tip": "Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy.",
       "email": {
         "fromName": "Bank Wektor — Dział Bezpieczeństwa",
         "fromAddress": "bezpieczenstwo@bankwektor-weryfikacja.pl",
@@ -765,17 +754,14 @@
         "result": [
           {
             "minScore": 0.8,
-            "pose": "cheer",
             "text": "Czytasz maile jak detektyw."
           },
           {
             "minScore": 0.4,
-            "pose": "thinking",
             "text": "Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je."
           },
           {
             "minScore": 0,
-            "pose": "warning",
             "text": "Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj."
           }
         ]
@@ -1093,10 +1079,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "pointing",
-        "text": "Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego."
-      },
+      "tip": "Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego.",
       "character": {
         "name": "Marek Zieliński",
         "role": "administrator IT (jednoosobowy dział)",
@@ -1177,7 +1160,6 @@
       ],
       "reactions": {
         "complete": {
-          "pose": "thinking",
           "text": "Masz już wszystko. Ułóżmy to w kolejności."
         }
       }
@@ -1206,10 +1188,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "pointing",
-        "text": "Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch."
-      },
+      "tip": "Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch.",
       "prompt": "Ułóż sześć zdarzeń w kolejności, w jakiej naprawdę się wydarzyły.",
       "items": [
         {
@@ -1250,12 +1229,10 @@
         "result": [
           {
             "minScore": 1,
-            "pose": "cheer",
             "text": "Dokładnie tak. I zauważ: łańcuch dało się przerwać w trzech miejscach — przy mailu, przy stronie i przy telefonie."
           },
           {
             "minScore": 0,
-            "pose": "thinking",
             "text": "Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku i brakowało mu tylko kodu."
           }
         ]
@@ -1281,10 +1258,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "thinking",
-        "text": "Bez zaglądania do notatnika. Pamiętasz?"
-      },
+      "tip": "Bez zaglądania do notatnika. Pamiętasz?",
       "prompt": "Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).",
       "placeholder": "wpisz adres",
       "frame": "browser",
@@ -1309,12 +1283,10 @@
         "result": [
           {
             "when": "correct",
-            "pose": "cheer",
             "text": "To jest to. Domena, nie napis. Zawsze domena."
           },
           {
             "when": "incorrect",
-            "pose": "warning",
             "text": "Nic straconego — ale zapamiętaj ten adres. Następny będzie wyglądał podobnie."
           }
         ]
@@ -1351,10 +1323,7 @@
           }
         ]
       },
-      "mascot": {
-        "pose": "greeting",
-        "text": "Sprawa zamknięta. Dobra robota, detektywie."
-      },
+      "tip": "Sprawa zamknięta. Dobra robota, detektywie.",
       "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”.",
       "lessons": [
         "Sprawdzaj domenę nadawcy, nie nazwę.",

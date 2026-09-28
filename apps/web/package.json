@@ -3,10 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "sync:mascot": "node scripts/sync-mascot.mjs",
-    "predev": "npm run sync:mascot",
     "dev": "next dev",
-    "prebuild": "npm run sync:mascot",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

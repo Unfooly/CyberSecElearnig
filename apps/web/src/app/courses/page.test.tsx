@@ -193,7 +193,7 @@ describe('CoursesPage', () => {
           json: async () => [
             {
               courseId: 'course-catalog-1',
-              title: 'Sprawa: wyłudzone hasło',
+              title: 'Wyłudzone hasło',
               subtitle: 'Prawdziwy przypadek phishingu',
               level: 'basic',
               objectives: [],
@@ -211,7 +211,7 @@ describe('CoursesPage', () => {
     render(jsx);
 
     expect(screen.getByText('Katalog')).toBeInTheDocument();
-    expect(screen.getByText('Sprawa: wyłudzone hasło')).toBeInTheDocument();
+    expect(screen.getByText('Wyłudzone hasło')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rozpocznij' })).toBeInTheDocument();
   });
 

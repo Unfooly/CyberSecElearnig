@@ -45,7 +45,7 @@ function renderScreen(props: Partial<Parameters<typeof CaseClosedScreen>[0]> = {
   return render(
     <SfxProvider enabled={sound}>
       <CaseClosedScreen
-        title="Sprawa: wyłudzone hasło"
+        title="Wyłudzone hasło"
         score={100}
         reward={reward}
         closing={closing}

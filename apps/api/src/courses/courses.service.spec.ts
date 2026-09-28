@@ -72,7 +72,7 @@ describe('CoursesService.listMyCourses', () => {
         mandatory: false,
         course: {
           id: 'course-1',
-          title: 'Sprawa: wyłudzone hasło',
+          title: 'Wyłudzone hasło',
           category: 'PHISHING_SOCIAL_ENGINEERING',
           durationMinutes: 12,
           contentBlocks: [{ type: 'NARRATIVE' }],
@@ -185,7 +185,7 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
     courseFindMany.mockResolvedValue([
       {
         id: 'course-nowy',
-        title: 'Sprawa: wyłudzone hasło',
+        title: 'Wyłudzone hasło',
         subtitle: 'Prawdziwy przypadek phishingu',
         thumbnail: 'assets/wyludzone-haslo/miniatura-wyludzone-haslo.1a2b3c4d.svg',
         level: 'basic',
@@ -204,7 +204,7 @@ describe('CoursesService.listCatalog / selfAssign (D-065)', () => {
     );
     expect(result).toEqual({
       courseId: 'course-nowy',
-      title: 'Sprawa: wyłudzone hasło',
+      title: 'Wyłudzone hasło',
       subtitle: 'Prawdziwy przypadek phishingu',
       thumbnail: 'assets/wyludzone-haslo/miniatura-wyludzone-haslo.1a2b3c4d.svg',
       level: 'basic',

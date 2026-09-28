@@ -1237,7 +1237,7 @@ try {
     const page = await context.newPage();
     const label = `${viewport.name} / katalog kursów`;
     await page.goto(`${WEB}/dev/courses-harness`);
-    const thumbs = page.getByRole('img', { name: 'Sprawa: wyłudzone hasło' });
+    const thumbs = page.getByRole('img', { name: 'Wyłudzone hasło', exact: true });
     await thumbs.first().waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete));
     await shot(page, `${viewport.name}-katalog`);

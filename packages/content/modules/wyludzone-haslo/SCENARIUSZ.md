@@ -1,4 +1,4 @@
-# Moduł 1 — „Sprawa: wyłudzone hasło"
+# Moduł 1 — „Wyłudzone hasło"
 
 Scenariusz treści dla silnika szkoleń (packages/content). Fabuła, postaci i firma są fikcyjne.
 Agent mapuje ten dokument na schemat modułu (wersja 5: jak 4 + blok BRIEFING i objectives z completeWhen, D-081): bloki, dowody, notatki, narrację,
@@ -7,7 +7,7 @@ podpowiedzi (`tip`). Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, 
 ## Metadane
 
 - slug: `wyludzone-haslo`
-- tytuł: „Sprawa: wyłudzone hasło"
+- tytuł: „Wyłudzone hasło" (bez przedrostka „Sprawa:” - to, że to śledztwo, mówi miniatura i odprawa)
 - subtitle: „Phishing, hasła i jedna karteczka"
 - category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut

@@ -630,7 +630,7 @@ Z code review ekranów logowania (`/login`) i dashboardu admina (`/dashboard`).
   przed odpowiedzią). PR 4 (schemaVersion 4, `reactions.result` - D-061/D-062) dodało jednak
   autorski komentarz zależny od wyniku (`lastResult.reaction: {pose, text}`; od D-093 liczy się tylko tekst),
   pokazywany jako zwykły tekst pod wynikiem (`apps/web/.../[courseId]/_components/FeedbackPanel.tsx`,
-  `data-testid="feedback-reaction"`) - dla modułów, które go definiują (jak "Sprawa: wyłudzone
+  `data-testid="feedback-reaction"`) - dla modułów, które go definiują (jak "Wyłudzone
   hasło"), generyczne "Poprawna odpowiedź!"/"Niepoprawna odpowiedź." NIE jest już jedynym feedbackiem.
   To nadal nie jest pełne wyjaśnienie konkretnej odpowiedzi (poziom bloku, nie opcji) - starsza treść
   bez `reactions.result` zostaje przy samym komunikacie generycznym.

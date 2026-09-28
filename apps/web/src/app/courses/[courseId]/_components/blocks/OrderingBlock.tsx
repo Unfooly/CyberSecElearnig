@@ -19,8 +19,9 @@ import {
 } from '@/lib/evidence-board';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 
-// Układanie kroków w kolejności jako TABLICA ŚLEDCZA (feat/evidence-board, D-088). Korek w drewnianej ramie, pola 1..N w kształcie U
-// (telefon w pionie: zygzak), czerwona nić między pinezkami (ciągła między przypiętymi, przerywana do pustych), "zdjęcia" początku i
+// Układanie kroków w kolejności jako TABLICA ŚLEDCZA (feat/evidence-board, D-088). Telefon w pionie (D-099): lista pól 1..N (tekst 15 px,
+// stuknięcie śladu przypina go do pierwszego pustego pola, wynik nad polami) zamiast tablicy - reszta opisu dotyczy tablicy.
+// Korek w drewnianej ramie, pola 1..N w kształcie U, czerwona nić między pinezkami (ciągła między przypiętymi, przerywana do pustych), "zdjęcia" początku i
 // końca łańcucha z treści (start/end). Ślady leżą na tacce (kolejność przetasowana przez serwer - seed przypisania, D-051). Trzy
 // sposoby przypięcia: przeciąganie (pointer events), klik ślad -> klik pole, klawiatura (te same przyciski; Esc anuluje wybór).
 // Upuszczenie na zajęte pole = zamiana. "Sprawdź trop", gdy wszystkie pola są pełne; ocenę liczy wyłącznie serwer.
@@ -86,6 +87,8 @@ export default function OrderingBlock({
   const [orientation, setOrientation] = useState<BoardOrientation>('landscape');
   const [cramped, setCramped] = useState(false);
   const layout = boardLayout(ids.length, orientation, { start: !!block.start, end: !!block.end });
+  // Telefon w pionie (D-099): lista pól zamiast tablicy - na korku 9:16 szerokości telefonu tekst kart miał 7-10 px.
+  const list = orientation === 'portrait';
 
   const [placements, setPlacements] = useState<(string | null)[]>(() => ids.map(() => null));
   const [selected, setSelected] = useState<string | null>(null);
@@ -119,7 +122,7 @@ export default function OrderingBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Orientacja z WŁASNEGO dostępnego miejsca (nie z okna): telefon w pionie -> zygzak.
+  // Orientacja z WŁASNEGO dostępnego miejsca (nie z okna): telefon w pionie -> lista (D-099).
   useLayoutEffect(() => {
     const element = outerRef.current;
     if (!element) return undefined;
@@ -190,13 +193,26 @@ export default function OrderingBlock({
   function clickCard(id: string, byKeyboard: boolean) {
     if (suppressClick.current || readOnly || disabled) return;
     const slotIndex = placements.indexOf(id);
+    // Lista (telefon w pionie, D-099): stuknięcie śladu z tacki przypina go do pierwszego pustego pola - ślady układa się po kolei
+    // (także gdy wybrany jest przypięty ślad - wybór znika, ogłoszenie z move() mówi, na którym polu wylądował nowy).
+    if (list && slotIndex < 0) {
+      const firstEmpty = placements.findIndex((candidate) => candidate === null);
+      if (firstEmpty >= 0) move(id, firstEmpty);
+      return;
+    }
     if (selected && selected !== id && slotIndex >= 0) {
       move(selected, slotIndex);
       return;
     }
     const next = selected === id ? null : id;
     setSelected(next);
-    setAnnouncement(next ? `Wybrano ślad „${textOf(id)}”. Wybierz pole na tablicy.` : 'Anulowano wybór śladu.');
+    setAnnouncement(
+      next
+        ? list
+          ? `Wybrano ślad „${textOf(id)}”. Wybierz inny przypięty ślad, żeby je zamienić, puste pole albo „Odłóż na tackę”.`
+          : `Wybrano ślad „${textOf(id)}”. Wybierz pole na tablicy.`
+        : 'Anulowano wybór śladu.',
+    );
     // Klawiatura: pola są w DOM przed tacką - po wyborze śladu fokus od razu na pierwsze puste pole (Tab/Shift+Tab między polami).
     if (next && byKeyboard) {
       const firstEmpty = placements.findIndex((candidate) => candidate === null);
@@ -207,7 +223,7 @@ export default function OrderingBlock({
   function clickSlot(index: number) {
     if (readOnly || disabled) return;
     if (!selected) {
-      setAnnouncement('Najpierw wybierz ślad z tacki.');
+      setAnnouncement(list ? 'Stuknij ślad z listy „Ślady do przypięcia” - trafi na pierwsze puste pole.' : 'Najpierw wybierz ślad z tacki.');
       return;
     }
     move(selected, index);
@@ -228,8 +244,8 @@ export default function OrderingBlock({
 
   // Przeciąganie (mysz, dotyk, pióro): dopiero po przesunięciu o DRAG_THRESHOLD_PX - krótki klik zostaje wyborem.
   function pointerDown(event: PointerEvent<HTMLButtonElement>, id: string) {
-    // Tylko główny przycisk (prawy/środkowy nie przeciąga).
-    if (readOnly || disabled || event.button > 0) return;
+    // Tylko główny przycisk (prawy/środkowy nie przeciąga). Lista na telefonie: palcem tylko stuknięcia (ruch palca przewija listę).
+    if (readOnly || disabled || event.button > 0 || (list && event.pointerType === 'touch')) return;
     const fromTray = placements.indexOf(id) < 0;
     dragStart.current = { id, x: event.clientX, y: event.clientY, rect: event.currentTarget.getBoundingClientRect(), touchTray: fromTray && event.pointerType === 'touch' };
     // Na tacce przy dotyku przechwytujemy dopiero, gdy ruch okaże się przeciąganiem (pionowym) - poziomy ruch przewija tackę.
@@ -301,22 +317,172 @@ export default function OrderingBlock({
     },
   });
 
-  // Pion: 17 (nie 18) - przy 18 najdłuższy ślad modułu 1 mieścił się w karcie bez zapasu i zaokrąglenia glifów (390x844, ~11 px)
-  // dawały dodatkową linię ucinaną przez overflow (layout-check b3).
-  const cardText = { fontSize: u(orientation === 'portrait' ? 17 : 15), lineHeight: 1.3 } as CSSProperties;
+  // Tablica skaluje tekst z szerokością sceny; lista (telefon w pionie) ma stałe 15 px - także klon przeciąganej karty.
+  const cardText = { fontSize: list ? 15 : u(15), lineHeight: 1.3 } as CSSProperties;
   // Zdanie pod tablicą: z reakcji wyniku, a bez niej z wyjaśnienia autora (`explanation` z serwera), na końcu - zdanie ogólne.
   const feedback = feedbackSentence(result?.reaction?.text ?? result?.detail?.explanation, result?.correct);
   const titleText = caseNo ? `Tablica śledcza · ${caseNo}` : 'Tablica śledcza';
 
+  // Telefon w pionie (D-099): te same pola, ślady i wynik jako lista (tekst 15 px, cele dotyku >= 44 px), przewijana w pionie wewnątrz
+  // bloku. Kolejność DOM = kolejność pól; data-slot-index/data-card-id jak na tablicy (przeciąganie myszą i fokus działają tak samo).
+  // Bez linii kartki (tło w liniach co 28 j. tablicy przecinałoby wiersze tekstu o innej wysokości).
+  const listCard = { fontSize: 15, lineHeight: 1.3, backgroundImage: 'none' } as CSSProperties;
+  // Tacka w trakcie gry jest pod polami; wynik (zdanie, liczba trafień, „Dalej”) - NAD nimi, żeby był widoczny od razu po sprawdzeniu.
+  const listTray = (
+    <div
+      data-board-tray
+      role="group"
+      aria-label={readOnly ? 'Wynik' : 'Ślady do przypięcia'}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) clickTray();
+      }}
+      className={`flex flex-col gap-2 rounded-[8px] border border-border bg-paper p-3 ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
+    >
+      {readOnly ? (
+        <>
+          <p data-testid="board-feedback" className="font-semibold text-ink">
+            {feedback}
+          </p>
+          <p className="text-muted">
+            Na właściwym miejscu: {inPlaceCount} z {ids.length}
+            {typeof result?.points === 'number' && ` · Wynik: ${Math.round(result.points * 100)}%`}
+          </p>
+          {onContinue && (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="min-h-[44px] w-full rounded-btn bg-ink px-4 font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {continueLabel}
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="font-bold text-muted">Ślady do przypięcia · {tray.length}</p>
+          {tray.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {tray.map((id) => (
+                <li key={id}>
+                  <button
+                    type="button"
+                    data-card-id={id}
+                    aria-label={`Ślad: ${textOf(id)} - przypnij do pola ${placements.indexOf(null) + 1}`}
+                    disabled={disabled}
+                    {...cardHandlers(id)}
+                    className={`board-card block min-h-[44px] w-full cursor-pointer touch-pan-y px-3 py-2 text-left text-ink outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${drag?.id === id ? 'opacity-40' : ''}`}
+                    style={listCard}
+                  >
+                    {textOf(id)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {selected && placements.includes(selected) && (
+            <button
+              type="button"
+              onClick={clickTray}
+              className="min-h-[44px] w-full rounded-btn border border-border bg-surface px-4 font-semibold text-ink hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Odłóż na tackę
+            </button>
+          )}
+          {full && (
+            <button
+              ref={checkRef}
+              type="button"
+              disabled={disabled}
+              onClick={() => onSubmit?.({ order: placements as string[] })}
+              className="min-h-[44px] w-full rounded-btn bg-accent px-4 font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Sprawdź trop
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+  const listBoard = (
+    <section
+      aria-label={titleText}
+      data-testid="evidence-board"
+      data-orientation={orientation}
+      data-layout="list"
+      data-phase={readOnly ? phase : 'play'}
+      className="flex select-none flex-col gap-3 rounded-card bg-[var(--board-frame)] p-2 text-[15px] leading-snug"
+    >
+      {readOnly && listTray}
+      <div className="board-cork flex flex-col gap-2 rounded-[8px] p-3">
+        <p className="self-start -rotate-1 rounded-[6px] bg-surface px-3 py-1 font-extrabold text-ink shadow-card">{titleText}</p>
+        {block.prompt && <p className="rounded-[6px] bg-surface/90 px-3 py-2 text-ink">{block.prompt}</p>}
+        {!readOnly && <p className="rounded-[6px] bg-surface/90 px-3 py-2 text-muted">Stuknij ślady po kolei, od najwcześniejszego. Stuknij dwa przypięte, żeby je zamienić.</p>}
+        {block.start && <ListPhoto label={block.start.label} caption={block.start.caption} tone="accent" />}
+        <ol className="flex flex-col gap-2">
+          {shown.map((id, index) => {
+            const good = id !== null && readOnly && inPlace(id);
+            const wrong = id !== null && readOnly && phase === 'verdict' && correctOrder.length > 0 && !inPlace(id);
+            return (
+              <li key={index} className="flex items-stretch gap-2">
+                <span aria-hidden="true" className={`board-pin flex w-9 shrink-0 items-center justify-center self-center rounded-full font-extrabold text-white ${good ? 'board-pin--good' : ''}`} style={{ height: 36 }}>
+                  {good ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
+                </span>
+                {id === null ? (
+                  <button
+                    type="button"
+                    data-slot-index={index}
+                    aria-label={`Pole ${index + 1}, puste${selected ? ' - przypnij tu wybrany ślad' : ''}`}
+                    disabled={readOnly || disabled}
+                    onClick={() => clickSlot(index)}
+                    className={`min-h-[44px] flex-1 rounded-[6px] border-[3px] border-dashed px-3 text-left font-semibold outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                      selected || (drag !== null && hoverTarget === index) ? 'border-accent bg-accent/15 text-accent-ink' : 'border-ink/30 bg-white/20 text-ink/70'
+                    }`}
+                  >
+                    {selected ? 'Przypnij tutaj' : 'Puste pole'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-slot-index={index}
+                    data-card-id={id}
+                    aria-label={`Pole ${index + 1}: ${textOf(id)}${good ? ' (na właściwym miejscu)' : ''}${selected === id ? ' - wybrany' : ''}`}
+                    aria-pressed={readOnly ? undefined : selected === id}
+                    aria-disabled={readOnly ? true : undefined}
+                    disabled={disabled && !readOnly}
+                    {...(readOnly ? {} : cardHandlers(id))}
+                    className={`board-card min-h-[44px] flex-1 px-3 py-2 text-left text-ink outline-none touch-pan-y focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                      selected === id ? 'ring-4 ring-accent' : ''
+                    } ${wrong ? 'board-card-wrong ring-2 ring-danger' : ''} ${drag?.id === id ? 'opacity-40' : ''} ${readOnly ? 'cursor-default' : 'cursor-grab'}`}
+                    style={listCard}
+                  >
+                    {textOf(id)}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {block.end && <ListPhoto label={block.end.label} caption={block.end.caption} tone="danger" />}
+      </div>
+      {!readOnly && listTray}
+    </section>
+  );
+
   return (
     <div ref={rootRef} className="evidence-board flex min-h-0 w-full flex-1 flex-col" onKeyDown={onKeyDown}>
-      {block.prompt && <p className="mb-2 shrink-0 text-sm text-muted [@media(max-height:500px)]:sr-only">{block.prompt}</p>}
+      {block.prompt && !list && <p className="mb-2 shrink-0 text-sm text-muted [@media(max-height:500px)]:sr-only">{block.prompt}</p>}
       {cramped && (
         <p data-testid="board-rotate-hint" className="mb-1 shrink-0 text-center text-xs font-semibold text-accent-ink">
           Obróć telefon pionowo, żeby wygodniej czytać i przypinać ślady.
         </p>
       )}
-      <div ref={outerRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+      {/* Jeden element mierzony (outerRef) w obu układach - obserwator rozmiaru zostaje na tym samym węźle przy obrocie. */}
+      <div
+        ref={outerRef}
+        data-testid="board-outer"
+        className={list ? 'min-h-0 w-full flex-1 overflow-y-auto overscroll-contain' : 'relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]'}
+      >
+        {list ? listBoard : (
         <section
           aria-label={titleText}
           data-testid="evidence-board"
@@ -429,11 +595,11 @@ export default function OrderingBlock({
             >
               {readOnly ? (
                 <div className="flex min-h-0 flex-1 flex-wrap items-center justify-between gap-[calc(var(--u)*10)]">
-                  <div className="min-w-0 flex-1" style={{ fontSize: u(orientation === 'portrait' ? 22 : 18) }}>
+                  <div className="min-w-0 flex-1" style={{ fontSize: u(18) }}>
                     <p data-testid="board-feedback" className="font-semibold text-ink">
                       {feedback}
                     </p>
-                    <p className="text-muted" style={{ fontSize: u(orientation === 'portrait' ? 18 : 14) }}>
+                    <p className="text-muted" style={{ fontSize: u(14) }}>
                       Na właściwym miejscu: {inPlaceCount} z {ids.length}
                       {typeof result?.points === 'number' && ` · Wynik: ${Math.round(result.points * 100)}%`}
                     </p>
@@ -443,7 +609,7 @@ export default function OrderingBlock({
                       type="button"
                       onClick={onContinue}
                       className="shrink-0 rounded-btn bg-ink font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      style={{ fontSize: u(orientation === 'portrait' ? 22 : 16), padding: `${u(10)} ${u(20)}`, minHeight: 44 }}
+                      style={{ fontSize: u(16), padding: `${u(10)} ${u(20)}`, minHeight: 44 }}
                     >
                       {continueLabel}
                     </button>
@@ -451,7 +617,7 @@ export default function OrderingBlock({
                 </div>
               ) : (
                 <>
-                  <p className="shrink-0 font-bold uppercase tracking-[0.08em] text-muted" style={{ fontSize: u(orientation === 'portrait' ? 16 : 12) }}>
+                  <p className="shrink-0 font-bold uppercase tracking-[0.08em] text-muted" style={{ fontSize: u(12) }}>
                     Ślady do przypięcia · {tray.length}
                   </p>
                   <div className="flex min-h-0 flex-1 items-center gap-[calc(var(--u)*16)]">
@@ -496,7 +662,7 @@ export default function OrderingBlock({
                         disabled={disabled}
                         onClick={() => onSubmit?.({ order: placements as string[] })}
                         className="shrink-0 rounded-btn bg-accent font-bold text-white hover:bg-accent-hover disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                        style={{ fontSize: u(orientation === 'portrait' ? 22 : 17), padding: `${u(12)} ${u(22)}`, minHeight: 44 }}
+                        style={{ fontSize: u(17), padding: `${u(12)} ${u(22)}`, minHeight: 44 }}
                       >
                         Sprawdź trop
                       </button>
@@ -507,6 +673,7 @@ export default function OrderingBlock({
             </div>
           </div>
         </section>
+        )}
       </div>
       {/* Jeden region ogłoszeń: przy wyniku zdanie + liczba trafień, w trakcie - ruchy śladów. */}
       <p className="sr-only" role="status" aria-live="polite">
@@ -536,6 +703,19 @@ export default function OrderingBlock({
           </div>,
           document.body,
         )}
+    </div>
+  );
+}
+
+/** Początek/koniec łańcucha w liście (telefon w pionie, D-099): etykieta i podpis w jednym wierszu, 15 px. */
+function ListPhoto({ label, caption, tone }: { label: string; caption: string; tone: 'accent' | 'danger' }) {
+  return (
+    <div data-board-photo className="flex items-center gap-3 rounded-[6px] bg-surface px-3 py-2 shadow-card">
+      <span className={`shrink-0 font-extrabold ${tone === 'danger' ? 'text-danger' : 'text-accent'}`}>
+        <span className="sr-only">{tone === 'danger' ? 'Koniec łańcucha: ' : 'Początek łańcucha: '}</span>
+        {label}
+      </span>
+      <span className="min-w-0 font-bold text-ink">{caption}</span>
     </div>
   );
 }

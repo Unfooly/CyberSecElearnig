@@ -22,6 +22,9 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function SettingsClient({ organization }: { organization: OrganizationOverview }) {
   const [selfJoin, setSelfJoin] = useState(organization.selfJoinEnabled);
+  // Ranking organizacji (D-112): domyślnie włączony; starsze odpowiedzi API bez pola = włączony.
+  const [leaderboard, setLeaderboard] = useState(organization.leaderboardEnabled !== false);
+  const [leaderboardMessage, setLeaderboardMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [timezone, setTimezone] = useState(organization.timezone ?? DEFAULT_TIMEZONE);
   const router = useRouter();
   const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
@@ -69,6 +72,29 @@ export default function SettingsClient({ organization }: { organization: Organiz
       setMessage({ kind: 'success', text: 'Ustawienie zapisane.' });
     } catch {
       setMessage({ kind: 'error', text: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleLeaderboard(next: boolean) {
+    setIsSaving(true);
+    setLeaderboardMessage(null);
+    try {
+      const response = await fetch('/api/organization/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leaderboardEnabled: next }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setLeaderboardMessage({ kind: 'error', text: data?.message ?? 'Nie udało się zapisać ustawienia.' });
+        return;
+      }
+      setLeaderboard(typeof data?.leaderboardEnabled === 'boolean' ? data.leaderboardEnabled : next);
+      setLeaderboardMessage({ kind: 'success', text: next ? 'Ranking włączony.' : 'Ranking wyłączony.' });
+    } catch {
+      setLeaderboardMessage({ kind: 'error', text: 'Nie udało się połączyć z serwerem. Spróbuj ponownie później.' });
     } finally {
       setIsSaving(false);
     }
@@ -198,6 +224,39 @@ export default function SettingsClient({ organization }: { organization: Organiz
               }`}
             >
               {message.text}
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Ranking pracowników" />
+        <div className="p-5">
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={leaderboard}
+              disabled={isSaving}
+              onChange={(event) => handleLeaderboard(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-accent"
+            />
+            <span>
+              <span className="font-semibold">Pokazuj ranking organizacji</span>
+              <span className="mt-0.5 block text-muted">
+                Pracownicy widzą pierwszą dziesiątkę i swoją pozycję (imię, inicjał nazwiska, poziom, XP i przypięte osiągnięcia) -
+                tylko w obrębie Twojej organizacji.
+              </span>
+            </span>
+          </label>
+          {leaderboardMessage && (
+            <p
+              role={leaderboardMessage.kind === 'error' ? 'alert' : 'status'}
+              className={`mt-4 rounded-btn px-3 py-2 text-sm font-semibold ${
+                leaderboardMessage.kind === 'error' ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'
+              }`}
+            >
+              {leaderboardMessage.text}
             </p>
           )}
         </div>

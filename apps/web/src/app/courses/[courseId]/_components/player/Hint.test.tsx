@@ -139,6 +139,21 @@ describe.each(['bar', 'overlay'] as const)('Hint (%s): wspólne zachowanie', (va
     expect(bubbleOf().className).toMatch(/opacity-100/);
   });
 
+  it('wpisywanie w pole (input) zwija tekst; samo `change` (blur pola przy wciśnięciu „Sprawdź”) - nie, bo przesunięcie gubiło dotyk (D-099)', () => {
+    render(
+      <>
+        <Hint variant={variant} text="Pamiętasz?" />
+        <input aria-label="adres" />
+      </>,
+    );
+    const field = screen.getByRole('textbox', { name: 'adres' });
+    fireEvent.change(field, { target: { value: 'bank.pl' } });
+    // fireEvent.change ustawia wartość i wysyła `change` - bez `input` dymek zostaje.
+    expect(bubbleOf().className).toMatch(/opacity-100/);
+    fireEvent.input(field, { target: { value: 'bank.pl2' } });
+    expect(bubbleOf().className).toMatch(/opacity-0/);
+  });
+
   it('otwarta nakładka overlay-stack (bez żadnej interakcji) zwija tekst; aria-expanded idzie za tym, co widać', () => {
     function ControlledLayer({ open }: { open: boolean }) {
       useOverlayLayer('hotspotCard', open, () => {});

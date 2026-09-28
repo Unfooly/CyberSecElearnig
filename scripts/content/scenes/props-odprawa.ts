@@ -471,3 +471,25 @@ export const badgeWalletPortrait: PropFn<{ unit?: string }> = (params) => {
 };
 
 export const PION_PROPS = { stackedHalves, badgeWalletPortrait };
+
+/* ---------- ramka monitora dla scen „ekranowych” (pulpit itp.) — tło wokół przezroczyste (D-101) ---------- */
+/**
+ * Monitor z tapetą `wallpaper` (dawny kolor tła sceny) w ekranie `sw` x `sh`, z cieniem, nóżką i podstawką. Owija scenę skrypt
+ * `wrap-in-monitor.ts` (elementy przesunięte o ramkę, tło sceny przezroczyste). Kolor tapety tylko jako #rgb/#rrggbb (trafia do atrybutu).
+ */
+/** Wysokość nóżki z podstawką pod ekranem (px) - ta sama w klocku i w kadrze sceny (scene-tools.ts wrapInMonitor). */
+export const SCREEN_FRAME_STAND = 90;
+export const screenFrame: PropFn<{ sw?: number; sh?: number; wallpaper?: string; bezel?: number }> = ({ sw = 1200, sh = 800, wallpaper = '#4E40B8', bezel = 28 }) => {
+  if (!/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(wallpaper)) throw new Error(`screenFrame: tapeta "${wallpaper}" nie jest kolorem #rgb/#rrggbb`);
+  const w = sw + bezel * 2, h = sh + bezel * 2 + SCREEN_FRAME_STAND;
+  return {
+    w, h,
+    svg:
+      `<rect x="${w / 2 - 70}" y="${sh + bezel * 2 - 6}" width="140" height="62" fill="${P.greyDark}"/>` +
+      `<rect x="${w / 2 - 190}" y="${sh + bezel * 2 + 52}" width="380" height="26" rx="13" fill="${P.greyDark}"/>` +
+      `<rect x="12" y="16" width="${w}" height="${sh + bezel * 2}" rx="26" fill="${P.ink}" opacity="0.2"/>` +
+      `<rect width="${w}" height="${sh + bezel * 2}" rx="26" fill="${P.ink}"/>` +
+      `<rect x="${bezel}" y="${bezel}" width="${sw}" height="${sh}" rx="6" fill="${wallpaper}"/>`,
+  };
+};
+export const EKRAN_PROPS = { screenFrame };

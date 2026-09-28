@@ -113,6 +113,19 @@ część przecinająca środek klocka (`stackedHalves`) to czytelny błąd.
 `odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/*.json` daje identyczne SVG w module i identyczne `*.hotspots.json` -
 po zmianie klocka albo kompozytora przebuduj sceny (`cli.ts build ... --out <assets>/scenes`) i opublikuj (`--assets`).
 
+### Przezroczyste tło grafik otwieranych kliknięciem (D-101)
+
+`"background": { "flat": true, "wall": "none" }` - scena bez prostokąta tła (tylko z `flat`). Narzędzia (z `scripts/content`):
+`npx tsx scenes/crop-zooms.ts scenes/examples <scena...>` (zbliżenie przedmiotu/dokumentu/okna: przezroczyste tło, ciasny kadr jedynego
+elementu) i `npx tsx scenes/wrap-in-monitor.ts scenes/examples <scena...>` (ekran komputera w ramce monitora `screenFrame`, tapeta = dawny
+kolor tła). Zmieniają tylko tło, kadr i przesunięcia; są idempotentne (logika: `scene-tools.ts`, testy: `scene-tools.test.ts`). Klocek,
+który rysuje coś NAD swoim pudełkiem (para z kubka, taśma karteczki), musi być w `OVERFLOW_TOP` - inaczej kadr go utnie. Reguła i test
+w CI: `docs/content/MODULE-PLAYBOOK.md`.
+
+| prop | parametry | części |
+|---|---|---|
+| `screenFrame` | `sw, sh` (ekran), `wallpaper` (#rgb/#rrggbb), `bezel` | |
+
 ## Animacje
 
 Każda scena ma na `<svg>` `id="static"` i blok `<style>` z animacjami CSS (`ANIM_CSS` w `compose.ts`); klocki dostają klasy

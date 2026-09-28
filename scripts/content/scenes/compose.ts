@@ -75,10 +75,13 @@ export function composeScene(spec: SceneSpec): ComposeResult {
   const wall = spec.background?.wall ?? P.wall;
   const floor = spec.background?.floor ?? P.floor;
 
+  // wall: 'none' - przezroczyste tło (D-101: grafiki otwierane kliknięciem leżą na scenie bez prostokąta tła).
+  const transparent = wall === 'none';
+  if (transparent && !spec.background?.flat) throw new Error('background.wall "none" wymaga flat: true (podłoga na przezroczystym tle nie ma sensu)');
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" id="static" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif">`,
     ANIM_CSS,
-    `<rect width="${W}" height="${H}" fill="${esc(wall)}"/>`,
+    ...(transparent ? [] : [`<rect width="${W}" height="${H}" fill="${esc(wall)}"/>`]),
   ];
   if (!spec.background?.flat) {
     parts.push(`<rect y="${floorY}" width="${W}" height="${H - floorY}" fill="${esc(floor)}"/>`);

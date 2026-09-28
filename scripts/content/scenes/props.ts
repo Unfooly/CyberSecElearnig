@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { EKRAN_PROPS, ODPRAWA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROP_REGISTRY } from './prop-registry.js';
 import type { PropFn, PropOutput } from './types.js';
 
@@ -415,5 +415,7 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...PRZEGLADARKA_PROPS,
   // Warianty pionowe odprawy i zamknięcia sprawy (telefon, D-098): składają inne klocki przez PROP_REGISTRY.
   ...PION_PROPS,
+  // Ramka monitora dla scen „ekranowych” z przezroczystym tłem (D-101, wrap-in-monitor.ts).
+  ...EKRAN_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

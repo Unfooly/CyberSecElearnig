@@ -42,6 +42,7 @@ export interface SceneSpec {
   width?: number;
   height?: number;
   background?: {
+    /** Kolor tła; 'none' (z `flat: true`) - przezroczyste tło bez prostokąta (zbliżenia, ekrany w ramce monitora - D-101). */
     wall?: string;
     floor?: string;
     /** Linia podłogi w px od góry. */

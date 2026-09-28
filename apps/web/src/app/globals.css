@@ -335,7 +335,7 @@
 .zoom-shadow {
   filter: drop-shadow(0 18px 30px rgb(19 19 19 / 0.35));
 }
-/* Bez przyciemnienia pod zbliżeniem ramki i znaczniki punktów oraz podpowiedź panoramy przebijałyby spod grafiki - chowamy je, gdy
+/* Ramki i znaczniki punktów oraz podpowiedź panoramy przebijałyby spod przezroczystej grafiki zbliżenia - chowamy je, gdy
    zbliżenie jest otwarte (scena główna), a punkty pulpitu - gdy otwarty jest jego przedmiot (poziom 2). Są i tak aria-hidden i poza Tab.
    opacity, NIE visibility: przy zamykaniu fokus wraca na przedmiot, zanim React zdejmie atrybut - element z visibility:hidden nie
    przyjąłby fokusu (focus() nic by nie zrobiło, fokus spadłby na body; code review D-101). */

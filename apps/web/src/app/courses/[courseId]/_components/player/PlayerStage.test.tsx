@@ -221,7 +221,19 @@ describe('PlayerStage: jeden „Dalej” - puls przy aktywacji i skróty Enter/�
     useOverlayLayer('fullscreen', true, () => {});
     return null;
   }
-  function ForwardHarness({ canForward, onForward, stage, forwardHref }: { canForward: boolean; onForward: () => void; stage?: React.ReactNode; forwardHref?: string }) {
+  function ForwardHarness({
+    canForward,
+    onForward,
+    stage,
+    forwardHref,
+    announceForward,
+  }: {
+    canForward: boolean;
+    onForward: () => void;
+    stage?: React.ReactNode;
+    forwardHref?: string;
+    announceForward?: boolean;
+  }) {
     const headingRef = useRef<HTMLHeadingElement>(null);
     return (
       <PlayerStage
@@ -242,6 +254,7 @@ describe('PlayerStage: jeden „Dalej” - puls przy aktywacji i skróty Enter/�
         canForward={canForward}
         forwardHref={forwardHref}
         forwardLabel={forwardHref ? 'Wróć do biblioteki' : undefined}
+        announceForward={announceForward}
         headingRef={headingRef}
       />
     );
@@ -255,6 +268,16 @@ describe('PlayerStage: jeden „Dalej” - puls przy aktywacji i skróty Enter/�
     expect(next().className).toMatch(/\bpbar-pulse\b/);
     fireEvent.animationEnd(next());
     expect(next().className).not.toMatch(/pbar-pulse/);
+  });
+
+  it('B-126: podgląd „Wstecz” (announceForward=false) - „Dalej” aktywny, ale bez pulsu i bez ogłoszenia; powrót do bieżącego bloku pulsuje', () => {
+    const { rerender } = render(<ForwardHarness canForward={false} onForward={() => {}} />);
+    rerender(<ForwardHarness canForward announceForward={false} onForward={() => {}} />);
+    expect(next()).toBeEnabled();
+    expect(next().className).not.toMatch(/pbar-pulse/);
+    expect(screen.getByTestId('forward-ready')).toHaveTextContent('');
+    rerender(<ForwardHarness canForward onForward={() => {}} />);
+    expect(next().className).toMatch(/\bpbar-pulse\b/);
   });
 
   it('bez pulsu przy reduced-motion', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Trophy } from 'lucide-react';
 import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { useSfx } from '@/lib/sfx';
@@ -108,6 +108,42 @@ function Confetti({ at }: { at: BriefingRect }) {
             }
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Toast nagrody na telefonie w pionie (B-127): awans poziomu i nowe odznaki są wzrokowo widoczne (spod pionowego raportu zniknął pasek
+// poziomu, D-107) - na REWARD_TOAST_MS nad dolnym paskiem, po ceremonii. Styl jak karta trofeum (ciemny indygo, złota ikona).
+// reduced-motion: bez animacji (pojawia się i znika). Dla czytnika nagroda jest w opisie raportu - toast jest aria-hidden (bez dubla).
+export const REWARD_TOAST_MS = 2500;
+
+function RewardToast({ levelUp, badges, show, animate }: { levelUp: string | null; badges: string[]; show: boolean; animate: boolean }) {
+  const hasReward = !!levelUp || badges.length > 0;
+  const [visible, setVisible] = useState(false);
+  const [shown, setShown] = useState(false);
+  // Raz: pokazanie i schowanie to osobne efekty (zmiana `shown` nie może skasować timera chowania).
+  useEffect(() => {
+    if (!show || !hasReward || shown) return;
+    setShown(true);
+    setVisible(true);
+  }, [show, hasReward, shown]);
+  useEffect(() => {
+    if (!visible) return undefined;
+    const timer = window.setTimeout(() => setVisible(false), REWARD_TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [visible]);
+  if (!visible) return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="reward-toast"
+      className={`pointer-events-none absolute inset-x-3 bottom-3 z-20 mx-auto flex max-w-sm items-center gap-3 rounded-card bg-[#261D7A] px-4 py-3 text-white shadow-card ${animate ? 'motion-safe:animate-rise-in' : ''}`}
+    >
+      <Trophy aria-hidden="true" className="h-7 w-7 shrink-0 text-[#FFD36E]" />
+      <div className="min-w-0 text-[15px] leading-snug">
+        {levelUp && <p className="font-extrabold">{levelUp}</p>}
+        {badges.length > 0 && <p className="font-semibold text-white/90">{badges.length === 1 ? `Nowa odznaka: ${badges[0]}` : `Nowe odznaki: ${badges.join(', ')}`}</p>}
       </div>
     </div>
   );
@@ -337,7 +373,8 @@ export default function CaseClosedScreen({
   const newBadges = reward?.unlockedBadges ?? [];
 
   return (
-    <div ref={rootRef} data-testid="case-closed" data-stage={stage} className="flex min-h-0 w-full flex-1 flex-col">
+    <div ref={rootRef} data-testid="case-closed" data-stage={stage} className="relative flex min-h-0 w-full flex-1 flex-col">
+      {portrait && <RewardToast levelUp={levelUp} badges={newBadges.map((badge) => badge.title)} show={stage === 'done'} animate={ceremony} />}
       <div className="mb-2 flex shrink-0 flex-wrap items-baseline justify-center gap-x-2 text-center">
         <h2 ref={headingRef} tabIndex={-1} className="text-lg font-bold text-ink outline-none">
           Sprawa zamknięta

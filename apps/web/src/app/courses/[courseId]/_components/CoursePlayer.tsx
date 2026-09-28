@@ -704,6 +704,8 @@ export default function CoursePlayer({
             // dalej, tylko zgłaszają gotowość (onReady) po akcji w bloku (sprawdzenie, obejrzenie, podejście do drzwi, ostatni krok
             // odprawy); wynik bloku ocenianego (feedback) - „Dalej” od razu aktywny.
             canForward={(reviewing || showingFeedback || readySubmit !== null) && !submitting}
+            // Puls i ogłoszenie „możesz przejść dalej” tylko przy gotowości i wyniku - nie w podglądzie „Wstecz” (B-126).
+            announceForward={!reviewing}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
             // Etykieta zmienia się tylko tam, gdzie „Dalej” kończy sprawę (SUMMARY) albo jest wyjściem z modułu (ekran zamknięcia -
             // prawdziwy link do biblioteki; pod raportem zostaje tylko „Następna sprawa”).

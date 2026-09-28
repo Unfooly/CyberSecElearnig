@@ -144,6 +144,30 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(screen.getByRole('button', { name: /Następna sprawa/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('B-127: w pionie toast nagrody dopiero PO ceremonii (nie w trakcie), z animacją wejścia; znika po 2,5 s', () => {
+    // Kontener telefonu w pionie (proporcje < 0.8) i wariant pionowy w treści.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
+    renderScreen({ closing: { ...closing, portrait: { image: 'scenes/raport-pion.svg', slots: closing.slots } } as CaseClosing });
+    expect(screen.getByTestId('case-closed-frame')).toHaveAttribute('data-orientation', 'portrait');
+
+    advance(1300);
+    for (let i = 0; i < 60; i += 1) advance(250);
+    expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'sign');
+    expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Podpisz raport' }));
+    advance(600);
+    advance(450);
+    expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+    advance(600);
+    expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
+    const toast = screen.getByTestId('reward-toast');
+    expect(toast).toHaveTextContent('Awans na poziom 2!');
+    expect(toast.className).toMatch(/motion-safe:animate-rise-in/);
+    advance(2500);
+    expect(screen.queryByTestId('reward-toast')).not.toBeInTheDocument();
+  });
+
   it('liczby nabijają się (wartość pośrednia między 0 a celem)', () => {
     renderScreen();
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('+0');

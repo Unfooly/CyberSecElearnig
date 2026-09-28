@@ -557,6 +557,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) usunięcie gałęzi portrait z `boardLayout` albo decyzja o jej zostawieniu; (2) decyzja właściciela, czy 15 px obowiązuje w
   całym module - wtedy `readableOnPhone` dla wszystkich bloków i sekcja layout-check na cały moduł; (3) tylko jeśli testy z użytkownikami
   pokażą potrzebę.
+- **Pkt 2 zrobiony (D-103, `feat/mobile-module-15px`, decyzja właściciela 2026-09-28):** `.mobile-readable` na całej ramce odtwarzacza,
+  sekcja layout-check `mobile-module` (s1-s3, s5 w każdym bloku modułu 1 na 390x844 i 360x740). Pkt 1 i 3 zostają. Nowy pkt 4 (code
+  review D-103): `mobile-module` nie sprawdza ekranów wyniku bloków modułu 1 (FeedbackPanel, podgląd „Wstecz”) ani bloków spoza modułu 1
+  (QUIZ, DRAG_AND_DROP, TABS, VIDEO, EMBEDDED_HTML) - reguła CSS je obejmuje, audyt nie; akceptacja: sekcja z fixturą `fullBlocks()` w
+  harnessie.
 
 ### B-122 Easter egg (D-100): odłożone uwagi z review
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `feat/easter-egg-game` (D-100)

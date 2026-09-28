@@ -68,10 +68,13 @@ wariantu poziomego po SSR) i bierze pionową grafikę z jej prostokątami; obró
 etapu ceremonii. Zamknięcie w pionie: raport 9:16 w całości, liczby i wnioski pod nim jako tekst (min. 15 px, lista wniosków przewijana w pionie przy długiej treści), przyciski na pełną szerokość jeden
 pod drugim. Bez `portrait` - scena 16:9 w pasach i panorama raportu (jak wcześniej).
 
-## Końcowe podsumowanie na telefonie (D-099)
+## Telefon: tekst min. 15 px w całym module (D-099, D-103)
 
-Od rekonstrukcji do zamknięcia sprawy (ORDERING, TEXT_INPUT_GUIDED, SUMMARY, ekran zamknięcia) na ekranie węższym niż 640 px tekst bloku
-ma min. 15 px (`PlayerStage readableOnPhone` -> `.mobile-readable` w globals.css), a cele dotyku 44 px. Tablica śledcza w pionie jest
+Na ekranie węższym niż 640 px cały tekst odtwarzacza ma min. 15 px - treść każdego bloku, notatnik, górny i dolny pasek (klasa
+`.mobile-readable` na ramce `PlayerStage`, reguła w globals.css; napisy lektora, licznik pytań rozmowy i podpowiedź panoramy - 15 px w CSS;
+tekst w slotach scen odprawy - wyższe granice FitText w pionie, pola legitymacji z `minPx`). Desktop bez zmian. layout-check: sekcja
+`mobile-module` (tekst w całej ramce, każdy blok modułu 1). Końcówka modułu (od rekonstrukcji do zamknięcia sprawy) ma dodatkowo cele
+dotyku 44 px i brak poziomego przewijania (D-099). Tablica śledcza w pionie jest
 listą pól: stuknięcie śladu przypina go do pierwszego pustego pola, dwa przypięte się zamieniają, wynik pokazuje się nad polami.
 Dłuższa treść przewija się w pionie wewnątrz bloku; dolny pasek zostaje. layout-check: sekcja `mobile-summary` (`auditMobileView`).
 

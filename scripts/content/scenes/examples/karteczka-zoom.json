@@ -1,16 +1,16 @@
 {
-  "width": 800,
-  "height": 800,
+  "width": 732,
+  "height": 704,
   "background": {
     "flat": true,
-    "wall": "#2B2440"
+    "wall": "none"
   },
   "items": [
     {
       "id": "karteczka",
       "prop": "stickyNote",
-      "x": 78,
-      "y": 120,
+      "x": 36,
+      "y": 92,
       "scale": 7,
       "params": {
         "lines": [

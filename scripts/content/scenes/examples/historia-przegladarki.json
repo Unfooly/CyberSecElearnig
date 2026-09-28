@@ -1,16 +1,16 @@
 {
-  "width": 1200,
-  "height": 800,
+  "width": 1228,
+  "height": 828,
   "background": {
     "flat": true,
-    "wall": "#EEF0FA"
+    "wall": "none"
   },
   "items": [
     {
       "id": "historia",
       "prop": "browserHistory",
-      "x": 30,
-      "y": 28
+      "x": 36,
+      "y": 36
     }
   ]
 }

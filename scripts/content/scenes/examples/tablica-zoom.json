@@ -1,16 +1,16 @@
 {
-  "width": 1200,
-  "height": 800,
+  "width": 1240,
+  "height": 856,
   "background": {
     "flat": true,
-    "wall": "#EEF0FA"
+    "wall": "none"
   },
   "items": [
     {
       "id": "tablica",
       "prop": "noticeBoard",
-      "x": 24,
-      "y": 16,
+      "x": 36,
+      "y": 36,
       "scale": 3.2,
       "params": {
         "notes": [

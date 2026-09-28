@@ -27,6 +27,5 @@
 @media (prefers-reduced-motion: reduce){*{animation:none!important}}
 #static:target *{animation:none!important}
 </style>
-<rect width="600" height="260" fill="none"/>
 <g id="item-pieczec" transform="translate(0 0) scale(1)"><g transform="translate(20 30) rotate(-8 280 100)" opacity="0.92"><rect x="10" y="20" width="540" height="160" rx="18" fill="none" stroke="#E5484D" stroke-width="10"/><rect x="26" y="36" width="508" height="128" rx="10" fill="none" stroke="#E5484D" stroke-width="3"/><text x="280" y="108" font-size="40" fill="#E5484D" font-weight="bold" text-anchor="middle" letter-spacing="2">SPRAWA ZAMKNIĘTA</text><text x="280" y="148" font-size="18" fill="#E5484D" font-weight="bold" text-anchor="middle" letter-spacing="3">WYDZIAŁ CYBERBEZPIECZEŃSTWA</text></g></g>
 </svg>

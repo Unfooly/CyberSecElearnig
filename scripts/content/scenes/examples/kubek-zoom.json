@@ -1,16 +1,16 @@
 {
-  "width": 800,
-  "height": 800,
+  "width": 728,
+  "height": 856,
   "background": {
     "flat": true,
-    "wall": "#EEF0FA"
+    "wall": "none"
   },
   "items": [
     {
       "id": "kubek",
       "prop": "mug",
-      "x": 80,
-      "y": 250,
+      "x": 36,
+      "y": 308,
       "scale": 8,
       "params": {
         "label": [

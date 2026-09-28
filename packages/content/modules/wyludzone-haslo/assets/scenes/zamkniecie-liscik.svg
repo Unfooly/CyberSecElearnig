@@ -27,6 +27,5 @@
 @media (prefers-reduced-motion: reduce){*{animation:none!important}}
 #static:target *{animation:none!important}
 </style>
-<rect width="270" height="250" fill="none"/>
 <g id="item-liscik" transform="translate(0 0) scale(1)"><g class="a-flutter"><rect x="8" y="10" width="250" height="228" fill="#2B2440" opacity="0.15"/><rect width="250" height="228" fill="#FFE066"/><rect width="250" height="26" fill="#E6C845" opacity="0.6"/><text x="22" y="64" font-size="22" fill="#4E40B8" font-weight="bold">Dobra robota,</text><text x="22" y="98" font-size="22" fill="#4E40B8" font-weight="bold">detektywie.</text><text x="22" y="132" font-size="22" fill="#4E40B8">Następna sprawa</text><text x="22" y="166" font-size="22" fill="#4E40B8">czeka.</text><text x="228" y="214" font-size="20" fill="#4E40B8" font-weight="bold" text-anchor="end">— A.W.</text></g></g>
 </svg>

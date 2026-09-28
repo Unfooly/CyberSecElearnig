@@ -1,16 +1,16 @@
 {
-  "width": 1200,
-  "height": 800,
+  "width": 1228,
+  "height": 828,
   "background": {
     "flat": true,
-    "wall": "#4E40B8"
+    "wall": "none"
   },
   "items": [
     {
       "id": "mail",
       "prop": "mailWindow",
-      "x": 30,
-      "y": 30,
+      "x": 36,
+      "y": 36,
       "params": {
         "from": "Bank Wektor — Dział Bezpieczeństwa <bezpieczenstwo@bankwektor-weryfikacja.pl>",
         "to": "a.kowalska@unfooly.com",

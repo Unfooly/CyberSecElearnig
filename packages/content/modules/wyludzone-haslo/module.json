@@ -295,7 +295,7 @@
           "height": 25.6,
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.d59afe0e.svg",
+            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.f02f0fb7.svg",
             "alt": "Tablica ogłoszeń: szkolenie BHP w czwartek o 10:00, kuchnia - myjemy po sobie, hasła - nie na karteczkach, parking - nowe miejsca."
           },
           "evidence": true,
@@ -353,7 +353,7 @@
           "content": "Na karteczce: „Unfooly24!” — a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.3274e293.svg",
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.10769fde.svg",
             "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
           },
           "evidence": true,
@@ -374,20 +374,20 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.e579d3c9.svg",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.ade30324.svg",
               "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe, Kosz; pasek zadań pokazuje 10:06.",
               "hotspots": [
                 {
                   "id": "outlook",
                   "label": "Poczta",
-                  "x": 4.2,
-                  "y": 5,
-                  "width": 17.7,
-                  "height": 28.1,
+                  "x": 8.1,
+                  "y": 9.6,
+                  "width": 15.9,
+                  "height": 22,
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.c7b30be0.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.8b53547b.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -400,14 +400,14 @@
                 {
                   "id": "przegladarka",
                   "label": "Internet",
-                  "x": 4.3,
-                  "y": 32.8,
-                  "width": 17.3,
-                  "height": 27.6,
+                  "x": 8.3,
+                  "y": 31.3,
+                  "width": 15.6,
+                  "height": 21.6,
                   "content": "Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.25246137.svg",
+                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.3ad51f7e.svg",
                     "alt": "Historia przeglądarki, dzisiaj (wtorek): 9:04 Intranet Unfooly, unfooly.com/intranet; 8:58 Weryfikacja konta firmowego, bankwektor-weryfikacja.pl/login; 8:47 Poczta — skrzynka odbiorcza, poczta.unfooly.com; 8:31 Kalendarz zespołu, kalendarz.unfooly.com; 8:05 Menu stołówki, unfooly.com/stolowka."
                   },
                   "evidence": true,
@@ -420,10 +420,10 @@
                 {
                   "id": "gra",
                   "label": "GTA6_PL.exe",
-                  "x": 24.3,
-                  "y": 32.8,
-                  "width": 17.3,
-                  "height": 27.6,
+                  "x": 26.3,
+                  "y": 31.3,
+                  "width": 15.6,
+                  "height": 21.6,
                   "content": "Ikona „GTA6_PL.exe” na służbowym pulpicie. Skąd się tu wzięła?",
                   "media": {
                     "kind": "popups",
@@ -509,7 +509,7 @@
                 }
               ]
             },
-            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.4321f249.svg",
+            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.105abd34.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
           },
           "evidence": true,
@@ -529,7 +529,7 @@
           "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.ed89372b.svg",
+            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.fd921b81.svg",
             "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
           },
           "evidence": true,
@@ -549,7 +549,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.86a17288.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.fb1186f8.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -569,7 +569,7 @@
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.821c2929.svg",
+            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.df6d6fb8.svg",
             "alt": "Kubek Anny z napisem Najlepsza księgowa"
           },
           "required": false
@@ -1445,8 +1445,8 @@
       ],
       "closing": {
         "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.eba1cee9.svg",
-        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.85d8d56a.svg",
-        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.111db7c8.svg",
+        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.33dfe506.svg",
+        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.c9a70c68.svg",
         "slots": {
           "evidence": {
             "x": 8.8,

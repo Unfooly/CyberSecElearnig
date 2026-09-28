@@ -527,6 +527,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   rozstrzygnięciu - z odpowiedzi `/attempt`, bo może zawierać fałszywą domenę) albo neutralny tekst domyślny; (2) jeden region live w
   oknie z testem; (3) przypadek w sekcji `browser`; (4) uproszczenie bez zmiany SVG (test identyczności).
 
+### B-119 Resztki maskotki po D-096 (pliki chronione i schemat)
+- Etykiety: `P3`, `tech-debt`, `mod:kursy`, `mod:ci` · Źródło: `refactor/remove-mascot-content` (D-096)
+- Opis: (1) `.dockerignore` ma dwie martwe linie `packages/content/mascot/*` - plik jest chroniony (reguła 11, safe-merge), więc zostały;
+  przy tej samej zmianie warto dopisać `apps/web/public/mascot/` (stara lokalna kopia SVG, której już nic nie czyści, trafiłaby do obrazu
+  z lokalnego `docker build`; CI buduje z czystego checkoutu - bez skutku);
+  (2) `MASCOT_POSES`, `mascotSchema` i opcjonalne `pose` w `reactions` zostają w schemacie dla starszych wersji treści (`course_versions`
+  są niemutowalne); (3) `RESERVED_SLUGS` w `scripts/content/src/hash.ts` nadal zastrzega slug `mascot` (nieszkodliwe).
+- Akceptacja: (1) usunięcie linii przy najbliższej zmianie `.dockerignore` przez człowieka; (2) usunięcie pól ze schematu dopiero, gdy
+  żadna wersja kursu w bazie ich nie używa (zapytanie na `course_versions` przed zmianą) - osobna decyzja.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

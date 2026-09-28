@@ -14,8 +14,9 @@ export default function BrowserWindow({ tabTitle, addressBar, children }: { tabT
           <span className="h-2.5 w-2.5 rounded-full bg-warning" />
           <span className="h-2.5 w-2.5 rounded-full bg-success" />
         </span>
-        <span className="flex min-w-0 max-w-[60%] items-center gap-2 rounded-t-lg bg-surface px-3 py-1.5 text-xs text-ink">
-          <span className="truncate">{tabTitle}</span>
+        {/* Tytuł karty zawijany (nie ucinany wielokropkiem) - na telefonie adres z odpowiedzi nie mieści się w jednej linii (D-099). */}
+        <span className="flex min-w-0 max-w-[60%] items-center gap-2 rounded-t-lg bg-surface px-3 py-1.5 text-xs text-ink max-sm:max-w-[80%]">
+          <span className="min-w-0 break-all">{tabTitle}</span>
           <X className="h-3 w-3 shrink-0 text-muted" />
         </span>
       </div>

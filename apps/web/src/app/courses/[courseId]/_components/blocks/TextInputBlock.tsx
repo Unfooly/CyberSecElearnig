@@ -159,7 +159,7 @@ export default function TextInputBlock({
         aria-busy={pending}
         className={
           browser
-            ? 'min-h-[40px] min-w-0 flex-1 bg-transparent px-1 text-sm text-ink placeholder:text-muted focus:outline-none disabled:opacity-60'
+            ? 'min-h-[44px] min-w-0 flex-1 bg-transparent px-1 text-sm text-ink placeholder:text-muted focus:outline-none disabled:opacity-60'
             : 'min-h-[44px] min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-slate-900 disabled:opacity-60'
         }
       />
@@ -168,7 +168,7 @@ export default function TextInputBlock({
         disabled={pending || disabled || value.trim().length === 0}
         className={
           browser
-            ? 'min-h-[40px] shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white disabled:opacity-50'
+            ? 'min-h-[44px] shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white disabled:opacity-50'
             : 'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50'
         }
       >
@@ -192,7 +192,7 @@ export default function TextInputBlock({
           tabTitle={shownAddress ?? 'Nowa karta'}
           addressBar={
             form || (
-              <span data-testid="browser-address" className="min-h-[40px] min-w-0 flex-1 truncate py-2 text-sm text-ink">
+              <span data-testid="browser-address" className="min-h-[44px] min-w-0 flex-1 break-all py-2.5 text-sm text-ink">
                 {shownAddress}
               </span>
             )

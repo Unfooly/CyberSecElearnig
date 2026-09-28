@@ -36,7 +36,8 @@ export default function Hint({ text, variant }: { text?: string; variant: 'bar' 
         aria-controls={bubbleId}
         aria-hidden={hiddenForOverlay ? true : undefined}
         tabIndex={hiddenForOverlay || bubbleVisible ? -1 : undefined}
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-accent-ink shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        // Telefon (max-sm): cel dotyku 44x44 (D-099).
+        className={`flex h-9 w-9 shrink-0 items-center max-sm:h-11 max-sm:w-11 justify-center rounded-full border border-border bg-surface text-accent-ink shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           hiddenForOverlay ? 'pointer-events-none invisible' : 'pointer-events-auto visible'
         } ${bubbleVisible ? 'sr-only' : ''}`}
       >
@@ -53,11 +54,11 @@ export default function Hint({ text, variant }: { text?: string; variant: 'bar' 
           onClick={() => setCollapsed(true)}
           aria-label="Zwiń podpowiedź"
           tabIndex={bubbleVisible ? undefined : -1}
-          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-paper hover:text-ink"
+          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-paper hover:text-ink max-sm:right-0 max-sm:top-0 max-sm:h-11 max-sm:w-11"
         >
           <X aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
-        <p role="status" aria-live="polite" className="pr-6 text-sm leading-snug text-ink">
+        <p role="status" aria-live="polite" className="pr-6 text-sm leading-snug text-ink max-sm:pr-9">
           {text}
         </p>
       </div>

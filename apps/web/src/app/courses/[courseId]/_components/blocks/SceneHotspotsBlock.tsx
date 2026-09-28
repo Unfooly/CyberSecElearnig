@@ -555,7 +555,11 @@ export default function SceneHotspotsBlock({
                   {activeInner && (
                     <div
                       onClick={onBackdrop}
-                      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${nestedPhase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
+                      // Drugie przyciemnienie nad już przyciemnionym pulpitem (celowo - przedmiot pulpitu wyróżnia się tak samo jak na
+                      // scenie głównej); przy oddalaniu znika razem z kamerą, jak na poziomie 1.
+                      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-3 ${
+                        reducedMotion ? '' : 'transition-[background-color,backdrop-filter] duration-300'
+                      } ${nestedPhase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
                     >
                       {activeInner.media?.kind === 'popups' ? (
                         showInner && (
@@ -695,8 +699,9 @@ function ZoomContent({
             type="button"
             data-autofocus={noted || review ? true : undefined}
             onClick={onPutDown}
-            // Ghost - jasny tekst na przyciemnionej scenie (D-102).
-            className={`min-h-[44px] rounded-btn border border-white/70 bg-white/10 px-5 text-sm font-bold text-white hover:bg-white/20 ${LIGHT_FOCUS}`}
+            // Ghost - jasny tekst i obrys na ciemnym (D-102); wypełnienie ink 50% zamiast white/10 - na scenie przyciemnionej tylko w 35%
+            // biały tekst na jasnym fragmencie sceny miałby za mały kontrast.
+            className={`min-h-[44px] rounded-btn border border-white/70 bg-ink/50 px-5 text-sm font-bold text-white hover:bg-ink/70 ${LIGHT_FOCUS}`}
           >
             Odłóż
           </button>
@@ -808,7 +813,8 @@ function AudioZoom({
             type="button"
             onClick={onToggleTranscript}
             aria-pressed={transcriptOpen}
-            className={`min-h-[44px] px-2 text-sm font-semibold text-white underline ${LIGHT_FOCUS}`}
+            // Własne ciemne tło (D-101): biały tekst na scenie przyciemnionej tylko w 35% (D-102) miałby za mały kontrast na jasnych fragmentach.
+            className={`min-h-[44px] rounded-btn bg-ink/80 px-3 text-sm font-semibold text-white underline shadow-card ${LIGHT_FOCUS}`}
           >
             Transkrypcja
           </button>

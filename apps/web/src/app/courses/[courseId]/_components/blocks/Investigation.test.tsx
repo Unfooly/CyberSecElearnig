@@ -215,7 +215,8 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(dialog()).toHaveAttribute('aria-modal', 'true');
     expect(dialog().className).toMatch(/bg-ink\/35/);
     expect(dialog().className).toMatch(/backdrop-blur-\[3px\]/);
-    expect(within(dialog()).getByRole('button', { name: 'Odłóż' }).className).toMatch(/text-white/);
+    // Odłóż ghost (jasny tekst i obrys) na ciemniejszym wypełnieniu - kontrast na scenie przyciemnionej tylko w 35%.
+    expect(within(dialog()).getByRole('button', { name: 'Odłóż' }).className).toMatch(/text-white.*bg-ink\/50|bg-ink\/50.*text-white/);
     expect(dialog().querySelector('.hotspot-card, .bg-white, h3')).toBeNull();
     expect(within(dialog()).getByTestId('scene-zoom-graphic').className).toMatch(/max-h-\[88%\]/);
 
@@ -596,6 +597,9 @@ describe('SCENE_HOTSPOTS: ruch kamery (bez prefers-reduced-motion)', () => {
 
     putDown();
     expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'out');
+    // Przyciemnienie (D-102) znika razem z kamerą.
+    expect(screen.getByTestId('scene-zoom').className).toMatch(/bg-transparent/);
+    expect(screen.getByTestId('scene-zoom').className).not.toMatch(/bg-ink\/35/);
     expect(box.style.transition).toContain('350ms');
     expect(box.style.transform).toBe('');
     act(() => vi.advanceTimersByTime(350));
@@ -644,6 +648,10 @@ describe('SCENE_HOTSPOTS: ruch kamery (bez prefers-reduced-motion)', () => {
     act(() => vi.advanceTimersByTime(450));
     fireEvent.click(screen.getByTestId('hotspot-overlay-outlook'));
     expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'inner-in');
+    // Przedmiot pulpitu też na przyciemnionym tle (D-102), z przejściem jak na poziomie 1.
+    const innerLayer = screen.getByTestId('scene-zoom-graphic').parentElement!;
+    expect(innerLayer.className).toMatch(/bg-ink\/35/);
+    expect(innerLayer.className).toMatch(/transition-\[background-color,backdrop-filter\]/);
   });
 
   it('prefers-reduced-motion: bez ruchu kamery (brak transform i transition), zbliżenie od razu otwarte', () => {
@@ -754,6 +762,8 @@ describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)
     // Stała etykieta "Transkrypcja" + aria-pressed (druga runda code review, punkt 6) - nie "Pokaż/Ukryj"/aria-expanded.
     const toggle = screen.getByRole('button', { name: 'Transkrypcja' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    // Własne ciemne tło (kontrast białego tekstu na scenie przyciemnionej tylko w 35%, D-102).
+    expect(toggle.className).toMatch(/bg-ink\/80/);
     expect(screen.queryByText('Dzień dobry, dzwonię z banku.')).not.toBeInTheDocument();
     fireEvent.click(toggle);
     // Widok się ZAMIENIŁ: transkrypcja w miejscu obrazka, obrazek zniknął, przycisk play/pauza zostaje.

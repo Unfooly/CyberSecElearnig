@@ -768,6 +768,8 @@ model User {
   narrationEnabled  Boolean    @default(true)
   xp                Int        @default(0)
   level             Int        @default(1)
+  // Wersja zasad, dla której przeszło już przyznanie wsteczne osiągnięć (D-111, GamificationService.syncAchievements).
+  achievementsSyncVersion Int @default(0)
   // Ustawiane WYŁĄCZNIE przez "wyloguj wszędzie" i reset hasła (SessionsService):
   // access tokeny wydane wcześniej są odrzucane (guard), a refresh tokeny unieważnione.
   // Źródło prawdy; odbicie z TTL w Redisie służy tylko szybkiemu sprawdzeniu w guardzie.
@@ -797,16 +799,43 @@ model User {
   @@map("users")
 }
 
+/// Ranga osiągnięcia (X, D-111) - etykieta w UI po angielsku (Secret / Legendary / Milestone).
+enum AchievementRank {
+  SECRET
+  LEGENDARY
+  MILESTONE
+}
+
+/// Zakres osiągnięcia: jeden moduł (`moduleSlug`) albo całe szkolenia (dowolny kurs).
+enum AchievementScope {
+  MODULE
+  GLOBAL
+}
+
+/// Globalny katalog osiągnięć (dawniej „odznak”, D-111). Wpisy tworzy migracja (nie seed - seed nie jest częścią wdrożenia),
+/// warunek przyznania żyje w kodzie (GamificationService, po `code`), tu tylko opis do UI.
 model Badge {
   // uuid (nie cuid jak reszta modeli) - tak wskazuje specyfikacja tego
   // modułu; nie ujednolicam z resztą schematu bez pytania.
-  id          String   @id @default(uuid())
-  code        String   @unique
-  title       String
-  description String
-  icon        String
-  xpReward    Int      @default(50)
-  createdAt   DateTime @default(now())
+  id            String            @id @default(uuid())
+  code          String            @unique
+  // Nazwa po angielsku (jak na grafice), opis i warunek po polsku.
+  title         String
+  description   String
+  // Plik trofeum w apps/web/public/achievements (zdobyte / zablokowane).
+  icon          String
+  lockedIcon    String?
+  xpReward      Int               @default(50)
+  rank          AchievementRank?
+  // Tajne: przed zdobyciem API nie wydaje nazwy, opisu, warunku ani grafiki zdobytej („???”).
+  hidden        Boolean           @default(false)
+  scope         AchievementScope  @default(GLOBAL)
+  moduleSlug    String?
+  conditionText String?
+  sortOrder     Int               @default(0)
+  // Wycofane (stare odznaki sprzed D-111): znikają z UI, zdobyte wiersze i XP zostają.
+  retiredAt     DateTime?
+  createdAt     DateTime          @default(now())
 
   unlockedBy UserBadge[]
 

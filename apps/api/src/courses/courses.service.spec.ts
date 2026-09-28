@@ -413,6 +413,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
   let updateMany: jest.Mock;
   let update: jest.Mock;
   let awardCourseCompletion: jest.Mock;
+  let awardEasterEggAchievements: jest.Mock;
 
   function assignmentFixture(overrides: Record<string, unknown> = {}) {
     return {
@@ -438,6 +439,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     awardCourseCompletion = jest
       .fn()
       .mockResolvedValue({ xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] });
+    awardEasterEggAchievements = jest.fn().mockResolvedValue([]);
 
     // Kurs z treścią sprzed silnika nie ma jeszcze wersji: resolveVersion tworzy "wersję 1" z course.contentBlocks. Mock
     // odtwarza to, zwracając wersję zbudowaną z treści aktualnej fixtury.
@@ -466,13 +468,15 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       providers: [
         CoursesService,
         { provide: TenantPrismaService, useValue: tenantPrisma },
-        { provide: GamificationService, useValue: { awardCourseCompletion } },
+        { provide: GamificationService, useValue: { awardCourseCompletion, awardEasterEggAchievements } },
         configProvider,
       ],
     }).compile();
 
     service = module.get(CoursesService);
   });
+
+  const noEvidence = { collected: 0, total: 0, perBlock: [] };
 
   it('woła GamificationService.awardCourseCompletion, gdy ostatni blok kończy kurs (isComplete)', async () => {
     findFirst.mockResolvedValue(assignmentFixture());
@@ -483,8 +487,55 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       expect.anything(),
       'org-1',
       'user-1',
-      { score: null },
+      { score: null, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' },
     );
+  });
+
+  it('D-111: przekazuje slug kursu i dowody policzone przez serwer (osiągnięcia modułu 1)', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({
+        course: {
+          id: 'course-1',
+          slug: 'wyludzone-haslo',
+          contentBlocks: [{ type: 'SCENE_HOTSPOTS', hotspots: [{ id: 'h1', evidence: true, note: { text: 'Ślad' } }] }],
+        },
+      }),
+    );
+
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { visited: ['h1'], noted: ['h1'] } });
+
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', {
+      score: null,
+      courseSlug: 'wyludzone-haslo',
+      evidence: { collected: 1, total: 1, perBlock: [{ blockId: 'b0', collected: 1, total: 1 }] },
+      assignmentId: 'assignment-1',
+    });
+  });
+
+  it('D-111: każdy zapis bloku przekazuje do osiągnięć easter egga slug kursu i wyróżnienia WYLICZONE przez serwer (nie od klienta)', async () => {
+    findFirst.mockResolvedValue(
+      assignmentFixture({
+        course: {
+          id: 'course-1',
+          slug: 'wyludzone-haslo',
+          contentBlocks: [
+            {
+              type: 'SCENE_HOTSPOTS',
+              hotspots: [
+                { id: 'h1' },
+                { id: 'gra', media: { kind: 'popups', badge: { id: 'ciekawski-detektyw', label: 'Curious Detective' } } },
+              ],
+            },
+            { type: 'VIDEO' },
+          ],
+        },
+      }),
+    );
+
+    // Dodatkowe pole z „wyróżnieniami” od klienta zostaje zignorowane - liczy się wyłącznie odwiedzony hotspot z treści.
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { visited: ['h1', 'gra'] } });
+
+    expect(awardEasterEggAchievements).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', 'wyludzone-haslo', ['ciekawski-detektyw']);
   });
 
   it('NIE woła GamificationService.awardCourseCompletion, gdy kurs ma jeszcze kolejne bloki', async () => {
@@ -504,7 +555,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
     await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: 0 });
 
-    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: 100 });
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: 100, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' });
   });
 
   it('dołącza wynik GamificationService do odpowiedzi jako pole `gamification`, gdy kurs się kończy', async () => {
@@ -514,7 +565,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       newLevel: 2,
       previousLevel: 1,
       leveledUp: true,
-      unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+      unlockedBadges: [{ code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
     });
@@ -526,7 +577,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       newLevel: 2,
       previousLevel: 1,
       leveledUp: true,
-      unlockedBadges: [{ code: 'FIRST_STEP', title: 'Pierwszy Krok', icon: 'first-step', xpReward: 50 }],
+      unlockedBadges: [{ code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
     });
@@ -639,7 +690,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
     expect(result.lastResult).toEqual({ blockIndex: 0, blockId: 'b0', type: 'EMBEDDED_HTML', correct: undefined });
     expect(result.status).toBe('COMPLETED');
-    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null });
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' });
   });
 
   describe('attemptBlock (TEXT_INPUT_GUIDED): reaction (schemaVersion 4) tylko przy rozstrzygnięciu', () => {

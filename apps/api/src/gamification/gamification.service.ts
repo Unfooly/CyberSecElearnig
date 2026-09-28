@@ -1,21 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { AssignmentStatus, Badge, Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
+import { evidenceSummary } from '../courses/client-view';
+import { toResolved } from '../courses/course-versions';
+import { readProgress } from '../courses/progress';
 import { initialsFromEmail } from './initials.util';
 import { currentLevelProgressPercent, levelForXp, xpForNextLevel } from './level.util';
+import { completionAchievements, easterEggAchievements } from './achievements';
 import {
-  BADGE_CODES,
+  ACHIEVEMENT_CODES,
+  ACHIEVEMENTS_SYNC_VERSION,
+  AchievementCode,
   COURSE_COMPLETION_XP,
-  KNOWLEDGE_HUNTER_THRESHOLD,
   LEADERBOARD_LIMIT,
   LeaderboardScope,
+  MODULE_1_SLUG,
   PERFECT_SCORE_XP,
 } from './gamification.constants';
 import { BadgeListItemDto } from './dto/badge-list-item.dto';
 import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { UserGamificationSummaryDto } from './dto/user-gamification-summary.dto';
 
-const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
+/** Data z postępu albo null (brak, śmieci albo data „zero” z formatu sprzed silnika - readProgress wstawia wtedy 1970). */
+function validDate(value: unknown): Date | null {
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) || date.getTime() <= 0 ? null : date;
+}
 
 export interface CourseCompletionResult {
   xpGained: number;
@@ -52,14 +63,30 @@ export class GamificationService {
     tx: Prisma.TransactionClient,
     organizationId: string,
     userId: string,
-    options: { score: number | null },
+    options: {
+      score: number | null;
+      courseSlug: string | null;
+      evidence: { collected: number; total: number };
+      // Przypisanie właśnie ukończone - wyłączone z przyznania wstecznego (jego osiągnięcia idą niżej, „na żywo”, z XP).
+      assignmentId: string;
+    },
   ): Promise<CourseCompletionResult> {
+    const { assignmentId, ...facts } = options;
     let xpGained = COURSE_COMPLETION_XP;
-    if (options.score === 100) {
+    if (facts.score === 100) {
       xpGained += PERFECT_SCORE_XP;
     }
 
-    const candidateCodes = await this.determineCandidateBadgeCodes(tx, organizationId, userId, options);
+    // Najpierw przyznanie wsteczne z WCZEŚNIEJSZYCH podejść (bez XP): kto ukończył kurs przed wdrożeniem osiągnięć, dostaje
+    // First Case Closed z tamtą datą i bez XP - tak samo, jak gdyby najpierw wszedł na profil.
+    await this.syncAchievements(tx, organizationId, userId, assignmentId);
+
+    // Liczony PO tym, jak CoursesService.submitBlockProgress już zapisał ten CourseAssignment jako COMPLETED (ta sama
+    // transakcja, ta kolejność) - właśnie ukończony kurs jest wliczony. Bez filtra archivedAt (D-069): historia ukończeń.
+    const completedCount = await tx.courseAssignment.count({
+      where: { organizationId, userId, status: AssignmentStatus.COMPLETED },
+    });
+    const candidateCodes = completionAchievements({ completedCount, ...facts });
 
     const unlockedBadges: Badge[] = [];
     for (const code of candidateCodes) {
@@ -101,12 +128,15 @@ export class GamificationService {
 
   async getMyGamificationSummary(organizationId: string, userId: string): Promise<UserGamificationSummaryDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // Karta na /courses pokazuje osiągnięcia - przyznanie wsteczne także tu (raz na użytkownika), nie dopiero na profilu.
+      await this.syncAchievements(tx, organizationId, userId);
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
         select: { xp: true, level: true, avatarUrl: true },
       });
+      // Wycofane odznaki sprzed D-111 znikają z UI (wiersze i XP zostają).
       const unlocked = await tx.userBadge.findMany({
-        where: { organizationId, userId },
+        where: { organizationId, userId, badge: { retiredAt: null } },
         include: { badge: true },
         orderBy: { unlockedAt: 'desc' },
       });
@@ -129,24 +159,162 @@ export class GamificationService {
     });
   }
 
+  /**
+   * Osiągnięcia (D-111) ze stanem zdobycia. Najpierw przyznanie wsteczne (syncAchievements) - tak użytkownik, który spełnił
+   * warunek przed wdrożeniem osiągnięć (także wyróżnienie easter egga z Q), widzi je od pierwszego wejścia na profil.
+   * Tajne i niezdobyte: bez kodu, nazwy, opisu, warunku i grafiki zdobytej - tylko ranga i grafika zablokowana („???”).
+   */
   async listBadgesWithUnlockStatus(organizationId: string, userId: string): Promise<BadgeListItemDto[]> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await this.syncAchievements(tx, organizationId, userId);
       const [badges, unlockedRows] = await Promise.all([
-        tx.badge.findMany({ orderBy: { createdAt: 'asc' } }),
+        tx.badge.findMany({ where: { retiredAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
         tx.userBadge.findMany({ where: { organizationId, userId } }),
       ]);
       const unlockedByBadgeId = new Map(unlockedRows.map((row) => [row.badgeId, row.unlockedAt]));
 
-      return badges.map((badge) => ({
-        code: badge.code,
-        title: badge.title,
-        description: badge.description,
-        icon: badge.icon,
-        xpReward: badge.xpReward,
-        isUnlocked: unlockedByBadgeId.has(badge.id),
-        unlockedAt: unlockedByBadgeId.get(badge.id) ?? null,
-      }));
+      return badges.map((badge, index): BadgeListItemDto => {
+        const unlockedAt = unlockedByBadgeId.get(badge.id) ?? null;
+        const common = { rank: badge.rank, hidden: badge.hidden, xpReward: badge.xpReward, isUnlocked: unlockedAt !== null, unlockedAt };
+        if (badge.hidden && unlockedAt === null) {
+          return {
+            ...common,
+            code: `secret-${index + 1}`,
+            title: null,
+            description: null,
+            conditionText: null,
+            scope: null,
+            // Grafika zablokowana tajnego ma neutralną nazwę pliku (osiagniecie-tajne-zablokowane) - nazwa nic nie zdradza.
+            icon: badge.lockedIcon ?? badge.icon,
+            lockedIcon: badge.lockedIcon,
+            xpReward: 0,
+          };
+        }
+        return {
+          ...common,
+          code: badge.code,
+          title: badge.title,
+          description: badge.description,
+          conditionText: badge.conditionText,
+          scope: badge.scope,
+          icon: badge.icon,
+          lockedIcon: badge.lockedIcon,
+        };
+      });
     });
+  }
+
+  /**
+   * Osiągnięcia za wyróżnienia easter egga zapisane TYM zapisem bloku (CoursesService.submitBlockProgress, ta sama
+   * transakcja). Bez XP (easter egg nie wpływa na wynik ani XP, D-100). Zwraca nowo zdobyte (testy; odpowiedź API ich nie
+   * niesie - komunikat w playerze pokazuje outro easter egga jeszcze przed zapisem bloku).
+   */
+  async awardEasterEggAchievements(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+    courseSlug: string | null,
+    easterEggs: readonly string[] | undefined,
+  ): Promise<Badge[]> {
+    const unlocked: Badge[] = [];
+    for (const code of easterEggAchievements(courseSlug, easterEggs)) {
+      const badge = await this.tryUnlockBadge(tx, organizationId, userId, code);
+      if (badge) unlocked.push(badge);
+    }
+    return unlocked;
+  }
+
+  /**
+   * Przyznanie wsteczne (backfill, D-111): osiągnięcia, których warunek użytkownik spełnił PRZED wdrożeniem osiągnięć (także
+   * wyróżnienie easter egga z Q). Raz na użytkownika i wersję zasad (`users.achievementsSyncVersion`) - potem wszystko
+   * przyznaje ścieżka „na żywo”, więc wejście na profil nie czyta za każdym razem historii przypisań. Idempotentne
+   * (unikalność userId+badgeId, ON CONFLICT DO NOTHING), bez XP (XP za te ukończenia przyznano już wtedy), data zdobycia =
+   * moment spełnienia warunku. Wyłącznie w kontekście organizacji użytkownika (RLS; `user_badges` ma FORCE RLS bez wyjątku
+   * bypass) - bez zapytań międzyorganizacyjnych.
+   *
+   * `excludeAssignmentId`: przypisanie właśnie ukończone (awardCourseCompletion) - osiągnięcia za JEGO ukończenie idą „na żywo”
+   * (z XP), a backfill ukończeń obejmuje tylko wcześniejsze podejścia (easter egg z bieżącego - tak, bez XP). Dzięki temu XP i data nie zależą od tego, czy użytkownik po wdrożeniu
+   * najpierw wszedł na profil, czy ukończył kolejny kurs.
+   */
+  async syncAchievements(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+    excludeAssignmentId?: string,
+  ): Promise<void> {
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { achievementsSyncVersion: true } });
+    if (user.achievementsSyncVersion >= ACHIEVEMENTS_SYNC_VERSION) return;
+
+    const owned = await tx.userBadge.findMany({ where: { organizationId, userId }, select: { badge: { select: { code: true } } } });
+    const have = new Set(owned.map((row) => row.badge.code));
+    const missing = Object.values(ACHIEVEMENT_CODES).filter((code) => !have.has(code));
+
+    if (missing.length > 0) {
+      // Historia przypisań (także zarchiwizowanych restartem, D-069): ukończone oraz wszystkie z modułu 1 (easter egg można
+      // znaleźć bez ukończenia kursu).
+      const assignments = await tx.courseAssignment.findMany({
+        where: {
+          organizationId,
+          userId,
+          OR: [{ status: AssignmentStatus.COMPLETED }, { course: { slug: MODULE_1_SLUG } }],
+        },
+        select: {
+          id: true,
+          status: true,
+          score: true,
+          progress: true,
+          completedAt: true,
+          updatedAt: true,
+          courseVersionId: true,
+          course: { select: { slug: true } },
+        },
+      });
+
+      const earnedAt = new Map<AchievementCode, Date>();
+      const earn = (code: AchievementCode, at: Date) => {
+        const current = earnedAt.get(code);
+        if (!current || at < current) earnedAt.set(code, at);
+      };
+
+      for (const assignment of assignments) {
+        const slug = assignment.course.slug;
+        const progress = readProgress(assignment.progress);
+        for (const entry of Object.values(progress.blocks) as unknown[]) {
+          // Postęp zapisuje serwer, ale czytamy go obronnie: uszkodzony wpis nie może zablokować profilu (500 przy każdym wejściu).
+          if (typeof entry !== 'object' || entry === null) continue;
+          const { easterEggs, answeredAt } = entry as { easterEggs?: unknown; answeredAt?: unknown };
+          if (!Array.isArray(easterEggs)) continue;
+          const at = validDate(answeredAt) ?? assignment.updatedAt;
+          for (const code of easterEggAchievements(slug, easterEggs.filter((id): id is string => typeof id === 'string'))) earn(code, at);
+        }
+        // Bieżące (właśnie ukończone) przypisanie: jego ukończenie idzie „na żywo” (z XP), ale easter egg zapisany w nim PRZED
+        // wdrożeniem osiągnięć (wyżej) przyznajemy tu - ścieżka „na żywo” sprawdza przy ukończeniu tylko warunki ukończenia.
+        const isCurrent = excludeAssignmentId !== undefined && assignment.id === excludeAssignmentId;
+        if (assignment.status !== AssignmentStatus.COMPLETED || isCurrent) continue;
+        const completedAt = assignment.completedAt ?? assignment.updatedAt;
+        // Sprawa bez skazy wymaga treści (dowody liczy serwer z treści wersji przypiętej do tego podejścia); pozostałe nie.
+        // Przypisanie bez przypiętej wersji (sprzed silnika treści) nie jest modułem 1 - pomijamy.
+        let evidence = { collected: 0, total: 0 };
+        if (missing.includes(ACHIEVEMENT_CODES.FLAWLESS_CASE) && slug === MODULE_1_SLUG && assignment.score === 100 && assignment.courseVersionId) {
+          const version = await tx.courseVersion.findUnique({ where: { id: assignment.courseVersionId } });
+          try {
+            if (version) evidence = evidenceSummary(progress, toResolved(version).blocks);
+          } catch {
+            // Uszkodzona treść wersji: bez sprawy bez skazy z tego podejścia, ale reszta przyznania działa.
+          }
+        }
+        for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, evidence })) {
+          earn(code, completedAt);
+        }
+      }
+
+      for (const code of missing) {
+        const at = earnedAt.get(code);
+        if (at) await this.tryUnlockBadge(tx, organizationId, userId, code, at);
+      }
+    }
+
+    await tx.user.update({ where: { id: userId }, data: { achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION } });
   }
 
   /**
@@ -208,76 +376,27 @@ export class GamificationService {
     });
   }
 
-  private async determineCandidateBadgeCodes(
-    tx: Prisma.TransactionClient,
-    organizationId: string,
-    userId: string,
-    options: { score: number | null },
-  ): Promise<string[]> {
-    const codes: string[] = [];
-
-    // Liczony PO tym, jak CoursesService.submitBlockProgress już zapisał ten
-    // CourseAssignment jako COMPLETED (wołane w tej samej transakcji, w tej
-    // kolejności) - więc właśnie ukończony kurs jest już wliczony.
-    //
-    // Celowo BEZ filtra archivedAt (D-069): to licznik UKOŃCZEŃ w całej historii, nie "ile różnych kursów mam
-    // teraz ukończonych" - powtórne ukończenie tego samego kursu po restarcie doliczy się tu ponownie, tak samo jak
-    // już wcześniej (przed D-069) każde kolejne ukończenie zwiększało XP (GamificationService.awardCourseCompletion
-    // nie ma parametru courseId - znany, udokumentowany kompromis, patrz B-091). Restart nie pogarsza tego stanu,
-    // tylko go po raz pierwszy realnie udostępnia (wcześniej ten sam kurs nie dał się ukończyć dwa razy).
-    const completedCount = await tx.courseAssignment.count({
-      where: { organizationId, userId, status: AssignmentStatus.COMPLETED },
-    });
-
-    if (completedCount === 1) {
-      codes.push(BADGE_CODES.FIRST_STEP);
-    }
-    if (options.score === 100) {
-      codes.push(BADGE_CODES.PERFECT_SCORE);
-    }
-    if (completedCount === KNOWLEDGE_HUNTER_THRESHOLD) {
-      codes.push(BADGE_CODES.KNOWLEDGE_HUNTER);
-    }
-
-    const phishingCategoryFilter = { course: { category: 'PHISHING_SOCIAL_ENGINEERING' as const } };
-    const [phishingTotal, phishingCompleted] = await Promise.all([
-      tx.courseAssignment.count({ where: { organizationId, userId, ...phishingCategoryFilter } }),
-      tx.courseAssignment.count({
-        where: { organizationId, userId, status: AssignmentStatus.COMPLETED, ...phishingCategoryFilter },
-      }),
-    ]);
-    if (phishingTotal > 0 && phishingTotal === phishingCompleted) {
-      codes.push(BADGE_CODES.PHISHING_SPOTTER);
-    }
-
-    return codes;
-  }
-
   /**
-   * Zwraca odznakę, jeśli udało się ją PIERWSZY RAZ przyznać temu userowi,
-   * albo null (odznaka nieseedowana, albo już odblokowana wcześniej -
-   * @@unique([userId, badgeId]) chroni przed duplikatem nawet przy
-   * współbieżnych wywołaniach, nie tylko przez logiczny check wyżej).
+   * Zwraca osiągnięcie, jeśli udało się je PIERWSZY RAZ przyznać temu userowi, albo null (brak w katalogu, wycofane albo
+   * już zdobyte). `skipDuplicates` (ON CONFLICT DO NOTHING) zamiast łapania P2002: błąd unikalności w Postgresie przerywa
+   * całą transakcję, a współbieżne przyznanie tego samego osiągnięcia (np. dwa kursy ukończone naraz) jest tu normalne -
+   * licznik wstawionych wierszy mówi, kto faktycznie przyznał (i tylko ten dolicza XP).
    */
   private async tryUnlockBadge(
     tx: Prisma.TransactionClient,
     organizationId: string,
     userId: string,
     code: string,
+    unlockedAt?: Date,
   ): Promise<Badge | null> {
     const badge = await tx.badge.findUnique({ where: { code } });
-    if (!badge) {
+    if (!badge || badge.retiredAt) {
       return null;
     }
-
-    try {
-      await tx.userBadge.create({ data: { userId, badgeId: badge.id, organizationId } });
-      return badge;
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_VIOLATION) {
-        return null;
-      }
-      throw error;
-    }
+    const created = await tx.userBadge.createMany({
+      data: [{ userId, badgeId: badge.id, organizationId, ...(unlockedAt ? { unlockedAt } : {}) }],
+      skipDuplicates: true,
+    });
+    return created.count === 1 ? badge : null;
   }
 }

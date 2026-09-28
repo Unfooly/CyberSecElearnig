@@ -715,8 +715,8 @@ describe('głosy ról (voices.json, D-082)', () => {
     const tts = new FakeTts();
     await runPipeline(params({ tts }));
     const byText = (text: string) => tts.calls.find((call) => call.text === text)!;
-    expect(byText('Narracja odprawa-1. Drugie zdanie.').voiceId).toBe('voice-komisarz01');
-    expect(byText('Narracja odprawa-0. Drugie zdanie.').voiceId).toBe('voice-narrator');
+    expect(byText('Narracja odprawa-jeden. Drugie zdanie.').voiceId).toBe('voice-komisarz01');
+    expect(byText('Narracja odprawa-zero. Drugie zdanie.').voiceId).toBe('voice-narrator');
     const refs = collectNarrations(bareModule());
     expect(refs.find((ref) => ref.id === 'odprawa#steps.1.narration')!.voice).toBe('komisarz');
     expect(refs.find((ref) => ref.id === 'odprawa#steps.0.narration')!.voice).toBe('narrator');

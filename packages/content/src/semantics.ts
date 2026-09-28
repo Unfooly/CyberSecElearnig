@@ -510,6 +510,30 @@ export function moduleWarnings(contentModule: ContentModule): string[] {
 }
 
 /**
+ * Każda NAGRYWANA narracja w bloku (`narration` na dowolnej głębokości i `answerNarration` pytań rozmowy - jak NARRATION_PATHS potoku
+ * scripts/content) i tekst, który przeczyta głos (`spokenText`, a bez niego `text`). Podpowiedzi (`hints[].narration`) są tylko tekstem
+ * (pola `secret`, bez nagrań) - pomijane. Wyjątki muszą odpowiadać TEXT_ONLY_NARRATION_PATHS w scripts/content/src/pipeline.ts (nowe pole
+ * narracji tylko-tekstowej = dopisać je tutaj i tam).
+ */
+export function narrationsIn(node: unknown, path = ''): { path: string; spoken: string }[] {
+  if (Array.isArray(node)) return node.flatMap((item, index) => narrationsIn(item, `${path}[${index}]`));
+  if (!node || typeof node !== 'object') return [];
+  const found: { path: string; spoken: string }[] = [];
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'hints') continue;
+    const here = path ? `${path}.${key}` : key;
+    if ((key === 'narration' || key === 'answerNarration') && value && typeof value === 'object' && !Array.isArray(value)) {
+      const narration = value as { text?: unknown; spokenText?: unknown };
+      const spoken = typeof narration.spokenText === 'string' ? narration.spokenText : narration.text;
+      if (typeof spoken === 'string') found.push({ path: here, spoken });
+    } else {
+      found.push(...narrationsIn(value, here));
+    }
+  }
+  return found;
+}
+
+/**
  * Waliduje moduł (schemat zod + relacje między polami + reguły całego modułu). Zwraca dane PO parsowaniu (z uzupełnionymi
  * wartościami domyślnymi) - właśnie ta postać jest zapisywana jako wersja kursu, więc serwer nie zgaduje domyślnych.
  */
@@ -571,6 +595,15 @@ export function parseModule(input: unknown): ContentModule {
         }
       });
     });
+  });
+
+  // Lektor źle czyta cyfry (godziny, kwoty, numery - fix/tts-numbers, D-109): tekst czytany przez głos (`spokenText`, a bez niego
+  // `text`) każdej nagrywanej narracji (blok, kroki odprawy, hotspoty, media, sceny zagnieżdżone, odpowiedzi rozmowy) jest bez cyfr -
+  // liczby słownie w `spokenText`, w przypadku zależnym od zdania. Napisy (`text`, `cues`) zostają z cyframi.
+  contentModule.blocks.forEach((block, index) => {
+    for (const { path, spoken } of narrationsIn(block)) {
+      if (/\d/.test(spoken)) errors.push(`blocks[${index}] (${block.id}): ${path}: cyfry w tekście czytanym przez lektora - dodaj spokenText ze słownym zapisem`);
+    }
   });
 
   const summaries = contentModule.blocks.map((b, i) => (b.type === 'SUMMARY' ? i : -1)).filter((i) => i >= 0);

@@ -55,6 +55,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const WEB_PORT = process.env.LAYOUT_CHECK_WEB_PORT ?? '3112';
@@ -107,7 +108,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -145,7 +146,24 @@ const BAR_VIEWPORTS = [
 const BAR_BLOCKS = ['biuro-anny', 'rozmowa-anna', 'ostatnie-pytanie'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
-const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
+// Moduł (B-128): LAYOUT_CHECK_MODULE=<slug> - sekcja `module` przechodzi wszystkie bloki TEGO modułu (harness `?module=<slug>`).
+// Pozostałe sekcje sprawdzają konkretne elementy treści modułu 1 (id bloków, hotspotów), więc dla innego modułu są pomijane.
+const DEFAULT_MODULE = 'wyludzone-haslo';
+const MODULE_SLUG = process.env.LAYOUT_CHECK_MODULE || DEFAULT_MODULE;
+if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'))) {
+  throw new Error(`LAYOUT_CHECK_MODULE: nie ma modułu "${MODULE_SLUG}" w packages/content/modules.`);
+}
+// Dla innego modułu tylko sekcje ogólne: `module` (każdy blok) i `catalog` (miniatura i karta kursu z `?module=`).
+const GENERIC_SECTIONS = ['module', 'catalog'];
+if (MODULE_SLUG !== DEFAULT_MODULE) {
+  const unsupported = ONLY.filter((name) => !GENERIC_SECTIONS.includes(name));
+  if (unsupported.length > 0) {
+    throw new Error(`LAYOUT_CHECK_MODULE=${MODULE_SLUG}: dostępne są tylko sekcje ${GENERIC_SECTIONS.join(', ')} (pozostałe sprawdzają treść modułu 1): ${unsupported.join(', ')}`);
+  }
+}
+const MODULE_TITLE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'), 'utf8')).title;
+const runs = (section) =>
+  MODULE_SLUG !== DEFAULT_MODULE && !GENERIC_SECTIONS.includes(section) ? false : ONLY.length === 0 || ONLY.includes(section);
 
 // TABLICA ŚLEDCZA (ORDERING, feat/evidence-board, D-088) - `?block=rekonstrukcja`, te same cztery rozdzielczości; stany: pusta, w trakcie
 // (3 ślady przypięte), po sprawdzeniu (odpowiedź serwera podstawiona przez page.route - harness nie ma backendu).
@@ -1230,14 +1248,54 @@ try {
     await context.close();
   }
 
+  // Dowolny moduł (B-128, LAYOUT_CHECK_MODULE=<slug>, domyślnie moduł 1): KAŻDY blok w harnessie `?module=<slug>&block=<id>` na 4
+  // rozdzielczościach + telefonie w pionie: (m1) blok się renderuje (obszar bloku widoczny), obrazy modułu załadowane; (m2) dolny pasek
+  // w ekranie; (m3) strona bez poziomego przewijania; (m4) bez błędów strony i konsoli. Minimalna siatka dla nowego modułu - sekcje
+  // wyżej sprawdzają szczegóły modułu 1.
+  if (runs('module')) {
+    const moduleJson = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'), 'utf8'));
+    const blockIds = moduleJson.blocks.map((block) => block.id);
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text().slice(0, 200));
+      });
+      for (const blockId of blockIds) {
+        const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${blockId}`;
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(blockId)}`);
+        await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+        await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete), null, { timeout: 30000 });
+        const info = await page.evaluate(() => {
+          const broken = [...document.querySelectorAll('img')].filter((img) => /(module-assets|\/assets\/)/.test(img.src) && img.naturalWidth === 0).map((img) => img.src);
+          const bar = document.querySelector('[data-testid="player-bottombar"]')?.getBoundingClientRect();
+          return {
+            broken,
+            barInView: !!bar && bar.top >= -1 && bar.bottom <= window.innerHeight + 1,
+            overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          };
+        });
+        if (info.broken.length > 0) fail(`${label}: (m1) obrazy modułu nie załadowane: ${info.broken.join(', ')}`);
+        if (!info.barInView) fail(`${label}: (m2) dolny pasek poza ekranem.`);
+        if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
+        if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
+      }
+      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4) OK`, true);
+      await context.close();
+    }
+  }
+
   // Miniatury kursów (D-084, /dev/courses-harness): (c1) każda miniatura załadowana, 16:9 (±2%), w całości w swojej karcie;
   // (c2) karta bez miniatury nie ma obrazka (dotychczasowy wygląd); (c3) strona bez poziomego przewijania.
   for (const viewport of runs('catalog') ? BRIEFING_VIEWPORTS : []) {
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
     const page = await context.newPage();
     const label = `${viewport.name} / katalog kursów`;
-    await page.goto(`${WEB}/dev/courses-harness`);
-    const thumbs = page.getByRole('img', { name: 'Wyłudzone hasło', exact: true });
+    await page.goto(`${WEB}/dev/courses-harness?module=${MODULE_SLUG}`);
+    const thumbs = page.getByRole('img', { name: MODULE_TITLE, exact: true });
     await thumbs.first().waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete));
     await shot(page, `${viewport.name}-katalog`);
@@ -2342,7 +2400,8 @@ try {
     // Nagranie narracji w harnessie (?narration=1) nie istnieje lokalnie - podstawiamy krótki dźwięk z apps/web/public/sfx, żeby
     // pojawiły się przycisk odtwarzania i linijka napisów. Działa, gdy harness bierze zasoby z /dev/module-assets (bez
     // CONTENT_BASE_URL - tak uruchamia go ten skrypt), a skrypt startuje z katalogu repo (jak next dev wyżej).
-    await page.route('**/dev/module-assets/audio/**', (route) => route.fulfill({ status: 200, contentType: 'audio/mpeg', path: join(process.cwd(), 'apps', 'web', 'public', 'sfx', 'msg-receive.mp3') }));
+    // Zasoby harnessu pod `/dev/module-assets/<slug>/…` (B-128).
+    await page.route('**/dev/module-assets/*/audio/**', (route) => route.fulfill({ status: 200, contentType: 'audio/mpeg', path: join(process.cwd(), 'apps', 'web', 'public', 'sfx', 'msg-receive.mp3') }));
     const variants = [...BAR_BLOCKS.map((blockId) => ({ blockId, narration: false })), { blockId: 'ostatnie-pytanie', narration: true }, { blockId: 'rozmowa-anna', narration: true }];
     for (const { blockId, narration } of variants) {
       const label = `${viewport.name} / dolny pasek: ${blockId}${narration ? ' (lektor, napisy)' : ''}`;

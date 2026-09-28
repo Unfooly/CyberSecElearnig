@@ -6,6 +6,7 @@ import { contentAssetBase } from '@/lib/content-assets';
 import type { ContentBlock } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
 import HarnessAutoOpen from './HarnessAutoOpen';
+import { DEFAULT_MODULE_SLUG, harnessModuleDir } from '../harness-module';
 
 // Podgląd układu bloku w PRAWDZIWYM PlayerStage, bez backendu (bez /courses/:id/start, bez logowania) - treść
 // wprost z packages/content (module.json), obrazy z CONTENT_BASE_URL jak na produkcji (bez niej - z lokalnych assets/ modułu,
@@ -18,7 +19,8 @@ import HarnessAutoOpen from './HarnessAutoOpen';
 // pierwotnie) - domyślnie DEFAULT_BLOCK_ID, żeby dotychczasowe wywołania scripts/layout-check.mjs (bez ?block=)
 // zostały bez zmian. `?hotspot=`/`?stripMedia=` (drilling HarnessAutoOpen, patrz niżej) mają sens WYŁĄCZNIE dla
 // SCENE_HOTSPOTS - dla innych typów bloku (np. DIALOGUE) są po prostu ignorowane.
-const MODULE_SLUG = 'wyludzone-haslo';
+// `?module=<slug>` (B-128): dowolny moduł z packages/content/modules, domyślnie moduł 1 (harness-module.ts). Domyślny blok: dla modułu 1
+// jak dotąd `biuro-anny` (wywołania layout-check bez ?block=), dla innych - pierwszy blok modułu.
 const DEFAULT_BLOCK_ID = 'biuro-anny';
 
 type SceneHotspotsServerBlock = ServerBlockOf<'SCENE_HOTSPOTS'>;
@@ -42,16 +44,17 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
 export default function PlayerHarnessPage({
   searchParams,
 }: {
-  searchParams: { block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string; noPortrait?: string };
+  searchParams: { module?: string; block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string; noPortrait?: string };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
   }
 
-  const modulePath = path.join(process.cwd(), '..', '..', 'packages', 'content', 'modules', MODULE_SLUG, 'module.json');
-  const rawModule: unknown = JSON.parse(fs.readFileSync(modulePath, 'utf8'));
+  const harnessModule = harnessModuleDir(searchParams.module);
+  if (!harnessModule) notFound();
+  const rawModule: unknown = JSON.parse(fs.readFileSync(path.join(harnessModule.dir, 'module.json'), 'utf8'));
   const parsedModule = moduleSchema.parse(rawModule);
-  const blockId = searchParams.block ?? DEFAULT_BLOCK_ID;
+  const blockId = searchParams.block ?? (harnessModule.slug === DEFAULT_MODULE_SLUG ? DEFAULT_BLOCK_ID : parsedModule.blocks[0]?.id);
   const rawBlock: ServerBlock | undefined = parsedModule.blocks.find((block) => block.id === blockId);
   if (!rawBlock) notFound();
 
@@ -109,11 +112,10 @@ export default function PlayerHarnessPage({
   };
 
   // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze
-  // nieopublikowane w magazynie; z CONTENT_BASE_URL - z magazynu, jak na produkcji. Trasa zna tylko MODULE_SLUG (jak ta
-  // strona) - harness z innym modułem wymaga zmiany w obu miejscach.
+  // nieopublikowane w magazynie; z CONTENT_BASE_URL - z magazynu, jak na produkcji. Slug modułu jest pierwszym segmentem trasy.
   const contentBase = process.env.CONTENT_BASE_URL
     ? contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development')
-    : '/dev/module-assets';
+    : `/dev/module-assets/${harnessModule.slug}`;
 
   return (
     <div className="h-dvh overflow-hidden bg-paper">

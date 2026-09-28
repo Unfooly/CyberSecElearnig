@@ -83,9 +83,9 @@ Publikacja audio narracji i zasobów modułów (autor treści): [`docs/content-p
    npx dotenv -e .env.test -- npm run prisma:deploy --workspace=apps/api
    ```
 
-5a. **Seed odznak** (moduł grywalizacji — `badges` to katalog danych administracyjnych, nie
-    schemat, więc nie jest częścią migracji; idempotentny, bezpieczny do wielokrotnego
-    uruchomienia po dodaniu nowej odznaki):
+5a. **Seed osiągnięć** (opcjonalny: katalog osiągnięć `badges` wstawia migracja
+    `20260928200000_achievements`, D-111; seed tylko przywraca te same wpisy po ręcznej zmianie
+    w bazie deweloperskiej - idempotentny):
 
    ```bash
    npm run seed:badges --workspace=apps/api

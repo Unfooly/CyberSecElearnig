@@ -52,7 +52,7 @@ docker exec cyberszkolo-postgres createdb -U cyberszkolo cyberszkolo_test   # je
 npm install                             # workspace'y + build packages/shared
 npm run prisma:migrate --workspace=apps/api                                  # baza dev
 npx dotenv -e .env.test -- npm run prisma:deploy --workspace=apps/api        # baza testowa
-npm run seed:badges --workspace=apps/api
+npm run seed:badges --workspace=apps/api   # opcjonalnie: katalog osiągnięć wstawia migracja (D-111)
 npm run dev:api                         # http://localhost:3001
 npm run dev:web                         # osobny terminal
 ```

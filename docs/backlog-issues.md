@@ -651,6 +651,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
      zakresem W: „nie zmieniaj treści poza spokenText”).
 - Akceptacja: (1) cues dla narracji ze `spokenText` z testem potoku; (2) decyzja właściciela - wyrównać napis czy zostawić.
 
+### B-130 Osiągnięcia (D-111): odłożone uwagi z review
+- Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review i security review `feat/achievements` (X, część 2)
+- Opis:
+  1. Outro easter egga pokazuje „Nowe osiągnięcie” na podstawie notatnika bieżącego podejścia - po restarcie kursu także dla osiągnięcia
+     zdobytego wcześniej (klient nie zna zdobytych osiągnięć; serwer przyznaje je dopiero przy zapisie bloku, po outro).
+  2. Rewers karty osiągnięcia (przewijany przy długim tekście) jest w przycisku i `aria-hidden` - czytnik dostaje treść z `aria-live`,
+     ale osoba z klawiaturą nie przewinie dłuższego tekstu na wąskim ekranie (dzisiejsze teksty się mieszczą - layout-check).
+  3. `gamification.e2e-spec.ts` dokłada do kursu `wyludzone-haslo` wersję testową, jeśli kurs już jest w bazie (lokalnie); sprzątana w
+     `afterAll`, ale przerwany test ją zostawi. Test izolacji A/B osiągnięć nie przechodzi lokalnie (superuser omija RLS, B-085) - tylko CI.
+  4. Teoretyczne zakleszczenie (40P01): użytkownik bez przyznania wstecznego kończy kurs dokładnie w chwili ładowania profilu w innej
+     karcie - oba ruszają `user_badges` i `users` w innej kolejności; Postgres przerwie jedno, odświeżenie naprawia (idempotentnie).
+- Akceptacja: (1) /start (albo odpowiedź zapisu) mówi, czy osiągnięcie easter egga jest już zdobyte, outro bez „Nowe” w takim przypadku;
+  (2) przewijanie rewersu klawiaturą (np. osobny, fokusowalny region po odwróceniu); (3) test na własnym kursie albo rollback wersji.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

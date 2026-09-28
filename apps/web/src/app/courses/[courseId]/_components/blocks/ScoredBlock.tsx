@@ -6,8 +6,9 @@ import OrderingBlock from './OrderingBlock';
 import TextInputBlock from './TextInputBlock';
 
 // Bloki oceniane z rozstrzygnięciem po odpowiedzi (mail, kolejność, zadanie tekstowe) w trzech widokach: odpowiadanie, WYNIK zaraz po
-// zapisie (z przyciskiem dalej) i PODGLĄD ukończonego bloku ("Wstecz", bez przycisku). Ocena zawsze z serwera; ten komponent tylko
-// pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste, jak w /start).
+// zapisie (`live` - reakcja, animacja werdyktu) i PODGLĄD ukończonego bloku ("Wstecz"). Żaden widok nie ma przycisku dalej - „Dalej” jest
+// wyłącznie w dolnym pasku (D-106). Ocena zawsze z serwera; ten komponent tylko pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste,
+// jak w /start).
 export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
 
 export const isScored = (type: string) => (SCORED_TYPES as readonly string[]).includes(type);
@@ -31,8 +32,8 @@ export default function ScoredBlock({
   disabled,
   result,
   progress,
-  onContinue,
-  continueLabel,
+  live = false,
+  onReady,
   onProgress,
   caseNo,
 }: {
@@ -42,12 +43,14 @@ export default function ScoredBlock({
   caseNo?: string;
   onSubmit?: (answer?: unknown) => void;
   disabled?: boolean;
-  /** Ustawione = widok wyniku (po zapisie z `onContinue`, w podglądzie bez). */
+  /** Ustawione = widok wyniku (`live` - zaraz po zapisie, bez - podgląd "Wstecz"). */
   result?: ScoredResult;
+  /** Wynik zaraz po zapisie (reakcja, animacja werdyktu) - nie podgląd. */
+  live?: boolean;
   /** Stan zadania tekstowego z serwera (próby, podpowiedzi, rozwiązanie). */
   progress?: ClientProgressBlock;
-  onContinue?: () => void;
-  continueLabel?: string;
+  /** Zadanie tekstowe po rozstrzygnięciu zgłasza gotowość - zapis rusza „Dalej” w pasku (D-106). */
+  onReady?: (submit: (() => void) | null) => void;
   /** Zadanie tekstowe zgłasza rozstrzygnięty stan (do podglądu "Wstecz" w tej samej sesji). */
   onProgress?: (patch: Partial<ClientProgressBlock>) => void;
 }) {
@@ -60,8 +63,7 @@ export default function ScoredBlock({
           onSubmit={onSubmit}
           disabled={disabled}
           result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
-          onContinue={onContinue}
-          continueLabel={continueLabel}
+          live={live}
         />
       );
     }
@@ -73,8 +75,7 @@ export default function ScoredBlock({
           onSubmit={onSubmit}
           disabled={disabled}
           result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
-          onContinue={onContinue}
-          continueLabel={continueLabel}
+          live={live}
           caseNo={caseNo}
         />
       );
@@ -85,9 +86,9 @@ export default function ScoredBlock({
           block={block}
           courseId={courseId}
           progress={progress}
-          onContinue={onContinue}
+          onReady={onReady ? (ready) => onReady(ready ? () => onSubmit?.() : null) : undefined}
           disabled={disabled}
-          readOnly={!!result && !onContinue}
+          readOnly={!!result && !live}
           onProgress={onProgress}
         />
       );

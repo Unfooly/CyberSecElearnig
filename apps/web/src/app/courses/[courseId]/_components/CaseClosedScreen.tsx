@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
@@ -16,7 +15,8 @@ import { usePortraitContainer } from '@/lib/use-portrait-container';
 //   3. pulsująca obwódka na "podpis" (przycisk "Podpisz raport") -> klik -> imię i inicjał nazwiska gracza jako podpis (~600 ms);
 //   4. pieczęć spada na raport (scale 1.6 -> 1, 350 ms) + stamp.mp3 + drgnięcie teczki;
 //   5. liścik komisarza wlatuje (-5°);
-//   6. pod raportem "Wróć do biblioteki" i "Następna sprawa" (brak następnej - zamknięta teczka z kłódką, "wkrótce").
+//   6. pod raportem "Następna sprawa" (brak następnej - zamknięta teczka z kłódką, "wkrótce"); "Wróć do biblioteki" jest przyciskiem
+//      „Dalej” dolnego paska (D-106 - jeden przycisk dalej w całym odtwarzaczu).
 // Ukończenie i XP są zapisane już przy wejściu na ten ekran (ostatni blok) - podpis to ceremonia, nie warunek. reduced-motion i podgląd
 // (powrót do ukończonego kursu, bez świeżej nagrody) - od razu stan końcowy, bez dźwięków. Moduł bez `closing` - prosty ekran z wynikiem.
 // Telefon w pionie: z `closing.portrait` w treści (D-098) - pionowy raport 9:16 w całości, przyciski pod nim na pełną szerokość; bez niego
@@ -189,7 +189,6 @@ export default function CaseClosedScreen({
   const [stage, setStage] = useState<Stage>(ceremony ? 'intro' : 'done');
   const [typedChars, setTypedChars] = useState(ceremony ? 0 : Number.POSITIVE_INFINITY);
   const signRef = useRef<HTMLButtonElement>(null);
-  const libraryRef = useRef<HTMLAnchorElement>(null);
   // Orientacja (D-098) z proporcji CAŁEGO ekranu zamknięcia (korzeń, flex-1), nie ramki raportu - wysokość ramki zależy od układu
   // przycisków pod nią, który sam zależy od orientacji (sprzężenie). < 0.8 i `closing.portrait` w treści -> raport pionowy 9:16 zamiast
   // panoramy 16:9; obrót telefonu przełącza wariant bez utraty etapu ceremonii (stan poniżej nie zależy od orientacji).
@@ -288,8 +287,9 @@ export default function CaseClosedScreen({
   function sign() {
     if (stage !== 'sign') return;
     setStage('signing');
-    // Przycisk podpisu znika (zostaje sam podpis) - fokus na "Wróć do biblioteki", żeby klawiatura/czytnik nie spadły na body.
-    libraryRef.current?.focus();
+    // Przycisk podpisu znika (zostaje sam podpis) - fokus na "Wróć do biblioteki" w dolnym pasku (D-106), żeby klawiatura/czytnik nie
+    // spadły na body.
+    document.querySelector<HTMLElement>('[data-testid="player-bottombar"] .pbar-next')?.focus();
   }
 
   const scoreLine = scoreUnavailable ? (
@@ -480,7 +480,7 @@ export default function CaseClosedScreen({
         </div>
       )}
 
-      {/* Pionowy raport (D-098): „Wróć do biblioteki” i „Następna sprawa” pod sceną, na pełną szerokość, jeden pod drugim. */}
+      {/* Pionowy raport (D-098): „Następna sprawa” pod sceną, na pełną szerokość („Wróć do biblioteki” - w dolnym pasku, D-106). */}
       <div
         data-testid="case-closed-actions"
         className={`mt-2 flex shrink-0 gap-y-2 ${portrait ? 'flex-col items-stretch text-center' : 'flex-wrap items-center justify-center gap-x-4'}`}
@@ -514,13 +514,6 @@ export default function CaseClosedScreen({
           </p>
         )}
         {restartError && <p className="text-sm font-medium text-danger">Nie udało się rozpocząć kursu od nowa. Spróbuj ponownie.</p>}
-        <Link
-          ref={libraryRef}
-          href="/courses"
-          className="inline-flex min-h-[44px] items-center justify-center rounded-btn bg-ink px-4 text-sm font-bold text-white hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          Wróć do biblioteki
-        </Link>
         {/* Kolejnej sprawy w API nie ma (B-115: zachowanie MVP) - zamknięta teczka z kłódką. aria-disabled (nie disabled): osiągalny Tabem,
             więc użytkownik klawiatury/czytnika też usłyszy "wkrótce"; bez obsługi kliku (type=button poza formularzem nic nie robi). */}
         <button

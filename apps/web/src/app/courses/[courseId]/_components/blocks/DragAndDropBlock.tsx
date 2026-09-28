@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
 
 const DEFAULT_CATEGORIES: [string, string] = ['Bezpieczne', 'Phishing'];
@@ -9,14 +9,16 @@ const DEFAULT_CATEGORIES: [string, string] = ['Bezpieczne', 'Phishing'];
 // backend NIE ocenia bloków DRAG_AND_DROP (tak jak VIDEO, nie ma go w
 // SCOREABLE_BLOCK_TYPES w CoursesService), więc prawdziwe przeciąganie
 // dawałoby złudzenie oceniania, którego i tak nie ma. Zamiast tego: lista
-// elementów z dwoma przyciskami klasyfikującymi każdy z nich.
+// elementów z dwoma przyciskami klasyfikującymi każdy z nich. Jeden „Dalej” (D-106):
+// po posegregowaniu wszystkich blok zgłasza gotowość, dalej prowadzi dolny pasek.
 export default function DragAndDropBlock({
   block,
-  onSubmit,
+  onReady,
   disabled,
 }: {
   block: ContentBlock;
-  onSubmit: () => void;
+  /** true = wszystkie elementy posegregowane - „Dalej” w pasku aktywny. */
+  onReady: (ready: boolean) => void;
   disabled: boolean;
 }) {
   const items = block.items ?? [];
@@ -24,6 +26,11 @@ export default function DragAndDropBlock({
   const [classified, setClassified] = useState<Record<number, 0 | 1>>({});
 
   const allDone = items.length > 0 && Object.keys(classified).length === items.length;
+  useEffect(() => {
+    onReady(allDone);
+    // onReady celowo poza deps - remount przez `key` na zmianę bloku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDone]);
 
   return (
     <div>
@@ -60,15 +67,6 @@ export default function DragAndDropBlock({
           </li>
         ))}
       </ul>
-
-      <button
-        type="button"
-        disabled={!allDone || disabled}
-        onClick={() => onSubmit()}
-        className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        Dalej
-      </button>
     </div>
   );
 }

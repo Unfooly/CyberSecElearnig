@@ -366,6 +366,10 @@
    od razu stoi w stanie końcowym (klasy nic nie robią), a tekst "maszyny do pisania" pokazuje się w całości (logika w
    komponencie, usePrefersReducedMotion). Kolory z tokenów (var(--...)), bez nowych. */
 @media (prefers-reduced-motion: no-preference) {
+  /* Jeden „Dalej” (D-106): krótki puls przycisku w dolnym pasku, gdy się aktywuje (PlayerStage.tsx). */
+  .pbar-pulse {
+    animation: pbar-pulse 700ms ease-out 2;
+  }
   /* Easter egg (PopupsEasterEgg.tsx, D-100): okienko wyskakuje z przesadnym odbiciem, drga po kliknięciu przycisku, ekran mruga
      przy otwarciu. */
   .popup-in {
@@ -543,6 +547,22 @@
 @media (prefers-reduced-motion: reduce) {
   .briefing-hotspot--idle {
     box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+/* Sam pierścień (box-shadow) i rozjaśnienie - BEZ transform: skalowanie szerokiego „Dalej” przy krawędzi ramki (overflow: hidden) na
+   chwilę wypychało go poza ramkę, a fokus/klik w tym momencie przewijał ramkę w bok (odsłaniał notatnik). Cień nie zmienia układu. */
+@keyframes pbar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent);
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.35);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+    filter: brightness(1);
   }
 }
 

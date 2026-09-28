@@ -263,18 +263,19 @@ describe('NOTEPAD i SUMMARY', () => {
 
   // SUMMARY zostaje wyjątkiem: ma WŁASNY, jedyny przycisk ukończenia (Dalej w pasku powłoki jest dla niego ukryty w
   // CoursePlayer), bez onReady - patrz ExploratoryBlock.tsx.
-  it('SUMMARY pokazuje tekst i notatki; w podglądzie bez przycisku', async () => {
-    const user = userEvent.setup();
-    const { onSubmit } = renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
+  it('SUMMARY pokazuje tekst i notatki, bez własnego przycisku; gotowy od razu - zapis rusza „Dalej” w pasku (D-106)', () => {
+    const { onSubmit, ready } = renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { notes: [{ blockId: 'd1', text: 'Sprawdź nadawcę.' }] });
     expect(screen.getByText('Dobra robota.')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Twoje notatki' })).getByText('Sprawdź nadawcę.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Zakończ szkolenie' }));
+    expect(screen.queryByRole('button', { name: /Zakończ/ })).not.toBeInTheDocument();
+    expect(ready.current).not.toBeNull();
+    ready.current!();
     expect(onSubmit).toHaveBeenCalledWith();
   });
 
-  it('SUMMARY w podglądzie nie ma przycisku ukończenia', () => {
-    renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { review: true });
-    expect(screen.queryByRole('button', { name: 'Zakończ szkolenie' })).not.toBeInTheDocument();
+  it('SUMMARY w podglądzie nie zgłasza gotowości', () => {
+    const { ready } = renderBlock({ type: 'SUMMARY', id: 's1', text: 'Dobra robota.' }, { review: true });
+    expect(ready.current).toBeNull();
   });
 
   it('SUMMARY renderuje tekst przez wąski markdown (pogrubienie)', () => {

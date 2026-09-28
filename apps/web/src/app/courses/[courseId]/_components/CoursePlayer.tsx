@@ -32,7 +32,7 @@ import TranscriptPanel from './player/TranscriptPanel';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
 import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './player/notes';
-import { EvidenceCounter, EvidenceProvider } from './player/evidence';
+import { EvidenceCounter, EvidenceProvider, hasEvidence } from './player/evidence';
 import { DEFAULT_HINT, HintProvider, useHints } from './player/hints';
 import { useNarrationPreference } from './player/useNarrationPreference';
 import { SfxProvider } from '@/lib/sfx';
@@ -55,8 +55,10 @@ interface RenderContext {
   onProgress: (blockId: string, patch: Partial<ClientProgressBlock>) => void;
   /** Trwa podgląd wcześniejszego bloku: blok z kodem z zewnątrz (EMBEDDED_HTML) odmontowuje swój iframe zamiast go ukrywać. */
   suspended: boolean;
-  /** Tylko bloki eksploracyjne: zgłasza gotowość do "Dalej" w pasku powłoki zamiast własnego "Kontynuuj". */
+  /** Zgłasza gotowość do "Dalej" w pasku powłoki - jedynego przejścia dalej (D-106); bloki nie mają własnych przycisków dalej. */
   onReady: (submit: (() => void) | null) => void;
+  /** „Pomiń odprawę” (D-106): zmiana licznika = żywy BRIEFING przeskakuje na ostatni krok. */
+  briefingSkip: number;
   myAvatarUrl?: string | null;
   myInitials?: string;
   /** BRIEFING (D-081): zadania pod kartą sprawy, tożsamość gracza (z sesji) i zmiana kroku odprawy. */
@@ -84,6 +86,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         tasks={ctx.tasks}
         identity={ctx.identity}
         onBriefingStep={ctx.onBriefingStep}
+        briefingSkip={ctx.briefingSkip}
       />
     );
   }
@@ -96,23 +99,34 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         onSubmit={onSubmit}
         disabled={disabled}
         progress={ctx.progress}
-        onContinue={() => onSubmit()}
+        onReady={ctx.onReady}
         onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
         caseNo={ctx.caseNo}
       />
     );
   }
+  // VIDEO, DRAG_AND_DROP, EMBEDDED_HTML: po akcji w bloku (obejrzenie, posegregowanie, „Ukończyłem”) blok zgłasza gotowość,
+  // a zapis rusza „Dalej” w pasku (D-106).
   switch (block.type) {
     case 'VIDEO':
-      return <VideoBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
+      return <VideoBlock key={block.id} block={block} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />;
     case 'QUIZ':
       return <QuizBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
     case 'BRANCHING_SCENARIO':
       return <BranchingScenarioBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
     case 'DRAG_AND_DROP':
-      return <DragAndDropBlock block={block} onSubmit={() => onSubmit(undefined)} disabled={disabled} />;
+      return <DragAndDropBlock key={block.id} block={block} disabled={disabled} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />;
     case 'EMBEDDED_HTML':
-      return <EmbeddedHtmlBlock block={block} courseId={ctx.courseId} onSubmit={() => onSubmit(undefined)} disabled={disabled} suspended={ctx.suspended} />;
+      return (
+        <EmbeddedHtmlBlock
+          key={block.id}
+          block={block}
+          courseId={ctx.courseId}
+          onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)}
+          disabled={disabled}
+          suspended={ctx.suspended}
+        />
+      );
     default:
       // Nieznany typ bloku (np. backend dodał nowy typ, front się jeszcze
       // nie zaktualizował) - jawny komunikat zamiast pustego <div>.
@@ -225,6 +239,8 @@ export default function CoursePlayer({
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
   const [viewIndex, setViewIndex] = useState<number | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  // „Pomiń odprawę” (D-106): licznik kliknięć - żywy blok BRIEFING przeskakuje na ostatni krok przy każdej zmianie.
+  const [briefingSkip, setBriefingSkip] = useState(0);
   // Klucz bloku, dla którego wolno rozpocząć narrację automatycznie (po geście "Dalej", gdy poprzedni blok miał nagranie).
   const [autoPlayFor, setAutoPlayFor] = useState<string | null>(null);
   // Wyniki bloków po id: początkowe z /start, uzupełniane po każdej odpowiedzi w tej sesji (dla podglądu "Wstecz").
@@ -403,6 +419,11 @@ export default function CoursePlayer({
   }
 
   function goForward() {
+    // Wynik bloku ocenianego (D-106): „Dalej” w pasku zamiast przycisku pod wynikiem.
+    if (feedback) {
+      continueAfterFeedback();
+      return;
+    }
     if (viewIndex === null) {
       // Nie podglądamy historii: "Dalej" tu znaczy "zgłoś gotowość bieżącego bloku eksploracyjnego" (patrz onReady) -
       // ten sam zapis, który wcześniej uruchamiał wewnętrzny przycisk "Kontynuuj" bloku.
@@ -490,9 +511,8 @@ export default function CoursePlayer({
     const answered = blocks[feedback.blockIndex];
     const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
     // Mail i kolejność pokazują wynik w samym bloku (wybór gracza, trafienia, wyjaśnienia); reszta ogólny komunikat.
-    // "Dalej" (etykieta zawsze taka sama - fix/course-finish-flow zdjął dawne "Zobacz podsumowanie"): gdy TA
-    // odpowiedź kończy kurs (blok oceniany jako ostatni, D-076), state.status jest już 'COMPLETED', więc kliknięcie
-    // samo przechodzi na ekran zamknięcia (continueAfterFeedback czyści `feedback`, isSummaryMode przejmuje).
+    // Dalej jest WYŁĄCZNIE w dolnym pasku (D-106, goForward -> continueAfterFeedback): gdy TA odpowiedź kończy kurs (blok oceniany
+    // jako ostatni, D-076), state.status jest już 'COMPLETED', więc „Dalej” samo przechodzi na ekran zamknięcia.
     stage =
       answered && hasInlineResult(answered.type) && feedback.detail ? (
         <ScoredBlock
@@ -500,12 +520,11 @@ export default function CoursePlayer({
           block={answered}
           courseId={courseId}
           result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
-          onContinue={continueAfterFeedback}
-          continueLabel="Dalej"
+          live
           caseNo={caseNo}
         />
       ) : (
-        <FeedbackPanel feedback={feedback} onContinue={continueAfterFeedback} continueLabel="Dalej" />
+        <FeedbackPanel feedback={feedback} />
       );
   } else if (!currentBlock) {
     stage = <p className="text-slate-500">Nie znaleziono treści tego bloku.</p>;
@@ -541,6 +560,7 @@ export default function CoursePlayer({
               onProgress,
               suspended: reviewing,
               onReady: handleReady,
+              briefingSkip,
               myAvatarUrl,
               myInitials,
               tasks,
@@ -595,14 +615,15 @@ export default function CoursePlayer({
       : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}${briefingStep ? `-s${briefingStep.index}` : ''}`,
   });
 
-  // "Pomiń odprawę" (D-081): widoczny od razu na KAŻDYM wejściu w blok BRIEFING, także ponownym (podgląd "Wstecz" ukończonej
-  // odprawy - tam przewija dalej jak "Dalej"). Na żywym bloku to ten sam zapis co ostatni krok: blok zaliczony, a zadania
-  // się nie odhaczają (żadne nie może wskazywać bloku odprawy - walidacja treści).
+  // "Pomiń odprawę" (D-081, D-106): przeskakuje na ostatni krok odprawy (ekran startu) - odprawa jest wtedy gotowa, a dalej prowadzi
+  // wyłącznie „Dalej” w dolnym pasku (jeden przycisk dalej). Tylko na żywym bloku i przed ostatnim krokiem; w podglądzie „Wstecz”
+  // „Dalej” w pasku jest i tak aktywny.
+  const briefingLast = (currentBlock?.steps?.length ?? 1) - 1;
   const skipBriefing =
-    briefingStep !== null ? (
+    briefingStep !== null && !reviewing && briefingStep.index < briefingLast ? (
       <button
         type="button"
-        onClick={() => (reviewing ? goForward() : handleAnswer())}
+        onClick={() => setBriefingSkip((count) => count + 1)}
         disabled={submitting}
         className="inline-flex h-10 shrink-0 items-center rounded border border-slate-300 bg-white px-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-3"
       >
@@ -679,26 +700,32 @@ export default function CoursePlayer({
             onBack={isSummaryMode ? restartCourse : goBack}
             onForward={isSummaryMode ? undefined : goForward}
             canBack={isSummaryMode ? !restarting : displayedIndex > 0 && !showingFeedback && !submitting}
-            canForward={(reviewing || readySubmit !== null) && !showingFeedback && !submitting}
+            // Jeden „Dalej” (D-106): pasek jest JEDYNYM przejściem dalej w całym odtwarzaczu - bloki nie mają własnych przycisków
+            // dalej, tylko zgłaszają gotowość (onReady) po akcji w bloku (sprawdzenie, obejrzenie, podejście do drzwi, ostatni krok
+            // odprawy); wynik bloku ocenianego (feedback) - „Dalej” od razu aktywny.
+            canForward={(reviewing || showingFeedback || readySubmit !== null) && !submitting}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
-            // Na SUMMARY jedynym wyjściem jest "Zakończ sprawę" w bloku: "Dalej" z paska znika (jedno CTA zamiast dwóch).
-            // TEXT_INPUT_GUIDED po rozstrzygnięciu (done) pokazuje własny, aktywny "Dalej" pod wynikiem (onReady go nie
-            // dotyczy - patrz handleAnswer) - z tego samego powodu pasek chowa swój, zamiast trzymać drugi, nieaktywny
-            // obok niego. SCENE_HOTSPOTS z hotspotem action:'next' ("drzwi", B-086/D-071): blok nigdy nie woła onReady
-            // (SceneHotspotsBlock), więc wyjściem jest wyłącznie klik w drzwi na scenie - pasek chowa swój "Dalej" tak
-            // samo jak przy SUMMARY. Tryb podsumowania: "Wróć do biblioteki" jest na ekranie zamknięcia sprawy (obok "Następna sprawa",
-            // D-089) - pasek go chowa; "Rozpocznij od nowa" (Wstecz) zostaje w pasku.
-            hideForward={
-              isSummaryMode ||
-              (!showingFeedback &&
-              !reviewing &&
-              (currentBlock?.type === 'SUMMARY' ||
-                // BRIEFING: wyjściem jest przycisk ostatniego kroku albo "Pomiń odprawę" w pasku górnym (D-081).
-                currentBlock?.type === 'BRIEFING' ||
-                (currentBlock?.type === 'TEXT_INPUT_GUIDED' && results[keyOf(displayedIndex)]?.done === true) ||
-                (currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next'))))
+            // Etykieta zmienia się tylko tam, gdzie „Dalej” kończy sprawę (SUMMARY) albo jest wyjściem z modułu (ekran zamknięcia -
+            // prawdziwy link do biblioteki; pod raportem zostaje tylko „Następna sprawa”).
+            forwardLabel={
+              isSummaryMode
+                ? 'Wróć do biblioteki'
+                : !showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY'
+                  ? hasEvidence(evidence)
+                    ? 'Zakończ sprawę'
+                    : 'Zakończ szkolenie'
+                  : undefined
             }
-            forwardHint={showingFeedback ? 'Użyj przycisku pod wynikiem.' : !reviewing ? 'Ukończ ten blok, aby przejść dalej.' : undefined}
+            forwardHref={isSummaryMode ? '/courses' : undefined}
+            // Scena z drzwiami (D-106): wyjściem jest podejście do drzwi - podpowiedź mówi to wprost (samo „Ukończ blok” myliło, gdy
+            // wymagane przedmioty były już obejrzane).
+            forwardHint={
+              showingFeedback || reviewing || isSummaryMode
+                ? undefined
+                : currentBlock?.type === 'SCENE_HOTSPOTS' && currentBlock.hotspots?.some((hotspot) => hotspot.action === 'next')
+                  ? 'Zbadaj scenę i podejdź do drzwi, aby przejść dalej.'
+                  : 'Ukończ ten blok, aby przejść dalej.'
+            }
           />
         </HintProvider>
       </EvidenceProvider>

@@ -187,7 +187,7 @@ describe('CoursePlayer: odprawa ze scenami, postęp klikiem w przedmiot (D-084, 
     expect(screen.getByTestId('briefing-slot-name')).toBeInTheDocument();
   });
 
-  it('legitymacja: inicjały, imię z inicjałem nazwiska i numer z caseNo w slotach; klik w legitymację ("Zabierz legitymację") zapisuje blok', async () => {
+  it('legitymacja: inicjały, imię z inicjałem nazwiska i numer z caseNo w slotach; „Zabierz legitymację” to akcja - aktywuje „Dalej” w pasku, który zapisuje blok (D-106)', async () => {
     const fetchMock = stubFetch();
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="jan.p@firma.pl" contentBase="https://cdn.example" />);
     fireEvent.click(item('Odbierz telefon'));
@@ -201,8 +201,22 @@ describe('CoursePlayer: odprawa ze scenami, postęp klikiem w przedmiot (D-084, 
     expect(screen.getByTestId('briefing-slot-photo')).toHaveClass('bg-accent-soft');
     expect(screen.getByText('Legitymacja śledczego: Jan P., nr legitymacji 0915-JP.')).toHaveClass('sr-only');
     expect(progressCalls(fetchMock)).toHaveLength(0);
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeDisabled();
 
     fireEvent.click(item('Zabierz legitymację'));
+    expect(progressCalls(fetchMock)).toHaveLength(0);
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
+    await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
+  });
+
+  it('„Pomiń odprawę”, gdy ostatni krok ma przedmiot: odprawa gotowa od razu (bez akcji na legitymacji), zapis dopiero po „Dalej”', async () => {
+    const fetchMock = stubFetch();
+    render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="jan.p@firma.pl" contentBase="https://cdn.example" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
+    expect(progressCalls(fetchMock)).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
   });
 

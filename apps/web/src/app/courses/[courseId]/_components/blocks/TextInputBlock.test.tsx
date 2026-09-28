@@ -23,7 +23,7 @@ function Probe() {
   return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
 }
 
-function setup(props: { progress?: ClientProgressBlock; onContinue?: () => void; onProgress?: (p: Partial<ClientProgressBlock>) => void; readOnly?: boolean } = {}) {
+function setup(props: { progress?: ClientProgressBlock; onReady?: (ready: boolean) => void; onProgress?: (p: Partial<ClientProgressBlock>) => void; readOnly?: boolean } = {}) {
   render(
     <HintProvider resetKey="k">
       <TextInputBlock block={block} courseId="course-1" {...props} />
@@ -72,11 +72,12 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
   });
 
-  it('poprawna próba: wynik, brak pola, "Dalej" wywołuje onContinue (zapis postępu)', async () => {
+  it('poprawna próba: wynik, brak pola, blok zgłasza gotowość (zapis postępu - „Dalej” w pasku, D-106), bez własnego „Dalej”', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(attempt({ correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75 })));
-    const onContinue = vi.fn();
+    const onReady = vi.fn();
     const onProgress = vi.fn();
-    setup({ onContinue, onProgress });
+    setup({ onReady, onProgress });
+    expect(onReady).not.toHaveBeenCalled();
     type('bank.pl');
     check();
 
@@ -84,8 +85,8 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText(/Wynik: 75%/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sprawdź' })).not.toBeInTheDocument();
     expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ done: true, correct: true, points: 0.75, attempts: 2 }));
-    fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
-    expect(onContinue).toHaveBeenCalledTimes(1);
+    expect(onReady).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
   });
 
   it('reaction z treści (schemaVersion 4, reactions.result) po rozstrzygnięciu ma pierwszeństwo nad brakiem reakcji/ogólnym ostrzeżeniem', async () => {
@@ -93,7 +94,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
       'fetch',
       vi.fn().mockResolvedValue(attempt({ correct: true, attempt: 1, attemptsLeft: 2, done: true, points: 1, reaction: { pose: 'cheer', text: 'Świetnie!' } })),
     );
-    setup({ onContinue: vi.fn() });
+    setup({ onReady: vi.fn() });
     type('bank.pl');
     check();
     await screen.findByText(/Poprawna odpowiedź!/);
@@ -105,7 +106,7 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
       'fetch',
       vi.fn().mockResolvedValue(attempt({ attempt: 3, attemptsLeft: 0, done: true, points: 0, solution: { text: 'bank-0.pl', explanation: 'Zero zamiast litery o.' } })),
     );
-    setup({ onContinue: vi.fn() });
+    setup({ onReady: vi.fn() });
     type('cos');
     check();
     await screen.findByText('Wykorzystano wszystkie próby.');
@@ -194,11 +195,12 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByText('Próba 3 z 3 (pozostało: 1).')).toBeInTheDocument();
   });
 
-  it('rozstrzygnięte przed odświeżeniem (poprawnie) => wynik i "Dalej", bez pola', () => {
-    setup({ progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: true, points: 1, attempts: 1 }, onContinue: vi.fn() });
+  it('rozstrzygnięte przed odświeżeniem (poprawnie) => wynik i gotowość od razu, bez pola', () => {
+    const onReady = vi.fn();
+    setup({ progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: true, points: 1, attempts: 1 }, onReady });
     expect(screen.getByText(/Poprawna odpowiedź!/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Jaka jest prawdziwa domena w linku?')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Dalej' })).toBeInTheDocument();
+    expect(onReady).toHaveBeenCalledWith(true);
   });
 
   it('bez `frame`: zwykłe pole, bez okna przeglądarki; komunikat złej próby pod polem', async () => {
@@ -212,12 +214,14 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.queryByTestId('browser-error')).not.toBeInTheDocument();
   });
 
-  it('podgląd (readOnly): wynik i rozwiązanie, bez pola i bez "Dalej"', () => {
+  it('podgląd (readOnly): wynik i rozwiązanie, bez pola, bez "Dalej" i bez zgłaszania gotowości', () => {
+    const onReady = vi.fn();
     setup({
       readOnly: true,
       progress: { type: 'TEXT_INPUT_GUIDED', done: true, correct: false, attempts: 3, solution: { text: 'bank-0.pl' } },
-      onContinue: vi.fn(),
+      onReady,
     });
+    expect(onReady).not.toHaveBeenCalled();
     expect(screen.getByText('Wykorzystano wszystkie próby.')).toBeInTheDocument();
     expect(screen.getByText('bank-0.pl')).toBeInTheDocument();
     expect(screen.queryByLabelText('Jaka jest prawdziwa domena w linku?')).not.toBeInTheDocument();
@@ -230,7 +234,7 @@ describe('TextInputBlock: oprawa przeglądarki (frame: browser, feat/browser-evi
   function setupBrowser(props: { progress?: ClientProgressBlock; readOnly?: boolean } = {}) {
     render(
       <HintProvider resetKey="k">
-        <TextInputBlock block={browserBlock} courseId="course-1" onContinue={vi.fn()} {...props} />
+        <TextInputBlock block={browserBlock} courseId="course-1" onReady={vi.fn()} {...props} />
       </HintProvider>,
     );
   }

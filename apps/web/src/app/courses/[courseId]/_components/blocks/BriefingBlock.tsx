@@ -14,9 +14,10 @@ import BriefingSceneStep, { activeHotspot, OPEN_CASE_LABEL, singleClick } from '
 // Odprawa (BRIEFING, schemaVersion 5, D-081): ciąg kroków - maszyna do pisania z dzwoniącym telefonem, rozmowa z postacią
 // (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran startu (miejsce akcji). Krok z `image`
 // (D-084) jest sceną z grafiką (BriefingScene.tsx); bez niej - karta na jasnym tle (paper), jak dotąd. Blok nieoceniany,
-// bez dowodów: przycisk ostatniego kroku zapisuje blok (ten sam zapis co "Dalej" bloku eksploracyjnego). "Pomiń odprawę"
-// jest w górnym pasku ramki (PlayerStage.tsx, CoursePlayer) - to ten sam zapis, więc serwer nie odróżnia pominięcia od
-// przejścia, a zadania i tak nie mogą wskazywać tego bloku (walidacja treści).
+// bez dowodów: ostatni krok (ekran startu) zgłasza gotowość, a zapis rusza „Dalej” w dolnym pasku - jedyne przejście dalej (D-106;
+// ostatni krok nie ma już własnego przycisku ani aktywnego przedmiotu). "Pomiń odprawę" (górny pasek ramki, CoursePlayer) przeskakuje
+// na ostatni krok (skipSignal) - dalej tak samo „Dalej”; serwer nie odróżnia pominięcia od przejścia, a zadania i tak nie mogą wskazywać
+// tego bloku (walidacja treści).
 //
 // Dane gracza (imię, inicjały, avatar, numer odznaki) liczy WYŁĄCZNIE przeglądarka z sesji (`identity`, `myAvatarUrl`) -
 // nie ma ich w treści modułu i nie idą do progress.
@@ -239,6 +240,8 @@ export default function BriefingBlock({
   block,
   contentBase,
   onSubmit,
+  onReady,
+  skipSignal = 0,
   review = false,
   disabled = false,
   tasks = [],
@@ -249,6 +252,10 @@ export default function BriefingBlock({
   block: ContentBlock;
   contentBase: string;
   onSubmit: () => void;
+  /** Gotowość do „Dalej” w pasku (ostatni krok) - D-106. */
+  onReady?: (submit: (() => void) | null) => void;
+  /** „Pomiń odprawę”: zmiana wartości = przeskok na ostatni krok. */
+  skipSignal?: number;
   review?: boolean;
   disabled?: boolean;
   /** Zadania (cele z completeWhen) ze stanem - ten sam co w notatniku. */
@@ -275,6 +282,29 @@ export default function BriefingBlock({
   // Reakcja na ukończenie (reactions.complete) dopiero na ostatnim kroku - wcześniej odprawa nie jest "zebrana".
   useCompleteHint(block.reactions?.complete, isLast, review);
 
+  // Ostatni krok = odprawa gotowa: „Dalej” w pasku zapisuje blok (D-106). Gdy ostatni krok ma przedmiot na scenie (np. „Zabierz
+  // legitymację”), jest on AKCJĄ, nie nawigacją: odprawa jest gotowa dopiero po nim (albo po „Pomiń odprawę”).
+  const [lastTaken, setLastTaken] = useState(false);
+  const lastHasItem = isLast && !!step?.image && failedStep !== index && step !== undefined && activeHotspot(step, caseOpen) !== null;
+  const briefingReady = isLast && (!lastHasItem || lastTaken);
+  useEffect(() => {
+    if (!review) onReady?.(briefingReady ? () => onSubmit() : null);
+    // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [briefingReady, review]);
+
+  // „Pomiń odprawę”: licznik z CoursePlayer - reagujemy tylko na ZMIANĘ po zamontowaniu (licznik jest wspólny dla modułu). Pominięcie =
+  // ostatni krok od razu gotowy (bez akcji na jego przedmiocie).
+  const skipSeen = useRef(skipSignal);
+  useEffect(() => {
+    if (skipSignal === skipSeen.current) return;
+    skipSeen.current = skipSignal;
+    if (review) return;
+    setCaseOpen(false);
+    setLastTaken(true);
+    setIndex(Math.max(0, steps.length - 1));
+  }, [skipSignal, review, steps.length]);
+
   useEffect(() => {
     onStepChange?.(index, !firstRender.current);
     // Po zmianie kroku (nie przy pierwszym renderze) fokus na treść nowego kroku: przycisk, który go wywołał, znika.
@@ -286,10 +316,10 @@ export default function BriefingBlock({
 
   if (!step) return null;
 
+  // Przejście do kolejnego kroku (przedmiot kroku albo cta). Ostatni krok nie ma przejścia - dalej prowadzi „Dalej” w pasku (D-106).
   const advance = () => {
     setCaseOpen(false);
     if (!isLast) setIndex((current) => Math.min(current + 1, steps.length - 1));
-    else if (!review) onSubmit();
   };
 
   // Krok ze sceną (D-084): grafika zamiast karty na jasnym tle; bez `image` - dotychczasowy widok (moduły bez grafik odprawy).
@@ -300,12 +330,17 @@ export default function BriefingBlock({
       // Przycisk "Otwórz teczkę" zmienia się w przycisk kroku - fokus na treść kroku (akta z zadaniami), jak przy zmianie kroku.
       headingRef.current?.focus();
     };
-    // Przedmiot kroku (D-086) jest JEDYNYM przejściem dalej (bez przycisków cta). Na ostatnim kroku nie działa w podglądzie ani w
-    // trakcie zapisu - inaczej klik zapisałby blok drugi raz. Krok ze sceną, ale bez przedmiotu (treść sprzed D-086) - przycisk cta.
-    // Obraz sceny się nie wczytał (404 z CDN, zła ścieżka): przedmiot jest przezroczystym prostokątem na pustej ramce, więc wracamy
-    // do przycisku cta pod sceną (awaryjna ścieżka, code review D-086).
+    // Przedmiot kroku (D-086) przechodzi do kolejnego kroku odprawy (bez przycisków cta). Na ostatnim kroku przedmiot jest akcją
+    // (np. „Zabierz legitymację”) - oznacza odprawę jako gotową, a dalej prowadzi wyłącznie „Dalej” w dolnym pasku (D-106); po akcji
+    // i w podglądzie jest nieaktywny. Krok ze sceną, ale bez przedmiotu (treść sprzed D-086) - przycisk cta. Obraz sceny się nie
+    // wczytał (404 z CDN, zła ścieżka): przedmiot jest przezroczystym prostokątem na pustej ramce, więc wracamy do przycisku cta pod
+    // sceną (awaryjna ścieżka, code review D-086).
     const imageFailed = failedStep === index;
-    const hotspotAction = imageFailed ? undefined : closedPhase ? openCase : isLast && (review || disabled) ? undefined : advance;
+    const takeLast = () => {
+      setLastTaken(true);
+      headingRef.current?.focus();
+    };
+    const hotspotAction = imageFailed ? undefined : closedPhase ? openCase : !isLast ? advance : review || lastTaken ? undefined : takeLast;
     const hasTarget = !imageFailed && activeHotspot(step, caseOpen) !== null;
     return (
       <div data-testid="briefing-block" data-scene="true" className="flex min-h-0 w-full flex-1 flex-col rounded-card bg-paper">
@@ -343,11 +378,7 @@ export default function BriefingBlock({
           </div>
           {!hasTarget && (
             <div className="shrink-0">
-              {closedPhase ? (
-                <Cta label={OPEN_CASE_LABEL} onClick={openCase} />
-              ) : (
-                !(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />
-              )}
+              {closedPhase ? <Cta label={OPEN_CASE_LABEL} onClick={openCase} /> : !isLast && <Cta label={step.cta} onClick={advance} />}
             </div>
           )}
         </div>
@@ -383,7 +414,7 @@ export default function BriefingBlock({
           {step.kind === 'badge' && <BadgeStep identity={identity} myAvatarUrl={myAvatarUrl} caseNo={caseNo} headingId={headingId} />}
           {step.kind === 'start' && <StartStep step={step} headingId={headingId} />}
         </div>
-        {!(isLast && review) && <Cta label={step.cta} onClick={advance} disabled={disabled && isLast} />}
+        {!isLast && <Cta label={step.cta} onClick={advance} />}
       </div>
     </div>
   );

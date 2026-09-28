@@ -60,7 +60,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-// Po wyniku bloku są dwa przyciski "Dalej": nieaktywny w powłoce i aktywny pod wynikiem (pierwszy w DOM). Czekamy na wynik, potem klikamy ten spod niego.
+// Po wyniku bloku jedyny „Dalej” (D-106) jest w pasku, aktywny. Czekamy na wynik, potem go klikamy.
 async function continueFromFeedback() {
   await screen.findByText(/Poprawna odpowiedź|Niepoprawna odpowiedź/);
   fireEvent.click(screen.getAllByRole('button', { name: 'Dalej' })[0]);
@@ -205,7 +205,7 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       expect(screen.getByRole('button', { name: /Wstecz/ })).toBeEnabled();
     });
 
-    it('"Wstecz" jest nieaktywne, gdy widoczny jest wynik bloku (feedback)', async () => {
+    it('wynik bloku (feedback): "Wstecz" nieaktywne, „Dalej” w pasku aktywny - jedyny przycisk dalej (D-106)', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answerResponse()));
       render(<CoursePlayer courseId="course-1" initial={course()} />);
 
@@ -213,7 +213,9 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       await screen.findByText('Poprawna odpowiedź!');
 
       expect(screen.getByRole('button', { name: /Wstecz/ })).toBeDisabled();
-      expect(screen.getByText('Użyj przycisku pod wynikiem.')).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /Dalej/ })).toHaveLength(1);
+      expect(screen.getByRole('button', { name: /Dalej/ })).toBeEnabled();
+      expect(screen.getByTestId('player-bottombar')).toContainElement(screen.getByRole('button', { name: /Dalej/ }));
     });
 
     it('po odpowiedzi wynik jest zapisany do podglądu ("Wstecz") w tej samej sesji', async () => {

@@ -37,6 +37,9 @@ interface OverlayStackContextValue {
       zasłaniać ani łapać kliknięć, gdy nad sceną leży karta hotspotu/notatnik/transkrypcja/nagroda (hotfix
       fix/mascot-overlap, D-093). */
   anyOpen: boolean;
+  /** true, gdy otwarta jest warstwa ZASŁANIAJĄCA treść (wszystko poza 'fullscreen' - pełny ekran to tryb, nie nakładka): skrót „Dalej”
+      (D-106) nie działa, gdy nad blokiem leży zbliżenie, notatnik albo transkrypcja, ale działa w pełnym ekranie. */
+  blockingOpen: boolean;
 }
 
 const OverlayStackContext = createContext<OverlayStackContextValue | null>(null);
@@ -53,6 +56,11 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
   // efektu bez tablicy zależności w useOverlayLayer, patrz niżej) nie re-renderuje subskrybentów przy
   // niepowiązanych zmianach - tylko przy prawdziwym przejściu pusty<->niepusty.
   const [anyOpen, setAnyOpen] = useState(false);
+  const [blockingOpen, setBlockingOpen] = useState(false);
+  const sync = useCallback(() => {
+    setAnyOpen(order.current.length > 0);
+    setBlockingOpen(order.current.some((layer) => layer !== 'fullscreen'));
+  }, []);
 
   const register = useCallback((layer: OverlayLayer, entry: OverlayEntry) => {
     entries.current.set(layer, entry);
@@ -62,14 +70,14 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
     } else if (index !== -1) {
       order.current.splice(index, 1);
     }
-    setAnyOpen(order.current.length > 0);
-  }, []);
+    sync();
+  }, [sync]);
   const unregister = useCallback((layer: OverlayLayer) => {
     entries.current.delete(layer);
     const index = order.current.indexOf(layer);
     if (index !== -1) order.current.splice(index, 1);
-    setAnyOpen(order.current.length > 0);
-  }, []);
+    sync();
+  }, [sync]);
   const closeTop = useCallback(() => {
     const layer = order.current[order.current.length - 1];
     if (!layer) return false;
@@ -78,12 +86,12 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
     // wołać dokładnie jedną warstwę na jedno wywołanie, nawet gdyby coś (błąd w onClose, kolejne zdarzenie) sprawiło,
     // że closeTop() wywoła się ponownie zanim React zdąży przeliczyć stan.
     order.current.pop();
-    setAnyOpen(order.current.length > 0);
+    sync();
     entry?.onClose();
     return true;
-  }, []);
+  }, [sync]);
 
-  const value = useMemo(() => ({ register, unregister, closeTop, anyOpen }), [register, unregister, closeTop, anyOpen]);
+  const value = useMemo(() => ({ register, unregister, closeTop, anyOpen, blockingOpen }), [register, unregister, closeTop, anyOpen, blockingOpen]);
   return <OverlayStackContext.Provider value={value}>{children}</OverlayStackContext.Provider>;
 }
 
@@ -135,4 +143,10 @@ export function useCloseTopOverlay(): () => boolean {
 export function useAnyOverlayOpen(): boolean {
   const ctx = useContext(OverlayStackContext);
   return ctx?.anyOpen ?? false;
+}
+
+/** true, gdy otwarta jest warstwa zasłaniająca treść (bez pełnego ekranu) - false poza providerem. */
+export function useBlockingOverlayOpen(): boolean {
+  const ctx = useContext(OverlayStackContext);
+  return ctx?.blockingOpen ?? false;
 }

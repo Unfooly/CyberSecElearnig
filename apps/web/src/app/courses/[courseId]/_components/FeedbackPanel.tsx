@@ -6,16 +6,8 @@ import type { LastResult } from '@/lib/courses-types';
 // (correct/outcome/feedback), więc tu nie ma skąd wziąć wyjaśnienia. Stąd
 // generyczny komunikat poprawnie/niepoprawnie. Komentarz do wyniku z treści
 // (schemaVersion 4, reactions.result) - od D-093 (bez maskotki) zwykły tekst
-// pod komunikatem; poza (`pose`) z API jest ignorowana.
-export default function FeedbackPanel({
-  feedback,
-  onContinue,
-  continueLabel,
-}: {
-  feedback: LastResult;
-  onContinue: () => void;
-  continueLabel: string;
-}) {
+// pod komunikatem; poza (`pose`) z API jest ignorowana. Bez własnego przycisku dalej - „Dalej” jest w dolnym pasku (D-106).
+export default function FeedbackPanel({ feedback }: { feedback: LastResult }) {
   const isScoreable = feedback.correct !== undefined;
 
   return (
@@ -34,14 +26,6 @@ export default function FeedbackPanel({
           {feedback.reaction.text}
         </p>
       )}
-
-      <button
-        type="button"
-        onClick={onContinue}
-        className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-      >
-        {continueLabel}
-      </button>
     </div>
   );
 }

@@ -188,7 +188,7 @@ export default function BriefingSceneStep({
   typed?: { shown: string; done: boolean; finish: () => void };
   /** caseFile z closedImage: czy teczka jest już otwarta. */
   caseOpen: boolean;
-  /** Akcja hotspotu; brak = hotspot nieaktywny (ostatni krok w podglądzie albo w trakcie zapisu) i niewidoczny. */
+  /** Akcja hotspotu; brak = hotspot nieaktywny i niewidoczny (ostatni krok - dalej prowadzi „Dalej” w dolnym pasku, D-106). */
   onHotspot?: () => void;
   /** Obraz sceny (albo zamkniętej teczki) się nie wczytał lub ma złą ścieżkę - BriefingBlock wraca wtedy do przycisku cta. */
   onImageError?: () => void;

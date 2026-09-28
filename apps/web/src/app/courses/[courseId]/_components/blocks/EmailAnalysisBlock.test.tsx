@@ -37,7 +37,7 @@ const block: ContentBlock = {
 const list = () => screen.getByRole('group', { name: /Inne elementy|Kryteria/ });
 const checkbox = (name: RegExp | string) => within(list()).getByRole('checkbox', { name });
 
-function setup(overrides: { result?: Parameters<typeof EmailAnalysisBlock>[0]['result']; onContinue?: () => void; continueLabel?: string } = {}) {
+function setup(overrides: { result?: Parameters<typeof EmailAnalysisBlock>[0]['result']; live?: boolean } = {}) {
   const onSubmit = vi.fn();
   function Probe() {
     return <output data-testid="reaction">{useHints().hint ?? ''}</output>;
@@ -193,7 +193,7 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
   const result = { answer: { selected: ['k-sender', 'k-link', 'k-text'] }, detail, correct: false, points: 1 / 3 };
 
   it('oznacza trafione, fałszywe alarmy i przeoczone (tekst dla czytników), pokazuje wyjaśnienia i wynik procentowy, bez formularza', () => {
-    setup({ result, onContinue: vi.fn() });
+    setup({ result, live: true });
     const mail = screen.getByTestId('mail-client');
     expect(within(mail).getByRole('button', { name: /Bank Zaufany/ })).toHaveTextContent('(trafione)');
     expect(within(mail).getByRole('button', { name: /Kliknij tutaj/ })).toHaveTextContent('(fałszywy alarm)');
@@ -208,13 +208,13 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
   });
 
   it('w wyniku fragmenty są zablokowane (klik niczego nie zmienia)', () => {
-    setup({ result, onContinue: vi.fn() });
+    setup({ result, live: true });
     const sender = within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank Zaufany/ });
     expect(sender).toBeDisabled();
   });
 
   it('gdy brak `answer` (starszy zapis), wybór gracza odtwarza się z detail.criteria[].selected', () => {
-    setup({ result: { detail, correct: false, points: 1 / 3 }, onContinue: vi.fn() });
+    setup({ result: { detail, correct: false, points: 1 / 3 }, live: true });
     expect(screen.getAllByRole('checkbox').filter((box) => (box as HTMLInputElement).checked)).toHaveLength(3);
   });
 
@@ -228,28 +228,26 @@ describe('EmailAnalysisBlock: wynik (tryb tylko do odczytu)', () => {
     expect(within(screen.getByTestId('mail-client')).getByRole('button', { name: /pusty\.example/ })).toBeInTheDocument();
   });
 
-  it('po zapisie: przycisk dalej z etykietą z powłoki; zła odpowiedź pokazuje podpowiedź-ostrzeżenie', () => {
-    const onContinue = vi.fn();
-    setup({ result, onContinue, continueLabel: 'Zobacz podsumowanie' });
-    fireEvent.click(screen.getByRole('button', { name: 'Zobacz podsumowanie' }));
-    expect(onContinue).toHaveBeenCalled();
+  it('po zapisie (live): bez własnego przycisku dalej (D-106 - „Dalej” w pasku); zła odpowiedź pokazuje podpowiedź-ostrzeżenie', () => {
+    setup({ result, live: true });
+    expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
     expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
   });
 
-  it('podgląd (bez onContinue): bez przycisku dalej i bez podpowiedzi', () => {
+  it('podgląd (bez live): bez przycisku dalej i bez podpowiedzi', () => {
     setup({ result });
     expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
     expect(screen.getByTestId('reaction').textContent).toBe('');
   });
 
   it('poprawna odpowiedź nie wywołuje ostrzeżenia', () => {
-    setup({ result: { ...result, correct: true, points: 1 }, onContinue: vi.fn() });
+    setup({ result: { ...result, correct: true, points: 1 }, live: true });
     expect(screen.getByTestId('reaction').textContent).toBe('');
     expect(screen.getByText(/wszystkie oznaki trafione/)).toBeInTheDocument();
   });
 
   it('reaction z treści (schemaVersion 4, reactions.result) ma pierwszeństwo nad ogólnym ostrzeżeniem; poza ignorowana (D-093)', () => {
-    setup({ result: { ...result, reaction: { pose: 'thinking', text: 'Prawie się udało.' } }, onContinue: vi.fn() });
+    setup({ result: { ...result, reaction: { pose: 'thinking', text: 'Prawie się udało.' } }, live: true });
     expect(screen.getByTestId('reaction')).toHaveTextContent('Prawie się udało.');
   });
 });

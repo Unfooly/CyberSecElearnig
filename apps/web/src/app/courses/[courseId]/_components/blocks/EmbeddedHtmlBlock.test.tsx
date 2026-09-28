@@ -8,7 +8,7 @@ const block: ContentBlock = { type: 'EMBEDDED_HTML', id: 'gra' };
 const TITLE = 'Interaktywny moduł szkoleniowy';
 
 const renderBlock = (props: Partial<Parameters<typeof EmbeddedHtmlBlock>[0]> = {}) =>
-  render(<EmbeddedHtmlBlock block={block} courseId="course-1" onSubmit={vi.fn()} disabled={false} {...props} />);
+  render(<EmbeddedHtmlBlock block={block} courseId="course-1" onReady={vi.fn()} disabled={false} {...props} />);
 
 describe('EmbeddedHtmlBlock', () => {
   it('iframe z sandboxem allow-scripts i NICZYM więcej (bez allow-same-origin, allow-downloads, allow-forms, allow-popups), bez referrera', () => {
@@ -34,7 +34,7 @@ describe('EmbeddedHtmlBlock', () => {
     const { container, rerender } = renderBlock({ suspended: true });
     expect(container.querySelector('iframe')).toBeNull();
     expect(screen.queryByTitle(TITLE)).not.toBeInTheDocument();
-    rerender(<EmbeddedHtmlBlock block={block} courseId="course-1" onSubmit={vi.fn()} disabled={false} suspended={false} />);
+    rerender(<EmbeddedHtmlBlock block={block} courseId="course-1" onReady={vi.fn()} disabled={false} suspended={false} />);
     expect(container.querySelector('iframe')).not.toBeNull();
   });
 
@@ -44,11 +44,16 @@ describe('EmbeddedHtmlBlock', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('brak identyfikatora bloku');
   });
 
-  it('woła onSubmit po kliknięciu "Ukończyłem"', () => {
-    const onSubmit = vi.fn();
-    renderBlock({ onSubmit });
-    fireEvent.click(screen.getByRole('button', { name: 'Ukończyłem' }));
-    expect(onSubmit).toHaveBeenCalled();
+  it('„Ukończyłem” to przełącznik gotowości (nie nawigacja, D-106): zgłasza gotowość, drugi klik ją cofa', () => {
+    const onReady = vi.fn();
+    renderBlock({ onReady });
+    const button = screen.getByRole('button', { name: 'Ukończyłem' });
+    fireEvent.click(button);
+    expect(onReady).toHaveBeenLastCalledWith(true);
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(button);
+    expect(onReady).toHaveBeenLastCalledWith(false);
+    expect(button).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('respektuje prop disabled (np. w trakcie zapisu poprzedniego bloku)', () => {

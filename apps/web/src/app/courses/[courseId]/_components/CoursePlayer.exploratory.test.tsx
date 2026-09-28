@@ -439,7 +439,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(screen.queryByText('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.')).not.toBeInTheDocument();
   });
 
-  it('na SUMMARY "Dalej" znika z paska: jedynym wyjściem jest przycisk w bloku, Wstecz zostaje', () => {
+  it('na SUMMARY „Dalej” w pasku ma etykietę „Zakończ szkolenie” i jest od razu aktywny (D-106: jedyny przycisk dalej), Wstecz zostaje', () => {
     const summary = { type: 'SUMMARY' as const, id: 'wnioski', text: 'Koniec.' };
     render(
       <CoursePlayer
@@ -451,13 +451,15 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
         })}
       />,
     );
-    expect(screen.getByRole('button', { name: 'Zakończ szkolenie' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Zakończ szkolenie/ })).toHaveLength(1);
+    expect(screen.getByTestId('player-bottombar')).toContainElement(screen.getByRole('button', { name: /Zakończ szkolenie/ }));
+    expect(screen.getByRole('button', { name: /Zakończ szkolenie/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Ukończ ten blok, aby przejść dalej.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Wstecz/ })).toBeEnabled();
   });
 
-  it('SCENE_HOTSPOTS z "drzwi" (action: "next", B-086/D-071): "Dalej" znika z paska, wyjście idzie przez klik w scenie', async () => {
+  it('SCENE_HOTSPOTS z "drzwi" (action: "next", B-086/D-071): klik w drzwi aktywuje „Dalej” w pasku, zapis dopiero po „Dalej” (D-106)', async () => {
     const doorBlock = {
       type: 'SCENE_HOTSPOTS' as const,
       id: 'korytarz',
@@ -488,10 +490,14 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       />,
     );
 
-    // Bez wymaganych elementów poza drzwiami: drzwi są od razu gotowe, ale "Dalej" w pasku NIGDY się nie pojawia
-    // (SceneHotspotsBlock z drzwiami nigdy nie woła onReady) - jedynym wyjściem jest klik w scenie.
-    expect(screen.queryByRole('button', { name: /^Dalej$/ })).not.toBeInTheDocument();
+    // Bez wymaganych elementów poza drzwiami: drzwi są od razu gotowe; „Dalej” w pasku jest nieaktywny, dopóki gracz nie podejdzie do
+    // drzwi - klik w drzwi niczego nie zapisuje, tylko aktywuje „Dalej” (jedyne przejście dalej).
+    const next = screen.getByRole('button', { name: /^Dalej$/ });
+    expect(next).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Wyjście' }));
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/courses/course-1/progress', expect.anything());
+    expect(next).toBeEnabled();
+    fireEvent.click(next);
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -541,7 +547,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(screen.queryByTestId('hint-bar')).not.toBeInTheDocument();
   });
 
-  it('D-089: SUMMARY z `closing` - świeże ukończenie uruchamia ceremonię raportu, podpis z imienia gracza (moduł bez odprawy też pyta o imię), pasek bez "Wróć do biblioteki", "Rozpocznij od nowa" zostaje', async () => {
+  it('D-089: SUMMARY z `closing` - świeże ukończenie uruchamia ceremonię raportu, podpis z imienia gracza (moduł bez odprawy też pyta o imię); „Wróć do biblioteki” TYLKO w pasku (D-106), "Rozpocznij od nowa" zostaje', async () => {
     const summary = {
       type: 'SUMMARY' as const,
       id: 'rozwiazanie',
@@ -601,8 +607,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(closed).toHaveAttribute('data-stage', 'intro');
     expect(screen.getByTestId('case-closed-scene')).toBeInTheDocument();
     expect(screen.getByText(/Czas śledztwa: 14 min\. Zdobyte doświadczenie: 120 XP\..*Podpis prowadzącego: Anna K\.$/)).toHaveClass('sr-only');
-    expect(screen.getAllByRole('link', { name: 'Wróć do biblioteki' })).toHaveLength(1);
-    expect(within(closed).getByRole('link', { name: 'Wróć do biblioteki' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Wróć do biblioteki/ })).toHaveLength(1);
+    expect(within(screen.getByTestId('player-bottombar')).getByRole('link', { name: /Wróć do biblioteki/ })).toHaveAttribute('href', '/courses');
+    expect(within(closed).queryByRole('link', { name: /Wróć do biblioteki/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rozpocznij od nowa' })).toBeInTheDocument();
   });
 
@@ -804,8 +811,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     await screen.findByText(/Poprawna odpowiedź!/);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/courses/course-1/blocks/domena/attempt');
 
-    // Jeden "Dalej": po rozstrzygnięciu pasek powłoki chowa swój (readySubmit nie dotyczy TEXT_INPUT_GUIDED) zamiast
-    // trzymać drugi, nieaktywny obok aktywnego pod wynikiem.
+    // Jeden "Dalej" (D-106): po rozstrzygnięciu zadanie zgłasza gotowość, a jedyny „Dalej” (w pasku) zapisuje postęp.
     expect(screen.getAllByRole('button', { name: /^Dalej$/ })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -813,7 +819,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ blockIndex: 0 });
   });
 
-  it('zadanie tekstowe: przed rozstrzygnięciem (jeszcze bez własnego przycisku) "Dalej" w pasku jest nieaktywne z podpowiedzią', () => {
+  it('zadanie tekstowe: przed rozstrzygnięciem "Dalej" w pasku jest nieaktywne z podpowiedzią', () => {
     render(
       <CoursePlayer
         courseId="course-1"

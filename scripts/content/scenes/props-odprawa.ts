@@ -380,3 +380,40 @@ export const commissionerNote: PropFn<{ lines?: string[]; sign?: string }> = ({ 
 });
 
 export const ZAMKNIECIE_PROPS = { reportFolderOpen, closedStamp, commissionerNote };
+
+/* ---------- przeglądarka: historia odwiedzin (dowód) ---------- */
+
+export const browserHistory: PropFn<{ w?: number; h?: number; rows?: string[] }> = ({
+  w = 1140, h = 740,
+  rows = [
+    // 9:04, nie 10:02: Anna wyszła od biurka po telefonie o 9:05 (kubek, lektor „jest teraz u Marka”) - D-094.
+    '9:04|unfooly.com/intranet|Intranet Unfooly',
+    '!8:58|bankwektor-weryfikacja.pl/login|Weryfikacja konta firmowego',
+    '8:47|poczta.unfooly.com|Poczta — skrzynka odbiorcza',
+    '8:31|kalendarz.unfooly.com|Kalendarz zespołu',
+    '8:05|unfooly.com/stolowka|Menu stołówki',
+  ],
+}) => ({
+  w, h,
+  svg:
+    shadow(w, h, 14, 10, 14) +
+    `<rect width="${w}" height="${h}" rx="14" fill="${P.white}"/>` +
+    `<path d="M0 14 a14 14 0 0 1 14 -14 h${w - 28} a14 14 0 0 1 14 14 v36 h-${w} z" fill="#E3E4EE"/>` +
+    `<circle cx="26" cy="24" r="7" fill="${P.red}"/><circle cx="48" cy="24" r="7" fill="${P.yellow}"/><circle cx="70" cy="24" r="7" fill="${P.green}"/>` +
+    `<path d="M100 50 v-26 a10 10 0 0 1 10 -10 h220 a10 10 0 0 1 10 10 v26 z" fill="${P.white}"/>` + t(120, 36, 'Historia', 15, { bold: true }) +
+    `<rect x="140" y="62" width="${w - 180}" height="34" rx="17" fill="#F1F2F7"/>` + t(164, 85, 'historia przeglądania', 16, { fill: P.greyDark }) +
+    `<line x1="0" y1="106" x2="${w}" y2="106" stroke="#E3E4EE" stroke-width="2"/>` +
+    t(48, 160, 'Dzisiaj — wtorek', 22, { bold: true }) +
+    rows.map((r, i) => {
+      const hot = false; // bez podpowiedzi — gracz sam ma wyłapać domenę
+      const [time, url, title] = r.replace(/^!/, '').split('|');
+      const y = 190 + i * 96;
+      return (hot ? `<rect x="32" y="${y}" width="${w - 64}" height="84" rx="10" fill="#FFF1F1" stroke="${P.red}" stroke-width="2"/>` : '') +
+        t(60, y + 50, time, 20, { bold: true, fill: hot ? P.red : P.greyDark }) +
+        `<rect x="140" y="${y + 28}" width="28" height="28" rx="6" fill="${hot ? P.purple : P.wall2}"/>` +
+        t(190, y + 40, title, 19, { bold: true }) +
+        t(190, y + 66, url, 16, { fill: hot ? P.red : P.greyDark, bold: hot });
+    }).join(''),
+});
+
+export const PRZEGLADARKA_PROPS = { browserHistory };

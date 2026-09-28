@@ -183,7 +183,7 @@ try {
   await dialog().getByRole('img', { name: /hasła - nie na karteczkach/ }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
   await take();
-  step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/22'), await page.getByTestId('evidence-counter').textContent());
+  step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/23'), await page.getByTestId('evidence-counter').textContent());
   // Tablica jest opcjonalna (required:false) - drzwi są gotowe od razu; klik kończy blok (jak "Dalej").
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
   step('SCENE_HOTSPOTS (korytarz): "drzwi" kończą blok', true);
@@ -207,17 +207,24 @@ try {
   await dialog().getByRole('button', { name: 'Poczta' }).click();
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   step('SCENE_HOTSPOTS: zagnieżdżona scena "pulpit" - dowód z przedmiotu "Poczta" (media image, B-086/D-071)', true);
+  // Ikona "Internet" na pulpicie (feat/browser-evidence): zbliżenie historii przeglądarki, dowód niewymagany.
+  await dialog().getByRole('button', { name: 'Internet' }).click();
+  await dialog().getByRole('img', { name: /bankwektor-weryfikacja\.pl\/login/ }).waitFor();
+  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  // Tablica 1 + karteczka, telefon, kalendarz 3 + Poczta 1 + historia przeglądarki 1 = 6.
+  await page.waitForFunction(() => document.querySelector('[data-testid="evidence-counter"]')?.textContent?.includes('Dowody 6/23'));
+  step('SCENE_HOTSPOTS: pulpit - dowód z historii przeglądarki (Internet, 8:58 bankwektor-weryfikacja.pl/login)', true);
   await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
   await closed();
 
   await page.getByRole('button', { name: 'Drukarka' }).click();
   await take();
-  step('SCENE_HOTSPOTS: 6 dowodów w notatniku (tablica + 5 z biura, kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 6/'), await page.getByTestId('evidence-counter').textContent());
+  step('SCENE_HOTSPOTS: 7 dowodów w notatniku (tablica + 6 z biura, kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/23'), await page.getByTestId('evidence-counter').textContent());
   // Kubek nie jest dowodem: "Zabierz" = potrząśnięcie i toast, bez notatki.
   await page.getByRole('button', { name: 'Kubek z kawą' }).click();
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('status').getByText('To nie jest dowód w tej sprawie.').waitFor();
-  step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 6/'));
+  step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/'));
   await putDown();
 
   // "drzwi" (action:'next', label "Wyjście") kończy blok jak "Dalej" w pasku (który jest ukryty - patrz krok wyżej):
@@ -285,7 +292,7 @@ try {
   await row('zarejestrowana 2 dni przed atakiem').click();
   await page.getByRole('tab', { name: 'Procedury' }).click();
   step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);
-  step('DOSSIER: licznik 5 dowodów z teczki (razem 19 po korytarzu, biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 19/22'), await page.getByTestId('evidence-counter').textContent());
+  step('DOSSIER: licznik 5 dowodów z teczki (razem 20 po korytarzu, biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 20/23'), await page.getByTestId('evidence-counter').textContent());
   await nextEnabled().click();
 
   // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
@@ -347,7 +354,7 @@ try {
   // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
   await page.getByTestId('case-evidence').waitFor();
   const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SUMMARY: wszystkie 22 dowody zebrane (1+5+4+4+5+3)', summaryText.includes('Zebrane dowody: 22 z 22'), summaryText.slice(0, 120));
+  step('SUMMARY: wszystkie 23 dowody zebrane (1+6+4+4+5+3)', summaryText.includes('Zebrane dowody: 23 z 23'), summaryText.slice(0, 120));
   step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
   step(
     'SUMMARY: podpowiedź z treści ("Sprawa zamknięta..."), bez maskotki (D-093)',
@@ -367,7 +374,7 @@ try {
   step('Zamknięcie: "Wynik zadań: 100%" widoczny od razu', ((await page.getByText(/Wynik zadań:/).textContent()) ?? '').includes('100%'));
   await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
   const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
-  step('Zamknięcie: dowody 22/22 w raporcie', (await slotText('closing-evidence')) === '22/22', await slotText('closing-evidence'));
+  step('Zamknięcie: dowody 23/23 w raporcie', (await slotText('closing-evidence')) === '23/23', await slotText('closing-evidence'));
   // startedAt (nowa kolumna przypisania) -> czas sprawy w minutach; pierwsze ukończenie dolicza XP (COURSE_COMPLETION_XP >= 100).
   step('Zamknięcie: czas sprawy w minutach (startedAt z /start)', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
   step('Zamknięcie: +XP w raporcie', /^\+[1-9]\d*$/.test(await slotText('closing-xp')), await slotText('closing-xp'));

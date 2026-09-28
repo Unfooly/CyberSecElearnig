@@ -267,7 +267,7 @@
         "pose": "pointing",
         "text": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
       },
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.d43bc84d.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
       "hotspots": [
         {
@@ -301,8 +301,8 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.2f51e00d.svg",
-              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Przelewy, Internet, Faktury, Kosz; pasek zadań pokazuje 8:52.",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.837640da.svg",
+              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, Kosz; pasek zadań pokazuje 10:06.",
               "hotspots": [
                 {
                   "id": "outlook",
@@ -321,6 +321,26 @@
                   "note": {
                     "text": "Mail od „Banku Wektor” z 8:47, temat: pilna weryfikacja konta.",
                     "kind": "mail"
+                  },
+                  "required": false
+                },
+                {
+                  "id": "przegladarka",
+                  "label": "Internet",
+                  "x": 4.3,
+                  "y": 32.8,
+                  "width": 17.3,
+                  "height": 27.6,
+                  "content": "Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka.",
+                  "media": {
+                    "kind": "image",
+                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.25246137.svg",
+                    "alt": "Historia przeglądarki, dzisiaj (wtorek): 9:04 Intranet Unfooly, unfooly.com/intranet; 8:58 Weryfikacja konta firmowego, bankwektor-weryfikacja.pl/login; 8:47 Poczta — skrzynka odbiorcza, poczta.unfooly.com; 8:31 Kalendarz zespołu, kalendarz.unfooly.com; 8:05 Menu stołówki, unfooly.com/stolowka."
+                  },
+                  "evidence": true,
+                  "note": {
+                    "text": "Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiło hasło.",
+                    "kind": "item"
                   },
                   "required": false
                 }
@@ -439,7 +459,7 @@
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.73e1c727.svg",
+            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.821c2929.svg",
             "alt": "Kubek Anny z napisem Najlepsza księgowa"
           },
           "required": false
@@ -1254,6 +1274,8 @@
         "text": "Bez zaglądania do notatnika. Pamiętasz?"
       },
       "prompt": "Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).",
+      "placeholder": "wpisz adres",
+      "frame": "browser",
       "answer": {
         "regex": "^(www\\.)?bankwektor-weryfikacja\\.pl/?$",
         "caseSensitive": false

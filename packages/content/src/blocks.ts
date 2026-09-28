@@ -70,7 +70,9 @@ const embeddedHtmlSchema = z
 // w pełnoekranowym podglądzie, `audio` z WŁASNYM odtwarzaczem (plik to gotowy zasób z --assets, NIE przechodzi przez silnik
 // TTS/cues narracji - inny głos niż lektor nagrywa się i publikuje osobno). `transcript` to zwykły tekst (jak `content`), nie
 // `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
-const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, alt: text(300) }).strict();
+// imagePortrait (D-104, opcjonalne): wariant grafiki dla telefonu w pionie (kontener sceny < 0.8) - np. okno maila z dużym, zawijanym
+// tekstem zamiast poziomego zrzutu; odtwarzacz wybiera go sam, `alt` wspólny (ta sama treść).
+const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, imagePortrait: imagePathSchema.optional(), alt: text(300) }).strict();
 // image: opcjonalne zbliżenie pokazywane NAD własnym odtwarzaczem audio (zamiast natywnych <audio controls> - feedback z
 // produkcji po PR #32, PR feat/scene-overlay-fix), publikowane tym samym potokiem --assets co media.src. alt: jak w
 // imageMediaSchema - opcjonalny, bo zbliżenie bywa czysto ilustracyjne (treść i tak jest w transkrypcie), ale gdy niesie
@@ -722,6 +724,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].content',
       'hotspots[].media.kind',
       'hotspots[].media.src',
+      'hotspots[].media.imagePortrait',
       'hotspots[].media.alt',
       'hotspots[].media.audioUrl',
       'hotspots[].media.transcript',
@@ -754,6 +757,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].content',
       'hotspots[].media.scene.hotspots[].media.kind',
       'hotspots[].media.scene.hotspots[].media.src',
+      'hotspots[].media.scene.hotspots[].media.imagePortrait',
       'hotspots[].media.scene.hotspots[].media.alt',
       'hotspots[].media.scene.hotspots[].media.audioUrl',
       'hotspots[].media.scene.hotspots[].media.transcript',

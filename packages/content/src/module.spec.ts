@@ -143,6 +143,10 @@ describe('parseModule: walidacja modułu', () => {
     expectInvalid((m) => {
       media(m).src = 'https://evil.test/x.png';
     }, 'media');
+    // Wariant pionowy (D-104) - ta sama walidacja ścieżki co src (bez zewnętrznych adresów).
+    expectInvalid((m) => {
+      media(m).imagePortrait = 'https://evil.test/x.png';
+    }, 'media');
     expectInvalid((m) => {
       const audioHotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots[2];
       audioHotspot.media.audioUrl = 'audio/x.wav';

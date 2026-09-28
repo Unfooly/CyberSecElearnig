@@ -19,4 +19,6 @@ export class BadgeListItemDto {
   xpReward!: number;
   isUnlocked!: boolean;
   unlockedAt!: Date | null;
+  // Pozycja wśród przypiętych na profilu (1..3, D-112) albo null.
+  pinned!: number | null;
 }

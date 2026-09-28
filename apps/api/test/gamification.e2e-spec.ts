@@ -1,5 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -365,6 +367,117 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(orgA.body.filter((b: { isUnlocked: boolean }) => b.isUnlocked).map((b: { code: string }) => b.code)).toEqual(['first-case-closed']);
       expect(orgA.body[2].code).toBe('secret-3');
     });
+
+    // X, część 3 (D-112): przypinanie - użytkownik B ma już trzy osiągnięcia (przyznanie wsteczne wyżej). Testy poniżej zależą od
+    // stanu z poprzednich `it` (kolejność w pliku, --runInBand): osiągnięcia B i przypięcia są budowane krok po kroku.
+    const pin = (token: string, codes: string[]) =>
+      request(app.getHttpServer()).put('/gamification/pinned').set('Authorization', `Bearer ${token}`).send({ codes });
+    const board = (token: string) => request(app.getHttpServer()).get('/gamification/leaderboard').set('Authorization', `Bearer ${token}`);
+
+    it('przypięcie dwóch zdobytych -> widać je przy nazwisku w rankingu (w kolejności przypięcia) i na profilu', async () => {
+      await pin(orgBToken, ['flawless-case', 'first-case-closed']).expect(200, { pinned: ['flawless-case', 'first-case-closed'] });
+
+      const ranking = await board(orgBToken).expect(200);
+      expect(ranking.body.enabled).toBe(true);
+      const mine = ranking.body.top.find((entry: { userId: string }) => entry.userId === orgBUserId);
+      expect(mine.pinned).toEqual([
+        { code: 'flawless-case', title: 'Flawless Case', icon: 'osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' },
+        { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' },
+      ]);
+      expect(ranking.body.me).toMatchObject({ userId: orgBUserId, rank: mine.rank });
+
+      const profile = await request(app.getHttpServer()).get('/gamification/badges').set('Authorization', `Bearer ${orgBToken}`).expect(200);
+      expect(profile.body.map((b: { code: string; pinned: number | null }) => [b.code, b.pinned])).toEqual([
+        ['first-case-closed', 2],
+        ['flawless-case', 1],
+        ['curious-detective', null],
+      ]);
+    });
+
+    it('czwarta odznaka odrzucona („Możesz przypiąć maksymalnie 3 odznaki.”); lista bez zmian', async () => {
+      const response = await pin(orgBToken, ['flawless-case', 'first-case-closed', 'curious-detective', 'inny']).expect(400);
+      expect(JSON.stringify(response.body)).toContain('Możesz przypiąć maksymalnie 3 odznaki.');
+      const ranking = await board(orgBToken).expect(200);
+      expect(ranking.body.me.pinned.map((p: { code: string }) => p.code)).toEqual(['flawless-case', 'first-case-closed']);
+    });
+
+    it('niezdobyte (także tajne) i duplikaty odrzucone; zmiana kolejności i odpięcie to ten sam zapis', async () => {
+      // Użytkownik A ma tylko First Case Closed.
+      await pin(orgAUser1Token, ['flawless-case']).expect(400);
+      await pin(orgAUser1Token, ['curious-detective']).expect(400);
+      await pin(orgAUser1Token, ['first-case-closed', 'first-case-closed']).expect(400);
+      await pin(orgAUser1Token, ['first-case-closed']).expect(200);
+
+      await pin(orgBToken, ['first-case-closed', 'curious-detective', 'flawless-case']).expect(200);
+      expect((await board(orgBToken)).body.me.pinned.map((p: { code: string }) => p.code)).toEqual(['first-case-closed', 'curious-detective', 'flawless-case']);
+      await pin(orgBToken, []).expect(200, { pinned: [] });
+      expect((await board(orgBToken)).body.me.pinned).toEqual([]);
+      await pin(orgBToken, ['flawless-case', 'first-case-closed']).expect(200);
+    });
+
+    it('izolacja A/B: ranking organizacji A nie pokazuje użytkownika B ani jego przypięć; B nie widzi A', async () => {
+      const orgA = await board(orgAUser1Token).expect(200);
+      const orgB = await board(orgBToken).expect(200);
+      expect(JSON.stringify(orgA.body)).not.toContain(orgBUserId);
+      expect(JSON.stringify(orgA.body)).not.toContain('flawless-case');
+      expect(JSON.stringify(orgB.body)).not.toContain(orgAUser1Id);
+      // Wpis A ma swoje przypięcie (First Case Closed) - tylko w rankingu A.
+      expect(orgA.body.me).toMatchObject({ userId: orgAUser1Id, pinned: [expect.objectContaining({ code: 'first-case-closed' })] });
+    });
+
+    it('admin organizacji wyłącza ranking: ranking B bez wpisów, ranking A bez zmian; ponowne włączenie przywraca', async () => {
+      await request(app.getHttpServer()).patch('/organization/settings').set('Authorization', `Bearer ${orgBToken}`).send({ leaderboardEnabled: false }).expect(200);
+      expect((await board(orgBToken).expect(200)).body).toEqual({ enabled: false, top: [], me: null });
+      expect((await board(orgAUser1Token).expect(200)).body.enabled).toBe(true);
+      const settings = await request(app.getHttpServer()).get('/organization/me').set('Authorization', `Bearer ${orgBToken}`).expect(200);
+      expect(settings.body.leaderboardEnabled).toBe(false);
+      await request(app.getHttpServer()).patch('/organization/settings').set('Authorization', `Bearer ${orgBToken}`).send({ leaderboardEnabled: true }).expect(200);
+      expect((await board(orgBToken).expect(200)).body.enabled).toBe(true);
+    });
+
+    describe('rola EMPLOYEE i tajne osiągnięcie w rankingu', () => {
+      let employeeToken: string;
+      let employeeId: string;
+
+      beforeAll(async () => {
+        // orgAUser2 (EMPLOYEE, ACTIVE; fixture z beforeAll pliku) - token podpisany jak w course-catalog.e2e-spec.ts, bo konto
+        // nie ma hasła. Dostaje tajne osiągnięcie (jakby znalazł easter egga) w kontekście SWOJEJ organizacji.
+        const employee = await tenantPrisma.runInOrgContext(orgAId, (tx) => tx.user.findFirstOrThrow({ where: { email: orgAUser2Email } }));
+        employeeId = employee.id;
+        employeeToken = await app.get(JwtService).signAsync(
+          { sub: employee.id, organizationId: orgAId, role: employee.role, email: employee.email },
+          { secret: app.get(ConfigService).get<string>('JWT_SECRET'), expiresIn: '15m' },
+        );
+        const secret = await prisma.badge.findUniqueOrThrow({ where: { code: 'curious-detective' } });
+        await tenantPrisma.runInOrgContext(orgAId, (tx) => tx.userBadge.create({ data: { userId: employee.id, badgeId: secret.id, organizationId: orgAId } }));
+      });
+
+      it('EMPLOYEE przypina swoje zdobyte (happy path głównej grupy użytkowników)', async () => {
+        await pin(employeeToken, ['curious-detective']).expect(200, { pinned: ['curious-detective'] });
+      });
+
+      it('przypięte tajne: współpracownik, który go nie zdobył, widzi „Tajne osiągnięcie” bez kodu i grafiki; właściciel - pełne', async () => {
+        const forColleague = await board(orgAUser1Token).expect(200);
+        const employeeRow = forColleague.body.top.find((entry: { userId: string }) => entry.userId === employeeId);
+        expect(employeeRow.pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
+        expect(JSON.stringify(forColleague.body)).not.toMatch(/curious|ciekawsk/i);
+
+        const forOwner = await board(employeeToken).expect(200);
+        expect(forOwner.body.me.pinned).toEqual([
+          { code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' },
+        ]);
+      });
+
+      it('EMPLOYEE nie wyłączy rankingu (403), stan bez zmian', async () => {
+        await request(app.getHttpServer()).patch('/organization/settings').set('Authorization', `Bearer ${employeeToken}`).send({ leaderboardEnabled: false }).expect(403);
+        expect((await board(orgAUser1Token).expect(200)).body.enabled).toBe(true);
+      });
+    });
+
+    it('bez tokena - 401; pola spoza DTO odrzucone (userId nie da się podrzucić)', async () => {
+      await request(app.getHttpServer()).put('/gamification/pinned').send({ codes: [] }).expect(401);
+      await request(app.getHttpServer()).put('/gamification/pinned').set('Authorization', `Bearer ${orgBToken}`).send({ codes: [], userId: orgAUser1Id }).expect(400);
+    });
   });
 
   describe('Avatar', () => {
@@ -539,15 +652,20 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
 
-      const userIds = response.body.map((entry: { userId: string }) => entry.userId);
+      const userIds = response.body.top.map((entry: { userId: string }) => entry.userId);
       expect(userIds).toContain(orgAUser1Id);
 
       // orgAUser2 ma xp=500 (ustawione w fixture), więc powinien być przed
       // orgAUser1 (300 XP w tym momencie) w rankingu malejącym po XP.
-      const ranks = new Map(response.body.map((e: { userId: string; rank: number }) => [e.userId, e.rank]));
-      const user2Entry = response.body.find((e: { xp: number }) => e.xp === 500);
+      const ranks = new Map(response.body.top.map((e: { userId: string; rank: number }) => [e.userId, e.rank]));
+      const user2Entry = response.body.top.find((e: { xp: number }) => e.xp === 500);
       expect(user2Entry).toBeDefined();
       expect(ranks.get(user2Entry.userId)).toBeLessThan(ranks.get(orgAUser1Id) as number);
+      // D-112: tylko imię i inicjał nazwiska, bez działu i e-maila.
+      for (const entry of response.body.top) {
+        expect(Object.keys(entry).sort()).toEqual(['avatarUrl', 'firstName', 'lastInitial', 'level', 'pinned', 'rank', 'userId', 'xp']);
+      }
+      expect(response.body.me).toMatchObject({ userId: orgAUser1Id, rank: ranks.get(orgAUser1Id) });
     });
 
     it('izolacja tenantów: leaderboard organizacji B nigdy nie zawiera userów organizacji A', async () => {
@@ -560,8 +678,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgBToken}`)
         .expect(200);
 
-      const orgAUserIds = orgAResponse.body.map((e: { userId: string }) => e.userId);
-      const orgBUserIds = orgBResponse.body.map((e: { userId: string }) => e.userId);
+      const orgAUserIds = orgAResponse.body.top.map((e: { userId: string }) => e.userId);
+      const orgBUserIds = orgBResponse.body.top.map((e: { userId: string }) => e.userId);
 
       expect(orgAUserIds).toContain(orgAUser1Id);
       expect(orgBUserIds).not.toContain(orgAUser1Id);
@@ -574,7 +692,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .get('/gamification/leaderboard?scope=department')
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
-      expect(noDeptResponse.body).toEqual([]);
+      expect(noDeptResponse.body).toEqual({ enabled: true, top: [], me: null });
     });
 
     it('ignoruje/odrzuca zmanipulowane organizationId w query - liczy się WYŁĄCZNIE JWT', async () => {

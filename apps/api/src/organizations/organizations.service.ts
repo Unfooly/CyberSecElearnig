@@ -14,6 +14,8 @@ export interface OrganizationOverview {
   name: string;
   status: 'PENDING_DOMAIN_VERIFICATION' | 'ACTIVE';
   selfJoinEnabled: boolean;
+  // Ranking pracowników organizacji włączony (D-112).
+  leaderboardEnabled: boolean;
   // Strefa czasowa organizacji (IANA) - wg niej UI formatuje daty.
   timezone: string;
   // Dane firmy z rejestracji (tylko do odczytu w ustawieniach); null dla organizacji sprzed modelu samoobsługowego.
@@ -44,7 +46,7 @@ export class OrganizationsService {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const organization = await tx.organization.findUniqueOrThrow({
         where: { id: organizationId },
-        select: { id: true, name: true, status: true, selfJoinEnabled: true, timezone: true },
+        select: { id: true, name: true, status: true, selfJoinEnabled: true, leaderboardEnabled: true, timezone: true },
       });
       const domain = await tx.organizationDomain.findFirst({
         where: { organizationId },
@@ -88,6 +90,7 @@ export class OrganizationsService {
         data: {
           ...(dto.name !== undefined ? { name: dto.name } : {}),
           ...(dto.selfJoinEnabled !== undefined ? { selfJoinEnabled: dto.selfJoinEnabled } : {}),
+          ...(dto.leaderboardEnabled !== undefined ? { leaderboardEnabled: dto.leaderboardEnabled } : {}),
           // Nazwa kanoniczna (walidator już potwierdził, że strefa istnieje).
           ...(dto.timezone !== undefined ? { timezone: canonicalTimeZone(dto.timezone) ?? undefined } : {}),
         },

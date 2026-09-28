@@ -419,14 +419,23 @@ describe('GamificationService', () => {
       { id: 'badge-first-case', code: 'first-case-closed', title: 'First Case Closed', description: 'a', conditionText: 'Ukończ.', icon: 'p', lockedIcon: 'p-z', xpReward: 50, rank: 'MILESTONE', hidden: false, scope: 'GLOBAL' },
       { id: 'badge-curious', code: 'curious-detective', title: 'Curious Detective', description: 'c', conditionText: 'Gra.', icon: 'c', lockedIcon: 'osiagniecie-tajne-zablokowane', xpReward: 25, rank: 'SECRET', hidden: true, scope: 'MODULE' },
     ];
-    function listTx(unlocked: { badgeId: string; unlockedAt: Date }[]) {
+    function listTx(unlocked: { badgeId: string; unlockedAt: Date }[], pinnedAchievements: string[] = []) {
       return {
         badge: { findMany: jest.fn().mockResolvedValue(catalog) },
         // Przyznanie wsteczne już było (znacznik aktualny) - sync nic nie czyta.
-        user: { findUniqueOrThrow: jest.fn().mockResolvedValue({ achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION }) },
+        user: { findUniqueOrThrow: jest.fn().mockResolvedValue({ achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION, pinnedAchievements }) },
         userBadge: { findMany: jest.fn().mockResolvedValue(unlocked) },
       };
     }
+
+    it('D-112: pozycja przypięcia (1..3) tylko dla zdobytych', async () => {
+      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) =>
+        fn(listTx([{ badgeId: 'badge-first-case', unlockedAt: new Date('2026-09-20') }], ['curious-detective', 'first-case-closed'])),
+      );
+      const [first, secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1');
+      expect(first.pinned).toBe(2);
+      expect(secret.pinned).toBeNull();
+    });
 
     it('bez wycofanych odznak, w kolejności katalogu; isUnlocked wyłącznie dla zdobytych', async () => {
       const tx = listTx([{ badgeId: 'badge-first-case', unlockedAt: new Date('2026-09-20') }]);
@@ -457,6 +466,7 @@ describe('GamificationService', () => {
         xpReward: 0,
         isUnlocked: false,
         unlockedAt: null,
+        pinned: null,
       });
       expect(JSON.stringify(secret)).not.toMatch(/curious|ciekawsk|detekty|gr[aę]/i);
     });
@@ -470,76 +480,161 @@ describe('GamificationService', () => {
     });
   });
 
-  describe('getLeaderboard', () => {
-    it('filtruje WYŁĄCZNIE po organizationId przekazanym z JWT (scope=organization)', async () => {
-      const findMany = jest.fn().mockResolvedValue([]);
-      const tx = { user: { findMany, findUniqueOrThrow: jest.fn() } };
-      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
+  describe('getLeaderboard (D-112)', () => {
+    const person = (id: string, xp: number, extra: Record<string, unknown> = {}) => ({
+      id,
+      firstName: 'Anna',
+      lastName: 'Nowak',
+      email: `${id}@example.test`,
+      avatarUrl: null,
+      level: 1,
+      xp,
+      createdAt: new Date('2026-01-01'),
+      pinnedAchievements: [] as string[],
+      ...extra,
+    });
+    function boardTx(options: { enabled?: boolean; top?: ReturnType<typeof person>[]; me?: ReturnType<typeof person> | null; ahead?: number; owned?: unknown[]; departmentId?: string | null }) {
+      return {
+        organization: { findUniqueOrThrow: jest.fn().mockResolvedValue({ leaderboardEnabled: options.enabled ?? true }) },
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({ departmentId: options.departmentId ?? null }),
+          findMany: jest.fn().mockResolvedValue(options.top ?? []),
+          findFirst: jest.fn().mockResolvedValue(options.me ?? null),
+          count: jest.fn().mockResolvedValue(options.ahead ?? 0),
+        },
+        userBadge: { findMany: jest.fn().mockResolvedValue(options.owned ?? []) },
+      };
+    }
+    const run = (tx: unknown) => runInOrgContext.mockImplementation((_orgId: string, fn: (t: unknown) => unknown) => fn(tx));
 
+    it('filtruje WYŁĄCZNIE po organizationId przekazanym z JWT (scope=organization); pierwsza dziesiątka', async () => {
+      const tx = boardTx({});
+      run(tx);
       await service.getLeaderboard('org-1', 'user-1', 'organization');
-
-      expect(findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { organizationId: 'org-1' } }),
+      expect(tx.organization.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'org-1' }, select: { leaderboardEnabled: true } });
+      // Tylko konta aktywne; pełny porządek (xp, data konta, id).
+      expect(tx.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { organizationId: 'org-1', status: 'ACTIVE' },
+          orderBy: [{ xp: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 10,
+        }),
       );
     });
 
-    it('zwraca pusty ranking (nie błąd) dla scope=department, gdy requester nie ma przypisanego działu', async () => {
-      const tx = {
-        user: {
-          findUniqueOrThrow: jest.fn().mockResolvedValue({ departmentId: null }),
-          findMany: jest.fn(),
-        },
-      };
-      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
-
-      const result = await service.getLeaderboard('org-1', 'user-1', 'department');
-
-      expect(result).toEqual([]);
+    it('ranking wyłączony przez admina: bez wpisów i bez zapytań o użytkowników', async () => {
+      const tx = boardTx({ enabled: false });
+      run(tx);
+      expect(await service.getLeaderboard('org-1', 'user-1', 'organization')).toEqual({ enabled: false, top: [], me: null });
       expect(tx.user.findMany).not.toHaveBeenCalled();
     });
 
-    it('dla scope=department filtruje po departmentId REQUESTERA, nie po żadnym wejściu klienta', async () => {
-      const findMany = jest.fn().mockResolvedValue([]);
-      const tx = {
-        user: {
-          findUniqueOrThrow: jest.fn().mockResolvedValue({ departmentId: 'dept-1' }),
-          findMany,
-        },
-      };
-      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
+    it('scope=department: dział REQUESTERA; brak działu - pusty ranking (nie błąd)', async () => {
+      const noDept = boardTx({ departmentId: null });
+      run(noDept);
+      expect(await service.getLeaderboard('org-1', 'user-1', 'department')).toEqual({ enabled: true, top: [], me: null });
+      expect(noDept.user.findMany).not.toHaveBeenCalled();
 
+      const withDept = boardTx({ departmentId: 'dept-1' });
+      run(withDept);
       await service.getLeaderboard('org-1', 'user-1', 'department');
-
-      expect(findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { organizationId: 'org-1', departmentId: 'dept-1' } }),
-      );
+      expect(withDept.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: 'org-1', status: 'ACTIVE', departmentId: 'dept-1' } }));
     });
 
-    it('używa inicjałów z e-maila, gdy firstName/lastName są puste', async () => {
-      const tx = {
-        user: {
-          findMany: jest.fn().mockResolvedValue([
-            {
-              id: 'user-1',
-              firstName: null,
-              lastName: null,
-              email: 'jan.kowalski@example.test',
-              avatarUrl: null,
-              level: 1,
-              xp: 0,
-              department: null,
-            },
-          ]),
-          findUniqueOrThrow: jest.fn(),
+    it('tylko imię i inicjał nazwiska; bez imienia - inicjały z e-maila', async () => {
+      run(boardTx({ top: [person('user-1', 10), person('jan.kowalski', 5, { firstName: null, lastName: null })] }));
+      const board = await service.getLeaderboard('org-1', 'user-1', 'organization');
+      expect(board.top[0]).toMatchObject({ rank: 1, firstName: 'Anna', lastInitial: 'N' });
+      expect(board.top[0]).not.toHaveProperty('lastName');
+      expect(board.top[1]).toMatchObject({ rank: 2, firstName: 'J', lastInitial: 'K' });
+      expect(board.me).toMatchObject({ userId: 'user-1', rank: 1 });
+    });
+
+    it('pytający spoza dziesiątki: jego pozycja = liczba wyprzedzających (xp, potem data konta) + 1', async () => {
+      const me = person('user-me', 3, { createdAt: new Date('2026-02-01') });
+      const tx = boardTx({ top: [person('a', 100)], me, ahead: 14 });
+      run(tx);
+      const board = await service.getLeaderboard('org-1', 'user-me', 'organization');
+      expect(board.me).toMatchObject({ userId: 'user-me', rank: 15 });
+      expect(tx.user.count).toHaveBeenCalledWith({
+        where: {
+          organizationId: 'org-1',
+          status: 'ACTIVE',
+          OR: [
+            { xp: { gt: 3 } },
+            { xp: 3, createdAt: { lt: new Date('2026-02-01') } },
+            { xp: 3, createdAt: new Date('2026-02-01'), id: { lt: 'user-me' } },
+          ],
         },
+      });
+    });
+
+    it('przypięte przy nazwisku: tylko nadal zdobyte, w kolejności z profilu (maks. 3)', async () => {
+      const tx = boardTx({
+        top: [person('user-1', 10, { pinnedAchievements: ['flawless-case', 'curious-detective', 'first-case-closed'] })],
+        owned: [
+          { userId: 'user-1', badge: { code: 'first-case-closed', title: 'First Case Closed', icon: 'p', rank: 'MILESTONE', hidden: false } },
+          { userId: 'user-1', badge: { code: 'flawless-case', title: 'Flawless Case', icon: 'f', rank: 'LEGENDARY', hidden: false } },
+        ],
+      });
+      run(tx);
+      const board = await service.getLeaderboard('org-1', 'user-1', 'organization');
+      expect(board.top[0].pinned.map((p) => p.code)).toEqual(['flawless-case', 'first-case-closed']);
+      expect(tx.userBadge.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1' }) }));
+    });
+
+    it('przypięte TAJNE: po nazwie widzi je tylko oglądający, który sam je zdobył; reszta - „Tajne osiągnięcie” bez kodu i grafiki', async () => {
+      const secret = { code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET', hidden: true };
+      const top = [person('owner', 50, { pinnedAchievements: ['curious-detective'] }), person('viewer', 10), person('fan', 5)];
+      const owned = [
+        { userId: 'owner', badge: secret },
+        { userId: 'fan', badge: secret },
+      ];
+      run(boardTx({ top, owned }));
+      const forViewer = await service.getLeaderboard('org-1', 'viewer', 'organization');
+      expect(forViewer.top[0].pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
+      expect(JSON.stringify(forViewer)).not.toMatch(/curious|ciekawsk/i);
+
+      run(boardTx({ top, owned }));
+      const forFan = await service.getLeaderboard('org-1', 'fan', 'organization');
+      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' }]);
+    });
+  });
+
+  describe('setPinnedAchievements (D-112): walidacja przypięć', () => {
+    function pinTx(ownedCodes: string[]) {
+      return {
+        userBadge: {
+          findMany: jest.fn(({ where }: { where: { badge: { code: { in: string[] } } } }) =>
+            where.badge.code.in.filter((code) => ownedCodes.includes(code)).map((code) => ({ badge: { code } })),
+          ),
+        },
+        user: { update: jest.fn().mockResolvedValue({}) },
       };
-      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
+    }
 
-      const [entry] = await service.getLeaderboard('org-1', 'user-1', 'organization');
+    it('zapisuje zdobyte w podanej kolejności (przypięcie, zmiana kolejności, odpięcie to ten sam zapis)', async () => {
+      const tx = pinTx(['first-case-closed', 'flawless-case']);
+      runInOrgContext.mockImplementation((_orgId: string, fn: (t: unknown) => unknown) => fn(tx));
+      expect(await service.setPinnedAchievements('org-1', 'user-1', ['flawless-case', 'first-case-closed'])).toEqual({ pinned: ['flawless-case', 'first-case-closed'] });
+      expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { pinnedAchievements: ['flawless-case', 'first-case-closed'] } });
+      expect(tx.userBadge.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1', userId: 'user-1' }) }));
+      expect(await service.setPinnedAchievements('org-1', 'user-1', [])).toEqual({ pinned: [] });
+    });
 
-      expect(entry.firstName).toBe('J');
-      expect(entry.lastName).toBe('K');
-      expect(entry.rank).toBe(1);
+    it('czwarta odznaka: „Możesz przypiąć maksymalnie 3 odznaki.” (bez zapisu)', async () => {
+      await expect(service.setPinnedAchievements('org-1', 'user-1', ['a', 'b', 'c', 'd'])).rejects.toThrow('Możesz przypiąć maksymalnie 3 odznaki.');
+      expect(runInOrgContext).not.toHaveBeenCalled();
+    });
+
+    it('duplikat i niezdobyte / nieistniejące / cudze - odrzucone, bez zapisu', async () => {
+      await expect(service.setPinnedAchievements('org-1', 'user-1', ['flawless-case', 'flawless-case'])).rejects.toThrow('Osiągnięcie jest już przypięte.');
+      const tx = pinTx(['first-case-closed']);
+      runInOrgContext.mockImplementation((_orgId: string, fn: (t: unknown) => unknown) => fn(tx));
+      for (const codes of [['flawless-case'], ['first-case-closed', 'nie-ma-takiego']]) {
+        await expect(service.setPinnedAchievements('org-1', 'user-1', codes)).rejects.toThrow('Możesz przypiąć tylko zdobyte osiągnięcia.');
+      }
+      expect(tx.user.update).not.toHaveBeenCalled();
     });
   });
 });

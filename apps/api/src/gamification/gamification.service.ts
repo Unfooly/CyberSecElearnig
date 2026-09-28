@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { AssignmentStatus, Badge, Prisma } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { AssignmentStatus, Badge, Prisma, UserStatus } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { evidenceSummary } from '../courses/client-view';
 import { toResolved } from '../courses/course-versions';
@@ -14,11 +14,14 @@ import {
   COURSE_COMPLETION_XP,
   LEADERBOARD_LIMIT,
   LeaderboardScope,
+  MAX_PINNED_ACHIEVEMENTS,
   MODULE_1_SLUG,
+  PIN_LIMIT_MESSAGE,
+  SECRET_LOCKED_ICON,
   PERFECT_SCORE_XP,
 } from './gamification.constants';
 import { BadgeListItemDto } from './dto/badge-list-item.dto';
-import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
+import { LeaderboardDto, LeaderboardEntryDto, PinnedAchievementDto } from './dto/leaderboard-entry.dto';
 import { UserGamificationSummaryDto } from './dto/user-gamification-summary.dto';
 
 /** Data z postępu albo null (brak, śmieci albo data „zero” z formatu sprzed silnika - readProgress wstawia wtedy 1970). */
@@ -167,15 +170,25 @@ export class GamificationService {
   async listBadgesWithUnlockStatus(organizationId: string, userId: string): Promise<BadgeListItemDto[]> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       await this.syncAchievements(tx, organizationId, userId);
-      const [badges, unlockedRows] = await Promise.all([
+      const [badges, unlockedRows, user] = await Promise.all([
         tx.badge.findMany({ where: { retiredAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
         tx.userBadge.findMany({ where: { organizationId, userId } }),
+        tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pinnedAchievements: true } }),
       ]);
       const unlockedByBadgeId = new Map(unlockedRows.map((row) => [row.badgeId, row.unlockedAt]));
 
       return badges.map((badge, index): BadgeListItemDto => {
         const unlockedAt = unlockedByBadgeId.get(badge.id) ?? null;
-        const common = { rank: badge.rank, hidden: badge.hidden, xpReward: badge.xpReward, isUnlocked: unlockedAt !== null, unlockedAt };
+        // Pozycja na profilu (1..3) - tylko zdobyte (zapis i tak przyjmuje wyłącznie zdobyte).
+        const pinIndex = unlockedAt === null ? -1 : user.pinnedAchievements.indexOf(badge.code);
+        const common = {
+          rank: badge.rank,
+          hidden: badge.hidden,
+          xpReward: badge.xpReward,
+          isUnlocked: unlockedAt !== null,
+          unlockedAt,
+          pinned: pinIndex >= 0 ? pinIndex + 1 : null,
+        };
         if (badge.hidden && unlockedAt === null) {
           return {
             ...common,
@@ -323,12 +336,13 @@ export class GamificationService {
    * dodatkowo po dziale REQUESTERA (nie przyjmuje departmentId od klienta),
    * a brak działu daje pusty ranking, nie błąd.
    */
-  async getLeaderboard(
-    organizationId: string,
-    userId: string,
-    scope: LeaderboardScope,
-  ): Promise<LeaderboardEntryDto[]> {
+  async getLeaderboard(organizationId: string, userId: string, scope: LeaderboardScope): Promise<LeaderboardDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // Ranking wyłączony przez admina organizacji (D-112): bez wpisów, klient chowa sekcję. `organizations` nie ma RLS - jawny
+      // warunek na id organizacji z JWT.
+      const organization = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { leaderboardEnabled: true } });
+      if (!organization.leaderboardEnabled) return { enabled: false, top: [], me: null };
+
       let departmentId: string | undefined;
       if (scope === 'department') {
         const requester = await tx.user.findUniqueOrThrow({
@@ -336,43 +350,139 @@ export class GamificationService {
           select: { departmentId: true },
         });
         if (!requester.departmentId) {
-          return [];
+          return { enabled: true, top: [], me: null };
         }
         departmentId = requester.departmentId;
       }
+      // Tylko konta AKTYWNE: zaproszeni/zaimportowani, którzy nigdy nie weszli na platformę, nie trafiają do rankingu (minimum
+      // danych, D-112).
+      const scopeWhere = { organizationId, status: UserStatus.ACTIVE, ...(departmentId ? { departmentId } : {}) };
+      const select = {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        avatarUrl: true,
+        level: true,
+        xp: true,
+        createdAt: true,
+        pinnedAchievements: true,
+      } as const;
 
       const topUsers = await tx.user.findMany({
-        where: { organizationId, ...(departmentId ? { departmentId } : {}) },
+        where: scopeWhere,
         // xp desc jako główne kryterium, createdAt asc jako deterministyczny
         // tie-break (bez tego kolejność remisów byłaby niezdefiniowana i
         // migotałaby między odświeżeniami).
-        orderBy: [{ xp: 'desc' }, { createdAt: 'asc' }],
+        // + id asc: pełny, jednoznaczny porządek także przy tym samym XP i dacie konta (import w jednej milisekundzie) - ten sam
+        // porządek liczy pozycję pytającego niżej.
+        orderBy: [{ xp: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
         take: LEADERBOARD_LIMIT,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          avatarUrl: true,
-          level: true,
-          xp: true,
-          department: { select: { name: true } },
-        },
+        select,
       });
 
-      return topUsers.map((user, index) => {
-        const fallback = user.firstName && user.lastName ? null : initialsFromEmail(user.email);
+      // Pozycja pytającego spoza dziesiątki: liczba wyprzedzających w tym samym porządku (xp desc, createdAt asc, id asc) + 1.
+      let meUser = topUsers.find((user) => user.id === userId) ?? null;
+      let meRank = meUser ? topUsers.indexOf(meUser) + 1 : 0;
+      if (!meUser) {
+        meUser = await tx.user.findFirst({ where: { ...scopeWhere, id: userId }, select });
+        if (meUser) {
+          const ahead = await tx.user.count({
+            where: {
+              ...scopeWhere,
+              OR: [
+                { xp: { gt: meUser.xp } },
+                { xp: meUser.xp, createdAt: { lt: meUser.createdAt } },
+                { xp: meUser.xp, createdAt: meUser.createdAt, id: { lt: meUser.id } },
+              ],
+            },
+          });
+          meRank = ahead + 1;
+        }
+      }
+
+      const listed = meUser && !topUsers.includes(meUser) ? [...topUsers, meUser] : topUsers;
+      const pinnedByUser = await this.pinnedFor(tx, organizationId, userId, listed);
+      const toEntry = (user: (typeof listed)[number], rank: number): LeaderboardEntryDto => {
+        const fallback = initialsFromEmail(user.email);
         return {
-          rank: index + 1,
+          rank,
           userId: user.id,
-          firstName: user.firstName ?? fallback!.firstName,
-          lastName: user.lastName ?? fallback!.lastName,
+          firstName: user.firstName || fallback.firstName,
+          // Tylko inicjał nazwiska (D-112): ranking widzą wszyscy pracownicy organizacji.
+          // Array.from: pierwszy znak Unicode (nie pół pary zastępczej).
+          lastInitial: (Array.from(user.lastName?.trim() ?? '')[0] || fallback.lastName).toLocaleUpperCase('pl-PL'),
           avatarUrl: user.avatarUrl,
           level: user.level,
           xp: user.xp,
-          departmentName: user.department?.name ?? null,
+          pinned: pinnedByUser.get(user.id) ?? [],
         };
-      });
+      };
+
+      return {
+        enabled: true,
+        top: topUsers.map((user, index) => toEntry(user, index + 1)),
+        me: meUser ? toEntry(meUser, meRank) : null,
+      };
+    });
+  }
+
+  /**
+   * Przypięte osiągnięcia do pokazania przy nazwiskach (ranking): wyłącznie te, które dany użytkownik NADAL ma zdobyte
+   * (`user_badges` tej organizacji) i które nie są wycofane - kolejność z profilu. Tajne (`hidden`) widzi po nazwie tylko
+   * oglądający, który sam je zdobył; pozostali dostają zastępczą miniaturę „Tajne osiągnięcie” bez kodu, nazwy i grafiki
+   * (niezmiennik tajności z D-111, pkt 4).
+   */
+  private async pinnedFor(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    viewerId: string,
+    users: { id: string; pinnedAchievements: string[] }[],
+  ): Promise<Map<string, PinnedAchievementDto[]>> {
+    const withPins = users.filter((user) => user.pinnedAchievements.length > 0);
+    const result = new Map<string, PinnedAchievementDto[]>();
+    if (withPins.length === 0) return result;
+    const ids = [...new Set([...withPins.map((user) => user.id), viewerId])];
+    const owned = await tx.userBadge.findMany({
+      where: { organizationId, userId: { in: ids }, badge: { retiredAt: null } },
+      select: { userId: true, badge: { select: { code: true, title: true, icon: true, rank: true, hidden: true } } },
+    });
+    const viewerOwns = new Set(owned.filter((row) => row.userId === viewerId).map((row) => row.badge.code));
+    for (const user of withPins) {
+      const mine = new Map(owned.filter((row) => row.userId === user.id).map((row) => [row.badge.code, row.badge]));
+      result.set(
+        user.id,
+        user.pinnedAchievements.flatMap((code, index): PinnedAchievementDto[] => {
+          const badge = mine.get(code);
+          if (!badge) return [];
+          if (badge.hidden && !viewerOwns.has(badge.code)) {
+            return [{ code: `secret-${index + 1}`, title: 'Tajne osiągnięcie', icon: SECRET_LOCKED_ICON, rank: badge.rank }];
+          }
+          return [{ code: badge.code, title: badge.title, icon: badge.icon, rank: badge.rank }];
+        }),
+      );
+    }
+    return result;
+  }
+
+  /**
+   * Przypięte osiągnięcia użytkownika (D-112): zastępuje całą listę (przypięcie, odpięcie i zmiana kolejności to ten sam zapis).
+   * Wyłącznie własne, ZDOBYTE i niewycofane osiągnięcia tej organizacji, bez duplikatów, maks. 3. userId/organizationId z JWT.
+   */
+  async setPinnedAchievements(organizationId: string, userId: string, codes: string[]): Promise<{ pinned: string[] }> {
+    if (codes.length > MAX_PINNED_ACHIEVEMENTS) throw new BadRequestException(PIN_LIMIT_MESSAGE);
+    if (new Set(codes).size !== codes.length) throw new BadRequestException('Osiągnięcie jest już przypięte.');
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      if (codes.length > 0) {
+        const owned = await tx.userBadge.findMany({
+          where: { organizationId, userId, badge: { code: { in: codes }, retiredAt: null } },
+          select: { badge: { select: { code: true } } },
+        });
+        // Ten sam komunikat dla nieistniejącego, niezdobytego i tajnego niezdobytego kodu - bez podpowiedzi, co istnieje.
+        if (owned.length !== codes.length) throw new BadRequestException('Możesz przypiąć tylko zdobyte osiągnięcia.');
+      }
+      await tx.user.update({ where: { id: userId }, data: { pinnedAchievements: codes } });
+      return { pinned: codes };
     });
   }
 

@@ -8,12 +8,16 @@ export const SECRET_MARKER = 'SEKRET';
 // przez fullModule()) - jej testy sidecar/cues zakładają, że każda narracja tego modułu NAPRAWDĘ generuje cues z TTS
 // (spokenText, gdy jest, celowo je pomija - patrz pipeline.ts). spokenText do testów klasyfikacji dokłada WYŁĄCZNIE
 // leakProbeBlocks() niżej (osobna funkcja, ten sam wzorzec co nadpisanie reactions.result).
+// Tekst narracji bez cyfr (walidacja modułu, D-109: lektor nie czyta cyfr) - cyfry z nazwy słownie („odprawa-1” -> „odprawa-jeden”);
+// ścieżka pliku zostaje z nazwą.
+const DIGIT_WORDS = ['zero', 'jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem', 'osiem', 'dziewięć'];
+const spokenName = (name: string) => name.replace(/\d/g, (digit) => DIGIT_WORDS[Number(digit)]);
 const audio = (name: string) => ({
-  text: `Narracja ${name}. Drugie zdanie.`,
+  text: `Narracja ${spokenName(name)}. Drugie zdanie.`,
   audioUrl: `audio/${name}.mp3`,
   durationMs: 1200,
   cues: [
-    { text: `Narracja ${name}.`, startMs: 0 },
+    { text: `Narracja ${spokenName(name)}.`, startMs: 0 },
     { text: 'Drugie zdanie.', startMs: 600 },
   ],
 });

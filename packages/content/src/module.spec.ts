@@ -58,6 +58,49 @@ describe('parseModule: walidacja modułu', () => {
     }, 'powtórzony identyfikator bloku');
   });
 
+  // D-109 (fix/tts-numbers): lektor nie czyta cyfr - tekst dla głosu (spokenText, a bez niego text) każdej nagrywanej narracji bez cyfr.
+  describe('cyfry w tekście czytanym przez lektora', () => {
+    it('narracja bloku z godziną w text i bez spokenText - błąd', () => {
+      expectInvalid((m) => {
+        m.blocks[0].narration.text = 'Przypomnij sobie wtorek, 8:47.';
+      }, 'narration: cyfry w tekście czytanym przez lektora');
+    });
+
+    it('spokenText ze słownym zapisem - poprawne (napis zostaje z cyframi)', () => {
+      const module = fullModuleForTests();
+      module.blocks[0].narration.text = 'Przypomnij sobie wtorek, 8:47.';
+      module.blocks[0].narration.spokenText = 'Przypomnij sobie wtorek, ósmą czterdzieści siedem.';
+      expect(() => parseModule(module)).not.toThrow();
+    });
+
+    it('cyfra w samym spokenText - błąd', () => {
+      expectInvalid((m) => {
+        m.blocks[0].narration.spokenText = 'O 9:03 zalogował się oszust.';
+      }, 'narration: cyfry w tekście czytanym przez lektora');
+    });
+
+    it('nagrywane miejsca: kroki odprawy, odpowiedzi rozmowy, media hotspotu - błąd', () => {
+      expectInvalid((m) => {
+        blockOf(m, 'BRIEFING').steps[0].narration.text = 'Wtorek, 9:40.';
+      }, 'steps[0].narration: cyfry');
+      expectInvalid((m) => {
+        blockOf(m, 'DIALOGUE').questions[0].answerNarration.text = 'O 9:05 zadzwonił.';
+      }, 'questions[0].answerNarration: cyfry');
+      expectInvalid((m) => {
+        // media.narration (D-082): nagranie z potoku zamiast pliku - tu tylko tekst, reszta błędów jest nieistotna dla tej reguły.
+        const hotspot = blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'audio');
+        hotspot.media.narration = { text: 'Przelew 14 000 zł.' };
+      }, 'media.narration: cyfry');
+    });
+
+    it('podpowiedzi (hints[].narration) są tylko tekstem, bez nagrań - cyfry dozwolone', () => {
+      const module = fullModuleForTests();
+      const withHints = module.blocks.find((b) => Array.isArray(b.hints) && b.hints[0]?.narration);
+      withHints!.hints[0].narration.text = 'Spójrz na godzinę 8:58.';
+      expect(() => parseModule(module)).not.toThrow();
+    });
+  });
+
   it.each(['constructor', '__proto__', 'a b', '', '-x', 'x'.repeat(65)])('odrzuca niebezpieczny/niepoprawny identyfikator %p', (id) => {
     expectInvalid((m) => {
       m.blocks[0].id = id;

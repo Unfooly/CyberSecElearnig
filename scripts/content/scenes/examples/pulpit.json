@@ -29,7 +29,8 @@
         "icon": "browser",
         "label": "Internet"
       },
-      "scale": 1.6
+      "scale": 1.6,
+      "hotspot": true
     },
     {
       "id": "faktury",
@@ -71,7 +72,7 @@
       "y": 744,
       "params": {
         "w": 1200,
-        "clock": "8:52",
+        "clock": "10:06",
         "date": "wtorek"
       }
     }

@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { ODPRAWA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -22,13 +22,14 @@ const build = (name: string) => composeScene(JSON.parse(readFileSync(join(exampl
 const svgPath = (name: string) => (existsSync(join(assets, 'scenes', `${name}.svg`)) ? join(assets, 'scenes', `${name}.svg`) : join(assets, `${name}.svg`));
 
 describe('sceny modułu 1 z kompozytora', () => {
-  it('klocki odprawy i zamknięcia sprawy są zarejestrowane w PROPS kompozytora', () => {
+  it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
     for (const name of Object.keys(ODPRAWA_PROPS)) expect(PROPS[name], name).toBe(ODPRAWA_PROPS[name as keyof typeof ODPRAWA_PROPS]);
     for (const name of Object.keys(ZAMKNIECIE_PROPS)) expect(PROPS[name], name).toBe(ZAMKNIECIE_PROPS[name as keyof typeof ZAMKNIECIE_PROPS]);
+    for (const name of Object.keys(PRZEGLADARKA_PROPS)) expect(PROPS[name], name).toBe(PRZEGLADARKA_PROPS[name as keyof typeof PRZEGLADARKA_PROPS]);
   });
 
-  it('każde źródło ma swoją scenę w module (10 scen modułu z zbliżeniem tablicy, 5 odprawy, 3 zamknięcia sprawy, miniatura)', () => {
-    expect(scenes).toHaveLength(19);
+  it('każde źródło ma swoją scenę w module (11 scen modułu z zbliżeniem tablicy i historią przeglądarki, 5 odprawy, 3 zamknięcia sprawy, miniatura)', () => {
+    expect(scenes).toHaveLength(20);
     for (const name of scenes) expect(existsSync(svgPath(name)), name).toBe(true);
   });
 
@@ -67,6 +68,20 @@ describe('sceny modułu 1 z kompozytora', () => {
       name: hotspot('odprawa-legitymacja', 'slot-imie'),
       number: hotspot('odprawa-legitymacja', 'slot-numer'),
     });
+  });
+
+  it('module.json (scena pulpitu w monitorze) ma te same współrzędne hotspotów co pulpit.hotspots.json; „outlook” bez zmian', () => {
+    const moduleJson = JSON.parse(readFileSync(join(assets, '..', 'module.json'), 'utf8'));
+    const office = moduleJson.blocks.find((block: { id: string }) => block.id === 'biuro-anny');
+    const desktop = office.hotspots.find((h: { id: string }) => h.id === 'monitor').media.scene.hotspots as Record<string, unknown>[];
+    const built = JSON.parse(readFileSync(join(examples, 'pulpit.hotspots.json'), 'utf8')) as Record<string, number | string>[];
+    // Pozycja ikony Poczty sprzed dodania przeglądarki - nowa ikona nie może jej przesunąć.
+    expect(built.find((h) => h.id === 'outlook')).toEqual({ id: 'outlook', x: 4.2, y: 5, w: 17.7, h: 28.1 });
+    for (const b of built) {
+      const inModule = desktop.find((h) => h.id === b.id);
+      expect(inModule, String(b.id)).toBeDefined();
+      expect({ x: inModule!.x, y: inModule!.y, w: inModule!.width, h: inModule!.height }, String(b.id)).toEqual({ x: b.x, y: b.y, w: b.w, h: b.h });
+    }
   });
 
   it('SVG scen nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych', () => {

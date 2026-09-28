@@ -1,5 +1,5 @@
 import { P } from './palette.js';
-import { ODPRAWA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { ODPRAWA_PROPS, PRZEGLADARKA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -213,18 +213,28 @@ export const printer: PropFn<{ paper?: boolean; paperText?: string; ready?: bool
   };
 };
 
-export const mug: PropFn<{ label?: string[]; color?: string; steam?: boolean }> = ({ label = [], color = P.teal, steam = false }) => ({
-  w: 80, h: 62,
-  svg:
-    (steam
-      ? `<g class="a-steam"><path d="M18 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>` +
-        `<g class="a-steam d1"><path d="M33 -10 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>` +
-        `<g class="a-steam d2"><path d="M48 -8 c-6 -8 6 -14 0 -22" fill="none" stroke="${P.grey}" stroke-width="3" stroke-linecap="round" opacity="0.8"/></g>`
-      : '') +
-    `<rect x="52" y="15" width="26" height="30" rx="10" fill="none" stroke="${esc(color)}" stroke-width="7"/><rect width="66" height="60" rx="8" fill="${esc(color)}"/>` +
-    `<ellipse cx="33" cy="0" rx="33" ry="8" fill="${P.ink}" opacity="0.25"/>` +
-    label.slice(0, 2).map((l, i) => text(33, 35 + i * 11, l, 8, { fill: P.white, bold: true, anchor: 'middle' })).join(''),
-});
+export const mug: PropFn<{ label?: string[]; color?: string; steam?: boolean }> = ({ label = [], color = P.teal, steam = false }) => {
+  const c = esc(color);
+  const wisp = (x: number, cls: string) =>
+    `<g class="${cls}"><path d="M${x} 2 c-5 -6 5 -10 0 -16 c-5 -6 5 -10 0 -16" fill="none" stroke="${P.greyDark}" stroke-width="2.4" stroke-linecap="round" opacity="0.45"/></g>`;
+  return {
+    w: 80, h: 62,
+    svg:
+      `<ellipse cx="34" cy="61" rx="30" ry="3" fill="${P.ink}" opacity="0.15"/>` +
+      /* ucho */
+      `<path d="M62 18 c15 0 15 26 -1 26" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/>` +
+      `<path d="M62 18 c15 0 15 26 -1 26" fill="none" stroke="${P.ink}" stroke-width="7" stroke-linecap="round" opacity="0.12"/>` +
+      /* bryła lekko zwężana ku dołowi */
+      `<path d="M2 8 h64 l-3 44 a8 8 0 0 1 -8 8 h-42 a8 8 0 0 1 -8 -8 z" fill="${c}"/>` +
+      `<path d="M9 14 l2 36" stroke="${P.white}" stroke-width="4" stroke-linecap="round" opacity="0.22"/>` +
+      /* brzeg i kawa */
+      `<ellipse cx="34" cy="8" rx="32" ry="6" fill="${c}"/>` +
+      `<ellipse cx="34" cy="8" rx="27" ry="4.2" fill="#6B4A2E"/>` +
+      `<ellipse cx="28" cy="7" rx="8" ry="1.6" fill="${P.white}" opacity="0.25"/>` +
+      label.slice(0, 2).map((l, i) => text(33, 34 + i * 11, l, 8, { fill: P.white, bold: true, anchor: 'middle' })).join('') +
+      (steam ? wisp(24, 'a-steam') + wisp(34, 'a-steam d1') + wisp(44, 'a-steam d2') : ''),
+  };
+};
 
 export const keyboardMouse: PropFn<Record<string, never>> = () => ({
   w: 370, h: 26,
@@ -387,4 +397,6 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...ODPRAWA_PROPS,
   // Zamknięcie sprawy (SUMMARY.closing, D-089) - raport w teczce, pieczęć, liścik komisarza.
   ...ZAMKNIECIE_PROPS,
+  // Przeglądarka Anny: historia odwiedzin (dowód z pulpitu, feat/browser-evidence).
+  ...PRZEGLADARKA_PROPS,
 };

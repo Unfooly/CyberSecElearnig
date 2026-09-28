@@ -1,0 +1,16 @@
+{
+  "width": 1200,
+  "height": 800,
+  "background": {
+    "flat": true,
+    "wall": "#EEF0FA"
+  },
+  "items": [
+    {
+      "id": "historia",
+      "prop": "browserHistory",
+      "x": 30,
+      "y": 28
+    }
+  ]
+}

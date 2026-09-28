@@ -17,8 +17,8 @@ pozy maskotki. Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, nie im
   2. „Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS."
   3. „Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach."
   4. „Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
-- dowody łącznie: **22** (korytarz: 1 - tablica ogłoszeń, opcjonalny; Biuro Anny: 5 - karteczka, telefon, kalendarz, drukarka,
-  outlook w pulpicie; rozmowa z Anną: 4;
+- dowody łącznie: **23** (korytarz: 1 - tablica ogłoszeń, opcjonalny; Biuro Anny: 6 - karteczka, telefon, kalendarz, drukarka,
+  outlook i historia przeglądarki w pulpicie; rozmowa z Anną: 4;
   analiza maila: 4 - domena, link, zalacznik, odliczanie; teczka sprawy: 5 - nowy odbiorca 9:04, Bukareszt 9:03, kod SMS
   z Bukaresztu 9:06, nagłówki maila z Bukaresztu, WHOIS; rozmowa z Markiem: 3)
 - oś czasu (źródło prawdy - rozmowa z Markiem, wydruk przelewu i rekonstrukcja): mail 8:47 → Anna wpisuje hasło 8:58 →
@@ -128,7 +128,7 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 - imageAlt: „Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe."
 - **Lektor:** „Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu."
 - **Fooli (poza: pointing):** „Rozejrzyj się. Kliknij to, co wygląda podejrzanie."
-- ukończenie: wymagane 4 z 6 hotspotów-dowodów (oznaczone ✱); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
+- ukończenie: wymagane 4 z 6 hotspotów-dowodów najwyższego poziomu, oznaczone ✱ (plus 2 niewymagane dowody w pulpicie); `drzwi` (action:'next') wykluczone z tej puli (B-086/D-071) — nieaktywne (przygaszone, `aria-disabled` + tooltip „Zbierz najpierw dowody: X/Y") dopóki wymagane nie zebrane, potem wyjście z biura = koniec bloku.
 - **Reguła tej sceny (feedback z produkcji, `feat/scene-overlay-fix`): każdy hotspot ma powiększenie (media).** Wyjątek: `drzwi`
   (action:'next') nigdy nie otwiera zbliżenia.
 - **Zbliżenie przedmiotu (D-086, feat/scene-zoom):** klik = kamera przybliża scenę do przedmiotu, crossfade do grafiki (bez karty i
@@ -153,20 +153,22 @@ przeniesione poniżej; powitanie Fooli w powłoce zostaje osobno, poza treścią
 Zawsze dokładnie jeden poziom zagnieżdżenia (silnik to wymusza typami, nie tylko treścią): hotspoty wewnątrz `pulpit`
 nie mogą mieć własnego `action` ani własnej zagnieżdżonej sceny.
 
-- obraz: `scenes/pulpit.svg` (1200×800). Pulpit komputera z ikonami: Poczta (z odznaką „1"), Przelewy, Internet,
-  Faktury, Kosz; pasek zadań pokazuje 8:52.
+- obraz: `scenes/pulpit.svg` (1200×800). Pulpit komputera z ikonami: Poczta (z odznaką „1"), Internet, Faktury,
+  Przelewy, Kosz; pasek zadań pokazuje 10:06 (gracz ogląda pulpit w trakcie śledztwa, po 10:05 z korytarza).
 - hotspoty wewnętrzne:
 
 | id | x | y | w | h | Karta po kliknięciu | Dowód | Notatka (kind) | Media |
 |---|---|---|---|---|---|---|---|---|
 | `outlook` | 4.2 | 5.0 | 17.7 | 28.1 | „Na ekranie otwarta wiadomość: *Bank Wektor — pilna weryfikacja konta firmowego*. Przyszła dziś o 8:47." | **tak** — dowód `mail` przeniesiony tu z `monitor` (patrz tabela wyżej) | (mail) „Mail od »Banku Wektor« z 8:47, temat: pilna weryfikacja konta." | image `mail-na-ekranie.svg` (1200×800), alt: „Otwarta wiadomość od Banku Wektor z 8:47" |
+| `przegladarka` (ikona „Internet", feat/browser-evidence) | 4.3 | 32.8 | 17.3 | 27.6 | „Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka." | tak (niewymagany) | (item) „Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiło hasło." | image `historia-przegladarki.svg` (1200×800; klocek `browserHistory`) — historia z dziś: 9:04 intranet (przed telefonem o 9:05 - potem Anna wyszła od biurka), **8:58 bankwektor-weryfikacja.pl/login** („Weryfikacja konta firmowego"), 8:47 poczta, 8:31 kalendarz, 8:05 stołówka; bez wyróżnienia - gracz sam ma wyłapać domenę. Alt wymienia wszystkie wpisy (odpowiednik tekstowy). |
 
 Uzasadnienie przeniesienia dowodu: prawdziwy dowód (treść maila) leży dopiero za Outlookiem — kredytowanie go samym
 kliknięciem `monitor` (otwarcie pulpitu) byłoby przedwczesne. Otwarcie samego pulpitu (klik `monitor`) niczego nie
 zalicza; dopiero klik w `outlook` (media.kind: image, jak każdy inny hotspot z mediami) zalicza dowód od razu przy
 otwarciu karty — te same zasady co dla hotspotów najwyższego poziomu (patrz `karteczka`/`kalendarz` wyżej).
 
-Pozostałe ikony pulpitu (Przelewy, Internet, Faktury, Kosz) są WYŁĄCZNIE dekoracją tła — bez hotspotów.
+Pozostałe ikony pulpitu (Przelewy, Faktury, Kosz) są WYŁĄCZNIE dekoracją tła — bez hotspotów. Woreczki w raporcie zamknięcia
+się nie zmieniają: woreczek „mail" obejmuje też trop z historii przeglądarki.
 
 ### Media: wiadomość głosowa „informatyka" (hotspot `telefon`)
 

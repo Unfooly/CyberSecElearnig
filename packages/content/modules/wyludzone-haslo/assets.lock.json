@@ -44,8 +44,8 @@
     },
     "biuro-anny#image": {
       "original": "scenes/biuro-anny.svg",
-      "hash": "d43bc84d",
-      "key": "assets/wyludzone-haslo/scenes/biuro-anny.d43bc84d.svg"
+      "hash": "90a5b3f5",
+      "key": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg"
     },
     "biuro-anny#hotspots.0.media.src": {
       "original": "scenes/karteczka-zoom.svg",
@@ -64,8 +64,8 @@
     },
     "biuro-anny#hotspots.5.media.src": {
       "original": "scenes/kubek-zoom.svg",
-      "hash": "73e1c727",
-      "key": "assets/wyludzone-haslo/scenes/kubek-zoom.73e1c727.svg"
+      "hash": "821c2929",
+      "key": "assets/wyludzone-haslo/scenes/kubek-zoom.821c2929.svg"
     },
     "biuro-anny#hotspots.2.media.image": {
       "original": "scenes/telefon-zoom.svg",
@@ -74,13 +74,18 @@
     },
     "biuro-anny#hotspots.1.media.scene.image": {
       "original": "scenes/pulpit.svg",
-      "hash": "2f51e00d",
-      "key": "assets/wyludzone-haslo/scenes/pulpit.2f51e00d.svg"
+      "hash": "837640da",
+      "key": "assets/wyludzone-haslo/scenes/pulpit.837640da.svg"
     },
     "biuro-anny#hotspots.1.media.scene.hotspots.0.media.src": {
       "original": "scenes/mail-na-ekranie.svg",
       "hash": "c7b30be0",
       "key": "assets/wyludzone-haslo/scenes/mail-na-ekranie.c7b30be0.svg"
+    },
+    "biuro-anny#hotspots.1.media.scene.hotspots.1.media.src": {
+      "original": "scenes/historia-przegladarki.svg",
+      "hash": "25246137",
+      "key": "assets/wyludzone-haslo/scenes/historia-przegladarki.25246137.svg"
     },
     "rozmowa-anna#character.avatar": {
       "original": "avatars/anna.svg",

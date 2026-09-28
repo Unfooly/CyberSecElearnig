@@ -107,7 +107,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 const runs = (section) => ONLY.length === 0 || ONLY.includes(section);
@@ -152,6 +152,8 @@ const HOTSPOT_CASES = [
   },
   { name: 'monitor-pulpit (scena)', hotspotId: 'monitor', scene: true },
   { name: 'outlook-mail', hotspotId: 'outlook', nested: true },
+  // Historia przeglądarki (feat/browser-evidence) - druga ikona pulpitu, zbliżenie z Zabierz/Odłóż jak outlook.
+  { name: 'przegladarka-historia', hotspotId: 'przegladarka', nested: true },
   { name: 'tablica (korytarz)', hotspotId: 'tablica', block: 'korytarz' },
   { name: 'karteczka-bez-mediow', hotspotId: 'karteczka', extraQuery: 'stripMedia=1' },
 ];
@@ -1329,6 +1331,75 @@ try {
       step(`${label}: (f1-f6) OK`, true);
       await context.close();
     }
+  }
+
+  // OKNO PRZEGLĄDARKI (feat/browser-evidence) - `?block=ostatnie-pytanie` (TEXT_INPUT_GUIDED, frame: browser), odpowiedzi /attempt
+  // podstawione przez page.route (harness nie ma backendu): (p1) strona i obszar bloku bez poziomego przewijania, okno w szerokości
+  // obszaru; (p2) pole adresu i „Sprawdź” w pasku adresu okna, cel dotyku >= 40 px; (p3) zła próba - komunikat w obrębie okna;
+  // (p4) poprawna - ostrzeżenie „Ta strona podszywa się pod bank” w obrębie okna, żadnych pól (input/textarea/select) na stronie bloku;
+  // (p5) błędy strony.
+  for (const viewport of runs('browser') ? BRIEFING_VIEWPORTS : []) {
+    console.log(`\n--- viewport (OKNO PRZEGLĄDARKI): ${viewport.name} ---`);
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+    let nextCorrect = false;
+    await page.route('**/api/courses/*/blocks/*/attempt', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          nextCorrect
+            ? { correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75 }
+            : { correct: false, attempt: 1, attemptsLeft: 2, done: false, hint: { text: 'Spójrz na to, co jest po @ w adresie nadawcy.' } },
+        ),
+      }),
+    );
+    const label = `${viewport.name} / okno przeglądarki`;
+    await page.goto(`${WEB}/dev/player-harness?block=ostatnie-pytanie`);
+    const win = page.getByTestId('browser-window');
+    await win.waitFor();
+    const noOverflow = async (step) => {
+      const over = await page.evaluate(() => {
+        const area = document.querySelector('[data-testid="player-content-area"]');
+        return { page: document.documentElement.scrollWidth - document.documentElement.clientWidth, area: area ? area.scrollWidth - area.clientWidth : 0 };
+      });
+      if (over.page > 1 || over.area > 1) fail(`${label}: (p1) poziome przewijanie ${step} - ${JSON.stringify(over)}.`);
+    };
+    await noOverflow('na starcie');
+    const areaBox = await boxOf(page, '[data-testid="player-content-area"]');
+    const winBox = await win.boundingBox();
+    if (!winBox || winBox.x < areaBox.x - 1 || winBox.x + winBox.width > areaBox.x + areaBox.width + 1) fail(`${label}: (p1) okno poza obszarem bloku - ${JSON.stringify({ winBox, areaBox })}.`);
+    const input = win.getByRole('textbox');
+    const go = win.getByRole('button', { name: 'Sprawdź' });
+    for (const [name, loc] of [['pole adresu', input], ['Sprawdź', go]]) {
+      const box = await loc.boundingBox();
+      if (!box || box.height < 40 || !contains(winBox, box)) fail(`${label}: (p2) ${name} poza oknem albo < 40 px - ${JSON.stringify(box)}.`);
+    }
+    await shot(page, `${viewport.name}-przegladarka-1-start`);
+    await input.fill('bank.pl');
+    await go.click();
+    const error = page.getByTestId('browser-error');
+    await error.waitFor();
+    if (!contains(await win.boundingBox(), await error.boundingBox())) fail(`${label}: (p3) komunikat złej próby poza oknem.`);
+    await noOverflow('po złej próbie');
+    await shot(page, `${viewport.name}-przegladarka-2-zla-proba`);
+    nextCorrect = true;
+    await input.fill('bankwektor-weryfikacja.pl');
+    await go.click();
+    const warning = page.getByTestId('browser-deceptive-warning');
+    await warning.waitFor();
+    const warnBox = await warning.boundingBox();
+    if (!contains(await win.boundingBox(), warnBox)) fail(`${label}: (p4) ostrzeżenie poza oknem - ${JSON.stringify(warnBox)}.`);
+    if (!(await warning.textContent())?.includes('Ta strona podszywa się pod bank')) fail(`${label}: (p4) brak nagłówka ostrzeżenia.`);
+    const fields = await page.getByTestId('player-content-area').locator('input, textarea, select').count();
+    if (fields > 0) fail(`${label}: (p4) po odpowiedzi w bloku są pola formularza (${fields}) - nie może być żadnych.`);
+    await noOverflow('po poprawnej odpowiedzi');
+    await shot(page, `${viewport.name}-przegladarka-3-ostrzezenie`);
+    if (pageErrors.length > 0) fail(`${label}: (p5) błąd strony: ${pageErrors.join(' | ')}`);
+    step(`${label}: (p1-p5) OK`, true);
+    await context.close();
   }
 
   console.log(`\nWSZYSTKIE SPRAWDZENIA OK (${results.length})`);

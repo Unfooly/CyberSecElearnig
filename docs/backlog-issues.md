@@ -537,6 +537,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) usunięcie linii przy najbliższej zmianie `.dockerignore` przez człowieka; (2) usunięcie pól ze schematu dopiero, gdy
   żadna wersja kursu w bazie ich nie używa (zapytanie na `course_versions` przed zmianą) - osobna decyzja.
 
+### B-120 Sceny pionowe (D-098): ścieżka zastępcza i odłożone uwagi z code review
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review `feat/portrait-scenes` (D-098)
+- Opis: (1) moduł BEZ `closing.portrait` na niskim telefonie w pionie (360x740) - panorama raportu daje wnioski ~9,7 px (próg 11 px
+  ustalono dla 390x844; zachowanie sprzed D-098 - moduł 1 ma już raport pionowy); (2) obrót w oknie 600 ms podpisu (etap `signing`)
+  przewija panoramę według slotów poprzedniej orientacji (w pionie bez przewijania - kosmetyka); (3) rotacja nie jest sprawdzana w CI
+  (layout-check poza CI - B-101), w vitest są testy ResizeObservera dla sceny i ceremonii; (4) layout-check sprawdza pionowe zamknięcie
+  tylko z wnioskami modułu 1 (3 krótkie) - przypadek maksymalny schematu (5 x 120 znaków: lista przewijana, limit 30dvh) bez przebiegu w
+  prawdziwej przeglądarce.
+- Akceptacja: (1) wnioski pod raportem w HTML także w panoramie (wszystkie moduły) albo próg per wysokość; (2) sloty z bieżącej orientacji
+  w chwili przewijania; (3) po B-101; (4) wariant harnessu z najdłuższymi wnioskami (np. `?longLessons=1`) i (z6) na 360x740.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

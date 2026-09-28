@@ -60,6 +60,14 @@ Każde pole schematu bloku jest sklasyfikowane w `packages/content/src/blocks.ts
 - Autoodtwarzanie tylko po „Dalej”, gdy poprzedni blok miał nagranie i lektor jest włączony. Blok bez narracji nie ma rzędu odtwarzacza ani przełącznika (zamierzone).
 - Narracja pojedynczych elementów (punkt sceny, kwestia dialogu): B-078.
 
+## Sceny pionowe (D-098)
+
+Odprawa (BRIEFING) i zamknięcie sprawy mają opcjonalny wariant pionowy (`portrait` w treści, grafiki 9:16). Odtwarzacz mierzy kontener
+(`lib/use-portrait-container.ts`: proporcje < 0.8 = telefon w pionie; do pierwszego pomiaru grafika się nie renderuje - bez mignięcia
+wariantu poziomego po SSR) i bierze pionową grafikę z jej prostokątami; obrót telefonu przełącza wariant bez utraty stanu kroku ani
+etapu ceremonii. Zamknięcie w pionie: raport 9:16 w całości, liczby i wnioski pod nim jako tekst (min. 15 px, lista wniosków przewijana w pionie przy długiej treści), przyciski na pełną szerokość jeden
+pod drugim. Bez `portrait` - scena 16:9 w pasach i panorama raportu (jak wcześniej).
+
 ## Podpowiedzi (D-093, dawniej maskotka)
 
 Odtwarzacz nie pokazuje postaci. Podpowiedź to sam tekst w neutralnym dymku z ikoną żarówki (`player/Hint.tsx`): na scenie z punktami w

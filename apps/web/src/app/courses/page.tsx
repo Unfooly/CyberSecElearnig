@@ -5,7 +5,7 @@ import { fetchJson } from '@/lib/fetch-json';
 import { contentAssetBase } from '@/lib/content-assets';
 import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
-import type { GamificationOverview, LeaderboardEntry } from '@/lib/gamification-types';
+import type { GamificationOverview, Leaderboard } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
 import PageContainer from '@/components/ui/PageContainer';
 import CourseLibrary from './_components/CourseLibrary';
@@ -49,7 +49,7 @@ export default async function CoursesPage() {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     }),
-    fetchJson<LeaderboardEntry[]>(`${API_URL}/gamification/leaderboard`, {
+    fetchJson<Leaderboard>(`${API_URL}/gamification/leaderboard`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     }),
@@ -90,12 +90,13 @@ export default async function CoursesPage() {
 
             {catalogResult.ok && <CourseCatalog courses={catalogResult.data} contentBase={contentBase} />}
 
-            {leaderboardResult.ok && currentUserId && (
+            {/* Ranking wyłączony przez admina organizacji (D-112) - bez sekcji. */}
+            {leaderboardResult.ok && leaderboardResult.data.enabled && currentUserId && (
               <Card>
                 <div className="flex items-center justify-between border-b border-border px-5 py-[18px]">
                   <h2 className="text-lg font-bold tracking-[-0.01em]">Ranking organizacji</h2>
                 </div>
-                <LeaderboardTable entries={leaderboardResult.data} currentUserId={currentUserId} />
+                <LeaderboardTable leaderboard={leaderboardResult.data} currentUserId={currentUserId} />
               </Card>
             )}
           </div>

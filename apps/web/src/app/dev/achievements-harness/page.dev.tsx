@@ -1,10 +1,14 @@
 import { notFound } from 'next/navigation';
-import type { Badge } from '@/lib/gamification-types';
-import AchievementGrid from '../../courses/achievements/_components/AchievementGrid';
+import Card from '@/components/ui/Card';
+import type { Badge, Leaderboard, LeaderboardEntry } from '@/lib/gamification-types';
+import AchievementsProfile from '../../courses/achievements/_components/AchievementsProfile';
+import LeaderboardTable from '../../courses/_components/LeaderboardTable';
 
-// Podgląd kart osiągnięć (D-111) bez backendu i logowania - WYŁĄCZNIE do scripts/layout-check.mjs (sekcja `achievements`) i ręcznego
-// podglądu. Jak courses-harness: plik `.dev.tsx` istnieje w routingu tylko z NEXT_PUBLIC_DEV_HARNESS=1 (next.config.mjs), notFound()
-// to druga linia obrony. Dane jak z GET /gamification/badges: jedno zdobyte, jedno niezdobyte (warunek), jedno tajne niezdobyte.
+// Podgląd profilu osiągnięć (D-111, D-112) i rankingu organizacji bez backendu i logowania - WYŁĄCZNIE do scripts/layout-check.mjs
+// (sekcja `achievements`) i ręcznego podglądu. Jak courses-harness: plik `.dev.tsx` istnieje w routingu tylko z
+// NEXT_PUBLIC_DEV_HARNESS=1 (next.config.mjs), notFound() to druga linia obrony. Dane jak z GET /gamification/badges i
+// /gamification/leaderboard: dwa zdobyte (jedno przypięte), jedno tajne niezdobyte; ranking - dziesiątka + „Ty” na 14. miejscu.
+// Zapis przypięć (PUT /api/gamification/pinned) layout-check przechwytuje w przeglądarce (page.route).
 const BADGES: Badge[] = [
   {
     code: 'first-case-closed',
@@ -19,6 +23,7 @@ const BADGES: Badge[] = [
     xpReward: 50,
     isUnlocked: true,
     unlockedAt: '2026-09-28T10:00:00.000Z',
+    pinned: 1,
   },
   {
     code: 'flawless-case',
@@ -31,8 +36,9 @@ const BADGES: Badge[] = [
     hidden: false,
     scope: 'MODULE',
     xpReward: 50,
-    isUnlocked: false,
-    unlockedAt: null,
+    isUnlocked: true,
+    unlockedAt: '2026-09-28T10:05:00.000Z',
+    pinned: null,
   },
   {
     code: 'secret-3',
@@ -47,21 +53,41 @@ const BADGES: Badge[] = [
     xpReward: 0,
     isUnlocked: false,
     unlockedAt: null,
+    pinned: null,
   },
 ];
+
+const PINNED = [
+  { code: 'flawless-case', title: 'Flawless Case', icon: 'osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
+  { code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' as const },
+  { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
+];
+const NAMES = ['Katarzyna', 'Bartłomiej', 'Anna', 'Jan', 'Małgorzata', 'Piotr', 'Zofia', 'Krzysztof', 'Ewa', 'Tomasz'];
+const TOP: LeaderboardEntry[] = NAMES.map((firstName, index) => ({
+  rank: index + 1,
+  userId: `dev-${index + 1}`,
+  firstName,
+  lastInitial: 'ABCDEFGHIJ'[index],
+  avatarUrl: index % 3 === 0 ? 'fox' : null,
+  level: 8 - Math.floor(index / 2),
+  xp: 2400 - index * 170,
+  pinned: PINNED.slice(0, 3 - (index % 4)),
+}));
+const ME: LeaderboardEntry = { rank: 14, userId: 'dev-me', firstName: 'Ola', lastInitial: 'W', avatarUrl: null, level: 2, xp: 300, pinned: [PINNED[2]] };
+const LEADERBOARD: Leaderboard = { enabled: true, top: TOP, me: ME };
 
 export default function AchievementsHarnessPage() {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') notFound();
   return (
     <div className="min-h-dvh bg-slate-50">
-      <main className="mx-auto max-w-7xl p-4 sm:p-8">
-        <h1 className="mb-6 flex items-baseline gap-3 text-2xl font-semibold text-slate-900">
-          Osiągnięcia
-          <span className="text-base font-bold text-muted" data-testid="achievements-counter">
-            1 / 3
-          </span>
-        </h1>
-        <AchievementGrid badges={BADGES} />
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:p-8">
+        <AchievementsProfile badges={BADGES} displayName="Ola W." />
+        <Card className="mt-8" data-testid="harness-leaderboard">
+          <div className="flex items-center justify-between border-b border-border px-5 py-[18px]">
+            <h2 className="text-lg font-bold tracking-[-0.01em]">Ranking organizacji</h2>
+          </div>
+          <LeaderboardTable leaderboard={LEADERBOARD} currentUserId="dev-me" />
+        </Card>
       </main>
     </div>
   );

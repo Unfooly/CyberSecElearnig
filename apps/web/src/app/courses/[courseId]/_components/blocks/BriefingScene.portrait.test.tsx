@@ -328,7 +328,7 @@ describe('CaseClosedScreen w pionie (D-098)', () => {
       );
       const toast = screen.getByTestId('reward-toast');
       expect(toast).toHaveTextContent('Awans na poziom 2!');
-      expect(toast).toHaveTextContent('Nowa odznaka: Tropiciel wszystkich dowodów');
+      expect(toast).toHaveTextContent('Nowe osiągnięcie: Tropiciel wszystkich dowodów');
       expect(toast).toHaveAttribute('aria-hidden', 'true');
       // Bez ceremonii (reduced-motion / powrót) - bez animacji wejścia.
       expect(toast.className).not.toMatch(/animate-rise-in/);

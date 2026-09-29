@@ -106,6 +106,21 @@ function expand(node: unknown, path: string[], trail: string[]): { holder: Json;
   return isObject(node) ? expand(node[head], rest, [...trail, head]) : [];
 }
 
+/**
+ * Nagranie `pl` narracji (schemaVersion 6, D-114): narracja jednojęzyczna - ona sama; wielojęzyczna `{ voice?, pl: {...}, en?: {...} }` -
+ * obiekt `pl` (tam potok wpisuje audioUrl/durationMs/cues), rola głosu wspólna. Klucz locka dla `pl` bez sufiksu języka (jak dotąd), więc
+ * treść jednojęzyczna i `pl` wielojęzycznej mają te same klucze. Nagrania innych języków (klucz `@<locale>`) - faza EN: dziś czytelny błąd,
+ * zamiast cichego pominięcia.
+ */
+function narrationForTts(narration: Json, where: string): { body: Json; voice: string } {
+  if (!contentIndex.isLocalizedValue(narration)) return { body: narration, voice: voiceRoleOf(narration) };
+  const other = Object.keys(narration).filter((key) => key !== 'pl' && key !== 'voice' && narration[key] !== undefined);
+  if (other.length > 0) {
+    throw new Error(`${where}: nagrania w języku ${other.join(', ')} nie są jeszcze obsługiwane przez potok (faza EN) - usuń je albo poczekaj na obsługę.`);
+  }
+  return { body: isObject(narration.pl) ? narration.pl : {}, voice: voiceRoleOf(narration) };
+}
+
 /** Zbiera narracje modułu i dodatkowo pilnuje kompletności: każdy obiekt pod kluczem narration/answerNarration musi być objęty wzorcami. */
 export function collectNarrations(raw: Json): NarrationRef[] {
   const blocks = Array.isArray(raw.blocks) ? raw.blocks : [];
@@ -117,15 +132,17 @@ export function collectNarrations(raw: Json): NarrationRef[] {
       for (const { holder, key, trail } of expand(block, path, [])) {
         const narration = holder[key] as Json;
         seen.add(narration);
-        if (typeof narration.text !== 'string' || narration.text.trim() === '') continue;
+        const id = `${block.id}#${trail.join('.')}`;
+        const { body, voice } = narrationForTts(narration, id);
+        if (typeof body.text !== 'string' || body.text.trim() === '') continue;
         refs.push({
-          id: `${block.id}#${trail.join('.')}`,
+          id,
           blockId: block.id,
-          holder: narration,
+          holder: body,
           key: '',
-          text: narration.text,
-          spokenText: typeof narration.spokenText === 'string' ? narration.spokenText : undefined,
-          voice: voiceRoleOf(narration),
+          text: body.text,
+          spokenText: typeof body.spokenText === 'string' ? body.spokenText : undefined,
+          voice,
         });
       }
     }
@@ -165,7 +182,8 @@ export function findOrphanAudio(raw: Json): string[] {
     if (!isObject(block) || typeof block.id !== 'string') continue;
     for (const path of NARRATION_PATHS) {
       for (const { holder, key, trail } of expand(block, path, [])) {
-        const narration = holder[key] as Json;
+        const raw = holder[key] as Json;
+        const narration = contentIndex.isLocalizedValue(raw) && isObject(raw.pl) ? raw.pl : raw;
         const empty = typeof narration.text !== 'string' || narration.text.trim() === '';
         if (empty && ('audioUrl' in narration || 'cues' in narration)) orphans.push(`${block.id}#${trail.join('.')}`);
       }

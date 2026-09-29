@@ -55,4 +55,8 @@ export const contentIndex = requireCjs('../../../packages/content/dist/index.js'
   FIELD_CLASSIFICATION: Record<string, { client: string[]; secret: string[] }>;
   /** Role głosu nagrań (narration.voice, D-082) - jedno źródło listy dla schematu treści i voices.json. */
   VOICE_ROLES: readonly string[];
+  /** Języki treści (schemaVersion 6, D-114) - klucze voices.json per rola. */
+  CONTENT_LOCALES: readonly string[];
+  /** Obiekt wielojęzyczny `{ pl, en? }` (dla narracji także `voice`) - packages/content/src/localize.ts. */
+  isLocalizedValue: (value: unknown) => value is Json;
 };

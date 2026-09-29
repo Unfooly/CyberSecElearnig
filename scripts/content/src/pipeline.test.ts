@@ -111,6 +111,26 @@ describe('collectNarrations', () => {
     (module.blocks as Record<string, unknown>[])[0].extra = { narration: { text: 'x' } };
     expect(() => collectNarrations(module)).toThrow(/nieznanym miejscu/);
   });
+
+  it('narracja wielojęzyczna (schemaVersion 6, D-114): nagranie pl w obiekcie pl, wspólna rola, klucz locka bez sufiksu języka', () => {
+    const flat = collectNarrations(bareModule());
+    const module = bareModule();
+    const first = (module.blocks as Record<string, unknown>[])[0];
+    const plBody = first.narration as Record<string, unknown>;
+    first.narration = { voice: 'oszust', pl: plBody };
+    const refs = collectNarrations(module);
+    expect(refs.map((ref) => ref.id)).toEqual(flat.map((ref) => ref.id));
+    expect(refs[0].holder).toBe(plBody);
+    expect(refs[0].voice).toBe('oszust');
+    expect(refs[0].text).toBe(plBody.text);
+  });
+
+  it('nagranie EN w narracji wielojęzycznej: czytelny błąd do czasu fazy EN (nie ciche pominięcie)', () => {
+    const module = bareModule();
+    const first = (module.blocks as Record<string, unknown>[])[0];
+    first.narration = { pl: first.narration, en: { text: 'Opening.' } };
+    expect(() => collectNarrations(module)).toThrow(/nagrania w języku en nie są jeszcze obsługiwane/);
+  });
 });
 
 describe('runPipeline', () => {

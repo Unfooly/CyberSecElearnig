@@ -132,6 +132,14 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   secretEnding? { id, label, note? } } }`,
   `falseSpotPenalty?` (0,25). `used`, `note`, `trapText` i kara są sekretem. Odpowiedź `{ marked: [spotId], heard?: [secretEnding.id] }`; wynik
   = trafione użyte / wszystkie użyte − kara × zaznaczone pułapki (min. 0); `heard` - wyróżnienie w notatniku (bez punktów, jak easter egg).
+- `LIVE_CALL` (D-122, oceniany, domyślna waga 1): `caller { display, number? }`, `choiceTimeLimitSec?` (5-60, domyślnie 12), `start`, `nodes[]`
+  (1-20) `{ id, narration (głos postaci - wymagany `voice`), choices[] (2-4) { id, text, next }, silence? }`, `endings[]` (2-10) `{ id, outcome:
+  good|partial|bad, narration }`, `infoChoices?` (odpowiedzi oddające informację). `next`/`silence` to id węzła albo `#<id zakończenia>`;
+  graf bez cykli, każdy węzeł i zakończenie osiągalne, co najmniej jedno `good`, id odpowiedzi unikalne w całym bloku (`silence` zarezerwowane).
+  `outcome` i `infoChoices` są sekretem (wynik i osiągnięcia liczy serwer); drzewo i teksty zakończeń klient zna - prowadzi rozmowę sam, więc
+  id zakończeń niech nie zdradzają oceny (`k1`, `oddzwonienie`, nie `dobre`/`zle`). Węzeł bez `silence` nie odlicza czasu; dobre zakończenie
+  musi być osiągalne samymi odpowiedziami (gracz bez limitu nie ma krawędzi `silence`).
+  Odpowiedź `{ path: [choiceId | "silence"], timed }` (cisza tylko z limitem czasu); wynik good 1 / partial 0,5 / bad 0.
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)

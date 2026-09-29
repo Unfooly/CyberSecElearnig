@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { audioPathSchema, baseShape, imagePathSchema, idSchema, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
+import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
 import { Delocalize } from './localize';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
@@ -793,6 +793,48 @@ const osintSpotBlockSchema = z
   })
   .strict();
 
+/**
+ * Rozmowa na żywo (D-122): drzewo rozmowy z dzwoniącym. Węzeł to kwestia dzwoniącego (`narration`, głos postaci) i 2-4 odpowiedzi gracza;
+ * `next` to id węzła albo `#<id zakończenia>`, `silence` - krawędź po upływie limitu czasu (`choiceTimeLimitSec`, domyślnie 12 s; bez
+ * limitu - ustawienie konta albo przełącznik przed połączeniem - krawędzi `silence` nie ma; węzeł bez `silence` też nie odlicza czasu -
+ * cisza nie ma tam dokąd prowadzić). Graf bez cykli, każdy węzeł osiągalny
+ * (semantics.ts). Ocena zakończenia (`outcome`: good 1 / partial 0,5 / bad 0) i odpowiedzi z podaniem informacji (`infoChoices`) są
+ * SEKRETEM - klient zna tekst zakończenia, ocenę dostaje od serwera. Odpowiedź `{ path: [choiceId | "silence"], timed }` - serwer
+ * przechodzi drzewo od `start` i odrzuca ścieżkę niezgodną z grafem.
+ */
+export const LIVE_CALL_SILENCE = 'silence';
+export const LIVE_CALL_DEFAULT_TIME_LIMIT_SEC = 12;
+// `next` / `silence`: id węzła albo `#` + id zakończenia (ten sam wzorzec id co idSchema).
+const liveCallTarget = z.string().regex(new RegExp(`^#?${ID_PATTERN.source.slice(1)}`), 'Cel krawędzi: id węzła albo #id zakończenia');
+
+const liveCallNodeSchema = z
+  .object({
+    id: idSchema,
+    narration: narrationSchema,
+    choices: z
+      .array(z.object({ id: idSchema, text: ltext(200), next: liveCallTarget }).strict())
+      .min(2)
+      .max(4),
+    silence: liveCallTarget.optional(),
+  })
+  .strict();
+
+const liveCallSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('LIVE_CALL'),
+    caller: z.object({ display: ltext(60), number: z.string().min(1).max(40).optional() }).strict(),
+    choiceTimeLimitSec: z.number().int().min(5).max(60).optional(),
+    start: idSchema,
+    nodes: z.array(liveCallNodeSchema).min(1).max(20),
+    endings: z
+      .array(z.object({ id: idSchema, outcome: z.enum(['good', 'partial', 'bad']), narration: narrationSchema }).strict())
+      .min(2)
+      .max(10),
+    infoChoices: z.array(idSchema).max(40).optional(),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -814,6 +856,7 @@ export const BLOCK_SCHEMAS = {
   ANNOTATED_REPLAY: annotatedReplaySchema,
   INTERROGATION: interrogationSchema,
   OSINT_SPOT: osintSpotBlockSchema,
+  LIVE_CALL: liveCallSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -840,6 +883,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   annotatedReplaySchema,
   interrogationSchema,
   osintSpotBlockSchema,
+  liveCallSchema,
 ]);
 /** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
 export type StoredBlock = z.infer<typeof blockSchema>;
@@ -874,6 +918,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   // Przesłuchanie (D-118): 1, gdy ma sprzeczności; bez sprzeczności nieoceniane (apps/api weightOf i walidacja wagi, semantics.ts).
   INTERROGATION: 1,
   OSINT_SPOT: 1,
+  LIVE_CALL: 1,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -1319,6 +1364,25 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       ...['id', 'x', 'y', 'w', 'h'].map((key) => `portraitSpots[].${key}`),
     ],
     [...narrationSecret('spots[].media.'), 'spots[].used', 'spots[].note.text', 'spots[].note.kind', 'spots[].trapText', 'falseSpotPenalty'],
+  ),
+  // Rozmowa na żywo (D-122): drzewo, kwestie, odpowiedzi i teksty zakończeń - publiczne (odtwarzacz prowadzi rozmowę bez serwera). Sekret:
+  // ocena zakończenia i to, które odpowiedzi oddają informację - wychodzą po ocenie.
+  LIVE_CALL: classify(
+    [
+      'caller.display',
+      'caller.number',
+      'choiceTimeLimitSec',
+      'start',
+      'nodes[].id',
+      ...narrationClient('nodes[].'),
+      'nodes[].choices[].id',
+      'nodes[].choices[].text',
+      'nodes[].choices[].next',
+      'nodes[].silence',
+      'endings[].id',
+      ...narrationClient('endings[].'),
+    ],
+    [...narrationSecret('nodes[].'), ...narrationSecret('endings[].'), 'endings[].outcome', 'infoChoices[]'],
   ),
 };
 

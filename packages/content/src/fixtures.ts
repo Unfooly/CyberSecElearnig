@@ -614,6 +614,54 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-osint-warning` },
       ]),
     },
+    // Rozmowa na żywo (D-122): trzy węzły (z ciszą), zakończenia dobre, częściowe i złe; wpisanie liczby i instalacja oddają informację.
+    LIVE_CALL: {
+      ...base('na-zywo'),
+      type: 'LIVE_CALL',
+      caller: { display: 'IT Helpdesk', number: '12 3XX XX 41' },
+      choiceTimeLimitSec: 12,
+      start: 'start',
+      nodes: [
+        {
+          id: 'start',
+          narration: { ...audio('na-zywo-start'), voice: 'oszust' },
+          choices: [
+            { id: 'oddzwonie', text: 'Oddzwonię na numer z intranetu.', next: '#dobre' },
+            { id: 'jaka-liczba', text: 'Jaką liczbę mam wpisać?', next: 'nacisk' },
+            { id: 'sprawdze', text: 'Poczekaj, sprawdzę, kto dzwoni.', next: 'autorytet' },
+          ],
+          silence: 'nacisk',
+        },
+        {
+          id: 'nacisk',
+          narration: { ...audio('na-zywo-nacisk'), voice: 'oszust' },
+          choices: [
+            { id: 'rozlaczam', text: 'Rozłączam się.', next: '#dobre' },
+            { id: 'wpisuje', text: 'Wpisuję liczbę.', next: '#zle' },
+          ],
+          silence: '#zle',
+        },
+        {
+          id: 'autorytet',
+          narration: { ...audio('na-zywo-autorytet'), voice: 'oszust' },
+          choices: [
+            { id: 'rozlaczam-2', text: 'Rozłączam się.', next: '#dobre' },
+            { id: 'nie-instaluje', text: 'Nie instaluję niczego z telefonu.', next: '#czesciowe' },
+            { id: 'instaluje', text: 'Instaluję.', next: '#zle' },
+          ],
+        },
+      ],
+      endings: [
+        { id: 'dobre', outcome: 'good', narration: { ...audio('na-zywo-dobre'), voice: 'narrator' } },
+        { id: 'czesciowe', outcome: 'partial', narration: audio('na-zywo-czesciowe') },
+        { id: 'zle', outcome: 'bad', narration: audio('na-zywo-zle') },
+      ],
+      infoChoices: ['wpisuje', 'instaluje'],
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-na-zywo-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-na-zywo-warning` },
+      ]),
+    },
   };
 }
 
@@ -741,6 +789,7 @@ export function fullModuleV6() {
       blocks.ANNOTATED_REPLAY,
       blocks.INTERROGATION,
       blocks.OSINT_SPOT,
+      blocks.LIVE_CALL,
       base.blocks[base.blocks.length - 1],
     ],
   };

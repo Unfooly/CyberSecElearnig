@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 2400" width="900" height="2400">
+  <!-- Moduł podglądu (dev-modul-2, D-121): wariant pionowy strony „Zespół” (przewijany) bez tekstu - treść w textLayer. -->
+  <rect width="900" height="2400" fill="#f8fafc" />
+  <rect x="0" y="0" width="900" height="40" fill="#1e293b" />
+  <rect x="54" y="48" width="792" height="192" rx="12" fill="#cbd5e1" />
+  <rect x="54" y="288" width="792" height="288" rx="14" fill="#e2e8f0" />
+  <circle cx="160" cy="432" r="70" fill="#a5b4fc" />
+  <rect x="54" y="624" width="792" height="288" rx="14" fill="#e2e8f0" />
+  <circle cx="160" cy="768" r="70" fill="#fcd34d" />
+  <rect x="54" y="960" width="792" height="288" rx="14" fill="#312e81" />
+  <polygon points="420,1060 420,1150 500,1105" fill="#ffffff" />
+  <rect x="54" y="1296" width="792" height="240" rx="14" fill="#fef3c7" />
+  <rect x="0" y="1584" width="900" height="816" fill="#e2e8f0" />
+</svg>

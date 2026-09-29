@@ -364,7 +364,7 @@ export default function OrderingBlock({
       className={`mt-2 flex shrink-0 flex-col gap-2 rounded-[8px] border border-border bg-paper p-2 text-[15px] leading-snug ${drag !== null && hoverTarget === 'tray' ? 'ring-4 ring-accent' : ''}`}
     >
       <p className="px-1 font-bold text-muted">
-        Ślady do przypięcia · {tray.length}
+        Do ułożenia ({tray.length})
         {tray.length > 0 && <span className="font-semibold"> · wybierz ślad, potem pole</span>}
       </p>
       {tray.length > 0 && (
@@ -443,7 +443,7 @@ export default function OrderingBlock({
           aria-label={titleText}
           data-testid="evidence-board"
           data-orientation={orientation}
-          data-layout={portrait ? 'zigzag' : 'u'}
+          data-layout={portrait ? 'axis' : 'u'}
           data-phase={readOnly ? phase : 'play'}
           className="board-box relative select-none"
           style={boxStyle}
@@ -474,8 +474,23 @@ export default function OrderingBlock({
               ))}
             </svg>
 
-            {block.start && layout.start && <Photo rect={layout.start} layout={layout} label={block.start.label} caption={block.start.caption} tone="accent" tilt={-4} fs={fs} />}
-            {block.end && layout.end && <Photo rect={layout.end} layout={layout} label={block.end.label} caption={block.end.caption} tone="danger" tilt={3} fs={fs} />}
+            {/* Pionowo (D-116): tabliczki START / KONIEC na końcach osi. */}
+            {layout.axis &&
+              ([
+                ['START', layout.axis.start, 'board-axis-start'],
+                ['KONIEC', layout.axis.end, 'board-axis-end'],
+              ] as const).map(([text, rect, testId]) => (
+                <p
+                  key={text}
+                  data-testid={testId}
+                  className={`absolute z-[3] flex items-center justify-center rounded-full font-extrabold tracking-[0.08em] text-white shadow-card ${text === 'START' ? 'bg-accent' : 'bg-danger'}`}
+                  style={{ ...place(rect, layout), fontSize: fs(22) }}
+                >
+                  {text}
+                </p>
+              ))}
+            {block.start && layout.start && <Photo rect={layout.start} layout={layout} label={block.start.label} caption={block.start.caption} tone="accent" tilt={portrait ? 0 : -4} fs={fs} />}
+            {block.end && layout.end && <Photo rect={layout.end} layout={layout} label={block.end.label} caption={block.end.caption} tone="danger" tilt={portrait ? 0 : 3} fs={fs} />}
 
             {layout.slots.map((slot, index) => {
               const id = shown[index] ?? null;
@@ -490,11 +505,22 @@ export default function OrderingBlock({
                   disabled={readOnly || disabled}
                   onClick={() => clickSlot(index)}
                   className={`absolute z-[1] flex items-center justify-center rounded-[calc(var(--u)*6)] border-[calc(var(--u)*3)] border-dashed font-extrabold outline-none focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                    active ? 'border-accent bg-accent/15 text-accent' : 'border-ink/30 bg-white/10 text-ink/25'
+                    // Pionowo podpis „Upuść tutaj” to instrukcja, nie ozdobna cyfra - pełniejszy kolor (czytelny na korku).
+                    active ? 'border-accent bg-accent/15 text-accent' : `border-ink/30 bg-white/10 ${portrait ? 'text-ink/70' : 'text-ink/25'}`
                   } ${drag !== null && hoverTarget === index ? 'ring-4 ring-accent' : ''}`}
-                  style={{ ...place(slot, layout), fontSize: u(40) }}
+                  style={{ ...place(slot, layout), fontSize: portrait ? fs(20) : u(40) }}
                 >
-                  {index + 1}
+                  {/* Pionowo (D-116): pole z podpisem „Upuść tutaj” (numer pola w etykiecie dostępności i małą cyfrą). */}
+                  {portrait ? (
+                    <span className="flex flex-col items-center gap-1">
+                      <span>Upuść tutaj</span>
+                      <span className="font-bold opacity-70" style={{ fontSize: fs(15) }}>
+                        {index + 1}
+                      </span>
+                    </span>
+                  ) : (
+                    index + 1
+                  )}
                 </button>
               );
             })}
@@ -505,7 +531,7 @@ export default function OrderingBlock({
               const index = shown.indexOf(id);
               if (index < 0) return null;
               const slot = layout.slots[index];
-              const pin = pinOf(slot);
+              const pin = pinOf(slot, layout);
               const good = readOnly && inPlace(id);
               const wrong = readOnly && phase === 'verdict' && correctOrder.length > 0 && !inPlace(id);
               return (
@@ -524,7 +550,8 @@ export default function OrderingBlock({
                       flying ? 'board-fly' : ''
                     } ${selected === id ? 'ring-4 ring-accent' : ''} ${drag?.id === id ? 'opacity-40' : ''} ${readOnly ? 'cursor-default' : portrait ? 'cursor-grab touch-pan-y' : 'cursor-grab touch-none'}`}
                     // Pionowo bez linii kartki: linie co 28 j. sceny nie trafiają w wiersze tekstu 15 px i przecinają litery.
-                    style={{ ...place(slot, layout), transform: `rotate(${tiltOf(index)}deg)`, ...(portrait ? { backgroundImage: 'none' } : {}) }}
+                    // Pionowo (D-116) karty proste przy osi - bez obrotu.
+                    style={{ ...place(slot, layout), transform: portrait ? undefined : `rotate(${tiltOf(index)}deg)`, ...(portrait ? { backgroundImage: 'none' } : {}) }}
                   >
                     <span className={`block h-full w-full overflow-hidden ${wrong ? 'board-card-wrong' : ''}`} style={{ ...cardText, padding: `${u(20)} ${u(12)} ${u(8)}` }}>
                       {textOf(id)}
@@ -675,7 +702,7 @@ function Photo({
   /** Rozmiar czcionki w jednostkach sceny (na telefonie w pionie min. 15 px, D-105). */
   fs: (value: number) => string;
 }) {
-  const pin = pinOf(rect);
+  const pin = pinOf(rect, layout);
   return (
     <>
       <div

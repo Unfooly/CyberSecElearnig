@@ -35,6 +35,11 @@ export interface BoardLayout {
   tray: Rect | null;
   /** Rozmiar karty śladu (w polu i na tacce). */
   card: { w: number; h: number };
+  /**
+   * Pionowo (telefon, D-116): oś łańcucha - czerwona nić po lewej (x), od tabliczki START na górze do KONIEC na dole; pinezka każdej
+   * karty i zdjęcia leży na osi. Poziomo: null (nić łukami między pinezkami na górze kart).
+   */
+  axis: { x: number; start: Rect; end: Rect } | null;
 }
 
 const LANDSCAPE = { width: 1280, height: 720 } as const;
@@ -53,13 +58,21 @@ export function boardOrientation(width: number, height: number): BoardOrientatio
   return height > width * 1.15 ? 'portrait' : 'landscape';
 }
 
-// Pionowo (D-105): jedna kolumna szerokich kart na przemian przesuniętych w lewo i w prawo (zygzak). Karta 440 j. szerokości przy
-// najwęższym telefonie (scena ~340 px, 1 j. ~0.57 px) mieści ok. 26 znaków tekstu 15 px w linii; linia 15 px × 1.3 to ~36 j. Wysokość
-// karty i zdjęcia rośnie z najdłuższym tekstem (schemat pozwala na 300 znaków śladu) - tekst nie jest ucinany; min. 150 j. = 3 linie.
+// Pionowo (D-116, jak makieta modułu 2 - zastępuje zygzak D-105): pionowa oś z czerwoną nicią po lewej, jedna kolumna kart i zdjęć po jej
+// prawej, pinezka każdej karty na osi, START na górze i KONIEC na dole. Karta 440 j. szerokości przy najwęższym telefonie (scena ~340 px,
+// 1 j. ~0.57 px) mieści ok. 26 znaków tekstu 15 px w linii; linia 15 px × 1.3 to ~36 j. Wysokość karty i zdjęcia rośnie z najdłuższym
+// tekstem (schemat pozwala na 300 znaków śladu) - tekst nie jest ucinany; min. 150 j. = 3 linie.
 const PORTRAIT_CARD_W = 440;
 const PORTRAIT_LINE = 36;
 const PORTRAIT_GAP = 34;
 const PORTRAIT_PHOTO_W = 300;
+/** Oś (nić) i lewa krawędź kolumny kart (j.). */
+const AXIS_X = 64;
+const COLUMN_X = 112;
+/** Tabliczki START / KONIEC na osi (j.): min. 15 px tekstu przy najwęższej scenie. */
+const TAG = { w: 170, h: 52 };
+/** Pinezka karty na osi: tyle j. poniżej górnej krawędzi karty. */
+const AXIS_PIN_DY = 34;
 
 /** Wysokość karty pionowej (j.) dla najdłuższego tekstu śladu: padding 28 j. + linie, min. 150 j. */
 export function portraitCardHeight(maxChars: number): number {
@@ -91,24 +104,24 @@ export function boardLayout(
 ): BoardLayout {
   const n = Math.max(1, count);
   if (orientation === 'portrait') {
-    const margin = 40;
-    const card = { w: PORTRAIT_CARD_W, h: portraitCardHeight(options.maxChars ?? 0) };
+    const card = { w: Math.min(PORTRAIT_CARD_W, PORTRAIT_WIDTH - COLUMN_X - 40), h: portraitCardHeight(options.maxChars ?? 0) };
     const photo = { w: PORTRAIT_PHOTO_W, h: portraitPhotoHeight(options.photoChars?.label ?? 0, options.photoChars?.caption ?? 0) };
-    const columns = [margin, PORTRAIT_WIDTH - margin - card.w];
-    // Tabliczka z tytułem ma na telefonie min. 15 px (~55 j. wysokości przy najwęższej scenie) - pod nią zdjęcie albo pierwsze pole.
-    const start = options.start ? { x: margin, y: 100, ...photo } : null;
-    const top = start ? start.y + start.h + 40 : 110;
+    // Tabliczka z tytułem ma na telefonie min. 15 px (~55 j. wysokości przy najwęższej scenie) - pod nią START, zdjęcie i pola.
+    const startTag = { x: AXIS_X - 24, y: 104, ...TAG };
+    const firstTop = startTag.y + startTag.h + 30;
+    const start = options.start ? { x: COLUMN_X, y: firstTop, ...photo } : null;
+    const top = start ? start.y + start.h + PORTRAIT_GAP : firstTop;
     const slots = Array.from({ length: n }, (_, index) => ({
-      x: columns[index % 2],
+      x: COLUMN_X,
       y: top + index * (card.h + PORTRAIT_GAP),
       w: card.w,
       h: card.h,
     }));
     const last = slots[n - 1];
-    // Zdjęcie końca po stronie przeciwnej do ostatniego pola - nić schodzi ukosem jak między polami.
-    const end = options.end ? { x: (n - 1) % 2 === 0 ? PORTRAIT_WIDTH - margin - photo.w : margin, y: last.y + last.h + 40, ...photo } : null;
+    const end = options.end ? { x: COLUMN_X, y: last.y + last.h + PORTRAIT_GAP, ...photo } : null;
     const bottom = end ? end.y + end.h : last.y + last.h;
-    const height = bottom + 40;
+    const endTag = { x: AXIS_X - 24, y: bottom + 30, ...TAG };
+    const height = endTag.y + endTag.h + 40;
     return {
       orientation,
       width: PORTRAIT_WIDTH,
@@ -121,6 +134,7 @@ export function boardLayout(
       end,
       tray: null,
       card,
+      axis: { x: AXIS_X, start: startTag, end: endTag },
     };
   }
 
@@ -160,11 +174,13 @@ export function boardLayout(
     end: options.end ? { x: 230, y: 330, w: 170, h: 124 } : null,
     tray: { x: 16, y: 542, w: 1248, h: 164 },
     card,
+    axis: null,
   };
 }
 
-/** Pinezka: środek górnej krawędzi, lekko w dół. */
-export function pinOf(rect: Rect): Point {
+/** Pinezka: poziomo środek górnej krawędzi, lekko w dół; pionowo (oś, D-116) - na osi, na wysokości górnej części karty. */
+export function pinOf(rect: Rect, layout?: Pick<BoardLayout, 'axis'>): Point {
+  if (layout?.axis) return { x: layout.axis.x, y: rect.y + AXIS_PIN_DY };
   return { x: rect.x + rect.w / 2, y: rect.y + 6 };
 }
 
@@ -193,10 +209,19 @@ export function yarnPath(a: Point, b: Point): string {
  */
 export function yarnSegments(layout: BoardLayout, filled: readonly boolean[]): { d: string; solid: boolean }[] {
   const nodes: { point: Point; filled: boolean }[] = [];
-  if (layout.start) nodes.push({ point: pinOf(layout.start), filled: true });
-  layout.slots.forEach((slot, index) => nodes.push({ point: pinOf(slot), filled: filled[index] === true }));
-  if (layout.end) nodes.push({ point: pinOf(layout.end), filled: true });
-  return nodes.slice(1).map((node, index) => ({ d: yarnPath(nodes[index].point, node.point), solid: nodes[index].filled && node.filled }));
+  const axis = layout.axis;
+  // Pionowo (D-116): nić prosto po osi, od tabliczki START do KONIEC (tabliczki są zawsze "przypięte").
+  if (axis) nodes.push({ point: { x: axis.x, y: axis.start.y + axis.start.h / 2 }, filled: true });
+  if (layout.start) nodes.push({ point: pinOf(layout.start, layout), filled: true });
+  layout.slots.forEach((slot, index) => nodes.push({ point: pinOf(slot, layout), filled: filled[index] === true }));
+  if (layout.end) nodes.push({ point: pinOf(layout.end, layout), filled: true });
+  if (axis) nodes.push({ point: { x: axis.x, y: axis.end.y + axis.end.h / 2 }, filled: true });
+  const r = (value: number) => Math.round(value * 10) / 10;
+  const straight = (a: Point, b: Point) => `M${r(a.x)} ${r(a.y)} L${r(b.x)} ${r(b.y)}`;
+  return nodes.slice(1).map((node, index) => ({
+    d: axis ? straight(nodes[index].point, node.point) : yarnPath(nodes[index].point, node.point),
+    solid: nodes[index].filled && node.filled,
+  }));
 }
 
 /**

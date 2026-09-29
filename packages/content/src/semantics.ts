@@ -323,6 +323,29 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const outerIds = block.hotspots.map((h) => h.id);
       checkUnique('hotspots', flattenHotspots(block.hotspots).map((h) => h.id));
       checkSubset('requiredHotspots', block.requiredHotspots, outerIds); // lista jest PRZESTARZAŁA i starsza niż zagnieżdżanie: tylko zewnętrzne.
+      // Ekran monitora sceny zagnieżdżonej (D-116) w granicach grafiki pulpitu.
+      block.hotspots.forEach((h, i) => {
+        const screen = h.media?.kind === 'scene' ? h.media.scene.screen : undefined;
+        if (screen && (screen.x + screen.w > 100 || screen.y + screen.h > 100)) errors.push(`hotspots[${i}].media.scene.screen: prostokąt wychodzi poza grafikę`);
+      });
+      // Wariant pionowy sceny (D-116): grafika i prostokąty razem, dokładnie te same przedmioty co scena pozioma (inaczej w pionie
+      // zniknąłby przedmiot albo drzwi), prostokąty w granicach grafiki.
+      if ((block.imagePortrait === undefined) !== (block.portraitHotspots === undefined)) {
+        errors.push('imagePortrait i portraitHotspots występują razem (wariant pionowy sceny)');
+      }
+      if (block.portraitHotspots) {
+        const portraitIds = block.portraitHotspots.map((h) => h.id);
+        checkUnique('portraitHotspots', portraitIds);
+        for (const id of outerIds.filter((id) => !portraitIds.includes(id))) errors.push(`portraitHotspots: brak przedmiotu "${id}" (te same id co hotspots)`);
+        for (const id of portraitIds.filter((id) => !outerIds.includes(id))) errors.push(`portraitHotspots: nieznany przedmiot "${id}"`);
+        block.portraitHotspots.forEach((h, i) => {
+          if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`portraitHotspots[${i}] (${h.id}): prostokąt wychodzi poza grafikę`);
+        });
+        // Napisy sceny na grafice pionowej: bez `portrait` odtwarzacz użyłby prostokąta z grafiki poziomej (inne położenie).
+        (block.textLayer ?? []).forEach((entry, i) => {
+          if (!entry.portrait) errors.push(`textLayer[${i}] (${entry.id}): scena z imagePortrait wymaga prostokąta portrait`);
+        });
+      }
       // Okienka easter egga (D-100) nigdy nie są wymagane - także przez przestarzałą listę; wyróżnienia unikalne w bloku (etykieta po id).
       const popupsHotspots = flattenHotspots(block.hotspots).filter((h) => h.media?.kind === 'popups');
       for (const h of popupsHotspots) {

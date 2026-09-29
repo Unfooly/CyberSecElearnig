@@ -11,6 +11,9 @@
       "prop": "screenFrame",
       "x": 30,
       "y": 30,
+      "partHotspots": {
+        "screen": "slot-ekran"
+      },
       "params": {
         "sw": 1200,
         "sh": 800,

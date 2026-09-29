@@ -8,6 +8,8 @@ import { hashContent, moduleWarnings, parseModule } from './node';
 // Sumy SHA-256 policzone na kodzie SPRZED v6 (main 4314519): parsowany moduł, skrót treści (import, wersje kursu), odpowiedź
 // /start (toClientBlock każdego bloku ze stałym kontekstem) i ostrzeżenia importu. Zmiana którejkolwiek sumy = zmiana zachowania
 // dla istniejącej treści - wolno ją zaktualizować wyłącznie świadomą decyzją (nowy wpis D-xxx), nigdy „żeby test przeszedł”.
+// Aktualizacje: D-116 (sceny pionowe korytarza i biura Anny - imagePortrait + portraitHotspots, prostokąt ekranu pulpitu
+// `media.scene.screen`; parsed, contentHash i clientBlocks nowe, ostrzeżenia bez zmian).
 const MODULE_1 = join(__dirname, '..', 'modules', 'wyludzone-haslo', 'module.json');
 
 const context = {
@@ -18,9 +20,9 @@ const context = {
 const sha = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 const GOLDEN = {
-  parsed: 'e4c4cdd61ba9bdcc95fe32d6d2d7df4fd5f9c4c1db13ceeece026d55ef1bad57',
-  contentHash: '504fe17f55e0920c77e66c4363930a27b60465fe197f4c3b69769f38eed7f8f5',
-  clientBlocks: '62b86b4269bc6d6647324eb8649d60d9a2459de4a68557df2b7747a98ebac50b',
+  parsed: '6cde9ca83be1df9742744bf1737370bdc46e72b5452af4e8d0d1ca560918b6db',
+  contentHash: '4471bebd654be62d0cda241c33cb1f920ee96871b020bf9ecc6eebfc24049ffc',
+  clientBlocks: '4f22409f40bcda32ec6217cd647cc82edc698402c8ff7f7e8cdd2257f0bd4b96',
   warnings: '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
 };
 

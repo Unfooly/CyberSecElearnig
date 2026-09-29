@@ -25,6 +25,8 @@ import type { ObjectStore } from './types.js';
  */
 export const ASSET_PATHS: string[][] = [
   ['image'],
+  // Wariant pionowy sceny SCENE_HOTSPOTS (D-116).
+  ['imagePortrait'],
   ['character', 'avatar'],
   ['hotspots', '*', 'media', 'src'],
   // Wariant pionowy zbliżenia (telefon, D-104).

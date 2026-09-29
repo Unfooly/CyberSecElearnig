@@ -239,6 +239,62 @@ describe('parseModule: walidacja modułu', () => {
     }, 'evidence wymaga pola note');
   });
 
+  describe('wariant pionowy sceny i ekran monitora (D-116)', () => {
+    const withPortrait = (m: TestModule) => {
+      const scene = blockOf(m, 'SCENE_HOTSPOTS');
+      scene.imagePortrait = 'scenes/biuro-pion.svg';
+      scene.portraitHotspots = scene.hotspots.map((h: Record<string, any>, i: number) => ({ id: h.id, x: 5, y: 5 + i * 10, width: 20, height: 8 }));
+      return scene;
+    };
+    const nestedOf = (m: TestModule) => blockOf(m, 'SCENE_HOTSPOTS').hotspots.find((h: Record<string, any>) => h.media?.kind === 'scene');
+
+    it('przyjmuje imagePortrait + portraitHotspots z tymi samymi id i ekran w granicach grafiki', () => {
+      const module = fullModuleForTests();
+      withPortrait(module);
+      nestedOf(module).media.scene.screen = { x: 3.8, y: 4.9, w: 91.3, h: 79.8 };
+      const scene = parseModule(module).blocks.find((b) => b.type === 'SCENE_HOTSPOTS') as Record<string, any>;
+      expect(scene.portraitHotspots).toHaveLength(scene.hotspots.length);
+    });
+
+    it('imagePortrait i portraitHotspots tylko razem', () => {
+      expectInvalid((m) => {
+        delete withPortrait(m).portraitHotspots;
+      }, 'imagePortrait i portraitHotspots występują razem');
+      expectInvalid((m) => {
+        delete withPortrait(m).imagePortrait;
+      }, 'imagePortrait i portraitHotspots występują razem');
+    });
+
+    it('portraitHotspots: dokładnie te same id co hotspots, bez powtórzeń', () => {
+      expectInvalid((m) => {
+        withPortrait(m).portraitHotspots.pop();
+      }, 'portraitHotspots: brak przedmiotu');
+      expectInvalid((m) => {
+        withPortrait(m).portraitHotspots[0].id = 'nie-ma-takiego';
+      }, 'portraitHotspots: nieznany przedmiot "nie-ma-takiego"');
+      expectInvalid((m) => {
+        const scene = withPortrait(m);
+        scene.portraitHotspots.push({ ...scene.portraitHotspots[0] });
+      }, 'portraitHotspots: powtórzony identyfikator');
+    });
+
+    it('prostokąty pionowe i ekran monitora w granicach grafiki', () => {
+      expectInvalid((m) => {
+        withPortrait(m).portraitHotspots[0].x = 90; // 90 + 20 > 100
+      }, 'prostokąt wychodzi poza grafikę');
+      expectInvalid((m) => {
+        nestedOf(m).media.scene.screen = { x: 10, y: 10, w: 91, h: 50 };
+      }, 'media.scene.screen: prostokąt wychodzi poza grafikę');
+    });
+
+    it('napis sceny (textLayer) przy imagePortrait wymaga prostokąta portrait', () => {
+      expectInvalid((m) => {
+        withPortrait(m).textLayer = [{ id: 'napis', x: 10, y: 10, w: 30, h: 5, text: 'Napis' }];
+        m.schemaVersion = MODULE_SCHEMA_VERSION;
+      }, 'scena z imagePortrait wymaga prostokąta portrait');
+    });
+  });
+
   it('requiredHotspots[] (przestarzałe) nie widzi id hotspotów WEWNĄTRZ zagnieżdżonej sceny - lista jest starsza niż zagnieżdżanie', () => {
     expectInvalid((m) => {
       blockOf(m, 'SCENE_HOTSPOTS').requiredHotspots = ['h4-outlook'];

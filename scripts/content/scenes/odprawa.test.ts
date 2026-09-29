@@ -86,8 +86,8 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
 });
 
 describe('sceny modułu 1 z kompozytora', () => {
-  it('moduł 1: komplet źródeł (11 scen + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea 3 × zdobyte/zablokowane', () => {
-    expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(28);
+  it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea 3 × zdobyte/zablokowane', () => {
+    expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(30);
     expect(sources.filter((s) => s.target === 'achievements')).toHaveLength(6);
   });
 
@@ -177,6 +177,18 @@ describe('sceny modułu 1 z kompozytora', () => {
     });
   });
 
+  it('D-116: warianty pionowe scen (korytarz, biuro-anny) w module.json mają prostokąty z *-pion.hotspots.json kompozytora, te same id co scena pozioma', () => {
+    const moduleJson = JSON.parse(readFileSync(join(assets, '..', 'module.json'), 'utf8'));
+    for (const scene of ['korytarz', 'biuro-anny']) {
+      const block = moduleJson.blocks.find((b: { id: string }) => b.id === scene);
+      const built = JSON.parse(readFileSync(join(examples, `${scene}-pion.hotspots.json`), 'utf8')) as { id: string; x: number; y: number; w: number; h: number }[];
+      const expected = built.map(({ id, x, y, w, h }) => ({ id, x, y, width: w, height: h }));
+      const byId = (list: { id: string }[]) => [...list].sort((a, b) => a.id.localeCompare(b.id));
+      expect(byId(block.portraitHotspots), scene).toEqual(byId(expected));
+      expect(block.portraitHotspots.map((h: { id: string }) => h.id).sort(), scene).toEqual(block.hotspots.map((h: { id: string }) => h.id).sort());
+    }
+  });
+
   it('module.json (scena pulpitu w monitorze) ma te same współrzędne hotspotów co pulpit.hotspots.json; „outlook” i „przegladarka” bez zmian, „gra” nowa', () => {
     const moduleJson = JSON.parse(readFileSync(join(assets, '..', 'module.json'), 'utf8'));
     const office = moduleJson.blocks.find((block: { id: string }) => block.id === 'biuro-anny');
@@ -186,10 +198,13 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(built.find((h) => h.id === 'outlook')).toEqual({ id: 'outlook', x: 8.1, y: 9.6, w: 15.9, h: 22 });
     expect(built.find((h) => h.id === 'przegladarka')).toEqual({ id: 'przegladarka', x: 8.3, y: 31.3, w: 15.6, h: 21.6 });
     expect(built.find((h) => h.id === 'gra')).toEqual({ id: 'gra', x: 26.3, y: 31.3, w: 15.6, h: 21.6 });
-    for (const b of built) {
+    for (const b of built.filter((h) => !String(h.id).startsWith('slot-'))) {
       const inModule = desktop.find((h) => h.id === b.id);
       expect(inModule, String(b.id)).toBeDefined();
       expect({ x: inModule!.x, y: inModule!.y, w: inModule!.width, h: inModule!.height }, String(b.id)).toEqual({ x: b.x, y: b.y, w: b.w, h: b.h });
     }
+    // D-116: ekran monitora (okienka easter egga tylko w nim) = slot-ekran kompozytora (wnętrze ramki screenFrame).
+    const slot = built.find((h) => h.id === 'slot-ekran')!;
+    expect(office.hotspots.find((h: { id: string }) => h.id === 'monitor').media.scene.screen).toEqual({ x: slot.x, y: slot.y, w: slot.w, h: slot.h });
   });
 });

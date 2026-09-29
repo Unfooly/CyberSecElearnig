@@ -1,0 +1,43 @@
+{
+ "width": 900,
+ "height": 1100,
+ "background": {
+  "floorY": 900
+ },
+ "items": [
+  {
+   "id": "tablica",
+   "prop": "noticeBoard",
+   "x": 40,
+   "y": 318,
+   "hotspot": true,
+   "params": {
+    "notes": [
+     "Szkolenie BHP|czwartek, 10:00",
+     "Kuchnia|myjemy po sobie!",
+     "Hasła|nie na karteczkach",
+     "Parking|nowe miejsca"
+    ]
+   },
+   "scale": 1.35
+  },
+  {
+   "id": "drzwi",
+   "prop": "door",
+   "x": 620,
+   "y": 340,
+   "hotspot": true,
+   "pad": 14,
+   "params": {
+    "label": "KSIĘGOWOŚĆ"
+   },
+   "scale": 1.4
+  },
+  {
+   "id": "roslina2",
+   "prop": "plant",
+   "x": 60,
+   "y": 710
+  }
+ ]
+}

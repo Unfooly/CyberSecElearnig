@@ -418,8 +418,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
   const dialogue = (m: TestModule) => m.blocks.find((b) => b.type === 'DIALOGUE') as Record<string, any>;
   const email = (m: TestModule) => m.blocks.find((b) => b.type === 'EMAIL_ANALYSIS') as Record<string, any>;
 
-  it('fixtura przechodzi; bieżąca wersja to 5', () => {
-    expect(MODULE_SCHEMA_VERSION).toBe(5);
+  it('fixtura przechodzi; bieżąca wersja to 6', () => {
+    expect(MODULE_SCHEMA_VERSION).toBe(6);
     expect(() => parseModule(fullModuleForTests())).not.toThrow();
   });
 
@@ -488,8 +488,8 @@ describe('parseModule: schemaVersion 3 (dowody, required, lines)', () => {
     }
   });
 
-  it('wersja spoza 2-5 jest odrzucona', () => {
-    expect(invalid((m) => (m.schemaVersion = 6))).toContain('schemaVersion');
+  it('wersja spoza 2-6 jest odrzucona', () => {
+    expect(invalid((m) => (m.schemaVersion = 7))).toContain('schemaVersion');
   });
 
   it('evidence bez note to błąd', () => {

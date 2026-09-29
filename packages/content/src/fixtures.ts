@@ -508,6 +508,15 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   telefon.media!.narration = audio('telefon-media');
   const inner = scene.hotspots.flatMap((h) => ((h.media?.scene as { hotspots?: { media?: Record<string, unknown> }[] })?.hotspots ?? []));
   inner.find((h) => h.media?.kind === 'audio')!.media!.narration = audio('kosz-media');
+  // textLayer (schemaVersion 6): na scenie, na zbliżeniu, na scenie zagnieżdżonej i na zbliżeniu w niej - tylko tutaj, fullModule()
+  // zostaje w v5 (kształt fixtury pilnują testy e2e, CLAUDE.md reguła 9).
+  const layer = (id: string) => [{ id, x: 10, y: 10, w: 30, h: 8, text: `Napis ${id}`, style: 'sign', portrait: { x: 5, y: 20, w: 60, h: 6 } }];
+  const sceneBlock = blocks.SCENE_HOTSPOTS as Record<string, unknown>;
+  sceneBlock.textLayer = layer('szyld');
+  scene.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('zblizenie');
+  const nested = scene.hotspots.find((h) => h.media?.kind === 'scene')!.media!.scene as { hotspots: { media?: Record<string, unknown> }[] } & Record<string, unknown>;
+  nested.textLayer = layer('pulpit');
+  nested.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('ekran');
   for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;
 }

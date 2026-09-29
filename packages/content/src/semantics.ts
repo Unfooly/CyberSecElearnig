@@ -1,6 +1,8 @@
 import { ServerBlock } from './blocks';
+import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape } from './common';
 import { collectPaths } from './introspect';
-import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, moduleSchema } from './module';
+import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
+import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, ResolvedModule, moduleSchema } from './module';
 import { validateRegex } from './regex';
 
 // Walidacja semantyczna modułu (relacje między polami, których zod nie wyrazi w schemacie obiektu, kompilacja wzorców RE2).
@@ -465,8 +467,15 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
  * Ostrzeżenia (NIE błędy) dla poprawnego modułu: przestarzałe pola, które nadal działają. Import wypisuje je autorowi. PR 4 usuwa
  * requiredHotspots[] / requiredQuestions[] po migracji fixtur.
  */
-export function moduleWarnings(contentModule: ContentModule): string[] {
+export function moduleWarnings(stored: ContentModule): string[] {
   const warnings: string[] = [];
+  // Częściowe tłumaczenie (schemaVersion 6): moduł ma już jakiś język poza `pl`, ale nie w każdym polu wielojęzycznym - gracz w tym
+  // języku zobaczy w tych polach tekst `pl` (fallback). Moduł tylko po polsku nie dostaje ostrzeżeń.
+  for (const locale of localesIn(stored)) {
+    if (locale === DEFAULT_CONTENT_LOCALE) continue;
+    for (const path of missingTranslations(stored, locale)) warnings.push(`brak tłumaczenia ${locale.toUpperCase()}: ${path}`);
+  }
+  const contentModule = localizeContent(stored, DEFAULT_CONTENT_LOCALE);
   contentModule.blocks.forEach((block, index) => {
     const where = `blocks[${index}] (${block.id})`;
     // D-096: odtwarzacz nie pokazuje postaci (D-093) - mascot i pose są przestarzałe.
@@ -533,6 +542,38 @@ export function narrationsIn(node: unknown, path = ''): { path: string; spoken: 
   return found;
 }
 
+function valueAt(input: unknown, path: (string | number)[]): unknown {
+  let node = input;
+  for (const key of path) {
+    if (!node || typeof node !== 'object') return undefined;
+    node = (node as Record<string | number, unknown>)[key];
+  }
+  return node;
+}
+
+/**
+ * Błędy zod z pełną ścieżką pola. Pole wielojęzyczne (schemaVersion 6) to unia „wartość jednojęzyczna | { pl, en }” - zod zgłasza ją
+ * jednym „invalid_union”; tu rozwijamy ją do gałęzi pasującej do kształtu danych (obiekt z `pl` = gałąź wielojęzyczna, reszta =
+ * jednojęzyczna), żeby autor dostał np. `blocks.0.narration.voice: Invalid enum value`, a nie ogólne „Invalid input”.
+ */
+function formatIssues(issues: import('zod').ZodIssue[], input: unknown): string[] {
+  return issues.flatMap((issue) => {
+    if (issue.code === 'invalid_union') {
+      const data = valueAt(input, issue.path);
+      if (typeof data === 'string' || (data && typeof data === 'object' && !Array.isArray(data))) {
+        const branch = issue.unionErrors[hasLocaleShape(data) ? issue.unionErrors.length - 1 : 0];
+        const first = branch?.issues[0];
+        // Obiekt bez `pl` w miejscu tekstu (np. { "en": "x" } albo { "PL": "x" }): zamiast „Expected string, received object” - podpowiedź.
+        if (first && first.code === 'invalid_type' && first.expected === 'string' && first.path.length === issue.path.length) {
+          return [`${issue.path.join('.')}: pole wielojęzyczne wymaga klucza "pl" ({ "pl": "…", "en"?: "…" }) albo zwykłego tekstu`];
+        }
+        if (branch) return formatIssues(branch.issues, input);
+      }
+    }
+    return [`${issue.path.join('.') || '(moduł)'}: ${issue.message}`];
+  });
+}
+
 /**
  * Waliduje moduł (schemat zod + relacje między polami + reguły całego modułu). Zwraca dane PO parsowaniu (z uzupełnionymi
  * wartościami domyślnymi) - właśnie ta postać jest zapisywana jako wersja kursu, więc serwer nie zgaduje domyślnych.
@@ -540,10 +581,82 @@ export function narrationsIn(node: unknown, path = ''): { path: string; spoken: 
 export function parseModule(input: unknown): ContentModule {
   const parsed = moduleSchema.safeParse(input);
   if (!parsed.success) {
-    throw new ContentValidationError(parsed.error.issues.map((i) => `${i.path.join('.') || '(moduł)'}: ${i.message}`));
+    throw new ContentValidationError(formatIssues(parsed.error.issues, input));
   }
   const contentModule = parsed.data;
+  const errors = v6FeatureErrors(contentModule);
+
+  // Reguły semantyczne sprawdzane na treści rozwiniętej do KAŻDEGO użytego języka (schemaVersion 6): np. cytat kryterium maila musi
+  // być w treści maila tego samego języka, a reguła cyfr lektora (D-109) dotyczy spokenText każdego języka. Błąd, który występuje
+  // tylko w innym języku niż `pl`, dostaje prefiks `[en]`. Treść jednojęzyczna = jeden przebieg, jak przed v6.
+  const base = moduleSemanticErrors(localizeContent(contentModule, DEFAULT_CONTENT_LOCALE));
+  errors.push(...base);
+  for (const locale of localesIn(contentModule)) {
+    if (locale === DEFAULT_CONTENT_LOCALE) continue;
+    for (const error of moduleSemanticErrors(localizeContent(contentModule, locale))) {
+      if (!base.includes(error)) errors.push(`[${locale}] ${error}`);
+    }
+  }
+
+  if (errors.length > 0) throw new ContentValidationError(errors);
+  return contentModule;
+}
+
+/** Wywołuje `visit` dla każdego pola treści (ścieżka, klucz, wartość, klucz rodzica). */
+function walkFields(value: unknown, visit: (path: string, key: string, item: unknown, parentKey: string) => void, path = '', parentKey = ''): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => walkFields(item, visit, `${path}[${index}]`, parentKey));
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  for (const [key, item] of Object.entries(value)) {
+    const here = path ? `${path}.${key}` : key;
+    visit(here, key, item, parentKey);
+    walkFields(item, visit, here, key);
+  }
+}
+
+/**
+ * Nowości schemaVersion 6 użyte w module o niższej wersji: pola wielojęzyczne, `textLayer`, rodzaje notatek call/log/web i role
+ * głosu karol/pawel/oszust. Sprawdzane na treści ZAPISANEJ (przed rozwinięciem języka) - po rozwinięciu obiekty `{ pl, en }` znikają.
+ */
+function v6FeatureErrors(contentModule: ContentModule): string[] {
+  if (contentModule.schemaVersion >= 6) return [];
   const errors: string[] = [];
+  const localized = localizedPaths(contentModule);
+  if (localized.length > 0) {
+    const more = localized.length > 1 ? ` (i ${localized.length - 1} innych pól)` : '';
+    errors.push(`${localized[0]}: pola wielojęzyczne ({ pl, en }) wymagają schemaVersion 6${more}`);
+  }
+  walkFields(contentModule, (path, key, item, parentKey) => {
+    if (key === 'textLayer') errors.push(`${path}: textLayer wymaga schemaVersion 6`);
+    if (key === 'kind' && parentKey === 'note' && (V6_NOTE_KINDS as readonly unknown[]).includes(item)) {
+      errors.push(`${path}: rodzaj notatki "${String(item)}" wymaga schemaVersion 6`);
+    }
+    if (key === 'voice' && (V6_VOICE_ROLES as readonly unknown[]).includes(item)) errors.push(`${path}: rola głosu "${String(item)}" wymaga schemaVersion 6`);
+  });
+  return errors;
+}
+
+/** Warstwa tekstu (schemaVersion 6): unikalne id w obrębie jednej warstwy i prostokąty w granicach grafiki. */
+function textLayerErrors(contentModule: ResolvedModule): string[] {
+  const errors: string[] = [];
+  walkFields(contentModule, (path, key, item) => {
+    if (key !== 'textLayer' || !Array.isArray(item)) return;
+    const layer = item as { id: string; x: number; y: number; w: number; h: number; portrait?: { x: number; y: number; w: number; h: number } }[];
+    for (const id of duplicates(layer.map((entry) => entry.id))) errors.push(`${path}: powtórzony identyfikator "${id}"`);
+    layer.forEach((entry, index) => {
+      if (entry.x + entry.w > 100 || entry.y + entry.h > 100) errors.push(`${path}[${index}]: prostokąt wychodzi poza grafikę`);
+      const p = entry.portrait;
+      if (p && (p.x + p.w > 100 || p.y + p.h > 100)) errors.push(`${path}[${index}].portrait: prostokąt wychodzi poza pionową grafikę`);
+    });
+  });
+  return errors;
+}
+
+/** Reguły semantyczne modułu rozwiniętego do jednego języka (bloki, relacje między blokami, reguła cyfr lektora, SUMMARY). */
+function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
+  const errors: string[] = textLayerErrors(contentModule);
 
   const seen = new Set<string>();
   contentModule.blocks.forEach((block, index) => {
@@ -623,6 +736,5 @@ export function parseModule(input: unknown): ContentModule {
     }
   }
 
-  if (errors.length > 0) throw new ContentValidationError(errors);
-  return contentModule;
+  return errors;
 }

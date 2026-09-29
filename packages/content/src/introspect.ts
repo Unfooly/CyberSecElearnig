@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isLocalizedSchema } from './common';
 
 /** Ścieżki pól liściowych DANYCH (`a.b`, `a[].b`) - do sprawdzania, które pola faktycznie trafiły do odpowiedzi. */
 export function collectPaths(value: unknown, prefix = ''): string[] {
@@ -19,6 +20,9 @@ export function collectPaths(value: unknown, prefix = ''): string[] {
  */
 export function leafPaths(schema: z.ZodTypeAny, prefix = ''): string[] {
   const def = schema._def as { typeName: string } & Record<string, unknown>;
+  // Pole wielojęzyczne (schemaVersion 6): klasyfikacja jak wariantu jednojęzycznego (pierwsza opcja unii) - klient dostaje treść
+  // już rozwiniętą do jednego języka (toClientBlock), więc ścieżki `pl`/`en` nigdy nie trafiają do odpowiedzi.
+  if (isLocalizedSchema(schema)) return leafPaths((def.options as z.ZodTypeAny[])[0], prefix);
   switch (def.typeName) {
     case 'ZodOptional':
     case 'ZodNullable':

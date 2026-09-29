@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
-import { moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
+import { DEFAULT_CONTENT_LOCALE, localizeContent, moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
 import type { ContentBlock } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
@@ -53,7 +53,8 @@ export default function PlayerHarnessPage({
   const harnessModule = harnessModuleDir(searchParams.module);
   if (!harnessModule) notFound();
   const rawModule: unknown = JSON.parse(fs.readFileSync(path.join(harnessModule.dir, 'module.json'), 'utf8'));
-  const parsedModule = moduleSchema.parse(rawModule);
+  // schemaVersion 6: harness pokazuje treść po polsku (jak API bez wyboru języka) - rozwinięcie języka przed wyborem bloku.
+  const parsedModule = localizeContent(moduleSchema.parse(rawModule), DEFAULT_CONTENT_LOCALE);
   const blockId = searchParams.block ?? (harnessModule.slug === DEFAULT_MODULE_SLUG ? DEFAULT_BLOCK_ID : parsedModule.blocks[0]?.id);
   const rawBlock: ServerBlock | undefined = parsedModule.blocks.find((block) => block.id === blockId);
   if (!rawBlock) notFound();

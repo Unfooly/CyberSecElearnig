@@ -774,6 +774,10 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   (`{ asked, noted, opened? }`), tylko osobnym żądaniem (serwer odsłania kwestię po trafieniu); „Podważ” przy każdej kwestii (klient nie wie,
   która kłamie); wynik = trafienia / (sprzeczności + pudła) zamiast trafione / sprzeczności (pudło kosztuje). Część 2 (odtwarzacz, konsola,
   moduł podglądu, layout-check) - osobny PR.
+- **Faza 1c, część 2 zrobiona (D-119):** `InterrogationBlock` w odtwarzaczu - wątek jak komunikator, akcje kwestii (dodaj do notatek, podważ;
+  klawisze N/P), arkusz wyboru dowodu, przyznanie po trafieniu, konsola (przekładki teczki), wynik z rozstrzygnięciem; moduł podglądu
+  `dev-modul-2` (przesłuchanie Karola i Pawła), layout-check `modul2` (n7). Odstępstwo od szkicu 4.2: zamiast przeciągania kwestii do
+  notesu - zaznaczenie kwestii i przycisk „Dodaj do notatek”.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);

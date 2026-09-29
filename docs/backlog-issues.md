@@ -719,6 +719,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: `inert` paska przy otwartej nakładce (wspólnie dla OSINT i przesłuchania); `aria-disabled` albo pełna lista obszarów w wyniku;
   wspólna stała typów tablicowych; decyzja przy treści 1g.
 
+### B-137 Rozmowa na żywo: brak ponowienia przy odrzuconym zapisie (D-124)
+- Etykiety: `P3`, `a11y`, `mod:kursy` · Źródło: code review D-124 (runda 2)
+- Opis: gdy odczyt `/users/me/preferences` w `page.tsx` się nie uda (5xx, sieć), a konto ma „Bez limitów czasu”, odtwarzacz pokazuje
+  przełącznik z limitem; gracz, który przemilczy odpowiedź, dostaje przy zapisie 400 (serwer stosuje ustawienie konta) i nie może ponowić
+  rozmowy bez odświeżenia strony. Rzadkie (awaria odczytu preferencji), ale trafia w osoby z ustawieniem dostępności.
+- Akceptacja: przy błędzie zapisu LIVE_CALL przycisk „Zadzwoń ponownie” (powrót do ekranu przed połączeniem z czystą ścieżką) albo tryb
+  bez limitu, gdy preferencji nie udało się odczytać; test.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

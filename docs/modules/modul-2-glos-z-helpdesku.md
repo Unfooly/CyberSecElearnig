@@ -803,6 +803,12 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);
   `localizeContent` już odrzuca nieznany język.
+- **Faza 1e część 3 i faza 1f zrobione (D-124, jeden PR z migracją):** „Bez limitów czasu” na koncie (sekcja „Dostępność” w ustawieniach,
+  serwer stosuje ustawienie konta przy ocenie rozmowy, odtwarzacz prowadzi wtedy rozmowę bez limitu), ranga RARE i 4 osiągnięcia (Dead Air,
+  Perfect Pitch, Full Transcript z dowodami ukrytymi, Off the Record) - przyznanie na żywo i wsteczne, trofea z kompozytora. Punkty niżej
+  („Ustawienia dostępności”, „Osiągnięcia”) zostają jako zapis wymagań; odstępstwa: Dead Air/Perfect Pitch przyznawane przy ukończeniu kursu;
+  „pierwsze 3 wybory” w Dead Air to najwyżej 3 KROKI ścieżki - cisza po limicie też jest krokiem (reguła liczona ze ścieżki, D-122/D-124);
+  konto z „Bez limitów czasu” nie ma przełącznika limitu przed połączeniem (serwer i tak nie przyjmie ciszy).
 - **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja) + przełącznik
   „Wyłącz limit czasu” na ekranie przed połączeniem `LIVE_CALL`. Limit nie zależy od `prefers-reduced-motion`.
 - **Osiągnięcia:**

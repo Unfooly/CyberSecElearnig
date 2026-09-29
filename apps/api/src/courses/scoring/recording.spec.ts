@@ -94,6 +94,27 @@ describe('scoreRecording: B-131 - nagranie jak w module 2 (12 kwestii, 7 flag)',
     const result = scoreRecording(module2, [...hitAll, { atMs: startOf(6) + 1400 }]);
     expect(result).toEqual({ points: 1, flagsHit: FLAGGED.map((n) => `s${n}`), falseTaps: 0 });
   });
+
+  it('podwójne stuknięcie tuż po trafieniu przy końcu okna, już poza oknem, też bez kary; karencja się nie łańcuchuje', () => {
+    // Flaga 12 nie istnieje; kwestia 11: okno do startOf(11) + 4500. Trafienie w samej końcówce okna, powtórka 800 ms później - poza oknem.
+    const end = startOf(11) + 4500;
+    const hits = [...hitAll.filter((tap) => tap.atMs < startOf(11)), { atMs: end }];
+    expect(scoreRecording(module2, [...hits, { atMs: end + 800 }]).falseTaps).toBe(0);
+    // Druga powtórka 1400 ms po pierwszej (2200 ms po trafieniu) - karencja liczy się od trafienia, więc fałszywe.
+    expect(scoreRecording(module2, [...hits, { atMs: end + 800 }, { atMs: end + 2200 }]).falseTaps).toBe(1);
+  });
+
+  it('ta sama kwestia zaznaczona w transkrypcji i stuknięta w odsłuchu to jedna odpowiedź (bez kary); kolejne - zwykłe reguły', () => {
+    const both = [...hitAll.slice(1), { segmentId: 's1' }, { atMs: startOf(1) + 1000 }];
+    expect(scoreRecording(module2, both)).toEqual({ points: 1, flagsHit: FLAGGED.map((n) => `s${n}`), falseTaps: 0 });
+    // Druga taka powtórka po czasie podwójnego stuknięcia - fałszywa.
+    expect(scoreRecording(module2, [...both, { atMs: startOf(1) + 3000 }]).falseTaps).toBe(1);
+  });
+
+  it('informacyjnie (uwaga z review): tapanie na ślepo co 4,5 s trafia wszystkie 7 flag i daje 0,7', () => {
+    const blind = Array.from({ length: 10 }, (_, i) => ({ atMs: i * 4500 }));
+    expect(scoreRecording(module2, blind)).toMatchObject({ flagsHit: FLAGGED.map((n) => `s${n}`), falseTaps: 3, points: 0.7 });
+  });
 });
 
 describe('scoreRecording: fałszywe tapnięcia, punkty, błędy', () => {

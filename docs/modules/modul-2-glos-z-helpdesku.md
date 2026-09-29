@@ -426,7 +426,10 @@ języka gracza.
 - **fałszywe tapnięcie (B-131, decyzja właściciela 2026-09-29): KAŻDE tapnięcie, które nie trafia NOWEJ flagi** - `atMs` poza oknami,
   `segmentId` segmentu bez flagi, powtórne tapnięcie w oknie już trafionej flagi i powtórne `segmentId` tej samej kwestii (nieistniejący
   `segmentId` = odpowiedź odrzucona);
-- **wyjątek - podwójne stuknięcie:** powtórka `atMs` w ciągu 1500 ms od trafienia flagi jest ignorowana (bez kary, bez punktu);
+- **wyjątek - podwójne stuknięcie:** powtórka `atMs` w ciągu 1500 ms od trafienia flagi jest ignorowana (bez kary, bez punktu) -
+  liczone od chwili trafienia (nie łańcuchuje się) i także gdy powtórka tuż po trafieniu przy końcu okna wypadnie już poza nie;
+- **ta sama kwestia w obu trybach:** kwestia zaznaczona w transkrypcji i stuknięta w odsłuchu to jedna odpowiedź - pierwsze tapnięcie
+  `atMs` w oknie flagi trafionej po `segmentId` bez kary (UI łączy oba tryby w jednej odpowiedzi);
 - kara bez zmian: −0,1 za każde fałszywe tapnięcie, wynik min. 0. Przykłady (testy): tapanie równomierne co 1 s przez całe nagranie →
   ≤ 0,2; 7 trafień + 1 pomyłka → 0,9; 7 trafień + podwójne stuknięcie przy jednej fladze → 1,0 (i warunek Perfect Pitch);
 - klient nie wysyła kategorii ani poprawności; kategoria jest pokazywana dopiero w omówieniu.
@@ -752,7 +755,8 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   - Wyjątki z własnym tłem: ekran połączenia w `LIVE_CALL` (ciemny) i tablica korkowa w `ORDERING` - to grafika w bloku, nie chrome.
 - **Testy oceny `CALL_RECORDING` (faza 1b, decyzja właściciela):** reguła nakładających się okien (tapnięcie w części wspólnej liczy
   się do wcześniejszej, jeszcze nietrafionej flagi) ma test na dwa nakładające się okna (segmenty 3 i 4) - m.in. dwa tapnięcia w części
-  wspólnej trafiają obie flagi, jedno trafia wcześniejszą, a tapnięcie po trafieniu obu nie jest fałszywe.
+  wspólnej trafiają obie flagi, jedno trafia wcześniejszą, a tapnięcie po trafieniu obu jest bez kary tylko w ciągu 1500 ms od
+  trafienia (podwójne stuknięcie, B-131).
 - **Faza 1a zrobiona (D-114):** schemat v6 - `Localized<T>` z fallbackiem na `pl`, `textLayer`, notatki `call`/`log`/`web`, role
   `karol`/`pawel`/`oszust`, `voices.json` per język z `sameAs`; moduł 1 bez zmian bajt w bajt (test). Poza v6 (faza EN): odpowiedzi
   zadania tekstowego per język, ścieżki grafik `Localized`, nagrania EN w potoku. Głosy wybrane przez właściciela z próbek

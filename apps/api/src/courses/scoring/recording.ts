@@ -76,6 +76,15 @@ export function scoreRecording(block: RecordingBlock, taps: RecordingTap[]): Rec
         hitAt.set(fresh.segmentId, atMs);
         continue;
       }
+      // Ta sama kwestia zaznaczona w obu trybach (UI łączy flagi z odsłuchu i z transkrypcji w jednej odpowiedzi): pierwsze tapnięcie
+      // po czasie w oknie flagi trafionej w transkrypcji to TA SAMA odpowiedź, nie powtórka - bez kary; od niego liczy się podwójne stuknięcie.
+      const sameAnswer = containing.find((window) => hit.has(window.segmentId) && !hitAt.has(window.segmentId));
+      if (sameAnswer) {
+        hitAt.set(sameAnswer.segmentId, atMs);
+        continue;
+      }
+      // Podwójne stuknięcie: w ciągu DOUBLE_TAP_GRACE_MS od trafienia (dowolnej flagi - powtórka tuż po trafieniu przy końcu okna może
+      // już wypaść poza okno tej flagi). Liczy się od chwili trafienia, nie od zignorowanej powtórki (karencja się nie łańcuchuje).
       const doubleTap = [...hitAt.values()].some((at) => atMs - at >= 0 && atMs - at <= DOUBLE_TAP_GRACE_MS);
       if (!doubleTap) falseTaps += 1;
     }

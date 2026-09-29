@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
-import { toClientBlock } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
@@ -15,7 +14,7 @@ import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto'
 import { CourseCatalogItemDto } from './dto/course-catalog-item.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { clientProgress, evidenceSummary, resolveNote, shuffleContext } from './client-view';
+import { clientProgress, evidenceSummary, projectBlockForStart, resolveNote, revealedBlockAt, shuffleContext } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import { AttemptResponse, evaluateAttempt, evaluateSubmit, pickReaction } from './scoring/evaluate';
@@ -231,7 +230,9 @@ export class CoursesService {
       // Jedyna droga treści do klienta: biała lista pól per typ bloku (packages/content, toClientBlock). Klucz odpowiedzi,
       // podpowiedzi i rozwiązania nie wychodzą; kolejność elementów ORDERING/EMAIL_ANALYSIS jest tasowana sekretem serwera.
       const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
-      const contentBlocks = version.blocks.map((block) => toClientBlock(block, context));
+      // Omówienie nagrania (D-115) przed miejscem gracza bez znaczników - byłyby kluczem odpowiedzi nagrania (projectBlockForStart).
+      const completed = current.status === AssignmentStatus.COMPLETED;
+      const contentBlocks = version.blocks.map((block, index) => projectBlockForStart(block, index, context, current.currentBlockIndex, completed));
 
       return {
         assignmentId: current.id,
@@ -278,8 +279,8 @@ export class CoursesService {
 
       const block = blocks[dto.blockIndex];
       const progress = readProgress(assignment.progress);
-      const { opaqueId } = shuffleContext(this.shuffleSecret, assignment.id, version.id);
-      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), opaqueId);
+      const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
+      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), context.opaqueId);
       const reaction = pickReaction(block, result.entry);
 
       progress.blocks[block.id] = result.entry;
@@ -319,6 +320,7 @@ export class CoursesService {
       // (patrz GamificationService.awardCourseCompletion i plan architektury
       // tego modułu: świadomie bez event emittera, właśnie z tego powodu).
       const evidence = evidenceSummary(progress, blocks);
+      const revealed = isComplete ? undefined : revealedBlockAt(blocks, currentBlockIndex, context);
       const courseSlug = assignment.course.slug ?? null;
       // Osiągnięcie za easter egg (D-111) - od razu przy zapisie bloku, w tej samej transakcji; bez XP (D-100). Komunikat
       // w playerze pokazuje outro easter egga (przed zapisem bloku), więc wynik nie wraca w odpowiedzi.
@@ -356,6 +358,8 @@ export class CoursesService {
         },
         // Dowody po tym zapisie (liczby liczy serwer; total znany od startu dla wszystkich bloków, D-055 pkt 2).
         evidence,
+        // Blok wstrzymany w /start (omówienie nagrania, D-115), do którego gracz właśnie dotarł - pełna treść dopiero teraz.
+        ...(revealed ? { revealedBlock: revealed } : {}),
         // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.
         notes: result.notesAdded
           .map((key) => resolveNote(blocks, key))

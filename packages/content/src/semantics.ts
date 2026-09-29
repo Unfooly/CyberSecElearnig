@@ -724,10 +724,17 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
     if (block.type !== 'ANNOTATED_REPLAY' || block.source.kind !== 'transcript') return;
     const where = `blocks[${index}] (${block.id})`;
     const fromBlock = block.source.fromBlock;
-    const source = contentModule.blocks.find((b) => b.id === fromBlock);
+    const sourceIndex = contentModule.blocks.findIndex((b) => b.id === fromBlock);
+    const source = contentModule.blocks[sourceIndex];
     if (!source || source.type !== 'CALL_RECORDING') {
       errors.push(`${where}: source.fromBlock "${fromBlock}" nie jest blokiem CALL_RECORDING tego modułu`);
       return;
+    }
+    // Znaczniki omówienia wskazują flagi nagrania - omówienie przed nagraniem odsłoniłoby klucz odpowiedzi (API wstrzymuje je tylko
+    // do dotarcia gracza do bloku omówienia, D-115).
+    if (sourceIndex > index) errors.push(`${where}: omówienie musi stać PO bloku nagrania "${fromBlock}" (znaczniki zdradzają flagi)`);
+    for (const id of duplicates(block.markers.flatMap((m) => (m.anchor.segmentId ? [m.anchor.segmentId] : [])))) {
+      errors.push(`${where}: więcej niż jeden znacznik przy segmencie "${id}"`);
     }
     const segmentIds = source.segments.map((s) => s.id);
     block.markers.forEach((marker, m) => {

@@ -5,6 +5,8 @@
 export const DEFAULT_FLAG_WINDOW_AFTER_MS = 1500;
 /** Domyślna kara za fałszywe tapnięcie (punkty = trafione / wszystkie - kara × fałszywe, min. 0). */
 export const DEFAULT_FALSE_TAP_PENALTY = 0.1;
+/** Najwięcej tapnięć w jednej odpowiedzi - limit odpowiedzi serwera i przycisku flagi w odtwarzaczu (jedna stała). */
+export const MAX_RECORDING_TAPS = 200;
 
 export interface TimelineSegmentInput {
   id: string;

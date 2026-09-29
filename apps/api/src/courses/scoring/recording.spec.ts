@@ -84,7 +84,9 @@ describe('scoreRecording: fałszywe tapnięcia, punkty, błędy', () => {
   });
 
   it('domyślne okno 1500 ms i kara 0,1, gdy treść ich nie podaje', () => {
-    const { flagWindowAfterMs: _w, falseTapPenalty: _p, ...defaults } = overlapping;
+    const defaults: Partial<typeof overlapping> & Pick<typeof overlapping, 'id' | 'segments' | 'flags'> = { ...overlapping };
+    delete defaults.flagWindowAfterMs;
+    delete defaults.falseTapPenalty;
     expect(scoreRecording(defaults, [{ atMs: 3500 }, { segmentId: 'c' }])).toEqual({ points: 0.4, flagsHit: ['b'], falseTaps: 1 });
   });
 

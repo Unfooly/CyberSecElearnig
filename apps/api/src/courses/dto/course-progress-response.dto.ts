@@ -32,6 +32,9 @@ export class CourseProgressResponseDto {
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
   // CoursesService) - front (karta nagrody na SummaryScreen,
   // fix/course-finish-flow) pokazuje ją tylko wtedy, nie przy każdym zapisie postępu.
+  // Pełna treść bloku, do którego gracz właśnie dotarł, gdy /start go wstrzymał (omówienie nagrania, D-115 - client-view.ts,
+  // projectBlockForStart). Ta sama projekcja co /start (toClientBlock).
+  revealedBlock?: { blockIndex: number; block: Record<string, unknown> };
   gamification!: {
     xpGained: number;
     newLevel: number;

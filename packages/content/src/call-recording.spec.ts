@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { ContentValidationError, recordingTimeline, segmentAt } from './index';
 import { fullModule, fullModuleV6 } from './fixtures';
 import { parseModule } from './node';
@@ -80,10 +82,36 @@ describe('CALL_RECORDING: walidacja', () => {
   });
 });
 
+describe('moduły podglądu (packages/content/dev-modules - tylko harness i layout-check, poza importem)', () => {
+  const root = join(__dirname, '..', 'dev-modules');
+  const slugs = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  it('każdy ma slug dev-* równy nazwie katalogu i przechodzi pełną walidację modułu', () => {
+    expect(slugs.length).toBeGreaterThan(0);
+    for (const slug of slugs) {
+      const module = JSON.parse(readFileSync(join(root, slug, 'module.json'), 'utf8'));
+      expect(slug).toMatch(/^dev-/);
+      expect(module.slug).toBe(slug);
+      expect(errorsOf(module)).toBe('');
+    }
+  });
+});
+
 describe('ANNOTATED_REPLAY: walidacja', () => {
   it('źródło musi być blokiem CALL_RECORDING tego modułu, kotwica - jego segmentem', () => {
     expect(errorsOf(mutate((m) => (replay(m).source.fromBlock = 'otwarcie')))).toContain('source.fromBlock "otwarcie" nie jest blokiem CALL_RECORDING');
     expect(errorsOf(mutate((m) => (replay(m).markers[0].anchor.segmentId = 's9')))).toContain('segmentId "s9" nie istnieje w bloku "nagranie"');
+  });
+
+  it('omówienie stoi PO nagraniu (znaczniki zdradzają flagi); jeden znacznik na segment', () => {
+    const before = fullModuleV6() as AnyModule;
+    const replayIndex = before.blocks.findIndex((b: AnyModule) => b.type === 'ANNOTATED_REPLAY');
+    const [moved] = before.blocks.splice(replayIndex, 1);
+    before.blocks.splice(0, 0, moved);
+    expect(errorsOf(before)).toContain('omówienie musi stać PO bloku nagrania "nagranie"');
+    expect(errorsOf(mutate((m) => (replay(m).markers[1].anchor.segmentId = 's1')))).toContain('więcej niż jeden znacznik przy segmencie "s1"');
   });
 
   it('znaczniki numerowane kolejno od 1; kotwica zgodna ze źródłem; waga 0', () => {

@@ -126,6 +126,12 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   (odnośnik notatki `ref` z postępu; jedna próba na kwestię). Odpowiedź bloku `{ asked, noted, opened? }`; wynik = trafienia /
   (sprzeczności + pudła). Pisząc treść: kwestia z `fragment` jest publiczna i nigdy nie jest sprzecznością, więc pytanie ze sprzecznością
   ma mieć też zwykłe kwestie bez fragmentu (inaczej kandydat na kłamstwo jest oczywisty).
+- `OSINT_SPOT` (D-120, oceniany, domyślna waga 1): `image`, `imagePortrait?` + `portraitSpots?` (te same id), `imageAlt`, `textLayer?` (treść
+  strony - przy `imagePortrait` każdy napis z `portrait`), `prompt?`, `spots[]` (2-20) `{ id, label, x, y, w, h, used, note? (tylko użyty -
+  dowód), trapText? (tylko pułapka), media? { kind: "audio", title, narration (z `voice`), image? + alt, imagePortrait?, textLayer?,
+  secretEnding? { id, label, note? } } }`,
+  `falseSpotPenalty?` (0,25). `used`, `note`, `trapText` i kara są sekretem. Odpowiedź `{ marked: [spotId], heard?: [secretEnding.id] }`; wynik
+  = trafione użyte / wszystkie użyte − kara × zaznaczone pułapki (min. 0); `heard` - wyróżnienie w notatniku (bez punktów, jak easter egg).
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)

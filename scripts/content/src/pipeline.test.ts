@@ -136,6 +136,8 @@ describe('collectNarrations', () => {
       ['nagranie#segments.2.narration', 'oszust'],
     ]);
     expect(refs.map((ref) => ref.id)).toContain('omowienie#markers.0.narration');
+    // OSINT (D-120): nagranie przy obszarze strony (webinar) głosem postaci.
+    expect(refs.filter((ref) => ref.id.startsWith('osint#spots.')).map((ref) => [ref.id, ref.voice])).toEqual([['osint#spots.2.media.narration', 'pawel']]);
   });
 
   it('nagranie EN w narracji wielojęzycznej: czytelny błąd do czasu fazy EN (nie ciche pominięcie)', () => {

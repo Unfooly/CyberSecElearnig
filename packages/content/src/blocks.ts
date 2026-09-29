@@ -742,6 +742,57 @@ const interrogationSchema = z
   })
   .strict();
 
+/**
+ * OSINT (D-120): strona www (grafika bez tekstu + `textLayer`) z obszarami `spots`; gracz zaznacza informacje, które wykorzystał
+ * oszust. `used` (czy obszar był użyty), `note` (dowód - wychodzi po ocenie) i `trapText` (wyjaśnienie pułapki) są SEKRETEM; klient zna
+ * tylko położenie i podpis obszaru. Ocena: trafione użyte / wszystkie użyte − `falseSpotPenalty` × zaznaczone pułapki (min. 0).
+ * `spots[].media` - nagranie przy obszarze (webinar): osobny odtwarzacz z transkrypcją; `secretEnding` - wysłuchanie do końca odsłania
+ * ukryte wyróżnienie w notatniku (bramka UX jak easter egg, D-100 - klient zgłasza `heard`, serwer zapisuje flagę; bez punktów i dowodu).
+ * Wariant pionowy jak scena (D-116): `imagePortrait` + `portraitSpots` (te same id).
+ */
+const osintMediaSchema = z
+  .object({
+    kind: z.literal('audio'),
+    title: ltext(120),
+    narration: narrationSchema,
+    // Kadr odtwarzacza (np. slajd prelekcji) - z opisem (`alt` wymagane przy `image`), wariantem pionowym i tekstem w warstwie (tytuł slajdu).
+    image: imagePathSchema.optional(),
+    imagePortrait: imagePathSchema.optional(),
+    alt: ltext(300).optional(),
+    textLayer: textLayerSchema.optional(),
+    secretEnding: z.object({ id: idSchema, label: ltext(60), note: ltext(300).optional() }).strict().optional(),
+  })
+  .strict();
+
+const osintRect = { x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) };
+
+const osintSpotSchema = z
+  .object({
+    id: idSchema,
+    label: ltext(100),
+    ...osintRect,
+    used: z.boolean(),
+    note: noteSchema.optional(),
+    trapText: ltext(300).optional(),
+    media: osintMediaSchema.optional(),
+  })
+  .strict();
+
+const osintSpotBlockSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('OSINT_SPOT'),
+    image: imagePathSchema,
+    imagePortrait: imagePathSchema.optional(),
+    imageAlt: ltext(300),
+    textLayer: textLayerSchema.optional(),
+    prompt: ltext(300).optional(),
+    spots: z.array(osintSpotSchema).min(2).max(20),
+    portraitSpots: z.array(z.object({ id: idSchema, ...osintRect }).strict()).min(2).max(20).optional(),
+    falseSpotPenalty: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -762,6 +813,7 @@ export const BLOCK_SCHEMAS = {
   CALL_RECORDING: callRecordingSchema,
   ANNOTATED_REPLAY: annotatedReplaySchema,
   INTERROGATION: interrogationSchema,
+  OSINT_SPOT: osintSpotBlockSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -787,6 +839,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   callRecordingSchema,
   annotatedReplaySchema,
   interrogationSchema,
+  osintSpotBlockSchema,
 ]);
 /** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
 export type StoredBlock = z.infer<typeof blockSchema>;
@@ -820,6 +873,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   ANNOTATED_REPLAY: 0,
   // Przesłuchanie (D-118): 1, gdy ma sprzeczności; bez sprzeczności nieoceniane (apps/api weightOf i walidacja wagi, semantics.ts).
   INTERROGATION: 1,
+  OSINT_SPOT: 1,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -1236,6 +1290,35 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'questions[].lines[].contradiction.note.text',
       'questions[].lines[].contradiction.note.kind',
     ],
+  ),
+  // OSINT (D-120): układ strony, podpisy obszarów, nagranie przy obszarze - publiczne. Sekret: który obszar był użyty, dowód (notatka
+  // zdradzałaby użycie) i wyjaśnienie pułapki - wychodzą po ocenie; kara za pułapki jak kara nagrania.
+  OSINT_SPOT: classify(
+    [
+      'image',
+      'imagePortrait',
+      'imageAlt',
+      ...textLayerPaths(''),
+      'prompt',
+      'spots[].id',
+      'spots[].label',
+      'spots[].x',
+      'spots[].y',
+      'spots[].w',
+      'spots[].h',
+      'spots[].media.kind',
+      'spots[].media.title',
+      'spots[].media.image',
+      'spots[].media.imagePortrait',
+      'spots[].media.alt',
+      ...textLayerPaths('spots[].media.'),
+      ...narrationClient('spots[].media.'),
+      'spots[].media.secretEnding.id',
+      'spots[].media.secretEnding.label',
+      'spots[].media.secretEnding.note',
+      ...['id', 'x', 'y', 'w', 'h'].map((key) => `portraitSpots[].${key}`),
+    ],
+    [...narrationSecret('spots[].media.'), 'spots[].used', 'spots[].note.text', 'spots[].note.kind', 'spots[].trapText', 'falseSpotPenalty'],
   ),
 };
 

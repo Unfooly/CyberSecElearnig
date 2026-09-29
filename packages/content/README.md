@@ -108,6 +108,13 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   prostokąt na `imagePortrait`). Grafika bez wypalonego tekstu jest wspólna dla języków.
 - Notatki `kind`: `call`, `log`, `web`; role głosu: `karol`, `pawel`, `oszust` (`voices.json`: `"oszust": { "sameAs": "pawel" }`).
 - Wszystko powyżej wymaga `schemaVersion: 6`. Moduł 1 (v5) jest bez zmian bajt w bajt (`src/module-1-golden.spec.ts`).
+- `CALL_RECORDING` (D-115, oceniany, domyślna waga 1): `segments[]` (2-40) `{ id, speaker, narration (z `voice`), gapAfterMs? }`,
+  `flags[]` `{ segmentId, category }` (`urgency` | `authority` | `fear` | `code_request` | `install_request`), `flagWindowAfterMs?`
+  (1500), `falseTapPenalty?` (0,1), `evidence[]` `{ id, segmentId (segment z flagą), note }`. Oś czasu z długości nagrań
+  (`recordingTimeline`, `src/recording.ts`). Odpowiedź `{ taps: [{ atMs } | { segmentId }] }`; ocena - `apps/api/src/courses/scoring/recording.ts`.
+- `ANNOTATED_REPLAY` (D-115, nieoceniany): `source` `{ kind: "transcript", fromBlock }` albo `{ kind: "image", image, imagePortrait?, alt }`,
+  `markers[]` (1-12) `{ n (1..N), anchor { segmentId } | { x, y }, title, text, narration? }`. Odpowiedź `{ seen: N }`.
+- Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

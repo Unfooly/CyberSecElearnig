@@ -85,6 +85,9 @@ jest też w locku i manifeście; klucz API zostaje wyłącznie w `.env.local`). 
   `"rola": "<voiceId>"` znaczy `{ "pl": … }`.
 - Narracja wielojęzyczna (`{ voice?, pl: {...}, en?: {...} }`): potok nagrywa `pl` (wynik trafia do obiektu `pl`, klucz locka jak dla
   narracji jednojęzycznej, bez sufiksu). Nagrania `en` - faza EN (dziś czytelny błąd zamiast cichego pominięcia).
+- Nagranie rozmowy (`CALL_RECORDING`, D-115): każdy segment osobnym nagraniem głosem swojej roli (`<blok>#segments.<N>.narration`); ich
+  `durationMs` wyznacza oś czasu odsłuchu i okna flag, więc zmiana tekstu segmentu po generowaniu = nowe nagranie przed publikacją.
+  Znaczniki omówienia (`ANNOTATED_REPLAY`): `<blok>#markers.<N>.narration`.
 
 - Skrót nagrania (nazwa pliku i wpis w locku) obejmuje voiceId + model + język + tekst: zmiana ID roli w `voices.json` = nagrania
   tej roli nieaktualne w `--check` (`głos roli zmieniony`) i nowe pliki przy generowaniu; pozostałe role bez zmian.

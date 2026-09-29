@@ -676,7 +676,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) /start (albo odpowiedź zapisu) mówi, czy osiągnięcie easter egga jest już zdobyte, outro bez „Nowe” w takim przypadku;
   (2) przewijanie rewersu klawiaturą (np. osobny, fokusowalny region po odwróceniu); (3) test na własnym kursie albo rollback wersji.
 
-### B-131 Odsłuch nagrania (D-115): „spamowanie” flag podbija wynik - decyzja właściciela
+### B-131 Odsłuch nagrania (D-115): „spamowanie” flag podbija wynik - ZROBIONE (opcja a, D-115)
+- Rozstrzygnięcie właściciela 2026-09-29: każde tapnięcie, które nie trafia nowej flagi, jest fałszywe, poza podwójnym stuknięciem w ciągu
+  1500 ms od trafienia; kara bez zmian. `apps/api/src/courses/scoring/recording.ts`, testy z przykładami właściciela.
 - Etykiety: `P2`, `product`, `mod:kursy` · Źródło: security review 1b (uwaga do rozważenia)
 - Opis: powtórne tapnięcie w już trafioną flagę nie jest fałszywe (reguła właściciela z 2026-09-29), a okna mają +1500 ms. Przy wielu
   flagach (moduł 2: ok. 8 z ok. 12 kwestii) równomierne tapanie co kilka sekund daje ok. 0,6-0,7 pkt bez rozpoznania manipulacji - to

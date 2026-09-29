@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
-import { DEFAULT_FALSE_TAP_PENALTY, DEFAULT_FLAG_WINDOW_AFTER_MS, MAX_RECORDING_TAPS, idSchema, recordingTimeline } from '@cyberszkolo/content';
+import { DEFAULT_FALSE_TAP_PENALTY, DEFAULT_FLAG_WINDOW_AFTER_MS, DOUBLE_TAP_GRACE_MS, MAX_RECORDING_TAPS, idSchema, recordingTimeline } from '@cyberszkolo/content';
 
 // Ocena odsłuchu nagrania (CALL_RECORDING, D-115) - WYŁĄCZNIE po stronie serwera. Klient wysyła tylko swoje tapnięcia: pozycję w
 // nagraniu (`{ atMs }`, tryb odsłuchu) albo segment (`{ segmentId }`, tryb transkrypcji); nigdy trafień ani punktów. Flagi, okno i kara
@@ -35,9 +35,11 @@ const invalid = () => new BadRequestException('Brak lub nieprawidłowa odpowied�
  * Reguły (decyzja właściciela 2026-09-29):
  *  - okno flagi = [początek segmentu, koniec segmentu + flagWindowAfterMs] (domyślnie 1500 ms);
  *  - `{ segmentId }` trafia flagę tego segmentu; segment bez flagi = fałszywe tapnięcie; nieznany segment = odpowiedź odrzucona;
- *  - `{ atMs }` poza oknem każdej flagi = fałszywe; w części wspólnej nakładających się okien liczy się do WCZEŚNIEJSZEJ, jeszcze
- *    nietrafionej flagi (najpierw tapnięcia po segmencie, potem po czasie rosnąco - wynik nie zależy od kolejności w odpowiedzi);
- *  - kolejne tapnięcie w już trafioną flagę nie jest fałszywe (i nie daje punktu);
+ *  - `{ atMs }` w części wspólnej nakładających się okien liczy się do WCZEŚNIEJSZEJ, jeszcze nietrafionej flagi (najpierw tapnięcia
+ *    po segmencie, potem po czasie rosnąco - wynik nie zależy od kolejności w odpowiedzi);
+ *  - B-131 (decyzja właściciela 2026-09-29): KAŻDE tapnięcie, które nie trafia NOWEJ flagi, jest fałszywe - poza oknami, na segmencie
+ *    bez flagi, a także powtórne w oknie już trafionej flagi i powtórne `{ segmentId }` tej samej kwestii. Jedyny wyjątek: powtórka
+ *    `{ atMs }` w ciągu DOUBLE_TAP_GRACE_MS (1500 ms) od trafienia flagi (odruch podwójnego stuknięcia) - ignorowana, bez kary;
  *  - punkty = trafione / wszystkie flagi - kara × fałszywe (domyślnie 0,1), min. 0.
  */
 export function scoreRecording(block: RecordingBlock, taps: RecordingTap[]): RecordingScore {
@@ -51,7 +53,7 @@ export function scoreRecording(block: RecordingBlock, taps: RecordingTap[]): Rec
 
   for (const { segmentId } of bySegment) {
     if (!segmentIds.has(segmentId)) throw invalid();
-    if (flagged.has(segmentId)) hit.add(segmentId);
+    if (flagged.has(segmentId) && !hit.has(segmentId)) hit.add(segmentId);
     else falseTaps += 1;
   }
 
@@ -64,14 +66,18 @@ export function scoreRecording(block: RecordingBlock, taps: RecordingTap[]): Rec
       .filter((segment) => flagged.has(segment.id))
       .map((segment) => ({ segmentId: segment.id, from: segment.startMs, to: segment.endMs + after }))
       .sort((a, b) => a.from - b.from);
+    // Chwila trafienia każdej flagi tapnięciem po czasie (okno podwójnego stuknięcia liczy się od niej).
+    const hitAt = new Map<string, number>();
     for (const { atMs } of byTime) {
       const containing = windows.filter((window) => window.from <= atMs && atMs <= window.to);
-      if (containing.length === 0) {
-        falseTaps += 1;
+      const fresh = containing.find((window) => !hit.has(window.segmentId));
+      if (fresh) {
+        hit.add(fresh.segmentId);
+        hitAt.set(fresh.segmentId, atMs);
         continue;
       }
-      const first = containing.find((window) => !hit.has(window.segmentId));
-      if (first) hit.add(first.segmentId);
+      const doubleTap = [...hitAt.values()].some((at) => atMs - at >= 0 && atMs - at <= DOUBLE_TAP_GRACE_MS);
+      if (!doubleTap) falseTaps += 1;
     }
   }
 

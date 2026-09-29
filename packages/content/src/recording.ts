@@ -5,6 +5,8 @@
 export const DEFAULT_FLAG_WINDOW_AFTER_MS = 1500;
 /** Domyślna kara za fałszywe tapnięcie (punkty = trafione / wszystkie - kara × fałszywe, min. 0). */
 export const DEFAULT_FALSE_TAP_PENALTY = 0.1;
+/** B-131: powtórka tapnięcia w tym czasie od trafienia flagi to odruch podwójnego stuknięcia - ignorowana (bez kary). */
+export const DOUBLE_TAP_GRACE_MS = 1500;
 /** Najwięcej tapnięć w jednej odpowiedzi - limit odpowiedzi serwera i przycisku flagi w odtwarzaczu (jedna stała). */
 export const MAX_RECORDING_TAPS = 200;
 

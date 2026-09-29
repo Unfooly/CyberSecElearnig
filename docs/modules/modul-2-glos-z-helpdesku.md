@@ -158,7 +158,8 @@ Konwencje jak w module 1:
 - **Czerwone flagi (7):** segmenty 1, 3, 4, 6, 7, 9, 11.
 - **Okno flagi:** od początku segmentu do końca segmentu + 1500 ms (reakcja po usłyszeniu zdania). W trybie transkrypcji tapnięcie
   wskazuje segment wprost.
-- **Fałszywe tapnięcia:** poza oknem każdej flagi albo na segmencie bez flagi; do osiągnięcia Perfect Pitch - 0.
+- **Fałszywe tapnięcia:** każde tapnięcie, które nie trafia nowej flagi (także powtórne w oknie trafionej), poza podwójnym stuknięciem
+  w ciągu 1500 ms od trafienia (B-131, rozdz. 4.1); do osiągnięcia Perfect Pitch - 0.
 - **Dowody:**
   - **D06** `liczba-47` (kind `call`) - „Dzwoniący sam podał liczbę 47. Przy parowaniu liczb liczbę zna tylko ten, kto się loguje.”
   - **D07** `prosba-instalacja` (kind `call`) - „»Paweł« kazał zainstalować narzędzie zdalnej pomocy i przeczytać ID sesji.”
@@ -421,10 +422,13 @@ języka gracza.
 
 - `{ atMs }` - tapnięcie w trybie odsłuchu (pozycja w nagraniu); trafia flagę, gdy mieści się w jej oknie;
 - `{ segmentId }` - tapnięcie w trybie transkrypcji; trafia flagę, gdy segment ma flagę;
-- fałszywe tapnięcie: `atMs` poza oknem każdej flagi albo `segmentId` segmentu bez flagi (nieistniejący `segmentId` = odpowiedź
-  odrzucona);
-- kilka tapnięć w tę samą flagę liczy się raz (kolejne nie są fałszywe);
 - okna sąsiednich flag mogą się nakładać (segmenty 3 i 4): `atMs` w części wspólnej trafia najwcześniejszą jeszcze nietrafioną flagę;
+- **fałszywe tapnięcie (B-131, decyzja właściciela 2026-09-29): KAŻDE tapnięcie, które nie trafia NOWEJ flagi** - `atMs` poza oknami,
+  `segmentId` segmentu bez flagi, powtórne tapnięcie w oknie już trafionej flagi i powtórne `segmentId` tej samej kwestii (nieistniejący
+  `segmentId` = odpowiedź odrzucona);
+- **wyjątek - podwójne stuknięcie:** powtórka `atMs` w ciągu 1500 ms od trafienia flagi jest ignorowana (bez kary, bez punktu);
+- kara bez zmian: −0,1 za każde fałszywe tapnięcie, wynik min. 0. Przykłady (testy): tapanie równomierne co 1 s przez całe nagranie →
+  ≤ 0,2; 7 trafień + 1 pomyłka → 0,9; 7 trafień + podwójne stuknięcie przy jednej fladze → 1,0 (i warunek Perfect Pitch);
 - klient nie wysyła kategorii ani poprawności; kategoria jest pokazywana dopiero w omówieniu.
 
 **UI:**

@@ -1,5 +1,5 @@
 import { ServerBlock } from './blocks';
-import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape } from './common';
+import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, requiredItemIds } from './common';
 import { collectPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
 import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, ResolvedModule, moduleSchema } from './module';
@@ -101,6 +101,88 @@ export interface DossierRowLike {
  */
 export function flattenDossierRows(documents: readonly { rows?: readonly DossierRowLike[] }[]): DossierRowLike[] {
   return documents.flatMap((document) => [...(document.rows ?? [])]);
+}
+
+/**
+ * Wiersze dokumentów teczki (DOSSIER) i konsoli przesłuchania (INTERROGATION.documents, D-118): komórki = kolumny, dowód z notatką,
+ * notatka i `required` tylko przy dowodzie, `message` tylko przy zwykłej linijce.
+ */
+function dossierDocumentErrors(
+  documents: readonly { columns: readonly string[]; rows: readonly (DossierRowLike & { cells: readonly string[]; message?: string })[] }[],
+  kindRequired: boolean,
+): string[] {
+  const errors: string[] = [];
+  documents.forEach((document, d) => {
+    document.rows.forEach((row, r) => {
+      const label = `documents[${d}].rows[${r}]`;
+      if (row.cells.length !== document.columns.length) {
+        errors.push(`${label}: liczba komórek (${row.cells.length}) różna od liczby kolumn (${document.columns.length})`);
+      }
+      errors.push(...evidenceErrors(label, row as { evidence?: boolean; note?: { text: string; kind?: string } }, kindRequired));
+      // Zwykła linijka nie trafia do notatnika (zakreślenie pokazuje tylko "zwykłą operację") - notatka bez evidence byłaby martwa.
+      if (row.note && row.evidence !== true) errors.push(`${label}: note bez evidence: true nigdy nie trafi do notatnika`);
+      if (row.required === true && row.evidence !== true) errors.push(`${label}: required dotyczy wyłącznie wierszy-dowodów`);
+      // Wiersz-dowód ma stały komunikat („Zakreślone…”) - własny message byłby martwy.
+      if (row.message !== undefined && row.evidence === true) errors.push(`${label}: message dotyczy wyłącznie zwykłych linijek`);
+    });
+  });
+  return errors;
+}
+
+/** Element bloku, który może dopisać notatkę (klucz `<blockId>.<id>`). */
+export interface NoteItemLike {
+  id: string;
+  evidence?: boolean;
+  note?: { text?: string; kind?: string };
+  /**
+   * Dowód ukryty do zebrania (sprzeczność przesłuchania, D-118): liczy się do licznika dowodów dopiero, gdy trafił do notatnika - inaczej
+   * `total` od startu zdradzałby, ile kwestii kłamie (albo że postać mówi prawdę).
+   */
+  hidden?: boolean;
+}
+
+interface InterrogationLineLike {
+  id: string;
+  fragment?: { evidence?: boolean; note?: NoteItemLike['note'] };
+  contradiction?: { note?: NoteItemLike['note'] };
+}
+
+/**
+ * Elementy bloku, które mogą dopisać notatkę: hotspoty (spłaszczone), pytania dialogu, kryteria maila, wiersze teczki, dowody nagrania,
+ * kwestie przesłuchania (fragment, sprzeczność - dowód po podważeniu) i wiersze jego konsoli. JEDNA definicja dla walidacji modułu
+ * (`refutedBy` wskazuje dowód z wcześniejszego bloku) i apps/api (treść notatek, licznik dowodów). Luźne typy - apps/api nie importuje
+ * pełnych typów zod.
+ */
+export function noteItemsOf(block: { type: string } & Record<string, unknown>): NoteItemLike[] {
+  switch (block.type) {
+    case 'SCENE_HOTSPOTS':
+      return Array.isArray(block.hotspots) ? flattenHotspots(block.hotspots as HotspotLike[]) : [];
+    case 'DIALOGUE':
+      return Array.isArray(block.questions) ? (block.questions as NoteItemLike[]) : [];
+    case 'EMAIL_ANALYSIS':
+      return Array.isArray(block.criteria) ? (block.criteria as NoteItemLike[]) : [];
+    case 'DOSSIER':
+      return Array.isArray(block.documents) ? flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[]) : [];
+    case 'CALL_RECORDING':
+      // Każdy wpis `evidence` jest dowodem (notatka po trafieniu flagi jego segmentu).
+      return Array.isArray(block.evidence) ? (block.evidence as NoteItemLike[]).map((item) => ({ id: item.id, evidence: true, note: item.note })) : [];
+    case 'INTERROGATION': {
+      const questions = Array.isArray(block.questions) ? (block.questions as { lines?: InterrogationLineLike[] }[]) : [];
+      const lines = questions.flatMap((question) =>
+        (question.lines ?? []).flatMap((line): NoteItemLike[] =>
+          line.fragment
+            ? [{ id: line.id, evidence: line.fragment.evidence, note: line.fragment.note }]
+            : line.contradiction
+              ? [{ id: line.id, evidence: true, note: line.contradiction.note, hidden: true }]
+              : [],
+        ),
+      );
+      const rows = Array.isArray(block.documents) ? flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[]) : [];
+      return [...lines, ...rows];
+    }
+    default:
+      return [];
+  }
 }
 
 // Sloty sceny odprawy (D-084): które rodzaje kroku mogą je mieć - zadania sprawy są w karcie (caseFile), dane gracza na legitymacji.
@@ -252,7 +334,7 @@ export function v4FeaturesUsed(block: ServerBlock): string[] {
 // Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
 // (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
 // Eksportowane: apps/api (evaluate.ts, pickReaction) wybiera pasujący wpis reactions.result tą samą regułą, którą tu walidujemy.
-export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING'] as const;
+export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION'] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
 export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
 
@@ -458,20 +540,55 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       if (evidenceCount > MAX_DOSSIER_EVIDENCE) {
         errors.push(`documents: ${evidenceCount} wierszy-dowodów, najwyżej ${MAX_DOSSIER_EVIDENCE} (limit odpowiedzi noted)`);
       }
-      block.documents.forEach((document, d) => {
-        document.rows.forEach((row, r) => {
-          const label = `documents[${d}].rows[${r}]`;
-          if (row.cells.length !== document.columns.length) {
-            errors.push(`${label}: liczba komórek (${row.cells.length}) różna od liczby kolumn (${document.columns.length})`);
+      errors.push(...dossierDocumentErrors(block.documents, kindRequired));
+      break;
+    }
+    case 'INTERROGATION': {
+      // Przesłuchanie (D-118): id pytań unikalne; id kwestii, dokumentów i wierszy konsoli - w JEDNEJ przestrzeni (klucze notatek
+      // `<blockId>.<id>`, odpowiedzi noted/opened i /challenge).
+      checkUnique('questions', block.questions.map((q) => q.id));
+      const lines = block.questions.flatMap((q) => q.lines);
+      const documents = block.documents ?? [];
+      const rows = flattenDossierRows(documents);
+      checkUnique('lines/documents/rows', [...lines.map((l) => l.id), ...documents.map((d) => d.id), ...rows.map((r) => r.id)]);
+      checkRequiredFlags('questions', block.questions, errors);
+      block.questions.forEach((question, q) => {
+        question.lines.forEach((line, l) => {
+          const label = `questions[${q}].lines[${l}]`;
+          // Kwestie mówi postać, nie lektor - nagranie wymaga roli głosu (jak segmenty nagrania).
+          if (line.narration && line.narration.voice === undefined) errors.push(`${label}.narration.voice: kwestia postaci wymaga roli głosu`);
+          if (line.fragment && line.contradiction) errors.push(`${label}: kwestia jest fragmentem do notatnika ALBO sprzecznością, nie oboma`);
+          if (line.fragment) errors.push(...evidenceErrors(`${label}.fragment`, line.fragment, kindRequired));
+          const contradiction = line.contradiction;
+          if (contradiction) {
+            if (!/^[^.]+\.[^.]+$/.test(contradiction.refutedBy)) {
+              errors.push(`${label}.contradiction.refutedBy: klucz dowodu w postaci "<idBloku>.<idElementu>"`);
+            }
+            if (kindRequired && contradiction.note.kind === undefined) errors.push(`${label}.contradiction.note.kind: dowód wymaga rodzaju notatki`);
           }
-          errors.push(...evidenceErrors(label, row, kindRequired));
-          // Zwykła linijka nie trafia do notatnika (zakreślenie pokazuje tylko "zwykłą operację") - notatka bez evidence byłaby martwa.
-          if (row.note && row.evidence !== true) errors.push(`${label}: note bez evidence: true nigdy nie trafi do notatnika`);
-          if (row.required === true && row.evidence !== true) errors.push(`${label}: required dotyczy wyłącznie wierszy-dowodów`);
-          // Wiersz-dowód ma stały komunikat („Zakreślone…”) - własny message byłby martwy.
-          if (row.message !== undefined && row.evidence === true) errors.push(`${label}: message dotyczy wyłącznie zwykłych linijek`);
         });
       });
+      // Konsola: otwiera ją dokładnie jedno pytanie (opensDocuments) - i tylko gdy blok ma dokumenty.
+      const openers = block.questions.filter((q) => q.opensDocuments === true).length;
+      if (documents.length > 0 && openers !== 1) errors.push('documents: konsolę otwiera dokładnie jedno pytanie z opensDocuments: true');
+      if (documents.length === 0 && openers > 0) errors.push('questions: opensDocuments bez documents (nie ma czego otworzyć)');
+      errors.push(...dossierDocumentErrors(documents, kindRequired));
+      // `noted` (fragmenty + wiersze konsoli) ma ten sam limit odpowiedzi co teczka (evaluate.ts).
+      const notable = lines.filter((line) => line.fragment).length + rows.filter((row) => row.evidence === true).length;
+      if (notable > MAX_DOSSIER_EVIDENCE) errors.push(`${notable} fragmentów i wierszy-dowodów, najwyżej ${MAX_DOSSIER_EVIDENCE} (limit odpowiedzi noted)`);
+      // Bez sprzeczności przesłuchanie nie ma wyniku (samo przejście) - waga > 0 dawałaby punkty za przejście, a reakcje na wynik (także przy
+      // jawnej wadze 0) nigdy by się nie pokazały.
+      const scored = lines.some((line) => line.contradiction) && block.weight !== 0;
+      if (!lines.some((line) => line.contradiction) && block.weight !== undefined && block.weight > 0) {
+        errors.push('weight: przesłuchanie bez sprzeczności jest nieoceniane (waga musi być 0)');
+      }
+      if (!scored && block.reactions?.result) errors.push('reactions.result: przesłuchanie bez wyniku (bez sprzeczności albo z wagą 0) nie ma reakcji na wynik');
+      // Wymagany wiersz konsoli jest wymagany tylko wtedy, gdy gracz musi otworzyć konsolę - pytanie konsoli też wymagane.
+      const opener = block.questions.find((q) => q.opensDocuments === true);
+      const requiredQuestions = requiredItemIds(block.questions, undefined);
+      if (opener && rows.some((row) => row.required === true) && !requiredQuestions.includes(opener.id)) {
+        errors.push(`questions: wymagane wiersze konsoli wymagają wymaganego pytania konsoli ("${opener.id}")`);
+      }
       break;
     }
     case 'BRIEFING': {
@@ -737,9 +854,30 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
       if (block.type === 'DOSSIER') errors.push(`blocks[${index}] (${block.id}): blok DOSSIER wymaga schemaVersion 5`);
       for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
     }
-    if (contentModule.schemaVersion < 6 && (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY')) {
+    if (contentModule.schemaVersion < 6 && (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY' || block.type === 'INTERROGATION')) {
       errors.push(`blocks[${index}] (${block.id}): blok ${block.type} wymaga schemaVersion 6`);
     }
+  });
+
+  // Sprzeczność w przesłuchaniu (D-118): `refutedBy` wskazuje dowód (element z evidence i notatką) z WCZEŚNIEJSZEGO bloku - gracz musi
+  // go mieć w notatniku, zanim dojdzie do przesłuchania.
+  contentModule.blocks.forEach((block, index) => {
+    if (block.type !== 'INTERROGATION') return;
+    block.questions.forEach((question, q) => {
+      question.lines.forEach((line, l) => {
+        const refutedBy = line.contradiction?.refutedBy;
+        if (refutedBy === undefined || !/^[^.]+\.[^.]+$/.test(refutedBy)) return;
+        const [blockId, itemId] = refutedBy.split('.');
+        const sourceIndex = contentModule.blocks.findIndex((b) => b.id === blockId);
+        const where = `blocks[${index}] (${block.id}): questions[${q}].lines[${l}].contradiction.refutedBy`;
+        if (sourceIndex < 0 || sourceIndex >= index) {
+          errors.push(`${where}: "${refutedBy}" - blok "${blockId}" musi być WCZEŚNIEJ w module`);
+          return;
+        }
+        const item = noteItemsOf(contentModule.blocks[sourceIndex] as ServerBlock & Record<string, unknown>).find((candidate) => candidate.id === itemId);
+        if (!item || item.evidence !== true || !item.note?.text) errors.push(`${where}: "${refutedBy}" nie jest dowodem (evidence z notatką) w bloku "${blockId}"`);
+      });
+    });
   });
 
   // Omówienie na transkrypcji (D-115): blok źródłowy to CALL_RECORDING tego modułu, a kotwice wskazują jego segmenty.

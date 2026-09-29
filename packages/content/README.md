@@ -118,6 +118,14 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   (`recordingTimeline`, `src/recording.ts`). Odpowiedź `{ taps: [{ atMs } | { segmentId }] }`; ocena - `apps/api/src/courses/scoring/recording.ts`.
 - `ANNOTATED_REPLAY` (D-115, nieoceniany): `source` `{ kind: "transcript", fromBlock }` albo `{ kind: "image", image, imagePortrait?, alt }`,
   `markers[]` (1-12) `{ n (1..N), anchor { segmentId } | { x, y }, title, text, narration? }`. Odpowiedź `{ seen: N }`.
+- `INTERROGATION` (D-118, oceniany przy sprzecznościach, domyślna waga 1; bez sprzeczności 0): `character { name, role?, avatar?, opening? }`,
+  `questions[]` (1-15) `{ id, text, required?, opensDocuments?, lines[] }`, kwestia `{ id, text, narration? (z `voice`), fragment? { evidence?, note }
+  | contradiction? { refutedBy: "<blok>.<element>", challengeLine { text }, note } }`, `documents?` - konsola w kształcie `DOSSIER.documents`
+  (otwiera ją jedno pytanie z `opensDocuments`). `refutedBy` wskazuje dowód z WCZEŚNIEJSZEGO bloku; `contradiction` jest sekretem, a kwestia
+  po podważeniu to sam tekst (bez nagrania - pole secret). Podważenie: `POST /courses/:id/blocks/:blockId/challenge { lineId, noteRef }`
+  (odnośnik notatki `ref` z postępu; jedna próba na kwestię). Odpowiedź bloku `{ asked, noted, opened? }`; wynik = trafienia /
+  (sprzeczności + pudła). Pisząc treść: kwestia z `fragment` jest publiczna i nigdy nie jest sprzecznością, więc pytanie ze sprzecznością
+  ma mieć też zwykłe kwestie bez fragmentu (inaczej kandydat na kłamstwo jest oczywisty).
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)

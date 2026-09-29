@@ -586,30 +586,33 @@ const dossierRowSchema = z
   })
   .strict();
 
+// Dokument teczki (przekładka z tabelą) - ten sam kształt w DOSSIER i w konsoli przesłuchania (INTERROGATION.documents, D-118).
+const dossierDocumentsSchema = z
+  .array(
+    z
+      .object({
+        id: idSchema,
+        // Napis na przekładce.
+        tab: ltext(40),
+        // Nagłówek arkusza: wystawca (np. "UNFOOLY SP. Z O.O. · DZIAŁ IT"), tytuł i metryka (autor, data, konto).
+        org: ltext(80),
+        title: ltext(120),
+        meta: ltext(200).optional(),
+        columns: z.array(ltext(40)).min(1).max(4),
+        rows: z.array(dossierRowSchema).min(1).max(30),
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(6);
+
 const dossierSchema = z
   .object({
     ...baseShape,
     type: z.literal('DOSSIER'),
     // Pieczątka na teczce (np. "POUFNE").
     stamp: ltext(30).optional(),
-    documents: z
-      .array(
-        z
-          .object({
-            id: idSchema,
-            // Napis na przekładce.
-            tab: ltext(40),
-            // Nagłówek arkusza: wystawca (np. "UNFOOLY SP. Z O.O. · DZIAŁ IT"), tytuł i metryka (autor, data, konto).
-            org: ltext(80),
-            title: ltext(120),
-            meta: ltext(200).optional(),
-            columns: z.array(ltext(40)).min(1).max(4),
-            rows: z.array(dossierRowSchema).min(1).max(30),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(6),
+    documents: dossierDocumentsSchema,
   })
   .strict();
 
@@ -680,6 +683,65 @@ const annotatedReplaySchema = z
   })
   .strict();
 
+/**
+ * Przesłuchanie (D-118): postać odpowiada na pytania kwestiami (`lines`, głos postaci w `narration.voice`). Kwestia może być:
+ *  - `fragment` - gracz przeciąga ją (albo stuka „Dodaj do notatek”) do notatnika: notatka `<blockId>.<lineId>`, jak hotspot;
+ *  - `contradiction` - kłamstwo, które obala dowód z WCZEŚNIEJSZEGO bloku (`refutedBy` = klucz notatki `<blockId>.<itemId>`).
+ *    „Podważ” jest przy KAŻDEJ kwestii (klient nie wie, która kłamie); serwer sprawdza wskazany dowód - jedna próba na kwestię
+ *    (/challenge). Trafienie odsłania `challengeLine` i dopisuje `note`. Wszystko w `contradiction` jest sekretem.
+ * `documents` (opcjonalnie) - konsola z zakładkami w kształcie teczki (DOSSIER), otwierana pytaniem z `opensDocuments: true`.
+ * Ocena: trafienia / (sprzeczności + pudła) - pudło kosztuje; blok bez sprzeczności jest nieoceniany (waga 0).
+ * `challengeLine` to sam tekst: nagrania trafiają do publicznego magazynu, więc pole secret nie ma audio (scripts/content, D-118).
+ */
+const interrogationLineSchema = z
+  .object({
+    id: idSchema,
+    text: ltext(600),
+    narration: narrationSchema.optional(),
+    fragment: z.object({ evidence: z.boolean().optional(), note: noteSchema }).strict().optional(),
+    contradiction: z
+      .object({
+        // Klucz notatki dowodu `<blockId>.<itemId>` (format i istnienie we wcześniejszym bloku - semantics.ts).
+        refutedBy: z.string().max(130),
+        challengeLine: z.object({ text: ltext(600) }).strict(),
+        note: noteSchema,
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const interrogationSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('INTERROGATION'),
+    character: z
+      .object({
+        name: ltext(80),
+        role: ltext(120).optional(),
+        avatar: imagePathSchema.optional(),
+        opening: ltext(300).optional(),
+      })
+      .strict(),
+    questions: z
+      .array(
+        z
+          .object({
+            id: idSchema,
+            text: ltext(300),
+            lines: z.array(interrogationLineSchema).min(1).max(10),
+            required: z.boolean().optional(),
+            // Pytanie otwiera konsolę (`documents`) - najwyżej jedno i tylko przy documents (semantics.ts).
+            opensDocuments: z.boolean().optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(15),
+    documents: dossierDocumentsSchema.optional(),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -699,6 +761,7 @@ export const BLOCK_SCHEMAS = {
   DOSSIER: dossierSchema,
   CALL_RECORDING: callRecordingSchema,
   ANNOTATED_REPLAY: annotatedReplaySchema,
+  INTERROGATION: interrogationSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -723,6 +786,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   dossierSchema,
   callRecordingSchema,
   annotatedReplaySchema,
+  interrogationSchema,
 ]);
 /** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
 export type StoredBlock = z.infer<typeof blockSchema>;
@@ -754,6 +818,8 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   DOSSIER: 0,
   CALL_RECORDING: 1,
   ANNOTATED_REPLAY: 0,
+  // Przesłuchanie (D-118): 1, gdy ma sprzeczności; bez sprzeczności nieoceniane (apps/api weightOf i walidacja wagi, semantics.ts).
+  INTERROGATION: 1,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -806,6 +872,28 @@ function classify(client: string[], secret: string[]): FieldClassification {
 }
 
 const CHOICE_SECRET = ['options[].correct', 'options[].outcome', 'options[].feedback'];
+
+// Dokumenty teczki (DOSSIER) i konsoli przesłuchania (INTERROGATION.documents) - ten sam kształt, wszystko publiczne (D-083).
+const DOSSIER_DOCUMENT_CLIENT = [
+  'documents[].id',
+  'documents[].tab',
+  'documents[].org',
+  'documents[].title',
+  'documents[].meta',
+  'documents[].columns[]',
+  'documents[].rows[].id',
+  'documents[].rows[].cells[]',
+  'documents[].rows[].evidence',
+  'documents[].rows[].note.text',
+  'documents[].rows[].note.kind',
+  'documents[].rows[].required',
+  'documents[].rows[].message',
+];
+
+// Ścieżki narracji wysyłane klientowi i sekretne (tylko wejście TTS) - dla narracji pod prefiksem `prefix` (np. `lines[].`).
+const narrationClient = (prefix: string) =>
+  ['text', 'audioUrl', 'durationMs', 'cues[].text', 'cues[].startMs'].map((key) => `${prefix}narration.${key}`);
+const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) => `${prefix}narration.${key}`);
 
 // Warstwa tekstu (schemaVersion 6): treść i układ do narysowania na grafice - publiczne jak `imageAlt`.
 const textLayerPaths = (prefix: string) =>
@@ -1072,25 +1160,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ['steps[].narration.spokenText', 'steps[].narration.voice'],
   ),
   // Wszystko client - jak hotspoty SCENE_HOTSPOTS (evidence/note/required też): blok eksploracyjny, bez klucza odpowiedzi.
-  DOSSIER: classify(
-    [
-      'stamp',
-      'documents[].id',
-      'documents[].tab',
-      'documents[].org',
-      'documents[].title',
-      'documents[].meta',
-      'documents[].columns[]',
-      'documents[].rows[].id',
-      'documents[].rows[].cells[]',
-      'documents[].rows[].evidence',
-      'documents[].rows[].note.text',
-      'documents[].rows[].note.kind',
-      'documents[].rows[].required',
-      'documents[].rows[].message',
-    ],
-    [],
-  ),
+  DOSSIER: classify(['stamp', ...DOSSIER_DOCUMENT_CLIENT], []),
   // Nagranie (D-115): klient zna segmenty (tekst, podpis, nagranie) - bez nich nie ma odsłuchu ani transkrypcji. Sekret: które segmenty
   // są flagami (i ich kategorie), okno i kara oceny oraz dowody (notatki zdradzałyby flagi; wychodzą po ocenie, jak kryteria maila).
   CALL_RECORDING: classify(
@@ -1138,6 +1208,34 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'markers[].narration.cues[].startMs',
     ],
     ['markers[].narration.spokenText', 'markers[].narration.voice'],
+  ),
+  // Przesłuchanie (D-118): kwestie, fragmenty do notatnika i konsola - publiczne (jak DIALOGUE i DOSSIER). Sekret: sprzeczność w całości
+  // (który dowód ją obala, kwestia po podważeniu i jej notatka) - odsłaniana przez /challenge dopiero po trafieniu.
+  INTERROGATION: classify(
+    [
+      'character.name',
+      'character.role',
+      'character.avatar',
+      'character.opening',
+      'questions[].id',
+      'questions[].text',
+      'questions[].required',
+      'questions[].opensDocuments',
+      'questions[].lines[].id',
+      'questions[].lines[].text',
+      ...narrationClient('questions[].lines[].'),
+      'questions[].lines[].fragment.evidence',
+      'questions[].lines[].fragment.note.text',
+      'questions[].lines[].fragment.note.kind',
+      ...DOSSIER_DOCUMENT_CLIENT,
+    ],
+    [
+      ...narrationSecret('questions[].lines[].'),
+      'questions[].lines[].contradiction.refutedBy',
+      'questions[].lines[].contradiction.challengeLine.text',
+      'questions[].lines[].contradiction.note.text',
+      'questions[].lines[].contradiction.note.kind',
+    ],
   ),
 };
 

@@ -9,11 +9,14 @@ import { MemoryStore } from './stores/memory.js';
 import type { SynthesisRequest, SynthesisResult, TtsProvider } from './types.js';
 
 const requireCjs = createRequire(import.meta.url);
-const { fullModule } = requireCjs('../../../packages/content/dist/fixtures.js') as { fullModule: () => Record<string, unknown> };
+const { fullModule, fullModuleV6 } = requireCjs('../../../packages/content/dist/fixtures.js') as {
+  fullModule: () => Record<string, unknown>;
+  fullModuleV6: () => Record<string, unknown>;
+};
 
 /** Moduł bez wygenerowanych nagrań: czyści audioUrl/durationMs/cues z fixtury (skrypt ma je wpisać sam). */
-function bareModule(): Record<string, unknown> {
-  const module = JSON.parse(JSON.stringify(fullModule())) as Record<string, unknown>;
+function bareModule(source: () => Record<string, unknown> = fullModule): Record<string, unknown> {
+  const module = JSON.parse(JSON.stringify(source())) as Record<string, unknown>;
   const strip = (node: unknown): void => {
     if (Array.isArray(node)) node.forEach(strip);
     else if (node && typeof node === 'object') {
@@ -123,6 +126,16 @@ describe('collectNarrations', () => {
     expect(refs[0].holder).toBe(plBody);
     expect(refs[0].voice).toBe('oszust');
     expect(refs[0].text).toBe(plBody.text);
+  });
+
+  it('nagranie rozmowy (D-115): każdy segment osobną narracją głosem postaci; znacznik omówienia z narracją lektora', () => {
+    const refs = collectNarrations(bareModule(fullModuleV6));
+    expect(refs.filter((ref) => ref.blockId === 'nagranie' && ref.id.includes('segments.')).map((ref) => [ref.id, ref.voice])).toEqual([
+      ['nagranie#segments.0.narration', 'oszust'],
+      ['nagranie#segments.1.narration', 'karol'],
+      ['nagranie#segments.2.narration', 'oszust'],
+    ]);
+    expect(refs.map((ref) => ref.id)).toContain('omowienie#markers.0.narration');
   });
 
   it('nagranie EN w narracji wielojęzycznej: czytelny błąd do czasu fazy EN (nie ciche pominięcie)', () => {

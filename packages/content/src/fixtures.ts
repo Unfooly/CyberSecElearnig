@@ -476,6 +476,38 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         },
       },
     },
+    // schemaVersion 6 (D-115): tylko w fullModuleV6() - fullModule() zostaje w v5 z tymi samymi indeksami bloków (reguła 9).
+    // Segmenty po 1200 ms (audio()), cisza 400 ms po s1: osie czasu s1 0-1200, s2 1600-2800, s3 2800-4000.
+    CALL_RECORDING: {
+      ...base('nagranie'),
+      type: 'CALL_RECORDING',
+      segments: [
+        { id: 's1', speaker: 'Dzwoniący', narration: { ...audio('nagranie-s1'), voice: 'oszust' }, gapAfterMs: 400 },
+        { id: 's2', speaker: 'Karol', narration: { ...audio('nagranie-s2'), voice: 'karol' } },
+        { id: 's3', speaker: 'Dzwoniący', narration: { ...audio('nagranie-s3'), voice: 'oszust' } },
+      ],
+      flags: [
+        { segmentId: 's1', category: 'fear' },
+        { segmentId: 's3', category: 'code_request' },
+      ],
+      flagWindowAfterMs: 1500,
+      falseTapPenalty: 0.1,
+      evidence: [{ id: 'liczba', segmentId: 's3', note: { text: `${SECRET_MARKER}-dowod-liczba`, kind: 'call' } }],
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-nagranie-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-nagranie-warning` },
+      ]),
+    },
+    ANNOTATED_REPLAY: {
+      ...base('omowienie'),
+      type: 'ANNOTATED_REPLAY',
+      weight: 0,
+      source: { kind: 'transcript', fromBlock: 'nagranie' },
+      markers: [
+        { n: 1, anchor: { segmentId: 's1' }, title: 'Strach', text: 'W stresie myślimy krócej.', narration: audio('omowienie-m1') },
+        { n: 2, anchor: { segmentId: 's3' }, title: 'Parowanie liczb', text: 'Liczbę zna tylko ten, kto się loguje.' },
+      ],
+    },
   };
 }
 
@@ -517,6 +549,10 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   const nested = scene.hotspots.find((h) => h.media?.kind === 'scene')!.media!.scene as { hotspots: { media?: Record<string, unknown> }[] } & Record<string, unknown>;
   nested.textLayer = layer('pulpit');
   nested.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('ekran');
+  // ANNOTATED_REPLAY (D-115): oba warianty źródła i kotwicy naraz (bez parseModule), żeby test kompletności widział wszystkie ścieżki.
+  const replay = blocks.ANNOTATED_REPLAY as { source: Record<string, unknown>; markers: { anchor: Record<string, unknown> }[] };
+  Object.assign(replay.source, { image: 'scenes/omowienie.svg', imagePortrait: 'scenes/omowienie-pion.svg', alt: 'Omówienie' });
+  Object.assign(replay.markers[1].anchor, { x: 40, y: 60 });
   for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;
 }
@@ -574,5 +610,20 @@ export function fullModule() {
       blocks.DOSSIER,
       blocks.SUMMARY,
     ],
+  };
+}
+
+/**
+ * Moduł schemaVersion 6 (D-114/D-115): fullModule() + nagranie i omówienie przed SUMMARY. Osobna funkcja - fullModule() nie zmienia
+ * wersji ani indeksów bloków (apps/api/test/course-engine.e2e-spec.ts, CLAUDE.md reguła 9). Razem oba moduły mają każdy typ bloku.
+ */
+export function fullModuleV6() {
+  const base = fullModule();
+  const blocks = fullBlocks();
+  return {
+    ...base,
+    schemaVersion: 6 as const,
+    slug: 'sprawa-testowa-v6',
+    blocks: [...base.blocks.slice(0, -1), blocks.CALL_RECORDING, blocks.ANNOTATED_REPLAY, base.blocks[base.blocks.length - 1]],
   };
 }

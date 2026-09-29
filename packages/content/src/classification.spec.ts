@@ -11,7 +11,7 @@ import {
   seededShuffle,
   toClientBlock,
 } from './index';
-import { SECRET_MARKER, fullModule, leakProbeBlocks } from './fixtures';
+import { SECRET_MARKER, fullModule, fullModuleV6, leakProbeBlocks } from './fixtures';
 import { parseModule } from './node';
 
 const context = {
@@ -21,9 +21,10 @@ const context = {
 const DERIVED_CLIENT_PATHS = ['hintCount'];
 
 describe('klasyfikacja pól bloków (client / secret)', () => {
-  it('fixtura pełnego modułu przechodzi walidację (każdy typ bloku raz)', () => {
+  it('fixtury pełnych modułów (v5 i v6) przechodzą walidację i razem mają każdy typ bloku', () => {
     expect(() => parseModule(fullModule())).not.toThrow();
-    expect(new Set(fullModule().blocks.map((b) => b.type))).toEqual(new Set(BLOCK_TYPES));
+    expect(() => parseModule(fullModuleV6())).not.toThrow();
+    expect(new Set(fullModuleV6().blocks.map((b) => b.type))).toEqual(new Set(BLOCK_TYPES));
   });
 
   it.each(BLOCK_TYPES)('%s: każde pole schematu jest sklasyfikowane dokładnie raz (nowe pole bez decyzji wywala test)', (type) => {

@@ -35,6 +35,10 @@ export const NARRATION_PATHS: string[][] = [
   // Media audio hotspotu nagrywane potokiem zamiast gotowego pliku (schemaVersion 5, D-082), np. poczta głosowa głosem "bank".
   ['hotspots', '*', 'media', 'narration'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'narration'],
+  // Nagranie rozmowy (CALL_RECORDING, D-115): każdy segment osobnym nagraniem głosem postaci (`narration.voice`); długości nagrań
+  // (durationMs) wyznaczają oś czasu odsłuchu i okna flag. Znaczniki omówienia (ANNOTATED_REPLAY) - narracja lektora per znacznik.
+  ['segments', '*', 'narration'],
+  ['markers', '*', 'narration'],
 ];
 
 /** Narracje w polach `secret`: bez audio (tylko tekst). Wpisane audioUrl/durationMs/cues w takim polu to błąd modułu. */

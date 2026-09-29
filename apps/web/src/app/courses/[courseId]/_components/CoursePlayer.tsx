@@ -71,6 +71,8 @@ interface RenderContext {
   blocks: ContentBlock[];
   /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu (przed zapisem bloku). */
   onEvidence: (summary: EvidenceSummary) => void;
+  /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
+  noTimeLimits: boolean;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -111,6 +113,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         onEvidence={ctx.onEvidence}
         myAvatarUrl={ctx.myAvatarUrl}
         myInitials={ctx.myInitials}
+        noTimeLimits={ctx.noTimeLimits}
       />
     );
   }
@@ -196,6 +199,7 @@ export default function CoursePlayer({
   initial,
   scoreUnavailable = false,
   narrationEnabled = true,
+  noTimeLimits = false,
   contentBase = LOCAL_CONTENT_BASE,
   userEmail = null,
 }: {
@@ -207,6 +211,8 @@ export default function CoursePlayer({
   scoreUnavailable?: boolean;
   // Ustawienie konta (users.narrationEnabled), czytane server-side w page.tsx.
   narrationEnabled?: boolean;
+  // Ustawienie konta „Bez limitów czasu” (users.noTimeLimits, D-124), czytane server-side w page.tsx.
+  noTimeLimits?: boolean;
   // Baza adresów zasobów (CONTENT_BASE_URL albo /content lokalnie), z page.tsx.
   contentBase?: string;
   userEmail?: string | null;
@@ -614,6 +620,7 @@ export default function CoursePlayer({
               identity,
               onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
               caseNo,
+              noTimeLimits,
               blocks,
               onEvidence: setEvidence,
             })}

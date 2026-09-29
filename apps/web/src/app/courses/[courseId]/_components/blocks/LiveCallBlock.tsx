@@ -74,7 +74,7 @@ export default function LiveCallBlock({
   onSubmit?: (answer: LiveCallAnswer) => void;
   onReady?: (submit: (() => void) | null) => void;
   disabled?: boolean;
-  /** Ustawienie konta „Bez limitów czasu” - domyślny stan przełącznika na ekranie przed połączeniem. */
+  /** Ustawienie konta „Bez limitów czasu” (D-124): rozmowa bez limitu, bez przełącznika (serwer stosuje ustawienie konta przy ocenie). */
   noTimeLimitDefault?: boolean;
   /** Wynik (po zapisie albo podgląd „Wstecz”): ścieżka gracza i rozstrzygnięcie z serwera. */
   result?: { detail?: ResultDetail; answer?: LiveCallAnswer; points?: number };
@@ -212,7 +212,15 @@ export default function LiveCallBlock({
               </div>
             </div>
             <div className="flex w-full flex-col gap-3 [@media(max-height:500px)]:flex-1">
-              {hasSilence && (
+              {hasSilence && noTimeLimitDefault && (
+                // Konto z „Bez limitów czasu” (D-124): serwer i tak nie przyjmie ciszy po limicie, więc tu bez przełącznika - inaczej
+                // włączony limit prowadziłby do ścieżki odrzuconej przy zapisie (ślepa uliczka, code review D-124).
+                <p data-testid="live-call-no-limit-account" className="rounded-btn bg-white/10 px-3 py-2 text-left text-base">
+                  Bez limitu czasu
+                  <span className="block text-sm text-white/70">Ustawienie Twojego konta (Ustawienia konta → Dostępność).</span>
+                </p>
+              )}
+              {hasSilence && !noTimeLimitDefault && (
                 <label className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 rounded-btn bg-white/10 px-3 text-left text-base">
                   <span>
                     Wyłącz limit czasu

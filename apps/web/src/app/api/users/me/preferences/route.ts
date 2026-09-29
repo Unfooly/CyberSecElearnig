@@ -27,9 +27,10 @@ export async function GET() {
   }
 }
 
-// Zapis preferencji zmienia stan: proxyAuthenticated wymaga żądania z naszej własnej strony (CSRF), ciało z allowlisty { narrationEnabled }.
+// Zapis preferencji zmienia stan: proxyAuthenticated wymaga żądania z naszej własnej strony (CSRF), ciało z allowlisty { narrationEnabled,
+// noTimeLimits } („Bez limitów czasu”, D-124 - ustawienia konta).
 export async function PATCH(request: NextRequest) {
-  const body = pickFields(await request.json().catch(() => null), ['narrationEnabled']);
+  const body = pickFields(await request.json().catch(() => null), ['narrationEnabled', 'noTimeLimits']);
   if (!body) {
     return NextResponse.json({ message: 'Nieprawidłowe żądanie.' }, { status: 400 });
   }

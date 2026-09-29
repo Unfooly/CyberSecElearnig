@@ -76,13 +76,17 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
 
   // Ustawienie lektora z konta (users.narrationEnabled). Błąd odczytu nie blokuje kursu: domyślnie lektor włączony.
   // Dla kursu już ukończonego pokazujemy tylko podsumowanie (bez odtwarzacza), więc preferencji nie pobieramy.
+  // „Bez limitów czasu” (D-124): rozmowa na żywo bez limitu i bez przełącznika; błąd odczytu - przełącznik z limitem (serwer i tak stosuje
+  // ustawienie z konta przy ocenie - B-137).
   let narrationEnabled = true;
+  let noTimeLimits = false;
   if (course.status !== 'COMPLETED') {
-    const preferencesResult = await fetchJson<{ narrationEnabled: boolean }>(`${API_URL}/users/me/preferences`, {
+    const preferencesResult = await fetchJson<{ narrationEnabled: boolean; noTimeLimits?: boolean }>(`${API_URL}/users/me/preferences`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });
     narrationEnabled = preferencesResult.ok ? preferencesResult.data.narrationEnabled !== false : true;
+    noTimeLimits = preferencesResult.ok && preferencesResult.data.noTimeLimits === true;
   }
   // Baza adresów zasobów modułu (ilustracje, audio): CONTENT_BASE_URL z env albo lokalny /content; ta sama walidacja co w CSP.
   const contentBase = contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development');
@@ -101,6 +105,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         initial={{ ...course, score }}
         scoreUnavailable={scoreUnavailable}
         narrationEnabled={narrationEnabled}
+        noTimeLimits={noTimeLimits}
         contentBase={contentBase}
         // Avatar gracza w dymkach DIALOGUE (fix/dialogue-polish, useMyAvatar) - z tego samego JWT co Topbar.tsx.
         userEmail={userEmail}

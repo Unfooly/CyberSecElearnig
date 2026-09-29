@@ -47,6 +47,22 @@ describe('AccountPage', () => {
     expect(screen.getByRole('button', { name: 'owl' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('D-124: sekcja „Dostępność” z przełącznikiem „Bez limitów czasu” w stanie z konta', async () => {
+    mockCookieValue('some-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).endsWith('/users/me/preferences') ? { narrationEnabled: true, noTimeLimits: true } : { avatarUrl: null }),
+      })),
+    );
+
+    render(await AccountPage());
+
+    expect(screen.getByRole('heading', { name: 'Dostępność', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Bez limitów czasu/ })).toBeChecked();
+  });
+
   it('przekierowuje do /login, gdy API odrzuca token (401)', async () => {
     mockCookieValue('some-token');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) }));

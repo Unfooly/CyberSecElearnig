@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { Award, X } from 'lucide-react';
 import type { PopupItem } from '@/lib/courses-types';
+import { usePhoneLayout } from '@/lib/use-phone-layout';
 
 // Easter egg (Q, D-100): komiksowe okienka („wirusy”, „wygrana”, „okup”) po kliknięciu przedmiotu z media.kind "popups" (moduł 1:
 // ikona gry na pulpicie Anny). Przesadzony, komiksowy wygląd w kolorach marki - celowo NIE imituje prawdziwych okien systemu ani
@@ -10,6 +11,10 @@ import type { PopupItem } from '@/lib/courses-types';
 // (Esc = krzyżyk górnego okienka, SceneHotspotsBlock); przycisk w okienku nic nie robi - okienko drga, a „dodge” ucieka przed kursorem
 // (2 razy, nie na dotyku). Po zamknięciu wszystkich: `outro` i ukryte wyróżnienie w notatniku (onFound - bez XP i dowodów).
 // reduced-motion: wszystkie okienka od razu, bez mrugnięcia, drgań i uciekania.
+// Telefon (D-117, decyzja właściciela; te same zapytania co tryby telefonowe odtwarzacza - usePhoneLayout): okienka PO JEDNYM -
+// wyśrodkowane, do 85% szerokości kontenera (ekranu monitora), bez obrotu i bez zmniejszania (tekst >= 15 px; za wysoka treść przewija
+// się pod stałym nagłówkiem z krzyżykiem), licznik „1/3” w nagłówku; po zamknięciu pojawia się następne, po ostatnim - outro. Desktop bez
+// zmian (kaskada, wszystkie naraz).
 
 export interface PopupsHandle {
   /** Zamyka górne okienko (Esc); false, gdy żadne nie jest otwarte. */
@@ -69,8 +74,11 @@ const PopupsEasterEgg = forwardRef<
   const [closed, setClosed] = useState<number[]>([]);
   const [blink, setBlink] = useState(!reducedMotion);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  // Telefon (D-117): po jednym okienku - widoczne (i „górne” dla Esc i fokusu) jest pierwsze niezamknięte, bez kaskady w czasie.
+  const single = usePhoneLayout();
   const openIndexes = items.map((_, index) => index).filter((index) => index < appeared && !closed.includes(index));
-  const top = openIndexes.length > 0 ? openIndexes[openIndexes.length - 1] : null;
+  const firstOpen = items.findIndex((_, index) => !closed.includes(index));
+  const top = single ? (firstOpen === -1 ? null : firstOpen) : openIndexes.length > 0 ? openIndexes[openIndexes.length - 1] : null;
   const finished = closed.length === items.length;
   // Stan z chwili OTWARCIA przedmiotu: onFound dopisuje wyróżnienie do notatnika, więc rodzic przelicza `alreadyFound` na true
   // zaraz po znalezieniu - bez zamrożenia pierwsze znalezienie pokazywało outro bez „Nowe”.
@@ -95,7 +103,8 @@ const PopupsEasterEgg = forwardRef<
         ? rootRef.current?.querySelector<HTMLElement>(`[data-popup-index="${top}"] [data-popup-close]`)
         : null;
     target?.focus();
-  }, [top, finished]);
+    // `single`: zmiana trybu (np. obrót) montuje okienko od nowa pod innym rodzicem - fokus trzeba przenieść ponownie.
+  }, [top, finished, single]);
 
   const foundOnce = useRef(false);
   useEffect(() => {
@@ -123,7 +132,8 @@ const PopupsEasterEgg = forwardRef<
   // (skala od lewego górnego rogu) - nic nie wystaje poza ekran. Przeliczane przy każdym pojawieniu się okna i zmianie rozmiaru.
   useLayoutEffect(() => {
     const root = rootRef.current;
-    if (!onScreen || !root) return undefined;
+    // Po jednym (telefon, D-117) okno nie jest zmniejszane - za wysoka treść przewija się w sobie.
+    if (!onScreen || single || !root) return undefined;
     const fit = () => {
       const box = root.getBoundingClientRect();
       // offset* nie uwzględniają transformu (skali), więc pomiar nie zależy od poprzedniego --fit.
@@ -143,7 +153,7 @@ const PopupsEasterEgg = forwardRef<
     // Także same okienka: ich wysokość zmienia się np. po wczytaniu fontu.
     root.querySelectorAll<HTMLElement>('[data-testid="easter-popup"]').forEach((popup) => observer.observe(popup));
     return () => observer.disconnect();
-  }, [onScreen, appeared, closed]);
+  }, [onScreen, single, appeared, closed]);
 
   return (
     // .easter-popups (globals.css): kontener zapytań - pozycje kaskady i odstępy w okienku zależą od wysokości nakładki (telefon w poziomie).
@@ -152,13 +162,31 @@ const PopupsEasterEgg = forwardRef<
       ref={rootRef}
       data-testid="easter-popups"
       data-on-screen={onScreen ? '' : undefined}
+      data-single={single ? '' : undefined}
       className={`easter-popups pointer-events-none absolute inset-0 ${onScreen ? 'easter-popups--screen [overflow:clip]' : ''}`}
     >
       {blink && <div aria-hidden="true" className="popup-blink absolute inset-0 bg-white" />}
-      {items.map((item, index) =>
-        index < appeared && !closed.includes(index) ? (
-          <Popup key={index} item={item} index={index} reducedMotion={reducedMotion} onScreen={onScreen} onClose={() => close(index)} />
-        ) : null,
+      {single ? (
+        top !== null && (
+          // Odstęp tylko w pionie: 85% szerokości okna liczone od pełnej szerokości ekranu.
+          <div className="absolute inset-0 flex items-center justify-center py-[3%]">
+            <Popup
+              key={top}
+              item={items[top]}
+              index={top}
+              reducedMotion={reducedMotion}
+              onScreen={onScreen}
+              counter={{ position: top + 1, total: items.length }}
+              onClose={() => close(top)}
+            />
+          </div>
+        )
+      ) : (
+        items.map((item, index) =>
+          index < appeared && !closed.includes(index) ? (
+            <Popup key={index} item={item} index={index} reducedMotion={reducedMotion} onScreen={onScreen} onClose={() => close(index)} />
+          ) : null,
+        )
       )}
       {/* Stały region live (od montowania): czytnik ogłasza WYPEŁNIENIE regionu, nie region wstawiony razem z treścią - outro i
           wyróżnienie dochodzą do czytnika, choć fokus od razu przechodzi na przycisk. */}
@@ -197,9 +225,25 @@ const PopupsEasterEgg = forwardRef<
 
 export default PopupsEasterEgg;
 
-function Popup({ item, index, reducedMotion, onScreen, onClose }: { item: PopupItem; index: number; reducedMotion: boolean; onScreen: boolean; onClose: () => void }) {
+function Popup({
+  item,
+  index,
+  reducedMotion,
+  onScreen,
+  counter,
+  onClose,
+}: {
+  item: PopupItem;
+  index: number;
+  reducedMotion: boolean;
+  onScreen: boolean;
+  /** Po jednym (telefon, D-117): numer okienka i liczba wszystkich - licznik „1/3”, okno wyśrodkowane bez obrotu i skali. */
+  counter?: { position: number; total: number };
+  onClose: () => void;
+}) {
   const titleId = useId();
   const bodyId = useId();
+  const counterId = useId();
   const [dodges, setDodges] = useState(0);
   const [shakes, setShakes] = useState(0);
   const [left, setLeft] = useState(item.countdown ? countdownSeconds(item.countdown) : 0);
@@ -211,8 +255,9 @@ function Popup({ item, index, reducedMotion, onScreen, onClose }: { item: PopupI
   }, [item.countdown]);
 
   // Ucieka tylko przed myszą (na dotyku nie ma „najechania” - przycisk musi dać się nacisnąć), maks. 2 razy, bez reduced-motion.
+  // Po jednym (telefon, D-117) nie ucieka: treść okienka przewija się w sobie i przesunięty przycisk zostałby ucięty.
   function dodge(event: PointerEvent<HTMLButtonElement>) {
-    if (item.behavior !== 'dodge' || reducedMotion || event.pointerType !== 'mouse') return;
+    if (item.behavior !== 'dodge' || reducedMotion || counter || event.pointerType !== 'mouse') return;
     setDodges((count) => Math.min(MAX_DODGES, count + 1));
   }
   const offset = dodges > 0 ? DODGE_OFFSETS[(dodges - 1) % DODGE_OFFSETS.length] : { x: 0, y: 0 };
@@ -221,24 +266,43 @@ function Popup({ item, index, reducedMotion, onScreen, onClose }: { item: PopupI
     <div
       role="dialog"
       aria-labelledby={titleId}
-      aria-describedby={bodyId}
+      // Po jednym licznik („Okienko 1 z 3”) w opisie okna - czytnik ogłasza go przy przejściu fokusu na krzyżyk.
+      aria-describedby={counter ? `${counterId} ${bodyId}` : bodyId}
       data-testid="easter-popup"
       data-popup-index={index}
-      className={`easter-popup pointer-events-auto absolute ${onScreen ? 'w-[min(60%,300px)] origin-top-left' : 'w-[min(80%,300px)]'}`}
+      className={
+        counter
+          ? 'pointer-events-auto relative flex max-h-full w-[min(85%,360px)] flex-col'
+          : `easter-popup pointer-events-auto absolute ${onScreen ? 'w-[min(60%,300px)] origin-top-left' : 'w-[min(80%,300px)]'}`
+      }
       // Na ekranie (D-116) także skala dopasowania (--fit, liczona w PopupsEasterEgg); bez ekranu --fit nie jest ustawiane (1).
-      style={{ '--i': index, transform: `rotate(${TILTS[index % TILTS.length]}deg) scale(var(--fit, 1))`, zIndex: 10 + index } as CSSProperties}
+      // Po jednym (D-117): bez obrotu i skali - okno wyśrodkowane przez rodzica.
+      style={counter ? { zIndex: 10 } : ({ '--i': index, transform: `rotate(${TILTS[index % TILTS.length]}deg) scale(var(--fit, 1))`, zIndex: 10 + index } as CSSProperties)}
     >
       {/* Drgnięcie na wewnętrznym elemencie (transform animacji nie nadpisuje obrotu okienka); `key` powtarza animację. */}
       <div
         key={shakes}
         data-testid="easter-popup-card"
-        // Bez overflow-hidden: uciekający przycisk może wyjść poza okienko.
-        className={`${reducedMotion ? '' : 'popup-in'} ${shakes > 0 && !reducedMotion ? 'popup-shake' : ''} rounded-2xl border-[3px] border-ink bg-surface text-ink shadow-[6px_6px_0_var(--ink)]`}
+        // Bez overflow-hidden: uciekający przycisk może wyjść poza okienko. Po jednym (telefon, bez uciekania): nagłówek z krzyżykiem
+        // stały, za wysoka treść przewija się pod nim - krzyżyk zawsze w zasięgu.
+        className={`${reducedMotion ? '' : 'popup-in'} ${shakes > 0 && !reducedMotion ? 'popup-shake' : ''} rounded-2xl border-[3px] border-ink bg-surface text-ink shadow-[6px_6px_0_var(--ink)] ${
+          counter ? 'flex min-h-0 flex-col' : ''
+        }`}
       >
-        <div className="flex items-center gap-2 rounded-t-[13px] bg-accent py-1 pl-3 pr-1 text-white">
+        <div className={`flex items-center gap-2 rounded-t-[13px] bg-accent py-1 pl-3 pr-1 text-white ${counter ? 'shrink-0' : ''}`}>
           <h2 id={titleId} className="min-w-0 flex-1 text-[17px] font-extrabold leading-tight">
             {item.title}
           </h2>
+          {counter && (
+            <span data-testid="easter-popup-counter" className="shrink-0 text-[15px] font-bold tabular-nums">
+              <span aria-hidden="true">
+                {counter.position}/{counter.total}
+              </span>
+              <span id={counterId} className="sr-only">
+                Okienko {counter.position} z {counter.total}
+              </span>
+            </span>
+          )}
           <button
             type="button"
             data-popup-close
@@ -256,7 +320,10 @@ function Popup({ item, index, reducedMotion, onScreen, onClose }: { item: PopupI
             <X aria-hidden="true" className="h-5 w-5" strokeWidth={3} />
           </button>
         </div>
-        <div className="easter-popup-body flex flex-col items-center gap-3 px-4 py-4 text-center">
+        <div
+          data-testid="easter-popup-body"
+          className={`easter-popup-body flex flex-col items-center gap-3 px-4 py-4 text-center ${counter ? 'min-h-0 overflow-y-auto' : ''}`}
+        >
           <p id={bodyId} className="text-[15px] font-semibold">
             {item.body}
           </p>

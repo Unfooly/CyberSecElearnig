@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { audioPathSchema, baseShape, imagePathSchema, idSchema, narrationSchema, noteSchema, text } from './common';
+import { audioPathSchema, baseShape, imagePathSchema, idSchema, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
+import { Delocalize } from './localize';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
 // do przeglądarki trafia wyłącznie wynik toClientBlock (client.ts) wg FIELD_CLASSIFICATION poniżej.
@@ -20,11 +21,11 @@ const videoSchema = z
 
 const choiceOptionSchema = z
   .object({
-    text: text(500),
+    text: ltext(500),
     // QUIZ używa `correct`, BRANCHING_SCENARIO `outcome` (jak w dokumencie) - dokładnie jedno z dwóch.
     correct: z.boolean().optional(),
     outcome: z.enum(['correct', 'wrong']).optional(),
-    feedback: text(1000).optional(),
+    feedback: ltext(1000).optional(),
   })
   .strict();
 
@@ -32,7 +33,7 @@ const quizSchema = z
   .object({
     ...baseShape,
     type: z.literal('QUIZ'),
-    prompt: text(1000),
+    prompt: ltext(1000),
     options: z.array(choiceOptionSchema).min(2).max(8),
   })
   .strict();
@@ -41,7 +42,7 @@ const branchingSchema = z
   .object({
     ...baseShape,
     type: z.literal('BRANCHING_SCENARIO'),
-    prompt: text(1000),
+    prompt: ltext(1000),
     options: z.array(choiceOptionSchema).min(2).max(8),
   })
   .strict();
@@ -50,9 +51,9 @@ const dragAndDropSchema = z
   .object({
     ...baseShape,
     type: z.literal('DRAG_AND_DROP'),
-    prompt: text(500).optional(),
-    items: z.array(z.object({ text: text(300) }).strict()).min(1).max(30),
-    categories: z.tuple([text(60), text(60)]).optional(),
+    prompt: ltext(500).optional(),
+    items: z.array(z.object({ text: ltext(300) }).strict()).min(1).max(30),
+    categories: z.tuple([ltext(60), ltext(60)]).optional(),
   })
   .strict();
 
@@ -72,7 +73,16 @@ const embeddedHtmlSchema = z
 // `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
 // imagePortrait (D-104, opcjonalne): wariant grafiki dla telefonu w pionie (kontener sceny < 0.8) - np. okno maila z dużym, zawijanym
 // tekstem zamiast poziomego zrzutu; odtwarzacz wybiera go sam, `alt` wspólny (ta sama treść).
-const imageMediaSchema = z.object({ kind: z.literal('image'), src: imagePathSchema, imagePortrait: imagePathSchema.optional(), alt: text(300) }).strict();
+// textLayer (schemaVersion 6, common.ts): tekst rysowany przez odtwarzacz na zbliżeniu zamiast wypalonego w grafice.
+const imageMediaSchema = z
+  .object({
+    kind: z.literal('image'),
+    src: imagePathSchema,
+    imagePortrait: imagePathSchema.optional(),
+    alt: ltext(300),
+    textLayer: textLayerSchema.optional(),
+  })
+  .strict();
 // image: opcjonalne zbliżenie pokazywane NAD własnym odtwarzaczem audio (zamiast natywnych <audio controls> - feedback z
 // produkcji po PR #32, PR feat/scene-overlay-fix), publikowane tym samym potokiem --assets co media.src. alt: jak w
 // imageMediaSchema - opcjonalny, bo zbliżenie bywa czysto ilustracyjne (treść i tak jest w transkrypcie), ale gdy niesie
@@ -85,22 +95,22 @@ const audioMediaSchema = z
   .object({
     kind: z.literal('audio'),
     audioUrl: audioPathSchema.optional(),
-    transcript: text(4000).optional(),
+    transcript: ltext(4000).optional(),
     narration: narrationSchema.optional(),
     image: imagePathSchema.optional(),
-    alt: text(300).optional(),
+    alt: ltext(300).optional(),
   })
   .strict();
-const documentMediaSchema = z.object({ kind: z.literal('document'), title: text(200), lines: z.array(text(300)).min(1).max(30) }).strict();
+const documentMediaSchema = z.object({ kind: z.literal('document'), title: ltext(200), lines: z.array(ltext(300)).min(1).max(30) }).strict();
 // Easter egg (Q, D-100): seria komiksowych okienek („wirusy”, „wygrana”, „okup”) zamykanych tylko krzyżykiem, po nich `outro` i
 // opcjonalne ukryte wyróżnienie w notatniku. Nie jest dowodem (semantics.ts: bez evidence/note/required) i nie zmienia wyniku ani XP -
 // serwer zapisuje tylko flagę wyróżnienia (progress, `easterEggs`). `behavior: 'dodge'` - przycisk ucieka przed kursorem (2 razy, nie na
 // dotyku); `countdown` - kosmetyczne odliczanie w dół (GG:MM:SS). Treść okienek to fikcja szkoleniowa, bez imitacji prawdziwych okien.
 const popupItemSchema = z
   .object({
-    title: text(80),
-    body: text(200),
-    button: text(60),
+    title: ltext(80),
+    body: ltext(200),
+    button: ltext(60),
     behavior: z.enum(['dodge', 'none']).optional(),
     countdown: z.string().regex(/^\d{1,2}:[0-5]\d:[0-5]\d$/, 'format GG:MM:SS').optional(),
   })
@@ -109,8 +119,8 @@ const popupsMediaSchema = z
   .object({
     kind: z.literal('popups'),
     items: z.array(popupItemSchema).min(1).max(5),
-    outro: text(400),
-    badge: z.object({ id: idSchema, label: text(60) }).strict().optional(),
+    outro: ltext(400),
+    badge: z.object({ id: idSchema, label: ltext(60) }).strict().optional(),
   })
   .strict();
 
@@ -121,12 +131,12 @@ const innerHotspotMediaSchema = z.discriminatedUnion('kind', [imageMediaSchema, 
 const innerHotspotSchema = z
   .object({
     id: idSchema,
-    label: text(100),
+    label: ltext(100),
     x: percent,
     y: percent,
     width: z.number().min(1).max(100),
     height: z.number().min(1).max(100),
-    content: text(2000),
+    content: ltext(2000),
     media: innerHotspotMediaSchema.optional(),
     narration: baseShape.narration,
     evidence: z.boolean().optional(),
@@ -141,7 +151,8 @@ const innerHotspotSchema = z
 const nestedSceneSchema = z
   .object({
     image: imagePathSchema,
-    imageAlt: text(300),
+    imageAlt: ltext(300),
+    textLayer: textLayerSchema.optional(),
     hotspots: z.array(innerHotspotSchema).min(1).max(20),
   })
   .strict();
@@ -160,13 +171,15 @@ const hotspotsSchema = z
     ...baseShape,
     type: z.literal('SCENE_HOTSPOTS'),
     image: imagePathSchema,
-    imageAlt: text(300),
+    imageAlt: ltext(300),
+    // schemaVersion 6: tekst sceny w warstwie (szyldy, podpisy) - common.ts textLayerSchema.
+    textLayer: textLayerSchema.optional(),
     hotspots: z
       .array(
         z
           .object({
             id: idSchema,
-            label: text(100),
+            label: ltext(100),
             // Prostokąt w procentach obrazu.
             x: percent,
             y: percent,
@@ -176,7 +189,7 @@ const hotspotsSchema = z
             // "drzwi" - klik KOŃCZY blok (jak przycisk "Dalej" w pasku powłoki), gdy wymagane elementy są już zebrane; taki
             // hotspot nie ma ani content, ani media, ani evidence/note (wzajemnie wykluczające, semantics.ts).
             action: z.enum(['card', 'next']).optional(),
-            content: text(2000).optional(),
+            content: ltext(2000).optional(),
             media: hotspotMediaSchema.optional(),
             narration: baseShape.narration,
             // schemaVersion 3: dowód w śledztwie (wpis w notatniku po "Zabierz" w zbliżeniu, D-086; wymaga `note` z `kind`) i wymagalność.
@@ -200,12 +213,12 @@ const dialogueSchema = z
     type: z.literal('DIALOGUE'),
     character: z
       .object({
-        name: text(80),
-        role: text(120).optional(),
+        name: ltext(80),
+        role: ltext(120).optional(),
         // avatar: schemaVersion 3, ścieżka względna wobec CONTENT_BASE_URL (klient tylko przez <img>).
         avatar: imagePathSchema.optional(),
         // opening: schemaVersion 4, kwestia wypowiadana PRZED listą pytań (bez narracji na razie - tylko tekst).
-        opening: text(300).optional(),
+        opening: ltext(300).optional(),
       })
       .strict(),
     questions: z
@@ -213,11 +226,11 @@ const dialogueSchema = z
         z
           .object({
             id: idSchema,
-            text: text(300),
+            text: ltext(300),
             // Odpowiedź jako jeden tekst ALBO kwestie wypowiadane po kolei (schemaVersion 3): dokładnie jedno z nich (semantics.ts).
-            answer: text(2000).optional(),
+            answer: ltext(2000).optional(),
             lines: z
-              .array(z.object({ text: text(600), narration: narrationSchema.optional() }).strict())
+              .array(z.object({ text: ltext(600), narration: narrationSchema.optional() }).strict())
               .min(1)
               .max(10)
               .optional(),
@@ -241,7 +254,7 @@ const notepadSchema = z
   .object({
     ...baseShape,
     type: z.literal('NOTEPAD'),
-    prompt: text(500).optional(),
+    prompt: ltext(500).optional(),
   })
   .strict();
 
@@ -251,7 +264,7 @@ const narrativeSchema = z
   .object({
     ...baseShape,
     type: z.literal('NARRATIVE'),
-    text: text(2000),
+    text: ltext(2000),
   })
   .strict();
 
@@ -264,30 +277,30 @@ const emailAnalysisSchema = z
     type: z.literal('EMAIL_ANALYSIS'),
     email: z
       .object({
-        fromName: text(120),
-        fromAddress: text(200),
+        fromName: ltext(120),
+        fromAddress: ltext(200),
         // schemaVersion 4: adresat do wyświetlenia w makiecie (pod "Od:") - tekst, nie jest parsowany ani używany jako kotwica
         // kryterium (na to jest criteria[].target); opcjonalny, bo starsze moduły (2/3) go nie mają.
-        to: text(200).optional(),
-        subject: text(300),
-        body: text(4000),
+        to: ltext(200).optional(),
+        subject: ltext(300),
+        body: ltext(4000),
         // schemaVersion 3: wygląd prawdziwego klienta pocztowego. Data to tekst do wyświetlenia (nie jest parsowana), załącznik to
         // element klikalny w makiecie, ale bez pobierania (nie ma adresu pliku).
-        date: text(60).optional(),
-        attachment: z.object({ name: text(120), size: text(30).optional() }).strict().optional(),
+        date: ltext(60).optional(),
+        attachment: z.object({ name: ltext(120), size: ltext(30).optional() }).strict().optional(),
         // `url` to tylko PODGLĄD adresu (wyświetlany w dymku jak pasek statusu przeglądarki, nigdy nie nawiguje).
-        links: z.array(z.object({ id: idSchema, text: text(200), url: text(500) }).strict()).max(10),
+        links: z.array(z.object({ id: idSchema, text: ltext(200), url: text(500) }).strict()).max(10),
       })
       .strict(),
-    prompt: text(500).optional(),
+    prompt: ltext(500).optional(),
     criteria: z
       .array(
         z
           .object({
             id: idSchema,
-            label: text(300),
+            label: ltext(300),
             correct: z.boolean(),
-            explanation: text(1000).optional(),
+            explanation: ltext(1000).optional(),
             // Trafia do notatnika, gdy kryterium jest poprawne i zostało zaznaczone.
             note: noteSchema.optional(),
             // schemaVersion 3: trafione kryterium jest dowodem (wymaga `correct: true` oraz `note` z `kind`). SEKRET (zdradzałby poprawność).
@@ -300,7 +313,7 @@ const emailAnalysisSchema = z
                 kind: z.enum(EMAIL_TARGET_KINDS),
                 // kind=link: id linku z email.links; kind=text: cytat (fragment email.body, semantics.ts).
                 linkId: idSchema.optional(),
-                quote: text(200).optional(),
+                quote: ltext(200).optional(),
               })
               .strict()
               .optional(),
@@ -318,14 +331,16 @@ const textInputSchema = z
   .object({
     ...baseShape,
     type: z.literal('TEXT_INPUT_GUIDED'),
-    prompt: text(1000),
-    placeholder: text(100).optional(),
+    prompt: ltext(1000),
+    placeholder: ltext(100).optional(),
     // Oprawa pola (feat/browser-evidence): 'browser' = pole jako pasek adresu w oknie przeglądarki (zadanie „wpisz adres/domenę”).
     // Czysto wizualne - ocena bez zmian (serwer). Po poprawnej odpowiedzi okno pokazuje ostrzeżenie o stronie podszywającej się pod
     // bank (bez formularzy); tekst jest stały w odtwarzaczu, więc pole nie niesie żadnej treści zadania.
     frame: z.enum(['browser']).optional(),
     answer: z
       .object({
+        // Odpowiedzi i wzorzec zostają jednojęzyczne w schemaVersion 6 (ocena per język przypisania - faza EN, rozdz. 10 specyfikacji
+        // modułu 2); treść zadania (prompt, podpowiedzi, rozwiązanie) jest już wielojęzyczna.
         accept: z.array(text(200)).max(20).default([]),
         // Wzorzec MUSI być zapisany jako ^...$ i skompilować się w silniku RE2 (czas liniowy: brak backreferencji i lookahead);
         // serwer dopasowuje go tym samym silnikiem do całej odpowiedzi. Długość wzorca <= 200, długość odpowiedzi <= 500
@@ -342,7 +357,7 @@ const textInputSchema = z
       })
       .strict()
       .default({}),
-    hints: z.array(z.object({ text: text(500), narration: baseShape.narration }).strict()).max(9).default([]),
+    hints: z.array(z.object({ text: ltext(500), narration: baseShape.narration }).strict()).max(9).default([]),
     maxAttempts: z.number().int().min(1).max(10).default(4),
     scoring: z
       .object({
@@ -351,7 +366,7 @@ const textInputSchema = z
       })
       .strict()
       .default({}),
-    solution: z.object({ text: text(300), explanation: text(1000).optional() }).strict(),
+    solution: z.object({ text: ltext(300), explanation: ltext(1000).optional() }).strict(),
   })
   .strict();
 
@@ -359,17 +374,17 @@ const orderingSchema = z
   .object({
     ...baseShape,
     type: z.literal('ORDERING'),
-    prompt: text(500),
+    prompt: ltext(500),
     // Elementy w POPRAWNEJ kolejności - klient dostaje je przetasowane (sekret serwera), patrz client.ts.
     // Co najmniej 3: przy 2 elementach jedyna "przetasowana" kolejność jest odwrotnością poprawnej, a nawet losowa zdradzałaby
     // odpowiedź z prawdopodobieństwem 1/2 bez żadnej wiedzy.
-    items: z.array(z.object({ id: idSchema, text: text(300) }).strict()).min(3).max(12),
+    items: z.array(z.object({ id: idSchema, text: ltext(300) }).strict()).min(3).max(12),
     scoring: z.enum(['partial', 'exact']).default('partial'),
-    explanation: text(1000).optional(),
+    explanation: ltext(1000).optional(),
     // Tablica śledcza (feat/evidence-board, D-088, addytywnie w v5): "zdjęcia" na początku i końcu łańcucha (np. ofiara i strata) -
     // sam opis, nie element oceniany (nie zdradza kolejności kroków).
-    start: z.object({ label: text(40), caption: text(60) }).strict().optional(),
-    end: z.object({ label: text(40), caption: text(60) }).strict().optional(),
+    start: z.object({ label: ltext(40), caption: ltext(60) }).strict().optional(),
+    end: z.object({ label: ltext(40), caption: ltext(60) }).strict().optional(),
   })
   .strict();
 
@@ -377,7 +392,7 @@ const tabsSchema = z
   .object({
     ...baseShape,
     type: z.literal('TABS'),
-    tabs: z.array(z.object({ id: idSchema, title: text(60), content: text(3000) }).strict()).min(1).max(10),
+    tabs: z.array(z.object({ id: idSchema, title: ltext(60), content: ltext(3000) }).strict()).min(1).max(10),
     requiredTabs: z.array(idSchema).max(10).optional(),
   })
   .strict();
@@ -413,8 +428,8 @@ const summarySchema = z
   .object({
     ...baseShape,
     type: z.literal('SUMMARY'),
-    text: text(2000).optional(),
-    lessons: z.array(text(120)).min(1).max(5).optional(),
+    text: ltext(2000).optional(),
+    lessons: z.array(ltext(120)).min(1).max(5).optional(),
     closing: z
       .object({
         image: imagePathSchema,
@@ -461,9 +476,9 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('typewriter'),
-      text: text(300),
-      sub: text(300).optional(),
-      cta: text(60),
+      text: ltext(300),
+      sub: ltext(300).optional(),
+      cta: ltext(60),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
     })
@@ -476,13 +491,13 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       // z odtwarzacza - refactor/remove-mascot-player).
       caller: z
         .object({
-          name: text(80),
-          role: text(120).optional(),
+          name: ltext(80),
+          role: ltext(120).optional(),
           avatar: imagePathSchema.optional(),
         })
         .strict(),
-      text: text(500),
-      cta: text(60),
+      text: ltext(500),
+      cta: ltext(60),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
     })
@@ -495,14 +510,14 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
     .object({
       kind: z.literal('caseFile'),
       caseNo: text(30),
-      title: text(120),
-      fields: z.array(z.object({ label: text(60), value: text(200) }).strict()).min(1).max(8),
-      stamp: text(30).optional(),
+      title: ltext(120),
+      fields: z.array(z.object({ label: ltext(60), value: ltext(200) }).strict()).min(1).max(8),
+      stamp: ltext(30).optional(),
       tasks: z
-        .array(z.object({ id: idSchema, text: text(200), completeWhen: z.array(idSchema).min(1).max(10) }).strict())
+        .array(z.object({ id: idSchema, text: ltext(200), completeWhen: z.array(idSchema).min(1).max(10) }).strict())
         .max(6)
         .optional(),
-      cta: text(60),
+      cta: ltext(60),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
       // Dwie fazy (D-084): zamknięta teczka (`closedImage`, klik w `hotspot` ją otwiera) -> otwarte akta (`image`, crossfade,
@@ -517,7 +532,7 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('badge'),
-      cta: text(60),
+      cta: ltext(60),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
     })
@@ -526,8 +541,8 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('start'),
-      text: text(200),
-      cta: text(60),
+      text: ltext(200),
+      cta: ltext(60),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
     })
@@ -550,13 +565,13 @@ const briefingSchema = z
 const dossierRowSchema = z
   .object({
     id: idSchema,
-    cells: z.array(text(300)).min(1).max(4),
+    cells: z.array(ltext(300)).min(1).max(4),
     evidence: z.boolean().optional(),
     note: noteSchema.optional(),
     required: z.boolean().optional(),
     // Komunikat po kliknięciu ZWYKŁEJ linijki (domyślnie „Ta linijka wygląda na zwykłą operację.”) - np. naprowadzenie, gdy wiersz
     // pokazuje fakt znany już z innej sceny. Tylko bez evidence (semantics.ts); publiczny jak reszta wiersza.
-    message: text(200).optional(),
+    message: ltext(200).optional(),
   })
   .strict();
 
@@ -565,19 +580,19 @@ const dossierSchema = z
     ...baseShape,
     type: z.literal('DOSSIER'),
     // Pieczątka na teczce (np. "POUFNE").
-    stamp: text(30).optional(),
+    stamp: ltext(30).optional(),
     documents: z
       .array(
         z
           .object({
             id: idSchema,
             // Napis na przekładce.
-            tab: text(40),
+            tab: ltext(40),
             // Nagłówek arkusza: wystawca (np. "UNFOOLY SP. Z O.O. · DZIAŁ IT"), tytuł i metryka (autor, data, konto).
-            org: text(80),
-            title: text(120),
-            meta: text(200).optional(),
-            columns: z.array(text(40)).min(1).max(4),
+            org: ltext(80),
+            title: ltext(120),
+            meta: ltext(200).optional(),
+            columns: z.array(ltext(40)).min(1).max(4),
             rows: z.array(dossierRowSchema).min(1).max(30),
           })
           .strict(),
@@ -627,9 +642,15 @@ export const blockSchema = z.discriminatedUnion('type', [
   briefingSchema,
   dossierSchema,
 ]);
-export type ServerBlock = z.infer<typeof blockSchema>;
+/** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
+export type StoredBlock = z.infer<typeof blockSchema>;
+/**
+ * Blok ROZWINIĘTY do jednego języka (localizeContent) - kształt, na którym pracuje walidacja semantyczna, ocena i odtwarzacz:
+ * zwykłe stringi i płaska narracja, jak w v5.
+ */
+export type ServerBlock = Delocalize<StoredBlock>;
 
-export type ServerBlockOf<T extends BlockType> = z.infer<(typeof BLOCK_SCHEMAS)[T]>;
+export type ServerBlockOf<T extends BlockType> = Delocalize<z.infer<(typeof BLOCK_SCHEMAS)[T]>>;
 
 // Bloki oceniane (waga 1) i eksploracyjne (waga 0: wymagane do przejścia, bez wpływu na wynik modułu).
 export const DEFAULT_WEIGHT: Record<BlockType, number> = {
@@ -701,6 +722,10 @@ function classify(client: string[], secret: string[]): FieldClassification {
 }
 
 const CHOICE_SECRET = ['options[].correct', 'options[].outcome', 'options[].feedback'];
+
+// Warstwa tekstu (schemaVersion 6): treść i układ do narysowania na grafice - publiczne jak `imageAlt`.
+const textLayerPaths = (prefix: string) =>
+  ['id', 'x', 'y', 'w', 'h', 'text', 'style', 'portrait.x', 'portrait.y', 'portrait.w', 'portrait.h'].map((key) => `${prefix}textLayer[].${key}`);
 
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'durationSeconds'], []),
@@ -796,6 +821,12 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].note.kind',
       'hotspots[].required',
       'requiredHotspots[]',
+      // Na końcu listy: pickByPaths układa klucze odpowiedzi w kolejności pierwszego wystąpienia ścieżki, a odpowiedź /start dla treści
+      // bez warstwy tekstu ma zostać bajt w bajt ta sama (module-1-golden.spec.ts).
+      ...textLayerPaths(''),
+      ...textLayerPaths('hotspots[].media.'),
+      ...textLayerPaths('hotspots[].media.scene.'),
+      ...textLayerPaths('hotspots[].media.scene.hotspots[].media.'),
     ],
     [
       'hotspots[].narration.spokenText',

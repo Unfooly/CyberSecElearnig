@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { ContentModule, ContentValidationError } from '@cyberszkolo/content';
+import { ContentModule, ContentValidationError, DEFAULT_CONTENT_LOCALE, localizeContent } from '@cyberszkolo/content';
 import { hashContent, moduleWarnings, parseModule } from '@cyberszkolo/content/dist/node';
 import { buildLegacyVersionData } from '../courses/course-versions';
 
@@ -85,14 +85,17 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
     }
   }
 
+  // Metadane kursu (kolumny tekstowe katalogu) w języku domyślnym treści: schemaVersion 6 zapisuje je jako { pl, en? }, a katalog
+  // nie ma jeszcze wyboru języka (faza EN). Wersja treści (contentBlocks) przechowuje wszystkie języki.
+  const meta = localizeContent({ title: contentModule.title, subtitle: contentModule.subtitle, objectives: contentModule.objectives }, DEFAULT_CONTENT_LOCALE);
   const courseData = {
-    title: contentModule.title,
-    subtitle: contentModule.subtitle ?? null,
+    title: meta.title,
+    subtitle: meta.subtitle ?? null,
     category: contentModule.category,
     level: contentModule.level ?? null,
     durationMinutes: contentModule.durationMinutes,
     mandatory: contentModule.mandatory,
-    objectives: (contentModule.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
+    objectives: (meta.objectives as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
     // Miniatura (D-084): ścieżka zasobu po publikacji (--assets) - moduł bez miniatury czyści ją (null), jak subtitle.
     thumbnail: contentModule.thumbnail ?? null,
     contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,

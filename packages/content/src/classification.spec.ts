@@ -58,6 +58,41 @@ describe('toClientBlock: brak wycieku klucza odpowiedzi', () => {
     expect(JSON.stringify(projected)).not.toContain(SECRET_MARKER);
   });
 
+  // schemaVersion 6 (D-114): ta sama fixtura, ale KAŻDY tekst jako { pl, en } (EN z sufiksem), a każda narracja jako
+  // { voice, pl: {...}, en: {...} } - sekrety w obu językach. Chroni kolejność w toClientBlock (najpierw język, potem biała lista).
+  const localizeProbe = (node: unknown, key = ''): unknown => {
+    if (Array.isArray(node)) return node.map((item) => localizeProbe(item));
+    if (typeof node === 'string') return key === 'id' || key === 'type' ? node : { pl: node, en: `${node}-EN` };
+    if (!node || typeof node !== 'object') return node;
+    const object = node as Record<string, unknown>;
+    const mapped = Object.fromEntries(Object.entries(object).map(([k, v]) => [k, localizeProbe(v, k)]));
+    if (typeof object.text === 'string' && 'audioUrl' in object) {
+      const { voice, ...body } = object;
+      const plBody = Object.fromEntries(Object.entries(body).map(([k, v]) => [k, k === 'cues' ? v : v]));
+      const enBody = { ...plBody, text: `${String(object.text)}-EN`, ...(typeof object.spokenText === 'string' ? { spokenText: `${object.spokenText}-EN` } : {}) };
+      return voice === undefined ? { pl: plBody, en: enBody } : { voice, pl: plBody, en: enBody };
+    }
+    return mapped;
+  };
+
+  it.each(BLOCK_TYPES.flatMap((type) => (['pl', 'en'] as const).map((locale) => [type, locale] as const)))(
+    '%s (%s, treść wielojęzyczna): tylko pola client, żadnego sekretu w żadnym języku, żadnych kluczy pl/en',
+    (type, locale) => {
+      const block = localizeProbe(leakProbeBlocks()[type]) as Record<string, unknown>;
+      const projected = toClientBlock(block, { ...context, locale });
+      const paths = collectPaths(projected);
+      for (const path of paths) expect([...FIELD_CLASSIFICATION[type].client, ...DERIVED_CLIENT_PATHS]).toContain(path);
+      for (const path of FIELD_CLASSIFICATION[type].secret) expect(paths).not.toContain(path);
+      expect(JSON.stringify(projected)).not.toContain(SECRET_MARKER);
+      expect(paths.some((path) => /(^|\.)(pl|en)(\.|\[|$)/.test(path))).toBe(false);
+      if (locale === 'en' && typeof block.title === 'object') expect(projected.title).toMatch(/-EN$/);
+    },
+  );
+
+  it('nieznany język w toClientBlock to błąd (nie cichy pl ani pole z prototypu)', () => {
+    expect(() => toClientBlock(leakProbeBlocks().VIDEO, { ...context, locale: 'constructor' as never })).toThrow(/Nieznany język/);
+  });
+
   it('nieznany typ bloku dostaje tylko id i type (nic, czego nie umiemy sklasyfikować)', () => {
     expect(toClientBlock({ id: 'x', type: 'NOWY_TYP', correct: true, tajne: 'SEKRET' }, context)).toEqual({
       id: 'x',

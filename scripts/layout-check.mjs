@@ -112,6 +112,10 @@ const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
+// Najmniejszy tekst okienek na ekranie monitora na telefonie (D-116: okienka zmniejszane, żeby zmieściły się w ekranie).
+const EASTER_SCREEN_MIN_FONT = 9;
+// Viewporty z pełnym progiem 15 px (ekran monitora dość duży) - nowy viewport dostaje próg jawną decyzją, nie z „ma mysz”.
+const EASTER_FULL_FONT_VIEWPORTS = new Set(['1920x1080', '1366x768']);
 const EASTER_VIEWPORTS = [
   { name: '1920x1080', width: 1920, height: 1080, mouse: true },
   { name: '1366x768', width: 1366, height: 768, mouse: true },
@@ -309,7 +313,8 @@ async function checkCameraCentersItem(page, hotspotId, label) {
   const dx = itemBox.x + itemBox.width / 2 - (zoomBox.x + zoomBox.width / 2);
   const dy = itemBox.y + itemBox.height / 2 - (zoomBox.y + zoomBox.height / 2);
   if (Math.abs(dx) > 2 || Math.abs(dy) > 2) fail(`${label}: (k) środek przedmiotu przesunięty względem środka nakładki o (${dx.toFixed(1)}, ${dy.toFixed(1)})px.`);
-  const transform = await page.locator('.scene-box').first().evaluate((el) => getComputedStyle(el).transform);
+  // Pudełko sceny w obu wariantach (poziomy .scene-box, pionowy D-116 .briefing-scene-box) ma data-scene-variant.
+  const transform = await page.locator('[data-scene-variant]').first().evaluate((el) => getComputedStyle(el).transform);
   if (!transform || transform === 'none') fail(`${label}: (k) pudełko sceny bez transformu kamery.`);
 }
 
@@ -349,6 +354,40 @@ async function checkPointerCoarse(page, label) {
 // fallback do "contain" - w tym drugim przypadku scrollWidth==clientWidth i cała reszta sprawdzeń panoramy (g-i
 // część) nie miałaby sensu) i scrollHeight<=clientHeight (bez przewijania w pionie - to strona/karta ma się
 // przewijać, nie sama scena).
+// Wariant pionowy sceny (D-116): (p1) grafika pionowa załadowana, bez panoramy (nic do przewinięcia w poziomie ani w pionie); (p2) scena
+// w całości w obszarze sceny; (p3) KAŻDY przedmiot w całości w scenie i w oknie - widoczny bez przewijania.
+async function checkPortraitSceneAllVisible(page, label) {
+  const info = await page.evaluate(() => {
+    const box = document.querySelector('[data-scene-variant="portrait"]');
+    const view = box?.parentElement?.parentElement;
+    const rect = (el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left, y: r.top, width: r.width, height: r.height };
+    };
+    const img = box?.querySelector('img');
+    const scrollers = [...document.querySelectorAll('[data-testid="player-content-area"] *')].filter(
+      (el) => el.scrollWidth > el.clientWidth + 1 && ['auto', 'scroll'].includes(getComputedStyle(el).overflowX),
+    );
+    return {
+      exists: !!box,
+      portraitImage: !!img && img.naturalWidth > 0 && img.naturalHeight > img.naturalWidth,
+      box: box ? rect(box) : null,
+      view: view ? rect(view) : null,
+      panContainer: !!document.querySelector('.scene-pan-edge, .scene-pan-hint'),
+      scrollers: scrollers.length,
+      hotspots: box ? [...box.querySelectorAll('.scene-hotspot')].map((el) => ({ id: el.dataset.testid, ...rect(el) })) : [],
+      viewport: { x: 0, y: 0, width: innerWidth, height: innerHeight },
+    };
+  });
+  if (!info.exists || !info.portraitImage) fail(`${label}: (p1) brak wariantu pionowego albo grafika nie jest pionowa.`);
+  if (info.panContainer || info.scrollers > 0) fail(`${label}: (p1) panorama/przewijanie w wariancie pionowym (pan=${info.panContainer}, przewijane=${info.scrollers}).`);
+  if (!contains(info.view, info.box)) fail(`${label}: (p2) scena ${JSON.stringify(info.box)} poza obszarem sceny ${JSON.stringify(info.view)}.`);
+  for (const h of info.hotspots) {
+    if (!contains(info.box, h) || !contains(info.viewport, h)) fail(`${label}: (p3) przedmiot ${h.id} poza sceną/oknem - ${JSON.stringify(h)}.`);
+  }
+  if (info.hotspots.length === 0) fail(`${label}: (p3) brak przedmiotów w scenie.`);
+}
+
 async function checkScenePansHorizontallyOnly(page, label) {
   const box = page.locator('.scene-pan-container').first();
   const { scrollWidth, clientWidth, scrollHeight, clientHeight } = await box.evaluate((el) => ({
@@ -391,7 +430,9 @@ async function checkTouchTargetSize(page, label) {
   const buttons = await page.locator('[data-testid^="hotspot-overlay-"]').all();
   if (buttons.length === 0) fail(`${label}: (h) nie znaleziono żadnego hotspotu na scenie.`);
   for (const button of buttons) {
-    const box = await button.boundingBox();
+    // Wariant pionowy sceny (D-116): cel dotyku to niewidoczne pole [data-hit] wokół drobnego przedmiotu, jeśli jest.
+    const hit = button.locator('[data-hit]');
+    const box = (await hit.count()) > 0 ? await hit.boundingBox() : await button.boundingBox();
     if (!box) continue;
     if (box.width < 44 || box.height < 44) {
       const name = await button.getAttribute('aria-label');
@@ -798,9 +839,9 @@ async function checkSingleNext(page, label) {
   return info.forward[0];
 }
 
-// TABLICA ZYGZAKIEM (telefon w pionie, D-105, zastępuje listę z D-099): (a) strona się nie przewija; (s1-s5) audyt telefonu (pasek tacki
-// przewija się w poziomie celowo); (g1) tablica z korkiem i nicią (data-layout=zigzag), pola na przemian przy lewej i prawej krawędzi,
-// każde pod poprzednim (bez nakładania); (g2) tekst każdej karty na scenie >= 15 px i nieucięty; (g3) w trakcie: tacka to pasek POD
+// TABLICA NA OSI (telefon w pionie, D-116, zastępuje zygzak z D-105): (a) strona się nie przewija; (s1-s5) audyt telefonu (pasek tacki
+// przewija się w poziomie celowo); (g1) tablica z korkiem i nicią (data-layout=axis), START u góry, KONIEC na dole, pola w jednej
+// kolumnie przy osi, każde pod poprzednim (bez nakładania); (g2) tekst każdej karty na scenie >= 15 px i nieucięty; (g3) w trakcie: tacka to pasek POD
 // przewijaną sceną (nie w niej), w ekranie, z oczekiwaną liczbą śladów, „Sprawdź trop” tylko przy pustej tacce; (g4) po sprawdzeniu:
 // nić ciągła, zdanie informacji zwrotnej NAD sceną, w ekranie (widoczne bez przewijania), „Dalej” w dolnym pasku aktywny; (j1, j2)
 // jeden „Dalej” (D-106).
@@ -819,6 +860,10 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
     const tray = document.querySelector('[data-board-tray]');
     return {
       layout: board.dataset.layout,
+      startTag: board.querySelector('[data-testid="board-axis-start"]') ? rect(board.querySelector('[data-testid="board-axis-start"]')) : null,
+      endTag: board.querySelector('[data-testid="board-axis-end"]') ? rect(board.querySelector('[data-testid="board-axis-end"]')) : null,
+      emptyLabels: [...board.querySelectorAll('button[data-slot-index]:not([data-card-id])')].map((el) => el.textContent.includes('Upuść tutaj')),
+      trayTitle: document.querySelector('[data-board-tray] p')?.textContent ?? '',
       cork: !!board.querySelector('.board-cork'),
       yarn: board.querySelectorAll('[data-yarn]').length,
       dashed: board.querySelectorAll('[data-yarn="dashed"]').length,
@@ -839,13 +884,20 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
       viewportHeight: innerHeight,
     };
   });
-  if (info.layout !== 'zigzag' || !info.cork || info.yarn === 0) fail(`${label}: (g1) nie tablica zygzakiem z korkiem i nicią - ${JSON.stringify({ layout: info.layout, cork: info.cork, yarn: info.yarn })}.`);
+  // D-116 (zastępuje zygzak D-105): pionowa oś, jedna kolumna pól, START nad pierwszym polem, KONIEC pod ostatnim.
+  if (info.layout !== 'axis' || !info.cork || info.yarn === 0) fail(`${label}: (g1) nie tablica z osią, korkiem i nicią - ${JSON.stringify({ layout: info.layout, cork: info.cork, yarn: info.yarn })}.`);
   for (let i = 1; i < info.slots.length; i += 1) {
     const [a, b] = [info.slots[i - 1], info.slots[i]];
-    if (Math.abs(a.x - b.x) < 10) fail(`${label}: (g1) pola ${i} i ${i + 1} nie na przemian (x ${Math.round(a.x)} i ${Math.round(b.x)}).`);
-    // Karty lekko obrócone (±2°) - tolerancja kilku pikseli.
-    if (b.y < a.y + a.height - 6) fail(`${label}: (g1) pole ${i + 1} nachodzi na pole ${i}.`);
+    if (Math.abs(a.x - b.x) > 2) fail(`${label}: (g1) pola ${i} i ${i + 1} nie w jednej kolumnie (x ${Math.round(a.x)} i ${Math.round(b.x)}).`);
+    if (b.y < a.y + a.height - 1) fail(`${label}: (g1) pole ${i + 1} nachodzi na pole ${i}.`);
   }
+  const firstSlot = info.slots[0];
+  const lastSlot = info.slots[info.slots.length - 1];
+  if (!info.startTag || !info.endTag || info.startTag.y + info.startTag.height > firstSlot.y || info.endTag.y < lastSlot.y + lastSlot.height) {
+    fail(`${label}: (g1) START/KONIEC nie na końcach osi - ${JSON.stringify({ start: info.startTag, end: info.endTag })}.`);
+  }
+  if (!result && info.emptyLabels.some((ok) => !ok)) fail(`${label}: (g1) puste pole bez podpisu „Upuść tutaj”.`);
+  if (!result && !/Do ułożenia \(\d+\)/.test(info.trayTitle)) fail(`${label}: (g3) tacka bez „Do ułożenia (n)” - „${info.trayTitle}”.`);
   const bad = info.texts.filter((t) => t.clipped || t.font < MOBILE_MIN_FONT_PX - 0.05);
   if (bad.length > 0) fail(`${label}: (g2) karty ucięte albo < 15 px: ${bad.map((t) => `„${t.text}…” (${t.font}px${t.clipped ? ', ucięta' : ''})`).join(', ')}.`);
   if (!result) {
@@ -1174,11 +1226,17 @@ try {
     }
     if (isPortrait) {
       await checkPointerCoarse(page, `${viewport.name} / scena główna`);
-      await checkScenePansHorizontallyOnly(page, `${viewport.name} / scena główna`);
-      await checkInitialPanX(page, `${viewport.name} / scena główna`);
       await checkTouchTargetSize(page, `${viewport.name} / scena główna`);
-      await checkPanoramaChromeInViewport(page, `${viewport.name} / scena główna`);
-      step(`${viewport.name} / scena główna: (f-h, j) panorama OK`, true);
+      // Wariant pionowy sceny (D-116): grafika pionowa w całości, każdy przedmiot widoczny bez przewijania. Bez wariantu - panorama.
+      if ((await page.locator('[data-scene-variant]').first().getAttribute('data-scene-variant')) === 'portrait') {
+        await checkPortraitSceneAllVisible(page, `${viewport.name} / scena główna`);
+        step(`${viewport.name} / scena główna: (p1-p3) wariant pionowy - wszystkie przedmioty widoczne bez przewijania`, true);
+      } else {
+        await checkScenePansHorizontallyOnly(page, `${viewport.name} / scena główna`);
+        await checkInitialPanX(page, `${viewport.name} / scena główna`);
+        await checkPanoramaChromeInViewport(page, `${viewport.name} / scena główna`);
+        step(`${viewport.name} / scena główna: (f-h, j) panorama OK`, true);
+      }
     }
 
     for (const testCase of HOTSPOT_CASES) {
@@ -1471,7 +1529,7 @@ try {
           }
           return result.length;
         };
-        const sceneItems = await checkLayer('scena', '.scene-box');
+        const sceneItems = await checkLayer('scena', '[data-scene-variant]');
         await page.getByTestId('hotspot-overlay-telefon').click();
         await page.getByTestId('zoom-text-frame').waitFor({ timeout: 10000 });
         await page.waitForTimeout(reduced ? 100 : 700);
@@ -1661,7 +1719,7 @@ try {
       await page.getByTestId('player-content-area').waitFor();
       if (query) {
         await page.locator('[data-testid="scene-zoom"][data-phase="inner-open"]').waitFor();
-        const transform = await page.locator('.scene-box').first().evaluate((el) => getComputedStyle(el).transform);
+        const transform = await page.locator('[data-scene-variant]').first().evaluate((el) => getComputedStyle(el).transform);
         if (transform !== 'none') fail(`${label}: (r3) reduced-motion, a pudełko sceny ma transform kamery: ${transform}.`);
         await checkZoomFits(page, { nested: true }, label);
       }
@@ -1716,6 +1774,25 @@ try {
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
     await walkBriefing(page, viewport, pageErrors, viewport.portrait);
+
+    // D-116: sceny SCENE_HOTSPOTS z wariantem pionowym - telefon w pionie: pionowa grafika, wszystkie przedmioty widoczne bez przewijania;
+    // w poziomie - scena pozioma jak dotąd.
+    for (const block of ['korytarz', 'biuro-anny']) {
+      await page.goto(`${WEB}/dev/player-harness?block=${block}`);
+      await page.getByTestId('player-content-area').waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-scene-variant] img')].every((img) => img.complete && img.naturalWidth > 0));
+      const variant = await page.locator('[data-scene-variant]').first().getAttribute('data-scene-variant');
+      const sceneLabel = `${viewport.name} / scena ${block}`;
+      if (viewport.portrait) {
+        if (variant !== 'portrait') fail(`${sceneLabel}: (p1) telefon w pionie bez wariantu pionowego sceny (${variant}).`);
+        await checkPortraitSceneAllVisible(page, sceneLabel);
+        await checkTouchTargetSize(page, sceneLabel);
+        await shot(page, `${viewport.name}-scena-pion-${block}`);
+        step(`${sceneLabel}: (p1-p3, h) wariant pionowy, wszystkie przedmioty widoczne bez przewijania, cele dotyku >= 44 px`, true);
+      } else if (variant !== 'landscape') {
+        fail(`${sceneLabel}: w poziomie wariant ${variant} zamiast sceny poziomej.`);
+      }
+    }
 
     // (r1) Obrót w trakcie kroku: teczka otwarta (faza "open"), obrót do drugiej orientacji i z powrotem - faza bez zmian, wariant zmienia się.
     const label = `${viewport.name} / obrót w trakcie kroku`;
@@ -2166,9 +2243,9 @@ try {
       gamification: null,
     };
     await page.goto(`${WEB}/dev/player-harness?block=rekonstrukcja`);
-    await page.locator('[data-testid="evidence-board"][data-layout="zigzag"]').waitFor();
+    await page.locator('[data-testid="evidence-board"][data-layout="axis"]').waitFor();
     await audit('tablica pusta');
-    // Tablica zygzakiem (D-105): stuknięcie śladu z tacki, potem pierwszego pustego pola.
+    // Tablica na osi (D-116, wcześniej zygzak D-105): stuknięcie śladu z tacki, potem pierwszego pustego pola.
     const pin = async () => {
       await page.getByRole('group', { name: 'Ślady do przypięcia' }).getByRole('button', { name: /^Ślad: / }).first().click();
       await page.getByRole('button', { name: /^Pole \d+, puste/ }).first().click();
@@ -2455,26 +2532,38 @@ try {
           const hit = topRect ? document.elementFromPoint(topRect.left + topRect.width / 2, topRect.top + topRect.height / 2) : null;
           const fonts = [...document.querySelectorAll('[data-testid="easter-popup"] :is(h2, p, button)')]
             .filter((el) => el.textContent.trim() && !el.closest('.sr-only'))
-            .map((el) => parseFloat(getComputedStyle(el).fontSize));
+            // Rozmiar po skali dopasowania okienka (--fit, D-116): computed style jej nie uwzględnia.
+            .map((el) => parseFloat(getComputedStyle(el).fontSize) * (parseFloat(el.closest('[data-testid="easter-popup"]').style.getPropertyValue('--fit')) || 1));
+          const monitor = document.querySelector('[data-testid="nested-screen"]');
           return {
             cards,
+            // D-116: okienka wyłącznie na ekranie monitora (prostokąt slot-ekran z grafiki pulpitu).
+            monitor: monitor ? rect(monitor) : null,
             zoom: rect(document.querySelector('[data-testid="scene-zoom"]')),
-            top: topRect ? rect(top) : null,
+            // Pole trafienia krzyżyka: niewidoczny [data-hit] (min. 44 px także po zmniejszeniu okienka na ekranie, D-116).
+            top: top ? rect(top.querySelector('[data-hit]') ?? top) : null,
             topHit: !!hit && top.contains(hit),
             topFocused: !!top && document.activeElement === top,
             minFont: fonts.length ? Math.min(...fonts) : null,
           };
         });
         const screen = { x: 0, y: 0, width: viewport.width, height: viewport.height };
+        if (!info.monitor) fail(`${label}: (e1) ${step}: okienka nie na ekranie monitora (brak prostokąta ekranu, D-116).`);
         info.cards.forEach((card, i) => {
-          if (!contains(screen, card) || !contains(info.zoom, card)) fail(`${label}: (e1) ${step}: okienko ${i + 1} poza ekranem/nakładką - ${JSON.stringify({ card, zoom: info.zoom })}.`);
+          if (!contains(screen, card) || !contains(info.zoom, card) || !contains(info.monitor, card)) {
+            fail(`${label}: (e1) ${step}: okienko ${i + 1} poza ekranem monitora - ${JSON.stringify({ card, monitor: info.monitor })}.`);
+          }
         });
         if (info.top) {
           if (info.top.width < 44 || info.top.height < 44 || !contains(screen, info.top)) fail(`${label}: (e2) ${step}: krzyżyk ${JSON.stringify(info.top)}.`);
           if (!info.topHit) fail(`${label}: (e2) ${step}: krzyżyk górnego okienka przykryty.`);
           if (!info.topFocused) fail(`${label}: (e2) ${step}: fokus nie na krzyżyku górnego okienka.`);
         }
-        if (info.minFont !== null && info.minFont < 15) fail(`${label}: (e3) ${step}: tekst okienek ${info.minFont}px (< 15).`);
+        // (e3) Tekst >= 15 px, gdy ekran monitora jest dość duży (od 1366x768); na telefonie okienka na ekranie monitora są zmniejszane
+        // (decyzja właściciela D-116: w granicach ekranu, szerokość <= 60%, skala w dół) - tam próg to 9 px (EASTER_SCREEN_MIN_FONT).
+        const minFont = EASTER_FULL_FONT_VIEWPORTS.has(viewport.name) ? 15 : EASTER_SCREEN_MIN_FONT;
+        if (info.minFont !== null && info.minFont < minFont) fail(`${label}: (e3) ${step}: tekst okienek ${info.minFont}px (< ${minFont}).`);
+        if (step === '3 okienka') console.log(`INFO ${label}: (e3) najmniejszy tekst okienek ${info.minFont?.toFixed(1)} px (próg ${minFont})`);
       };
       await check('3 okienka');
       // (e4) Tło nie zamyka; Esc zamyka górne okienko.
@@ -2503,6 +2592,9 @@ try {
       }
       await action.click();
       if ((await popups.count()) !== 1) fail(`${label}: (e5) klik w przycisk okienka je zamknął.`);
+      // Koniec drgnięcia po kliku w przycisk: w trakcie animacji test trafienia Playwrighta chybia i ponawia przewinięcie z
+      // wymuszonym wyrównaniem, które przesuwa kontenery odtwarzacza z overflow: hidden (artefakt testu, nie zachowanie strony).
+      await page.waitForFunction(() => document.querySelector('[data-popup-index="0"] [data-testid="easter-popup-card"]')?.getAnimations().length === 0);
       await shot(page, `${viewport.name}-easter-2-ostatnie${reduced ? '-rm' : ''}`);
       await page.locator('[data-popup-index="0"] [data-popup-close]').click();
       const outro = page.getByTestId('easter-outro');

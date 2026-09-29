@@ -86,9 +86,9 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
 });
 
 describe('sceny modułu 1 z kompozytora', () => {
-  it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea 3 × zdobyte/zablokowane', () => {
+  it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea: moduł 1 - 3 × zdobyte/zablokowane, moduł 2 (D-124) - 3 × zdobyte/zablokowane + tajne zdobyte (zablokowane tajne - wspólna grafika)', () => {
     expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(30);
-    expect(sources.filter((s) => s.target === 'achievements')).toHaveLength(6);
+    expect(sources.filter((s) => s.target === 'achievements')).toHaveLength(13);
   });
 
   it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
@@ -99,6 +99,22 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(PION_OKNA_PROPS)) expect(PROPS[name], name).toBe(PION_OKNA_PROPS[name as keyof typeof PION_OKNA_PROPS]);
     for (const name of Object.keys(TROFEA_PROPS)) expect(PROPS[name], name).toBe(TROFEA_PROPS[name as keyof typeof TROFEA_PROPS]);
     for (const name of Object.keys(KEYART_PROPS)) expect(PROPS[name], name).toBe(KEYART_PROPS[name as keyof typeof KEYART_PROPS]);
+  });
+
+  it('trophyBadge moduł 2 (D-124): Rare na medalach Dead Air i Perfect Pitch, Legendary na Full Transcript, Secret na Off the Record; zablokowane bez nazw', () => {
+    const svg = (kind: 'deadair' | 'pitch' | 'transcript' | 'offrecord', locked: boolean) => PROPS.trophyBadge({ kind, locked }).svg as string;
+    expect(svg('deadair', false)).toContain('DEAD AIR');
+    expect(svg('deadair', false)).toContain('RARE');
+    expect(svg('pitch', false)).toContain('PERFECT PITCH');
+    expect(svg('pitch', false)).toContain('RARE');
+    expect(svg('transcript', false)).toContain('FULL TRANSCRIPT');
+    expect(svg('transcript', false)).toContain('LEGENDARY');
+    expect(svg('offrecord', false)).toContain('OFF THE RECORD');
+    expect(svg('offrecord', false)).toContain('SECRET');
+    for (const [kind, name] of [['deadair', 'DEAD AIR'], ['pitch', 'PERFECT PITCH'], ['transcript', 'FULL TRANSCRIPT'], ['offrecord', 'OFF THE RECORD']] as const) {
+      expect(svg(kind, true)).not.toContain(name);
+    }
+    expect(svg('offrecord', true)).toContain('???');
   });
 
   it('trophyBadge: wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {

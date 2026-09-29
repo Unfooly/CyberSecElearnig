@@ -1,0 +1,1 @@
+{"width": 512, "height": 512, "background": {"flat": true, "wall": "none"}, "items": [{"id": "odznaka", "prop": "trophyBadge", "x": 0, "y": 0, "params": {"kind": "transcript", "locked": true}}]}

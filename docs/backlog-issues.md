@@ -676,6 +676,30 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) /start (albo odpowiedź zapisu) mówi, czy osiągnięcie easter egga jest już zdobyte, outro bez „Nowe” w takim przypadku;
   (2) przewijanie rewersu klawiaturą (np. osobny, fokusowalny region po odwróceniu); (3) test na własnym kursie albo rollback wersji.
 
+### B-131 Odsłuch nagrania (D-115): „spamowanie” flag podbija wynik - decyzja właściciela
+- Etykiety: `P2`, `product`, `mod:kursy` · Źródło: security review 1b (uwaga do rozważenia)
+- Opis: powtórne tapnięcie w już trafioną flagę nie jest fałszywe (reguła właściciela z 2026-09-29), a okna mają +1500 ms. Przy wielu
+  flagach (moduł 2: ok. 8 z ok. 12 kwestii) równomierne tapanie co kilka sekund daje ok. 0,6-0,7 pkt bez rozpoznania manipulacji - to
+  wiarygodność wyniku w raportach dla klienta, nie wyciek ani izolacja.
+- Opcje: (a) powtórne tapnięcie w trafioną flagę później niż N ms po pierwszym = fałszywe; (b) limit tapnięć, np. 2 × liczba kwestii;
+  (c) kara za tapnięcia ponad liczbę flag; (d) bez zmian.
+- Akceptacja: decyzja właściciela; zmiana w `apps/api/src/courses/scoring/recording.ts` z testem i wpisem w D-115.
+
+### B-132 Odsłuch nagrania (D-115): drobne uwagi z code review
+- Etykiety: `P3`, `a11y`, `mod:kursy` · Źródło: code review 1b
+- Opis: (1) skróty Spacja/strzałki/F działają przy fokusie w bloku, a nic go tam nie ustawia po wejściu (wskazówka „F - czerwona flaga”
+  bez kliknięcia w blok nic nie robi); (2) zakładki Odsłuch/Transkrypcja bez `tabpanel`/`aria-controls`; (3) brak testu CoursePlayer, że
+  narracja w pasku idzie za znacznikiem omówienia (STEPPED_TYPES) i że „Pomiń odprawę” nie pojawia się przy omówieniu.
+- Akceptacja: fokus na suwaku przy wejściu w tryb odsłuchu (bez kradzieży fokusu z nagłówka bloku - D-076) albo wskazówka „kliknij falę”;
+  `tabpanel`; test CoursePlayer.
+
+### B-133 e2e /start i /progress na module v6 (omówienie wstrzymane do dotarcia, D-115)
+- Etykiety: `P2`, `test`, `mod:kursy` · Źródło: code review 1b (runda 2)
+- Opis: wstrzymywanie znaczników omówienia w /start i `revealedBlock` w /progress mają testy jednostkowe (`client-view.gating.spec.ts`,
+  `CoursePlayer.replay.test.tsx`), ale `course-engine.e2e-spec.ts` działa na module v5 (`fullModule()`, reguła 9 - twarde indeksy bloków).
+- Akceptacja: osobny e2e na `fullModuleV6()` (własny kurs): /start przy nagraniu bez znaczników, odpowiedź nagrania, /progress z
+  `revealedBlock`, /start po dotarciu z pełnym blokiem, izolacja A/B.
+
 ## F. Symulacje phishingowe i zgłoszenia
 
 ### B-050 Alert SUPER_ADMIN: odbiorcy spoza zweryfikowanej domeny

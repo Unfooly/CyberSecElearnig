@@ -754,7 +754,12 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   zadania tekstowego per język, ścieżki grafik `Localized`, nagrania EN w potoku. Głosy wybrane przez właściciela z próbek
   (2026-09-29; po 3 kandydatów z natywnym polskim w metadanych): karol = `V5GZ9rfeV9jjKZE5NkT7` („Adam - Emphatic and Romantic”,
   próbka karol-1), pawel = `H5xTcsAIeS5RAykjz57a` („Alex - Warm Storyteller”, pawel-1); oszust = głos Pawła (`sameAs`).
-- **Do fazy 1b (z review 1a):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
+- **Faza 1b zrobiona (D-115):** `CALL_RECORDING` i `ANNOTATED_REPLAY` (schemat, klasyfikacja, walidacja, ocena serwera z regułą
+  nakładających się okien i testem dwóch nakładających się okien, komponenty, wariant pionowy, klawiatura, reduced-motion, layout-check
+  sekcja `modul2` na module podglądu `dev-modul-2`), ikony notatek call/log/web, rysowanie `textLayer`. Odstępstwa od szkicu z rozdz. 4:
+  segment ma `narration` z `voice` (zamiast `speech` + `voice`) i `speaker`; bez `flagCategories` i `maxFalseTaps`; dowód nagrania trafia
+  do notatnika po trafieniu flagi jego segmentu.
+- **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);
   `localizeContent` już odrzuca nieznany język.

@@ -156,8 +156,9 @@ Konwencje jak w module 1:
   11. (oszust) „Mam. Nie ruszaj myszki, to potrwa. I zrestartuj komputer dopiero po południu, bo poprawka się nie zapisze.” [F: pośpiech]
   12. (karol) „Jasne. Dzięki, Paweł.”
 - **Czerwone flagi (7):** segmenty 1, 3, 4, 6, 7, 9, 11.
-- **Okno tolerancji:** czas segmentu ± 1,5 s.
-- **Fałszywe tapnięcia:** poza oknem flagi; do osiągnięcia Perfect Pitch - 0.
+- **Okno flagi:** od początku segmentu do końca segmentu + 1500 ms (reakcja po usłyszeniu zdania). W trybie transkrypcji tapnięcie
+  wskazuje segment wprost.
+- **Fałszywe tapnięcia:** poza oknem każdej flagi albo na segmencie bez flagi; do osiągnięcia Perfect Pitch - 0.
 - **Dowody:**
   - **D06** `liczba-47` (kind `call`) - „Dzwoniący sam podał liczbę 47. Przy parowaniu liczb liczbę zna tylko ten, kto się loguje.”
   - **D07** `prosba-instalacja` (kind `call`) - „»Paweł« kazał zainstalować narzędzie zdalnej pomocy i przeczytać ID sesji.”
@@ -283,36 +284,40 @@ Konwencje jak w module 1:
 
 - **Cel dydaktyczny:** zachowanie pod presją. Nie podawać niczego, rozłączyć się, oddzwonić na numer z intranetu (wewn. 214).
 - **Fabuła:** po odprawie ten sam „IT Helpdesk” dzwoni do gracza („detektyw z firmy zewnętrznej, sprawdzamy twoje konto gościa”).
+- **Zasada sceny (jak w nagraniu):** oszust **sam podaje liczbę** i każe ją wpisać w aplikacji. Przy parowaniu liczb liczbę widzi tylko
+  ten, kto się loguje - kto ją podaje, ten się loguje. Gracz nigdy nie „podaje” liczby oszustowi; zły wybór to jej **wpisanie**.
 - **Drzewo:**
-  - `start` (oszust): „Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Za chwilę przyjdzie powiadomienie - podaj mi
-    liczbę, to je zablokuję.”
+  - `start` (oszust): „Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w
+    aplikacji 62, to je zablokuję.”
+    - `spokenText`: „…wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję.”
     - „Oddzwonię na numer helpdesku z intranetu.” → koniec **dobry**
-    - „Jaka to liczba?” → `nacisk`
+    - „Jaką liczbę mam wpisać?” → `nacisk`
     - „Poczekaj, sprawdzę, kto dzwoni.” → `autorytet`
-    - cisza 12 s → `nacisk`
-  - `nacisk` (oszust): „Nie ma czasu, blokada wejdzie za dwie minuty! Liczba z aplikacji, szybko.”
-    - `spokenText`: „…za dwie minuty…”
+    - cisza (limit czasu) → `nacisk`
+  - `nacisk` (oszust): „62, szybko, blokada za dwie minuty!”
+    - `spokenText`: „Sześćdziesiąt dwa, szybko, blokada za dwie minuty!”
     - „Rozłączam się i dzwonię na dwieście czternaście.” → koniec **dobry**
-    - „Czterdzieści siedem.” (`gaveInfo`) → koniec **zły**
+    - „Wpisuję 62.” (`gaveInfo`) → koniec **zły**
+      - `spokenText` nie dotyczy (odpowiedzi gracza nie są czytane przez lektora)
     - „Najpierw podaj swój numer wewnętrzny.” → `wykret`
   - `autorytet` (oszust): „Kierownik już wie, to polecenie z góry. Chcesz, żeby cały dział stracił dostęp?”
     - „Rozłączam się i dzwonię na dwieście czternaście.” → koniec **dobry**
     - „Dobra, co mam zrobić?” → `instalacja`
   - `wykret` (oszust): „Dwieście czternaście, ale teraz dzwonię z komórki, bo system leży.”
     - „To oddzwonię na dwieście czternaście.” → koniec **dobry**
-    - „W porządku, podaję liczbę.” (`gaveInfo`) → koniec **zły**
+    - „W porządku, wpisuję.” (`gaveInfo`) → koniec **zły**
   - `instalacja` (oszust): „Kliknij link na czacie i zainstaluj narzędzie zdalnej pomocy. Przeczytaj mi ID.”
     - „Nie instaluję niczego z telefonu. Rozłączam się.” → koniec **częściowy**
     - „Instaluję.” (`gaveInfo`) → koniec **zły**
 - **Zakończenia:**
   - **dobre** (narrator): „Rozłączasz się i dzwonisz na wewnętrzny 214. Paweł odbiera: »Nie dzwoniłem. Dobrze, że sprawdziłeś.«”
     - `spokenText`: „…na wewnętrzny dwieście czternaście…”
-  - **częściowe:** „Nie podałeś liczby, ale wszedłeś w rozmowę dalej, niż trzeba. Następnym razem rozłącz się od razu.”
-  - **złe:** „Oszust ma to, czego chciał. W prawdziwej firmie to byłaby druga lista klientów.”
-- **Limit czasu:**
+  - **częściowe:** „Nie wpisałeś liczby, ale wszedłeś w rozmowę dalej, niż trzeba. Następnym razem rozłącz się od razu.”
+  - **złe:** „Wpisałeś liczbę, którą podał dzwoniący - zatwierdziłeś jego logowanie. W prawdziwej firmie to byłaby druga lista klientów.”
+- **Limit czasu (niezależny od `prefers-reduced-motion`):**
   - 12 s na wybór; cisza wybiera krawędź `silence` (oszust naciska);
-  - wyłączalny w ustawieniach dostępności (WCAG 2.2.1);
-  - wyłączony przy `prefers-reduced-motion`.
+  - wyłączony, gdy konto ma ustawienie „Bez limitów czasu” albo gracz zaznaczy „Wyłącz limit czasu” na ekranie przed połączeniem
+    (WCAG 2.2.1) - szczegóły w 4.4.
 - **Ocena:** waga 1. Dobre = 1, częściowe = 0,5, złe = 0. Serwer odtwarza ścieżkę wyborów po drzewie; `outcome` i `gaveInfo` są
   `secret`.
 
@@ -332,7 +337,7 @@ Konwencje jak w module 1:
 
 - **Cel dydaktyczny:** wnioski.
 - **Wnioski** (`lessons`, ≤ 120 znaków):
-  1. „Liczbę z aplikacji zna tylko logujący się. Kto ją podaje przez telefon, ten się loguje.”
+  1. „Liczbę do wpisania w aplikacji widzi tylko logujący się. Kto ci ją podaje przez telefon, ten się loguje.”
   2. „Nazwa i głos na telefonie to nie dowód. Rozłącz się i oddzwoń na numer z intranetu.”
   3. „Nie instaluj niczego i nie czytaj ID sesji na prośbę rozmówcy.”
 - **Narracja** (komisarz): „Zamknięte. Jedna rozmowa, trzydzieści dziewięć minut, lista klientów na zewnątrz. Zapamiętaj: przy
@@ -378,9 +383,10 @@ Każdy typ ma wariant telefonu 9:16, obsługę klawiatury i zachowanie przy `pre
       "speech": { "pl": { "text": "… Wpisz w aplikacji liczbę 47 …", "spokenText": "… liczbę czterdzieści siedem …" } } }
   ],
   "flags": [
-    { "segmentId": "s1", "category": "fear", "toleranceMs": 1500 },
-    { "segmentId": "s4", "category": "code_request", "toleranceMs": 1500 }
+    { "segmentId": "s1", "category": "fear" },
+    { "segmentId": "s4", "category": "code_request" }
   ],
+  "flagWindowAfterMs": 1500,
   "flagCategories": ["urgency", "authority", "fear", "code_request", "install_request"],
   "maxFalseTaps": 0,
   "falseTapPenalty": 0.1,
@@ -405,11 +411,21 @@ osobno dla każdego języka; `voice` jest wspólne.)
 
 - `client`: `segments[].{id, gapAfterMs}`, `segments[].speech.<locale>.{text, audioUrl, durationMs}` (serwer wydaje tylko język gracza,
   rozdział 10), `flagCategories`; `voice` i `spokenText` tylko dla TTS (jak dziś).
-- `secret`: `flags` (cała tablica), `evidence[].segmentId`.
+- `secret`: `flags` (cała tablica), `flagWindowAfterMs`, `evidence[].segmentId`.
 - Notatki dowodów wychodzą dopiero w odpowiedzi serwera po ocenie (jak kryteria maila).
 
-**Odpowiedź klienta:** `{ taps: [{ atMs, category? }] }`. Serwer dopasowuje tapnięcia do okien flag; tapnięcie poza oknem jest
-fałszywe. Kategoria jest informacyjna: w MVP punkt za trafienie w okno, kategoria tylko w omówieniu.
+**Okno flagi:** `[startMs segmentu, startMs + durationMs segmentu + flagWindowAfterMs]` (domyślnie 1500 ms), liczone z `durationMs`
+języka gracza.
+
+**Odpowiedź klienta:** `{ taps: [{ atMs } | { segmentId }] }` - serwer przyjmuje oba kształty, także wymieszane w jednej odpowiedzi:
+
+- `{ atMs }` - tapnięcie w trybie odsłuchu (pozycja w nagraniu); trafia flagę, gdy mieści się w jej oknie;
+- `{ segmentId }` - tapnięcie w trybie transkrypcji; trafia flagę, gdy segment ma flagę;
+- fałszywe tapnięcie: `atMs` poza oknem każdej flagi albo `segmentId` segmentu bez flagi (nieistniejący `segmentId` = odpowiedź
+  odrzucona);
+- kilka tapnięć w tę samą flagę liczy się raz (kolejne nie są fałszywe);
+- okna sąsiednich flag mogą się nakładać (segmenty 3 i 4): `atMs` w części wspólnej trafia najwcześniejszą jeszcze nietrafioną flagę;
+- klient nie wysyła kategorii ani poprawności; kategoria jest pokazywana dopiero w omówieniu.
 
 **UI:**
 
@@ -531,10 +547,12 @@ fałszywe. Kategoria jest informacyjna: w MVP punkt za trafienie w okno, kategor
     {
       "id": "start",
       "voice": "oszust",
-      "speech": { "pl": { "text": "Tu IT Helpdesk. …" } },
+      "speech": { "pl": { "text": "Tu IT Helpdesk. … wpisz w aplikacji 62, to je zablokuję.",
+                          "spokenText": "… wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję." } },
       "choices": [
         { "id": "oddzwonie", "text": { "pl": "Oddzwonię na numer helpdesku z intranetu." }, "next": "#dobre" },
-        { "id": "jaka-liczba", "text": { "pl": "Jaka to liczba?" }, "next": "nacisk" }
+        { "id": "jaka-liczba", "text": { "pl": "Jaką liczbę mam wpisać?" }, "next": "nacisk" },
+        { "id": "sprawdze", "text": { "pl": "Poczekaj, sprawdzę, kto dzwoni." }, "next": "autorytet" }
       ],
       "silence": "nacisk"
     }
@@ -543,7 +561,7 @@ fałszywe. Kategoria jest informacyjna: w MVP punkt za trafienie w okno, kategor
     { "id": "dobre", "outcome": "good", "voice": "narrator", "speech": { "pl": { "text": "…" } } },
     { "id": "zle", "outcome": "bad", "speech": { "pl": { "text": "…" } } }
   ],
-  "infoChoices": ["czterdziesci-siedem", "podaje", "instaluje"],
+  "infoChoices": ["wpisuje-62", "wpisuje", "instaluje"],
   "weight": 1
 }
 ```
@@ -559,12 +577,15 @@ fałszywe. Kategoria jest informacyjna: w MVP punkt za trafienie w okno, kategor
   - `client`: reszta. Tekst zakończenia klient zna, ale nie jego ocenę; ocenę pokazuje po odpowiedzi serwera.
 - **Odpowiedź klienta:** `{ path: [choiceId | "silence"] }`. Serwer przechodzi drzewo od `start` i odrzuca ścieżkę niezgodną z grafem.
 - **Ocena:** good 1 / partial 0,5 / bad 0.
-- **Limit czasu:**
-  - pasek odliczania 12 s;
-  - wyłączony, gdy użytkownik ma w ustawieniach „Bez limitów czasu” (nowe ustawienie dostępności konta, WCAG 2.2.1) albo
-    `prefers-reduced-motion` - wtedy nie ma krawędzi `silence`;
-  - bez limitu serwer nie przyjmuje wyboru `silence` (ta sama walidacja: `silence` dozwolone tylko przy aktywnym limicie, flaga w
-    odpowiedzi klienta `{ timed: boolean }`, informacyjnie).
+- **Limit czasu (WCAG 2.2.1; NIE zależy od `prefers-reduced-motion`):**
+  - pasek odliczania 12 s (przy reduced-motion pasek bez animacji - zmiana co sekundę - ale limit działa tak samo);
+  - wyłączony w dwóch przypadkach:
+    - konto ma ustawienie dostępności „Bez limitów czasu” (nowe pole preferencji, migracja w fazie 1e);
+    - gracz zaznaczy „Wyłącz limit czasu” na ekranie przed połączeniem (przełącznik na tym ekranie, domyślnie z ustawienia konta;
+      dotyczy tego podejścia);
+  - bez limitu nie ma krawędzi `silence`;
+  - odpowiedź klienta: `{ path: [...], timed: boolean }`; serwer przyjmuje `silence` tylko przy `timed: true` i koncie bez
+    „Bez limitów czasu”, inaczej odrzuca ścieżkę.
 - **Klawiatura:** odpowiedzi 1-4, Enter.
 - **Telefon:** ekran połączenia 9:16 (wyświetlacz, odpowiedzi jako duże przyciski).
 
@@ -629,7 +650,7 @@ fałszywe. Kategoria jest informacyjna: w MVP punkt za trafienie w okno, kategor
 
 | Kod | Nazwa | Ranga | Warunek (serwer) | Opis |
 |---|---|---|---|---|
-| `dead-air` | Dead Air | RARE | `na-zywo`: zakończenie `good`, ścieżka bez `infoChoices`, rozłączenie w pierwszych 3 wyborach | „Rozłączyłeś się, zanim oszust zdążył cokolwiek wyciągnąć.” |
+| `dead-air` | Dead Air | RARE | `na-zywo`: zakończenie `good`, ścieżka bez `infoChoices`, rozłączenie w pierwszych 3 wyborach; **niezależnie od trybu czasu** (z limitem i bez - `timed` nie wpływa na warunek) | „Rozłączyłeś się, zanim oszust zdążył cokolwiek wyciągnąć.” |
 | `perfect-pitch` | Perfect Pitch | RARE | `nagranie`: 7/7 flag i 0 fałszywych tapnięć w jednym podejściu | „Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.” |
 | `full-transcript` | Full Transcript | LEGENDARY | wszystkie dowody (20/20) i 100% za zadania w jednym podejściu | „Cała rozmowa rozpisana co do słowa. Sprawa bez luk.” |
 | `off-the-record` | Off the Record | SECRET (ukryte) | webinar w `osint` wysłuchany do końca | „Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być.” |
@@ -671,7 +692,7 @@ mogą zostać w grafice.
 | 7 | `mfa-powiadomienia-zoom.svg` | 9:16, 900×1600 | - (dokument) | - | tak | tekst w warstwie (6 powiadomień jako lista w `textLayer`; godziny zostają w grafice) |
 | 8 | `rejestr-polaczen-zoom.svg` | 9:16 | - | - | tak | tekst w warstwie (nazwy „IT Helpdesk”, „wewn.”, kierunek; numery zamaskowane w grafice) |
 | 9 | `pulpit-karola.svg` (w ramce monitora, `wrap-in-monitor`) | 4:3 | `narzedzie` 8/10/14/20; `przegladarka` 8/32/14/20 | nie | ramka monitora | tekst w warstwie (podpisy ikon) |
-| 10 | `karteczka-id-zoom.svg` | 1:1 | - | nie | tak | wymaga wariantu EN (odręczny dopisek „Paweł IT” - pismo ręczne jest częścią rysunku; ID zamaskowane zostaje) |
+| 10 | `karteczka-id-zoom.svg` | 1:1 | - | nie | tak | bez wariantu EN (odręczny dopisek „Paweł IT” działa także po angielsku - decyzja właściciela; ID zamaskowane zostaje) |
 | 11 | `plakat-zoom.svg` | 3:4 | - | nie | tak | tekst w warstwie (hasło plakatu w `textLayer` na polu plakatu) |
 | 12 | `nagranie-tlo.svg` (tło odsłuchu: stół, rejestrator, słuchawki) | 16:9 | brak (UI fali rysuje odtwarzacz) | tak | nie | bez tekstu |
 | 13 | `avatars/karol.svg`, `avatars/pawel.svg` | 1:1, 256 | - | - | tak | bez tekstu |
@@ -683,7 +704,7 @@ mogą zostać w grafice.
 | 19 | `tablica-osi.svg` (tablica korkowa, 7 kart, nić) | 16:9 | jak moduł 1 (karty to HTML) | tak | nie | tekst w warstwie (karty, `start`/`end`) |
 | 20 | `omowienie-tlo.svg` (pulpit z transkrypcją) | 16:9 | - | tak | nie | bez tekstu (transkrypcja i znaczniki - HTML) |
 | 21 | `zamkniecie-raport.svg`, `zamkniecie-pieczec.svg`, `zamkniecie-liscik.svg` | 16:9 / wg modułu 1 | sloty jak moduł 1 (`evidence`, `time`, `xp`, `lessons`, `signature`, `stamp`, `note`) | tak (`zamkniecie-raport-pion.svg`) | pieczęć i liścik: tak | raport: tekst w warstwie (nagłówki pól w slotach, nowe sloty `labels`); **pieczęć i liścik: wymaga wariantu EN** (napis pieczęci „SPRAWA ZAMKNIĘTA” i odręczny liścik to rysunek) |
-| 22 | `miniatura-glos-z-helpdesku.svg` (+ PNG 1600×900 do og:image, poza repo) | 16:9, 1600×900 | - | nie | nie | wymaga wariantu EN tylko, jeśli miniatura ma tytuł - zalecenie: miniatura bez tytułu (tytuł pokazuje karta kursu) |
+| 22 | `miniatura-glos-z-helpdesku.svg` (+ PNG 1600×900 do og:image, poza repo) | 16:9, 1600×900 | - | nie | nie | bez tekstu - miniatura bez tytułu (zatwierdzone przez właściciela; tytuł pokazuje karta kursu), więc bez wariantu EN |
 | 23 | Trofea: `osiagniecie-dead-air`, `-perfect-pitch`, `-full-transcript`, `-off-the-record` (+ `-zablokowane`; tajne - wspólne `osiagniecie-tajne-zablokowane`) | 1:1, 512×512 | - | - | tak | bez zmian językowych (nazwy i rangi po angielsku - decyzja D-111) |
 
 Uwagi do grafik:
@@ -719,7 +740,8 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   - test „oszust = pawel”.
 - **Odtwarzacz** (`apps/web`) - pięć nowych komponentów bloków, każdy z wariantem pionowym, klawiaturą, reduced-motion i sekcją
   layout-check.
-- **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja).
+- **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja) + przełącznik
+  „Wyłącz limit czasu” na ekranie przed połączeniem `LIVE_CALL`. Limit nie zależy od `prefers-reduced-motion`.
 - **Osiągnięcia:**
   - ranga RARE (migracja enumu);
   - 4 wpisy katalogu (migracja);

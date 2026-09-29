@@ -34,6 +34,10 @@ export interface BlockEntry {
   // w notatniku, bez punktów i dowodów (jak easterEggs).
   marked?: string[];
   secretEndings?: string[];
+  // LIVE_CALL (D-122): ścieżka odpowiedzi (id odpowiedzi z treści albo "silence") i czy podejście było z limitem czasu - rozstrzygnięcie
+  // i osiągnięcia liczy serwer z tej ścieżki.
+  path?: string[];
+  timed?: boolean;
 }
 
 export interface ProgressV2 {

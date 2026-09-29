@@ -33,7 +33,21 @@ export type ContentBlockType =
   // schemaVersion 6 (moduł 2, D-118): przesłuchanie - pytania, kwestie do notatnika, podważanie dowodem, konsola (oceniane przy sprzecznościach).
   | 'INTERROGATION'
   // schemaVersion 6 (moduł 2, D-120): OSINT - strona z obszarami do zaznaczenia (oceniane), nagranie przy obszarze z ukrytym zakończeniem.
-  | 'OSINT_SPOT';
+  | 'OSINT_SPOT'
+  // schemaVersion 6 (moduł 2, D-122): rozmowa na żywo - drzewo odpowiedzi z limitem czasu (oceniana po zakończeniu).
+  | 'LIVE_CALL';
+
+/**
+ * Rozmowa na żywo (LIVE_CALL, D-122) - pola bloku po stronie klienta. Osobny typ zamiast pól w ContentBlock: `start` to tu id węzła, a w
+ * ORDERING obiekt z podpisem (ta sama nazwa pola). Ocena zakończeń i odpowiedzi oddające informację są sekretem (po ocenie - detail).
+ */
+export interface LiveCallContent {
+  caller: { display: string; number?: string };
+  choiceTimeLimitSec?: number;
+  start: string;
+  nodes: { id: string; narration: Narration; choices: { id: string; text: string; next: string }[]; silence?: string }[];
+  endings: { id: string; narration: Narration }[];
+}
 
 /** Obszar strony w OSINT (D-120): położenie i podpis; czy był użyty, dowód i wyjaśnienie pułapki są sekretem (po ocenie - detail.spots). */
 export interface OsintSpot {
@@ -538,6 +552,10 @@ export interface ResultDetail {
   contradictions?: { lineId: string; line: { text: string } }[];
   /** OSINT_SPOT (D-120): który obszar był użyty, czy gracz go zaznaczył, wyjaśnienie pułapki - dopiero po ocenie. */
   spots?: { id: string; used: boolean; marked: boolean; trapText?: string }[];
+  /** LIVE_CALL (D-122): zakończenie rozmowy, jego ocena i odpowiedzi gracza, które oddały informację - dopiero po ocenie. */
+  ending?: string;
+  outcome?: 'good' | 'partial' | 'bad';
+  gaveInfo?: string[];
 }
 
 export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_request' | 'install_request';
@@ -546,7 +564,13 @@ export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_req
 export type RecordingTap = { atMs: number } | { segmentId: string };
 
 /** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste; nagranie: taps). */
-export type ChosenAnswer = number | { selected: string[] } | { order: string[] } | { taps: RecordingTap[] } | { marked: string[] };
+export type ChosenAnswer =
+  | number
+  | { selected: string[] }
+  | { order: string[] }
+  | { taps: RecordingTap[] }
+  | { marked: string[] }
+  | { path: string[]; timed: boolean };
 
 export interface LastResult {
   blockIndex: number;

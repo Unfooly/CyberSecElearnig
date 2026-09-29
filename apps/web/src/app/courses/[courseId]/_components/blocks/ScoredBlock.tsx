@@ -7,18 +7,30 @@ import TextInputBlock from './TextInputBlock';
 import CallRecordingBlock from './CallRecordingBlock';
 import InterrogationBlock, { InterrogationResult } from './InterrogationBlock';
 import OsintBlock from './OsintBlock';
+import LiveCallBlock from './LiveCallBlock';
 
 // Bloki oceniane z rozstrzygnięciem po odpowiedzi (mail, kolejność, zadanie tekstowe) w trzech widokach: odpowiadanie, WYNIK zaraz po
 // zapisie (`live` - reakcja, animacja werdyktu) i PODGLĄD ukończonego bloku ("Wstecz"). Żaden widok nie ma przycisku dalej - „Dalej” jest
 // wyłącznie w dolnym pasku (D-106). Ocena zawsze z serwera; ten komponent tylko pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste,
 // jak w /start).
-export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION', 'OSINT_SPOT'] as const;
+export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION', 'OSINT_SPOT', 'LIVE_CALL'] as const;
+
+/**
+ * Bloki „tablicowe” (B-136): wynik na tym samym ekranie co zadanie, wypełniają ramkę ('fill') także w wyniku zaraz po zapisie i w podglądzie
+ * „Wstecz” - tablica śledcza (D-088), odsłuch nagrania (D-115), OSINT (D-121), rozmowa na żywo (D-123). Jedna lista dla CoursePlayer i ReviewBlock.
+ */
+export const BOARD_TYPES: readonly string[] = ['ORDERING', 'CALL_RECORDING', 'OSINT_SPOT', 'LIVE_CALL'];
 
 export const isScored = (type: string) => (SCORED_TYPES as readonly string[]).includes(type);
 
 /** Bloki, których wynik pokazujemy w samym bloku (zamiast ogólnego "Poprawna / niepoprawna odpowiedź"). */
 export const hasInlineResult = (type: string) =>
-  type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING' || type === 'INTERROGATION' || type === 'OSINT_SPOT';
+  type === 'EMAIL_ANALYSIS' ||
+  type === 'ORDERING' ||
+  type === 'CALL_RECORDING' ||
+  type === 'INTERROGATION' ||
+  type === 'OSINT_SPOT' ||
+  type === 'LIVE_CALL';
 
 export interface ScoredResult {
   answer?: ChosenAnswer;
@@ -137,6 +149,21 @@ export default function ScoredBlock({
           onReady={(submit) => onReady?.(submit)}
           disabled={disabled}
           result={result ? { detail: result.detail, points: result.points } : undefined}
+        />
+      );
+    }
+    case 'LIVE_CALL': {
+      // Rozmowa na żywo (D-122/D-123): wynik na tym samym ekranie - transkrypcja rozmowy ze ścieżki gracza i rozstrzygnięcie z serwera.
+      const answer =
+        result?.answer && typeof result.answer === 'object' && 'path' in result.answer && Array.isArray(result.answer.path) ? result.answer : undefined;
+      return (
+        <LiveCallBlock
+          block={block}
+          contentBase={contentBase ?? ''}
+          onSubmit={(liveAnswer) => onSubmit?.(liveAnswer)}
+          onReady={(submit) => onReady?.(submit)}
+          disabled={disabled}
+          result={result ? { detail: result.detail, answer, points: result.points } : undefined}
         />
       );
     }

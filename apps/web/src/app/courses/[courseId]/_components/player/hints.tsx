@@ -18,6 +18,8 @@ export const DEFAULT_HINT: Record<string, string> = {
   INTERROGATION: 'Zadawaj pytania. Gdy odpowiedź nie zgadza się z dowodem, podważ ją dowodem z notatnika.',
   // Moduł 2 (D-121).
   OSINT_SPOT: 'Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało.',
+  // D-123.
+  LIVE_CALL: 'Ktoś dzwoni i bardzo się spieszy. Zanim cokolwiek zrobisz, zastanów się, kto naprawdę jest po drugiej stronie.',
 };
 
 export const HINT_EVENT_TEXT: Record<HintEvent, string> = {

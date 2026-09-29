@@ -751,9 +751,9 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   wspólnej trafiają obie flagi, jedno trafia wcześniejszą, a tapnięcie po trafieniu obu nie jest fałszywe.
 - **Faza 1a zrobiona (D-114):** schemat v6 - `Localized<T>` z fallbackiem na `pl`, `textLayer`, notatki `call`/`log`/`web`, role
   `karol`/`pawel`/`oszust`, `voices.json` per język z `sameAs`; moduł 1 bez zmian bajt w bajt (test). Poza v6 (faza EN): odpowiedzi
-  zadania tekstowego per język, ścieżki grafik `Localized`, nagrania EN w potoku. Głosy: karol `V5GZ9rfeV9jjKZE5NkT7` („Adam -
-  Emphatic and Romantic”; drugi kandydat `XKYftMgjSQsXrQSGCa6V` „Konrad W.”), pawel `H5xTcsAIeS5RAykjz57a` („Alex - Warm
-  Storyteller”; drugi `lyCsVF5VHRvdLys8MaJT` „Rav”) - wybór po etykietach biblioteki, właściciel może zawetować.
+  zadania tekstowego per język, ścieżki grafik `Localized`, nagrania EN w potoku. Głosy karol i pawel: placeholder w `voices.json`;
+  właściciel wybiera z próbek (po 3 kandydatów z natywnym polskim w metadanych, `_incoming/probki-glosow/`, poza repo) - wybór po
+  samych etykietach odrzucony (2026-09-29).
 - **Do fazy 1b (z review 1a):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);

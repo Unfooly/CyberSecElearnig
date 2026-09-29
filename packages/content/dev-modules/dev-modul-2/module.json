@@ -244,6 +244,69 @@
           ]
         }
       ]
+    },
+    {
+      "id": "osint",
+      "type": "OSINT_SPOT",
+      "title": "Skąd oszust wiedział?",
+      "image": "scenes/strona-zespol-demo.svg",
+      "imagePortrait": "scenes/strona-zespol-demo-pion.svg",
+      "imageAlt": "Strona drukarni, zakładka Zespół: zdjęcie budynku, dwie osoby z działów, kafel webinaru, oferta i stopka z kontaktem.",
+      "prompt": "Zaznacz informacje, które wykorzystał oszust.",
+      "textLayer": [
+        { "id": "t-logo", "x": 10, "y": 13, "w": 28, "h": 10, "text": "DRUKARNIA PAPIRUS", "style": "sign", "portrait": { "x": 8, "y": 3.5, "w": 84, "h": 4 } },
+        { "id": "t-pawel", "x": 9, "y": 52, "w": 24, "h": 6, "text": "Paweł Nowicki", "portrait": { "x": 26, "y": 16.5, "w": 64, "h": 2.2 } },
+        { "id": "t-pawel-rola", "x": 9, "y": 58, "w": 24, "h": 5, "text": "specjalista IT, helpdesk", "portrait": { "x": 26, "y": 19, "w": 64, "h": 2 } },
+        { "id": "t-kierownik", "x": 39, "y": 52, "w": 24, "h": 6, "text": "Marta Zielińska", "portrait": { "x": 26, "y": 30.5, "w": 64, "h": 2.2 } },
+        { "id": "t-kierownik-rola", "x": 39, "y": 58, "w": 24, "h": 5, "text": "kierownik sprzedaży", "portrait": { "x": 26, "y": 33, "w": 64, "h": 2 } },
+        { "id": "t-webinar", "x": 71, "y": 50, "w": 22, "h": 8, "text": "Webinar: Bezpieczna praca zdalna", "style": "screen", "portrait": { "x": 8, "y": 48, "w": 84, "h": 3 } },
+        { "id": "t-oferta", "x": 71, "y": 66, "w": 22, "h": 14, "text": "Oferta: wizytówki od 49 zł, ulotki od 99 zł", "style": "screen", "portrait": { "x": 8, "y": 55, "w": 84, "h": 7 } },
+        { "id": "t-numery", "x": 9, "y": 87, "w": 48, "h": 6, "text": "Kontakt: centrala 12 3XX XX 00, wewnętrzne trzycyfrowe", "style": "screen", "portrait": { "x": 8, "y": 67, "w": 84, "h": 4 } },
+        { "id": "t-adres", "x": 61, "y": 87, "w": 30, "h": 6, "text": "ul. Drukarska 7, Kraków", "portrait": { "x": 8, "y": 75, "w": 84, "h": 3 } },
+        { "id": "t-godziny", "x": 71, "y": 94.5, "w": 20, "h": 4, "text": "pn-pt 8-16", "portrait": { "x": 8, "y": 83, "w": 84, "h": 3 } }
+      ],
+      "spots": [
+        { "id": "zdjecie-budynku", "label": "Zdjęcie budynku", "x": 8, "y": 10, "w": 84, "h": 16, "used": false, "trapText": "Zdjęcie budynku nic oszustowi nie dało - dzwonił, nie przychodził." },
+        { "id": "zespol-pawel", "label": "Paweł Nowicki, specjalista IT, helpdesk", "x": 8, "y": 30, "w": 26, "h": 34, "used": true, "note": { "text": "Strona „Zespół”: imię, nazwisko i stanowisko Pawła - gotowa legenda.", "kind": "web" } },
+        { "id": "kierownik-sprzedazy", "label": "Kierownik sprzedaży", "x": 38, "y": 30, "w": 26, "h": 34, "used": true },
+        {
+          "id": "webinar",
+          "label": "Webinar: Bezpieczna praca zdalna",
+          "x": 70,
+          "y": 30,
+          "w": 24,
+          "h": 30,
+          "used": true,
+          "note": { "text": "Publiczny webinar: około czterdziestu minut głosu Pawła - wystarczy, żeby go podrobić.", "kind": "web" },
+          "media": {
+            "kind": "audio",
+            "title": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki",
+            "image": "scenes/webinar-kadr-demo.svg",
+            "alt": "Kadr prelekcji: slajd i sylwetka prelegenta.",
+            "textLayer": [{ "id": "slajd", "x": 10, "y": 16, "w": 55, "h": 16, "text": "Bezpieczna praca zdalna", "style": "sign" }],
+            "narration": {
+              "voice": "pawel",
+              "text": "Dzień dobry, nazywam się Paweł Nowicki i pracuję w dziale IT. Porozmawiamy dziś o bezpiecznej pracy zdalnej: o hasłach, o aktualizacjach i o tym, żeby nie otwierać dziwnych załączników.\n\nPamiętajcie o blokowaniu ekranu, gdy odchodzicie od komputera, i o tym, żeby nie pracować na publicznym wi-fi bez zabezpieczeń.\n\n…a jak trzeba komuś pomóc zdalnie, to po prostu prosimy o ID sesji z narzędzia zdalnej pomocy i już."
+            },
+            "secretEnding": { "id": "off-the-record", "label": "Off the Record", "note": "Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być." }
+          }
+        },
+        { "id": "oferta", "label": "Oferta i cennik", "x": 70, "y": 64, "w": 24, "h": 18, "used": false, "trapText": "Cennik nie pomaga podszyć się pod IT." },
+        { "id": "numery-wewn", "label": "Kontakt: centrala i numery wewnętrzne", "x": 8, "y": 86, "w": 50, "h": 8, "used": true, "note": { "text": "Stopka strony zdradza format numerów wewnętrznych.", "kind": "web" } },
+        { "id": "adres-firmy", "label": "Adres drukarni", "x": 60, "y": 86, "w": 32, "h": 8, "used": false, "trapText": "Adres nic oszustowi nie dał." },
+        { "id": "godziny", "label": "Godziny otwarcia", "x": 70, "y": 94, "w": 22, "h": 5, "used": false, "trapText": "Godziny otwarcia nic oszustowi nie dały." }
+      ],
+      "portraitSpots": [
+        { "id": "zdjecie-budynku", "x": 6, "y": 2, "w": 88, "h": 8 },
+        { "id": "zespol-pawel", "x": 6, "y": 12, "w": 88, "h": 12 },
+        { "id": "kierownik-sprzedazy", "x": 6, "y": 26, "w": 88, "h": 12 },
+        { "id": "webinar", "x": 6, "y": 40, "w": 88, "h": 12 },
+        { "id": "oferta", "x": 6, "y": 54, "w": 88, "h": 10 },
+        { "id": "numery-wewn", "x": 6, "y": 66, "w": 88, "h": 6 },
+        { "id": "adres-firmy", "x": 6, "y": 74, "w": 88, "h": 5 },
+        { "id": "godziny", "x": 6, "y": 82, "w": 88, "h": 5 }
+      ],
+      "falseSpotPenalty": 0.25
     }
   ]
 }

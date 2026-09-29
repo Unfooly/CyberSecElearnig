@@ -1627,6 +1627,84 @@ try {
         step(`${label}: (n7, n6) konsola w bloku, zakładki i ślady ≥ 44 px, przejrzana OK`, true);
         await page.unroute('**/api/courses/*/blocks/*/challenge');
 
+        // (n8) OSINT (D-121): strona w wariancie zgodnym z orientacją (telefon w pionie - pionowa, przewijana), obszary ≥ 44 px, zaznaczanie,
+        // nagranie przy obszarze (transkrypcja doczytana do końca - ukryte zakończenie w notatniku), wynik na tej samej stronie.
+        await open('osint');
+        label = `${tag} / OSINT`;
+        const osintVariant = await page.getByTestId('osint-frame').getAttribute('data-variant');
+        const phonePortrait = viewport.width < viewport.height;
+        if (osintVariant !== (phonePortrait ? 'portrait' : 'landscape')) fail(`${label}: (n8) wariant strony ${osintVariant} (telefon w pionie: ${phonePortrait}).`);
+        // Telefon (także w poziomie - niska ramka): strona na całą szerokość ramki, przewijana; „contain” dawał tam nieczytelną miniaturę.
+        const osintScroll = await page.evaluate(() => {
+          const frame = document.querySelector('[data-testid="osint-frame"]');
+          return { scroll: frame.dataset.scroll === 'true', pageWidth: document.querySelector('[data-testid="osint-page"]').getBoundingClientRect().width, frameWidth: frame.clientWidth };
+        });
+        const phoneViewport = phonePortrait || viewport.height <= 500;
+        if (osintScroll.scroll !== phoneViewport) fail(`${label}: (n8) przewijana strona: ${osintScroll.scroll} (telefon: ${phoneViewport}).`);
+        if (phoneViewport && osintScroll.pageWidth < osintScroll.frameWidth - 2) fail(`${label}: (n8) strona węższa niż ramka (${osintScroll.pageWidth.toFixed(0)} < ${osintScroll.frameWidth}).`);
+        const spotTarget = await page.evaluate(() =>
+          Math.min(
+            ...[...document.querySelectorAll('[data-testid="osint-spot"] [data-hit]')].map((hit) => {
+              const r = hit.getBoundingClientRect();
+              return Math.min(r.width, r.height);
+            }),
+          ),
+        );
+        if (spotTarget < 43.5) fail(`${label}: (n8) obszar mniejszy niż 44 px (${spotTarget.toFixed(1)}).`);
+        for (const name of ['Paweł Nowicki, specjalista IT, helpdesk', 'Webinar: Bezpieczna praca zdalna', 'Godziny otwarcia']) {
+          const spotButton = page.getByRole('button', { name, exact: true });
+          await spotButton.scrollIntoViewIfNeeded();
+          await spotButton.click();
+          if ((await spotButton.getAttribute('aria-pressed')) !== 'true') fail(`${label}: (n8) obszar „${name}” nie zaznaczony.`);
+        }
+        await page.getByTestId('osint-play').scrollIntoViewIfNeeded();
+        await page.getByTestId('osint-play').click();
+        const player = page.getByTestId('osint-player');
+        await player.waitFor();
+        if (!(await inArea(page, '[data-testid="osint-player"]'))) fail(`${label}: (n8) nakładka nagrania poza obszarem bloku.`);
+        await page.getByTestId('osint-transcript').evaluate((region) => region.scrollTo({ top: region.scrollHeight }));
+        await page.getByTestId('osint-secret-ending').waitFor({ timeout: 10000 });
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-osint-webinar`);
+        await player.getByRole('button', { name: 'Zamknij nagranie' }).click();
+        await page.route('**/api/courses/*/progress', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              status: 'IN_PROGRESS',
+              currentBlockIndex: 1,
+              score: 50,
+              lastResult: {
+                blockIndex: 0,
+                blockId: 'osint',
+                type: 'OSINT_SPOT',
+                correct: false,
+                points: 0.25,
+                detail: {
+                  spots: demoBlocks
+                    .find((b) => b.id === 'osint')
+                    .spots.map((s) => ({ id: s.id, used: s.used, marked: ['zespol-pawel', 'webinar', 'godziny'].includes(s.id), ...(s.trapText ? { trapText: s.trapText } : {}) })),
+                },
+              },
+              notes: [],
+              gamification: null,
+            }),
+          }),
+        );
+        await page.locator('.pbar-next').click();
+        await page.getByTestId('osint-summary').waitFor({ timeout: 15000 });
+        await page.getByTestId('osint-explanations').scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="osint-explanations"]'))) fail(`${label}: (n8) wyjaśnienia wyniku poza obszarem bloku.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-osint-wynik`);
+        await page.unroute('**/api/courses/*/progress');
+        await page.getByRole('button', { name: /^Notatnik/ }).click();
+        if (!(await page.getByTestId('notebook-distinctions').textContent())?.includes('Off the Record')) fail(`${label}: (n8) brak wyróżnienia w notatniku.`);
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="true"]', { state: 'attached', timeout: 5000 });
+        await noShift(label);
+        await common(label);
+        step(`${label}: (n8, n6) wariant strony, obszary ≥ 44 px, nagranie z ukrytym zakończeniem, wynik na stronie OK`, true);
+
         await context.close();
       }
     }

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <!-- Moduł podglądu (dev-modul-2, D-121): układ strony „Zespół” bez tekstu - treść w textLayer. Tylko harness i layout-check. -->
+  <rect width="1600" height="1000" fill="#f8fafc" />
+  <rect x="0" y="0" width="1600" height="80" fill="#1e293b" />
+  <rect x="128" y="100" width="1344" height="160" rx="12" fill="#cbd5e1" />
+  <rect x="160" y="130" width="300" height="100" rx="8" fill="#94a3b8" />
+  <rect x="128" y="300" width="416" height="340" rx="14" fill="#e2e8f0" />
+  <circle cx="336" cy="400" r="70" fill="#a5b4fc" />
+  <rect x="608" y="300" width="416" height="340" rx="14" fill="#e2e8f0" />
+  <circle cx="816" cy="400" r="70" fill="#fcd34d" />
+  <rect x="1120" y="300" width="384" height="300" rx="14" fill="#312e81" />
+  <polygon points="1290,410 1290,490 1360,450" fill="#ffffff" />
+  <rect x="1120" y="640" width="384" height="180" rx="14" fill="#fef3c7" />
+  <rect x="0" y="850" width="1600" height="150" fill="#e2e8f0" />
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- Moduł podglądu (dev-modul-2, D-121): kadr prelekcji - slajd i sylwetka prelegenta, tytuł slajdu w textLayer. -->
+  <rect width="1600" height="900" fill="#0f172a" />
+  <rect x="120" y="100" width="980" height="620" rx="16" fill="#f8fafc" />
+  <rect x="200" y="360" width="820" height="24" rx="12" fill="#cbd5e1" />
+  <rect x="200" y="420" width="700" height="24" rx="12" fill="#cbd5e1" />
+  <circle cx="1330" cy="430" r="110" fill="#475569" />
+  <rect x="1200" y="560" width="260" height="340" rx="120" fill="#475569" />
+</svg>

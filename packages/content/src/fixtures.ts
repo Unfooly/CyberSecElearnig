@@ -566,6 +566,54 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-przesluchanie-warning` },
       ]),
     },
+    // OSINT (D-120): trzy obszary użyte (dwa z dowodem, jeden bez), dwie pułapki, webinar z ukrytym zakończeniem, wariant pionowy.
+    OSINT_SPOT: {
+      ...base('osint'),
+      type: 'OSINT_SPOT',
+      image: 'scenes/strona-zespol.svg',
+      imagePortrait: 'scenes/strona-zespol-pion.svg',
+      imageAlt: 'Strona drukarni, zakładka Zespół.',
+      textLayer: [{ id: 't-pawel', x: 9, y: 52, w: 24, h: 6, text: 'Paweł Testowy - IT', style: 'sign', portrait: { x: 6, y: 30, w: 80, h: 4 } }],
+      prompt: 'Zaznacz informacje, które wykorzystał oszust.',
+      spots: [
+        { id: 'zespol', label: 'Paweł, IT', x: 8, y: 30, w: 26, h: 34, used: true, note: { text: `${SECRET_MARKER}-dowod-zespol`, kind: 'web' } },
+        { id: 'kierownik', label: 'Kierownik sprzedaży', x: 38, y: 30, w: 26, h: 34, used: true },
+        {
+          id: 'webinar',
+          label: 'Webinar',
+          x: 70,
+          y: 30,
+          w: 24,
+          h: 30,
+          used: true,
+          note: { text: `${SECRET_MARKER}-dowod-webinar`, kind: 'web' },
+          media: {
+            kind: 'audio',
+            title: 'Webinar: Bezpieczna praca zdalna',
+            narration: { ...audio('osint-webinar'), voice: 'pawel' },
+            image: 'scenes/webinar-odtwarzacz.svg',
+            imagePortrait: 'scenes/webinar-odtwarzacz-pion.svg',
+            alt: 'Kadr prelekcji: slajd i prelegent.',
+            textLayer: [{ id: 'slajd', x: 10, y: 10, w: 60, h: 10, text: 'Bezpieczna praca zdalna', style: 'sign', portrait: { x: 5, y: 10, w: 90, h: 8 } }],
+            secretEnding: { id: 'off-the-record', label: 'Off the Record', note: 'Na końcu webinaru padło to, czego nie powinno.' },
+          },
+        },
+        { id: 'godziny', label: 'Godziny otwarcia', x: 70, y: 88, w: 22, h: 6, used: false, trapText: `${SECRET_MARKER}-pulapka-godziny` },
+        { id: 'adres', label: 'Adres drukarni', x: 8, y: 88, w: 30, h: 6, used: false, trapText: 'Adres nic oszustowi nie dał.' },
+      ],
+      portraitSpots: [
+        { id: 'zespol', x: 6, y: 20, w: 88, h: 12 },
+        { id: 'kierownik', x: 6, y: 34, w: 88, h: 12 },
+        { id: 'webinar', x: 6, y: 48, w: 88, h: 12 },
+        { id: 'godziny', x: 6, y: 90, w: 88, h: 4 },
+        { id: 'adres', x: 6, y: 95, w: 88, h: 4 },
+      ],
+      falseSpotPenalty: 0.25,
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-osint-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-osint-warning` },
+      ]),
+    },
   };
 }
 
@@ -687,6 +735,13 @@ export function fullModuleV6() {
     ...base,
     schemaVersion: 6 as const,
     slug: 'sprawa-testowa-v6',
-    blocks: [...base.blocks.slice(0, -1), blocks.CALL_RECORDING, blocks.ANNOTATED_REPLAY, blocks.INTERROGATION, base.blocks[base.blocks.length - 1]],
+    blocks: [
+      ...base.blocks.slice(0, -1),
+      blocks.CALL_RECORDING,
+      blocks.ANNOTATED_REPLAY,
+      blocks.INTERROGATION,
+      blocks.OSINT_SPOT,
+      base.blocks[base.blocks.length - 1],
+    ],
   };
 }

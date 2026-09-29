@@ -10,7 +10,10 @@ import { MemoryStore } from './stores/memory.js';
 import type { ObjectHead, ObjectStore, PutOptions } from './types.js';
 
 const requireCjs = createRequire(import.meta.url);
-const { fullModule } = requireCjs('../../../packages/content/dist/fixtures.js') as { fullModule: () => Record<string, unknown> };
+const { fullModule, fullModuleV6 } = requireCjs('../../../packages/content/dist/fixtures.js') as {
+  fullModule: () => Record<string, unknown>;
+  fullModuleV6: () => Record<string, unknown>;
+};
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]); // nagłówek PNG + śmieci (treść nieważna dla testów)
 const CLEAN_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="red" /></svg>';
@@ -76,6 +79,14 @@ describe('collectAssetRefs', () => {
     briefing.steps[callIndex].caller!.avatar = 'avatars/komisarz.svg';
     const refs = collectAssetRefs(module);
     expect(refs.find((ref) => ref.id === `${briefing.id}#steps.${callIndex}.caller.avatar`)?.value).toBe('avatars/komisarz.svg');
+  });
+
+  it('OSINT (D-120): kadr odtwarzacza nagrania przy obszarze strony i jego wariant pionowy', () => {
+    const refs = collectAssetRefs(fullModuleV6());
+    expect(refs.filter((ref) => ref.id.startsWith('osint#spots.')).map((ref) => [ref.id, ref.value])).toEqual([
+      ['osint#spots.2.media.image', 'scenes/webinar-odtwarzacz.svg'],
+      ['osint#spots.2.media.imagePortrait', 'scenes/webinar-odtwarzacz-pion.svg'],
+    ]);
   });
 
   it('puste albo brakujące pole (avatar jest opcjonalny) nie jest zasobem', () => {

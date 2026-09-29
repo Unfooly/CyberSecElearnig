@@ -56,6 +56,9 @@ export const ASSET_PATHS: string[][] = [
   // Omówienie na grafice (ANNOTATED_REPLAY, source.kind "image", D-115) i jej wariant pionowy.
   ['source', 'image'],
   ['source', 'imagePortrait'],
+  // Kadr odtwarzacza nagrania przy obszarze strony (OSINT_SPOT, webinar, D-120).
+  ['spots', '*', 'media', 'image'],
+  ['spots', '*', 'media', 'imagePortrait'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

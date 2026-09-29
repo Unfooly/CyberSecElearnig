@@ -39,6 +39,8 @@ export const NARRATION_PATHS: string[][] = [
   // (durationMs) wyznaczają oś czasu odsłuchu i okna flag. Znaczniki omówienia (ANNOTATED_REPLAY) - narracja lektora per znacznik.
   ['segments', '*', 'narration'],
   ['markers', '*', 'narration'],
+  // OSINT (D-120): nagranie przy obszarze strony (webinar) głosem postaci.
+  ['spots', '*', 'media', 'narration'],
 ];
 
 /** Narracje w polach `secret`: bez audio (tylko tekst). Wpisane audioUrl/durationMs/cues w takim polu to błąd modułu. */

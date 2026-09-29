@@ -180,6 +180,14 @@ export function noteItemsOf(block: { type: string } & Record<string, unknown>): 
       const rows = Array.isArray(block.documents) ? flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[]) : [];
       return [...lines, ...rows];
     }
+    case 'OSINT_SPOT':
+      // OSINT (D-120): dowodem jest użyty obszar z notatką (notatka po ocenie, gdy gracz go zaznaczył). Ukryty do zebrania (jak sprzeczność,
+      // D-118) - licznik od startu nie podpowiada, ile obszarów było użytych.
+      return Array.isArray(block.spots)
+        ? (block.spots as (NoteItemLike & { used?: boolean })[])
+            .filter((spot) => spot.used === true && spot.note)
+            .map((spot) => ({ id: spot.id, evidence: true, note: spot.note, hidden: true }))
+        : [];
     default:
       return [];
   }
@@ -334,7 +342,7 @@ export function v4FeaturesUsed(block: ServerBlock): string[] {
 // Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
 // (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
 // Eksportowane: apps/api (evaluate.ts, pickReaction) wybiera pasujący wpis reactions.result tą samą regułą, którą tu walidujemy.
-export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION'] as const;
+export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION', 'OSINT_SPOT'] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
 export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
 
@@ -588,6 +596,49 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const requiredQuestions = requiredItemIds(block.questions, undefined);
       if (opener && rows.some((row) => row.required === true) && !requiredQuestions.includes(opener.id)) {
         errors.push(`questions: wymagane wiersze konsoli wymagają wymaganego pytania konsoli ("${opener.id}")`);
+      }
+      break;
+    }
+    case 'OSINT_SPOT': {
+      // OSINT (D-120): id obszarów unikalne; przynajmniej jeden użyty (inaczej wynik dzieliłby przez zero); notatka (dowód) tylko przy
+      // użytym, wyjaśnienie pułapki tylko przy nieużytym; obszary w granicach grafiki; nagranie głosem postaci; ukryte zakończenia unikalne.
+      const ids = block.spots.map((spot) => spot.id);
+      checkUnique('spots', ids);
+      if (!block.spots.some((spot) => spot.used)) errors.push('spots: co najmniej jeden obszar z used: true (wynik to trafione użyte / wszystkie użyte)');
+      block.spots.forEach((spot, i) => {
+        const label = `spots[${i}] (${spot.id})`;
+        if (spot.note && !spot.used) errors.push(`${label}: note (dowód) tylko przy obszarze użytym przez oszusta`);
+        if (spot.trapText !== undefined && spot.used) errors.push(`${label}: trapText tylko przy pułapce (used: false)`);
+        if (spot.note && kindRequired && spot.note.kind === undefined) errors.push(`${label}.note.kind: dowód wymaga rodzaju notatki`);
+        if (spot.x + spot.w > 100 || spot.y + spot.h > 100) errors.push(`${label}: obszar wychodzi poza grafikę`);
+        const media = spot.media;
+        if (media) {
+          if (media.narration.voice === undefined) errors.push(`${label}.media.narration.voice: nagranie wymaga roli głosu`);
+          if (media.image !== undefined && media.alt === undefined) errors.push(`${label}.media.alt: kadr odtwarzacza (image) wymaga opisu alt`);
+          if (media.imagePortrait !== undefined && media.image === undefined) errors.push(`${label}.media.imagePortrait: wariant pionowy wymaga image`);
+          if (media.imagePortrait !== undefined) {
+            (media.textLayer ?? []).forEach((entry, t) => {
+              if (!entry.portrait) errors.push(`${label}.media.textLayer[${t}] (${entry.id}): kadr z imagePortrait wymaga prostokąta portrait`);
+            });
+          }
+        }
+      });
+      for (const id of duplicates(block.spots.flatMap((spot) => (spot.media?.secretEnding ? [spot.media.secretEnding.id] : [])))) {
+        errors.push(`spots: powtórzone ukryte zakończenie "${id}"`);
+      }
+      // Wariant pionowy (jak scena, D-116): grafika i obszary razem, te same id, w granicach; napisy strony z prostokątem pionowym.
+      if ((block.imagePortrait === undefined) !== (block.portraitSpots === undefined)) errors.push('imagePortrait i portraitSpots występują razem (wariant pionowy)');
+      if (block.portraitSpots) {
+        const portraitIds = block.portraitSpots.map((spot) => spot.id);
+        checkUnique('portraitSpots', portraitIds);
+        for (const id of ids.filter((id) => !portraitIds.includes(id))) errors.push(`portraitSpots: brak obszaru "${id}" (te same id co spots)`);
+        for (const id of portraitIds.filter((id) => !ids.includes(id))) errors.push(`portraitSpots: nieznany obszar "${id}"`);
+        block.portraitSpots.forEach((spot, i) => {
+          if (spot.x + spot.w > 100 || spot.y + spot.h > 100) errors.push(`portraitSpots[${i}] (${spot.id}): obszar wychodzi poza grafikę`);
+        });
+        (block.textLayer ?? []).forEach((entry, i) => {
+          if (!entry.portrait) errors.push(`textLayer[${i}] (${entry.id}): strona z imagePortrait wymaga prostokąta portrait`);
+        });
       }
       break;
     }
@@ -854,7 +905,10 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
       if (block.type === 'DOSSIER') errors.push(`blocks[${index}] (${block.id}): blok DOSSIER wymaga schemaVersion 5`);
       for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
     }
-    if (contentModule.schemaVersion < 6 && (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY' || block.type === 'INTERROGATION')) {
+    if (
+      contentModule.schemaVersion < 6 &&
+      (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY' || block.type === 'INTERROGATION' || block.type === 'OSINT_SPOT')
+    ) {
       errors.push(`blocks[${index}] (${block.id}): blok ${block.type} wymaga schemaVersion 6`);
     }
   });

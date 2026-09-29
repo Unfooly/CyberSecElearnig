@@ -102,6 +102,148 @@
         { "n": 1, "anchor": { "x": 53.75, "y": 38.3 }, "title": "Konsola", "text": "Zatwierdzone logowanie z obcego miejsca." },
         { "n": 2, "anchor": { "x": 80, "y": 46.1 }, "title": "Karteczka", "text": "ID sesji zdalnej pomocy zapisane obok telefonu." }
       ]
+    },
+    {
+      "id": "przesluchanie-karola",
+      "type": "INTERROGATION",
+      "title": "Przesłuchanie Karola",
+      "character": { "name": "Karol Wieczorek", "role": "handlowiec", "opening": "Myślałem, że pomagam. To był Paweł, znam jego głos." },
+      "questions": [
+        {
+          "id": "glos",
+          "text": "Skąd wiedziałeś, że to Paweł?",
+          "lines": [
+            {
+              "id": "glos-1",
+              "text": "To był jego głos, na sto procent. Ten sam sposób mówienia.",
+              "fragment": { "evidence": true, "note": { "text": "Karol rozpoznał głos Pawła. Głos można podrobić - to nie dowód, kto dzwoni.", "kind": "person" } }
+            },
+            { "id": "glos-2", "text": "Na wyświetlaczu było „IT Helpdesk”, tak jak zawsze." }
+          ]
+        },
+        {
+          "id": "kod",
+          "text": "Czy podawałeś jakieś kody?",
+          "lines": [
+            {
+              "id": "kod-1",
+              "text": "Nie, żadnych kodów. Tylko odrzucałem te powiadomienia.",
+              "contradiction": {
+                "refutedBy": "nagranie.liczba-47",
+                "challengeLine": { "text": "…No tak. Wpisałem liczbę, którą podał. Myślałem, że to blokuje atak." },
+                "note": { "text": "Karol przyznał: wpisał liczbę podaną przez dzwoniącego.", "kind": "person" }
+              }
+            },
+            { "id": "kod-2", "text": "Telefon cały czas miałem przy sobie." }
+          ]
+        },
+        {
+          "id": "wiedza",
+          "text": "Co o tobie wiedział?",
+          "lines": [
+            {
+              "id": "wiedza-1",
+              "text": "Znał moje imię, dział, nazwisko kierownika. Mówił o nim jak o koledze.",
+              "fragment": { "evidence": true, "note": { "text": "Oszust znał dział i kierownika Karola - wiedzę z publicznych źródeł.", "kind": "person" } }
+            }
+          ]
+        },
+        {
+          "id": "koniec",
+          "text": "Jak zakończyła się rozmowa?",
+          "lines": [{ "id": "koniec-1", "text": "Kazał zrestartować komputer dopiero po południu i nikomu nie mówić, żeby nie robić zamieszania." }]
+        }
+      ],
+      "reactions": { "result": [{ "minScore": 1, "text": "Sprzeczność obalona dowodem." }, { "minScore": 0, "text": "Zeznanie warto porównać z nagraniem." }] }
+    },
+    {
+      "id": "przesluchanie-pawla",
+      "type": "INTERROGATION",
+      "title": "Przesłuchanie Pawła i konsola administratora",
+      "weight": 0,
+      "character": { "name": "Paweł Nowicki", "role": "IT", "opening": "Nie dzwoniłem do Karola. Byłem na szkoleniu do dziesiątej." },
+      "questions": [
+        {
+          "id": "gdzie",
+          "text": "Gdzie byłeś rano?",
+          "lines": [
+            {
+              "id": "gdzie-1",
+              "text": "Na szkoleniu poza biurem, do 10:00. Telefon służbowy miałem wyciszony.",
+              "fragment": { "evidence": true, "note": { "text": "Paweł był do dziesiątej na szkoleniu - to nie on dzwonił.", "kind": "person" } }
+            }
+          ]
+        },
+        {
+          "id": "alert",
+          "text": "Czy system coś zgłaszał?",
+          "lines": [
+            {
+              "id": "alert-1",
+              "text": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu.",
+              "fragment": { "evidence": true, "note": { "text": "8:58: alert o serii odrzuconych logowań - nikt go nie odebrał.", "kind": "log" } }
+            }
+          ]
+        },
+        {
+          "id": "procedura",
+          "text": "Jak IT kontaktuje się z pracownikami?",
+          "lines": [{ "id": "procedura-1", "text": "Zawsze z wewnętrznego 214. I nigdy nie prosimy o kody ani liczby z aplikacji." }]
+        },
+        {
+          "id": "konsola",
+          "text": "Pokaż, co widać w konsoli.",
+          "opensDocuments": true,
+          "lines": [{ "id": "konsola-1", "text": "Proszę. Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje." }]
+        }
+      ],
+      "documents": [
+        {
+          "id": "logowania",
+          "tab": "Logowania",
+          "org": "KONSOLA ADMINISTRATORA",
+          "title": "Logowania konta k.wieczorek",
+          "columns": ["Godzina", "Zdarzenie"],
+          "rows": [
+            { "id": "log-1", "cells": ["8:55-8:57", "Sześć odrzuconych prób, Kraków → Amsterdam (185.XX.XX.17)"], "message": "Odrzucone próby - Karol jeszcze się bronił." },
+            { "id": "log-2", "cells": ["9:04", "Zatwierdzone logowanie, Amsterdam"], "evidence": true, "required": true, "note": { "text": "9:04: logowanie zatwierdzone przez Karola, z Amsterdamu.", "kind": "log" } },
+            { "id": "log-3", "cells": ["10:22", "Wylogowanie wszystkich sesji (Paweł)"] }
+          ]
+        },
+        {
+          "id": "reguly",
+          "tab": "Reguły poczty",
+          "org": "KONSOLA ADMINISTRATORA",
+          "title": "Reguły skrzynki k.wieczorek",
+          "columns": ["Godzina", "Reguła"],
+          "rows": [
+            { "id": "reg-1", "cells": ["9:09", "Przekaż kopię wszystkich wiadomości na k.w…@skrzynka-zewn.example"], "evidence": true, "required": true, "note": { "text": "9:09: reguła kopiująca całą pocztę Karola na zewnętrzny adres.", "kind": "log" } },
+            { "id": "reg-2", "cells": ["-", "Faktury → folder Faktury"] }
+          ]
+        },
+        {
+          "id": "programy",
+          "tab": "Programy",
+          "org": "KONSOLA ADMINISTRATORA",
+          "title": "Instalacje na stacji KW-12",
+          "columns": ["Data", "Program"],
+          "rows": [
+            { "id": "prog-1", "cells": ["czw. 9:06", "Narzędzie zdalnej pomocy - zainstalowane przez użytkownika"], "evidence": true, "required": true, "note": { "text": "9:06: narzędzie zdalnej pomocy zainstalowane z konta Karola.", "kind": "log" } },
+            { "id": "prog-2", "cells": ["pon.", "Aktualizacja pakietu biurowego"] }
+          ]
+        },
+        {
+          "id": "crm",
+          "tab": "CRM",
+          "org": "KONSOLA ADMINISTRATORA",
+          "title": "Operacje w CRM",
+          "columns": ["Godzina", "Operacja"],
+          "rows": [
+            { "id": "crm-1", "cells": ["9:31", "Eksport „Klienci - pełna lista” (1 2XX rekordów)"], "evidence": true, "required": true, "note": { "text": "9:31: eksport pełnej listy klientów z CRM.", "kind": "log" } },
+            { "id": "crm-2", "cells": ["pon.", "Raport sprzedaży"] }
+          ]
+        }
+      ]
     }
   ]
 }

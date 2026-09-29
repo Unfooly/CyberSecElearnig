@@ -508,6 +508,64 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { n: 2, anchor: { segmentId: 's3' }, title: 'Parowanie liczb', text: 'Liczbę zna tylko ten, kto się loguje.' },
       ],
     },
+    // Przesłuchanie (D-118): fragment-dowód, sprzeczność obalana dowodem nagrania (`nagranie.liczba`, blok wcześniej w fullModuleV6),
+    // pytanie otwierające konsolę (dokument z wymaganym wierszem-dowodem).
+    INTERROGATION: {
+      ...base('przesluchanie'),
+      type: 'INTERROGATION',
+      character: { name: 'Karol Testowy', role: 'handlowiec', avatar: 'avatars/karol.svg', opening: 'Myślałem, że pomagam.' },
+      questions: [
+        {
+          id: 'glos',
+          text: 'Skąd wiedziałeś, kto dzwoni?',
+          required: true,
+          lines: [
+            {
+              id: 'glos-1',
+              text: 'To był jego głos.',
+              narration: { ...audio('przesluchanie-glos-1'), voice: 'karol' },
+              fragment: { evidence: true, note: { text: 'Karol rozpoznał głos.', kind: 'person' } },
+            },
+            { id: 'glos-2', text: 'Na wyświetlaczu było IT Helpdesk.' },
+          ],
+        },
+        {
+          id: 'kod',
+          text: 'Czy podawałeś jakieś kody?',
+          lines: [
+            {
+              id: 'kod-1',
+              text: 'Nie, żadnych kodów.',
+              narration: { ...audio('przesluchanie-kod-1'), voice: 'karol' },
+              contradiction: {
+                refutedBy: 'nagranie.liczba',
+                challengeLine: { text: `${SECRET_MARKER}-przyznanie` },
+                note: { text: `${SECRET_MARKER}-dowod-przyznanie`, kind: 'person' },
+              },
+            },
+          ],
+        },
+        { id: 'konsola', text: 'Pokaż konsolę.', required: true, opensDocuments: true, lines: [{ id: 'konsola-1', text: 'Proszę, tu są logowania.' }] },
+      ],
+      documents: [
+        {
+          id: 'logowania',
+          tab: 'Logowania',
+          org: 'KONSOLA ADMINISTRATORA',
+          title: 'Logowania konta',
+          meta: 'Konto: k.testowy',
+          columns: ['Godzina', 'Zdarzenie'],
+          rows: [
+            { id: 'l1', cells: ['08:55', 'Odrzucone logowanie'], message: 'Odrzucone - to jeszcze nie włamanie.' },
+            { id: 'l2', cells: ['09:04', 'Zatwierdzone logowanie, Amsterdam'], evidence: true, required: true, note: { text: 'Logowanie z Amsterdamu.', kind: 'log' } },
+          ],
+        },
+      ],
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-przesluchanie-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-przesluchanie-warning` },
+      ]),
+    },
   };
 }
 
@@ -618,8 +676,9 @@ export function fullModule() {
 }
 
 /**
- * Moduł schemaVersion 6 (D-114/D-115): fullModule() + nagranie i omówienie przed SUMMARY. Osobna funkcja - fullModule() nie zmienia
- * wersji ani indeksów bloków (apps/api/test/course-engine.e2e-spec.ts, CLAUDE.md reguła 9). Razem oba moduły mają każdy typ bloku.
+ * Moduł schemaVersion 6 (D-114/D-115/D-118): fullModule() + nagranie, omówienie i przesłuchanie przed SUMMARY. Osobna funkcja -
+ * fullModule() nie zmienia wersji ani indeksów bloków (apps/api/test/course-engine.e2e-spec.ts, CLAUDE.md reguła 9). Razem oba moduły mają
+ * każdy typ bloku.
  */
 export function fullModuleV6() {
   const base = fullModule();
@@ -628,6 +687,6 @@ export function fullModuleV6() {
     ...base,
     schemaVersion: 6 as const,
     slug: 'sprawa-testowa-v6',
-    blocks: [...base.blocks.slice(0, -1), blocks.CALL_RECORDING, blocks.ANNOTATED_REPLAY, base.blocks[base.blocks.length - 1]],
+    blocks: [...base.blocks.slice(0, -1), blocks.CALL_RECORDING, blocks.ANNOTATED_REPLAY, blocks.INTERROGATION, base.blocks[base.blocks.length - 1]],
   };
 }

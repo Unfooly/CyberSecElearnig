@@ -19,8 +19,11 @@ export default function ReviewBlock({
   identity,
   onBriefingStep,
   caseNo,
+  moduleBlocks,
 }: {
   caseNo?: string;
+  /** Bloki modułu (omówienie czyta transkrypcję z bloku nagrania). */
+  moduleBlocks?: ContentBlock[];
   block: ContentBlock;
   result?: ClientProgressBlock;
   contentBase: string;
@@ -41,7 +44,8 @@ export default function ReviewBlock({
     // flex-col), ale i tak ograniczamy je do SCENE_HOTSPOTS/DIALOGUE, żeby diff dokładnie odzwierciedlał, co
     // faktycznie tego wymaga.
     // BRIEFING (D-081) i DOSSIER (D-083) też 'fill' - odprawa i teczka wypełniają ramkę jak rozmowa.
-    const isFill = block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE' || block.type === 'BRIEFING' || block.type === 'DOSSIER';
+    const isFill =
+      block.type === 'SCENE_HOTSPOTS' || block.type === 'DIALOGUE' || block.type === 'BRIEFING' || block.type === 'DOSSIER' || block.type === 'ANNOTATED_REPLAY';
     return (
       <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
@@ -57,14 +61,15 @@ export default function ReviewBlock({
           tasks={tasks}
           identity={identity}
           onBriefingStep={onBriefingStep}
+          moduleBlocks={moduleBlocks}
         />
       </div>
     );
   }
 
   if (isScored(block.type) && result && (block.type === 'TEXT_INPUT_GUIDED' || (hasInlineResult(block.type) && result.detail))) {
-    // Tablica śledcza (ORDERING, D-088) wypełnia ramkę jak scena - ten sam łańcuch wysokości co bloki 'fill' wyżej.
-    const isBoard = block.type === 'ORDERING';
+    // Tablica śledcza (ORDERING, D-088) i odsłuch nagrania (D-115) wypełniają ramkę - ten sam łańcuch wysokości co bloki 'fill' wyżej.
+    const isBoard = block.type === 'ORDERING' || block.type === 'CALL_RECORDING';
     return (
       <div data-testid="review-block" className={isBoard ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
@@ -74,6 +79,7 @@ export default function ReviewBlock({
           progress={result}
           result={{ answer: result.answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction }}
           caseNo={caseNo}
+          contentBase={contentBase}
         />
         <p className={`mt-2 text-xs text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
       </div>

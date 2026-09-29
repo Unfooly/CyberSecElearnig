@@ -26,7 +26,44 @@ export type ContentBlockType =
   // schemaVersion 5: odprawa (kroki typewriter/call/caseFile/badge), nieoceniana - D-081.
   | 'BRIEFING'
   // schemaVersion 5: teczka sprawy (dokumenty z wierszami, zakreślanie dowodów), nieoceniana - D-083.
-  | 'DOSSIER';
+  | 'DOSSIER'
+  // schemaVersion 6 (moduł 2, D-115): odsłuch nagrania z czerwonymi flagami (oceniany) i omówienie ze znacznikami (nieoceniane).
+  | 'CALL_RECORDING'
+  | 'ANNOTATED_REPLAY';
+
+/** Warstwa tekstu na grafice (schemaVersion 6, D-114): prostokąty w % grafiki, tekst rysowany przez odtwarzacz. */
+export interface TextLayerItem {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  style?: 'label' | 'sign' | 'screen' | 'handwritten';
+  /** Prostokąt na wariancie pionowym grafiki (imagePortrait). */
+  portrait?: { x: number; y: number; w: number; h: number };
+}
+
+/** Segment nagrania rozmowy (CALL_RECORDING): kto mówi, tekst i nagranie; flagi są sekretem serwera. */
+export interface RecordingSegment {
+  id: string;
+  speaker: string;
+  narration: Narration;
+  gapAfterMs?: number;
+}
+
+/** Znacznik omówienia (ANNOTATED_REPLAY): numer, kotwica (segment nagrania albo punkt na grafice), tytuł, tekst, narracja. */
+export interface ReplayMarker {
+  n: number;
+  anchor: { segmentId?: string; x?: number; y?: number };
+  title: string;
+  text: string;
+  narration?: Narration;
+}
+
+export type ReplaySource =
+  | { kind: 'transcript'; fromBlock: string }
+  | { kind: 'image'; image: string; imagePortrait?: string; alt: string };
 
 /** Wiersz dokumentu w teczce (DOSSIER). evidence/note/required są jawne (jak hotspoty) - blok nie jest oceniany. */
 export interface DossierRow {
@@ -198,8 +235,17 @@ export interface ContentBlock {
   // SCENE_HOTSPOTS: ilustracja (ścieżka względna wobec bazy zasobów), tekst alternatywny i prostokąty w % obrazu.
   image?: string;
   imageAlt?: string;
+  /** Tekst sceny w warstwie (schemaVersion 6). */
+  textLayer?: TextLayerItem[];
   hotspots?: SceneHotspot[];
   requiredHotspots?: string[];
+  // CALL_RECORDING (D-115): segmenty rozmowy (bez flag - te są sekretem, rozstrzygnięcie w ResultDetail.flags po ocenie).
+  segments?: RecordingSegment[];
+  // ANNOTATED_REPLAY (D-115): źródło (transkrypcja nagrania albo grafika) i numerowane znaczniki.
+  source?: ReplaySource;
+  markers?: ReplayMarker[];
+  /** Treść wstrzymana przez API do czasu dotarcia gracza do bloku (omówienie nagrania, D-115) - pełny blok w odpowiedzi /progress. */
+  withheld?: boolean;
   // DIALOGUE
   character?: { name: string; role?: string; avatar?: string; opening?: string };
   questions?: DialogueQuestion[];
@@ -275,6 +321,8 @@ export interface HotspotMedia extends PopupsFields {
   /** kind:'image' - wariant dla telefonu w pionie (D-104). */
   imagePortrait?: string;
   alt?: string;
+  /** kind:'image' - tekst zbliżenia w warstwie (schemaVersion 6). */
+  textLayer?: TextLayerItem[];
   audioUrl?: string;
   transcript?: string;
   /** kind:'audio' nagrane potokiem TTS (schemaVersion 5, D-082) zamiast audioUrl/transcript: plik w narration.audioUrl, transkrypcja w narration.text. */
@@ -289,6 +337,7 @@ export interface HotspotMedia extends PopupsFields {
 export interface NestedScene {
   image: string;
   imageAlt: string;
+  textLayer?: TextLayerItem[];
   hotspots: InnerSceneHotspot[];
 }
 
@@ -299,6 +348,7 @@ export interface InnerHotspotMedia extends PopupsFields {
   /** kind:'image' - wariant dla telefonu w pionie (D-104). */
   imagePortrait?: string;
   alt?: string;
+  textLayer?: TextLayerItem[];
   audioUrl?: string;
   transcript?: string;
   narration?: Narration;
@@ -354,7 +404,8 @@ export interface DialogueQuestion {
   required?: boolean;
 }
 
-export type NoteKind = 'mail' | 'person' | 'item' | 'place';
+// call/log/web - schemaVersion 6 (moduł 2): rozmowa/nagranie, logi/konsola, strona/webinar.
+export type NoteKind = 'mail' | 'person' | 'item' | 'place' | 'call' | 'log' | 'web';
 
 export interface EvidenceSummary {
   collected: number;
@@ -425,10 +476,18 @@ export interface ResultDetail {
   criteria?: { id: string; correct: boolean; selected: boolean; explanation?: string }[];
   correctOrder?: string[];
   explanation?: string;
+  /** CALL_RECORDING (D-115): które segmenty były flagami, kategoria i czy gracz je trafił. */
+  flags?: { segmentId: string; category: RecordingFlagCategory; hit: boolean }[];
+  falseTaps?: number;
 }
 
-/** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste). */
-export type ChosenAnswer = number | { selected: string[] } | { order: string[] };
+export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_request' | 'install_request';
+
+/** Tapnięcie w odsłuchu nagrania: pozycja w nagraniu (odsłuch) albo segment (transkrypcja). */
+export type RecordingTap = { atMs: number } | { segmentId: string };
+
+/** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste; nagranie: taps). */
+export type ChosenAnswer = number | { selected: string[] } | { order: string[] } | { taps: RecordingTap[] };
 
 export interface LastResult {
   blockIndex: number;
@@ -472,5 +531,7 @@ export interface CourseProgressResponse {
   // Notatki dopisane tym zapisem (np. trafione kryteria maila): dołączane do notatnika od razu.
   notes?: ClientNote[];
   evidence?: EvidenceSummary;
+  // Pełna treść bloku wstrzymanego w /start (omówienie nagrania, D-115), do którego gracz właśnie dotarł - podmieniana w liście bloków.
+  revealedBlock?: { blockIndex: number; block: ContentBlock };
   gamification: CourseCompletionReward | null;
 }

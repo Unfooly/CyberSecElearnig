@@ -11,6 +11,9 @@ export type HintEvent = 'evidence' | 'wrong' | 'hint';
 /** Stała podpowiedź dla typu bloku, gdy autor jej nie ustawił (`block.tip` / `block.mascot.text` wygrywa). Tylko sceny z punktami. */
 export const DEFAULT_HINT: Record<string, string> = {
   SCENE_HOTSPOTS: 'Rozejrzyj się. Kliknij to, co wygląda podejrzanie.',
+  // Moduł 2 (D-115).
+  CALL_RECORDING: 'Słuchaj uważnie. Stuknij „Czerwona flaga”, gdy rozmówca manipuluje.',
+  ANNOTATED_REPLAY: 'Przejdź przez wszystkie znaczniki omówienia.',
 };
 
 export const HINT_EVENT_TEXT: Record<HintEvent, string> = {

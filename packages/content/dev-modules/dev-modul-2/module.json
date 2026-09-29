@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 6,
+  "slug": "dev-modul-2",
+  "title": { "pl": "Demo modułu 2 (harness)", "en": "Module 2 demo (harness)" },
+  "category": "PHISHING_SOCIAL_ENGINEERING",
+  "durationMinutes": 5,
+  "mandatory": false,
+  "blocks": [
+    {
+      "id": "biuro-helpdesk",
+      "type": "SCENE_HOTSPOTS",
+      "title": { "pl": "Biuro helpdesku", "en": "Helpdesk office" },
+      "image": "scenes/demo-scena.svg",
+      "imageAlt": "Biuro helpdesku: tablica na ścianie, biurko z laptopem, telefon i plakat.",
+      "textLayer": [
+        { "id": "szyld", "x": 32.5, "y": 7.8, "w": 35, "h": 13.3, "text": { "pl": "IT Helpdesk", "en": "IT Helpdesk" }, "style": "sign" },
+        { "id": "tabliczka", "x": 7.5, "y": 28.9, "w": 18.75, "h": 8.9, "text": { "pl": "Sprzedaż", "en": "Sales" }, "style": "label" },
+        { "id": "ekran", "x": 42.25, "y": 30.7, "w": 23, "h": 15.3, "text": "Logowanie: Amsterdam\nzatwierdzone", "style": "screen" },
+        { "id": "plakat", "x": 73.75, "y": 22.2, "w": 16.25, "h": 18.9, "text": "IT nigdy nie prosi o kody", "style": "handwritten" }
+      ],
+      "hotspots": [
+        {
+          "id": "laptop",
+          "label": "Laptop",
+          "x": 41.25,
+          "y": 28.9,
+          "width": 25,
+          "height": 19,
+          "content": "Konsola pokazuje zatwierdzone logowanie z obcego miejsca.",
+          "evidence": true,
+          "required": true,
+          "note": { "text": "Konsola: zatwierdzone logowanie z Amsterdamu.", "kind": "log" }
+        },
+        {
+          "id": "telefon",
+          "label": "Telefon",
+          "x": 76.25,
+          "y": 42.2,
+          "width": 7.5,
+          "height": 7.8,
+          "content": "Obok telefonu karteczka z dopiskiem.",
+          "media": {
+            "kind": "image",
+            "src": "scenes/demo-karteczka-zoom.svg",
+            "alt": "Żółta karteczka z odręcznym dopiskiem.",
+            "textLayer": [{ "id": "dopisek", "x": 22, "y": 35, "w": 56, "h": 30, "text": "Paweł IT\nID 7…219", "style": "handwritten" }]
+          },
+          "evidence": true,
+          "required": true,
+          "note": { "text": "Karteczka: „Paweł IT” i ID sesji zdalnej pomocy.", "kind": "call" }
+        },
+        {
+          "id": "plakat",
+          "label": "Plakat",
+          "x": 73.75,
+          "y": 22.2,
+          "width": 16.25,
+          "height": 18.9,
+          "content": "Plakat przypomina zasadę helpdesku.",
+          "evidence": true,
+          "note": { "text": "Plakat: IT nigdy nie prosi o kody.", "kind": "web" }
+        }
+      ]
+    },
+    {
+      "id": "nagranie",
+      "type": "CALL_RECORDING",
+      "title": "Odsłuch nagrania",
+      "weight": 2,
+      "segments": [
+        { "id": "s1", "speaker": "Dzwoniący", "gapAfterMs": 300, "narration": { "voice": "oszust", "text": "Dzień dobry, Karol? Paweł z IT. Ktoś próbuje się włamać na twoje konto.", "audioUrl": "audio/demo-s1.mp3", "durationMs": 3200 } },
+        { "id": "s2", "speaker": "Karol", "gapAfterMs": 300, "narration": { "voice": "karol", "text": "O, to te powiadomienia? Odrzucałem je.", "audioUrl": "audio/demo-s2.mp3", "durationMs": 2100 } },
+        { "id": "s3", "speaker": "Dzwoniący", "narration": { "voice": "oszust", "text": "Nie mam dużo czasu, zaraz blokuje się cały dział sprzedaży.", "audioUrl": "audio/demo-s3.mp3", "durationMs": 2600 } },
+        { "id": "s4", "speaker": "Dzwoniący", "gapAfterMs": 300, "narration": { "voice": "oszust", "text": "Wpisz w aplikacji liczbę 47, to je zablokuje.", "spokenText": "Wpisz w aplikacji liczbę czterdzieści siedem, to je zablokuje.", "audioUrl": "audio/demo-s4.mp3", "durationMs": 2400 } },
+        { "id": "s5", "speaker": "Karol", "narration": { "voice": "karol", "text": "Czterdzieści siedem… wpisane.", "audioUrl": "audio/demo-s5.mp3", "durationMs": 1800 } }
+      ],
+      "flags": [
+        { "segmentId": "s1", "category": "fear" },
+        { "segmentId": "s3", "category": "urgency" },
+        { "segmentId": "s4", "category": "code_request" }
+      ],
+      "evidence": [{ "id": "liczba-47", "segmentId": "s4", "note": { "text": "Dzwoniący sam podał liczbę 47 - loguje się on.", "kind": "call" } }],
+      "reactions": { "result": [{ "minScore": 1, "text": "Wszystkie manipulacje wyłapane." }, { "minScore": 0, "text": "Część manipulacji umknęła - zobacz omówienie." }] }
+    },
+    {
+      "id": "omowienie",
+      "type": "ANNOTATED_REPLAY",
+      "title": "Omówienie rozmowy",
+      "source": { "kind": "transcript", "fromBlock": "nagranie" },
+      "markers": [
+        { "n": 1, "anchor": { "segmentId": "s1" }, "title": "Strach", "text": "„Ktoś się włamuje” - w stresie myślimy krócej." },
+        { "n": 2, "anchor": { "segmentId": "s3" }, "title": "Pośpiech", "text": "„Nie mam czasu” - bez czasu nie ma weryfikacji." },
+        { "n": 3, "anchor": { "segmentId": "s4" }, "title": "Parowanie liczb", "text": "Liczbę zna tylko ten, kto się loguje. Dzwoniący, który ją podaje, to on się loguje." }
+      ]
+    },
+    {
+      "id": "omowienie-grafika",
+      "type": "ANNOTATED_REPLAY",
+      "title": "Omówienie na grafice",
+      "source": { "kind": "image", "image": "scenes/demo-scena.svg", "alt": "Biuro helpdesku z numerowanymi znacznikami." },
+      "markers": [
+        { "n": 1, "anchor": { "x": 53.75, "y": 38.3 }, "title": "Konsola", "text": "Zatwierdzone logowanie z obcego miejsca." },
+        { "n": 2, "anchor": { "x": 80, "y": 46.1 }, "title": "Karteczka", "text": "ID sesji zdalnej pomocy zapisane obok telefonu." }
+      ]
+    }
+  ]
+}

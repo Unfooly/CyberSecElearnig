@@ -69,6 +69,8 @@ interface RenderContext {
   caseNo?: string;
   /** Bloki modułu (omówienie ANNOTATED_REPLAY czyta transkrypcję z bloku CALL_RECORDING, D-115). */
   blocks: ContentBlock[];
+  /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu (przed zapisem bloku). */
+  onEvidence: (summary: EvidenceSummary) => void;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -106,6 +108,9 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
         caseNo={ctx.caseNo}
         contentBase={contentBase}
+        onEvidence={ctx.onEvidence}
+        myAvatarUrl={ctx.myAvatarUrl}
+        myInitials={ctx.myInitials}
       />
     );
   }
@@ -509,7 +514,9 @@ export default function CoursePlayer({
               currentBlock?.type === 'DOSSIER' ||
               currentBlock?.type === 'ORDERING' ||
               currentBlock?.type === 'CALL_RECORDING' ||
-              currentBlock?.type === 'ANNOTATED_REPLAY'
+              currentBlock?.type === 'ANNOTATED_REPLAY' ||
+              // Przesłuchanie (D-118): wątek jak rozmowa (własne przewijanie wątku, stopka z pytaniami) - 'fill'.
+              currentBlock?.type === 'INTERROGATION'
             ? 'fill'
             : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
@@ -547,7 +554,14 @@ export default function CoursePlayer({
           key={`result-${answered.id}`}
           block={answered}
           courseId={courseId}
-          result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
+          result={{
+            answer: answeredResult?.answer,
+            detail: feedback.detail,
+            correct: feedback.correct,
+            points: feedback.points,
+            reaction: feedback.reaction,
+            challenges: answeredResult?.challenges,
+          }}
           live
           caseNo={caseNo}
           contentBase={contentBase}
@@ -597,6 +611,7 @@ export default function CoursePlayer({
               onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
               caseNo,
               blocks,
+              onEvidence: setEvidence,
             })}
           </div>
         )}

@@ -702,7 +702,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: osobny e2e na `fullModuleV6()` (własny kurs): /start przy nagraniu bez znaczników, odpowiedź nagrania, /progress z
   `revealedBlock`, /start po dotarciu z pełnym blokiem, izolacja A/B.
 
-### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116)
+### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;
   390×844: 10,8 px), poniżej zasady 15 px (D-099/D-103). Krzyżyk ma pole trafienia ≥ 44 px.

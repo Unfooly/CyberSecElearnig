@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
-import { DEFAULT_FALSE_TAP_PENALTY, DEFAULT_FLAG_WINDOW_AFTER_MS, idSchema, recordingTimeline } from '@cyberszkolo/content';
+import { DEFAULT_FALSE_TAP_PENALTY, DEFAULT_FLAG_WINDOW_AFTER_MS, MAX_RECORDING_TAPS, idSchema, recordingTimeline } from '@cyberszkolo/content';
 
 // Ocena odsłuchu nagrania (CALL_RECORDING, D-115) - WYŁĄCZNIE po stronie serwera. Klient wysyła tylko swoje tapnięcia: pozycję w
 // nagraniu (`{ atMs }`, tryb odsłuchu) albo segment (`{ segmentId }`, tryb transkrypcji); nigdy trafień ani punktów. Flagi, okno i kara
@@ -11,7 +11,7 @@ const tap = z.union([
   z.object({ atMs: z.number().int().min(0).max(MAX_RECORDING_MS) }).strict(),
   z.object({ segmentId: idSchema }).strict(),
 ]);
-export const recordingAnswer = z.object({ taps: z.array(tap).max(200) }).strict();
+export const recordingAnswer = z.object({ taps: z.array(tap).max(MAX_RECORDING_TAPS) }).strict();
 export type RecordingTap = z.infer<typeof tap>;
 
 interface RecordingBlock {

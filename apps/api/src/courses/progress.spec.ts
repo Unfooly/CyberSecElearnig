@@ -236,15 +236,22 @@ describe('client-view', () => {
         collected: 0,
         // scena: 2 - h1 (zewnętrzny) + h4-outlook (wewnątrz zagnieżdżonej sceny media.kind:'scene', B-086/D-071) - dowody
         // z zagnieżdżonej sceny LICZĄ SIĘ do bloku (spłaszczone id, ta sama funkcja co semantics.ts).
-        // + akta: 1 - wiersz-dowód teczki (DOSSIER, D-083).
-        total: 5,
+        // + akta: 1 - wiersz-dowód teczki (DOSSIER, D-083); + nagranie: 1 - dowód nagrania rozmowy (CALL_RECORDING, D-115).
+        total: 6,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
           { blockId: 'akta', collected: 0, total: 1 },
+          { blockId: 'nagranie', collected: 0, total: 1 },
         ],
       });
+    });
+
+    it('CALL_RECORDING: dowód liczy się po notatce <blok>.<id dowodu>, notatka rozwiązuje się z treści (rodzaj call)', () => {
+      const summary = evidenceSummary({ v: 2, blocks: {}, notes: ['nagranie.liczba'] }, blocks());
+      expect(summary.perBlock.find((b) => b.blockId === 'nagranie')).toEqual({ blockId: 'nagranie', collected: 1, total: 1 });
+      expect(resolveNote(blocks(), 'nagranie.liczba')).toEqual({ key: 'nagranie.liczba', blockId: 'nagranie', text: `${SECRET_MARKER}-dowod-liczba`, kind: 'call' });
     });
 
     it('DOSSIER: zakreślony wiersz-dowód liczy się po notatce <blok>.<wiersz>, a notatka rozwiązuje się z treści', () => {
@@ -264,12 +271,13 @@ describe('client-view', () => {
       // więc liczy się do total, ale nie do collected.
       expect(summary).toEqual({
         collected: 3,
-        total: 5,
+        total: 6,
         perBlock: [
           { blockId: 'scena', collected: 1, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
           { blockId: 'akta', collected: 0, total: 1 },
+          { blockId: 'nagranie', collected: 0, total: 1 },
         ],
       });
     });

@@ -1,5 +1,5 @@
 import { createHmac, hkdfSync } from 'node:crypto';
-import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
+import { ClientContext, ShuffleSeed, toClientBlock } from '@cyberszkolo/content';
 import { DossierRowLike, HotspotLike, flattenDossierRows, flattenHotspots } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
 import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
@@ -35,6 +35,30 @@ export function shuffleContext(secret: string, assignmentId: string, versionId: 
     opaqueId: (blockId: string, itemId: string): string =>
       createHmac('sha256', idKey).update(`${scope}\n${blockId}\n${itemId}`).digest('hex').slice(0, 24),
   };
+}
+
+/**
+ * Bloki, których treść wychodzi do klienta dopiero, gdy gracz do nich DOTRZE (D-115, security review 1b). Omówienie nagrania
+ * (ANNOTATED_REPLAY) jest publiczne, ale jego znaczniki wskazują segmenty z flagami CALL_RECORDING i nazywają ich kategorie - w /start
+ * (które wysyła wszystkie bloki kursu) byłyby kluczem odpowiedzi nagrania. Walidacja modułu wymusza omówienie PO bloku nagrania.
+ */
+const GATED_BLOCK_TYPES = new Set(['ANNOTATED_REPLAY']);
+
+/**
+ * Projekcja bloku do /start: jak toClientBlock, ale blok z GATED_BLOCK_TYPES przed bieżącym miejscem (index > reachedIndex, kurs
+ * nieukończony) idzie bez znaczników (`withheld: true`). Po dotarciu klient dostaje pełny blok w odpowiedzi /progress (revealedBlock).
+ */
+export function projectBlockForStart(block: Block, index: number, context: ClientContext, reachedIndex: number, completed: boolean) {
+  const client = toClientBlock(block, context);
+  if (!GATED_BLOCK_TYPES.has(block.type) || completed || index <= reachedIndex) return client;
+  // Biała lista, nie „usuń markers”: narracja bloku, podpowiedź czy opis grafiki źródła też mogłyby nazwać flagi nagrania (review 1b).
+  return { id: client.id, type: client.type, ...(typeof client.title === 'string' ? { title: client.title } : {}), withheld: true };
+}
+
+/** Pełny blok dla nowo osiągniętego miejsca, gdy jest wstrzymywany w /start (odpowiedź /progress); inaczej undefined. */
+export function revealedBlockAt(blocks: Block[], index: number, context: ClientContext) {
+  const block = blocks[index];
+  return block && GATED_BLOCK_TYPES.has(block.type) ? { blockIndex: index, block: toClientBlock(block, context) } : undefined;
 }
 
 interface ClientNote {

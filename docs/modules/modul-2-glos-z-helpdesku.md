@@ -778,6 +778,14 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   klawisze N/P), arkusz wyboru dowodu, przyznanie po trafieniu, konsola (przekładki teczki), wynik z rozstrzygnięciem; moduł podglądu
   `dev-modul-2` (przesłuchanie Karola i Pawła), layout-check `modul2` (n7). Odstępstwo od szkicu 4.2: zamiast przeciągania kwestii do
   notesu - zaznaczenie kwestii i przycisk „Dodaj do notatek”.
+- **Faza 1d, część 1 zrobiona (D-120):** `OSINT_SPOT` - schemat, klasyfikacja, walidacja, ocena serwera (kara za pułapki), dowody po
+  ocenie, rozstrzygnięcie po ukończeniu, ukryte zakończenie nagrania jako flaga `secretEndings` i wyróżnienie w notatniku. Odstępstwa od
+  szkicu z rozdz. 4.3: nagranie jest przy obszarze (`spots[].media`, zamiast osobnego `media.webinar`) z `narration` (z `voice`), `title` i
+  kadrem `image`; odpowiedź `{ marked, heard? }` (`heard` - wysłuchane ukryte zakończenia). Samo osiągnięcie „Off the Record” (katalog -
+  migracja) przyznaje faza 1f na podstawie `secretEndings`. Część 2 (odtwarzacz, moduł podglądu, layout-check) - osobny PR; do
+  obsłużenia w niej (code review 1d-1): `heard` idzie wyłącznie z zapisem bloku, więc webinar musi dać się wysłuchać przed „Dalej”;
+  `ClientDistinction` w web dostaje `note`, a lokalne wyróżnienie bierze etykietę z bloku (jak easter egg); `textLayer` ma limit 30 napisów -
+  sprawdzić przy właściwej treści strony „Zespół”.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);
@@ -785,8 +793,12 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
 - **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja) + przełącznik
   „Wyłącz limit czasu” na ekranie przed połączeniem `LIVE_CALL`. Limit nie zależy od `prefers-reduced-motion`.
 - **Osiągnięcia:**
-  - „komplet dowodów” (`collected === total`, np. FLAWLESS_CASE) po D-118 nie widzi sprzeczności przesłuchania, dopóki nie zostanie
-    trafiona (licznik jej nie liczy) - osiągnięcie dla modułu 2 musi dodatkowo wymagać trafienia wszystkich sprzeczności (albo wyniku 100);
+  - „komplet dowodów” (`collected === total`, np. FLAWLESS_CASE) po D-118 i D-120 nie widzi dowodów ukrytych do zebrania (sprzeczności
+    przesłuchania, obszary OSINT) - licznik ich nie liczy, dopóki gracz ich nie zbierze. Osiągnięcie dla modułu 2 liczy na stałą liczbę
+    dowodów z treści (`noteItemsOf` łącznie z `hidden`) albo wymaga wyniku 100 w tych blokach;
+  - „Off the Record” z `secretEndings` (D-120): bez XP i bez wpływu na wynik (jak easter egg, D-111); przekazać `result.entry.secretEndings`
+    tak jak `easterEggs` przy zapisie bloku (`courses.service.ts`) i uwzględnić je w przyznaniu wstecznym (`gamification.service.ts`,
+    `syncAchievements`), żeby przypisania ukończone przed 1f dostały osiągnięcie; id wyróżnień rozróżniać po slugu kursu i typie bloku;
   - ranga RARE (migracja enumu);
   - 4 wpisy katalogu (migracja);
   - warunki w `achievements.ts`;

@@ -786,6 +786,11 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   obsłużenia w niej (code review 1d-1): `heard` idzie wyłącznie z zapisem bloku, więc webinar musi dać się wysłuchać przed „Dalej”;
   `ClientDistinction` w web dostaje `note`, a lokalne wyróżnienie bierze etykietę z bloku (jak easter egg); `textLayer` ma limit 30 napisów -
   sprawdzić przy właściwej treści strony „Zespół”.
+- **Faza 1d, część 2 zrobiona (D-121):** `OsintBlock` w odtwarzaczu - obszary-przełączniki, nagranie przy obszarze (nakładka z transkrypcją;
+  ukryte zakończenie także po doczytaniu transkrypcji do końca), wynik z wyjaśnieniami na tej samej stronie; moduł podglądu `dev-modul-2`
+  (blok `osint`), layout-check `modul2` (n8). Odstępstwa: na telefonie w poziomie strona na całą szerokość i przewijana (nie „contain”);
+  przycisk nagrania na krawędzi obszaru, nie w środku. Do treści v6 (faza 1g): grafika strony „Zespół” bez tekstu (tekst w `textLayer`,
+  limit 30 napisów), wariant pionowy z `portraitSpots`, kadr webinaru.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);

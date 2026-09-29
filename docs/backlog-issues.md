@@ -709,6 +709,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - np. nagrania sekretnych kwestii w osobnym, niepublicznym prefiksie serwowanym przez API po trafieniu,
   albo zgoda na nieodgadywalną nazwę w publicznym magazynie; potem ścieżka w potoku i test.
 
+### B-136 OSINT w odtwarzaczu (D-121): drobne uwagi z code review
+- Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review 1d-2
+- Opis: (1) nakładka nagrania ma `aria-modal`, ale pasek odtwarzacza („Dalej”, notatnik) działa dalej z myszy - jak w przesłuchaniu
+  (InterrogationBlock); (2) w widoku wyniku obszary są `disabled` (poza kolejnością Tab), a lista pod stroną wymienia tylko przeoczone i
+  pułapki - trafione tylko liczbą w podsumowaniu; (3) lista typów bloków „tablicowych” powtarza się w `CoursePlayer.tsx` (`boardFeedback`) i
+  `ReviewBlock.tsx` (`isBoard`); (4) krótka transkrypcja mieszcząca się bez przewijania liczy się jako doczytana od razu po otwarciu
+  (bramka UX, D-120) - sprawdzić przy docelowej treści webinaru (faza 1g).
+- Akceptacja: `inert` paska przy otwartej nakładce (wspólnie dla OSINT i przesłuchania); `aria-disabled` albo pełna lista obszarów w wyniku;
+  wspólna stała typów tablicowych; decyzja przy treści 1g.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

@@ -76,11 +76,10 @@ describe('voices.json (rola głosu -> voiceId, D-082; per język i sameAs, D-114
     expect(voiceRoleOf({ text: 'x', voice: 'bank' })).toBe('bank');
   });
 
-  it('commitowany scripts/content/voices.json jest poprawny; role modułu 1 bez placeholderów; brak pliku i zły JSON to czytelny błąd', () => {
+  it('commitowany scripts/content/voices.json jest poprawny i bez placeholderów; brak pliku i zły JSON to czytelny błąd', () => {
     const voices = loadVoices(VOICES_PATH);
     expect(Object.keys(voices).sort()).toEqual([...contentIndex.VOICE_ROLES].sort());
-    // karol/pawel (moduł 2): placeholder do czasu wyboru głosu przez właściciela (próbki, D-114) - generowanie nimi jest odrzucane.
-    for (const role of ['narrator', 'komisarz', 'bank', 'marek']) expect(isPlaceholderVoiceId(voices[role])).toBe(false);
+    for (const id of Object.values(voices)) expect(isPlaceholderVoiceId(id)).toBe(false);
     expect(() => loadVoices('/nie/ma/voices.json')).toThrow(/Brak pliku/);
     expect(() => loadVoices('x', () => '{zly')).toThrow(/niepoprawny JSON/);
   });

@@ -57,6 +57,8 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
     return texts.map((text) => list.find((item) => (item.label ?? item.text) === text)!.id);
   }
   const CRITERIA = { c1: 'Podejrzana domena', c2: 'Poprawna polszczyzna', c3: 'Presja czasu' };
+  // Nieprzejrzysty odnośnik notatki (D-118): 24 znaki hex, inny w każdym przypisaniu.
+  const REF = expect.stringMatching(/^[a-f0-9]{24}$/);
   const STEPS = { o1: 'Nie klikaj', o2: 'Zgłoś', o3: 'Usuń' };
 
   // Moduł z fixtur packages/content: po jednym bloku każdego typu, bez nadpisanych wag (domyślne: oceniane 1, eksploracyjne 0).
@@ -263,11 +265,11 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       const resumed = (await start(tokenA, engineCourseId).expect(200)).body;
       expect(resumed.currentBlockIndex).toBe(9);
       expect(resumed.progress.notes).toEqual([
-        { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item' },
+        { blockId: 'scena', text: 'Hasło na kartce przy monitorze.', kind: 'item', ref: REF },
         // h4-outlook: dowód WEWNĄTRZ zagnieżdżonej sceny (media.kind:'scene' na h4, B-086/D-071) - drugi noted z tego
         // samego submitu (visited/noted: ['h1', 'h4-outlook']), więc dopisuje się od razu po notatce h1.
-        { blockId: 'scena', text: 'Mail otwarty w programie pocztowym.', kind: 'mail' },
-        { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail' },
+        { blockId: 'scena', text: 'Mail otwarty w programie pocztowym.', kind: 'mail', ref: REF },
+        { blockId: 'rozmowa', text: 'Mail przyszedł rano.', kind: 'mail', ref: REF },
       ]);
       // Po wznowieniu dowody z serwera (suma znana od startu, także dla jeszcze niezatwierdzonego maila). scena: 2
       // zebrane/2 razem (h1 zewnętrzny + h4-outlook wewnątrz zagnieżdżonej sceny, B-086/D-071) - patrz test wyżej.
@@ -292,9 +294,11 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       expect(result.lastResult.detail.criteria).toHaveLength(3);
       // Notatki dopisane tym zapisem (trafione kryteria) wracają od razu, jako blockId + treść + rodzaj (bez id z treści).
       expect(result.notes).toEqual([
-        { blockId: 'mail', text: `${SECRET_MARKER}-note-c1`, kind: 'mail' },
-        { blockId: 'mail', text: `${SECRET_MARKER}-note-c3`, kind: 'mail' },
+        { blockId: 'mail', text: `${SECRET_MARKER}-note-c1`, kind: 'mail', ref: REF },
+        { blockId: 'mail', text: `${SECRET_MARKER}-note-c3`, kind: 'mail', ref: REF },
       ]);
+      // Odnośnik notatki (D-118) nie jest nieprzejrzystym id kryterium z /start (osobna przestrzeń HMAC).
+      expect(result.notes.map((n: { ref: string }) => n.ref)).not.toContain(c1);
       // Rozstrzygnięcie kryteriów idzie po id nieprzejrzystych, które klient zna.
       expect(result.lastResult.detail.criteria.map((c: { id: string }) => c.id)).toContain(c1);
       const progress = (await start(tokenA, engineCourseId).expect(200)).body.progress;
@@ -307,7 +311,8 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       ]);
       // Brak id z treści w progress.notes: klient dostaje blockId, treść i (opcjonalnie) rodzaj, bez klucza "<blockId>.<itemId>" (np. mail.c1).
       for (const note of progress.notes) expect(Object.keys(note).sort()).toEqual(expect.arrayContaining(['blockId', 'text']));
-      for (const note of progress.notes) expect(Object.keys(note).every((k) => ['blockId', 'text', 'kind'].includes(k))).toBe(true);
+      // `ref` (D-118) - nieprzejrzysty odnośnik do podważeń przesłuchania, nie klucz notatki.
+      for (const note of progress.notes) expect(Object.keys(note).every((k) => ['blockId', 'text', 'kind', 'ref'].includes(k))).toBe(true);
       expect(JSON.stringify(progress)).not.toMatch(/mail\.c[13]|rozmowa\.q1|scena\.h1|scena\.h4-outlook|"c[123]"|"h[12]"|"h4-outlook"/);
       // Podgląd ukończonego bloku po wznowieniu: własny wybór i rozstrzygnięcie, wyłącznie jako id nieprzejrzyste z /start.
       expect(progress.blocks.mail.answer).toEqual({ selected: [c1, c3] });
@@ -371,7 +376,7 @@ describe('Silnik scen: kursy z blokami interaktywnymi (e2e)', () => {
       }
       const dossier = (await submit(tokenA, engineCourseId, { blockIndex: 14, answer: { opened, noted: ['w2'] } }).expect(200)).body;
       expect(dossier.lastResult).toMatchObject({ blockId: 'akta', type: 'DOSSIER' });
-      expect(dossier.notes).toEqual([{ blockId: 'akta', text: 'Przelew 9:12.', kind: 'item' }]);
+      expect(dossier.notes).toEqual([{ blockId: 'akta', text: 'Przelew 9:12.', kind: 'item', ref: REF }]);
       expect(dossier.evidence).toMatchObject({ collected: 5, total: 5 });
 
       const done = (await submit(tokenA, engineCourseId, { blockIndex: 15 }).expect(200)).body;

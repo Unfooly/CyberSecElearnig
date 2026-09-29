@@ -6,7 +6,7 @@ import { toResolved } from '../courses/course-versions';
 import { readProgress } from '../courses/progress';
 import { initialsFromEmail } from './initials.util';
 import { currentLevelProgressPercent, levelForXp, xpForNextLevel } from './level.util';
-import { completionAchievements, easterEggAchievements } from './achievements';
+import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, secretEndingAchievements } from './achievements';
 import {
   ACHIEVEMENT_CODES,
   ACHIEVEMENTS_SYNC_VERSION,
@@ -16,6 +16,7 @@ import {
   LeaderboardScope,
   MAX_PINNED_ACHIEVEMENTS,
   MODULE_1_SLUG,
+  MODULE_2_SLUG,
   PIN_LIMIT_MESSAGE,
   SECRET_LOCKED_ICON,
   PERFECT_SCORE_XP,
@@ -70,6 +71,8 @@ export class GamificationService {
       score: number | null;
       courseSlug: string | null;
       evidence: { collected: number; total: number };
+      // Moduł 2 (D-124): fakty z bloków tego podejścia (CoursesService liczy je z postępu i treści wersji).
+      module2?: Module2Facts;
       // Przypisanie właśnie ukończone - wyłączone z przyznania wstecznego (jego osiągnięcia idą niżej, „na żywo”, z XP).
       assignmentId: string;
     },
@@ -238,6 +241,25 @@ export class GamificationService {
   }
 
   /**
+   * Off the Record (D-120/D-124): ukryte zakończenie webinaru zapisane TYM zapisem bloku OSINT (`secretEndings`) - jak easter egg: od razu
+   * przy zapisie bloku, w tej samej transakcji, bez XP i bez wpływu na wynik (wyróżnienie notatnik pokazał już w chwili wysłuchania).
+   */
+  async awardSecretEndingAchievements(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+    courseSlug: string | null,
+    secretEndings: readonly string[] | undefined,
+  ): Promise<Badge[]> {
+    const unlocked: Badge[] = [];
+    for (const code of secretEndingAchievements(courseSlug, secretEndings)) {
+      const badge = await this.tryUnlockBadge(tx, organizationId, userId, code);
+      if (badge) unlocked.push(badge);
+    }
+    return unlocked;
+  }
+
+  /**
    * Przyznanie wsteczne (backfill, D-111): osiągnięcia, których warunek użytkownik spełnił PRZED wdrożeniem osiągnięć (także
    * wyróżnienie easter egga z Q). Raz na użytkownika i wersję zasad (`users.achievementsSyncVersion`) - potem wszystko
    * przyznaje ścieżka „na żywo”, więc wejście na profil nie czyta za każdym razem historii przypisań. Idempotentne
@@ -263,13 +285,13 @@ export class GamificationService {
     const missing = Object.values(ACHIEVEMENT_CODES).filter((code) => !have.has(code));
 
     if (missing.length > 0) {
-      // Historia przypisań (także zarchiwizowanych restartem, D-069): ukończone oraz wszystkie z modułu 1 (easter egg można
-      // znaleźć bez ukończenia kursu).
+      // Historia przypisań (także zarchiwizowanych restartem, D-069): ukończone oraz wszystkie z modułów 1 i 2 (easter egg i ukryte
+      // zakończenie webinaru można znaleźć bez ukończenia kursu).
       const assignments = await tx.courseAssignment.findMany({
         where: {
           organizationId,
           userId,
-          OR: [{ status: AssignmentStatus.COMPLETED }, { course: { slug: MODULE_1_SLUG } }],
+          OR: [{ status: AssignmentStatus.COMPLETED }, { course: { slug: { in: [MODULE_1_SLUG, MODULE_2_SLUG] } } }],
         },
         select: {
           id: true,
@@ -295,28 +317,43 @@ export class GamificationService {
         for (const entry of Object.values(progress.blocks) as unknown[]) {
           // Postęp zapisuje serwer, ale czytamy go obronnie: uszkodzony wpis nie może zablokować profilu (500 przy każdym wejściu).
           if (typeof entry !== 'object' || entry === null) continue;
-          const { easterEggs, answeredAt } = entry as { easterEggs?: unknown; answeredAt?: unknown };
-          if (!Array.isArray(easterEggs)) continue;
+          const { easterEggs, secretEndings, answeredAt } = entry as { easterEggs?: unknown; secretEndings?: unknown; answeredAt?: unknown };
           const at = validDate(answeredAt) ?? assignment.updatedAt;
-          for (const code of easterEggAchievements(slug, easterEggs.filter((id): id is string => typeof id === 'string'))) earn(code, at);
+          const strings = (list: unknown) => (Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []);
+          for (const code of easterEggAchievements(slug, strings(easterEggs))) earn(code, at);
+          // Off the Record (D-124): ukryte zakończenie webinaru z postępu bloku OSINT - także w nieukończonym podejściu.
+          for (const code of secretEndingAchievements(slug, strings(secretEndings))) earn(code, at);
         }
         // Bieżące (właśnie ukończone) przypisanie: jego ukończenie idzie „na żywo” (z XP), ale easter egg zapisany w nim PRZED
         // wdrożeniem osiągnięć (wyżej) przyznajemy tu - ścieżka „na żywo” sprawdza przy ukończeniu tylko warunki ukończenia.
         const isCurrent = excludeAssignmentId !== undefined && assignment.id === excludeAssignmentId;
         if (assignment.status !== AssignmentStatus.COMPLETED || isCurrent) continue;
         const completedAt = assignment.completedAt ?? assignment.updatedAt;
-        // Sprawa bez skazy wymaga treści (dowody liczy serwer z treści wersji przypiętej do tego podejścia); pozostałe nie.
-        // Przypisanie bez przypiętej wersji (sprzed silnika treści) nie jest modułem 1 - pomijamy.
+        // Sprawa bez skazy (moduł 1) i osiągnięcia modułu 2 wymagają treści (dowody i bloki liczy serwer z treści wersji przypiętej do
+        // tego podejścia); pierwsza sprawa nie. Przypisanie bez przypiętej wersji (sprzed silnika treści) nie jest modułem 1 ani 2 - pomijamy.
         let evidence = { collected: 0, total: 0 };
-        if (missing.includes(ACHIEVEMENT_CODES.FLAWLESS_CASE) && slug === MODULE_1_SLUG && assignment.score === 100 && assignment.courseVersionId) {
+        let module2: Module2Facts | undefined;
+        const needsFlawless = missing.includes(ACHIEVEMENT_CODES.FLAWLESS_CASE) && slug === MODULE_1_SLUG && assignment.score === 100;
+        // Full Transcript wymaga 100% - bez tego treści nie czytamy, jeśli brakuje tylko jego.
+        const module2Codes = [
+          ACHIEVEMENT_CODES.DEAD_AIR,
+          ACHIEVEMENT_CODES.PERFECT_PITCH,
+          ...(assignment.score === 100 ? [ACHIEVEMENT_CODES.FULL_TRANSCRIPT] : []),
+        ];
+        const needsModule2 = slug === MODULE_2_SLUG && module2Codes.some((code) => missing.includes(code));
+        if ((needsFlawless || needsModule2) && assignment.courseVersionId) {
           const version = await tx.courseVersion.findUnique({ where: { id: assignment.courseVersionId } });
           try {
-            if (version) evidence = evidenceSummary(progress, toResolved(version).blocks);
+            if (version) {
+              const blocks = toResolved(version).blocks;
+              if (needsFlawless) evidence = evidenceSummary(progress, blocks);
+              if (needsModule2) module2 = module2Facts(progress, blocks);
+            }
           } catch {
-            // Uszkodzona treść wersji: bez sprawy bez skazy z tego podejścia, ale reszta przyznania działa.
+            // Uszkodzona treść wersji: bez osiągnięć zależnych od treści z tego podejścia, ale reszta przyznania działa.
           }
         }
-        for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, evidence })) {
+        for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, evidence, module2 })) {
           earn(code, completedAt);
         }
       }

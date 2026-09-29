@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
+import { module2Facts } from '../gamification/achievements';
+import { MODULE_2_SLUG } from '../gamification/gamification.constants';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto';
 import { CourseCatalogItemDto } from './dto/course-catalog-item.dto';
@@ -30,6 +32,18 @@ import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progr
 import { AttemptResponse, ChallengeResponse, evaluateAttempt, evaluateChallenge, evaluateSubmit, pickReaction } from './scoring/evaluate';
 
 type AssignmentWithCourse = CourseAssignment & { course: Course };
+
+/**
+ * Fakty modułu 2 do osiągnięć (D-124) przy ukończeniu kursu - obronnie: nietypowa treść wersji nie może zablokować ukończenia (500 przy
+ * ostatnim bloku); wtedy bez osiągnięć zależnych od treści, jak w przyznaniu wstecznym (GamificationService.syncAchievements).
+ */
+function safeModule2Facts(progress: ProgressV2, blocks: Parameters<typeof module2Facts>[1]) {
+  try {
+    return module2Facts(progress, blocks);
+  } catch {
+    return undefined;
+  }
+}
 
 @Injectable()
 export class CoursesService {
@@ -290,7 +304,13 @@ export class CoursesService {
       const block = blocks[dto.blockIndex];
       const progress = readProgress(assignment.progress);
       const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
-      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), context.opaqueId);
+      // Rozmowa na żywo (D-124): konto z „Bez limitów czasu” nie ma krawędzi ciszy - serwer bierze ustawienie z konta, nie z `timed`
+      // od klienta. Odczyt tylko przy tym typie bloku (ten sam wiersz użytkownika co przypisanie, organizacja z JWT, RLS).
+      const noTimeLimits =
+        block.type === 'LIVE_CALL'
+          ? ((await tx.user.findFirst({ where: { id: userId, organizationId }, select: { noTimeLimits: true } }))?.noTimeLimits ?? false)
+          : false;
+      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), context.opaqueId, { noTimeLimits });
       const reaction = pickReaction(block, result.entry);
 
       progress.blocks[block.id] = result.entry;
@@ -341,11 +361,15 @@ export class CoursesService {
         courseSlug,
         result.entry.easterEggs,
       );
+      // Off the Record (D-120/D-124): ukryte zakończenie webinaru - jak easter egg, przy zapisie bloku, bez XP.
+      await this.gamificationService.awardSecretEndingAchievements(tx, organizationId, userId, courseSlug, result.entry.secretEndings);
       const gamification = isComplete
         ? await this.gamificationService.awardCourseCompletion(tx, organizationId, userId, {
             score,
             courseSlug,
             evidence,
+            // Moduł 2 (D-124): Dead Air, Perfect Pitch i komplet dowodów (z ukrytymi) z bloków tego podejścia.
+            module2: courseSlug === MODULE_2_SLUG ? safeModule2Facts(progress, blocks) : undefined,
             assignmentId: assignment.id,
           })
         : null;

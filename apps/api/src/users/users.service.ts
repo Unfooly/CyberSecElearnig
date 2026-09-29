@@ -33,6 +33,13 @@ import { assertSeatsAvailable, lockSeats } from './seats';
 
 const AVATAR_VALIDATION_MESSAGE = 'avatarUrl musi być jednym z dostępnych presetów.';
 
+// Preferencje własnego konta (GET/PATCH /users/me/preferences): lektor w odtwarzaczu i „Bez limitów czasu” (D-124).
+export interface UserPreferences {
+  narrationEnabled: boolean;
+  noTimeLimits: boolean;
+}
+const PREFERENCES_SELECT = { narrationEnabled: true, noTimeLimits: true } as const;
+
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 // Ochrona przed używaniem platformy jako kanału spamu: każde zaproszenie
@@ -394,15 +401,15 @@ export class UsersService {
     });
   }
 
-  /** Własne preferencje (odtwarzacz szkoleń) - organizationId/userId wyłącznie z tokena JWT. */
-  async getPreferences(organizationId: string, userId: string): Promise<{ narrationEnabled: boolean }> {
+  /** Własne preferencje (odtwarzacz szkoleń, dostępność) - organizationId/userId wyłącznie z tokena JWT. */
+  async getPreferences(organizationId: string, userId: string): Promise<UserPreferences> {
     const user = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-      tx.user.findFirst({ where: { id: userId, organizationId }, select: { narrationEnabled: true } }),
+      tx.user.findFirst({ where: { id: userId, organizationId }, select: PREFERENCES_SELECT }),
     );
     if (!user) {
       throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
     }
-    return { narrationEnabled: user.narrationEnabled };
+    return user;
   }
 
   /**
@@ -410,21 +417,25 @@ export class UsersService {
    * własne preferencje, endpoint nie przyjmuje identyfikatora użytkownika. updateMany z jawnym organizationId (Zasada nr 1),
    * RLS jest drugą linią obrony.
    */
-  async updatePreferences(
-    organizationId: string,
-    userId: string,
-    preferences: { narrationEnabled: boolean },
-  ): Promise<{ narrationEnabled: boolean }> {
-    const result = await this.tenantPrisma.runInOrgContext(organizationId, (tx) =>
-      tx.user.updateMany({
-        where: { id: userId, organizationId },
-        data: { narrationEnabled: preferences.narrationEnabled },
-      }),
-    );
-    if (result.count === 0) {
-      throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+  async updatePreferences(organizationId: string, userId: string, preferences: Partial<UserPreferences>): Promise<UserPreferences> {
+    // Zapis tylko podanych pól (odtwarzacz zmienia lektora, ustawienia konta - dostępność); pusty zapis to błąd klienta.
+    const data: Partial<UserPreferences> = {};
+    if (typeof preferences.narrationEnabled === 'boolean') data.narrationEnabled = preferences.narrationEnabled;
+    if (typeof preferences.noTimeLimits === 'boolean') data.noTimeLimits = preferences.noTimeLimits;
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('Brak ustawień do zapisania.');
     }
-    return { narrationEnabled: preferences.narrationEnabled };
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      const result = await tx.user.updateMany({ where: { id: userId, organizationId }, data });
+      if (result.count === 0) {
+        throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+      }
+      const user = await tx.user.findFirst({ where: { id: userId, organizationId }, select: PREFERENCES_SELECT });
+      if (!user) {
+        throw new NotFoundException('Użytkownik nie istnieje w tej organizacji.');
+      }
+      return user;
+    });
   }
 
   /**

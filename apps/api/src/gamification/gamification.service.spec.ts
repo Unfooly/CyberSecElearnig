@@ -1,11 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GamificationService } from './gamification.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import { completionAchievements, easterEggAchievements } from './achievements';
-import { ACHIEVEMENT_CODES, ACHIEVEMENTS_SYNC_VERSION, MODULE_1_SLUG } from './gamification.constants';
+import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
+import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, secretEndingAchievements } from './achievements';
+import { ACHIEVEMENT_CODES, ACHIEVEMENTS_SYNC_VERSION, MODULE_1_SLUG, MODULE_2_SLUG } from './gamification.constants';
+import type { Block } from '../courses/scoring/evaluate';
 
 /** Kontekst ukończenia: domyślnie kurs spoza modułu 1, bez dowodów. */
-const opts = (overrides: { score: number | null; courseSlug?: string | null; evidence?: { collected: number; total: number } }) => ({
+const opts = (overrides: {
+  score: number | null;
+  courseSlug?: string | null;
+  evidence?: { collected: number; total: number };
+  module2?: Module2Facts;
+}) => ({
   courseSlug: null,
   evidence: { collected: 0, total: 0 },
   assignmentId: 'assignment-now',
@@ -22,7 +29,7 @@ function buildTx(options: {
   // Wersja przyznania wstecznego użytkownika; domyślnie już przeszedł (backfill pomijany).
   syncVersion?: number;
 }) {
-  const { completedCount, existingBadgeCodes = [], retired = [], userXpBefore = 0, userLevelBefore = 1, syncVersion = 1 } = options;
+  const { completedCount, existingBadgeCodes = [], retired = [], userXpBefore = 0, userLevelBefore = 1, syncVersion = ACHIEVEMENTS_SYNC_VERSION } = options;
 
   let currentXp = userXpBefore;
   let currentLevel = userLevelBefore;
@@ -31,6 +38,10 @@ function buildTx(options: {
     { id: 'badge-first-case', code: ACHIEVEMENT_CODES.FIRST_CASE_CLOSED, xpReward: 50 },
     { id: 'badge-flawless', code: ACHIEVEMENT_CODES.FLAWLESS_CASE, xpReward: 50 },
     { id: 'badge-curious', code: ACHIEVEMENT_CODES.CURIOUS_DETECTIVE, xpReward: 0 },
+    { id: 'badge-dead-air', code: ACHIEVEMENT_CODES.DEAD_AIR, xpReward: 25 },
+    { id: 'badge-perfect-pitch', code: ACHIEVEMENT_CODES.PERFECT_PITCH, xpReward: 25 },
+    { id: 'badge-full-transcript', code: ACHIEVEMENT_CODES.FULL_TRANSCRIPT, xpReward: 50 },
+    { id: 'badge-off-the-record', code: ACHIEVEMENT_CODES.OFF_THE_RECORD, xpReward: 0 },
   ].map((badge) => ({ ...badge, retiredAt: retired.includes(badge.code) ? new Date() : null }));
 
   const alreadyUnlocked = new Set(existingBadgeCodes);
@@ -243,6 +254,167 @@ describe('GamificationService', () => {
       expect(result.newLevel - result.previousLevel).toBeGreaterThan(1);
       expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { level: 3 } });
       expect(result.levelProgressAfterPercent).toBe(100);
+    });
+  });
+
+  describe('moduł 2 (D-124)', () => {
+    const facts = (overrides: Partial<Module2Facts> = {}): Module2Facts => ({
+      deadAir: false,
+      perfectPitch: false,
+      fullEvidence: { collected: 0, total: 5 },
+      ...overrides,
+    });
+
+    it('ukończenie: Dead Air, Perfect Pitch i Full Transcript z XP osiągnięć; bez faktów albo inny kurs - nic', async () => {
+      const tx = buildTx({ completedCount: 2, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] });
+      const result = await service.awardCourseCompletion(
+        tx as never,
+        'org-1',
+        'user-1',
+        opts({ score: 100, courseSlug: MODULE_2_SLUG, module2: facts({ deadAir: true, perfectPitch: true, fullEvidence: { collected: 5, total: 5 } }) }),
+      );
+      expect(result.unlockedBadges.map((b) => b.code)).toEqual([
+        ACHIEVEMENT_CODES.DEAD_AIR,
+        ACHIEVEMENT_CODES.PERFECT_PITCH,
+        ACHIEVEMENT_CODES.FULL_TRANSCRIPT,
+      ]);
+      // 100 za ukończenie + 50 za 100% + 25 + 25 + 50.
+      expect(result.xpGained).toBe(250);
+
+      const other = await service.awardCourseCompletion(
+        buildTx({ completedCount: 2, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] }) as never,
+        'org-1',
+        'user-1',
+        opts({ score: 100, courseSlug: 'inny-kurs', module2: facts({ deadAir: true, perfectPitch: true, fullEvidence: { collected: 5, total: 5 } }) }),
+      );
+      expect(other.unlockedBadges).toEqual([]);
+    });
+
+    it('Full Transcript wymaga 100% i kompletu dowodów z ukrytymi', () => {
+      const codes = (score: number, collected: number) =>
+        completionAchievements({ completedCount: 1, score, courseSlug: MODULE_2_SLUG, evidence: { collected: 0, total: 0 }, module2: facts({ fullEvidence: { collected, total: 5 } }) });
+      expect(codes(100, 5)).toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(99, 5)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(100, 4)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+    });
+
+    it('Off the Record: przy zapisie bloku, raz, bez XP; tylko moduł 2 i id ukrytego zakończenia webinaru', async () => {
+      const tx = buildTx({ completedCount: 0 });
+      expect((await service.awardSecretEndingAchievements(tx as never, 'org-1', 'user-1', MODULE_2_SLUG, ['off-the-record'])).map((b) => b.code)).toEqual([
+        ACHIEVEMENT_CODES.OFF_THE_RECORD,
+      ]);
+      expect(await service.awardSecretEndingAchievements(tx as never, 'org-1', 'user-1', MODULE_2_SLUG, ['off-the-record'])).toEqual([]);
+      expect(await service.awardSecretEndingAchievements(tx as never, 'org-1', 'user-1', MODULE_1_SLUG, ['off-the-record'])).toEqual([]);
+      expect(await service.awardSecretEndingAchievements(tx as never, 'org-1', 'user-1', MODULE_2_SLUG, undefined)).toEqual([]);
+      expect(tx.user.update).not.toHaveBeenCalled();
+      expect(secretEndingAchievements(MODULE_2_SLUG, ['inne'])).toEqual([]);
+    });
+
+    describe('module2Facts (postęp + treść)', () => {
+      const blocks = Object.values(fullBlocks()) as unknown as Block[];
+      const call = (path: string[], done = true) => ({ type: 'LIVE_CALL', done, weight: 1, answeredAt: '2026-09-29T10:00:00Z', path, timed: true });
+      const progress = (entries: Record<string, unknown>, notes: string[] = []) => ({ v: 2 as const, blocks: entries as never, notes });
+
+      it('Dead Air: dobre zakończenie, bez oddania informacji, najwyżej 3 kroki; tryb czasu bez znaczenia; nieukończony - nie', () => {
+        expect(module2Facts(progress({ 'na-zywo': call(['oddzwonie']) }), blocks).deadAir).toBe(true);
+        expect(module2Facts(progress({ 'na-zywo': call(['silence', 'rozlaczam']) }), blocks).deadAir).toBe(true);
+        expect(module2Facts(progress({ 'na-zywo': { ...call(['jaka-liczba', 'rozlaczam']), timed: false } }), blocks).deadAir).toBe(true);
+        expect(module2Facts(progress({ 'na-zywo': call(['sprawdze', 'nie-instaluje']) }), blocks).deadAir).toBe(false);
+        expect(module2Facts(progress({ 'na-zywo': call(['jaka-liczba', 'wpisuje']) }), blocks).deadAir).toBe(false);
+        expect(module2Facts(progress({ 'na-zywo': call(['oddzwonie'], false) }), blocks).deadAir).toBe(false);
+        expect(module2Facts(progress({ 'na-zywo': { ...call([]), path: 'x' } }), blocks).deadAir).toBe(false);
+      });
+
+      it('Dead Air: dobre zakończenie po więcej niż 3 krokach - nie', () => {
+        const long = {
+          id: 'dlugi',
+          type: 'LIVE_CALL',
+          start: 'a',
+          nodes: ['a', 'b', 'c'].map((id, i, all) => ({
+            id,
+            choices: [{ id: `dalej-${id}`, next: i < all.length - 1 ? all[i + 1] : '#dobre' }, { id: `zle-${id}`, next: '#zle' }],
+          })),
+          endings: [
+            { id: 'dobre', outcome: 'good' },
+            { id: 'zle', outcome: 'bad' },
+          ],
+        } as unknown as Block;
+        const withSilence = { ...long, nodes: (long.nodes as { id: string }[]).map((n, i) => (i === 0 ? { ...n, silence: 'b' } : n)) } as Block;
+        expect(module2Facts(progress({ dlugi: call(['dalej-a', 'dalej-b', 'dalej-c']) }), [long]).deadAir).toBe(true);
+        expect(module2Facts(progress({ dlugi: call(['silence', 'dalej-b', 'dalej-c']) }), [withSilence]).deadAir).toBe(true);
+        const four = {
+          ...long,
+          nodes: [...(long.nodes as object[]), { id: 'd', choices: [{ id: 'dalej-d', next: '#dobre' }, { id: 'zle-d', next: '#zle' }] }].map((n, i) =>
+            i === 2 ? { ...(n as object), choices: [{ id: 'dalej-c', next: 'd' }, { id: 'zle-c', next: '#zle' }] } : n,
+          ),
+        } as unknown as Block;
+        expect(module2Facts(progress({ dlugi: call(['dalej-a', 'dalej-b', 'dalej-c', 'dalej-d']) }), [four]).deadAir).toBe(false);
+      });
+
+      it('Perfect Pitch: wszystkie flagi z treści i zero fałszywych tapnięć', () => {
+        const rec = (flagsHit: string[], falseTaps: number) => ({ type: 'CALL_RECORDING', done: true, weight: 1, answeredAt: '2026-09-29T10:00:00Z', flagsHit, falseTaps });
+        expect(module2Facts(progress({ nagranie: rec(['s1', 's3'], 0) }), blocks).perfectPitch).toBe(true);
+        expect(module2Facts(progress({ nagranie: rec(['s1', 's3'], 1) }), blocks).perfectPitch).toBe(false);
+        expect(module2Facts(progress({ nagranie: rec(['s1'], 0) }), blocks).perfectPitch).toBe(false);
+      });
+
+      it('komplet dowodów liczy także ukryte (sprzeczności przesłuchania, obszary OSINT) - licznik gracza ich nie widzi przed zebraniem', () => {
+        const all = ['scena.h1', 'scena.h4-outlook', 'rozmowa.q1', 'mail.c1', 'akta.w2', 'nagranie.liczba', 'przesluchanie.glos-1', 'przesluchanie.kod-1', 'przesluchanie.l2', 'osint.zespol', 'osint.webinar'];
+        expect(module2Facts(progress({}, all), blocks).fullEvidence).toEqual({ collected: 11, total: 11 });
+        expect(module2Facts(progress({}, all.filter((key) => key !== 'osint.webinar')), blocks).fullEvidence).toEqual({ collected: 10, total: 11 });
+      });
+    });
+
+    it('przyznanie wsteczne: Off the Record z nieukończonego podejścia, Dead Air i Perfect Pitch z ukończonego (treść wersji), bez XP', async () => {
+      const at = '2026-09-25T10:00:00Z';
+      const completed = new Date('2026-09-26T10:00:00Z');
+      const base = buildTx({ completedCount: 0, syncVersion: 1, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] });
+      const tx = {
+        ...base,
+        userBadge: { ...base.userBadge, findMany: jest.fn().mockResolvedValue([{ badge: { code: ACHIEVEMENT_CODES.FIRST_CASE_CLOSED } }]) },
+        courseAssignment: {
+          ...base.courseAssignment,
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'a-w-toku',
+              status: 'IN_PROGRESS',
+              score: null,
+              progress: { v: 2, blocks: { osint: { type: 'OSINT_SPOT', done: true, answeredAt: at, weight: 1, marked: [], secretEndings: ['off-the-record'] } }, notes: [] },
+              completedAt: null,
+              updatedAt: new Date(at),
+              courseVersionId: 'v2',
+              course: { slug: MODULE_2_SLUG },
+            },
+            {
+              id: 'a-ukonczone',
+              status: 'COMPLETED',
+              score: 80,
+              progress: {
+                v: 2,
+                blocks: {
+                  'na-zywo': { type: 'LIVE_CALL', done: true, answeredAt: at, weight: 1, path: ['oddzwonie'], timed: true },
+                  nagranie: { type: 'CALL_RECORDING', done: true, answeredAt: at, weight: 1, flagsHit: ['s1', 's3'], falseTaps: 0 },
+                },
+                notes: [],
+              },
+              completedAt: completed,
+              updatedAt: completed,
+              courseVersionId: 'v2',
+              course: { slug: MODULE_2_SLUG },
+            },
+          ]),
+        },
+        courseVersion: { findUnique: jest.fn().mockResolvedValue({ id: 'v2', version: 1, schemaVersion: 6, contentBlocks: Object.values(fullBlocks()) }) },
+      };
+      await service.syncAchievements(tx as never, 'org-1', 'user-1');
+      const created = tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0] as { badgeId: string; unlockedAt?: Date });
+      expect(created.map((row) => row.badgeId).sort()).toEqual(['badge-dead-air', 'badge-off-the-record', 'badge-perfect-pitch']);
+      expect(created.find((row) => row.badgeId === 'badge-off-the-record')!.unlockedAt).toEqual(new Date(at));
+      expect(created.find((row) => row.badgeId === 'badge-dead-air')!.unlockedAt).toEqual(completed);
+      expect(tx.user.update.mock.calls.map((call) => call[0].data)).toEqual([{ achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION }]);
+      expect(tx.courseAssignment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ OR: expect.arrayContaining([{ course: { slug: { in: [MODULE_1_SLUG, MODULE_2_SLUG] } } }]) }) }),
+      );
     });
   });
 

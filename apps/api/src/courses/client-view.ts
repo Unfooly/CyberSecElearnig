@@ -125,16 +125,16 @@ export interface EvidenceSummary {
  * (poprawka D-055 pkt 2, PR 4: wcześniejsze ukrywanie tej liczby do zatwierdzenia odpowiedzi było zbyt małym wyciekiem, żeby psuć UX
  * licznikiem "?" przez cztery bloki).
  */
-export function evidenceSummary(progress: ProgressV2, blocks: Block[]): EvidenceSummary {
+export function evidenceSummary(progress: ProgressV2, blocks: readonly Block[], { includeHidden = false }: { includeHidden?: boolean } = {}): EvidenceSummary {
   const noted = new Set(progress.notes);
   const perBlock: EvidenceSummary['perBlock'] = [];
   let collected = 0;
   let total = 0;
   for (const block of blocks) {
     // Dowód ukryty do zebrania (sprzeczność przesłuchania, D-118) liczy się dopiero po trafieniu do notatnika - licznik od startu nie
-    // zdradza, ile kwestii kłamie.
+    // zdradza, ile kwestii kłamie. `includeHidden` (tylko serwer - osiągnięcia, D-124): komplet dowodów z treści, łącznie z ukrytymi.
     const evidence = noteItemsOf(block).filter(
-      (item) => item.evidence === true && item.note?.text && (!item.hidden || noted.has(`${block.id}.${item.id}`)),
+      (item) => item.evidence === true && item.note?.text && (includeHidden || !item.hidden || noted.has(`${block.id}.${item.id}`)),
     );
     if (evidence.length === 0) continue;
     const got = evidence.filter((item) => noted.has(`${block.id}.${item.id}`)).length;

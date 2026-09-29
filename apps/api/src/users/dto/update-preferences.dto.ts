@@ -1,8 +1,17 @@
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, ValidateIf } from 'class-validator';
 
-// Preferencje WŁASNEGO konta. Dziś jedno pole; kolejne dojdą jako opcjonalne. ValidationPipe (whitelist + forbidNonWhitelisted) odrzuca
-// każde pole spoza DTO, więc nie da się tędy zmienić np. roli, organizacji ani avatara.
+// Preferencje WŁASNEGO konta. Każde pole opcjonalne (zapis tylko podanych); pusty zapis odrzuca serwis. ValidationPipe (whitelist +
+// forbidNonWhitelisted) odrzuca każde pole spoza DTO, więc nie da się tędy zmienić np. roli, organizacji ani avatara.
+// ValidateIf zamiast IsOptional: pominięte pole jest w porządku, ale `null` to błąd walidacji (IsOptional przepuszczałby je po cichu).
+const present = (_: object, value: unknown) => value !== undefined;
+
 export class UpdatePreferencesDto {
+  @ValidateIf(present)
   @IsBoolean()
-  narrationEnabled!: boolean;
+  narrationEnabled?: boolean;
+
+  // „Bez limitów czasu” (WCAG 2.2.1, D-124): rozmowa na żywo bez odliczania i bez krawędzi ciszy.
+  @ValidateIf(present)
+  @IsBoolean()
+  noTimeLimits?: boolean;
 }

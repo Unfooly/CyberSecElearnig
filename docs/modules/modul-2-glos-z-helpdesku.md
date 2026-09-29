@@ -795,6 +795,10 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   rozstrzygnięcie po ukończeniu, `path` i `timed` w wpisie bloku (pod Dead Air). Odstępstwo od szkicu z rozdz. 4.4: kwestia węzła to
   `narration` (z `voice` i `spokenText`) zamiast `voice` + `speech`. Część 2 (odtwarzacz, ekran przed połączeniem z przełącznikiem „Wyłącz
   limit czasu”, moduł podglądu, layout-check) i część 3 (migracja: „Bez limitów czasu” na koncie, ranga RARE, 4 osiągnięcia) - osobne PR.
+- **Faza 1e, część 2 zrobiona (D-123):** `LiveCallBlock` - ekran przed połączeniem z przełącznikiem „Wyłącz limit czasu”, rozmowa
+  (napis + nagranie kwestii, odpowiedzi 1-4), limit od końca kwestii tylko w węźle z ciszą, wynik z oceną serwera i odpowiedziami, które
+  oddały informację; moduł podglądu (blok `na-zywo`), layout-check `modul2` (n9). Odstępstwo: na telefonie w poziomie rozmowa i odpowiedzi
+  obok siebie (szkic: odpowiedzi pod wyświetlaczem). Domyślny stan przełącznika z ustawienia konta - część 3.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);

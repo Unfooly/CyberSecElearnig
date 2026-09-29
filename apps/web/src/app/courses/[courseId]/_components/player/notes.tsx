@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Award, Mail, MapPin, Package, Square, StickyNote, User, type LucideIcon } from 'lucide-react';
+import { Award, Globe, Mail, MapPin, Package, Phone, ScrollText, Square, StickyNote, User, type LucideIcon } from 'lucide-react';
 import type { ClientDistinction, ClientNote, ClientProgressBlock, ContentBlock, NoteKind } from '@/lib/courses-types';
 
 // Notatnik modułu: wspólny stan widoczny w wielu blokach (panel w powłoce). Wpisy dodają bloki (hotspoty, dialog, checklista maila);
@@ -76,6 +76,10 @@ const KIND_ICONS: Record<NoteKind, { Icon: LucideIcon; label: string }> = {
   person: { Icon: User, label: 'Osoba' },
   item: { Icon: Package, label: 'Przedmiot' },
   place: { Icon: MapPin, label: 'Miejsce' },
+  // schemaVersion 6 (moduł 2): rozmowa/nagranie, logi/konsola, strona/webinar.
+  call: { Icon: Phone, label: 'Rozmowa' },
+  log: { Icon: ScrollText, label: 'Logi' },
+  web: { Icon: Globe, label: 'Strona' },
 };
 
 /** Ikona rodzaju wpisu (nieznany albo brak rodzaju = zwykła notatka). Ikona jest dekoracyjna, rodzaj czyta się z ukrytej etykiety. */

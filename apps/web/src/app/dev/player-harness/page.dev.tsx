@@ -97,6 +97,13 @@ export default function PlayerHarnessPage({
   // ukończonego kursu). Czas sprawy (startedAt -> completedAt) stały: 14 min.
   const completed = searchParams.completed === '1';
   const now = Date.now();
+  // Omówienie na transkrypcji (ANNOTATED_REPLAY, D-115) czyta segmenty z bloku nagrania - podgląd dokłada ten blok PRZED omówieniem
+  // (niewyświetlany; bieżący jest blok omówienia), jak w prawdziwym module.
+  const sourceId = rawBlock.type === 'ANNOTATED_REPLAY' && rawBlock.source.kind === 'transcript' ? rawBlock.source.fromBlock : undefined;
+  const sourceBlock = sourceId ? parsedModule.blocks.find((block) => block.id === sourceId) : undefined;
+  const leading = sourceBlock
+    ? [toClientBlock(sourceBlock, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (_blockId, itemId) => itemId }) as unknown as ContentBlock]
+    : [];
   const initial: CoursePlayerInitialState = {
     assignmentId: 'dev-harness',
     courseId: 'dev-harness',
@@ -104,10 +111,10 @@ export default function PlayerHarnessPage({
     status: completed ? 'COMPLETED' : 'IN_PROGRESS',
     startedAt: new Date(now - 14 * 60_000).toISOString(),
     completedAt: completed ? new Date(now).toISOString() : null,
-    currentBlockIndex: 0,
+    currentBlockIndex: leading.length,
     // Zadania sprawy (`?block=odprawa`, D-081) są w samym bloku BRIEFING; completeWhen wskazuje bloki spoza podglądu (jeden
     // blok), więc nic się tu nie odhacza.
-    contentBlocks: [contentBlock],
+    contentBlocks: [...leading, contentBlock],
     progress: null,
     score: null,
   };

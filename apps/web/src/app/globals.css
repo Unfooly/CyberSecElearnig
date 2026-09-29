@@ -351,6 +351,14 @@
 .hotspot-nested-scene-box {
   width: min(100cqw, calc(100cqh * var(--scene-ratio)));
 }
+/* Zbliżenie z warstwą tekstu (SceneHotspotsBlock.tsx, ZoomImageWithText, D-114): ramka = kontener zapytań, pudełko "contain" o proporcjach
+   obrazu - obraz i prostokąty tekstu w % mają ten sam układ odniesienia. */
+.zoom-layer-frame {
+  container-type: size;
+}
+.zoom-layer-box {
+  width: min(100cqw, calc(100cqh * var(--scene-ratio)));
+}
 
 /* Telefon w pionie (feat/player-portrait) - OSOBNY @media, TEKSTOWO PO regule domyślnej wyżej (kolejność w pliku decyduje przy równej
    specyficzności): panorama "fit-height" zamiast "contain" - scena CELOWO może wyjść szerzej niż ekran, .scene-pan-container daje

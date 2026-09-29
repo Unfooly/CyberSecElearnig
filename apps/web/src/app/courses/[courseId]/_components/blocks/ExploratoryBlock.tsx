@@ -11,10 +11,11 @@ import SummaryBlock from './SummaryBlock';
 import NarrativeBlock from './NarrativeBlock';
 import BriefingBlock from './BriefingBlock';
 import DossierBlock from './DossierBlock';
+import AnnotatedReplayBlock from './AnnotatedReplayBlock';
 
 // Bloki eksploracyjne (nieoceniane): po przejrzeniu wymaganych elementów blok się kończy bez punktów. Ten sam komponent służy do
 // podglądu ("Wstecz", review=true: bez zapisu i przycisku ukończenia), więc ukończony blok można przejść ponownie bez skutku na serwerze.
-export const EXPLORATORY_TYPES = ['SCENE_HOTSPOTS', 'DIALOGUE', 'NOTEPAD', 'TABS', 'SUMMARY', 'NARRATIVE', 'BRIEFING', 'DOSSIER'] as const;
+export const EXPLORATORY_TYPES = ['SCENE_HOTSPOTS', 'DIALOGUE', 'NOTEPAD', 'TABS', 'SUMMARY', 'NARRATIVE', 'BRIEFING', 'DOSSIER', 'ANNOTATED_REPLAY'] as const;
 
 export function isExploratory(type: string): boolean {
   return (EXPLORATORY_TYPES as readonly string[]).includes(type);
@@ -33,8 +34,11 @@ export default function ExploratoryBlock({
   identity,
   onBriefingStep,
   briefingSkip = 0,
+  moduleBlocks = [],
 }: {
   block: ContentBlock;
+  /** Bloki modułu (ANNOTATED_REPLAY czyta transkrypcję z bloku CALL_RECORDING). */
+  moduleBlocks?: ContentBlock[];
   contentBase: string;
   onSubmit: (answer?: unknown) => void;
   /** Zgłasza gotowość do "Dalej" w pasku powłoki - jedynego przejścia dalej (D-106), we wszystkich typach. */
@@ -89,6 +93,18 @@ export default function ExploratoryBlock({
           tasks={tasks}
           identity={identity ?? ANONYMOUS_IDENTITY}
           myAvatarUrl={myAvatarUrl ?? null}
+          onStepChange={onBriefingStep}
+        />
+      );
+    case 'ANNOTATED_REPLAY':
+      return (
+        <AnnotatedReplayBlock
+          block={block}
+          moduleBlocks={moduleBlocks}
+          contentBase={contentBase}
+          onSubmit={onSubmit}
+          onReady={onReady}
+          review={review}
           onStepChange={onBriefingStep}
         />
       );

@@ -67,6 +67,8 @@ interface RenderContext {
   onBriefingStep: (index: number, byGesture: boolean) => void;
   /** Numer sprawy z odprawy - tabliczka tablicy śledczej (ORDERING, D-088). */
   caseNo?: string;
+  /** Bloki modułu (omówienie ANNOTATED_REPLAY czyta transkrypcję z bloku CALL_RECORDING, D-115). */
+  blocks: ContentBlock[];
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -87,6 +89,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         identity={ctx.identity}
         onBriefingStep={ctx.onBriefingStep}
         briefingSkip={ctx.briefingSkip}
+        moduleBlocks={ctx.blocks}
       />
     );
   }
@@ -102,6 +105,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         onReady={ctx.onReady}
         onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
         caseNo={ctx.caseNo}
+        contentBase={contentBase}
       />
     );
   }
@@ -157,9 +161,21 @@ function StageWithContext({
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
 
 
-/** Czy blok ma jakiekolwiek nagranie - dla BRIEFING także w krokach (narracja odprawy jest per krok, D-081). */
+/** Czy blok ma jakiekolwiek nagranie - dla BRIEFING także w krokach (narracja odprawy jest per krok, D-081), dla omówienia - w znacznikach. */
 const blockNarrations = (block: ContentBlock | undefined): (Narration | undefined)[] =>
-  block ? [block.narration, ...(block.steps ?? []).map((step) => step.narration)] : [];
+  block
+    ? [block.narration, ...(block.steps ?? []).map((step) => step.narration), ...(block.markers ?? []).map((marker) => marker.narration)]
+    : [];
+
+/** Bloki z narracją per krok w pasku powłoki: odprawa (kroki, D-081) i omówienie (znaczniki, D-115). */
+const STEPPED_TYPES = new Set(['BRIEFING', 'ANNOTATED_REPLAY']);
+
+/** Narracja kroku: krok odprawy albo znacznik omówienia (pierwszy znacznik bez własnej - narracja bloku, wprowadzenie). */
+function stepNarration(block: ContentBlock | undefined, index: number): Narration | undefined {
+  if (!block) return undefined;
+  if (block.type === 'BRIEFING') return block.steps?.[index]?.narration;
+  return block.markers?.[index]?.narration ?? (index === 0 ? block.narration : undefined);
+}
 
 // Notatki dopisane przez serwer przy zapisie bloku (np. trafione kryteria maila) trafiają do notatnika od razu; dedup w addNote.
 function ApplyServerNotes({ notes }: { notes: ClientNote[] }) {
@@ -283,7 +299,8 @@ export default function CoursePlayer({
   // by go ominęły): każdy blok oceniany korzysta z handleAnswer, więc wzorzec jest w powłoce.
   const submittingRef = useRef(false);
 
-  const blocks = initial.contentBlocks;
+  // Bloki z /start; blok wstrzymany przez API (omówienie nagrania, D-115) podmieniany pełną treścią z /progress (revealedBlock).
+  const [blocks, setBlocks] = useState<ContentBlock[]>(initial.contentBlocks);
   const displayedIndex = viewIndex ?? state.currentBlockIndex;
   const isSummaryMode = state.status === 'COMPLETED' && !feedback;
   // Nagłówki grup w notatniku i podsumowaniu sprawy: tytuł bloku (albo opis obrazu sceny, albo numer).
@@ -388,6 +405,10 @@ export default function CoursePlayer({
           },
         };
       });
+      const revealed = progress.revealedBlock;
+      if (revealed && revealed.blockIndex >= 0 && revealed.blockIndex < blocks.length) {
+        setBlocks((current) => current.map((block, index) => (index === revealed.blockIndex ? revealed.block : block)));
+      }
       if (progress.notes && progress.notes.length > 0) setServerNotes(progress.notes);
       if (progress.evidence) setEvidence(progress.evidence);
       setReward(progress.gamification);
@@ -471,7 +492,9 @@ export default function CoursePlayer({
   // Ekran zamknięcia sprawy z raportem (D-089) wypełnia ramkę jak scena; bez `closing` - panel jak slajd.
   // ORDERING (tablica śledcza, D-088) też 'fill' - także jej wynik zaraz po zapisie (wynik jest na tej samej tablicy); w 'fill'
   // PlayerStage nie dokłada paska podpowiedzi, zdanie informacji zwrotnej jest pod tablicą.
-  const boardFeedback = showingFeedback && blocks[feedback.blockIndex]?.type === 'ORDERING' && !!feedback.detail;
+  // Odsłuch nagrania (D-115) pokazuje wynik na tej samej transkrypcji - też 'fill', jak tablica.
+  const boardFeedback =
+    showingFeedback && (blocks[feedback.blockIndex]?.type === 'ORDERING' || blocks[feedback.blockIndex]?.type === 'CALL_RECORDING') && !!feedback.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
       ? 'fill'
@@ -481,7 +504,12 @@ export default function CoursePlayer({
         ? 'fill'
         : currentBlock?.type === 'SCENE_HOTSPOTS'
           ? 'scene'
-          : currentBlock?.type === 'DIALOGUE' || currentBlock?.type === 'BRIEFING' || currentBlock?.type === 'DOSSIER' || currentBlock?.type === 'ORDERING'
+          : currentBlock?.type === 'DIALOGUE' ||
+              currentBlock?.type === 'BRIEFING' ||
+              currentBlock?.type === 'DOSSIER' ||
+              currentBlock?.type === 'ORDERING' ||
+              currentBlock?.type === 'CALL_RECORDING' ||
+              currentBlock?.type === 'ANNOTATED_REPLAY'
             ? 'fill'
             : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
@@ -522,6 +550,7 @@ export default function CoursePlayer({
           result={{ answer: answeredResult?.answer, detail: feedback.detail, correct: feedback.correct, points: feedback.points, reaction: feedback.reaction }}
           live
           caseNo={caseNo}
+          contentBase={contentBase}
         />
       ) : (
         <FeedbackPanel feedback={feedback} />
@@ -567,6 +596,7 @@ export default function CoursePlayer({
               identity,
               onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
               caseNo,
+              blocks,
             })}
           </div>
         )}
@@ -583,6 +613,7 @@ export default function CoursePlayer({
             identity={identity}
             onBriefingStep={trackBriefingStep(`r-${keyOf(displayedIndex)}`)}
             caseNo={caseNo}
+            moduleBlocks={blocks}
           />
         )}
       </>
@@ -597,11 +628,12 @@ export default function CoursePlayer({
   // BRIEFING (D-081): narracja BIEŻĄCEGO KROKU odprawy (steps[].narration), nie bloku - pasek, napisy i transkrypcja idą za
   // krokiem. Krok >= 1 odtwarza się sam wyłącznie wtedy, gdy gracz przeszedł na niego przyciskiem kroku (gest w tej samej
   // instancji bloku); powrót z podglądu "Wstecz"/"Dalej" gest zeruje (quietBriefingSteps). Krok 0 jak każdy blok (autoPlayFor).
+  // Omówienie (ANNOTATED_REPLAY, D-115) - ten sam mechanizm dla znaczników: narracja bieżącego znacznika, kolejne tylko po geście.
   const briefingStep =
-    !isSummaryMode && !showingFeedback && currentBlock?.type === 'BRIEFING'
+    !isSummaryMode && !showingFeedback && currentBlock && STEPPED_TYPES.has(currentBlock.type)
       ? (briefingSteps[`${reviewing ? 'r' : 'l'}-${keyOf(displayedIndex)}`] ?? { index: 0, gesture: false })
       : null;
-  const narration = briefingStep ? currentBlock?.steps?.[briefingStep.index]?.narration : narrationBlock?.narration;
+  const narration = briefingStep ? stepNarration(currentBlock, briefingStep.index) : narrationBlock?.narration;
   const narrationBarState = useNarrationBar({
     narration,
     contentBase,
@@ -620,7 +652,7 @@ export default function CoursePlayer({
   // „Dalej” w pasku jest i tak aktywny.
   const briefingLast = (currentBlock?.steps?.length ?? 1) - 1;
   const skipBriefing =
-    briefingStep !== null && !reviewing && briefingStep.index < briefingLast ? (
+    briefingStep !== null && currentBlock?.type === 'BRIEFING' && !reviewing && briefingStep.index < briefingLast ? (
       <button
         type="button"
         onClick={() => setBriefingSkip((count) => count + 1)}

@@ -4,17 +4,18 @@ import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ContentReaction, 
 import EmailAnalysisBlock from './EmailAnalysisBlock';
 import OrderingBlock from './OrderingBlock';
 import TextInputBlock from './TextInputBlock';
+import CallRecordingBlock from './CallRecordingBlock';
 
 // Bloki oceniane z rozstrzygnięciem po odpowiedzi (mail, kolejność, zadanie tekstowe) w trzech widokach: odpowiadanie, WYNIK zaraz po
 // zapisie (`live` - reakcja, animacja werdyktu) i PODGLĄD ukończonego bloku ("Wstecz"). Żaden widok nie ma przycisku dalej - „Dalej” jest
 // wyłącznie w dolnym pasku (D-106). Ocena zawsze z serwera; ten komponent tylko pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste,
 // jak w /start).
-export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
+export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING'] as const;
 
 export const isScored = (type: string) => (SCORED_TYPES as readonly string[]).includes(type);
 
 /** Bloki, których wynik pokazujemy w samym bloku (zamiast ogólnego "Poprawna / niepoprawna odpowiedź"). */
-export const hasInlineResult = (type: string) => type === 'EMAIL_ANALYSIS' || type === 'ORDERING';
+export const hasInlineResult = (type: string) => type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING';
 
 export interface ScoredResult {
   answer?: ChosenAnswer;
@@ -36,9 +37,12 @@ export default function ScoredBlock({
   onReady,
   onProgress,
   caseNo,
+  contentBase,
 }: {
   block: ContentBlock;
   courseId: string;
+  /** Baza zasobów (nagrania CALL_RECORDING). */
+  contentBase?: string;
   /** Numer sprawy z odprawy (tabliczka tablicy śledczej, ORDERING). */
   caseNo?: string;
   onSubmit?: (answer?: unknown) => void;
@@ -77,6 +81,19 @@ export default function ScoredBlock({
           result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
           live={live}
           caseNo={caseNo}
+        />
+      );
+    }
+    case 'CALL_RECORDING': {
+      // Odsłuch nagrania (D-115): wynik pokazuje rozstrzygnięcie flag z serwera (detail.flags), nie wybór gracza.
+      const answer = result?.answer && typeof result.answer === 'object' && 'taps' in result.answer ? result.answer : undefined;
+      return (
+        <CallRecordingBlock
+          block={block}
+          contentBase={contentBase ?? ''}
+          onSubmit={onSubmit}
+          disabled={disabled}
+          result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
         />
       );
     }

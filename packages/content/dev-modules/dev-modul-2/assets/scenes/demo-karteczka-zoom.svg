@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <title>Karteczka (demo, przezroczyste tło, dopisek w warstwie tekstu)</title>
+  <rect x="120" y="120" width="560" height="560" rx="8" fill="#fff3a8" transform="rotate(-3 400 400)"/>
+  <rect x="120" y="120" width="560" height="60" fill="#f2df72" transform="rotate(-3 400 400)"/>
+</svg>

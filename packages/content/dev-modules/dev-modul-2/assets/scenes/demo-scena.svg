@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Biuro helpdesku (demo, bez tekstu - napisy w warstwie tekstu)</title>
+  <rect x="0" y="0" width="1600" height="900" fill="#e8ecf4"/>
+  <rect x="0" y="640" width="1600" height="260" fill="#c9b79c"/>
+  <rect x="520" y="70" width="560" height="120" rx="10" fill="#1f2a44"/>
+  <rect x="120" y="260" width="300" height="80" rx="6" fill="#f5f0e1" stroke="#8b6a45" stroke-width="4"/>
+  <rect x="600" y="430" width="520" height="40" rx="6" fill="#7a5c3e"/>
+  <rect x="660" y="260" width="400" height="170" rx="12" fill="#2d3748"/>
+  <rect x="676" y="276" width="368" height="138" rx="6" fill="#dfe8f5"/>
+  <rect x="1220" y="380" width="120" height="70" rx="10" fill="#374151"/>
+  <rect x="1180" y="200" width="260" height="170" rx="4" fill="#fff8d6" stroke="#caa94a" stroke-width="4"/>
+</svg>

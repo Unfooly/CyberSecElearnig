@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { ArrowLeft, Check, DoorOpen, Pause, Play } from 'lucide-react';
-import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot } from '@/lib/courses-types';
+import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot, TextLayerItem } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
 import { flattenHotspots } from '@/lib/flatten-hotspots';
@@ -18,6 +18,7 @@ import ScenePanContainer from '../player/ScenePanContainer';
 import { vibrate } from '@/lib/vibrate';
 import ExploreFooter from './ExploreFooter';
 import PopupsEasterEgg, { type PopupsHandle } from './PopupsEasterEgg';
+import TextLayer from './TextLayer';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 type Phase = 'in' | 'open' | 'out';
@@ -461,6 +462,8 @@ export default function SceneHotspotsBlock({
                 }}
                 onError={() => setImageFailed(true)}
               />
+              {/* Tekst sceny w warstwie (schemaVersion 6, D-114) - nad obrazem, pod przedmiotami; pod otwartym zbliżeniem aria-hidden jak obraz. */}
+              <TextLayer items={block.textLayer} ariaHidden={overlayOpen} />
               {hotspots.map((hotspot) => {
                 const seen = visited.includes(hotspot.id);
                 const isDoor = hotspot.action === 'next';
@@ -752,7 +755,13 @@ function ZoomGraphic({
   portrait?: boolean;
 }) {
   if (media.kind === 'image') {
-    return <ZoomImage path={portrait && media.imagePortrait ? media.imagePortrait : media.src} alt={media.alt} contentBase={contentBase} wide={onScreen} />;
+    const usePortrait = portrait && !!media.imagePortrait;
+    const path = usePortrait ? media.imagePortrait : media.src;
+    // Zbliżenie z tekstem w warstwie (schemaVersion 6): pudełko o proporcjach obrazu, żeby prostokąty w % leżały na grafice.
+    if (media.textLayer && media.textLayer.length > 0) {
+      return <ZoomImageWithText path={path} alt={media.alt} contentBase={contentBase} wide={onScreen} items={media.textLayer} portrait={usePortrait} />;
+    }
+    return <ZoomImage path={path} alt={media.alt} contentBase={contentBase} wide={onScreen} />;
   }
   if (media.kind === 'audio') return <AudioZoom media={media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />;
   if (media.kind === 'document') {
@@ -774,6 +783,52 @@ function ZoomImage({ path, alt, contentBase, wide = false }: { path: string | un
   return (
     // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL
     <img src={url} alt={alt ?? ''} referrerPolicy="no-referrer" className={`zoom-shadow min-h-0 max-h-full ${wide ? 'max-w-[94%]' : 'max-w-[88%]'} object-contain`} />
+  );
+}
+
+// Zbliżenie z warstwą tekstu (D-114): ramka (kontener zapytań, max 88%/94% nakładki) i pudełko "contain" o proporcjach obrazu (jak scena
+// zagnieżdżona) - obraz i tekst w tym samym układzie odniesienia. Zbliżenia bez warstwy zostają zwykłym <img> (ZoomImage, bez zmian).
+function ZoomImageWithText({
+  path,
+  alt,
+  contentBase,
+  wide,
+  items,
+  portrait,
+}: {
+  path: string | undefined;
+  alt: string | undefined;
+  contentBase: string;
+  wide: boolean;
+  items: TextLayerItem[];
+  portrait: boolean;
+}) {
+  const url = withStaticFragment(contentAssetUrl(contentBase, path, 'image'), usePrefersReducedMotion());
+  const [aspectRatio, setAspectRatio] = useState(1);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight);
+  }, [url]);
+  if (!url) return null;
+  return (
+    <div data-testid="zoom-text-frame" className={`zoom-layer-frame flex h-full min-h-0 items-center justify-center ${wide ? 'w-[94%]' : 'w-[88%]'}`}>
+      <div className="zoom-layer-box zoom-shadow relative" style={{ '--scene-ratio': String(aspectRatio), aspectRatio: 'var(--scene-ratio)' } as CSSProperties}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
+        <img
+          ref={imgRef}
+          src={url}
+          alt={alt ?? ''}
+          referrerPolicy="no-referrer"
+          className="block h-full w-full object-contain"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget;
+            if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
+          }}
+        />
+        <TextLayer items={items} portrait={portrait} />
+      </div>
+    </div>
   );
 }
 
@@ -904,6 +959,7 @@ function NestedSceneImage({
             if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
           }}
         />
+        <TextLayer items={scene.textLayer} ariaHidden={overlayOpen} />
         {scene.hotspots.map((hotspot) => {
           const seen = visited.includes(hotspot.id);
           return (

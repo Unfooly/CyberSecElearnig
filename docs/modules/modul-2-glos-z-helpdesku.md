@@ -740,6 +740,24 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   - test „oszust = pawel”.
 - **Odtwarzacz** (`apps/web`) - pięć nowych komponentów bloków, każdy z wariantem pionowym, klawiaturą, reduced-motion i sekcją
   layout-check.
+- **Wytyczne UI dla faz 1b-1e (decyzja właściciela, 2026-09-29):**
+  - Makiety modułu 2 pokazują tylko **treść bloków**. Górny i dolny pasek, notatnik, licznik dowodów i narrację bierzesz z
+    istniejącego `PlayerStage` - nie twórz własnych.
+  - Nowe bloki używają tych samych klas co `DialogueBlock` i `SceneHotspotsBlock`: `rounded`, paleta slate/indigo, `min-h-[44px]`,
+    karta od dołu jak `hotspot-card`, dymki jak w `DialogueBlock`.
+  - Wyjątki z własnym tłem: ekran połączenia w `LIVE_CALL` (ciemny) i tablica korkowa w `ORDERING` - to grafika w bloku, nie chrome.
+- **Testy oceny `CALL_RECORDING` (faza 1b, decyzja właściciela):** reguła nakładających się okien (tapnięcie w części wspólnej liczy
+  się do wcześniejszej, jeszcze nietrafionej flagi) ma test na dwa nakładające się okna (segmenty 3 i 4) - m.in. dwa tapnięcia w części
+  wspólnej trafiają obie flagi, jedno trafia wcześniejszą, a tapnięcie po trafieniu obu nie jest fałszywe.
+- **Faza 1a zrobiona (D-114):** schemat v6 - `Localized<T>` z fallbackiem na `pl`, `textLayer`, notatki `call`/`log`/`web`, role
+  `karol`/`pawel`/`oszust`, `voices.json` per język z `sameAs`; moduł 1 bez zmian bajt w bajt (test). Poza v6 (faza EN): odpowiedzi
+  zadania tekstowego per język, ścieżki grafik `Localized`, nagrania EN w potoku. Głosy: karol `V5GZ9rfeV9jjKZE5NkT7` („Adam -
+  Emphatic and Romantic”; drugi kandydat `XKYftMgjSQsXrQSGCa6V` „Konrad W.”), pawel `H5xTcsAIeS5RAykjz57a` („Alex - Warm
+  Storyteller”; drugi `lyCsVF5VHRvdLys8MaJT` „Rav”) - wybór po etykietach biblioteki, właściciel może zawetować.
+- **Do fazy 1b (z review 1a):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
+  (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
+  odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);
+  `localizeContent` już odrzuca nieznany język.
 - **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja) + przełącznik
   „Wyłącz limit czasu” na ekranie przed połączeniem `LIVE_CALL`. Limit nie zależy od `prefers-reduced-motion`.
 - **Osiągnięcia:**

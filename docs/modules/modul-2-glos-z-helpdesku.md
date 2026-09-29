@@ -767,6 +767,13 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   sekcja `modul2` na module podglądu `dev-modul-2`), ikony notatek call/log/web, rysowanie `textLayer`. Odstępstwa od szkicu z rozdz. 4:
   segment ma `narration` z `voice` (zamiast `speech` + `voice`) i `speaker`; bez `flagCategories` i `maxFalseTaps`; dowód nagrania trafia
   do notatnika po trafieniu flagi jego segmentu.
+- **Faza 1c, część 1 zrobiona (D-118):** `INTERROGATION` - schemat (z konsolą `documents` w kształcie teczki), klasyfikacja, walidacja
+  (`refutedBy` = dowód z wcześniejszego bloku), ocena serwera i podważenie `POST .../blocks/:blockId/challenge` z nieprzejrzystym
+  odnośnikiem notatki (`ref`). Odstępstwa od szkicu z rozdz. 4.2: kwestia ma `text` + `narration` (zamiast `speech` + `voice`), jak
+  DIALOGUE; `challengeLine` to sam tekst (pole secret - bez nagrania w publicznym magazynie, B-135); podważenia nie idą w odpowiedzi bloku
+  (`{ asked, noted, opened? }`), tylko osobnym żądaniem (serwer odsłania kwestię po trafieniu); „Podważ” przy każdej kwestii (klient nie wie,
+  która kłamie); wynik = trafienia / (sprzeczności + pudła) zamiast trafione / sprzeczności (pudło kosztuje). Część 2 (odtwarzacz, konsola,
+  moduł podglądu, layout-check) - osobny PR.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);
@@ -774,6 +781,8 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
 - **Ustawienia dostępności konta:** „Bez limitów czasu” (WCAG 2.2.1) - nowe pole preferencji użytkownika (migracja) + przełącznik
   „Wyłącz limit czasu” na ekranie przed połączeniem `LIVE_CALL`. Limit nie zależy od `prefers-reduced-motion`.
 - **Osiągnięcia:**
+  - „komplet dowodów” (`collected === total`, np. FLAWLESS_CASE) po D-118 nie widzi sprzeczności przesłuchania, dopóki nie zostanie
+    trafiona (licznik jej nie liczy) - osiągnięcie dla modułu 2 musi dodatkowo wymagać trafienia wszystkich sprzeczności (albo wyniku 100);
   - ranga RARE (migracja enumu);
   - 4 wpisy katalogu (migracja);
   - warunki w `achievements.ts`;

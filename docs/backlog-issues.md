@@ -702,6 +702,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: osobny e2e na `fullModuleV6()` (własny kurs): /start przy nagraniu bez znaczników, odpowiedź nagrania, /progress z
   `revealedBlock`, /start po dotarciu z pełnym blokiem, izolacja A/B.
 
+### B-135 Przesłuchanie: nagrana kwestia po podważeniu (D-118)
+- Etykiety: `P3`, `content`, `security`, `mod:kursy` · Źródło: faza 1c modułu 2
+- Opis: `challengeLine` (kwestia po trafionym podważeniu) jest polem secret, a potok treści nie nagrywa pól secret (nagrania trafiają do
+  publicznego magazynu pod nazwą ze skrótu treści) - dziś kwestia po podważeniu jest tylko tekstem, bez głosu postaci.
+- Akceptacja: decyzja właściciela - np. nagrania sekretnych kwestii w osobnym, niepublicznym prefiksie serwowanym przez API po trafieniu,
+  albo zgoda na nieodgadywalną nazwę w publicznym magazynie; potem ścieżka w potoku i test.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

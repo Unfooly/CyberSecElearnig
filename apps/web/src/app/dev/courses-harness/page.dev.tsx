@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
-import { moduleSchema } from '@cyberszkolo/content';
+import { DEFAULT_CONTENT_LOCALE, localizeContent, moduleSchema } from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
 import CourseCatalog from '../../courses/_components/CourseCatalog';
@@ -18,7 +18,8 @@ export default function CoursesHarnessPage({ searchParams = {} }: { searchParams
 
   const harnessModule = harnessModuleDir(searchParams.module);
   if (!harnessModule) notFound();
-  const contentModule = moduleSchema.parse(JSON.parse(fs.readFileSync(path.join(harnessModule.dir, 'module.json'), 'utf8')));
+  // schemaVersion 6: metadane po polsku (jak kolumny kursu po imporcie).
+  const contentModule = localizeContent(moduleSchema.parse(JSON.parse(fs.readFileSync(path.join(harnessModule.dir, 'module.json'), 'utf8'))), DEFAULT_CONTENT_LOCALE);
   const contentBase = process.env.CONTENT_BASE_URL
     ? contentAssetBase(process.env.CONTENT_BASE_URL, process.env.NODE_ENV === 'development')
     : `/dev/module-assets/${harnessModule.slug}`;

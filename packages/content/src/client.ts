@@ -1,4 +1,6 @@
 import { BlockType, BLOCK_TYPES, FIELD_CLASSIFICATION, FieldClassification } from './blocks';
+import { ContentLocale } from './common';
+import { localizeContent } from './localize';
 
 // Tasowanie determinowane sekretem SERWERA. Seed MUSI pochodzić z HMAC z kluczem serwera (nie z samych publicznych
 // identyfikatorów): przy jawnym seedzie klient odtworzyłby permutację i odwrócił ją, odzyskując kolejność z JSON-a (= odpowiedź).
@@ -13,6 +15,8 @@ export interface ClientContext {
    * w rodzaju "krok1..krok3" albo "poprawne-1" zdradzałyby klucz mimo tasowania. Id jest inny w każdym przypisaniu.
    */
   opaqueId: (blockId: string, itemId: string) => string;
+  /** Język treści gracza (schemaVersion 6); brak = `pl`. Pola bez tego języka dostają `pl` (localize.ts). */
+  locale?: ContentLocale;
 }
 
 // sfc32 - mały, szybki PRNG; wystarcza do tasowania (nie do kryptografii - kryptografia jest w HMAC seeda).
@@ -109,11 +113,14 @@ export function isKnownBlockType(type: unknown): type is BlockType {
  * tylko `id` i `type` (nigdy dane, których nie umiemy sklasyfikować).
  */
 export function toClientBlock(
-  block: Record<string, unknown>,
+  stored: Record<string, unknown>,
   context: ClientContext,
   // Podmieniana WYŁĄCZNIE w testach mutacyjnych (classification.spec.ts); produkcyjnie zawsze FIELD_CLASSIFICATION.
   classification: Record<BlockType, FieldClassification> = FIELD_CLASSIFICATION,
 ): ClientBlock {
+  // Najpierw jeden język (schemaVersion 6), potem biała lista: ścieżki klasyfikacji są niezależne od języka, a inne języki i obiekty
+  // `{ pl, en }` nigdy nie trafiają do klienta. Dla treści jednojęzycznej rozwinięcie jest tożsamością.
+  const block = localizeContent(stored, context.locale) as Record<string, unknown>;
   const id = typeof block.id === 'string' ? block.id : '';
   const type = typeof block.type === 'string' ? block.type : 'UNKNOWN';
   if (!isKnownBlockType(type)) return { id, type };

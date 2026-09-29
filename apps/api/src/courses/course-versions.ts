@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { AssignmentStatus, Course, CourseAssignment, CourseVersion, Prisma } from '@prisma/client';
-import { withLegacyIds } from '@cyberszkolo/content';
+import { DEFAULT_CONTENT_LOCALE, localizeContent, withLegacyIds } from '@cyberszkolo/content';
 import { hashContent } from '@cyberszkolo/content/dist/node';
 import { Block } from './scoring/evaluate';
 
@@ -18,7 +18,11 @@ export function toResolved(version: CourseVersion): ResolvedVersion {
     throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');
   }
   const raw = version.contentBlocks as unknown[];
-  const blocks = (version.schemaVersion === 1 ? withLegacyIds(raw) : raw) as Block[];
+  // schemaVersion 6: wersja przechowuje wszystkie języki; ocena, postęp i toClientBlock pracują na treści rozwiniętej do języka
+  // przypisania (dziś zawsze `pl` - wybór języka to faza EN). Starsze wersje nie mają pól wielojęzycznych (v1 nie przeszła nawet
+  // walidacji zod) - zostają bez zmian i bez kopiowania.
+  const withIds = version.schemaVersion === 1 ? withLegacyIds(raw) : raw;
+  const blocks = (version.schemaVersion >= 6 ? localizeContent(withIds, DEFAULT_CONTENT_LOCALE) : withIds) as Block[];
   return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks };
 }
 

@@ -1,4 +1,4 @@
-import { ServerBlock } from './blocks';
+import { LIVE_CALL_SILENCE, ServerBlock } from './blocks';
 import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, requiredItemIds } from './common';
 import { collectPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
@@ -16,6 +16,130 @@ function duplicates(ids: string[]): string[] {
     seen.add(id);
   }
   return [...dup];
+}
+
+/**
+ * Kształt rozmowy na żywo (LIVE_CALL, D-122) wystarczający do przejścia drzewa - zgodny z `ServerBlock` i z luźno typowanym `Block` w
+ * apps/api. Krawędzie węzła ma jedna definicja (`liveCallEdges`) - tę samą czytają walidacja i ocena ścieżki odpowiedzi (`replayLiveCall`).
+ */
+export interface LiveCallLike {
+  start: string;
+  nodes: { id: string; choices: { id: string; next: string }[]; silence?: string; narration?: { voice?: string } }[];
+  endings: { id: string; outcome?: string }[];
+  infoChoices?: string[];
+}
+type LiveCallNodeLike = LiveCallLike['nodes'][number];
+
+/** Cel krawędzi: zakończenie (`#id`) albo węzeł (id). */
+export function liveCallTarget(next: string): { ending: string } | { node: string } {
+  return next.startsWith('#') ? { ending: next.slice(1) } : { node: next };
+}
+
+/** Krawędzie węzła: odpowiedzi gracza i (gdy `allowSilence` i węzeł ją ma) cisza po upływie limitu. `step` - krok ścieżki odpowiedzi. */
+export function liveCallEdges(node: LiveCallNodeLike, { allowSilence }: { allowSilence: boolean }): { step: string; next: string }[] {
+  const choices = Array.isArray(node.choices) ? node.choices.map((choice) => ({ step: choice.id, next: choice.next })) : [];
+  return allowSilence && typeof node.silence === 'string' ? [...choices, { step: LIVE_CALL_SILENCE, next: node.silence }] : choices;
+}
+
+/**
+ * Przejście drzewa rozmowy po ścieżce odpowiedzi gracza (`choiceId` albo `silence`) od `start`. Zwraca zakończenie i przebyte odpowiedzi
+ * albo null, gdy ścieżka nie zgadza się z grafem (nieznana odpowiedź w węźle, `silence` bez krawędzi albo niedozwolone, ścieżka kończy się
+ * przed zakończeniem albo idzie dalej po nim) albo treść jest uszkodzona (obronnie - zapisana treść jest zwalidowana przy imporcie).
+ */
+export function replayLiveCall(
+  block: LiveCallLike,
+  path: readonly string[],
+  { allowSilence }: { allowSilence: boolean },
+): { ending: string; choices: string[] } | null {
+  if (!Array.isArray(block.nodes) || !Array.isArray(block.endings) || !Array.isArray(path)) return null;
+  let nodeId = block.start;
+  const choices: string[] = [];
+  for (let i = 0; i < path.length; i++) {
+    const node = block.nodes.find((candidate) => candidate?.id === nodeId);
+    if (!node) return null;
+    const step = path[i];
+    const edge = liveCallEdges(node, { allowSilence }).find((candidate) => candidate.step === step);
+    if (!edge || typeof edge.next !== 'string') return null;
+    if (step !== LIVE_CALL_SILENCE) choices.push(step);
+    const target = liveCallTarget(edge.next);
+    if ('ending' in target) {
+      if (i !== path.length - 1 || !block.endings.some((ending) => ending?.id === target.ending)) return null;
+      return { ending: target.ending, choices };
+    }
+    nodeId = target.node;
+  }
+  return null;
+}
+
+function liveCallErrors(block: LiveCallLike): string[] {
+  const errors: string[] = [];
+  const nodeIds = block.nodes.map((node) => node.id);
+  const endingIds = block.endings.map((ending) => ending.id);
+  for (const id of duplicates(nodeIds)) errors.push(`nodes: powtórzony identyfikator "${id}"`);
+  for (const id of duplicates(endingIds)) errors.push(`endings: powtórzony identyfikator "${id}"`);
+  for (const id of nodeIds.filter((id) => endingIds.includes(id))) errors.push(`"${id}": to samo id węzła i zakończenia`);
+  const choiceIds = block.nodes.flatMap((node) => node.choices.map((choice) => choice.id));
+  for (const id of duplicates(choiceIds)) errors.push(`nodes[].choices: powtórzony identyfikator odpowiedzi "${id}" (unikalne w całym bloku)`);
+  if (choiceIds.includes(LIVE_CALL_SILENCE)) errors.push('nodes[].choices: id "silence" jest zarezerwowane (cisza po upływie limitu)');
+  if (!nodeIds.includes(block.start)) errors.push(`start: nieznany węzeł "${block.start}"`);
+  for (const id of block.infoChoices ?? []) {
+    if (!choiceIds.includes(id)) errors.push(`infoChoices: nieznana odpowiedź "${id}"`);
+  }
+  for (const id of duplicates(block.infoChoices ?? [])) errors.push(`infoChoices: powtórzony identyfikator "${id}"`);
+  if (!block.endings.some((ending) => ending.outcome === 'good')) errors.push('endings: co najmniej jedno zakończenie z outcome "good"');
+
+  const edges = (node: LiveCallNodeLike) => liveCallEdges(node, { allowSilence: true }).map((edge) => edge.next);
+  block.nodes.forEach((node, i) => {
+    const label = `nodes[${i}] (${node.id})`;
+    if (node.narration && node.narration.voice === undefined) errors.push(`${label}.narration.voice: kwestia dzwoniącego wymaga roli głosu`);
+    for (const next of edges(node)) {
+      const target = liveCallTarget(next);
+      if ('ending' in target ? !endingIds.includes(target.ending) : !nodeIds.includes(target.node)) {
+        errors.push(`${label}: krawędź "${next}" prowadzi donikąd (id węzła albo #id zakończenia)`);
+      }
+    }
+  });
+
+  // Cykle i osiągalność: DFS od startu (kolory: 1 - na stosie, 2 - odwiedzony).
+  const state = new Map<string, number>();
+  const reachedEndings = new Set<string>();
+  const visit = (id: string) => {
+    const node = block.nodes.find((candidate) => candidate.id === id);
+    if (!node) return;
+    state.set(id, 1);
+    for (const next of edges(node)) {
+      const target = liveCallTarget(next);
+      if ('ending' in target) {
+        reachedEndings.add(target.ending);
+        continue;
+      }
+      const seen = state.get(target.node);
+      if (seen === 1) errors.push(`nodes (${id} → ${target.node}): cykl w rozmowie`);
+      else if (seen === undefined) visit(target.node);
+    }
+    state.set(id, 2);
+  };
+  if (nodeIds.includes(block.start)) visit(block.start);
+  for (const id of nodeIds.filter((id) => !state.has(id))) errors.push(`nodes: węzeł "${id}" nieosiągalny od start`);
+  for (const id of endingIds.filter((id) => !reachedEndings.has(id))) errors.push(`endings: zakończenie "${id}" nieosiągalne`);
+
+  // Bez limitu czasu (ustawienie konta, przełącznik przed połączeniem) krawędzi `silence` nie ma - dobre zakończenie musi być osiągalne
+  // samymi odpowiedziami, inaczej gracz bez limitu nie mógłby zdobyć wyniku 1.
+  const good = new Set(block.endings.filter((ending) => ending.outcome === 'good').map((ending) => ending.id));
+  const seenByChoices = new Set<string>();
+  const reachesGood = (id: string): boolean => {
+    if (seenByChoices.has(id)) return false;
+    seenByChoices.add(id);
+    const node = block.nodes.find((candidate) => candidate.id === id);
+    return !!node && liveCallEdges(node, { allowSilence: false }).some(({ next }) => {
+      const target = liveCallTarget(next);
+      return 'ending' in target ? good.has(target.ending) : reachesGood(target.node);
+    });
+  };
+  if (good.size > 0 && nodeIds.includes(block.start) && !reachesGood(block.start)) {
+    errors.push('endings: zakończenie "good" musi być osiągalne bez ciszy (gracz bez limitu czasu nie ma krawędzi silence)');
+  }
+  return errors;
 }
 
 /**
@@ -342,7 +466,17 @@ export function v4FeaturesUsed(block: ServerBlock): string[] {
 // Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
 // (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
 // Eksportowane: apps/api (evaluate.ts, pickReaction) wybiera pasujący wpis reactions.result tą samą regułą, którą tu walidujemy.
-export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION', 'OSINT_SPOT'] as const;
+export const SCORED_BLOCK_TYPES = [
+  'QUIZ',
+  'BRANCHING_SCENARIO',
+  'EMAIL_ANALYSIS',
+  'ORDERING',
+  'TEXT_INPUT_GUIDED',
+  'CALL_RECORDING',
+  'INTERROGATION',
+  'OSINT_SPOT',
+  'LIVE_CALL',
+] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
 export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
 
@@ -642,6 +776,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       }
       break;
     }
+    case 'LIVE_CALL': {
+      // Rozmowa na żywo (D-122): id węzłów i zakończeń rozłączne, id odpowiedzi unikalne w całym bloku (infoChoices i ścieżka odpowiedzi),
+      // każda krawędź prowadzi do istniejącego węzła/zakończenia, graf bez cykli, każdy węzeł i zakończenie osiągalne od `start`,
+      // co najmniej jedno zakończenie dobre; kwestie dzwoniącego głosem postaci.
+      errors.push(...liveCallErrors(block));
+      break;
+    }
     case 'BRIEFING': {
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
@@ -907,7 +1048,11 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
     }
     if (
       contentModule.schemaVersion < 6 &&
-      (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY' || block.type === 'INTERROGATION' || block.type === 'OSINT_SPOT')
+      (block.type === 'CALL_RECORDING' ||
+        block.type === 'ANNOTATED_REPLAY' ||
+        block.type === 'INTERROGATION' ||
+        block.type === 'OSINT_SPOT' ||
+        block.type === 'LIVE_CALL')
     ) {
       errors.push(`blocks[${index}] (${block.id}): blok ${block.type} wymaga schemaVersion 6`);
     }

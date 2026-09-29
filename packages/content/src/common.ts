@@ -17,7 +17,7 @@ export type MascotPose = (typeof MASCOT_POSES)[number];
 
 // Identyfikator bloku/elementu trafia jako KLUCZ do obiektów w progress (JSON) - musi być bezpieczny jako klucz:
 // bez `__proto__` (zaczyna się od `_`, więc regex go odrzuca) i bez nazw z Object.prototype.
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const RESERVED_IDS = new Set(['constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', 'toJSON']);
 
 export const idSchema = z

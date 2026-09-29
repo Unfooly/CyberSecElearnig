@@ -138,6 +138,16 @@ describe('collectNarrations', () => {
     expect(refs.map((ref) => ref.id)).toContain('omowienie#markers.0.narration');
     // OSINT (D-120): nagranie przy obszarze strony (webinar) głosem postaci.
     expect(refs.filter((ref) => ref.id.startsWith('osint#spots.')).map((ref) => [ref.id, ref.voice])).toEqual([['osint#spots.2.media.narration', 'pawel']]);
+    // Rozmowa na żywo (D-122): kwestie dzwoniącego i zakończenia.
+    expect(refs.filter((ref) => /^na-zywo#(nodes|endings)\./.test(ref.id)).map((ref) => [ref.id, ref.voice])).toEqual([
+      ['na-zywo#nodes.0.narration', 'oszust'],
+      ['na-zywo#nodes.1.narration', 'oszust'],
+      ['na-zywo#nodes.2.narration', 'oszust'],
+      ['na-zywo#endings.0.narration', 'narrator'],
+      // Bez roli głosu - lektor.
+      ['na-zywo#endings.1.narration', 'narrator'],
+      ['na-zywo#endings.2.narration', 'narrator'],
+    ]);
   });
 
   it('nagranie EN w narracji wielojęzycznej: czytelny błąd do czasu fazy EN (nie ciche pominięcie)', () => {

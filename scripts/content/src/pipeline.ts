@@ -41,6 +41,9 @@ export const NARRATION_PATHS: string[][] = [
   ['markers', '*', 'narration'],
   // OSINT (D-120): nagranie przy obszarze strony (webinar) głosem postaci.
   ['spots', '*', 'media', 'narration'],
+  // Rozmowa na żywo (D-122): kwestie dzwoniącego (głos postaci) i zakończenia (zwykle lektor).
+  ['nodes', '*', 'narration'],
+  ['endings', '*', 'narration'],
 ];
 
 /** Narracje w polach `secret`: bez audio (tylko tekst). Wpisane audioUrl/durationMs/cues w takim polu to błąd modułu. */

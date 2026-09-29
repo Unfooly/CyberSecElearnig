@@ -307,6 +307,98 @@
         { "id": "godziny", "x": 6, "y": 82, "w": 88, "h": 5 }
       ],
       "falseSpotPenalty": 0.25
+    },
+    {
+      "id": "na-zywo",
+      "type": "LIVE_CALL",
+      "title": "Telefon od „IT Helpdesk”",
+      "caller": { "display": "IT Helpdesk", "number": "12 3XX XX 41" },
+      "choiceTimeLimitSec": 12,
+      "start": "start",
+      "nodes": [
+        {
+          "id": "start",
+          "narration": {
+            "voice": "oszust",
+            "text": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji 62, to je zablokuję.",
+            "spokenText": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję."
+          },
+          "choices": [
+            { "id": "oddzwonie", "text": "Oddzwonię na numer helpdesku z intranetu.", "next": "#koniec-a" },
+            { "id": "jaka-liczba", "text": "Jaką liczbę mam wpisać?", "next": "nacisk" },
+            { "id": "sprawdze", "text": "Poczekaj, sprawdzę, kto dzwoni.", "next": "autorytet" }
+          ],
+          "silence": "nacisk"
+        },
+        {
+          "id": "nacisk",
+          "narration": {
+            "voice": "oszust",
+            "text": "62, szybko, blokada za dwie minuty!",
+            "spokenText": "Sześćdziesiąt dwa, szybko, blokada za dwie minuty!"
+          },
+          "choices": [
+            { "id": "rozlaczam", "text": "Rozłączam się i dzwonię na 214.", "next": "#koniec-a" },
+            { "id": "wpisuje-62", "text": "Wpisuję 62.", "next": "#koniec-c" },
+            { "id": "numer-wewn", "text": "Najpierw podaj swój numer wewnętrzny.", "next": "wykret" }
+          ],
+          "silence": "#koniec-c"
+        },
+        {
+          "id": "autorytet",
+          "narration": { "voice": "oszust", "text": "Kierownik już wie, to polecenie z góry. Chcesz, żeby cały dział stracił dostęp?" },
+          "choices": [
+            { "id": "rozlaczam-2", "text": "Rozłączam się i dzwonię na 214.", "next": "#koniec-a" },
+            { "id": "co-mam-zrobic", "text": "Dobra, co mam zrobić?", "next": "instalacja" }
+          ]
+        },
+        {
+          "id": "wykret",
+          "narration": {
+            "voice": "oszust",
+            "text": "214, ale teraz dzwonię z komórki, bo system leży.",
+            "spokenText": "Dwieście czternaście, ale teraz dzwonię z komórki, bo system leży."
+          },
+          "choices": [
+            { "id": "oddzwonie-214", "text": "To oddzwonię na 214.", "next": "#koniec-a" },
+            { "id": "wpisuje", "text": "W porządku, wpisuję.", "next": "#koniec-c" }
+          ],
+          "silence": "#koniec-c"
+        },
+        {
+          "id": "instalacja",
+          "narration": { "voice": "oszust", "text": "Kliknij link na czacie i zainstaluj narzędzie zdalnej pomocy. Przeczytaj mi ID." },
+          "choices": [
+            { "id": "nie-instaluje", "text": "Nie instaluję niczego z telefonu. Rozłączam się.", "next": "#koniec-b" },
+            { "id": "instaluje", "text": "Instaluję.", "next": "#koniec-c" }
+          ]
+        }
+      ],
+      "endings": [
+        {
+          "id": "koniec-a",
+          "outcome": "good",
+          "narration": {
+            "voice": "narrator",
+            "text": "Rozłączasz się i dzwonisz na wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem. Dobrze, że sprawdziłeś.”",
+            "spokenText": "Rozłączasz się i dzwonisz na wewnętrzny dwieście czternaście. Paweł odbiera: „Nie dzwoniłem. Dobrze, że sprawdziłeś.”"
+          }
+        },
+        {
+          "id": "koniec-b",
+          "outcome": "partial",
+          "narration": { "voice": "narrator", "text": "Nie wpisałeś liczby, ale wszedłeś w rozmowę dalej, niż trzeba. Następnym razem rozłącz się od razu." }
+        },
+        {
+          "id": "koniec-c",
+          "outcome": "bad",
+          "narration": {
+            "voice": "narrator",
+            "text": "Wpisałeś liczbę, którą podał dzwoniący, albo oddałeś mu komputer - zatwierdziłeś jego logowanie. W prawdziwej firmie to byłaby druga lista klientów."
+          }
+        }
+      ],
+      "infoChoices": ["wpisuje-62", "wpisuje", "instaluje"]
     }
   ]
 }

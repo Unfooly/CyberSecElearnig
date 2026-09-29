@@ -1705,6 +1705,57 @@ try {
         await common(label);
         step(`${label}: (n8, n6) wariant strony, obszary ≥ 44 px, nagranie z ukrytym zakończeniem, wynik na stronie OK`, true);
 
+        // (n9) Rozmowa na żywo (D-123): ekran przed połączeniem (przełącznik limitu, „Odbierz” ≥ 44 px, w obszarze bloku), połączenie - kwestia
+        // ≥ 15 px, odpowiedzi ≥ 44 px w obszarze, pasek odliczania; zakończenie; wynik z oceną i transkrypcją na tym samym ekranie.
+        await open('na-zywo');
+        label = `${tag} / rozmowa na żywo`;
+        for (const id of ['live-call-answer', 'live-call-no-limit']) {
+          if (!(await inArea(page, `[data-testid="${id}"]`))) fail(`${label}: (n9) ${id} poza obszarem bloku.`);
+        }
+        const ringTarget = await minTarget(page, '[data-testid="live-call-answer"], label:has([data-testid="live-call-no-limit"])');
+        if (ringTarget < 43.5) fail(`${label}: (n9) cel na ekranie połączenia mniejszy niż 44 px (${ringTarget.toFixed(1)}).`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-rozmowa-dzwoni`);
+        await page.getByTestId('live-call-answer').click();
+        await page.getByTestId('live-call-line').waitFor();
+        await page.getByTestId('live-call-timer').waitFor({ timeout: 5000 });
+        const lineFont = await page.getByTestId('live-call-line').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+        if (lineFont < 14.95) fail(`${label}: (n9) kwestia dzwoniącego ${lineFont}px (< 15).`);
+        const choiceTarget = await minTarget(page, '[data-testid="live-call-choice"]');
+        if (choiceTarget < 43.5) fail(`${label}: (n9) odpowiedź mniejsza niż 44 px (${choiceTarget.toFixed(1)}).`);
+        const choiceCount = await page.getByTestId('live-call-choice').count();
+        for (let i = 0; i < choiceCount; i++) {
+          if (!(await inArea(page, `[data-testid="live-call-choice"]:nth-of-type(${i + 1})`))) fail(`${label}: (n9) odpowiedź ${i + 1} poza obszarem bloku.`);
+        }
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-rozmowa`);
+        await page.getByRole('button', { name: /Jaką liczbę mam wpisać/ }).click();
+        await page.getByTestId('live-call-line').filter({ hasText: 'szybko' }).waitFor();
+        await page.getByRole('button', { name: /Rozłączam się i dzwonię/ }).click();
+        await page.getByTestId('live-call-ending').waitFor();
+        if (!(await inArea(page, '[data-testid="live-call-ending"]'))) fail(`${label}: (n9) zakończenie poza obszarem bloku.`);
+        await page.route('**/api/courses/*/progress', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              status: 'IN_PROGRESS',
+              currentBlockIndex: 1,
+              score: 100,
+              lastResult: { blockIndex: 0, blockId: 'na-zywo', type: 'LIVE_CALL', correct: true, points: 1, detail: { ending: 'koniec-a', outcome: 'good', gaveInfo: [] } },
+              notes: [],
+              gamification: null,
+            }),
+          }),
+        );
+        await page.locator('.pbar-next').click();
+        await page.getByTestId('live-call-outcome').waitFor({ timeout: 15000 });
+        await page.getByTestId('live-call-ending').scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="live-call-ending"]'))) fail(`${label}: (n9) zakończenie w wyniku poza obszarem bloku.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-rozmowa-wynik`);
+        await page.unroute('**/api/courses/*/progress');
+        await noShift(label);
+        await common(label);
+        step(`${label}: (n9, n6) ekran połączenia, odpowiedzi ≥ 44 px, kwestia ≥ 15 px, limit czasu, zakończenie i wynik OK`, true);
+
         await context.close();
       }
     }

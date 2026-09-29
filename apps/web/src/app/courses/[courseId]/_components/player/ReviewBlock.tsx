@@ -69,7 +69,7 @@ export default function ReviewBlock({
 
   if (isScored(block.type) && result && (block.type === 'TEXT_INPUT_GUIDED' || (hasInlineResult(block.type) && result.detail))) {
     // Tablica śledcza (ORDERING, D-088) i odsłuch nagrania (D-115) wypełniają ramkę - ten sam łańcuch wysokości co bloki 'fill' wyżej.
-    const isBoard = block.type === 'ORDERING' || block.type === 'CALL_RECORDING';
+    const isBoard = block.type === 'ORDERING' || block.type === 'CALL_RECORDING' || block.type === 'OSINT_SPOT';
     return (
       <div data-testid="review-block" className={isBoard ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>

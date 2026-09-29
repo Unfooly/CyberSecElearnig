@@ -6,17 +6,19 @@ import OrderingBlock from './OrderingBlock';
 import TextInputBlock from './TextInputBlock';
 import CallRecordingBlock from './CallRecordingBlock';
 import InterrogationBlock, { InterrogationResult } from './InterrogationBlock';
+import OsintBlock from './OsintBlock';
 
 // Bloki oceniane z rozstrzygnięciem po odpowiedzi (mail, kolejność, zadanie tekstowe) w trzech widokach: odpowiadanie, WYNIK zaraz po
 // zapisie (`live` - reakcja, animacja werdyktu) i PODGLĄD ukończonego bloku ("Wstecz"). Żaden widok nie ma przycisku dalej - „Dalej” jest
 // wyłącznie w dolnym pasku (D-106). Ocena zawsze z serwera; ten komponent tylko pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste,
 // jak w /start).
-export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION'] as const;
+export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION', 'OSINT_SPOT'] as const;
 
 export const isScored = (type: string) => (SCORED_TYPES as readonly string[]).includes(type);
 
 /** Bloki, których wynik pokazujemy w samym bloku (zamiast ogólnego "Poprawna / niepoprawna odpowiedź"). */
-export const hasInlineResult = (type: string) => type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING' || type === 'INTERROGATION';
+export const hasInlineResult = (type: string) =>
+  type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING' || type === 'INTERROGATION' || type === 'OSINT_SPOT';
 
 export interface ScoredResult {
   answer?: ChosenAnswer;
@@ -125,6 +127,19 @@ export default function ScoredBlock({
           myInitials={myInitials}
         />
       );
+    case 'OSINT_SPOT': {
+      // OSINT (D-120/D-121): wynik na tej samej stronie - rozstrzygnięcie obszarów z serwera (detail.spots, z zaznaczeniami gracza).
+      return (
+        <OsintBlock
+          block={block}
+          contentBase={contentBase ?? ''}
+          onSubmit={(answer) => onSubmit?.(answer)}
+          onReady={(submit) => onReady?.(submit)}
+          disabled={disabled}
+          result={result ? { detail: result.detail, points: result.points } : undefined}
+        />
+      );
+    }
     case 'TEXT_INPUT_GUIDED':
       return (
         <TextInputBlock

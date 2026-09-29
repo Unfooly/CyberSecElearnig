@@ -1356,6 +1356,8 @@ try {
   //  (n4) omówienie na grafice: obraz załadowany, znaczniki na obrazie;
   //  (n5) warstwa tekstu: każdy napis w scenie i w zbliżeniu (tekst w granicach grafiki), na telefonie (< 640 px) napisy jednolinijkowe ≥ 15 px;
   //  (n6) wszędzie: strona bez przewijania w poziomie, dolny pasek w ekranie, bez błędów strony i konsoli.
+  //  (n7) przesłuchanie (D-118): pytania, akcje kwestii, wybór dowodu i przyznanie w obszarze bloku, cele ≥ 44 px; konsola w bloku,
+  //       wszystkie zakładki i ślady do zaznaczenia (odpowiedź /challenge podstawiona z treści modułu podglądu).
   if (runs('modul2')) {
     const DEMO = 'dev-modul-2';
     const inArea = async (page, selector) => {
@@ -1536,6 +1538,94 @@ try {
         await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-tekst`);
         await common(label);
         step(`${label}: (n5, n6) ${sceneItems} napisów w scenie, ${zoomItems} w zbliżeniu OK`, true);
+
+        // (n7) przesłuchanie (D-118): podważenie dowodem (odpowiedź /challenge podstawiona z treści modułu podglądu - trafienie, gdy odnośnik
+        // notatki podglądu `<blok>.<element>` = refutedBy) i konsola.
+        const demoBlocks = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'dev-modules', DEMO, 'module.json'), 'utf8')).blocks;
+        await page.route('**/api/courses/*/blocks/*/challenge', async (route) => {
+          const { lineId, noteRef } = JSON.parse(route.request().postData() ?? '{}');
+          const blockId = decodeURIComponent(route.request().url().split('/blocks/')[1].split('/')[0]);
+          const found = demoBlocks.find((b) => b.id === blockId)?.questions.flatMap((q) => q.lines).find((l) => l.id === lineId);
+          const correct = found?.contradiction?.refutedBy === noteRef;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              blockId,
+              lineId,
+              correct,
+              ...(correct ? { line: found.contradiction.challengeLine, note: { blockId, ...found.contradiction.note, ref: `${blockId}.${lineId}` } } : {}),
+              evidence: { collected: 1, total: 4, perBlock: [{ blockId, collected: 1, total: 3 }] },
+            }),
+          });
+        });
+        // Kwestia otwierająca „pisze się” (wskaźnik) - chipy pod wątkiem przesuwają się, a klik Playwrighta w ruchomy element ponawia
+        // przewinięcie z wymuszonym wyrównaniem i przesuwa kontenery z overflow: hidden (artefakt testu, jak przy easter eggu).
+        const openingShown = () => page.waitForFunction(() => !document.querySelector('[data-testid="dialogue-typing"]'), null, { timeout: 15000 });
+        // Żaden kontener odtwarzacza (poza listami, które przewijają się celowo) nie jest przesunięty w bok.
+        const noShift = async (where) => {
+          const shifted = await page.evaluate(() =>
+            [...document.querySelectorAll('*')]
+              .filter((el) => el.scrollLeft > 0 && !el.matches('[role="tablist"], .dialogue-chips'))
+              .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)} L${el.scrollLeft}`),
+          );
+          if (shifted.length > 0) fail(`${where}: (n7) kontener przesunięty w bok: ${shifted.join(' | ')}`);
+        };
+        await open('przesluchanie-karola');
+        label = `${tag} / przesłuchanie (podważenie)`;
+        await openingShown();
+        await page.getByRole('button', { name: 'Czy podawałeś jakieś kody?' }).click();
+        const lie = page.getByTestId('interrogation-line').filter({ hasText: 'Nie, żadnych kodów' });
+        await lie.waitFor({ timeout: 15000 });
+        await page.getByTestId('interrogation-line').filter({ hasText: 'Telefon cały czas' }).waitFor({ timeout: 15000 });
+        const chipTarget = await minTarget(page, '[data-testid="interrogation-block"] ul[aria-label="Pytania do zadania"] button');
+        if (chipTarget < 43.5) fail(`${label}: (n7) pytanie mniejsze niż 44 px (${chipTarget.toFixed(1)}).`);
+        await lie.click();
+        await page.getByRole('button', { name: 'Podważ', exact: true }).scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="interrogation-actions"]'))) fail(`${label}: (n7) akcje kwestii poza obszarem bloku.`);
+        const actionTarget = await minTarget(page, '[data-testid="interrogation-actions"] button');
+        if (actionTarget < 43.5) fail(`${label}: (n7) akcja kwestii mniejsza niż 44 px (${actionTarget.toFixed(1)}).`);
+        await page.getByRole('button', { name: 'Podważ', exact: true }).click();
+        await page.getByTestId('interrogation-picker').waitFor();
+        if (!(await inArea(page, '[data-testid="interrogation-picker"]'))) fail(`${label}: (n7) wybór dowodu poza obszarem bloku.`);
+        const evidenceTarget = await minTarget(page, '[data-testid="interrogation-evidence"]');
+        if (evidenceTarget < 43.5) fail(`${label}: (n7) dowód do wyboru mniejszy niż 44 px (${evidenceTarget.toFixed(1)}).`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-podwazenie`);
+        await page.getByTestId('interrogation-evidence').filter({ hasText: 'liczbę 47' }).click();
+        const admission = page.getByTestId('interrogation-admission');
+        await admission.waitFor({ timeout: 10000 });
+        await admission.scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="interrogation-admission"]'))) fail(`${label}: (n7) przyznanie poza obszarem bloku.`);
+        if (!(await lie.textContent())?.includes('Sprzeczność obalona')) fail(`${label}: (n7) kwestia bez oznaczenia obalonej sprzeczności.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-przyznanie`);
+        await noShift(label);
+        await common(label);
+        step(`${label}: (n7, n6) pytania, akcje kwestii i wybór dowodu w bloku, ≥ 44 px, przyznanie po trafieniu OK`, true);
+
+        await open('przesluchanie-pawla');
+        label = `${tag} / przesłuchanie (konsola)`;
+        await openingShown();
+        await page.getByRole('button', { name: 'Pokaż, co widać w konsoli.' }).click();
+        const consolePanel = page.getByTestId('interrogation-console');
+        await consolePanel.waitFor({ timeout: 15000 });
+        if (!(await inArea(page, '[data-testid="interrogation-console"]'))) fail(`${label}: (n7) konsola poza obszarem bloku.`);
+        const consoleTarget = await minTarget(page, '[data-testid="interrogation-console"] button');
+        if (consoleTarget < 43.5) fail(`${label}: (n7) przycisk konsoli mniejszy niż 44 px (${consoleTarget.toFixed(1)}).`);
+        for (const tab of ['Logowania', 'Reguły poczty', 'Programy', 'CRM']) {
+          await consolePanel.getByRole('tab', { name: tab }).click();
+          const evidenceRow = consolePanel.locator('[data-testid="dossier-rows"] button').filter({ hasText: /9:0[469]|9:31/ }).first();
+          await evidenceRow.scrollIntoViewIfNeeded();
+          if (!(await inArea(page, '[data-testid="interrogation-console"] [data-testid="dossier-rows"]'))) fail(`${label}: (n7) wiersze zakładki ${tab} poza obszarem bloku.`);
+          await evidenceRow.click();
+        }
+        if (!(await consolePanel.textContent())?.includes('Konsola przejrzana.')) fail(`${label}: (n7) konsola nieprzejrzana po zaznaczeniu śladów.`);
+        await noShift(label);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-konsola`);
+        await consolePanel.getByRole('button', { name: 'Zamknij konsolę' }).click();
+        await page.getByTestId('interrogation-console-open').waitFor();
+        await common(label);
+        step(`${label}: (n7, n6) konsola w bloku, zakładki i ślady ≥ 44 px, przejrzana OK`, true);
+        await page.unroute('**/api/courses/*/blocks/*/challenge');
 
         await context.close();
       }

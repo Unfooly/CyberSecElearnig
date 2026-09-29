@@ -3,7 +3,7 @@ import path from 'node:path';
 import { notFound } from 'next/navigation';
 import { DEFAULT_CONTENT_LOCALE, localizeContent, moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
-import type { ContentBlock } from '@/lib/courses-types';
+import type { ContentBlock, NoteKind } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
 import HarnessAutoOpen from './HarnessAutoOpen';
 import { DEFAULT_MODULE_SLUG, harnessModuleDir } from '../harness-module';
@@ -39,6 +39,29 @@ function findHotspotPath(hotspots: ServerHotspot[], targetId: string, prefix: st
     }
   }
   return null;
+}
+
+type HarnessNote = { blockId: string; text: string; kind?: NoteKind; ref: string };
+
+// Przesłuchanie (D-118): podważa się dowodem z notatnika - podgląd (bez backendu) wkłada do notatnika dowody z bloków modułu PRZED
+// przesłuchaniem, jak po ich przejściu. Odnośnik to klucz notatki `<blok>.<element>` (w produkcji nieprzejrzysty HMAC) - layout-check
+// podstawia odpowiedź /challenge i porównuje go z `refutedBy` z treści.
+function evidenceNotesBefore(blocks: ServerBlock[], index: number): HarnessNote[] {
+  const notes: HarnessNote[] = [];
+  const push = (blockId: string, id: string, note: { text: string; kind?: NoteKind } | undefined) => {
+    if (note) notes.push({ blockId, text: note.text, ...(note.kind ? { kind: note.kind } : {}), ref: `${blockId}.${id}` });
+  };
+  for (const block of blocks.slice(0, index)) {
+    if (block.type === 'SCENE_HOTSPOTS') {
+      for (const hotspot of block.hotspots.flatMap((h) => [h, ...(h.media?.kind === 'scene' ? h.media.scene.hotspots : [])])) {
+        if (hotspot.evidence) push(block.id, hotspot.id, hotspot.note);
+      }
+    }
+    if (block.type === 'CALL_RECORDING') for (const item of block.evidence ?? []) push(block.id, item.id, item.note);
+    if (block.type === 'DOSSIER') for (const row of block.documents.flatMap((d) => d.rows)) if (row.evidence) push(block.id, row.id, row.note);
+    if (block.type === 'DIALOGUE') for (const question of block.questions) if (question.evidence) push(block.id, question.id, question.note);
+  }
+  return notes;
 }
 
 export default function PlayerHarnessPage({
@@ -115,7 +138,10 @@ export default function PlayerHarnessPage({
     // Zadania sprawy (`?block=odprawa`, D-081) są w samym bloku BRIEFING; completeWhen wskazuje bloki spoza podglądu (jeden
     // blok), więc nic się tu nie odhacza.
     contentBlocks: [...leading, contentBlock],
-    progress: null,
+    progress:
+      rawBlock.type === 'INTERROGATION'
+        ? { v: 2, blocks: {}, notes: evidenceNotesBefore(parsedModule.blocks, parsedModule.blocks.indexOf(rawBlock)) }
+        : null,
     score: null,
   };
 

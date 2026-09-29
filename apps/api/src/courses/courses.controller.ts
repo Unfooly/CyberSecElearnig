@@ -10,6 +10,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { CoursesService } from './courses.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { AttemptBlockDto } from './dto/attempt-block.dto';
+import { ChallengeBlockDto } from './dto/challenge-block.dto';
 
 // Limit prób odpowiedzi tekstowych na użytkownika (poza limitem maxAttempts z treści bloku): chroni bazę i utrudnia zgadywanie.
 const ATTEMPT_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
@@ -96,5 +97,19 @@ export class CoursesController {
     @Body() dto: AttemptBlockDto,
   ) {
     return this.coursesService.attemptBlock(user.organizationId, user.userId, courseId, blockId, dto.answer);
+  }
+
+  // Podważenie kwestii przesłuchania (INTERROGATION, D-118): serwer sprawdza wskazany dowód; jedna próba na kwestię, kurs się nie przesuwa.
+  @Post(':courseId/blocks/:blockId/challenge')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(ATTEMPT_THROTTLE)
+  @UseGuards(UserThrottlerGuard)
+  challengeBlock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('courseId') courseId: string,
+    @Param('blockId') blockId: string,
+    @Body() dto: ChallengeBlockDto,
+  ) {
+    return this.coursesService.challengeBlock(user.organizationId, user.userId, courseId, blockId, dto.lineId, dto.noteRef);
   }
 }

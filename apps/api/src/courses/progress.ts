@@ -27,6 +27,9 @@ export interface BlockEntry {
   // CALL_RECORDING (D-115): trafione flagi (id segmentów z treści) i liczba fałszywych tapnięć - podgląd wyniku i osiągnięcia.
   flagsHit?: string[];
   falseTaps?: number;
+  // INTERROGATION (D-118): podważone kwestie (id kwestii z treści, publiczne) i czy wskazany dowód obalił sprzeczność - jedna próba na
+  // kwestię, zapisywana przy /challenge, zanim blok jest ukończony (done: false), i przenoszona do wpisu po zapisie bloku.
+  challenges?: { lineId: string; correct: boolean }[];
 }
 
 export interface ProgressV2 {

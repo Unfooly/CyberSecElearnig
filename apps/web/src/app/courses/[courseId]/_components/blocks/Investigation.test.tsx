@@ -1283,6 +1283,110 @@ describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () 
   });
 });
 
+// Pulpit z prostokątem ekranu monitora (D-116): okienka easter egga wyłącznie na ekranie.
+const easterOnScreen: ContentBlock = {
+  ...easterScene,
+  hotspots: easterScene.hotspots!.map((hotspot) =>
+    hotspot.id === 'monitor' ? { ...hotspot, media: { ...hotspot.media!, scene: { ...hotspot.media!.scene!, screen: { x: 4, y: 5, w: 91, h: 80 } } } } : hotspot,
+  ),
+};
+
+describe('SCENE_HOTSPOTS: okienka easter egga na ekranie monitora (media.scene.screen, D-116)', () => {
+  withReducedMotion();
+  const openGame = () => {
+    pick('Monitor');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'GTA6_PL.exe' }));
+  };
+
+  it('okienka w prostokącie ekranu (ucięte do niego), szerokość <= 60%, krzyżyk z polem trafienia; Esc dalej zamyka górne', () => {
+    setup(easterOnScreen);
+    openGame();
+    const screenRect = screen.getByTestId('nested-screen');
+    expect(screenRect).toHaveStyle({ left: '4%', top: '5%', width: '91%', height: '80%' });
+    const popups = within(screenRect).getByTestId('easter-popups');
+    expect(popups).toHaveAttribute('data-on-screen');
+    expect(popups.className).toMatch(/easter-popups--screen/);
+    expect(within(screenRect).getAllByTestId('easter-popup')).toHaveLength(2);
+    for (const popup of within(screenRect).getAllByTestId('easter-popup')) {
+      expect(popup.className).toMatch(/w-\[min\(60%,300px\)\]/);
+      expect(popup.querySelector('[data-popup-close] [data-hit]')).not.toBeNull();
+    }
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(within(screenRect).getAllByTestId('easter-popup')).toHaveLength(1);
+  });
+
+  it('outro też na ekranie (max 92% ekranu)', () => {
+    setup(easterOnScreen);
+    openGame();
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij okienko: Gratulacje!' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij okienko: Wykryto 147 wirusów!' }));
+    const outro = within(screen.getByTestId('nested-screen')).getByTestId('easter-outro');
+    expect(outro.className).toMatch(/max-w-\[92%\]/);
+  });
+
+  it('bez prostokąta ekranu - okienka jak dotąd nad pulpitem (bez nested-screen)', () => {
+    setup(easterScene);
+    openGame();
+    expect(screen.queryByTestId('nested-screen')).not.toBeInTheDocument();
+    expect(screen.getByTestId('easter-popups')).not.toHaveAttribute('data-on-screen');
+  });
+});
+
+describe('SCENE_HOTSPOTS: wariant pionowy sceny (imagePortrait + portraitHotspots, D-116)', () => {
+  withReducedMotion();
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  const stageSize = (width: number, height: number) =>
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON: () => ({}) }) as DOMRect);
+  const portraitScene: ContentBlock = {
+    ...scene,
+    imagePortrait: 'scenes/office-pion.png',
+    portraitHotspots: [
+      { id: 'h1', x: 5, y: 40, width: 30, height: 10 },
+      { id: 'h2', x: 60, y: 20, width: 30, height: 40 },
+      { id: 'h3', x: 40, y: 70, width: 5, height: 4 },
+    ],
+  };
+  const sceneImg = () => screen.getByAltText('Biuro');
+  const variant = () => document.querySelector('[data-scene-variant]')!.getAttribute('data-scene-variant');
+
+  it('telefon w pionie: cała grafika pionowa („contain”), prostokąty z portraitHotspots, pole trafienia >= 44 px', () => {
+    stageSize(360, 600);
+    setup(portraitScene);
+    expect(variant()).toBe('portrait');
+    expect(document.querySelector('[data-scene-variant]')!.className).toMatch(/briefing-scene-box/);
+    expect(sceneImg().getAttribute('src')).toContain('office-pion.png');
+    expect(screen.getByTestId('hotspot-overlay-h3')).toHaveStyle({ left: '40%', top: '70%', width: '5%', height: '4%' });
+    expect(screen.getByTestId('hotspot-overlay-h3').querySelector('[data-hit]')!.className).toMatch(/min-h-\[44px\].*min-w-\[44px\]/);
+  });
+
+  it('poziomo - panorama z grafiką poziomą i prostokątami hotspots, mimo wariantu pionowego', () => {
+    stageSize(1280, 720);
+    setup(portraitScene);
+    expect(variant()).toBe('landscape');
+    expect(sceneImg().getAttribute('src')).toContain('office.png');
+    expect(screen.getByTestId('hotspot-overlay-h3')).toHaveStyle({ left: '70%', top: '10%' });
+    expect(screen.getByTestId('hotspot-overlay-h3').querySelector('[data-hit]')).toBeNull();
+  });
+
+  it('pionowo bez wariantu pionowego - panorama jak dotąd', () => {
+    stageSize(360, 600);
+    setup(scene);
+    expect(variant()).toBe('landscape');
+    expect(sceneImg().getAttribute('src')).toContain('office.png');
+  });
+
+  it('grafika pionowa się nie wczytała - powrót do grafiki poziomej (scena zostaje)', () => {
+    stageSize(360, 600);
+    setup(portraitScene);
+    fireEvent.error(sceneImg());
+    expect(variant()).toBe('landscape');
+    expect(sceneImg().getAttribute('src')).toContain('office.png');
+    expect(sceneImg().getAttribute('src')).not.toContain('pion');
+  });
+});
+
 const doorScene: ContentBlock = {
   type: 'SCENE_HOTSPOTS',
   id: 'korytarz',

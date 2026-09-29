@@ -288,6 +288,12 @@
   left: calc(6% + var(--i) * 6%);
   top: calc(6% + var(--i) * 11%);
 }
+/* Okienka na ekranie monitora (D-116): kaskada w procentach PROSTOKĄTA EKRANU, ~6% na krok (w poziomie i w pionie). Selektor (0,2,0)
+   wygrywa też z regułami niskiej nakładki niżej. */
+.easter-popups--screen .easter-popup {
+  left: calc(6% + var(--i) * 6%);
+  top: calc(6% + var(--i) * 6%);
+}
 @container easter (max-height: 360px) {
   .easter-popup {
     left: calc(3% + var(--i) * 14%);

@@ -237,6 +237,9 @@ export interface ContentBlock {
   imageAlt?: string;
   /** Tekst sceny w warstwie (schemaVersion 6). */
   textLayer?: TextLayerItem[];
+  /** Wariant pionowy sceny (D-116): grafika na telefon w pionie i prostokąty przedmiotów (te same id co `hotspots`) w % tej grafiki. */
+  imagePortrait?: string;
+  portraitHotspots?: { id: string; x: number; y: number; width: number; height: number }[];
   hotspots?: SceneHotspot[];
   requiredHotspots?: string[];
   // CALL_RECORDING (D-115): segmenty rozmowy (bez flag - te są sekretem, rozstrzygnięcie w ResultDetail.flags po ocenie).
@@ -338,6 +341,8 @@ export interface NestedScene {
   image: string;
   imageAlt: string;
   textLayer?: TextLayerItem[];
+  /** Ekran monitora w % grafiki (D-116) - okienka easter egga pojawiają się wyłącznie w nim. */
+  screen?: { x: number; y: number; w: number; h: number };
   hotspots: InnerSceneHotspot[];
 }
 

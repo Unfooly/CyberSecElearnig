@@ -21,8 +21,8 @@ export class CourseProgressResponseDto {
     // (D-096), tylko ze starszych wersji treści.
     reaction?: { pose?: string; text: string };
   };
-  // Notatki dopisane tym zapisem (blockId, treść, rodzaj); bez kluczy elementów.
-  notes!: { blockId: string; text: string; kind?: string }[];
+  // Notatki dopisane tym zapisem (blockId, treść, rodzaj, nieprzejrzysty odnośnik do podważeń - D-118); bez kluczy elementów.
+  notes!: { blockId: string; text: string; kind?: string; ref?: string }[];
   // Dowody śledztwa po tym zapisie (client-view.ts, evidenceSummary): liczby i id bloków, bez id elementów.
   evidence!: {
     collected: number;

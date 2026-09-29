@@ -14,10 +14,20 @@ import { CourseAssignmentSummaryDto } from './dto/course-assignment-summary.dto'
 import { CourseCatalogItemDto } from './dto/course-catalog-item.dto';
 import { CourseDetailDto } from './dto/course-detail.dto';
 import { CourseProgressResponseDto } from './dto/course-progress-response.dto';
-import { clientProgress, evidenceSummary, projectBlockForStart, resolveNote, revealedBlockAt, shuffleContext } from './client-view';
+import {
+  EvidenceSummary,
+  clientProgress,
+  evidenceSummary,
+  noteKeyForRef,
+  projectBlockForStart,
+  resolveNote,
+  revealedBlockAt,
+  shuffleContext,
+  toClientNote,
+} from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
-import { AttemptResponse, evaluateAttempt, evaluateSubmit, pickReaction } from './scoring/evaluate';
+import { AttemptResponse, ChallengeResponse, evaluateAttempt, evaluateChallenge, evaluateSubmit, pickReaction } from './scoring/evaluate';
 
 type AssignmentWithCourse = CourseAssignment & { course: Course };
 
@@ -364,7 +374,7 @@ export class CoursesService {
         notes: result.notesAdded
           .map((key) => resolveNote(blocks, key))
           .filter((note): note is NonNullable<typeof note> => note !== null)
-          .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) })),
+          .map((note) => toClientNote(note, context.opaqueId)),
         gamification: gamification
           ? {
               xpGained: gamification.xpGained,
@@ -457,6 +467,70 @@ export class CoursesService {
       // `done` (poprawna odpowiedź albo wyczerpane próby) - żadnej reakcji na próbę z pozostałymi podejściami.
       const reaction = pickReaction(block, entry);
       return { ...response, ...(reaction ? { reaction } : {}) };
+    });
+  }
+
+  /**
+   * Podważenie kwestii przesłuchania (INTERROGATION, D-118). Dowód wskazuje nieprzejrzysty odnośnik notatki (`noteRef`) - serwer szuka go
+   * WYŁĄCZNIE wśród notatek tego przypisania, więc nie da się wskazać dowodu, którego gracz nie zebrał. Jedna próba na kwestię; trafienie
+   * odsłania kwestię po podważeniu i dopisuje notatkę sprzeczności. Blok się tu nie kończy - kurs przesuwa zwykły zapis postępu.
+   */
+  async challengeBlock(
+    organizationId: string,
+    userId: string,
+    courseId: string,
+    blockId: string,
+    lineId: string,
+    noteRef: string,
+  ): Promise<ChallengeResponse & { note?: ReturnType<typeof toClientNote>; evidence: EvidenceSummary }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // FOR UPDATE: równoległe podważenia tej samej kwestii idą po kolei - „jedna próba” nie da się obejść wieloma żądaniami naraz.
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+
+      if (assignment.status === AssignmentStatus.COMPLETED) {
+        throw new BadRequestException('Kurs jest już ukończony');
+      }
+
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      if (index < 0) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      if (index !== assignment.currentBlockIndex) {
+        throw new BadRequestException('Bloki trzeba ukończyć po kolei');
+      }
+      const block = version.blocks[index];
+      if (block.type !== 'INTERROGATION') {
+        throw new BadRequestException('Ten blok nie przyjmuje podważeń');
+      }
+
+      const progress: ProgressV2 = readProgress(assignment.progress);
+      const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
+      const evidenceKey = noteKeyForRef(progress, context.opaqueId, noteRef);
+      if (evidenceKey === null) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      const { entry, response, notesAdded } = evaluateChallenge(block, lineId, evidenceKey, entryOf(progress, block.id), new Date());
+      progress.blocks[block.id] = entry;
+      for (const key of notesAdded) {
+        if (!progress.notes.includes(key)) progress.notes.push(key);
+      }
+
+      await tx.courseAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          progress: toJson(progress),
+          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() } : {}),
+        },
+      });
+
+      const added = notesAdded.map((key) => resolveNote(version.blocks, key)).find((note) => note !== null);
+      return {
+        ...response,
+        ...(added ? { note: toClientNote(added, context.opaqueId) } : {}),
+        evidence: evidenceSummary(progress, version.blocks),
+      };
     });
   }
 

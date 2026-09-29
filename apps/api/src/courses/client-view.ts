@@ -1,8 +1,8 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed, toClientBlock } from '@cyberszkolo/content';
-import { DossierRowLike, HotspotLike, flattenDossierRows, flattenHotspots } from '@cyberszkolo/content/dist/node';
+import { HotspotLike, flattenHotspots, noteItemsOf } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
-import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
+import { Block, OpaqueId, challengesView, emailDetail, interrogationDetail, orderingDetail, pickReaction } from './scoring/evaluate';
 import { recordingDetail } from './scoring/recording';
 
 /**
@@ -68,30 +68,24 @@ interface ClientNote {
   kind?: string;
 }
 
-interface NoteItem {
-  id: string;
-  evidence?: boolean;
-  note?: { text?: string; kind?: string };
+/**
+ * Nieprzejrzysty odnośnik do notatki (D-118): klient wskazuje nim dowód przy podważeniu kwestii przesłuchania. Klucz notatki zawiera id
+ * elementu Z TREŚCI (np. dowodu nagrania - sekret), więc nie wychodzi do klienta; odnośnik to HMAC z kluczem serwera, inny w każdym
+ * przypisaniu (jak id kryteriów maila), w osobnej przestrzeni (`note:`) - nie pokrywa się z id elementów bloku.
+ */
+export function noteRef(opaque: OpaqueId, key: string): string {
+  const dot = key.indexOf('.');
+  return opaque(key.slice(0, dot), `note:${key.slice(dot + 1)}`);
 }
 
-/** Elementy bloku, które mogą dopisać notatkę (hotspoty, pytania dialogu, kryteria maila, wiersze teczki). SCENE_HOTSPOTS spłaszczone
- * (zewnętrzne + media.kind:'scene' wewnętrzne, B-086/D-071) - ta sama funkcja co evaluate.ts i walidacja modułu. */
-function noteItems(block: Block): NoteItem[] {
-  const list: unknown =
-    block.type === 'SCENE_HOTSPOTS'
-      ? flattenHotspots(block.hotspots as HotspotLike[])
-      : block.type === 'DIALOGUE'
-        ? block.questions
-        : block.type === 'EMAIL_ANALYSIS'
-          ? block.criteria
-          : block.type === 'DOSSIER' && Array.isArray(block.documents)
-            ? // Teczka (D-083): wiersze wszystkich dokumentów - ta sama funkcja co evaluate.ts i walidacja modułu.
-              flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[])
-            : block.type === 'CALL_RECORDING' && Array.isArray(block.evidence)
-              ? // Nagranie (D-115): każdy wpis `evidence` jest dowodem (notatka po trafieniu flagi jego segmentu, evaluate.ts).
-                (block.evidence as { id: string; note?: NoteItem['note'] }[]).map((item) => ({ id: item.id, evidence: true, note: item.note }))
-              : [];
-  return Array.isArray(list) ? (list as NoteItem[]) : [];
+/** Klucz notatki z postępu dla odnośnika z odpowiedzi klienta; null, gdy gracz takiej notatki nie ma. */
+export function noteKeyForRef(progress: ProgressV2, opaque: OpaqueId, ref: string): string | null {
+  return progress.notes.find((key) => key.indexOf('.') > 0 && noteRef(opaque, key) === ref) ?? null;
+}
+
+/** Notatka w postaci dla klienta: id bloku, treść, rodzaj i - gdy znany kontekst przypisania - odnośnik do podważeń. */
+export function toClientNote({ key, blockId, text, kind }: ClientNote, opaque?: OpaqueId) {
+  return { blockId, text, ...(kind ? { kind } : {}), ...(opaque ? { ref: noteRef(opaque, key) } : {}) };
 }
 
 /** Treść notatki z treści modułu (klient nigdy nie wysyła treści notatek). */
@@ -102,7 +96,7 @@ export function resolveNote(blocks: Block[], key: string): ClientNote | null {
   const itemId = key.slice(dot + 1);
   const block = blocks.find((b) => b.id === blockId);
   if (!block) return null;
-  const item = noteItems(block).find((i) => i.id === itemId);
+  const item = noteItemsOf(block).find((i) => i.id === itemId);
   return item?.note?.text ? { key, blockId, text: item.note.text, ...(item.note.kind ? { kind: item.note.kind } : {}) } : null;
 }
 
@@ -126,7 +120,11 @@ export function evidenceSummary(progress: ProgressV2, blocks: Block[]): Evidence
   let collected = 0;
   let total = 0;
   for (const block of blocks) {
-    const evidence = noteItems(block).filter((item) => item.evidence === true && item.note?.text);
+    // Dowód ukryty do zebrania (sprzeczność przesłuchania, D-118) liczy się dopiero po trafieniu do notatnika - licznik od startu nie
+    // zdradza, ile kwestii kłamie.
+    const evidence = noteItemsOf(block).filter(
+      (item) => item.evidence === true && item.note?.text && (!item.hidden || noted.has(`${block.id}.${item.id}`)),
+    );
     if (evidence.length === 0) continue;
     const got = evidence.filter((item) => noted.has(`${block.id}.${item.id}`)).length;
     perBlock.push({ blockId: block.id, collected: got, total: evidence.length });
@@ -176,6 +174,9 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
     // pokazano przy zapisie). Elementy zawsze jako id nieprzejrzyste, jak w /start. Bez `opaque` (starsze wywołania) nie ma ich wcale.
     let answer: unknown;
     let detail: unknown;
+    // Przesłuchanie (D-118): podważenia są w wpisie także PRZED ukończeniem bloku (odświeżenie strony w trakcie) - własne wyniki gracza,
+    // kwestia po podważeniu wyłącznie przy trafieniu (ta sama, którą pokazała odpowiedź /challenge).
+    const challenges = block?.type === 'INTERROGATION' && Array.isArray(entry.challenges) ? challengesView(block, entry.challenges) : undefined;
     if (block && entry.done && opaque) {
       if ((block.type === 'QUIZ' || block.type === 'BRANCHING_SCENARIO') && typeof entry.answer === 'number') answer = entry.answer;
       if (block.type === 'EMAIL_ANALYSIS' && Array.isArray(entry.selected)) {
@@ -190,6 +191,8 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       if (block.type === 'CALL_RECORDING' && Array.isArray(entry.flagsHit) && Array.isArray(block.flags)) {
         detail = recordingDetail(block as Block & Parameters<typeof recordingDetail>[0], { flagsHit: entry.flagsHit, falseTaps: entry.falseTaps ?? 0 });
       }
+      // Przesłuchanie (D-118): które kwestie kłamały i ich przyznanie - jak mail i nagranie, dopiero po ukończeniu bloku.
+      if (block.type === 'INTERROGATION') detail = interrogationDetail(block);
     }
     view[blockId] = {
       type: entry.type,
@@ -202,13 +205,14 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       ...(reaction ? { reaction } : {}),
       ...(answer !== undefined ? { answer } : {}),
       ...(detail !== undefined ? { detail } : {}),
+      ...(challenges !== undefined ? { challenges } : {}),
     };
   }
-  // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId i
-  // treść: klient buduje klucz listy z indeksu. Żadne id z treści (poza id bloku) nie wychodzi w progress.
+  // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId, treść i
+  // nieprzejrzysty odnośnik (noteRef, D-118): klient buduje klucz listy z indeksu. Żadne id z treści (poza id bloku) nie wychodzi w progress.
   const notes = progress.notes
     .map((key) => resolveNote(blocks, key))
     .filter((n): n is ClientNote => n !== null)
-    .map(({ blockId, text, kind }) => ({ blockId, text, ...(kind ? { kind } : {}) }));
+    .map((note) => toClientNote(note, opaque));
   return { v: 2 as const, blocks: view, notes, evidence: evidenceSummary(progress, blocks), distinctions: distinctions(progress, blocks) };
 }

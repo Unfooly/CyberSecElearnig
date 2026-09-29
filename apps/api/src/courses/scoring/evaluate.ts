@@ -40,6 +40,9 @@ const dossierAnswer = z.object({ opened: ids, noted: z.array(idSchema).max(MAX_D
 const selectedAnswer = z.object({ selected: ids }).strict();
 const orderAnswer = z.object({ order: ids }).strict();
 const seenAnswer = z.object({ seen: z.number().int().min(0).max(20) }).strict();
+// INTERROGATION (D-118): zadane pytania, fragmenty i wiersze konsoli dodane do notatnika, otwarte dokumenty konsoli. Podważenia idą
+// osobno (/challenge) - serwer zna je z wpisu bloku.
+const interrogationAnswer = z.object({ asked: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE), opened: ids.optional() }).strict();
 
 function parseAnswer<T>(schema: z.ZodType<T>, answer: unknown): T {
   const parsed = schema.safeParse(answer);
@@ -49,6 +52,8 @@ function parseAnswer<T>(schema: z.ZodType<T>, answer: unknown): T {
 
 export function weightOf(block: Block): number {
   if (typeof block.weight === 'number') return block.weight;
+  // Przesłuchanie bez sprzeczności nie ma wyniku (D-118) - domyślna waga typu dotyczy tylko bloku ze sprzecznościami.
+  if (block.type === 'INTERROGATION' && interrogationLines(block).every((line) => !line.contradiction)) return 0;
   return Object.prototype.hasOwnProperty.call(DEFAULT_WEIGHT, block.type) ? DEFAULT_WEIGHT[block.type as BlockType] : 0;
 }
 
@@ -232,6 +237,45 @@ export function evaluateSubmit(
       };
     }
 
+    case 'INTERROGATION': {
+      // Przesłuchanie (D-118): wszystkie wymagane pytania zadane; `noted` = fragmenty zadanych pytań i wiersze-dowody otwartej konsoli
+      // (klucz `<blockId>.<id>`, jak hotspot). Konsola (documents): po zadaniu pytania, które ją otwiera, wszystkie dokumenty otwarte i
+      // wymagane wiersze zakreślone. Wynik z podważeń zapisanych przez /challenge (niżej).
+      const { asked, noted, opened = [] } = parseAnswer(interrogationAnswer, answer);
+      const questions = block.questions as InterrogationQuestion[];
+      requireCoverage('pytania', asked, questions.map((q) => q.id), requiredItemIds(questions, undefined));
+      const documents = (Array.isArray(block.documents) ? block.documents : []) as { id: string; rows: DossierRowLike[] }[];
+      const consoleOpened = questions.some((q) => q.opensDocuments === true && asked.includes(q.id));
+      if (consoleOpened) requireCoverage('dokumenty', opened, documents.map((d) => d.id), undefined);
+      else if (opened.length > 0) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      const askedFragments = questions.filter((q) => asked.includes(q.id)).flatMap((q) => q.lines.filter((line) => line.fragment?.note).map((line) => line.id));
+      const rows = consoleOpened ? flattenDossierRows(documents) : [];
+      const evidenceRows = rows.filter((r) => r.evidence === true && r.note).map((r) => r.id);
+      if (!unique(noted) || noted.some((id) => !askedFragments.includes(id) && !evidenceRows.includes(id))) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      if (rows.some((r) => r.required === true && !noted.includes(r.id))) {
+        throw new BadRequestException('Nie ukończono wymaganych elementów (dowody w konsoli)');
+      }
+      // Podważenia wyłącznie przy kwestiach zadanych pytań - bramka UX (jak `asked` w DIALOGUE; `asked` deklaruje klient), nie zabezpieczenie:
+      // kwestie są publiczne, a punkty zależą tylko od dowodu.
+      const challenges = existing?.challenges ?? [];
+      const askedLines = questions.filter((q) => asked.includes(q.id)).flatMap((q) => q.lines.map((line) => line.id));
+      if (challenges.some((c) => !askedLines.includes(c.lineId))) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      // Wynik = trafienia / (sprzeczności + pudła) - pudło (prawdziwa kwestia albo zły dowód) kosztuje, więc „Podważ” przy każdej kwestii
+      // nie daje pełnego wyniku bez rozpoznania kłamstwa (security review 1c).
+      const contradictions = interrogationLines(block).filter((line) => line.contradiction).length;
+      const hits = challenges.filter((c) => c.correct).length;
+      const misses = challenges.length - hits;
+      const scored =
+        contradictions > 0 && weightOf(block) > 0 ? { points: hits / (contradictions + misses), correct: hits === contradictions && misses === 0 } : {};
+      return {
+        entry: baseEntry(block, now, { ...scored, ...(challenges.length > 0 ? { challenges } : {}) }),
+        notesAdded: noted.map((id) => noteKey(block.id, id)),
+        detail: interrogationDetail(block),
+      };
+    }
+
     case 'ANNOTATED_REPLAY': {
       // Omówienie (D-115): ukończone po przejściu wszystkich znaczników (bramka UX, jak zakładki).
       const { seen } = parseAnswer(seenAnswer, answer);
@@ -278,6 +322,85 @@ export function orderingDetail(block: Block, opaque: OpaqueId) {
     correctOrder: items.map((i) => opaque(block.id, i.id)),
     ...(block.explanation ? { explanation: block.explanation } : {}),
   };
+}
+
+// --- INTERROGATION (D-118) ----------------------------------------------------------------------------------------------
+
+interface InterrogationLine {
+  id: string;
+  fragment?: { note?: unknown };
+  contradiction?: { refutedBy: string; challengeLine: { text: string } };
+}
+interface InterrogationQuestion {
+  id: string;
+  required?: boolean;
+  opensDocuments?: boolean;
+  lines: InterrogationLine[];
+}
+
+function interrogationLines(block: Block): InterrogationLine[] {
+  return (Array.isArray(block.questions) ? (block.questions as InterrogationQuestion[]) : []).flatMap((q) => (Array.isArray(q.lines) ? q.lines : []));
+}
+
+export interface ChallengeResponse {
+  blockId: string;
+  lineId: string;
+  correct: boolean;
+  /** Kwestia po podważeniu (sekret treści) - wyłącznie po trafieniu. */
+  line?: { text: string };
+}
+
+/**
+ * Podważenie kwestii przesłuchania (D-118): `evidenceKey` to klucz notatki z notatnika gracza (serwer tłumaczy go z nieprzejrzystego
+ * odnośnika i sprawdza, że notatka jest w postępie). Jedna próba na kwestię - także na kwestię bez sprzeczności (klient nie wie, która
+ * kłamie, więc „pudło” na prawdziwej kwestii wygląda tak samo jak zły dowód). Trafienie odsłania `challengeLine` i dopisuje notatkę
+ * sprzeczności. Blok nie jest tu ukończony (done: false) - zapis bloku („Dalej”) przenosi podważenia do wpisu z wynikiem.
+ */
+export function evaluateChallenge(
+  block: Block,
+  lineId: string,
+  evidenceKey: string,
+  existing: BlockEntry | undefined,
+  now: Date,
+): { entry: BlockEntry; response: ChallengeResponse; notesAdded: string[] } {
+  const line = interrogationLines(block).find((candidate) => candidate.id === lineId);
+  if (!line) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+  const challenges = existing?.challenges ?? [];
+  if (challenges.some((c) => c.lineId === lineId)) throw new BadRequestException('Ta kwestia była już podważona');
+  const correct = line.contradiction !== undefined && line.contradiction.refutedBy === evidenceKey;
+  const entry: BlockEntry = {
+    type: block.type,
+    done: false,
+    answeredAt: now.toISOString(),
+    weight: weightOf(block),
+    challenges: [...challenges, { lineId, correct }],
+  };
+  return {
+    entry,
+    response: { blockId: block.id, lineId, correct, ...(correct && line.contradiction ? { line: { text: line.contradiction.challengeLine.text } } : {}) },
+    notesAdded: correct ? [noteKey(block.id, lineId)] : [],
+  };
+}
+
+/**
+ * Rozstrzygnięcie przesłuchania po ukończeniu bloku: które kwestie kłamały i ich przyznanie (sekret treści, ujawniany jak klucz maila -
+ * dopiero w odpowiedzi zapisu bloku i w podglądzie ukończonego bloku). Id kwestii są publiczne.
+ */
+export function interrogationDetail(block: Block) {
+  return {
+    contradictions: interrogationLines(block)
+      .filter((line) => line.contradiction)
+      .map((line) => ({ lineId: line.id, line: { text: line.contradiction!.challengeLine.text } })),
+  };
+}
+
+/** Wynik podważeń do widoku postępu (odświeżenie strony w trakcie, podgląd wstecz): kwestia po podważeniu tylko przy trafieniu. */
+export function challengesView(block: Block, challenges: { lineId: string; correct: boolean }[]) {
+  const lines = interrogationLines(block);
+  return challenges.map(({ lineId, correct }) => {
+    const text = correct ? lines.find((line) => line.id === lineId)?.contradiction?.challengeLine.text : undefined;
+    return { lineId, correct, ...(text !== undefined ? { line: { text } } : {}) };
+  });
 }
 
 // Bloki eksploracyjne: po spełnieniu wymagań punkty = 1 (ważne tylko, gdy autor nada im wagę > 0).

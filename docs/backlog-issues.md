@@ -713,8 +713,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review 1d-2
 - Opis: (1) nakładka nagrania ma `aria-modal`, ale pasek odtwarzacza („Dalej”, notatnik) działa dalej z myszy - jak w przesłuchaniu
   (InterrogationBlock); (2) w widoku wyniku obszary są `disabled` (poza kolejnością Tab), a lista pod stroną wymienia tylko przeoczone i
-  pułapki - trafione tylko liczbą w podsumowaniu; (3) lista typów bloków „tablicowych” powtarza się w `CoursePlayer.tsx` (`boardFeedback`) i
-  `ReviewBlock.tsx` (`isBoard`); (4) krótka transkrypcja mieszcząca się bez przewijania liczy się jako doczytana od razu po otwarciu
+  pułapki - trafione tylko liczbą w podsumowaniu; (3) ~~lista typów bloków „tablicowych” powtarza się w `CoursePlayer.tsx` (`boardFeedback`) i
+  `ReviewBlock.tsx` (`isBoard`)~~ - zrobione w D-123 (`BOARD_TYPES`); (4) krótka transkrypcja mieszcząca się bez przewijania liczy się jako doczytana od razu po otwarciu
   (bramka UX, D-120) - sprawdzić przy docelowej treści webinaru (faza 1g).
 - Akceptacja: `inert` paska przy otwartej nakładce (wspólnie dla OSINT i przesłuchania); `aria-disabled` albo pełna lista obszarów w wyniku;
   wspólna stała typów tablicowych; decyzja przy treści 1g.

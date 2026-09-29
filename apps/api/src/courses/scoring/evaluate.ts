@@ -43,6 +43,8 @@ const seenAnswer = z.object({ seen: z.number().int().min(0).max(20) }).strict();
 // INTERROGATION (D-118): zadane pytania, fragmenty i wiersze konsoli dodane do notatnika, otwarte dokumenty konsoli. Podważenia idą
 // osobno (/challenge) - serwer zna je z wpisu bloku.
 const interrogationAnswer = z.object({ asked: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE), opened: ids.optional() }).strict();
+// OSINT_SPOT (D-120): zaznaczone obszary i wysłuchane do końca nagrania (id ukrytych zakończeń - bramka UX jak easter egg).
+const osintAnswer = z.object({ marked: z.array(idSchema).max(20), heard: z.array(idSchema).max(20).optional() }).strict();
 
 function parseAnswer<T>(schema: z.ZodType<T>, answer: unknown): T {
   const parsed = schema.safeParse(answer);
@@ -276,6 +278,29 @@ export function evaluateSubmit(
       };
     }
 
+    case 'OSINT_SPOT': {
+      // OSINT (D-120): trafione użyte / wszystkie użyte − kara × zaznaczone pułapki (min. 0). Dowody - notatki zaznaczonych użytych obszarów
+      // (po ocenie, bo zdradzają użycie). Ukryte zakończenie nagrania: tylko flaga (wyróżnienie), bez punktów.
+      const { marked, heard = [] } = parseAnswer(osintAnswer, answer);
+      const spots = osintSpots(block);
+      const spotIds = spots.map((spot) => spot.id);
+      const endings = spots.flatMap((spot) => (spot.media?.secretEnding ? [spot.media.secretEnding.id] : []));
+      if (!unique(marked) || marked.some((id) => !spotIds.includes(id)) || !unique(heard) || heard.some((id) => !endings.includes(id))) {
+        throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      }
+      const used = spots.filter((spot) => spot.used).map((spot) => spot.id);
+      const hits = marked.filter((id) => used.includes(id)).length;
+      const traps = marked.length - hits;
+      const penalty = typeof block.falseSpotPenalty === 'number' ? block.falseSpotPenalty : DEFAULT_FALSE_SPOT_PENALTY;
+      const points = used.length === 0 ? 0 : Math.max(0, hits / used.length - penalty * traps);
+      return {
+        // `correct` - wszystkie użyte i żadnej pułapki (przy karze 0 „zaznacz wszystko” też daje 1 punkt, ale nie jest poprawne).
+        entry: baseEntry(block, now, { correct: hits === used.length && traps === 0, points, marked, ...(heard.length > 0 ? { secretEndings: heard } : {}) }),
+        notesAdded: spots.filter((spot) => spot.used && spot.note && marked.includes(spot.id)).map((spot) => noteKey(block.id, spot.id)),
+        detail: osintDetail(block, marked),
+      };
+    }
+
     case 'ANNOTATED_REPLAY': {
       // Omówienie (D-115): ukończone po przejściu wszystkich znaczników (bramka UX, jak zakładki).
       const { seen } = parseAnswer(seenAnswer, answer);
@@ -322,6 +347,45 @@ export function orderingDetail(block: Block, opaque: OpaqueId) {
     correctOrder: items.map((i) => opaque(block.id, i.id)),
     ...(block.explanation ? { explanation: block.explanation } : {}),
   };
+}
+
+// --- OSINT_SPOT (D-120) -------------------------------------------------------------------------------------------------
+
+/** Kara za zaznaczoną pułapkę, gdy treść jej nie ustawia (specyfikacja modułu 2, rozdz. 4.3). */
+export const DEFAULT_FALSE_SPOT_PENALTY = 0.25;
+
+interface OsintSpot {
+  id: string;
+  used: boolean;
+  note?: unknown;
+  trapText?: string;
+  media?: { secretEnding?: { id: string; label: string; note?: string } };
+}
+
+function osintSpots(block: Block): OsintSpot[] {
+  return Array.isArray(block.spots) ? (block.spots as OsintSpot[]) : [];
+}
+
+/**
+ * Rozstrzygnięcie OSINT po ocenie (jak klucz maila - w odpowiedzi zapisu i w podglądzie ukończonego bloku): który obszar był użyty, czy
+ * gracz go zaznaczył i wyjaśnienie każdej pułapki. Id obszarów są publiczne.
+ */
+export function osintDetail(block: Block, marked: string[]) {
+  return {
+    spots: osintSpots(block).map((spot) => ({
+      id: spot.id,
+      used: spot.used,
+      marked: marked.includes(spot.id),
+      ...(spot.trapText !== undefined ? { trapText: spot.trapText } : {}),
+    })),
+  };
+}
+
+/** Ukryte zakończenia nagrań (wyróżnienia w notatniku) wysłuchane w bloku OSINT - etykieta i zdanie z treści dla id z postępu. */
+export function osintSecretEndings(block: Block, heard: readonly string[]) {
+  return osintSpots(block)
+    .flatMap((spot) => (spot.media?.secretEnding ? [spot.media.secretEnding] : []))
+    .filter((ending) => heard.includes(ending.id));
 }
 
 // --- INTERROGATION (D-118) ----------------------------------------------------------------------------------------------

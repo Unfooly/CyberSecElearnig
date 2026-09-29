@@ -237,7 +237,8 @@ describe('client-view', () => {
         // scena: 2 - h1 (zewnętrzny) + h4-outlook (wewnątrz zagnieżdżonej sceny media.kind:'scene', B-086/D-071) - dowody
         // z zagnieżdżonej sceny LICZĄ SIĘ do bloku (spłaszczone id, ta sama funkcja co semantics.ts).
         // + akta: 1 - wiersz-dowód teczki (DOSSIER, D-083); + nagranie: 1 - dowód nagrania rozmowy (CALL_RECORDING, D-115);
-        // + przesluchanie: 2 - fragment i wiersz konsoli (INTERROGATION, D-118); sprzeczność liczy się dopiero po zebraniu.
+        // + przesluchanie: 2 - fragment i wiersz konsoli (INTERROGATION, D-118); sprzeczność liczy się dopiero po zebraniu;
+        // osint (OSINT_SPOT, D-120) - dowody ukryte do zebrania, bez wpisu przed zebraniem.
         total: 8,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 2 },

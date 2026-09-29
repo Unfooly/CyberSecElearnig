@@ -2,7 +2,17 @@ import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed, toClientBlock } from '@cyberszkolo/content';
 import { HotspotLike, flattenHotspots, noteItemsOf } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
-import { Block, OpaqueId, challengesView, emailDetail, interrogationDetail, orderingDetail, pickReaction } from './scoring/evaluate';
+import {
+  Block,
+  OpaqueId,
+  challengesView,
+  emailDetail,
+  interrogationDetail,
+  orderingDetail,
+  osintDetail,
+  osintSecretEndings,
+  pickReaction,
+} from './scoring/evaluate';
 import { recordingDetail } from './scoring/recording';
 
 /**
@@ -138,11 +148,15 @@ export function evidenceSummary(progress: ProgressV2, blocks: Block[]): Evidence
  * Wyróżnienia easter egga (D-100) do notatnika: etykiety z treści dla id zapisanych przy ukończeniu bloku (`easterEggs`). Nieznane id
  * (np. usunięte w nowszej wersji treści - klient i tak dostaje etykietę wyłącznie z zapisanej wersji kursu) są pomijane.
  */
-export function distinctions(progress: ProgressV2, blocks: Block[]): { blockId: string; label: string }[] {
-  const found: { blockId: string; label: string }[] = [];
+export function distinctions(progress: ProgressV2, blocks: Block[]): { blockId: string; label: string; note?: string }[] {
+  const found: { blockId: string; label: string; note?: string }[] = [];
   for (const [blockId, entry] of Object.entries(progress.blocks)) {
-    if (!Array.isArray(entry.easterEggs)) continue;
     const block = blocks.find((b) => b.id === blockId);
+    // Ukryte zakończenie nagrania w OSINT (D-120): etykieta i zdanie z treści dla wysłuchanych (id z postępu).
+    if (Array.isArray(entry.secretEndings) && block?.type === 'OSINT_SPOT') {
+      for (const ending of osintSecretEndings(block, entry.secretEndings)) found.push({ blockId, label: ending.label, ...(ending.note ? { note: ending.note } : {}) });
+    }
+    if (!Array.isArray(entry.easterEggs)) continue;
     if (block?.type !== 'SCENE_HOTSPOTS' || !Array.isArray(block.hotspots)) continue;
     const badges = flattenHotspots(block.hotspots as HotspotLike[])
       .map((h) => h.media as { kind?: string; badge?: { id?: unknown; label?: unknown } } | undefined)
@@ -193,6 +207,11 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       }
       // Przesłuchanie (D-118): które kwestie kłamały i ich przyznanie - jak mail i nagranie, dopiero po ukończeniu bloku.
       if (block.type === 'INTERROGATION') detail = interrogationDetail(block);
+      // OSINT (D-120): zaznaczenia gracza i rozstrzygnięcie obszarów (id obszarów są publiczne).
+      if (block.type === 'OSINT_SPOT' && Array.isArray(entry.marked)) {
+        answer = { marked: entry.marked };
+        detail = osintDetail(block, entry.marked);
+      }
     }
     view[blockId] = {
       type: entry.type,

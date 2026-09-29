@@ -30,6 +30,10 @@ export interface BlockEntry {
   // INTERROGATION (D-118): podważone kwestie (id kwestii z treści, publiczne) i czy wskazany dowód obalił sprzeczność - jedna próba na
   // kwestię, zapisywana przy /challenge, zanim blok jest ukończony (done: false), i przenoszona do wpisu po zapisie bloku.
   challenges?: { lineId: string; correct: boolean }[];
+  // OSINT_SPOT (D-120): zaznaczone obszary (id z treści, publiczne) i wysłuchane ukryte zakończenia nagrań (id `secretEnding`) - wyróżnienie
+  // w notatniku, bez punktów i dowodów (jak easterEggs).
+  marked?: string[];
+  secretEndings?: string[];
 }
 
 export interface ProgressV2 {

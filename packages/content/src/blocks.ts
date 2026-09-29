@@ -153,6 +153,8 @@ const nestedSceneSchema = z
     image: imagePathSchema,
     imageAlt: ltext(300),
     textLayer: textLayerSchema.optional(),
+    // Ekran monitora w % grafiki (D-116, addytywnie w v5; slot-ekran kompozytora): okienka easter egga pojawiają się wyłącznie w nim.
+    screen: z.object({ x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) }).strict().optional(),
     hotspots: z.array(innerHotspotSchema).min(1).max(20),
   })
   .strict();
@@ -172,6 +174,15 @@ const hotspotsSchema = z
     type: z.literal('SCENE_HOTSPOTS'),
     image: imagePathSchema,
     imageAlt: ltext(300),
+    // Wariant pionowy sceny (D-116, addytywnie w v5): na telefonie w pionie (kontener sceny < 0.8, jak D-098) odtwarzacz pokazuje tę
+    // grafikę w całości ("contain", bez panoramy) z prostokątami `portraitHotspots` - te same id co `hotspots` (najwyższego poziomu),
+    // prostokąty w % pionowej grafiki. Bez wariantu - panorama jak dotąd. `imageAlt` wspólny (ta sama scena).
+    imagePortrait: imagePathSchema.optional(),
+    portraitHotspots: z
+      .array(z.object({ id: idSchema, x: percent, y: percent, width: z.number().min(1).max(100), height: z.number().min(1).max(100) }).strict())
+      .min(1)
+      .max(20)
+      .optional(),
     // schemaVersion 6: tekst sceny w warstwie (szyldy, podpisy) - common.ts textLayerSchema.
     textLayer: textLayerSchema.optional(),
     hotspots: z
@@ -900,6 +911,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       ...textLayerPaths('hotspots[].media.'),
       ...textLayerPaths('hotspots[].media.scene.'),
       ...textLayerPaths('hotspots[].media.scene.hotspots[].media.'),
+      // Wariant pionowy sceny i ekran monitora w scenie zagnieżdżonej (D-116): grafika i układ - nic tu nie jest sekretem.
+      ...['x', 'y', 'w', 'h'].map((key) => `hotspots[].media.scene.screen.${key}`),
+      'imagePortrait',
+      ...['id', 'x', 'y', 'width', 'height'].map((key) => `portraitHotspots[].${key}`),
     ],
     [
       'hotspots[].narration.spokenText',

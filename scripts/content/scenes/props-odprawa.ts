@@ -490,6 +490,8 @@ export const screenFrame: PropFn<{ sw?: number; sh?: number; wallpaper?: string;
       `<rect x="12" y="16" width="${w}" height="${sh + bezel * 2}" rx="26" fill="${P.ink}" opacity="0.2"/>` +
       `<rect width="${w}" height="${sh + bezel * 2}" rx="26" fill="${P.ink}"/>` +
       `<rect x="${bezel}" y="${bezel}" width="${sw}" height="${sh}" rx="6" fill="${wallpaper}"/>`,
+    // Ekran (wnętrze ramki) - slot, w którym odtwarzacz stawia okienka easter egga (D-116: nic nie wystaje poza monitor).
+    parts: { screen: { x: bezel, y: bezel, w: sw, h: sh } },
   };
 };
 export const EKRAN_PROPS = { screenFrame };

@@ -545,9 +545,13 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   const layer = (id: string) => [{ id, x: 10, y: 10, w: 30, h: 8, text: `Napis ${id}`, style: 'sign', portrait: { x: 5, y: 20, w: 60, h: 6 } }];
   const sceneBlock = blocks.SCENE_HOTSPOTS as Record<string, unknown>;
   sceneBlock.textLayer = layer('szyld');
+  // Wariant pionowy sceny (D-116) - tylko tutaj (fullModule() bez zmian, reguła 9).
+  sceneBlock.imagePortrait = 'img/biuro-pion.svg';
+  sceneBlock.portraitHotspots = [{ id: scene.hotspots[0].id, x: 5, y: 10, width: 20, height: 10 }];
   scene.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('zblizenie');
   const nested = scene.hotspots.find((h) => h.media?.kind === 'scene')!.media!.scene as { hotspots: { media?: Record<string, unknown> }[] } & Record<string, unknown>;
   nested.textLayer = layer('pulpit');
+  nested.screen = { x: 3, y: 4, w: 90, h: 80 };
   nested.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('ekran');
   // ANNOTATED_REPLAY (D-115): oba warianty źródła i kotwicy naraz (bez parseModule), żeby test kompletności widział wszystkie ścieżki.
   const replay = blocks.ANNOTATED_REPLAY as { source: Record<string, unknown>; markers: { anchor: Record<string, unknown> }[] };

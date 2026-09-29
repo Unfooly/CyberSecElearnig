@@ -1,0 +1,123 @@
+{
+ "width": 900,
+ "height": 1400,
+ "background": {
+  "floorY": 780
+ },
+ "items": [
+  {
+   "id": "okno",
+   "prop": "window",
+   "x": 40,
+   "y": 320
+  },
+  {
+   "id": "kalendarz",
+   "prop": "calendar",
+   "x": 400,
+   "y": 360,
+   "hotspot": true,
+   "params": {
+    "month": "WRZESIEŃ",
+    "markedDay": 15,
+    "note": "PRZELEWY DO 15:00 !!!"
+   }
+  },
+  {
+   "id": "drzwi",
+   "prop": "door",
+   "x": 740,
+   "y": 380,
+   "hotspot": true,
+   "pad": 14,
+   "params": {
+    "label": "WYJŚCIE"
+   },
+   "scale": 0.95
+  },
+  {
+   "id": "biurko",
+   "prop": "desk",
+   "x": 30,
+   "y": 980,
+   "params": {
+    "w": 840
+   }
+  },
+  {
+   "id": "krzeslo",
+   "prop": "chair",
+   "x": 420,
+   "y": 1050
+  },
+  {
+   "id": "roslina",
+   "prop": "plant",
+   "x": 760,
+   "y": 1200
+  },
+  {
+   "id": "drukarka",
+   "prop": "printer",
+   "x": 40,
+   "y": 850,
+   "hotspot": true,
+   "params": {}
+  },
+  {
+   "id": "kubek",
+   "prop": "mug",
+   "x": 280,
+   "y": 918,
+   "hotspot": true,
+   "params": {
+    "label": [
+     "Najlepsza",
+     "księgowa"
+    ],
+    "steam": true
+   }
+  },
+  {
+   "id": "monitor",
+   "prop": "monitor",
+   "x": 330,
+   "y": 698,
+   "scale": 0.85,
+   "hotspot": true,
+   "partHotspots": {
+    "sticky": "karteczka"
+   },
+   "params": {
+    "screen": "mail",
+    "subject": "PILNE: weryfikacja konta firmowego",
+    "sender": "Bank Wektor — Dział Bezpieczeństwa · 8:47",
+    "sticky": [
+     "Unfooly24!",
+     "bank: to samo"
+    ]
+   }
+  },
+  {
+   "id": "klawiatura",
+   "prop": "keyboardMouse",
+   "x": 360,
+   "y": 990,
+   "scale": 0.8
+  },
+  {
+   "id": "telefon",
+   "prop": "phone",
+   "x": 740,
+   "y": 908,
+   "scale": 0.8,
+   "hotspot": true,
+   "params": {
+    "led": true,
+    "display": [
+     "1 nieodebrane"
+    ]
+   }
+  }
+ ]
+}

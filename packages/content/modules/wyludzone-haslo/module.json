@@ -285,6 +285,23 @@
       },
       "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
+      "imagePortrait": "assets/wyludzone-haslo/scenes/korytarz-pion.0e85a248.svg",
+      "portraitHotspots": [
+        {
+          "id": "tablica",
+          "x": 3.6,
+          "y": 28.2,
+          "width": 55.8,
+          "height": 30.9
+        },
+        {
+          "id": "drzwi",
+          "x": 67.3,
+          "y": 29.6,
+          "width": 29.6,
+          "height": 53.5
+        }
+      ],
       "hotspots": [
         {
           "id": "tablica",
@@ -342,6 +359,58 @@
       "tip": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie.",
       "image": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
+      "imagePortrait": "assets/wyludzone-haslo/scenes/biuro-anny-pion.06bd84cc.svg",
+      "portraitHotspots": [
+        {
+          "id": "karteczka",
+          "x": 69.8,
+          "y": 47.5,
+          "width": 12.2,
+          "height": 7.2
+        },
+        {
+          "id": "monitor",
+          "x": 35.8,
+          "y": 49.3,
+          "width": 41.4,
+          "height": 21.3
+        },
+        {
+          "id": "telefon",
+          "x": 81.3,
+          "y": 64.3,
+          "width": 17.8,
+          "height": 6.3
+        },
+        {
+          "id": "kalendarz",
+          "x": 43.6,
+          "y": 25.1,
+          "width": 23.1,
+          "height": 16.9
+        },
+        {
+          "id": "drukarka",
+          "x": 3.6,
+          "y": 60.1,
+          "width": 27.3,
+          "height": 10.4
+        },
+        {
+          "id": "kubek",
+          "x": 30.2,
+          "y": 65,
+          "width": 10.7,
+          "height": 5.6
+        },
+        {
+          "id": "drzwi",
+          "x": 80.7,
+          "y": 26.1,
+          "width": 19.3,
+          "height": 29.1
+        }
+      ],
       "hotspots": [
         {
           "id": "karteczka",
@@ -376,6 +445,12 @@
             "scene": {
               "image": "assets/wyludzone-haslo/scenes/pulpit.ade30324.svg",
               "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe, Kosz; pasek zadań pokazuje 10:06.",
+              "screen": {
+                "x": 3.8,
+                "y": 4.9,
+                "w": 91.3,
+                "h": 79.8
+              },
               "hotspots": [
                 {
                   "id": "outlook",

@@ -74,6 +74,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
 - Media obrazu hotspotu (`kind: "image"`): opcjonalne `imagePortrait` (D-104) - wariant dla telefonu w pionie (np. okno maila z dużym,
   zawijanym tekstem; kompozytor `mailWindowPortrait`/`browserHistoryPortrait` + `crop-zooms`), wspólne `alt`.
+- Scena `SCENE_HOTSPOTS` w pionie (D-116): opcjonalne `imagePortrait` + `portraitHotspots[] { id, x, y, width, height }` (zawsze razem,
+  te same id co `hotspots`, % grafiki pionowej) - na telefonie w pionie cała grafika pionowa bez panoramy (dowolne proporcje, „contain”).
+  Źródło prostokątów: `*-pion.hotspots.json` kompozytora. Scena zagnieżdżona (`media.kind: "scene"`) może mieć `screen { x, y, w, h }`
+  (%) - prostokąt ekranu monitora; okienka easter egga (`popups` w tej scenie) pojawiają się wyłącznie w nim.
 - Media audio hotspotu: `audioUrl` + `transcript` (gotowy plik z `--assets`) ALBO `narration` (nagranie z potoku TTS, zwykle z
   `voice`; transkrypcją jest `narration.text`) - dokładnie jedno z nich.
 - Easter egg (D-100): `media.kind: "popups"` (hotspot na zewnątrz albo w scenie zagnieżdżonej) - `items[]` (1-5) `{ title, body, button,

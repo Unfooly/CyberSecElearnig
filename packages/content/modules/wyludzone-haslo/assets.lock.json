@@ -62,6 +62,11 @@
       "hash": "b4abcdeb",
       "key": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg"
     },
+    "korytarz#imagePortrait": {
+      "original": "scenes/korytarz-pion.svg",
+      "hash": "0e85a248",
+      "key": "assets/wyludzone-haslo/scenes/korytarz-pion.0e85a248.svg"
+    },
     "korytarz#hotspots.0.media.src": {
       "original": "scenes/tablica-zoom.svg",
       "hash": "f02f0fb7",
@@ -71,6 +76,11 @@
       "original": "scenes/biuro-anny.svg",
       "hash": "90a5b3f5",
       "key": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg"
+    },
+    "biuro-anny#imagePortrait": {
+      "original": "scenes/biuro-anny-pion.svg",
+      "hash": "06bd84cc",
+      "key": "assets/wyludzone-haslo/scenes/biuro-anny-pion.06bd84cc.svg"
     },
     "biuro-anny#hotspots.0.media.src": {
       "original": "scenes/karteczka-zoom.svg",

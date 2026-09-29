@@ -41,7 +41,9 @@ export default function NotesDrawer({
   useEffect(() => {
     if (open) {
       wasOpenRef.current = true;
-      closeButtonRef.current?.focus();
+      // preventScroll: panel w chwili fokusu jest jeszcze poza ramką (translate-x-full, przejście dopiero rusza) -
+      // zwykły focus() przewinąłby main.player-frame (overflow hidden) o szerokość panelu i ramka zostałaby przesunięta.
+      closeButtonRef.current?.focus({ preventScroll: true });
     } else if (wasOpenRef.current) {
       wasOpenRef.current = false;
       triggerRef.current?.focus();

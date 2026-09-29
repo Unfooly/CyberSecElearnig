@@ -791,6 +791,10 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   (blok `osint`), layout-check `modul2` (n8). Odstępstwa: na telefonie w poziomie strona na całą szerokość i przewijana (nie „contain”);
   przycisk nagrania na krawędzi obszaru, nie w środku. Do treści v6 (faza 1g): grafika strony „Zespół” bez tekstu (tekst w `textLayer`,
   limit 30 napisów), wariant pionowy z `portraitSpots`, kadr webinaru.
+- **Faza 1e, część 1 zrobiona (D-122):** `LIVE_CALL` - schemat, klasyfikacja, walidacja grafu, ocena serwera po ścieżce (`replayLiveCall`),
+  rozstrzygnięcie po ukończeniu, `path` i `timed` w wpisie bloku (pod Dead Air). Odstępstwo od szkicu z rozdz. 4.4: kwestia węzła to
+  `narration` (z `voice` i `spokenText`) zamiast `voice` + `speech`. Część 2 (odtwarzacz, ekran przed połączeniem z przełącznikiem „Wyłącz
+  limit czasu”, moduł podglądu, layout-check) i część 3 (migracja: „Bez limitów czasu” na koncie, ranga RARE, 4 osiągnięcia) - osobne PR.
 - **Do fazy 1b (z review 1a - zrobione w D-115):** odtwarzacz nie zna jeszcze v6 - `NoteKind` w `apps/web/src/lib/courses-types.ts` bez `call`/`log`/`web`
   (notatnik pokazałby wpis bez ikony) i brak rysowania `textLayer` na scenach i zbliżeniach. Oba muszą wejść, zanim treść v6 trafi do
   odtwarzacza (najpóźniej z pierwszym blokiem modułu 2). Przed fazą EN: język z żądania walidowany w DTO (`@IsIn(CONTENT_LOCALES)`);

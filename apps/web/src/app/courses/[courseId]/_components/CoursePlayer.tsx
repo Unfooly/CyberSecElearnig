@@ -23,7 +23,7 @@ import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
 import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
-import ScoredBlock, { hasInlineResult, isScored } from './blocks/ScoredBlock';
+import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
 import CaseClosedScreen from './CaseClosedScreen';
 import PlayerStage from './player/PlayerStage';
@@ -498,11 +498,8 @@ export default function CoursePlayer({
   // ORDERING (tablica śledcza, D-088) też 'fill' - także jej wynik zaraz po zapisie (wynik jest na tej samej tablicy); w 'fill'
   // PlayerStage nie dokłada paska podpowiedzi, zdanie informacji zwrotnej jest pod tablicą.
   // Odsłuch nagrania (D-115) pokazuje wynik na tej samej transkrypcji - też 'fill', jak tablica.
-  // OSINT (D-121) - wynik na tej samej stronie, też 'fill'.
-  const boardFeedback =
-    showingFeedback &&
-    (blocks[feedback.blockIndex]?.type === 'ORDERING' || blocks[feedback.blockIndex]?.type === 'CALL_RECORDING' || blocks[feedback.blockIndex]?.type === 'OSINT_SPOT') &&
-    !!feedback.detail;
+  // OSINT (D-121) i rozmowa na żywo (D-123) - wynik na tym samym ekranie, też 'fill' (BOARD_TYPES).
+  const boardFeedback = showingFeedback && BOARD_TYPES.includes(blocks[feedback.blockIndex]?.type ?? '') && !!feedback.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
       ? 'fill'
@@ -521,7 +518,9 @@ export default function CoursePlayer({
               // Przesłuchanie (D-118): wątek jak rozmowa (własne przewijanie wątku, stopka z pytaniami) - 'fill'.
               currentBlock?.type === 'INTERROGATION' ||
               // OSINT (D-121): strona wypełnia ramkę (w pionie przewijana w bloku).
-              currentBlock?.type === 'OSINT_SPOT'
+              currentBlock?.type === 'OSINT_SPOT' ||
+              // Rozmowa na żywo (D-123): ekran połączenia z własnym przewijaniem transkrypcji i odpowiedziami w stopce.
+              currentBlock?.type === 'LIVE_CALL'
             ? 'fill'
             : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>

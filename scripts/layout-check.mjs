@@ -110,12 +110,11 @@ const BRIEFING_SCENE_VIEWS = [
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
 const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'modul2'];
 
-// EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
-// i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
-// Najmniejszy tekst okienek na ekranie monitora na telefonie (D-116: okienka zmniejszane, żeby zmieściły się w ekranie).
-const EASTER_SCREEN_MIN_FONT = 9;
-// Viewporty z pełnym progiem 15 px (ekran monitora dość duży) - nowy viewport dostaje próg jawną decyzją, nie z „ma mysz”.
-const EASTER_FULL_FONT_VIEWPORTS = new Set(['1920x1080', '1366x768']);
+// EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - dwa desktopy, telefon
+// w poziomie i dwa w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e10).
+// Telefony (D-117, decyzja właściciela): okienka PO JEDNYM, wyśrodkowane na ekranie monitora, tekst >= 15 px, licznik „n/3”. Jawna
+// lista (dotyk + tryb telefonu odtwarzacza), nie „brak myszy” - nowy viewport dostaje tryb decyzją.
+const EASTER_SINGLE_VIEWPORTS = new Set(['844x390', '390x844', '360x740']);
 const EASTER_VIEWPORTS = [
   { name: '1920x1080', width: 1920, height: 1080, mouse: true },
   { name: '1366x768', width: 1366, height: 768, mouse: true },
@@ -2493,7 +2492,9 @@ try {
   // nieprzykryty (elementFromPoint), z fokusem; (e3) tekst okienek >= 15 px; (e4) Esc zamyka górne okienko, klik w tło niczego nie
   // zamyka; (e5, mysz) przycisk „dodge” ucieka dokładnie 2 razy, klik w przycisk - okienko drga i zostaje; (e6) po ostatnim krzyżyku:
   // outro z wyróżnieniem, „Wróć do pulpitu” >= 44 px, w ekranie; ikona gry na pulpicie obejrzana, wyróżnienie w notatniku; (e7) strona
-  // się nie przewija, błędy strony; (e8) reduced-motion (390x844): wszystkie okienka od razu, bez animacji wejścia i mrugnięcia.
+  // się nie przewija, błędy strony; (e8) reduced-motion (390x844): okienka od razu (telefon: jedno), bez animacji wejścia i mrugnięcia.
+  // Telefon (D-117, EASTER_SINGLE_VIEWPORTS): okienka po jednym - (e1-e3) dla KAŻDEGO z trzech, licznik „n/3” (e9), tło nie zamyka,
+  // pierwsze zamyka Esc, drugie - klik w przycisk go nie zamyka, potem krzyżyk; trzecie krzyżykiem; dalej outro jak na desktopie.
   for (const viewport of runs('easter') ? EASTER_VIEWPORTS : []) {
     console.log(`\n--- viewport (EASTER EGG): ${viewport.name} ---`);
     for (const reduced of viewport.name === '390x844' ? [false, true] : [false]) {
@@ -2509,11 +2510,16 @@ try {
       const label = `${viewport.name} / easter egg${reduced ? ' (reduced-motion)' : ''}`;
       await page.goto(`${WEB}/dev/player-harness?block=biuro-anny&hotspot=gra`);
       const popups = page.getByTestId('easter-popup');
+      const single = EASTER_SINGLE_VIEWPORTS.has(viewport.name);
+      const expectedAtStart = single ? 1 : 3;
       if (reduced) {
         await popups.first().waitFor({ timeout: 15000 });
         const count = await popups.count();
         const animated = await page.evaluate(() => document.querySelectorAll('.popup-in, .popup-blink').length);
-        if (count !== 3 || animated > 0) fail(`${label}: (e8) reduced-motion - okienek ${count} (oczekiwane 3 od razu), animacji ${animated}.`);
+        if (count !== expectedAtStart || animated > 0) fail(`${label}: (e8) reduced-motion - okienek ${count} (oczekiwane ${expectedAtStart} od razu), animacji ${animated}.`);
+      } else if (single) {
+        await popups.first().waitFor({ timeout: 15000 });
+        await page.waitForTimeout(500); // wejście okienka (260 ms)
       } else {
         await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 15000 });
         await page.waitForTimeout(500); // wejście ostatniego okienka (260 ms)
@@ -2535,8 +2541,11 @@ try {
             // Rozmiar po skali dopasowania okienka (--fit, D-116): computed style jej nie uwzględnia.
             .map((el) => parseFloat(getComputedStyle(el).fontSize) * (parseFloat(el.closest('[data-testid="easter-popup"]').style.getPropertyValue('--fit')) || 1));
           const monitor = document.querySelector('[data-testid="nested-screen"]');
+          const counter = document.querySelector('[data-testid="easter-popup-counter"] [aria-hidden="true"]');
           return {
             cards,
+            counter: counter ? counter.textContent.trim() : null,
+            single: document.querySelector('[data-testid="easter-popups"]')?.hasAttribute('data-single') ?? false,
             // D-116: okienka wyłącznie na ekranie monitora (prostokąt slot-ekran z grafiki pulpitu).
             monitor: monitor ? rect(monitor) : null,
             zoom: rect(document.querySelector('[data-testid="scene-zoom"]')),
@@ -2559,44 +2568,96 @@ try {
           if (!info.topHit) fail(`${label}: (e2) ${step}: krzyżyk górnego okienka przykryty.`);
           if (!info.topFocused) fail(`${label}: (e2) ${step}: fokus nie na krzyżyku górnego okienka.`);
         }
-        // (e3) Tekst >= 15 px, gdy ekran monitora jest dość duży (od 1366x768); na telefonie okienka na ekranie monitora są zmniejszane
-        // (decyzja właściciela D-116: w granicach ekranu, szerokość <= 60%, skala w dół) - tam próg to 9 px (EASTER_SCREEN_MIN_FONT).
-        const minFont = EASTER_FULL_FONT_VIEWPORTS.has(viewport.name) ? 15 : EASTER_SCREEN_MIN_FONT;
-        if (info.minFont !== null && info.minFont < minFont) fail(`${label}: (e3) ${step}: tekst okienek ${info.minFont}px (< ${minFont}).`);
-        if (step === '3 okienka') console.log(`INFO ${label}: (e3) najmniejszy tekst okienek ${info.minFont?.toFixed(1)} px (próg ${minFont})`);
-      };
-      await check('3 okienka');
-      // (e4) Tło nie zamyka; Esc zamyka górne okienko.
-      const zoomBox = await boxOf(page, '[data-testid="scene-zoom"]');
-      await page.mouse.click(zoomBox.x + zoomBox.width - 6, zoomBox.y + zoomBox.height - 6);
-      if ((await popups.count()) !== 3) fail(`${label}: (e4) klik w tło zamknął okienko.`);
-      await page.keyboard.press('Escape');
-      if ((await popups.count()) !== 2) fail(`${label}: (e4) Esc nie zamknął górnego okienka (${await popups.count()}).`);
-      await check('2 okienka');
-      await page.locator('[data-popup-index="1"] [data-popup-close]').click();
-      await check('1 okienko');
-      const action = page.locator('[data-popup-index="0"] [data-testid="easter-popup-action"]');
-      if (viewport.mouse && !reduced) {
-        // (e5) Uciekanie: dwa najechania przesuwają przycisk, trzecie już nie.
-        const positions = [];
-        for (let i = 0; i < 3; i += 1) {
-          const before = await action.boundingBox();
-          await page.mouse.move(5, 5);
-          await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2, { steps: 3 });
-          await page.waitForTimeout(250);
-          const after = await action.boundingBox();
-          positions.push(Math.hypot(after.x - before.x, after.y - before.y) > 5);
+        // (e3) Tekst >= 15 px wszędzie (telefon: okienka po jednym, bez zmniejszania - D-117).
+        if (info.minFont !== null && info.minFont < 15) fail(`${label}: (e3) ${step}: tekst okienek ${info.minFont}px (< 15).`);
+        // (e9) Telefon: tryb po jednym, dokładnie jedno okienko z licznikiem „n/3”.
+        if (single && (!info.single || info.cards.length !== 1 || info.counter !== expectedCounter)) {
+          fail(`${label}: (e9) ${step}: po jednym - ${JSON.stringify({ single: info.single, okienek: info.cards.length, licznik: info.counter, oczekiwany: expectedCounter })}.`);
         }
-        if (positions.join() !== 'true,true,false') fail(`${label}: (e5) uciekanie ${positions.join()} (oczekiwane: ucieka 2 razy).`);
-        step(`${label}: (e5) przycisk ucieka 2 razy, potem zostaje`, true);
-      }
-      await action.click();
-      if ((await popups.count()) !== 1) fail(`${label}: (e5) klik w przycisk okienka je zamknął.`);
+        if (!single && info.single) fail(`${label}: (e9) ${step}: desktop w trybie po jednym.`);
+      };
+      let expectedCounter = null;
+      const zoomBox = await boxOf(page, '[data-testid="scene-zoom"]');
+      const action = page.locator('[data-testid="easter-popup-action"]').first();
       // Koniec drgnięcia po kliku w przycisk: w trakcie animacji test trafienia Playwrighta chybia i ponawia przewinięcie z
       // wymuszonym wyrównaniem, które przesuwa kontenery odtwarzacza z overflow: hidden (artefakt testu, nie zachowanie strony).
-      await page.waitForFunction(() => document.querySelector('[data-popup-index="0"] [data-testid="easter-popup-card"]')?.getAnimations().length === 0);
-      await shot(page, `${viewport.name}-easter-2-ostatnie${reduced ? '-rm' : ''}`);
-      await page.locator('[data-popup-index="0"] [data-popup-close]').click();
+      // `playState`, nie długość listy: wejście (popup-in, fill: both) zostaje na liście także po zakończeniu.
+      const shakeDone = () =>
+        page.waitForFunction(() => [...document.querySelectorAll('[data-testid="easter-popup-card"]')].every((card) => card.getAnimations().every((animation) => animation.playState !== 'running')));
+      if (single) {
+        for (let n = 1; n <= 3; n += 1) {
+          expectedCounter = `${n}/3`;
+          await shakeDone();
+          await check(`okienko ${n}/3`);
+          await shot(page, `${viewport.name}-easter-1-okienko-${n}${reduced ? '-rm' : ''}`);
+          if (n === 1) {
+            // (e4) Tło nie zamyka (dotyk w róg zbliżenia), Esc zamyka okienko - pojawia się następne.
+            await page.touchscreen.tap(zoomBox.x + zoomBox.width - 6, zoomBox.y + zoomBox.height - 6);
+            if ((await popups.count()) !== 1 || (await page.getByTestId('easter-popup-counter').textContent())?.includes('2 z 3')) fail(`${label}: (e4) dotyk w tło zamknął okienko.`);
+            await page.keyboard.press('Escape');
+            if (!(await page.getByTestId('easter-popup-counter').textContent())?.includes('2 z 3')) fail(`${label}: (e4) Esc nie przełączył na okienko 2/3.`);
+          } else if (n === 2) {
+            // Klik w przycisk okienka go nie zamyka (drgnięcie), zamyka krzyżyk.
+            await action.click();
+            await shakeDone();
+            if ((await page.locator('[data-testid="easter-popup-counter"] [aria-hidden="true"]').textContent())?.trim() !== '2/3') fail(`${label}: (e5) klik w przycisk okienka je zamknął.`);
+            await page.locator('[data-popup-close]').click();
+          } else {
+            // (e10) Treść przewinięta do końca (za wysokie okienko, np. z odliczaniem na 844x390): krzyżyk dalej w ekranie monitora i
+            // nieprzykryty - nagłówek nie przewija się razem z treścią.
+            const afterScroll = await page.evaluate(() => {
+              const body = document.querySelector('[data-testid="easter-popup-body"]');
+              body.scrollTop = body.scrollHeight;
+              const close = document.querySelector('[data-popup-close]').getBoundingClientRect();
+              const monitor = document.querySelector('[data-testid="nested-screen"]').getBoundingClientRect();
+              const hit = document.elementFromPoint(close.left + close.width / 2, close.top + close.height / 2);
+              // Po przewinięciu do końca także przycisk okienka widoczny w ekranie monitora i w przewijanej treści.
+              const action = document.querySelector('[data-testid="easter-popup-action"]').getBoundingClientRect();
+              const bodyRect = body.getBoundingClientRect();
+              const within = (r, box) => r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 && r.left >= box.left - 0.5 && r.right <= box.right + 0.5;
+              return {
+                scrolls: body.scrollHeight > body.clientHeight,
+                inside: within(close, monitor),
+                hit: !!hit && document.querySelector('[data-popup-close]').contains(hit),
+                action: within(action, monitor) && within(action, bodyRect),
+              };
+            });
+            if (!afterScroll.inside || !afterScroll.hit || !afterScroll.action) fail(`${label}: (e10) krzyżyk po przewinięciu treści ${JSON.stringify(afterScroll)}.`);
+            console.log(`INFO ${label}: (e10) okienko 3/3 ${afterScroll.scrolls ? 'przewija treść' : 'mieści się bez przewijania'}, krzyżyk i przycisk w ekranie`);
+            await page.locator('[data-popup-close]').click();
+          }
+        }
+      }
+      if (!single) {
+        await check('3 okienka');
+        // (e4) Tło nie zamyka; Esc zamyka górne okienko.
+        await page.mouse.click(zoomBox.x + zoomBox.width - 6, zoomBox.y + zoomBox.height - 6);
+        if ((await popups.count()) !== 3) fail(`${label}: (e4) klik w tło zamknął okienko.`);
+        await page.keyboard.press('Escape');
+        if ((await popups.count()) !== 2) fail(`${label}: (e4) Esc nie zamknął górnego okienka (${await popups.count()}).`);
+        await check('2 okienka');
+        await page.locator('[data-popup-index="1"] [data-popup-close]').click();
+        await check('1 okienko');
+        if (viewport.mouse && !reduced) {
+          // (e5) Uciekanie: dwa najechania przesuwają przycisk, trzecie już nie.
+          const positions = [];
+          for (let i = 0; i < 3; i += 1) {
+            const before = await action.boundingBox();
+            await page.mouse.move(5, 5);
+            await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2, { steps: 3 });
+            await page.waitForTimeout(250);
+            const after = await action.boundingBox();
+            positions.push(Math.hypot(after.x - before.x, after.y - before.y) > 5);
+          }
+          if (positions.join() !== 'true,true,false') fail(`${label}: (e5) uciekanie ${positions.join()} (oczekiwane: ucieka 2 razy).`);
+          step(`${label}: (e5) przycisk ucieka 2 razy, potem zostaje`, true);
+        }
+        await action.click();
+        if ((await popups.count()) !== 1) fail(`${label}: (e5) klik w przycisk okienka je zamknął.`);
+        await shakeDone();
+        await shot(page, `${viewport.name}-easter-2-ostatnie${reduced ? '-rm' : ''}`);
+        await page.locator('[data-popup-index="0"] [data-popup-close]').click();
+      }
       const outro = page.getByTestId('easter-outro');
       await outro.waitFor();
       await shot(page, `${viewport.name}-easter-3-outro${reduced ? '-rm' : ''}`);
@@ -2617,7 +2678,7 @@ try {
       await shot(page, `${viewport.name}-easter-4-notatnik${reduced ? '-rm' : ''}`);
       await checkNoPageScroll(page, label);
       if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);
-      step(`${label}: (e1-e4, e6-e8) OK`, true);
+      step(`${label}: ${single ? '(e1-e4, e6-e10, po jednym 1/3-3/3)' : '(e1-e4, e6-e8)'} OK`, true);
       await context.close();
     }
   }

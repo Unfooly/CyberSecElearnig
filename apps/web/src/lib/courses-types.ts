@@ -29,7 +29,9 @@ export type ContentBlockType =
   | 'DOSSIER'
   // schemaVersion 6 (moduł 2, D-115): odsłuch nagrania z czerwonymi flagami (oceniany) i omówienie ze znacznikami (nieoceniane).
   | 'CALL_RECORDING'
-  | 'ANNOTATED_REPLAY';
+  | 'ANNOTATED_REPLAY'
+  // schemaVersion 6 (moduł 2, D-118): przesłuchanie - pytania, kwestie do notatnika, podważanie dowodem, konsola (oceniane przy sprzecznościach).
+  | 'INTERROGATION';
 
 /** Warstwa tekstu na grafice (schemaVersion 6, D-114): prostokąty w % grafiki, tekst rysowany przez odtwarzacz. */
 export interface TextLayerItem {
@@ -402,11 +404,15 @@ export interface DialogueQuestion {
   text: string;
   // Odpowiedź jako jeden tekst ALBO kwestie po kolei (schemaVersion 3).
   answer?: string;
-  lines?: { text: string; narration?: Narration }[];
+  // INTERROGATION (D-118): kwestia ma id (podważenie, klucz notatki) i może być fragmentem do notatnika. Sprzeczność jest sekretem - klient
+  // nie wie, która kwestia kłamie.
+  lines?: { id?: string; text: string; narration?: Narration; fragment?: { evidence?: boolean; note: { text: string; kind?: NoteKind } } }[];
   answerNarration?: Narration;
   note?: { text: string; kind?: NoteKind };
   evidence?: boolean;
   required?: boolean;
+  /** INTERROGATION (D-118): pytanie otwiera konsolę (`documents` bloku). */
+  opensDocuments?: boolean;
 }
 
 // call/log/web - schemaVersion 6 (moduł 2): rozmowa/nagranie, logi/konsola, strona/webinar.
@@ -439,12 +445,29 @@ export interface ClientProgressBlock {
   detail?: ResultDetail;
   // Reakcja maskotki na WYNIK (schemaVersion 4), dopiero po ukończeniu - patrz packages/content D-061.
   reaction?: ContentReaction;
+  // INTERROGATION (D-118): podważone kwestie (także w trakcie bloku) - kwestia po podważeniu tylko przy trafieniu.
+  challenges?: InterrogationChallenge[];
+}
+
+export interface InterrogationChallenge {
+  lineId: string;
+  correct: boolean;
+  line?: { text: string };
 }
 
 export interface ClientNote {
   blockId: string;
   text: string;
   kind?: NoteKind;
+  /** Nieprzejrzysty odnośnik notatki (D-118) - wskazanie dowodu przy podważeniu kwestii przesłuchania; tylko notatki zapisane przez serwer. */
+  ref?: string;
+}
+
+/** Odpowiedź POST .../blocks/:blockId/challenge (D-118). */
+export interface ChallengeResponse extends InterrogationChallenge {
+  blockId: string;
+  note?: ClientNote;
+  evidence: EvidenceSummary;
 }
 
 /** Ukryte wyróżnienie easter egga (D-100): etykieta z treści, rozwiązana przez serwer (bez id z treści). */
@@ -484,6 +507,8 @@ export interface ResultDetail {
   /** CALL_RECORDING (D-115): które segmenty były flagami, kategoria i czy gracz je trafił. */
   flags?: { segmentId: string; category: RecordingFlagCategory; hit: boolean }[];
   falseTaps?: number;
+  /** INTERROGATION (D-118): które kwestie kłamały i przyznanie po podważeniu - dopiero po ukończeniu bloku. */
+  contradictions?: { lineId: string; line: { text: string } }[];
 }
 
 export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_request' | 'install_request';

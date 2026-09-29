@@ -1,21 +1,22 @@
 'use client';
 
-import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ContentReaction, ResultDetail } from '@/lib/courses-types';
+import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ContentReaction, EvidenceSummary, InterrogationChallenge, ResultDetail } from '@/lib/courses-types';
 import EmailAnalysisBlock from './EmailAnalysisBlock';
 import OrderingBlock from './OrderingBlock';
 import TextInputBlock from './TextInputBlock';
 import CallRecordingBlock from './CallRecordingBlock';
+import InterrogationBlock, { InterrogationResult } from './InterrogationBlock';
 
 // Bloki oceniane z rozstrzygnięciem po odpowiedzi (mail, kolejność, zadanie tekstowe) w trzech widokach: odpowiadanie, WYNIK zaraz po
 // zapisie (`live` - reakcja, animacja werdyktu) i PODGLĄD ukończonego bloku ("Wstecz"). Żaden widok nie ma przycisku dalej - „Dalej” jest
 // wyłącznie w dolnym pasku (D-106). Ocena zawsze z serwera; ten komponent tylko pokazuje wybór gracza i rozstrzygnięcie (id nieprzejrzyste,
 // jak w /start).
-export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING'] as const;
+export const SCORED_TYPES = ['EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING', 'INTERROGATION'] as const;
 
 export const isScored = (type: string) => (SCORED_TYPES as readonly string[]).includes(type);
 
 /** Bloki, których wynik pokazujemy w samym bloku (zamiast ogólnego "Poprawna / niepoprawna odpowiedź"). */
-export const hasInlineResult = (type: string) => type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING';
+export const hasInlineResult = (type: string) => type === 'EMAIL_ANALYSIS' || type === 'ORDERING' || type === 'CALL_RECORDING' || type === 'INTERROGATION';
 
 export interface ScoredResult {
   answer?: ChosenAnswer;
@@ -24,6 +25,8 @@ export interface ScoredResult {
   points?: number;
   // Reakcja na wynik (schemaVersion 4; od D-093 tylko tekst), dopiero po ukończeniu - patrz packages/content D-061.
   reaction?: ContentReaction;
+  // Przesłuchanie (D-118): własne podważenia gracza (trafienia i pudła) do wyniku.
+  challenges?: InterrogationChallenge[];
 }
 
 export default function ScoredBlock({
@@ -38,9 +41,16 @@ export default function ScoredBlock({
   onProgress,
   caseNo,
   contentBase,
+  onEvidence,
+  myAvatarUrl,
+  myInitials,
 }: {
   block: ContentBlock;
   courseId: string;
+  /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu. */
+  onEvidence?: (summary: EvidenceSummary) => void;
+  myAvatarUrl?: string | null;
+  myInitials?: string;
   /** Baza zasobów (nagrania CALL_RECORDING). */
   contentBase?: string;
   /** Numer sprawy z odprawy (tabliczka tablicy śledczej, ORDERING). */
@@ -97,6 +107,24 @@ export default function ScoredBlock({
         />
       );
     }
+    case 'INTERROGATION':
+      // Przesłuchanie (D-118): wynik - rozstrzygnięcie sprzeczności z serwera i własne podważenia; bez wyniku - przesłuchanie na żywo.
+      return result ? (
+        <InterrogationResult block={block} detail={result.detail} challenges={result.challenges ?? progress?.challenges} points={result.points} />
+      ) : (
+        <InterrogationBlock
+          block={block}
+          courseId={courseId}
+          contentBase={contentBase ?? ''}
+          onSubmit={(answer) => onSubmit?.(answer)}
+          onReady={(submit) => onReady?.(submit)}
+          progress={progress}
+          onProgress={onProgress}
+          onEvidence={onEvidence}
+          myAvatarUrl={myAvatarUrl}
+          myInitials={myInitials}
+        />
+      );
     case 'TEXT_INPUT_GUIDED':
       return (
         <TextInputBlock

@@ -71,7 +71,7 @@ function CharacterBubble({
 }
 
 // Dymek gracza (prawa strona, akcent) z jego avatarem przy ostatniej wiadomości grupy.
-function PlayerBubble({ avatarUrl, initials, showAvatar, children }: { avatarUrl: string | null; initials?: string; showAvatar: boolean; children: ReactNode }) {
+export function PlayerBubble({ avatarUrl, initials, showAvatar, children }: { avatarUrl: string | null; initials?: string; showAvatar: boolean; children: ReactNode }) {
   return (
     <div className="flex items-end gap-2">
       <p className="ml-auto w-fit max-w-[75%] break-words rounded-card rounded-br-md bg-accent px-3 py-2 text-white">
@@ -86,8 +86,8 @@ function PlayerBubble({ avatarUrl, initials, showAvatar, children }: { avatarUrl
 }
 
 // Wskaźnik pisania rozmówcy: trzy animowane kropki z jego avatarem (reduced-motion: statyczne „pisze…”). Dla czytnika ukryty - wątek
-// jest regionem live i ogłasza gotową wiadomość; klik (albo Spacja w bloku) pokazuje wiadomość od razu.
-function TypingBubble({
+// jest regionem live i ogłasza gotową wiadomość; klik (albo Spacja w bloku) pokazuje wiadomość od razu. Także przesłuchanie (D-118).
+export function TypingBubble({
   avatarUrl,
   avatarFailed,
   onAvatarError,

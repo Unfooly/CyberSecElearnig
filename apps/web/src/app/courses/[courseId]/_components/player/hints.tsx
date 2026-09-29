@@ -14,6 +14,8 @@ export const DEFAULT_HINT: Record<string, string> = {
   // Moduł 2 (D-115).
   CALL_RECORDING: 'Słuchaj uważnie. Stuknij „Czerwona flaga”, gdy rozmówca manipuluje.',
   ANNOTATED_REPLAY: 'Przejdź przez wszystkie znaczniki omówienia.',
+  // Moduł 2 (D-118).
+  INTERROGATION: 'Zadawaj pytania. Gdy odpowiedź nie zgadza się z dowodem, podważ ją dowodem z notatnika.',
 };
 
 export const HINT_EVENT_TEXT: Record<HintEvent, string> = {

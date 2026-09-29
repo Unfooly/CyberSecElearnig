@@ -56,9 +56,13 @@ export function NotesProvider({
   const [notes, setNotes] = useState<ClientNote[]>(initial);
   const [distinctions, setDistinctions] = useState<ClientDistinction[]>(initialDistinctions);
   const addNote = useCallback((note: ClientNote) => {
-    setNotes((current) =>
-      current.some((existing) => existing.blockId === note.blockId && existing.text === note.text) ? current : [...current, note],
-    );
+    setNotes((current) => {
+      const index = current.findIndex((existing) => existing.blockId === note.blockId && existing.text === note.text);
+      if (index < 0) return [...current, note];
+      // Notatka dodana w bloku (bez odnośnika) dostaje `ref`, gdy serwer ją zapisze (D-118 - wskazanie dowodu przy podważeniu).
+      if (note.ref && !current[index].ref) return current.map((existing, i) => (i === index ? { ...existing, ref: note.ref } : existing));
+      return current;
+    });
   }, []);
   const addDistinction = useCallback((distinction: ClientDistinction) => {
     setDistinctions((current) =>

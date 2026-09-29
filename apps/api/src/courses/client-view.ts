@@ -8,6 +8,7 @@ import {
   challengesView,
   emailDetail,
   interrogationDetail,
+  liveCallDetail,
   orderingDetail,
   osintDetail,
   osintSecretEndings,
@@ -211,6 +212,11 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       if (block.type === 'OSINT_SPOT' && Array.isArray(entry.marked)) {
         answer = { marked: entry.marked };
         detail = osintDetail(block, entry.marked);
+      }
+      // Rozmowa na żywo (D-122): ścieżka gracza i rozstrzygnięcie (zakończenie, ocena, odpowiedzi oddające informację).
+      if (block.type === 'LIVE_CALL' && Array.isArray(entry.path)) {
+        answer = { path: entry.path, timed: entry.timed === true };
+        detail = liveCallDetail(block, entry.path);
       }
     }
     view[blockId] = {

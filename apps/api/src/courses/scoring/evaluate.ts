@@ -8,6 +8,8 @@ import {
   compileAnswerRegex,
   flattenDossierRows,
   flattenHotspots,
+  LiveCallLike,
+  replayLiveCall,
   SCORED_BLOCK_TYPES,
   WHEN_BASED_TYPES,
 } from '@cyberszkolo/content/dist/node';
@@ -45,6 +47,9 @@ const seenAnswer = z.object({ seen: z.number().int().min(0).max(20) }).strict();
 const interrogationAnswer = z.object({ asked: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE), opened: ids.optional() }).strict();
 // OSINT_SPOT (D-120): zaznaczone obszary i wysłuchane do końca nagrania (id ukrytych zakończeń - bramka UX jak easter egg).
 const osintAnswer = z.object({ marked: z.array(idSchema).max(20), heard: z.array(idSchema).max(20).optional() }).strict();
+// LIVE_CALL (D-122): ścieżka odpowiedzi (id odpowiedzi albo "silence" po upływie limitu) i czy podejście było z limitem czasu. Węzłów jest
+// najwyżej 20 i graf nie ma cykli, więc ścieżka ma najwyżej 20 kroków.
+const liveCallAnswer = z.object({ path: z.array(idSchema).min(1).max(20), timed: z.boolean() }).strict();
 
 function parseAnswer<T>(schema: z.ZodType<T>, answer: unknown): T {
   const parsed = schema.safeParse(answer);
@@ -301,6 +306,20 @@ export function evaluateSubmit(
       };
     }
 
+    case 'LIVE_CALL': {
+      // Rozmowa na żywo (D-122): serwer przechodzi drzewo po ścieżce gracza (ta sama funkcja co walidacja treści) i ocenia zakończenie.
+      // Cisza (krawędź `silence`) tylko w podejściu z limitem czasu - bez limitu nie ma czego przemilczeć.
+      const { path, timed } = parseAnswer(liveCallAnswer, answer);
+      const walked = replayLiveCall(block as unknown as LiveCallLike, path, { allowSilence: timed });
+      if (!walked) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+      const outcome = liveCallOutcome(block, walked.ending);
+      return {
+        entry: baseEntry(block, now, { correct: outcome === 'good', points: LIVE_CALL_POINTS[outcome], path, timed }),
+        notesAdded: [],
+        detail: liveCallDetail(block, path),
+      };
+    }
+
     case 'ANNOTATED_REPLAY': {
       // Omówienie (D-115): ukończone po przejściu wszystkich znaczników (bramka UX, jak zakładki).
       const { seen } = parseAnswer(seenAnswer, answer);
@@ -347,6 +366,30 @@ export function orderingDetail(block: Block, opaque: OpaqueId) {
     correctOrder: items.map((i) => opaque(block.id, i.id)),
     ...(block.explanation ? { explanation: block.explanation } : {}),
   };
+}
+
+// --- LIVE_CALL (D-122) --------------------------------------------------------------------------------------------------
+
+type LiveCallOutcome = 'good' | 'partial' | 'bad';
+const LIVE_CALL_POINTS: Record<LiveCallOutcome, number> = { good: 1, partial: 0.5, bad: 0 };
+
+function liveCallOutcome(block: Block, endingId: string): LiveCallOutcome {
+  const endings = (block as unknown as LiveCallLike).endings;
+  const ending = Array.isArray(endings) ? endings.find((candidate) => candidate?.id === endingId) : undefined;
+  return ending?.outcome === 'good' || ending?.outcome === 'partial' ? ending.outcome : 'bad';
+}
+
+/**
+ * Rozstrzygnięcie rozmowy po ocenie (odpowiedź zapisu i podgląd ukończonego bloku): zakończenie, jego ocena i odpowiedzi ze ścieżki, które
+ * oddały informację (`infoChoices` - sekret treści, tu tylko te wybrane przez gracza). Ścieżka pochodzi z zapisanego wpisu (przeszła ocenę);
+ * uszkodzona treść albo wpis - bez rozstrzygnięcia (undefined), nie 500 na widoku kursu.
+ */
+export function liveCallDetail(block: Block, path: readonly string[]) {
+  const walked = replayLiveCall(block as unknown as LiveCallLike, path, { allowSilence: true });
+  if (!walked) return undefined;
+  const infoChoices = (block as unknown as LiveCallLike).infoChoices;
+  const info = Array.isArray(infoChoices) ? infoChoices : [];
+  return { ending: walked.ending, outcome: liveCallOutcome(block, walked.ending), gaveInfo: walked.choices.filter((id) => info.includes(id)) };
 }
 
 // --- OSINT_SPOT (D-120) -------------------------------------------------------------------------------------------------

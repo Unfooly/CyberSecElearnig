@@ -94,6 +94,21 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   Bez `closing` odtwarzacz pokazuje prosty ekran ukończenia. `closing.portrait { image, slots }` (D-098, opcjonalne): raport 9:16 dla
   telefonu w pionie z kompletem slotów (pieczęć i liścik te same pliki); bez niego telefon pokazuje panoramę raportu 16:9.
 
+### schemaVersion 6: treść wielojęzyczna, warstwa tekstu (D-114)
+
+- **Pola wielojęzyczne:** każdy tekst dla gracza (tytuły, treści, etykiety, notatki, `alt`, podpowiedzi, reakcje, metadane modułu) to
+  string (= `pl`) albo `{ "pl": "…", "en": "…" }`; `pl` wymagane, brak języka w polu = `pl`. Narracja: płaska (jak v5) albo
+  `{ "voice": "oszust", "pl": { "text", "spokenText"?, "audioUrl"?, "durationMs"?, "cues"? }, "en"?: { … } }`. Jednojęzyczne zostają:
+  `answer.accept[]`, `answer.regex`, `email.links[].url`, `caseNo`.
+- Wersja kursu przechowuje wszystkie języki; walidacja semantyczna, API (`toResolved`), `toClientBlock` i harness pracują na treści
+  rozwiniętej do jednego języka (`localizeContent`, `src/localize.ts`). Klasyfikacja pól (`FIELD_CLASSIFICATION`) nie zależy od języka.
+- Reguły semantyczne sprawdzane w każdym użytym języku (błąd tylko w EN: prefiks `[en]`), reguła cyfr lektora (D-109) też.
+- `textLayer[] { id, x, y, w, h, text, style?, portrait? }` na scenie `SCENE_HOTSPOTS`, zbliżeniu (`media.kind: "image"`) i scenie
+  zagnieżdżonej - tekst rysowany na grafice w % jej wymiarów (`style`: `label` | `sign` | `screen` | `handwritten`; `portrait` -
+  prostokąt na `imagePortrait`). Grafika bez wypalonego tekstu jest wspólna dla języków.
+- Notatki `kind`: `call`, `log`, `web`; role głosu: `karol`, `pawel`, `oszust` (`voices.json`: `"oszust": { "sameAs": "pawel" }`).
+- Wszystko powyżej wymaga `schemaVersion: 6`. Moduł 1 (v5) jest bez zmian bajt w bajt (`src/module-1-golden.spec.ts`).
+
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 
 Renderer po stronie klienta (`apps/web/src/app/courses/[courseId]/_components/simple-markdown.tsx`) obsługuje ZAMKNIĘTY,

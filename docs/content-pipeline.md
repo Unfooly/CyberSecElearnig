@@ -79,6 +79,13 @@ Każda narracja (także nagranie media audio hotspotu, `media.narration`) może 
 błąd walidacji modułu. Rola -> voiceId ElevenLabs: **`scripts/content/voices.json`** (commitowany; ID głosu nie jest sekretem,
 jest też w locku i manifeście; klucz API zostaje wyłącznie w `.env.local`). Plik musi mieć dokładnie role ze schematu.
 
+- schemaVersion 6 (D-114): role `karol`, `pawel`, `oszust`. Wpis roli to `{ "pl": "<voiceId>", "en"?: "<voiceId>" }` (głos per język
+  treści; brak języka = głos `pl`) albo `{ "sameAs": "<rola>" }` - ta sama postać pod innym imieniem, ten sam głos w każdym języku
+  (`"oszust": { "sameAs": "pawel" }`, test pilnuje równości). `sameAs` wskazuje rolę z własnym głosem (bez łańcuchów). Stary kształt
+  `"rola": "<voiceId>"` znaczy `{ "pl": … }`.
+- Narracja wielojęzyczna (`{ voice?, pl: {...}, en?: {...} }`): potok nagrywa `pl` (wynik trafia do obiektu `pl`, klucz locka jak dla
+  narracji jednojęzycznej, bez sufiksu). Nagrania `en` - faza EN (dziś czytelny błąd zamiast cichego pominięcia).
+
 - Skrót nagrania (nazwa pliku i wpis w locku) obejmuje voiceId + model + język + tekst: zmiana ID roli w `voices.json` = nagrania
   tej roli nieaktualne w `--check` (`głos roli zmieniony`) i nowe pliki przy generowaniu; pozostałe role bez zmian.
 - `audio.lock.json` `lockVersion: 2`: `voice` i `voiceId` przy KAŻDYM wpisie. Lock w wersji 1 (jeden `voiceId` partii) jest czytany

@@ -286,9 +286,9 @@ describe('OrderingBlock: tablica śledcza', () => {
   });
 });
 
-// Telefon w pionie (D-105, zastępuje listę z D-099): miejsce wyraźnie wyższe niż szersze -> tablica z korkiem w jednej kolumnie
-// zygzakiem, tacka jako pasek pod sceną, tekst min. 15 px; palcem tylko stuknięcia.
-describe('OrderingBlock: tablica zygzakiem na telefonie w pionie', () => {
+// Telefon w pionie (D-116, zastępuje zygzak D-105): miejsce wyraźnie wyższe niż szersze -> tablica z korkiem, pionowa oś z nicią po
+// lewej, jedna kolumna kart, START / KONIEC, pola „Upuść tutaj”, tacka „Do ułożenia (n)” pod sceną, tekst min. 15 px; palcem stuknięcia.
+describe('OrderingBlock: tablica z osią na telefonie w pionie', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -299,22 +299,29 @@ describe('OrderingBlock: tablica zygzakiem na telefonie w pionie', () => {
   const portrait = () =>
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) }) as DOMRect);
 
-  it('tablica z korkiem i nicią (nie lista): pola w jednej kolumnie zygzakiem, tacka POZA sceną, tekst kart i tacki min. 15 px', () => {
+  it('tablica z korkiem i osią (nie lista): jedna kolumna pól, START / KONIEC, „Upuść tutaj”, tacka „Do ułożenia (n)” POZA sceną, 15 px', () => {
     portrait();
     setup();
     const board = screen.getByTestId('evidence-board');
-    expect(board).toHaveAttribute('data-layout', 'zigzag');
+    expect(board).toHaveAttribute('data-layout', 'axis');
     expect(board.querySelector('.board-cork')).not.toBeNull();
     expect(board.querySelectorAll('svg [data-yarn]').length).toBeGreaterThan(0);
-    // Zygzak: sąsiednie pola na przemian przy lewej i prawej krawędzi, każde niżej od poprzedniego.
+    // Jedna kolumna: pola przy tej samej lewej krawędzi, każde niżej od poprzedniego; puste pole z podpisem „Upuść tutaj”.
     const lefts = [1, 2, 3].map((n) => parseFloat(emptySlot(n).style.left));
     const tops = [1, 2, 3].map((n) => parseFloat(emptySlot(n).style.top));
-    expect(lefts[0]).toBeLessThan(lefts[1]);
-    expect(lefts[2]).toBe(lefts[0]);
+    expect(new Set(lefts).size).toBe(1);
     expect(tops[1]).toBeGreaterThan(tops[0]);
     expect(tops[2]).toBeGreaterThan(tops[1]);
-    // Tacka - pasek pod sceną (nie w niej), karty tacki 15 px.
+    expect(emptySlot(1)).toHaveTextContent('Upuść tutaj');
+    // START nad pierwszym polem, KONIEC pod ostatnim.
+    const top = (el: HTMLElement) => parseFloat(el.style.top);
+    expect(top(screen.getByTestId('board-axis-start'))).toBeLessThan(tops[0]);
+    expect(top(screen.getByTestId('board-axis-end'))).toBeGreaterThan(tops[2]);
+    // Nić prosto po osi (pionowe odcinki).
+    for (const path of board.querySelectorAll('svg [data-yarn]')) expect(path.getAttribute('d')).toMatch(/^M(\d+) [\d.]+ L\1 [\d.]+$/);
+    // Tacka - pasek pod sceną (nie w niej) z licznikiem „Do ułożenia (n)”, karty tacki 15 px.
     expect(board).not.toContainElement(tray());
+    expect(tray()).toHaveTextContent(/Do ułożenia \(\d+\)/);
     expect(trayCard('Usuń mail')).toHaveStyle({ fontSize: '15px' });
     expect(screen.getByText('A.K.')).toBeInTheDocument();
   });
@@ -403,7 +410,7 @@ describe('OrderingBlock: tablica zygzakiem na telefonie w pionie', () => {
     expect(document.querySelector('body > .board-card')).not.toBeNull();
     size = { width: 360, height: 600 };
     act(() => resize());
-    expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-layout', 'zigzag');
+    expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-layout', 'axis');
     expect(document.querySelector('body > .board-card')).toBeNull();
     expect(placed(1)).toHaveTextContent('Usuń mail');
     expect(trayCard('Zgłoś wiadomość')).toBeInTheDocument();

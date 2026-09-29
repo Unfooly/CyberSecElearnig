@@ -32,19 +32,31 @@ describe('boardLayout', () => {
     }
   });
 
-  it('pionowo (telefon, D-105): jedna kolumna szerokich kart na przemian przy lewej i prawej krawędzi, tacka poza sceną', () => {
+  it('pionowo (telefon, D-116): oś z nicią po lewej, jedna kolumna szerokich kart po jej prawej, START na górze, KONIEC na dole', () => {
     const layout = boardLayout(6, 'portrait', { start: true, end: true });
     expect(layout.width).toBeLessThan(layout.height);
-    const xs = layout.slots.map((slot) => slot.x);
-    expect(new Set(xs).size).toBe(2);
-    expect(xs[0]).toBeLessThan(xs[1]);
-    // Szerokie karty (ponad 70% sceny) - jedna "kolumna", nie dwie obok siebie.
+    const axis = layout.axis!;
+    // Jedna kolumna: wszystkie pola i zdjęcia przy tej samej lewej krawędzi, na prawo od osi.
+    expect(new Set([...layout.slots, layout.start!, layout.end!].map((piece) => piece.x)).size).toBe(1);
+    expect(layout.slots[0].x).toBeGreaterThan(axis.x);
     expect(layout.card.w / layout.width).toBeGreaterThan(0.7);
     for (let i = 1; i < 6; i += 1) expect(layout.slots[i].y).toBeGreaterThanOrEqual(layout.slots[i - 1].y + layout.slots[i - 1].h);
-    for (const piece of [...layout.slots, layout.start!, layout.end!]) expect(inside(layout.cork, piece)).toBe(true);
-    // Koniec łańcucha po stronie przeciwnej do ostatniego pola (6. pole - prawa strona, zdjęcie z lewej).
-    expect(layout.end!.x).toBeLessThan(layout.slots[5].x);
+    // START nad zdjęciem początku, KONIEC pod zdjęciem końca; tabliczki na osi.
+    expect(axis.start.y + axis.start.h).toBeLessThanOrEqual(layout.start!.y);
+    expect(axis.end.y).toBeGreaterThanOrEqual(layout.end!.y + layout.end!.h);
+    for (const tag of [axis.start, axis.end]) expect(tag.x).toBeLessThanOrEqual(axis.x);
+    for (const piece of [...layout.slots, layout.start!, layout.end!, axis.start, axis.end]) expect(inside(layout.cork, piece)).toBe(true);
     expect(layout.tray).toBeNull();
+    expect(boardLayout(6, 'landscape').axis).toBeNull();
+  });
+
+  it('pionowo: nić prosto po osi od START do KONIEC (pinezki kart na osi), przerywana przy pustych polach', () => {
+    const layout = boardLayout(3, 'portrait', { start: true, end: true });
+    const segments = yarnSegments(layout, [true, false, true]);
+    // START -> zdjęcie -> 3 pola -> zdjęcie -> KONIEC = 6 odcinków, wszystkie pionowe na x osi.
+    expect(segments).toHaveLength(6);
+    for (const segment of segments) expect(segment.d).toMatch(new RegExp(`^M${layout.axis!.x} [\\d.]+ L${layout.axis!.x} [\\d.]+$`));
+    expect(segments.map((segment) => segment.solid)).toEqual([true, true, false, false, true, true]);
   });
 
   it('pionowo: długi tekst śladu i podpis zdjęcia = wyższe karty i zdjęcia (tekst 15 px się nie ucina), nadal bez nakładania', () => {

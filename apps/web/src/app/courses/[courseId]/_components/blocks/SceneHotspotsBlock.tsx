@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { ArrowLeft, Check, DoorOpen, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot, TextLayerItem } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
@@ -112,7 +112,6 @@ export default function SceneHotspotsBlock({
   review?: boolean;
 }) {
   const hotspots = block.hotspots ?? [];
-  const hotspotZIndex = hotspotStackZIndex(hotspots);
   const flat = flattenHotspots(hotspots);
   const initialPanX = computeHotspotCentroid(hotspots);
   const { addNote, addDistinction, distinctions } = useNotes();
@@ -154,11 +153,26 @@ export default function SceneHotspotsBlock({
   const nestedPhaseRef = useRef<Phase | null>(null);
   phaseRef.current = phase;
   nestedPhaseRef.current = nestedPhase;
-  const imageUrl = withStaticFragment(contentAssetUrl(contentBase, block.image, 'image'), reducedMotion);
+  // Wariant pionowy sceny (D-116): na telefonie w pionie (ten sam warunek co zbliżenia, D-098/D-104) grafika pionowa w całości, bez
+  // panoramy, i prostokąty przedmiotów z `portraitHotspots` (te same id). Bez wariantu - panorama jak dotąd.
+  // Grafika pionowa, która się nie wczytała, nie chowa sceny: wracamy do panoramy z grafiką poziomą (zapamiętane do końca bloku).
+  const [portraitFailed, setPortraitFailed] = useState(false);
+  const portraitScene = portraitStage && !portraitFailed && !!block.imagePortrait && (block.portraitHotspots?.length ?? 0) > 0;
+  const imageUrl = withStaticFragment(contentAssetUrl(contentBase, portraitScene ? block.imagePortrait : block.image, 'image'), reducedMotion);
+  const portraitRects = new Map((block.portraitHotspots ?? []).map((rect) => [rect.id, rect]));
+  const shownHotspots = portraitScene
+    ? hotspots.map((hotspot) => {
+        const rect = portraitRects.get(hotspot.id);
+        return rect ? { ...hotspot, x: rect.x, y: rect.y, width: rect.width, height: rect.height } : hotspot;
+      })
+    : hotspots;
+  const hotspotZIndex = hotspotStackZIndex(shownHotspots);
   const active = hotspots.find((hotspot) => hotspot.id === activeId) ?? null;
   const nestedScene = active?.media?.kind === 'scene' ? active.media.scene : undefined;
   const activeInner = nestedScene?.hotspots.find((hotspot) => hotspot.id === nestedActiveId) ?? null;
   const current: AnyHotspot | null = activeInner ?? active;
+  // Scena zagnieżdżona z prostokątem ekranu (D-116): okienka easter egga w nim, nie nad całą nakładką.
+  const popupsOnScreen = !!nestedScene?.screen;
 
   // "Drzwi" (action:'next', B-086/D-071) WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie (klik od razu
   // kończy blok) - inaczej scena z SAMYMI drzwiami (np. "korytarz") nigdy nie mogłaby się ukończyć. Ta sama reguła co server-side
@@ -210,6 +224,27 @@ export default function SceneHotspotsBlock({
     // wartości, nie od refa (usePortraitContainer mierzy element zamontowany od razu, stąd osobny pomiar).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl, imageFailed]);
+
+  // Zmiana układu sceny przy otwartym zbliżeniu (wariant pionowy <-> poziomy po obrocie, D-116, albo proporcja obrazu po jego wczytaniu):
+  // kamera była policzona dla starego położenia przedmiotu - liczymy ją od nowa z geometrii BEZ bieżącego przybliżenia (transform
+  // pudełka chwilowo zdjęty, bez przejścia), inaczej przedmiot uciekałby spod nakładki.
+  const layoutKey = `${portraitScene ? 'p' : 'l'}:${aspectRatio.toFixed(4)}`;
+  const lastLayoutKey = useRef(layoutKey);
+  useLayoutEffect(() => {
+    if (lastLayoutKey.current === layoutKey) return;
+    lastLayoutKey.current = layoutKey;
+    const box = boxRef.current;
+    if (!activeId || camera === null || !box) return;
+    const { transform, transition } = box.style;
+    box.style.transition = 'none';
+    box.style.transform = 'none';
+    const next = cameraFor(triggerRef.current, box, viewRef.current);
+    box.style.transform = transform;
+    box.style.transition = transition;
+    setCamera(next);
+    // Tylko przy zmianie układu (camera/activeId czytane w chwili zmiany).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutKey]);
 
   // Fokus: przy otwarciu (w tym samym renderze, zanim przedmiot dostanie aria-hidden - reguła axe "aria-hidden-focus") na samą
   // nakładkę, a gdy grafika jest już na miejscu - na pierwszy przycisk (Zabierz/Odłóż albo Wróć).
@@ -433,10 +468,14 @@ export default function SceneHotspotsBlock({
           data-zoom-open={overlayOpen ? '' : undefined}
           className="relative isolate flex min-h-0 flex-1 items-center justify-center overflow-hidden [container-type:size]"
         >
+          {/* Zawsze ta sama struktura (bez przemontowania pudełka i przedmiotów przy zmianie wariantu - klik w trakcie przełączenia
+              trafiłby w odmontowany przycisk): wariant pionowy (D-116) nie ma przepełnienia, więc ScenePanContainer sam nie panoramuje. */}
           <ScenePanContainer initialPanX={initialPanX}>
             <div
               ref={boxRef}
-              className="scene-box relative isolate overflow-hidden rounded border border-slate-200"
+              data-scene-variant={portraitScene ? 'portrait' : 'landscape'}
+              // Wariant pionowy (D-116): "contain" jak scena odprawy (.briefing-scene-box - bez panoramy na telefonie w pionie).
+              className={`${portraitScene ? 'briefing-scene-box' : 'scene-box'} relative isolate overflow-hidden rounded border border-slate-200`}
               style={
                 {
                   '--scene-ratio': String(aspectRatio),
@@ -460,11 +499,11 @@ export default function SceneHotspotsBlock({
                   const { naturalWidth, naturalHeight } = event.currentTarget;
                   if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
                 }}
-                onError={() => setImageFailed(true)}
+                onError={() => (portraitScene ? setPortraitFailed(true) : setImageFailed(true))}
               />
               {/* Tekst sceny w warstwie (schemaVersion 6, D-114) - nad obrazem, pod przedmiotami; pod otwartym zbliżeniem aria-hidden jak obraz. */}
-              <TextLayer items={block.textLayer} ariaHidden={overlayOpen} />
-              {hotspots.map((hotspot) => {
+              <TextLayer items={block.textLayer} ariaHidden={overlayOpen} portrait={portraitScene} />
+              {shownHotspots.map((hotspot) => {
                 const seen = visited.includes(hotspot.id);
                 const isDoor = hotspot.action === 'next';
                 const blocked = isDoor && !ready;
@@ -499,6 +538,11 @@ export default function SceneHotspotsBlock({
                           }`
                     }`}
                   >
+                    {/* Wariant pionowy (D-116): cała scena w kadrze telefonu, więc drobne przedmioty (kubek, telefon) są mniejsze niż
+                        44 px - niewidoczne pole trafienia min. 44 px wokół środka przedmiotu. */}
+                    {portraitScene && (
+                      <span aria-hidden="true" data-hit className="absolute left-1/2 top-1/2 h-full min-h-[44px] w-full min-w-[44px] -translate-x-1/2 -translate-y-1/2" />
+                    )}
                     {isDoor && <DoorOpen aria-hidden="true" className="pointer-events-none mx-auto h-4 w-4 text-amber-800" />}
                     {!isDoor && seen && (
                       <span className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white">
@@ -566,9 +610,26 @@ export default function SceneHotspotsBlock({
                       overlayOpen={nestedActiveId !== null || !showOuter}
                       onBackdrop={onBackdrop}
                       onPick={openNested}
+                      screenContent={
+                        // Okienka easter egga na EKRANIE monitora (D-116) - tylko gdy treść podaje prostokąt ekranu; inaczej jak dotąd.
+                        popupsOnScreen && activeInner?.media?.kind === 'popups' && showInner ? (
+                          <PopupsEasterEgg
+                            ref={popupsRef}
+                            items={activeInner.media.items ?? []}
+                            outro={activeInner.media.outro ?? ''}
+                            badge={activeInner.media.badge}
+                            reducedMotion={reducedMotion}
+                            onFound={() => foundEasterEgg(activeInner)}
+                            onDone={closeNested}
+                            backLabel="Wróć do pulpitu"
+                            alreadyFound={hasDistinction(activeInner)}
+                            onScreen
+                          />
+                        ) : undefined
+                      }
                     />
                   </div>
-                  {activeInner && (
+                  {activeInner && !(popupsOnScreen && activeInner.media?.kind === 'popups') && (
                     <div
                       onClick={onBackdrop}
                       // Okno na ekranie (D-104): nad pulpitem przyciemnienie jak przy zbliżeniu (ink 35% + blur 3 px), bez ruchu kamery;
@@ -921,9 +982,12 @@ function NestedSceneImage({
   overlayOpen,
   onPick,
   onBackdrop,
+  screenContent,
 }: {
   contentBase: string;
   scene: NestedScene;
+  /** Treść na ekranie monitora (D-116: okienka easter egga) - w prostokącie `scene.screen`, ucięta do niego. */
+  screenContent?: ReactNode;
   visited: string[];
   noted: string[];
   interacted: boolean;
@@ -938,13 +1002,21 @@ function NestedSceneImage({
     const img = imgRef.current;
     if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight);
   }, [url]);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const push = useScreenPush(frameRef, scene.screen && screenContent ? scene.screen : undefined, aspectRatio);
   if (!url) return null;
   const zIndex = hotspotStackZIndex(scene.hotspots);
   return (
-    <div onClick={onBackdrop} className="hotspot-nested-scene-frame relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
+    <div ref={frameRef} onClick={onBackdrop} className="hotspot-nested-scene-frame relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
       <div
-        className="hotspot-nested-scene-box zoom-shadow relative isolate overflow-hidden"
-        style={{ '--scene-ratio': String(aspectRatio), height: 'auto', aspectRatio: 'var(--scene-ratio)', margin: 'auto' } as CSSProperties}
+        data-screen-push={push ? '' : undefined}
+        className={`hotspot-nested-scene-box relative isolate overflow-hidden ${push ? '' : 'zoom-shadow'}`}
+        style={{
+          ...({ '--scene-ratio': String(aspectRatio) } as CSSProperties),
+          height: 'auto',
+          aspectRatio: 'var(--scene-ratio)',
+          ...(push ? { position: 'absolute', width: push.width, left: push.left, top: push.top, margin: 0 } : { margin: 'auto' }),
+        }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
         <img
@@ -984,7 +1056,58 @@ function NestedSceneImage({
             </button>
           );
         })}
+        {scene.screen && screenContent && (
+          <div
+            data-testid="nested-screen"
+            className="absolute z-30 [overflow:clip]"
+            style={{ left: `${scene.screen.x}%`, top: `${scene.screen.y}%`, width: `${scene.screen.w}%`, height: `${scene.screen.h}%` }}
+          >
+            {screenContent}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+// Najazd na ekran monitora (D-116): okienka easter egga są układane w pikselach prostokąta ekranu, więc na małym zbliżeniu (telefon)
+// pudełko sceny jest powiększane (układ, nie transform - okienka liczą się w prawdziwych pikselach) tak, żeby ekran miał co najmniej
+// SCREEN_MIN_W × SCREEN_MIN_H px, ale nie więcej, niż zmieści się cały w ramce; ekran jest wtedy wyśrodkowany. Duży ekran: bez zmian (null).
+const SCREEN_MIN_W = 480;
+const SCREEN_MIN_H = 340;
+
+function useScreenPush(frameRef: RefObject<HTMLDivElement | null>, screen: NestedScene['screen'], aspectRatio: number) {
+  const [push, setPush] = useState<{ width: number; left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || !screen) {
+      setPush(null);
+      return undefined;
+    }
+    const measure = () => {
+      const fw = frame.clientWidth;
+      const fh = frame.clientHeight;
+      if (fw <= 0 || fh <= 0) return;
+      const baseWidth = Math.min(fw, fh * aspectRatio);
+      const sw = (baseWidth * screen.w) / 100;
+      const sh = (baseWidth / aspectRatio) * (screen.h / 100);
+      const scale = Math.min(Math.max(1, SCREEN_MIN_W / sw, SCREEN_MIN_H / sh), fw / sw, fh / sh);
+      if (scale <= 1.01) {
+        setPush(null);
+        return;
+      }
+      const width = baseWidth * scale;
+      const height = width / aspectRatio;
+      // Środek ekranu na środku ramki.
+      const left = fw / 2 - width * ((screen.x + screen.w / 2) / 100);
+      const top = fh / 2 - height * ((screen.y + screen.h / 2) / 100);
+      setPush((prev) => (prev && Math.abs(prev.width - width) < 0.5 && Math.abs(prev.left - left) < 0.5 && Math.abs(prev.top - top) < 0.5 ? prev : { width, left, top }));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [frameRef, screen, aspectRatio]);
+  return push;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { Award, X } from 'lucide-react';
 import type { PopupItem } from '@/lib/courses-types';
 
@@ -58,8 +58,13 @@ const PopupsEasterEgg = forwardRef<
     backLabel?: string;
     /** Wyróżnienie już było w notatniku (ponowne otwarcie przedmiotu) - bez „Nowe”. */
     alreadyFound?: boolean;
+    /**
+     * Okienka na ekranie monitora (D-116): kontener = prostokąt ekranu (ucina wszystko poza nim), okno max 60% ekranu, kaskada ~6%
+     * w jego wnętrzu, okno zmniejszane, gdy nie mieści się w wysokości ekranu.
+     */
+    onScreen?: boolean;
   }
->(function PopupsEasterEgg({ items, outro, badge, reducedMotion, onFound, onDone, backLabel = 'Wróć', alreadyFound = false }, ref) {
+>(function PopupsEasterEgg({ items, outro, badge, reducedMotion, onFound, onDone, backLabel = 'Wróć', alreadyFound = false, onScreen = false }, ref) {
   const [appeared, setAppeared] = useState(reducedMotion ? items.length : 0);
   const [closed, setClosed] = useState<number[]>([]);
   const [blink, setBlink] = useState(!reducedMotion);
@@ -114,13 +119,45 @@ const PopupsEasterEgg = forwardRef<
     pending: () => !finished,
   }));
 
+  // Na ekranie monitora (D-116): okno, które nie mieści się w wysokości ekranu od swojego miejsca w kaskadzie, jest zmniejszane
+  // (skala od lewego górnego rogu) - nic nie wystaje poza ekran. Przeliczane przy każdym pojawieniu się okna i zmianie rozmiaru.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!onScreen || !root) return undefined;
+    const fit = () => {
+      const box = root.getBoundingClientRect();
+      // offset* nie uwzględniają transformu (skali), więc pomiar nie zależy od poprzedniego --fit.
+      for (const popup of root.querySelectorAll<HTMLElement>('[data-testid="easter-popup"]')) {
+        const top = popup.offsetTop;
+        const left = popup.offsetLeft;
+        // Zapas na obrót okienka (±3°: róg wychodzi o ok. szerokość × sin 3° ≈ 5% szerokości) i obramowanie.
+        const margin = 6 + popup.offsetWidth * 0.06;
+        const room = Math.min((box.height - top - margin) / popup.offsetHeight, (box.width - left - margin) / popup.offsetWidth);
+        popup.style.setProperty('--fit', String(Math.max(0.3, Math.min(1, room))));
+      }
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(fit);
+    observer.observe(root);
+    // Także same okienka: ich wysokość zmienia się np. po wczytaniu fontu.
+    root.querySelectorAll<HTMLElement>('[data-testid="easter-popup"]').forEach((popup) => observer.observe(popup));
+    return () => observer.disconnect();
+  }, [onScreen, appeared, closed]);
+
   return (
     // .easter-popups (globals.css): kontener zapytań - pozycje kaskady i odstępy w okienku zależą od wysokości nakładki (telefon w poziomie).
-    <div ref={rootRef} data-testid="easter-popups" className="easter-popups pointer-events-none absolute inset-0">
+    // Na ekranie monitora (D-116) kontenerem jest prostokąt ekranu i ucina wszystko poza nim.
+    <div
+      ref={rootRef}
+      data-testid="easter-popups"
+      data-on-screen={onScreen ? '' : undefined}
+      className={`easter-popups pointer-events-none absolute inset-0 ${onScreen ? 'easter-popups--screen [overflow:clip]' : ''}`}
+    >
       {blink && <div aria-hidden="true" className="popup-blink absolute inset-0 bg-white" />}
       {items.map((item, index) =>
         index < appeared && !closed.includes(index) ? (
-          <Popup key={index} item={item} index={index} reducedMotion={reducedMotion} onClose={() => close(index)} />
+          <Popup key={index} item={item} index={index} reducedMotion={reducedMotion} onScreen={onScreen} onClose={() => close(index)} />
         ) : null,
       )}
       {/* Stały region live (od montowania): czytnik ogłasza WYPEŁNIENIE regionu, nie region wstawiony razem z treścią - outro i
@@ -130,7 +167,13 @@ const PopupsEasterEgg = forwardRef<
       </p>
       {finished && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-3">
-          <div data-testid="easter-outro" className="flex max-w-[88%] flex-col items-center gap-3 rounded-card bg-surface p-5 text-center text-[15px] text-ink shadow-card sm:max-w-md">
+          <div
+            data-testid="easter-outro"
+            // Na ekranie monitora (D-116) karta w granicach ekranu: max 92% jego szerokości i wysokości (przewijana treść), bez 448 px z sm:.
+            className={`flex flex-col items-center gap-3 rounded-card bg-surface p-5 text-center text-[15px] text-ink shadow-card ${
+              onScreen ? 'max-h-[92%] max-w-[92%] overflow-y-auto' : 'max-w-[88%] sm:max-w-md'
+            }`}
+          >
             <p aria-hidden="true">{outro}</p>
             {badge && (
               <p aria-hidden="true" data-testid="easter-badge" className="inline-flex items-center gap-2 font-bold text-accent-ink">
@@ -154,7 +197,7 @@ const PopupsEasterEgg = forwardRef<
 
 export default PopupsEasterEgg;
 
-function Popup({ item, index, reducedMotion, onClose }: { item: PopupItem; index: number; reducedMotion: boolean; onClose: () => void }) {
+function Popup({ item, index, reducedMotion, onScreen, onClose }: { item: PopupItem; index: number; reducedMotion: boolean; onScreen: boolean; onClose: () => void }) {
   const titleId = useId();
   const bodyId = useId();
   const [dodges, setDodges] = useState(0);
@@ -181,8 +224,9 @@ function Popup({ item, index, reducedMotion, onClose }: { item: PopupItem; index
       aria-describedby={bodyId}
       data-testid="easter-popup"
       data-popup-index={index}
-      className="easter-popup pointer-events-auto absolute w-[min(80%,300px)]"
-      style={{ '--i': index, transform: `rotate(${TILTS[index % TILTS.length]}deg)`, zIndex: 10 + index } as CSSProperties}
+      className={`easter-popup pointer-events-auto absolute ${onScreen ? 'w-[min(60%,300px)] origin-top-left' : 'w-[min(80%,300px)]'}`}
+      // Na ekranie (D-116) także skala dopasowania (--fit, liczona w PopupsEasterEgg); bez ekranu --fit nie jest ustawiane (1).
+      style={{ '--i': index, transform: `rotate(${TILTS[index % TILTS.length]}deg) scale(var(--fit, 1))`, zIndex: 10 + index } as CSSProperties}
     >
       {/* Drgnięcie na wewnętrznym elemencie (transform animacji nie nadpisuje obrotu okienka); `key` powtarza animację. */}
       <div
@@ -200,8 +244,15 @@ function Popup({ item, index, reducedMotion, onClose }: { item: PopupItem; index
             data-popup-close
             aria-label={`Zamknij okienko: ${spokenTitle(item.title)}`}
             onClick={onClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white bg-danger text-white hover:brightness-110 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-white"
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white bg-danger text-white hover:brightness-110 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-white"
           >
+            {/* Pole trafienia min. 44 px także po zmniejszeniu okienka na ekranie monitora (--fit < 1, D-116): niewidoczne, wokół krzyżyka. */}
+            <span
+              aria-hidden="true"
+              data-hit
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ width: 'max(100%, calc(44px / var(--fit, 1)))', height: 'max(100%, calc(44px / var(--fit, 1)))' }}
+            />
             <X aria-hidden="true" className="h-5 w-5" strokeWidth={3} />
           </button>
         </div>

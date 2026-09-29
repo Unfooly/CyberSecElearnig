@@ -1,5 +1,5 @@
 import { AchievementRank, AchievementScope, PrismaClient } from '@prisma/client';
-import { ACHIEVEMENT_CODES, MODULE_1_SLUG } from '../src/gamification/gamification.constants';
+import { ACHIEVEMENT_CODES, MODULE_1_SLUG, MODULE_2_SLUG } from '../src/gamification/gamification.constants';
 
 // Katalog osiągnięć (D-111). Źródłem na wdrożeniu jest MIGRACJA 20260928200000_achievements (seed nie jest częścią
 // wdrożenia); ten skrypt tylko przywraca te same wpisy (np. po ręcznej zmianie w bazie deweloperskiej). Idempotentny (upsert
@@ -51,6 +51,63 @@ const ACHIEVEMENTS = [
     moduleSlug: MODULE_1_SLUG,
     conditionText: 'Otwórz podejrzaną grę na pulpicie Anny w sprawie „Wyłudzone hasło”.',
     sortOrder: 3,
+  },
+  // Moduł 2 (D-124) - te same wpisy co migracja 20260929200100_module2_achievements.
+  {
+    code: ACHIEVEMENT_CODES.DEAD_AIR,
+    title: 'Dead Air',
+    description: 'Rozłączyłeś się, zanim oszust zdążył cokolwiek wyciągnąć.',
+    icon: 'osiagniecie-cisza-na-linii',
+    lockedIcon: 'osiagniecie-cisza-na-linii-zablokowane',
+    xpReward: 25,
+    rank: AchievementRank.RARE,
+    hidden: false,
+    scope: AchievementScope.MODULE,
+    moduleSlug: MODULE_2_SLUG,
+    conditionText: 'W rozmowie na żywo w sprawie „Głos z helpdesku” zakończ rozmowę dobrze w najwyżej trzech odpowiedziach, nie podając niczego.',
+    sortOrder: 4,
+  },
+  {
+    code: ACHIEVEMENT_CODES.PERFECT_PITCH,
+    title: 'Perfect Pitch',
+    description: 'Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.',
+    icon: 'osiagniecie-czysty-odsluch',
+    lockedIcon: 'osiagniecie-czysty-odsluch-zablokowane',
+    xpReward: 25,
+    rank: AchievementRank.RARE,
+    hidden: false,
+    scope: AchievementScope.MODULE,
+    moduleSlug: MODULE_2_SLUG,
+    conditionText: 'W odsłuchu nagrania w sprawie „Głos z helpdesku” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',
+    sortOrder: 5,
+  },
+  {
+    code: ACHIEVEMENT_CODES.FULL_TRANSCRIPT,
+    title: 'Full Transcript',
+    description: 'Cała rozmowa rozpisana co do słowa. Sprawa bez luk.',
+    icon: 'osiagniecie-pelny-zapis',
+    lockedIcon: 'osiagniecie-pelny-zapis-zablokowane',
+    xpReward: 50,
+    rank: AchievementRank.LEGENDARY,
+    hidden: false,
+    scope: AchievementScope.MODULE,
+    moduleSlug: MODULE_2_SLUG,
+    conditionText: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Głos z helpdesku”.',
+    sortOrder: 6,
+  },
+  {
+    code: ACHIEVEMENT_CODES.OFF_THE_RECORD,
+    title: 'Off the Record',
+    description: 'Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być.',
+    icon: 'osiagniecie-off-the-record',
+    lockedIcon: 'osiagniecie-tajne-zablokowane',
+    xpReward: 0,
+    rank: AchievementRank.SECRET,
+    hidden: true,
+    scope: AchievementScope.MODULE,
+    moduleSlug: MODULE_2_SLUG,
+    conditionText: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Głos z helpdesku”.',
+    sortOrder: 7,
   },
 ];
 

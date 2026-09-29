@@ -78,24 +78,48 @@ describe('Preferencje użytkownika: lektor (e2e)', () => {
     await app.close();
   });
 
-  it('domyślnie lektor jest włączony (nowe konto i istniejący użytkownik bez wcześniejszej zmiany)', async () => {
-    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: true });
-    expect((await get(tokenB).expect(200)).body).toEqual({ narrationEnabled: true });
+  it('domyślnie lektor jest włączony, a limity czasu działają (nowe konto i istniejący użytkownik bez wcześniejszej zmiany)', async () => {
+    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
+    expect((await get(tokenB).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
   });
 
   it('PATCH zapisuje od razu, GET zwraca nową wartość, a zmiana jest odwracalna', async () => {
-    expect((await patch(tokenA, { narrationEnabled: false }).expect(200)).body).toEqual({ narrationEnabled: false });
-    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: false });
+    expect((await patch(tokenA, { narrationEnabled: false }).expect(200)).body).toEqual({ narrationEnabled: false, noTimeLimits: false });
+    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: false, noTimeLimits: false });
     expect((await narrationOf(orgAId, userAId)).narrationEnabled).toBe(false);
 
-    expect((await patch(tokenA, { narrationEnabled: true }).expect(200)).body).toEqual({ narrationEnabled: true });
-    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: true });
+    expect((await patch(tokenA, { narrationEnabled: true }).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
+    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
+  });
+
+  it('„Bez limitów czasu” (D-124): zapis tylko tego pola nie rusza lektora, oba pola naraz, izolacja A/B i drugi użytkownik organizacji', async () => {
+    expect((await patch(tokenA, { noTimeLimits: true }).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: true });
+    expect((await get(tokenA).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: true });
+    expect((await get(tokenB).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
+    const noLimitsOf = (orgId: string, userId: string) =>
+      tenantPrisma.runInOrgContext(orgId, (tx) => tx.user.findFirstOrThrow({ where: { id: userId, organizationId: orgId }, select: { noTimeLimits: true } }));
+    expect((await noLimitsOf(orgAId, secondUserAId)).noTimeLimits).toBe(false);
+    expect((await noLimitsOf(orgBId, userBId)).noTimeLimits).toBe(false);
+
+    expect((await patch(tokenA, { narrationEnabled: false, noTimeLimits: false }).expect(200)).body).toEqual({ narrationEnabled: false, noTimeLimits: false });
+    await patch(tokenA, { narrationEnabled: true }).expect(200);
+    for (const body of [
+      { noTimeLimits: 'true' },
+      { noTimeLimits: 1 },
+      { noTimeLimits: [] },
+      { noTimeLimits: true, userId: userBId },
+      // `null` przy drugim, poprawnym polu - błąd walidacji, nie ciche pominięcie.
+      { narrationEnabled: null, noTimeLimits: true },
+    ]) {
+      await patch(tokenA, body).expect(400);
+    }
+    expect((await noLimitsOf(orgAId, userAId)).noTimeLimits).toBe(false);
   });
 
   it('izolacja: zmiana przez użytkownika A nie rusza innego użytkownika tej samej organizacji ani organizacji B', async () => {
     await patch(tokenA, { narrationEnabled: false }).expect(200);
 
-    expect((await get(tokenB).expect(200)).body).toEqual({ narrationEnabled: true });
+    expect((await get(tokenB).expect(200)).body).toEqual({ narrationEnabled: true, noTimeLimits: false });
     expect((await narrationOf(orgBId, userBId)).narrationEnabled).toBe(true);
     expect((await narrationOf(orgAId, secondUserAId)).narrationEnabled).toBe(true);
 

@@ -201,13 +201,27 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       );
     });
 
-    it('GET /gamification/badges: trzy osiągnięcia w kolejności katalogu, bez wycofanych odznak; tajne niezdobyte bez nazwy', async () => {
+    it('GET /gamification/badges: osiągnięcia w kolejności katalogu (moduł 1, potem moduł 2 - D-124), bez wycofanych odznak; tajne niezdobyte bez nazwy', async () => {
       const response = await request(app.getHttpServer())
         .get('/gamification/badges')
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .expect(200);
 
-      expect(response.body.map((b: { code: string }) => b.code)).toEqual(['first-case-closed', 'flawless-case', 'secret-3']);
+      expect(response.body.map((b: { code: string }) => b.code)).toEqual([
+        'first-case-closed',
+        'flawless-case',
+        'secret-3',
+        'dead-air',
+        'perfect-pitch',
+        'full-transcript',
+        'secret-7',
+      ]);
+      // Moduł 2 (D-124, migracja 20260929200100): ranga RARE, tajne Off the Record bez nazwy i z neutralną grafiką.
+      expect(response.body[3]).toMatchObject({ title: 'Dead Air', rank: 'RARE', xpReward: 25, isUnlocked: false });
+      expect(response.body[4]).toMatchObject({ title: 'Perfect Pitch', rank: 'RARE' });
+      expect(response.body[5]).toMatchObject({ title: 'Full Transcript', rank: 'LEGENDARY' });
+      expect(response.body[6]).toMatchObject({ title: null, rank: 'SECRET', icon: 'osiagniecie-tajne-zablokowane', xpReward: 0 });
+      expect(JSON.stringify(response.body[6])).not.toMatch(/off-the-record|webinar|record/i);
       expect(response.body[0]).toMatchObject({ title: 'First Case Closed', rank: 'MILESTONE', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
       expect(response.body[1]).toMatchObject({ title: 'Flawless Case', rank: 'LEGENDARY', isUnlocked: false, unlockedAt: null });
       expect(response.body[2]).toMatchObject({
@@ -343,6 +357,11 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
           isUnlocked: true,
           unlockedAt: easterEggAt,
         }),
+        // Moduł 2 (D-124): B nie ma podejścia do modułu 2 - backfill v2 nic tu nie przyznał; tajne Off the Record bez nazwy.
+        expect.objectContaining({ code: 'dead-air', isUnlocked: false }),
+        expect.objectContaining({ code: 'perfect-pitch', isUnlocked: false }),
+        expect.objectContaining({ code: 'full-transcript', isUnlocked: false }),
+        expect.objectContaining({ code: 'secret-7', title: null, isUnlocked: false }),
       ]);
       const xpAfter = (await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.user.findUniqueOrThrow({ where: { id: orgBUserId } }))).xp;
       expect(xpAfter).toBe(xpBefore);
@@ -391,6 +410,10 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         ['first-case-closed', 2],
         ['flawless-case', 1],
         ['curious-detective', null],
+        ['dead-air', null],
+        ['perfect-pitch', null],
+        ['full-transcript', null],
+        ['secret-7', null],
       ]);
     });
 

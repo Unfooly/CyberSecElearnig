@@ -115,6 +115,8 @@ export function evaluateSubmit(
   existing: BlockEntry | undefined,
   now: Date,
   opaque: OpaqueId,
+  // Ustawienia konta wpływające na ocenę: „Bez limitów czasu” (D-124) - rozmowa na żywo bez krawędzi ciszy.
+  account: { noTimeLimits?: boolean } = {},
 ): SubmitResult {
   switch (block.type) {
     case 'QUIZ':
@@ -308,8 +310,10 @@ export function evaluateSubmit(
 
     case 'LIVE_CALL': {
       // Rozmowa na żywo (D-122): serwer przechodzi drzewo po ścieżce gracza (ta sama funkcja co walidacja treści) i ocenia zakończenie.
-      // Cisza (krawędź `silence`) tylko w podejściu z limitem czasu - bez limitu nie ma czego przemilczeć.
-      const { path, timed } = parseAnswer(liveCallAnswer, answer);
+      // Cisza (krawędź `silence`) tylko w podejściu z limitem czasu - bez limitu nie ma czego przemilczeć. Konto z „Bez limitów czasu”
+      // (D-124) nie ma limitu niezależnie od `timed` od klienta; zapisany tryb to tryb faktyczny.
+      const { path, timed: requested } = parseAnswer(liveCallAnswer, answer);
+      const timed = requested && account.noTimeLimits !== true;
       const walked = replayLiveCall(block as unknown as LiveCallLike, path, { allowSilence: timed });
       if (!walked) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
       const outcome = liveCallOutcome(block, walked.ending);

@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
+import * as achievements from '../gamification/achievements';
 import { ConfigService } from '@nestjs/config';
 import { CoursesService } from './courses.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -414,6 +416,8 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
   let update: jest.Mock;
   let awardCourseCompletion: jest.Mock;
   let awardEasterEggAchievements: jest.Mock;
+  let awardSecretEndingAchievements: jest.Mock;
+  let userFindFirst: jest.Mock;
 
   function assignmentFixture(overrides: Record<string, unknown> = {}) {
     return {
@@ -440,6 +444,8 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       .fn()
       .mockResolvedValue({ xpGained: 100, newLevel: 1, leveledUp: false, unlockedBadges: [] });
     awardEasterEggAchievements = jest.fn().mockResolvedValue([]);
+    awardSecretEndingAchievements = jest.fn().mockResolvedValue([]);
+    userFindFirst = jest.fn().mockResolvedValue({ noTimeLimits: false });
 
     // Kurs z treścią sprzed silnika nie ma jeszcze wersji: resolveVersion tworzy "wersję 1" z course.contentBlocks. Mock
     // odtwarza to, zwracając wersję zbudowaną z treści aktualnej fixtury.
@@ -460,7 +466,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
     const tenantPrisma = {
       runInOrgContext: jest.fn((_organizationId: string, fn: (tx: unknown) => unknown) =>
-        fn({ courseAssignment: { findFirst, updateMany, update }, courseVersion, $queryRaw: jest.fn() }),
+        fn({ courseAssignment: { findFirst, updateMany, update }, courseVersion, user: { findFirst: userFindFirst }, $queryRaw: jest.fn() }),
       ),
     };
 
@@ -468,7 +474,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       providers: [
         CoursesService,
         { provide: TenantPrismaService, useValue: tenantPrisma },
-        { provide: GamificationService, useValue: { awardCourseCompletion, awardEasterEggAchievements } },
+        { provide: GamificationService, useValue: { awardCourseCompletion, awardEasterEggAchievements, awardSecretEndingAchievements } },
         configProvider,
       ],
     }).compile();
@@ -536,6 +542,73 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { visited: ['h1', 'gra'] } });
 
     expect(awardEasterEggAchievements).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', 'wyludzone-haslo', ['ciekawski-detektyw']);
+  });
+
+  it('D-124: moduł 2 - ukryte zakończenie webinaru do Off the Record przy zapisie bloku, fakty bloków do osiągnięć przy ukończeniu', async () => {
+    const blocks = fullBlocks();
+    findFirst.mockResolvedValue(
+      assignmentFixture({
+        currentBlockIndex: 0,
+        course: { id: 'course-1', slug: 'glos-z-helpdesku', contentBlocks: [blocks.OSINT_SPOT, blocks.LIVE_CALL] },
+      }),
+    );
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { marked: ['zespol'], heard: ['off-the-record'] } });
+    expect(awardSecretEndingAchievements).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', 'glos-z-helpdesku', ['off-the-record']);
+    expect(awardCourseCompletion).not.toHaveBeenCalled();
+
+    findFirst.mockResolvedValue(
+      assignmentFixture({
+        currentBlockIndex: 1,
+        course: { id: 'course-1', slug: 'glos-z-helpdesku', contentBlocks: [blocks.OSINT_SPOT, blocks.LIVE_CALL] },
+      }),
+    );
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 1, answer: { path: ['oddzwonie'], timed: true } });
+    expect(awardCourseCompletion).toHaveBeenCalledWith(
+      expect.anything(),
+      'org-1',
+      'user-1',
+      expect.objectContaining({ courseSlug: 'glos-z-helpdesku', module2: expect.objectContaining({ deadAir: true, perfectPitch: false }) }),
+    );
+  });
+
+  it('D-124: LIVE_CALL - konto z „Bez limitów czasu” (z bazy, organizacja z JWT) odrzuca ciszę mimo timed: true od klienta', async () => {
+    const blocks = fullBlocks();
+    const fixture = () => assignmentFixture({ course: { id: 'course-1', slug: 'glos-z-helpdesku', contentBlocks: [blocks.LIVE_CALL, { type: 'VIDEO' }] } });
+    findFirst.mockResolvedValue(fixture());
+    userFindFirst.mockResolvedValue({ noTimeLimits: true });
+    await expect(
+      service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { path: ['silence', 'rozlaczam'], timed: true } }),
+    ).rejects.toThrow(BadRequestException);
+    expect(userFindFirst).toHaveBeenCalledWith({ where: { id: 'user-1', organizationId: 'org-1' }, select: { noTimeLimits: true } });
+
+    // Bez ciszy przechodzi, a zapisany tryb to tryb faktyczny (bez limitu).
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { path: ['oddzwonie'], timed: true } });
+    const saved = updateMany.mock.calls.at(-1)![0].data.progress as { blocks: Record<string, { timed?: boolean }> };
+    // Id bloku w postępie nadaje wersja zbudowana przez atrapę (treść sprzed silnika) - jedyny wpis to ta rozmowa.
+    expect(Object.values(saved.blocks)[0].timed).toBe(false);
+
+    // Konto z limitem: cisza przyjęta.
+    userFindFirst.mockResolvedValue({ noTimeLimits: false });
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: { path: ['silence', 'rozlaczam'], timed: true } });
+  });
+
+  it('D-124: błąd liczenia faktów modułu 2 (nietypowa treść) nie blokuje ukończenia - bez osiągnięć zależnych od treści', async () => {
+    const spy = jest.spyOn(achievements, 'module2Facts').mockImplementation(() => {
+      throw new Error('nietypowa treść');
+    });
+    try {
+      findFirst.mockResolvedValue(assignmentFixture({ course: { id: 'course-1', slug: 'glos-z-helpdesku', contentBlocks: [{ type: 'VIDEO' }] } }));
+      await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+      expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', expect.objectContaining({ courseSlug: 'glos-z-helpdesku', module2: undefined }));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('D-124: odczyt ustawienia konta tylko przy rozmowie na żywo', async () => {
+    findFirst.mockResolvedValue(assignmentFixture());
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+    expect(userFindFirst).not.toHaveBeenCalled();
   });
 
   it('NIE woła GamificationService.awardCourseCompletion, gdy kurs ma jeszcze kolejne bloki', async () => {

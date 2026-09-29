@@ -3,6 +3,7 @@ import { ClientContext, ShuffleSeed } from '@cyberszkolo/content';
 import { DossierRowLike, HotspotLike, flattenDossierRows, flattenHotspots } from '@cyberszkolo/content/dist/node';
 import { ProgressV2 } from './progress';
 import { Block, OpaqueId, emailDetail, orderingDetail, pickReaction } from './scoring/evaluate';
+import { recordingDetail } from './scoring/recording';
 
 /**
  * Klucze pochodne od JWT_SECRET (HKDF-SHA256 ze stałym `info` osobnym dla każdego zastosowania), więc bez nowej zmiennej
@@ -62,7 +63,10 @@ function noteItems(block: Block): NoteItem[] {
           : block.type === 'DOSSIER' && Array.isArray(block.documents)
             ? // Teczka (D-083): wiersze wszystkich dokumentów - ta sama funkcja co evaluate.ts i walidacja modułu.
               flattenDossierRows(block.documents as { rows?: DossierRowLike[] }[])
-            : [];
+            : block.type === 'CALL_RECORDING' && Array.isArray(block.evidence)
+              ? // Nagranie (D-115): każdy wpis `evidence` jest dowodem (notatka po trafieniu flagi jego segmentu, evaluate.ts).
+                (block.evidence as { id: string; note?: NoteItem['note'] }[]).map((item) => ({ id: item.id, evidence: true, note: item.note }))
+              : [];
   return Array.isArray(list) ? (list as NoteItem[]) : [];
 }
 
@@ -157,6 +161,10 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       if (block.type === 'ORDERING' && Array.isArray(entry.order)) {
         answer = { order: entry.order.map((id) => opaque(block.id, id)) };
         detail = orderingDetail(block, opaque);
+      }
+      // Nagranie (D-115): rozstrzygnięcie flag (id segmentów są publiczne) - jak mail, dopiero po ukończeniu.
+      if (block.type === 'CALL_RECORDING' && Array.isArray(entry.flagsHit) && Array.isArray(block.flags)) {
+        detail = recordingDetail(block as Block & Parameters<typeof recordingDetail>[0], { flagsHit: entry.flagsHit, falseTaps: entry.falseTaps ?? 0 });
       }
     }
     view[blockId] = {

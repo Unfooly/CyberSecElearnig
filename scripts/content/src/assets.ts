@@ -51,6 +51,9 @@ export const ASSET_PATHS: string[][] = [
   ['steps', '*', 'portrait', 'image'],
   ['steps', '*', 'portrait', 'closedImage'],
   ['closing', 'portrait', 'image'],
+  // Omówienie na grafice (ANNOTATED_REPLAY, source.kind "image", D-115) i jej wariant pionowy.
+  ['source', 'image'],
+  ['source', 'imagePortrait'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

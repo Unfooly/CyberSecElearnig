@@ -24,6 +24,9 @@ export interface BlockEntry {
   hintsShown?: number;
   // SCENE_HOTSPOTS: znalezione wyróżnienia easter egga (id `media.badge` z treści, D-100) - bez wpływu na wynik, dowody i XP.
   easterEggs?: string[];
+  // CALL_RECORDING (D-115): trafione flagi (id segmentów z treści) i liczba fałszywych tapnięć - podgląd wyniku i osiągnięcia.
+  flagsHit?: string[];
+  falseTaps?: number;
 }
 
 export interface ProgressV2 {

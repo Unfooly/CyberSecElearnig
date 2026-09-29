@@ -12,6 +12,7 @@ import {
   WHEN_BASED_TYPES,
 } from '@cyberszkolo/content/dist/node';
 import { BlockEntry } from '../progress';
+import { recordingAnswer, recordingDetail, scoreRecording } from './recording';
 
 // Ocena odpowiedzi PO STRONIE SERWERA. Klient przesyła wyłącznie swój wybór (indeks, listę id, tekst) - nigdy ocenę ani
 // punkty. Bloki pochodzą z zapisanej wersji kursu (klucz odpowiedzi tylko tutaj).
@@ -38,6 +39,7 @@ const openedAnswer = z.object({ opened: ids }).strict();
 const dossierAnswer = z.object({ opened: ids, noted: z.array(idSchema).max(MAX_DOSSIER_EVIDENCE) }).strict();
 const selectedAnswer = z.object({ selected: ids }).strict();
 const orderAnswer = z.object({ order: ids }).strict();
+const seenAnswer = z.object({ seen: z.number().int().min(0).max(20) }).strict();
 
 function parseAnswer<T>(schema: z.ZodType<T>, answer: unknown): T {
   const parsed = schema.safeParse(answer);
@@ -215,6 +217,27 @@ export function evaluateSubmit(
         notesAdded: [],
         detail: orderingDetail(block, opaque),
       };
+    }
+
+    case 'CALL_RECORDING': {
+      // Odsłuch nagrania (D-115): trafione flagi, fałszywe tapnięcia, punkty - recording.ts. Dowód nagrania trafia do notatnika, gdy
+      // flaga na jego segmencie została trafiona.
+      const { taps } = parseAnswer(recordingAnswer, answer);
+      const score = scoreRecording(block as Block & Parameters<typeof scoreRecording>[0], taps);
+      const evidence = (Array.isArray(block.evidence) ? block.evidence : []) as { id: string; segmentId: string }[];
+      return {
+        entry: baseEntry(block, now, { correct: score.points === 1, points: score.points, flagsHit: score.flagsHit, falseTaps: score.falseTaps }),
+        notesAdded: evidence.filter((item) => score.flagsHit.includes(item.segmentId)).map((item) => noteKey(block.id, item.id)),
+        detail: recordingDetail(block as Block & Parameters<typeof recordingDetail>[0], score),
+      };
+    }
+
+    case 'ANNOTATED_REPLAY': {
+      // Omówienie (D-115): ukończone po przejściu wszystkich znaczników (bramka UX, jak zakładki).
+      const { seen } = parseAnswer(seenAnswer, answer);
+      const markers = Array.isArray(block.markers) ? block.markers.length : 0;
+      if (seen !== markers) throw new BadRequestException('Nie ukończono wymaganych elementów (znaczniki omówienia)');
+      return { entry: baseEntry(block, now, weightPoints(block)), notesAdded: [] };
     }
 
     case 'TEXT_INPUT_GUIDED': {

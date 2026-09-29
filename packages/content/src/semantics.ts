@@ -252,7 +252,7 @@ export function v4FeaturesUsed(block: ServerBlock): string[] {
 // Typy bloków, których wynik jest wyliczany 0-1 (evaluate.ts) - jedyne, którym wolno mieć `reactions.result`. Pozostałe typy
 // (eksploracyjne, VIDEO, NARRATIVE...) nie mają wyniku do progowania; dla nich zostaje wyłącznie `reactions.complete`.
 // Eksportowane: apps/api (evaluate.ts, pickReaction) wybiera pasujący wpis reactions.result tą samą regułą, którą tu walidujemy.
-export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED'] as const;
+export const SCORED_BLOCK_TYPES = ['QUIZ', 'BRANCHING_SCENARIO', 'EMAIL_ANALYSIS', 'ORDERING', 'TEXT_INPUT_GUIDED', 'CALL_RECORDING'] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
 export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
 
@@ -455,6 +455,41 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
       block.steps.forEach((step, index) => errors.push(...briefingSceneErrors(`steps[${index}]`, step)));
+      break;
+    }
+    case 'CALL_RECORDING': {
+      // Nagranie (D-115): jedna przestrzeń id segmentów; flaga najwyżej jedna na segment; dowód tylko na segmencie z flagą (notatka
+      // trafia do notatnika po trafieniu TEJ flagi); każdy segment ma rolę głosu (kwestie rozmowy mówią postacie, nie lektor).
+      const segmentIds = block.segments.map((s) => s.id);
+      checkUnique('segments', segmentIds);
+      const flagged = block.flags.map((f) => f.segmentId);
+      for (const id of duplicates(flagged)) errors.push(`flags: segment "${id}" ma więcej niż jedną flagę`);
+      checkSubset('flags', flagged, segmentIds);
+      block.segments.forEach((segment, i) => {
+        if (segment.narration.voice === undefined) errors.push(`segments[${i}].narration.voice: kwestia nagrania wymaga roli głosu`);
+      });
+      const evidence = block.evidence ?? [];
+      checkUnique('evidence', evidence.map((e) => e.id));
+      evidence.forEach((item, i) => {
+        if (!flagged.includes(item.segmentId)) errors.push(`evidence[${i}].segmentId: "${item.segmentId}" nie jest segmentem z flagą`);
+        if (kindRequired && item.note.kind === undefined) errors.push(`evidence[${i}].note.kind: dowód wymaga rodzaju notatki`);
+      });
+      break;
+    }
+    case 'ANNOTATED_REPLAY': {
+      // Omówienie (D-115): znaczniki 1..N po kolei; kotwica zgodna ze źródłem (segment dla transkrypcji, punkt dla grafiki). Istnienie
+      // bloku źródłowego i segmentów - parseModule (relacja między blokami).
+      block.markers.forEach((marker, i) => {
+        if (marker.n !== i + 1) errors.push(`markers[${i}].n: znaczniki numerowane kolejno od 1 (oczekiwano ${i + 1})`);
+        const { segmentId, x, y } = marker.anchor;
+        if (block.source.kind === 'transcript' && (segmentId === undefined || x !== undefined || y !== undefined)) {
+          errors.push(`markers[${i}].anchor: przy source.kind "transcript" kotwicą jest wyłącznie segmentId`);
+        }
+        if (block.source.kind === 'image' && (segmentId !== undefined || x === undefined || y === undefined)) {
+          errors.push(`markers[${i}].anchor: przy source.kind "image" kotwicą jest punkt { x, y }`);
+        }
+      });
+      if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok ANNOTATED_REPLAY jest nieoceniany (waga musi być 0)');
       break;
     }
     default:
@@ -679,6 +714,28 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
       if (block.type === 'DOSSIER') errors.push(`blocks[${index}] (${block.id}): blok DOSSIER wymaga schemaVersion 5`);
       for (const feature of v5FeaturesUsed(block)) errors.push(`blocks[${index}] (${block.id}): pole ${feature} wymaga schemaVersion 5`);
     }
+    if (contentModule.schemaVersion < 6 && (block.type === 'CALL_RECORDING' || block.type === 'ANNOTATED_REPLAY')) {
+      errors.push(`blocks[${index}] (${block.id}): blok ${block.type} wymaga schemaVersion 6`);
+    }
+  });
+
+  // Omówienie na transkrypcji (D-115): blok źródłowy to CALL_RECORDING tego modułu, a kotwice wskazują jego segmenty.
+  contentModule.blocks.forEach((block, index) => {
+    if (block.type !== 'ANNOTATED_REPLAY' || block.source.kind !== 'transcript') return;
+    const where = `blocks[${index}] (${block.id})`;
+    const fromBlock = block.source.fromBlock;
+    const source = contentModule.blocks.find((b) => b.id === fromBlock);
+    if (!source || source.type !== 'CALL_RECORDING') {
+      errors.push(`${where}: source.fromBlock "${fromBlock}" nie jest blokiem CALL_RECORDING tego modułu`);
+      return;
+    }
+    const segmentIds = source.segments.map((s) => s.id);
+    block.markers.forEach((marker, m) => {
+      const segmentId = marker.anchor.segmentId;
+      if (segmentId !== undefined && !segmentIds.includes(segmentId)) {
+        errors.push(`${where}: markers[${m}].anchor.segmentId "${segmentId}" nie istnieje w bloku "${source.id}"`);
+      }
+    });
   });
 
   // Metadane modułu z wersji 4 (nie są ścieżką WEWNĄTRZ bloku, więc osobne sprawdzenie od v3FeaturesUsed/v4FeaturesUsed).

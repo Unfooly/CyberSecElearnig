@@ -602,6 +602,73 @@ const dossierSchema = z
   })
   .strict();
 
+// --- schemaVersion 6: moduł 2 (vishing, D-115) -------------------------------------------------------------------------
+
+/** Kategorie czerwonych flag nagrania (pokazywane w omówieniu wyniku; w MVP punkt za trafienie w okno, kategoria informacyjna). */
+export const RECORDING_FLAG_CATEGORIES = ['urgency', 'authority', 'fear', 'code_request', 'install_request'] as const;
+
+/**
+ * Segment nagrania rozmowy: jedna kwestia jednym głosem (`narration.voice` wymagane - semantics.ts), osobne nagranie TTS
+ * (`<blockId>#segments.<N>.narration`). `speaker` - podpis w transkrypcji („Karol”, „Dzwoniący”). `gapAfterMs` - cisza po segmencie.
+ * Znaczniki czasu liczy klient i serwer tak samo: początek segmentu = suma (durationMs + gapAfterMs) poprzednich (recordingTimeline).
+ */
+const recordingSegmentSchema = z
+  .object({
+    id: idSchema,
+    speaker: ltext(60),
+    narration: narrationSchema,
+    gapAfterMs: z.number().int().min(0).max(10_000).optional(),
+  })
+  .strict();
+
+/**
+ * Odsłuch nagrania (D-115): gracz stuka „Czerwona flaga” w chwili manipulacji (tryb odsłuchu: `{ atMs }`) albo przy kwestii w
+ * transkrypcji (`{ segmentId }`). Okno flagi = [początek segmentu, koniec segmentu + flagWindowAfterMs]. Flagi, okno, kara i dowody
+ * są SEKRETEM - klient zna tylko segmenty; ocenę liczy serwer (apps/api scoring/recording.ts).
+ */
+const callRecordingSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('CALL_RECORDING'),
+    segments: z.array(recordingSegmentSchema).min(2).max(40),
+    flags: z
+      .array(z.object({ segmentId: idSchema, category: z.enum(RECORDING_FLAG_CATEGORIES) }).strict())
+      .min(1)
+      .max(20),
+    flagWindowAfterMs: z.number().int().min(0).max(10_000).optional(),
+    falseTapPenalty: z.number().min(0).max(1).optional(),
+    // Dowód dopisywany do notatnika, gdy flaga na jego segmencie została trafiona (segmentId - segment z flagą, semantics.ts).
+    evidence: z.array(z.object({ id: idSchema, segmentId: idSchema, note: noteSchema }).strict()).min(1).max(10).optional(),
+  })
+  .strict();
+
+/**
+ * Omówienie z adnotacjami (D-115): numerowane znaczniki 1..N na transkrypcji nagrania z bloku CALL_RECORDING tego modułu
+ * (`source.kind: transcript`, kotwica `segmentId`) albo na grafice (`source.kind: image`, kotwica `{ x, y }` w %). Nieoceniane,
+ * wszystko publiczne (omówienie po ocenie nagrania); ukończone po przejściu wszystkich znaczników (`{ seen: N }`).
+ */
+const replayMarkerSchema = z
+  .object({
+    n: z.number().int().min(1).max(20),
+    anchor: z.object({ segmentId: idSchema.optional(), x: percent.optional(), y: percent.optional() }).strict(),
+    title: ltext(80),
+    text: ltext(600),
+    narration: narrationSchema.optional(),
+  })
+  .strict();
+
+const annotatedReplaySchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('ANNOTATED_REPLAY'),
+    source: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('transcript'), fromBlock: idSchema }).strict(),
+      z.object({ kind: z.literal('image'), image: imagePathSchema, imagePortrait: imagePathSchema.optional(), alt: ltext(300) }).strict(),
+    ]),
+    markers: z.array(replayMarkerSchema).min(1).max(12),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -619,6 +686,8 @@ export const BLOCK_SCHEMAS = {
   SUMMARY: summarySchema,
   BRIEFING: briefingSchema,
   DOSSIER: dossierSchema,
+  CALL_RECORDING: callRecordingSchema,
+  ANNOTATED_REPLAY: annotatedReplaySchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -641,6 +710,8 @@ export const blockSchema = z.discriminatedUnion('type', [
   summarySchema,
   briefingSchema,
   dossierSchema,
+  callRecordingSchema,
+  annotatedReplaySchema,
 ]);
 /** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
 export type StoredBlock = z.infer<typeof blockSchema>;
@@ -670,6 +741,8 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   SUMMARY: 0,
   BRIEFING: 0,
   DOSSIER: 0,
+  CALL_RECORDING: 1,
+  ANNOTATED_REPLAY: 0,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -1002,6 +1075,54 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'documents[].rows[].message',
     ],
     [],
+  ),
+  // Nagranie (D-115): klient zna segmenty (tekst, podpis, nagranie) - bez nich nie ma odsłuchu ani transkrypcji. Sekret: które segmenty
+  // są flagami (i ich kategorie), okno i kara oceny oraz dowody (notatki zdradzałyby flagi; wychodzą po ocenie, jak kryteria maila).
+  CALL_RECORDING: classify(
+    [
+      'segments[].id',
+      'segments[].speaker',
+      'segments[].gapAfterMs',
+      'segments[].narration.text',
+      'segments[].narration.audioUrl',
+      'segments[].narration.durationMs',
+      'segments[].narration.cues[].text',
+      'segments[].narration.cues[].startMs',
+    ],
+    [
+      'segments[].narration.spokenText',
+      'segments[].narration.voice',
+      'flags[].segmentId',
+      'flags[].category',
+      'flagWindowAfterMs',
+      'falseTapPenalty',
+      'evidence[].id',
+      'evidence[].segmentId',
+      'evidence[].note.text',
+      'evidence[].note.kind',
+    ],
+  ),
+  // Omówienie (D-115): wszystko publiczne - pokazywane po ocenie nagrania, nic do odgadnięcia.
+  ANNOTATED_REPLAY: classify(
+    [
+      'source.kind',
+      'source.fromBlock',
+      'source.image',
+      'source.imagePortrait',
+      'source.alt',
+      'markers[].n',
+      'markers[].anchor.segmentId',
+      'markers[].anchor.x',
+      'markers[].anchor.y',
+      'markers[].title',
+      'markers[].text',
+      'markers[].narration.text',
+      'markers[].narration.audioUrl',
+      'markers[].narration.durationMs',
+      'markers[].narration.cues[].text',
+      'markers[].narration.cues[].startMs',
+    ],
+    ['markers[].narration.spokenText', 'markers[].narration.voice'],
   ),
 };
 

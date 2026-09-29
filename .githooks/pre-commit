@@ -1,0 +1,58 @@
+#!/bin/sh
+# Blokada sekretów w commitach (decyzja właściciela 2026-09-29, docs/security/do-rotacji.md): żadnych nowych sekretów w repo.
+#
+# Skanuje gitleaksem WYŁĄCZNIE linie dodawane w tym commicie (`git diff --cached`, bez kontekstu) - przez `gitleaks stdin`, więc działa
+# także w worktree (skan katalogu `.git` w kontenerze nie widzi refów worktree). Wartości nie są wypisywane (`--redact`).
+#
+# Kolejność: gitleaks z PATH -> obraz Docker (wersja przypięta niżej) -> brak obu = commit ODRZUCONY (fail-closed) z instrukcją instalacji.
+# Świadomy wyjątek (tylko wartości testowe): komentarz `gitleaks:allow` w tej samej linii. Placeholdery szablonów `.env*.example` i
+# typowe wartości testowe są w `.gitleaks.toml` (stopwords).
+#
+# Włączenie (raz na klon): git config core.hooksPath .githooks (albo: npm run hooks:install). Nie omijaj go `--no-verify`.
+# UTRZYMANIE: plik MUSI mieć tryb 100755 w indeksie (git update-index --chmod=+x .githooks/pre-commit) - pilnuje test pre-commit.test.js.
+
+GITLEAKS_IMAGE="zricethezav/gitleaks:v8.30.1"
+
+root=$(git rev-parse --show-toplevel) || exit 1
+config="$root/.gitleaks.toml"
+
+added=$(git diff --cached -U0 --no-color --no-ext-diff | grep '^+' | grep -v '^+++')
+if [ -z "$added" ]; then
+  exit 0
+fi
+
+fail() {
+  {
+    printf '\n'
+    printf '  ODRZUCONO COMMIT: %s\n' "$1"
+    printf '  Zasada: żadnych sekretów w repo (docs/security/do-rotacji.md, CLAUDE.md reguła 5). Sekrety tylko w .env spoza repo.\n'
+    printf '  Wartość testowa? Dopisz w tej linii komentarz gitleaks:allow.\n\n'
+  } >&2
+  exit 1
+}
+
+# `-v` przy `--redact` wypisuje regułę i linię z zamaskowaną wartością (bez nazwy pliku - wejście to stdin).
+ARGS="stdin --redact --no-banner --log-level warn -v"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  if [ -f "$config" ]; then
+    printf '%s\n' "$added" | gitleaks $ARGS --config "$config" >&2 || fail "gitleaks znalazł sekret w dodawanych liniach (wyżej, wartości ukryte)."
+  else
+    printf '%s\n' "$added" | gitleaks $ARGS >&2 || fail "gitleaks znalazł sekret w dodawanych liniach (wyżej, wartości ukryte)."
+  fi
+  exit 0
+fi
+
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  # Konfiguracja przez montowanie samego pliku tylko do odczytu (Git Bash: ścieżka w formacie C:/..., bez konwersji MSYS).
+  if [ -f "$config" ]; then
+    printf '%s\n' "$added" | MSYS_NO_PATHCONV=1 docker run --rm -i -v "$config:/cfg/gitleaks.toml:ro" "$GITLEAKS_IMAGE" $ARGS --config /cfg/gitleaks.toml >&2 \
+      || fail "gitleaks (Docker) znalazł sekret w dodawanych liniach (wyżej, wartości ukryte)."
+  else
+    printf '%s\n' "$added" | docker run --rm -i "$GITLEAKS_IMAGE" $ARGS >&2 \
+      || fail "gitleaks (Docker) znalazł sekret w dodawanych liniach (wyżej, wartości ukryte)."
+  fi
+  exit 0
+fi
+
+fail "brak gitleaks i Dockera - nie da się sprawdzić sekretów. Zainstaluj gitleaks (winget install gitleaks / brew install gitleaks) albo uruchom Docker."

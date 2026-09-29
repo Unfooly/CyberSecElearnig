@@ -192,7 +192,11 @@ export function DistinctionList({ distinctions }: { distinctions: ClientDistinct
         {distinctions.map((distinction, index) => (
           <li key={index} className="flex items-start gap-2">
             <Award aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
-            <span className="font-semibold">{distinction.label}</span>
+            <span>
+              <span className="font-semibold">{distinction.label}</span>
+              {/* Zdanie pod wyróżnieniem (ukryte zakończenie nagrania, D-120). */}
+              {distinction.note && <span className="block text-slate-700">{distinction.note}</span>}
+            </span>
           </li>
         ))}
       </ul>

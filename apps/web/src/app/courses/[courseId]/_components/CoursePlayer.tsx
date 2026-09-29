@@ -498,8 +498,11 @@ export default function CoursePlayer({
   // ORDERING (tablica śledcza, D-088) też 'fill' - także jej wynik zaraz po zapisie (wynik jest na tej samej tablicy); w 'fill'
   // PlayerStage nie dokłada paska podpowiedzi, zdanie informacji zwrotnej jest pod tablicą.
   // Odsłuch nagrania (D-115) pokazuje wynik na tej samej transkrypcji - też 'fill', jak tablica.
+  // OSINT (D-121) - wynik na tej samej stronie, też 'fill'.
   const boardFeedback =
-    showingFeedback && (blocks[feedback.blockIndex]?.type === 'ORDERING' || blocks[feedback.blockIndex]?.type === 'CALL_RECORDING') && !!feedback.detail;
+    showingFeedback &&
+    (blocks[feedback.blockIndex]?.type === 'ORDERING' || blocks[feedback.blockIndex]?.type === 'CALL_RECORDING' || blocks[feedback.blockIndex]?.type === 'OSINT_SPOT') &&
+    !!feedback.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
       ? 'fill'
@@ -516,7 +519,9 @@ export default function CoursePlayer({
               currentBlock?.type === 'CALL_RECORDING' ||
               currentBlock?.type === 'ANNOTATED_REPLAY' ||
               // Przesłuchanie (D-118): wątek jak rozmowa (własne przewijanie wątku, stopka z pytaniami) - 'fill'.
-              currentBlock?.type === 'INTERROGATION'
+              currentBlock?.type === 'INTERROGATION' ||
+              // OSINT (D-121): strona wypełnia ramkę (w pionie przewijana w bloku).
+              currentBlock?.type === 'OSINT_SPOT'
             ? 'fill'
             : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>

@@ -16,6 +16,8 @@ export const DEFAULT_HINT: Record<string, string> = {
   ANNOTATED_REPLAY: 'Przejdź przez wszystkie znaczniki omówienia.',
   // Moduł 2 (D-118).
   INTERROGATION: 'Zadawaj pytania. Gdy odpowiedź nie zgadza się z dowodem, podważ ją dowodem z notatnika.',
+  // Moduł 2 (D-121).
+  OSINT_SPOT: 'Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało.',
 };
 
 export const HINT_EVENT_TEXT: Record<HintEvent, string> = {

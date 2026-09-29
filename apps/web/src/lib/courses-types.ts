@@ -31,7 +31,29 @@ export type ContentBlockType =
   | 'CALL_RECORDING'
   | 'ANNOTATED_REPLAY'
   // schemaVersion 6 (moduł 2, D-118): przesłuchanie - pytania, kwestie do notatnika, podważanie dowodem, konsola (oceniane przy sprzecznościach).
-  | 'INTERROGATION';
+  | 'INTERROGATION'
+  // schemaVersion 6 (moduł 2, D-120): OSINT - strona z obszarami do zaznaczenia (oceniane), nagranie przy obszarze z ukrytym zakończeniem.
+  | 'OSINT_SPOT';
+
+/** Obszar strony w OSINT (D-120): położenie i podpis; czy był użyty, dowód i wyjaśnienie pułapki są sekretem (po ocenie - detail.spots). */
+export interface OsintSpot {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  media?: {
+    kind: 'audio';
+    title: string;
+    narration: Narration;
+    image?: string;
+    imagePortrait?: string;
+    alt?: string;
+    textLayer?: TextLayerItem[];
+    secretEnding?: { id: string; label: string; note?: string };
+  };
+}
 
 /** Warstwa tekstu na grafice (schemaVersion 6, D-114): prostokąty w % grafiki, tekst rysowany przez odtwarzacz. */
 export interface TextLayerItem {
@@ -263,6 +285,9 @@ export interface ContentBlock {
   // DOSSIER: pieczątka teczki i dokumenty (przekładki).
   stamp?: string;
   documents?: DossierDocument[];
+  // OSINT_SPOT (D-120): obszary strony i ich wariant pionowy (te same id).
+  spots?: OsintSpot[];
+  portraitSpots?: { id: string; x: number; y: number; w: number; h: number }[];
   // SUMMARY
   text?: string;
   // EMAIL_ANALYSIS: makieta maila i kryteria (id nieprzejrzyste, kolejność potasowana przez serwer; bez klucza odpowiedzi).
@@ -474,6 +499,8 @@ export interface ChallengeResponse extends InterrogationChallenge {
 export interface ClientDistinction {
   blockId: string;
   label: string;
+  /** Zdanie pod wyróżnieniem (ukryte zakończenie nagrania w OSINT, D-120). */
+  note?: string;
 }
 
 export interface ClientProgress {
@@ -509,6 +536,8 @@ export interface ResultDetail {
   falseTaps?: number;
   /** INTERROGATION (D-118): które kwestie kłamały i przyznanie po podważeniu - dopiero po ukończeniu bloku. */
   contradictions?: { lineId: string; line: { text: string } }[];
+  /** OSINT_SPOT (D-120): który obszar był użyty, czy gracz go zaznaczył, wyjaśnienie pułapki - dopiero po ocenie. */
+  spots?: { id: string; used: boolean; marked: boolean; trapText?: string }[];
 }
 
 export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_request' | 'install_request';
@@ -517,7 +546,7 @@ export type RecordingFlagCategory = 'urgency' | 'authority' | 'fear' | 'code_req
 export type RecordingTap = { atMs: number } | { segmentId: string };
 
 /** Własny wybór gracza w ukończonym bloku (QUIZ/BRANCHING: indeks; EMAIL: selected; ORDERING: order; id nieprzejrzyste; nagranie: taps). */
-export type ChosenAnswer = number | { selected: string[] } | { order: string[] } | { taps: RecordingTap[] };
+export type ChosenAnswer = number | { selected: string[] } | { order: string[] } | { taps: RecordingTap[] } | { marked: string[] };
 
 export interface LastResult {
   blockIndex: number;

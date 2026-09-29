@@ -159,6 +159,45 @@ describe('CoursePlayerPage', () => {
     expect(screen.getByRole('button', { name: 'Lektor' })).toHaveAttribute('aria-pressed', 'false');
   });
 
+  it('D-124: „Bez limitów czasu” z konta dochodzi do rozmowy na żywo (bez przełącznika limitu); bez ustawienia - przełącznik', async () => {
+    const liveCallCourse = {
+      ...inProgressCourse,
+      contentBlocks: [
+        {
+          id: 'na-zywo',
+          type: 'LIVE_CALL',
+          title: 'Telefon',
+          caller: { display: 'IT Helpdesk' },
+          start: 'start',
+          nodes: [
+            { id: 'start', narration: { text: 'Wpisz liczbę.' }, choices: [{ id: 'a', text: 'Oddzwonię.', next: '#k1' }, { id: 'b', text: 'Wpisuję.', next: '#k2' }], silence: '#k2' },
+          ],
+          endings: [
+            { id: 'k1', narration: { text: 'Koniec.' } },
+            { id: 'k2', narration: { text: 'Koniec.' } },
+          ],
+        },
+      ],
+    };
+    const fetchWith = (noTimeLimits: boolean) =>
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/users/me/preferences')
+          ? { ok: true, status: 200, json: async () => ({ narrationEnabled: true, noTimeLimits }) }
+          : { ok: true, status: 200, json: async () => liveCallCourse },
+      );
+    mockCookieValue('token');
+
+    vi.stubGlobal('fetch', fetchWith(true));
+    const { unmount } = render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+    expect(screen.getByTestId('live-call-no-limit-account')).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /Wyłącz limit czasu/ })).toBeNull();
+    unmount();
+
+    vi.stubGlobal('fetch', fetchWith(false));
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+    expect(screen.getByRole('switch', { name: /Wyłącz limit czasu/ })).not.toBeChecked();
+  });
+
   it('błąd odczytu preferencji nie blokuje kursu: domyślnie lektor włączony', async () => {
     mockCookieValue('token');
     vi.stubGlobal(

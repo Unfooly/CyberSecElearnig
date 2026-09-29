@@ -141,5 +141,15 @@ describe('/api/users/me/preferences (BFF)', () => {
 
       expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ narrationEnabled: false }));
     });
+
+    it('„Bez limitów czasu” (D-124): noTimeLimits przechodzi przez allowlistę, obce pola dalej odcinane', async () => {
+      mockCookie('access-token-value');
+      const fetchMock = vi.fn().mockResolvedValue({ status: 200, json: async () => ({ narrationEnabled: true, noTimeLimits: true }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await PATCH(patchRequest({ noTimeLimits: true, role: 'SUPER_ADMIN' }));
+
+      expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ noTimeLimits: true }));
+    });
   });
 });

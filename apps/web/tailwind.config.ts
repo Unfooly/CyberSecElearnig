@@ -19,7 +19,8 @@ const config: Config = {
         // Zakreślacz (kolor funkcyjny, D-083): wyłącznie zakreślony wiersz-dowód w teczce sprawy - nie tło ani akcent UI.
         highlight: '#FFE066',
         // Rangi osiągnięć (D-111): tło rewersu karty, ciemne odcienie wstęg z grafik trofeów (biały tekst, kontrast >= 7:1).
-        rank: { secret: '#7A2150', legendary: '#7A5A14', milestone: '#261D7A' },
+        // rare (D-124): morski odcień wstęgi trofeów modułu 2 (kontrast z białym ~8.9:1).
+        rank: { secret: '#7A2150', legendary: '#7A5A14', milestone: '#261D7A', rare: '#0E5257' },
       },
       fontFamily: {
         sans: ['var(--font-jakarta)', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],

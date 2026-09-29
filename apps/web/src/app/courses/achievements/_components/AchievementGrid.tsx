@@ -13,6 +13,7 @@ const RANK_BACK: Record<AchievementRank, string> = {
   SECRET: 'bg-rank-secret',
   LEGENDARY: 'bg-rank-legendary',
   MILESTONE: 'bg-rank-milestone',
+  RARE: 'bg-rank-rare',
 };
 
 export const SECRET_TEXT = 'To osiągnięcie jest tajne. Szukaj uważnie.';

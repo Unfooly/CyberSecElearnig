@@ -95,13 +95,28 @@ const withAudio = {
 } as unknown as ContentBlock;
 
 describe('LiveCallBlock', () => {
-  it('ekran przed połączeniem: dzwoniący, przełącznik limitu (domyślnie z konta), „Odbierz” otwiera rozmowę', () => {
-    setup({ noTimeLimitDefault: true });
+  it('ekran przed połączeniem: dzwoniący, przełącznik limitu (domyślnie wyłączony), „Odbierz” otwiera rozmowę', () => {
+    setup();
     expect(screen.getByTestId('live-call-caller')).toHaveTextContent('IT Helpdesk');
-    expect(screen.getByRole('switch', { name: /Wyłącz limit czasu/ })).toBeChecked();
+    expect(screen.getByRole('switch', { name: /Wyłącz limit czasu/ })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
     expect(screen.getByTestId('live-call-line')).toHaveTextContent('Wpisz w aplikacji 62.');
     expect(screen.getAllByTestId('live-call-choice')).toHaveLength(2);
+  });
+
+  it('konto z „Bez limitów czasu” (D-124): bez przełącznika i bez odliczania - limitu nie da się włączyć (serwer i tak odrzuciłby ciszę)', () => {
+    vi.useFakeTimers();
+    const { onSubmit, ready } = setup({ noTimeLimitDefault: true });
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.getByTestId('live-call-no-limit-account')).toHaveTextContent('Bez limitu czasu');
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    expect(screen.queryByTestId('live-call-timer')).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Oddzwonię/ }));
+    act(() => ready.current!());
+    expect(onSubmit).toHaveBeenCalledWith({ path: ['oddzwonie'], timed: false });
   });
 
   it('odpowiedzi prowadzą przez drzewo; po zakończeniu „Dalej” zapisuje ścieżkę i tryb czasu', () => {

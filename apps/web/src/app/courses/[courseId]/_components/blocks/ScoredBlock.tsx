@@ -58,9 +58,12 @@ export default function ScoredBlock({
   onEvidence,
   myAvatarUrl,
   myInitials,
+  noTimeLimits = false,
 }: {
   block: ContentBlock;
   courseId: string;
+  /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
+  noTimeLimits?: boolean;
   /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu. */
   onEvidence?: (summary: EvidenceSummary) => void;
   myAvatarUrl?: string | null;
@@ -163,6 +166,7 @@ export default function ScoredBlock({
           onSubmit={(liveAnswer) => onSubmit?.(liveAnswer)}
           onReady={(submit) => onReady?.(submit)}
           disabled={disabled}
+          noTimeLimitDefault={noTimeLimits}
           result={result ? { detail: result.detail, answer, points: result.points } : undefined}
         />
       );

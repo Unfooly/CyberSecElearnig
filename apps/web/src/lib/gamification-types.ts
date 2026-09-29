@@ -22,10 +22,10 @@ export interface GamificationOverview {
   badges: UnlockedBadge[];
 }
 
-export type AchievementRank = 'SECRET' | 'LEGENDARY' | 'MILESTONE';
+export type AchievementRank = 'SECRET' | 'LEGENDARY' | 'MILESTONE' | 'RARE';
 
-/** Etykiety rang w UI - po angielsku, jak na grafikach trofeów (D-111). */
-export const RANK_LABELS: Record<AchievementRank, string> = { SECRET: 'Secret', LEGENDARY: 'Legendary', MILESTONE: 'Milestone' };
+/** Etykiety rang w UI - po angielsku, jak na grafikach trofeów (D-111; Rare - D-124). */
+export const RANK_LABELS: Record<AchievementRank, string> = { SECRET: 'Secret', LEGENDARY: 'Legendary', MILESTONE: 'Milestone', RARE: 'Rare' };
 
 /**
  * Osiągnięcie na profilu (GET /gamification/badges, D-111). Tajne niezdobyte przychodzi z kodem zastępczym, bez nazwy, opisu i

@@ -40,8 +40,14 @@ describe('scoreRecording: dwa nakładające się okna flag (decyzja właściciel
     expect(score([{ atMs: 300 }, { atMs: 1500 }])).toEqual({ points: 1, flagsHit: ['a', 'b'], falseTaps: 0 });
   });
 
-  it('tapnięcie w części wspólnej po trafieniu obu flag nie jest fałszywe (i nie daje punktu)', () => {
+  it('tapnięcie w części wspólnej po trafieniu obu flag, w ciągu 1500 ms od trafienia - podwójne stuknięcie, bez kary (B-131)', () => {
     expect(score([{ atMs: 1100 }, { atMs: 1200 }, { atMs: 1300 }])).toEqual({ points: 1, flagsHit: ['a', 'b'], falseTaps: 0 });
+  });
+
+  it('powtórka w oknie już trafionej flagi PÓŹNIEJ niż 1500 ms od trafienia jest fałszywa (B-131)', () => {
+    // a trafiona w 100, b w 1100; 2601 - obie trafione, 1501 ms po ostatnim trafieniu (b) - fałszywe.
+    expect(score([{ atMs: 100 }, { atMs: 1100 }, { atMs: 2601 }])).toEqual({ points: 0.9, flagsHit: ['a', 'b'], falseTaps: 1 });
+    expect(score([{ atMs: 100 }, { atMs: 1100 }, { atMs: 2600 }])).toEqual({ points: 1, flagsHit: ['a', 'b'], falseTaps: 0 });
   });
 
   it('wynik nie zależy od kolejności tapnięć w odpowiedzi (czas rosnąco)', () => {
@@ -58,6 +64,38 @@ describe('scoreRecording: dwa nakładające się okna flag (decyzja właściciel
   });
 });
 
+describe('scoreRecording: B-131 - nagranie jak w module 2 (12 kwestii, 7 flag)', () => {
+  // Kwestie po 3000 ms z ciszą 400 ms: początek kwestii i = i * 3400. Flagi na kwestiach 1, 3, 4, 6, 7, 9, 11 (numeracja od 1, rozdz. 3).
+  const FLAGGED = [1, 3, 4, 6, 7, 9, 11];
+  const module2 = {
+    id: 'nagranie',
+    segments: Array.from({ length: 12 }, (_, i) => ({ id: `s${i + 1}`, gapAfterMs: 400, narration: { durationMs: 3000 } })),
+    flags: FLAGGED.map((n) => ({ segmentId: `s${n}`, category: 'urgency' })),
+  };
+  const startOf = (n: number) => (n - 1) * 3400;
+  const hitAll = FLAGGED.map((n) => ({ atMs: startOf(n) + 1000 }));
+
+  it('tapanie równomierne co 1 s przez całe nagranie daje najwyżej 0,2', () => {
+    const total = 12 * 3400;
+    const taps = Array.from({ length: Math.floor(total / 1000) + 1 }, (_, i) => ({ atMs: i * 1000 }));
+    const result = scoreRecording(module2, taps);
+    expect(result.points).toBeLessThanOrEqual(0.2);
+    expect(result.falseTaps).toBeGreaterThan(20);
+  });
+
+  it('7 trafień + 1 pomyłka = 0,9 (pomyłka poza oknami i pomyłka w oknie trafionej flagi po czasie podwójnego stuknięcia)', () => {
+    // 4700 ms: kwestia 2 bez flagi, za oknem flagi 1 (do 4500 ms), przed oknem flagi 3 (od 6800 ms).
+    expect(scoreRecording(module2, [...hitAll, { atMs: startOf(2) + 1300 }])).toMatchObject({ falseTaps: 1, points: 0.9 });
+    // 3900 ms: w oknie flagi 1 (trafionej w 1000 ms), 2900 ms po trafieniu - więcej niż 1500 ms, więc pomyłka.
+    expect(scoreRecording(module2, [...hitAll, { atMs: startOf(2) + 500 }])).toMatchObject({ falseTaps: 1, points: 0.9 });
+  });
+
+  it('7 trafień + podwójne stuknięcie przy jednej fladze = 1,0 i warunek Perfect Pitch (7/7, 0 fałszywych)', () => {
+    const result = scoreRecording(module2, [...hitAll, { atMs: startOf(6) + 1400 }]);
+    expect(result).toEqual({ points: 1, flagsHit: FLAGGED.map((n) => `s${n}`), falseTaps: 0 });
+  });
+});
+
 describe('scoreRecording: fałszywe tapnięcia, punkty, błędy', () => {
   it('segment bez flagi (transkrypcja) i czas poza oknami to fałszywe; kara 0,1 za każde, min. 0', () => {
     expect(score([{ segmentId: 'a' }, { segmentId: 'b' }, { segmentId: 'c' }])).toEqual({ points: 0.9, flagsHit: ['a', 'b'], falseTaps: 1 });
@@ -65,8 +103,8 @@ describe('scoreRecording: fałszywe tapnięcia, punkty, błędy', () => {
     expect(score(Array.from({ length: 12 }, () => ({ segmentId: 'c' })))).toEqual({ points: 0, flagsHit: [], falseTaps: 12 });
   });
 
-  it('powtórne tapnięcie po segmencie w trafioną flagę nie jest fałszywe', () => {
-    expect(score([{ segmentId: 'a' }, { segmentId: 'a' }])).toEqual({ points: 0.5, flagsHit: ['a'], falseTaps: 0 });
+  it('powtórne tapnięcie po segmencie w trafioną flagę jest fałszywe (B-131: tylko nowa flaga się liczy)', () => {
+    expect(score([{ segmentId: 'a' }, { segmentId: 'a' }])).toEqual({ points: 0.4, flagsHit: ['a'], falseTaps: 1 });
   });
 
   it('brak tapnięć = 0 punktów, bez fałszywych', () => {

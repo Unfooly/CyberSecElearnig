@@ -17,6 +17,11 @@ zasad w CLAUDE.md. Pracujesz na branchu `<typ>/<numer>-<opis>`, wypychasz go i o
 Sprawdzenie, że hook działa: `git push origin main` powinno się zakończyć komunikatem „ODRZUCONO PUSH NA main”. Nie omijaj go `--no-verify`.
 Gdy ochrona gałęzi w GitHub zostanie włączona, hook zostaje jako pierwsza (szybsza) linia obrony.
 
+To samo ustawienie włącza `.githooks/pre-commit`: każdy commit przechodzi skan gitleaks (tylko linie dodawane, wartości ukryte). Potrzebny jest
+`gitleaks` w PATH (`winget install gitleaks` / `brew install gitleaks`) albo działający Docker (obraz przypięty w hooku); bez żadnego z nich
+commit jest odrzucany. Świadoma wartość testowa: komentarz `gitleaks:allow` w tej linii. Repo jest publiczne - sekrety tylko w `.env` spoza repo
+(`docs/security/do-rotacji.md`).
+
 ## 1. Co to jest
 
 Unfooly (dawniej CyberSzkoło): wielodostępowa (multi-tenant) platforma SaaS do szkoleń z cyberbezpieczeństwa i symulacji phishingowych,

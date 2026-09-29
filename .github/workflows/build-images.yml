@@ -98,6 +98,11 @@ jobs:
       - name: Testy hooka pre-push (blokada pushu na main)
         run: node --test .githooks/pre-push.test.js
 
+      # Lokalna blokada sekretów w commitach (.githooks/pre-commit, gitleaks; docs/security/do-rotacji.md). Atrapy gitleaks/dockera -
+      # scenariusze "brak gitleaks" są tu pomijane, bo runner ma prawdziwego dockera w /usr/bin (sprawdzane lokalnie na Windows).
+      - name: Testy hooka pre-commit (gitleaks)
+        run: node --test .githooks/pre-commit.test.js
+
       # Hook Claude Code egzekwujący regułę 11 (CLAUDE.md): polecenia niszczące na origin/main (force-push, reset --hard, ...).
       - name: Testy hooka block-destructive-git (reguła 11)
         run: node --test .claude/hooks/block-destructive-git.test.js

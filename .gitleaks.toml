@@ -1,0 +1,15 @@
+# Konfiguracja gitleaks (hook .githooks/pre-commit, ręczne skany - docs/security/do-rotacji.md).
+# Reguły domyślne + wyjątki dla znanych fałszywych trafień: placeholdery szablonów .env*.example i jawne wartości testowe.
+# Wyjątek w pojedynczej linii: komentarz `gitleaks:allow`. Nie dopisuj tu wzorców pasujących do prawdziwych kluczy.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholdery szablonów i jawne wartości testowe"
+stopwords = [
+  "zmien-na",
+  "sekret-123",
+  "haslo-testowe",
+  "e2e-haslo-testowe",
+]

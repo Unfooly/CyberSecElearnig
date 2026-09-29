@@ -108,7 +108,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'modul2'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - cztery rozdzielczości
 // i dwa telefony w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e8).
@@ -150,18 +150,22 @@ for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana
 // Pozostałe sekcje sprawdzają konkretne elementy treści modułu 1 (id bloków, hotspotów), więc dla innego modułu są pomijane.
 const DEFAULT_MODULE = 'wyludzone-haslo';
 const MODULE_SLUG = process.env.LAYOUT_CHECK_MODULE || DEFAULT_MODULE;
-if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'))) {
-  throw new Error(`LAYOUT_CHECK_MODULE: nie ma modułu "${MODULE_SLUG}" w packages/content/modules.`);
+// Moduły podglądu `dev-*` (D-115) leżą w packages/content/dev-modules - jak w harnessie (apps/web/src/app/dev/harness-module.ts).
+const moduleDir = (slug) => join(process.cwd(), 'packages', 'content', slug.startsWith('dev-') ? 'dev-modules' : 'modules', slug);
+if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(moduleDir(MODULE_SLUG), 'module.json'))) {
+  throw new Error(`LAYOUT_CHECK_MODULE: nie ma modułu "${MODULE_SLUG}" w packages/content/modules ani dev-modules.`);
 }
-// Dla innego modułu tylko sekcje ogólne: `module` (każdy blok) i `catalog` (miniatura i karta kursu z `?module=`).
-const GENERIC_SECTIONS = ['module', 'catalog'];
+// Dla innego modułu tylko sekcje ogólne: `module` (każdy blok), `catalog` (miniatura i karta kursu z `?module=`) i `modul2` (własny moduł
+// podglądu nowych bloków, niezależny od LAYOUT_CHECK_MODULE).
+const GENERIC_SECTIONS = ['module', 'catalog', 'modul2'];
 if (MODULE_SLUG !== DEFAULT_MODULE) {
   const unsupported = ONLY.filter((name) => !GENERIC_SECTIONS.includes(name));
   if (unsupported.length > 0) {
     throw new Error(`LAYOUT_CHECK_MODULE=${MODULE_SLUG}: dostępne są tylko sekcje ${GENERIC_SECTIONS.join(', ')} (pozostałe sprawdzają treść modułu 1): ${unsupported.join(', ')}`);
   }
 }
-const MODULE_TITLE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'), 'utf8')).title;
+// Tytuł wielojęzyczny (schemaVersion 6) - harness pokazuje `pl`.
+const MODULE_TITLE = ((title) => (typeof title === 'string' ? title : title.pl))(JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8')).title);
 const runs = (section) =>
   MODULE_SLUG !== DEFAULT_MODULE && !GENERIC_SECTIONS.includes(section) ? false : ONLY.length === 0 || ONLY.includes(section);
 
@@ -1253,7 +1257,7 @@ try {
   // w ekranie; (m3) strona bez poziomego przewijania; (m4) bez błędów strony i konsoli. Minimalna siatka dla nowego modułu - sekcje
   // wyżej sprawdzają szczegóły modułu 1.
   if (runs('module')) {
-    const moduleJson = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', MODULE_SLUG, 'module.json'), 'utf8'));
+    const moduleJson = JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8'));
     const blockIds = moduleJson.blocks.map((block) => block.id);
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }]) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
@@ -1285,6 +1289,199 @@ try {
       }
       step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4) OK`, true);
       await context.close();
+    }
+  }
+
+  // Moduł 2 - nowe bloki i v6 (D-114/D-115) na module podglądu packages/content/dev-modules/dev-modul-2 (treść modułu 2 dopiero w fazie 1g):
+  //  (n1) odsłuch nagrania: fala, odtwarzanie, „Czerwona flaga”, „Sprawdź flagi” w obszarze bloku, cele ≥ 44 px; F dodaje flagę;
+  //  (n2) transkrypcja: flagi przy kwestiach 44x44, wysyłka, WYNIK (odpowiedź serwera podstawiona) - kwestie z rozstrzygnięciem, „Dalej” aktywny;
+  //  (n3) omówienie na transkrypcji: karta znacznika w obszarze bloku, numery ≥ 44 px, „Dalej” aktywny dopiero po ostatnim znaczniku;
+  //  (n4) omówienie na grafice: obraz załadowany, znaczniki na obrazie;
+  //  (n5) warstwa tekstu: każdy napis w scenie i w zbliżeniu (tekst w granicach grafiki), na telefonie (< 640 px) napisy jednolinijkowe ≥ 15 px;
+  //  (n6) wszędzie: strona bez przewijania w poziomie, dolny pasek w ekranie, bez błędów strony i konsoli.
+  if (runs('modul2')) {
+    const DEMO = 'dev-modul-2';
+    const inArea = async (page, selector) => {
+      const area = await boxOf(page, '[data-testid="player-content-area"]');
+      const box = await page.locator(selector).first().boundingBox();
+      return !!box && contains(area, box);
+    };
+    const minTarget = (page, selector) =>
+      page.locator(selector).evaluateAll((elements) => Math.min(...elements.map((el) => Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height))));
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }]) {
+      for (const reduced of viewport.name === '1366x768' ? [false, true] : [false]) {
+        const context = await browser.newContext({
+          viewport: { width: viewport.width, height: viewport.height },
+          hasTouch: true,
+          isMobile: viewport.isMobile ?? false,
+          reducedMotion: reduced ? 'reduce' : 'no-preference',
+        });
+        const page = await context.newPage();
+        const errors = [];
+        page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));
+        page.on('console', (message) => {
+          if (message.type() === 'error') errors.push(message.text().slice(0, 200));
+        });
+        await page.route('**/dev/module-assets/*/audio/**', (route) => route.fulfill({ status: 200, contentType: 'audio/mpeg', path: join(process.cwd(), 'apps', 'web', 'public', 'sfx', 'msg-receive.mp3') }));
+        const tag = `${viewport.name}${reduced ? ' (reduced-motion)' : ''} / moduł 2 demo`;
+        const open = async (blockId) => {
+          errors.length = 0;
+          await page.goto(`${WEB}/dev/player-harness?module=${DEMO}&block=${blockId}`);
+          await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+          await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete), null, { timeout: 30000 });
+        };
+        const common = async (label) => {
+          const info = await page.evaluate(() => {
+            const bar = document.querySelector('[data-testid="player-bottombar"]')?.getBoundingClientRect();
+            return { barInView: !!bar && bar.top >= -1 && bar.bottom <= window.innerHeight + 1, overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+          });
+          if (!info.barInView) fail(`${label}: (n6) dolny pasek poza ekranem.`);
+          if (info.overflowX > 1) fail(`${label}: (n6) strona przewija się w poziomie o ${info.overflowX}px.`);
+          if (errors.length > 0) fail(`${label}: (n6) błędy: ${errors.join(' | ')}`);
+        };
+
+        // (n1) odsłuch
+        await open('nagranie');
+        let label = `${tag} / nagranie (odsłuch)`;
+        for (const id of ['recording-wave', 'recording-play', 'recording-flag', 'recording-submit']) {
+          await page.getByTestId(id).scrollIntoViewIfNeeded();
+          if (!(await inArea(page, `[data-testid="${id}"]`))) fail(`${label}: (n1) ${id} poza obszarem bloku.`);
+        }
+        const listenTarget = await minTarget(page, '[data-testid="call-recording"] button:not([disabled])');
+        if (listenTarget < 43.5) fail(`${label}: (n1) przycisk mniejszy niż 44 px (${listenTarget.toFixed(1)}).`);
+        await page.getByTestId('recording-wave').focus();
+        await page.keyboard.press('f');
+        if ((await page.getByTestId('recording-tap-marker').count()) !== 1) fail(`${label}: (n1) F nie dodało flagi.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-odsluch`);
+        await common(label);
+        step(`${label}: (n1, n6) OK`, true);
+
+        // (n2) transkrypcja i wynik
+        label = `${tag} / nagranie (transkrypcja + wynik)`;
+        await page.getByRole('tab', { name: 'Transkrypcja' }).click();
+        const flagTarget = await minTarget(page, '[data-testid^="recording-segment-flag-"]');
+        if (flagTarget < 43.5) fail(`${label}: (n2) flaga przy kwestii mniejsza niż 44 px (${flagTarget.toFixed(1)}).`);
+        await page.getByTestId('recording-segment-flag-s1').click();
+        await page.getByTestId('recording-segment-flag-s2').click();
+        await page.route('**/api/courses/*/progress', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              status: 'IN_PROGRESS',
+              currentBlockIndex: 1,
+              score: 40,
+              lastResult: {
+                blockIndex: 0,
+                blockId: 'nagranie',
+                type: 'CALL_RECORDING',
+                correct: false,
+                points: 0.23,
+                detail: {
+                  flags: [
+                    { segmentId: 's1', category: 'fear', hit: true },
+                    { segmentId: 's3', category: 'urgency', hit: false },
+                    { segmentId: 's4', category: 'code_request', hit: false },
+                  ],
+                  falseTaps: 1,
+                },
+                reaction: { text: 'Część manipulacji umknęła - zobacz omówienie.' },
+              },
+              notes: [],
+              gamification: null,
+            }),
+          }),
+        );
+        await page.getByTestId('recording-submit').click();
+        await page.getByTestId('call-recording-result').waitFor({ timeout: 15000 });
+        await page.getByTestId('recording-result-s4').scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="recording-result-s4"]'))) fail(`${label}: (n2) ostatnia rozstrzygnięta kwestia poza obszarem bloku.`);
+        if (await page.locator('.pbar-next').isDisabled()) fail(`${label}: (n2) „Dalej” nieaktywny po wyniku.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-wynik`);
+        await page.unroute('**/api/courses/*/progress');
+        await common(label);
+        step(`${label}: (n2, n6) OK`, true);
+
+        // (n3) omówienie na transkrypcji
+        await open('omowienie');
+        label = `${tag} / omówienie (transkrypcja)`;
+        if (!(await inArea(page, '[data-testid="replay-card"]'))) fail(`${label}: (n3) karta znacznika poza obszarem bloku.`);
+        const markerTarget = await minTarget(page, '[data-testid^="replay-marker-"]');
+        if (markerTarget < 43.5) fail(`${label}: (n3) znacznik mniejszy niż 44 px (${markerTarget.toFixed(1)}).`);
+        if (!(await page.locator('.pbar-next').isDisabled())) fail(`${label}: (n3) „Dalej” aktywny przed ostatnim znacznikiem.`);
+        await page.getByTestId('replay-next').click();
+        await page.getByTestId('replay-next').click();
+        if (!(await inArea(page, '[data-testid="replay-card"]'))) fail(`${label}: (n3) karta ostatniego znacznika poza obszarem bloku.`);
+        await page.getByTestId('replay-marker-3').scrollIntoViewIfNeeded();
+        if (!(await inArea(page, '[data-testid="replay-marker-3"]'))) fail(`${label}: (n3) znacznik 3 poza obszarem bloku.`);
+        if (await page.locator('.pbar-next').isDisabled()) fail(`${label}: (n3) „Dalej” nieaktywny po ostatnim znaczniku.`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-omowienie`);
+        await common(label);
+        step(`${label}: (n3, n6) OK`, true);
+
+        // (n4) omówienie na grafice
+        await open('omowienie-grafika');
+        label = `${tag} / omówienie (grafika)`;
+        const pins = await page.evaluate(() => {
+          const img = document.querySelector('[data-testid="annotated-replay"] img');
+          const box = img?.getBoundingClientRect();
+          return {
+            loaded: !!img && img.naturalWidth > 0,
+            inside: [...document.querySelectorAll('[data-testid^="replay-marker-"]')].every((pin) => {
+              const r = pin.getBoundingClientRect();
+              const cx = r.left + r.width / 2;
+              const cy = r.top + r.height / 2;
+              return !!box && cx >= box.left && cx <= box.right && cy >= box.top && cy <= box.bottom;
+            }),
+          };
+        });
+        if (!pins.loaded) fail(`${label}: (n4) grafika omówienia nie załadowana.`);
+        if (!pins.inside) fail(`${label}: (n4) znacznik poza grafiką.`);
+        if (!(await inArea(page, '[data-testid="replay-card"]'))) fail(`${label}: (n4) karta znacznika poza obszarem bloku.`);
+        await common(label);
+        step(`${label}: (n4, n6) OK`, true);
+
+        // (n5) warstwa tekstu - scena i zbliżenie
+        await open('biuro-helpdesk');
+        label = `${tag} / warstwa tekstu`;
+        const phone = viewport.width < 640;
+        const checkLayer = async (where, boxSelector) => {
+          const result = await page.evaluate(
+            ({ boxSelector: selector }) => {
+              const box = document.querySelector(selector)?.getBoundingClientRect();
+              return [...document.querySelectorAll(`${selector} [data-testid^="text-layer-"]`)].map((item) => {
+                const text = item.firstElementChild;
+                const r = item.getBoundingClientRect();
+                return {
+                  id: item.getAttribute('data-testid'),
+                  inside: !!box && r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1,
+                  fits: !!text && text.scrollWidth <= text.clientWidth + 1,
+                  nowrap: !!text && getComputedStyle(text).whiteSpace === 'nowrap',
+                  size: text ? parseFloat(getComputedStyle(text).fontSize) : 0,
+                };
+              });
+            },
+            { boxSelector },
+          );
+          if (result.length === 0) fail(`${label}: (n5) brak warstwy tekstu (${where}).`);
+          for (const item of result) {
+            if (!item.inside) fail(`${label}: (n5) ${item.id} wychodzi poza grafikę (${where}).`);
+            if (!item.fits) fail(`${label}: (n5) ${item.id} nie mieści się w szerokości (${where}).`);
+            if (phone && item.nowrap && item.size < 14.9) fail(`${label}: (n5) ${item.id} ma ${item.size}px < 15 px na telefonie (${where}).`);
+          }
+          return result.length;
+        };
+        const sceneItems = await checkLayer('scena', '.scene-box');
+        await page.getByTestId('hotspot-overlay-telefon').click();
+        await page.getByTestId('zoom-text-frame').waitFor({ timeout: 10000 });
+        await page.waitForTimeout(reduced ? 100 : 700);
+        const zoomItems = await checkLayer('zbliżenie', '.zoom-layer-box');
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-tekst`);
+        await common(label);
+        step(`${label}: (n5, n6) ${sceneItems} napisów w scenie, ${zoomItems} w zbliżeniu OK`, true);
+
+        await context.close();
+      }
     }
   }
 

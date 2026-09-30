@@ -802,6 +802,25 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   dla e2e API; (3) decyzja właściciela: manifest i ikony neutralne albo pominięte na `/t/*`; (4) skrót SVG zapisany obok PNG i test
   zgodności albo render w CI; (5) opcjonalnie warunek na nazwę bazy testowej.
 
+### B-142 Domknięcia po D-128: blokada przypisania przy restarcie, limit per IP na trasach kursu, kolejność kontroli w BFF
+- Etykiety: `P2`, `security`, `mod:kursy` · Źródło: code review i security review D-128 (wzorce istniejące na `main`, nie regresja D-128)
+- Opis: (1) `lockOwnAssignment` blokuje wiersz aktywnego przypisania, a `findOwnAssignment` szuka go od nowa: żądanie czekające na
+  blokadę trzymaną przez `/restart` po jego zatwierdzeniu nie blokuje niczego (stary wiersz zarchiwizowany, nowy poza migawką polecenia)
+  i pracuje na nowym przypisaniu bez blokady - dla `/attempt` i `/challenge` teoretycznie dwa równoległe żądania mogą ominąć „jedną
+  próbę”; (2) zapisy postępu w `attemptBlock`, `challengeBlock` i `submitBlockProgress` idą przez `update({ where: { id } })` - sam RLS,
+  bez filtra `organizationId` w zapytaniu (`exploreBlock` ma już `updateMany` z warunkiem); (3) `@Throttle` na trasie nadpisuje też
+  limit globalnego `ProxyAwareThrottlerGuard`, więc limity „na użytkownika” (`/explore` 120/min, `/attempt` i `/challenge` 30/min,
+  `/progress` domyślny) są jednocześnie limitami na adres IP - biuro za jednym adresem je dzieli (429 na `/explore` odtwarzacz pomija,
+  więc stan częściowy sceny po cichu się nie zapisze); (4) trasy BFF z ciałem (`explore`, `challenge` i podobne) parsują JSON przed
+  kontrolą pochodzenia żądania i sesji w `proxyAuthenticated`; (5) stan częściowy sceny oczekujący w kolejce nie wychodzi przy twardym
+  zamknięciu karty w trakcie poprzedniego żądania (`pagehide` + `keepalive`); (6) `e2e-module-01` bez kroku „wyjście w połowie sceny i
+  powrót” (jest w `e2e-module-02`, w API e2e i w testach odtwarzacza).
+- Akceptacja: (1) `lockOwnAssignment` zwraca `id` zablokowanego wiersza, a dalsze odczyty idą po tym `id` (brak wiersza = 404 albo
+  ponowienie), test równoległego restartu i próby; (2) `updateMany` z `organizationId`/`userId`/`currentBlockIndex` w trzech pozostałych
+  zapisach; (3) osobny, wyższy limit per IP dla tras z limitem per użytkownik (albo decyzja, że zostaje) i ewentualnie łączenie zapisów
+  częściowych (opóźnienie 300-500 ms); (4) najpierw kontrola pochodzenia i ciasteczka, potem parsowanie - wspólnie dla wszystkich tras;
+  (5), (6) według uznania.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

@@ -269,6 +269,17 @@ describe('textLayer (schemaVersion 6)', () => {
     expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X' }, { id: 'a', x: 1, y: 10, w: 5, h: 5, text: 'Y' }]))).toContain('powtórzony identyfikator "a"');
     expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', style: 'neon' }]))).toContain('textLayer');
   });
+
+  it('kolor tekstu (`tone`, D-128): dark i light przechodzą i trafiają do klienta; inna wartość to błąd', () => {
+    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'dark' }, { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y', tone: 'light' }]))).toBe('');
+    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'neon' }]))).toContain('textLayer');
+    const m = withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'light' }, { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y' }]);
+    const client = toClientBlock(block(m, 'SCENE_HOTSPOTS'), context);
+    expect(client.textLayer).toEqual([
+      { id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'light' },
+      { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y' },
+    ]);
+  });
 });
 
 describe('toClientBlock: język gracza, bez wycieku innych języków ani sekretów', () => {

@@ -112,7 +112,9 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'modul2'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2'];
+// Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
+const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - dwa desktopy, telefon
 // w poziomie i dwa w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e10).
@@ -164,7 +166,7 @@ if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(moduleDir(MODULE_
 }
 // Dla innego modułu tylko sekcje ogólne: `module` (każdy blok), `catalog` (miniatura i karta kursu z `?module=`) i `modul2` (własny moduł
 // podglądu nowych bloków, niezależny od LAYOUT_CHECK_MODULE).
-const GENERIC_SECTIONS = ['module', 'catalog', 'modul2'];
+const GENERIC_SECTIONS = ['module', 'catalog', 'modul2', 'notes'];
 if (MODULE_SLUG !== DEFAULT_MODULE) {
   const unsupported = ONLY.filter((name) => !GENERIC_SECTIONS.includes(name));
   if (unsupported.length > 0) {
@@ -318,6 +320,52 @@ const describeBroken = (broken) =>
       return `${b.src} (${b.error ?? 'bez wymiarów'}; complete=${b.complete}, ${request})`;
     })
     .join(', ');
+
+// Warstwa tekstu na grafice (D-128): każdy widoczny napis ma czcionkę co najmniej 14 px (tryb telefonu: 15 px), krój dziedziczony (nie
+// o stałej szerokości), zawija się w slocie, mieści się w jego szerokości i nie jest ucięty w pionie (tekst wyższy niż slot jest
+// widoczny w całości - overflow: visible). Zwraca listę problemów (pusta = OK) i liczbę sprawdzonych napisów.
+// Tryb telefonu odtwarzacza - to samo zapytanie co PHONE_LAYOUT_QUERY w apps/web/src/lib/use-phone-layout.ts (skrypt nie importuje z apps/web).
+const PHONE_LAYOUT_QUERY = '(max-height: 500px) and (orientation: landscape) and (pointer: coarse), (max-width: 767px) and (orientation: portrait) and (pointer: coarse)';
+
+async function textLayerProblems(page) {
+  return page.evaluate((phoneQuery) => {
+    const phoneMode = window.matchMedia(phoneQuery).matches;
+    const minPx = phoneMode ? 15 : 14;
+    const items = [...document.querySelectorAll('[data-testid^="text-layer-"]')].filter((item) => item.getClientRects().length > 0 && !item.closest('[aria-hidden="true"]'));
+    const problems = [];
+    for (const item of items) {
+      const id = item.getAttribute('data-testid');
+      const text = item.firstElementChild;
+      if (!text) {
+        problems.push(`${id}: brak tekstu`);
+        continue;
+      }
+      const style = getComputedStyle(text);
+      const size = parseFloat(style.fontSize);
+      if (size < minPx - 0.1) problems.push(`${id}: ${size.toFixed(1)} px < ${minPx} px`);
+      if (/mono|courier/i.test(style.fontFamily)) problems.push(`${id}: krój o stałej szerokości`);
+      if (style.whiteSpace === 'nowrap') problems.push(`${id}: bez zawijania`);
+      if (text.scrollWidth > text.clientWidth + 1) problems.push(`${id}: nie mieści się w szerokości slotu`);
+      if (text.scrollHeight > text.clientHeight + 1 && style.overflowY !== 'visible') problems.push(`${id}: ucięty w pionie`);
+      // FitText (wholeWords) łamie słowo w środku dopiero, gdy nie mieści się w slocie nawet przy dolnym limicie. Na desktopie to błąd
+      // treści (za długie słowo na ten slot): skróć napis albo poszerz slot. Na telefonie grafika bywa tak mała (np. ekran telefonu
+      // w scenie zagnieżdżonej przy 844x390), że słowo przy 15 px nie ma prawa się zmieścić - tam złamanie jest zamierzonym wyjściem
+      // (czytelny rozmiar i pełna treść ważniejsze niż całe słowo), więc go nie zgłaszamy.
+      if (!phoneMode && style.overflowWrap === 'anywhere') problems.push(`${id}: słowo złamane w środku (nie mieści się w slocie przy ${minPx} px)`);
+    }
+    return { problems, count: items.length };
+  }, PHONE_LAYOUT_QUERY);
+}
+
+// Przedmioty sceny (także zagnieżdżone), których zbliżenie albo scena zagnieżdżona ma warstwę tekstu - do otwarcia przez `?hotspot=`.
+function hotspotsWithTextLayer(block) {
+  const ids = [];
+  for (const hotspot of block.hotspots ?? []) {
+    if (hotspot.media?.textLayer || hotspot.media?.scene?.textLayer) ids.push(hotspot.id);
+    for (const inner of hotspot.media?.scene?.hotspots ?? []) if (inner.media?.textLayer) ids.push(inner.id);
+  }
+  return ids;
+}
 
 async function boxOf(page, selector) {
   const box = await page.locator(selector).first().boundingBox();
@@ -1407,6 +1455,7 @@ try {
       page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text().slice(0, 200));
       });
+      let layerItems = 0;
       for (const blockId of blockIds) {
         const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${blockId}`;
         errors.length = 0;
@@ -1424,9 +1473,164 @@ try {
         if (!info.barInView) fail(`${label}: (m2) dolny pasek poza ekranem.`);
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
+        // (m5) warstwa tekstu na grafice bloku (D-128) - scena, strona OSINT.
+        const layer = await textLayerProblems(page);
+        if (layer.problems.length > 0) fail(`${label}: (m5) warstwa tekstu: ${layer.problems.join('; ')}`);
+        layerItems += layer.count;
       }
-      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4) OK`, true);
+      // (m5) zbliżenia i sceny zagnieżdżone z warstwą tekstu (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`.
+      for (const block of moduleJson.blocks) {
+        for (const hotspotId of hotspotsWithTextLayer(block)) {
+          const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${block.id} / ${hotspotId}`;
+          await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(block.id)}&hotspot=${encodeURIComponent(hotspotId)}`);
+          await page.getByTestId('scene-zoom').waitFor({ timeout: 30000 });
+          const broken = await brokenModuleImages(page);
+          if (broken.length > 0) fail(`${label}: (m1) obrazy modułu nie załadowane: ${describeBroken(broken)}`);
+          await page.waitForTimeout(700);
+          const layer = await textLayerProblems(page);
+          if (layer.count === 0) fail(`${label}: (m5) zbliżenie bez widocznej warstwy tekstu.`);
+          if (layer.problems.length > 0) fail(`${label}: (m5) warstwa tekstu: ${layer.problems.join('; ')}`);
+          layerItems += layer.count;
+        }
+      }
+      // (m6) raport zamknięcia: wnioski zawijają się w slocie i nie są ucięte (poziomo i w pionie), czcionka nie mniejsza niż dolny limit.
+      const summary = moduleJson.blocks.find((block) => block.type === 'SUMMARY' && block.closing);
+      if (summary) {
+        const label = `${viewport.name} / moduł ${MODULE_SLUG} / raport zamknięcia`;
+        await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(summary.id)}&completed=1`);
+        await page.getByTestId('closing-lessons').waitFor({ timeout: 30000 });
+        await brokenModuleImages(page);
+        const lessons = await page.getByTestId('closing-lessons').evaluate((list) => {
+          const box = list.getBoundingClientRect();
+          const scene = document.querySelector('[data-testid="case-closed-scene"]').getBoundingClientRect();
+          const items = [...list.querySelectorAll('li')];
+          return {
+            layout: list.getAttribute('data-layout'),
+            portrait: document.querySelector('[data-testid="case-closed-frame"]')?.getAttribute('data-orientation') === 'portrait',
+            font: parseFloat(getComputedStyle(list).fontSize),
+            // Czcionka zmniejszona przez dopasowanie (rozmiar w px wpisany w styl) - inaczej rozmiar wyjściowy, skalowany z raportem.
+            shrunk: /^[\d.]+px$/.test(list.style.fontSize),
+            clippedY: list.scrollHeight > list.clientHeight + 1 && getComputedStyle(list).overflowY !== 'visible',
+            clippedX: items.some((item) => item.scrollWidth > list.clientWidth + 1),
+            shown: items.every((item) => (item.querySelector('[data-testid="closing-lesson-typed"]')?.textContent ?? '').length > 3),
+            // Ostatni wiersz wniosków w granicach raportu (tekst wychodzący poza slot nie może wyjść poza stronę).
+            inScene: items.length > 0 && items[items.length - 1].getBoundingClientRect().bottom <= scene.bottom + 1 && box.left >= scene.left - 1,
+          };
+        });
+        if (lessons.clippedY || lessons.clippedX) fail(`${label}: (m6) wnioski ucięte (${JSON.stringify(lessons)}).`);
+        if (!lessons.shown) fail(`${label}: (m6) wnioski niepokazane w całości (${JSON.stringify(lessons)}).`);
+        if (!lessons.inScene) fail(`${label}: (m6) wnioski poza raportem (${JSON.stringify(lessons)}).`);
+        // Dolna granica ZMNIEJSZANIA czcionki wniosków (LESSONS_MIN_PX w CaseClosedScreen.tsx): 15 px w pionie, 10 px w poziomie.
+        // Rozmiar wyjściowy skaluje się z raportem jak przed D-128 (na telefonie w poziomie cały raport jest mały) - granica dotyczy
+        // tylko dopasowania: wnioski niemieszczące się w slocie nie są zmniejszane poniżej niej.
+        if (lessons.shrunk && lessons.font < (lessons.portrait ? 15 : 10) - 0.05) fail(`${label}: (m6) czcionka wniosków poniżej dolnej granicy (${JSON.stringify(lessons)}).`);
+        // Moduł 1 w poziomie: wnioski jednowierszowe na liniaturze raportu, jak przed D-128 (wygląd bez zmian).
+        if (MODULE_SLUG === DEFAULT_MODULE && !lessons.portrait && lessons.layout !== 'ruled') {
+          fail(`${label}: (m6) wnioski modułu 1 w poziomie mają zostać na liniaturze (układ „ruled”) (${JSON.stringify(lessons)}).`);
+        }
+      }
+      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6) OK`, true);
       await context.close();
+    }
+  }
+
+  // NOTATNIK NA KAŻDYM BLOKU (uwaga właściciela po przejściu modułów 1 i 2 na desktopie 1920×975: po otwarciu notatnika cała ramka
+  // przesuwała się w lewo - ucięty X i początek treści). Każdy blok modułu 1 i 2 (czyli każdy używany typ bloku; odprawa także na drugim
+  // kroku), dwa desktopy: (o1) ramki nie da się przewinąć - ani przy schowanym, ani przy otwartym notatniku, także celowo (scrollLeft,
+  // scrollIntoView i focus() bez preventScroll na przycisku zamykania - to, co robi dowolny fokus albo przewinięcie wewnątrz ramki);
+  // (o2) po otwarciu ramka stoi w miejscu, X wyjścia i początek treści są w ramce; (o3) panel notatnika i jego X w całości w ramce;
+  // (o4) po zamknięciu (Escape) bez przesunięcia; (o5) strona bez przewijania w poziomie.
+  if (runs('notes')) {
+    const NOTES_VIEWPORTS = [
+      { name: '1920x975', width: 1920, height: 975 },
+      { name: '1366x768', width: 1366, height: 768 },
+    ];
+    for (const viewport of NOTES_VIEWPORTS) {
+      for (const slug of NOTES_MODULES) {
+        const blocks = JSON.parse(readFileSync(join(moduleDir(slug), 'module.json'), 'utf8')).blocks;
+        const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        // Nagrania modułu 2 są tylko w magazynie treści - harness ich nie ma, a ta sekcja ich nie potrzebuje.
+        await page.route('**/dev/module-assets/*/audio/**', (route) => route.fulfill({ status: 200, contentType: 'audio/mpeg', path: join(process.cwd(), 'apps', 'web', 'public', 'sfx', 'msg-receive.mp3') }));
+        const measure = () =>
+          page.evaluate(() => {
+            const frame = document.querySelector('main.player-frame');
+            const rect = (el) => {
+              const r = el.getBoundingClientRect();
+              return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+            };
+            const scrolled = [frame, ...(function ancestors(el) { return el.parentElement ? [el.parentElement, ...ancestors(el.parentElement)] : []; })(frame)]
+              .filter((el) => el.scrollLeft !== 0 || el.scrollTop !== 0)
+              .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)} L${el.scrollLeft} T${el.scrollTop}`);
+            return {
+              frame: rect(frame),
+              exit: rect(frame.querySelector('a[aria-label="Zakończ i wróć do listy kursów"]')),
+              content: rect(frame.querySelector('[data-testid="player-content-area"]')),
+              drawer: rect(frame.querySelector('[data-testid="notes-drawer"]')),
+              close: rect(frame.querySelector('[aria-label="Zamknij notatnik"]')),
+              scrolled,
+              pageScrollX: window.scrollX,
+              overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            };
+          });
+        // To, co potrafi zrobić dowolny fokus albo scrollIntoView wewnątrz ramki, gdy schowany panel wystaje poza nią.
+        const tryToScrollFrame = () =>
+          page.evaluate(async () => {
+            const frame = document.querySelector('main.player-frame');
+            const close = frame.querySelector('[aria-label="Zamknij notatnik"]');
+            frame.scrollLeft = 200;
+            close.scrollIntoView();
+            const active = document.activeElement;
+            close.focus();
+            if (active instanceof HTMLElement) active.focus({ preventScroll: true });
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          });
+        const near = (a, b) => Math.abs(a - b) <= 1;
+        const check = async (label, before) => {
+          const now = await measure();
+          if (now.scrolled.length > 0) fail(`${label}: (o1) przewinięta ramka albo jej przodek: ${now.scrolled.join(' | ')}`);
+          if (!near(now.frame.left, before.frame.left) || !near(now.frame.right, before.frame.right) || !near(now.frame.top, before.frame.top)) {
+            fail(`${label}: (o2) ramka się przesunęła (${before.frame.left.toFixed(0)}-${before.frame.right.toFixed(0)} -> ${now.frame.left.toFixed(0)}-${now.frame.right.toFixed(0)}).`);
+          }
+          if (!near(now.exit.left, before.exit.left) || now.exit.left < now.frame.left - 1) fail(`${label}: (o2) X wyjścia przesunięty albo ucięty (left ${now.exit.left.toFixed(0)}, było ${before.exit.left.toFixed(0)}).`);
+          if (!near(now.content.left, before.content.left)) fail(`${label}: (o2) początek treści przesunięty (left ${now.content.left.toFixed(0)}, było ${before.content.left.toFixed(0)}).`);
+          if (now.pageScrollX !== 0 || now.overflowX > 1) fail(`${label}: (o5) strona przewija się w poziomie.`);
+          return now;
+        };
+        const notebook = async (label) => {
+          const before = await measure();
+          await tryToScrollFrame();
+          await check(`${label} (notatnik schowany)`, before);
+          await page.getByRole('button', { name: /^Notatnik/ }).click();
+          await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="false"]');
+          await page.waitForTimeout(80);
+          await tryToScrollFrame();
+          const open = await check(`${label} (notatnik otwarty)`, before);
+          if (open.drawer.right > open.frame.right + 1 || open.drawer.left < open.frame.left - 1) fail(`${label}: (o3) panel notatnika poza ramką.`);
+          if (open.close.right > open.frame.right + 1 || open.close.left < open.drawer.left - 1 || open.close.top < open.frame.top - 1) fail(`${label}: (o3) X notatnika poza panelem.`);
+          await page.keyboard.press('Escape');
+          await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="true"]', { state: 'attached' });
+          await check(`${label} (po zamknięciu)`, before);
+        };
+        for (const block of blocks) {
+          const label = `${viewport.name} / notatnik / ${slug} / ${block.id}`;
+          await page.goto(`${WEB}/dev/player-harness?module=${slug}&block=${encodeURIComponent(block.id)}`);
+          await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+          // Pole tekstowe z fokusem (zadanie tekstowe) - przypadek zgłoszony w module 1.
+          const input = page.locator('[data-testid="player-content-area"] input[type="text"]').first();
+          if (await input.count()) await input.click();
+          await notebook(label);
+          if (block.type === 'BRIEFING') {
+            // Drugi krok odprawy (rozmowa z komisarzem) - przypadek zgłoszony w module 2.
+            await page.locator('[data-testid="briefing-hotspot"]').first().click();
+            await page.getByTestId('briefing-bubble').waitFor({ timeout: 10000 });
+            await notebook(`${label} (krok 2)`);
+            await shot(page, `${viewport.name}-notatnik-${slug}-odprawa-krok-2`);
+          }
+        }
+        step(`${viewport.name} / notatnik / ${slug}: ${blocks.length} bloków (${[...new Set(blocks.map((b) => b.type))].join(', ')}) - (o1-o5) ramka nie do przewinięcia, bez przesunięcia OK`, true);
+        await context.close();
+      }
     }
   }
 
@@ -1588,7 +1792,8 @@ try {
         // (n5) warstwa tekstu - scena i zbliżenie
         await open('biuro-helpdesk');
         label = `${tag} / warstwa tekstu`;
-        const phone = viewport.width < 640;
+        // Tryb telefonu odtwarzacza - te same zapytania co apps/web/src/lib/use-phone-layout.ts (TextLayer bierze z nich dolny limit).
+        const phoneMode = await page.evaluate((phoneQuery) => window.matchMedia(phoneQuery).matches, PHONE_LAYOUT_QUERY);
         const checkLayer = async (where, boxSelector) => {
           const result = await page.evaluate(
             ({ boxSelector: selector }) => {
@@ -1596,22 +1801,31 @@ try {
               return [...document.querySelectorAll(`${selector} [data-testid^="text-layer-"]`)].map((item) => {
                 const text = item.firstElementChild;
                 const r = item.getBoundingClientRect();
+                const style = text ? getComputedStyle(text) : null;
                 return {
                   id: item.getAttribute('data-testid'),
                   inside: !!box && r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1,
                   fits: !!text && text.scrollWidth <= text.clientWidth + 1,
-                  nowrap: !!text && getComputedStyle(text).whiteSpace === 'nowrap',
-                  size: text ? parseFloat(getComputedStyle(text).fontSize) : 0,
+                  // Tekst wyższy niż slot musi być widoczny w całości (overflow: visible), nie ucięty.
+                  clipped: !!text && text.scrollHeight > text.clientHeight + 1 && style.overflowY !== 'visible',
+                  wraps: !!style && style.whiteSpace !== 'nowrap',
+                  monospace: !!style && /mono|courier/i.test(style.fontFamily),
+                  size: style ? parseFloat(style.fontSize) : 0,
                 };
               });
             },
             { boxSelector },
           );
           if (result.length === 0) fail(`${label}: (n5) brak warstwy tekstu (${where}).`);
+          // D-128: dolny limit czcionki 14 px na desktopie, 15 px w trybie telefonu; tekst zawija się w slocie i nie jest ucinany.
+          const minPx = phoneMode ? 15 : 14;
           for (const item of result) {
             if (!item.inside) fail(`${label}: (n5) ${item.id} wychodzi poza grafikę (${where}).`);
             if (!item.fits) fail(`${label}: (n5) ${item.id} nie mieści się w szerokości (${where}).`);
-            if (phone && item.nowrap && item.size < 14.9) fail(`${label}: (n5) ${item.id} ma ${item.size}px < 15 px na telefonie (${where}).`);
+            if (item.clipped) fail(`${label}: (n5) ${item.id} jest ucięty w pionie (${where}).`);
+            if (!item.wraps) fail(`${label}: (n5) ${item.id} nie zawija się w slocie (${where}).`);
+            if (item.monospace) fail(`${label}: (n5) ${item.id} ma krój o stałej szerokości zamiast dziedziczonego (${where}).`);
+            if (item.size < minPx - 0.1) fail(`${label}: (n5) ${item.id} ma ${item.size}px < ${minPx} px (${where}).`);
           }
           return result.length;
         };

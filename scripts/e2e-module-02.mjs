@@ -197,11 +197,11 @@ try {
   step('SCENE_HOTSPOTS (biurko): „Dalej” nieaktywny przed drzwiami', (await nextDisabled()) && (await noInBlockNext()));
   await page.getByRole('button', { name: 'Telefon Karola' }).click();
   await dialog().getByRole('button', { name: 'Powiadomienia aplikacji' }).click();
-  await dialog().getByText('Aplikacja uwierzytelniająca').waitFor();
-  step('Telefon: zbliżenie powiadomień z warstwą tekstu (6 wierszy)', (await dialog().getByText(/Prośba o logowanie/).count()) === 6);
+  await dialog().getByText('Uwierzytelnianie', { exact: true }).waitFor();
+  step('Telefon: zbliżenie powiadomień z warstwą tekstu (6 wierszy)', (await dialog().getByText(/Logowanie\s+odrzucone/).count()) === 6);
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Rejestr połączeń' }).click();
-  await dialog().getByText('IT Helpdesk · 39 min').waitFor();
+  await dialog().getByText('IT Helpdesk', { exact: true }).waitFor();
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
@@ -226,6 +226,22 @@ try {
   await counterIs(5, 16);
   step('SCENE_HOTSPOTS (biurko): karteczka i plakat w notatniku (5/16), kubek bez dowodu', true, await counter());
   step('SCENE_HOTSPOTS (biurko): „Dalej” nieaktywny, dopóki gracz nie podejdzie do drzwi', await nextDisabled());
+  // Stan częściowy sceny (D-128): wyjście z modułu w połowie sceny i powrót - obejrzane i zabrane przedmioty, licznik i notatnik wracają.
+  await page.waitForLoadState('networkidle');
+  await page.goto(`${WEB}/courses`);
+  await page.getByRole('img', { name: MODULE_TITLE, exact: true }).first().waitFor();
+  await page.goto(`${WEB}/courses/${courseId}`);
+  await page.getByRole('button', { name: 'Karteczka (w notatniku)' }).waitFor();
+  await counterIs(5, 16);
+  step(
+    'SCENE_HOTSPOTS (biurko): po wyjściu i powrocie scena w tym samym stanie (zabrane, obejrzane, licznik 5/16, notatnik 5)',
+    (await page.getByRole('button', { name: 'Plakat (w notatniku)' }).count()) === 1 &&
+      (await page.getByRole('button', { name: 'Kubek (obejrzane)' }).count()) === 1 &&
+      (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1 &&
+      (await page.getByRole('button', { name: /^Notatnik \(5\)/ }).count()) === 1 &&
+      (await nextDisabled()),
+    await counter(),
+  );
   await page.getByRole('button', { name: 'Do sali odsłuchu' }).click();
   await advanceUntil(page.getByTestId('call-recording'), 'odsłuch nagrania');
   step('SCENE_HOTSPOTS (biurko): drzwi aktywują „Dalej”, blok zapisany', true);
@@ -430,7 +446,9 @@ try {
   step('Zamknięcie: nazwa modułu w raporcie', (await page.getByTestId('case-closed').getByText(MODULE_TITLE, { exact: true }).count()) >= 1);
   step(`Zamknięcie: dowody ${EVIDENCE_TOTAL}/${EVIDENCE_TOTAL}`, (await slotText('closing-evidence')) === `${EVIDENCE_TOTAL}/${EVIDENCE_TOTAL}`, await slotText('closing-evidence'));
   step('Zamknięcie: czas sprawy w minutach i +XP', /^\d+ min$/.test(await slotText('closing-time')) && /^\+[1-9]\d*$/.test(await slotText('closing-xp')), `${await slotText('closing-time')} | ${await slotText('closing-xp')}`);
-  step('Zamknięcie: trzy wnioski', ((await slotText('closing-lessons')).match(/\d\. /g) ?? []).length === 3, await slotText('closing-lessons'));
+  // Wpisane (widoczne) wnioski - lista ma też niewidoczne pełne kopie, które rezerwują miejsce (D-128).
+  const typedLessons = (await page.getByTestId('closing-lesson-typed').allTextContents()).filter((line) => /^\d\. .+/.test(line));
+  step('Zamknięcie: trzy wnioski', typedLessons.length === 3, typedLessons.join(' | '));
   await page.getByRole('button', { name: 'Podpisz raport' }).click();
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie: pieczęć i liścik po podpisie', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1);

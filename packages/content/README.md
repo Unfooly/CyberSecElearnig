@@ -125,7 +125,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   po podważeniu to sam tekst (bez nagrania - pole secret). Podważenie: `POST /courses/:id/blocks/:blockId/challenge { lineId, noteRef }`
   (odnośnik notatki `ref` z postępu; jedna próba na kwestię). Odpowiedź bloku `{ asked, noted, opened? }`; wynik = trafienia /
   (sprzeczności + pudła). Pisząc treść: kwestia z `fragment` jest publiczna i nigdy nie jest sprzecznością, więc pytanie ze sprzecznością
-  ma mieć też zwykłe kwestie bez fragmentu (inaczej kandydat na kłamstwo jest oczywisty).
+  ma mieć też zwykłe kwestie bez fragmentu (inaczej kandydat na kłamstwo jest oczywisty). Id kwestii idą do przeglądarki (`lineId` przy
+  podważeniu) - mają być neutralne (np. `kod-odpowiedz`, nie `wpisal-liczbe`): id nie może zdradzać, że kwestia kłamie, ani czym ją obalić.
 - `OSINT_SPOT` (D-120, oceniany, domyślna waga 1): `image`, `imagePortrait?` + `portraitSpots?` (te same id), `imageAlt`, `textLayer?` (treść
   strony - przy `imagePortrait` każdy napis z `portrait`), `prompt?`, `spots[]` (2-20) `{ id, label, x, y, w, h, used, note? (tylko użyty -
   dowód), trapText? (tylko pułapka), media? { kind: "audio", title, narration (z `voice`), image? + alt, imagePortrait?, textLayer?,

@@ -1,0 +1,3330 @@
+{
+  "schemaVersion": 6,
+  "slug": "glos-z-helpdesku",
+  "title": {
+    "pl": "Głos z helpdesku"
+  },
+  "subtitle": {
+    "pl": "Vishing, powiadomienia MFA i jeden telefon od „IT”"
+  },
+  "category": "PHISHING_SOCIAL_ENGINEERING",
+  "level": "intermediate",
+  "durationMinutes": 15,
+  "mandatory": true,
+  "objectives": [
+    {
+      "pl": "Rozpoznać serię próśb o zatwierdzenie logowania jako sygnał ataku."
+    },
+    {
+      "pl": "Wiedzieć, że liczbę do wpisania w aplikacji zna tylko logujący się - kto ją podaje przez telefon, ten się loguje."
+    },
+    {
+      "pl": "Nie ufać nazwie ani głosowi na telefonie - rozłączyć się i oddzwonić na numer z intranetu."
+    },
+    {
+      "pl": "Nie instalować niczego i nie czytać ID sesji na prośbę rozmówcy."
+    }
+  ],
+  "thumbnail": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.921c9ee4.svg",
+  "blocks": [
+    {
+      "id": "odprawa",
+      "type": "BRIEFING",
+      "title": {
+        "pl": "Odprawa"
+      },
+      "steps": [
+        {
+          "kind": "typewriter",
+          "text": {
+            "pl": "Czwartek, 10:20. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy."
+          },
+          "cta": {
+            "pl": "Odbierz telefon"
+          },
+          "narration": {
+            "pl": {
+              "text": "Czwartek, 10:20. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
+              "spokenText": "Czwartek, dziesiąta dwadzieścia. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/odprawa/111cbecb10e8d262.mp3",
+              "durationMs": 6502
+            }
+          },
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko.781c7c71.svg",
+          "hotspot": {
+            "id": "telefon",
+            "x": 49,
+            "y": 21.6,
+            "w": 16.3,
+            "h": 54.2
+          },
+          "portrait": {
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko-pion.420d0e31.svg",
+            "hotspot": {
+              "id": "telefon",
+              "x": 31.1,
+              "y": 28.1,
+              "w": 37.8,
+              "h": 40
+            }
+          }
+        },
+        {
+          "kind": "call",
+          "caller": {
+            "name": {
+              "pl": "Komisarz Adam Wolski"
+            },
+            "role": {
+              "pl": "Wydział Cyberbezpieczeństwa"
+            }
+          },
+          "text": {
+            "pl": "Drukarnia Lipowa, Kraków. Dziś rano ktoś zadzwonił do handlowca jako firmowy informatyk. Pół godziny później lista klientów była poza firmą. Jedź tam i ustal, jak to się stało."
+          },
+          "cta": {
+            "pl": "Rozłącz"
+          },
+          "narration": {
+            "voice": "komisarz",
+            "pl": {
+              "text": "Drukarnia Lipowa, Kraków. Dziś rano ktoś zadzwonił do handlowca jako firmowy informatyk. Pół godziny później lista klientów była poza firmą. Jedź tam i ustal, jak to się stało.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/odprawa/c49cd18f015ba5e9.mp3",
+              "durationMs": 11053,
+              "cues": [
+                {
+                  "text": "Drukarnia Lipowa, Kraków.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Dziś rano ktoś zadzwonił do handlowca jako firmowy informatyk.",
+                  "startMs": 2136
+                },
+                {
+                  "text": "Pół godziny później lista klientów była poza firmą.",
+                  "startMs": 6026
+                },
+                {
+                  "text": "Jedź tam i ustal, jak to się stało.",
+                  "startMs": 8986
+                }
+              ]
+            }
+          },
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa.198bff46.svg",
+          "hotspot": {
+            "id": "rozlacz",
+            "x": 21.4,
+            "y": 72.4,
+            "w": 8.5,
+            "h": 15.1
+          },
+          "portrait": {
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa-pion.bb81da54.svg",
+            "hotspot": {
+              "id": "rozlacz",
+              "x": 42,
+              "y": 44.4,
+              "w": 15.9,
+              "h": 9
+            }
+          }
+        },
+        {
+          "kind": "caseFile",
+          "caseNo": "GZH/2026/1004",
+          "title": {
+            "pl": "Wyłudzony dostęp"
+          },
+          "fields": [
+            {
+              "label": {
+                "pl": "Poszkodowany"
+              },
+              "value": {
+                "pl": "Karol Wieczorek (handlowiec, Drukarnia Lipowa sp. z o.o.)"
+              }
+            },
+            {
+              "label": {
+                "pl": "Strata"
+              },
+              "value": {
+                "pl": "lista klientów, poczta"
+              }
+            },
+            {
+              "label": {
+                "pl": "Kiedy"
+              },
+              "value": {
+                "pl": "czwartek, 9:02"
+              }
+            },
+            {
+              "label": {
+                "pl": "Zgłosił"
+              },
+              "value": {
+                "pl": "Paweł Nowicki, dział IT"
+              }
+            }
+          ],
+          "stamp": {
+            "pl": "Priorytet"
+          },
+          "tasks": [
+            {
+              "id": "dostep",
+              "text": {
+                "pl": "Ustal, jak oszust dostał się do konta."
+              },
+              "completeWhen": [
+                "biurko-karola",
+                "nagranie"
+              ]
+            },
+            {
+              "id": "systemy",
+              "text": {
+                "pl": "Sprawdź, co zrobił w systemach."
+              },
+              "completeWhen": [
+                "przesluchanie-pawla"
+              ]
+            },
+            {
+              "id": "zrodlo",
+              "text": {
+                "pl": "Dowiedz się, skąd wiedział, pod kogo się podszyć."
+              },
+              "completeWhen": [
+                "osint"
+              ]
+            }
+          ],
+          "cta": {
+            "pl": "Zamknij teczkę"
+          },
+          "narration": {
+            "voice": "komisarz",
+            "pl": {
+              "text": "Tu masz wszystko, co wiemy. Rozmowa trwała niecałe czterdzieści minut. Reszta jest w dziale sprzedaży.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/odprawa/5a3407268f18c54a.mp3",
+              "durationMs": 8035,
+              "cues": [
+                {
+                  "text": "Tu masz wszystko, co wiemy.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Rozmowa trwała niecałe czterdzieści minut.",
+                  "startMs": 2543
+                },
+                {
+                  "text": "Reszta jest w dziale sprzedaży.",
+                  "startMs": 5886
+                }
+              ]
+            }
+          },
+          "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka.a806ab31.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-akta.cbc8d489.svg",
+          "hotspot": {
+            "id": "teczka",
+            "x": 24.4,
+            "y": 17.4,
+            "w": 51.6,
+            "h": 69.5
+          },
+          "openHotspot": {
+            "id": "akta",
+            "x": 3.9,
+            "y": 2.3,
+            "w": 92.1,
+            "h": 95.3
+          },
+          "slots": {
+            "tasks": {
+              "x": 54.1,
+              "y": 19.4,
+              "w": 37.1,
+              "h": 56.2
+            }
+          },
+          "portrait": {
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.14c49e81.svg",
+            "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.84074229.svg",
+            "hotspot": {
+              "id": "teczka",
+              "x": 4.1,
+              "y": 32.3,
+              "w": 91.8,
+              "h": 39.1
+            },
+            "openHotspot": {
+              "id": "akta",
+              "x": 12.8,
+              "y": 0.6,
+              "w": 74.4,
+              "h": 99
+            },
+            "slots": {
+              "tasks": {
+                "x": 19.4,
+                "y": 59.6,
+                "w": 60,
+                "h": 28.7
+              }
+            }
+          }
+        },
+        {
+          "kind": "badge",
+          "cta": {
+            "pl": "Zabierz legitymację"
+          },
+          "narration": {
+            "voice": "komisarz",
+            "pl": {
+              "text": "Legitymacja przy tobie. Pamiętaj: w tej sprawie nikt nie złamał hasła. Ktoś po prostu poprosił przez telefon.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/odprawa/f64e459d8dac96b1.mp3",
+              "durationMs": 8266,
+              "cues": [
+                {
+                  "text": "Legitymacja przy tobie.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Pamiętaj: w tej sprawie nikt nie złamał hasła.",
+                  "startMs": 2043
+                },
+                {
+                  "text": "Ktoś po prostu poprosił przez telefon.",
+                  "startMs": 5433
+                }
+              ]
+            }
+          },
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja.242f34bc.svg",
+          "hotspot": {
+            "id": "legitymacja",
+            "x": 8.8,
+            "y": 6,
+            "w": 82.5,
+            "h": 88
+          },
+          "slots": {
+            "photo": {
+              "x": 55.1,
+              "y": 30,
+              "w": 11.2,
+              "h": 25.3
+            },
+            "name": {
+              "x": 68.8,
+              "y": 33.7,
+              "w": 17.4,
+              "h": 5.3
+            },
+            "number": {
+              "x": 68.8,
+              "y": 44.9,
+              "w": 17.4,
+              "h": 5.3
+            }
+          },
+          "portrait": {
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja-pion.114362ac.svg",
+            "hotspot": {
+              "id": "legitymacja",
+              "x": 13.3,
+              "y": 6.9,
+              "w": 73.3,
+              "h": 85.3
+            },
+            "slots": {
+              "photo": {
+                "x": 25.3,
+                "y": 59.8,
+                "w": 18.3,
+                "h": 13.1
+              },
+              "name": {
+                "x": 47.6,
+                "y": 61.7,
+                "w": 28.4,
+                "h": 2.8
+              },
+              "number": {
+                "x": 47.6,
+                "y": 67.5,
+                "w": 28.4,
+                "h": 2.8
+              }
+            }
+          }
+        },
+        {
+          "kind": "start",
+          "text": {
+            "pl": "Drukarnia Lipowa, dział sprzedaży. 10:40."
+          },
+          "cta": {
+            "pl": "Zacznij śledztwo"
+          },
+          "narration": {
+            "pl": {
+              "text": "Drukarnia Lipowa, dział sprzedaży. 10:40.",
+              "spokenText": "Drukarnia Lipowa, dział sprzedaży. Dziesiąta czterdzieści.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/odprawa/9fc932d86b4feffc.mp3",
+              "durationMs": 3808
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "biurko-karola",
+      "type": "SCENE_HOTSPOTS",
+      "title": {
+        "pl": "Biurko Karola"
+      },
+      "narration": {
+        "pl": {
+          "text": "Biurko Karola. Kubek zimnej kawy, telefon ekranem do góry, komputer, którego nikt nie zrestartował. Zacznij od tego, co pokazuje telefon.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/biurko-karola/69e90f844faeedd3.mp3",
+          "durationMs": 10542,
+          "cues": [
+            {
+              "text": "Biurko Karola.",
+              "startMs": 0
+            },
+            {
+              "text": "Kubek zimnej kawy, telefon ekranem do góry, komputer, którego nikt nie zrestartował.",
+              "startMs": 1939
+            },
+            {
+              "text": "Zacznij od tego, co pokazuje telefon.",
+              "startMs": 7779
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Rozejrzyj się. Zacznij od telefonu - to, co pokazuje, jest początkiem sprawy."
+      },
+      "image": "assets/glos-z-helpdesku/scenes/biurko-karola.5e24c720.svg",
+      "imageAlt": {
+        "pl": "Biurko handlowca: telefon ekranem do góry, monitor, żółta karteczka przy telefonie, plakat na ścianie, kubek kawy i drzwi do sali obok."
+      },
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/biurko-karola-pion.ec9dcd26.svg",
+      "portraitHotspots": [
+        {
+          "id": "telefon",
+          "x": 74.9,
+          "y": 66,
+          "width": 20.2,
+          "height": 6.4
+        },
+        {
+          "id": "komputer",
+          "x": 15.8,
+          "y": 49.3,
+          "width": 41.4,
+          "height": 21.3
+        },
+        {
+          "id": "karteczka-id",
+          "x": 60.2,
+          "y": 69.1,
+          "width": 15.6,
+          "height": 4.7
+        },
+        {
+          "id": "plakat-zasada",
+          "x": 43.6,
+          "y": 23,
+          "width": 22.9,
+          "height": 19
+        },
+        {
+          "id": "kubek",
+          "x": 4.7,
+          "y": 65,
+          "width": 10.7,
+          "height": 5.6
+        },
+        {
+          "id": "drzwi",
+          "x": 76.9,
+          "y": 26.6,
+          "width": 20.7,
+          "height": 29.7
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "telefon",
+          "label": {
+            "pl": "Telefon Karola"
+          },
+          "x": 64,
+          "y": 54.4,
+          "width": 11.4,
+          "height": 9,
+          "content": {
+            "pl": "Telefon Karola. Na ekranie powiadomienia z aplikacji uwierzytelniającej i rejestr połączeń."
+          },
+          "media": {
+            "kind": "scene",
+            "scene": {
+              "image": "assets/glos-z-helpdesku/scenes/telefon-karola.8f1ac15d.svg",
+              "imageAlt": {
+                "pl": "Ekran telefonu: kafel z listą powiadomień aplikacji uwierzytelniającej i kafel rejestru połączeń."
+              },
+              "textLayer": [
+                {
+                  "id": "tytul-powiadomienia",
+                  "x": 30.6,
+                  "y": 21.4,
+                  "w": 44.6,
+                  "h": 3.5,
+                  "text": {
+                    "pl": "Powiadomienia"
+                  },
+                  "style": "screen"
+                },
+                {
+                  "id": "tytul-rejestr",
+                  "x": 30.6,
+                  "y": 61.9,
+                  "w": 44.6,
+                  "h": 3.5,
+                  "text": {
+                    "pl": "Połączenia"
+                  },
+                  "style": "screen"
+                }
+              ],
+              "hotspots": [
+                {
+                  "id": "mfa-seria",
+                  "label": {
+                    "pl": "Powiadomienia aplikacji"
+                  },
+                  "x": 14.9,
+                  "y": 18.3,
+                  "width": 70.3,
+                  "height": 38.1,
+                  "content": {
+                    "pl": "Sześć próśb o zatwierdzenie logowania, jedna po drugiej, od 8:55 do 8:57. Karol odrzucił wszystkie. Ktoś już miał jego hasło."
+                  },
+                  "media": {
+                    "kind": "image",
+                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.0a3bfc25.svg",
+                    "alt": {
+                      "pl": "Lista sześciu odrzuconych próśb o zatwierdzenie logowania, od 8:55 do 8:57."
+                    },
+                    "textLayer": [
+                      {
+                        "id": "tytul",
+                        "x": 26,
+                        "y": 13.7,
+                        "w": 59.5,
+                        "h": 3.8,
+                        "text": {
+                          "pl": "Aplikacja uwierzytelniająca"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-1",
+                        "x": 26,
+                        "y": 23.1,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-2",
+                        "x": 26,
+                        "y": 33.9,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-3",
+                        "x": 26,
+                        "y": 44.7,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-4",
+                        "x": 26,
+                        "y": 55.4,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-5",
+                        "x": 26,
+                        "y": 66.2,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "wiersz-6",
+                        "x": 26,
+                        "y": 77,
+                        "w": 44.4,
+                        "h": 6,
+                        "text": {
+                          "pl": "Prośba o logowanie\nodrzucona"
+                        },
+                        "style": "screen"
+                      }
+                    ]
+                  },
+                  "evidence": true,
+                  "required": true,
+                  "note": {
+                    "text": {
+                      "pl": "8:55-8:57: sześć próśb o zatwierdzenie logowania, Karol odrzucił wszystkie. Ktoś już miał jego hasło."
+                    },
+                    "kind": "item"
+                  }
+                },
+                {
+                  "id": "rejestr-helpdesk",
+                  "label": {
+                    "pl": "Rejestr połączeń"
+                  },
+                  "x": 14.9,
+                  "y": 58.7,
+                  "width": 70.3,
+                  "height": 23.8,
+                  "content": {
+                    "pl": "9:02 - „IT Helpdesk”, numer 12 3XX XX 41, trzydzieści dziewięć minut. 10:15 - wewnętrzny 214, trzy minuty."
+                  },
+                  "media": {
+                    "kind": "image",
+                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.1fe44a61.svg",
+                    "alt": {
+                      "pl": "Rejestr połączeń: 9:02 IT Helpdesk, 12 3XX XX 41, 39 minut; 10:15 wewnętrzny 214, 3 minuty."
+                    },
+                    "textLayer": [
+                      {
+                        "id": "tytul",
+                        "x": 26,
+                        "y": 13.7,
+                        "w": 59.5,
+                        "h": 3.8,
+                        "text": {
+                          "pl": "Połączenia"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "nazwa-1",
+                        "x": 27.2,
+                        "y": 23.9,
+                        "w": 40.9,
+                        "h": 3.8,
+                        "text": {
+                          "pl": "IT Helpdesk · 39 min"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "nazwa-2",
+                        "x": 27.2,
+                        "y": 38,
+                        "w": 40.9,
+                        "h": 3.8,
+                        "text": {
+                          "pl": "Helpdesk (wewn.) · 3 min"
+                        },
+                        "style": "screen"
+                      },
+                      {
+                        "id": "nazwa-3",
+                        "x": 27.2,
+                        "y": 52.1,
+                        "w": 40.9,
+                        "h": 3.8,
+                        "text": {
+                          "pl": "Drukarnia - centrala"
+                        },
+                        "style": "screen"
+                      }
+                    ]
+                  },
+                  "evidence": true,
+                  "required": true,
+                  "note": {
+                    "text": {
+                      "pl": "9:02: połączenie od „IT Helpdesk”, numer zewnętrzny 12 3XX XX 41, 39 minut."
+                    },
+                    "kind": "call"
+                  }
+                }
+              ]
+            }
+          },
+          "required": true
+        },
+        {
+          "id": "komputer",
+          "label": {
+            "pl": "Komputer"
+          },
+          "x": 34.5,
+          "y": 27.2,
+          "width": 27.3,
+          "height": 34.8,
+          "content": {
+            "pl": "Komputer Karola. Nikt go dziś nie restartował - tak kazał „Paweł”."
+          },
+          "media": {
+            "kind": "scene",
+            "scene": {
+              "image": "assets/glos-z-helpdesku/scenes/pulpit-karola.7693bd79.svg",
+              "imageAlt": {
+                "pl": "Pulpit komputera z ikonami programów, wśród nich narzędzie zdalnej pomocy i przeglądarka; otwarte okno instalatora."
+              },
+              "screen": {
+                "x": 3.8,
+                "y": 4.9,
+                "w": 91.3,
+                "h": 79.8
+              },
+              "textLayer": [
+                {
+                  "id": "podpis-narzedzie",
+                  "x": 26.3,
+                  "y": 31.8,
+                  "w": 15.6,
+                  "h": 3.5,
+                  "text": {
+                    "pl": "Pomoc zdalna"
+                  },
+                  "style": "screen"
+                },
+                {
+                  "id": "podpis-przegladarka",
+                  "x": 8.3,
+                  "y": 53.3,
+                  "w": 15.6,
+                  "h": 3.5,
+                  "text": {
+                    "pl": "Przeglądarka"
+                  },
+                  "style": "screen"
+                }
+              ],
+              "hotspots": [
+                {
+                  "id": "narzedzie-zdalne",
+                  "label": {
+                    "pl": "Narzędzie zdalnej pomocy"
+                  },
+                  "x": 26.3,
+                  "y": 9.8,
+                  "width": 15.6,
+                  "height": 21.6,
+                  "content": {
+                    "pl": "Ikona narzędzia zdalnej pomocy - na pulpicie i w zasobniku. Rano jeszcze jej nie było."
+                  },
+                  "evidence": true,
+                  "required": true,
+                  "note": {
+                    "text": {
+                      "pl": "Na pulpicie Karola jest narzędzie zdalnej pomocy, którego rano jeszcze nie było."
+                    },
+                    "kind": "item"
+                  }
+                },
+                {
+                  "id": "przegladarka",
+                  "label": {
+                    "pl": "Przeglądarka"
+                  },
+                  "x": 8.3,
+                  "y": 31.3,
+                  "width": 15.6,
+                  "height": 21.6,
+                  "content": {
+                    "pl": "Historia pusta - ktoś ją wyczyścił."
+                  }
+                }
+              ]
+            }
+          },
+          "required": true
+        },
+        {
+          "id": "karteczka-id",
+          "label": {
+            "pl": "Karteczka"
+          },
+          "x": 58.9,
+          "y": 58.8,
+          "width": 8.8,
+          "height": 6.6,
+          "content": {
+            "pl": "Karteczka z numerem ID sesji i dopiskiem „Paweł IT”."
+          },
+          "media": {
+            "kind": "image",
+            "src": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.be1a6069.svg",
+            "alt": {
+              "pl": "Żółta karteczka: „ID: 7XX XXX 219” i odręczny dopisek „Paweł IT”."
+            }
+          },
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": {
+              "pl": "Karteczka z ID sesji zdalnej pomocy i dopiskiem „Paweł IT”."
+            },
+            "kind": "item"
+          }
+        },
+        {
+          "id": "plakat-zasada",
+          "label": {
+            "pl": "Plakat"
+          },
+          "x": 80.1,
+          "y": 32.2,
+          "width": 12.9,
+          "height": 26.6,
+          "content": {
+            "pl": "Plakat działu IT przy biurku Karola."
+          },
+          "media": {
+            "kind": "image",
+            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.f4794890.svg",
+            "alt": {
+              "pl": "Plakat: IT nigdy nie prosi o kody ani liczby z aplikacji."
+            },
+            "textLayer": [
+              {
+                "id": "haslo",
+                "x": 10,
+                "y": 86,
+                "w": 80,
+                "h": 10,
+                "text": {
+                  "pl": "IT nigdy nie prosi o kody ani liczby z aplikacji"
+                },
+                "style": "sign"
+              }
+            ]
+          },
+          "evidence": true,
+          "note": {
+            "text": {
+              "pl": "Plakat przy biurku: „IT nigdy nie prosi o kody ani liczby z aplikacji”. Zasada była znana."
+            },
+            "kind": "place"
+          }
+        },
+        {
+          "id": "kubek",
+          "label": {
+            "pl": "Kubek"
+          },
+          "x": 23.3,
+          "y": 53.7,
+          "width": 6,
+          "height": 7.8,
+          "content": {
+            "pl": "Zimna kawa. Karol od rana nie odszedł od biurka - rozmowa trwała prawie czterdzieści minut."
+          }
+        },
+        {
+          "id": "drzwi",
+          "label": {
+            "pl": "Do sali odsłuchu"
+          },
+          "x": 1.4,
+          "y": 37.2,
+          "width": 11.6,
+          "height": 41.6,
+          "action": "next"
+        }
+      ],
+      "reactions": {
+        "complete": {
+          "text": {
+            "pl": "Seria odrzuconych powiadomień, a potem telefon od „IT”. Posłuchajmy tej rozmowy."
+          }
+        }
+      }
+    },
+    {
+      "id": "nagranie",
+      "type": "CALL_RECORDING",
+      "title": {
+        "pl": "Odsłuch nagrania"
+      },
+      "weight": 2,
+      "narration": {
+        "pl": {
+          "text": "Telefony w dziale sprzedaży nagrywają rozmowy. Posłuchaj i stuknij „Czerwona flaga” za każdym razem, gdy dzwoniący manipuluje.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/848beaabbe4bc43b.mp3",
+          "durationMs": 9056,
+          "cues": [
+            {
+              "text": "Telefony w dziale sprzedaży nagrywają rozmowy.",
+              "startMs": 0
+            },
+            {
+              "text": "Posłuchaj i stuknij „Czerwona flaga” za każdym razem, gdy dzwoniący manipuluje.",
+              "startMs": 3170
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Flaga za każdą sztuczkę: strach, pośpiech, autorytet, prośba o kod albo o instalację. Pudła kosztują."
+      },
+      "segments": [
+        {
+          "id": "s1",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Dzień dobry, Karol? Paweł z IT. Mamy problem - ktoś właśnie próbuje się włamać na twoje konto.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/fa9c49101b6b462a.mp3",
+              "durationMs": 6130,
+              "cues": [
+                {
+                  "text": "Dzień dobry, Karol?",
+                  "startMs": 0
+                },
+                {
+                  "text": "Paweł z IT.",
+                  "startMs": 1219
+                },
+                {
+                  "text": "Mamy problem - ktoś właśnie próbuje się włamać na twoje konto.",
+                  "startMs": 2786
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s2",
+          "speaker": {
+            "pl": "Karol"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "karol",
+            "pl": {
+              "text": "O, to te powiadomienia? Odrzucałem je.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/0fb0dc3550bc0325.mp3",
+              "durationMs": 2833,
+              "cues": [
+                {
+                  "text": "O, to te powiadomienia?",
+                  "startMs": 0
+                },
+                {
+                  "text": "Odrzucałem je.",
+                  "startMs": 1474
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s3",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 300,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Dobrze, że dzwonię. Nie mam dużo czasu, zaraz blokuje się cały dział sprzedaży.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/d4f60bc1c52c4096.mp3",
+              "durationMs": 3855,
+              "cues": [
+                {
+                  "text": "Dobrze, że dzwonię.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Nie mam dużo czasu, zaraz blokuje się cały dział sprzedaży.",
+                  "startMs": 1138
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s4",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 500,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Zaraz przyjdzie powiadomienie. Wpisz w aplikacji liczbę 47, to je zablokuje.",
+              "spokenText": "Zaraz przyjdzie powiadomienie. Wpisz w aplikacji liczbę czterdzieści siedem, to je zablokuje.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/d6b600104c95f088.mp3",
+              "durationMs": 5619
+            }
+          }
+        },
+        {
+          "id": "s5",
+          "speaker": {
+            "pl": "Karol"
+          },
+          "gapAfterMs": 600,
+          "narration": {
+            "voice": "karol",
+            "pl": {
+              "text": "Czterdzieści siedem… wpisane.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/7124d84c0d962846.mp3",
+              "durationMs": 2601,
+              "cues": [
+                {
+                  "text": "Czterdzieści siedem… wpisane.",
+                  "startMs": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s6",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Świetnie. Kierownik sprzedaży wie, że się tym zajmuję, nie musisz nikomu zgłaszać.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/8ef437215dcf0449.mp3",
+              "durationMs": 4690,
+              "cues": [
+                {
+                  "text": "Świetnie.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Kierownik sprzedaży wie, że się tym zajmuję, nie musisz nikomu zgłaszać.",
+                  "startMs": 1068
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s7",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 500,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Teraz wgram ci poprawkę. Kliknij link, który przyszedł na czacie, i zainstaluj narzędzie zdalnej pomocy.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/f13afa22149c2908.mp3",
+              "durationMs": 6362,
+              "cues": [
+                {
+                  "text": "Teraz wgram ci poprawkę.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Kliknij link, który przyszedł na czacie, i zainstaluj narzędzie zdalnej pomocy.",
+                  "startMs": 2148
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s8",
+          "speaker": {
+            "pl": "Karol"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "karol",
+            "pl": {
+              "text": "Zainstalowane. Mam tu jakiś numer… ID sesji.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/1eeab1970421ada3.mp3",
+              "durationMs": 4272,
+              "cues": [
+                {
+                  "text": "Zainstalowane.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Mam tu jakiś numer…",
+                  "startMs": 1765
+                },
+                {
+                  "text": "ID sesji.",
+                  "startMs": 3111
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s9",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Przeczytaj mi go.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/cbcb2195ec7bec34.mp3",
+              "durationMs": 1115,
+              "cues": [
+                {
+                  "text": "Przeczytaj mi go.",
+                  "startMs": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s10",
+          "speaker": {
+            "pl": "Karol"
+          },
+          "gapAfterMs": 600,
+          "narration": {
+            "voice": "karol",
+            "pl": {
+              "text": "Siedem… dwa, jeden, dziewięć na końcu.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/ba46afc707fd7294.mp3",
+              "durationMs": 3158,
+              "cues": [
+                {
+                  "text": "Siedem… dwa, jeden, dziewięć na końcu.",
+                  "startMs": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s11",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 400,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Mam. Nie ruszaj myszki, to potrwa. I zrestartuj komputer dopiero po południu, bo poprawka się nie zapisze.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/a4f1df02c83186a5.mp3",
+              "durationMs": 7338,
+              "cues": [
+                {
+                  "text": "Mam.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Nie ruszaj myszki, to potrwa.",
+                  "startMs": 1033
+                },
+                {
+                  "text": "I zrestartuj komputer dopiero po południu, bo poprawka się nie zapisze.",
+                  "startMs": 2694
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s12",
+          "speaker": {
+            "pl": "Karol"
+          },
+          "narration": {
+            "voice": "karol",
+            "pl": {
+              "text": "Jasne. Dzięki, Paweł.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/76607bbc41d36d23.mp3",
+              "durationMs": 2276,
+              "cues": [
+                {
+                  "text": "Jasne.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Dzięki, Paweł.",
+                  "startMs": 1126
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "flags": [
+        {
+          "segmentId": "s1",
+          "category": "fear"
+        },
+        {
+          "segmentId": "s3",
+          "category": "urgency"
+        },
+        {
+          "segmentId": "s4",
+          "category": "code_request"
+        },
+        {
+          "segmentId": "s6",
+          "category": "authority"
+        },
+        {
+          "segmentId": "s7",
+          "category": "install_request"
+        },
+        {
+          "segmentId": "s9",
+          "category": "code_request"
+        },
+        {
+          "segmentId": "s11",
+          "category": "urgency"
+        }
+      ],
+      "flagWindowAfterMs": 1500,
+      "falseTapPenalty": 0.1,
+      "evidence": [
+        {
+          "id": "liczba-47",
+          "segmentId": "s4",
+          "note": {
+            "text": {
+              "pl": "Dzwoniący sam podał liczbę 47. Przy parowaniu liczb liczbę zna tylko ten, kto się loguje."
+            },
+            "kind": "call"
+          }
+        },
+        {
+          "id": "prosba-instalacja",
+          "segmentId": "s7",
+          "note": {
+            "text": {
+              "pl": "„Paweł” kazał zainstalować narzędzie zdalnej pomocy i przeczytać ID sesji."
+            },
+            "kind": "call"
+          }
+        }
+      ],
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": {
+              "pl": "Wszystkie siedem manipulacji wyłapanych, bez fałszywego alarmu."
+            }
+          },
+          {
+            "minScore": 0.6,
+            "text": {
+              "pl": "Większość sztuczek wyłapana. Omówienie pokaże resztę."
+            }
+          },
+          {
+            "minScore": 0,
+            "text": {
+              "pl": "Część manipulacji umknęła - omówienie pokaże każdą po kolei."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "przesluchanie-karola",
+      "type": "INTERROGATION",
+      "title": {
+        "pl": "Przesłuchanie Karola"
+      },
+      "weight": 1,
+      "narration": {
+        "pl": {
+          "text": "Karol Wieczorek. Wciąż jest przekonany, że rozmawiał z kolegą z IT. Porównaj jego słowa z tym, co już wiesz.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/babed3328622b6d0.mp3",
+          "durationMs": 8035,
+          "cues": [
+            {
+              "text": "Karol Wieczorek.",
+              "startMs": 0
+            },
+            {
+              "text": "Wciąż jest przekonany, że rozmawiał z kolegą z IT.",
+              "startMs": 1416
+            },
+            {
+              "text": "Porównaj jego słowa z tym, co już wiesz.",
+              "startMs": 5213
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Jeśli coś się nie zgadza z nagraniem, podważ to dowodem z notatnika."
+      },
+      "character": {
+        "name": {
+          "pl": "Karol Wieczorek"
+        },
+        "role": {
+          "pl": "handlowiec"
+        },
+        "avatar": "assets/glos-z-helpdesku/avatars/karol.dbb38d93.svg",
+        "opening": {
+          "pl": "Myślałem, że pomagam. To był Paweł, znam jego głos."
+        }
+      },
+      "questions": [
+        {
+          "id": "glos",
+          "text": {
+            "pl": "Skąd wiedziałeś, że to Paweł?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "glos-identyczny",
+              "text": {
+                "pl": "To był jego głos, na sto procent. Ten sam sposób mówienia."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "To był jego głos, na sto procent. Ten sam sposób mówienia.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/463973248c817180.mp3",
+                  "durationMs": 4365,
+                  "cues": [
+                    {
+                      "text": "To był jego głos, na sto procent.",
+                      "startMs": 0
+                    },
+                    {
+                      "text": "Ten sam sposób mówienia.",
+                      "startMs": 2612
+                    }
+                  ]
+                }
+              },
+              "fragment": {
+                "evidence": true,
+                "note": {
+                  "text": {
+                    "pl": "Karol rozpoznał głos Pawła. Głos można podrobić - to nie dowód, kto dzwoni."
+                  },
+                  "kind": "person"
+                }
+              }
+            },
+            {
+              "id": "glos-wyswietlacz",
+              "text": {
+                "pl": "Na wyświetlaczu było „IT Helpdesk”, tak jak zawsze."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "Na wyświetlaczu było IT Helpdesk, tak jak zawsze.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/477779f8aff96dfe.mp3",
+                  "durationMs": 3390,
+                  "cues": [
+                    {
+                      "text": "Na wyświetlaczu było IT Helpdesk, tak jak zawsze.",
+                      "startMs": 0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "kod",
+          "text": {
+            "pl": "Czy podawałeś jakieś kody?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "kod-odpowiedz",
+              "text": {
+                "pl": "Nie, żadnych kodów. Tylko odrzucałem te powiadomienia."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "Nie, żadnych kodów. Tylko odrzucałem te powiadomienia.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/f519dfc391261796.mp3",
+                  "durationMs": 3855,
+                  "cues": [
+                    {
+                      "text": "Nie, żadnych kodów.",
+                      "startMs": 0
+                    },
+                    {
+                      "text": "Tylko odrzucałem te powiadomienia.",
+                      "startMs": 1660
+                    }
+                  ]
+                }
+              },
+              "contradiction": {
+                "refutedBy": "nagranie.liczba-47",
+                "challengeLine": {
+                  "text": {
+                    "pl": "…No tak. Wpisałem liczbę, którą podał. Myślałem, że to blokuje atak."
+                  }
+                },
+                "note": {
+                  "text": {
+                    "pl": "Karol przyznał: wpisał liczbę podaną przez dzwoniącego."
+                  },
+                  "kind": "person"
+                }
+              }
+            },
+            {
+              "id": "kod-telefon",
+              "text": {
+                "pl": "Telefon cały czas miałem przy sobie."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "Telefon cały czas miałem przy sobie.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/7d9c8f8cee8e00ca.mp3",
+                  "durationMs": 2554,
+                  "cues": [
+                    {
+                      "text": "Telefon cały czas miałem przy sobie.",
+                      "startMs": 0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "wiedza",
+          "text": {
+            "pl": "Co o tobie wiedział?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "znal-kierownika",
+              "text": {
+                "pl": "Znał moje imię, dział, nazwisko kierownika. Mówił o nim jak o koledze."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "Znał moje imię, dział, nazwisko kierownika. Mówił o nim jak o koledze.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/16a43f3c69f0a235.mp3",
+                  "durationMs": 6455,
+                  "cues": [
+                    {
+                      "text": "Znał moje imię, dział, nazwisko kierownika.",
+                      "startMs": 0
+                    },
+                    {
+                      "text": "Mówił o nim jak o koledze.",
+                      "startMs": 4447
+                    }
+                  ]
+                }
+              },
+              "fragment": {
+                "evidence": true,
+                "note": {
+                  "text": {
+                    "pl": "Oszust znał dział i kierownika Karola - wiedzę z publicznych źródeł."
+                  },
+                  "kind": "person"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "koniec",
+          "text": {
+            "pl": "Jak zakończyła się rozmowa?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "koniec-restart",
+              "text": {
+                "pl": "Kazał zrestartować komputer dopiero po południu i nikomu nie mówić, żeby nie robić zamieszania."
+              },
+              "narration": {
+                "voice": "karol",
+                "pl": {
+                  "text": "Kazał zrestartować komputer dopiero po południu i nikomu nie mówić, żeby nie robić zamieszania.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-karola/4ef0e6eb4ee29322.mp3",
+                  "durationMs": 6269,
+                  "cues": [
+                    {
+                      "text": "Kazał zrestartować komputer dopiero po południu i nikomu nie mówić, żeby nie robić zamieszania.",
+                      "startMs": 0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": {
+              "pl": "Sprzeczność obalona dowodem. Karol nie kłamał złośliwie - naprawdę wierzył, że pomaga."
+            }
+          },
+          {
+            "minScore": 0,
+            "text": {
+              "pl": "Zeznanie warto porównać z nagraniem - kto podał liczbę?"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "przesluchanie-pawla",
+      "type": "INTERROGATION",
+      "title": {
+        "pl": "Przesłuchanie Pawła i konsola administratora"
+      },
+      "weight": 0,
+      "narration": {
+        "pl": {
+          "text": "Paweł Nowicki z IT. Prawdziwy. Zapytaj go, gdzie był, i sprawdź w konsoli, co zrobił napastnik.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/cb4af7181081c1b4.mp3",
+          "durationMs": 7570,
+          "cues": [
+            {
+              "text": "Paweł Nowicki z IT.",
+              "startMs": 0
+            },
+            {
+              "text": "Prawdziwy.",
+              "startMs": 1625
+            },
+            {
+              "text": "Zapytaj go, gdzie był, i sprawdź w konsoli, co zrobił napastnik.",
+              "startMs": 2577
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "W konsoli zaznacz wpisy, które nie pasują do zwykłego dnia Karola."
+      },
+      "character": {
+        "name": {
+          "pl": "Paweł Nowicki"
+        },
+        "role": {
+          "pl": "IT, helpdesk"
+        },
+        "avatar": "assets/glos-z-helpdesku/avatars/pawel.a7171671.svg",
+        "opening": {
+          "pl": "Nie dzwoniłem do Karola. Byłem na szkoleniu do dziesiątej."
+        }
+      },
+      "questions": [
+        {
+          "id": "gdzie",
+          "text": {
+            "pl": "Gdzie byłeś rano?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "pawel-szkolenie",
+              "text": {
+                "pl": "Na szkoleniu poza biurem, do 10:00. Telefon służbowy miałem wyciszony."
+              },
+              "narration": {
+                "voice": "pawel",
+                "pl": {
+                  "text": "Na szkoleniu poza biurem, do 10:00. Telefon służbowy miałem wyciszony.",
+                  "spokenText": "Na szkoleniu poza biurem, do dziesiątej. Telefon służbowy miałem wyciszony.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/24cbeddb200635cd.mp3",
+                  "durationMs": 4598
+                }
+              },
+              "fragment": {
+                "evidence": true,
+                "note": {
+                  "text": {
+                    "pl": "Paweł był do dziesiątej na szkoleniu - to nie on dzwonił."
+                  },
+                  "kind": "person"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "alert",
+          "text": {
+            "pl": "Czy system coś zgłaszał?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "alert-mfa",
+              "text": {
+                "pl": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu."
+              },
+              "narration": {
+                "voice": "pawel",
+                "pl": {
+                  "text": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/2e4d409fcc88489b.mp3",
+                  "durationMs": 4551,
+                  "cues": [
+                    {
+                      "text": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu.",
+                      "startMs": 0
+                    }
+                  ]
+                }
+              },
+              "fragment": {
+                "evidence": true,
+                "note": {
+                  "text": {
+                    "pl": "8:58: alert o serii odrzuconych logowań - nikt go nie odebrał."
+                  },
+                  "kind": "log"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "procedura",
+          "text": {
+            "pl": "Jak IT kontaktuje się z pracownikami?"
+          },
+          "required": true,
+          "lines": [
+            {
+              "id": "procedura-214",
+              "text": {
+                "pl": "Zawsze z wewnętrznego 214. I nigdy nie prosimy o kody ani liczby z aplikacji."
+              },
+              "narration": {
+                "voice": "pawel",
+                "pl": {
+                  "text": "Zawsze z wewnętrznego 214. I nigdy nie prosimy o kody ani liczby z aplikacji.",
+                  "spokenText": "Zawsze z wewnętrznego dwieście czternaście. I nigdy nie prosimy o kody ani liczby z aplikacji.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/bed69fe7cf6afe67.mp3",
+                  "durationMs": 5526
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "konsola",
+          "text": {
+            "pl": "Pokaż, co widać w konsoli."
+          },
+          "required": true,
+          "opensDocuments": true,
+          "lines": [
+            {
+              "id": "konsola-1",
+              "text": {
+                "pl": "Proszę. Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje."
+              },
+              "narration": {
+                "voice": "pawel",
+                "pl": {
+                  "text": "Proszę. Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/64d1dba924553a44.mp3",
+                  "durationMs": 4644,
+                  "cues": [
+                    {
+                      "text": "Proszę.",
+                      "startMs": 0
+                    },
+                    {
+                      "text": "Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje.",
+                      "startMs": 557
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "documents": [
+        {
+          "id": "logowania",
+          "tab": {
+            "pl": "Logowania"
+          },
+          "org": {
+            "pl": "KONSOLA ADMINISTRATORA"
+          },
+          "title": {
+            "pl": "Logowania konta k.wieczorek"
+          },
+          "meta": {
+            "pl": "czwartek, wszystkie źródła"
+          },
+          "columns": [
+            {
+              "pl": "Godzina"
+            },
+            {
+              "pl": "Zdarzenie"
+            }
+          ],
+          "rows": [
+            {
+              "id": "logowania-odrzucone",
+              "cells": [
+                {
+                  "pl": "8:55-8:57"
+                },
+                {
+                  "pl": "Sześć odrzuconych prób, Kraków → Amsterdam (185.XX.XX.17)"
+                }
+              ],
+              "message": {
+                "pl": "Te próby Karol odrzucił - znasz je już z jego telefonu."
+              }
+            },
+            {
+              "id": "logowanie-amsterdam",
+              "cells": [
+                {
+                  "pl": "9:04"
+                },
+                {
+                  "pl": "Zatwierdzone logowanie, Amsterdam (185.XX.XX.17)"
+                }
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": {
+                  "pl": "9:04: logowanie zatwierdzone przez Karola, z Amsterdamu."
+                },
+                "kind": "log"
+              }
+            },
+            {
+              "id": "logowania-wylogowanie",
+              "cells": [
+                {
+                  "pl": "10:22"
+                },
+                {
+                  "pl": "Wylogowanie wszystkich sesji (Paweł)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "reguly",
+          "tab": {
+            "pl": "Reguły poczty"
+          },
+          "org": {
+            "pl": "KONSOLA ADMINISTRATORA"
+          },
+          "title": {
+            "pl": "Reguły skrzynki k.wieczorek"
+          },
+          "columns": [
+            {
+              "pl": "Utworzona"
+            },
+            {
+              "pl": "Reguła"
+            }
+          ],
+          "rows": [
+            {
+              "id": "regula-przekierowania",
+              "cells": [
+                {
+                  "pl": "9:09"
+                },
+                {
+                  "pl": "Przekaż kopię wszystkich wiadomości na k.w…@skrzynka-zewn.example"
+                }
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": {
+                  "pl": "9:09: reguła kopiująca całą pocztę Karola na zewnętrzny adres."
+                },
+                "kind": "log"
+              }
+            },
+            {
+              "id": "regula-faktury",
+              "cells": [
+                {
+                  "pl": "marzec"
+                },
+                {
+                  "pl": "Faktury → folder Faktury"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "programy",
+          "tab": {
+            "pl": "Programy"
+          },
+          "org": {
+            "pl": "KONSOLA ADMINISTRATORA"
+          },
+          "title": {
+            "pl": "Instalacje na komputerze Karola"
+          },
+          "columns": [
+            {
+              "pl": "Kiedy"
+            },
+            {
+              "pl": "Program"
+            }
+          ],
+          "rows": [
+            {
+              "id": "instalacja-9-06",
+              "cells": [
+                {
+                  "pl": "czw. 9:06"
+                },
+                {
+                  "pl": "Narzędzie zdalnej pomocy - zainstalowane przez użytkownika"
+                }
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": {
+                  "pl": "9:06: narzędzie zdalnej pomocy zainstalowane z konta Karola."
+                },
+                "kind": "log"
+              }
+            },
+            {
+              "id": "instalacja-pakiet",
+              "cells": [
+                {
+                  "pl": "zeszły tydzień"
+                },
+                {
+                  "pl": "Aktualizacja pakietu biurowego"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "crm",
+          "tab": {
+            "pl": "CRM"
+          },
+          "org": {
+            "pl": "KONSOLA ADMINISTRATORA"
+          },
+          "title": {
+            "pl": "Operacje w systemie CRM"
+          },
+          "columns": [
+            {
+              "pl": "Kiedy"
+            },
+            {
+              "pl": "Operacja"
+            }
+          ],
+          "rows": [
+            {
+              "id": "eksport-crm",
+              "cells": [
+                {
+                  "pl": "czw. 9:31"
+                },
+                {
+                  "pl": "Eksport „Klienci - pełna lista” (1 2XX rekordów)"
+                }
+              ],
+              "evidence": true,
+              "required": true,
+              "note": {
+                "text": {
+                  "pl": "9:31: eksport pełnej listy klientów z CRM."
+                },
+                "kind": "log"
+              }
+            },
+            {
+              "id": "crm-raport",
+              "cells": [
+                {
+                  "pl": "poniedziałek"
+                },
+                {
+                  "pl": "Raport sprzedaży za tydzień"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rejestr",
+      "type": "SCENE_HOTSPOTS",
+      "title": {
+        "pl": "Porównanie w rejestrze połączeń"
+      },
+      "narration": {
+        "pl": {
+          "text": "Dwa połączenia. Obie strony przedstawiły się jako IT. Tylko jedno przyszło z wewnątrz firmy.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/rejestr/78ea4bf1fc538905.mp3",
+          "durationMs": 6827,
+          "cues": [
+            {
+              "text": "Dwa połączenia.",
+              "startMs": 0
+            },
+            {
+              "text": "Obie strony przedstawiły się jako IT.",
+              "startMs": 1358
+            },
+            {
+              "text": "Tylko jedno przyszło z wewnątrz firmy.",
+              "startMs": 4203
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Porównaj oba wpisy. Skąd przyszło każde z połączeń? Potem „Dalej”."
+      },
+      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.89ad08fb.svg",
+      "imageAlt": {
+        "pl": "Dwa wpisy rejestru połączeń jeden obok drugiego: 9:02 „IT Helpdesk” z numeru 12 3XX XX 41 i 10:15 wewnętrzny 214, obok karta intranetu z kontaktem do IT."
+      },
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b790f667.svg",
+      "portraitHotspots": [
+        {
+          "id": "numer-zewnetrzny",
+          "x": 26,
+          "y": 16.4,
+          "width": 49.3,
+          "height": 12.3
+        },
+        {
+          "id": "wpis-10-15",
+          "x": 26,
+          "y": 29.5,
+          "width": 49.3,
+          "height": 12.3
+        },
+        {
+          "id": "intranet",
+          "x": 18,
+          "y": 60.8,
+          "width": 64,
+          "height": 39.2
+        }
+      ],
+      "textLayer": [
+        {
+          "id": "nazwa-9-02",
+          "x": 20.5,
+          "y": 26.1,
+          "w": 18.7,
+          "h": 7.7,
+          "text": {
+            "pl": "IT Helpdesk\n9:02 · 39 min"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 38.7,
+            "y": 18.4,
+            "w": 33.2,
+            "h": 4.3
+          }
+        },
+        {
+          "id": "nazwa-10-15",
+          "x": 20.5,
+          "y": 49.3,
+          "w": 18.7,
+          "h": 7.7,
+          "text": {
+            "pl": "Helpdesk (wewn.)\n10:15 · 3 min"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 38.7,
+            "y": 31.5,
+            "w": 33.2,
+            "h": 4.3
+          }
+        },
+        {
+          "id": "intranet-naglowek",
+          "x": 59.8,
+          "y": 11.7,
+          "w": 28.6,
+          "h": 7.1,
+          "text": {
+            "pl": "Intranet: kontakt z IT"
+          },
+          "style": "label",
+          "portrait": {
+            "x": 29.1,
+            "y": 62.1,
+            "w": 48.4,
+            "h": 3.9
+          }
+        },
+        {
+          "id": "intranet-tresc",
+          "x": 55.9,
+          "y": 51.1,
+          "w": 32.5,
+          "h": 36.8,
+          "text": {
+            "pl": "Helpdesk IT - tylko numer wewnętrzny.\nIT nigdy nie prosi o kody ani liczby z aplikacji.\nWątpliwości? Rozłącz się i oddzwoń."
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 22.4,
+            "y": 83.3,
+            "w": 55.1,
+            "h": 16.7
+          }
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "numer-zewnetrzny",
+          "label": {
+            "pl": "Połączenie 9:02 - „IT Helpdesk”"
+          },
+          "x": 13.4,
+          "y": 22.5,
+          "width": 27.7,
+          "height": 21.8,
+          "content": {
+            "pl": "Szczegóły połączenia: numer zewnętrzny 12 3XX XX 41. Nazwę „IT Helpdesk” nadał dzwoniący - telefon pokazuje to, co mu przesłano."
+          },
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": {
+              "pl": "„IT Helpdesk” dzwonił z numeru zewnętrznego. Prawdziwy helpdesk to wewnętrzny 214."
+            },
+            "kind": "call"
+          }
+        },
+        {
+          "id": "wpis-10-15",
+          "label": {
+            "pl": "Połączenie 10:15 - wewnętrzny 214"
+          },
+          "x": 13.4,
+          "y": 45.8,
+          "width": 27.7,
+          "height": 21.8,
+          "content": {
+            "pl": "Karol dzwoni na wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem do ciebie”."
+          },
+          "required": true
+        },
+        {
+          "id": "intranet",
+          "label": {
+            "pl": "Karta intranetu"
+          },
+          "x": 53.3,
+          "y": 9.1,
+          "width": 37.8,
+          "height": 83.4,
+          "content": {
+            "pl": "Intranet: „Kontakt z IT - wewnętrzny 214”. To numer, na który warto oddzwonić, gdy ktoś podaje się za IT."
+          }
+        }
+      ]
+    },
+    {
+      "id": "osint",
+      "type": "OSINT_SPOT",
+      "title": {
+        "pl": "Skąd oszust wiedział?"
+      },
+      "weight": 1,
+      "narration": {
+        "pl": {
+          "text": "Oszust znał imię, dział i kierownika Karola. Nie włamał się po te informacje - leżały na stronie firmy. Zaznacz, z czego skorzystał.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/osint/5639dd4935889d6e.mp3",
+          "durationMs": 10310,
+          "cues": [
+            {
+              "text": "Oszust znał imię, dział i kierownika Karola.",
+              "startMs": 0
+            },
+            {
+              "text": "Nie włamał się po te informacje - leżały na stronie firmy.",
+              "startMs": 3669
+            },
+            {
+              "text": "Zaznacz, z czego skorzystał.",
+              "startMs": 8173
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało."
+      },
+      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.3dc94b59.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.f06a7977.svg",
+      "imageAlt": {
+        "pl": "Strona drukarni, zakładka Zespół: zdjęcie budynku, dwie osoby z działów, kafel webinaru, oferta i stopka z kontaktem."
+      },
+      "prompt": {
+        "pl": "Zaznacz informacje, które wykorzystał oszust."
+      },
+      "textLayer": [
+        {
+          "id": "t-firma",
+          "x": 5,
+          "y": 1.5,
+          "w": 30,
+          "h": 5,
+          "text": {
+            "pl": "Drukarnia Lipowa"
+          },
+          "style": "label",
+          "portrait": {
+            "x": 10,
+            "y": 0.6,
+            "w": 60,
+            "h": 1.8
+          }
+        },
+        {
+          "id": "t-pawel",
+          "x": 9,
+          "y": 53,
+          "w": 24,
+          "h": 6.5,
+          "text": {
+            "pl": "Paweł Nowicki\nspecjalista IT, helpdesk"
+          },
+          "style": "label",
+          "portrait": {
+            "x": 7,
+            "y": 29.6,
+            "w": 58,
+            "h": 3.4
+          }
+        },
+        {
+          "id": "t-kierownik",
+          "x": 39,
+          "y": 53,
+          "w": 24,
+          "h": 6.5,
+          "text": {
+            "pl": "Grzegorz Sowa\nkierownik sprzedaży"
+          },
+          "style": "label",
+          "portrait": {
+            "x": 7,
+            "y": 48.8,
+            "w": 58,
+            "h": 3.4
+          }
+        },
+        {
+          "id": "t-webinar",
+          "x": 71,
+          "y": 51.5,
+          "w": 22,
+          "h": 6,
+          "text": {
+            "pl": "Webinar: Bezpieczna praca zdalna\nPaweł Nowicki"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 7,
+            "y": 68.6,
+            "w": 84,
+            "h": 3.4
+          }
+        },
+        {
+          "id": "t-oferta",
+          "x": 71,
+          "y": 75,
+          "w": 22,
+          "h": 5,
+          "text": {
+            "pl": "Oferta i cennik\nulotki, katalogi, wizytówki"
+          },
+          "style": "label",
+          "portrait": {
+            "x": 7,
+            "y": 81.8,
+            "w": 84,
+            "h": 3
+          }
+        },
+        {
+          "id": "t-kontakt",
+          "x": 8,
+          "y": 87,
+          "w": 40,
+          "h": 4.5,
+          "text": {
+            "pl": "Kontakt: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 5.6,
+            "y": 88.5,
+            "w": 84,
+            "h": 2.4
+          }
+        },
+        {
+          "id": "t-adres",
+          "x": 60,
+          "y": 87,
+          "w": 28,
+          "h": 4.5,
+          "text": {
+            "pl": "ul. Lipowa 7, Kraków"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 5.6,
+            "y": 92.3,
+            "w": 84,
+            "h": 2.4
+          }
+        },
+        {
+          "id": "t-godziny",
+          "x": 70,
+          "y": 93,
+          "w": 20,
+          "h": 4,
+          "text": {
+            "pl": "pon.-pt. 8-16"
+          },
+          "style": "screen",
+          "portrait": {
+            "x": 5.6,
+            "y": 96,
+            "w": 84,
+            "h": 2.4
+          }
+        }
+      ],
+      "spots": [
+        {
+          "id": "zdjecie-budynku",
+          "label": {
+            "pl": "Zdjęcie budynku"
+          },
+          "x": 8,
+          "y": 10,
+          "w": 84,
+          "h": 16,
+          "used": false,
+          "trapText": {
+            "pl": "Zdjęcie budynku niczego oszustowi nie dało - dzwonił, nie przyjeżdżał."
+          }
+        },
+        {
+          "id": "zespol-pawel",
+          "label": {
+            "pl": "Paweł Nowicki, specjalista IT, helpdesk"
+          },
+          "x": 8,
+          "y": 30,
+          "w": 26,
+          "h": 34,
+          "used": true,
+          "note": {
+            "text": {
+              "pl": "Strona „Zespół”: imię, nazwisko i stanowisko Pawła - gotowa legenda."
+            },
+            "kind": "web"
+          }
+        },
+        {
+          "id": "kierownik-sprzedazy",
+          "label": {
+            "pl": "Kierownik sprzedaży"
+          },
+          "x": 38,
+          "y": 30,
+          "w": 26,
+          "h": 34,
+          "used": true
+        },
+        {
+          "id": "webinar",
+          "label": {
+            "pl": "Webinar: Bezpieczna praca zdalna"
+          },
+          "x": 70,
+          "y": 30,
+          "w": 24,
+          "h": 30,
+          "used": true,
+          "note": {
+            "text": {
+              "pl": "Publiczny webinar: około czterdziestu minut głosu Pawła - wystarczy, żeby go podrobić."
+            },
+            "kind": "web"
+          },
+          "media": {
+            "kind": "audio",
+            "title": {
+              "pl": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki"
+            },
+            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.6586579a.svg",
+            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.ffa82447.svg",
+            "alt": {
+              "pl": "Kadr prelekcji: slajd „Bezpieczna praca zdalna” i sylwetka prelegenta."
+            },
+            "textLayer": [
+              {
+                "id": "slajd",
+                "x": 6.9,
+                "y": 11.1,
+                "w": 56.3,
+                "h": 10.2,
+                "text": {
+                  "pl": "Bezpieczna praca zdalna"
+                },
+                "style": "sign",
+                "portrait": {
+                  "x": 10,
+                  "y": 8.8,
+                  "w": 80,
+                  "h": 5.2
+                }
+              }
+            ],
+            "narration": {
+              "voice": "pawel",
+              "pl": {
+                "text": "Dzień dobry, nazywam się Paweł Nowicki i pracuję w dziale IT naszej drukarni. Porozmawiamy dziś o bezpiecznej pracy zdalnej. Po pierwsze hasła: każde konto ma mieć własne, długie hasło, a najlepiej hasło z menedżera haseł. Po drugie aktualizacje: kiedy komputer prosi o restart, nie odkładajcie tego na przyszły tydzień. Po trzecie poczta: nie otwierajcie załączników, których się nie spodziewacie, nawet jeśli nadawca wygląda znajomo. Pamiętajcie też o blokowaniu ekranu, gdy odchodzicie od biurka, i o tym, żeby nie pracować na publicznym wi-fi bez zabezpieczeń. To tyle na dziś, dziękuję za uwagę.\n\n…a, i jeszcze jedno: jak trzeba komuś pomóc zdalnie, to po prostu prosimy o ID sesji z narzędzia zdalnej pomocy i już.",
+                "audioUrl": "audio/glos-z-helpdesku/v1/osint/2f51d0f124b4a68d.mp3",
+                "durationMs": 46300,
+                "cues": [
+                  {
+                    "text": "Dzień dobry, nazywam się Paweł Nowicki i pracuję w dziale IT naszej drukarni.",
+                    "startMs": 0
+                  },
+                  {
+                    "text": "Porozmawiamy dziś o bezpiecznej pracy zdalnej.",
+                    "startMs": 5201
+                  },
+                  {
+                    "text": "Po pierwsze hasła: każde konto ma mieć własne, długie hasło, a najlepiej hasło z menedżera haseł.",
+                    "startMs": 8255
+                  },
+                  {
+                    "text": "Po drugie aktualizacje: kiedy komputer prosi o restart, nie odkładajcie tego na przyszły tydzień.",
+                    "startMs": 15221
+                  },
+                  {
+                    "text": "Po trzecie poczta: nie otwierajcie załączników, których się nie spodziewacie, nawet jeśli nadawca wygląda znajomo.",
+                    "startMs": 21687
+                  },
+                  {
+                    "text": "Pamiętajcie też o blokowaniu ekranu, gdy odchodzicie od biurka, i o tym, żeby nie pracować na publicznym wi-fi bez zabezpieczeń.",
+                    "startMs": 28479
+                  },
+                  {
+                    "text": "To tyle na dziś, dziękuję za uwagę. …a, i jeszcze jedno: jak trzeba komuś pomóc zdalnie, to po prostu prosimy o ID sesji z narzędzia zdalnej pomocy i już.",
+                    "startMs": 35538
+                  }
+                ]
+              }
+            },
+            "secretEnding": {
+              "id": "off-the-record",
+              "label": {
+                "pl": "Off the Record"
+              },
+              "note": {
+                "pl": "Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być."
+              }
+            }
+          }
+        },
+        {
+          "id": "oferta",
+          "label": {
+            "pl": "Oferta i cennik"
+          },
+          "x": 70,
+          "y": 64,
+          "w": 24,
+          "h": 18,
+          "used": false,
+          "trapText": {
+            "pl": "Cennik nie pomaga podszyć się pod informatyka."
+          }
+        },
+        {
+          "id": "numery-wewn",
+          "label": {
+            "pl": "Kontakt: centrala i numery wewnętrzne"
+          },
+          "x": 8,
+          "y": 86,
+          "w": 50,
+          "h": 7,
+          "used": true,
+          "note": {
+            "text": {
+              "pl": "Stopka strony zdradza format numerów wewnętrznych."
+            },
+            "kind": "web"
+          }
+        },
+        {
+          "id": "adres-firmy",
+          "label": {
+            "pl": "Adres drukarni"
+          },
+          "x": 60,
+          "y": 86,
+          "w": 32,
+          "h": 6,
+          "used": false,
+          "trapText": {
+            "pl": "Adres nic oszustowi nie dał."
+          }
+        },
+        {
+          "id": "godziny",
+          "label": {
+            "pl": "Godziny otwarcia"
+          },
+          "x": 70,
+          "y": 92.5,
+          "w": 22,
+          "h": 5.5,
+          "used": false,
+          "trapText": {
+            "pl": "Godziny otwarcia nic oszustowi nie dały."
+          }
+        }
+      ],
+      "portraitSpots": [
+        {
+          "id": "zdjecie-budynku",
+          "x": 5.6,
+          "y": 4.6,
+          "w": 88.9,
+          "h": 11.7
+        },
+        {
+          "id": "zespol-pawel",
+          "x": 5.6,
+          "y": 17.9,
+          "w": 88.9,
+          "h": 17.5
+        },
+        {
+          "id": "kierownik-sprzedazy",
+          "x": 5.6,
+          "y": 37.1,
+          "w": 88.9,
+          "h": 17.5
+        },
+        {
+          "id": "webinar",
+          "x": 5.6,
+          "y": 56.3,
+          "w": 88.9,
+          "h": 17.5
+        },
+        {
+          "id": "oferta",
+          "x": 5.6,
+          "y": 75.4,
+          "w": 88.9,
+          "h": 10.4
+        },
+        {
+          "id": "numery-wewn",
+          "x": 5.6,
+          "y": 88.3,
+          "w": 88.9,
+          "h": 2.9
+        },
+        {
+          "id": "adres-firmy",
+          "x": 5.6,
+          "y": 92.1,
+          "w": 88.9,
+          "h": 2.9
+        },
+        {
+          "id": "godziny",
+          "x": 5.6,
+          "y": 95.8,
+          "w": 88.9,
+          "h": 2.9
+        }
+      ],
+      "falseSpotPenalty": 0.25,
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": {
+              "pl": "Dokładnie to wykorzystał. Kilka publicznych informacji wystarczyło na wiarygodną legendę."
+            }
+          },
+          {
+            "minScore": 0,
+            "text": {
+              "pl": "Nie wszystko, co publiczne, się przydało - zobacz, czego naprawdę użył."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tablica",
+      "type": "ORDERING",
+      "title": {
+        "pl": "Tablica osi czasu"
+      },
+      "weight": 2,
+      "narration": {
+        "pl": {
+          "text": "Siedem zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/tablica/abfb39fe17f9a844.mp3",
+          "durationMs": 5944,
+          "cues": [
+            {
+              "text": "Siedem zdarzeń.",
+              "startMs": 0
+            },
+            {
+              "text": "Jedna kolejność.",
+              "startMs": 1370
+            },
+            {
+              "text": "Ułóż je tak, jak naprawdę się wydarzyły.",
+              "startMs": 3019
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Przeciągnij albo użyj strzałek. Kolejność pokazuje, gdzie można było przerwać łańcuch."
+      },
+      "prompt": {
+        "pl": "Ułóż siedem zdarzeń w kolejności, w jakiej naprawdę się wydarzyły."
+      },
+      "items": [
+        {
+          "id": "zbieranie",
+          "text": {
+            "pl": "Oszust zbiera dane ze strony „Zespół” i z webinaru."
+          }
+        },
+        {
+          "id": "mfa",
+          "text": {
+            "pl": "Karol odrzuca sześć próśb o zatwierdzenie logowania."
+          }
+        },
+        {
+          "id": "telefon",
+          "text": {
+            "pl": "Telefon od „IT Helpdesk”."
+          }
+        },
+        {
+          "id": "liczba",
+          "text": {
+            "pl": "Karol wpisuje liczbę podaną przez dzwoniącego."
+          }
+        },
+        {
+          "id": "instalacja",
+          "text": {
+            "pl": "Instalacja narzędzia zdalnej pomocy i ID sesji."
+          }
+        },
+        {
+          "id": "przekierowanie",
+          "text": {
+            "pl": "Reguła przekierowania poczty i eksport z CRM."
+          }
+        },
+        {
+          "id": "oddzwonienie",
+          "text": {
+            "pl": "Karol dzwoni na wewnętrzny 214."
+          }
+        }
+      ],
+      "start": {
+        "label": {
+          "pl": "www"
+        },
+        "caption": {
+          "pl": "Publiczna strona firmy"
+        }
+      },
+      "end": {
+        "label": {
+          "pl": "CRM"
+        },
+        "caption": {
+          "pl": "Lista klientów poza firmą"
+        }
+      },
+      "scoring": "partial",
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": {
+              "pl": "Dokładnie tak. Łańcuch dało się przerwać przy powiadomieniach, przy liczbie i przy instalacji."
+            }
+          },
+          {
+            "minScore": 0,
+            "text": {
+              "pl": "Jeszcze nie tak. Zauważ: oszust miał hasło, zanim zadzwonił - brakowało mu tylko zgody na logowanie."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "na-zywo",
+      "type": "LIVE_CALL",
+      "title": {
+        "pl": "Rozmowa na żywo"
+      },
+      "weight": 1,
+      "narration": {
+        "pl": {
+          "text": "Po odprawie ktoś dzwoni do ciebie. Na wyświetlaczu: IT Helpdesk.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/9b64de839d117ee0.mp3",
+          "durationMs": 4690,
+          "cues": [
+            {
+              "text": "Po odprawie ktoś dzwoni do ciebie.",
+              "startMs": 0
+            },
+            {
+              "text": "Na wyświetlaczu: IT Helpdesk.",
+              "startMs": 2241
+            }
+          ]
+        }
+      },
+      "caller": {
+        "display": {
+          "pl": "IT Helpdesk"
+        },
+        "number": "12 3XX XX 41"
+      },
+      "choiceTimeLimitSec": 12,
+      "start": "start",
+      "nodes": [
+        {
+          "id": "start",
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji 62, to je zablokuję.",
+              "spokenText": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/15cdeab287fe2320.mp3",
+              "durationMs": 9520
+            }
+          },
+          "choices": [
+            {
+              "id": "oddzwonie",
+              "text": {
+                "pl": "Oddzwonię na numer helpdesku z intranetu."
+              },
+              "next": "#koniec-a"
+            },
+            {
+              "id": "jaka-liczba",
+              "text": {
+                "pl": "Jaką liczbę mam wpisać?"
+              },
+              "next": "nacisk"
+            },
+            {
+              "id": "sprawdze",
+              "text": {
+                "pl": "Poczekaj, sprawdzę, kto dzwoni."
+              },
+              "next": "autorytet"
+            }
+          ],
+          "silence": "nacisk"
+        },
+        {
+          "id": "nacisk",
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "62, szybko, blokada za dwie minuty!",
+              "spokenText": "Sześćdziesiąt dwa, szybko, blokada za dwie minuty!",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/6dbb9c191ffb78bc.mp3",
+              "durationMs": 2879
+            }
+          },
+          "choices": [
+            {
+              "id": "rozlaczam",
+              "text": {
+                "pl": "Rozłączam się i dzwonię na dwieście czternaście."
+              },
+              "next": "#koniec-a"
+            },
+            {
+              "id": "wpisuje-62",
+              "text": {
+                "pl": "Wpisuję 62."
+              },
+              "next": "#koniec-c"
+            },
+            {
+              "id": "numer-wewn",
+              "text": {
+                "pl": "Najpierw podaj swój numer wewnętrzny."
+              },
+              "next": "wykret"
+            }
+          ]
+        },
+        {
+          "id": "autorytet",
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Kierownik już wie, to polecenie z góry. Chcesz, żeby cały dział stracił dostęp?",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/b471008a65798867.mp3",
+              "durationMs": 4087,
+              "cues": [
+                {
+                  "text": "Kierownik już wie, to polecenie z góry.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Chcesz, żeby cały dział stracił dostęp?",
+                  "startMs": 2090
+                }
+              ]
+            }
+          },
+          "choices": [
+            {
+              "id": "rozlaczam-2",
+              "text": {
+                "pl": "Rozłączam się i dzwonię na dwieście czternaście."
+              },
+              "next": "#koniec-a"
+            },
+            {
+              "id": "co-mam-zrobic",
+              "text": {
+                "pl": "Dobra, co mam zrobić?"
+              },
+              "next": "instalacja"
+            }
+          ]
+        },
+        {
+          "id": "wykret",
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "214, ale teraz dzwonię z komórki, bo system leży.",
+              "spokenText": "Dwieście czternaście, ale teraz dzwonię z komórki, bo system leży.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/f00884f3ff218685.mp3",
+              "durationMs": 3715
+            }
+          },
+          "choices": [
+            {
+              "id": "oddzwonie-214",
+              "text": {
+                "pl": "To oddzwonię na dwieście czternaście."
+              },
+              "next": "#koniec-a"
+            },
+            {
+              "id": "wpisuje",
+              "text": {
+                "pl": "W porządku, wpisuję."
+              },
+              "next": "#koniec-c"
+            }
+          ]
+        },
+        {
+          "id": "instalacja",
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Kliknij link na czacie i zainstaluj narzędzie zdalnej pomocy. Przeczytaj mi ID.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/8e5113e92d5951ba.mp3",
+              "durationMs": 4737,
+              "cues": [
+                {
+                  "text": "Kliknij link na czacie i zainstaluj narzędzie zdalnej pomocy.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Przeczytaj mi ID.",
+                  "startMs": 3413
+                }
+              ]
+            }
+          },
+          "choices": [
+            {
+              "id": "nie-instaluje",
+              "text": {
+                "pl": "Nie instaluję niczego z telefonu. Rozłączam się."
+              },
+              "next": "#koniec-b"
+            },
+            {
+              "id": "instaluje",
+              "text": {
+                "pl": "Instaluję."
+              },
+              "next": "#koniec-c"
+            }
+          ]
+        }
+      ],
+      "endings": [
+        {
+          "id": "koniec-a",
+          "outcome": "good",
+          "narration": {
+            "pl": {
+              "text": "Rozłączasz się i dzwonisz na wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem. Dobrze, że sprawdziłeś.”",
+              "spokenText": "Rozłączasz się i dzwonisz na wewnętrzny dwieście czternaście. Paweł odbiera: Nie dzwoniłem. Dobrze, że sprawdziłeś.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/cb668d65f519a65c.mp3",
+              "durationMs": 7523
+            }
+          }
+        },
+        {
+          "id": "koniec-b",
+          "outcome": "partial",
+          "narration": {
+            "pl": {
+              "text": "Nie wpisałeś liczby, ale wszedłeś w rozmowę dalej, niż trzeba. Następnym razem rozłącz się od razu.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/2618894915568b61.mp3",
+              "durationMs": 6920,
+              "cues": [
+                {
+                  "text": "Nie wpisałeś liczby, ale wszedłeś w rozmowę dalej, niż trzeba.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Następnym razem rozłącz się od razu.",
+                  "startMs": 4296
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "koniec-c",
+          "outcome": "bad",
+          "narration": {
+            "pl": {
+              "text": "Oddałeś dzwoniącemu to, o co prosił - liczbę albo komputer - i zatwierdziłeś jego dostęp. W prawdziwej firmie to byłaby druga lista klientów.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/3e2bbb2dcbba974d.mp3",
+              "durationMs": 9474,
+              "cues": [
+                {
+                  "text": "Oddałeś dzwoniącemu to, o co prosił - liczbę albo komputer - i zatwierdziłeś jego dostęp.",
+                  "startMs": 0
+                },
+                {
+                  "text": "W prawdziwej firmie to byłaby druga lista klientów.",
+                  "startMs": 6374
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "infoChoices": [
+        "wpisuje-62",
+        "wpisuje",
+        "instaluje"
+      ],
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": {
+              "pl": "Właśnie tak: rozłącz się i oddzwoń na numer, który znasz. Głos i nazwa na ekranie niczego nie dowodzą."
+            }
+          },
+          {
+            "minScore": 0.5,
+            "text": {
+              "pl": "Blisko. Każda minuta rozmowy to szansa dla oszusta - rozłącz się od razu."
+            }
+          },
+          {
+            "minScore": 0,
+            "text": {
+              "pl": "Tak właśnie wpadł Karol. Kto podaje ci liczbę do wpisania, ten się loguje."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "omowienie",
+      "type": "ANNOTATED_REPLAY",
+      "title": {
+        "pl": "Omówienie rozmowy"
+      },
+      "narration": {
+        "pl": {
+          "text": "Wróćmy do nagrania. Sześć miejsc, w których dało się przerwać rozmowę.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/3b2404d7597556cb.mp3",
+          "durationMs": 4644,
+          "cues": [
+            {
+              "text": "Wróćmy do nagrania.",
+              "startMs": 0
+            },
+            {
+              "text": "Sześć miejsc, w których dało się przerwać rozmowę.",
+              "startMs": 1370
+            }
+          ]
+        }
+      },
+      "source": {
+        "kind": "transcript",
+        "fromBlock": "nagranie"
+      },
+      "markers": [
+        {
+          "n": 1,
+          "anchor": {
+            "segmentId": "s1"
+          },
+          "title": {
+            "pl": "Strach"
+          },
+          "text": {
+            "pl": "„Ktoś właśnie próbuje się włamać” - w stresie myślimy krócej."
+          },
+          "narration": {
+            "pl": {
+              "text": "Strach. Ktoś się włamuje - a w stresie myślimy krócej.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/59b1851d7e9a2c68.mp3",
+              "durationMs": 4272,
+              "cues": [
+                {
+                  "text": "Strach.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Ktoś się włamuje - a w stresie myślimy krócej.",
+                  "startMs": 836
+                }
+              ]
+            }
+          }
+        },
+        {
+          "n": 2,
+          "anchor": {
+            "segmentId": "s3"
+          },
+          "title": {
+            "pl": "Pośpiech"
+          },
+          "text": {
+            "pl": "„Nie mam dużo czasu” - bez czasu nie ma weryfikacji."
+          },
+          "narration": {
+            "pl": {
+              "text": "Pośpiech. Nie mam czasu - a bez czasu nie ma weryfikacji.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/3a781b248cf03b59.mp3",
+              "durationMs": 3901,
+              "cues": [
+                {
+                  "text": "Pośpiech.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Nie mam czasu - a bez czasu nie ma weryfikacji.",
+                  "startMs": 906
+                }
+              ]
+            }
+          }
+        },
+        {
+          "n": 3,
+          "anchor": {
+            "segmentId": "s4"
+          },
+          "title": {
+            "pl": "Parowanie liczb"
+          },
+          "text": {
+            "pl": "Liczbę zna tylko ten, kto się loguje. Dzwoniący, który ją podaje - to on się loguje."
+          },
+          "narration": {
+            "pl": {
+              "text": "Parowanie liczb. Liczbę zna tylko ten, kto się loguje. Jeśli dzwoniący ją podaje, to on się loguje.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/28f1adb9afda9230.mp3",
+              "durationMs": 7430,
+              "cues": [
+                {
+                  "text": "Parowanie liczb.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Liczbę zna tylko ten, kto się loguje.",
+                  "startMs": 1440
+                },
+                {
+                  "text": "Jeśli dzwoniący ją podaje, to on się loguje.",
+                  "startMs": 4110
+                }
+              ]
+            }
+          }
+        },
+        {
+          "n": 4,
+          "anchor": {
+            "segmentId": "s6"
+          },
+          "title": {
+            "pl": "Autorytet"
+          },
+          "text": {
+            "pl": "Kierownik „wie” - nikt tego nie sprawdzi w trakcie rozmowy."
+          },
+          "narration": {
+            "pl": {
+              "text": "Autorytet. Kierownik wie - i nikt tego nie sprawdzi w trakcie rozmowy.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/1e6196deed6126ca.mp3",
+              "durationMs": 5619,
+              "cues": [
+                {
+                  "text": "Autorytet.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Kierownik wie - i nikt tego nie sprawdzi w trakcie rozmowy.",
+                  "startMs": 1196
+                }
+              ]
+            }
+          }
+        },
+        {
+          "n": 5,
+          "anchor": {
+            "segmentId": "s7"
+          },
+          "title": {
+            "pl": "Instalacja i ID sesji"
+          },
+          "text": {
+            "pl": "Instalacja narzędzia i przeczytanie ID sesji to oddanie komputera obcej osobie."
+          },
+          "narration": {
+            "pl": {
+              "text": "Instalacja i ID sesji. To oddanie komputera obcej osobie.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/cbdca3d14a23edf1.mp3",
+              "durationMs": 4133,
+              "cues": [
+                {
+                  "text": "Instalacja i ID sesji.",
+                  "startMs": 0
+                },
+                {
+                  "text": "To oddanie komputera obcej osobie.",
+                  "startMs": 1741
+                }
+              ]
+            }
+          }
+        },
+        {
+          "n": 6,
+          "anchor": {
+            "segmentId": "s11"
+          },
+          "title": {
+            "pl": "Zakończenie"
+          },
+          "text": {
+            "pl": "„Zrestartuj po południu” - kupuje czas na przekierowanie poczty i eksport danych."
+          },
+          "narration": {
+            "pl": {
+              "text": "Zakończenie. Zrestartuj po południu - to kupuje czas na przekierowanie poczty i eksport danych.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/cea78cee6edace2c.mp3",
+              "durationMs": 7152,
+              "cues": [
+                {
+                  "text": "Zakończenie.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Zrestartuj po południu - to kupuje czas na przekierowanie poczty i eksport danych.",
+                  "startMs": 1312
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rozwiazanie-sprawy",
+      "type": "SUMMARY",
+      "title": {
+        "pl": "Zamknięcie sprawy"
+      },
+      "narration": {
+        "voice": "komisarz",
+        "pl": {
+          "text": "Zamknięte. Jedna rozmowa, trzydzieści dziewięć minut, lista klientów na zewnątrz. Zapamiętaj: przy telefonie weryfikujesz numer, nie głos.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/rozwiazanie-sprawy/6b7442354668b9ff.mp3",
+          "durationMs": 9752,
+          "cues": [
+            {
+              "text": "Zamknięte.",
+              "startMs": 0
+            },
+            {
+              "text": "Jedna rozmowa, trzydzieści dziewięć minut, lista klientów na zewnątrz.",
+              "startMs": 1521
+            },
+            {
+              "text": "Zapamiętaj: przy telefonie weryfikujesz numer, nie głos.",
+              "startMs": 6014
+            }
+          ]
+        }
+      },
+      "tip": {
+        "pl": "Sprawa zamknięta. Dobra robota, detektywie."
+      },
+      "text": {
+        "pl": "**Trzy rzeczy do zapamiętania**\n\n1. **Liczba z aplikacji jest twoja.** Liczbę do wpisania widzi tylko logujący się. Kto podaje ci ją przez telefon, ten się loguje.\n2. **Numer, nie głos.** Nazwa na wyświetlaczu i znajomy głos niczego nie dowodzą. Rozłącz się i oddzwoń na numer z intranetu.\n3. **Nic na prośbę rozmówcy.** Nie instaluj narzędzi i nie czytaj ID sesji osobie, która do ciebie dzwoni.\n\n**Co zmieniono w Drukarni Lipowej po tej sprawie:** alerty o serii odrzuconych logowań trafiają do dyżurnego, a strona „Zespół” nie podaje już stanowisk i formatu numerów wewnętrznych."
+      },
+      "lessons": [
+        {
+          "pl": "Liczbę do wpisania w aplikacji widzi tylko logujący się. Kto ci ją podaje przez telefon, ten się loguje."
+        },
+        {
+          "pl": "Nazwa i głos na telefonie to nie dowód. Rozłącz się i oddzwoń na numer z intranetu."
+        },
+        {
+          "pl": "Nie instaluj niczego i nie czytaj ID sesji na prośbę rozmówcy."
+        }
+      ],
+      "closing": {
+        "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport.760c7732.svg",
+        "stamp": "assets/glos-z-helpdesku/scenes/zamkniecie-pieczec.33dfe506.svg",
+        "note": "assets/glos-z-helpdesku/scenes/zamkniecie-liscik.539acf2d.svg",
+        "slots": {
+          "evidence": {
+            "x": 8.8,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "time": {
+            "x": 21.5,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "xp": {
+            "x": 34.2,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "lessons": {
+            "x": 8.8,
+            "y": 50.7,
+            "w": 37.1,
+            "h": 29.3
+          },
+          "signature": {
+            "x": 23.2,
+            "y": 81.8,
+            "w": 22.7,
+            "h": 6.1
+          },
+          "stamp": {
+            "x": 55.5,
+            "y": 69.6,
+            "w": 34.4,
+            "h": 22
+          },
+          "note": {
+            "x": 81.6,
+            "y": 24.3,
+            "w": 11.7,
+            "h": 19.3
+          }
+        },
+        "portrait": {
+          "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport-pion.b80abb9a.svg",
+          "slots": {
+            "evidence": {
+              "x": 8,
+              "y": 19.8,
+              "w": 25.8,
+              "h": 4.5
+            },
+            "time": {
+              "x": 35.8,
+              "y": 19.8,
+              "w": 25.8,
+              "h": 4.5
+            },
+            "xp": {
+              "x": 63.6,
+              "y": 19.8,
+              "w": 25.8,
+              "h": 4.5
+            },
+            "lessons": {
+              "x": 8,
+              "y": 29.6,
+              "w": 82.2,
+              "h": 26.3
+            },
+            "signature": {
+              "x": 44.7,
+              "y": 56.4,
+              "w": 45.6,
+              "h": 4
+            },
+            "stamp": {
+              "x": 58,
+              "y": 84.5,
+              "w": 35.6,
+              "h": 10.6
+            },
+            "note": {
+              "x": 62.4,
+              "y": 67.8,
+              "w": 27.8,
+              "h": 15
+            }
+          }
+        }
+      }
+    }
+  ]
+}

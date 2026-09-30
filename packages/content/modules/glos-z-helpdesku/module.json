@@ -970,6 +970,27 @@
           }
         },
         {
+          "id": "s2a",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 300,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Tak, to właśnie te.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/2bf4c629cee3a035.mp3",
+              "durationMs": 1440,
+              "cues": [
+                {
+                  "text": "Tak, to właśnie te.",
+                  "startMs": 0
+                }
+              ]
+            }
+          }
+        },
+        {
           "id": "s3",
           "speaker": {
             "pl": "Dzwoniący"
@@ -1025,6 +1046,27 @@
               "cues": [
                 {
                   "text": "Czterdzieści siedem… wpisane.",
+                  "startMs": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s5a",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "gapAfterMs": 500,
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Dobra, to jeszcze chwila.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/0af10872c6a16605.mp3",
+              "durationMs": 1347,
+              "cues": [
+                {
+                  "text": "Dobra, to jeszcze chwila.",
                   "startMs": 0
                 }
               ]
@@ -1186,6 +1228,7 @@
           "speaker": {
             "pl": "Karol"
           },
+          "gapAfterMs": 400,
           "narration": {
             "voice": "karol",
             "pl": {
@@ -1200,6 +1243,30 @@
                 {
                   "text": "Dzięki, Paweł.",
                   "startMs": 1126
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s13",
+          "speaker": {
+            "pl": "Dzwoniący"
+          },
+          "narration": {
+            "voice": "oszust",
+            "pl": {
+              "text": "Nie ma za co. Ja też mam dziś urwanie głowy.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/b307ce6e04ff66cc.mp3",
+              "durationMs": 2601,
+              "cues": [
+                {
+                  "text": "Nie ma za co.",
+                  "startMs": 0
+                },
+                {
+                  "text": "Ja też mam dziś urwanie głowy.",
+                  "startMs": 1022
                 }
               ]
             }
@@ -2278,7 +2345,7 @@
           "w": 28,
           "h": 4.5,
           "text": {
-            "pl": "ul. Lipowa 7, Kraków"
+            "pl": "ul. Grabowa 12, Kraków"
           },
           "style": "screen",
           "tone": "light",
@@ -2670,10 +2737,10 @@
       },
       "end": {
         "label": {
-          "pl": "CRM"
+          "pl": "IT"
         },
         "caption": {
-          "pl": "Lista klientów poza firmą"
+          "pl": "Karol zgłasza sprawę do IT"
         }
       },
       "scoring": "partial",
@@ -2955,6 +3022,30 @@
               ]
             }
           }
+        },
+        {
+          "id": "koniec-odrzucone",
+          "outcome": "good",
+          "narration": {
+            "pl": {
+              "text": "Odrzucasz połączenie i dzwonisz na wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem. Dobrze, że sprawdziłeś.”",
+              "spokenText": "Odrzucasz połączenie i dzwonisz na wewnętrzny dwieście czternaście. Paweł odbiera: Nie dzwoniłem. Dobrze, że sprawdziłeś.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/4e47439036704032.mp3",
+              "durationMs": 9149
+            }
+          }
+        },
+        {
+          "id": "koniec-rozlaczenie",
+          "outcome": "good",
+          "narration": {
+            "pl": {
+              "text": "Rozłączasz się w pół zdania i wybierasz wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem. Dobrze, że sprawdziłeś.”",
+              "spokenText": "Rozłączasz się w pół zdania i wybierasz wewnętrzny dwieście czternaście. Paweł odbiera: Nie dzwoniłem. Dobrze, że sprawdziłeś.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/a0a11eba21f6fb9d.mp3",
+              "durationMs": 8266
+            }
+          }
         }
       ],
       "infoChoices": [
@@ -2962,6 +3053,8 @@
         "wpisuje",
         "instaluje"
       ],
+      "reject": "#koniec-odrzucone",
+      "hangUp": "#koniec-rozlaczenie",
       "reactions": {
         "result": [
           {

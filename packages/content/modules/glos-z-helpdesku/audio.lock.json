@@ -78,6 +78,14 @@
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
     },
     "nagranie#segments.2.narration": {
+      "hash": "2bf4c629cee3a035",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/2bf4c629cee3a035.mp3",
+      "textSha": "ca46fcb67421167c",
+      "durationMs": 1440,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.3.narration": {
       "hash": "d4f60bc1c52c4096",
       "key": "audio/glos-z-helpdesku/v1/nagranie/d4f60bc1c52c4096.mp3",
       "textSha": "e5a6ac30683bf89f",
@@ -85,7 +93,7 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.3.narration": {
+    "nagranie#segments.4.narration": {
       "hash": "d6b600104c95f088",
       "key": "audio/glos-z-helpdesku/v1/nagranie/d6b600104c95f088.mp3",
       "textSha": "a819fe6070b7f258",
@@ -93,7 +101,7 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.4.narration": {
+    "nagranie#segments.5.narration": {
       "hash": "7124d84c0d962846",
       "key": "audio/glos-z-helpdesku/v1/nagranie/7124d84c0d962846.mp3",
       "textSha": "a66776734fba100e",
@@ -101,7 +109,15 @@
       "voice": "karol",
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
     },
-    "nagranie#segments.5.narration": {
+    "nagranie#segments.6.narration": {
+      "hash": "0af10872c6a16605",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/0af10872c6a16605.mp3",
+      "textSha": "24c3e4e1a5a2db61",
+      "durationMs": 1347,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.7.narration": {
       "hash": "8ef437215dcf0449",
       "key": "audio/glos-z-helpdesku/v1/nagranie/8ef437215dcf0449.mp3",
       "textSha": "3b559781c4eee26c",
@@ -109,7 +125,7 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.6.narration": {
+    "nagranie#segments.8.narration": {
       "hash": "f13afa22149c2908",
       "key": "audio/glos-z-helpdesku/v1/nagranie/f13afa22149c2908.mp3",
       "textSha": "3a48c6f796376f8e",
@@ -117,7 +133,7 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.7.narration": {
+    "nagranie#segments.9.narration": {
       "hash": "1eeab1970421ada3",
       "key": "audio/glos-z-helpdesku/v1/nagranie/1eeab1970421ada3.mp3",
       "textSha": "ea7f3fd6d5585a3b",
@@ -125,7 +141,7 @@
       "voice": "karol",
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
     },
-    "nagranie#segments.8.narration": {
+    "nagranie#segments.10.narration": {
       "hash": "cbcb2195ec7bec34",
       "key": "audio/glos-z-helpdesku/v1/nagranie/cbcb2195ec7bec34.mp3",
       "textSha": "09e67cc9ae213c7d",
@@ -133,7 +149,7 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.9.narration": {
+    "nagranie#segments.11.narration": {
       "hash": "ba46afc707fd7294",
       "key": "audio/glos-z-helpdesku/v1/nagranie/ba46afc707fd7294.mp3",
       "textSha": "f25b6cf796759932",
@@ -141,7 +157,7 @@
       "voice": "karol",
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
     },
-    "nagranie#segments.10.narration": {
+    "nagranie#segments.12.narration": {
       "hash": "a4f1df02c83186a5",
       "key": "audio/glos-z-helpdesku/v1/nagranie/a4f1df02c83186a5.mp3",
       "textSha": "3fe8cd4e8021a9b4",
@@ -149,13 +165,21 @@
       "voice": "oszust",
       "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
-    "nagranie#segments.11.narration": {
+    "nagranie#segments.13.narration": {
       "hash": "76607bbc41d36d23",
       "key": "audio/glos-z-helpdesku/v1/nagranie/76607bbc41d36d23.mp3",
       "textSha": "9deeaeef55a8544c",
       "durationMs": 2276,
       "voice": "karol",
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "nagranie#segments.14.narration": {
+      "hash": "b307ce6e04ff66cc",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/b307ce6e04ff66cc.mp3",
+      "textSha": "4f4bc757996d4df0",
+      "durationMs": 2601,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
     },
     "przesluchanie-karola#narration": {
       "hash": "babed3328622b6d0",
@@ -354,6 +378,22 @@
       "key": "audio/glos-z-helpdesku/v1/na-zywo/3e2bbb2dcbba974d.mp3",
       "textSha": "a0d482caede967e7",
       "durationMs": 9474,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#endings.3.narration": {
+      "hash": "4e47439036704032",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/4e47439036704032.mp3",
+      "textSha": "ff39f33ea325dc96",
+      "durationMs": 9149,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#endings.4.narration": {
+      "hash": "a0a11eba21f6fb9d",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/a0a11eba21f6fb9d.mp3",
+      "textSha": "d309f49f9fffde53",
+      "durationMs": 8266,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },

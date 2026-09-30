@@ -20,6 +20,8 @@ if (!/^[a-z0-9-]{1,64}$/.test(SLUG) || !existsSync(modulePath)) {
   process.exit(1);
 }
 const MODULE = JSON.parse(readFileSync(modulePath, 'utf8'));
+// Tytuł jak go pokazuje aplikacja: schemaVersion 6 trzyma pola tekstowe per język (`{ pl, en? }`) - odtwarzacz i katalog biorą `pl`.
+const TITLE = typeof MODULE.title === 'string' ? MODULE.title : MODULE.title.pl;
 
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3110';
@@ -111,12 +113,12 @@ try {
   await page.waitForURL((url) => url.pathname === '/courses');
   step('logowanie pracownika kieruje na /courses', true);
 
-  await page.getByText(MODULE.title, { exact: true }).first().waitFor();
-  const thumbnails = await page.getByRole('img', { name: MODULE.title, exact: true }).count();
-  step(`Katalog: kurs „${MODULE.title}”${MODULE.thumbnail ? ' z miniaturą' : ''}`, MODULE.thumbnail ? thumbnails >= 1 : true, `${thumbnails} miniatur`);
+  await page.getByText(TITLE, { exact: true }).first().waitFor();
+  const thumbnails = await page.getByRole('img', { name: TITLE, exact: true }).count();
+  step(`Katalog: kurs „${TITLE}”${MODULE.thumbnail ? ' z miniaturą' : ''}`, MODULE.thumbnail ? thumbnails >= 1 : true, `${thumbnails} miniatur`);
 
   await page.goto(`${WEB}/courses/${courseId}`);
-  await page.getByRole('heading', { level: 1, name: MODULE.title, exact: true }).waitFor();
+  await page.getByRole('heading', { level: 1, name: TITLE, exact: true }).waitFor();
   step('Player: nagłówek z tytułem modułu', true);
   await page.getByTestId('player-content-area').waitFor();
   await page.getByTestId('player-bottombar').getByRole('button', { name: /Dalej|Zakończ/ }).first().waitFor();

@@ -316,7 +316,7 @@ export function evaluateSubmit(
       const timed = requested && account.noTimeLimits !== true;
       const walked = replayLiveCall(block as unknown as LiveCallLike, path, { allowSilence: timed });
       if (!walked) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
-      const outcome = liveCallOutcome(block, walked.ending);
+      const outcome = liveCallWalkOutcome(block, walked);
       return {
         entry: baseEntry(block, now, { correct: outcome === 'good', points: LIVE_CALL_POINTS[outcome], path, timed }),
         notesAdded: [],
@@ -383,6 +383,22 @@ function liveCallOutcome(block: Block, endingId: string): LiveCallOutcome {
   return ending?.outcome === 'good' || ending?.outcome === 'partial' ? ending.outcome : 'bad';
 }
 
+/** Odpowiedzi ze ścieżki, które oddały informację (`infoChoices` - sekret treści). */
+function liveCallGaveInfo(block: Block, choices: readonly string[]): string[] {
+  const infoChoices = (block as unknown as LiveCallLike).infoChoices;
+  const info = Array.isArray(infoChoices) ? infoChoices : [];
+  return choices.filter((id) => info.includes(id));
+}
+
+/**
+ * Ocena przebytej rozmowy: zakończenie z treści; rozłączenie się (`hangup`, D-129) po oddaniu informacji jest złe niezależnie od zakończenia
+ * „rozłączenia” - informacja już wyszła, a tekst zakończenia (publiczny) nie może zależeć od sekretnego `infoChoices`.
+ */
+function liveCallWalkOutcome(block: Block, walked: { ending: string; choices: string[]; hungUp?: boolean }): LiveCallOutcome {
+  if (walked.hungUp && liveCallGaveInfo(block, walked.choices).length > 0) return 'bad';
+  return liveCallOutcome(block, walked.ending);
+}
+
 /**
  * Rozstrzygnięcie rozmowy po ocenie (odpowiedź zapisu i podgląd ukończonego bloku): zakończenie, jego ocena i odpowiedzi ze ścieżki, które
  * oddały informację (`infoChoices` - sekret treści, tu tylko te wybrane przez gracza). Ścieżka pochodzi z zapisanego wpisu (przeszła ocenę);
@@ -391,9 +407,7 @@ function liveCallOutcome(block: Block, endingId: string): LiveCallOutcome {
 export function liveCallDetail(block: Block, path: readonly string[]) {
   const walked = replayLiveCall(block as unknown as LiveCallLike, path, { allowSilence: true });
   if (!walked) return undefined;
-  const infoChoices = (block as unknown as LiveCallLike).infoChoices;
-  const info = Array.isArray(infoChoices) ? infoChoices : [];
-  return { ending: walked.ending, outcome: liveCallOutcome(block, walked.ending), gaveInfo: walked.choices.filter((id) => info.includes(id)) };
+  return { ending: walked.ending, outcome: liveCallWalkOutcome(block, walked), gaveInfo: liveCallGaveInfo(block, walked.choices) };
 }
 
 // --- OSINT_SPOT (D-120) -------------------------------------------------------------------------------------------------

@@ -18,7 +18,7 @@ const config: Config = {
         danger: { DEFAULT: '#D9483B', soft: '#FDECEA' },
         // Zakreślacz (kolor funkcyjny, D-083): wyłącznie zakreślony wiersz-dowód w teczce sprawy - nie tło ani akcent UI.
         highlight: '#FFE066',
-        // Rangi osiągnięć (D-111): tło rewersu karty, ciemne odcienie wstęg z grafik trofeów (biały tekst, kontrast >= 7:1).
+        // Rangi osiągnięć (D-111): tło rewersu karty, ciemne odcienie wstęg z grafik trofeów (biały tekst, kontrast >= 4.5:1 - legendary 6.4:1, pozostałe >= 8.8:1).
         // rare (D-126, decyzja właściciela): rodzina szafiru trofeów modułu 2 od grafika (#1F7FB8) - tło rewersu to jej ciemny odcień
         // (kontrast z białym ~8.9:1); `rare-accent` to kolor trofeum, wyłącznie dla elementów NIETEKSTOWYCH (biały tekst na nim ma
         // 4.39:1, poniżej 4.5:1). Test: src/lib/rank-colors.test.ts.

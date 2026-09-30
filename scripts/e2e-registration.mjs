@@ -20,6 +20,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { PrismaClient } from '@prisma/client';
+import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+
+// Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
+assertLocalDatabase('scripts/e2e-registration.mjs');
 
 const API_PORT = process.env.E2E_API_PORT ?? '3101';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3100';

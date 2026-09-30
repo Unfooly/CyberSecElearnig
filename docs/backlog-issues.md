@@ -760,8 +760,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: ponowienie ładowania obrazu (np. jedno przeładowanie strony przed zgłoszeniem m1) albo przyczyna w trasie deweloperskiej;
   sekcja stabilna w 5 kolejnych przebiegach.
 
-### B-140 Skrypty e2e modułów: blokada uruchomienia na nielokalnej bazie
-- Etykiety: `P3`, `security`, `test` · Źródło: security review fazy 1g (D-125)
+### B-140 Skrypty e2e modułów: blokada uruchomienia na nielokalnej bazie - ZROBIONE (D-126)
+- Etykiety: `P1`, `security`, `test` · Źródło: security review fazy 1g (D-125); priorytet podniesiony decyzją właściciela (2026-09-30)
+- Rozwiązanie: `scripts/lib/local-db-guard.mjs` - `e2e-module.mjs`, `e2e-module-01.mjs`, `e2e-module-02.mjs`, `e2e-registration.mjs`,
+  `screenshot-module.mjs` i `layout-check.mjs` na samym początku sprawdzają `DATABASE_URL` i `DATABASE_URL_APP` (rola API): dozwolone hosty
+  to `localhost`, `127.0.0.1`, `::1` i `ci-pg` (replika CI); inny host, adres nie do odczytania albo brak `DATABASE_URL` (poza
+  layout-checkiem, który bazy nie używa) = odmowa z komunikatem (nazwa zmiennej i host, bez adresu). Bez flagi „wymuś” - inaczej niż w
+  pierwotnej akceptacji niżej. Test: `scripts/content/src/local-db-guard.test.ts` (krok CI „Testy scripts/content”).
 - Opis: `scripts/e2e-module-01.mjs`, `e2e-module-02.mjs` i `e2e-module.mjs` biorą `DATABASE_URL` z `.env`, tworzą organizację, użytkownika i
   (czasem) kurs, a potem je usuwają. Nic nie chroni przed uruchomieniem na bazie innej niż lokalna.
 - Akceptacja: skrypty odmawiają startu, gdy host `DATABASE_URL` nie jest lokalny (localhost/127.0.0.1/kontener), chyba że jawna zmienna

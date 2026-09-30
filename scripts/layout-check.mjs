@@ -57,6 +57,10 @@ import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+
+// Layout-check bazy nie używa (harness bez backendu), ale uruchamiany przez dotenv z nielokalnym adresem bazy też odmawia startu (B-140).
+assertLocalDatabase('scripts/layout-check.mjs', { required: false });
 
 const WEB_PORT = process.env.LAYOUT_CHECK_WEB_PORT ?? '3112';
 const WEB = `http://localhost:${WEB_PORT}`;

@@ -20,6 +20,10 @@ import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+
+// Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
+assertLocalDatabase('scripts/screenshot-module.mjs');
 
 const SLUG = process.argv[2] ?? 'wyludzone-haslo';
 const API_PORT = process.env.E2E_API_PORT ?? '3111';

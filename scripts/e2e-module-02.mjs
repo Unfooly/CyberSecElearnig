@@ -12,6 +12,10 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+
+// Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
+assertLocalDatabase('scripts/e2e-module-02.mjs');
 
 const SLUG = 'glos-z-helpdesku';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ContentBlock } from '@/lib/courses-types';
+import type { ContentBlock, SceneExploration } from '@/lib/courses-types';
 import { ANONYMOUS_IDENTITY, type PlayerIdentity } from '@/lib/use-my-display-name';
 import type { NotebookTask } from '../player/notes';
 import SceneHotspotsBlock from './SceneHotspotsBlock';
@@ -35,7 +35,12 @@ export default function ExploratoryBlock({
   onBriefingStep,
   briefingSkip = 0,
   moduleBlocks = [],
+  exploration,
+  onExplore,
 }: {
+  /** SCENE_HOTSPOTS (D-128): stan częściowy sceny z serwera i zgłaszanie jego zmian (zapis w CoursePlayer). */
+  exploration?: SceneExploration;
+  onExplore?: (state: SceneExploration) => void;
   block: ContentBlock;
   /** Bloki modułu (ANNOTATED_REPLAY czyta transkrypcję z bloku CALL_RECORDING). */
   moduleBlocks?: ContentBlock[];
@@ -57,7 +62,9 @@ export default function ExploratoryBlock({
 }) {
   switch (block.type) {
     case 'SCENE_HOTSPOTS':
-      return <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
+      return (
+        <SceneHotspotsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} initial={exploration} onExplore={onExplore} />
+      );
     case 'DIALOGUE':
       return (
         <DialogueBlock

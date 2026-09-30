@@ -155,7 +155,7 @@ export default function PlayerHarnessPage({
     <div className="h-dvh overflow-hidden bg-paper">
       {/* `?narration=1` (fix/mobile-player-bar): lektor włączony - layout-check podstawia nagranie (page.route) i mierzy przycisk
           odtwarzania i linijkę napisów w dolnym pasku. Domyślnie wyłączony, jak dotąd (bez prób ładowania audio). */}
-      <CoursePlayer courseId="dev-harness" initial={initial} contentBase={contentBase} narrationEnabled={searchParams.narration === '1'} />
+      <CoursePlayer courseId="dev-harness" initial={initial} contentBase={contentBase} narrationEnabled={searchParams.narration === '1'} persistExploration={false} />
       {clickPath && <HarnessAutoOpen path={clickPath} />}
     </div>
   );

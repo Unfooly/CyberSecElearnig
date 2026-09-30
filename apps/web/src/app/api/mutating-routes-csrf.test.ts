@@ -41,6 +41,8 @@ const PROTECTED: Row[] = [
     params: { courseId: 'c1', blockId: 'b1' },
     body: { lineId: 'kod-1', noteRef: 'a1b2c3d4e5f6a1b2c3d4e5f6' },
   },
+  // Stan częściowy sceny (D-128)
+  { route: './courses/[courseId]/blocks/[blockId]/explore/route.ts', method: 'POST', params: { courseId: 'c1', blockId: 'b1' }, body: { visited: ['h1'], noted: [] } },
   // Katalog kursów (D-065, hotfix widoczności zaimportowanego kursu)
   { route: './courses/[courseId]/self-assign/route.ts', method: 'POST', params: { courseId: 'c1' } },
   // "Rozpocznij od nowa" (D-069)

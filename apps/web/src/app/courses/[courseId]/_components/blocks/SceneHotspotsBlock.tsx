@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { ArrowLeft, Check, DoorOpen, Pause, Play } from 'lucide-react';
-import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneHotspot, TextLayerItem } from '@/lib/courses-types';
+import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneExploration, SceneHotspot, TextLayerItem } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
 import { flattenHotspots } from '@/lib/flatten-hotspots';
@@ -65,6 +65,19 @@ export function computeHotspotCentroid(hotspots: readonly { x: number; width: nu
   return Math.min(1, Math.max(0, averagePercent / 100));
 }
 
+// Stan częściowy z serwera (D-128) ograniczony do przedmiotów tej sceny: drzwi nigdy nie są "obejrzane", a zabrać da się tylko
+// obejrzany przedmiot-dowód z notatką. Serwer pilnuje tego samego (evaluateExploration) - tu obrona przed starszą wersją treści.
+function restoredVisited(flat: readonly AnyHotspot[], initial: SceneExploration | undefined): string[] {
+  const known = new Set(flat.filter((hotspot) => !('action' in hotspot && hotspot.action === 'next')).map((hotspot) => hotspot.id));
+  return [...new Set(initial?.visited ?? [])].filter((id) => known.has(id));
+}
+
+function restoredNoted(flat: readonly AnyHotspot[], initial: SceneExploration | undefined): string[] {
+  const visited = restoredVisited(flat, initial);
+  const evidence = new Set(flat.filter((hotspot) => hotspot.evidence && hotspot.note).map((hotspot) => hotspot.id));
+  return [...new Set(initial?.noted ?? [])].filter((id) => visited.includes(id) && evidence.has(id));
+}
+
 /** Transform kamery z prostokątów: przedmiot (przycisk hotspotu), pudełko obrazu i widoczny obszar. */
 function cameraFor(trigger: HTMLElement | null, box: HTMLElement | null, view: HTMLElement | null): CameraStyle {
   if (!trigger || !box || !view) return null;
@@ -103,10 +116,16 @@ export default function SceneHotspotsBlock({
   onSubmit,
   onReady,
   review = false,
+  initial,
+  onExplore,
 }: {
   block: ContentBlock;
   contentBase: string;
   onSubmit: (answer: { visited: string[]; noted: string[] }) => void;
+  /** Stan częściowy z serwera (D-128): przedmioty obejrzane i zabrane przed wyjściem z modułu - scena wraca w tym samym stanie. */
+  initial?: SceneExploration;
+  /** Zgłasza każdą zmianę stanu częściowego (CoursePlayer zapisuje ją na serwerze); nie w podglądzie ukończonego bloku. */
+  onExplore?: (state: SceneExploration) => void;
   /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane elementy pokryte) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
   onReady: (submit: (() => void) | null) => void;
   review?: boolean;
@@ -122,9 +141,11 @@ export default function SceneHotspotsBlock({
   const reducedMotion = usePrefersReducedMotion();
   // Telefon w pionie (widoczny obszar sceny < 0.8, jak D-098): zbliżenia z `imagePortrait` pokazują wariant pionowy (D-104).
   const [portraitStage, setPortraitStage] = useState(false);
-  const [visited, setVisited] = useState<string[]>([]);
-  const [noted, setNoted] = useState<string[]>([]);
-  const [interacted, setInteracted] = useState(false);
+  // Stan początkowy z serwera (D-128) tylko dla przedmiotów TEJ wersji sceny: zabrany = obejrzany przedmiot-dowód z notatką (jak w API).
+  const [visited, setVisited] = useState<string[]>(() => restoredVisited(flat, initial));
+  const [noted, setNoted] = useState<string[]>(() => restoredNoted(flat, initial));
+  // Po powrocie do zbadanej już sceny ramki podpowiedzi nie pulsują od nowa.
+  const [interacted, setInteracted] = useState(() => restoredVisited(flat, initial).length > 0);
   const [imageFailed, setImageFailed] = useState(false);
   // Proporcja obrazu z onLoad (albo z cache zaraz po zamontowaniu - React 18 nie odtwarza `load` dla obrazu z cache sprzed hydratacji,
   // React #15446); domyślne 16/10 tylko na czas ładowania.
@@ -200,6 +221,30 @@ export default function SceneHotspotsBlock({
     // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku, nie "stabilność".
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visited, noted, review, hasDoor, doorOpened]);
+
+  // Stan częściowy (D-128): każda ZMIANA obejrzanych/zabranych idzie do powłoki. Porównanie z ostatnio zgłoszonym stanem (na starcie -
+  // stan z serwera), nie flaga „pierwszy przebieg”: efekt uruchomiony drugi raz bez zmiany (StrictMode) niczego nie wysyła.
+  const lastExplored = useRef(JSON.stringify({ visited, noted }));
+  useEffect(() => {
+    const state = JSON.stringify({ visited, noted });
+    if (review || state === lastExplored.current) return;
+    lastExplored.current = state;
+    onExplore?.({ visited, noted });
+    // onExplore celowo poza deps (jak onReady wyżej).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visited, noted, review]);
+
+  // Easter egg obejrzany przed wyjściem z modułu (D-128): serwer nadaje wyróżnienie dopiero przy zapisie bloku, więc po powrocie
+  // notatnik dostaje je z odtworzonego stanu sceny (jak w chwili znalezienia) - outro okienek nie pokaże drugi raz „Nowe”.
+  useEffect(() => {
+    if (review || !block.id) return;
+    for (const hotspot of flat) {
+      const badge = hotspot.media?.kind === 'popups' ? hotspot.media.badge : undefined;
+      if (badge && visited.includes(hotspot.id)) addDistinction({ blockId: block.id, label: badge.label });
+    }
+    // Tylko przy zamontowaniu: później wyróżnienie dodaje foundEasterEgg.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const img = imgRef.current;

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import { homePathForRole } from '@/lib/home-path';
+import { socialMetadata } from '@/lib/site-metadata';
 import {
   AudienceSection,
   ComplianceBand,
@@ -26,21 +27,8 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: { canonical: '/' },
-  openGraph: {
-    type: 'website',
-    siteName: 'Unfooly',
-    locale: 'pl_PL',
-    title: TITLE,
-    description: DESCRIPTION,
-    url: '/',
-    images: [{ url: '/brand/png/unfooly-wordmark-1600.png', alt: 'Unfooly' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: TITLE,
-    description: DESCRIPTION,
-    images: ['/brand/png/unfooly-wordmark-1600.png'],
-  },
+  // Wspólna grafika podglądu linku serwisu (D-126), z tytułem i opisem strony głównej.
+  ...socialMetadata({ title: TITLE, description: DESCRIPTION, url: '/' }),
 };
 
 export default function HomePage() {

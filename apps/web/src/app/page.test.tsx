@@ -70,9 +70,11 @@ describe('HomePage (landing)', () => {
     expect(() => HomePage()).toThrow('REDIRECT:/courses');
   });
 
-  it('ma metadane SEO: opis i obraz OG z logo PNG', () => {
+  it('ma metadane SEO: opis, wspólna grafika podglądu linku serwisu (D-126) i karta summary_large_image', () => {
     expect(metadata.description).toMatch(/NIS2/);
-    const images = (metadata.openGraph?.images ?? []) as { url: string }[];
-    expect(images[0].url).toBe('/brand/png/unfooly-wordmark-1600.png');
+    const images = (metadata.openGraph?.images ?? []) as { url: string; width: number; height: number }[];
+    expect(images[0]).toMatchObject({ url: '/og/og-unfooly.png', width: 1200, height: 630 });
+    expect(metadata.openGraph).toMatchObject({ title: expect.stringMatching(/^Unfooly/), description: expect.stringMatching(/NIS2/), url: '/' });
+    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', images: ['/og/og-unfooly.png'] });
   });
 });

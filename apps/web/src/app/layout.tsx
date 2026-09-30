@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Courier_Prime, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { SITE_URL } from '@/lib/landing-config';
+import { SITE_DESCRIPTION, SITE_NAME, socialMetadata } from '@/lib/site-metadata';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin', 'latin-ext'],
@@ -21,10 +22,13 @@ const typewriter = Courier_Prime({
   variable: '--font-typewriter',
 });
 
+// Domyślne metadane każdej strony, także tych za logowaniem (D-126): wspólny podgląd linku serwisu, bez danych kursów. `metadataBase`
+// zamienia względny adres grafiki na bezwzględny (wymóg Open Graph).
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Unfooly',
-  description: 'Platforma szkoleń z cyberbezpieczeństwa i symulacji phishingowych',
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  ...socialMetadata(),
 };
 
 // viewportFit: 'cover' (feat/player-stage, D-075 sąsiedztwo): pozwala treści wchodzić pod notch/wyspę/pasek gestów -

@@ -116,6 +116,13 @@ dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/a
 źródło. Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny
 (`cli.ts build examples/<slug>/<scena>.json --out <assets>/scenes`) i opublikuj (`--assets`).
 
+### Grafika og:image serwisu (D-126)
+
+`examples/og/og-unfooly.json` → `apps/web/public/og/og-unfooly.svg` (1200×630; test `odprawa.test.ts` pilnuje identycznego builda i tego,
+że jedyny tekst to nazwa i podtytuł). Klocki: `keyartTitle` (`title, subtitle, w` - ciemna plakietka z białym tekstem) oraz
+`caseFolderClosed` i `phoneTop` z `wordless: true` (bez napisów; domyślnie wyłączone). PNG dla botów podglądu linków:
+`node scripts/render-og-image.mjs` z katalogu repo (po każdej przebudowie SVG), wynik `apps/web/public/og/og-unfooly.png`.
+
 ### Klocki modułu 2 (`props-helpdesk.ts`, „Głos z helpdesku”, D-125)
 
 Zarejestrowane w `PROPS` (`...HELPDESK_PROPS`), dostarczone przez grafika (paczki 1 i 2). Zasada EN-ready: grafiki bez słów - napisy

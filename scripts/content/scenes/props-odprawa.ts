@@ -44,13 +44,25 @@ export const woodGrain: PropFn<{ w?: number; h?: number }> = ({ w = 1600, h = 90
 const handset = (cx: number, cy: number, rot: number) =>
   `<g transform="translate(${cx} ${cy}) rotate(${rot})"><path d="M-14 4 a14 14 0 0 1 28 0" fill="none" stroke="${P.white}" stroke-width="7" stroke-linecap="round"/><rect x="-19" y="1" width="11" height="8" rx="3" fill="${P.white}"/><rect x="8" y="1" width="11" height="8" rx="3" fill="${P.white}"/></g>`;
 
-export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: string; role?: string; initials?: string; timer?: string; animated?: boolean }> = ({
-  state = 'ringing', animated = true, caller = 'Komisarz A. Wolski', role = 'Wydział Cyberbezpieczeństwa', initials = 'AW', timer = '00:12',
+/**
+ * `wordless` (D-126, grafika og:image serwisu): dzwoniący telefon bez żadnego napisu - sylwetka zamiast inicjałów, bez podpisów
+ * przycisków. Tylko stan `ringing`; domyślnie wyłączone, sceny modułów bez zmian.
+ */
+export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: string; role?: string; initials?: string; timer?: string; animated?: boolean; wordless?: boolean }> = ({
+  state = 'ringing', animated = true, caller = 'Komisarz A. Wolski', role = 'Wydział Cyberbezpieczeństwa', initials = 'AW', timer = '00:12', wordless = false,
 }) => {
   const w = 240, h = 480;
   const avatar = `<circle cx="120" cy="170" r="50" fill="#EEEBFF"/>` + t(120, 184, initials, 36, { anchor: 'middle', bold: true, fill: P.purple });
   let screen = '';
-  if (state === 'ringing') {
+  if (state === 'ringing' && wordless) {
+    screen =
+      `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.purpleDark}"/>` +
+      `<rect x="12" y="14" width="216" height="240" rx="26" fill="${P.purple}"/>` +
+      `<circle cx="120" cy="150" r="50" fill="#EEEBFF"/><circle cx="120" cy="136" r="18" fill="${P.purple}"/>` +
+      `<path d="M86 184 c0 -30 68 -30 68 0 z" fill="${P.purple}"/>` +
+      `<circle cx="66" cy="396" r="30" fill="${P.red}"/>${handset(66, 396, 135)}` +
+      `<circle cx="174" cy="396" r="30" fill="${P.green}"/>${handset(174, 400, 0)}`;
+  } else if (state === 'ringing') {
     screen =
       `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.purpleDark}"/>` +
       `<rect x="12" y="14" width="216" height="240" rx="26" fill="${P.purple}"/>` +
@@ -185,9 +197,30 @@ export const newspaper: PropFn<{ title?: string; headline?: string[] }> = ({ tit
 
 /* ---------- teczka ---------- */
 
-/** `stampDrop` (D-090): stempel "spada" przy pojawieniu się sceny (jednorazowa animacja a-stamp z compose.ts). */
-export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string; stampDrop?: boolean }> = ({ caseNo = 'CS/2026/0915', stamp = 'PRIORYTET', stampDrop = false }) => {
+/**
+ * `stampDrop` (D-090): stempel "spada" przy pojawieniu się sceny (jednorazowa animacja a-stamp z compose.ts).
+ * `wordless` (D-126, grafika og:image serwisu): teczka bez napisów - paski zamiast etykiety i numeru sprawy, bez stempla.
+ */
+export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string; stampDrop?: boolean; wordless?: boolean }> = ({
+  caseNo = 'CS/2026/0915', stamp = 'PRIORYTET', stampDrop = false, wordless = false,
+}) => {
   const w = 620, h = 440;
+  if (wordless) {
+    return {
+      w, h,
+      svg:
+        shadow(w, h, 14, 14, 18) +
+        `<rect x="16" y="-14" width="${w - 30}" height="${h}" rx="6" fill="${P.white}" transform="rotate(1.5 ${w / 2} ${h / 2})"/>` +
+        `<rect x="10" y="-6" width="${w - 20}" height="${h}" rx="6" fill="#F4F4F8" transform="rotate(-1 ${w / 2} ${h / 2})"/>` +
+        `<rect width="${w}" height="${h}" rx="14" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+        `<path d="M30 0 h180 l20 -26 h140 l20 26" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
+        `<rect x="70" y="80" width="340" height="120" rx="8" fill="${P.white}"/>` +
+        bars(90, 108, [180], 14, 12) + bars(90, 140, [280, 220], 24, 8) +
+        `<rect x="${w - 110}" y="0" width="16" height="${h}" fill="${P.ink}" opacity="0.85"/>` +
+        `<rect x="70" y="${h - 90}" width="200" height="14" rx="7" fill="${FOLDER_EDGE}"/>`,
+      parts: { cover: { x: 0, y: -26, w, h: h + 26 } },
+    };
+  }
   const stampSvg = `<rect x="340" y="270" width="230" height="74" rx="10" fill="none" stroke="${P.red}" stroke-width="6"/>${t(455, 320, stamp, 30, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })}`;
   return {
     w, h,
@@ -805,4 +838,19 @@ export const redString: PropFn<{ points?: number[][]; w?: number; h?: number }> 
   const pins = points.map(([x, y]) => `<circle cx="${x + 3}" cy="${y + 5}" r="13" fill="${P.ink}" opacity="0.3"/><circle cx="${x}" cy="${y}" r="13" fill="${P.red}"/><circle cx="${x - 4}" cy="${y - 4}" r="4.5" fill="${P.white}" opacity="0.7"/>`).join('');
   return { w, h, svg: d + pins };
 };
-export const KEYART_PROPS = { lampGlow, vignette, redString };
+/**
+ * Tytuł na key arcie (D-126, og:image serwisu): ciemna plakietka z nazwą i podtytułem - jedyny tekst grafiki (wariant EN = inne
+ * parametry sceny). Biały tekst na tle `ink` z kryciem 0.9 - czytelny niezależnie od tła sceny.
+ */
+export const keyartTitle: PropFn<{ title?: string; subtitle?: string; w?: number }> = ({ title = 'Unfooly', subtitle = '', w = 640 }) => {
+  const h = subtitle ? 190 : 130;
+  return {
+    w, h,
+    svg:
+      `<rect width="${w}" height="${h}" rx="24" fill="${P.ink}" opacity="0.9"/>` +
+      `<rect x="28" y="28" width="10" height="${h - 56}" rx="5" fill="${P.purple}"/>` +
+      t(64, 106, title, 92, { bold: true, fill: P.white }) +
+      (subtitle ? t(66, 156, subtitle, 34, { fill: P.white, opacity: 0.92 }) : ''),
+  };
+};
+export const KEYART_PROPS = { lampGlow, vignette, redString, keyartTitle };

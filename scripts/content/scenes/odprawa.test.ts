@@ -18,10 +18,13 @@ const repo = join(here, '..', '..', '..');
 const examplesRoot = join(here, 'examples');
 const modulesRoot = join(repo, 'packages', 'content', 'modules');
 const achievements = join(repo, 'apps', 'web', 'public', 'achievements');
+// Grafika og:image serwisu (D-126): statyczny plik aplikacji web; PNG obok powstaje z tego SVG (scripts/render-og-image.mjs).
+const og = join(repo, 'apps', 'web', 'public', 'og');
+const STATIC_TARGETS: Record<string, string> = { achievements, og };
 const targets = readdirSync(examplesRoot).filter((dir) => statSync(join(examplesRoot, dir)).isDirectory()).sort();
-/** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); trofea - public/achievements. */
+/** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); trofea - public/achievements; og - public/og. */
 const outputDirs = (target: string) =>
-  target === 'achievements' ? [achievements] : [join(modulesRoot, target, 'assets', 'scenes'), join(modulesRoot, target, 'assets')];
+  STATIC_TARGETS[target] ? [STATIC_TARGETS[target]] : [join(modulesRoot, target, 'assets', 'scenes'), join(modulesRoot, target, 'assets')];
 interface Source {
   target: string;
   name: string;
@@ -43,10 +46,24 @@ const examples = join(examplesRoot, 'wyludzone-haslo');
 const assets = join(modulesRoot, 'wyludzone-haslo', 'assets');
 
 describe('sceny z kompozytora (każdy moduł i trofea)', () => {
-  it('cele w scenes/examples: moduły z packages/content/modules albo achievements', () => {
+  it('cele w scenes/examples: moduły z packages/content/modules albo cele statyczne (achievements, og)', () => {
     expect(targets).toContain('wyludzone-haslo');
     expect(targets).toContain('achievements');
-    for (const target of targets) expect(target === 'achievements' || existsSync(join(modulesRoot, target, 'module.json')), target).toBe(true);
+    for (const target of targets) expect(target in STATIC_TARGETS || existsSync(join(modulesRoot, target, 'module.json')), target).toBe(true);
+  });
+
+  it('og:image serwisu (D-126): jedyny tekst to nazwa i podtytuł; klocki `wordless` nie mają napisów', () => {
+    const svg = composeScene(JSON.parse(readFileSync(join(examplesRoot, 'og', 'og-unfooly.json'), 'utf8')) as SceneSpec).svg;
+    const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]);
+    expect(texts).toEqual(['Unfooly', 'Szkolenia z cyberbezpieczeństwa']);
+    // Także tekst zagnieżdżony (np. <tspan>) - elementów <text> jest dokładnie tyle, ile napisów.
+    expect(svg.match(/<text\b/g)).toHaveLength(2);
+    expect(svg).toMatch(/viewBox="0 0 1200 630"/);
+    expect(PROPS.caseFolderClosed({ wordless: true }).svg).not.toContain('<text');
+    expect(PROPS.phoneTop({ state: 'ringing', wordless: true }).svg).not.toContain('<text');
+    // Domyślnie (moduły) napisy zostają.
+    expect(PROPS.caseFolderClosed({}).svg).toContain('AKTA SPRAWY');
+    expect(PROPS.phoneTop({ state: 'ringing' }).svg).toContain('Odbierz');
   });
 
   // Kontrola „grafika bez źródła” obejmuje assets/scenes modułu (i public/achievements), nie korzeń assets/: tam leżą też avatary i

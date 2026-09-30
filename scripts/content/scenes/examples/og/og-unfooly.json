@@ -1,0 +1,77 @@
+{
+ "width": 1200,
+ "height": 630,
+ "background": {
+  "flat": true,
+  "wall": "#C9AE8C"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1200,
+    "h": 630
+   }
+  },
+  {
+   "id": "teczka",
+   "prop": "caseFolderClosed",
+   "x": 90,
+   "y": 290,
+   "scale": 0.72,
+   "params": {
+    "wordless": true
+   }
+  },
+  {
+   "id": "telefon",
+   "prop": "phoneTop",
+   "x": 930,
+   "y": 250,
+   "scale": 0.74,
+   "params": {
+    "state": "ringing",
+    "animated": false,
+    "wordless": true
+   }
+  },
+  {
+   "id": "swiatlo",
+   "prop": "lampGlow",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1200,
+    "h": 630,
+    "cx": 600,
+    "cy": 300,
+    "r": 560
+   }
+  },
+  {
+   "id": "winieta",
+   "prop": "vignette",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1200,
+    "h": 630,
+    "strength": 0.68
+   }
+  },
+  {
+   "id": "tytul",
+   "prop": "keyartTitle",
+   "x": 280,
+   "y": 56,
+   "params": {
+    "title": "Unfooly",
+    "subtitle": "Szkolenia z cyberbezpieczeństwa",
+    "w": 640
+   }
+  }
+ ]
+}

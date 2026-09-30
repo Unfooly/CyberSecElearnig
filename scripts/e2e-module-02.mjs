@@ -225,7 +225,7 @@ try {
   await putDown();
   await counterIs(5, 16);
   step('SCENE_HOTSPOTS (biurko): karteczka i plakat w notatniku (5/16), kubek bez dowodu', true, await counter());
-  step('SCENE_HOTSPOTS (biurko): „Dalej” nieaktywny, dopóki gracz nie podejdzie do drzwi', await nextDisabled());
+  step('SCENE_HOTSPOTS (biurko): wymagane zebrane - „Dalej” w pasku aktywny (drzwi też prowadzą dalej, D-129)', (await nextEnabled().count()) === 1);
   // Stan częściowy sceny (D-128): wyjście z modułu w połowie sceny i powrót - obejrzane i zabrane przedmioty, licznik i notatnik wracają.
   await page.waitForLoadState('networkidle');
   await page.goto(`${WEB}/courses`);
@@ -239,12 +239,14 @@ try {
       (await page.getByRole('button', { name: 'Kubek (obejrzane)' }).count()) === 1 &&
       (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1 &&
       (await page.getByRole('button', { name: /^Notatnik \(5\)/ }).count()) === 1 &&
-      (await nextDisabled()),
+      (await nextEnabled().count()) === 1,
     await counter(),
   );
+  // Klik w drzwi to przejście dalej - zapis bloku od razu, bez osobnego „Dalej” (D-129).
+  const deskSaved = progressResponse();
   await page.getByRole('button', { name: 'Do sali odsłuchu' }).click();
-  await advanceUntil(page.getByTestId('call-recording'), 'odsłuch nagrania');
-  step('SCENE_HOTSPOTS (biurko): drzwi aktywują „Dalej”, blok zapisany', true);
+  step('SCENE_HOTSPOTS (biurko): klik w drzwi zapisuje blok i przechodzi dalej', (await deskSaved).ok());
+  await page.getByTestId('call-recording').waitFor();
 
   // --- 3. Odsłuch nagrania (CALL_RECORDING, waga 2): 7 flag w transkrypcji, bez pudeł -> Perfect Pitch ------------------------
   await page.getByRole('tab', { name: 'Transkrypcja' }).click();

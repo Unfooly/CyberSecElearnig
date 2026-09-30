@@ -1,0 +1,44 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "akta",
+   "prop": "stackedHalves",
+   "x": 115,
+   "y": 10,
+   "params": {
+    "prop": "caseFolderOpen",
+    "params": {
+     "caseNo": "GZH/2026/1004",
+     "title": "Wyłudzony dostęp",
+     "victim": "Karol Wieczorek",
+     "victimLabel": "Poszkodowany",
+     "victimRole": "handlowiec · Drukarnia Lipowa sp. z o.o.",
+     "loss": "lista klientów, poczta",
+     "when": "czwartek, 9:02",
+     "reporter": "Paweł Nowicki, dział IT"
+    }
+   },
+   "hotspot": true,
+   "partHotspots": {
+    "slot-zadania": "slot-zadania"
+   },
+   "pad": 0
+  }
+ ]
+}

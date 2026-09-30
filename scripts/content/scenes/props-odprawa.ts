@@ -213,10 +213,10 @@ const field = (x: number, y: number, k: string, v: string, vBold = false) =>
   t(x, y, k.toUpperCase(), 13, { bold: true, fill: P.greyDark, spacing: 1 }) + t(x, y + 26, v, 20, { bold: vBold });
 
 export const caseFolderOpen: PropFn<{
-  caseNo?: string; title?: string; victim?: string; victimRole?: string; loss?: string; when?: string; reporter?: string; stamp?: string;
+  caseNo?: string; title?: string; victim?: string; victimLabel?: string; victimRole?: string; loss?: string; when?: string; reporter?: string; stamp?: string;
 }> = ({
   caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew', victim = 'Anna Kowalska', victimRole = 'księgowa · Unfooly Sp. z o.o.',
-  loss = '14 000,00 PLN', when = 'wtorek, 9:12', reporter = 'Marek Zieliński, dział IT', stamp = 'PRIORYTET',
+  loss = '14 000,00 PLN', when = 'wtorek, 9:12', reporter = 'Marek Zieliński, dział IT', stamp = 'PRIORYTET', victimLabel = 'Poszkodowana',
 }) => {
   const w = 1340, h = 780;
   const pw = 620, ph = 720;
@@ -234,7 +234,7 @@ export const caseFolderOpen: PropFn<{
       t(L + 40, top + 104, caseNo, 36, { bold: true }) +
       t(L + 40, top + 146, title, 26, { bold: true, fill: P.purpleDark }) +
       `<line x1="${L + 40}" y1="${top + 172}" x2="${L + pw - 40}" y2="${top + 172}" stroke="${P.grey}" stroke-width="2"/>` +
-      field(L + 40, top + 214, 'Poszkodowana', victim, true) + t(L + 40, top + 262, victimRole, 16, { fill: P.greyDark }) +
+      field(L + 40, top + 214, victimLabel, victim, true) + t(L + 40, top + 262, victimRole, 16, { fill: P.greyDark }) +
       field(L + 40, top + 318, 'Strata', loss, true) +
       field(L + 330, top + 318, 'Kiedy', when) +
       field(L + 40, top + 408, 'Zgłosił', reporter) +
@@ -315,7 +315,8 @@ export const ODPRAWA_PROPS = {
 
 /* ---------- zamknięcie sprawy (feat/case-closed, D-089) ---------- */
 
-export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew' }) => {
+export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: string[] }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'] }) => {
   const w = 1340, h = 780, pw = 620, ph = 720, L = 30, R = w - 30 - pw, top = 30;
   const statBox = (x: number, y: number, label: string) =>
     `<rect x="${x}" y="${y}" width="170" height="96" rx="8" fill="#F6F6F4"/>` + t(x + 16, y + 28, label, 13, { bold: true, fill: P.greyDark, spacing: 1 });
@@ -343,7 +344,7 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string }> = ({ 
       t(R + 40, top + 62, 'DOWODY RZECZOWE', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
       `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>` +
       /* woreczki na dowody: siatka 3×3, prawa kolumna strony wolna na liścik */
-      [['mail', 0, 0], ['karteczka', 1, 0], ['wydruk', 2, 0], ['poczta głos.', 0, 1], ['kalendarz', 1, 1], ['logi', 2, 1], ['WHOIS', 0, 2], ['SMS', 1, 2], ['tablica', 2, 2]].map(([l, c, r]) => {
+      bags.slice(0, 9).map((l, i) => [l, i % 3, Math.floor(i / 3)]).map(([l, c, r]) => {
         const x = R + 36 + (c as number) * 132, y = top + 106 + (r as number) * 128;
         return `<g transform="rotate(${((c as number) + (r as number)) % 2 ? 2 : -2} ${x + 58} ${y + 54})"><rect x="${x}" y="${y}" width="116" height="110" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
           `<rect x="${x}" y="${y}" width="116" height="20" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 58, y + 15, 'DOWÓD', 11, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
@@ -679,11 +680,8 @@ const banner = (cx: number, y: number, w: number, label: string, fill: string, d
 const sparkle = (x: number, y: number, s: number, c: string = P.white) =>
   `<path d="M${x} ${y - s} q${s * 0.18} ${s * 0.82} ${s} ${s} q${-s * 0.82} ${s * 0.18} ${-s} ${s} q${-s * 0.18} ${-s * 0.82} ${-s} ${-s} q${s * 0.82} ${-s * 0.18} ${s} ${-s} z" fill="${c}"/>`;
 
-// Moduł 2 (D-124): 'deadair' i 'pitch' - ranga RARE (morski medal), 'transcript' - LEGENDARY (złota tarcza jak 'perfect'),
-// 'offrecord' - SECRET (heksagon jak 'curious'; zablokowane tajne mają wspólną, neutralną grafikę osiagniecie-tajne-zablokowane).
-type TrophyKind = 'curious' | 'perfect' | 'first' | 'deadair' | 'pitch' | 'transcript' | 'offrecord';
-
-export const trophyBadge: PropFn<{ kind?: TrophyKind; locked?: boolean }> = ({ kind = 'first', locked = false }) => {
+// Trofea modułu 2 rysuje `trophyHelpdesk` (props-helpdesk.ts, grafik - paczka 1).
+export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locked?: boolean }> = ({ kind = 'first', locked = false }) => {
   const w = 512, h = 512, cx = 256, cy = 236;
   const defs =
     `<defs>` +
@@ -700,15 +698,15 @@ export const trophyBadge: PropFn<{ kind?: TrophyKind; locked?: boolean }> = ({ k
   const halo = `<circle cx="${cx}" cy="${cy}" r="230" fill="url(#glow)"/>`;
 
   if (locked) {
-    const shape = kind === 'curious' || kind === 'offrecord' ? `<polygon points="${hexPts(cx, cy, 170)}" fill="#3A3550"/><polygon points="${hexPts(cx, cy, 150)}" fill="#4A4466"/>`
-      : kind === 'perfect' || kind === 'transcript' ? `<path d="M${cx} ${cy - 190} L${cx + 168} ${cy - 134} V${cy + 10} C${cx + 168} ${cy + 124}, ${cx + 80} ${cy + 180}, ${cx} ${cy + 214} C${cx - 80} ${cy + 180}, ${cx - 168} ${cy + 124}, ${cx - 168} ${cy + 10} V${cy - 134} Z" fill="#3A3550"/>`
+    const shape = kind === 'curious' ? `<polygon points="${hexPts(cx, cy, 170)}" fill="#3A3550"/><polygon points="${hexPts(cx, cy, 150)}" fill="#4A4466"/>`
+      : kind === 'perfect' ? `<path d="M${cx} ${cy - 190} L${cx + 168} ${cy - 134} V${cy + 10} C${cx + 168} ${cy + 124}, ${cx + 80} ${cy + 180}, ${cx} ${cy + 214} C${cx - 80} ${cy + 180}, ${cx - 168} ${cy + 124}, ${cx - 168} ${cy + 10} V${cy - 134} Z" fill="#3A3550"/>`
       : `<circle cx="${cx}" cy="${cy}" r="162" fill="#3A3550"/><circle cx="${cx}" cy="${cy}" r="140" fill="#4A4466"/>`;
     return {
       w, h,
       svg: defs + `<g opacity="0.9">${shape}</g>` +
         `<rect x="${cx - 44}" y="${cy - 6}" width="88" height="72" rx="12" fill="#6F6A8A"/><path d="M${cx - 27} ${cy - 6} v-22 a27 27 0 0 1 54 0 v22" fill="none" stroke="#6F6A8A" stroke-width="14"/>` +
-        (kind === 'curious' || kind === 'offrecord' ? t(cx, cy + 128, '???', 40, { anchor: 'middle', bold: true, fill: '#8C87A8', spacing: 8 }) : '') +
-        banner(cx, 420, 300, kind === 'curious' || kind === 'offrecord' ? 'SECRET' : 'LOCKED', '#6F6A8A', '#4A4466', 24),
+        (kind === 'curious' ? t(cx, cy + 128, '???', 40, { anchor: 'middle', bold: true, fill: '#8C87A8', spacing: 8 }) : '') +
+        banner(cx, 420, 300, kind === 'curious' ? 'SECRET' : 'LOCKED', '#6F6A8A', '#4A4466', 24),
     };
   }
 
@@ -761,72 +759,6 @@ export const trophyBadge: PropFn<{ kind?: TrophyKind; locked?: boolean }> = ({ k
         sparkle(cx + 118, cy - 150, 16, '#FFF1A8') + sparkle(cx - 128, cy - 118, 12, '#FFF1A8') + sparkle(cx + 150, cy + 60, 9) +
         `<rect x="${cx - 96}" y="${cy - 234}" width="192" height="36" rx="18" fill="#C9962B"/>` + t(cx, cy - 209, 'LEGENDARY', 18, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
         banner(cx, 426, 380, 'FLAWLESS CASE', '#C9962B', '#7A5A14', 22),
-    };
-  }
-
-  if (kind === 'deadair' || kind === 'pitch') {
-    // RZADKIE — morski medal z zębatym obrzeżem; Dead Air: odłożona słuchawka i przerwana linia, Perfect Pitch: fala dźwięku z flagami
-    const teal = '#1C8C8F', tealDark = '#0E5257';
-    const rim = Array.from({ length: 24 }, (_, i) => { const a = i * Math.PI / 12; return `<circle cx="${(cx + 168 * Math.cos(a)).toFixed(1)}" cy="${(cy + 168 * Math.sin(a)).toFixed(1)}" r="16" fill="url(#silver)"/>`; }).join('');
-    const inner = kind === 'deadair'
-      ? `<path d="M${cx - 104} ${cy + 36} q0 -48 104 -48 q104 0 104 48 l-6 20 q-2 10 -12 8 l-44 -8 q-10 -2 -10 -12 l0 -18 q-32 -10 -64 0 l0 18 q0 10 -10 12 l-44 8 q-10 2 -12 -8 z" fill="${P.white}"/>` +
-        `<path d="M${cx - 120} ${cy - 50} h56 l14 -22 l18 44 l16 -22 h36" stroke="#8FE3E0" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<path d="M${cx + 30} ${cy - 50} h24 M${cx + 70} ${cy - 50} h14 M${cx + 100} ${cy - 50} h8" stroke="#8FE3E0" stroke-width="7" stroke-linecap="round" opacity="0.7"/>`
-      : Array.from({ length: 13 }, (_, i) => { const x = cx - 108 + i * 18, hh = [18, 34, 58, 30, 76, 44, 96, 40, 70, 28, 52, 24, 14][i]; return `<rect x="${x - 5}" y="${cy + 10 - hh / 2}" width="10" height="${hh}" rx="5" fill="${P.white}"/>`; }).join('') +
-        [-72, 0, 72].map((dx) => `<g transform="translate(${cx + dx} ${cy - 78})"><rect x="-2" y="0" width="4" height="40" fill="#FFD36E"/><path d="M2 0 h26 l-8 9 l8 9 h-26 z" fill="${P.red}"/></g>`).join('') +
-        `<rect x="${cx - 112}" y="${cy + 70}" width="224" height="6" rx="3" fill="#8FE3E0" opacity="0.8"/>`;
-    return {
-      w, h,
-      svg: defs + halo +
-        `<circle cx="${cx}" cy="${cy + 8}" r="176" fill="${P.ink}" opacity="0.25"/>` + rim +
-        `<circle cx="${cx}" cy="${cy}" r="164" fill="url(#silver)"/><circle cx="${cx}" cy="${cy}" r="142" fill="${tealDark}"/><circle cx="${cx}" cy="${cy}" r="128" fill="${teal}"/>` +
-        `<g clip-path="url(#cc)"><rect x="${cx - 150}" y="${cy - 150}" width="70" height="300" fill="url(#shine)" transform="rotate(22 ${cx} ${cy})" opacity="0.45"/></g>` +
-        inner +
-        sparkle(cx + 134, cy - 128, 14) + sparkle(cx - 148, cy - 64, 10, '#8FE3E0') +
-        `<rect x="${cx - 54}" y="${cy - 222}" width="108" height="36" rx="18" fill="${teal}"/>` + t(cx, cy - 197, 'RARE', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
-        banner(cx, 426, 300, kind === 'deadair' ? 'DEAD AIR' : 'PERFECT PITCH', teal, tealDark, 24),
-    };
-  }
-
-  if (kind === 'transcript') {
-    // LEGENDARNE — złota tarcza z kartką transkrypcji (wiersze i znaczniki) i tabliczką 100%
-    const sh = `M${cx} ${cy - 190} L${cx + 168} ${cy - 134} V${cy + 10} C${cx + 168} ${cy + 124}, ${cx + 80} ${cy + 180}, ${cx} ${cy + 214} C${cx - 80} ${cy + 180}, ${cx - 168} ${cy + 124}, ${cx - 168} ${cy + 10} V${cy - 134} Z`;
-    const lines = [0, 1, 2, 3, 4].map((k) => `<rect x="${cx - 62}" y="${cy - 92 + k * 26}" width="${[110, 84, 120, 70, 96][k]}" height="9" rx="4.5" fill="#B8BAD0"/>` +
-      (k % 2 ? '' : `<circle cx="${cx - 80}" cy="${cy - 87 + k * 26}" r="7" fill="${P.red}"/>`)).join('');
-    return {
-      w, h,
-      svg: defs + halo +
-        [-1, 1].map(sd => `<polygon points="${star5(cx + sd * 196, cy - 40, 22, 9)}" fill="url(#gold)"/>`).join('') +
-        `<path d="${sh}" transform="translate(0 8)" fill="${P.ink}" opacity="0.25"/>` +
-        `<path d="${sh}" fill="url(#gold)"/>` +
-        `<g clip-path="url(#shc)"><rect x="${cx - 160}" y="${cy - 170}" width="320" height="360" fill="url(#enamel)"/>` +
-        `<rect x="${cx - 160}" y="${cy - 170}" width="80" height="360" fill="url(#shine)" transform="rotate(20 ${cx} ${cy})" opacity="0.5"/></g>` +
-        `<g transform="rotate(-5 ${cx} ${cy})"><rect x="${cx - 100}" y="${cy - 120}" width="200" height="176" rx="10" fill="${P.white}"/>` + lines + `</g>` +
-        `<rect x="${cx - 70}" y="${cy + 78}" width="140" height="56" rx="10" fill="url(#gold)" stroke="#C9962B" stroke-width="3"/>` +
-        t(cx, cy + 118, '100%', 36, { anchor: 'middle', bold: true, fill: '#5A3E0B' }) +
-        sparkle(cx + 118, cy - 150, 16, '#FFF1A8') + sparkle(cx - 128, cy - 118, 12, '#FFF1A8') +
-        `<rect x="${cx - 96}" y="${cy - 234}" width="192" height="36" rx="18" fill="#C9962B"/>` + t(cx, cy - 209, 'LEGENDARY', 18, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
-        banner(cx, 426, 380, 'FULL TRANSCRIPT', '#C9962B', '#7A5A14', 22),
-    };
-  }
-
-  if (kind === 'offrecord') {
-    // SEKRET — heksagon z mikrofonem i czerwoną lampką „OFF AIR”
-    return {
-      w, h,
-      svg: defs + halo +
-        `<polygon points="${hexPts(cx, cy + 6, 178)}" fill="${P.ink}" opacity="0.25"/>` +
-        `<polygon points="${hexPts(cx, cy, 178)}" fill="url(#silver)"/><polygon points="${hexPts(cx, cy, 160)}" fill="#2B1B5E"/>` +
-        `<g clip-path="url(#hexc)"><rect x="${cx - 160}" y="${cy - 160}" width="320" height="320" fill="url(#neon)"/>` +
-        `<rect x="${cx - 160}" y="${cy - 160}" width="90" height="320" fill="url(#shine)" transform="rotate(18 ${cx} ${cy})" opacity="0.5"/></g>` +
-        `<rect x="${cx - 36}" y="${cy - 96}" width="72" height="120" rx="36" fill="#1B1236"/>` +
-        [0, 1, 2, 3].map((k) => `<rect x="${cx - 26}" y="${cy - 74 + k * 18}" width="52" height="5" rx="2.5" fill="#6F6A8A"/>`).join('') +
-        `<path d="M${cx - 58} ${cy - 8} a58 58 0 0 0 116 0" fill="none" stroke="#1B1236" stroke-width="12" stroke-linecap="round"/>` +
-        `<rect x="${cx - 6}" y="${cy + 50}" width="12" height="40" fill="#1B1236"/><rect x="${cx - 44}" y="${cy + 88}" width="88" height="12" rx="6" fill="#1B1236"/>` +
-        `<rect x="${cx + 48}" y="${cy - 124}" width="96" height="40" rx="8" fill="${P.red}"/>` + t(cx + 96, cy - 97, 'OFF AIR', 16, { anchor: 'middle', bold: true, fill: P.white, spacing: 1 }) +
-        sparkle(cx - 130, cy - 110, 14) + sparkle(cx + 140, cy + 60, 10, '#FFD36E') +
-        `<rect x="${cx - 60}" y="${cy - 204}" width="120" height="36" rx="18" fill="#C2417A"/>` + t(cx, cy - 179, 'SECRET', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
-        banner(cx, 420, 320, 'OFF THE RECORD', '#C2417A', '#7A2150', 24),
     };
   }
 

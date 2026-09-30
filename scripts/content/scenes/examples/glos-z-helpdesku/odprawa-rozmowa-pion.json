@@ -1,0 +1,51 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "notes",
+   "prop": "notepadTop",
+   "x": -90,
+   "y": 1260,
+   "params": {
+    "lines": [
+     "raport — czwartek",
+     "Lipowa: helpdesk?",
+     "oddać lupę"
+    ]
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 660,
+   "y": 1380
+  },
+  {
+   "id": "rozlacz",
+   "prop": "phoneTop",
+   "x": 258,
+   "y": 110,
+   "scale": 1.6,
+   "params": {
+    "state": "call"
+   },
+   "hotspot": "endCall",
+   "pad": 14
+  }
+ ]
+}

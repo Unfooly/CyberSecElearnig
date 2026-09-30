@@ -1,0 +1,60 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 80,
+   "y": 150
+  },
+  {
+   "id": "klucze",
+   "prop": "keysTop",
+   "x": 600,
+   "y": 200
+  },
+  {
+   "id": "telefon",
+   "prop": "phoneTop",
+   "x": 90,
+   "y": 1180,
+   "scale": 0.7,
+   "params": {
+    "state": "idle"
+   }
+  },
+  {
+   "id": "lupa",
+   "prop": "magnifier",
+   "x": 600,
+   "y": 1220
+  },
+  {
+   "id": "teczka",
+   "prop": "caseFolderClosed",
+   "x": 47,
+   "y": 560,
+   "scale": 1.3,
+   "hotspot": "cover",
+   "pad": 10,
+   "params": {
+    "caseNo": "GZH/2026/1004"
+   }
+  }
+ ]
+}

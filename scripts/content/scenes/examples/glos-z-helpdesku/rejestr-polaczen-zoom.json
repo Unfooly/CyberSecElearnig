@@ -1,0 +1,23 @@
+{
+ "width": 860,
+ "height": 1560,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "ekran",
+   "prop": "callLogZoom",
+   "x": 30,
+   "y": 30,
+   "pad": 0,
+   "partHotspots": {
+    "slot-tytul": "slot-tytul",
+    "slot-nazwa-1": "slot-nazwa-1",
+    "slot-nazwa-2": "slot-nazwa-2",
+    "slot-nazwa-3": "slot-nazwa-3"
+   }
+  }
+ ]
+}

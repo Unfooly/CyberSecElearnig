@@ -1,0 +1,51 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "raport",
+   "prop": "reportPortrait",
+   "x": 22,
+   "y": 22,
+   "partHotspots": {
+    "slot-dowody": "slot-dowody",
+    "slot-czas": "slot-czas",
+    "slot-xp": "slot-xp",
+    "slot-wnioski": "slot-wnioski",
+    "slot-podpis": "podpis",
+    "slot-pieczec": "slot-pieczec",
+    "slot-liscik": "slot-liscik"
+   },
+   "pad": 0,
+   "params": {
+    "caseNo": "GZH/2026/1004",
+    "title": "Wyłudzony dostęp",
+    "bags": [
+     "MFA",
+     "rejestr",
+     "nagranie",
+     "karteczka",
+     "logowania",
+     "poczta",
+     "CRM",
+     "strona",
+     "webinar"
+    ]
+   }
+  }
+ ]
+}

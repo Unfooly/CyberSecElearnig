@@ -1,0 +1,92 @@
+{
+ "width": 1332,
+ "height": 1022,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "ramka-ekranu",
+   "prop": "screenFrame",
+   "x": 30,
+   "y": 30,
+   "partHotspots": {
+    "screen": "slot-ekran"
+   },
+   "params": {
+    "sw": 1200,
+    "sh": 800,
+    "wallpaper": "#4E40B8",
+    "bezel": 28
+   }
+  },
+  {
+   "id": "poczta",
+   "prop": "desktopIcon",
+   "x": 118,
+   "y": 108,
+   "scale": 1.6,
+   "params": {
+    "icon": "outlook"
+   }
+  },
+  {
+   "id": "przegladarka",
+   "prop": "desktopIcon",
+   "x": 118,
+   "y": 328,
+   "scale": 1.6,
+   "hotspot": true,
+   "params": {
+    "icon": "browser"
+   }
+  },
+  {
+   "id": "crm",
+   "prop": "desktopIcon",
+   "x": 118,
+   "y": 548,
+   "scale": 1.6,
+   "params": {
+    "icon": "sheet"
+   }
+  },
+  {
+   "id": "narzedzie",
+   "prop": "desktopRemoteIcon",
+   "x": 358,
+   "y": 108,
+   "scale": 1.6,
+   "hotspot": true
+  },
+  {
+   "id": "okno-zdalne",
+   "prop": "remoteToolWindow",
+   "x": 620,
+   "y": 240,
+   "scale": 1.0
+  },
+  {
+   "id": "kosz",
+   "prop": "desktopIcon",
+   "x": 1038,
+   "y": 108,
+   "params": {
+    "icon": "trash"
+   },
+   "scale": 1.6
+  },
+  {
+   "id": "pasek",
+   "prop": "taskbar",
+   "x": 58,
+   "y": 802,
+   "params": {
+    "w": 1200,
+    "clock": "9:06",
+    "date": ""
+   }
+  }
+ ]
+}

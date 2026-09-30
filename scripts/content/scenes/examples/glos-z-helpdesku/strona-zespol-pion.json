@@ -1,0 +1,30 @@
+{
+ "width": 900,
+ "height": 2400,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "strona",
+   "prop": "teamWebsite",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "portrait": true
+   },
+   "partHotspots": {
+    "zdjecie-budynku": "zdjecie-budynku",
+    "zespol-pawel": "zespol-pawel",
+    "kierownik-sprzedazy": "kierownik-sprzedazy",
+    "webinar": "webinar",
+    "oferta": "oferta",
+    "numery-wewn": "numery-wewn",
+    "adres-firmy": "adres-firmy",
+    "godziny": "godziny"
+   },
+   "pad": 0
+  }
+ ]
+}

@@ -1,0 +1,91 @@
+{
+ "width": 900,
+ "height": 1400,
+ "background": {
+  "floorY": 780
+ },
+ "items": [
+  {
+   "id": "okno",
+   "prop": "window",
+   "x": 40,
+   "y": 320
+  },
+  {
+   "id": "plakat",
+   "prop": "noCodePoster",
+   "x": 400,
+   "y": 330,
+   "hotspot": true
+  },
+  {
+   "id": "drzwi",
+   "prop": "door",
+   "x": 700,
+   "y": 380,
+   "hotspot": true
+  },
+  {
+   "id": "biurko",
+   "prop": "desk",
+   "x": 30,
+   "y": 980,
+   "params": {
+    "w": 840
+   }
+  },
+  {
+   "id": "krzeslo",
+   "prop": "chair",
+   "x": 380,
+   "y": 1050
+  },
+  {
+   "id": "roslina",
+   "prop": "plant",
+   "x": 760,
+   "y": 1200
+  },
+  {
+   "id": "kubek",
+   "prop": "mug",
+   "x": 50,
+   "y": 918,
+   "hotspot": true,
+   "params": {
+    "color": "#E5484D"
+   }
+  },
+  {
+   "id": "komputer",
+   "prop": "monitorRemote",
+   "x": 150,
+   "y": 698,
+   "scale": 0.85,
+   "hotspot": true
+  },
+  {
+   "id": "klawiatura",
+   "prop": "keyboardMouse",
+   "x": 180,
+   "y": 990,
+   "scale": 0.8
+  },
+  {
+   "id": "karteczka",
+   "prop": "stickyLying",
+   "x": 560,
+   "y": 986,
+   "hotspot": true,
+   "pad": 18
+  },
+  {
+   "id": "telefon",
+   "prop": "phoneLying",
+   "x": 690,
+   "y": 940,
+   "hotspot": true,
+   "pad": 16
+  }
+ ]
+}

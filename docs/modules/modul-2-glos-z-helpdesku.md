@@ -716,7 +716,7 @@ mogą zostać w grafice.
 | 19 | `tablica-osi.svg` (tablica korkowa, 7 kart, nić) | 16:9 | jak moduł 1 (karty to HTML) | tak | nie | tekst w warstwie (karty, `start`/`end`) |
 | 20 | `omowienie-tlo.svg` (pulpit z transkrypcją) | 16:9 | - | tak | nie | bez tekstu (transkrypcja i znaczniki - HTML) |
 | 21 | `zamkniecie-raport.svg`, `zamkniecie-pieczec.svg`, `zamkniecie-liscik.svg` | 16:9 / wg modułu 1 | sloty jak moduł 1 (`evidence`, `time`, `xp`, `lessons`, `signature`, `stamp`, `note`) | tak (`zamkniecie-raport-pion.svg`) | pieczęć i liścik: tak | raport: tekst w warstwie (nagłówki pól w slotach, nowe sloty `labels`); **pieczęć i liścik: wymaga wariantu EN** (napis pieczęci „SPRAWA ZAMKNIĘTA” i odręczny liścik to rysunek) |
-| 22 | `miniatura-glos-z-helpdesku.svg` (+ PNG 1600×900 do og:image, poza repo) | 16:9, 1600×900 | - | nie | nie | bez tekstu - miniatura bez tytułu (zatwierdzone przez właściciela; tytuł pokazuje karta kursu), więc bez wariantu EN |
+| 22 | `miniatura-glos-z-helpdesku.svg` (bez PNG: og:image jest wspólny dla serwisu - D-126) | 16:9, 1600×900 | - | nie | nie | bez tekstu - miniatura bez tytułu (zatwierdzone przez właściciela; tytuł pokazuje karta kursu), więc bez wariantu EN |
 | 23 | Trofea: `osiagniecie-dead-air`, `-perfect-pitch`, `-full-transcript`, `-off-the-record` (+ `-zablokowane`; tajne - wspólne `osiagniecie-tajne-zablokowane`) | 1:1, 512×512 | - | - | tak | bez zmian językowych (nazwy i rangi po angielsku - decyzja D-111) |
 
 Uwagi do grafik:

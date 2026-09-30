@@ -433,8 +433,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   DOM: nagłówek sprawy przed zadaniami (test RTL); hotspot tylko na „Odbierz” albo „Odrzuć” usunięte z grafiki; przypadek bez
   reduced-motion w layout-check.
 
-### B-110 Podgląd linku kursu (og:image) z miniatury PNG
+### B-110 Podgląd linku kursu (og:image) z miniatury PNG - ZAMKNIĘTE jako „wspólny og:image serwisu” (D-126)
 - Etykiety: `P3`, `mod:web`, `mod:content` · Źródło: `feat/briefing-scenes` (F, miniatura modułu), D-084
+- Rozstrzygnięcie (decyzja właściciela, 2026-09-30): strony kursów są za logowaniem, więc bot podglądu linków i tak dostaje stronę
+  logowania - zamiast miniatur per kurs jedna grafika serwisu 1200×630 (`apps/web/public/og/og-unfooly.png`) w domyślnych metadanych
+  layoutu i na stronach publicznych. Bez pola `thumbnailPng`, bez `generateMetadata` kursu, bez publicznego endpointu; PNG miniatur
+  modułów nie są potrzebne (pliki od właściciela nie zostały opublikowane i nie ma ich już lokalnie).
 - Opis: właściciel dostarczył `miniatura-wyludzone-haslo.png` (1600×900) na `og:image`, ale strona kursu nie ma dziś żadnych meta
   (`generateMetadata`), a karty kursu używają SVG. PNG nie jest w repo ani w magazynie (plik lokalny u właściciela).
 - Akceptacja: `generateMetadata` dla strony kursu (tytuł, opis, `og:image` z PNG opublikowanego potokiem `--assets`, np. osobne pole
@@ -764,13 +768,25 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Etykiety: `P1`, `security`, `test` · Źródło: security review fazy 1g (D-125); priorytet podniesiony decyzją właściciela (2026-09-30)
 - Rozwiązanie: `scripts/lib/local-db-guard.mjs` - `e2e-module.mjs`, `e2e-module-01.mjs`, `e2e-module-02.mjs`, `e2e-registration.mjs`,
   `screenshot-module.mjs` i `layout-check.mjs` na samym początku sprawdzają `DATABASE_URL` i `DATABASE_URL_APP` (rola API): dozwolone hosty
-  to `localhost`, `127.0.0.1`, `::1` i `ci-pg` (replika CI); inny host, adres nie do odczytania albo brak `DATABASE_URL` (poza
-  layout-checkiem, który bazy nie używa) = odmowa z komunikatem (nazwa zmiennej i host, bez adresu). Bez flagi „wymuś” - inaczej niż w
-  pierwotnej akceptacji niżej. Test: `scripts/content/src/local-db-guard.test.ts` (krok CI „Testy scripts/content”).
-- Opis: `scripts/e2e-module-01.mjs`, `e2e-module-02.mjs` i `e2e-module.mjs` biorą `DATABASE_URL` z `.env`, tworzą organizację, użytkownika i
-  (czasem) kurs, a potem je usuwają. Nic nie chroni przed uruchomieniem na bazie innej niż lokalna.
-- Akceptacja: skrypty odmawiają startu, gdy host `DATABASE_URL` nie jest lokalny (localhost/127.0.0.1/kontener), chyba że jawna zmienna
-  (np. `E2E_ALLOW_REMOTE_DB=1`); test pomocnika.
+  to `localhost`, `127.0.0.1`, `::1` i `ci-pg` (replika CI); inny host, adres niejednoznaczny albo brak którejkolwiek zmiennej w środowisku
+  (poza layout-checkiem, który bazy nie używa) = odmowa z komunikatem (nazwa zmiennej i host, bez adresu). Bez flagi „wymuś” - inaczej niż
+  w pierwotnej akceptacji niżej. Test: `scripts/content/src/local-db-guard.test.ts` (krok CI „Testy scripts/content”). Reszta: B-141.
+- Opis (pierwotny): `scripts/e2e-module-01.mjs`, `e2e-module-02.mjs` i `e2e-module.mjs` biorą `DATABASE_URL` z `.env`, tworzą organizację,
+  użytkownika i (czasem) kurs, a potem je usuwają. Nic nie chroni przed uruchomieniem na bazie innej niż lokalna.
+- Akceptacja (pierwotna): skrypty odmawiają startu, gdy host `DATABASE_URL` nie jest lokalny (localhost/127.0.0.1/kontener), chyba że jawna
+  zmienna (np. `E2E_ALLOW_REMOTE_DB=1`); test pomocnika.
+
+### B-141 Domknięcia po D-126: Redis i e2e API poza blokadą, marka na stronie lądowania symulacji, świeżość PNG og
+- Etykiety: `P2`, `security`, `test`, `mod:phishing` · Źródło: code review i security review D-126
+- Opis: (1) blokada B-140 nie obejmuje `REDIS_URL` - API startowane przez skrypty e2e (zadania w tle wyłączone) pisałoby klucze limitera
+  i cache do nielokalnego Redisa; (2) `npm run test:e2e --workspace=apps/api` tworzy i kasuje organizacje bez tej blokady (brak
+  `globalSetup` w `apps/api/test/jest-e2e.json`); (3) strona lądowania symulacji `/t/[token]` nie ma już opisu ani karty podglądu serwisu
+  (D-126), ale nadal dostaje `<link rel="manifest">` (nazwa i opis Unfooly) i ikony serwisu - skaner albo uważny odbiorca rozpozna markę;
+  (4) `apps/web/public/og/og-unfooly.png` powstaje ręcznie z SVG (`scripts/render-og-image.mjs`) - test sprawdza wymiary i rozmiar, nie
+  świeżość względem SVG; (5) tunel do zdalnej bazy wystawiony na `localhost` jest dla blokady nie do odróżnienia (ryzyko resztkowe).
+- Akceptacja: (1) `REDIS_URL` pod tą samą listą hostów (+ `ci-redis`) albo jawna decyzja, że nie; (2) `globalSetup` z tą samą blokadą
+  dla e2e API; (3) decyzja właściciela: manifest i ikony neutralne albo pominięte na `/t/*`; (4) skrót SVG zapisany obok PNG i test
+  zgodności albo render w CI; (5) opcjonalnie warunek na nazwę bazy testowej.
 
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`

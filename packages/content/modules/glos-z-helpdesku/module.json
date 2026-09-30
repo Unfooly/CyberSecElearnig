@@ -534,9 +534,10 @@
                         "w": 59.5,
                         "h": 3.8,
                         "text": {
-                          "pl": "Aplikacja uwierzytelniająca"
+                          "pl": "Uwierzytelnianie"
                         },
-                        "style": "screen"
+                        "style": "screen",
+                        "tone": "light"
                       },
                       {
                         "id": "wiersz-1",
@@ -545,7 +546,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       },
@@ -556,7 +557,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       },
@@ -567,7 +568,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       },
@@ -578,7 +579,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       },
@@ -589,7 +590,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       },
@@ -600,7 +601,7 @@
                         "w": 44.4,
                         "h": 6,
                         "text": {
-                          "pl": "Prośba o logowanie\nodrzucona"
+                          "pl": "Logowanie\nodrzucone"
                         },
                         "style": "screen"
                       }
@@ -652,7 +653,7 @@
                         "w": 40.9,
                         "h": 3.8,
                         "text": {
-                          "pl": "IT Helpdesk · 39 min"
+                          "pl": "IT Helpdesk"
                         },
                         "style": "screen"
                       },
@@ -663,7 +664,7 @@
                         "w": 40.9,
                         "h": 3.8,
                         "text": {
-                          "pl": "Helpdesk (wewn.) · 3 min"
+                          "pl": "Wewnętrzny"
                         },
                         "style": "screen"
                       },
@@ -674,7 +675,7 @@
                         "w": 40.9,
                         "h": 3.8,
                         "text": {
-                          "pl": "Drukarnia - centrala"
+                          "pl": "Centrala"
                         },
                         "style": "screen"
                       }
@@ -729,18 +730,20 @@
                   "text": {
                     "pl": "Pomoc zdalna"
                   },
-                  "style": "screen"
+                  "style": "screen",
+                  "tone": "light"
                 },
                 {
                   "id": "podpis-przegladarka",
-                  "x": 8.3,
-                  "y": 53.3,
-                  "w": 15.6,
-                  "h": 3.5,
+                  "x": 24.5,
+                  "y": 39.6,
+                  "w": 16,
+                  "h": 5,
                   "text": {
                     "pl": "Przeglądarka"
                   },
-                  "style": "screen"
+                  "style": "screen",
+                  "tone": "light"
                 }
               ],
               "hotspots": [
@@ -2027,7 +2030,7 @@
           "w": 18.7,
           "h": 7.7,
           "text": {
-            "pl": "Helpdesk (wewn.)\n10:15 · 3 min"
+            "pl": "Wewnętrzny\n10:15 · 3 min"
           },
           "style": "screen",
           "portrait": {
@@ -2047,6 +2050,7 @@
             "pl": "Intranet: kontakt z IT"
           },
           "style": "label",
+          "tone": "light",
           "portrait": {
             "x": 29.1,
             "y": 62.1,
@@ -2221,9 +2225,10 @@
           "w": 22,
           "h": 6,
           "text": {
-            "pl": "Webinar: Bezpieczna praca zdalna\nPaweł Nowicki"
+            "pl": "Webinar: praca zdalna\nPaweł Nowicki"
           },
           "style": "screen",
+          "tone": "light",
           "portrait": {
             "x": 7,
             "y": 68.6,
@@ -2238,7 +2243,7 @@
           "w": 22,
           "h": 5,
           "text": {
-            "pl": "Oferta i cennik\nulotki, katalogi, wizytówki"
+            "pl": "Oferta i cennik\nulotki, wizytówki"
           },
           "style": "label",
           "portrait": {
@@ -2258,6 +2263,7 @@
             "pl": "Kontakt: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe"
           },
           "style": "screen",
+          "tone": "light",
           "portrait": {
             "x": 5.6,
             "y": 88.5,
@@ -2275,6 +2281,7 @@
             "pl": "ul. Lipowa 7, Kraków"
           },
           "style": "screen",
+          "tone": "light",
           "portrait": {
             "x": 5.6,
             "y": 92.3,
@@ -2292,6 +2299,7 @@
             "pl": "pon.-pt. 8-16"
           },
           "style": "screen",
+          "tone": "light",
           "portrait": {
             "x": 5.6,
             "y": 96,
@@ -2380,6 +2388,7 @@
                   "pl": "Bezpieczna praca zdalna"
                 },
                 "style": "sign",
+                "tone": "light",
                 "portrait": {
                   "x": 10,
                   "y": 8.8,

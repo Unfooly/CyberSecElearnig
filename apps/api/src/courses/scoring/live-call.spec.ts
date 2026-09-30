@@ -51,6 +51,32 @@ describe('evaluateSubmit: LIVE_CALL', () => {
     }
   });
 
+  it('D-129: odrzucenie połączenia i rozłączenie się bez oddanej informacji - dobre zakończenie (1)', () => {
+    expect(submit({ path: ['reject'], timed: true })).toMatchObject({
+      entry: { correct: true, points: 1, path: ['reject'] },
+      detail: { ending: 'odrzucone', outcome: 'good', gaveInfo: [] },
+    });
+    expect(submit({ path: ['hangup'], timed: true }).detail).toEqual({ ending: 'rozlaczenie', outcome: 'good', gaveInfo: [] });
+    expect(submit({ path: ['sprawdze', 'hangup'], timed: false }).entry).toMatchObject({ correct: true, points: 1 });
+    // Blok bez `reject` / `hangUp` - tych kroków nie ma.
+    const plain = { ...call(), reject: undefined, hangUp: undefined } as Block;
+    expect(() => submit({ path: ['reject'], timed: true }, plain)).toThrow(BadRequestException);
+    expect(() => submit({ path: ['hangup'], timed: true }, plain)).toThrow(BadRequestException);
+  });
+
+  it('D-129: rozłączenie się PO oddaniu informacji - złe (0), niezależnie od zakończenia „rozłączenia”; podgląd tak samo', () => {
+    // Wariant drzewa: po wpisaniu liczby rozmowa trwa dalej (w module 2 odpowiedzi z infoChoices kończą rozmowę od razu).
+    const block = call() as unknown as { nodes: { id: string; choices: { id: string; next: string }[] }[] };
+    block.nodes.find((n) => n.id === 'nacisk')!.choices.find((c) => c.id === 'wpisuje')!.next = 'autorytet';
+    const leaked = submit({ path: ['jaka-liczba', 'wpisuje', 'hangup'], timed: false }, block as unknown as Block);
+    expect(leaked.entry).toMatchObject({ correct: false, points: 0 });
+    expect(leaked.detail).toEqual({ ending: 'rozlaczenie', outcome: 'bad', gaveInfo: ['wpisuje'] });
+    const view = (clientProgress({ v: 2, blocks: { 'na-zywo': leaked.entry }, notes: [] }, [block as unknown as Block], opaque) as {
+      blocks: Record<string, Record<string, unknown>>;
+    }).blocks['na-zywo'];
+    expect(view.detail).toEqual({ ending: 'rozlaczenie', outcome: 'bad', gaveInfo: ['wpisuje'] });
+  });
+
   it('waga domyślna 1', () => {
     expect(weightOf({ ...call(), weight: undefined } as Block)).toBe(1);
   });

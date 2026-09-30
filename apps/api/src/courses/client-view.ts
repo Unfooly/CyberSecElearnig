@@ -1,7 +1,7 @@
 import { createHmac, hkdfSync } from 'node:crypto';
 import { ClientContext, ShuffleSeed, toClientBlock } from '@cyberszkolo/content';
 import { HotspotLike, flattenHotspots, noteItemsOf } from '@cyberszkolo/content/dist/node';
-import { ProgressV2 } from './progress';
+import { BlockEntry, ProgressV2 } from './progress';
 import {
   Block,
   OpaqueId,
@@ -171,6 +171,16 @@ export function distinctions(progress: ProgressV2, blocks: Block[]): { blockId: 
   return found;
 }
 
+/** Stan częściowy sceny do widoku postępu (D-128): id przedmiotów z zapisu, ograniczone do tych, które są w treści bloku. */
+function explorationView(block: Block, entry: BlockEntry): { visited: string[]; noted: string[] } | undefined {
+  if (!Array.isArray(block.hotspots)) return undefined;
+  const ids = new Set(flattenHotspots(block.hotspots as HotspotLike[]).map((hotspot) => hotspot.id));
+  const known = (list: unknown) => (Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && ids.has(id)) : []);
+  const visited = known(entry.visited);
+  const noted = known(entry.noted).filter((id) => visited.includes(id));
+  return visited.length > 0 ? { visited, noted } : undefined;
+}
+
 /**
  * Widok postępu dla klienta: własne wyniki i stan, plus WYŁĄCZNIE ujawnione dotąd elementy zadań tekstowych (podpowiedzi
  * odsłonięte próbami; rozwiązanie po wyczerpaniu prób) i rozwiązane notatki. Niczego, co nie było jeszcze ujawnione.
@@ -192,6 +202,9 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
     // Przesłuchanie (D-118): podważenia są w wpisie także PRZED ukończeniem bloku (odświeżenie strony w trakcie) - własne wyniki gracza,
     // kwestia po podważeniu wyłącznie przy trafieniu (ta sama, którą pokazała odpowiedź /challenge).
     const challenges = block?.type === 'INTERROGATION' && Array.isArray(entry.challenges) ? challengesView(block, entry.challenges) : undefined;
+    // Scena (D-128): stan częściowy - obejrzane przedmioty i zabrane dowody NIEUKOŃCZONEGO bloku, żeby po powrocie do kursu scena
+    // wyglądała tak, jak ją zostawiono. Id przedmiotów są publiczne (pole `hotspots[].id`); tylko te, które nadal są w treści bloku.
+    const exploration = block?.type === 'SCENE_HOTSPOTS' && !entry.done ? explorationView(block, entry) : undefined;
     if (block && entry.done && opaque) {
       if ((block.type === 'QUIZ' || block.type === 'BRANCHING_SCENARIO') && typeof entry.answer === 'number') answer = entry.answer;
       if (block.type === 'EMAIL_ANALYSIS' && Array.isArray(entry.selected)) {
@@ -231,6 +244,7 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       ...(answer !== undefined ? { answer } : {}),
       ...(detail !== undefined ? { detail } : {}),
       ...(challenges !== undefined ? { challenges } : {}),
+      ...(exploration !== undefined ? { exploration } : {}),
     };
   }
   // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId, treść i

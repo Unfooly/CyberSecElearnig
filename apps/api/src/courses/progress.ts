@@ -24,6 +24,11 @@ export interface BlockEntry {
   hintsShown?: number;
   // SCENE_HOTSPOTS: znalezione wyróżnienia easter egga (id `media.badge` z treści, D-100) - bez wpływu na wynik, dowody i XP.
   easterEggs?: string[];
+  // SCENE_HOTSPOTS (D-128): stan częściowy sceny - obejrzane przedmioty i zabrane dowody (id przedmiotów z treści, publiczne), zapisywany
+  // przy /explore, zanim blok jest ukończony (done: false); wyjście z bloku w połowie niczego nie gubi. Zapis bloku („Dalej”) zastępuje
+  // wpis zwykłym wpisem ukończenia (bez tych pól); notatki dowodów są wtedy już w `notes`.
+  visited?: string[];
+  noted?: string[];
   // CALL_RECORDING (D-115): trafione flagi (id segmentów z treści) i liczba fałszywych tapnięć - podgląd wyniku i osiągnięcia.
   flagsHit?: string[];
   falseTaps?: number;

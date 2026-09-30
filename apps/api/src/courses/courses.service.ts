@@ -29,7 +29,7 @@ import {
 } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
-import { AttemptResponse, ChallengeResponse, evaluateAttempt, evaluateChallenge, evaluateSubmit, pickReaction } from './scoring/evaluate';
+import { AttemptResponse, ChallengeResponse, evaluateAttempt, evaluateChallenge, evaluateExploration, evaluateSubmit, pickReaction } from './scoring/evaluate';
 
 type AssignmentWithCourse = CourseAssignment & { course: Course };
 
@@ -555,6 +555,61 @@ export class CoursesService {
         ...(added ? { note: toClientNote(added, context.opaqueId) } : {}),
         evidence: evidenceSummary(progress, version.blocks),
       };
+    });
+  }
+
+  /**
+   * Stan częściowy sceny (SCENE_HOTSPOTS, D-128): obejrzane przedmioty i zabrane dowody bieżącego bloku trafiają do postępu, zanim
+   * blok jest ukończony - wyjście z kursu w połowie sceny niczego nie gubi. Kurs się nie przesuwa, punktów ani XP nie ma; notatki
+   * zabranych dowodów serwer dopisuje sam (treść z wersji kursu). Tylko własne, aktywne przypisanie (RLS + filtr organizacji).
+   */
+  async exploreBlock(
+    organizationId: string,
+    userId: string,
+    courseId: string,
+    blockId: string,
+    answer: { visited: string[]; noted: string[] },
+  ): Promise<{ blockId: string; visited: string[]; noted: string[]; evidence: EvidenceSummary }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // FOR UPDATE: równoległe zapisy stanu (szybkie kliknięcia, dwie karty) idą po kolei - suma stanów, żaden nie nadpisuje drugiego.
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+
+      if (assignment.status === AssignmentStatus.COMPLETED) {
+        throw new BadRequestException('Kurs jest już ukończony');
+      }
+
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      if (index < 0) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      if (index !== assignment.currentBlockIndex) {
+        throw new BadRequestException('Bloki trzeba ukończyć po kolei');
+      }
+      const block = version.blocks[index];
+
+      const progress: ProgressV2 = readProgress(assignment.progress);
+      const { entry, notesAdded } = evaluateExploration(block, answer, entryOf(progress, block.id), new Date());
+      progress.blocks[block.id] = entry;
+      for (const key of notesAdded) {
+        if (!progress.notes.includes(key)) progress.notes.push(key);
+      }
+
+      // Warunek w zapisie (obok RLS): własne, aktywne przypisanie tej organizacji, nadal na tym samym bloku - zapis nie trafi w
+      // przypisanie, które w międzyczasie przesunął /progress albo zarchiwizował restart (security review D-128).
+      const updated = await tx.courseAssignment.updateMany({
+        where: { id: assignment.id, organizationId, userId, archivedAt: null, currentBlockIndex: assignment.currentBlockIndex },
+        data: {
+          progress: toJson(progress),
+          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() } : {}),
+        },
+      });
+      if (updated.count === 0) {
+        throw new ConflictException('Stan kursu zmienił się w trakcie zapisu');
+      }
+
+      return { blockId: block.id, visited: entry.visited ?? [], noted: entry.noted ?? [], evidence: evidenceSummary(progress, version.blocks) };
     });
   }
 

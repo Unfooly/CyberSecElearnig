@@ -494,6 +494,47 @@ export function evaluateChallenge(
 }
 
 /**
+ * Stan częściowy sceny (SCENE_HOTSPOTS, D-128): gracz wyszedł z bloku w połowie - obejrzane przedmioty i zabrane dowody zostają w
+ * postępie i wracają po ponownym wejściu. Te same reguły co przy zapisie bloku (evaluate), bez bramki wymaganych elementów:
+ *  - `visited` i `noted` to id przedmiotów TEJ sceny (spłaszczone z zagnieżdżonymi), bez powtórzeń; drzwi (action: next) nie są
+ *    przedmiotem do obejrzenia;
+ *  - `noted` tylko dla obejrzanego przedmiotu-dowodu z notatką;
+ *  - stan tylko rośnie: wynik to suma z poprzednim zapisem (spóźnione albo powtórzone żądanie niczego nie cofa).
+ * Blok nie jest tu ukończony (done: false), nie ma punktów ani wyróżnień easter egga - te nadaje dopiero zapis bloku („Dalej”).
+ * To bramka UX jak przy zapisie bloku, nie dowód kliknięcia: klient zgłasza, co obejrzał.
+ */
+export function evaluateExploration(
+  block: Block,
+  answer: { visited: string[]; noted: string[] },
+  existing: BlockEntry | undefined,
+  now: Date,
+): { entry: BlockEntry; notesAdded: string[] } {
+  if (block.type !== 'SCENE_HOTSPOTS') throw new BadRequestException('Ten blok nie zapisuje stanu częściowego');
+  // Ukończonego wpisu (punkty, wyróżnienia) stan częściowy nigdy nie zastępuje - także przy niespójnym postępie (jak evaluateAttempt).
+  if (existing?.done) throw new BadRequestException('Ten blok jest już ukończony');
+  const hotspots = flattenHotspots(block.hotspots as HotspotLike[]);
+  const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
+  const viewable = hotspots.filter((h) => !doorIds.has(h.id)).map((h) => h.id);
+  const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
+  const { visited, noted } = answer;
+  const invalid =
+    !unique(visited) ||
+    !unique(noted) ||
+    visited.some((id) => !viewable.includes(id)) ||
+    noted.some((id) => !visited.includes(id) || !evidenceIds.includes(id));
+  if (invalid) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+  // Poprzedni stan czytamy obronnie (postęp zapisuje serwer, ale wpis mógł powstać przed tą funkcją albo z innej wersji treści).
+  const previous = (list: unknown) => (Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []);
+  const merge = (before: string[], next: string[], allowed: string[]) => allowed.filter((id) => before.includes(id) || next.includes(id));
+  const mergedVisited = merge(previous(existing?.visited), visited, viewable);
+  const mergedNoted = merge(previous(existing?.noted), noted, evidenceIds).filter((id) => mergedVisited.includes(id));
+  return {
+    entry: { type: block.type, done: false, answeredAt: now.toISOString(), weight: weightOf(block), visited: mergedVisited, noted: mergedNoted },
+    notesAdded: mergedNoted.map((id) => noteKey(block.id, id)),
+  };
+}
+
+/**
  * Rozstrzygnięcie przesłuchania po ukończeniu bloku: które kwestie kłamały i ich przyznanie (sekret treści, ujawniany jak klucz maila -
  * dopiero w odpowiedzi zapisu bloku i w podglądzie ukończonego bloku). Id kwestii są publiczne.
  */

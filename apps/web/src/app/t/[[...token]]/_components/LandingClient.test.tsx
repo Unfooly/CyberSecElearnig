@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import LandingClient from './LandingClient';
-import TrackingLandingPage, { metadata } from '../page';
+import TrackingLandingPage from '../page';
+import { metadata } from '../../layout';
 import { DEFAULT_LESSON_HTML } from '@/lib/tracking';
 
 const TOKEN = 'B'.repeat(43);
@@ -9,7 +10,7 @@ const fetchMock = vi.fn();
 
 const lessonResponse = (html: string) => ({ ok: true, json: async () => ({ lessonHtml: html }) });
 
-describe('strona lądowania /t/[token]', () => {
+describe('strona lądowania /t/[[...token]]', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     fetchMock.mockReset();
@@ -22,11 +23,28 @@ describe('strona lądowania /t/[token]', () => {
   });
 
   it('samo wyrenderowanie strony (GET) NIE woła API - skanery linków niczego nie zaliczą; strona jest noindex', () => {
-    render(<TrackingLandingPage params={{ token: TOKEN }} />);
+    render(<TrackingLandingPage params={{ token: [TOKEN] }} />);
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { name: 'Weryfikacja konta' })).toBeInTheDocument();
     expect(metadata.robots).toEqual({ index: false, follow: false });
+  });
+
+  // B-141: /t, /t/a/b itd. dają tę samą neutralną stronę (nie 404 aplikacji z metadanymi serwisu) i nigdy nie wołają API.
+  it.each([
+    ['/t', undefined],
+    ['/t/a/b', ['a', 'b']],
+    ['/t/<token>/dalej', [TOKEN, 'dalej']],
+  ])('adres %s: neutralna strona, bez wywołania API także po czasie i po interakcji', async (_path, segments) => {
+    render(<TrackingLandingPage params={{ token: segments }} />);
+    expect(screen.getByRole('heading', { name: 'Weryfikacja konta' })).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2600);
+    });
+    fireEvent.pointerDown(window);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('po 2,5 s widoczności strony: JEDNO wywołanie view, bez ciała i bez cookie', async () => {

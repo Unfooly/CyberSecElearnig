@@ -6,6 +6,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Bez nagłówka `X-Powered-By: Next.js` - nie zdradzamy technologii (m.in. stronie lądowania symulacji phishingowej, B-141).
+  poweredByHeader: false,
   // Strony deweloperskie (dziś tylko dev/player-harness/page.dev.tsx, D-076) używają rozszerzenia `.dev.tsx` zamiast
   // zwykłego `.tsx` - bez NEXT_PUBLIC_DEV_HARNESS=1 NIE dopisujemy 'dev.tsx'/'dev.ts' do pageExtensions, więc Next
   // w ogóle NIE TRAKTUJE page.dev.tsx jako strony: trasa nie istnieje w grafie routingu, a jej fs.readFileSync

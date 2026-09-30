@@ -48,8 +48,12 @@ const handset = (cx: number, cy: number, rot: number) =>
  * `wordless` (D-126, grafika og:image serwisu): dzwoniący telefon bez żadnego napisu - sylwetka zamiast inicjałów, bez podpisów
  * przycisków. Tylko stan `ringing`; domyślnie wyłączone, sceny modułów bez zmian.
  */
-export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: string; role?: string; initials?: string; timer?: string; animated?: boolean; wordless?: boolean }> = ({
+// `time` / `day` - zegar ekranu w stanie spoczynku (idle); domyślnie oś czasu modułu 1 (wtorek 9:40), moduł 2: czwartek 10:20 (D-130).
+export const phoneTop: PropFn<{
+  state?: 'ringing' | 'call' | 'idle'; caller?: string; role?: string; initials?: string; timer?: string; animated?: boolean; wordless?: boolean; time?: string; day?: string;
+}> = ({
   state = 'ringing', animated = true, caller = 'Komisarz A. Wolski', role = 'Wydział Cyberbezpieczeństwa', initials = 'AW', timer = '00:12', wordless = false,
+  time = '9:40', day = 'wtorek',
 }) => {
   const w = 240, h = 480;
   const avatar = `<circle cx="120" cy="170" r="50" fill="#EEEBFF"/>` + t(120, 184, initials, 36, { anchor: 'middle', bold: true, fill: P.purple });
@@ -86,7 +90,7 @@ export const phoneTop: PropFn<{ state?: 'ringing' | 'call' | 'idle'; caller?: st
       `<path d="M172 324 h6 l7 -6 v24 l-7 -6 h-6 z" fill="${P.white}"/>` +
       `<circle cx="120" cy="420" r="30" fill="${P.red}"/>${handset(120, 420, 135)}`;
   } else {
-    screen = `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.ink}"/>` + t(120, 120, '9:40', 44, { anchor: 'middle', fill: P.white, opacity: 0.9 }) + t(120, 146, 'wtorek', 13, { anchor: 'middle', fill: P.white, opacity: 0.7 });
+    screen = `<rect x="12" y="14" width="216" height="452" rx="26" fill="${P.ink}"/>` + t(120, 120, time, 44, { anchor: 'middle', fill: P.white, opacity: 0.9 }) + t(120, 146, day, 13, { anchor: 'middle', fill: P.white, opacity: 0.7 });
   }
   const rings = state === 'ringing'
     ? [0, 1].map(i => {
@@ -245,11 +249,14 @@ export const caseFolderClosed: PropFn<{ caseNo?: string; stamp?: string; stampDr
 const field = (x: number, y: number, k: string, v: string, vBold = false) =>
   t(x, y, k.toUpperCase(), 13, { bold: true, fill: P.greyDark, spacing: 1 }) + t(x, y + 26, v, 20, { bold: vBold });
 
+// `photoCaption` - podpis polaroidu miejsca zdarzenia; domyślnie moduł 1 („biuro A.K.”), moduł 2: „biurko K.W.” (D-130).
 export const caseFolderOpen: PropFn<{
   caseNo?: string; title?: string; victim?: string; victimLabel?: string; victimRole?: string; loss?: string; when?: string; reporter?: string; stamp?: string;
+  photoCaption?: string;
 }> = ({
   caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew', victim = 'Anna Kowalska', victimRole = 'księgowa · Unfooly Sp. z o.o.',
   loss = '14 000,00 PLN', when = 'wtorek, 9:12', reporter = 'Marek Zieliński, dział IT', stamp = 'PRIORYTET', victimLabel = 'Poszkodowana',
+  photoCaption = 'biuro A.K.',
 }) => {
   const w = 1340, h = 780;
   const pw = 620, ph = 720;
@@ -275,7 +282,7 @@ export const caseFolderOpen: PropFn<{
       /* polaroid biura */
       `<g transform="rotate(-6 ${L + 150} ${top + 590})"><rect x="${L + 50}" y="${top + 490}" width="200" height="200" rx="4" fill="${P.white}" stroke="${P.grey}" stroke-width="2"/><rect x="${L + 64}" y="${top + 504}" width="172" height="140" fill="${P.wall}"/>` +
       `<rect x="${L + 80}" y="${top + 590}" width="140" height="10" fill="${P.desk}"/><rect x="${L + 120}" y="${top + 540}" width="60" height="44" rx="4" fill="${P.ink}"/><rect x="${L + 126}" y="${top + 546}" width="48" height="32" fill="${P.sky}"/><rect x="${L + 186}" y="${top + 548}" width="14" height="12" fill="${P.yellow}"/>` +
-      t(L + 150, top + 672, 'biuro A.K.', 15, { anchor: 'middle', fill: P.greyDark }) + `</g>` +
+      t(L + 150, top + 672, photoCaption, 15, { anchor: 'middle', fill: P.greyDark }) + `</g>` +
       /* spinacz */
       `<path d="M${L + 520} ${top - 18} v70 a14 14 0 0 0 28 0 v-60 a8 8 0 0 0 -16 0 v52" fill="none" stroke="${P.greyDark}" stroke-width="5" stroke-linecap="round"/>` +
       /* prawa kartka: zadania (tekst wstawia player w slot-zadania) */

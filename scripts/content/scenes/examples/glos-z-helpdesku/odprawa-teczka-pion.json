@@ -35,7 +35,9 @@
    "y": 1180,
    "scale": 0.7,
    "params": {
-    "state": "idle"
+    "state": "idle",
+    "time": "10:20",
+    "day": "czwartek"
    }
   },
   {

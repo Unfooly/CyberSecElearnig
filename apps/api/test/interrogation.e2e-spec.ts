@@ -93,8 +93,8 @@ describe('Przesłuchanie: podważenie kwestii dowodem (e2e)', () => {
     const body = (await start(tokenA).expect(200)).body;
     expect(JSON.stringify(body)).not.toContain(SECRET_MARKER);
     expect(JSON.stringify(body.contentBlocks)).not.toContain('contradiction');
-    // Licznik dowodów nie zdradza sprzeczności (liczy się dopiero po zebraniu): fragment i wiersz konsoli.
-    expect(body.progress.evidence.perBlock.find((b: { blockId: string }) => b.blockId === 'przesluchanie')).toMatchObject({ total: 2 });
+    // Stały mianownik (D-130): fragment, wiersz konsoli i sprzeczność w sumie od startu; KTÓRA kwestia kłamie - nadal sekret (wyżej).
+    expect(body.progress.evidence.perBlock.find((b: { blockId: string }) => b.blockId === 'przesluchanie')).toMatchObject({ collected: 0, total: 3 });
     await challenge(tokenA, 'kod-1', 'a1b2c3d4e5f6a1b2c3d4e5f6').expect(400);
     // Nieznany blok - 404; bieżący blok innego typu (nagranie) - 400.
     await call(`/courses/${courseId}/blocks/nie-ma/challenge`, tokenA, { lineId: 'kod-1', noteRef: 'a1b2c3d4e5f6a1b2c3d4e5f6' }).expect(404);

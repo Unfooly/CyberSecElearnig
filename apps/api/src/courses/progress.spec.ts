@@ -237,16 +237,17 @@ describe('client-view', () => {
         // scena: 2 - h1 (zewnętrzny) + h4-outlook (wewnątrz zagnieżdżonej sceny media.kind:'scene', B-086/D-071) - dowody
         // z zagnieżdżonej sceny LICZĄ SIĘ do bloku (spłaszczone id, ta sama funkcja co semantics.ts).
         // + akta: 1 - wiersz-dowód teczki (DOSSIER, D-083); + nagranie: 1 - dowód nagrania rozmowy (CALL_RECORDING, D-115);
-        // + przesluchanie: 2 - fragment i wiersz konsoli (INTERROGATION, D-118); sprzeczność liczy się dopiero po zebraniu;
-        // osint (OSINT_SPOT, D-120) - dowody ukryte do zebrania, bez wpisu przed zebraniem.
-        total: 8,
+        // + przesluchanie: 3 - fragment, wiersz konsoli i sprzeczność (INTERROGATION, D-118); + osint: 2 (OSINT_SPOT, D-120) -
+        // dowody ukryte do zebrania liczą się do sumy od startu (stały mianownik, D-130).
+        total: 11,
         perBlock: [
           { blockId: 'scena', collected: 0, total: 2 },
           { blockId: 'rozmowa', collected: 0, total: 1 },
           { blockId: 'mail', collected: 0, total: 1 },
           { blockId: 'akta', collected: 0, total: 1 },
           { blockId: 'nagranie', collected: 0, total: 1 },
-          { blockId: 'przesluchanie', collected: 0, total: 2 },
+          { blockId: 'przesluchanie', collected: 0, total: 3 },
+          { blockId: 'osint', collected: 0, total: 2 },
         ],
       });
     });
@@ -274,14 +275,15 @@ describe('client-view', () => {
       // więc liczy się do total, ale nie do collected.
       expect(summary).toEqual({
         collected: 3,
-        total: 8,
+        total: 11,
         perBlock: [
           { blockId: 'scena', collected: 1, total: 2 },
           { blockId: 'rozmowa', collected: 1, total: 1 },
           { blockId: 'mail', collected: 1, total: 1 },
           { blockId: 'akta', collected: 0, total: 1 },
           { blockId: 'nagranie', collected: 0, total: 1 },
-          { blockId: 'przesluchanie', collected: 0, total: 2 },
+          { blockId: 'przesluchanie', collected: 0, total: 3 },
+          { blockId: 'osint', collected: 0, total: 2 },
         ],
       });
     });

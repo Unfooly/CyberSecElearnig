@@ -1,6 +1,9 @@
 # Moduł 2 - „Głos z helpdesku” (vishing): specyfikacja, faza 0
 
-Status: **faza 0 - specyfikacja do akceptacji** (bez kodu i migracji). Decyzje są podjęte przez właściciela (2026-09-29); ten dokument
+Status: **faza 1g - treść modułu gotowa** (`packages/content/modules/glos-z-helpdesku`, D-125; pełne przejście: `scripts/e2e-module-02.mjs`).
+Poniżej specyfikacja z fazy 0; odstępstwa treści od niej opisuje D-125.
+
+Status fazy 0: **specyfikacja do akceptacji** (bez kodu i migracji). Decyzje są podjęte przez właściciela (2026-09-29); ten dokument
 je rozpisuje. Wzór konwencji: moduł 1 (`packages/content/modules/wyludzone-haslo`, `docs/content/MODULE-PLAYBOOK.md`, D-108, D-109).
 
 Spis treści:
@@ -64,7 +67,8 @@ Spis treści:
 | 9:07-9:40 | Reguła przekierowania poczty na zewnętrzny adres (9:09), eksport listy klientów z CRM (9:31) | konsola admina |
 | 9:41 | „Zrestartuj komputer po południu” - koniec rozmowy (39 min) | nagranie, rejestr połączeń |
 | 10:15 | Karol dzwoni do prawdziwego helpdesku (wewn. 214) - Paweł: „nie dzwoniłem” | rejestr połączeń, przesłuchanie Pawła |
-| 10:40 | Odprawa, start gracza | odprawa |
+| 10:20 | Odprawa - telefon komisarza do gracza | odprawa |
+| 10:40 | Start gracza w dziale sprzedaży drukarni | odprawa (krok `start`) |
 
 **Źródło wiedzy oszusta** (scena OSINT):
 
@@ -185,7 +189,8 @@ Konwencje jak w module 1:
     - (karol) „Kazał zrestartować komputer dopiero po południu i nikomu nie mówić, żeby nie robić zamieszania.”
 - **Dowody:**
   - **D08** `glos-identyczny` (kind `person`) - „Karol rozpoznał głos Pawła. Głos można podrobić - to nie dowód, kto dzwoni.”
-  - **D09** `wpisal-liczbe` (kind `person`) - „Karol przyznał: wpisał liczbę podaną przez dzwoniącego.”
+  - **D09** (kind `person`) - „Karol przyznał: wpisał liczbę podaną przez dzwoniącego.” Klucz notatki to id kwestii ze sprzecznością -
+    w treści neutralne `kod-odpowiedz` (id kwestii są publiczne, security review 1g - D-125), nie `wpisal-liczbe` ze szkicu.
   - **D10** `znal-kierownika` (kind `person`) - „Oszust znał dział i kierownika Karola - wiedzę z publicznych źródeł.”
 - **Ocena:** waga 1; podważenie sprzeczności właściwym dowodem = 1 pkt, zły dowód = 0 (jedna próba po wybraniu dowodu).
   `refutedBy` jest `secret`.
@@ -730,7 +735,8 @@ Uwagi do grafik:
 | `skrzynka-zewn.example` | domena zewnętrznej skrzynki (przekierowanie) | `.example` - zarezerwowana, bezpieczna |
 | Karol Wieczorek, Paweł Nowicki | postacie fikcyjne | bez odniesień do prawdziwych osób (wyszukiwarka) |
 
-Wpisy trafiają do rejestru w `docs/content/MODULE-PLAYBOOK.md` (rozdział 8) w fazie treści modułu.
+Wpisy trafiają do rejestru w `docs/content/MODULE-PLAYBOOK.md` (rozdział 8) w fazie treści modułu. **Faza 1g (D-125):** dopisane; domena
+`drukarnia-lipowa.pl` w treści nie występuje (strona „Zespół” bez adresu), doszedł kierownik sprzedaży Grzegorz Sowa (strona OSINT; mężczyzna - Karol mówi „o nim jak o koledze”).
 
 ## 9. Wpływ na silnik i dane (plan faz 1+)
 

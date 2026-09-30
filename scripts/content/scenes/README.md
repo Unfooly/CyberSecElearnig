@@ -116,6 +116,31 @@ dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/a
 źródło. Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny
 (`cli.ts build examples/<slug>/<scena>.json --out <assets>/scenes`) i opublikuj (`--assets`).
 
+### Klocki modułu 2 (`props-helpdesk.ts`, „Głos z helpdesku”, D-125)
+
+Zarejestrowane w `PROPS` (`...HELPDESK_PROPS`), dostarczone przez grafika (paczki 1 i 2). Zasada EN-ready: grafiki bez słów - napisy
+dokłada odtwarzacz (`textLayer`, sloty `slot-*`); w grafice tylko cyfry i numery zamaskowane (12 3XX XX 41, 214). Źródła scen:
+`examples/glos-z-helpdesku/*.json` (sceny, zbliżenia, warianty `-pion`; legitymacja i pieczęć jak w module 1), trofea:
+`examples/achievements/osiagniecie-{cisza-na-linii,czysty-odsluch,pelny-zapis,off-the-record}*.json`. Współrzędne hotspotów i slotów
+warstwy tekstu w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); wyjątki - napisy bez slotu od grafika (strona „Zespół”,
+podpisy ikon pulpitu, hasło plakatu) mają współrzędne wpisane ręcznie w granicach swojego obszaru (D-125).
+
+| prop | do czego |
+|---|---|
+| `phoneFaceUp`, `phoneHomeTiles`, `phoneLying`, `stickyLying`, `noCodePoster`, `monitorRemote` | biurko Karola (scena, telefon, karteczka, plakat, monitor) |
+| `mfaListZoom`, `callLogZoom` | zbliżenia: seria powiadomień MFA, rejestr połączeń |
+| `desktopRemoteIcon`, `remoteToolWindow` | pulpit z narzędziem zdalnej pomocy |
+| `recorderTop`, `headphonesTop`, `transcriptPagesTop`, `highlighterTop` | sala odsłuchu (tło nagrania i omówienia) |
+| `adminConsoleWindow` | konsola administratora |
+| `callCompareTop`, `intranetSheet` | porównanie w rejestrze połączeń |
+| `teamWebsite`, `webinarFrame` | strona „Zespół” (OSINT) i kadr webinaru |
+| `incomingCallScreen` | ekran połączenia przychodzącego (rozmowa na żywo) |
+| `avatarBust` | awatary postaci przesłuchań |
+| `trophyHelpdesk` | trofea osiągnięć modułu 2: `kind` `dead-air`, `perfect-pitch`, `full-transcript`, `off-the-record`, `earned` (zablokowane bez nazw) |
+
+`caseFolderOpen` przyjmuje `victimLabel` (domyślnie „Poszkodowana”), a `reportFolderOpen` - listę `bags` (domyślnie torebki modułu 1);
+domyślne wartości zostawiają sceny modułu 1 bajt w bajt bez zmian (test `odprawa.test.ts`).
+
 ### Przezroczyste tło grafik otwieranych kliknięciem (D-101)
 
 `"background": { "flat": true, "wall": "none" }` - scena bez prostokąta tła (tylko z `flat`). Narzędzia (z `scripts/content`):

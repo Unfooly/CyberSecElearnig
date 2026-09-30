@@ -133,8 +133,7 @@ try {
     (await page.getByTestId('player-content-area').getByRole('button', { name: IN_BLOCK_NEXT }).count()) === 0 &&
     (await page.getByTestId('player-content-area').getByRole('link', { name: IN_BLOCK_NEXT }).count()) === 0;
   const counter = async () => (await page.getByTestId('evidence-counter').textContent()) ?? '';
-  // Suma w liczniku rośnie: sprzeczność przesłuchania i notatki OSINT są dowodami ukrytymi (D-118, D-120) - liczą się dopiero po zebraniu,
-  // więc od startu jest 16, po obaleniu sprzeczności 17, po ocenie OSINT 20.
+  // Stały mianownik (D-130): suma to wszystkie dowody modułu (także ukryte do zebrania - sprzeczność przesłuchania, notatki OSINT) od startu.
   const counterIs = async (n, total = EVIDENCE_TOTAL) => {
     const wanted = `Dowody ${n}/${total}`;
     await page
@@ -205,8 +204,8 @@ try {
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
-  await counterIs(2, 16);
-  step('Telefon (scena zagnieżdżona): seria MFA i rejestr połączeń w notatniku (2/16 - ukryte dowody poza sumą)', true, await counter());
+  await counterIs(2);
+  step(`Telefon (scena zagnieżdżona): seria MFA i rejestr połączeń w notatniku (2/${EVIDENCE_TOTAL} - stały mianownik, D-130)`, true, await counter());
   await page.getByRole('button', { name: 'Komputer' }).click();
   await dialog().getByRole('button', { name: 'Narzędzie zdalnej pomocy' }).click();
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
@@ -214,8 +213,8 @@ try {
   await dialog().getByRole('button', { name: 'Odłóż' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
-  await counterIs(3, 16);
-  step('Pulpit (scena zagnieżdżona): narzędzie zdalnej pomocy w notatniku (3/16), przeglądarka bez dowodu', true, await counter());
+  await counterIs(3);
+  step(`Pulpit (scena zagnieżdżona): narzędzie zdalnej pomocy w notatniku (3/${EVIDENCE_TOTAL}), przeglądarka bez dowodu`, true, await counter());
   await page.getByRole('button', { name: 'Karteczka' }).click();
   await take();
   await page.getByRole('button', { name: 'Plakat' }).click();
@@ -223,8 +222,8 @@ try {
   await take();
   await page.getByRole('button', { name: 'Kubek' }).click();
   await putDown();
-  await counterIs(5, 16);
-  step('SCENE_HOTSPOTS (biurko): karteczka i plakat w notatniku (5/16), kubek bez dowodu', true, await counter());
+  await counterIs(5);
+  step(`SCENE_HOTSPOTS (biurko): karteczka i plakat w notatniku (5/${EVIDENCE_TOTAL}), kubek bez dowodu`, true, await counter());
   step('SCENE_HOTSPOTS (biurko): wymagane zebrane - „Dalej” w pasku aktywny (drzwi też prowadzą dalej, D-129)', (await nextEnabled().count()) === 1);
   // Stan częściowy sceny (D-128): wyjście z modułu w połowie sceny i powrót - obejrzane i zabrane przedmioty, licznik i notatnik wracają.
   await page.waitForLoadState('networkidle');
@@ -232,9 +231,9 @@ try {
   await page.getByRole('img', { name: MODULE_TITLE, exact: true }).first().waitFor();
   await page.goto(`${WEB}/courses/${courseId}`);
   await page.getByRole('button', { name: 'Karteczka (w notatniku)' }).waitFor();
-  await counterIs(5, 16);
+  await counterIs(5);
   step(
-    'SCENE_HOTSPOTS (biurko): po wyjściu i powrocie scena w tym samym stanie (zabrane, obejrzane, licznik 5/16, notatnik 5)',
+    `SCENE_HOTSPOTS (biurko): po wyjściu i powrocie scena w tym samym stanie (zabrane, obejrzane, licznik 5/${EVIDENCE_TOTAL}, notatnik 5)`,
     (await page.getByRole('button', { name: 'Plakat (w notatniku)' }).count()) === 1 &&
       (await page.getByRole('button', { name: 'Kubek (obejrzane)' }).count()) === 1 &&
       (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1 &&
@@ -256,8 +255,8 @@ try {
   const recordingBody = await (await recordingSaved).json();
   step('CALL_RECORDING: 7/7 flag bez fałszywych -> 100%', recordingBody.lastResult?.points === 1 && recordingBody.lastResult?.detail?.falseTaps === 0, JSON.stringify(recordingBody.lastResult?.detail));
   await page.getByTestId('call-recording-result').waitFor();
-  await counterIs(7, 16);
-  step('CALL_RECORDING: dowody z nagrania (liczba 47, prośba o instalację) w notatniku (7/16)', true, await counter());
+  await counterIs(7);
+  step(`CALL_RECORDING: dowody z nagrania (liczba 47, prośba o instalację) w notatniku (7/${EVIDENCE_TOTAL})`, true, await counter());
   step('CALL_RECORDING: wynik bez własnego „Dalej”', await noInBlockNext());
   await advanceUntil(page.getByTestId('interrogation-block'), 'przesłuchanie Karola');
 
@@ -292,8 +291,8 @@ try {
   await ask('Co o tobie wiedział?', 'Znał moje imię, dział, nazwisko kierownika.');
   await note('Znał moje imię, dział, nazwisko kierownika.');
   await ask('Jak zakończyła się rozmowa?', 'Kazał zrestartować komputer');
-  await counterIs(10, 17);
-  step('INTERROGATION (Karol): 2 fragmenty + przyznanie w notatniku (10/17 - obalona sprzeczność dolicza się do sumy)', true, await counter());
+  await counterIs(10);
+  step(`INTERROGATION (Karol): 2 fragmenty + przyznanie w notatniku (10/${EVIDENCE_TOTAL} - suma bez zmian)`, true, await counter());
   await nextEnabled().waitFor();
   step('INTERROGATION (Karol): wymagane pytania zadane, „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   const karolSaved = progressResponse();
@@ -323,8 +322,8 @@ try {
   }
   await consolePanel.getByText('Konsola przejrzana.').waitFor();
   await consolePanel.getByRole('button', { name: 'Zamknij konsolę' }).click();
-  await counterIs(16, 17);
-  step('INTERROGATION (Paweł): 2 fragmenty + 4 ślady z konsoli w notatniku (16/17)', true, await counter());
+  await counterIs(16);
+  step(`INTERROGATION (Paweł): 2 fragmenty + 4 ślady z konsoli w notatniku (16/${EVIDENCE_TOTAL})`, true, await counter());
   await nextEnabled().waitFor();
   step('INTERROGATION (Paweł): „Dalej” aktywny po konsoli, w bloku brak przycisku dalej', await noInBlockNext());
   await advanceUntil(page.getByRole('button', { name: 'Połączenie 9:02 - „IT Helpdesk”' }), 'porównanie w rejestrze');
@@ -340,8 +339,8 @@ try {
   await putDown();
   await page.getByRole('button', { name: 'Karta intranetu' }).click();
   await putDown();
-  await counterIs(17, 17);
-  step('SCENE_HOTSPOTS (rejestr): numer zewnętrzny w notatniku (17/17)', true, await counter());
+  await counterIs(17);
+  step(`SCENE_HOTSPOTS (rejestr): numer zewnętrzny w notatniku (17/${EVIDENCE_TOTAL})`, true, await counter());
   await nextEnabled().waitFor();
   await advanceUntil(page.getByTestId('osint-frame'), 'OSINT');
 

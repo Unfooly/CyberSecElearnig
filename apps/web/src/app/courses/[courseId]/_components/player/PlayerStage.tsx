@@ -270,10 +270,24 @@ function PlayerStageInner({
     if (overlap > 0) content.scrollBy({ top: overlap + 8 });
   }
 
+  // Zdarzenie scroll nie bąbelkuje - handler na <main> widzi wyłącznie przewinięcie samej ramki (nie obszaru treści ani list w blokach).
+  function resetFrameScroll(event: React.UIEvent<HTMLElement>) {
+    const frame = event.currentTarget;
+    if (frame.scrollLeft !== 0) frame.scrollLeft = 0;
+    if (frame.scrollTop !== 0) frame.scrollTop = 0;
+  }
+
   return (
     <div className="player-outer flex h-full w-full items-center justify-center p-4">
       {/* .mobile-readable (globals.css, D-103): na telefonie cały tekst modułu min. 15 px - treść bloku, notatnik, paski; desktop bez zmian. */}
-      <main ref={frameRef} aria-labelledby={titleId} className="player-frame mobile-readable relative isolate flex w-full flex-col overflow-hidden rounded-card bg-white shadow-card">
+      {/* Ramka nigdy się nie przewija (overflow: clip w globals.css .player-frame). onScroll to rezerwa dla przeglądarek bez `clip`:
+          przewinięcie ramki (np. fokus albo scrollIntoView przy schowanym notatniku, który wystaje w prawo) cofamy od razu. */}
+      <main
+        ref={frameRef}
+        aria-labelledby={titleId}
+        onScroll={resetFrameScroll}
+        className="player-frame mobile-readable relative isolate flex w-full flex-col rounded-card bg-white shadow-card"
+      >
         {/* Reszta ramki (wszystko poza NotesDrawer, wyżej) jest inert, dopóki notatnik jest otwarty - patrz efekt
             na restRef. h-full: NotesDrawer jest position:absolute (poza przepływem), więc to jedyne "prawdziwe"
             dziecko flex kolumny ramki i musi samo wypełnić jej wysokość. */}

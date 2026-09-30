@@ -70,6 +70,12 @@
   width: min(calc(100vw - 32px), calc((100dvh - 32px) * 16 / 9), 1280px);
   aspect-ratio: 16 / 9;
   max-height: calc(100dvh - 32px);
+  /* Ramka NIE jest kontenerem przewijania: `clip` (w odróżnieniu od `hidden`) nie da się przewinąć także programowo. Schowany notatnik
+     (translate-x-full) wystaje poza ramkę w prawo - przy `hidden` dowolny fokus albo scrollIntoView wewnątrz ramki mógł ją przewinąć w
+     bok i cała treść (X, początek bloku) zostawała ucięta z lewej. `hidden` zostaje dla przeglądarek bez `clip`; tam przewinięcie
+     cofa PlayerStage (onScroll). */
+  overflow: hidden;
+  overflow: clip;
 }
 
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {

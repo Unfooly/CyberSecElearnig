@@ -42,7 +42,8 @@ export default function NotesDrawer({
     if (open) {
       wasOpenRef.current = true;
       // preventScroll: panel w chwili fokusu jest jeszcze poza ramką (translate-x-full, przejście dopiero rusza) -
-      // zwykły focus() przewinąłby main.player-frame (overflow hidden) o szerokość panelu i ramka zostałaby przesunięta.
+      // zwykły focus() mógłby przewinąć ramkę o szerokość panelu. Druga linia obrony (D-128): main.player-frame ma overflow: clip
+      // (nieprzewijalna także programowo) i zeruje przewinięcie w onScroll.
       closeButtonRef.current?.focus({ preventScroll: true });
     } else if (wasOpenRef.current) {
       wasOpenRef.current = false;

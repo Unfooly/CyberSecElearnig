@@ -12,6 +12,7 @@ import type {
   CourseProgressResponse,
   EvidenceSummary,
   LastResult,
+  SceneExploration,
 } from '@/lib/courses-types';
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import { initialsFromEmail } from '@/lib/avatar';
@@ -73,6 +74,8 @@ interface RenderContext {
   onEvidence: (summary: EvidenceSummary) => void;
   /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
   noTimeLimits: boolean;
+  /** Scena (D-128): zapis stanu częściowego (obejrzane, zabrane) - po powrocie do modułu scena wraca w tym samym stanie. */
+  onExplore: (blockId: string, state: SceneExploration) => void;
 }
 
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
@@ -94,6 +97,8 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         onBriefingStep={ctx.onBriefingStep}
         briefingSkip={ctx.briefingSkip}
         moduleBlocks={ctx.blocks}
+        exploration={ctx.progress?.exploration}
+        onExplore={block.id ? (state) => ctx.onExplore(block.id ?? '', state) : undefined}
       />
     );
   }
@@ -147,6 +152,8 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
 }
 
 const NOTES_ID = 'notes-panel';
+// Ile najwyżej „Dalej” czeka na trwający zapis stanu częściowego sceny (D-128), zanim wyśle zapis bloku.
+const EXPLORE_WAIT_MS = 4000;
 
 // Woła hooki, które MUSZĄ być dziećmi NotesProvider/HintProvider (useNotes, useHints) - liczbę notatek i bieżącą podpowiedź
 // PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
@@ -202,7 +209,10 @@ export default function CoursePlayer({
   noTimeLimits = false,
   contentBase = LOCAL_CONTENT_BASE,
   userEmail = null,
+  persistExploration = true,
 }: {
+  // Zapis stanu częściowego sceny (D-128); strona deweloperska (player-harness) nie ma backendu, więc go wyłącza.
+  persistExploration?: boolean;
   courseId: string;
   initial: CoursePlayerInitialState;
   // true tylko, gdy user wrócił do JUŻ ukończonego kursu, a pobranie
@@ -339,12 +349,53 @@ export default function CoursePlayer({
     preference.enabled && blockNarrations(blocks[index]).some((narration) => contentAssetUrl(contentBase, narration?.audioUrl, 'audio') !== null);
   const keyOf = (index: number) => blockIdOf(blocks, index);
 
+  // Stan częściowy sceny (D-128): zapis w tle, po kolei (jedno żądanie naraz, w kolejce tylko NAJNOWSZY stan - każde żądanie niesie
+  // pełny stan, a serwer i tak scala go z zapisanym). Błędy pomijamy: to tylko wygoda powrotu, pełny stan niesie i tak zapis bloku
+  // (/progress). Licznika dowodów nie ruszamy (dowody niezapisanego bloku dolicza EvidenceProvider). `keepalive`: żądanie dochodzi
+  // także wtedy, gdy gracz zaraz po kliknięciu opuszcza stronę.
+  const exploreQueue = useRef<{ inFlight: Promise<void> | null; next: { blockId: string; state: SceneExploration } | null }>({ inFlight: null, next: null });
+  function saveExploration(blockId: string, exploration: SceneExploration) {
+    if (!persistExploration || (exploration.visited.length === 0 && exploration.noted.length === 0)) return;
+    const queue = exploreQueue.current;
+    queue.next = { blockId, state: exploration };
+    if (queue.inFlight) return;
+    queue.inFlight = (async () => {
+      while (queue.next) {
+        const { blockId: id, state: body } = queue.next;
+        queue.next = null;
+        try {
+          await fetch(`/api/courses/${courseId}/blocks/${id}/explore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            keepalive: true,
+          });
+        } catch {
+          // Brak sieci: stan doniesie kolejny zapis częściowy albo zapis bloku.
+        }
+      }
+      queue.inFlight = null;
+    })();
+  }
+
   async function handleAnswer(answer?: unknown) {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
+    // Zapis bloku niesie pełny stan sceny: oczekujący zapis częściowy jest zbędny (wraca do kolejki tylko, gdy zapis bloku się nie
+    // powiedzie), a trwający ma dojść PRZED zapisem bloku (po nim blok nie jest już bieżący i serwer odrzuciłby go kodem 400) - czekamy
+    // na niego najwyżej EXPLORE_WAIT_MS, żeby wiszące żądanie w tle nie blokowało „Dalej”.
+    const droppedExploration = exploreQueue.current.next;
+    exploreQueue.current.next = null;
+    let blockSaved = false;
     try {
+      const pendingExploration = exploreQueue.current.inFlight;
+      if (pendingExploration) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([pendingExploration, new Promise<void>((resolve) => (timer = setTimeout(resolve, EXPLORE_WAIT_MS)))]);
+        clearTimeout(timer);
+      }
       const response = await fetch(`/api/courses/${courseId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -368,6 +419,7 @@ export default function CoursePlayer({
       }
 
       const progress = data as CourseProgressResponse;
+      blockSaved = true;
       // Po zapisie wracamy do bieżącego bloku z serwera: ewentualny podgląd ("Wstecz") z czasu oczekiwania nie może przetrwać.
       setViewIndex(null);
       // WPROST tutaj, nie w osobnym useEffect na state.currentBlockIndex (patrz komentarz przy readySubmit wyżej) -
@@ -433,6 +485,8 @@ export default function CoursePlayer({
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+      // Zapis bloku się nie powiódł: zdjęty z kolejki stan częściowy wraca do zapisu (chyba że scena zgłosiła w międzyczasie nowszy).
+      if (!blockSaved && droppedExploration && !exploreQueue.current.next) saveExploration(droppedExploration.blockId, droppedExploration.state);
     }
   }
 
@@ -623,6 +677,7 @@ export default function CoursePlayer({
               noTimeLimits,
               blocks,
               onEvidence: setEvidence,
+              onExplore: saveExploration,
             })}
           </div>
         )}

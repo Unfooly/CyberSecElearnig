@@ -1,0 +1,25 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "okno",
+   "prop": "adminConsoleWindow",
+   "x": 24,
+   "y": 24,
+   "params": {
+    "w": 840,
+    "h": 1540
+   },
+   "partHotspots": {
+    "slot-tytul": "slot-tytul",
+    "slot-dokument": "slot-dokument"
+   },
+   "pad": 0
+  }
+ ]
+}

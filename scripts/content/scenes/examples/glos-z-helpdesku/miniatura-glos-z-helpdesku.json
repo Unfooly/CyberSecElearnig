@@ -1,0 +1,118 @@
+{
+ "width": 1600,
+ "height": 900,
+ "background": {
+  "flat": true,
+  "wall": "#C9AE8C"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1600,
+    "h": 900
+   }
+  },
+  {
+   "id": "sluchawki",
+   "prop": "headphonesTop",
+   "x": 90,
+   "y": 80,
+   "scale": 1.3
+  },
+  {
+   "id": "teczka",
+   "prop": "caseFolderClosed",
+   "x": 110,
+   "y": 460,
+   "scale": 0.85,
+   "params": {
+    "caseNo": "GZH/2026/1004"
+   }
+  },
+  {
+   "id": "rejestrator",
+   "prop": "recorderTop",
+   "x": 980,
+   "y": 560,
+   "scale": 1.1
+  },
+  {
+   "id": "karteczka",
+   "prop": "stickyNote",
+   "x": 700,
+   "y": 140,
+   "scale": 2.3,
+   "params": {
+    "lines": [
+     "ID:",
+     "7XX XXX 219",
+     "Paweł IT"
+    ]
+   }
+  },
+  {
+   "id": "telefon",
+   "prop": "phoneTop",
+   "x": 1250,
+   "y": 90,
+   "scale": 0.95,
+   "params": {
+    "state": "ringing",
+    "animated": false,
+    "caller": "IT Helpdesk",
+    "role": "12 3XX XX 41",
+    "initials": "IT"
+   }
+  },
+  {
+   "id": "nic",
+   "prop": "redString",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "points": [
+     [
+      260,
+      250
+     ],
+     [
+      760,
+      160
+     ],
+     [
+      1300,
+      170
+     ],
+     [
+      1090,
+      640
+     ]
+    ]
+   }
+  },
+  {
+   "id": "swiatlo",
+   "prop": "lampGlow",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "cx": 820,
+    "cy": 400,
+    "r": 760
+   }
+  },
+  {
+   "id": "winieta",
+   "prop": "vignette",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "strength": 0.68
+   }
+  }
+ ]
+}

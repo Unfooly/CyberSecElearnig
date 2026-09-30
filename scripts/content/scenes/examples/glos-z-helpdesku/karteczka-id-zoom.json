@@ -1,0 +1,24 @@
+{
+ "width": 732,
+ "height": 704,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "karteczka",
+   "prop": "stickyNote",
+   "x": 36,
+   "y": 92,
+   "scale": 7,
+   "params": {
+    "lines": [
+     "ID:",
+     "7XX XXX 219",
+     "Paweł IT"
+    ]
+   }
+  }
+ ]
+}

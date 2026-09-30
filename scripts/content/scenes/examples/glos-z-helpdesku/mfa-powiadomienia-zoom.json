@@ -1,0 +1,26 @@
+{
+ "width": 860,
+ "height": 1560,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "ekran",
+   "prop": "mfaListZoom",
+   "x": 30,
+   "y": 30,
+   "pad": 0,
+   "partHotspots": {
+    "slot-tytul": "slot-tytul",
+    "slot-wiersz-1": "slot-wiersz-1",
+    "slot-wiersz-2": "slot-wiersz-2",
+    "slot-wiersz-3": "slot-wiersz-3",
+    "slot-wiersz-4": "slot-wiersz-4",
+    "slot-wiersz-5": "slot-wiersz-5",
+    "slot-wiersz-6": "slot-wiersz-6"
+   }
+  }
+ ]
+}

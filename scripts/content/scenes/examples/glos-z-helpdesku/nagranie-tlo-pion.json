@@ -1,0 +1,59 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "sluchawki",
+   "prop": "headphonesTop",
+   "x": 240,
+   "y": 160,
+   "scale": 1.4
+  },
+  {
+   "id": "rejestrator",
+   "prop": "recorderTop",
+   "x": 180,
+   "y": 620,
+   "scale": 1.5
+  },
+  {
+   "id": "notes",
+   "prop": "notepadTop",
+   "x": 90,
+   "y": 1030,
+   "params": {
+    "lines": [
+     "9:02 — 9:41",
+     "„Paweł z IT”?",
+     "flagi!"
+    ]
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 620,
+   "y": 1180
+  },
+  {
+   "id": "dlugopis",
+   "prop": "penTop",
+   "x": 520,
+   "y": 1450
+  }
+ ]
+}

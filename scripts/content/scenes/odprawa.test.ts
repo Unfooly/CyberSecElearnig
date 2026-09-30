@@ -3,7 +3,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { composeScene } from './compose.js';
-import { KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
 
@@ -101,20 +102,32 @@ describe('sceny modułu 1 z kompozytora', () => {
     for (const name of Object.keys(KEYART_PROPS)) expect(PROPS[name], name).toBe(KEYART_PROPS[name as keyof typeof KEYART_PROPS]);
   });
 
-  it('trophyBadge moduł 2 (D-124): Rare na medalach Dead Air i Perfect Pitch, Legendary na Full Transcript, Secret na Off the Record; zablokowane bez nazw', () => {
-    const svg = (kind: 'deadair' | 'pitch' | 'transcript' | 'offrecord', locked: boolean) => PROPS.trophyBadge({ kind, locked }).svg as string;
-    expect(svg('deadair', false)).toContain('DEAD AIR');
-    expect(svg('deadair', false)).toContain('RARE');
-    expect(svg('pitch', false)).toContain('PERFECT PITCH');
-    expect(svg('pitch', false)).toContain('RARE');
-    expect(svg('transcript', false)).toContain('FULL TRANSCRIPT');
-    expect(svg('transcript', false)).toContain('LEGENDARY');
-    expect(svg('offrecord', false)).toContain('OFF THE RECORD');
-    expect(svg('offrecord', false)).toContain('SECRET');
-    for (const [kind, name] of [['deadair', 'DEAD AIR'], ['pitch', 'PERFECT PITCH'], ['transcript', 'FULL TRANSCRIPT'], ['offrecord', 'OFF THE RECORD']] as const) {
-      expect(svg(kind, true)).not.toContain(name);
+  it('trofea modułu 2 (grafik, trophyHelpdesk, D-124): zdobyte z nazwą, zablokowane bez nazwy; klocki HELPDESK_PROPS zarejestrowane', () => {
+    for (const name of Object.keys(HELPDESK_PROPS)) expect(PROPS[name], name).toBe(HELPDESK_PROPS[name as keyof typeof HELPDESK_PROPS]);
+    const svg = (kind: 'dead-air' | 'perfect-pitch' | 'full-transcript' | 'off-the-record', locked: boolean) =>
+      PROPS.trophyHelpdesk({ kind, locked }).svg as string;
+    for (const [kind, name, rank] of [
+      ['dead-air', 'DEAD AIR', 'RARE'],
+      ['perfect-pitch', 'PERFECT PITCH', 'RARE'],
+      ['full-transcript', 'FULL TRANSCRIPT', 'LEGENDARY'],
+      ['off-the-record', 'OFF THE RECORD', 'SECRET'],
+    ] as const) {
+      expect(svg(kind, false), kind).toContain(name);
+      expect(svg(kind, false), kind).toContain(rank);
+      expect(svg(kind, true), kind).not.toContain(name);
     }
-    expect(svg('offrecord', true)).toContain('???');
+    // Tajne zablokowane: „???” i SECRET zamiast nazwy; zwykłe zablokowane: LOCKED.
+    expect(svg('off-the-record', true)).toContain('???');
+    expect(svg('off-the-record', true)).toContain('SECRET');
+    expect(svg('dead-air', true)).toContain('LOCKED');
+  });
+
+  it('PROPS: żadna grupa klocków nie nadpisuje innego klocka (nazwy unikalne)', () => {
+    const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS];
+    const groupNames = groups.flatMap((group) => Object.keys(group));
+    expect(new Set(groupNames).size).toBe(groupNames.length);
+    // 24 klocki podstawowe zdefiniowane w props.ts (window…paper): razem z grupami każda nazwa dokładnie raz.
+    expect(Object.keys(PROPS).length).toBe(24 + groupNames.length);
   });
 
   it('trophyBadge: wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {

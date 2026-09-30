@@ -1,5 +1,6 @@
 import { P } from './palette.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
+import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { PROP_REGISTRY } from './prop-registry.js';
 import type { PropFn, PropOutput } from './types.js';
 
@@ -422,5 +423,8 @@ export const PROPS: Record<string, PropFn<any>> = {
   // Trofea osiągnięć (512×512, wersja zdobyta i zablokowana) i key art miniatury: światło lampy, winieta, czerwona nić.
   ...TROFEA_PROPS,
   ...KEYART_PROPS,
+  // Moduł 2 „Głos z helpdesku” (grafik, paczka 1): biurko i telefon Karola, ekran połączenia, awatary, trofea modułu 2 - bez słów
+  // (tekst w textLayer / slotach `slot-*`).
+  ...HELPDESK_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

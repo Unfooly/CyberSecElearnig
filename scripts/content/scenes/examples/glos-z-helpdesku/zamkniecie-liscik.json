@@ -1,0 +1,25 @@
+{
+ "width": 270,
+ "height": 250,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "liscik",
+   "prop": "commissionerNote",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "lines": [
+     "Weryfikuj",
+     "numer,",
+     "nie głos.",
+     ""
+    ],
+    "sign": "— A.W."
+   }
+  }
+ ]
+}

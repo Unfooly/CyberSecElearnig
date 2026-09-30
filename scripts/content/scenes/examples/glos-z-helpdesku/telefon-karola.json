@@ -1,0 +1,2 @@
+{ "width": 700, "height": 1260, "background": { "flat": true, "wall": "none" },
+  "items": [ { "id": "ekran", "prop": "phoneHomeTiles", "x": 40, "y": 30, "partHotspots": { "powiadomienia": "powiadomienia", "rejestr": "rejestr", "slot-powiadomienia-tytul": "slot-powiadomienia-tytul", "slot-rejestr-tytul": "slot-rejestr-tytul" }, "pad": 0 } ] }

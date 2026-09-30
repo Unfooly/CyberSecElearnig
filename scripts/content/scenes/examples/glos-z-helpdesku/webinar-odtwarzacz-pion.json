@@ -1,0 +1,23 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "kadr",
+   "prop": "webinarFrame",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "portrait": true
+   },
+   "partHotspots": {
+    "slot-tytul-slajdu": "slot-tytul-slajdu"
+   },
+   "pad": 0
+  }
+ ]
+}

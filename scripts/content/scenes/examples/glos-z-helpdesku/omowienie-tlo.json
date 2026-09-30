@@ -1,0 +1,52 @@
+{
+ "width": 1600,
+ "height": 900,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1600,
+    "h": 900
+   }
+  },
+  {
+   "id": "kartka",
+   "prop": "transcriptPagesTop",
+   "x": 520,
+   "y": 110,
+   "scale": 1.1
+  },
+  {
+   "id": "zakreslacz",
+   "prop": "highlighterTop",
+   "x": 1150,
+   "y": 520,
+   "scale": 1.3
+  },
+  {
+   "id": "lupa",
+   "prop": "magnifier",
+   "x": 120,
+   "y": 480
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 180,
+   "y": 120
+  },
+  {
+   "id": "sluchawki",
+   "prop": "headphonesTop",
+   "x": 1180,
+   "y": 120
+  }
+ ]
+}

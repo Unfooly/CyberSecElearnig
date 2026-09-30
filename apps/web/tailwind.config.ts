@@ -19,8 +19,10 @@ const config: Config = {
         // Zakreślacz (kolor funkcyjny, D-083): wyłącznie zakreślony wiersz-dowód w teczce sprawy - nie tło ani akcent UI.
         highlight: '#FFE066',
         // Rangi osiągnięć (D-111): tło rewersu karty, ciemne odcienie wstęg z grafik trofeów (biały tekst, kontrast >= 7:1).
-        // rare (D-124): morski odcień wstęgi trofeów modułu 2 (kontrast z białym ~8.9:1).
-        rank: { secret: '#7A2150', legendary: '#7A5A14', milestone: '#261D7A', rare: '#0E5257' },
+        // rare (D-126, decyzja właściciela): rodzina szafiru trofeów modułu 2 od grafika (#1F7FB8) - tło rewersu to jej ciemny odcień
+        // (kontrast z białym ~8.9:1); `rare-accent` to kolor trofeum, wyłącznie dla elementów NIETEKSTOWYCH (biały tekst na nim ma
+        // 4.39:1, poniżej 4.5:1). Test: src/lib/rank-colors.test.ts.
+        rank: { secret: '#7A2150', legendary: '#7A5A14', milestone: '#261D7A', rare: '#0E4E75', 'rare-accent': '#1F7FB8' },
       },
       fontFamily: {
         sans: ['var(--font-jakarta)', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],

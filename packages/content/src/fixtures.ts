@@ -655,8 +655,13 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { id: 'dobre', outcome: 'good', narration: { ...audio('na-zywo-dobre'), voice: 'narrator' } },
         { id: 'czesciowe', outcome: 'partial', narration: audio('na-zywo-czesciowe') },
         { id: 'zle', outcome: 'bad', narration: audio('na-zywo-zle') },
+        // D-129: osobne dobre zakończenia odrzucenia połączenia i rozłączenia się (nie są celem zwykłych odpowiedzi).
+        { id: 'odrzucone', outcome: 'good', narration: audio('na-zywo-odrzucone') },
+        { id: 'rozlaczenie', outcome: 'good', narration: audio('na-zywo-rozlaczenie') },
       ],
       infoChoices: ['wpisuje', 'instaluje'],
+      reject: '#odrzucone',
+      hangUp: '#rozlaczenie',
       reactions: scoredReactions([
         { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-na-zywo-cheer` },
         { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-na-zywo-warning` },

@@ -1,4 +1,4 @@
-import { LIVE_CALL_SILENCE, ServerBlock } from './blocks';
+import { LIVE_CALL_HANG_UP, LIVE_CALL_REJECT, LIVE_CALL_SILENCE, ServerBlock } from './blocks';
 import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, requiredItemIds } from './common';
 import { collectPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
@@ -27,8 +27,19 @@ export interface LiveCallLike {
   nodes: { id: string; choices: { id: string; next: string }[]; silence?: string; narration?: { voice?: string } }[];
   endings: { id: string; outcome?: string }[];
   infoChoices?: string[];
+  /** Zakończenie po odrzuceniu połączenia na ekranie przychodzącym (`#id`, D-129). */
+  reject?: string;
+  /** Zakończenie po rozłączeniu się w trakcie rozmowy - dostępne w każdym węźle (`#id`, D-129). */
+  hangUp?: string;
 }
 type LiveCallNodeLike = LiveCallLike['nodes'][number];
+
+/** Zakończenie wskazane polem `reject` / `hangUp` (`#id` istniejącego zakończenia) albo null. */
+function liveCallExit(block: LiveCallLike, target: string | undefined): string | null {
+  if (typeof target !== 'string' || !target.startsWith('#')) return null;
+  const ending = target.slice(1);
+  return block.endings.some((candidate) => candidate?.id === ending) ? ending : null;
+}
 
 /** Cel krawędzi: zakończenie (`#id`) albo węzeł (id). */
 export function liveCallTarget(next: string): { ending: string } | { node: string } {
@@ -45,19 +56,29 @@ export function liveCallEdges(node: LiveCallNodeLike, { allowSilence }: { allowS
  * Przejście drzewa rozmowy po ścieżce odpowiedzi gracza (`choiceId` albo `silence`) od `start`. Zwraca zakończenie i przebyte odpowiedzi
  * albo null, gdy ścieżka nie zgadza się z grafem (nieznana odpowiedź w węźle, `silence` bez krawędzi albo niedozwolone, ścieżka kończy się
  * przed zakończeniem albo idzie dalej po nim) albo treść jest uszkodzona (obronnie - zapisana treść jest zwalidowana przy imporcie).
+ * D-129: `reject` - jedyny krok ścieżki (połączenie odrzucone przed rozmową, gdy blok ma `reject`); `hangup` - ostatni krok w dowolnym
+ * węźle (gdy blok ma `hangUp`), `hungUp: true` w wyniku (ocena zależy wtedy od tego, czy wcześniej oddano informację).
  */
 export function replayLiveCall(
   block: LiveCallLike,
   path: readonly string[],
   { allowSilence }: { allowSilence: boolean },
-): { ending: string; choices: string[] } | null {
+): { ending: string; choices: string[]; hungUp?: boolean } | null {
   if (!Array.isArray(block.nodes) || !Array.isArray(block.endings) || !Array.isArray(path)) return null;
+  if (path.length === 1 && path[0] === LIVE_CALL_REJECT) {
+    const ending = liveCallExit(block, block.reject);
+    return ending === null ? null : { ending, choices: [] };
+  }
   let nodeId = block.start;
   const choices: string[] = [];
   for (let i = 0; i < path.length; i++) {
     const node = block.nodes.find((candidate) => candidate?.id === nodeId);
     if (!node) return null;
     const step = path[i];
+    if (step === LIVE_CALL_HANG_UP) {
+      const ending = liveCallExit(block, block.hangUp);
+      return ending === null || i !== path.length - 1 ? null : { ending, choices, hungUp: true };
+    }
     const edge = liveCallEdges(node, { allowSilence }).find((candidate) => candidate.step === step);
     if (!edge || typeof edge.next !== 'string') return null;
     if (step !== LIVE_CALL_SILENCE) choices.push(step);
@@ -81,6 +102,22 @@ function liveCallErrors(block: LiveCallLike): string[] {
   const choiceIds = block.nodes.flatMap((node) => node.choices.map((choice) => choice.id));
   for (const id of duplicates(choiceIds)) errors.push(`nodes[].choices: powtórzony identyfikator odpowiedzi "${id}" (unikalne w całym bloku)`);
   if (choiceIds.includes(LIVE_CALL_SILENCE)) errors.push('nodes[].choices: id "silence" jest zarezerwowane (cisza po upływie limitu)');
+  // D-129: odrzucenie połączenia i rozłączenie się to osobne kroki ścieżki - ich id nie mogą być id odpowiedzi; oba prowadzą do dobrego
+  // zakończenia (odrzucenie i rozłączenie się to zawsze właściwa reakcja; rozłączenie PO oddaniu informacji serwer ocenia jako złe).
+  for (const reserved of [LIVE_CALL_REJECT, LIVE_CALL_HANG_UP]) {
+    if (choiceIds.includes(reserved)) errors.push(`nodes[].choices: id "${reserved}" jest zarezerwowane (odrzucenie połączenia / rozłączenie się)`);
+  }
+  for (const [field, target] of [['reject', block.reject], ['hangUp', block.hangUp]] as const) {
+    if (target === undefined) continue;
+    const ending = liveCallExit(block, target);
+    if (ending === null) errors.push(`${field}: "${target}" - oczekiwane #id istniejącego zakończenia`);
+    else if (block.endings.find((candidate) => candidate.id === ending)?.outcome !== 'good') errors.push(`${field}: zakończenie "${ending}" musi mieć outcome "good"`);
+    // Zakończenie odrzucenia/rozłączenia jest jawnie dobre (pole `client` + reguła wyżej), więc nie może być celem zwykłej odpowiedzi ani
+    // ciszy - inaczej krawędzie `next` do niego zdradzałyby klientowi dobre odpowiedzi mimo tasowania (code review D-129).
+    else if (block.nodes.some((node) => liveCallEdges(node, { allowSilence: true }).some((edge) => edge.next === `#${ending}`))) {
+      errors.push(`${field}: zakończenie "${ending}" nie może być celem odpowiedzi ani ciszy (osobne zakończenie dla odrzucenia/rozłączenia)`);
+    }
+  }
   if (!nodeIds.includes(block.start)) errors.push(`start: nieznany węzeł "${block.start}"`);
   for (const id of block.infoChoices ?? []) {
     if (!choiceIds.includes(id)) errors.push(`infoChoices: nieznana odpowiedź "${id}"`);
@@ -120,6 +157,10 @@ function liveCallErrors(block: LiveCallLike): string[] {
     state.set(id, 2);
   };
   if (nodeIds.includes(block.start)) visit(block.start);
+  for (const target of [block.reject, block.hangUp]) {
+    const ending = liveCallExit(block, target);
+    if (ending !== null) reachedEndings.add(ending);
+  }
   for (const id of nodeIds.filter((id) => !state.has(id))) errors.push(`nodes: węzeł "${id}" nieosiągalny od start`);
   for (const id of endingIds.filter((id) => !reachedEndings.has(id))) errors.push(`endings: zakończenie "${id}" nieosiągalne`);
 

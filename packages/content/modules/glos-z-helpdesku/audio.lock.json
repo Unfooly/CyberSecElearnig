@@ -1,0 +1,425 @@
+{
+  "lockVersion": 2,
+  "slug": "glos-z-helpdesku",
+  "audioVersion": "v1",
+  "model": "eleven_multilingual_v2",
+  "language": "pl",
+  "entries": {
+    "odprawa#steps.0.narration": {
+      "hash": "111cbecb10e8d262",
+      "key": "audio/glos-z-helpdesku/v1/odprawa/111cbecb10e8d262.mp3",
+      "textSha": "6b28533146fef5e0",
+      "durationMs": 6502,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "odprawa#steps.1.narration": {
+      "hash": "c49cd18f015ba5e9",
+      "key": "audio/glos-z-helpdesku/v1/odprawa/c49cd18f015ba5e9.mp3",
+      "textSha": "c43d741ce107f6ef",
+      "durationMs": 11053,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.2.narration": {
+      "hash": "5a3407268f18c54a",
+      "key": "audio/glos-z-helpdesku/v1/odprawa/5a3407268f18c54a.mp3",
+      "textSha": "33cd47e373a7d2c1",
+      "durationMs": 8035,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.3.narration": {
+      "hash": "f64e459d8dac96b1",
+      "key": "audio/glos-z-helpdesku/v1/odprawa/f64e459d8dac96b1.mp3",
+      "textSha": "f0ca82a6d008f7a3",
+      "durationMs": 8266,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "odprawa#steps.4.narration": {
+      "hash": "9fc932d86b4feffc",
+      "key": "audio/glos-z-helpdesku/v1/odprawa/9fc932d86b4feffc.mp3",
+      "textSha": "8e91ba8b00365ffb",
+      "durationMs": 3808,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "biurko-karola#narration": {
+      "hash": "69e90f844faeedd3",
+      "key": "audio/glos-z-helpdesku/v1/biurko-karola/69e90f844faeedd3.mp3",
+      "textSha": "cee591c02b8751eb",
+      "durationMs": 10542,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "nagranie#narration": {
+      "hash": "848beaabbe4bc43b",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/848beaabbe4bc43b.mp3",
+      "textSha": "fa1ad6975254191e",
+      "durationMs": 9056,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "nagranie#segments.0.narration": {
+      "hash": "fa9c49101b6b462a",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/fa9c49101b6b462a.mp3",
+      "textSha": "452f5d8f79457831",
+      "durationMs": 6130,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.1.narration": {
+      "hash": "0fb0dc3550bc0325",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/0fb0dc3550bc0325.mp3",
+      "textSha": "a4b3c9526b72e8bf",
+      "durationMs": 2833,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "nagranie#segments.2.narration": {
+      "hash": "d4f60bc1c52c4096",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/d4f60bc1c52c4096.mp3",
+      "textSha": "e5a6ac30683bf89f",
+      "durationMs": 3855,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.3.narration": {
+      "hash": "d6b600104c95f088",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/d6b600104c95f088.mp3",
+      "textSha": "a819fe6070b7f258",
+      "durationMs": 5619,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.4.narration": {
+      "hash": "7124d84c0d962846",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/7124d84c0d962846.mp3",
+      "textSha": "a66776734fba100e",
+      "durationMs": 2601,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "nagranie#segments.5.narration": {
+      "hash": "8ef437215dcf0449",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/8ef437215dcf0449.mp3",
+      "textSha": "3b559781c4eee26c",
+      "durationMs": 4690,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.6.narration": {
+      "hash": "f13afa22149c2908",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/f13afa22149c2908.mp3",
+      "textSha": "3a48c6f796376f8e",
+      "durationMs": 6362,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.7.narration": {
+      "hash": "1eeab1970421ada3",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/1eeab1970421ada3.mp3",
+      "textSha": "ea7f3fd6d5585a3b",
+      "durationMs": 4272,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "nagranie#segments.8.narration": {
+      "hash": "cbcb2195ec7bec34",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/cbcb2195ec7bec34.mp3",
+      "textSha": "09e67cc9ae213c7d",
+      "durationMs": 1115,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.9.narration": {
+      "hash": "ba46afc707fd7294",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/ba46afc707fd7294.mp3",
+      "textSha": "f25b6cf796759932",
+      "durationMs": 3158,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "nagranie#segments.10.narration": {
+      "hash": "a4f1df02c83186a5",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/a4f1df02c83186a5.mp3",
+      "textSha": "3fe8cd4e8021a9b4",
+      "durationMs": 7338,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "nagranie#segments.11.narration": {
+      "hash": "76607bbc41d36d23",
+      "key": "audio/glos-z-helpdesku/v1/nagranie/76607bbc41d36d23.mp3",
+      "textSha": "9deeaeef55a8544c",
+      "durationMs": 2276,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#narration": {
+      "hash": "babed3328622b6d0",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/babed3328622b6d0.mp3",
+      "textSha": "931a62fbae148380",
+      "durationMs": 8035,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "przesluchanie-karola#questions.0.lines.0.narration": {
+      "hash": "463973248c817180",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/463973248c817180.mp3",
+      "textSha": "82fbf4d6d3c2c77b",
+      "durationMs": 4365,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#questions.0.lines.1.narration": {
+      "hash": "477779f8aff96dfe",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/477779f8aff96dfe.mp3",
+      "textSha": "ede9bb6506915a03",
+      "durationMs": 3390,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#questions.1.lines.0.narration": {
+      "hash": "f519dfc391261796",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/f519dfc391261796.mp3",
+      "textSha": "6a1822ef8479154c",
+      "durationMs": 3855,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#questions.1.lines.1.narration": {
+      "hash": "7d9c8f8cee8e00ca",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/7d9c8f8cee8e00ca.mp3",
+      "textSha": "16b114608acf67bd",
+      "durationMs": 2554,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#questions.2.lines.0.narration": {
+      "hash": "16a43f3c69f0a235",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/16a43f3c69f0a235.mp3",
+      "textSha": "302a849a368d2052",
+      "durationMs": 6455,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-karola#questions.3.lines.0.narration": {
+      "hash": "4ef0e6eb4ee29322",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/4ef0e6eb4ee29322.mp3",
+      "textSha": "4f3f0d288fe1a0b3",
+      "durationMs": 6269,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
+    },
+    "przesluchanie-pawla#narration": {
+      "hash": "cb4af7181081c1b4",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/cb4af7181081c1b4.mp3",
+      "textSha": "2e76beeb1678cea5",
+      "durationMs": 7570,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "przesluchanie-pawla#questions.0.lines.0.narration": {
+      "hash": "24cbeddb200635cd",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/24cbeddb200635cd.mp3",
+      "textSha": "3be4ca5b70af7587",
+      "durationMs": 4598,
+      "voice": "pawel",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "przesluchanie-pawla#questions.1.lines.0.narration": {
+      "hash": "2e4d409fcc88489b",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/2e4d409fcc88489b.mp3",
+      "textSha": "d860b192052b14a8",
+      "durationMs": 4551,
+      "voice": "pawel",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "przesluchanie-pawla#questions.2.lines.0.narration": {
+      "hash": "bed69fe7cf6afe67",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/bed69fe7cf6afe67.mp3",
+      "textSha": "4c2249fac0cad116",
+      "durationMs": 5526,
+      "voice": "pawel",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "przesluchanie-pawla#questions.3.lines.0.narration": {
+      "hash": "64d1dba924553a44",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/64d1dba924553a44.mp3",
+      "textSha": "f78a767c2467300c",
+      "durationMs": 4644,
+      "voice": "pawel",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "rejestr#narration": {
+      "hash": "78ea4bf1fc538905",
+      "key": "audio/glos-z-helpdesku/v1/rejestr/78ea4bf1fc538905.mp3",
+      "textSha": "3d372f3a33be977e",
+      "durationMs": 6827,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "osint#narration": {
+      "hash": "5639dd4935889d6e",
+      "key": "audio/glos-z-helpdesku/v1/osint/5639dd4935889d6e.mp3",
+      "textSha": "6a2bd9fd286b8798",
+      "durationMs": 10310,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "osint#spots.3.media.narration": {
+      "hash": "2f51d0f124b4a68d",
+      "key": "audio/glos-z-helpdesku/v1/osint/2f51d0f124b4a68d.mp3",
+      "textSha": "e6297d6e908741d8",
+      "durationMs": 46300,
+      "voice": "pawel",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "tablica#narration": {
+      "hash": "abfb39fe17f9a844",
+      "key": "audio/glos-z-helpdesku/v1/tablica/abfb39fe17f9a844.mp3",
+      "textSha": "66b9e813cfcc4717",
+      "durationMs": 5944,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#narration": {
+      "hash": "9b64de839d117ee0",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/9b64de839d117ee0.mp3",
+      "textSha": "7812a3e23f167c51",
+      "durationMs": 4690,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#nodes.0.narration": {
+      "hash": "15cdeab287fe2320",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/15cdeab287fe2320.mp3",
+      "textSha": "8ff10c4c7409ed0e",
+      "durationMs": 9520,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "na-zywo#nodes.1.narration": {
+      "hash": "6dbb9c191ffb78bc",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/6dbb9c191ffb78bc.mp3",
+      "textSha": "ae6398750b087fff",
+      "durationMs": 2879,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "na-zywo#nodes.2.narration": {
+      "hash": "b471008a65798867",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/b471008a65798867.mp3",
+      "textSha": "dc0d46d572d4e6fd",
+      "durationMs": 4087,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "na-zywo#nodes.3.narration": {
+      "hash": "f00884f3ff218685",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/f00884f3ff218685.mp3",
+      "textSha": "e1ea3f37457a2791",
+      "durationMs": 3715,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "na-zywo#nodes.4.narration": {
+      "hash": "8e5113e92d5951ba",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/8e5113e92d5951ba.mp3",
+      "textSha": "59a41c39a0cf0580",
+      "durationMs": 4737,
+      "voice": "oszust",
+      "voiceId": "H5xTcsAIeS5RAykjz57a"
+    },
+    "na-zywo#endings.0.narration": {
+      "hash": "cb668d65f519a65c",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/cb668d65f519a65c.mp3",
+      "textSha": "cdd03c4920a898c2",
+      "durationMs": 7523,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#endings.1.narration": {
+      "hash": "2618894915568b61",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/2618894915568b61.mp3",
+      "textSha": "6a250b4127daf936",
+      "durationMs": 6920,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "na-zywo#endings.2.narration": {
+      "hash": "3e2bbb2dcbba974d",
+      "key": "audio/glos-z-helpdesku/v1/na-zywo/3e2bbb2dcbba974d.mp3",
+      "textSha": "a0d482caede967e7",
+      "durationMs": 9474,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#narration": {
+      "hash": "3b2404d7597556cb",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/3b2404d7597556cb.mp3",
+      "textSha": "bd6ad763e9a9c966",
+      "durationMs": 4644,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.0.narration": {
+      "hash": "59b1851d7e9a2c68",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/59b1851d7e9a2c68.mp3",
+      "textSha": "b9b24f783e4638b0",
+      "durationMs": 4272,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.1.narration": {
+      "hash": "3a781b248cf03b59",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/3a781b248cf03b59.mp3",
+      "textSha": "53ec705eb0cce165",
+      "durationMs": 3901,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.2.narration": {
+      "hash": "28f1adb9afda9230",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/28f1adb9afda9230.mp3",
+      "textSha": "8c1c2ac73d6a2128",
+      "durationMs": 7430,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.3.narration": {
+      "hash": "1e6196deed6126ca",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/1e6196deed6126ca.mp3",
+      "textSha": "b26d0b2eff825d94",
+      "durationMs": 5619,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.4.narration": {
+      "hash": "cbdca3d14a23edf1",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/cbdca3d14a23edf1.mp3",
+      "textSha": "dd81eb1747cc9b75",
+      "durationMs": 4133,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "omowienie#markers.5.narration": {
+      "hash": "cea78cee6edace2c",
+      "key": "audio/glos-z-helpdesku/v1/omowienie/cea78cee6edace2c.mp3",
+      "textSha": "45a7529031dfb52f",
+      "durationMs": 7152,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "rozwiazanie-sprawy#narration": {
+      "hash": "6b7442354668b9ff",
+      "key": "audio/glos-z-helpdesku/v1/rozwiazanie-sprawy/6b7442354668b9ff.mp3",
+      "textSha": "6f0527ff71b3e413",
+      "durationMs": 9752,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    }
+  }
+}

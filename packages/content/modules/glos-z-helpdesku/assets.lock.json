@@ -1,0 +1,161 @@
+{
+  "lockVersion": 1,
+  "slug": "glos-z-helpdesku",
+  "entries": {
+    "module#thumbnail": {
+      "original": "miniatura-glos-z-helpdesku.svg",
+      "hash": "921c9ee4",
+      "key": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.921c9ee4.svg"
+    },
+    "odprawa#steps.0.image": {
+      "original": "scenes/odprawa-biurko.svg",
+      "hash": "781c7c71",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-biurko.781c7c71.svg"
+    },
+    "odprawa#steps.1.image": {
+      "original": "scenes/odprawa-rozmowa.svg",
+      "hash": "198bff46",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa.198bff46.svg"
+    },
+    "odprawa#steps.2.image": {
+      "original": "scenes/odprawa-akta.svg",
+      "hash": "cbc8d489",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta.cbc8d489.svg"
+    },
+    "odprawa#steps.3.image": {
+      "original": "scenes/odprawa-legitymacja.svg",
+      "hash": "242f34bc",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja.242f34bc.svg"
+    },
+    "odprawa#steps.2.closedImage": {
+      "original": "scenes/odprawa-teczka.svg",
+      "hash": "a806ab31",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka.a806ab31.svg"
+    },
+    "odprawa#steps.0.portrait.image": {
+      "original": "scenes/odprawa-biurko-pion.svg",
+      "hash": "420d0e31",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-biurko-pion.420d0e31.svg"
+    },
+    "odprawa#steps.1.portrait.image": {
+      "original": "scenes/odprawa-rozmowa-pion.svg",
+      "hash": "bb81da54",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa-pion.bb81da54.svg"
+    },
+    "odprawa#steps.2.portrait.image": {
+      "original": "scenes/odprawa-akta-pion.svg",
+      "hash": "14c49e81",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.14c49e81.svg"
+    },
+    "odprawa#steps.3.portrait.image": {
+      "original": "scenes/odprawa-legitymacja-pion.svg",
+      "hash": "114362ac",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja-pion.114362ac.svg"
+    },
+    "odprawa#steps.2.portrait.closedImage": {
+      "original": "scenes/odprawa-teczka-pion.svg",
+      "hash": "84074229",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.84074229.svg"
+    },
+    "biurko-karola#image": {
+      "original": "scenes/biurko-karola.svg",
+      "hash": "5e24c720",
+      "key": "assets/glos-z-helpdesku/scenes/biurko-karola.5e24c720.svg"
+    },
+    "biurko-karola#imagePortrait": {
+      "original": "scenes/biurko-karola-pion.svg",
+      "hash": "ec9dcd26",
+      "key": "assets/glos-z-helpdesku/scenes/biurko-karola-pion.ec9dcd26.svg"
+    },
+    "biurko-karola#hotspots.2.media.src": {
+      "original": "scenes/karteczka-id-zoom.svg",
+      "hash": "be1a6069",
+      "key": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.be1a6069.svg"
+    },
+    "biurko-karola#hotspots.3.media.src": {
+      "original": "scenes/plakat-zoom.svg",
+      "hash": "f4794890",
+      "key": "assets/glos-z-helpdesku/scenes/plakat-zoom.f4794890.svg"
+    },
+    "biurko-karola#hotspots.0.media.scene.image": {
+      "original": "scenes/telefon-karola.svg",
+      "hash": "8f1ac15d",
+      "key": "assets/glos-z-helpdesku/scenes/telefon-karola.8f1ac15d.svg"
+    },
+    "biurko-karola#hotspots.1.media.scene.image": {
+      "original": "scenes/pulpit-karola.svg",
+      "hash": "7693bd79",
+      "key": "assets/glos-z-helpdesku/scenes/pulpit-karola.7693bd79.svg"
+    },
+    "biurko-karola#hotspots.0.media.scene.hotspots.0.media.src": {
+      "original": "scenes/mfa-powiadomienia-zoom.svg",
+      "hash": "0a3bfc25",
+      "key": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.0a3bfc25.svg"
+    },
+    "biurko-karola#hotspots.0.media.scene.hotspots.1.media.src": {
+      "original": "scenes/rejestr-polaczen-zoom.svg",
+      "hash": "1fe44a61",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.1fe44a61.svg"
+    },
+    "przesluchanie-karola#character.avatar": {
+      "original": "avatars/karol.svg",
+      "hash": "dbb38d93",
+      "key": "assets/glos-z-helpdesku/avatars/karol.dbb38d93.svg"
+    },
+    "przesluchanie-pawla#character.avatar": {
+      "original": "avatars/pawel.svg",
+      "hash": "a7171671",
+      "key": "assets/glos-z-helpdesku/avatars/pawel.a7171671.svg"
+    },
+    "rejestr#image": {
+      "original": "scenes/rejestr-porownanie.svg",
+      "hash": "89ad08fb",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.89ad08fb.svg"
+    },
+    "rejestr#imagePortrait": {
+      "original": "scenes/rejestr-porownanie-pion.svg",
+      "hash": "b790f667",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b790f667.svg"
+    },
+    "osint#image": {
+      "original": "scenes/strona-zespol.svg",
+      "hash": "3dc94b59",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol.3dc94b59.svg"
+    },
+    "osint#imagePortrait": {
+      "original": "scenes/strona-zespol-pion.svg",
+      "hash": "f06a7977",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.f06a7977.svg"
+    },
+    "osint#spots.3.media.image": {
+      "original": "scenes/webinar-odtwarzacz.svg",
+      "hash": "6586579a",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.6586579a.svg"
+    },
+    "osint#spots.3.media.imagePortrait": {
+      "original": "scenes/webinar-odtwarzacz-pion.svg",
+      "hash": "ffa82447",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.ffa82447.svg"
+    },
+    "rozwiazanie-sprawy#closing.image": {
+      "original": "scenes/zamkniecie-raport.svg",
+      "hash": "760c7732",
+      "key": "assets/glos-z-helpdesku/scenes/zamkniecie-raport.760c7732.svg"
+    },
+    "rozwiazanie-sprawy#closing.stamp": {
+      "original": "scenes/zamkniecie-pieczec.svg",
+      "hash": "33dfe506",
+      "key": "assets/glos-z-helpdesku/scenes/zamkniecie-pieczec.33dfe506.svg"
+    },
+    "rozwiazanie-sprawy#closing.note": {
+      "original": "scenes/zamkniecie-liscik.svg",
+      "hash": "539acf2d",
+      "key": "assets/glos-z-helpdesku/scenes/zamkniecie-liscik.539acf2d.svg"
+    },
+    "rozwiazanie-sprawy#closing.portrait.image": {
+      "original": "scenes/zamkniecie-raport-pion.svg",
+      "hash": "b80abb9a",
+      "key": "assets/glos-z-helpdesku/scenes/zamkniecie-raport-pion.b80abb9a.svg"
+    }
+  }
+}

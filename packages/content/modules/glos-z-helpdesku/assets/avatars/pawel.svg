@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="static" viewBox="0 0 256 256" width="256" height="256" font-family="Arial, Helvetica, sans-serif">
+<style>
+.a-blink{animation:a-blink 1.2s ease-in-out infinite}
+.a-blink-slow{animation:a-blink 3s ease-in-out infinite}
+.a-glow{animation:a-glow 5s ease-in-out infinite}
+.a-pulse{animation:a-pulse 2.2s ease-in-out infinite}
+.a-steam{animation:a-steam 2.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.a-sway{animation:a-sway 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.a-flutter{animation:a-flutter 4.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center top}
+.a-bounce{animation:a-bounce 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-ring{animation:a-ring 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-wave{animation:a-wave 1.2s ease-out infinite}
+.a-grow{animation:a-grow .9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.a-shimmer{animation:a-shimmer 3.5s ease-in-out infinite}
+.d1{animation-delay:.35s}.d2{animation-delay:.7s}
+@keyframes a-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes a-glow{0%,100%{opacity:1}50%{opacity:.65}}
+@keyframes a-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes a-steam{0%{opacity:0;transform:translateY(6px)}40%{opacity:.9}100%{opacity:0;transform:translateY(-10px)}}
+@keyframes a-sway{0%,100%{transform:rotate(0)}50%{transform:rotate(1.6deg)}}
+@keyframes a-flutter{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.4deg)}}
+@keyframes a-bounce{0%,70%,100%{transform:scale(1)}80%{transform:scale(1.18)}90%{transform:scale(.95)}}
+@keyframes a-ring{0%,100%{transform:rotate(0)}10%{transform:rotate(-2.5deg)}20%{transform:rotate(2.5deg)}30%{transform:rotate(-2.5deg)}40%{transform:rotate(0)}}
+@keyframes a-wave{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+@keyframes a-grow{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes a-shimmer{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+#static:target *{animation:none!important}
+</style>
+<rect width="256" height="256" fill="none"/>
+<g id="item-a" transform="translate(0 0) scale(1)"><clipPath id="av-pawel-a"><circle cx="128" cy="128" r="124"/></clipPath><circle cx="128" cy="128" r="124" fill="#DDF3F6"/><g clip-path="url(#av-pawel-a)"><path d="M28 260 c0 -60 40 -80 100 -80 s100 20 100 80 z" fill="#3AA6B9"/><rect x="110" y="160" width="36" height="30" fill="#E0AC86"/><ellipse cx="128" cy="116" rx="50" ry="58" fill="#E0AC86"/><path d="M78 100 c0 -40 22 -58 52 -58 c30 0 50 18 48 58 c-10 -16 -30 -22 -52 -22 c-20 0 -38 8 -48 22 z" fill="#2E2A33"/><circle cx="108" cy="118" r="5" fill="#2B2440"/><circle cx="148" cy="118" r="5" fill="#2B2440"/><path d="M112 146 q16 10 32 0" fill="none" stroke="#2B2440" stroke-width="4" stroke-linecap="round"/><path d="M98 188 l30 50 l30 -50" fill="none" stroke="#6C5CE7" stroke-width="6"/><rect x="112" y="232" width="32" height="22" rx="4" fill="#FFFFFF"/><g fill="none" stroke="#2B2440" stroke-width="5"><circle cx="108" cy="116" r="15"/><circle cx="148" cy="116" r="15"/><path d="M123 116 h10"/></g></g><circle cx="128" cy="128" r="124" fill="none" stroke="#FFFFFF" stroke-width="6"/></g>
+</svg>

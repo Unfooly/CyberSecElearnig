@@ -737,11 +737,26 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela, które tła wchodzą do odtwarzacza (pole `image`/`imagePortrait` w schemacie bloku, klasyfikacja
   `client`, layout-check), albo usunięcie nieużytych plików i ich źródeł.
 
-### B-139 layout-check: sporadyczny błąd ładowania obrazu (m1) na `next dev`
+### B-139 layout-check: sporadyczny błąd ładowania obrazu (m1) na `next dev` - ZROBIONE (artefakt testu, m1/n4 czekają na `decode()`)
 - Etykiety: `P3`, `test`, `mod:web` · Źródło: faza 1g (D-125)
+- Diagnoza (2026-09-30, sonda na Playwright w layout-checku: każde żądanie obrazu - status, nagłówki, czas, błędy sieci): sekcja `module`
+  10 przebiegów pojedynczo - 0 błędów (340 żądań, p95 85 ms); 3 równoległe przebiegi × 3 - 5 fałszywych m1, a dla zgłoszonych obrazów 0
+  błędów sieci i 0 odpowiedzi ≠ 200 (w 4 przypadkach żądanie jeszcze nie wyszło, w 1 obraz załadował się wcześniej ze statusem 200). Obrazy
+  idą z lokalnej trasy `/dev/module-assets`, nie z R2. Wniosek: artefakt testu - wyścig z odtwarzaczem: część grafik montuje się albo
+  zmienia `src` dopiero po pomiarze kontenera (orientacja: OSINT, omówienie na grafice, warianty pionowe), a jednorazowy odczyt łapał obraz
+  przed żądaniem albo w trakcie podmiany. Hipoteza z opisu niżej (przerwane żądanie) obalona - żadne żądanie zgłoszonego obrazu nie padło.
+- Rozwiązanie: `brokenModuleImages` w `scripts/layout-check.mjs` - m1 i n4 dekodują (`img.decode()`, limit 30 s) obrazy modułu w pętli, aż
+  zbiór się ustabilizuje (400 ms bez nowych obrazów; nowe i podmienione obrazy w kolejnych rundach; odrzucenie przy zmianie `src` to podmiana, nie błąd); n4 czeka też
+  na zamontowanie grafiki. Błąd to nieudane dekodowanie, brak wymiarów albo przekroczony limit, z opisem (błąd, `complete`, Resource
+  Timing: status, czas). Po poprawce: obciążenie 3×3 - 7/9, 0 fałszywych m1 (2 nieudane
+  przez środowisko: start `next dev`, 404 przy wspólnym `.next`); 5 kolejnych pojedynczych przebiegów OK (warunek akceptacji spełniony);
+  pełny layout-check 448/448. Kontrole: obraz 404 i obraz 404 zamontowany po 300 ms zgłoszone ze statusem 404,
+  podmiana `src` w trakcie ładowania bez fałszywego alarmu. Odtwarzacz bez zmian. Uwaga: kilka `next dev` naraz na wspólnym
+  `apps/web/.next` (i pierwszy przebieg po nich, gdy `.next` się przebudowuje) daje prawdziwe 404 / status 0 z trasy deweloperskiej - m1
+  zgłasza je teraz ze statusem; to artefakt środowiska, layout-check uruchamiaj pojedynczo.
 - Opis: sekcja `module` (`LAYOUT_CHECK_MODULE=glos-z-helpdesku`) w 2 z 4 przebiegów zgłosiła m1 „obrazy modułu nie załadowane” na
   losowym viewporcie (390x844, 360x800) i dla różnych plików, które w pozostałych przebiegach ładują się poprawnie; wcześniej ta sama klasa
-  błędów w n4/r1 (fazy 1c-1e). Prawdopodobnie przerwane żądanie do `/dev/module-assets` pod obciążeniem `next dev` na Windows.
+  błędów w n4/r1 (fazy 1c-1e). Pierwotna hipoteza: przerwane żądanie do `/dev/module-assets` pod obciążeniem `next dev` na Windows.
 - Akceptacja: ponowienie ładowania obrazu (np. jedno przeładowanie strony przed zgłoszeniem m1) albo przyczyna w trasie deweloperskiej;
   sekcja stabilna w 5 kolejnych przebiegach.
 

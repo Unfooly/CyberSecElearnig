@@ -236,6 +236,85 @@ function fail(message) {
   throw error;
 }
 
+// Obrazy modułu (B-139): czekamy na `decode()` każdego obrazu z zasobów modułu, aż zbiór obrazów się ustabilizuje, zamiast jednorazowo
+// czytać `complete && naturalWidth`. Przyczyna fałszywych m1 to wyścig testu z odtwarzaczem, nie błąd ładowania: część grafik montuje się
+// albo zmienia `src` dopiero po pomiarze kontenera (orientacja - OSINT, omówienie na grafice, warianty pionowe), więc jednorazowy odczyt
+// łapał obraz przed żądaniem albo w trakcie podmiany. Diagnoza: 10 przebiegów sekcji `module` pojedynczo - 0 błędów; 3×3 równolegle
+// (obciążenie `next dev`) - 5 fałszywych m1, a dla zgłoszonych obrazów 0 błędów sieci i 0 odpowiedzi innych niż 200.
+// Pętla: po dwóch klatkach zbieramy obrazy modułu jeszcze niesprawdzone (nowe albo ze zmienionym `src`) i dekodujemy je; koniec, gdy przez
+// `quietMs` (400 ms) nie pojawia się nic nowego. Odrzucone `decode()` przy zmianie `src` w trakcie to podmiana, nie błąd - obraz idzie do następnej rundy. Zepsuty jest obraz,
+// którego dekodowanie się nie udało (albo bez wymiarów) albo nie skończyło się w limicie; raport podaje stan obrazu i wpis Resource Timing.
+async function brokenModuleImages(page, timeoutMs = 30000, quietMs = 400) {
+  return page.evaluate(async ({ limit, QUIET_MS }) => {
+    const deadline = performance.now() + limit;
+    const moduleImages = () => [...document.querySelectorAll('img')].filter((img) => /(module-assets|\/assets\/)/.test(img.src));
+    const nextFrames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const decodeWithin = (img, ms) =>
+      new Promise((resolve) => {
+        const timer = setTimeout(() => resolve('timeout'), ms);
+        img.decode().then(
+          () => {
+            clearTimeout(timer);
+            resolve(null);
+          },
+          (error) => {
+            clearTimeout(timer);
+            resolve(String(error?.message ?? error));
+          },
+        );
+      });
+    const checked = new Map(); // img -> sprawdzony src
+    const failures = new Map(); // img -> błąd (null = bez wymiarów)
+    let quietSince = performance.now();
+    for (;;) {
+      await nextFrames();
+      const pending = moduleImages().filter((img) => checked.get(img) !== img.src);
+      if (pending.length === 0) {
+        // Koniec dopiero po chwili bez nowych obrazów - grafika montowana po pomiarze kontenera też trafia do sprawdzenia.
+        if (performance.now() - quietSince >= QUIET_MS || performance.now() >= deadline) break;
+        continue;
+      }
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) {
+        for (const img of pending) failures.set(img, 'timeout');
+        break;
+      }
+      await Promise.all(
+        pending.map(async (img) => {
+          const src = img.src;
+          const error = await decodeWithin(img, remaining);
+          if (img.src !== src) return; // podmiana w trakcie - sprawdzimy nowe źródło w następnej rundzie
+          checked.set(img, src);
+          if (error !== null || img.naturalWidth === 0) failures.set(img, error);
+          else failures.delete(img);
+        }),
+      );
+      quietSince = performance.now();
+    }
+    return [...failures]
+      .filter(([img]) => img.isConnected)
+      .map(([img, error]) => {
+        // Wpis Resource Timing - po pełnym adresie albo bez fragmentu (`#static` przy reduced-motion). Obraz zdjęty z DOM (np. awatar
+        // zastąpiony inicjałami po błędzie) nie jest tu zgłaszany - tak jak przed B-139.
+        const url = img.currentSrc || img.src;
+        const timing = performance.getEntriesByName(url).at(-1) ?? performance.getEntriesByName(url.split('#')[0]).at(-1);
+        return {
+          src: img.src,
+          error,
+          complete: img.complete,
+          timing: timing ? { status: timing.responseStatus ?? null, ms: Math.round(timing.duration) } : null,
+        };
+      });
+  }, { limit: timeoutMs, QUIET_MS: quietMs });
+}
+const describeBroken = (broken) =>
+  broken
+    .map((b) => {
+      const request = b.timing ? `żądanie: status ${b.timing.status ?? '?'}, ${b.timing.ms} ms` : 'brak wpisu Resource Timing';
+      return `${b.src} (${b.error ?? 'bez wymiarów'}; complete=${b.complete}, ${request})`;
+    })
+    .join(', ');
+
 async function boxOf(page, selector) {
   const box = await page.locator(selector).first().boundingBox();
   if (!box) fail(`Nie znaleziono elementu "${selector}" albo jest niewidoczny.`);
@@ -1329,17 +1408,15 @@ try {
         errors.length = 0;
         await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(blockId)}`);
         await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
-        await page.waitForFunction(() => [...document.querySelectorAll('img')].every((img) => img.complete), null, { timeout: 30000 });
+        const broken = await brokenModuleImages(page);
         const info = await page.evaluate(() => {
-          const broken = [...document.querySelectorAll('img')].filter((img) => /(module-assets|\/assets\/)/.test(img.src) && img.naturalWidth === 0).map((img) => img.src);
           const bar = document.querySelector('[data-testid="player-bottombar"]')?.getBoundingClientRect();
           return {
-            broken,
             barInView: !!bar && bar.top >= -1 && bar.bottom <= window.innerHeight + 1,
             overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           };
         });
-        if (info.broken.length > 0) fail(`${label}: (m1) obrazy modułu nie załadowane: ${info.broken.join(', ')}`);
+        if (broken.length > 0) fail(`${label}: (m1) obrazy modułu nie załadowane: ${describeBroken(broken)}`);
         if (!info.barInView) fail(`${label}: (m2) dolny pasek poza ekranem.`);
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
@@ -1481,6 +1558,10 @@ try {
         // (n4) omówienie na grafice
         await open('omowienie-grafika');
         label = `${tag} / omówienie (grafika)`;
+        // Grafika omówienia montuje się dopiero po pomiarze orientacji (ReplayImage) - czekamy na nią, potem na jej dekodowanie.
+        await page.locator('[data-testid="annotated-replay"] img').waitFor({ state: 'attached', timeout: 30000 });
+        const brokenReplay = await brokenModuleImages(page);
+        if (brokenReplay.length > 0) fail(`${label}: (n4) grafika omówienia nie załadowana: ${describeBroken(brokenReplay)}`);
         const pins = await page.evaluate(() => {
           const img = document.querySelector('[data-testid="annotated-replay"] img');
           const box = img?.getBoundingClientRect();

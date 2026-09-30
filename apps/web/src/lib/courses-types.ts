@@ -78,6 +78,8 @@ export interface TextLayerItem {
   h: number;
   text: string;
   style?: 'label' | 'sign' | 'screen' | 'handwritten';
+  /** Kolor tekstu względem tła slotu: `light` - jasny tekst na ciemnym tle grafiki; domyślnie ciemny. */
+  tone?: 'dark' | 'light';
   /** Prostokąt na wariancie pionowym grafiki (imagePortrait). */
   portrait?: { x: number; y: number; w: number; h: number };
 }
@@ -486,6 +488,13 @@ export interface ClientProgressBlock {
   reaction?: ContentReaction;
   // INTERROGATION (D-118): podważone kwestie (także w trakcie bloku) - kwestia po podważeniu tylko przy trafieniu.
   challenges?: InterrogationChallenge[];
+  // SCENE_HOTSPOTS (D-128): stan częściowy nieukończonej sceny - obejrzane przedmioty i zabrane dowody (id przedmiotów z treści).
+  exploration?: SceneExploration;
+}
+
+export interface SceneExploration {
+  visited: string[];
+  noted: string[];
 }
 
 export interface InterrogationChallenge {

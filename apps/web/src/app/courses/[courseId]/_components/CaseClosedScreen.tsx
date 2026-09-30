@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Lock, Trophy } from 'lucide-react';
 import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
@@ -63,6 +63,103 @@ function useCountUp(target: number, active: boolean, delayMs: number): number {
 }
 
 const place = (rect: BriefingRect): CSSProperties => ({ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` });
+
+// Dolna granica czcionki wniosków przy dopasowaniu do slotu: telefon w pionie 15 px (D-103), raport poziomy 10 px.
+const LESSONS_MIN_PX = { portrait: 15, landscape: 10 } as const;
+
+/**
+ * Wnioski śledczego w slocie raportu (uwaga właściciela po module 2: dłuższe wnioski ucinały się z prawej). Każdy wniosek rezerwuje
+ * miejsce pełnego tekstu (niewidoczna kopia w tej samej komórce siatki), więc wystukiwanie nie przesuwa kolejnych wierszy.
+ *  - Raport poziomy, wnioski krótkie (każdy mieści się w jednym wierszu, jak w module 1): wiersze na liniaturze raportu (`ruled`).
+ *  - Inaczej (dłuższe wnioski albo raport pionowy): tekst ZAWIJA SIĘ w szerokości slotu; gdy nie mieści się w wysokości, czcionka
+ *    zmniejsza się do dolnej granicy; gdyby i wtedy się nie mieścił, wychodzi poza slot - nigdy nie jest ucinany.
+ */
+function ClosingLessons({
+  lessons,
+  shown,
+  portrait,
+  slotStyle,
+  baseFont,
+  ruledLineHeight,
+  ruledPaddingTop,
+  gap,
+}: {
+  lessons: string[];
+  shown: string[];
+  portrait: boolean;
+  slotStyle: CSSProperties;
+  /** Rozmiar wyjściowy (wyrażenie CSS w cqw raportu). */
+  baseFont: string;
+  ruledLineHeight: string;
+  ruledPaddingTop: string;
+  gap: string;
+}) {
+  const ref = useRef<HTMLOListElement>(null);
+  const [ruled, setRuled] = useState(!portrait);
+  const lessonsKey = lessons.join('\n');
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return undefined;
+    const fit = () => {
+      const floor = portrait ? LESSONS_MIN_PX.portrait : LESSONS_MIN_PX.landscape;
+      list.style.fontSize = baseFont;
+      list.style.overflow = 'hidden';
+      // Pełne teksty (niewidoczne kopie) w jednym wierszu - czy mieszczą się w szerokości slotu.
+      const copies = [...list.querySelectorAll<HTMLElement>('[data-lesson-full]')];
+      const probe = (copy: HTMLElement) => {
+        const previous = copy.style.cssText;
+        // Poza siatką i bez zawijania - szerokość samego tekstu, niezależnie od bieżącego układu listy.
+        copy.style.cssText = 'position:absolute;white-space:nowrap;width:max-content';
+        const width = copy.getBoundingClientRect().width;
+        copy.style.cssText = previous;
+        return width;
+      };
+      const singleLines = !portrait && copies.every((copy) => probe(copy) <= list.clientWidth + 1);
+      setRuled(singleLines);
+      // Zmiana układu: dopasowanie czcionki zrobi kolejny przebieg efektu (zależy od `ruled`), już na nowym układzie listy.
+      if (singleLines || singleLines !== ruled) return;
+      // Zawijane: zmniejszaj do dolnej granicy, aż lista zmieści się w wysokości slotu.
+      let size = parseFloat(getComputedStyle(list).fontSize);
+      while (list.scrollHeight > list.clientHeight + 1 && size > floor) {
+        size = Math.max(floor, size - 0.5);
+        list.style.fontSize = `${size}px`;
+      }
+      if (list.scrollHeight > list.clientHeight + 1) list.style.overflow = 'visible';
+    };
+    fit();
+    let active = true;
+    void document.fonts?.ready.then(() => {
+      if (active) fit();
+    });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    observer?.observe(list);
+    return () => {
+      active = false;
+      observer?.disconnect();
+    };
+  }, [lessonsKey, portrait, baseFont, ruled]);
+  return (
+    <ol
+      ref={ref}
+      aria-hidden="true"
+      data-testid="closing-lessons"
+      data-layout={ruled ? 'ruled' : 'wrapped'}
+      className="absolute flex flex-col text-ink"
+      style={{ ...slotStyle, ...(ruled ? { lineHeight: ruledLineHeight, paddingTop: ruledPaddingTop } : { lineHeight: 1.25, gap }) }}
+    >
+      {lessons.map((line, index) => (
+        <li key={index} className={`grid ${ruled ? 'whitespace-nowrap' : ''}`}>
+          <span data-lesson-full className="invisible col-start-1 row-start-1">
+            {index + 1}. {line}
+          </span>
+          <span data-testid="closing-lesson-typed" className="col-start-1 row-start-1">
+            {shown[index] ? `${index + 1}. ${shown[index]}` : ''}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 const CONFETTI_MS = 1200;
 const CONFETTI_COLORS = ['var(--accent)', 'var(--accent-soft)', 'var(--success)', 'var(--highlight)'];
@@ -417,30 +514,16 @@ export default function CaseClosedScreen({
 
             {/* Wnioski w slocie raportu. Pionowo (D-107) min. 15 px i zawijane (duża strona raportu); każda linijka rezerwuje wysokość
                 pełnego tekstu (niewidoczna kopia w tej samej komórce siatki), więc wystukiwanie nie przesuwa kolejnych linijek. */}
-            {portrait ? (
-              <ol aria-hidden="true" data-testid="closing-lessons" className="absolute flex flex-col overflow-hidden text-ink" style={{ ...place(slots.lessons), fontSize: font(1.3, 15), lineHeight: 1.25, gap: cqw(0.3) }}>
-                {lessons.map((line, index) => (
-                  <li key={index} className="grid">
-                    <span className="invisible col-start-1 row-start-1">
-                      {index + 1}. {line}
-                    </span>
-                    <span data-testid="closing-lesson-typed" className="col-start-1 row-start-1">
-                      {shownLessons[index] ? `${index + 1}. ${shownLessons[index]}` : ''}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <ol aria-hidden="true" data-testid="closing-lessons" className="absolute overflow-hidden text-ink" style={{ ...place(slots.lessons), fontSize: cqw(1.3), lineHeight: cqw(2.5), paddingTop: cqw(1.6) }}>
-                {shownLessons.map((line, index) =>
-                  line ? (
-                    <li key={index} className="whitespace-nowrap">
-                      {index + 1}. {line}
-                    </li>
-                  ) : null,
-                )}
-              </ol>
-            )}
+            <ClosingLessons
+              lessons={lessons}
+              shown={shownLessons}
+              portrait={portrait}
+              slotStyle={place(slots.lessons)}
+              baseFont={font(1.3, 15)}
+              ruledLineHeight={cqw(2.5)}
+              ruledPaddingTop={cqw(1.6)}
+              gap={cqw(0.3)}
+            />
 
             {/* Przycisk tylko na etapie podpisu; potem sam podpis (dla czytnika jest w opisie raportu wyżej). */}
             {stage === 'sign' ? (

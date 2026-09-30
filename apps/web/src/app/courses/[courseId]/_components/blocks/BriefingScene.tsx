@@ -95,6 +95,7 @@ export function FitText({
   children,
   testId,
   minPx,
+  wholeWords = false,
 }: {
   className?: string;
   style?: CSSProperties;
@@ -106,9 +107,17 @@ export function FitText({
   /**
    * Czytelne minimum (D-103, np. 15 px na telefonie): rozmiar do `minPx` może wyjść poza WYSOKOŚĆ kontenera (overflow widoczny - niski
    * slot w grafice, tekst rośnie w odstęp nad nim), ale nadal musi zmieścić się w szerokości - inaczej zmniejsza się jak zwykle.
-   * Tylko dla tekstu JEDNOLINIJKOWEGO (whitespace-nowrap) - zawijany tekst „mieści się” w szerokości zawsze i mógłby wyjść dowolnie wysoko.
+   * Dla tekstu JEDNOLINIJKOWEGO (whitespace-nowrap) wyjście poza wysokość jest ograniczone jednym wierszem. Tekst ZAWIJANY „mieści się”
+   * w szerokości zawsze, więc przy `minPx` może wyjść poza slot o kilka wierszy - tak działa warstwa tekstu na grafice (TextLayer,
+   * D-128: czytelny rozmiar i pełna treść są ważniejsze niż granica slotu); sloty odprawy i raportu używają `minPx` tylko z nowrap.
    */
   minPx?: number;
+  /**
+   * Tekst zawijany z twardym minimum (TextLayer, D-128): `minPx` jest dolną granicą także dla szerokości, a słowa zostają w całości -
+   * rozmiar maleje (do `minPx`), aż najdłuższe słowo zmieści się w wierszu; dopiero słowo, które nie mieści się nawet przy `minPx`,
+   * jest łamane w środku (`overflow-wrap: anywhere`), bo tekst nie może wyjść poza slot w poziomie. Wymaga `minPx`.
+   */
+  wholeWords?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -121,9 +130,11 @@ export function FitText({
       const setSize = (size: number) => {
         element.style.fontSize = `${size}px`;
       };
+      const hardMin = wholeWords && minPx !== undefined ? minPx : null;
       element.style.overflow = '';
+      element.style.overflowWrap = hardMin !== null ? 'normal' : '';
       let high = Math.max(MIN_FONT_PX, element.clientHeight * maxRatio, minPx ?? 0);
-      let low = MIN_FONT_PX;
+      let low = hardMin ?? MIN_FONT_PX;
       setSize(high);
       if (!fits(high)) {
         for (let step = 0; step < 10; step += 1) {
@@ -136,6 +147,8 @@ export function FitText({
         if (minPx !== undefined && low < minPx && fits(minPx)) low = minPx;
         setSize(low);
       }
+      // Słowo szersze niż slot nawet przy minimum - dopiero teraz łamane w środku (zamiast wyjść poza slot w poziomie).
+      if (hardMin !== null && !fitsWidth()) element.style.overflowWrap = 'anywhere';
       // Tekst o czytelnym minimum wyższy niż slot - widoczny w całości (bez ucięcia przez overflow-hidden kontenera). Tylko z minPx:
       // bez niego treść, która nie mieści się nawet przy MIN_FONT_PX, zostaje przycięta jak dotąd (nie wylewa się na scenę). Bez
       // tolerancji 1 px z fitsHeight - ułamek piksela nad slotem też byłby ucięty.
@@ -159,7 +172,7 @@ export function FitText({
       active = false;
       observer.disconnect();
     };
-  }, [fitKey, maxRatio, minPx]);
+  }, [fitKey, maxRatio, minPx, wholeWords]);
   return (
     <div ref={ref} data-testid={testId} className={`absolute overflow-hidden ${className}`} style={style}>
       {children}

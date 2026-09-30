@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Courier_Prime, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { SITE_URL } from '@/lib/landing-config';
-import { SITE_DESCRIPTION, SITE_NAME, socialMetadata } from '@/lib/site-metadata';
+import { SITE_DESCRIPTION, SITE_ICONS, SITE_MANIFEST, SITE_NAME, socialMetadata } from '@/lib/site-metadata';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin', 'latin-ext'],
@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_NAME,
   description: SITE_DESCRIPTION,
+  // Pola, nie pliki-konwencje w app/: segment /t je wyłącza (B-141).
+  manifest: SITE_MANIFEST,
+  icons: SITE_ICONS,
   ...socialMetadata(),
 };
 

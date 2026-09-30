@@ -90,9 +90,12 @@ function refreshTokensOnce(refreshToken: string, clientIp: Record<string, string
 function passThrough(request: NextRequest): NextResponse {
   const development = process.env.NODE_ENV === 'development';
   const nonce = generateNonce();
+  // Strona lądowania symulacji phishingowej (/t/*) nie ładuje zasobów modułów, więc jej CSP nie wymienia magazynu treści - jego adres
+  // (domena z marką serwisu) w nagłówku odpowiedzi zdradzałby ćwiczenie skanerowi poczty albo odbiorcy (B-141).
+  const landing = matchesPrefix(request.nextUrl.pathname, '/t');
   const policy = buildContentSecurityPolicy({
     nonce,
-    contentOrigin: resolveContentOrigin(process.env.CONTENT_BASE_URL, development),
+    contentOrigin: landing ? null : resolveContentOrigin(process.env.CONTENT_BASE_URL, development),
     development,
   });
   const headers = new Headers(request.headers);

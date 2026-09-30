@@ -73,12 +73,58 @@ describe('strony, które NIE mogą mieć karty podglądu z danymi', () => {
     expect(files(join(web, 'src', 'app', dir)).filter((file) => dynamic.test(readFileSync(file, 'utf8')))).toEqual([]);
   });
 
-  // Strona lądowania symulacji phishingowej: bez marki serwisu w meta (inaczej podgląd linku zdradza ćwiczenie).
-  it('/t/[token] zeruje opis i kartę podglądu odziedziczone z layoutu', async () => {
-    const { metadata } = await import('../app/t/[token]/page');
+  // Strona lądowania symulacji phishingowej: bez marki serwisu w meta (inaczej podgląd linku, ikona albo manifest zdradzają ćwiczenie).
+  it('/t/* zeruje manifest, opis i kartę podglądu z layoutu głównego, ma neutralną ikonę, neutralny tytuł i noindex (B-141)', async () => {
+    const { metadata } = await import('../app/t/layout');
     expect(metadata.description).toBeNull();
+    expect(metadata.manifest).toBeNull();
     expect(metadata.openGraph).toBeNull();
     expect(metadata.twitter).toBeNull();
-    expect(JSON.stringify(metadata)).not.toMatch(/unfooly|phishing|symulac/i);
+    expect(metadata.title).toBe('Weryfikacja konta');
+    expect(metadata.robots).toEqual({ index: false, follow: false });
+    expect(JSON.stringify(metadata)).not.toMatch(/unfooly|phishing|symulac|manifest\.webmanifest|\/icon/i);
+    // Strona pod layoutem nie dokłada własnych metadanych.
+    expect(readFileSync(join(web, 'src', 'app', 't', '[[...token]]', 'page.tsx'), 'utf8')).not.toMatch(/export\s+(const\s+metadata|(async\s+)?function\s+generateMetadata)/);
+  });
+
+  it('neutralna ikona: osadzona w adresie data: (bez żądania do serwera), PNG 32×32 i SVG bez marki, skryptów i odwołań', async () => {
+    const { metadata } = await import('../app/t/layout');
+    const icons = (metadata.icons as { icon: { url: string; type: string; sizes: string }[] }).icon;
+    expect(icons.map((icon) => icon.type)).toEqual(['image/png', 'image/svg+xml']);
+    for (const icon of icons) expect(icon.url.startsWith('data:')).toBe(true);
+    const png = Buffer.from(icons[0].url.replace('data:image/png;base64,', ''), 'base64');
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([32, 32]);
+    const svg = decodeURIComponent(icons[1].url.replace('data:image/svg+xml,', ''));
+    expect(svg.startsWith('<svg ')).toBe(true);
+    expect(svg).not.toMatch(/unfooly|<script|href=|url\(|<text|on\w+=/i);
+  });
+
+  // Cały prefiks /t obsługuje jedna trasa - żaden adres pod /t nie wpada w 404 aplikacji z metadanymi layoutu głównego.
+  it('trasa /t to opcjonalny catch-all [[...token]] - bez innych stron pod /t', () => {
+    expect(readdirSync(join(web, 'src', 'app', 't')).sort()).toEqual(['[[...token]]', 'layout.tsx']);
+    expect(readdirSync(join(web, 'src', 'app', 't', '[[...token]]')).sort()).toEqual(['_components', 'page.tsx']);
+  });
+
+  // Ikony i manifest serwisu to pola metadanych layoutu (pliki w public/), nie pliki-konwencje w app/ - tych segment /t nie wyłączy.
+  it('w src/app nie ma plików-konwencji ikon ani manifestu; layout główny podaje je jako pola', async () => {
+    const convention = /^(favicon\.ico|(icon|apple-icon|opengraph-image|twitter-image)\d*\.(ico|svg|png|jpg|jpeg|gif|tsx?|jsx?)|manifest\.(ts|js|json|webmanifest))$/;
+    // W korzeniu app/ i pod /t: plik-konwencja wygrałby z polami metadanych (także z `null` w layoucie /t).
+    const roots = [join(web, 'src', 'app'), join(web, 'src', 'app', 't'), join(web, 'src', 'app', 't', '[[...token]]')];
+    expect(roots.flatMap((dir) => readdirSync(dir).filter((name) => convention.test(name)))).toEqual([]);
+    const { metadata, viewport } = await import('../app/layout');
+    // Bez koloru marki w <meta name="theme-color"> - odziedziczyłaby go strona lądowania symulacji.
+    expect(viewport).not.toHaveProperty('themeColor');
+    expect(metadata.manifest).toBe('/manifest.webmanifest');
+    expect(metadata.icons).toEqual({
+      icon: [
+        { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
+        { url: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
+      ],
+    });
+    for (const file of ['favicon.ico', 'icon.svg', 'manifest.webmanifest']) expect(statSync(join(web, 'public', file)).isFile()).toBe(true);
+    const manifest = JSON.parse(readFileSync(join(web, 'public', 'manifest.webmanifest'), 'utf8')) as { name: string; description: string; icons: { src: string }[] };
+    expect(manifest).toMatchObject({ name: 'Unfooly', description: SITE_DESCRIPTION });
+    for (const icon of manifest.icons) expect(statSync(join(web, 'public', ...icon.src.split('/').filter(Boolean))).isFile()).toBe(true);
   });
 });

@@ -59,6 +59,24 @@ describe('middleware: Content-Security-Policy z nonce', () => {
     expect(nonceOf(policyOf(response))).toBeTruthy();
   });
 
+  // B-141: adres magazynu treści (domena z marką serwisu) nie może trafić do nagłówka strony lądowania symulacji phishingowej.
+  it('strona lądowania /t/* ma CSP bez adresu magazynu treści; pozostałe strony go mają', async () => {
+    vi.stubEnv('CONTENT_BASE_URL', 'https://content.example.test');
+    try {
+      expect(policyOf(await middleware(buildRequest('/login')))).toContain('https://content.example.test');
+      for (const path of ['/t', '/t/token', '/t/token/dalej', '/t/a/b/c']) {
+        const policy = policyOf(await middleware(buildRequest(path)));
+        expect(nonceOf(policy), path).toBeTruthy();
+        expect(policy, path).not.toContain('content.example.test');
+        expect(policy, path).toContain("img-src 'self' data:;");
+      }
+      // Prefiks po segmencie: /team to zwykła strona.
+      expect(policyOf(await middleware(buildRequest('/team')))).toContain('https://content.example.test');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('matcher obejmuje strony, a pomija trasy BFF, zasoby statyczne Next.js i pliki ikon', async () => {
     const { config } = await import('./middleware');
     const matcher = new RegExp(`^${config.matcher[0]}$`);

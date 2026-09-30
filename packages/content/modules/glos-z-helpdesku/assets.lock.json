@@ -19,8 +19,8 @@
     },
     "odprawa#steps.2.image": {
       "original": "scenes/odprawa-akta.svg",
-      "hash": "cbc8d489",
-      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta.cbc8d489.svg"
+      "hash": "f6b759e2",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta.f6b759e2.svg"
     },
     "odprawa#steps.3.image": {
       "original": "scenes/odprawa-legitymacja.svg",
@@ -29,8 +29,8 @@
     },
     "odprawa#steps.2.closedImage": {
       "original": "scenes/odprawa-teczka.svg",
-      "hash": "a806ab31",
-      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka.a806ab31.svg"
+      "hash": "9f9fbf50",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka.9f9fbf50.svg"
     },
     "odprawa#steps.0.portrait.image": {
       "original": "scenes/odprawa-biurko-pion.svg",
@@ -44,8 +44,8 @@
     },
     "odprawa#steps.2.portrait.image": {
       "original": "scenes/odprawa-akta-pion.svg",
-      "hash": "14c49e81",
-      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.14c49e81.svg"
+      "hash": "1eaab2a8",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.1eaab2a8.svg"
     },
     "odprawa#steps.3.portrait.image": {
       "original": "scenes/odprawa-legitymacja-pion.svg",
@@ -54,8 +54,8 @@
     },
     "odprawa#steps.2.portrait.closedImage": {
       "original": "scenes/odprawa-teczka-pion.svg",
-      "hash": "84074229",
-      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.84074229.svg"
+      "hash": "426df70e",
+      "key": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.426df70e.svg"
     },
     "biurko-karola#image": {
       "original": "scenes/biurko-karola.svg",

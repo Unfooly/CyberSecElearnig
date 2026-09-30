@@ -228,8 +228,8 @@
               ]
             }
           },
-          "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka.a806ab31.svg",
-          "image": "assets/glos-z-helpdesku/scenes/odprawa-akta.cbc8d489.svg",
+          "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka.9f9fbf50.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-akta.f6b759e2.svg",
           "hotspot": {
             "id": "teczka",
             "x": 24.4,
@@ -253,8 +253,8 @@
             }
           },
           "portrait": {
-            "image": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.14c49e81.svg",
-            "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.84074229.svg",
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.1eaab2a8.svg",
+            "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.426df70e.svg",
             "hotspot": {
               "id": "teczka",
               "x": 4.1,

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import type { ContentBlock, ContentReaction, ResultDetail } from '@/lib/courses-types';
 import {
+  BOARD_LANDSCAPE_WIDTH,
   boardLayout,
   boardOrientation,
   boardRatio,
@@ -44,6 +45,13 @@ const DRAG_THRESHOLD_PX = 6;
 const VERDICT_MS = 1400;
 // Poniżej tej szerokości sceny poziomej tekst kart ma < ~8 px (telefon w poziomie).
 const COMPACT_BOARD_PX = 700;
+// Najmniejsza szerokość sceny poziomej na desktopie (D-130): tekst kart 15 j. = 14 px przy szerokości projektu × 14/15. Minimalna skala
+// włącza się dopiero przy obszarze szerszym o zapas na pionowy pasek przewijania (rezerwowany stale - `scrollbar-gutter: stable`).
+const BOARD_MIN_PX = Math.ceil((BOARD_LANDSCAPE_WIDTH * 14) / 15);
+const SCROLLBAR_ALLOWANCE_PX = 20;
+// Przeciąganie przy krawędzi przewijanej sceny: strefa i krok przewinięcia na zdarzenie ruchu.
+const DRAG_EDGE_PX = 48;
+const DRAG_EDGE_STEP_PX = 18;
 
 function reducedMotionNow(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
@@ -86,6 +94,8 @@ export default function OrderingBlock({
   const reducedMotion = usePrefersReducedMotion();
   const [orientation, setOrientation] = useState<BoardOrientation>('landscape');
   const [cramped, setCramped] = useState(false);
+  // Szeroki ekran (D-130): tablica pozioma nie mniejsza niż skala, przy której tekst kart ma 14 px - przy niskim oknie przewija się w pionie.
+  const [roomy, setRoomy] = useState(false);
   // Pionowo wysokość kart i zdjęć rośnie z najdłuższym tekstem (tekst 15 px nie jest ucinany, D-105).
   const photos = [block.start, block.end].filter((photo) => !!photo);
   const hasStart = !!block.start;
@@ -98,6 +108,8 @@ export default function OrderingBlock({
   });
   // Telefon w pionie (D-105): zygzak w jednej kolumnie, scena przewijana, tacka pod sceną, czcionki min. 15 px.
   const portrait = orientation === 'portrait';
+  // Szeroki ekran (D-130): scena pozioma w minimalnej skali (tekst kart 14 px), przewijana w pionie, gdy obszar jest niski.
+  const desktop = !portrait && roomy;
   const fs = (value: number) => (portrait ? `max(15px, ${u(value)})` : u(value));
 
   const [placements, setPlacements] = useState<(string | null)[]>(() => ids.map(() => null));
@@ -148,6 +160,8 @@ export default function OrderingBlock({
       // zygzak jest dla tego ekranu). Szerokość sceny = min(szerokość, wysokość × 16/9). Tylko przy dotyku (pointer: coarse) - wąskie
       // okno desktopu z myszą nie jest telefonem (ta sama zasada co PlayerStage, PR #44).
       const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
+      // Szeroki obszar (co najmniej BOARD_MIN_PX) i nie niski ekran telefonu w poziomie - scena nie schodzi poniżej skali 14 px (D-130).
+      setRoomy(next === 'landscape' && width >= BOARD_MIN_PX + SCROLLBAR_ALLOWANCE_PX && window.innerHeight > 500);
       setCramped(touch && next === 'landscape' && Math.min(width, height * boardRatio(ids.length, { start: hasStart, end: hasEnd })) < COMPACT_BOARD_PX);
     };
     update();
@@ -198,6 +212,18 @@ export default function OrderingBlock({
     rootRef.current?.querySelector<HTMLElement>(`[data-card-id="${id.replace(/["\\]/g, '\\$&')}"]`)?.focus();
   }, [placements]);
 
+  // Wynik na szerokim ekranie z przewijaną sceną (D-130): zdanie informacji zwrotnej jest w tacce na dole - przewijamy do niej, żeby wynik
+  // był widoczny od razu (także po powrocie do ukończonej tablicy).
+  useEffect(() => {
+    if (!readOnly || !desktop) return;
+    const outer = outerRef.current;
+    const tray = outer?.querySelector<HTMLElement>('[data-board-tray]');
+    if (!outer || !tray || outer.scrollHeight <= outer.clientHeight) return;
+    const box = outer.getBoundingClientRect();
+    const target = tray.getBoundingClientRect();
+    if (target.bottom > box.bottom) outer.scrollTop += target.bottom - box.bottom;
+  }, [readOnly, desktop]);
+
   // Po ostatnim przypięciu fokus na "Sprawdź trop" (pojawia się, gdy tacka jest pusta).
   useEffect(() => {
     if (full) checkRef.current?.focus();
@@ -218,9 +244,9 @@ export default function OrderingBlock({
     const emptySlot = () => rootRef.current?.querySelector<HTMLElement>(`[data-slot-index="${firstEmpty}"]:not([data-card-id])`);
     // Klawiatura: pola są w DOM przed tacką - po wyborze śladu fokus od razu na pierwsze puste pole (Tab/Shift+Tab między polami).
     if (byKeyboard) window.setTimeout(() => emptySlot()?.focus(), 0);
-    // Telefon w pionie: tacka jest pod przewijaną sceną - po wyborze śladu z tacki pierwsze puste pole przewija się w widok. Tylko
-    // kontener sceny i tylko w pionie (scrollIntoView przewijałby też przodków, także w poziomie - strona "uciekała" w bok).
-    else if (portrait && slotIndex < 0) {
+    // Telefon w pionie i szeroki ekran z przewijaną sceną (D-130): tacka jest pod polami - po wyborze śladu z tacki pierwsze puste pole
+    // przewija się w widok. Tylko kontener sceny i tylko w pionie (scrollIntoView przewijałby też przodków, także w poziomie).
+    else if ((portrait || desktop) && slotIndex < 0) {
       const outer = outerRef.current;
       const slot = emptySlot();
       if (!outer || !slot) return;
@@ -290,6 +316,13 @@ export default function OrderingBlock({
     const { clientX, clientY } = event;
     setDrag({ id: start.id, x: clientX, y: clientY, offX: start.x - start.rect.left, offY: start.y - start.rect.top, w: start.rect.width, h: start.rect.height });
     setHoverTarget(targetAt(clientX, clientY));
+    // Szeroki ekran z przewijaną sceną (D-130): przeciąganie przy górnej/dolnej krawędzi obszaru przewija scenę (pola u góry, tacka na dole).
+    const outer = desktop ? outerRef.current : null;
+    if (outer && outer.scrollHeight > outer.clientHeight) {
+      const box = outer.getBoundingClientRect();
+      if (clientY < box.top + DRAG_EDGE_PX) outer.scrollBy({ top: -DRAG_EDGE_STEP_PX });
+      else if (clientY > box.bottom - DRAG_EDGE_PX) outer.scrollBy({ top: DRAG_EDGE_STEP_PX });
+    }
   }
 
   function pointerUp(event: PointerEvent<HTMLButtonElement>) {
@@ -337,7 +370,8 @@ export default function OrderingBlock({
     },
   });
 
-  // Tablica skaluje tekst z szerokością sceny; na telefonie w pionie nie mniej niż 15 px (D-105) - także klon przeciąganej karty.
+  // Tablica skaluje tekst z szerokością sceny; na telefonie w pionie nie mniej niż 15 px (D-105) - także klon przeciąganej karty. Desktop
+  // (D-130): scena nie maleje poniżej BOARD_MIN_PX, więc tekst kart (15 j.) ma co najmniej 14 px bez ucinania w karcie.
   const cardText = { fontSize: fs(15), lineHeight: 1.3 } as CSSProperties;
   // Zdanie pod tablicą: z reakcji wyniku, a bez niej z wyjaśnienia autora (`explanation` z serwera), na końcu - zdanie ogólne.
   const feedback = feedbackSentence(result?.reaction?.text ?? result?.detail?.explanation, result?.correct);
@@ -416,10 +450,15 @@ export default function OrderingBlock({
 
   // Pudełko sceny: poziomo "contain" w obszarze bloku (proporcja 16:9), pionowo pełna szerokość i proporcja z układu (scena dłuższa niż
   // ekran - przewija się w obszarze bloku).
+  // Desktop (D-130): „contain”, ale nie mniej niż BOARD_MIN_PX szerokości (o ile mieści się w szerokości) - niższe okno przewija scenę w pionie.
   const boxStyle = (
     portrait
       ? { width: '100%', aspectRatio: `${layout.width} / ${layout.height}` }
-      : { '--board-ratio': String(layout.width / layout.height), aspectRatio: 'var(--board-ratio)' }
+      : {
+          '--board-ratio': String(layout.width / layout.height),
+          aspectRatio: 'var(--board-ratio)',
+          ...(desktop ? { width: `min(100cqw, max(calc(100cqh * var(--board-ratio)), ${BOARD_MIN_PX}px))`, margin: 'auto', flexShrink: 0 } : {}),
+        }
   ) as CSSProperties;
 
   return (
@@ -437,7 +476,10 @@ export default function OrderingBlock({
         className={
           portrait
             ? 'min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [container-type:inline-size]'
-            : 'relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]'
+            : desktop
+              ? // Scena wyższa niż obszar przewija się w pionie; `margin: auto` sceny centruje ją, gdy się mieści (bez ucinania góry przy przewijaniu).
+                'relative flex min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [container-type:size] [scrollbar-gutter:stable]'
+              : 'relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]'
         }
       >
         {block.prompt && portrait && <p className="mb-2 text-[15px] leading-snug text-muted">{block.prompt}</p>}
@@ -446,6 +488,7 @@ export default function OrderingBlock({
           data-testid="evidence-board"
           data-orientation={orientation}
           data-layout={portrait ? 'axis' : 'u'}
+          data-min-scale={desktop ? 'true' : undefined}
           data-phase={readOnly ? phase : 'play'}
           className="board-box relative select-none"
           style={boxStyle}

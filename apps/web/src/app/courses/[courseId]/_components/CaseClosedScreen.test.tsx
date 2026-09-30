@@ -146,6 +146,22 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(screen.getByRole('button', { name: /Następna sprawa/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('D-130: jest następny nieukończony kurs - „Następna sprawa” to link do niego (z tytułem), bez zamkniętej teczki', () => {
+    renderScreen({ fresh: false, reward: null, nextCourse: { courseId: 'kurs-2', title: 'Głos z helpdesku' } });
+    const link = screen.getByRole('link', { name: 'Następna sprawa: Głos z helpdesku' });
+    expect(link).toHaveAttribute('href', '/courses/kurs-2');
+    expect(screen.queryByRole('button', { name: /Następna sprawa/ })).not.toBeInTheDocument();
+  });
+
+  it('D-130: na etapie podpisu pole podpisu ma widoczną etykietę „Podpisz raport”', () => {
+    renderScreen();
+    advance(1300);
+    for (let i = 0; i < 60; i += 1) advance(250);
+    expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'sign');
+    expect(screen.getByTestId('closing-sign-label')).toHaveTextContent('Podpisz raport');
+    expect(screen.getByRole('button', { name: 'Podpisz raport' })).toContainElement(screen.getByTestId('closing-sign-label'));
+  });
+
   it('B-127: w pionie toast nagrody dopiero PO ceremonii (nie w trakcie), z animacją wejścia; znika po 2,5 s', () => {
     // Kontener telefonu w pionie (proporcje < 0.8) i wariant pionowy w treści.
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);

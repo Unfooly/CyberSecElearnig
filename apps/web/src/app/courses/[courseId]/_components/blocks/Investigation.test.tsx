@@ -1483,7 +1483,7 @@ describe('DIALOGUE: komunikator (pisanie, kwestie po jednej)', () => {
     // Kliknięty chip znika od razu z listy (jest w wątku).
     expect(within(screen.getByRole('list', { name: 'Pytania do zadania' })).queryByRole('button', { name: /Skąd ten mail/ })).not.toBeInTheDocument();
     expect(ready.current).toBeNull();
-    expect(screen.getByText('Zadano 0 z 1 pytań.')).toBeInTheDocument();
+    expect(screen.getByText('Wymagane pytania: 0/1')).toBeInTheDocument();
 
     typeNext();
     expect(screen.getByText('Przyszedł rano.')).toBeInTheDocument();

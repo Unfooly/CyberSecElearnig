@@ -447,8 +447,7 @@ export default function DialogueBlock({
         <ExploreFooter
           done={doneCount}
           total={required.length}
-          noun="pytań"
-          verb="Zadano"
+          format={(done, total) => `Wymagane pytania: ${done}/${total}`}
           readyText="Wszystkie wymagane pytania zadane."
           review={review}
           className={`dialogue-progress mt-4 ${review ? 'dialogue-progress-review text-xs text-slate-500' : 'text-sm text-slate-600'}`}

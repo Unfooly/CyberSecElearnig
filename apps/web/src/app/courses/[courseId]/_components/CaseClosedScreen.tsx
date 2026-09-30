@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { Lock, Trophy } from 'lucide-react';
+import Link from 'next/link';
+import { FolderOpen, Lock, Trophy } from 'lucide-react';
 import type { BriefingRect, CaseClosing, CourseCompletionReward, EvidenceSummary } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { useSfx } from '@/lib/sfx';
@@ -294,7 +295,10 @@ export default function CaseClosedScreen({
   signer,
   contentBase,
   fresh,
+  nextCourse = null,
 }: {
+  /** Następny nieukończony kurs (D-130): „Następna sprawa” to link do niego; brak - zamknięta teczka „wkrótce”. */
+  nextCourse?: { courseId: string; title: string } | null;
   title: string;
   score: number | null;
   scoreUnavailable?: boolean;
@@ -527,15 +531,23 @@ export default function CaseClosedScreen({
 
             {/* Przycisk tylko na etapie podpisu; potem sam podpis (dla czytnika jest w opisie raportu wyżej). */}
             {stage === 'sign' ? (
+              // Widoczna etykieta na polu podpisu (D-130) - wcześniej sama pulsująca obwódka, bez słowa, co zrobić.
               <button
                 ref={signRef}
                 type="button"
-                aria-label="Podpisz raport"
                 data-testid="closing-signature"
                 onClick={sign}
-                className="closing-sign-hit closing-sign-pulse absolute cursor-pointer rounded-[0.4cqw] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="closing-sign-hit closing-sign-pulse absolute flex cursor-pointer items-end rounded-[0.4cqw] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 style={place(slots.signature)}
-              />
+              >
+                <span
+                  data-testid="closing-sign-label"
+                  className="block whitespace-nowrap font-semibold italic text-accent-ink"
+                  style={{ fontSize: font(1.6, 14), lineHeight: 1.1, paddingLeft: cqw(1) }}
+                >
+                  Podpisz raport
+                </span>
+              </button>
             ) : (
               <div aria-hidden="true" data-testid="closing-signature" className="absolute flex items-end" style={place(slots.signature)}>
                 {signed && (
@@ -626,16 +638,27 @@ export default function CaseClosedScreen({
         {/* Błąd pobrania wyniku to nie dubel danych z grafiki - pionowo też widoczny (poziomo jest w linijce wyniku wyżej). */}
         {portrait && scoreUnavailable && <p className="text-sm font-medium text-danger">Nie udało się pobrać wyniku. Spróbuj odświeżyć stronę.</p>}
         {restartError && <p className="text-sm font-medium text-danger">Nie udało się rozpocząć kursu od nowa. Spróbuj ponownie.</p>}
-        {/* Kolejnej sprawy w API nie ma (B-115: zachowanie MVP) - zamknięta teczka z kłódką. aria-disabled (nie disabled): osiągalny Tabem,
-            więc użytkownik klawiatury/czytnika też usłyszy "wkrótce"; bez obsługi kliku (type=button poza formularzem nic nie robi). */}
-        <button
-          type="button"
-          aria-disabled="true"
-          className="inline-flex min-h-[44px] cursor-not-allowed items-center justify-center gap-2 rounded-btn border border-border bg-paper px-4 text-sm font-bold text-muted"
-        >
-          <Lock aria-hidden="true" className="h-4 w-4" />
-          Następna sprawa · wkrótce
-        </button>
+        {/* Następny nieukończony przypisany kurs (D-130) - link do niego. Bez niego zamknięta teczka z kłódką. aria-disabled (nie disabled):
+            osiągalny Tabem, więc użytkownik klawiatury/czytnika też usłyszy "wkrótce"; bez obsługi kliku (type=button poza formularzem). */}
+        {nextCourse ? (
+          <Link
+            href={`/courses/${encodeURIComponent(nextCourse.courseId)}`}
+            data-testid="closing-next-case"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-btn bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <FolderOpen aria-hidden="true" className="h-4 w-4" />
+            Następna sprawa: {nextCourse.title}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            aria-disabled="true"
+            className="inline-flex min-h-[44px] cursor-not-allowed items-center justify-center gap-2 rounded-btn border border-border bg-paper px-4 text-sm font-bold text-muted"
+          >
+            <Lock aria-hidden="true" className="h-4 w-4" />
+            Następna sprawa · wkrótce
+          </button>
+        )}
       </div>
     </div>
   );

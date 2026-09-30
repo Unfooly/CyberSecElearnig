@@ -118,9 +118,12 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
 
       const nav = screen.getByRole('navigation', { name: 'Nawigacja po blokach' });
       const next = screen.getByRole('button', { name: /^Dalej$/ });
-      const hint = screen.getByText('Ukończ ten blok, aby przejść dalej.');
+      // Podpowiedź zawijana w dwóch wierszach (D-130): tekst w wewnętrznym elemencie z line-clamp, id na zewnętrznym.
+      const hint = screen.getByText('Ukończ ten blok, aby przejść dalej.').closest('[id]') as HTMLElement;
       expect(next).toBeDisabled();
       expect(nav).toContainElement(hint);
+      expect(hint).toHaveTextContent('Ukończ ten blok, aby przejść dalej.');
+      expect(hint.className).not.toMatch(/truncate/);
       expect(next).toHaveAttribute('aria-describedby', hint.id);
       expect(next).toHaveAttribute('title', 'Ukończ ten blok, aby przejść dalej.');
       expect(screen.getByRole('button', { name: /Wstecz/ })).toBeDisabled();

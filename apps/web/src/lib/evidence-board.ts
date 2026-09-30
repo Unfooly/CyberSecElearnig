@@ -45,6 +45,8 @@ export interface BoardLayout {
 }
 
 const LANDSCAPE = { width: 1280, height: 720 } as const;
+/** Szerokość projektu sceny poziomej (jednostki układu) - minimalna skala tablicy na szerokim ekranie liczy się od niej (D-130). */
+export const BOARD_LANDSCAPE_WIDTH = LANDSCAPE.width;
 const PORTRAIT_WIDTH = 600;
 
 /**

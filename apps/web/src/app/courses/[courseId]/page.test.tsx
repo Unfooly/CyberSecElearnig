@@ -128,7 +128,7 @@ describe('CoursePlayerPage', () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it('kurs IN_PROGRESS: renderuje odtwarzacz z pierwszym blokiem; zapytania tylko o start i preferencje (bez score)', async () => {
+  it('kurs IN_PROGRESS: renderuje odtwarzacz z pierwszym blokiem; zapytania o start, listę kursów (następna sprawa, D-130) i preferencje', async () => {
     mockCookieValue('token');
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => inProgressCourse });
     vi.stubGlobal('fetch', fetchMock);
@@ -138,9 +138,58 @@ describe('CoursePlayerPage', () => {
 
     expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
       expect.stringMatching(/\/courses\/course-1\/start$/),
+      expect.stringMatching(/\/courses\/my$/),
       expect.stringMatching(/\/users\/me\/preferences$/),
     ]);
     expect(document.querySelector('video')).toHaveAttribute('src', 'https://example.test/v.mp4');
+  });
+
+  it('D-130: kurs w toku, /courses/my zwraca 5xx - kurs się renderuje (bez błędu wyniku), „Następna sprawa” niedostępna', async () => {
+    mockCookieValue('token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/courses/my')
+          ? { ok: false, status: 503, json: async () => ({}) }
+          : url.endsWith('/users/me/preferences')
+            ? { ok: true, status: 200, json: async () => ({ narrationEnabled: true }) }
+            : { ok: true, status: 200, json: async () => inProgressCourse },
+      ),
+    );
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+    expect(document.querySelector('video')).toHaveAttribute('src', 'https://example.test/v.mp4');
+    expect(screen.queryByText(/nie udało się pobrać wyniku/i)).not.toBeInTheDocument();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('D-130: kurs w toku, /courses/my zwraca 401 - przekierowanie do /login', async () => {
+    mockCookieValue('token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) =>
+        url.endsWith('/courses/my') ? { ok: false, status: 401, json: async () => ({}) } : { ok: true, status: 200, json: async () => inProgressCourse },
+      ),
+    );
+    await expect(CoursePlayerPage({ params: { courseId: 'course-1' } })).rejects.toThrow('REDIRECT:/login');
+  });
+
+  it('D-130: kurs ukończony z następnym nieukończonym kursem na liście - „Następna sprawa” prowadzi do niego', async () => {
+    mockCookieValue('token');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => completedCourse })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { courseId: 'course-1', title: 'Wyłudzone hasło', status: 'COMPLETED', score: 80 },
+          { courseId: 'course-2', title: 'Głos z helpdesku', status: 'NOT_STARTED', score: null },
+        ],
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
+
+    expect(screen.getByRole('link', { name: 'Następna sprawa: Głos z helpdesku' })).toHaveAttribute('href', '/courses/course-2');
   });
 
   it('przekazuje ustawienie lektora z konta: wyłączony lektor => przełącznik "Lektor" niezaznaczony', async () => {

@@ -86,7 +86,7 @@ export default function InterrogationBlock({
   progress?: ClientProgressBlock;
   /** Zgłasza podważenia do stanu wyników (podgląd, odświeżenie w tej samej sesji). */
   onProgress?: (patch: Partial<ClientProgressBlock>) => void;
-  /** Liczby dowodów z serwera po trafionym podważeniu (sprzeczność liczy się dopiero po zebraniu). */
+  /** Liczby dowodów z serwera po trafionym podważeniu (zebrana sprzeczność; suma bez zmian - stały mianownik, D-130). */
   onEvidence?: (summary: EvidenceSummary) => void;
   myAvatarUrl?: string | null;
   myInitials?: string;
@@ -578,7 +578,7 @@ export default function InterrogationBlock({
         <p className="dialogue-progress mt-3 text-sm text-slate-600">
           {ready
             ? 'Przesłuchanie zakończone - „Dalej” w pasku.'
-            : `Zadano ${askedRequired} z ${required.length} pytań${consoleAvailable && !dossier.ready ? ' · konsola: zaznacz ślady włamania' : ''}.`}
+            : `Wymagane pytania: ${askedRequired}/${required.length}${consoleAvailable && !dossier.ready ? ' · konsola: zaznacz ślady włamania' : ''}`}
         </p>
       </div>
 

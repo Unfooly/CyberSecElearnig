@@ -236,12 +236,15 @@ describe('InterrogationBlock', () => {
   it('konsola: otwiera się po pytaniu; gotowe po wymaganych pytaniach, otwarciu dokumentów i zakreśleniu śladów; odpowiedź dla serwera', () => {
     const { ready, onSubmit } = setup();
     flush();
+    // Licznik pytań (D-130): „Wymagane pytania: X/Y”.
+    expect(screen.getByText(/^Wymagane pytania: 0\/\d+$/)).toBeInTheDocument();
     ask('Skąd wiedziałeś, kto dzwoni?', 2);
     fireEvent.click(line('To był jego głos'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatek' }));
     ask('Pokaż konsolę.', 1);
     const consoleDialog = screen.getByTestId('interrogation-console');
     expect(ready.current).toBeNull();
+    expect(screen.getByText(/^Wymagane pytania: \d+\/\d+ · konsola: zaznacz ślady włamania$/)).toBeInTheDocument();
     fireEvent.click(within(consoleDialog).getByRole('button', { name: /Zatwierdzone, Amsterdam/ }));
     expect(ready.current).not.toBeNull();
     fireEvent.click(within(consoleDialog).getByRole('button', { name: 'Zamknij konsolę' }));

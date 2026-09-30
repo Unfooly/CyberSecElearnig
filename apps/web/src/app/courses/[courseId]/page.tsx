@@ -8,6 +8,7 @@ import Topbar from '@/components/Topbar';
 import CoursePlayer from './_components/CoursePlayer';
 import { redirectIfPending } from '@/lib/organization';
 import { contentAssetBase } from '@/lib/content-assets';
+import { nextUnfinishedCourse } from '@/lib/next-course';
 
 export default async function CoursePlayerPage({ params }: { params: { courseId: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -59,20 +60,23 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   // poprawna odpowiedź) od "nie udało się pobrać wyniku" (score=null byłoby
   // mylące - ekran zamknięcia sprawy pokazałby fałszywe "ten kurs nie miał pytań").
   let scoreUnavailable = false;
+  // Lista przypisań także dla kursu w toku (D-130): „Następna sprawa” na ekranie zamknięcia prowadzi do następnego nieukończonego kursu.
+  // Błąd odczytu nie blokuje kursu - wtedy „Następna sprawa · wkrótce” jak dotąd.
+  const myCoursesResult = await fetchJson<CourseAssignmentSummary[]>(`${API_URL}/courses/my`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!myCoursesResult.ok && myCoursesResult.status === 401) {
+    redirect('/login');
+  }
   if (course.status === 'COMPLETED') {
-    const myCoursesResult = await fetchJson<CourseAssignmentSummary[]>(`${API_URL}/courses/my`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store',
-    });
-    if (!myCoursesResult.ok && myCoursesResult.status === 401) {
-      redirect('/login');
-    }
     if (myCoursesResult.ok) {
       score = myCoursesResult.data.find((c) => c.courseId === course.courseId)?.score ?? null;
     } else {
       scoreUnavailable = true;
     }
   }
+  const nextCourse = myCoursesResult.ok && Array.isArray(myCoursesResult.data) ? nextUnfinishedCourse(myCoursesResult.data, course.courseId) : null;
 
   // Ustawienie lektora z konta (users.narrationEnabled). Błąd odczytu nie blokuje kursu: domyślnie lektor włączony.
   // Dla kursu już ukończonego pokazujemy tylko podsumowanie (bez odtwarzacza), więc preferencji nie pobieramy.
@@ -109,6 +113,7 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         contentBase={contentBase}
         // Avatar gracza w dymkach DIALOGUE (fix/dialogue-polish, useMyAvatar) - z tego samego JWT co Topbar.tsx.
         userEmail={userEmail}
+        nextCourse={nextCourse}
       />
     </div>
   );

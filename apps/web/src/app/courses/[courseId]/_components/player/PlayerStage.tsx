@@ -461,8 +461,9 @@ function PlayerStageInner({
                 <span className={backIsDefault ? 'pbar-label' : undefined}>{backLabel}</span>
               </button>
               {!canForward && forwardHint && (
-                <span id={hintId} className="pbar-hint hidden max-w-[160px] truncate text-xs text-slate-500 sm:inline" title={forwardHint}>
-                  {forwardHint}
+                // Podpowiedź zawija się (najwyżej 2 wiersze, D-130) zamiast ucinać - pełny tekst także w `title` i dla czytnika (aria-describedby).
+                <span id={hintId} className="pbar-hint hidden max-w-[260px] text-right text-xs leading-tight text-slate-500 sm:block" title={forwardHint}>
+                  <span className="line-clamp-2">{forwardHint}</span>
                 </span>
               )}
               {forwardHref ? (

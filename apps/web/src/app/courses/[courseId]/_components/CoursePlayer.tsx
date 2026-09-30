@@ -209,6 +209,7 @@ export default function CoursePlayer({
   noTimeLimits = false,
   contentBase = LOCAL_CONTENT_BASE,
   userEmail = null,
+  nextCourse = null,
   persistExploration = true,
 }: {
   // Zapis stanu częściowego sceny (D-128); strona deweloperska (player-harness) nie ma backendu, więc go wyłącza.
@@ -226,6 +227,8 @@ export default function CoursePlayer({
   // Baza adresów zasobów (CONTENT_BASE_URL albo /content lokalnie), z page.tsx.
   contentBase?: string;
   userEmail?: string | null;
+  /** Następny nieukończony przypisany kurs (page.tsx, D-130) - „Następna sprawa” na ekranie zamknięcia; null - „wkrótce”. */
+  nextCourse?: { courseId: string; title: string } | null;
 }) {
   const router = useRouter();
   const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
@@ -626,6 +629,7 @@ export default function CoursePlayer({
         signer={identity.label}
         contentBase={contentBase}
         fresh={completedNow}
+        nextCourse={nextCourse}
       />
     );
   } else if (showingFeedback) {

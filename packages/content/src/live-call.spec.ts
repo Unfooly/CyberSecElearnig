@@ -54,7 +54,7 @@ describe('LIVE_CALL: walidacja', () => {
   });
 
   it('co najmniej jedno dobre zakończenie; id odpowiedzi unikalne w bloku, „silence” zarezerwowane; infoChoices istnieją', () => {
-    expect(errorsOf(mutate((m) => (call(m).endings[0].outcome = 'partial')))).toContain('co najmniej jedno zakończenie z outcome "good"');
+    expect(errorsOf(mutate((m) => call(m).endings.forEach((e: AnyModule) => (e.outcome = 'partial'))))).toContain('co najmniej jedno zakończenie z outcome "good"');
     expect(errorsOf(mutate((m) => (node(m, 'autorytet').choices[0].id = 'rozlaczam')))).toContain('powtórzony identyfikator odpowiedzi "rozlaczam"');
     expect(errorsOf(mutate((m) => (node(m, 'autorytet').choices[0].id = 'silence')))).toContain('id "silence" jest zarezerwowane');
     expect(errorsOf(mutate((m) => call(m).infoChoices.push('nie-ma')))).toContain('infoChoices: nieznana odpowiedź "nie-ma"');
@@ -101,12 +101,79 @@ describe('LIVE_CALL: walidacja', () => {
 
   it('klient: drzewo i teksty zakończeń, bez oceny zakończeń i infoChoices', () => {
     const client = toClientBlock(call(fullModuleV6()), { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
-    expect(client.nodes[0].choices[0]).toEqual({ id: 'oddzwonie', text: 'Oddzwonię na numer z intranetu.', next: '#dobre' });
+    expect(client.nodes[0].choices).toContainEqual({ id: 'oddzwonie', text: 'Oddzwonię na numer z intranetu.', next: '#dobre' });
+    expect(client.reject).toBe('#odrzucone');
+    expect(client.hangUp).toBe('#rozlaczenie');
     expect(client.nodes[0].silence).toBe('nacisk');
-    expect(client.endings.map((e: AnyModule) => e.id)).toEqual(['dobre', 'czesciowe', 'zle']);
+    expect(client.endings.map((e: AnyModule) => e.id)).toEqual(['dobre', 'czesciowe', 'zle', 'odrzucone', 'rozlaczenie']);
     expect(client.endings.some((e: AnyModule) => 'outcome' in e)).toBe(false);
     expect('infoChoices' in client).toBe(false);
     expect(client.caller).toEqual({ display: 'IT Helpdesk', number: '12 3XX XX 41' });
+  });
+});
+
+describe('LIVE_CALL: odrzucenie, rozłączenie i kolejność odpowiedzi (D-129)', () => {
+  const block = call(fullModuleV6()) as Parameters<typeof replayLiveCall>[0];
+
+  it('walidacja: reject/hangUp tylko do istniejącego dobrego zakończenia; id "reject" i "hangup" zarezerwowane', () => {
+    expect(errorsOf(mutate((m) => (call(m).reject = '#nie-ma')))).toContain('reject: "#nie-ma" - oczekiwane #id istniejącego zakończenia');
+    expect(errorsOf(mutate((m) => (call(m).hangUp = '#zle')))).toContain('hangUp: zakończenie "zle" musi mieć outcome "good"');
+    expect(errorsOf(mutate((m) => (call(m).reject = 'start')))).not.toBe('');
+    expect(errorsOf(mutate((m) => (node(m, 'autorytet').choices[0].id = 'hangup')))).toContain('id "hangup" jest zarezerwowane');
+    expect(errorsOf(mutate((m) => (node(m, 'autorytet').choices[0].id = 'reject')))).toContain('id "reject" jest zarezerwowane');
+  });
+
+  it('walidacja: zakończenie reject/hangUp nie może być celem zwykłej odpowiedzi ani ciszy (nie zdradza dobrych odpowiedzi)', () => {
+    expect(errorsOf(mutate((m) => (call(m).hangUp = '#dobre')))).toContain('hangUp: zakończenie "dobre" nie może być celem odpowiedzi ani ciszy');
+    expect(errorsOf(mutate((m) => (node(m, 'nacisk').silence = '#odrzucone')))).toContain('reject: zakończenie "odrzucone" nie może być celem odpowiedzi ani ciszy');
+    // Dobre są tylko zakończenia odrzucenia/rozłączenia: zwykła rozmowa musi nadal mieć osiągalne dobre zakończenie.
+    expect(errorsOf(mutate((m) => (call(m).endings.find((e: AnyModule) => e.id === 'dobre').outcome = 'partial')))).toContain(
+      'zakończenie "good" musi być osiągalne bez ciszy',
+    );
+  });
+
+  it('zakończenie osiągalne wyłącznie przez reject/hangUp nie jest „nieosiągalne”', () => {
+    // Fixtura: `odrzucone` i `rozlaczenie` prowadzi do nich wyłącznie reject/hangUp.
+    expect(errorsOf(fullModuleV6())).toBe('');
+    expect(errorsOf(mutate((m) => delete call(m).reject))).toContain('zakończenie "odrzucone" nieosiągalne');
+  });
+
+  it('replay: reject tylko jako jedyny krok; hangup jako ostatni krok w dowolnym węźle', () => {
+    expect(replayLiveCall(block, ['reject'], { allowSilence: false })).toEqual({ ending: 'odrzucone', choices: [] });
+    expect(replayLiveCall(block, ['hangup'], { allowSilence: false })).toEqual({ ending: 'rozlaczenie', choices: [], hungUp: true });
+    expect(replayLiveCall(block, ['sprawdze', 'hangup'], { allowSilence: false })).toEqual({ ending: 'rozlaczenie', choices: ['sprawdze'], hungUp: true });
+    expect(replayLiveCall(block, ['silence', 'hangup'], { allowSilence: true })).toEqual({ ending: 'rozlaczenie', choices: [], hungUp: true });
+    expect(replayLiveCall(block, ['reject', 'oddzwonie'], { allowSilence: false })).toBeNull();
+    expect(replayLiveCall(block, ['sprawdze', 'reject'], { allowSilence: false })).toBeNull();
+    expect(replayLiveCall(block, ['hangup', 'oddzwonie'], { allowSilence: false })).toBeNull();
+    const without = { ...block, reject: undefined, hangUp: undefined };
+    expect(replayLiveCall(without, ['reject'], { allowSilence: false })).toBeNull();
+    expect(replayLiveCall(without, ['hangup'], { allowSilence: false })).toBeNull();
+  });
+
+  it('klient: odpowiedzi tasowane osobno w każdym węźle (seed per węzeł), ten sam zbiór i krawędzie; stały seed = stała kolejność', () => {
+    const seeds: string[] = [];
+    const context = {
+      shuffleSeed: (key: string) => {
+        seeds.push(key);
+        return [key.length, 7, 11, 13] as [number, number, number, number];
+      },
+      opaqueId: (b: string, i: string) => `${b}-${i}`,
+    };
+    const stored = call(fullModuleV6());
+    const client = toClientBlock(stored, context) as AnyModule;
+    expect(seeds).toEqual(['na-zywo:start', 'na-zywo:nacisk', 'na-zywo:autorytet']);
+    client.nodes.forEach((n: AnyModule, i: number) => {
+      expect([...n.choices].sort((a: AnyModule, b: AnyModule) => a.id.localeCompare(b.id))).toEqual(
+        [...stored.nodes[i].choices].sort((a: AnyModule, b: AnyModule) => a.id.localeCompare(b.id)),
+      );
+    });
+    expect(toClientBlock(stored, context)).toEqual(client);
+    // Różne seedy dają różne permutacje (co najmniej jedna z kilku różna od kolejności z treści).
+    const orders = [1, 2, 3, 4, 5, 6].map(
+      (n) => (toClientBlock(stored, { ...context, shuffleSeed: () => [n, n * 3, n * 5, n * 7] }) as AnyModule).nodes[0].choices.map((c: AnyModule) => c.id).join(','),
+    );
+    expect(new Set(orders).size).toBeGreaterThan(1);
   });
 });
 

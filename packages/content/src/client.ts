@@ -137,6 +137,17 @@ export function toClientBlock(
       result.items = opaqueAndShuffle(result.items, id, context);
       break;
     }
+    case 'LIVE_CALL': {
+      // D-129: kolejność odpowiedzi losowana osobno w każdym węźle (seed serwera per przypisanie i węzeł; `:` nie występuje w id, więc
+      // seed węzła nie pokrywa się z seedem innego bloku) - pozycja na liście (i klawisz 1-4) nie zdradza dobrej odpowiedzi. Id odpowiedzi
+      // zostają jawne: rozmowa idzie po krawędziach `next` bez serwera, a ocena zależy od zakończenia i sekretnego `infoChoices`.
+      if (Array.isArray(result.nodes)) {
+        result.nodes = (result.nodes as Record<string, unknown>[]).map((node) =>
+          Array.isArray(node.choices) ? { ...node, choices: seededShuffle(node.choices, context.shuffleSeed(`${id}:${String(node.id)}`)) } : node,
+        );
+      }
+      break;
+    }
     case 'TEXT_INPUT_GUIDED': {
       const hints = Array.isArray(block.hints) ? block.hints.length : 0;
       result.hintCount = hints;

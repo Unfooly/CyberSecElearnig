@@ -803,9 +803,16 @@ const osintSpotBlockSchema = z
  * przechodzi drzewo od `start` i odrzuca ścieżkę niezgodną z grafem.
  */
 export const LIVE_CALL_SILENCE = 'silence';
+// D-129: odrzucenie połączenia na ekranie przychodzącym (jedyny krok ścieżki) i rozłączenie się w trakcie rozmowy (ostatni krok) -
+// pola `reject` / `hangUp` wskazują zakończenie (`#id`, outcome "good"). Rozłączenie PO odpowiedzi z `infoChoices` serwer ocenia jako złe.
+export const LIVE_CALL_REJECT = 'reject';
+export const LIVE_CALL_HANG_UP = 'hangup';
 export const LIVE_CALL_DEFAULT_TIME_LIMIT_SEC = 12;
 // `next` / `silence`: id węzła albo `#` + id zakończenia (ten sam wzorzec id co idSchema).
 const liveCallTarget = z.string().regex(new RegExp(`^#?${ID_PATTERN.source.slice(1)}`), 'Cel krawędzi: id węzła albo #id zakończenia');
+
+// `reject` / `hangUp`: wyłącznie zakończenie (`#id`).
+const liveCallExit = z.string().regex(new RegExp(`^#${ID_PATTERN.source.slice(1)}`), 'Oczekiwane #id zakończenia');
 
 const liveCallNodeSchema = z
   .object({
@@ -832,6 +839,8 @@ const liveCallSchema = z
       .min(2)
       .max(10),
     infoChoices: z.array(idSchema).max(40).optional(),
+    reject: liveCallExit.optional(),
+    hangUp: liveCallExit.optional(),
   })
   .strict();
 
@@ -1381,6 +1390,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'nodes[].silence',
       'endings[].id',
       ...narrationClient('endings[].'),
+      'reject',
+      'hangUp',
     ],
     [...narrationSecret('nodes[].'), ...narrationSecret('endings[].'), 'endings[].outcome', 'infoChoices[]'],
   ),

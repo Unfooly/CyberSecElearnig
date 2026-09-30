@@ -145,6 +145,9 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   id zakończeń niech nie zdradzają oceny (`k1`, `oddzwonienie`, nie `dobre`/`zle`). Węzeł bez `silence` nie odlicza czasu; dobre zakończenie
   musi być osiągalne samymi odpowiedziami (gracz bez limitu nie ma krawędzi `silence`).
   Odpowiedź `{ path: [choiceId | "silence"], timed }` (cisza tylko z limitem czasu); wynik good 1 / partial 0,5 / bad 0.
+  D-129: `reject?` i `hangUp?` - `#<id zakończenia>` z outcome `good`: „Odrzuć” na ekranie przychodzącym (ścieżka `["reject"]`) i „Rozłącz”
+  przez całą rozmowę (ostatni krok `"hangup"`); id `reject` i `hangup` zarezerwowane. Rozłączenie PO odpowiedzi z `infoChoices` serwer ocenia
+  jako złe (0). Kolejność odpowiedzi w każdym węźle tasuje serwer (seed per przypisanie i węzeł) - autor nie musi jej mieszać.
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)

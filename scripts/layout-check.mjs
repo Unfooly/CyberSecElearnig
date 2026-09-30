@@ -487,6 +487,14 @@ async function checkPointerCoarse(page, label) {
 // Wariant pionowy sceny (D-116): (p1) grafika pionowa załadowana, bez panoramy (nic do przewinięcia w poziomie ani w pionie); (p2) scena
 // w całości w obszarze sceny; (p3) KAŻDY przedmiot w całości w scenie i w oknie - widoczny bez przewijania.
 async function checkPortraitSceneAllVisible(page, label) {
+  // Grafika pionowa wczytana, zanim cokolwiek zmierzymy (pod obciążeniem `next dev` w pełnym przebiegu potrafi dojść później - jak B-139);
+  // brak w limicie czasu - p1 niżej zgłosi błąd z wymiarami.
+  await page
+    .waitForFunction(() => {
+      const img = document.querySelector('[data-scene-variant="portrait"] img');
+      return !!img && img.complete && img.naturalWidth > 0;
+    }, undefined, { timeout: 15000 })
+    .catch(() => {});
   const info = await page.evaluate(() => {
     const box = document.querySelector('[data-scene-variant="portrait"]');
     const view = box?.parentElement?.parentElement;
@@ -501,6 +509,8 @@ async function checkPortraitSceneAllVisible(page, label) {
     return {
       exists: !!box,
       portraitImage: !!img && img.naturalWidth > 0 && img.naturalHeight > img.naturalWidth,
+      image: img ? { src: img.currentSrc || img.src, complete: img.complete, w: img.naturalWidth, h: img.naturalHeight } : null,
+      variant: document.querySelector('[data-scene-variant]')?.getAttribute('data-scene-variant') ?? null,
       box: box ? rect(box) : null,
       view: view ? rect(view) : null,
       panContainer: !!document.querySelector('.scene-pan-edge, .scene-pan-hint'),
@@ -509,7 +519,9 @@ async function checkPortraitSceneAllVisible(page, label) {
       viewport: { x: 0, y: 0, width: innerWidth, height: innerHeight },
     };
   });
-  if (!info.exists || !info.portraitImage) fail(`${label}: (p1) brak wariantu pionowego albo grafika nie jest pionowa.`);
+  if (!info.exists || !info.portraitImage) {
+    fail(`${label}: (p1) brak wariantu pionowego albo grafika nie jest pionowa (wariant: ${info.variant}, obraz: ${JSON.stringify(info.image)}).`);
+  }
   if (info.panContainer || info.scrollers > 0) fail(`${label}: (p1) panorama/przewijanie w wariancie pionowym (pan=${info.panContainer}, przewijane=${info.scrollers}).`);
   if (!contains(info.view, info.box)) fail(`${label}: (p2) scena ${JSON.stringify(info.box)} poza obszarem sceny ${JSON.stringify(info.view)}.`);
   for (const h of info.hotspots) {
@@ -886,7 +898,17 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
   await checkMainSceneFits(page, label);
   const boardBox = await boxOf(page, '[data-testid="evidence-board"]');
   const contentAreaBox = await boxOf(page, '[data-testid="player-content-area"]');
-  if (!contains(contentAreaBox, boardBox)) fail(`${label}: (b1) tablica poza obszarem bloku - ${JSON.stringify(boardBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  // Szeroki ekran (D-130, `data-min-scale`): scena nie maleje poniżej skali tekstu 14 px - może być wyższa niż obszar bloku i wtedy
+  // przewija się w pionie wewnątrz `board-outer` (szerokość nadal w całości w obszarze, bez przewijania w poziomie).
+  const minScale = await page.locator('[data-testid="evidence-board"][data-min-scale="true"]').count();
+  if (minScale > 0) {
+    const outer = await page.getByTestId('board-outer').evaluate((el) => ({ overflowY: getComputedStyle(el).overflowY, scrollX: el.scrollWidth - el.clientWidth }));
+    const inWidth = boardBox.x >= contentAreaBox.x - 1 && boardBox.x + boardBox.width <= contentAreaBox.x + contentAreaBox.width + 1;
+    if (!inWidth || outer.scrollX > 1) fail(`${label}: (b1) tablica szersza niż obszar bloku - ${JSON.stringify(boardBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+    if (boardBox.height > contentAreaBox.height + 1 && outer.overflowY !== 'auto') fail(`${label}: (b1) tablica wyższa niż obszar, a nie przewija się (${outer.overflowY}).`);
+  } else if (!contains(contentAreaBox, boardBox)) {
+    fail(`${label}: (b1) tablica poza obszarem bloku - ${JSON.stringify(boardBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  }
   const info = await page.evaluate(() => {
     const board = document.querySelector('[data-testid="evidence-board"]');
     const rect = (el) => {
@@ -1146,6 +1168,11 @@ async function checkCaseClosed(page, label, portrait) {
       y: signBox.y + signBox.height / 2,
     });
     if (hits.includes(false)) fail(`${label}: (z5) cel dotyku podpisu < 44x44 (trafienia ±21 px od środka: ${hits.join(', ')}; slot ${JSON.stringify(signBox)}).`);
+    // Widoczna etykieta „Podpisz raport” (D-130) w polu podpisu (szerokość; wysokość - z tolerancją jednej linii nad slotem).
+    const signLabel = await boxOf(page, '[data-testid="closing-sign-label"]');
+    if (signLabel.x < signBox.x - 1 || signLabel.x + signLabel.width > signBox.x + signBox.width + 1) {
+      fail(`${label}: (z5) etykieta „Podpisz raport” szersza niż pole podpisu (${JSON.stringify(signLabel)} w ${JSON.stringify(signBox)}).`);
+    }
   }
   const viewport = page.viewportSize();
   const inViewport = (box) => box && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
@@ -1491,6 +1518,22 @@ try {
           };
         });
         if (tray && (tray.scroll > 1 || tray.hidden > 0)) fail(`${label}: (m7) tacka śladów przewija się albo ucina karty (${JSON.stringify(tray)}).`);
+        // (m8) karty śladów na tablicy poziomej na szerokim ekranie (D-130, `data-min-scale`): tekst co najmniej 14 px i nieucięty w karcie.
+        // Telefon w poziomie - tablica „contain” jak dotąd (podpowiedź obrócenia telefonu), bez tej kontroli.
+        const cards = await page.evaluate(() =>
+          [...document.querySelectorAll('[data-min-scale="true"] [data-board-tray] ul[data-tray-rows] [data-card-id] > span')].map((span) => ({
+            text: (span.textContent ?? '').slice(0, 30),
+            size: parseFloat(getComputedStyle(span).fontSize),
+            clipped: span.scrollHeight > span.clientHeight + 1,
+          })),
+        );
+        const badCards = cards.filter((card) => card.size < 13.9 || card.clipped);
+        if (badCards.length > 0) fail(`${label}: (m8) karta śladu za mała albo ucięta: ${JSON.stringify(badCards)}.`);
+        // Na szerokich viewportach desktopu tablica MUSI być w minimalnej skali (inaczej m8 nie sprawdziłoby niczego).
+        const hasBoard = await page.locator('[data-testid="evidence-board"][data-orientation="landscape"]').count();
+        if (hasBoard > 0 && viewport.width >= 1280 && !viewport.isMobile && cards.length === 0) {
+          fail(`${label}: (m8) tablica pozioma na szerokim ekranie bez minimalnej skali (data-min-scale) albo bez kart na tacce.`);
+        }
       }
       // (m5) zbliżenia i sceny zagnieżdżone z warstwą tekstu (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`.
       for (const block of moduleJson.blocks) {
@@ -1543,7 +1586,7 @@ try {
           fail(`${label}: (m6) wnioski modułu 1 w poziomie mają zostać na liniaturze (układ „ruled”) (${JSON.stringify(lessons)}).`);
         }
       }
-      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6), tacka śladów (m7) OK`, true);
+      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6), tacka śladów (m7, m8) OK`, true);
       await context.close();
     }
   }
@@ -2473,8 +2516,13 @@ try {
     // Ruch pionowy - na telefonie poziomy ruch na tacce przewija tackę.
     const firstCard = tray.getByRole('button', { name: /^Ślad: / }).first();
     const cardText = ((await firstCard.getAttribute('aria-label')) ?? '').replace(/^Ślad: /, '').replace(/ - przypnij do pola \d+$/, '');
+    // Szeroki ekran (D-130): scena może być wyższa niż obszar i przewijać się - karta z tacki (na dole) najpierw w widok.
+    await firstCard.scrollIntoViewIfNeeded();
     const from = await firstCard.boundingBox();
     const to = await page.getByRole('button', { name: /^Pole 1, puste/ }).boundingBox();
+    // Przewijana scena (D-130): po przewinięciu do karty pole 1 musi nadal być w oknie - inaczej przeciąganie myszą nie ma dokąd trafić.
+    const view = page.viewportSize();
+    if (!to || to.y < 0 || to.y + to.height > view.height) fail(`${label}: (b6) pole 1 poza oknem po przewinięciu do karty z tacki - ${JSON.stringify(to)}.`);
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 40, { steps: 4 });
@@ -3321,7 +3369,7 @@ try {
   // widoczne, w granicach paska i ekranu, BEZ nakładania się parami; (n3) scena < 640 px: Odtwórz/Transkrypcja/Lektor/Wstecz = 44x44,
   // „Dalej” 44 px wysokości i >= 120 px szerokości, jedyny widoczny tekst w rzędzie przycisków, bez ucięcia; rząd przycisków 60 px;
   // napisy (jeśli są) jedną linijką NAD przyciskami; scena >= 640 px: etykieta „Lektor” widoczna (układ bez zmian); (n4) rozmowa na
-  // scenie < 640 px: chipy w jednym rzędzie (wspólna górna krawędź, poziome przewijanie), „Zadano x z y pytań” jedną linijką nad nimi;
+  // scenie < 640 px: chipy w jednym rzędzie (wspólna górna krawędź, poziome przewijanie), „Wymagane pytania: x/y” jedną linijką nad nimi;
   // (n5) błędy strony.
   for (const viewport of runs('bar') ? BAR_VIEWPORTS : []) {
     console.log(`\n--- viewport (DOLNY PASEK): ${viewport.name} ---`);

@@ -113,7 +113,9 @@ Dopracowane limity - backlog.
 ## Śledzenie kliknięć i strona lądowania
 
 Link w mailu prowadzi do `<PHISHING_LANDING_BASE_URL>/t/<token>` (strona w `apps/web`, publiczna, bez cookie, `noindex`,
-bez marek). Token to 32 losowe bajty (base64url, 43 znaki); w bazie jest tylko jego SHA-256.
+bez marek - także w metadanych i nagłówkach: layout `/t` wyłącza manifest, ikony, opis i kartę podglądu linku serwisu i podstawia
+generyczną ikonę dokumentu, każdy adres pod `/t` daje tę samą neutralną stronę, a CSP nie wymienia magazynu treści, D-126/D-127;
+sprawdzenie na buildzie: `node scripts/check-landing-neutral.mjs`. Teksty lekcji w skrypcie strony - B-141). Token to 32 losowe bajty (base64url, 43 znaki); w bazie jest tylko jego SHA-256.
 
 - **`GET /t/<token>` (strona) niczego nie zalicza** i nie woła API - pobierają go skanery linków w skrzynkach. Wynik nie
   zależy od tokenu (każda wartość daje tę samą stronę).

@@ -776,8 +776,22 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja (pierwotna): skrypty odmawiają startu, gdy host `DATABASE_URL` nie jest lokalny (localhost/127.0.0.1/kontener), chyba że jawna
   zmienna (np. `E2E_ALLOW_REMOTE_DB=1`); test pomocnika.
 
-### B-141 Domknięcia po D-126: Redis i e2e API poza blokadą, marka na stronie lądowania symulacji, świeżość PNG og
+### B-141 Domknięcia po D-126: Redis i e2e API poza blokadą, marka na stronie lądowania symulacji, świeżość PNG og - pkt 1-3 ZROBIONE (D-127)
 - Etykiety: `P2`, `security`, `test`, `mod:phishing` · Źródło: code review i security review D-126
+- Zrobione (D-127, decyzje właściciela 2026-09-30): (1) `REDIS_URL` w blokadzie (hosty `localhost`, `127.0.0.1`, `::1`, `ci-redis`),
+  wymagany w środowisku jak adresy bazy; (2) `apps/api/test/global-setup.cjs` - ta sama blokada na starcie `npm run test:e2e`; (3) `/t/*`
+  z własnym layoutem: bez manifestu, ikon i koloru marki, neutralna ikona dokumentu (w adresie `data:`), neutralny tytuł,
+  `noindex, nofollow`, jedna trasa na cały prefiks `/t` (bez 404 aplikacji), CSP bez adresu magazynu treści, bez `X-Powered-By` - w HTML
+  i nagłówkach zero wystąpień „unfooly”, `manifest.webmanifest` i `/icon` (`scripts/check-landing-neutral.mjs` na buildzie produkcyjnym).
+  **Otwarte: (4), (5) oraz nowe z review D-127:** (6) teksty lekcji („To była symulacja”, „Ćwiczenie bezpieczeństwa”) są w skrypcie
+  strony `/t` ładowanym przy samym wejściu (`DEFAULT_LESSON_HTML` w `apps/web/src/lib/tracking.ts`, `LandingClient.tsx`) - skaner
+  analizujący JS je znajdzie; propozycja: usunąć kopię kliencką (BFF i tak zwraca lekcję domyślną), przy błędzie sieci neutralny
+  komunikat; (7) `scripts/check-landing-neutral.mjs` uruchamiany ręcznie - do CI razem z B-101; (8) `.env.test.example` bez `REDIS_URL`
+  (blokada go wymaga; plik env jest chroniony przed safe-merge - zmiana dla człowieka); (9) `redis://[::1]:…` przechodzi blokadę, ale API
+  podaje ioredis host z nawiasami (`apps/api/src/jobs/redis-connection.ts`) i się nie połączy; (10) `jest` wywołany z innym configiem niż
+  `test/jest-e2e.json` (np. `--rootDir . --testRegex`) omija `globalSetup` - wymaga celowego działania; (11) adresy spoza dokładnego
+  prefiksu `/t` (np. `/T/<token>`, `/%74/<token>`, każdy inny nieistniejący adres) dają zwykłą stronę 404 aplikacji z nazwą serwisu -
+  na hoście lądowania blokuje je reguła WAF (tylko `/t/*`); ewentualnie neutralna strona 404 dla hosta lądowania (decyzja właściciela).
 - Opis: (1) blokada B-140 nie obejmuje `REDIS_URL` - API startowane przez skrypty e2e (zadania w tle wyłączone) pisałoby klucze limitera
   i cache do nielokalnego Redisa; (2) `npm run test:e2e --workspace=apps/api` tworzy i kasuje organizacje bez tej blokady (brak
   `globalSetup` w `apps/api/test/jest-e2e.json`); (3) strona lądowania symulacji `/t/[token]` nie ma już opisu ani karty podglądu serwisu

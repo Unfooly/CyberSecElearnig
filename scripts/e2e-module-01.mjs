@@ -168,7 +168,8 @@ try {
   const briefingItem = async (name) => {
     const item = page.getByRole('button', { name, exact: true });
     await item.waitFor();
-    if ((await item.getAttribute('data-testid')) !== 'briefing-hotspot') throw new Error(`"${name}" nie jest przedmiotem na scenie odprawy`);
+    const testId = await item.getAttribute('data-testid');
+    if (testId !== 'briefing-hotspot') throw new Error(`"${name}" nie jest przedmiotem na scenie odprawy (data-testid: ${testId})`);
     await item.click();
   };
 
@@ -440,7 +441,9 @@ try {
   // startedAt (nowa kolumna przypisania) -> czas sprawy w minutach; pierwsze ukończenie dolicza XP (COURSE_COMPLETION_XP >= 100).
   step('Zamknięcie: czas sprawy w minutach (startedAt z /start)', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
   step('Zamknięcie: +XP w raporcie', /^\+[1-9]\d*$/.test(await slotText('closing-xp')), await slotText('closing-xp'));
-  step('Zamknięcie: trzy wnioski śledczego wpisane', ((await slotText('closing-lessons')).match(/\d\. /g) ?? []).length === 3, await slotText('closing-lessons'));
+  // Wpisane (widoczne) wnioski - lista ma też niewidoczne pełne kopie, które rezerwują miejsce (D-128).
+  const typedLessons = (await page.getByTestId('closing-lesson-typed').allTextContents()).filter((line) => /^\d\. .+/.test(line));
+  step('Zamknięcie: trzy wnioski śledczego wpisane', typedLessons.length === 3, typedLessons.join(' | '));
   await page.getByRole('button', { name: 'Podpisz raport' }).click();
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie: po podpisie pieczęć i liścik, bez modala (role=dialog)', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1 && (await page.getByRole('dialog').count()) === 0);
@@ -463,7 +466,9 @@ try {
   // Osiągnięcia (D-111): pełne przejście - easter egg, 23/23 dowodów, 100% - daje na profilu wszystkie trzy, przyznane przez serwer.
   await page.goto(`${WEB}/courses/achievements`);
   await page.getByTestId('achievements-counter').waitFor();
-  step('Osiągnięcia: licznik 3 / 3 na profilu', ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '') === '3/3');
+  // Mianownik to cały katalog osiągnięć (rośnie z kolejnymi modułami) - tu liczą się trzy zdobyte w module 1.
+  const achievementsCounter = ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '');
+  step('Osiągnięcia: licznik 3 / N na profilu', /^3\/\d+$/.test(achievementsCounter), achievementsCounter);
   for (const name of ['First Case Closed', 'Flawless Case', 'Curious Detective']) {
     step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\(\\w+\\), zdobyte`) }).count()) === 1);
   }

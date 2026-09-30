@@ -573,7 +573,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       image: 'scenes/strona-zespol.svg',
       imagePortrait: 'scenes/strona-zespol-pion.svg',
       imageAlt: 'Strona drukarni, zakładka Zespół.',
-      textLayer: [{ id: 't-pawel', x: 9, y: 52, w: 24, h: 6, text: 'Paweł Testowy - IT', style: 'sign', portrait: { x: 6, y: 30, w: 80, h: 4 } }],
+      textLayer: [{ id: 't-pawel', x: 9, y: 52, w: 24, h: 6, text: 'Paweł Testowy - IT', style: 'sign', tone: 'dark', portrait: { x: 6, y: 30, w: 80, h: 4 } }],
       prompt: 'Zaznacz informacje, które wykorzystał oszust.',
       spots: [
         { id: 'zespol', label: 'Paweł, IT', x: 8, y: 30, w: 26, h: 34, used: true, note: { text: `${SECRET_MARKER}-dowod-zespol`, kind: 'web' } },
@@ -594,7 +594,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
             image: 'scenes/webinar-odtwarzacz.svg',
             imagePortrait: 'scenes/webinar-odtwarzacz-pion.svg',
             alt: 'Kadr prelekcji: slajd i prelegent.',
-            textLayer: [{ id: 'slajd', x: 10, y: 10, w: 60, h: 10, text: 'Bezpieczna praca zdalna', style: 'sign', portrait: { x: 5, y: 10, w: 90, h: 8 } }],
+            textLayer: [{ id: 'slajd', x: 10, y: 10, w: 60, h: 10, text: 'Bezpieczna praca zdalna', style: 'sign', tone: 'light', portrait: { x: 5, y: 10, w: 90, h: 8 } }],
             secretEnding: { id: 'off-the-record', label: 'Off the Record', note: 'Na końcu webinaru padło to, czego nie powinno.' },
           },
         },
@@ -696,7 +696,7 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   inner.find((h) => h.media?.kind === 'audio')!.media!.narration = audio('kosz-media');
   // textLayer (schemaVersion 6): na scenie, na zbliżeniu, na scenie zagnieżdżonej i na zbliżeniu w niej - tylko tutaj, fullModule()
   // zostaje w v5 (kształt fixtury pilnują testy e2e, CLAUDE.md reguła 9).
-  const layer = (id: string) => [{ id, x: 10, y: 10, w: 30, h: 8, text: `Napis ${id}`, style: 'sign', portrait: { x: 5, y: 20, w: 60, h: 6 } }];
+  const layer = (id: string) => [{ id, x: 10, y: 10, w: 30, h: 8, text: `Napis ${id}`, style: 'sign', tone: 'light', portrait: { x: 5, y: 20, w: 60, h: 6 } }];
   const sceneBlock = blocks.SCENE_HOTSPOTS as Record<string, unknown>;
   sceneBlock.textLayer = layer('szyld');
   // Wariant pionowy sceny (D-116) - tylko tutaj (fullModule() bez zmian, reguła 9).

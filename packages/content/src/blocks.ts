@@ -996,7 +996,7 @@ const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) =>
 
 // Warstwa tekstu (schemaVersion 6): treść i układ do narysowania na grafice - publiczne jak `imageAlt`.
 const textLayerPaths = (prefix: string) =>
-  ['id', 'x', 'y', 'w', 'h', 'text', 'style', 'portrait.x', 'portrait.y', 'portrait.w', 'portrait.h'].map((key) => `${prefix}textLayer[].${key}`);
+  ['id', 'x', 'y', 'w', 'h', 'text', 'style', 'tone', 'portrait.x', 'portrait.y', 'portrait.w', 'portrait.h'].map((key) => `${prefix}textLayer[].${key}`);
 
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'durationSeconds'], []),

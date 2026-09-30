@@ -200,6 +200,11 @@ const layerRectShape = { x: layerPercent, y: layerPercent, w: z.number().gt(0).m
 
 /** Wygląd tekstu warstwy (odtwarzacz): etykieta/podpis, tabliczka lub szyld, tekst na ekranie urządzenia, pismo odręczne. */
 export const TEXT_LAYER_STYLES = ['label', 'sign', 'screen', 'handwritten'] as const;
+/**
+ * Kolor tekstu warstwy względem tła slotu w grafice: `dark` (domyślnie) - ciemny tekst na jasnym tle; `light` - jasny tekst na ciemnym
+ * tle (np. stopka strony, ekran urządzenia). Odtwarzacz nie zna koloru grafiki pod slotem, więc podaje go treść.
+ */
+export const TEXT_LAYER_TONES = ['dark', 'light'] as const;
 
 /**
  * Warstwa tekstu (schemaVersion 6, rozdz. 10 specyfikacji modułu 2): tekst rysowany przez odtwarzacz NA grafice, w prostokącie w %
@@ -214,6 +219,7 @@ export const textLayerSchema = z
         ...layerRectShape,
         text: ltext(300),
         style: z.enum(TEXT_LAYER_STYLES).optional(),
+        tone: z.enum(TEXT_LAYER_TONES).optional(),
         portrait: z.object(layerRectShape).strict().optional(),
       })
       .strict(),

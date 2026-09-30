@@ -147,6 +147,9 @@ describe('collectNarrations', () => {
       // Bez roli głosu - lektor.
       ['na-zywo#endings.1.narration', 'narrator'],
       ['na-zywo#endings.2.narration', 'narrator'],
+      // D-129: zakończenia odrzucenia połączenia i rozłączenia się.
+      ['na-zywo#endings.3.narration', 'narrator'],
+      ['na-zywo#endings.4.narration', 'narrator'],
     ]);
   });
 

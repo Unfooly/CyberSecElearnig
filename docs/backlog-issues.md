@@ -802,6 +802,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   dla e2e API; (3) decyzja właściciela: manifest i ikony neutralne albo pominięte na `/t/*`; (4) skrót SVG zapisany obok PNG i test
   zgodności albo render w CI; (5) opcjonalnie warunek na nazwę bazy testowej.
 
+### B-143 Domknięcia po D-130: „Następna sprawa” z katalogu, drobne tablicy i raportu
+- Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: code review D-130
+- Opis: (1) „Następna sprawa” bierze pod uwagę tylko przypisane kursy - kurs z katalogu do samodzielnego przypisania (D-065) nie jest
+  proponowany (zostaje „wkrótce”); (2) na szerokim ekranie przy przewijanej tablicy śledczej nagłówek tacki (`u(12)`) i wiersz wyniku
+  (`u(14)`) mają przy minimalnej skali ok. 11 i 13 px (cel 14 px dotyczył kart).
+- Akceptacja: (1) gdy brak nieukończonych przypisań, a katalog ma kurs do przypisania - link do niego; (2) według uznania.
+
 ### B-142 Domknięcia po D-128: blokada przypisania przy restarcie, limit per IP na trasach kursu, kolejność kontroli w BFF
 - Etykiety: `P2`, `security`, `mod:kursy` · Źródło: code review i security review D-128 (wzorce istniejące na `main`, nie regresja D-128)
 - Opis: (1) `lockOwnAssignment` blokuje wiersz aktywnego przypisania, a `findOwnAssignment` szuka go od nowa: żądanie czekające na

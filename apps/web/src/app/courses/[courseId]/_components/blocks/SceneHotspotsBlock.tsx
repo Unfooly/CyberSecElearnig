@@ -108,7 +108,7 @@ function cameraTransition(reducedMotion: boolean, phase: Phase | null): string |
 // play/pauza pod grafiką (i transkrypcja jako alternatywa tekstowa). Scena zagnieżdżona (monitor -> pulpit): przybliżenie na monitor i
 // przejście do sceny zagnieżdżonej z ikoną "Wróć" - jej przedmioty (okna na ekranie, D-104) otwierają się BEZ ruchu kamery, od razu nad
 // przyciemnionym pulpitem (max 94% sceny), okienka easter egga bez przyciemnienia. Drzwi (action:'next') - bez
-// zoomu, klik (gdy wymagane pokryte) aktywuje „Dalej” w dolnym pasku - jedyne przejście dalej (D-106). reduced-motion: bez ruchu kamery, grafika od razu. A11y: role=dialog, aria-label = nazwa przedmiotu,
+// zoomu, klik (gdy wymagane pokryte) to przejście dalej - zapis bloku od razu, jak „Dalej” w dolnym pasku (D-129, zmiana D-106). reduced-motion: bez ruchu kamery, grafika od razu. A11y: role=dialog, aria-label = nazwa przedmiotu,
 // focus trap w nakładce, po zamknięciu fokus wraca na przedmiot.
 export default function SceneHotspotsBlock({
   block,
@@ -205,22 +205,16 @@ export default function SceneHotspotsBlock({
   );
   const doneCount = required.filter((id) => visited.includes(id)).length;
   const ready = doneCount >= required.length;
-  const hasDoor = doorIds.size > 0;
   useCompleteHint(block.reactions?.complete, ready, review);
 
-  // Drzwi (action:'next'): podejście do drzwi (klik, gdy wymagane przedmioty są pokryte) to akcja w scenie, nie nawigacja - blok
-  // zgłasza wtedy gotowość, a dalej prowadzi wyłącznie „Dalej” w dolnym pasku (D-106, jeden przycisk dalej).
-  const [doorOpened, setDoorOpened] = useState(false);
-  // Blok przestał być kompletny - podejście do drzwi trzeba powtórzyć (inaczej po ponownym pokryciu blok byłby gotowy bez drzwi).
-  useEffect(() => {
-    if (!ready) setDoorOpened(false);
-  }, [ready]);
+  // Gotowość do „Dalej” w pasku po pokryciu wymaganych przedmiotów. Drzwi (action:'next', D-129 - zmiana D-106) są drugą drogą dalej:
+  // klik w nie po zebraniu wymaganych zapisuje blok od razu (clickDoor), bez osobnego „Dalej”.
   useEffect(() => {
     if (review) return;
-    onReady(ready && (!hasDoor || doorOpened) ? () => onSubmit({ visited, noted }) : null);
+    onReady(ready ? () => onSubmit({ visited, noted }) : null);
     // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku, nie "stabilność".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visited, noted, review, hasDoor, doorOpened]);
+  }, [visited, noted, review, ready]);
 
   // Stan częściowy (D-128): każda ZMIANA obejrzanych/zabranych idzie do powłoki. Porównanie z ostatnio zgłoszonym stanem (na starcie -
   // stan z serwera), nie flaga „pierwszy przebieg”: efekt uruchomiony drugi raz bez zmiany (StrictMode) niczego nie wysyła.
@@ -427,13 +421,13 @@ export default function SceneHotspotsBlock({
     if (badge && !review && block.id) addDistinction({ blockId: block.id, label: badge.label });
   }
 
-  // Drzwi (action:'next'): bez zoomu - gotowe (ready) aktywują „Dalej” w pasku (D-106). Podpowiedź w scenie mówi, co dalej (podpowiedź
-  // paska jest ukryta na telefonie): po wymaganych - „Dalej” na dole, przed nimi - najpierw zbadać scenę.
+  // Drzwi (action:'next'): bez zoomu. Po zebraniu wymaganych klik w drzwi to przejście dalej - zapis bloku od razu, bez dodatkowego
+  // „Dalej” w pasku (D-129, zmiana D-106; „Dalej” w pasku też działa). Przed wymaganymi - podpowiedź w scenie (podpowiedź paska jest
+  // ukryta na telefonie).
   function clickDoor() {
     if (review) return;
     if (ready) {
-      setDoorOpened(true);
-      hints.show({ text: 'Drzwi otwarte. Naciśnij „Dalej” na dole, aby przejść dalej.' });
+      onSubmit({ visited, noted });
     } else {
       hints.show({ text: 'Najpierw zbadaj scenę - drzwi poczekają.' });
     }

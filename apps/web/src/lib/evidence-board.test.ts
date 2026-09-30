@@ -23,6 +23,27 @@ describe('boardLayout', () => {
     expect(layout.tray!.y + layout.tray!.h).toBeLessThanOrEqual(layout.height);
   });
 
+  it('tacka (D-129): do 6 śladów jeden rząd i scena 16:9 bez zmian; 7 i więcej - dwa rzędy bez przewijania, scena wyższa o rząd kart', () => {
+    for (const n of [3, 6]) {
+      const layout = boardLayout(n, 'landscape', { start: true, end: true });
+      expect(layout.trayRows, `n=${n}`).toBe(1);
+      expect(layout.height, `n=${n}`).toBe(720);
+      expect(boardRatio(n)).toBeCloseTo(16 / 9);
+    }
+    for (const n of [7, 9, 12]) {
+      const layout = boardLayout(n, 'landscape', { start: true, end: true });
+      expect(layout.trayRows, `n=${n}`).toBe(2);
+      // Dwa rzędy kart + nagłówek mieszczą się na tacce, a tacka w scenie.
+      expect(layout.tray!.h, `n=${n}`).toBeGreaterThanOrEqual(2 * layout.card.h + 12 + 24);
+      expect(layout.tray!.y + layout.tray!.h, `n=${n}`).toBeLessThanOrEqual(layout.height);
+      expect(layout.height, `n=${n}`).toBeGreaterThan(720);
+      // Każdy rząd mieści połowę kart (zaokrągloną w górę) - bez poziomego przewijania.
+      const perRow = Math.ceil(n / 2);
+      expect(perRow * layout.card.w + (perRow - 1) * 16, `n=${n}`).toBeLessThanOrEqual(layout.tray!.w - 28);
+      expect(boardRatio(n)).toBeCloseTo(layout.width / layout.height);
+    }
+  });
+
   it('poziomo: więcej pól = węższe karty, nadal bez nakładania (3..12)', () => {
     for (let n = 3; n <= 12; n += 1) {
       const layout = boardLayout(n, 'landscape', { start: true, end: true });

@@ -14,10 +14,17 @@ import Hint from '../player/Hint';
 // 1.4.2), odpowiedzi jako duże przyciski (klawisze 1-4, nie przy otwartej nakładce ani przy przytrzymanym klawiszu). Limit czasu rusza PO
 // kwestii dzwoniącego i tylko w węźle z krawędzią ciszy; po upływie - cisza (`silence`). Przy reduced-motion pasek odliczania bez animacji
 // (zmiana co sekundę), limit działa tak samo. Po zakończeniu „Dalej” w pasku zapisuje `{ path, timed }`; ocenę (good/partial/bad) i
-// odpowiedzi, które oddały informację, zwraca serwer - wynik na tym samym ekranie.
+// odpowiedzi, które oddały informację, zwraca serwer - wynik na tym samym ekranie. D-129: „Odrzuć” na ekranie przychodzącym i „Rozłącz”
+// przez całą rozmowę (gdy treść ma `reject` / `hangUp`) prowadzą od razu do wskazanego zakończenia; kolejność odpowiedzi w węźle tasuje
+// serwer (toClientBlock).
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 const SILENCE = 'silence';
+// D-129 (te same stałe co LIVE_CALL_REJECT / LIVE_CALL_HANG_UP w packages/content): odrzucenie połączenia - jedyny krok ścieżki;
+// rozłączenie się - ostatni krok, w dowolnym węźle.
+const REJECT = 'reject';
+const HANG_UP = 'hangup';
+const HANG_UP_LINE = 'Rozłączasz się.';
 // Domyślny limit - ten sam co w treści (packages/content LIVE_CALL_DEFAULT_TIME_LIMIT_SEC; web nie importuje wartości z pakietu Node).
 export const DEFAULT_CHOICE_TIME_LIMIT_SEC = 12;
 // Nagranie, które ani się nie skończyło, ani nie zgłosiło błędu (zawieszone ładowanie): limit rusza po długości kwestii + zapas.
@@ -31,17 +38,26 @@ export interface LiveCallAnswer {
 
 type Line = { who: 'caller' | 'me' | 'silence'; text: string; choiceId?: string };
 
+/** Wiersz gracza po kroku ścieżki: cisza, rozłączenie się albo wybrana odpowiedź. */
+function stepLine(step: string, choice: { text: string } | undefined): Line {
+  if (step === SILENCE) return { who: 'silence', text: 'Cisza…' };
+  if (step === HANG_UP) return { who: 'silence', text: HANG_UP_LINE };
+  return { who: 'me', text: choice?.text ?? '', choiceId: step };
+}
+
 /** Przejście drzewa po ścieżce (jak serwer, bez oceny): transkrypcja rozmowy i zakończenie - do widoku wyniku („Wstecz”). */
 export function walkLiveCall(call: LiveCallContent, path: readonly string[]): { lines: Line[]; ending?: string } {
   const lines: Line[] = [];
+  // Połączenie odrzucone (D-129): bez rozmowy, od razu zakończenie.
+  if (path.length === 1 && path[0] === REJECT) return call.reject?.startsWith('#') ? { lines, ending: call.reject.slice(1) } : { lines };
   let nodeId: string | undefined = call.start;
   for (const step of path) {
     const node = call.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) break;
     lines.push({ who: 'caller', text: node.narration.text });
     const choice = node.choices.find((candidate) => candidate.id === step);
-    const next = step === SILENCE ? node.silence : choice?.next;
-    lines.push(step === SILENCE ? { who: 'silence', text: 'Cisza…' } : { who: 'me', text: choice?.text ?? '', choiceId: step });
+    const next = step === SILENCE ? node.silence : step === HANG_UP ? call.hangUp : choice?.next;
+    lines.push(stepLine(step, choice));
     if (!next) break;
     if (next.startsWith('#')) return { lines, ending: next.slice(1) };
     nodeId = next;
@@ -106,14 +122,10 @@ export default function LiveCallBlock({
     (step: string) => {
       if (!node || stage !== 'call' || disabled) return;
       const choice = node.choices.find((candidate) => candidate.id === step);
-      const next = step === SILENCE ? node.silence : choice?.next;
+      const next = step === SILENCE ? node.silence : step === HANG_UP ? call.hangUp : choice?.next;
       if (!next) return;
       setPath((list) => [...list, step]);
-      setLines((list) => [
-        ...list,
-        { who: 'caller', text: node.narration.text },
-        step === SILENCE ? { who: 'silence', text: 'Cisza…' } : { who: 'me', text: choice?.text ?? '', choiceId: step },
-      ]);
+      setLines((list) => [...list, { who: 'caller', text: node.narration.text }, stepLine(step, choice)]);
       setLineDone(false);
       setRemainingMs(limitSec * 1000);
       if (next.startsWith('#')) {
@@ -123,8 +135,16 @@ export default function LiveCallBlock({
         setNodeId(next);
       }
     },
-    [node, stage, disabled, limitSec],
+    [node, stage, disabled, limitSec, call.hangUp],
   );
+
+  // „Odrzuć” na ekranie przychodzącym (D-129): bez rozmowy - od razu zakończenie z treści (`reject`).
+  function reject() {
+    if (stage !== 'ring' || disabled || !call.reject?.startsWith('#')) return;
+    setPath([REJECT]);
+    setEndingId(call.reject.slice(1));
+    setStage('ended');
+  }
 
   // „Dalej” w pasku zapisuje dopiero po zakończeniu rozmowy.
   useEffect(() => {
@@ -246,6 +266,18 @@ export default function LiveCallBlock({
                 <Phone aria-hidden="true" className="h-5 w-5" />
                 Odbierz
               </button>
+              {call.reject && (
+                <button
+                  type="button"
+                  data-testid="live-call-reject"
+                  disabled={disabled}
+                  onClick={reject}
+                  className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-semibold text-white hover:bg-danger/90 ${FOCUS_RING}`}
+                >
+                  <PhoneOff aria-hidden="true" className="h-5 w-5" />
+                  Odrzuć
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -282,6 +314,19 @@ export default function LiveCallBlock({
             >
               {muted ? <VolumeX aria-hidden="true" className="h-4 w-4" /> : <Volume2 aria-hidden="true" className="h-4 w-4" />}
               Wycisz
+            </button>
+          )}
+          {stage === 'call' && node && call.hangUp && (
+            // „Rozłącz” (D-129) - dostępne przez całą rozmowę, także przed końcem kwestii dzwoniącego.
+            <button
+              type="button"
+              data-testid="live-call-hangup"
+              disabled={disabled}
+              onClick={() => choose(HANG_UP)}
+              className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-btn bg-danger px-3 text-sm font-semibold text-white hover:bg-danger/90 ${FOCUS_RING}`}
+            >
+              <PhoneOff aria-hidden="true" className="h-4 w-4" />
+              Rozłącz
             </button>
           )}
           {stage === 'ended' && (

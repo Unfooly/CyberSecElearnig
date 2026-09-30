@@ -88,9 +88,11 @@ export default function OrderingBlock({
   const [cramped, setCramped] = useState(false);
   // Pionowo wysokość kart i zdjęć rośnie z najdłuższym tekstem (tekst 15 px nie jest ucinany, D-105).
   const photos = [block.start, block.end].filter((photo) => !!photo);
+  const hasStart = !!block.start;
+  const hasEnd = !!block.end;
   const layout = boardLayout(ids.length, orientation, {
-    start: !!block.start,
-    end: !!block.end,
+    start: hasStart,
+    end: hasEnd,
     maxChars: Math.max(0, ...items.map((item) => item.text.length)),
     photoChars: { label: Math.max(0, ...photos.map((photo) => photo.label.length)), caption: Math.max(0, ...photos.map((photo) => photo.caption.length)) },
   });
@@ -146,14 +148,14 @@ export default function OrderingBlock({
       // zygzak jest dla tego ekranu). Szerokość sceny = min(szerokość, wysokość × 16/9). Tylko przy dotyku (pointer: coarse) - wąskie
       // okno desktopu z myszą nie jest telefonem (ta sama zasada co PlayerStage, PR #44).
       const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
-      setCramped(touch && next === 'landscape' && Math.min(width, height * boardRatio()) < COMPACT_BOARD_PX);
+      setCramped(touch && next === 'landscape' && Math.min(width, height * boardRatio(ids.length, { start: hasStart, end: hasEnd })) < COMPACT_BOARD_PX);
     };
     update();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [ids.length, hasStart, hasEnd]);
 
   const shown: (string | null)[] = readOnly ? (phase === 'settled' && correctOrder.length > 0 ? correctOrder : playerOrder) : placements;
   const inPlace = (id: string) => correctOrder.length > 0 && playerOrder.indexOf(id) === correctOrder.indexOf(id);
@@ -417,7 +419,7 @@ export default function OrderingBlock({
   const boxStyle = (
     portrait
       ? { width: '100%', aspectRatio: `${layout.width} / ${layout.height}` }
-      : { '--board-ratio': String(boardRatio()), aspectRatio: 'var(--board-ratio)' }
+      : { '--board-ratio': String(layout.width / layout.height), aspectRatio: 'var(--board-ratio)' }
   ) as CSSProperties;
 
   return (
@@ -597,7 +599,13 @@ export default function OrderingBlock({
                       Ślady do przypięcia · {tray.length}
                     </p>
                     <div className="flex min-h-0 flex-1 items-center gap-[calc(var(--u)*16)]">
-                      <ul className="flex h-full min-w-0 flex-1 items-center gap-[calc(var(--u)*16)] overflow-x-auto overflow-y-hidden">
+                      {/* Dwa rzędy (D-129), gdy śladów jest więcej, niż mieści jeden - bez poziomego przewijania; jeden rząd - jak dotąd. */}
+                      <ul
+                        data-tray-rows={layout.trayRows ?? 1}
+                        className={`flex h-full min-w-0 flex-1 gap-[calc(var(--u)*16)] ${
+                          (layout.trayRows ?? 1) > 1 ? 'flex-wrap content-center items-start gap-y-[calc(var(--u)*12)] overflow-hidden' : 'items-center overflow-x-auto overflow-y-hidden'
+                        }`}
+                      >
                         {tray.map((id) => (
                           <li key={id} className="shrink-0" style={{ width: u(layout.card.w), height: u(layout.card.h) }}>
                             <button

@@ -47,6 +47,9 @@ export interface LiveCallContent {
   start: string;
   nodes: { id: string; narration: Narration; choices: { id: string; text: string; next: string }[]; silence?: string }[];
   endings: { id: string; narration: Narration }[];
+  /** D-129: zakończenie (`#id`) po „Odrzuć” na ekranie przychodzącym i po „Rozłącz” w trakcie rozmowy. */
+  reject?: string;
+  hangUp?: string;
 }
 
 /** Obszar strony w OSINT (D-120): położenie i podpis; czy był użyty, dowód i wyjaśnienie pułapki są sekretem (po ocenie - detail.spots). */

@@ -353,7 +353,11 @@ export default function CoursePlayer({
   // pełny stan, a serwer i tak scala go z zapisanym). Błędy pomijamy: to tylko wygoda powrotu, pełny stan niesie i tak zapis bloku
   // (/progress). Licznika dowodów nie ruszamy (dowody niezapisanego bloku dolicza EvidenceProvider). `keepalive`: żądanie dochodzi
   // także wtedy, gdy gracz zaraz po kliknięciu opuszcza stronę.
-  const exploreQueue = useRef<{ inFlight: Promise<void> | null; next: { blockId: string; state: SceneExploration } | null }>({ inFlight: null, next: null });
+  const exploreQueue = useRef<{
+    inFlight: Promise<void> | null;
+    next: { blockId: string; state: SceneExploration } | null;
+    abort: AbortController | null;
+  }>({ inFlight: null, next: null, abort: null });
   function saveExploration(blockId: string, exploration: SceneExploration) {
     if (!persistExploration || (exploration.visited.length === 0 && exploration.noted.length === 0)) return;
     const queue = exploreQueue.current;
@@ -363,17 +367,21 @@ export default function CoursePlayer({
       while (queue.next) {
         const { blockId: id, state: body } = queue.next;
         queue.next = null;
+        const abort = typeof AbortController === 'undefined' ? null : new AbortController();
+        queue.abort = abort;
         try {
           await fetch(`/api/courses/${courseId}/blocks/${id}/explore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
             keepalive: true,
+            ...(abort ? { signal: abort.signal } : {}),
           });
         } catch {
-          // Brak sieci: stan doniesie kolejny zapis częściowy albo zapis bloku.
+          // Brak sieci albo przerwane po limicie czekania (handleAnswer): stan doniesie kolejny zapis częściowy albo zapis bloku.
         }
       }
+      queue.abort = null;
       queue.inFlight = null;
     })();
   }
@@ -385,16 +393,23 @@ export default function CoursePlayer({
     setError(null);
     // Zapis bloku niesie pełny stan sceny: oczekujący zapis częściowy jest zbędny (wraca do kolejki tylko, gdy zapis bloku się nie
     // powiedzie), a trwający ma dojść PRZED zapisem bloku (po nim blok nie jest już bieżący i serwer odrzuciłby go kodem 400) - czekamy
-    // na niego najwyżej EXPLORE_WAIT_MS, żeby wiszące żądanie w tle nie blokowało „Dalej”.
+    // na niego najwyżej EXPLORE_WAIT_MS, żeby wiszące żądanie w tle nie blokowało „Dalej” - po limicie jest przerywane (kolejka się zwalnia
+    // i nie trzyma zapisów częściowych następnej sceny).
     const droppedExploration = exploreQueue.current.next;
     exploreQueue.current.next = null;
     let blockSaved = false;
+    // Sesja wygasła (401 - przejście do logowania): zdjęty stan częściowy nie wraca do kolejki (poleciałby w próżnię).
+    let requeue = true;
     try {
       const pendingExploration = exploreQueue.current.inFlight;
       if (pendingExploration) {
         let timer: ReturnType<typeof setTimeout> | undefined;
-        await Promise.race([pendingExploration, new Promise<void>((resolve) => (timer = setTimeout(resolve, EXPLORE_WAIT_MS)))]);
+        const timedOut = await Promise.race([
+          pendingExploration.then(() => false),
+          new Promise<boolean>((resolve) => (timer = setTimeout(() => resolve(true), EXPLORE_WAIT_MS))),
+        ]);
         clearTimeout(timer);
+        if (timedOut) exploreQueue.current.abort?.abort();
       }
       const response = await fetch(`/api/courses/${courseId}/progress`, {
         method: 'POST',
@@ -407,6 +422,7 @@ export default function CoursePlayer({
       });
 
       if (response.status === 401) {
+        requeue = false;
         router.push('/login');
         return;
       }
@@ -439,7 +455,13 @@ export default function CoursePlayer({
       // ekran zamknięcia ma tylko zagregowany wynik procentowy). "Dalej" na tym ekranie (continueAfterFeedback czyści
       // `feedback`) samo przechodzi na ekran zamknięcia, bo `state.status` jest już 'COMPLETED' z TEGO zapisu -
       // isSummaryMode przejmuje bez dodatkowej logiki tutaj. Ekran zamknięcia nie ma podpowiedzi ani reakcji (D-089, D-093).
-      const skipsFeedbackScreen = isExploratory(progress.lastResult.type) || progress.lastResult.type === 'TEXT_INPUT_GUIDED';
+      // Blok bez oceny (D-129, np. przesłuchanie bez sprzeczności - waga 0): serwer nie zwraca ani wyniku, ani komentarza, ani
+      // rozstrzygnięcia z treścią - ekran wyniku byłby pusty („Blok ukończony.”), więc też od razu dalej. Przesłuchanie ze sprzecznościami,
+      // ale z wagą 0 (bez punktów) zwraca w rozstrzygnięciu kłamstwa - ten wynik zostaje (code review D-129).
+      const last = progress.lastResult;
+      const detailToShow = !!last.detail && (last.type !== 'INTERROGATION' || (last.detail.contradictions?.length ?? 0) > 0);
+      const nothingToShow = last.correct === undefined && last.points === undefined && !last.reaction?.text && !detailToShow;
+      const skipsFeedbackScreen = isExploratory(last.type) || last.type === 'TEXT_INPUT_GUIDED' || nothingToShow;
       if (skipsFeedbackScreen) {
         setFeedback(null);
         setAutoPlayFor(hasAudio(progress.lastResult.blockIndex) ? keyOf(progress.currentBlockIndex) : null);
@@ -486,7 +508,7 @@ export default function CoursePlayer({
       submittingRef.current = false;
       setSubmitting(false);
       // Zapis bloku się nie powiódł: zdjęty z kolejki stan częściowy wraca do zapisu (chyba że scena zgłosiła w międzyczasie nowszy).
-      if (!blockSaved && droppedExploration && !exploreQueue.current.next) saveExploration(droppedExploration.blockId, droppedExploration.state);
+      if (requeue && !blockSaved && droppedExploration && !exploreQueue.current.next) saveExploration(droppedExploration.blockId, droppedExploration.state);
     }
   }
 

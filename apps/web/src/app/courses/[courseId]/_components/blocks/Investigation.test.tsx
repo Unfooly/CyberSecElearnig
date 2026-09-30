@@ -1422,28 +1422,28 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('po zebraniu required: klik w drzwi NIE nawiguje, tylko zgłasza gotowość - zapis rusza „Dalej” w pasku (D-106); bez nakładki', () => {
-    const { onSubmit, ready } = setup(doorScene);
+  it('po zebraniu required: klik w drzwi to przejście dalej - zapis bloku od razu, bez osobnego „Dalej” (D-129); bez nakładki', () => {
+    const { onSubmit } = setup(doorScene);
     pick('Kartka');
     putDown();
     const door = screen.getByRole('button', { name: 'Wyjście' });
     expect(door).toHaveAttribute('aria-disabled', 'false');
     expect(door).not.toHaveAttribute('title');
-    expect(ready.current).toBeNull();
     fireEvent.click(door);
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(ready.current).not.toBeNull();
-    ready.current!();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
     // Drzwi same nigdy nie otwierają nakładki (w odróżnieniu od zwykłego hotspotu) - klik w nie nie ustawia activeId.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('blok z drzwiami nie zgłasza gotowości przed podejściem do drzwi - nawet po zebraniu required', () => {
-    const { ready } = setup(doorScene);
+  it('po zebraniu required „Dalej” w pasku też prowadzi dalej (drzwi nie są obowiązkowe); przed - brak gotowości', () => {
+    const { onSubmit, ready } = setup(doorScene);
     expect(ready.current).toBeNull();
     pick('Kartka');
-    expect(ready.current).toBeNull();
+    putDown();
+    expect(ready.current).not.toBeNull();
+    ready.current!();
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
   });
 });
 

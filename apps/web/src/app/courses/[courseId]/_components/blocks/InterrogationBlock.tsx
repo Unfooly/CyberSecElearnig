@@ -18,7 +18,8 @@ import { DossierDocuments, useDossier } from './DossierBlock';
 
 // Przesłuchanie (INTERROGATION, D-118/D-119). Wątek jak komunikator (DialogueBlock, D-087): gracz wybiera pytanie z chipów, postać
 // „pisze” i odpowiada kwestiami. Kwestię postaci można zaznaczyć (klik, Enter): pod nią akcje
-//  - „Dodaj do notatek” (klawisz N) - kwestia-fragment trafia do notatnika (dowód, gdy `evidence`), jak hotspot;
+//  - „Dodaj do notatek” (klawisz N) - przy każdej kwestii (D-129); kwestia-fragment trafia do notatnika (dowód, gdy `evidence`), jak
+//    hotspot, a zwykła kwestia - komunikat NOT_NEW, bez notatki i dowodu;
 //  - „Podważ” (klawisz P) - przy KAŻDEJ kwestii (klient nie wie, która kłamie): wybór dowodu z notatnika (notatki z odnośnikiem `ref`,
 //    czyli zapisane przez serwer), serwer sprawdza (/challenge). Trafienie: postać się przyznaje (dymek przyznania), notatka sprzeczności
 //    i licznik dowodów z serwera. Pudło: kwestia zostaje oznaczona. Jedna próba na kwestię.
@@ -30,6 +31,8 @@ import { DossierDocuments, useDossier } from './DossierBlock';
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 const STICK_TO_BOTTOM_THRESHOLD_PX = 80;
+// „Dodaj do notatek” przy kwestii bez fragmentu (D-129): bez notatki, dowodu i kary.
+export const NOT_NEW = 'To nie wnosi nic nowego.';
 const FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 type Line = NonNullable<NonNullable<ContentBlock['questions']>[number]['lines']>[number];
@@ -227,7 +230,13 @@ export default function InterrogationBlock({
   const evidenceNotes = notes.filter((note): note is ClientNote & { ref: string } => typeof note.ref === 'string' && note.blockId !== block.id);
 
   function addFragment(line: Line, from?: Element | null) {
-    if (!line.id || !line.fragment || !block.id) return;
+    if (!line.id || !block.id) return;
+    // „Dodaj do notatek” jest przy KAŻDEJ kwestii (D-129) - sam przycisk nie zdradza, które kwestie coś wnoszą. Kwestia bez fragmentu nie
+    // trafia do notatnika i nie jest dowodem (bez kary).
+    if (!line.fragment) {
+      setStatus(NOT_NEW);
+      return;
+    }
     if (noted.includes(line.id)) {
       setStatus('Ta kwestia jest już w notatniku.');
       return;
@@ -316,8 +325,7 @@ export default function InterrogationBlock({
     const key = event.key.toLowerCase();
     if (key === 'n') {
       event.preventDefault();
-      if (line.fragment) addFragment(line, event.currentTarget);
-      else setStatus('Tej kwestii nie da się dodać do notatek.');
+      addFragment(line, event.currentTarget);
     } else if (key === 'p') {
       event.preventDefault();
       openPicker(line.id);
@@ -467,7 +475,7 @@ export default function InterrogationBlock({
                       type="button"
                       data-testid="interrogation-line"
                       aria-expanded={open}
-                      aria-keyshortcuts={line.fragment ? 'N P' : 'P'}
+                      aria-keyshortcuts="N P"
                       onClick={() => setSelected(open ? null : lineId)}
                       onKeyDown={(event) => onLineKeyDown(event, line)}
                       className={`w-fit break-words rounded-card rounded-bl-md border px-3 py-2 text-left text-ink shadow-card ${FOCUS_RING} ${
@@ -486,7 +494,7 @@ export default function InterrogationBlock({
                     </button>
                     {open && (
                       <div role="group" aria-label="Akcje kwestii" className="flex flex-wrap gap-2" data-testid="interrogation-actions">
-                        {line.fragment && !isNoted && (
+                        {!isNoted && (
                           <button
                             type="button"
                             onClick={(event) => addFragment(line, event.currentTarget)}

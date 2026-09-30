@@ -423,6 +423,70 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       expect(JSON.parse(exploreCalls(fetchMock)[1][1].body)).toEqual({ visited: ['h1', 'h2'], noted: ['h1'] });
     });
 
+    it('401 z zapisu bloku (sesja wygasła): zdjęty z kolejki stan częściowy NIE wraca do zapisu', async () => {
+      const release: (() => void)[] = [];
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (String(url).endsWith('/progress')) return Promise.resolve({ ok: false, status: 401, json: async () => ({}) });
+        return new Promise((resolve) => release.push(() => resolve({ ok: true, status: 200, json: async () => ({}) })));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis 1 (wisi)
+      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' })); // stan w kolejce
+      fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
+      await act(async () => release[0]());
+      await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
+      await act(async () => {});
+      expect(exploreCalls(fetchMock)).toHaveLength(1);
+    });
+
+    it('wiszący zapis częściowy: „Dalej” czeka najwyżej 4 s, potem przerywa go i wysyła zapis bloku', async () => {
+      const signals: AbortSignal[] = [];
+      const fetchMock = vi.fn().mockImplementation((url: string, init: RequestInit) => {
+        if (String(url).endsWith('/explore')) {
+          signals.push(init.signal as AbortSignal);
+          return new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            assignmentId: 'a1',
+            status: 'IN_PROGRESS',
+            currentBlockIndex: 1,
+            score: null,
+            completedAt: null,
+            lastResult: { blockIndex: 0, blockId: 'scena', type: 'SCENE_HOTSPOTS', points: 1 },
+            gamification: null,
+          }),
+        });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis częściowy - wisi
+      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(3900);
+        });
+        expect(progressCalls(fetchMock)).toHaveLength(0);
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(200);
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+      await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
+      expect(signals[0].aborted).toBe(true);
+      await screen.findByText('Pytanie?');
+    });
+
     it('powrót do sceny z obejrzanym easter eggiem: wyróżnienie wraca do notatnika (serwer nadaje je dopiero przy zapisie bloku)', () => {
       vi.stubGlobal('fetch', vi.fn());
       const base = sceneCourse();
@@ -690,7 +754,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(screen.getByRole('button', { name: /Wstecz/ })).toBeEnabled();
   });
 
-  it('SCENE_HOTSPOTS z "drzwi" (action: "next", B-086/D-071): klik w drzwi aktywuje „Dalej” w pasku, zapis dopiero po „Dalej” (D-106)', async () => {
+  it('SCENE_HOTSPOTS z "drzwi" (action: "next", B-086/D-071): klik w drzwi po zebraniu wymaganych to przejście dalej - zapis od razu (D-129)', async () => {
     const doorBlock = {
       type: 'SCENE_HOTSPOTS' as const,
       id: 'korytarz',
@@ -721,14 +785,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       />,
     );
 
-    // Bez wymaganych elementów poza drzwiami: drzwi są od razu gotowe; „Dalej” w pasku jest nieaktywny, dopóki gracz nie podejdzie do
-    // drzwi - klik w drzwi niczego nie zapisuje, tylko aktywuje „Dalej” (jedyne przejście dalej).
-    const next = screen.getByRole('button', { name: /^Dalej$/ });
-    expect(next).toBeDisabled();
+    // Bez wymaganych elementów poza drzwiami: drzwi są od razu gotowe (i „Dalej” w pasku też); klik w drzwi zapisuje blok od razu.
+    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Wyjście' }));
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/courses/course-1/progress', expect.anything());
-    expect(next).toBeEnabled();
-    fireEvent.click(next);
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -736,6 +795,50 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
         expect.objectContaining({ method: 'POST', body: JSON.stringify({ blockIndex: 0, answer: { visited: [], noted: [] } }) }),
       ),
     );
+    await screen.findByText('Pytanie?');
+    expect(progressCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it('D-129: klik w drzwi i zaraz potem „Dalej” w pasku (zapis w toku) - jeden zapis bloku', async () => {
+    const doorBlock = {
+      type: 'SCENE_HOTSPOTS' as const,
+      id: 'korytarz',
+      title: 'Korytarz',
+      image: 'scenes/korytarz.png',
+      imageAlt: 'Korytarz',
+      hotspots: [{ id: 'drzwi', label: 'Wyjście', x: 90, y: 10, width: 8, height: 10, action: 'next' as const }],
+    };
+    let resolveProgress: (value: unknown) => void = () => {};
+    const fetchMock = vi.fn().mockImplementation(() => new Promise((resolve) => (resolveProgress = resolve)));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        narrationEnabled={false}
+        initial={course({ currentBlockIndex: 0, contentBlocks: [doorBlock, { type: 'QUIZ', id: 'quiz1', prompt: 'Pytanie?', options: [{ text: 'A' }, { text: 'B' }] }] })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Wyjście' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Wyjście' }));
+    await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
+    await act(async () =>
+      resolveProgress({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          assignmentId: 'a1',
+          status: 'IN_PROGRESS',
+          currentBlockIndex: 1,
+          score: null,
+          completedAt: null,
+          lastResult: { blockIndex: 0, blockId: 'korytarz', type: 'SCENE_HOTSPOTS' },
+          gamification: null,
+        }),
+      }),
+    );
+    await screen.findByText('Pytanie?');
+    expect(progressCalls(fetchMock)).toHaveLength(1);
   });
 
   it('fix/course-finish-flow: ukończenie kursu na SUMMARY idzie OD RAZU na ekran zamknięcia sprawy - bez ekranu pośredniego "Blok ukończony."/"Zobacz podsumowanie"; od D-089 bez dymka podpowiedzi (zamiast niego liścik komisarza na raporcie)', async () => {

@@ -67,11 +67,11 @@ describe('evaluateSubmit: OSINT_SPOT', () => {
     expect(distinctions(progress, all())).toEqual([{ blockId: 'osint', label: 'Off the Record', note: 'Na końcu webinaru padło to, czego nie powinno.' }]);
   });
 
-  it('waga domyślna 1; licznik dowodów nie zdradza liczby użytych obszarów - dowody liczą się dopiero po zebraniu', () => {
+  it('waga domyślna 1; dowody strony w sumie licznika od startu (stały mianownik, D-130), zebrane - po ocenie', () => {
     expect(weightOf({ ...osint(), weight: undefined } as Block)).toBe(1);
     const perBlock = (notes: string[]) => evidenceSummary({ v: 2, blocks: {}, notes }, all()).perBlock.find((b) => b.blockId === 'osint');
-    expect(perBlock([])).toBeUndefined();
-    expect(perBlock(['osint.zespol'])).toEqual({ blockId: 'osint', collected: 1, total: 1 });
+    expect(perBlock([])).toEqual({ blockId: 'osint', collected: 0, total: 2 });
+    expect(perBlock(['osint.zespol'])).toEqual({ blockId: 'osint', collected: 1, total: 2 });
   });
 
   it('podgląd ukończonego bloku: zaznaczenia gracza i rozstrzygnięcie; przed ukończeniem - nic', () => {

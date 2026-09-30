@@ -104,7 +104,7 @@ describe('INTERROGATION: walidacja', () => {
 describe('INTERROGATION: noteItemsOf i projekcja', () => {
   it('notatki: fragmenty, sprzeczność (dowód po podważeniu), wiersze konsoli - zwykła kwestia bez notatki', () => {
     const block = interrogation(fullModuleV6());
-    // Sprzeczność - dowód ukryty do zebrania (hidden): licznik dowodów nie zdradza liczby kłamstw.
+    // Sprzeczność - dowód ukryty do zebrania (hidden): które kwestie kłamią, klient nie wie; ich liczba jest w sumie licznika (D-130).
     expect(noteItemsOf(block).map((item) => [item.id, item.evidence === true, item.hidden === true])).toEqual([
       ['glos-1', true, false],
       ['kod-1', true, true],

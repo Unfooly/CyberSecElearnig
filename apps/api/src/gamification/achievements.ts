@@ -17,7 +17,7 @@ import {
 /**
  * Fakty z przebiegu modułu 2 liczone z postępu i treści wersji kursu (serwer - klient niczego tu nie deklaruje poza tym, co przeszło
  * ocenę bloków). `fullEvidence` liczy WSZYSTKIE dowody z treści, łącznie z ukrytymi do zebrania (sprzeczności przesłuchania, obszary OSINT) -
- * licznik gracza (evidenceSummary) ukrytych nie widzi, dopóki ich nie zbierze, więc sam nie wystarcza do „kompletu” (warunek z D-120).
+ * od D-130 to ta sama suma co w liczniku gracza (evidenceSummary: stały mianownik).
  */
 export interface Module2Facts {
   deadAir: boolean;
@@ -101,6 +101,6 @@ export function module2Facts(progress: ProgressV2, blocks: readonly Block[]): Mo
       if (flags.length > 0 && flags.every((flag) => hit.has(flag.segmentId))) perfectPitch = true;
     }
   }
-  const { collected, total } = evidenceSummary(progress, blocks, { includeHidden: true });
+  const { collected, total } = evidenceSummary(progress, blocks);
   return { deadAir, perfectPitch, fullEvidence: { collected, total } };
 }

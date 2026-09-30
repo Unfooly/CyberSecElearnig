@@ -300,8 +300,9 @@ export interface NoteItemLike {
   evidence?: boolean;
   note?: { text?: string; kind?: string };
   /**
-   * Dowód ukryty do zebrania (sprzeczność przesłuchania, D-118): liczy się do licznika dowodów dopiero, gdy trafił do notatnika - inaczej
-   * `total` od startu zdradzałby, ile kwestii kłamie (albo że postać mówi prawdę).
+   * Dowód ukryty do zebrania (sprzeczność przesłuchania D-118, obszar OSINT D-120) - znacznik semantyczny: KTÓRY to element, klient
+   * nie wie, dopóki go nie zbierze. Od D-130 (stały mianownik, decyzja właściciela) licznik dowodów liczy te elementy do sumy od startu,
+   * więc ich LICZBA jest jawna (ile kwestii kłamie, ile obszarów OSINT jest poprawnych); żaden kod produkcyjny nie czyta już tego pola.
    */
   hidden?: boolean;
 }
@@ -347,7 +348,7 @@ export function noteItemsOf(block: { type: string } & Record<string, unknown>): 
     }
     case 'OSINT_SPOT':
       // OSINT (D-120): dowodem jest użyty obszar z notatką (notatka po ocenie, gdy gracz go zaznaczył). Ukryty do zebrania (jak sprzeczność,
-      // D-118) - licznik od startu nie podpowiada, ile obszarów było użytych.
+      // D-118) - które obszary, klient nie wie; od D-130 ich LICZBA jest w sumie licznika od startu (świadomie - patrz `hidden`).
       return Array.isArray(block.spots)
         ? (block.spots as (NoteItemLike & { used?: boolean })[])
             .filter((spot) => spot.used === true && spot.note)

@@ -113,13 +113,13 @@ describe('notatki i widok postępu przesłuchania', () => {
     expect(noteKeyForRef(progress(), opaque, 'cokolwiek')).toBeNull();
   });
 
-  it('notatka sprzeczności rozwiązywana z treści; do licznika dowodów dopiero po zebraniu (licznik nie zdradza liczby kłamstw)', () => {
+  it('notatka sprzeczności rozwiązywana z treści; w sumie licznika od startu (stały mianownik, D-130), zebrana - po trafieniu', () => {
     expect(resolveNote(all(), 'przesluchanie.kod-1')).toMatchObject({ text: `${SECRET_MARKER}-dowod-przyznanie`, kind: 'person' });
     const perBlock = (p: ProgressV2) => evidenceSummary(p, all()).perBlock.find((b) => b.blockId === 'przesluchanie');
-    // Po trafieniu: fragment glos-1, sprzeczność kod-1, wiersz l2.
+    // Po trafieniu: fragment glos-1, sprzeczność kod-1, wiersz l2 - suma 3, zebrana sprzeczność.
     expect(perBlock(progress())).toEqual({ blockId: 'przesluchanie', collected: 1, total: 3 });
-    // Przed trafieniem - tylko publiczne dowody (fragment i wiersz konsoli).
-    expect(perBlock({ ...progress(), notes: ['nagranie.liczba'] })).toEqual({ blockId: 'przesluchanie', collected: 0, total: 2 });
+    // Przed trafieniem - ta sama suma (bez skoku licznika), nic zebrane.
+    expect(perBlock({ ...progress(), notes: ['nagranie.liczba'] })).toEqual({ blockId: 'przesluchanie', collected: 0, total: 3 });
   });
 
   it('clientProgress: rozstrzygnięcie (które kwestie kłamały) tylko dla ukończonego bloku', () => {

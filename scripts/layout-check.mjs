@@ -1477,6 +1477,20 @@ try {
         const layer = await textLayerProblems(page);
         if (layer.problems.length > 0) fail(`${label}: (m5) warstwa tekstu: ${layer.problems.join('; ')}`);
         layerItems += layer.count;
+        // (m7) tacka tablicy śledczej w układzie poziomym (D-129): wszystkie ślady widoczne bez poziomego przewijania tacki (dwa rzędy
+        // przy 7+ śladach). Telefon w pionie: tacka to przewijany pasek pod sceną (D-105) - bez tej kontroli.
+        const tray = await page.evaluate(() => {
+          const list = document.querySelector('[data-board-tray] ul[data-tray-rows]');
+          if (!list) return null;
+          const box = list.getBoundingClientRect();
+          const cards = [...list.querySelectorAll('[data-card-id]')].map((card) => card.getBoundingClientRect());
+          return {
+            scroll: list.scrollWidth - list.clientWidth,
+            hidden: cards.filter((card) => card.right > box.right + 1 || card.left < box.left - 1 || card.bottom > box.bottom + 1 || card.top < box.top - 1).length,
+            cards: cards.length,
+          };
+        });
+        if (tray && (tray.scroll > 1 || tray.hidden > 0)) fail(`${label}: (m7) tacka śladów przewija się albo ucina karty (${JSON.stringify(tray)}).`);
       }
       // (m5) zbliżenia i sceny zagnieżdżone z warstwą tekstu (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`.
       for (const block of moduleJson.blocks) {
@@ -1529,7 +1543,7 @@ try {
           fail(`${label}: (m6) wnioski modułu 1 w poziomie mają zostać na liniaturze (układ „ruled”) (${JSON.stringify(lessons)}).`);
         }
       }
-      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6) OK`, true);
+      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6), tacka śladów (m7) OK`, true);
       await context.close();
     }
   }

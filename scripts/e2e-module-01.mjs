@@ -202,16 +202,17 @@ try {
 
   // --- Blok 1: Korytarz (SCENE_HOTSPOTS: tablica - dowód opcjonalny, drzwi) - B-086/D-071/D-086 -----------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
-  step('SCENE_HOTSPOTS (korytarz): „Dalej” nieaktywny, dopóki gracz nie podejdzie do drzwi (D-106)', (await nextDisabled()) && (await noInBlockNext()));
+  // Tablica jest opcjonalna (required: false) - scena gotowa od razu: drzwi i „Dalej” w pasku prowadzą dalej (D-129).
+  step('SCENE_HOTSPOTS (korytarz): „Dalej” aktywny od razu (brak wymaganych), w bloku brak przycisku dalej', (await nextEnabled().count()) === 1 && (await noInBlockNext()));
   await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
   await dialog().getByRole('img', { name: /hasła - nie na karteczkach/ }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
   await take();
   step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/23'), await page.getByTestId('evidence-counter').textContent());
-  // Tablica jest opcjonalna (required:false) - drzwi są gotowe od razu; klik aktywuje „Dalej” w pasku (akcja, nie nawigacja).
+  // Klik w drzwi to przejście dalej - zapis bloku od razu, bez osobnego „Dalej” (D-129).
+  const corridorSaved = progressResponse();
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
-  await nextEnabled().click();
-  step('SCENE_HOTSPOTS (korytarz): drzwi aktywują „Dalej”, blok kończy „Dalej” w pasku', true);
+  step('SCENE_HOTSPOTS (korytarz): klik w drzwi zapisuje blok i przechodzi dalej', (await corridorSaved).ok());
 
   // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071/D-086 -------------
   await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
@@ -226,7 +227,8 @@ try {
   await page.getByRole('button', { name: 'Monitor' }).click();
   await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
   step('SCENE_HOTSPOTS: reactions.complete po wymaganych 4 punktach', true);
-  step('SCENE_HOTSPOTS: scena z drzwiami - „Dalej” nieaktywny mimo pokrytych wymaganych (czeka na drzwi)', (await nextDisabled()) && (await noInBlockNext()));
+  // D-129: po pokryciu wymaganych „Dalej” w pasku jest aktywny od razu (drzwi nie są obowiązkowe - klik w nie też prowadzi dalej).
+  step('SCENE_HOTSPOTS: scena z drzwiami - „Dalej” aktywny po pokryciu wymaganych, w bloku brak przycisku dalej', (await nextEnabled().count()) === 1 && (await noInBlockNext()));
 
   // Prawdziwy dowód maila jest dopiero za Pocztą wewnątrz zagnieżdżonej sceny "pulpit" - "Zabierz" w jej zbliżeniu go zalicza.
   await dialog().getByRole('button', { name: 'Poczta' }).click();
@@ -265,10 +267,10 @@ try {
   step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/'));
   await putDown();
 
-  // "drzwi" (action:'next', label "Wyjście") aktywują „Dalej” w pasku (wymagane 4 są już odwiedzone) - blok kończy „Dalej” (D-106).
+  // "drzwi" (action:'next', label "Wyjście"): wymagane 4 są już odwiedzone - klik w drzwi zapisuje blok i przechodzi dalej (D-129).
+  const officeSaved = progressResponse();
   await page.getByRole('button', { name: 'Wyjście' }).click();
-  await nextEnabled().click();
-  step('SCENE_HOTSPOTS: "drzwi" (Wyjście) aktywują „Dalej”, blok kończy „Dalej” w pasku', true);
+  step('SCENE_HOTSPOTS: "drzwi" (Wyjście) zapisują blok i przechodzą dalej', (await officeSaved).ok());
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
   // Komunikator (D-087): rozmówca "pisze" (wskaźnik), potem kwestia; data-typing na wątku mówi, czy ktoś właśnie pisze.

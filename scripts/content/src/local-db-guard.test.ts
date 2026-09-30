@@ -26,7 +26,14 @@ describe('databaseHost', () => {
     ['to nie jest adres', 'nie URL'],
     ['mysql://u:p@localhost/baza', 'inny protokół'],
     [url('localhost', '&host=/var/run/postgresql'), 'parametr host nadpisuje hosta'],
+    [url('localhost', '&HOST=db.example.com'), 'parametr HOST (wielkie litery)'],
+    [url('localhost', '&hostaddr=10.0.0.5'), 'parametr hostaddr'],
     ['postgresql:///baza', 'bez hosta'],
+    ['prisma://localhost/?api_key=x', 'inny protokół (prisma)'],
+    ['postgresql://user:p@localhost:5432@db.example.com/baza', 'dwa znaki @'],
+    ['postgresql://admin:tajne@haslo#1@db.example.com/prod', 'niezakodowane hasło z @ i #'],
+    ['postgresql://admin:taj/ne@db.example.com/prod', 'niezakodowane hasło z /'],
+    ['postgresql://localhost,db.example.com/baza', 'wiele hostów'],
   ])('nie do odczytania (%s, %s) -> null', (value, _why) => {
     expect(databaseHost(value)).toBeNull();
   });
@@ -45,7 +52,7 @@ describe('databaseProblems', () => {
   it.each(['db.example.com', '10.0.0.5', 'postgres', 'localhost.example.com', 'ci-pg.example.com', '127.0.0.1.example.com', 'host.docker.internal'])(
     'host nielokalny %s blokuje',
     (host) => {
-      const problems = databaseProblems({ DATABASE_URL: url(host) });
+      const problems = databaseProblems({ DATABASE_URL: url(host), DATABASE_URL_APP: url('localhost') });
       expect(problems).toHaveLength(1);
       expect(problems[0]).toContain(`"${host}"`);
     },
@@ -56,21 +63,29 @@ describe('databaseProblems', () => {
     expect(problems).toEqual(['DATABASE_URL_APP wskazuje na host "db.example.com"']);
   });
 
-  it('brak DATABASE_URL blokuje skrypt, który pisze do bazy, a nie blokuje skryptu bez bazy (layout-check)', () => {
-    expect(databaseProblems({})).toEqual(['DATABASE_URL nie jest ustawiony']);
+  // API dociąga brakujące zmienne z pliku .env w katalogu uruchomienia - nieustawiony DATABASE_URL_APP mógłby przyjść stamtąd.
+  it('skrypt piszący do bazy wymaga OBU zmiennych w środowisku; skrypt bez bazy (layout-check) nie wymaga żadnej', () => {
+    expect(databaseProblems({})).toEqual(['DATABASE_URL nie jest ustawiony', 'DATABASE_URL_APP nie jest ustawiony']);
+    expect(databaseProblems({ DATABASE_URL: url('localhost') })).toEqual(['DATABASE_URL_APP nie jest ustawiony']);
+    expect(databaseProblems({ DATABASE_URL: url('localhost'), DATABASE_URL_APP: '' })).toEqual(['DATABASE_URL_APP nie jest ustawiony']);
     expect(databaseProblems({}, { required: false })).toEqual([]);
     expect(databaseProblems({ DATABASE_URL: url('db.example.com') }, { required: false })).toHaveLength(1);
+    expect(databaseProblems({ DATABASE_URL_APP: url('db.example.com') }, { required: false })).toHaveLength(1);
   });
 
   it('adres nie do odczytania blokuje (fail-closed) i nie trafia do komunikatu', () => {
-    const problems = databaseProblems({ DATABASE_URL: 'postgresql://user:tajne-haslo@' });
-    expect(problems).toEqual(['DATABASE_URL: nie da się odczytać hosta bazy z adresu']);
+    const problems = databaseProblems({ DATABASE_URL: 'postgresql://user:tajne-haslo@', DATABASE_URL_APP: url('localhost') });
+    expect(problems).toEqual(['DATABASE_URL: nie da się jednoznacznie odczytać hosta bazy z adresu']);
   });
 
-  it('komunikat nie zawiera loginu ani hasła', () => {
-    const problems = databaseProblems({ DATABASE_URL: 'postgresql://admin:tajne-haslo@db.example.com:5432/prod' }).join(' ');
-    expect(problems).not.toContain('tajne-haslo');
-    expect(problems).not.toContain('admin');
+  it.each([
+    'postgresql://admin:tajne-haslo@db.example.com:5432/prod',
+    'postgresql://admin:tajne@haslo#1@db.example.com/prod',
+    'postgresql://admin:tajne/haslo@db.example.com/prod',
+    'postgresql://admin:tajne?haslo@db.example.com/prod',
+  ])('komunikat nie zawiera loginu ani żadnego fragmentu hasła (%s)', (value) => {
+    const problems = databaseProblems({ DATABASE_URL: value, DATABASE_URL_APP: value }).join(' ');
+    expect(problems).not.toMatch(/tajne|haslo|admin/);
   });
 });
 
@@ -83,11 +98,12 @@ describe('assertLocalDatabase', () => {
   };
 
   it('baza lokalna: bez komunikatu i bez wyjścia', () => {
-    expect(run({ DATABASE_URL: url('localhost') })).toEqual({ codes: [], message: '' });
+    expect(run({ DATABASE_URL: url('localhost'), DATABASE_URL_APP: url('localhost') })).toEqual({ codes: [], message: '' });
+    expect(run({}, false)).toEqual({ codes: [], message: '' });
   });
 
   it('baza nielokalna: kod 1 i czytelny komunikat z nazwą skryptu, hostem i dozwolonymi hostami, bez adresu', () => {
-    const { codes, message } = run({ DATABASE_URL: 'postgresql://admin:tajne-haslo@db.example.com:5432/prod' });
+    const { codes, message } = run({ DATABASE_URL: 'postgresql://admin:tajne-haslo@db.example.com:5432/prod', DATABASE_URL_APP: url('localhost') });
     expect(codes).toEqual([1]);
     expect(message).toContain('ODMOWA: scripts/test.mjs');
     expect(message).toContain('"db.example.com"');
@@ -97,7 +113,7 @@ describe('assertLocalDatabase', () => {
   });
 
   it('nie ma zmiennej ani argumentu, który wyłącza blokadę', () => {
-    const env = { DATABASE_URL: url('db.example.com'), E2E_ALLOW_REMOTE_DB: '1', FORCE: '1', ALLOW_REMOTE_DB: 'true' };
+    const env = { DATABASE_URL: url('db.example.com'), DATABASE_URL_APP: url('localhost'), E2E_ALLOW_REMOTE_DB: '1', FORCE: '1', ALLOW_REMOTE_DB: 'true' };
     expect(run(env).codes).toEqual([1]);
   });
 });

@@ -9,8 +9,8 @@ Zasady z tego pliku obowiązują każdy nowy moduł i każdą zmianę treści al
 
 > **Narzędzia weryfikacji przyjmują slug modułu** (B-128): źródła scen w `scripts/content/scenes/examples/<slug>/` (test scen obejmuje
 > nowy katalog sam), harness odtwarzacza i katalogu `?module=<slug>` (zasoby `/dev/module-assets/<slug>/…`), layout-check
-> `LAYOUT_CHECK_MODULE=<slug>` (sekcja `module`: każdy blok na 4 rozdzielczościach + pion), e2e smoke `node scripts/e2e-module.mjs <slug>`
-> (import → logowanie → katalog → pierwszy ekran odtwarzacza). Pełne przejście treści to osobny skrypt modułu na wzór `e2e-module-01.mjs`.
+> `LAYOUT_CHECK_MODULE=<slug>` (sekcja `module`: każdy blok na 4 rozdzielczościach + pion), e2e smoke `npx dotenv -e .env -- node scripts/e2e-module.mjs <slug>`
+> (import → logowanie → katalog → pierwszy ekran odtwarzacza; skrypty e2e startują tylko na lokalnej bazie - B-140). Pełne przejście treści to osobny skrypt modułu na wzór `e2e-module-01.mjs`.
 > Kolejność: najpierw szkielet `module.json` (test scen wymaga go dla każdego katalogu `scenes/examples/<slug>/`), potem sceny.
 
 ## 1. Kolejność pracy
@@ -230,6 +230,6 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 - [ ] Nazwy fikcyjne i sprawdzone, dopisane do rejestru nazw (rozdział 8); brak formularzy logowania i cudzych logotypów.
 - [ ] layout-check zielony i wklejony do PR (CLAUDE.md, reguła 12): dla nowego modułu `LAYOUT_CHECK_MODULE=<slug> node
       scripts/layout-check.mjs` (sekcja `module`) plus sekcje z elementami specyficznymi dla modułu, jeśli je dodasz.
-- [ ] e2e: smoke `node scripts/e2e-module.mjs <slug>` i pełne przejście modułu (wzór: `scripts/e2e-module-01.mjs`, przejście wyłącznie
+- [ ] e2e: smoke `npx dotenv -e .env -- node scripts/e2e-module.mjs <slug>` (lokalna baza - B-140) i pełne przejście modułu (wzór: `scripts/e2e-module-01.mjs`, przejście wyłącznie
       dolnym „Dalej”) zielone lokalnie; w opisie PR linia „DEPLOY: <co weszło> — content-import: tak”.
 - [ ] Decyzje zmieniające zachowanie w `docs/decisions.md`, odłożone uwagi w `docs/backlog-issues.md`.

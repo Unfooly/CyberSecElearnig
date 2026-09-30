@@ -111,11 +111,13 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(screen.getByTestId('closing-time')).toHaveTextContent('14 min');
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('+350');
     for (let i = 0; i < 5; i += 1) advance(28); // znak po znaku (każdy znak to osobny timer po renderze)
-    expect(screen.getByTestId('closing-lessons')).toHaveTextContent('1. Spraw');
-    expect(screen.getByTestId('closing-lessons')).not.toHaveTextContent('Kod SMS');
+    // Widoczny (pisany) tekst wniosków; pełne teksty są w liście od początku jako niewidoczne kopie - rezerwują miejsce (PR A pkt 3).
+    const typed = () => screen.getAllByTestId('closing-lesson-typed').map((line) => line.textContent);
+    expect(typed()).toEqual(['1. Spraw', '']);
+    expect(screen.getByTestId('closing-lessons').querySelectorAll('[data-lesson-full].invisible')).toHaveLength(2);
 
     for (let i = 0; i < 60; i += 1) advance(250);
-    expect(screen.getByTestId('closing-lessons')).toHaveTextContent('2. Kod SMS zatwierdza.');
+    expect(typed()).toEqual(['1. Sprawdzaj domenę.', '2. Kod SMS zatwierdza.']);
     const signature = screen.getByRole('button', { name: 'Podpisz raport' });
     expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'sign');
     expect(signature).toBeEnabled();
@@ -247,9 +249,40 @@ describe('CaseClosedScreen: stan końcowy od razu', () => {
     expect(screen.getByTestId('closing-signature')).toHaveTextContent('Jan P.');
     expect(screen.getByTestId('closing-stamp')).toHaveAttribute('src', expect.stringMatching(/pieczec\.svg#static$/));
     expect(screen.getByTestId('closing-note')).toBeInTheDocument();
-    expect(screen.getByTestId('closing-lessons')).toHaveTextContent('2. Kod SMS zatwierdza.');
+    expect(screen.getAllByTestId('closing-lesson-typed').map((line) => line.textContent)).toEqual(['1. Sprawdzaj domenę.', '2. Kod SMS zatwierdza.']);
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('—');
     expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
+  // Wnioski w slocie (PR A pkt 3): jsdom nie liczy layoutu, więc szerokości podstawiamy - test pilnuje WYBORU układu, a rzeczywiste
+  // mieszczenie się w slocie sprawdza layout-check (m6) w prawdziwej przeglądarce.
+  function mockLessonWidths(textWidth: number, slotWidth: number) {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.dataset.testid === 'closing-lessons' ? slotWidth : 0;
+    });
+    // Na HTMLElement.prototype: inny test tego pliku zostawia tam własną wersję, która przesłania Element.prototype.
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.hasAttribute('data-lesson-full')) return { width: textWidth, height: 20, left: 0, top: 0, right: textWidth, bottom: 20, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      return original.call(this);
+    });
+  }
+
+  it('wnioski mieszczące się w jednym wierszu: układ „ruled” (wiersz = liniatura raportu, bez zawijania)', () => {
+    mockLessonWidths(200, 400);
+    renderScreen({ fresh: false, reward: null });
+    const list = screen.getByTestId('closing-lessons');
+    expect(list).toHaveAttribute('data-layout', 'ruled');
+    expect(list.querySelector('li')?.className).toMatch(/whitespace-nowrap/);
+  });
+
+  it('wniosek szerszy niż slot: układ „wrapped” - zawijanie w slocie zamiast ucinania', () => {
+    mockLessonWidths(900, 400);
+    renderScreen({ fresh: false, reward: null });
+    const list = screen.getByTestId('closing-lessons');
+    expect(list).toHaveAttribute('data-layout', 'wrapped');
+    expect(list.querySelector('li')?.className).not.toMatch(/whitespace-nowrap/);
+    expect(list.style.lineHeight).toBe('1.25');
   });
 
   it('prefers-reduced-motion przy świeżym ukończeniu: stan końcowy od razu, XP i liczby bez nabijania', () => {

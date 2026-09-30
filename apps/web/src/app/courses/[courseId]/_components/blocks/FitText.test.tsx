@@ -72,6 +72,32 @@ describe('FitText', () => {
     expect(fitted().style.overflow).toBe('');
   });
 
+  describe('wholeWords (warstwa tekstu, D-128): słowo = jedna linijka o szerokości 0,6 x rozmiar x liczba znaków', () => {
+    it('słowo mieści się dopiero przy mniejszej czcionce (powyżej minimum): rozmiar maleje, słowo zostaje w całości', () => {
+      box = { width: 100, height: 40 };
+      render(
+        <FitText testId="fit" fitKey="a" maxRatio={1} minPx={14} wholeWords>
+          Detektyw
+        </FitText>,
+      );
+      // 0,6 x 8 x rozmiar <= 100 (+1 px tolerancji) -> ~21 px (wysokość pozwalałaby na 40 px).
+      expect(fontOf(fitted()) * 0.6 * CHARS).toBeLessThanOrEqual(101);
+      expect(fontOf(fitted())).toBeGreaterThan(19.5);
+      expect(fitted().style.overflowWrap).toBe('normal');
+    });
+
+    it('słowo szersze niż slot nawet przy minimum: czcionka = minPx (nigdy mniej) i dopiero wtedy łamanie w środku słowa', () => {
+      box = { width: 50, height: 40 };
+      render(
+        <FitText testId="fit" fitKey="a" maxRatio={1} minPx={14} wholeWords>
+          Detektyw
+        </FitText>,
+      );
+      expect(fontOf(fitted())).toBe(14);
+      expect(fitted().style.overflowWrap).toBe('anywhere');
+    });
+  });
+
   it('ponowne dopasowanie (zmiana fitKey) czyści overflow z poprzedniego', () => {
     box = { width: 200, height: 10 };
     const { rerender } = render(

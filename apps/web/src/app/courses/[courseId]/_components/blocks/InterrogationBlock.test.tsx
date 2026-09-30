@@ -158,10 +158,15 @@ describe('InterrogationBlock', () => {
     expect(within(screen.getByRole('complementary', { name: 'Notatnik' })).getByText('Karol rozpoznał głos.')).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveAccessibleName('Dowody 3 z 5');
     expect(line('To był jego głos')).toHaveTextContent('W notatniku');
-    // Zwykła kwestia - bez „Dodaj do notatek”, ale z „Podważ” (klient nie wie, która kwestia kłamie).
+    // Zwykła kwestia (D-129) - też „Dodaj do notatek” (przycisk nie zdradza, co jest fragmentem) i „Podważ”; dodanie nic nie wnosi:
+    // bez notatki, bez dowodu, komunikat.
     fireEvent.click(line('Na wyświetlaczu'));
-    expect(screen.queryByRole('button', { name: 'Dodaj do notatek' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Podważ' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatek' }));
+    expect(screen.getByTestId('interrogation-status')).toHaveTextContent('To nie wnosi nic nowego.');
+    expect(line('Na wyświetlaczu')).not.toHaveTextContent('W notatniku');
+    expect(screen.getByTestId('evidence-counter')).toHaveAccessibleName('Dowody 3 z 5');
+    expect(within(screen.getByRole('complementary', { name: 'Notatnik' })).queryByText(/Na wyświetlaczu/)).not.toBeInTheDocument();
   });
 
   it('podważenie: wybór dowodu (tylko notatki z odnośnikiem, z innych bloków), trafienie - przyznanie, notatka, liczby dowodów z serwera', async () => {
@@ -325,7 +330,7 @@ describe('InterrogationBlock', () => {
     expect(screen.getByTestId('interrogation-status')).toHaveTextContent('W notatniku nie ma jeszcze dowodów');
     expect(screen.queryByTestId('interrogation-picker')).not.toBeInTheDocument();
     fireEvent.keyDown(line('Na wyświetlaczu'), { key: 'n' });
-    expect(screen.getByTestId('interrogation-status')).toHaveTextContent('Tej kwestii nie da się dodać do notatek.');
+    expect(screen.getByTestId('interrogation-status')).toHaveTextContent('To nie wnosi nic nowego.');
     fireEvent.keyDown(line('Nie, żadnych kodów'), { key: 'p' });
     expect(screen.getByTestId('interrogation-status')).toHaveTextContent('Ta kwestia była już podważona.');
   });

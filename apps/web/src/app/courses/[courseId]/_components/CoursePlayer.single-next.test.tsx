@@ -111,11 +111,50 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     expect(barNext()).toBeEnabled();
     fireEvent.click(barNext());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
-    // Wynik (FeedbackPanel „Blok ukończony.”) bez własnego przycisku - dalej ten sam „Dalej” w pasku.
-    await screen.findByText('Blok ukończony.');
-    expect(inBlockNext()).toEqual([]);
-    fireEvent.click(barNext());
+    // Blok bez oceny (D-129): bez pustego ekranu „Blok ukończony.” - od razu kolejny blok, bez przycisku dalej w bloku.
     await screen.findByText('Kolejny blok.');
+    expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
+    expect(inBlockNext()).toEqual([]);
+  });
+
+  it.each([
+    // Odpowiedź API dla przesłuchania bez sprzeczności (waga 0): rozstrzygnięcie z pustą listą kłamstw, bez punktów.
+    ['przesłuchanie bez sprzeczności (waga 0) - od razu dalej', { type: 'INTERROGATION', detail: { contradictions: [] } }, null],
+    ['blok bez oceny i bez rozstrzygnięcia (np. VIDEO) - od razu dalej', { type: 'VIDEO' }, null],
+    // Przesłuchanie ze sprzecznościami i wagą 0: bez punktów, ale z rozstrzygnięciem (kłamstwa) - ekran wyniku zostaje (tu: blok w
+    // atrapie to VIDEO, więc ogólny panel wyniku).
+    [
+      'przesłuchanie ze sprzecznościami bez wagi - ekran wyniku zostaje',
+      { type: 'INTERROGATION', detail: { contradictions: [{ lineId: 'k1', line: { text: 'Przyznaję.' } }] } },
+      'Blok ukończony.',
+    ],
+    ['wynik z oceną - ekran wyniku zostaje', { type: 'QUIZ', correct: true, points: 1 }, 'Poprawna odpowiedź!'],
+    ['bez oceny, ale z komentarzem z treści - ekran wyniku zostaje', { type: 'QUIZ', reaction: { text: 'Dobrze wiedzieć.' } }, 'Dobrze wiedzieć.'],
+  ])('D-129: pusty ekran wyniku pominięty (%s)', async (_name, lastResult, shown) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'a1',
+        status: 'IN_PROGRESS',
+        currentBlockIndex: 1,
+        score: null,
+        completedAt: null,
+        lastResult: { blockIndex: 0, blockId: video.id, ...lastResult },
+        gamification: null,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CoursePlayer courseId="course-1" initial={course(video)} narrationEnabled={false} />);
+    fireEvent.ended(document.querySelector('video')!);
+    fireEvent.click(barNext());
+    if (shown === null) {
+      await screen.findByText('Kolejny blok.');
+      expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
+    } else {
+      await screen.findByText(shown);
+      expect(screen.queryByText('Kolejny blok.')).not.toBeInTheDocument();
+    }
   });
 
   it('DRAG_AND_DROP: „Dalej” aktywny dopiero po posegregowaniu wszystkiego', async () => {

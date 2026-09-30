@@ -33,6 +33,8 @@ export interface BoardLayout {
   end: Rect | null;
   /** Tacka "Ślady do przypięcia" z kartami i przyciskiem "Sprawdź trop" (pionowo: null - tacka to pasek pod sceną, D-105). */
   tray: Rect | null;
+  /** Liczba rzędów kart na tacce (poziomo: 1 albo 2, D-129; pionowo: brak - pasek pod sceną). */
+  trayRows?: number;
   /** Rozmiar karty śladu (w polu i na tacce). */
   card: { w: number; h: number };
   /**
@@ -45,9 +47,22 @@ export interface BoardLayout {
 const LANDSCAPE = { width: 1280, height: 720 } as const;
 const PORTRAIT_WIDTH = 600;
 
-/** Proporcja sceny poziomej (szerokość / wysokość); pionowa ma proporcję z układu (wysokość zależy od liczby pól). */
-export function boardRatio(): number {
-  return LANDSCAPE.width / LANDSCAPE.height;
+/**
+ * Proporcja sceny poziomej (szerokość / wysokość) dla `count` śladów - tacka w dwóch rzędach (D-129) wydłuża scenę; pionowa ma proporcję
+ * z układu (wysokość zależy od liczby pól).
+ */
+export function boardRatio(count = 1, options: { start?: boolean; end?: boolean } = {}): number {
+  const layout = boardLayout(count, 'landscape', options);
+  return layout.width / layout.height;
+}
+
+// Tacka pod tablicą (poziomo): nagłówek i odstępy wokół kart; ile kart mieści się w rzędzie o danej szerokości karty. Więcej śladów niż
+// w jednym rzędzie - tacka w dwóch rzędach (D-129, bez poziomego przewijania), scena rośnie w dół o jeden rząd kart.
+const TRAY = { x: 16, y: 542, w: 1248, paddingX: 14, header: 40, rowGap: 12, bottom: 12, cardGap: 16 } as const;
+export function trayRows(count: number, cardW: number): number {
+  const inner = TRAY.w - 2 * TRAY.paddingX;
+  const perRow = Math.max(1, Math.floor((inner + TRAY.cardGap) / (cardW + TRAY.cardGap)));
+  return count > perRow ? 2 : 1;
 }
 
 /**
@@ -162,17 +177,22 @@ export function boardLayout(
     w: cardW,
     h: card.h,
   }));
+  // Jeden rząd: dotychczasowa tacka 164 j. (scena 1280×720 bez zmian - moduł 1). Dwa rzędy: + rząd kart i odstęp, scena odpowiednio wyższa.
+  const rows = trayRows(n, cardW);
+  const trayH = rows === 1 ? 164 : TRAY.header + 2 * card.h + TRAY.rowGap + TRAY.bottom;
+  const height = rows === 1 ? LANDSCAPE.height : TRAY.y + trayH + (LANDSCAPE.height - (TRAY.y + 164));
   return {
     orientation,
     width: LANDSCAPE.width,
-    height: LANDSCAPE.height,
+    height,
     frame,
     cork,
     title: { x: 48, y: 44 },
     slots: [...topRow, ...bottomRow],
     start: options.start ? { x: 50, y: 100, w: 170, h: 124 } : null,
     end: options.end ? { x: 230, y: 330, w: 170, h: 124 } : null,
-    tray: { x: 16, y: 542, w: 1248, h: 164 },
+    tray: { x: TRAY.x, y: TRAY.y, w: TRAY.w, h: trayH },
+    trayRows: rows,
     card,
     axis: null,
   };

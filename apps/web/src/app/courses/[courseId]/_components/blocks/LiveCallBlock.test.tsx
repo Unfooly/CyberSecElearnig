@@ -104,6 +104,60 @@ describe('LiveCallBlock', () => {
     expect(screen.getAllByTestId('live-call-choice')).toHaveLength(2);
   });
 
+  describe('D-129: „Odrzuć” i „Rozłącz”', () => {
+    const exits = { ...block, reject: '#koniec-a', hangUp: '#koniec-a' } as unknown as ContentBlock;
+
+    it('bez `reject` / `hangUp` w treści - bez przycisków', () => {
+      setup();
+      expect(screen.queryByRole('button', { name: 'Odrzuć' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+      expect(screen.queryByRole('button', { name: 'Rozłącz' })).toBeNull();
+    });
+
+    it('„Odrzuć” na ekranie przychodzącym: od razu zakończenie z treści, zapis { path: [reject] }', () => {
+      const { onSubmit, ready } = setup({ block: exits });
+      expect(ready.current).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Odrzuć' }));
+      expect(screen.getByTestId('live-call')).toHaveAttribute('data-stage', 'ended');
+      expect(screen.getByTestId('live-call-ending')).toHaveTextContent('Paweł: nie dzwoniłem.');
+      expect(screen.queryByTestId('live-call-line')).toBeNull();
+      act(() => ready.current!());
+      expect(onSubmit).toHaveBeenCalledWith({ path: ['reject'], timed: true });
+    });
+
+    it('„Rozłącz” w trakcie rozmowy (w dowolnym węźle, także przed końcem kwestii): zakończenie z treści, ścieżka kończy się krokiem hangup', () => {
+      const { onSubmit, ready } = setup({ block: exits });
+      fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+      fireEvent.click(screen.getByRole('button', { name: /Jaką liczbę/ }));
+      expect(screen.getByTestId('live-call-line')).toHaveTextContent('62, szybko!');
+      fireEvent.click(screen.getByRole('button', { name: 'Rozłącz' }));
+      expect(screen.getByTestId('live-call-ending')).toHaveTextContent('Paweł: nie dzwoniłem.');
+      expect(screen.getByTestId('live-call-transcript')).toHaveTextContent('Rozłączasz się.');
+      expect(screen.queryByRole('button', { name: 'Rozłącz' })).toBeNull();
+      act(() => ready.current!());
+      expect(onSubmit).toHaveBeenCalledWith({ path: ['jaka-liczba', 'hangup'], timed: true });
+    });
+
+    it('zapis w toku (disabled): „Odrzuć” zablokowane', () => {
+      setup({ block: exits, disabled: true });
+      fireEvent.click(screen.getByRole('button', { name: 'Odrzuć' }));
+      expect(screen.getByTestId('live-call')).toHaveAttribute('data-stage', 'ring');
+    });
+
+    it('walkLiveCall (widok wyniku): odrzucenie - bez transkrypcji; rozłączenie - kwestia i „Rozłączasz się.”', () => {
+      const call = { ...content, reject: '#koniec-a', hangUp: '#koniec-a' };
+      expect(walkLiveCall(call, ['reject'])).toEqual({ lines: [], ending: 'koniec-a' });
+      expect(walkLiveCall(call, ['hangup'])).toEqual({
+        lines: [
+          { who: 'caller', text: 'Wpisz w aplikacji 62.' },
+          { who: 'silence', text: 'Rozłączasz się.' },
+        ],
+        ending: 'koniec-a',
+      });
+      expect(walkLiveCall(content, ['reject']).ending).toBeUndefined();
+    });
+  });
+
   it('konto z „Bez limitów czasu” (D-124): bez przełącznika i bez odliczania - limitu nie da się włączyć (serwer i tak odrzuciłby ciszę)', () => {
     vi.useFakeTimers();
     const { onSubmit, ready } = setup({ noTimeLimitDefault: true });

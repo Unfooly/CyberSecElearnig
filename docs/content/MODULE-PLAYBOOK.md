@@ -199,6 +199,10 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 | `bankwektor.pl` | domena „prawdziwego” banku w fabule | 1 `wyludzone-haslo` | fikcyjna; status rejestracji domeny do sprawdzenia przez właściciela (dns.pl) |
 | `bankwektor-weryfikacja.pl` | domena fałszywa (phishing) | 1 `wyludzone-haslo` | fikcyjna; status rejestracji domeny do sprawdzenia przez właściciela (dns.pl) |
 | „GTA6_PL.exe” | nazwa pliku gry (easter egg) | 1 `wyludzone-haslo` | nawiązanie do cudzej marki - zostaje, decyzja właściciela (D-100): świadome ryzyko, ikona własna, bez logo |
+| Drukarnia Lipowa sp. z o.o. (ul. Lipowa 7, Kraków) | firma ofiary (fikcyjna) | 2 `glos-z-helpdesku` | fikcyjna; do sprawdzenia przez właściciela (KRS, wyszukiwarka); w treści bez domeny strony |
+| `skrzynka-zewn.example` | domena zewnętrznej skrzynki (przekierowanie poczty) | 2 `glos-z-helpdesku` | `.example` - zarezerwowana (RFC 2606), bezpieczna |
+| Karol Wieczorek, Paweł Nowicki, Grzegorz Sowa | postacie (fikcyjne) | 2 `glos-z-helpdesku` | fikcyjne; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
+| numery 12 3XX XX 41, 12 3XX XX 00, wewn. 214, ID 7XX XXX 219, IP 185.XX.XX.17 | numery w fabule | 2 `glos-z-helpdesku` | zamaskowane (X) - nie są prawdziwymi numerami |
 
 ## 9. Zakazy (D-108)
 

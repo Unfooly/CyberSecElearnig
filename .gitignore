@@ -45,3 +45,6 @@ apps/web/public/content/
 coverage/
 docs/brand/screens/*.png
 docs/brand/screens/*/*.png
+
+# paczki od grafika i próbki głosów przed rozpakowaniem na miejsca docelowe (lokalne, nigdy w repo)
+_incoming/

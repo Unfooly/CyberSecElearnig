@@ -727,6 +727,31 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: przy błędzie zapisu LIVE_CALL przycisk „Zadzwoń ponownie” (powrót do ekranu przed połączeniem z czystą ścieżką) albo tryb
   bez limitu, gdy preferencji nie udało się odczytać; test.
 
+### B-138 Moduł 2: grafiki z paczki 2 bez pola w treści (D-125)
+- Etykiety: `P3`, `ux`, `mod:kursy`, `mod:content` · Źródło: faza 1g, README paczki 2 grafika
+- Opis: grafik dostarczył tła, których bloki nie mają gdzie użyć: `nagranie-tlo(-pion)` (sala odsłuchu za blokiem CALL_RECORDING),
+  `omowienie-tlo(-pion)` (tło ANNOTATED_REPLAY na transkrypcji), `konsola-admina(-pion)` (okno konsoli w przesłuchaniu - dziś konsola
+  rysowana przez odtwarzacz) i `rozmowa-na-zywo` (ekran połączenia LIVE_CALL - dziś ciemny ekran odtwarzacza). Pliki leżą w
+  `packages/content/modules/glos-z-helpdesku/assets/scenes` ze źródłami w `scripts/content/scenes/examples/glos-z-helpdesku/`, bez
+  publikacji (potok publikuje tylko zasoby wskazane w treści).
+- Akceptacja: decyzja właściciela, które tła wchodzą do odtwarzacza (pole `image`/`imagePortrait` w schemacie bloku, klasyfikacja
+  `client`, layout-check), albo usunięcie nieużytych plików i ich źródeł.
+
+### B-139 layout-check: sporadyczny błąd ładowania obrazu (m1) na `next dev`
+- Etykiety: `P3`, `test`, `mod:web` · Źródło: faza 1g (D-125)
+- Opis: sekcja `module` (`LAYOUT_CHECK_MODULE=glos-z-helpdesku`) w 2 z 4 przebiegów zgłosiła m1 „obrazy modułu nie załadowane” na
+  losowym viewporcie (390x844, 360x800) i dla różnych plików, które w pozostałych przebiegach ładują się poprawnie; wcześniej ta sama klasa
+  błędów w n4/r1 (fazy 1c-1e). Prawdopodobnie przerwane żądanie do `/dev/module-assets` pod obciążeniem `next dev` na Windows.
+- Akceptacja: ponowienie ładowania obrazu (np. jedno przeładowanie strony przed zgłoszeniem m1) albo przyczyna w trasie deweloperskiej;
+  sekcja stabilna w 5 kolejnych przebiegach.
+
+### B-140 Skrypty e2e modułów: blokada uruchomienia na nielokalnej bazie
+- Etykiety: `P3`, `security`, `test` · Źródło: security review fazy 1g (D-125)
+- Opis: `scripts/e2e-module-01.mjs`, `e2e-module-02.mjs` i `e2e-module.mjs` biorą `DATABASE_URL` z `.env`, tworzą organizację, użytkownika i
+  (czasem) kurs, a potem je usuwają. Nic nie chroni przed uruchomieniem na bazie innej niż lokalna.
+- Akceptacja: skrypty odmawiają startu, gdy host `DATABASE_URL` nie jest lokalny (localhost/127.0.0.1/kontener), chyba że jawna zmienna
+  (np. `E2E_ALLOW_REMOTE_DB=1`); test pomocnika.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

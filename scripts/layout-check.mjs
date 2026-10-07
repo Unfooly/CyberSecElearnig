@@ -112,7 +112,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2', 'prosty'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -166,7 +166,7 @@ if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(moduleDir(MODULE_
 }
 // Dla innego modułu tylko sekcje ogólne: `module` (każdy blok), `catalog` (miniatura i karta kursu z `?module=`) i `modul2` (własny moduł
 // podglądu nowych bloków, niezależny od LAYOUT_CHECK_MODULE).
-const GENERIC_SECTIONS = ['module', 'catalog', 'modul2', 'notes'];
+const GENERIC_SECTIONS = ['module', 'catalog', 'modul2', 'notes', 'prosty'];
 if (MODULE_SLUG !== DEFAULT_MODULE) {
   const unsupported = ONLY.filter((name) => !GENERIC_SECTIONS.includes(name));
   if (unsupported.length > 0) {
@@ -2114,6 +2114,151 @@ try {
 
         await context.close();
       }
+    }
+  }
+
+  // TRYB PROSTY (D-132, moduł 3 i kolejne) na module podglądu packages/content/dev-modules/dev-tryb-prosty:
+  //  (p1) cały widoczny tekst ramki odtwarzacza ≥ 16 px (klasa .simple-mode);
+  //  (p2) przyciski odpowiedzi i werdyktu ≥ 44 px, karta i zdanie po werdykcie w obszarze bloku, dolny pasek w ekranie, strona bez
+  //       przewijania w poziomie, bez błędów strony i konsoli;
+  //  (p3) wybór: zła odpowiedź - „Nie tym razem” ze zdaniem, po 2 błędach podpowiedź, trafienie - „Dalej” aktywny;
+  //  (p4) SWIPE_SORT przyciskami (pierwsze 3 karty) i gestem myszy (pozostałe, w lewo i w prawo wg treści): zdanie po każdej karcie,
+  //       „Dalej” aktywny po ostatniej.
+  // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
+  if (runs('prosty')) {
+    const DEMO = 'dev-tryb-prosty';
+    const demoBlocks = JSON.parse(readFileSync(join(moduleDir(DEMO), 'module.json'), 'utf8')).blocks;
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: true,
+        isMobile: viewport.isMobile ?? false,
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text().slice(0, 200));
+      });
+      const mistakes = new Map();
+      await page.route('**/api/courses/*/blocks/*/check', async (route) => {
+        const body = JSON.parse(route.request().postData() ?? '{}');
+        const blockId = decodeURIComponent(route.request().url().split('/blocks/')[1].split('/')[0]);
+        const block = demoBlocks.find((b) => b.id === blockId);
+        const answer = block.type === 'QUIZ' ? block.options[body.option] : block.cards.find((card) => card.id === body.card);
+        const good = block.type === 'QUIZ' ? answer.correct === true : answer.correct === body.verdict;
+        const count = (mistakes.get(blockId) ?? 0) + (good ? 0 : 1);
+        mistakes.set(blockId, count);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ blockId, result: good ? 'good' : 'bad', feedback: answer.feedback, ...(count >= 2 ? { hint: block.hint } : {}), done: false }),
+        });
+      });
+      const open = async (blockId) => {
+        mistakes.clear();
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=${DEMO}&block=${blockId}`);
+        await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+      };
+      const inArea = async (selector) => {
+        await page.locator(selector).first().scrollIntoViewIfNeeded();
+        const area = await boxOf(page, '[data-testid="player-content-area"]');
+        const box = await page.locator(selector).first().boundingBox();
+        return !!box && contains(area, box);
+      };
+      const minTarget = (selector) =>
+        page.locator(selector).evaluateAll((elements) => Math.min(...elements.map((el) => Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height))));
+      const minFont = () =>
+        page.evaluate(() => {
+          const frame = document.querySelector('main.player-frame');
+          const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+          let min = Infinity;
+          let where = '';
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            const el = node.parentElement;
+            if (!node.textContent.trim() || !el || el.closest('.sr-only, svg, [aria-hidden="true"], [hidden]')) continue;
+            const rect = el.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            if (rect.width === 0 || rect.height === 0 || style.visibility === 'hidden') continue;
+            const size = parseFloat(style.fontSize);
+            if (size < min) {
+              min = size;
+              where = node.textContent.trim().slice(0, 40);
+            }
+          }
+          return { min, where };
+        });
+      const common = async (label) => {
+        const font = await minFont();
+        if (font.min < 15.9) fail(`${label}: (p1) tekst ${font.min}px < 16px („${font.where}”).`);
+        const info = await page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="player-bottombar"]')?.getBoundingClientRect();
+          return { barInView: !!bar && bar.top >= -1 && bar.bottom <= window.innerHeight + 1, overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        if (!info.barInView) fail(`${label}: (p2) dolny pasek poza ekranem.`);
+        if (info.overflowX > 1) fail(`${label}: (p2) strona przewija się w poziomie o ${info.overflowX}px.`);
+        if (errors.length > 0) fail(`${label}: (p2) błędy: ${errors.join(' | ')}`);
+      };
+      const forwardEnabled = () => page.waitForFunction(() => document.querySelector('.pbar-next') && !document.querySelector('.pbar-next').disabled, null, { timeout: 10000 });
+
+      // (p3) wybór
+      await open('wybor');
+      let label = `${viewport.name} / tryb prosty / wybór`;
+      await common(label);
+      const optionTarget = await minTarget('[data-testid="simple-option"]');
+      if (optionTarget < 43.5) fail(`${label}: (p2) odpowiedź mniejsza niż 44 px (${optionTarget.toFixed(1)}).`);
+      const quiz = demoBlocks.find((b) => b.id === 'wybor');
+      const wrong = quiz.options.map((option, index) => (option.correct ? -1 : index)).filter((index) => index >= 0);
+      const right = quiz.options.findIndex((option) => option.correct);
+      await page.getByTestId('simple-option').nth(wrong[0]).click();
+      await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
+      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po kliknięciu poza obszarem bloku.`);
+      await page.getByTestId('simple-option').nth(wrong[1]).click();
+      await page.getByTestId('simple-hint').waitFor({ timeout: 10000 });
+      if (!(await inArea('[data-testid="simple-hint"]'))) fail(`${label}: (p3) podpowiedź poza obszarem bloku.`);
+      await common(`${label} (podpowiedź)`);
+      await shot(page, `${viewport.name}-prosty-wybor-podpowiedz`);
+      await page.getByTestId('simple-option').nth(right).click();
+      await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
+      await forwardEnabled();
+      step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi ≥ 44 px, zdanie, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
+
+      // (p4) SWIPE_SORT
+      await open('wiadomosci');
+      label = `${viewport.name} / tryb prosty / SWIPE_SORT`;
+      await common(label);
+      const verdictTarget = await minTarget('[data-testid="swipe-suspicious"], [data-testid="swipe-ok"]');
+      if (verdictTarget < 43.5) fail(`${label}: (p2) przycisk werdyktu mniejszy niż 44 px (${verdictTarget.toFixed(1)}).`);
+      const sort = demoBlocks.find((b) => b.id === 'wiadomosci');
+      for (let index = 0; index < sort.cards.length; index += 1) {
+        const card = page.getByTestId('swipe-card');
+        if (!(await inArea('[data-testid="swipe-card"]'))) fail(`${label}: (p2) karta ${index + 1} poza obszarem bloku.`);
+        const id = await card.getAttribute('data-card-id');
+        const expected = sort.cards.find((candidate) => candidate.id === id);
+        if (index < 3) {
+          await page.getByTestId(expected.correct === 'suspicious' ? 'swipe-suspicious' : 'swipe-ok').click();
+        } else {
+          const box = await card.boundingBox();
+          const startX = box.x + box.width / 2;
+          const y = box.y + Math.min(box.height / 2, 40);
+          await page.mouse.move(startX, y);
+          await page.mouse.down();
+          await page.mouse.move(startX + (expected.correct === 'suspicious' ? -1 : 1) * Math.max(120, box.width * 0.4), y, { steps: 6 });
+          await page.mouse.up();
+        }
+        await page.locator('[data-testid="simple-feedback"][data-result="good"]', { hasText: expected.feedback.slice(0, 30) }).waitFor({ timeout: 10000 });
+        if (index === 3) {
+          if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po werdykcie poza obszarem bloku.`);
+          await shot(page, `${viewport.name}-prosty-swipe-gest`);
+        }
+      }
+      await forwardEnabled();
+      await common(`${label} (po ostatniej karcie)`);
+      step(`${label}: (p1, p2, p4) ${sort.cards.length} kart - 3 przyciskami, ${sort.cards.length - 3} gestem, zdanie po każdej, „Dalej” po ostatniej OK`, true);
+      await context.close();
     }
   }
 

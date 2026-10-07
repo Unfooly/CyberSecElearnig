@@ -143,6 +143,8 @@ export default function PlayerHarnessPage({
         ? { v: 2, blocks: {}, notes: evidenceNotesBefore(parsedModule.blocks, parsedModule.blocks.indexOf(rawBlock)) }
         : null,
     score: null,
+    // Tryb prosty (D-132): z modułu, jak z wersji kursu w /start. Ocena kliknięć (/check) - layout-check podstawia odpowiedź z treści.
+    simpleMode: parsedModule.simpleMode === true,
   };
 
   // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze

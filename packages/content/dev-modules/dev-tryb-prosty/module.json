@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 6,
+  "slug": "dev-tryb-prosty",
+  "title": "Tryb prosty (podgląd)",
+  "category": "PHISHING_SOCIAL_ENGINEERING",
+  "durationMinutes": 5,
+  "mandatory": false,
+  "simpleMode": true,
+  "blocks": [
+    {
+      "id": "odprawa",
+      "type": "NARRATIVE",
+      "text": "Ola Malec z księgowości dostała wiadomość od Kasi. Coś tu nie gra."
+    },
+    {
+      "id": "wybor",
+      "type": "QUIZ",
+      "prompt": "Kasia prosi na czacie o kod BLIK - co robisz?",
+      "options": [
+        { "text": "Wysyłam kod, przecież to Kasia.", "correct": false, "feedback": "Konto Kasi mogło zostać przejęte - kod trafiłby do oszusta." },
+        { "text": "Odpisuję na czacie: na pewno to Ty?", "correct": false, "feedback": "Na przejętym koncie odpowie oszust, nie Kasia." },
+        { "text": "Dzwonię do Kasi na numer, który znam.", "correct": true, "feedback": "Tak - znany numer to inny kanał, którego oszust nie kontroluje." }
+      ],
+      "hint": "Sprawdź prośbę innym kanałem niż ten czat."
+    },
+    {
+      "id": "wiadomosci",
+      "type": "SWIPE_SORT",
+      "prompt": "Oceń każdą wiadomość: podejrzana czy w porządku?",
+      "cards": [
+        { "id": "paczka", "channel": "sms", "from": "SzybkaPaczka", "time": "9:41", "text": "Twoja paczka czeka. Dopłać 1,99 zł: szybkapaczka.example/oplata", "correct": "suspicious", "feedback": "Mała dopłata przez link to typowa pułapka - sprawdź przesyłkę w aplikacji przewoźnika." },
+        { "id": "mama", "channel": "sms", "from": "+48 500 XXX XXX", "time": "10:02", "text": "Mamo, to mój nowy numer. Zapisz go i odpisz.", "correct": "suspicious", "feedback": "„Nowy numer” to początek wyłudzenia - zadzwoń na stary numer dziecka." },
+        { "id": "kod", "channel": "chat", "from": "Marek", "time": "10:15", "text": "Wysłałem Ci kod przez pomyłkę, możesz mi go przesłać?", "correct": "suspicious", "feedback": "Kod z SMS-a to klucz do Twojego konta - nie przesyłasz go nikomu." },
+        { "id": "faktura", "channel": "chat", "from": "Kasia", "time": "10:20", "text": "Zerknij na fakturę, pilne.", "attachment": "faktura.zip", "correct": "suspicious", "feedback": "Spakowana „faktura” od znajomego bez kontekstu może zawierać złośliwy program." },
+        { "id": "szef", "channel": "chat", "from": "Szef", "time": "10:31", "text": "Przenoszę spotkanie na 11:00. Ta sama sala.", "correct": "ok", "feedback": "Zwykła informacja bez linku, prośby o dane ani pośpiechu." },
+        { "id": "przychodnia", "channel": "sms", "from": "Przychodnia", "time": "11:05", "text": "Przypominamy o wizycie jutro o 8:30.", "correct": "ok", "feedback": "Przypomnienie bez linku i bez prośby o dane - w porządku." }
+      ],
+      "hint": "Podejrzane są prośby o kod, pieniądze albo kliknięcie w link."
+    },
+    {
+      "id": "raport",
+      "type": "SUMMARY",
+      "lessons": [
+        "Dziwna prośba od znajomego? Zadzwoń na znany numer.",
+        "Kodu z SMS-a nie podajesz nikomu.",
+        "Link w wiadomości? Nie klikaj - wejdź sam przez aplikację lub stronę."
+      ]
+    }
+  ]
+}

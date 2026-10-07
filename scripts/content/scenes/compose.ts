@@ -1,8 +1,127 @@
 import { P } from './palette.js';
 import { esc, PROPS } from './props.js';
-import type { ComposeResult, Hotspot, SceneSpec } from './types.js';
+import { outlineText, parseTextElement } from './text.js';
+import type { ComposeResult, Hotspot, PropContext, SceneLocale, SceneSpec, SceneString } from './types.js';
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Języki scen ze `strings` - jak CONTENT_LOCALES w packages/content (pl zawsze, w tej kolejności). */
+export const SCENE_LOCALES: readonly SceneLocale[] = ['pl', 'en'];
+
+/**
+ * Obszar sceny na telefonie 390×844 w pionie (D-135), zmierzony w odtwarzaczu (dev harness, 2026-10-07): scena/wariant pionowy
+ * dopasowany do szerokości ma 364 px, obszar bloku - 631 px wysokości. 'contain' = cała scena w tym prostokącie, 'panorama' = pełna
+ * wysokość (scena pozioma przewijana w bok). Zmiana układu odtwarzacza = ponowny pomiar i zmiana tych liczb.
+ */
+export const PHONE_SCENE_BOX = { width: 364, height: 631 } as const;
+/** Minimalny rozmiar tekstu do czytania na telefonie (px ekranu) i na ekranie telefonu narysowanym w scenie. */
+export const MIN_TEXT_PX = 14;
+export const MIN_PHONE_SCREEN_TEXT_PX = 16;
+/** Klocki, które są ekranem telefonu (tekst min. 16 px); element może to nadpisać polem `phoneScreen`. */
+export const PHONE_SCREEN_PROPS = new Set(['smartphone', 'phoneTop', 'phoneFaceUp', 'phoneHomeTiles', 'phoneLying', 'incomingCallScreen', 'mfaListZoom']);
+
+/**
+ * Parametry klocków dopasowywane do slotu przez `fitText` (zawijanie + zmniejszanie do minimum, błąd gdy się nie mieści) - tylko tu
+ * wolno w scenie ze `strings` podać `{ "$t": … }`. Klocek z tekstem o stałym rozmiarze nie gwarantuje, że dłuższy tekst innego
+ * języka zmieści się w jego kształcie. Nowy klocek z tekstem do tłumaczenia = `fitText` + wpis tutaj.
+ */
+export const FIT_PARAMS: Record<string, string[]> = { textBox: ['text'] };
+
+/** Tekst, który nie musi pochodzić ze `strings`: same cyfry i znaki liczb/maski (godzina, kwota, „12 3XX XX 41”). */
+const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX]*$/;
+
+/** Skala sceny na telefonie (px ekranu na jednostkę sceny). */
+export function phoneScale(spec: SceneSpec): number {
+  const W = spec.width ?? 1600, H = spec.height ?? 1000;
+  return spec.phone === 'panorama' ? PHONE_SCENE_BOX.height / H : Math.min(PHONE_SCENE_BOX.width / W, PHONE_SCENE_BOX.height / H);
+}
+
+const isRef = (value: unknown): value is { $t: string } =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 1 && typeof (value as { $t?: unknown }).$t === 'string';
+
+/** Klucze `{ "$t": … }` użyte w parametrach (głęboko). */
+function refsIn(value: unknown, out: string[] = []): string[] {
+  if (isRef(value)) out.push(value.$t);
+  else if (Array.isArray(value)) value.forEach((v) => refsIn(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach((v) => refsIn(v, out));
+  return out;
+}
+
+function resolveRefs(value: unknown, table: Record<string, SceneString>): unknown {
+  if (isRef(value)) return table[value.$t];
+  if (Array.isArray(value)) return value.map((v) => resolveRefs(v, table));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveRefs(v, table)]));
+  return value;
+}
+
+/** Języki sceny ze `strings` w kolejności SCENE_LOCALES; [] dla sceny bez `strings`. */
+export function sceneLocales(spec: SceneSpec): SceneLocale[] {
+  return spec.strings ? SCENE_LOCALES.filter((locale) => spec.strings![locale] !== undefined) : [];
+}
+
+/** Kompletność `strings`: pl obecny, tylko znane języki, te same klucze w każdym języku, każdy klucz użyty, każde odwołanie istnieje. */
+export function validateStrings(spec: SceneSpec): string[] {
+  const errors: string[] = [];
+  const used = spec.items.flatMap((it) => refsIn(it.params ?? {}));
+  if (!spec.strings) {
+    if (used.length > 0) errors.push(`Odwołania { "$t": … } (${[...new Set(used)].join(', ')}) bez "strings" w scenie`);
+    if (spec.items.some((it) => it.decorative)) errors.push('"decorative" ma sens tylko w scenie ze "strings"');
+    return errors;
+  }
+  const unknown = Object.keys(spec.strings).filter((locale) => !SCENE_LOCALES.includes(locale as SceneLocale));
+  if (unknown.length > 0) errors.push(`Nieznane języki w "strings": ${unknown.join(', ')} (dozwolone: ${SCENE_LOCALES.join(', ')})`);
+  if (!spec.strings.pl) errors.push('"strings" musi mieć język "pl"');
+  const locales = sceneLocales(spec);
+  const keys = new Set(locales.flatMap((locale) => Object.keys(spec.strings![locale]!)));
+  for (const locale of locales) {
+    const table = spec.strings[locale]!;
+    for (const key of keys) {
+      const value = table[key];
+      if (value === undefined) errors.push(`strings.${locale}: brak klucza "${key}"`);
+      else if (Array.isArray(value) ? value.some((v) => typeof v !== 'string') : typeof value !== 'string') errors.push(`strings.${locale}.${key}: napis albo lista napisów`);
+    }
+  }
+  for (const it of spec.items) {
+    for (const [param, value] of Object.entries(it.params ?? {})) {
+      if (refsIn(value).length > 0 && !(FIT_PARAMS[it.prop] ?? []).includes(param)) {
+        errors.push(`Element "${it.id}": parametr "${param}" klocka "${it.prop}" nie jest dopasowywany do slotu (fitText) - tekst dłuższy w innym języku wyszedłby poza grafikę; użyj textBox albo dodaj dopasowanie do klocka (FIT_PARAMS)`);
+      }
+    }
+  }
+  for (const key of new Set(used)) if (!keys.has(key)) errors.push(`Odwołanie do nieistniejącego klucza "${key}"`);
+  for (const key of keys) if (!used.includes(key)) errors.push(`Klucz "${key}" w "strings" nie jest nigdzie użyty`);
+  return errors;
+}
+
+/** Skala z atrybutu transform (scale(s) / scale(sx sy) - mniejsza oś); translate/rotate nie zmieniają rozmiaru tekstu. */
+function transformScale(attrs: string): number {
+  const transform = attrs.match(/\btransform="([^"]*)"/)?.[1];
+  if (!transform) return 1;
+  if (/matrix\(|skew/.test(transform)) throw new Error(`Nieobsługiwany transform "${transform}" (kontrola rozmiaru tekstu zna tylko translate/scale/rotate)`);
+  let scale = 1;
+  for (const [, sx, sy] of transform.matchAll(/scale\(\s*([\d.]+)(?:[\s,]+([\d.]+))?\s*\)/g)) scale *= Math.min(Number(sx), Number(sy ?? sx));
+  return scale;
+}
+
+/** Każdy <text> fragmentu z rozmiarem w jednostkach fragmentu (po transformach zagnieżdżonych <g>). */
+function textsWithScale(svg: string): { text: string; size: number }[] {
+  const out: { text: string; size: number }[] = [];
+  const stack = [1];
+  for (const match of svg.matchAll(/<(\/?)(g|text)\b([^>]*?)(\/?)>([^<]*)/g)) {
+    const [, close, tag, attrs, selfClosing, content] = match;
+    if (tag === 'g') {
+      if (close) stack.pop();
+      else if (!selfClosing) stack.push(stack[stack.length - 1] * transformScale(attrs));
+    } else if (!close) {
+      const element = parseTextElement(attrs, content);
+      out.push({ text: element.text, size: element.style.size * stack[stack.length - 1] });
+    }
+  }
+  return out;
+}
+
+const words = (value: unknown): string[] =>
+  typeof value === 'string' ? value.split(/\s+/).filter(Boolean) : Array.isArray(value) ? value.flatMap(words) : value && typeof value === 'object' ? Object.values(value).flatMap(words) : [];
 
 /** Nadaje lokalnym id (clipPath itp.) unikalny sufiks per element sceny. */
 function scopeIds(svg: string, itemId: string): string {
@@ -63,12 +182,52 @@ export function validateScene(spec: SceneSpec): string[] {
     if (!/^[a-z0-9-]+$/.test(it.id)) errors.push(`Id "${it.id}" ma być kebab-case`);
     if (it.scale !== undefined && !(it.scale > 0 && it.scale <= 10)) errors.push(`Skala poza zakresem (${it.id})`);
   }
+  if (spec.phone !== undefined && !['contain', 'panorama'].includes(spec.phone)) errors.push(`Nieznane "phone": ${spec.phone} (contain | panorama)`);
+  errors.push(...validateStrings(spec));
   return errors;
 }
 
-export function composeScene(spec: SceneSpec): ComposeResult {
+export interface ComposeOptions {
+  /** Język wyniku - wymagany dla sceny ze `strings`. */
+  locale?: SceneLocale;
+  /** Nazwa sceny w komunikatach błędów (plik bez .json). */
+  name?: string;
+}
+
+/**
+ * Scena ze `strings` (D-135): parametry z odwołaniami w języku `locale`, kontekst z dolną granicą czcionki dla `fitText`, a po
+ * renderze kontrola, że każdy tekst pochodzi ze `strings` (albo jest samymi cyframi) i - poza `decorative` - ma na telefonie
+ * co najmniej MIN_TEXT_PX (MIN_PHONE_SCREEN_TEXT_PX na ekranie telefonu). Błąd nazywa scenę, element i język.
+ */
+function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: ComposeOptions, errors: string[]) {
+  const fn = PROPS[it.prop];
+  const s = it.scale ?? 1;
+  const where = `scena ${options.name ?? '(bez nazwy)'}, element "${it.id}"${options.locale ? `, język ${options.locale}` : ''}`;
+  if (!spec.strings) return fn(it.params ?? {}, { minFontSize: 0, where });
+
+  const table = spec.strings[options.locale!]!;
+  const minPx = it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX;
+  const toLocal = phoneScale(spec) * s;
+  const context: PropContext = { minFontSize: it.decorative ? 0 : minPx / toLocal, where };
+  const out = fn(resolveRefs(it.params ?? {}, table) as Record<string, unknown>, context);
+
+  const allowed = new Set(refsIn(it.params ?? {}).flatMap((key) => words(table[key])).map((word) => word.toLocaleLowerCase(options.locale)));
+  for (const { text, size } of textsWithScale(out.svg)) {
+    const foreign = text.split(/\s+/).filter((word) => word && !LANGUAGE_NEUTRAL.test(word) && !allowed.has(word.toLocaleLowerCase(options.locale)));
+    if (foreign.length > 0) errors.push(`${where}: tekst „${text}” nie pochodzi ze "strings" (${foreign.join(' ')}) - przekaż go parametrem { "$t": … }`);
+    const px = size * toLocal;
+    if (!it.decorative && !LANGUAGE_NEUTRAL.test(text) && px < minPx - 0.01) {
+      errors.push(`${where}: tekst „${text}” ma na telefonie ${px.toFixed(1)} px (minimum ${minPx} px) - powiększ go albo oznacz element "decorative"`);
+    }
+  }
+  return out;
+}
+
+export function composeScene(spec: SceneSpec, options: ComposeOptions = {}): ComposeResult {
   const errors = validateScene(spec);
   if (errors.length) throw new Error(errors.join('\n'));
+  if (spec.strings && !options.locale) throw new Error(`Scena ${options.name ?? ''} ma "strings" - podaj język (${sceneLocales(spec).join(', ')})`);
+  if (options.locale && !(spec.strings && spec.strings[options.locale])) throw new Error(`Scena ${options.name ?? ''} nie ma tekstów w języku "${options.locale}"`);
 
   const W = spec.width ?? 1600, H = spec.height ?? 1000;
   const floorY = spec.background?.floorY ?? Math.round(H * 0.78);
@@ -79,7 +238,8 @@ export function composeScene(spec: SceneSpec): ComposeResult {
   const transparent = wall === 'none';
   if (transparent && !spec.background?.flat) throw new Error('background.wall "none" wymaga flat: true (podłoga na przezroczystym tle nie ma sensu)');
   const parts: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" id="static" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif">`,
+    // Bez font-family: tekst jest konturami (D-135), grafika nie zależy od czcionek systemu.
+    `<svg xmlns="http://www.w3.org/2000/svg" id="static" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
     ANIM_CSS,
     ...(transparent ? [] : [`<rect width="${W}" height="${H}" fill="${esc(wall)}"/>`]),
   ];
@@ -98,12 +258,12 @@ export function composeScene(spec: SceneSpec): ComposeResult {
     hotspots.push({ id, x: r1((x0 / W) * 100), y: r1((y0 / H) * 100), w: r1(((x1 - x0) / W) * 100), h: r1(((y1 - y0) / H) * 100) });
   };
 
+  const itemErrors: string[] = [];
   for (const it of spec.items) {
-    const fn = PROPS[it.prop];
-    const out = fn(it.params ?? {});
+    const out = renderItem(spec, it, options, itemErrors);
     const s = it.scale ?? 1;
     const pad = it.pad ?? 8;
-    parts.push(`<g id="item-${it.id}" transform="translate(${it.x} ${it.y}) scale(${s})">${scopeIds(out.svg, it.id)}</g>`);
+    parts.push(`<g id="item-${it.id}" transform="translate(${it.x} ${it.y}) scale(${s})">${outlineText(scopeIds(out.svg, it.id))}</g>`);
 
     if (it.hotspot === true) {
       pushHotspot(it.id, it.x, it.y, out.w * s, out.h * s, pad);
@@ -118,6 +278,7 @@ export function composeScene(spec: SceneSpec): ComposeResult {
       pushHotspot(hid, it.x + p.x * s, it.y + p.y * s, p.w * s, p.h * s, pad);
     }
   }
+  if (itemErrors.length) throw new Error(itemErrors.join('\n'));
   parts.push('</svg>');
   let svg = parts.join('\n');
   const once = Object.entries(ONCE_CSS)
@@ -131,7 +292,21 @@ export function composeScene(spec: SceneSpec): ComposeResult {
     if (!svg.includes('</style>')) throw new Error('Brak <style> w scenie - nie da się dopisać animacji jednorazowych');
     svg = svg.replace('</style>', `${once}</style>`);
   }
-  return { svg, hotspots, width: W, height: H };
+  return { svg, hotspots, width: W, height: H, ...(options.locale ? { locale: options.locale } : {}) };
+}
+
+/**
+ * Wszystkie wyniki sceny: bez `strings` - jeden (jak dotąd); ze `strings` - jeden na język. Hotspoty nie zależą od tekstu, ale
+ * sprawdzamy, że są identyczne we wszystkich językach (prostokąty hotspotów są wspólne w module, D-134).
+ */
+export function composeSceneLocales(spec: SceneSpec, name?: string): ComposeResult[] {
+  const locales = sceneLocales(spec);
+  if (locales.length === 0) return [composeScene(spec, { name })];
+  const results = locales.map((locale) => composeScene(spec, { locale, name }));
+  const reference = JSON.stringify(results[0].hotspots);
+  const different = results.filter((result) => JSON.stringify(result.hotspots) !== reference).map((result) => result.locale);
+  if (different.length > 0) throw new Error(`Scena ${name ?? ''}: hotspoty różnią się między językami (${different.join(', ')}) - prostokąty muszą być wspólne`);
+  return results;
 }
 
 /** Podgląd HTML z zaznaczonymi hotspotami — do sprawdzenia oka, nie do repo. */

@@ -3,7 +3,7 @@
 Scena szkoleniowa to plik JSON z listą klocków. Skrypt składa z nich SVG w płaskim stylu Unfooly
 i **sam wylicza hotspoty** (procenty względem obrazu), więc nikt nie przelicza
 współrzędnych ręcznie. Docelowe miejsce w repo: `scripts/content/scenes/`
-(ten sam projekt npm co skrypt TTS: tsx + vitest, zero zależności runtime).
+(ten sam projekt npm co skrypt TTS: tsx + vitest; jedyna zależność kompozytora to `opentype.js` - kontury tekstu, D-135).
 
 ## Użycie
 
@@ -51,6 +51,48 @@ nie do repo (`.gitignore`: `*.preview.html`).
 - `scale` — skala klocka (hotspot liczy się po skalowaniu). `pad` — margines w px (domyślnie 8).
 - Kolejność w `items` = kolejność rysowania (późniejszy przykrywa wcześniejszy).
 
+## Tekst w grafice i języki (D-135)
+
+**Tekst to krzywe.** Kompozytor zamienia każdy `<text>` klocka na `<path>` z konturów czcionek z repo (`fonts/`: Plus Jakarta Sans -
+domyślna, Caveat - pismo odręczne przez `font-family="Caveat"`; obie OFL, licencje obok plików). Grafika wygląda tak samo w każdej
+przeglądarce, build nie pobiera niczego z sieci, a wynik jest deterministyczny (stała precyzja `PATH_DECIMALS`, stały krok dopasowania) -
+ta sama scena = te same bajty. Znak, którego czcionka nie ma (np. emoji), to błąd builda z nazwą znaku - rysuj ikonę ścieżką.
+
+**Teksty per język (`strings`).** Scena z polem `strings` jest budowana osobno dla każdego języka do `<out>/<język>/<nazwa>.svg`
+(hotspoty - wspólne dla języków - raz, w `<out>/<nazwa>.hotspots.json`). Parametr klocka odwołuje się do tekstu przez `{ "$t": "klucz" }`:
+
+```json
+{
+  "width": 900, "height": 1600, "background": { "flat": true, "wall": "#4E40B8" },
+  "strings": {
+    "pl": { "dymek": "To Ty na tym filmie?" },
+    "en": { "dymek": "Is that you in this video?" }
+  },
+  "items": [
+    { "id": "dymek", "prop": "textBox", "x": 100, "y": 200, "hotspot": true,
+      "params": { "w": 700, "h": 260, "size": 64, "text": { "$t": "dymek" }, "background": "#FFFFFF", "padding": 24 } }
+  ]
+}
+```
+
+Reguły sceny ze `strings` (błąd builda z nazwą sceny, elementu, slotu i języka):
+
+- `pl` zawsze; te same klucze w każdym języku; każdy klucz użyty; odwołanie do istniejącego klucza; języki tylko `pl`, `en`.
+- `{ "$t": … }` tylko w parametrze dopasowywanym do slotu (`FIT_PARAMS` w `compose.ts`; dziś `textBox.text`). Klocek z tekstem o stałym
+  rozmiarze nie gwarantuje, że dłuższy tekst innego języka zmieści się w jego kształcie. Nowy klocek z tekstem do tłumaczenia = `fitText`
+  (`text.ts`) + wpis w `FIT_PARAMS`.
+- Każdy tekst w grafice pochodzi ze `strings` (albo jest samymi cyframi/maską: godzina, „12 3XX XX 41”) - domyślne etykiety klocka po
+  polsku w scenie EN to błąd, nie cicha mieszanka języków.
+- **Dopasowanie:** `fitText` zawija słowami i zmniejsza czcionkę od `size` w krokach 0,5 do minimum; nie mieści się = błąd (nigdy nie
+  ucina i nie schodzi poniżej minimum).
+- **Minimum na telefonie:** 14 px (16 px na ekranie telefonu narysowanym w scenie: klocki z `PHONE_SCREEN_PROPS` albo `"phoneScreen": true`)
+  w skali odtwarzacza na telefonie 390×844 - obszar sceny 364×631 px (`PHONE_SCENE_BOX`, zmierzony w dev harness). `"phone": "contain"`
+  (domyślnie: wariant pionowy, zbliżenie - cała scena w tym obszarze) albo `"panorama"` (scena pozioma na pełną wysokość, przewijana w
+  bok). Tekst tła, którego nie trzeba czytać: `"decorative": true` na elemencie (bez minimum, ale nadal ze `strings`).
+
+Sceny bez `strings` (moduły 1-2) budują się jak dotąd - jeden plik, tekst zamieniony na krzywe w obecnych rozmiarach, bez kontroli
+minimum (decyzja właściciela D-135: wyglądają jak wcześniej, czytelność przez zbliżenia).
+
 ## Klocki
 
 | prop | parametry | części |
@@ -77,6 +119,7 @@ nie do repo (`.gitignore`: `*.preview.html`).
 | `mug` | `label[] (2), color, steam` | |
 | `smartphone` | `lines[] (3), badge` | |
 | `box` | `w, h, label` | |
+| `textBox` | `w, h, text` (napis albo lista akapitów; w scenie ze `strings` - `{ "$t": … }`), `size, align, valign, bold, hand, color, background, radius, padding, lineHeight, maxLines` - tekst dopasowany do slotu (D-135) | |
 
 ### Klocki odprawy (`props-odprawa.ts`, widok z góry na biurko, D-084)
 

@@ -3,3 +3,5 @@
 *.sh text eol=lf
 # Hooki Gita (.githooks/pre-push) nie mają rozszerzenia .sh, a z CRLF `sh` odrzuca je błędem składni (Git Bash na Windows).
 .githooks/* text eol=lf
+# Czcionki kompozytora scen (D-135): binarne, bez konwersji końców linii.
+*.ttf binary

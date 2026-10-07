@@ -2,6 +2,7 @@ import { P } from './palette.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { PROP_REGISTRY } from './prop-registry.js';
+import { fitText } from './text.js';
 import type { PropFn, PropOutput } from './types.js';
 
 // Wyeksportowane: także parametry renderowane w kontekście ATRYBUTU (nie tylko <text>, jak color/binders/wall/floor -
@@ -403,11 +404,34 @@ export const paper: PropFn<{ w?: number; h?: number; title?: string; lines?: str
     `<rect x="50" y="${h - 60}" width="${w - 100}" height="18" rx="3" fill="${P.wall2}"/>`,
 });
 
+/* ---------- tekst w slocie (D-135) ---------- */
+
+/**
+ * Tekst wpalony w grafikę z dopasowaniem: zawijanie słowami i zmniejszanie do minimum z kontekstu (14 px na telefonie, 16 px na ekranie
+ * telefonu - kompozytor przelicza na jednostki klocka); nie mieści się = błąd builda (scena, element, slot "text", język). Opcjonalne
+ * tło (`background`, `radius`, `padding`). `hand: true` - pismo odręczne (Caveat).
+ */
+export const textBox: PropFn<{
+  w?: number; h?: number; text?: string | string[]; size?: number; align?: 'start' | 'middle' | 'end'; valign?: 'top' | 'middle';
+  bold?: boolean; hand?: boolean; color?: string; background?: string; radius?: number; padding?: number; lineHeight?: number; maxLines?: number;
+}> = (
+  { w = 400, h = 120, text: value = 'Tekst', size = 32, align = 'start', valign = 'top', bold = false, hand = false, color = P.ink, background, radius = 12, padding = 0, lineHeight, maxLines },
+  context,
+) => ({
+  w, h,
+  svg:
+    (background ? `<rect width="${w}" height="${h}" rx="${radius}" fill="${esc(background)}"/>` : '') +
+    fitText(value, {
+      slot: 'text', x: padding, y: padding, w: w - 2 * padding, h: h - 2 * padding, size, minSize: context?.minFontSize ?? 0,
+      align, valign, bold, family: hand ? 'hand' : 'sans', fill: color, lineHeight, maxLines, where: context?.where ?? 'textBox',
+    }),
+});
+
 export const PROPS: Record<string, PropFn<any>> = {
   window: window_, calendar, shelf, whiteboard, door,
   desk, drawerUnit, chair, plant,
   monitor, stickyNote, phone, printer, mug, keyboardMouse, laptop, smartphone, box,
-  wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper,
+  wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper, textBox,
   // Odprawa (BRIEFING) - widok z góry na biurko detektywa (props-odprawa.ts); nazwy nie kolidują z powyższymi.
   ...ODPRAWA_PROPS,
   // Zamknięcie sprawy (SUMMARY.closing, D-089) - raport w teczce, pieczęć, liścik komisarza.

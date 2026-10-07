@@ -854,6 +854,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-147 `course_versions.locales` jako NOT NULL (D-133)
+- Etykiety: `P3`, `tech-debt`, `mod:kursy`, `migration` · Źródło: decyzja właściciela 2026-10-07 (doprecyzowania do i18n-3)
+- Opis: kolumna `course_versions.locales` (migracja `20261007120000_content_locale`) ma `DEFAULT {pl}`, ale dopuszcza NULL - kod i tak
+  traktuje brak jako `['pl']`.
+- Akceptacja: osobna migracja (MERGE RĘCZNY): uzupełnienie NULL na `{pl}` i `SET NOT NULL`, `schema.prisma` bez `?`, test zapisu wersji bez
+  `locales` w module.
+
 ### B-146 Faza EN treści: nagrania narracji EN i podgląd EN w harnessie (D-134)
 - Etykiety: `P3`, `i18n`, `mod:kursy` · Źródło: code review i18n-2 (D-134), świadomie poza zakresem
 - Opis: (1) potok TTS (`scripts/content` `tts`) generuje i sprawdza (`--check`) nagrania tylko po polsku - walidator wymaga narracji EN w

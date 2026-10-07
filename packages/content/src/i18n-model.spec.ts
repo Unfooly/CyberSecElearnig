@@ -1,5 +1,5 @@
 import { BLOCK_SCHEMAS, ContentValidationError, DYNAMIC_OVERLAY_SLOTS, leafPaths, toClientBlock } from './index';
-import { fullModuleV6, simpleModule } from './fixtures';
+import { bilingualModule, fullModuleV6, simpleModule } from './fixtures';
 import { moduleWarnings, parseModule } from './node';
 
 // Model treści i18n (D-133, i18n-2): grafiki z wpalonym tekstem osobne na język, opisy alt, kompletność języków z `locales`, textLayer
@@ -17,42 +17,8 @@ const errorsOf = (module: unknown): string => {
   return '';
 };
 
-/** Mały moduł dwujęzyczny: odprawa ze sceną, scena z hotspotem, raport. */
-function bilingual(): AnyModule {
-  return {
-    schemaVersion: 6,
-    slug: 'dwujezyczny',
-    title: { pl: 'Łańcuszek', en: 'The chain' },
-    category: 'EMAIL_SECURITY',
-    durationMinutes: 5,
-    mandatory: false,
-    locales: ['pl', 'en'],
-    blocks: [
-      {
-        id: 'odprawa',
-        type: 'BRIEFING',
-        steps: [
-          {
-            kind: 'start',
-            text: { pl: 'Zaczynamy.', en: 'Let us begin.' },
-            cta: { pl: 'Start', en: 'Start' },
-            image: { pl: 'scenes/pl/odprawa.svg', en: 'scenes/en/odprawa.svg' },
-            alt: { pl: 'Biurko z telefonem.', en: 'A desk with a phone.' },
-          },
-        ],
-      },
-      {
-        id: 'telefon',
-        type: 'SCENE_HOTSPOTS',
-        tip: { pl: 'Kliknij link.', en: 'Click the link.' },
-        image: { pl: 'scenes/pl/telefon.svg', en: 'scenes/en/telefon.svg' },
-        imageAlt: { pl: 'Telefon z wiadomością „To Ty?”.', en: 'A phone with the message “Is that you?”.' },
-        hotspots: [{ id: 'link', label: { pl: 'Link do filmu', en: 'Video link' }, x: 10, y: 10, width: 30, height: 20, content: { pl: 'Link.', en: 'Link.' } }],
-      },
-      { id: 'raport', type: 'SUMMARY', lessons: [{ pl: 'Nie klikaj.', en: 'Do not click.' }] },
-    ],
-  };
-}
+/** Mały moduł dwujęzyczny (fixtura): odprawa ze sceną, scena z hotspotem, raport. */
+const bilingual = (): AnyModule => bilingualModule();
 
 describe('model treści i18n (D-133)', () => {
   it('moduł dwujęzyczny z grafikami osobnymi na język przechodzi walidację', () => {

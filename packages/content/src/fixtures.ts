@@ -886,3 +886,43 @@ export function fullModuleV6() {
     ],
   };
 }
+
+/**
+ * Mały moduł kompletny w PL i EN (D-133/D-134): odprawa ze sceną, scena z hotspotem, raport - grafiki osobne na język, opisy alt.
+ * Z `locales: ['pl', 'en']` przechodzi ostrą walidację języków (fullModuleV6 ma teksty tylko po polsku).
+ */
+export function bilingualModule() {
+  return {
+    schemaVersion: 6 as const,
+    slug: 'dwujezyczny',
+    title: { pl: 'Łańcuszek', en: 'The chain' },
+    category: 'EMAIL_SECURITY' as const,
+    durationMinutes: 5,
+    mandatory: false,
+    locales: ['pl', 'en'],
+    blocks: [
+      {
+        id: 'odprawa',
+        type: 'BRIEFING',
+        steps: [
+          {
+            kind: 'start',
+            text: { pl: 'Zaczynamy.', en: 'Let us begin.' },
+            cta: { pl: 'Start', en: 'Start' },
+            image: { pl: 'scenes/pl/odprawa.svg', en: 'scenes/en/odprawa.svg' },
+            alt: { pl: 'Biurko z telefonem.', en: 'A desk with a phone.' },
+          },
+        ],
+      },
+      {
+        id: 'telefon',
+        type: 'SCENE_HOTSPOTS',
+        tip: { pl: 'Kliknij link.', en: 'Click the link.' },
+        image: { pl: 'scenes/pl/telefon.svg', en: 'scenes/en/telefon.svg' },
+        imageAlt: { pl: 'Telefon z wiadomością „To Ty?”.', en: 'A phone with the message “Is that you?”.' },
+        hotspots: [{ id: 'link', label: { pl: 'Link do filmu', en: 'Video link' }, x: 10, y: 10, width: 30, height: 20, content: { pl: 'Link.', en: 'Link.' } }],
+      },
+      { id: 'raport', type: 'SUMMARY', lessons: [{ pl: 'Nie klikaj.', en: 'Do not click.' }] },
+    ],
+  };
+}

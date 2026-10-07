@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { blockSchema } from './blocks';
-import { COURSE_CATEGORIES, idSchema, imagePathSchema, ltext } from './common';
+import { CONTENT_LOCALES, COURSE_CATEGORIES, idSchema, imagePathSchema, ltext } from './common';
 import { Delocalize } from './localize';
 
 /**
@@ -40,9 +40,24 @@ export const moduleSchema = z
     // Tryb prosty (D-132, moduł 3 i kolejne, addytywnie w v6): ostrzejsza walidacja (semantics.ts simpleModeErrors) i odtwarzacz dla osób
     // nietechnicznych - ocena każdego kliknięcia od razu, podpowiedź po 2 błędach, tekst min. 16 px, bez wyniku w blokach.
     simpleMode: z.boolean().optional(),
+    // Języki kursu (D-133): w których językach kurs jest kompletny - gracz w innym języku dostaje `pl` z plakietką „Available in Polish
+    // only”. Zawsze z `pl`; brak pola = ['pl'] (częściowe tłumaczenie pól nie czyni kursu dwujęzycznym). Kompletność języków sprawdza
+    // walidacja (i18n-2).
+    locales: z
+      .array(z.enum(CONTENT_LOCALES))
+      .min(1)
+      .refine((list) => list.includes('pl'), 'locales: kurs zawsze ma język "pl"')
+      .refine((list) => new Set(list).size === list.length, 'locales: powtórzony język')
+      .optional(),
     blocks: z.array(blockSchema).min(1).max(200),
   })
   .strict();
+
+/** Języki kursu z module.json (D-133): pole `locales` albo `['pl']`. */
+export function moduleLocales(contentModule: { locales?: readonly (typeof CONTENT_LOCALES)[number][] }): (typeof CONTENT_LOCALES)[number][] {
+  // Kolejność CONTENT_LOCALES (nie kolejność z pliku) - ['en','pl'] i ['pl','en'] to ten sam kurs i ten sam skrót wersji.
+  return contentModule.locales ? CONTENT_LOCALES.filter((locale) => contentModule.locales!.includes(locale)) : ['pl'];
+}
 
 /** Moduł tak, jak jest zapisany (wszystkie języki) - to trafia do wersji kursu i do skrótu treści. */
 export type ContentModule = z.infer<typeof moduleSchema>;

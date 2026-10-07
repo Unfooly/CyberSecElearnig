@@ -2,6 +2,7 @@
 // wczytywanie plików) są w `@cyberszkolo/content/dist/node`.
 export * from './common';
 export * from './localize';
+export * from './locale-choice';
 export * from './recording';
 export * from './blocks';
 export * from './module';

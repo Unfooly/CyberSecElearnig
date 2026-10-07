@@ -179,6 +179,18 @@ describe('CallRecordingBlock', () => {
     expect(screen.getByTestId('recording-time-taps')).toHaveTextContent('Flagi z odsłuchu: 1');
   });
 
+  it('B-132: zakładka steruje panelem (tabpanel, aria-controls); powrót do odsłuchu zakładką - fokus na fali, przy montażu - nie', () => {
+    render(<CallRecordingBlock block={block(true)} contentBase="/content" onSubmit={vi.fn()} />);
+    const listenTab = screen.getByRole('tab', { name: 'Odsłuch' });
+    expect(screen.getByRole('slider', { name: 'Pozycja w nagraniu' })).not.toHaveFocus();
+    expect(screen.getByRole('tabpanel', { name: 'Odsłuch' })).toHaveAttribute('id', listenTab.getAttribute('aria-controls'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Transkrypcja' }));
+    expect(screen.getByRole('tabpanel', { name: 'Transkrypcja' })).toHaveAttribute('id', screen.getByRole('tab', { name: 'Transkrypcja' }).getAttribute('aria-controls'));
+    expect(listenTab).not.toHaveAttribute('aria-controls');
+    fireEvent.click(listenTab);
+    expect(screen.getByRole('slider', { name: 'Pozycja w nagraniu' })).toHaveFocus();
+  });
+
   it('wynik: każda flaga z kategorią, trafiona/przeoczona, liczba fałszywych alarmów i wynik; bez przycisku wysyłki', () => {
     render(
       <CallRecordingBlock

@@ -72,6 +72,28 @@ describe('CoursePlayer: omówienie wstrzymane do dotarcia (revealedBlock)', () =
     await waitFor(() => expect(forward()).not.toBeDisabled());
   });
 
+  it('B-132: pasek lektora idzie za znacznikiem omówienia (pierwszy bez własnej - narracja bloku); bez „Pomiń odprawę”', () => {
+    const narrated: ContentBlock = {
+      ...revealed,
+      narration: { text: 'Wprowadzenie do omówienia.' },
+      markers: revealed.markers!.map((marker, index) => (index === 1 ? { ...marker, narration: { text: 'Komentarz do parowania liczb.' } } : marker)),
+    };
+    render(
+      <CoursePlayer courseId="course-1" initial={course({ currentBlockIndex: 1, contentBlocks: [course().contentBlocks[0], narrated] })} narrationEnabled={false} />,
+    );
+    const transcriptText = () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
+      const text = screen.getByRole('region', { name: 'Transkrypcja narracji' }).textContent;
+      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
+      return text;
+    };
+    expect(transcriptText()).toContain('Wprowadzenie do omówienia.');
+    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('replay-next'));
+    expect(transcriptText()).toContain('Komentarz do parowania liczb.');
+    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
+  });
+
   it('blok wstrzymany bez ujawnienia (np. zgubiona odpowiedź) - komunikat o odświeżeniu, „Dalej” nieaktywny', () => {
     render(<CoursePlayer courseId="course-1" initial={course({ currentBlockIndex: 1 })} contentBase="/content" />);
     expect(screen.getByTestId('replay-withheld')).toHaveTextContent('Odśwież stronę');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Check, Flag, Pause, Play, RotateCcw, RotateCw, Undo2 } from 'lucide-react';
 import { MAX_RECORDING_TAPS, recordingTimeline, segmentAt } from '@cyberszkolo/content';
 import type { ContentBlock, ContentReaction, RecordingFlagCategory, RecordingTap, ResultDetail } from '@/lib/courses-types';
@@ -93,6 +93,16 @@ export default function CallRecordingBlock({
   useEffect(() => {
     if (!listenAvailable && mode === 'listen') setMode('transcript');
   }, [listenAvailable, mode]);
+
+  // Zakładki trybu (B-132): tab ↔ tabpanel; fokus na fali po wejściu w odsłuch zakładką.
+  const tabsId = useId();
+  const waveRef = useRef<HTMLDivElement | null>(null);
+  const focusWave = useRef(false);
+  useEffect(() => {
+    if (mode !== 'listen' || !focusWave.current) return;
+    focusWave.current = false;
+    waveRef.current?.focus({ preventScroll: true });
+  }, [mode]);
 
   const setPos = useCallback((ms: number) => {
     positionRef.current = ms;
@@ -306,8 +316,22 @@ export default function CallRecordingBlock({
       </p>
 
       <div className="mx-auto mb-3 flex w-full max-w-[760px] shrink-0 gap-2" role="tablist" aria-label="Tryb odsłuchu">
-        <ModeTab active={mode === 'listen'} disabled={!listenAvailable} onClick={() => setMode('listen')} label="Odsłuch" />
         <ModeTab
+          id={`${tabsId}-listen`}
+          panelId={`${tabsId}-panel`}
+          active={mode === 'listen'}
+          disabled={!listenAvailable}
+          onClick={() => {
+            // B-132: wejście w odsłuch zakładką - fokus na fali, żeby skróty (Spacja, strzałki, F) działały od razu. Przy montażu bloku fokus
+            // zostaje na nagłówku (D-076) - tam wskazówka pod przyciskami mówi, że skróty działają po kliknięciu w nagranie.
+            if (mode !== 'listen') focusWave.current = true;
+            setMode('listen');
+          }}
+          label="Odsłuch"
+        />
+        <ModeTab
+          id={`${tabsId}-transcript`}
+          panelId={`${tabsId}-panel`}
           active={mode === 'transcript'}
           onClick={() => {
             stop(false);
@@ -318,9 +342,15 @@ export default function CallRecordingBlock({
       </div>
 
       {mode === 'listen' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col gap-3 overflow-y-auto">
+        <div
+          id={`${tabsId}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${tabsId}-listen`}
+          className="mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col gap-3 overflow-y-auto"
+        >
           <div className="rounded-card border border-border bg-surface p-4 shadow-card">
             <div
+              ref={waveRef}
               role="slider"
               tabIndex={0}
               aria-label="Pozycja w nagraniu"
@@ -413,11 +443,18 @@ export default function CallRecordingBlock({
             </button>
           </div>
           <p className="text-sm text-muted">
-            Flagi: <span className="font-semibold text-ink">{taps.length}</span>. Spacja - odtwórz/pauza, strzałki - ±5 s, F - czerwona flaga.
+            Flagi: <span className="font-semibold text-ink">{taps.length}</span>. Po kliknięciu w nagranie: Spacja - odtwórz/pauza, strzałki - ±5 s,
+            F - czerwona flaga.
           </p>
         </div>
       ) : (
-        <div className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-y-auto" data-testid="recording-transcript">
+        <div
+          id={`${tabsId}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${tabsId}-transcript`}
+          className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-y-auto"
+          data-testid="recording-transcript"
+        >
           {!listenAvailable && (
             <p className="mb-3 rounded-card border border-border bg-paper px-3 py-2 text-sm text-muted">
               {canListen ? 'Nagranie nie wczytało się - zaznacz manipulacje w transkrypcji.' : 'Zaznacz w transkrypcji kwestie, w których rozmówca manipuluje.'}
@@ -470,12 +507,28 @@ export default function CallRecordingBlock({
   );
 }
 
-function ModeTab({ active, disabled = false, onClick, label }: { active: boolean; disabled?: boolean; onClick: () => void; label: string }) {
+function ModeTab({
+  id,
+  panelId,
+  active,
+  disabled = false,
+  onClick,
+  label,
+}: {
+  id: string;
+  panelId: string;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label: string;
+}) {
   return (
     <button
       type="button"
+      id={id}
       role="tab"
       aria-selected={active}
+      aria-controls={active ? panelId : undefined}
       disabled={disabled}
       onClick={onClick}
       className={`min-h-[44px] flex-1 rounded-btn border px-4 text-sm font-semibold disabled:opacity-40 ${FOCUS_RING} ${

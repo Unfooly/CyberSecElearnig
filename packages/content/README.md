@@ -157,10 +157,12 @@ włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrze
 
 - dozwolone bloki: `NARRATIVE`, `BRIEFING` (narracja/odprawa), `DIALOGUE`, `SCENE_HOTSPOTS`, `QUIZ` (wybór), `SWIPE_SORT`, `SUMMARY` (raport);
   każdy inny typ to błąd (w tym `ORDERING`, `INTERROGATION`, `CALL_RECORDING`, `LIVE_CALL`, `OSINT_SPOT`); żadnego limitu czasu;
-- polecenie (`prompt`, `tip`) najwyżej 90 znaków i jedno zdanie (bez drugiego zdania po `.`/`!`/`?`/`…` i bez nowej linii);
+- polecenie (`prompt`, `tip`) najwyżej 90 znaków i jedno zdanie (bez drugiego zdania po `.`/`!`/`?`/`…` i bez nowej linii - skróty z kropką
+  w środku, np. „np. kliknij”, też są odrzucane: pisz bez nich); scena wymaga własnego `tip`;
 - `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków, `hint` (podpowiedź po 2 błędach);
-- `SCENE_HOTSPOTS`: najwyżej 4 cele (z zagnieżdżonymi), każdy ≥ 44×44 px na scenie 480×270 px (pozioma, telefon w poziomie) i - przy
-  `portraitHotspots` - 360×640 px (pionowa); np. 30% × 20% sceny poziomej;
+- `SCENE_HOTSPOTS`: najwyżej 4 cele (z zagnieżdżonymi), każdy (także w scenie zagnieżdżonej) ≥ 44×44 px na scenie 480×270 px (pozioma, telefon w poziomie) i - przy
+  `portraitHotspots` - 360×640 px (pionowa); cele sceny zagnieżdżonej na 401×216 px (a przy `portraitHotspots` także 296×166 px); np. 30% × 20%
+  sceny poziomej;
 - `SWIPE_SORT`: polecenie jak wyżej i `hint`.
 
 Odtwarzacz w trybie prostym: każde kliknięcie wyboru i każda karta są oceniane od razu przez serwer (`POST /courses/:id/blocks/:blockId/check`

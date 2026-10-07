@@ -827,6 +827,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   zapisach; (3) osobny, wyższy limit per IP dla tras z limitem per użytkownik (albo decyzja, że zostaje) i ewentualnie łączenie zapisów
   częściowych (opóźnienie 300-500 ms); (4) najpierw kontrola pochodzenia i ciasteczka, potem parsowanie - wspólnie dla wszystkich tras;
   (5), (6) według uznania.
+- Uzupełnienie (D-132, security i code review 3a): pkt (3) dotyczy też `/check` (tryb prosty, 120/min) - tu 429 zatrzymuje grę (każda karta
+  SWIPE_SORT i każdy wybór wymaga `/check`), więc przy szkoleniu grupowym za jednym adresem to realne ryzyko, nie tylko cichy zapis częściowy.
+  Przy okazji: test e2e, że organizacja PENDING dostaje 403 na `/check` (dziś zapewnia to globalny guard, bez testu regresji).
 
 ### B-144 Domknięcia po D-131: warstwy overlay-stack per instancja, strzałki w zakładkach odsłuchu
 - Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review D-131 (stan sprzed zmian, nie regresja D-131)

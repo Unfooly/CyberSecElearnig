@@ -148,7 +148,30 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   D-129: `reject?` i `hangUp?` - `#<id zakończenia>` z outcome `good`: „Odrzuć” na ekranie przychodzącym (ścieżka `["reject"]`) i „Rozłącz”
   przez całą rozmowę (ostatni krok `"hangup"`); id `reject` i `hangup` zarezerwowane. Rozłączenie PO odpowiedzi z `infoChoices` serwer ocenia
   jako złe (0). Kolejność odpowiedzi w każdym węźle tasuje serwer (seed per przypisanie i węzeł) - autor nie musi jej mieszać.
-- Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcja `modul2`) - import ich nie czyta.
+- Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcje `modul2` i `prosty`) - import ich nie czyta.
+
+### Tryb prosty (`simpleMode`, D-132) i blok `SWIPE_SORT`
+
+Moduł 3 i kolejne: każdą minigrę ma przejść osoba nietechniczna bez instrukcji. `"simpleMode": true` na poziomie modułu (schemaVersion 6)
+włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrzeżenia (`semantics.ts`, `simpleModeErrors`):
+
+- dozwolone bloki: `NARRATIVE`, `BRIEFING` (narracja/odprawa), `DIALOGUE`, `SCENE_HOTSPOTS`, `QUIZ` (wybór), `SWIPE_SORT`, `SUMMARY` (raport);
+  każdy inny typ to błąd (w tym `ORDERING`, `INTERROGATION`, `CALL_RECORDING`, `LIVE_CALL`, `OSINT_SPOT`); żadnego limitu czasu;
+- polecenie (`prompt`, `tip`) najwyżej 90 znaków i jedno zdanie (bez drugiego zdania po `.`/`!`/`?`/`…` i bez nowej linii);
+- `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków, `hint` (podpowiedź po 2 błędach);
+- `SCENE_HOTSPOTS`: najwyżej 4 cele (z zagnieżdżonymi), każdy ≥ 44×44 px na scenie 480×270 px (pozioma, telefon w poziomie) i - przy
+  `portraitHotspots` - 360×640 px (pionowa); np. 30% × 20% sceny poziomej;
+- `SWIPE_SORT`: polecenie jak wyżej i `hint`.
+
+Odtwarzacz w trybie prostym: każde kliknięcie wyboru i każda karta są oceniane od razu przez serwer (`POST /courses/:id/blocks/:blockId/check`
+- „Dobrze”/„Nie tym razem” i zdanie z `feedback`), po 2 błędach w bloku stała podpowiedź (`hint`), cały tekst modułu min. 16 px, bez wyniku w
+blokach (ekran wyniku po zapisie pomijany). Wybór: próby do skutku, „Dalej” po trafieniu, wynik z **pierwszej** próby. Tryb prosty jest
+częścią wersji kursu (`course_versions.simpleMode`) - włączenie go przy tej samej treści tworzy nową wersję.
+
+`SWIPE_SORT` (oceniany, domyślna waga 1, każdy moduł v6): `prompt`, `cards[]` (2-12) `{ id, channel: "sms" | "chat", from, time?, text,
+attachment?, correct: "suspicious" | "ok", feedback (≤ 140) }`, `hint?`; co najmniej jedna karta z każdym werdyktem. Przesunięcie w lewo =
+„Podejrzane”, w prawo = „W porządku”, dwa duże przyciski robią to samo. `correct`, `feedback` i `hint` są sekretem; karty idą do klienta z
+nieprzejrzystymi id i przetasowane. Każda karta oceniana raz (`/check`), zapis bloku bez odpowiedzi, wynik = trafione werdykty / karty.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)
 

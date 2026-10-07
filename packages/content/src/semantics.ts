@@ -1,4 +1,4 @@
-import { LIVE_CALL_HANG_UP, LIVE_CALL_REJECT, LIVE_CALL_SILENCE, ServerBlock } from './blocks';
+import { LIVE_CALL_HANG_UP, LIVE_CALL_REJECT, LIVE_CALL_SILENCE, SWIPE_VERDICTS, ServerBlock } from './blocks';
 import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, requiredItemIds } from './common';
 import { collectPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
@@ -518,6 +518,7 @@ export const SCORED_BLOCK_TYPES = [
   'INTERROGATION',
   'OSINT_SPOT',
   'LIVE_CALL',
+  'SWIPE_SORT',
 ] as const;
 // TEXT_INPUT_GUIDED: wynik binarny (poprawnie / po wyczerpaniu prób) - reakcje po `when`. Reszta: wynik 0-1 - reakcje po `minScore`.
 export const WHEN_BASED_TYPES = new Set<string>(['TEXT_INPUT_GUIDED']);
@@ -825,6 +826,14 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       errors.push(...liveCallErrors(block));
       break;
     }
+    case 'SWIPE_SORT': {
+      // Segregowanie wiadomości (D-132): id kart unikalne; co najmniej jedna karta z każdym werdyktem (inaczej „wszystko w lewo” wygrywa).
+      checkUnique('cards', block.cards.map((card) => card.id));
+      for (const verdict of SWIPE_VERDICTS) {
+        if (!block.cards.some((card) => card.correct === verdict)) errors.push(`cards: brak karty z werdyktem "${verdict}"`);
+      }
+      break;
+    }
     case 'BRIEFING': {
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
@@ -1063,6 +1072,93 @@ function textLayerErrors(contentModule: ResolvedModule): string[] {
   return errors;
 }
 
+// --- Tryb prosty (D-132, moduł 3 i kolejne): każdą minigrę ma przejść osoba nietechniczna bez instrukcji -------------------------------
+//
+// Dozwolone bloki: narracja (NARRATIVE, odprawa BRIEFING), DIALOGUE, SCENE_HOTSPOTS, wybór (QUIZ: 2-3 odpowiedzi, jedna poprawna),
+// SWIPE_SORT i raport (SUMMARY). Bloki z limitem czasu (LIVE_CALL) i wymagające wprawy (ORDERING, INTERROGATION, CALL_RECORDING,
+// OSINT_SPOT) - zakazane, jak każdy typ spoza listy.
+export const SIMPLE_MODE_BLOCK_TYPES = ['NARRATIVE', 'BRIEFING', 'DIALOGUE', 'SCENE_HOTSPOTS', 'QUIZ', 'SWIPE_SORT', 'SUMMARY'] as const;
+export const SIMPLE_PROMPT_MAX = 90;
+export const SIMPLE_FEEDBACK_MAX = 140;
+export const SIMPLE_MAX_HOTSPOTS = 4;
+/** Najmniejszy cel dotykowy (WCAG 2.5.5) w skali wyświetlania. */
+export const SIMPLE_TOUCH_TARGET_PX = 44;
+/**
+ * Najmniejsza scena, na której liczymy cel dotykowy: pozioma - scena 16:9 w obszarze bloku telefonu w poziomie (844×390 bez pasków
+ * odtwarzacza: ok. 480×270 px); pionowa (`imagePortrait`, D-116) - grafika na szerokość telefonu w pionie (ok. 360 px) w proporcjach 9:16.
+ */
+export const SIMPLE_SCENE_REF = { landscape: { width: 480, height: 270 }, portrait: { width: 360, height: 640 } } as const;
+
+/** Jedno zdanie: po kropce, wykrzykniku, pytajniku albo wielokropku nie ma dalszego tekstu (ani nowej linii). */
+export function isOneSentence(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length > 0 && !/[.!?…]\s+\S/.test(trimmed) && !/\n/.test(trimmed);
+}
+
+function instructionErrors(label: string, value: string | undefined): string[] {
+  if (value === undefined) return [];
+  const errors: string[] = [];
+  if (value.length > SIMPLE_PROMPT_MAX) errors.push(`${label}: tryb prosty - polecenie najwyżej ${SIMPLE_PROMPT_MAX} znaków (jest ${value.length})`);
+  if (!isOneSentence(value)) errors.push(`${label}: tryb prosty - polecenie to jedno zdanie`);
+  return errors;
+}
+
+function touchTargetErrors(label: string, rect: { width: number; height: number }, ref: { width: number; height: number }): string[] {
+  const width = (rect.width / 100) * ref.width;
+  const height = (rect.height / 100) * ref.height;
+  if (width >= SIMPLE_TOUCH_TARGET_PX && height >= SIMPLE_TOUCH_TARGET_PX) return [];
+  return [
+    `${label}: tryb prosty - cel dotykowy min. ${SIMPLE_TOUCH_TARGET_PX}×${SIMPLE_TOUCH_TARGET_PX} px na scenie ${ref.width}×${ref.height} px (jest ${Math.floor(width)}×${Math.floor(height)})`,
+  ];
+}
+
+/** Reguły trybu prostego (błędy, nie ostrzeżenia) - tylko dla modułu z `simpleMode: true`. */
+function simpleModeErrors(contentModule: ResolvedModule): string[] {
+  if (contentModule.simpleMode !== true) return [];
+  const errors: string[] = [];
+  if (contentModule.schemaVersion < 6) errors.push('simpleMode: wymaga schemaVersion 6');
+  contentModule.blocks.forEach((block, index) => {
+    const where = `blocks[${index}] (${block.id})`;
+    if (!(SIMPLE_MODE_BLOCK_TYPES as readonly string[]).includes(block.type)) {
+      errors.push(`${where}: tryb prosty nie dopuszcza bloku ${block.type} (dozwolone: ${SIMPLE_MODE_BLOCK_TYPES.join(', ')})`);
+      return;
+    }
+    errors.push(...instructionErrors(`${where}: tip`, block.tip));
+    // Brak limitów czasu - także w polach, które dopiero powstaną (dziś limit ma wyłącznie LIVE_CALL, zakazany wyżej).
+    walkFields(block, (path, key) => {
+      if (/timelimit/i.test(key)) errors.push(`${where}: ${path}: tryb prosty nie dopuszcza limitów czasu`);
+    });
+    switch (block.type) {
+      case 'QUIZ': {
+        errors.push(...instructionErrors(`${where}: prompt`, block.prompt));
+        if (block.options.length > 3) errors.push(`${where}: options: tryb prosty - 2-3 odpowiedzi (jest ${block.options.length})`);
+        if (block.options.filter((option) => option.correct === true).length !== 1) errors.push(`${where}: options: tryb prosty - dokładnie jedna poprawna odpowiedź`);
+        block.options.forEach((option, i) => {
+          if (option.feedback === undefined) errors.push(`${where}: options[${i}].feedback: tryb prosty - każda odpowiedź ma zdanie po kliknięciu`);
+          else if (option.feedback.length > SIMPLE_FEEDBACK_MAX) errors.push(`${where}: options[${i}].feedback: tryb prosty - najwyżej ${SIMPLE_FEEDBACK_MAX} znaków`);
+        });
+        if (block.hint === undefined) errors.push(`${where}: hint: tryb prosty - podpowiedź po 2 błędach jest wymagana`);
+        break;
+      }
+      case 'SWIPE_SORT': {
+        errors.push(...instructionErrors(`${where}: prompt`, block.prompt));
+        if (block.hint === undefined) errors.push(`${where}: hint: tryb prosty - podpowiedź po 2 błędach jest wymagana`);
+        break;
+      }
+      case 'SCENE_HOTSPOTS': {
+        const all = flattenHotspots(block.hotspots);
+        if (all.length > SIMPLE_MAX_HOTSPOTS) errors.push(`${where}: hotspots: tryb prosty - najwyżej ${SIMPLE_MAX_HOTSPOTS} cele (jest ${all.length})`);
+        block.hotspots.forEach((h, i) => errors.push(...touchTargetErrors(`${where}: hotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.landscape)));
+        (block.portraitHotspots ?? []).forEach((h, i) => errors.push(...touchTargetErrors(`${where}: portraitHotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.portrait)));
+        break;
+      }
+      default:
+        break;
+    }
+  });
+  return errors;
+}
+
 /** Reguły semantyczne modułu rozwiniętego do jednego języka (bloki, relacje między blokami, reguła cyfr lektora, SUMMARY). */
 function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
   const errors: string[] = textLayerErrors(contentModule);
@@ -1094,7 +1190,8 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
         block.type === 'ANNOTATED_REPLAY' ||
         block.type === 'INTERROGATION' ||
         block.type === 'OSINT_SPOT' ||
-        block.type === 'LIVE_CALL')
+        block.type === 'LIVE_CALL' ||
+        block.type === 'SWIPE_SORT')
     ) {
       errors.push(`blocks[${index}] (${block.id}): blok ${block.type} wymaga schemaVersion 6`);
     }
@@ -1155,6 +1252,7 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
   }
   // Miniatura modułu (D-084) - addytywnie w v5. Istnienie pliku sprawdza potok zasobów (--assets), jak obrazy bloków.
   if (contentModule.schemaVersion < 5 && contentModule.thumbnail !== undefined) errors.push('thumbnail: wymaga schemaVersion 5');
+  errors.push(...simpleModeErrors(contentModule));
   // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
   // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
   // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).

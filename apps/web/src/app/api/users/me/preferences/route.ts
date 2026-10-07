@@ -28,9 +28,9 @@ export async function GET() {
 }
 
 // Zapis preferencji zmienia stan: proxyAuthenticated wymaga żądania z naszej własnej strony (CSRF), ciało z allowlisty { narrationEnabled,
-// noTimeLimits } („Bez limitów czasu”, D-124 - ustawienia konta).
+// noTimeLimits, contentLocale } („Bez limitów czasu”, D-124; „Język szkoleń”, D-133 - ustawienia konta i przełącznik na starcie kursu).
 export async function PATCH(request: NextRequest) {
-  const body = pickFields(await request.json().catch(() => null), ['narrationEnabled', 'noTimeLimits']);
+  const body = pickFields(await request.json().catch(() => null), ['narrationEnabled', 'noTimeLimits', 'contentLocale']);
   if (!body) {
     return NextResponse.json({ message: 'Nieprawidłowe żądanie.' }, { status: 400 });
   }

@@ -7,6 +7,8 @@ import Topbar from '@/components/Topbar';
 import PageHeader from '@/components/ui/PageHeader';
 import AvatarSettings from './_components/AvatarSettings';
 import AccessibilitySettings from './_components/AccessibilitySettings';
+import LanguageSettings from './_components/LanguageSettings';
+import { isContentLocale } from '@cyberszkolo/content';
 
 // Ustawienia KONTA (każda zalogowana rola - middleware.ts), w odróżnieniu od
 // /dashboard/settings, czyli ustawień ORGANIZACJI dla ORG_ADMIN-a. Sekcje: avatar (D-066) i dostępność (D-124); kolejne dokładamy tutaj.
@@ -28,7 +30,7 @@ export default async function AccountPage() {
     redirect('/login');
   }
   // Dostępność (D-124). Błąd odczytu nie blokuje ekranu: przełącznik startuje wyłączony (domyślne ustawienie konta).
-  const preferencesResult = await fetchJson<{ noTimeLimits?: boolean }>(`${API_URL}/users/me/preferences`, {
+  const preferencesResult = await fetchJson<{ noTimeLimits?: boolean; contentLocale?: string | null }>(`${API_URL}/users/me/preferences`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: 'no-store',
   });
@@ -42,6 +44,10 @@ export default async function AccountPage() {
             zaznaczonego presetu, a zapis i tak przechodzi przez API. */}
         <AvatarSettings initialAvatarUrl={avatarResult.ok ? avatarResult.data.avatarUrl : null} />
         <AccessibilitySettings initialNoTimeLimits={preferencesResult.ok && preferencesResult.data.noTimeLimits === true} />
+        {/* Język szkoleń (D-133); błąd odczytu - „Automatycznie”. */}
+        <LanguageSettings
+          initialLocale={preferencesResult.ok && isContentLocale(preferencesResult.data.contentLocale) ? preferencesResult.data.contentLocale : null}
+        />
       </main>
     </div>
   );

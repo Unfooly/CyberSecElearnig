@@ -24,6 +24,22 @@ export function isSameOriginRequest(): boolean {
 }
 
 /**
+ * Accept-Language bieżącego żądania (D-133: język przeglądarki - drugi po ustawieniu konta wybór języka szkoleń) do przekazania do API.
+ * Tylko znaki dozwolone w nagłówku listy języków i najwyżej 200 znaków; inaczej (albo poza zakresem żądania) - brak nagłówka.
+ */
+export function requestAcceptLanguage(): Record<string, string> {
+  try {
+    const raw = headers().get('accept-language');
+    if (!raw || !/^[A-Za-z0-9\-_,;=.* \t]+$/.test(raw)) return {};
+    // Długi nagłówek przycinamy do całych wpisów (do ostatniego przecinka w limicie) - pierwsze, najważniejsze języki zostają.
+    const value = raw.length <= 200 ? raw : raw.slice(0, 200).replace(/,[^,]*$/, '');
+    return value ? { 'Accept-Language': value } : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Proxy server-side do apps/api dla ZALOGOWANEGO użytkownika: token bierze z
  * httpOnly cookie (przeglądarka go nie widzi), ścieżka jest STAŁA po stronie
  * serwera (nigdy z danych żądania), a ciało - jeśli jest - musi zostać
@@ -53,6 +69,7 @@ export async function proxyAuthenticated(
       method,
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        ...requestAcceptLanguage(),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -107,7 +124,11 @@ export async function proxyEmbeddedDocument(apiPath: string): Promise<NextRespon
   if (!accessToken) return embedDocument(EMBED_ERROR, 401);
   let backendResponse: Response;
   try {
-    backendResponse = await apiFetch(`${API_URL}${apiPath}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+    // Accept-Language (D-133): dokument w tym samym języku co reszta kursu.
+    backendResponse = await apiFetch(`${API_URL}${apiPath}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, ...requestAcceptLanguage() },
+      cache: 'no-store',
+    });
   } catch (error) {
     console.error(`Nie udało się połączyć z apps/api (GET ${apiPath}):`, (error as Error).message);
     return embedDocument(EMBED_ERROR, 502);

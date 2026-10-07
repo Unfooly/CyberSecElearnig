@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { GET } from './route';
 import { API_URL } from '@/lib/config';
 import { EMBED_DOCUMENT_HEADERS } from '@/lib/bff';
@@ -57,6 +57,12 @@ describe('GET /api/courses/[courseId]/blocks/[blockId]/embed', () => {
       `${API_URL}/courses/course-1/blocks/gra/embed`,
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer tok' }) }),
     );
+  });
+
+  it('D-133: Accept-Language przeglądarki idzie do API - dokument w języku reszty kursu', async () => {
+    vi.mocked(headers).mockReturnValue({ get: (name: string) => (name.toLowerCase() === 'accept-language' ? 'pl-PL,pl;q=0.9' : null) } as unknown as ReturnType<typeof headers>);
+    await GET(request, ctx());
+    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({ 'Accept-Language': 'pl-PL,pl;q=0.9' });
   });
 
   it('eksportowane nagłówki są jedynym źródłem prawdy: brak allow-same-origin, allow-downloads, allow-forms, allow-popups', () => {

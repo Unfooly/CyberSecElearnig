@@ -587,6 +587,12 @@ export interface CourseDetail {
   progress: ClientProgress | null;
   /** Tryb prosty (D-132): ocena każdego kliknięcia, podpowiedź po 2 błędach, tekst min. 16 px; starsze odpowiedzi bez pola = false. */
   simpleMode?: boolean;
+  /** Język treści (D-133): język gracza, jeśli kurs go ma, inaczej 'pl'; starsze odpowiedzi bez pól = 'pl', bez plakietki. */
+  locale?: 'pl' | 'en';
+  /** Języki, w których kurs jest kompletny - przełącznik na starcie kursu, gdy więcej niż jeden. */
+  locales?: ('pl' | 'en')[];
+  /** Kurs bez języka gracza - treść po polsku z plakietką „Available in Polish only”. */
+  localeFallback?: boolean;
 }
 
 /** Rozstrzygnięcie ukończonego bloku (id elementów nieprzejrzyste, jak w /start): EMAIL_ANALYSIS -> criteria, ORDERING -> correctOrder. */

@@ -9,6 +9,7 @@ import CoursePlayer from './_components/CoursePlayer';
 import { redirectIfPending } from '@/lib/organization';
 import { contentAssetBase } from '@/lib/content-assets';
 import { nextUnfinishedCourse } from '@/lib/next-course';
+import { requestAcceptLanguage } from '@/lib/bff';
 
 export default async function CoursePlayerPage({ params }: { params: { courseId: string } }) {
   const accessToken = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
@@ -24,7 +25,8 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
   // przy każdym wejściu/odświeżeniu strony.
   const startResult = await fetchJson<CourseDetail>(
     `${API_URL}/courses/${encodeURIComponent(params.courseId)}/start`,
-    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' },
+    // Accept-Language (D-133): język przeglądarki - API wybiera język treści: konto > przeglądarka > EN.
+    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, ...requestAcceptLanguage() }, cache: 'no-store' },
   );
 
   if (!startResult.ok && startResult.status === 401) {
@@ -104,7 +106,8 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         // key = assignmentId: po "Rozpocznij od nowa" (D-069) to jest NOWE przypisanie (inny id) - wymuszony
         // remount resetuje CAŁY wewnętrzny stan klienta (notatki, dowody, podpowiedzi, feedback), zamiast
         // pozostawiać go z poprzedniego, ukończonego przebiegu po samym router.refresh().
-        key={course.assignmentId}
+        // Język treści w kluczu (D-133): zmiana języka na starcie kursu (router.refresh) przeładowuje cały stan odtwarzacza w nowym języku.
+        key={`${course.assignmentId}-${course.locale ?? 'pl'}`}
         courseId={params.courseId}
         initial={{ ...course, score }}
         scoreUnavailable={scoreUnavailable}

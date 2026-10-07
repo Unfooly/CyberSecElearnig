@@ -109,6 +109,8 @@ export interface PlayerStageProps {
   announceForward?: boolean;
   /** Tryb prosty (D-132): klasa .simple-mode na ramce - cały tekst modułu min. 16 px (globals.css). */
   simpleMode?: boolean;
+  /** Język treści kursu (D-133) - atrybut `lang` obszaru treści i tytułu (czytnik ekranu czyta treść właściwą wymową; paski - polski interfejs). */
+  lang?: string;
 }
 
 function PlayerStageInner({
@@ -139,6 +141,7 @@ function PlayerStageInner({
   forwardHref,
   announceForward = true,
   simpleMode = false,
+  lang,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -330,7 +333,7 @@ function PlayerStageInner({
 
             <div className="ml-auto flex min-w-0 items-center gap-3">
               <div className="min-w-0 text-right">
-                <h1 id={titleId} className="truncate text-xs font-medium text-slate-500">
+                <h1 id={titleId} lang={lang} className="truncate text-xs font-medium text-slate-500">
                   {title}
                 </h1>
                 <div
@@ -407,13 +410,16 @@ function PlayerStageInner({
             ref={contentRef}
             onFocusCapture={keepFocusAboveBar}
             data-testid="player-content-area"
+            // Język treści (D-133) tylko na treści bloku i tytule - paski ramki to polski interfejs aplikacji (WCAG 3.1.2).
+            lang={lang}
             className={`relative min-h-0 flex-1 ${
               contentLayout === 'scene' || contentLayout === 'fill'
                 ? 'overflow-clip'
                 : 'overflow-y-auto [scrollbar-width:thin] [scrollbar-gutter:stable]'
             }`}
           >
-            <h2 ref={headingRef} tabIndex={-1} className="sr-only">
+            {/* Polski interfejs („Blok X z Y”) w obszarze z `lang` języka treści (D-133). */}
+            <h2 ref={headingRef} tabIndex={-1} lang="pl" className="sr-only">
               Blok {blockNumber} z {totalBlocks}
             </h2>
             {/* JEDEN <div> ze WSPÓLNĄ, stałą tablicą dzieci (className tylko przełącza się warunkowo) - NIE

@@ -67,7 +67,16 @@ function evidenceNotesBefore(blocks: ServerBlock[], index: number): HarnessNote[
 export default function PlayerHarnessPage({
   searchParams,
 }: {
-  searchParams: { module?: string; block?: string; hotspot?: string; stripMedia?: string; completed?: string; narration?: string; noPortrait?: string };
+  searchParams: {
+    module?: string;
+    block?: string;
+    hotspot?: string;
+    stripMedia?: string;
+    completed?: string;
+    narration?: string;
+    noPortrait?: string;
+    localeUi?: string;
+  };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
     notFound();
@@ -145,6 +154,10 @@ export default function PlayerHarnessPage({
     score: null,
     // Tryb prosty (D-132): z modułu, jak z wersji kursu w /start. Ocena kliknięć (/check) - layout-check podstawia odpowiedź z treści.
     simpleMode: parsedModule.simpleMode === true,
+    // `?localeUi=switch|badge` (D-133): pasek górny z przełącznikiem języka (kurs dwujęzyczny) albo z plakietką „Available in Polish only” -
+    // layout-check sprawdza nimi najciaśniejszy pasek (pierwszy blok z „Pomiń odprawę”). Treść zostaje polska (podgląd układu).
+    ...(searchParams.localeUi === 'switch' ? { locale: 'pl' as const, locales: ['pl', 'en'] as ('pl' | 'en')[], localeFallback: false } : {}),
+    ...(searchParams.localeUi === 'badge' ? { locale: 'pl' as const, locales: ['pl'] as ('pl' | 'en')[], localeFallback: true } : {}),
   };
 
   // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze

@@ -150,6 +150,26 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   jako złe (0). Kolejność odpowiedzi w każdym węźle tasuje serwer (seed per przypisanie i węzeł) - autor nie musi jej mieszać.
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcje `modul2` i `prosty`) - import ich nie czyta.
 
+### Języki kursu i grafiki z wpalonym tekstem (D-133, D-134)
+
+Tekst sceny jest WPALONY w grafikę, osobny plik na każdy język; `textLayer` (tekst rysowany przez odtwarzacz) jest przestarzały.
+
+- `locales` (moduł): języki, w których kurs jest kompletny - zawsze z `pl`, np. `["pl"]` albo `["pl", "en"]`. Gracz w innym języku dostaje
+  cały kurs po polsku z plakietką „Available in Polish only” (nigdy mieszanka). Moduł z `locales` przechodzi ostrzejszą walidację (błędy):
+  każde pole wielojęzyczne ma każdy język z `locales` (zwykły string = tylko `pl`), każda grafika ma opis (`alt`/`imageAlt`), bez `textLayer`.
+  Moduły 1-2 (bez pola) - bez zmian, `textLayer` daje w nich ostrzeżenie.
+- Grafiki z tekstem (scena, wariant pionowy, zbliżenia, scena zagnieżdżona, sceny odprawy, raport zamknięcia, OSINT, omówienie) mogą być
+  wielojęzyczne: `"image": { "pl": "scenes/pl/telefon.svg", "en": "scenes/en/telefon.svg" }`. Prostokąty hotspotów są wspólne - zmienia się
+  tylko tekst w grafice, nie układ. `--assets` publikuje każdy język osobno (klucz locka `<blok>#<ścieżka>@<język>` dla `en`; `pl` ma klucz
+  jak zwykła ścieżka, więc zamiana ścieżki na `{ pl, en }` nie publikuje ponownie grafik PL).
+- W module z `locales: ["pl", "en"]` także nazwy własne i teksty identyczne w obu językach zapisujesz jako `{ "pl": "Ola", "en": "Ola" }`
+  - zwykły string to tylko `pl` (błąd „brak języka”), nie „wspólny dla wszystkich”.
+- Opisy grafik dla czytnika ekranu (z tekstem widocznym w grafice): `imageAlt` sceny, `alt` zbliżenia, `alt` kroku odprawy ze sceną
+  (`closedAlt` zamkniętej teczki), `alt`/`stampAlt`/`noteAlt` raportu zamknięcia. Etykieta dostępna hotspotu to jego `label`. Opis trafia do
+  przeglądarki - mówi, co widać (w tym tekst z grafiki), i **nie zdradza odpowiedzi ćwiczenia** (np. „podejrzany link”, „to phishing”).
+- Na grafice odtwarzacz rysuje WYŁĄCZNIE wartości dynamiczne z listy `DYNAMIC_OVERLAY_SLOTS` (BRIEFING: zadania, imię, numer, inicjały;
+  SUMMARY: dowody X/Y, czas, XP, wnioski, podpis) - reszta tekstu jest w grafice.
+
 ### Tryb prosty (`simpleMode`, D-132) i blok `SWIPE_SORT`
 
 Moduł 3 i kolejne: każdą minigrę ma przejść osoba nietechniczna bez instrukcji. `"simpleMode": true` na poziomie modułu (schemaVersion 6)

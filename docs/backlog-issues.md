@@ -854,6 +854,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-146 Faza EN treści: nagrania narracji EN i podgląd EN w harnessie (D-134)
+- Etykiety: `P3`, `i18n`, `mod:kursy` · Źródło: code review i18n-2 (D-134), świadomie poza zakresem
+- Opis: (1) potok TTS (`scripts/content` `tts`) generuje i sprawdza (`--check`) nagrania tylko po polsku - walidator wymaga narracji EN w
+  module z `locales: ['pl','en']`, ale nagrań EN nie ma kto wygenerować (głosy EN w `voices.json`, klucz locka `@en` jak w `--assets`);
+  (2) harness odtwarzacza (`/dev/player-harness`) i `layout-check` czytają treść bez wyboru języka treści (`localeUi` przełącza tylko
+  plakietkę) - grafik EN nie da się obejrzeć ani sprawdzić layoutem; (3) z security review i18n-2: `localizedFieldPaths` nie schodzi do
+  `ZodRecord`/`ZodLazy`/`ZodIntersection` - pole wielojęzyczne w takim schemacie zapisane zwykłym stringiem nie dostałoby błędu „brak
+  języka” (dziś żadne takie pole nie istnieje; `{ pl }` bez `en` łapie `missingTranslations`).
+- Akceptacja: (1) `tts` dla każdego języka z `locales`, `--check` wykrywa brak nagrania EN; (2) parametr `locale=` w harnessie
+  (`toClientBlock` z tym językiem) i przypadek EN w `layout-check`, gdy pierwszy moduł będzie miał grafiki EN; (3) test po `BLOCK_SCHEMAS`,
+  który wywala się na nieobsłużonym typie złożonym zawierającym `localized()`.
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

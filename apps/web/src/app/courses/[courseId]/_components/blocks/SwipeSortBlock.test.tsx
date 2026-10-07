@@ -62,12 +62,17 @@ afterEach(() => vi.unstubAllGlobals());
 describe('SwipeSortBlock', () => {
   it('przyciski: werdykt do /check, zdanie „Dobrze”/„Nie tym razem”, kolejna karta; po ostatniej - „Dalej” i zapis bez odpowiedzi', async () => {
     const { ready, onSubmit } = setup();
-    expect(screen.getByText('Wiadomość 1 z 2')).toBeInTheDocument();
-    expect(screen.getByTestId('swipe-card')).toHaveTextContent('SzybkaPaczka');
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Wiadomość 1 z 2: SzybkaPaczka');
+    expect(screen.getByRole('group', { name: 'Wiadomość od: SzybkaPaczka' })).toBeInTheDocument();
     expect(ready.current).toBeNull();
 
     reply({ blockId: 'wiadomosci', result: 'good', feedback: 'Dopłata przez link to typowy przekręt.', done: false });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Podejrzane' })));
+    const suspicious = screen.getByRole('button', { name: 'Podejrzane' });
+    suspicious.focus();
+    await act(async () => fireEvent.click(suspicious));
+    // Fokus zostaje na przycisku werdyktu (bez `disabled` w trakcie sprawdzania) - następna karta z klawiatury bez ponownego Tab.
+    expect(suspicious).toHaveFocus();
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Wiadomość 2 z 2: Szef');
     expect(fetchMock.mock.calls[0][0]).toBe('/api/courses/kurs-1/blocks/wiadomosci/check');
     expect(sent(0)).toEqual({ card: 'op1', verdict: 'suspicious' });
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Dopłata przez link to typowy przekręt.');
@@ -79,7 +84,9 @@ describe('SwipeSortBlock', () => {
     expect(sent(1)).toEqual({ card: 'op2', verdict: 'ok' });
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Nie tym razem. Szef pisze');
     expect(screen.queryByTestId('swipe-card')).not.toBeInTheDocument();
-    expect(screen.getByText('Wszystkie wiadomości ocenione.')).toBeInTheDocument();
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Wszystkie wiadomości ocenione.');
+    // Przyciski znikły - fokus na komunikacie, nie na body.
+    expect(screen.getByTestId('swipe-status')).toHaveFocus();
     act(() => ready.current!());
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
@@ -110,9 +117,14 @@ describe('SwipeSortBlock', () => {
 
   it('podpowiedź z odpowiedzi serwera (po 2 błędach) zostaje widoczna; błąd serwera - komunikat, karta zostaje', async () => {
     setup();
-    reply({ message: 'Za dużo żądań.' }, 429);
+    // 429 z API ma angielski komunikat limitera - gracz widzi stały tekst po polsku.
+    reply({ message: 'ThrottlerException: Too Many Requests', statusCode: 429 }, 429);
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Podejrzane' })));
-    expect(screen.getByRole('alert')).toHaveTextContent('Za dużo żądań.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Za dużo kliknięć naraz. Odczekaj chwilę i spróbuj ponownie.');
+    // Komunikat walidatora jako tablica - ogólny tekst.
+    reply({ message: ['card must match'] }, 400);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Podejrzane' })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się sprawdzić odpowiedzi. Spróbuj ponownie.');
     expect(screen.getByTestId('swipe-card')).toHaveTextContent('SzybkaPaczka');
 
     reply({ blockId: 'wiadomosci', result: 'bad', feedback: 'Nie.', hint: 'Zobacz, czy wiadomość prosi o kliknięcie albo pieniądze.', done: false });
@@ -120,9 +132,19 @@ describe('SwipeSortBlock', () => {
     expect(screen.getByTestId('simple-hint')).toHaveTextContent('Podpowiedź: Zobacz, czy wiadomość prosi o kliknięcie albo pieniądze.');
   });
 
+  it('wygasła sesja (401): przejście do logowania, bez komunikatu błędu', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    setup();
+    reply({ message: 'Unauthorized' }, 401);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Podejrzane' })));
+    expect(assign).toHaveBeenCalledWith('/login');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('odświeżenie strony w trakcie: ocenione karty z postępu pominięte, ostatnie zdanie widoczne', () => {
     setup({ type: 'SWIPE_SORT', done: false, checks: [{ item: 'op1', result: 'good', feedback: 'Tak było.' }] });
-    expect(screen.getByText('Wiadomość 2 z 2')).toBeInTheDocument();
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Wiadomość 2 z 2: Szef');
     expect(screen.getByTestId('swipe-card')).toHaveTextContent('Szef');
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Tak było.');
   });

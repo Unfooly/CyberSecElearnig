@@ -27,9 +27,23 @@ export function useSimpleCheck(courseId: string, blockId: string, initial?: { ch
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        const data = (await response.json().catch(() => null)) as (CheckResponse & { message?: string }) | null;
+        // Sesja wygasła - logowanie (jak zapis bloku i podważenie w przesłuchaniu).
+        if (response.status === 401) {
+          window.location.assign('/login');
+          return null;
+        }
+        const data = (await response.json().catch(() => null)) as (CheckResponse & { message?: unknown }) | null;
         if (!response.ok || !data || (data.result !== 'good' && data.result !== 'bad')) {
-          setError(data?.message ?? 'Nie udało się sprawdzić odpowiedzi. Spróbuj ponownie.');
+          // `message` z API bywa tablicą (walidator) albo angielskim tekstem (limit żądań, 403/500 Nest) - stały komunikat dla 429, polski
+          // napis z API tylko przy 400/409 (nasze BadRequest: „Ta karta jest już oceniona” itd.), inaczej ogólny tekst.
+          const own = (response.status === 400 || response.status === 409) && typeof data?.message === 'string' && data.message.length <= 200;
+          setError(
+            response.status === 429
+              ? 'Za dużo kliknięć naraz. Odczekaj chwilę i spróbuj ponownie.'
+              : own && typeof data?.message === 'string'
+                ? data.message
+                : 'Nie udało się sprawdzić odpowiedzi. Spróbuj ponownie.',
+          );
           return null;
         }
         const item = 'option' in body ? body.option : body.card;

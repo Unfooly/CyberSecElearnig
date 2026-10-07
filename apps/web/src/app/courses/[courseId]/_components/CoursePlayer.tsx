@@ -147,7 +147,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
             progress={ctx.progress}
             onSubmit={onSubmit}
             onReady={ctx.onReady}
-            onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+            onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
             disabled={disabled}
           />
         );
@@ -163,7 +163,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
           progress={ctx.progress}
           onSubmit={() => onSubmit(undefined)}
           onReady={ctx.onReady}
-          onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+          onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
           disabled={disabled}
         />
       );

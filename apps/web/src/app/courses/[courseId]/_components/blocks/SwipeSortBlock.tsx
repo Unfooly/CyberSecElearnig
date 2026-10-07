@@ -97,11 +97,18 @@ export default function SwipeSortBlock({
   const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; id: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const statusRef = useRef<HTMLParagraphElement | null>(null);
+  // Werdykt w tej sesji (nie stan z postępu po odświeżeniu) - fokus na komunikacie po ostatniej karcie tylko wtedy.
+  const decided = useRef(false);
 
   const current = cards.find((card) => !checks.some((entry) => entry.item === card.id));
   const done = cards.length > 0 && !current;
   const last = checks[checks.length - 1];
   const lastCard = last ? cards.find((card) => card.id === last.item) : undefined;
+
+  useEffect(() => {
+    if (done && decided.current) statusRef.current?.focus({ preventScroll: true });
+  }, [done]);
 
   useEffect(() => {
     if (review) return;
@@ -120,6 +127,7 @@ export default function SwipeSortBlock({
 
   async function decide(verdict: SwipeVerdict) {
     if (!current || disabled || pending) return;
+    decided.current = true;
     await check({ card: current.id, verdict });
     setDx(0);
   }
@@ -156,8 +164,10 @@ export default function SwipeSortBlock({
   return (
     <div data-testid="swipe-sort" className="mx-auto flex w-full max-w-[560px] flex-col gap-4">
       {block.prompt && <p className="text-xl font-semibold text-ink">{block.prompt}</p>}
-      <p className="text-base text-muted" aria-live="polite">
-        {done ? 'Wszystkie wiadomości ocenione.' : `Wiadomość ${position} z ${cards.length}`}
+      {/* Licznik z nadawcą ogłasza czytnikowi nową kartę; po ostatniej - fokus tutaj (przyciski werdyktu znikają). */}
+      {/* Po ostatniej karcie bez aria-live - komunikat czyta czytnik raz, przy przeniesieniu fokusu. */}
+      <p ref={statusRef} tabIndex={-1} data-testid="swipe-status" className="text-base text-muted focus:outline-none" aria-live={current ? 'polite' : undefined}>
+        {!current ? 'Wszystkie wiadomości ocenione.' : `Wiadomość ${position} z ${cards.length}: ${current.from}`}
       </p>
 
       {current && (
@@ -171,7 +181,8 @@ export default function SwipeSortBlock({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
-          aria-roledescription="wiadomość"
+          role="group"
+          aria-label={`Wiadomość od: ${current.from}`}
           className={`relative cursor-grab touch-pan-y select-none rounded-card border-2 bg-surface p-4 shadow-card ${
             leaning === 'suspicious' ? 'border-danger' : leaning === 'ok' ? 'border-success' : 'border-border'
           } ${dragging ? 'cursor-grabbing' : reducedMotion ? '' : 'transition-transform duration-200'}`}
@@ -194,9 +205,11 @@ export default function SwipeSortBlock({
           <button
             type="button"
             data-testid="swipe-suspicious"
-            disabled={disabled || pending}
+            // W trakcie sprawdzania aria-disabled (decide() i tak czeka) - `disabled` zdjąłby fokus z przycisku po każdej karcie.
+            disabled={disabled}
+            aria-disabled={pending || undefined}
             onClick={() => void decide('suspicious')}
-            className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-bold text-white hover:bg-danger/90 disabled:opacity-50 ${FOCUS_RING}`}
+            className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-bold text-white disabled:opacity-50 ${pending ? 'cursor-wait opacity-70' : 'hover:bg-danger/90'} ${FOCUS_RING}`}
           >
             <ArrowLeft aria-hidden="true" className="h-5 w-5" />
             {VERDICT_LABEL.suspicious}
@@ -204,9 +217,10 @@ export default function SwipeSortBlock({
           <button
             type="button"
             data-testid="swipe-ok"
-            disabled={disabled || pending}
+            disabled={disabled}
+            aria-disabled={pending || undefined}
             onClick={() => void decide('ok')}
-            className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-success px-4 text-base font-bold text-white hover:bg-success/90 disabled:opacity-50 ${FOCUS_RING}`}
+            className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-success px-4 text-base font-bold text-white disabled:opacity-50 ${pending ? 'cursor-wait opacity-70' : 'hover:bg-success/90'} ${FOCUS_RING}`}
           >
             {VERDICT_LABEL.ok}
             <ArrowRight aria-hidden="true" className="h-5 w-5" />

@@ -43,6 +43,9 @@ export interface BlockEntry {
   // i osiągnięcia liczy serwer z tej ścieżki.
   path?: string[];
   timed?: boolean;
+  // Tryb prosty i SWIPE_SORT (D-132): próby /check po kolei - `item` to indeks odpowiedzi wyboru (jako tekst) albo id karty z treści;
+  // zapisywane przed ukończeniem bloku (done: false) i przenoszone do wpisu po zapisie. Wynik z pierwszej próby (wybór) / każdej karty.
+  checks?: { item: string; correct: boolean }[];
 }
 
 export interface ProgressV2 {

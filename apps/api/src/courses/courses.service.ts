@@ -29,7 +29,18 @@ import {
 } from './client-view';
 import { resolveVersion } from './course-versions';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
-import { AttemptResponse, ChallengeResponse, evaluateAttempt, evaluateChallenge, evaluateExploration, evaluateSubmit, pickReaction } from './scoring/evaluate';
+import {
+  AttemptResponse,
+  ChallengeResponse,
+  CheckResponse,
+  evaluateAttempt,
+  evaluateChallenge,
+  evaluateCheck,
+  evaluateExploration,
+  evaluateSubmit,
+  pickReaction,
+} from './scoring/evaluate';
+import { CheckBlockDto } from './dto/check-block.dto';
 
 type AssignmentWithCourse = CourseAssignment & { course: Course };
 
@@ -268,6 +279,7 @@ export class CoursesService {
         completedAt: current.completedAt,
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
         progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
+        simpleMode: version.simpleMode,
       };
     });
   }
@@ -310,7 +322,10 @@ export class CoursesService {
         block.type === 'LIVE_CALL'
           ? ((await tx.user.findFirst({ where: { id: userId, organizationId }, select: { noTimeLimits: true } }))?.noTimeLimits ?? false)
           : false;
-      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), context.opaqueId, { noTimeLimits });
+      const result = evaluateSubmit(block, dto.answer, entryOf(progress, block.id), new Date(), context.opaqueId, {
+        noTimeLimits,
+        simpleMode: version.simpleMode,
+      });
       const reaction = pickReaction(block, result.entry);
 
       progress.blocks[block.id] = result.entry;
@@ -555,6 +570,47 @@ export class CoursesService {
         ...(added ? { note: toClientNote(added, context.opaqueId) } : {}),
         evidence: evidenceSummary(progress, version.blocks),
       };
+    });
+  }
+
+  /**
+   * Ocena jednego kliknięcia (D-132): wybór w trybie prostym albo karta SWIPE_SORT bieżącego bloku. Próba zapisana w postępie (wynik bloku
+   * liczy zapis „Dalej” z tych prób), odpowiedź: werdykt, zdanie i podpowiedź po 2 błędach - nigdy klucz (`correct`) innych kart.
+   */
+  async checkBlock(organizationId: string, userId: string, courseId: string, blockId: string, dto: CheckBlockDto): Promise<CheckResponse> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      // FOR UPDATE: równoległe kliknięcia tej samej karty idą po kolei - „każda karta raz” nie da się obejść wieloma żądaniami naraz.
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+
+      if (assignment.status === AssignmentStatus.COMPLETED) {
+        throw new BadRequestException('Kurs jest już ukończony');
+      }
+
+      const version = await resolveVersion(tx, assignment);
+      const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
+      if (index < 0) {
+        throw new NotFoundException('Nie ma takiego bloku w tym kursie');
+      }
+      if (index !== assignment.currentBlockIndex) {
+        throw new BadRequestException('Bloki trzeba ukończyć po kolei');
+      }
+      const block = version.blocks[index];
+      const progress: ProgressV2 = readProgress(assignment.progress);
+      const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
+      // Odpowiedź z wypełnionych pól DTO (zod w evaluateCheck sprawdza, że pasują do typu bloku).
+      const answer = Object.fromEntries(Object.entries({ option: dto.option, card: dto.card, verdict: dto.verdict }).filter(([, value]) => value !== undefined));
+      const { entry, response } = evaluateCheck(block, answer, entryOf(progress, block.id), new Date(), context.opaqueId, version.simpleMode);
+      progress.blocks[block.id] = entry;
+
+      await tx.courseAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          progress: toJson(progress),
+          ...(assignment.status === AssignmentStatus.NOT_STARTED ? { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() } : {}),
+        },
+      });
+      return response;
     });
   }
 

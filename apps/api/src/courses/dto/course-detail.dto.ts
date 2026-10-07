@@ -11,4 +11,6 @@ export class CourseDetailDto {
   completedAt!: Date | null;
   contentBlocks!: Prisma.JsonValue;
   progress!: Prisma.JsonValue;
+  /** Tryb prosty wersji treści (D-132): odtwarzacz dla osób nietechnicznych, ocena każdego kliknięcia przez /check. */
+  simpleMode!: boolean;
 }

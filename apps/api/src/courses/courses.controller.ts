@@ -11,6 +11,7 @@ import { CoursesService } from './courses.service';
 import { SubmitBlockProgressDto } from './dto/submit-block-progress.dto';
 import { AttemptBlockDto } from './dto/attempt-block.dto';
 import { ChallengeBlockDto } from './dto/challenge-block.dto';
+import { CheckBlockDto } from './dto/check-block.dto';
 import { ExploreBlockDto } from './dto/explore-block.dto';
 
 // Limit prób odpowiedzi tekstowych na użytkownika (poza limitem maxAttempts z treści bloku): chroni bazę i utrudnia zgadywanie.
@@ -19,6 +20,8 @@ const ATTEMPT_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
 // Uwaga: @Throttle ustawia ten sam limit także globalnemu limitowi per adres IP (ProxyAwareThrottlerGuard) - biuro za jednym adresem
 // dzieli 120/min; przekroczenie (429) odtwarzacz pomija, a pełny stan i tak niesie zapis bloku. Osobny limit per IP: B-142.
 const EXPLORE_THROTTLE = { default: { limit: 120, ttl: 60_000 } };
+// Kliknięcia w trybie prostym (D-132): jedno żądanie na kartę SWIPE_SORT (do 12) i na odpowiedź wyboru - z zapasem na kilka bloków.
+const CHECK_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
 // Ładowanie dokumentu embed (iframe ładuje go przy każdym wejściu w blok i po powrocie z podglądu).
 const EMBED_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
 // Katalog/self-assign celowo NIE dla SUPER_ADMIN (operator platformy, nie pracownik przechodzący szkolenia - D-065).
@@ -116,6 +119,21 @@ export class CoursesController {
     @Body() dto: ChallengeBlockDto,
   ) {
     return this.coursesService.challengeBlock(user.organizationId, user.userId, courseId, blockId, dto.lineId, dto.noteRef);
+  }
+
+  // Ocena jednego kliknięcia (D-132): wybór w trybie prostym i karta SWIPE_SORT - werdykt, zdanie i podpowiedź po 2 błędach; kurs się nie
+  // przesuwa ("Dalej" to /progress).
+  @Post(':courseId/blocks/:blockId/check')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(CHECK_THROTTLE)
+  @UseGuards(UserThrottlerGuard)
+  checkBlock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('courseId') courseId: string,
+    @Param('blockId') blockId: string,
+    @Body() dto: CheckBlockDto,
+  ) {
+    return this.coursesService.checkBlock(user.organizationId, user.userId, courseId, blockId, dto);
   }
 
   // Stan częściowy sceny (SCENE_HOTSPOTS, D-128): obejrzane przedmioty i zabrane dowody bieżącego bloku - zapis przy każdej zmianie w

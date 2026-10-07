@@ -988,6 +988,9 @@ model CourseVersion {
   contentHash   String   @db.VarChar(80)
   contentBlocks Json
   blockCount    Int
+  // Tryb prosty (D-132, module.json `simpleMode`): ocena każdego kliknięcia od razu (/check), podpowiedź po 2 błędach, odtwarzacz dla osób
+  // nietechnicznych. Część wersji (niemutowalna razem z treścią) - zmienia ocenę bloków wyboru, więc przypisanie zostaje przy swojej.
+  simpleMode    Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   // CASCADE tylko z kursu bez przypisań: przypisanie ma RESTRICT na kurs i na wersję (B-032), więc nie da się skasować

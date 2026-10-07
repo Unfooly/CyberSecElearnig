@@ -56,10 +56,13 @@ describe('composeScene', () => {
   });
 
   it('SVG nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych; tekst jest escapowany', () => {
-    const res = composeScene({ ...base, items: [{ id: 'n', prop: 'stickyNote', x: 0, y: 0, params: { lines: ['<script>alert(1)</script>', 'a&b'] } }] });
+    const params = { lines: ['<script>alert(1)</script>', 'a&b'] };
+    const res = composeScene({ ...base, items: [{ id: 'n', prop: 'stickyNote', x: 0, y: 0, params }] });
     expect(res.svg).not.toMatch(/<script|on\w+=|href=|foreignObject|javascript:/i);
-    expect(res.svg).toContain('&lt;script&gt;');
-    expect(res.svg).toContain('a&amp;b');
+    // Klocek escapuje tekst w <text>; w gotowej scenie tekst jest konturem (D-135) - bez znaków z treści w ogóle.
+    expect(PROPS.stickyNote(params).svg).toContain('&lt;script&gt;');
+    expect(PROPS.stickyNote(params).svg).toContain('a&amp;b');
+    expect(res.svg).not.toMatch(/<text\b|alert/);
   });
 
   // Pola renderowane w KONTEKŚCIE ATRYBUTU (fill/stroke), nie <text>: ucieczka z cudzysłowu atrybutu wstrzyknęłaby

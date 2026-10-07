@@ -2,11 +2,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeScene } from './compose.js';
+import { composeScene, composeSceneLocales, SCENE_LOCALES, sceneLocales } from './compose.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { PROPS } from './props.js';
-import type { SceneSpec } from './types.js';
+import type { SceneLocale, SceneSpec } from './types.js';
 
 // Grafiki modułów i trofea to WYNIK kompozytora ze źródeł scenes/examples/<cel>/*.json (B-128: jeden katalog na cel, dowolny moduł) -
 // build ze źródła musi dać identyczny plik (inaczej ktoś poprawił SVG ręcznie albo zmienił klocek bez przebudowania scen) i identyczne
@@ -37,9 +37,13 @@ const sources: Source[] = targets.flatMap((target) =>
 );
 const label = (source: Source) => `${source.target}/${source.name}`;
 const lf = (s: string) => s.replace(/\r\n/g, '\n');
-const build = (source: Source) => composeScene(JSON.parse(readFileSync(join(examplesRoot, source.target, `${source.name}.json`), 'utf8')) as SceneSpec);
+const specOf = (source: Source) => JSON.parse(readFileSync(join(examplesRoot, source.target, `${source.name}.json`), 'utf8')) as SceneSpec;
+/** Wszystkie wyniki źródła: jeden, a dla sceny ze `strings` (D-135) - jeden na język. */
+const buildAll = (source: Source) => composeSceneLocales(specOf(source), source.name);
 const svgPath = (source: Source) =>
   outputDirs(source.target).map((dir) => join(dir, `${source.name}.svg`)).find((file) => existsSync(file)) ?? join(outputDirs(source.target)[0], `${source.name}.svg`);
+/** Plik wyniku: scena ze `strings` - <katalog celu>/<język>/<nazwa>.svg (jak cli.ts build). */
+const resultPath = (source: Source, locale?: SceneLocale) => (locale ? join(outputDirs(source.target)[0], locale, `${source.name}.svg`) : svgPath(source));
 
 // Moduł 1 - testy współrzędnych (module.json vs *.hotspots.json).
 const examples = join(examplesRoot, 'wyludzone-haslo');
@@ -53,11 +57,15 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
   });
 
   it('og:image serwisu (D-126): jedyny tekst to nazwa i podtytuł; klocki `wordless` nie mają napisów', () => {
-    const svg = composeScene(JSON.parse(readFileSync(join(examplesRoot, 'og', 'og-unfooly.json'), 'utf8')) as SceneSpec).svg;
-    const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]);
+    const spec = JSON.parse(readFileSync(join(examplesRoot, 'og', 'og-unfooly.json'), 'utf8')) as SceneSpec;
+    // Napisy klocków PRZED zamianą na krzywe (D-135) - w gotowym SVG tekst jest już ścieżkami.
+    const propSvg = spec.items.map((item) => PROPS[item.prop](item.params ?? {}).svg as string).join('');
+    const texts = [...propSvg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]);
     expect(texts).toEqual(['Unfooly', 'Szkolenia z cyberbezpieczeństwa']);
     // Także tekst zagnieżdżony (np. <tspan>) - elementów <text> jest dokładnie tyle, ile napisów.
-    expect(svg.match(/<text\b/g)).toHaveLength(2);
+    expect(propSvg.match(/<text\b/g)).toHaveLength(2);
+    const svg = composeScene(spec).svg;
+    expect(svg).not.toMatch(/<text\b|<tspan\b/);
     expect(svg).toMatch(/viewBox="0 0 1200 630"/);
     expect(PROPS.caseFolderClosed({ wordless: true }).svg).not.toContain('<text');
     expect(PROPS.phoneTop({ state: 'ringing', wordless: true }).svg).not.toContain('<text');
@@ -68,37 +76,52 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
 
   // Kontrola „grafika bez źródła” obejmuje assets/scenes modułu (i public/achievements), nie korzeń assets/: tam leżą też avatary i
   // pliki spoza kompozytora (miniatura ma źródło, ale obok bywa podgląd PNG).
-  it('każde źródło ma swój plik wynikowy; każda grafika w assets/scenes modułu i w public/achievements ma źródło (nic ręcznego)', () => {
-    for (const source of sources) expect(existsSync(svgPath(source)), label(source)).toBe(true);
+  it('każde źródło ma swój plik wynikowy (scena ze strings - w katalogu każdego języka); każda grafika w assets/scenes modułu i w public/achievements ma źródło (nic ręcznego)', () => {
+    for (const source of sources) {
+      const locales = sceneLocales(specOf(source));
+      if (locales.length === 0) expect(existsSync(svgPath(source)), label(source)).toBe(true);
+      for (const locale of locales) expect(existsSync(resultPath(source, locale)), `${label(source)} (${locale})`).toBe(true);
+    }
     for (const target of targets) {
-      const produced = new Set(sources.filter((s) => s.target === target).map((s) => `${s.name}.svg`));
+      const ofTarget = sources.filter((s) => s.target === target);
       const dir = outputDirs(target)[0];
       if (!existsSync(dir)) continue;
+      const produced = new Set(ofTarget.filter((s) => sceneLocales(specOf(s)).length === 0).map((s) => `${s.name}.svg`));
       const orphans = readdirSync(dir).filter((file) => file.endsWith('.svg') && !produced.has(file));
       expect(orphans, `${target}: grafiki bez źródła w scenes/examples/${target}/`).toEqual([]);
+      for (const locale of SCENE_LOCALES) {
+        if (!existsSync(join(dir, locale))) continue;
+        const localized = new Set(ofTarget.filter((s) => sceneLocales(specOf(s)).includes(locale)).map((s) => `${s.name}.svg`));
+        const localeOrphans = readdirSync(join(dir, locale)).filter((file) => file.endsWith('.svg') && !localized.has(file));
+        expect(localeOrphans, `${target}/${locale}: grafiki bez źródła ze "strings.${locale}"`).toEqual([]);
+      }
     }
   });
 
-  it.each(sources.map((source) => [label(source), source] as const))('%s: build ze źródła daje identyczne SVG i hotspoty', (_label, source) => {
-    const res = build(source);
-    expect(res.svg).toBe(lf(readFileSync(svgPath(source), 'utf8')));
+  it.each(sources.map((source) => [label(source), source] as const))('%s: build ze źródła daje identyczne SVG (każdy język) i hotspoty', (_label, source) => {
+    const results = buildAll(source);
+    for (const res of results) expect(res.svg, res.locale).toBe(lf(readFileSync(resultPath(source, res.locale), 'utf8')));
     const hotspotsFile = join(examplesRoot, source.target, `${source.name}.hotspots.json`);
-    expect(res.hotspots).toEqual(existsSync(hotspotsFile) ? JSON.parse(readFileSync(hotspotsFile, 'utf8')) : []);
+    expect(results[0].hotspots).toEqual(existsSync(hotspotsFile) ? JSON.parse(readFileSync(hotspotsFile, 'utf8')) : []);
   });
 
   it('animacje: CSS w SVG, zatrzymywane przez reduced-motion i fragment #static (id="static" na <svg>), bez SMIL', () => {
     for (const source of sources) {
-      const svg = build(source).svg;
-      expect(svg, label(source)).toMatch(/^<svg [^>]*id="static"/);
-      expect(svg, label(source)).toContain('#static:target *{animation:none!important}');
-      expect(svg, label(source)).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}');
-      expect(svg, label(source)).not.toMatch(/<animate/);
+      for (const { svg } of buildAll(source)) {
+        expect(svg, label(source)).toMatch(/^<svg [^>]*id="static"/);
+        expect(svg, label(source)).toContain('#static:target *{animation:none!important}');
+        expect(svg, label(source)).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}');
+        expect(svg, label(source)).not.toMatch(/<animate/);
+      }
     }
   });
 
-  it('SVG scen nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych', () => {
+  it('SVG scen nie zawiera skryptów, zdarzeń ani odwołań zewnętrznych; cały tekst to krzywe (D-135: bez <text>, bez czcionek systemu)', () => {
     for (const source of sources) {
-      expect(build(source).svg, label(source)).not.toMatch(/<script|\son\w+=|href=|foreignObject|javascript:|@import|url\((?!#)/i);
+      for (const { svg } of buildAll(source)) {
+        expect(svg, label(source)).not.toMatch(/<script|\son\w+=|href=|foreignObject|javascript:|@import|url\((?!#)/i);
+        expect(svg, label(source)).not.toMatch(/<text\b|<tspan\b|font-family/);
+      }
     }
   });
 });
@@ -143,8 +166,8 @@ describe('sceny modułu 1 z kompozytora', () => {
     const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS];
     const groupNames = groups.flatMap((group) => Object.keys(group));
     expect(new Set(groupNames).size).toBe(groupNames.length);
-    // 24 klocki podstawowe zdefiniowane w props.ts (window…paper): razem z grupami każda nazwa dokładnie raz.
-    expect(Object.keys(PROPS).length).toBe(24 + groupNames.length);
+    // 25 klocków podstawowych zdefiniowanych w props.ts (window…paper, textBox): razem z grupami każda nazwa dokładnie raz.
+    expect(Object.keys(PROPS).length).toBe(25 + groupNames.length);
   });
 
   it('trophyBadge: wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {

@@ -13,7 +13,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { composeScene, previewHtml } from './compose.js';
+import { composeSceneLocales, previewHtml } from './compose.js';
 import { patchHotspotCoords, resolveTargetHotspots, type ContentModuleLike } from './patch-module.js';
 import { PROPS } from './props.js';
 import type { SceneSpec } from './types.js';
@@ -38,13 +38,19 @@ if (cmd !== 'build') {
 const sceneFile = process.argv[3];
 const outDir = arg('--out') ?? '.';
 const spec = JSON.parse(readFileSync(sceneFile, 'utf8')) as SceneSpec;
-const res = composeScene(spec);
 const name = basename(sceneFile).replace(/\.json$/, '');
+// Scena ze `strings` (D-135): jeden plik na język w <out>/<język>/, hotspoty (wspólne dla języków) raz w <out>.
+const results = composeSceneLocales(spec, name);
+const res = results[0];
 
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, `${name}.svg`), res.svg);
+for (const result of results) {
+  const dir = result.locale ? join(outDir, result.locale) : outDir;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${name}.svg`), result.svg);
+  if (process.argv.includes('--preview')) writeFileSync(join(dir, `${name}.preview.html`), previewHtml(result, `${name}.svg`));
+}
 writeFileSync(join(outDir, `${name}.hotspots.json`), JSON.stringify(res.hotspots, null, 2) + '\n');
-if (process.argv.includes('--preview')) writeFileSync(join(outDir, `${name}.preview.html`), previewHtml(res, `${name}.svg`));
 
 const modulePath = arg('--module');
 const blockId = arg('--block');
@@ -65,4 +71,5 @@ if (modulePath && blockId) {
   console.log(`Zaktualizowano ${patched} hotspotów w ${modulePath} (blok ${blockId}${nestedId ? `, zagnieżdżona scena "${nestedId}"` : ''})`);
 }
 
-console.log(`OK: ${name}.svg (${res.width}×${res.height}), hotspoty: ${res.hotspots.map(h => h.id).join(', ') || 'brak'}`);
+const files = results.map((result) => (result.locale ? `${result.locale}/${name}.svg` : `${name}.svg`)).join(', ');
+console.log(`OK: ${files} (${res.width}×${res.height}), hotspoty: ${res.hotspots.map(h => h.id).join(', ') || 'brak'}`);

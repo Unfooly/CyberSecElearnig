@@ -597,7 +597,9 @@ export const mailWindowPortrait: PropFn<{
   y += 36;
   if (attachment) {
     const aw = Math.min(w - 2 * X, 60 + attachment.length * 13);
-    g += `<rect x="${X}" y="${y - 30}" width="${aw}" height="46" rx="23" fill="${P.wall2}"/>` + t(X + 22, y + 1, '📎 ' + attachment, 20);
+    // Spinacz rysowany (nie emoji 📎 - czcionek z repo nie ma emoji, a tekst sceny jest zamieniany na krzywe, D-135).
+    const clip = `<path d="M${X + 30} ${y - 4} v-10 a5 5 0 0 1 10 0 v14 a8 8 0 0 1 -16 0 v-12" fill="none" stroke="${P.ink}" stroke-width="2.4" stroke-linecap="round"/>`;
+    g += `<rect x="${X}" y="${y - 30}" width="${aw}" height="46" rx="23" fill="${P.wall2}"/>` + clip + t(X + 50, y + 1, attachment, 20);
     y += 50;
   }
   for (const p of paragraphs(body)) {

@@ -13,7 +13,7 @@
     "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
     "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
   ],
-  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.f22bdca6.svg",
+  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.94eb28f3.svg",
   "blocks": [
     {
       "id": "odprawa",
@@ -30,7 +30,7 @@
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/fb0479081fc6a6af.mp3",
             "durationMs": 6780
           },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.67b3cbbb.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.d2702633.svg",
           "hotspot": {
             "id": "telefon",
             "x": 49,
@@ -39,7 +39,7 @@
             "h": 54.2
           },
           "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-biurko-pion.b3a15825.svg",
+            "image": "assets/wyludzone-haslo/scenes/odprawa-biurko-pion.f026c3ef.svg",
             "hotspot": {
               "id": "telefon",
               "x": 31.1,
@@ -64,7 +64,7 @@
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
             "durationMs": 13050
           },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.4bcf8d68.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.1502e6de.svg",
           "hotspot": {
             "id": "rozlacz",
             "x": 21.4,
@@ -73,7 +73,7 @@
             "h": 15.1
           },
           "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa-pion.347fd034.svg",
+            "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa-pion.d46de638.svg",
             "hotspot": {
               "id": "rozlacz",
               "x": 42,
@@ -138,8 +138,8 @@
             "audioUrl": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
             "durationMs": 10217
           },
-          "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka.5a18901f.svg",
-          "image": "assets/wyludzone-haslo/scenes/odprawa-akta.d0f90bd7.svg",
+          "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka.e85aed2d.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-akta.719e8dbe.svg",
           "hotspot": {
             "id": "teczka",
             "x": 24.4,
@@ -163,8 +163,8 @@
             }
           },
           "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-akta-pion.4c4f4a2d.svg",
-            "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka-pion.fc743103.svg",
+            "image": "assets/wyludzone-haslo/scenes/odprawa-akta-pion.1146097e.svg",
+            "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka-pion.90593dff.svg",
             "hotspot": {
               "id": "teczka",
               "x": 4.1,
@@ -212,7 +212,7 @@
               }
             ]
           },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.242f34bc.svg",
+          "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.f7ceead8.svg",
           "hotspot": {
             "id": "legitymacja",
             "x": 8.8,
@@ -241,7 +241,7 @@
             }
           },
           "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja-pion.114362ac.svg",
+            "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja-pion.7be9c5ef.svg",
             "hotspot": {
               "id": "legitymacja",
               "x": 13.3,
@@ -283,9 +283,9 @@
         "audioUrl": "audio/wyludzone-haslo/v1/korytarz/fa82944590190eef.mp3",
         "durationMs": 11378
       },
-      "image": "assets/wyludzone-haslo/scenes/korytarz.b4abcdeb.svg",
+      "image": "assets/wyludzone-haslo/scenes/korytarz.03396990.svg",
       "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
-      "imagePortrait": "assets/wyludzone-haslo/scenes/korytarz-pion.0e85a248.svg",
+      "imagePortrait": "assets/wyludzone-haslo/scenes/korytarz-pion.8298eb57.svg",
       "portraitHotspots": [
         {
           "id": "tablica",
@@ -312,7 +312,7 @@
           "height": 25.6,
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.f02f0fb7.svg",
+            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.ecd2c377.svg",
             "alt": "Tablica ogłoszeń: szkolenie BHP w czwartek o 10:00, kuchnia - myjemy po sobie, hasła - nie na karteczkach, parking - nowe miejsca."
           },
           "evidence": true,
@@ -357,9 +357,9 @@
         ]
       },
       "tip": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie.",
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.90a5b3f5.svg",
+      "image": "assets/wyludzone-haslo/scenes/biuro-anny.b7eea3dc.svg",
       "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
-      "imagePortrait": "assets/wyludzone-haslo/scenes/biuro-anny-pion.06bd84cc.svg",
+      "imagePortrait": "assets/wyludzone-haslo/scenes/biuro-anny-pion.0d97b05f.svg",
       "portraitHotspots": [
         {
           "id": "karteczka",
@@ -422,7 +422,7 @@
           "content": "Na karteczce: „Unfooly24!” — a niżej dopisek długopisem: bank: to samo.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.10769fde.svg",
+            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.f356944b.svg",
             "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
           },
           "evidence": true,
@@ -443,7 +443,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.ade30324.svg",
+              "image": "assets/wyludzone-haslo/scenes/pulpit.da6538de.svg",
               "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe, Kosz; pasek zadań pokazuje 10:06.",
               "screen": {
                 "x": 3.8,
@@ -462,8 +462,8 @@
                   "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.8b53547b.svg",
-                    "imagePortrait": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.7e4cd257.svg",
+                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.e04aba84.svg",
+                    "imagePortrait": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.82ed18d5.svg",
                     "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
                   },
                   "evidence": true,
@@ -483,8 +483,8 @@
                   "content": "Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka.",
                   "media": {
                     "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.3ad51f7e.svg",
-                    "imagePortrait": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.cf750033.svg",
+                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.ca7ec320.svg",
+                    "imagePortrait": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.4dc7741d.svg",
                     "alt": "Historia przeglądarki, dzisiaj (wtorek): 9:04 Intranet Unfooly, unfooly.com/intranet; 8:58 Weryfikacja konta firmowego, bankwektor-weryfikacja.pl/login; 8:47 Poczta — skrzynka odbiorcza, poczta.unfooly.com; 8:31 Kalendarz zespołu, kalendarz.unfooly.com; 8:05 Menu stołówki, unfooly.com/stolowka."
                   },
                   "evidence": true,
@@ -586,7 +586,7 @@
                 }
               ]
             },
-            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.105abd34.svg",
+            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.025d3c90.svg",
             "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
           },
           "evidence": true,
@@ -606,7 +606,7 @@
           "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.fd921b81.svg",
+            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.ab0560e6.svg",
             "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
           },
           "evidence": true,
@@ -626,7 +626,7 @@
           "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.fb1186f8.svg",
+            "src": "assets/wyludzone-haslo/scenes/wydruk.f3a084c4.svg",
             "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
           },
           "evidence": true,
@@ -646,7 +646,7 @@
           "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
           "media": {
             "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.df6d6fb8.svg",
+            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.217c1ffc.svg",
             "alt": "Kubek Anny z napisem Najlepsza księgowa"
           },
           "required": false
@@ -1500,9 +1500,9 @@
         "Hasło nie na karteczce — i nigdy przez telefon."
       ],
       "closing": {
-        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.eba1cee9.svg",
-        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.33dfe506.svg",
-        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.c9a70c68.svg",
+        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.90cca0c7.svg",
+        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.5b21f148.svg",
+        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.52a4d25e.svg",
         "slots": {
           "evidence": {
             "x": 8.8,
@@ -1548,7 +1548,7 @@
           }
         },
         "portrait": {
-          "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport-pion.2bfe848e.svg",
+          "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport-pion.8126b02f.svg",
           "slots": {
             "evidence": {
               "x": 8,

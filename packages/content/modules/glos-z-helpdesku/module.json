@@ -25,7 +25,7 @@
       "pl": "Nie instalować niczego i nie czytać ID sesji na prośbę rozmówcy."
     }
   ],
-  "thumbnail": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.921c9ee4.svg",
+  "thumbnail": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.b7e907a3.svg",
   "blocks": [
     {
       "id": "odprawa",
@@ -50,7 +50,7 @@
               "durationMs": 6502
             }
           },
-          "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko.781c7c71.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko.5cd53e75.svg",
           "hotspot": {
             "id": "telefon",
             "x": 49,
@@ -59,7 +59,7 @@
             "h": 54.2
           },
           "portrait": {
-            "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko-pion.420d0e31.svg",
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-biurko-pion.d6b2e864.svg",
             "hotspot": {
               "id": "telefon",
               "x": 31.1,
@@ -111,7 +111,7 @@
               ]
             }
           },
-          "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa.198bff46.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa.12648795.svg",
           "hotspot": {
             "id": "rozlacz",
             "x": 21.4,
@@ -120,7 +120,7 @@
             "h": 15.1
           },
           "portrait": {
-            "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa-pion.bb81da54.svg",
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-rozmowa-pion.f4a97dbc.svg",
             "hotspot": {
               "id": "rozlacz",
               "x": 42,
@@ -228,8 +228,8 @@
               ]
             }
           },
-          "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka.9f9fbf50.svg",
-          "image": "assets/glos-z-helpdesku/scenes/odprawa-akta.f6b759e2.svg",
+          "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka.60108548.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-akta.a96e90a3.svg",
           "hotspot": {
             "id": "teczka",
             "x": 24.4,
@@ -253,8 +253,8 @@
             }
           },
           "portrait": {
-            "image": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.1eaab2a8.svg",
-            "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.426df70e.svg",
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-akta-pion.657fa6e1.svg",
+            "closedImage": "assets/glos-z-helpdesku/scenes/odprawa-teczka-pion.ce26d46f.svg",
             "hotspot": {
               "id": "teczka",
               "x": 4.1,
@@ -306,7 +306,7 @@
               ]
             }
           },
-          "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja.242f34bc.svg",
+          "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja.f7ceead8.svg",
           "hotspot": {
             "id": "legitymacja",
             "x": 8.8,
@@ -335,7 +335,7 @@
             }
           },
           "portrait": {
-            "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja-pion.114362ac.svg",
+            "image": "assets/glos-z-helpdesku/scenes/odprawa-legitymacja-pion.7be9c5ef.svg",
             "hotspot": {
               "id": "legitymacja",
               "x": 13.3,
@@ -414,11 +414,11 @@
       "tip": {
         "pl": "Rozejrzyj się. Zacznij od telefonu - to, co pokazuje, jest początkiem sprawy."
       },
-      "image": "assets/glos-z-helpdesku/scenes/biurko-karola.5e24c720.svg",
+      "image": "assets/glos-z-helpdesku/scenes/biurko-karola.5682c007.svg",
       "imageAlt": {
         "pl": "Biurko handlowca: telefon ekranem do góry, monitor, żółta karteczka przy telefonie, plakat na ścianie, kubek kawy i drzwi do sali obok."
       },
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/biurko-karola-pion.ec9dcd26.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/biurko-karola-pion.af9fa8a0.svg",
       "portraitHotspots": [
         {
           "id": "telefon",
@@ -479,7 +479,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/glos-z-helpdesku/scenes/telefon-karola.8f1ac15d.svg",
+              "image": "assets/glos-z-helpdesku/scenes/telefon-karola.1019c2c2.svg",
               "imageAlt": {
                 "pl": "Ekran telefonu: kafel z listą powiadomień aplikacji uwierzytelniającej i kafel rejestru połączeń."
               },
@@ -522,7 +522,7 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.0a3bfc25.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.a4930fbc.svg",
                     "alt": {
                       "pl": "Lista sześciu odrzuconych próśb o zatwierdzenie logowania, od 8:55 do 8:57."
                     },
@@ -630,7 +630,7 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.1fe44a61.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.5d333f05.svg",
                     "alt": {
                       "pl": "Rejestr połączeń: 9:02 IT Helpdesk, 12 3XX XX 41, 39 minut; 10:15 wewnętrzny 214, 3 minuty."
                     },
@@ -710,7 +710,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/glos-z-helpdesku/scenes/pulpit-karola.7693bd79.svg",
+              "image": "assets/glos-z-helpdesku/scenes/pulpit-karola.417f5670.svg",
               "imageAlt": {
                 "pl": "Pulpit komputera z ikonami programów, wśród nich narzędzie zdalnej pomocy i przeglądarka; otwarte okno instalatora."
               },
@@ -800,7 +800,7 @@
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.be1a6069.svg",
+            "src": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.f9b8f7e6.svg",
             "alt": {
               "pl": "Żółta karteczka: „ID: 7XX XXX 219” i odręczny dopisek „Paweł IT”."
             }
@@ -828,7 +828,7 @@
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.f4794890.svg",
+            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.48806873.svg",
             "alt": {
               "pl": "Plakat: IT nigdy nie prosi o kody ani liczby z aplikacji."
             },
@@ -2044,11 +2044,11 @@
       "tip": {
         "pl": "Porównaj oba wpisy. Skąd przyszło każde z połączeń? Potem „Dalej”."
       },
-      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.89ad08fb.svg",
+      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.179d3458.svg",
       "imageAlt": {
         "pl": "Dwa wpisy rejestru połączeń jeden obok drugiego: 9:02 „IT Helpdesk” z numeru 12 3XX XX 41 i 10:15 wewnętrzny 214, obok karta intranetu z kontaktem do IT."
       },
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b790f667.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.c2175240.svg",
       "portraitHotspots": [
         {
           "id": "numer-zewnetrzny",
@@ -2225,8 +2225,8 @@
       "tip": {
         "pl": "Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało."
       },
-      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.3dc94b59.svg",
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.f06a7977.svg",
+      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.bca7440b.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.caa6e884.svg",
       "imageAlt": {
         "pl": "Strona drukarni, zakładka Zespół: zdjęcie budynku, dwie osoby z działów, kafel webinaru, oferta i stopka z kontaktem."
       },
@@ -2439,8 +2439,8 @@
             "title": {
               "pl": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki"
             },
-            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.6586579a.svg",
-            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.ffa82447.svg",
+            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.64e93c2e.svg",
+            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.43904efb.svg",
             "alt": {
               "pl": "Kadr prelekcji: slajd „Bezpieczna praca zdalna” i sylwetka prelegenta."
             },
@@ -3332,9 +3332,9 @@
         }
       ],
       "closing": {
-        "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport.760c7732.svg",
-        "stamp": "assets/glos-z-helpdesku/scenes/zamkniecie-pieczec.33dfe506.svg",
-        "note": "assets/glos-z-helpdesku/scenes/zamkniecie-liscik.539acf2d.svg",
+        "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport.e1e95b5e.svg",
+        "stamp": "assets/glos-z-helpdesku/scenes/zamkniecie-pieczec.5b21f148.svg",
+        "note": "assets/glos-z-helpdesku/scenes/zamkniecie-liscik.a0e2691e.svg",
         "slots": {
           "evidence": {
             "x": 8.8,
@@ -3380,7 +3380,7 @@
           }
         },
         "portrait": {
-          "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport-pion.b80abb9a.svg",
+          "image": "assets/glos-z-helpdesku/scenes/zamkniecie-raport-pion.768d00b8.svg",
           "slots": {
             "evidence": {
               "x": 8,

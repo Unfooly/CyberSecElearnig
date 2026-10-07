@@ -691,7 +691,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (c) kara za tapnięcia ponad liczbę flag; (d) bez zmian.
 - Akceptacja: decyzja właściciela; zmiana w `apps/api/src/courses/scoring/recording.ts` z testem i wpisem w D-115.
 
-### B-132 Odsłuch nagrania (D-115): drobne uwagi z code review
+### B-132 Odsłuch nagrania (D-115): drobne uwagi z code review - ZROBIONE (D-131)
 - Etykiety: `P3`, `a11y`, `mod:kursy` · Źródło: code review 1b
 - Opis: (1) skróty Spacja/strzałki/F działają przy fokusie w bloku, a nic go tam nie ustawia po wejściu (wskazówka „F - czerwona flaga”
   bez kliknięcia w blok nic nie robi); (2) zakładki Odsłuch/Transkrypcja bez `tabpanel`/`aria-controls`; (3) brak testu CoursePlayer, że
@@ -713,7 +713,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - np. nagrania sekretnych kwestii w osobnym, niepublicznym prefiksie serwowanym przez API po trafieniu,
   albo zgoda na nieodgadywalną nazwę w publicznym magazynie; potem ścieżka w potoku i test.
 
-### B-136 OSINT w odtwarzaczu (D-121): drobne uwagi z code review
+### B-136 OSINT w odtwarzaczu (D-121): drobne uwagi z code review - ZROBIONE (D-131; pkt 4 - bez zmian, decyzja w D-131)
 - Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review 1d-2
 - Opis: (1) nakładka nagrania ma `aria-modal`, ale pasek odtwarzacza („Dalej”, notatnik) działa dalej z myszy - jak w przesłuchaniu
   (InterrogationBlock); (2) w widoku wyniku obszary są `disabled` (poza kolejnością Tab), a lista pod stroną wymienia tylko przeoczone i
@@ -723,7 +723,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: `inert` paska przy otwartej nakładce (wspólnie dla OSINT i przesłuchania); `aria-disabled` albo pełna lista obszarów w wyniku;
   wspólna stała typów tablicowych; decyzja przy treści 1g.
 
-### B-137 Rozmowa na żywo: brak ponowienia przy odrzuconym zapisie (D-124)
+### B-137 Rozmowa na żywo: brak ponowienia przy odrzuconym zapisie (D-124) - ZROBIONE (D-131, „Zadzwoń ponownie”)
 - Etykiety: `P3`, `a11y`, `mod:kursy` · Źródło: code review D-124 (runda 2)
 - Opis: gdy odczyt `/users/me/preferences` w `page.tsx` się nie uda (5xx, sieć), a konto ma „Bez limitów czasu”, odtwarzacz pokazuje
   przełącznik z limitem; gracz, który przemilczy odpowiedź, dostaje przy zapisie 400 (serwer stosuje ustawienie konta) i nie może ponowić
@@ -827,6 +827,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   zapisach; (3) osobny, wyższy limit per IP dla tras z limitem per użytkownik (albo decyzja, że zostaje) i ewentualnie łączenie zapisów
   częściowych (opóźnienie 300-500 ms); (4) najpierw kontrola pochodzenia i ciasteczka, potem parsowanie - wspólnie dla wszystkich tras;
   (5), (6) według uznania.
+
+### B-144 Domknięcia po D-131: warstwy overlay-stack per instancja, strzałki w zakładkach odsłuchu
+- Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review D-131 (stan sprzed zmian, nie regresja D-131)
+- Opis: (1) rejestr overlay-stack ma jeden wpis na NAZWĘ warstwy, a CoursePlayer trzyma ukryty blok bieżący zamontowany przy „Wstecz” - dwa
+  zamontowane bloki z tą samą warstwą (np. dwa przesłuchania modułu 2, `blockModal`) nadpisują sobie stan: ukryty blok z `isOpen=false` zdejmuje
+  ze stosu warstwę otwartą w drugim, a jego odmontowanie kasuje cudzy wpis; (2) zakładki Odsłuch/Transkrypcja (CALL_RECORDING) bez obsługi
+  strzałek z wzorca ARIA tablist; (3) brak testu, że prawdziwe InterrogationBlock/OsintBlock w PlayerStage robią paski `inert` (mechanizm
+  pokrywa zaślepka w `PlayerStage.test.tsx`).
+- Akceptacja: (1) klucz warstwy per instancja (np. `useId`) z zachowaniem LIFO i testem dwóch instancji; (2) strzałki ←/→ przełączają
+  zakładkę (z ominięciem nieaktywnej); (3) jeden test integracyjny.
 
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`

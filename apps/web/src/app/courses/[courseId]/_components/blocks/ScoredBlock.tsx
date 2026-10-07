@@ -59,11 +59,17 @@ export default function ScoredBlock({
   myAvatarUrl,
   myInitials,
   noTimeLimits = false,
+  submitFailed = false,
+  onRetry,
 }: {
   block: ContentBlock;
   courseId: string;
   /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
   noTimeLimits?: boolean;
+  /** Zapis bloku się nie udał (B-137) - rozmowa na żywo pozwala zadzwonić ponownie. */
+  submitFailed?: boolean;
+  /** Rozmowa zaczyna od nowa po nieudanym zapisie (B-137) - CoursePlayer zdejmuje komunikat o błędzie. */
+  onRetry?: () => void;
   /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu. */
   onEvidence?: (summary: EvidenceSummary) => void;
   myAvatarUrl?: string | null;
@@ -167,6 +173,8 @@ export default function ScoredBlock({
           onReady={(submit) => onReady?.(submit)}
           disabled={disabled}
           noTimeLimitDefault={noTimeLimits}
+          submitFailed={submitFailed}
+          onRetry={onRetry}
           result={result ? { detail: result.detail, answer, points: result.points } : undefined}
         />
       );

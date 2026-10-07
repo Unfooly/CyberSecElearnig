@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 'lucide-react';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { useFullscreen } from './useFullscreen';
-import { OverlayStackProvider, useBlockingOverlayOpen, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
+import { OverlayStackProvider, useBlockingOverlayOpen, useBlockModalOpen, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
 import Hint from './Hint';
 import NotesDrawer from './NotesDrawer';
 
@@ -166,6 +166,17 @@ function PlayerStageInner({
     if (restRef.current) restRef.current.inert = notesOpen;
   }, [notesOpen]);
 
+  // Okno modalne bloku (B-136: nagranie OSINT, wybór dowodu i konsola w przesłuchaniu - aria-modal): oba paski ramki inert, żeby „Dalej”
+  // i notatnik nie działały z myszy pod oknem. Okno leży w obszarze bloku, więc całej reszty ramki (restRef) nie wyłączamy.
+  const blockModalOpen = useBlockModalOpen();
+  const topBarRef = useRef<HTMLDivElement>(null);
+  // Kontener dolnego paska razem z panelem transkrypcji (otwarta wcześniej transkrypcja nie może zostać interaktywna nad oknem).
+  const bottomHostRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (topBarRef.current) topBarRef.current.inert = blockModalOpen;
+    if (bottomHostRef.current) bottomHostRef.current.inert = blockModalOpen;
+  }, [blockModalOpen]);
+
   // Fullscreen jako najniższy priorytet kaskady (D-075: w praktyce Escape w fullscreenie i tak wychodzi z niego
   // przez samą przeglądarkę PRZED tym kodem - to wyłącznie dopełnienie rejestru, nie próba obejścia tamtego
   // zachowania).
@@ -295,7 +306,7 @@ function PlayerStageInner({
           {/* Pasek górny (~48px, ściśnięty do 40px w telefonie w poziomie - globals.css): X (wyjście, zapis postępu
               jest już serwerowy po każdej odpowiedzi - nic dodatkowego do zrobienia tutaj), pełny ekran (tylko gdy
               wspierany), tytuł + cienki pasek postępu, licznik dowodów, Notatnik. */}
-          <div className="player-topbar flex min-h-[48px] shrink-0 items-center gap-3 border-b border-slate-200 px-3">
+          <div ref={topBarRef} className="player-topbar flex min-h-[48px] shrink-0 items-center gap-3 border-b border-slate-200 px-3">
             <Link
               href="/courses"
               aria-label="Zakończ i wróć do listy kursów"
@@ -437,7 +448,7 @@ function PlayerStageInner({
               panel transkrypcji jest POZA kontenerem (w `player-bottombar-host`, bottom-full nad paskiem) - zostaje w tym samym
               kontekście warstw co nakładki sceny i tło notatnika, jak przed D-097 (kod review: kontener z z-index nad tłem
               notatnika zostawiał pasek nieprzyciemniony przy otwartym notatniku). */}
-          <div className="player-bottombar-host relative shrink-0">
+          <div ref={bottomHostRef} className="player-bottombar-host relative shrink-0">
           {transcriptPanel}
           <div className="player-bottombar-cq">
           <div

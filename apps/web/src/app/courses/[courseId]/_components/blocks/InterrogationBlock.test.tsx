@@ -5,7 +5,7 @@ import InterrogationBlock, { InterrogationResult } from './InterrogationBlock';
 import { NotesPanel, NotesProvider } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider } from '../player/evidence';
 import { HintProvider } from '../player/hints';
-import { OverlayStackProvider } from '../player/overlay-stack';
+import { OverlayStackProvider, useOverlayLayer } from '../player/overlay-stack';
 import type { ClientNote, ClientProgressBlock, ContentBlock, EvidenceSummary } from '@/lib/courses-types';
 
 // Przesłuchanie (D-118): pytania i kwestie jak w komunikatorze, fragmenty do notatnika, podważanie dowodem z notatnika (/challenge),
@@ -108,10 +108,22 @@ function Harness({
               }}
             />
             <NotesPanel id="panel" />
+            <NotebookLayer />
           </HintProvider>
         </EvidenceProvider>
       </NotesProvider>
     </OverlayStackProvider>
+  );
+}
+
+// Szuflada notatnika jako warstwa overlay-stack (B-136: samoczynne otwarcie konsoli czeka na jej zamknięcie).
+function NotebookLayer() {
+  const [open, setOpen] = useState(false);
+  useOverlayLayer('notebook', open, () => setOpen(false));
+  return (
+    <button type="button" onClick={() => setOpen((value) => !value)}>
+      Szuflada {open ? 'otwarta' : 'zamknięta'}
+    </button>
   );
 }
 
@@ -266,6 +278,23 @@ describe('InterrogationBlock', () => {
     fireEvent.click(within(screen.getByTestId('interrogation-console')).getByRole('button', { name: /Zatwierdzone, Amsterdam/ }));
     act(() => ready.current!());
     expect(onSubmit).toHaveBeenCalledWith({ asked: ['kod', 'glos', 'konsola'], noted: ['l2'], opened: ['logowania'] });
+  });
+
+  it('B-136: konsola nie otwiera się sama nad otwartym notatnikiem - czeka na jego zamknięcie', () => {
+    setup();
+    flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż konsolę.' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Szuflada zamknięta' }));
+    flush();
+    expect(screen.queryByTestId('interrogation-console')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Szuflada otwarta' }));
+    const consoleDialog = screen.getByTestId('interrogation-console');
+    expect(consoleDialog.querySelector('[data-console-close]')).toHaveFocus();
+    // Zamknięta konsola nie wyskakuje drugi raz.
+    fireEvent.click(within(consoleDialog).getByRole('button', { name: 'Zamknij konsolę' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Szuflada zamknięta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Szuflada otwarta' }));
+    expect(screen.queryByTestId('interrogation-console')).not.toBeInTheDocument();
   });
 
   it('licznik dowodów: po trafieniu liczby z serwera + niezapisane dowody bloku (fragment) - nic nie znika', async () => {

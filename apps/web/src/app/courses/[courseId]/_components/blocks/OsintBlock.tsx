@@ -156,7 +156,7 @@ export default function OsintBlock({
                     : outcome?.marked
                       ? 'border-danger bg-danger/15'
                       : 'border-transparent';
-              const verdict = !outcome ? '' : outcome.used ? (outcome.marked ? ' (wykorzystane - zaznaczone)' : ' (wykorzystane - przeoczone)') : outcome.marked ? ' (pułapka - zaznaczona)' : '';
+              const verdict = !outcome ? '' : outcome.used ? (outcome.marked ? ' (wykorzystane - zaznaczone)' : ' (wykorzystane - przeoczone)') : outcome.marked ? ' (pułapka - zaznaczona)' : ' (niewykorzystane - pominięte)';
               return (
                 <div key={spot.id} className="absolute" style={place} data-spot-id={spot.id}>
                   <button
@@ -164,9 +164,12 @@ export default function OsintBlock({
                     data-testid="osint-spot"
                     aria-pressed={isMarked}
                     aria-label={`${spot.label}${verdict}`}
-                    disabled={!!result || disabled}
+                    // Wynik (B-136): aria-disabled zamiast disabled - obszary z rozstrzygnięciem w nazwie zostają w kolejności Tab
+                    // (trafione też, nie tylko przeoczone i pułapki z listy pod stroną); toggle() i tak nic nie robi przy wyniku.
+                    disabled={!result && disabled}
+                    aria-disabled={result ? true : undefined}
                     onClick={() => toggle(spot)}
-                    className={`absolute inset-0 rounded border-2 ${tone} ${FOCUS_RING} disabled:cursor-default`}
+                    className={`absolute inset-0 rounded border-2 ${tone} ${FOCUS_RING} disabled:cursor-default ${result ? 'cursor-default' : ''}`}
                   >
                     {/* Pole trafienia min. 44 px wokół środka drobnego obszaru (jak przedmioty sceny w pionie, D-116). */}
                     <span aria-hidden="true" data-hit className="absolute left-1/2 top-1/2 h-full min-h-[44px] w-full min-w-[44px] -translate-x-1/2 -translate-y-1/2" />
@@ -279,7 +282,7 @@ function MediaPlayer({
   const endRef = useRef<HTMLParagraphElement | null>(null);
   const onHeardRef = useRef(onHeard);
   onHeardRef.current = onHeard;
-  useOverlayLayer('hotspotCard', true, onClose);
+  useOverlayLayer('blockModal', true, onClose);
 
   useEffect(() => {
     closeRef.current?.focus();

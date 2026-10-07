@@ -21,7 +21,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useCallback, use
 // programowe wywołanie closeTop()), nie zmienia natywnego zachowania przeglądarki.
 // 'reward' USUNIĘTE (fix/course-finish-flow): CourseRewardModal.tsx (jedyny konsument tej warstwy) skasowany -
 // karta nagrody na SummaryScreen (RewardCard.tsx) jest zwykłą treścią ekranu, nie nakładką overlay-stack.
-export type OverlayLayer = 'hotspotCard' | 'transcript' | 'notebook' | 'fullscreen';
+// 'blockModal' (B-136): okno modalne bloku (nagranie OSINT, wybór dowodu i konsola w przesłuchaniu) - jak 'hotspotCard' w kaskadzie
+// Escape, ale dodatkowo PlayerStage robi wtedy oba paski ramki (górny z notatnikiem, dolny z „Dalej”) inert, żeby aria-modal nie kłamało.
+export type OverlayLayer = 'hotspotCard' | 'blockModal' | 'transcript' | 'notebook' | 'fullscreen';
 
 interface OverlayEntry {
   isOpen: boolean;
@@ -40,6 +42,8 @@ interface OverlayStackContextValue {
   /** true, gdy otwarta jest warstwa ZASŁANIAJĄCA treść (wszystko poza 'fullscreen' - pełny ekran to tryb, nie nakładka): skrót „Dalej”
       (D-106) nie działa, gdy nad blokiem leży zbliżenie, notatnik albo transkrypcja, ale działa w pełnym ekranie. */
   blockingOpen: boolean;
+  /** true, gdy otwarte jest okno modalne bloku ('blockModal', B-136) - paski ramki są wtedy inert. */
+  modalOpen: boolean;
 }
 
 const OverlayStackContext = createContext<OverlayStackContextValue | null>(null);
@@ -57,9 +61,11 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
   // niepowiązanych zmianach - tylko przy prawdziwym przejściu pusty<->niepusty.
   const [anyOpen, setAnyOpen] = useState(false);
   const [blockingOpen, setBlockingOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const sync = useCallback(() => {
     setAnyOpen(order.current.length > 0);
     setBlockingOpen(order.current.some((layer) => layer !== 'fullscreen'));
+    setModalOpen(order.current.includes('blockModal'));
   }, []);
 
   const register = useCallback((layer: OverlayLayer, entry: OverlayEntry) => {
@@ -91,7 +97,10 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
     return true;
   }, [sync]);
 
-  const value = useMemo(() => ({ register, unregister, closeTop, anyOpen, blockingOpen }), [register, unregister, closeTop, anyOpen, blockingOpen]);
+  const value = useMemo(
+    () => ({ register, unregister, closeTop, anyOpen, blockingOpen, modalOpen }),
+    [register, unregister, closeTop, anyOpen, blockingOpen, modalOpen],
+  );
   return <OverlayStackContext.Provider value={value}>{children}</OverlayStackContext.Provider>;
 }
 
@@ -149,4 +158,10 @@ export function useAnyOverlayOpen(): boolean {
 export function useBlockingOverlayOpen(): boolean {
   const ctx = useContext(OverlayStackContext);
   return ctx?.blockingOpen ?? false;
+}
+
+/** true, gdy otwarte jest okno modalne bloku ('blockModal', B-136) - false poza providerem. */
+export function useBlockModalOpen(): boolean {
+  const ctx = useContext(OverlayStackContext);
+  return ctx?.modalOpen ?? false;
 }

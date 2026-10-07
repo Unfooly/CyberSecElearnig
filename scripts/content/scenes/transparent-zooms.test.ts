@@ -12,20 +12,26 @@ import { composeScene } from './compose.js';
 
 const modulesDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules');
 
-type Media = { kind?: string; src?: string; imagePortrait?: string; image?: string; scene?: { image?: string; hotspots?: Hotspot[] } };
+// Grafika osobna na język (D-134): `{ pl, en }` - każdy język to osobny plik, reguła dotyczy każdego (`<miejsce>@<język>`).
+type ImagePath = string | Record<string, string>;
+type Media = { kind?: string; src?: ImagePath; imagePortrait?: ImagePath; image?: ImagePath; scene?: { image?: ImagePath; hotspots?: Hotspot[] } };
 type Hotspot = { id: string; media?: Media };
 
 /** Ścieżki grafik otwieranych kliknięciem w bloku SCENE_HOTSPOTS (z miejscem w treści - do komunikatu). */
-function clickOpenedImages(blocks: { id: string; type: string; hotspots?: Hotspot[] }[]): { where: string; path: string }[] {
+export function clickOpenedImages(blocks: { id: string; type: string; hotspots?: Hotspot[] }[]): { where: string; path: string }[] {
   const found: { where: string; path: string }[] = [];
+  const add = (where: string, value: ImagePath | undefined) => {
+    if (typeof value === 'string') found.push({ where, path: value });
+    else if (value && typeof value === 'object') for (const [locale, path] of Object.entries(value)) if (typeof path === 'string') found.push({ where: `${where}@${locale}`, path });
+  };
   const fromMedia = (where: string, media: Media | undefined) => {
     if (!media) return;
-    if (media.kind === 'image' && media.src) found.push({ where: `${where}.media.src`, path: media.src });
+    if (media.kind === 'image') add(`${where}.media.src`, media.src);
     // Wariant pionowy zbliżenia (D-104) - ta sama reguła.
-    if (media.kind === 'image' && media.imagePortrait) found.push({ where: `${where}.media.imagePortrait`, path: media.imagePortrait });
-    if (media.kind === 'audio' && media.image) found.push({ where: `${where}.media.image`, path: media.image });
+    if (media.kind === 'image') add(`${where}.media.imagePortrait`, media.imagePortrait);
+    if (media.kind === 'audio') add(`${where}.media.image`, media.image);
     if (media.kind === 'scene' && media.scene?.image) {
-      found.push({ where: `${where}.media.scene.image`, path: media.scene.image });
+      add(`${where}.media.scene.image`, media.scene.image);
       for (const inner of media.scene.hotspots ?? []) fromMedia(`${where}.media.scene.hotspots[${inner.id}]`, inner.media);
     }
   };
@@ -76,6 +82,14 @@ describe('D-101: grafiki otwierane kliknięciem mają przezroczyste tło', () =>
     expect(problems).toEqual([]);
     // Moduł bez scen z grafikami też przechodzi, ale moduł 1 ma ich kilka - test nie może być ślepy.
     if (slug === 'wyludzone-haslo') expect(images.length).toBeGreaterThanOrEqual(11);
+  });
+
+  it('D-134: grafika { pl, en } - każdy język sprawdzany osobno (miejsce z sufiksem @<język>)', () => {
+    const blocks = [{ id: 'scena', type: 'SCENE_HOTSPOTS', hotspots: [{ id: 'kartka', media: { kind: 'image', src: { pl: 'scenes/pl/kartka.svg', en: 'scenes/en/kartka.svg' } } }] }];
+    expect(clickOpenedImages(blocks)).toEqual([
+      { where: 'scena.hotspots[kartka].media.src@pl', path: 'scenes/pl/kartka.svg' },
+      { where: 'scena.hotspots[kartka].media.src@en', path: 'scenes/en/kartka.svg' },
+    ]);
   });
 
   it('kompozytor: wall "none" nie rysuje tła, zwykły kolor - rysuje; "none" bez flat to błąd', () => {

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
+import { ContentLocale, choosePlayerLocale, parseAcceptLanguage } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { module2Facts } from '../gamification/achievements';
@@ -42,7 +43,16 @@ import {
 } from './scoring/evaluate';
 import { CheckBlockDto } from './dto/check-block.dto';
 
-type AssignmentWithCourse = CourseAssignment & { course: Course };
+// `user` dołącza findOwnAssignment (język szkoleń z konta); opcjonalne w typie - brak relacji (np. przypisanie z innego źródła) = „wg przeglądarki”.
+type AssignmentWithCourse = CourseAssignment & { course: Course; user?: { contentLocale: string | null } };
+
+/**
+ * Język gracza dla tego żądania (D-133): ustawienie konta („Język szkoleń”), potem język przeglądarki (Accept-Language przekazany przez
+ * BFF), potem EN. Liczony przy każdym żądaniu kursu - zmiana ustawienia działa od następnego widoku; w obrębie żądania jeden język.
+ */
+function playerLocaleOf(assignment: AssignmentWithCourse, acceptLanguage: string | undefined): ContentLocale {
+  return choosePlayerLocale(assignment.user?.contentLocale ?? null, parseAcceptLanguage(acceptLanguage));
+}
 
 /**
  * Fakty modułu 2 do osiągnięć (D-124) przy ukończeniu kursu - obronnie: nietypowa treść wersji nie może zablokować ukończenia (500 przy
@@ -243,10 +253,11 @@ export class CoursesService {
     organizationId: string,
     userId: string,
     courseId: string,
+    acceptLanguage?: string,
   ): Promise<CourseDetailDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
 
       // NOT_STARTED -> IN_PROGRESS tylko warunkowo: równoległy zapis mógł już przesunąć/ukończyć kurs, a bezwarunkowy update
       // nadpisałby COMPLETED z powrotem na IN_PROGRESS (kurs 1-blokowy byłby wtedy zablokowany). Po próbie czytamy wiersz
@@ -272,7 +283,8 @@ export class CoursesService {
       return {
         assignmentId: current.id,
         courseId: assignment.course.id,
-        title: assignment.course.title,
+        // Tytuł w języku treści (D-133), dla wersji sprzed D-133 - polska kolumna katalogu.
+        title: version.title ?? assignment.course.title,
         status: current.status,
         currentBlockIndex: current.currentBlockIndex,
         startedAt: current.startedAt,
@@ -280,6 +292,10 @@ export class CoursesService {
         contentBlocks: contentBlocks as unknown as Prisma.JsonValue,
         progress: clientProgress(readProgress(current.progress), version.blocks, context.opaqueId) as unknown as Prisma.JsonValue,
         simpleMode: version.simpleMode,
+        // Język treści, języki kursu i plakietka „Available in Polish only” (gracz w języku, którego kurs nie ma).
+        locale: version.locale,
+        locales: version.locales,
+        localeFallback: version.localeFallback,
       };
     });
   }
@@ -289,6 +305,7 @@ export class CoursesService {
     userId: string,
     courseId: string,
     dto: SubmitBlockProgressDto,
+    acceptLanguage?: string,
   ): Promise<CourseProgressResponseDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       await this.lockOwnAssignment(tx, organizationId, userId, courseId);
@@ -298,7 +315,7 @@ export class CoursesService {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const blocks = version.blocks;
 
       if (dto.blockIndex >= blocks.length) {
@@ -441,10 +458,10 @@ export class CoursesService {
    * wyłącznie dla bloków tego typu. Każdy brak dostępu to ten sam 404 (bez ujawniania, czy blok istnieje). Treść jest niezaufana: BFF
    * serwuje ją jako dokument w sandboxie z restrykcyjnym CSP (apps/web, trasa embed).
    */
-  async getEmbeddedHtml(organizationId: string, userId: string, courseId: string, blockId: string): Promise<{ html: string }> {
+  async getEmbeddedHtml(organizationId: string, userId: string, courseId: string, blockId: string, acceptLanguage?: string): Promise<{ html: string }> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
       const block = index >= 0 ? version.blocks[index] : undefined;
       if (!block || block.type !== 'EMBEDDED_HTML' || typeof block.html !== 'string' || index > assignment.currentBlockIndex) {
@@ -465,6 +482,7 @@ export class CoursesService {
     courseId: string,
     blockId: string,
     answer: string,
+    acceptLanguage?: string,
   ): Promise<AttemptResponse> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // FOR UPDATE: równoległe próby tego samego przypisania idą po kolei, więc licznik prób i limit maxAttempts nie dają
@@ -476,7 +494,7 @@ export class CoursesService {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
       if (index < 0) {
         throw new NotFoundException('Nie ma takiego bloku w tym kursie');
@@ -521,6 +539,7 @@ export class CoursesService {
     blockId: string,
     lineId: string,
     noteRef: string,
+    acceptLanguage?: string,
   ): Promise<ChallengeResponse & { note?: ReturnType<typeof toClientNote>; evidence: EvidenceSummary }> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // FOR UPDATE: równoległe podważenia tej samej kwestii idą po kolei - „jedna próba” nie da się obejść wieloma żądaniami naraz.
@@ -531,7 +550,7 @@ export class CoursesService {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
       if (index < 0) {
         throw new NotFoundException('Nie ma takiego bloku w tym kursie');
@@ -577,7 +596,14 @@ export class CoursesService {
    * Ocena jednego kliknięcia (D-132): wybór w trybie prostym albo karta SWIPE_SORT bieżącego bloku. Próba zapisana w postępie (wynik bloku
    * liczy zapis „Dalej” z tych prób), odpowiedź: werdykt, zdanie i podpowiedź po 2 błędach - nigdy klucz (`correct`) innych kart.
    */
-  async checkBlock(organizationId: string, userId: string, courseId: string, blockId: string, dto: CheckBlockDto): Promise<CheckResponse> {
+  async checkBlock(
+    organizationId: string,
+    userId: string,
+    courseId: string,
+    blockId: string,
+    dto: CheckBlockDto,
+    acceptLanguage?: string,
+  ): Promise<CheckResponse> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // FOR UPDATE: równoległe kliknięcia tej samej karty idą po kolei - „każda karta raz” nie da się obejść wieloma żądaniami naraz.
       await this.lockOwnAssignment(tx, organizationId, userId, courseId);
@@ -587,7 +613,7 @@ export class CoursesService {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
       if (index < 0) {
         throw new NotFoundException('Nie ma takiego bloku w tym kursie');
@@ -625,6 +651,7 @@ export class CoursesService {
     courseId: string,
     blockId: string,
     answer: { visited: string[]; noted: string[] },
+    acceptLanguage?: string,
   ): Promise<{ blockId: string; visited: string[]; noted: string[]; evidence: EvidenceSummary }> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // FOR UPDATE: równoległe zapisy stanu (szybkie kliknięcia, dwie karty) idą po kolei - suma stanów, żaden nie nadpisuje drugiego.
@@ -635,7 +662,7 @@ export class CoursesService {
         throw new BadRequestException('Kurs jest już ukończony');
       }
 
-      const version = await resolveVersion(tx, assignment);
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
       const index = version.blocks.findIndex((candidate) => candidate.id === blockId);
       if (index < 0) {
         throw new NotFoundException('Nie ma takiego bloku w tym kursie');
@@ -701,7 +728,8 @@ export class CoursesService {
     // ani jako cel kolejnego restartu - "swój kurs" zawsze oznacza to jedno, aktualne przypisanie.
     const assignment = await tx.courseAssignment.findFirst({
       where: { organizationId, userId, courseId, archivedAt: null },
-      include: { course: true },
+      // Język szkoleń z konta (D-133) - ten sam wiersz użytkownika co przypisanie (organizacja z JWT, RLS).
+      include: { course: true, user: { select: { contentLocale: true } } },
     });
 
     if (!assignment) {

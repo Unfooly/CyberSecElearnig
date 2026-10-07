@@ -13,4 +13,10 @@ export class CourseDetailDto {
   progress!: Prisma.JsonValue;
   /** Tryb prosty wersji treści (D-132): odtwarzacz dla osób nietechnicznych, ocena każdego kliknięcia przez /check. */
   simpleMode!: boolean;
+  /** Język treści tej odpowiedzi (D-133): język gracza, jeśli kurs go ma, inaczej 'pl'. */
+  locale!: string;
+  /** Języki, w których kurs jest kompletny (przełącznik na starcie kursu, gdy więcej niż jeden). */
+  locales!: string[];
+  /** true - kurs bez języka gracza, treść po polsku z plakietką „Available in Polish only”. */
+  localeFallback!: boolean;
 }

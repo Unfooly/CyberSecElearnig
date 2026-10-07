@@ -771,6 +771,9 @@ model User {
   // Ustawienie dostępności (WCAG 2.2.1, D-124): bez limitów czasu w rozmowie na żywo (LIVE_CALL) - serwer nie przyjmuje ciszy po
   // upływie limitu, odtwarzacz nie odlicza. Zmieniane wyłącznie przez użytkownika dla SIEBIE (PATCH /users/me/preferences).
   noTimeLimits      Boolean    @default(false)
+  // Język szkoleń (D-133): 'pl' | 'en' (packages/content CONTENT_LOCALES - string, nie enum: nowy język bez migracji). NULL = wg języka
+  // przeglądarki (Accept-Language), potem EN. Zmieniany wyłącznie przez użytkownika dla SIEBIE (PATCH /users/me/preferences).
+  contentLocale     String?    @db.VarChar(8)
   xp                Int        @default(0)
   level             Int        @default(1)
   // Wersja zasad, dla której przeszło już przyznanie wsteczne osiągnięć (D-111, GamificationService.syncAchievements).
@@ -991,6 +994,11 @@ model CourseVersion {
   // Tryb prosty (D-132, module.json `simpleMode`): ocena każdego kliknięcia od razu (/check), podpowiedź po 2 błędach, odtwarzacz dla osób
   // nietechnicznych. Część wersji (niemutowalna razem z treścią) - zmienia ocenę bloków wyboru, więc przypisanie zostaje przy swojej.
   simpleMode    Boolean  @default(false)
+  // Języki, w których wersja jest kompletna (D-133, module.json `locales`; zawsze z 'pl'). Gracz w innym języku dostaje 'pl' z plakietką.
+  locales       String[] @default(["pl"])
+  // Tytuł modułu ze wszystkimi językami (module.json `title`: string albo { pl, en? }) - tytuł w odtwarzaczu w języku treści (D-133);
+  // kolumny katalogu w `courses` są tylko po polsku. NULL - wersje sprzed D-133 (tytuł z `courses.title`).
+  title         Json?
   createdAt     DateTime @default(now())
 
   // CASCADE tylko z kursu bez przypisań: przypisanie ma RESTRICT na kurs i na wersję (B-032), więc nie da się skasować

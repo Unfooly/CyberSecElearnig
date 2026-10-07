@@ -511,7 +511,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   z punktu kursora.
 - Akceptacja: jak w specyfikacji B; test reduced-motion, layout-check (brak przesunięć układu przy konfetti), e2e modułu 1.
 
-### B-117 Kopia zapasowa bazy produkcyjnej (postgres_data)
+### B-117 Kopia zapasowa bazy produkcyjnej (postgres_data) - KOD GOTOWY (D-136), wdrożenie na VPS i próba odtworzenia: właściciel (docs/ops/BACKUP.md)
 - Etykiety: `P1`, `ops`, `mod:db` · Źródło: `chore/disk-hygiene` (D), docs/ops/DISK.md
 - Opis: wolumen `postgres_data` na VPS nie ma kopii zapasowej - awaria dysku, pomyłka (`down -v`, `volume prune`) albo błąd migracji
   oznacza nieodwracalną utratę danych klientów. Skrypty w `scripts/ops` mają zakaz czyszczenia wolumenów (test w CI), ale to tylko

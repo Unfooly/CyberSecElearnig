@@ -18,7 +18,8 @@ jak to wykryć, jak posprzątać i co ustawić na hoście, żeby nie wróciło.
 | `scripts/ops/disk-hygiene.test.mjs` | test w CI: żaden skrypt w `scripts/ops` nie czyści wolumenów; compose ma rotację logów |
 
 **ZAKAZ:** `--volumes`, `docker volume prune`, `docker volume rm`, `docker system prune`, `docker compose down -v`. Wolumen
-`postgres_data` to baza produkcyjna **bez kopii zapasowej** - jej usunięcie jest nieodwracalne. Test w CI odrzuci skrypt, który to robi.
+`postgres_data` to baza produkcyjna - jej usunięcie traci dane od ostatniej kopii (`docs/ops/BACKUP.md`, do doby), a bez wdrożonej kopii
+jest nieodwracalne. Test w CI odrzuci skrypt, który to robi.
 
 ## Diagnoza
 
@@ -70,4 +71,5 @@ Wycofanie na starszy tag (`IMAGE_TAG=sha-…`) po sprzątaniu wymaga ponownego `
 
 ## Backup bazy
 
-Brak kopii zapasowej `postgres_data` to osobne ryzyko (backlog) - dopóki go nie ma, żadna operacja na wolumenach.
+Codzienna, szyfrowana kopia `postgres_data` poza VPS: `docs/ops/BACKUP.md` (B-117). Zakaz operacji na wolumenach zostaje - kopia to
+zabezpieczenie na awarię, nie zgoda na kasowanie (odtworzenie traci dane od ostatniej kopii, do doby).

@@ -69,6 +69,11 @@ i `/bezpieczenstwo` nie mogą mieć placeholderów `[DO UZUPEŁNIENIA]` ani `noi
 - [ ] Konta aktywne: przez czas umowy + okres wygaśnięcia; co po wypowiedzeniu (eksport, usunięcie, termin).
 - [ ] Dane do faktury/księgowe - zgodnie z przepisami (zwykle 5 lat od końca roku podatkowego).
 - [ ] Logi i backupy - okres i mechanizm usuwania; jak backupy mają się do żądania usunięcia.
+  **Kopie bazy (B-117, D-136, `docs/ops/BACKUP.md`):** codzienny zrzut całej bazy (wszystkie dane osobowe), szyfrowany (age) kluczem
+  spoza serwera, w prywatnym buckecie Cloudflare R2 w UE; **retencja 14 dni** (reguła cyklu życia bucketu). Dane usunięte w aplikacji
+  (konto, organizacja) znikają z kopii najpóźniej po 14 dniach - kopii nie edytujemy pojedynczo; przy odtworzeniu z kopii ponownie
+  usuwamy dane, których usunięcia zażądano po jej wykonaniu. Wpisać do polityki: cel (ciągłość działania), okres, lokalizacja, podmiot
+  przetwarzający (Cloudflare).
 - [ ] Zgody (`legal_acceptances`) - jak długo jako dowód, mimo usunięcia konta.
 - [ ] **Własne zdjęcie profilowe** (`user_avatar_images`, D-067): trzymane tak długo, jak pracownik je ma ustawione -
   usuwane natychmiast na jego żądanie, przy zmianie na preset oraz kaskadowo z kontem i organizacją. Brak osobnego

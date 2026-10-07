@@ -2233,12 +2233,17 @@ try {
       const verdictTarget = await minTarget('[data-testid="swipe-suspicious"], [data-testid="swipe-ok"]');
       if (verdictTarget < 43.5) fail(`${label}: (p2) przycisk werdyktu mniejszy niż 44 px (${verdictTarget.toFixed(1)}).`);
       const sort = demoBlocks.find((b) => b.id === 'wiadomosci');
+      // Sposób oceny wybierany per werdykt (nie per pozycja - kolejność kart tasuje serwer): pierwsza karta z danym werdyktem przyciskiem,
+      // druga gestem, dalej na zmianę - przyciski i gest pokrywają oba kierunki niezależnie od tasowania.
+      const used = new Set();
       for (let index = 0; index < sort.cards.length; index += 1) {
         const card = page.getByTestId('swipe-card');
         if (!(await inArea('[data-testid="swipe-card"]'))) fail(`${label}: (p2) karta ${index + 1} poza obszarem bloku.`);
         const id = await card.getAttribute('data-card-id');
         const expected = sort.cards.find((candidate) => candidate.id === id);
-        if (index < 3) {
+        const byButton = !used.has(`button-${expected.correct}`) || (used.has(`gesture-${expected.correct}`) && index % 2 === 0);
+        used.add(`${byButton ? 'button' : 'gesture'}-${expected.correct}`);
+        if (byButton) {
           await page.getByTestId(expected.correct === 'suspicious' ? 'swipe-suspicious' : 'swipe-ok').click();
         } else {
           const box = await card.boundingBox();
@@ -2250,14 +2255,21 @@ try {
           await page.mouse.up();
         }
         await page.locator('[data-testid="simple-feedback"][data-result="good"]', { hasText: expected.feedback.slice(0, 30) }).waitFor({ timeout: 10000 });
-        if (index === 3) {
-          if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po werdykcie poza obszarem bloku.`);
-          await shot(page, `${viewport.name}-prosty-swipe-gest`);
-        }
+        if (!byButton && !(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po werdykcie poza obszarem bloku.`);
+        if (index === sort.cards.length - 2) await shot(page, `${viewport.name}-prosty-swipe`);
       }
+      const missing = ['button-suspicious', 'button-ok', 'gesture-suspicious', 'gesture-ok'].filter((kind) => !used.has(kind));
+      if (missing.length > 0) fail(`${label}: (p4) nie sprawdzono: ${missing.join(', ')} (za mało kart z danym werdyktem w module podglądu).`);
       await forwardEnabled();
       await common(`${label} (po ostatniej karcie)`);
-      step(`${label}: (p1, p2, p4) ${sort.cards.length} kart - 3 przyciskami, ${sort.cards.length - 3} gestem, zdanie po każdej, „Dalej” po ostatniej OK`, true);
+      step(`${label}: (p1, p2, p4) ${sort.cards.length} kart - przyciski i gest w obu kierunkach, zdanie po każdej, „Dalej” po ostatniej OK`, true);
+
+      // (p1) narracja i raport - cały tekst ≥ 16 px także poza minigrami.
+      for (const blockId of ['odprawa', 'raport']) {
+        await open(blockId);
+        await common(`${viewport.name} / tryb prosty / ${blockId}`);
+      }
+      step(`${viewport.name} / tryb prosty / narracja i raport: (p1, p2) tekst ≥ 16 px OK`, true);
       await context.close();
     }
   }

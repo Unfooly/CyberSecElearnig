@@ -35,6 +35,8 @@ const quizSchema = z
     type: z.literal('QUIZ'),
     prompt: ltext(1000),
     options: z.array(choiceOptionSchema).min(2).max(8),
+    // Tryb prosty (D-132): podpowiedź po 2 błędnych kliknięciach w bloku - sekret, przychodzi z odpowiedzi /check.
+    hint: ltext(140).optional(),
   })
   .strict();
 
@@ -844,6 +846,40 @@ const liveCallSchema = z
   })
   .strict();
 
+/** Werdykt karty SWIPE_SORT (D-132): przesunięcie w lewo = „Podejrzane”, w prawo = „W porządku”. */
+export const SWIPE_VERDICTS = ['suspicious', 'ok'] as const;
+export type SwipeVerdict = (typeof SWIPE_VERDICTS)[number];
+
+// Segregowanie wiadomości (SWIPE_SORT, moduł 3, D-132): karty-wiadomości (SMS albo komunikator) - gracz ocenia każdą przesunięciem albo
+// jednym z dwóch przycisków. `correct` (poprawny werdykt), `feedback` (zdanie po werdykcie) i `hint` (po 2 błędach) są sekretem - werdykt
+// sprawdza serwer (/check) przy każdej karcie; klient dostaje karty z nieprzejrzystymi id, przetasowane (client.ts).
+const swipeSortSchema = z
+  .object({
+    ...baseShape,
+    type: z.literal('SWIPE_SORT'),
+    prompt: ltext(300),
+    cards: z
+      .array(
+        z
+          .object({
+            id: idSchema,
+            channel: z.enum(['sms', 'chat']),
+            // Nadawca jak na ekranie telefonu (nazwa kontaktu albo numer), opcjonalnie godzina i załącznik (nazwa pliku).
+            from: ltext(60),
+            time: z.string().min(1).max(20).optional(),
+            text: ltext(300),
+            attachment: ltext(80).optional(),
+            correct: z.enum(SWIPE_VERDICTS),
+            feedback: ltext(140),
+          })
+          .strict(),
+      )
+      .min(2)
+      .max(12),
+    hint: ltext(140).optional(),
+  })
+  .strict();
+
 export const BLOCK_SCHEMAS = {
   VIDEO: videoSchema,
   QUIZ: quizSchema,
@@ -866,6 +902,7 @@ export const BLOCK_SCHEMAS = {
   INTERROGATION: interrogationSchema,
   OSINT_SPOT: osintSpotBlockSchema,
   LIVE_CALL: liveCallSchema,
+  SWIPE_SORT: swipeSortSchema,
 } as const;
 
 export type BlockType = keyof typeof BLOCK_SCHEMAS;
@@ -893,6 +930,7 @@ export const blockSchema = z.discriminatedUnion('type', [
   interrogationSchema,
   osintSpotBlockSchema,
   liveCallSchema,
+  swipeSortSchema,
 ]);
 /** Blok tak, jak jest zapisany w wersji kursu (schemaVersion 6: pola wielojęzyczne jako `{ pl, en? }`). */
 export type StoredBlock = z.infer<typeof blockSchema>;
@@ -928,6 +966,7 @@ export const DEFAULT_WEIGHT: Record<BlockType, number> = {
   INTERROGATION: 1,
   OSINT_SPOT: 1,
   LIVE_CALL: 1,
+  SWIPE_SORT: 1,
 };
 
 // --- Klasyfikacja pól: co widzi klient, co jest sekretem serwera -------------------------------------------------------
@@ -980,6 +1019,8 @@ function classify(client: string[], secret: string[]): FieldClassification {
 }
 
 const CHOICE_SECRET = ['options[].correct', 'options[].outcome', 'options[].feedback'];
+// Podpowiedź po 2 błędach w trybie prostym (D-132) - tylko QUIZ ma to pole.
+const QUIZ_SECRET = [...CHOICE_SECRET, 'hint'];
 
 // Dokumenty teczki (DOSSIER) i konsoli przesłuchania (INTERROGATION.documents) - ten sam kształt, wszystko publiczne (D-083).
 const DOSSIER_DOCUMENT_CLIENT = [
@@ -1009,7 +1050,7 @@ const textLayerPaths = (prefix: string) =>
 
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'durationSeconds'], []),
-  QUIZ: classify(['prompt', 'options[].text'], CHOICE_SECRET),
+  QUIZ: classify(['prompt', 'options[].text'], QUIZ_SECRET),
   BRANCHING_SCENARIO: classify(['prompt', 'options[].text'], CHOICE_SECRET),
   DRAG_AND_DROP: classify(['prompt', 'items[].text', 'categories[]'], []),
   // `html` wykonuje dowolny JS, więc NIE idzie do przeglądarki razem z treścią modułu (/start): serwowany jest osobnym dokumentem
@@ -1394,6 +1435,11 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hangUp',
     ],
     [...narrationSecret('nodes[].'), ...narrationSecret('endings[].'), 'endings[].outcome', 'infoChoices[]'],
+  ),
+  // Segregowanie wiadomości (D-132): treść kart publiczna; werdykt, zdanie po werdykcie i podpowiedź - sekret (odpowiedź /check).
+  SWIPE_SORT: classify(
+    ['prompt', 'cards[].id', 'cards[].channel', 'cards[].from', 'cards[].time', 'cards[].text', 'cards[].attachment'],
+    ['cards[].correct', 'cards[].feedback', 'hint'],
   ),
 };
 

@@ -137,6 +137,11 @@ export function toClientBlock(
       result.items = opaqueAndShuffle(result.items, id, context);
       break;
     }
+    case 'SWIPE_SORT': {
+      // Karty oceniane po id (/check, D-132): id autora („paczka-doplata”) zdradzałoby werdykt, a kolejność autora - wzór.
+      result.cards = opaqueAndShuffle(result.cards, id, context);
+      break;
+    }
     case 'LIVE_CALL': {
       // D-129: kolejność odpowiedzi losowana osobno w każdym węźle (seed serwera per przypisanie i węzeł; `:` nie występuje w id, więc
       // seed węzła nie pokrywa się z seedem innego bloku) - pozycja na liście (i klawisz 1-4) nie zdradza dobrej odpowiedzi. Id odpowiedzi

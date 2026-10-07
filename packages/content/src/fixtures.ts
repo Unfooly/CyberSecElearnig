@@ -667,6 +667,37 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
         { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-na-zywo-warning` },
       ]),
     },
+    // Segregowanie wiadomości (D-132): werdykt, zdanie po werdykcie i podpowiedź - sekret (marker w tekstach).
+    SWIPE_SORT: {
+      ...base('wiadomosci'),
+      type: 'SWIPE_SORT',
+      prompt: 'Przesuń każdą wiadomość w lewo albo w prawo.',
+      cards: [
+        {
+          id: 'paczka',
+          channel: 'sms',
+          from: 'SzybkaPaczka',
+          time: '9:41',
+          text: 'Dopłać 1,99 zł do paczki: szybkapaczka.example/oplata',
+          correct: 'suspicious',
+          feedback: `${SECRET_MARKER}-swipe-paczka`,
+        },
+        {
+          id: 'szef',
+          channel: 'chat',
+          from: 'Szef',
+          text: 'Przenoszę spotkanie na 11:00.',
+          attachment: 'agenda.pdf',
+          correct: 'ok',
+          feedback: `${SECRET_MARKER}-swipe-szef`,
+        },
+      ],
+      hint: `${SECRET_MARKER}-swipe-hint`,
+      reactions: scoredReactions([
+        { minScore: 1, pose: 'cheer', text: `${SECRET_MARKER}-swipe-cheer` },
+        { minScore: 0, pose: 'warning', text: `${SECRET_MARKER}-swipe-warning` },
+      ]),
+    },
   };
 }
 
@@ -678,6 +709,8 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
 export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   const blocks = fullBlocks();
   for (const option of blocks.QUIZ.options as Record<string, unknown>[]) option.outcome = 'wrong';
+  // Podpowiedź trybu prostego (D-132) - sekret; fullModule() bez niej (moduł 1 i 2 nie są w trybie prostym).
+  blocks.QUIZ.hint = `${SECRET_MARKER}-quiz-hint`;
   for (const option of blocks.BRANCHING_SCENARIO.options as Record<string, unknown>[]) option.correct = false;
   // reactions.result jest w schemacie na KAŻDYM typie (baseShape), więc klasyfikacja obejmuje go wszędzie - ale semantycznie
   // wolno go mieć tylko blokom ocenianym, i tylko z JEDNYM z when/minScore (semantics.ts, reactionErrors). fullBlocks() trzyma
@@ -777,6 +810,49 @@ export function fullModule() {
 }
 
 /**
+ * Moduł w trybie prostym (D-132): narracja, scena z 3 dużymi celami, wybór (2-3 odpowiedzi, każda z feedbackiem, podpowiedź), SWIPE_SORT i
+ * raport. Przechodzi walidację trybu prostego - testy psują go po jednym polu.
+ */
+export function simpleModule() {
+  return {
+    schemaVersion: 6 as const,
+    slug: 'sprawa-prosta',
+    title: 'Sprawa prosta',
+    category: 'EMAIL_SECURITY' as const,
+    durationMinutes: 8,
+    mandatory: false,
+    simpleMode: true,
+    blocks: [
+      { id: 'odprawa', type: 'NARRATIVE', text: 'Ola dostała dziwną wiadomość.' },
+      {
+        id: 'telefon',
+        type: 'SCENE_HOTSPOTS',
+        tip: 'Kliknij to, co budzi wątpliwości.',
+        image: 'scenes/telefon.svg',
+        imageAlt: 'Telefon Oli z wiadomością',
+        hotspots: [
+          { id: 'link', label: 'Link', x: 10, y: 10, width: 30, height: 20, content: 'Link do filmu.' },
+          { id: 'tekst', label: 'Tekst', x: 10, y: 40, width: 30, height: 20, content: 'To Ty na tym filmie?' },
+          { id: 'logowanie', label: 'Logowanie', x: 50, y: 40, width: 30, height: 20, content: 'Prośba o logowanie.' },
+        ],
+      },
+      {
+        id: 'wybor',
+        type: 'QUIZ',
+        prompt: 'Co robisz?',
+        options: [
+          { text: 'Loguję się.', correct: false, feedback: `${SECRET_MARKER}-prosty-zle` },
+          { text: 'Pytam znajomą innym kanałem.', correct: true, feedback: `${SECRET_MARKER}-prosty-dobrze` },
+        ],
+        hint: `${SECRET_MARKER}-prosty-hint`,
+      },
+      fullBlocks().SWIPE_SORT,
+      { id: 'raport', type: 'SUMMARY', lessons: ['Dziwna prośba od znajomego? Zadzwoń na znany numer.'] },
+    ],
+  };
+}
+
+/**
  * Moduł schemaVersion 6 (D-114/D-115/D-118): fullModule() + nagranie, omówienie i przesłuchanie przed SUMMARY. Osobna funkcja -
  * fullModule() nie zmienia wersji ani indeksów bloków (apps/api/test/course-engine.e2e-spec.ts, CLAUDE.md reguła 9). Razem oba moduły mają
  * każdy typ bloku.
@@ -795,6 +871,7 @@ export function fullModuleV6() {
       blocks.INTERROGATION,
       blocks.OSINT_SPOT,
       blocks.LIVE_CALL,
+      blocks.SWIPE_SORT,
       base.blocks[base.blocks.length - 1],
     ],
   };

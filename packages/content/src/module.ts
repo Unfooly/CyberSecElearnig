@@ -37,6 +37,9 @@ export const moduleSchema = z
     objectives: z.array(ltext(200)).max(6).optional(),
     // Miniatura modułu 16:9 do katalogu i karty kursu (plik z assets/ modułu, potok --assets; D-084) - addytywnie w v5.
     thumbnail: imagePathSchema.optional(),
+    // Tryb prosty (D-132, moduł 3 i kolejne, addytywnie w v6): ostrzejsza walidacja (semantics.ts simpleModeErrors) i odtwarzacz dla osób
+    // nietechnicznych - ocena każdego kliknięcia od razu, podpowiedź po 2 błędach, tekst min. 16 px, bez wyniku w blokach.
+    simpleMode: z.boolean().optional(),
     blocks: z.array(blockSchema).min(1).max(200),
   })
   .strict();

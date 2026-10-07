@@ -15,6 +15,34 @@ export function collectPaths(value: unknown, prefix = ''): string[] {
 }
 
 /**
+ * Ścieżki pól WIELOJĘZYCZNYCH schematu (`a.b`, tablice `a[].b`) - pole, które w treści może być `{ pl, en? }` (D-133: kompletność języków z
+ * `locales` - zwykły string w takim polu to tylko `pl`). Nie schodzi w głąb pola wielojęzycznego.
+ */
+export function localizedFieldPaths(schema: z.ZodTypeAny, prefix = ''): string[] {
+  const def = schema._def as { typeName: string } & Record<string, unknown>;
+  if (isLocalizedSchema(schema)) return [prefix];
+  switch (def.typeName) {
+    case 'ZodOptional':
+    case 'ZodNullable':
+    case 'ZodDefault':
+      return localizedFieldPaths(def.innerType as z.ZodTypeAny, prefix);
+    case 'ZodEffects':
+      return localizedFieldPaths(def.schema as z.ZodTypeAny, prefix);
+    case 'ZodObject':
+      return Object.entries((schema as z.ZodObject<z.ZodRawShape>).shape).flatMap(([key, value]) => localizedFieldPaths(value, prefix ? `${prefix}.${key}` : key));
+    case 'ZodArray':
+      return localizedFieldPaths(def.type as z.ZodTypeAny, `${prefix}[]`);
+    case 'ZodTuple':
+      return [...new Set((def.items as z.ZodTypeAny[]).flatMap((item) => localizedFieldPaths(item, `${prefix}[]`)))];
+    case 'ZodDiscriminatedUnion':
+    case 'ZodUnion':
+      return [...new Set((def.options as z.ZodTypeAny[]).flatMap((option) => localizedFieldPaths(option, prefix)))];
+    default:
+      return [];
+  }
+}
+
+/**
  * Ścieżki wszystkich pól liściowych schematu zod (`a.b`, tablice `a[].b`). Służy testowi kompletności klasyfikacji pól
  * (blocks.ts, FIELD_CLASSIFICATION): nowe pole w schemacie bez decyzji "client albo secret" ma wywalić CI.
  */

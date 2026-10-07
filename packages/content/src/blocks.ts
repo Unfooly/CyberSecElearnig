@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
+import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, limage, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
 import { Delocalize } from './localize';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
@@ -79,8 +79,8 @@ const embeddedHtmlSchema = z
 const imageMediaSchema = z
   .object({
     kind: z.literal('image'),
-    src: imagePathSchema,
-    imagePortrait: imagePathSchema.optional(),
+    src: limage(),
+    imagePortrait: limage().optional(),
     alt: ltext(300),
     textLayer: textLayerSchema.optional(),
   })
@@ -99,7 +99,7 @@ const audioMediaSchema = z
     audioUrl: audioPathSchema.optional(),
     transcript: ltext(4000).optional(),
     narration: narrationSchema.optional(),
-    image: imagePathSchema.optional(),
+    image: limage().optional(),
     alt: ltext(300).optional(),
   })
   .strict();
@@ -152,7 +152,7 @@ const innerHotspotSchema = z
 // mogą nieść evidence/required tak jak zewnętrzne - stan bloku (visited/noted) to jedna, płaska lista id (semantics.ts).
 const nestedSceneSchema = z
   .object({
-    image: imagePathSchema,
+    image: limage(),
     imageAlt: ltext(300),
     textLayer: textLayerSchema.optional(),
     // Ekran monitora w % grafiki (D-116, addytywnie w v5; slot-ekran kompozytora): okienka easter egga pojawiają się wyłącznie w nim.
@@ -174,12 +174,12 @@ const hotspotsSchema = z
   .object({
     ...baseShape,
     type: z.literal('SCENE_HOTSPOTS'),
-    image: imagePathSchema,
+    image: limage(),
     imageAlt: ltext(300),
     // Wariant pionowy sceny (D-116, addytywnie w v5): na telefonie w pionie (kontener sceny < 0.8, jak D-098) odtwarzacz pokazuje tę
     // grafikę w całości ("contain", bez panoramy) z prostokątami `portraitHotspots` - te same id co `hotspots` (najwyższego poziomu),
     // prostokąty w % pionowej grafiki. Bez wariantu - panorama jak dotąd. `imageAlt` wspólny (ta sama scena).
-    imagePortrait: imagePathSchema.optional(),
+    imagePortrait: limage().optional(),
     portraitHotspots: z
       .array(z.object({ id: idSchema, x: percent, y: percent, width: z.number().min(1).max(100), height: z.number().min(1).max(100) }).strict())
       .min(1)
@@ -425,6 +425,17 @@ const briefingRectSchema = z.object({ x: percent, y: percent, w: z.number().gt(0
 // Podsumowanie modułu. Zamknięcie sprawy (feat/case-closed, D-089, addytywnie w v5): `lessons` - wnioski śledczego wpisywane w raport
 // (linijka po linijce), `closing` - grafika ekranu zamknięcia: raport w teczce (scena 16:9), pieczęć i liścik komisarza (osobne pliki,
 // wlatują na raport) oraz sloty HTML w % sceny (liczby, wnioski, podpis gracza, miejsce pieczęci i liściku).
+/**
+ * Nakładki HTML na grafikach (D-133): tekst sceny jest wpalony w grafikę (osobny plik na język), a odtwarzacz rysuje na niej WYŁĄCZNIE
+ * wartości dynamiczne z tej listy - liczone w kodzie albo z sesji gracza, nigdy dowolny tekst z treści (do tego służył przestarzały
+ * textLayer). BRIEFING: zadania sprawy (z treści, lista w notatniku), imię, numer odznaki i inicjały gracza; SUMMARY: dowody X/Y, czas
+ * sprawy, XP, wnioski (lista z treści), podpis gracza. Sloty `stamp`/`note` raportu to miejsca na grafiki, nie tekst.
+ */
+export const DYNAMIC_OVERLAY_SLOTS = {
+  BRIEFING: ['tasks', 'name', 'number', 'photo'],
+  SUMMARY: ['evidence', 'time', 'xp', 'lessons', 'signature'],
+} as const;
+
 const closingSlotsSchema = z
   .object({
     evidence: briefingRectSchema,
@@ -445,13 +456,17 @@ const summarySchema = z
     lessons: z.array(ltext(120)).min(1).max(5).optional(),
     closing: z
       .object({
-        image: imagePathSchema,
-        stamp: imagePathSchema,
-        note: imagePathSchema,
+        image: limage(),
+        stamp: limage(),
+        note: limage(),
+        // Opisy grafik z tekstem wpalonym w obraz (D-133) - dla czytnika ekranu: raport, pieczęć i liścik; wymagane w modułach z `locales`.
+        alt: ltext(300).optional(),
+        stampAlt: ltext(120).optional(),
+        noteAlt: ltext(300).optional(),
         slots: closingSlotsSchema,
         // Wariant pionowy (feat/portrait-scenes, D-098, addytywnie w v5): raport 9:16 dla telefonu w pionie - ten sam zestaw slotów
         // w % pionowej sceny. Pieczęć i liścik te same pliki (wlatują w sloty stamp/note). Bez `portrait` - panorama raportu 16:9 (D-089).
-        portrait: z.object({ image: imagePathSchema, slots: closingSlotsSchema }).strict().optional(),
+        portrait: z.object({ image: limage(), slots: closingSlotsSchema }).strict().optional(),
       })
       .strict()
       .optional(),
@@ -471,15 +486,17 @@ const briefingHotspotSchema = briefingRectSchema.extend({ id: idSchema }).strict
 // pozioma: `closedImage`/`openHotspot` tylko przy dwóch fazach teczki (caseFile); zgodność z polami poziomymi - semantics.ts.
 const briefingPortraitSchema = z
   .object({
-    image: imagePathSchema,
-    closedImage: imagePathSchema.optional(),
+    image: limage(),
+    closedImage: limage().optional(),
     hotspot: briefingHotspotSchema.optional(),
     openHotspot: briefingHotspotSchema.optional(),
     slots: briefingSlotsSchema.optional(),
   })
   .strict();
 const briefingSceneShape = {
-  image: imagePathSchema.optional(),
+  image: limage().optional(),
+  // Opis sceny kroku z tekstem wpalonym w grafikę (D-133) - dla czytnika ekranu; wymagany w modułach z `locales` przy `image` (semantics.ts).
+  alt: ltext(300).optional(),
   hotspot: briefingHotspotSchema.optional(),
   slots: briefingSlotsSchema.optional(),
   portrait: briefingPortraitSchema.optional(),
@@ -536,7 +553,9 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       // Dwie fazy (D-084): zamknięta teczka (`closedImage`, klik w `hotspot` ją otwiera) -> otwarte akta (`image`, crossfade,
       // bez animacji przy reduced-motion). Przy closedImage `hotspot` dotyczy fazy zamkniętej, a `openHotspot` (D-086) - otwartych akt:
       // klik zamyka teczkę i przechodzi dalej (etykieta = `cta`).
-      closedImage: imagePathSchema.optional(),
+      closedImage: limage().optional(),
+      // Opis zamkniętej teczki (D-133) - w fazie zamkniętej widać ją, nie otwarte akta (`alt`); wymagany w modułach z `locales`.
+      closedAlt: ltext(300).optional(),
       openHotspot: briefingHotspotSchema.optional(),
     })
     .strict(),
@@ -679,7 +698,7 @@ const annotatedReplaySchema = z
     type: z.literal('ANNOTATED_REPLAY'),
     source: z.discriminatedUnion('kind', [
       z.object({ kind: z.literal('transcript'), fromBlock: idSchema }).strict(),
-      z.object({ kind: z.literal('image'), image: imagePathSchema, imagePortrait: imagePathSchema.optional(), alt: ltext(300) }).strict(),
+      z.object({ kind: z.literal('image'), image: limage(), imagePortrait: limage().optional(), alt: ltext(300) }).strict(),
     ]),
     markers: z.array(replayMarkerSchema).min(1).max(12),
   })
@@ -758,8 +777,8 @@ const osintMediaSchema = z
     title: ltext(120),
     narration: narrationSchema,
     // Kadr odtwarzacza (np. slajd prelekcji) - z opisem (`alt` wymagane przy `image`), wariantem pionowym i tekstem w warstwie (tytuł slajdu).
-    image: imagePathSchema.optional(),
-    imagePortrait: imagePathSchema.optional(),
+    image: limage().optional(),
+    imagePortrait: limage().optional(),
     alt: ltext(300).optional(),
     textLayer: textLayerSchema.optional(),
     secretEnding: z.object({ id: idSchema, label: ltext(60), note: ltext(300).optional() }).strict().optional(),
@@ -784,8 +803,8 @@ const osintSpotBlockSchema = z
   .object({
     ...baseShape,
     type: z.literal('OSINT_SPOT'),
-    image: imagePathSchema,
-    imagePortrait: imagePathSchema.optional(),
+    image: limage(),
+    imagePortrait: limage().optional(),
     imageAlt: ltext(300),
     textLayer: textLayerSchema.optional(),
     prompt: ltext(300).optional(),
@@ -1252,6 +1271,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'text',
       'lessons[]',
       'closing.image',
+      // Opis grafiki raportu (D-133) - publiczny jak imageAlt scen.
+      'closing.alt',
+      'closing.stampAlt',
+      'closing.noteAlt',
       'closing.stamp',
       'closing.note',
       ...['evidence', 'time', 'xp', 'lessons', 'signature', 'stamp', 'note'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((key) => `closing.slots.${slot}.${key}`)),
@@ -1288,6 +1311,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].narration.cues[].startMs',
       // Grafika kroku (D-084): obrazy sceny i prostokąty (hotspot, sloty) - układ, nic tu nie jest sekretem.
       'steps[].image',
+      'steps[].alt',
+      'steps[].closedAlt',
       'steps[].closedImage',
       'steps[].hotspot.id',
       'steps[].hotspot.x',

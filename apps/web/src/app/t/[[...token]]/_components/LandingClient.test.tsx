@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { headers } from 'next/headers';
 import LandingClient from './LandingClient';
 import TrackingLandingPage from '../page';
-import { metadata } from '../../layout';
+import { generateMetadata } from '../../layout';
 import { DEFAULT_LESSON_HTML } from '@/lib/tracking';
+
+// Język strony wg przeglądarki (D-133): Accept-Language z next/headers - w teście podstawiany.
+vi.mock('next/headers', () => ({ headers: vi.fn() }));
+const acceptLanguage = (value: string | null) =>
+  vi.mocked(headers).mockReturnValue({ get: (name: string) => (name.toLowerCase() === 'accept-language' ? value : null) } as unknown as ReturnType<typeof headers>);
+acceptLanguage('pl-PL,pl;q=0.9');
+const metadata = generateMetadata();
 
 const TOKEN = 'B'.repeat(43);
 const fetchMock = vi.fn();
@@ -20,6 +28,8 @@ describe('strona lądowania /t/[[...token]]', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    // Test języka zmienia nagłówek - kolejne testy zawsze z polskim, także gdy tamten przerwie się w połowie.
+    acceptLanguage('pl-PL,pl;q=0.9');
   });
 
   it('samo wyrenderowanie strony (GET) NIE woła API - skanery linków niczego nie zaliczą; strona jest noindex', () => {
@@ -45,6 +55,24 @@ describe('strona lądowania /t/[[...token]]', () => {
     fireEvent.pointerDown(window);
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('D-133: język wg przeglądarki - en-US -> angielskie teksty i tytuł, de-DE -> angielskie (domyślny EN), pl-PL -> polskie', () => {
+    acceptLanguage('en-US,pl;q=0.8');
+    const { unmount } = render(<TrackingLandingPage params={{ token: [TOKEN] }} />);
+    expect(screen.getByRole('heading', { name: 'Account verification' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    expect(generateMetadata().title).toBe('Account verification');
+    unmount();
+    acceptLanguage('de-DE');
+    const second = render(<TrackingLandingPage params={{ token: [TOKEN] }} />);
+    expect(screen.getByRole('heading', { name: 'Account verification' })).toBeInTheDocument();
+    second.unmount();
+    acceptLanguage('pl-PL');
+    render(<TrackingLandingPage params={{ token: [TOKEN] }} />);
+    expect(screen.getByRole('heading', { name: 'Weryfikacja konta' })).toBeInTheDocument();
+    expect(generateMetadata().title).toBe('Weryfikacja konta');
   });
 
   it('po 2,5 s widoczności strony: JEDNO wywołanie view, bez ciała i bez cookie', async () => {

@@ -1,4 +1,5 @@
 import LandingClient from './_components/LandingClient';
+import { landingLocale } from '@/lib/landing-locale';
 
 // Strona lądowania symulacji phishingowej (publiczna, bez logowania i bez cookie). Renderowanie strony (GET) NIE liczy
 // kliknięcia i nie woła API - robi to dopiero JS w przeglądarce (LandingClient), którego skanery linków w skrzynkach
@@ -14,5 +15,6 @@ export const dynamic = 'force-dynamic';
 
 export default function TrackingLandingPage({ params }: { params: { token?: string[] } }) {
   const token = params.token?.length === 1 ? params.token[0] : '';
-  return <LandingClient token={token} />;
+  // Język strony wg przeglądarki (D-133) - bez konta.
+  return <LandingClient token={token} locale={landingLocale()} />;
 }

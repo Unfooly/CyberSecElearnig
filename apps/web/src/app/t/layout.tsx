@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { NEUTRAL_ICONS } from '@/lib/site-metadata';
+import { landingLocale } from '@/lib/landing-locale';
+import { LANDING_TEXT } from '@/lib/landing-text';
 
 // Layout stron lądowania symulacji phishingowej (/t/*, B-141): żadnej marki serwisu w HTML. Zeruje wszystko, co dziedziczy się z
 // layoutu głównego - manifest (nazwa i opis serwisu), ikony, opis i kartę podglądu linku - i podstawia generyczną ikonę dokumentu
@@ -8,15 +10,18 @@ import { NEUTRAL_ICONS } from '@/lib/site-metadata';
 // Inaczej skaner poczty, podgląd linku w komunikatorze albo uważny odbiorca rozpoznałby po ikonie lub manifeście, że to ćwiczenie.
 // Tytuł jest neutralny („Weryfikacja konta”) także po kliknięciu - treść szkoleniowa pojawia się w treści strony, nie w <title>.
 // Test: src/lib/site-metadata.test.ts; na buildzie produkcyjnym HTML nie zawiera „unfooly”, manifest.webmanifest ani /icon.
-export const metadata: Metadata = {
-  title: 'Weryfikacja konta',
-  description: null,
-  manifest: null,
-  icons: NEUTRAL_ICONS,
-  openGraph: null,
-  twitter: null,
-  robots: { index: false, follow: false },
-};
+// Tytuł w języku przeglądarki (D-133, landing-locale.ts) - nadal neutralny („Weryfikacja konta” / „Account verification”).
+export function generateMetadata(): Metadata {
+  return {
+    title: LANDING_TEXT[landingLocale()].title,
+    description: null,
+    manifest: null,
+    icons: NEUTRAL_ICONS,
+    openGraph: null,
+    twitter: null,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default function TrackingLayout({ children }: { children: React.ReactNode }) {
   return children;

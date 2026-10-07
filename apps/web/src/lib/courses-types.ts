@@ -165,6 +165,10 @@ export interface CaseClosing {
   image: string;
   stamp: string;
   note: string;
+  /** Opisy grafik z tekstem wpalonym w obraz (D-133): raport, pieczęć, liścik. */
+  alt?: string;
+  stampAlt?: string;
+  noteAlt?: string;
   slots: Record<'evidence' | 'time' | 'xp' | 'lessons' | 'signature' | 'stamp' | 'note', BriefingRect>;
   /** Wariant pionowy (telefon, D-098): raport 9:16 z tym samym zestawem slotów. */
   portrait?: { image: string; slots: CaseClosing['slots'] };
@@ -180,6 +184,8 @@ export interface BriefingRect {
 /** Grafika kroku odprawy (D-084): scena, hotspot = cta, sloty na HTML (zadania, dane gracza). */
 export interface BriefingScene {
   image?: string;
+  /** Opis sceny z tekstem wpalonym w grafikę (D-133) - alt obrazu; bez niego obraz jest dekoracyjny (tekst kroku w HTML). */
+  alt?: string;
   hotspot?: BriefingRect & { id: string };
   slots?: Partial<Record<'tasks' | 'name' | 'number' | 'photo', BriefingRect>>;
   /** Wariant pionowy (telefon, D-098): te same pola w % sceny 9:16; closedImage/openHotspot tylko przy teczce (caseFile). */
@@ -213,6 +219,8 @@ export type BriefingStep =
       narration?: Narration;
       /** Faza zamknięta (teczka) - klik w hotspot otwiera akta (`image`). */
       closedImage?: string;
+      /** Opis zamkniętej teczki z tekstem wpalonym w grafikę (D-133). */
+      closedAlt?: string;
       /** Klikalne otwarte akta (D-086): klik zamyka teczkę i przechodzi dalej. */
       openHotspot?: BriefingRect & { id: string };
     } & BriefingScene)

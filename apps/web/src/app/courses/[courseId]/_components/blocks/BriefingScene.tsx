@@ -262,14 +262,16 @@ export default function BriefingSceneStep({
       >
         {imageSrc && (
           // eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG wyłącznie przez <img> (D-051)
-          <img src={imageSrc} alt="" referrerPolicy="no-referrer" onLoad={measure} onError={onImageError} className="absolute inset-0 block h-full w-full object-contain" />
+          // alt (D-133): opis sceny z tekstem wpalonym w grafikę, w języku treści; bez niego obraz dekoracyjny (tekst kroku jest w HTML).
+          <img src={imageSrc} alt={closedSrc && closedPhase ? '' : (step.alt ?? '')} referrerPolicy="no-referrer" onLoad={measure} onError={onImageError} className="absolute inset-0 block h-full w-full object-contain" />
         )}
         {closedSrc && (
           // Faza zamknięta nad otwartą: crossfade przez opacity (bez animacji przy reduced-motion - motion-reduce:transition-none).
           // eslint-disable-next-line @next/next/no-img-element -- jak wyżej
           <img
             src={closedSrc}
-            alt=""
+            // Opis widocznej fazy (D-133): zamknięta teczka - closedAlt; po otwarciu ten obraz jest przezroczysty, opis ma obraz akt.
+            alt={closedPhase && step.kind === 'caseFile' ? (step.closedAlt ?? '') : ''}
             referrerPolicy="no-referrer"
             data-testid="briefing-closed-image"
             onError={onImageError}

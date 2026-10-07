@@ -1087,7 +1087,14 @@ export const SIMPLE_TOUCH_TARGET_PX = 44;
  * Najmniejsza scena, na której liczymy cel dotykowy: pozioma - scena 16:9 w obszarze bloku telefonu w poziomie (844×390 bez pasków
  * odtwarzacza: ok. 480×270 px); pionowa (`imagePortrait`, D-116) - grafika na szerokość telefonu w pionie (ok. 360 px) w proporcjach 9:16.
  */
-export const SIMPLE_SCENE_REF = { landscape: { width: 480, height: 270 }, portrait: { width: 360, height: 640 } } as const;
+export const SIMPLE_SCENE_REF = {
+  landscape: { width: 480, height: 270 },
+  portrait: { width: 360, height: 640 },
+  // Scena zagnieżdżona (zbliżenie z `p-3` i kontenerem 88% - SceneHotspotsBlock): (480 - 24) × 0,88 i (270 - 24) × 0,88 przy 16:9; na
+  // telefonie w pionie (scena główna z `portraitHotspots`) zagnieżdżona nie ma wariantu pionowego - ok. 296 px szerokości.
+  nested: { width: 401, height: 216 },
+  nestedPortrait: { width: 296, height: 166 },
+} as const;
 
 /** Jedno zdanie: po kropce, wykrzykniku, pytajniku albo wielokropku nie ma dalszego tekstu (ani nowej linii). */
 export function isOneSentence(value: string): boolean {
@@ -1148,7 +1155,19 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
       case 'SCENE_HOTSPOTS': {
         const all = flattenHotspots(block.hotspots);
         if (all.length > SIMPLE_MAX_HOTSPOTS) errors.push(`${where}: hotspots: tryb prosty - najwyżej ${SIMPLE_MAX_HOTSPOTS} cele (jest ${all.length})`);
-        block.hotspots.forEach((h, i) => errors.push(...touchTargetErrors(`${where}: hotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.landscape)));
+        // Bez `tip` odtwarzacz pokazałby domyślną podpowiedź sceny - dwa zdania (player/hints.tsx DEFAULT_HINT).
+        if (block.tip === undefined) errors.push(`${where}: tip: tryb prosty - scena wymaga własnego polecenia (jedno zdanie)`);
+        block.hotspots.forEach((h, i) => {
+          errors.push(...touchTargetErrors(`${where}: hotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.landscape));
+          // Scena zagnieżdżona (np. ekran telefonu) jest mniejsza niż scena główna (zbliżenie z marginesem) - własna scena odniesienia, a przy
+          // scenie z wariantem pionowym także pionowa (zagnieżdżona nie ma swojego wariantu pionowego).
+          if (h.media?.kind === 'scene') {
+            const refs = block.portraitHotspots ? [SIMPLE_SCENE_REF.nested, SIMPLE_SCENE_REF.nestedPortrait] : [SIMPLE_SCENE_REF.nested];
+            h.media.scene.hotspots.forEach((inner, j) => {
+              for (const ref of refs) errors.push(...touchTargetErrors(`${where}: hotspots[${i}].media.scene.hotspots[${j}] (${inner.id})`, inner, ref));
+            });
+          }
+        });
         (block.portraitHotspots ?? []).forEach((h, i) => errors.push(...touchTargetErrors(`${where}: portraitHotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.portrait)));
         break;
       }

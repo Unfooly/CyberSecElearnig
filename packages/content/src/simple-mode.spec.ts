@@ -68,6 +68,37 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(five)).toMatch(/najwyżej 4 cele \(jest 5\)/);
     const small = mutate((m) => Object.assign(byType(m, 'SCENE_HOTSPOTS').hotspots[0], { width: 5, height: 10 }));
     expect(errorsOf(small)).toMatch(/hotspots\[0\] \(link\): tryb prosty - cel dotykowy min\. 44×44 px na scenie 480×270 px \(jest 24×27\)/);
+    const nested = mutate((m) => {
+      const scene = byType(m, 'SCENE_HOTSPOTS');
+      scene.hotspots[2] = {
+        id: 'ekran',
+        label: 'Ekran',
+        x: 50,
+        y: 40,
+        width: 30,
+        height: 20,
+        media: { kind: 'scene', scene: { image: 'scenes/ekran.svg', imageAlt: 'Ekran', hotspots: [{ id: 'maly', label: 'Mały', x: 1, y: 1, width: 4, height: 4, content: 'Mały cel.' }] } },
+      };
+    });
+    expect(errorsOf(nested)).toMatch(/hotspots\[2\]\.media\.scene\.hotspots\[0\] \(maly\): tryb prosty - cel dotykowy min\. 44×44 px na scenie 401×216 px/);
+    // 10% × 20% przechodzi na scenie głównej (48×54 px), ale nie w zagnieżdżonej (40×43 px).
+    const borderline = mutate((m) => {
+      const scene = byType(m, 'SCENE_HOTSPOTS');
+      scene.hotspots[2] = {
+        id: 'ekran',
+        label: 'Ekran',
+        x: 50,
+        y: 40,
+        width: 30,
+        height: 20,
+        media: { kind: 'scene', scene: { image: 'scenes/ekran.svg', imageAlt: 'Ekran', hotspots: [{ id: 'graniczny', label: 'Graniczny', x: 1, y: 1, width: 10, height: 20, content: 'Cel.' }] } },
+      };
+    });
+    expect(errorsOf(borderline)).toMatch(/\(graniczny\): tryb prosty - cel dotykowy min\. 44×44 px na scenie 401×216 px \(jest 40×43\)/);
+  });
+
+  it('scena bez własnego polecenia (tip) - błąd: domyślna podpowiedź sceny ma dwa zdania', () => {
+    expect(errorsOf(mutate((m) => delete byType(m, 'SCENE_HOTSPOTS').tip))).toMatch(/tip: tryb prosty - scena wymaga własnego polecenia/);
   });
 
   it('karta SWIPE_SORT: feedback najwyżej 140 znaków (schemat) i oba werdykty w bloku', () => {

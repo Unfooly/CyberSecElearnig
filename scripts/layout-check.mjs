@@ -112,7 +112,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2', 'prosty'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2', 'prosty', 'jezyk'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -2114,6 +2114,60 @@ try {
 
         await context.close();
       }
+    }
+  }
+
+  // JĘZYK KURSU W PASKU GÓRNYM (D-133): najciaśniejszy pasek - pierwszy blok modułu 1 (odprawa z „Pomiń odprawę”, licznik dowodów,
+  // Notatnik) z przełącznikiem języka (`?localeUi=switch`, kurs dwujęzyczny) albo plakietką „Available in Polish only” (`?localeUi=badge`):
+  //  (j1) pasek górny bez przepełnienia w poziomie i każdy jego element w ramce; (j2) przyciski języka ≥ 40 px wysokości (jak reszta paska),
+  //  plakietka widoczna; od 640 px widoczna kopia w pasku górnym, węziej - nad treścią bloku (pasek nie ma miejsca), nigdy obie; (j3) strona
+  //  bez przewijania w poziomie; (j4) węziej: przedmiot odprawy („Odbierz telefon”) w całości w obszarze bloku mimo wiersza języka.
+  if (runs('jezyk')) {
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      for (const variant of ['switch', 'badge']) {
+        const label = `${viewport.name} / język / ${variant === 'switch' ? 'przełącznik' : 'plakietka'}`;
+        await page.goto(`${WEB}/dev/player-harness?block=odprawa&localeUi=${variant}`);
+        await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+        // Dwie kopie w HTML (pasek górny od 640 px, wiersz nad treścią węziej), przełączane klasami - widoczna musi być właściwa, druga ukryta.
+        const narrow = viewport.width < 640;
+        const ids = variant === 'badge' ? ['polish-only-badge', 'polish-only-badge-row'] : ['course-language', 'course-language-row'];
+        const control = page.getByTestId(narrow ? ids[1] : ids[0]);
+        await control.waitFor({ timeout: 10000 });
+        // Po pojawieniu się widocznej kopii (strona ostylowana) druga musi być ukryta.
+        if (await page.getByTestId(narrow ? ids[0] : ids[1]).isVisible()) fail(`${label}: (j2) widoczne obie kopie kontrolki.`);
+        const info = await page.evaluate(() => {
+          const bar = document.querySelector('.player-topbar');
+          const frame = document.querySelector('main.player-frame').getBoundingClientRect();
+          // Wypełnienie paska postępu wysuwa się zza lewej krawędzi toru (translateX, overflow-hidden, D-090) - z założenia poza torem.
+          const outside = [...bar.querySelectorAll('a, button, h1, [data-testid]:not([data-testid="progress-fill"])')]
+            .filter((el) => {
+              const r = el.getBoundingClientRect();
+              return r.width > 0 && (r.left < frame.left - 1 || r.right > frame.right + 1);
+            })
+            .map((el) => el.getAttribute('data-testid') ?? el.getAttribute('aria-label') ?? el.textContent.trim().slice(0, 30));
+          return {
+            overflow: bar.scrollWidth - bar.clientWidth,
+            outside,
+            pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          };
+        });
+        if (info.overflow > 1) fail(`${label}: (j1) pasek górny przepełniony o ${info.overflow}px.`);
+        if (info.outside.length > 0) fail(`${label}: (j1) poza ramką: ${info.outside.join(', ')}`);
+        if (info.pageOverflow > 1) fail(`${label}: (j3) strona przewija się w poziomie o ${info.pageOverflow}px.`);
+        const box = await control.boundingBox();
+        if (!box || box.height < (variant === 'switch' ? 39.5 : 20)) fail(`${label}: (j2) kontrolka niewidoczna albo za niska (${box?.height ?? 0}px).`);
+        // (j4) Wąski ekran: wiersz języka nad treścią nie wypycha przedmiotu odprawy poza obszar bloku (układ 'fill' z overflow-clip).
+        if (narrow) {
+          const area = await boxOf(page, '[data-testid="player-content-area"]');
+          const item = await page.getByRole('button', { name: 'Odbierz telefon' }).boundingBox();
+          if (!item || !contains(area, item)) fail(`${label}: (j4) przedmiot odprawy „Odbierz telefon” poza obszarem bloku.`);
+        }
+        await shot(page, `${viewport.name}-jezyk-${variant}`);
+        step(`${label}: (j1-j4) pasek górny bez przepełnienia, kontrolka w ${narrow ? 'wierszu nad treścią' : 'pasku'}, w ramce OK`, true);
+      }
+      await context.close();
     }
   }
 

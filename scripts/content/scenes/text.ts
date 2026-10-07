@@ -120,13 +120,20 @@ export const FIT_STEP = 0.5;
 
 /**
  * Pionowy zasięg linii w em (code review i18n-3): nad linią bazową do najwyższego glifu z akcentami (Ż, Ś - ok. 0,98 em), pod nią do
- * najniższego wydłużenia (g, ą - ok. 0,23 em) - z wartości hhea czcionki, nie z wysokości wersalików. Slot liczony tak nie wypuści
- * akcentów pierwszej linii nad prostokąt ani ogonków ostatniej pod niego.
+ * najniższego wydłużenia (g, ą - ok. 0,24 em) - większa z wartości hhea czcionki i granic glifów EXTREME_GLYPHS, nie wysokość
+ * wersalików. Slot liczony tak nie wypuści akcentów pierwszej linii nad prostokąt ani ogonków ostatniej pod niego.
  */
 export function verticalExtent(family: FontFamily = 'sans', bold = false): { ascent: number; descent: number } {
   const font = loadFont(family, bold);
-  return { ascent: font.ascender / font.unitsPerEm, descent: -font.descender / font.unitsPerEm };
+  // hhea bywa ciaśniejsze niż same glify (Plus Jakarta Sans: descender 0,222 em, „ą” do 0,237 em) - bierzemy większą z wartości.
+  const bounds = [...EXTREME_GLYPHS].map((char) => font.charToGlyph(char).getBoundingBox());
+  const top = Math.max(font.ascender, ...bounds.map((box) => box.y2));
+  const bottom = Math.min(font.descender, ...bounds.map((box) => box.y1));
+  return { ascent: top / font.unitsPerEm, descent: -bottom / font.unitsPerEm };
 }
+
+/** Znaki o największym zasięgu w pionie w tekstach PL/EN: akcenty nad wersalikami i ogonki/wydłużenia pod linią. */
+export const EXTREME_GLYPHS = 'ŻŹŚĆŃÓŁĘĄÉÈÊÁÀÂÜÖÄąęgjpyqç';
 
 export class TextFitError extends Error {}
 

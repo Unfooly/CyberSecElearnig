@@ -20,8 +20,11 @@ const ATTEMPT_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
 // Uwaga: @Throttle ustawia ten sam limit także globalnemu limitowi per adres IP (ProxyAwareThrottlerGuard) - biuro za jednym adresem
 // dzieli 120/min; przekroczenie (429) odtwarzacz pomija, a pełny stan i tak niesie zapis bloku. Osobny limit per IP: B-142.
 const EXPLORE_THROTTLE = { default: { limit: 120, ttl: 60_000 } };
-// Kliknięcia w trybie prostym (D-132): jedno żądanie na kartę SWIPE_SORT (do 12) i na odpowiedź wyboru - z zapasem na kilka bloków.
-const CHECK_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
+// Kliknięcia w trybie prostym (D-132): jedno żądanie na kartę SWIPE_SORT (do 12) i na odpowiedź wyboru. Każdą kartę i odpowiedź sprawdza się
+// raz (serwer odrzuca powtórkę), więc limit chroni bazę, nie klucz odpowiedzi. Jak przy /explore ten sam limit dostaje globalny limit per
+// adres IP - biuro za jednym adresem dzieli 120/min, a 429 zatrzymuje grę (odtwarzacz pokazuje komunikat, gracz ponawia ręcznie - bez
+// automatycznego ponowienia). Osobny limit per IP: B-142.
+const CHECK_THROTTLE = { default: { limit: 120, ttl: 60_000 } };
 // Ładowanie dokumentu embed (iframe ładuje go przy każdym wejściu w blok i po powrocie z podglądu).
 const EMBED_THROTTLE = { default: { limit: 60, ttl: 60_000 } };
 // Katalog/self-assign celowo NIE dla SUPER_ADMIN (operator platformy, nie pracownik przechodzący szkolenia - D-065).

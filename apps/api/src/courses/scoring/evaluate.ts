@@ -133,7 +133,8 @@ export function evaluateSubmit(
     }
     case 'QUIZ':
       if (account.simpleMode) {
-        // Tryb prosty (D-132): próby do skutku przez /check - „Dalej” dopiero po trafieniu; wynik z PIERWSZEJ próby.
+        // Tryb prosty (D-132): próby do skutku przez /check - „Dalej” dopiero po trafieniu; wynik z PIERWSZEJ próby. `answer` od klienta
+        // celowo pominięty: zapisujemy indeks trafienia z prób na serwerze (klient nie wybiera, co się liczy).
         const checks = existing?.checks ?? [];
         const hit = checks.find((check) => check.correct);
         if (!hit) throw new BadRequestException('Najpierw wybierz poprawną odpowiedź');

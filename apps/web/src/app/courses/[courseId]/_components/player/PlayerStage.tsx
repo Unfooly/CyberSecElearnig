@@ -107,6 +107,8 @@ export interface PlayerStageProps {
   /** Puls „Dalej” i ogłoszenie gotowości tylko przy gotowości bloku i wyniku - nie w podglądzie „Wstecz” (tam „Dalej” też jest aktywny,
       ale to nawigacja po historii, nie nowy stan; B-126). Domyślnie true. */
   announceForward?: boolean;
+  /** Tryb prosty (D-132): klasa .simple-mode na ramce - cały tekst modułu min. 16 px (globals.css). */
+  simpleMode?: boolean;
 }
 
 function PlayerStageInner({
@@ -136,6 +138,7 @@ function PlayerStageInner({
   forwardLabel = 'Dalej',
   forwardHref,
   announceForward = true,
+  simpleMode = false,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -297,7 +300,7 @@ function PlayerStageInner({
         ref={frameRef}
         aria-labelledby={titleId}
         onScroll={resetFrameScroll}
-        className="player-frame mobile-readable relative isolate flex w-full flex-col rounded-card bg-white shadow-card"
+        className={`player-frame mobile-readable relative isolate flex w-full flex-col rounded-card bg-white shadow-card${simpleMode ? ' simple-mode' : ''}`}
       >
         {/* Reszta ramki (wszystko poza NotesDrawer, wyżej) jest inert, dopóki notatnik jest otwarty - patrz efekt
             na restRef. h-full: NotesDrawer jest position:absolute (poza przepływem), więc to jedyne "prawdziwe"

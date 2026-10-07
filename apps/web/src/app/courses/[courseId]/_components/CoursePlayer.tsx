@@ -20,6 +20,8 @@ import { useMyAvatar } from '@/lib/use-my-avatar';
 import { playerIdentity, useMyDisplayName, type PlayerIdentity } from '@/lib/use-my-display-name';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
+import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
+import SwipeSortBlock from './blocks/SwipeSortBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
@@ -78,6 +80,8 @@ interface RenderContext {
   submitFailed: boolean;
   /** Blok zaczyna od nowa po nieudanym zapisie (B-137, „Zadzwoń ponownie”) - komunikat o błędzie znika. */
   onRetry: () => void;
+  /** Tryb prosty (D-132): wybór (QUIZ) oceniany przy każdym kliknięciu (/check). */
+  simpleMode: boolean;
   /** Scena (D-128): zapis stanu częściowego (obejrzane, zabrane) - po powrocie do modułu scena wraca w tym samym stanie. */
   onExplore: (blockId: string, state: SceneExploration) => void;
 }
@@ -134,7 +138,35 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
     case 'VIDEO':
       return <VideoBlock key={block.id} block={block} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />;
     case 'QUIZ':
+      if (ctx.simpleMode) {
+        return (
+          <SimpleChoiceBlock
+            key={block.id}
+            block={block}
+            courseId={ctx.courseId}
+            progress={ctx.progress}
+            onSubmit={onSubmit}
+            onReady={ctx.onReady}
+            onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+            disabled={disabled}
+          />
+        );
+      }
       return <QuizBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
+    case 'SWIPE_SORT':
+      // D-132: każda karta przez /check; „Dalej” po ocenie wszystkich - zapis bez odpowiedzi (werdykty są już w postępie).
+      return (
+        <SwipeSortBlock
+          key={block.id}
+          block={block}
+          courseId={ctx.courseId}
+          progress={ctx.progress}
+          onSubmit={() => onSubmit(undefined)}
+          onReady={ctx.onReady}
+          onProgress={(patch) => ctx.onProgress(block.id ?? '', patch)}
+          disabled={disabled}
+        />
+      );
     case 'BRANCHING_SCENARIO':
       return <BranchingScenarioBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
     case 'DRAG_AND_DROP':
@@ -237,6 +269,8 @@ export default function CoursePlayer({
   nextCourse?: { courseId: string; title: string } | null;
 }) {
   const router = useRouter();
+  // Tryb prosty wersji treści (D-132) - z /start; starsze odpowiedzi bez pola = zwykły odtwarzacz.
+  const simpleMode = initial.simpleMode === true;
   const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
   const myInitials = userEmail ? initialsFromEmail(userEmail) : undefined;
   // Legitymacja w odprawie (BRIEFING, D-081): imię z profilu pobierane tylko, gdy moduł ma odprawę; fallback z e-maila.
@@ -470,7 +504,9 @@ export default function CoursePlayer({
       const last = progress.lastResult;
       const detailToShow = !!last.detail && (last.type !== 'INTERROGATION' || (last.detail.contradictions?.length ?? 0) > 0);
       const nothingToShow = last.correct === undefined && last.points === undefined && !last.reaction?.text && !detailToShow;
-      const skipsFeedbackScreen = isExploratory(last.type) || last.type === 'TEXT_INPUT_GUIDED' || nothingToShow;
+      // Tryb prosty i SWIPE_SORT (D-132): werdykt i zdanie gracz widział przy każdym kliknięciu, a wyniku w blokach nie pokazujemy.
+      const skipsFeedbackScreen =
+        isExploratory(last.type) || last.type === 'TEXT_INPUT_GUIDED' || last.type === 'SWIPE_SORT' || simpleMode || nothingToShow;
       if (skipsFeedbackScreen) {
         setFeedback(null);
         setAutoPlayFor(hasAudio(progress.lastResult.blockIndex) ? keyOf(progress.currentBlockIndex) : null);
@@ -709,6 +745,7 @@ export default function CoursePlayer({
               noTimeLimits,
               submitFailed: error !== null,
               onRetry: () => setError(null),
+              simpleMode,
               blocks,
               onEvidence: setEvidence,
               onExplore: saveExploration,
@@ -729,6 +766,7 @@ export default function CoursePlayer({
             onBriefingStep={trackBriefingStep(`r-${keyOf(displayedIndex)}`)}
             caseNo={caseNo}
             moduleBlocks={blocks}
+            simpleMode={simpleMode}
           />
         )}
       </>
@@ -812,6 +850,7 @@ export default function CoursePlayer({
                 : undefined
             }
             contentLayout={contentLayout}
+            simpleMode={simpleMode}
             stage={
               <>
                 {error && (

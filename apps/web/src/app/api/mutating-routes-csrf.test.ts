@@ -41,6 +41,8 @@ const PROTECTED: Row[] = [
     params: { courseId: 'c1', blockId: 'b1' },
     body: { lineId: 'kod-1', noteRef: 'a1b2c3d4e5f6a1b2c3d4e5f6' },
   },
+  // Ocena kliknięcia w trybie prostym i SWIPE_SORT (D-132)
+  { route: './courses/[courseId]/blocks/[blockId]/check/route.ts', method: 'POST', params: { courseId: 'c1', blockId: 'b1' }, body: { card: 'k1', verdict: 'ok' } },
   // Stan częściowy sceny (D-128)
   { route: './courses/[courseId]/blocks/[blockId]/explore/route.ts', method: 'POST', params: { courseId: 'c1', blockId: 'b1' }, body: { visited: ['h1'], noted: [] } },
   // Katalog kursów (D-065, hotfix widoczności zaimportowanego kursu)

@@ -3,6 +3,7 @@ import type { PlayerIdentity } from '@/lib/use-my-display-name';
 import type { NotebookTask } from './notes';
 import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from '../blocks/ScoredBlock';
+import SwipeSortBlock from '../blocks/SwipeSortBlock';
 
 // Podgląd JUŻ ukończonego bloku (przycisk "Wstecz"): tylko do odczytu, bez zmiany stanu na serwerze. Serwer i tak nie pozwala ponownie
 // zapisać ukończonego bloku (sekwencyjność). Bloki eksploracyjne (hotspoty, dialog, zakładki, notatnik, podsumowanie) można przejść
@@ -20,7 +21,10 @@ export default function ReviewBlock({
   onBriefingStep,
   caseNo,
   moduleBlocks,
+  simpleMode = false,
 }: {
+  /** Tryb prosty (D-132): bez wyniku „poprawna/niepoprawna” - gracz i tak doszedł do dobrej odpowiedzi. */
+  simpleMode?: boolean;
   caseNo?: string;
   /** Bloki modułu (omówienie czyta transkrypcję z bloku nagrania). */
   moduleBlocks?: ContentBlock[];
@@ -67,6 +71,16 @@ export default function ReviewBlock({
     );
   }
 
+  if (block.type === 'SWIPE_SORT') {
+    // D-132: każda karta z własnym werdyktem i zdaniem (próby z postępu albo z tej sesji), bez wyniku.
+    return (
+      <div data-testid="review-block">
+        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
+        <SwipeSortBlock block={block} courseId={courseId} progress={result} review />
+      </div>
+    );
+  }
+
   if (isScored(block.type) && result && (block.type === 'TEXT_INPUT_GUIDED' || (hasInlineResult(block.type) && result.detail))) {
     // Tablica śledcza (ORDERING, D-088) i odsłuch nagrania (D-115) wypełniają ramkę - ten sam łańcuch wysokości co bloki 'fill' wyżej.
     const isBoard = BOARD_TYPES.includes(block.type);
@@ -101,7 +115,7 @@ export default function ReviewBlock({
         </p>
       )}
 
-      {result && result.correct !== undefined ? (
+      {result && result.correct !== undefined && !simpleMode ? (
         <p className={`text-sm font-medium ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
           {result.correct ? 'Twoja odpowiedź była poprawna.' : 'Twoja odpowiedź była niepoprawna.'}
           {typeof result.points === 'number' && result.points > 0 && result.points < 1 && ` Punkty: ${Math.round(result.points * 100)}%.`}

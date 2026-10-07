@@ -35,7 +35,37 @@ export type ContentBlockType =
   // schemaVersion 6 (moduł 2, D-120): OSINT - strona z obszarami do zaznaczenia (oceniane), nagranie przy obszarze z ukrytym zakończeniem.
   | 'OSINT_SPOT'
   // schemaVersion 6 (moduł 2, D-122): rozmowa na żywo - drzewo odpowiedzi z limitem czasu (oceniana po zakończeniu).
-  | 'LIVE_CALL';
+  | 'LIVE_CALL'
+  // schemaVersion 6 (moduł 3, D-132): segregowanie wiadomości - karta w lewo „Podejrzane”, w prawo „W porządku” (każda karta przez /check).
+  | 'SWIPE_SORT';
+
+/** Karta SWIPE_SORT z /start (D-132): id nieprzejrzyste, bez werdyktu i zdania po werdykcie (sekret - odpowiedź /check). */
+export interface SwipeCard {
+  id: string;
+  channel: 'sms' | 'chat';
+  from: string;
+  time?: string;
+  text: string;
+  attachment?: string;
+}
+
+export type SwipeVerdict = 'suspicious' | 'ok';
+
+/** Próba /check (D-132): wybór po indeksie odpowiedzi, karta po id nieprzejrzystym. */
+export interface SimpleCheck {
+  item: number | string;
+  result: 'good' | 'bad';
+  feedback: string;
+}
+
+/** Odpowiedź POST .../blocks/:blockId/check (D-132). */
+export interface CheckResponse {
+  blockId: string;
+  result: 'good' | 'bad';
+  feedback: string;
+  hint?: string;
+  done: boolean;
+}
 
 /**
  * Rozmowa na żywo (LIVE_CALL, D-122) - pola bloku po stronie klienta. Osobny typ zamiast pól w ContentBlock: `start` to tu id węzła, a w
@@ -263,6 +293,8 @@ export interface ContentBlock {
   // QUIZ / BRANCHING_SCENARIO
   prompt?: string;
   options?: ContentBlockOption[];
+  // SWIPE_SORT (D-132): karty-wiadomości (id nieprzejrzyste, przetasowane przez serwer).
+  cards?: SwipeCard[];
   // SUMMARY - zamknięcie sprawy (D-089): wnioski śledczego i grafika ekranu zamknięcia ze slotami w % sceny raportu.
   lessons?: string[];
   closing?: CaseClosing;
@@ -493,6 +525,9 @@ export interface ClientProgressBlock {
   challenges?: InterrogationChallenge[];
   // SCENE_HOTSPOTS (D-128): stan częściowy nieukończonej sceny - obejrzane przedmioty i zabrane dowody (id przedmiotów z treści).
   exploration?: SceneExploration;
+  // Tryb prosty i SWIPE_SORT (D-132): własne próby /check (także w trakcie bloku) i podpowiedź po 2 błędach.
+  checks?: SimpleCheck[];
+  hint?: string;
 }
 
 export interface SceneExploration {
@@ -550,6 +585,8 @@ export interface CourseDetail {
   completedAt?: string | null;
   contentBlocks: ContentBlock[];
   progress: ClientProgress | null;
+  /** Tryb prosty (D-132): ocena każdego kliknięcia, podpowiedź po 2 błędach, tekst min. 16 px; starsze odpowiedzi bez pola = false. */
+  simpleMode?: boolean;
 }
 
 /** Rozstrzygnięcie ukończonego bloku (id elementów nieprzejrzyste, jak w /start): EMAIL_ANALYSIS -> criteria, ORDERING -> correctOrder. */

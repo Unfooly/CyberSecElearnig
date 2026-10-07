@@ -9,6 +9,8 @@ vi.mock('next/font/google', () => ({
   Plus_Jakarta_Sans: () => ({ variable: '--font-jakarta' }),
   Courier_Prime: () => ({ variable: '--font-typewriter' }),
 }));
+// Tytuł /t/* wg języka przeglądarki (D-133) - nagłówek Accept-Language podstawiony (polski).
+vi.mock('next/headers', () => ({ headers: () => ({ get: (name: string) => (name.toLowerCase() === 'accept-language' ? 'pl-PL' : null) }) }));
 
 // Wspólny podgląd linku serwisu (D-126, B-110): jedna grafika, zero danych kursów w meta.
 const web = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -75,7 +77,7 @@ describe('strony, które NIE mogą mieć karty podglądu z danymi', () => {
 
   // Strona lądowania symulacji phishingowej: bez marki serwisu w meta (inaczej podgląd linku, ikona albo manifest zdradzają ćwiczenie).
   it('/t/* zeruje manifest, opis i kartę podglądu z layoutu głównego, ma neutralną ikonę, neutralny tytuł i noindex (B-141)', async () => {
-    const { metadata } = await import('../app/t/layout');
+    const metadata = (await import('../app/t/layout')).generateMetadata();
     expect(metadata.description).toBeNull();
     expect(metadata.manifest).toBeNull();
     expect(metadata.openGraph).toBeNull();
@@ -88,7 +90,7 @@ describe('strony, które NIE mogą mieć karty podglądu z danymi', () => {
   });
 
   it('neutralna ikona: osadzona w adresie data: (bez żądania do serwera), PNG 32×32 i SVG bez marki, skryptów i odwołań', async () => {
-    const { metadata } = await import('../app/t/layout');
+    const metadata = (await import('../app/t/layout')).generateMetadata();
     const icons = (metadata.icons as { icon: { url: string; type: string; sizes: string }[] }).icon;
     expect(icons.map((icon) => icon.type)).toEqual(['image/png', 'image/svg+xml']);
     for (const icon of icons) expect(icon.url.startsWith('data:')).toBe(true);

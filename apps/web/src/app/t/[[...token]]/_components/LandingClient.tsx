@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import type { ContentLocale } from '@cyberszkolo/content';
 import { DEFAULT_LESSON_HTML, TRACKING_TOKEN_REGEX } from '@/lib/tracking';
+import { LANDING_TEXT } from '@/lib/landing-text';
 
 // Kliknięcie zaliczamy dopiero po chwili widoczności strony albo po pierwszej interakcji: skanery linków, które
 // wykonują JS, zwykle nie czekają ani nie klikają. To ograniczenie, nie gwarancja (opis: docs/phishing-simulations.md).
@@ -23,7 +25,9 @@ async function post(kind: 'view' | 'submit', token: string): Promise<string> {
  * czytane w kodzie: wysyłamy sam fakt wysłania formularza, nigdy jego wartości. Po wysłaniu (albo "Anuluj") pokazujemy
  * lekcję "To była symulacja" z kampanii w piaskownicy (iframe sandbox="", bez skryptów).
  */
-export default function LandingClient({ token }: { token: string }) {
+export default function LandingClient({ token, locale = 'pl' }: { token: string; locale?: ContentLocale }) {
+  // Teksty strony w języku przeglądarki (D-133, wybór po stronie serwera - page.tsx).
+  const t = LANDING_TEXT[locale];
   const [lessonHtml, setLessonHtml] = useState<string | null>(null);
   const viewed = useRef<Promise<string> | null>(null);
 
@@ -63,37 +67,37 @@ export default function LandingClient({ token }: { token: string }) {
 
   if (lessonHtml !== null) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
+      <main lang={locale} className="mx-auto max-w-2xl px-6 py-12">
         <div role="status" className="rounded-card border border-border bg-surface p-6 shadow-card">
           <p className="mb-4 inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent-ink">
-            Ćwiczenie bezpieczeństwa
+            {t.exercise}
           </p>
-          <iframe title="Lekcja" sandbox="" srcDoc={`<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:15px;line-height:1.5">${lessonHtml}</body></html>`} className="h-80 w-full border-0" />
-          <p className="mt-4 text-sm text-muted">Możesz zamknąć tę kartę. Kurs uzupełniający znajdziesz po zalogowaniu do platformy szkoleniowej.</p>
+          <iframe title={t.lesson} sandbox="" srcDoc={`<!doctype html><html lang="pl"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:15px;line-height:1.5">${lessonHtml}</body></html>`} className="h-80 w-full border-0" />
+          <p className="mt-4 text-sm text-muted">{t.close}</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-16">
+    <main lang={locale} className="mx-auto max-w-md px-6 py-16">
       <div className="rounded-card border border-border bg-surface p-8 shadow-card">
-        <h1 className="text-xl font-extrabold">Weryfikacja konta</h1>
-        <p className="mt-2 text-sm text-muted">Ze względów bezpieczeństwa potwierdź swoją tożsamość, aby zachować dostęp do konta służbowego.</p>
+        <h1 className="text-xl font-extrabold">{t.title}</h1>
+        <p className="mt-2 text-sm text-muted">{t.intro}</p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="off">
           <label className="block text-sm font-bold">
-            Adres e-mail
+            {t.email}
             <input type="text" autoComplete="off" className="mt-1 h-10 w-full rounded-btn border border-border px-3 font-medium" />
           </label>
           <label className="block text-sm font-bold">
-            Hasło
+            {t.password}
             <input type="password" autoComplete="off" className="mt-1 h-10 w-full rounded-btn border border-border px-3 font-medium" />
           </label>
           <button type="submit" className="h-10 w-full rounded-btn bg-accent font-bold text-white hover:bg-accent-hover">
-            Potwierdź
+            {t.confirm}
           </button>
           <button type="button" onClick={handleCancel} className="w-full text-sm font-semibold text-muted hover:underline">
-            Anuluj
+            {t.cancel}
           </button>
         </form>
       </div>

@@ -55,8 +55,12 @@ function layout(text: string, style: TextStyle): Layout {
   const font = loadFont(style.family, style.bold);
   const scale = style.size / font.unitsPerEm;
   const spacing = style.spacing ?? 0;
-  const glyphs = font.stringToGlyphs(text);
-  const missing = [...text].filter((char) => font.charToGlyphIndex(char) === 0 && char.trim() !== '');
+  // Przy letter-spacing przeglądarka wyłącza ligatury („fi”) i dodaje odstęp po każdym znaku - tu tak samo.
+  // opentype.js 1.3.4: stringToGlyphs(s, options) przyjmuje `features` (typy @types/opentype.js 1.3.8 go nie znają).
+  const toGlyphs = font.stringToGlyphs as unknown as (s: string, options: { features: Record<string, boolean> }) => opentype.Glyph[];
+  const glyphs = toGlyphs.call(font, text, { features: { liga: spacing === 0, rlig: true } });
+  // Tylko zwykła spacja może nie mieć konturu - inny znak bez glifu (np. U+202F) narysowałby się jako pusty prostokąt.
+  const missing = [...text].filter((char) => char !== ' ' && font.charToGlyphIndex(char) === 0);
   if (missing.length > 0) {
     throw new Error(`Czcionka ${FONT_FILES[style.family ?? 'sans'][style.bold ? 'bold' : 'regular']} nie ma znaków: ${[...new Set(missing)].map((c) => `"${c}" (U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`).join(', ')} - w tekście „${text}”`);
   }
@@ -113,7 +117,16 @@ export interface FitBox {
 
 /** Krok zmniejszania czcionki przy dopasowaniu (stały - wynik powtarzalny). */
 export const FIT_STEP = 0.5;
-const CAP_HEIGHT = 0.72;
+
+/**
+ * Pionowy zasięg linii w em (code review i18n-3): nad linią bazową do najwyższego glifu z akcentami (Ż, Ś - ok. 0,98 em), pod nią do
+ * najniższego wydłużenia (g, ą - ok. 0,23 em) - z wartości hhea czcionki, nie z wysokości wersalików. Slot liczony tak nie wypuści
+ * akcentów pierwszej linii nad prostokąt ani ogonków ostatniej pod niego.
+ */
+export function verticalExtent(family: FontFamily = 'sans', bold = false): { ascent: number; descent: number } {
+  const font = loadFont(family, bold);
+  return { ascent: font.ascender / font.unitsPerEm, descent: -font.descender / font.unitsPerEm };
+}
 
 export class TextFitError extends Error {}
 
@@ -124,7 +137,8 @@ function wrap(paragraphs: string[], style: TextStyle, maxWidth: number): string[
   const lines: string[] = [];
   for (const paragraph of paragraphs) {
     let line = '';
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+    // Tylko zwykłe spacje/tabulatory/nowe linie - twarda spacja (U+00A0, „z kolei”) łączy słowa jak w przeglądarce.
+    for (const word of paragraph.split(/[ \t\n\r]+/).filter(Boolean)) {
       if (measureText(word, style) > maxWidth) return null;
       const candidate = line ? `${line} ${word}` : word;
       if (measureText(candidate, style) <= maxWidth) line = candidate;
@@ -146,6 +160,7 @@ function wrap(paragraphs: string[], style: TextStyle, maxWidth: number): string[
 export function fitText(value: string | string[], box: FitBox): string {
   const paragraphs = (Array.isArray(value) ? value : [value]).map((p) => p.trim());
   const lineHeight = box.lineHeight ?? 1.25;
+  const { ascent, descent } = verticalExtent(box.family, box.bold);
   const floor = Math.max(box.minSize, 0.5);
   if (box.size < floor) {
     throw new TextFitError(`${box.where}, slot "${box.slot}": rozmiar ${box.size} poniżej minimum ${floor.toFixed(1)} (w jednostkach klocka) - powiększ tekst albo slot`);
@@ -156,13 +171,13 @@ export function fitText(value: string | string[], box: FitBox): string {
     if (!lines) continue;
     if (box.maxLines !== undefined && lines.length > box.maxLines) continue;
     const step = size * lineHeight;
-    const height = (lines.length - 1) * step + size * CAP_HEIGHT;
+    const height = size * ascent + (lines.length - 1) * step + size * descent;
     if (height > box.h) continue;
     const top = box.valign === 'middle' ? box.y + (box.h - height) / 2 : box.y;
     const x = box.align === 'middle' ? box.x + box.w / 2 : box.align === 'end' ? box.x + box.w : box.x;
     return lines
       .map((line, i) => {
-        const y = Math.round((top + size * CAP_HEIGHT + i * step) * 100) / 100;
+        const y = Math.round((top + size * ascent + i * step) * 100) / 100;
         const attrs = [
           `x="${Math.round(x * 100) / 100}"`,
           `y="${y}"`,
@@ -205,6 +220,8 @@ export function parseTextElement(attrs: string, content: string): TextElement {
     if (!KNOWN_ATTRS.has(name)) throw new Error(`Atrybut <text> "${name}" nie jest obsługiwany przy zamianie tekstu na krzywe (tekst „${unescape(content)}”)`);
     values[name] = value;
   }
+  // Rozmiar zawsze na samym <text> (atrybuty dziedziczone z <g> nie są czytane) - brak = błąd, nie cicha wartość domyślna.
+  if (!(Number(values['font-size']) > 0)) throw new Error(`<text> bez font-size (tekst „${unescape(content)}”) - rozmiar musi być na elemencie`);
   const family = values['font-family'] === undefined ? 'sans' : FONT_FAMILY_ATTR[values['font-family']];
   if (!family) throw new Error(`Nieznana czcionka "${values['font-family']}" (dozwolone: ${Object.keys(FONT_FAMILY_ATTR).join(', ')})`);
   const anchor = (values['text-anchor'] ?? 'start') as Anchor;
@@ -218,7 +235,7 @@ export function parseTextElement(attrs: string, content: string): TextElement {
     x: Number(values.x ?? 0),
     y: Number(values.y ?? 0),
     style: {
-      size: Number(values['font-size'] ?? 16),
+      size: Number(values['font-size']),
       bold: values['font-weight'] === 'bold',
       family,
       spacing: values['letter-spacing'] === undefined ? 0 : Number(values['letter-spacing']),

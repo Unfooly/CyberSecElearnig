@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { composeScene, composeSceneLocales, MIN_PHONE_SCREEN_TEXT_PX, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneScale } from './compose.js';
-import { fitText, measureText, outlineText, PATH_DECIMALS, textPathData } from './text.js';
+import { composeScene, composeSceneLocales, MIN_PHONE_SCREEN_TEXT_PX, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneScale, textsWithScale, transformScale } from './compose.js';
+import { fitText, measureText, outlineText, PATH_DECIMALS, textPathData, verticalExtent } from './text.js';
 import type { SceneSpec } from './types.js';
 
 // Tekst wpalony w grafikę (D-135, i18n-3): kontury z czcionek z repo, teksty sceny per język (`strings`), dopasowanie do slotu z
@@ -59,6 +59,36 @@ describe('dopasowanie tekstu do slotu (fitText)', () => {
     expect(Math.min(...sizes)).toBeGreaterThanOrEqual(20);
   });
 
+  it('wysokość slotu z akcentami i ogonkami: „Żg” mieści się dokładnie w ascent+descent, o 1 jednostkę mniej - już nie', () => {
+    const { ascent, descent } = verticalExtent();
+    const exact = (ascent + descent) * 20;
+    const one = { ...box, w: 400, size: 20, minSize: 20 };
+    const svg = fitText('Żg', { ...one, h: exact + 0.01 });
+    // Linia bazowa = górna krawędź + ascent: akcent „Ż” nie wychodzi nad slot.
+    expect(svg).toMatch(new RegExp(`y="${Math.round(ascent * 20 * 100) / 100}"`));
+    expect(() => fitText('Żg', { ...one, h: exact - 1 })).toThrow(/nie mieści się/);
+  });
+
+  it('maxLines, align end, valign middle; kerning „AV” węższy niż „A” + „V”', () => {
+    expect(() => fitText('jeden dwa trzy cztery pięć sześć', { ...box, w: 120, h: 400, maxLines: 1 })).toThrow(/nie mieści się/);
+    const end = fitText('Koniec', { ...box, align: 'end', valign: 'middle', h: 200 });
+    expect(end).toMatch(/x="300" .*text-anchor="end"/);
+    const { ascent, descent } = verticalExtent();
+    const top = (200 - 40 * (ascent + descent)) / 2;
+    expect(end).toMatch(new RegExp(`y="${Math.round((top + 40 * ascent) * 100) / 100}"`));
+    expect(measureText('AV', { size: 100 })).toBeLessThan(measureText('A', { size: 100 }) + measureText('V', { size: 100 }));
+    // Ligatura „fi” bez letter-spacing; z letter-spacing - dwa znaki z odstępem po każdym (jak przeglądarka).
+    const separate = measureText('f', { size: 100, spacing: 5 }) + measureText('i', { size: 100, spacing: 5 });
+    // Dwa glify (± kerning pary f-i), nie jeden glif ligatury z jednym odstępem (byłoby o ok. 5 + szerokość „i” mniej).
+    expect(Math.abs(measureText('fi', { size: 100, spacing: 5 }) - separate)).toBeLessThan(2);
+  });
+
+  it('twarda spacja łączy słowa przy zawijaniu; <text> bez font-size - błąd', () => {
+    const lines = fitText('aaa z kolei bbb', { ...box, w: measureText('aaa z kolei', { size: 40 }) + 1, h: 400 });
+    expect([...lines.matchAll(/>([^<]*)<\/text>/g)].map((m) => m[1])).toEqual(['aaa z kolei', 'bbb']);
+    expect(() => outlineText('<text x="0" y="0">a</text>')).toThrow(/bez font-size/);
+  });
+
   it('nie mieści się nawet przy minimum - błąd z nazwą sceny, slotu i języka (nie ucina, nie zmniejsza dalej)', () => {
     const tooLong = 'This English sentence is far too long to ever fit into such a small speech bubble on a phone, even after shrinking it';
     expect(() => fitText(tooLong, box)).toThrow(
@@ -111,9 +141,11 @@ describe('scena ze strings (D-135): plik na język, kontrola tekstu', () => {
     expect(() => composeScene(sticky, { locale: 'pl' })).toThrow(/parametr "lines" klocka "stickyNote" nie jest dopasowywany do slotu/);
     const defaults: SceneSpec = { ...bubbleScene(), items: [...bubbleScene().items, { id: 'drzwi', prop: 'door', x: 500, y: 900, params: { label: 'POKÓJ' } }] };
     expect(() => composeScene(defaults, { locale: 'en' })).toThrow(/element "drzwi", język en: tekst „POKÓJ” nie pochodzi ze "strings"/);
-    // Same cyfry (godzina, numer zamaskowany) - bez języka, dozwolone.
-    const digits: SceneSpec = { ...bubbleScene(), items: [...bubbleScene().items, { id: 'drzwi', prop: 'door', x: 500, y: 900, params: { label: '214' } }] };
-    expect(() => composeScene(digits, { locale: 'en' })).not.toThrow();
+    // Same cyfry (godzina, numer zamaskowany) - bez języka, dozwolone ze względu na pochodzenie; minimum rozmiaru obowiązuje i je
+    // (kwota, numer bywają wskazówką) - za mały numer na drzwiach przechodzi tylko jako "decorative".
+    const digits = (decorative: boolean): SceneSpec => ({ ...bubbleScene(), items: [...bubbleScene().items, { id: 'drzwi', prop: 'door', x: 500, y: 900, decorative, params: { label: '214' } }] });
+    expect(() => composeScene(digits(false), { locale: 'en' })).toThrow(/tekst „214” ma na telefonie [\d.]+ px \(minimum 14 px\)/);
+    expect(() => composeScene(digits(true), { locale: 'en' })).not.toThrow();
   });
 
   it('minimum na telefonie: 14 px (dopasowanie nie schodzi niżej), 16 px na ekranie telefonu; decorative - bez minimum', () => {
@@ -136,6 +168,27 @@ describe('scena ze strings (D-135): plik na język, kontrola tekstu', () => {
     expect(() => composeScene(screen(true), { locale: 'pl' })).toThrow(/poniżej minimum 40\.6/);
     expect(MIN_TEXT_PX).toBe(14);
     expect(MIN_PHONE_SCREEN_TEXT_PX).toBe(16);
+  });
+
+  it('kontrola rozmiaru śledzi skalę <g>: 40 j. w scale(0.5) = 20 j.; odbicie, zapis wykładniczy; nieczytelne/matrix/<use> - błąd', () => {
+    expect(textsWithScale('<g transform="translate(5 5) scale(0.5)"><text x="0" y="0" font-size="40">a</text></g><text x="0" y="0" font-size="40">b</text>')).toEqual([
+      { text: 'a', size: 20 },
+      { text: 'b', size: 40 },
+    ]);
+    expect(transformScale('transform="scale(-0.5 0.5)"')).toBe(0.5);
+    expect(transformScale('transform="scale(1e-1)"')).toBeCloseTo(0.1);
+    expect(transformScale('transform="rotate(5) scale(2, 3)"')).toBe(2);
+    expect(() => transformScale('transform="scale(var(--s))"')).toThrow(/Nieczytelne scale/);
+    expect(() => transformScale('transform="matrix(1 0 0 1 0 0)"')).toThrow(/Nieobsługiwany transform/);
+    expect(() => textsWithScale('<use href="#x"/>')).toThrow(/<svg>\/<use>\/<symbol>/);
+  });
+
+  it('pusty napis w strings, "decorative" bez strings - błąd', () => {
+    const empty = bubbleScene();
+    empty.strings!.en!.podpis = ' ';
+    expect(() => composeScene(empty, { locale: 'pl' })).toThrow(/strings\.en\.podpis: pusty napis/);
+    const decorative: SceneSpec = { width: 900, height: 1600, items: [{ id: 'roslina', prop: 'plant', x: 0, y: 0, decorative: true }] };
+    expect(() => composeScene(decorative)).toThrow(/"decorative" ma sens tylko w scenie ze "strings"/);
   });
 
   it('skala telefonu jak w odtwarzaczu: contain = cała scena w 364×631, panorama = pełna wysokość obszaru', () => {

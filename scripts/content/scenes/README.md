@@ -88,7 +88,10 @@ Reguły sceny ze `strings` (błąd builda z nazwą sceny, elementu, slotu i jęz
 - **Minimum na telefonie:** 14 px (16 px na ekranie telefonu narysowanym w scenie: klocki z `PHONE_SCREEN_PROPS` albo `"phoneScreen": true`)
   w skali odtwarzacza na telefonie 390×844 - obszar sceny 364×631 px (`PHONE_SCENE_BOX`, zmierzony w dev harness). `"phone": "contain"`
   (domyślnie: wariant pionowy, zbliżenie - cała scena w tym obszarze) albo `"panorama"` (scena pozioma na pełną wysokość, przewijana w
-  bok). Tekst tła, którego nie trzeba czytać: `"decorative": true` na elemencie (bez minimum, ale nadal ze `strings`).
+  bok). Minimum obowiązuje także same cyfry (kwota, numer bywają wskazówką). Tekst tła, którego nie trzeba czytać: `"decorative": true`
+  na elemencie (bez minimum, ale nadal ze `strings`).
+- Slot liczy wysokość linii z akcentami i ogonkami (hhea czcionki: „Ż” nad linią, „ą/g” pod nią) - nic nie wychodzi poza prostokąt.
+  Twarda spacja (U+00A0) łączy słowa przy zawijaniu („z kolei”); pusty napis w `strings` to błąd.
 
 Sceny bez `strings` (moduły 1-2) budują się jak dotąd - jeden plik, tekst zamieniony na krzywe w obecnych rozmiarach, bez kontroli
 minimum (decyzja właściciela D-135: wyglądają jak wcześniej, czytelność przez zbliżenia).

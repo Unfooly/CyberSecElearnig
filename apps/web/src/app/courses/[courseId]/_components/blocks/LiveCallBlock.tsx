@@ -83,6 +83,8 @@ export default function LiveCallBlock({
   onReady,
   disabled = false,
   noTimeLimitDefault = false,
+  submitFailed = false,
+  onRetry,
   result,
 }: {
   block: ContentBlock;
@@ -92,6 +94,13 @@ export default function LiveCallBlock({
   disabled?: boolean;
   /** Ustawienie konta „Bez limitów czasu” (D-124): rozmowa bez limitu, bez przełącznika (serwer stosuje ustawienie konta przy ocenie). */
   noTimeLimitDefault?: boolean;
+  /**
+   * Zapis zakończonej rozmowy się nie udał (B-137, np. 400 - ścieżka z ciszą przy koncie „Bez limitów czasu”, gdy odczyt preferencji w
+   * page.tsx zawiódł): „Zadzwoń ponownie” wraca do ekranu przed połączeniem z czystą ścieżką - bez odświeżania strony.
+   */
+  submitFailed?: boolean;
+  /** Wołane przy „Zadzwoń ponownie” - CoursePlayer zdejmuje komunikat o błędzie (i `submitFailed`) z poprzedniego zapisu. */
+  onRetry?: () => void;
   /** Wynik (po zapisie albo podgląd „Wstecz”): ścieżka gracza i rozstrzygnięcie z serwera. */
   result?: { detail?: ResultDetail; answer?: LiveCallAnswer; points?: number };
 }) {
@@ -112,6 +121,9 @@ export default function LiveCallBlock({
   const [remainingMs, setRemainingMs] = useState(limitSec * 1000);
   const answerRef = useRef<HTMLButtonElement | null>(null);
   const endingRef = useRef<HTMLParagraphElement | null>(null);
+  // „Odbierz” - fokus po „Zadzwoń ponownie” (przycisk ponowienia znika, klawiatura nie może zgubić miejsca).
+  const pickUpRef = useRef<HTMLButtonElement | null>(null);
+  const redialed = useRef(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const timed = hasSilence && !noLimit;
   const node = call.nodes.find((candidate) => candidate.id === nodeId);
@@ -144,6 +156,20 @@ export default function LiveCallBlock({
     setPath([REJECT]);
     setEndingId(call.reject.slice(1));
     setStage('ended');
+  }
+
+  // „Zadzwoń ponownie” (B-137): tylko po nieudanym zapisie - przed zapisem rozmowy nie da się powtórzyć.
+  function redial() {
+    if (stage !== 'ended' || result || !submitFailed) return;
+    redialed.current = true;
+    onRetry?.();
+    setPath([]);
+    setLines([]);
+    setEndingId(null);
+    setNodeId(call.start);
+    setLineDone(false);
+    setRemainingMs(limitSec * 1000);
+    setStage('ring');
   }
 
   // „Dalej” w pasku zapisuje dopiero po zakończeniu rozmowy.
@@ -192,6 +218,8 @@ export default function LiveCallBlock({
   // też ramkę odtwarzacza).
   useEffect(() => {
     if (stage === 'call') answerRef.current?.focus({ preventScroll: true });
+    // Ekran przed połączeniem po ponowieniu (B-137); przy pierwszym montażu fokus zostaje na nagłówku bloku (D-076).
+    if (stage === 'ring' && path.length === 0 && redialed.current) pickUpRef.current?.focus({ preventScroll: true });
     if (stage === 'ended' && !result) endingRef.current?.focus({ preventScroll: true });
     const transcript = transcriptRef.current;
     if (transcript) transcript.scrollTop = transcript.scrollHeight;
@@ -258,6 +286,7 @@ export default function LiveCallBlock({
               )}
               <button
                 type="button"
+                ref={pickUpRef}
                 data-testid="live-call-answer"
                 disabled={disabled}
                 onClick={() => setStage('call')}
@@ -377,6 +406,18 @@ export default function LiveCallBlock({
               >
                 {shownEnding.narration.text}
               </p>
+            )}
+            {stage === 'ended' && !result && submitFailed && (
+              <button
+                type="button"
+                data-testid="live-call-redial"
+                disabled={disabled}
+                onClick={redial}
+                className={`inline-flex min-h-[48px] items-center gap-2 rounded-btn bg-success px-4 text-base font-semibold text-white hover:bg-success/90 ${FOCUS_RING}`}
+              >
+                <Phone aria-hidden="true" className="h-5 w-5" />
+                Zadzwoń ponownie
+              </button>
             )}
           </div>
 

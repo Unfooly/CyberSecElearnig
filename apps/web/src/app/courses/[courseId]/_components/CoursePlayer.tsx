@@ -74,6 +74,10 @@ interface RenderContext {
   onEvidence: (summary: EvidenceSummary) => void;
   /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
   noTimeLimits: boolean;
+  /** Ostatni zapis bieżącego bloku się nie udał (B-137): rozmowa na żywo pokazuje „Zadzwoń ponownie”. */
+  submitFailed: boolean;
+  /** Blok zaczyna od nowa po nieudanym zapisie (B-137, „Zadzwoń ponownie”) - komunikat o błędzie znika. */
+  onRetry: () => void;
   /** Scena (D-128): zapis stanu częściowego (obejrzane, zabrane) - po powrocie do modułu scena wraca w tym samym stanie. */
   onExplore: (blockId: string, state: SceneExploration) => void;
 }
@@ -119,6 +123,8 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         myAvatarUrl={ctx.myAvatarUrl}
         myInitials={ctx.myInitials}
         noTimeLimits={ctx.noTimeLimits}
+        submitFailed={ctx.submitFailed}
+        onRetry={ctx.onRetry}
       />
     );
   }
@@ -701,6 +707,8 @@ export default function CoursePlayer({
               onBriefingStep: trackBriefingStep(`l-${keyOf(state.currentBlockIndex)}`),
               caseNo,
               noTimeLimits,
+              submitFailed: error !== null,
+              onRetry: () => setError(null),
               blocks,
               onEvidence: setEvidence,
               onExplore: saveExploration,

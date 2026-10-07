@@ -64,6 +64,8 @@ function setup(
   props: {
     result?: { detail?: ResultDetail; answer?: { path: string[]; timed: boolean }; points?: number };
     noTimeLimitDefault?: boolean;
+    submitFailed?: boolean;
+    onRetry?: () => void;
     disabled?: boolean;
     block?: ContentBlock;
   } = {},
@@ -219,6 +221,33 @@ describe('LiveCallBlock', () => {
     expect(screen.getAllByTestId('live-call-choice')[0]).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: /Oddzwonię/ }));
     expect(screen.getByTestId('live-call-ending')).toHaveFocus();
+  });
+
+  it('B-137: bez błędu zapisu rozmowy nie da się powtórzyć', () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddzwonię/ }));
+    expect(screen.queryByTestId('live-call-redial')).toBeNull();
+  });
+
+  it('B-137: po nieudanym zapisie „Zadzwoń ponownie” wraca do ekranu przed połączeniem z czystą ścieżką', () => {
+    const onRetry = vi.fn();
+    const { onSubmit, ready } = setup({ submitFailed: true, onRetry });
+    expect(screen.queryByTestId('live-call-redial')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    fireEvent.click(screen.getByRole('button', { name: /Jaką liczbę mam wpisać/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Wpisuję 62/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zadzwoń ponownie' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('live-call')).toHaveAttribute('data-stage', 'ring');
+    expect(ready.current).toBeNull();
+    expect(screen.getByRole('button', { name: 'Odbierz' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    expect(screen.getByTestId('live-call-transcript')).not.toHaveTextContent('Wpisuję 62.');
+    fireEvent.click(screen.getByRole('button', { name: /Oddzwonię/ }));
+    act(() => ready.current!());
+    expect(onSubmit).toHaveBeenLastCalledWith({ path: ['oddzwonie'], timed: false });
   });
 
   it('zapis w toku (disabled): „Odbierz” zablokowane - rozmowa się nie zaczyna', () => {

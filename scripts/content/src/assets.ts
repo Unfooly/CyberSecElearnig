@@ -105,9 +105,26 @@ export interface AssetRef {
   value: string;
 }
 
-function expandAsset(node: unknown, path: string[], trail: string[]): { holder: Json; key: string; trail: string[] }[] {
+/**
+ * Grafika osobna na język (D-133, i18n-2): pole `{ pl: 'scenes/pl/x.svg', en: 'scenes/en/x.svg' }` - każdy język to osobny zasób. Klucz w
+ * lockfile jak w potoku narracji (pipeline.ts): `pl` BEZ sufiksu (ten sam klucz co zwykła ścieżka - pole już opublikowane przechodzi na
+ * `{ pl, en }` bez ponownej publikacji i bez osieroconego wpisu), inne języki `<blockId>#<ścieżka>@<język>`.
+ */
+function localeEntries(holder: Json, trail: string[]): { holder: Json; key: string; trail: string[]; locale: string }[] {
+  const locales = contentIndex.CONTENT_LOCALES as readonly string[];
+  return Object.keys(holder)
+    .filter((key) => locales.includes(key) && typeof holder[key] === 'string')
+    .map((locale) => ({ holder, key: locale, trail, locale }));
+}
+
+function expandAsset(node: unknown, path: string[], trail: string[]): { holder: Json; key: string; trail: string[]; locale?: string }[] {
   const [head, ...rest] = path;
-  if (rest.length === 0) return isObject(node) && typeof node[head] === 'string' ? [{ holder: node, key: head, trail: [...trail, head] }] : [];
+  if (rest.length === 0) {
+    if (!isObject(node)) return [];
+    const value = node[head];
+    if (typeof value === 'string') return [{ holder: node, key: head, trail: [...trail, head] }];
+    return isObject(value) && contentIndex.isLocalizedValue(value) ? localeEntries(value, [...trail, head]) : [];
+  }
   if (head === '*') {
     // Jak scripts/content/src/pipeline.ts's expand(): brak dopasowania (np. media.kind inny niż oczekiwany dla tej
     // ścieżki - pole po prostu nie istnieje) to cicho pusta lista, nie błąd - to samo pole może pasować do wielu
@@ -129,10 +146,11 @@ export function collectAssetRefs(raw: Json): AssetRef[] {
   for (const block of blocks) {
     if (!isObject(block) || typeof block.id !== 'string') continue;
     for (const path of ASSET_PATHS) {
-      for (const { holder, key, trail } of expandAsset(block, path, [])) {
+      for (const { holder, key, trail, locale } of expandAsset(block, path, [])) {
         const value = holder[key] as string;
         if (value.trim() === '') continue;
-        refs.push({ id: `${block.id}#${trail.join('.')}`, blockId: block.id, holder, key, value });
+        const suffix = locale && locale !== 'pl' ? `@${locale}` : '';
+        refs.push({ id: `${block.id}#${trail.join('.')}${suffix}`, blockId: block.id, holder, key, value });
       }
     }
   }

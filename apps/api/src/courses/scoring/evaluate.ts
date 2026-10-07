@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
-import { DEFAULT_WEIGHT, BlockType, idSchema, requiredItemIds } from '@cyberszkolo/content';
+import { DEFAULT_WEIGHT, BlockType, SWIPE_VERDICTS, idSchema, requiredItemIds } from '@cyberszkolo/content';
 import {
   DossierRowLike,
   HotspotLike,
@@ -115,11 +115,35 @@ export function evaluateSubmit(
   existing: BlockEntry | undefined,
   now: Date,
   opaque: OpaqueId,
-  // Ustawienia konta wpływające na ocenę: „Bez limitów czasu” (D-124) - rozmowa na żywo bez krawędzi ciszy.
-  account: { noTimeLimits?: boolean } = {},
+  // Ustawienia konta wpływające na ocenę: „Bez limitów czasu” (D-124) - rozmowa na żywo bez krawędzi ciszy. `simpleMode` - wersja kursu
+  // w trybie prostym (D-132): wybór oceniany z pierwszej próby /check.
+  account: { noTimeLimits?: boolean; simpleMode?: boolean } = {},
 ): SubmitResult {
   switch (block.type) {
+    case 'SWIPE_SORT': {
+      // D-132: wszystkie karty ocenione przez /check; wynik = trafione werdykty / karty. Bez `correct` (blok nie jest „dobrze/źle”).
+      if (answer !== undefined) parseAnswer(swipeSubmitAnswer, answer);
+      const checks = existing?.checks ?? [];
+      const cards = swipeCards(block);
+      if (cards.some((card) => !checks.some((check) => check.item === card.id))) {
+        throw new BadRequestException('Nie oceniono wszystkich wiadomości');
+      }
+      const hits = cards.filter((card) => checks.find((check) => check.item === card.id)?.correct).length;
+      return { entry: baseEntry(block, now, { points: cards.length > 0 ? hits / cards.length : 0, checks }), notesAdded: [] };
+    }
     case 'QUIZ':
+      if (account.simpleMode) {
+        // Tryb prosty (D-132): próby do skutku przez /check - „Dalej” dopiero po trafieniu; wynik z PIERWSZEJ próby.
+        const checks = existing?.checks ?? [];
+        const hit = checks.find((check) => check.correct);
+        if (!hit) throw new BadRequestException('Najpierw wybierz poprawną odpowiedź');
+        const first = checks[0].correct;
+        return {
+          entry: baseEntry(block, now, { answer: Number(hit.item), correct: first, points: first ? 1 : 0, checks }),
+          notesAdded: [],
+        };
+      }
+    // falls through
     case 'BRANCHING_SCENARIO': {
       const options: Record<string, any>[] = Array.isArray(block.options) ? block.options : [];
       if (typeof answer !== 'number' || !Number.isInteger(answer) || answer < 0 || answer >= options.length) {
@@ -505,6 +529,101 @@ export function evaluateChallenge(
     response: { blockId: block.id, lineId, correct, ...(correct && line.contradiction ? { line: { text: line.contradiction.challengeLine.text } } : {}) },
     notesAdded: correct ? [noteKey(block.id, lineId)] : [],
   };
+}
+
+// --- Tryb prosty i segregowanie wiadomości (D-132): ocena każdego kliknięcia od razu (/check) ------------------------------------------
+
+/** Podpowiedź (sekret `hint`) przychodzi w odpowiedzi /check od tylu błędnych kliknięć w bloku. */
+export const SIMPLE_HINT_AFTER_ERRORS = 2;
+
+const quizCheckAnswer = z.object({ option: z.number().int().min(0).max(7) }).strict();
+// Karta po id nieprzejrzystym (jak elementy ORDERING) i werdykt gracza.
+const swipeCheckAnswer = z.object({ card: idSchema, verdict: z.enum(SWIPE_VERDICTS) }).strict();
+// Zapis bloku SWIPE_SORT nie niesie odpowiedzi (werdykty są już w postępie z /check) - pusty obiekt albo brak pola.
+const swipeSubmitAnswer = z.object({}).strict();
+
+type SwipeCard = { id: string; correct: string; feedback: string };
+const swipeCards = (block: Block): SwipeCard[] => (Array.isArray(block.cards) ? block.cards : []);
+
+export interface CheckResponse {
+  blockId: string;
+  /** Ocena tego kliknięcia (`good`/`bad`) - nigdy pole `correct` z treści. */
+  result: 'good' | 'bad';
+  /** Jedno zdanie po kliknięciu (sekret treści dla tej odpowiedzi/karty - ujawniony dopiero po wyborze). */
+  feedback: string;
+  /** Podpowiedź bloku po SIMPLE_HINT_AFTER_ERRORS błędach. */
+  hint?: string;
+  /** Blok gotowy do zapisu („Dalej”): wybór trafiony albo wszystkie karty ocenione. */
+  done: boolean;
+}
+
+const errorCount = (checks: readonly { correct: boolean }[]) => checks.filter((check) => !check.correct).length;
+const simpleHint = (block: Block, checks: readonly { correct: boolean }[]) =>
+  errorCount(checks) >= SIMPLE_HINT_AFTER_ERRORS && typeof block.hint === 'string' ? block.hint : undefined;
+
+/**
+ * Ocena jednego kliknięcia (/check, D-132): QUIZ w trybie prostym (wybór - próby do skutku, wynik z PIERWSZEJ) i SWIPE_SORT (każda karta
+ * raz). Zapisuje próbę w postępie (`checks`, id z treści) zanim blok jest ukończony; zapis bloku („Dalej”) liczy wynik z tych prób.
+ */
+export function evaluateCheck(
+  block: Block,
+  answer: unknown,
+  existing: BlockEntry | undefined,
+  now: Date,
+  opaque: OpaqueId,
+  simpleMode: boolean,
+): { entry: BlockEntry; response: CheckResponse } {
+  const checks = existing?.checks ?? [];
+  let item: string;
+  let correct: boolean;
+  let feedback: string;
+  let done: boolean;
+  if (block.type === 'QUIZ' && simpleMode) {
+    const { option } = parseAnswer(quizCheckAnswer, answer);
+    const options: Record<string, any>[] = Array.isArray(block.options) ? block.options : [];
+    if (option >= options.length) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+    if (checks.some((check) => check.correct)) throw new BadRequestException('Ten wybór jest już rozstrzygnięty');
+    item = String(option);
+    if (checks.some((check) => check.item === item)) throw new BadRequestException('Ta odpowiedź była już sprawdzona');
+    correct = options[option].correct === true;
+    feedback = typeof options[option].feedback === 'string' ? options[option].feedback : '';
+    done = correct;
+  } else if (block.type === 'SWIPE_SORT') {
+    const { card, verdict } = parseAnswer(swipeCheckAnswer, answer);
+    const cards = swipeCards(block);
+    const [realId] = toRealIds(block, opaque, cards, [card]);
+    if (checks.some((check) => check.item === realId)) throw new BadRequestException('Ta karta jest już oceniona');
+    const target = cards.find((candidate) => candidate.id === realId)!;
+    item = realId;
+    correct = target.correct === verdict;
+    feedback = target.feedback;
+    done = checks.length + 1 >= cards.length;
+  } else {
+    throw new BadRequestException('Ten blok nie przyjmuje sprawdzania odpowiedzi');
+  }
+  const next = [...checks, { item, correct }];
+  const hint = simpleHint(block, next);
+  return {
+    entry: { type: block.type, done: false, answeredAt: now.toISOString(), weight: weightOf(block), checks: next },
+    response: { blockId: block.id, result: correct ? 'good' : 'bad', feedback, ...(hint ? { hint } : {}), done },
+  };
+}
+
+/** Widok prób /check dla klienta (odświeżenie strony w trakcie bloku, D-132): karty po id nieprzejrzystym, wybór po indeksie. */
+export function checksView(block: Block, entry: BlockEntry, opaque: OpaqueId) {
+  const checks = entry.checks ?? [];
+  const feedbackOf = (item: string): string => {
+    if (block.type === 'SWIPE_SORT') return swipeCards(block).find((card) => card.id === item)?.feedback ?? '';
+    const option = Array.isArray(block.options) ? block.options[Number(item)] : undefined;
+    return typeof option?.feedback === 'string' ? option.feedback : '';
+  };
+  const view = checks.map((check) => ({
+    item: block.type === 'SWIPE_SORT' ? opaque(block.id, check.item) : Number(check.item),
+    result: check.correct ? ('good' as const) : ('bad' as const),
+    feedback: feedbackOf(check.item),
+  }));
+  const hint = simpleHint(block, checks);
+  return { checks: view, ...(hint ? { hint } : {}) };
 }
 
 /**

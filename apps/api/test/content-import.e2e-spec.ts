@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { fullModule } from '@cyberszkolo/content/dist/fixtures';
+import { fullModule, simpleModule } from '@cyberszkolo/content/dist/fixtures';
 import { hashContent, parseModule } from '@cyberszkolo/content/dist/node';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -83,6 +83,19 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(versions.map((v) => v.version)).toEqual([1, 2]);
     const course = await prisma.course.findUniqueOrThrow({ where: { id: first.courseId } });
     expect(course.durationMinutes).toBe(content.durationMinutes + 5);
+  });
+
+  it('tryb prosty (D-132): wersja z simpleMode; włączenie go przy tej samej treści tworzy nową wersję', async () => {
+    const plain = parseModule({ ...simpleModule(), slug: slug('prosty'), simpleMode: undefined });
+    const first = await prisma.$transaction((tx) => importModule(tx, plain));
+    const simple = parseModule({ ...simpleModule(), slug: slug('prosty') });
+    const second = await prisma.$transaction((tx) => importModule(tx, simple));
+
+    expect(second).toMatchObject({ courseId: first.courseId, versionCreated: true, version: 2 });
+    const versions = await prisma.courseVersion.findMany({ where: { courseId: first.courseId }, orderBy: { version: 'asc' } });
+    expect(versions.map((v) => v.simpleMode)).toEqual([false, true]);
+    expect(versions[0].contentHash).toBe(hashContent(plain.blocks));
+    expect((await prisma.$transaction((tx) => importModule(tx, simple))).versionCreated).toBe(false);
   });
 
   it('kurs utworzony wprost (sprzed importu, bez żadnej wersji) dostaje wersję 1 = kopia jego STAREJ treści, potem wersję 2 z importu', async () => {

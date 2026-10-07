@@ -10,6 +10,8 @@ export interface ResolvedVersion {
   schemaVersion: number;
   // Bloki z id (dla wersji 1 nadanymi deterministycznie: b<indeks>).
   blocks: Block[];
+  // Tryb prosty (D-132): ocena każdego kliknięcia od razu (/check) - także dla QUIZ.
+  simpleMode: boolean;
 }
 
 export function toResolved(version: CourseVersion): ResolvedVersion {
@@ -23,7 +25,7 @@ export function toResolved(version: CourseVersion): ResolvedVersion {
   // walidacji zod) - zostają bez zmian i bez kopiowania.
   const withIds = version.schemaVersion === 1 ? withLegacyIds(raw) : raw;
   const blocks = (version.schemaVersion >= 6 ? localizeContent(withIds, DEFAULT_CONTENT_LOCALE) : withIds) as Block[];
-  return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks };
+  return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks, simpleMode: version.simpleMode === true };
 }
 
 /**

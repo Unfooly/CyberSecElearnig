@@ -106,7 +106,10 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
 
   const maxVersion = await tx.courseVersion.aggregate({ where: { courseId }, _max: { version: true } });
   const nextVersion = (maxVersion._max.version ?? 0) + 1;
-  const contentHash = hashContent(contentModule.blocks);
+  // Tryb prosty (D-132) zmienia ocenę, więc jest częścią wersji: włączenie go przy tej samej treści daje nową wersję. Moduł bez trybu
+  // prostego ma skrót samych bloków jak dotąd (import modułów 1 i 2 nie tworzy nowych wersji).
+  const simpleMode = contentModule.simpleMode === true;
+  const contentHash = hashContent(simpleMode ? { blocks: contentModule.blocks, simpleMode } : contentModule.blocks);
   const created = await tx.courseVersion.createMany({
     data: [
       {
@@ -116,6 +119,7 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
         contentHash,
         contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
         blockCount: contentModule.blocks.length,
+        simpleMode,
       },
     ],
     skipDuplicates: true,

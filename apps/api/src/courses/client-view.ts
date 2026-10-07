@@ -13,6 +13,7 @@ import {
   osintDetail,
   osintSecretEndings,
   pickReaction,
+  checksView,
 } from './scoring/evaluate';
 import { recordingDetail } from './scoring/recording';
 
@@ -204,6 +205,9 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
     // Scena (D-128): stan częściowy - obejrzane przedmioty i zabrane dowody NIEUKOŃCZONEGO bloku, żeby po powrocie do kursu scena
     // wyglądała tak, jak ją zostawiono. Id przedmiotów są publiczne (pole `hotspots[].id`); tylko te, które nadal są w treści bloku.
     const exploration = block?.type === 'SCENE_HOTSPOTS' && !entry.done ? explorationView(block, entry) : undefined;
+    // Tryb prosty i SWIPE_SORT (D-132): własne próby /check (werdykt i zdanie już pokazane graczowi) - po odświeżeniu strony blok wraca
+    // w tym samym stanie. Karty po id nieprzejrzystym (jak w /start); bez `opaque` (starsze wywołania) - wcale.
+    const checks = block && opaque && Array.isArray(entry.checks) && entry.checks.length > 0 ? checksView(block, entry, opaque) : undefined;
     if (block && entry.done && opaque) {
       if ((block.type === 'QUIZ' || block.type === 'BRANCHING_SCENARIO') && typeof entry.answer === 'number') answer = entry.answer;
       if (block.type === 'EMAIL_ANALYSIS' && Array.isArray(entry.selected)) {
@@ -244,6 +248,7 @@ export function clientProgress(progress: ProgressV2, blocks: Block[], opaque?: O
       ...(detail !== undefined ? { detail } : {}),
       ...(challenges !== undefined ? { challenges } : {}),
       ...(exploration !== undefined ? { exploration } : {}),
+      ...(checks !== undefined ? checks : {}),
     };
   }
   // Klucz notatki (`<blockId>.<itemId>`) zawiera id elementu Z TREŚCI (np. kryterium maila), więc do klienta idzie tylko blockId, treść i

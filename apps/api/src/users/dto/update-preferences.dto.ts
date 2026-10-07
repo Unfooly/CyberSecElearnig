@@ -1,4 +1,5 @@
-import { IsBoolean, ValidateIf } from 'class-validator';
+import { IsBoolean, IsIn, ValidateIf } from 'class-validator';
+import { CONTENT_LOCALES } from '@cyberszkolo/content';
 
 // Preferencje WŁASNEGO konta. Każde pole opcjonalne (zapis tylko podanych); pusty zapis odrzuca serwis. ValidationPipe (whitelist +
 // forbidNonWhitelisted) odrzuca każde pole spoza DTO, więc nie da się tędy zmienić np. roli, organizacji ani avatara.
@@ -14,4 +15,9 @@ export class UpdatePreferencesDto {
   @ValidateIf(present)
   @IsBoolean()
   noTimeLimits?: boolean;
+
+  // Język szkoleń (D-133): obsługiwany język treści albo null - „wg przeglądarki” (Accept-Language, potem EN).
+  @ValidateIf(present)
+  @IsIn([...CONTENT_LOCALES, null])
+  contentLocale?: string | null;
 }

@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { Role, UserStatus } from '@cyberszkolo/shared';
+import { isContentLocale } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EmailService } from '../email/email.service';
@@ -34,11 +35,13 @@ import { assertSeatsAvailable, lockSeats } from './seats';
 const AVATAR_VALIDATION_MESSAGE = 'avatarUrl musi być jednym z dostępnych presetów.';
 
 // Preferencje własnego konta (GET/PATCH /users/me/preferences): lektor w odtwarzaczu i „Bez limitów czasu” (D-124).
+// Język szkoleń (D-133): 'pl' | 'en' albo null - wg przeglądarki.
 export interface UserPreferences {
   narrationEnabled: boolean;
   noTimeLimits: boolean;
+  contentLocale: string | null;
 }
-const PREFERENCES_SELECT = { narrationEnabled: true, noTimeLimits: true } as const;
+const PREFERENCES_SELECT = { narrationEnabled: true, noTimeLimits: true, contentLocale: true } as const;
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
@@ -422,6 +425,8 @@ export class UsersService {
     const data: Partial<UserPreferences> = {};
     if (typeof preferences.narrationEnabled === 'boolean') data.narrationEnabled = preferences.narrationEnabled;
     if (typeof preferences.noTimeLimits === 'boolean') data.noTimeLimits = preferences.noTimeLimits;
+    // `null` to świadomy wybór („wg przeglądarki”), nie brak pola - DTO dopuszcza wyłącznie CONTENT_LOCALES albo null.
+    if (preferences.contentLocale === null || isContentLocale(preferences.contentLocale)) data.contentLocale = preferences.contentLocale;
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('Brak ustawień do zapisania.');
     }

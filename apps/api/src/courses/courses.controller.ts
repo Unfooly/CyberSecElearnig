@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@cyberszkolo/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -70,8 +70,9 @@ export class CoursesController {
   // auth.controller.ts).
   @Post(':courseId/start')
   @HttpCode(HttpStatus.OK)
-  startOrContinue(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string) {
-    return this.coursesService.startOrContinue(user.organizationId, user.userId, courseId);
+  // Accept-Language (D-133): język przeglądarki gracza - drugi po ustawieniu konta wybór języka treści (BFF przekazuje nagłówek).
+  startOrContinue(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string, @Headers('accept-language') acceptLanguage?: string) {
+    return this.coursesService.startOrContinue(user.organizationId, user.userId, courseId, acceptLanguage);
   }
 
   @Post(':courseId/progress')
@@ -80,8 +81,9 @@ export class CoursesController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId') courseId: string,
     @Body() dto: SubmitBlockProgressDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.submitBlockProgress(user.organizationId, user.userId, courseId, dto);
+    return this.coursesService.submitBlockProgress(user.organizationId, user.userId, courseId, dto, acceptLanguage);
   }
 
   // Dokument HTML bloku EMBEDDED_HTML ({ html }): tylko dla właściciela przypisania i tylko do bloku bieżącego lub wcześniejszego.
@@ -92,8 +94,9 @@ export class CoursesController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('courseId') courseId: string,
     @Param('blockId') blockId: string,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.getEmbeddedHtml(user.organizationId, user.userId, courseId, blockId);
+    return this.coursesService.getEmbeddedHtml(user.organizationId, user.userId, courseId, blockId, acceptLanguage);
   }
 
   // Próba odpowiedzi w bloku TEXT_INPUT_GUIDED: zwraca werdykt i kolejną podpowiedź, nie przesuwa kursu ("Dalej" to /progress).
@@ -106,8 +109,9 @@ export class CoursesController {
     @Param('courseId') courseId: string,
     @Param('blockId') blockId: string,
     @Body() dto: AttemptBlockDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.attemptBlock(user.organizationId, user.userId, courseId, blockId, dto.answer);
+    return this.coursesService.attemptBlock(user.organizationId, user.userId, courseId, blockId, dto.answer, acceptLanguage);
   }
 
   // Podważenie kwestii przesłuchania (INTERROGATION, D-118): serwer sprawdza wskazany dowód; jedna próba na kwestię, kurs się nie przesuwa.
@@ -120,8 +124,9 @@ export class CoursesController {
     @Param('courseId') courseId: string,
     @Param('blockId') blockId: string,
     @Body() dto: ChallengeBlockDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.challengeBlock(user.organizationId, user.userId, courseId, blockId, dto.lineId, dto.noteRef);
+    return this.coursesService.challengeBlock(user.organizationId, user.userId, courseId, blockId, dto.lineId, dto.noteRef, acceptLanguage);
   }
 
   // Ocena jednego kliknięcia (D-132): wybór w trybie prostym i karta SWIPE_SORT - werdykt, zdanie i podpowiedź po 2 błędach; kurs się nie
@@ -135,8 +140,9 @@ export class CoursesController {
     @Param('courseId') courseId: string,
     @Param('blockId') blockId: string,
     @Body() dto: CheckBlockDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.checkBlock(user.organizationId, user.userId, courseId, blockId, dto);
+    return this.coursesService.checkBlock(user.organizationId, user.userId, courseId, blockId, dto, acceptLanguage);
   }
 
   // Stan częściowy sceny (SCENE_HOTSPOTS, D-128): obejrzane przedmioty i zabrane dowody bieżącego bloku - zapis przy każdej zmianie w
@@ -150,7 +156,8 @@ export class CoursesController {
     @Param('courseId') courseId: string,
     @Param('blockId') blockId: string,
     @Body() dto: ExploreBlockDto,
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.coursesService.exploreBlock(user.organizationId, user.userId, courseId, blockId, { visited: dto.visited, noted: dto.noted });
+    return this.coursesService.exploreBlock(user.organizationId, user.userId, courseId, blockId, { visited: dto.visited, noted: dto.noted }, acceptLanguage);
   }
 }

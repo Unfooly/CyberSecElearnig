@@ -18,7 +18,7 @@ function validModule(overrides: Partial<ReturnType<typeof fullModule>> = {}) {
 
 interface SpyOverrides {
   course?: Partial<Record<'findUnique' | 'create' | 'update', jest.Mock>>;
-  courseVersion?: Partial<Record<'count' | 'createMany' | 'aggregate', jest.Mock>>;
+  courseVersion?: Partial<Record<'count' | 'createMany' | 'aggregate' | 'updateMany', jest.Mock>>;
 }
 
 /** "tx" ograniczony do course/courseVersion: dostęp do JAKIEGOKOLWIEK innego modelu rzuca od razu. */
@@ -33,6 +33,7 @@ function spyTx(overrides: SpyOverrides = {}) {
     count: jest.fn().mockResolvedValue(0),
     createMany: jest.fn().mockResolvedValue({ count: 1 }),
     aggregate: jest.fn().mockResolvedValue({ _max: { version: null } }),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     ...overrides.courseVersion,
   };
   const target: Record<string, unknown> = { course, courseVersion };
@@ -92,16 +93,19 @@ describe('content-import: importModule (szpieg Prisma - wyłącznie course/cours
   });
 
   it('identyczna treść: createMany pomija duplikat (unikalność contentHash), versionCreated=false', async () => {
-    const { tx } = spyTx({
+    const { tx, courseVersion } = spyTx({
       course: { findUnique: jest.fn().mockResolvedValue({ id: 'course-1', contentBlocks: [] }) },
       courseVersion: {
         count: jest.fn().mockResolvedValue(1),
         aggregate: jest.fn().mockResolvedValue({ _max: { version: 3 } }),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     });
     const result = await importModule(tx, validModule({ slug: 'bez-zmian' }));
     expect(result.versionCreated).toBe(false);
+    // D-133: tytuł (tylko do wyświetlania, poza skrótem) odświeżony w istniejącej wersji o tym samym skrócie.
+    expect(courseVersion.updateMany).toHaveBeenCalledWith({ where: { courseId: 'course-1', contentHash: expect.any(String) }, data: { title: expect.anything() } });
   });
 });
 

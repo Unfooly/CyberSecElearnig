@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { AssignmentStatus, Course, CourseAssignment, CourseVersion, Prisma } from '@prisma/client';
-import { DEFAULT_CONTENT_LOCALE, localizeContent, withLegacyIds } from '@cyberszkolo/content';
+import { ContentLocale, DEFAULT_CONTENT_LOCALE, courseContentLocale, isContentLocale, localizeContent, withLegacyIds } from '@cyberszkolo/content';
 import { hashContent } from '@cyberszkolo/content/dist/node';
 import { Block } from './scoring/evaluate';
 
@@ -12,20 +12,44 @@ export interface ResolvedVersion {
   blocks: Block[];
   // Tryb prosty (D-132): ocena każdego kliknięcia od razu (/check) - także dla QUIZ.
   simpleMode: boolean;
+  // Język treści tej odpowiedzi (D-133) i czy to `pl` zamiast języka gracza (kurs bez jego języka - plakietka „Available in Polish only”).
+  locale: ContentLocale;
+  localeFallback: boolean;
+  // Języki, w których wersja jest kompletna (przełącznik języka na starcie kursu).
+  locales: ContentLocale[];
+  // Tytuł modułu w języku treści (wersje sprzed D-133: brak - tytuł z `courses.title`).
+  title?: string;
 }
 
-export function toResolved(version: CourseVersion): ResolvedVersion {
+/**
+ * Wersja rozwinięta do JEDNEGO języka (D-133): języka gracza, jeśli wersja go ma (`locales`), inaczej `pl` - nigdy mieszanka. Bez języka
+ * gracza (gamifikacja, skrypty) - `pl`. Ocena, postęp, notatki i toClientBlock pracują na tej treści, więc całe żądanie jest w jednym języku.
+ */
+export function toResolved(version: CourseVersion, playerLocale: ContentLocale = DEFAULT_CONTENT_LOCALE): ResolvedVersion {
   if (!Array.isArray(version.contentBlocks)) {
     // Błąd danych administracyjnych (treść kursu), nie błąd wejścia klienta - stąd 500, nie 400.
     throw new InternalServerErrorException('Kurs ma nieprawidłowo zapisaną treść');
   }
   const raw = version.contentBlocks as unknown[];
   // schemaVersion 6: wersja przechowuje wszystkie języki; ocena, postęp i toClientBlock pracują na treści rozwiniętej do języka
-  // przypisania (dziś zawsze `pl` - wybór języka to faza EN). Starsze wersje nie mają pól wielojęzycznych (v1 nie przeszła nawet
-  // walidacji zod) - zostają bez zmian i bez kopiowania.
+  // tej odpowiedzi. Starsze wersje nie mają pól wielojęzycznych (v1 nie przeszła nawet walidacji zod) - zostają bez zmian i bez kopiowania.
+  const locales = (version.locales ?? []).filter(isContentLocale);
+  const available = locales.includes(DEFAULT_CONTENT_LOCALE) ? locales : [DEFAULT_CONTENT_LOCALE, ...locales];
+  const { locale, fallback } = courseContentLocale(playerLocale, available);
   const withIds = version.schemaVersion === 1 ? withLegacyIds(raw) : raw;
-  const blocks = (version.schemaVersion >= 6 ? localizeContent(withIds, DEFAULT_CONTENT_LOCALE) : withIds) as Block[];
-  return { id: version.id, version: version.version, schemaVersion: version.schemaVersion, blocks, simpleMode: version.simpleMode === true };
+  const blocks = (version.schemaVersion >= 6 ? localizeContent(withIds, locale) : withIds) as Block[];
+  const title = version.title === null || version.title === undefined ? undefined : localizeContent(version.title, locale);
+  return {
+    ...(typeof title === 'string' ? { title } : {}),
+    id: version.id,
+    version: version.version,
+    schemaVersion: version.schemaVersion,
+    blocks,
+    simpleMode: version.simpleMode === true,
+    locale,
+    localeFallback: fallback,
+    locales: available,
+  };
 }
 
 /**
@@ -77,11 +101,13 @@ async function ensureLegacyVersion(tx: Prisma.TransactionClient, course: Course)
 export async function resolveVersion(
   tx: Prisma.TransactionClient,
   assignment: CourseAssignment & { course: Course },
+  // Język gracza (D-133: konto > przeglądarka > EN) - treść w nim, jeśli wersja go ma; inaczej `pl`.
+  playerLocale: ContentLocale = DEFAULT_CONTENT_LOCALE,
 ): Promise<ResolvedVersion> {
   if (assignment.courseVersionId) {
     const pinned = await tx.courseVersion.findUnique({ where: { id: assignment.courseVersionId } });
     if (!pinned) throw new InternalServerErrorException('Przypięta wersja kursu nie istnieje');
-    return toResolved(pinned);
+    return toResolved(pinned, playerLocale);
   }
 
   const started =
@@ -103,7 +129,7 @@ export async function resolveVersion(
       where: { id: assignment.id, organizationId: assignment.organizationId },
       select: { courseVersion: true },
     });
-    if (current?.courseVersion) return toResolved(current.courseVersion);
+    if (current?.courseVersion) return toResolved(current.courseVersion, playerLocale);
   }
-  return toResolved(version);
+  return toResolved(version, playerLocale);
 }

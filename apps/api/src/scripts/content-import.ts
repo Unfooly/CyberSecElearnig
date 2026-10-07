@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { ContentModule, ContentValidationError, DEFAULT_CONTENT_LOCALE, localizeContent } from '@cyberszkolo/content';
+import { ContentModule, ContentValidationError, DEFAULT_CONTENT_LOCALE, localizeContent, moduleLocales } from '@cyberszkolo/content';
 import { hashContent, moduleWarnings, parseModule } from '@cyberszkolo/content/dist/node';
 import { buildLegacyVersionData } from '../courses/course-versions';
 
@@ -86,7 +86,7 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
   }
 
   // Metadane kursu (kolumny tekstowe katalogu) w języku domyślnym treści: schemaVersion 6 zapisuje je jako { pl, en? }, a katalog
-  // nie ma jeszcze wyboru języka (faza EN). Wersja treści (contentBlocks) przechowuje wszystkie języki.
+  // pokazuje dziś tylko polski (B-145). Wersja treści (contentBlocks) i jej tytuł przechowują wszystkie języki (D-133).
   const meta = localizeContent({ title: contentModule.title, subtitle: contentModule.subtitle, objectives: contentModule.objectives }, DEFAULT_CONTENT_LOCALE);
   const courseData = {
     title: meta.title,
@@ -109,7 +109,11 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
   // Tryb prosty (D-132) zmienia ocenę, więc jest częścią wersji: włączenie go przy tej samej treści daje nową wersję. Moduł bez trybu
   // prostego ma skrót samych bloków jak dotąd (import modułów 1 i 2 nie tworzy nowych wersji).
   const simpleMode = contentModule.simpleMode === true;
-  const contentHash = hashContent(simpleMode ? { blocks: contentModule.blocks, simpleMode } : contentModule.blocks);
+  // Języki kursu (D-133) też są częścią wersji (decydują o języku treści gracza); ['pl'] (domyślne) nie zmienia skrótu - moduły bez
+  // `locales` mają skrót jak dotąd. Tytuł wersji (wszystkie języki) - tylko do wyświetlania, poza skrótem.
+  const locales = moduleLocales(contentModule);
+  const extra = { ...(simpleMode ? { simpleMode } : {}), ...(locales.length > 1 ? { locales } : {}) };
+  const contentHash = hashContent(Object.keys(extra).length > 0 ? { blocks: contentModule.blocks, ...extra } : contentModule.blocks);
   const created = await tx.courseVersion.createMany({
     data: [
       {
@@ -120,10 +124,17 @@ export async function importModule(tx: Prisma.TransactionClient, contentModule: 
         contentBlocks: contentModule.blocks as unknown as Prisma.InputJsonValue,
         blockCount: contentModule.blocks.length,
         simpleMode,
+        locales,
+        title: contentModule.title as Prisma.InputJsonValue,
       },
     ],
     skipDuplicates: true,
   });
+  // Tytuł jest poza skrótem (tylko do wyświetlania): poprawka samego tytułu przy tych samych blokach nie tworzy wersji, więc aktualizujemy go
+  // w istniejącej wersji o tym skrócie - odtwarzacz pokazuje poprawiony tytuł od razu, jak katalog (`courses.title`).
+  if (created.count === 0) {
+    await tx.courseVersion.updateMany({ where: { courseId, contentHash }, data: { title: contentModule.title as Prisma.InputJsonValue } });
+  }
 
   return { slug: contentModule.slug, courseId, courseCreated: !existing, versionCreated: created.count > 0, version: nextVersion };
 }

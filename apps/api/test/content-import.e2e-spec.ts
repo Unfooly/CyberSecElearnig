@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { fullModule, simpleModule } from '@cyberszkolo/content/dist/fixtures';
+import { fullModule, fullModuleV6, simpleModule } from '@cyberszkolo/content/dist/fixtures';
 import { hashContent, parseModule } from '@cyberszkolo/content/dist/node';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -96,6 +96,25 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(versions.map((v) => v.simpleMode)).toEqual([false, true]);
     expect(versions[0].contentHash).toBe(hashContent(plain.blocks));
     expect((await prisma.$transaction((tx) => importModule(tx, simple))).versionCreated).toBe(false);
+  });
+
+  it('języki kursu (D-133): wersja z `locales` i tytułem; bez pola - [pl] i skrót jak dotąd; dodanie języka tworzy nową wersję', async () => {
+    const plOnly = parseModule({ ...fullModuleV6(), slug: slug('jezyki') });
+    const first = await prisma.$transaction((tx) => importModule(tx, plOnly));
+    const bilingual = parseModule({ ...fullModuleV6(), slug: slug('jezyki'), title: { pl: 'Sprawa', en: 'Case' }, locales: ['pl', 'en'] });
+    const second = await prisma.$transaction((tx) => importModule(tx, bilingual));
+
+    expect(second).toMatchObject({ courseId: first.courseId, versionCreated: true, version: 2 });
+    const versions = await prisma.courseVersion.findMany({ where: { courseId: first.courseId }, orderBy: { version: 'asc' } });
+    expect(versions.map((v) => v.locales)).toEqual([['pl'], ['pl', 'en']]);
+    expect(versions[0].contentHash).toBe(hashContent(plOnly.blocks));
+    expect(versions[1].title).toEqual({ pl: 'Sprawa', en: 'Case' });
+
+    // Ta sama treść, języki w innej kolejności - bez nowej wersji; poprawiony sam tytuł trafia do istniejącej wersji.
+    const retitled = parseModule({ ...fullModuleV6(), slug: slug('jezyki'), title: { pl: 'Sprawa X', en: 'Case X' }, locales: ['en', 'pl'] });
+    expect((await prisma.$transaction((tx) => importModule(tx, retitled))).versionCreated).toBe(false);
+    const latest = await prisma.courseVersion.findFirstOrThrow({ where: { courseId: first.courseId }, orderBy: { version: 'desc' } });
+    expect(latest).toMatchObject({ version: 2, locales: ['pl', 'en'], title: { pl: 'Sprawa X', en: 'Case X' } });
   });
 
   it('kurs utworzony wprost (sprzed importu, bez żadnej wersji) dostaje wersję 1 = kopia jego STAREJ treści, potem wersję 2 z importu', async () => {

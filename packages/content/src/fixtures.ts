@@ -711,6 +711,16 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   for (const option of blocks.QUIZ.options as Record<string, unknown>[]) option.outcome = 'wrong';
   // Podpowiedź trybu prostego (D-132) - sekret; fullModule() bez niej (moduł 1 i 2 nie są w trybie prostym).
   blocks.QUIZ.hint = `${SECRET_MARKER}-quiz-hint`;
+  // Opisy grafik z tekstem wpalonym (D-133) - publiczne; tylko tutaj (fullModule() bez zmian, reguła 9).
+  Object.assign(blocks.SUMMARY.closing as Record<string, unknown>, {
+    alt: 'Raport sprawy w teczce.',
+    stampAlt: 'Pieczęć: Sprawa zamknięta.',
+    noteAlt: 'Liścik komisarza: Dobra robota.',
+  });
+  const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
+  steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';
+  const caseFile = steps.find((step) => step.kind === 'caseFile');
+  if (caseFile) caseFile.closedAlt = 'Zamknięta teczka z napisem PRIORYTET.';
   for (const option of blocks.BRANCHING_SCENARIO.options as Record<string, unknown>[]) option.correct = false;
   // reactions.result jest w schemacie na KAŻDYM typie (baseShape), więc klasyfikacja obejmuje go wszędzie - ale semantycznie
   // wolno go mieć tylko blokom ocenianym, i tylko z JEDNYM z when/minScore (semantics.ts, reactionErrors). fullBlocks() trzyma

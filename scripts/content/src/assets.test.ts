@@ -253,6 +253,59 @@ describe('runAssetsPipeline: hotspots[].media (B-086/D-071)', () => {
   });
 });
 
+describe('runAssetsPipeline: grafika osobna na język (D-133, i18n-2)', () => {
+  it('przejście zwykłej ścieżki (już opublikowanej) na { pl, en }: pl bez ponownej publikacji i bez osieroconego wpisu, en - nowy zasób', async () => {
+    const store = new MemoryStore();
+    await writeFile(modulePath, JSON.stringify({ ...moduleWithAssets(), schemaVersion: 6 }));
+    await runAssetsPipeline(params({ store }));
+    const published = JSON.parse(await readFile(modulePath, 'utf8'));
+    const scene = published.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS');
+    const plKey = scene.image as string;
+    scene.image = { pl: plKey, en: 'en/scena.png' };
+    await writeFile(modulePath, JSON.stringify(published));
+    await mkdir(join(assetsDir, 'en'), { recursive: true });
+    await writeFile(join(assetsDir, 'en', 'scena.png'), new Uint8Array([...PNG, 7]));
+
+    const result = await runAssetsPipeline(params({ store }));
+    expect(result.published).toBe(1);
+    const after = JSON.parse(await readFile(modulePath, 'utf8')).blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS');
+    expect(after.image.pl).toBe(plKey);
+    expect(after.image.en).toMatch(/^assets\/sprawa-testowa\/en\/scena\.[0-9a-f]{8}\.png$/);
+    expect((await runAssetsPipeline(params({ store, check: true }))).problems).toEqual([]);
+  });
+
+  it('pole { pl, en }: każdy język to osobny zasób (pl - klucz locka jak zwykła ścieżka, en - @en); drugi przebieg i --check bez zmian', async () => {
+    // Pola wielojęzyczne wymagają schemaVersion 6 (fixtura jest w v5).
+    const module = { ...moduleWithAssets(), schemaVersion: 6 } as unknown as { blocks: Record<string, unknown>[] };
+    const scene = module.blocks.find((block) => block.type === 'SCENE_HOTSPOTS') as { id: string; image: unknown };
+    scene.image = { pl: 'pl/scena.png', en: 'en/scena.png' };
+    expect(collectAssetRefs(module).filter((ref) => ref.id.startsWith(`${scene.id}#image`)).map((ref) => [ref.id, ref.value])).toEqual([
+      [`${scene.id}#image`, 'pl/scena.png'],
+      [`${scene.id}#image@en`, 'en/scena.png'],
+    ]);
+
+    await writeFile(modulePath, JSON.stringify(module));
+    await mkdir(join(assetsDir, 'pl'), { recursive: true });
+    await mkdir(join(assetsDir, 'en'), { recursive: true });
+    await writeFile(join(assetsDir, 'pl', 'scena.png'), PNG);
+    await writeFile(join(assetsDir, 'en', 'scena.png'), new Uint8Array([...PNG, 9]));
+    const store = new MemoryStore();
+    const result = await runAssetsPipeline(params({ store }));
+    expect(result.published).toBe(3); // pl, en i avatar postaci
+
+    const published = JSON.parse(await readFile(modulePath, 'utf8'));
+    const image = published.blocks.find((b: { type: string }) => b.type === 'SCENE_HOTSPOTS').image;
+    expect(image.pl).toMatch(/^assets\/sprawa-testowa\/pl\/scena\.[0-9a-f]{8}\.png$/);
+    expect(image.en).toMatch(/^assets\/sprawa-testowa\/en\/scena\.[0-9a-f]{8}\.png$/);
+    expect(image.pl).not.toBe(image.en);
+    const lock = JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8'));
+    expect(lock.entries[`${scene.id}#image@en`]).toMatchObject({ original: 'en/scena.png', key: image.en });
+
+    expect((await runAssetsPipeline(params({ store }))).published).toBe(0);
+    expect((await runAssetsPipeline(params({ store, check: true }))).problems).toEqual([]);
+  });
+});
+
 describe('assertAssetPathsClassified', () => {
   const real = requireCjs('../../../packages/content/dist/index.js') as { FIELD_CLASSIFICATION: Record<string, { client: string[]; secret: string[] }> };
   const clone = () => JSON.parse(JSON.stringify(real.FIELD_CLASSIFICATION)) as Record<string, { client: string[]; secret: string[] }>;

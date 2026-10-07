@@ -116,6 +116,11 @@ jobs:
       - name: Testy higieny dysku (scripts/ops)
         run: node --test scripts/ops/disk-hygiene.test.mjs
 
+      # Kopia zapasowa bazy (docs/ops/BACKUP.md, B-117): rola tylko do odczytu, szyfrowanie przed wysyłką, sekrety poza logami,
+      # próba odtworzenia nigdy na produkcji.
+      - name: Testy kopii zapasowej bazy (scripts/ops)
+        run: node --test scripts/ops/db-backup.test.mjs
+
   # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
   # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
   # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga

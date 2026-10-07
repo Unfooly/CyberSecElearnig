@@ -8,6 +8,11 @@ node_modules/
 .env.*.local
 # Produkcyjny plik konfiguracji na VPS (wzór: .env.prod.example) - zawiera sekrety
 .env.prod
+# Kopia zapasowa bazy (wzór: .env.backup.example, docs/ops/BACKUP.md) - klucze bucketu kopii
+.env.backup
+# Klucz prywatny age do odszyfrowania kopii - nigdy w repo
+*.agekey
+age-identity.txt
 
 # build output
 dist/

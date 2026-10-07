@@ -79,6 +79,9 @@ export function validateStrings(spec: SceneSpec): string[] {
       const value = table[key];
       if (value === undefined) errors.push(`strings.${locale}: brak klucza "${key}"`);
       else if (Array.isArray(value) ? value.some((v) => typeof v !== 'string') : typeof value !== 'string') errors.push(`strings.${locale}.${key}: napis albo lista napisów`);
+      else if ((Array.isArray(value) ? value : [value]).some((v) => v.trim() === '') || (Array.isArray(value) && value.length === 0)) {
+        errors.push(`strings.${locale}.${key}: pusty napis (brak tłumaczenia dałby pusty dymek)`);
+      }
     }
   }
   for (const it of spec.items) {
@@ -93,18 +96,32 @@ export function validateStrings(spec: SceneSpec): string[] {
   return errors;
 }
 
-/** Skala z atrybutu transform (scale(s) / scale(sx sy) - mniejsza oś); translate/rotate nie zmieniają rozmiaru tekstu. */
-function transformScale(attrs: string): number {
+const NUMBER = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?';
+const SCALE = new RegExp(`scale\\(\\s*(${NUMBER})(?:[\\s,]+(${NUMBER}))?\\s*\\)`, 'g');
+
+/**
+ * Skala z atrybutu transform (scale(s) / scale(sx sy) - mniejsza oś, wartość bezwzględna: odbicie lustrzane nie zmienia rozmiaru);
+ * translate/rotate nie zmieniają rozmiaru tekstu. `scale(`, którego nie da się odczytać w całości, matrix i skew - błąd (nie pomijamy
+ * po cichu transformu, który mógłby zmniejszyć tekst poniżej minimum).
+ */
+export function transformScale(attrs: string): number {
   const transform = attrs.match(/\btransform="([^"]*)"/)?.[1];
   if (!transform) return 1;
   if (/matrix\(|skew/.test(transform)) throw new Error(`Nieobsługiwany transform "${transform}" (kontrola rozmiaru tekstu zna tylko translate/scale/rotate)`);
+  const parsed = [...transform.matchAll(SCALE)];
+  if (parsed.length !== (transform.match(/scale\(/g) ?? []).length) throw new Error(`Nieczytelne scale() w transform "${transform}"`);
   let scale = 1;
-  for (const [, sx, sy] of transform.matchAll(/scale\(\s*([\d.]+)(?:[\s,]+([\d.]+))?\s*\)/g)) scale *= Math.min(Number(sx), Number(sy ?? sx));
+  for (const [, sx, sy] of parsed) scale *= Math.min(Math.abs(Number(sx)), Math.abs(Number(sy ?? sx)));
   return scale;
 }
 
-/** Każdy <text> fragmentu z rozmiarem w jednostkach fragmentu (po transformach zagnieżdżonych <g>). */
-function textsWithScale(svg: string): { text: string; size: number }[] {
+/**
+ * Każdy <text> fragmentu z rozmiarem w jednostkach fragmentu (po transformach zagnieżdżonych <g>). Konstrukcje, które też skalują,
+ * a których ta kontrola nie śledzi (zagnieżdżony <svg viewBox>, <use>/<symbol>), to błąd; transform na samym <text> odrzuca
+ * parseTextElement (nieznany atrybut). Inne elementy nie zawierają tekstu, więc ich transform nie zmienia jego rozmiaru.
+ */
+export function textsWithScale(svg: string): { text: string; size: number }[] {
+  if (/<(svg|use|symbol)\b/.test(svg)) throw new Error('Klocek w scenie ze "strings" nie może używać <svg>/<use>/<symbol> (kontrola rozmiaru tekstu ich nie śledzi)');
   const out: { text: string; size: number }[] = [];
   const stack = [1];
   for (const match of svg.matchAll(/<(\/?)(g|text)\b([^>]*?)(\/?)>([^<]*)/g)) {
@@ -206,17 +223,20 @@ function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: Co
   if (!spec.strings) return fn(it.params ?? {}, { minFontSize: 0, where });
 
   const table = spec.strings[options.locale!]!;
-  const minPx = it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX;
+  const minPx = (it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop)) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX;
   const toLocal = phoneScale(spec) * s;
   const context: PropContext = { minFontSize: it.decorative ? 0 : minPx / toLocal, where };
   const out = fn(resolveRefs(it.params ?? {}, table) as Record<string, unknown>, context);
 
+  // Dozwolone słowa = słowa tekstów, do których element się odwołuje. Szczelne, dopóki FIT_PARAMS mają tylko klocki bez własnych
+  // etykiet (textBox); klocek z etykietami w FIT_PARAMS wymaga sprawdzania etykiet osobno (etykieta ze słów napisu by przeszła).
   const allowed = new Set(refsIn(it.params ?? {}).flatMap((key) => words(table[key])).map((word) => word.toLocaleLowerCase(options.locale)));
   for (const { text, size } of textsWithScale(out.svg)) {
     const foreign = text.split(/\s+/).filter((word) => word && !LANGUAGE_NEUTRAL.test(word) && !allowed.has(word.toLocaleLowerCase(options.locale)));
     if (foreign.length > 0) errors.push(`${where}: tekst „${text}” nie pochodzi ze "strings" (${foreign.join(' ')}) - przekaż go parametrem { "$t": … }`);
     const px = size * toLocal;
-    if (!it.decorative && !LANGUAGE_NEUTRAL.test(text) && px < minPx - 0.01) {
+    // Także same cyfry (kwota, numer - bywają wskazówką w ćwiczeniu); tekst tła do pominięcia - tylko przez "decorative".
+    if (!it.decorative && px < minPx - 0.01) {
       errors.push(`${where}: tekst „${text}” ma na telefonie ${px.toFixed(1)} px (minimum ${minPx} px) - powiększ go albo oznacz element "decorative"`);
     }
   }

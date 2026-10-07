@@ -496,7 +496,8 @@ export default function CaseClosedScreen({
             style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG tylko przez <img> (D-051) */}
-            <img src={imageUrl} alt="" referrerPolicy="no-referrer" className="absolute inset-0 block h-full w-full object-contain" />
+            {/* alt (D-133): opis raportu z tekstem wpalonym w grafikę; bez niego dekoracyjna (raport dla czytnika jest w sr-only). */}
+            <img src={imageUrl} alt={closing?.alt ?? ''} referrerPolicy="no-referrer" className="absolute inset-0 block h-full w-full object-contain" />
 
             {(
               [
@@ -566,7 +567,7 @@ export default function CaseClosedScreen({
               // eslint-disable-next-line @next/next/no-img-element -- jak wyżej
               <img
                 src={stampUrl}
-                alt=""
+                alt={closing?.stampAlt ?? ''}
                 referrerPolicy="no-referrer"
                 data-testid="closing-stamp"
                 className={`absolute object-contain ${ceremony ? 'closing-stamp-in' : ''}`}
@@ -577,7 +578,7 @@ export default function CaseClosedScreen({
               // eslint-disable-next-line @next/next/no-img-element -- jak wyżej
               <img
                 src={noteUrl}
-                alt=""
+                alt={closing?.noteAlt ?? ''}
                 referrerPolicy="no-referrer"
                 data-testid="closing-note"
                 className={`absolute object-contain ${ceremony ? 'closing-note-in' : ''}`}

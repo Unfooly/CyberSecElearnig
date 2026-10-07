@@ -11,7 +11,7 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { NoteKindIcon, useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { DEFAULT_HINT, useCompleteHint, useHints } from '../player/hints';
-import { useOverlayLayer } from '../player/overlay-stack';
+import { useBlockingOverlayOpen, useOverlayLayer } from '../player/overlay-stack';
 import Hint from '../player/Hint';
 import { PlayerBubble, TypingBubble, typingDelayMs } from './DialogueBlock';
 import { DossierDocuments, useDossier } from './DossierBlock';
@@ -120,6 +120,8 @@ export default function InterrogationBlock({
   const [status, setStatus] = useState('');
   const [announcement, setAnnouncement] = useState('');
   const [consoleOpen, setConsoleOpen] = useState(false);
+  const [consolePending, setConsolePending] = useState(false);
+  const overlayOpen = useBlockingOverlayOpen();
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const dossier = useDossier(documents, block.id, false);
   const logRef = useRef<HTMLDivElement>(null);
@@ -179,7 +181,8 @@ export default function InterrogationBlock({
   function closePicker() {
     const lineId = pickerFor;
     setPickerFor(null);
-    if (lineId) window.setTimeout(() => lineRefs.current[lineId]?.focus(), 0);
+    // Konsola zaraz otworzy się sama (czekała na zamknięcie wyboru) - fokus dostaje ona, nie kwestia pod jej oknem.
+    if (lineId && !consolePending) window.setTimeout(() => lineRefs.current[lineId]?.focus(), 0);
   }
   function closeConsole() {
     setConsoleOpen(false);
@@ -187,7 +190,7 @@ export default function InterrogationBlock({
   }
 
   // Esc: najpierw wybór dowodu, potem konsola (jedna warstwa kaskady powłoki).
-  useOverlayLayer('hotspotCard', pickerFor !== null || consoleOpen, () => {
+  useOverlayLayer('blockModal', pickerFor !== null || consoleOpen, () => {
     if (pickerFor !== null) closePicker();
     else closeConsole();
   });
@@ -215,8 +218,22 @@ export default function InterrogationBlock({
     setAnnouncement(`${speakerName}: ${text}`);
     setAsked((list) => list.map((entry) => (entry.id === current.id ? { ...entry, shown } : entry)));
     // Po ostatniej kwestii pytania konsoli - konsola otwiera się sama (pierwszy raz).
-    if (shown >= linesOf(current.id).length && current.id === opener?.id) setConsoleOpen(true);
+    if (shown >= linesOf(current.id).length && current.id === opener?.id) setConsolePending(true);
   }
+
+  // Samoczynne otwarcie konsoli czeka, aż nic jej nie zasłania (B-136, code review): przy otwartym notatniku okno modalne zrobiłoby inert
+  // pasek z przyciskiem „Notatnik” i fokus po zamknięciu notatnika wylądowałby na body.
+  // Konsola otwarta w międzyczasie przyciskiem - oczekujące otwarcie przepada (inaczej wyskoczyłaby drugi raz po jej zamknięciu).
+  useEffect(() => {
+    if (!consolePending) return;
+    if (consoleOpen) {
+      setConsolePending(false);
+      return;
+    }
+    if (overlayOpen) return;
+    setConsolePending(false);
+    setConsoleOpen(true);
+  }, [consolePending, consoleOpen, overlayOpen]);
 
   function ask(id: string) {
     if (typing || asked.some((entry) => entry.id === id)) return;

@@ -43,7 +43,25 @@ function HotspotCardStub() {
   );
 }
 
-function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string } = {}) {
+// Okno modalne bloku (B-136: nagranie OSINT, wybór dowodu w przesłuchaniu) - warstwa 'blockModal'.
+function BlockModalStub() {
+  const [open, setOpen] = useState(false);
+  useOverlayLayer('blockModal', open, () => setOpen(false));
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        otwórz nagranie
+      </button>
+      {open && (
+        <div role="dialog" aria-modal="true" aria-label="Nagranie">
+          Nagranie
+        </div>
+      )}
+    </>
+  );
+}
+
+function Harness({ contentLayout, hint, stage }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string; stage?: React.ReactNode } = {}) {
   const [notesOpen, setNotesOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const transcriptTriggerRef = useRef<HTMLButtonElement>(null);
@@ -53,7 +71,7 @@ function Harness({ contentLayout, hint }: { contentLayout?: 'scene' | 'slide' | 
       blockNumber={1}
       totalBlocks={3}
       completedBlocks={0}
-      stage={<HotspotCardStub />}
+      stage={stage ?? <HotspotCardStub />}
       contentLayout={contentLayout}
       hint={hint}
       narrationBar={null}
@@ -128,6 +146,25 @@ describe('PlayerStage: kaskada Escape na PRAWDZIWYM, zamontowanym drzewie (bez m
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(screen.queryByRole('dialog', { name: 'Karta hotspotu' })).not.toBeInTheDocument();
+  });
+
+  it('B-136: okno modalne bloku robi oba paski inert (notatnik, „Dalej”); karta hotspotu - nie; Escape zamyka okno i zdejmuje inert', () => {
+    const { unmount } = render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz kartę hotspotu' }));
+    expect(hasInertAncestor(screen.getByTestId('player-bottombar'))).toBe(false);
+    unmount();
+
+    render(<Harness stage={<BlockModalStub />} />);
+    const notes = screen.getByRole('button', { name: /^Notatnik/ });
+    const bar = screen.getByTestId('player-bottombar');
+    expect(hasInertAncestor(notes) || hasInertAncestor(bar)).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz nagranie' }));
+    expect(hasInertAncestor(notes)).toBe(true);
+    expect(hasInertAncestor(bar)).toBe(true);
+    expect(hasInertAncestor(screen.getByRole('dialog', { name: 'Nagranie' }))).toBe(false);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Nagranie' })).not.toBeInTheDocument();
+    expect(hasInertAncestor(notes) || hasInertAncestor(bar)).toBe(false);
   });
 
   it('Escape bez żadnej otwartej warstwy nic nie robi (closeTop() zwraca false, nic nie wybucha)', () => {

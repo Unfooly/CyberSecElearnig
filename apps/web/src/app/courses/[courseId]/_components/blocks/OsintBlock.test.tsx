@@ -221,7 +221,12 @@ describe('OsintBlock', () => {
     const explanations = screen.getByTestId('osint-explanations');
     expect(explanations).toHaveTextContent('Paweł Nowicki, helpdesk');
     expect(explanations).toHaveTextContent('Godziny otwarcia nic oszustowi nie dały.');
-    expect(screen.getByRole('button', { name: 'Webinar (wykorzystane - zaznaczone)' })).toBeDisabled();
+    // B-136: aria-disabled (nie disabled) - trafione obszary też w kolejności Tab, z rozstrzygnięciem w nazwie; klik nic nie zmienia.
+    const webinar = screen.getByRole('button', { name: 'Webinar (wykorzystane - zaznaczone)' });
+    expect(webinar).not.toBeDisabled();
+    expect(webinar).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(webinar);
+    expect(webinar).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Godziny otwarcia (pułapka - zaznaczona)' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Paweł Nowicki, helpdesk (wykorzystane - przeoczone)' })).toHaveAttribute('aria-pressed', 'false');
   });

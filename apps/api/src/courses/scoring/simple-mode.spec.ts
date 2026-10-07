@@ -40,6 +40,12 @@ describe('evaluateCheck: wybór w trybie prostym', () => {
     expect(() => evaluateCheck(quiz(), { option: 5 }, undefined, now, opaque, true)).toThrow(BadRequestException);
   });
 
+  it('poza trybem prostym QUIZ ocenia się po staremu - z odpowiedzi w zapisie, bez /check', () => {
+    expect(evaluateSubmit(quiz(), 1, undefined, now, opaque).entry).toMatchObject({ done: true, answer: 1, correct: true, points: 1 });
+    expect(evaluateSubmit(quiz(), 0, undefined, now, opaque, { simpleMode: false }).entry).toMatchObject({ correct: false, points: 0 });
+    expect(() => evaluateCheck(quiz(), { option: 1 }, undefined, now, opaque, false)).toThrow('Ten blok nie przyjmuje sprawdzania odpowiedzi');
+  });
+
   it('zapis bloku: dopiero po trafieniu; wynik z PIERWSZEJ próby', () => {
     expect(() => evaluateSubmit(quiz(), 1, undefined, now, opaque, { simpleMode: true })).toThrow('Najpierw wybierz poprawną odpowiedź');
     const firstWrong = clicks(quiz(), [{ option: 0 }, { option: 1 }]).entry;

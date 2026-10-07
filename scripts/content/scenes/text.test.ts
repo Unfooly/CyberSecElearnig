@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { composeScene, composeSceneLocales, MIN_PHONE_SCREEN_TEXT_PX, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneScale, textsWithScale, transformScale } from './compose.js';
-import { fitText, measureText, outlineText, PATH_DECIMALS, textPathData, verticalExtent } from './text.js';
+import { EXTREME_GLYPHS, fitText, loadFont, measureText, outlineText, PATH_DECIMALS, textPathData, verticalExtent } from './text.js';
 import type { SceneSpec } from './types.js';
 
 // Tekst wpalony w grafikę (D-135, i18n-3): kontury z czcionek z repo, teksty sceny per język (`strings`), dopasowanie do slotu z
@@ -67,6 +67,16 @@ describe('dopasowanie tekstu do slotu (fitText)', () => {
     // Linia bazowa = górna krawędź + ascent: akcent „Ż” nie wychodzi nad slot.
     expect(svg).toMatch(new RegExp(`y="${Math.round(ascent * 20 * 100) / 100}"`));
     expect(() => fitText('Żg', { ...one, h: exact - 1 })).toThrow(/nie mieści się/);
+    // Zasięg obejmuje rzeczywiste kontury każdego skrajnego znaku (także gdy hhea czcionki jest ciaśniejsze, np. „ą” w Bold).
+    for (const [family, bold] of [['sans', false], ['sans', true], ['hand', false], ['hand', true]] as const) {
+      const extent = verticalExtent(family, bold);
+      const font = loadFont(family, bold);
+      for (const char of EXTREME_GLYPHS) {
+        const glyph = font.charToGlyph(char).getBoundingBox();
+        expect(glyph.y2 / font.unitsPerEm, `${family}${bold ? ' bold' : ''} ${char}`).toBeLessThanOrEqual(extent.ascent + 1e-9);
+        expect(-glyph.y1 / font.unitsPerEm, `${family}${bold ? ' bold' : ''} ${char}`).toBeLessThanOrEqual(extent.descent + 1e-9);
+      }
+    }
   });
 
   it('maxLines, align end, valign middle; kerning „AV” węższy niż „A” + „V”', () => {

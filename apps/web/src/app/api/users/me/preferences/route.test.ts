@@ -151,5 +151,15 @@ describe('/api/users/me/preferences (BFF)', () => {
 
       expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ noTimeLimits: true }));
     });
+
+    it('„Język szkoleń” (D-133): contentLocale (także null - wg przeglądarki) przechodzi przez allowlistę', async () => {
+      mockCookie('access-token-value');
+      const fetchMock = vi.fn().mockResolvedValue({ status: 200, json: async () => ({ contentLocale: null }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await PATCH(patchRequest({ contentLocale: null, organizationId: 'obca' }));
+
+      expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ contentLocale: null }));
+    });
   });
 });

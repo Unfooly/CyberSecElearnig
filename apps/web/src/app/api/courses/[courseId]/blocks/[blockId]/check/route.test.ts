@@ -53,6 +53,15 @@ describe('POST /api/courses/[courseId]/blocks/[blockId]/check', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/courses/course-1/blocks/wybor/check`, expect.objectContaining({ body: JSON.stringify({ option: 2 }) }));
   });
 
+  it('D-133: Accept-Language przeglądarki idzie do API (język treści); nagłówek o złym kształcie - pomijany', async () => {
+    mockSession('tok', { ...SAME_ORIGIN, 'accept-language': 'en-GB,pl;q=0.8' });
+    await POST(buildRequest({ option: 1 }), ctx());
+    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({ 'Accept-Language': 'en-GB,pl;q=0.8' });
+    mockSession('tok', { ...SAME_ORIGIN, 'accept-language': 'en\r\nX-Evil: 1' });
+    await POST(buildRequest({ option: 1 }), ctx());
+    expect(fetchMock.mock.calls[1][1].headers).not.toHaveProperty('Accept-Language');
+  });
+
   it('obcy Origin - 403 bez wołania API; bez ciasteczka - 401', async () => {
     mockSession('tok', { origin: 'https://sasiednia.example', host: 'localhost:3000' });
     expect((await POST(buildRequest({ option: 1 }), ctx())).status).toBe(403);

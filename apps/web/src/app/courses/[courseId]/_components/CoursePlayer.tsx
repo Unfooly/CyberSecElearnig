@@ -22,6 +22,7 @@ import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
 import SwipeSortBlock from './blocks/SwipeSortBlock';
+import { CourseLanguageSwitch, PolishOnlyBadge } from './player/CourseLanguage';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
@@ -816,6 +817,23 @@ export default function CoursePlayer({
       </button>
     ) : undefined;
 
+  // Język kursu (D-133): plakietka „Available in Polish only”, gdy kurs nie ma języka gracza; przełącznik na starcie kursu (pierwszy blok,
+  // kurs w toku), gdy kurs ma więcej niż jeden język. Starsze odpowiedzi /start bez pól - polski, bez plakietki i przełącznika.
+  const contentLocale = initial.locale ?? 'pl';
+  const courseLocales = initial.locales ?? ['pl'];
+  // Dwie kopie (pasek górny od 640 px, wiersz nad treścią węziej - CourseLanguage.tsx), przełączane klasami: bez skoku układu po hydracji.
+  const showSwitch = !initial.localeFallback && courseLocales.length > 1 && state.currentBlockIndex === 0 && !reviewing && !isSummaryMode;
+  const languageControl = (place: 'bar' | 'row') =>
+    initial.localeFallback ? (
+      <PolishOnlyBadge testId={place === 'bar' ? 'polish-only-badge' : 'polish-only-badge-row'} />
+    ) : showSwitch ? (
+      <CourseLanguageSwitch locale={contentLocale} locales={courseLocales} testId={place === 'bar' ? 'course-language' : 'course-language-row'} />
+    ) : null;
+  const hasLanguageControl = initial.localeFallback === true || showSwitch;
+  // Wiersz nad treścią (telefon) tylko na starcie kursu - także dla plakietki: na kolejnych blokach zabierałby miejsce scenom ('scene'/'fill'
+  // z overflow-clip). Od 640 px plakietka zostaje w pasku górnym na każdym bloku (D-133).
+  const languageRow = hasLanguageControl && state.currentBlockIndex === 0 && !reviewing && !isSummaryMode;
+
   // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
   // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
   // tym gdy user wraca do już dawno ukończonego kursu (reward null, raport pokazuje wtedy XP jako "—").
@@ -842,7 +860,13 @@ export default function CoursePlayer({
             resultAnnouncement={resultAnnouncement}
             showHint={!isSummaryMode}
             evidence={<EvidenceCounter />}
-            topAction={skipBriefing}
+            topAction={
+              <>
+                {hasLanguageControl && <div className="hidden sm:flex">{languageControl('bar')}</div>}
+                {skipBriefing}
+              </>
+            }
+            lang={contentLocale}
             // Stała podpowiedź: `tip` (D-096), dla starszych wersji treści `mascot.text` (poza ignorowana, D-093); bez niej - domyślna dla typu.
             idleHint={
               currentBlock && !showingFeedback && !isSummaryMode
@@ -853,6 +877,12 @@ export default function CoursePlayer({
             simpleMode={simpleMode}
             stage={
               <>
+                {/* Wąski ekran: język kursu nad treścią bloku - pasek górny pierwszego bloku nie ma już miejsca (D-133). */}
+                {languageRow && (
+                  <div lang="pl" data-testid="course-language-place-row" className="mb-3 flex w-full shrink-0 justify-end sm:hidden">
+                    {languageControl('row')}
+                  </div>
+                )}
                 {error && (
                   <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
                     {error}

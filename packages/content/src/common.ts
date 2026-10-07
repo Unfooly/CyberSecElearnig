@@ -96,6 +96,14 @@ export function ltext(max: number) {
   return localized(text(max));
 }
 
+/**
+ * Grafika z tekstem wpalonym w obraz (D-133, i18n-2): osobny plik na język (`{ pl: 'scenes/pl/x.svg', en: 'scenes/en/x.svg' }`); zwykła
+ * ścieżka = `pl` (moduły sprzed D-133 bez zmian). Prostokąty hotspotów są wspólne dla języków - zmienia się tylko tekst w grafice.
+ */
+export function limage() {
+  return localized(imagePathSchema);
+}
+
 // Napisy z dokładnymi czasami: zdanie i moment jego początku w nagraniu (ms). Wypełnia je skrypt TTS z timestampów ElevenLabs
 // (with_timestamps, PR 3). Bez `cues` odtwarzacz dzieli `text` na zdania i rozkłada czas proporcjonalnie do ich długości (fallback).
 export const cueSchema = z

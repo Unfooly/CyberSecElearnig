@@ -1,6 +1,7 @@
-import { LIVE_CALL_HANG_UP, LIVE_CALL_REJECT, LIVE_CALL_SILENCE, SWIPE_VERDICTS, ServerBlock } from './blocks';
+import { z } from 'zod';
+import { BLOCK_SCHEMAS, LIVE_CALL_HANG_UP, LIVE_CALL_REJECT, LIVE_CALL_SILENCE, SWIPE_VERDICTS, ServerBlock } from './blocks';
 import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, requiredItemIds } from './common';
-import { collectPaths } from './introspect';
+import { collectPaths, localizedFieldPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
 import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, ResolvedModule, moduleSchema } from './module';
 import { validateRegex } from './regex';
@@ -887,6 +888,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
  */
 export function moduleWarnings(stored: ContentModule): string[] {
   const warnings: string[] = [];
+  // textLayer (D-133): przestarzałe - tekst sceny wpalamy w grafikę osobną na każdy język. Moduł bez `locales` (sprzed D-133) dostaje
+  // ostrzeżenie; moduł z `locales` - błąd (newModelErrors).
+  if (stored.locales === undefined) {
+    walkFields(stored, (path, key) => {
+      if (key === 'textLayer') warnings.push(`${path}: textLayer jest przestarzałe (D-133) - wpal tekst w grafikę (osobny plik na język)`);
+    });
+  }
   // Częściowe tłumaczenie (schemaVersion 6): moduł ma już jakiś język poza `pl`, ale nie w każdym polu wielojęzycznym - gracz w tym
   // języku zobaczy w tych polach tekst `pl` (fallback). Moduł tylko po polsku nie dostaje ostrzeżeń.
   for (const locale of localesIn(stored)) {
@@ -1002,7 +1010,7 @@ export function parseModule(input: unknown): ContentModule {
     throw new ContentValidationError(formatIssues(parsed.error.issues, input));
   }
   const contentModule = parsed.data;
-  const errors = v6FeatureErrors(contentModule);
+  const errors = [...v6FeatureErrors(contentModule), ...newModelErrors(contentModule)];
 
   // Reguły semantyczne sprawdzane na treści rozwiniętej do KAŻDEGO użytego języka (schemaVersion 6): np. cytat kryterium maila musi
   // być w treści maila tego samego języka, a reguła cyfr lektora (D-109) dotyczy spokenText każdego języka. Błąd, który występuje
@@ -1018,6 +1026,81 @@ export function parseModule(input: unknown): ContentModule {
 
   if (errors.length > 0) throw new ContentValidationError(errors);
   return contentModule;
+}
+
+/**
+ * Model treści i18n (D-133, i18n-2) - moduł z jawnym `locales` (moduł 3 i kolejne; moduły sprzed D-133 bez pola nie są objęte):
+ *  - każdy język z `locales` jest KOMPLETNY: każde pole wielojęzyczne (teksty, grafiki z wpalonym tekstem, opisy `alt`, etykiety hotspotów,
+ *    narracje) ma ten język - inaczej gracz w nim zobaczyłby mieszankę z polskim (zamiast tego kurs bez języka gracza idzie w całości po
+ *    polsku z plakietką, D-133). Nagrania narracji w każdym języku sprawdza potok TTS (`--check`);
+ *  - każda grafika ma opis (`alt`/`imageAlt`) - tekst wpalony w obraz jest dla czytnika ekranu tylko w opisie;
+ *  - bez `textLayer` (tekst rysowany przez odtwarzacz - przestarzały, D-133).
+ * Sprawdzane na treści ZAPISANEJ (przed rozwinięciem języka) - po rozwinięciu obiekty `{ pl, en }` znikają.
+ */
+function newModelErrors(stored: ContentModule): string[] {
+  if (stored.locales === undefined) return [];
+  const errors: string[] = [];
+  const extra = stored.locales.filter((locale) => locale !== DEFAULT_CONTENT_LOCALE);
+  for (const locale of extra) {
+    for (const path of missingTranslations(stored, locale)) errors.push(`${path}: brak języka "${locale}" (kurs deklaruje locales: [${stored.locales.join(', ')}])`);
+  }
+  // Zwykły string w polu wielojęzycznym = tylko `pl` - przy drugim języku to też brak tłumaczenia (missingTranslations widzi tylko `{ pl }`).
+  if (extra.length > 0) {
+    const label = extra.map((locale) => `"${locale}"`).join(', ');
+    const { blocks: _blocks, ...moduleShape } = moduleSchema.shape;
+    const modulePaths = new Set(localizedFieldPaths(z.object(moduleShape)));
+    const { blocks, ...meta } = stored;
+    for (const path of singleLanguageFields(meta, modulePaths)) errors.push(`${path}: brak języka ${label} (pole tylko po polsku)`);
+    blocks.forEach((block, index) => {
+      const schema = BLOCK_SCHEMAS[block.type as keyof typeof BLOCK_SCHEMAS];
+      if (!schema) return;
+      for (const path of singleLanguageFields(block, new Set(localizedFieldPaths(schema)), `blocks[${index}]`)) {
+        errors.push(`${path}: brak języka ${label} (pole tylko po polsku)`);
+      }
+    });
+  }
+  walkFields(stored, (path, key) => {
+    if (key === 'textLayer') errors.push(`${path}: textLayer jest przestarzałe w modułach z locales (D-133) - wpal tekst w grafikę`);
+  });
+  const resolved = localizeContent(stored, DEFAULT_CONTENT_LOCALE);
+  resolved.blocks.forEach((block, index) => {
+    const where = `blocks[${index}] (${block.id})`;
+    const needAlt = (label: string, image: unknown, alt: unknown) => {
+      if (image !== undefined && (typeof alt !== 'string' || alt.trim() === '')) errors.push(`${where}: ${label}: grafika bez opisu alt (D-133)`);
+    };
+    if (block.type === 'BRIEFING') {
+      block.steps.forEach((step, s) => {
+        needAlt(`steps[${s}]`, step.image, step.alt);
+        if (step.kind === 'caseFile') needAlt(`steps[${s}].closedImage (closedAlt)`, step.closedImage, step.closedAlt);
+      });
+    }
+    if (block.type === 'SUMMARY' && block.closing) {
+      needAlt('closing', block.closing.image, block.closing.alt);
+      needAlt('closing.stamp (stampAlt)', block.closing.stamp, block.closing.stampAlt);
+      needAlt('closing.note (noteAlt)', block.closing.note, block.closing.noteAlt);
+    }
+    if (block.type === 'SCENE_HOTSPOTS') {
+      for (const [h, hotspot] of block.hotspots.entries()) {
+        if (hotspot.media?.kind === 'audio') needAlt(`hotspots[${h}].media`, hotspot.media.image, hotspot.media.alt);
+        if (hotspot.media?.kind === 'scene') {
+          hotspot.media.scene.hotspots.forEach((inner, i) => {
+            if (inner.media?.kind === 'audio') needAlt(`hotspots[${h}].media.scene.hotspots[${i}].media`, inner.media.image, inner.media.alt);
+          });
+        }
+      }
+    }
+  });
+  return errors;
+}
+
+/** Pola wielojęzyczne (wg ścieżek schematu) zapisane jednojęzycznie - ścieżki danych (`a.b[2].c`). */
+function singleLanguageFields(value: unknown, localizedPaths: Set<string>, path = '', schemaPath = ''): string[] {
+  if (localizedPaths.has(schemaPath) && schemaPath !== '') return value === undefined || hasLocaleShape(value) ? [] : [path];
+  if (Array.isArray(value)) return value.flatMap((item, index) => singleLanguageFields(item, localizedPaths, `${path}[${index}]`, `${schemaPath}[]`));
+  if (!value || typeof value !== 'object') return [];
+  return Object.entries(value).flatMap(([key, item]) =>
+    singleLanguageFields(item, localizedPaths, path ? `${path}.${key}` : key, schemaPath ? `${schemaPath}.${key}` : key),
+  );
 }
 
 /** Wywołuje `visit` dla każdego pola treści (ścieżka, klucz, wartość, klucz rodzica). */

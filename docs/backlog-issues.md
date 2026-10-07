@@ -841,6 +841,19 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: (1) klucz warstwy per instancja (np. `useId`) z zachowaniem LIFO i testem dwóch instancji; (2) strzałki ←/→ przełączają
   zakładkę (z ominięciem nieaktywnej); (3) jeden test integracyjny.
 
+### B-145 Język szkoleń poza odtwarzaczem: katalog, lekcja symulacji, interfejs (D-133)
+- Etykiety: `P3`, `i18n`, `mod:kursy`, `mod:phishing` · Źródło: i18n-1 (D-133), świadomie poza zakresem
+- Opis: (1) kolumny katalogu `courses.title/subtitle/objectives` są tylko po polsku (import zapisuje PL) - biblioteka i „Moje kursy” pokazują
+  polskie tytuły także graczowi EN; plakietka „Available in Polish only” jest tylko w odtwarzaczu; (2) lekcja „To była symulacja” na stronie
+  `/t` (`lessonHtml` kampanii i `DEFAULT_LESSON_HTML`) jest jednojęzyczna (PL), choć strona wokół jest w języku przeglądarki; (3) interfejs
+  aplikacji (przyciski odtwarzacza, ustawienia, komunikaty) jest po polsku - decyzja dotyczy treści szkoleń. Z security review i18n-1:
+  (4) język liczony przy każdym żądaniu - API nie blokuje zmiany języka w połowie kursu dwujęzycznego (przełącznik ukrywa tylko UI); np.
+  `/attempt` z innym Accept-Language sprawdzi odpowiedź według listy innego języka (bez obejścia limitu prób ani wycieku) - rozważyć
+  przypięcie języka do przypisania przy pierwszym `/start`; (5) `/t/*` różni się wg Accept-Language bez `Vary` (dziś `no-store`, bez CDN) -
+  przy CDN dodać `Vary: Accept-Language` albo wyłączyć `/t` z cache.
+- Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
+  szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
+
 ### B-134 Easter egg na ekranie monitora: czytelność na telefonie (D-116) - ZROBIONE (D-117: na telefonie okienka po jednym)
 - Etykiety: `P3`, `ux`, `mod:kursy` · Źródło: autopilot, `fix/telefon-sceny-pion`
 - Opis: okienka w granicach ekranu monitora (≤ 60% jego szerokości, skala w dół) mają na telefonie tekst 9-11 px (844×390: 9,1 px;

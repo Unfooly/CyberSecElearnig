@@ -57,21 +57,27 @@ export default function SimpleChoiceBlock({
         {options.map((option, index) => {
           const tried = checks.find((entry) => entry.item === index);
           const state = tried?.result ?? null;
+          // Sprawdzona odpowiedź i czas sprawdzania: aria-disabled (nie `disabled`) - fokus zostaje na klikniętym przycisku, klawiatura i
+          // czytnik nie wracają na początek strony po każdym kliknięciu. Klik w takim stanie nic nie robi.
+          const locked = pending || hitIndex !== null || state !== null;
           return (
             <button
               key={index}
               type="button"
               data-testid="simple-option"
               data-result={state ?? undefined}
-              disabled={disabled || pending || hitIndex !== null || state !== null}
-              onClick={() => void check({ option: index })}
+              disabled={disabled}
+              aria-disabled={locked || undefined}
+              onClick={() => {
+                if (!locked) void check({ option: index });
+              }}
               className={`flex min-h-[56px] w-full items-center gap-3 rounded-btn border-2 px-4 py-3 text-left text-base font-semibold ${FOCUS_RING} ${
                 state === 'good'
                   ? 'border-success bg-success/10 text-ink'
                   : state === 'bad'
                     ? 'border-danger/60 bg-danger/5 text-ink/70'
-                    : 'border-border bg-surface text-ink hover:border-accent hover:bg-paper'
-              } disabled:cursor-default`}
+                    : `border-border bg-surface text-ink ${locked ? '' : 'hover:border-accent hover:bg-paper'}`
+              } disabled:cursor-default ${locked ? 'cursor-default' : ''}`}
             >
               {state === 'good' && <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-success" />}
               {state === 'bad' && <X aria-hidden="true" className="h-5 w-5 shrink-0 text-danger" />}

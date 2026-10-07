@@ -29,10 +29,17 @@ describe('SimpleChoiceBlock', () => {
     render(<SimpleChoiceBlock block={block} courseId="kurs-1" onSubmit={onSubmit} onReady={(submit) => (ready.current = submit)} />);
 
     reply({ blockId: 'wybor', result: 'bad', feedback: 'Link prowadzi do fałszywej strony.', done: false });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Loguję się.' })));
+    const first = screen.getByRole('button', { name: 'Loguję się.' });
+    first.focus();
+    await act(async () => fireEvent.click(first));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ option: 0 });
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Nie tym razem. Link prowadzi do fałszywej strony.');
-    expect(screen.getByRole('button', { name: /Loguję się\. - zła odpowiedź/ })).toBeDisabled();
+    // aria-disabled, nie disabled: fokus zostaje na przycisku (klawiatura, czytnik), ponowny klik nic nie wysyła.
+    const tried = screen.getByRole('button', { name: /Loguję się\. - zła odpowiedź/ });
+    expect(tried).toHaveAttribute('aria-disabled', 'true');
+    expect(tried).toHaveFocus();
+    await act(async () => fireEvent.click(tried));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(ready.current).toBeNull();
 
     reply({ blockId: 'wybor', result: 'bad', feedback: 'To też link.', hint: 'Zapytaj Kasię inaczej niż przez ten czat.', done: false });
@@ -43,7 +50,7 @@ describe('SimpleChoiceBlock', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Pytam znajomą innym kanałem.' })));
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Tak sprawdzisz');
     expect(screen.queryByTestId('simple-hint')).not.toBeInTheDocument();
-    for (const button of screen.getAllByTestId('simple-option')) expect(button).toBeDisabled();
+    for (const button of screen.getAllByTestId('simple-option')) expect(button).toHaveAttribute('aria-disabled', 'true');
     act(() => ready.current!());
     expect(onSubmit).toHaveBeenCalledWith(2);
   });

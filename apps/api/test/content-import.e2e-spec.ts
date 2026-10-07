@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { fullModule, fullModuleV6, simpleModule } from '@cyberszkolo/content/dist/fixtures';
+import { bilingualModule, fullModule, simpleModule } from '@cyberszkolo/content/dist/fixtures';
 import { hashContent, parseModule } from '@cyberszkolo/content/dist/node';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -99,9 +99,12 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
   });
 
   it('języki kursu (D-133): wersja z `locales` i tytułem; bez pola - [pl] i skrót jak dotąd; dodanie języka tworzy nową wersję', async () => {
-    const plOnly = parseModule({ ...fullModuleV6(), slug: slug('jezyki') });
+    // Moduł kompletny w PL i EN (D-134: z `locales: ['pl','en']` każde pole musi mieć EN); bez pola `locales` = [pl], jak moduły 1-2.
+    const withoutLocales: Record<string, unknown> = { ...bilingualModule(), slug: slug('jezyki') };
+    delete withoutLocales.locales;
+    const plOnly = parseModule(withoutLocales);
     const first = await prisma.$transaction((tx) => importModule(tx, plOnly));
-    const bilingual = parseModule({ ...fullModuleV6(), slug: slug('jezyki'), title: { pl: 'Sprawa', en: 'Case' }, locales: ['pl', 'en'] });
+    const bilingual = parseModule({ ...bilingualModule(), slug: slug('jezyki'), title: { pl: 'Sprawa', en: 'Case' }, locales: ['pl', 'en'] });
     const second = await prisma.$transaction((tx) => importModule(tx, bilingual));
 
     expect(second).toMatchObject({ courseId: first.courseId, versionCreated: true, version: 2 });
@@ -111,7 +114,7 @@ describe('content-import: importModule (e2e, prawdziwy Postgres)', () => {
     expect(versions[1].title).toEqual({ pl: 'Sprawa', en: 'Case' });
 
     // Ta sama treść, języki w innej kolejności - bez nowej wersji; poprawiony sam tytuł trafia do istniejącej wersji.
-    const retitled = parseModule({ ...fullModuleV6(), slug: slug('jezyki'), title: { pl: 'Sprawa X', en: 'Case X' }, locales: ['en', 'pl'] });
+    const retitled = parseModule({ ...bilingualModule(), slug: slug('jezyki'), title: { pl: 'Sprawa X', en: 'Case X' }, locales: ['en', 'pl'] });
     expect((await prisma.$transaction((tx) => importModule(tx, retitled))).versionCreated).toBe(false);
     const latest = await prisma.courseVersion.findFirstOrThrow({ where: { courseId: first.courseId }, orderBy: { version: 'desc' } });
     expect(latest).toMatchObject({ version: 2, locales: ['pl', 'en'], title: { pl: 'Sprawa X', en: 'Case X' } });

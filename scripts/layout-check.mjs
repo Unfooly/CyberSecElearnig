@@ -321,50 +321,15 @@ const describeBroken = (broken) =>
     })
     .join(', ');
 
-// Warstwa tekstu na grafice (D-128): każdy widoczny napis ma czcionkę co najmniej 14 px (tryb telefonu: 15 px), krój dziedziczony (nie
-// o stałej szerokości), zawija się w slocie, mieści się w jego szerokości i nie jest ucięty w pionie (tekst wyższy niż slot jest
-// widoczny w całości - overflow: visible). Zwraca listę problemów (pusta = OK) i liczbę sprawdzonych napisów.
-// Tryb telefonu odtwarzacza - to samo zapytanie co PHONE_LAYOUT_QUERY w apps/web/src/lib/use-phone-layout.ts (skrypt nie importuje z apps/web).
-const PHONE_LAYOUT_QUERY = '(max-height: 500px) and (orientation: landscape) and (pointer: coarse), (max-width: 767px) and (orientation: portrait) and (pointer: coarse)';
-
-async function textLayerProblems(page) {
-  return page.evaluate((phoneQuery) => {
-    const phoneMode = window.matchMedia(phoneQuery).matches;
-    const minPx = phoneMode ? 15 : 14;
-    const items = [...document.querySelectorAll('[data-testid^="text-layer-"]')].filter((item) => item.getClientRects().length > 0 && !item.closest('[aria-hidden="true"]'));
-    const problems = [];
-    for (const item of items) {
-      const id = item.getAttribute('data-testid');
-      const text = item.firstElementChild;
-      if (!text) {
-        problems.push(`${id}: brak tekstu`);
-        continue;
-      }
-      const style = getComputedStyle(text);
-      const size = parseFloat(style.fontSize);
-      if (size < minPx - 0.1) problems.push(`${id}: ${size.toFixed(1)} px < ${minPx} px`);
-      if (/mono|courier/i.test(style.fontFamily)) problems.push(`${id}: krój o stałej szerokości`);
-      if (style.whiteSpace === 'nowrap') problems.push(`${id}: bez zawijania`);
-      if (text.scrollWidth > text.clientWidth + 1) problems.push(`${id}: nie mieści się w szerokości slotu`);
-      if (text.scrollHeight > text.clientHeight + 1 && style.overflowY !== 'visible') problems.push(`${id}: ucięty w pionie`);
-      // FitText (wholeWords) łamie słowo w środku dopiero, gdy nie mieści się w slocie nawet przy dolnym limicie. Na desktopie to błąd
-      // treści (za długie słowo na ten slot): skróć napis albo poszerz slot. Na telefonie grafika bywa tak mała (np. ekran telefonu
-      // w scenie zagnieżdżonej przy 844x390), że słowo przy 15 px nie ma prawa się zmieścić - tam złamanie jest zamierzonym wyjściem
-      // (czytelny rozmiar i pełna treść ważniejsze niż całe słowo), więc go nie zgłaszamy.
-      if (!phoneMode && style.overflowWrap === 'anywhere') problems.push(`${id}: słowo złamane w środku (nie mieści się w slocie przy ${minPx} px)`);
-    }
-    return { problems, count: items.length };
-  }, PHONE_LAYOUT_QUERY);
-}
-
-// Przedmioty sceny (także zagnieżdżone), których zbliżenie albo scena zagnieżdżona ma warstwę tekstu - do otwarcia przez `?hotspot=`.
-function hotspotsWithTextLayer(block) {
-  const ids = [];
+// Przedmioty sceny (także zagnieżdżone) ze zbliżeniem-grafiką albo sceną zagnieżdżoną - do otwarcia przez `?hotspot=` (m5). Tekst na nich
+// jest wpalony w grafikę (D-133, i18n-4), więc wystarczy, że grafika się ładuje; czytelność pilnuje kompozytor (scripts/content/scenes).
+function hotspotsWithGraphic(block) {
+  const items = [];
   for (const hotspot of block.hotspots ?? []) {
-    if (hotspot.media?.textLayer || hotspot.media?.scene?.textLayer) ids.push(hotspot.id);
-    for (const inner of hotspot.media?.scene?.hotspots ?? []) if (inner.media?.textLayer) ids.push(inner.id);
+    if (hotspot.media?.kind === 'image' || hotspot.media?.kind === 'scene') items.push({ id: hotspot.id, nested: false });
+    for (const inner of hotspot.media?.scene?.hotspots ?? []) if (inner.media?.kind === 'image') items.push({ id: inner.id, nested: true });
   }
-  return ids;
+  return items;
 }
 
 async function boxOf(page, selector) {
@@ -1482,7 +1447,7 @@ try {
       page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text().slice(0, 200));
       });
-      let layerItems = 0;
+      let zooms = 0;
       for (const blockId of blockIds) {
         const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${blockId}`;
         errors.length = 0;
@@ -1500,10 +1465,6 @@ try {
         if (!info.barInView) fail(`${label}: (m2) dolny pasek poza ekranem.`);
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
-        // (m5) warstwa tekstu na grafice bloku (D-128) - scena, strona OSINT.
-        const layer = await textLayerProblems(page);
-        if (layer.problems.length > 0) fail(`${label}: (m5) warstwa tekstu: ${layer.problems.join('; ')}`);
-        layerItems += layer.count;
         // (m7) tacka tablicy śledczej w układzie poziomym (D-129): wszystkie ślady widoczne bez poziomego przewijania tacki (dwa rzędy
         // przy 7+ śladach). Telefon w pionie: tacka to przewijany pasek pod sceną (D-105) - bez tej kontroli.
         const tray = await page.evaluate(() => {
@@ -1535,19 +1496,18 @@ try {
           fail(`${label}: (m8) tablica pozioma na szerokim ekranie bez minimalnej skali (data-min-scale) albo bez kart na tacce.`);
         }
       }
-      // (m5) zbliżenia i sceny zagnieżdżone z warstwą tekstu (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`.
+      // (m5) zbliżenia i sceny zagnieżdżone (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`: grafika załadowana.
       for (const block of moduleJson.blocks) {
-        for (const hotspotId of hotspotsWithTextLayer(block)) {
+        for (const { id: hotspotId, nested } of hotspotsWithGraphic(block)) {
           const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${block.id} / ${hotspotId}`;
           await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(block.id)}&hotspot=${encodeURIComponent(hotspotId)}`);
-          await page.getByTestId('scene-zoom').waitFor({ timeout: 30000 });
+          // Grafika zbliżenia montuje się dopiero po dojeździe kamery (faza "open", w scenie zagnieżdżonej "inner-open") - bez czekania na
+          // nią kontrola obrazów skończyłaby się, zanim zbliżenie w ogóle trafi do DOM.
+          await page.locator(`[data-testid="scene-zoom"][data-phase="${nested ? 'inner-open' : 'open'}"]`).waitFor({ timeout: 30000 });
+          await page.waitForFunction(() => document.querySelectorAll('[data-testid="scene-zoom"] img').length > 0, null, { timeout: 30000 });
           const broken = await brokenModuleImages(page);
-          if (broken.length > 0) fail(`${label}: (m1) obrazy modułu nie załadowane: ${describeBroken(broken)}`);
-          await page.waitForTimeout(700);
-          const layer = await textLayerProblems(page);
-          if (layer.count === 0) fail(`${label}: (m5) zbliżenie bez widocznej warstwy tekstu.`);
-          if (layer.problems.length > 0) fail(`${label}: (m5) warstwa tekstu: ${layer.problems.join('; ')}`);
-          layerItems += layer.count;
+          if (broken.length > 0) fail(`${label}: (m5) obrazy zbliżenia nie załadowane: ${describeBroken(broken)}`);
+          zooms += 1;
         }
       }
       // (m6) raport zamknięcia: wnioski zawijają się w slocie i nie są ucięte (poziomo i w pionie), czcionka nie mniejsza niż dolny limit.
@@ -1586,7 +1546,7 @@ try {
           fail(`${label}: (m6) wnioski modułu 1 w poziomie mają zostać na liniaturze (układ „ruled”) (${JSON.stringify(lessons)}).`);
         }
       }
-      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), warstwa tekstu: ${layerItems} napisów (m5), wnioski raportu (m6), tacka śladów (m7, m8) OK`, true);
+      step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), ${zooms} zbliżeń (m5), wnioski raportu (m6), tacka śladów (m7, m8) OK`, true);
       await context.close();
     }
   }
@@ -1696,7 +1656,7 @@ try {
   //  (n2) transkrypcja: flagi przy kwestiach 44x44, wysyłka, WYNIK (odpowiedź serwera podstawiona) - kwestie z rozstrzygnięciem, „Dalej” aktywny;
   //  (n3) omówienie na transkrypcji: karta znacznika w obszarze bloku, numery ≥ 44 px, „Dalej” aktywny dopiero po ostatnim znaczniku;
   //  (n4) omówienie na grafice: obraz załadowany, znaczniki na obrazie;
-  //  (n5) warstwa tekstu: każdy napis w scenie i w zbliżeniu (tekst w granicach grafiki), na telefonie (< 640 px) napisy jednolinijkowe ≥ 15 px;
+  //  (n5) scena i zbliżenie (grafiki z wpalonym tekstem, D-133): obie grafiki załadowane;
   //  (n6) wszędzie: strona bez przewijania w poziomie, dolny pasek w ekranie, bez błędów strony i konsoli.
   //  (n7) przesłuchanie (D-118): pytania, akcje kwestii, wybór dowodu i przyznanie w obszarze bloku, cele ≥ 44 px; konsola w bloku,
   //       wszystkie zakładki i ślady do zaznaczenia (odpowiedź /challenge podstawiona z treści modułu podglądu).
@@ -1846,54 +1806,25 @@ try {
         await common(label);
         step(`${label}: (n4, n6) OK`, true);
 
-        // (n5) warstwa tekstu - scena i zbliżenie
+        // (n5) scena i zbliżenie (bez warstwy tekstu - D-133, i18n-4)
         await open('biuro-helpdesk');
-        label = `${tag} / warstwa tekstu`;
-        // Tryb telefonu odtwarzacza - te same zapytania co apps/web/src/lib/use-phone-layout.ts (TextLayer bierze z nich dolny limit).
-        const phoneMode = await page.evaluate((phoneQuery) => window.matchMedia(phoneQuery).matches, PHONE_LAYOUT_QUERY);
-        const checkLayer = async (where, boxSelector) => {
-          const result = await page.evaluate(
-            ({ boxSelector: selector }) => {
-              const box = document.querySelector(selector)?.getBoundingClientRect();
-              return [...document.querySelectorAll(`${selector} [data-testid^="text-layer-"]`)].map((item) => {
-                const text = item.firstElementChild;
-                const r = item.getBoundingClientRect();
-                const style = text ? getComputedStyle(text) : null;
-                return {
-                  id: item.getAttribute('data-testid'),
-                  inside: !!box && r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1,
-                  fits: !!text && text.scrollWidth <= text.clientWidth + 1,
-                  // Tekst wyższy niż slot musi być widoczny w całości (overflow: visible), nie ucięty.
-                  clipped: !!text && text.scrollHeight > text.clientHeight + 1 && style.overflowY !== 'visible',
-                  wraps: !!style && style.whiteSpace !== 'nowrap',
-                  monospace: !!style && /mono|courier/i.test(style.fontFamily),
-                  size: style ? parseFloat(style.fontSize) : 0,
-                };
-              });
-            },
-            { boxSelector },
-          );
-          if (result.length === 0) fail(`${label}: (n5) brak warstwy tekstu (${where}).`);
-          // D-128: dolny limit czcionki 14 px na desktopie, 15 px w trybie telefonu; tekst zawija się w slocie i nie jest ucinany.
-          const minPx = phoneMode ? 15 : 14;
-          for (const item of result) {
-            if (!item.inside) fail(`${label}: (n5) ${item.id} wychodzi poza grafikę (${where}).`);
-            if (!item.fits) fail(`${label}: (n5) ${item.id} nie mieści się w szerokości (${where}).`);
-            if (item.clipped) fail(`${label}: (n5) ${item.id} jest ucięty w pionie (${where}).`);
-            if (!item.wraps) fail(`${label}: (n5) ${item.id} nie zawija się w slocie (${where}).`);
-            if (item.monospace) fail(`${label}: (n5) ${item.id} ma krój o stałej szerokości zamiast dziedziczonego (${where}).`);
-            if (item.size < minPx - 0.1) fail(`${label}: (n5) ${item.id} ma ${item.size}px < ${minPx} px (${where}).`);
-          }
-          return result.length;
-        };
-        const sceneItems = await checkLayer('scena', '[data-scene-variant]');
+        label = `${tag} / scena i zbliżenie`;
         await page.getByTestId('hotspot-overlay-telefon').click();
-        await page.getByTestId('zoom-text-frame').waitFor({ timeout: 10000 });
-        await page.waitForTimeout(reduced ? 100 : 700);
-        const zoomItems = await checkLayer('zbliżenie', '.zoom-layer-box');
-        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-tekst`);
+        // Grafika zbliżenia montuje się po dojeździe kamery (faza "open") - czekamy na nią, potem na dekodowanie.
+        await page.locator('[data-testid="scene-zoom"][data-phase="open"]').waitFor({ timeout: 10000 });
+        await page.waitForFunction(
+          () => {
+            const zoom = [...document.querySelectorAll('[data-testid="scene-zoom"] img')];
+            return zoom.length > 0 && zoom.every((img) => img.complete);
+          },
+          null,
+          { timeout: 30000 },
+        );
+        const brokenZoom = await brokenModuleImages(page);
+        if (brokenZoom.length > 0) fail(`${label}: (n5) grafika sceny albo zbliżenia nie załadowana: ${describeBroken(brokenZoom)}`);
+        await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-zblizenie`);
         await common(label);
-        step(`${label}: (n5, n6) ${sceneItems} napisów w scenie, ${zoomItems} w zbliżeniu OK`, true);
+        step(`${label}: (n5, n6) OK`, true);
 
         // (n7) przesłuchanie (D-118): podważenie dowodem (odpowiedź /challenge podstawiona z treści modułu podglądu - trafienie, gdy odnośnik
         // notatki podglądu `<blok>.<element>` = refutedBy) i konsola.

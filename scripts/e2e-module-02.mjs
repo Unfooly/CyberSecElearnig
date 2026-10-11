@@ -196,11 +196,21 @@ try {
   step('SCENE_HOTSPOTS (biurko): „Dalej” nieaktywny przed drzwiami', (await nextDisabled()) && (await noInBlockNext()));
   await page.getByRole('button', { name: 'Telefon Karola' }).click();
   await dialog().getByRole('button', { name: 'Powiadomienia aplikacji' }).click();
-  await dialog().getByText('Uwierzytelnianie', { exact: true }).waitFor();
-  step('Telefon: zbliżenie powiadomień z warstwą tekstu (6 wierszy)', (await dialog().getByText(/Logowanie\s+odrzucone/).count()) === 6);
+  // Tekst zbliżeń jest wpalony w grafikę (i18n-4, D-137) - sprawdzamy grafikę po opisie alt i jej załadowanie.
+  const zoomImage = async (name) => {
+    const image = dialog().getByRole('img', { name });
+    await image.waitFor();
+    // Grafika idzie z magazynu treści - czekamy na jej załadowanie (albo błąd), dopiero potem sprawdzamy wymiary.
+    await image.evaluate((img) => (img.complete ? null : new Promise((resolve) => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+    })));
+    return image.evaluate((img) => img.naturalWidth > 0);
+  };
+  step('Telefon: zbliżenie powiadomień (grafika z wpalonym tekstem)', await zoomImage(/sześciu odrzuconych próśb/));
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Rejestr połączeń' }).click();
-  await dialog().getByText('IT Helpdesk', { exact: true }).waitFor();
+  step('Telefon: zbliżenie rejestru połączeń (grafika z wpalonym tekstem)', await zoomImage(/Rejestr połączeń: 9:02 IT Helpdesk/));
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
@@ -218,7 +228,7 @@ try {
   await page.getByRole('button', { name: 'Karteczka' }).click();
   await take();
   await page.getByRole('button', { name: 'Plakat' }).click();
-  await dialog().getByText('IT nigdy nie prosi o kody ani liczby z aplikacji').waitFor();
+  step('Plakat: zbliżenie z hasłem (grafika z wpalonym tekstem)', await zoomImage(/IT nigdy nie prosi o kody ani liczby z aplikacji/));
   await take();
   await page.getByRole('button', { name: 'Kubek' }).click();
   await putDown();

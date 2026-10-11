@@ -11,11 +11,11 @@ Awaria dysku, `down -v`, `volume prune` albo zła migracja przestają oznaczać 
 | `scripts/ops/db-backup.sh` | kontrola miejsca → `pg_dump` tą rolą → kontrola zrzutu (`pg_restore --list`, dane `organizations`) → szyfrowanie `age` kluczem **publicznym** → usunięcie zrzutu → wysyłka do bucketu (`curl --aws-sigv4`) → ping alarmu; błąd (także konfiguracji) → ping `/fail` |
 | `scripts/ops/db-restore-check.sh` | na komputerze z kluczem prywatnym: pobranie (token tylko do odczytu), odszyfrowanie **strumieniem** do `pg_restore` w jednorazowym kontenerze (dane w RAM - `--tmpfs`, bez sieci, bez portów, usuwany z wolumenami), liczba wierszy w tabelach |
 | `scripts/ops/db-backup.test.mjs` | test w CI: rola tylko do odczytu, szyfrowanie przed wysyłką, sekrety poza logami/argumentami/środowiskiem, alarm obowiązkowy, próba odtworzenia bez śladów i bez produkcji, ten sam obraz postgres co produkcja |
-| bucket (R2) | prywatny, **jurysdykcja UE**, **inny** niż bucket treści; cykl życia: usuwanie `db/` po 14 dniach; **blokada obiektów** `db/` na 14 dni |
+| bucket (R2) | prywatny, **jurysdykcja UE**, **inny** niż bucket treści; cykl życia: usuwanie `db/` po 14 dniach; **blokada obiektów** `db/` na 13 dni (krótsza od cyklu życia - zablokowanego obiektu cykl życia nie usunie, a kasuje z opóźnieniem; razem najpóźniej 14 dni) |
 
 Dlaczego blokada obiektów: token zapisu R2 („Object Read & Write”) umie też kasować i nadpisywać - R2 nie ma uprawnienia „tylko zapis”.
 Ktoś, kto przejmie VPS, nie odczyta kopii (nie ma klucza prywatnego), ale bez blokady mógłby je skasować przed zniszczeniem bazy. Blokada
-(Bucket Lock) uniemożliwia skasowanie i nadpisanie obiektu przed upływem 14 dni - także temu tokenowi.
+(Bucket Lock) uniemożliwia skasowanie i nadpisanie obiektu przed upływem 13 dni - także temu tokenowi.
 
 ## Klucz prywatny (właściciel)
 
@@ -47,7 +47,7 @@ blokadą i szyfrowaniem. Nowy token dopiero na odbudowanym serwerze.
    zaszyfrowany plik klucza i pyta o hasło.
 2. **Bucket R2:** nowy, prywatny bucket (np. `unfooly-db-backup`) z **Jurisdiction: European Union** (sama „location hint” EEUR nie
    gwarantuje przechowywania w UE). Endpoint takiego bucketu: `https://<account-id>.eu.r2.cloudflarestorage.com`. Reguły bucketu:
-   cykl życia - prefiks `db/`, usuwanie po 14 dniach; **Bucket Lock** - prefiks `db/`, 14 dni. Dwa tokeny API R2 ograniczone do tego
+   cykl życia - prefiks `db/`, usuwanie po 14 dniach; **Bucket Lock** - prefiks `db/`, 13 dni. Dwa tokeny API R2 ograniczone do tego
    bucketu: **Object Read & Write** (VPS, wysyłka) i **Object Read** (odtworzenie).
 3. **Alarm (obowiązkowy - bez niego skrypt nie wystartuje):** sprawdzenie w usłudze typu healthchecks.io (okres 1 dzień, tolerancja 2 h,
    powiadomienie e-mailem) - adres pingu to `BACKUP_HEALTHCHECK_URL`. Alarm przychodzi po błędzie (`/fail`, także gdy brakuje konfiguracji)
@@ -79,6 +79,10 @@ Na komputerze właściciela (Linux, macOS, WSL albo Git Bash na Windows; Docker,
 ```bash
 bash scripts/ops/db-restore-check.sh db/cyberszkolo-20261008T021500Z.dump.age
 ```
+
+Windows: uruchamiaj z Windows Terminal (albo WSL) - w samym oknie Git Bash (mintty) `age` może nie móc zapytać o hasło klucza; wtedy
+`winpty bash scripts/ops/db-restore-check.sh …`. Kontener trzyma bazę w RAM - Docker potrzebuje wolnej pamięci rzędu rozmiaru bazy
+z indeksami (dziś kilkadziesiąt MB; przy dużej bazie zwiększ pamięć maszyny Docker Desktop).
 
 Wynik: liczba wierszy w każdej tabeli i `OK: kopia odtwarza się (organizacje: N, zastosowane migracje: M)`. Kopia jest odszyfrowywana
 strumieniem prosto do kontenera z danymi w RAM - po zakończeniu nie zostaje ani plik, ani wolumen. Porównaj liczbę organizacji i migracji z
@@ -117,9 +121,19 @@ produkcją (panel SUPER_ADMIN / `apps/api/prisma/migrations`) - to też wykrywa 
 
    (Po kroku 3 baza `cyberszkolo` jest pusta - też ją przemianuj, żeby `cyberszkolo_restored` zajęła jej nazwę.) Role
    `cyberszkolo_app` i `cyberszkolo_backup` są globalne (poza zrzutem bazy); uprawnienia `cyberszkolo_app` przychodzą ze zrzutu.
-6. `$C up -d` (migracje dogonią ewentualne nowsze wersje), sprawdź logowanie i panel, potem
+6. **Unieważnij sesje i tokeny z kopii** - odtworzona baza ma stan sprzed awarii: refresh tokeny unieważnione później (wylogowanie,
+   zmiana hasła, dezaktywacja zwolnionego pracownika) wróciłyby do życia razem ze starymi hasłami:
+
+   ```bash
+   $C exec -T postgres psql -U cyberszkolo -d cyberszkolo -c "DELETE FROM refresh_tokens; DELETE FROM password_reset_tokens; DELETE FROM email_verification_tokens;"
+   ```
+
+   Wszyscy logują się ponownie (tokeny dostępu wygasają same w ciągu minut). Administratorom organizacji przekaż, że zmiany kont z okresu
+   między kopią a awarią (dezaktywacje, zmiany ról, zaproszenia) trzeba powtórzyć, a użytkownikom - że hasło zmienione w tym okresie
+   wróciło do poprzedniego (reset hasła).
+7. `$C up -d` (migracje dogonią ewentualne nowsze wersje), sprawdź logowanie i panel, potem
    `$C exec -T postgres dropdb -U cyberszkolo cyberszkolo_broken`.
-7. Zgłoszenia/dane z okresu między kopią a awarią są utracone - poinformuj klientów (RODO: naruszenie dostępności, ocena w 72 h). Dane,
+8. Zgłoszenia/dane z okresu między kopią a awarią są utracone - poinformuj klientów (RODO: naruszenie dostępności, ocena w 72 h). Dane,
    których usunięcia zażądano po wykonaniu kopii, usuń ponownie.
 
 ## RODO

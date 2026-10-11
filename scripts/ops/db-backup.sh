@@ -72,6 +72,13 @@ if [ "$(printf '%s\n8.0.0\n' "$curl_version" | sort -V | head -n 1)" != "8.0.0" 
   config_error "curl $curl_version - potrzebny 8.0+ (podpis SigV4 dla S3)"
 fi
 
+# Jeden bieg naraz (cron i ręczny): drugi kończy się bez błędu - pierwszy wyśle ping. VPS ma 1 GB RAM, dwa zrzuty naraz to zbędne ryzyko.
+exec 9> /var/tmp/unfooly-backup.lock
+if ! flock -n 9; then
+  log "inny bieg kopii trwa - pomijam"
+  exit 0
+fi
+
 # Katalogi po przerwanym biegu (pułapka EXIT się nie wykonała) - mogą zawierać jawny zrzut.
 find /var/tmp -maxdepth 1 -type d -name 'unfooly-backup.*' -mmin +120 -exec rm -rf {} + 2> /dev/null || true
 
@@ -79,6 +86,8 @@ workdir="$(mktemp -d /var/tmp/unfooly-backup.XXXXXX)"
 chmod 700 "$workdir"
 cleanup() { rm -rf "$workdir"; }
 on_error() {
+  # set -E dziedziczy pułapkę do podstawień $(...): błąd w podpowłoce i tak zatrzyma skrypt - alarm raz, z głównej powłoki.
+  [ "$BASH_SUBSHELL" -eq 0 ] || return 0
   log "BŁĄD: kopia NIE powstała (linia $1)" >&2
   ping_healthcheck /fail
 }

@@ -57,6 +57,9 @@ test('db-backup.sh: pg_dump rolą kopii, kontrola zrzutu, szyfrowanie age klucze
   assert.ok(order.every((index) => index >= 0), `brak kroku: ${order}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'kroki w złej kolejności');
   assert.doesNotMatch(backup, /--upload-file "\$dump"|-T "\$dump"/);
+  // Jeden bieg naraz; drugi kończy się bez błędu przed jakąkolwiek pracą.
+  assert.match(backup, /exec 9> \/var\/tmp\/unfooly-backup\.lock\nif ! flock -n 9; then/);
+  assert.ok(backup.indexOf('flock -n 9') < backup.indexOf('pg_dump'));
   // Jawny zrzut po przerwanym biegu sprzątany na starcie następnego.
   assert.match(backup, /find \/var\/tmp -maxdepth 1 -type d -name 'unfooly-backup\.\*' -mmin \+120/);
 });

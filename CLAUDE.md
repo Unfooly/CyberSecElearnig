@@ -41,9 +41,9 @@ To jest najważniejsza reguła w całym projekcie. Złamanie jej = wyciek danych
 
 ### Wyjątki od Zasady nr 1 (omijanie RLS): pełna lista
 
-Wszystkie idą przez `TenantPrismaService` (sentinel `app.bypass_tenant_rls`, w politykach RLS wyłącznie w `USING`
-odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i wpisu tutaj. Zapisy zawsze przez
-`runInOrgContext(organizationId)` po odczycie.
+Wyjątki 1-7 idą przez `TenantPrismaService` (sentinel `app.bypass_tenant_rls`, w politykach RLS wyłącznie w `USING`
+odczytu, nigdy w `WITH CHECK`); wyjątek 8 to rola bazodanowa poza aplikacją. Nowy wyjątek wymaga decyzji, opisu w kodzie i wpisu tutaj.
+Zapisy zawsze przez `runInOrgContext(organizationId)` po odczycie.
 
 1. `runAuthLookup` - użytkownik po globalnym e-mailu/id (login, refresh, reset, rejestracja - tylko sprawdzenie istnienia;
    oraz `AddressClaimService` przy zaproszeniu/imporcie/potwierdzeniu rejestracji - decyzja o przejęciu nieaktywowanego zaproszenia).
@@ -62,6 +62,11 @@ odczytu, nigdy w `WITH CHECK`); nowy wyjątek wymaga decyzji, opisu w kodzie i w
 6. `listCampaignsToReconcile` - pary (id, organizationId) kampanii do uzgodnienia przez `CampaignReconcileService`
    (bypass tylko w SELECT `phishing_campaigns`).
 7. `runCrossOrgQuery` - dashboard SUPER_ADMIN i sprzątanie wygasłych refresh tokenów (jawny warunek `where` po stronie wołającego).
+8. Rola `cyberszkolo_backup` (D-136, B-117) - kopia zapasowa całej bazy (`scripts/ops/db-backup.sh`, `pg_dump`). Rola bazodanowa, nie kod
+   aplikacji: `BYPASSRLS`, tylko odczyt (`pg_read_all_data`), bez superusera, bez hasła - loguje się wyłącznie gniazdem lokalnym w kontenerze
+   postgres (`docker compose exec`), aplikacja nigdy się nią nie łączy. Dlaczego bezpieczne: zrzut jest szyfrowany kluczem publicznym przed
+   opuszczeniem serwera (klucz prywatny tylko u właściciela), nic z niego nie trafia do API ani do klienta. Rolę tworzy
+   `docker/postgres-init/02-create-backup-role.sh`; nie nadawaj jej innych uprawnień i nie używaj jej w kodzie aplikacji.
 
 Nie jest wyjątkiem, ale wymaga tu wzmianki: `TenantPrismaService.runInOrgContextsSequence` (jedna transakcja, w której kolejne
 kroki idą pod RLS RÓŻNYCH organizacji; bez sentinela bypass, polityki bez zmian) służy **wyłącznie do przejęcia adresu**

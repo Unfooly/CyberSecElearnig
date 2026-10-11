@@ -12,6 +12,7 @@ node_modules/
 .env.backup
 # Klucz prywatny age do odszyfrowania kopii - nigdy w repo
 *.agekey
+*.agekey.age
 age-identity.txt
 
 # build output

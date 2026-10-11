@@ -108,11 +108,11 @@ export function FitText({
    * Czytelne minimum (D-103, np. 15 px na telefonie): rozmiar do `minPx` może wyjść poza WYSOKOŚĆ kontenera (overflow widoczny - niski
    * slot w grafice, tekst rośnie w odstęp nad nim), ale nadal musi zmieścić się w szerokości - inaczej zmniejsza się jak zwykle.
    * Dla tekstu JEDNOLINIJKOWEGO (whitespace-nowrap) wyjście poza wysokość jest ograniczone jednym wierszem - tak używają `minPx` sloty
-   * odprawy i raportu. Tekst zawijany z twardym minimum (warstwa tekstu na grafice, D-128) - patrz `wholeWords` niżej.
+   * odprawy i raportu. Tekst zawijany z twardym minimum - patrz `wholeWords` niżej.
    */
   minPx?: number;
   /**
-   * Tekst zawijany z twardym minimum (TextLayer, D-128): `minPx` jest dolną granicą także dla szerokości, a słowa zostają w całości -
+   * Tekst zawijany z twardym minimum (dawniej warstwa tekstu, D-128; od i18n-4 bez użycia w odtwarzaczu - D-137, do decyzji w B-148): `minPx` jest dolną granicą także dla szerokości, a słowa zostają w całości -
    * rozmiar maleje (do `minPx`), aż najdłuższe słowo zmieści się w wierszu; dopiero słowo, które nie mieści się nawet przy `minPx`,
    * jest łamane w środku (`overflow-wrap: anywhere`), bo tekst nie może wyjść poza slot w poziomie. Wymaga `minPx`.
    */

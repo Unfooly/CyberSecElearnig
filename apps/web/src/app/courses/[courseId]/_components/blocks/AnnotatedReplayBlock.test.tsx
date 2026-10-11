@@ -2,10 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ContentBlock } from '@/lib/courses-types';
 import AnnotatedReplayBlock from './AnnotatedReplayBlock';
-import TextLayer from './TextLayer';
 import { NoteKindIcon } from '../player/notes';
 
-// Omówienie (ANNOTATED_REPLAY, D-115), warstwa tekstu (D-114) i ikony nowych rodzajów notatek.
+// Omówienie (ANNOTATED_REPLAY, D-115) i ikony nowych rodzajów notatek.
 
 const recording: ContentBlock = {
   type: 'CALL_RECORDING',
@@ -100,22 +99,6 @@ describe('AnnotatedReplayBlock', () => {
     render(<AnnotatedReplayBlock block={onImage} moduleBlocks={[]} contentBase="/content" onReady={vi.fn()} onSubmit={vi.fn()} />);
     expect(screen.getByAltText('Omówienie rozmowy')).toHaveAttribute('src', '/content/scenes/omowienie.svg');
     expect(screen.getByTestId('replay-marker-1')).toHaveStyle({ left: '25%', top: '40%' });
-  });
-});
-
-describe('TextLayer (warstwa tekstu, D-114)', () => {
-  const items = [{ id: 'szyld', x: 10, y: 20, w: 30, h: 8, text: 'Księgowość', style: 'sign' as const, portrait: { x: 5, y: 50, w: 60, h: 5 } }];
-
-  it('prostokąty w % grafiki; na wariancie pionowym - prostokąt portrait; bez warstwy nic', () => {
-    const { rerender, container } = render(<TextLayer items={items} />);
-    expect(screen.getByTestId('text-layer-szyld')).toHaveStyle({ left: '10%', top: '20%', width: '30%', height: '8%' });
-    expect(screen.getByText('Księgowość')).toBeInTheDocument();
-    rerender(<TextLayer items={items} portrait />);
-    expect(screen.getByTestId('text-layer-szyld')).toHaveStyle({ left: '5%', top: '50%', width: '60%', height: '5%' });
-    rerender(<TextLayer items={items} ariaHidden />);
-    expect(screen.getByTestId('text-layer')).toHaveAttribute('aria-hidden', 'true');
-    rerender(<TextLayer items={[]} />);
-    expect(container).toBeEmptyDOMElement();
   });
 });
 

@@ -97,24 +97,8 @@ export interface OsintSpot {
     image?: string;
     imagePortrait?: string;
     alt?: string;
-    textLayer?: TextLayerItem[];
     secretEnding?: { id: string; label: string; note?: string };
   };
-}
-
-/** Warstwa tekstu na grafice (schemaVersion 6, D-114): prostokąty w % grafiki, tekst rysowany przez odtwarzacz. */
-export interface TextLayerItem {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  text: string;
-  style?: 'label' | 'sign' | 'screen' | 'handwritten';
-  /** Kolor tekstu względem tła slotu: `light` - jasny tekst na ciemnym tle grafiki; domyślnie ciemny. */
-  tone?: 'dark' | 'light';
-  /** Prostokąt na wariancie pionowym grafiki (imagePortrait). */
-  portrait?: { x: number; y: number; w: number; h: number };
 }
 
 /** Segment nagrania rozmowy (CALL_RECORDING): kto mówi, tekst i nagranie; flagi są sekretem serwera. */
@@ -318,8 +302,6 @@ export interface ContentBlock {
   // SCENE_HOTSPOTS: ilustracja (ścieżka względna wobec bazy zasobów), tekst alternatywny i prostokąty w % obrazu.
   image?: string;
   imageAlt?: string;
-  /** Tekst sceny w warstwie (schemaVersion 6). */
-  textLayer?: TextLayerItem[];
   /** Wariant pionowy sceny (D-116): grafika na telefon w pionie i prostokąty przedmiotów (te same id co `hotspots`) w % tej grafiki. */
   imagePortrait?: string;
   portraitHotspots?: { id: string; x: number; y: number; width: number; height: number }[];
@@ -410,8 +392,6 @@ export interface HotspotMedia extends PopupsFields {
   /** kind:'image' - wariant dla telefonu w pionie (D-104). */
   imagePortrait?: string;
   alt?: string;
-  /** kind:'image' - tekst zbliżenia w warstwie (schemaVersion 6). */
-  textLayer?: TextLayerItem[];
   audioUrl?: string;
   transcript?: string;
   /** kind:'audio' nagrane potokiem TTS (schemaVersion 5, D-082) zamiast audioUrl/transcript: plik w narration.audioUrl, transkrypcja w narration.text. */
@@ -426,7 +406,6 @@ export interface HotspotMedia extends PopupsFields {
 export interface NestedScene {
   image: string;
   imageAlt: string;
-  textLayer?: TextLayerItem[];
   /** Ekran monitora w % grafiki (D-116) - okienka easter egga pojawiają się wyłącznie w nim. */
   screen?: { x: number; y: number; w: number; h: number };
   hotspots: InnerSceneHotspot[];
@@ -439,7 +418,6 @@ export interface InnerHotspotMedia extends PopupsFields {
   /** kind:'image' - wariant dla telefonu w pionie (D-104). */
   imagePortrait?: string;
   alt?: string;
-  textLayer?: TextLayerItem[];
   audioUrl?: string;
   transcript?: string;
   narration?: Narration;

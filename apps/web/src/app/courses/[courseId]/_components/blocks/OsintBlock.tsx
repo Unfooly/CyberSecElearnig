@@ -10,12 +10,11 @@ import { useNotes } from '../player/notes';
 import { DEFAULT_HINT, useHints } from '../player/hints';
 import { useOverlayLayer } from '../player/overlay-stack';
 import Hint from '../player/Hint';
-import TextLayer from './TextLayer';
 
-// OSINT (OSINT_SPOT, D-120/D-121): strona www (grafika + tekst w warstwie) z obszarami; gracz zaznacza informacje, które wykorzystał
+// OSINT (OSINT_SPOT, D-120/D-121): strona www (grafika z wpalonym tekstem, D-137) z obszarami; gracz zaznacza informacje, które wykorzystał
 // oszust (przyciski-przełączniki, aria-pressed; pole trafienia ≥ 44 px). Na telefonie w pionie - wariant pionowy strony (imagePortrait +
 // portraitSpots) na całą szerokość, przewijany w pionie; poziomo - strona w całości („contain”), a na telefonie w poziomie (niska ramka:
-// „contain” dałby stronę ~240 px, tekst warstwy nieczytelny) wariant poziomy na całą szerokość, przewijany w pionie. Obszar z nagraniem (webinar) ma własny
+// „contain” dałby stronę ~240 px, tekst strony nieczytelny) wariant poziomy na całą szerokość, przewijany w pionie. Obszar z nagraniem (webinar) ma własny
 // przycisk odtwarzania: nakładka z kadrem, odtwarzaniem i transkrypcją. Ukryte zakończenie (secretEnding) liczy się jako wysłuchane po
 // końcu nagrania ALBO po doczytaniu transkrypcji do końca (alternatywa tekstowa) - wyróżnienie od razu w notatniku; do serwera idzie
 // `heard` z zapisem bloku. „Dalej” (zapis) po zaznaczeniu co najmniej jednego obszaru; wynik (po ocenie i w podglądzie „Wstecz”) na tej
@@ -111,7 +110,7 @@ export default function OsintBlock({
         </p>
       )}
 
-      {/* Ramka strony: poziomo - strona w całości („contain”, jak zbliżenie z warstwą tekstu); pionowo i na telefonie - na całą
+      {/* Ramka strony: poziomo - strona w całości („contain”); pionowo i na telefonie - na całą
           szerokość, przewijana. */}
       <div
         ref={frameRef}
@@ -139,7 +138,6 @@ export default function OsintBlock({
                 }}
               />
             )}
-            <TextLayer items={block.textLayer} portrait={portrait} />
             {spots.map((spot) => {
               const rect = rectOf(spot);
               const place = { left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` };
@@ -253,7 +251,7 @@ export default function OsintBlock({
 }
 
 /**
- * Nakładka nagrania przy obszarze (webinar): kadr z tekstem w warstwie (wariant pionowy na telefonie), odtwarzanie/pauza z postępem,
+ * Nakładka nagrania przy obszarze (webinar): kadr z wpalonym tekstem (wariant pionowy na telefonie), odtwarzanie/pauza z postępem,
  * transkrypcja jako alternatywa (WCAG 1.2.1). Koniec nagrania albo doczytana do końca transkrypcja = wysłuchane (ukryte zakończenie).
  */
 function MediaPlayer({
@@ -355,7 +353,6 @@ function MediaPlayer({
             <div className="zoom-layer-box relative" style={{ '--scene-ratio': '1.7778', aspectRatio: 'var(--scene-ratio)' } as CSSProperties}>
               {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src) */}
               <img src={imageUrl} alt={media.alt ?? ''} referrerPolicy="no-referrer" className="block h-full w-full object-contain" />
-              <TextLayer items={media.textLayer} portrait={portrait && !!media.imagePortrait} />
             </div>
           </div>
         )

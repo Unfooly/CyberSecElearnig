@@ -72,7 +72,7 @@ describe('FitText', () => {
     expect(fitted().style.overflow).toBe('');
   });
 
-  describe('wholeWords (warstwa tekstu, D-128): słowo = jedna linijka o szerokości 0,6 x rozmiar x liczba znaków', () => {
+  describe('wholeWords (D-128; po D-137 bez użycia w odtwarzaczu - B-148):słowo = jedna linijka o szerokości 0,6 x rozmiar x liczba znaków', () => {
     it('słowo mieści się dopiero przy mniejszej czcionce (powyżej minimum): rozmiar maleje, słowo zostaje w całości', () => {
       box = { width: 100, height: 40 };
       render(

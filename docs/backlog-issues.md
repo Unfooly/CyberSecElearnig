@@ -854,6 +854,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-148 `FitText` `wholeWords` bez użycia po usunięciu warstwy tekstu (D-137)
+- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review i18n-4 (D-137)
+- Opis: opcja `wholeWords` w `FitText` (`apps/web/.../blocks/BriefingScene.tsx`) powstała dla `TextLayer` (D-128); po i18n-4 używa jej tylko
+  `FitText.test.tsx`.
+- Akceptacja: usunąć opcję razem z testem albo użyć jej w nakładkach dynamicznych (odprawa, raport), jeśli tam potrzebne jest zawijanie z
+  twardym minimum.
+
 ### B-147 `course_versions.locales` jako NOT NULL (D-133)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy`, `migration` · Źródło: decyzja właściciela 2026-10-07 (doprecyzowania do i18n-3)
 - Opis: kolumna `course_versions.locales` (migracja `20261007120000_content_locale`) ma `DEFAULT {pl}`, ale dopuszcza NULL - kod i tak

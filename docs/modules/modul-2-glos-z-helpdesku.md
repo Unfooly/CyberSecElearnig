@@ -514,6 +514,7 @@ języka gracza.
   "type": "OSINT_SPOT",
   "image": "scenes/strona-zespol.svg",
   "imagePortrait": "scenes/strona-zespol-pion.svg",
+  // szkic sprzed D-137: textLayer usunięty, tekst strony wpalony w grafikę
   "textLayer": [
     { "id": "t-pawel", "x": 9.0, "y": 52.0, "w": 24.0, "h": 6.0, "text": { "pl": "Paweł Nowicki - specjalista IT, helpdesk" } }
   ],
@@ -673,6 +674,10 @@ języka gracza.
   UI „Rare”, kolor rewersu (token `rank.rare`) i wariant trofeum w kompozytorze.
 
 ## 7. Lista grafik (dla grafika)
+
+> **Zastąpione w i18n-4 (D-137):** „tekst w warstwie” (`textLayer`) już nie istnieje - napisy z tej listy są wpalone w grafiki klockami
+> `textBox` w scenach kompozytora (`scripts/content/scenes/examples/glos-z-helpdesku/`). Kolumny „tekst w warstwie” czytaj jako „tekst
+> wpalony przez kompozytor”.
 
 Zasady (playbook, rozdział 6):
 
@@ -834,6 +839,9 @@ Tylko lista konsekwencji decyzji z tego dokumentu - realizacja w kolejnych fazac
   - pełne przejście `scripts/e2e-module-02.mjs`.
 
 ## 10. Gotowość na wersję EN (schemat wielojęzyczny)
+
+> **Zastąpione w D-133/D-137:** pole `textLayer` opisane niżej usunięto (i18n-4). Wersja EN to osobny komplet grafik z wpalonym tekstem
+> (`strings` w scenach kompozytora, D-135) - B-146.
 
 Tłumaczenie EN przyjdzie później, ale schemat modułu 2 jest wielojęzyczny od początku. Zgodnie z CLAUDE.md („PL + EN wystarczy w danych,
 nie buduj pełnego i18n frameworka od razu”) zmiana dotyczy **danych treści**, nie tłumaczenia interfejsu aplikacji.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, limage, ltext, narrationSchema, noteSchema, text, textLayerSchema } from './common';
+import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, limage, ltext, narrationSchema, noteSchema, text } from './common';
 import { Delocalize } from './localize';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
@@ -75,14 +75,12 @@ const embeddedHtmlSchema = z
 // `narrationSchema` - nie ma tu ani cues, ani spokenText, ani skrótu TTS do policzenia.
 // imagePortrait (D-104, opcjonalne): wariant grafiki dla telefonu w pionie (kontener sceny < 0.8) - np. okno maila z dużym, zawijanym
 // tekstem zamiast poziomego zrzutu; odtwarzacz wybiera go sam, `alt` wspólny (ta sama treść).
-// textLayer (schemaVersion 6, common.ts): tekst rysowany przez odtwarzacz na zbliżeniu zamiast wypalonego w grafice.
 const imageMediaSchema = z
   .object({
     kind: z.literal('image'),
     src: limage(),
     imagePortrait: limage().optional(),
     alt: ltext(300),
-    textLayer: textLayerSchema.optional(),
   })
   .strict();
 // image: opcjonalne zbliżenie pokazywane NAD własnym odtwarzaczem audio (zamiast natywnych <audio controls> - feedback z
@@ -154,7 +152,6 @@ const nestedSceneSchema = z
   .object({
     image: limage(),
     imageAlt: ltext(300),
-    textLayer: textLayerSchema.optional(),
     // Ekran monitora w % grafiki (D-116, addytywnie w v5; slot-ekran kompozytora): okienka easter egga pojawiają się wyłącznie w nim.
     screen: z.object({ x: percent, y: percent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) }).strict().optional(),
     hotspots: z.array(innerHotspotSchema).min(1).max(20),
@@ -185,8 +182,6 @@ const hotspotsSchema = z
       .min(1)
       .max(20)
       .optional(),
-    // schemaVersion 6: tekst sceny w warstwie (szyldy, podpisy) - common.ts textLayerSchema.
-    textLayer: textLayerSchema.optional(),
     hotspots: z
       .array(
         z
@@ -427,8 +422,8 @@ const briefingRectSchema = z.object({ x: percent, y: percent, w: z.number().gt(0
 // wlatują na raport) oraz sloty HTML w % sceny (liczby, wnioski, podpis gracza, miejsce pieczęci i liściku).
 /**
  * Nakładki HTML na grafikach (D-133): tekst sceny jest wpalony w grafikę (osobny plik na język), a odtwarzacz rysuje na niej WYŁĄCZNIE
- * wartości dynamiczne z tej listy - liczone w kodzie albo z sesji gracza, nigdy dowolny tekst z treści (do tego służył przestarzały
- * textLayer). BRIEFING: zadania sprawy (z treści, lista w notatniku), imię, numer odznaki i inicjały gracza; SUMMARY: dowody X/Y, czas
+ * wartości dynamiczne z tej listy - liczone w kodzie albo z sesji gracza, nigdy dowolny tekst z treści (do tego służył usunięty w
+ * i18n-4 textLayer). BRIEFING: zadania sprawy (z treści, lista w notatniku), imię, numer odznaki i inicjały gracza; SUMMARY: dowody X/Y, czas
  * sprawy, XP, wnioski (lista z treści), podpis gracza. Sloty `stamp`/`note` raportu to miejsca na grafiki, nie tekst.
  */
 export const DYNAMIC_OVERLAY_SLOTS = {
@@ -764,7 +759,7 @@ const interrogationSchema = z
   .strict();
 
 /**
- * OSINT (D-120): strona www (grafika bez tekstu + `textLayer`) z obszarami `spots`; gracz zaznacza informacje, które wykorzystał
+ * OSINT (D-120): strona www (grafika z wpalonym tekstem) z obszarami `spots`; gracz zaznacza informacje, które wykorzystał
  * oszust. `used` (czy obszar był użyty), `note` (dowód - wychodzi po ocenie) i `trapText` (wyjaśnienie pułapki) są SEKRETEM; klient zna
  * tylko położenie i podpis obszaru. Ocena: trafione użyte / wszystkie użyte − `falseSpotPenalty` × zaznaczone pułapki (min. 0).
  * `spots[].media` - nagranie przy obszarze (webinar): osobny odtwarzacz z transkrypcją; `secretEnding` - wysłuchanie do końca odsłania
@@ -776,11 +771,10 @@ const osintMediaSchema = z
     kind: z.literal('audio'),
     title: ltext(120),
     narration: narrationSchema,
-    // Kadr odtwarzacza (np. slajd prelekcji) - z opisem (`alt` wymagane przy `image`), wariantem pionowym i tekstem w warstwie (tytuł slajdu).
+    // Kadr odtwarzacza (np. slajd prelekcji) - z opisem (`alt` wymagane przy `image`) i wariantem pionowym.
     image: limage().optional(),
     imagePortrait: limage().optional(),
     alt: ltext(300).optional(),
-    textLayer: textLayerSchema.optional(),
     secretEnding: z.object({ id: idSchema, label: ltext(60), note: ltext(300).optional() }).strict().optional(),
   })
   .strict();
@@ -806,7 +800,6 @@ const osintSpotBlockSchema = z
     image: limage(),
     imagePortrait: limage().optional(),
     imageAlt: ltext(300),
-    textLayer: textLayerSchema.optional(),
     prompt: ltext(300).optional(),
     spots: z.array(osintSpotSchema).min(2).max(20),
     portraitSpots: z.array(z.object({ id: idSchema, ...osintRect }).strict()).min(2).max(20).optional(),
@@ -1063,10 +1056,6 @@ const narrationClient = (prefix: string) =>
   ['text', 'audioUrl', 'durationMs', 'cues[].text', 'cues[].startMs'].map((key) => `${prefix}narration.${key}`);
 const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) => `${prefix}narration.${key}`);
 
-// Warstwa tekstu (schemaVersion 6): treść i układ do narysowania na grafice - publiczne jak `imageAlt`.
-const textLayerPaths = (prefix: string) =>
-  ['id', 'x', 'y', 'w', 'h', 'text', 'style', 'tone', 'portrait.x', 'portrait.y', 'portrait.w', 'portrait.h'].map((key) => `${prefix}textLayer[].${key}`);
-
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'durationSeconds'], []),
   QUIZ: classify(['prompt', 'options[].text'], QUIZ_SECRET),
@@ -1161,12 +1150,6 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].note.kind',
       'hotspots[].required',
       'requiredHotspots[]',
-      // Na końcu listy: pickByPaths układa klucze odpowiedzi w kolejności pierwszego wystąpienia ścieżki, a odpowiedź /start dla treści
-      // bez warstwy tekstu ma zostać bajt w bajt ta sama (module-1-golden.spec.ts).
-      ...textLayerPaths(''),
-      ...textLayerPaths('hotspots[].media.'),
-      ...textLayerPaths('hotspots[].media.scene.'),
-      ...textLayerPaths('hotspots[].media.scene.hotspots[].media.'),
       // Wariant pionowy sceny i ekran monitora w scenie zagnieżdżonej (D-116): grafika i układ - nic tu nie jest sekretem.
       ...['x', 'y', 'w', 'h'].map((key) => `hotspots[].media.scene.screen.${key}`),
       'imagePortrait',
@@ -1418,7 +1401,6 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'image',
       'imagePortrait',
       'imageAlt',
-      ...textLayerPaths(''),
       'prompt',
       'spots[].id',
       'spots[].label',
@@ -1431,7 +1413,6 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'spots[].media.image',
       'spots[].media.imagePortrait',
       'spots[].media.alt',
-      ...textLayerPaths('spots[].media.'),
       ...narrationClient('spots[].media.'),
       'spots[].media.secretEnding.id',
       'spots[].media.secretEnding.label',

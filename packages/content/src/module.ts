@@ -11,8 +11,9 @@ import { Delocalize } from './localize';
  * TTS i blok DOSSIER - teczkę sprawy (D-081, D-082, D-083). Wszystkie pola
  * v3/v4/v5 są opcjonalne, więc starszy moduł nadal się waliduje, ale NIE może używać pól z nowszej wersji (semantics.ts:
  * V3_FEATURES/V4_FEATURES i sprawdzenia na poziomie modułu/typu bloku).
- * Wersja 6 (moduł 2, D-114) dodaje format wielojęzyczny (`{ pl, en? }` w polach tekstowych i narracji - localize.ts), warstwę
- * tekstu `textLayer`, rodzaje notatek call/log/web i role głosu karol/pawel/oszust.
+ * Wersja 6 (moduł 2, D-114) dodaje format wielojęzyczny (`{ pl, en? }` w polach tekstowych i narracji - localize.ts), rodzaje
+ * notatek call/log/web i role głosu karol/pawel/oszust. Warstwa tekstu `textLayer` z D-114 usunięta w i18n-4 (D-137): tekst sceny
+ * jest wpalony w grafikę, pole jest odrzucane jak każde nieznane.
  */
 export const MODULE_SCHEMA_VERSION = 6;
 export const SUPPORTED_SCHEMA_VERSIONS = [2, 3, 4, 5, 6] as const;

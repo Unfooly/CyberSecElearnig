@@ -203,38 +203,6 @@ export const V6_NOTE_KINDS: readonly NoteKind[] = ['call', 'log', 'web'];
 
 export const noteSchema = z.object({ text: ltext(500), kind: z.enum(NOTE_KINDS).optional() }).strict();
 
-const layerPercent = z.number().min(0).max(100);
-const layerRectShape = { x: layerPercent, y: layerPercent, w: z.number().gt(0).max(100), h: z.number().gt(0).max(100) };
-
-/** Wygląd tekstu warstwy (odtwarzacz): etykieta/podpis, tabliczka lub szyld, tekst na ekranie urządzenia, pismo odręczne. */
-export const TEXT_LAYER_STYLES = ['label', 'sign', 'screen', 'handwritten'] as const;
-/**
- * Kolor tekstu warstwy względem tła slotu w grafice: `dark` (domyślnie) - ciemny tekst na jasnym tle; `light` - jasny tekst na ciemnym
- * tle (np. stopka strony, ekran urządzenia). Odtwarzacz nie zna koloru grafiki pod slotem, więc podaje go treść.
- */
-export const TEXT_LAYER_TONES = ['dark', 'light'] as const;
-
-/**
- * Warstwa tekstu (schemaVersion 6, rozdz. 10 specyfikacji modułu 2): tekst rysowany przez odtwarzacz NA grafice, w prostokącie w %
- * grafiki (jak sloty odprawy), zamiast tekstu wypalonego w SVG - dzięki temu grafika jest wspólna dla wszystkich języków. `portrait` -
- * prostokąt na wariancie pionowym grafiki (imagePortrait), gdy ten istnieje. Minimalny rozmiar czcionki na telefonie: D-103.
- */
-export const textLayerSchema = z
-  .array(
-    z
-      .object({
-        id: idSchema,
-        ...layerRectShape,
-        text: ltext(300),
-        style: z.enum(TEXT_LAYER_STYLES).optional(),
-        tone: z.enum(TEXT_LAYER_TONES).optional(),
-        portrait: z.object(layerRectShape).strict().optional(),
-      })
-      .strict(),
-  )
-  .min(1)
-  .max(30);
-
 /**
  * Elementy wymagane do ukończenia bloku eksploracyjnego (hotspoty, pytania dialogu). Jedna reguła dla serwera i klienta:
  *  1. jeśli którykolwiek element ma jawne `required` (true/false): wymagane są te z `required: true` (reszta to "smaczki");

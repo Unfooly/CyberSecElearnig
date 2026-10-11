@@ -215,14 +215,10 @@ describe('schemat v6: pola wielojęzyczne', () => {
 });
 
 describe('schemat v6: nowości tylko od schemaVersion 6', () => {
-  it('pola wielojęzyczne, textLayer, notatki call/log/web i role karol/pawel/oszust w module v5 to błąd', () => {
+  it('pola wielojęzyczne, notatki call/log/web i role karol/pawel/oszust w module v5 to błąd', () => {
     const localized = v6Module();
     localized.schemaVersion = 5;
     expect(errorsOf(localized)).toMatch(/pola wielojęzyczne \(\{ pl, en \}\) wymagają schemaVersion 6/);
-
-    const layer = fullModule() as AnyModule;
-    block(layer, 'SCENE_HOTSPOTS').textLayer = [{ id: 'szyld', x: 1, y: 1, w: 10, h: 5, text: 'Wejście' }];
-    expect(errorsOf(layer)).toContain('textLayer wymaga schemaVersion 6');
 
     const kind = fullModule() as AnyModule;
     const note = block(kind, 'SCENE_HOTSPOTS').hotspots.find((h: AnyModule) => h.note).note;
@@ -236,7 +232,7 @@ describe('schemat v6: nowości tylko od schemaVersion 6', () => {
     }
   });
 
-  it('w module v6 te same nowości przechodzą (call, log, web; karol, pawel, oszust; textLayer)', () => {
+  it('w module v6 te same nowości przechodzą (call, log, web; karol, pawel, oszust)', () => {
     for (const kind of ['call', 'log', 'web']) {
       const m = v6Module();
       block(m, 'SCENE_HOTSPOTS').hotspots.find((h: AnyModule) => h.note).note.kind = kind;
@@ -250,35 +246,21 @@ describe('schemat v6: nowości tylko od schemaVersion 6', () => {
   });
 });
 
-describe('textLayer (schemaVersion 6)', () => {
-  const withLayer = (layer: unknown[]) => {
-    const m = v6Module();
-    block(m, 'SCENE_HOTSPOTS').textLayer = layer;
-    return m;
-  };
-
-  it('poprawna warstwa (także wielojęzyczna, z wariantem pionowym) przechodzi', () => {
-    expect(
-      errorsOf(withLayer([{ id: 'szyld', x: 10, y: 5, w: 20, h: 6, text: { pl: 'Księgowość', en: 'Accounting' }, style: 'sign', portrait: { x: 5, y: 10, w: 50, h: 5 } }])),
-    ).toBe('');
-  });
-
-  it('prostokąt poza grafiką, powtórzone id i nieznany styl to błąd', () => {
-    expect(errorsOf(withLayer([{ id: 'a', x: 90, y: 5, w: 20, h: 6, text: 'X' }]))).toContain('prostokąt wychodzi poza grafikę');
-    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', portrait: { x: 1, y: 98, w: 5, h: 5 } }]))).toContain('pionową grafikę');
-    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X' }, { id: 'a', x: 1, y: 10, w: 5, h: 5, text: 'Y' }]))).toContain('powtórzony identyfikator "a"');
-    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', style: 'neon' }]))).toContain('textLayer');
-  });
-
-  it('kolor tekstu (`tone`, D-128): dark i light przechodzą i trafiają do klienta; inna wartość to błąd', () => {
-    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'dark' }, { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y', tone: 'light' }]))).toBe('');
-    expect(errorsOf(withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'neon' }]))).toContain('textLayer');
-    const m = withLayer([{ id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'light' }, { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y' }]);
-    const client = toClientBlock(block(m, 'SCENE_HOTSPOTS'), context);
-    expect(client.textLayer).toEqual([
-      { id: 'a', x: 1, y: 1, w: 5, h: 5, text: 'X', tone: 'light' },
-      { id: 'b', x: 1, y: 10, w: 5, h: 5, text: 'Y' },
-    ]);
+describe('textLayer (usunięte w i18n-4, D-137)', () => {
+  it('pole jest odrzucane na scenie, zbliżeniu i scenie zagnieżdżonej (OSINT: osint.spec.ts); zapisana dawniej warstwa nie trafia do klienta', () => {
+    const layer = [{ id: 'szyld', x: 10, y: 5, w: 20, h: 6, text: 'Księgowość' }];
+    const scene = v6Module();
+    block(scene, 'SCENE_HOTSPOTS').textLayer = layer;
+    expect(errorsOf(scene)).toMatch(/textLayer/);
+    const zoom = v6Module();
+    block(zoom, 'SCENE_HOTSPOTS').hotspots.find((h: AnyModule) => h.media?.kind === 'image').media.textLayer = layer;
+    expect(errorsOf(zoom)).toMatch(/textLayer/);
+    const nested = v6Module();
+    block(nested, 'SCENE_HOTSPOTS').hotspots.find((h: AnyModule) => h.media?.kind === 'scene').media.scene.textLayer = layer;
+    expect(errorsOf(nested)).toMatch(/textLayer/);
+    // Wersje kursu zapisane przed i18n-4 (moduł 2) mają warstwę w bazie - biała lista pól klienta jej nie przepuszcza.
+    const stored = { ...block(v6Module(), 'SCENE_HOTSPOTS'), textLayer: layer };
+    expect(toClientBlock(stored, context)).not.toHaveProperty('textLayer');
   });
 });
 

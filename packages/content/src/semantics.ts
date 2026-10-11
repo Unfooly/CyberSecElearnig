@@ -609,10 +609,6 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         block.portraitHotspots.forEach((h, i) => {
           if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`portraitHotspots[${i}] (${h.id}): prostokąt wychodzi poza grafikę`);
         });
-        // Napisy sceny na grafice pionowej: bez `portrait` odtwarzacz użyłby prostokąta z grafiki poziomej (inne położenie).
-        (block.textLayer ?? []).forEach((entry, i) => {
-          if (!entry.portrait) errors.push(`textLayer[${i}] (${entry.id}): scena z imagePortrait wymaga prostokąta portrait`);
-        });
       }
       // Okienka easter egga (D-100) nigdy nie są wymagane - także przez przestarzałą listę; wyróżnienia unikalne w bloku (etykieta po id).
       const popupsHotspots = flattenHotspots(block.hotspots).filter((h) => h.media?.kind === 'popups');
@@ -794,17 +790,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           if (media.narration.voice === undefined) errors.push(`${label}.media.narration.voice: nagranie wymaga roli głosu`);
           if (media.image !== undefined && media.alt === undefined) errors.push(`${label}.media.alt: kadr odtwarzacza (image) wymaga opisu alt`);
           if (media.imagePortrait !== undefined && media.image === undefined) errors.push(`${label}.media.imagePortrait: wariant pionowy wymaga image`);
-          if (media.imagePortrait !== undefined) {
-            (media.textLayer ?? []).forEach((entry, t) => {
-              if (!entry.portrait) errors.push(`${label}.media.textLayer[${t}] (${entry.id}): kadr z imagePortrait wymaga prostokąta portrait`);
-            });
-          }
         }
       });
       for (const id of duplicates(block.spots.flatMap((spot) => (spot.media?.secretEnding ? [spot.media.secretEnding.id] : [])))) {
         errors.push(`spots: powtórzone ukryte zakończenie "${id}"`);
       }
-      // Wariant pionowy (jak scena, D-116): grafika i obszary razem, te same id, w granicach; napisy strony z prostokątem pionowym.
+      // Wariant pionowy (jak scena, D-116): grafika i obszary razem, te same id, w granicach.
       if ((block.imagePortrait === undefined) !== (block.portraitSpots === undefined)) errors.push('imagePortrait i portraitSpots występują razem (wariant pionowy)');
       if (block.portraitSpots) {
         const portraitIds = block.portraitSpots.map((spot) => spot.id);
@@ -813,9 +804,6 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         for (const id of portraitIds.filter((id) => !ids.includes(id))) errors.push(`portraitSpots: nieznany obszar "${id}"`);
         block.portraitSpots.forEach((spot, i) => {
           if (spot.x + spot.w > 100 || spot.y + spot.h > 100) errors.push(`portraitSpots[${i}] (${spot.id}): obszar wychodzi poza grafikę`);
-        });
-        (block.textLayer ?? []).forEach((entry, i) => {
-          if (!entry.portrait) errors.push(`textLayer[${i}] (${entry.id}): strona z imagePortrait wymaga prostokąta portrait`);
         });
       }
       break;
@@ -888,13 +876,6 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
  */
 export function moduleWarnings(stored: ContentModule): string[] {
   const warnings: string[] = [];
-  // textLayer (D-133): przestarzałe - tekst sceny wpalamy w grafikę osobną na każdy język. Moduł bez `locales` (sprzed D-133) dostaje
-  // ostrzeżenie; moduł z `locales` - błąd (newModelErrors).
-  if (stored.locales === undefined) {
-    walkFields(stored, (path, key) => {
-      if (key === 'textLayer') warnings.push(`${path}: textLayer jest przestarzałe (D-133) - wpal tekst w grafikę (osobny plik na język)`);
-    });
-  }
   // Częściowe tłumaczenie (schemaVersion 6): moduł ma już jakiś język poza `pl`, ale nie w każdym polu wielojęzycznym - gracz w tym
   // języku zobaczy w tych polach tekst `pl` (fallback). Moduł tylko po polsku nie dostaje ostrzeżeń.
   for (const locale of localesIn(stored)) {
@@ -1033,8 +1014,7 @@ export function parseModule(input: unknown): ContentModule {
  *  - każdy język z `locales` jest KOMPLETNY: każde pole wielojęzyczne (teksty, grafiki z wpalonym tekstem, opisy `alt`, etykiety hotspotów,
  *    narracje) ma ten język - inaczej gracz w nim zobaczyłby mieszankę z polskim (zamiast tego kurs bez języka gracza idzie w całości po
  *    polsku z plakietką, D-133). Nagrania narracji w każdym języku sprawdza potok TTS (`--check`);
- *  - każda grafika ma opis (`alt`/`imageAlt`) - tekst wpalony w obraz jest dla czytnika ekranu tylko w opisie;
- *  - bez `textLayer` (tekst rysowany przez odtwarzacz - przestarzały, D-133).
+ *  - każda grafika ma opis (`alt`/`imageAlt`) - tekst wpalony w obraz jest dla czytnika ekranu tylko w opisie.
  * Sprawdzane na treści ZAPISANEJ (przed rozwinięciem języka) - po rozwinięciu obiekty `{ pl, en }` znikają.
  */
 function newModelErrors(stored: ContentModule): string[] {
@@ -1059,9 +1039,6 @@ function newModelErrors(stored: ContentModule): string[] {
       }
     });
   }
-  walkFields(stored, (path, key) => {
-    if (key === 'textLayer') errors.push(`${path}: textLayer jest przestarzałe w modułach z locales (D-133) - wpal tekst w grafikę`);
-  });
   const resolved = localizeContent(stored, DEFAULT_CONTENT_LOCALE);
   resolved.blocks.forEach((block, index) => {
     const where = `blocks[${index}] (${block.id})`;
@@ -1118,7 +1095,7 @@ function walkFields(value: unknown, visit: (path: string, key: string, item: unk
 }
 
 /**
- * Nowości schemaVersion 6 użyte w module o niższej wersji: pola wielojęzyczne, `textLayer`, rodzaje notatek call/log/web i role
+ * Nowości schemaVersion 6 użyte w module o niższej wersji: pola wielojęzyczne, rodzaje notatek call/log/web i role
  * głosu karol/pawel/oszust. Sprawdzane na treści ZAPISANEJ (przed rozwinięciem języka) - po rozwinięciu obiekty `{ pl, en }` znikają.
  */
 function v6FeatureErrors(contentModule: ContentModule): string[] {
@@ -1130,27 +1107,10 @@ function v6FeatureErrors(contentModule: ContentModule): string[] {
     errors.push(`${localized[0]}: pola wielojęzyczne ({ pl, en }) wymagają schemaVersion 6${more}`);
   }
   walkFields(contentModule, (path, key, item, parentKey) => {
-    if (key === 'textLayer') errors.push(`${path}: textLayer wymaga schemaVersion 6`);
     if (key === 'kind' && parentKey === 'note' && (V6_NOTE_KINDS as readonly unknown[]).includes(item)) {
       errors.push(`${path}: rodzaj notatki "${String(item)}" wymaga schemaVersion 6`);
     }
     if (key === 'voice' && (V6_VOICE_ROLES as readonly unknown[]).includes(item)) errors.push(`${path}: rola głosu "${String(item)}" wymaga schemaVersion 6`);
-  });
-  return errors;
-}
-
-/** Warstwa tekstu (schemaVersion 6): unikalne id w obrębie jednej warstwy i prostokąty w granicach grafiki. */
-function textLayerErrors(contentModule: ResolvedModule): string[] {
-  const errors: string[] = [];
-  walkFields(contentModule, (path, key, item) => {
-    if (key !== 'textLayer' || !Array.isArray(item)) return;
-    const layer = item as { id: string; x: number; y: number; w: number; h: number; portrait?: { x: number; y: number; w: number; h: number } }[];
-    for (const id of duplicates(layer.map((entry) => entry.id))) errors.push(`${path}: powtórzony identyfikator "${id}"`);
-    layer.forEach((entry, index) => {
-      if (entry.x + entry.w > 100 || entry.y + entry.h > 100) errors.push(`${path}[${index}]: prostokąt wychodzi poza grafikę`);
-      const p = entry.portrait;
-      if (p && (p.x + p.w > 100 || p.y + p.h > 100)) errors.push(`${path}[${index}].portrait: prostokąt wychodzi poza pionową grafikę`);
-    });
   });
   return errors;
 }
@@ -1263,7 +1223,7 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
 
 /** Reguły semantyczne modułu rozwiniętego do jednego języka (bloki, relacje między blokami, reguła cyfr lektora, SUMMARY). */
 function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
-  const errors: string[] = textLayerErrors(contentModule);
+  const errors: string[] = [];
 
   const seen = new Set<string>();
   contentModule.blocks.forEach((block, index) => {

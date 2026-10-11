@@ -286,13 +286,6 @@ describe('parseModule: walidacja modułu', () => {
         nestedOf(m).media.scene.screen = { x: 10, y: 10, w: 91, h: 50 };
       }, 'media.scene.screen: prostokąt wychodzi poza grafikę');
     });
-
-    it('napis sceny (textLayer) przy imagePortrait wymaga prostokąta portrait', () => {
-      expectInvalid((m) => {
-        withPortrait(m).textLayer = [{ id: 'napis', x: 10, y: 10, w: 30, h: 5, text: 'Napis' }];
-        m.schemaVersion = MODULE_SCHEMA_VERSION;
-      }, 'scena z imagePortrait wymaga prostokąta portrait');
-    });
   });
 
   it('requiredHotspots[] (przestarzałe) nie widzi id hotspotów WEWNĄTRZ zagnieżdżonej sceny - lista jest starsza niż zagnieżdżanie', () => {

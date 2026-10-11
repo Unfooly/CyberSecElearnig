@@ -49,7 +49,6 @@ describe('OSINT_SPOT: walidacja', () => {
     expect(errorsOf(mutate((m) => delete spot(m, 'webinar').media.narration.voice))).toContain('nagranie wymaga roli głosu');
     expect(errorsOf(mutate((m) => delete spot(m, 'webinar').media.alt))).toContain('kadr odtwarzacza (image) wymaga opisu alt');
     expect(errorsOf(mutate((m) => delete spot(m, 'webinar').media.image))).toContain('wariant pionowy wymaga image');
-    expect(errorsOf(mutate((m) => delete spot(m, 'webinar').media.textLayer[0].portrait))).toContain('kadr z imagePortrait wymaga prostokąta portrait');
     expect(
       errorsOf(
         mutate((m) => {
@@ -59,12 +58,17 @@ describe('OSINT_SPOT: walidacja', () => {
     ).toContain('powtórzone ukryte zakończenie "off-the-record"');
   });
 
-  it('wariant pionowy: grafika i obszary razem, te same id, w granicach; napisy z prostokątem pionowym', () => {
+  it('wariant pionowy: grafika i obszary razem, te same id, w granicach', () => {
     expect(errorsOf(mutate((m) => delete osint(m).portraitSpots))).toContain('imagePortrait i portraitSpots występują razem');
     expect(errorsOf(mutate((m) => osint(m).portraitSpots.pop()))).toContain('portraitSpots: brak obszaru "adres"');
     expect(errorsOf(mutate((m) => (osint(m).portraitSpots[0].id = 'nie-ma')))).toContain('portraitSpots: nieznany obszar "nie-ma"');
     expect(errorsOf(mutate((m) => (osint(m).portraitSpots[0].y = 95)))).toContain('portraitSpots[0] (zespol): obszar wychodzi poza grafikę');
-    expect(errorsOf(mutate((m) => delete osint(m).textLayer[0].portrait))).toContain('strona z imagePortrait wymaga prostokąta portrait');
+  });
+
+  it('textLayer (usunięte w i18n-4, D-137) na stronie i w kadrze nagrania to błąd', () => {
+    const layer = [{ id: 'napis', x: 1, y: 1, w: 10, h: 5, text: 'Napis' }];
+    expect(errorsOf(mutate((m) => (osint(m).textLayer = layer)))).toMatch(/textLayer/);
+    expect(errorsOf(mutate((m) => (spot(m, 'webinar').media.textLayer = layer)))).toMatch(/textLayer/);
   });
 });
 

@@ -573,7 +573,6 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
       image: 'scenes/strona-zespol.svg',
       imagePortrait: 'scenes/strona-zespol-pion.svg',
       imageAlt: 'Strona drukarni, zakładka Zespół.',
-      textLayer: [{ id: 't-pawel', x: 9, y: 52, w: 24, h: 6, text: 'Paweł Testowy - IT', style: 'sign', tone: 'dark', portrait: { x: 6, y: 30, w: 80, h: 4 } }],
       prompt: 'Zaznacz informacje, które wykorzystał oszust.',
       spots: [
         { id: 'zespol', label: 'Paweł, IT', x: 8, y: 30, w: 26, h: 34, used: true, note: { text: `${SECRET_MARKER}-dowod-zespol`, kind: 'web' } },
@@ -594,7 +593,6 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
             image: 'scenes/webinar-odtwarzacz.svg',
             imagePortrait: 'scenes/webinar-odtwarzacz-pion.svg',
             alt: 'Kadr prelekcji: slajd i prelegent.',
-            textLayer: [{ id: 'slajd', x: 10, y: 10, w: 60, h: 10, text: 'Bezpieczna praca zdalna', style: 'sign', tone: 'light', portrait: { x: 5, y: 10, w: 90, h: 8 } }],
             secretEnding: { id: 'off-the-record', label: 'Off the Record', note: 'Na końcu webinaru padło to, czego nie powinno.' },
           },
         },
@@ -742,19 +740,12 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   telefon.media!.narration = audio('telefon-media');
   const inner = scene.hotspots.flatMap((h) => ((h.media?.scene as { hotspots?: { media?: Record<string, unknown> }[] })?.hotspots ?? []));
   inner.find((h) => h.media?.kind === 'audio')!.media!.narration = audio('kosz-media');
-  // textLayer (schemaVersion 6): na scenie, na zbliżeniu, na scenie zagnieżdżonej i na zbliżeniu w niej - tylko tutaj, fullModule()
-  // zostaje w v5 (kształt fixtury pilnują testy e2e, CLAUDE.md reguła 9).
-  const layer = (id: string) => [{ id, x: 10, y: 10, w: 30, h: 8, text: `Napis ${id}`, style: 'sign', tone: 'light', portrait: { x: 5, y: 20, w: 60, h: 6 } }];
-  const sceneBlock = blocks.SCENE_HOTSPOTS as Record<string, unknown>;
-  sceneBlock.textLayer = layer('szyld');
   // Wariant pionowy sceny (D-116) - tylko tutaj (fullModule() bez zmian, reguła 9).
+  const sceneBlock = blocks.SCENE_HOTSPOTS as Record<string, unknown>;
   sceneBlock.imagePortrait = 'img/biuro-pion.svg';
   sceneBlock.portraitHotspots = [{ id: scene.hotspots[0].id, x: 5, y: 10, width: 20, height: 10 }];
-  scene.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('zblizenie');
-  const nested = scene.hotspots.find((h) => h.media?.kind === 'scene')!.media!.scene as { hotspots: { media?: Record<string, unknown> }[] } & Record<string, unknown>;
-  nested.textLayer = layer('pulpit');
+  const nested = scene.hotspots.find((h) => h.media?.kind === 'scene')!.media!.scene as Record<string, unknown>;
   nested.screen = { x: 3, y: 4, w: 90, h: 80 };
-  nested.hotspots.find((h) => h.media?.kind === 'image')!.media!.textLayer = layer('ekran');
   // ANNOTATED_REPLAY (D-115): oba warianty źródła i kotwicy naraz (bez parseModule), żeby test kompletności widział wszystkie ścieżki.
   const replay = blocks.ANNOTATED_REPLAY as { source: Record<string, unknown>; markers: { anchor: Record<string, unknown> }[] };
   Object.assign(replay.source, { image: 'scenes/omowienie.svg', imagePortrait: 'scenes/omowienie-pion.svg', alt: 'Omówienie' });

@@ -1,9 +1,9 @@
 import { BLOCK_SCHEMAS, ContentValidationError, DYNAMIC_OVERLAY_SLOTS, leafPaths, toClientBlock } from './index';
 import { bilingualModule, fullModuleV6, simpleModule } from './fixtures';
-import { moduleWarnings, parseModule } from './node';
+import { parseModule } from './node';
 
-// Model treści i18n (D-133, i18n-2): grafiki z wpalonym tekstem osobne na język, opisy alt, kompletność języków z `locales`, textLayer
-// przestarzały, lista nakładek HTML z wartościami dynamicznymi.
+// Model treści i18n (D-133, i18n-2): grafiki z wpalonym tekstem osobne na język, opisy alt, kompletność języków z `locales`, bez textLayer
+// (usunięty w i18n-4, D-137), lista nakładek HTML z wartościami dynamicznymi.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyModule = Record<string, any>;
@@ -47,16 +47,15 @@ describe('model treści i18n (D-133)', () => {
     expect(errorsOf(old)).toBe('');
   });
 
-  it('textLayer: w module z locales - błąd; w module bez locales - ostrzeżenie', () => {
+  it('textLayer (usunięte w i18n-4, D-137) to nieznane pole - błąd w module z locales i bez nich', () => {
     const layer = [{ id: 'napis', x: 1, y: 1, w: 10, h: 5, text: { pl: 'Napis', en: 'Label' } }];
     const m = bilingual();
     m.blocks[1].textLayer = layer;
-    expect(errorsOf(m)).toMatch(/blocks\[1\]\.textLayer: textLayer jest przestarzałe w modułach z locales/);
+    expect(errorsOf(m)).toMatch(/textLayer/);
     const old = bilingual();
     delete old.locales;
     old.blocks[1].textLayer = layer;
-    expect(errorsOf(old)).toBe('');
-    expect(moduleWarnings(parseModule(old)).join('\n')).toMatch(/blocks\[1\]\.textLayer: textLayer jest przestarzałe \(D-133\)/);
+    expect(errorsOf(old)).toMatch(/textLayer/);
   });
 
   it('kurs tylko PL (locales [pl], moduł 3 na start) przechodzi ze zwykłymi ścieżkami; moduł 2 bez locales - bez zmian', () => {

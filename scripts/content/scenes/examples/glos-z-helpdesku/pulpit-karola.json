@@ -87,6 +87,8 @@
     "clock": "9:06",
     "date": ""
    }
-  }
+  },
+  {"id":"tekst-podpis-narzedzie","prop":"textBox","x":350.3,"y":320,"params":{"w":207.8,"h":70,"text":"Pomoc zdalna","size":28,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-podpis-przegladarka","prop":"textBox","x":326.3,"y":404.7,"params":{"w":213.1,"h":51.1,"text":"Przeglądarka","size":28,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}}
  ]
 }

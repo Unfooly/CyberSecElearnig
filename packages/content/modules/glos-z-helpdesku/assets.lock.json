@@ -74,28 +74,28 @@
     },
     "biurko-karola#hotspots.3.media.src": {
       "original": "scenes/plakat-zoom.svg",
-      "hash": "48806873",
-      "key": "assets/glos-z-helpdesku/scenes/plakat-zoom.48806873.svg"
+      "hash": "a4864851",
+      "key": "assets/glos-z-helpdesku/scenes/plakat-zoom.a4864851.svg"
     },
     "biurko-karola#hotspots.0.media.scene.image": {
       "original": "scenes/telefon-karola.svg",
-      "hash": "1019c2c2",
-      "key": "assets/glos-z-helpdesku/scenes/telefon-karola.1019c2c2.svg"
+      "hash": "3b29c4e3",
+      "key": "assets/glos-z-helpdesku/scenes/telefon-karola.3b29c4e3.svg"
     },
     "biurko-karola#hotspots.1.media.scene.image": {
       "original": "scenes/pulpit-karola.svg",
-      "hash": "417f5670",
-      "key": "assets/glos-z-helpdesku/scenes/pulpit-karola.417f5670.svg"
+      "hash": "c7e41f6c",
+      "key": "assets/glos-z-helpdesku/scenes/pulpit-karola.c7e41f6c.svg"
     },
     "biurko-karola#hotspots.0.media.scene.hotspots.0.media.src": {
       "original": "scenes/mfa-powiadomienia-zoom.svg",
-      "hash": "a4930fbc",
-      "key": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.a4930fbc.svg"
+      "hash": "f46e1cf8",
+      "key": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.f46e1cf8.svg"
     },
     "biurko-karola#hotspots.0.media.scene.hotspots.1.media.src": {
       "original": "scenes/rejestr-polaczen-zoom.svg",
-      "hash": "5d333f05",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.5d333f05.svg"
+      "hash": "4f1fe8b3",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.4f1fe8b3.svg"
     },
     "przesluchanie-karola#character.avatar": {
       "original": "avatars/karol.svg",
@@ -109,33 +109,33 @@
     },
     "rejestr#image": {
       "original": "scenes/rejestr-porownanie.svg",
-      "hash": "179d3458",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.179d3458.svg"
+      "hash": "b5729109",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.b5729109.svg"
     },
     "rejestr#imagePortrait": {
       "original": "scenes/rejestr-porownanie-pion.svg",
-      "hash": "c2175240",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.c2175240.svg"
+      "hash": "43c29a6a",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.43c29a6a.svg"
     },
     "osint#image": {
       "original": "scenes/strona-zespol.svg",
-      "hash": "bca7440b",
-      "key": "assets/glos-z-helpdesku/scenes/strona-zespol.bca7440b.svg"
+      "hash": "8cf7e344",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol.8cf7e344.svg"
     },
     "osint#imagePortrait": {
       "original": "scenes/strona-zespol-pion.svg",
-      "hash": "caa6e884",
-      "key": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.caa6e884.svg"
+      "hash": "3b7fe414",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.3b7fe414.svg"
     },
     "osint#spots.3.media.image": {
       "original": "scenes/webinar-odtwarzacz.svg",
-      "hash": "64e93c2e",
-      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.64e93c2e.svg"
+      "hash": "e397d112",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.e397d112.svg"
     },
     "osint#spots.3.media.imagePortrait": {
       "original": "scenes/webinar-odtwarzacz-pion.svg",
-      "hash": "43904efb",
-      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.43904efb.svg"
+      "hash": "f27c3a2f",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.f27c3a2f.svg"
     },
     "rozwiazanie-sprawy#closing.image": {
       "original": "scenes/zamkniecie-raport.svg",

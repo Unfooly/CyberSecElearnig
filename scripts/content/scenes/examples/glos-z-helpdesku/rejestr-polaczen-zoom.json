@@ -18,6 +18,10 @@
     "slot-nazwa-2": "slot-nazwa-2",
     "slot-nazwa-3": "slot-nazwa-3"
    }
-  }
+  },
+  {"id":"tekst-tytul","prop":"textBox","x":223.6,"y":213.7,"params":{"w":511.7,"h":59.3,"text":"Połączenia","size":34,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}},
+  {"id":"tekst-nazwa-1","prop":"textBox","x":233.9,"y":372.8,"params":{"w":351.7,"h":59.3,"text":"IT Helpdesk","size":26.7,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-nazwa-2","prop":"textBox","x":233.9,"y":592.8,"params":{"w":351.7,"h":59.3,"text":"Wewnętrzny","size":26.7,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-nazwa-3","prop":"textBox","x":233.9,"y":812.8,"params":{"w":351.7,"h":59.3,"text":"Centrala","size":26.7,"align":"middle","valign":"middle","color":"#0F172A"}}
  ]
 }

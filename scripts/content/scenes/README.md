@@ -171,12 +171,13 @@ dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/a
 
 ### Klocki modułu 2 (`props-helpdesk.ts`, „Głos z helpdesku”, D-125)
 
-Zarejestrowane w `PROPS` (`...HELPDESK_PROPS`), dostarczone przez grafika (paczki 1 i 2). Zasada EN-ready: grafiki bez słów - napisy
-dokłada odtwarzacz (`textLayer`, sloty `slot-*`); w grafice tylko cyfry i numery zamaskowane (12 3XX XX 41, 214). Źródła scen:
+Zarejestrowane w `PROPS` (`...HELPDESK_PROPS`), dostarczone przez grafika (paczki 1 i 2). Klocki są bez słów (poza cyframi i
+numerami zamaskowanymi: 12 3XX XX 41, 214); napisy wpala scena klockami `textBox` w slotach `slot-*` (i18n-4, D-137 - dawniej `textLayer`
+odtwarzacza). Moduł 2 jest tylko po polsku: teksty wprost w parametrach `textBox`, bez `strings` (wersja EN - B-146). Źródła scen:
 `examples/glos-z-helpdesku/*.json` (sceny, zbliżenia, warianty `-pion`; legitymacja i pieczęć jak w module 1), trofea:
-`examples/achievements/osiagniecie-{cisza-na-linii,czysty-odsluch,pelny-zapis,off-the-record}*.json`. Współrzędne hotspotów i slotów
-warstwy tekstu w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); wyjątki - napisy bez slotu od grafika (strona „Zespół”,
-podpisy ikon pulpitu, hasło plakatu) mają współrzędne wpisane ręcznie w granicach swojego obszaru (D-125).
+`examples/achievements/osiagniecie-{cisza-na-linii,czysty-odsluch,pelny-zapis,off-the-record}*.json`. Współrzędne hotspotów
+w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); napisy bez slotu (strona „Zespół”, podpisy ikon pulpitu, hasło plakatu -
+`noCodePoster` z `slogan: true`) mają współrzędne `textBox` wpisane ręcznie w scenie.
 
 | prop | do czego |
 |---|---|

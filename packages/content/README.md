@@ -98,7 +98,7 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   Bez `closing` odtwarzacz pokazuje prosty ekran ukończenia. `closing.portrait { image, slots }` (D-098, opcjonalne): raport 9:16 dla
   telefonu w pionie z kompletem slotów (pieczęć i liścik te same pliki); bez niego telefon pokazuje panoramę raportu 16:9.
 
-### schemaVersion 6: treść wielojęzyczna, warstwa tekstu (D-114)
+### schemaVersion 6: treść wielojęzyczna (D-114)
 
 - **Pola wielojęzyczne:** każdy tekst dla gracza (tytuły, treści, etykiety, notatki, `alt`, podpowiedzi, reakcje, metadane modułu) to
   string (= `pl`) albo `{ "pl": "…", "en": "…" }`; `pl` wymagane, brak języka w polu = `pl`. Narracja: płaska (jak v5) albo
@@ -107,13 +107,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - Wersja kursu przechowuje wszystkie języki; walidacja semantyczna, API (`toResolved`), `toClientBlock` i harness pracują na treści
   rozwiniętej do jednego języka (`localizeContent`, `src/localize.ts`). Klasyfikacja pól (`FIELD_CLASSIFICATION`) nie zależy od języka.
 - Reguły semantyczne sprawdzane w każdym użytym języku (błąd tylko w EN: prefiks `[en]`), reguła cyfr lektora (D-109) też.
-- `textLayer[] { id, x, y, w, h, text, style?, tone?, portrait? }` na scenie `SCENE_HOTSPOTS`, zbliżeniu (`media.kind: "image"`) i scenie
-  zagnieżdżonej - tekst rysowany na grafice w % jej wymiarów (`style`: `label` | `sign` | `screen` | `handwritten`; `portrait` -
-  prostokąt na `imagePortrait`). Grafika bez wypalonego tekstu jest wspólna dla języków. Zasady odtwarzacza (D-128): font odtwarzacza
-  (tylko `handwritten` ma własny krój), co najmniej 14 px na desktopie i 15 px na telefonie, tekst zawija się w szerokości slotu i nigdy
-  nie jest ucinany - za długi wyjdzie poza slot w pionie, więc pisz krótko albo dziel wiersze jawnie (`\n`). `tone`: `dark` (domyślnie,
-  ciemny tekst na jasnym tle slotu) albo `light` (biały tekst na ciemnym tle) - kolor dobiera autor do grafiki pod slotem.
-  `layout-check` (`LAYOUT_CHECK_MODULE=<slug>`, m5) sprawdza każdy napis w przeglądarce.
+- Warstwa tekstu `textLayer` (D-114, tekst rysowany przez odtwarzacz na grafice) jest USUNIĘTA (i18n-4, D-137): pole jest odrzucane jak
+  każde nieznane, a tekst sceny wpala kompozytor w grafikę (sekcja niżej).
 - Notatki `kind`: `call`, `log`, `web`; role głosu: `karol`, `pawel`, `oszust` (`voices.json`: `"oszust": { "sameAs": "pawel" }`).
 - Wszystko powyżej wymaga `schemaVersion: 6`. Moduł 1 (v5) jest bez zmian bajt w bajt (`src/module-1-golden.spec.ts`).
 - `CALL_RECORDING` (D-115, oceniany, domyślna waga 1): `segments[]` (2-40) `{ id, speaker, narration (z `voice`), gapAfterMs? }`,
@@ -131,9 +126,9 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   (sprzeczności + pudła). Pisząc treść: kwestia z `fragment` jest publiczna i nigdy nie jest sprzecznością, więc pytanie ze sprzecznością
   ma mieć też zwykłe kwestie bez fragmentu (inaczej kandydat na kłamstwo jest oczywisty). Id kwestii idą do przeglądarki (`lineId` przy
   podważeniu) - mają być neutralne (np. `kod-odpowiedz`, nie `wpisal-liczbe`): id nie może zdradzać, że kwestia kłamie, ani czym ją obalić.
-- `OSINT_SPOT` (D-120, oceniany, domyślna waga 1): `image`, `imagePortrait?` + `portraitSpots?` (te same id), `imageAlt`, `textLayer?` (treść
-  strony - przy `imagePortrait` każdy napis z `portrait`), `prompt?`, `spots[]` (2-20) `{ id, label, x, y, w, h, used, note? (tylko użyty -
-  dowód), trapText? (tylko pułapka), media? { kind: "audio", title, narration (z `voice`), image? + alt, imagePortrait?, textLayer?,
+- `OSINT_SPOT` (D-120, oceniany, domyślna waga 1): `image`, `imagePortrait?` + `portraitSpots?` (te same id), `imageAlt` (treść strony
+  wpalona w grafikę), `prompt?`, `spots[]` (2-20) `{ id, label, x, y, w, h, used, note? (tylko użyty -
+  dowód), trapText? (tylko pułapka), media? { kind: "audio", title, narration (z `voice`), image? + alt, imagePortrait?,
   secretEnding? { id, label, note? } } }`,
   `falseSpotPenalty?` (0,25). `used`, `note`, `trapText` i kara są sekretem. Odpowiedź `{ marked: [spotId], heard?: [secretEnding.id] }`; wynik
   = trafione użyte / wszystkie użyte − kara × zaznaczone pułapki (min. 0); `heard` - wyróżnienie w notatniku (bez punktów, jak easter egg).
@@ -152,12 +147,12 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 
 ### Języki kursu i grafiki z wpalonym tekstem (D-133, D-134)
 
-Tekst sceny jest WPALONY w grafikę, osobny plik na każdy język; `textLayer` (tekst rysowany przez odtwarzacz) jest przestarzały.
+Tekst sceny jest WPALONY w grafikę, osobny plik na każdy język; `textLayer` (tekst rysowany przez odtwarzacz) usunięto w i18n-4 (D-137).
 
 - `locales` (moduł): języki, w których kurs jest kompletny - zawsze z `pl`, np. `["pl"]` albo `["pl", "en"]`. Gracz w innym języku dostaje
   cały kurs po polsku z plakietką „Available in Polish only” (nigdy mieszanka). Moduł z `locales` przechodzi ostrzejszą walidację (błędy):
-  każde pole wielojęzyczne ma każdy język z `locales` (zwykły string = tylko `pl`), każda grafika ma opis (`alt`/`imageAlt`), bez `textLayer`.
-  Moduły 1-2 (bez pola) - bez zmian, `textLayer` daje w nich ostrzeżenie.
+  każde pole wielojęzyczne ma każdy język z `locales` (zwykły string = tylko `pl`), każda grafika ma opis (`alt`/`imageAlt`).
+  Moduły 1-2 (bez pola) - bez zmian; ich tekst jest wpalony po polsku (moduł 2 od i18n-4 - D-137).
 - Grafiki z tekstem (scena, wariant pionowy, zbliżenia, scena zagnieżdżona, sceny odprawy, raport zamknięcia, OSINT, omówienie) mogą być
   wielojęzyczne: `"image": { "pl": "scenes/pl/telefon.svg", "en": "scenes/en/telefon.svg" }`. Prostokąty hotspotów są wspólne - zmienia się
   tylko tekst w grafice, nie układ. `--assets` publikuje każdy język osobno (klucz locka `<blok>#<ścieżka>@<język>` dla `en`; `pl` ma klucz

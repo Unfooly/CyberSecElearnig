@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 2400" width="900" height="2400">
-  <!-- Moduł podglądu (dev-modul-2, D-121): wariant pionowy strony „Zespół” (przewijany) bez tekstu - treść w textLayer. -->
+  <!-- Moduł podglądu (dev-modul-2, D-121): wariant pionowy strony „Zespół” (przewijany) bez tekstu (atrapa układu; textLayer usunięty w D-137). -->
   <rect width="900" height="2400" fill="#f8fafc" />
   <rect x="0" y="0" width="900" height="40" fill="#1e293b" />
   <rect x="54" y="48" width="792" height="192" rx="12" fill="#cbd5e1" />

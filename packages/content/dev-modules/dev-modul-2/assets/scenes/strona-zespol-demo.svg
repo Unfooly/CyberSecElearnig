@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
-  <!-- Moduł podglądu (dev-modul-2, D-121): układ strony „Zespół” bez tekstu - treść w textLayer. Tylko harness i layout-check. -->
+  <!-- Moduł podglądu (dev-modul-2, D-121): układ strony „Zespół” bez tekstu (atrapa układu; textLayer usunięty w D-137). Tylko harness i layout-check. -->
   <rect width="1600" height="1000" fill="#f8fafc" />
   <rect x="0" y="0" width="1600" height="80" fill="#1e293b" />
   <rect x="128" y="100" width="1344" height="160" rx="12" fill="#cbd5e1" />

@@ -18,6 +18,7 @@
     "slot-tytul-slajdu": "slot-tytul-slajdu"
    },
    "pad": 0
-  }
+  },
+  {"id":"tekst-slajd","prop":"textBox","x":90,"y":140.8,"params":{"w":720,"h":83.2,"text":"BEZPIECZNA PRACA ZDALNA","size":66.6,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}}
  ]
 }

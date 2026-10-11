@@ -479,34 +479,10 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/glos-z-helpdesku/scenes/telefon-karola.1019c2c2.svg",
+              "image": "assets/glos-z-helpdesku/scenes/telefon-karola.3b29c4e3.svg",
               "imageAlt": {
                 "pl": "Ekran telefonu: kafel z listą powiadomień aplikacji uwierzytelniającej i kafel rejestru połączeń."
               },
-              "textLayer": [
-                {
-                  "id": "tytul-powiadomienia",
-                  "x": 30.6,
-                  "y": 21.4,
-                  "w": 44.6,
-                  "h": 3.5,
-                  "text": {
-                    "pl": "Powiadomienia"
-                  },
-                  "style": "screen"
-                },
-                {
-                  "id": "tytul-rejestr",
-                  "x": 30.6,
-                  "y": 61.9,
-                  "w": 44.6,
-                  "h": 3.5,
-                  "text": {
-                    "pl": "Połączenia"
-                  },
-                  "style": "screen"
-                }
-              ],
               "hotspots": [
                 {
                   "id": "mfa-seria",
@@ -522,90 +498,10 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.a4930fbc.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.f46e1cf8.svg",
                     "alt": {
                       "pl": "Lista sześciu odrzuconych próśb o zatwierdzenie logowania, od 8:55 do 8:57."
-                    },
-                    "textLayer": [
-                      {
-                        "id": "tytul",
-                        "x": 26,
-                        "y": 13.7,
-                        "w": 59.5,
-                        "h": 3.8,
-                        "text": {
-                          "pl": "Uwierzytelnianie"
-                        },
-                        "style": "screen",
-                        "tone": "light"
-                      },
-                      {
-                        "id": "wiersz-1",
-                        "x": 26,
-                        "y": 23.1,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "wiersz-2",
-                        "x": 26,
-                        "y": 33.9,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "wiersz-3",
-                        "x": 26,
-                        "y": 44.7,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "wiersz-4",
-                        "x": 26,
-                        "y": 55.4,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "wiersz-5",
-                        "x": 26,
-                        "y": 66.2,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "wiersz-6",
-                        "x": 26,
-                        "y": 77,
-                        "w": 44.4,
-                        "h": 6,
-                        "text": {
-                          "pl": "Logowanie\nodrzucone"
-                        },
-                        "style": "screen"
-                      }
-                    ]
+                    }
                   },
                   "evidence": true,
                   "required": true,
@@ -630,56 +526,10 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.5d333f05.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.4f1fe8b3.svg",
                     "alt": {
                       "pl": "Rejestr połączeń: 9:02 IT Helpdesk, 12 3XX XX 41, 39 minut; 10:15 wewnętrzny 214, 3 minuty."
-                    },
-                    "textLayer": [
-                      {
-                        "id": "tytul",
-                        "x": 26,
-                        "y": 13.7,
-                        "w": 59.5,
-                        "h": 3.8,
-                        "text": {
-                          "pl": "Połączenia"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "nazwa-1",
-                        "x": 27.2,
-                        "y": 23.9,
-                        "w": 40.9,
-                        "h": 3.8,
-                        "text": {
-                          "pl": "IT Helpdesk"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "nazwa-2",
-                        "x": 27.2,
-                        "y": 38,
-                        "w": 40.9,
-                        "h": 3.8,
-                        "text": {
-                          "pl": "Wewnętrzny"
-                        },
-                        "style": "screen"
-                      },
-                      {
-                        "id": "nazwa-3",
-                        "x": 27.2,
-                        "y": 52.1,
-                        "w": 40.9,
-                        "h": 3.8,
-                        "text": {
-                          "pl": "Centrala"
-                        },
-                        "style": "screen"
-                      }
-                    ]
+                    }
                   },
                   "evidence": true,
                   "required": true,
@@ -710,7 +560,7 @@
           "media": {
             "kind": "scene",
             "scene": {
-              "image": "assets/glos-z-helpdesku/scenes/pulpit-karola.417f5670.svg",
+              "image": "assets/glos-z-helpdesku/scenes/pulpit-karola.c7e41f6c.svg",
               "imageAlt": {
                 "pl": "Pulpit komputera z ikonami programów, wśród nich narzędzie zdalnej pomocy i przeglądarka; otwarte okno instalatora."
               },
@@ -720,32 +570,6 @@
                 "w": 91.3,
                 "h": 79.8
               },
-              "textLayer": [
-                {
-                  "id": "podpis-narzedzie",
-                  "x": 26.3,
-                  "y": 31.8,
-                  "w": 15.6,
-                  "h": 3.5,
-                  "text": {
-                    "pl": "Pomoc zdalna"
-                  },
-                  "style": "screen",
-                  "tone": "light"
-                },
-                {
-                  "id": "podpis-przegladarka",
-                  "x": 24.5,
-                  "y": 39.6,
-                  "w": 16,
-                  "h": 5,
-                  "text": {
-                    "pl": "Przeglądarka"
-                  },
-                  "style": "screen",
-                  "tone": "light"
-                }
-              ],
               "hotspots": [
                 {
                   "id": "narzedzie-zdalne",
@@ -828,23 +652,10 @@
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.48806873.svg",
+            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.a4864851.svg",
             "alt": {
               "pl": "Plakat: IT nigdy nie prosi o kody ani liczby z aplikacji."
-            },
-            "textLayer": [
-              {
-                "id": "haslo",
-                "x": 10,
-                "y": 86,
-                "w": 80,
-                "h": 10,
-                "text": {
-                  "pl": "IT nigdy nie prosi o kody ani liczby z aplikacji"
-                },
-                "style": "sign"
-              }
-            ]
+            }
           },
           "evidence": true,
           "note": {
@@ -2044,11 +1855,11 @@
       "tip": {
         "pl": "Porównaj oba wpisy. Skąd przyszło każde z połączeń? Potem „Dalej”."
       },
-      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.179d3458.svg",
+      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.b5729109.svg",
       "imageAlt": {
-        "pl": "Dwa wpisy rejestru połączeń jeden obok drugiego: 9:02 „IT Helpdesk” z numeru 12 3XX XX 41 i 10:15 wewnętrzny 214, obok karta intranetu z kontaktem do IT."
+        "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min. Obok intranet „Kontakt z IT”: 214. Helpdesk IT - tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
       },
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.c2175240.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.43c29a6a.svg",
       "portraitHotspots": [
         {
           "id": "numer-zewnetrzny",
@@ -2070,77 +1881,6 @@
           "y": 60.8,
           "width": 64,
           "height": 39.2
-        }
-      ],
-      "textLayer": [
-        {
-          "id": "nazwa-9-02",
-          "x": 20.5,
-          "y": 26.1,
-          "w": 18.7,
-          "h": 7.7,
-          "text": {
-            "pl": "IT Helpdesk\n9:02 · 39 min"
-          },
-          "style": "screen",
-          "portrait": {
-            "x": 38.7,
-            "y": 18.4,
-            "w": 33.2,
-            "h": 4.3
-          }
-        },
-        {
-          "id": "nazwa-10-15",
-          "x": 20.5,
-          "y": 49.3,
-          "w": 18.7,
-          "h": 7.7,
-          "text": {
-            "pl": "Wewnętrzny\n10:15 · 3 min"
-          },
-          "style": "screen",
-          "portrait": {
-            "x": 38.7,
-            "y": 31.5,
-            "w": 33.2,
-            "h": 4.3
-          }
-        },
-        {
-          "id": "intranet-naglowek",
-          "x": 59.8,
-          "y": 11.7,
-          "w": 28.6,
-          "h": 7.1,
-          "text": {
-            "pl": "Intranet: kontakt z IT"
-          },
-          "style": "label",
-          "tone": "light",
-          "portrait": {
-            "x": 29.1,
-            "y": 62.1,
-            "w": 48.4,
-            "h": 3.9
-          }
-        },
-        {
-          "id": "intranet-tresc",
-          "x": 55.9,
-          "y": 51.1,
-          "w": 32.5,
-          "h": 36.8,
-          "text": {
-            "pl": "Helpdesk IT - tylko numer wewnętrzny.\nIT nigdy nie prosi o kody ani liczby z aplikacji.\nWątpliwości? Rozłącz się i oddzwoń."
-          },
-          "style": "screen",
-          "portrait": {
-            "x": 22.4,
-            "y": 83.3,
-            "w": 55.1,
-            "h": 16.7
-          }
         }
       ],
       "hotspots": [
@@ -2225,156 +1965,14 @@
       "tip": {
         "pl": "Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało."
       },
-      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.bca7440b.svg",
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.caa6e884.svg",
+      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.8cf7e344.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.3b7fe414.svg",
       "imageAlt": {
-        "pl": "Strona drukarni, zakładka Zespół: zdjęcie budynku, dwie osoby z działów, kafel webinaru, oferta i stopka z kontaktem."
+        "pl": "Strona Drukarni Lipowej, Zespół: zdjęcie budynku, Paweł Nowicki, specjalista IT, helpdesk; Grzegorz Sowa, kierownik sprzedaży; webinar „Praca zdalna” (Paweł Nowicki); oferta: ulotki, wizytówki; stopka: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe, ul. Grabowa 12, Kraków, pon.-pt. 8-16."
       },
       "prompt": {
         "pl": "Zaznacz informacje, które wykorzystał oszust."
       },
-      "textLayer": [
-        {
-          "id": "t-firma",
-          "x": 5,
-          "y": 1.5,
-          "w": 30,
-          "h": 5,
-          "text": {
-            "pl": "Drukarnia Lipowa"
-          },
-          "style": "label",
-          "portrait": {
-            "x": 10,
-            "y": 0.6,
-            "w": 60,
-            "h": 1.8
-          }
-        },
-        {
-          "id": "t-pawel",
-          "x": 9,
-          "y": 53,
-          "w": 24,
-          "h": 6.5,
-          "text": {
-            "pl": "Paweł Nowicki\nspecjalista IT, helpdesk"
-          },
-          "style": "label",
-          "portrait": {
-            "x": 7,
-            "y": 29.6,
-            "w": 58,
-            "h": 3.4
-          }
-        },
-        {
-          "id": "t-kierownik",
-          "x": 39,
-          "y": 53,
-          "w": 24,
-          "h": 6.5,
-          "text": {
-            "pl": "Grzegorz Sowa\nkierownik sprzedaży"
-          },
-          "style": "label",
-          "portrait": {
-            "x": 7,
-            "y": 48.8,
-            "w": 58,
-            "h": 3.4
-          }
-        },
-        {
-          "id": "t-webinar",
-          "x": 71,
-          "y": 51.5,
-          "w": 22,
-          "h": 6,
-          "text": {
-            "pl": "Webinar: praca zdalna\nPaweł Nowicki"
-          },
-          "style": "screen",
-          "tone": "light",
-          "portrait": {
-            "x": 7,
-            "y": 68.6,
-            "w": 84,
-            "h": 3.4
-          }
-        },
-        {
-          "id": "t-oferta",
-          "x": 71,
-          "y": 75,
-          "w": 22,
-          "h": 5,
-          "text": {
-            "pl": "Oferta i cennik\nulotki, wizytówki"
-          },
-          "style": "label",
-          "portrait": {
-            "x": 7,
-            "y": 81.8,
-            "w": 84,
-            "h": 3
-          }
-        },
-        {
-          "id": "t-kontakt",
-          "x": 8,
-          "y": 87,
-          "w": 40,
-          "h": 4.5,
-          "text": {
-            "pl": "Kontakt: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe"
-          },
-          "style": "screen",
-          "tone": "light",
-          "portrait": {
-            "x": 5.6,
-            "y": 88.5,
-            "w": 84,
-            "h": 2.4
-          }
-        },
-        {
-          "id": "t-adres",
-          "x": 60,
-          "y": 87,
-          "w": 28,
-          "h": 4.5,
-          "text": {
-            "pl": "ul. Grabowa 12, Kraków"
-          },
-          "style": "screen",
-          "tone": "light",
-          "portrait": {
-            "x": 5.6,
-            "y": 92.3,
-            "w": 84,
-            "h": 2.4
-          }
-        },
-        {
-          "id": "t-godziny",
-          "x": 70,
-          "y": 93,
-          "w": 20,
-          "h": 4,
-          "text": {
-            "pl": "pon.-pt. 8-16"
-          },
-          "style": "screen",
-          "tone": "light",
-          "portrait": {
-            "x": 5.6,
-            "y": 96,
-            "w": 84,
-            "h": 2.4
-          }
-        }
-      ],
       "spots": [
         {
           "id": "zdjecie-budynku",
@@ -2439,31 +2037,11 @@
             "title": {
               "pl": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki"
             },
-            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.64e93c2e.svg",
-            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.43904efb.svg",
+            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.e397d112.svg",
+            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.f27c3a2f.svg",
             "alt": {
               "pl": "Kadr prelekcji: slajd „Bezpieczna praca zdalna” i sylwetka prelegenta."
             },
-            "textLayer": [
-              {
-                "id": "slajd",
-                "x": 6.9,
-                "y": 11.1,
-                "w": 56.3,
-                "h": 10.2,
-                "text": {
-                  "pl": "Bezpieczna praca zdalna"
-                },
-                "style": "sign",
-                "tone": "light",
-                "portrait": {
-                  "x": 10,
-                  "y": 8.8,
-                  "w": 80,
-                  "h": 5.2
-                }
-              }
-            ],
             "narration": {
               "voice": "pawel",
               "pl": {

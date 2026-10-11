@@ -1,7 +1,7 @@
 /**
  * Klocki modułu 2 „Głos z helpdesku”.
- * Zasada EN-ready: grafiki bez słów — tekst dokłada odtwarzacz (textLayer / sloty `slot-*`).
- * Dozwolone w grafice: cyfry i numery zamaskowane (12 3XX XX 41, 214), bo nie zależą od języka.
+ * Klocki bez słów: napisy wpala scena klockami `textBox` w slotach `slot-*` (D-133, i18n-4 - dawniej `textLayer` odtwarzacza).
+ * Dozwolone w klocku: cyfry i numery zamaskowane (12 3XX XX 41, 214), bo nie zależą od języka.
  */
 import { P } from './palette.js';
 import type { PropFn } from './types.js';
@@ -30,8 +30,11 @@ const shieldIcon = (s: number, fill: string = P.purple) =>
 
 /* ---------- biurko Karola ---------- */
 
-/** Plakat „IT nigdy nie prosi o kody” — bez słów: telefon + dymek z liczbą przekreśloną. */
-export const noCodePoster: PropFn<{ w?: number; h?: number }> = ({ w = 190, h = 250 }) => ({
+/**
+ * Plakat „IT nigdy nie prosi o kody” — bez słów: telefon + dymek z liczbą przekreśloną. `slogan: true` (zbliżenie) - dół plakatu pusty
+ * (bez znaku zakazu i paska-atrapy) na hasło wpalone przez scenę (`textBox`, lokalnie x 16-174, y 168-238).
+ */
+export const noCodePoster: PropFn<{ w?: number; h?: number; slogan?: boolean }> = ({ w = 190, h = 250, slogan = false }) => ({
   w, h,
   svg:
     `<rect x="6" y="8" width="${w}" height="${h}" rx="6" fill="${P.ink}" opacity="0.15"/>` +
@@ -42,8 +45,10 @@ export const noCodePoster: PropFn<{ w?: number; h?: number }> = ({ w = 190, h = 
     `<g transform="translate(${w - 78} 92)"><path d="M-40 -26 h80 a10 10 0 0 1 10 10 v36 a10 10 0 0 1 -10 10 h-50 l-18 16 v-16 h-12 a10 10 0 0 1 -10 -10 v-36 a10 10 0 0 1 10 -10 z" fill="${P.wall2}"/>` +
     t(0, 14, '47', 30, { anchor: 'middle', bold: true, fill: P.ink }) +
     `<path d="M-30 -16 L30 30" stroke="${P.red}" stroke-width="7" stroke-linecap="round"/></g>` +
-    `<circle cx="${w / 2}" cy="${h - 52}" r="26" fill="none" stroke="${P.red}" stroke-width="6"/><path d="M${w / 2 - 18} ${h - 70} L${w / 2 + 18} ${h - 34}" stroke="${P.red}" stroke-width="6"/>` +
-    bars(26, h - 20, [w - 52], 0, 6),
+    (slogan
+      ? ''
+      : `<circle cx="${w / 2}" cy="${h - 52}" r="26" fill="none" stroke="${P.red}" stroke-width="6"/><path d="M${w / 2 - 18} ${h - 70} L${w / 2 + 18} ${h - 34}" stroke="${P.red}" stroke-width="6"/>` +
+        bars(26, h - 20, [w - 52], 0, 6)),
 });
 
 /** Monitor z pulpitem: tapeta, ikony i otwarte okno narzędzia zdalnej pomocy (połączone). */
@@ -84,7 +89,7 @@ export const phoneFaceUp: PropFn<{ badge?: string }> = ({ badge = '6' }) => {
 
 /**
  * Ekran telefonu 9:16 z dwoma kaflami: powiadomienia MFA i rejestr połączeń.
- * Etykiety kafli w warstwie tekstu (sloty `slot-powiadomienia-tytul`, `slot-rejestr-tytul`).
+ * Etykiety kafli wpala scena klockami `textBox` (sloty `slot-powiadomienia-tytul`, `slot-rejestr-tytul`).
  */
 export const phoneHomeTiles: PropFn<Record<string, never>> = () => {
   const w = 620, h = 1180, sx = 34, sy = 90, sw = w - 68, sh = h - 170;
@@ -374,7 +379,7 @@ const phoneShell = (w: number, h: number, screenFill: string) => {
   };
 };
 
-/** Zbliżenie: lista 6 odrzuconych próśb o logowanie (godziny w grafice, opisy w textLayer). */
+/** Zbliżenie: lista 6 odrzuconych próśb o logowanie (godziny w grafice, opisy wpala scena w `slot-wiersz-*`). */
 export const mfaListZoom: PropFn<Record<string, never>> = () => {
   const w = 800, h = 1500;
   const sh = phoneShell(w, h, '#F4F5FB');
@@ -397,7 +402,7 @@ export const mfaListZoom: PropFn<Record<string, never>> = () => {
   };
 };
 
-/** Zbliżenie: rejestr połączeń (3 wiersze, numery zamaskowane w grafice, nazwy w textLayer). */
+/** Zbliżenie: rejestr połączeń (3 wiersze, numery zamaskowane w grafice, nazwy wpala scena w `slot-nazwa-*`). */
 export const callLogZoom: PropFn<Record<string, never>> = () => {
   const w = 800, h = 1500;
   const sh = phoneShell(w, h, '#F4F5FB');
@@ -421,7 +426,7 @@ export const callLogZoom: PropFn<Record<string, never>> = () => {
   };
 };
 
-/** Ikona pulpitu z narzędziem zdalnej pomocy (bez podpisu — podpis w textLayer). */
+/** Ikona pulpitu z narzędziem zdalnej pomocy (bez podpisu — podpis wpala scena klockiem `textBox`). */
 export const desktopRemoteIcon: PropFn<{ highlight?: boolean }> = ({ highlight = true }) => ({
   w: 120, h: 128,
   svg: `<rect x="10" y="4" width="100" height="96" rx="18" fill="${P.white}" opacity="0.92"/>` +
@@ -525,7 +530,7 @@ export const callCompareTop: PropFn<Record<string, never>> = () => {
   };
 };
 
-/** Wydruk strony intranetu „Kontakt z IT” (bez słów poza numerem 214). */
+/** Wydruk strony intranetu „Kontakt z IT” (bez słów poza numerem 214; nagłówek i treść wpala scena w `slot-naglowek`, `slot-tresc`). */
 export const intranetSheet: PropFn<Record<string, never>> = () => {
   const w = 560, h = 700;
   return {
@@ -536,20 +541,18 @@ export const intranetSheet: PropFn<Record<string, never>> = () => {
       `<circle cx="60" cy="45" r="24" fill="${P.white}" opacity="0.9"/>` +
       `<rect x="40" y="130" width="${w - 80}" height="200" rx="14" fill="#EEEBFF"/>` +
       `<g transform="translate(110 230)"><circle r="54" fill="${P.purple}"/>${handset(64, P.white, 0)}</g>` +
-      t(200, 262, '214', 88, { bold: true, fill: P.purpleDark }) +
-      bars(40, 380, [420, 360, 440, 300, 400, 340], 42, 12),
+      t(200, 262, '214', 88, { bold: true, fill: P.purpleDark }),
     parts: { 'slot-naglowek': { x: 100, y: 22, w: w - 140, h: 46 }, 'slot-tresc': { x: 40, y: 360, w: w - 80, h: 300 } },
   };
 };
 
-/** Strona www drukarni „Zespół” — układ bez słów (tekst w textLayer). portrait=true → 900×2400. */
+/** Strona www drukarni „Zespół” — układ bez słów (napisy wpala scena pod zdjęciami kart i w stopce). portrait=true → 900×2400. */
 export const teamWebsite: PropFn<{ portrait?: boolean }> = ({ portrait = false }) => {
   const person = (x: number, y: number, w: number, h: number, col: string, hair: string) =>
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${P.white}" stroke="${P.wall2}" stroke-width="3"/>` +
     `<rect x="${x + 16}" y="${y + 16}" width="${w - 32}" height="${h * 0.55}" rx="10" fill="${col}"/>` +
     `<circle cx="${x + w / 2}" cy="${y + 16 + h * 0.23}" r="${h * 0.1}" fill="#E7C2A0"/><path d="M${x + w / 2 - h * 0.1} ${y + 16 + h * 0.2} a${h * 0.1} ${h * 0.1} 0 0 1 ${h * 0.2} 0 z" fill="${hair}"/>` +
-    `<path d="M${x + w / 2 - h * 0.2} ${y + 16 + h * 0.55} c0 -${h * 0.14} ${h * 0.4} -${h * 0.14} ${h * 0.4} 0 z" fill="${P.white}" opacity="0.85"/>` +
-    bars(x + 24, y + h * 0.65 + 20, [w * 0.6, w * 0.45], 30, 12);
+    `<path d="M${x + w / 2 - h * 0.2} ${y + 16 + h * 0.55} c0 -${h * 0.14} ${h * 0.4} -${h * 0.14} ${h * 0.4} 0 z" fill="${P.white}" opacity="0.85"/>`;
   const building = (x: number, y: number, w: number, h: number) =>
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${P.sky}"/>` +
     `<rect x="${x + w * 0.2}" y="${y + h * 0.25}" width="${w * 0.6}" height="${h * 0.75}" fill="${P.desk}"/>` +
@@ -559,12 +562,10 @@ export const teamWebsite: PropFn<{ portrait?: boolean }> = ({ portrait = false }
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#2B2440"/>` +
     `<rect x="${x + 16}" y="${y + 16}" width="${w - 32}" height="${h * 0.58}" rx="8" fill="#3B2F8F"/>` +
     `<circle cx="${x + w * 0.7}" cy="${y + h * 0.3}" r="${h * 0.12}" fill="#8E82F0"/><path d="M${x + w * 0.7 - h * 0.2} ${y + 16 + h * 0.58} c0 -${h * 0.2} ${h * 0.4} -${h * 0.2} ${h * 0.4} 0 z" fill="#8E82F0"/>` +
-    `<g transform="translate(${x + w * 0.32} ${y + h * 0.33})"><circle r="${h * 0.12}" fill="${P.white}"/><path d="M-${h * 0.04} -${h * 0.06} l${h * 0.1} ${h * 0.06} l-${h * 0.1} ${h * 0.06} z" fill="#2B2440"/></g>` +
-    bars(x + 24, y + h * 0.72, [w * 0.7, w * 0.4], 30, 12, '#8E82F0');
+    `<g transform="translate(${x + w * 0.32} ${y + h * 0.33})"><circle r="${h * 0.12}" fill="${P.white}"/><path d="M-${h * 0.04} -${h * 0.06} l${h * 0.1} ${h * 0.06} l-${h * 0.1} ${h * 0.06} z" fill="#2B2440"/></g>`;
   const offer = (x: number, y: number, w: number, h: number) =>
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${P.white}" stroke="${P.wall2}" stroke-width="3"/>` +
-    [0, 1, 2].map(i => `<rect x="${x + 20 + i * (w - 40) / 3}" y="${y + 20}" width="${(w - 40) / 3 - 12}" height="${h * 0.45}" rx="8" fill="${[P.orange, P.teal, P.purple][i]}" opacity="0.8"/>`).join('') +
-    bars(x + 20, y + h * 0.62, [w * 0.7, w * 0.5], 28, 12);
+    [0, 1, 2].map(i => `<rect x="${x + 20 + i * (w - 40) / 3}" y="${y + 20}" width="${(w - 40) / 3 - 12}" height="${h * 0.45}" rx="8" fill="${[P.orange, P.teal, P.purple][i]}" opacity="0.8"/>`).join('');
   const header = (w: number) => `<rect width="${w}" height="80" fill="${P.white}"/><rect y="78" width="${w}" height="3" fill="${P.wall2}"/>` +
     `<g transform="translate(60 40)"><circle r="24" fill="${P.green}"/><path d="M-10 6 q10 -26 20 0" fill="none" stroke="${P.white}" stroke-width="5"/></g>` +
     [0, 1, 2, 3].map(i => `<rect x="${w - 420 + i * 95}" y="34" width="70" height="12" rx="6" fill="${i === 2 ? P.purple : P.grey}"/>`).join('');
@@ -576,7 +577,7 @@ export const teamWebsite: PropFn<{ portrait?: boolean }> = ({ portrait = false }
       svg: `<rect width="${w}" height="${h}" fill="#F7F8FC"/>` + header(w) +
         building(L.bud[0], L.bud[1], L.bud[2], L.bud[3]) + person(L.p1[0], L.p1[1], L.p1[2], L.p1[3], P.teal, '#2E2A33') + person(L.p2[0], L.p2[1], L.p2[2], L.p2[3], P.orange, '#5A3A22') +
         webinar(L.web[0], L.web[1], L.web[2], L.web[3]) + offer(L.off[0], L.off[1], L.off[2], L.off[3]) +
-        `<rect x="0" y="850" width="${w}" height="150" fill="#2B2440"/>` + bars(128, 880, [620], 0, 14, '#8E82F0') + bars(960, 880, [420], 0, 14, '#8E82F0') + bars(1120, 940, [300], 0, 14, '#8E82F0'),
+        `<rect x="0" y="850" width="${w}" height="150" fill="#2B2440"/>`,
       parts: {
         'zdjecie-budynku': { x: 128, y: 100, w: 1344, h: 160 }, 'zespol-pawel': { x: 128, y: 300, w: 416, h: 340 }, 'kierownik-sprzedazy': { x: 608, y: 300, w: 416, h: 340 },
         webinar: { x: 1120, y: 300, w: 384, h: 300 }, oferta: { x: 1120, y: 640, w: 384, h: 180 },
@@ -590,7 +591,7 @@ export const teamWebsite: PropFn<{ portrait?: boolean }> = ({ portrait = false }
     svg: `<rect width="${w}" height="${h}" fill="#F7F8FC"/>` + header(w) +
       building(50, 110, 800, 280) + person(50, 430, 800, 420, P.teal, '#2E2A33') + person(50, 890, 800, 420, P.orange, '#5A3A22') +
       webinar(50, 1350, 800, 420) + offer(50, 1810, 800, 250) +
-      `<rect x="0" y="2100" width="${w}" height="300" fill="#2B2440"/>` + bars(50, 2140, [700], 0, 16, '#8E82F0') + bars(50, 2230, [520], 0, 16, '#8E82F0') + bars(50, 2320, [400], 0, 16, '#8E82F0'),
+      `<rect x="0" y="2100" width="${w}" height="300" fill="#2B2440"/>`,
     parts: {
       'zdjecie-budynku': { x: 50, y: 110, w: 800, h: 280 }, 'zespol-pawel': { x: 50, y: 430, w: 800, h: 420 }, 'kierownik-sprzedazy': { x: 50, y: 890, w: 800, h: 420 },
       webinar: { x: 50, y: 1350, w: 800, h: 420 }, oferta: { x: 50, y: 1810, w: 800, h: 250 },
@@ -599,7 +600,7 @@ export const teamWebsite: PropFn<{ portrait?: boolean }> = ({ portrait = false }
   };
 };
 
-/** Kadr webinaru: slajd (tytuł w textLayer) + sylwetka prelegenta + pasek odtwarzacza. */
+/** Kadr webinaru: slajd (tytuł wpala scena w `slot-tytul-slajdu`) + sylwetka prelegenta + pasek odtwarzacza. */
 export const webinarFrame: PropFn<{ portrait?: boolean }> = ({ portrait = false }) => {
   const w = portrait ? 900 : 1600, h = portrait ? 1600 : 900;
   const slide = portrait ? [60, 120, 780, 560] : [80, 80, 960, 600];

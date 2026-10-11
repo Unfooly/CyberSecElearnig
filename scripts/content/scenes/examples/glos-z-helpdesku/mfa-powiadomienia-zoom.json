@@ -21,6 +21,13 @@
     "slot-wiersz-5": "slot-wiersz-5",
     "slot-wiersz-6": "slot-wiersz-6"
    }
-  }
+  },
+  {"id":"tekst-tytul","prop":"textBox","x":223.6,"y":213.7,"params":{"w":511.7,"h":59.3,"text":"Uwierzytelnianie","size":34,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-wiersz-1","prop":"textBox","x":223.6,"y":360.4,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-wiersz-2","prop":"textBox","x":223.6,"y":528.8,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-wiersz-3","prop":"textBox","x":223.6,"y":697.3,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-wiersz-4","prop":"textBox","x":223.6,"y":864.2,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-wiersz-5","prop":"textBox","x":223.6,"y":1032.7,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-wiersz-6","prop":"textBox","x":223.6,"y":1201.2,"params":{"w":381.8,"h":93.6,"text":["Logowanie","odrzucone"],"size":42.1,"align":"middle","valign":"middle","color":"#0F172A"}}
  ]
 }

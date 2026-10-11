@@ -1,2 +1,4 @@
 { "width": 700, "height": 1260, "background": { "flat": true, "wall": "none" },
-  "items": [ { "id": "ekran", "prop": "phoneHomeTiles", "x": 40, "y": 30, "partHotspots": { "powiadomienia": "powiadomienia", "rejestr": "rejestr", "slot-powiadomienia-tytul": "slot-powiadomienia-tytul", "slot-rejestr-tytul": "slot-rejestr-tytul" }, "pad": 0 } ] }
+  "items": [ { "id": "ekran", "prop": "phoneHomeTiles", "x": 40, "y": 30, "partHotspots": { "powiadomienia": "powiadomienia", "rejestr": "rejestr", "slot-powiadomienia-tytul": "slot-powiadomienia-tytul", "slot-rejestr-tytul": "slot-rejestr-tytul" }, "pad": 0 },
+    {"id":"tekst-tytul-powiadomienia","prop":"textBox","x":214.2,"y":269.6,"params":{"w":312.2,"h":44.1,"text":"Powiadomienia","size":30,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}},
+    {"id":"tekst-tytul-rejestr","prop":"textBox","x":214.2,"y":779.9,"params":{"w":312.2,"h":44.1,"text":"Połączenia","size":30,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}} ] }

@@ -25,6 +25,18 @@
     "godziny": "godziny"
    },
    "pad": 0
-  }
+  },
+  {"id":"tekst-firma","prop":"textBox","x":100,"y":18,"params":{"w":360,"h":44,"text":"Drukarnia Lipowa","size":34,"valign":"middle","bold":true,"color":"#0F172A"}},
+  {"id":"tekst-pawel","prop":"textBox","x":74,"y":700,"params":{"w":752,"h":60,"text":"Paweł Nowicki","size":48,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}},
+  {"id":"tekst-pawel-rola","prop":"textBox","x":74,"y":768,"params":{"w":752,"h":56,"text":"specjalista IT, helpdesk","size":40,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-kierownik","prop":"textBox","x":74,"y":1160,"params":{"w":752,"h":60,"text":"Grzegorz Sowa","size":48,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}},
+  {"id":"tekst-kierownik-rola","prop":"textBox","x":74,"y":1228,"params":{"w":752,"h":56,"text":"kierownik sprzedaży","size":40,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-webinar","prop":"textBox","x":74,"y":1628,"params":{"w":752,"h":58,"text":"Webinar: praca zdalna","size":44,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-webinar-prelegent","prop":"textBox","x":74,"y":1694,"params":{"w":752,"h":52,"text":"Paweł Nowicki","size":38,"align":"middle","valign":"middle","color":"#FFFFFF"}},
+  {"id":"tekst-oferta","prop":"textBox","x":74,"y":1956,"params":{"w":752,"h":48,"text":"Oferta i cennik","size":38,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}},
+  {"id":"tekst-oferta-opis","prop":"textBox","x":74,"y":2006,"params":{"w":752,"h":44,"text":"ulotki, wizytówki","size":34,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-kontakt","prop":"textBox","x":62,"y":2122,"params":{"w":776,"h":66,"text":"Kontakt: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe","size":34,"valign":"middle","color":"#FFFFFF"}},
+  {"id":"tekst-adres","prop":"textBox","x":62,"y":2212,"params":{"w":776,"h":66,"text":"ul. Grabowa 12, Kraków","size":34,"valign":"middle","color":"#FFFFFF"}},
+  {"id":"tekst-godziny","prop":"textBox","x":62,"y":2302,"params":{"w":776,"h":66,"text":"pon.-pt. 8-16","size":34,"valign":"middle","color":"#FFFFFF"}}
  ]
 }

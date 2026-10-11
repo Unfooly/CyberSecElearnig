@@ -448,7 +448,7 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...TROFEA_PROPS,
   ...KEYART_PROPS,
   // Moduł 2 „Głos z helpdesku” (grafik, paczka 1): biurko i telefon Karola, ekran połączenia, awatary, trofea modułu 2 - bez słów
-  // (tekst w textLayer / slotach `slot-*`).
+  // (napisy wpala scena klockami `textBox` w slotach `slot-*`, D-137).
   ...HELPDESK_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

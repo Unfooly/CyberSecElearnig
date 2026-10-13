@@ -388,10 +388,10 @@ export const mfaListZoom: PropFn<Record<string, never>> = () => {
   const parts: Record<string, { x: number; y: number; w: number; h: number }> = { 'slot-tytul': { x: sh.sx + 150, y: sh.sy + 70, w: sh.sw - 200, h: 60 } };
   const rows = times.map((tm, i) => {
     const y = y0 + i * (rowH + 18);
-    parts[`slot-wiersz-${i + 1}`] = { x: sh.sx + 150, y: y + 28, w: sh.sw - 330, h: rowH - 56 };
+    parts[`slot-wiersz-${i + 1}`] = { x: sh.sx + 150, y: y + 15, w: sh.sw - 340, h: rowH - 30 };
     return `<rect x="${sh.sx + 30}" y="${y}" width="${sh.sw - 60}" height="${rowH}" rx="22" fill="${P.white}"/>` +
       `<g transform="translate(${sh.sx + 96} ${y + rowH / 2})">${shieldIcon(52, P.purple)}</g>` +
-      t(sh.sx + sh.sw - 170, y + 62, tm, 34, { bold: true, fill: P.greyDark }) +
+      t(sh.sx + sh.sw - 180, y + 56, tm, 44, { bold: true, fill: P.greyDark }) +
       `<g transform="translate(${sh.sx + sh.sw - 88} ${y + rowH / 2 + 18})"><circle r="24" fill="${P.red}"/><path d="M-10 -10 L10 10 M10 -10 L-10 10" stroke="${P.white}" stroke-width="6" stroke-linecap="round"/></g>`;
   }).join('');
   return {
@@ -412,11 +412,11 @@ export const callLogZoom: PropFn<Record<string, never>> = () => {
   const parts: Record<string, { x: number; y: number; w: number; h: number }> = { 'slot-tytul': { x: sh.sx + 150, y: sh.sy + 70, w: sh.sw - 200, h: 60 } };
   const body = rows.map(([num, tm, hl, col], i) => {
     const y = sh.sy + 200 + i * 220;
-    parts[`slot-nazwa-${i + 1}`] = { x: sh.sx + 160, y: y + 30, w: sh.sw - 360, h: 60 };
+    parts[`slot-nazwa-${i + 1}`] = { x: sh.sx + 160, y: y + 24, w: sh.sw - 360, h: 64 };
     return `<rect x="${sh.sx + 30}" y="${y}" width="${sh.sw - 60}" height="190" rx="24" fill="${hl ? '#FFE9EA' : P.white}"/>` +
       `<g transform="translate(${sh.sx + 96} ${y + 70})"><circle r="40" fill="${col}" opacity="0.18"/>${handset(52, col, 0)}</g>` +
-      t(sh.sx + 160, y + 140, num, 36, { fill: P.greyDark, spacing: 1 }) +
-      t(sh.sx + sh.sw - 70, y + 80, tm, 34, { anchor: 'end', bold: true, fill: P.greyDark });
+      t(sh.sx + 160, y + 150, num, 46, { fill: P.greyDark, spacing: 1 }) +
+      t(sh.sx + sh.sw - 60, y + 76, tm, 44, { anchor: 'end', bold: true, fill: P.greyDark });
   }).join('');
   return {
     w, h,
@@ -507,14 +507,14 @@ export const adminConsoleWindow: PropFn<{ w?: number; h?: number }> = ({ w = 148
   parts: { 'slot-tytul': { x: 90, y: 16, w: w * 0.6, h: 40 }, 'slot-dokument': { x: Math.round(w * 0.04), y: 96, w: Math.round(w * 0.92), h: h - 120 } },
 });
 
-/** Duży telefon z rejestrem: dwa wpisy (części = hotspoty). */
-export const callCompareTop: PropFn<Record<string, never>> = () => {
+/** Duży telefon z rejestrem: dwa wpisy (części = hotspoty). `numSize` - rozmiar numerów (zbliżenie: większy, D-138). */
+export const callCompareTop: PropFn<{ numSize?: number }> = ({ numSize = 30 }) => {
   const w = 560, h = 980;
   const sh = phoneShell(w, h, '#F4F5FB');
   const row = (y: number, col: string, hl: boolean, num: string) =>
     `<rect x="${sh.sx + 24}" y="${y}" width="${sh.sw - 48}" height="190" rx="22" fill="${hl ? '#FFE9EA' : P.white}"/>` +
     `<g transform="translate(${sh.sx + 84} ${y + 70})"><circle r="38" fill="${col}" opacity="0.18"/>${handset(50, col, 0)}</g>` +
-    t(sh.sx + 144, y + 150, num, 30, { fill: P.greyDark, spacing: 1 });
+    t(sh.sx + 144, y + 150, num, numSize, { fill: P.greyDark, spacing: 1 });
   const y1 = sh.sy + 190, y2 = sh.sy + 410;
   return {
     w, h,
@@ -613,10 +613,8 @@ export const webinarFrame: PropFn<{ portrait?: boolean }> = ({ portrait = false 
       `<g transform="translate(${slide[0] + slide[2] * 0.2} ${slide[1] + slide[3] * 0.62})">${remoteIcon(slide[3] * 0.4)}</g>` +
       bars(slide[0] + slide[2] * 0.42, slide[1] + slide[3] * 0.4, [slide[2] * 0.45, slide[2] * 0.38, slide[2] * 0.42, slide[2] * 0.3], slide[3] * 0.1, slide[3] * 0.035) +
       `<circle cx="${spk[0]}" cy="${spk[1] - 170}" r="90" fill="#8E82F0"/><path d="M${spk[0] - 190} ${spk[1] + 160} c0 -200 380 -200 380 0 z" fill="#8E82F0"/>` +
-      `<rect x="${spk[0] - 16}" y="${spk[1] - 60}" width="32" height="60" rx="10" fill="#443B63"/>` +
-      `<rect x="0" y="${h - 90}" width="${w}" height="90" rx="0" fill="#141029"/>` +
-      `<path d="M50 ${h - 62} l30 17 l-30 17 z" fill="${P.white}"/>` +
-      `<rect x="120" y="${h - 50}" width="${w - 260}" height="10" rx="5" fill="#443B63"/><rect x="120" y="${h - 50}" width="${(w - 260) * 0.35}" height="10" rx="5" fill="${P.red}"/>`,
+      // Bez paska odtwarzania: odtwarzacz OSINT ma własne sterowanie i postęp (uwaga właściciela - wpalony pasek udawał drugi).
+      `<rect x="${spk[0] - 16}" y="${spk[1] - 60}" width="32" height="60" rx="10" fill="#443B63"/>`,
     parts: { 'slot-tytul-slajdu': { x: slide[0] + 30, y: slide[1] + 20, w: slide[2] - 60, h: slide[3] * 0.22 - 40 } },
   };
 };

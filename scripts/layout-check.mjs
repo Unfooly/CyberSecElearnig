@@ -112,7 +112,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'notes', 'modul2', 'prosty', 'jezyk'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -1635,6 +1635,65 @@ try {
         }
       }
       step(`${viewport.name} / moduł ${MODULE_SLUG}: ${blockIds.length} bloków (m1-m4), ${zooms} zbliżeń (m5), wnioski raportu (m6), tacka śladów (m7, m8) OK`, true);
+      await context.close();
+    }
+  }
+
+  // PODPOWIEDŹ W SCENIE NA TELEFONIE (decyzja właściciela 2026-10-13): na szerokości < 640 px podpowiedź sceny (Hint `overlay`) to pasek
+  // przyklejony do dołu obszaru bloku na pełną szerokość (dymek 30% był wąski i zasłaniał środek grafiki). Na 390×844, w pierwszej scenie z
+  // podpowiedzią modułu 1 i modułu 3 (gdy jest w repo): (h1) rozwinięta podpowiedź sięga obu krawędzi obszaru bloku (±2 px), (h2) jej dół
+  // leży przy dole obszaru i nie wchodzi na dolny pasek, (h3) przycisk zwijania ma co najmniej 44×44 px, (h4) tekst ≥ 15 px (tryb
+// prosty: 16 px); zrzut ekranu.
+  if (runs('hint')) {
+    for (const slug of [DEFAULT_MODULE, 'lancuszek'].filter((s) => existsSync(join(moduleDir(s), 'module.json')))) {
+      const moduleJson = JSON.parse(readFileSync(join(moduleDir(slug), 'module.json'), 'utf8'));
+      const scene = moduleJson.blocks.find((block) => block.type === 'SCENE_HOTSPOTS' && block.tip);
+      if (!scene) {
+        fail(`podpowiedź / ${slug}: brak sceny z podpowiedzią (tip).`);
+        continue;
+      }
+      const label = `390x844 / podpowiedź / ${slug} / ${scene.id}`;
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+      const page = await context.newPage();
+      await page.goto(`${WEB}/dev/player-harness?module=${slug}&block=${encodeURIComponent(scene.id)}`);
+      await page.getByTestId('hint-overlay').waitFor({ timeout: 30000 });
+      // Tylko czekanie na grafikę sceny (zrzut); obrazy sprawdza sekcja `module`.
+      await brokenModuleImages(page);
+      // Podpowiedź zwija się sama po kilku sekundach - rozwijamy ją jawnie (stan z aria-expanded przycisku „Pokaż podpowiedź”, który przy
+      // rozwiniętym dymku jest sr-only - stąd force) i mierzymy od razu po rozwinięciu.
+      const show = page.getByTestId('hint-overlay').getByRole('button', { name: 'Pokaż podpowiedź' });
+      if ((await show.getAttribute('aria-expanded')) !== 'true') await show.click({ force: true });
+      await page.waitForFunction(() => document.querySelector('[data-testid="hint-overlay"] button[aria-label="Pokaż podpowiedź"]')?.getAttribute('aria-expanded') === 'true');
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => {
+        const area = document.querySelector('[data-testid="player-content-area"]').getBoundingClientRect();
+        const bar = document.querySelector('[data-testid="player-bottombar"]').getBoundingClientRect();
+        const status = document.querySelector('[data-testid="hint-overlay"] [role="status"]');
+        const bubble = status.parentElement.getBoundingClientRect();
+        const closeButton = document.querySelector('[data-testid="hint-overlay"] button[aria-label="Zwiń podpowiedź"]');
+        if (!closeButton) return null;
+        const close = closeButton.getBoundingClientRect();
+        return {
+          area: { left: area.left, right: area.right, bottom: area.bottom },
+          bubble: { left: bubble.left, right: bubble.right, bottom: bubble.bottom, top: bubble.top },
+          barTop: bar.top,
+          close: { w: close.width, h: close.height },
+          font: parseFloat(getComputedStyle(status).fontSize),
+        };
+      });
+      if (!m) {
+        fail(`${label}: (h3) brak przycisku „Zwiń podpowiedź”.`);
+        await context.close();
+        continue;
+      }
+      if (Math.abs(m.bubble.left - m.area.left) > 2 || Math.abs(m.bubble.right - m.area.right) > 2) fail(`${label}: (h1) podpowiedź nie na pełną szerokość obszaru bloku (${JSON.stringify(m)}).`);
+      if (Math.abs(m.bubble.bottom - m.area.bottom) > 2 || m.bubble.bottom > m.barTop + 1) fail(`${label}: (h2) podpowiedź nie przy dole obszaru albo na dolnym pasku (${JSON.stringify(m)}).`);
+      if (m.close.w < 43.5 || m.close.h < 43.5) fail(`${label}: (h3) przycisk zwijania mniejszy niż 44 px (${JSON.stringify(m.close)}).`);
+      // Minimum tekstu na telefonie: 15 px (D-103), w trybie prostym 16 px (D-132).
+      const minFont = moduleJson.simpleMode ? 16 : 15;
+      if (m.font < minFont - 0.1) fail(`${label}: (h4) tekst podpowiedzi ${m.font} px < ${minFont} px.`);
+      await shot(page, `390x844-podpowiedz-${slug}`);
+      step(`${label}: (h1-h4) pasek na pełną szerokość przy dole sceny, zwijanie 44 px, tekst ${m.font} px OK`, true);
       await context.close();
     }
   }

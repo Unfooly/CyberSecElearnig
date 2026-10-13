@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { composeScene, composeSceneLocales, SCENE_LOCALES, sceneLocales } from './compose.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
+import { LANCUSZEK_PROPS } from './props-lancuszek.js';
 import { PROPS } from './props.js';
 import type { SceneLocale, SceneSpec } from './types.js';
 
@@ -163,7 +164,7 @@ describe('sceny modułu 1 z kompozytora', () => {
   });
 
   it('PROPS: żadna grupa klocków nie nadpisuje innego klocka (nazwy unikalne)', () => {
-    const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS];
+    const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS, LANCUSZEK_PROPS];
     const groupNames = groups.flatMap((group) => Object.keys(group));
     expect(new Set(groupNames).size).toBe(groupNames.length);
     // 25 klocków podstawowych zdefiniowanych w props.ts (window…paper, textBox): razem z grupami każda nazwa dokładnie raz.

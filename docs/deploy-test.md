@@ -290,6 +290,15 @@ prawdziwych klientów).
 - [ ] **Redis z trwałością** (AOF/RDB) i `BACKGROUND_JOBS_ENABLED` niewyłączone: bez workera nie działa sprzątanie
   organizacji PENDING (14 dni) ani przypomnienie po 7 dniach.
 - [ ] **Kopie zapasowe bazy** (harmonogram + sprawdzone odtworzenie) i region UE (RODO).
+- [ ] **Brak przypisań na wersjach kursów sprzed i18n-4** (D-137: odtwarzacz nie rysuje już warstwy tekstu `textLayer`, więc
+  grafiki takich wersji są bez napisów). Tylko odczyt, rolą kopii (omija RLS, tylko `SELECT` - wyjątek nr 8 w CLAUDE.md), jedna linia:
+
+  ```bash
+  docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T postgres psql -U cyberszkolo_backup -d cyberszkolo -c 'SELECT count(*) FROM course_assignments a JOIN course_versions v ON v.id = a."courseVersionId" WHERE v."contentBlocks"::text LIKE '"'"'%"textLayer"%'"'"';'
+  ```
+
+  Wynik ma być **0** (inaczej: nowy `content-import` i nowe przypisania albo usunięcie organizacji testowych, jak wyżej). Przypisania bez
+  wersji (`courseVersionId` puste) przypinają się przy starcie do najnowszej wersji - zapytanie ich nie liczy.
 
 ### B. Zalecane przed startem (z backlogu rejestracji, README)
 

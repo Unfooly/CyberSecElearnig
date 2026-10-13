@@ -118,6 +118,10 @@ cudzych grafik. Klocek = funkcja w `props.ts` / `props-odprawa.ts`, wpis w `PROP
   przy reduced-motion (README kompozytora, „Animacje”).
 - **Warianty pionowe (telefon):** odprawa i zamknięcie mają sceny 900×1600 (`*-pion.json`, `portrait` w treści - D-098, D-107); okna
   z drobnym tekstem - `imagePortrait` (niżej).
+- **Tekst dowodów ≥ 15 px na telefonie (D-138):** tekst POTRZEBNY do rozwiązania zadania (dowód, porównanie, hotspot) ma na telefonie
+  390 px co najmniej 15 px w scenie ALBO w zbliżeniu, które gracz otwiera. Element sceny z takim tekstem dostaje `"evidence": "<klucz>"`
+  (ten sam klucz w scenie i w jej zbliżeniu); `layout-check` (sekcja `module`, m9) mierzy to w przeglądarce. Za mały w scenie -
+  dodaj albo powiększ zbliżenie, nie zmniejszaj tekstu. Tekst tła (stopki, podpisy ikon) - bez klucza.
 - **Publikacja:** `npm run tts --prefix scripts/content -- <slug> --assets --storage r2 --yes`, potem `--assets --check` (i
   `--assets --check --remote` - obecność plików w magazynie, D-068) - zawsze z gałęzi PR (CLAUDE.md, reguła 13).
 

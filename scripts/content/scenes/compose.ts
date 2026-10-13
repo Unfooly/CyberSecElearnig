@@ -25,7 +25,14 @@ export const PHONE_SCREEN_PROPS = new Set(['smartphone', 'phoneTop', 'phoneFaceU
  * wolno w scenie ze `strings` podać `{ "$t": … }`. Klocek z tekstem o stałym rozmiarze nie gwarantuje, że dłuższy tekst innego
  * języka zmieści się w jego kształcie. Nowy klocek z tekstem do tłumaczenia = `fitText` + wpis tutaj.
  */
-export const FIT_PARAMS: Record<string, string[]> = { textBox: ['text'] };
+export const FIT_PARAMS: Record<string, string[]> = {
+  textBox: ['text'],
+  // Klocki zamknięcia sprawy (D-140): w scenie ze `strings` napisy dopasowywane (fitText); bez `strings` - dotychczasowy tekst modułów 1-2.
+  reportFolderOpen: ['caseNo', 'title', 'labels', 'bags'],
+  reportPortrait: ['caseNo', 'title', 'labels', 'bags'],
+  closedStamp: ['text', 'sub'],
+  commissionerNote: ['lines', 'sign'],
+};
 
 /** Tekst, który nie musi pochodzić ze `strings`: same cyfry i znaki liczb/maski (godzina, kwota, „12 3XX XX 41”). */
 const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX]*$/;
@@ -229,8 +236,9 @@ function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: Co
   const context: PropContext = { minFontSize: it.decorative ? 0 : minPx / toLocal, where };
   const out = fn(resolveRefs(it.params ?? {}, table) as Record<string, unknown>, context);
 
-  // Dozwolone słowa = słowa tekstów, do których element się odwołuje. Szczelne, dopóki FIT_PARAMS mają tylko klocki bez własnych
-  // etykiet (textBox); klocek z etykietami w FIT_PARAMS wymaga sprawdzania etykiet osobno (etykieta ze słów napisu by przeszła).
+  // Dozwolone słowa = słowa tekstów, do których element się odwołuje. Klocki zamknięcia w FIT_PARAMS (D-140) mają domyślne etykiety
+  // PL: pominięta etykieta trafia tu jako tekst spoza "strings" i daje błąd (test w odprawa.test.ts) - chyba że wszystkie jej słowa
+  // są przypadkiem w napisach przekazanych temu samemu elementowi (wtedy przechodzi; scena z innym językiem podaje komplet `labels`).
   const allowed = new Set(refsIn(it.params ?? {}).flatMap((key) => words(table[key])).map((word) => word.toLocaleLowerCase(options.locale)));
   for (const { text, size } of textsWithScale(out.svg)) {
     const foreign = text.split(/\s+/).filter((word) => word && !LANGUAGE_NEUTRAL.test(word) && !allowed.has(word.toLocaleLowerCase(options.locale)));

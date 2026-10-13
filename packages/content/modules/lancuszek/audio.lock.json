@@ -1,0 +1,65 @@
+{
+  "lockVersion": 2,
+  "slug": "lancuszek",
+  "audioVersion": "v1",
+  "model": "eleven_multilingual_v2",
+  "language": "pl",
+  "entries": {
+    "odprawa#narration": {
+      "hash": "48e5be8399b98946",
+      "key": "audio/lancuszek/v1/odprawa/48e5be8399b98946.mp3",
+      "textSha": "ca3a0ff76e375232",
+      "durationMs": 13653,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "telefon#narration": {
+      "hash": "2bdf8ed101d8453c",
+      "key": "audio/lancuszek/v1/telefon/2bdf8ed101d8453c.mp3",
+      "textSha": "7d91da2746abe60c",
+      "durationMs": 6223,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "zaloguj#narration": {
+      "hash": "583b589df269d5a8",
+      "key": "audio/lancuszek/v1/zaloguj/583b589df269d5a8.mp3",
+      "textSha": "b698b05b95774eec",
+      "durationMs": 4180,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "wiadomosci#narration": {
+      "hash": "b921d1340c618951",
+      "key": "audio/lancuszek/v1/wiadomosci/b921d1340c618951.mp3",
+      "textSha": "bcfad0b747aa006f",
+      "durationMs": 7570,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "blik#narration": {
+      "hash": "fc4b36aae7c8610d",
+      "key": "audio/lancuszek/v1/blik/fc4b36aae7c8610d.mp3",
+      "textSha": "2b31098de33ebff2",
+      "durationMs": 3901,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "kod-sms#narration": {
+      "hash": "46c6808b63cb445f",
+      "key": "audio/lancuszek/v1/kod-sms/46c6808b63cb445f.mp3",
+      "textSha": "6279991faf6508fd",
+      "durationMs": 5016,
+      "voice": "narrator",
+      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    "raport#narration": {
+      "hash": "a5a2907d0b277ec0",
+      "key": "audio/lancuszek/v1/raport/a5a2907d0b277ec0.mp3",
+      "textSha": "f5cb0ff4474b85b0",
+      "durationMs": 10449,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    }
+  }
+}

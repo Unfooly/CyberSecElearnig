@@ -498,7 +498,7 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.f46e1cf8.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.920ba0a0.svg",
                     "alt": {
                       "pl": "Lista sześciu odrzuconych próśb o zatwierdzenie logowania, od 8:55 do 8:57."
                     }
@@ -526,7 +526,7 @@
                   },
                   "media": {
                     "kind": "image",
-                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.4f1fe8b3.svg",
+                    "src": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.0d3f9f0a.svg",
                     "alt": {
                       "pl": "Rejestr połączeń: 9:02 IT Helpdesk, 12 3XX XX 41, 39 minut; 10:15 wewnętrzny 214, 3 minuty."
                     }
@@ -624,7 +624,7 @@
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.f9b8f7e6.svg",
+            "src": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.4779b2a5.svg",
             "alt": {
               "pl": "Żółta karteczka: „ID: 7XX XXX 219” i odręczny dopisek „Paweł IT”."
             }
@@ -652,7 +652,7 @@
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.a4864851.svg",
+            "src": "assets/glos-z-helpdesku/scenes/plakat-zoom.7a6bdbe7.svg",
             "alt": {
               "pl": "Plakat: IT nigdy nie prosi o kody ani liczby z aplikacji."
             }
@@ -1855,32 +1855,32 @@
       "tip": {
         "pl": "Porównaj oba wpisy. Skąd przyszło każde z połączeń? Potem „Dalej”."
       },
-      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.b5729109.svg",
+      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.a62becd6.svg",
       "imageAlt": {
         "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min. Obok intranet „Kontakt z IT”: 214. Helpdesk IT - tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
       },
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.43c29a6a.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b50191f4.svg",
       "portraitHotspots": [
         {
           "id": "numer-zewnetrzny",
-          "x": 26,
-          "y": 16.4,
-          "width": 49.3,
-          "height": 12.3
+          "x": 29.1,
+          "y": 14,
+          "width": 41.8,
+          "height": 10.5
         },
         {
           "id": "wpis-10-15",
-          "x": 26,
-          "y": 29.5,
-          "width": 49.3,
-          "height": 12.3
+          "x": 29.1,
+          "y": 25,
+          "width": 41.8,
+          "height": 10.5
         },
         {
           "id": "intranet",
           "x": 18,
-          "y": 60.8,
+          "y": 52,
           "width": 64,
-          "height": 39.2
+          "height": 44.8
         }
       ],
       "hotspots": [
@@ -1889,12 +1889,19 @@
           "label": {
             "pl": "Połączenie 9:02 - „IT Helpdesk”"
           },
-          "x": 13.4,
-          "y": 22.5,
-          "width": 27.7,
-          "height": 21.8,
+          "x": 14.4,
+          "y": 26.9,
+          "width": 25.8,
+          "height": 20.4,
           "content": {
             "pl": "Szczegóły połączenia: numer zewnętrzny 12 3XX XX 41. Nazwę „IT Helpdesk” nadał dzwoniący - telefon pokazuje to, co mu przesłano."
+          },
+          "media": {
+            "kind": "image",
+            "src": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-zoom.241173bb.svg",
+            "alt": {
+              "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min."
+            }
           },
           "evidence": true,
           "required": true,
@@ -1910,12 +1917,19 @@
           "label": {
             "pl": "Połączenie 10:15 - wewnętrzny 214"
           },
-          "x": 13.4,
-          "y": 45.8,
-          "width": 27.7,
-          "height": 21.8,
+          "x": 14.4,
+          "y": 48.4,
+          "width": 25.8,
+          "height": 20.4,
           "content": {
             "pl": "Karol dzwoni na wewnętrzny 214. Paweł odbiera: „Nie dzwoniłem do ciebie”."
+          },
+          "media": {
+            "kind": "image",
+            "src": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-zoom.241173bb.svg",
+            "alt": {
+              "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min."
+            }
           },
           "required": true
         },
@@ -1930,6 +1944,13 @@
           "height": 83.4,
           "content": {
             "pl": "Intranet: „Kontakt z IT - wewnętrzny 214”. To numer, na który warto oddzwonić, gdy ktoś podaje się za IT."
+          },
+          "media": {
+            "kind": "image",
+            "src": "assets/glos-z-helpdesku/scenes/intranet-zoom.889808b5.svg",
+            "alt": {
+              "pl": "Intranet „Kontakt z IT”: 214. Helpdesk IT - tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
+            }
           }
         }
       ]
@@ -1965,8 +1986,8 @@
       "tip": {
         "pl": "Zaznacz na stronie to, co oszust mógł wykorzystać. Nie wszystko, co publiczne, mu się przydało."
       },
-      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.8cf7e344.svg",
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.3b7fe414.svg",
+      "image": "assets/glos-z-helpdesku/scenes/strona-zespol.2303e418.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.31d508b3.svg",
       "imageAlt": {
         "pl": "Strona Drukarni Lipowej, Zespół: zdjęcie budynku, Paweł Nowicki, specjalista IT, helpdesk; Grzegorz Sowa, kierownik sprzedaży; webinar „Praca zdalna” (Paweł Nowicki); oferta: ulotki, wizytówki; stopka: centrala 12 3XX XX 00, numery wewnętrzne trzycyfrowe, ul. Grabowa 12, Kraków, pon.-pt. 8-16."
       },
@@ -2037,8 +2058,8 @@
             "title": {
               "pl": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki"
             },
-            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.e397d112.svg",
-            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.f27c3a2f.svg",
+            "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.2ce4a9a9.svg",
+            "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.8012f48b.svg",
             "alt": {
               "pl": "Kadr prelekcji: slajd „Bezpieczna praca zdalna” i sylwetka prelegenta."
             },

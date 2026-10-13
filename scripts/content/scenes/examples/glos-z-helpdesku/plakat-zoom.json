@@ -17,6 +17,6 @@
    },
    "partHotspots": {}
   },
-  {"id":"tekst-haslo","prop":"textBox","x":81,"y":568,"params":{"w":506,"h":224,"text":"IT NIGDY NIE PROSI O KODY ANI LICZBY Z APLIKACJI","size":56,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}}
+  {"id":"tekst-haslo","prop":"textBox","x":81,"y":568,"evidence":"plakat-zasada","params":{"w":506,"h":224,"text":"IT NIGDY NIE PROSI O KODY ANI LICZBY Z APLIKACJI","size":56,"align":"middle","valign":"middle","bold":true,"color":"#0F172A"}}
  ]
 }

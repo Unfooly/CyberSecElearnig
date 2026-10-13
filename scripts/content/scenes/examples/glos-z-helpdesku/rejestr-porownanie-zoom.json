@@ -1,0 +1,22 @@
+{
+ "width": 620,
+ "height": 1040,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "items": [
+  {
+   "id": "telefon",
+   "prop": "callCompareTop",
+   "x": 30,
+   "y": 30,
+   "evidence": "rejestr-porownanie",
+   "params": {
+    "numSize": 40
+   }
+  },
+  {"id":"tekst-nazwa-9-02","prop":"textBox","x":205,"y":306,"evidence":"rejestr-porownanie","params":{"w":330,"h":104,"text":["IT Helpdesk","9:02 · 39 min"],"size":40,"valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-nazwa-10-15","prop":"textBox","x":205,"y":526,"evidence":"rejestr-porownanie","params":{"w":330,"h":104,"text":["Wewnętrzny","10:15 · 3 min"],"size":40,"valign":"middle","color":"#0F172A"}}
+ ]
+}

@@ -69,13 +69,13 @@
     },
     "biurko-karola#hotspots.2.media.src": {
       "original": "scenes/karteczka-id-zoom.svg",
-      "hash": "f9b8f7e6",
-      "key": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.f9b8f7e6.svg"
+      "hash": "4779b2a5",
+      "key": "assets/glos-z-helpdesku/scenes/karteczka-id-zoom.4779b2a5.svg"
     },
     "biurko-karola#hotspots.3.media.src": {
       "original": "scenes/plakat-zoom.svg",
-      "hash": "a4864851",
-      "key": "assets/glos-z-helpdesku/scenes/plakat-zoom.a4864851.svg"
+      "hash": "7a6bdbe7",
+      "key": "assets/glos-z-helpdesku/scenes/plakat-zoom.7a6bdbe7.svg"
     },
     "biurko-karola#hotspots.0.media.scene.image": {
       "original": "scenes/telefon-karola.svg",
@@ -89,13 +89,13 @@
     },
     "biurko-karola#hotspots.0.media.scene.hotspots.0.media.src": {
       "original": "scenes/mfa-powiadomienia-zoom.svg",
-      "hash": "f46e1cf8",
-      "key": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.f46e1cf8.svg"
+      "hash": "920ba0a0",
+      "key": "assets/glos-z-helpdesku/scenes/mfa-powiadomienia-zoom.920ba0a0.svg"
     },
     "biurko-karola#hotspots.0.media.scene.hotspots.1.media.src": {
       "original": "scenes/rejestr-polaczen-zoom.svg",
-      "hash": "4f1fe8b3",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.4f1fe8b3.svg"
+      "hash": "0d3f9f0a",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.0d3f9f0a.svg"
     },
     "przesluchanie-karola#character.avatar": {
       "original": "avatars/karol.svg",
@@ -109,33 +109,48 @@
     },
     "rejestr#image": {
       "original": "scenes/rejestr-porownanie.svg",
-      "hash": "b5729109",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.b5729109.svg"
+      "hash": "a62becd6",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.a62becd6.svg"
     },
     "rejestr#imagePortrait": {
       "original": "scenes/rejestr-porownanie-pion.svg",
-      "hash": "43c29a6a",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.43c29a6a.svg"
+      "hash": "b50191f4",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b50191f4.svg"
+    },
+    "rejestr#hotspots.0.media.src": {
+      "original": "scenes/rejestr-porownanie-zoom.svg",
+      "hash": "241173bb",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-zoom.241173bb.svg"
+    },
+    "rejestr#hotspots.1.media.src": {
+      "original": "scenes/rejestr-porownanie-zoom.svg",
+      "hash": "241173bb",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-zoom.241173bb.svg"
+    },
+    "rejestr#hotspots.2.media.src": {
+      "original": "scenes/intranet-zoom.svg",
+      "hash": "889808b5",
+      "key": "assets/glos-z-helpdesku/scenes/intranet-zoom.889808b5.svg"
     },
     "osint#image": {
       "original": "scenes/strona-zespol.svg",
-      "hash": "8cf7e344",
-      "key": "assets/glos-z-helpdesku/scenes/strona-zespol.8cf7e344.svg"
+      "hash": "2303e418",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol.2303e418.svg"
     },
     "osint#imagePortrait": {
       "original": "scenes/strona-zespol-pion.svg",
-      "hash": "3b7fe414",
-      "key": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.3b7fe414.svg"
+      "hash": "31d508b3",
+      "key": "assets/glos-z-helpdesku/scenes/strona-zespol-pion.31d508b3.svg"
     },
     "osint#spots.3.media.image": {
       "original": "scenes/webinar-odtwarzacz.svg",
-      "hash": "e397d112",
-      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.e397d112.svg"
+      "hash": "2ce4a9a9",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.2ce4a9a9.svg"
     },
     "osint#spots.3.media.imagePortrait": {
       "original": "scenes/webinar-odtwarzacz-pion.svg",
-      "hash": "f27c3a2f",
-      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.f27c3a2f.svg"
+      "hash": "8012f48b",
+      "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.8012f48b.svg"
     },
     "rozwiazanie-sprawy#closing.image": {
       "original": "scenes/zamkniecie-raport.svg",

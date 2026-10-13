@@ -12,6 +12,7 @@
    "x": 36,
    "y": 92,
    "scale": 7,
+   "evidence": "karteczka-id",
    "params": {
     "lines": [
      "ID:",

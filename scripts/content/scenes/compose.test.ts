@@ -88,4 +88,17 @@ describe('composeScene', () => {
       expect(out.svg, name).not.toContain('undefined');
     }
   });
+
+  it('tekst dowodów (D-138): data-evidence z najmniejszym rozmiarem tekstu na klucz (ze skalą); bez klucza - bez atrybutu', () => {
+    const box = (id: string, size: number, scale = 1) => ({ id, prop: 'textBox', x: 0, y: 0, scale, evidence: 'rejestr', params: { w: 600, h: 200, size, text: 'Rejestr 9:02' } });
+    const res = composeScene({ ...base, items: [box('a', 40), box('b', 30, 0.5), { id: 'c', prop: 'textBox', x: 0, y: 300, evidence: 'plakat', params: { w: 600, h: 150, size: 36, text: 'Plakat' } }] });
+    expect(res.svg).toMatch(/^<svg data-evidence="plakat:36 rejestr:15" /);
+    const plain = composeScene({ ...base, items: [{ id: 'a', prop: 'textBox', x: 0, y: 0, params: { w: 600, h: 200, size: 40, text: 'Rejestr' } }] });
+    expect(plain.svg).not.toContain('data-evidence');
+  });
+
+  it('tekst dowodów: klucz kebab-case, element z kluczem musi mieć tekst', () => {
+    expect(validateScene({ ...base, items: [{ id: 'a', prop: 'mug', x: 0, y: 0, evidence: 'Zły klucz' }] }).join('\n')).toContain('kebab-case');
+    expect(() => composeScene({ ...base, items: [{ id: 'kubek', prop: 'mug', x: 0, y: 0, evidence: 'kubek' }] })).toThrow('"evidence" bez tekstu');
+  });
 });

@@ -54,6 +54,12 @@ export interface SceneItem {
   decorative?: boolean;
   /** Ekran telefonu w scenie: minimalny rozmiar tekstu 16 px zamiast 14 px (domyślnie dla klocków z PHONE_SCREEN_PROPS). */
   phoneScreen?: boolean;
+  /**
+   * Tekst potrzebny do rozwiązania zadania (dowód, porównanie) - klucz dowodu, kebab-case (D-138). Kompozytor zapisuje w SVG
+   * najmniejszy rozmiar tekstu elementu (`data-evidence`), a `layout-check` (m9) wymaga, żeby na telefonie 390 px tekst z danym kluczem
+   * miał co najmniej 15 px w scenie ALBO w zbliżeniu, które gracz otwiera (ten sam klucz w obu grafikach). Tekst tła - bez klucza.
+   */
+  evidence?: string;
 }
 
 export type SceneLocale = 'pl' | 'en';

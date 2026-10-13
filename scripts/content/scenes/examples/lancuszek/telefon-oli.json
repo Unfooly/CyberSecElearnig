@@ -1,0 +1,56 @@
+{
+ "width": 1600,
+ "height": 1000,
+ "phone": "panorama",
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "kontakt": "Kasia",
+   "wiadomosc": "To Ty na tym filmie?",
+   "link-tytul": "Film z imprezy",
+   "link-adres": "wideo-kasi.test/f/82",
+   "logowanie-tytul": "Zaloguj się, aby obejrzeć film",
+   "logowanie-przycisk": "Zaloguj się"
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1600,
+    "h": 1000
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 250,
+   "y": 640,
+   "scale": 1.2
+  },
+  {
+   "id": "telefon",
+   "prop": "chatPhone",
+   "x": 534,
+   "y": 6,
+   "scale": 0.76,
+   "partHotspots": {
+    "wiadomosc": "wiadomosc",
+    "link": "link",
+    "logowanie": "logowanie"
+   }
+  },
+  {"id":"tekst-kontakt","prop":"textBox","x":696.6,"y":97.2,"phoneScreen":true,"params":{"w":311.6,"h":60.8,"text":{"$t":"kontakt"},"size":34,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-wiadomosc","prop":"textBox","x":610,"y":221.8,"phoneScreen":true,"evidence":"wiadomosc","params":{"w":364.8,"h":138.3,"text":{"$t":"wiadomosc"},"size":38,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-link-tytul","prop":"textBox","x":607,"y":547.1,"phoneScreen":true,"evidence":"link","params":{"w":386.1,"h":48.6,"text":{"$t":"link-tytul"},"size":32,"valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-link-adres","prop":"textBox","x":607,"y":598.8,"phoneScreen":true,"evidence":"link","params":{"w":386.1,"h":39.5,"text":{"$t":"link-adres"},"size":28,"valign":"middle","color":"#4E40B8"}},
+  {"id":"tekst-logowanie-tytul","prop":"textBox","x":678.4,"y":688.5,"phoneScreen":true,"evidence":"logowanie","params":{"w":319.2,"h":88.2,"text":{"$t":"logowanie-tytul"},"size":30,"valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-logowanie-przycisk","prop":"textBox","x":686,"y":788.8,"phoneScreen":true,"params":{"w":296.4,"h":48.6,"text":{"$t":"logowanie-przycisk"},"size":30,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}}
+ ]
+}

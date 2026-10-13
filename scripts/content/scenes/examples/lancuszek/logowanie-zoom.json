@@ -1,0 +1,30 @@
+{
+ "width": 760,
+ "height": 1360,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "strings": {
+  "pl": {
+   "adres": "wideo-kasi.test/login",
+   "naglowek": "Zaloguj się, aby obejrzeć film",
+   "pole-login": "E-mail lub telefon",
+   "pole-haslo": "Hasło",
+   "przycisk": "Zaloguj się"
+  }
+ },
+ "items": [
+  {
+   "id": "ekran",
+   "prop": "loginScreen",
+   "x": 30,
+   "y": 30
+  },
+  {"id":"tekst-adres","prop":"textBox","x":166,"y":170,"phoneScreen":true,"evidence":"logowanie","params":{"w":480,"h":60,"text":{"$t":"adres"},"size":36,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-naglowek","prop":"textBox","x":100,"y":440,"phoneScreen":true,"evidence":"logowanie","params":{"w":560,"h":130,"text":{"$t":"naglowek"},"size":46,"align":"middle","valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-pole-login","prop":"textBox","x":140,"y":620,"phoneScreen":true,"params":{"w":480,"h":60,"text":{"$t":"pole-login"},"size":36,"valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-pole-haslo","prop":"textBox","x":140,"y":780,"phoneScreen":true,"params":{"w":480,"h":60,"text":{"$t":"pole-haslo"},"size":36,"valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-przycisk","prop":"textBox","x":140,"y":948,"phoneScreen":true,"params":{"w":480,"h":64,"text":{"$t":"przycisk"},"size":40,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}}
+ ]
+}

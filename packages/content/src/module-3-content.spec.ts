@@ -21,7 +21,7 @@ describe('moduł 3 „Łańcuszek” - treść (3b)', () => {
 
   it('kolejność bloków ze specyfikacji: odprawa, telefon (3 cele), wybór, skrzynka, BLIK, kod SMS, raport', () => {
     expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual([
-      'odprawa:NARRATIVE',
+      'odprawa:BRIEFING',
       'telefon:SCENE_HOTSPOTS',
       'zaloguj:QUIZ',
       'wiadomosci:SWIPE_SORT',
@@ -34,14 +34,44 @@ describe('moduł 3 „Łańcuszek” - treść (3b)', () => {
     expect(hotspots.every((h) => h.required)).toBe(true);
   });
 
-  it('raport: trzy zasady dosłownie (także jako lista w tekście raportu)', () => {
+  it('odprawa: jedna statyczna scena (poziomo i pionowo) bez hotspotu - dalej przyciskiem', () => {
+    const steps = block('odprawa').steps as Record<string, unknown>[];
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({ kind: 'typewriter', cta: 'Odbierz telefon' });
+    expect(steps[0].image).toMatch(/scenes\/pl\/odprawa\./);
+    expect((steps[0].portrait as Record<string, unknown>).image).toMatch(/scenes\/pl\/odprawa-pion\./);
+    expect(steps[0].hotspot).toBeUndefined();
+    expect((steps[0].portrait as Record<string, unknown>).hotspot).toBeUndefined();
+  });
+
+  it('raport: trzy zasady dosłownie w tekście i w opisie grafiki zamknięcia (wpalone w grafikę), bez powtarzania ich w `lessons`', () => {
     const rules = [
       'Dziwna prośba od znajomego? Zadzwoń na znany numer.',
       'Kodu z SMS-a nie podajesz nikomu.',
       'Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.',
     ];
-    expect(block('raport').lessons).toEqual(rules);
-    for (const rule of rules) expect(block('raport').text).toContain(rule);
+    expect(block('raport').lessons).toBeUndefined();
+    const closing = block('raport').closing as Record<string, string>;
+    for (const rule of rules) {
+      expect(block('raport').text).toContain(rule);
+      expect(closing.alt).toContain(rule);
+    }
+  });
+
+  it('współrzędne hotspotów telefonu i slotów raportu = *.hotspots.json kompozytora (poziomo i pionowo)', () => {
+    const scenes = join(__dirname, '..', '..', '..', 'scripts', 'content', 'scenes', 'examples', 'lancuszek');
+    const rects = (name: string) =>
+      Object.fromEntries((JSON.parse(readFileSync(join(scenes, `${name}.hotspots.json`), 'utf8')) as { id: string; x: number; y: number; w: number; h: number }[]).map(({ id, ...r }) => [id, r]));
+    const asRect = (h: { x: number; y: number; width: number; height: number }) => ({ x: h.x, y: h.y, w: h.width, h: h.height });
+    const phone = block('telefon') as { hotspots: { id: string; x: number; y: number; width: number; height: number }[]; portraitHotspots: { id: string; x: number; y: number; width: number; height: number }[] };
+    expect(Object.fromEntries(phone.hotspots.map((h) => [h.id, asRect(h)]))).toEqual(rects('telefon-oli'));
+    expect(Object.fromEntries(phone.portraitHotspots.map((h) => [h.id, asRect(h)]))).toEqual(rects('telefon-oli-pion'));
+    // Sloty raportu: nazwy w treści (evidence...) vs części klocka w kompozytorze (slot-dowody...).
+    const slotIds = { evidence: 'slot-dowody', time: 'slot-czas', xp: 'slot-xp', lessons: 'slot-wnioski', signature: 'podpis', stamp: 'slot-pieczec', note: 'slot-liscik' };
+    const closing = block('raport').closing as { slots: Record<string, unknown>; portrait: { slots: Record<string, unknown> } };
+    const byPart = (slots: Record<string, unknown>) => Object.fromEntries(Object.entries(slotIds).map(([slot, part]) => [part, slots[slot]]));
+    expect(byPart(closing.slots)).toEqual(rects('zamkniecie-raport'));
+    expect(byPart(closing.portrait.slots)).toEqual(rects('zamkniecie-raport-pion'));
   });
 
   it('skrzynka: 6 wiadomości, 4 podejrzane i 2 w porządku, każda z jednozdaniowym komentarzem', () => {

@@ -32,48 +32,55 @@ const lock = (s: number, fill: string) =>
 
 /**
  * Telefon Oli: rozmowa z „Kasią” na komunikatorze. Części (cele sceny): `wiadomosc` (dymek „To Ty na tym filmie?”), `link` (karta
- * linku z miniaturą filmu), `logowanie` (karta „zaloguj się, aby obejrzeć” z przyciskiem). Sloty tekstu: `slot-kontakt`,
- * `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie-tytul`, `slot-logowanie-przycisk`.
+ * linku z miniaturą filmu), `logowanie` (druga wiadomość: ponaglenie do logowania). Sloty tekstu: `slot-kontakt`, `slot-wiadomosc`,
+ * `slot-link-tytul`, `slot-link-adres`, `slot-logowanie`, godziny pod wiadomościami `slot-czas-1`, `slot-czas-2`, `slot-czas-3`.
  */
 export const chatPhone: PropFn<Record<string, never>> = () => {
-  const bubble: Rect = { x: 70, y: 260, w: 540, h: 230 };
-  const link: Rect = { x: 70, y: 520, w: 560, h: 330 };
-  const login: Rect = { x: 70, y: 880, w: 560, h: 240 };
+  // Trzy wiadomości od Kasi (uwagi właściciela 2026-10-13): dymek dopasowany do dwóch linii tekstu, karta linku, druga wiadomość
+  // z prośbą o logowanie (zamiast karty „zaloguj się” wyglądającej jak prośba komunikatora); pod każdą godzina. Cel dotykowy = wiadomość
+  // razem z wierszem godziny (≥ 230 jednostek wysokości).
+  const bubble: Rect = { x: 70, y: 250, w: 540, h: 180 };
+  const link: Rect = { x: 70, y: 500, w: 560, h: 300 };
+  const second: Rect = { x: 70, y: 870, w: 560, h: 180 };
+  const time = (r: Rect): Rect => ({ x: r.x + r.w - 160, y: r.y + r.h + 4, w: 160, h: 54 });
+  const target = (r: Rect): Rect => ({ x: r.x, y: r.y, w: r.w, h: r.h + 60 });
+  const incoming = (r: Rect) =>
+    `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="40" fill="${P.white}"/>` +
+    `<path d="M${r.x + 6} ${r.y + r.h - 30} l-26 30 l56 -10 z" fill="${P.white}"/>`;
   return {
     w: W, h: H,
     svg:
       shell('#EEF0F8') +
-      // Nagłówek rozmowy: strzałka wstecz, awatar (sylwetka, bez inicjału), miejsce na imię.
+      // Nagłówek rozmowy: strzałka wstecz, awatar (sylwetka, bez inicjału), miejsce na imię; odstęp strzałka-awatar ≥ 20 jednostek.
       `<rect x="${SCREEN.x}" y="${SCREEN.y}" width="${SCREEN.w}" height="140" rx="44" fill="${P.purpleDark}"/><rect x="${SCREEN.x}" y="${SCREEN.y + 100}" width="${SCREEN.w}" height="40" fill="${P.purpleDark}"/>` +
-      `<path d="M92 160 l-26 -24 l26 -24" fill="none" stroke="${P.white}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<circle cx="150" cy="160" r="44" fill="#F3C9A8"/><circle cx="150" cy="148" r="17" fill="${P.ink}" opacity="0.75"/>` +
-      `<path d="M120 192 c0 -26 60 -26 60 0 z" fill="${P.ink}" opacity="0.75"/>` +
-      // Dymek przychodzący.
-      `<rect x="${bubble.x}" y="${bubble.y}" width="${bubble.w}" height="${bubble.h}" rx="40" fill="${P.white}"/>` +
-      `<path d="M${bubble.x + 6} ${bubble.y + bubble.h - 30} l-26 30 l56 -10 z" fill="${P.white}"/>` +
+      `<path d="M84 160 l-26 -24 l26 -24" fill="none" stroke="${P.white}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<circle cx="158" cy="160" r="44" fill="#F3C9A8"/><circle cx="158" cy="148" r="17" fill="${P.ink}" opacity="0.75"/>` +
+      `<path d="M128 192 c0 -26 60 -26 60 0 z" fill="${P.ink}" opacity="0.75"/>` +
+      // Wiadomość 1.
+      incoming(bubble) +
       // Karta linku: miniatura filmu z przyciskiem odtwarzania, tytuł i adres.
       `<rect x="${link.x}" y="${link.y}" width="${link.w}" height="${link.h}" rx="36" fill="${P.white}"/>` +
-      `<rect x="${link.x + 18}" y="${link.y + 18}" width="${link.w - 36}" height="160" rx="22" fill="#3B2F8F"/>` +
-      `<circle cx="${link.x + link.w / 2}" cy="${link.y + 98}" r="46" fill="${P.white}" opacity="0.92"/>` +
-      `<path d="M${link.x + link.w / 2 - 14} ${link.y + 74} l40 24 l-40 24 z" fill="#3B2F8F"/>` +
-      // Karta logowania: kłódka i przycisk (bez marki).
-      `<rect x="${login.x}" y="${login.y}" width="${login.w}" height="${login.h}" rx="36" fill="${P.white}"/>` +
-      `<g transform="translate(${login.x + 62} ${login.y + 72})"><circle r="40" fill="${P.sky}"/>${lock(46, P.purpleDark)}</g>` +
-      `<rect x="${login.x + 120}" y="${login.y + 146}" width="${login.w - 150}" height="72" rx="36" fill="${P.purple}"/>` +
+      `<rect x="${link.x + 18}" y="${link.y + 18}" width="${link.w - 36}" height="140" rx="22" fill="#3B2F8F"/>` +
+      `<circle cx="${link.x + link.w / 2}" cy="${link.y + 88}" r="44" fill="${P.white}" opacity="0.92"/>` +
+      `<path d="M${link.x + link.w / 2 - 14} ${link.y + 64} l40 24 l-40 24 z" fill="#3B2F8F"/>` +
+      // Wiadomość 2 (prośba o logowanie).
+      incoming(second) +
       // Pasek pisania (bez tekstu).
       `<rect x="${SCREEN.x + 24}" y="${SCREEN.y + SCREEN.h - 74}" width="${SCREEN.w - 130}" height="56" rx="28" fill="${P.white}"/>` +
       `<circle cx="${SCREEN.x + SCREEN.w - 54}" cy="${SCREEN.y + SCREEN.h - 46}" r="30" fill="${P.purple}"/>` +
       `<path d="M${SCREEN.x + SCREEN.w - 66} ${SCREEN.y + SCREEN.h - 58} l26 12 l-26 12 z" fill="${P.white}"/>`,
     parts: {
-      wiadomosc: bubble,
-      link,
-      logowanie: login,
-      'slot-kontakt': { x: 214, y: 120, w: 410, h: 80 },
-      'slot-wiadomosc': { x: bubble.x + 30, y: bubble.y + 24, w: bubble.w - 60, h: bubble.h - 48 },
-      'slot-link-tytul': { x: link.x + 26, y: link.y + 192, w: link.w - 52, h: 64 },
-      'slot-link-adres': { x: link.x + 26, y: link.y + 260, w: link.w - 52, h: 52 },
-      'slot-logowanie-tytul': { x: login.x + 120, y: login.y + 18, w: login.w - 140, h: 116 },
-      'slot-logowanie-przycisk': { x: login.x + 130, y: login.y + 150, w: login.w - 170, h: 64 },
+      wiadomosc: target(bubble),
+      link: target(link),
+      logowanie: target(second),
+      'slot-kontakt': { x: 222, y: 120, w: 400, h: 80 },
+      'slot-wiadomosc': { x: bubble.x + 30, y: bubble.y + 18, w: bubble.w - 60, h: bubble.h - 36 },
+      'slot-czas-1': time(bubble),
+      'slot-link-tytul': { x: link.x + 26, y: link.y + 168, w: link.w - 52, h: 60 },
+      'slot-link-adres': { x: link.x + 26, y: link.y + 232, w: link.w - 52, h: 52 },
+      'slot-czas-2': time(link),
+      'slot-logowanie': { x: second.x + 30, y: second.y + 18, w: second.w - 60, h: second.h - 36 },
+      'slot-czas-3': time(second),
     },
   };
 };

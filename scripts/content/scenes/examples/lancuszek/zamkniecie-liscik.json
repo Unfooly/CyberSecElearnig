@@ -1,0 +1,26 @@
+{
+ "width": 260,
+ "height": 240,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "strings": {
+  "pl": {
+   "liscik": ["Łańcuszek", "przerwany.", "Dobra robota,", "detektywie."],
+   "podpis": "— A.W."
+  }
+ },
+ "items": [
+  {
+   "id": "liscik",
+   "prop": "commissionerNote",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "lines": { "$t": "liscik" },
+    "sign": { "$t": "podpis" }
+   }
+  }
+ ]
+}

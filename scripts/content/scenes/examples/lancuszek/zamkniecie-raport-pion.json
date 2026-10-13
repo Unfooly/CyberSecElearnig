@@ -1,0 +1,68 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "raport": "RAPORT KOŃCOWY",
+   "sygnatura": "LAN/2026/1013",
+   "tytul": "Łańcuszek",
+   "dowody": "DOWODY",
+   "czas": "CZAS",
+   "xp": "XP",
+   "zasady-naglowek": "TRZY ZASADY",
+   "podpis": "PODPIS PROWADZĄCEGO",
+   "zasady": [
+    "1. Dziwna prośba od znajomego? Zadzwoń na znany numer.",
+    "2. Kodu z SMS-a nie podajesz nikomu.",
+    "3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę."
+   ]
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "raport",
+   "prop": "reportPortrait",
+   "x": 22,
+   "y": 22,
+   "partHotspots": {
+    "slot-dowody": "slot-dowody",
+    "slot-czas": "slot-czas",
+    "slot-xp": "slot-xp",
+    "slot-wnioski": "slot-wnioski",
+    "slot-podpis": "podpis",
+    "slot-pieczec": "slot-pieczec",
+    "slot-liscik": "slot-liscik"
+   },
+   "pad": 0,
+   "params": {
+    "caseNo": { "$t": "sygnatura" },
+    "title": { "$t": "tytul" },
+    "bags": [],
+    "ruled": false,
+    "labels": {
+     "report": { "$t": "raport" },
+     "evidence": { "$t": "dowody" },
+     "time": { "$t": "czas" },
+     "xp": { "$t": "xp" },
+     "lessons": { "$t": "zasady-naglowek" },
+     "signature": { "$t": "podpis" }
+    }
+   }
+  },
+  {"id":"tekst-zasady","prop":"textBox","x":72,"y":474,"evidence":"zasady","params":{"w":740,"h":420,"text":{"$t":"zasady"},"size":46,"valign":"top","color":"#2B2440"}}
+ ]
+}

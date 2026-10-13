@@ -208,6 +208,11 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 | `skrzynka-zewn.example` | domena zewnętrznej skrzynki (przekierowanie poczty) | 2 `glos-z-helpdesku` | `.example` - zarezerwowana (RFC 2606), bezpieczna |
 | Karol Wieczorek, Paweł Nowicki, Grzegorz Sowa | postacie (fikcyjne) | 2 `glos-z-helpdesku` | fikcyjne; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
 | numery 12 3XX XX 41, 12 3XX XX 00, wewn. 214, ID 7XX XXX 219, IP 185.XX.XX.17 | numery w fabule | 2 `glos-z-helpdesku` | zamaskowane (X) - nie są prawdziwymi numerami |
+| Ola Malec, Kasia, Marek | postacie (fikcyjne) | 3 `lancuszek` | fikcyjne; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
+| SzybkaPaczka | kurier (fikcyjny, nazwa właściciela) | 3 `lancuszek` | fikcyjna; do sprawdzenia przez właściciela (wyszukiwarka, rejestr znaków towarowych) |
+| `wideo-kasi.test`, `szybkapaczka.test` | domeny w wiadomościach (link do „filmu”, dopłata) | 3 `lancuszek` | `.test` - zarezerwowane (RFC 2606), bezpieczne |
+| +48 500 XXX XXX | numer w wiadomości „nowy numer” | 3 `lancuszek` | zamaskowany (X) - nie jest prawdziwym numerem |
+| komunikator, ekran logowania | interfejsy w grafikach | 3 `lancuszek` | generyczne, bez logo i nazwy aplikacji/serwisu |
 
 ## 9. Zakazy (D-108)
 

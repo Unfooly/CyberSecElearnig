@@ -201,6 +201,21 @@ w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); napisy bez slo
 `caseFolderOpen` przyjmuje `victimLabel` (domyślnie „Poszkodowana”), a `reportFolderOpen` - listę `bags` (domyślnie torebki modułu 1);
 domyślne wartości zostawiają sceny modułu 1 bajt w bajt bez zmian (test `odprawa.test.ts`).
 
+### Klocki modułu 3 (`props-lancuszek.ts`, „Łańcuszek”, tryb prosty, D-140)
+
+Pierwszy moduł w nowym modelu od początku: sceny ze `strings` (`pl`), napisy w klockach `textBox` z `"phoneScreen": true` (minimum 16 px
+na telefonie 390 px pilnuje kompozytor), tekst dowodów z kluczem `evidence` (m9). Klocki rysują tylko kształty i wystawiają sloty; komunikator
+i ekran logowania są generyczne - bez logo i nazwy aplikacji, adresy wyłącznie w domenach `.test`. Źródła: `examples/lancuszek/*.json`
+(scena telefonu poziomo `phone: "panorama"` i pionowo, zbliżenie ekranu logowania, miniatura bez tekstu). Telefon ma lokalny rozmiar
+700×1300, cele dotykowe (dymek, karta linku, karta logowania) co najmniej 230 jednostek wysokości - przy skali 0,76 w scenie 1600×1000 to
+≥ 44 px na scenie odniesienia trybu prostego (D-132).
+
+| prop | do czego | części |
+|---|---|---|
+| `chatPhone` | telefon z rozmową na komunikatorze | `wiadomosc`, `link`, `logowanie`; sloty `slot-kontakt`, `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie-tytul`, `slot-logowanie-przycisk` |
+| `loginScreen` | ekran logowania z linku (zbliżenie), bez marki | sloty `slot-adres`, `slot-naglowek`, `slot-pole-login`, `slot-pole-haslo`, `slot-przycisk` |
+| `chatPhoneIcon` | telefon z dymkami bez słów (miniatura modułu) | |
+
 ### Przezroczyste tło grafik otwieranych kliknięciem (D-101)
 
 `"background": { "flat": true, "wall": "none" }` - scena bez prostokąta tła (tylko z `flat`). Narzędzia (z `scripts/content`):

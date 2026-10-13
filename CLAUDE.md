@@ -186,6 +186,13 @@ Jeśli struktura jeszcze nie istnieje, zaproponuj ją przy pierwszym zadaniu i p
 3. **Testy obowiązkowe.** Nowa funkcja bez testu nie jest skończona. Minimum: happy path + jeden przypadek brzegowy + test izolacji tenantów (jeśli dotyczy danych klienckich).
 4. **Migracje bazy danych** zawsze przez Prisma Migrate, nigdy ręczne ALTER TABLE. Migracja + odpowiadający jej update `schema.prisma` w tym samym commicie.
 5. **Sekrety** (klucze API, connection stringi) tylko w zmiennych środowiskowych / `.env` (nieopublikowanym), nigdy hardkodowane w kodzie.
+   **Nigdy nie wyświetlaj zawartości plików `.env*`** (cat/type/Get-Content/head/less/sed/grep z treścią wiersza itd.) **ani wartości
+   zmiennych środowiskowych** (printenv, env, echo `$SEKRET`). Sprawdzasz wyłącznie nazwy kluczy (`grep -oE '^[A-Z0-9_]+=' .env`) albo to,
+   czy zmienna jest ustawiona, bez wartości (`[ -n "$VAR" ] && echo set`); skrypty uruchamiasz przez `npx dotenv -e .env -- <polecenie>`.
+   Pliki wzorcowe `*.example` (w repo, bez sekretów) można czytać. Poznane 2026-10-11: `grep -E "^(DATABASE_URL...)=" .env` z nieudanym
+   maskowaniem wypisał hasło roli bazy deweloperskiej. Egzekwuje to hook PreToolUse `.claude/hooks/block-env-read.js` (Bash, PowerShell,
+   Read i Grep; test w CI; zakres i znane ograniczenia: D-139) - bariera przed odruchem, nie sandbox. `grep -r` w katalogu z plikiem `.env`
+   tylko z `--exclude='.env*'`.
 6. **Commity małe i opisowe.** Jeden commit = jedna logiczna zmiana.
 7. **Pliki edytujesz narzędziem do edycji plików** (Write/Edit), nigdy przez `echo`, `cat` ani heredoc w powłoce. Powłoka interpretuje backticki i `$(...)` w treści jako komendy: tak backticki w README wykonały się jako polecenia, uruchomiły testy e2e i zostawiły dziury w tekście. Powłoka służy do uruchamiania poleceń, nie do zapisywania treści plików. Dotyczy to także skryptów Python/Node uruchamianych z powłoki do modyfikacji plików (w tym jednorazowych `python - <<EOF`, `node -e`, `sed -i`): jedyny dozwolony sposób edycji plików to Write/Edit.
 8. **Status CI po pushu.** Dopóki nie masz dostępu do GitHub Actions, po pushu raportujesz „wypchnięte, czekam na status CI” (razem z hashem) i prosisz użytkownika o status runa. Zielone testy lokalne nie oznaczają zielonego CI (inna liczba rdzeni, wersja Node, pula połączeń) - nie pisz „gotowe”, dopóki nie znasz wyniku CI. Nie zaczynaj kolejnego kroku, gdy CI jest czerwone.

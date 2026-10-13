@@ -7,9 +7,11 @@ import { useHintCollapse } from './useHintCollapse';
 // Dymek podpowiedzi (refactor/remove-mascot-player, D-093) - zastępuje maskotkę Fooli: sam tekst w neutralnej karcie, bez postaci.
 // Dwa warianty:
 //  - `bar` (bloki w układzie 'slide' i rozmowa): w normalnym przepływie nad treścią bloku - niczego nie zasłania;
-//  - `overlay` (SCENE_HOTSPOTS): w lewym dolnym rogu sceny, max 30% szerokości; przy otwartej nakładce (zbliżenie, notatnik,
-//    transkrypcja) dymek jest zwinięty (bubbleVisible), a ikona `invisible` + aria-hidden + poza Tab (nie zasłania i nie łapie kliknięć);
-//    po zamknięciu nakładki wraca sama ikona, dymek zostaje zwinięty.
+//  - `overlay` (SCENE_HOTSPOTS): w lewym dolnym rogu sceny, max 30% szerokości; na oknie < 640 px (`max-sm`, jak cele 44 px z
+//    D-099 - D-141, decyzja właściciela 2026-10-13) pasek przyklejony do dołu obszaru bloku na pełną szerokość (dymek 30% był wąski,
+//    po jednym słowie w linii, i zasłaniał środek grafiki), przycisk zwijania 44×44. Przy otwartej nakładce (zbliżenie, notatnik,
+//    transkrypcja) dymek jest zwinięty (bubbleVisible), a ikona `invisible` + aria-hidden + poza Tab (nie zasłania i nie łapie
+//    kliknięć); po zamknięciu nakładki wraca sama ikona, dymek zostaje zwinięty.
 // Zwinięty dymek to mała ikona żarówki („Pokaż podpowiedź”) - klik rozwija. Przy rozwiniętym dymku ikona jest `sr-only` i poza Tab (nic nie
 // robi, a fokus na elemencie 1 px byłby niewidoczny). Tekst jest w <p role="status" aria-live="polite"> poza przyciskami; zwijanie przez
 // max-h-0/opacity-0 (nie display:none ani aria-hidden) - region aria-live zostaje w drzewie dostępności także przy otwartej nakładce, więc
@@ -26,7 +28,11 @@ export default function Hint({ text, variant }: { text?: string; variant: 'bar' 
     <div
       ref={rootRef}
       data-testid={overlay ? 'hint-overlay' : 'hint-bar'}
-      className={overlay ? 'pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[30%] items-end gap-2' : 'mb-3 flex shrink-0 items-start gap-2'}
+      className={
+        overlay
+          ? 'pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[30%] items-end gap-2 max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:max-w-none'
+          : 'mb-3 flex shrink-0 items-start gap-2'
+      }
     >
       <button
         type="button"
@@ -39,14 +45,14 @@ export default function Hint({ text, variant }: { text?: string; variant: 'bar' 
         // Telefon (max-sm): cel dotyku 44x44 (D-099).
         className={`flex h-9 w-9 shrink-0 items-center max-sm:h-11 max-sm:w-11 justify-center rounded-full border border-border bg-surface text-accent-ink shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           hiddenForOverlay ? 'pointer-events-none invisible' : 'pointer-events-auto visible'
-        } ${bubbleVisible ? 'sr-only' : ''}`}
+        } ${bubbleVisible ? 'sr-only' : ''} ${overlay ? 'max-sm:mb-3 max-sm:ml-3' : ''}`}
       >
         <Lightbulb aria-hidden="true" className="h-4 w-4" />
       </button>
       <div
         id={bubbleId}
         className={`pointer-events-auto relative min-w-0 overflow-hidden rounded-card border border-border bg-surface shadow-card transition-[max-height,opacity] duration-base motion-reduce:transition-none ${
-          overlay ? 'max-w-[280px]' : 'flex-1'
+          overlay ? 'max-w-[280px] max-sm:max-w-none max-sm:flex-1 max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0' : 'flex-1'
         } ${bubbleVisible ? 'max-h-[400px] px-4 py-3 opacity-100' : 'pointer-events-none max-h-0 border-0 p-0 opacity-0'}`}
       >
         <button
@@ -54,11 +60,11 @@ export default function Hint({ text, variant }: { text?: string; variant: 'bar' 
           onClick={() => setCollapsed(true)}
           aria-label="Zwiń podpowiedź"
           tabIndex={bubbleVisible ? undefined : -1}
-          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-paper hover:text-ink max-sm:right-0 max-sm:top-0 max-sm:h-11 max-sm:w-11"
+          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent max-sm:right-0 max-sm:top-0 max-sm:h-11 max-sm:w-11"
         >
           <X aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
-        <p role="status" aria-live="polite" className="pr-6 text-sm leading-snug text-ink max-sm:pr-9">
+        <p role="status" aria-live="polite" className="pr-6 text-sm leading-snug text-ink max-sm:pr-11 max-sm:text-base">
           {text}
         </p>
       </div>

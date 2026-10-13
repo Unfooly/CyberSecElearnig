@@ -1,0 +1,26 @@
+{
+ "width": 600,
+ "height": 260,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "strings": {
+  "pl": {
+   "pieczec": "SPRAWA ZAMKNIĘTA",
+   "wydzial": "Wydział Cyberbezpieczeństwa"
+  }
+ },
+ "items": [
+  {
+   "id": "pieczec",
+   "prop": "closedStamp",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "text": { "$t": "pieczec" },
+    "sub": { "$t": "wydzial" }
+   }
+  }
+ ]
+}

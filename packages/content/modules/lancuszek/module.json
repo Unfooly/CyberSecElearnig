@@ -21,37 +21,48 @@
   "blocks": [
     {
       "id": "odprawa",
-      "type": "NARRATIVE",
+      "type": "BRIEFING",
       "title": "Odprawa",
-      "text": "Wtorek rano. Dzwoni Ola Malec z księgowości: koleżanka Kasia przysłała jej link do „filmu”, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-      "narration": {
-        "voice": "komisarz",
-        "text": "Wtorek rano. Dzwoni Ola Malec z księgowości. Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-        "audioUrl": "audio/lancuszek/v1/odprawa/48e5be8399b98946.mp3",
-        "durationMs": 13653,
-        "cues": [
-          {
-            "text": "Wtorek rano.",
-            "startMs": 0
+      "steps": [
+        {
+          "kind": "typewriter",
+          "text": "Wtorek rano. Dzwoni Ola Malec z księgowości: koleżanka Kasia przysłała jej link do „filmu”, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
+          "cta": "Odbierz telefon",
+          "narration": {
+            "voice": "komisarz",
+            "text": "Wtorek rano. Dzwoni Ola Malec z księgowości. Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
+            "audioUrl": "audio/lancuszek/v1/odprawa/48e5be8399b98946.mp3",
+            "durationMs": 13653,
+            "cues": [
+              {
+                "text": "Wtorek rano.",
+                "startMs": 0
+              },
+              {
+                "text": "Dzwoni Ola Malec z księgowości.",
+                "startMs": 720
+              },
+              {
+                "text": "Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK.",
+                "startMs": 2902
+              },
+              {
+                "text": "Ola nie wie, co z tym zrobić.",
+                "startMs": 7779
+              },
+              {
+                "text": "Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
+                "startMs": 9230
+              }
+            ]
           },
-          {
-            "text": "Dzwoni Ola Malec z księgowości.",
-            "startMs": 720
-          },
-          {
-            "text": "Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK.",
-            "startMs": 2902
-          },
-          {
-            "text": "Ola nie wie, co z tym zrobić.",
-            "startMs": 7779
-          },
-          {
-            "text": "Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-            "startMs": 9230
+          "image": "assets/lancuszek/scenes/pl/odprawa.b3b6523f.svg",
+          "alt": "Biurko detektywa: lampka, kubek i telefon na blacie. Na ekranie telefonu połączenie przychodzące - Ola Malec, księgowość.",
+          "portrait": {
+            "image": "assets/lancuszek/scenes/pl/odprawa-pion.1151b967.svg"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "id": "telefon",
@@ -59,42 +70,42 @@
       "title": "Telefon Oli",
       "tip": "Wskaż trzy miejsca na ekranie, które powinny wzbudzić czujność.",
       "narration": {
-        "text": "To rozmowa Oli z Kasią. Przyjrzyj się wiadomości, linkowi i temu, o co prosi strona.",
-        "audioUrl": "audio/lancuszek/v1/telefon/2bdf8ed101d8453c.mp3",
-        "durationMs": 6223,
+        "text": "To rozmowa Oli z Kasią. Przyjrzyj się obu wiadomościom i linkowi.",
+        "audioUrl": "audio/lancuszek/v1/telefon/39610b68a92ef547.mp3",
+        "durationMs": 4551,
         "cues": [
           {
             "text": "To rozmowa Oli z Kasią.",
             "startMs": 0
           },
           {
-            "text": "Przyjrzyj się wiadomości, linkowi i temu, o co prosi strona.",
-            "startMs": 1718
+            "text": "Przyjrzyj się obu wiadomościom i linkowi.",
+            "startMs": 1788
           }
         ]
       },
-      "image": "assets/lancuszek/scenes/pl/telefon-oli.102a95e7.svg",
-      "imageAlt": "Telefon Oli: rozmowa z Kasią na komunikatorze - wiadomość „To Ty na tym filmie?”, link „Film z imprezy” wideo-kasi.test/f/82 i okienko „Zaloguj się, aby obejrzeć film” z przyciskiem „Zaloguj się”.",
-      "imagePortrait": "assets/lancuszek/scenes/pl/telefon-oli-pion.b2874405.svg",
+      "image": "assets/lancuszek/scenes/pl/telefon-oli.83668f90.svg",
+      "imageAlt": "Telefon Oli: rozmowa z Kasią na komunikatorze - wiadomość „To Ty na tym filmie?” o 9:12, link „Film z imprezy” wideo-kasi.test/f/82 i o 9:13 druga wiadomość „Musisz się zalogować, inaczej nie puści”.",
+      "imagePortrait": "assets/lancuszek/scenes/pl/telefon-oli-pion.2bcbd815.svg",
       "portraitHotspots": [
         {
           "id": "wiadomosc",
           "x": 13.3,
-          "y": 21.4,
+          "y": 20.7,
           "width": 70.8,
-          "height": 17.5
+          "height": 18.3
         },
         {
           "id": "link",
           "x": 13.3,
-          "y": 40.1,
+          "y": 38.7,
           "width": 73.3,
-          "height": 24.7
+          "height": 26.9
         },
         {
           "id": "logowanie",
           "x": 13.3,
-          "y": 66,
+          "y": 65.3,
           "width": 73.3,
           "height": 18.3
         }
@@ -104,9 +115,9 @@
           "id": "wiadomosc",
           "label": "Wiadomość od Kasi",
           "x": 36.2,
-          "y": 19.6,
+          "y": 18.8,
           "width": 26.6,
-          "height": 19.1,
+          "height": 19.8,
           "content": "„To Ty na tym filmie?” - ciekawość i lekki niepokój to przynęta. Tak zaczyna się łańcuszek.",
           "evidence": true,
           "required": true,
@@ -119,10 +130,10 @@
           "id": "link",
           "label": "Link do filmu",
           "x": 36.2,
-          "y": 39.3,
+          "y": 37.8,
           "width": 27.6,
-          "height": 26.7,
-          "content": "Adres wideo-kasi.test nie jest żadnym znanym serwisem z filmami - link prowadzi na obcą stronę.",
+          "height": 29,
+          "content": "Adres wideo-kasi.test nie jest żadnym znanym serwisem z filmami - link prowadzi na obcą stronę. Kłódka w pasku adresu nie znaczy, że strona jest bezpieczna - oznacza tylko szyfrowane połączenie.",
           "evidence": true,
           "required": true,
           "note": {
@@ -132,12 +143,12 @@
         },
         {
           "id": "logowanie",
-          "label": "Prośba o logowanie",
+          "label": "Ponaglenie do logowania",
           "x": 36.2,
-          "y": 66.7,
+          "y": 65.9,
           "width": 27.6,
           "height": 19.8,
-          "content": "Strona każe się zalogować, żeby zobaczyć film. Tak oszuści zbierają hasła i przejmują kolejne konta.",
+          "content": "„Musisz się zalogować, inaczej nie puści” - Kasia ponagla, żeby zalogować się na stronie z linku. Tak oszuści zbierają hasła i przejmują kolejne konta.",
           "media": {
             "kind": "image",
             "src": "assets/lancuszek/scenes/pl/logowanie-zoom.6e9acfba.svg",
@@ -146,7 +157,7 @@
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Strona z linku wyłudza login i hasło pod pretekstem filmu.",
+            "text": "Kasia ponagla do logowania - strona z linku wyłudza login i hasło pod pretekstem filmu.",
             "kind": "web"
           }
         }
@@ -373,11 +384,105 @@
         ]
       },
       "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi na znany numer. Kasia zmieniła hasło i odzyskała konto - łańcuszek się urwał.\n\n**Trzy zasady**\n\n1. Dziwna prośba od znajomego? Zadzwoń na znany numer.\n2. Kodu z SMS-a nie podajesz nikomu.\n3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
-      "lessons": [
-        "Dziwna prośba od znajomego? Zadzwoń na znany numer.",
-        "Kodu z SMS-a nie podajesz nikomu.",
-        "Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę."
-      ]
+      "closing": {
+        "image": "assets/lancuszek/scenes/pl/zamkniecie-raport.1a95b831.svg",
+        "stamp": "assets/lancuszek/scenes/pl/zamkniecie-pieczec.5f3d06cf.svg",
+        "note": "assets/lancuszek/scenes/pl/zamkniecie-liscik.af13eb43.svg",
+        "alt": "Raport końcowy w teczce, sprawa LAN/2026/1013 „Łańcuszek”. Trzy zasady: 1. Dziwna prośba od znajomego? Zadzwoń na znany numer. 2. Kodu z SMS-a nie podajesz nikomu. 3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
+        "stampAlt": "Pieczęć: SPRAWA ZAMKNIĘTA, Wydział Cyberbezpieczeństwa.",
+        "noteAlt": "Liścik komisarza: Łańcuszek przerwany. Dobra robota, detektywie. — A.W.",
+        "slots": {
+          "evidence": {
+            "x": 8.8,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "time": {
+            "x": 21.5,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "xp": {
+            "x": 34.2,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "lessons": {
+            "x": 8.8,
+            "y": 50.7,
+            "w": 37.1,
+            "h": 29.3
+          },
+          "signature": {
+            "x": 23.2,
+            "y": 81.8,
+            "w": 22.7,
+            "h": 6.1
+          },
+          "stamp": {
+            "x": 55.5,
+            "y": 69.6,
+            "w": 34.4,
+            "h": 22
+          },
+          "note": {
+            "x": 81.6,
+            "y": 24.3,
+            "w": 11.7,
+            "h": 19.3
+          }
+        },
+        "portrait": {
+          "image": "assets/lancuszek/scenes/pl/zamkniecie-raport-pion.f55085b4.svg",
+          "slots": {
+            "evidence": {
+              "x": 8,
+              "y": 20.5,
+              "w": 25.8,
+              "h": 3.8
+            },
+            "time": {
+              "x": 35.8,
+              "y": 20.5,
+              "w": 25.8,
+              "h": 3.8
+            },
+            "xp": {
+              "x": 63.6,
+              "y": 20.5,
+              "w": 25.8,
+              "h": 3.8
+            },
+            "lessons": {
+              "x": 8,
+              "y": 29.6,
+              "w": 82.2,
+              "h": 26.3
+            },
+            "signature": {
+              "x": 44.7,
+              "y": 56.4,
+              "w": 45.6,
+              "h": 4
+            },
+            "stamp": {
+              "x": 58,
+              "y": 84.5,
+              "w": 35.6,
+              "h": 10.6
+            },
+            "note": {
+              "x": 62.4,
+              "y": 67.8,
+              "w": 27.8,
+              "h": 15
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -5,7 +5,7 @@
   "model": "eleven_multilingual_v2",
   "language": "pl",
   "entries": {
-    "odprawa#narration": {
+    "odprawa#steps.0.narration": {
       "hash": "48e5be8399b98946",
       "key": "audio/lancuszek/v1/odprawa/48e5be8399b98946.mp3",
       "textSha": "ca3a0ff76e375232",
@@ -14,10 +14,10 @@
       "voiceId": "o11yegU3CL24TZ1qcm6b"
     },
     "telefon#narration": {
-      "hash": "2bdf8ed101d8453c",
-      "key": "audio/lancuszek/v1/telefon/2bdf8ed101d8453c.mp3",
-      "textSha": "7d91da2746abe60c",
-      "durationMs": 6223,
+      "hash": "39610b68a92ef547",
+      "key": "audio/lancuszek/v1/telefon/39610b68a92ef547.mp3",
+      "textSha": "d6524d53ada88118",
+      "durationMs": 4551,
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },

@@ -1,0 +1,42 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#C9AE8C"
+ },
+ "strings": {
+  "pl": {
+   "naglowek": "Połączenie przychodzące",
+   "dzwoni": "Ola Malec",
+   "dzial": "księgowość"
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "telefon",
+   "prop": "phoneTop",
+   "x": 138,
+   "y": 270,
+   "scale": 2.6,
+   "params": {
+    "state": "ringing",
+    "wordless": true,
+    "animated": false
+   }
+  },
+  {"id":"tekst-naglowek","prop":"textBox","x":190,"y":358.4,"phoneScreen":true,"params":{"w":520,"h":104,"text":{"$t":"naglowek"},"size":44.2,"align":"middle","valign":"middle","color":"#FFFFFF"}},
+  {"id":"tekst-dzwoni","prop":"textBox","x":190,"y":800.4,"phoneScreen":true,"params":{"w":520,"h":119.6,"text":{"$t":"dzwoni"},"size":83.2,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-dzial","prop":"textBox","x":190,"y":925.2,"phoneScreen":true,"params":{"w":520,"h":104,"text":{"$t":"dzial"},"size":62.4,"align":"middle","valign":"middle","color":"#FFFFFF"}}
+ ]
+}

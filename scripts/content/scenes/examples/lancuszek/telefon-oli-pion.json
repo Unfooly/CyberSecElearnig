@@ -11,8 +11,7 @@
    "wiadomosc": "To Ty na tym filmie?",
    "link-tytul": "Film z imprezy",
    "link-adres": "wideo-kasi.test/f/82",
-   "logowanie-tytul": "Zaloguj się, aby obejrzeć film",
-   "logowanie-przycisk": "Zaloguj się"
+   "logowanie": "Musisz się zalogować, inaczej nie puści"
   }
  },
  "items": [
@@ -38,11 +37,13 @@
     "logowanie": "logowanie"
    }
   },
-  {"id":"tekst-kontakt","prop":"textBox","x":293.6,"y":190,"phoneScreen":true,"params":{"w":471.5,"h":92,"text":{"$t":"kontakt"},"size":46,"valign":"middle","bold":true,"color":"#FFFFFF"}},
-  {"id":"tekst-wiadomosc","prop":"textBox","x":162.5,"y":378.6,"phoneScreen":true,"evidence":"wiadomosc","params":{"w":552,"h":209.3,"text":{"$t":"wiadomosc"},"size":52,"valign":"middle","color":"#2B2440"}},
-  {"id":"tekst-link-tytul","prop":"textBox","x":157.9,"y":870.8,"phoneScreen":true,"evidence":"link","params":{"w":584.2,"h":73.6,"text":{"$t":"link-tytul"},"size":46,"valign":"middle","bold":true,"color":"#2B2440"}},
-  {"id":"tekst-link-adres","prop":"textBox","x":157.9,"y":949,"phoneScreen":true,"evidence":"link","params":{"w":584.2,"h":59.8,"text":{"$t":"link-adres"},"size":42,"valign":"middle","color":"#4E40B8"}},
-  {"id":"tekst-logowanie-tytul","prop":"textBox","x":266,"y":1084.7,"phoneScreen":true,"evidence":"logowanie","params":{"w":483,"h":133.4,"text":{"$t":"logowanie-tytul"},"size":46,"valign":"middle","bold":true,"color":"#2B2440"}},
-  {"id":"tekst-logowanie-przycisk","prop":"textBox","x":277.5,"y":1236.5,"phoneScreen":true,"params":{"w":448.5,"h":73.6,"text":{"$t":"logowanie-przycisk"},"size":44,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}}
+  {"id":"tekst-kontakt","prop":"textBox","x":302.8,"y":190,"phoneScreen":true,"params":{"w":460,"h":92,"text":{"$t":"kontakt"},"size":50.6,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-wiadomosc","prop":"textBox","x":162.5,"y":360.2,"phoneScreen":true,"evidence":"wiadomosc","params":{"w":552,"h":165.6,"text":{"$t":"wiadomosc"},"size":64.4,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-czas-1","prop":"textBox","x":565,"y":551.1,"phoneScreen":true,"params":{"w":184,"h":62.1,"text":"9:12","size":41.4,"align":"end","valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-link-tytul","prop":"textBox","x":157.9,"y":820.2,"phoneScreen":true,"evidence":"link","params":{"w":584.2,"h":69,"text":{"$t":"link-tytul"},"size":50.6,"valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-link-adres","prop":"textBox","x":157.9,"y":893.8,"phoneScreen":true,"evidence":"link","params":{"w":584.2,"h":59.8,"text":{"$t":"link-adres"},"size":46,"valign":"middle","color":"#4E40B8"}},
+  {"id":"tekst-czas-2","prop":"textBox","x":588,"y":976.6,"phoneScreen":true,"params":{"w":184,"h":62.1,"text":"9:12","size":41.4,"align":"end","valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-logowanie","prop":"textBox","x":162.5,"y":1073.2,"phoneScreen":true,"evidence":"logowanie","params":{"w":575,"h":165.6,"text":{"$t":"logowanie"},"size":55.2,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-czas-3","prop":"textBox","x":588,"y":1264.1,"phoneScreen":true,"params":{"w":184,"h":62.1,"text":"9:13","size":41.4,"align":"end","valign":"middle","color":"#8C8FA8"}}
  ]
 }

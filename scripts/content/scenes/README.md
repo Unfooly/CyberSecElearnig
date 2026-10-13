@@ -96,6 +96,12 @@ Reguły sceny ze `strings` (błąd builda z nazwą sceny, elementu, slotu i jęz
 Sceny bez `strings` (moduły 1-2) budują się jak dotąd - jeden plik, tekst zamieniony na krzywe w obecnych rozmiarach, bez kontroli
 minimum (decyzja właściciela D-135: wyglądają jak wcześniej, czytelność przez zbliżenia).
 
+**Tekst dowodów (`evidence`, D-138).** Element z `"evidence": "<klucz>"` (kebab-case) to tekst potrzebny do rozwiązania zadania. Kompozytor
+zapisuje na `<svg>` atrybut `data-evidence="<klucz>:<najmniejszy rozmiar tekstu w px sceny> ..."` (tylko sceny z kluczami - reszta bez
+zmian), a `layout-check` (m9) przelicza go na px ekranu telefonu 390×844 w scenie i w otwieranych zbliżeniach: największy wynik dla klucza
+musi mieć co najmniej 15 px. Ten sam klucz w scenie i w jej zbliżeniu - wystarczy, że jedno z nich spełnia regułę. Element z kluczem bez
+tekstu to błąd builda.
+
 ## Klocki
 
 | prop | parametry | części |

@@ -121,7 +121,7 @@ export function transformScale(attrs: string): number {
  * parseTextElement (nieznany atrybut). Inne elementy nie zawierają tekstu, więc ich transform nie zmienia jego rozmiaru.
  */
 export function textsWithScale(svg: string): { text: string; size: number }[] {
-  if (/<(svg|use|symbol)\b/.test(svg)) throw new Error('Klocek w scenie ze "strings" nie może używać <svg>/<use>/<symbol> (kontrola rozmiaru tekstu ich nie śledzi)');
+  if (/<(svg|use|symbol)\b/.test(svg)) throw new Error('Klocek z kontrolą rozmiaru tekstu (scena ze "strings" albo element z "evidence") nie może używać <svg>/<use>/<symbol> (kontrola ich nie śledzi)');
   const out: { text: string; size: number }[] = [];
   const stack = [1];
   for (const match of svg.matchAll(/<(\/?)(g|text)\b([^>]*?)(\/?)>([^<]*)/g)) {
@@ -198,6 +198,7 @@ export function validateScene(spec: SceneSpec): string[] {
     ids.add(it.id);
     if (!/^[a-z0-9-]+$/.test(it.id)) errors.push(`Id "${it.id}" ma być kebab-case`);
     if (it.scale !== undefined && !(it.scale > 0 && it.scale <= 10)) errors.push(`Skala poza zakresem (${it.id})`);
+    if (it.evidence !== undefined && !/^[a-z0-9-]+$/.test(it.evidence)) errors.push(`Klucz "evidence" "${it.evidence}" ma być kebab-case (${it.id})`);
   }
   if (spec.phone !== undefined && !['contain', 'panorama'].includes(spec.phone)) errors.push(`Nieznane "phone": ${spec.phone} (contain | panorama)`);
   errors.push(...validateStrings(spec));
@@ -279,9 +280,16 @@ export function composeScene(spec: SceneSpec, options: ComposeOptions = {}): Com
   };
 
   const itemErrors: string[] = [];
+  // Tekst dowodów (D-138): klucz -> najmniejszy rozmiar tekstu w px sceny (z elementów o tym kluczu).
+  const evidence = new Map<string, number>();
   for (const it of spec.items) {
     const out = renderItem(spec, it, options, itemErrors);
     const s = it.scale ?? 1;
+    if (it.evidence !== undefined) {
+      const sizes = textsWithScale(out.svg).map(({ size }) => size * s);
+      if (sizes.length === 0) itemErrors.push(`scena ${options.name ?? '(bez nazwy)'}, element "${it.id}": "evidence" bez tekstu`);
+      else evidence.set(it.evidence, Math.min(evidence.get(it.evidence) ?? Infinity, ...sizes));
+    }
     const pad = it.pad ?? 8;
     parts.push(`<g id="item-${it.id}" transform="translate(${it.x} ${it.y}) scale(${s})">${outlineText(scopeIds(out.svg, it.id))}</g>`);
 
@@ -299,6 +307,12 @@ export function composeScene(spec: SceneSpec, options: ComposeOptions = {}): Com
     }
   }
   if (itemErrors.length) throw new Error(itemErrors.join('\n'));
+  if (evidence.size > 0) {
+    // Tylko sceny z tekstem dowodów dostają atrybut - pozostałe grafiki zostają bajt w bajt bez zmian.
+    // Porównanie bajtowe (nie localeCompare - kolacja ICU zależy od wersji Node), żeby plik był stabilny bajt w bajt.
+    const value = [...evidence].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([key, size]) => `${key}:${r1(size)}`).join(' ');
+    parts[0] = parts[0].replace('<svg ', `<svg data-evidence="${value}" `);
+  }
   parts.push('</svg>');
   let svg = parts.join('\n');
   const once = Object.entries(ONCE_CSS)

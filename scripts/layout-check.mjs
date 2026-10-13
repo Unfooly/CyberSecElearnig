@@ -332,6 +332,67 @@ function hotspotsWithGraphic(block) {
   return items;
 }
 
+// (m9) Tekst dowodów (D-138): grafiki z kompozytora niosą `data-evidence="klucz:rozmiar ..."` (najmniejszy tekst elementów oznaczonych
+// `evidence`, w px sceny). Tu przeliczamy go na px ekranu: rozmiar × (wyświetlona szerokość grafiki / szerokość viewBox), z uwzględnieniem
+// `object-fit: contain` (obraz w pudełku o innych proporcjach). Tylko obrazy, które gracz CZYTA: bez tych pod nakładką (`aria-hidden`
+// sceny przy otwartym zbliżeniu) i bez przezroczystych (`opacity: 0` - zewnętrzna grafika przy zbliżeniu zagnieżdżonym); rozmiar z układu
+// (`offsetWidth`), nie z `getBoundingClientRect` - kamera zbliżenia powiększa scenę transformem (do 4×), co zawyżałoby wynik. Uwaga:
+// `offsetWidth` pomija też transformy, które realnie zmieniają rozmiar (np. `scale(var(--fit))` okienek easter egga) - grafika z kluczem
+// w takim kontenerze dałaby wynik zawyżony; dziś żadna tam nie trafia.
+// Zwraca { sizes: [{ key, px, src }], failed: [src] } - `failed`: SVG modułu, którego nie udało się pobrać (błąd m9, nie cichy pominięty).
+async function evidenceTextSizes(page) {
+  return page.evaluate(async () => {
+    window.__evidenceSvg ??= new Map();
+    const hidden = (el) => {
+      for (let node = el; node && node !== document.body; node = node.parentElement) {
+        if (node.getAttribute('aria-hidden') === 'true' || getComputedStyle(node).opacity === '0') return true;
+      }
+      return false;
+    };
+    const sizes = [];
+    const failed = [];
+    for (const img of document.querySelectorAll('img')) {
+      if (!/(module-assets|\/assets\/)/.test(img.src) || img.getClientRects().length === 0 || hidden(img)) continue;
+      const src = img.currentSrc || img.src;
+      if (!window.__evidenceSvg.has(src)) window.__evidenceSvg.set(src, await fetch(src).then((r) => (r.ok ? r.text() : null)).catch(() => null));
+      const text = window.__evidenceSvg.get(src);
+      if (text === null) {
+        failed.push(src.split('/').pop());
+        continue;
+      }
+      const head = text.match(/<svg\b[^>]*>/)?.[0] ?? '';
+      const evidence = head.match(/data-evidence="([^"]*)"/)?.[1];
+      const viewBox = head.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+      if (!evidence || !viewBox) continue;
+      const [vbW, vbH] = [Number(viewBox[1]), Number(viewBox[2])];
+      const shownWidth = Math.min(img.offsetWidth, (img.offsetHeight * vbW) / vbH);
+      for (const pair of evidence.split(' ')) {
+        const [key, size] = pair.split(':');
+        sizes.push({ key, px: (Number(size) * shownWidth) / vbW, src: src.split('/').pop() });
+      }
+    }
+    return { sizes, failed };
+  });
+}
+
+// Klucze dowodów oczekiwane w module (m9): `data-evidence` plików grafik modułu użytych w module.json (klucze z assets.lock.json) -
+// m9 nie może przejść dlatego, że niczego nie zmierzył (grafika niepokazana, adres spoza wzorca, nieudane pobranie).
+function expectedEvidenceKeys(slug) {
+  const dir = moduleDir(slug);
+  const lockPath = join(dir, 'assets.lock.json');
+  if (!existsSync(lockPath)) return new Set();
+  const moduleText = readFileSync(join(dir, 'module.json'), 'utf8');
+  const keys = new Set();
+  for (const entry of Object.values(JSON.parse(readFileSync(lockPath, 'utf8')).entries ?? {})) {
+    if (!entry.original?.endsWith('.svg') || !moduleText.includes(entry.key)) continue;
+    const file = join(dir, 'assets', entry.original);
+    if (!existsSync(file)) continue;
+    const evidence = readFileSync(file, 'utf8').match(/<svg\b[^>]*data-evidence="([^"]*)"/)?.[1];
+    for (const pair of evidence?.split(' ') ?? []) keys.add(pair.split(':')[0]);
+  }
+  return keys;
+}
+
 async function boxOf(page, selector) {
   const box = await page.locator(selector).first().boundingBox();
   if (!box) fail(`Nie znaleziono elementu "${selector}" albo jest niewidoczny.`);
@@ -1434,8 +1495,9 @@ try {
 
   // Dowolny moduł (B-128, LAYOUT_CHECK_MODULE=<slug>, domyślnie moduł 1): KAŻDY blok w harnessie `?module=<slug>&block=<id>` na 4
   // rozdzielczościach + telefonie w pionie: (m1) blok się renderuje (obszar bloku widoczny), obrazy modułu załadowane; (m2) dolny pasek
-  // w ekranie; (m3) strona bez poziomego przewijania; (m4) bez błędów strony i konsoli. Minimalna siatka dla nowego modułu - sekcje
-  // wyżej sprawdzają szczegóły modułu 1.
+  // w ekranie; (m3) strona bez poziomego przewijania; (m4) bez błędów strony i konsoli; (m5) zbliżenia się ładują; (m9, tylko 390×844)
+  // tekst dowodów ≥ 15 px w scenie albo w zbliżeniu (D-138). Minimalna siatka dla nowego modułu - sekcje wyżej sprawdzają szczegóły
+  // modułu 1.
   if (runs('module')) {
     const moduleJson = JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8'));
     const blockIds = moduleJson.blocks.map((block) => block.id);
@@ -1448,6 +1510,18 @@ try {
         if (message.type() === 'error') errors.push(message.text().slice(0, 200));
       });
       let zooms = 0;
+      // (m9) tylko telefon 390×844 (zasada właściciela: tekst dowodu ≥ 15 px na 390 px w scenie ALBO w otwieranym zbliżeniu).
+      const evidencePhone = viewport.name === '390x844';
+      const evidenceBest = new Map();
+      const evidenceFailed = new Set();
+      const noteEvidence = async () => {
+        if (!evidencePhone) return;
+        const { sizes, failed } = await evidenceTextSizes(page);
+        for (const src of failed) evidenceFailed.add(src);
+        for (const { key, px, src } of sizes) {
+          if (!evidenceBest.has(key) || evidenceBest.get(key).px < px) evidenceBest.set(key, { px, src });
+        }
+      };
       for (const blockId of blockIds) {
         const label = `${viewport.name} / moduł ${MODULE_SLUG} / ${blockId}`;
         errors.length = 0;
@@ -1465,6 +1539,7 @@ try {
         if (!info.barInView) fail(`${label}: (m2) dolny pasek poza ekranem.`);
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
+        await noteEvidence();
         // (m7) tacka tablicy śledczej w układzie poziomym (D-129): wszystkie ślady widoczne bez poziomego przewijania tacki (dwa rzędy
         // przy 7+ śladach). Telefon w pionie: tacka to przewijany pasek pod sceną (D-105) - bez tej kontroli.
         const tray = await page.evaluate(() => {
@@ -1507,7 +1582,20 @@ try {
           await page.waitForFunction(() => document.querySelectorAll('[data-testid="scene-zoom"] img').length > 0, null, { timeout: 30000 });
           const broken = await brokenModuleImages(page);
           if (broken.length > 0) fail(`${label}: (m5) obrazy zbliżenia nie załadowane: ${describeBroken(broken)}`);
+          await noteEvidence();
           zooms += 1;
+        }
+      }
+      // (m9) każdy klucz dowodu: największy rozmiar ze sceny i zbliżeń ≥ 15 px.
+      if (evidencePhone) {
+        const small = [...evidenceBest].filter(([, best]) => best.px < 15 - 0.05);
+        for (const [key, best] of small) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodu „${key}” ma najwyżej ${best.px.toFixed(1)} px (${best.src}) - minimum 15 px w scenie albo w zbliżeniu.`);
+        const unseen = [...expectedEvidenceKeys(MODULE_SLUG)].filter((key) => !evidenceBest.has(key));
+        if (unseen.length > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) klucze dowodów bez pomiaru (grafika niepokazana na telefonie albo niepobrana): ${unseen.join(', ')}`);
+        if (evidenceFailed.size > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) nie udało się pobrać SVG do pomiaru: ${[...evidenceFailed].join(', ')}`);
+        if (small.length === 0 && unseen.length === 0 && evidenceFailed.size === 0) {
+          const list = [...evidenceBest].map(([key, best]) => `${key} ${best.px.toFixed(1)}`).join(', ');
+          step(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodów ≥ 15 px: ${evidenceBest.size > 0 ? list : 'brak oznaczonych'}`, true);
         }
       }
       // (m6) raport zamknięcia: wnioski zawijają się w slocie i nie są ucięte (poziomo i w pionie), czcionka nie mniejsza niż dolny limit.

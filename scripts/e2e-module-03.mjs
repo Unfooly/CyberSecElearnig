@@ -1,8 +1,9 @@
 // E2E w przeglądarce (Playwright) - pełne przejście modułu 3 („Łańcuszek”, packages/content/modules/lancuszek, tryb prosty D-132)
 // zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-02.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko kursu
-// stworzonego przez ten przebieg). Cel: odprawa, scena telefonu (3 cele, zbliżenie ekranu logowania), trzy wybory z natychmiastową
-// oceną (najpierw zła odpowiedź - komunikat „Nie tym razem”, potem dobra), sortowanie 6 wiadomości (5 przyciskami, 1 gestem
-// przeciągnięcia), raport z trzema zasadami - bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy pola `correct`.
+// stworzonego przez ten przebieg). Cel: odprawa (statyczna scena z połączeniem od Oli), scena telefonu (3 cele, zbliżenie ekranu
+// logowania), trzy wybory z natychmiastową oceną (najpierw zła odpowiedź - komunikat „Nie tym razem”, potem dobra), sortowanie
+// 6 wiadomości (5 przyciskami, 1 gestem przeciągnięcia), raport z trzema zasadami i ekran zamknięcia sprawy (zasady w grafice,
+// podpis jednym dotknięciem, pieczęć i liścik) - bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy pola `correct`.
 //
 // Nagrania i grafiki modułu 3 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
@@ -153,9 +154,17 @@ try {
     step('„Dalej” zapisuje blok', (await saved).ok());
   };
 
-  // --- 1. Odprawa (NARRATIVE) --------------------------------------------------------------------------------------------------
-  await page.getByText(/Dzwoni Ola Malec z księgowości/).first().waitFor();
-  step('NARRATIVE: odprawa - Ola Malec, link do „filmu” i prośba o BLIK', true);
+  // --- 1. Odprawa (BRIEFING: jedna statyczna scena - telefon z połączeniem od Oli; jedyny krok, dalej „Dalej” w pasku, D-106) ----
+  const briefingScene = page.locator('img[alt*="połączenie przychodzące - Ola Malec, księgowość"]');
+  await briefingScene.first().waitFor();
+  await page.getByTestId('briefing-scene-text').filter({ hasText: /Dzwoni Ola Malec z księgowości/ }).waitFor();
+  const sceneLoaded = await briefingScene.first().evaluate((img) => (img.complete ? img.naturalWidth > 0 : new Promise((resolve) => {
+    img.addEventListener('load', () => resolve(img.naturalWidth > 0));
+    img.addEventListener('error', () => resolve(false));
+  })));
+  step('BRIEFING: odprawa - scena z połączeniem od Oli (grafika z opisem alt załadowana) i tekst narracji', sceneLoaded);
+  step('BRIEFING: scena bez klikalnego przedmiotu (bez hotspotu)', (await page.getByTestId('briefing-hotspot').count()) === 0);
+  await nextEnabled().waitFor();
   await shot('1-odprawa');
   await goNext();
 
@@ -165,10 +174,14 @@ try {
   await shot('2-scena-telefon');
   for (const label of ['Wiadomość od Kasi', 'Link do filmu']) {
     await page.getByRole('button', { name: new RegExp(`^${label}`) }).click();
+    if (label === 'Link do filmu') {
+      await dialog().getByText(/Kłódka w pasku adresu/).waitFor();
+      step('Karta „link”: zdanie o kłódce w pasku adresu', true);
+    }
     await dialog().getByRole('button', { name: 'Zabierz' }).click();
     await closed();
   }
-  await page.getByRole('button', { name: /^Prośba o logowanie/ }).click();
+  await page.getByRole('button', { name: /^Ponaglenie do logowania/ }).click();
   const login = dialog().getByRole('img', { name: /Strona wideo-kasi\.test\/login/ });
   await login.waitFor();
   step('Zbliżenie: ekran logowania bez marki (grafika z opisem alt załadowana)', await login.evaluate((img) => img.complete && img.naturalWidth > 0));
@@ -238,9 +251,10 @@ try {
     await goNext();
   }
 
-  // --- 7. Raport (SUMMARY z trzema zasadami jako lista w tekście) --------------------------------------------------------------
-  for (const lesson of blockOf('raport').lessons) {
-    await page.locator('ol li', { hasText: lesson }).first().waitFor({ timeout: 20000 });
+  // --- 7. Raport (SUMMARY z trzema zasadami jako lista w tekście), potem ekran zamknięcia sprawy (jak w module 2) --------------
+  const rules = ['Dziwna prośba od znajomego? Zadzwoń na znany numer.', 'Kodu z SMS-a nie podajesz nikomu.', 'Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.'];
+  for (const rule of rules) {
+    await page.locator('ol li', { hasText: rule }).first().waitFor({ timeout: 20000 });
   }
   step('SUMMARY: trzy zasady z raportu na liście', (await page.locator('ol li').count()) >= 3);
   step('SUMMARY: wszystkie dowody (3 z 3)', (await page.getByText('Zebrane dowody: 3 z 3').count()) >= 1);
@@ -249,6 +263,22 @@ try {
   await bar().getByRole('button', { name: 'Zakończ sprawę' }).click();
   const finishedBody = await (await finished).json();
   step('Zakończenie: kurs ukończony (status COMPLETED)', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
+
+  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
+  await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
+  const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
+  const report = page.getByTestId('case-closed').getByRole('img', { name: /Raport końcowy w teczce/ });
+  step('Zamknięcie: grafika raportu (zasady wpalone w grafikę) załadowana', await report.evaluate((img) => img.complete && img.naturalWidth > 0));
+  const reportAlt = (await report.getAttribute('alt')) ?? '';
+  step('Zamknięcie: opis alt raportu zawiera wszystkie trzy zasady', rules.every((rule) => reportAlt.includes(rule)), reportAlt);
+  step('Zamknięcie: dowody 3/3', (await slotText('closing-evidence')) === '3/3', await slotText('closing-evidence'));
+  step('Zamknięcie: czas sprawy w minutach i +XP', /^\d+ min$/.test(await slotText('closing-time')) && /^\+[1-9]\d*$/.test(await slotText('closing-xp')), `${await slotText('closing-time')} | ${await slotText('closing-xp')}`);
+  step('Zamknięcie: bez wpisywanych wniosków (zasady są w grafice)', (await page.getByTestId('closing-lesson-typed').count()) === 0);
+  await shot('8-zamkniecie-przed-podpisem');
+  await page.getByRole('button', { name: 'Podpisz raport' }).click();
+  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
+  step('Zamknięcie: podpis jednym dotknięciem, potem pieczęć i liścik', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1);
+  await shot('9-zamkniecie-podpisane');
   step('Klucz odpowiedzi (`correct`) nigdy w treści bloków ani w /check', leaks.length === 0, leaks.join(' | '));
   step('Bez błędów strony, konsoli i odpowiedzi 5xx', problems.length === 0, problems.join(' | '));
 
@@ -257,6 +287,7 @@ try {
   console.error(`\nBŁĄD: ${error.message}`);
   if (page) {
     console.error('--- URL w chwili błędu ---', page.url());
+    if (SHOTS_DIR) await page.screenshot({ path: join(SHOTS_DIR, `${VW}x${VH}-blad.png`) }).catch(() => {});
     console.error('--- treść strony (pierwsze 2000 znaków) ---\n' + (await page.locator('body').innerText().catch(() => '(brak)')).slice(0, 2000));
   }
   console.error('--- ostatnie logi API/web ---\n' + log.split('\n').slice(-40).join('\n'));

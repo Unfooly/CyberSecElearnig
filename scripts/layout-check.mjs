@@ -1586,6 +1586,15 @@ try {
           zooms += 1;
         }
       }
+      // (m9) raport zamknięcia: tekst wpalony w grafikę raportu (np. zasady modułu 3, D-140) mierzymy na ekranie zamknięcia.
+      const closingSummary = moduleJson.blocks.find((block) => block.type === 'SUMMARY' && block.closing);
+      if (evidencePhone && closingSummary) {
+        await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(closingSummary.id)}&completed=1`);
+        await page.getByTestId('case-closed-scene').waitFor({ timeout: 30000 });
+        const brokenClosing = await brokenModuleImages(page);
+        if (brokenClosing.length > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) grafika raportu zamknięcia nie załadowana: ${describeBroken(brokenClosing)}`);
+        await noteEvidence();
+      }
       // (m9) każdy klucz dowodu: największy rozmiar ze sceny i zbliżeń ≥ 15 px.
       if (evidencePhone) {
         const small = [...evidenceBest].filter(([, best]) => best.px < 15 - 0.05);
@@ -1622,9 +1631,15 @@ try {
             inScene: items.length > 0 && items[items.length - 1].getBoundingClientRect().bottom <= scene.bottom + 1 && box.left >= scene.left - 1,
           };
         });
-        if (lessons.clippedY || lessons.clippedX) fail(`${label}: (m6) wnioski ucięte (${JSON.stringify(lessons)}).`);
-        if (!lessons.shown) fail(`${label}: (m6) wnioski niepokazane w całości (${JSON.stringify(lessons)}).`);
-        if (!lessons.inScene) fail(`${label}: (m6) wnioski poza raportem (${JSON.stringify(lessons)}).`);
+        // Moduł bez `lessons` (zasady wpalone w grafikę raportu, D-140): lista wniosków ma być pusta - nic nie nachodzi na grafikę.
+        const noLessons = !(summary.lessons?.length > 0);
+        if (noLessons) {
+          const count = await page.getByTestId('closing-lessons').locator('li').count();
+          if (count !== 0) fail(`${label}: (m6) moduł bez wniosków w treści, a raport pokazuje ${count} wniosków.`);
+        }
+        if (!noLessons && (lessons.clippedY || lessons.clippedX)) fail(`${label}: (m6) wnioski ucięte (${JSON.stringify(lessons)}).`);
+        if (!noLessons && !lessons.shown) fail(`${label}: (m6) wnioski niepokazane w całości (${JSON.stringify(lessons)}).`);
+        if (!noLessons && !lessons.inScene) fail(`${label}: (m6) wnioski poza raportem (${JSON.stringify(lessons)}).`);
         // Dolna granica ZMNIEJSZANIA czcionki wniosków (LESSONS_MIN_PX w CaseClosedScreen.tsx): 15 px w pionie, 10 px w poziomie.
         // Rozmiar wyjściowy skaluje się z raportem jak przed D-128 (na telefonie w poziomie cały raport jest mały) - granica dotyczy
         // tylko dopasowania: wnioski niemieszczące się w slocie nie są zmniejszane poniżej niej.

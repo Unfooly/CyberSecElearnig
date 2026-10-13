@@ -107,6 +107,10 @@ jobs:
       - name: Testy hooka block-destructive-git (reguła 11)
         run: node --test .claude/hooks/block-destructive-git.test.js
 
+      # Hook Claude Code egzekwujący regułę 5 (CLAUDE.md): bez wyświetlania zawartości plików .env* i wartości zmiennych środowiskowych.
+      - name: Testy hooka block-env-read (reguła 5)
+        run: node --test .claude/hooks/block-env-read.test.js
+
       # Merge przez agenta wyłącznie przez scripts/dev/safe-merge.mjs (CLAUDE.md reguła 11): każdy warunek odmowy ma test.
       - name: Testy safe-merge (reguła 11)
         run: node --test scripts/dev/safe-merge.test.mjs

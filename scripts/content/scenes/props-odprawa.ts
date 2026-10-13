@@ -5,13 +5,49 @@
  */
 import { P } from './palette.js';
 import { registeredProp } from './prop-registry.js';
-import type { PropFn } from './types.js';
+import { fitText } from './text.js';
+import type { PropContext, PropFn } from './types.js';
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const t = (x: number, y: number, s: unknown, size: number, o: { fill?: string; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; spacing?: number; opacity?: number } = {}) =>
   `<text x="${x}" y="${y}" font-size="${size}" fill="${o.fill ?? P.ink}"${o.bold ? ' font-weight="bold"' : ''}${o.anchor ? ` text-anchor="${o.anchor}"` : ''}${o.spacing ? ` letter-spacing="${o.spacing}"` : ''}${o.opacity !== undefined ? ` opacity="${o.opacity}"` : ''}>${esc(s)}</text>`;
+
+/**
+ * Tryb dopasowania klocków zamknięcia sprawy (D-140): w scenie ze `strings` (kompozytor podaje dodatnie `minFontSize`) napisy idą przez
+ * `fitText` w pudełkach z osobnego układu, od max(rozmiar, minimum) w dół do minimum - błąd builda, gdy tekst się nie mieści. Sceny bez
+ * `strings` (moduły 1-2) zostają na dotychczasowym `<text>` - te same bajty (test skrótów w `odprawa.test.ts`).
+ */
+const fitMode = (context?: PropContext): context is PropContext => (context?.minFontSize ?? 0) > 0;
+type Box = { x: number; y: number; w: number; h: number };
+const fitLabel = (
+  context: PropContext,
+  slot: string,
+  value: string | string[],
+  size: number,
+  box: Box,
+  o: { fill?: string; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; valign?: 'top' | 'middle' } = {},
+) =>
+  fitText(value, {
+    slot, ...box, size: Math.max(size, context.minFontSize), minSize: context.minFontSize, align: o.anchor ?? 'start', valign: o.valign ?? 'middle',
+    bold: !!o.bold, family: 'sans', fill: o.fill ?? P.ink, where: context.where,
+  });
+
+/** Napisy raportu zamknięcia (parametr `labels`): domyślnie dotychczasowe teksty PL modułów 1-2; scena ze `strings` podaje je przez `{ "$t" }`. */
+export interface ReportLabels {
+  report: string;
+  evidence: string;
+  time: string;
+  xp: string;
+  lessons: string;
+  signature: string;
+  items: string;
+  bag: string;
+}
+export const REPORT_LABELS: ReportLabels = {
+  report: 'RAPORT KOŃCOWY', evidence: 'DOWODY', time: 'CZAS', xp: 'XP', lessons: 'WNIOSKI ŚLEDCZEGO', signature: 'PODPIS PROWADZĄCEGO', items: 'DOWODY RZECZOWE', bag: 'DOWÓD',
+};
 
 const shadow = (w: number, h: number, rx: number, dx = 10, dy = 14) =>
   `<rect x="${dx}" y="${dy}" width="${w}" height="${h}" rx="${rx}" fill="${P.ink}" opacity="0.18"/>`;
@@ -355,11 +391,19 @@ export const ODPRAWA_PROPS = {
 
 /* ---------- zamknięcie sprawy (feat/case-closed, D-089) ---------- */
 
-export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: string[] }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
-  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'] }) => {
+// `ruled: false` - bez liniatury pod wnioskami (D-140): moduł z zasadami wpalonymi w grafikę (textBox) - linie przecinałyby tekst.
+export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true }, context) => {
   const w = 1340, h = 780, pw = 620, ph = 720, L = 30, R = w - 30 - pw, top = 30;
-  const statBox = (x: number, y: number, label: string) =>
-    `<rect x="${x}" y="${y}" width="170" height="96" rx="8" fill="#F6F6F4"/>` + t(x + 16, y + 28, label, 13, { bold: true, fill: P.greyDark, spacing: 1 });
+  const N = { ...REPORT_LABELS, ...labels };
+  const fit = fitMode(context);
+  // Napis: bez dopasowania - dotychczasowy <text> (x, y linii bazowej); z dopasowaniem - pudełko `box` (D-140).
+  const lbl = (slot: string, value: string, x: number, y: number, size: number, o: Parameters<typeof t>[4], box: Box) =>
+    fit ? fitLabel(context, slot, value, size, box, { fill: o?.fill, bold: o?.bold, anchor: o?.anchor }) : t(x, y, value, size, o);
+  const statBox = (x: number, y: number, slot: string, label: string) =>
+    `<rect x="${x}" y="${y}" width="170" height="96" rx="8" fill="#F6F6F4"/>` + lbl(slot, label, x + 16, y + 28, 13, { bold: true, fill: P.greyDark, spacing: 1 }, { x: x + 10, y: y + 4, w: 152, h: 32 });
+  // Przy dopasowaniu bez woreczków (moduł 3) prawa strona bez nagłówka - wolna na pieczęć i liścik.
+  const items = !(fit && bags.length === 0);
   return {
     w, h,
     svg:
@@ -369,26 +413,28 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
       /* lewa: raport końcowy */
       `<rect x="${L + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
       `<rect x="${L}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
-      t(L + 40, top + 62, 'RAPORT KOŃCOWY', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
-      t(L + 40, top + 104, caseNo, 36, { bold: true }) +
-      t(L + 40, top + 146, title, 26, { bold: true, fill: P.purpleDark }) +
+      lbl('report', N.report, L + 40, top + 62, 16, { bold: true, spacing: 3, fill: P.greyDark }, { x: L + 40, y: top + 34, w: pw - 80, h: 34 }) +
+      lbl('caseNo', caseNo, L + 40, top + 104, 36, { bold: true }, { x: L + 40, y: top + 72, w: 420, h: 46 }) +
+      lbl('title', title, L + 40, top + 146, 26, { bold: true, fill: P.purpleDark }, { x: L + 40, y: top + 120, w: pw - 80, h: 40 }) +
       `<line x1="${L + 40}" y1="${top + 172}" x2="${L + pw - 40}" y2="${top + 172}" stroke="${P.grey}" stroke-width="2"/>` +
-      statBox(L + 40, top + 200, 'DOWODY') + statBox(L + 225, top + 200, 'CZAS') + statBox(L + 410, top + 200, 'XP') +
-      t(L + 40, top + 346, 'WNIOSKI ŚLEDCZEGO', 13, { bold: true, fill: P.greyDark, spacing: 1 }) +
-      Array.from({ length: 6 }, (_, i) => `<line x1="${L + 40}" y1="${top + 400 + i * 40}" x2="${L + pw - 40}" y2="${top + 400 + i * 40}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
-      t(L + 40, top + 668, 'PODPIS PROWADZĄCEGO', 12, { bold: true, fill: P.greyDark, spacing: 1 }) +
+      statBox(L + 40, top + 200, 'evidence', N.evidence) + statBox(L + 225, top + 200, 'time', N.time) + statBox(L + 410, top + 200, 'xp', N.xp) +
+      lbl('lessons', N.lessons, L + 40, top + 346, 13, { bold: true, fill: P.greyDark, spacing: 1 }, { x: L + 40, y: top + 320, w: pw - 80, h: 36 }) +
+      (ruled ? Array.from({ length: 6 }, (_, i) => `<line x1="${L + 40}" y1="${top + 400 + i * 40}" x2="${L + pw - 40}" y2="${top + 400 + i * 40}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
+      lbl('signature', N.signature, L + 40, top + 668, 12, { bold: true, fill: P.greyDark, spacing: 1 }, { x: L + 40, y: top + 616, w: 204, h: 62 }) +
       `<line x1="${L + 250}" y1="${top + 670}" x2="${L + pw - 40}" y2="${top + 670}" stroke="${P.ink}" stroke-width="2" stroke-dasharray="6 6"/>` +
       /* prawa: dowody rzeczowe (miniatury) + miejsce na pieczęć */
       `<rect x="${R + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
       `<rect x="${R}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
-      t(R + 40, top + 62, 'DOWODY RZECZOWE', 16, { bold: true, spacing: 3, fill: P.greyDark }) +
-      `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>` +
+      (items
+        ? lbl('items', N.items, R + 40, top + 62, 16, { bold: true, spacing: 3, fill: P.greyDark }, { x: R + 40, y: top + 34, w: pw - 80, h: 34 }) +
+          `<line x1="${R + 40}" y1="${top + 84}" x2="${R + pw - 40}" y2="${top + 84}" stroke="${P.grey}" stroke-width="2"/>`
+        : '') +
       /* woreczki na dowody: siatka 3×3, prawa kolumna strony wolna na liścik */
       bags.slice(0, 9).map((l, i) => [l, i % 3, Math.floor(i / 3)]).map(([l, c, r]) => {
         const x = R + 36 + (c as number) * 132, y = top + 106 + (r as number) * 128;
         return `<g transform="rotate(${((c as number) + (r as number)) % 2 ? 2 : -2} ${x + 58} ${y + 54})"><rect x="${x}" y="${y}" width="116" height="110" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
-          `<rect x="${x}" y="${y}" width="116" height="20" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 58, y + 15, 'DOWÓD', 11, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
-          `<rect x="${x + 14}" y="${y + 34}" width="88" height="56" rx="4" fill="${P.white}"/>` + t(x + 58, y + 68, l as string, 14, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
+          `<rect x="${x}" y="${y}" width="116" height="20" rx="4" fill="${P.red}" opacity="0.85"/>` + lbl('bag', N.bag, x + 58, y + 15, 11, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }, { x: x + 4, y: y + 1, w: 108, h: 18 }) +
+          `<rect x="${x + 14}" y="${y + 34}" width="88" height="56" rx="4" fill="${P.white}"/>` + lbl('bags', l as string, x + 58, y + 68, 14, { anchor: 'middle', bold: true, fill: P.purpleDark }, { x: x + 16, y: y + 36, w: 84, h: 52 }) + `</g>`;
       }).join(''),
     parts: {
       'slot-dowody': { x: L + 40, y: top + 236, w: 170, h: 56 },
@@ -403,22 +449,30 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
   };
 };
 
-export const closedStamp: PropFn<{ text?: string; sub?: string }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa' }) => ({
+export const closedStamp: PropFn<{ text?: string; sub?: string }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa' }, context) => ({
   w: 600, h: 260,
   svg:
     `<g transform="translate(20 30) rotate(-8 280 100)" opacity="0.92"><rect x="10" y="20" width="540" height="160" rx="18" fill="none" stroke="${P.red}" stroke-width="10"/>` +
     `<rect x="26" y="36" width="508" height="128" rx="10" fill="none" stroke="${P.red}" stroke-width="3"/>` +
-    t(280, 108, tx, 40, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 }) +
-    t(280, 148, sub.toUpperCase(), 18, { anchor: 'middle', bold: true, fill: P.red, spacing: 3 }) + `</g>`,
+    (fitMode(context)
+      ? fitLabel(context, 'text', tx, 40, { x: 40, y: 56, w: 480, h: 62 }, { anchor: 'middle', bold: true, fill: P.red }) +
+        fitLabel(context, 'sub', sub.toUpperCase(), 18, { x: 40, y: 118, w: 480, h: 44 }, { anchor: 'middle', bold: true, fill: P.red })
+      : t(280, 108, tx, 40, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 }) +
+        t(280, 148, sub.toUpperCase(), 18, { anchor: 'middle', bold: true, fill: P.red, spacing: 3 })) +
+    `</g>`,
 });
 
-export const commissionerNote: PropFn<{ lines?: string[]; sign?: string }> = ({ lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.' }) => ({
+export const commissionerNote: PropFn<{ lines?: string[]; sign?: string }> = ({ lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.' }, context) => ({
   w: 260, h: 240,
   svg:
     `<g class="a-flutter"><rect x="8" y="10" width="250" height="228" fill="${P.ink}" opacity="0.15"/><rect width="250" height="228" fill="${P.yellow}"/>` +
     `<rect width="250" height="26" fill="${P.yellowDark}" opacity="0.6"/>` +
-    lines.slice(0, 4).map((l, i) => t(22, 64 + i * 34, l, 22, { fill: P.purpleDark, bold: i < 2 })).join('') +
-    t(228, 214, sign, 20, { anchor: 'end', fill: P.purpleDark, bold: true }) + `</g>`,
+    (fitMode(context)
+      ? lines.slice(0, 4).map((l, i) => fitLabel(context, 'lines', l, 22, { x: 18, y: 38 + i * 36, w: 222, h: 36 }, { fill: P.purpleDark, bold: i < 2 })).join('') +
+        fitLabel(context, 'sign', sign, 20, { x: 100, y: 188, w: 132, h: 36 }, { anchor: 'end', fill: P.purpleDark, bold: true })
+      : lines.slice(0, 4).map((l, i) => t(22, 64 + i * 34, l, 22, { fill: P.purpleDark, bold: i < 2 })).join('') +
+        t(228, 214, sign, 20, { anchor: 'end', fill: P.purpleDark, bold: true })) +
+    `</g>`,
 });
 
 export const ZAMKNIECIE_PROPS = { reportFolderOpen, closedStamp, commissionerNote };
@@ -665,40 +719,50 @@ export const browserHistoryPortrait: PropFn<{ rows?: string[] }> = ({ rows = [] 
 };
 
 /* ---------- raport zamknięcia sprawy — pionowy, jedna duża strona (U/D-104) ---------- */
-export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: string[] }> = ({
+export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean }> = ({
   caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
-  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'],
-}) => {
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true,
+}, context) => {
   const w = 840, h = 1540, X = 50;
-  const box = (x: number, label: string) => `<rect x="${x}" y="250" width="232" height="120" rx="12" fill="#F6F6F4"/>` + t(x + 20, 284, label, 20, { bold: true, fill: P.greyDark, spacing: 2 });
+  const N = { ...REPORT_LABELS, ...labels };
+  const fit = fitMode(context);
+  const lbl = (slot: string, value: string, x: number, y: number, size: number, o: Parameters<typeof t>[4], box: Box) =>
+    fit ? fitLabel(context, slot, value, size, box, { fill: o?.fill, bold: o?.bold, anchor: o?.anchor }) : t(x, y, value, size, o);
+  const box = (x: number, slot: string, label: string) =>
+    `<rect x="${x}" y="250" width="232" height="120" rx="12" fill="#F6F6F4"/>` + lbl(slot, label, x + 20, 284, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: x + 12, y: 254, w: 208, h: 50 });
+  // Przy dopasowaniu bez woreczków (moduł 3) bez sekcji „dowody rzeczowe” - dół strony wolny na pieczęć i liścik.
+  const items = !(fit && bags.length === 0);
+  // Przy dopasowaniu wartości statystyk pod większą etykietą (etykieta do y 304).
+  const statY = fit ? 306 : 294, statH = fit ? 60 : 72;
   return {
     w, h,
     svg:
       `<rect x="14" y="18" width="${w}" height="${h}" rx="20" fill="${P.ink}" opacity="0.18"/>` +
       `<rect width="${w}" height="${h}" rx="20" fill="${FOLDER}" stroke="${FOLDER_EDGE}" stroke-width="4"/>` +
       `<rect x="24" y="24" width="${w - 48}" height="${h - 48}" rx="8" fill="${P.white}"/>` +
-      t(X, 92, 'RAPORT KOŃCOWY', 24, { bold: true, fill: P.greyDark, spacing: 4 }) +
-      t(X, 150, caseNo, 52, { bold: true }) + t(X, 204, title, 34, { bold: true, fill: P.purpleDark }) +
-      box(X, 'DOWODY') + box(X + 250, 'CZAS') + box(X + 500, 'XP') +
-      t(X, 432, 'WNIOSKI ŚLEDCZEGO', 22, { bold: true, fill: P.greyDark, spacing: 2 }) +
-      Array.from({ length: 8 }, (_, i) => `<line x1="${X}" y1="${500 + i * 50}" x2="${w - X}" y2="${500 + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') +
-      t(X, 940, 'PODPIS PROWADZĄCEGO', 20, { bold: true, fill: P.greyDark, spacing: 2 }) +
+      lbl('report', N.report, X, 92, 24, { bold: true, fill: P.greyDark, spacing: 4 }, { x: X, y: 52, w: w - 2 * X, h: 54 }) +
+      lbl('caseNo', caseNo, X, 150, 52, { bold: true }, { x: X, y: 108, w: w - 2 * X, h: 68 }) +
+      lbl('title', title, X, 204, 34, { bold: true, fill: P.purpleDark }, { x: X, y: 178, w: w - 2 * X, h: 62 }) +
+      box(X, 'evidence', N.evidence) + box(X + 250, 'time', N.time) + box(X + 500, 'xp', N.xp) +
+      lbl('lessons', N.lessons, X, 432, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 392, w: w - 2 * X, h: 56 }) +
+      (ruled ? Array.from({ length: 8 }, (_, i) => `<line x1="${X}" y1="${500 + i * 50}" x2="${w - X}" y2="${500 + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
+      lbl('signature', N.signature, X, 940, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 878, w: 320, h: 108 }) +
       `<line x1="${X + 330}" y1="945" x2="${w - X}" y2="945" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>` +
       `<line x1="${X}" y1="990" x2="${w - X}" y2="990" stroke="${P.grey}" stroke-width="2"/>` +
-      t(X, 1036, 'DOWODY RZECZOWE', 22, { bold: true, fill: P.greyDark, spacing: 2 }) +
+      (items ? lbl('items', N.items, X, 1036, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 1000, w: w - 2 * X, h: 54 }) : '') +
       bags
         .slice(0, 9)
         .map((l, i) => {
           const c = i % 3, r = Math.floor(i / 3), x = X + c * 150, y = 1062 + r * 138;
           return `<g transform="rotate(${(c + r) % 2 ? 2 : -2} ${x + 66} ${y + 60})"><rect x="${x}" y="${y}" width="132" height="120" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
-            `<rect x="${x}" y="${y}" width="132" height="24" rx="4" fill="${P.red}" opacity="0.85"/>` + t(x + 66, y + 18, 'DOWÓD', 14, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }) +
-            `<rect x="${x + 14}" y="${y + 38}" width="104" height="64" rx="4" fill="${P.white}"/>` + t(x + 66, y + 78, l, 17, { anchor: 'middle', bold: true, fill: P.purpleDark }) + `</g>`;
+            `<rect x="${x}" y="${y}" width="132" height="24" rx="4" fill="${P.red}" opacity="0.85"/>` + lbl('bag', N.bag, x + 66, y + 18, 14, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }, { x: x + 4, y: y + 2, w: 124, h: 20 }) +
+            `<rect x="${x + 14}" y="${y + 38}" width="104" height="64" rx="4" fill="${P.white}"/>` + lbl('bags', l, x + 66, y + 78, 17, { anchor: 'middle', bold: true, fill: P.purpleDark }, { x: x + 16, y: y + 40, w: 100, h: 60 }) + `</g>`;
         })
         .join(''),
     parts: {
-      'slot-dowody': { x: X, y: 294, w: 232, h: 72 },
-      'slot-czas': { x: X + 250, y: 294, w: 232, h: 72 },
-      'slot-xp': { x: X + 500, y: 294, w: 232, h: 72 },
+      'slot-dowody': { x: X, y: statY, w: 232, h: statH },
+      'slot-czas': { x: X + 250, y: statY, w: 232, h: statH },
+      'slot-xp': { x: X + 500, y: statY, w: 232, h: statH },
       'slot-wnioski': { x: X, y: 452, w: w - 2 * X, h: 420 },
       'slot-podpis': { x: X + 330, y: 880, w: w - 2 * X - 330, h: 64 },
       'slot-pieczec': { x: 500, y: 1330, w: 320, h: 170 },

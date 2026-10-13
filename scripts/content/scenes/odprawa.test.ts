@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -276,5 +277,53 @@ describe('sceny modułu 1 z kompozytora', () => {
     // D-116: ekran monitora (okienka easter egga tylko w nim) = slot-ekran kompozytora (wnętrze ramki screenFrame).
     const slot = built.find((h) => h.id === 'slot-ekran')!;
     expect(office.hotspots.find((h: { id: string }) => h.id === 'monitor').media.scene.screen).toEqual({ x: slot.x, y: slot.y, w: slot.w, h: slot.h });
+  });
+});
+
+describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, moduły 1-2 bajt w bajt jak przed zmianą', () => {
+  // SHA-256 SVG zbudowanych PRZED dodaniem trybu dopasowania (main po #126) - każda scena modułów 1-2 z reportFolderOpen, reportPortrait,
+  // closedStamp i commissionerNote. Zmiana skrótu = zmiana grafiki istniejącego modułu: tylko świadomą decyzją (nowy wpis D-xxx).
+  const GOLDEN: Record<string, string> = {
+    'wyludzone-haslo/zamkniecie-raport': '90cca0c75e10d321e9d2b0da47d10707cda0b35c1ade096eea4bc4e7d6b30a8b',
+    'wyludzone-haslo/zamkniecie-raport-pion': '8126b02fd8eda60951a394e2658866343ec64b9609a72867c472ac88cd2085ee',
+    'wyludzone-haslo/zamkniecie-pieczec': '5b21f1488344a9ec5553588eabd2ee798a033f015969dc8c2b54d082168c0f90',
+    'wyludzone-haslo/zamkniecie-liscik': '52a4d25ea56728da30858e8a4591480d4df8014b5fbbc7124e8967d5ef8e1702',
+    'glos-z-helpdesku/zamkniecie-raport': 'e1e95b5e517c2b44966aed2aa52bbef33544d975c2ea0f0ff88b6dd450173c5b',
+    'glos-z-helpdesku/zamkniecie-raport-pion': '768d00b818ae28cf9c237ddaedb829c41d3c28906039f5f56971d40c6498b33e',
+    'glos-z-helpdesku/zamkniecie-pieczec': '5b21f1488344a9ec5553588eabd2ee798a033f015969dc8c2b54d082168c0f90',
+    'glos-z-helpdesku/zamkniecie-liscik': 'a0e2691e9cf14ee13513d14a0407877c4e62eaa7c00310a8cc92e461634acdf6',
+  };
+  const sha = (text: string) => createHash('sha256').update(text).digest('hex');
+
+  it.each(Object.entries(GOLDEN))('%s: SVG ze źródła ma ten sam skrót co przed zmianą klocków', (key, hash) => {
+    const [target, name] = key.split('/');
+    const [result] = buildAll({ target, name } as Source);
+    expect(sha(result.svg)).toBe(hash);
+  });
+
+  it('każda scena modułów 1-2 z tymi klockami jest w liście skrótów', () => {
+    const using = sources
+      .filter((s) => s.target === 'wyludzone-haslo' || s.target === 'glos-z-helpdesku')
+      .filter((s) => specOf(s).items.some((it) => ['reportFolderOpen', 'reportPortrait', 'closedStamp', 'commissionerNote'].includes(it.prop)))
+      .map((s) => `${s.target}/${s.name}`)
+      .sort();
+    expect(using).toEqual(Object.keys(GOLDEN).sort());
+  });
+
+  it('w scenie ze strings napis za mały nawet po dopasowaniu to błąd builda z nazwą slotu (raport w skali 1 nie mieści minimum)', () => {
+    const spec: SceneSpec = {
+      width: 900, height: 1600, strings: { pl: { t: 'Raport' } },
+      items: [{ id: 'raport', prop: 'reportPortrait', x: 0, y: 0, params: { title: { $t: 't' } } }],
+    };
+    expect(() => composeScene(spec, { locale: 'pl', name: 'test' })).toThrow(/slot "(bag|bags|report|caseNo)"/);
+  });
+
+  it('w scenie ze strings domyślny napis PL klocka (parametr pominięty) to błąd builda „nie pochodzi ze strings”', () => {
+    const spec: SceneSpec = {
+      width: 600, height: 260, background: { flat: true, wall: 'none' }, strings: { pl: { pieczec: 'SPRAWA ZAMKNIĘTA' } },
+      // `sub` pominięte - klocek narysowałby domyślne „Wydział Cyberbezpieczeństwa” (np. po polsku w scenie EN).
+      items: [{ id: 'pieczec', prop: 'closedStamp', x: 0, y: 0, params: { text: { $t: 'pieczec' } } }],
+    };
+    expect(() => composeScene(spec, { locale: 'pl', name: 'test' })).toThrow(/nie pochodzi ze "strings" \(.*Cyberbezpiecze/i);
   });
 });

@@ -1,0 +1,26 @@
+{
+  "lockVersion": 1,
+  "slug": "lancuszek",
+  "entries": {
+    "module#thumbnail": {
+      "original": "miniatura-lancuszek.svg",
+      "hash": "1e119e96",
+      "key": "assets/lancuszek/miniatura-lancuszek.1e119e96.svg"
+    },
+    "telefon#image": {
+      "original": "scenes/pl/telefon-oli.svg",
+      "hash": "102a95e7",
+      "key": "assets/lancuszek/scenes/pl/telefon-oli.102a95e7.svg"
+    },
+    "telefon#imagePortrait": {
+      "original": "scenes/pl/telefon-oli-pion.svg",
+      "hash": "b2874405",
+      "key": "assets/lancuszek/scenes/pl/telefon-oli-pion.b2874405.svg"
+    },
+    "telefon#hotspots.2.media.src": {
+      "original": "scenes/pl/logowanie-zoom.svg",
+      "hash": "6e9acfba",
+      "key": "assets/lancuszek/scenes/pl/logowanie-zoom.6e9acfba.svg"
+    }
+  }
+}

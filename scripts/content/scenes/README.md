@@ -201,6 +201,14 @@ w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); napisy bez slo
 `caseFolderOpen` przyjmuje `victimLabel` (domyślnie „Poszkodowana”), a `reportFolderOpen` - listę `bags` (domyślnie torebki modułu 1);
 domyślne wartości zostawiają sceny modułu 1 bajt w bajt bez zmian (test `odprawa.test.ts`).
 
+Klocki zamknięcia sprawy (`reportFolderOpen`, `reportPortrait`, `closedStamp`, `commissionerNote`, D-140) mają dwa tryby. Bez `strings`
+w scenie rysują dotychczasowe napisy PL (moduły 1-2 - złote skróty SHA-256 ośmiu scen zamknięcia w `odprawa.test.ts` pilnują, że SVG
+są bajt w bajt te same). W scenie ze `strings` wszystkie napisy idą przez `fitText` w pudełkach (minimum rozmiaru jak w `textBox`) i
+mogą pochodzić ze `strings`: raport - `caseNo`, `title`, `labels` (`report`, `evidence`, `time`, `xp`, `lessons`, `signature`, `items`,
+`bag`; domyślnie `REPORT_LABELS`), `bags` (pusta lista = bez sekcji „dowody rzeczowe”); pieczęć - `text`, `sub`; liścik - `lines`, `sign`.
+W trybie dopasowania etykiety nie mają rozstrzelenia liter (`spacing`) - `fitText` mierzy szerokość bez niego.
+`ruled: false` w raporcie usuwa liniaturę pod wnioskami - dla modułu z zasadami wpalonymi w grafikę (`textBox` z `evidence`, moduł 3).
+
 ### Klocki modułu 3 (`props-lancuszek.ts`, „Łańcuszek”, tryb prosty, D-140)
 
 Pierwszy moduł w nowym modelu od początku: sceny ze `strings` (`pl`), napisy w klockach `textBox` z `"phoneScreen": true` (minimum 16 px
@@ -212,7 +220,7 @@ i ekran logowania są generyczne - bez logo i nazwy aplikacji, adresy wyłączni
 
 | prop | do czego | części |
 |---|---|---|
-| `chatPhone` | telefon z rozmową na komunikatorze | `wiadomosc`, `link`, `logowanie`; sloty `slot-kontakt`, `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie-tytul`, `slot-logowanie-przycisk` |
+| `chatPhone` | telefon z rozmową na komunikatorze | `wiadomosc`, `link`, `logowanie`; sloty `slot-kontakt`, `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie`, `slot-czas-1`/`-2`/`-3` (godziny pod wiadomościami) |
 | `loginScreen` | ekran logowania z linku (zbliżenie), bez marki | sloty `slot-adres`, `slot-naglowek`, `slot-pole-login`, `slot-pole-haslo`, `slot-przycisk` |
 | `chatPhoneIcon` | telefon z dymkami bez słów (miniatura modułu) | |
 

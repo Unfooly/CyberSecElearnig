@@ -31,7 +31,10 @@ const WEB = `http://localhost:${WEB_PORT}`;
 const API = `http://localhost:${API_PORT}`;
 const RUN = Date.now();
 const [VW, VH] = (process.env.E2E_VIEWPORT ?? '1366x768').split('x').map(Number);
-const MOBILE = VW < 768;
+if (![VW, VH].every((n) => Number.isInteger(n) && n > 0)) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
+// Opcjonalnie E2E_WEB_MODE=start - web z buildu produkcyjnego (`next start`, wymaga `next build` apps/web) zamiast `next dev` (D-142).
+const WEB_MODE = process.env.E2E_WEB_MODE ?? 'dev';
+if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);const MOBILE = VW < 768;
 const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 const DOMAIN = `module-03-e2e-${RUN}.test`;
 const EMAIL = `pracownik@${DOMAIN}`;
@@ -73,7 +76,7 @@ let courseCreatedByThisRun = false;
 try {
   if (!process.env.CONTENT_BASE_URL) throw new Error('Brak CONTENT_BASE_URL - nagrania i grafiki modułu 3 są tylko na R2.');
   start(process.execPath, ['apps/api/dist/main.js'], { PORT: API_PORT, FRONTEND_URL: WEB, MAILERSEND_API_TOKEN: '', BACKGROUND_JOBS_ENABLED: 'false', NODE_ENV: 'development' }, process.cwd());
-  start(process.execPath, [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '-p', WEB_PORT], { API_URL: API }, join(process.cwd(), 'apps', 'web'));
+  start(process.execPath, [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), WEB_MODE, '-p', WEB_PORT], { API_URL: API }, join(process.cwd(), 'apps', 'web'));
   await waitFor(async () => (await fetch(`${API}/`)).status > 0, 'start API');
   await waitFor(async () => (await fetch(`${WEB}/`)).ok, 'start web');
 
@@ -129,8 +132,7 @@ try {
   await page.fill('input[type=password]', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
-  step('logowanie pracownika kieruje na /courses', true);
-  await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
+  step('logowanie pracownika kieruje na /courses', true);  await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
   step(`Katalog: karta i miniatura „${MODULE_TITLE}”`, (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
 
   await page.goto(`${WEB}/courses/${courseId}`);
@@ -201,7 +203,9 @@ try {
       // Żądania RSC strony odtwarzacza w trakcie powrotu: 0 = strona podana z pamięci routera klienta (stary postęp).
       const rsc = [];
       const onRequest = (request) => {
-        if (request.headers().rsc === '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
+        // Bez prefetchu (Next-Router-Prefetch): liczy się pełne pobranie strony przy nawigacji.
+        const headers = request.headers();
+        if (headers.rsc === '1' && headers['next-router-prefetch'] !== '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
       };
       page.on('request', onRequest);
       await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
@@ -216,6 +220,7 @@ try {
         resumed && (await page.getByTestId('briefing-scene-text').count()) === 0,
         `żądania RSC odtwarzacza: ${rsc.length}`,
       );
+      step('Wznowienie: strona odtwarzacza pobrana z serwera (pełne żądanie RSC), nie z pamięci routera', rsc.length >= 1, `${rsc.length}`);
     }
     // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na skrzynkę, a postęp poszedł
     // dalej - odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje BLIK, nie skrzynkę.

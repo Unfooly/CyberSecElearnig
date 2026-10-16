@@ -159,7 +159,7 @@ export class UsersController {
     return this.usersService.updatePreferences(user.organizationId, user.userId, dto);
   }
 
-  // Bez @Roles() - dowolna zalogowana rola czyta WŁASNE imię i inicjał nazwiska (legitymacja w odprawie odtwarzacza, D-081).
+  // Bez @Roles() - dowolna zalogowana rola czyta WŁASNE imię, inicjał i nazwisko (legitymacja w odprawie D-081, podpis raportu).
   // Bez parametru userId: tylko własne dane. Bez @AllowPendingOrganization(): używa tego wyłącznie odtwarzacz kursów, a kursy
   // są niedostępne dla organizacji czekającej na weryfikację domeny (guard PENDING, fail-closed).
   @Get('me/display-name')

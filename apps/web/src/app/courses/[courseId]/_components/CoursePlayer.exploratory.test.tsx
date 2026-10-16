@@ -903,7 +903,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       },
     };
     const fetchMock = vi.fn().mockImplementation(async (url: string) => {
-      if (url === '/api/users/me/display-name') return { ok: true, status: 200, json: async () => ({ firstName: 'Anna', lastInitial: 'K' }) };
+      if (url === '/api/users/me/display-name') return { ok: true, status: 200, json: async () => ({ firstName: 'Anna', lastInitial: 'K', lastName: 'Kowalska' }) };
       if (url === '/api/courses/course-1/progress') {
         return {
           ok: true,
@@ -940,7 +940,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     const closed = await screen.findByTestId('case-closed');
     expect(closed).toHaveAttribute('data-stage', 'intro');
     expect(screen.getByTestId('case-closed-scene')).toBeInTheDocument();
-    expect(screen.getByText(/Czas śledztwa: 14 min\. Zdobyte doświadczenie: 120 XP\..*Podpis prowadzącego: Anna K\.$/)).toHaveClass('sr-only');
+    expect(screen.getByText(/Czas śledztwa: 14 min\. Zdobyte doświadczenie: 120 XP\..*Podpis prowadzącego: Anna Kowalska\.$/)).toHaveClass('sr-only');
     expect(screen.getAllByRole('link', { name: /Wróć do biblioteki/ })).toHaveLength(1);
     expect(within(screen.getByTestId('player-bottombar')).getByRole('link', { name: /Wróć do biblioteki/ })).toHaveAttribute('href', '/courses');
     expect(within(closed).queryByRole('link', { name: /Wróć do biblioteki/ })).not.toBeInTheDocument();

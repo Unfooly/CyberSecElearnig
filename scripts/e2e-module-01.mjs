@@ -36,7 +36,10 @@ const ORG_NAME = `Module 01 E2E ${RUN}`;
 const MODULE_TITLE = 'Wyłudzone hasło';
 // Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk); domyślnie okno Playwrighta 1280x720 jak dotąd.
 const VIEWPORT = process.env.E2E_VIEWPORT?.split('x').map(Number);
-// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
+if (VIEWPORT && (VIEWPORT.length !== 2 || !VIEWPORT.every((n) => Number.isInteger(n) && n > 0))) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
+// Opcjonalnie E2E_WEB_MODE=start - web z buildu produkcyjnego zamiast `next dev` (D-142).
+const WEB_MODE = process.env.E2E_WEB_MODE ?? 'dev';
+if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
 // to inny przebieg, poza zakresem tego skryptu (pełna ścieżka desktopowa bez zmian).
 const PHONE = !!VIEWPORT && VIEWPORT[0] < 768;
 
@@ -86,10 +89,12 @@ try {
   // empirycznie). `next dev` kompiluje z apps/web/src na bieżąco (bez wymogu wcześniejszego `next build`), więc ten
   // skrypt zawsze testuje NAJNOWSZY kod, nie stary build .next. Skutek uboczny (CSP z unsafe-eval/WebSocket, D-053 pkt 5)
   // nie ma znaczenia: ten skrypt nie sprawdza nagłówków CSP (to robi scripts/e2e-registration.mjs).
+  // E2E_WEB_MODE=start (D-142): build produkcyjny (`next start`, wymaga wcześniejszego `next build` apps/web) - pamięć routera klienta
+  // i prefetch działają w nim inaczej niż w `next dev`. Ciasteczka z Secure: patrz komentarz wyżej i obsługa w WEB_MODE niżej.
   start(
     'web',
     process.execPath,
-    [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '-p', WEB_PORT],
+    [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), WEB_MODE, '-p', WEB_PORT],
     { API_URL: API },
     join(process.cwd(), 'apps', 'web'),
   );
@@ -134,8 +139,7 @@ try {
   await page.fill('input[type=password]', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
-  step('logowanie pracownika kieruje na /courses', true);
-  // Nazwa modułu „Wyłudzone hasło” (feat/achievements-content): katalog (karta + alt miniatury), nagłówek playera, raport - bez „Sprawa:”.
+  step('logowanie pracownika kieruje na /courses', true);  // Nazwa modułu „Wyłudzone hasło” (feat/achievements-content): katalog (karta + alt miniatury), nagłówek playera, raport - bez „Sprawa:”.
   await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
   step('Katalog: karta i miniatura modułu z nazwą „Wyłudzone hasło”, nigdzie „Sprawa: wyłudzone hasło”',
     (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1 && (await page.getByText(/Sprawa: wyłudzone/i).count()) === 0);
@@ -207,7 +211,8 @@ try {
   step('BRIEFING: legitymacja zabrana - „Dalej” w pasku aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   const briefingSaved = progressResponse();
   await nextEnabled().click();
-  step('BRIEFING: „Dalej” w pasku zapisuje blok', (await briefingSaved).ok());
+  const briefingResponse = await briefingSaved;
+  step('BRIEFING: „Dalej” w pasku zapisuje blok', briefingResponse.ok(), `HTTP ${briefingResponse.status()} ${briefingResponse.ok() ? '' : await briefingResponse.text().catch(() => '')}`);
 
   // --- Blok 1: Korytarz (SCENE_HOTSPOTS: tablica - dowód opcjonalny, drzwi) - B-086/D-071/D-086 -----------------------------
   await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
@@ -284,20 +289,36 @@ try {
   step('SCENE_HOTSPOTS: "drzwi" (Wyjście) zapisują blok i przechodzą dalej', (await officeSaved).ok());
 
   // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 3 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
-  // blok, na którym przerwano (rozmowa z Anną), a nie na odprawę z pamięci routera klienta. 0 żądań RSC = strona z pamięci.
+  // blok, na którym przerwano (rozmowa z Anną), a nie na odprawę z pamięci routera klienta. 0 pełnych żądań RSC = strona z pamięci.
+  // Przy okazji sieć jednej nawigacji kurs → lista → kurs (D-142, staleTimes.dynamic = 0): lista kursów pobrana raz (bez podwójnego
+  // pobierania), prefetch liczony osobno (nagłówek Next-Router-Prefetch).
   {
-    const rsc = [];
+    const net = { list: [], course: [], listPrefetch: [], coursePrefetch: [], api: [] };
+    let phase = 'list';
     const onRequest = (request) => {
-      if (request.headers().rsc === '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
+      const { pathname } = new URL(request.url());
+      const headers = request.headers();
+      if (pathname.startsWith('/api/')) net.api.push(`${phase} ${request.method()} ${pathname}`);
+      if (headers.rsc !== '1') return;
+      const prefetch = headers['next-router-prefetch'] === '1';
+      if (pathname === '/courses') (prefetch ? net.listPrefetch : net.list).push(phase);
+      if (pathname === `/courses/${courseId}`) (prefetch ? net.coursePrefetch : net.course).push(phase);
     };
     page.on('request', onRequest);
     await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
     await page.waitForURL((url) => url.pathname === '/courses');
+    await page.getByRole('link', { name: 'Kontynuuj naukę' }).waitFor();
+    // Lista doczytana do końca (żądania w locie), zanim liczymy, ile razy poszła.
+    await page.waitForLoadState('networkidle');
+    phase = 'course';
     await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
     await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
     const resumed = await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor({ timeout: 15000 }).then(() => true, () => false);
     page.off('request', onRequest);
-    step('Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - rozmowa z Anną, blok 4 z 10, nie odprawa', resumed, `żądania RSC odtwarzacza: ${rsc.length}`);
+    const detail = `RSC lista: ${net.list.length} (prefetch ${net.listPrefetch.length}), RSC odtwarzacz: ${net.course.length} (prefetch ${net.coursePrefetch.length}), API: ${net.api.join(', ') || 'brak'}`;
+    step('Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - rozmowa z Anną, blok 4 z 10, nie odprawa', resumed, detail);
+    step('Wznowienie: strona odtwarzacza pobrana z serwera (pełne żądanie RSC), nie z pamięci routera', net.course.filter((p) => p === 'course').length >= 1, detail);
+    step('Sieć: lista kursów pobrana raz przy powrocie X (bez podwójnego pobierania)', net.list.filter((p) => p === 'list').length === 1, detail);
   }
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------

@@ -862,7 +862,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: przed kliknięciem skrypt czeka, aż „Sprawdź” będzie aktywny (albo ponawia `fill`, gdy wartość nie dotarła); 3 przebiegi
   `E2E_WEB_MODE=start` z rzędu zielone. Jeśli powtórzy się u użytkownika (ręcznie) - osobny błąd odtwarzacza, nie testu.
 
-### B-150 Wznowienie kursu (D-142) sprawdzone na buildzie produkcyjnym; e2e `next start` i asercja żądań RSC
+### ~~B-150 Wznowienie kursu (D-142) sprawdzone na buildzie produkcyjnym; e2e `next start` i asercja żądań RSC~~ - ROZWIĄZANE (D-142, D-144)
+- Rozwiązanie: tryb `E2E_WEB_MODE=start`, asercja pełnego żądania RSC i walidacja `E2E_VIEWPORT` w #131; m1-m3 × desktop/390x844 zielone na
+  buildzie produkcyjnym; przy okazji znaleziony i naprawiony błąd wylogowania przez prefetch (#133, D-144). Właściciel potwierdził na
+  produkcji 2026-10-16: logowanie pracownika i klik w logo bez wylogowania, X → „Kontynuuj naukę” wznawia w miejscu przerwania.
 - Etykiety: `P2`, `test`, `mod:kursy` · Źródło: code review fix/resume-po-wyjsciu (D-142)
 - Opis: scenariusze wznowienia w `scripts/e2e-module-0{1,2,3}.mjs` uruchamiają `next dev`, a pamięć routera klienta i prefetch linków
   (`Kontynuuj naukę`) działają inaczej w buildzie produkcyjnym - poprawka `staleTimes.dynamic = 0` dotyczy właśnie tej pamięci. Liczba

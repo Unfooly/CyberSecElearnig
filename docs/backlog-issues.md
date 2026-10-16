@@ -854,6 +854,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-151 `scripts/e2e-module-01.mjs` - blok 8 (TEXT_INPUT_GUIDED) raz z nieaktywnym „Sprawdź” na buildzie produkcyjnym
+- Etykiety: `P3`, `test`, `mod:kursy` · Źródło: weryfikacja #131 na buildzie produkcyjnym (`E2E_WEB_MODE=start`, 2026-10-16)
+- Opis: pierwszy przebieg m1 na desktopie (1280x720) utknął na „Ostatnie pytanie”: `fill` domeny wykonany, a przycisk „Sprawdź” został
+  nieaktywny przez 30 s (pole kontrolowane bez wartości w stanie Reacta). Powtórka bez zmian w kodzie: 84/84 OK; 390x844 też zielone.
+  Podejrzenie (niepotwierdzone): `fill` trafił w pole przed hydracją po przejściu bloku - w `next dev` wolniejsza kompilacja to maskuje.
+- Akceptacja: przed kliknięciem skrypt czeka, aż „Sprawdź” będzie aktywny (albo ponawia `fill`, gdy wartość nie dotarła); 3 przebiegi
+  `E2E_WEB_MODE=start` z rzędu zielone. Jeśli powtórzy się u użytkownika (ręcznie) - osobny błąd odtwarzacza, nie testu.
+
 ### B-150 Wznowienie kursu (D-142) sprawdzone na buildzie produkcyjnym; e2e `next start` i asercja żądań RSC
 - Etykiety: `P2`, `test`, `mod:kursy` · Źródło: code review fix/resume-po-wyjsciu (D-142)
 - Opis: scenariusze wznowienia w `scripts/e2e-module-0{1,2,3}.mjs` uruchamiają `next dev`, a pamięć routera klienta i prefetch linków

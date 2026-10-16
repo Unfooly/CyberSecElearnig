@@ -21,11 +21,12 @@ export async function GET() {
     if (!backendResponse.ok) {
       return NextResponse.json(data, { status: backendResponse.status });
     }
-    // Do przeglądarki wyłącznie te dwa pola, jako tekst albo null - nawet gdyby backend kiedyś zwrócił więcej.
+    // Do przeglądarki wyłącznie te trzy pola (nazwisko - podpis raportu, D-145), jako tekst albo null - nawet gdyby backend kiedyś
+    // zwrócił więcej.
     const text = (value: unknown) => (typeof value === 'string' && value.length > 0 ? value : null);
     // no-store: dane osobowe nie zostają w cache przeglądarki (np. współdzielony komputer).
     return NextResponse.json(
-      { firstName: text(data?.firstName), lastInitial: text(data?.lastInitial) },
+      { firstName: text(data?.firstName), lastInitial: text(data?.lastInitial), lastName: text(data?.lastName) },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {

@@ -426,18 +426,18 @@ describe('UsersService', () => {
     });
   });
 
-  describe('getDisplayName (legitymacja w odprawie, D-081)', () => {
-    it('imię i sam inicjał nazwiska; zapytanie w kontekście i z filtrem organizacji wywołującego', async () => {
-      userFindFirst.mockResolvedValue({ firstName: ' Anna ', lastName: 'łukasiewicz' });
+  describe('getDisplayName (legitymacja w odprawie D-081, podpis raportu - poprawki m3)', () => {
+    it('imię, inicjał i nazwisko własnego konta; zapytanie w kontekście i z filtrem organizacji wywołującego', async () => {
+      userFindFirst.mockResolvedValue({ firstName: ' Anna ', lastName: ' łukasiewicz ' });
 
-      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: 'Anna', lastInitial: 'Ł' });
+      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: 'Anna', lastInitial: 'Ł', lastName: 'łukasiewicz' });
       expect(runInOrgContext).toHaveBeenCalledWith('org-a', expect.any(Function));
       expect(userFindFirst).toHaveBeenCalledWith({ where: { id: 'user-1', organizationId: 'org-a' }, select: { firstName: true, lastName: true } });
     });
 
     it('brak imienia/nazwiska (pusty albo null) = null, klient bierze wtedy imię z e-maila', async () => {
       userFindFirst.mockResolvedValue({ firstName: '  ', lastName: null });
-      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: null, lastInitial: null });
+      expect(await service.getDisplayName('org-a', 'user-1')).toEqual({ firstName: null, lastInitial: null, lastName: null });
     });
 
     it('użytkownik spoza organizacji (RLS/filtr nic nie zwraca): 404', async () => {

@@ -7,7 +7,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { registerVerified } from './helpers/auth';
 
-// GET /users/me/display-name (legitymacja w odprawie odtwarzacza, D-081): WYŁĄCZNIE własne imię i inicjał nazwiska, bez
+// GET /users/me/display-name (legitymacja w odprawie D-081, podpis raportu D-145): WYŁĄCZNIE własne imię, inicjał i nazwisko, bez
 // parametru userId. Zasada nr 1: dane z tokena wywołującego, organizacja B nigdy nie dostaje danych organizacji A.
 describe('Własne imię do legitymacji: GET /users/me/display-name (e2e)', () => {
   let app: INestApplication;
@@ -67,27 +67,28 @@ describe('Własne imię do legitymacji: GET /users/me/display-name (e2e)', () =>
     await app.close();
   });
 
-  it('zwraca imię i SAM inicjał nazwiska (pełne nazwisko nie wychodzi)', async () => {
+  // Poprawki m3 (D-145): także pełne nazwisko - WŁASNE (podpis raportu na ekranie zamknięcia); cudze nigdy (testy niżej).
+  it('zwraca imię, inicjał i nazwisko własnego konta', async () => {
     const body = (await get(tokenA).expect(200)).body;
-    expect(body).toEqual({ firstName: 'Anna', lastInitial: 'K' });
-    expect(JSON.stringify(body)).not.toContain('Kowalska');
+    expect(body).toEqual({ firstName: 'Anna', lastInitial: 'K', lastName: 'Kowalska' });
   });
 
   it('izolacja A/B: każdy dostaje wyłącznie własne dane, także przy równoległych żądaniach', async () => {
     const [a, b] = await Promise.allSettled([get(tokenA), get(tokenB)]);
-    expect(a.status === 'fulfilled' && a.value.body).toEqual({ firstName: 'Anna', lastInitial: 'K' });
-    expect(b.status === 'fulfilled' && b.value.body).toEqual({ firstName: 'Bartosz', lastInitial: 'N' });
+    expect(a.status === 'fulfilled' && a.value.body).toEqual({ firstName: 'Anna', lastInitial: 'K', lastName: 'Kowalska' });
+    expect(b.status === 'fulfilled' && b.value.body).toEqual({ firstName: 'Bartosz', lastInitial: 'N', lastName: 'Nowak' });
+    expect(JSON.stringify(a.status === 'fulfilled' && a.value.body)).not.toContain('Nowak');
   });
 
   it('nie da się wskazać innego użytkownika: parametr w zapytaniu jest ignorowany, trasa z id nie istnieje', async () => {
-    expect((await get(tokenA, `/users/me/display-name?userId=${userBId}`).expect(200)).body).toEqual({ firstName: 'Anna', lastInitial: 'K' });
+    expect((await get(tokenA, `/users/me/display-name?userId=${userBId}`).expect(200)).body).toEqual({ firstName: 'Anna', lastInitial: 'K', lastName: 'Kowalska' });
     await get(tokenA, `/users/${userBId}/display-name`).expect(404);
   });
 
   it('brak imienia i nazwiska w profilu: null (klient bierze imię z e-maila)', async () => {
     await setNames(orgAId, userAId, null, null);
     try {
-      expect((await get(tokenA).expect(200)).body).toEqual({ firstName: null, lastInitial: null });
+      expect((await get(tokenA).expect(200)).body).toEqual({ firstName: null, lastInitial: null, lastName: null });
     } finally {
       await setNames(orgAId, userAId, 'Anna', 'Kowalska');
     }

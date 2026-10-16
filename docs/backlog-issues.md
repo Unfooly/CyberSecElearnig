@@ -1278,8 +1278,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   przypisania z `currentBlockIndex > 0` i `status = COMPLETED` niezmienione; test w `apps/api` (happy path + granica
   `currentBlockIndex = 0` vs `1` + test izolacji A/B, jeśli `UPDATE` dotyka więcej niż jednej organizacji na raz).
 
-### B-095 `CoursePlayer.exploratory.test.tsx` - test "mail: odpowiedź { selected }..." raz nie przeszedł w CI (na tym samym commicie zielony lokalnie i po ponownym uruchomieniu CI)
-- Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: CI PR #35 (`docs/backlog-course-version-repin` - PR WYŁĄCZNIE
+### B-095 `CoursePlayer.exploratory.test.tsx` - test "mail: odpowiedź { selected }..." niestabilny w CI (2 razy: PR #35 i 2026-10-13 „Notatnik (1)”; zielony po ponownym uruchomieniu)
+- Etykiety: `P2`, `tech-debt`, `mod:kursy` · Źródło: CI PR #35 (`docs/backlog-course-version-repin` - PR WYŁĄCZNIE
   dokumentacyjny, `docs/backlog-issues.md`, zero zmian w kodzie - test nie ma nic wspólnego z treścią PR-a)
 - Opis: `lint + testy` (job `apps/web`) padł na teście `CoursePlayer.exploratory.test.tsx > ... > mail: odpowiedź
   { selected }, wynik w bloku, notatki z serwera od razu w notatniku, a po "Wstecz" wybór gracza i rozstrzygnięcie`
@@ -1293,6 +1293,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: jeśli to się powtórzy - dodać `await waitFor(...)` (albo `act()`) między klikiem "Dalej" a "Wstecz" w
   tym teście i sprawdzić, czy problem znika; jeśli NIE powtórzy się w rozsądnym oknie (np. kilka kolejnych PR-ów), ten
   wpis można zamknąć jako jednorazowy szum infrastruktury CI.
+- **Powtórzyło się (2026-10-13, zgłoszenie właściciela przy przeglądzie modułu 3 - „Notatnik (1)”):** gałąź
+  `feat/3b-modul-3-lancuszek-r2`, przebieg https://github.com/Unfooly/CyberSecElearnig/actions/runs/38375155710 (próba 1, job
+  `lint + testy` https://github.com/Unfooly/CyberSecElearnig/actions/runs/38375155710/job/115221567194; próba 2 zielona bez zmian w kodzie).
+  Ten sam test, inny krok: `Unable to find an accessible element with the role "button" and name /Notatnik \(1\)/` - przycisk miał jeszcze
+  „Notatnik (0)”, czyli asercja przyszła przed wpisaniem notatek z odpowiedzi serwera (`getByRole` zamiast `findByRole`/`waitFor` po zapisie).
+  Priorytet podniesiony do `P2` (drugie wystąpienie, blokuje CI do ponownego uruchomienia); akceptacja bez zmian, plus asercja licznika
+  Notatnika przez `findByRole`.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

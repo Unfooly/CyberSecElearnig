@@ -5,6 +5,7 @@ import { clientIpHeaders } from '@/lib/client-ip';
 import { decodeJwtPayload, isExpired } from '@/lib/jwt';
 import { clearAuthCookies, setAuthCookies, type TokenPair } from '@/lib/auth-cookies';
 import { buildContentSecurityPolicy, generateNonce, resolveContentOrigin } from '@/lib/security-headers';
+import { homePathForRole } from '@/lib/home-path';
 
 // Ścieżka -> role dopuszczone do wejścia. To WYŁĄCZNIE wygoda UX (szybszy
 // redirect, brak migotania niezalogowanego widoku) - prawdziwa kontrola
@@ -40,6 +41,16 @@ const matchesPrefix = (pathname: string, prefix: string) => pathname === prefix 
 function redirectToLogin(request: NextRequest): NextResponse {
   const response = NextResponse.redirect(new URL('/login', request.url));
   clearAuthCookies(response.cookies);
+  return response;
+}
+
+// Ważna sesja, ale ścieżka nie dla tej roli (fix/prefetch-wylogowanie): przekierowanie na stronę startową roli BEZ czyszczenia cookies.
+// Wcześniej było to redirectToLogin - a Next w buildzie produkcyjnym prefetchuje linki widoczne na ekranie (np. logo -> /dashboard), więc
+// sam prefetch strony admina wylogowywał pracownika chwilę po zalogowaniu (Set-Cookie Max-Age=0 z odpowiedzi prefetchu). Bezpieczeństwo
+// bez zmian: o dostępie decyduje apps/api, middleware to tylko UX. Strona startowa (homePathForRole) zawsze wpuszcza swoją rolę - bez pętli.
+function redirectToHome(request: NextRequest, role: Role, refreshedTokens: TokenPair | null): NextResponse {
+  const response = NextResponse.redirect(new URL(homePathForRole(role), request.url));
+  if (refreshedTokens) setAuthCookies(response.cookies, refreshedTokens);
   return response;
 }
 
@@ -134,8 +145,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     payload = decodeJwtPayload(accessToken);
   }
 
-  if (!payload || !route.roles.includes(payload.role)) {
+  // Nieczytelny token (decodeJwtPayload odrzuca też nieznaną rolę): sesja do niczego - wylogowanie.
+  if (!payload) {
     return redirectToLogin(request);
+  }
+  if (!route.roles.includes(payload.role)) {
+    return redirectToHome(request, payload.role, refreshedTokens);
   }
 
   const response = passThrough(request);

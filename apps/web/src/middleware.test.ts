@@ -98,7 +98,9 @@ describe('middleware', () => {
     expect(response.headers.get('location')).toContain('/login');
   });
 
-  it('przekierowuje na /login, gdy access token wskazuje rolę inną niż ORG_ADMIN', async () => {
+  // fix/prefetch-wylogowanie: prefetch linku do /dashboard (logo) w buildzie produkcyjnym wylogowywał pracownika - zła rola przy ważnej
+  // sesji to przekierowanie na stronę startową roli, bez Set-Cookie (cookies zostają).
+  it('rola inna niż ORG_ADMIN na /dashboard: przekierowanie na /courses BEZ czyszczenia cookies (sesja zostaje)', async () => {
     const token = fakeJwt({
       sub: 'user-1',
       organizationId: 'org-1',
@@ -110,7 +112,34 @@ describe('middleware', () => {
       buildRequest('/dashboard', `access_token=${token}; refresh_token=some-refresh-token`),
     );
 
-    expect(response.headers.get('location')).toContain('/login');
+    expect(new URL(response.headers.get('location') ?? '').pathname).toBe('/courses');
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('zła rola z wygasłym access tokenem: odświeżone cookies trafiają na przekierowanie (nie giną)', async () => {
+    const expired = fakeJwt({ sub: 'u', organizationId: 'o', role: 'EMPLOYEE', email: 'e@example.test', exp: Math.floor(Date.now() / 1000) - 60 });
+    const fresh = fakeJwt({ sub: 'u', organizationId: 'o', role: 'EMPLOYEE', email: 'e@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ accessToken: fresh, refreshToken: 'rotated-refresh' }), { status: 200 })));
+    try {
+      const response = await middleware(buildRequest('/dashboard', `access_token=${expired}; refresh_token=role-refresh`));
+      expect(new URL(response.headers.get('location') ?? '').pathname).toBe('/courses');
+      expect(response.cookies.get('access_token')?.value).toBe(fresh);
+      expect(response.cookies.get('refresh_token')?.value).toBe('rotated-refresh');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('nieczytelny access token (np. nieznana rola) przy ważnym refresh tokenie: dalej /login z wyczyszczonymi cookies', async () => {
+    const token = fakeJwt({ sub: 'u', organizationId: 'o', role: 'HACKER', email: 'e@example.test', exp: Math.floor(Date.now() / 1000) + 900 });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
+    try {
+      const response = await middleware(buildRequest('/courses', `access_token=${token}; refresh_token=r`));
+      expect(response.headers.get('location')).toContain('/login');
+      expect(response.cookies.get('access_token')?.value).toBe('');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('przepuszcza żądanie dla poprawnej roli ORG_ADMIN z ważnym tokenem (brak przekierowania)', async () => {
@@ -139,9 +168,10 @@ describe('middleware', () => {
       expect(response.headers.get('location')).toBeNull();
     });
 
-    it.each(['EMPLOYEE', 'DEPARTMENT_MANAGER'])('rola %s => /login', async (role) => {
+    it.each(['EMPLOYEE', 'DEPARTMENT_MANAGER'])('rola %s => /courses (strona startowa roli), cookies bez zmian', async (role) => {
       const response = await middleware(buildRequest('/onboarding', `access_token=${tokenFor(role)}; refresh_token=r`));
-      expect(response.headers.get('location')).toContain('/login');
+      expect(new URL(response.headers.get('location') ?? '').pathname).toBe('/courses');
+      expect(response.headers.get('set-cookie')).toBeNull();
     });
 
     it('niezalogowany => /login', async () => {
@@ -233,7 +263,7 @@ describe('middleware', () => {
     it('prefiks /report nie obejmuje /reports: pracownik na /reports jest odsyłany (dopasowanie po segmencie ścieżki)', async () => {
       const response = await middleware(buildRequest('/reports', `access_token=${tokenFor('EMPLOYEE')}; refresh_token=r`));
 
-      expect(response.headers.get('location')).toContain('/login');
+      expect(new URL(response.headers.get('location') ?? '').pathname).toBe('/courses');
     });
   });
 
@@ -248,8 +278,8 @@ describe('middleware', () => {
       }
     });
 
-    it('EMPLOYEE => /login; niezalogowany => /login', async () => {
-      expect((await middleware(buildRequest('/reports', `access_token=${tokenFor('EMPLOYEE')}; refresh_token=r`))).headers.get('location')).toContain('/login');
+    it('EMPLOYEE => /courses; niezalogowany => /login', async () => {
+      expect(new URL((await middleware(buildRequest('/reports', `access_token=${tokenFor('EMPLOYEE')}; refresh_token=r`))).headers.get('location') ?? '').pathname).toBe('/courses');
       expect((await middleware(buildRequest('/reports/abc123'))).headers.get('location')).toContain('/login');
     });
   });

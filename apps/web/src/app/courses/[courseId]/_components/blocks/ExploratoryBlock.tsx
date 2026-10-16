@@ -37,7 +37,10 @@ export default function ExploratoryBlock({
   moduleBlocks = [],
   exploration,
   onExplore,
+  simpleMode = false,
 }: {
+  /** Tryb prosty (D-132): BRIEFING pokazuje tekst maszyny do pisania w ramce nad sceną, min. 16 px (D-145). */
+  simpleMode?: boolean;
   /** SCENE_HOTSPOTS (D-128): stan częściowy sceny z serwera i zgłaszanie jego zmian (zapis w CoursePlayer). */
   exploration?: SceneExploration;
   onExplore?: (state: SceneExploration) => void;
@@ -101,6 +104,7 @@ export default function ExploratoryBlock({
           identity={identity ?? ANONYMOUS_IDENTITY}
           myAvatarUrl={myAvatarUrl ?? null}
           onStepChange={onBriefingStep}
+          simpleMode={simpleMode}
         />
       );
     case 'ANNOTATED_REPLAY':

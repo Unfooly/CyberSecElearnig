@@ -191,7 +191,13 @@ export default function BriefingSceneStep({
   tasks,
   identity,
   caseNo,
+  simpleMode = false,
 }: {
+  /**
+   * Tryb prosty (D-132, D-145): tekst maszyny do pisania nie jest nakładką w pasku sceny (dopasowanie zmniejszało go do ~12 px na
+   * telefonie), tylko ramką NAD sceną, o wysokości tekstu i stałym rozmiarze min. 16 px - scena zajmuje resztę i nie jest zasłonięta.
+   */
+  simpleMode?: boolean;
   step: BriefingStep;
   contentBase: string;
   reducedMotion: boolean;
@@ -249,8 +255,8 @@ export default function BriefingSceneStep({
     if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
   };
 
-  return (
-    <div ref={containerRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+  const scene = (
+    <div ref={containerRef} className="relative flex min-h-0 min-w-0 w-full flex-1 items-center justify-center [container-type:size]">
       {measured && (
       <div
         data-testid="briefing-scene"
@@ -292,21 +298,9 @@ export default function BriefingSceneStep({
           />
         )}
 
-        {step.kind === 'typewriter' && typed && (
+        {step.kind === 'typewriter' && typed && !simpleMode && (
           <FitText testId="briefing-scene-text" fitKey={`${step.text}|${step.sub ?? ''}|${portrait}`} maxRatio={0.34} style={rectStyle(topBand)} className="z-20 rounded-card bg-surface/90 px-[1.5%] py-[0.8%] shadow-card">
-            {/* Dwie warstwy w jednej komórce siatki: niewidoczny pełny tekst ustala rozmiar (dopasowanie liczone raz, nie co znak),
-                widoczna jest wystukana część. Klik kończy pisanie od razu. */}
-            <div aria-hidden="true" onClick={typed.finish} className="grid text-center font-bold leading-snug text-ink">
-              <p className="invisible [grid-area:1/1]">
-                {step.text}
-                {step.sub && <span className="block text-[0.7em] font-normal">{step.sub}</span>}
-              </p>
-              <p className="[grid-area:1/1]">
-                {typed.shown}
-                {!typed.done && <span className="briefing-caret ml-0.5 inline-block w-[0.5ch] border-b-2 border-ink" />}
-                {typed.done && step.sub && <span className="briefing-step-enter block text-[0.7em] font-normal text-muted">{step.sub}</span>}
-              </p>
-            </div>
+            <TypewriterText text={step.text} sub={step.sub} typed={typed} />
           </FitText>
         )}
 
@@ -409,6 +403,57 @@ export default function BriefingSceneStep({
           Legitymacja śledczego: {identity.label}, nr legitymacji {badgeNumber(caseNo, identity.initials)}.
         </p>
       )}
+    </div>
+  );
+
+  if (!(simpleMode && step.kind === 'typewriter' && typed)) return scene;
+  // Tryb prosty (D-145): ramka tekstu nad sceną - wysokość z treści (niewidoczna pełna warstwa rezerwuje miejsce od pierwszego znaku),
+  // 16 px na telefonie, 18 px od sm; scena (container-type: size) dopasowuje się do miejsca, które zostało. Niskie okno w poziomie
+  // (telefon obrócony, wysokość ≤ 500 px): ramka OBOK sceny, po lewej - nad sceną zostawiłaby jej ~150 px (layout-check m10).
+  // Klasy z media query wpisane w całości (Tailwind nie widzi klas sklejanych ze zmiennej).
+  return (
+    // Bez items-center w wierszu: kontener sceny (container-type: size) musi się rozciągnąć na wysokość - wyśrodkowana jest tylko ramka.
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-2 [@media(orientation:landscape)_and_(max-height:500px)]:flex-row">
+      <div
+        data-testid="briefing-scene-text"
+        data-layout="above"
+        className="mx-auto w-full max-w-[62ch] shrink-0 rounded-card border border-border bg-surface px-4 py-3 text-base shadow-card sm:text-lg [@media(orientation:landscape)_and_(max-height:500px)]:mx-0 [@media(orientation:landscape)_and_(max-height:500px)]:w-[40%] [@media(orientation:landscape)_and_(max-height:500px)]:self-center [@media(orientation:landscape)_and_(max-height:500px)]:text-base"
+      >
+        <TypewriterText text={step.text} sub={step.sub} typed={typed} simpleMode />
+      </div>
+      {scene}
+    </div>
+  );
+}
+
+/**
+ * Tekst kroku maszyny do pisania. Dwie warstwy w jednej komórce siatki: niewidoczny pełny tekst ustala rozmiar (dopasowanie liczone
+ * raz, nie co znak), widoczna jest wystukana część. Klik kończy pisanie od razu.
+ */
+function TypewriterText({
+  text,
+  sub,
+  typed,
+  simpleMode = false,
+}: {
+  text: string;
+  sub?: string;
+  typed: { shown: string; done: boolean; finish: () => void };
+  /** Tryb prosty: podtytuł pełnym rozmiarem (0,7 em zszedłby poniżej 16 px). */
+  simpleMode?: boolean;
+}) {
+  const subSize = simpleMode ? '' : 'text-[0.7em]';
+  return (
+    <div aria-hidden="true" onClick={typed.finish} className="grid text-center font-bold leading-snug text-ink">
+      <p className="invisible [grid-area:1/1]">
+        {text}
+        {sub && <span className={`block ${subSize} font-normal`}>{sub}</span>}
+      </p>
+      <p className="[grid-area:1/1]">
+        {typed.shown}
+        {!typed.done && <span className="briefing-caret ml-0.5 inline-block w-[0.5ch] border-b-2 border-ink" />}
+        {typed.done && sub && <span className={`briefing-step-enter block ${subSize} font-normal text-muted`}>{sub}</span>}
+      </p>
     </div>
   );
 }

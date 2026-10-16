@@ -91,6 +91,54 @@ describe('sceneForOrientation (D-098)', () => {
   });
 });
 
+// Poprawki m3 (D-145): w trybie prostym tekst maszyny do pisania w ramce NAD sceną (wysokość z treści, 16 px), nie w pasku sceny.
+describe('BriefingSceneStep: maszyna do pisania w trybie prostym (D-145)', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const typewriter: BriefingStep = {
+    kind: 'typewriter',
+    text: 'Wtorek rano. Dzwoni Ola Malec z księgowości.',
+    sub: 'Pokój 12',
+    cta: 'Odbierz telefon',
+    image: 'scenes/odprawa.svg',
+    portrait: { image: 'scenes/odprawa-pion.svg' },
+  } as BriefingStep;
+  const typed = { shown: 'Wtorek rano.', done: true, finish: () => {} };
+  const renderTypewriter = (simpleMode: boolean) =>
+    render(
+      <BriefingSceneStep
+        step={typewriter}
+        contentBase="/content"
+        reducedMotion
+        headingId="h"
+        typed={typed}
+        caseOpen={false}
+        tasks={[]}
+        identity={{ label: 'Jan P.', initials: 'JP' }}
+        simpleMode={simpleMode}
+      />,
+    );
+
+  it('tryb prosty: ramka poza sceną (nad nią), 16 px, podtytuł bez zmniejszenia; tekst dla czytnika bez zmian', () => {
+    mockContainer(390, 600);
+    renderTypewriter(true);
+    const frame = screen.getByTestId('briefing-scene-text');
+    expect(frame).toHaveAttribute('data-layout', 'above');
+    expect(screen.getByTestId('briefing-scene')).not.toContainElement(frame);
+    expect(frame.className).toContain('text-base');
+    expect(frame.style.fontSize).toBe('');
+    expect(frame.querySelector('.text-\\[0\\.7em\\]')).toBeNull();
+    expect(screen.getByText('Wtorek rano. Dzwoni Ola Malec z księgowości. Pokój 12')).toHaveClass('sr-only');
+  });
+
+  it('zwykły tryb (moduły 1-2): pasek na scenie jak dotąd', () => {
+    mockContainer(390, 600);
+    renderTypewriter(false);
+    const frame = screen.getByTestId('briefing-scene-text');
+    expect(frame).not.toHaveAttribute('data-layout');
+    expect(screen.getByTestId('briefing-scene')).toContainElement(frame);
+  });
+});
+
 describe('BriefingSceneStep w pionie (D-098)', () => {
   afterEach(() => vi.restoreAllMocks());
 

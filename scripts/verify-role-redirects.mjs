@@ -44,12 +44,14 @@ for (const [role, email, expected] of USERS) {
   console.log(`     po logowaniu: ${afterLogin} (oczekiwano ${expected}), cookies: ${cookiesAfterLogin}`);
   console.log(`     po odświeżeniu strony: ${afterReload}; wejście na "/": ${fromRoot}`);
 
-  // Ścieżka zabroniona dla roli (tylko ORG_ADMIN ma /dashboard): sprawdzamy, że
-  // to middleware, a nie logowanie, odsyła na /login.
+  // Ścieżka zabroniona dla roli (tylko ORG_ADMIN ma /dashboard): middleware odsyła na stronę startową roli (/courses) i NIE
+  // czyści cookies (D-144 - wcześniej /login z wylogowaniem, co przy prefetchu linku wylogowywało pracownika).
   if (role !== 'ORG_ADMIN') {
     await page.goto(`${BASE}/dashboard`);
     await page.waitForLoadState('networkidle').catch(() => {});
-    console.log(`     ręczne wejście na /dashboard: ${pathOf()}, cookies: ${await cookieNames()}`);
+    const forbiddenOk = pathOf() === '/courses' && (await cookieNames()).includes('refresh_token');
+    if (!forbiddenOk) failed = true;
+    console.log(`${forbiddenOk ? 'OK  ' : 'FAIL'} ręczne wejście na /dashboard: ${pathOf()} (oczekiwano /courses), cookies: ${await cookieNames()}`);
   }
   await context.close();
 }

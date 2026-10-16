@@ -39,6 +39,25 @@ describe('Topbar', () => {
     expect(header.className).toMatch(/sm:pr-\[calc\(2\.5rem\+env\(safe-area-inset-right\)\)\]/);
   });
 
+  // fix/prefetch-wylogowanie: logo prowadzi na stronę startową roli - link na ekranie jest prefetchowany, a /dashboard jest tylko dla admina.
+  it.each([
+    [Role.ORG_ADMIN, '/dashboard'],
+    [Role.EMPLOYEE, '/courses'],
+    [Role.DEPARTMENT_MANAGER, '/courses'],
+  ])('logo dla roli %s prowadzi do %s', (role, href) => {
+    usePathnameMock.mockReturnValue('/courses');
+    render(<Topbar userEmail="jan@example.test" role={role} />);
+
+    expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toHaveAttribute('href', href);
+  });
+
+  it('logo bez roli (strony /dashboard/* nie przekazują roli) prowadzi do /dashboard', () => {
+    usePathnameMock.mockReturnValue('/dashboard/users');
+    render(<Topbar userEmail="jan@example.test" />);
+
+    expect(screen.getByRole('link', { name: 'Unfooly - strona główna' })).toHaveAttribute('href', '/dashboard');
+  });
+
   it.each([Role.EMPLOYEE, Role.DEPARTMENT_MANAGER, Role.ORG_ADMIN])('rola %s widzi przycisk "Zgłoś podejrzany mail" prowadzący do /report', (role) => {
     usePathnameMock.mockReturnValue('/courses');
     render(<Topbar userEmail="jan@example.test" role={role} />);

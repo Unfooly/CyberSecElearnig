@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 'lucide-react';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
@@ -111,6 +111,12 @@ export interface PlayerStageProps {
   simpleMode?: boolean;
   /** Język treści kursu (D-133) - atrybut `lang` obszaru treści i tytułu (czytnik ekranu czyta treść właściwą wymową; paski - polski interfejs). */
   lang?: string;
+  /** Kliknięcie X (fix/resume-po-wyjsciu): CoursePlayer wstrzymuje wyjście (preventDefault), dopóki trwa zapis postępu albo stanu
+      sceny, i sam przechodzi do listy; bez zapisów w toku X działa jak zwykły link. Nie czeka na /attempt ani /challenge - te nie
+      zmieniają bieżącego bloku, więc nie wpływają na wznowienie. */
+  onExitClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Wyjście czeka na zapis (D-142): aria-busy i przygaszony X. */
+  exitPending?: boolean;
 }
 
 function PlayerStageInner({
@@ -142,6 +148,8 @@ function PlayerStageInner({
   announceForward = true,
   simpleMode = false,
   lang,
+  onExitClick,
+  exitPending = false,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -309,14 +317,16 @@ function PlayerStageInner({
             na restRef. h-full: NotesDrawer jest position:absolute (poza przepływem), więc to jedyne "prawdziwe"
             dziecko flex kolumny ramki i musi samo wypełnić jej wysokość. */}
         <div ref={restRef} className="flex h-full flex-col">
-          {/* Pasek górny (~48px, ściśnięty do 40px w telefonie w poziomie - globals.css): X (wyjście, zapis postępu
-              jest już serwerowy po każdej odpowiedzi - nic dodatkowego do zrobienia tutaj), pełny ekran (tylko gdy
+          {/* Pasek górny (~48px, ściśnięty do 40px w telefonie w poziomie - globals.css): X (wyjście; zapis postępu
+              jest serwerowy po każdej odpowiedzi, a zapis w toku X dociska przez onExitClick - D-142), pełny ekran (tylko gdy
               wspierany), tytuł + cienki pasek postępu, licznik dowodów, Notatnik. */}
           <div ref={topBarRef} className="player-topbar flex min-h-[48px] shrink-0 items-center gap-3 border-b border-slate-200 px-3">
             <Link
               href="/courses"
+              onClick={onExitClick}
               aria-label="Zakończ i wróć do listy kursów"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              aria-busy={exitPending || undefined}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900${exitPending ? ' opacity-60 motion-safe:animate-pulse' : ''}`}
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </Link>

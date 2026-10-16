@@ -61,6 +61,11 @@ const nextConfig = {
     // dopiero w Next 15 przeniesione na najwyższy poziom configu. Sprawdź
     // przy podbijaniu wersji Next, czy nie trzeba tego przenieść.
     outputFileTracingRoot: path.join(__dirname, '../../'),
+    // Router Cache klienta (fix/resume-po-wyjsciu): w Next 14.2 strona dynamiczna odwiedzona linkiem jest podawana z pamięci
+    // przeglądarki przez 30 s - X w odtwarzaczu i od razu „Kontynuuj naukę” pokazywały kurs z postępem z pierwszego wejścia
+    // (od początku), bo strona odtwarzacza (postęp z /start po stronie serwera) nie była pobierana ponownie. 0 = każda nawigacja
+    // linkiem do strony dynamicznej pyta serwer (domyślne zachowanie Next 15); wstecz/dalej w przeglądarce dalej z pamięci.
+    staleTimes: { dynamic: 0 },
   },
 };
 

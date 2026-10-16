@@ -12,6 +12,8 @@
 //
 // Użycie z katalogu repo (dotenv-cli ładuje bazę i sekrety JWT z .env):
 //   npx dotenv -e .env -- node scripts/e2e-module-01.mjs
+// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk; bez easter egga pulpitu). Scenariusz wznowienia po wyjściu (X i „Kontynuuj
+// naukę” bez przeładowania, D-142) jest częścią przebiegu.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
@@ -32,6 +34,11 @@ const EMAIL = `pracownik@${DOMAIN}`;
 const PASSWORD = 'E2e-Haslo-Testowe-1!';
 const ORG_NAME = `Module 01 E2E ${RUN}`;
 const MODULE_TITLE = 'Wyłudzone hasło';
+// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk); domyślnie okno Playwrighta 1280x720 jak dotąd.
+const VIEWPORT = process.env.E2E_VIEWPORT?.split('x').map(Number);
+// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
+// to inny przebieg, poza zakresem tego skryptu (pełna ścieżka desktopowa bez zmian).
+const PHONE = !!VIEWPORT && VIEWPORT[0] < 768;
 
 const children = [];
 let apiLog = '';
@@ -117,7 +124,9 @@ try {
   step('organizacja ACTIVE i pracownik z przypisanym kursem utworzeni', true);
 
   browser = await chromium.launch();
-  page = await (await browser.newContext()).newPage();
+  page = await (
+    await browser.newContext(VIEWPORT ? { viewport: { width: VIEWPORT[0], height: VIEWPORT[1] }, isMobile: VIEWPORT[0] < 768, hasTouch: VIEWPORT[0] < 768 } : {})
+  ).newPage();
 
   // 1. Logowanie -> pracownik ląduje na /courses (homePathForRole).
   await page.goto(`${WEB}/login`);
@@ -243,17 +252,19 @@ try {
   step('SCENE_HOTSPOTS: pulpit - dowód z historii przeglądarki (Internet, 8:58 bankwektor-weryfikacja.pl/login)', true);
   // Easter egg (D-100): ikona gry - trzy okienka zamykane krzyżykiem, potem outro i ukryte wyróżnienie w notatniku. Licznik dowodów
   // zostaje 6/23; końcowe 23/23 i +XP w raporcie (niżej) są takie same jak bez easter egga - znalezienie nie zmienia N ani XP.
-  await dialog().getByRole('button', { name: 'GTA6_PL.exe' }).click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
-  // Etykieta krzyżyka bez ozdobnego symbolu z początku tytułu (spokenTitle).
-  for (const title of ['Pliki zaszyfrowane', 'Gratulacje!', 'Wykryto 147 wirusów!']) {
-    await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
+  if (!PHONE) {
+    await dialog().getByRole('button', { name: 'GTA6_PL.exe' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
+    // Etykieta krzyżyka bez ozdobnego symbolu z początku tytułu (spokenTitle).
+    for (const title of ['Pliki zaszyfrowane', 'Gratulacje!', 'Wykryto 147 wirusów!']) {
+      await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
+    }
+    await page.getByTestId('easter-outro').waitFor();
+    const eggCounter = await page.getByTestId('evidence-counter').textContent();
+    const eggBadge = await page.getByTestId('easter-badge').textContent();
+    step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && eggBadge?.includes('Nowe osiągnięcie: Curious Detective'), `${eggCounter} | ${eggBadge}`);
+    await page.getByRole('button', { name: 'Wróć do pulpitu' }).click();
   }
-  await page.getByTestId('easter-outro').waitFor();
-  const eggCounter = await page.getByTestId('evidence-counter').textContent();
-  const eggBadge = await page.getByTestId('easter-badge').textContent();
-  step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && eggBadge?.includes('Nowe osiągnięcie: Curious Detective'), `${eggCounter} | ${eggBadge}`);
-  await page.getByRole('button', { name: 'Wróć do pulpitu' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
   await closed();
 
@@ -271,6 +282,23 @@ try {
   const officeSaved = progressResponse();
   await page.getByRole('button', { name: 'Wyjście' }).click();
   step('SCENE_HOTSPOTS: "drzwi" (Wyjście) zapisują blok i przechodzą dalej', (await officeSaved).ok());
+
+  // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 3 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
+  // blok, na którym przerwano (rozmowa z Anną), a nie na odprawę z pamięci routera klienta. 0 żądań RSC = strona z pamięci.
+  {
+    const rsc = [];
+    const onRequest = (request) => {
+      if (request.headers().rsc === '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
+    };
+    page.on('request', onRequest);
+    await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+    await page.waitForURL((url) => url.pathname === '/courses');
+    await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
+    await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+    const resumed = await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    page.off('request', onRequest);
+    step('Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - rozmowa z Anną, blok 4 z 10, nie odprawa', resumed, `żądania RSC odtwarzacza: ${rsc.length}`);
+  }
 
   // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
   // Komunikator (D-087): rozmówca "pisze" (wskaźnik), potem kwestia; data-typing na wątku mówi, czy ktoś właśnie pisze.
@@ -294,6 +322,16 @@ try {
 
   // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
   await page.getByTestId('mail-client').waitFor();
+  // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na rozmowę z Anną, a postęp poszedł
+  // dalej - odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje mail, nie rozmowę.
+  {
+    await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+    await page.waitForURL((url) => url.pathname === '/courses');
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+    const back = await page.getByTestId('mail-client').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    step('Wznowienie: X i „Wstecz” przeglądarki po kolejnym bloku - mail, blok 5 z 10, nie rozmowa', back && (await page.getByText('Ja naprawdę nic nie zrobiłam').count()) === 0);
+  }
   step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@unfooly.com'));
   // Fragmenty maila są prawdziwymi <button>-ami inline (aria-pressed) - klikamy bezpośrednio, bez osobnej "Listy
   // elementów (dla klawiatury)" (usunięta, feedback z produkcji). "presja" (groźba blokady) NIE ma fragmentu w treści
@@ -460,22 +498,27 @@ try {
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie po odświeżeniu: stan końcowy od razu, czas sprawy z /start', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
   // Wyróżnienie easter egga (D-100) zapisane po stronie serwera: po odświeżeniu nadal w notatniku (progress.distinctions z /start).
-  await page.getByRole('button', { name: /^Notatnik/ }).click();
-  const distinctions = page.getByTestId('notebook-distinctions');
-  await distinctions.waitFor();
-  step('EASTER EGG: osiągnięcie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Curious Detective'));
+  if (!PHONE) {
+    await page.getByRole('button', { name: /^Notatnik/ }).click();
+    const distinctions = page.getByTestId('notebook-distinctions');
+    await distinctions.waitFor();
+    step('EASTER EGG: osiągnięcie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Curious Detective'));
+  }
 
   // Osiągnięcia (D-111): pełne przejście - easter egg, 23/23 dowodów, 100% - daje na profilu wszystkie trzy, przyznane przez serwer.
   await page.goto(`${WEB}/courses/achievements`);
   await page.getByTestId('achievements-counter').waitFor();
   // Mianownik to cały katalog osiągnięć (rośnie z kolejnymi modułami) - tu liczą się trzy zdobyte w module 1.
   const achievementsCounter = ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '');
-  step('Osiągnięcia: licznik 3 / N na profilu', /^3\/\d+$/.test(achievementsCounter), achievementsCounter);
-  for (const name of ['First Case Closed', 'Flawless Case', 'Curious Detective']) {
+  const earnedCount = PHONE ? 2 : 3;
+  step(`Osiągnięcia: licznik ${earnedCount} / N na profilu`, new RegExp(`^${earnedCount}/\\d+$`).test(achievementsCounter), achievementsCounter);
+  for (const name of PHONE ? ['First Case Closed', 'Flawless Case'] : ['First Case Closed', 'Flawless Case', 'Curious Detective']) {
     step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\(\\w+\\), zdobyte`) }).count()) === 1);
   }
-  await page.getByRole('button', { name: /^Curious Detective/ }).click();
-  step('Osiągnięcia: rewers Curious Detective z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
+  if (!PHONE) {
+    await page.getByRole('button', { name: /^Curious Detective/ }).click();
+    step('Osiągnięcia: rewers Curious Detective z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
+  }
 
   // Przypinanie (D-112): z rewersu dwóch zdobytych kart -> sekcja „Przypięte” i miniatury przy imieniu w rankingu na /courses.
   for (const name of ['Flawless Case', 'First Case Closed']) {

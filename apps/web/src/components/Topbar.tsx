@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { LogOut, Menu, Settings, X } from 'lucide-react';
 import { initialsFromEmail } from '@/lib/avatar';
+import { homePathForRole } from '@/lib/home-path';
 import { useMyAvatar } from '@/lib/use-my-avatar';
 import { useLogout } from '@/lib/use-logout';
 import { buttonClasses } from './ui/Button';
@@ -194,7 +195,9 @@ export default function Topbar({
           poziomie (iPhone w poziomie i tak trafia w breakpoint sm). */}
       <header className="sticky top-0 z-40 min-h-[calc(4rem+env(safe-area-inset-top))] border-b border-border bg-surface pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] sm:pl-[calc(2.5rem+env(safe-area-inset-left))] sm:pr-[calc(2.5rem+env(safe-area-inset-right))]">
         <div className="flex h-16 items-center gap-3 sm:gap-9">
-          <Link href="/dashboard" className="shrink-0" aria-label="Unfooly - strona główna">
+          {/* Strona startowa roli (D-144): /dashboard jest tylko dla ORG_ADMIN-a, a link na ekranie Next prefetchuje. Bez roli (strony
+              /dashboard/* nie przekazują jej - jak w visibleNavItems: brak roli = widok admina) - /dashboard; strony pracownika rolę przekazują. */}
+          <Link href={role === undefined ? '/dashboard' : homePathForRole(role)} className="shrink-0" aria-label="Unfooly - strona główna">
             <Logo variant="dark" />
           </Link>
 

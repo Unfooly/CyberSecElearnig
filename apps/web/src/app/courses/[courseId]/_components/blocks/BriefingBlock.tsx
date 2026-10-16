@@ -248,7 +248,10 @@ export default function BriefingBlock({
   identity,
   myAvatarUrl = null,
   onStepChange,
+  simpleMode = false,
 }: {
+  /** Tryb prosty (D-132): tekst maszyny do pisania w ramce nad sceną, min. 16 px (D-145). */
+  simpleMode?: boolean;
   block: ContentBlock;
   contentBase: string;
   onSubmit: () => void;
@@ -374,6 +377,7 @@ export default function BriefingBlock({
               tasks={tasks}
               identity={identity}
               caseNo={caseNo}
+              simpleMode={simpleMode}
             />
           </div>
           {!hasTarget && (

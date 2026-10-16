@@ -66,6 +66,7 @@ export default function ReviewBlock({
           identity={identity}
           onBriefingStep={onBriefingStep}
           moduleBlocks={moduleBlocks}
+          simpleMode={simpleMode}
         />
       </div>
     );

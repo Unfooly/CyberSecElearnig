@@ -108,6 +108,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         moduleBlocks={ctx.blocks}
         exploration={ctx.progress?.exploration}
         onExplore={block.id ? (state) => ctx.onExplore(block.id ?? '', state) : undefined}
+        simpleMode={ctx.simpleMode}
       />
     );
   }

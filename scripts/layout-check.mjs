@@ -1497,8 +1497,8 @@ try {
   // Dowolny moduł (B-128, LAYOUT_CHECK_MODULE=<slug>, domyślnie moduł 1): KAŻDY blok w harnessie `?module=<slug>&block=<id>` na 4
   // rozdzielczościach + telefonie w pionie: (m1) blok się renderuje (obszar bloku widoczny), obrazy modułu załadowane; (m2) dolny pasek
   // w ekranie; (m3) strona bez poziomego przewijania; (m4) bez błędów strony i konsoli; (m5) zbliżenia się ładują; (m9, tylko 390×844)
-  // tekst dowodów ≥ 15 px w scenie albo w zbliżeniu (D-138). Minimalna siatka dla nowego modułu - sekcje wyżej sprawdzają szczegóły
-  // modułu 1.
+  // tekst dowodów ≥ 15 px w scenie albo w zbliżeniu (D-138); (m10, kurs w trybie prostym) maszyna do pisania odprawy w ramce nad sceną,
+  // ≥ 16 px (D-145). Minimalna siatka dla nowego modułu - sekcje wyżej sprawdzają szczegóły modułu 1.
   if (runs('module')) {
     const moduleJson = JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8'));
     const blockIds = moduleJson.blocks.map((block) => block.id);
@@ -1570,6 +1570,43 @@ try {
         const hasBoard = await page.locator('[data-testid="evidence-board"][data-orientation="landscape"]').count();
         if (hasBoard > 0 && viewport.width >= 1280 && !viewport.isMobile && cards.length === 0) {
           fail(`${label}: (m8) tablica pozioma na szerokim ekranie bez minimalnej skali (data-min-scale) albo bez kart na tacce.`);
+        }
+        // (m10) maszyna do pisania w odprawie kursu w trybie prostym (D-145): ramka NAD sceną (nie nakładka), tekst ≥ 16 px (także
+        // niewidoczna warstwa rezerwująca miejsce i podtytuł), ramka mieści cały tekst i jest w ekranie, scena pod nią nadal widoczna.
+        const block = moduleJson.blocks.find((candidate) => candidate.id === blockId);
+        if (moduleJson.simpleMode && block?.type === 'BRIEFING' && block.steps?.[0]?.kind === 'typewriter') {
+          const typewriter = await page.evaluate(() => {
+            const frame = document.querySelector('[data-testid="briefing-scene-text"]');
+            const scene = document.querySelector('[data-testid="briefing-scene"]');
+            if (!frame) return null;
+            const box = frame.getBoundingClientRect();
+            const sceneBox = scene?.getBoundingClientRect();
+            const sizes = [...frame.querySelectorAll('p, span')]
+              .filter((node) => (node.textContent ?? '').trim().length > 0)
+              .map((node) => parseFloat(getComputedStyle(node).fontSize));
+            return {
+              above: frame.getAttribute('data-layout') === 'above' && !scene?.contains(frame),
+              minFont: Math.min(...sizes),
+              clipped: frame.scrollHeight > frame.clientHeight + 1 || frame.scrollWidth > frame.clientWidth + 1,
+              inView: box.top >= -1 && box.bottom <= window.innerHeight + 1 && box.left >= -1 && box.right <= window.innerWidth + 1,
+              // Nad sceną albo obok niej (niskie okno w poziomie) - byle prostokąty się nie przecinały.
+              overlapsScene:
+                !!sceneBox && box.bottom > sceneBox.top + 1 && box.top < sceneBox.bottom - 1 && box.right > sceneBox.left + 1 && box.left < sceneBox.right - 1,
+              sceneHeight: Math.round(sceneBox?.height ?? 0),
+            };
+          });
+          if (!typewriter) fail(`${label}: (m10) brak tekstu maszyny do pisania w odprawie.`);
+          else {
+            const problems = [];
+            if (!typewriter.above) problems.push('ramka na scenie (nakładka), nie poza nią');
+            if (typewriter.minFont < 15.95) problems.push(`tekst ${typewriter.minFont.toFixed(1)} px < 16 px`);
+            if (typewriter.clipped) problems.push('tekst ucięty w ramce');
+            if (!typewriter.inView) problems.push('ramka poza ekranem');
+            if (typewriter.overlapsScene) problems.push('ramka zasłania scenę');
+            if (typewriter.sceneHeight < 200) problems.push(`scena za niska (${typewriter.sceneHeight} px)`);
+            if (problems.length > 0) fail(`${label}: (m10) maszyna do pisania: ${problems.join(', ')} (${JSON.stringify(typewriter)}).`);
+            else step(`${label}: (m10) maszyna do pisania poza sceną (nad nią albo obok), ${typewriter.minFont.toFixed(1)} px, scena ${typewriter.sceneHeight} px`, true);
+          }
         }
       }
       // (m5) zbliżenia i sceny zagnieżdżone (telefon, pulpit, plakat...) - otwierane przez `?hotspot=`: grafika załadowana.

@@ -17,6 +17,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
@@ -128,7 +129,7 @@ try {
   });
   step('organizacja ACTIVE i pracownik z przypisanym kursem utworzeni', true);
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
   page = await (
     await browser.newContext(VIEWPORT ? { viewport: { width: VIEWPORT[0], height: VIEWPORT[1] }, isMobile: VIEWPORT[0] < 768, hasTouch: VIEWPORT[0] < 768 } : {})
   ).newPage();

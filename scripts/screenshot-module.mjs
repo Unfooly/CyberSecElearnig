@@ -18,6 +18,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
@@ -307,7 +308,7 @@ try {
   if (importResult.courseCreated) courseCreatedIds.add(courseId);
   console.log('import treści OK:', JSON.stringify(importResult));
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
 
   for (const viewport of VIEWPORTS) {
     console.log(`\n--- przebieg: ${viewport.name} (${viewport.width}x${viewport.height}) ---`);

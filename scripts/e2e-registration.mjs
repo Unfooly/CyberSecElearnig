@@ -19,6 +19,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
 
@@ -108,7 +109,7 @@ try {
   await waitFor(async () => (await fetch(`${API}/`)).status > 0, 'start API');
   await waitFor(async () => (await fetch(`${WEB}/`)).ok, 'start web');
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
   const page = await (await browser.newContext()).newPage();
   const pathOf = () => new URL(page.url()).pathname;
 

@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
@@ -101,7 +102,7 @@ try {
   });
   step('organizacja ACTIVE i pracownik z przypisanym kursem', true);
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
   page = await (await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: VW < 768, hasTouch: VW < 768 })).newPage();
   const problems = [];
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message.slice(0, 200)}`));

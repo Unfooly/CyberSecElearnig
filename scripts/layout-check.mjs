@@ -58,6 +58,7 @@ import { mkdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 
 // Layout-check bazy nie używa (harness bez backendu), ale uruchamiany przez dotenv z nielokalnym adresem bazy też odmawia startu (B-140).
 assertLocalDatabase('scripts/layout-check.mjs', { required: false });
@@ -1381,7 +1382,7 @@ try {
 
   await waitForServer(`${WEB}/dev/player-harness`, 'start web (dev harness)');
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
 
   for (const viewport of runs('hotspots') ? VIEWPORTS : []) {
     console.log(`\n--- viewport: ${viewport.name} ---`);

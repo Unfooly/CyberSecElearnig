@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
@@ -103,7 +104,7 @@ try {
   });
   step('organizacja ACTIVE i pracownik z przypisanym kursem', true);
 
-  browser = await chromium.launch();
+  browser = await launchPolishBrowser(chromium);
   page = await (await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: MOBILE, hasTouch: MOBILE })).newPage();
   const shot = async (name) => {
     if (!SHOTS_DIR) return;

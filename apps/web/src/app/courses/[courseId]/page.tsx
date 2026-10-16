@@ -107,7 +107,10 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         // remount resetuje CAŁY wewnętrzny stan klienta (notatki, dowody, podpowiedzi, feedback), zamiast
         // pozostawiać go z poprzedniego, ukończonego przebiegu po samym router.refresh().
         // Język treści w kluczu (D-133): zmiana języka na starcie kursu (router.refresh) przeładowuje cały stan odtwarzacza w nowym języku.
-        key={`${course.assignmentId}-${course.locale ?? 'pl'}`}
+        // Postęp w kluczu (D-142): po „Wstecz” w przeglądarce odtwarzacz wraca z drzewa w pamięci routera ze starym postępem i woła
+        // router.refresh() - świeży currentBlockIndex/status z serwera przemontowuje odtwarzacz na właściwym bloku. W trakcie gry serwer
+        // nie jest odświeżany (blok przesuwa stan klienta), więc klucz się wtedy nie zmienia.
+        key={`${course.assignmentId}-${course.locale ?? 'pl'}-${course.currentBlockIndex}-${course.status}`}
         courseId={params.courseId}
         initial={{ ...course, score }}
         scoreUnavailable={scoreUnavailable}

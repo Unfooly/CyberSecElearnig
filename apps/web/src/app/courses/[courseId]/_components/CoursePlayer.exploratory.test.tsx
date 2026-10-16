@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
 function course(overrides: Partial<CoursePlayerInitialState> = {}): CoursePlayerInitialState {

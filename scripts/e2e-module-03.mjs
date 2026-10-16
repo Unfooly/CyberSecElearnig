@@ -195,6 +195,38 @@ try {
   // --- 3-6. Wybory (QUIZ w trybie prostym: zła odpowiedź -> „Nie tym razem”, potem dobra -> „Dobrze” i „Dalej”) i skrzynka (blok 4) -
   for (const id of ['zaloguj', 'wiadomosci', 'blik', 'kod-sms']) {
     const block = blockOf(id);
+    // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 3 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
+    // blok, na którym przerwano (skrzynka), a nie na odprawę z pamięci routera klienta.
+    if (id === 'wiadomosci') {
+      // Żądania RSC strony odtwarzacza w trakcie powrotu: 0 = strona podana z pamięci routera klienta (stary postęp).
+      const rsc = [];
+      const onRequest = (request) => {
+        if (request.headers().rsc === '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
+      };
+      page.on('request', onRequest);
+      await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+      await page.waitForURL((url) => url.pathname === '/courses');
+      await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
+      await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+      await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
+      const resumed = await page.getByText(block.prompt, { exact: true }).waitFor({ timeout: 15000 }).then(() => true, () => false);
+      page.off('request', onRequest);
+      step(
+        'Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - skrzynka, blok 4 z 7, nie odprawa',
+        resumed && (await page.getByTestId('briefing-scene-text').count()) === 0,
+        `żądania RSC odtwarzacza: ${rsc.length}`,
+      );
+    }
+    // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na skrzynkę, a postęp poszedł
+    // dalej - odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje BLIK, nie skrzynkę.
+    if (id === 'blik') {
+      await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+      await page.waitForURL((url) => url.pathname === '/courses');
+      await page.goBack();
+      await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+      const back = await page.getByText(block.prompt, { exact: true }).waitFor({ timeout: 15000 }).then(() => true, () => false);
+      step('Wznowienie: X i „Wstecz” przeglądarki po kolejnym bloku - BLIK, blok 5 z 7, nie skrzynka', back && (await page.getByTestId('swipe-card').count()) === 0);
+    }
     if (block.type === 'QUIZ') {
       await page.getByTestId('simple-choice').waitFor();
       step(`QUIZ ${id}: polecenie „${block.prompt}”, „Dalej” nieaktywny`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await nextDisabled()));

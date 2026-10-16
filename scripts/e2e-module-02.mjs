@@ -6,6 +6,8 @@
 // Nagrania i grafiki modułu 2 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
 //   CONTENT_BASE_URL=https://content.unfooly.com npx dotenv -e .env -- node scripts/e2e-module-02.mjs
+// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk). Scenariusz wznowienia po wyjściu (X i „Kontynuuj naukę” bez przeładowania,
+// D-142) jest częścią przebiegu.
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,6 +24,8 @@ const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content'
 const MODULE_TITLE = MODULE.title.pl;
 const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
 const EVIDENCE_TOTAL = 20;
+// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk) zamiast domyślnego 1366x768.
+const [VW, VH] = (process.env.E2E_VIEWPORT ?? '1366x768').split('x').map(Number);
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3110';
 const WEB = `http://localhost:${WEB_PORT}`;
@@ -95,7 +99,7 @@ try {
   step('organizacja ACTIVE i pracownik z przypisanym kursem', true);
 
   browser = await chromium.launch();
-  page = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
+  page = await (await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: VW < 768, hasTouch: VW < 768 })).newPage();
   const problems = [];
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message.slice(0, 200)}`));
   page.on('console', (message) => {
@@ -257,6 +261,23 @@ try {
   step('SCENE_HOTSPOTS (biurko): klik w drzwi zapisuje blok i przechodzi dalej', (await deskSaved).ok());
   await page.getByTestId('call-recording').waitFor();
 
+  // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 2 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
+  // blok, na którym przerwano (odsłuch nagrania), a nie na odprawę z pamięci routera klienta. 0 żądań RSC = strona z pamięci.
+  {
+    const rsc = [];
+    const onRequest = (request) => {
+      if (request.headers().rsc === '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
+    };
+    page.on('request', onRequest);
+    await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+    await page.waitForURL((url) => url.pathname === '/courses');
+    await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
+    await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+    const resumed = await page.getByTestId('call-recording').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    page.off('request', onRequest);
+    step('Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - odsłuch nagrania, blok 3 z 11, nie odprawa', resumed, `żądania RSC odtwarzacza: ${rsc.length}`);
+  }
+
   // --- 3. Odsłuch nagrania (CALL_RECORDING, waga 2): 7 flag w transkrypcji, bez pudeł -> Perfect Pitch ------------------------
   await page.getByRole('tab', { name: 'Transkrypcja' }).click();
   for (const id of ['s1', 's3', 's4', 's6', 's7', 's9', 's11']) await page.getByTestId(`recording-segment-flag-${id}`).click();
@@ -269,6 +290,16 @@ try {
   step(`CALL_RECORDING: dowody z nagrania (liczba 47, prośba o instalację) w notatniku (7/${EVIDENCE_TOTAL})`, true, await counter());
   step('CALL_RECORDING: wynik bez własnego „Dalej”', await noInBlockNext());
   await advanceUntil(page.getByTestId('interrogation-block'), 'przesłuchanie Karola');
+  // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na odsłuch, a postęp poszedł dalej -
+  // odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje przesłuchanie, nie odsłuch.
+  {
+    await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
+    await page.waitForURL((url) => url.pathname === '/courses');
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
+    const back = await page.getByTestId('interrogation-block').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    step('Wznowienie: X i „Wstecz” przeglądarki po kolejnym bloku - przesłuchanie Karola, nie odsłuch', back && (await page.getByTestId('call-recording').count()) === 0);
+  }
 
   // --- 4. Przesłuchanie Karola (INTERROGATION): dwa fragmenty do notatek, podważenie dowodem „liczba 47” ---------------------------
   const typingDone = () => page.waitForFunction(() => !document.querySelector('[data-testid="dialogue-typing"]'), null, { timeout: 30000 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Narration } from '@cyberszkolo/content';
 import type {
@@ -193,6 +193,16 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
 const NOTES_ID = 'notes-panel';
 // Ile najwyżej „Dalej” czeka na trwający zapis stanu częściowego sceny (D-128), zanim wyśle zapis bloku.
 const EXPLORE_WAIT_MS = 4000;
+// Najdłuższe czekanie X na zapisy w toku (D-142) - potem wyjście i tak następuje. Obejmuje też czekanie samego „Dalej” na zapis stanu
+// sceny (do EXPLORE_WAIT_MS), więc w najgorszym razie na /progress zostaje ~1 s: celem jest „wyjście nigdy nie wisi”, nie pewność zapisu.
+const EXIT_SAVE_WAIT_MS = 5000;
+// „Wstecz”/„Dalej” przeglądarki (D-142): Next 14 przywraca wtedy odtwarzacz z drzewa w pamięci routera (props z pierwszego wejścia,
+// także przy staleTimes.dynamic = 0). Flaga ustawiana przez popstate i zużywana przez pierwszy montaż odtwarzacza - ten pobiera świeży
+// postęp (router.refresh). Flaga, nie okno czasowe: montaż ciężkiego bloku na słabym telefonie bywa dłuższy niż sekunda (code review).
+// Fałszywe trafienie (np. „Wstecz” na liście, potem „Kontynuuj naukę”) kosztuje jedno zbędne odświeżenie bez przemontowania (postęp,
+// czyli klucz, się nie zmienia). Powrót z bfcache (inna witryna, `pageshow`) nie jest objęty - zostaje stan na żywo.
+let restoredFromHistory = false;
+if (typeof window !== 'undefined') window.addEventListener('popstate', () => (restoredFromHistory = true));
 
 // Woła hooki, które MUSZĄ być dziećmi NotesProvider/HintProvider (useNotes, useHints) - liczbę notatek i bieżącą podpowiedź
 // PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
@@ -270,6 +280,15 @@ export default function CoursePlayer({
   nextCourse?: { courseId: string; title: string } | null;
 }) {
   const router = useRouter();
+  // Odtwarzacz przywrócony z historii (D-142): świeży postęp z serwera; zmieniony postęp zmienia klucz w page.tsx i przemontowuje odtwarzacz.
+  useEffect(() => {
+    if (restoredFromHistory) {
+      restoredFromHistory = false;
+      router.refresh();
+    }
+    // Jednorazowo przy montowaniu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Tryb prosty wersji treści (D-132) - z /start; starsze odpowiedzi bez pola = zwykły odtwarzacz.
   const simpleMode = initial.simpleMode === true;
   const { avatarUrl: myAvatarUrl } = useMyAvatar(userEmail);
@@ -316,6 +335,8 @@ export default function CoursePlayer({
   const [completedNow, setCompletedNow] = useState(false);
   const [completedAt, setCompletedAt] = useState<string | null>(initial.completedAt ?? null);
   const [submitting, setSubmitting] = useState(false);
+  // X czeka na zapis w toku (D-142) - aria-busy na X, żeby czekanie nie wyglądało na martwy przycisk.
+  const [exitPending, setExitPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
   const [viewIndex, setViewIndex] = useState<number | null>(null);
@@ -430,9 +451,56 @@ export default function CoursePlayer({
     })();
   }
 
+  // Zapis bloku w toku (fix/resume-po-wyjsciu): X czeka na niego i na zapis stanu sceny, najwyżej EXIT_SAVE_WAIT_MS (wyjście nigdy nie
+  // wisi na zerwanym połączeniu), żeby lista kursów i „Kontynuuj naukę” widziały ostatni zapisany blok.
+  // Bez zapisów w toku X działa jak zwykły link (także nowa karta: kliknięcie z modyfikatorem nie jest wstrzymywane). Kolejne kliknięcia
+  // w trakcie czekania nic nie dokładają; odmontowanie (gracz sam przeszedł gdzie indziej) i sesja wygasła (401 -> /login) - bez push.
+  const progressSave = useRef<Promise<void> | null>(null);
+  const exiting = useRef(false);
+  const unmounted = useRef(false);
+  const sessionExpired = useRef(false);
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+    };
+  }, []);
+  const handleExitClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (exiting.current) {
+        event.preventDefault();
+        return;
+      }
+      const pending = [progressSave.current, exploreQueue.current.inFlight].filter((p): p is Promise<void> => p !== null);
+      if (pending.length === 0) return;
+      event.preventDefault();
+      exiting.current = true;
+      setExitPending(true);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      void Promise.race([
+        Promise.allSettled(pending),
+        new Promise<void>((resolve) => (timer = setTimeout(resolve, EXIT_SAVE_WAIT_MS))),
+      ]).then(() => {
+        clearTimeout(timer);
+        if (unmounted.current || sessionExpired.current) return;
+        router.push('/courses');
+        // Nawigacja, która się nie odbyła (przerwana) - X nie zostaje zablokowany na stałe.
+        setTimeout(() => {
+          if (unmounted.current) return;
+          exiting.current = false;
+          setExitPending(false);
+        }, EXIT_SAVE_WAIT_MS);
+      });
+    },
+    [router],
+  );
+
   async function handleAnswer(answer?: unknown) {
     if (submittingRef.current) return;
     submittingRef.current = true;
+    let releaseSave: () => void = () => {};
+    progressSave.current = new Promise<void>((resolve) => (releaseSave = resolve));
     setSubmitting(true);
     setError(null);
     // Zapis bloku niesie pełny stan sceny: oczekujący zapis częściowy jest zbędny (wraca do kolejki tylko, gdy zapis bloku się nie
@@ -467,6 +535,7 @@ export default function CoursePlayer({
 
       if (response.status === 401) {
         requeue = false;
+        sessionExpired.current = true;
         router.push('/login');
         return;
       }
@@ -475,6 +544,9 @@ export default function CoursePlayer({
 
       if (!response.ok) {
         setError(data?.message ?? 'Nie udało się zapisać odpowiedzi.');
+        // 400 (np. „Bloki trzeba ukończyć po kolei”): odtwarzacz mógł mieć nieaktualny postęp (D-142: drzewo z pamięci routera, nieudane
+        // odświeżenie po „Wstecz”) - świeży postęp z serwera; inny currentBlockIndex zmienia klucz w page.tsx i przemontowuje odtwarzacz.
+        if (response.status === 400) router.refresh();
         return;
       }
 
@@ -553,6 +625,8 @@ export default function CoursePlayer({
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+      progressSave.current = null;
+      releaseSave();
       // Zapis bloku się nie powiódł: zdjęty z kolejki stan częściowy wraca do zapisu (chyba że scena zgłosiła w międzyczasie nowszy).
       if (requeue && !blockSaved && droppedExploration && !exploreQueue.current.next) saveExploration(droppedExploration.blockId, droppedExploration.state);
     }
@@ -935,6 +1009,8 @@ export default function CoursePlayer({
                   : undefined
             }
             forwardHref={isSummaryMode ? '/courses' : undefined}
+            onExitClick={handleExitClick}
+            exitPending={exitPending}
             // Scena z drzwiami (D-106): wyjściem jest podejście do drzwi - podpowiedź mówi to wprost (samo „Ukończ blok” myliło, gdy
             // wymagane przedmioty były już obejrzane).
             forwardHint={

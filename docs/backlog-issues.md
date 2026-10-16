@@ -854,6 +854,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-150 Wznowienie kursu (D-142) sprawdzone na buildzie produkcyjnym; e2e `next start` i asercja żądań RSC
+- Etykiety: `P2`, `test`, `mod:kursy` · Źródło: code review fix/resume-po-wyjsciu (D-142)
+- Opis: scenariusze wznowienia w `scripts/e2e-module-0{1,2,3}.mjs` uruchamiają `next dev`, a pamięć routera klienta i prefetch linków
+  (`Kontynuuj naukę`) działają inaczej w buildzie produkcyjnym - poprawka `staleTimes.dynamic = 0` dotyczy właśnie tej pamięci. Liczba
+  żądań RSC strony odtwarzacza przy powrocie jest tylko wypisywana, nie sprawdzana; `E2E_VIEWPORT` nie jest walidowany (`abc` → NaN).
+- Akceptacja: tryb `E2E_WEB_MODE=start` (`next build` + `next start`) w skryptach e2e modułów; X → „Kontynuuj naukę” i X → „Wstecz” zielone
+  na buildzie produkcyjnym (albo ręcznie na środowisku testowym, wynik w PR); asercja `rsc.length >= 1`; błędny `E2E_VIEWPORT` = błąd skryptu.
+
+### B-149 `loading.tsx` dla cięższych stron po `staleTimes.dynamic = 0` (D-142)
+- Etykiety: `P3`, `ux`, `mod:web` · Źródło: code review fix/resume-po-wyjsciu (D-142)
+- Opis: od D-142 każda nawigacja linkiem do strony dynamicznej (cały apps/web - root layout `force-dynamic`) to pełny render serwera
+  (layout + zapytania API strony); aplikacja nie ma `loading.tsx`, więc na wolnym łączu klik w link chwilę „wisi” bez sygnału.
+- Akceptacja: `loading.tsx` (szkielet w tokenach UI) co najmniej dla dashboardu, kampanii i listy kursów; bez przewijania i z reduced-motion.
+
 ### B-148 `FitText` `wholeWords` bez użycia po usunięciu warstwy tekstu (D-137)
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: code review i18n-4 (D-137)
 - Opis: opcja `wholeWords` w `FitText` (`apps/web/.../blocks/BriefingScene.tsx`) powstała dla `TextLayer` (D-128); po i18n-4 używa jej tylko

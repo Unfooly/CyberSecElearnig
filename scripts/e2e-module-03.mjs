@@ -169,6 +169,27 @@ try {
   step('BRIEFING: scena bez klikalnego przedmiotu (bez hotspotu)', (await page.getByTestId('briefing-hotspot').count()) === 0);
   await nextEnabled().waitFor();
   await shot('1-odprawa');
+  // Po zakończeniu pisania (bez kliknięcia - samo się dopisuje; kursor znika): pełny tekst widoczny w ramce, ramka mieści go bez
+  // przewijania i bez wychodzenia poza ekran, scena pod nią nie zasłonięta (D-145, przegląd właściciela 2026-10-19).
+  await page.locator('.briefing-caret').waitFor({ state: 'detached', timeout: 60000 });
+  const typed = await page.getByTestId('briefing-scene-text').evaluate((frame) => {
+    const box = frame.getBoundingClientRect();
+    const scene = document.querySelector('[data-testid="briefing-scene"]')?.getBoundingClientRect();
+    const visible = [...frame.querySelectorAll('p')].find((p) => !p.classList.contains('invisible'))?.textContent ?? '';
+    return {
+      visible,
+      overflow: frame.scrollHeight - frame.clientHeight,
+      inView: box.top >= 0 && box.bottom <= window.innerHeight,
+      clearOfScene: !scene || box.bottom <= scene.top + 1 || box.right <= scene.left + 1,
+      pageScroll: document.documentElement.scrollHeight - window.innerHeight,
+    };
+  });
+  step(
+    'BRIEFING: po zakończeniu pisania pełny tekst w ramce, bez przewijania, w ekranie, scena niezasłonięta',
+    typed.visible.includes('łańcuszek') && typed.overflow <= 1 && typed.inView && typed.clearOfScene && typed.pageScroll <= 1,
+    JSON.stringify({ ...typed, visible: `${typed.visible.length} znaków` }),
+  );
+  await shot('1b-odprawa-po-pisaniu');
   await goNext();
 
   // --- 2. Telefon Oli (SCENE_HOTSPOTS, 3 cele, zbliżenie ekranu logowania) -----------------------------------------------------

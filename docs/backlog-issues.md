@@ -854,6 +854,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-153 Ekran zamknięcia po awansie: „Poziom {nowy}” z paskiem od nowa, nie „Poziom {stary}” z paskiem do 100%
+- Etykiety: `P2`, `ux`, `mod:gamifikacja` · Źródło: przegląd zrzutów poprawek m3 przez właściciela 2026-10-19 (desktop: obok siebie
+  „Awans na poziom 2!” i „Poziom 1” z paskiem) · Plan: osobny PR zaraz po #134
+- Opis: zgodne z dzisiejszym projektem (fix/course-finish-flow, D-089/B-116), nie przypadkowy błąd webu: API zwraca `previousLevel` i
+  `levelProgressBefore/AfterPercent` w SKALI POZIOMU SPRZED nagrody (przy awansie `After` przycięty do 100), a `LevelProgress` w
+  `CaseClosedScreen.tsx` celowo podpisuje pasek „Poziom {previousLevel}”. Postępu w nowym poziomie API nie zwraca - wzór poziomu jest
+  tylko w apps/api (`level.util.ts`), więc web nie może go policzyć sam.
+- Akceptacja: API (`CourseCompletionResult` / `CourseProgressResponseDto`) dodaje postęp w nowym poziomie (np. `levelProgressNewPercent`,
+  ten sam wzór); po awansie ekran pokazuje „Poziom {newLevel}” i pasek od 0 do postępu w nowym poziomie (bez awansu - jak dziś);
+  reduced-motion bez animacji; test jednostkowy API (granica progu, przeskok o 2 poziomy) i webu (awans / bez awansu); e2e modułu z
+  awansem sprawdza etykietę.
+
 ### B-152 `scripts/e2e-registration.mjs` - nieaktualna sekcja zrzutów odtwarzacza (`data-testid="caption"`)
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: poprawki m3 (D-145), przebieg w przeglądarce pl-PL 2026-10-19
 - Opis: cała ścieżka rejestracji przechodzi (formularz → hasło → DNS → panel → ustawienia → odtwarzacz z nonce), ale końcowa sekcja zrzutów

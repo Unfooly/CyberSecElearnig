@@ -177,6 +177,49 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(progressCalls(fetchMock)).toHaveLength(0);
   });
 
+  // D-145 (code review): tryb prosty z /start dochodzi do sceny odprawy - na żywo i w podglądzie „Wstecz” (ReviewBlock).
+  describe('tryb prosty: maszyna do pisania w ramce nad sceną (D-145)', () => {
+    const sceneBriefing = {
+      type: 'BRIEFING',
+      id: 'odprawa',
+      steps: [{ kind: 'typewriter', text: 'Wtorek rano. Dzwoni Ola.', cta: 'Odbierz telefon', image: 'scenes/odprawa.svg' }],
+    } as ContentBlock;
+    const sceneCourse = (simpleMode: boolean, currentBlockIndex: number) =>
+      course({
+        simpleMode,
+        currentBlockIndex,
+        contentBlocks: [sceneBriefing, { type: 'NARRATIVE', id: 'biuro', text: 'Biuro Anny.' }],
+        progress: currentBlockIndex > 0 ? { v: 2, blocks: { odprawa: { type: 'BRIEFING', done: true } }, notes: [] } : null,
+      });
+    const renderScene = (simpleMode: boolean, currentBlockIndex: number) => {
+      stubFetch();
+      // jsdom nie liczy układu - kontener sceny z wymiarami telefonu, żeby scena się wyrenderowała.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
+      render(<CoursePlayer courseId="course-1" initial={sceneCourse(simpleMode, currentBlockIndex)} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);
+    };
+
+    it('na żywo: ramka poza sceną', async () => {
+      renderScene(true, 0);
+      const frame = await screen.findByTestId('briefing-scene-text');
+      expect(frame).toHaveAttribute('data-layout', 'above');
+      expect(screen.getByTestId('briefing-scene')).not.toContainElement(frame);
+    });
+
+    it('podgląd „Wstecz”: też ramka poza sceną (simpleMode przez ReviewBlock)', async () => {
+      renderScene(true, 1);
+      fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
+      const frame = await within(screen.getByTestId('review-block')).findByTestId('briefing-scene-text');
+      expect(frame).toHaveAttribute('data-layout', 'above');
+    });
+
+    it('kurs bez trybu prostego: pasek na scenie jak dotąd', async () => {
+      renderScene(false, 0);
+      const frame = await screen.findByTestId('briefing-scene-text');
+      expect(frame).not.toHaveAttribute('data-layout');
+      expect(screen.getByTestId('briefing-scene')).toContainElement(frame);
+    });
+  });
+
   it('zadania w notatniku odhaczone wg ukończonych bloków (wszystkie z completeWhen), także zaraz po zapisie w tej sesji', async () => {
     stubFetch();
     render(
@@ -373,6 +416,7 @@ describe('tożsamość na legitymacji i zadania (funkcje czyste)', () => {
   it('reportSigner: imię z inicjałem, a konto bez imienia - e-mail przed @ i „Pracownik”', () => {
     expect(reportSigner({ firstName: 'Jakub', lastInitial: 'P' }, 'j.p@x.pl')).toBe('Jakub P.');
     expect(reportSigner({ firstName: 'Jakub', lastInitial: null }, 'j.p@x.pl')).toBe('Jakub');
+    expect(reportSigner({ firstName: 'Jakub', lastInitial: ' ' }, 'j.p@x.pl')).toBe('Jakub');
     // Konto bez imienia (np. import): część e-maila bez przerabiania, także gdy profil ma sam inicjał.
     expect(reportSigner({ firstName: null, lastInitial: 'K' }, 'a.kowalska@x.pl')).toBe('a.kowalska');
     expect(reportSigner(null, 'pracownik.biura@x.pl')).toBe('pracownik.biura');

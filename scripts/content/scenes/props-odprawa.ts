@@ -466,9 +466,12 @@ const compactStamp = (tx: string, context: PropContext) => ({
     `</g>`,
 });
 
-export const closedStamp: PropFn<{ text?: string; sub?: string; layout?: 'wide' | 'compact' }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa', layout = 'wide' }, context) => {
+export const closedStamp: PropFn<{ text?: string; sub?: string; layout?: 'wide' | 'compact' }> = (params, context) => {
+  const { text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa', layout = 'wide' } = params;
   if (layout === 'compact') {
     if (!fitMode(context)) throw new Error('closedStamp: layout "compact" tylko w scenie ze "strings" (dopasowanie tekstu)');
+    // Kompaktowa pieczęć nie ma dopisku - podany `sub` zniknąłby po cichu.
+    if (params.sub !== undefined) throw new Error(`${context.where}: closedStamp layout "compact" nie ma dopisku - usuń parametr "sub"`);
     return compactStamp(tx, context);
   }
   return closedStampWide(tx, sub, context);
@@ -488,7 +491,7 @@ const closedStampWide = (tx: string, sub: string, context?: PropContext) => ({
 });
 
 /**
- * Liścik szeroki (poprawki m3, `layout: "wide"`, tylko w scenie ze `strings`): jedno krótkie zdanie (wiersze `lines` łączone i zawijane
+ * Liścik paskowy (poprawki m3, `layout: "banner"`, tylko w scenie ze `strings`): jedno krótkie zdanie (wiersze `lines` łączone i zawijane
  * przez `fitText`) i podpis pod nim - niski kształt 320×140 mieści się pod podpisem raportu w pionie z tekstem min. 16 px na telefonie.
  */
 const wideNote = (lines: string[], sign: string, context: PropContext) => ({
@@ -501,12 +504,12 @@ const wideNote = (lines: string[], sign: string, context: PropContext) => ({
     `</g>`,
 });
 
-export const commissionerNote: PropFn<{ lines?: string[]; sign?: string; layout?: 'square' | 'wide' }> = (
+export const commissionerNote: PropFn<{ lines?: string[]; sign?: string; layout?: 'square' | 'banner' }> = (
   { lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.', layout = 'square' },
   context,
 ) => {
-  if (layout === 'wide') {
-    if (!fitMode(context)) throw new Error('commissionerNote: layout "wide" tylko w scenie ze "strings" (dopasowanie tekstu)');
+  if (layout === 'banner') {
+    if (!fitMode(context)) throw new Error('commissionerNote: layout "banner" tylko w scenie ze "strings" (dopasowanie tekstu)');
     return wideNote(lines, sign, context);
   }
   return squareNote(lines, sign, context);

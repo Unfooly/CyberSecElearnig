@@ -212,7 +212,7 @@ mogą pochodzić ze `strings`: raport - `caseNo`, `title`, `labels` (`report`, `
 W trybie dopasowania etykiety nie mają rozstrzelenia liter (`spacing`) - `fitText` mierzy szerokość bez niego.
 `ruled: false` w raporcie usuwa liniaturę pod wnioskami - dla modułu z zasadami wpalonymi w grafikę (`textBox` z `evidence`, moduł 3).
 Tylko w scenie ze `strings` (poprawki m3, tryb prosty): pieczęć `"layout": "compact"` (420×260, sam napis zawijany w dwa wiersze, bez
-`sub`) i liścik `"layout": "wide"` (320×140, wiersze `lines` łączone w jedno zdanie i zawijane, podpis pod nim). Raport bez dowodów
+`sub` - podany to błąd) i liścik `"layout": "banner"` (320×140, wiersze `lines` łączone w jedno zdanie i zawijane, podpis pod nim). Raport bez dowodów
 rzeczowych (`bags: []`) ma wtedy duże sloty `slot-liscik`/`slot-pieczec` pod podpisem (pion) i na pustej prawej stronie teczki (poziom).
 
 ### Klocki modułu 3 (`props-lancuszek.ts`, „Łańcuszek”, tryb prosty, D-140)

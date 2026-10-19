@@ -51,7 +51,8 @@ export function playerIdentity(fromProfile: DisplayName | null, email: string | 
  */
 export function reportSigner(fromProfile: DisplayName | null, email: string | null): string {
   const firstName = fromProfile?.firstName?.trim();
-  if (firstName) return fromProfile?.lastInitial ? `${firstName} ${fromProfile.lastInitial}.` : firstName;
+  const lastInitial = fromProfile?.lastInitial?.trim();
+  if (firstName) return lastInitial ? `${firstName} ${lastInitial}.` : firstName;
   return email?.split('@')[0]?.trim() || 'Pracownik';
 }
 

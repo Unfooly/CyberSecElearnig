@@ -191,8 +191,15 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
         contentBlocks: [sceneBriefing, { type: 'NARRATIVE', id: 'biuro', text: 'Biuro Anny.' }],
         progress: currentBlockIndex > 0 ? { v: 2, blocks: { odprawa: { type: 'BRIEFING', done: true } }, notes: [] } : null,
       });
+    // Podmieniony getBoundingClientRect daje każdemu elementowi ten sam prostokąt - PlayerStage (keepFocusAboveBar) uznaje wtedy, że
+    // fokus zachodzi na dolny pasek, i woła scrollBy, którego jsdom nie ma (nieobsłużony błąd w CI) - atrapa na czas tych testów.
+    const originalScrollBy = HTMLElement.prototype.scrollBy;
+    afterEach(() => {
+      HTMLElement.prototype.scrollBy = originalScrollBy;
+    });
     const renderScene = (simpleMode: boolean, currentBlockIndex: number) => {
       stubFetch();
+      HTMLElement.prototype.scrollBy = vi.fn() as unknown as typeof HTMLElement.prototype.scrollBy;
       // jsdom nie liczy układu - kontener sceny z wymiarami telefonu, żeby scena się wyrenderowała.
       vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
       render(<CoursePlayer courseId="course-1" initial={sceneCourse(simpleMode, currentBlockIndex)} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);

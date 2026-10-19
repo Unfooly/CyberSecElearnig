@@ -1106,7 +1106,9 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     await screen.findByText('Domena jest podróbką.');
     expect(screen.getByText(/Wynik: 50%/)).toBeInTheDocument();
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
-    expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
+    // B-095: notatka z odpowiedzi serwera trafia do notatnika w osobnym renderze - na wolniejszym runnerze CI przycisk miał jeszcze
+    // „Notatnik (0)” (3 wystąpienia), więc czekamy na licznik zamiast sprawdzać go od razu.
+    expect(await screen.findByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
     expect(screen.getByTestId('hint-bar')).toHaveTextContent('Uważaj, coś tu nie gra.'); // zła odpowiedź
 
     // Dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem (pierwszy w DOM).

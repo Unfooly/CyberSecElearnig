@@ -32,7 +32,7 @@ describe('GET /api/users/me/display-name', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('woła apps/api z tokenem i przepuszcza WYŁĄCZNIE firstName/lastInitial/lastName (nadmiarowe pola odcięte)', async () => {
+  it('woła apps/api z tokenem i przepuszcza WYŁĄCZNIE firstName/lastInitial (nadmiarowe pola odcięte)', async () => {
     mockCookie('access-token-value');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -49,14 +49,14 @@ describe('GET /api/users/me/display-name', () => {
     );
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
-    expect(await response.json()).toEqual({ firstName: 'Anna', lastInitial: 'K', lastName: 'Kowalska' });
+    expect(await response.json()).toEqual({ firstName: 'Anna', lastInitial: 'K' });
   });
 
-  it('brak imienia w profilu: null we wszystkich polach', async () => {
+  it('brak imienia w profilu: null w obu polach', async () => {
     mockCookie('access-token-value');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ firstName: null, lastInitial: '' }) }));
 
-    expect(await (await GET()).json()).toEqual({ firstName: null, lastInitial: null, lastName: null });
+    expect(await (await GET()).json()).toEqual({ firstName: null, lastInitial: null });
   });
 
   it('błąd z apps/api przechodzi ze statusem (np. 403 dla organizacji PENDING)', async () => {

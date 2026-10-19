@@ -1633,16 +1633,56 @@ try {
         if (brokenClosing.length > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) grafika raportu zamknięcia nie załadowana: ${describeBroken(brokenClosing)}`);
         await noteEvidence();
       }
-      // (m9) każdy klucz dowodu: największy rozmiar ze sceny i zbliżeń ≥ 15 px.
+      // (m11) ekran zamknięcia w pionie (poprawki m3): liścik i pieczęć nie zasłaniają zasad (slot wniosków - zasady wpalone w grafikę
+      // raportu leżą w nim) ani podpisu. Prostokąty obrazów z object-contain liczone z naturalnych proporcji obrazu w slocie.
+      if (viewport.isMobile && viewport.height > viewport.width && closingSummary?.closing?.portrait) {
+        const portraitSlots = closingSummary.closing.portrait.slots;
+        // Ekran zamknięcia otwiera wyżej tylko m9 (390×844) - na innych telefonach wchodzimy tu sami.
+        if (!evidencePhone) {
+          await page.goto(`${WEB}/dev/player-harness?module=${MODULE_SLUG}&block=${encodeURIComponent(closingSummary.id)}&completed=1`);
+          await page.getByTestId('case-closed-scene').waitFor({ timeout: 30000 });
+        }
+        await page.waitForFunction(() => ['closing-note', 'closing-stamp'].every((id) => document.querySelector(`[data-testid="${id}"]`)?.complete), null, { timeout: 30000 });
+        const overlap = await page.evaluate(({ lessons, signature }) => {
+          const box = document.querySelector('[data-testid="closing-box"]')?.getBoundingClientRect() ?? document.querySelector('[data-testid="case-closed-scene"]')?.getBoundingClientRect();
+          if (!box) return { error: 'brak ramki raportu' };
+          const pct = (slot) => ({ left: box.left + (slot.x / 100) * box.width, top: box.top + (slot.y / 100) * box.height, right: box.left + ((slot.x + slot.w) / 100) * box.width, bottom: box.top + ((slot.y + slot.h) / 100) * box.height });
+          const contained = (img) => {
+            const r = img.getBoundingClientRect();
+            const ratio = img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : r.width / r.height;
+            const width = Math.min(r.width, r.height * ratio), height = width / ratio;
+            return { left: r.left + (r.width - width) / 2, top: r.top + (r.height - height) / 2, right: r.left + (r.width + width) / 2, bottom: r.top + (r.height + height) / 2, width };
+          };
+          const hit = (a, b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+          const areas = { zasady: pct(lessons), podpis: pct(signature) };
+          return Object.fromEntries(
+            ['closing-note', 'closing-stamp'].map((id) => {
+              const img = document.querySelector(`[data-testid="${id}"]`);
+              if (!img) return [id, { missing: true }];
+              const rect = contained(img);
+              return [id, { width: Math.round(rect.width), covers: Object.entries(areas).filter(([, area]) => hit(rect, area)).map(([name]) => name) }];
+            }),
+          );
+        }, { lessons: portraitSlots.lessons, signature: portraitSlots.signature });
+        const label = `${viewport.name} / moduł ${MODULE_SLUG} / zamknięcie`;
+        if (overlap.error) fail(`${label}: (m11) ${overlap.error}.`);
+        else {
+          const bad = Object.entries(overlap).filter(([, info]) => info.missing || info.covers.length > 0);
+          if (bad.length > 0) fail(`${label}: (m11) liścik/pieczęć zasłaniają zasady albo podpis: ${JSON.stringify(Object.fromEntries(bad))}.`);
+          else step(`${label}: (m11) liścik i pieczęć bez zasłaniania zasad i podpisu (szerokość: ${Object.entries(overlap).map(([id, info]) => `${id} ${info.width} px`).join(', ')})`, true);
+        }
+      }
+      // (m9) każdy klucz dowodu: największy rozmiar ze sceny i zbliżeń ≥ 15 px; w kursie w trybie prostym ≥ 16 px (D-132, poprawki m3).
       if (evidencePhone) {
-        const small = [...evidenceBest].filter(([, best]) => best.px < 15 - 0.05);
-        for (const [key, best] of small) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodu „${key}” ma najwyżej ${best.px.toFixed(1)} px (${best.src}) - minimum 15 px w scenie albo w zbliżeniu.`);
+        const evidenceMin = moduleJson.simpleMode ? 16 : 15;
+        const small = [...evidenceBest].filter(([, best]) => best.px < evidenceMin - 0.05);
+        for (const [key, best] of small) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodu „${key}” ma najwyżej ${best.px.toFixed(1)} px (${best.src}) - minimum ${evidenceMin} px w scenie albo w zbliżeniu.`);
         const unseen = [...expectedEvidenceKeys(MODULE_SLUG)].filter((key) => !evidenceBest.has(key));
         if (unseen.length > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) klucze dowodów bez pomiaru (grafika niepokazana na telefonie albo niepobrana): ${unseen.join(', ')}`);
         if (evidenceFailed.size > 0) fail(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) nie udało się pobrać SVG do pomiaru: ${[...evidenceFailed].join(', ')}`);
         if (small.length === 0 && unseen.length === 0 && evidenceFailed.size === 0) {
           const list = [...evidenceBest].map(([key, best]) => `${key} ${best.px.toFixed(1)}`).join(', ');
-          step(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodów ≥ 15 px: ${evidenceBest.size > 0 ? list : 'brak oznaczonych'}`, true);
+          step(`${viewport.name} / moduł ${MODULE_SLUG}: (m9) tekst dowodów ≥ ${evidenceMin} px: ${evidenceBest.size > 0 ? list : 'brak oznaczonych'}`, true);
         }
       }
       // (m6) raport zamknięcia: wnioski zawijają się w slocie i nie są ucięte (poziomo i w pionie), czcionka nie mniejsza niż dolny limit.

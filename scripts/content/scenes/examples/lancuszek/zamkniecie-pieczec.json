@@ -1,14 +1,15 @@
 {
- "width": 600,
+ "width": 420,
  "height": 260,
  "background": {
   "flat": true,
   "wall": "none"
  },
+ "phoneWidth": 149,
+ "minTextPx": 16,
  "strings": {
   "pl": {
-   "pieczec": "SPRAWA ZAMKNIĘTA",
-   "wydzial": "Wydział Cyberbezpieczeństwa"
+   "pieczec": "SPRAWA ZAMKNIĘTA"
   }
  },
  "items": [
@@ -17,9 +18,10 @@
    "prop": "closedStamp",
    "x": 0,
    "y": 0,
+   "evidence": "pieczec",
    "params": {
-    "text": { "$t": "pieczec" },
-    "sub": { "$t": "wydzial" }
+    "layout": "compact",
+    "text": { "$t": "pieczec" }
    }
   }
  ]

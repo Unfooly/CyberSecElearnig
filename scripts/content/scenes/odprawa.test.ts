@@ -326,4 +326,36 @@ describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, modu�
     };
     expect(() => composeScene(spec, { locale: 'pl', name: 'test' })).toThrow(/nie pochodzi ze "strings" \(.*Cyberbezpiecze/i);
   });
+
+  // Poprawki m3: liścik i pieczęć w slotach raportu - kontrola rozmiaru tekstu z rzeczywistej szerokości na telefonie (`phoneWidth`) i
+  // minimum trybu prostego (`minTextPx`); układy „compact”/„wide” tylko z dopasowaniem tekstu.
+  const stamp = (phoneWidth: number, extra: Partial<SceneSpec> = {}): SceneSpec => ({
+    width: 420, height: 260, background: { flat: true, wall: 'none' }, phoneWidth, minTextPx: 16, strings: { pl: { pieczec: 'SPRAWA ZAMKNIĘTA' } },
+    items: [{ id: 'pieczec', prop: 'closedStamp', x: 0, y: 0, params: { layout: 'compact', text: { $t: 'pieczec' } } }],
+    ...extra,
+  });
+
+  it('pieczęć „compact”: sam napis (bez dopisku wydziału) mieści się z 16 px przy szerokości slotu; za wąski slot - błąd builda', () => {
+    const { svg } = composeScene(stamp(149), { locale: 'pl', name: 'test' });
+    expect(svg).toContain('<svg');
+    expect(() => composeScene(stamp(80), { locale: 'pl', name: 'test' })).toThrow(/slot "text"/);
+  });
+
+  it('liścik „wide”: zdanie zawijane w liścik, przy wąskim slocie błąd builda z nazwą slotu', () => {
+    const note = (phoneWidth: number): SceneSpec => ({
+      width: 320, height: 140, background: { flat: true, wall: 'none' }, phoneWidth, minTextPx: 16,
+      strings: { pl: { liscik: ['Łańcuszek przerwany.'], podpis: '— A.W.' } },
+      items: [{ id: 'liscik', prop: 'commissionerNote', x: 0, y: 0, params: { layout: 'wide', lines: { $t: 'liscik' }, sign: { $t: 'podpis' } } }],
+    });
+    expect(() => composeScene(note(230), { locale: 'pl', name: 'test' })).not.toThrow();
+    expect(() => composeScene(note(120), { locale: 'pl', name: 'test' })).toThrow(/slot "(lines|sign)"/);
+  });
+
+  it('„compact”/„wide” bez strings (moduły 1-2) - błąd; phoneWidth/minTextPx poza zakresem albo razem z "phone" - błąd walidacji', () => {
+    expect(() => composeScene({ width: 420, height: 260, items: [{ id: 'p', prop: 'closedStamp', x: 0, y: 0, params: { layout: 'compact' } }] })).toThrow(/compact/);
+    expect(() => composeScene({ width: 320, height: 140, items: [{ id: 'n', prop: 'commissionerNote', x: 0, y: 0, params: { layout: 'wide' } }] })).toThrow(/wide/);
+    expect(() => composeScene(stamp(500), { locale: 'pl' })).toThrow(/phoneWidth/);
+    expect(() => composeScene(stamp(149, { phone: 'contain' }), { locale: 'pl' })).toThrow(/wykluczają się/);
+    expect(() => composeScene(stamp(149, { minTextPx: 30 }), { locale: 'pl' })).toThrow(/minTextPx/);
+  });
 });

@@ -1,13 +1,15 @@
 {
- "width": 260,
- "height": 240,
+ "width": 320,
+ "height": 140,
  "background": {
   "flat": true,
   "wall": "none"
  },
+ "phoneWidth": 230,
+ "minTextPx": 16,
  "strings": {
   "pl": {
-   "liscik": ["Łańcuszek", "przerwany.", "Dobra robota,", "detektywie."],
+   "liscik": ["Łańcuszek przerwany."],
    "podpis": "— A.W."
   }
  },
@@ -17,7 +19,9 @@
    "prop": "commissionerNote",
    "x": 0,
    "y": 0,
+   "evidence": "liscik",
    "params": {
+    "layout": "wide",
     "lines": { "$t": "liscik" },
     "sign": { "$t": "podpis" }
    }

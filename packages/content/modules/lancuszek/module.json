@@ -386,11 +386,11 @@
       "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi na znany numer. Kasia zmieniła hasło i odzyskała konto - łańcuszek się urwał.\n\n**Trzy zasady**\n\n1. Dziwna prośba od znajomego? Zadzwoń na znany numer.\n2. Kodu z SMS-a nie podajesz nikomu.\n3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
       "closing": {
         "image": "assets/lancuszek/scenes/pl/zamkniecie-raport.1a95b831.svg",
-        "stamp": "assets/lancuszek/scenes/pl/zamkniecie-pieczec.5f3d06cf.svg",
-        "note": "assets/lancuszek/scenes/pl/zamkniecie-liscik.af13eb43.svg",
+        "stamp": "assets/lancuszek/scenes/pl/zamkniecie-pieczec.eb11c289.svg",
+        "note": "assets/lancuszek/scenes/pl/zamkniecie-liscik.b2287827.svg",
         "alt": "Raport końcowy w teczce, sprawa LAN/2026/1013 „Łańcuszek”. Trzy zasady: 1. Dziwna prośba od znajomego? Zadzwoń na znany numer. 2. Kodu z SMS-a nie podajesz nikomu. 3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
-        "stampAlt": "Pieczęć: SPRAWA ZAMKNIĘTA, Wydział Cyberbezpieczeństwa.",
-        "noteAlt": "Liścik komisarza: Łańcuszek przerwany. Dobra robota, detektywie. — A.W.",
+        "stampAlt": "Pieczęć: SPRAWA ZAMKNIĘTA.",
+        "noteAlt": "Liścik komisarza: Łańcuszek przerwany. — A.W.",
         "slots": {
           "evidence": {
             "x": 8.8,
@@ -423,16 +423,16 @@
             "h": 6.1
           },
           "stamp": {
-            "x": 55.5,
-            "y": 69.6,
-            "w": 34.4,
-            "h": 22
+            "x": 58.3,
+            "y": 54.9,
+            "w": 28.9,
+            "h": 31.8
           },
           "note": {
-            "x": 81.6,
-            "y": 24.3,
-            "w": 11.7,
-            "h": 19.3
+            "x": 54.1,
+            "y": 19.4,
+            "w": 37.1,
+            "h": 28.8
           }
         },
         "portrait": {
@@ -469,16 +469,16 @@
               "h": 4
             },
             "stamp": {
-              "x": 58,
-              "y": 84.5,
-              "w": 35.6,
-              "h": 10.6
+              "x": 42,
+              "y": 80.8,
+              "w": 48.9,
+              "h": 17
             },
             "note": {
-              "x": 62.4,
-              "y": 67.8,
-              "w": 27.8,
-              "h": 15
+              "x": 6.9,
+              "y": 62.3,
+              "w": 75.6,
+              "h": 18.6
             }
           }
         }

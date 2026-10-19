@@ -854,6 +854,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-152 `scripts/e2e-registration.mjs` - nieaktualna sekcja zrzutów odtwarzacza (`data-testid="caption"`)
+- Etykiety: `P3`, `test`, `mod:kursy` · Źródło: poprawki m3 (D-145), przebieg w przeglądarce pl-PL 2026-10-19
+- Opis: cała ścieżka rejestracji przechodzi (formularz → hasło → DNS → panel → ustawienia → odtwarzacz z nonce), ale końcowa sekcja zrzutów
+  czeka na `getByTestId('caption')`, którego odtwarzacz nie ma od ramki 16:9 (`6bbf35a`), i na `section[aria-label="Narracja"]` - skrypt
+  nie jest w CI, więc zestarzał się niezauważony. Przy okazji naprawiony w D-145: `getByRole('switch')` trafiał w dwa przełączniki
+  (doszedł ranking organizacji) - teraz po nazwie „Pozwól pracownikom dołączać”.
+- Akceptacja: sekcja zrzutów na bieżących elementach paska lektora (np. `player-bottombar` i przycisk odtwarzania narracji), cały skrypt
+  zielony lokalnie (`npx dotenv -e .env -- node scripts/e2e-registration.mjs` po `next build`).
+
 ### B-151 `scripts/e2e-module-01.mjs` - blok 8 (TEXT_INPUT_GUIDED) raz z nieaktywnym „Sprawdź” na buildzie produkcyjnym
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: weryfikacja #131 na buildzie produkcyjnym (`E2E_WEB_MODE=start`, 2026-10-16)
 - Opis: pierwszy przebieg m1 na desktopie (1280x720) utknął na „Ostatnie pytanie”: `fill` domeny wykonany, a przycisk „Sprawdź” został

@@ -110,6 +110,8 @@ export interface FitBox {
   maxLines?: number;
   bold?: boolean;
   family?: FontFamily;
+  /** letter-spacing w jednostkach klocka (stały przy zmniejszaniu czcionki; wchodzi w szerokość linii jak w przeglądarce). */
+  spacing?: number;
   fill: string;
   /** Do komunikatu błędu: scena, element, język. */
   where: string;
@@ -173,7 +175,7 @@ export function fitText(value: string | string[], box: FitBox): string {
     throw new TextFitError(`${box.where}, slot "${box.slot}": rozmiar ${box.size} poniżej minimum ${floor.toFixed(1)} (w jednostkach klocka) - powiększ tekst albo slot`);
   }
   for (let size = box.size; size >= floor - 1e-9; size = Math.round((size - FIT_STEP) * 100) / 100) {
-    const style: TextStyle = { size, bold: box.bold, family: box.family, anchor: box.align ?? 'start' };
+    const style: TextStyle = { size, bold: box.bold, family: box.family, anchor: box.align ?? 'start', ...(box.spacing ? { spacing: box.spacing } : {}) };
     const lines = wrap(paragraphs, style, box.w);
     if (!lines) continue;
     if (box.maxLines !== undefined && lines.length > box.maxLines) continue;
@@ -193,6 +195,7 @@ export function fitText(value: string | string[], box: FitBox): string {
           ...(box.bold ? ['font-weight="bold"'] : []),
           ...(box.align && box.align !== 'start' ? [`text-anchor="${box.align}"`] : []),
           ...(box.family === 'hand' ? ['font-family="Caveat"'] : []),
+          ...(box.spacing ? [`letter-spacing="${box.spacing}"`] : []),
         ];
         return `<text ${attrs.join(' ')}>${escText(line)}</text>`;
       })

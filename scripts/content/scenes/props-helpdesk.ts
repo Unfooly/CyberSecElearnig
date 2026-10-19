@@ -4,6 +4,7 @@
  * Dozwolone w klocku: cyfry i numery zamaskowane (12 3XX XX 41, 214), bo nie zależą od języka.
  */
 import { P } from './palette.js';
+import { fitBanner, fitPill, trophyFitMode } from './trophy-labels.js';
 import type { PropFn } from './types.js';
 
 const esc = (s: unknown) =>
@@ -227,8 +228,34 @@ export const RANK = {
   secret: { fill: '#C2417A', dark: '#7A2150' },
 } as const;
 
-export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'full-transcript' | 'off-the-record'; locked?: boolean }> = ({ kind = 'dead-air', locked = false }) => {
+/**
+ * Napisy z parametrów (wersje językowe przez `strings` sceny): `name` (wstęga), `rank` (pigułka rangi), `lockedLabel` (wstęga
+ * zablokowanego). Domyślnie dotychczasowe napisy EN; w scenie ze `strings` - dopasowanie (`trophy-labels.ts`). „???”, „7/7” i cudzysłów
+ * na kartce są neutralne językowo i zostają w klocku.
+ */
+export interface TrophyHelpdeskParams {
+  kind?: 'dead-air' | 'perfect-pitch' | 'full-transcript' | 'off-the-record';
+  locked?: boolean;
+  name?: string;
+  rank?: string;
+  lockedLabel?: string;
+}
+const TROPHY_HELPDESK_EN = {
+  'dead-air': { name: 'DEAD AIR', rank: 'RARE', lockedLabel: 'LOCKED' },
+  'perfect-pitch': { name: 'PERFECT PITCH', rank: 'RARE', lockedLabel: 'LOCKED' },
+  'full-transcript': { name: 'FULL TRANSCRIPT', rank: 'LEGENDARY', lockedLabel: 'LOCKED' },
+  'off-the-record': { name: 'OFF THE RECORD', rank: 'SECRET', lockedLabel: 'SECRET' },
+} as const;
+
+export const trophyHelpdesk: PropFn<TrophyHelpdeskParams> = (params, context) => {
+  const { kind = 'dead-air', locked = false } = params;
   const w = 512, h = 512, cx = 256, cy = 236;
+  const en = TROPHY_HELPDESK_EN[kind];
+  const name = params.name ?? en.name, rank = params.rank ?? en.rank, lockedLabel = params.lockedLabel ?? en.lockedLabel;
+  const fit = trophyFitMode(context);
+  const ribbon = (y: number, bw: number, label: string, fill: string, dark: string, size = 24) =>
+    fit ? fitBanner(context, locked ? 'lockedLabel' : 'name', cx, y, bw, 420, label, fill, dark, size) : banner(cx, y, bw, label, fill, dark, size);
+  const rankPill = (y: number, pw: number, fill: string) => (fit ? fitPill(context, 'rank', cx, y, pw, 300, rank, fill) : pill(cx, y, pw, rank, fill));
   const defs =
     `<defs>` +
     `<linearGradient id="h-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset="0.45" stop-color="#F2C94C"/><stop offset="0.7" stop-color="#C9962B"/><stop offset="1" stop-color="#FFE38A"/></linearGradient>` +
@@ -255,7 +282,7 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
       svg: defs + `<g opacity="0.9">${shape}</g>` +
         `<rect x="${cx - 44}" y="${cy - 6}" width="88" height="72" rx="12" fill="#6F6A8A"/><path d="M${cx - 27} ${cy - 6} v-22 a27 27 0 0 1 54 0 v22" fill="none" stroke="#6F6A8A" stroke-width="14"/>` +
         (kind === 'off-the-record' ? t(cx, cy + 128, '???', 40, { anchor: 'middle', bold: true, fill: '#8C87A8', spacing: 8 }) : '') +
-        banner(cx, 420, 300, kind === 'off-the-record' ? 'SECRET' : 'LOCKED', '#6F6A8A', '#4A4466', 24),
+        ribbon(420, 300, lockedLabel, '#6F6A8A', '#4A4466', 24),
     };
   }
 
@@ -266,7 +293,7 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
     Array.from({ length: 8 }, (_, i) => `<path d="M${cx} ${cy} L${cx + 260 * Math.cos(i * Math.PI / 4)} ${cy + 260 * Math.sin(i * Math.PI / 4)} L${cx + 260 * Math.cos(i * Math.PI / 4 + 0.22)} ${cy + 260 * Math.sin(i * Math.PI / 4 + 0.22)} Z" fill="${P.white}" opacity="0.06"/>`).join('') +
     inner +
     `<rect x="${cx - 160}" y="${cy - 160}" width="80" height="320" fill="url(#h-shine)" transform="rotate(20 ${cx} ${cy})" opacity="0.5"/></g>` +
-    pill(cx, cy - 214, 110, 'RARE', RANK.rare.fill);
+    rankPill(cy - 214, 110, RANK.rare.fill);
 
   if (kind === 'dead-air') {
     // Rozłączona słuchawka nad płaską linią — cisza w eterze
@@ -275,7 +302,7 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
       `<path d="M${cx - 150} ${cy + 70} H${cx + 150}" fill="none" stroke="${P.white}" stroke-width="6" stroke-linecap="round"/>` +
       `<g transform="translate(${cx} ${cy - 30})"><circle r="74" fill="${P.red}"/>${handset(96, P.white, 135)}</g>` +
       [0, 1].map(i => `<path d="M${cx + 100 + i * 20} ${cy - 70} q16 40 0 80" fill="none" stroke="${P.white}" stroke-width="6" stroke-linecap="round" opacity="${0.5 - i * 0.2}"/>`).join('');
-    return { w, h, svg: defs + halo + rareFrame(inner) + sparkle(cx + 150, cy - 130, 14) + sparkle(cx - 150, cy - 100, 10) + banner(cx, 426, 280, 'DEAD AIR', RANK.rare.fill, RANK.rare.dark) };
+    return { w, h, svg: defs + halo + rareFrame(inner) + sparkle(cx + 150, cy - 130, 14) + sparkle(cx - 150, cy - 100, 10) + ribbon(426, 280, name, RANK.rare.fill, RANK.rare.dark) };
   }
 
   if (kind === 'perfect-pitch') {
@@ -285,7 +312,7 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
     const x0 = cx - 120, dx = 20;
     const wave = amps.map((a, i) => `<rect x="${x0 + i * dx - 5}" y="${cy + 14 - a}" width="10" height="${a * 2}" rx="5" fill="${P.white}" opacity="${peaks.includes(i) ? 1 : 0.55}"/>`).join('');
     const flags = peaks.map(i => { const x = x0 + i * dx, y = cy + 14 - amps[i] - 8; return `<path d="M${x} ${y} v-34" stroke="${P.white}" stroke-width="3"/><path d="M${x} ${y - 34} h20 l-6 8 l6 8 h-20 z" fill="${P.red}"/>`; }).join('');
-    return { w, h, svg: defs + halo + rareFrame(wave + flags + t(cx, cy + 122, '7/7', 30, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 })) + sparkle(cx + 150, cy - 130, 14) + sparkle(cx - 146, cy + 60, 10) + banner(cx, 426, 360, 'PERFECT PITCH', RANK.rare.fill, RANK.rare.dark) };
+    return { w, h, svg: defs + halo + rareFrame(wave + flags + t(cx, cy + 122, '7/7', 30, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 })) + sparkle(cx + 150, cy - 130, 14) + sparkle(cx - 146, cy + 60, 10) + ribbon(426, 360, name, RANK.rare.fill, RANK.rare.dark) };
   }
 
   if (kind === 'full-transcript') {
@@ -303,8 +330,8 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
         `<g clip-path="url(#h-sh)"><rect x="${cx - 160}" y="${cy - 170}" width="320" height="360" fill="url(#h-enamel)"/>${page}` +
         `<rect x="${cx - 160}" y="${cy - 170}" width="80" height="360" fill="url(#h-shine)" transform="rotate(20 ${cx} ${cy})" opacity="0.5"/></g>` +
         sparkle(cx + 118, cy - 150, 16, '#FFF1A8') + sparkle(cx - 128, cy - 118, 12, '#FFF1A8') +
-        pill(cx, cy - 234, 192, 'LEGENDARY', RANK.legendary.fill) +
-        banner(cx, 426, 400, 'FULL TRANSCRIPT', RANK.legendary.fill, RANK.legendary.dark, 22),
+        rankPill(cy - 234, 192, RANK.legendary.fill) +
+        ribbon(426, 400, name, RANK.legendary.fill, RANK.legendary.dark, 22),
     };
   }
 
@@ -327,8 +354,8 @@ export const trophyHelpdesk: PropFn<{ kind?: 'dead-air' | 'perfect-pitch' | 'ful
       [-22, 0, 22].map(x => `<circle cx="${x}" cy="-2" r="6" fill="#C2417A"/>`).join('') + `</g>` +
       `<rect x="${cx - 170}" y="${cy - 170}" width="90" height="340" fill="url(#h-shine)" transform="rotate(18 ${cx} ${cy})" opacity="0.5"/></g>` +
       sparkle(cx + 132, cy + 40, 12, '#FFD36E') + sparkle(cx - 140, cy + 70, 10) +
-      pill(cx, cy - 214, 120, 'SECRET', RANK.secret.fill) +
-      banner(cx, 420, 380, 'OFF THE RECORD', RANK.secret.fill, RANK.secret.dark, 22),
+      rankPill(cy - 214, 120, RANK.secret.fill) +
+      ribbon(420, 380, name, RANK.secret.fill, RANK.secret.dark, 22),
   };
 };
 

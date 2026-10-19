@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeScene, composeSceneLocales, SCENE_LOCALES, sceneLocales } from './compose.js';
+import { composeScene, composeSceneLocales, MIN_TEXT_PX, phoneScale, SCENE_LOCALES, sceneLocales } from './compose.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
@@ -172,7 +172,7 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(Object.keys(PROPS).length).toBe(25 + groupNames.length);
   });
 
-  it('trophyBadge: wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {
+  it('trophyBadge bez "strings" (domyślne parametry): wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {
     const svg = (kind: 'curious' | 'perfect' | 'first', locked: boolean) => PROPS.trophyBadge({ kind, locked }).svg as string;
     expect(svg('curious', true)).toContain('???');
     expect(svg('curious', true)).not.toContain('CURIOUS DETECTIVE');
@@ -181,6 +181,56 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(svg('curious', false)).toContain('CURIOUS DETECTIVE');
     expect(svg('perfect', false)).toContain('LEGENDARY');
     expect(svg('first', false)).toContain('FIRST CASE CLOSED');
+  });
+
+  // Trofea w wersjach językowych (strings sceny, jak D-135): napisy klocka PRZED zamianą na krzywe, w trybie dopasowania z minimum sceny.
+  const trophyTexts = (name: string, locale: SceneLocale) => {
+    const spec = specOf({ target: 'achievements', name });
+    const item = spec.items[0];
+    const table = spec.strings![locale]!;
+    const params = Object.fromEntries(
+      Object.entries(item.params ?? {}).map(([key, value]) => [key, value && typeof value === 'object' && '$t' in value ? table[(value as { $t: string }).$t] : value]),
+    );
+    const svg = PROPS[item.prop](params, { minFontSize: MIN_TEXT_PX / phoneScale(spec), where: name }).svg as string;
+    return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1].replace(/&amp;/g, '&'));
+  };
+
+  it.each(SCENE_LOCALES.map((locale) => [locale] as const))('trofea (%s): każda scena osiągnięcia ma oba języki; zdobyte - nazwa i ranga z "strings", zablokowane bez nazwy (tajne: „???”)', (locale) => {
+    const expected = {
+      pl: {
+        'osiagniecie-pierwsza-sprawa': ['ZAMKNIĘTA', 'SPRAWA', '№ 1', 'PIERWSZA SPRAWA'],
+        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARNE', 'PERFEKCYJNE ŚLEDZTWO'],
+        'osiagniecie-ciekawski-detektyw': ['?', 'TAJNE', 'CIEKAWSKI DETEKTYW'],
+        'osiagniecie-cisza-na-linii': ['RZADKIE', 'CISZA NA LINII'],
+        'osiagniecie-czysty-odsluch': ['7/7', 'RZADKIE', 'CZYSTY ODSŁUCH'],
+        'osiagniecie-pelny-zapis': ['“', 'LEGENDARNE', 'PEŁNY ZAPIS'],
+        'osiagniecie-off-the-record': ['TAJNE', 'POZA PROTOKOŁEM'],
+        'osiagniecie-tajne-zablokowane': ['???', 'TAJNE'],
+        'osiagniecie-pierwsza-sprawa-zablokowane': ['ZABLOKOWANE'],
+      },
+      en: {
+        'osiagniecie-pierwsza-sprawa': ['CLOSED', 'CASE', '№ 1', 'FIRST CASE CLOSED'],
+        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARY', 'FLAWLESS CASE'],
+        'osiagniecie-ciekawski-detektyw': ['?', 'SECRET', 'CURIOUS DETECTIVE'],
+        'osiagniecie-cisza-na-linii': ['RARE', 'DEAD AIR'],
+        'osiagniecie-czysty-odsluch': ['7/7', 'RARE', 'PERFECT PITCH'],
+        'osiagniecie-pelny-zapis': ['“', 'LEGENDARY', 'FULL TRANSCRIPT'],
+        'osiagniecie-off-the-record': ['SECRET', 'OFF THE RECORD'],
+        'osiagniecie-tajne-zablokowane': ['???', 'SECRET'],
+        'osiagniecie-pierwsza-sprawa-zablokowane': ['LOCKED'],
+      },
+    }[locale];
+    for (const [name, texts] of Object.entries(expected)) expect(trophyTexts(name, locale), name).toEqual(texts);
+    const achievementSources = sources.filter((s) => s.target === 'achievements');
+    for (const source of achievementSources) {
+      expect(sceneLocales(specOf(source)), source.name).toEqual([...SCENE_LOCALES]);
+      if (!source.name.endsWith('-zablokowane')) continue;
+      // Zablokowana nie zawiera nazwy zdobytej (tajne zablokowane - wspólna grafika, bez pary).
+      const earned = sources.find((s) => s.target === 'achievements' && s.name === source.name.replace(/-zablokowane$/, ''));
+      const earnedName = earned ? (specOf(earned).strings![locale]!.name as string) : undefined;
+      if (earnedName) expect(trophyTexts(source.name, locale).join(' '), source.name).not.toContain(earnedName);
+      expect(trophyTexts(source.name, locale).length, source.name).toBeLessThanOrEqual(2);
+    }
   });
 
   it('D-104: reportPortrait (jeszcze bez sceny w module) renderuje się z domyślnymi parametrami i ma wszystkie sloty raportu', () => {

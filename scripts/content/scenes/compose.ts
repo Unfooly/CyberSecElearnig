@@ -32,10 +32,16 @@ export const FIT_PARAMS: Record<string, string[]> = {
   reportPortrait: ['caseNo', 'title', 'labels', 'bags'],
   closedStamp: ['text', 'sub'],
   commissionerNote: ['lines', 'sign'],
+  // Trofea osiągnięć: wstęga, pigułka rangi i etykiety medalu dopasowywane w scenie ze `strings` (trophy-labels.ts).
+  trophyBadge: ['name', 'rank', 'lockedLabel', 'caseLabel', 'stampLabel'],
+  trophyHelpdesk: ['name', 'rank', 'lockedLabel'],
 };
 
-/** Tekst, który nie musi pochodzić ze `strings`: same cyfry i znaki liczb/maski (godzina, kwota, „12 3XX XX 41”). */
-const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX]*$/;
+/**
+ * Tekst, który nie musi pochodzić ze `strings`: same cyfry i znaki liczb/maski (godzina, kwota, „12 3XX XX 41”) oraz samodzielne
+ * znaki bez języka: znak zapytania („???” tajnego trofeum, „?” na lupie), znak numeru („№ 1”) i cudzysłowy jako ozdobny glif.
+ */
+const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX?№“”„]*$/;
 
 /** Skala sceny na telefonie (px ekranu na jednostkę sceny). */
 export function phoneScale(spec: SceneSpec): number {

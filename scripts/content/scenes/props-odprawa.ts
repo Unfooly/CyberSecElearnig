@@ -494,7 +494,7 @@ const closedStampWide = (tx: string, sub: string, context?: PropContext) => ({
  * Liścik paskowy (poprawki m3, `layout: "banner"`, tylko w scenie ze `strings`): jedno krótkie zdanie (wiersze `lines` łączone i zawijane
  * przez `fitText`) i podpis pod nim - niski kształt 320×140 mieści się pod podpisem raportu w pionie z tekstem min. 16 px na telefonie.
  */
-const wideNote = (lines: string[], sign: string, context: PropContext) => ({
+const bannerNote = (lines: string[], sign: string, context: PropContext) => ({
   w: 320, h: 140,
   svg:
     `<g class="a-flutter"><rect x="8" y="10" width="310" height="128" fill="${P.ink}" opacity="0.15"/><rect width="310" height="128" fill="${P.yellow}"/>` +
@@ -510,7 +510,7 @@ export const commissionerNote: PropFn<{ lines?: string[]; sign?: string; layout?
 ) => {
   if (layout === 'banner') {
     if (!fitMode(context)) throw new Error('commissionerNote: layout "banner" tylko w scenie ze "strings" (dopasowanie tekstu)');
-    return wideNote(lines, sign, context);
+    return bannerNote(lines, sign, context);
   }
   return squareNote(lines, sign, context);
 };

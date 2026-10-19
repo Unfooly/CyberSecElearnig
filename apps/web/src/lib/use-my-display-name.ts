@@ -10,8 +10,6 @@ import { useEffect, useState } from 'react';
 export interface DisplayName {
   firstName: string | null;
   lastInitial: string | null;
-  /** Pełne nazwisko WŁASNEGO konta - tylko podpis raportu (reportSigner, D-145); legitymacja zostaje z inicjałem. */
-  lastName?: string | null;
 }
 
 export interface PlayerIdentity {
@@ -47,16 +45,6 @@ export function playerIdentity(fromProfile: DisplayName | null, email: string | 
   };
 }
 
-/** Podpis raportu na ekranie zamknięcia (D-145): imię i nazwisko → samo imię → część e-maila przed @ → „Pracownik”. */
-export function reportSigner(fromProfile: DisplayName | null, email: string | null): string {
-  const firstName = fromProfile?.firstName?.trim();
-  const lastName = fromProfile?.lastName?.trim();
-  if (firstName && lastName) return `${firstName} ${lastName}`;
-  if (firstName) return firstName;
-  const localPart = email?.split('@')[0]?.trim();
-  return localPart || 'Pracownik';
-}
-
 /** Numer odznaki: ostatnie 4 znaki numeru sprawy (bez separatorów) + inicjały, np. "0412-AK". Liczony tylko w kliencie. */
 export function badgeNumber(caseNo: string | undefined, initials: string): string {
   const tail = (caseNo ?? '').replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase();
@@ -80,7 +68,6 @@ export function useMyDisplayName(userEmail: string | null, enabled: boolean): Di
           setName({
             firstName: typeof data?.firstName === 'string' ? data.firstName : null,
             lastInitial: typeof data?.lastInitial === 'string' ? data.lastInitial : null,
-            lastName: typeof data?.lastName === 'string' ? data.lastName : null,
           });
         }
       } catch {

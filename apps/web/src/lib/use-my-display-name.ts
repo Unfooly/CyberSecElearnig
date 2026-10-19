@@ -45,6 +45,16 @@ export function playerIdentity(fromProfile: DisplayName | null, email: string | 
   };
 }
 
+/**
+ * Podpis raportu na ekranie zamknięcia (poprawki m3, D-081): imię z profilu z inicjałem nazwiska („Jakub P.”, samo imię bez nazwiska),
+ * a bez imienia w profilu - część e-maila przed @ (bez przerabiania), ostatecznie „Pracownik”.
+ */
+export function reportSigner(fromProfile: DisplayName | null, email: string | null): string {
+  const firstName = fromProfile?.firstName?.trim();
+  if (firstName) return fromProfile?.lastInitial ? `${firstName} ${fromProfile.lastInitial}.` : firstName;
+  return email?.split('@')[0]?.trim() || 'Pracownik';
+}
+
 /** Numer odznaki: ostatnie 4 znaki numeru sprawy (bez separatorów) + inicjały, np. "0412-AK". Liczony tylko w kliencie. */
 export function badgeNumber(caseNo: string | undefined, initials: string): string {
   const tail = (caseNo ?? '').replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase();

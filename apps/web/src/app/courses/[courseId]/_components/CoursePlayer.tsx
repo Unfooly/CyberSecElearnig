@@ -17,7 +17,7 @@ import type {
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 import { initialsFromEmail } from '@/lib/avatar';
 import { useMyAvatar } from '@/lib/use-my-avatar';
-import { playerIdentity, useMyDisplayName, type PlayerIdentity } from '@/lib/use-my-display-name';
+import { playerIdentity, reportSigner, useMyDisplayName, type PlayerIdentity } from '@/lib/use-my-display-name';
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
@@ -300,6 +300,8 @@ export default function CoursePlayer({
   const closingBlock = initial.contentBlocks.find((block) => block.type === 'SUMMARY' && block.closing);
   const displayName = useMyDisplayName(userEmail, hasBriefing || !!closingBlock);
   const identity = useMemo(() => playerIdentity(displayName, userEmail), [displayName, userEmail]);
+  // Podpis raportu (poprawki m3): „Imię I.”, a bez imienia w profilu część e-maila przed @, ostatecznie „Pracownik”.
+  const signer = useMemo(() => reportSigner(displayName, userEmail), [displayName, userEmail]);
   // Bieżący krok odprawy per zamontowana instancja bloku ("l-<id>" żywy, "r-<id>" podgląd "Wstecz") - narracja w pasku
   // powłoki idzie za krokiem; gesture = krok zmieniony kliknięciem gracza (wolno wtedy autoodtworzyć jego narrację).
   const [briefingSteps, setBriefingSteps] = useState<Record<string, { index: number; gesture: boolean }>>({});
@@ -744,7 +746,7 @@ export default function CoursePlayer({
         evidence={evidence}
         startedAt={initial.startedAt}
         completedAt={completedAt}
-        signer={identity.label}
+        signer={signer}
         contentBase={contentBase}
         fresh={completedNow}
         nextCourse={nextCourse}

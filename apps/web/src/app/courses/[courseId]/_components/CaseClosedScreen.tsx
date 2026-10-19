@@ -312,7 +312,7 @@ export default function CaseClosedScreen({
   evidence?: EvidenceSummary | null;
   startedAt?: string | null;
   completedAt?: string | null;
-  /** Podpis prowadzącego: imię i inicjał nazwiska gracza (z sesji). */
+  /** Podpis prowadzącego (reportSigner): „Imię I.”, bez imienia w profilu - część e-maila przed @ albo „Pracownik”. */
   signer: string;
   contentBase: string;
   /** Ukończenie w tej sesji (ceremonia z animacją i dźwiękami); false - powrót do ukończonego kursu (stan końcowy od razu). */

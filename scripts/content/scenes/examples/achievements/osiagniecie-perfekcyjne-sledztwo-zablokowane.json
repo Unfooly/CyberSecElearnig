@@ -1,1 +1,12 @@
-{"width": 512, "height": 512, "background": {"flat": true, "wall": "none"}, "items": [{"id": "odznaka", "prop": "trophyBadge", "x": 0, "y": 0, "params": {"kind": "perfect", "locked": true}}]}
+{
+  "width": 512,
+  "height": 512,
+  "background": { "flat": true, "wall": "none" },
+  "strings": {
+    "pl": { "lockedLabel": "ZABLOKOWANE" },
+    "en": { "lockedLabel": "LOCKED" }
+  },
+  "items": [
+    { "id": "odznaka", "prop": "trophyBadge", "x": 0, "y": 0, "params": { "kind": "perfect", "locked": true, "lockedLabel": { "$t": "lockedLabel" } } }
+  ]
+}

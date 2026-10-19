@@ -6,6 +6,7 @@
 import { P } from './palette.js';
 import { registeredProp } from './prop-registry.js';
 import { fitText } from './text.js';
+import { fitBanner, fitCentered, fitPill, trophyFitMode } from './trophy-labels.js';
 import type { PropContext, PropFn } from './types.js';
 
 const esc = (s: unknown) =>
@@ -843,8 +844,37 @@ const sparkle = (x: number, y: number, s: number, c: string = P.white) =>
   `<path d="M${x} ${y - s} q${s * 0.18} ${s * 0.82} ${s} ${s} q${-s * 0.82} ${s * 0.18} ${-s} ${s} q${-s * 0.18} ${-s * 0.82} ${-s} ${-s} q${s * 0.82} ${-s * 0.18} ${s} ${-s} z" fill="${c}"/>`;
 
 // Trofea modułu 2 rysuje `trophyHelpdesk` (props-helpdesk.ts, grafik - paczka 1).
-export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locked?: boolean }> = ({ kind = 'first', locked = false }) => {
+/**
+ * Napisy z parametrów (wersje językowe przez `strings` sceny): `name` (wstęga), `rank` (pigułka rangi: curious, perfect), `lockedLabel`
+ * (wstęga zablokowanego), `caseLabel` i `stampLabel` (medal `first`). Domyślnie dotychczasowe napisy EN; w scenie ze `strings` -
+ * dopasowanie (`trophy-labels.ts`). „???”, „?”, „100%”, „№ 1” są neutralne językowo i zostają w klocku.
+ */
+export interface TrophyBadgeParams {
+  kind?: 'curious' | 'perfect' | 'first';
+  locked?: boolean;
+  name?: string;
+  rank?: string;
+  lockedLabel?: string;
+  caseLabel?: string;
+  stampLabel?: string;
+}
+const TROPHY_BADGE_EN = {
+  curious: { name: 'CURIOUS DETECTIVE', rank: 'SECRET', lockedLabel: 'SECRET' },
+  perfect: { name: 'FLAWLESS CASE', rank: 'LEGENDARY', lockedLabel: 'LOCKED' },
+  first: { name: 'FIRST CASE CLOSED', rank: '', lockedLabel: 'LOCKED' },
+} as const;
+export const trophyBadge: PropFn<TrophyBadgeParams> = (params, context) => {
+  const { kind = 'first', locked = false } = params;
   const w = 512, h = 512, cx = 256, cy = 236;
+  const en = TROPHY_BADGE_EN[kind];
+  const name = params.name ?? en.name, rank = params.rank ?? en.rank, lockedLabel = params.lockedLabel ?? en.lockedLabel;
+  const caseLabel = params.caseLabel ?? 'CASE', stampLabel = params.stampLabel ?? 'CLOSED';
+  const fit = trophyFitMode(context);
+  const ribbon = (y: number, bw: number, label: string, fill: string, dark: string, size: number) =>
+    fit ? fitBanner(context, locked ? 'lockedLabel' : 'name', cx, y, bw, 420, label, fill, dark, size) : banner(cx, y, bw, label, fill, dark, size);
+  const rankPill = (y: number, pw: number, fill: string, size: number) =>
+    fit ? fitPill(context, 'rank', cx, y, pw, 300, rank, fill, size)
+      : `<rect x="${cx - pw / 2}" y="${y}" width="${pw}" height="36" rx="18" fill="${fill}"/>` + t(cx, y + 25, rank, size, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 });
   const defs =
     `<defs>` +
     `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset="0.45" stop-color="#F2C94C"/><stop offset="0.7" stop-color="#C9962B"/><stop offset="1" stop-color="#FFE38A"/></linearGradient>` +
@@ -868,7 +898,7 @@ export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locke
       svg: defs + `<g opacity="0.9">${shape}</g>` +
         `<rect x="${cx - 44}" y="${cy - 6}" width="88" height="72" rx="12" fill="#6F6A8A"/><path d="M${cx - 27} ${cy - 6} v-22 a27 27 0 0 1 54 0 v22" fill="none" stroke="#6F6A8A" stroke-width="14"/>` +
         (kind === 'curious' ? t(cx, cy + 128, '???', 40, { anchor: 'middle', bold: true, fill: '#8C87A8', spacing: 8 }) : '') +
-        banner(cx, 420, 300, kind === 'curious' ? 'SECRET' : 'LOCKED', '#6F6A8A', '#4A4466', 24),
+        ribbon(420, 300, lockedLabel, '#6F6A8A', '#4A4466', 24),
     };
   }
 
@@ -891,8 +921,8 @@ export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locke
         `<g transform="translate(${cx + 20} ${cy - 40})"><circle r="62" fill="${P.white}" fill-opacity="0.18" stroke="${P.white}" stroke-width="16"/>` +
         `<rect x="40" y="40" width="70" height="22" rx="11" transform="rotate(45 40 40)" fill="${P.white}"/>` + t(0, 22, '?', 64, { anchor: 'middle', bold: true, fill: P.white }) + `</g>` +
         sparkle(cx + 130, cy - 120, 18) + sparkle(cx - 140, cy - 90, 12) + sparkle(cx + 150, cy + 40, 10, '#FFD36E') +
-        `<rect x="${cx - 60}" y="${cy - 204}" width="120" height="36" rx="18" fill="#C2417A"/>` + t(cx, cy - 179, 'SECRET', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
-        banner(cx, 420, 340, 'CURIOUS DETECTIVE', '#C2417A', '#7A2150', 24),
+        rankPill(cy - 204, 120, '#C2417A', 20) +
+        ribbon(420, 340, name, '#C2417A', '#7A2150', 24),
     };
   }
 
@@ -919,8 +949,8 @@ export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locke
         `<rect x="${cx - 70}" y="${cy + 78}" width="140" height="56" rx="10" fill="url(#gold)" stroke="#C9962B" stroke-width="3"/>` +
         t(cx, cy + 118, '100%', 36, { anchor: 'middle', bold: true, fill: '#5A3E0B' }) +
         sparkle(cx + 118, cy - 150, 16, '#FFF1A8') + sparkle(cx - 128, cy - 118, 12, '#FFF1A8') + sparkle(cx + 150, cy + 60, 9) +
-        `<rect x="${cx - 96}" y="${cy - 234}" width="192" height="36" rx="18" fill="#C9962B"/>` + t(cx, cy - 209, 'LEGENDARY', 18, { anchor: 'middle', bold: true, fill: P.white, spacing: 3 }) +
-        banner(cx, 426, 380, 'FLAWLESS CASE', '#C9962B', '#7A5A14', 22),
+        rankPill(cy - 234, 192, '#C9962B', 18) +
+        ribbon(426, 380, name, '#C9962B', '#7A5A14', 22),
     };
   }
 
@@ -937,11 +967,13 @@ export const trophyBadge: PropFn<{ kind?: 'curious' | 'perfect' | 'first'; locke
       `<g transform="rotate(-6 ${cx} ${cy})"><path d="M${cx - 92} ${cy - 58} h52 l14 -18 h46 l14 18 h58 v130 h-184 z" fill="#FFFFFF"/><rect x="${cx - 92}" y="${cy - 40}" width="184" height="112" rx="6" fill="#EEEBFF"/>` +
       `<rect x="${cx - 70}" y="${cy - 22}" width="100" height="10" rx="5" fill="#B8BAD0"/><rect x="${cx - 70}" y="${cy - 4}" width="70" height="10" rx="5" fill="#B8BAD0"/></g>` +
       `<g transform="rotate(-14 ${cx + 10} ${cy + 36})"><rect x="${cx - 80}" y="${cy + 12}" width="180" height="50" rx="8" fill="${P.white}" fill-opacity="0.9" stroke="${P.red}" stroke-width="6"/>` +
-      t(cx + 10, cy + 45, 'CLOSED', 26, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 }) + `</g>` +
-      t(cx, cy - 92, 'CASE', 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 4 }) +
+      (fit ? fitCentered(context, 'stampLabel', stampLabel, 26, 2, { x: cx - 72, y: cy + 16, w: 164, h: 42 }, P.red)
+        : t(cx + 10, cy + 45, stampLabel, 26, { anchor: 'middle', bold: true, fill: P.red, spacing: 2 })) + `</g>` +
+      (fit ? fitCentered(context, 'caseLabel', caseLabel, 20, 4, { x: cx - 90, y: cy - 115, w: 180, h: 32 }, P.white)
+        : t(cx, cy - 92, caseLabel, 20, { anchor: 'middle', bold: true, fill: P.white, spacing: 4 })) +
       t(cx, cy + 112, '№ 1', 28, { anchor: 'middle', bold: true, fill: '#FFD36E' }) +
       sparkle(cx + 132, cy - 132, 14) + sparkle(cx - 146, cy - 60, 10) +
-      banner(cx, 426, 340, 'FIRST CASE CLOSED', '#3F32B5', '#261D7A', 24),
+      ribbon(426, 340, name, '#3F32B5', '#261D7A', 24),
   };
 };
 export const TROFEA_PROPS = { trophyBadge };

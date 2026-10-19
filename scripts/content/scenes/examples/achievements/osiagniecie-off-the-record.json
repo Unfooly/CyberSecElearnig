@@ -1,1 +1,12 @@
-{ "width": 512, "height": 512, "background": { "flat": true, "wall": "none" }, "items": [ { "id": "odznaka", "prop": "trophyHelpdesk", "x": 0, "y": 0, "params": { "kind": "off-the-record" } } ] }
+{
+  "width": 512,
+  "height": 512,
+  "background": { "flat": true, "wall": "none" },
+  "strings": {
+    "pl": { "name": "POZA PROTOKOŁEM", "rank": "TAJNE" },
+    "en": { "name": "OFF THE RECORD", "rank": "SECRET" }
+  },
+  "items": [
+    { "id": "odznaka", "prop": "trophyHelpdesk", "x": 0, "y": 0, "params": { "kind": "off-the-record", "name": { "$t": "name" }, "rank": { "$t": "rank" } } }
+  ]
+}

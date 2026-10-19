@@ -1,1 +1,15 @@
-{"width": 512, "height": 512, "background": {"flat": true, "wall": "none"}, "items": [{"id": "odznaka", "prop": "trophyBadge", "x": 0, "y": 0, "params": {"kind": "first", "locked": false}}]}
+{
+  "width": 512,
+  "height": 512,
+  "background": { "flat": true, "wall": "none" },
+  "strings": {
+    "pl": { "name": "PIERWSZA SPRAWA", "caseLabel": "SPRAWA", "stampLabel": "ZAMKNIĘTA" },
+    "en": { "name": "FIRST CASE CLOSED", "caseLabel": "CASE", "stampLabel": "CLOSED" }
+  },
+  "items": [
+    {
+      "id": "odznaka", "prop": "trophyBadge", "x": 0, "y": 0,
+      "params": { "kind": "first", "locked": false, "name": { "$t": "name" }, "caseLabel": { "$t": "caseLabel" }, "stampLabel": { "$t": "stampLabel" } }
+    }
+  ]
+}

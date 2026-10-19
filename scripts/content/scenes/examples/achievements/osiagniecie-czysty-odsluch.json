@@ -1,1 +1,12 @@
-{ "width": 512, "height": 512, "background": { "flat": true, "wall": "none" }, "items": [ { "id": "odznaka", "prop": "trophyHelpdesk", "x": 0, "y": 0, "params": { "kind": "perfect-pitch" } } ] }
+{
+  "width": 512,
+  "height": 512,
+  "background": { "flat": true, "wall": "none" },
+  "strings": {
+    "pl": { "name": "CZYSTY ODSŁUCH", "rank": "RZADKIE" },
+    "en": { "name": "PERFECT PITCH", "rank": "RARE" }
+  },
+  "items": [
+    { "id": "odznaka", "prop": "trophyHelpdesk", "x": 0, "y": 0, "params": { "kind": "perfect-pitch", "name": { "$t": "name" }, "rank": { "$t": "rank" } } }
+  ]
+}

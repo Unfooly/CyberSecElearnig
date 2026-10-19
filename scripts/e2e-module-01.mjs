@@ -40,7 +40,8 @@ const VIEWPORT = process.env.E2E_VIEWPORT?.split('x').map(Number);
 if (VIEWPORT && (VIEWPORT.length !== 2 || !VIEWPORT.every((n) => Number.isInteger(n) && n > 0))) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
 // Opcjonalnie E2E_WEB_MODE=start - web z buildu produkcyjnego zamiast `next dev` (D-142).
 const WEB_MODE = process.env.E2E_WEB_MODE ?? 'dev';
-if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
+if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);
+// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
 // to inny przebieg, poza zakresem tego skryptu (pełna ścieżka desktopowa bez zmian).
 const PHONE = !!VIEWPORT && VIEWPORT[0] < 768;
 
@@ -534,27 +535,28 @@ try {
   const achievementsCounter = ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '');
   const earnedCount = PHONE ? 2 : 3;
   step(`Osiągnięcia: licznik ${earnedCount} / N na profilu`, new RegExp(`^${earnedCount}/\\d+$`).test(achievementsCounter), achievementsCounter);
-  for (const name of PHONE ? ['First Case Closed', 'Flawless Case'] : ['First Case Closed', 'Flawless Case', 'Curious Detective']) {
-    step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\(\\w+\\), zdobyte`) }).count()) === 1);
+  // Nazwy w języku szkoleń (D-146): przeglądarka testu pl-PL - polskie nazwy i rangi.
+  for (const name of PHONE ? ['Pierwsza sprawa', 'Perfekcyjne śledztwo'] : ['Pierwsza sprawa', 'Perfekcyjne śledztwo', 'Ciekawski detektyw']) {
+    step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\([^)]+\\), zdobyte`) }).count()) === 1);
   }
   if (!PHONE) {
-    await page.getByRole('button', { name: /^Curious Detective/ }).click();
-    step('Osiągnięcia: rewers Curious Detective z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
+    await page.getByRole('button', { name: /^Ciekawski detektyw/ }).click();
+    step('Osiągnięcia: rewers Ciekawski detektyw z datą zdobycia', /Zdobyto: \d{2}\.\d{2}\.\d{4}/.test((await page.getByTestId('achievement-live').textContent()) ?? ''));
   }
 
   // Przypinanie (D-112): z rewersu dwóch zdobytych kart -> sekcja „Przypięte” i miniatury przy imieniu w rankingu na /courses.
-  for (const name of ['Flawless Case', 'First Case Closed']) {
+  for (const name of ['Perfekcyjne śledztwo', 'Pierwsza sprawa']) {
     const pinResponse = page.waitForResponse((r) => r.url().includes('/api/gamification/pinned') && r.request().method() === 'PUT');
     await page.getByRole('button', { name: new RegExp(`^${name} \\(`) }).click();
     await page.getByTestId('achievement-pin').click();
     step(`Przypinanie: ${name} zapisane na serwerze`, (await pinResponse).ok());
   }
-  step('Przypinanie: sekcja „Przypięte” w kolejności przypięcia', (await page.getByTestId('pinned-item').allTextContents()).map((t) => t.replace(/^\d+\.\s*/, '').split('Odepnij')[0].trim()).join('|') === 'Flawless Case|First Case Closed');
+  step('Przypinanie: sekcja „Przypięte” w kolejności przypięcia', (await page.getByTestId('pinned-item').allTextContents()).map((t) => t.replace(/^\d+\.\s*/, '').split('Odepnij')[0].trim()).join('|') === 'Perfekcyjne śledztwo|Pierwsza sprawa');
   await page.goto(`${WEB}/courses`);
   const myRow = page.getByRole('row').filter({ has: page.getByText('Ty', { exact: true }) });
   await myRow.waitFor();
   const rowBadges = await myRow.getByTestId('pinned-badge').evaluateAll((els) => els.map((el) => el.getAttribute('title')));
-  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Flawless Case|First Case Closed', rowBadges.join('|'));
+  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Perfekcyjne śledztwo|Pierwsza sprawa', rowBadges.join('|'));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

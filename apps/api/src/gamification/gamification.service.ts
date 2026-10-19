@@ -21,6 +21,8 @@ import {
   SECRET_LOCKED_ICON,
   PERFECT_SCORE_XP,
 } from './gamification.constants';
+import { ContentLocale, choosePlayerLocale, localizeContent, parseAcceptLanguage } from '@cyberszkolo/content';
+import { SECRET_ACHIEVEMENT_LABEL, localizedBadgeTexts, localizedIcon } from './achievement-texts';
 import { BadgeListItemDto } from './dto/badge-list-item.dto';
 import { LeaderboardDto, LeaderboardEntryDto, PinnedAchievementDto } from './dto/leaderboard-entry.dto';
 import { UserGamificationSummaryDto } from './dto/user-gamification-summary.dto';
@@ -132,14 +134,24 @@ export class GamificationService {
     };
   }
 
-  async getMyGamificationSummary(organizationId: string, userId: string): Promise<UserGamificationSummaryDto> {
+  /**
+   * Język osiągnięć oglądającego (poprawki m3, pkt c): ten sam co język szkoleń (D-133) - ustawienie konta, potem Accept-Language
+   * przekazany przez BFF, potem EN. organizationId/userId z JWT; zapytanie w kontekście organizacji (RLS).
+   */
+  private async viewerLocale(tx: Prisma.TransactionClient, organizationId: string, userId: string, acceptLanguage?: string): Promise<ContentLocale> {
+    const user = await tx.user.findFirst({ where: { id: userId, organizationId }, select: { contentLocale: true } });
+    return choosePlayerLocale(user?.contentLocale ?? null, parseAcceptLanguage(acceptLanguage));
+  }
+
+  async getMyGamificationSummary(organizationId: string, userId: string, acceptLanguage?: string): Promise<UserGamificationSummaryDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // Karta na /courses pokazuje osiągnięcia - przyznanie wsteczne także tu (raz na użytkownika), nie dopiero na profilu.
       await this.syncAchievements(tx, organizationId, userId);
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
-        select: { xp: true, level: true, avatarUrl: true },
+        select: { xp: true, level: true, avatarUrl: true, contentLocale: true },
       });
+      const locale = choosePlayerLocale(user.contentLocale, parseAcceptLanguage(acceptLanguage));
       // Wycofane odznaki sprzed D-111 znikają z UI (wiersze i XP zostają).
       const unlocked = await tx.userBadge.findMany({
         where: { organizationId, userId, badge: { retiredAt: null } },
@@ -155,9 +167,9 @@ export class GamificationService {
         currentLevelProgressPercent: currentLevelProgressPercent(user.xp, user.level),
         badges: unlocked.map((userBadge) => ({
           code: userBadge.badge.code,
-          title: userBadge.badge.title,
-          description: userBadge.badge.description,
-          icon: userBadge.badge.icon,
+          title: localizedBadgeTexts(userBadge.badge, locale).title,
+          description: localizedBadgeTexts(userBadge.badge, locale).description,
+          icon: localizedIcon(userBadge.badge.icon, locale) ?? userBadge.badge.icon,
           xpReward: userBadge.badge.xpReward,
           unlockedAt: userBadge.unlockedAt,
         })),
@@ -170,14 +182,15 @@ export class GamificationService {
    * warunek przed wdrożeniem osiągnięć (także wyróżnienie easter egga z Q), widzi je od pierwszego wejścia na profil.
    * Tajne i niezdobyte: bez kodu, nazwy, opisu, warunku i grafiki zdobytej - tylko ranga i grafika zablokowana („???”).
    */
-  async listBadgesWithUnlockStatus(organizationId: string, userId: string): Promise<BadgeListItemDto[]> {
+  async listBadgesWithUnlockStatus(organizationId: string, userId: string, acceptLanguage?: string): Promise<BadgeListItemDto[]> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       await this.syncAchievements(tx, organizationId, userId);
       const [badges, unlockedRows, user] = await Promise.all([
         tx.badge.findMany({ where: { retiredAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
         tx.userBadge.findMany({ where: { organizationId, userId } }),
-        tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pinnedAchievements: true } }),
+        tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pinnedAchievements: true, contentLocale: true } }),
       ]);
+      const locale = choosePlayerLocale(user.contentLocale, parseAcceptLanguage(acceptLanguage));
       const unlockedByBadgeId = new Map(unlockedRows.map((row) => [row.badgeId, row.unlockedAt]));
 
       return badges.map((badge, index): BadgeListItemDto => {
@@ -201,20 +214,21 @@ export class GamificationService {
             conditionText: null,
             scope: null,
             // Grafika zablokowana tajnego ma neutralną nazwę pliku (osiagniecie-tajne-zablokowane) - nazwa nic nie zdradza.
-            icon: badge.lockedIcon ?? badge.icon,
-            lockedIcon: badge.lockedIcon,
+            icon: localizedIcon(badge.lockedIcon ?? badge.icon, locale) ?? badge.icon,
+            lockedIcon: localizedIcon(badge.lockedIcon, locale),
             xpReward: 0,
           };
         }
+        const texts = localizedBadgeTexts(badge, locale);
         return {
           ...common,
           code: badge.code,
-          title: badge.title,
-          description: badge.description,
-          conditionText: badge.conditionText,
+          title: texts.title,
+          description: texts.description,
+          conditionText: texts.conditionText,
           scope: badge.scope,
-          icon: badge.icon,
-          lockedIcon: badge.lockedIcon,
+          icon: localizedIcon(badge.icon, locale) ?? badge.icon,
+          lockedIcon: localizedIcon(badge.lockedIcon, locale),
         };
       });
     });
@@ -373,7 +387,7 @@ export class GamificationService {
    * dodatkowo po dziale REQUESTERA (nie przyjmuje departmentId od klienta),
    * a brak działu daje pusty ranking, nie błąd.
    */
-  async getLeaderboard(organizationId: string, userId: string, scope: LeaderboardScope): Promise<LeaderboardDto> {
+  async getLeaderboard(organizationId: string, userId: string, scope: LeaderboardScope, acceptLanguage?: string): Promise<LeaderboardDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // Ranking wyłączony przez admina organizacji (D-112): bez wpisów, klient chowa sekcję. `organizations` nie ma RLS - jawny
       // warunek na id organizacji z JWT.
@@ -439,7 +453,7 @@ export class GamificationService {
       }
 
       const listed = meUser && !topUsers.includes(meUser) ? [...topUsers, meUser] : topUsers;
-      const pinnedByUser = await this.pinnedFor(tx, organizationId, userId, listed);
+      const pinnedByUser = await this.pinnedFor(tx, organizationId, userId, listed, await this.viewerLocale(tx, organizationId, userId, acceptLanguage));
       const toEntry = (user: (typeof listed)[number], rank: number): LeaderboardEntryDto => {
         const fallback = initialsFromEmail(user.email);
         return {
@@ -475,6 +489,7 @@ export class GamificationService {
     organizationId: string,
     viewerId: string,
     users: { id: string; pinnedAchievements: string[] }[],
+    locale: ContentLocale,
   ): Promise<Map<string, PinnedAchievementDto[]>> {
     const withPins = users.filter((user) => user.pinnedAchievements.length > 0);
     const result = new Map<string, PinnedAchievementDto[]>();
@@ -482,7 +497,7 @@ export class GamificationService {
     const ids = [...new Set([...withPins.map((user) => user.id), viewerId])];
     const owned = await tx.userBadge.findMany({
       where: { organizationId, userId: { in: ids }, badge: { retiredAt: null } },
-      select: { userId: true, badge: { select: { code: true, title: true, icon: true, rank: true, hidden: true } } },
+      select: { userId: true, badge: { select: { code: true, title: true, description: true, conditionText: true, icon: true, rank: true, hidden: true } } },
     });
     const viewerOwns = new Set(owned.filter((row) => row.userId === viewerId).map((row) => row.badge.code));
     for (const user of withPins) {
@@ -493,9 +508,9 @@ export class GamificationService {
           const badge = mine.get(code);
           if (!badge) return [];
           if (badge.hidden && !viewerOwns.has(badge.code)) {
-            return [{ code: `secret-${index + 1}`, title: 'Tajne osiągnięcie', icon: SECRET_LOCKED_ICON, rank: badge.rank }];
+            return [{ code: `secret-${index + 1}`, title: localizeContent(SECRET_ACHIEVEMENT_LABEL, locale), icon: localizedIcon(SECRET_LOCKED_ICON, locale) ?? SECRET_LOCKED_ICON, rank: badge.rank }];
           }
-          return [{ code: badge.code, title: badge.title, icon: badge.icon, rank: badge.rank }];
+          return [{ code: badge.code, title: localizedBadgeTexts(badge, locale).title, icon: localizedIcon(badge.icon, locale) ?? badge.icon, rank: badge.rank }];
         }),
       );
     }

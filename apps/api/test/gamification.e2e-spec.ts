@@ -180,7 +180,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         previousLevel: 1,
         leveledUp: true,
         unlockedBadges: [
-          { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' },
+          // Bez Accept-Language i ustawienia konta - język szkoleń EN (D-133), grafika z public/achievements/en (poprawki m3, pkt c).
+          { code: 'first-case-closed', title: 'First Case Closed', icon: 'en/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' },
         ],
         // Konto zaczyna od 0 XP/poziom 1: 0% postępu SPRZED tego ukończenia; awans na poziom 2, więc pasek "przed
         // -> po" (SummaryScreen) kończy się na 100% (przycięty - sam awans/nowy poziom pokazuje osobny komunikat).
@@ -220,9 +221,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(response.body[3]).toMatchObject({ title: 'Dead Air', rank: 'RARE', xpReward: 25, isUnlocked: false });
       expect(response.body[4]).toMatchObject({ title: 'Perfect Pitch', rank: 'RARE' });
       expect(response.body[5]).toMatchObject({ title: 'Full Transcript', rank: 'LEGENDARY' });
-      expect(response.body[6]).toMatchObject({ title: null, rank: 'SECRET', icon: 'osiagniecie-tajne-zablokowane', xpReward: 0 });
+      expect(response.body[6]).toMatchObject({ title: null, rank: 'SECRET', icon: 'en/osiagniecie-tajne-zablokowane', xpReward: 0 });
       expect(JSON.stringify(response.body[6])).not.toMatch(/off-the-record|webinar|record/i);
-      expect(response.body[0]).toMatchObject({ title: 'First Case Closed', rank: 'MILESTONE', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
+      expect(response.body[0]).toMatchObject({ title: 'First Case Closed', rank: 'MILESTONE', isUnlocked: true, conditionText: 'Complete any training.' });
       expect(response.body[1]).toMatchObject({ title: 'Flawless Case', rank: 'LEGENDARY', isUnlocked: false, unlockedAt: null });
       expect(response.body[2]).toMatchObject({
         title: null,
@@ -230,13 +231,26 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         conditionText: null,
         rank: 'SECRET',
         hidden: true,
-        icon: 'osiagniecie-tajne-zablokowane',
-        lockedIcon: 'osiagniecie-tajne-zablokowane',
+        icon: 'en/osiagniecie-tajne-zablokowane',
+        lockedIcon: 'en/osiagniecie-tajne-zablokowane',
         xpReward: 0,
         isUnlocked: false,
       });
       // Nic w odpowiedzi nie zdradza tajnego osiągnięcia - także nazwa pliku grafiki (neutralna).
       expect(JSON.stringify(response.body[2])).not.toMatch(/curious|ciekawsk|detekty|gr[ęa]/i);
+
+      // Przeglądarka po polsku (poprawki m3, pkt c): nazwy, warunki i grafiki PL; tajne niezdobyte nadal bez nazwy.
+      const polish = await request(app.getHttpServer())
+        .get('/gamification/badges')
+        .set('Authorization', `Bearer ${orgAUser1Token}`)
+        .set('Accept-Language', 'pl-PL,pl;q=0.9')
+        .expect(200);
+      expect(polish.body[0]).toMatchObject({ title: 'Pierwsza sprawa', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/osiagniecie-pierwsza-sprawa' });
+      expect(polish.body[3]).toMatchObject({ title: 'Cisza na linii' });
+      expect(polish.body[2]).toMatchObject({ title: null, icon: 'pl/osiagniecie-tajne-zablokowane' });
+      // Tajność (D-111) także w tekstach PL: nic o grze z pulpitu ani o webinarze.
+      expect(JSON.stringify(polish.body[2])).not.toMatch(/ciekawsk|detekty|curious|gr[ęa]/i);
+      expect(JSON.stringify(polish.body[6])).not.toMatch(/protok|webinar|record/i);
     });
 
     it('ukończenie drugiego kursu ze 100% wyniku dolicza bonus 100%, bez nowego osiągnięcia (to nie moduł 1)', async () => {
@@ -344,16 +358,20 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     // z przypisaniem jest chroniona - RESTRICT).
     it('przyznanie wsteczne: kto spełnił warunki wcześniej, dostaje wszystkie trzy, z datą spełnienia warunku i bez XP', async () => {
       const xpBefore = (await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.user.findUniqueOrThrow({ where: { id: orgBUserId } }))).xp;
-      const response = await request(app.getHttpServer()).get('/gamification/badges').set('Authorization', `Bearer ${orgBToken}`).expect(200);
+      const response = await request(app.getHttpServer())
+        .get('/gamification/badges')
+        .set('Authorization', `Bearer ${orgBToken}`)
+        .set('Accept-Language', 'pl-PL')
+        .expect(200);
 
       expect(response.body).toEqual([
         expect.objectContaining({ code: 'first-case-closed', isUnlocked: true, unlockedAt: completedAt.toISOString() }),
         expect.objectContaining({ code: 'flawless-case', isUnlocked: true, unlockedAt: completedAt.toISOString() }),
         expect.objectContaining({
           code: 'curious-detective',
-          title: 'Curious Detective',
+          title: 'Ciekawski detektyw',
           description: 'Otworzyłeś podejrzaną grę na pulpicie Anny. Na szczęście tylko w ćwiczeniu.',
-          icon: 'osiagniecie-ciekawski-detektyw',
+          icon: 'pl/osiagniecie-ciekawski-detektyw',
           isUnlocked: true,
           unlockedAt: easterEggAt,
         }),
@@ -391,7 +409,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
     // stanu z poprzednich `it` (kolejność w pliku, --runInBand): osiągnięcia B i przypięcia są budowane krok po kroku.
     const pin = (token: string, codes: string[]) =>
       request(app.getHttpServer()).put('/gamification/pinned').set('Authorization', `Bearer ${token}`).send({ codes });
-    const board = (token: string) => request(app.getHttpServer()).get('/gamification/leaderboard').set('Authorization', `Bearer ${token}`);
+    // Przeglądarka po polsku - nazwy przypiętych osiągnięć i „Tajne osiągnięcie” w języku szkoleń PL (poprawki m3, pkt c).
+    const board = (token: string) =>
+      request(app.getHttpServer()).get('/gamification/leaderboard').set('Authorization', `Bearer ${token}`).set('Accept-Language', 'pl-PL');
 
     it('przypięcie dwóch zdobytych -> widać je przy nazwisku w rankingu (w kolejności przypięcia) i na profilu', async () => {
       await pin(orgBToken, ['flawless-case', 'first-case-closed']).expect(200, { pinned: ['flawless-case', 'first-case-closed'] });
@@ -400,8 +420,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(ranking.body.enabled).toBe(true);
       const mine = ranking.body.top.find((entry: { userId: string }) => entry.userId === orgBUserId);
       expect(mine.pinned).toEqual([
-        { code: 'flawless-case', title: 'Flawless Case', icon: 'osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' },
-        { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' },
+        { code: 'flawless-case', title: 'Perfekcyjne śledztwo', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' },
+        { code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' },
       ]);
       expect(ranking.body.me).toMatchObject({ userId: orgBUserId, rank: mine.rank });
 
@@ -482,12 +502,12 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       it('przypięte tajne: współpracownik, który go nie zdobył, widzi „Tajne osiągnięcie” bez kodu i grafiki; właściciel - pełne', async () => {
         const forColleague = await board(orgAUser1Token).expect(200);
         const employeeRow = forColleague.body.top.find((entry: { userId: string }) => entry.userId === employeeId);
-        expect(employeeRow.pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
+        expect(employeeRow.pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'pl/osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
         expect(JSON.stringify(forColleague.body)).not.toMatch(/curious|ciekawsk/i);
 
         const forOwner = await board(employeeToken).expect(200);
         expect(forOwner.body.me.pinned).toEqual([
-          { code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' },
+          { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' },
         ]);
       });
 

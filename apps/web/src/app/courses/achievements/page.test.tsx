@@ -108,7 +108,7 @@ describe('AchievementsPage', () => {
     render(jsx);
 
     expect(screen.getAllByTestId('achievement-card')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: /^First Case Closed \(Milestone\), zdobyte/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^First Case Closed \(Kamień milowy\), zdobyte/ })).toBeInTheDocument();
     expect(screen.getByTestId('achievements-counter')).toHaveTextContent('1 / 3');
   });
 

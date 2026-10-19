@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
+import { requestAcceptLanguage } from '@/lib/bff';
 import { decodeJwtPayload } from '@/lib/jwt';
 import type { Badge } from '@/lib/gamification-types';
 import Topbar from '@/components/Topbar';
@@ -28,8 +29,9 @@ export default async function AchievementsPage() {
   const userEmail = payload?.email ?? null;
 
   const [result, nameResult] = await Promise.all([
+    // Accept-Language: nazwy, opisy i grafiki osiągnięć w języku szkoleń (poprawki m3, pkt c).
     fetchJson<Badge[]>(`${API_URL}/gamification/badges`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...requestAcceptLanguage() },
       cache: 'no-store',
     }),
     fetchJson<unknown>(`${API_URL}/users/me/display-name`, {

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Header,
+  Headers,
   HttpCode,
   HttpStatus,
   NotFoundException,
@@ -169,7 +170,7 @@ export class UsersController {
 
   // Bez @Roles() - dowolna zalogowana rola widzi WŁASNY postęp grywalizacji.
   @Get('me/gamification')
-  getMyGamification(@CurrentUser() user: AuthenticatedUser) {
-    return this.gamificationService.getMyGamificationSummary(user.organizationId, user.userId);
+  getMyGamification(@CurrentUser() user: AuthenticatedUser, @Headers('accept-language') acceptLanguage?: string) {
+    return this.gamificationService.getMyGamificationSummary(user.organizationId, user.userId, acceptLanguage);
   }
 }

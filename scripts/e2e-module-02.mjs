@@ -504,8 +504,9 @@ try {
 
   await page.goto(`${WEB}/courses/achievements`);
   await page.getByTestId('achievements-counter').waitFor();
-  for (const name of ['First Case Closed', 'Dead Air', 'Perfect Pitch', 'Full Transcript', 'Off the Record']) {
-    step(`Osiągnięcia: ${name} zdobyte na profilu`, (await page.getByRole('button', { name: new RegExp(`^${name} \\(\\w+\\), zdobyte`) }).count()) === 1);
+  // Nazwy w języku szkoleń (D-146): przeglądarka testu pl-PL - polskie nazwy i rangi.
+  for (const name of ['Pierwsza sprawa', 'Cisza na linii', 'Czysty odsłuch', 'Pełny zapis', 'Poza protokołem']) {
+    step(`Osiągnięcia: ${name} zdobyte na profilu`, (await page.getByRole('button', { name: new RegExp(`^${name} \\([^)]+\\), zdobyte`) }).count()) === 1);
   }
   step('Bez błędów strony, konsoli i odpowiedzi 5xx', problems.length === 0, problems.join(' | '));
 

@@ -643,17 +643,22 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       levelProgressAfterPercent: 100,
     });
 
-    const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 });
+    const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 }, 'pl-PL');
 
+    // Nazwa i grafika osiągnięcia w języku gracza (poprawki m3, pkt c) - przeglądarka pl-PL, konto bez ustawienia.
     expect(result.gamification).toEqual({
       xpGained: 150,
       newLevel: 2,
       previousLevel: 1,
       leveledUp: true,
-      unlockedBadges: [{ code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
+      unlockedBadges: [{ code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
     });
+
+    findFirst.mockResolvedValue(assignmentFixture());
+    const english = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 }, 'en-GB');
+    expect(english.gamification?.unlockedBadges).toEqual([{ code: 'first-case-closed', title: 'First Case Closed', icon: 'en/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }]);
   });
 
   it('zwraca `gamification: null`, gdy kurs się jeszcze nie kończy', async () => {

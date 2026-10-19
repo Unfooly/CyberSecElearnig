@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ACCESS_TOKEN_COOKIE, API_URL } from '@/lib/config';
 import { fetchJson } from '@/lib/fetch-json';
+import { requestAcceptLanguage } from '@/lib/bff';
 import { contentAssetBase } from '@/lib/content-assets';
 import { decodeJwtPayload } from '@/lib/jwt';
 import type { CourseAssignmentSummary, CourseCatalogItem } from '@/lib/courses-types';
@@ -45,12 +46,13 @@ export default async function CoursesPage() {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     }),
+    // Accept-Language: nazwy osiągnięć w języku szkoleń (poprawki m3, pkt c) - API wybiera konto > przeglądarka > EN.
     fetchJson<GamificationOverview>(`${API_URL}/users/me/gamification`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...requestAcceptLanguage() },
       cache: 'no-store',
     }),
     fetchJson<Leaderboard>(`${API_URL}/gamification/leaderboard`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...requestAcceptLanguage() },
       cache: 'no-store',
     }),
   ]);

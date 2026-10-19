@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import AchievementGrid, { SECRET_TEXT } from './AchievementGrid';
-import type { Badge } from '@/lib/gamification-types';
+import { achievementImage, type Badge } from '@/lib/gamification-types';
 
 const base = { lockedIcon: null, hidden: false, scope: 'GLOBAL' as const, xpReward: 50, pinned: null };
 const badges: Badge[] = [
@@ -50,16 +50,25 @@ const badges: Badge[] = [
 const card = (code: string) => screen.getAllByTestId('achievement-card').find((el) => el.dataset.code === code)!;
 
 describe('AchievementGrid (D-111, karty z obrotem)', () => {
-  it('awers: grafika zdobyta albo zablokowana, ranga po angielsku, nazwa; tajne niezdobyte jako „???”', () => {
+  it('awers: grafika zdobyta albo zablokowana, ranga po polsku (UI), nazwa; tajne niezdobyte jako „???”', () => {
     render(<AchievementGrid badges={badges} />);
 
     const first = card('first-case-closed');
     expect(first.querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-pierwsza-sprawa.svg');
-    expect(within(first).getByTestId('achievement-front')).toHaveTextContent('MilestoneFirst Case Closed');
+    expect(within(first).getByTestId('achievement-front')).toHaveTextContent('Kamień milowyFirst Case Closed');
     expect(card('flawless-case').querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-perfekcyjne-sledztwo-zablokowane.svg');
     const secret = card('secret-3');
-    expect(within(secret).getByTestId('achievement-front')).toHaveTextContent('Secret???');
-    expect(secret).toHaveAccessibleName(/^Tajne osiągnięcie \(Secret\), niezdobyte/);
+    expect(within(secret).getByTestId('achievement-front')).toHaveTextContent('Tajne???');
+    expect(secret).toHaveAccessibleName(/^Tajne osiągnięcie \(Tajne\), niezdobyte/);
+  });
+
+  // Poprawki m3, pkt c: grafika w katalogu języka szkoleń (API podaje „pl/…”); inne ścieżki nadal bez grafiki.
+  it('achievementImage: nazwa z katalogiem języka pl/en, inne katalogi i znaki odrzucone', () => {
+    expect(achievementImage('pl/osiagniecie-pierwsza-sprawa')).toBe('/achievements/pl/osiagniecie-pierwsza-sprawa.svg');
+    expect(achievementImage('en/osiagniecie-tajne-zablokowane')).toBe('/achievements/en/osiagniecie-tajne-zablokowane.svg');
+    expect(achievementImage('de/osiagniecie-x')).toBeNull();
+    expect(achievementImage('../secret')).toBeNull();
+    expect(achievementImage('pl/../x')).toBeNull();
   });
 
   it('klik obraca kartę (aria-pressed), ponowny klik wraca; naraz odwrócona jest jedna karta', () => {
@@ -81,23 +90,23 @@ describe('AchievementGrid (D-111, karty z obrotem)', () => {
     render(<AchievementGrid badges={badges} />);
 
     expect(within(card('first-case-closed')).getByTestId('achievement-back')).toHaveTextContent(
-      'MilestoneFirst Case ClosedTwoja pierwsza zamknięta sprawa.Zdobyto: 28.09.2026',
+      'Kamień milowyFirst Case ClosedTwoja pierwsza zamknięta sprawa.Zdobyto: 28.09.2026',
     );
     expect(within(card('flawless-case')).getByTestId('achievement-back')).toHaveTextContent('Zbierz wszystkie dowody (23/23)');
     const secretBack = within(card('secret-3')).getByTestId('achievement-back');
-    expect(secretBack).toHaveTextContent(`Secret${SECRET_TEXT}`);
+    expect(secretBack).toHaveTextContent(`Tajne${SECRET_TEXT}`);
   });
 
   it('rewers odwróconej karty trafia do regionu aria-live; tło rewersu w kolorze rangi', () => {
     render(<AchievementGrid badges={badges} />);
 
     fireEvent.click(card('secret-3'));
-    expect(screen.getByTestId('achievement-live')).toHaveTextContent(`Secret. ${SECRET_TEXT}`);
+    expect(screen.getByTestId('achievement-live')).toHaveTextContent(`Tajne. ${SECRET_TEXT}`);
     expect(within(card('secret-3')).getByTestId('achievement-back')).toHaveClass('bg-rank-secret');
 
     fireEvent.click(card('first-case-closed'));
     expect(screen.getByTestId('achievement-live')).toHaveTextContent(
-      'Milestone. First Case Closed. Twoja pierwsza zamknięta sprawa. Zdobyto: 28.09.2026.',
+      'Kamień milowy. First Case Closed. Twoja pierwsza zamknięta sprawa. Zdobyto: 28.09.2026.',
     );
   });
 

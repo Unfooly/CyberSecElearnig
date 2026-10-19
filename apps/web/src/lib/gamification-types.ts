@@ -24,8 +24,11 @@ export interface GamificationOverview {
 
 export type AchievementRank = 'SECRET' | 'LEGENDARY' | 'MILESTONE' | 'RARE';
 
-/** Etykiety rang w UI - po angielsku, jak na grafikach trofeów (D-111; Rare - D-124). */
-export const RANK_LABELS: Record<AchievementRank, string> = { SECRET: 'Secret', LEGENDARY: 'Legendary', MILESTONE: 'Milestone', RARE: 'Rare' };
+/**
+ * Etykiety rang w UI - po polsku, jak cały interfejs (poprawki m3, pkt c; wcześniej po angielsku „jak na grafikach”, D-111/D-124 -
+ * grafiki trofeów są teraz w języku szkoleń, z kompozytora).
+ */
+export const RANK_LABELS: Record<AchievementRank, string> = { SECRET: 'Tajne', LEGENDARY: 'Legendarne', MILESTONE: 'Kamień milowy', RARE: 'Rzadkie' };
 
 /**
  * Osiągnięcie na profilu (GET /gamification/badges, D-111). Tajne niezdobyte przychodzi z kodem zastępczym, bez nazwy, opisu i
@@ -60,9 +63,12 @@ export interface PinnedAchievement {
 export const MAX_PINNED = 3;
 export const PIN_LIMIT_MESSAGE = 'Możesz przypiąć maksymalnie 3 odznaki.';
 
-/** Adres grafiki trofeum z nazwy pliku z API - tylko bezpieczne nazwy (litery, cyfry, myślnik), inaczej brak grafiki. */
+/**
+ * Adres grafiki trofeum z nazwy pliku z API - tylko bezpieczne nazwy (litery, cyfry, myślnik), inaczej brak grafiki. API podaje nazwę
+ * z katalogiem języka szkoleń („pl/osiagniecie-…”, poprawki m3 pkt c) - grafiki z kompozytora w public/achievements/<język>/.
+ */
 export function achievementImage(name: string | null | undefined): string | null {
-  return name && /^[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.svg` : null;
+  return name && /^(?:(?:pl|en)\/)?[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.svg` : null;
 }
 
 /** Wpis rankingu organizacji (D-112): imię i inicjał nazwiska, bez działu. */

@@ -613,16 +613,16 @@ describe('GamificationService', () => {
       const tx = listTx([{ badgeId: 'badge-first-case', unlockedAt: new Date('2026-09-20') }]);
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
 
-      const result = await service.listBadgesWithUnlockStatus('org-1', 'user-1');
+      const result = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
 
       expect(tx.badge.findMany).toHaveBeenCalledWith({ where: { retiredAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
-      expect(result[0]).toMatchObject({ code: 'first-case-closed', title: 'First Case Closed', isUnlocked: true, conditionText: 'Ukończ.' });
+      expect(result[0]).toMatchObject({ code: 'first-case-closed', title: 'Pierwsza sprawa', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
     });
 
     it('tajne niezdobyte: bez kodu, nazwy, opisu, warunku i grafiki zdobytej (tylko ranga i grafika zablokowana)', async () => {
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(listTx([])));
 
-      const [, secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1');
+      const [, secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
 
       expect(secret).toEqual({
         code: 'secret-2',
@@ -630,8 +630,8 @@ describe('GamificationService', () => {
         description: null,
         conditionText: null,
         scope: null,
-        icon: 'osiagniecie-tajne-zablokowane',
-        lockedIcon: 'osiagniecie-tajne-zablokowane',
+        icon: 'pl/osiagniecie-tajne-zablokowane',
+        lockedIcon: 'pl/osiagniecie-tajne-zablokowane',
         rank: 'SECRET',
         hidden: true,
         // Nagroda XP też maskowana (wartość mogłaby coś podpowiadać).
@@ -647,8 +647,28 @@ describe('GamificationService', () => {
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) =>
         fn(listTx([{ badgeId: 'badge-curious', unlockedAt: new Date('2026-09-20') }])),
       );
-      const [, secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1');
-      expect(secret).toMatchObject({ code: 'curious-detective', title: 'Curious Detective', icon: 'c', isUnlocked: true });
+      const [, secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
+      expect(secret).toMatchObject({ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/c', isUnlocked: true });
+    });
+
+    // Poprawki m3, pkt c: nazwa, opis, warunek i grafika w języku szkoleń - konto > przeglądarka > EN (D-133).
+    it('język: ustawienie konta wygrywa z przeglądarką; bez obu - EN; kod spoza mapy - teksty z bazy', async () => {
+      const unlocked = [{ badgeId: 'badge-first-case', unlockedAt: new Date('2026-09-20') }];
+      const withAccount = listTx(unlocked);
+      withAccount.user.findUniqueOrThrow.mockResolvedValue({ achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION, pinnedAchievements: [], contentLocale: 'pl' });
+      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(withAccount));
+      const [pl] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'en-US,en;q=0.9');
+      expect(pl).toMatchObject({ title: 'Pierwsza sprawa', description: 'Twoja pierwsza zamknięta sprawa.', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/p', lockedIcon: 'pl/p-z' });
+
+      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(listTx(unlocked)));
+      const [en] = await service.listBadgesWithUnlockStatus('org-1', 'user-1');
+      expect(en).toMatchObject({ title: 'First Case Closed', description: 'Your first closed case.', conditionText: 'Complete any training.', icon: 'en/p' });
+
+      const retired = listTx([{ badgeId: 'badge-old', unlockedAt: new Date('2026-09-20') }]);
+      retired.badge.findMany.mockResolvedValue([{ ...catalog[0], id: 'badge-old', code: 'first-step', title: 'First Step', description: 'Stary opis.', conditionText: 'Stary warunek.' }]);
+      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(retired));
+      const [old] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
+      expect(old).toMatchObject({ title: 'First Step', description: 'Stary opis.', conditionText: 'Stary warunek.' });
     });
   });
 
@@ -763,13 +783,18 @@ describe('GamificationService', () => {
         { userId: 'fan', badge: secret },
       ];
       run(boardTx({ top, owned }));
-      const forViewer = await service.getLeaderboard('org-1', 'viewer', 'organization');
-      expect(forViewer.top[0].pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
+      const forViewer = await service.getLeaderboard('org-1', 'viewer', 'organization', 'pl-PL');
+      expect(forViewer.top[0].pinned).toEqual([{ code: 'secret-1', title: 'Tajne osiągnięcie', icon: 'pl/osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
       expect(JSON.stringify(forViewer)).not.toMatch(/curious|ciekawsk/i);
 
       run(boardTx({ top, owned }));
-      const forFan = await service.getLeaderboard('org-1', 'fan', 'organization');
-      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' }]);
+      const forFan = await service.getLeaderboard('org-1', 'fan', 'organization', 'pl-PL');
+      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' }]);
+
+      // Przeglądarka po angielsku (bez ustawienia konta) - nazwy i grafiki EN (poprawki m3, pkt c).
+      run(boardTx({ top, owned }));
+      const forViewerEn = await service.getLeaderboard('org-1', 'viewer', 'organization', 'en-GB');
+      expect(forViewerEn.top[0].pinned).toEqual([{ code: 'secret-1', title: 'Secret achievement', icon: 'en/osiagniecie-tajne-zablokowane', rank: 'SECRET' }]);
     });
   });
 

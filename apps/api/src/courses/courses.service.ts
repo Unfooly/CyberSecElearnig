@@ -42,6 +42,7 @@ import {
   pickReaction,
 } from './scoring/evaluate';
 import { CheckBlockDto } from './dto/check-block.dto';
+import { localizedBadgeTexts, localizedIcon } from '../gamification/achievement-texts';
 
 // `user` dołącza findOwnAssignment (język szkoleń z konta); opcjonalne w typie - brak relacji (np. przypisanie z innego źródła) = „wg przeglądarki”.
 type AssignmentWithCourse = CourseAssignment & { course: Course; user?: { contentLocale: string | null } };
@@ -437,10 +438,11 @@ export class CoursesService {
               newLevel: gamification.newLevel,
               previousLevel: gamification.previousLevel,
               leveledUp: gamification.leveledUp,
+              // Nazwa i grafika osiągnięcia w języku gracza (poprawki m3, pkt c) - ten sam język co treść kursu.
               unlockedBadges: gamification.unlockedBadges.map((badge) => ({
                 code: badge.code,
-                title: badge.title,
-                icon: badge.icon,
+                title: localizedBadgeTexts(badge, playerLocaleOf(assignment, acceptLanguage)).title,
+                icon: localizedIcon(badge.icon, playerLocaleOf(assignment, acceptLanguage)) ?? badge.icon,
                 xpReward: badge.xpReward,
                 rank: badge.rank,
               })),

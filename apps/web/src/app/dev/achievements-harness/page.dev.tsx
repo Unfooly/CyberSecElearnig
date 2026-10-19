@@ -8,15 +8,16 @@ import LeaderboardTable from '../../courses/_components/LeaderboardTable';
 // (sekcja `achievements`) i ręcznego podglądu. Jak courses-harness: plik `.dev.tsx` istnieje w routingu tylko z
 // NEXT_PUBLIC_DEV_HARNESS=1 (next.config.mjs), notFound() to druga linia obrony. Dane jak z GET /gamification/badges i
 // /gamification/leaderboard: dwa zdobyte (jedno przypięte), jedno tajne niezdobyte; ranking - dziesiątka + „Ty” na 14. miejscu.
-// Zapis przypięć (PUT /api/gamification/pinned) layout-check przechwytuje w przeglądarce (page.route).
+// Zapis przypięć (PUT /api/gamification/pinned) layout-check przechwytuje w przeglądarce (page.route). Nazwy i grafiki jak dla gracza
+// z językiem szkoleń PL (poprawki m3, pkt c: API podaje grafiki z katalogiem języka, „pl/…”).
 const BADGES: Badge[] = [
   {
     code: 'first-case-closed',
-    title: 'First Case Closed',
+    title: 'Pierwsza sprawa',
     description: 'Twoja pierwsza zamknięta sprawa.',
     conditionText: 'Ukończ dowolne szkolenie.',
-    icon: 'osiagniecie-pierwsza-sprawa',
-    lockedIcon: 'osiagniecie-pierwsza-sprawa-zablokowane',
+    icon: 'pl/osiagniecie-pierwsza-sprawa',
+    lockedIcon: 'pl/osiagniecie-pierwsza-sprawa-zablokowane',
     rank: 'MILESTONE',
     hidden: false,
     scope: 'GLOBAL',
@@ -27,11 +28,11 @@ const BADGES: Badge[] = [
   },
   {
     code: 'flawless-case',
-    title: 'Flawless Case',
+    title: 'Perfekcyjne śledztwo',
     description: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.',
     conditionText: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Wyłudzone hasło”.',
-    icon: 'osiagniecie-perfekcyjne-sledztwo',
-    lockedIcon: 'osiagniecie-perfekcyjne-sledztwo-zablokowane',
+    icon: 'pl/osiagniecie-perfekcyjne-sledztwo',
+    lockedIcon: 'pl/osiagniecie-perfekcyjne-sledztwo-zablokowane',
     rank: 'LEGENDARY',
     hidden: false,
     scope: 'MODULE',
@@ -45,8 +46,8 @@ const BADGES: Badge[] = [
     title: null,
     description: null,
     conditionText: null,
-    icon: 'osiagniecie-tajne-zablokowane',
-    lockedIcon: 'osiagniecie-tajne-zablokowane',
+    icon: 'pl/osiagniecie-tajne-zablokowane',
+    lockedIcon: 'pl/osiagniecie-tajne-zablokowane',
     rank: 'SECRET',
     hidden: true,
     scope: null,
@@ -58,11 +59,11 @@ const BADGES: Badge[] = [
   // Moduł 2 (D-124): ranga Rare zdobyta i niezdobyta, Legendary niezdobyte, tajne zdobyte.
   {
     code: 'dead-air',
-    title: 'Dead Air',
+    title: 'Cisza na linii',
     description: 'Rozłączyłeś się, zanim oszust zdążył cokolwiek wyciągnąć.',
     conditionText: 'W rozmowie na żywo w sprawie „Głos z helpdesku” zakończ rozmowę dobrze w najwyżej trzech odpowiedziach, nie podając niczego.',
-    icon: 'osiagniecie-cisza-na-linii',
-    lockedIcon: 'osiagniecie-cisza-na-linii-zablokowane',
+    icon: 'pl/osiagniecie-cisza-na-linii',
+    lockedIcon: 'pl/osiagniecie-cisza-na-linii-zablokowane',
     rank: 'RARE',
     hidden: false,
     scope: 'MODULE',
@@ -73,11 +74,11 @@ const BADGES: Badge[] = [
   },
   {
     code: 'perfect-pitch',
-    title: 'Perfect Pitch',
+    title: 'Czysty odsłuch',
     description: 'Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.',
     conditionText: 'W odsłuchu nagrania w sprawie „Głos z helpdesku” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',
-    icon: 'osiagniecie-czysty-odsluch',
-    lockedIcon: 'osiagniecie-czysty-odsluch-zablokowane',
+    icon: 'pl/osiagniecie-czysty-odsluch',
+    lockedIcon: 'pl/osiagniecie-czysty-odsluch-zablokowane',
     rank: 'RARE',
     hidden: false,
     scope: 'MODULE',
@@ -88,11 +89,11 @@ const BADGES: Badge[] = [
   },
   {
     code: 'full-transcript',
-    title: 'Full Transcript',
+    title: 'Pełny zapis',
     description: 'Cała rozmowa rozpisana co do słowa. Sprawa bez luk.',
     conditionText: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Głos z helpdesku”.',
-    icon: 'osiagniecie-pelny-zapis',
-    lockedIcon: 'osiagniecie-pelny-zapis-zablokowane',
+    icon: 'pl/osiagniecie-pelny-zapis',
+    lockedIcon: 'pl/osiagniecie-pelny-zapis-zablokowane',
     rank: 'LEGENDARY',
     hidden: false,
     scope: 'MODULE',
@@ -103,11 +104,11 @@ const BADGES: Badge[] = [
   },
   {
     code: 'off-the-record',
-    title: 'Off the Record',
+    title: 'Poza protokołem',
     description: 'Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być.',
     conditionText: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Głos z helpdesku”.',
-    icon: 'osiagniecie-off-the-record',
-    lockedIcon: 'osiagniecie-tajne-zablokowane',
+    icon: 'pl/osiagniecie-off-the-record',
+    lockedIcon: 'pl/osiagniecie-tajne-zablokowane',
     rank: 'SECRET',
     hidden: true,
     scope: 'MODULE',
@@ -119,9 +120,9 @@ const BADGES: Badge[] = [
 ];
 
 const PINNED = [
-  { code: 'flawless-case', title: 'Flawless Case', icon: 'osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
-  { code: 'curious-detective', title: 'Curious Detective', icon: 'osiagniecie-ciekawski-detektyw', rank: 'SECRET' as const },
-  { code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
+  { code: 'flawless-case', title: 'Perfekcyjne śledztwo', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
+  { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' as const },
+  { code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
 ];
 const NAMES = ['Katarzyna', 'Bartłomiej', 'Anna', 'Jan', 'Małgorzata', 'Piotr', 'Zofia', 'Krzysztof', 'Ewa', 'Tomasz'];
 const TOP: LeaderboardEntry[] = NAMES.map((firstName, index) => ({

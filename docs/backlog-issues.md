@@ -854,6 +854,22 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-155 Grafiki zdobytych tajnych osiągnięć publiczne pod przewidywalną nazwą
+- Etykiety: `P3`, `security`, `mod:gamifikacja` · Źródło: security review D-146
+- Opis: `apps/web/public/achievements/{pl,en}/osiagniecie-ciekawski-detektyw.svg` i `…-off-the-record.svg` są dostępne bez logowania pod
+  nazwą, którą da się zgadnąć (stan sprzed D-146, teraz dwa pliki zamiast jednego). D-111 chroni odpowiedzi API, nie zasoby statyczne -
+  ryzyko: spoiler, nie wyciek danych klienta.
+- Akceptacja: decyzja właściciela - zostawić albo serwować grafiki tajnych przez BFF dla zalogowanego, który je zdobył (albo nazwy z
+  losowym skrótem).
+
+### B-154 Easter egg modułu 1: „Nowe osiągnięcie: Curious Detective” z treści modułu, nie w języku szkoleń
+- Etykiety: `P3`, `content`, `mod:kursy` · Źródło: D-146 (osiągnięcia w języku szkoleń)
+- Opis: okienko easter egga pulpitu Anny (`PopupsEasterEgg`) i wyróżnienie w notatniku biorą nazwę osiągnięcia z treści modułu 1
+  (`module.json`), nie z API - po D-146 polski gracz widzi tam „Curious Detective”, a na profilu „Ciekawski detektyw”. To samo dla
+  „Off the Record” w module 2 (wyróżnienie w notatniku). Zmiana treści = nowa wersja kursu i content-import.
+- Akceptacja: etykiety w treści modułów 1-2 zgodne z nazwami PL z D-146 (albo pobierane z tej samej mapy); e2e modułów sprawdzają nową
+  etykietę.
+
 ### B-153 Ekran zamknięcia po awansie: „Poziom {nowy}” z paskiem od nowa, nie „Poziom {stary}” z paskiem do 100%
 - Etykiety: `P2`, `ux`, `mod:gamifikacja` · Źródło: przegląd zrzutów poprawek m3 przez właściciela 2026-10-19 (desktop: obok siebie
   „Awans na poziom 2!” i „Poziom 1” z paskiem) · Plan: osobny PR zaraz po #134

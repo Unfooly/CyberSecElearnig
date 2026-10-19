@@ -1599,6 +1599,7 @@ try {
           else {
             const problems = [];
             if (!typewriter.above) problems.push('ramka na scenie (nakładka), nie poza nią');
+            if (!Number.isFinite(typewriter.minFont)) problems.push('brak tekstu do zmierzenia w ramce');
             if (typewriter.minFont < 15.95) problems.push(`tekst ${typewriter.minFont.toFixed(1)} px < 16 px`);
             if (typewriter.clipped) problems.push('tekst ucięty w ramce');
             if (!typewriter.inView) problems.push('ramka poza ekranem');
@@ -1644,9 +1645,14 @@ try {
         }
         await page.waitForFunction(() => ['closing-note', 'closing-stamp'].every((id) => document.querySelector(`[data-testid="${id}"]`)?.complete), null, { timeout: 30000 });
         const overlap = await page.evaluate(({ lessons, signature }) => {
-          const box = document.querySelector('[data-testid="closing-box"]')?.getBoundingClientRect() ?? document.querySelector('[data-testid="case-closed-scene"]')?.getBoundingClientRect();
+          // case-closed-scene = ramka raportu (aspect 9/16 w pionie) - sloty z module.json są w % jej wymiarów.
+          const box = document.querySelector('[data-testid="case-closed-scene"]')?.getBoundingClientRect();
           if (!box) return { error: 'brak ramki raportu' };
+          // Sloty pionowe porównujemy tylko z układem pionowym (w poziomie dałyby fałszywy wynik).
+          if (!document.querySelector('[data-testid="case-closed-frame"][data-orientation="portrait"]')) return { error: 'ekran zamknięcia nie w układzie pionowym' };
           const pct = (slot) => ({ left: box.left + (slot.x / 100) * box.width, top: box.top + (slot.y / 100) * box.height, right: box.left + ((slot.x + slot.w) / 100) * box.width, bottom: box.top + ((slot.y + slot.h) / 100) * box.height });
+          // Liścik jest obrócony (rotate -5°): getBoundingClientRect to obwiednia obróconego elementu - prostokąt obrazu z niej jest
+          // nieco większy niż rzeczywisty (zapas po bezpiecznej stronie: kontrola może zgłosić zasłanianie, którego nie ma, nie odwrotnie).
           const contained = (img) => {
             const r = img.getBoundingClientRect();
             const ratio = img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : r.width / r.height;

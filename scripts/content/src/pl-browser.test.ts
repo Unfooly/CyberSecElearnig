@@ -13,8 +13,8 @@ describe('pl-browser', () => {
   });
 
   it('launchPolishBrowser: newContext i newPage dostają polskie opcje', async () => {
-    const newContext = vi.fn(async (options: unknown) => options);
-    const newPage = vi.fn(async (options: unknown) => options);
+    const newContext = vi.fn(async (options?: unknown) => options);
+    const newPage = vi.fn(async (options?: unknown) => options);
     const chromium = { launch: vi.fn(async () => ({ newContext, newPage })) };
     const browser = await launchPolishBrowser(chromium, { headless: true });
 

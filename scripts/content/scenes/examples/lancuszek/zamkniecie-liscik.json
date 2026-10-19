@@ -21,7 +21,7 @@
    "y": 0,
    "evidence": "liscik",
    "params": {
-    "layout": "wide",
+    "layout": "banner",
     "lines": { "$t": "liscik" },
     "sign": { "$t": "podpis" }
    }

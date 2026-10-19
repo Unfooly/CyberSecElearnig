@@ -209,7 +209,7 @@ export function validateScene(spec: SceneSpec): string[] {
     if (it.evidence !== undefined && !/^[a-z0-9-]+$/.test(it.evidence)) errors.push(`Klucz "evidence" "${it.evidence}" ma być kebab-case (${it.id})`);
   }
   if (spec.phone !== undefined && !['contain', 'panorama'].includes(spec.phone)) errors.push(`Nieznane "phone": ${spec.phone} (contain | panorama)`);
-  if (spec.phoneWidth !== undefined && !(spec.phoneWidth > 0 && spec.phoneWidth <= 390)) errors.push(`"phoneWidth" poza zakresem 1-390 px: ${spec.phoneWidth}`);
+  if (spec.phoneWidth !== undefined && !(spec.phoneWidth >= 1 && spec.phoneWidth <= 390)) errors.push(`"phoneWidth" poza zakresem 1-390 px: ${spec.phoneWidth}`);
   if (spec.phoneWidth !== undefined && spec.phone !== undefined) errors.push('"phoneWidth" i "phone" wykluczają się (nakładka w slocie albo scena w obszarze bloku)');
   if (spec.minTextPx !== undefined && !(spec.minTextPx >= MIN_TEXT_PX && spec.minTextPx <= 24)) errors.push(`"minTextPx" poza zakresem ${MIN_TEXT_PX}-24: ${spec.minTextPx}`);
   if ((spec.phoneWidth !== undefined || spec.minTextPx !== undefined) && !spec.strings) errors.push('"phoneWidth" i "minTextPx" tylko w scenie ze "strings" (kontrola rozmiaru tekstu)');

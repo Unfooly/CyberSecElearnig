@@ -40,6 +40,7 @@ const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX]*$/;
 /** Skala sceny na telefonie (px ekranu na jednostkę sceny). */
 export function phoneScale(spec: SceneSpec): number {
   const W = spec.width ?? 1600, H = spec.height ?? 1000;
+  if (spec.phoneWidth !== undefined) return spec.phoneWidth / W;
   return spec.phone === 'panorama' ? PHONE_SCENE_BOX.height / H : Math.min(PHONE_SCENE_BOX.width / W, PHONE_SCENE_BOX.height / H);
 }
 
@@ -208,6 +209,10 @@ export function validateScene(spec: SceneSpec): string[] {
     if (it.evidence !== undefined && !/^[a-z0-9-]+$/.test(it.evidence)) errors.push(`Klucz "evidence" "${it.evidence}" ma być kebab-case (${it.id})`);
   }
   if (spec.phone !== undefined && !['contain', 'panorama'].includes(spec.phone)) errors.push(`Nieznane "phone": ${spec.phone} (contain | panorama)`);
+  if (spec.phoneWidth !== undefined && !(spec.phoneWidth > 0 && spec.phoneWidth <= 390)) errors.push(`"phoneWidth" poza zakresem 1-390 px: ${spec.phoneWidth}`);
+  if (spec.phoneWidth !== undefined && spec.phone !== undefined) errors.push('"phoneWidth" i "phone" wykluczają się (nakładka w slocie albo scena w obszarze bloku)');
+  if (spec.minTextPx !== undefined && !(spec.minTextPx >= MIN_TEXT_PX && spec.minTextPx <= 24)) errors.push(`"minTextPx" poza zakresem ${MIN_TEXT_PX}-24: ${spec.minTextPx}`);
+  if ((spec.phoneWidth !== undefined || spec.minTextPx !== undefined) && !spec.strings) errors.push('"phoneWidth" i "minTextPx" tylko w scenie ze "strings" (kontrola rozmiaru tekstu)');
   errors.push(...validateStrings(spec));
   return errors;
 }
@@ -231,7 +236,7 @@ function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: Co
   if (!spec.strings) return fn(it.params ?? {}, { minFontSize: 0, where });
 
   const table = spec.strings[options.locale!]!;
-  const minPx = (it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop)) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX;
+  const minPx = Math.max((it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop)) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX, spec.minTextPx ?? 0);
   const toLocal = phoneScale(spec) * s;
   const context: PropContext = { minFontSize: it.decorative ? 0 : minPx / toLocal, where };
   const out = fn(resolveRefs(it.params ?? {}, table) as Record<string, unknown>, context);

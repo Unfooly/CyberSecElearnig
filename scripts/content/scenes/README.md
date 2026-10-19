@@ -90,6 +90,9 @@ Reguły sceny ze `strings` (błąd builda z nazwą sceny, elementu, slotu i jęz
   (domyślnie: wariant pionowy, zbliżenie - cała scena w tym obszarze) albo `"panorama"` (scena pozioma na pełną wysokość, przewijana w
   bok). Minimum obowiązuje także same cyfry (kwota, numer bywają wskazówką). Tekst tła, którego nie trzeba czytać: `"decorative": true`
   na elemencie (bez minimum, ale nadal ze `strings`).
+- **Nakładka w mniejszym slocie** (poprawki m3: liścik i pieczęć w raporcie zamknięcia): `"phoneWidth": <px>` - szerokość, w jakiej
+  odtwarzacz pokazuje grafikę na 390×844 (zmierz slot: layout-check m11 wypisuje szerokości); skala kontroli = `phoneWidth / width`
+  zamiast `"phone"`. `"minTextPx": 16` - minimum dla całej sceny (moduł w trybie prostym). Oba tylko w scenie ze `strings`.
 - Slot liczy wysokość linii z akcentami i ogonkami (hhea czcionki: „Ż” nad linią, „ą/g” pod nią) - nic nie wychodzi poza prostokąt.
   Twarda spacja (U+00A0) łączy słowa przy zawijaniu („z kolei”); pusty napis w `strings` to błąd.
 
@@ -208,6 +211,9 @@ mogą pochodzić ze `strings`: raport - `caseNo`, `title`, `labels` (`report`, `
 `bag`; domyślnie `REPORT_LABELS`), `bags` (pusta lista = bez sekcji „dowody rzeczowe”); pieczęć - `text`, `sub`; liścik - `lines`, `sign`.
 W trybie dopasowania etykiety nie mają rozstrzelenia liter (`spacing`) - `fitText` mierzy szerokość bez niego.
 `ruled: false` w raporcie usuwa liniaturę pod wnioskami - dla modułu z zasadami wpalonymi w grafikę (`textBox` z `evidence`, moduł 3).
+Tylko w scenie ze `strings` (poprawki m3, tryb prosty): pieczęć `"layout": "compact"` (420×260, sam napis zawijany w dwa wiersze, bez
+`sub`) i liścik `"layout": "wide"` (320×140, wiersze `lines` łączone w jedno zdanie i zawijane, podpis pod nim). Raport bez dowodów
+rzeczowych (`bags: []`) ma wtedy duże sloty `slot-liscik`/`slot-pieczec` pod podpisem (pion) i na pustej prawej stronie teczki (poziom).
 
 ### Klocki modułu 3 (`props-lancuszek.ts`, „Łańcuszek”, tryb prosty, D-140)
 

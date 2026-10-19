@@ -442,14 +442,39 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
       'slot-xp': { x: L + 410, y: top + 236, w: 170, h: 56 },
       'slot-wnioski': { x: L + 40, y: top + 366, w: pw - 80, h: 240 },
       'slot-podpis': { x: L + 250, y: top + 620, w: pw - 290, h: 50 },
-      'slot-pieczec': { x: R + 60, y: top + 520, w: 500, h: 180 },
+      // Bez dowodów rzeczowych (moduł 3, poprawki m3): pusta prawa strona - szeroki liścik u góry i kompaktowa pieczęć pod nim, oba duże.
+      // Moduły 1-2 bez zmian (te same sloty i kolejność).
+      ...(items
+        ? { 'slot-pieczec': { x: R + 60, y: top + 520, w: 500, h: 180 } }
+        : { 'slot-pieczec': { x: R + 100, y: top + 400, w: 420, h: 260 } }),
       'slot-odznaka': { x: L + 470, y: top + 18, w: 120, h: 164 },
-      'slot-liscik': { x: R + 440, y: top + 150, w: 170, h: 158 },
+      ...(items ? { 'slot-liscik': { x: R + 440, y: top + 150, w: 170, h: 158 } } : { 'slot-liscik': { x: R + 40, y: top + 110, w: 540, h: 236 } }),
     },
   };
 };
 
-export const closedStamp: PropFn<{ text?: string; sub?: string }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa' }, context) => ({
+/**
+ * Pieczęć bez dopisku (poprawki m3, `layout: "compact"`, tylko w scenie ze `strings`): sam napis, zawijany w dwa wiersze, większy względem
+ * pieczęci - w slocie raportu na telefonie ma min. 16 px. Kształt 420×260 (proporcja ~1,6 zamiast 2,3).
+ */
+const compactStamp = (tx: string, context: PropContext) => ({
+  w: 420, h: 260,
+  svg:
+    `<g transform="translate(20 25) rotate(-6 190 105)" opacity="0.92"><rect x="0" y="0" width="380" height="210" rx="18" fill="none" stroke="${P.red}" stroke-width="10"/>` +
+    `<rect x="14" y="14" width="352" height="182" rx="10" fill="none" stroke="${P.red}" stroke-width="3"/>` +
+    fitLabel(context, 'text', tx, 50, { x: 20, y: 24, w: 340, h: 162 }, { anchor: 'middle', bold: true, fill: P.red }) +
+    `</g>`,
+});
+
+export const closedStamp: PropFn<{ text?: string; sub?: string; layout?: 'wide' | 'compact' }> = ({ text: tx = 'SPRAWA ZAMKNIĘTA', sub = 'Wydział Cyberbezpieczeństwa', layout = 'wide' }, context) => {
+  if (layout === 'compact') {
+    if (!fitMode(context)) throw new Error('closedStamp: layout "compact" tylko w scenie ze "strings" (dopasowanie tekstu)');
+    return compactStamp(tx, context);
+  }
+  return closedStampWide(tx, sub, context);
+};
+
+const closedStampWide = (tx: string, sub: string, context?: PropContext) => ({
   w: 600, h: 260,
   svg:
     `<g transform="translate(20 30) rotate(-8 280 100)" opacity="0.92"><rect x="10" y="20" width="540" height="160" rx="18" fill="none" stroke="${P.red}" stroke-width="10"/>` +
@@ -462,7 +487,32 @@ export const closedStamp: PropFn<{ text?: string; sub?: string }> = ({ text: tx 
     `</g>`,
 });
 
-export const commissionerNote: PropFn<{ lines?: string[]; sign?: string }> = ({ lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.' }, context) => ({
+/**
+ * Liścik szeroki (poprawki m3, `layout: "wide"`, tylko w scenie ze `strings`): jedno krótkie zdanie (wiersze `lines` łączone i zawijane
+ * przez `fitText`) i podpis pod nim - niski kształt 320×140 mieści się pod podpisem raportu w pionie z tekstem min. 16 px na telefonie.
+ */
+const wideNote = (lines: string[], sign: string, context: PropContext) => ({
+  w: 320, h: 140,
+  svg:
+    `<g class="a-flutter"><rect x="8" y="10" width="310" height="128" fill="${P.ink}" opacity="0.15"/><rect width="310" height="128" fill="${P.yellow}"/>` +
+    `<rect width="310" height="20" fill="${P.yellowDark}" opacity="0.6"/>` +
+    fitLabel(context, 'lines', lines.join(' '), 24, { x: 14, y: 26, w: 282, h: 58 }, { fill: P.purpleDark, bold: true }) +
+    fitLabel(context, 'sign', sign, 24, { x: 130, y: 84, w: 166, h: 40 }, { anchor: 'end', fill: P.purpleDark, bold: true }) +
+    `</g>`,
+});
+
+export const commissionerNote: PropFn<{ lines?: string[]; sign?: string; layout?: 'square' | 'wide' }> = (
+  { lines = ['Dobra robota,', 'detektywie.', 'Następna sprawa', 'czeka.'], sign = '— A.W.', layout = 'square' },
+  context,
+) => {
+  if (layout === 'wide') {
+    if (!fitMode(context)) throw new Error('commissionerNote: layout "wide" tylko w scenie ze "strings" (dopasowanie tekstu)');
+    return wideNote(lines, sign, context);
+  }
+  return squareNote(lines, sign, context);
+};
+
+const squareNote = (lines: string[], sign: string, context?: PropContext) => ({
   w: 260, h: 240,
   svg:
     `<g class="a-flutter"><rect x="8" y="10" width="250" height="228" fill="${P.ink}" opacity="0.15"/><rect width="250" height="228" fill="${P.yellow}"/>` +
@@ -765,8 +815,11 @@ export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: st
       'slot-xp': { x: X + 500, y: statY, w: 232, h: statH },
       'slot-wnioski': { x: X, y: 452, w: w - 2 * X, h: 420 },
       'slot-podpis': { x: X + 330, y: 880, w: w - 2 * X - 330, h: 64 },
-      'slot-pieczec': { x: 500, y: 1330, w: 320, h: 170 },
-      'slot-liscik': { x: 540, y: 1062, w: 250, h: 240 },
+      // Bez dowodów rzeczowych (moduł 3, poprawki m3): szeroki liścik pod podpisem i kompaktowa pieczęć pod nim, po prawej - oba duże
+      // (tekst min. 16 px na telefonie), poza sekcją zasad (do y 872). Moduły 1-2 bez zmian.
+      ...(items
+        ? { 'slot-pieczec': { x: 500, y: 1330, w: 320, h: 170 }, 'slot-liscik': { x: 540, y: 1062, w: 250, h: 240 } }
+        : { 'slot-pieczec': { x: 356, y: 1270, w: 440, h: 272 }, 'slot-liscik': { x: 40, y: 975, w: 680, h: 298 } }),
     },
   };
 };

@@ -90,6 +90,14 @@ export interface SceneSpec {
    * bloku - warianty pionowe, zbliżenia) albo 'panorama' (scena pozioma na pełną wysokość obszaru, przewijana w bok).
    */
   phone?: 'contain' | 'panorama';
+  /**
+   * Nakładka pokazywana na telefonie 390×844 w MNIEJSZYM slocie niż obszar sceny (poprawki m3: liścik i pieczęć w slotach raportu
+   * zamknięcia): szerokość wyświetlenia w px ekranu - kontrola rozmiaru tekstu liczy skalę z niej (`phoneWidth / width`), nie z `phone`.
+   * Liczba z pomiaru slotu w odtwarzaczu (layout-check m11 sprawdza rzeczywisty rozmiar).
+   */
+  phoneWidth?: number;
+  /** Minimum tekstu na telefonie dla całej sceny (px ekranu), gdy wyższe niż domyślne 14 - np. 16 w module w trybie prostym. */
+  minTextPx?: number;
 }
 
 export interface Hotspot {

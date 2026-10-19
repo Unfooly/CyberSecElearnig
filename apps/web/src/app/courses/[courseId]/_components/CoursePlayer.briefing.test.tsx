@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 import type { ContentBlock } from '@/lib/courses-types';
-import { badgeNumber, displayNameFromEmail, playerIdentity } from '@/lib/use-my-display-name';
+import { badgeNumber, displayNameFromEmail, playerIdentity, reportSigner } from '@/lib/use-my-display-name';
 import { notebookTasks } from './player/notes';
 
 vi.mock('next/navigation', () => ({
@@ -367,6 +367,17 @@ describe('tożsamość na legitymacji i zadania (funkcje czyste)', () => {
     expect(badgeNumber('SPR-2026-0412', 'AK')).toBe('0412-AK');
     expect(badgeNumber('A-1', 'AK')).toBe('A1-AK');
     expect(badgeNumber(undefined, 'AK')).toBe('AK');
+  });
+
+  // Poprawki m3: podpis raportu „Imię I.” (D-081), bez imienia - część e-maila przed @, ostatecznie „Pracownik”.
+  it('reportSigner: imię z inicjałem, a konto bez imienia - e-mail przed @ i „Pracownik”', () => {
+    expect(reportSigner({ firstName: 'Jakub', lastInitial: 'P' }, 'j.p@x.pl')).toBe('Jakub P.');
+    expect(reportSigner({ firstName: 'Jakub', lastInitial: null }, 'j.p@x.pl')).toBe('Jakub');
+    // Konto bez imienia (np. import): część e-maila bez przerabiania, także gdy profil ma sam inicjał.
+    expect(reportSigner({ firstName: null, lastInitial: 'K' }, 'a.kowalska@x.pl')).toBe('a.kowalska');
+    expect(reportSigner(null, 'pracownik.biura@x.pl')).toBe('pracownik.biura');
+    expect(reportSigner({ firstName: '  ', lastInitial: null }, null)).toBe('Pracownik');
+    expect(reportSigner(null, '@x.pl')).toBe('Pracownik');
   });
 
   it('notebookTasks: zadania z bloku BRIEFING, odhaczone, gdy WSZYSTKIE bloki z completeWhen są ukończone; moduł bez odprawy = brak', () => {

@@ -1309,6 +1309,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   „Notatnik (0)”, czyli asercja przyszła przed wpisaniem notatek z odpowiedzi serwera (`getByRole` zamiast `findByRole`/`waitFor` po zapisie).
   Priorytet podniesiony do `P2` (drugie wystąpienie, blokuje CI do ponownego uruchomienia); akceptacja bez zmian, plus asercja licznika
   Notatnika przez `findByRole`.
+- **Trzecie wystąpienie (2026-10-19, PR #134, https://github.com/Unfooly/CyberSecElearnig/actions/runs/39240542760) - poprawione w D-145:**
+  asercja „Notatnik (1)” po odpowiedzi serwera przez `findByRole` (czeka na render z notatką). Do zamknięcia, jeśli nie powtórzy się w
+  kolejnych PR-ach.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

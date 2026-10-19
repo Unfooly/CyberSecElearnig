@@ -194,7 +194,9 @@ try {
 
   // 8. Ustawienia PRZED weryfikacją: przełącznik zablokowany.
   await page.goto(`${WEB}/dashboard/settings`);
-  step('ustawienia: przełącznik selfJoin zablokowany do weryfikacji', await page.getByRole('switch').isDisabled());
+  // Po nazwie: ustawienia mają też przełącznik rankingu organizacji.
+  const selfJoinSwitch = () => page.getByRole('switch', { name: 'Pozwól pracownikom dołączać' });
+  step('ustawienia: przełącznik selfJoin zablokowany do weryfikacji', await selfJoinSwitch().isDisabled());
   await page.goto(`${WEB}/onboarding`);
 
   // 9. Rekord "wpisany w DNS" (plik czytany przez stub) + odczekanie cooldownu 10 s.
@@ -210,7 +212,7 @@ try {
   step('/onboarding dla organizacji ACTIVE odsyła do /dashboard', pathOf() === '/dashboard', pathOf());
   await page.goto(`${WEB}/dashboard/settings`);
   await page.getByText(COMPANY, { exact: false }).first().waitFor();
-  const toggle = page.getByRole('switch');
+  const toggle = selfJoinSwitch();
   step('ustawienia: przełącznik aktywny po weryfikacji', await toggle.isEnabled());
   // Przełącznik zmienia stan dopiero po potwierdzeniu z API (nie optymistycznie) - stąd click, nie check.
   await toggle.click();

@@ -96,6 +96,12 @@ Reguły sceny ze `strings` (błąd builda z nazwą sceny, elementu, slotu i jęz
 - Slot liczy wysokość linii z akcentami i ogonkami (hhea czcionki: „Ż” nad linią, „ą/g” pod nią) - nic nie wychodzi poza prostokąt.
   Twarda spacja (U+00A0) łączy słowa przy zawijaniu („z kolei”); pusty napis w `strings` to błąd.
 
+**Pseudo-lokalizacja `xx` (D-143).** Zanim powstanie EN, każda scena ze `strings` buduje się w teście (`pseudo-locale.test.ts`, CI) także
+w `xx`: teksty z `strings.pl` o ~35% dłuższe, z akcentami, w [ ] (`composePseudoScene`, generator w `packages/content/src/pseudo-locale.ts`),
+z tymi samymi regułami co wyżej. Wynik tylko w pamięci - `cli.ts` go nie zapisuje, a `xx` w `strings` źródła to błąd. Błąd w `xx` =
+za mały slot albo zły układ: popraw klocek/scenę, nie skracaj tekstu PL. Sceny sprzed D-143 z takim błędem - `KNOWN_TOO_TIGHT` (B-156);
+nowa scena tam nie trafia.
+
 Sceny bez `strings` (moduły 1-2) budują się jak dotąd - jeden plik, tekst zamieniony na krzywe w obecnych rozmiarach, bez kontroli
 minimum (decyzja właściciela D-135: wyglądają jak wcześniej, czytelność przez zbliżenia).
 

@@ -740,6 +740,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   publikacji (potok publikuje tylko zasoby wskazane w treści).
 - Akceptacja: decyzja właściciela, które tła wchodzą do odtwarzacza (pole `image`/`imagePortrait` w schemacie bloku, klasyfikacja
   `client`, layout-check), albo usunięcie nieużytych plików i ich źródeł.
+- Decyzja właściciela (2026-10-21): wszystkie wchodzą do odtwarzacza.
+- Status: część a zrobiona (D-147, gałąź `feat/138-tla-modulu-2`) - tła odsłuchu i omówienia. Zostaje część b: okno konsoli
+  (`konsola-admina(-pion)`, sloty `slot-tytul`, `slot-dokument`) w INTERROGATION i ekran połączenia (`rozmowa-na-zywo`, sloty
+  `slot-caller`, `slot-status`, `slot-choices`, `odrzuc`, `odbierz`) w LIVE_CALL - HTML w slotach grafiki, położenie slotów w treści.
+  Na wersję EN modułu 2: notatnik w `nagranie-tlo(-pion)` ma odręczny PL („9:02 — 9:41”, „„Paweł z IT”?”, „flagi!”) - wariant `{ pl, en }`.
 
 ### B-139 layout-check: sporadyczny błąd ładowania obrazu (m1) na `next dev` - ZROBIONE (artefakt testu, m1/n4 czekają na `decode()`)
 - Etykiety: `P3`, `test`, `mod:web` · Źródło: faza 1g (D-125)

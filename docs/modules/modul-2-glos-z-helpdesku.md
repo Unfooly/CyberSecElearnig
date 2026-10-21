@@ -711,7 +711,7 @@ mogą zostać w grafice.
 | 9 | `pulpit-karola.svg` (w ramce monitora, `wrap-in-monitor`) | 4:3 | `narzedzie` 8/10/14/20; `przegladarka` 8/32/14/20 | nie | ramka monitora | tekst w warstwie (podpisy ikon) |
 | 10 | `karteczka-id-zoom.svg` | 1:1 | - | nie | tak | bez wariantu EN (odręczny dopisek „Paweł IT” działa także po angielsku - decyzja właściciela; ID zamaskowane zostaje) |
 | 11 | `plakat-zoom.svg` | 3:4 | - | nie | tak | tekst w warstwie (hasło plakatu w `textLayer` na polu plakatu) |
-| 12 | `nagranie-tlo.svg` (tło odsłuchu: stół, rejestrator, słuchawki) | 16:9 | brak (UI fali rysuje odtwarzacz) | tak | nie | bez tekstu |
+| 12 | `nagranie-tlo.svg` (tło odsłuchu: stół, rejestrator, słuchawki) | 16:9 | brak (UI fali rysuje odtwarzacz) | tak | nie | **notatnik z odręcznym PL** („9:02 — 9:41”, „„Paweł z IT”?”, „flagi!”) - dekoracja (aria-hidden), ale wersja EN wymaga wariantu `{ pl, en }`; w treści od B-138 (`background`, D-147) |
 | 13 | `avatars/karol.svg`, `avatars/pawel.svg` | 1:1, 256 | - | - | tak | bez tekstu |
 | 14 | `konsola-admina.svg` (okno konsoli, zakładki jako HTML w slocie) | 16:10 | slot `dokument` 4/12/92/84 | tak (`-pion`, slot 4/10/92/86) | tak | tekst w warstwie (tytuł okna i wszystkie zakładki - HTML) |
 | 15 | `rejestr-porownanie.svg` (dwa wpisy obok siebie + karta intranetu) | 16:9 | `wpis-9-02` 8/22/40/20; `wpis-10-15` 8/48/40/20; `intranet` 56/20/36/50; `drzwi` 88/10/10/70 | tak (wpisy jeden pod drugim: 8/12/84/14, 8/30/84/14, intranet 8/50/84/30) | nie | tekst w warstwie (etykiety wpisów i karta intranetu) |
@@ -719,7 +719,7 @@ mogą zostać w grafice.
 | 17 | `webinar-odtwarzacz.svg` (kadr prelekcji: slajd „Bezpieczna praca zdalna”, sylwetka prelegenta) | 16:9 | - | tak | tak | tekst w warstwie (tytuł slajdu w `textLayer`) |
 | 18 | `rozmowa-na-zywo.svg` (ekran połączenia przychodzącego „IT Helpdesk”, 12 3XX XX 41) | 9:16 | - (odpowiedzi to HTML) | - (pionowa także na desktopie, wyśrodkowana) | tak | tekst w warstwie („IT Helpdesk”, „Połączenie przychodzące” - HTML z `caller.display`; numer zamaskowany może zostać) |
 | 19 | `tablica-osi.svg` (tablica korkowa, 7 kart, nić) | 16:9 | jak moduł 1 (karty to HTML) | tak | nie | tekst w warstwie (karty, `start`/`end`) |
-| 20 | `omowienie-tlo.svg` (pulpit z transkrypcją) | 16:9 | - | tak | nie | bez tekstu (transkrypcja i znaczniki - HTML) |
+| 20 | `omowienie-tlo.svg` (pulpit z transkrypcją) | 16:9 | - | tak | nie | bez tekstu (transkrypcja i znaczniki - HTML); w treści od B-138 (`source.background`, D-147) |
 | 21 | `zamkniecie-raport.svg`, `zamkniecie-pieczec.svg`, `zamkniecie-liscik.svg` | 16:9 / wg modułu 1 | sloty jak moduł 1 (`evidence`, `time`, `xp`, `lessons`, `signature`, `stamp`, `note`) | tak (`zamkniecie-raport-pion.svg`) | pieczęć i liścik: tak | raport: tekst w warstwie (nagłówki pól w slotach, nowe sloty `labels`); **pieczęć i liścik: wymaga wariantu EN** (napis pieczęci „SPRAWA ZAMKNIĘTA” i odręczny liścik to rysunek) |
 | 22 | `miniatura-glos-z-helpdesku.svg` (bez PNG: og:image jest wspólny dla serwisu - D-126) | 16:9, 1600×900 | - | nie | nie | bez tekstu - miniatura bez tytułu (zatwierdzone przez właściciela; tytuł pokazuje karta kursu), więc bez wariantu EN |
 | 23 | Trofea: `osiagniecie-dead-air`, `-perfect-pitch`, `-full-transcript`, `-off-the-record` (+ `-zablokowane`; tajne - wspólne `osiagniecie-tajne-zablokowane`) | 1:1, 512×512 | - | - | tak | bez zmian językowych (nazwy i rangi po angielsku - decyzja D-111) |

@@ -122,6 +122,9 @@ cudzych grafik. Klocek = funkcja w `props.ts` / `props-odprawa.ts`, wpis w `PROP
   390 px co najmniej 15 px w scenie ALBO w zbliżeniu, które gracz otwiera. Element sceny z takim tekstem dostaje `"evidence": "<klucz>"`
   (ten sam klucz w scenie i w jej zbliżeniu); `layout-check` (sekcja `module`, m9) mierzy to w przeglądarce. Za mały w scenie -
   dodaj albo powiększ zbliżenie, nie zmniejszaj tekstu. Tekst tła (stopki, podpisy ikon) - bez klucza.
+- **Grafiki są publiczne (tła bloków, D-147):** każda grafika trafia do publicznego magazynu, a walidator nie czyta obrazów - na tle
+  odsłuchu, omówienia czy sceny nie rysuj wskazówek wskazujących oceniane odpowiedzi (które kwestie są flagami, kolejność śladów,
+  poprawny wybór). Taka treść omija klasyfikację `secret`.
 - **Publikacja:** `npm run tts --prefix scripts/content -- <slug> --assets --storage r2 --yes`, potem `--assets --check` (i
   `--assets --check --remote` - obecność plików w magazynie, D-068) - zawsze z gałęzi PR (CLAUDE.md, reguła 13).
 

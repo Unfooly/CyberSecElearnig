@@ -202,10 +202,10 @@ w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); napisy bez slo
 | `mfaListZoom`, `callLogZoom` | zbliżenia: seria powiadomień MFA, rejestr połączeń |
 | `desktopRemoteIcon`, `remoteToolWindow` | pulpit z narzędziem zdalnej pomocy |
 | `recorderTop`, `headphonesTop`, `transcriptPagesTop`, `highlighterTop` | sala odsłuchu (tło nagrania i omówienia) |
-| `adminConsoleWindow` | konsola administratora |
+| `adminConsoleWindow` | konsola administratora (dziś nieużywany w treści - konsola przesłuchania jest w HTML, D-148) |
 | `callCompareTop`, `intranetSheet` | porównanie w rejestrze połączeń |
 | `teamWebsite`, `webinarFrame` | strona „Zespół” (OSINT) i kadr webinaru |
-| `incomingCallScreen` | ekran połączenia przychodzącego (rozmowa na żywo) |
+| `incomingCallScreen` | ekran połączenia przychodzącego (rozmowa na żywo, B-138b): sama ramka telefonu bez słów, numeru i przycisków (`ringing` - fale); części `slot-status`, `slot-caller`, `slot-number`, `slot-actions` pod HTML odtwarzacza |
 | `avatarBust` | awatary postaci przesłuchań |
 | `trophyHelpdesk` | trofea osiągnięć modułu 2: `kind` `dead-air`, `perfect-pitch`, `full-transcript`, `off-the-record`, `earned` (zablokowane bez nazw) |
 

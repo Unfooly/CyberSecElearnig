@@ -61,6 +61,8 @@ export const ASSET_PATHS: string[][] = [
   ['backgroundPortrait'],
   ['source', 'background'],
   ['source', 'backgroundPortrait'],
+  // Ekran połączenia przychodzącego (LIVE_CALL, B-138b).
+  ['ringScreen', 'image'],
   // Kadr odtwarzacza nagrania przy obszarze strony (OSINT_SPOT, webinar, D-120).
   ['spots', '*', 'media', 'image'],
   ['spots', '*', 'media', 'imagePortrait'],

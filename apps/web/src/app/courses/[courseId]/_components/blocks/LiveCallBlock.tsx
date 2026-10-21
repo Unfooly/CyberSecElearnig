@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { CircleAlert, CircleCheck, CircleDot, Phone, PhoneOff, Volume2, VolumeX } from 'lucide-react';
-import type { ContentBlock, LiveCallContent, ResultDetail } from '@/lib/courses-types';
-import { contentAssetUrl } from '@/lib/content-assets';
+import type { ContentBlock, LiveCallContent, ResultDetail, SlotRect } from '@/lib/courses-types';
+import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { DEFAULT_HINT, useHints } from '../player/hints';
 import { useBlockingOverlayOpen } from '../player/overlay-stack';
@@ -76,6 +76,45 @@ const OUTCOME: Record<NonNullable<ResultDetail['outcome']>, { label: string; ton
   bad: { label: 'Oszust dopiął swego', tone: 'text-danger', Icon: CircleAlert },
 };
 
+// Ramka telefonu (B-138b): proporcje grafiki 700×1260 i minimalna wysokość, przy której slot przycisków mieści przełącznik limitu czasu i
+// dwa przyciski po 44 px (slot 30% wysokości). Niżej - karta jak dotąd (telefon w poziomie, niskie okno).
+export const RING_FRAME_RATIO = 700 / 1260;
+export const RING_FRAME_MIN_HEIGHT = 520;
+
+// `undefined` - jeszcze nie zmierzono (nic nie rysujemy - bez mignięcia karty przed ramką i bez fokusu na przycisku, który zaraz zniknie),
+// `null` - ramka się nie mieści albo nieaktywna (karta), rozmiar - ramka.
+// `enabled` - treść ma ramkę; `active` - ekran przychodzący na ekranie (poza nim - znów „niezmierzone”, ponowienie mierzy od nowa).
+function useRingFrame(enabled: boolean, active: boolean): [RefObject<HTMLDivElement>, { width: number; height: number } | null | undefined] {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null | undefined>(enabled ? undefined : null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!enabled) {
+      setSize(null);
+      return undefined;
+    }
+    if (!active || !element) {
+      setSize(undefined);
+      return undefined;
+    }
+    const measure = () => {
+      const { width, height } = element.getBoundingClientRect();
+      const frameHeight = Math.floor(Math.min(height, width / RING_FRAME_RATIO));
+      const next = frameHeight >= RING_FRAME_MIN_HEIGHT ? { width: Math.floor(frameHeight * RING_FRAME_RATIO), height: frameHeight } : null;
+      // Ten sam rozmiar - bez nowego obiektu (ResizeObserver woła przy każdej zmianie, także bez zmiany ramki).
+      setSize((current) => (current && next && current.width === next.width && current.height === next.height ? current : next));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled, active]);
+  return [ref, size];
+}
+
+const slotStyle = (rect: SlotRect): CSSProperties => ({ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` });
+
 export default function LiveCallBlock({
   block,
   contentBase,
@@ -125,6 +164,38 @@ export default function LiveCallBlock({
   const pickUpRef = useRef<HTMLButtonElement | null>(null);
   const redialed = useRef(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  // Ramka telefonu na ekranie przychodzącym (B-138b): rozmiar z pomiaru obszaru, null - za nisko (telefon w poziomie) albo przed pomiarem.
+  const [ringAreaRef, ringFrame] = useRingFrame(!!call.ringScreen, stage === 'ring' && !result);
+  const ringMeasured = ringFrame !== undefined;
+  const [ringImageFailed, setRingImageFailed] = useState(false);
+  // Przepełnienie slotu przycisków (code review B-138b): przy ramce blisko minimum dwuwierszowy podpis przełącznika wypycha przyciski poza
+  // slot - wtedy karta. Sprawdzane po każdej zmianie rozmiaru ramki (nowy rozmiar - nowa próba ramki).
+  const ringActionsRef = useRef<HTMLDivElement>(null);
+  const [ringOverflow, setRingOverflow] = useState(false);
+  useLayoutEffect(() => {
+    setRingOverflow(false);
+  }, [ringFrame?.width, ringFrame?.height]);
+  // Pomiar przed wczytaniem fontu (szerszy font zastępczy łamie podpis na dwie linie) dałby trwałą kartę - po wczytaniu fontów nowa próba.
+  // Przejście karta <-> ramka (font, zmiana rozmiaru okna) montuje przyciski od nowa: fokus na nich wraca na body - świadomy przypadek
+  // brzegowy (code review B-138b), bez przenoszenia fokusu między wariantami.
+  useEffect(() => {
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+    if (!fonts) return undefined;
+    let alive = true;
+    const retry = () => {
+      if (alive) setRingOverflow(false);
+    };
+    void fonts.ready.then(retry);
+    fonts.addEventListener?.('loadingdone', retry);
+    return () => {
+      alive = false;
+      fonts.removeEventListener?.('loadingdone', retry);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const element = ringActionsRef.current;
+    if (element && !ringOverflow && element.scrollHeight > element.clientHeight + 1) setRingOverflow(true);
+  });
   const timed = hasSilence && !noLimit;
   const node = call.nodes.find((candidate) => candidate.id === nodeId);
   // Limit biegnie także przy otwartym notatniku (presja rozmowy; WCAG 2.2.1 zapewnia przełącznik przed połączeniem).
@@ -223,9 +294,11 @@ export default function LiveCallBlock({
     if (stage === 'ended' && !result) endingRef.current?.focus({ preventScroll: true });
     const transcript = transcriptRef.current;
     if (transcript) transcript.scrollTop = transcript.scrollHeight;
-    // result - tylko stan początkowy (widok wyniku nie przenosi fokusu).
+    // result - tylko stan początkowy (widok wyniku nie przenosi fokusu). ringMeasured: przycisk „Odbierz” w ramce telefonu istnieje
+    // dopiero po pomiarze obszaru (B-138b) - fokus po ponowieniu czeka na niego. Przy wyjściu z ekranu przychodzącego (ring -> call/ended)
+    // efekt biegnie drugi raz i ustawia ten sam fokus ponownie - bez skutku dla gracza.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, nodeId]);
+  }, [stage, nodeId, ringMeasured]);
 
   const answer = result?.answer ?? (stage === 'ended' ? { path, timed } : undefined);
   const review = result && answer ? walkLiveCall(call, answer.path) : null;
@@ -235,12 +308,99 @@ export default function LiveCallBlock({
   const outcome = result?.detail?.outcome ? OUTCOME[result.detail.outcome] : null;
 
   if (stage === 'ring' && !result) {
+    // Przełącznik limitu czasu i przyciski - te same w karcie i w ramce telefonu (B-138b); `compact` - niższe elementy w slocie ramki.
+    const ringActions = (compact: boolean) => (
+      <>
+        {hasSilence && noTimeLimitDefault && (
+          // Konto z „Bez limitów czasu” (D-124): serwer i tak nie przyjmie ciszy po limicie, więc tu bez przełącznika - inaczej
+          // włączony limit prowadziłby do ścieżki odrzuconej przy zapisie (ślepa uliczka, code review D-124).
+          <p data-testid="live-call-no-limit-account" className={`rounded-btn bg-white/10 px-3 py-2 text-left ${compact ? 'text-sm' : 'text-base'}`}>
+            Bez limitu czasu
+            <span className="block text-sm text-white/70">Ustawienie Twojego konta (Ustawienia konta → Dostępność).</span>
+          </p>
+        )}
+        {hasSilence && !noTimeLimitDefault && (
+          <label className={`flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 rounded-btn bg-white/10 px-3 text-left ${compact ? 'py-1 text-sm' : 'text-base'}`}>
+            <span>
+              Wyłącz limit czasu
+              {/* W ramce telefonu krótszy podpis w jednej linii - slot przycisków ma stałą wysokość (B-138b). */}
+              <span className="block text-sm text-white/70">{compact ? `Bez odliczania ${limitSec} s.` : `Bez odliczania ${limitSec} s na odpowiedź.`}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              data-testid="live-call-no-limit"
+              checked={noLimit}
+              onChange={(event) => setNoLimit(event.target.checked)}
+              className={`h-5 w-5 shrink-0 accent-accent ${FOCUS_RING}`}
+            />
+          </label>
+        )}
+        <button
+          type="button"
+          ref={pickUpRef}
+          data-testid="live-call-answer"
+          disabled={disabled}
+          onClick={() => setStage('call')}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-btn bg-success px-4 text-base font-semibold text-white hover:bg-success/90 ${compact ? 'min-h-[44px]' : 'min-h-[48px]'} ${FOCUS_RING}`}
+        >
+          <Phone aria-hidden="true" className="h-5 w-5" />
+          Odbierz
+        </button>
+        {call.reject && (
+          <button
+            type="button"
+            data-testid="live-call-reject"
+            disabled={disabled}
+            onClick={reject}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-semibold text-white hover:bg-danger/90 ${compact ? 'min-h-[44px]' : 'min-h-[48px]'} ${FOCUS_RING}`}
+          >
+            <PhoneOff aria-hidden="true" className="h-5 w-5" />
+            Odrzuć
+          </button>
+        )}
+      </>
+    );
+    // Reduced motion: `#static` zatrzymuje fale dzwonienia w SVG (D-084), jak pulsowanie ikony w karcie.
+    const ringImage = call.ringScreen ? withStaticFragment(contentAssetUrl(contentBase, call.ringScreen.image, 'image'), reducedMotion) : null;
+    // Grafika się nie wczytała albo przełącznik i przyciski nie mieszczą się w slocie (niska ramka, dwuwierszowy podpis) - karta.
+    const frame = call.ringScreen && ringImage && ringFrame && !ringImageFailed && !ringOverflow ? { ...ringFrame, slots: call.ringScreen.slots } : null;
     return (
       <div data-testid="live-call" data-stage="ring" className="flex min-h-0 w-full flex-1 flex-col">
         <Hint variant="bar" text={hints.hint ?? block.tip ?? DEFAULT_HINT.LIVE_CALL} />
-        {/* Niski ekran (telefon w poziomie, max-height 500 px): karta w poziomie - dzwoniący po lewej, przełącznik i „Odbierz” po prawej.
-            Klasy wariantu wypisane dosłownie - Tailwind nie widzi klas sklejanych w czasie działania. */}
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        {/* Ramka telefonu (B-138b), gdy obszar jest dość wysoki; niski ekran (telefon w poziomie) i treść bez grafiki - karta. */}
+        <div ref={ringAreaRef} className="flex min-h-0 flex-1 items-center justify-center">
+          {ringFrame === undefined ? null : frame ? (
+            <div data-testid="live-call-ring-frame" className="relative shrink-0 text-center text-white" style={{ width: frame.width, height: frame.height }}>
+              {/* Ciemne podłoże w miejscu obudowy telefonu (5,7/2,4/88,6/93,7% sceny 700×1260) - biały tekst czytelny, zanim grafika się wczyta. */}
+              <div aria-hidden="true" className="absolute left-[5.7%] top-[2.4%] h-[93.7%] w-[88.6%] rounded-[2rem] bg-ink" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL; dekoracja (status i nazwa są w HTML) */}
+              <img
+                src={ringImage!}
+                alt=""
+                aria-hidden="true"
+                referrerPolicy="no-referrer"
+                onError={() => setRingImageFailed(true)}
+                className="absolute inset-0 h-full w-full"
+              />
+              <p className="absolute flex items-center justify-center whitespace-nowrap text-sm text-white/80" style={slotStyle(frame.slots.status)}>
+                Połączenie przychodzące
+              </p>
+              <p data-testid="live-call-caller" className="absolute flex items-center justify-center text-2xl font-bold leading-tight" style={slotStyle(frame.slots.caller)}>
+                <span className="min-w-0 truncate">{call.caller.display}</span>
+              </p>
+              {call.caller.number && (
+                <p className="absolute flex items-center justify-center text-sm tracking-wider text-white/80" style={slotStyle(frame.slots.number)}>
+                  {call.caller.number}
+                </p>
+              )}
+              {/* Dociśnięte do dołu przez `mt-auto` (nie `justify-end`): nadmiar idzie w dół i liczy się do scrollHeight - przy justify-end
+                  wystawałby w górę, poza obszar przewijania, i pomiar przepełnienia by go nie widział (code review B-138b). */}
+              <div ref={ringActionsRef} data-testid="live-call-ring-actions" className="absolute flex flex-col" style={slotStyle(frame.slots.actions)}>
+                <div className="mt-auto flex flex-col gap-2">{ringActions(true)}</div>
+              </div>
+            </div>
+          ) : (
           <div
             className="flex w-full max-w-sm flex-col items-center gap-4 rounded-card bg-ink p-6 text-center text-white shadow-card [@media(max-height:500px)]:max-w-2xl [@media(max-height:500px)]:flex-row [@media(max-height:500px)]:p-4"
           >
@@ -259,56 +419,9 @@ export default function LiveCallBlock({
                 {call.caller.number && <p className="text-white/80">{call.caller.number}</p>}
               </div>
             </div>
-            <div className="flex w-full flex-col gap-3 [@media(max-height:500px)]:flex-1">
-              {hasSilence && noTimeLimitDefault && (
-                // Konto z „Bez limitów czasu” (D-124): serwer i tak nie przyjmie ciszy po limicie, więc tu bez przełącznika - inaczej
-                // włączony limit prowadziłby do ścieżki odrzuconej przy zapisie (ślepa uliczka, code review D-124).
-                <p data-testid="live-call-no-limit-account" className="rounded-btn bg-white/10 px-3 py-2 text-left text-base">
-                  Bez limitu czasu
-                  <span className="block text-sm text-white/70">Ustawienie Twojego konta (Ustawienia konta → Dostępność).</span>
-                </p>
-              )}
-              {hasSilence && !noTimeLimitDefault && (
-                <label className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 rounded-btn bg-white/10 px-3 text-left text-base">
-                  <span>
-                    Wyłącz limit czasu
-                    <span className="block text-sm text-white/70">Bez odliczania {limitSec} s na odpowiedź.</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    data-testid="live-call-no-limit"
-                    checked={noLimit}
-                    onChange={(event) => setNoLimit(event.target.checked)}
-                    className={`h-5 w-5 shrink-0 accent-accent ${FOCUS_RING}`}
-                  />
-                </label>
-              )}
-              <button
-                type="button"
-                ref={pickUpRef}
-                data-testid="live-call-answer"
-                disabled={disabled}
-                onClick={() => setStage('call')}
-                className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-btn bg-success px-4 text-base font-semibold text-white hover:bg-success/90 ${FOCUS_RING}`}
-              >
-                <Phone aria-hidden="true" className="h-5 w-5" />
-                Odbierz
-              </button>
-              {call.reject && (
-                <button
-                  type="button"
-                  data-testid="live-call-reject"
-                  disabled={disabled}
-                  onClick={reject}
-                  className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-semibold text-white hover:bg-danger/90 ${FOCUS_RING}`}
-                >
-                  <PhoneOff aria-hidden="true" className="h-5 w-5" />
-                  Odrzuć
-                </button>
-              )}
-            </div>
+            <div className="flex w-full flex-col gap-3 [@media(max-height:500px)]:flex-1">{ringActions(false)}</div>
           </div>
+          )}
         </div>
       </div>
     );

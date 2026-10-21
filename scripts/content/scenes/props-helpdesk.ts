@@ -133,10 +133,16 @@ export const phoneHomeTiles: PropFn<Record<string, never>> = () => {
 
 /* ---------- rozmowa na żywo: ekran połączenia przychodzącego ---------- */
 
-export const incomingCallScreen: PropFn<{ number?: string; ringing?: boolean }> = ({ number = '12 3XX XX 41', ringing = true }) => {
-  const w = 620, h = 1180, sx = 34, sy = 90, sw = w - 68, sh = h - 170, cx = w / 2;
+/**
+ * Ekran połączenia przychodzącego (LIVE_CALL, B-138b): sama ramka telefonu - gradient ekranu, fale dzwonienia, sylwetka ze słuchawkami.
+ * Bez słów, numeru i przycisków (decyzja właściciela 2026-10-21): status, nazwa, numer, przełącznik limitu czasu i „Odbierz”/„Odrzuć”
+ * rysuje odtwarzacz w HTML w slotach (`slot-status`, `slot-caller`, `slot-number`, `slot-actions`) - przycisk „Odrzuć” jest w treści
+ * opcjonalny, a przyciski potrzebują podpisu.
+ */
+export const incomingCallScreen: PropFn<{ ringing?: boolean }> = ({ ringing = true }) => {
+  const w = 620, h = 1180, sx = 34, sy = 90, sw = w - 68, sh = h - 170, cx = w / 2, cy = 470;
   const waves = ringing
-    ? [0, 1, 2].map(i => `<circle class="a-wave${i ? ` d${i}` : ''}" cx="${cx}" cy="440" r="${150 + i * 42}" fill="none" stroke="${P.white}" stroke-width="4" opacity="0.5"/>`).join('')
+    ? [0, 1, 2].map(i => `<circle class="a-wave${i ? ` d${i}` : ''}" cx="${cx}" cy="${cy}" r="${126 + i * 28}" fill="none" stroke="${P.white}" stroke-width="4" opacity="0.5"/>`).join('')
     : '';
   return {
     w, h,
@@ -147,26 +153,20 @@ export const incomingCallScreen: PropFn<{ number?: string; ringing?: boolean }> 
       `<rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="30" fill="url(#callbg)"/>` +
       `<rect x="${cx - 70}" y="36" width="140" height="22" rx="11" fill="#1B1730"/>` +
       waves +
-      `<circle cx="${cx}" cy="440" r="132" fill="${P.purple}"/>` +
+      `<circle cx="${cx}" cy="${cy}" r="110" fill="${P.purple}"/>` +
       // sylwetka bez twarzy + zestaw słuchawkowy
-      `<clipPath id="avc"><circle cx="${cx}" cy="440" r="132"/></clipPath><g clip-path="url(#avc)">` +
-      `<circle cx="${cx}" cy="410" r="56" fill="#8E82F0"/><path d="M${cx - 110} 580 c0 -80 50 -110 110 -110 s110 30 110 110 z" fill="#8E82F0"/></g>` +
-      `<path d="M${cx - 62} 410 a62 62 0 0 1 124 0" fill="none" stroke="${P.ink}" stroke-width="12"/>` +
-      `<rect x="${cx - 74}" y="398" width="22" height="40" rx="10" fill="${P.ink}"/><rect x="${cx + 52}" y="398" width="22" height="40" rx="10" fill="${P.ink}"/>` +
-      `<path d="M${cx - 60} 436 q10 44 50 44" fill="none" stroke="${P.ink}" stroke-width="7"/><circle cx="${cx - 6}" cy="480" r="9" fill="${P.ink}"/>` +
-      // slot na nazwę (HTML) i numer zamaskowany
-      `<rect x="${sx + 60}" y="210" width="${sw - 120}" height="1" fill="none"/>` +
-      t(cx, 670, number, 40, { anchor: 'middle', fill: P.white, opacity: 0.85, spacing: 2 }) +
-      // przyciski: odrzuć / odbierz (bez słów)
-      `<g transform="translate(${cx - 150} ${h - 250})"><circle r="62" fill="${P.red}"/>${handset(70, P.white, 135)}</g>` +
-      `<g transform="translate(${cx + 150} ${h - 250})"${ringing ? ' class="a-bounce"' : ''}><circle r="62" fill="${P.green}"/>${handset(70, P.white, 0)}</g>` +
+      `<clipPath id="avc"><circle cx="${cx}" cy="${cy}" r="110"/></clipPath><g clip-path="url(#avc)">` +
+      `<circle cx="${cx}" cy="${cy - 25}" r="46" fill="#8E82F0"/><path d="M${cx - 92} ${cy + 117} c0 -66 42 -92 92 -92 s92 26 92 92 z" fill="#8E82F0"/></g>` +
+      `<path d="M${cx - 52} ${cy - 25} a52 52 0 0 1 104 0" fill="none" stroke="${P.ink}" stroke-width="10"/>` +
+      `<rect x="${cx - 62}" y="${cy - 35}" width="18" height="34" rx="8" fill="${P.ink}"/><rect x="${cx + 44}" y="${cy - 35}" width="18" height="34" rx="8" fill="${P.ink}"/>` +
+      `<path d="M${cx - 50} ${cy - 5} q8 37 42 37" fill="none" stroke="${P.ink}" stroke-width="6"/><circle cx="${cx - 5}" cy="${cy + 32}" r="8" fill="${P.ink}"/>` +
       `<rect x="${w / 2 - 90}" y="${h - 50}" width="180" height="10" rx="5" fill="${P.white}" opacity="0.6"/>`,
     parts: {
-      'slot-caller': { x: sx + 50, y: 170, w: sw - 100, h: 70 },
-      'slot-status': { x: sx + 80, y: 245, w: sw - 160, h: 40 },
-      'slot-choices': { x: sx + 30, y: 720, w: sw - 60, h: 250 },
-      odrzuc: { x: cx - 212, y: h - 312, w: 124, h: 124 },
-      odbierz: { x: cx + 88, y: h - 312, w: 124, h: 124 },
+      // Nad sylwetką: status, nazwa dzwoniącego, numer; pod nią: przełącznik limitu czasu i przyciski (HTML).
+      'slot-status': { x: sx + 40, y: sy + 40, w: sw - 80, h: 40 },
+      'slot-caller': { x: sx + 30, y: sy + 85, w: sw - 60, h: 70 },
+      'slot-number': { x: sx + 40, y: sy + 160, w: sw - 80, h: 40 },
+      'slot-actions': { x: sx + 30, y: 690, w: sw - 60, h: 380 },
     },
   };
 };

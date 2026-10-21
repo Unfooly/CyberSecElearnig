@@ -1,2 +1,2 @@
 { "width": 700, "height": 1260, "background": { "flat": true, "wall": "none" },
-  "items": [ { "id": "ekran", "prop": "incomingCallScreen", "x": 40, "y": 30, "partHotspots": { "slot-caller": "slot-caller", "slot-status": "slot-status", "slot-choices": "slot-choices", "odrzuc": "odrzuc", "odbierz": "odbierz" }, "pad": 0 } ] }
+  "items": [ { "id": "ekran", "prop": "incomingCallScreen", "x": 40, "y": 30, "partHotspots": { "slot-status": "slot-status", "slot-caller": "slot-caller", "slot-number": "slot-number", "slot-actions": "slot-actions" }, "pad": 0 } ] }

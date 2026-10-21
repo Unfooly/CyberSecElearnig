@@ -2392,6 +2392,35 @@
         },
         "number": "12 3XX XX 41"
       },
+      "ringScreen": {
+        "image": "assets/glos-z-helpdesku/scenes/rozmowa-na-zywo.e741a675.svg",
+        "slots": {
+          "status": {
+            "x": 16.3,
+            "y": 12.7,
+            "w": 67.4,
+            "h": 3.2
+          },
+          "caller": {
+            "x": 14.9,
+            "y": 16.3,
+            "w": 70.3,
+            "h": 5.6
+          },
+          "number": {
+            "x": 16.3,
+            "y": 22.2,
+            "w": 67.4,
+            "h": 3.2
+          },
+          "actions": {
+            "x": 14.9,
+            "y": 57.1,
+            "w": 70.3,
+            "h": 30.2
+          }
+        }
+      },
       "choiceTimeLimitSec": 12,
       "start": "start",
       "nodes": [

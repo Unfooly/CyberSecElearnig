@@ -97,6 +97,16 @@
       "hash": "0d3f9f0a",
       "key": "assets/glos-z-helpdesku/scenes/rejestr-polaczen-zoom.0d3f9f0a.svg"
     },
+    "nagranie#background": {
+      "original": "scenes/nagranie-tlo.svg",
+      "hash": "9add71e2",
+      "key": "assets/glos-z-helpdesku/scenes/nagranie-tlo.9add71e2.svg"
+    },
+    "nagranie#backgroundPortrait": {
+      "original": "scenes/nagranie-tlo-pion.svg",
+      "hash": "9bed0ab4",
+      "key": "assets/glos-z-helpdesku/scenes/nagranie-tlo-pion.9bed0ab4.svg"
+    },
     "przesluchanie-karola#character.avatar": {
       "original": "avatars/karol.svg",
       "hash": "dbb38d93",
@@ -151,6 +161,16 @@
       "original": "scenes/webinar-odtwarzacz-pion.svg",
       "hash": "8012f48b",
       "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.8012f48b.svg"
+    },
+    "omowienie#source.background": {
+      "original": "scenes/omowienie-tlo.svg",
+      "hash": "8d0d7fd7",
+      "key": "assets/glos-z-helpdesku/scenes/omowienie-tlo.8d0d7fd7.svg"
+    },
+    "omowienie#source.backgroundPortrait": {
+      "original": "scenes/omowienie-tlo-pion.svg",
+      "hash": "af297a83",
+      "key": "assets/glos-z-helpdesku/scenes/omowienie-tlo-pion.af297a83.svg"
     },
     "rozwiazanie-sprawy#closing.image": {
       "original": "scenes/zamkniecie-raport.svg",

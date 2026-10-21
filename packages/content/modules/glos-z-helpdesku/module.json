@@ -705,6 +705,8 @@
         "pl": "Odsłuch nagrania"
       },
       "weight": 2,
+      "background": "assets/glos-z-helpdesku/scenes/nagranie-tlo.9add71e2.svg",
+      "backgroundPortrait": "assets/glos-z-helpdesku/scenes/nagranie-tlo-pion.9bed0ab4.svg",
       "narration": {
         "pl": {
           "text": "Telefony w dziale sprzedaży nagrywają rozmowy. Posłuchaj i stuknij „Czerwona flaga” za każdym razem, gdy dzwoniący manipuluje.",
@@ -2702,7 +2704,9 @@
       },
       "source": {
         "kind": "transcript",
-        "fromBlock": "nagranie"
+        "fromBlock": "nagranie",
+        "background": "assets/glos-z-helpdesku/scenes/omowienie-tlo.8d0d7fd7.svg",
+        "backgroundPortrait": "assets/glos-z-helpdesku/scenes/omowienie-tlo-pion.af297a83.svg"
       },
       "markers": [
         {

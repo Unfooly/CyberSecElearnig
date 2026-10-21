@@ -80,6 +80,16 @@ export interface LiveCallContent {
   /** D-129: zakończenie (`#id`) po „Odrzuć” na ekranie przychodzącym i po „Rozłącz” w trakcie rozmowy. */
   reject?: string;
   hangUp?: string;
+  /** B-138b: ramka telefonu (grafika bez słów) i sloty HTML w % grafiki - status, nazwa, numer, przełącznik i przyciski. */
+  ringScreen?: { image: string; slots: Record<'status' | 'caller' | 'number' | 'actions', SlotRect> };
+}
+
+/** Prostokąt slotu HTML na grafice, w % jej wymiarów. */
+export interface SlotRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 /** Obszar strony w OSINT (D-120): położenie i podpis; czy był użyty, dowód i wyjaśnienie pułapki są sekretem (po ocenie - detail.spots). */

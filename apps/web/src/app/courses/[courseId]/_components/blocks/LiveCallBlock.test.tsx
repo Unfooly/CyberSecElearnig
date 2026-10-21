@@ -106,6 +106,87 @@ describe('LiveCallBlock', () => {
     expect(screen.getAllByTestId('live-call-choice')).toHaveLength(2);
   });
 
+  describe('B-138b: ramka telefonu na ekranie przychodzącym', () => {
+    const rect = { x: 15, y: 15, w: 70, h: 5 };
+    const framed = {
+      ...block,
+      reject: '#koniec-a',
+      ringScreen: { image: 'scenes/rozmowa-na-zywo.svg', slots: { status: rect, caller: rect, number: rect, actions: { x: 15, y: 57, w: 70, h: 30 } } },
+    } as unknown as ContentBlock;
+    const area = (width: number, height: number) =>
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON: () => ({}) } as DOMRect);
+
+    it('wysoki obszar: grafika (dekoracja) w proporcjach 700×1260, status, nazwa, numer i przyciski w slotach; „Odbierz” działa', () => {
+      area(1200, 700);
+      setup({ block: framed });
+      const frame = screen.getByTestId('live-call-ring-frame');
+      expect(frame).toHaveStyle({ height: '700px', width: `${Math.floor(700 * (700 / 1260))}px` });
+      const img = frame.querySelector('img')!;
+      expect(img).toHaveAttribute('src', '/content/scenes/rozmowa-na-zywo.svg');
+      expect(img).toHaveAttribute('alt', '');
+      expect(within(frame).getByText('Połączenie przychodzące')).toBeInTheDocument();
+      expect(within(frame).getByTestId('live-call-caller')).toHaveTextContent('IT Helpdesk');
+      expect(within(frame).getByRole('switch', { name: /Wyłącz limit czasu/ })).toBeInTheDocument();
+      expect(within(frame).getByTestId('live-call-ring-actions')).toHaveStyle({ top: '57%', height: '30%' });
+      expect(within(within(frame).getByTestId('live-call-ring-actions')).getByRole('button', { name: 'Odrzuć' })).toBeInTheDocument();
+      fireEvent.click(within(frame).getByRole('button', { name: 'Odbierz' }));
+      expect(screen.getByTestId('live-call-line')).toHaveTextContent('Wpisz w aplikacji 62.');
+    });
+
+    it('pierwsze zamontowanie z ramką - fokus nie na „Odbierz” (zostaje na nagłówku bloku, D-076); po ponowieniu - na „Odbierz” w ramce', () => {
+      area(1200, 700);
+      setup({ block: framed, submitFailed: true, onRetry: vi.fn() });
+      const frame = screen.getByTestId('live-call-ring-frame');
+      expect(within(frame).getByRole('button', { name: 'Odbierz' })).not.toHaveFocus();
+      fireEvent.click(within(frame).getByRole('button', { name: 'Odbierz' }));
+      fireEvent.click(screen.getByRole('button', { name: /Jaką liczbę mam wpisać/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Wpisuję 62/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zadzwoń ponownie' }));
+      expect(within(screen.getByTestId('live-call-ring-frame')).getByRole('button', { name: 'Odbierz' })).toHaveFocus();
+    });
+
+    it('grafika się nie wczytała - karta; przyciski nie mieszczą się w slocie (niska ramka) - karta', () => {
+      area(1200, 700);
+      setup({ block: framed });
+      fireEvent.error(screen.getByTestId('live-call-ring-frame').querySelector('img')!);
+      expect(screen.queryByTestId('live-call-ring-frame')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
+      cleanup();
+      vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.dataset.testid === 'live-call-ring-actions' ? 200 : 0;
+      });
+      vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.dataset.testid === 'live-call-ring-actions' ? 150 : 0;
+      });
+      setup({ block: framed });
+      expect(screen.queryByTestId('live-call-ring-frame')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
+    });
+
+    it('reduced motion: grafika z #static (fale dzwonienia zatrzymane)', () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('prefers-reduced-motion'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+      try {
+        area(1200, 700);
+        setup({ block: framed });
+        expect(screen.getByTestId('live-call-ring-frame').querySelector('img')).toHaveAttribute('src', '/content/scenes/rozmowa-na-zywo.svg#static');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('niski obszar (telefon w poziomie) albo treść bez grafiki - karta jak dotąd', () => {
+      area(800, 360);
+      setup({ block: framed });
+      expect(screen.queryByTestId('live-call-ring-frame')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
+      cleanup();
+      area(1200, 700);
+      setup();
+      expect(screen.queryByTestId('live-call-ring-frame')).not.toBeInTheDocument();
+      expect(screen.getByTestId('live-call-caller')).toHaveTextContent('IT Helpdesk');
+    });
+  });
+
   describe('D-129: „Odrzuć” i „Rozłącz”', () => {
     const exits = { ...block, reject: '#koniec-a', hangUp: '#koniec-a' } as unknown as ContentBlock;
 

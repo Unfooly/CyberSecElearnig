@@ -850,6 +850,15 @@ const liveCallSchema = z
     ...baseShape,
     type: z.literal('LIVE_CALL'),
     caller: z.object({ display: ltext(60), number: z.string().min(1).max(40).optional() }).strict(),
+    // Ekran połączenia przychodzącego (B-138b): ramka telefonu bez słów i przycisków; status, nazwa, numer, przełącznik limitu czasu i
+    // „Odbierz”/„Odrzuć” odtwarzacz rysuje w HTML w slotach (% grafiki). Dekoracja - bez alt. Za niski obszar (telefon w poziomie) - karta.
+    ringScreen: z
+      .object({
+        image: limage(),
+        slots: z.object({ status: briefingRectSchema, caller: briefingRectSchema, number: briefingRectSchema, actions: briefingRectSchema }).strict(),
+      })
+      .strict()
+      .optional(),
     choiceTimeLimitSec: z.number().int().min(5).max(60).optional(),
     start: idSchema,
     nodes: z.array(liveCallNodeSchema).min(1).max(20),
@@ -1437,6 +1446,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [
       'caller.display',
       'caller.number',
+      // Ekran połączenia przychodzącego (B-138b) - dekoracja i położenie HTML, nic do odgadnięcia.
+      'ringScreen.image',
+      ...['status', 'caller', 'number', 'actions'].flatMap((slot) => ['x', 'y', 'w', 'h'].map((key) => `ringScreen.slots.${slot}.${key}`)),
       'choiceTimeLimitSec',
       'start',
       'nodes[].id',

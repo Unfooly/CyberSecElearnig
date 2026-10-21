@@ -255,6 +255,11 @@ describe('InterrogationBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj do notatek' }));
     ask('Pokaż konsolę.', 1);
     const consoleDialog = screen.getByTestId('interrogation-console');
+    // Okno jak grafika konsoli (B-138b): ciemny pasek tytułu z tytułem okna i przyciskiem zamknięcia.
+    const titlebar = within(consoleDialog).getByTestId('interrogation-console-titlebar');
+    expect(titlebar).toHaveClass('bg-ink', 'text-white');
+    expect(within(titlebar).getByRole('heading', { name: 'Konsola administratora' })).toBeInTheDocument();
+    expect(within(titlebar).getByRole('button', { name: 'Zamknij konsolę' })).toBeInTheDocument();
     expect(ready.current).toBeNull();
     expect(screen.getByText(/^Wymagane pytania: \d+\/\d+ · konsola: zaznacz ślady włamania$/)).toBeInTheDocument();
     fireEvent.click(within(consoleDialog).getByRole('button', { name: /Zatwierdzone, Amsterdam/ }));

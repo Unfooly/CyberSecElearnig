@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Check, Gavel, Monitor, NotebookPen, X } from 'lucide-react';
+import { Check, Gavel, Monitor, NotebookPen, Shield, X } from 'lucide-react';
 import type { ChallengeResponse, ClientNote, ClientProgressBlock, ContentBlock, EvidenceSummary, InterrogationChallenge, ResultDetail } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -607,27 +607,36 @@ export default function InterrogationBlock({
           aria-label="Konsola administratora"
           data-testid="interrogation-console"
           onKeyDown={trapTab}
-          className="absolute inset-0 z-20 flex min-h-0 flex-col rounded-card border border-border bg-accent-soft p-3 sm:p-4"
+          className="absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden rounded-card border border-border bg-paper shadow-card"
         >
-          <div className="mb-2 flex shrink-0 items-center gap-2">
-            <Monitor aria-hidden="true" className="h-5 w-5 shrink-0 text-muted" />
-            <h3 className="min-w-0 flex-1 truncate text-base font-bold text-ink">Konsola administratora</h3>
+          {/* Okno konsoli jak grafika z paczki 2 (B-138b, decyzja właściciela 2026-10-21: HTML zamiast SVG - pasek tytułu SVG na telefonie
+              byłby za niski na tytuł 16 px i przycisk 44 px): ciemny pasek z tarczą, tytułem i trzema kropkami, jasne wnętrze. */}
+          <div data-testid="interrogation-console-titlebar" className="flex shrink-0 items-center gap-2 bg-ink px-3 py-1 text-white">
+            <Shield aria-hidden="true" className="h-5 w-5 shrink-0 fill-white" />
+            <h3 className="min-w-0 flex-1 truncate text-base font-bold">Konsola administratora</h3>
+            <span aria-hidden="true" className="hidden shrink-0 items-center gap-1.5 sm:flex">
+              <span className="h-2.5 w-2.5 rounded-full bg-white/85" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/60" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/40" />
+            </span>
             <button
               type="button"
               data-console-close
               onClick={closeConsole}
               aria-label="Zamknij konsolę"
-              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-ink hover:bg-paper ${FOCUS_RING}`}
+              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white hover:bg-white/10 ${FOCUS_RING}`}
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
           </div>
+          <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
           <DossierDocuments state={dossier} tabsLabel="Zakładki konsoli" hint="Zaznacz wpis, który świadczy o włamaniu." />
           <p className="mt-2 shrink-0 text-xs text-muted">
             {dossier.ready
               ? 'Konsola przejrzana.'
               : `Zakładki: ${dossier.opened.length} z ${documents.length}${dossier.requiredRows.length > 0 ? ` · ślady: ${dossier.requiredNoted} z ${dossier.requiredRows.length}` : ''}.`}
           </p>
+          </div>
         </div>
       )}
 

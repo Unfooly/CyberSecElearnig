@@ -110,6 +110,18 @@ describe('LIVE_CALL: walidacja', () => {
     expect('infoChoices' in client).toBe(false);
     expect(client.caller).toEqual({ display: 'IT Helpdesk', number: '12 3XX XX 41' });
   });
+
+  it('ekran połączenia przychodzącego (B-138b): grafika i sloty przechodzą i trafiają do klienta; slot poza grafiką - błąd', () => {
+    const rect = { x: 15, y: 15, w: 70, h: 5 };
+    const ringScreen = { image: 'scenes/rozmowa-na-zywo.svg', slots: { status: rect, caller: rect, number: rect, actions: { x: 15, y: 57, w: 70, h: 30 } } };
+    const ok = mutate((m) => (call(m).ringScreen = ringScreen));
+    expect(errorsOf(ok)).toBe('');
+    const client = toClientBlock(call(ok), { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
+    expect(client.ringScreen).toEqual(ringScreen);
+    const outside = mutate((m) => (call(m).ringScreen = { ...ringScreen, slots: { ...ringScreen.slots, actions: { x: 15, y: 80, w: 70, h: 30 } } }));
+    expect(errorsOf(outside)).toContain('ringScreen.slots.actions: slot wychodzi poza grafikę');
+    expect(errorsOf(mutate((m) => (call(m).ringScreen = { image: 'scenes/rozmowa-na-zywo.svg', slots: { status: rect } })))).not.toBe('');
+  });
 });
 
 describe('LIVE_CALL: odrzucenie, rozłączenie i kolejność odpowiedzi (D-129)', () => {

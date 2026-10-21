@@ -755,6 +755,11 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     background: 'scenes/omowienie-tlo.svg',
     backgroundPortrait: 'scenes/omowienie-tlo-pion.svg',
   });
+  // Ekran połączenia przychodzącego (B-138b).
+  const rect = { x: 15, y: 15, w: 70, h: 5 };
+  Object.assign(blocks.LIVE_CALL as Record<string, unknown>, {
+    ringScreen: { image: 'scenes/rozmowa-na-zywo.svg', slots: { status: rect, caller: rect, number: rect, actions: { x: 15, y: 57, w: 70, h: 30 } } },
+  });
   // Tło odsłuchu (B-138).
   Object.assign(blocks.CALL_RECORDING as Record<string, unknown>, { background: 'scenes/nagranie-tlo.svg', backgroundPortrait: 'scenes/nagranie-tlo-pion.svg' });
   Object.assign(replay.markers[1].anchor, { x: 40, y: 60 });

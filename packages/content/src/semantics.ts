@@ -813,6 +813,10 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // każda krawędź prowadzi do istniejącego węzła/zakończenia, graf bez cykli, każdy węzeł i zakończenie osiągalne od `start`,
       // co najmniej jedno zakończenie dobre; kwestie dzwoniącego głosem postaci.
       errors.push(...liveCallErrors(block));
+      // Ekran połączenia przychodzącego (B-138b): sloty HTML w obrębie grafiki.
+      for (const [slot, rect] of Object.entries(block.ringScreen?.slots ?? {})) {
+        if (rect.x + rect.w > 100 || rect.y + rect.h > 100) errors.push(`ringScreen.slots.${slot}: slot wychodzi poza grafikę`);
+      }
       break;
     }
     case 'SWIPE_SORT': {

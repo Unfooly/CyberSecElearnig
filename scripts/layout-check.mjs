@@ -1541,6 +1541,53 @@ try {
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
         await noteEvidence();
+        // (m12) ekran połączenia przychodzącego w ramce telefonu (LIVE_CALL z `ringScreen`, B-138b): ramka albo karta (niski obszar,
+        // przepełniony slot); w ramce przełącznik i przyciski w prostokącie slotu, cele ≥ 44 px, nazwa dzwoniącego nieucięta, numer i
+        // status w ramce. Telefon w poziomie (wysokość < 500 px) - karta.
+        const moduleBlock = moduleJson.blocks.find((candidate) => candidate.id === blockId);
+        const ringState = () =>
+          page.evaluate(() => {
+            const frame = document.querySelector('[data-testid="live-call-ring-frame"]');
+            const card = document.querySelector('[data-testid="live-call-answer"]');
+            if (!frame) return { frame: false, card: !!card };
+            const slot = frame.querySelector('[data-testid="live-call-ring-actions"]').getBoundingClientRect();
+            // Kontrolki są w opakowaniu dociśniętym do dołu (`mt-auto`) wewnątrz slotu.
+            const controls = [...frame.querySelectorAll('[data-testid="live-call-ring-actions"] > div > *')].map((el) => {
+              const r = el.getBoundingClientRect();
+              return { text: el.textContent.trim().slice(0, 24), h: r.height, inside: r.top >= slot.top - 1 && r.bottom <= slot.bottom + 1 && r.left >= slot.left - 1 && r.right <= slot.right + 1 };
+            });
+            const caller = frame.querySelector('[data-testid="live-call-caller"] span');
+            const box = frame.getBoundingClientRect();
+            const texts = [...frame.querySelectorAll('p')].map((p) => p.getBoundingClientRect()).every((r) => r.left >= box.left - 1 && r.right <= box.right + 1);
+            return { frame: true, controls, callerClipped: caller.scrollWidth > caller.clientWidth + 1, texts };
+          });
+        const checkRing = (ring, where, short) => {
+          if (short && ring.frame) fail(`${where}: (m12) telefon w poziomie - oczekiwano karty, jest ramka telefonu.`);
+          if (!ring.frame && !ring.card) fail(`${where}: (m12) ani ramki telefonu, ani karty połączenia przychodzącego.`);
+          if (ring.frame) {
+            const outside = ring.controls.filter((c) => !c.inside).map((c) => c.text);
+            const small = ring.controls.filter((c) => c.h < 43.5).map((c) => `${c.text} ${Math.round(c.h)}px`);
+            if (outside.length > 0) fail(`${where}: (m12) poza slotem przycisków: ${outside.join(', ')}`);
+            if (small.length > 0) fail(`${where}: (m12) cele < 44 px: ${small.join(', ')}`);
+            if (ring.callerClipped) fail(`${where}: (m12) nazwa dzwoniącego ucięta.`);
+            if (!ring.texts) fail(`${where}: (m12) tekst statusu, nazwy albo numeru wychodzi poza ramkę.`);
+          }
+          step(`${where}: (m12) ekran przychodzący - ${ring.frame ? `ramka telefonu, ${ring.controls.length} kontrolki w slocie` : 'karta'} OK`, true);
+        };
+        if (moduleBlock?.type === 'LIVE_CALL' && moduleBlock.ringScreen) {
+          checkRing(await ringState(), label, viewport.height < 500);
+          // Ramka blisko minimum (520 px): niskie okna desktopu - przy dwuwierszowym podpisie przełącznika slot się przepełnia i ekran
+          // ma przejść na kartę (albo wszystko mieści się w slocie). Rozmiar okna zmieniany na żywo (ResizeObserver), potem przywracany.
+          if (viewport.name === '1366x768') {
+            for (const height of [690, 700, 710, 720, 740]) {
+              await page.setViewportSize({ width: 1280, height });
+              await page.waitForTimeout(300);
+              const frameHeight = await page.evaluate(() => document.querySelector('[data-testid="live-call-ring-frame"]')?.getBoundingClientRect().height ?? null);
+              checkRing(await ringState(), `1280x${height} (ramka ${frameHeight === null ? 'brak' : `${Math.round(frameHeight)} px`}) / moduł ${MODULE_SLUG} / ${blockId}`, false);
+            }
+            await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          }
+        }
         // (m7) tacka tablicy śledczej w układzie poziomym (D-129): wszystkie ślady widoczne bez poziomego przewijania tacki (dwa rzędy
         // przy 7+ śladach). Telefon w pionie: tacka to przewijany pasek pod sceną (D-105) - bez tej kontroli.
         const tray = await page.evaluate(() => {

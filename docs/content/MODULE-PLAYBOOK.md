@@ -240,6 +240,11 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 - [ ] Nazwy fikcyjne i sprawdzone, dopisane do rejestru nazw (rozdział 8); brak formularzy logowania i cudzych logotypów.
 - [ ] layout-check zielony i wklejony do PR (CLAUDE.md, reguła 12): dla nowego modułu `LAYOUT_CHECK_MODULE=<slug> node
       scripts/layout-check.mjs` (sekcja `module`) plus sekcje z elementami specyficznymi dla modułu, jeśli je dodasz.
+- [ ] Pseudo-lokalizacja zielona (D-143, DoD od modułu 4): sceny modułu ze `strings` przechodzą `scenes/pseudo-locale.test.ts` (tekst
+      `xx` o ~35% dłuższy mieści się w slotach; nowa scena NIE trafia do `KNOWN_TOO_TIGHT`) oraz `LAYOUT_CHECK_SECTION=pseudo node
+      scripts/layout-check.mjs` (stan początkowy każdego bloku na 390×844 z tekstami w `xx`; ręcznie, layout-check nie jest w CI;
+      karty, odpowiedzi i werdykty po interakcji - obejrzyj zrzuty, automat: B-157). Nie mieści się = większy slot albo inny układ, nie krótszy
+      tekst PL. Wersja EN dopiero po „zatwierdzam treść modułu N” od właściciela.
 - [ ] e2e: smoke `npx dotenv -e .env -- node scripts/e2e-module.mjs <slug>` (lokalna baza - B-140) i pełne przejście modułu (wzór: `scripts/e2e-module-01.mjs`, przejście wyłącznie
       dolnym „Dalej”) zielone lokalnie; w opisie PR linia „DEPLOY: <co weszło> — content-import: tak”.
 - [ ] Decyzje zmieniające zachowanie w `docs/decisions.md`, odłożone uwagi w `docs/backlog-issues.md`.

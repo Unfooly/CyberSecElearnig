@@ -854,6 +854,27 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-157 Layout-check `pseudo`: stany bloku po interakcji w `xx`
+- Etykiety: `P3`, `test`, `i18n` · Źródło: code review D-143
+- Opis: sekcja `pseudo` (D-143) sprawdza tylko stan początkowy bloku. Teksty po interakcji - zdanie po odpowiedzi i werdykcie
+  (QUIZ, SWIPE_SORT), karta hotspotu i bottom sheet, kolejne wiadomości rozmowy, zbliżenia, podpowiedź po 2 błędach - w `xx` nie są
+  sprawdzane, a tam najczęściej coś się nie mieści. Znane ograniczenia kontroli: prostokąty linii (nie glify), tylko węzły z `~`
+  (ucięty początek „[” tekstu podzielonego na kilka węzłów umknie), przewijany przodek wyłącza dalszą kontrolę w osi; (x1) wymaga
+  tekstu w bloku (blok wyłącznie z grafiką padnie fałszywie).
+- Akceptacja: sekcja przechodzi główne interakcje każdego typu bloku (wzór: sekcja `prosty` - odpowiedzi /check podstawione z treści)
+  i sprawdza w każdym stanie te same warunki (x1-x3); wynik w opisie PR modułu 4.
+
+### B-156 Sloty za ciasne na pseudo-lokalizację `xx` w grafikach modułu 3 i trofeum „Pierwsza sprawa zamknięta”
+- Etykiety: `P2`, `content`, `i18n` · Źródło: D-143 (pierwszy przebieg `scripts/content/scenes/pseudo-locale.test.ts`, 2026-10-21)
+- Opis: sceny opublikowane przed D-143 mają slot, w który tekst o ~35% dłuższy nie wchodzi nawet przy minimum (lista `KNOWN_TOO_TIGHT`
+  w teście; pierwszy błąd każdej sceny): trofeum `osiagniecie-pierwsza-sprawa` (`stampLabel` medalu, 164×42), `lancuszek/logowanie-zoom`
+  (`tekst-adres`, 480×60), `lancuszek/odprawa` (`tekst-naglowek`, 290×58), `lancuszek/zamkniecie-pieczec` (`text`, 340×162),
+  `lancuszek/zamkniecie-raport-pion` (`evidence`, 208×50), `lancuszek/zamkniecie-raport` (`signature`, 204×62). Po poprawce pierwszego
+  slotu sceny może wyjść następny. Poprawka slotu zmienia też grafikę PL: przebudowa, publikacja assetów (`--assets --storage r2`),
+  nowa wersja kursu (content-import), a dla trofeum - plik w `apps/web/public/achievements/pl/`.
+- Akceptacja: `KNOWN_TOO_TIGHT` pusta, sceny w `xx` przechodzą; tekst PL bez skracania (decyzja właściciela 2026-10-16); m3 wygląda
+  w PL jak dotąd albo lepiej (zrzuty 390×844 i desktop do przeglądu właściciela); `--assets --check` zielone.
+
 ### B-155 Grafiki zdobytych tajnych osiągnięć publiczne pod przewidywalną nazwą
 - Etykiety: `P3`, `security`, `mod:gamifikacja` · Źródło: security review D-146
 - Opis: `apps/web/public/achievements/{pl,en}/osiagniecie-ciekawski-detektyw.svg` i `…-off-the-record.svg` są dostępne bez logowania pod

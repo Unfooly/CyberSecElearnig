@@ -56,6 +56,11 @@ export const ASSET_PATHS: string[][] = [
   // Omówienie na grafice (ANNOTATED_REPLAY, source.kind "image", D-115) i jej wariant pionowy.
   ['source', 'image'],
   ['source', 'imagePortrait'],
+  // Tło odsłuchu (CALL_RECORDING) i omówienia na transkrypcji (ANNOTATED_REPLAY, source.kind "transcript") z wariantami pionowymi (B-138).
+  ['background'],
+  ['backgroundPortrait'],
+  ['source', 'background'],
+  ['source', 'backgroundPortrait'],
   // Kadr odtwarzacza nagrania przy obszarze strony (OSINT_SPOT, webinar, D-120).
   ['spots', '*', 'media', 'image'],
   ['spots', '*', 'media', 'imagePortrait'],

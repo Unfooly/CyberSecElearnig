@@ -748,7 +748,15 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   nested.screen = { x: 3, y: 4, w: 90, h: 80 };
   // ANNOTATED_REPLAY (D-115): oba warianty źródła i kotwicy naraz (bez parseModule), żeby test kompletności widział wszystkie ścieżki.
   const replay = blocks.ANNOTATED_REPLAY as { source: Record<string, unknown>; markers: { anchor: Record<string, unknown> }[] };
-  Object.assign(replay.source, { image: 'scenes/omowienie.svg', imagePortrait: 'scenes/omowienie-pion.svg', alt: 'Omówienie' });
+  Object.assign(replay.source, {
+    image: 'scenes/omowienie.svg',
+    imagePortrait: 'scenes/omowienie-pion.svg',
+    alt: 'Omówienie',
+    background: 'scenes/omowienie-tlo.svg',
+    backgroundPortrait: 'scenes/omowienie-tlo-pion.svg',
+  });
+  // Tło odsłuchu (B-138).
+  Object.assign(blocks.CALL_RECORDING as Record<string, unknown>, { background: 'scenes/nagranie-tlo.svg', backgroundPortrait: 'scenes/nagranie-tlo-pion.svg' });
   Object.assign(replay.markers[1].anchor, { x: 40, y: 60 });
   for (const block of Object.values(blocks)) injectSpokenText(block);
   return blocks;

@@ -135,3 +135,25 @@ describe('ANNOTATED_REPLAY: walidacja', () => {
     expect(errorsOf(m)).toBe('');
   });
 });
+
+describe('tła odsłuchu i omówienia na transkrypcji (B-138)', () => {
+  it('tło z wariantem pionowym przechodzi (bez alt - dekoracja); wariant pionowy bez tła to błąd', () => {
+    const withBoth = mutate((m) => {
+      Object.assign(recording(m), { background: 'scenes/nagranie-tlo.svg', backgroundPortrait: 'scenes/nagranie-tlo-pion.svg' });
+      Object.assign(replay(m).source, { background: 'scenes/omowienie-tlo.svg', backgroundPortrait: 'scenes/omowienie-tlo-pion.svg' });
+    });
+    expect(errorsOf(withBoth)).toBe('');
+    expect(errorsOf(mutate((m) => (recording(m).backgroundPortrait = 'scenes/nagranie-tlo-pion.svg')))).toContain('backgroundPortrait: wariant pionowy wymaga background');
+    expect(errorsOf(mutate((m) => (replay(m).source.backgroundPortrait = 'scenes/omowienie-tlo-pion.svg')))).toContain(
+      'source.backgroundPortrait: wariant pionowy wymaga background',
+    );
+  });
+
+  it('tło tylko przy omówieniu na transkrypcji (grafika ma własny obraz)', () => {
+    const m = mutate((module) => {
+      replay(module).source = { kind: 'image', image: 'scenes/omowienie.svg', alt: 'Omówienie', background: 'scenes/omowienie-tlo.svg' };
+      replay(module).markers.forEach((marker: AnyModule, i: number) => (marker.anchor = { x: 20 + i * 30, y: 40 }));
+    });
+    expect(errorsOf(m)).not.toBe('');
+  });
+});

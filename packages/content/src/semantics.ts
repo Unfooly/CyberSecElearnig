@@ -846,9 +846,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         if (!flagged.includes(item.segmentId)) errors.push(`evidence[${i}].segmentId: "${item.segmentId}" nie jest segmentem z flagą`);
         if (kindRequired && item.note.kind === undefined) errors.push(`evidence[${i}].note.kind: dowód wymaga rodzaju notatki`);
       });
+      if (block.backgroundPortrait !== undefined && block.background === undefined) errors.push('backgroundPortrait: wariant pionowy wymaga background');
       break;
     }
     case 'ANNOTATED_REPLAY': {
+      if (block.source.kind === 'transcript' && block.source.backgroundPortrait !== undefined && block.source.background === undefined) {
+        errors.push('source.backgroundPortrait: wariant pionowy wymaga background');
+      }
       // Omówienie (D-115): znaczniki 1..N po kolei; kotwica zgodna ze źródłem (segment dla transkrypcji, punkt dla grafiki). Istnienie
       // bloku źródłowego i segmentów - parseModule (relacja między blokami).
       block.markers.forEach((marker, i) => {

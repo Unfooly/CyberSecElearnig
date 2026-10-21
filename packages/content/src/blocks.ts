@@ -669,6 +669,10 @@ const callRecordingSchema = z
     falseTapPenalty: z.number().min(0).max(1).optional(),
     // Dowód dopisywany do notatnika, gdy flaga na jego segmencie została trafiona (segmentId - segment z flagą, semantics.ts).
     evidence: z.array(z.object({ id: idSchema, segmentId: idSchema, note: noteSchema }).strict()).min(1).max(10).optional(),
+    // Tło odsłuchu (B-138): dekoracja za panelem odtwarzacza (sala odsłuchu), bez treści do odczytania - bez alt (aria-hidden).
+    // Wariant pionowy - telefon w pionie (kontener węższy niż 0,8 wysokości), jak OSINT_SPOT.
+    background: limage().optional(),
+    backgroundPortrait: limage().optional(),
   })
   .strict();
 
@@ -692,7 +696,8 @@ const annotatedReplaySchema = z
     ...baseShape,
     type: z.literal('ANNOTATED_REPLAY'),
     source: z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('transcript'), fromBlock: idSchema }).strict(),
+      // Tło omówienia na transkrypcji (B-138): dekoracja za listą kwestii, jak tło odsłuchu (bez alt).
+      z.object({ kind: z.literal('transcript'), fromBlock: idSchema, background: limage().optional(), backgroundPortrait: limage().optional() }).strict(),
       z.object({ kind: z.literal('image'), image: limage(), imagePortrait: limage().optional(), alt: ltext(300) }).strict(),
     ]),
     markers: z.array(replayMarkerSchema).min(1).max(12),
@@ -1330,6 +1335,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'segments[].narration.durationMs',
       'segments[].narration.cues[].text',
       'segments[].narration.cues[].startMs',
+      // Tło odsłuchu (B-138) - dekoracja, nic do odgadnięcia.
+      'background',
+      'backgroundPortrait',
     ],
     [
       'segments[].narration.spokenText',
@@ -1349,6 +1357,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [
       'source.kind',
       'source.fromBlock',
+      'source.background',
+      'source.backgroundPortrait',
       'source.image',
       'source.imagePortrait',
       'source.alt',

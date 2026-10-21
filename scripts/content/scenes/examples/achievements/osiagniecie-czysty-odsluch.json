@@ -3,7 +3,7 @@
   "height": 512,
   "background": { "flat": true, "wall": "none" },
   "strings": {
-    "pl": { "name": "CZYSTY ODSŁUCH", "rank": "RZADKIE" },
+    "pl": { "name": "SŁUCH ABSOLUTNY", "rank": "RZADKIE" },
     "en": { "name": "PERFECT PITCH", "rank": "RARE" }
   },
   "items": [

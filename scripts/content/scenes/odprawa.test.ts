@@ -198,11 +198,11 @@ describe('sceny modułu 1 z kompozytora', () => {
   it.each(SCENE_LOCALES.map((locale) => [locale] as const))('trofea (%s): każda scena osiągnięcia ma oba języki; zdobyte - nazwa i ranga z "strings", zablokowane bez nazwy (tajne: „???”)', (locale) => {
     const expected = {
       pl: {
-        'osiagniecie-pierwsza-sprawa': ['ZAMKNIĘTA', 'SPRAWA', '№ 1', 'PIERWSZA SPRAWA'],
-        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARNE', 'PERFEKCYJNE ŚLEDZTWO'],
+        'osiagniecie-pierwsza-sprawa': ['ZAMKNIĘTA', 'SPRAWA', '№ 1', 'PIERWSZA SPRAWA ZAMKNIĘTA'],
+        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARNE', 'SPRAWA BEZ SKAZY'],
         'osiagniecie-ciekawski-detektyw': ['?', 'TAJNE', 'CIEKAWSKI DETEKTYW'],
         'osiagniecie-cisza-na-linii': ['RZADKIE', 'CISZA NA LINII'],
-        'osiagniecie-czysty-odsluch': ['7/7', 'RZADKIE', 'CZYSTY ODSŁUCH'],
+        'osiagniecie-czysty-odsluch': ['7/7', 'RZADKIE', 'SŁUCH ABSOLUTNY'],
         'osiagniecie-pelny-zapis': ['“', 'LEGENDARNE', 'PEŁNY ZAPIS'],
         'osiagniecie-off-the-record': ['TAJNE', 'POZA PROTOKOŁEM'],
         'osiagniecie-tajne-zablokowane': ['???', 'TAJNE'],

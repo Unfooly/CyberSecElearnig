@@ -3,7 +3,7 @@
   "height": 512,
   "background": { "flat": true, "wall": "none" },
   "strings": {
-    "pl": { "name": "PIERWSZA SPRAWA", "caseLabel": "SPRAWA", "stampLabel": "ZAMKNIĘTA" },
+    "pl": { "name": "PIERWSZA SPRAWA ZAMKNIĘTA", "caseLabel": "SPRAWA", "stampLabel": "ZAMKNIĘTA" },
     "en": { "name": "FIRST CASE CLOSED", "caseLabel": "CASE", "stampLabel": "CLOSED" }
   },
   "items": [

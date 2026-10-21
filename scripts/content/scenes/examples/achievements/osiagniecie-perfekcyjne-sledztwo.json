@@ -3,7 +3,7 @@
   "height": 512,
   "background": { "flat": true, "wall": "none" },
   "strings": {
-    "pl": { "name": "PERFEKCYJNE ŚLEDZTWO", "rank": "LEGENDARNE" },
+    "pl": { "name": "SPRAWA BEZ SKAZY", "rank": "LEGENDARNE" },
     "en": { "name": "FLAWLESS CASE", "rank": "LEGENDARY" }
   },
   "items": [

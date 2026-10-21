@@ -245,7 +245,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         .set('Authorization', `Bearer ${orgAUser1Token}`)
         .set('Accept-Language', 'pl-PL,pl;q=0.9')
         .expect(200);
-      expect(polish.body[0]).toMatchObject({ title: 'Pierwsza sprawa', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/osiagniecie-pierwsza-sprawa' });
+      expect(polish.body[0]).toMatchObject({ title: 'Pierwsza sprawa zamknięta', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/osiagniecie-pierwsza-sprawa' });
       expect(polish.body[3]).toMatchObject({ title: 'Cisza na linii' });
       expect(polish.body[2]).toMatchObject({ title: null, icon: 'pl/osiagniecie-tajne-zablokowane' });
       // Tajność (D-111) także w tekstach PL: nic o grze z pulpitu ani o webinarze.
@@ -420,8 +420,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
       expect(ranking.body.enabled).toBe(true);
       const mine = ranking.body.top.find((entry: { userId: string }) => entry.userId === orgBUserId);
       expect(mine.pinned).toEqual([
-        { code: 'flawless-case', title: 'Perfekcyjne śledztwo', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' },
-        { code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' },
+        { code: 'flawless-case', title: 'Sprawa bez skazy', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' },
+        { code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' },
       ]);
       expect(ranking.body.me).toMatchObject({ userId: orgBUserId, rank: mine.rank });
 

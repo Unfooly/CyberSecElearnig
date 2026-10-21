@@ -509,6 +509,21 @@ try {
   step('Zamknięcie: trzy wnioski śledczego wpisane', typedLessons.length === 3, typedLessons.join(' | '));
   await page.getByRole('button', { name: 'Podpisz raport' }).click();
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
+  // B-153: nowe konto (0 XP) awansuje przy pierwszym ukończeniu - pasek podpisany NOWYM poziomem, wartość w jego skali. W pionowym
+  // raporcie pasek poziomu nie występuje (D-107), awans pokazuje toast - o układzie decyduje komponent (data-orientation), nie szerokość.
+  const reward = completionBody.gamification;
+  if ((await page.getByTestId('case-closed-frame').getAttribute('data-orientation')) !== 'portrait') {
+    const levelBar = page.getByTestId('case-closed').getByRole('progressbar', { name: `Poziom ${reward?.newLevel}`, exact: true });
+    step(
+      `Zamknięcie: po awansie pasek „Poziom ${reward?.newLevel}” (nie „Poziom ${reward?.previousLevel}”) z postępem w nowym poziomie`,
+      reward?.leveledUp === true &&
+        typeof reward.levelProgressNewPercent === 'number' &&
+        (await levelBar.count()) === 1 &&
+        (await levelBar.getAttribute('aria-valuenow')) === String(reward.levelProgressNewPercent) &&
+        (await page.getByTestId('case-closed').getByRole('progressbar', { name: `Poziom ${reward.previousLevel}`, exact: true }).count()) === 0,
+      JSON.stringify({ newLevel: reward.newLevel, previousLevel: reward.previousLevel, levelProgressNewPercent: reward.levelProgressNewPercent }),
+    );
+  }
   step('Zamknięcie: po podpisie pieczęć i liścik, bez modala (role=dialog)', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1 && (await page.getByRole('dialog').count()) === 0);
   step('Zamknięcie: "Następna sprawa" zamknięta (wkrótce)', (await page.getByRole('button', { name: /Następna sprawa/ }).getAttribute('aria-disabled')) === 'true');
   step(

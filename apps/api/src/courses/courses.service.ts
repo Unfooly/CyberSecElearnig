@@ -448,6 +448,7 @@ export class CoursesService {
               })),
               levelProgressBeforePercent: gamification.levelProgressBeforePercent,
               levelProgressAfterPercent: gamification.levelProgressAfterPercent,
+              levelProgressNewPercent: gamification.levelProgressNewPercent,
             }
           : null,
       };

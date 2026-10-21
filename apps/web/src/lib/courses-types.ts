@@ -639,10 +639,13 @@ export interface CourseCompletionReward {
   leveledUp: boolean;
   // Osiągnięcia zdobyte tym ukończeniem (D-111); `rank` - ranga (etykieta po angielsku w UI).
   unlockedBadges: { code: string; title: string; icon: string; xpReward: number; rank?: 'SECRET' | 'LEGENDARY' | 'MILESTONE' | 'RARE' | null }[];
-  // Pasek poziomu "przed -> po" (dziś nieużywany przez web, D-089) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
+  // Pasek poziomu "przed -> po" (CaseClosedScreen, D-090) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
   // przy awansie `levelProgressAfterPercent` jest przycięty do 100 przez API.
   levelProgressBeforePercent: number;
   levelProgressAfterPercent: number;
+  // Postęp 0..100 w skali NOWEGO poziomu (B-153): po awansie pasek „Poziom {newLevel}” od 0 do tej wartości. Opcjonalne - starsze API
+  // (kolejność wdrożenia) go nie zwraca, wtedy pasek jak dotąd.
+  levelProgressNewPercent?: number;
 }
 
 export interface CourseProgressResponse {

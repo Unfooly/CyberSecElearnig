@@ -13,7 +13,7 @@ import LeaderboardTable from '../../courses/_components/LeaderboardTable';
 const BADGES: Badge[] = [
   {
     code: 'first-case-closed',
-    title: 'Pierwsza sprawa',
+    title: 'Pierwsza sprawa zamknięta',
     description: 'Twoja pierwsza zamknięta sprawa.',
     conditionText: 'Ukończ dowolne szkolenie.',
     icon: 'pl/osiagniecie-pierwsza-sprawa',
@@ -28,7 +28,7 @@ const BADGES: Badge[] = [
   },
   {
     code: 'flawless-case',
-    title: 'Perfekcyjne śledztwo',
+    title: 'Sprawa bez skazy',
     description: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.',
     conditionText: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Wyłudzone hasło”.',
     icon: 'pl/osiagniecie-perfekcyjne-sledztwo',
@@ -74,7 +74,7 @@ const BADGES: Badge[] = [
   },
   {
     code: 'perfect-pitch',
-    title: 'Czysty odsłuch',
+    title: 'Słuch absolutny',
     description: 'Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.',
     conditionText: 'W odsłuchu nagrania w sprawie „Głos z helpdesku” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',
     icon: 'pl/osiagniecie-czysty-odsluch',
@@ -120,9 +120,9 @@ const BADGES: Badge[] = [
 ];
 
 const PINNED = [
-  { code: 'flawless-case', title: 'Perfekcyjne śledztwo', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
+  { code: 'flawless-case', title: 'Sprawa bez skazy', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
   { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' as const },
-  { code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
+  { code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
 ];
 const NAMES = ['Katarzyna', 'Bartłomiej', 'Anna', 'Jan', 'Małgorzata', 'Piotr', 'Zofia', 'Krzysztof', 'Ewa', 'Tomasz'];
 const TOP: LeaderboardEntry[] = NAMES.map((firstName, index) => ({

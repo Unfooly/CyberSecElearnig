@@ -536,7 +536,7 @@ try {
   const earnedCount = PHONE ? 2 : 3;
   step(`Osiągnięcia: licznik ${earnedCount} / N na profilu`, new RegExp(`^${earnedCount}/\\d+$`).test(achievementsCounter), achievementsCounter);
   // Nazwy w języku szkoleń (D-146): przeglądarka testu pl-PL - polskie nazwy i rangi.
-  for (const name of PHONE ? ['Pierwsza sprawa', 'Perfekcyjne śledztwo'] : ['Pierwsza sprawa', 'Perfekcyjne śledztwo', 'Ciekawski detektyw']) {
+  for (const name of PHONE ? ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy'] : ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy', 'Ciekawski detektyw']) {
     step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\([^)]+\\), zdobyte`) }).count()) === 1);
   }
   if (!PHONE) {
@@ -545,18 +545,18 @@ try {
   }
 
   // Przypinanie (D-112): z rewersu dwóch zdobytych kart -> sekcja „Przypięte” i miniatury przy imieniu w rankingu na /courses.
-  for (const name of ['Perfekcyjne śledztwo', 'Pierwsza sprawa']) {
+  for (const name of ['Sprawa bez skazy', 'Pierwsza sprawa zamknięta']) {
     const pinResponse = page.waitForResponse((r) => r.url().includes('/api/gamification/pinned') && r.request().method() === 'PUT');
     await page.getByRole('button', { name: new RegExp(`^${name} \\(`) }).click();
     await page.getByTestId('achievement-pin').click();
     step(`Przypinanie: ${name} zapisane na serwerze`, (await pinResponse).ok());
   }
-  step('Przypinanie: sekcja „Przypięte” w kolejności przypięcia', (await page.getByTestId('pinned-item').allTextContents()).map((t) => t.replace(/^\d+\.\s*/, '').split('Odepnij')[0].trim()).join('|') === 'Perfekcyjne śledztwo|Pierwsza sprawa');
+  step('Przypinanie: sekcja „Przypięte” w kolejności przypięcia', (await page.getByTestId('pinned-item').allTextContents()).map((t) => t.replace(/^\d+\.\s*/, '').split('Odepnij')[0].trim()).join('|') === 'Sprawa bez skazy|Pierwsza sprawa zamknięta');
   await page.goto(`${WEB}/courses`);
   const myRow = page.getByRole('row').filter({ has: page.getByText('Ty', { exact: true }) });
   await myRow.waitFor();
   const rowBadges = await myRow.getByTestId('pinned-badge').evaluateAll((els) => els.map((el) => el.getAttribute('title')));
-  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Perfekcyjne śledztwo|Pierwsza sprawa', rowBadges.join('|'));
+  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Sprawa bez skazy|Pierwsza sprawa zamknięta', rowBadges.join('|'));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {

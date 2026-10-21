@@ -651,7 +651,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       newLevel: 2,
       previousLevel: 1,
       leveledUp: true,
-      unlockedBadges: [{ code: 'first-case-closed', title: 'Pierwsza sprawa', icon: 'pl/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
+      unlockedBadges: [{ code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
     });

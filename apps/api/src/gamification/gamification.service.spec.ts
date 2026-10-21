@@ -616,7 +616,7 @@ describe('GamificationService', () => {
       const result = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
 
       expect(tx.badge.findMany).toHaveBeenCalledWith({ where: { retiredAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
-      expect(result[0]).toMatchObject({ code: 'first-case-closed', title: 'Pierwsza sprawa', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
+      expect(result[0]).toMatchObject({ code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
     });
 
     it('tajne niezdobyte: bez kodu, nazwy, opisu, warunku i grafiki zdobytej (tylko ranga i grafika zablokowana)', async () => {
@@ -658,7 +658,7 @@ describe('GamificationService', () => {
       withAccount.user.findUniqueOrThrow.mockResolvedValue({ achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION, pinnedAchievements: [], contentLocale: 'pl' });
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(withAccount));
       const [pl] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'en-US,en;q=0.9');
-      expect(pl).toMatchObject({ title: 'Pierwsza sprawa', description: 'Twoja pierwsza zamknięta sprawa.', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/p', lockedIcon: 'pl/p-z' });
+      expect(pl).toMatchObject({ title: 'Pierwsza sprawa zamknięta', description: 'Twoja pierwsza zamknięta sprawa.', conditionText: 'Ukończ dowolne szkolenie.', icon: 'pl/p', lockedIcon: 'pl/p-z' });
 
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(listTx(unlocked)));
       const [en] = await service.listBadgesWithUnlockStatus('org-1', 'user-1');

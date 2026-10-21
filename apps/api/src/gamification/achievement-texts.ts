@@ -6,7 +6,7 @@ import { ACHIEVEMENT_CODES } from './gamification.constants';
  * Tabela `badges` trzyma jedną wersję tekstu (nazwa EN, opis i warunek PL, D-111) - tu jest komplet per język; kod spoza mapy
  * (np. wycofane odznaki) dostaje teksty z bazy. Ten sam język co treść kursu (D-133: konto > przeglądarka > EN), także dla grafiki
  * odznaki (`localizedIcon`: wersje z kompozytora w public/achievements/<język>/). Tytuły spraw w warunkach zostają po polsku - moduły
- * są dziś tylko po polsku. Teksty EN opisów i warunków - do akceptacji właściciela (PR).
+ * są dziś tylko po polsku. Nazwy PL zaakceptowane przez właściciela (D-146); teksty EN opisów i warunków - robocze, do przeglądu przy wersji EN.
  */
 interface AchievementTexts {
   title: Localized<string>;
@@ -16,12 +16,12 @@ interface AchievementTexts {
 
 export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
   [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED]: {
-    title: { pl: 'Pierwsza sprawa', en: 'First Case Closed' },
+    title: { pl: 'Pierwsza sprawa zamknięta', en: 'First Case Closed' },
     description: { pl: 'Twoja pierwsza zamknięta sprawa.', en: 'Your first closed case.' },
     conditionText: { pl: 'Ukończ dowolne szkolenie.', en: 'Complete any training.' },
   },
   [ACHIEVEMENT_CODES.FLAWLESS_CASE]: {
-    title: { pl: 'Perfekcyjne śledztwo', en: 'Flawless Case' },
+    title: { pl: 'Sprawa bez skazy', en: 'Flawless Case' },
     description: { pl: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.', en: 'You closed the case without missing a single clue.' },
     conditionText: {
       pl: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Wyłudzone hasło”.',
@@ -48,7 +48,7 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
     },
   },
   [ACHIEVEMENT_CODES.PERFECT_PITCH]: {
-    title: { pl: 'Czysty odsłuch', en: 'Perfect Pitch' },
+    title: { pl: 'Słuch absolutny', en: 'Perfect Pitch' },
     description: { pl: 'Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.', en: 'You caught every manipulation. Not a single false alarm.' },
     conditionText: {
       pl: 'W odsłuchu nagrania w sprawie „Głos z helpdesku” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',

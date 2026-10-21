@@ -859,14 +859,16 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: `apps/web/public/achievements/{pl,en}/osiagniecie-ciekawski-detektyw.svg` i `…-off-the-record.svg` są dostępne bez logowania pod
   nazwą, którą da się zgadnąć (stan sprzed D-146, teraz dwa pliki zamiast jednego). D-111 chroni odpowiedzi API, nie zasoby statyczne -
   ryzyko: spoiler, nie wyciek danych klienta.
-- Akceptacja: decyzja właściciela - zostawić albo serwować grafiki tajnych przez BFF dla zalogowanego, który je zdobył (albo nazwy z
-  losowym skrótem).
+- Decyzja właściciela (2026-10-19): to spoiler, nie dziura bezpieczeństwa. Nazwy plików grafik tajnych osiągnięć z hashem treści (jak
+  inne assety), bez blokowania dostępu. Niski priorytet - po module 4.
+- Akceptacja: grafiki tajnych osiągnięć pod nazwą z hashem treści; API podaje nową nazwę; stara, przewidywalna nazwa nie istnieje.
 
 ### B-154 Easter egg modułu 1: „Nowe osiągnięcie: Curious Detective” z treści modułu, nie w języku szkoleń
 - Etykiety: `P3`, `content`, `mod:kursy` · Źródło: D-146 (osiągnięcia w języku szkoleń)
 - Opis: okienko easter egga pulpitu Anny (`PopupsEasterEgg`) i wyróżnienie w notatniku biorą nazwę osiągnięcia z treści modułu 1
   (`module.json`), nie z API - po D-146 polski gracz widzi tam „Curious Detective”, a na profilu „Ciekawski detektyw”. To samo dla
   „Off the Record” w module 2 (wyróżnienie w notatniku). Zmiana treści = nowa wersja kursu i content-import.
+- Decyzja właściciela (2026-10-19): przy najbliższej zmianie treści m1 (i tak będzie nowa wersja kursu), nie osobny content-import.
 - Akceptacja: etykiety w treści modułów 1-2 zgodne z nazwami PL z D-146 (albo pobierane z tej samej mapy); e2e modułów sprawdzają nową
   etykietę.
 

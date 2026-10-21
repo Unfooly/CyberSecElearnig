@@ -7,6 +7,7 @@ import type { ContentBlock, NoteKind } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
 import HarnessAutoOpen from './HarnessAutoOpen';
 import { DEFAULT_MODULE_SLUG, harnessModuleDir } from '../harness-module';
+import { pseudoLocalizeClientContent } from '../pseudo-content';
 
 // Podgląd układu bloku w PRAWDZIWYM PlayerStage, bez backendu (bez /courses/:id/start, bez logowania) - treść
 // wprost z packages/content (module.json), obrazy z CONTENT_BASE_URL jak na produkcji (bez niej - z lokalnych assets/ modułu,
@@ -76,6 +77,7 @@ export default function PlayerHarnessPage({
     narration?: string;
     noPortrait?: string;
     localeUi?: string;
+    pseudo?: string;
   };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
@@ -120,10 +122,14 @@ export default function PlayerHarnessPage({
   // Ani SCENE_HOTSPOTS, ani DIALOGUE, ani BRIEFING nie używają shuffleSeed/opaqueId (tylko EMAIL_ANALYSIS/ORDERING/
   // TEXT_INPUT_GUIDED w client.ts) - wartości poniżej nigdy nie trafiają do wyniku dla tych typów bloku, są tu
   // wyłącznie, żeby zaspokoić sygnaturę wspólną dla WSZYSTKICH typów.
-  const contentBlock = toClientBlock(blockForClient, {
+  // `?pseudo=1` (D-143): widoczne teksty bloku w pseudo-lokalizacji `xx` (dłuższe o ~35%, z akcentami, w [ ]) - layout-check (sekcja
+  // `pseudo`) sprawdza nimi układ dłuższego przekładu na 390×844. Po toClientBlock (te same pola co w produkcji), tylko w tym renderze.
+  const pseudo = searchParams.pseudo === '1';
+  const forPlayer = (block: ContentBlock) => (pseudo ? pseudoLocalizeClientContent(block) : block);
+  const contentBlock = forPlayer(toClientBlock(blockForClient, {
     shuffleSeed: () => [1, 2, 3, 4],
     opaqueId: (_blockId, itemId) => itemId,
-  }) as unknown as ContentBlock;
+  }) as unknown as ContentBlock);
 
   // `?completed=1` (feat/case-closed, D-089): przypisanie już ukończone - ekran zamknięcia sprawy w stanie końcowym (powrót do
   // ukończonego kursu). Czas sprawy (startedAt -> completedAt) stały: 14 min.
@@ -134,7 +140,7 @@ export default function PlayerHarnessPage({
   const sourceId = rawBlock.type === 'ANNOTATED_REPLAY' && rawBlock.source.kind === 'transcript' ? rawBlock.source.fromBlock : undefined;
   const sourceBlock = sourceId ? parsedModule.blocks.find((block) => block.id === sourceId) : undefined;
   const leading = sourceBlock
-    ? [toClientBlock(sourceBlock, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (_blockId, itemId) => itemId }) as unknown as ContentBlock]
+    ? [forPlayer(toClientBlock(sourceBlock, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (_blockId, itemId) => itemId }) as unknown as ContentBlock)]
     : [];
   const initial: CoursePlayerInitialState = {
     assignmentId: 'dev-harness',

@@ -55,7 +55,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
 import { launchPolishBrowser } from './lib/pl-browser.mjs';
@@ -113,7 +113,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'pseudo'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -167,7 +167,7 @@ if (!/^[a-z0-9-]{1,64}$/.test(MODULE_SLUG) || !existsSync(join(moduleDir(MODULE_
 }
 // Dla innego modułu tylko sekcje ogólne: `module` (każdy blok), `catalog` (miniatura i karta kursu z `?module=`) i `modul2` (własny moduł
 // podglądu nowych bloków, niezależny od LAYOUT_CHECK_MODULE).
-const GENERIC_SECTIONS = ['module', 'catalog', 'modul2', 'notes', 'prosty'];
+const GENERIC_SECTIONS = ['module', 'catalog', 'modul2', 'notes', 'prosty', 'pseudo'];
 if (MODULE_SLUG !== DEFAULT_MODULE) {
   const unsupported = ONLY.filter((name) => !GENERIC_SECTIONS.includes(name));
   if (unsupported.length > 0) {
@@ -2346,6 +2346,106 @@ try {
       }
       await context.close();
     }
+  }
+
+  // PSEUDO-LOKALIZACJA (D-143): każdy blok modułów w modelu z `locales` (moduł 3 i kolejne; moduły 1-2 mają grafiki z wpalonym PL) na
+  // 390×844 z tekstami treści w `xx` (`?pseudo=1`: dłuższe o ~35%, z akcentami, w [ ]) - STAN POCZĄTKOWY bloku (bez interakcji; stany
+  // po interakcji: B-157). Sprawdzamy prostokąty linii tekstu (nie glify - akcent ucięty ciasnym line-height łapią tylko zrzuty):
+  //  (x1) teksty treści naprawdę w xx (co najmniej jeden widoczny tekst z „~]”);
+  //  (x2) strona bez przewijania w poziomie, dolny pasek w ekranie, bez błędów strony i konsoli;
+  //  (x3) żaden widoczny tekst xx nie jest ucięty przez przodka z overflow hidden/clip ani wielokropkiem (koniec „~]” musi być widać).
+  // Napisy interfejsu odtwarzacza są po polsku w kodzie (D-133) - xx sprawdza miejsce na teksty treści w tych samych kontrolkach.
+  // Coś się nie mieści = poprawka układu albo slotu, nie skracanie tekstu PL (decyzja właściciela 2026-10-16).
+  if (runs('pseudo')) {
+    const modulesRoot = join(process.cwd(), 'packages', 'content', 'modules');
+    const pseudoModules = readdirSync(modulesRoot)
+      .filter((slug) => existsSync(join(modulesRoot, slug, 'module.json')))
+      .map((slug) => ({ slug, json: JSON.parse(readFileSync(join(modulesRoot, slug, 'module.json'), 'utf8')) }))
+      .filter(({ json }) => Array.isArray(json.locales));
+    if (pseudoModules.length === 0) fail('pseudo: brak modułu z `locales` do sprawdzenia.');
+    const pseudoFailures = [];
+    const viewport = { name: '390x844', width: 390, height: 844, isMobile: true };
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text().slice(0, 200));
+    });
+    for (const { slug, json } of pseudoModules) {
+      for (const blockId of json.blocks.map((block) => block.id)) {
+        const label = `${viewport.name} / xx / ${slug} / ${blockId}`;
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=${slug}&block=${encodeURIComponent(blockId)}&pseudo=1`);
+        await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
+        // Maszyna do pisania odprawy (D-145) dopisuje tekst - reduced-motion pokazuje go od razu; chwila na fonty i układ.
+        await page.waitForTimeout(300);
+        const info = await page.evaluate(() => {
+          const frame = document.querySelector('main.player-frame');
+          const bar = document.querySelector('[data-testid="player-bottombar"]')?.getBoundingClientRect();
+          if (!frame) return { pseudoTexts: 0, clipped: ['brak ramki odtwarzacza (main.player-frame)'], barInView: !!bar, overflowX: 0 };
+          const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+          const clipped = [];
+          let pseudoTexts = 0;
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            const text = node.textContent;
+            if (!text.includes('~')) continue;
+            const el = node.parentElement;
+            // Bez pomijania aria-hidden: widoczny tekst maszyny do pisania odprawy jest aria-hidden (czytnik dostaje go osobno).
+            if (!el || el.closest('.sr-only, [hidden]')) continue;
+            const style = getComputedStyle(el);
+            if (style.visibility === 'hidden' || el.getClientRects().length === 0) continue;
+            // Niewidoczne kopie rezerwujące miejsce (D-128) mają opacity 0 gdzieś w przodkach.
+            let transparent = false;
+            for (let a = el; a && a !== frame.parentElement; a = a.parentElement) if (getComputedStyle(a).opacity === '0') transparent = true;
+            if (transparent) continue;
+            pseudoTexts += /~\]/.test(text) ? 1 : 0;
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+            if (rects.length === 0) continue;
+            const short = text.trim().slice(0, 40);
+            if (style.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1) clipped.push(`${short} (wielokropek)`);
+            // Przodek z overflow hidden/clip ucina tekst wychodzący poza swój prostokąt; przewijany (auto/scroll) - nie (da się przewinąć).
+            let checkX = true;
+            let checkY = true;
+            for (let a = el; a && a !== document.body && (checkX || checkY); a = a.parentElement) {
+              const s = getComputedStyle(a);
+              const box = a.getBoundingClientRect();
+              const clips = (value) => value === 'hidden' || value === 'clip';
+              const scrolls = (value) => value === 'auto' || value === 'scroll';
+              const outX = checkX && clips(s.overflowX) && rects.some((r) => r.left < box.left - 1 || r.right > box.right + 1);
+              const outY = checkY && clips(s.overflowY) && rects.some((r) => r.top < box.top - 1 || r.bottom > box.bottom + 1);
+              if (outX || outY) {
+                clipped.push(`${short} (ucięte ${outX ? 'w poziomie' : 'w pionie'} przez ${a.tagName.toLowerCase()}${a.dataset.testid ? `[${a.dataset.testid}]` : ''})`);
+                break;
+              }
+              if (scrolls(s.overflowX)) checkX = false;
+              if (scrolls(s.overflowY)) checkY = false;
+            }
+          }
+          return {
+            pseudoTexts,
+            clipped,
+            barInView: !!bar && bar.top >= -1 && bar.bottom <= window.innerHeight + 1,
+            overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          };
+        });
+        // Wszystkie bloki przed werdyktem (pełna lista do poprawek układu), potem jeden błąd sekcji.
+        const problems = [];
+        if (info.pseudoTexts === 0) problems.push('(x1) brak widocznego tekstu w xx (podgląd ?pseudo=1 nie zadziałał?)');
+        if (info.overflowX > 1) problems.push(`(x2) strona przewija się w poziomie o ${info.overflowX}px`);
+        if (!info.barInView) problems.push('(x2) dolny pasek poza ekranem');
+        if (errors.length > 0) problems.push(`(x2) błędy: ${errors.join(' | ')}`);
+        if (info.clipped.length > 0) problems.push(`(x3) tekst xx ucięty: ${info.clipped.slice(0, 5).join('; ')}`);
+        await shot(page, `${viewport.name}-xx-${slug}-${blockId}`);
+        if (problems.length > 0) pseudoFailures.push(label);
+        step(problems.length === 0 ? `${label}: (x1-x3) ${info.pseudoTexts} tekstów xx, bez ucięć, strona bez przewijania w poziomie OK` : `${label}: ${problems.join('; ')}`, problems.length === 0);
+      }
+    }
+    await context.close();
+    if (pseudoFailures.length > 0) fail(`pseudo: ${pseudoFailures.length} bloków z błędami (lista wyżej): ${pseudoFailures.join(', ')}`);
   }
 
   // TRYB PROSTY (D-132, moduł 3 i kolejne) na module podglądu packages/content/dev-modules/dev-tryb-prosty:

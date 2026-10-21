@@ -741,7 +741,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela, które tła wchodzą do odtwarzacza (pole `image`/`imagePortrait` w schemacie bloku, klasyfikacja
   `client`, layout-check), albo usunięcie nieużytych plików i ich źródeł.
 - Decyzja właściciela (2026-10-21): wszystkie wchodzą do odtwarzacza.
-- Status: część a zrobiona (D-147, gałąź `feat/138-tla-modulu-2`) - tła odsłuchu i omówienia. Zostaje część b: okno konsoli
+- Status: zrobione - część a (D-147, PR #138) tła odsłuchu i omówienia; część b (D-148, gałąź `feat/138b-konsola-rozmowa`): konsola w HTML
+  w wyglądzie grafiki (grafika usunięta), ekran połączenia - ramka telefonu z HTML w slotach (decyzje właściciela 2026-10-21). Opis
+  części b sprzed decyzji: okno konsoli
   (`konsola-admina(-pion)`, sloty `slot-tytul`, `slot-dokument`) w INTERROGATION i ekran połączenia (`rozmowa-na-zywo`, sloty
   `slot-caller`, `slot-status`, `slot-choices`, `odrzuc`, `odbierz`) w LIVE_CALL - HTML w slotach grafiki, położenie slotów w treści.
   Na wersję EN modułu 2: notatnik w `nagranie-tlo(-pion)` ma odręczny PL („9:02 — 9:41”, „„Paweł z IT”?”, „flagi!”) - wariant `{ pl, en }`.

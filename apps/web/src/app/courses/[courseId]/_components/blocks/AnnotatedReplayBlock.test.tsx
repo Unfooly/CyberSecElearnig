@@ -99,6 +99,20 @@ describe('AnnotatedReplayBlock', () => {
     render(<AnnotatedReplayBlock block={onImage} moduleBlocks={[]} contentBase="/content" onReady={vi.fn()} onSubmit={vi.fn()} />);
     expect(screen.getByAltText('Omówienie rozmowy')).toHaveAttribute('src', '/content/scenes/omowienie.svg');
     expect(screen.getByTestId('replay-marker-1')).toHaveStyle({ left: '25%', top: '40%' });
+    // Omówienie na grafice ma własny obraz - bez tła bloku (B-138).
+    expect(screen.queryByTestId('block-background')).not.toBeInTheDocument();
+  });
+
+  it('B-138: tło omówienia na transkrypcji pod listą kwestii (dekoracja, bez alt); bez tła w treści - bez tła', () => {
+    const withBackground: ContentBlock = { ...replay, source: { kind: 'transcript', fromBlock: 'nagranie', background: 'scenes/omowienie-tlo.svg' } };
+    const { unmount } = render(<AnnotatedReplayBlock block={withBackground} moduleBlocks={[recording, withBackground]} contentBase="/content" onReady={vi.fn()} onSubmit={vi.fn()} />);
+    const background = screen.getByTestId('block-background');
+    expect(background).toHaveAttribute('aria-hidden', 'true');
+    expect(background.querySelector('img')).toHaveAttribute('src', '/content/scenes/omowienie-tlo.svg');
+    expect(screen.getByTestId('annotated-replay')).toHaveClass('relative', 'isolate');
+    unmount();
+    render(<AnnotatedReplayBlock block={replay} moduleBlocks={[recording, replay]} contentBase="/content" onReady={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.queryByTestId('block-background')).not.toBeInTheDocument();
   });
 });
 

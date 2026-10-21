@@ -6,6 +6,7 @@ import type { ContentBlock } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { usePortraitContainer } from '@/lib/use-portrait-container';
+import BlockBackground from './BlockBackground';
 
 // Omówienie z adnotacjami (ANNOTATED_REPLAY, D-115): numerowane znaczniki 1..N na transkrypcji nagrania (segmenty bloku CALL_RECORDING
 // tego modułu) albo na grafice (punkty { x, y } w %). Przejście znacznikami w bloku („Poprzedni”/„Następny”, strzałki ← →), karta
@@ -101,7 +102,9 @@ export default function AnnotatedReplayBlock({
   }
 
   return (
-    <div data-testid="annotated-replay" onKeyDown={onKeyDown} className="flex min-h-0 w-full flex-1 flex-col">
+    <div data-testid="annotated-replay" onKeyDown={onKeyDown} className="relative isolate flex min-h-0 w-full flex-1 flex-col">
+      {/* Tło omówienia na transkrypcji (B-138) - dekoracja pod listą kwestii; omówienie na grafice ma własny obraz. */}
+      {source?.kind === 'transcript' && <BlockBackground contentBase={contentBase} image={source.background} imagePortrait={source.backgroundPortrait} />}
       {source?.kind === 'image' ? (
         <ReplayImage block={block} contentBase={contentBase} index={index} onPick={go} />
       ) : (

@@ -6,6 +6,7 @@ import { MAX_RECORDING_TAPS, recordingTimeline, segmentAt } from '@cyberszkolo/c
 import type { ContentBlock, ContentReaction, RecordingFlagCategory, RecordingTap, ResultDetail } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import BlockBackground from './BlockBackground';
 
 // Odsłuch nagrania rozmowy (CALL_RECORDING, D-115). Gracz słucha (fala z pozycją, odtwórz/pauza, ±5 s) i stuka „Czerwona flaga” w chwili
 // manipulacji (`{ atMs }`), albo zaznacza kwestie w transkrypcji (`{ segmentId }`) - alternatywa dostępności i jedyny tryb, gdy nagranie
@@ -293,10 +294,14 @@ export default function CallRecordingBlock({
   const timeTaps = taps.filter((tap): tap is { atMs: number } => 'atMs' in tap);
   const canSubmit = !disabled && !result && (taps.length > 0 || reachedEnd);
 
-  if (result) return <RecordingResult block={block} result={result} />;
+  if (result) return <RecordingResult block={block} result={result} contentBase={contentBase} />;
+  // Na tle (B-138) wskazówki bez karty dostają jasne podłoże - tekst nie może leżeć wprost na grafice.
+  const onBackground = block.background ? 'w-fit rounded-card bg-surface/95 px-3 py-1.5 shadow-card' : '';
 
   return (
-    <div data-testid="call-recording" onKeyDown={onKeyDown} className="flex min-h-0 w-full flex-1 flex-col">
+    <div data-testid="call-recording" onKeyDown={onKeyDown} className="relative isolate flex min-h-0 w-full flex-1 flex-col">
+      {/* Tło odsłuchu (B-138) pod zakładkami i panelem - dekoracja, bez treści. */}
+      <BlockBackground contentBase={contentBase} image={block.background} imagePortrait={block.backgroundPortrait} />
       {/* Transkrypcja i napisy są w bloku (tryb transkrypcji, napis bieżącej kwestii). */}
       <audio
         ref={audioRef}
@@ -442,7 +447,7 @@ export default function CallRecordingBlock({
               Cofnij flagę
             </button>
           </div>
-          <p className="text-sm text-muted">
+          <p className={`text-sm text-muted ${onBackground}`}>
             Flagi: <span className="font-semibold text-ink">{taps.length}</span>. Po kliknięciu w nagranie: Spacja - odtwórz/pauza, strzałki - ±5 s,
             F - czerwona flaga.
           </p>
@@ -461,7 +466,7 @@ export default function CallRecordingBlock({
             </p>
           )}
           {timeTaps.length > 0 && (
-            <p data-testid="recording-time-taps" className="mb-3 text-sm text-muted">
+            <p data-testid="recording-time-taps" className={`mb-3 text-sm text-muted ${onBackground}`}>
               Flagi z odsłuchu: <span className="font-semibold text-ink">{timeTaps.length}</span> - zostaną sprawdzone razem z zaznaczonymi tutaj.
             </p>
           )}
@@ -554,13 +559,14 @@ function IconButton({ label, onClick, children }: { label: string; onClick: () =
 }
 
 /** Rozstrzygnięcie z serwera: każda kwestia, przy flagach - kategoria i czy gracz ją trafił; liczba fałszywych alarmów i wynik. */
-function RecordingResult({ block, result }: { block: ContentBlock; result: CallRecordingResult }) {
+function RecordingResult({ block, result, contentBase }: { block: ContentBlock; result: CallRecordingResult; contentBase: string }) {
   const flags = new Map((result.detail?.flags ?? []).map((flag) => [flag.segmentId, flag]));
   const total = result.detail?.flags?.length ?? 0;
   const hits = (result.detail?.flags ?? []).filter((flag) => flag.hit).length;
   const falseTaps = result.detail?.falseTaps ?? 0;
   return (
-    <div data-testid="call-recording-result" className="flex min-h-0 w-full flex-1 flex-col">
+    <div data-testid="call-recording-result" className="relative isolate flex min-h-0 w-full flex-1 flex-col">
+      <BlockBackground contentBase={contentBase} image={block.background} imagePortrait={block.backgroundPortrait} />
       <div className="mx-auto mb-3 w-full max-w-[760px] shrink-0 rounded-card border border-border bg-surface px-4 py-3 shadow-card" role="status">
         <p className="font-semibold text-ink">
           Trafione flagi: {hits}/{total} · Fałszywe alarmy: {falseTaps}

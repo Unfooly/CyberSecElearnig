@@ -31,6 +31,17 @@ describe('CallRecordingBlock', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
+  it('B-138: tło odsłuchu pod zakładkami i panelem (dekoracja); bez tła w treści - bez tła', () => {
+    const { unmount } = render(<CallRecordingBlock block={{ ...block(true), background: 'scenes/nagranie-tlo.svg' }} contentBase="/content" onSubmit={vi.fn()} />);
+    const background = screen.getByTestId('block-background');
+    expect(background).toHaveAttribute('aria-hidden', 'true');
+    expect(background.querySelector('img')).toHaveAttribute('src', '/content/scenes/nagranie-tlo.svg');
+    expect(screen.getByTestId('call-recording')).toHaveClass('relative', 'isolate');
+    unmount();
+    render(<CallRecordingBlock block={block(true)} contentBase="/content" onSubmit={vi.fn()} />);
+    expect(screen.queryByTestId('block-background')).not.toBeInTheDocument();
+  });
+
   it('bez nagrań (przed potokiem TTS) tylko transkrypcja: flagi przy kwestiach, zdjęcie flagi, wysyłka samych segmentów', () => {
     const onSubmit = vi.fn();
     render(<CallRecordingBlock block={block(false)} contentBase="/content" onSubmit={onSubmit} />);

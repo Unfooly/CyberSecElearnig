@@ -119,7 +119,7 @@ export interface ReplayMarker {
 }
 
 export type ReplaySource =
-  | { kind: 'transcript'; fromBlock: string }
+  | { kind: 'transcript'; fromBlock: string; background?: string; backgroundPortrait?: string }
   | { kind: 'image'; image: string; imagePortrait?: string; alt: string };
 
 /** Wiersz dokumentu w teczce (DOSSIER). evidence/note/required są jawne (jak hotspoty) - blok nie jest oceniany. */
@@ -309,6 +309,9 @@ export interface ContentBlock {
   requiredHotspots?: string[];
   // CALL_RECORDING (D-115): segmenty rozmowy (bez flag - te są sekretem, rozstrzygnięcie w ResultDetail.flags po ocenie).
   segments?: RecordingSegment[];
+  /** CALL_RECORDING (B-138): dekoracyjne tło odsłuchu i jego wariant pionowy (BlockBackground). */
+  background?: string;
+  backgroundPortrait?: string;
   // ANNOTATED_REPLAY (D-115): źródło (transkrypcja nagrania albo grafika) i numerowane znaczniki.
   source?: ReplaySource;
   markers?: ReplayMarker[];

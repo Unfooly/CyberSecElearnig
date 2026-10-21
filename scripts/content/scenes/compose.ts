@@ -1,5 +1,6 @@
 import { P } from './palette.js';
 import { esc, PROPS } from './props.js';
+import { PSEUDO_LOCALE, pseudoTable } from './pseudo-locale.js';
 import { outlineText, parseTextElement } from './text.js';
 import type { ComposeResult, Hotspot, PropContext, SceneLocale, SceneSpec, SceneString } from './types.js';
 
@@ -41,7 +42,7 @@ export const FIT_PARAMS: Record<string, string[]> = {
  * Tekst, który nie musi pochodzić ze `strings`: same cyfry i znaki liczb/maski (godzina, kwota, „12 3XX XX 41”) oraz samodzielne
  * znaki bez języka: znak zapytania („???” tajnego trofeum, „?” na lupie), znak numeru („№ 1”) i cudzysłowy jako ozdobny glif.
  */
-const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX?№“”„]*$/;
+export const LANGUAGE_NEUTRAL = /^[\d\s.,:;/+\-–—%()#*×xX?№“”„]*$/;
 
 /** Skala sceny na telefonie (px ekranu na jednostkę sceny). */
 export function phoneScale(spec: SceneSpec): number {
@@ -228,7 +229,15 @@ export interface ComposeOptions {
   locale?: SceneLocale;
   /** Nazwa sceny w komunikatach błędów (plik bez .json). */
   name?: string;
+  /**
+   * Pseudo-lokalizacja `xx` (D-143): teksty z `strings.pl` przepuszczone przez `pseudoLocalize` (dłuższe, z akcentami, w [ ]), te same
+   * kontrole co dla prawdziwego języka (fitText, minimum px, tekst tylko ze `strings`). Tylko w pamięci - `composePseudoScene`.
+   */
+  pseudo?: boolean;
 }
+
+/** Język wyniku w komunikatach i porównaniu słów: `xx` dla pseudo-lokalizacji. */
+const localeOf = (options: ComposeOptions) => (options.pseudo ? PSEUDO_LOCALE : options.locale);
 
 /**
  * Scena ze `strings` (D-135): parametry z odwołaniami w języku `locale`, kontekst z dolną granicą czcionki dla `fitText`, a po
@@ -238,10 +247,11 @@ export interface ComposeOptions {
 function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: ComposeOptions, errors: string[]) {
   const fn = PROPS[it.prop];
   const s = it.scale ?? 1;
-  const where = `scena ${options.name ?? '(bez nazwy)'}, element "${it.id}"${options.locale ? `, język ${options.locale}` : ''}`;
+  const locale = localeOf(options);
+  const where = `scena ${options.name ?? '(bez nazwy)'}, element "${it.id}"${locale ? `, język ${locale}` : ''}`;
   if (!spec.strings) return fn(it.params ?? {}, { minFontSize: 0, where });
 
-  const table = spec.strings[options.locale!]!;
+  const table = options.pseudo ? pseudoTable(spec.strings.pl!) : spec.strings[options.locale!]!;
   const minPx = Math.max((it.phoneScreen ?? PHONE_SCREEN_PROPS.has(it.prop)) ? MIN_PHONE_SCREEN_TEXT_PX : MIN_TEXT_PX, spec.minTextPx ?? 0);
   const toLocal = phoneScale(spec) * s;
   const context: PropContext = { minFontSize: it.decorative ? 0 : minPx / toLocal, where };
@@ -250,9 +260,9 @@ function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: Co
   // Dozwolone słowa = słowa tekstów, do których element się odwołuje. Klocki zamknięcia w FIT_PARAMS (D-140) mają domyślne etykiety
   // PL: pominięta etykieta trafia tu jako tekst spoza "strings" i daje błąd (test w odprawa.test.ts) - chyba że wszystkie jej słowa
   // są przypadkiem w napisach przekazanych temu samemu elementowi (wtedy przechodzi; scena z innym językiem podaje komplet `labels`).
-  const allowed = new Set(refsIn(it.params ?? {}).flatMap((key) => words(table[key])).map((word) => word.toLocaleLowerCase(options.locale)));
+  const allowed = new Set(refsIn(it.params ?? {}).flatMap((key) => words(table[key])).map((word) => word.toLocaleLowerCase(locale)));
   for (const { text, size } of textsWithScale(out.svg)) {
-    const foreign = text.split(/\s+/).filter((word) => word && !LANGUAGE_NEUTRAL.test(word) && !allowed.has(word.toLocaleLowerCase(options.locale)));
+    const foreign = text.split(/\s+/).filter((word) => word && !LANGUAGE_NEUTRAL.test(word) && !allowed.has(word.toLocaleLowerCase(locale)));
     if (foreign.length > 0) errors.push(`${where}: tekst „${text}” nie pochodzi ze "strings" (${foreign.join(' ')}) - przekaż go parametrem { "$t": … }`);
     const px = size * toLocal;
     // Także same cyfry (kwota, numer - bywają wskazówką w ćwiczeniu); tekst tła do pominięcia - tylko przez "decorative".
@@ -266,7 +276,9 @@ function renderItem(spec: SceneSpec, it: SceneSpec['items'][number], options: Co
 export function composeScene(spec: SceneSpec, options: ComposeOptions = {}): ComposeResult {
   const errors = validateScene(spec);
   if (errors.length) throw new Error(errors.join('\n'));
-  if (spec.strings && !options.locale) throw new Error(`Scena ${options.name ?? ''} ma "strings" - podaj język (${sceneLocales(spec).join(', ')})`);
+  if (options.pseudo && options.locale) throw new Error('Pseudo-lokalizacja (xx) bierze teksty z "pl" - bez "locale"');
+  if (options.pseudo && !spec.strings?.pl) throw new Error(`Scena ${options.name ?? ''}: pseudo-lokalizacja (xx) tylko dla sceny ze "strings"`);
+  if (spec.strings && !options.locale && !options.pseudo) throw new Error(`Scena ${options.name ?? ''} ma "strings" - podaj język (${sceneLocales(spec).join(', ')})`);
   if (options.locale && !(spec.strings && spec.strings[options.locale])) throw new Error(`Scena ${options.name ?? ''} nie ma tekstów w języku "${options.locale}"`);
 
   const W = spec.width ?? 1600, H = spec.height ?? 1000;
@@ -360,6 +372,15 @@ export function composeSceneLocales(spec: SceneSpec, name?: string): ComposeResu
   const different = results.filter((result) => JSON.stringify(result.hotspots) !== reference).map((result) => result.locale);
   if (different.length > 0) throw new Error(`Scena ${name ?? ''}: hotspoty różnią się między językami (${different.join(', ')}) - prostokąty muszą być wspólne`);
   return results;
+}
+
+/**
+ * Scena ze `strings` w pseudo-lokalizacji `xx` (D-143) - tylko do kontroli dopasowania w teście (CI), bez zapisu na dysk: błąd builda
+ * (tekst nie mieści się w slocie, za mały na telefonie, tekst spoza `strings`) to błąd slotu albo układu - poprawiamy klocek, nie
+ * skracamy tekstu PL. Wynik bez pola `locale` (nie jest plikiem żadnego języka).
+ */
+export function composePseudoScene(spec: SceneSpec, name?: string): ComposeResult {
+  return composeScene(spec, { name, pseudo: true });
 }
 
 /** Podgląd HTML z zaznaczonymi hotspotami — do sprawdzenia oka, nie do repo. */

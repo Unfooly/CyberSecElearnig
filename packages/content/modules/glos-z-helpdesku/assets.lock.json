@@ -162,6 +162,11 @@
       "hash": "8012f48b",
       "key": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.8012f48b.svg"
     },
+    "na-zywo#ringScreen.image": {
+      "original": "scenes/rozmowa-na-zywo.svg",
+      "hash": "e741a675",
+      "key": "assets/glos-z-helpdesku/scenes/rozmowa-na-zywo.e741a675.svg"
+    },
     "omowienie#source.background": {
       "original": "scenes/omowienie-tlo.svg",
       "hash": "8d0d7fd7",

@@ -187,6 +187,8 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         // -> po" (SummaryScreen) kończy się na 100% (przycięty - sam awans/nowy poziom pokazuje osobny komunikat).
         levelProgressBeforePercent: 0,
         levelProgressAfterPercent: 100,
+        // B-153: postęp w NOWYM poziomie (2, próg 100..400): 150 XP = 50/300 = 17%.
+        levelProgressNewPercent: 17,
       });
 
       const summary = await request(app.getHttpServer())

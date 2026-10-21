@@ -2986,6 +2986,7 @@ try {
               ],
               levelProgressBeforePercent: 40,
               levelProgressAfterPercent: 100,
+              levelProgressNewPercent: 17,
             },
           }),
         }),
@@ -3262,6 +3263,7 @@ try {
         unlockedBadges: [{ code: 'pierwsza-sprawa', title: 'Pierwsza zamknięta sprawa', icon: 'badge', xpReward: 50 }],
         levelProgressBeforePercent: 40,
         levelProgressAfterPercent: 100,
+        levelProgressNewPercent: 17,
       },
     };
     await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);

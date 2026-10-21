@@ -883,6 +883,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   ten sam wzór); po awansie ekran pokazuje „Poziom {newLevel}” i pasek od 0 do postępu w nowym poziomie (bez awansu - jak dziś);
   reduced-motion bez animacji; test jednostkowy API (granica progu, przeskok o 2 poziomy) i webu (awans / bez awansu); e2e modułu z
   awansem sprawdza etykietę.
+- Status: zrobione (gałąź `fix/153-poziom-po-awansie`) - `levelProgressNewPercent` w `CourseCompletionResult` i odpowiedzi `/progress`,
+  `LevelProgress` po awansie „Poziom {newLevel}” od 0; bez pola (starsze API przy wdrożeniu) - jak dotąd; e2e modułu 1 sprawdza etykietę i wartość.
 
 ### B-152 `scripts/e2e-registration.mjs` - nieaktualna sekcja zrzutów odtwarzacza (`data-testid="caption"`)
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: poprawki m3 (D-145), przebieg w przeglądarce pl-PL 2026-10-19

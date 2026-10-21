@@ -220,6 +220,8 @@ describe('GamificationService', () => {
       // pasek pokazuje "napełnienie" starego poziomu, sam awans/numer nowego poziomu pokazuje leveledUp/newLevel.
       expect(result.levelProgressBeforePercent).toBe(0);
       expect(result.levelProgressAfterPercent).toBe(100);
+      // B-153: w skali NOWEGO poziomu (2, próg 100..400): 100 (bazowe) + 50 (First Case Closed) = 150 XP = 50/300 = 17%.
+      expect(result.levelProgressNewPercent).toBe(17);
     });
 
     it('NIE zapisuje poziomu drugi raz, jeśli XP nie przekroczyło progu następnego levelu, i leveledUp=false', async () => {
@@ -233,6 +235,8 @@ describe('GamificationService', () => {
       // Bez awansu: "przed"/"po" liczone w TEJ SAMEJ skali (poziom 3, próg 400..900) - 500 XP = 20%, +100 XP = 40%.
       expect(result.levelProgressBeforePercent).toBe(20);
       expect(result.levelProgressAfterPercent).toBe(40);
+      // Bez awansu nowy poziom = stary - ta sama wartość co `After`.
+      expect(result.levelProgressNewPercent).toBe(40);
     });
 
     it('przeskakuje WIĘCEJ niż jeden poziom w jednym ukończeniu (previousLevel != newLevel-1), gdy suma XP+bonusy+osiągnięcia przebija próg kolejnego poziomu', async () => {
@@ -254,6 +258,26 @@ describe('GamificationService', () => {
       expect(result.newLevel - result.previousLevel).toBeGreaterThan(1);
       expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { level: 3 } });
       expect(result.levelProgressAfterPercent).toBe(100);
+      // B-153: postęp w poziomie 3 (próg 400..900): 449 XP = 49/500 = 10% (zaokrąglone).
+      expect(result.levelProgressNewPercent).toBe(10);
+    });
+
+    it('B-153: dokładnie na progu nowego poziomu - postęp w nowym poziomie 0%', async () => {
+      // 0 XP + 100 (bazowe), First Case Closed już zdobyte = 100 XP = start poziomu 2 (próg 100..400).
+      const tx = buildTx({ completedCount: 2, userXpBefore: 0, userLevelBefore: 1, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] });
+      const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', opts({ score: 80 }));
+      expect(result.newLevel).toBe(2);
+      expect(result.leveledUp).toBe(true);
+      expect(result.levelProgressNewPercent).toBe(0);
+    });
+
+    it('B-153: o 1 XP przed progiem następnego poziomu - postęp zaokrąglony do 100%, wciąż poziom 2', async () => {
+      // 299 XP + 100 (bazowe) = 399 XP -> poziom 2 (próg 100..400): (399-100)/300 = 99,67% -> 100 po zaokrągleniu, ale wciąż poziom 2.
+      const tx = buildTx({ completedCount: 2, userXpBefore: 299, userLevelBefore: 1, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] });
+      const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', opts({ score: 80 }));
+      expect(result.newLevel).toBe(2);
+      expect(result.leveledUp).toBe(true);
+      expect(result.levelProgressNewPercent).toBe(100);
     });
   });
 

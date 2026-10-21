@@ -30,21 +30,22 @@ export class CourseProgressResponseDto {
     perBlock: { blockId: string; collected: number; total: number }[];
   };
   // Obecne WYŁĄCZNIE gdy ta odpowiedź ukończyła kurs (isComplete w
-  // CoursesService) - front (karta nagrody na SummaryScreen,
-  // fix/course-finish-flow) pokazuje ją tylko wtedy, nie przy każdym zapisie postępu.
+  // CoursesService) - ekran zamknięcia sprawy (CaseClosedScreen, D-089) pokazuje ją tylko wtedy, nie przy każdym zapisie postępu.
   // Pełna treść bloku, do którego gracz właśnie dotarł, gdy /start go wstrzymał (omówienie nagrania, D-115 - client-view.ts,
   // projectBlockForStart). Ta sama projekcja co /start (toClientBlock).
   revealedBlock?: { blockIndex: number; block: Record<string, unknown> };
   gamification!: {
     xpGained: number;
     newLevel: number;
-    // Poziom SPRZED tego przyznania XP - front pokazuje "Poziom {previousLevel}" obok paska.
+    // Poziom SPRZED tego przyznania XP - podpis paska bez awansu (po awansie „Poziom {newLevel}”, B-153).
     previousLevel: number;
     leveledUp: boolean;
     unlockedBadges: { code: string; title: string; icon: string; xpReward: number; rank: AchievementRank | null }[];
-    // Pasek poziomu "przed -> po" (SummaryScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
+    // Pasek poziomu "przed -> po" (CaseClosedScreen) - procent 0..100 w skali poziomu SPRZED tego przyznania XP;
     // przy awansie `After` jest przycięty do 100 (patrz GamificationService.awardCourseCompletion).
     levelProgressBeforePercent: number;
     levelProgressAfterPercent: number;
+    // Postęp 0..100 w skali NOWEGO poziomu (B-153) - po awansie pasek „Poziom {newLevel}”; bez awansu = `levelProgressAfterPercent`.
+    levelProgressNewPercent: number;
   } | null;
 }

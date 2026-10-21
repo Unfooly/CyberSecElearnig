@@ -641,6 +641,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       unlockedBadges: [{ code: 'first-case-closed', title: 'First Case Closed', icon: 'osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
+      levelProgressNewPercent: 17,
     });
 
     const result = await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0 }, 'pl-PL');
@@ -654,6 +655,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       unlockedBadges: [{ code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', xpReward: 50, rank: 'MILESTONE' }],
       levelProgressBeforePercent: 90,
       levelProgressAfterPercent: 100,
+      levelProgressNewPercent: 17,
     });
 
     findFirst.mockResolvedValue(assignmentFixture());

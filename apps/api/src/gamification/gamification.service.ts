@@ -37,20 +37,23 @@ function validDate(value: unknown): Date | null {
 export interface CourseCompletionResult {
   xpGained: number;
   newLevel: number;
-  // Poziom SPRZED tego przyznania XP (fix/course-finish-flow) - front pokazuje "Poziom {previousLevel}" obok paska,
-  // a przy awansie osobno "Poziom {newLevel}". Nie zakładamy newLevel-1: przy bardzo niskim poziomie start (progi
+  // Poziom SPRZED tego przyznania XP (fix/course-finish-flow) - bez awansu front podpisuje nim pasek („Poziom {previousLevel}”),
+  // po awansie pasek dostaje „Poziom {newLevel}” (B-153). Nie zakładamy newLevel-1: przy bardzo niskim poziomie start (progi
   // level.util.ts rosną kwadratowo) pojedyncze ukończenie kursu w teorii mogłoby przeskoczyć więcej niż jeden poziom.
   previousLevel: number;
-  // true tylko gdy newLevel > poziom SPRZED tego przyznania XP - front (karta nagrody na SummaryScreen,
-  // fix/course-finish-flow) pokazuje osobny komunikat o awansie tylko wtedy.
+  // true tylko gdy newLevel > poziom SPRZED tego przyznania XP - ekran zamknięcia (CaseClosedScreen) pokazuje
+  // komunikat „Awans na poziom N!” tylko wtedy.
   leveledUp: boolean;
   unlockedBadges: Badge[];
-  // Pasek poziomu "przed -> po" (fix/course-finish-flow, SummaryScreen): procent 0..100 w SKALI POZIOMU SPRZED tego
-  // przyznania XP - przy awansie `After` jest przycięty do 100 (pasek "napełnia się" do końca starego poziomu;
-  // sam awans i numer nowego poziomu pokazuje osobny komunikat z `leveledUp`/`newLevel`, nie ten pasek). Liczone tu
-  // (nie na froncie), żeby wzór poziomu (level.util.ts) miał jedno źródło prawdy.
+  // Pasek poziomu "przed -> po" (CaseClosedScreen, D-090): procent 0..100 w SKALI POZIOMU SPRZED tego przyznania XP -
+  // przy awansie `After` jest przycięty do 100. Po B-153 web przy awansie używa `levelProgressNewPercent`; te dwa pola
+  // to pasek bez awansu i zgodność ze starszym webem. Liczone tu (nie na froncie), żeby wzór poziomu (level.util.ts)
+  // miał jedno źródło prawdy.
   levelProgressBeforePercent: number;
   levelProgressAfterPercent: number;
+  // Postęp 0..100 w skali NOWEGO poziomu po tym przyznaniu XP (B-153): po awansie ekran zamknięcia pokazuje „Poziom {newLevel}” i pasek
+  // od 0 do tej wartości; bez awansu równy `levelProgressAfterPercent`. Ten sam wzór (level.util.ts) - web go nie liczy.
+  levelProgressNewPercent: number;
 }
 
 @Injectable()
@@ -122,6 +125,7 @@ export class GamificationService {
     const levelProgressBeforePercent = currentLevelProgressPercent(xpBefore, previousLevel);
     const levelProgressAfterPercent =
       newLevel > previousLevel ? 100 : currentLevelProgressPercent(updatedUser.xp, previousLevel);
+    const levelProgressNewPercent = currentLevelProgressPercent(updatedUser.xp, newLevel);
 
     return {
       xpGained,
@@ -131,6 +135,7 @@ export class GamificationService {
       unlockedBadges,
       levelProgressBeforePercent,
       levelProgressAfterPercent,
+      levelProgressNewPercent,
     };
   }
 

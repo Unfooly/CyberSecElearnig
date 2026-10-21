@@ -247,7 +247,11 @@ function RewardToast({ levelUp, badges, show, animate }: { levelUp: string | nul
   );
 }
 
-/** Pasek poziomu (D-090, B-116): wypełnienie przesuwa się od stanu sprzed nagrody do stanu po (translateX, 600 ms); reduced-motion - od razu. */
+/**
+ * Pasek poziomu (D-090, B-116): wypełnienie przesuwa się od stanu sprzed nagrody do stanu po (translateX, 600 ms); reduced-motion - od razu.
+ * Po awansie (B-153) - „Poziom {newLevel}” i pasek od 0 do postępu w nowym poziomie (`levelProgressNewPercent` z API), nie stary poziom
+ * napełniony do 100% obok „Awans na poziom N!”. Odpowiedź bez tego pola (starsze API przy wdrożeniu) - jak dotąd, w skali starego poziomu.
+ */
 function LevelProgress({ reward, animate }: { reward: CourseCompletionReward; animate: boolean }) {
   const [grown, setGrown] = useState(!animate);
   useEffect(() => {
@@ -256,18 +260,23 @@ function LevelProgress({ reward, animate }: { reward: CourseCompletionReward; an
     return () => window.clearTimeout(timer);
   }, [animate]);
   const clamp = (value: number) => Math.max(0, Math.min(100, value));
+  const newPercent = reward.levelProgressNewPercent;
+  const inNewLevel = reward.leveledUp && typeof newPercent === 'number';
+  const level = inNewLevel ? reward.newLevel : reward.previousLevel;
+  const from = inNewLevel ? 0 : reward.levelProgressBeforePercent;
+  const to = inNewLevel ? newPercent : reward.levelProgressAfterPercent;
   // Bez animacji (także reduced-motion włączone w trakcie pierwszych 300 ms) - od razu stan po nagrodzie.
-  const percent = clamp(!animate || grown ? reward.levelProgressAfterPercent : reward.levelProgressBeforePercent);
+  const percent = clamp(!animate || grown ? to : from);
   const labelId = useId();
   return (
     <div className="flex items-center gap-2 text-xs font-bold text-muted">
-      <span id={labelId}>Poziom {reward.previousLevel}</span>
+      <span id={labelId}>Poziom {level}</span>
       <div
         role="progressbar"
         aria-labelledby={labelId}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={clamp(reward.levelProgressAfterPercent)}
+        aria-valuenow={clamp(to)}
         className="h-1.5 w-24 overflow-hidden rounded-full bg-border"
       >
         <div

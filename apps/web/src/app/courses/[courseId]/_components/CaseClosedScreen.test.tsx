@@ -245,6 +245,40 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-70%)' });
   });
 
+  it('B-153: po awansie „Poziom {nowy}” i pasek od 0 do postępu w nowym poziomie; bez awansu - stary poziom jak dotąd', () => {
+    const { unmount } = renderScreen({ reward: { ...reward, levelProgressBeforePercent: 90, levelProgressAfterPercent: 100, levelProgressNewPercent: 17 } });
+    expect(screen.getByRole('progressbar', { name: 'Poziom 2' })).toHaveAttribute('aria-valuenow', '17');
+    expect(screen.queryByRole('progressbar', { name: 'Poziom 1' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-100%)' });
+    advance(300);
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-83%)' });
+    unmount();
+
+    renderScreen({ reward: { ...reward, previousLevel: 3, newLevel: 3, leveledUp: false, levelProgressBeforePercent: 20, levelProgressAfterPercent: 40, levelProgressNewPercent: 40 } });
+    expect(screen.getByRole('progressbar', { name: 'Poziom 3' })).toHaveAttribute('aria-valuenow', '40');
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-80%)' });
+    advance(300);
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-60%)' });
+  });
+
+  it('B-153: odpowiedź bez levelProgressNewPercent (starsze API) - pasek jak dotąd, w skali starego poziomu', () => {
+    renderScreen({ reward: { ...reward, levelProgressBeforePercent: 90, levelProgressAfterPercent: 100 } });
+    expect(screen.getByRole('progressbar', { name: 'Poziom 1' })).toHaveAttribute('aria-valuenow', '100');
+    expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-10%)' });
+  });
+
+  it('B-153: po awansie z reduced-motion - nowy poziom od razu w stanie końcowym', () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ ...original(query), matches: query.includes('prefers-reduced-motion: reduce') })) as typeof window.matchMedia;
+    try {
+      renderScreen({ reward: { ...reward, levelProgressBeforePercent: 90, levelProgressAfterPercent: 100, levelProgressNewPercent: 17 } });
+      expect(screen.getByRole('progressbar', { name: 'Poziom 2' })).toBeInTheDocument();
+      expect(screen.getByTestId('level-progress-fill')).toHaveStyle({ transform: 'translateX(-83%)' });
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it('Lektor wyłączony: ceremonia bez dźwięków', () => {
     renderScreen({}, false);
     advance(1300);

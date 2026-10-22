@@ -712,6 +712,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   publicznego magazynu pod nazwą ze skrótu treści) - dziś kwestia po podważeniu jest tylko tekstem, bez głosu postaci.
 - Akceptacja: decyzja właściciela - np. nagrania sekretnych kwestii w osobnym, niepublicznym prefiksie serwowanym przez API po trafieniu,
   albo zgoda na nieodgadywalną nazwę w publicznym magazynie; potem ścieżka w potoku i test.
+- Decyzja właściciela (2026-10-21, doprecyzowana 2026-10-22): nieodgadywalna nazwa w publicznym magazynie - losowa (128 bitów) raz
+  wygenerowana i trzymana w `audio.lock.json` (bez nowego sekretu), URL z API dopiero po trafieniu. Odtwarzacz nie grał dotąd ŻADNEJ
+  kwestii przesłuchania (nagrania były w treści) - zakres: głos całego przesłuchania. Część a (D-149, gałąź `feat/135a-glos-przesluchania`):
+  głos kwestii przy włączonym Lektorze - zrobione. Część b: nagranie `challengeLine` (pole secret, bez pliku z napisami i poza manifestem),
+  URL w odpowiedzi /challenge i w wyniku bloku.
 
 ### B-136 OSINT w odtwarzaczu (D-121): drobne uwagi z code review - ZROBIONE (D-131; pkt 4 - bez zmian, decyzja w D-131)
 - Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review 1d-2

@@ -55,6 +55,15 @@ export function audioKey(parts: { slug: string; version: string; blockId: string
   return `audio/${assertSlug(parts.slug)}/${assertVersion(parts.version)}/${assertBlockId(parts.blockId)}/${parts.hash}.mp3`;
 }
 
+/**
+ * Klucz nagrania pola secret (przyznanie po podważeniu, B-135): `audio/<slug>/<wersja>/<blockId>/<losowe 32 hex>.mp3`. Nazwa LOSOWA
+ * (128 bitów, nie skrót tekstu) - publiczny magazyn bez listowania, więc pliku nie da się znaleźć bez adresu, który zna tylko serwer.
+ */
+export function secretAudioKey(parts: { slug: string; version: string; blockId: string; name: string }): string {
+  if (!/^[0-9a-f]{32}$/.test(parts.name)) throw new Error('Niepoprawna nazwa nagrania pola tajnego (32 znaki hex).');
+  return `audio/${assertSlug(parts.slug)}/${assertVersion(parts.version)}/${assertBlockId(parts.blockId)}/${parts.name}.mp3`;
+}
+
 /** Klucz sidecara (czasy `cues` i `durationMs`, których nie da się odczytać z mp3) obok nagrania. */
 export function sidecarKey(audioObjectKey: string): string {
   if (!audioObjectKey.endsWith('.mp3')) throw new Error('Klucz audio musi kończyć się na .mp3.');

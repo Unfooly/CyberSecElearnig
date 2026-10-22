@@ -712,7 +712,9 @@ const annotatedReplaySchema = z
  *    (/challenge). Trafienie odsłania `challengeLine` i dopisuje `note`. Wszystko w `contradiction` jest sekretem.
  * `documents` (opcjonalnie) - konsola z zakładkami w kształcie teczki (DOSSIER), otwierana pytaniem z `opensDocuments: true`.
  * Ocena: trafienia / (sprzeczności + pudła) - pudło kosztuje; blok bez sprzeczności jest nieoceniany (waga 0).
- * `challengeLine` to sam tekst: nagrania trafiają do publicznego magazynu, więc pole secret nie ma audio (scripts/content, D-118).
+ * `challengeLine` (B-135, D-150): tekst przyznania i jego nagranie głosem postaci (głos z `narration.voice` kwestii). Pole secret, więc
+ * nagranie leży w publicznym magazynie pod LOSOWĄ nazwą (128 bitów, scripts/content - bez napisów obok i poza manifestem), a jego adres
+ * zna tylko serwer: wysyła go razem z tekstem dopiero po trafionym podważeniu. Bez `cues` (napisem jest tekst przyznania w wątku).
  */
 const interrogationLineSchema = z
   .object({
@@ -724,7 +726,16 @@ const interrogationLineSchema = z
       .object({
         // Klucz notatki dowodu `<blockId>.<itemId>` (format i istnienie we wcześniejszym bloku - semantics.ts).
         refutedBy: z.string().max(130),
-        challengeLine: z.object({ text: ltext(600) }).strict(),
+        challengeLine: z
+          .object({
+            text: ltext(600),
+            // Tekst do przeczytania, gdy różni się od wyświetlanego (jak narration.spokenText); nagranie i jego długość wpisuje potok TTS.
+            spokenText: text(600).optional(),
+            audioUrl: audioPathSchema.optional(),
+            durationMs: z.number().int().min(0).max(600_000).optional(),
+          })
+          .strict()
+          .refine((line) => (line.audioUrl === undefined) === (line.durationMs === undefined), 'challengeLine: audioUrl i durationMs występują razem (wpisuje je skrypt TTS)'),
         note: noteSchema,
       })
       .strict()
@@ -1409,6 +1420,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       ...narrationSecret('questions[].lines[].'),
       'questions[].lines[].contradiction.refutedBy',
       'questions[].lines[].contradiction.challengeLine.text',
+      // Nagranie przyznania (B-135): adres zdradzałby, która kwestia kłamie - sekret do trafienia (serwer wysyła go z tekstem).
+      'questions[].lines[].contradiction.challengeLine.spokenText',
+      'questions[].lines[].contradiction.challengeLine.audioUrl',
+      'questions[].lines[].contradiction.challengeLine.durationMs',
       'questions[].lines[].contradiction.note.text',
       'questions[].lines[].contradiction.note.kind',
     ],

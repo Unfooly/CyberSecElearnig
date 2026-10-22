@@ -21,6 +21,16 @@ describe('evaluateChallenge (podważenie kwestii)', () => {
     expect(entry).toMatchObject({ done: false, challenges: [{ lineId: 'kod-1', correct: true }] });
   });
 
+  it('B-135: przyznanie z nagraniem - adres i długość dopiero po trafieniu, bez spokenText; pudło - bez adresu', () => {
+    const block = interrogation() as unknown as { questions: { lines: { id: string; contradiction?: { challengeLine: Record<string, unknown> } }[] }[] };
+    const secret = { spokenText: 'czytane', audioUrl: 'audio/test/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3', durationMs: 2100 };
+    Object.assign(block.questions.flatMap((q) => q.lines).find((l) => l.id === 'kod-1')!.contradiction!.challengeLine, secret);
+    const hit = evaluateChallenge(block as unknown as Block, 'kod-1', 'nagranie.liczba', undefined, now).response;
+    expect(hit.line).toEqual({ text: `${SECRET_MARKER}-przyznanie`, audioUrl: secret.audioUrl, durationMs: 2100 });
+    const miss = evaluateChallenge(block as unknown as Block, 'kod-1', 'akta.w2', undefined, now).response;
+    expect(JSON.stringify(miss)).not.toContain('0123456789abcdef');
+  });
+
   it('zły dowód albo prawdziwa kwestia: to samo „pudło” (bez treści sekretu, bez notatki)', () => {
     for (const [lineId, key] of [
       ['kod-1', 'akta.w2'],
@@ -128,6 +138,19 @@ describe('notatki i widok postępu przesłuchania', () => {
     const view = (p: ProgressV2) => (clientProgress(p, all(), opaque) as { blocks: Record<string, Record<string, unknown>> }).blocks.przesluchanie;
     expect(view(doneProgress).detail).toEqual({ contradictions: [{ lineId: 'kod-1', line: { text: `${SECRET_MARKER}-przyznanie` } }] });
     expect(view(progress()).detail).toBeUndefined();
+  });
+
+  it('B-135: nagranie przyznania w podglądzie w trakcie bloku (trafienie) i w rozstrzygnięciu po ukończeniu; bez spokenText', () => {
+    const block = interrogation() as unknown as { questions: { lines: { id: string; contradiction?: { challengeLine: Record<string, unknown> } }[] }[] };
+    const secret = { spokenText: 'czytane', audioUrl: 'audio/test/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3', durationMs: 2100 };
+    Object.assign(block.questions.flatMap((q) => q.lines).find((l) => l.id === 'kod-1')!.contradiction!.challengeLine, secret);
+    const blocks = all().map((b) => (b.id === 'przesluchanie' ? (block as unknown as Block) : b));
+    const doneProgress = progress();
+    doneProgress.blocks.przesluchanie.done = true;
+    const view = (p: ProgressV2) => (clientProgress(p, blocks, opaque) as { blocks: Record<string, Record<string, unknown>> }).blocks.przesluchanie;
+    expect(view(progress()).challenges).toContainEqual({ lineId: 'kod-1', correct: true, line: { text: `${SECRET_MARKER}-przyznanie`, audioUrl: secret.audioUrl, durationMs: 2100 } });
+    expect(JSON.stringify(view(doneProgress).detail)).toContain(secret.audioUrl);
+    expect(JSON.stringify(view(doneProgress))).not.toContain('czytane');
   });
 
   it('clientProgress: podważenia w trakcie bloku, kwestia po podważeniu tylko przy trafieniu; notatki z odnośnikiem', () => {

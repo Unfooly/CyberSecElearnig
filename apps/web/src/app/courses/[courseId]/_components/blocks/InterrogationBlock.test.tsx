@@ -339,6 +339,63 @@ describe('InterrogationBlock', () => {
     expect(screen.queryByRole('button', { name: 'Podważ' })).not.toBeInTheDocument();
   });
 
+  it('B-135: przyznanie z nagraniem po trafieniu gra głosem postaci przy włączonym Lektorze (lektor bloku wstrzymany); wyłączenie Lektora - cisza', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const admission = { text: '…No tak. Wpisałem liczbę.', audioUrl: 'audio/test/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3', durationMs: 2100 };
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ blockId: 'przesluchanie', lineId: 'kod-1', correct: true, line: admission, evidence: { collected: 3, total: 6, perBlock: [] } }),
+    });
+    const challengeWith = async () => {
+      flush();
+      ask('Czy podawałeś kody?', 1);
+      fireEvent.click(line('Nie, żadnych kodów'));
+      fireEvent.click(screen.getByRole('button', { name: 'Podważ' }));
+      await act(async () => {
+        fireEvent.click(within(screen.getByTestId('interrogation-picker')).getAllByTestId('interrogation-evidence')[0]);
+      });
+    };
+    try {
+      const onPauseNarration = vi.fn();
+      setup(undefined, NOTES, { sound: true, onPauseNarration });
+      await challengeWith();
+      expect(screen.getByTestId('interrogation-admission')).toHaveTextContent('…No tak. Wpisałem liczbę.');
+      expect(screen.getByTestId('interrogation-audio')).toHaveAttribute('src', `/content/${admission.audioUrl}`);
+      expect(onPauseNarration).toHaveBeenCalled();
+      // Wyłączenie Lektora w trakcie przyznania - nagranie znika.
+      fireEvent.click(screen.getByRole('button', { name: 'Przełącz Lektor' }));
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('B-135: przyznanie z nagraniem przy wyłączonym Lektorze - sam tekst', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        blockId: 'przesluchanie',
+        lineId: 'kod-1',
+        correct: true,
+        line: { text: '…No tak.', audioUrl: 'audio/test/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3', durationMs: 2100 },
+        evidence: { collected: 3, total: 6, perBlock: [] },
+      }),
+    });
+    setup();
+    flush();
+    ask('Czy podawałeś kody?', 1);
+    fireEvent.click(line('Nie, żadnych kodów'));
+    fireEvent.click(screen.getByRole('button', { name: 'Podważ' }));
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('interrogation-picker')).getAllByTestId('interrogation-evidence')[0]);
+    });
+    expect(screen.getByTestId('interrogation-admission')).toHaveTextContent('…No tak.');
+    expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+  });
+
   it('pudło: komunikat i oznaczenie kwestii, bez przyznania; klawisz P otwiera wybór dowodu, Esc/Anuluj go zamyka', async () => {
     fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ blockId: 'przesluchanie', lineId: 'glos-2', correct: false, evidence: SUMMARY }) });
     setup();

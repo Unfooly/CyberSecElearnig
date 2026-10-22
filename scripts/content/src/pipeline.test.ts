@@ -904,3 +904,120 @@ describe('narration.spokenText (tekst do przeczytania różny od wyświetlanego)
     expect(tts.calls[0].text).toBe('dziesiąta trzydzieści');
   });
 });
+
+// Nagranie przyznania po podważeniu (B-135, D-150): pole secret - losowa nazwa w locku, bez sidecara, poza manifestem, bez cues.
+describe('nagrania pól tajnych (B-135)', () => {
+  const V6_VOICES = { ...VOICES, karol: 'voice-karol01', pawel: 'voice-pawel01', oszust: 'voice-oszust01' };
+  const SECRET_ID = 'przesluchanie#questions.1.lines.0.contradiction.challengeLine';
+  const challengeLineOf = (module: { blocks: Record<string, any>[] }) => module.blocks.find((block) => block.id === 'przesluchanie')!.questions[1].lines[0].contradiction.challengeLine;
+  beforeEach(async () => {
+    // Slug fixtury v6 = nazwa katalogu testu (pipeline to sprawdza).
+    await writeFile(modulePath, JSON.stringify({ ...bareModule(fullModuleV6), slug: 'sprawa-testowa' }));
+  });
+
+  it('zbierane głosem kwestii (karol), oznaczone jako tajne', () => {
+    const ref = collectNarrations(bareModule(fullModuleV6)).find((candidate) => candidate.id === SECRET_ID);
+    expect(ref).toMatchObject({ blockId: 'przesluchanie', voice: 'karol', secret: true });
+  });
+
+  it('generuje: losowa nazwa (32 hex), tylko mp3 (bez sidecara), poza manifestem, w module audioUrl/durationMs bez cues; lock z flagą secret', async () => {
+    const store = new MemoryStore();
+    await runPipeline(params({ store, voices: V6_VOICES }));
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    const line = challengeLineOf(module);
+    expect(line.audioUrl).toMatch(/^audio\/sprawa-testowa\/v1\/przesluchanie\/[0-9a-f]{32}\.mp3$/);
+    expect(typeof line.durationMs).toBe('number');
+    expect(line).not.toHaveProperty('cues');
+    expect(store.objects.has(line.audioUrl)).toBe(true);
+    expect(store.objects.has(line.audioUrl.replace(/\.mp3$/, '.json'))).toBe(false);
+    const manifestText = new TextDecoder().decode(store.objects.get('audio/sprawa-testowa/v1/manifest.json')!.body);
+    expect(manifestText).not.toContain(line.audioUrl);
+    expect(manifestText).not.toMatch(/[0-9a-f]{32}/);
+    const lock = JSON.parse(await readFile(join(dir, 'audio.lock.json'), 'utf8'));
+    expect(lock.entries[SECRET_ID]).toMatchObject({ key: line.audioUrl, secret: true, voice: 'karol', voiceId: 'voice-karol01' });
+    expect(lock.entries[SECRET_ID].hash).toMatch(/^[0-9a-f]{16}$/);
+    expect(lock.entries[SECRET_ID].key).not.toContain(lock.entries[SECRET_ID].hash);
+  });
+
+  it('drugi przebieg - ta sama nazwa, bez TTS; zmiana tekstu - nowa losowa nazwa, stary plik zostaje', async () => {
+    const store = new MemoryStore();
+    await runPipeline(params({ store, voices: V6_VOICES }));
+    const first = challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl as string;
+    const tts = new FakeTts();
+    await runPipeline(params({ store, tts, voices: V6_VOICES }));
+    expect(tts.calls).toEqual([]);
+    expect(challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl).toBe(first);
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    challengeLineOf(module).text = 'Dobrze. Wpisałem tę liczbę.';
+    await writeFile(modulePath, JSON.stringify(module));
+    const again = new FakeTts();
+    await runPipeline(params({ store, tts: again, voices: V6_VOICES }));
+    expect(again.calls.map((call) => call.text)).toEqual(['Dobrze. Wpisałem tę liczbę.']);
+    const second = challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl as string;
+    expect(second).toMatch(/\/[0-9a-f]{32}\.mp3$/);
+    expect(second).not.toBe(first);
+    expect(store.objects.has(first)).toBe(true);
+  });
+
+  it('--check offline: OK po generowaniu; zmieniony tekst albo adres niezgodny z lockiem - błąd; wpis bez flagi secret - błąd', async () => {
+    await runPipeline(params({ voices: V6_VOICES }));
+    const offline = { tts: undefined, check: true, store: new MemoryStore(), voices: V6_VOICES };
+    expect((await runPipeline(params(offline))).problems).toEqual([]);
+
+    const module = JSON.parse(await readFile(modulePath, 'utf8'));
+    challengeLineOf(module).audioUrl = 'audio/sprawa-testowa/v1/przesluchanie/ffffffffffffffffffffffffffffffff.mp3';
+    await writeFile(modulePath, JSON.stringify(module));
+    expect((await runPipeline(params(offline))).problems.join('\n')).toMatch(/challengeLine: audioUrl\/durationMs\/cues/);
+
+    const lockPath = join(dir, 'audio.lock.json');
+    const lock = JSON.parse(await readFile(lockPath, 'utf8'));
+    delete lock.entries[SECRET_ID].secret;
+    await writeFile(lockPath, JSON.stringify(lock));
+    expect((await runPipeline(params(offline))).problems.join('\n')).toMatch(/bez losowej nazwy/);
+  });
+
+  it('nowa wersja partii - nowa losowa nazwa mimo tego samego tekstu; plik zniknął z magazynu - nagranie od nowa pod TĄ SAMĄ nazwą', async () => {
+    const store = new MemoryStore();
+    await runPipeline(params({ store, voices: V6_VOICES }));
+    const first = challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl as string;
+    store.objects.delete(first);
+    const tts = new FakeTts();
+    await runPipeline(params({ store, tts, voices: V6_VOICES }));
+    expect(tts.calls).toHaveLength(1);
+    expect(challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl).toBe(first);
+    expect(store.objects.has(first)).toBe(true);
+
+    await runPipeline(params({ store, voices: V6_VOICES, version: 'v2' }));
+    const next = challengeLineOf(JSON.parse(await readFile(modulePath, 'utf8'))).audioUrl as string;
+    expect(next).toMatch(/^audio\/sprawa-testowa\/v2\/przesluchanie\/[0-9a-f]{32}\.mp3$/);
+    expect(next.split('/').pop()).not.toBe(first.split('/').pop());
+  });
+
+  it('--dry-run: bez magazynu i TTS; nagrane przyznanie liczy się jako istniejące', async () => {
+    await runPipeline(params({ voices: V6_VOICES }));
+    const store = new MemoryStore();
+    const tts = new FakeTts();
+    const result = await runPipeline(params({ store, tts, voices: V6_VOICES, dryRun: true }));
+    expect(tts.calls).toEqual([]);
+    expect(store.calls).toEqual({ head: 0, get: 0, put: 0 });
+    // Nic do wygenerowania - także przyznanie (moduł wskazuje na jego losową nazwę z locka).
+    expect(result.chars).toBe(0);
+  });
+
+  it('przyznanie w innym języku niż pl - czytelny błąd do fazy EN', () => {
+    const module = { ...bareModule(fullModuleV6), slug: 'sprawa-testowa' } as unknown as { blocks: Record<string, any>[] };
+    challengeLineOf(module).text = { pl: 'Przyznaję.', en: 'I admit it.' };
+    expect(() => collectNarrations(module)).toThrow(/nagrania przyznania w języku en nie są jeszcze obsługiwane/);
+  });
+
+  it('klasyfikacja: pole nagrania przyznania uznane za client - błąd (adres trafiłby do klienta przed trafieniem)', () => {
+    const real = requireCjs('../../../packages/content/dist/index.js') as { FIELD_CLASSIFICATION: Record<string, { client: string[]; secret: string[] }> };
+    expect(() => assertNarrationPathsClassified(real.FIELD_CLASSIFICATION)).not.toThrow();
+    const classification = JSON.parse(JSON.stringify(real.FIELD_CLASSIFICATION)) as Record<string, { client: string[]; secret: string[] }>;
+    const path = 'questions[].lines[].contradiction.challengeLine.audioUrl';
+    classification.INTERROGATION.secret = classification.INTERROGATION.secret.filter((item) => item !== path);
+    classification.INTERROGATION.client.push(path);
+    expect(() => assertNarrationPathsClassified(classification)).toThrow(/nie jest polem secret/);
+  });
+});

@@ -479,7 +479,24 @@ export function osintSecretEndings(block: Block, heard: readonly string[]) {
 interface InterrogationLine {
   id: string;
   fragment?: { note?: unknown };
-  contradiction?: { refutedBy: string; challengeLine: { text: string } };
+  contradiction?: { refutedBy: string; challengeLine: ChallengeLine };
+}
+interface ChallengeLine {
+  text: string;
+  spokenText?: string;
+  audioUrl?: string;
+  durationMs?: number;
+}
+
+/**
+ * Przyznanie po trafionym podważeniu dla klienta (B-135, D-150): tekst i - gdy jest - nagranie (losowa nazwa w publicznym magazynie,
+ * adres zna tylko serwer). Zawsze tylko przy trafieniu albo po ukończeniu bloku; `spokenText` (wejście TTS) nie wychodzi.
+ */
+function challengeLineView(line: ChallengeLine): { text: string; audioUrl?: string; durationMs?: number } {
+  return {
+    text: line.text,
+    ...(line.audioUrl !== undefined && line.durationMs !== undefined ? { audioUrl: line.audioUrl, durationMs: line.durationMs } : {}),
+  };
 }
 interface InterrogationQuestion {
   id: string;
@@ -496,8 +513,8 @@ export interface ChallengeResponse {
   blockId: string;
   lineId: string;
   correct: boolean;
-  /** Kwestia po podważeniu (sekret treści) - wyłącznie po trafieniu. */
-  line?: { text: string };
+  /** Kwestia po podważeniu (sekret treści) z nagraniem, gdy jest (B-135) - wyłącznie po trafieniu. */
+  line?: { text: string; audioUrl?: string; durationMs?: number };
 }
 
 /**
@@ -527,7 +544,7 @@ export function evaluateChallenge(
   };
   return {
     entry,
-    response: { blockId: block.id, lineId, correct, ...(correct && line.contradiction ? { line: { text: line.contradiction.challengeLine.text } } : {}) },
+    response: { blockId: block.id, lineId, correct, ...(correct && line.contradiction ? { line: challengeLineView(line.contradiction.challengeLine) } : {}) },
     notesAdded: correct ? [noteKey(block.id, lineId)] : [],
   };
 }
@@ -676,7 +693,7 @@ export function interrogationDetail(block: Block) {
   return {
     contradictions: interrogationLines(block)
       .filter((line) => line.contradiction)
-      .map((line) => ({ lineId: line.id, line: { text: line.contradiction!.challengeLine.text } })),
+      .map((line) => ({ lineId: line.id, line: challengeLineView(line.contradiction!.challengeLine) })),
   };
 }
 
@@ -684,8 +701,8 @@ export function interrogationDetail(block: Block) {
 export function challengesView(block: Block, challenges: { lineId: string; correct: boolean }[]) {
   const lines = interrogationLines(block);
   return challenges.map(({ lineId, correct }) => {
-    const text = correct ? lines.find((line) => line.id === lineId)?.contradiction?.challengeLine.text : undefined;
-    return { lineId, correct, ...(text !== undefined ? { line: { text } } : {}) };
+    const challengeLine = correct ? lines.find((line) => line.id === lineId)?.contradiction?.challengeLine : undefined;
+    return { lineId, correct, ...(challengeLine !== undefined ? { line: challengeLineView(challengeLine) } : {}) };
   });
 }
 

@@ -755,6 +755,14 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     background: 'scenes/omowienie-tlo.svg',
     backgroundPortrait: 'scenes/omowienie-tlo-pion.svg',
   });
+  // Nagranie przyznania po podważeniu (B-135) - pola secret, tylko w fixturze testu wycieku (fullModuleV6 bez zmian).
+  const interrogation = blocks.INTERROGATION as { questions: { lines: { contradiction?: { challengeLine: Record<string, unknown> } }[] }[] };
+  const challenged = interrogation.questions.flatMap((question) => question.lines).find((item) => item.contradiction)!;
+  Object.assign(challenged.contradiction!.challengeLine, {
+    spokenText: `${SECRET_MARKER}-przyznanie-czytane`,
+    audioUrl: `audio/${SECRET_MARKER.toLowerCase()}/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3`,
+    durationMs: 2100,
+  });
   // Ekran połączenia przychodzącego (B-138b).
   const rect = { x: 15, y: 15, w: 70, h: 5 };
   Object.assign(blocks.LIVE_CALL as Record<string, unknown>, {

@@ -345,6 +345,12 @@ export default function InterrogationBlock({
         play('msg-receive');
         setStatus('Trafiony dowód - zeznanie się nie trzyma.');
         if (data.line) setAnnouncement(`${speakerName} (przyznaje): ${data.line.text}`);
+        // Przyznanie głosem postaci (B-135), jak zwykła kwestia: przy włączonym Lektorze, lektor bloku wstrzymany.
+        const admissionSrc = soundOnRef.current ? contentAssetUrl(contentBase, data.line?.audioUrl, 'audio') : null;
+        if (admissionSrc) {
+          pauseNarration();
+          setSpeaking({ key: `admission-${lineId}`, src: admissionSrc, durationMs: data.line?.durationMs });
+        }
       } else {
         hints.notify('wrong');
         setStatus('Ten dowód nie podważa tej kwestii.');

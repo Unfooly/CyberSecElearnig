@@ -67,6 +67,17 @@ razem z pełnym tekstem, z pominięciem `maxAttempts` i stopniowego ujawniania w
 listę pól z audio z klasyfikacją przy każdym uruchomieniu (fail-closed: nowe pole narracji w schemacie bez decyzji tutaj to
 błąd, nie ciche audio). Backlog B-082: audio podpowiedzi przez API po odblokowaniu (podpisany URL).
 
+**Wyjątek: nagranie przyznania po podważeniu (B-135, D-150).** `contradiction.challengeLine` w przesłuchaniu jest polem `secret`, ale
+ma nagranie (`SECRET_AUDIO_PATHS`): głos postaci kwestii, plik pod **losową** nazwą `audio/<slug>/<wersja>/<blockId>/<32 hex>.mp3`
+(128 bitów, nie skrót tekstu - zapamiętana w `audio.lock.json` z flagą `secret`, nowa przy zmianie tekstu, głosu, modelu, języka albo
+wersji partii; przebieg przerwany po wgraniu pliku, a przed zapisem locka, nagra przyznanie ponownie pod nową nazwą),
+**bez sidecara** (napisy zdradzałyby tekst) i **poza manifestem**; w `module.json` tylko `audioUrl`/`durationMs` (bez `cues`). Magazyn nie
+listuje plików, więc adres zna tylko serwer - API wysyła go razem z tekstem przyznania dopiero po trafieniu. `assertNarrationPathsClassified`
+pilnuje odwrotnie: pola tego nagrania muszą być `secret`. `--check` sprawdza je offline jak inne (skrót wejścia TTS w locku).
+**Niezmiennik:** publiczny dostęp do bucketa (custom domain, r2.dev) NIE listuje obiektów - nigdy nie wystawiaj go przez Worker/proxy z
+poświadczeniami S3 ani z `ListObjects`: losowa nazwa przestałaby chronić przyznanie bez żadnej zmiany w kodzie. Log generowania nie
+wypisuje tej nazwy (jest w `module.json` i locku).
+
 Manifest partii (`audio/<slug>/<wersja>/manifest.json`, publiczny, mutowalny: `manifestVersion`, `slug`, `audioVersion`,
 `model`, `language`, `voices` (rola -> voiceId użyte w partii), `files`) NIE zawiera ścieżek pól - `files` to tylko posortowana
 lista kluczy plików, bez informacji, którego pola narracji dotyczy który plik (to mapowanie trzyma wyłącznie `module.json` i

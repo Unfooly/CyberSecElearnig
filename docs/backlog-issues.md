@@ -706,7 +706,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: osobny e2e na `fullModuleV6()` (własny kurs): /start przy nagraniu bez znaczników, odpowiedź nagrania, /progress z
   `revealedBlock`, /start po dotarciu z pełnym blokiem, izolacja A/B.
 
-### B-135 Przesłuchanie: nagrana kwestia po podważeniu (D-118)
+### B-135 Przesłuchanie: nagrana kwestia po podważeniu (D-118) - ZROBIONE (D-149, D-150)
 - Etykiety: `P3`, `content`, `security`, `mod:kursy` · Źródło: faza 1c modułu 2
 - Opis: `challengeLine` (kwestia po trafionym podważeniu) jest polem secret, a potok treści nie nagrywa pól secret (nagrania trafiają do
   publicznego magazynu pod nazwą ze skrótu treści) - dziś kwestia po podważeniu jest tylko tekstem, bez głosu postaci.
@@ -715,8 +715,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Decyzja właściciela (2026-10-21, doprecyzowana 2026-10-22): nieodgadywalna nazwa w publicznym magazynie - losowa (128 bitów) raz
   wygenerowana i trzymana w `audio.lock.json` (bez nowego sekretu), URL z API dopiero po trafieniu. Odtwarzacz nie grał dotąd ŻADNEJ
   kwestii przesłuchania (nagrania były w treści) - zakres: głos całego przesłuchania. Część a (D-149, gałąź `feat/135a-glos-przesluchania`):
-  głos kwestii przy włączonym Lektorze - zrobione. Część b: nagranie `challengeLine` (pole secret, bez pliku z napisami i poza manifestem),
-  URL w odpowiedzi /challenge i w wyniku bloku.
+  głos kwestii przy włączonym Lektorze - zrobione (PR #140). Część b (D-150, gałąź `feat/135b-nagranie-podwazenia`): nagranie
+  `challengeLine` pod losową nazwą (bez sidecara, poza manifestem), URL w odpowiedzi /challenge, w podglądzie w trakcie bloku i w wyniku -
+  zrobione. Status: zrobione.
 
 ### B-136 OSINT w odtwarzaczu (D-121): drobne uwagi z code review - ZROBIONE (D-131; pkt 4 - bez zmian, decyzja w D-131)
 - Etykiety: `P3`, `a11y`, `tech-debt`, `mod:kursy` · Źródło: code review 1d-2

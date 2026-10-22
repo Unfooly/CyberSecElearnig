@@ -237,6 +237,15 @@
       "voice": "karol",
       "voiceId": "V5GZ9rfeV9jjKZE5NkT7"
     },
+    "przesluchanie-karola#questions.1.lines.0.contradiction.challengeLine": {
+      "hash": "105761806c04db85",
+      "key": "audio/glos-z-helpdesku/v1/przesluchanie-karola/db658569f4afadd1824f89c8a4a7bf4d.mp3",
+      "textSha": "47462a62a4944edb",
+      "durationMs": 5573,
+      "voice": "karol",
+      "voiceId": "V5GZ9rfeV9jjKZE5NkT7",
+      "secret": true
+    },
     "przesluchanie-pawla#narration": {
       "hash": "cb4af7181081c1b4",
       "key": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/cb4af7181081c1b4.mp3",

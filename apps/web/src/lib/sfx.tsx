@@ -17,6 +17,11 @@ export function SfxProvider({ enabled, children }: { enabled: boolean; children:
   return <SfxEnabledContext.Provider value={enabled}>{children}</SfxEnabledContext.Provider>;
 }
 
+/** Lektor włączony (to samo ustawienie co dźwięki) - np. głos postaci w przesłuchaniu (B-135). Poza odtwarzaczem: false. */
+export function useSoundEnabled(): boolean {
+  return useContext(SfxEnabledContext);
+}
+
 let gestureSeen = false;
 function trackGesture() {
   if (gestureSeen || typeof document === 'undefined') return;

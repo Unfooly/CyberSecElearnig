@@ -7,6 +7,8 @@ import { EvidenceCounter, EvidenceProvider } from '../player/evidence';
 import { HintProvider } from '../player/hints';
 import { OverlayStackProvider, useOverlayLayer } from '../player/overlay-stack';
 import type { ClientNote, ClientProgressBlock, ContentBlock, EvidenceSummary } from '@/lib/courses-types';
+import { SfxProvider } from '@/lib/sfx';
+import { NarrationPauseProvider } from '../player/narration-pause';
 
 // Przesłuchanie (D-118): pytania i kwestie jak w komunikatorze, fragmenty do notatnika, podważanie dowodem z notatnika (/challenge),
 // konsola z dokumentami. Testy z prefers-reduced-motion (kwestie po 300 ms - fałszywy zegar).
@@ -77,6 +79,9 @@ function Harness({
   onEvidence,
   onProgress,
   ready,
+  content = block,
+  sound = false,
+  onPauseNarration,
 }: {
   progress?: ClientProgressBlock;
   notes: ClientNote[];
@@ -84,16 +89,27 @@ function Harness({
   onEvidence: (summary: EvidenceSummary) => void;
   onProgress: (patch: Partial<ClientProgressBlock>) => void;
   ready: { current: (() => void) | null };
+  content?: ContentBlock;
+  /** Lektor włączony (SfxProvider) - głos postaci, B-135; przycisk „Przełącz Lektor” zmienia go w trakcie testu. */
+  sound?: boolean;
+  /** Wstrzymanie lektora bloku (pasek narracji) przez głos postaci. */
+  onPauseNarration?: () => void;
 }) {
   const [summary, setSummary] = useState<EvidenceSummary>(SUMMARY);
+  const [soundOn, setSoundOn] = useState(sound);
   return (
+    <SfxProvider enabled={soundOn}>
+    <NarrationPauseProvider pause={onPauseNarration ?? (() => {})}>
+    <button type="button" onClick={() => setSoundOn((value) => !value)}>
+      Przełącz Lektor
+    </button>
     <OverlayStackProvider>
       <NotesProvider initial={notes} blockTitles={{ nagranie: 'Nagranie', przesluchanie: 'Przesłuchanie' }}>
         <EvidenceProvider summary={summary}>
           <HintProvider resetKey="k">
             <EvidenceCounter />
             <InterrogationBlock
-              block={block}
+              block={content}
               courseId="kurs-1"
               contentBase="/content"
               onSubmit={onSubmit}
@@ -113,6 +129,8 @@ function Harness({
         </EvidenceProvider>
       </NotesProvider>
     </OverlayStackProvider>
+    </NarrationPauseProvider>
+    </SfxProvider>
   );
 }
 
@@ -127,14 +145,28 @@ function NotebookLayer() {
   );
 }
 
-function setup(progress?: ClientProgressBlock, notes: ClientNote[] = NOTES) {
+function setup(
+  progress?: ClientProgressBlock,
+  notes: ClientNote[] = NOTES,
+  options: { content?: ContentBlock; sound?: boolean; onPauseNarration?: () => void } = {},
+) {
   const onSubmit = vi.fn();
   const onEvidence = vi.fn();
   const onProgress = vi.fn();
   const ready: { current: (() => void) | null } = { current: null };
-  render(<Harness progress={progress} notes={notes} onSubmit={onSubmit} onEvidence={onEvidence} onProgress={onProgress} ready={ready} />);
+  render(<Harness progress={progress} notes={notes} onSubmit={onSubmit} onEvidence={onEvidence} onProgress={onProgress} ready={ready} {...options} />);
   return { onSubmit, onEvidence, onProgress, ready };
 }
+
+// Głos postaci (B-135): kwestie pytania „glos” z nagraniami.
+const voiced: ContentBlock = {
+  ...block,
+  questions: block.questions!.map((question) =>
+    question.id === 'glos'
+      ? { ...question, lines: question.lines!.map((item, index) => ({ ...item, narration: { text: item.text, audioUrl: `audio/glos-${index + 1}.mp3`, durationMs: 1500 } })) }
+      : question,
+  ),
+};
 
 const flush = () =>
   act(() => {
@@ -159,6 +191,94 @@ describe('InterrogationBlock', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     restore();
+  });
+
+  describe('B-135: głos postaci', () => {
+    beforeEach(() => {
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it('Lektor włączony: nagranie kwestii po jej pokazaniu, następna kwestia dopiero po końcu nagrania; Spacja kończy nagranie', () => {
+      setup(undefined, NOTES, { content: voiced, sound: true });
+      flush(); // otwarcie (bez nagrania)
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Skąd wiedziałeś, kto dzwoni?' }));
+      flush();
+      expect(line('To był jego głos')).toBeInTheDocument();
+      expect(screen.getByTestId('interrogation-audio')).toHaveAttribute('src', '/content/audio/glos-1.mp3');
+      // Postać mówi - druga kwestia czeka (bez „pisze…” w trakcie nagrania).
+      flush();
+      flush();
+      expect(screen.queryByRole('button', { name: /Na wyświetlaczu/ })).not.toBeInTheDocument();
+      fireEvent.ended(screen.getByTestId('interrogation-audio'));
+      flush();
+      expect(line('Na wyświetlaczu')).toBeInTheDocument();
+      expect(screen.getByTestId('interrogation-audio')).toHaveAttribute('src', '/content/audio/glos-2.mp3');
+      fireEvent.keyDown(screen.getByTestId('interrogation-block'), { key: ' ' });
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
+
+    it('nowe pytanie zatrzymuje nagranie bieżącej kwestii', () => {
+      setup(undefined, NOTES, { content: voiced, sound: true });
+      flush();
+      ask('Skąd wiedziałeś, kto dzwoni?', 1);
+      fireEvent.ended(screen.getByTestId('interrogation-audio'));
+      flush();
+      expect(screen.getByTestId('interrogation-audio')).toHaveAttribute('src', '/content/audio/glos-2.mp3');
+      fireEvent.click(screen.getByRole('button', { name: 'Czy podawałeś kody?' }));
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
+
+    it('głos postaci wstrzymuje lektora bloku; wyłączenie Lektora w trakcie nagrania usuwa nagranie', () => {
+      const onPauseNarration = vi.fn();
+      setup(undefined, NOTES, { content: voiced, sound: true, onPauseNarration });
+      flush();
+      expect(onPauseNarration).not.toHaveBeenCalled();
+      ask('Skąd wiedziałeś, kto dzwoni?', 1);
+      expect(onPauseNarration).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('interrogation-audio')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Przełącz Lektor' }));
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
+
+    it('Lektor wyłączony w trakcie „pisze…” - kwestia bez nagrania (bieżące ustawienie, nie z chwili startu pisania)', () => {
+      setup(undefined, NOTES, { content: voiced, sound: true });
+      flush();
+      fireEvent.click(screen.getByRole('button', { name: 'Skąd wiedziałeś, kto dzwoni?' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Przełącz Lektor' }));
+      flush();
+      expect(line('To był jego głos')).toBeInTheDocument();
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
+
+    it('Spacja na przycisku w trakcie nagrania (bez „pisze…”) działa jak zwykle - nie kończy nagrania', () => {
+      setup(undefined, NOTES, { content: voiced, sound: true });
+      flush();
+      ask('Skąd wiedziałeś, kto dzwoni?', 1);
+      fireEvent.ended(screen.getByTestId('interrogation-audio'));
+      flush();
+      const chip = screen.getByRole('button', { name: 'Czy podawałeś kody?' });
+      const event = fireEvent.keyDown(chip, { key: ' ' });
+      expect(event).toBe(true); // bez preventDefault - przycisk dostaje swoją Spację
+      expect(screen.getByTestId('interrogation-audio')).toBeInTheDocument();
+    });
+
+    it('odświeżenie z podważeniem: kwestie wracają do wątku bez odtwarzania', () => {
+      setup({ type: 'INTERROGATION', done: false, challenges: [{ lineId: 'glos-1', correct: false }] }, NOTES, { content: voiced, sound: true });
+      flush();
+      expect(line('To był jego głos')).toBeInTheDocument();
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
+
+    it('Lektor wyłączony: kwestie z nagraniami bez dźwięku, w zwykłym tempie', () => {
+      setup(undefined, NOTES, { content: voiced, sound: false });
+      flush();
+      ask('Skąd wiedziałeś, kto dzwoni?', 2);
+      expect(line('Na wyświetlaczu')).toBeInTheDocument();
+      expect(screen.queryByTestId('interrogation-audio')).not.toBeInTheDocument();
+    });
   });
 
   it('pytanie i kwestie jak w komunikatorze; fragment „Dodaj do notatek” - notatka i dowód w liczniku', () => {

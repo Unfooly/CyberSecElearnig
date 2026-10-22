@@ -5,7 +5,7 @@ import { Check, Gavel, Monitor, NotebookPen, Shield, X } from 'lucide-react';
 import type { ChallengeResponse, ClientNote, ClientProgressBlock, ContentBlock, EvidenceSummary, InterrogationChallenge, ResultDetail } from '@/lib/courses-types';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
-import { useSfx } from '@/lib/sfx';
+import { useSfx, useSoundEnabled } from '@/lib/sfx';
 import { flyEvidence, prefersReducedMotion } from '@/lib/motion';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { NoteKindIcon, useNotes } from '../player/notes';
@@ -15,6 +15,8 @@ import { useBlockingOverlayOpen, useOverlayLayer } from '../player/overlay-stack
 import Hint from '../player/Hint';
 import { PlayerBubble, TypingBubble, typingDelayMs } from './DialogueBlock';
 import { DossierDocuments, useDossier } from './DossierBlock';
+import LineAudio from './LineAudio';
+import { usePauseNarration } from '../player/narration-pause';
 
 // Przesłuchanie (INTERROGATION, D-118/D-119). Wątek jak komunikator (DialogueBlock, D-087): gracz wybiera pytanie z chipów, postać
 // „pisze” i odpowiada kwestiami. Kwestię postaci można zaznaczyć (klik, Enter): pod nią akcje
@@ -99,6 +101,7 @@ export default function InterrogationBlock({
   const hints = useHints();
   const reducedMotion = usePrefersReducedMotion();
   const play = useSfx(['msg-send', 'msg-receive']);
+  const soundOn = useSoundEnabled();
   const bannerHint = hints.hint ?? block.tip ?? DEFAULT_HINT.INTERROGATION;
   const avatarUrl = contentAssetUrl(contentBase, character?.avatar, 'image');
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -195,13 +198,26 @@ export default function InterrogationBlock({
     else closeConsole();
   });
 
-  // „Pisanie” postaci - jak w dialogu: każda kwestia po typingDelayMs; klik we wskaźnik albo Spacja - od razu.
+  // Głos postaci (B-135): nagranie kwestii gra po jej pokazaniu, gdy Lektor jest włączony (to samo ustawienie co dźwięki). Następna
+  // kwestia („pisze…”) czeka na koniec nagrania (wskaźnika pisania wtedy nie ma); Spacja kończy nagranie, nowe pytanie i wyłączenie
+  // Lektora - zatrzymują. Lektor bloku (pasek narracji) zostaje wstrzymany, gdy postać zaczyna mówić. Napis to tekst kwestii (już w
+  // wątku). Bez nagrania (przed potokiem TTS) - jak dotąd, sam tekst.
+  const [speaking, setSpeaking] = useState<{ key: string; src: string; durationMs?: number } | null>(null);
+  const pauseNarration = usePauseNarration();
+  // `reveal` wołany z timera „pisze…” ma domknięcie z renderu, w którym timer ruszył - bieżące ustawienie Lektora z refa (code review B-135a).
+  const soundOnRef = useRef(soundOn);
+  soundOnRef.current = soundOn;
   useEffect(() => {
-    if (!typing) return undefined;
+    if (!soundOn) setSpeaking(null);
+  }, [soundOn]);
+
+  // „Pisanie” postaci - jak w dialogu: każda kwestia po typingDelayMs (po nagraniu poprzedniej); klik we wskaźnik albo Spacja - od razu.
+  useEffect(() => {
+    if (!typing || speaking) return undefined;
     const timer = window.setTimeout(() => reveal(true, pendingKey), typingDelayMs(pendingLine ?? '', reducedMotion || prefersReducedMotion()));
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingKey]);
+  }, [pendingKey, speaking === null]);
 
   function reveal(withSound: boolean, forKey: string = pendingKeyRef.current) {
     if (!forKey || forKey !== pendingKeyRef.current) return;
@@ -214,8 +230,12 @@ export default function InterrogationBlock({
     }
     if (!current) return;
     const shown = current.shown + 1;
-    const text = linesOf(current.id)[current.shown]?.text ?? '';
+    const line = linesOf(current.id)[current.shown];
+    const text = line?.text ?? '';
     setAnnouncement(`${speakerName}: ${text}`);
+    const src = soundOnRef.current ? contentAssetUrl(contentBase, line?.narration?.audioUrl, 'audio') : null;
+    if (src) pauseNarration();
+    setSpeaking(src ? { key: forKey, src, durationMs: line?.narration?.durationMs } : null);
     setAsked((list) => list.map((entry) => (entry.id === current.id ? { ...entry, shown } : entry)));
     // Po ostatniej kwestii pytania konsoli - konsola otwiera się sama (pierwszy raz).
     if (shown >= linesOf(current.id).length && current.id === opener?.id) setConsolePending(true);
@@ -237,6 +257,7 @@ export default function InterrogationBlock({
 
   function ask(id: string) {
     if (typing || asked.some((entry) => entry.id === id)) return;
+    setSpeaking(null);
     setAsked((list) => [...list, { id, shown: 0 }]);
     setSelected(null);
     play('msg-send');
@@ -350,11 +371,15 @@ export default function InterrogationBlock({
   }
 
   function skipOnSpace(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== ' ' || !typing) return;
+    if (event.key !== ' ' || (!typing && !speaking)) return;
     const target = event.target as HTMLElement;
     if (target.closest('input, textarea, [contenteditable="true"]')) return;
+    // Samo nagranie (bez „pisze…”): Spacja na przycisku (pytanie, kwestia, dowód) działa jak zwykle - nie połyka akcji.
+    if (!typing && target.closest('button, a, [role="button"], [role="option"]')) return;
     event.preventDefault();
-    reveal(true);
+    // W trakcie nagrania Spacja kończy je (następna kwestia rusza zwykłym „pisze…”); przy „pisze…” - pokazuje kwestię od razu.
+    if (speaking) setSpeaking(null);
+    else reveal(true);
   }
 
   // Wiadomości wątku: otwarcie, pytania gracza, kwestie postaci (z przyznaniem po trafionym podważeniu tuż pod kwestią).
@@ -372,7 +397,8 @@ export default function InterrogationBlock({
         if (line.id && hit?.correct && hit.line) messages.push({ key: `${entry.id}-${index}-admission`, kind: 'admission', lineId: line.id, text: hit.line.text });
       });
   }
-  if (typing) messages.push({ key: `typing-${pendingKey}`, kind: 'typing' });
+  // Postać „pisze” dopiero po swoim nagraniu - bez wskaźnika pisania w trakcie mówienia.
+  if (typing && !speaking) messages.push({ key: `typing-${pendingKey}`, kind: 'typing' });
   const lastKey = messages[messages.length - 1]?.key ?? '';
 
   useEffect(() => {
@@ -411,6 +437,7 @@ export default function InterrogationBlock({
 
   return (
     <div onKeyDown={skipOnSpace} data-testid="interrogation-block" className="relative flex min-h-0 w-full flex-1 flex-col [container-type:size]">
+      {speaking && soundOn && <LineAudio key={speaking.key} testId="interrogation-audio" src={speaking.src} durationMs={speaking.durationMs} onDone={() => setSpeaking(null)} />}
       <Hint variant="bar" text={bannerHint} />
       {character && (
         <div className="mx-auto mb-3 flex w-full max-w-[760px] shrink-0 items-center gap-3 [@media(max-height:500px)]:hidden">

@@ -32,6 +32,7 @@ import FeedbackPanel from './FeedbackPanel';
 import CaseClosedScreen from './CaseClosedScreen';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
+import { NarrationPauseProvider } from './player/narration-pause';
 import TranscriptPanel from './player/TranscriptPanel';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
@@ -877,6 +878,13 @@ export default function CoursePlayer({
       ? 'summary'
       : `${keyOf(showingFeedback ? feedback.blockIndex : displayedIndex)}-${showingFeedback ? 'w' : 'b'}${briefingStep ? `-s${briefingStep.index}` : ''}`,
   });
+  // Blok z głosem postaci (przesłuchanie, B-135) wstrzymuje lektora, gdy postać zaczyna mówić - bez dwóch głosów naraz. Stabilna funkcja
+  // (ref na bieżący stan paska), żeby nie zmieniać kontekstu przy każdym renderze.
+  const narrationBarRef = useRef(narrationBarState);
+  narrationBarRef.current = narrationBarState;
+  const pauseNarration = useCallback(() => {
+    if (narrationBarRef.current.playing) narrationBarRef.current.togglePlay();
+  }, []);
 
   // "Pomiń odprawę" (D-081, D-106): przeskakuje na ostatni krok odprawy (ekran startu) - odprawa jest wtedy gotowa, a dalej prowadzi
   // wyłącznie „Dalej” w dolnym pasku (jeden przycisk dalej). Tylko na żywym bloku i przed ostatnim krokiem; w podglądzie „Wstecz”
@@ -924,6 +932,7 @@ export default function CoursePlayer({
   return (
     // Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087/D-089).
     <SfxProvider enabled={preference.enabled}>
+    <NarrationPauseProvider pause={pauseNarration}>
     <NotesProvider initial={initial.progress?.notes ?? []} initialDistinctions={initial.progress?.distinctions} blockTitles={blockTitles} tasks={tasks}>
       <EvidenceProvider summary={evidence}>
         <HintProvider resetKey={`${isSummaryMode ? 'summary' : displayedIndex}-${showingFeedback ? 'f' : 'b'}`}>
@@ -1027,6 +1036,7 @@ export default function CoursePlayer({
         </HintProvider>
       </EvidenceProvider>
     </NotesProvider>
+    </NarrationPauseProvider>
     </SfxProvider>
   );
 }

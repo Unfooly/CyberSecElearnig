@@ -8,6 +8,7 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { DEFAULT_HINT, useHints } from '../player/hints';
 import { useBlockingOverlayOpen } from '../player/overlay-stack';
 import Hint from '../player/Hint';
+import LineAudio from './LineAudio';
 
 // Rozmowa na żywo (LIVE_CALL, D-122/D-123). Ekran przed połączeniem: kto dzwoni, przełącznik „Wyłącz limit czasu” (WCAG 2.2.1 - domyślnie
 // z ustawienia konta, dotyczy tego podejścia) i „Odbierz”. Połączenie: kwestia dzwoniącego (napis + nagranie; „Wycisz” w nagłówku - WCAG
@@ -27,9 +28,6 @@ const HANG_UP = 'hangup';
 const HANG_UP_LINE = 'Rozłączasz się.';
 // Domyślny limit - ten sam co w treści (packages/content LIVE_CALL_DEFAULT_TIME_LIMIT_SEC; web nie importuje wartości z pakietu Node).
 export const DEFAULT_CHOICE_TIME_LIMIT_SEC = 12;
-// Nagranie, które ani się nie skończyło, ani nie zgłosiło błędu (zawieszone ładowanie): limit rusza po długości kwestii + zapas.
-const STALL_FALLBACK_MS = 3000;
-const STALL_FALLBACK_NO_DURATION_MS = 20000;
 
 export interface LiveCallAnswer {
   path: string[];
@@ -576,63 +574,12 @@ export default function LiveCallBlock({
           )}
         </div>
       </div>
+      {/* Nagranie kwestii (LineAudio.tsx): koniec, błąd, blokada odtwarzania albo zawieszenie = kwestia wysłuchana - od tej chwili
+          biegnie limit czasu. */}
       {stage === 'call' && node && (
-        <LineAudio key={nodeId} src={nodeAudio} muted={muted} durationMs={node.narration.durationMs} onDone={() => setLineDone(true)} />
+        <LineAudio key={nodeId} testId="live-call-audio" src={nodeAudio} muted={muted} durationMs={node.narration.durationMs} onDone={() => setLineDone(true)} />
       )}
-      {endingAudio && <LineAudio key={`ending-${endingId}`} src={endingAudio} muted={muted} durationMs={shownEnding?.narration.durationMs} />}
+      {endingAudio && <LineAudio key={`ending-${endingId}`} testId="live-call-audio" src={endingAudio} muted={muted} durationMs={shownEnding?.narration.durationMs} />}
     </div>
   );
-}
-
-/**
- * Nagranie kwestii: koniec (albo błąd, albo przeglądarka zablokowała odtwarzanie, albo nagranie utknęło dłużej niż kwestia + zapas) =
- * kwestia wysłuchana - od tej chwili biegnie limit czasu. Bez nagrania (przed potokiem TTS) - od razu po pokazaniu napisu. `onDone` najwyżej
- * raz; po odmontowaniu (następna kwestia) - wcale, żeby spóźnione zdarzenie nie uruchomiło limitu NOWEJ kwestii.
- */
-function LineAudio({ src, muted, durationMs, onDone }: { src: string | null; muted: boolean; durationMs?: number; onDone?: () => void }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const doneRef = useRef(onDone);
-  doneRef.current = onDone;
-  const finished = useRef(false);
-  const finish = () => {
-    if (finished.current) return;
-    finished.current = true;
-    doneRef.current?.();
-  };
-  const finishRef = useRef(finish);
-  finishRef.current = finish;
-  // Zapas na zawieszone nagranie liczony od montażu i od nowa od startu odtwarzania (`playing`) - wolne ładowanie nie może uruchomić
-  // limitu, gdy dzwoniący jeszcze mówi.
-  const restartFallback = useRef<() => void>(() => {});
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!src || !audio) {
-      finishRef.current();
-      return undefined;
-    }
-    let cancelled = false;
-    let fallback = 0;
-    const guarded = () => !cancelled && finishRef.current();
-    restartFallback.current = () => {
-      window.clearTimeout(fallback);
-      fallback = window.setTimeout(guarded, (durationMs ?? STALL_FALLBACK_NO_DURATION_MS) + STALL_FALLBACK_MS);
-    };
-    restartFallback.current();
-    const played = audio.play();
-    if (played && typeof played.catch === 'function') played.catch(guarded);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(fallback);
-      restartFallback.current = () => {};
-      audio.pause();
-    };
-  }, [src, durationMs]);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = muted;
-  }, [muted]);
-
-  if (!src) return null;
-  return <audio ref={audioRef} data-testid="live-call-audio" src={src} preload="auto" hidden onPlaying={() => restartFallback.current()} onEnded={() => finish()} onError={() => finish()} />;
 }

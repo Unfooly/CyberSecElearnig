@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { basename, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { alignmentToCues, splitSentences } from './cues.js';
-import { audioKey, manifestKey, narrationHash, sidecarKey } from './hash.js';
+import { audioKey, manifestKey, narrationHash, secretAudioKey, sidecarKey } from './hash.js';
 import { contentIndex, contentNode, encode, isObject, type Json, readJsonFile, say, writeIfChanged } from './io.js';
 import { confirm, enforceMaxChars, formatPlan, summarizePlan, type PlannedNarration } from './plan.js';
 import { AUDIO_CONTENT_TYPE, IMMUTABLE_CACHE, JSON_CONTENT_TYPE, MUTABLE_CACHE } from './stores/key.js';
@@ -85,6 +85,19 @@ export function assertNarrationPathsClassified(
       }
     }
   }
+  // Odwrotnie dla nagrań pól tajnych (B-135): każde pole MUSI być secret - inaczej losowa nazwa trafiłaby do klienta przed trafieniem.
+  for (const prefix of SECRET_AUDIO_PATHS.map(toClassificationPath)) {
+    const owners = Object.entries(classification).filter(([, fields]) => [...fields.client, ...fields.secret].includes(`${prefix}.text`));
+    if (owners.length === 0) throw new Error(`SECRET_AUDIO_PATHS: ścieżka "${prefix}" nie istnieje w klasyfikacji pól (schemat się zmienił?).`);
+    for (const [type, fields] of owners) {
+      for (const leaf of SECRET_AUDIO_LEAVES) {
+        const path = `${prefix}.${leaf}`;
+        if (fields.client.includes(path) || !fields.secret.includes(path)) {
+          throw new Error(`SECRET_AUDIO_PATHS: pole "${path}" (${type}) nie jest polem secret: adres nagrania nie może trafić do klienta przed trafieniem.`);
+        }
+      }
+    }
+  }
 }
 
 export interface NarrationRef {
@@ -99,7 +112,19 @@ export interface NarrationRef {
   spokenText?: string;
   /** Rola głosu (narration.voice, brak = narrator) - voiceId z voices.json (D-082). */
   voice: string;
+  /**
+   * Nagranie pola secret (przyznanie po podważeniu, B-135): losowa nazwa pliku (secretAudioKey, zapamiętana w locku), bez sidecara
+   * z napisami, poza publicznym manifestem, w module tylko audioUrl/durationMs (bez cues).
+   */
+  secret?: boolean;
 }
+
+/**
+ * Pola secret z nagraniem (B-135, D-150): przyznanie po trafionym podważeniu (`contradiction.challengeLine`) głosem postaci kwestii
+ * (`narration.voice` tej kwestii). Adres zna tylko serwer (pole secret w module.json) i wysyła go dopiero po trafieniu.
+ */
+export const SECRET_AUDIO_PATHS: string[][] = [['questions', '*', 'lines', '*', 'contradiction', 'challengeLine']];
+const SECRET_AUDIO_LEAVES = ['text', 'spokenText', 'audioUrl', 'durationMs'];
 
 /** To, co faktycznie idzie do ElevenLabs i do hasha/lockfile: spokenText, gdy jest, inaczej tekst wyświetlany. */
 export function ttsInputOf(ref: Pick<NarrationRef, 'text' | 'spokenText'>): string {
@@ -165,6 +190,33 @@ export function collectNarrations(raw: Json): NarrationRef[] {
         }
       }
     }
+    // Nagrania pól tajnych (B-135): głos z narracji kwestii, do której należy przyznanie (ścieżka ...lines.<i>.contradiction.challengeLine).
+    for (const path of SECRET_AUDIO_PATHS) {
+      for (const { holder, key, trail } of expand(block, path, [])) {
+        const secretLine = holder[key] as Json;
+        // Kwestia, do której należy przyznanie: ta sama ścieżka bez `contradiction.challengeLine`.
+        const lineObject = trail.slice(0, -2).reduce<unknown>((node, part) => (isObject(node) || Array.isArray(node) ? (node as Record<string, unknown>)[part] : undefined), block);
+        const lineNarration = isObject(lineObject) ? lineObject.narration : undefined;
+        // Tekst wielojęzyczny: nagranie tylko `pl`; inny język - czytelny błąd do fazy EN, jak w narrationForTts (audioUrl jest jeden dla
+        // wszystkich języków, więc przyznanie EN zagrałoby po polsku).
+        if (contentIndex.isLocalizedValue(secretLine.text)) {
+          const other = Object.keys(secretLine.text as Json).filter((locale) => locale !== 'pl' && (secretLine.text as Json)[locale] !== undefined);
+          if (other.length > 0) throw new Error(`${block.id}#${trail.join('.')}: nagrania przyznania w języku ${other.join(', ')} nie są jeszcze obsługiwane przez potok (faza EN).`);
+        }
+        const text = contentIndex.isLocalizedValue(secretLine.text) ? (secretLine.text as Json).pl : secretLine.text;
+        if (typeof text !== 'string' || text.trim() === '') continue;
+        refs.push({
+          id: `${block.id}#${trail.join('.')}`,
+          blockId: block.id,
+          holder: secretLine,
+          key: '',
+          text,
+          spokenText: typeof secretLine.spokenText === 'string' ? secretLine.spokenText : undefined,
+          voice: isObject(lineNarration) ? narrationForTts(lineNarration as Json, `${block.id}#${trail.join('.')}`).voice : 'narrator',
+          secret: true,
+        });
+      }
+    }
     // Zabezpieczenie na przyszłość: nowe pole narracji w schemacie bez wzorca tutaj nie może zostać po cichu bez audio.
     const stack: unknown[] = [block];
     while (stack.length > 0) {
@@ -228,6 +280,8 @@ interface LockEntry {
   /** lockVersion 2 (D-082): rola i voiceId, którym nagrano TEN wpis. W lockVersion 1 brak - wtedy narrator i Lock.voiceId. */
   voice?: string;
   voiceId?: string;
+  /** Nagranie pola tajnego (B-135): `key` losowy (nie skrót), `hash` - skrót wejścia TTS; bez sidecara i poza manifestem. */
+  secret?: true;
 }
 
 interface Lock {
@@ -328,7 +382,16 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (unknown.length > 0) throw new Error(`--only: brak narracji w blokach: ${unknown.join(', ')}.`);
   }
   for (const ref of selected) {
-    ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ref) });
+    if (!ref.secret) {
+      ref.key = audioKey({ slug, version: params.version, blockId: ref.blockId, hash: hashOf(ref) });
+      continue;
+    }
+    // Nagranie pola tajnego (B-135): ta sama losowa nazwa, dopóki tekst, głos, model i język (skrót we wpisie locka) się nie zmienią;
+    // inaczej - nowa losowa nazwa (stary plik zostaje: starsze wersje kursu mogą na niego wskazywać).
+    const previous = lock?.entries[ref.id];
+    const prefix = `audio/${slug}/${params.version}/${ref.blockId}/`;
+    const reuse = previous && previous.secret === true && previous.hash === hashOf(ref) && lock!.audioVersion === params.version && previous.key.startsWith(prefix);
+    ref.key = reuse ? previous!.key : secretAudioKey({ slug, version: params.version, blockId: ref.blockId, name: randomBytes(16).toString('hex') });
   }
   // --only dopisuje do istniejącej partii: wpisy niewybranych narracji zostają ze starego locka, więc parametry partii muszą się zgadzać.
   // Głos nie jest już parametrem partii (każdy wpis ma własny voiceId, D-082), więc tu tylko wersja, model i język.
@@ -347,9 +410,18 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
   for (const ref of selected) {
     if (params.dryRun) {
       const current = ref.holder;
-      // Ze spokenText cues są ŚWIADOMIE nieobecne (patrz punkt 5.) - "już wygenerowane" nie może wymagać ich obecności.
-      const cuesOk = ref.spokenText ? current.cues === undefined : Array.isArray(current.cues);
+      // Ze spokenText (i w polu tajnym) cues są ŚWIADOMIE nieobecne (patrz punkt 5.) - "już wygenerowane" nie może wymagać ich obecności.
+      const cuesOk = ref.spokenText || ref.secret ? current.cues === undefined : Array.isArray(current.cues);
       if (current.audioUrl === ref.key && typeof current.durationMs === 'number' && cuesOk) cachedIds.add(ref.id);
+      continue;
+    }
+    if (ref.secret) {
+      // Pole tajne (B-135): bez sidecara - nagranie jest, gdy plik istnieje, a lock zna jego długość (ten sam losowy klucz).
+      const entry = lock?.entries[ref.id];
+      if (entry && entry.key === ref.key && (await params.store.head(ref.key))) {
+        sidecars.set(ref.id, { hash: entry.hash, model: params.model, language: params.language, voiceId: voiceIdOf(ref), bytes: 0, durationMs: entry.durationMs, cues: [] });
+        cachedIds.add(ref.id);
+      }
       continue;
     }
     const audio = await params.store.head(ref.key);
@@ -393,7 +465,9 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (!ok) throw new Error('Przerwano: brak potwierdzenia (nic nie wygenerowano).');
   }
 
-  // 4. Generowanie (kolejno). Błąd przerywa przebieg BEZ zmiany module.json; wygenerowane pliki zostają i drugi przebieg ich nie powtórzy.
+  // 4. Generowanie (kolejno). Błąd przerywa przebieg BEZ zmiany module.json; wygenerowane pliki zostają i drugi przebieg ich nie powtórzy -
+  // POZA nagraniami pól tajnych: ich losowa nazwa trafia do locka dopiero na końcu przebiegu, więc po przerwaniu drugi przebieg nagra je pod
+  // nową nazwą (stary plik zostaje w magazynie jako nieznaleźny sierota; koszt - ponownie rozliczone znaki jednego przyznania).
   let generated = 0;
   let index = 0;
   for (const ref of unique) {
@@ -401,7 +475,8 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     if (cachedIds.has(ref.id)) continue;
     const spoken = ttsInputOf(ref);
     const voiceId = voiceIdOf(ref);
-    say(params.output, `[${index}/${unique.length}] [${ref.voice}] ${ref.id}: ${spoken.length} znaków -> ${ref.key}`);
+    // Losowa nazwa nagrania pola tajnego nie trafia do logu (log bywa wklejany do PR) - jest w module.json i locku.
+    say(params.output, `[${index}/${unique.length}] [${ref.voice}] ${ref.id}: ${spoken.length} znaków -> ${ref.secret ? '(nazwa tajna, w locku)' : ref.key}`);
     let result;
     try {
       result = await params.tts!.synthesize({ text: spoken, voiceId, model: params.model, language: params.language });
@@ -417,14 +492,22 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
       throw new Error(`Blok "${ref.blockId}" (${ref.id}): napisy z timestampów: ${(error as Error).message}`);
     }
     const sidecar: Sidecar = {
-      hash: hashFromKey(ref.key),
+      hash: ref.secret ? hashOf(ref) : hashFromKey(ref.key),
       model: params.model,
       language: params.language,
       voiceId,
       bytes: result.audio.byteLength,
       durationMs: cues.durationMs,
-      cues: cues.cues,
+      cues: ref.secret ? [] : cues.cues,
     };
+    if (ref.secret) {
+      // Pole tajne (B-135): tylko nagranie - bez sidecara (napisy zdradzałyby tekst przyznania każdemu, kto zna klucz).
+      const stale = (await params.store.head(ref.key)) !== null;
+      await params.store.put(ref.key, result.audio, { contentType: AUDIO_CONTENT_TYPE, cacheControl: IMMUTABLE_CACHE }, stale);
+      sidecars.set(ref.id, sidecar);
+      generated += 1;
+      continue;
+    }
     // Para nagranie + sidecar musi być spójna: gdy któryś z plików istniał (przerwany przebieg, uszkodzony sidecar), zastępujemy OBA nowym wynikiem.
     const stale = (await params.store.head(ref.key)) !== null || (await params.store.head(sidecarKey(ref.key))) !== null;
     if (stale) say(params.output, '  (niepełna para nagranie + sidecar: zastępuję ją spójnym wynikiem)');
@@ -445,7 +528,7 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     // Napisy/cues ZAWSZE z tekstu wyświetlanego: gdy blok ma spokenText, sidecar.cues to fragmenty tego, co WYBRZMIAŁO
     // (inny tekst niż na ekranie) i NIE mogą trafić do klienta jako podpis - zostają bez cues, odtwarzacz sam podzieli
     // narration.text proporcjonalnie do czasu (istniejący fallback, patrz NarrationPlayer). Bez spokenText - jak dotąd.
-    if (ref.spokenText) delete ref.holder.cues;
+    if (ref.spokenText || ref.secret) delete ref.holder.cues;
     else ref.holder.cues = sidecar.cues;
   }
   contentNode.parseModule(raw);
@@ -454,12 +537,14 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
     // hash/textSha z tego, co poszło do TTS (spokenText, gdy jest) - zmiana samego tekstu wyświetlanego (bez zmiany
     // spokenText) nie unieważnia nagrania; zmiana spokenText (albo text, gdy spokenText nie ma) - unieważnia.
     entries[ref.id] = {
-      hash: hashFromKey(ref.key),
+      // Pole tajne: klucz losowy, więc skrót wejścia TTS osobno (z niego --check i ponowne użycie nazwy).
+      hash: ref.secret ? hashOf(ref) : hashFromKey(ref.key),
       key: ref.key,
       textSha: textSha(ttsInputOf(ref)),
       durationMs: sidecars.get(ref.id)!.durationMs,
       voice: ref.voice,
       voiceId: voiceIdOf(ref),
+      ...(ref.secret ? { secret: true as const } : {}),
     };
   }
   // --only na locku w wersji 1: wpisy niewybranych narracji nie mają voiceId - uzupełniamy głosem partii, żeby lockVersion 2 był pełny.
@@ -483,7 +568,8 @@ export async function runPipeline(params: PipelineParams): Promise<PipelineResul
 
   // Manifest jest PUBLICZNY: bez ścieżek pól (mapowanie narracja -> plik trzyma tylko module.json i audio.lock.json w repo). Tylko klucze
   // plików (blockId i skrót są w nazwie), posortowane, żeby dwa przebiegi dawały identyczny plik.
-  const files = [...new Set(Object.values(entries).map((entry) => entry.key))].sort();
+  // Nagrania pól tajnych (B-135) NIE trafiają do publicznego manifestu - inaczej losowa nazwa byłaby do znalezienia bez trafienia.
+  const files = [...new Set(Object.values(entries).filter((entry) => !entry.secret).map((entry) => entry.key))].sort();
   const manifest = { manifestVersion: 2, slug, audioVersion: params.version, model: params.model, language: params.language, voices: usedVoices, files };
   const manifestBytes = encode(manifest);
   const existing = await params.store.get(manifestKey(slug, params.version));
@@ -524,8 +610,12 @@ function checkOffline(refs: NarrationRef[], lock: Lock | null, params: PipelineP
         continue;
       }
       const holder = ref.holder;
-      // Ze spokenText cues są ŚWIADOMIE nieobecne w module.json (patrz runPipeline, punkt 5.), więc tu wymagamy ich BRAKU, nie obecności.
-      const cuesOk = ref.spokenText ? holder.cues === undefined : Array.isArray(holder.cues);
+      if (ref.secret && (entry.secret !== true || !/\/[0-9a-f]{32}\.mp3$/.test(entry.key))) {
+        problems.push(`${label}: nagranie pola tajnego bez losowej nazwy w audio.lock.json (wygeneruj ponownie).`);
+        continue;
+      }
+      // Ze spokenText (i w polu tajnym) cues są ŚWIADOMIE nieobecne w module.json (patrz runPipeline, punkt 5.) - wymagamy ich BRAKU.
+      const cuesOk = ref.spokenText || ref.secret ? holder.cues === undefined : Array.isArray(holder.cues);
       if (holder.audioUrl !== entry.key || holder.durationMs !== entry.durationMs || !cuesOk) {
         problems.push(`${label}: audioUrl/durationMs/cues w module.json nie zgadzają się z audio.lock.json.`);
       }

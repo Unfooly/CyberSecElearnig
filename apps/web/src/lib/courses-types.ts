@@ -537,7 +537,8 @@ export interface SceneExploration {
 export interface InterrogationChallenge {
   lineId: string;
   correct: boolean;
-  line?: { text: string };
+  /** Przyznanie po trafieniu; nagranie (B-135) - adres dopiero po trafieniu (losowa nazwa w magazynie). */
+  line?: { text: string; audioUrl?: string; durationMs?: number };
 }
 
 export interface ClientNote {

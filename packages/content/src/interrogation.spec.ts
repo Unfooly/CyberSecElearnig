@@ -62,8 +62,19 @@ describe('INTERROGATION: walidacja', () => {
     ).toContain('fragmentem do notatnika ALBO sprzecznością');
     expect(errorsOf(mutate((m) => delete line(m, 'glos-1').fragment.note.kind))).toContain('note wymaga note.kind');
     expect(errorsOf(mutate((m) => delete line(m, 'glos-1').narration.voice))).toContain('kwestia postaci wymaga roli głosu');
-    // Kwestia po podważeniu to sam tekst (sekret - bez nagrania w publicznym magazynie).
+    // Kwestia po podważeniu nie ma obiektu narracji (bez napisów w publicznym magazynie) - nagranie w polach audioUrl/durationMs (B-135).
     expect(errorsOf(mutate((m) => (line(m, 'kod-1').contradiction.challengeLine.narration = { text: 'x' })))).toContain('challengeLine');
+  });
+
+  it('B-135: nagranie przyznania - audioUrl i durationMs razem; nigdy w bloku klienta', () => {
+    const audio = { audioUrl: 'audio/test/v1/przesluchanie/0123456789abcdef0123456789abcdef.mp3', durationMs: 2100 };
+    const ok = mutate((m) => Object.assign(line(m, 'kod-1').contradiction.challengeLine, audio, { spokenText: 'Wpisałem czterdzieści siedem.' }));
+    expect(errorsOf(ok)).toBe('');
+    expect(errorsOf(mutate((m) => (line(m, 'kod-1').contradiction.challengeLine.audioUrl = audio.audioUrl)))).toContain('audioUrl i durationMs występują razem');
+    expect(errorsOf(mutate((m) => (line(m, 'kod-1').contradiction.challengeLine.cues = [{ text: 'x', startMs: 0 }])))).not.toBe('');
+    const client = JSON.stringify(toClientBlock(interrogation(ok), { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }));
+    expect(client).not.toContain('0123456789abcdef0123456789abcdef');
+    expect(client).not.toContain('czterdzieści siedem');
   });
 
   it('id kwestii, dokumentów i wierszy konsoli w jednej przestrzeni; id pytań unikalne', () => {

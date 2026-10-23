@@ -238,6 +238,28 @@ i ekran logowania są generyczne - bez logo i nazwy aplikacji, adresy wyłączni
 | `loginScreen` | ekran logowania z linku (zbliżenie), bez marki | sloty `slot-adres`, `slot-naglowek`, `slot-pole-login`, `slot-pole-haslo`, `slot-przycisk` |
 | `chatPhoneIcon` | telefon z dymkami bez słów (miniatura modułu) | |
 
+### Klocki modułu 4 (`props-naskroty.ts`, „Na skróty”, shadow IT, tryb prosty, D-153)
+
+Model jak w module 3: klocki bez słów, napisy ze `strings` w `textBox` (`"minTextPx": 16` w każdej scenie), tekst dowodów z kluczem
+`evidence`. Sceny używają klocków w skali 1, więc pozycja `textBox` = pozycja elementu + slot (przeliczone ręcznie w
+`examples/na-skroty/*.json`). Narzędzia są fikcyjne i generyczne (bez logo); tabela klientów w oknie czatu jest rozmyta - bez danych.
+Cel dotykowy mniejszego rysunku (ikona programu, pendrive) to część `cel` z parametru `target` - może wychodzić poza rysunek. W scenie
+poziomej biurka pendrive siedzi w PRAWYM boku laptopa (`port: "right"`, `flip: true`): lewy dolny róg sceny zasłania dymek podpowiedzi.
+
+| prop | do czego | części |
+|---|---|---|
+| `laptopFront` | laptop od frontu: `sw`, `sh`, `wallpaper`, `port: left\|right` | `slot-ekran`, `port` |
+| `chatWindow` | okno darmowego czatu AI z rozmytą tabelą: `w`, `h`, `bubbleH`, `bar` (wysokość paska tytułu) | `slot-tytul`, `slot-prosba` |
+| `cloudWindow` | okno prywatnego dysku w chmurze z folderem: `w`, `h`, `folder`, `bar` | `slot-tytul`, `slot-folder` |
+| `docWindow` | okno dokumentu (raport w edytorze): `w`, `h`, `titleH` | `slot-tytul` |
+| `appIcon` | ikona pobranego programu (bez liter): `size`, `target` | `cel` |
+| `usbStick` | prywatny pendrive: `len`, `flip`, `target` | `cel` |
+| `effectsBoard` | tablica korkowa z 4 kartami skutków: `w`, `h`, `cols`, `gap`, `iconH` | `karta-1`…`karta-4`, `slot-tytul-1`…`slot-tytul-4` |
+
+Raport pionowy modułu 4 jest wyższy niż 9:16 (900×1800, odtwarzacz przewija go w pionie - D-152): `reportPortrait` z `tallStats`,
+`signatureAbove`, `rulesExtra` (wyższa sekcja zasad), `pageExtra` (dłuższa strona u dołu) i `slots` (liścik i pieczęć pod podpisem), a
+scena deklaruje `"phoneWidth": 364` - raport jest na telefonie na całą szerokość, nie dopasowany do wysokości.
+
 ### Przezroczyste tło grafik otwieranych kliknięciem (D-101)
 
 `"background": { "flat": true, "wall": "none" }` - scena bez prostokąta tła (tylko z `flat`). Narzędzia (z `scripts/content`):

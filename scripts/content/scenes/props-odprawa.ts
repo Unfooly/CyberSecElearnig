@@ -786,35 +786,37 @@ export const browserHistoryPortrait: PropFn<{ rows?: string[] }> = ({ rows = [] 
 
 /* ---------- raport zamknięcia sprawy — pionowy, jedna duża strona (U/D-104) ---------- */
 // `tallStats` (moduł 4, D-152): etykiety statystyk w dwóch wierszach (wyższe pola, dłuższy przekład - pseudo-lokalizacja D-143), reszta strony
-// niżej o 40 jednostek. `rulesExtra` (D-152) - wyższa sekcja zasad o tyle jednostek, strona dłuższa o tyle samo (grafika wyższa niż 9:16,
-// odtwarzacz przewija ją w pionie). `slots` - inne położenie pieczęci i liściku. Bez tych parametrów - grafika i sloty bez zmian (moduły 1-3
-// bajt w bajt).
+// niżej o 50 jednostek. `rulesExtra` (D-152) - wyższa sekcja zasad o tyle jednostek, strona dłuższa o tyle samo (grafika wyższa niż 9:16,
+// odtwarzacz przewija ją w pionie). `pageExtra` - strona dłuższa o tyle u dołu, nic się nie przesuwa (miejsce na większy liścik i pieczęć
+// w `slots`). `slots` - inne położenie pieczęci i liściku. Bez tych parametrów - grafika i sloty bez zmian (moduły 1-3 bajt w bajt).
 export const reportPortrait: PropFn<{
   caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean; tallStats?: boolean; signatureAbove?: boolean;
-  rulesExtra?: number; slots?: ReportSlotOverrides;
+  rulesExtra?: number; pageExtra?: number; slots?: ReportSlotOverrides;
 }> = ({
   caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
   bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true, tallStats = false,
-  signatureAbove = false, rulesExtra = 0, slots,
+  signatureAbove = false, rulesExtra = 0, pageExtra = 0, slots,
 }, context) => {
   const fit = fitMode(context);
   const extra = fit ? Math.max(0, Math.round(rulesExtra)) : 0;
-  const w = 840, h = 1540 + extra, X = 50;
+  const w = 840, h = 1540 + extra + (fit ? Math.max(0, Math.round(pageExtra)) : 0), X = 50;
   const N = { ...REPORT_LABELS, ...labels };
   const tall = tallStats && fit;
   // Przesunięcie wszystkiego pod polami statystyk (wyższe pola przy `tallStats`); pod sekcją zasad - dodatkowo o `rulesExtra`.
-  const dy = tall ? 40 : 0;
+  // 50: dwa wiersze etykiety przy minimum 16 px na telefonie (pseudo-lokalizacja „[DÖWÖDÝ ~~~]” - 2 × ~47,5 jednostki).
+  const dy = tall ? 50 : 0;
   const dz = dy + extra;
   const lbl = (slot: string, value: string, x: number, y: number, size: number, o: Parameters<typeof t>[4], box: Box) =>
     fit ? fitLabel(context, slot, value, size, box, { fill: o?.fill, bold: o?.bold, anchor: o?.anchor }) : t(x, y, value, size, o);
   const box = (x: number, slot: string, label: string) =>
     `<rect x="${x}" y="250" width="232" height="${120 + dy}" rx="12" fill="#F6F6F4"/>` +
-    lbl(slot, label, x + 20, 284, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: x + 12, y: 254, w: 208, h: 50 + dy });
+    // Przy `tallStats` etykieta prawie na całą szerokość pola (margines 8) - najdłuższe słowo przekładu bez dzielenia.
+    lbl(slot, label, x + 20, 284, 20, { bold: true, fill: P.greyDark, spacing: 2 }, tall ? { x: x + 8, y: 254, w: 216, h: 50 + dy } : { x: x + 12, y: 254, w: 208, h: 50 });
   // Przy dopasowaniu bez woreczków (moduł 3) bez sekcji „dowody rzeczowe” - dół strony wolny na pieczęć i liścik.
   const items = !(fit && bags.length === 0);
-  // Przy dopasowaniu wartości statystyk pod większą etykietą (etykieta do y 304, wartość od 306; przy `tallStats` - etykieta do y 344,
-  // wartość od 346, pole do 410).
-  const statY = tall ? 346 : fit ? 306 : 294, statH = fit ? 60 : 72;
+  // Przy dopasowaniu wartości statystyk pod większą etykietą (etykieta do y 304, wartość od 306; przy `tallStats` - etykieta do y 354,
+  // wartość od 356, pole do 420).
+  const statY = tall ? 306 + dy : fit ? 306 : 294, statH = fit ? 60 : 72;
   return {
     w, h,
     svg:
@@ -829,7 +831,7 @@ export const reportPortrait: PropFn<{
       (ruled ? Array.from({ length: 8 + Math.floor(extra / 50) }, (_, i) => `<line x1="${X}" y1="${500 + dy + i * 50}" x2="${w - X}" y2="${500 + dy + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
       // `signatureAbove` (D-152): etykieta w jednej linii nad linią podpisu, na całą szerokość; linia i slot podpisu pod nią.
       (signatureAbove && fit
-        ? lbl('signature', N.signature, X, 916 + dz, 20, { bold: true, fill: P.greyDark }, { x: X, y: 878 + dz, w: w - 2 * X, h: 50 }) +
+        ? lbl('signature', N.signature, X, 916 + dz, 20, { bold: true, fill: P.greyDark }, { x: X, y: 872 + dz, w: w - 2 * X, h: 56 }) +
           `<line x1="${X}" y1="${982 + dz}" x2="${w - X}" y2="${982 + dz}" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>`
         : lbl('signature', N.signature, X, 940 + dz, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 878 + dz, w: 320, h: 108 }) +
           `<line x1="${X + 330}" y1="${945 + dz}" x2="${w - X}" y2="${945 + dz}" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>`) +

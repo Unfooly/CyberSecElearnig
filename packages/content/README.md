@@ -185,9 +185,11 @@ Odtwarzacz w trybie prostym: każde kliknięcie wyboru i każda karta są ocenia
 blokach (ekran wyniku po zapisie pomijany). Wybór: próby do skutku, „Dalej” po trafieniu, wynik z **pierwszej** próby. Tryb prosty jest
 częścią wersji kursu (`course_versions.simpleMode`) - włączenie go przy tej samej treści tworzy nową wersję.
 
-`SWIPE_SORT` (oceniany, domyślna waga 1, każdy moduł v6): `prompt`, `cards[]` (2-12) `{ id, channel: "sms" | "chat", from, time?, text,
-attachment?, correct: "suspicious" | "ok", feedback (≤ 140) }`, `hint?`; co najmniej jedna karta z każdym werdyktem. Przesunięcie w lewo =
-„Podejrzane”, w prawo = „W porządku”, dwa duże przyciski robią to samo. `correct`, `feedback` i `hint` są sekretem; karty idą do klienta z
+`SWIPE_SORT` (oceniany, domyślna waga 1, każdy moduł v6): `prompt`, `cards[]` (2-12) `{ id, channel: "sms" | "chat" | "situation", from?,
+time?, text, attachment?, correct: "suspicious" | "ok", feedback (≤ 140) }`, `hint?`, `labels?: { suspicious, ok }` (≤ 16 znaków, `Localized`);
+co najmniej jedna karta z każdym werdyktem. Wiadomość (`sms`/`chat`) ma nadawcę `from`; karta-sytuacja (`situation`, D-151) to sam tekst - bez
+`from`, `time` i `attachment`; w bloku jeden rodzaj kart. Przesunięcie w lewo = „Podejrzane”, w prawo = „W porządku” (albo `labels`, np.
+„Zapytaj IT” / „Bezpieczne”), dwa duże przyciski robią to samo. `correct`, `feedback` i `hint` są sekretem; karty idą do klienta z
 nieprzejrzystymi id i przetasowane. Każda karta oceniana raz (`/check`), zapis bloku bez odpowiedzi, wynik = trafione werdykty / karty.
 
 ### Markdown w treści (TABS/SUMMARY/NARRATIVE `text`, TABS `tabs[].content`; teksty kroków BRIEFING to zwykły tekst)

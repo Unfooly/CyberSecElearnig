@@ -3129,13 +3129,15 @@ try {
     const portrait = PORTRAIT_VIEWPORT_NAMES.has(viewport.name);
     // „wysoki” (D-152, telefon w pionie): ceremonia z pionowym raportem wyższym niż 9:16 - grafika podmieniona na 900x1900 (sloty treści w %
     // tej samej grafiki); raport na całą szerokość, przewijany w pionie, ceremonia sama zjeżdża do pieczęci i liściku (z8).
-    for (const mode of portrait ? ['ceremonia', 'końcowe', 'wysoki'] : ['ceremonia', 'końcowe']) {
-      const ceremony = mode !== 'końcowe';
+    // „wysoki-bez-ruchu”: ten sam raport, świeże ukończenie z reduced-motion (bez ceremonii) - widok od razu przy pieczęci i liściku (z8),
+    // bez animacji przewijania (z10).
+    for (const mode of portrait ? ['ceremonia', 'końcowe', 'wysoki', 'wysoki-bez-ruchu'] : ['ceremonia', 'końcowe']) {
+      const ceremony = mode === 'ceremonia' || mode === 'wysoki';
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         hasTouch: true,
         isMobile: viewport.isMobile ?? false,
-        reducedMotion: mode === 'końcowe' ? 'reduce' : 'no-preference',
+        reducedMotion: ceremony ? 'no-preference' : 'reduce',
       });
       const page = await context.newPage();
       const pageErrors = [];
@@ -3170,7 +3172,7 @@ try {
           }),
         }),
       );
-      if (mode === 'wysoki') {
+      if (mode.startsWith('wysoki')) {
         await page.route('**/*raport-pion*.svg', (route) =>
           route.fulfill({
             status: 200,
@@ -3179,7 +3181,7 @@ try {
           }),
         );
       }
-      const label = `${viewport.name} / zamknięcie: ${mode === 'wysoki' ? 'ceremonia (wysoki raport, D-152)' : mode}`;
+      const label = `${viewport.name} / zamknięcie: ${{ wysoki: 'ceremonia (wysoki raport, D-152)', 'wysoki-bez-ruchu': 'reduced-motion (wysoki raport, D-152)' }[mode] ?? mode}`;
       if (ceremony) {
         await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
         // Harness ma jeden blok (bez dowodów w notatniku) - SummaryBlock pokazuje wtedy "Zakończ szkolenie" zamiast "Zakończ sprawę".
@@ -3204,16 +3206,28 @@ try {
         await checkNoPageScroll(page, `${label} (konfetti)`);
         await checkMainSceneFits(page, `${label} (konfetti)`);
         step(`${label}: (z9) konfetti (${pieces} cząstek) bez przewijania`, true);
+      } else if (mode === 'wysoki-bez-ruchu') {
+        await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
+        await page.getByRole('button', { name: /^Zakończ (sprawę|szkolenie)$/ }).click();
       } else {
         await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy&completed=1`);
       }
       await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
+      if (mode === 'wysoki-bez-ruchu') {
+        // (z10) przewinięcie bez animacji: po wczytaniu grafiki ramka od razu w docelowym miejscu - dwa odczyty 80 ms od siebie bez zmiany.
+        await page.waitForFunction(() => (document.querySelector('[data-testid="case-closed-frame"]')?.scrollTop ?? 0) > 0, undefined, { timeout: 5000 });
+        const first = await page.getByTestId('case-closed-frame').evaluate((el) => el.scrollTop);
+        await page.waitForTimeout(80);
+        const second = await page.getByTestId('case-closed-frame').evaluate((el) => el.scrollTop);
+        if (first !== second) fail(`${label}: (z10) przewijanie z animacją przy reduced-motion (scrollTop ${first} → ${second}).`);
+        step(`${label}: (z10) od razu przewinięty (scrollTop ${Math.round(first)}), bez animacji`, true);
+      }
       await page.waitForTimeout(700); // animacje pieczęci/liściku/drgnięcia dobiegają końca
       await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
-      await shot(page, `${viewport.name}-zamkniecie-2-${{ ceremonia: 'po-ceremonii', wysoki: 'po-ceremonii-wysoki' }[mode] ?? 'koncowe'}`);
+      await shot(page, `${viewport.name}-zamkniecie-2-${{ ceremonia: 'po-ceremonii', wysoki: 'po-ceremonii-wysoki', 'wysoki-bez-ruchu': 'wysoki-bez-ruchu' }[mode] ?? 'koncowe'}`);
       if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
       if ((await page.getByTestId('closing-stamp').count()) !== 1 || (await page.getByTestId('closing-note').count()) !== 1) fail(`${label}: brak pieczęci albo liściku w stanie końcowym.`);
-      if (portrait && ceremony) {
+      if (portrait && (ceremony || mode === 'wysoki-bez-ruchu')) {
         // (z8) ceremonia w panoramie sama przesunęła widok (a w pionowym raporcie, D-098, wszystko i tak jest widoczne): pieczęć i liścik w
         // całości w widocznej części ramki.
         const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');

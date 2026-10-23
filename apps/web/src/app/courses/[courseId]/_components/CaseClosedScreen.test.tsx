@@ -394,6 +394,38 @@ describe('CaseClosedScreen: stan końcowy od razu', () => {
     }
   });
 
+  it('D-152 + prefers-reduced-motion: wysoki pionowy raport od razu przewinięty do pieczęci i liściku, bez animacji; powrót - od góry', () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ ...original(query), matches: query.includes('prefers-reduced-motion: reduce') })) as typeof window.matchMedia;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
+    const portrait = { ...closing, portrait: { image: 'scenes/raport-pion.svg', slots: closing.slots } } as CaseClosing;
+    // jsdom nie liczy układu: ramka przewijalna podana wprost, potem wczytanie grafiki 900x1900 (proporcje znane dopiero wtedy).
+    const open = (fresh: boolean) => {
+      const view = renderScreen({ closing: portrait, fresh });
+      const frame = screen.getByTestId('case-closed-frame');
+      Object.defineProperty(frame, 'scrollHeight', { configurable: true, value: 1200 });
+      Object.defineProperty(frame, 'clientHeight', { configurable: true, value: 600 });
+      const scrollTo = vi.fn();
+      frame.scrollTo = scrollTo;
+      const image = screen.getByTestId('case-closed-scene').querySelector('img')!;
+      Object.defineProperty(image, 'naturalWidth', { configurable: true, value: 900 });
+      Object.defineProperty(image, 'naturalHeight', { configurable: true, value: 1900 });
+      fireEvent.load(image);
+      return { view, scrollTo };
+    };
+    try {
+      const fresh = open(true);
+      expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
+      expect(fresh.scrollTo).toHaveBeenCalledTimes(1);
+      expect(fresh.scrollTo).toHaveBeenCalledWith({ top: -16, behavior: 'instant' });
+      fresh.view.unmount();
+
+      expect(open(false).scrollTo).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it('ponowne ukończenie po restarcie (xpGained 0): XP "—" zamiast "+0"', () => {
     renderScreen({ fresh: false, reward: { ...reward, xpGained: 0 } });
     expect(screen.getByTestId('closing-xp')).toHaveTextContent('—');

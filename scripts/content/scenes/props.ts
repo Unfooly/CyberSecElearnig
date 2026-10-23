@@ -2,6 +2,7 @@ import { P } from './palette.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
+import { NASKROTY_PROPS } from './props-naskroty.js';
 import { PROP_REGISTRY } from './prop-registry.js';
 import { fitText } from './text.js';
 import type { PropFn, PropOutput } from './types.js';
@@ -453,5 +454,8 @@ export const PROPS: Record<string, PropFn<any>> = {
   ...HELPDESK_PROPS,
   // Moduł 3 „Łańcuszek” (tryb prosty, D-132): telefon z rozmową na komunikatorze, ekran logowania bez marki, telefon do miniatury.
   ...LANCUSZEK_PROPS,
+  // Moduł 4 „Na skróty” (tryb prosty): laptop, okna darmowych narzędzi (czat AI, dysk w chmurze, dokument), ikona programu, pendrive,
+  // tablica kart skutków - bez słów, napisy w slotach `slot-*`.
+  ...NASKROTY_PROPS,
 };
 Object.assign(PROP_REGISTRY, PROPS);

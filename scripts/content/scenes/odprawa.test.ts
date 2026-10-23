@@ -7,6 +7,7 @@ import { composeScene, composeSceneLocales, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneS
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
+import { NASKROTY_PROPS } from './props-naskroty.js';
 import { PROPS } from './props.js';
 import type { SceneLocale, SceneSpec } from './types.js';
 
@@ -165,7 +166,7 @@ describe('sceny modułu 1 z kompozytora', () => {
   });
 
   it('PROPS: żadna grupa klocków nie nadpisuje innego klocka (nazwy unikalne)', () => {
-    const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS, LANCUSZEK_PROPS];
+    const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS, LANCUSZEK_PROPS, NASKROTY_PROPS];
     const groupNames = groups.flatMap((group) => Object.keys(group));
     expect(new Set(groupNames).size).toBe(groupNames.length);
     // 25 klocków podstawowych zdefiniowanych w props.ts (window…paper, textBox): razem z grupami każda nazwa dokładnie raz.
@@ -395,16 +396,21 @@ describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, modu�
     near('slot-wnioski', tall['slot-wnioski'], { y: base['slot-wnioski'].y, h: base['slot-wnioski'].h + 300 });
     for (const id of ['podpis', 'slot-pieczec', 'slot-liscik']) near(id, tall[id], { y: base[id].y + 300, h: base[id].h });
     expect(PROPS.reportPortrait({ rulesExtra: 300 })).toEqual(PROPS.reportPortrait({}));
+    // `pageExtra`: tylko dłuższa strona - sloty bez zmian.
+    const fitted = (params: Record<string, unknown>) => PROPS.reportPortrait({ bags: [], ...params }, { minFontSize: 12, where: 'test' });
+    expect(fitted({ pageExtra: 90 }).h).toBe(fitted({}).h + 90);
+    expect(fitted({ pageExtra: 90 }).parts).toEqual(fitted({}).parts);
+    expect(PROPS.reportPortrait({ pageExtra: 90 })).toEqual(PROPS.reportPortrait({}));
   });
 
-  it('D-152: reportPortrait `tallStats` - wartości statystyk pod etykietą (od y 346), reszta strony niżej o 40; `signatureAbove` - podpis na całą szerokość', () => {
+  it('D-152: reportPortrait `tallStats` - wartości statystyk pod etykietą (od y 356), reszta strony niżej o 50; `signatureAbove` - podpis na całą szerokość', () => {
     const parts = (params: Record<string, unknown>) => PROPS.reportPortrait(params, { minFontSize: 12, where: 'test' }).parts!;
     const base = parts({}), tall = parts({ tallStats: true, signatureAbove: true });
-    expect(tall['slot-dowody']).toEqual({ x: 50, y: 346, w: 232, h: 60 });
-    // Pole statystyki (rect od y 250, wysokość 160) mieści wartość: 346 + 60 <= 410.
-    expect(tall['slot-dowody'].y + tall['slot-dowody'].h).toBeLessThanOrEqual(410);
-    expect(tall['slot-wnioski']).toEqual({ ...base['slot-wnioski'], y: base['slot-wnioski'].y + 40 });
-    expect(tall['slot-podpis']).toEqual({ x: 50, y: 970, w: 740, h: 50 });
+    expect(tall['slot-dowody']).toEqual({ x: 50, y: 356, w: 232, h: 60 });
+    // Pole statystyki (rect od y 250, wysokość 170) mieści wartość: 356 + 60 <= 420.
+    expect(tall['slot-dowody'].y + tall['slot-dowody'].h).toBeLessThanOrEqual(420);
+    expect(tall['slot-wnioski']).toEqual({ ...base['slot-wnioski'], y: base['slot-wnioski'].y + 50 });
+    expect(tall['slot-podpis']).toEqual({ x: 50, y: 980, w: 740, h: 50 });
     expect(parts({ slots: { 'slot-pieczec': { x: 1, y: 2, w: 3, h: 4 } } })['slot-pieczec']).toEqual({ x: 1, y: 2, w: 3, h: 4 });
   });
 

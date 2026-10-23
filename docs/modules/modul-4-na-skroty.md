@@ -72,6 +72,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 ### 3.4 Bezpieczne czy zapytaj IT? (SWIPE_SORT, `bezpieczne-czy-it`) - z rozszerzeniem schematu (pkt 7.1)
 
 - **Polecenie:** Oceń każdą sytuację: bezpieczne czy najpierw zapytać IT?
+- **Narracja wejścia (`komisarz`, dopisana przy budowie - D-153):** Oto sytuacje z pracy. Przesuń kartę w lewo, jeśli najpierw trzeba
+  zapytać IT, albo w prawo, jeśli to bezpieczne.
 - **Werdykty:** w lewo „Zapytaj IT”, w prawo „Bezpieczne” (dziś na sztywno „Podejrzane” / „W porządku”).
 - **Karty-sytuacje (bez nadawcy i godziny):**
 
@@ -124,15 +126,16 @@ scena zielona w `xx` (pseudo-lokalizacja). Arkusze i zrzuty (pl-PL) do `docs/bra
 
 | grafika | wariant pionowy | tekst wpalony |
 |---|---|---|
-| `odprawa-biurko` (wieczór, laptop „Raport na jutro, 9:00”) | tak | „Raport na jutro, 9:00” |
-| `biurko-bartka` (4 przedmioty) + zbliżenia ekranu czatu i okna dysku | tak | nazwy narzędzi, „Raporty firmowe”; tabela klientów rozmyta (bez danych) |
+| `odprawa` (wieczór, laptop „Raport na jutro, 9:00”) | tak | „Raport na jutro, 9:00” |
+| `biurko-bartka` (4 przedmioty; bez osobnych zbliżeń - tekst w scenie ≥ 16 px na telefonie, D-153) | tak | nazwy narzędzi, prośba w czacie, „Raporty firmowe”; tabela klientów rozmyta (bez danych) |
 | `tablica-skutki` (4 karty) | tak | tytuły czterech kart |
-| `zamkniecie-raport(-pion)`, `zamkniecie-pieczec`, `zamkniecie-liscik` | raport - tak | jak moduł 3 |
+| `zamkniecie-raport(-pion)`, `zamkniecie-pieczec`, `zamkniecie-liscik` | raport - tak (900×1800, przewijany na telefonie - D-152) | jak moduł 3 |
 | `miniatura-na-skroty` | nie | bez tekstu |
 
 ## 5. Nagrania
 
-Lektor `komisarz`: odprawa, narracje wejścia scen, narracja raportu. Odpowiedzi QUIZ i karty - bez nagrań (jak moduł 3).
+Lektor `komisarz` - 7 nagrań: odprawa, narracje wejścia obu scen i SWIPE_SORT, pytania obu QUIZ (jak w module 3 - lektor czyta
+pytanie), narracja raportu. Odpowiedzi QUIZ i karty - bez nagrań (jak moduł 3).
 
 ## 6. Weryfikacja (DoD)
 

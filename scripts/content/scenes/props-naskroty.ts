@@ -16,8 +16,9 @@ const BAR = 80;
 const CORK = '#C89B6D';
 const CORK_EDGE = '#9C7247';
 
-const shadow = (w: number, h: number, rx: number, dx = 10, dy = 14) =>
-  `<rect x="${dx}" y="${dy}" width="${w}" height="${h}" rx="${rx}" fill="${P.ink}" opacity="0.18"/>`;
+/** Cień kształtu; `at` - przesunięcie całego cienia (transform), gdy kształt nie leży w (0,0). */
+const shadow = (w: number, h: number, rx: number, dx = 10, dy = 14, at?: [number, number]) =>
+  `<rect ${at ? `transform="translate(${at[0].toFixed(1)} ${at[1].toFixed(1)})" ` : ''}x="${dx}" y="${dy}" width="${w}" height="${h}" rx="${rx}" fill="${P.ink}" opacity="0.18"/>`;
 
 /** Okno aplikacji: pasek tytułu `bar` wysokości (kolor narzędzia, ikona w kółku - rysowana dla paska 80) i białe wnętrze. */
 const windowFrame = (w: number, h: number, color: string, icon: string, bar: number) =>
@@ -47,7 +48,7 @@ export const laptopFront: PropFn<{ sw?: number; sh?: number; wallpaper?: string;
       `<rect x="${sx}" y="0" width="${sw + 2 * bezel}" height="${top}" rx="26" fill="${P.ink}"/>` +
       `<rect x="${sx + bezel}" y="${bezel}" width="${sw}" height="${sh}" rx="8" fill="${wallpaper}"/>` +
       `<circle cx="${w / 2}" cy="${bezel / 2}" r="5" fill="${P.greyDark}"/>` +
-      // Podstawa (trapez) z wycięciem na otwieranie i portem po lewej.
+      // Podstawa (trapez) z wycięciem na otwieranie i gniazdem z boku (`port`).
       `<path d="M${sx - 10} ${top} h${sw + 2 * bezel + 20} l${over - 10} ${base - 18} a18 18 0 0 1 -16 ${18} h-${w - 32} a18 18 0 0 1 -16 -18 z" fill="${P.grey}"/>` +
       `<rect x="${w / 2 - 110}" y="${top}" width="220" height="16" rx="8" fill="${P.greyDark}"/>` +
       `<rect x="${portX}" y="${top + 20}" width="14" height="26" rx="4" fill="${P.ink}" opacity="0.7"/>`,
@@ -225,14 +226,16 @@ export const effectsBoard: PropFn<{ w?: number; h?: number; cols?: number; gap?:
     const icon = Math.min(iconH, ch * 0.45);
     cards +=
       `<g>` +
-      shadow(cw, ch, 10, 8, 10).replace('<rect ', `<rect transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" `) +
+      shadow(cw, ch, 10, 8, 10, [x, y]) +
       `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" rx="10" fill="${P.white}"/>` +
       `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="18" rx="6" fill="${colors[i]}"/>` +
       `<circle cx="${(x + cw / 2).toFixed(1)}" cy="${(y + 4).toFixed(1)}" r="14" fill="${P.red}"/><circle cx="${(x + cw / 2 - 4).toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${P.white}" opacity="0.7"/>` +
       cardIcon(i, x + cw / 2, y + 40 + icon / 2, icon / 220) +
       `</g>`;
     parts[`karta-${i + 1}`] = { x, y, w: cw, h: ch };
-    parts[`slot-tytul-${i + 1}`] = { x: x + 24, y: y + 60 + icon, w: cw - 48, h: ch - 60 - icon - 30 };
+    const titleH = ch - 60 - icon - 30;
+    if (titleH < 60) throw new Error(`effectsBoard: za niska karta na tytuł (${Math.round(titleH)} j.) - zwiększ "h" albo zmniejsz "iconH"`);
+    parts[`slot-tytul-${i + 1}`] = { x: x + 24, y: y + 60 + icon, w: cw - 48, h: titleH };
   }
   return {
     w, h,

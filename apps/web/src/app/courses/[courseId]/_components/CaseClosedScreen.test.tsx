@@ -407,6 +407,8 @@ describe('CaseClosedScreen: stan końcowy od razu', () => {
       Object.defineProperty(frame, 'clientHeight', { configurable: true, value: 600 });
       const scrollTo = vi.fn();
       frame.scrollTo = scrollTo;
+      // Wysokość raportu 1000 px: cel = 1000 × min(pieczęć 67,7%, liścik 36,6%) - 16 = 350.
+      Object.defineProperty(screen.getByTestId('case-closed-scene'), 'offsetHeight', { configurable: true, value: 1000 });
       const image = screen.getByTestId('case-closed-scene').querySelector('img')!;
       Object.defineProperty(image, 'naturalWidth', { configurable: true, value: 900 });
       Object.defineProperty(image, 'naturalHeight', { configurable: true, value: 1900 });
@@ -417,12 +419,85 @@ describe('CaseClosedScreen: stan końcowy od razu', () => {
       const fresh = open(true);
       expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
       expect(fresh.scrollTo).toHaveBeenCalledTimes(1);
-      expect(fresh.scrollTo).toHaveBeenCalledWith({ top: -16, behavior: 'instant' });
+      expect(fresh.scrollTo).toHaveBeenCalledWith({ top: 350, behavior: 'instant' });
       fresh.view.unmount();
 
       expect(open(false).scrollTo).not.toHaveBeenCalled();
     } finally {
       window.matchMedia = original;
+    }
+  });
+
+  it('D-152 + reduced-motion włączone w trakcie: wysoki raport od razu przy pieczęci (raz); po zwykłej ceremonii - bez drugiego przewinięcia', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
+    __setGestureSeenForTests(true);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
+    // Ustawienie „ogranicz ruch” przełączane w trakcie (nasłuch zmian jak w usePrefersReducedMotion).
+    const original = window.matchMedia;
+    let reduce = false;
+    const listeners = new Set<() => void>();
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      get matches() {
+        return query.includes('prefers-reduced-motion: reduce') && reduce;
+      },
+      addEventListener: (_: string, listener: () => void) => void listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => void listeners.delete(listener),
+    })) as unknown as typeof window.matchMedia;
+    const toggle = (value: boolean) =>
+      act(() => {
+        reduce = value;
+        listeners.forEach((listener) => listener());
+      });
+    const advance = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+    const portrait = { ...closing, portrait: { image: 'scenes/raport-pion.svg', slots: closing.slots } } as CaseClosing;
+    const open = () => {
+      const view = renderScreen({ closing: portrait });
+      const frame = screen.getByTestId('case-closed-frame');
+      Object.defineProperty(frame, 'scrollHeight', { configurable: true, value: 1200 });
+      Object.defineProperty(frame, 'clientHeight', { configurable: true, value: 600 });
+      const scrollTo = vi.fn();
+      frame.scrollTo = scrollTo;
+      Object.defineProperty(screen.getByTestId('case-closed-scene'), 'offsetHeight', { configurable: true, value: 1000 });
+      const image = screen.getByTestId('case-closed-scene').querySelector('img')!;
+      Object.defineProperty(image, 'naturalWidth', { configurable: true, value: 900 });
+      Object.defineProperty(image, 'naturalHeight', { configurable: true, value: 1900 });
+      fireEvent.load(image);
+      return { view, scrollTo };
+    };
+    try {
+      // W trakcie ceremonii (etap wniosków): włączenie - stan końcowy i od razu przy pieczęci, bez animacji; ponowne przełączenie nic nie robi.
+      const during = open();
+      advance(1300);
+      expect(during.scrollTo).not.toHaveBeenCalled();
+      toggle(true);
+      expect(screen.getByTestId('case-closed')).toHaveAttribute('data-stage', 'done');
+      expect(during.scrollTo).toHaveBeenCalledWith({ top: 350, behavior: 'instant' });
+      toggle(false);
+      toggle(true);
+      expect(during.scrollTo).toHaveBeenCalledTimes(1);
+      during.view.unmount();
+
+      // Zwykła ceremonia (zjazd płynny po podpisie), potem włączenie - bez drugiego przewinięcia.
+      toggle(false);
+      const after = open();
+      advance(1300);
+      for (let i = 0; i < 60; i += 1) advance(250);
+      fireEvent.click(screen.getByRole('button', { name: 'Podpisz raport' }));
+      advance(600);
+      expect(after.scrollTo).toHaveBeenCalledWith({ top: 350, behavior: 'smooth' });
+      advance(2000);
+      toggle(true);
+      expect(after.scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = original;
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      __setGestureSeenForTests(false);
     }
   });
 

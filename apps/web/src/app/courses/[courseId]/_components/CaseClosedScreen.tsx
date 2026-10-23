@@ -420,9 +420,13 @@ export default function CaseClosedScreen({
 
   // Świeże ukończenie z reduced-motion (bez ceremonii - podpis, pieczęć i liścik od razu, także po wyłączeniu ruchu w trakcie): widok od
   // razu przy pieczęci i liściku, bez animacji przewijania - jak po podpisie w ceremonii. Powrót do ukończonego kursu - raport od góry.
-  // Uruchamia się, gdy znane są proporcje grafiki (tallPortrait po wczytaniu).
+  // Uruchamia się, gdy znane są proporcje grafiki (tallPortrait po wczytaniu) - raz na montowanie: obrót telefonu (pion → poziom → pion)
+  // albo włączenie ograniczenia po zwykłej ceremonii nie zabiera pozycji komuś, kto przewinął raport.
+  const instantScrollDone = useRef(false);
   useEffect(() => {
-    if (fresh && closing && !ceremony && tallPortrait) scrollToStampAndNote('instant');
+    if (instantScrollDone.current || !(fresh && closing && !ceremony && tallPortrait)) return;
+    instantScrollDone.current = true;
+    scrollToStampAndNote('instant');
     // scrollToStampAndNote czyta bieżące refy i sloty; wystarczy moment, w którym raport staje się wysoki albo ceremonia się kończy.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh, ceremony, tallPortrait]);
@@ -441,6 +445,8 @@ export default function CaseClosedScreen({
         // clientHeight także w panoramie, a drugi scrollTo przerwałby przesuwanie w poziomie. tallPortrait z chwili podpisu (grafika dawno
         // wczytana); zależności efektu - patrz niżej.
         if (tallPortrait) {
+          // Widok już przy pieczęci - późniejsze włączenie „ogranicz ruch” nie przewija drugi raz.
+          instantScrollDone.current = true;
           scrollToStampAndNote('smooth');
         } else if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && slots) {
           frame.scrollTo?.({ left: scene.offsetLeft + (scene.offsetWidth * slots.stamp.x) / 100 - 16, behavior: 'smooth' });

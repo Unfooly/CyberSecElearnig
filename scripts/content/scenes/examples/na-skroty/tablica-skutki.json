@@ -1,0 +1,33 @@
+{
+ "width": 1600,
+ "height": 1000,
+ "phone": "panorama",
+ "minTextPx": 16,
+ "background": {
+  "flat": true,
+  "wall": "#E3E6F5"
+ },
+ "strings": {
+  "pl": {
+   "dane": "Dane firmy u obcej firmy",
+   "wirus": "Wirus w pakiecie",
+   "prawo": "Problem prawny firmy",
+   "pliki": "Utrata plików"
+  }
+ },
+ "items": [
+  {
+   "id": "tablica",
+   "prop": "effectsBoard",
+   "x": 40,
+   "y": 40,
+   "pad": 0,
+   "partHotspots": { "karta-1": "dane", "karta-2": "wirus", "karta-3": "prawo", "karta-4": "pliki" },
+   "params": { "w": 1520, "h": 920, "cols": 4, "iconH": 300 }
+  },
+  {"id":"tekst-dane","prop":"textBox","x":130,"y":466,"evidence":"dane","params":{"w":272,"h":398,"text":{"$t":"dane"},"size":46,"align":"middle","valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-wirus","prop":"textBox","x":486,"y":466,"evidence":"wirus","params":{"w":272,"h":398,"text":{"$t":"wirus"},"size":46,"align":"middle","valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-prawo","prop":"textBox","x":842,"y":466,"evidence":"prawo","params":{"w":272,"h":398,"text":{"$t":"prawo"},"size":46,"align":"middle","valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-pliki","prop":"textBox","x":1198,"y":466,"evidence":"pliki","params":{"w":272,"h":398,"text":{"$t":"pliki"},"size":46,"align":"middle","valign":"middle","bold":true,"color":"#2B2440"}}
+ ]
+}

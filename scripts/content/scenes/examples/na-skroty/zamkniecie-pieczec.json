@@ -1,0 +1,28 @@
+{
+ "width": 420,
+ "height": 260,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "phoneWidth": 210,
+ "minTextPx": 16,
+ "strings": {
+  "pl": {
+   "pieczec": "SPRAWA ZAMKNIĘTA"
+  }
+ },
+ "items": [
+  {
+   "id": "pieczec",
+   "prop": "closedStamp",
+   "x": 0,
+   "y": 0,
+   "evidence": "pieczec",
+   "params": {
+    "layout": "compact",
+    "text": { "$t": "pieczec" }
+   }
+  }
+ ]
+}

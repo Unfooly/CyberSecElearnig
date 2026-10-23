@@ -216,6 +216,9 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 | `wideo-kasi.test`, `szybkapaczka.test` | domeny w wiadomościach (link do „filmu”, dopłata) | 3 `lancuszek` | `.test` - zarezerwowane (RFC 2606), bezpieczne |
 | +48 500 XXX XXX | numer w wiadomości „nowy numer” | 3 `lancuszek` | zamaskowany (X) - nie jest prawdziwym numerem |
 | komunikator, ekran logowania | interfejsy w grafikach | 3 `lancuszek` | generyczne, bez logo i nazwy aplikacji/serwisu |
+| Bartek Lis | postać (fikcyjna) | 4 `na-skroty` | fikcyjna; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
+| CzatPomocnik, MojaChmura, PDF Zamiennik Free | darmowe narzędzia w fabule (czat AI, dysk w chmurze, program do PDF) | 4 `na-skroty` | fikcyjne; do sprawdzenia przez właściciela (wyszukiwarka, rejestr znaków towarowych); w grafikach bez logo, ikony z kompozytora |
+| „Darmowy VPN”, NSK/2026/1023 | opis rozszerzenia (nazwa rodzajowa), sygnatura sprawy | 4 `na-skroty` | rodzajowa / wymyślona - bezpieczne |
 
 ## 9. Zakazy (D-108)
 

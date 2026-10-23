@@ -1,0 +1,25 @@
+{
+ "width": 1600,
+ "height": 900,
+ "phone": "panorama",
+ "minTextPx": 16,
+ "background": {
+  "flat": true,
+  "wall": "#B89C7A"
+ },
+ "strings": {
+  "pl": {
+   "raport": "Raport na jutro, 9:00"
+  }
+ },
+ "items": [
+  { "id": "sloje", "prop": "woodGrain", "x": 0, "y": 0, "params": { "w": 1600, "h": 900 } },
+  { "id": "swiatlo", "prop": "lampGlow", "x": 0, "y": 0, "params": { "w": 1600, "h": 900, "cx": 800, "cy": 400, "r": 760 } },
+  { "id": "kubek", "prop": "mugTop", "x": 1330, "y": 640, "scale": 1.2 },
+  { "id": "okulary", "prop": "glassesTop", "x": 70, "y": 700 },
+  { "id": "laptop", "prop": "laptopFront", "x": 260, "y": 110, "params": { "sw": 900, "sh": 520, "wallpaper": "#3B2F8F" } },
+  { "id": "dokument", "prop": "docWindow", "x": 390, "y": 170, "params": { "w": 820, "h": 460, "titleH": 150 } },
+  {"id":"tekst-raport","prop":"textBox","x":440,"y":280,"params":{"w":720,"h":150,"text":{"$t":"raport"},"size":64,"valign":"middle","bold":true,"color":"#2B2440"}},
+  { "id": "winieta", "prop": "vignette", "x": 0, "y": 0, "params": { "w": 1600, "h": 900, "strength": 0.82 } }
+ ]
+}

@@ -410,6 +410,27 @@ export default function CaseClosedScreen({
     return () => window.clearTimeout(timer);
   }, [stage, typedChars, totalChars, lessons]);
 
+  // Wysoki pionowy raport (D-152, przewijany w pionie): widok do wyżej położonego z pieczęci i liściku.
+  function scrollToStampAndNote(behavior: ScrollBehavior) {
+    const frame = frameRef.current;
+    const scene = sceneRef.current;
+    if (!frame || !scene || !slots || frame.scrollHeight <= frame.clientHeight + 1) return;
+    frame.scrollTo?.({ top: scene.offsetTop + (scene.offsetHeight * Math.min(slots.stamp.y, slots.note.y)) / 100 - 16, behavior });
+  }
+
+  // Świeże ukończenie z reduced-motion (bez ceremonii - podpis, pieczęć i liścik od razu, także po wyłączeniu ruchu w trakcie): widok od
+  // razu przy pieczęci i liściku, bez animacji przewijania - jak po podpisie w ceremonii. Powrót do ukończonego kursu - raport od góry.
+  // Uruchamia się, gdy znane są proporcje grafiki (tallPortrait po wczytaniu) - raz na montowanie: obrót telefonu (pion → poziom → pion)
+  // albo włączenie ograniczenia po zwykłej ceremonii nie zabiera pozycji komuś, kto przewinął raport.
+  const instantScrollDone = useRef(false);
+  useEffect(() => {
+    if (instantScrollDone.current || !(fresh && closing && !ceremony && tallPortrait)) return;
+    instantScrollDone.current = true;
+    scrollToStampAndNote('instant');
+    // scrollToStampAndNote czyta bieżące refy i sloty; wystarczy moment, w którym raport staje się wysoki albo ceremonia się kończy.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh, ceremony, tallPortrait]);
+
   useEffect(() => {
     if (stage === 'sign') signRef.current?.focus();
     if (stage === 'signing') {
@@ -420,13 +441,13 @@ export default function CaseClosedScreen({
         // Panorama (telefon w pionie): widok przesuwa się na prawą kartkę, gdzie spada pieczęć i wlatuje liścik. Poza panoramą no-op.
         const frame = frameRef.current;
         const scene = sceneRef.current;
-        // Wysoki pionowy raport (D-152, przewijany w pionie): widok zjeżdża do pieczęci i liściku. Rozłącznie z panoramą - wystające
-        // elementy dają scrollHeight > clientHeight także w panoramie, a drugi scrollTo przerwałby przesuwanie w poziomie.
-        // tallPortrait z chwili podpisu (grafika dawno wczytana); zależności efektu - patrz niżej.
-        if (frame && scene && slots && tallPortrait) {
-          if (frame.scrollHeight > frame.clientHeight + 1) {
-            frame.scrollTo?.({ top: scene.offsetTop + (scene.offsetHeight * Math.min(slots.stamp.y, slots.note.y)) / 100 - 16, behavior: 'smooth' });
-          }
+        // Wysoki pionowy raport (D-152): zjazd do pieczęci i liściku. Rozłącznie z panoramą - wystające elementy dają scrollHeight >
+        // clientHeight także w panoramie, a drugi scrollTo przerwałby przesuwanie w poziomie. tallPortrait z chwili podpisu (grafika dawno
+        // wczytana); zależności efektu - patrz niżej.
+        if (tallPortrait) {
+          // Widok już przy pieczęci - późniejsze włączenie „ogranicz ruch” nie przewija drugi raz.
+          instantScrollDone.current = true;
+          scrollToStampAndNote('smooth');
         } else if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && slots) {
           frame.scrollTo?.({ left: scene.offsetLeft + (scene.offsetWidth * slots.stamp.x) / 100 - 16, behavior: 'smooth' });
         }

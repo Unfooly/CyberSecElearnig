@@ -1,0 +1,570 @@
+{
+  "schemaVersion": 6,
+  "slug": "na-skroty",
+  "title": "Na skróty",
+  "subtitle": "Darmowe narzędzia z internetu w pracy - czym jest shadow IT i co może pójść nie tak",
+  "category": "IT_HYGIENE",
+  "level": "basic",
+  "durationMinutes": 7,
+  "mandatory": true,
+  "simpleMode": true,
+  "locales": [
+    "pl"
+  ],
+  "objectives": [
+    "Wiedzieć, czym jest shadow IT: narzędzie do pracy, którego firma nie sprawdziła i nie zatwierdziła.",
+    "Znać skutki: dane firmy u obcej firmy, złośliwe dodatki, naruszenie danych osobowych, utrata plików.",
+    "Przed użyciem nowego programu, strony albo AI zapytać IT.",
+    "Gdy coś poszło nie tak - od razu zgłosić to do IT."
+  ],
+  "thumbnail": "assets/na-skroty/miniatura-na-skroty.1db1bbe9.svg",
+  "blocks": [
+    {
+      "id": "odprawa",
+      "type": "BRIEFING",
+      "title": "Odprawa",
+      "steps": [
+        {
+          "kind": "typewriter",
+          "text": "Wieczór przed ważnym spotkaniem. Bartek Lis z marketingu ma do rana przygotować raport. Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu. Takie skróty mają swoją nazwę: shadow IT. Zobacz, czego użył.",
+          "cta": "Zobacz biurko Bartka",
+          "narration": {
+            "voice": "komisarz",
+            "text": "Wieczór przed ważnym spotkaniem. Bartek Lis z marketingu ma do rana przygotować raport. Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu. Takie skróty mają swoją nazwę: shadow IT. Zobacz, czego użył.",
+            "audioUrl": "audio/na-skroty/v1/odprawa/d2d92051ac7fa472.mp3",
+            "durationMs": 16069,
+            "cues": [
+              {
+                "text": "Wieczór przed ważnym spotkaniem.",
+                "startMs": 0
+              },
+              {
+                "text": "Bartek Lis z marketingu ma do rana przygotować raport.",
+                "startMs": 2078
+              },
+              {
+                "text": "Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu.",
+                "startMs": 6107
+              },
+              {
+                "text": "Takie skróty mają swoją nazwę: shadow IT.",
+                "startMs": 11146
+              },
+              {
+                "text": "Zobacz, czego użył.",
+                "startMs": 14524
+              }
+            ]
+          },
+          "image": "assets/na-skroty/scenes/pl/odprawa.14c30f4c.svg",
+          "alt": "Wieczór, biurko w świetle lampki: otwarty laptop z dokumentem „Raport na jutro, 9:00”, obok kubek kawy i okulary.",
+          "portrait": {
+            "image": "assets/na-skroty/scenes/pl/odprawa-pion.1ebeaf28.svg"
+          }
+        }
+      ]
+    },
+    {
+      "id": "biurko",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Co to jest shadow IT",
+      "tip": "Wskaż cztery narzędzia, których Bartek użył bez wiedzy IT.",
+      "narration": {
+        "voice": "komisarz",
+        "text": "Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła.",
+        "audioUrl": "audio/na-skroty/v1/biurko/7b5b44b3771d5fbe.mp3",
+        "durationMs": 7988,
+        "cues": [
+          {
+            "text": "Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła.",
+            "startMs": 0
+          }
+        ]
+      },
+      "image": "assets/na-skroty/scenes/pl/biurko-bartka.5b172dab.svg",
+      "imageAlt": "Laptop Bartka: okno czatu AI „CzatPomocnik” z prośbą „Uporządkuj tabelę klientów” i wklejoną, rozmytą tabelą, okno dysku „MojaChmura” z folderem „Raporty firmowe”, ikona programu „PDF Zamiennik Free” na pulpicie i pomarańczowy pendrive w porcie z prawej strony laptopa.",
+      "imagePortrait": "assets/na-skroty/scenes/pl/biurko-bartka-pion.5ab9e43e.svg",
+      "portraitHotspots": [
+        {
+          "id": "czat",
+          "x": 20,
+          "y": 5,
+          "width": 68.9,
+          "height": 32.5
+        },
+        {
+          "id": "chmura",
+          "x": 20,
+          "y": 39.4,
+          "width": 68.9,
+          "height": 20
+        },
+        {
+          "id": "program",
+          "x": 20,
+          "y": 60.6,
+          "width": 68.9,
+          "height": 10.9
+        },
+        {
+          "id": "pendrive",
+          "x": 0,
+          "y": 71.6,
+          "width": 26.7,
+          "height": 12.5
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "czat",
+          "label": "CzatPomocnik",
+          "x": 8.1,
+          "y": 8,
+          "width": 41.3,
+          "height": 60,
+          "content": "Bartek wkleił do darmowego czatu AI tabelę z danymi klientów. Te dane są teraz na serwerach obcej firmy.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Dane klientów wklejone do darmowego czatu AI.",
+            "kind": "web"
+          }
+        },
+        {
+          "id": "chmura",
+          "label": "MojaChmura",
+          "x": 51.9,
+          "y": 8,
+          "width": 30,
+          "height": 36,
+          "content": "Folder „Raporty firmowe” leży na prywatnym dysku w chmurze. Firma nie ma do niego dostępu ani kopii zapasowej.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Firmowe raporty na prywatnym dysku w chmurze.",
+            "kind": "web"
+          }
+        },
+        {
+          "id": "program",
+          "label": "PDF Zamiennik Free",
+          "x": 51.6,
+          "y": 48.6,
+          "width": 16.3,
+          "height": 29,
+          "content": "Program ściągnięty z internetu. Nikt w firmie go nie sprawdził - może mieć ukryte dodatki.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Program z internetu, którego nikt nie sprawdził.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "pendrive",
+          "label": "Pendrive",
+          "x": 83.9,
+          "y": 74.5,
+          "width": 13.8,
+          "height": 22,
+          "content": "Prywatny pendrive w firmowym laptopie. Nie wiadomo, co na nim jest, a firmowe pliki łatwo z nim zgubić.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Prywatny pendrive w firmowym laptopie.",
+            "kind": "item"
+          }
+        }
+      ]
+    },
+    {
+      "id": "skutki",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Co może pójść nie tak",
+      "tip": "Otwórz każdą z czterech kart.",
+      "narration": {
+        "voice": "komisarz",
+        "text": "Każdy taki skrót może kosztować więcej, niż daje. Sprawdź wszystkie cztery karty.",
+        "audioUrl": "audio/na-skroty/v1/skutki/049ef6be71bf7ed9.mp3",
+        "durationMs": 5155,
+        "cues": [
+          {
+            "text": "Każdy taki skrót może kosztować więcej, niż daje.",
+            "startMs": 0
+          },
+          {
+            "text": "Sprawdź wszystkie cztery karty.",
+            "startMs": 3286
+          }
+        ]
+      },
+      "image": "assets/na-skroty/scenes/pl/tablica-skutki.4d306a63.svg",
+      "imageAlt": "Tablica korkowa z czterema kartami: „Dane firmy u obcej firmy”, „Wirus w pakiecie”, „Problem prawny firmy” i „Utrata plików”.",
+      "imagePortrait": "assets/na-skroty/scenes/pl/tablica-skutki-pion.901adff3.svg",
+      "portraitHotspots": [
+        {
+          "id": "dane",
+          "x": 9.6,
+          "y": 10.4,
+          "width": 38.8,
+          "height": 38.7
+        },
+        {
+          "id": "wirus",
+          "x": 51.7,
+          "y": 10.4,
+          "width": 38.8,
+          "height": 38.7
+        },
+        {
+          "id": "prawo",
+          "x": 9.6,
+          "y": 50.9,
+          "width": 38.8,
+          "height": 38.7
+        },
+        {
+          "id": "pliki",
+          "x": 51.7,
+          "y": 50.9,
+          "width": 38.8,
+          "height": 38.7
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "dane",
+          "label": "Dane firmy u obcej firmy",
+          "x": 6.6,
+          "y": 10.6,
+          "width": 20,
+          "height": 78.8,
+          "content": "To, co wkleisz do darmowego narzędzia, trafia na cudze serwery; nie wiesz, kto ma do tego dostęp i czy narzędzie się na tym nie uczy.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Skutek: dane z darmowego narzędzia trafiają na cudze serwery.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "wirus",
+          "label": "Wirus w pakiecie",
+          "x": 28.9,
+          "y": 10.6,
+          "width": 20,
+          "height": 78.8,
+          "content": "Darmowe programy i rozszerzenia z internetu często mają ukryte złośliwe dodatki.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Skutek: darmowy program może mieć złośliwy dodatek.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "prawo",
+          "label": "Problem prawny firmy",
+          "x": 51.1,
+          "y": 10.6,
+          "width": 20,
+          "height": 78.8,
+          "content": "Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Skutek: naruszenie danych osobowych - zgłoszenie do UODO w 72 godziny.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "pliki",
+          "label": "Utrata plików",
+          "x": 73.4,
+          "y": 10.6,
+          "width": 20,
+          "height": 78.8,
+          "content": "Prywatne konto nie ma firmowej kopii zapasowej; gdy konto zniknie albo pracownik odejdzie, pliki przepadają.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Skutek: pliki na prywatnym koncie mogą przepaść.",
+            "kind": "item"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bezpieczne-czy-it",
+      "type": "SWIPE_SORT",
+      "title": "Bezpieczne czy zapytaj IT?",
+      "prompt": "Oceń każdą sytuację: bezpieczne czy najpierw zapytać IT?",
+      "labels": {
+        "suspicious": "Zapytaj IT",
+        "ok": "Bezpieczne"
+      },
+      "narration": {
+        "voice": "komisarz",
+        "text": "Oto sytuacje z pracy. Przesuń kartę w lewo, jeśli najpierw trzeba zapytać IT, albo w prawo, jeśli to bezpieczne.",
+        "audioUrl": "audio/na-skroty/v1/bezpieczne-czy-it/13de8f9627898319.mp3",
+        "durationMs": 7941,
+        "cues": [
+          {
+            "text": "Oto sytuacje z pracy.",
+            "startMs": 0
+          },
+          {
+            "text": "Przesuń kartę w lewo, jeśli najpierw trzeba zapytać IT, albo w prawo, jeśli to bezpieczne.",
+            "startMs": 1753
+          }
+        ]
+      },
+      "cards": [
+        {
+          "id": "umowa",
+          "channel": "situation",
+          "text": "Wklejam umowę z klientem do darmowego czatu AI, żeby ją streścić.",
+          "correct": "suspicious",
+          "feedback": "Umowa trafiłaby na serwery obcej firmy. Do dokumentów używaj narzędzi zatwierdzonych przez IT."
+        },
+        {
+          "id": "dysk",
+          "channel": "situation",
+          "text": "Zapisuję raport na firmowym dysku.",
+          "correct": "ok",
+          "feedback": "Tak - firmowy dysk ma kopię zapasową, a dostęp mają tylko osoby z firmy."
+        },
+        {
+          "id": "konwerter",
+          "channel": "situation",
+          "text": "Zamieniam listę płac na PDF w darmowym konwerterze online.",
+          "correct": "suspicious",
+          "feedback": "Lista płac to dane osobowe - nie wysyłaj jej na obce strony. IT wskaże firmowe narzędzie."
+        },
+        {
+          "id": "vpn",
+          "channel": "situation",
+          "text": "Instaluję w przeglądarce rozszerzenie „Darmowy VPN”.",
+          "correct": "suspicious",
+          "feedback": "Takie rozszerzenie widzi wszystko, co robisz w przeglądarce. Zapytaj IT przed instalacją."
+        },
+        {
+          "id": "katalog",
+          "channel": "situation",
+          "text": "Instaluję program z firmowego katalogu aplikacji.",
+          "correct": "ok",
+          "feedback": "Tak - programy z firmowego katalogu IT już sprawdziło."
+        },
+        {
+          "id": "prywatna-poczta",
+          "channel": "situation",
+          "text": "Wysyłam plik z ofertą na prywatną skrzynkę, żeby skończyć w domu.",
+          "correct": "suspicious",
+          "feedback": "Prywatna poczta to już poza firmą. Zapytaj IT o bezpieczny dostęp z domu."
+        }
+      ],
+      "hint": "Czy firma sprawdziła to narzędzie? Jeśli nie - zapytaj IT."
+    },
+    {
+      "id": "brak-programu",
+      "type": "QUIZ",
+      "title": "Programu nie ma na liście firmowej",
+      "prompt": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu - co robisz?",
+      "narration": {
+        "voice": "komisarz",
+        "text": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu. Co robisz?",
+        "audioUrl": "audio/na-skroty/v1/brak-programu/1b542188d4658abc.mp3",
+        "durationMs": 5108,
+        "cues": [
+          {
+            "text": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu.",
+            "startMs": 0
+          },
+          {
+            "text": "Co robisz?",
+            "startMs": 4226
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Pobieram pierwszy darmowy program, jaki znajdę w internecie.",
+          "correct": false,
+          "feedback": "Darmowe programy z internetu bywają z ukrytymi dodatkami - firma nie wie, co instalujesz."
+        },
+        {
+          "text": "Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.",
+          "correct": true,
+          "feedback": "Tak - IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć."
+        },
+        {
+          "text": "Proszę kolegę, żeby zainstalował mi swój program.",
+          "correct": false,
+          "feedback": "To nadal program, którego nikt nie sprawdził - decyzję zostaw IT."
+        }
+      ],
+      "hint": "Kto w firmie sprawdza i zatwierdza programy?"
+    },
+    {
+      "id": "juz-wklejone",
+      "type": "QUIZ",
+      "title": "Dane już wklejone",
+      "prompt": "Dane klientów trafiły już do darmowego czatu AI - co teraz?",
+      "narration": {
+        "voice": "komisarz",
+        "text": "Dane klientów trafiły już do darmowego czatu AI. Co teraz?",
+        "audioUrl": "audio/na-skroty/v1/juz-wklejone/ebd6867505cc1cff.mp3",
+        "durationMs": 4040,
+        "cues": [
+          {
+            "text": "Dane klientów trafiły już do darmowego czatu AI.",
+            "startMs": 0
+          },
+          {
+            "text": "Co teraz?",
+            "startMs": 3216
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Kasuję historię rozmowy i nic nie mówię.",
+          "correct": false,
+          "feedback": "Skasowanie historii u siebie nie usuwa danych z serwerów narzędzia."
+        },
+        {
+          "text": "Od razu zgłaszam to do IT.",
+          "correct": true,
+          "feedback": "Tak - liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki."
+        },
+        {
+          "text": "Czekam, czy coś się stanie.",
+          "correct": false,
+          "feedback": "Jeśli to dane osobowe, firma ma 72 godziny na zgłoszenie naruszenia - czekanie zabiera ten czas."
+        }
+      ],
+      "hint": "Im szybciej IT się dowie, tym więcej da się zrobić."
+    },
+    {
+      "id": "raport",
+      "type": "SUMMARY",
+      "title": "Raport",
+      "narration": {
+        "voice": "komisarz",
+        "text": "Raport gotowy na czas, a dane zostały w firmie. Bartek zgłosił IT, czego potrzebuje, i dostał bezpieczne narzędzia.",
+        "audioUrl": "audio/na-skroty/v1/raport/04f7b42b80aa2370.mp3",
+        "durationMs": 7245,
+        "cues": [
+          {
+            "text": "Raport gotowy na czas, a dane zostały w firmie.",
+            "startMs": 0
+          },
+          {
+            "text": "Bartek zgłosił IT, czego potrzebuje, i dostał bezpieczne narzędzia.",
+            "startMs": 3274
+          }
+        ]
+      },
+      "text": "Bartek zgłosił do IT program do PDF i dane wklejone do czatu. IT pomogło ograniczyć skutki, a do raportu znalazło firmowe narzędzia. Następnym razem Bartek zacznie od pytania.\n\n**Trzy zasady**\n\n1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.\n2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI.\n3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.",
+      "closing": {
+        "image": "assets/na-skroty/scenes/pl/zamkniecie-raport.7c4178d9.svg",
+        "stamp": "assets/na-skroty/scenes/pl/zamkniecie-pieczec.eb11c289.svg",
+        "note": "assets/na-skroty/scenes/pl/zamkniecie-liscik.5b32f360.svg",
+        "alt": "Raport, sprawa NSK/2026/1023 „Na skróty”. Zasady: 1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie. 2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI. 3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.",
+        "stampAlt": "Pieczęć: SPRAWA ZAMKNIĘTA.",
+        "noteAlt": "Liścik komisarza: Najpierw zapytaj IT. — A.W.",
+        "slots": {
+          "evidence": {
+            "x": 8.8,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "time": {
+            "x": 21.5,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "xp": {
+            "x": 34.2,
+            "y": 34.8,
+            "w": 11.7,
+            "h": 6.8
+          },
+          "lessons": {
+            "x": 8.8,
+            "y": 50.7,
+            "w": 37.1,
+            "h": 29.3
+          },
+          "signature": {
+            "x": 8.8,
+            "y": 85.2,
+            "w": 37.1,
+            "h": 5.4
+          },
+          "stamp": {
+            "x": 58.3,
+            "y": 54.9,
+            "w": 28.9,
+            "h": 31.8
+          },
+          "note": {
+            "x": 54.1,
+            "y": 19.4,
+            "w": 37.1,
+            "h": 28.8
+          }
+        },
+        "portrait": {
+          "image": "assets/na-skroty/scenes/pl/zamkniecie-raport-pion.6ec63cb2.svg",
+          "slots": {
+            "evidence": {
+              "x": 8,
+              "y": 21,
+              "w": 25.8,
+              "h": 3.3
+            },
+            "time": {
+              "x": 35.8,
+              "y": 21,
+              "w": 25.8,
+              "h": 3.3
+            },
+            "xp": {
+              "x": 63.6,
+              "y": 21,
+              "w": 25.8,
+              "h": 3.3
+            },
+            "lessons": {
+              "x": 8,
+              "y": 29.1,
+              "w": 82.2,
+              "h": 30
+            },
+            "signature": {
+              "x": 8,
+              "y": 62.3,
+              "w": 82.2,
+              "h": 2.8
+            },
+            "stamp": {
+              "x": 14.7,
+              "y": 81.8,
+              "w": 68.9,
+              "h": 15
+            },
+            "note": {
+              "x": 6.9,
+              "y": 67.1,
+              "w": 84.4,
+              "h": 13.9
+            }
+          }
+        }
+      }
+    }
+  ]
+}

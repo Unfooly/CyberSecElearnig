@@ -7,8 +7,8 @@ import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
 import { useSimpleCheck } from './simple-check';
 import { SimpleError, SimpleFeedback, SimpleHint } from './SimpleFeedback';
 
-// Segregowanie wiadomości (SWIPE_SORT, D-132): po jednej karcie-wiadomości (SMS albo komunikator). Przesunięcie w lewo = „Podejrzane”,
-// w prawo = „W porządku”; dwa duże przyciski pod kartą robią to samo (klawiatura, czytnik ekranu, osoby, którym gest sprawia trudność).
+// Segregowanie wiadomości (SWIPE_SORT, D-132): po jednej karcie-wiadomości (SMS albo komunikator) albo karcie-sytuacji (sam tekst, D-151).
+// Przesunięcie w lewo = „Podejrzane”, w prawo = „W porządku” (albo własne etykiety z treści, D-151); dwa duże przyciski pod kartą robią to samo (klawiatura, czytnik ekranu, osoby, którym gest sprawia trudność).
 // Werdykt każdej karty sprawdza serwer (/check) - od razu „Dobrze”/„Nie tym razem” i zdanie z treści; po 2 błędach podpowiedź. Karty mają
 // id nieprzejrzyste i kolejność z serwera; klient nie zna poprawnych werdyktów. „Dalej” w pasku po ocenie wszystkich kart. Bez wyniku w bloku.
 
@@ -16,9 +16,15 @@ const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:
 /** Przesunięcie (px), od którego puszczona karta liczy się jako werdykt - albo ćwierć szerokości karty, jeśli to więcej. */
 export const SWIPE_THRESHOLD_PX = 80;
 
-const VERDICT_LABEL: Record<SwipeVerdict, string> = { suspicious: 'Podejrzane', ok: 'W porządku' };
+// Domyślne etykiety werdyktów (moduł 3); treść może podać własne (`labels`, D-151 - np. „Zapytaj IT” / „Bezpieczne”).
+export const DEFAULT_VERDICT_LABEL: Record<SwipeVerdict, string> = { suspicious: 'Podejrzane', ok: 'W porządku' };
+
+/** Opis karty dla czytnika i licznika: wiadomość - nadawca, sytuacja (D-151) - numer. */
+const cardName = (card: SwipeCard, position: number) => (card.channel === 'situation' ? `Sytuacja ${position}` : `Wiadomość od: ${card.from ?? ''}`);
 
 function CardBody({ card }: { card: SwipeCard }) {
+  // Karta-sytuacja (D-151): sam tekst, bez nagłówka nadawcy i kanału.
+  if (card.channel === 'situation') return <p className="whitespace-pre-line break-words text-lg text-ink">{card.text}</p>;
   const Icon = card.channel === 'sms' ? MessageSquare : MessageCircle;
   return (
     <>
@@ -160,6 +166,8 @@ export default function SwipeSortBlock({
 
   const leaning: SwipeVerdict | null = dx <= -24 ? 'suspicious' : dx >= 24 ? 'ok' : null;
   const position = current ? cards.indexOf(current) + 1 : cards.length;
+  const labels = block.labels ?? DEFAULT_VERDICT_LABEL;
+  const situations = cards.some((card) => card.channel === 'situation');
 
   return (
     <div data-testid="swipe-sort" className="mx-auto flex w-full max-w-[560px] flex-col gap-4">
@@ -167,7 +175,13 @@ export default function SwipeSortBlock({
       {/* Licznik z nadawcą ogłasza czytnikowi nową kartę; po ostatniej - fokus tutaj (przyciski werdyktu znikają). */}
       {/* Po ostatniej karcie bez aria-live - komunikat czyta czytnik raz, przy przeniesieniu fokusu. */}
       <p ref={statusRef} tabIndex={-1} data-testid="swipe-status" className="text-base text-muted focus:outline-none" aria-live={current ? 'polite' : undefined}>
-        {!current ? 'Wszystkie wiadomości ocenione.' : `Wiadomość ${position} z ${cards.length}: ${current.from}`}
+        {!current
+          ? situations
+            ? 'Wszystkie sytuacje ocenione.'
+            : 'Wszystkie wiadomości ocenione.'
+          : situations
+            ? `Sytuacja ${position} z ${cards.length}`
+            : `Wiadomość ${position} z ${cards.length}: ${current.from ?? ''}`}
       </p>
 
       {current && (
@@ -182,7 +196,7 @@ export default function SwipeSortBlock({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           role="group"
-          aria-label={`Wiadomość od: ${current.from}`}
+          aria-label={cardName(current, position)}
           className={`relative cursor-grab touch-pan-y select-none rounded-card border-2 bg-surface p-4 shadow-card ${
             leaning === 'suspicious' ? 'border-danger' : leaning === 'ok' ? 'border-success' : 'border-border'
           } ${dragging ? 'cursor-grabbing' : reducedMotion ? '' : 'transition-transform duration-200'}`}
@@ -193,7 +207,7 @@ export default function SwipeSortBlock({
               aria-hidden="true"
               className={`absolute right-3 top-3 rounded-btn px-3 py-1 text-base font-bold text-white ${leaning === 'suspicious' ? 'bg-danger' : 'bg-success'}`}
             >
-              {VERDICT_LABEL[leaning]}
+              {labels[leaning]}
             </span>
           )}
           <CardBody card={current} />
@@ -212,7 +226,7 @@ export default function SwipeSortBlock({
             className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-danger px-4 text-base font-bold text-white disabled:opacity-50 ${pending ? 'cursor-wait opacity-70' : 'hover:bg-danger/90'} ${FOCUS_RING}`}
           >
             <ArrowLeft aria-hidden="true" className="h-5 w-5" />
-            {VERDICT_LABEL.suspicious}
+            {labels.suspicious}
           </button>
           <button
             type="button"
@@ -222,13 +236,13 @@ export default function SwipeSortBlock({
             onClick={() => void decide('ok')}
             className={`inline-flex min-h-[56px] items-center justify-center gap-2 rounded-btn bg-success px-4 text-base font-bold text-white disabled:opacity-50 ${pending ? 'cursor-wait opacity-70' : 'hover:bg-success/90'} ${FOCUS_RING}`}
           >
-            {VERDICT_LABEL.ok}
+            {labels.ok}
             <ArrowRight aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
       )}
 
-      <SimpleFeedback result={last?.result ?? null} text={last?.feedback} about={lastCard ? `Wiadomość od: ${lastCard.from}` : undefined} />
+      <SimpleFeedback result={last?.result ?? null} text={last?.feedback} about={lastCard ? cardName(lastCard, cards.indexOf(lastCard) + 1) : undefined} />
       <SimpleHint text={done ? undefined : hint} />
       <SimpleError text={error} />
     </div>

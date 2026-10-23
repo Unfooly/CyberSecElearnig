@@ -88,7 +88,7 @@ describe('evaluateCheck: SWIPE_SORT', () => {
 
   it('zapis bloku: wszystkie karty ocenione; wynik = trafione / karty, bez `correct`', () => {
     const half = clicks(swipe(), [{ card: opaque('wiadomosci', 'paczka'), verdict: 'suspicious' }]).entry;
-    expect(() => evaluateSubmit(swipe(), undefined, half, now, opaque)).toThrow('Nie oceniono wszystkich wiadomości');
+    expect(() => evaluateSubmit(swipe(), undefined, half, now, opaque)).toThrow('Nie oceniono wszystkich kart');
     const both = clicks(swipe(), [
       { card: opaque('wiadomosci', 'paczka'), verdict: 'suspicious' },
       { card: opaque('wiadomosci', 'szef'), verdict: 'suspicious' },

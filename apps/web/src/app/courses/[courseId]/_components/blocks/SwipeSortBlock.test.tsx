@@ -91,6 +91,36 @@ describe('SwipeSortBlock', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
+  it('D-151: karty-sytuacje i własne etykiety - przyciski, znacznik przy przesuwaniu, licznik „Sytuacja n z m”, bez nadawcy', async () => {
+    const situations = {
+      ...block,
+      labels: { suspicious: 'Zapytaj IT', ok: 'Bezpieczne' },
+      cards: [
+        { id: 'op1', channel: 'situation', text: 'Wklejam umowę do darmowego czatu AI.' },
+        { id: 'op2', channel: 'situation', text: 'Zapisuję raport na firmowym dysku.' },
+      ],
+    } as unknown as ContentBlock;
+    render(<SwipeSortBlock block={situations} courseId="kurs-1" onSubmit={vi.fn()} onReady={vi.fn()} onProgress={vi.fn()} />);
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Sytuacja 1 z 2');
+    expect(screen.getByRole('group', { name: 'Sytuacja 1' })).toHaveTextContent('Wklejam umowę do darmowego czatu AI.');
+    expect(screen.queryByText('SMS')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Podejrzane' })).not.toBeInTheDocument();
+    const card = screen.getByTestId('swipe-card');
+    fireEvent.pointerDown(card, { clientX: 300, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(card, { clientX: 260, pointerId: 1 });
+    expect(card).toHaveTextContent('Zapytaj IT');
+    fireEvent.pointerCancel(card, { pointerId: 1 });
+
+    reply({ blockId: 'wiadomosci', result: 'good', feedback: 'Umowa trafiłaby na obce serwery.', done: false });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Zapytaj IT' })));
+    expect(sent(0)).toEqual({ card: 'op1', verdict: 'suspicious' });
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Sytuacja 2 z 2');
+    reply({ blockId: 'wiadomosci', result: 'good', feedback: 'Tak.', done: true });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Bezpieczne' })));
+    expect(sent(1)).toEqual({ card: 'op2', verdict: 'ok' });
+    expect(screen.getByTestId('swipe-status')).toHaveTextContent('Wszystkie sytuacje ocenione.');
+  });
+
   it('gest: przesunięcie w lewo poza próg = „Podejrzane”, w prawo = „W porządku”; krótkie przesunięcie wraca bez werdyktu', async () => {
     setup();
     const card = () => screen.getByTestId('swipe-card');

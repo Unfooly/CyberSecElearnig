@@ -2410,6 +2410,11 @@ try {
       .map((slug) => ({ slug, json: JSON.parse(readFileSync(join(modulesRoot, slug, 'module.json'), 'utf8')) }))
       .filter(({ json }) => Array.isArray(json.locales));
     if (pseudoModules.length === 0) fail('pseudo: brak modułu z `locales` do sprawdzenia.');
+    // Moduł podglądu trybu prostego: SWIPE_SORT z własnymi etykietami (D-151, najdłuższa dozwolona - 16 znaków) i kartami-sytuacjami -
+    // etykiety w xx na 390 px muszą się mieścić w przyciskach (decyzja właściciela 2026-10-23).
+    // Tylko bloki SWIPE_SORT (pozostałe bloki podglądu sprawdza sekcja `prosty`; raport bez lessons-tekstu na starcie nie ma czego badać).
+    const devSimple = JSON.parse(readFileSync(join(moduleDir('dev-tryb-prosty'), 'module.json'), 'utf8'));
+    pseudoModules.push({ slug: 'dev-tryb-prosty', json: { ...devSimple, blocks: devSimple.blocks.filter((block) => block.type === 'SWIPE_SORT') } });
     const pseudoFailures = [];
     const viewport = { name: '390x844', width: 390, height: 844, isMobile: true };
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
@@ -2604,13 +2609,24 @@ try {
       await forwardEnabled();
       step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi ≥ 44 px, zdanie, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
 
-      // (p4) SWIPE_SORT
-      await open('wiadomosci');
-      label = `${viewport.name} / tryb prosty / SWIPE_SORT`;
+      // (p4) SWIPE_SORT - każdy blok modułu podglądu: wiadomości (domyślne etykiety, moduł 3) i sytuacje z własnymi etykietami (D-151,
+      // najdłuższa dozwolona - 16 znaków).
+      for (const sort of demoBlocks.filter((b) => b.type === 'SWIPE_SORT')) {
+      await open(sort.id);
+      label = `${viewport.name} / tryb prosty / SWIPE_SORT ${sort.id}`;
       await common(label);
       const verdictTarget = await minTarget('[data-testid="swipe-suspicious"], [data-testid="swipe-ok"]');
       if (verdictTarget < 43.5) fail(`${label}: (p2) przycisk werdyktu mniejszy niż 44 px (${verdictTarget.toFixed(1)}).`);
-      const sort = demoBlocks.find((b) => b.id === 'wiadomosci');
+      // Etykiety przycisków: własne z treści albo domyślne - w całości w przycisku (bez ucięcia).
+      const labelClip = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="swipe-suspicious"], [data-testid="swipe-ok"]')]
+          .filter((button) => button.scrollWidth > button.clientWidth + 1 || button.scrollHeight > button.clientHeight + 1)
+          .map((button) => button.textContent.trim()),
+      );
+      if (labelClip.length > 0) fail(`${label}: (p4) etykieta werdyktu ucięta: ${labelClip.join(', ')}`);
+      const expectedLabels = sort.labels ? [sort.labels.suspicious, sort.labels.ok] : ['Podejrzane', 'W porządku'];
+      const shownLabels = [await page.getByTestId('swipe-suspicious').textContent(), await page.getByTestId('swipe-ok').textContent()].map((text) => text.trim());
+      if (shownLabels.join('|') !== expectedLabels.join('|')) fail(`${label}: (p4) etykiety ${shownLabels.join(' / ')} zamiast ${expectedLabels.join(' / ')}.`);
       // Sposób oceny wybierany per werdykt (nie per pozycja - kolejność kart tasuje serwer): pierwsza karta z danym werdyktem przyciskiem,
       // druga gestem, dalej na zmianę - przyciski i gest pokrywają oba kierunki niezależnie od tasowania.
       const used = new Set();
@@ -2634,13 +2650,14 @@ try {
         }
         await page.locator('[data-testid="simple-feedback"][data-result="good"]', { hasText: expected.feedback.slice(0, 30) }).waitFor({ timeout: 10000 });
         if (!byButton && !(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po werdykcie poza obszarem bloku.`);
-        if (index === sort.cards.length - 2) await shot(page, `${viewport.name}-prosty-swipe`);
+        if (index === sort.cards.length - 2) await shot(page, `${viewport.name}-prosty-swipe-${sort.id}`);
       }
       const missing = ['button-suspicious', 'button-ok', 'gesture-suspicious', 'gesture-ok'].filter((kind) => !used.has(kind));
       if (missing.length > 0) fail(`${label}: (p4) nie sprawdzono: ${missing.join(', ')} (za mało kart z danym werdyktem w module podglądu).`);
       await forwardEnabled();
       await common(`${label} (po ostatniej karcie)`);
-      step(`${label}: (p1, p2, p4) ${sort.cards.length} kart - przyciski i gest w obu kierunkach, zdanie po każdej, „Dalej” po ostatniej OK`, true);
+      step(`${label}: (p1, p2, p4) ${sort.cards.length} kart - etykiety ${expectedLabels.join(' / ')}, przyciski i gest w obu kierunkach, zdanie po każdej, „Dalej” po ostatniej OK`, true);
+      }
 
       // (p1) narracja i raport - cały tekst ≥ 16 px także poza minigrami.
       for (const blockId of ['odprawa', 'raport']) {

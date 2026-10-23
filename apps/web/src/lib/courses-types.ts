@@ -42,8 +42,9 @@ export type ContentBlockType =
 /** Karta SWIPE_SORT z /start (D-132): id nieprzejrzyste, bez werdyktu i zdania po werdykcie (sekret - odpowiedź /check). */
 export interface SwipeCard {
   id: string;
-  channel: 'sms' | 'chat';
-  from: string;
+  /** `situation` (D-151): karta-sytuacja - sam tekst, bez nadawcy, godziny i załącznika. */
+  channel: 'sms' | 'chat' | 'situation';
+  from?: string;
   time?: string;
   text: string;
   attachment?: string;
@@ -297,6 +298,8 @@ export interface ContentBlock {
   options?: ContentBlockOption[];
   // SWIPE_SORT (D-132): karty-wiadomości (id nieprzejrzyste, przetasowane przez serwer).
   cards?: SwipeCard[];
+  /** SWIPE_SORT (D-151): własne etykiety werdyktów; brak - „Podejrzane” / „W porządku”. */
+  labels?: Record<SwipeVerdict, string>;
   // SUMMARY - zamknięcie sprawy (D-089): wnioski śledczego i grafika ekranu zamknięcia ze slotami w % sceny raportu.
   lessons?: string[];
   closing?: CaseClosing;

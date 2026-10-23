@@ -825,6 +825,22 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       for (const verdict of SWIPE_VERDICTS) {
         if (!block.cards.some((card) => card.correct === verdict)) errors.push(`cards: brak karty z werdyktem "${verdict}"`);
       }
+      // D-151: wiadomość ma nadawcę; sytuacja to sam tekst. Jeden rodzaj kart w bloku (licznik i komunikaty mówią „wiadomość” albo „sytuacja”).
+      block.cards.forEach((card, i) => {
+        if (card.channel === 'situation') {
+          if (card.from !== undefined || card.time !== undefined || card.attachment !== undefined) {
+            errors.push(`cards[${i}] (${card.id}): karta-sytuacja to sam tekst - bez from, time i attachment`);
+          }
+        } else if (card.from === undefined) {
+          errors.push(`cards[${i}] (${card.id}): wiadomość wymaga nadawcy (from)`);
+        }
+      });
+      if (new Set(block.cards.map((card) => card.channel === 'situation')).size > 1) {
+        errors.push('cards: jeden rodzaj kart w bloku - same wiadomości (sms/chat) albo same sytuacje');
+      }
+      if (block.labels && JSON.stringify(block.labels.suspicious) === JSON.stringify(block.labels.ok)) {
+        errors.push('labels: etykiety werdyktów muszą się różnić');
+      }
       break;
     }
     case 'BRIEFING': {

@@ -755,6 +755,8 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     background: 'scenes/omowienie-tlo.svg',
     backgroundPortrait: 'scenes/omowienie-tlo-pion.svg',
   });
+  // Własne etykiety werdyktów SWIPE_SORT (D-151) - tylko w fixturze testu wycieku (moduł bez etykiet = domyślne, jak moduł 3).
+  Object.assign(blocks.SWIPE_SORT as Record<string, unknown>, { labels: { suspicious: 'Zapytaj IT', ok: 'Bezpieczne' } });
   // Nagranie przyznania po podważeniu (B-135) - pola secret, tylko w fixturze testu wycieku (fullModuleV6 bez zmian).
   const interrogation = blocks.INTERROGATION as { questions: { lines: { contradiction?: { challengeLine: Record<string, unknown> } }[] }[] };
   const challenged = interrogation.questions.flatMap((question) => question.lines).find((item) => item.contradiction)!;

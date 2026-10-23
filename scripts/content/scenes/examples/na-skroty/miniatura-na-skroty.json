@@ -1,0 +1,19 @@
+{
+ "width": 1600,
+ "height": 900,
+ "background": {
+  "flat": true,
+  "wall": "#B89C7A"
+ },
+ "items": [
+  { "id": "sloje", "prop": "woodGrain", "x": 0, "y": 0, "params": { "w": 1600, "h": 900 } },
+  { "id": "swiatlo", "prop": "lampGlow", "x": 0, "y": 0, "params": { "w": 1600, "h": 900, "cx": 800, "cy": 400, "r": 760 } },
+  { "id": "kubek", "prop": "mugTop", "x": 1330, "y": 640, "scale": 1.2 },
+  { "id": "laptop", "prop": "laptopFront", "x": 260, "y": 110, "params": { "sw": 900, "sh": 520, "wallpaper": "#3B2F8F" } },
+  { "id": "czat", "prop": "chatWindow", "x": 380, "y": 170, "params": { "w": 460, "h": 440, "bubbleH": 90 } },
+  { "id": "chmura", "prop": "cloudWindow", "x": 870, "y": 170, "params": { "w": 350, "h": 260, "folder": 90 } },
+  { "id": "program", "prop": "appIcon", "x": 990, "y": 460, "params": { "size": 110 } },
+  { "id": "pendrive", "prop": "usbStick", "x": 124, "y": 685 },
+  { "id": "winieta", "prop": "vignette", "x": 0, "y": 0, "params": { "w": 1600, "h": 900 } }
+ ]
+}

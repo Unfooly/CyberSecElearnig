@@ -1,0 +1,30 @@
+{
+ "width": 320,
+ "height": 140,
+ "background": {
+  "flat": true,
+  "wall": "none"
+ },
+ "phoneWidth": 230,
+ "minTextPx": 16,
+ "strings": {
+  "pl": {
+   "liscik": ["Najpierw zapytaj IT."],
+   "podpis": "— A.W."
+  }
+ },
+ "items": [
+  {
+   "id": "liscik",
+   "prop": "commissionerNote",
+   "x": 0,
+   "y": 0,
+   "evidence": "liscik",
+   "params": {
+    "layout": "banner",
+    "lines": { "$t": "liscik" },
+    "sign": { "$t": "podpis" }
+   }
+  }
+ ]
+}

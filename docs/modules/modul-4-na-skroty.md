@@ -59,14 +59,15 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 - **Narracja wejścia (`komisarz`):** Każdy taki skrót może kosztować więcej, niż daje. Sprawdź wszystkie cztery karty.
 - **Podpowiedź (tip):** Otwórz każdą z czterech kart.
 - **Grafika:** tablica z czterema kartami (tytuły kart wpalone przez `strings`, duże - min. 16 px na 390 px); wszystkie wymagane.
-  Treść kart *(spec)*, każda ≤ 140 znaków:
+  Treść kart *(spec)*, każda ≤ 140 znaków. Karty są dowodami z notatką (dopisane przy budowie modułu, 2026-10-23): przycisk „Zabierz”
+  przy przedmiocie bez dowodu pokazuje „To nie jest dowód w tej sprawie” - na tablicy skutków byłoby to mylące. Dowodów w module: 8.
 
-| karta | treść |
-|---|---|
-| Dane firmy u obcej firmy | To, co wkleisz do darmowego narzędzia, trafia na cudze serwery; nie wiesz, kto ma do tego dostęp i czy narzędzie się na tym nie uczy. |
-| Wirus w pakiecie | Darmowe programy i rozszerzenia z internetu często mają ukryte złośliwe dodatki. |
-| Problem prawny firmy | Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę. |
-| Utrata plików | Prywatne konto nie ma firmowej kopii zapasowej; gdy konto zniknie albo pracownik odejdzie, pliki przepadają. |
+| karta | treść | notatka |
+|---|---|---|
+| Dane firmy u obcej firmy | To, co wkleisz do darmowego narzędzia, trafia na cudze serwery; nie wiesz, kto ma do tego dostęp i czy narzędzie się na tym nie uczy. | Skutek: dane z darmowego narzędzia trafiają na cudze serwery. |
+| Wirus w pakiecie | Darmowe programy i rozszerzenia z internetu często mają ukryte złośliwe dodatki. | Skutek: darmowy program może mieć złośliwy dodatek. |
+| Problem prawny firmy | Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę. | Skutek: naruszenie danych osobowych - zgłoszenie do UODO w 72 godziny. |
+| Utrata plików | Prywatne konto nie ma firmowej kopii zapasowej; gdy konto zniknie albo pracownik odejdzie, pliki przepadają. | Skutek: pliki na prywatnym koncie mogą przepaść. |
 
 ### 3.4 Bezpieczne czy zapytaj IT? (SWIPE_SORT, `bezpieczne-czy-it`) - z rozszerzeniem schematu (pkt 7.1)
 
@@ -87,7 +88,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 
 ### 3.5 Programu nie ma na liście firmowej (QUIZ, `brak-programu`)
 
-- **Pytanie:** Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu. Co robisz?
+- **Pytanie:** Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu - co robisz? (tryb prosty: polecenie to jedno zdanie;
+  lektor czyta je jako dwa zdania, jak w module 3)
 - **Odpowiedzi:**
   - Pobieram pierwszy darmowy program, jaki znajdę w internecie. → *Darmowe programy z internetu bywają z ukrytymi dodatkami - firma nie wie, co instalujesz.*
   - ✔ **Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.** *(spec)* → *Tak - IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć.*
@@ -96,7 +98,7 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 
 ### 3.6 Dane już wklejone (QUIZ, `juz-wklejone`)
 
-- **Pytanie:** Dane klientów trafiły już do darmowego czatu AI. Co teraz?
+- **Pytanie:** Dane klientów trafiły już do darmowego czatu AI - co teraz?
 - **Odpowiedzi:**
   - Kasuję historię rozmowy i nic nie mówię. → *(spec)* *Skasowanie historii u siebie nie usuwa danych z serwerów narzędzia.*
   - ✔ **Od razu zgłaszam to do IT.** *(spec)* → *Tak - liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki.*

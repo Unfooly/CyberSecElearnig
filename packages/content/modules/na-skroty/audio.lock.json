@@ -1,0 +1,65 @@
+{
+  "lockVersion": 2,
+  "slug": "na-skroty",
+  "audioVersion": "v1",
+  "model": "eleven_multilingual_v2",
+  "language": "pl",
+  "entries": {
+    "odprawa#steps.0.narration": {
+      "hash": "d2d92051ac7fa472",
+      "key": "audio/na-skroty/v1/odprawa/d2d92051ac7fa472.mp3",
+      "textSha": "964f198f2ad18c8f",
+      "durationMs": 16069,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "biurko#narration": {
+      "hash": "7b5b44b3771d5fbe",
+      "key": "audio/na-skroty/v1/biurko/7b5b44b3771d5fbe.mp3",
+      "textSha": "218d37f2168337cc",
+      "durationMs": 7988,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "skutki#narration": {
+      "hash": "049ef6be71bf7ed9",
+      "key": "audio/na-skroty/v1/skutki/049ef6be71bf7ed9.mp3",
+      "textSha": "da29003e43d72301",
+      "durationMs": 5155,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "bezpieczne-czy-it#narration": {
+      "hash": "13de8f9627898319",
+      "key": "audio/na-skroty/v1/bezpieczne-czy-it/13de8f9627898319.mp3",
+      "textSha": "8583d8fd38e86f8f",
+      "durationMs": 7941,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "brak-programu#narration": {
+      "hash": "1b542188d4658abc",
+      "key": "audio/na-skroty/v1/brak-programu/1b542188d4658abc.mp3",
+      "textSha": "3703b6c2d96ffaaa",
+      "durationMs": 5108,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "juz-wklejone#narration": {
+      "hash": "ebd6867505cc1cff",
+      "key": "audio/na-skroty/v1/juz-wklejone/ebd6867505cc1cff.mp3",
+      "textSha": "44d3879810f7a657",
+      "durationMs": 4040,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    },
+    "raport#narration": {
+      "hash": "04f7b42b80aa2370",
+      "key": "audio/na-skroty/v1/raport/04f7b42b80aa2370.mp3",
+      "textSha": "7fa8fe360220ac76",
+      "durationMs": 7245,
+      "voice": "komisarz",
+      "voiceId": "o11yegU3CL24TZ1qcm6b"
+    }
+  }
+}

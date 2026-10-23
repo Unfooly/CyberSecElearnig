@@ -1,0 +1,32 @@
+{
+ "width": 900,
+ "height": 1600,
+ "minTextPx": 16,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "czat-tytul": "CzatPomocnik",
+   "czat-prosba": "Uporządkuj tabelę klientów",
+   "chmura-tytul": "MojaChmura",
+   "folder": "Raporty firmowe",
+   "program": "PDF Zamiennik Free"
+  }
+ },
+ "items": [
+  { "id": "sloje", "prop": "woodGrain", "x": 0, "y": 0, "params": { "w": 900, "h": 1600 } },
+  { "id": "kubek", "prop": "mugTop", "x": 620, "y": 1360, "scale": 1.5 },
+  { "id": "laptop", "prop": "laptopFront", "x": 80, "y": 30, "params": { "sw": 640, "sh": 1100, "wallpaper": "#3B2F8F" } },
+  { "id": "czat", "prop": "chatWindow", "x": 180, "y": 80, "hotspot": true, "pad": 0, "params": { "w": 620, "h": 520, "bubbleH": 190, "bar": 110 } },
+  { "id": "chmura", "prop": "cloudWindow", "x": 180, "y": 630, "hotspot": true, "pad": 0, "params": { "w": 620, "h": 320, "folder": 130, "bar": 110 } },
+  { "id": "program", "prop": "appIcon", "x": 200, "y": 985, "hotspot": "cel", "pad": 0, "params": { "size": 120, "target": { "x": -20, "y": -15, "w": 620, "h": 175 } } },
+  {"id":"tekst-czat-tytul","prop":"textBox","x":264,"y":90,"evidence":"czat","params":{"w":426,"h":90,"text":{"$t":"czat-tytul"},"size":50,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-czat-prosba","prop":"textBox","x":348,"y":224,"evidence":"czat","params":{"w":398,"h":170,"text":{"$t":"czat-prosba"},"size":46,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-chmura-tytul","prop":"textBox","x":264,"y":640,"evidence":"chmura","params":{"w":426,"h":90,"text":{"$t":"chmura-tytul"},"size":50,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-folder","prop":"textBox","x":364,"y":770,"evidence":"chmura","params":{"w":406,"h":150,"text":{"$t":"folder"},"size":48,"valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-program","prop":"textBox","x":350,"y":975,"evidence":"program","params":{"w":440,"h":160,"text":{"$t":"program"},"size":46,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  { "id": "pendrive", "prop": "usbStick", "x": 8, "y": 1185, "hotspot": "cel", "pad": 0, "params": { "len": 66, "target": { "x": -8, "y": -40, "w": 240, "h": 200 } } }
+ ]
+}

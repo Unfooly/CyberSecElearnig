@@ -1,0 +1,61 @@
+{
+  "lockVersion": 1,
+  "slug": "na-skroty",
+  "entries": {
+    "module#thumbnail": {
+      "original": "miniatura-na-skroty.svg",
+      "hash": "1db1bbe9",
+      "key": "assets/na-skroty/miniatura-na-skroty.1db1bbe9.svg"
+    },
+    "odprawa#steps.0.image": {
+      "original": "scenes/pl/odprawa.svg",
+      "hash": "14c30f4c",
+      "key": "assets/na-skroty/scenes/pl/odprawa.14c30f4c.svg"
+    },
+    "odprawa#steps.0.portrait.image": {
+      "original": "scenes/pl/odprawa-pion.svg",
+      "hash": "1ebeaf28",
+      "key": "assets/na-skroty/scenes/pl/odprawa-pion.1ebeaf28.svg"
+    },
+    "biurko#image": {
+      "original": "scenes/pl/biurko-bartka.svg",
+      "hash": "5b172dab",
+      "key": "assets/na-skroty/scenes/pl/biurko-bartka.5b172dab.svg"
+    },
+    "biurko#imagePortrait": {
+      "original": "scenes/pl/biurko-bartka-pion.svg",
+      "hash": "5ab9e43e",
+      "key": "assets/na-skroty/scenes/pl/biurko-bartka-pion.5ab9e43e.svg"
+    },
+    "skutki#image": {
+      "original": "scenes/pl/tablica-skutki.svg",
+      "hash": "4d306a63",
+      "key": "assets/na-skroty/scenes/pl/tablica-skutki.4d306a63.svg"
+    },
+    "skutki#imagePortrait": {
+      "original": "scenes/pl/tablica-skutki-pion.svg",
+      "hash": "901adff3",
+      "key": "assets/na-skroty/scenes/pl/tablica-skutki-pion.901adff3.svg"
+    },
+    "raport#closing.image": {
+      "original": "scenes/pl/zamkniecie-raport.svg",
+      "hash": "7c4178d9",
+      "key": "assets/na-skroty/scenes/pl/zamkniecie-raport.7c4178d9.svg"
+    },
+    "raport#closing.stamp": {
+      "original": "scenes/pl/zamkniecie-pieczec.svg",
+      "hash": "eb11c289",
+      "key": "assets/na-skroty/scenes/pl/zamkniecie-pieczec.eb11c289.svg"
+    },
+    "raport#closing.note": {
+      "original": "scenes/pl/zamkniecie-liscik.svg",
+      "hash": "5b32f360",
+      "key": "assets/na-skroty/scenes/pl/zamkniecie-liscik.5b32f360.svg"
+    },
+    "raport#closing.portrait.image": {
+      "original": "scenes/pl/zamkniecie-raport-pion.svg",
+      "hash": "6ec63cb2",
+      "key": "assets/na-skroty/scenes/pl/zamkniecie-raport-pion.6ec63cb2.svg"
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+ "width": 900,
+ "height": 1800,
+ "phoneWidth": 364,
+ "minTextPx": 16,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "raport": "RAPORT KOŃCOWY",
+   "sygnatura": "NSK/2026/1023",
+   "tytul": "Na skróty",
+   "dowody": "DOWODY",
+   "czas": "CZAS",
+   "xp": "XP",
+   "zasady-naglowek": "TRZY ZASADY",
+   "podpis": "PODPIS PROWADZĄCEGO",
+   "zasady": [
+    "1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.",
+    "2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI.",
+    "3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych."
+   ]
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1800
+   }
+  },
+  {
+   "id": "raport",
+   "prop": "reportPortrait",
+   "x": 22,
+   "y": 22,
+   "partHotspots": {
+    "slot-dowody": "slot-dowody",
+    "slot-czas": "slot-czas",
+    "slot-xp": "slot-xp",
+    "slot-wnioski": "slot-wnioski",
+    "slot-podpis": "podpis",
+    "slot-pieczec": "slot-pieczec",
+    "slot-liscik": "slot-liscik"
+   },
+   "pad": 0,
+   "params": {
+    "caseNo": { "$t": "sygnatura" },
+    "title": { "$t": "tytul" },
+    "bags": [],
+    "ruled": false,
+    "tallStats": true,
+    "signatureAbove": true,
+    "rulesExtra": 120,
+    "pageExtra": 90,
+    "slots": {
+     "slot-liscik": { "x": 40, "y": 1185, "w": 760, "h": 250 },
+     "slot-pieczec": { "x": 110, "y": 1450, "w": 620, "h": 270 }
+    },
+    "labels": {
+     "report": { "$t": "raport" },
+     "evidence": { "$t": "dowody" },
+     "time": { "$t": "czas" },
+     "xp": { "$t": "xp" },
+     "lessons": { "$t": "zasady-naglowek" },
+     "signature": { "$t": "podpis" }
+    }
+   }
+  },
+  {"id":"tekst-zasady","prop":"textBox","x":72,"y":524,"evidence":"zasady","params":{"w":740,"h":540,"text":{"$t":"zasady"},"size":46,"valign":"top","color":"#2B2440"}}
+ ]
+}

@@ -126,7 +126,8 @@ export function evaluateSubmit(
       const checks = existing?.checks ?? [];
       const cards = swipeCards(block);
       if (cards.some((card) => !checks.some((check) => check.item === card.id))) {
-        throw new BadRequestException('Nie oceniono wszystkich wiadomości');
+        // „kart”, nie „wiadomości” - karty mogą być sytuacjami (D-151).
+        throw new BadRequestException('Nie oceniono wszystkich kart');
       }
       const hits = cards.filter((card) => checks.find((check) => check.item === card.id)?.correct).length;
       return { entry: baseEntry(block, now, { points: cards.length > 0 ? hits / cards.length : 0, checks }), notesAdded: [] };

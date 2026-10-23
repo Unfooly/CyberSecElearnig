@@ -6,7 +6,11 @@ import { pseudoLocalizeClientContent } from './pseudo-content';
 
 // Pola, które w podglądzie xx wolno zmienić (tekst do czytania). Nowe pole w treści modułu z `locales`: tekst - dopisz tutaj; pole
 // sterujące albo identyfikator - dopisz do TECHNICAL_KEYS w pseudo-content.ts (inaczej podgląd xx po cichu psuje porównania odtwarzacza).
-const TEXT_KEYS = new Set(['title', 'text', 'cta', 'alt', 'tip', 'imageAlt', 'label', 'content', 'prompt', 'from', 'attachment', 'stampAlt', 'noteAlt']);
+const TEXT_KEYS = new Set([
+  'title', 'text', 'cta', 'alt', 'tip', 'imageAlt', 'label', 'content', 'prompt', 'from', 'attachment', 'stampAlt', 'noteAlt',
+  // Własne etykiety werdyktów SWIPE_SORT (`labels.suspicious` / `labels.ok`, D-151) - tekst przycisków.
+  'suspicious', 'ok',
+]);
 
 /** Klucze (ostatni segment ścieżki, bez indeksów list) wartości tekstowych, które różnią się między `a` i `b`. */
 function changedKeys(a: unknown, b: unknown, key = '', out = new Set<string>()): Set<string> {

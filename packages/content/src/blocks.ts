@@ -900,9 +900,11 @@ const swipeSortSchema = z
         z
           .object({
             id: idSchema,
-            channel: z.enum(['sms', 'chat']),
-            // Nadawca jak na ekranie telefonu (nazwa kontaktu albo numer), opcjonalnie godzina i załącznik (nazwa pliku).
-            from: ltext(60),
+            // `situation` (moduł 4, D-151): karta-sytuacja - sam tekst (bez nadawcy, godziny i załącznika); wiadomości: `sms`/`chat`.
+            channel: z.enum(['sms', 'chat', 'situation']),
+            // Nadawca jak na ekranie telefonu (nazwa kontaktu albo numer) - wymagany w wiadomości, zakazany w sytuacji (semantics.ts);
+            // opcjonalnie godzina i załącznik (nazwa pliku).
+            from: ltext(60).optional(),
             time: z.string().min(1).max(20).optional(),
             text: ltext(300),
             attachment: ltext(80).optional(),
@@ -914,6 +916,9 @@ const swipeSortSchema = z
       .min(2)
       .max(12),
     hint: ltext(140).optional(),
+    // Własne etykiety werdyktów (moduł 4, D-151), np. „Zapytaj IT” / „Bezpieczne” - przycisk i znacznik przy przesuwaniu karty (≤ 16 znaków,
+    // sprawdzone w pseudo-lokalizacji na 390 px). Bez pola - „Podejrzane” / „W porządku” jak dotąd (moduł 3 bez zmian).
+    labels: z.object({ suspicious: ltext(16), ok: ltext(16) }).strict().optional(),
   })
   .strict();
 
@@ -1481,7 +1486,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   ),
   // Segregowanie wiadomości (D-132): treść kart publiczna; werdykt, zdanie po werdykcie i podpowiedź - sekret (odpowiedź /check).
   SWIPE_SORT: classify(
-    ['prompt', 'cards[].id', 'cards[].channel', 'cards[].from', 'cards[].time', 'cards[].text', 'cards[].attachment'],
+    ['prompt', 'cards[].id', 'cards[].channel', 'cards[].from', 'cards[].time', 'cards[].text', 'cards[].attachment', 'labels.suspicious', 'labels.ok'],
     ['cards[].correct', 'cards[].feedback', 'hint'],
   ),
 };

@@ -38,6 +38,19 @@
       "hint": "Podejrzane są prośby o kod, pieniądze albo kliknięcie w link."
     },
     {
+      "id": "sytuacje",
+      "type": "SWIPE_SORT",
+      "prompt": "Oceń każdą sytuację: bezpieczne czy najpierw zapytać IT?",
+      "labels": { "suspicious": "Zapytaj dział IT", "ok": "Bezpieczne" },
+      "cards": [
+        { "id": "umowa", "channel": "situation", "text": "Wklejam umowę z klientem do darmowego czatu AI, żeby ją streścić.", "correct": "suspicious", "feedback": "Umowa trafiłaby na serwery obcej firmy. Do dokumentów używaj narzędzi zatwierdzonych przez IT." },
+        { "id": "dysk", "channel": "situation", "text": "Zapisuję raport na firmowym dysku.", "correct": "ok", "feedback": "Tak - firmowy dysk ma kopię zapasową, a dostęp mają tylko osoby z firmy." },
+        { "id": "vpn", "channel": "situation", "text": "Instaluję w przeglądarce rozszerzenie „Darmowy VPN”.", "correct": "suspicious", "feedback": "Takie rozszerzenie widzi wszystko, co robisz w przeglądarce. Zapytaj IT przed instalacją." },
+        { "id": "katalog", "channel": "situation", "text": "Instaluję program z firmowego katalogu aplikacji.", "correct": "ok", "feedback": "Tak - programy z firmowego katalogu IT już sprawdziło." }
+      ],
+      "hint": "Czy firma sprawdziła to narzędzie? Jeśli nie - zapytaj IT."
+    },
+    {
       "id": "raport",
       "type": "SUMMARY",
       "lessons": [

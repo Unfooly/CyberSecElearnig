@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ContentValidationError, toClientBlock } from './index';
 import { SECRET_MARKER, fullModuleV6, simpleModule } from './fixtures';
 import { isOneSentence, parseModule } from './node';
@@ -108,6 +110,45 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(oneVerdict)).toMatch(/cards: brak karty z werdyktem "ok"/);
   });
 
+  it('D-151: karty-sytuacje i własne etykiety werdyktów (≤ 16 znaków); wiadomość bez nadawcy, sytuacja z nadawcą, mieszane karty - błąd', () => {
+    const situations = mutate((m) => {
+      const block = byType(m, 'SWIPE_SORT');
+      block.labels = { suspicious: 'Zapytaj IT', ok: 'Bezpieczne' };
+      block.cards = [
+        { id: 'umowa', channel: 'situation', text: 'Wklejam umowę do darmowego czatu AI.', correct: 'suspicious', feedback: 'Umowa trafiłaby na obce serwery.' },
+        { id: 'dysk', channel: 'situation', text: 'Zapisuję raport na firmowym dysku.', correct: 'ok', feedback: 'Tak - firmowy dysk ma kopię zapasową.' },
+      ];
+    });
+    expect(errorsOf(situations)).toBe('');
+    expect(errorsOf(mutate((m) => (byType(m, 'SWIPE_SORT').labels = { suspicious: 'x'.repeat(17), ok: 'OK' })))).toMatch(/labels\.suspicious/);
+    expect(errorsOf(mutate((m) => (byType(m, 'SWIPE_SORT').labels = { suspicious: 'Tak', ok: 'Tak' })))).toMatch(/etykiety werdyktów muszą się różnić/);
+    expect(errorsOf(mutate((m) => delete byType(m, 'SWIPE_SORT').cards[0].from))).toMatch(/wiadomość wymaga nadawcy/);
+    const situationWithFrom = mutate((m) => Object.assign(byType(m, 'SWIPE_SORT').cards[0], { channel: 'situation' }));
+    expect(errorsOf(situationWithFrom)).toMatch(/karta-sytuacja to sam tekst/);
+    // Sama godzina albo sam załącznik (bez nadawcy) też nie pasują do sytuacji.
+    for (const extra of [{ time: '9:41' }, { attachment: 'plik.pdf' }]) {
+      const situationWithExtra = mutate((m) => {
+        const block = byType(m, 'SWIPE_SORT');
+        for (const card of block.cards) {
+          card.channel = 'situation';
+          delete card.from;
+          delete card.time;
+          delete card.attachment;
+        }
+        Object.assign(block.cards[0], extra);
+      });
+      expect(errorsOf(situationWithExtra)).toMatch(/karta-sytuacja to sam tekst/);
+    }
+    const mixed = mutate((m) => {
+      const card = byType(m, 'SWIPE_SORT').cards[1];
+      card.channel = 'situation';
+      delete card.from;
+      delete card.time;
+      delete card.attachment;
+    });
+    expect(errorsOf(mixed)).toMatch(/jeden rodzaj kart w bloku/);
+  });
+
   it('bez simpleMode zasady trybu prostego nie obowiązują (moduł 2 ma ORDERING i długie polecenia)', () => {
     expect(errorsOf(fullModuleV6())).toBe('');
     expect(errorsOf(mutate((m) => delete m.simpleMode))).toBe('');
@@ -135,5 +176,22 @@ describe('SWIPE_SORT w projekcji do klienta', () => {
       expect(Object.keys(card).sort()).toEqual(expect.arrayContaining(['channel', 'from', 'id', 'text']));
       expect(['paczka', 'szef']).not.toContain(card.id);
     }
+  });
+
+  it('D-151: moduł 3 bez zmian - blok bez `labels` (domyślne etykiety w odtwarzaczu), karty-wiadomości z nadawcą', () => {
+    const lancuszek = parseModule(JSON.parse(readFileSync(join(__dirname, '..', 'modules', 'lancuszek', 'module.json'), 'utf8')));
+    const block = lancuszek.blocks.find((b) => b.type === 'SWIPE_SORT') as AnyModule;
+    const client = toClientBlock(block as never, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
+    expect(client).not.toHaveProperty('labels');
+    for (const card of client.cards as AnyModule[]) {
+      expect(['sms', 'chat']).toContain(card.channel);
+      expect(typeof card.from).toBe('string');
+    }
+  });
+
+  it('D-151: własne etykiety idą do klienta (pole client)', () => {
+    const block = { ...byType(simpleModule(), 'SWIPE_SORT'), labels: { suspicious: 'Zapytaj IT', ok: 'Bezpieczne' } };
+    const client = toClientBlock(block, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
+    expect(client.labels).toEqual({ suspicious: 'Zapytaj IT', ok: 'Bezpieczne' });
   });
 });

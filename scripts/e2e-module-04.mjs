@@ -27,6 +27,8 @@ const SLUG = 'na-skroty';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
 const MODULE_TITLE = typeof MODULE.title === 'string' ? MODULE.title : MODULE.title.pl;
 const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
+// Etykieta z treści jako początek nazwy przycisku (znaki specjalne wyrażeń regularnych dosłownie).
+const startsWith = (label) => new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 // Liczba dowodów liczona z treści (jak serwer): przedmioty scen z `evidence`.
 const EVIDENCE_TOTAL = MODULE.blocks.filter((b) => b.type === 'SCENE_HOTSPOTS').flatMap((b) => b.hotspots).filter((h) => h.evidence).length;
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
@@ -190,13 +192,13 @@ try {
   let collected = 0;
   for (const [id, cardCheck] of [['biurko', /serwerach obcej firmy/], ['skutki', /UODO w ciągu 72 godzin/]]) {
     const block = blockOf(id);
-    await page.getByRole('button', { name: new RegExp(`^${block.hotspots[0].label}`) }).waitFor();
+    await page.getByRole('button', { name: startsWith(block.hotspots[0].label) }).waitFor();
     step(`SCENE_HOTSPOTS ${id}: polecenie trybu prostego i „Dalej” nieaktywny przed celami`, (await page.getByText(block.tip).count()) >= 1 && (await nextDisabled()));
     const scene = page.locator(`img[alt="${block.imageAlt}"]`);
     step(`SCENE_HOTSPOTS ${id}: grafika sceny załadowana`, await imageLoaded(scene.first()));
     await shot(`2-scena-${id}`);
     for (const hotspot of block.hotspots) {
-      await page.getByRole('button', { name: new RegExp(`^${hotspot.label}`) }).click();
+      await page.getByRole('button', { name: startsWith(hotspot.label) }).click();
       await dialog().getByText(hotspot.content).waitFor();
       if (cardCheck.test(hotspot.content)) {
         step(`SCENE_HOTSPOTS ${id}: karta „${hotspot.label}” z treścią ze scenariusza`, true);
@@ -304,8 +306,16 @@ try {
   await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
   step('Zamknięcie: podpis jednym dotknięciem, potem pieczęć i liścik', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1);
   if (MOBILE) {
-    // Po ceremonii widok zjechał do pieczęci i liściku - oba w widocznej części ramki.
-    await page.waitForTimeout(900);
+    // Po ceremonii widok zjechał do pieczęci i liściku - oba w widocznej części ramki (pomiar po zakończeniu płynnego przewijania:
+    // scrollTop > 0 i bez zmiany przez 200 ms).
+    let previous = -1;
+    await waitFor(async () => {
+      const top = await page.getByTestId('case-closed-frame').evaluate((el) => el.scrollTop);
+      const stable = top > 0 && top === previous;
+      previous = top;
+      if (!stable) await new Promise((r) => setTimeout(r, 200));
+      return stable;
+    }, 'koniec przewijania raportu', 10000);
     const visible = await page.evaluate(() => {
       const frame = document.querySelector('[data-testid="case-closed-frame"]').getBoundingClientRect();
       return ['closing-stamp', 'closing-note'].every((id) => {

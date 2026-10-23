@@ -1115,15 +1115,25 @@ async function checkCaseClosed(page, label, portrait) {
     const scrolls = (value) => value === 'auto' || value === 'scroll';
     return { x: scrolls(style.overflowX) ? el.scrollWidth - el.clientWidth : 0, y: scrolls(style.overflowY) ? el.scrollHeight - el.clientHeight : 0 };
   });
-  if (pan.y > 1) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
+  // Wysoki pionowy raport (D-152, grafika wyższa niż 9:16): na całą szerokość ramki, przewijany w pionie - proporcje z grafiki.
+  const scrollY = (await page.getByTestId('case-closed-frame').getAttribute('data-scroll')) === 'y';
+  if (pan.y > 1 && !scrollY) fail(`${label}: (z2) ramka raportu przewija się w pionie o ${pan.y}px.`);
   // Raport pionowy (D-098, D-107, closing.portrait w treści): na telefonie w pionie raport 9:16 w całości (bez panoramy), wypełnia
   // wolną wysokość, dane w slotach grafiki, pod nim tylko „Następna sprawa” na pełną szerokość (z8).
   const orientation = await page.getByTestId('case-closed-frame').getAttribute('data-orientation');
   if (portrait && orientation === 'portrait') {
     if (pan.x > 1) fail(`${label}: (z2) pionowy raport przewija się w poziomie o ${pan.x}px.`);
     const scene = await boxOf(page, '[data-testid="case-closed-scene"]');
-    if (!contains(contentAreaBox, scene)) fail(`${label}: (z2) pionowy raport wychodzi poza obszar bloku - ${JSON.stringify(scene)}.`);
-    if (Math.abs(scene.width / scene.height - 9 / 16) > 0.02) fail(`${label}: (z2) raport ${scene.width}x${scene.height} - nie 9:16.`);
+    if (scrollY) {
+      const ratio = await page.locator('[data-testid="case-closed-scene"] img').first().evaluate((img) => img.naturalWidth / img.naturalHeight);
+      if (ratio >= 9 / 16 - 0.01) fail(`${label}: (z2) przewijanie w pionie przy grafice ${ratio.toFixed(3)} (nie wyższej niż 9:16).`);
+      if (Math.abs(scene.width / scene.height - ratio) > 0.02) fail(`${label}: (z2) raport ${scene.width}x${scene.height} - inne proporcje niż grafika (${ratio.toFixed(3)}).`);
+      if (Math.abs(scene.width - frameBox.width) > 2) fail(`${label}: (z2) wysoki raport ${Math.round(scene.width)} px - nie na całą szerokość ramki (${Math.round(frameBox.width)} px).`);
+      if (pan.y <= 1) fail(`${label}: (z2) wysoki raport bez przewijania w pionie (raport ${Math.round(scene.height)} px, ramka ${Math.round(frameBox.height)} px).`);
+    } else {
+      if (!contains(contentAreaBox, scene)) fail(`${label}: (z2) pionowy raport wychodzi poza obszar bloku - ${JSON.stringify(scene)}.`);
+      if (Math.abs(scene.width / scene.height - 9 / 16) > 0.02) fail(`${label}: (z2) raport ${scene.width}x${scene.height} - nie 9:16.`);
+    }
     const next = await page.getByTestId('case-closed').getByRole('button', { name: /Następna sprawa/ }).boundingBox();
     const actions = await boxOf(page, '[data-testid="case-closed-actions"]');
     if (!next || Math.abs(next.width - actions.width) > 1) fail(`${label}: (z6) „Następna sprawa” nie na pełną szerokość (${next?.width} z ${actions.width}).`);
@@ -1152,7 +1162,7 @@ async function checkCaseClosed(page, label, portrait) {
     if (data.signed && (!data.signed.inScene || data.signed.font < 16 - 0.05 || data.signed.overflowX > 1)) fail(`${label}: (z4) podpis w pionie - ${JSON.stringify(data.signed)} (oczekiwany w slocie raportu, >= 16 px, bez przepełnienia).`);
     // D-107: grafika wypełnia wolną wysokość ramki (contain - ograniczona wysokością albo szerokością).
     const frame = await boxOf(page, '[data-testid="case-closed-frame"]');
-    if (Math.abs(scene.height - frame.height) > 2 && Math.abs(scene.width - frame.width) > 2) fail(`${label}: (z8) raport ${Math.round(scene.width)}x${Math.round(scene.height)} nie wypełnia ramki ${Math.round(frame.width)}x${Math.round(frame.height)}.`);
+    if (!scrollY && Math.abs(scene.height - frame.height) > 2 && Math.abs(scene.width - frame.width) > 2) fail(`${label}: (z8) raport ${Math.round(scene.width)}x${Math.round(scene.height)} nie wypełnia ramki ${Math.round(frame.width)}x${Math.round(frame.height)}.`);
   } else if (portrait) {
     // Panorama: raport szerszy niż ekran (przewijanie w poziomie), wnioski czytelne (>= 11 px).
     if (pan.x <= 1) fail(`${label}: (z2) telefon w pionie bez panoramy raportu (contain - tekst nieczytelny).`);
@@ -1162,7 +1172,7 @@ async function checkCaseClosed(page, label, portrait) {
     if (pan.x > 1) fail(`${label}: (z2) ramka raportu przewija się w poziomie o ${pan.x}px (poza telefonem w pionie raport ma się mieścić).`);
   }
   const sceneBox = await boxOf(page, '[data-testid="case-closed-scene"]');
-  if ((!portrait || orientation === 'portrait') && !contains(contentAreaBox, sceneBox)) fail(`${label}: (z2) raport wychodzi poza obszar bloku - raport=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
+  if ((!portrait || orientation === 'portrait') && !scrollY && !contains(contentAreaBox, sceneBox)) fail(`${label}: (z2) raport wychodzi poza obszar bloku - raport=${JSON.stringify(sceneBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
   const loaded = await page.locator('[data-testid="case-closed-scene"] img').evaluateAll((els) => els.every((img) => img.naturalWidth > 0));
   if (!loaded) fail(`${label}: (z2) obraz raportu/pieczęci/liściku się nie załadował.`);
   for (const testId of CLOSING_SLOTS) {
@@ -1189,6 +1199,8 @@ async function checkCaseClosed(page, label, portrait) {
   if (overflows.length > 0) fail(`${label}: (z4) tekst wychodzi poza slot - ${overflows.join('; ')}.`);
   // (z5) tylko na etapie podpisu (później przycisku już nie ma - sam podpis).
   if ((await page.getByRole('button', { name: 'Podpisz raport' }).count()) > 0) {
+    // Wysoki raport (D-152): podpis może być poza widokiem ramki (fokus przewija do niego dopiero na etapie podpisu).
+    if (scrollY) await page.getByTestId('closing-signature').scrollIntoViewIfNeeded();
     const signBox = await boxOf(page, '[data-testid="closing-signature"]');
     const hits = await page.evaluate(({ x, y }) => [[x, y - 21], [x, y + 21], [x - 21, y], [x + 21, y]].map(([px, py]) => !!document.elementFromPoint(px, py)?.closest('[data-testid="closing-signature"]')), {
       x: signBox.x + signBox.width / 2,
@@ -3115,7 +3127,10 @@ try {
   for (const viewport of runs('closing') ? BRIEFING_VIEWPORTS : []) {
     console.log(`\n--- viewport (ZAMKNIĘCIE): ${viewport.name} ---`);
     const portrait = PORTRAIT_VIEWPORT_NAMES.has(viewport.name);
-    for (const mode of ['ceremonia', 'końcowe']) {
+    // „wysoki” (D-152, telefon w pionie): ceremonia z pionowym raportem wyższym niż 9:16 - grafika podmieniona na 900x1900 (sloty treści w %
+    // tej samej grafiki); raport na całą szerokość, przewijany w pionie, ceremonia sama zjeżdża do pieczęci i liściku (z8).
+    for (const mode of portrait ? ['ceremonia', 'końcowe', 'wysoki'] : ['ceremonia', 'końcowe']) {
+      const ceremony = mode !== 'końcowe';
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         hasTouch: true,
@@ -3155,14 +3170,26 @@ try {
           }),
         }),
       );
-      const label = `${viewport.name} / zamknięcie: ${mode}`;
-      if (mode === 'ceremonia') {
+      if (mode === 'wysoki') {
+        await page.route('**/*raport-pion*.svg', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1900" width="900" height="1900"><rect width="900" height="1900" fill="#F6F6F4"/><rect x="40" y="40" width="820" height="1820" fill="none" stroke="#2B2440" stroke-width="6"/></svg>',
+          }),
+        );
+      }
+      const label = `${viewport.name} / zamknięcie: ${mode === 'wysoki' ? 'ceremonia (wysoki raport, D-152)' : mode}`;
+      if (ceremony) {
         await page.goto(`${WEB}/dev/player-harness?block=rozwiazanie-sprawy`);
         // Harness ma jeden blok (bez dowodów w notatniku) - SummaryBlock pokazuje wtedy "Zakończ szkolenie" zamiast "Zakończ sprawę".
         await page.getByRole('button', { name: /^Zakończ (sprawę|szkolenie)$/ }).click();
         await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 15000 });
         await page.waitForTimeout(700); // wejście teczki (600 ms) - pomiar bez transformu animacji
-        await shot(page, `${viewport.name}-zamkniecie-1-podpis`);
+        if (mode === 'wysoki' && (await page.getByTestId('case-closed-frame').getAttribute('data-scroll')) !== 'y') {
+          fail(`${label}: (z2) raport 900x1900 bez przewijania w pionie (data-scroll="y").`);
+        }
+        await shot(page, `${viewport.name}-zamkniecie-1-podpis${mode === 'wysoki' ? '-wysoki' : ''}`);
         if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
         await checkCaseClosed(page, `${label} (podpis)`, portrait);
         step(`${label} (etap podpisu): (z1-z7) OK`, true);
@@ -3183,10 +3210,10 @@ try {
       await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor({ timeout: 10000 });
       await page.waitForTimeout(700); // animacje pieczęci/liściku/drgnięcia dobiegają końca
       await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="case-closed-scene"] img')].every((img) => img.complete));
-      await shot(page, `${viewport.name}-zamkniecie-2-${mode === 'ceremonia' ? 'po-ceremonii' : 'koncowe'}`);
+      await shot(page, `${viewport.name}-zamkniecie-2-${{ ceremonia: 'po-ceremonii', wysoki: 'po-ceremonii-wysoki' }[mode] ?? 'koncowe'}`);
       if (pageErrors.length > 0) fail(`${label}: (z7) błąd strony: ${pageErrors.join(' | ')}`);
       if ((await page.getByTestId('closing-stamp').count()) !== 1 || (await page.getByTestId('closing-note').count()) !== 1) fail(`${label}: brak pieczęci albo liściku w stanie końcowym.`);
-      if (portrait && mode === 'ceremonia') {
+      if (portrait && ceremony) {
         // (z8) ceremonia w panoramie sama przesunęła widok (a w pionowym raporcie, D-098, wszystko i tak jest widoczne): pieczęć i liścik w
         // całości w widocznej części ramki.
         const frameBox = await boxOf(page, '[data-testid="case-closed-frame"]');

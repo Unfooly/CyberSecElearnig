@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeScene, composeSceneLocales, MIN_TEXT_PX, phoneScale, SCENE_LOCALES, sceneLocales } from './compose.js';
+import { composeScene, composeSceneLocales, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneScale, SCENE_LOCALES, sceneLocales } from './compose.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
@@ -366,6 +366,46 @@ describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, modu�
       items: [{ id: 'raport', prop: 'reportPortrait', x: 0, y: 0, params: { title: { $t: 't' } } }],
     };
     expect(() => composeScene(spec, { locale: 'pl', name: 'test' })).toThrow(/slot "(bag|bags|report|caseNo)"/);
+  });
+
+  it('D-152: reportPortrait z `rulesExtra` - strona i sekcja zasad wyższe o tyle samo, wszystko pod zasadami niżej; bez dopasowania ignorowane', () => {
+    // Wyższa grafika jest na telefonie na całą szerokość (przewijana w pionie) - skala z `phoneWidth`, nie z wysokości sceny.
+    const portrait = (extra?: number): SceneSpec => ({
+      width: 900, height: 1600 + (extra ?? 0), background: { flat: true, wall: 'none' }, phoneWidth: PHONE_SCENE_BOX.width,
+      strings: { pl: { t: 'Na skróty', c: 'NSK/2026/1023', r: 'RAPORT', e: 'DOWODY', m: 'CZAS', x: 'XP', l: 'ZASADY', s: 'PODPIS' } },
+      items: [{
+        id: 'raport', prop: 'reportPortrait', x: 0, y: 0, pad: 0,
+        partHotspots: { 'slot-wnioski': 'slot-wnioski', 'slot-podpis': 'podpis', 'slot-pieczec': 'slot-pieczec', 'slot-liscik': 'slot-liscik' },
+        params: {
+          caseNo: { $t: 'c' }, title: { $t: 't' }, bags: [], ruled: false, signatureAbove: true, ...(extra === undefined ? {} : { rulesExtra: extra }),
+          labels: { report: { $t: 'r' }, evidence: { $t: 'e' }, time: { $t: 'm' }, xp: { $t: 'x' }, lessons: { $t: 'l' }, signature: { $t: 's' } },
+        },
+      }],
+    });
+    const px = (spec: SceneSpec) => {
+      const { hotspots, height } = composeScene(spec, { locale: 'pl', name: 'test' });
+      return Object.fromEntries(hotspots.map((h) => [h.id, { y: Math.round((h.y * height) / 100), h: Math.round((h.h * height) / 100) }]));
+    };
+    const base = px(portrait()), tall = px(portrait(300));
+    // Hotspoty w % z jednym miejscem po przecinku - porównanie z dokładnością do 2 jednostek sceny.
+    const near = (id: string, actual: { y: number; h: number }, expected: { y: number; h: number }) => {
+      expect(Math.abs(actual.y - expected.y), `${id} y`).toBeLessThanOrEqual(2);
+      expect(Math.abs(actual.h - expected.h), `${id} h`).toBeLessThanOrEqual(2);
+    };
+    near('slot-wnioski', tall['slot-wnioski'], { y: base['slot-wnioski'].y, h: base['slot-wnioski'].h + 300 });
+    for (const id of ['podpis', 'slot-pieczec', 'slot-liscik']) near(id, tall[id], { y: base[id].y + 300, h: base[id].h });
+    expect(PROPS.reportPortrait({ rulesExtra: 300 })).toEqual(PROPS.reportPortrait({}));
+  });
+
+  it('D-152: reportPortrait `tallStats` - wartości statystyk pod etykietą (od y 346), reszta strony niżej o 40; `signatureAbove` - podpis na całą szerokość', () => {
+    const parts = (params: Record<string, unknown>) => PROPS.reportPortrait(params, { minFontSize: 12, where: 'test' }).parts!;
+    const base = parts({}), tall = parts({ tallStats: true, signatureAbove: true });
+    expect(tall['slot-dowody']).toEqual({ x: 50, y: 346, w: 232, h: 60 });
+    // Pole statystyki (rect od y 250, wysokość 160) mieści wartość: 346 + 60 <= 410.
+    expect(tall['slot-dowody'].y + tall['slot-dowody'].h).toBeLessThanOrEqual(410);
+    expect(tall['slot-wnioski']).toEqual({ ...base['slot-wnioski'], y: base['slot-wnioski'].y + 40 });
+    expect(tall['slot-podpis']).toEqual({ x: 50, y: 970, w: 740, h: 50 });
+    expect(parts({ slots: { 'slot-pieczec': { x: 1, y: 2, w: 3, h: 4 } } })['slot-pieczec']).toEqual({ x: 1, y: 2, w: 3, h: 4 });
   });
 
   it('w scenie ze strings domyślny napis PL klocka (parametr pominięty) to błąd builda „nie pochodzi ze strings”', () => {

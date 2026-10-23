@@ -1,4 +1,4 @@
-# Moduł 4 „Na skróty” - scenariusz (projekt do akceptacji właściciela)
+# Moduł 4 „Na skróty” - scenariusz (zatwierdzony przez właściciela 2026-10-23)
 
 Źródło: specyfikacja właściciela z 2026-10-19 (zastępuje wcześniejszą). Ten dokument uzupełnia ją o wszystkie teksty, których
 specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, odpowiedzi błędne), i jest źródłem prawdy dla
@@ -12,6 +12,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
   SWIPE_SORT, raport). `locales: ["pl"]`. EN dopiero po „zatwierdzam treść modułu 4” (D-143).
 - **DoD (D-143):** PL gotowe + pseudo-lokalizacja zielona - sceny ze `strings` przechodzą `pseudo-locale.test.ts` bez nowych wpisów
   `KNOWN_TOO_TIGHT`, layout-check `pseudo` zielony.
+- **Bez form rodzajowych w poleceniach i pytaniach** (decyzja właściciela 2026-10-23): w trybie prostym nie „-łeś/-łaś” - pytania
+  bezosobowo („Dane klientów trafiły już…”), odpowiedzi w 1. osobie czasu teraźniejszego („Zgłaszam…”).
 - **Nazwy fikcyjne** (rozdział 8 playbooka): Bartek Lis (marketing), narzędzia „CzatPomocnik”, „MojaChmura”, „PDF Zamiennik Free”;
   domeny `.test`; bez logotypów prawdziwych firm.
 - **Głosy jak w module 3:** lektor-przewodnik `komisarz` (A.W.). Bartek nie mówi (nie potrzebuje roli głosu).
@@ -23,7 +25,7 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 | slug | `na-skroty` |
 | title | Na skróty |
 | subtitle | Darmowe narzędzia z internetu w pracy - czym jest shadow IT i co może pójść nie tak |
-| category | `IT_HYGIENE` *(do potwierdzenia - pkt 7.3)* |
+| category | `IT_HYGIENE` (decyzja właściciela - pkt 7.3) |
 | level | `basic` |
 | durationMinutes | 7 |
 | objectives | 1) Wiedzieć, czym jest shadow IT: narzędzie do pracy, którego firma nie sprawdziła i nie zatwierdziła. 2) Znać skutki: dane firmy u obcej firmy, złośliwe dodatki, naruszenie danych osobowych, utrata plików. 3) Przed użyciem nowego programu, strony albo AI zapytać IT. 4) Gdy coś poszło nie tak - od razu zgłosić to do IT. |
@@ -66,7 +68,7 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 | Problem prawny firmy | Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę. |
 | Utrata plików | Prywatne konto nie ma firmowej kopii zapasowej; gdy konto zniknie albo pracownik odejdzie, pliki przepadają. |
 
-### 3.4 Bezpieczne czy zapytaj IT? (SWIPE_SORT, `bezpieczne-czy-it`) - wymaga rozszerzenia schematu (pkt 7.1)
+### 3.4 Bezpieczne czy zapytaj IT? (SWIPE_SORT, `bezpieczne-czy-it`) - z rozszerzeniem schematu (pkt 7.1)
 
 - **Polecenie:** Oceń każdą sytuację: bezpieczne czy najpierw zapytać IT?
 - **Werdykty:** w lewo „Zapytaj IT”, w prawo „Bezpieczne” (dziś na sztywno „Podejrzane” / „W porządku”).
@@ -87,14 +89,14 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 
 - **Pytanie:** Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu. Co robisz?
 - **Odpowiedzi:**
-  - Pobieram darmowy program z pierwszej strony w wyszukiwarce. → *Darmowe programy z internetu bywają z ukrytymi dodatkami - firma nie wie, co instalujesz.*
+  - Pobieram pierwszy darmowy program, jaki znajdę w internecie. → *Darmowe programy z internetu bywają z ukrytymi dodatkami - firma nie wie, co instalujesz.*
   - ✔ **Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.** *(spec)* → *Tak - IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć.*
   - Proszę kolegę, żeby zainstalował mi swój program. → *To nadal program, którego nikt nie sprawdził - decyzję zostaw IT.*
 - **Podpowiedź:** Kto w firmie sprawdza i zatwierdza programy?
 
 ### 3.6 Dane już wklejone (QUIZ, `juz-wklejone`)
 
-- **Pytanie:** Wkleiłeś do darmowego czatu AI tabelę z danymi klientów. Co teraz?
+- **Pytanie:** Dane klientów trafiły już do darmowego czatu AI. Co teraz?
 - **Odpowiedzi:**
   - Kasuję historię rozmowy i nic nie mówię. → *(spec)* *Skasowanie historii u siebie nie usuwa danych z serwerów narzędzia.*
   - ✔ **Od razu zgłaszam to do IT.** *(spec)* → *Tak - liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki.*
@@ -111,7 +113,7 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
   1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.
   2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI.
   3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.
-- **Pieczęć i liścik** (pkt 7.2): pieczęć „SPRAWA ZAMKNIĘTA”, liścik „Najpierw zapytaj IT. — A.W.”.
+- **Pieczęć i liścik** (pkt 7.2, zatwierdzone): pieczęć „SPRAWA ZAMKNIĘTA”, liścik „Najpierw zapytaj IT. — A.W.”.
 
 ## 4. Grafiki (kompozytor, `scripts/content/scenes/examples/na-skroty/`)
 
@@ -136,13 +138,10 @@ Lektor `komisarz`: odprawa, narracje wejścia scen, narracja raportu. Odpowiedzi
 `LAYOUT_CHECK_MODULE=na-skroty` sekcje `module`, `prosty` (jeśli dotyczy), `pseudo`; e2e smoke `scripts/e2e-module.mjs na-skroty` i pełne
 przejście; content-import; zrzuty pl-PL.
 
-## 7. Decyzje do podjęcia przed `module.json`
+## 7. Decyzje właściciela (2026-10-23)
 
-1. **SWIPE_SORT - własne werdykty i karty-sytuacje.** Dziś przyciski są na sztywno „Podejrzane” / „W porządku”, a karta to wiadomość
-   (SMS/komunikator z nadawcą). Propozycja: opcjonalne `labels: { suspicious, ok }` (np. „Zapytaj IT” / „Bezpieczne”) i karta
-   `channel: "situation"` - sam tekst sytuacji, bez nadawcy i godziny. Osobny mały PR przed treścią modułu (schemat, odtwarzacz,
-   testy, layout-check).
-2. **Pieczęć i liścik:** „SPRAWA ZAMKNIĘTA” pasuje do serii, ale tu nie ma „sprawy” w sensie kryminalnym. Propozycja: zostaje
-   (spójność serii) albo „RAPORT GOTOWY”. Liścik: „Najpierw zapytaj IT. — A.W.”.
-3. **Kategoria katalogu:** `IT_HYGIENE` (istniejąca; alternatywa `GENERAL_AWARENESS`). Nowa kategoria, np. „ochrona danych”, wymaga
-   migracji enumu `CourseCategory` - osobny PR z merge ręcznym.
+1. **SWIPE_SORT - własne werdykty i karty-sytuacje: TAK**, osobny mały PR przed treścią modułu: opcjonalne `labels: { suspicious, ok }`
+   jako `Localized` (pl/en) i karta `channel: "situation"` (sam tekst, bez nadawcy i godziny). Domyślne etykiety bez zmian - moduł 3
+   wygląda i działa identycznie (test). Etykiety ≤ 16 znaków, sprawdzone w pseudo-lokalizacji na 390 px. Bez migracji.
+2. **Pieczęć:** zostaje „SPRAWA ZAMKNIĘTA” (rama serii z detektywem A.W.). **Liścik:** „Najpierw zapytaj IT. — A.W.”.
+3. **Kategoria:** `IT_HYGIENE`. Nowej kategorii teraz nie dodajemy (wróci przy module o RODO).

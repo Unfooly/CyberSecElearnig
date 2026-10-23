@@ -35,6 +35,9 @@ const fitLabel = (
     bold: !!o.bold, family: 'sans', fill: o.fill ?? P.ink, where: context.where,
   });
 
+/** Inne położenie pieczęci i liściku w raporcie (moduł 4, D-152) - tylko sloty (prostokąty dla odtwarzacza), grafika bez zmian. */
+export type ReportSlotOverrides = Partial<Record<'slot-pieczec' | 'slot-liscik', { x: number; y: number; w: number; h: number }>>;
+
 /** Napisy raportu zamknięcia (parametr `labels`): domyślnie dotychczasowe teksty PL modułów 1-2; scena ze `strings` podaje je przez `{ "$t" }`. */
 export interface ReportLabels {
   report: string;
@@ -393,8 +396,13 @@ export const ODPRAWA_PROPS = {
 /* ---------- zamknięcie sprawy (feat/case-closed, D-089) ---------- */
 
 // `ruled: false` - bez liniatury pod wnioskami (D-140): moduł z zasadami wpalonymi w grafikę (textBox) - linie przecinałyby tekst.
-export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean }> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
-  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true }, context) => {
+// `signatureAbove` (moduł 4, D-152): etykieta podpisu w jednej linii nad linią podpisu, na całą szerokość strony (zamiast wąskiego pola obok
+// linii - dłuższy przekład się nie mieścił, pseudo-lokalizacja D-143); slot podpisu pod etykietą. `slots` - inne położenie pieczęci i liściku.
+// Bez tych parametrów - grafika i sloty bez zmian (moduły 1-3 bajt w bajt).
+export const reportFolderOpen: PropFn<{
+  caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean; signatureAbove?: boolean; slots?: ReportSlotOverrides;
+}> = ({ caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true, signatureAbove = false, slots }, context) => {
   const w = 1340, h = 780, pw = 620, ph = 720, L = 30, R = w - 30 - pw, top = 30;
   const N = { ...REPORT_LABELS, ...labels };
   const fit = fitMode(context);
@@ -421,8 +429,11 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
       statBox(L + 40, top + 200, 'evidence', N.evidence) + statBox(L + 225, top + 200, 'time', N.time) + statBox(L + 410, top + 200, 'xp', N.xp) +
       lbl('lessons', N.lessons, L + 40, top + 346, 13, { bold: true, fill: P.greyDark, spacing: 1 }, { x: L + 40, y: top + 320, w: pw - 80, h: 36 }) +
       (ruled ? Array.from({ length: 6 }, (_, i) => `<line x1="${L + 40}" y1="${top + 400 + i * 40}" x2="${L + pw - 40}" y2="${top + 400 + i * 40}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
-      lbl('signature', N.signature, L + 40, top + 668, 12, { bold: true, fill: P.greyDark, spacing: 1 }, { x: L + 40, y: top + 616, w: 204, h: 62 }) +
-      `<line x1="${L + 250}" y1="${top + 670}" x2="${L + pw - 40}" y2="${top + 670}" stroke="${P.ink}" stroke-width="2" stroke-dasharray="6 6"/>` +
+      (signatureAbove && fit
+        ? lbl('signature', N.signature, L + 40, top + 636, 12, { bold: true, fill: P.greyDark }, { x: L + 40, y: top + 612, w: pw - 80, h: 34 }) +
+          `<line x1="${L + 40}" y1="${top + 694}" x2="${L + pw - 40}" y2="${top + 694}" stroke="${P.ink}" stroke-width="2" stroke-dasharray="6 6"/>`
+        : lbl('signature', N.signature, L + 40, top + 668, 12, { bold: true, fill: P.greyDark, spacing: 1 }, { x: L + 40, y: top + 616, w: 204, h: 62 }) +
+          `<line x1="${L + 250}" y1="${top + 670}" x2="${L + pw - 40}" y2="${top + 670}" stroke="${P.ink}" stroke-width="2" stroke-dasharray="6 6"/>`) +
       /* prawa: dowody rzeczowe (miniatury) + miejsce na pieczęć */
       `<rect x="${R + 6}" y="${top + 8}" width="${pw}" height="${ph}" rx="6" fill="${P.ink}" opacity="0.12"/>` +
       `<rect x="${R}" y="${top}" width="${pw}" height="${ph}" rx="6" fill="${P.white}"/>` +
@@ -442,7 +453,7 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
       'slot-czas': { x: L + 225, y: top + 236, w: 170, h: 56 },
       'slot-xp': { x: L + 410, y: top + 236, w: 170, h: 56 },
       'slot-wnioski': { x: L + 40, y: top + 366, w: pw - 80, h: 240 },
-      'slot-podpis': { x: L + 250, y: top + 620, w: pw - 290, h: 50 },
+      'slot-podpis': signatureAbove && fit ? { x: L + 40, y: top + 648, w: pw - 80, h: 44 } : { x: L + 250, y: top + 620, w: pw - 290, h: 50 },
       // Bez dowodów rzeczowych (moduł 3, poprawki m3): pusta prawa strona - szeroki liścik u góry i kompaktowa pieczęć pod nim, oba duże.
       // Moduły 1-2 bez zmian (te same sloty i kolejność).
       ...(items
@@ -450,6 +461,7 @@ export const reportFolderOpen: PropFn<{ caseNo?: string; title?: string; bags?: 
         : { 'slot-pieczec': { x: R + 100, y: top + 400, w: 420, h: 260 } }),
       'slot-odznaka': { x: L + 470, y: top + 18, w: 120, h: 164 },
       ...(items ? { 'slot-liscik': { x: R + 440, y: top + 150, w: 170, h: 158 } } : { 'slot-liscik': { x: R + 40, y: top + 110, w: 540, h: 236 } }),
+      ...slots,
     },
   };
 };
@@ -773,21 +785,36 @@ export const browserHistoryPortrait: PropFn<{ rows?: string[] }> = ({ rows = [] 
 };
 
 /* ---------- raport zamknięcia sprawy — pionowy, jedna duża strona (U/D-104) ---------- */
-export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean }> = ({
+// `tallStats` (moduł 4, D-152): etykiety statystyk w dwóch wierszach (wyższe pola, dłuższy przekład - pseudo-lokalizacja D-143), reszta strony
+// niżej o 40 jednostek. `rulesExtra` (D-152) - wyższa sekcja zasad o tyle jednostek, strona dłuższa o tyle samo (grafika wyższa niż 9:16,
+// odtwarzacz przewija ją w pionie). `slots` - inne położenie pieczęci i liściku. Bez tych parametrów - grafika i sloty bez zmian (moduły 1-3
+// bajt w bajt).
+export const reportPortrait: PropFn<{
+  caseNo?: string; title?: string; bags?: string[]; labels?: Partial<ReportLabels>; ruled?: boolean; tallStats?: boolean; signatureAbove?: boolean;
+  rulesExtra?: number; slots?: ReportSlotOverrides;
+}> = ({
   caseNo = 'CS/2026/0915', title = 'Nieautoryzowany przelew',
-  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true,
+  bags = ['mail', 'karteczka', 'wydruk', 'poczta głos.', 'kalendarz', 'logi', 'WHOIS', 'SMS', 'tablica'], labels, ruled = true, tallStats = false,
+  signatureAbove = false, rulesExtra = 0, slots,
 }, context) => {
-  const w = 840, h = 1540, X = 50;
-  const N = { ...REPORT_LABELS, ...labels };
   const fit = fitMode(context);
+  const extra = fit ? Math.max(0, Math.round(rulesExtra)) : 0;
+  const w = 840, h = 1540 + extra, X = 50;
+  const N = { ...REPORT_LABELS, ...labels };
+  const tall = tallStats && fit;
+  // Przesunięcie wszystkiego pod polami statystyk (wyższe pola przy `tallStats`); pod sekcją zasad - dodatkowo o `rulesExtra`.
+  const dy = tall ? 40 : 0;
+  const dz = dy + extra;
   const lbl = (slot: string, value: string, x: number, y: number, size: number, o: Parameters<typeof t>[4], box: Box) =>
     fit ? fitLabel(context, slot, value, size, box, { fill: o?.fill, bold: o?.bold, anchor: o?.anchor }) : t(x, y, value, size, o);
   const box = (x: number, slot: string, label: string) =>
-    `<rect x="${x}" y="250" width="232" height="120" rx="12" fill="#F6F6F4"/>` + lbl(slot, label, x + 20, 284, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: x + 12, y: 254, w: 208, h: 50 });
+    `<rect x="${x}" y="250" width="232" height="${120 + dy}" rx="12" fill="#F6F6F4"/>` +
+    lbl(slot, label, x + 20, 284, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: x + 12, y: 254, w: 208, h: 50 + dy });
   // Przy dopasowaniu bez woreczków (moduł 3) bez sekcji „dowody rzeczowe” - dół strony wolny na pieczęć i liścik.
   const items = !(fit && bags.length === 0);
-  // Przy dopasowaniu wartości statystyk pod większą etykietą (etykieta do y 304).
-  const statY = fit ? 306 : 294, statH = fit ? 60 : 72;
+  // Przy dopasowaniu wartości statystyk pod większą etykietą (etykieta do y 304, wartość od 306; przy `tallStats` - etykieta do y 344,
+  // wartość od 346, pole do 410).
+  const statY = tall ? 346 : fit ? 306 : 294, statH = fit ? 60 : 72;
   return {
     w, h,
     svg:
@@ -798,16 +825,20 @@ export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: st
       lbl('caseNo', caseNo, X, 150, 52, { bold: true }, { x: X, y: 108, w: w - 2 * X, h: 68 }) +
       lbl('title', title, X, 204, 34, { bold: true, fill: P.purpleDark }, { x: X, y: 178, w: w - 2 * X, h: 62 }) +
       box(X, 'evidence', N.evidence) + box(X + 250, 'time', N.time) + box(X + 500, 'xp', N.xp) +
-      lbl('lessons', N.lessons, X, 432, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 392, w: w - 2 * X, h: 56 }) +
-      (ruled ? Array.from({ length: 8 }, (_, i) => `<line x1="${X}" y1="${500 + i * 50}" x2="${w - X}" y2="${500 + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
-      lbl('signature', N.signature, X, 940, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 878, w: 320, h: 108 }) +
-      `<line x1="${X + 330}" y1="945" x2="${w - X}" y2="945" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>` +
-      `<line x1="${X}" y1="990" x2="${w - X}" y2="990" stroke="${P.grey}" stroke-width="2"/>` +
-      (items ? lbl('items', N.items, X, 1036, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 1000, w: w - 2 * X, h: 54 }) : '') +
+      lbl('lessons', N.lessons, X, 432 + dy, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 392 + dy, w: w - 2 * X, h: 56 }) +
+      (ruled ? Array.from({ length: 8 + Math.floor(extra / 50) }, (_, i) => `<line x1="${X}" y1="${500 + dy + i * 50}" x2="${w - X}" y2="${500 + dy + i * 50}" stroke="${P.sky}" stroke-width="2"/>`).join('') : '') +
+      // `signatureAbove` (D-152): etykieta w jednej linii nad linią podpisu, na całą szerokość; linia i slot podpisu pod nią.
+      (signatureAbove && fit
+        ? lbl('signature', N.signature, X, 916 + dz, 20, { bold: true, fill: P.greyDark }, { x: X, y: 878 + dz, w: w - 2 * X, h: 50 }) +
+          `<line x1="${X}" y1="${982 + dz}" x2="${w - X}" y2="${982 + dz}" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>`
+        : lbl('signature', N.signature, X, 940 + dz, 20, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 878 + dz, w: 320, h: 108 }) +
+          `<line x1="${X + 330}" y1="${945 + dz}" x2="${w - X}" y2="${945 + dz}" stroke="${P.ink}" stroke-width="3" stroke-dasharray="8 8"/>`) +
+      (signatureAbove && fit ? '' : `<line x1="${X}" y1="${990 + dz}" x2="${w - X}" y2="${990 + dz}" stroke="${P.grey}" stroke-width="2"/>`) +
+      (items ? lbl('items', N.items, X, 1036 + dz, 22, { bold: true, fill: P.greyDark, spacing: 2 }, { x: X, y: 1000 + dz, w: w - 2 * X, h: 54 }) : '') +
       bags
         .slice(0, 9)
         .map((l, i) => {
-          const c = i % 3, r = Math.floor(i / 3), x = X + c * 150, y = 1062 + r * 138;
+          const c = i % 3, r = Math.floor(i / 3), x = X + c * 150, y = 1062 + dz + r * 138;
           return `<g transform="rotate(${(c + r) % 2 ? 2 : -2} ${x + 66} ${y + 60})"><rect x="${x}" y="${y}" width="132" height="120" rx="6" fill="${P.sky}" opacity="0.55" stroke="${P.grey}" stroke-width="2"/>` +
             `<rect x="${x}" y="${y}" width="132" height="24" rx="4" fill="${P.red}" opacity="0.85"/>` + lbl('bag', N.bag, x + 66, y + 18, 14, { anchor: 'middle', bold: true, fill: P.white, spacing: 2 }, { x: x + 4, y: y + 2, w: 124, h: 20 }) +
             `<rect x="${x + 14}" y="${y + 38}" width="104" height="64" rx="4" fill="${P.white}"/>` + lbl('bags', l, x + 66, y + 78, 17, { anchor: 'middle', bold: true, fill: P.purpleDark }, { x: x + 16, y: y + 40, w: 100, h: 60 }) + `</g>`;
@@ -817,13 +848,14 @@ export const reportPortrait: PropFn<{ caseNo?: string; title?: string; bags?: st
       'slot-dowody': { x: X, y: statY, w: 232, h: statH },
       'slot-czas': { x: X + 250, y: statY, w: 232, h: statH },
       'slot-xp': { x: X + 500, y: statY, w: 232, h: statH },
-      'slot-wnioski': { x: X, y: 452, w: w - 2 * X, h: 420 },
-      'slot-podpis': { x: X + 330, y: 880, w: w - 2 * X - 330, h: 64 },
+      'slot-wnioski': { x: X, y: 452 + dy, w: w - 2 * X, h: 420 + extra },
+      'slot-podpis': signatureAbove && fit ? { x: X, y: 930 + dz, w: w - 2 * X, h: 50 } : { x: X + 330, y: 880 + dz, w: w - 2 * X - 330, h: 64 },
       // Bez dowodów rzeczowych (moduł 3, poprawki m3): szeroki liścik pod podpisem i kompaktowa pieczęć pod nim, po prawej - oba duże
       // (tekst min. 16 px na telefonie), poza sekcją zasad (do y 872). Moduły 1-2 bez zmian.
       ...(items
-        ? { 'slot-pieczec': { x: 500, y: 1330, w: 320, h: 170 }, 'slot-liscik': { x: 540, y: 1062, w: 250, h: 240 } }
-        : { 'slot-pieczec': { x: 356, y: 1270, w: 440, h: 272 }, 'slot-liscik': { x: 40, y: 975, w: 680, h: 298 } }),
+        ? { 'slot-pieczec': { x: 500, y: 1330 + dz, w: 320, h: 170 }, 'slot-liscik': { x: 540, y: 1062 + dz, w: 250, h: 240 } }
+        : { 'slot-pieczec': { x: 356, y: 1270 + dz, w: 440, h: 272 }, 'slot-liscik': { x: 40, y: 975 + dz, w: 680, h: 298 } }),
+      ...slots,
     },
   };
 };

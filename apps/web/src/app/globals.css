@@ -285,6 +285,20 @@
 .closing-frame[data-orientation='portrait'] .closing-box {
   width: min(100cqw, calc(100cqh * 9 / 16));
 }
+/* Wysoki pionowy raport (D-152, grafika wyższa niż 9:16 - np. moduł 4 z dłuższymi zasadami): na całą szerokość, przewijany w pionie (jak
+   panorama w poziomie); ceremonia sama zjeżdża do pieczęci. m-auto raportu zostaje: we flexie automatyczne marginesy przy przepełnieniu
+   to 0 (raport od góry, nic nie jest ucięte), a bez nich align-items: stretch rozciągnąłby raport do wysokości ramki. Jak w panoramie
+   ramka przewijana przycina (wbrew „bez przycinania” wyżej): raport ma całą szerokość, więc przycięte bywa tylko wlatywanie liściku.
+   Proporcje znane po wczytaniu grafiki - do tego czasu 9:16 (jednorazowy skok w trakcie wejścia teczki). */
+.closing-frame[data-orientation='portrait'][data-scroll='y'] {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y pinch-zoom;
+}
+.closing-frame[data-orientation='portrait'][data-scroll='y'] .closing-box {
+  width: 100cqw;
+}
 /* Okienka easter egga (PopupsEasterEgg.tsx, D-100): kaskada w procentach nakładki zbliżenia (--i = numer okienka). Niska nakładka
    (telefon w poziomie, < 360 px wysokości): kaskada bardziej w bok niż w dół i ciaśniejsze okienko - trzy okienka mieszczą się w całości. */
 .easter-popups {

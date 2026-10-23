@@ -344,6 +344,10 @@ export default function CaseClosedScreen({
   // Do pierwszego pomiaru (null - także HTML z serwera) raport się nie renderuje - bez mignięcia panoramy i pobierania poziomej grafiki.
   const measured = portraitRoot !== null;
   const portrait = portraitRoot === true && !!closing?.portrait;
+  // Proporcje pionowego raportu (D-152) z wczytanej grafiki: 9:16 (moduły 1-3) mieści się w całości; wyższa grafika (np. 900×1800 - moduł 4,
+  // dłuższe zasady w innych językach) - na całą szerokość, przewijana w pionie (jak panorama w poziomie). Do wczytania - 9:16.
+  const [portraitRatio, setPortraitRatio] = useState(9 / 16);
+  const tallPortrait = portrait && portraitRatio < 9 / 16 - 0.01;
   const frameRef = useRef<HTMLDivElement>(null);
   // Raport w bieżącej orientacji: obraz i sloty. Rozmiary tekstu w cqw skalowane do szerokości sceny (pionowa ma 900 zamiast 1600 j.).
   const sceneImage = portrait ? closing!.portrait!.image : closing?.image;
@@ -416,7 +420,14 @@ export default function CaseClosedScreen({
         // Panorama (telefon w pionie): widok przesuwa się na prawą kartkę, gdzie spada pieczęć i wlatuje liścik. Poza panoramą no-op.
         const frame = frameRef.current;
         const scene = sceneRef.current;
-        if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && slots) {
+        // Wysoki pionowy raport (D-152, przewijany w pionie): widok zjeżdża do pieczęci i liściku. Rozłącznie z panoramą - wystające
+        // elementy dają scrollHeight > clientHeight także w panoramie, a drugi scrollTo przerwałby przesuwanie w poziomie.
+        // tallPortrait z chwili podpisu (grafika dawno wczytana); zależności efektu - patrz niżej.
+        if (frame && scene && slots && tallPortrait) {
+          if (frame.scrollHeight > frame.clientHeight + 1) {
+            frame.scrollTo?.({ top: scene.offsetTop + (scene.offsetHeight * Math.min(slots.stamp.y, slots.note.y)) / 100 - 16, behavior: 'smooth' });
+          }
+        } else if (frame && scene && frame.scrollWidth > frame.clientWidth + 1 && slots) {
           frame.scrollTo?.({ left: scene.offsetLeft + (scene.offsetWidth * slots.stamp.x) / 100 - 16, behavior: 'smooth' });
         }
       }, SIGN_MS);
@@ -431,7 +442,7 @@ export default function CaseClosedScreen({
       return () => window.clearTimeout(timer);
     }
     return undefined;
-    // play - stabilna funkcja z useSfx.
+    // play - stabilna funkcja z useSfx; slots i tallPortrait czytane w chwili zmiany etapu (nie restartują timerów ceremonii).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
@@ -494,7 +505,13 @@ export default function CaseClosedScreen({
       <p className="sr-only">{report}</p>
 
       {closing && imageUrl && slots ? (
-        <div ref={frameRef} data-testid="case-closed-frame" data-orientation={portrait ? 'portrait' : 'landscape'} className="closing-frame relative flex min-h-0 w-full flex-1">
+        <div
+          ref={frameRef}
+          data-testid="case-closed-frame"
+          data-orientation={portrait ? 'portrait' : 'landscape'}
+          data-scroll={tallPortrait ? 'y' : undefined}
+          className="closing-frame relative flex min-h-0 w-full flex-1"
+        >
           {measured && (
           <div
             data-testid="case-closed-scene"
@@ -502,11 +519,20 @@ export default function CaseClosedScreen({
             // Wejście teczki tylko na etapie intro: klasa zdjęta później nie wraca (inaczej po drgnięciu przeglądarka odpaliłaby wejście
             // teczki drugi raz - obie klasy ustawiają `animation`).
             className={`closing-box relative m-auto shrink-0 ${ceremony && stage === 'intro' ? 'closing-folder-in' : ''} ${ceremony && stage === 'stamp' ? 'closing-shake' : ''}`}
-            style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}
+            style={{ aspectRatio: tallPortrait ? String(portraitRatio) : portrait ? '9 / 16' : '16 / 9' }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG tylko przez <img> (D-051) */}
             {/* alt (D-133): opis raportu z tekstem wpalonym w grafikę; bez niego dekoracyjna (raport dla czytnika jest w sr-only). */}
-            <img src={imageUrl} alt={closing?.alt ?? ''} referrerPolicy="no-referrer" className="absolute inset-0 block h-full w-full object-contain" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- zasób modułu z CONTENT_BASE_URL, SVG tylko przez <img> (D-051) */}
+            <img
+              src={imageUrl}
+              alt={closing?.alt ?? ''}
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 block h-full w-full object-contain"
+              onLoad={(event) => {
+                const { naturalWidth, naturalHeight } = event.currentTarget;
+                if (portrait && naturalWidth > 0 && naturalHeight > 0) setPortraitRatio(naturalWidth / naturalHeight);
+              }}
+            />
 
             {(
               [

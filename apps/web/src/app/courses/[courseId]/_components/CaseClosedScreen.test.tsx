@@ -162,6 +162,48 @@ describe('CaseClosedScreen: ceremonia', () => {
     expect(screen.getByRole('button', { name: 'Podpisz raport' })).toContainElement(screen.getByTestId('closing-sign-label'));
   });
 
+  it('D-152: pionowy raport wyższy niż 9:16 - proporcje z grafiki, ramka przewijana w pionie, przy pieczęci zjazd w dół; 9:16 bez zmian', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);
+    const loadImage = (width: number, height: number) => {
+      const image = screen.getByTestId('case-closed-scene').querySelector('img')!;
+      Object.defineProperty(image, 'naturalWidth', { configurable: true, value: width });
+      Object.defineProperty(image, 'naturalHeight', { configurable: true, value: height });
+      fireEvent.load(image);
+    };
+    const portrait = { ...closing, portrait: { image: 'scenes/raport-pion.svg', slots: closing.slots } } as CaseClosing;
+
+    const frame = () => screen.getByTestId('case-closed-frame');
+    // jsdom nie liczy układu - rozmiary przewijania ramki podane wprost (wystające elementy: scrollHeight > clientHeight także przy 9:16).
+    const ceremony = () => {
+      Object.defineProperty(frame(), 'scrollHeight', { configurable: true, value: 1200 });
+      Object.defineProperty(frame(), 'clientHeight', { configurable: true, value: 600 });
+      const scrollTo = vi.fn();
+      frame().scrollTo = scrollTo;
+      advance(1300);
+      for (let i = 0; i < 60; i += 1) advance(250);
+      fireEvent.click(screen.getByRole('button', { name: 'Podpisz raport' }));
+      advance(600);
+      return scrollTo;
+    };
+
+    const { unmount } = renderScreen({ closing: portrait });
+    expect(screen.getByTestId('case-closed-scene').style.aspectRatio).toBe('9 / 16');
+    loadImage(900, 1600);
+    expect(frame()).not.toHaveAttribute('data-scroll');
+    expect(screen.getByTestId('case-closed-scene').style.aspectRatio).toBe('9 / 16');
+    expect(ceremony()).not.toHaveBeenCalled();
+    unmount();
+
+    renderScreen({ closing: portrait });
+    loadImage(900, 1900);
+    expect(frame()).toHaveAttribute('data-scroll', 'y');
+    expect(screen.getByTestId('case-closed-scene').style.aspectRatio).toBe(String(900 / 1900));
+    const scrollTo = ceremony();
+    // offsetTop/offsetHeight w jsdom = 0 - zjazd do wyżej położonego z pieczęci i liściku minus margines 16 px; bez przesuwania w poziomie.
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: -16, behavior: 'smooth' });
+  });
+
   it('B-127: w pionie toast nagrody dopiero PO ceremonii (nie w trakcie), z animacją wejścia; znika po 2,5 s', () => {
     // Kontener telefonu w pionie (proporcje < 0.8) i wariant pionowy w treści.
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 360, height: 600, x: 0, y: 0, top: 0, left: 0, right: 360, bottom: 600, toJSON: () => ({}) } as DOMRect);

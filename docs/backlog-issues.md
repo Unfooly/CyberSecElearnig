@@ -867,19 +867,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
-### B-159 Półpauza i pudła: reszta po D-154 (stałe teksty, testy brzegowe, easter egg)
-- Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review D-154
-- Opis: (1) stałe teksty odtwarzacza w kodzie nadal mają „ - ” (walidator ich nie obejmuje): `InterrogationBlock.tsx` (346, 630, 756),
-  `CallRecordingBlock.tsx` (238, 249, 451-452, 465), `OsintBlock.tsx:157`, `EmbeddedHtmlBlock.tsx:78`, `apps/web/src/lib/evidence-board.ts:279`;
-  lista z grepa po liniach, mogą być teksty łamane między liniami. (2) Test reguły walidatora jest w `simple-mode.spec.ts`, a dotyczy
-  wszystkich modułów; brakuje przypadku pól pomijanych (`regex`, `accept`). (3) Logika pudeł nie ma testu braku komunikatu przy wszystkich
-  obejrzanych przedmiotach ani przekazania `revealed` na pulpit. (4) Ramki podpowiedzi obejmują przedmiot `popups`: w module 1 dwa pudła
-  po ukończeniu wymaganych zaznaczają ukrytego easter egga (dawny puls też go pokazywał). (5) Krok `framed` w `e2e-module-04.mjs` nie
-  wyklucza drzwi, inaczej niż m13 (dziś m4 nie ma drzwi; krok jest fail-closed).
-- Akceptacja: stałe teksty z półpauzą (z asercjami w testach); test reguły w pliku specyfikacji walidatora, z przypadkiem `regex`/`accept`;
-  testy komponentu dla obu przypadków pudeł; decyzja właściciela w sprawie ramki easter egga.
+### B-159 Reguła półpauzy: testy i drobne po D-154
+- Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review D-154. Stałe teksty, ramka easter egga i testy pudeł zrobione w D-155.
+- Opis: (1) test reguły walidatora jest w `simple-mode.spec.ts`, a dotyczy wszystkich modułów; brakuje przypadku pól pomijanych (`regex`,
+  `accept`). (2) Krok `framed` w `e2e-module-04.mjs` nie wyklucza drzwi, inaczej niż m13 (dziś m4 nie ma drzwi; krok jest fail-closed).
+  (3) Półpauzy w stałych tekstach kodu nic nie pilnuje (walidator obejmuje tylko treść modułów); asercje ma tylko OSINT, a `CourseCatalog.tsx:47`
+  (katalog, poza odtwarzaczem) nadal ma „ - ”. (4) Po 2 pudłach na pulpicie i szybkim „Wróć” komunikat żyje jeszcze do 5 s, choć scena
+  główna nie ma ramek.
+- Akceptacja: test reguły w pliku specyfikacji walidatora, z przypadkiem `regex`/`accept`; `framed` bez drzwi; asercje półpauzy w testach
+  bloków; `CourseCatalog.tsx` poprawiony.
 
 ### B-158 Pudła liczone osobno w każdym widoku sceny (scena główna i pulpit)
+- **Status: zrobione** (D-155)
 - Etykiety: `P1`, `mod:kursy` · Źródło: code review D-154, decyzja właściciela 2026-10-30. **Następny punkt po #145, przed B-155.**
 - Opis: dziś (D-154) pudła liczy tylko scena główna; gracz, który utknie na pulpicie (m1, m2), nie dostanie tam ramek, dopóki nie wyjdzie
   i nie spudłuje dwa razy na scenie głównej.

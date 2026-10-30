@@ -380,6 +380,7 @@
 [data-zoom-open] .scene-pan-frame :is(.scene-hotspot, .scene-pan-hint, .scene-pan-edge),
 [data-testid='scene-zoom'][data-phase^='inner-'] .hotspot-nested-scene-box .scene-hotspot {
   opacity: 0;
+  animation: none; /* puls ramki podpowiedzi (keyframes z opacity) wygrałby z opacity: 0 */
 }
 .hotspot-nested-scene-frame {
   container-type: size;

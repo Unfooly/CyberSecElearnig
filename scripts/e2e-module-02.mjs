@@ -201,7 +201,54 @@ try {
   // --- 2. Biurko Karola (SCENE_HOTSPOTS z dwiema scenami zagnieżdżonymi: telefon, pulpit) -------------------------------------
   await page.getByRole('button', { name: 'Telefon Karola' }).waitFor();
   step('SCENE_HOTSPOTS (biurko): „Dalej” nieaktywny przed drzwiami', (await nextDisabled()) && (await noInBlockNext()));
+  // B-158: pudło = prawdziwy klik w obraz widoku poza przedmiotem (punkt, w którym elementFromPoint to sam obraz, np. nie warstwa nad nim).
+  const missTwice = async (imageSelector) => {
+    const point = await page.locator(imageSelector).first().evaluate((img) => {
+      const box = img.getBoundingClientRect();
+      for (let x = 0.05; x < 1; x += 0.05) {
+        for (let y = 0.05; y < 1; y += 0.05) {
+          const px = box.left + box.width * x;
+          const py = box.top + box.height * y;
+          if (px < window.innerWidth && py < window.innerHeight && document.elementFromPoint(px, py) === img) return { x: px, y: py };
+        }
+      }
+      return null;
+    });
+    if (!point) throw new Error(`Brak wolnego punktu na obrazie ${imageSelector}`);
+    await page.mouse.click(point.x, point.y);
+    await page.waitForTimeout(300);
+    await page.mouse.click(point.x, point.y);
+  };
+  const hotspotState = (id) => page.getByTestId(`hotspot-overlay-${id}`).getAttribute('data-state');
+  const revealHint = page.getByText('Miejsca, którym warto się przyjrzeć, są teraz zaznaczone.');
+
+  await missTwice('.scene-box img, .briefing-scene-box img');
+  step(
+    'SCENE_HOTSPOTS (biurko): 2 pudła na scenie głównej - ramka na wymaganym, komunikat widoczny (B-158)',
+    (await hotspotState('telefon')) === 'hint' && (await hotspotState('komputer')) === 'hint' && (await revealHint.isVisible()),
+  );
   await page.getByRole('button', { name: 'Telefon Karola' }).click();
+  await dialog().getByRole('button', { name: 'Powiadomienia aplikacji' }).waitFor();
+  await page.locator('.hotspot-nested-scene-box img').first().waitFor();
+  step('SCENE_HOTSPOTS (telefon): pudła ze sceny głównej nie odsłaniają ramek w telefonie (B-158)', (await hotspotState('mfa-seria')) === 'hidden');
+  await missTwice('.hotspot-nested-scene-box img');
+  step('SCENE_HOTSPOTS (telefon): 2 pudła w widoku - ramki na wymaganych celach, zbliżenie otwarte (B-158)', (await hotspotState('mfa-seria')) === 'hint' && (await hotspotState('rejestr-helpdesk')) === 'hint' && (await dialog().count()) === 1);
+  // Dymek podpowiedzi jest pod zbliżeniem zwinięty (Hint.tsx), więc w widoku telefonu sygnałem są same ramki - muszą być naprawdę widoczne.
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(1000);
+  const frameStyle = await page.getByTestId('hotspot-overlay-mfa-seria').evaluate((button) => {
+    const style = getComputedStyle(button);
+    const box = button.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return { border: style.borderTopColor, width: parseFloat(style.borderTopWidth), onTop: top === button };
+  });
+  step('SCENE_HOTSPOTS (telefon): ramka nieprzezroczysta i na wierzchu (B-158)', frameStyle.onTop && frameStyle.width >= 2 && !frameStyle.border.startsWith('rgba') && frameStyle.border !== 'transparent', JSON.stringify(frameStyle));
+  // Ramki spod zbliżenia nie prześwitują: puls wyłączony pod sceną zagnieżdżoną (telefon z ramką) i pod otwartym przedmiotem (cel obok).
+  const hiddenUnderZoom = (id) => page.getByTestId(`hotspot-overlay-${id}`).evaluate((button) => {
+    const style = getComputedStyle(button);
+    return style.animationName === 'none' && style.opacity === '0';
+  });
+  step('SCENE_HOTSPOTS (telefon): ramka przedmiotu sceny głównej schowana pod zbliżeniem (B-158)', await hiddenUnderZoom('telefon'));
   await dialog().getByRole('button', { name: 'Powiadomienia aplikacji' }).click();
   // Tekst zbliżeń jest wpalony w grafikę (i18n-4, D-137) - sprawdzamy grafikę po opisie alt i jej załadowanie.
   const zoomImage = async (name) => {
@@ -215,6 +262,7 @@ try {
     return image.evaluate((img) => img.naturalWidth > 0);
   };
   step('Telefon: zbliżenie powiadomień (grafika z wpalonym tekstem)', await zoomImage(/sześciu odrzuconych próśb/));
+  step('SCENE_HOTSPOTS (telefon): ramka celu schowana pod otwartym przedmiotem (B-158)', await hiddenUnderZoom('rejestr-helpdesk'));
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Rejestr połączeń' }).click();
   step('Telefon: zbliżenie rejestru połączeń (grafika z wpalonym tekstem)', await zoomImage(/Rejestr połączeń: 9:02 IT Helpdesk/));

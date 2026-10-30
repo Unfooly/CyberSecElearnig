@@ -218,8 +218,9 @@ export class GamificationService {
             description: null,
             conditionText: null,
             scope: null,
-            // Grafika zablokowana tajnego ma neutralną nazwę pliku (osiagniecie-tajne-zablokowane) - nazwa nic nie zdradza.
-            icon: localizedIcon(badge.lockedIcon ?? badge.icon, locale) ?? badge.icon,
+            // Grafika zablokowana tajnego ma neutralną nazwę pliku (osiagniecie-tajne-zablokowane) - nazwa nic nie zdradza; bez `lockedIcon`
+            // też neutralna, nigdy `badge.icon` (D-111).
+            icon: localizedIcon(badge.lockedIcon ?? SECRET_LOCKED_ICON, locale) ?? SECRET_LOCKED_ICON,
             lockedIcon: localizedIcon(badge.lockedIcon, locale),
             xpReward: 0,
           };

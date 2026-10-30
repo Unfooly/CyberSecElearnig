@@ -643,6 +643,16 @@ describe('GamificationService', () => {
       expect(result[0]).toMatchObject({ code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', isUnlocked: true, conditionText: 'Ukończ dowolne szkolenie.' });
     });
 
+    it('tajne niezdobyte bez `lockedIcon` w bazie: neutralna grafika, nigdy zdobyta (D-111)', async () => {
+      const tx = listTx([]);
+      tx.badge.findMany.mockResolvedValue([{ ...catalog[1], icon: 'osiagniecie-ciekawski-detektyw', lockedIcon: null }]);
+      runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(tx));
+
+      const [secret] = await service.listBadgesWithUnlockStatus('org-1', 'user-1', 'pl-PL');
+
+      expect(secret.icon).toBe('pl/osiagniecie-tajne-zablokowane');
+    });
+
     it('tajne niezdobyte: bez kodu, nazwy, opisu, warunku i grafiki zdobytej (tylko ranga i grafika zablokowana)', async () => {
       runInOrgContext.mockImplementation((_orgId: string, fn: (tx: unknown) => unknown) => fn(listTx([])));
 
@@ -813,7 +823,7 @@ describe('GamificationService', () => {
 
       run(boardTx({ top, owned }));
       const forFan = await service.getLeaderboard('org-1', 'fan', 'organization', 'pl-PL');
-      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' }]);
+      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b', rank: 'SECRET' }]);
 
       // Przeglądarka po angielsku (bez ustawienia konta) - nazwy i grafiki EN (poprawki m3, pkt c).
       run(boardTx({ top, owned }));

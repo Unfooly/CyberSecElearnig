@@ -174,6 +174,7 @@ część przecinająca środek klocka (`stackedHalves`) to czytelny błąd.
 `odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/<cel>/*.json` daje identyczny plik i identyczne `*.hotspots.json`
 (B-128: jeden katalog na cel - `examples/<slug>/` dla modułu, wynik w `packages/content/modules/<slug>/assets/scenes` albo `assets/`
 dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/achievements/<język>/` - trofea są scenami ze `strings`:
+tajne trofea pod nazwą z hashem treści (`trophy-files.ts`, po przebudowie usuń stary plik i zaktualizuj `SECRET_ICON_FILES` w API, D-156);
 napisy `trophyBadge`/`trophyHelpdesk` (`name`, `rank`, `lockedLabel`, medal `first`: `caseLabel`, `stampLabel`) idą przez `{ "$t" }`,
 wstęga i pigułka rangi rosną pod dłuższy tekst, a potem `fitText` w jednej linii, `trophy-labels.ts`), i że każda grafika w tych katalogach ma
 źródło. Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny

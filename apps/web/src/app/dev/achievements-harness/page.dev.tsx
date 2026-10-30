@@ -107,7 +107,7 @@ const BADGES: Badge[] = [
     title: 'Poza protokołem',
     description: 'Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być.',
     conditionText: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Głos z helpdesku”.',
-    icon: 'pl/osiagniecie-off-the-record',
+    icon: 'pl/osiagniecie-off-the-record-8551a4b1',
     lockedIcon: 'pl/osiagniecie-tajne-zablokowane',
     rank: 'SECRET',
     hidden: true,
@@ -121,7 +121,7 @@ const BADGES: Badge[] = [
 
 const PINNED = [
   { code: 'flawless-case', title: 'Sprawa bez skazy', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
-  { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw', rank: 'SECRET' as const },
+  { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b', rank: 'SECRET' as const },
   { code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
 ];
 const NAMES = ['Katarzyna', 'Bartłomiej', 'Anna', 'Jan', 'Małgorzata', 'Piotr', 'Zofia', 'Krzysztof', 'Ewa', 'Tomasz'];

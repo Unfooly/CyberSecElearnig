@@ -94,9 +94,19 @@ export function localizedBadgeTexts(
 }
 
 /**
+ * Tajne trofea są w public/achievements pod nazwą z hashem treści (B-155, bez migracji: baza trzyma nazwę bez hasha). Wartości to wynik
+ * kompozytora (scripts/content/scenes/trophy-files.ts); zmiana grafiki = nowy hash tutaj, pilnuje achievement-texts.spec.ts.
+ */
+export const SECRET_ICON_FILES: Record<string, Record<ContentLocale, string>> = {
+  'osiagniecie-ciekawski-detektyw': { pl: 'osiagniecie-ciekawski-detektyw-5a973d2b', en: 'osiagniecie-ciekawski-detektyw-7194d2d4' },
+  'osiagniecie-off-the-record': { pl: 'osiagniecie-off-the-record-8551a4b1', en: 'osiagniecie-off-the-record-7b4dd8b3' },
+};
+
+/**
  * Grafika odznaki w języku gracza: nazwa pliku z bazy z katalogiem języka („pl/osiagniecie-pierwsza-sprawa”) - web składa z niej
  * /achievements/<język>/<nazwa>.svg (achievementImage). Nazwa spoza wzorca - bez zmian (web i tak jej nie pokaże).
  */
 export function localizedIcon(icon: string | null, locale: ContentLocale): string | null {
-  return icon && /^[a-z0-9-]{1,80}$/.test(icon) ? `${locale}/${icon}` : icon;
+  if (!icon || !/^[a-z0-9-]{1,80}$/.test(icon)) return icon;
+  return `${locale}/${SECRET_ICON_FILES[icon]?.[locale] ?? icon}`;
 }

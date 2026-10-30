@@ -16,6 +16,7 @@ import { basename, join } from 'node:path';
 import { composeSceneLocales, previewHtml } from './compose.js';
 import { patchHotspotCoords, resolveTargetHotspots, type ContentModuleLike } from './patch-module.js';
 import { PROPS } from './props.js';
+import { outputFileName } from './trophy-files.js';
 import type { SceneSpec } from './types.js';
 
 function arg(name: string): string | undefined {
@@ -47,8 +48,9 @@ mkdirSync(outDir, { recursive: true });
 for (const result of results) {
   const dir = result.locale ? join(outDir, result.locale) : outDir;
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, `${name}.svg`), result.svg);
-  if (process.argv.includes('--preview')) writeFileSync(join(dir, `${name}.preview.html`), previewHtml(result, `${name}.svg`));
+  const fileName = outputFileName(name, result.svg);
+  writeFileSync(join(dir, fileName), result.svg);
+  if (process.argv.includes('--preview')) writeFileSync(join(dir, `${name}.preview.html`), previewHtml(result, fileName));
 }
 writeFileSync(join(outDir, `${name}.hotspots.json`), JSON.stringify(res.hotspots, null, 2) + '\n');
 
@@ -71,5 +73,5 @@ if (modulePath && blockId) {
   console.log(`Zaktualizowano ${patched} hotspotów w ${modulePath} (blok ${blockId}${nestedId ? `, zagnieżdżona scena "${nestedId}"` : ''})`);
 }
 
-const files = results.map((result) => (result.locale ? `${result.locale}/${name}.svg` : `${name}.svg`)).join(', ');
+const files = results.map((result) => `${result.locale ? `${result.locale}/` : ''}${outputFileName(name, result.svg)}`).join(', ');
 console.log(`OK: ${files} (${res.width}×${res.height}), hotspoty: ${res.hotspots.map(h => h.id).join(', ') || 'brak'}`);

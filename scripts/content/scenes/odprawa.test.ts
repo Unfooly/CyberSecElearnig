@@ -9,6 +9,7 @@ import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
 import { NASKROTY_PROPS } from './props-naskroty.js';
 import { PROPS } from './props.js';
+import { isSecretTrophy, outputFileName } from './trophy-files.js';
 import type { SceneLocale, SceneSpec } from './types.js';
 
 // Grafiki modułów i trofea to WYNIK kompozytora ze źródeł scenes/examples/<cel>/*.json (B-128: jeden katalog na cel, dowolny moduł) -
@@ -46,7 +47,12 @@ const buildAll = (source: Source) => composeSceneLocales(specOf(source), source.
 const svgPath = (source: Source) =>
   outputDirs(source.target).map((dir) => join(dir, `${source.name}.svg`)).find((file) => existsSync(file)) ?? join(outputDirs(source.target)[0], `${source.name}.svg`);
 /** Plik wyniku: scena ze `strings` - <katalog celu>/<język>/<nazwa>.svg (jak cli.ts build). */
-const resultPath = (source: Source, locale?: SceneLocale) => (locale ? join(outputDirs(source.target)[0], locale, `${source.name}.svg`) : svgPath(source));
+const resultPath = (source: Source, locale?: SceneLocale) => (locale ? join(outputDirs(source.target)[0], locale, resultFile(source, locale)) : svgPath(source));
+/** Nazwa pliku w katalogu języka: tajne trofea z hashem treści (B-155), reszta `<nazwa>.svg`. */
+function resultFile(source: Source, locale: SceneLocale): string {
+  if (!isSecretTrophy(source.name)) return `${source.name}.svg`;
+  return outputFileName(source.name, buildAll(source).find((res) => res.locale === locale)!.svg);
+}
 
 // Moduł 1 - testy współrzędnych (module.json vs *.hotspots.json).
 const examples = join(examplesRoot, 'wyludzone-haslo');
@@ -94,7 +100,7 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
       expect(orphans, `${target}: grafiki bez źródła w scenes/examples/${target}/`).toEqual([]);
       for (const locale of SCENE_LOCALES) {
         if (!existsSync(join(dir, locale))) continue;
-        const localized = new Set(ofTarget.filter((s) => sceneLocales(specOf(s)).includes(locale)).map((s) => `${s.name}.svg`));
+        const localized = new Set(ofTarget.filter((s) => sceneLocales(specOf(s)).includes(locale)).map((s) => resultFile(s, locale)));
         const localeOrphans = readdirSync(join(dir, locale)).filter((file) => file.endsWith('.svg') && !localized.has(file));
         expect(localeOrphans, `${target}/${locale}: grafiki bez źródła ze "strings.${locale}"`).toEqual([]);
       }

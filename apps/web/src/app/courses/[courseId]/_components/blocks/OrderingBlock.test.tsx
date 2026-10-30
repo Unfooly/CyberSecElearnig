@@ -257,7 +257,7 @@ describe('OrderingBlock: tablica śledcza', () => {
     expect(screen.getByTestId('evidence-board')).toHaveAttribute('data-phase', 'settled');
     expect(placed(1)).toHaveTextContent('Nie klikaj w link');
     expect(screen.queryByRole('button', { name: 'Dalej' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('board-feedback')).toHaveTextContent(/Nie wszystko jest na swoim miejscu/);
+    expect(screen.getByTestId('board-feedback')).toHaveTextContent(/Nie wszystko jest na swoim miejscu – zobacz/);
   });
 
   it('reduced-motion: od razu stan końcowy (bez werdyktu i przelotu)', () => {

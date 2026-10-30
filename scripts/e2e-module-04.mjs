@@ -201,7 +201,8 @@ try {
     await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
     await page.waitForTimeout(150); // przejście koloru ramki trwa 100 ms
     const framed = await page.evaluate(() =>
-      [...document.querySelectorAll('.scene-hotspot')].filter((el) => {
+      // Drzwi (ready/blocked) są zawsze widoczne - wyjście ze sceny, nie odpowiedź (D-129), jak w m13 w layout-check.
+      [...document.querySelectorAll('.scene-hotspot')].filter((el) => !['ready', 'blocked'].includes(el.dataset.state)).filter((el) => {
         const { borderTopColor, backgroundColor } = getComputedStyle(el);
         return ![borderTopColor, backgroundColor].every((c) => c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c));
       }).length,

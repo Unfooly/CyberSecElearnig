@@ -103,7 +103,7 @@ describe('CallRecordingBlock', () => {
     render(<CallRecordingBlock block={block(true)} contentBase="/content" onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByTestId('recording-play'));
     await vi.waitFor(() => {
-      expect(screen.getByTestId('recording-transcript')).toHaveTextContent('Nagranie nie wczytało się');
+      expect(screen.getByTestId('recording-transcript')).toHaveTextContent('Nagranie nie wczytało się – zaznacz');
     });
     expect(screen.getByRole('tab', { name: 'Odsłuch' })).toBeDisabled();
   });

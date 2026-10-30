@@ -8,6 +8,11 @@
 const fs = require('fs');
 const dns = require('dns');
 
+// Atrapa weryfikacji domeny nigdy nie może działać w produkcji: start tylko w jawnie dozwolonym środowisku (fail-closed).
+if (!['development', 'test'].includes(process.env.NODE_ENV)) {
+  throw new Error('dns-stub: start dozwolony tylko przy NODE_ENV=development albo test');
+}
+
 const file = process.env.E2E_DNS_TXT_FILE;
 if (!file) {
   throw new Error('dns-stub: brak E2E_DNS_TXT_FILE');

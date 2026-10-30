@@ -867,6 +867,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-160 Layout-check: element z fokusem klawiatury nad dolnym paskiem odtwarzacza
+- Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review B-152
+- Opis: pomiar z `e2e-registration.mjs` usunięty razem z przyciskiem „Kontynuuj”. `scroll-padding-bottom` na obszarze treści (`PlayerStage.tsx`) sprawdza dziś tylko
+  jsdom na zamockowanych wymiarach (`CoursePlayer.exploratory.test.tsx`), a komentarz w kodzie opisuje błąd zależny od przeglądarki (Chromium na telefonie).
+- Akceptacja: przypadek w `layout-check`: fokus klawiatury na elemencie przy dole obszaru treści na 390×844, dół elementu nie niżej niż góra `player-bottombar`.
+
 ### B-159 Reguła półpauzy: testy i drobne po D-154
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review D-154. Stałe teksty, ramka easter egga i testy pudeł zrobione w D-155.
 - Opis: (1) test reguły walidatora jest w `simple-mode.spec.ts`, a dotyczy wszystkich modułów; brakuje przypadku pól pomijanych (`regex`,
@@ -940,6 +946,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `LevelProgress` po awansie „Poziom {newLevel}” od 0; bez pola (starsze API przy wdrożeniu) - jak dotąd; e2e modułu 1 sprawdza etykietę i wartość.
 
 ### B-152 `scripts/e2e-registration.mjs` - nieaktualna sekcja zrzutów odtwarzacza (`data-testid="caption"`)
+- **Status: zrobione** (2026-10-30): dotyczyło tylko skryptu, nie rejestracji na produkcji; cały skrypt zielony na buildach produkcyjnych web i API (84 kroki; API w trybie `NODE_ENV=development`, bo tylko tak działa atrapa DNS i tryb maili w logu). Zaktualizowana też część „śledztwo” (D-129, D-130).
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: poprawki m3 (D-145), przebieg w przeglądarce pl-PL 2026-10-19
 - Opis: cała ścieżka rejestracji przechodzi (formularz → hasło → DNS → panel → ustawienia → odtwarzacz z nonce), ale końcowa sekcja zrzutów
   czeka na `getByTestId('caption')`, którego odtwarzacz nie ma od ramki 16:9 (`6bbf35a`), i na `section[aria-label="Narracja"]` - skrypt

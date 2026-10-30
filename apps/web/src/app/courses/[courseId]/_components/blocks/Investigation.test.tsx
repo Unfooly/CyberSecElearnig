@@ -186,16 +186,154 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     fireEvent.click(sceneImage);
     expect(overlay('h1')).toHaveAttribute('data-state', 'hidden');
     fireEvent.click(sceneImage);
-    for (const id of ['h1', 'h2']) {
-      expect(overlay(id)).toHaveAttribute('data-state', 'hint');
-      expect(overlay(id).className).toContain('motion-safe:animate-pulse');
-      expect(overlay(id).className).not.toMatch(/(^|\s)animate-pulse/); // animacja tylko bez prefers-reduced-motion
-    }
+    expect(overlay('h1')).toHaveAttribute('data-state', 'hint');
+    expect(overlay('h1').className).toContain('motion-safe:animate-pulse');
+    expect(overlay('h1').className).not.toMatch(/(^|\s)animate-pulse/); // animacja tylko bez prefers-reduced-motion
     expect(screen.getByTestId('reaction')).toHaveTextContent(REVEAL_HINT);
+    // Decyzja właściciela 2026-10-30: ramka tylko na celach wymaganych.
+    for (const id of ['h2', 'h3']) {
+      expect(overlay(id)).toHaveAttribute('data-state', 'hidden');
+      expect(overlay(id).className).not.toContain('animate-pulse');
+    }
 
     pick('Monitor');
     expect(overlay('h1')).toHaveAttribute('data-state', 'discovered');
-    expect(overlay('h2')).toHaveAttribute('data-state', 'hint');
+  });
+
+  describe('B-158: pudła osobno w każdym widoku', () => {
+    const pulpit: ContentBlock = {
+      type: 'SCENE_HOTSPOTS',
+      id: 'pulpit-widoki',
+      title: 'Biuro',
+      image: 'scenes/office.png',
+      imageAlt: 'Biuro',
+      hotspots: [
+        {
+          id: 'komputer',
+          label: 'Komputer',
+          x: 10,
+          y: 10,
+          width: 30,
+          height: 30,
+          content: 'Ekran z pulpitem.',
+          required: true,
+          media: {
+            kind: 'scene',
+            scene: {
+              image: 'scenes/pulpit.png',
+              imageAlt: 'Pulpit',
+              hotspots: [
+                { id: 'poczta', label: 'Poczta', x: 10, y: 10, width: 10, height: 10, content: 'Skrzynka.', required: true },
+                { id: 'kosz', label: 'Kosz', x: 30, y: 10, width: 10, height: 10, content: 'Pusty.', required: false },
+                {
+                  id: 'gra',
+                  label: 'Gra',
+                  x: 50,
+                  y: 10,
+                  width: 10,
+                  height: 10,
+                  content: 'Pirat.',
+                  required: false,
+                  media: { kind: 'popups' as const, items: [{ title: 'Gratulacje!', body: 'Wygrałeś.', button: 'Odbierz' }], outro: 'Ćwiczenie.' },
+                },
+              ],
+            },
+          },
+        },
+        { id: 'kubek', label: 'Kubek', x: 60, y: 60, width: 10, height: 10, content: 'Zwykły kubek.', required: false },
+      ],
+    };
+    const overlay = (id: string) => screen.getByTestId(`hotspot-overlay-${id}`);
+    const mainImage = () => document.querySelector('.scene-box img, .briefing-scene-box img') as HTMLImageElement;
+    const desktopImage = () => document.querySelector('.hotspot-nested-scene-box img') as HTMLImageElement;
+    const missTwice = (image: HTMLImageElement) => {
+      fireEvent.click(image);
+      fireEvent.click(image);
+    };
+
+    it('2 pudła na pulpicie: ramki tylko na wymaganym celu pulpitu, bez easter egga i bez odsłaniania sceny głównej', () => {
+      setup(pulpit);
+      pick('Komputer');
+      fireEvent.click(desktopImage());
+      expect(overlay('poczta')).toHaveAttribute('data-state', 'hidden');
+      fireEvent.click(desktopImage());
+      expect(overlay('poczta')).toHaveAttribute('data-state', 'hint');
+      expect(overlay('kosz')).toHaveAttribute('data-state', 'hidden');
+      expect(overlay('gra')).toHaveAttribute('data-state', 'hidden');
+      expect(overlay('gra').className).not.toContain('animate-pulse');
+      expect(screen.getByTestId('reaction')).toHaveTextContent(REVEAL_HINT);
+
+      back();
+      fireEvent.click(mainImage()); // jedno pudło na scenie głównej: liczniki się nie sumują
+      expect(overlay('komputer')).toHaveAttribute('data-state', 'discovered');
+    });
+
+    it('2 pudła na scenie głównej: przedmiot prowadzi do wymaganego celu w środku, pulpit zostaje bez ramek', () => {
+      setup(pulpit);
+      pick('Komputer');
+      back();
+      missTwice(mainImage());
+      expect(overlay('komputer')).toHaveAttribute('data-state', 'hint');
+      expect(overlay('kubek')).toHaveAttribute('data-state', 'hidden');
+
+      pick('Komputer (obejrzane)');
+      expect(overlay('poczta')).toHaveAttribute('data-state', 'hidden');
+    });
+
+    it('podwójne kliknięcie to jedno pudło', () => {
+      setup(pulpit);
+      fireEvent.click(mainImage(), { detail: 1 });
+      fireEvent.click(mainImage(), { detail: 2 });
+      expect(overlay('komputer')).toHaveAttribute('data-state', 'hidden');
+    });
+
+    it('klik w obraz pulpitu pod otwartym przedmiotem nie jest pudłem', () => {
+      // Kosz wymagany: przy otwartej Poczcie został cel do wskazania, więc o braku pudeł decyduje sam stan widoku.
+      const [komputer, kubek] = pulpit.hotspots!;
+      const nested = komputer.media!.scene!;
+      setup({
+        ...pulpit,
+        hotspots: [{ ...komputer, media: { kind: 'scene', scene: { ...nested, hotspots: nested.hotspots.map((inner) => (inner.id === 'kosz' ? { ...inner, required: true } : inner)) } } }, kubek],
+      });
+      pick('Komputer');
+      pick('Poczta');
+      missTwice(desktopImage());
+      fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+      expect(overlay('kosz')).toHaveAttribute('data-state', 'hidden');
+      expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
+    });
+
+    it('pulpit bez wymaganych celów (jak w module 1): brak ramek i komunikatu, także na easter eggu', () => {
+      const [komputer, kubek] = pulpit.hotspots!;
+      const nested = komputer.media!.scene!;
+      setup({
+        ...pulpit,
+        hotspots: [{ ...komputer, media: { kind: 'scene', scene: { ...nested, hotspots: nested.hotspots.map((inner) => ({ ...inner, required: false })) } } }, kubek],
+      });
+      pick('Komputer');
+      missTwice(desktopImage());
+      expect(overlay('poczta')).toHaveAttribute('data-state', 'hidden');
+      expect(overlay('gra')).toHaveAttribute('data-state', 'hidden');
+      expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
+    });
+
+    it('podgląd (review): pudła na pulpicie niczego nie odsłaniają', () => {
+      setup(pulpit, { review: true });
+      pick('Komputer');
+      missTwice(desktopImage());
+      expect(overlay('poczta')).toHaveAttribute('data-state', 'hidden');
+    });
+
+    it('bez wymaganych celów w widoku pudła nic nie robią: brak komunikatu o ramkach, których nie będzie', () => {
+      setup(pulpit);
+      pick('Komputer');
+      pick('Poczta');
+      fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+      back();
+      missTwice(mainImage());
+      expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
+      expect(overlay('kubek')).toHaveAttribute('data-state', 'hidden');
+    });
   });
 
   it('punkty na obrazie są w pełni dostępne: bez aria-hidden/tabIndex=-1, z aria-label i widocznym focus-ringiem - jedyna ścieżka (bez chipów)', () => {
@@ -351,7 +489,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     const sceneImage = document.querySelector('.scene-box img, .briefing-scene-box img') as HTMLImageElement;
     fireEvent.click(sceneImage);
     fireEvent.click(sceneImage);
-    expect(screen.getByTestId('hotspot-overlay-h2')).toHaveAttribute('data-state', 'hidden');
+    expect(screen.getByTestId('hotspot-overlay-h1')).toHaveAttribute('data-state', 'hidden');
     expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
   });
 

@@ -5,10 +5,11 @@ import { HINT_EVENT_TEXT, HintProvider, useCompleteHint, useHints, type HintMess
 
 // Przeniesione z mascot-reaction.test.tsx (D-093): te same zasady, tylko bez pozy - liczy się sam tekst.
 function Probe() {
-  const { hint, notify, show } = useHints();
+  const { hint, notify, show, clear } = useHints();
   return (
     <div>
       <output data-testid="hint">{hint ?? ''}</output>
+      <button type="button" onClick={() => clear('Z treści!')}>zdejmij z treści</button>
       <button type="button" onClick={() => notify('evidence')}>zdarzenie</button>
       <button type="button" onClick={() => show({ pose: 'greeting', text: 'Z treści!' })}>pokaż z treści</button>
       <button type="button" onClick={() => show({ pose: 'greeting' })}>sama poza</button>
@@ -38,6 +39,34 @@ describe('hints: notify() (zdarzenia powłoki) i show() (reakcja z treści)', ()
     fireEvent.click(screen.getByRole('button', { name: 'pokaż z treści' }));
     expect(screen.getByTestId('hint')).toHaveTextContent('Z treści!');
     expect(screen.getByTestId('hint')).not.toHaveTextContent('greeting');
+  });
+
+  it('clear() zdejmuje podpowiedź o tym tekście', () => {
+    render(
+      <HintProvider resetKey="k">
+        <Probe />
+      </HintProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'pokaż z treści' }));
+    fireEvent.click(screen.getByRole('button', { name: 'zdejmij z treści' }));
+    expect(screen.getByTestId('hint')).toHaveTextContent('');
+  });
+
+  it('clear() nie kasuje nowszej podpowiedzi, a ta nadal wygasa po 5 s', () => {
+    vi.useFakeTimers();
+    render(
+      <HintProvider resetKey="k">
+        <Probe />
+      </HintProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'pokaż z treści' }));
+    fireEvent.click(screen.getByRole('button', { name: 'zdarzenie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'zdejmij z treści' }));
+    expect(screen.getByTestId('hint')).toHaveTextContent(HINT_EVENT_TEXT.evidence);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByTestId('hint')).toHaveTextContent('');
   });
 
   it('reakcja bez tekstu (sama przestarzała poza) nic nie pokazuje', () => {

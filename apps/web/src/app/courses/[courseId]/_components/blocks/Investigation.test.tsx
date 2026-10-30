@@ -264,6 +264,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
       expect(screen.getByTestId('reaction')).toHaveTextContent(REVEAL_HINT);
 
       back();
+      expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument(); // scena główna nie ma ramek, więc komunikat znika
       fireEvent.click(mainImage()); // jedno pudło na scenie głównej: liczniki się nie sumują
       expect(overlay('komputer')).toHaveAttribute('data-state', 'discovered');
     });
@@ -278,6 +279,14 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
 
       pick('Komputer (obejrzane)');
       expect(overlay('poczta')).toHaveAttribute('data-state', 'hidden');
+    });
+
+    it('komunikat ze sceny głównej zostaje po powrocie z pulpitu: tam ramki są', () => {
+      setup(pulpit);
+      missTwice(mainImage());
+      pick('Komputer');
+      back();
+      expect(screen.getByTestId('reaction')).toHaveTextContent(REVEAL_HINT);
     });
 
     it('podwójne kliknięcie to jedno pudło', () => {

@@ -341,9 +341,9 @@ try {
       await page.setViewportSize(size);
       await page.goto(`${WEB}/courses/${demoCourse.id}`);
       await page.getByText(shot.promptText).waitFor();
-      if (shot.narrated) await page.getByTestId('caption').waitFor();
+      if (shot.narrated) await page.getByTestId('narration-caption').waitFor();
       const label = `${name}${shot.suffix}`;
-      const narrationRows = await page.locator('section[aria-label="Narracja"]').count();
+      const narrationRows = await page.getByTestId('narration-caption').count();
       step(`odtwarzacz (${label}): ${shot.narrated ? 'rząd narracji jest' : 'rząd narracji znika, zostaje nawigacja'}`, shot.narrated ? narrationRows === 1 : narrationRows === 0);
       // Bez poziomego przewijania strony (telefon): szerokość dokumentu nie przekracza okna.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -358,7 +358,7 @@ try {
         : [];
       step(`odtwarzacz (${label}): brak poziomego przewijania`, overflow <= 0, `nadmiar ${overflow}px ${offenders.join(' | ')}`);
       // Dolny pasek na telefonie nie może zajmować więcej niż ok. jednej czwartej ekranu (cel: dwa rzędy).
-      const barHeight = await page.evaluate(() => document.querySelector('nav[aria-label="Nawigacja po blokach"]')?.closest('.sticky')?.getBoundingClientRect().height ?? 0);
+      const barHeight = (await page.getByTestId('player-bottombar').boundingBox())?.height ?? 0;
       if (name === 'mobile-390') step(`odtwarzacz (${label}): dolny pasek <= 30% wysokości ekranu`, barHeight <= size.height * 0.3, `${Math.round(barHeight)} px z ${size.height}`);
       const file = join(screenshotDir, `player-${name}${shot.suffix}.png`);
       await page.screenshot({ path: file });
@@ -497,8 +497,8 @@ try {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(`${WEB}/courses/${caseCourse.id}`);
   await page.getByTestId('hotspot-overlay-monitor').waitFor();
-  // Suma nieznana ("?"): blok maila ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (gracz nie wie z góry, ile zaznaczyć).
-  step('śledztwo: licznik startuje z serwera, suma ukryta przez blok maila (Dowody 0/?)', (await counter().textContent())?.includes('Dowody 0/?') === true, await counter().textContent());
+  // Stały mianownik (D-130): suma dowodów znana od startu.
+  step('śledztwo: licznik startuje z serwera (Dowody 0/6)', (await counter().textContent())?.includes('Dowody 0/6') === true, await counter().textContent());
   // D-154: przedmioty bez ramki do podpowiedzi (2 pudła na scenie) - przed pierwszym kliknięciem niczego nie zdradzają.
   step('śledztwo: punkty niewidoczne przed pierwszym kliknięciem (D-154)', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-przed');
@@ -515,8 +515,8 @@ try {
   await page.getByRole('button', { name: 'Monitor' }).click();
   await take();
   step(
-    'śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/?) i podpowiedź o dowodzie (bez maskotki, D-093)',
-    (await counter().textContent())?.includes('Dowody 2/?') === true &&
+    'śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/6) i podpowiedź o dowodzie (bez maskotki, D-093)',
+    (await counter().textContent())?.includes('Dowody 2/6') === true &&
       (await page.getByTestId('hint-overlay').getByText('Mamy dowód! Trafił do notatnika.').count()) === 1 &&
       (await page.getByAltText(/Maskotka/).count()) === 0,
     await counter().textContent(),
@@ -525,72 +525,34 @@ try {
   await shoot('hotspoty-po');
   await noHScroll('desktop, hotspoty');
 
-  // Treść bloku nie może zostać pod lepkim paskiem: po przewinięciu do końca ostatni element ("Kontynuuj") leży nad paskiem, a element
-  // z fokusem klawiatury przewija się nad pasek (scroll-padding-bottom z pomiaru). Sprawdzane na desktopie i na telefonie.
-  const visibleAboveBar = async (label) => {
-    // Od góry strony i fokus klawiaturą na "Kontynuuj": przeglądarka przewija element do widoku, a scroll-padding-bottom (pomiar paska)
-    // ma zostawić go NAD paskiem. Samo przewinięcie do końca niczego nie dowodzi (pasek leży wtedy w przepływie pod treścią).
-    // blur: element mógł już mieć fokus z poprzedniego pomiaru (ponowne focus() na fokusowanym elemencie nie wywołuje zdarzenia ani przewijania).
-    await page.evaluate(() => {
-      document.activeElement?.blur();
-      window.scrollTo(0, 0);
-    });
-    await page.getByRole('button', { name: 'Kontynuuj' }).focus();
-    const metrics = await page.evaluate(() => {
-      const bar = document.querySelector('nav[aria-label="Nawigacja po blokach"]')?.closest('.sticky');
-      const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Kontynuuj');
-      return {
-        barTop: bar?.getBoundingClientRect().top ?? 0,
-        barHeight: bar?.getBoundingClientRect().height ?? 0,
-        buttonBottom: button?.getBoundingClientRect().bottom ?? 0,
-        padding: document.documentElement.style.getPropertyValue('scroll-padding-bottom'),
-        scrollY: Math.round(window.scrollY),
-        docHeight: document.documentElement.scrollHeight,
-        innerHeight: window.innerHeight,
-      };
-    });
-    step(`śledztwo (${label}): "Kontynuuj" z fokusem klawiatury jest w całości nad dolnym paskiem`, metrics.buttonBottom > 0 && metrics.buttonBottom <= metrics.barTop + 1, JSON.stringify(metrics));
-    const padding = await page.evaluate(() => document.documentElement.style.getPropertyValue('scroll-padding-bottom'));
-    step(`śledztwo (${label}): scroll-padding-bottom ustawiony z pomiaru paska`, /^\d+px$/.test(padding), padding);
-  };
-  await visibleAboveBar('desktop');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await visibleAboveBar('telefon');
-  await page.setViewportSize({ width: 1280, height: 1100 });
-  await page.evaluate(() => window.scrollTo(0, 0));
-
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
-  step('śledztwo: po zapisie licznik z serwera nadal 2/? (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/?') === true, await counter().textContent());
-  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
-  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
-
+  // Jeden „Dalej” (D-106, D-129): wyłącznie przycisk dolnego paska; po pokryciu wymaganych zapisuje blok i przechodzi dalej.
+  const nextEnabled = () => page.getByTestId('player-bottombar').getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
+  const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  await nextEnabled().click();
   await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
+  step('śledztwo: po zapisie licznik z serwera nadal 2/6 (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/6') === true, await counter().textContent());
+
   await page.getByRole('button', { name: 'Skąd był ten mail?' }).click();
   // Komunikator (D-087): kwestie przychodzą po "pisaniu" rozmówcy, jedna po drugiej.
   await page.getByText('Przyszedł dziś rano, podpisany jako bank.').waitFor();
   step('śledztwo: dialog pokazuje pierwszą kwestię, nie całość', (await page.getByText('Kliknęłam w link, zanim to sprawdziłam.').count()) === 0);
-  step('śledztwo: avatar rozmówcy ładuje się przez <img>', (await page.locator('img[src$="/content/img/anna.svg"]').count()) === 1);
+  // Avatar jest w kilku miejscach (nagłówek rozmowy, dymki) - liczy się załadowanie, nie liczba wystąpień.
+  await page.locator('img[src$="/content/img/anna.svg"]').first().waitFor();
+  step('śledztwo: avatar rozmówcy ładuje się przez <img>', await page.locator('img[src$="/content/img/anna.svg"]').first().evaluate((img) => img.complete && img.naturalWidth > 0));
   await shoot('dialog-w-trakcie');
   await page.setViewportSize({ width: 390, height: 844 });
   await noHScroll('telefon, dialog');
   await shoot('dialog-w-trakcie-390');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.locator('[role="log"][data-typing="false"]').waitFor();
-  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/?)', (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
-  await page.getByRole('button', { name: 'Kontynuuj' }).click();
-  await page.getByText('Blok ukończony.').waitFor();
-  // Po wyniku bloku są dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem; klikamy aktywny (bez polegania na kolejności w DOM).
-  await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
+  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/6)', (await counter().textContent())?.includes('Dowody 3/6') === true, await counter().textContent());
+  await nextEnabled().click();
 
   // --- Bloki oceniane: mail (klik we fragmenty), kolejność (klawiatura), zadanie tekstowe z podpowiedzią; ocena po stronie serwera. ---
-  // Jeden „Dalej” (D-106): wyłącznie przycisk dolnego paska.
-  const nextEnabled = () => page.getByTestId('player-bottombar').getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
-  const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
   await page.setViewportSize({ width: 1280, height: 1100 });
 
   await page.getByTestId('mail-client').waitFor();
-  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik), licznik nadal z "?"', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1 && (await counter().textContent())?.includes('Dowody 3/?') === true, await counter().textContent());
+  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik), licznik 3/6', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1 && (await counter().textContent())?.includes('Dowody 3/6') === true, await counter().textContent());
   await shoot('mail-przed');
 
   // Link nigdy nie nawiguje: adres w pasku statusu po najechaniu i kliknięciu, adres strony bez zmian.
@@ -715,8 +677,6 @@ try {
   step('embed: po powrocie z podglądu iframe wraca', (await page.locator('iframe').count()) === 1);
   // „Ukończyłem” to przełącznik gotowości (D-106) - zapis rusza „Dalej” w pasku.
   await page.getByRole('button', { name: 'Ukończyłem' }).click();
-  await nextEnabled().click();
-  await page.getByText('Blok ukończony.').waitFor();
   await nextEnabled().click();
 
   await page.getByTestId('case-evidence').waitFor();

@@ -75,7 +75,7 @@ export default function EmbeddedHtmlBlock({
         {finished && <span aria-hidden="true"> ✓</span>}
       </button>
       <p className="mt-2 text-xs text-slate-600">
-        Wynik w grze powyżej jest informacyjny - kliknij &quot;Ukończyłem&quot;, gdy skończysz, a potem &quot;Dalej&quot; na dole.
+        Wynik w grze powyżej jest informacyjny – kliknij &quot;Ukończyłem&quot;, gdy skończysz, a potem &quot;Dalej&quot; na dole.
       </p>
     </div>
   );

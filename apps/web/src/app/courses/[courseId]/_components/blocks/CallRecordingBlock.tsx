@@ -235,7 +235,7 @@ export default function CallRecordingBlock({
   function flagNow() {
     if (!listenAvailable || disabled) return;
     if (taps.length >= MAX_RECORDING_TAPS) {
-      setAnnounce('Osiągnięto limit flag - cofnij którąś albo sprawdź flagi.');
+      setAnnounce('Osiągnięto limit flag – cofnij którąś albo sprawdź flagi.');
       return;
     }
     const atMs = Math.round(positionRef.current);
@@ -246,7 +246,7 @@ export default function CallRecordingBlock({
   function toggleSegmentFlag(segmentId: string) {
     const exists = taps.some((tap) => 'segmentId' in tap && tap.segmentId === segmentId);
     if (!exists && taps.length >= MAX_RECORDING_TAPS) {
-      setAnnounce('Osiągnięto limit flag - cofnij którąś albo sprawdź flagi.');
+      setAnnounce('Osiągnięto limit flag – cofnij którąś albo sprawdź flagi.');
       return;
     }
     setTaps((current) => (exists ? current.filter((tap) => !('segmentId' in tap && tap.segmentId === segmentId)) : [...current, { segmentId }]));
@@ -448,8 +448,8 @@ export default function CallRecordingBlock({
             </button>
           </div>
           <p className={`text-sm text-muted ${onBackground}`}>
-            Flagi: <span className="font-semibold text-ink">{taps.length}</span>. Po kliknięciu w nagranie: Spacja - odtwórz/pauza, strzałki - ±5 s,
-            F - czerwona flaga.
+            Flagi: <span className="font-semibold text-ink">{taps.length}</span>. Po kliknięciu w nagranie: Spacja – odtwórz/pauza, strzałki – ±5 s,
+            F – czerwona flaga.
           </p>
         </div>
       ) : (
@@ -462,7 +462,7 @@ export default function CallRecordingBlock({
         >
           {!listenAvailable && (
             <p className="mb-3 rounded-card border border-border bg-paper px-3 py-2 text-sm text-muted">
-              {canListen ? 'Nagranie nie wczytało się - zaznacz manipulacje w transkrypcji.' : 'Zaznacz w transkrypcji kwestie, w których rozmówca manipuluje.'}
+              {canListen ? 'Nagranie nie wczytało się – zaznacz manipulacje w transkrypcji.' : 'Zaznacz w transkrypcji kwestie, w których rozmówca manipuluje.'}
             </p>
           )}
           {timeTaps.length > 0 && (

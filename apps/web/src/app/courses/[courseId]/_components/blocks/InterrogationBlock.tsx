@@ -343,7 +343,7 @@ export default function InterrogationBlock({
         if (data.evidence) onEvidence?.(data.evidence);
         hints.notify('evidence');
         play('msg-receive');
-        setStatus('Trafiony dowód - zeznanie się nie trzyma.');
+        setStatus('Trafiony dowód – zeznanie się nie trzyma.');
         if (data.line) setAnnouncement(`${speakerName} (przyznaje): ${data.line.text}`);
         // Przyznanie głosem postaci (B-135), jak zwykła kwestia: przy włączonym Lektorze, lektor bloku wstrzymany.
         const admissionSrc = soundOnRef.current ? contentAssetUrl(contentBase, data.line?.audioUrl, 'audio') : null;
@@ -627,7 +627,7 @@ export default function InterrogationBlock({
         )}
         <p className="dialogue-progress mt-3 text-sm text-slate-600">
           {ready
-            ? 'Przesłuchanie zakończone - „Dalej” w pasku.'
+            ? 'Przesłuchanie zakończone – „Dalej” w pasku.'
             : `Wymagane pytania: ${askedRequired}/${required.length}${consoleAvailable && !dossier.ready ? ' · konsola: zaznacz ślady włamania' : ''}`}
         </p>
       </div>
@@ -753,7 +753,7 @@ export function InterrogationResult({ block, detail, challenges, points }: { blo
       <h3 className="text-lg font-bold text-ink">{block.title ?? 'Przesłuchanie'}</h3>
       {contradictions.length === 0 ? (
         <p className="text-ink">
-          To zeznanie było prawdziwe - nie każdy świadek kłamie.
+          To zeznanie było prawdziwe – nie każdy świadek kłamie.
           {misses > 0 ? ` Podważone bez skutku: ${misses}.` : ''}
         </p>
       ) : (

@@ -158,7 +158,7 @@ try {
   };
 
   // --- 1. Odprawa (BRIEFING: jedna statyczna scena - telefon z połączeniem od Oli; jedyny krok, dalej „Dalej” w pasku, D-106) ----
-  const briefingScene = page.locator('img[alt*="połączenie przychodzące - Ola Malec, księgowość"]');
+  const briefingScene = page.locator('img[alt*="połączenie przychodzące – Ola Malec, księgowość"]');
   await briefingScene.first().waitFor();
   await page.getByTestId('briefing-scene-text').filter({ hasText: /Dzwoni Ola Malec z księgowości/ }).waitFor();
   const sceneLoaded = await briefingScene.first().evaluate((img) => (img.complete ? img.naturalWidth > 0 : new Promise((resolve) => {

@@ -46,7 +46,7 @@
   {"id":"tekst-nazwa-9-02","prop":"textBox","x":344,"y":280,"evidence":"rejestr-porownanie","params":{"w":262,"h":50,"text":["IT Helpdesk","9:02 · 39 min"],"size":31,"valign":"middle","color":"#0F172A"}},
   {"id":"tekst-nazwa-10-15","prop":"textBox","x":344,"y":474,"evidence":"rejestr-porownanie","params":{"w":262,"h":50,"text":["Wewnętrzny","10:15 · 3 min"],"size":31,"valign":"middle","color":"#0F172A"}},
   {"id":"tekst-intranet-naglowek","prop":"textBox","x":956.8,"y":105.3,"params":{"w":457.6,"h":63.9,"text":"Intranet: kontakt z IT","size":51.1,"align":"middle","valign":"middle","bold":true,"color":"#FFFFFF"}},
-  {"id":"tekst-intranet-tresc","prop":"textBox","x":902,"y":470,"evidence":"intranet-214","params":{"w":504,"h":300,"text":["Helpdesk IT - tylko numer wewnętrzny.","IT nigdy nie prosi o kody ani liczby z aplikacji.","Wątpliwości? Rozłącz się i oddzwoń."],"size":36,"align":"middle","valign":"middle","color":"#0F172A"}},
+  {"id":"tekst-intranet-tresc","prop":"textBox","x":902,"y":470,"evidence":"intranet-214","params":{"w":504,"h":300,"text":["Helpdesk IT – tylko numer wewnętrzny.","IT nigdy nie prosi o kody ani liczby z aplikacji.","Wątpliwości? Rozłącz się i oddzwoń."],"size":36,"align":"middle","valign":"middle","color":"#0F172A"}},
   {
    "id": "kubek",
    "prop": "mugTop",

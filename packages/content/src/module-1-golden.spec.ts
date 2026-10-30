@@ -10,7 +10,9 @@ import { hashContent, moduleWarnings, parseModule } from './node';
 // dla istniejącej treści - wolno ją zaktualizować wyłącznie świadomą decyzją (nowy wpis D-xxx), nigdy „żeby test przeszedł”.
 // Aktualizacje: D-116 (sceny pionowe korytarza i biura Anny - imagePortrait + portraitHotspots, prostokąt ekranu pulpitu
 // `media.scene.screen`; parsed, contentHash i clientBlocks nowe, ostrzeżenia bez zmian); D-135 (grafiki z tekstem jako krzywe -
-// ponownie opublikowane, w module.json zmieniły się WYŁĄCZNIE skróty w kluczach plików `assets/.../<nazwa>.<skrót>.svg`).
+// ponownie opublikowane, w module.json zmieniły się WYŁĄCZNIE skróty w kluczach plików `assets/.../<nazwa>.<skrót>.svg`); D-154
+// (typografia: trzy „ - ” w tekstach dla gracza zamienione na półpauzę „ – ” - parsed, contentHash i clientBlocks nowe, ostrzeżenia
+// bez zmian; nowa wersja kursu przy imporcie).
 const MODULE_1 = join(__dirname, '..', 'modules', 'wyludzone-haslo', 'module.json');
 
 const context = {
@@ -21,9 +23,9 @@ const context = {
 const sha = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 const GOLDEN = {
-  parsed: 'c54725c202cd66cbf996ea7c6d2e8cb0e05bf6686b692fd1b6ac15e7787cd0b4',
-  contentHash: 'd932295daa7ba126c44cb8667d64dfb4388f2ccd079fe8560abf7e86cec715df',
-  clientBlocks: '68c073ca29bde2d98ee1047c261824676875dc888c9e249998cee67d0e9899da',
+  parsed: '54565f8b0c26f3d00ec75b8154293f1ba27c0c1241972852ab2f4bb085240627',
+  contentHash: 'dff6c20607cb9f9df23f8893b8512d22e32193472698483e150ee6bd10e4911b',
+  clientBlocks: 'cfd91fbcddd7b5920afa6691d4940b8dba4afbf107a88a0a26d97b79265dc803',
   warnings: '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
 };
 

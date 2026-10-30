@@ -221,7 +221,7 @@ try {
   // Tablica jest opcjonalna (required: false) - scena gotowa od razu: drzwi i „Dalej” w pasku prowadzą dalej (D-129).
   step('SCENE_HOTSPOTS (korytarz): „Dalej” aktywny od razu (brak wymaganych), w bloku brak przycisku dalej', (await nextEnabled().count()) === 1 && (await noInBlockNext()));
   await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
-  await dialog().getByRole('img', { name: /hasła - nie na karteczkach/ }).waitFor();
+  await dialog().getByRole('img', { name: /hasła – nie na karteczkach/ }).waitFor();
   step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
   await take();
   step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/23'), await page.getByTestId('evidence-counter').textContent());

@@ -361,8 +361,8 @@ try {
   for (const [tab, rowText] of [
     ['Logowania', 'Zatwierdzone logowanie, Amsterdam'],
     ['Reguły poczty', 'Przekaż kopię wszystkich wiadomości'],
-    ['Programy', 'Narzędzie zdalnej pomocy - zainstalowane'],
-    ['CRM', 'Klienci - pełna lista'],
+    ['Programy', 'Narzędzie zdalnej pomocy – zainstalowane'],
+    ['CRM', 'Klienci – pełna lista'],
   ]) {
     await consolePanel.getByRole('tab', { name: tab }).click();
     await consolePanel.locator('[data-testid="dossier-rows"] button').filter({ hasText: rowText }).click();
@@ -373,16 +373,16 @@ try {
   step(`INTERROGATION (Paweł): 2 fragmenty + 4 ślady z konsoli w notatniku (16/${EVIDENCE_TOTAL})`, true, await counter());
   await nextEnabled().waitFor();
   step('INTERROGATION (Paweł): „Dalej” aktywny po konsoli, w bloku brak przycisku dalej', await noInBlockNext());
-  await advanceUntil(page.getByRole('button', { name: 'Połączenie 9:02 - „IT Helpdesk”' }), 'porównanie w rejestrze');
+  await advanceUntil(page.getByRole('button', { name: 'Połączenie 9:02 – „IT Helpdesk”' }), 'porównanie w rejestrze');
 
   // --- 6. Rejestr połączeń (SCENE_HOTSPOTS bez drzwi - „Dalej” po wymaganych) ---------------------------------------------------
   step(
     'SCENE_HOTSPOTS (rejestr): bez hotspotu przejścia (action: next), „Dalej” nieaktywny przed wymaganymi',
     blockOf('rejestr').hotspots.every((hotspot) => hotspot.action !== 'next') && (await nextDisabled()),
   );
-  await page.getByRole('button', { name: 'Połączenie 9:02 - „IT Helpdesk”' }).click();
+  await page.getByRole('button', { name: 'Połączenie 9:02 – „IT Helpdesk”' }).click();
   await take();
-  await page.getByRole('button', { name: 'Połączenie 10:15 - wewnętrzny 214' }).click();
+  await page.getByRole('button', { name: 'Połączenie 10:15 – wewnętrzny 214' }).click();
   await putDown();
   await page.getByRole('button', { name: 'Karta intranetu' }).click();
   await putDown();

@@ -556,7 +556,7 @@ export function fullBlocks(): Record<BlockType, Record<string, unknown>> {
           meta: 'Konto: k.testowy',
           columns: ['Godzina', 'Zdarzenie'],
           rows: [
-            { id: 'l1', cells: ['08:55', 'Odrzucone logowanie'], message: 'Odrzucone - to jeszcze nie włamanie.' },
+            { id: 'l1', cells: ['08:55', 'Odrzucone logowanie'], message: 'Odrzucone – to jeszcze nie włamanie.' },
             { id: 'l2', cells: ['09:04', 'Zatwierdzone logowanie, Amsterdam'], evidence: true, required: true, note: { text: 'Logowanie z Amsterdamu.', kind: 'log' } },
           ],
         },

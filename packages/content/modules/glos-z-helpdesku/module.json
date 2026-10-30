@@ -16,10 +16,10 @@
       "pl": "Rozpoznać serię próśb o zatwierdzenie logowania jako sygnał ataku."
     },
     {
-      "pl": "Wiedzieć, że liczbę do wpisania w aplikacji zna tylko logujący się - kto ją podaje przez telefon, ten się loguje."
+      "pl": "Wiedzieć, że liczbę do wpisania w aplikacji zna tylko logujący się – kto ją podaje przez telefon, ten się loguje."
     },
     {
-      "pl": "Nie ufać nazwie ani głosowi na telefonie - rozłączyć się i oddzwonić na numer z intranetu."
+      "pl": "Nie ufać nazwie ani głosowi na telefonie – rozłączyć się i oddzwonić na numer z intranetu."
     },
     {
       "pl": "Nie instalować niczego i nie czytać ID sesji na prośbę rozmówcy."
@@ -412,7 +412,7 @@
         }
       },
       "tip": {
-        "pl": "Rozejrzyj się. Zacznij od telefonu - to, co pokazuje, jest początkiem sprawy."
+        "pl": "Rozejrzyj się. Zacznij od telefonu – to, co pokazuje, jest początkiem sprawy."
       },
       "image": "assets/glos-z-helpdesku/scenes/biurko-karola.5682c007.svg",
       "imageAlt": {
@@ -522,7 +522,7 @@
                   "width": 70.3,
                   "height": 23.8,
                   "content": {
-                    "pl": "9:02 - „IT Helpdesk”, numer 12 3XX XX 41, trzydzieści dziewięć minut. 10:15 - wewnętrzny 214, trzy minuty."
+                    "pl": "9:02 – „IT Helpdesk”, numer 12 3XX XX 41, trzydzieści dziewięć minut. 10:15 – wewnętrzny 214, trzy minuty."
                   },
                   "media": {
                     "kind": "image",
@@ -555,7 +555,7 @@
           "width": 27.3,
           "height": 34.8,
           "content": {
-            "pl": "Komputer Karola. Nikt go dziś nie restartował - tak kazał „Paweł”."
+            "pl": "Komputer Karola. Nikt go dziś nie restartował – tak kazał „Paweł”."
           },
           "media": {
             "kind": "scene",
@@ -581,7 +581,7 @@
                   "width": 15.6,
                   "height": 21.6,
                   "content": {
-                    "pl": "Ikona narzędzia zdalnej pomocy - na pulpicie i w zasobniku. Rano jeszcze jej nie było."
+                    "pl": "Ikona narzędzia zdalnej pomocy – na pulpicie i w zasobniku. Rano jeszcze jej nie było."
                   },
                   "evidence": true,
                   "required": true,
@@ -602,7 +602,7 @@
                   "width": 15.6,
                   "height": 21.6,
                   "content": {
-                    "pl": "Historia pusta - ktoś ją wyczyścił."
+                    "pl": "Historia pusta – ktoś ją wyczyścił."
                   }
                 }
               ]
@@ -675,7 +675,7 @@
           "width": 6,
           "height": 7.8,
           "content": {
-            "pl": "Zimna kawa. Karol od rana nie odszedł od biurka - rozmowa trwała prawie czterdzieści minut."
+            "pl": "Zimna kawa. Karol od rana nie odszedł od biurka – rozmowa trwała prawie czterdzieści minut."
           }
         },
         {
@@ -737,9 +737,9 @@
           "narration": {
             "voice": "oszust",
             "pl": {
-              "text": "Dzień dobry, Karol? Paweł z IT. Mamy problem - ktoś właśnie próbuje się włamać na twoje konto.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/fa9c49101b6b462a.mp3",
-              "durationMs": 6130,
+              "text": "Dzień dobry, Karol? Paweł z IT. Mamy problem – ktoś właśnie próbuje się włamać na twoje konto.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/nagranie/9b2d2c3281d08ff0.mp3",
+              "durationMs": 5712,
               "cues": [
                 {
                   "text": "Dzień dobry, Karol?",
@@ -747,11 +747,11 @@
                 },
                 {
                   "text": "Paweł z IT.",
-                  "startMs": 1219
+                  "startMs": 1231
                 },
                 {
-                  "text": "Mamy problem - ktoś właśnie próbuje się włamać na twoje konto.",
-                  "startMs": 2786
+                  "text": "Mamy problem – ktoś właśnie próbuje się włamać na twoje konto.",
+                  "startMs": 2438
                 }
               ]
             }
@@ -1157,7 +1157,7 @@
           {
             "minScore": 0,
             "text": {
-              "pl": "Część manipulacji umknęła - omówienie pokaże każdą po kolei."
+              "pl": "Część manipulacji umknęła – omówienie pokaże każdą po kolei."
             }
           }
         ]
@@ -1241,7 +1241,7 @@
                 "evidence": true,
                 "note": {
                   "text": {
-                    "pl": "Karol rozpoznał głos Pawła. Głos można podrobić - to nie dowód, kto dzwoni."
+                    "pl": "Karol rozpoznał głos Pawła. Głos można podrobić – to nie dowód, kto dzwoni."
                   },
                   "kind": "person"
                 }
@@ -1372,7 +1372,7 @@
                 "evidence": true,
                 "note": {
                   "text": {
-                    "pl": "Oszust znał dział i kierownika Karola - wiedzę z publicznych źródeł."
+                    "pl": "Oszust znał dział i kierownika Karola – wiedzę z publicznych źródeł."
                   },
                   "kind": "person"
                 }
@@ -1415,13 +1415,13 @@
           {
             "minScore": 1,
             "text": {
-              "pl": "Sprzeczność obalona dowodem. Karol nie kłamał złośliwie - naprawdę wierzył, że pomaga."
+              "pl": "Sprzeczność obalona dowodem. Karol nie kłamał złośliwie – naprawdę wierzył, że pomaga."
             }
           },
           {
             "minScore": 0,
             "text": {
-              "pl": "Zeznanie warto porównać z nagraniem - kto podał liczbę?"
+              "pl": "Zeznanie warto porównać z nagraniem – kto podał liczbę?"
             }
           }
         ]
@@ -1496,7 +1496,7 @@
                 "evidence": true,
                 "note": {
                   "text": {
-                    "pl": "Paweł był do dziesiątej na szkoleniu - to nie on dzwonił."
+                    "pl": "Paweł był do dziesiątej na szkoleniu – to nie on dzwonił."
                   },
                   "kind": "person"
                 }
@@ -1514,17 +1514,17 @@
             {
               "id": "alert-mfa",
               "text": {
-                "pl": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu."
+                "pl": "Był alert o seryjnie odrzucanych logowaniach – zobaczyłem go dopiero po szkoleniu."
               },
               "narration": {
                 "voice": "pawel",
                 "pl": {
-                  "text": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu.",
-                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/2e4d409fcc88489b.mp3",
-                  "durationMs": 4551,
+                  "text": "Był alert o seryjnie odrzucanych logowaniach – zobaczyłem go dopiero po szkoleniu.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/aafedeaeebdde400.mp3",
+                  "durationMs": 4598,
                   "cues": [
                     {
-                      "text": "Był alert o seryjnie odrzucanych logowaniach - zobaczyłem go dopiero po szkoleniu.",
+                      "text": "Był alert o seryjnie odrzucanych logowaniach – zobaczyłem go dopiero po szkoleniu.",
                       "startMs": 0
                     }
                   ]
@@ -1534,7 +1534,7 @@
                 "evidence": true,
                 "note": {
                   "text": {
-                    "pl": "8:58: alert o serii odrzuconych logowań - nikt go nie odebrał."
+                    "pl": "8:58: alert o serii odrzuconych logowań – nikt go nie odebrał."
                   },
                   "kind": "log"
                 }
@@ -1577,22 +1577,22 @@
             {
               "id": "konsola-1",
               "text": {
-                "pl": "Proszę. Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje."
+                "pl": "Proszę. Logowania, reguły poczty, programy i CRM – zaznacz, co nie pasuje."
               },
               "narration": {
                 "voice": "pawel",
                 "pl": {
-                  "text": "Proszę. Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje.",
-                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/64d1dba924553a44.mp3",
-                  "durationMs": 4644,
+                  "text": "Proszę. Logowania, reguły poczty, programy i CRM – zaznacz, co nie pasuje.",
+                  "audioUrl": "audio/glos-z-helpdesku/v1/przesluchanie-pawla/1840fc4d208652c5.mp3",
+                  "durationMs": 5248,
                   "cues": [
                     {
                       "text": "Proszę.",
                       "startMs": 0
                     },
                     {
-                      "text": "Logowania, reguły poczty, programy i CRM - zaznacz, co nie pasuje.",
-                      "startMs": 557
+                      "text": "Logowania, reguły poczty, programy i CRM – zaznacz, co nie pasuje.",
+                      "startMs": 778
                     }
                   ]
                 }
@@ -1636,7 +1636,7 @@
                 }
               ],
               "message": {
-                "pl": "Te próby Karol odrzucił - znasz je już z jego telefonu."
+                "pl": "Te próby Karol odrzucił – znasz je już z jego telefonu."
               }
             },
             {
@@ -1750,7 +1750,7 @@
                   "pl": "czw. 9:06"
                 },
                 {
-                  "pl": "Narzędzie zdalnej pomocy - zainstalowane przez użytkownika"
+                  "pl": "Narzędzie zdalnej pomocy – zainstalowane przez użytkownika"
                 }
               ],
               "evidence": true,
@@ -1802,7 +1802,7 @@
                   "pl": "czw. 9:31"
                 },
                 {
-                  "pl": "Eksport „Klienci - pełna lista” (1 2XX rekordów)"
+                  "pl": "Eksport „Klienci – pełna lista” (1 2XX rekordów)"
                 }
               ],
               "evidence": true,
@@ -1859,11 +1859,11 @@
       "tip": {
         "pl": "Porównaj oba wpisy. Skąd przyszło każde z połączeń? Potem „Dalej”."
       },
-      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.a62becd6.svg",
+      "image": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.8c18f5cb.svg",
       "imageAlt": {
-        "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min. Obok intranet „Kontakt z IT”: 214. Helpdesk IT - tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
+        "pl": "Rejestr połączeń: 9:02 „IT Helpdesk”, 12 3XX XX 41, 39 min; 10:15 wewnętrzny 214, 3 min. Obok intranet „Kontakt z IT”: 214. Helpdesk IT – tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
       },
-      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b50191f4.svg",
+      "imagePortrait": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.f5a5ff06.svg",
       "portraitHotspots": [
         {
           "id": "numer-zewnetrzny",
@@ -1891,14 +1891,14 @@
         {
           "id": "numer-zewnetrzny",
           "label": {
-            "pl": "Połączenie 9:02 - „IT Helpdesk”"
+            "pl": "Połączenie 9:02 – „IT Helpdesk”"
           },
           "x": 14.4,
           "y": 26.9,
           "width": 25.8,
           "height": 20.4,
           "content": {
-            "pl": "Szczegóły połączenia: numer zewnętrzny 12 3XX XX 41. Nazwę „IT Helpdesk” nadał dzwoniący - telefon pokazuje to, co mu przesłano."
+            "pl": "Szczegóły połączenia: numer zewnętrzny 12 3XX XX 41. Nazwę „IT Helpdesk” nadał dzwoniący – telefon pokazuje to, co mu przesłano."
           },
           "media": {
             "kind": "image",
@@ -1919,7 +1919,7 @@
         {
           "id": "wpis-10-15",
           "label": {
-            "pl": "Połączenie 10:15 - wewnętrzny 214"
+            "pl": "Połączenie 10:15 – wewnętrzny 214"
           },
           "x": 14.4,
           "y": 48.4,
@@ -1947,13 +1947,13 @@
           "width": 37.8,
           "height": 83.4,
           "content": {
-            "pl": "Intranet: „Kontakt z IT - wewnętrzny 214”. To numer, na który warto oddzwonić, gdy ktoś podaje się za IT."
+            "pl": "Intranet: „Kontakt z IT – wewnętrzny 214”. To numer, na który warto oddzwonić, gdy ktoś podaje się za IT."
           },
           "media": {
             "kind": "image",
-            "src": "assets/glos-z-helpdesku/scenes/intranet-zoom.889808b5.svg",
+            "src": "assets/glos-z-helpdesku/scenes/intranet-zoom.7862de73.svg",
             "alt": {
-              "pl": "Intranet „Kontakt z IT”: 214. Helpdesk IT - tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
+              "pl": "Intranet „Kontakt z IT”: 214. Helpdesk IT – tylko numer wewnętrzny. IT nigdy nie prosi o kody ani liczby z aplikacji. Wątpliwości? Rozłącz się i oddzwoń."
             }
           }
         }
@@ -1968,21 +1968,21 @@
       "weight": 1,
       "narration": {
         "pl": {
-          "text": "Oszust znał imię, dział i kierownika Karola. Nie włamał się po te informacje - leżały na stronie firmy. Zaznacz, z czego skorzystał.",
-          "audioUrl": "audio/glos-z-helpdesku/v1/osint/5639dd4935889d6e.mp3",
-          "durationMs": 10310,
+          "text": "Oszust znał imię, dział i kierownika Karola. Nie włamał się po te informacje – leżały na stronie firmy. Zaznacz, z czego skorzystał.",
+          "audioUrl": "audio/glos-z-helpdesku/v1/osint/c3742a6cf3378b31.mp3",
+          "durationMs": 9706,
           "cues": [
             {
               "text": "Oszust znał imię, dział i kierownika Karola.",
               "startMs": 0
             },
             {
-              "text": "Nie włamał się po te informacje - leżały na stronie firmy.",
-              "startMs": 3669
+              "text": "Nie włamał się po te informacje – leżały na stronie firmy.",
+              "startMs": 3599
             },
             {
               "text": "Zaznacz, z czego skorzystał.",
-              "startMs": 8173
+              "startMs": 7558
             }
           ]
         }
@@ -2010,7 +2010,7 @@
           "h": 16,
           "used": false,
           "trapText": {
-            "pl": "Zdjęcie budynku niczego oszustowi nie dało - dzwonił, nie przyjeżdżał."
+            "pl": "Zdjęcie budynku niczego oszustowi nie dało – dzwonił, nie przyjeżdżał."
           }
         },
         {
@@ -2025,7 +2025,7 @@
           "used": true,
           "note": {
             "text": {
-              "pl": "Strona „Zespół”: imię, nazwisko i stanowisko Pawła - gotowa legenda."
+              "pl": "Strona „Zespół”: imię, nazwisko i stanowisko Pawła – gotowa legenda."
             },
             "kind": "web"
           }
@@ -2053,14 +2053,14 @@
           "used": true,
           "note": {
             "text": {
-              "pl": "Publiczny webinar: około czterdziestu minut głosu Pawła - wystarczy, żeby go podrobić."
+              "pl": "Publiczny webinar: około czterdziestu minut głosu Pawła – wystarczy, żeby go podrobić."
             },
             "kind": "web"
           },
           "media": {
             "kind": "audio",
             "title": {
-              "pl": "Webinar: Bezpieczna praca zdalna - Paweł Nowicki"
+              "pl": "Webinar: Bezpieczna praca zdalna – Paweł Nowicki"
             },
             "image": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz.2ce4a9a9.svg",
             "imagePortrait": "assets/glos-z-helpdesku/scenes/webinar-odtwarzacz-pion.8012f48b.svg",
@@ -2246,7 +2246,7 @@
           {
             "minScore": 0,
             "text": {
-              "pl": "Nie wszystko, co publiczne, się przydało - zobacz, czego naprawdę użył."
+              "pl": "Nie wszystko, co publiczne, się przydało – zobacz, czego naprawdę użył."
             }
           }
         ]
@@ -2358,7 +2358,7 @@
           {
             "minScore": 0,
             "text": {
-              "pl": "Jeszcze nie tak. Zauważ: oszust miał hasło, zanim zadzwonił - brakowało mu tylko zgody na logowanie."
+              "pl": "Jeszcze nie tak. Zauważ: oszust miał hasło, zanim zadzwonił – brakowało mu tylko zgody na logowanie."
             }
           }
         ]
@@ -2431,10 +2431,10 @@
           "narration": {
             "voice": "oszust",
             "pl": {
-              "text": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji 62, to je zablokuję.",
-              "spokenText": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie - wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/15cdeab287fe2320.mp3",
-              "durationMs": 9520
+              "text": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie – wpisz w aplikacji 62, to je zablokuję.",
+              "spokenText": "Tu IT Helpdesk. Ktoś loguje się na konto gościa, które dostałeś rano. Zaraz przyjdzie powiadomienie – wpisz w aplikacji sześćdziesiąt dwa, to je zablokuję.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/f04ce39caedd29b1.mp3",
+              "durationMs": 9752
             }
           },
           "choices": [
@@ -2639,17 +2639,17 @@
           "outcome": "bad",
           "narration": {
             "pl": {
-              "text": "Oddałeś dzwoniącemu to, o co prosił - liczbę albo komputer - i zatwierdziłeś jego dostęp. W prawdziwej firmie to byłaby druga lista klientów.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/3e2bbb2dcbba974d.mp3",
-              "durationMs": 9474,
+              "text": "Oddałeś dzwoniącemu to, o co prosił – liczbę albo komputer – i zatwierdziłeś jego dostęp. W prawdziwej firmie to byłaby druga lista klientów.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/na-zywo/6880ea7255c8d368.mp3",
+              "durationMs": 9938,
               "cues": [
                 {
-                  "text": "Oddałeś dzwoniącemu to, o co prosił - liczbę albo komputer - i zatwierdziłeś jego dostęp.",
+                  "text": "Oddałeś dzwoniącemu to, o co prosił – liczbę albo komputer – i zatwierdziłeś jego dostęp.",
                   "startMs": 0
                 },
                 {
                   "text": "W prawdziwej firmie to byłaby druga lista klientów.",
-                  "startMs": 6374
+                  "startMs": 6525
                 }
               ]
             }
@@ -2698,7 +2698,7 @@
           {
             "minScore": 0.5,
             "text": {
-              "pl": "Blisko. Każda minuta rozmowy to szansa dla oszusta - rozłącz się od razu."
+              "pl": "Blisko. Każda minuta rozmowy to szansa dla oszusta – rozłącz się od razu."
             }
           },
           {
@@ -2749,21 +2749,21 @@
             "pl": "Strach"
           },
           "text": {
-            "pl": "„Ktoś właśnie próbuje się włamać” - w stresie myślimy krócej."
+            "pl": "„Ktoś właśnie próbuje się włamać” – w stresie myślimy krócej."
           },
           "narration": {
             "pl": {
-              "text": "Strach. Ktoś się włamuje - a w stresie myślimy krócej.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/59b1851d7e9a2c68.mp3",
-              "durationMs": 4272,
+              "text": "Strach. Ktoś się włamuje – a w stresie myślimy krócej.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/9379a4e24de75a23.mp3",
+              "durationMs": 3715,
               "cues": [
                 {
                   "text": "Strach.",
                   "startMs": 0
                 },
                 {
-                  "text": "Ktoś się włamuje - a w stresie myślimy krócej.",
-                  "startMs": 836
+                  "text": "Ktoś się włamuje – a w stresie myślimy krócej.",
+                  "startMs": 882
                 }
               ]
             }
@@ -2778,20 +2778,20 @@
             "pl": "Pośpiech"
           },
           "text": {
-            "pl": "„Nie mam dużo czasu” - bez czasu nie ma weryfikacji."
+            "pl": "„Nie mam dużo czasu” – bez czasu nie ma weryfikacji."
           },
           "narration": {
             "pl": {
-              "text": "Pośpiech. Nie mam czasu - a bez czasu nie ma weryfikacji.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/3a781b248cf03b59.mp3",
-              "durationMs": 3901,
+              "text": "Pośpiech. Nie mam czasu – a bez czasu nie ma weryfikacji.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/45d7589da0f5e1e9.mp3",
+              "durationMs": 4133,
               "cues": [
                 {
                   "text": "Pośpiech.",
                   "startMs": 0
                 },
                 {
-                  "text": "Nie mam czasu - a bez czasu nie ma weryfikacji.",
+                  "text": "Nie mam czasu – a bez czasu nie ma weryfikacji.",
                   "startMs": 906
                 }
               ]
@@ -2807,7 +2807,7 @@
             "pl": "Parowanie liczb"
           },
           "text": {
-            "pl": "Liczbę zna tylko ten, kto się loguje. Dzwoniący, który ją podaje - to on się loguje."
+            "pl": "Liczbę zna tylko ten, kto się loguje. Dzwoniący, który ją podaje – to on się loguje."
           },
           "narration": {
             "pl": {
@@ -2840,12 +2840,12 @@
             "pl": "Autorytet"
           },
           "text": {
-            "pl": "Kierownik „wie” - nikt tego nie sprawdzi w trakcie rozmowy."
+            "pl": "Kierownik „wie” – nikt tego nie sprawdzi w trakcie rozmowy."
           },
           "narration": {
             "pl": {
-              "text": "Autorytet. Kierownik wie - i nikt tego nie sprawdzi w trakcie rozmowy.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/1e6196deed6126ca.mp3",
+              "text": "Autorytet. Kierownik wie – i nikt tego nie sprawdzi w trakcie rozmowy.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/e196996092fc0bbf.mp3",
               "durationMs": 5619,
               "cues": [
                 {
@@ -2853,8 +2853,8 @@
                   "startMs": 0
                 },
                 {
-                  "text": "Kierownik wie - i nikt tego nie sprawdzi w trakcie rozmowy.",
-                  "startMs": 1196
+                  "text": "Kierownik wie – i nikt tego nie sprawdzi w trakcie rozmowy.",
+                  "startMs": 1207
                 }
               ]
             }
@@ -2898,21 +2898,21 @@
             "pl": "Zakończenie"
           },
           "text": {
-            "pl": "„Zrestartuj po południu” - kupuje czas na przekierowanie poczty i eksport danych."
+            "pl": "„Zrestartuj po południu” – kupuje czas na przekierowanie poczty i eksport danych."
           },
           "narration": {
             "pl": {
-              "text": "Zakończenie. Zrestartuj po południu - to kupuje czas na przekierowanie poczty i eksport danych.",
-              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/cea78cee6edace2c.mp3",
-              "durationMs": 7152,
+              "text": "Zakończenie. Zrestartuj po południu – to kupuje czas na przekierowanie poczty i eksport danych.",
+              "audioUrl": "audio/glos-z-helpdesku/v1/omowienie/2a337e37e5cef22e.mp3",
+              "durationMs": 7012,
               "cues": [
                 {
                   "text": "Zakończenie.",
                   "startMs": 0
                 },
                 {
-                  "text": "Zrestartuj po południu - to kupuje czas na przekierowanie poczty i eksport danych.",
-                  "startMs": 1312
+                  "text": "Zrestartuj po południu – to kupuje czas na przekierowanie poczty i eksport danych.",
+                  "startMs": 1161
                 }
               ]
             }

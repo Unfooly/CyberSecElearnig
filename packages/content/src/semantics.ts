@@ -1020,8 +1020,9 @@ export function parseModule(input: unknown): ContentModule {
   // Reguły semantyczne sprawdzane na treści rozwiniętej do KAŻDEGO użytego języka (schemaVersion 6): np. cytat kryterium maila musi
   // być w treści maila tego samego języka, a reguła cyfr lektora (D-109) dotyczy spokenText każdego języka. Błąd, który występuje
   // tylko w innym języku niż `pl`, dostaje prefiks `[en]`. Treść jednojęzyczna = jeden przebieg, jak przed v6.
-  const base = moduleSemanticErrors(localizeContent(contentModule, DEFAULT_CONTENT_LOCALE));
-  errors.push(...base);
+  const polish = localizeContent(contentModule, DEFAULT_CONTENT_LOCALE);
+  const base = moduleSemanticErrors(polish);
+  errors.push(...base, ...polishDashErrors(polish));
   for (const locale of localesIn(contentModule)) {
     if (locale === DEFAULT_CONTENT_LOCALE) continue;
     for (const error of moduleSemanticErrors(localizeContent(contentModule, locale))) {
@@ -1102,6 +1103,25 @@ function singleLanguageFields(value: unknown, localizedPaths: Set<string>, path 
   return Object.entries(value).flatMap(([key, item]) =>
     singleLanguageFields(item, localizedPaths, path ? `${path}.${key}` : key, schemaPath ? `${schemaPath}.${key}` : key),
   );
+}
+
+/**
+ * Typografia PL (D-154, decyzja właściciela 2026-10-23): w tekście dla gracza myślnik to półpauza ze spacjami („ – ”), nigdy łącznik
+ * („ - ”). Sprawdzane na treści rozwiniętej do `pl`, we wszystkich polach tekstowych (także w listach) poza tymi, których gracz nie
+ * widzi: `spokenText` (czyta tylko lektor) oraz `regex`/`accept` (klucz odpowiedzi pola tekstowego).
+ */
+const NOT_SHOWN_TEXT_KEYS = new Set(['spokenText', 'regex', 'accept']);
+function polishDashErrors(contentModule: ResolvedModule): string[] {
+  const errors: string[] = [];
+  const check = (path: string, text: unknown) => {
+    if (typeof text === 'string' && text.includes(' - ')) errors.push(`${path}: łącznik ze spacjami („ - ”) w tekście dla gracza - użyj półpauzy („ – ”)`);
+  };
+  walkFields(contentModule, (path, key, item) => {
+    if (NOT_SHOWN_TEXT_KEYS.has(key)) return;
+    if (Array.isArray(item)) item.forEach((entry, index) => check(`${path}[${index}]`, entry));
+    else check(path, item);
+  });
+  return errors;
 }
 
 /** Wywołuje `visit` dla każdego pola treści (ścieżka, klucz, wartość, klucz rodzica). */

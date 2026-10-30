@@ -13,7 +13,7 @@
   ],
   "objectives": [
     "Rozpoznać, że wiadomość od znajomego może wysłać oszust, który przejął jego konto.",
-    "Nie logować się przez link z wiadomości - wejść samemu przez aplikację lub stronę.",
+    "Nie logować się przez link z wiadomości – wejść samemu przez aplikację lub stronę.",
     "Dziwną prośbę o pieniądze albo kod sprawdzić innym kanałem, np. telefonem na znany numer.",
     "Nie podawać nikomu kodu z SMS-a."
   ],
@@ -57,7 +57,7 @@
             ]
           },
           "image": "assets/lancuszek/scenes/pl/odprawa.b3b6523f.svg",
-          "alt": "Biurko detektywa: lampka, kubek i telefon na blacie. Na ekranie telefonu połączenie przychodzące - Ola Malec, księgowość.",
+          "alt": "Biurko detektywa: lampka, kubek i telefon na blacie. Na ekranie telefonu połączenie przychodzące – Ola Malec, księgowość.",
           "portrait": {
             "image": "assets/lancuszek/scenes/pl/odprawa-pion.1151b967.svg"
           }
@@ -85,7 +85,7 @@
         ]
       },
       "image": "assets/lancuszek/scenes/pl/telefon-oli.83668f90.svg",
-      "imageAlt": "Telefon Oli: rozmowa z Kasią na komunikatorze - wiadomość „To Ty na tym filmie?” o 9:12, link „Film z imprezy” wideo-kasi.test/f/82 i o 9:13 druga wiadomość „Musisz się zalogować, inaczej nie puści”.",
+      "imageAlt": "Telefon Oli: rozmowa z Kasią na komunikatorze – wiadomość „To Ty na tym filmie?” o 9:12, link „Film z imprezy” wideo-kasi.test/f/82 i o 9:13 druga wiadomość „Musisz się zalogować, inaczej nie puści”.",
       "imagePortrait": "assets/lancuszek/scenes/pl/telefon-oli-pion.2bcbd815.svg",
       "portraitHotspots": [
         {
@@ -118,7 +118,7 @@
           "y": 18.8,
           "width": 26.6,
           "height": 19.8,
-          "content": "„To Ty na tym filmie?” - ciekawość i lekki niepokój to przynęta. Tak zaczyna się łańcuszek.",
+          "content": "„To Ty na tym filmie?” – ciekawość i lekki niepokój to przynęta. Tak zaczyna się łańcuszek.",
           "evidence": true,
           "required": true,
           "note": {
@@ -133,7 +133,7 @@
           "y": 37.8,
           "width": 27.6,
           "height": 29,
-          "content": "Adres wideo-kasi.test nie jest żadnym znanym serwisem z filmami - link prowadzi na obcą stronę. Kłódka w pasku adresu nie znaczy, że strona jest bezpieczna - oznacza tylko szyfrowane połączenie.",
+          "content": "Adres wideo-kasi.test nie jest żadnym znanym serwisem z filmami – link prowadzi na obcą stronę. Kłódka w pasku adresu nie znaczy, że strona jest bezpieczna – oznacza tylko szyfrowane połączenie.",
           "evidence": true,
           "required": true,
           "note": {
@@ -148,7 +148,7 @@
           "y": 65.9,
           "width": 27.6,
           "height": 19.8,
-          "content": "„Musisz się zalogować, inaczej nie puści” - Kasia ponagla, żeby zalogować się na stronie z linku. Tak oszuści zbierają hasła i przejmują kolejne konta.",
+          "content": "„Musisz się zalogować, inaczej nie puści” – Kasia ponagla, żeby zalogować się na stronie z linku. Tak oszuści zbierają hasła i przejmują kolejne konta.",
           "media": {
             "kind": "image",
             "src": "assets/lancuszek/scenes/pl/logowanie-zoom.6e9acfba.svg",
@@ -157,7 +157,7 @@
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Kasia ponagla do logowania - strona z linku wyłudza login i hasło pod pretekstem filmu.",
+            "text": "Kasia ponagla do logowania – strona z linku wyłudza login i hasło pod pretekstem filmu.",
             "kind": "web"
           }
         }
@@ -167,7 +167,7 @@
       "id": "zaloguj",
       "type": "QUIZ",
       "title": "Zaloguj się, aby obejrzeć",
-      "prompt": "Strona prosi o zalogowanie, żeby zobaczyć film - co robisz?",
+      "prompt": "Strona prosi o zalogowanie, żeby zobaczyć film – co robisz?",
       "narration": {
         "text": "Strona prosi o zalogowanie, żeby zobaczyć film. Co robisz?",
         "audioUrl": "audio/lancuszek/v1/zaloguj/583b589df269d5a8.mp3",
@@ -192,12 +192,12 @@
         {
           "text": "Zamykam stronę i pytam Kasię innym kanałem, np. telefonicznie.",
           "correct": true,
-          "feedback": "Tak - inny kanał pozwala sprawdzić, czy konto Kasi nie zostało przejęte."
+          "feedback": "Tak – inny kanał pozwala sprawdzić, czy konto Kasi nie zostało przejęte."
         },
         {
           "text": "Przesyłam link dalej, niech inni sprawdzą.",
           "correct": false,
-          "feedback": "Tak właśnie rośnie łańcuszek - link trafia do kolejnych osób."
+          "feedback": "Tak właśnie rośnie łańcuszek – link trafia do kolejnych osób."
         }
       ],
       "hint": "Zapytaj Kasię, ale nie przez ten sam czat."
@@ -230,7 +230,7 @@
           "time": "9:41",
           "text": "Twoja paczka czeka. Dopłać 1,99 zł: szybkapaczka.test/oplata",
           "correct": "suspicious",
-          "feedback": "Mała dopłata przez link to typowa pułapka - sprawdź przesyłkę w aplikacji przewoźnika."
+          "feedback": "Mała dopłata przez link to typowa pułapka – sprawdź przesyłkę w aplikacji przewoźnika."
         },
         {
           "id": "mama",
@@ -239,7 +239,7 @@
           "time": "10:02",
           "text": "Mamo, to mój nowy numer. Zapisz go i odpisz.",
           "correct": "suspicious",
-          "feedback": "„Nowy numer” to częsty początek wyłudzenia - zadzwoń na stary numer dziecka."
+          "feedback": "„Nowy numer” to częsty początek wyłudzenia – zadzwoń na stary numer dziecka."
         },
         {
           "id": "kod",
@@ -248,7 +248,7 @@
           "time": "10:15",
           "text": "Wysłałem Ci kod przez pomyłkę, możesz mi go przesłać?",
           "correct": "suspicious",
-          "feedback": "Kod z SMS-a to klucz do Twojego konta - nie przesyłasz go nikomu."
+          "feedback": "Kod z SMS-a to klucz do Twojego konta – nie przesyłasz go nikomu."
         },
         {
           "id": "faktura",
@@ -276,7 +276,7 @@
           "time": "11:05",
           "text": "Przypominamy o wizycie jutro o 8:30.",
           "correct": "ok",
-          "feedback": "Przypomnienie bez linku i bez prośby o dane - w porządku."
+          "feedback": "Przypomnienie bez linku i bez prośby o dane – w porządku."
         }
       ],
       "hint": "Podejrzane są prośby o kod, pieniądze albo kliknięcie w link."
@@ -285,7 +285,7 @@
       "id": "blik",
       "type": "QUIZ",
       "title": "Prośba o BLIK",
-      "prompt": "Kasia prosi na czacie o kod BLIK na pilny przelew - co robisz?",
+      "prompt": "Kasia prosi na czacie o kod BLIK na pilny przelew – co robisz?",
       "narration": {
         "text": "Kasia prosi na czacie o kod BLIK na pilny przelew. Co robisz?",
         "audioUrl": "audio/lancuszek/v1/blik/fc4b36aae7c8610d.mp3",
@@ -305,7 +305,7 @@
         {
           "text": "Wysyłam kod, przecież to Kasia.",
           "correct": false,
-          "feedback": "Konto Kasi mogło zostać przejęte - kod trafiłby do oszusta."
+          "feedback": "Konto Kasi mogło zostać przejęte – kod trafiłby do oszusta."
         },
         {
           "text": "Odpisuję na czacie: na pewno to Ty?",
@@ -315,7 +315,7 @@
         {
           "text": "Dzwonię do Kasi na numer, który znam.",
           "correct": true,
-          "feedback": "Tak - znany numer to inny kanał, którego oszust nie kontroluje."
+          "feedback": "Tak – znany numer to inny kanał, którego oszust nie kontroluje."
         }
       ],
       "hint": "Sprawdź prośbę innym kanałem niż ten czat."
@@ -324,7 +324,7 @@
       "id": "kod-sms",
       "type": "QUIZ",
       "title": "Kod z SMS-a",
-      "prompt": "Ktoś pisze, że wysłał Ci kod przez pomyłkę i prosi o niego - co robisz?",
+      "prompt": "Ktoś pisze, że wysłał Ci kod przez pomyłkę i prosi o niego – co robisz?",
       "narration": {
         "text": "Ktoś pisze, że wysłał ci kod przez pomyłkę, i prosi o niego. Co robisz?",
         "audioUrl": "audio/lancuszek/v1/kod-sms/46c6808b63cb445f.mp3",
@@ -344,17 +344,17 @@
         {
           "text": "Przesyłam kod, to tylko pomyłka.",
           "correct": false,
-          "feedback": "Kod z SMS-a potwierdza logowanie albo płatność - z nim ktoś przejmie Twoje konto."
+          "feedback": "Kod z SMS-a potwierdza logowanie albo płatność – z nim ktoś przejmie Twoje konto."
         },
         {
           "text": "Nie podaję kodu i nie odpisuję.",
           "correct": true,
-          "feedback": "Tak - kodu z SMS-a nie podajesz nikomu, nawet znajomym."
+          "feedback": "Tak – kodu z SMS-a nie podajesz nikomu, nawet znajomym."
         },
         {
           "text": "Pytam, do czego mu ten kod.",
           "correct": false,
-          "feedback": "Rozmowa daje oszustowi czas na wymówkę - kodu nie podajesz nikomu."
+          "feedback": "Rozmowa daje oszustowi czas na wymówkę – kodu nie podajesz nikomu."
         }
       ],
       "hint": "Kod z SMS-a jest tylko dla Ciebie."
@@ -383,7 +383,7 @@
           }
         ]
       },
-      "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi na znany numer. Kasia zmieniła hasło i odzyskała konto - łańcuszek się urwał.\n\n**Trzy zasady**\n\n1. Dziwna prośba od znajomego? Zadzwoń na znany numer.\n2. Kodu z SMS-a nie podajesz nikomu.\n3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
+      "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi na znany numer. Kasia zmieniła hasło i odzyskała konto – łańcuszek się urwał.\n\n**Trzy zasady**\n\n1. Dziwna prośba od znajomego? Zadzwoń na znany numer.\n2. Kodu z SMS-a nie podajesz nikomu.\n3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
       "closing": {
         "image": "assets/lancuszek/scenes/pl/zamkniecie-raport.1a95b831.svg",
         "stamp": "assets/lancuszek/scenes/pl/zamkniecie-pieczec.eb11c289.svg",

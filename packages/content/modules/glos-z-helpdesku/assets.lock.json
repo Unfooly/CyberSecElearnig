@@ -119,13 +119,13 @@
     },
     "rejestr#image": {
       "original": "scenes/rejestr-porownanie.svg",
-      "hash": "a62becd6",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.a62becd6.svg"
+      "hash": "8c18f5cb",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie.8c18f5cb.svg"
     },
     "rejestr#imagePortrait": {
       "original": "scenes/rejestr-porownanie-pion.svg",
-      "hash": "b50191f4",
-      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.b50191f4.svg"
+      "hash": "f5a5ff06",
+      "key": "assets/glos-z-helpdesku/scenes/rejestr-porownanie-pion.f5a5ff06.svg"
     },
     "rejestr#hotspots.0.media.src": {
       "original": "scenes/rejestr-porownanie-zoom.svg",
@@ -139,8 +139,8 @@
     },
     "rejestr#hotspots.2.media.src": {
       "original": "scenes/intranet-zoom.svg",
-      "hash": "889808b5",
-      "key": "assets/glos-z-helpdesku/scenes/intranet-zoom.889808b5.svg"
+      "hash": "7862de73",
+      "key": "assets/glos-z-helpdesku/scenes/intranet-zoom.7862de73.svg"
     },
     "osint#image": {
       "original": "scenes/strona-zespol.svg",

@@ -30,6 +30,17 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(simpleModule())).toBe('');
   });
 
+  it('D-154: „ - ” (łącznik ze spacjami) w tekście dla gracza (pl) to błąd z ścieżką pola - także w listach; półpauza i spokenText bez błędu', () => {
+    const swipe = (change: (block: AnyModule) => void) => mutate((m) => change(byType(m, 'SWIPE_SORT')));
+    expect(errorsOf(swipe((b) => (b.cards[0].feedback = 'Tak - to dobra odpowiedź.')))).toMatch(/cards\[0\]\.feedback: łącznik ze spacjami/);
+    expect(errorsOf(mutate((m) => (m.objectives = ['Cel - pierwszy.'])))).toMatch(/objectives\[0\]: łącznik ze spacjami/);
+    expect(errorsOf(swipe((b) => (b.cards[0].feedback = 'Tak – to dobra odpowiedź.')))).toBe('');
+    // Łącznik bez spacji (słowo złożone, zakres) jest poprawny.
+    expect(errorsOf(swipe((b) => (b.cards[0].feedback = 'Biało-czerwona flaga, strony 3-5.')))).toBe('');
+    // spokenText czyta tylko lektor - gracz go nie widzi.
+    expect(errorsOf(mutate((m) => (m.blocks[0].narration = { text: 'Wstęp – start.', spokenText: 'Wstęp - start.' })))).toBe('');
+  });
+
   it('odrzuca blok ORDERING (i każdy inny spoza listy dozwolonych)', () => {
     const ordering = fullModuleV6().blocks.find((b) => b.type === 'ORDERING');
     const m = mutate((module) => module.blocks.splice(1, 0, ordering));
@@ -116,7 +127,7 @@ describe('tryb prosty (simpleMode)', () => {
       block.labels = { suspicious: 'Zapytaj IT', ok: 'Bezpieczne' };
       block.cards = [
         { id: 'umowa', channel: 'situation', text: 'Wklejam umowę do darmowego czatu AI.', correct: 'suspicious', feedback: 'Umowa trafiłaby na obce serwery.' },
-        { id: 'dysk', channel: 'situation', text: 'Zapisuję raport na firmowym dysku.', correct: 'ok', feedback: 'Tak - firmowy dysk ma kopię zapasową.' },
+        { id: 'dysk', channel: 'situation', text: 'Zapisuję raport na firmowym dysku.', correct: 'ok', feedback: 'Tak – firmowy dysk ma kopię zapasową.' },
       ];
     });
     expect(errorsOf(situations)).toBe('');

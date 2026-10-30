@@ -868,6 +868,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
 ### B-160 Layout-check: element z fokusem klawiatury nad dolnym paskiem odtwarzacza
+- **Status: zrobione** (zamknięte decyzją właściciela 2026-10-30): „Kontynuuj” usunięty celowo (D-106), nie ma regresji dla graczy.
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review B-152
 - Opis: pomiar z `e2e-registration.mjs` usunięty razem z przyciskiem „Kontynuuj”. `scroll-padding-bottom` na obszarze treści (`PlayerStage.tsx`) sprawdza dziś tylko
   jsdom na zamockowanych wymiarach (`CoursePlayer.exploratory.test.tsx`), a komentarz w kodzie opisuje błąd zależny od przeglądarki (Chromium na telefonie).
@@ -914,6 +915,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   w PL jak dotąd albo lepiej (zrzuty 390×844 i desktop do przeglądu właściciela); `--assets --check` zielone.
 
 ### B-155 Grafiki zdobytych tajnych osiągnięć publiczne pod przewidywalną nazwą
+- **Status: zrobione** (D-156)
 - Etykiety: `P3`, `security`, `mod:gamifikacja` · Źródło: security review D-146
 - Opis: `apps/web/public/achievements/{pl,en}/osiagniecie-ciekawski-detektyw.svg` i `…-off-the-record.svg` są dostępne bez logowania pod
   nazwą, którą da się zgadnąć (stan sprzed D-146, teraz dwa pliki zamiast jednego). D-111 chroni odpowiedzi API, nie zasoby statyczne -

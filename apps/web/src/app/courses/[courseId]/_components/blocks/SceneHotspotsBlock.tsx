@@ -369,6 +369,8 @@ export default function SceneHotspotsBlock({
     if (phaseRef.current === 'out' || phaseRef.current === null) return;
     phaseRef.current = 'out';
     generation.current += 1;
+    // Komunikat ze sceny zagnieżdżonej nie może zapowiadać ramek na scenie głównej, która ich nie ma.
+    if (!isRevealed(MAIN_VIEW)) hints.clear(REVEAL_HINT);
     // Na czas oddalania fokus na nakładce (przyciski znikają od razu), potem wraca na przedmiot.
     overlayRef.current?.focus();
     const trigger = triggerRef.current;

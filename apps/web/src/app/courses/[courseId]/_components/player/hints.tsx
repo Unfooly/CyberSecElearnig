@@ -39,9 +39,11 @@ interface Value {
   hint: string | null;
   notify: (event: HintEvent) => void;
   show: (message: HintMessage) => void;
+  /** Zdejmuje podpowiedź, ale tylko gdy to wciąż ten tekst (nie kasuje nowszej). */
+  clear: (text: string) => void;
 }
 
-const HintsContext = createContext<Value>({ hint: null, notify: () => {}, show: () => {} });
+const HintsContext = createContext<Value>({ hint: null, notify: () => {}, show: () => {}, clear: () => {} });
 
 const HINT_MS = 5000;
 
@@ -64,6 +66,7 @@ export function HintProvider({ resetKey, children }: { resetKey: string; childre
   }, []);
 
   const notify = useCallback((event: HintEvent) => show({ text: HINT_EVENT_TEXT[event] }), [show]);
+  const clear = useCallback((text: string) => setStored((current) => (current?.text === text ? null : current)), []);
 
   useEffect(
     () => () => {
@@ -73,7 +76,7 @@ export function HintProvider({ resetKey, children }: { resetKey: string; childre
   );
 
   const hint = stored && stored.key === resetKey ? stored.text : null;
-  const value = useMemo(() => ({ hint, notify, show }), [hint, notify, show]);
+  const value = useMemo(() => ({ hint, notify, show, clear }), [hint, notify, show, clear]);
   return <HintsContext.Provider value={value}>{children}</HintsContext.Provider>;
 }
 

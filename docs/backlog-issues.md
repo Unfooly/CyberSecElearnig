@@ -867,6 +867,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-161 Półpauza w stałych tekstach kodu bez automatycznej kontroli
+- Etykiety: `P3`, `test`, `mod:web` · Źródło: code review B-159
+- Opis: walidator obejmuje tylko treść modułów (D-154). Teksty w `apps/web` poprawione ręcznie; nowy tekst z „ - ” przejdzie CI.
+- Akceptacja: test albo reguła lint dla tekstów widocznych dla gracza, bez fałszywych alarmów na komentarzach i wyrażeniach.
+
 ### B-160 Layout-check: element z fokusem klawiatury nad dolnym paskiem odtwarzacza
 - **Status: zrobione** (zamknięte decyzją właściciela 2026-10-30): „Kontynuuj” usunięty celowo (D-106), nie ma regresji dla graczy.
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review B-152
@@ -875,6 +880,7 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: przypadek w `layout-check`: fokus klawiatury na elemencie przy dole obszaru treści na 390×844, dół elementu nie niżej niż góra `player-bottombar`.
 
 ### B-159 Reguła półpauzy: testy i drobne po D-154
+- **Status: zrobione** (2026-10-30). Stałych tekstów kodu nadal nie pilnuje automat - B-161.
 - Etykiety: `P3`, `test`, `mod:kursy` · Źródło: code review D-154. Stałe teksty, ramka easter egga i testy pudeł zrobione w D-155.
 - Opis: (1) test reguły walidatora jest w `simple-mode.spec.ts`, a dotyczy wszystkich modułów; brakuje przypadku pól pomijanych (`regex`,
   `accept`). (2) Krok `framed` w `e2e-module-04.mjs` nie wyklucza drzwi, inaczej niż m13 (dziś m4 nie ma drzwi; krok jest fail-closed).

@@ -4,28 +4,28 @@
   "entries": {
     "module#thumbnail": {
       "original": "miniatura-na-skroty.svg",
-      "hash": "1db1bbe9",
-      "key": "assets/na-skroty/miniatura-na-skroty.1db1bbe9.svg"
+      "hash": "748ea883",
+      "key": "assets/na-skroty/miniatura-na-skroty.748ea883.svg"
     },
     "odprawa#steps.0.image": {
       "original": "scenes/pl/odprawa.svg",
-      "hash": "14c30f4c",
-      "key": "assets/na-skroty/scenes/pl/odprawa.14c30f4c.svg"
+      "hash": "5e6b7bef",
+      "key": "assets/na-skroty/scenes/pl/odprawa.5e6b7bef.svg"
     },
     "odprawa#steps.0.portrait.image": {
       "original": "scenes/pl/odprawa-pion.svg",
-      "hash": "1ebeaf28",
-      "key": "assets/na-skroty/scenes/pl/odprawa-pion.1ebeaf28.svg"
+      "hash": "02da70ab",
+      "key": "assets/na-skroty/scenes/pl/odprawa-pion.02da70ab.svg"
     },
     "biurko#image": {
       "original": "scenes/pl/biurko-bartka.svg",
-      "hash": "5b172dab",
-      "key": "assets/na-skroty/scenes/pl/biurko-bartka.5b172dab.svg"
+      "hash": "8bb3cb0e",
+      "key": "assets/na-skroty/scenes/pl/biurko-bartka.8bb3cb0e.svg"
     },
     "biurko#imagePortrait": {
       "original": "scenes/pl/biurko-bartka-pion.svg",
-      "hash": "5ab9e43e",
-      "key": "assets/na-skroty/scenes/pl/biurko-bartka-pion.5ab9e43e.svg"
+      "hash": "9b1bc476",
+      "key": "assets/na-skroty/scenes/pl/biurko-bartka-pion.9b1bc476.svg"
     },
     "skutki#image": {
       "original": "scenes/pl/tablica-skutki.svg",

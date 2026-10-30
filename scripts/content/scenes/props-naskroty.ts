@@ -13,6 +13,9 @@ import type { PropFn } from './types.js';
 type Rect = { x: number; y: number; w: number; h: number };
 
 const BAR = 80;
+/** Środek gniazda USB laptopa od górnej krawędzi podstawy (`laptopFront`) i środek wtyku pendrive'a (`usbStick`, lokalne y). */
+const PORT_Y = 37;
+const PLUG_Y = 40;
 const CORK = '#C89B6D';
 const CORK_EDGE = '#9C7247';
 
@@ -32,15 +35,19 @@ const windowFrame = (w: number, h: number, color: string, icon: string, bar: num
 const titleSlot = (w: number, bar: number): Rect => ({ x: 84, y: 10, w: w - 84 - 110, h: bar - 20 });
 
 /**
- * Laptop od frontu (ekran i podstawa). `sw`×`sh` - wyświetlacz, `wallpaper` - tapeta, `port` - bok podstawy z gniazdem pendrive'a (w scenie
- * poziomej prawy: lewy dolny róg sceny zasłania dymek podpowiedzi odtwarzacza). Części: `slot-ekran` (wyświetlacz), `port` (gniazdo).
- * Lokalnie: ramka 30 wokół ekranu, podstawa wystaje 60 w bok i ma 70 wysokości.
+ * Laptop od frontu (ekran i podstawa). `sw`×`sh` - wyświetlacz, `wallpaper` - tapeta, `over` - o ile podstawa wystaje w bok, `port` - bok
+ * podstawy z gniazdem pendrive'a (w scenie poziomej prawy: lewy dolny róg sceny zasłania dymek podpowiedzi odtwarzacza). Podstawa ma
+ * krótki pionowy bok z gniazdem: środek gniazda na lokalnym y = PORT_Y (od góry podstawy), krawędź na x = 0 albo x = w. Pendrive rysuje
+ * scena POD laptopem (wcześniej w `items`) - podstawa przykrywa koniec wtyku, więc wygląda na wsunięty. Części: `slot-ekran`, `port`.
+ * Lokalnie: ramka 30 wokół ekranu, podstawa ma 70 wysokości.
  */
-export const laptopFront: PropFn<{ sw?: number; sh?: number; wallpaper?: string; port?: 'left' | 'right' }> = ({ sw = 1240, sh = 740, wallpaper = P.purpleDark, port = 'left' }) => {
-  const bezel = 30, over = 60, base = 70;
+export const laptopFront: PropFn<{ sw?: number; sh?: number; wallpaper?: string; port?: 'left' | 'right'; over?: number }> = ({
+  sw = 1240, sh = 740, wallpaper = P.purpleDark, port = 'left', over = 60,
+}) => {
+  const bezel = 30, base = 70;
   const w = sw + 2 * bezel + 2 * over, h = sh + 2 * bezel + base;
   const sx = over, top = sh + 2 * bezel;
-  const portX = port === 'left' ? over - 4 : w - over - 10;
+  const slot = { x: port === 'left' ? 0 : w - 8, y: top + PORT_Y - 15, w: 8, h: 30 };
   return {
     w, h,
     svg:
@@ -48,13 +55,13 @@ export const laptopFront: PropFn<{ sw?: number; sh?: number; wallpaper?: string;
       `<rect x="${sx}" y="0" width="${sw + 2 * bezel}" height="${top}" rx="26" fill="${P.ink}"/>` +
       `<rect x="${sx + bezel}" y="${bezel}" width="${sw}" height="${sh}" rx="8" fill="${wallpaper}"/>` +
       `<circle cx="${w / 2}" cy="${bezel / 2}" r="5" fill="${P.greyDark}"/>` +
-      // Podstawa (trapez) z wycięciem na otwieranie i gniazdem z boku (`port`).
-      `<path d="M${sx - 10} ${top} h${sw + 2 * bezel + 20} l${over - 10} ${base - 18} a18 18 0 0 1 -16 ${18} h-${w - 32} a18 18 0 0 1 -16 -18 z" fill="${P.grey}"/>` +
+      // Podstawa: krótki skos od ekranu, pionowe boki (z gniazdem), zaokrąglony dół; wycięcie na otwieranie.
+      `<path d="M${sx - 10} ${top} H${w - sx + 10} L${w} ${top + 20} V${top + base - 16} a16 16 0 0 1 -16 16 H16 a16 16 0 0 1 -16 -16 V${top + 20} Z" fill="${P.grey}"/>` +
       `<rect x="${w / 2 - 110}" y="${top}" width="220" height="16" rx="8" fill="${P.greyDark}"/>` +
-      `<rect x="${portX}" y="${top + 20}" width="14" height="26" rx="4" fill="${P.ink}" opacity="0.7"/>`,
+      `<rect x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" rx="2" fill="${P.ink}" opacity="0.75"/>`,
     parts: {
       'slot-ekran': { x: sx + bezel, y: bezel, w: sw, h: sh },
-      port: { x: portX, y: top + 20, w: 14, h: 26 },
+      port: slot,
     },
   };
 };
@@ -157,23 +164,32 @@ export const appIcon: PropFn<{ size?: number; target?: Rect }> = ({ size = 150, 
 };
 
 /**
- * Prywatny pendrive (pomarańczowy, z zawieszką), wtyk z prawej - wchodzi w lewy bok laptopa (`port` klocka `laptopFront`: środek wtyku
- * na lokalnym y 38, koniec na x = w); `flip` - lustrzanie, wtyk z lewej (x = 0), do prawego boku. `len` - długość obudowy. Bez napisów.
- * `target` (część `cel`) w lokalnych jednostkach już po odbiciu.
+ * Prywatny pendrive: obudowa z kółkiem na smycz (bez smyczy) i diodą, metalowa końcówka USB z dwoma stykami. Wtyk z prawej, koniec na
+ * x = w, środek na lokalnym y = PLUG_Y; `flip` - lustrzanie (wtyk z lewej, x = 0). Scena kładzie go POD laptopem tak, żeby ostatnie
+ * 12 jednostek wtyku przykryła podstawa (gniazdo `port` klocka `laptopFront`): x = x laptopa + 12 - w (lewy bok) albo x laptopa +
+ * szerokość - 12 (prawy, `flip`); y = y laptopa + góra podstawy + PORT_Y - PLUG_Y (= +37 - 40). `len` - długość obudowy.
+ * `target` (część `cel`) w lokalnych jednostkach już po odbiciu. Bez napisów.
  */
-export const usbStick: PropFn<{ len?: number; flip?: boolean; target?: Rect }> = ({ len = 130, flip = false, target }) => {
-  const plug = 34 + len - 4;
-  const w = plug + 40;
+export const usbStick: PropFn<{ len?: number; flip?: boolean; target?: Rect }> = ({ len = 120, flip = false, target }) => {
+  const ring = 16, body = { x: ring + 4, y: PLUG_Y - 24, w: len, h: 48 };
+  const tip = { x: body.x + body.w, y: PLUG_Y - 15, w: 36, h: 30 };
+  const w = tip.x + tip.w;
   return {
     ...targetPart(target),
     w, h: 80,
     svg:
       (flip ? `<g transform="translate(${w} 0) scale(-1 1)">` : '<g>') +
-      `<rect x="40" y="18" width="${len}" height="56" rx="14" fill="${P.ink}" opacity="0.18"/>` +
-      `<rect x="34" y="10" width="${len}" height="56" rx="14" fill="${P.orange}"/>` +
-      `<rect x="${plug}" y="20" width="40" height="36" rx="3" fill="${P.grey}"/><rect x="${plug + 12}" y="28" width="8" height="8" fill="${P.greyDark}"/><rect x="${plug + 26}" y="28" width="8" height="8" fill="${P.greyDark}"/>` +
-      `<circle cx="56" cy="38" r="9" fill="none" stroke="${P.white}" stroke-width="5"/>` +
-      `<path d="M47 38 c-24 0 -40 14 -44 34" fill="none" stroke="${P.purpleDark}" stroke-width="6" stroke-linecap="round"/>` +
+      // Cień, kółko na smycz (krótkie, przy końcu obudowy), obudowa z ciemniejszą nasadką przy wtyku, otwór na kółko i dioda.
+      `<rect x="${body.x + 6}" y="${body.y + 8}" width="${body.w}" height="${body.h}" rx="14" fill="${P.ink}" opacity="0.18"/>` +
+      `<circle cx="${ring}" cy="${PLUG_Y}" r="12" fill="none" stroke="${P.greyDark}" stroke-width="5"/>` +
+      `<rect x="${body.x}" y="${body.y}" width="${body.w}" height="${body.h}" rx="14" fill="${P.orange}"/>` +
+      `<rect x="${body.x + body.w - 22}" y="${body.y}" width="22" height="${body.h}" rx="4" fill="#C9661F"/>` +
+      `<circle cx="${body.x + 16}" cy="${PLUG_Y}" r="7" fill="${P.desk}" stroke="#C9661F" stroke-width="3"/>` +
+      `<circle cx="${body.x + body.w - 40}" cy="${body.y + 12}" r="4.5" fill="${P.green}"/>` +
+      // Metalowa końcówka USB: ramka z jaśniejszym pasem i dwoma prostokątnymi stykami.
+      `<rect x="${tip.x}" y="${tip.y}" width="${tip.w}" height="${tip.h}" rx="2" fill="#C8CBDA" stroke="${P.greyDark}" stroke-width="2"/>` +
+      `<rect x="${tip.x}" y="${tip.y + 3}" width="${tip.w}" height="5" fill="${P.white}" opacity="0.6"/>` +
+      `<rect x="${tip.x + 8}" y="${tip.y + 11}" width="7" height="7" fill="${P.ink}" opacity="0.7"/><rect x="${tip.x + 21}" y="${tip.y + 11}" width="7" height="7" fill="${P.ink}" opacity="0.7"/>` +
       `</g>`,
   };
 };

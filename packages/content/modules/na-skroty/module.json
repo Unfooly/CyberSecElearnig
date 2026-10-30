@@ -2,7 +2,7 @@
   "schemaVersion": 6,
   "slug": "na-skroty",
   "title": "Na skróty",
-  "subtitle": "Darmowe narzędzia z internetu w pracy - czym jest shadow IT i co może pójść nie tak",
+  "subtitle": "Darmowe narzędzia z internetu w pracy – czym jest shadow IT i co może pójść nie tak",
   "category": "IT_HYGIENE",
   "level": "basic",
   "durationMinutes": 7,
@@ -15,9 +15,9 @@
     "Wiedzieć, czym jest shadow IT: narzędzie do pracy, którego firma nie sprawdziła i nie zatwierdziła.",
     "Znać skutki: dane firmy u obcej firmy, złośliwe dodatki, naruszenie danych osobowych, utrata plików.",
     "Przed użyciem nowego programu, strony albo AI zapytać IT.",
-    "Gdy coś poszło nie tak - od razu zgłosić to do IT."
+    "Gdy coś poszło nie tak – od razu zgłosić to do IT."
   ],
-  "thumbnail": "assets/na-skroty/miniatura-na-skroty.1db1bbe9.svg",
+  "thumbnail": "assets/na-skroty/miniatura-na-skroty.748ea883.svg",
   "blocks": [
     {
       "id": "odprawa",
@@ -56,10 +56,10 @@
               }
             ]
           },
-          "image": "assets/na-skroty/scenes/pl/odprawa.14c30f4c.svg",
+          "image": "assets/na-skroty/scenes/pl/odprawa.5e6b7bef.svg",
           "alt": "Wieczór, biurko w świetle lampki: otwarty laptop z dokumentem „Raport na jutro, 9:00”, obok kubek kawy i okulary.",
           "portrait": {
-            "image": "assets/na-skroty/scenes/pl/odprawa-pion.1ebeaf28.svg"
+            "image": "assets/na-skroty/scenes/pl/odprawa-pion.02da70ab.svg"
           }
         }
       ]
@@ -81,37 +81,37 @@
           }
         ]
       },
-      "image": "assets/na-skroty/scenes/pl/biurko-bartka.5b172dab.svg",
+      "image": "assets/na-skroty/scenes/pl/biurko-bartka.8bb3cb0e.svg",
       "imageAlt": "Laptop Bartka: okno czatu AI „CzatPomocnik” z prośbą „Uporządkuj tabelę klientów” i wklejoną, rozmytą tabelą, okno dysku „MojaChmura” z folderem „Raporty firmowe”, ikona programu „PDF Zamiennik Free” na pulpicie i pomarańczowy pendrive w porcie z prawej strony laptopa.",
-      "imagePortrait": "assets/na-skroty/scenes/pl/biurko-bartka-pion.5ab9e43e.svg",
+      "imagePortrait": "assets/na-skroty/scenes/pl/biurko-bartka-pion.9b1bc476.svg",
       "portraitHotspots": [
         {
           "id": "czat",
-          "x": 20,
+          "x": 23.8,
           "y": 5,
           "width": 68.9,
           "height": 32.5
         },
         {
           "id": "chmura",
-          "x": 20,
+          "x": 23.8,
           "y": 39.4,
           "width": 68.9,
           "height": 20
         },
         {
           "id": "program",
-          "x": 20,
+          "x": 23.8,
           "y": 60.6,
           "width": 68.9,
           "height": 10.9
         },
         {
           "id": "pendrive",
-          "x": 0,
-          "y": 71.6,
-          "width": 26.7,
-          "height": 12.5
+          "x": 0.1,
+          "y": 70.6,
+          "width": 24.9,
+          "height": 11.4
         }
       ],
       "hotspots": [
@@ -152,7 +152,7 @@
           "y": 48.6,
           "width": 16.3,
           "height": 29,
-          "content": "Program ściągnięty z internetu. Nikt w firmie go nie sprawdził - może mieć ukryte dodatki.",
+          "content": "Program ściągnięty z internetu. Nikt w firmie go nie sprawdził – może mieć ukryte dodatki.",
           "evidence": true,
           "required": true,
           "note": {
@@ -163,10 +163,10 @@
         {
           "id": "pendrive",
           "label": "Pendrive",
-          "x": 83.9,
-          "y": 74.5,
-          "width": 13.8,
-          "height": 22,
+          "x": 88,
+          "y": 75.7,
+          "width": 11.6,
+          "height": 20,
           "content": "Prywatny pendrive w firmowym laptopie. Nie wiadomo, co na nim jest, a firmowe pliki łatwo z nim zgubić.",
           "evidence": true,
           "required": true,
@@ -273,7 +273,7 @@
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Skutek: naruszenie danych osobowych - zgłoszenie do UODO w 72 godziny.",
+            "text": "Skutek: naruszenie danych osobowych – zgłoszenie do UODO w 72 godziny.",
             "kind": "item"
           }
         },
@@ -332,14 +332,14 @@
           "channel": "situation",
           "text": "Zapisuję raport na firmowym dysku.",
           "correct": "ok",
-          "feedback": "Tak - firmowy dysk ma kopię zapasową, a dostęp mają tylko osoby z firmy."
+          "feedback": "Tak – firmowy dysk ma kopię zapasową, a dostęp mają tylko osoby z firmy."
         },
         {
           "id": "konwerter",
           "channel": "situation",
           "text": "Zamieniam listę płac na PDF w darmowym konwerterze online.",
           "correct": "suspicious",
-          "feedback": "Lista płac to dane osobowe - nie wysyłaj jej na obce strony. IT wskaże firmowe narzędzie."
+          "feedback": "Lista płac to dane osobowe – nie wysyłaj jej na obce strony. IT wskaże firmowe narzędzie."
         },
         {
           "id": "vpn",
@@ -353,7 +353,7 @@
           "channel": "situation",
           "text": "Instaluję program z firmowego katalogu aplikacji.",
           "correct": "ok",
-          "feedback": "Tak - programy z firmowego katalogu IT już sprawdziło."
+          "feedback": "Tak – programy z firmowego katalogu IT już sprawdziło."
         },
         {
           "id": "prywatna-poczta",
@@ -363,13 +363,13 @@
           "feedback": "Prywatna poczta to już poza firmą. Zapytaj IT o bezpieczny dostęp z domu."
         }
       ],
-      "hint": "Czy firma sprawdziła to narzędzie? Jeśli nie - zapytaj IT."
+      "hint": "Czy firma sprawdziła to narzędzie? Jeśli nie – zapytaj IT."
     },
     {
       "id": "brak-programu",
       "type": "QUIZ",
       "title": "Programu nie ma na liście firmowej",
-      "prompt": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu - co robisz?",
+      "prompt": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu – co robisz?",
       "narration": {
         "voice": "komisarz",
         "text": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu. Co robisz?",
@@ -390,17 +390,17 @@
         {
           "text": "Pobieram pierwszy darmowy program, jaki znajdę w internecie.",
           "correct": false,
-          "feedback": "Darmowe programy z internetu bywają z ukrytymi dodatkami - firma nie wie, co instalujesz."
+          "feedback": "Darmowe programy z internetu bywają z ukrytymi dodatkami – firma nie wie, co instalujesz."
         },
         {
           "text": "Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.",
           "correct": true,
-          "feedback": "Tak - IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć."
+          "feedback": "Tak – IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć."
         },
         {
           "text": "Proszę kolegę, żeby zainstalował mi swój program.",
           "correct": false,
-          "feedback": "To nadal program, którego nikt nie sprawdził - decyzję zostaw IT."
+          "feedback": "To nadal program, którego nikt nie sprawdził – decyzję zostaw IT."
         }
       ],
       "hint": "Kto w firmie sprawdza i zatwierdza programy?"
@@ -409,7 +409,7 @@
       "id": "juz-wklejone",
       "type": "QUIZ",
       "title": "Dane już wklejone",
-      "prompt": "Dane klientów trafiły już do darmowego czatu AI - co teraz?",
+      "prompt": "Dane klientów trafiły już do darmowego czatu AI – co teraz?",
       "narration": {
         "voice": "komisarz",
         "text": "Dane klientów trafiły już do darmowego czatu AI. Co teraz?",
@@ -435,12 +435,12 @@
         {
           "text": "Od razu zgłaszam to do IT.",
           "correct": true,
-          "feedback": "Tak - liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki."
+          "feedback": "Tak – liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki."
         },
         {
           "text": "Czekam, czy coś się stanie.",
           "correct": false,
-          "feedback": "Jeśli to dane osobowe, firma ma 72 godziny na zgłoszenie naruszenia - czekanie zabiera ten czas."
+          "feedback": "Jeśli to dane osobowe, firma ma 72 godziny na zgłoszenie naruszenia – czekanie zabiera ten czas."
         }
       ],
       "hint": "Im szybciej IT się dowie, tym więcej da się zrobić."

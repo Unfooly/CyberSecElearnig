@@ -29,6 +29,10 @@ deweloperskim, nigdy z `.env` wskazującym produkcję.
 Skrypt sam startuje API (`:3101`) i web (`:3100`), używa bazy z `.env` i po sobie usuwa utworzoną organizację.
 Porty zmienisz zmiennymi `E2E_API_PORT` / `E2E_WEB_PORT`.
 
+W CI skrypt biegnie na każdym pull requeście jako job `e2e-registration` („testy e2e (rejestracja)”, `.github/workflows/build-images.yml`).
+Atrapa DNS działa tylko jako preload procesu API tego skryptu: nie ma jej w kodzie aplikacji ani w obrazach, a poza
+`NODE_ENV=development`/`test` odmawia startu.
+
 **Czego skrypt NIE sprawdza (ograniczenia):**
 - DNS jest podmieniony preloadem `scripts/e2e/dns-stub.cjs` tylko w procesie API skryptu (prawdziwy
   `NodeDnsTxtResolver` działa dalej, ale zamiast sieci dostaje rekord z pliku). Prawdziwe zapytanie DNS

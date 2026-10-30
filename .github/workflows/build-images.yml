@@ -127,8 +127,7 @@ jobs:
 
   # Testy e2e API na prawdziwym Postgresie i Redisie (kontenery serwisowe): m.in. izolacja
   # tenantów (RLS, Zasada nr 1), rejestracja, sesje, zadania w tle. Obrazy powstają dopiero
-  # po zielonym `test` ORAZ `e2e`. Bez przeglądarkowego skryptu Playwright (wymaga
-  # przeglądarek) - ten zostaje ręcznie (docs/e2e-registration.md).
+  # po zielonym `test` ORAZ `e2e`. Przeglądarkowy przebieg rejestracji to osobny job `e2e-registration`.
   e2e:
     name: testy e2e (api)
     runs-on: ubuntu-latest
@@ -200,6 +199,83 @@ jobs:
       - name: Testy e2e api
         working-directory: apps/api
         run: npx jest --config ./test/jest-e2e.json --runInBand
+
+  # Cała ścieżka rejestracji w przeglądarce (docs/e2e-registration.md) na buildach produkcyjnych web i API. DNS zastępuje preload
+  # scripts/e2e/dns-stub.cjs tylko w procesie API tego skryptu: bez hooka w kodzie aplikacji, poza obrazami, odmowa startu poza
+  # development/test. Bez NODE_ENV na poziomie joba: `next build` wymaga production, a API skrypt uruchamia sam z development.
+  # Nie blokuje `images`: najpierw obserwujemy stabilność; zielony wymagany przed merge jak każde sprawdzenie PR.
+  e2e-registration:
+    name: testy e2e (rejestracja)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cyberszkolo
+          POSTGRES_PASSWORD: ci-migrator-password
+          POSTGRES_DB: cyberszkolo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h localhost -U cyberszkolo -d cyberszkolo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cyberszkolo:ci-migrator-password@localhost:5432/cyberszkolo_test?schema=public
+      DATABASE_URL_APP: postgresql://cyberszkolo_app:ci-app-password@localhost:5432/cyberszkolo_test?schema=public&connection_limit=5
+      REDIS_URL: redis://localhost:6379
+      # Sekrety wyłącznie testowe, jednorazowe dla runnera.
+      JWT_SECRET: ci-e2e-access-secret
+      JWT_REFRESH_SECRET: ci-e2e-refresh-secret
+      E2E_SCREENSHOT_DIR: /tmp/e2e-registration-shots
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Rola runtime cyberszkolo_app
+        env:
+          PGHOST: localhost
+          PGPASSWORD: ci-migrator-password
+          POSTGRES_USER: cyberszkolo
+          POSTGRES_DB: cyberszkolo_test
+          APP_DB_PASSWORD: ci-app-password
+        run: sh docker/postgres-init/01-create-app-role.sh
+
+      - name: Migracje (prisma migrate deploy)
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Build pakietów, API i web
+        run: |
+          npm run build --workspace=packages/shared
+          npm run build --workspace=packages/content
+          npm run build --workspace=apps/api
+          npm run build --workspace=apps/web
+
+      - name: Przeglądarka Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Rejestracja w przeglądarce
+        run: node scripts/e2e-registration.mjs
 
   images:
     name: obraz ${{ matrix.app }}

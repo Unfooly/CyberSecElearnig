@@ -276,7 +276,7 @@ export function tiltOf(index: number): number {
  */
 export function feedbackSentence(sourceText: string | undefined, correct: boolean | undefined): string {
   const text = sourceText?.trim();
-  if (!text) return correct ? 'Kolejność jest poprawna - trop się zgadza.' : 'Nie wszystko jest na swoim miejscu - zobacz, jak było naprawdę.';
+  if (!text) return correct ? 'Kolejność jest poprawna – trop się zgadza.' : 'Nie wszystko jest na swoim miejscu – zobacz, jak było naprawdę.';
   const sentences = text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)?.map((sentence) => sentence.trim()) ?? [text];
   const first = sentences[0] ?? text;
   if (first.split(/\s+/).length < 4 && sentences[1]) return `${first} ${sentences[1]}`;

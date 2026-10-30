@@ -154,7 +154,7 @@ export default function OsintBlock({
                     : outcome?.marked
                       ? 'border-danger bg-danger/15'
                       : 'border-transparent';
-              const verdict = !outcome ? '' : outcome.used ? (outcome.marked ? ' (wykorzystane - zaznaczone)' : ' (wykorzystane - przeoczone)') : outcome.marked ? ' (pułapka - zaznaczona)' : ' (niewykorzystane - pominięte)';
+              const verdict = !outcome ? '' : outcome.used ? (outcome.marked ? ' (wykorzystane – zaznaczone)' : ' (wykorzystane – przeoczone)') : outcome.marked ? ' (pułapka – zaznaczona)' : ' (niewykorzystane – pominięte)';
               return (
                 <div key={spot.id} className="absolute" style={place} data-spot-id={spot.id}>
                   <button

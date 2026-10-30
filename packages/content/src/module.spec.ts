@@ -16,6 +16,39 @@ function withoutPopups(module: TestModule) {
   }
 }
 
+describe('parseModule: półpauza w tekstach dla gracza (D-154)', () => {
+  const errorsOf = (module: TestModule): string => {
+    try {
+      parseModule(module);
+    } catch (error) {
+      return (error as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const changed = (change: (module: TestModule) => void): TestModule => {
+    const module = fullModuleForTests();
+    change(module);
+    return module;
+  };
+  const textBlock = (module: TestModule) => module.blocks.find((block) => block.type === 'TEXT_INPUT_GUIDED')!;
+
+  it('„ - ” to błąd ze ścieżką pola, także w listach', () => {
+    expect(errorsOf(changed((module) => (module.blocks[0].title = 'Wstęp - start')))).toMatch(/blocks\[0\]\.title: łącznik ze spacjami/);
+    expect(errorsOf(changed((module) => (module.objectives = ['Cel - pierwszy.'])))).toMatch(/objectives\[0\]: łącznik ze spacjami/);
+  });
+
+  it('półpauza i łącznik bez spacji są poprawne', () => {
+    expect(errorsOf(changed((module) => (module.blocks[0].title = 'Wstęp – start')))).toBe('');
+    expect(errorsOf(changed((module) => (module.blocks[0].title = 'Biało-czerwona flaga, strony 3-5')))).toBe('');
+  });
+
+  it('pola, których gracz nie widzi: spokenText, regex, accept', () => {
+    expect(errorsOf(changed((module) => (module.blocks[0].narration = { text: 'Wstęp – start.', spokenText: 'Wstęp - start.' })))).toBe('');
+    expect(errorsOf(changed((module) => (textBlock(module).answer.regex = '^a - b$')))).toBe('');
+    expect(errorsOf(changed((module) => (textBlock(module).answer.accept = ['a - b'])))).toBe('');
+  });
+});
+
 describe('parseModule: walidacja modułu', () => {
   const expectInvalid = (mutate: (m: TestModule) => void, fragment: string) => {
     const module = fullModuleForTests();

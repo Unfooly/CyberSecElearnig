@@ -44,7 +44,7 @@ export default function CourseCatalog({ courses, contentBase = LOCAL_CONTENT_BAS
         <h2 className="text-lg font-bold tracking-[-0.01em]">Katalog</h2>
       </div>
       <p className="mb-4 text-sm text-muted">
-        Szkolenia dostępne do samodzielnego rozpoczęcia - nieobowiązkowe, dopóki nie przypisze ich administrator.
+        Szkolenia dostępne do samodzielnego rozpoczęcia – nieobowiązkowe, dopóki nie przypisze ich administrator.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

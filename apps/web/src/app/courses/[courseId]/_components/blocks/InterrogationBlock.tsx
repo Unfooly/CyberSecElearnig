@@ -538,7 +538,7 @@ export default function InterrogationBlock({
                         <span className="mt-1 flex flex-wrap gap-1.5 text-xs font-semibold">
                           {isNoted && <span className="rounded-full bg-highlight px-2 py-0.5 text-ink">W notatniku</span>}
                           {outcome?.correct && <span className="rounded-full bg-danger px-2 py-0.5 text-white">Sprzeczność obalona</span>}
-                          {outcome && !outcome.correct && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Podważona - bez skutku</span>}
+                          {outcome && !outcome.correct && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Podważona – bez skutku</span>}
                         </span>
                       )}
                     </button>
@@ -696,7 +696,7 @@ export default function InterrogationBlock({
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
           </div>
-          <p className="mb-2 shrink-0 text-sm text-muted">Jedna próba na kwestię - pudło też się liczy.</p>
+          <p className="mb-2 shrink-0 text-sm text-muted">Jedna próba na kwestię – pudło też się liczy.</p>
           <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto" aria-label="Dowody z notatnika">
             {evidenceNotes.map((note) => (
               <li key={note.ref}>

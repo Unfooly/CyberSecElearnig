@@ -499,7 +499,8 @@ try {
   await page.getByTestId('hotspot-overlay-monitor').waitFor();
   // Suma nieznana ("?"): blok maila ukrywa liczbę dowodów do zatwierdzenia odpowiedzi (gracz nie wie z góry, ile zaznaczyć).
   step('śledztwo: licznik startuje z serwera, suma ukryta przez blok maila (Dowody 0/?)', (await counter().textContent())?.includes('Dowody 0/?') === true, await counter().textContent());
-  step('śledztwo: puls-podpowiedź na punktach przed pierwszym kliknięciem', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hint');
+  // D-154: przedmioty bez ramki do podpowiedzi (2 pudła na scenie) - przed pierwszym kliknięciem niczego nie zdradzają.
+  step('śledztwo: punkty niewidoczne przed pierwszym kliknięciem (D-154)', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-przed');
 
   // Punkt na obrazie jest jedyną, w pełni dostępną ścieżką - klik otwiera zbliżenie NA scenie (role="dialog", D-086); dowód dodaje

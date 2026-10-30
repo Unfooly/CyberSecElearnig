@@ -410,7 +410,7 @@ describe('InterrogationBlock', () => {
       fireEvent.click(screen.getAllByTestId('interrogation-evidence')[1]);
     });
     expect(screen.getByTestId('interrogation-status')).toHaveTextContent('Ten dowód nie podważa tej kwestii.');
-    expect(line('Na wyświetlaczu')).toHaveTextContent('Podważona - bez skutku');
+    expect(line('Na wyświetlaczu')).toHaveTextContent('Podważona – bez skutku');
     expect(screen.queryByTestId('interrogation-admission')).not.toBeInTheDocument();
   });
 

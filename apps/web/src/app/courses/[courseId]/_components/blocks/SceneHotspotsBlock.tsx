@@ -36,6 +36,11 @@ const ZOOM_OUT_MS = 350;
 const EASE_OUT_SOFT = 'cubic-bezier(.2,.8,.2,1)';
 const TOAST_MS = 2500;
 export const NOT_EVIDENCE_TOAST = 'To nie jest dowód w tej sprawie.';
+/** Pudła na scenie (klik poza przedmiotem), po których przedmioty dostają ramki podpowiedzi (D-154) - jak „podpowiedź po 2 błędach”. */
+export const MISSES_TO_REVEAL = 2;
+export const REVEAL_HINT = 'Miejsca, którym warto się przyjrzeć, są teraz zaznaczone.';
+/** Ramka podpowiedzi nieobejrzanego przedmiotu (puls tylko bez reduced-motion). */
+const HINT_FRAME = 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse';
 
 // Hotspoty bywają geometrycznie zagnieżdżone (np. "karteczka" przyklejona do ramki "monitora" - mniejszy prostokąt
 // częściowo/całkowicie wewnątrz większego). Bez jawnego z-index stackowanie idzie po kolejności DOM (= kolejności w
@@ -143,8 +148,10 @@ export default function SceneHotspotsBlock({
   // Stan początkowy z serwera (D-128) tylko dla przedmiotów TEJ wersji sceny: zabrany = obejrzany przedmiot-dowód z notatką (jak w API).
   const [visited, setVisited] = useState<string[]>(() => restoredVisited(flat, initial));
   const [noted, setNoted] = useState<string[]>(() => restoredNoted(flat, initial));
-  // Po powrocie do zbadanej już sceny ramki podpowiedzi nie pulsują od nowa.
-  const [interacted, setInteracted] = useState(() => restoredVisited(flat, initial).length > 0);
+  // Przedmioty są niewidoczne (nie zdradzają odpowiedzi, D-154) - ramki podpowiedzi (puls) dopiero po MISSES_TO_REVEAL pudłach: klik w
+  // scenę poza przedmiotem. Obejrzane mają zawsze znacznik, fokus klawiatury - pierścień.
+  const [misses, setMisses] = useState(0);
+  const revealed = misses >= MISSES_TO_REVEAL;
   const [imageFailed, setImageFailed] = useState(false);
   // Proporcja obrazu z onLoad (albo z cache zaraz po zamontowaniu - React 18 nie odtwarza `load` dla obrazu z cache sprzed hydratacji,
   // React #15446); domyślne 16/10 tylko na czas ładowania.
@@ -315,6 +322,16 @@ export default function SceneHotspotsBlock({
     );
   }
 
+  // Pudło: klik w obraz sceny poza przedmiotem. Po MISSES_TO_REVEAL - ramki nieobejrzanych przedmiotów i komunikat w dymku podpowiedzi.
+  // Liczone tylko na scenie głównej (na pulpicie overlayOpen); gdy wszystko obejrzane, nie ma czego zaznaczać.
+  function miss() {
+    if (review || overlayOpen || revealed) return;
+    if (flat.every((hotspot) => ('action' in hotspot && hotspot.action === 'next') || visited.includes(hotspot.id))) return;
+    const next = misses + 1;
+    setMisses(next);
+    if (next >= MISSES_TO_REVEAL) hints.show({ text: REVEAL_HINT });
+  }
+
   function markVisited(id: string) {
     setVisited((list) => (list.includes(id) ? list : [...list, id]));
   }
@@ -322,7 +339,6 @@ export default function SceneHotspotsBlock({
   function open(hotspot: SceneHotspot, trigger: HTMLButtonElement) {
     generation.current += 1;
     vibrate(10);
-    setInteracted(true);
     setToast(null);
     setShake(0);
     triggerRef.current = trigger;
@@ -428,7 +444,7 @@ export default function SceneHotspotsBlock({
     if (ready) {
       onSubmit({ visited, noted });
     } else {
-      hints.show({ text: 'Najpierw zbadaj scenę - drzwi poczekają.' });
+      hints.show({ text: 'Najpierw zbadaj scenę – drzwi poczekają.' });
     }
   }
 
@@ -533,6 +549,7 @@ export default function SceneHotspotsBlock({
                 referrerPolicy="no-referrer"
                 aria-hidden={overlayOpen ? true : undefined}
                 className="block h-full w-full object-contain"
+                onClick={miss}
                 onLoad={(event) => {
                   const { naturalWidth, naturalHeight } = event.currentTarget;
                   if (naturalWidth > 0 && naturalHeight > 0) setAspectRatio(naturalWidth / naturalHeight);
@@ -553,7 +570,7 @@ export default function SceneHotspotsBlock({
                     key={hotspot.id}
                     type="button"
                     data-testid={`hotspot-overlay-${hotspot.id}`}
-                    data-state={isDoor ? (ready ? 'ready' : 'blocked') : seen ? 'discovered' : interacted ? 'hidden' : 'hint'}
+                    data-state={isDoor ? (ready ? 'ready' : 'blocked') : seen ? 'discovered' : revealed ? 'hint' : 'hidden'}
                     aria-label={label}
                     // Nieaktywne drzwi zostają SKUPIALNE (aria-disabled, nie disabled) - czytnik ma usłyszeć DLACZEGO. Pod otwartą
                     // nakładką przedmioty wychodzą z kolejności Tab i dostają aria-hidden.
@@ -570,7 +587,7 @@ export default function SceneHotspotsBlock({
                           ? 'border-amber-500 bg-amber-400/20 hover:border-amber-600 hover:bg-amber-400/30'
                           : 'cursor-not-allowed border-slate-400/50 bg-slate-400/10'
                         : `hover:border-indigo-600 hover:bg-indigo-500/20 ${
-                            seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
+                            seen ? 'border-green-600 bg-green-500/[0.07]' : revealed ? HINT_FRAME : 'border-transparent'
                           }`
                     }`}
                   >
@@ -641,7 +658,7 @@ export default function SceneHotspotsBlock({
                       scene={nestedScene}
                       visited={visited}
                       noted={noted}
-                      interacted={interacted}
+                      revealed={revealed}
                       // Przedmioty pulpitu nieaktywne, dopóki kamera nie dojedzie na monitor (niewidoczne nie mogą być klikalne).
                       overlayOpen={nestedActiveId !== null || !showOuter}
                       onBackdrop={onBackdrop}
@@ -964,7 +981,7 @@ function NestedSceneImage({
   scene,
   visited,
   noted,
-  interacted,
+  revealed,
   overlayOpen,
   onPick,
   onBackdrop,
@@ -976,7 +993,8 @@ function NestedSceneImage({
   screenContent?: ReactNode;
   visited: string[];
   noted: string[];
-  interacted: boolean;
+  /** Ramki podpowiedzi po pudłach na scenie głównej (D-154) - także na przedmiotach pulpitu. */
+  revealed: boolean;
   overlayOpen: boolean;
   onBackdrop: (event: MouseEvent<HTMLElement>) => void;
   onPick: (hotspot: InnerSceneHotspot, trigger: HTMLButtonElement) => void;
@@ -1030,7 +1048,7 @@ function NestedSceneImage({
               onClick={(event) => onPick(hotspot, event.currentTarget)}
               style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: zIndex.get(hotspot.id) }}
               className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-[color,background-color,border-color,transform] duration-[100ms] motion-safe:active:scale-[.98] hover:border-indigo-600 hover:bg-indigo-500/20 ${FOCUS_RING} ${overlayOpen ? 'pointer-events-none' : ''} ${
-                seen ? 'border-green-600 bg-green-500/[0.07]' : interacted ? 'border-transparent' : 'border-indigo-400/70 bg-indigo-500/10 motion-safe:animate-pulse'
+                seen ? 'border-green-600 bg-green-500/[0.07]' : revealed ? HINT_FRAME : 'border-transparent'
               }`}
             >
               {seen && (

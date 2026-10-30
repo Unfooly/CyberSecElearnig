@@ -1553,6 +1553,29 @@ try {
         if (info.overflowX > 1) fail(`${label}: (m3) strona przewija się w poziomie o ${info.overflowX}px.`);
         if (errors.length > 0) fail(`${label}: (m4) błędy: ${errors.join(' | ')}`);
         await noteEvidence();
+        // (m13, D-154) przed interakcją żaden przedmiot sceny nie ma widocznej ramki ani wypełnienia (nie zdradza odpowiedzi; ramki dopiero
+        // po pudłach). Kursor poza sceną (bez :hover), fokus nie na przedmiocie. Drzwi (`action: next`, data-state ready/blocked) są
+        // wyjściem ze sceny, nie odpowiedzią (D-129) - zostają widoczne i nie są tu liczone.
+        const moduleBlockType = moduleJson.blocks.find((candidate) => candidate.id === blockId)?.type;
+        if (moduleBlockType === 'SCENE_HOTSPOTS') {
+          await page.mouse.move(1, 1);
+          await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+          await page.waitForTimeout(150); // przejście koloru ramki trwa 100 ms - odczyt po wygaszeniu ewentualnego :hover
+          const visibleFrames = await page.evaluate(() => {
+            const alpha = (color) => {
+              const match = color.match(/rgba?\(([^)]+)\)/);
+              if (!match) return color === 'transparent' ? 0 : 1;
+              const parts = match[1].split(/[ ,/]+/).filter(Boolean);
+              return parts.length > 3 ? Number(parts[3]) : 1;
+            };
+            return [...document.querySelectorAll('.scene-hotspot')]
+              .filter((el) => !['ready', 'blocked'].includes(el.getAttribute('data-state')))
+              .map((el) => ({ id: el.getAttribute('data-testid'), state: el.getAttribute('data-state'), border: getComputedStyle(el).borderTopColor, bg: getComputedStyle(el).backgroundColor }))
+              .filter((h) => alpha(h.border) > 0.01 || alpha(h.bg) > 0.01);
+          });
+          if (visibleFrames.length > 0) fail(`${label}: (m13) przed interakcją widoczna ramka przedmiotu: ${JSON.stringify(visibleFrames)}.`);
+          step(`${label}: (m13) przedmioty bez widocznej ramki przed interakcją`, true);
+        }
         // (m12) ekran połączenia przychodzącego w ramce telefonu (LIVE_CALL z `ringScreen`, B-138b): ramka albo karta (niski obszar,
         // przepełniony slot); w ramce przełącznik i przyciski w prostokącie slotu, cele ≥ 44 px, nazwa dzwoniącego nieucięta, numer i
         // status w ramce. Telefon w poziomie (wysokość < 500 px) - karta.

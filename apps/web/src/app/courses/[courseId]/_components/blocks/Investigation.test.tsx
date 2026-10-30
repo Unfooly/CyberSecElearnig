@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
-import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST } from './SceneHotspotsBlock';
+import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST, REVEAL_HINT } from './SceneHotspotsBlock';
 import { typingDelayMs } from './DialogueBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
@@ -174,16 +174,28 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
   withReducedMotion();
   const summary: EvidenceSummary = { collected: 0, total: 2, perBlock: [{ blockId: 'scena', collected: 0, total: 2 }] };
 
-  it('puls-podpowiedź do pierwszego kliknięcia: potem nakładki są niewidoczne, odkryta ma znacznik', () => {
+  it('D-154: przedmioty niewidoczne od startu (nie zdradzają odpowiedzi); po 2 pudłach na scenie - ramki podpowiedzi i komunikat; odkryty ma znacznik', () => {
     setup(scene, { summary });
-    expect(screen.getByTestId('hotspot-overlay-h1')).toHaveAttribute('data-state', 'hint');
-    expect(screen.getByTestId('hotspot-overlay-h1').className).toContain('motion-safe:animate-pulse');
-    expect(screen.getByTestId('hotspot-overlay-h1').className).not.toMatch(/(^|\s)animate-pulse/); // animacja tylko bez prefers-reduced-motion
+    const overlay = (id: string) => screen.getByTestId(`hotspot-overlay-${id}`);
+    for (const id of ['h1', 'h2']) {
+      expect(overlay(id)).toHaveAttribute('data-state', 'hidden');
+      expect(overlay(id).className).toContain('border-transparent');
+      expect(overlay(id).className).not.toContain('animate-pulse');
+    }
+    const sceneImage = document.querySelector('.scene-box img, .briefing-scene-box img') as HTMLImageElement;
+    fireEvent.click(sceneImage);
+    expect(overlay('h1')).toHaveAttribute('data-state', 'hidden');
+    fireEvent.click(sceneImage);
+    for (const id of ['h1', 'h2']) {
+      expect(overlay(id)).toHaveAttribute('data-state', 'hint');
+      expect(overlay(id).className).toContain('motion-safe:animate-pulse');
+      expect(overlay(id).className).not.toMatch(/(^|\s)animate-pulse/); // animacja tylko bez prefers-reduced-motion
+    }
+    expect(screen.getByTestId('reaction')).toHaveTextContent(REVEAL_HINT);
 
     pick('Monitor');
-    expect(screen.getByTestId('hotspot-overlay-h1')).toHaveAttribute('data-state', 'discovered');
-    expect(screen.getByTestId('hotspot-overlay-h2')).toHaveAttribute('data-state', 'hidden');
-    expect(screen.getByTestId('hotspot-overlay-h2').className).not.toContain('animate-pulse');
+    expect(overlay('h1')).toHaveAttribute('data-state', 'discovered');
+    expect(overlay('h2')).toHaveAttribute('data-state', 'hint');
   });
 
   it('punkty na obrazie są w pełni dostępne: bez aria-hidden/tabIndex=-1, z aria-label i widocznym focus-ringiem - jedyna ścieżka (bez chipów)', () => {
@@ -332,6 +344,15 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(ready.current).not.toBeNull();
     ready.current!();
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1'], noted: [] });
+  });
+
+  it('D-154: w podglądzie (review) kliki w scenę nie odsłaniają ramek ani komunikatu', () => {
+    setup(scene, { summary, review: true });
+    const sceneImage = document.querySelector('.scene-box img, .briefing-scene-box img') as HTMLImageElement;
+    fireEvent.click(sceneImage);
+    fireEvent.click(sceneImage);
+    expect(screen.getByTestId('hotspot-overlay-h2')).toHaveAttribute('data-state', 'hidden');
+    expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
   });
 
   it('podgląd: brak "Zabierz", brak zmian w notatniku i liczniku', () => {

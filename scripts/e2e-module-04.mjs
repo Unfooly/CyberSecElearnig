@@ -196,6 +196,17 @@ try {
     step(`SCENE_HOTSPOTS ${id}: polecenie trybu prostego i „Dalej” nieaktywny przed celami`, (await page.getByText(block.tip).count()) >= 1 && (await nextDisabled()));
     const scene = page.locator(`img[alt="${block.imageAlt}"]`);
     step(`SCENE_HOTSPOTS ${id}: grafika sceny załadowana`, await imageLoaded(scene.first()));
+    // Zrzut stanu przed interakcją: kursor poza sceną (bez :hover), przedmioty bez widocznej ramki (D-154).
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+    await page.waitForTimeout(150); // przejście koloru ramki trwa 100 ms
+    const framed = await page.evaluate(() =>
+      [...document.querySelectorAll('.scene-hotspot')].filter((el) => {
+        const { borderTopColor, backgroundColor } = getComputedStyle(el);
+        return ![borderTopColor, backgroundColor].every((c) => c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c));
+      }).length,
+    );
+    step(`SCENE_HOTSPOTS ${id}: przed interakcją żaden przedmiot nie ma widocznej ramki`, framed === 0, `${framed}`);
     await shot(`2-scena-${id}`);
     for (const hotspot of block.hotspots) {
       await page.getByRole('button', { name: startsWith(hotspot.label) }).click();

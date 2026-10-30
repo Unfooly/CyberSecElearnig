@@ -19,6 +19,7 @@
  "items": [
   { "id": "sloje", "prop": "woodGrain", "x": 0, "y": 0, "params": { "w": 1600, "h": 1000 } },
   { "id": "kubek", "prop": "mugTop", "x": 1440, "y": 300 },
+  { "id": "pendrive", "prop": "usbStick", "x": 1418, "y": 817, "hotspot": "cel", "pad": 0, "params": { "flip": true, "target": { "x": -10, "y": -60, "w": 186, "h": 200 } } },
   { "id": "laptop", "prop": "laptopFront", "x": 10, "y": 20, "params": { "sw": 1240, "sh": 740, "wallpaper": "#3B2F8F", "port": "right" } },
   { "id": "czat", "prop": "chatWindow", "x": 130, "y": 80, "hotspot": true, "pad": 0, "params": { "w": 660, "h": 600, "bubbleH": 130 } },
   { "id": "chmura", "prop": "cloudWindow", "x": 830, "y": 80, "hotspot": true, "pad": 0, "params": { "w": 480, "h": 360, "folder": 120 } },
@@ -27,7 +28,6 @@
   {"id":"tekst-czat-prosba","prop":"textBox","x":309,"y":194,"evidence":"czat","params":{"w":427,"h":110,"text":{"$t":"czat-prosba"},"size":32,"valign":"middle","color":"#2B2440"}},
   {"id":"tekst-chmura-tytul","prop":"textBox","x":914,"y":90,"evidence":"chmura","params":{"w":286,"h":60,"text":{"$t":"chmura-tytul"},"size":36,"valign":"middle","bold":true,"color":"#FFFFFF"}},
   {"id":"tekst-folder","prop":"textBox","x":1004,"y":190,"evidence":"chmura","params":{"w":276,"h":220,"text":{"$t":"folder"},"size":36,"valign":"middle","bold":true,"color":"#2B2440"}},
-  {"id":"tekst-program","prop":"textBox","x":825,"y":662,"evidence":"program","params":{"w":260,"h":110,"text":{"$t":"program"},"size":30,"align":"middle","valign":"top","bold":true,"color":"#FFFFFF"}},
-  { "id": "pendrive", "prop": "usbStick", "x": 1362, "y": 815, "hotspot": "cel", "pad": 0, "params": { "flip": true, "target": { "x": -20, "y": -70, "w": 220, "h": 220 } } }
+  {"id":"tekst-program","prop":"textBox","x":825,"y":662,"evidence":"program","params":{"w":260,"h":110,"text":{"$t":"program"},"size":30,"align":"middle","valign":"top","bold":true,"color":"#FFFFFF"}}
  ]
 }

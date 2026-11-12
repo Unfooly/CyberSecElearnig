@@ -113,7 +113,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'pseudo'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'pseudo', 'coming-soon'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -176,8 +176,16 @@ if (MODULE_SLUG !== DEFAULT_MODULE) {
 }
 // Tytuł wielojęzyczny (schemaVersion 6) - harness pokazuje `pl`.
 const MODULE_TITLE = ((title) => (typeof title === 'string' ? title : title.pl))(JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8')).title);
+// Strona „w budowie” (D-157) wymaga serwera z COMING_SOON=1, który podmienia „/” - wtedy sekcja `home` (film na landingu) nie ma czego
+// sprawdzać. Dlatego `coming-soon` idzie WYŁĄCZNIE osobnym przebiegiem (LAYOUT_CHECK_SECTION=coming-soon), nie w domyślnym „wszystko”.
+const COMING_SOON_RUN = ONLY.includes('coming-soon');
+if (COMING_SOON_RUN && ONLY.length > 1) throw new Error('LAYOUT_CHECK_SECTION=coming-soon uruchamiaj osobno (serwer z COMING_SOON=1 zmienia „/”).');
 const runs = (section) =>
-  MODULE_SLUG !== DEFAULT_MODULE && !GENERIC_SECTIONS.includes(section) ? false : ONLY.length === 0 || ONLY.includes(section);
+  MODULE_SLUG !== DEFAULT_MODULE && !GENERIC_SECTIONS.includes(section)
+    ? false
+    : ONLY.length === 0
+      ? section !== 'coming-soon'
+      : ONLY.includes(section);
 
 // TABLICA ŚLEDCZA (ORDERING, feat/evidence-board, D-088) - `?block=rekonstrukcja`, te same cztery rozdzielczości; stany: pusta, w trakcie
 // (3 ślady przypięte), po sprawdzeniu (odpowiedź serwera podstawiona przez page.route - harness nie ma backendu).
@@ -1388,7 +1396,8 @@ try {
   start(
     process.execPath,
     [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev', '-p', WEB_PORT],
-    { NEXT_PUBLIC_DEV_HARNESS: '1' },
+    // COMING_SOON jawnie: flaga z powłoki nie może podmienić „/” w zwykłym przebiegu (sekcja `home`).
+    { NEXT_PUBLIC_DEV_HARNESS: '1', COMING_SOON: COMING_SOON_RUN ? '1' : '' },
     join(process.cwd(), 'apps', 'web'),
   );
 
@@ -3384,6 +3393,84 @@ try {
       if (!(await cta.isVisible()) || (await cta.getAttribute('href')) !== '/register') fail(`${label}: (f4) brak CTA do rejestracji.`);
       if (pageErrors.length > 0) fail(`${label}: (f6) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: (f1-f6) OK`, true);
+      await context.close();
+    }
+  }
+
+  // STRONA „W BUDOWIE” (D-157, tylko LAYOUT_CHECK_SECTION=coming-soon): (w1) strona bez przewijania w poziomie i w pionie; (w2) wideo w
+  // szerokości viewportu, 16:9 (±2%), źródła i plakat z własnego originu (200), CSP media-src 'self'; (w3) bez reduced-motion wideo gra
+  // samo (wyciszone, aria-hidden), plakat zastępczy ukryty; z reduced-motion wideo ukryte, widoczny sam plakat; (w4) język wg
+  // Accept-Language (pl → PL, en → EN), link logowania widoczny, prowadzi do /login, cel >= 24 px wysokości; (w5) zero <script> poza
+  // skryptami Next.js z nonce; (w6) błędy strony.
+  for (const viewport of runs('coming-soon') ? [{ name: '390x844', width: 390, height: 844, isMobile: true }, { name: '1366x768', width: 1366, height: 768 }] : []) {
+    console.log(`\n--- viewport (W BUDOWIE): ${viewport.name} ---`);
+    for (const [locale, reduce] of [['pl-PL', false], ['pl-PL', true], ['en-US', false]]) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        hasTouch: !!viewport.isMobile,
+        isMobile: !!viewport.isMobile,
+        locale,
+        reducedMotion: reduce ? 'reduce' : 'no-preference',
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message.split('\n')[0]));
+      const label = `${viewport.name} / w budowie ${locale}${reduce ? ' (reduced-motion)' : ''}`;
+      const response = await page.goto(`${WEB}/`);
+      const csp = response?.headers()['content-security-policy'] ?? '';
+      if (!/media-src 'self'/.test(csp)) fail(`${label}: (w2) CSP bez media-src 'self': ${csp.slice(0, 200)}`);
+      const video = page.getByTestId('coming-soon-video');
+      const poster = page.getByTestId('coming-soon-poster');
+      await page.getByRole('heading', { level: 1 }).waitFor();
+      const overflow = await page.evaluate(() => ({
+        x: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        y: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      }));
+      if (overflow.x > 1 || overflow.y > 1) fail(`${label}: (w1) strona się przewija - ${JSON.stringify(overflow)}.`);
+      const media = reduce ? poster : video;
+      const box = await media.boundingBox();
+      if (!box || box.x < -1 || box.x + box.width > viewport.width + 1) fail(`${label}: (w2) ${reduce ? 'plakat' : 'wideo'} poza szerokością viewportu - ${JSON.stringify(box)}.`);
+      if (box && Math.abs(box.width / box.height - 16 / 9) > 0.04) fail(`${label}: (w2) proporcja ${(box.width / box.height).toFixed(3)} zamiast 16:9.`);
+      const urls = await page.evaluate(() => [
+        ...[...document.querySelectorAll('[data-testid="coming-soon-video"] source')].map((s) => s.getAttribute('src')),
+        document.querySelector('[data-testid="coming-soon-video"]')?.getAttribute('poster'),
+        document.querySelector('[data-testid="coming-soon-poster"]')?.getAttribute('src'),
+      ]);
+      for (const url of urls) {
+        const res = await page.request.get(new URL(url, WEB).toString());
+        if (!url?.startsWith('/coming-soon/') || res.status() !== 200) fail(`${label}: (w2) ${url} -> ${res.status()} (oczekiwany własny origin, 200).`);
+      }
+      // Pudełko ma aspect-video, więc proporcję samych plików sprawdzamy osobno (wymiary naturalne plakatu i filmu).
+      await page.waitForFunction(() => document.querySelector('[data-testid="coming-soon-poster"]')?.complete === true, null, { timeout: 8000 }).catch(() => null);
+      const posterRatio = await poster.evaluate((img) => img.naturalWidth / img.naturalHeight);
+      if (!(Math.abs(posterRatio - 16 / 9) <= 0.02)) fail(`${label}: (w2) plakat ma proporcję ${posterRatio.toFixed(3)} zamiast 16:9.`);
+      if (!reduce) {
+        await page.waitForFunction(() => { const v = document.querySelector('[data-testid="coming-soon-video"]'); return v && !v.paused && v.currentTime > 0.3; }, null, { timeout: 8000 }).catch(() => null);
+        const videoRatio = await video.evaluate((v) => v.videoWidth / v.videoHeight);
+        if (!(Math.abs(videoRatio - 16 / 9) <= 0.02)) fail(`${label}: (w2) film ma proporcję ${videoRatio} zamiast 16:9.`);
+        const state = await video.evaluate((v) => ({ paused: v.paused, t: v.currentTime, muted: v.muted, loop: v.loop, hidden: v.getAttribute('aria-hidden') }));
+        if (state.paused || state.t <= 0.3 || !state.muted || !state.loop || state.hidden !== 'true') fail(`${label}: (w3) wideo nie gra samo (wyciszone, w pętli, aria-hidden) - ${JSON.stringify(state)}.`);
+        if (await poster.isVisible()) fail(`${label}: (w3) bez reduced-motion widoczny plakat zastępczy.`);
+      } else {
+        if (await video.isVisible()) fail(`${label}: (w3) reduced-motion, a wideo widoczne.`);
+        if (!(await poster.isVisible())) fail(`${label}: (w3) reduced-motion bez plakatu.`);
+      }
+      const pl = locale.startsWith('pl');
+      const heading = (await page.getByRole('heading', { level: 1 }).textContent())?.trim();
+      const expectedHeading = pl ? 'Strona w budowie. Startujemy wkrótce.' : 'Under construction. Launching soon.';
+      if (heading !== expectedHeading) fail(`${label}: (w4) nagłówek „${heading}”, oczekiwany „${expectedHeading}”.`);
+      const login = page.getByRole('link', { name: pl ? 'Zaloguj się' : 'Log in' });
+      const loginBox = await login.boundingBox();
+      if (!(await login.isVisible()) || (await login.getAttribute('href')) !== '/login' || !loginBox || loginBox.height < 24) fail(`${label}: (w4) link logowania niewidoczny, nie do /login albo < 24 px - ${JSON.stringify(loginBox)}.`);
+      const foreignScripts = await page.evaluate(() => [...document.querySelectorAll('script')].filter((s) => !s.nonce && !s.src).length);
+      if (foreignScripts > 0) fail(`${label}: (w5) ${foreignScripts} skrypt(ów) inline bez nonce.`);
+      await shot(page, `${viewport.name}-w-budowie-${locale}${reduce ? '-rm' : ''}`);
+      if (!reduce && locale === 'pl-PL') {
+        await login.click();
+        await page.waitForURL(/\/login$/, { timeout: 10000 }).catch(() => fail(`${label}: (w4) klik w „Zaloguj się” nie prowadzi na /login (${page.url()}).`));
+      }
+      if (pageErrors.length > 0) fail(`${label}: (w6) błąd strony: ${pageErrors.join(' | ')}`);
+      step(`${label}: (w1-w6) OK`, true);
       await context.close();
     }
   }

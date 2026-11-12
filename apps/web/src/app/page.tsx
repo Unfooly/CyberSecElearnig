@@ -5,6 +5,9 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/config';
 import { decodeJwtPayload } from '@/lib/jwt';
 import { homePathForRole } from '@/lib/home-path';
 import { socialMetadata } from '@/lib/site-metadata';
+import { comingSoonEnabled } from '@/lib/coming-soon';
+import { landingLocale } from '@/lib/landing-locale';
+import ComingSoon, { COMING_SOON_TEXT } from './_coming-soon/ComingSoon';
 import {
   AudienceSection,
   ComplianceBand,
@@ -23,13 +26,17 @@ const TITLE = 'Unfooly — szkolenia z cyberbezpieczeństwa i symulacje phishing
 const DESCRIPTION =
   'Unfooly: krótkie szkolenia security awareness, symulacje phishingu i raporty pod NIS2 i ISO 27001. Start w jeden dzień.';
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESCRIPTION,
-  alternates: { canonical: '/' },
-  // Wspólna grafika podglądu linku serwisu (D-126), z tytułem i opisem strony głównej.
-  ...socialMetadata({ title: TITLE, description: DESCRIPTION, url: '/' }),
-};
+export function generateMetadata(): Metadata {
+  // Strona „w budowie” (D-157): tytuł karty i opis w języku przeglądarki, ale podgląd linku (og:/twitter:) ogólny, jak bez flagi.
+  const comingSoon = comingSoonEnabled() ? COMING_SOON_TEXT[landingLocale()] : null;
+  return {
+    title: { absolute: comingSoon?.title ?? TITLE },
+    description: comingSoon?.description ?? DESCRIPTION,
+    alternates: { canonical: '/' },
+    // Wspólna grafika podglądu linku serwisu (D-126), z tytułem i opisem strony głównej.
+    ...socialMetadata({ title: TITLE, description: DESCRIPTION, url: '/' }),
+  };
+}
 
 export default function HomePage() {
   // Strona publiczna, ale zalogowany użytkownik nie potrzebuje reklamy -
@@ -44,6 +51,8 @@ export default function HomePage() {
     // Ta sama tabela co po zalogowaniu (lib/home-path.ts).
     redirect(homePathForRole(role));
   }
+
+  if (comingSoonEnabled()) return <ComingSoon locale={landingLocale()} />;
 
   return (
     <div className="min-h-screen bg-paper">

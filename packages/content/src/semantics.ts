@@ -572,6 +572,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
   };
 
   switch (block.type) {
+    case 'VIDEO': {
+      // D-159: zewnętrzny adres (`url`) albo plik z potoku zasobów (`src`) - dokładnie jedno; plakat tylko przy pliku z potoku.
+      if ((block.url === undefined) === (block.src === undefined)) errors.push('dokładnie jedno z pól url/src');
+      if (block.poster !== undefined && block.src === undefined) errors.push('poster: tylko przy wideo z potoku zasobów (src)');
+      break;
+    }
     case 'QUIZ':
     case 'BRANCHING_SCENARIO': {
       block.options.forEach((option, i) => {
@@ -1163,8 +1169,8 @@ function v6FeatureErrors(contentModule: ContentModule): string[] {
 //
 // Dozwolone bloki: narracja (NARRATIVE, odprawa BRIEFING), DIALOGUE, SCENE_HOTSPOTS, wybór (QUIZ: 2-3 odpowiedzi, jedna poprawna),
 // SWIPE_SORT i raport (SUMMARY). Bloki z limitem czasu (LIVE_CALL) i wymagające wprawy (ORDERING, INTERROGATION, CALL_RECORDING,
-// OSINT_SPOT) - zakazane, jak każdy typ spoza listy.
-export const SIMPLE_MODE_BLOCK_TYPES = ['NARRATIVE', 'BRIEFING', 'DIALOGUE', 'SCENE_HOTSPOTS', 'QUIZ', 'SWIPE_SORT', 'SUMMARY'] as const;
+// OSINT_SPOT) - zakazane, jak każdy typ spoza listy. VIDEO (D-159) - tylko plik z potoku zasobów (`src`), bez zewnętrznego adresu.
+export const SIMPLE_MODE_BLOCK_TYPES = ['NARRATIVE', 'BRIEFING', 'DIALOGUE', 'SCENE_HOTSPOTS', 'QUIZ', 'SWIPE_SORT', 'SUMMARY', 'VIDEO'] as const;
 export const SIMPLE_PROMPT_MAX = 90;
 export const SIMPLE_FEEDBACK_MAX = 140;
 /** Wielokrotny wybór (QUIZ `multiple`, D-158): liczba odpowiedzi. Górna granica - lista z polami wyboru mieści się na telefonie. */
@@ -1226,6 +1232,11 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
       if (/timelimit/i.test(key)) errors.push(`${where}: ${path}: tryb prosty nie dopuszcza limitów czasu`);
     });
     switch (block.type) {
+      case 'VIDEO': {
+        // Zewnętrzny adres to inny host niż CONTENT_BASE_URL (CSP media-src go nie przepuści) i plik bez kontroli treści.
+        if (block.src === undefined) errors.push(`${where}: src: tryb prosty - wideo tylko z potoku zasobów (src), nie z adresu url`);
+        break;
+      }
       case 'QUIZ': {
         errors.push(...instructionErrors(`${where}: prompt`, block.prompt));
         const correctCount = block.options.filter((option) => option.correct === true).length;

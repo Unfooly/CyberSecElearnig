@@ -711,6 +711,8 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   blocks.QUIZ.hint = `${SECRET_MARKER}-quiz-hint`;
   // Wielokrotny wybór (D-158) - tylko w trybie prostym, więc też tylko tutaj (fullModule() bez zmian, reguła 9).
   blocks.QUIZ.multiple = true;
+  // Wideo z potoku zasobów (D-159) - `src` i `poster` publiczne; w module wyklucza się z `url`, więc tylko tutaj (fullModule() bez zmian).
+  Object.assign(blocks.VIDEO, { src: 'video/film.mp4', poster: 'video/film-plakat.jpg' });
   // Opisy grafik z tekstem wpalonym (D-133) - publiczne; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.SUMMARY.closing as Record<string, unknown>, {
     alt: 'Raport sprawy w teczce.',

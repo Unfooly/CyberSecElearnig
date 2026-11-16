@@ -66,6 +66,9 @@ export const ASSET_PATHS: string[][] = [
   // Kadr odtwarzacza nagrania przy obszarze strony (OSINT_SPOT, webinar, D-120).
   ['spots', '*', 'media', 'image'],
   ['spots', '*', 'media', 'imagePortrait'],
+  // Wideo modułu z potoku (VIDEO, D-159): plik filmu i plakat.
+  ['src'],
+  ['poster'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).
@@ -79,6 +82,9 @@ const CONTENT_TYPE: Record<string, string> = {
   webp: 'image/webp',
   avif: 'image/avif',
   mp3: 'audio/mpeg',
+  // Wideo modułu (VIDEO.src, D-159).
+  mp4: 'video/mp4',
+  webm: 'video/webm',
 };
 
 // Jak w scripts/content/src/pipeline.ts (toClassificationPath): `*` w ASSET_PATHS odpowiada `[]` w zapisie ścieżek

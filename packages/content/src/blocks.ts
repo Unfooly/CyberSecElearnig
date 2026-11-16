@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, limage, ltext, narrationSchema, noteSchema, text } from './common';
+import { ID_PATTERN, audioPathSchema, baseShape, imagePathSchema, idSchema, limage, ltext, lvideo, narrationSchema, noteSchema, text } from './common';
 import { Delocalize } from './localize';
 
 // Pełne ("serwerowe") schematy bloków modułu. Zawierają KLUCZ ODPOWIEDZI, więc nigdy nie idą do klienta wprost:
@@ -14,7 +14,13 @@ const videoSchema = z
   .object({
     ...baseShape,
     type: z.literal('VIDEO'),
-    url: z.string().max(500).regex(/^https:\/\//, 'Adres wideo musi być https'),
+    // Dokładnie jedno z dwóch (semantics.ts): `url` - zewnętrzny adres https (dotychczasowe bloki), `src` - plik z potoku zasobów (D-159,
+    // publikacja `--assets`, adres z CONTENT_BASE_URL jak grafiki; osobny plik na język).
+    url: z.string().max(500).regex(/^https:\/\//, 'Adres wideo musi być https').optional(),
+    src: lvideo().optional(),
+    // Plakat przed startem filmu (D-159) - tylko przy `src`. UWAGA: `src` i `poster` na NAJWYŻSZYM poziomie bloku to dla potoku zasobów
+    // pliki do publikacji (scripts/content/src/assets.ts, ASSET_PATHS ['src'], ['poster']) - innego bloku z takim polem nie dodawaj.
+    poster: limage().optional(),
     durationSeconds: z.number().int().min(0).max(36_000).optional(),
   })
   .strict();
@@ -1089,7 +1095,7 @@ const narrationClient = (prefix: string) =>
 const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) => `${prefix}narration.${key}`);
 
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
-  VIDEO: classify(['url', 'durationSeconds'], []),
+  VIDEO: classify(['url', 'src', 'poster', 'durationSeconds'], []),
   // `multiple` jawne: odtwarzacz musi wiedzieć, że to pola wyboru; nie zdradza, ile odpowiedzi jest poprawnych (D-158).
   QUIZ: classify(['prompt', 'options[].text', 'multiple'], QUIZ_SECRET),
   BRANCHING_SCENARIO: classify(['prompt', 'options[].text'], CHOICE_SECRET),

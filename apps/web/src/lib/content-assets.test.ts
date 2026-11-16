@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { audioPathSchema, imagePathSchema } from '@cyberszkolo/content';
+import { audioPathSchema, imagePathSchema, videoPathSchema } from '@cyberszkolo/content';
 import { LOCAL_CONTENT_BASE, contentAssetBase, contentAssetUrl, withStaticFragment } from './content-assets';
 
 describe('withStaticFragment (reduced-motion: animacje scen SVG zatrzymane, D-084)', () => {
@@ -82,11 +82,12 @@ describe('contentAssetUrl', () => {
   });
 
   // Zgodność ze schematem treści: klient akceptuje dokładnie to, co przepuszcza walidacja modułu (packages/content).
-  it.each([...evil, 'img/scena.png', 'a.svg', 'x/y/z.jpeg', 'a-b_c.webp', 'audio/hint1.mp3', 'audio/a.mp3', 'A.PNG', '1.avif'])(
-    'zgodność z imagePathSchema/audioPathSchema dla %p',
+  it.each([...evil, 'img/scena.png', 'a.svg', 'x/y/z.jpeg', 'a-b_c.webp', 'audio/hint1.mp3', 'audio/a.mp3', 'A.PNG', '1.avif', 'video/film.mp4', 'v.webm', 'v.mov'])(
+    'zgodność z imagePathSchema/audioPathSchema/videoPathSchema dla %p',
     (path) => {
       expect(contentAssetUrl(base, path, 'image') !== null).toBe(imagePathSchema.safeParse(path).success);
       expect(contentAssetUrl(base, path, 'audio') !== null).toBe(audioPathSchema.safeParse(path).success);
+      expect(contentAssetUrl(base, path, 'video') !== null).toBe(videoPathSchema.safeParse(path).success);
     },
   );
 });

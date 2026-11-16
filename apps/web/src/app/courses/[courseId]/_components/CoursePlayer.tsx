@@ -140,7 +140,9 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   // a zapis rusza „Dalej” w pasku (D-106).
   switch (block.type) {
     case 'VIDEO':
-      return <VideoBlock key={block.id} block={block} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />;
+      return (
+        <VideoBlock key={block.id} block={block} contentBase={contentBase} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />
+      );
     case 'QUIZ':
       if (ctx.simpleMode && block.multiple === true) {
         // Wielokrotny wybór (D-158): zbiór przez /check, zapis po trafieniu bez odpowiedzi (wynik z prób w postępie).
@@ -732,6 +734,8 @@ export default function CoursePlayer({
         : currentBlock?.type === 'SCENE_HOTSPOTS'
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
+              // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).
+              currentBlock?.type === 'VIDEO' ||
               currentBlock?.type === 'BRIEFING' ||
               currentBlock?.type === 'DOSSIER' ||
               currentBlock?.type === 'ORDERING' ||

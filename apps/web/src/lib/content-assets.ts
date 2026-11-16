@@ -4,11 +4,13 @@ import { resolveContentOrigin } from '@/lib/security-headers';
 // sprawdzana TYM SAMYM wzorcem co schemat treści (packages/content, common.ts) - test zgodności w content-assets.test.ts - więc treść
 // nie może wskazać obcego hosta, schematu (`javascript:`), ścieżki bezwzględnej ani `..`, nawet gdyby walidacja importu została ominięta.
 
-export type AssetKind = 'image' | 'audio';
+export type AssetKind = 'image' | 'audio' | 'video';
 
 const EXTENSIONS: Record<AssetKind, string[]> = {
   image: ['png', 'jpg', 'jpeg', 'webp', 'avif', 'svg'],
   audio: ['mp3'],
+  // Wideo modułu z potoku zasobów (VIDEO.src, D-159).
+  video: ['mp4', 'webm'],
 };
 
 // Bez schematu (brak ":"), hosta ("//"), ścieżki bezwzględnej, ".." i backslasha.

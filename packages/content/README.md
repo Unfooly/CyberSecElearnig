@@ -177,6 +177,9 @@ włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrze
 - `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków, `hint` (podpowiedź po 2 błędach);
   z `"multiple": true` (wielokrotny wybór, D-158, **tylko** w trybie prostym): 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna,
   `feedback` i `hint` jak wyżej - gracz zaznacza pola i „Sprawdź”, trafienie = dokładnie wszystkie poprawne;
+- `VIDEO` (D-159): tylko plik z potoku zasobów - `src` (mp4/webm, ścieżka względna jak grafiki, osobny plik na język `{ pl, en }`) i
+  opcjonalny `poster`; zewnętrzny `url` to błąd. Poza trybem prostym blok ma dokładnie jedno z `url`/`src`, a `poster` tylko przy `src`.
+  Odtwarzacz: ramka 16:9 wpisana w obszar bloku, „Dalej” po końcu filmu, przewijanie do przodu dopiero po pierwszym obejrzeniu;
 - `SCENE_HOTSPOTS`: najwyżej 4 cele (z zagnieżdżonymi), każdy (także w scenie zagnieżdżonej) ≥ 44×44 px na scenie 480×270 px (pozioma, telefon w poziomie) i - przy
   `portraitHotspots` - 360×640 px (pionowa); cele sceny zagnieżdżonej na 401×216 px (a przy `portraitHotspots` także 296×166 px); np. 30% × 20%
   sceny poziomej;

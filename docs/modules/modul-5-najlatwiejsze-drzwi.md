@@ -27,7 +27,8 @@ dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1)
   Annę (inną postać) - pkt 6.2.
 - **Nazwy fikcyjne:** firma Unfooly Sp. z o.o. (jak moduł 1), sieci Wi-Fi „Unfooly” i „Unfooly-Gość”; bez logotypów, bez prawdziwych
   marek routerów i drukarek.
-- **Głos:** ekran startowy bez lektora; podsumowanie - lektor `komisarz` (A.W.) jak w modułach 3-4 (pkt 6.1). Wideo ma własnego lektora.
+- **Głos:** lektor modułu 5 - nowa rola `lektor-siec` w `scripts/content/voices.json`, głos ElevenLabs `zs057lc0shdaAFXkm2Fm` (podany przez
+  właściciela 2026-11-16; ID głosu nie jest sekretem - D-082). Ekran startowy bez lektora; gdzie lektor czyta - pkt 6.1. Wideo ma własnego lektora.
 
 ## 2. Metadane
 
@@ -112,7 +113,7 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
 
 ### 3.7 Podsumowanie (SUMMARY, `podsumowanie`)
 
-- **Narracja (lektor - pkt 6.1):** Haker szukał najłatwiejszych drzwi i żadnych nie znalazł. To zasługa nie tylko IT, ale każdej osoby w
+- **Narracja (`lektor-siec` - pkt 6.1):** Haker szukał najłatwiejszych drzwi i żadnych nie znalazł. To zasługa nie tylko IT, ale każdej osoby w
   biurze.
 - **Tekst:** Sieć chroni IT, ale drzwi do niej otwierają i zamykają ludzie. Wystarczą trzy nawyki.
 - **Trzy zasady:**
@@ -152,8 +153,8 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
 
 ## 6. Do decyzji właściciela
 
-1. **Lektor** - propozycja: ekran startowy bez lektora (sam tekst, wideo zaraz potem ma własnego lektora); podsumowanie czyta
-   `komisarz` (A.W.) jak w modułach 3-4, czy też bez lektora?
+1. **Lektor** (głos `zs057lc0shdaAFXkm2Fm`) - propozycja: ekran startowy bez lektora (wideo zaraz potem ma własnego lektora), a
+   lektor czyta podsumowanie. Czy ma też czytać opis na ekranie startowym albo pytania quizu?
 2. **Anna** - w wideo koleżanka ma na imię Anna, a w module 1 Anna to inna postać (ofiara phishingu). Zostawiamy (to imię z wideo,
    moduły są niezależne), czy prosisz o inne imię w wersji PL wideo?
 3. **Wideo** - blokować „Dalej” do końca filmu (jak dziś), czy pozwolić przejść dalej od razu? Napisy PL wpalone w obraz (jak w EN)

@@ -1,4 +1,4 @@
-# Moduł 5 „Najłatwiejsze drzwi” - scenariusz (projekt do akceptacji właściciela)
+# Moduł 5 „Najłatwiejsze drzwi” - scenariusz (zatwierdzony przez właściciela 2026-11-16)
 
 Źródło: zlecenie właściciela z 2026-11-16 (moduł o bezpieczeństwie sieci, kolejność **wstęp → wideo → quiz**, styl Unfooly) i cztery
 decyzje z tego samego dnia (pkt 1). Wideo `elearning_16x9.mp4` (2:21) i brandkit (obsada, paleta) dostarczył właściciel. Zrzuty
@@ -29,7 +29,7 @@ dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1)
 - **Nazwy fikcyjne:** firma Unfooly Sp. z o.o. (jak moduł 1), sieci Wi-Fi „Unfooly” i „Unfooly-Gość”; bez logotypów, bez prawdziwych
   marek routerów i drukarek.
 - **Głos:** lektor modułu 5 - nowa rola `lektor-siec` w `scripts/content/voices.json`, głos ElevenLabs `zs057lc0shdaAFXkm2Fm` (podany przez
-  właściciela 2026-11-16; ID głosu nie jest sekretem - D-082). Ekran startowy bez lektora; gdzie lektor czyta - pkt 6.1. Wideo ma własnego lektora.
+  właściciela 2026-11-16; ID głosu nie jest sekretem - D-082). Lektor czyta opis startu, pytania i podsumowanie - pkt 6.1. Wideo ma własnego lektora.
 
 - **Podgląd frontendu zaakceptowany przez właściciela (2026-11-16):** start → wideo → 4 pytania wielokrotnego wyboru → podsumowanie, w
   wyglądzie odtwarzacza; ekran wideo **bez przewijania** - ramka 16:9 wpisana w wysokość obszaru bloku.
@@ -56,7 +56,7 @@ Kolejność: **start → wideo → 4 pytania → podsumowanie** (7 bloków).
   jak w brandkicie) przykłada kartę, a tuż za nim, w cieniu, postać w kapturze. Paleta brandkitu: tło #131313, akcent #6C5CE7.
   Wariant pionowy na telefon.
 - **Tytuł:** Najłatwiejsze drzwi
-- **Opis (jeden krok, bez maszyny do pisania i bez lektora - pkt 6.1):**
+- **Opis (jeden krok, czyta lektor `lektor-siec` - pkt 6.1):**
   > Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje
   > dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.
 - **Przycisk:** „Zaczynamy”.
@@ -66,14 +66,13 @@ Kolejność: **start → wideo → 4 pytania → podsumowanie** (7 bloków).
 - **Tytuł:** Najłatwiejsze drzwi
 - **Plik:** wersja PL od właściciela (lektor i napisy po polsku), 16:9, publikowana w R2 jak grafiki (`--assets`) - nie w repo
   (44 MB). Plakat: pierwsza klatka albo grafika z kompozytora.
-- **Ukończenie:** „Dalej” po obejrzeniu do końca (jak dziś w bloku VIDEO), przewijanie do przodu zablokowane dopiero po pierwszym
-  obejrzeniu - pkt 6.3.
-- **Bez narracji lektora** przed wideo - wideo ma własnego lektora, a dwa głosy po sobie zlewają się.
+- **Ukończenie:** „Dalej” zablokowany do końca filmu (jak dziś w bloku VIDEO) - pkt 6.3. Napisy PL wpalone w obraz (jak w wersji EN).
+- **Bez narracji lektora** w bloku wideo - wideo ma własnego lektora.
 
 ### 3.3-3.6 Quiz (QUIZ wielokrotnego wyboru) - wymaga zmian w silniku (pkt 5.1)
 
 Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie poprawne odpowiedzi.” (nie w treści pytania), przycisk
-„Sprawdź”. Każda odpowiedź ma własne zdanie informacji zwrotnej, pokazywane po sprawdzeniu przy tej odpowiedzi. ✔ = poprawna.
+„Sprawdź”. Lektor `lektor-siec` czyta pytanie (pkt 6.1). Każda odpowiedź ma własne zdanie informacji zwrotnej, pokazywane po sprawdzeniu przy tej odpowiedzi. ✔ = poprawna.
 
 #### 3.3 Ktoś za tobą (`ktos-za-toba`)
 
@@ -124,7 +123,7 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
   1. Wchodzisz swoją kartą – nikogo nie wpuszczasz za sobą, a obcych pytasz, do kogo przyszli.
   2. Nie podłączasz nieznanych urządzeń ani znalezionych nośników – zgłaszasz je do IT.
   3. Goście dostają sieć dla gości, a ty logujesz się z kodem i przez VPN poza biurem.
-- **Ekran zamknięcia:** bez pieczęci „SPRAWA ZAMKNIĘTA” (to nie śledztwo) - pkt 6.4.
+- **Ekran zamknięcia:** same zasady - bez pieczęci, liściku i raportu w teczce (to nie śledztwo) - pkt 6.4.
 
 ## 4. Dowody i ocena
 
@@ -156,14 +155,12 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
   bloku (bez przewijania, decyzja właściciela po podglądzie), plakat, `playsinline`; napisy wpalone w
   wideo PL, więc bez osobnego pliku napisów (pkt 6.3).
 
-## 6. Do decyzji właściciela
+## 6. Decyzje właściciela (2026-11-16) - scenariusz zatwierdzony
 
-1. **Lektor** (głos `zs057lc0shdaAFXkm2Fm`) - propozycja: ekran startowy bez lektora (wideo zaraz potem ma własnego lektora), a
-   lektor czyta podsumowanie. Czy ma też czytać opis na ekranie startowym albo pytania quizu?
-2. **Anna** - w wideo koleżanka ma na imię Anna, a w module 1 Anna to inna postać (ofiara phishingu). Zostawiamy (to imię z wideo,
-   moduły są niezależne), czy prosisz o inne imię w wersji PL wideo?
-3. **Wideo** - blokować „Dalej” do końca filmu (jak dziś), czy pozwolić przejść dalej od razu? Napisy PL wpalone w obraz (jak w EN)
-   czy osobny plik napisów (wymaga obsługi napisów w odtwarzaczu)?
-4. **Ekran zamknięcia** - prosty ekran z trzema zasadami (bez pieczęci i liściku), czy elementy zamknięcia jak w modułach 3-4 z
-   pieczęcią np. „DRZWI ZAMKNIĘTE”?
-5. **Liczba pytań** - 4 (jak wyżej), czy krócej (3)?
+1. **Lektor:** wszystko z głosem - opis na ekranie startowym, każde pytanie quizu i podsumowanie czyta `lektor-siec`
+   (`zs057lc0shdaAFXkm2Fm`). Wideo ma własnego lektora.
+2. **Anna:** zostaje (imię z wideo; moduły są niezależne).
+3. **Wideo:** „Dalej” zablokowany do końca filmu. Napisy PL wpalone w obraz (decyzja autopilota - jak w wersji EN, bez obsługi plików
+   napisów w odtwarzaczu).
+4. **Ekran zamknięcia:** same zasady (bez pieczęci, liściku i raportu w teczce).
+5. **Liczba pytań:** 4.

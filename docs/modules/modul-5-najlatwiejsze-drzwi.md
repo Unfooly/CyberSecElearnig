@@ -17,7 +17,8 @@ dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1)
 - **Decyzje właściciela (2026-11-16):**
   1. Wideo: właściciel dostarczy **wersję PL** (lektor i napisy po polsku); plik EN zostaje na późniejszą wersję EN modułu.
   2. Quiz: **wielokrotny wybór** („zaznacz wszystkie poprawne”) - wymaga zmiany silnika przed treścią (pkt 5.1).
-  3. Grafiki wstępu: **sceny SVG z kompozytora**, jak w modułach 1-4.
+  3. Grafiki: **na razie placeholdery, grafiki wygeneruje właściciel** (zmiana 2026-11-16 po akceptacji podglądu; wcześniej: sceny SVG z
+     kompozytora). Format plików (SVG albo raster) - do ustalenia z właścicielem przed PR treści.
   4. Wstęp: **jeden ekran startowy** - krótki opis, o czym jest moduł, jedna grafika i przycisk „Zaczynamy” (doprecyzowanie
      właściciela 2026-11-16: bez sceny z celami do kliknięcia i bez odprawy detektywistycznej).
 - **Tryb prosty** (`simpleMode: true`, D-132) jak moduły 3-4: tekst ≥ 16 px na 390 px, polecenia ≤ 90 znaków i jedno zdanie, każda
@@ -29,6 +30,9 @@ dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1)
   marek routerów i drukarek.
 - **Głos:** lektor modułu 5 - nowa rola `lektor-siec` w `scripts/content/voices.json`, głos ElevenLabs `zs057lc0shdaAFXkm2Fm` (podany przez
   właściciela 2026-11-16; ID głosu nie jest sekretem - D-082). Ekran startowy bez lektora; gdzie lektor czyta - pkt 6.1. Wideo ma własnego lektora.
+
+- **Podgląd frontendu zaakceptowany przez właściciela (2026-11-16):** start → wideo → 4 pytania wielokrotnego wyboru → podsumowanie, w
+  wyglądzie odtwarzacza; ekran wideo **bez przewijania** - ramka 16:9 wpisana w wysokość obszaru bloku.
 
 ## 2. Metadane
 
@@ -131,7 +135,7 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
 
 ## 5. Zmiany w silniku przed treścią (osobne PR-y)
 
-### 5.1 QUIZ wielokrotnego wyboru (PR przed treścią; `security-reviewer` - ocena na serwerze)
+### 5.1 QUIZ wielokrotnego wyboru (PR przed treścią; `security-reviewer` - ocena na serwerze) - zrobione: D-158
 
 - Schemat: `QUIZ` z polem `multiple: true` (klient - odtwarzacz musi wiedzieć, że to pola wyboru); `correct` przy odpowiedziach
   zostaje sekretem. Bez `multiple` - zachowanie bez zmian (moduły 1-4 bajt w bajt).
@@ -148,7 +152,8 @@ Wspólne: nad odpowiedziami stała linijka odtwarzacza „Zaznacz wszystkie popr
 - `VIDEO` dopuszczony w trybie prostym.
 - Plik wideo przez potok zasobów (`ASSET_PATHS`, publikacja `--assets` do R2, klucz z hashem w `module.json`) zamiast ręcznego
   adresu https; `media-src` z `CONTENT_BASE_URL` jest już w CSP.
-- Odtwarzacz: blok wideo w stylu odtwarzacza (dziś jasna karta „Wideo” ze starego wyglądu), plakat, `playsinline`; napisy wpalone w
+- Odtwarzacz: blok wideo w stylu odtwarzacza (dziś jasna karta „Wideo” ze starego wyglądu), ramka 16:9 dopasowana do wysokości obszaru
+  bloku (bez przewijania, decyzja właściciela po podglądzie), plakat, `playsinline`; napisy wpalone w
   wideo PL, więc bez osobnego pliku napisów (pkt 6.3).
 
 ## 6. Do decyzji właściciela

@@ -709,6 +709,8 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   for (const option of blocks.QUIZ.options as Record<string, unknown>[]) option.outcome = 'wrong';
   // Podpowiedź trybu prostego (D-132) - sekret; fullModule() bez niej (moduł 1 i 2 nie są w trybie prostym).
   blocks.QUIZ.hint = `${SECRET_MARKER}-quiz-hint`;
+  // Wielokrotny wybór (D-158) - tylko w trybie prostym, więc też tylko tutaj (fullModule() bez zmian, reguła 9).
+  blocks.QUIZ.multiple = true;
   // Opisy grafik z tekstem wpalonym (D-133) - publiczne; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.SUMMARY.closing as Record<string, unknown>, {
     alt: 'Raport sprawy w teczce.',

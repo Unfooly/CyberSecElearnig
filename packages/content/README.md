@@ -175,6 +175,8 @@ włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrze
 - polecenie (`prompt`, `tip`) najwyżej 90 znaków i jedno zdanie (bez drugiego zdania po `.`/`!`/`?`/`…` i bez nowej linii - skróty z kropką
   w środku, np. „np. kliknij”, też są odrzucane: pisz bez nich); scena wymaga własnego `tip`;
 - `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków, `hint` (podpowiedź po 2 błędach);
+  z `"multiple": true` (wielokrotny wybór, D-158, **tylko** w trybie prostym): 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna,
+  `feedback` i `hint` jak wyżej - gracz zaznacza pola i „Sprawdź”, trafienie = dokładnie wszystkie poprawne;
 - `SCENE_HOTSPOTS`: najwyżej 4 cele (z zagnieżdżonymi), każdy (także w scenie zagnieżdżonej) ≥ 44×44 px na scenie 480×270 px (pozioma, telefon w poziomie) i - przy
   `portraitHotspots` - 360×640 px (pionowa); cele sceny zagnieżdżonej na 401×216 px (a przy `portraitHotspots` także 296×166 px); np. 30% × 20%
   sceny poziomej;

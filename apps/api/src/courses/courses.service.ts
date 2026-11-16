@@ -628,7 +628,9 @@ export class CoursesService {
       const progress: ProgressV2 = readProgress(assignment.progress);
       const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
       // Odpowiedź z wypełnionych pól DTO (zod w evaluateCheck sprawdza, że pasują do typu bloku).
-      const answer = Object.fromEntries(Object.entries({ option: dto.option, card: dto.card, verdict: dto.verdict }).filter(([, value]) => value !== undefined));
+      const answer = Object.fromEntries(
+        Object.entries({ option: dto.option, options: dto.options, card: dto.card, verdict: dto.verdict }).filter(([, value]) => value !== undefined),
+      );
       const { entry, response } = evaluateCheck(block, answer, entryOf(progress, block.id), new Date(), context.opaqueId, version.simpleMode);
       progress.blocks[block.id] = entry;
 

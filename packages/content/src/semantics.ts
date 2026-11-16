@@ -1167,6 +1167,9 @@ function v6FeatureErrors(contentModule: ContentModule): string[] {
 export const SIMPLE_MODE_BLOCK_TYPES = ['NARRATIVE', 'BRIEFING', 'DIALOGUE', 'SCENE_HOTSPOTS', 'QUIZ', 'SWIPE_SORT', 'SUMMARY'] as const;
 export const SIMPLE_PROMPT_MAX = 90;
 export const SIMPLE_FEEDBACK_MAX = 140;
+/** Wielokrotny wybór (QUIZ `multiple`, D-158): liczba odpowiedzi. Górna granica - lista z polami wyboru mieści się na telefonie. */
+export const SIMPLE_MULTI_MIN = 3;
+export const SIMPLE_MULTI_MAX = 6;
 export const SIMPLE_MAX_HOTSPOTS = 4;
 /** Najmniejszy cel dotykowy (WCAG 2.5.5) w skali wyświetlania. */
 export const SIMPLE_TOUCH_TARGET_PX = 44;
@@ -1225,8 +1228,17 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
     switch (block.type) {
       case 'QUIZ': {
         errors.push(...instructionErrors(`${where}: prompt`, block.prompt));
-        if (block.options.length > 3) errors.push(`${where}: options: tryb prosty - 2-3 odpowiedzi (jest ${block.options.length})`);
-        if (block.options.filter((option) => option.correct === true).length !== 1) errors.push(`${where}: options: tryb prosty - dokładnie jedna poprawna odpowiedź`);
+        const correctCount = block.options.filter((option) => option.correct === true).length;
+        if (block.multiple === true) {
+          // Wielokrotny wybór (D-158): 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna (inaczej „zaznacz wszystko” zawsze trafia).
+          if (block.options.length < SIMPLE_MULTI_MIN || block.options.length > SIMPLE_MULTI_MAX) {
+            errors.push(`${where}: options: wielokrotny wybór - ${SIMPLE_MULTI_MIN}-${SIMPLE_MULTI_MAX} odpowiedzi (jest ${block.options.length})`);
+          }
+          if (correctCount < 1 || correctCount === block.options.length) errors.push(`${where}: options: wielokrotny wybór - co najmniej jedna poprawna i jedna błędna odpowiedź`);
+        } else {
+          if (block.options.length > 3) errors.push(`${where}: options: tryb prosty - 2-3 odpowiedzi (jest ${block.options.length})`);
+          if (correctCount !== 1) errors.push(`${where}: options: tryb prosty - dokładnie jedna poprawna odpowiedź`);
+        }
         block.options.forEach((option, i) => {
           if (option.feedback === undefined) errors.push(`${where}: options[${i}].feedback: tryb prosty - każda odpowiedź ma zdanie po kliknięciu`);
           else if (option.feedback.length > SIMPLE_FEEDBACK_MAX) errors.push(`${where}: options[${i}].feedback: tryb prosty - najwyżej ${SIMPLE_FEEDBACK_MAX} znaków`);
@@ -1359,6 +1371,13 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
   // Miniatura modułu (D-084) - addytywnie w v5. Istnienie pliku sprawdza potok zasobów (--assets), jak obrazy bloków.
   if (contentModule.schemaVersion < 5 && contentModule.thumbnail !== undefined) errors.push('thumbnail: wymaga schemaVersion 5');
   errors.push(...simpleModeErrors(contentModule));
+  // Wielokrotny wybór (D-158) istnieje tylko w trybie prostym: ocena idzie przez /check (próby do skutku), a zwykły zapis bloku przyjmuje
+  // jeden indeks odpowiedzi.
+  if (contentModule.simpleMode !== true) {
+    contentModule.blocks.forEach((block, index) => {
+      if (block.type === 'QUIZ' && block.multiple === true) errors.push(`blocks[${index}] (${block.id}): multiple: wielokrotny wybór wymaga simpleMode`);
+    });
+  }
   // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie
   // BRIEFING - "Pomiń odprawę" zalicza blok odprawy, a pominięcie nie może odhaczać zadań. Relacja z INNYMI blokami, więc
   // sprawdzenie na poziomie modułu (validateBlockSemantics widzi tylko jeden blok).

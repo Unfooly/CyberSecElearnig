@@ -35,6 +35,8 @@ const quizSchema = z
     type: z.literal('QUIZ'),
     prompt: ltext(1000),
     options: z.array(choiceOptionSchema).min(2).max(8),
+    // Wielokrotny wybór (D-158): gracz zaznacza wszystkie poprawne i sprawdza zbiór. Tylko w trybie prostym (walidacja modułu).
+    multiple: z.literal(true).optional(),
     // Tryb prosty (D-132): podpowiedź po 2 błędnych kliknięciach w bloku - sekret, przychodzi z odpowiedzi /check.
     hint: ltext(140).optional(),
   })
@@ -1088,7 +1090,8 @@ const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) =>
 
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'durationSeconds'], []),
-  QUIZ: classify(['prompt', 'options[].text'], QUIZ_SECRET),
+  // `multiple` jawne: odtwarzacz musi wiedzieć, że to pola wyboru; nie zdradza, ile odpowiedzi jest poprawnych (D-158).
+  QUIZ: classify(['prompt', 'options[].text', 'multiple'], QUIZ_SECRET),
   BRANCHING_SCENARIO: classify(['prompt', 'options[].text'], CHOICE_SECRET),
   DRAG_AND_DROP: classify(['prompt', 'items[].text', 'categories[]'], []),
   // `html` wykonuje dowolny JS, więc NIE idzie do przeglądarki razem z treścią modułu (/start): serwowany jest osobnym dokumentem

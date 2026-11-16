@@ -53,10 +53,19 @@ export interface SwipeCard {
 export type SwipeVerdict = 'suspicious' | 'ok';
 
 /** Próba /check (D-132): wybór po indeksie odpowiedzi, karta po id nieprzejrzystym. */
-export interface SimpleCheck {
-  item: number | string;
+/** Ocena jednej zaznaczonej odpowiedzi w wielokrotnym wyborze (D-158) - tylko zaznaczone, nigdy brakujące poprawne. */
+export interface CheckedOption {
+  option: number;
   result: 'good' | 'bad';
   feedback: string;
+}
+
+export interface SimpleCheck {
+  /** Indeks odpowiedzi (wybór), id karty (SWIPE_SORT) albo zbiór indeksów (wielokrotny wybór, D-158). */
+  item: number | string | number[];
+  result: 'good' | 'bad';
+  feedback: string;
+  options?: CheckedOption[];
 }
 
 /** Odpowiedź POST .../blocks/:blockId/check (D-132). */
@@ -66,6 +75,7 @@ export interface CheckResponse {
   feedback: string;
   hint?: string;
   done: boolean;
+  options?: CheckedOption[];
 }
 
 /**
@@ -296,6 +306,8 @@ export interface ContentBlock {
   // QUIZ / BRANCHING_SCENARIO
   prompt?: string;
   options?: ContentBlockOption[];
+  /** QUIZ: wielokrotny wybór - pola wyboru i „Sprawdź” (D-158, tylko tryb prosty). */
+  multiple?: boolean;
   // SWIPE_SORT (D-132): karty-wiadomości (id nieprzejrzyste, przetasowane przez serwer).
   cards?: SwipeCard[];
   /** SWIPE_SORT (D-151): własne etykiety werdyktów; brak - „Podejrzane” / „W porządku”. */

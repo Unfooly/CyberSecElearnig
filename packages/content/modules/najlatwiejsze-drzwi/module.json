@@ -18,6 +18,7 @@
     "Gościom dawać sieć dla gości, nigdy hasło do sieci firmowej.",
     "Chronić konto logowaniem dwuetapowym i VPN poza biurem."
   ],
+  "thumbnail": "assets/najlatwiejsze-drzwi/images/miniatura.a8cf8742.webp",
   "blocks": [
     {
       "id": "start",
@@ -45,10 +46,10 @@
               }
             ]
           },
-          "image": "assets/najlatwiejsze-drzwi/placeholders/start.017d4ede.svg",
-          "alt": "Szklane drzwi biura z czytnikiem kart (grafika zastępcza).",
+          "image": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
+          "alt": "Pracownik przykłada kartę do czytnika przy szklanych drzwiach biura, a tuż za nim, w cieniu, czeka postać w kapturze i ciemnych okularach.",
           "portrait": {
-            "image": "assets/najlatwiejsze-drzwi/placeholders/start-pion.ed756623.svg"
+            "image": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
           }
         }
       ]

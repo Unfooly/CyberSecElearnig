@@ -53,6 +53,11 @@ describe('POST /api/courses/[courseId]/blocks/[blockId]/check', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/courses/course-1/blocks/wybor/check`, expect.objectContaining({ body: JSON.stringify({ option: 2 }) }));
   });
 
+  it('D-158 wielokrotny wybór: ciało tylko { options }', async () => {
+    await POST(buildRequest({ options: [0, 2], verdict: 'ok', extra: 1 }), ctx('course-1', 'wybor'));
+    expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/courses/course-1/blocks/wybor/check`, expect.objectContaining({ body: JSON.stringify({ options: [0, 2] }) }));
+  });
+
   it('D-133: Accept-Language przeglądarki idzie do API (język treści); nagłówek o złym kształcie - pomijany', async () => {
     mockSession('tok', { ...SAME_ORIGIN, 'accept-language': 'en-GB,pl;q=0.8' });
     await POST(buildRequest({ option: 1 }), ctx());
@@ -78,6 +83,11 @@ describe('POST /api/courses/[courseId]/blocks/[blockId]/check', () => {
     ['karta z niebezpiecznym id', { card: '../x', verdict: 'ok' }],
     ['indeks poza zakresem', { option: 9 }],
     ['indeks niecałkowity', { option: 1.5 }],
+    ['wybór i zbiór naraz', { option: 1, options: [1] }],
+    ['pusty zbiór', { options: [] }],
+    ['zbiór z indeksem poza zakresem', { options: [0, 8] }],
+    ['zbiór z tekstem', { options: ['1'] }],
+    ['za długi zbiór', { options: [0, 1, 2, 3, 4, 5, 6, 7, 0] }],
   ])('%s - 400 bez wołania API', async (_label, body) => {
     expect((await POST(buildRequest(body), ctx())).status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();

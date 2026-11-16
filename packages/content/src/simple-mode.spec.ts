@@ -62,6 +62,36 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(noHint)).toMatch(/hint: tryb prosty - podpowiedź po 2 błędach jest wymagana/);
   });
 
+  it('D-158 wielokrotny wybór: 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna, feedback i podpowiedź jak w wyborze', () => {
+    const multi = (options: { text: string; correct: boolean; feedback: string }[]) =>
+      mutate((m) => Object.assign(byType(m, 'QUIZ'), { multiple: true, options }));
+    const opt = (text: string, correct: boolean) => ({ text, correct, feedback: correct ? 'Tak.' : 'Nie.' });
+    expect(errorsOf(multi([opt('A', true), opt('B', true), opt('C', false), opt('D', false)]))).toBe('');
+    // Jedna poprawna wśród kilku - też wielokrotny wybór (gracz nie wie, ile ich jest).
+    expect(errorsOf(multi([opt('A', true), opt('B', false), opt('C', false)]))).toBe('');
+    expect(errorsOf(multi([opt('A', true), opt('B', false)]))).toMatch(/wielokrotny wybór - 3-6 odpowiedzi \(jest 2\)/);
+    expect(errorsOf(multi(['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((t, i) => opt(t, i < 2))))).toMatch(/3-6 odpowiedzi \(jest 7\)/);
+    expect(errorsOf(multi([opt('A', true), opt('B', true), opt('C', true)]))).toMatch(/co najmniej jedna poprawna i jedna błędna/);
+    expect(errorsOf(multi([opt('A', false), opt('B', false), opt('C', false)]))).toMatch(/co najmniej jedna poprawna i jedna błędna/);
+    const noFeedback = multi([opt('A', true), opt('B', true), { text: 'C', correct: false } as never]);
+    expect(errorsOf(noFeedback)).toMatch(/options\[2\]\.feedback: tryb prosty - każda odpowiedź ma zdanie po kliknięciu/);
+  });
+
+  it('D-158 wielokrotny wybór poza trybem prostym - błąd (zwykły zapis bloku przyjmuje jeden indeks)', () => {
+    const m = fullModuleV6() as AnyModule;
+    const quiz = m.blocks.find((b: AnyModule) => b.type === 'QUIZ');
+    quiz.multiple = true;
+    expect(errorsOf(m)).toMatch(/multiple: wielokrotny wybór wymaga simpleMode/);
+  });
+
+  it('D-158 `multiple` idzie do klienta, poprawność i zdania po wyborze - nie', () => {
+    const block = mutate((m) => (byType(m, 'QUIZ').multiple = true)).blocks.find((b: AnyModule) => b.type === 'QUIZ');
+    const client = toClientBlock(block, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
+    expect(client.multiple).toBe(true);
+    expect(client.options.every((o: AnyModule) => o.correct === undefined && o.feedback === undefined)).toBe(true);
+    expect(client.hint).toBeUndefined();
+  });
+
   it('scena: najwyżej 4 cele, każdy min. 44×44 px w skali wyświetlania', () => {
     const five = mutate((m) => {
       const scene = byType(m, 'SCENE_HOTSPOTS');

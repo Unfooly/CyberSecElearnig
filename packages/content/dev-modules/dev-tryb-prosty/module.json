@@ -24,6 +24,19 @@
       "hint": "Sprawdź prośbę innym kanałem niż ten czat."
     },
     {
+      "id": "wybor-wielokrotny",
+      "type": "QUIZ",
+      "multiple": true,
+      "prompt": "Które z tych sytuacji od razu zgłaszasz do IT?",
+      "options": [
+        { "text": "Nieznane urządzenie podpięte do gniazdka w sali konferencyjnej.", "correct": true, "feedback": "Tak – to może być czyjś „przedłużacz” do firmowej sieci." },
+        { "text": "Pendrive znaleziony na parkingu firmy.", "correct": true, "feedback": "Tak – nie podłączaj go. Oddaj IT, nawet jeśli kusi, żeby sprawdzić, czyj jest." },
+        { "text": "Kolega pracuje na firmowym laptopie przy swoim biurku.", "correct": false, "feedback": "To zwykły dzień pracy – nie ma czego zgłaszać." },
+        { "text": "Nieznajomy siedzi z laptopem w sali, w której nie ma spotkania.", "correct": true, "feedback": "Tak – zapytaj, czy możesz pomóc, i daj znać IT albo recepcji." }
+      ],
+      "hint": "Zgłaszasz to, czego nie znasz i czego nie powinno tam być."
+    },
+    {
       "id": "wiadomosci",
       "type": "SWIPE_SORT",
       "prompt": "Oceń każdą wiadomość: podejrzana czy w porządku?",

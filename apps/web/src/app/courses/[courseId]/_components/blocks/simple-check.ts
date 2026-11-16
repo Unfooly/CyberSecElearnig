@@ -6,7 +6,7 @@ import type { CheckResponse, SimpleCheck } from '@/lib/courses-types';
 // Ocena jednego kliknięcia (tryb prosty i SWIPE_SORT, D-132): POST /api/courses/:id/blocks/:blockId/check. Klient wysyła tylko swój wybór,
 // werdykt, zdanie i podpowiedź (po 2 błędach) liczy serwer. Stan prób zaczyna się od postępu z /start (odświeżenie strony w trakcie bloku).
 
-export type CheckBody = { option: number } | { card: string; verdict: 'suspicious' | 'ok' };
+export type CheckBody = { option: number } | { options: number[] } | { card: string; verdict: 'suspicious' | 'ok' };
 
 export function useSimpleCheck(courseId: string, blockId: string, initial?: { checks?: SimpleCheck[]; hint?: string }) {
   const [checks, setChecks] = useState<SimpleCheck[]>(initial?.checks ?? []);
@@ -46,8 +46,8 @@ export function useSimpleCheck(courseId: string, blockId: string, initial?: { ch
           );
           return null;
         }
-        const item = 'option' in body ? body.option : body.card;
-        setChecks((list) => [...list, { item, result: data.result, feedback: data.feedback }]);
+        const item = 'option' in body ? body.option : 'options' in body ? [...body.options].sort((a, b) => a - b) : body.card;
+        setChecks((list) => [...list, { item, result: data.result, feedback: data.feedback, ...(data.options ? { options: data.options } : {}) }]);
         if (data.hint) setHint(data.hint);
         return data;
       } catch {

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
 // Sprawdzenie jednego kliknięcia (/check, D-132): wybór w trybie prostym (`option` - indeks odpowiedzi) albo werdykt karty SWIPE_SORT
 // (`card` - nieprzejrzyste id karty z /start, `verdict`). Klient wysyła wyłącznie swój wybór - ocenę liczy serwer (evaluateCheck).
@@ -10,6 +10,16 @@ export class CheckBlockDto {
   @Min(0)
   @Max(7)
   option?: number;
+
+  // Wielokrotny wybór (D-158): zaznaczone indeksy odpowiedzi. Powtórzenia i zakres bloku sprawdza evaluateCheck.
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(8)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(7, { each: true })
+  options?: number[];
 
   @IsOptional()
   @IsString()

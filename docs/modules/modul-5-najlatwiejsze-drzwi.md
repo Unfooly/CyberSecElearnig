@@ -17,8 +17,8 @@ dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1)
 - **Decyzje właściciela (2026-11-16):**
   1. Wideo: właściciel dostarczy **wersję PL** (lektor i napisy po polsku); plik EN zostaje na późniejszą wersję EN modułu.
   2. Quiz: **wielokrotny wybór** („zaznacz wszystkie poprawne”) - wymaga zmiany silnika przed treścią (pkt 5.1).
-  3. Grafiki: **na razie placeholdery, grafiki wygeneruje właściciel** (zmiana 2026-11-16 po akceptacji podglądu; wcześniej: sceny SVG z
-     kompozytora). Format plików (SVG albo raster) - do ustalenia z właścicielem przed PR treści.
+  3. Grafiki: **obrazy właściciela z ElevenLabs w stylu Unfooly** (D-161) - start poziomo i pionowo oraz miniatura, WebP; do D-161
+     placeholdery (zmiana 2026-11-16 po akceptacji podglądu; wcześniej: sceny SVG z kompozytora).
   4. Wstęp: **jeden ekran startowy** - krótki opis, o czym jest moduł, jedna grafika i przycisk „Zaczynamy” (doprecyzowanie
      właściciela 2026-11-16: bez sceny z celami do kliknięcia i bez odprawy detektywistycznej).
 - **Tryb prosty** (`simpleMode: true`, D-132) jak moduły 3-4: tekst ≥ 16 px na 390 px, polecenia ≤ 90 znaków i jedno zdanie, każda

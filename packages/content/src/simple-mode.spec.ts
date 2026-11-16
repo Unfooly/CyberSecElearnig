@@ -92,6 +92,21 @@ describe('tryb prosty (simpleMode)', () => {
     expect(client.hint).toBeUndefined();
   });
 
+  it('D-159 wideo: w trybie prostym tylko plik z potoku (`src`); dokładnie jedno z url/src; plakat tylko przy `src`', () => {
+    const withVideo = (video: AnyModule) => mutate((m) => m.blocks.splice(1, 0, { id: 'film', type: 'VIDEO', ...video }));
+    expect(errorsOf(withVideo({ src: 'video/film.mp4', poster: 'video/film.jpg' }))).toBe('');
+    expect(errorsOf(withVideo({ src: { pl: 'video/pl/film.mp4', en: 'video/en/film.mp4' } }))).toBe('');
+    expect(errorsOf(withVideo({ url: 'https://example.test/film.mp4' }))).toMatch(/src: tryb prosty - wideo tylko z potoku zasobów/);
+    expect(errorsOf(withVideo({ src: 'video/film.mp4', url: 'https://example.test/film.mp4' }))).toMatch(/dokładnie jedno z pól url\/src/);
+    expect(errorsOf(withVideo({}))).toMatch(/dokładnie jedno z pól url\/src/);
+    expect(errorsOf(withVideo({ src: 'video/film.mov' }))).toMatch(/Dozwolone rozszerzenia: mp4, webm/);
+    expect(errorsOf(withVideo({ src: 'https://cdn.example/film.mp4' }))).toMatch(/Ścieżka zasobu musi być względna/);
+    // Plakat bez pliku z potoku - poza trybem prostym też błąd.
+    const external = fullModuleV6() as AnyModule;
+    Object.assign(external.blocks.find((b: AnyModule) => b.type === 'VIDEO'), { poster: 'video/film.jpg' });
+    expect(errorsOf(external)).toMatch(/poster: tylko przy wideo z potoku zasobów/);
+  });
+
   it('scena: najwyżej 4 cele, każdy min. 44×44 px w skali wyświetlania', () => {
     const five = mutate((m) => {
       const scene = byType(m, 'SCENE_HOTSPOTS');

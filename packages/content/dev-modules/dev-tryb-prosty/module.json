@@ -13,6 +13,13 @@
       "text": "Ola Malec z księgowości dostała wiadomość od Kasi. Coś tu nie gra."
     },
     {
+      "id": "film",
+      "type": "VIDEO",
+      "title": "Najłatwiejsze drzwi",
+      "src": "video/film-podglad.mp4",
+      "poster": "video/film-podglad-plakat.jpg"
+    },
+    {
       "id": "wybor",
       "type": "QUIZ",
       "prompt": "Kasia prosi na czacie o kod BLIK – co robisz?",

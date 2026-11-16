@@ -301,8 +301,10 @@ export interface ContentBlock {
   tip?: string;
   // Przestarzałe (D-096): starsze wersje treści; odtwarzacz czyta `mascot.text`, gdy brak `tip` (poza ignorowana).
   mascot?: { pose: string; text?: string };
-  // VIDEO
+  // VIDEO: zewnętrzny adres (`url`) albo plik z potoku zasobów (`src`, ścieżka względna do CONTENT_BASE_URL) z plakatem (D-159).
   url?: string;
+  src?: string;
+  poster?: string;
   // QUIZ / BRANCHING_SCENARIO
   prompt?: string;
   options?: ContentBlockOption[];

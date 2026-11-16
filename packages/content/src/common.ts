@@ -40,6 +40,8 @@ function assetPath(extensions: string[]) {
 
 export const imagePathSchema = assetPath(['png', 'jpg', 'jpeg', 'webp', 'avif', 'svg']);
 export const audioPathSchema = assetPath(['mp3']);
+/** Wideo modułu przez potok zasobów (D-159) - plik w magazynie treści, nie adres zewnętrzny. */
+export const videoPathSchema = assetPath(['mp4', 'webm']);
 
 export function text(max: number) {
   return z.string().min(1).max(max);
@@ -102,6 +104,11 @@ export function ltext(max: number) {
  */
 export function limage() {
   return localized(imagePathSchema);
+}
+
+/** Wideo z lektorem i napisami wpalonymi w obraz (D-159): osobny plik na język, jak grafika z tekstem (D-133); zwykła ścieżka = `pl`. */
+export function lvideo() {
+  return localized(videoPathSchema);
 }
 
 // Napisy z dokładnymi czasami: zdanie i moment jego początku w nagraniu (ms). Wypełnia je skrypt TTS z timestampów ElevenLabs

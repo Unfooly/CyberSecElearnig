@@ -17,6 +17,9 @@ const CONTENT_TYPES: Record<string, string> = {
   jpeg: 'image/jpeg',
   webp: 'image/webp',
   avif: 'image/avif',
+  // Wideo modułu (VIDEO.src, D-159).
+  mp4: 'video/mp4',
+  webm: 'video/webm',
 };
 
 const notFound = () => new Response(null, { status: 404 });

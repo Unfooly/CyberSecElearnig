@@ -2666,6 +2666,47 @@ try {
       await forwardEnabled();
       step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi ≥ 44 px, zdanie, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
 
+      // (p6) wideo z potoku zasobów (D-159): ramka 16:9 (±2%) w całości w obszarze bloku i w viewporcie, obszar bloku się NIE przewija (ramka
+      // wpisana w wysokość), plik i plakat z bazy zasobów (200, video/mp4); „Dalej” nieaktywny do końca filmu, aktywny po `ended`.
+      await open('film');
+      label = `${viewport.name} / tryb prosty / wideo`;
+      await common(label);
+      const player = page.getByTestId('video-player');
+      await player.waitFor();
+      const videoInfo = await page.evaluate(() => {
+        const area = document.querySelector('[data-testid="player-content-area"]');
+        const v = document.querySelector('[data-testid="video-player"]');
+        const r = v.getBoundingClientRect();
+        return { box: { x: r.x, y: r.y, width: r.width, height: r.height }, areaScroll: area.scrollHeight - area.clientHeight, src: v.currentSrc || v.getAttribute('src'), poster: v.getAttribute('poster') };
+      });
+      if (!(await inArea('[data-testid="video-player"]'))) fail(`${label}: (p6) film poza obszarem bloku - ${JSON.stringify(videoInfo.box)}.`);
+      if (videoInfo.box.x < -1 || videoInfo.box.x + videoInfo.box.width > viewport.width + 1 || videoInfo.box.y + videoInfo.box.height > viewport.height + 1) fail(`${label}: (p6) film poza viewportem - ${JSON.stringify(videoInfo.box)}.`);
+      if (Math.abs(videoInfo.box.width / videoInfo.box.height - 16 / 9) > 0.04) fail(`${label}: (p6) proporcja ramki ${(videoInfo.box.width / videoInfo.box.height).toFixed(3)} zamiast 16:9.`);
+      if (videoInfo.areaScroll > 1) fail(`${label}: (p6) obszar bloku przewija się o ${videoInfo.areaScroll}px - film nie wpisany w wysokość.`);
+      for (const [what, url, type] of [['film', videoInfo.src, 'video/mp4'], ['plakat', videoInfo.poster, 'image/jpeg']]) {
+        const res = url ? await page.request.get(new URL(url, WEB).toString()) : null;
+        if (!res || res.status() !== 200 || !res.headers()['content-type']?.startsWith(type)) fail(`${label}: (p6) ${what} ${url} -> ${res?.status()} ${res?.headers()['content-type']}.`);
+      }
+      if (!(await page.locator('.pbar-next').isDisabled())) fail(`${label}: (p6) „Dalej” aktywny przed obejrzeniem filmu.`);
+      await shot(page, `${viewport.name}-prosty-wideo`);
+      // Przewinięcie na koniec przed obejrzeniem wraca do początku (blokada do pierwszego obejrzenia); potem film od początku do końca
+      // (wyciszony, plik podglądu ma kilka sekund) - zdarzenie `ended` jak po obejrzeniu.
+      const seekBack = await player.evaluate((v) => new Promise((resolve) => {
+        const go = () => {
+          v.addEventListener('seeked', () => resolve(v.currentTime), { once: true });
+          v.currentTime = Math.max(0, v.duration - 0.2);
+        };
+        if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+      }));
+      if (seekBack > 1.5) fail(`${label}: (p6) przewinięcie na koniec przed obejrzeniem nie zostało cofnięte (czas ${seekBack}s).`);
+      await player.evaluate((v) => new Promise((resolve) => {
+        v.muted = true;
+        v.addEventListener('ended', resolve, { once: true });
+        v.play().catch(() => {});
+      }));
+      await forwardEnabled();
+      step(`${label}: (p1, p2, p6) ramka 16:9 w obszarze bez przewijania, plik i plakat z bazy zasobów, „Dalej” dopiero po końcu filmu OK`, true);
+
       // (p5) wielokrotny wybór (D-158): pola ≥ 44 px, „Sprawdź” ≥ 44 px; błędny zbiór - oceny przy zaznaczonych (w obszarze bloku), po 2 błędach
       // podpowiedź; trafienie - „Dalej” aktywny. Najdłuższy stan (oceny przy wszystkich zaznaczonych + podpowiedź) mieści się w bloku z przewijaniem.
       await open('wybor-wielokrotny');

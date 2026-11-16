@@ -14,6 +14,7 @@ const valid = {
   karol: { pl: 'voice-karol-pl' },
   pawel: { pl: 'voice-pawel-pl', en: 'voice-pawel-en' },
   oszust: { sameAs: 'pawel' },
+  'lektor-siec': 'voice-lektor-siec-12345',
 };
 
 describe('voices.json (rola głosu -> voiceId, D-082; per język i sameAs, D-114)', () => {

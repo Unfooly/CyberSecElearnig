@@ -10,6 +10,8 @@ const TEXT_KEYS = new Set([
   'title', 'text', 'cta', 'alt', 'tip', 'imageAlt', 'label', 'content', 'prompt', 'from', 'attachment', 'stampAlt', 'noteAlt',
   // Własne etykiety werdyktów SWIPE_SORT (`labels.suspicious` / `labels.ok`, D-151) - tekst przycisków.
   'suspicious', 'ok',
+  // Etykieta „Dalej” ostatniego kroku odprawy (D-160) - tekst przycisku w pasku.
+  'nextLabel',
 ]);
 
 /** Klucze (ostatni segment ścieżki, bez indeksów list) wartości tekstowych, które różnią się między `a` i `b`. */

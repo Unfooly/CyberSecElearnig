@@ -45,7 +45,9 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 
 ### schemaVersion 5: odprawa (`BRIEFING`) i zadania (D-081)
 
-- `BRIEFING`: `steps[]` (1-8) zamkniętego typu `kind`: `typewriter { text, sub?, cta }`, `call { caller { name, role?, avatar? },
+- `BRIEFING`: `steps[]` (1-8) zamkniętego typu `kind`: `typewriter { text, sub?, cta, nextLabel? }` (`nextLabel` ≤ 24 znaki, tylko na
+  OSTATNIM kroku - etykieta przycisku w dolnym pasku zamiast „Dalej”, np. „Zaczynamy”, D-160; `cta` ostatniego kroku się nie
+  wyświetla, D-106), `call { caller { name, role?, avatar? },
   text, cta }` (postać; bez maskotki), `caseFile { caseNo, title, fields[{ label, value }], stamp?, cta }`, `badge { cta }`,
   `start { text, cta }` (miejsce akcji na koniec odprawy). Każdy krok może mieć własne
   `narration` (TTS jak dziś; wpis w `audio.lock.json`: `<blockId>#steps.<N>.narration`). Nieoceniany, bez dowodów; zaliczany
@@ -109,7 +111,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - Reguły semantyczne sprawdzane w każdym użytym języku (błąd tylko w EN: prefiks `[en]`), reguła cyfr lektora (D-109) też.
 - Warstwa tekstu `textLayer` (D-114, tekst rysowany przez odtwarzacz na grafice) jest USUNIĘTA (i18n-4, D-137): pole jest odrzucane jak
   każde nieznane, a tekst sceny wpala kompozytor w grafikę (sekcja niżej).
-- Notatki `kind`: `call`, `log`, `web`; role głosu: `karol`, `pawel`, `oszust` (`voices.json`: `"oszust": { "sameAs": "pawel" }`).
+- Notatki `kind`: `call`, `log`, `web`; role głosu: `karol`, `pawel`, `oszust` (`voices.json`: `"oszust": { "sameAs": "pawel" }`),
+  `lektor-siec` (lektor modułu 5, D-160).
 - Wszystko powyżej wymaga `schemaVersion: 6`. Moduł 1 (v5) jest bez zmian bajt w bajt (`src/module-1-golden.spec.ts`).
 - `CALL_RECORDING` (D-115, oceniany, domyślna waga 1): `segments[]` (2-40) `{ id, speaker, narration (z `voice`), gapAfterMs? }`,
   `flags[]` `{ segmentId, category }` (`urgency` | `authority` | `fear` | `code_request` | `install_request`), `flagWindowAfterMs?`

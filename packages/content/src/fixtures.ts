@@ -721,6 +721,9 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   });
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';
+  // Etykieta „Dalej” ostatniego kroku (D-160) - publiczna; w fullBlocks() pierwszy krok nie jest ostatni, więc tylko tutaj.
+  const typewriter = steps.find((step) => step.kind === 'typewriter');
+  if (typewriter) typewriter.nextLabel = 'Zaczynamy';
   const caseFile = steps.find((step) => step.kind === 'caseFile');
   if (caseFile) caseFile.closedAlt = 'Zamknięta teczka z napisem PRIORYTET.';
   for (const option of blocks.BRANCHING_SCENARIO.options as Record<string, unknown>[]) option.correct = false;

@@ -512,6 +512,9 @@ const briefingStepSchema = z.discriminatedUnion('kind', [
       text: ltext(300),
       sub: ltext(300).optional(),
       cta: ltext(60),
+      // Etykieta „Dalej” w dolnym pasku na OSTATNIM kroku odprawy (D-160, np. „Zaczynamy”) - `cta` ostatniego kroku nie jest pokazywane
+      // (jedyne przejście dalej to pasek, D-106). Bez pola - „Dalej” jak dotąd.
+      nextLabel: ltext(24).optional(),
       narration: narrationSchema.optional(),
       ...briefingSceneShape,
     })
@@ -1314,6 +1317,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'steps[].text',
       'steps[].sub',
       'steps[].cta',
+      'steps[].nextLabel',
       'steps[].caller.name',
       'steps[].caller.role',
       'steps[].caller.avatar',

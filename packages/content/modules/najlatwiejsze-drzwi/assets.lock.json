@@ -1,0 +1,21 @@
+{
+  "lockVersion": 1,
+  "slug": "najlatwiejsze-drzwi",
+  "entries": {
+    "start#steps.0.image": {
+      "original": "placeholders/start.svg",
+      "hash": "017d4ede",
+      "key": "assets/najlatwiejsze-drzwi/placeholders/start.017d4ede.svg"
+    },
+    "start#steps.0.portrait.image": {
+      "original": "placeholders/start-pion.svg",
+      "hash": "ed756623",
+      "key": "assets/najlatwiejsze-drzwi/placeholders/start-pion.ed756623.svg"
+    },
+    "film#src": {
+      "original": "video/film.mp4",
+      "hash": "6db4a598",
+      "key": "assets/najlatwiejsze-drzwi/video/film.6db4a598.mp4"
+    }
+  }
+}

@@ -103,6 +103,36 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     expect(inBlockNext()).toEqual([]);
   });
 
+  it('D-160: ostatni krok odprawy z `nextLabel` - przycisk w pasku ma tę etykietę (jedyny), bez - „Dalej”', () => {
+    const start = {
+      type: 'BRIEFING',
+      id: 'start',
+      steps: [{ kind: 'typewriter', text: 'Krótki opis modułu.', cta: 'Zaczynamy', nextLabel: 'Zaczynamy' }],
+    } as unknown as ContentBlock;
+    const { unmount } = render(<CoursePlayer courseId="course-1" initial={course(start)} narrationEnabled={false} />);
+    expect(bar().querySelectorAll('.pbar-next')).toHaveLength(1);
+    expect(within(bar()).getByRole('button', { name: /^Zaczynamy$/ })).toBeInTheDocument();
+    expect(inBlockNext()).toEqual([]);
+    unmount();
+
+    const plain = { ...start, steps: [{ kind: 'typewriter', text: 'Krótki opis modułu.', cta: 'Zaczynamy' }] } as unknown as ContentBlock;
+    const { unmount: unmountPlain } = render(<CoursePlayer courseId="course-1" initial={course(plain)} narrationEnabled={false} />);
+    expect(barNext()).toBeInTheDocument();
+    unmountPlain();
+
+    // Odprawa z kilkoma krokami: na pierwszym kroku w pasku zwykłe „Dalej” - etykieta dotyczy wyłącznie ostatniego kroku.
+    const twoSteps = {
+      ...start,
+      steps: [
+        { kind: 'typewriter', text: 'Pierwszy krok.', cta: 'Dalej w odprawie' },
+        { kind: 'typewriter', text: 'Ostatni krok.', cta: 'Zaczynamy', nextLabel: 'Zaczynamy' },
+      ],
+    } as unknown as ContentBlock;
+    render(<CoursePlayer courseId="course-1" initial={course(twoSteps)} narrationEnabled={false} />);
+    expect(barNext()).toBeInTheDocument();
+    expect(within(bar()).queryByRole('button', { name: /^Zaczynamy$/ })).not.toBeInTheDocument();
+  });
+
   it('VIDEO: po obejrzeniu „Dalej” w pasku aktywny i zapisuje blok bez odpowiedzi', async () => {
     const fetchMock = stubProgress(video);
     render(<CoursePlayer courseId="course-1" initial={course(video)} narrationEnabled={false} />);

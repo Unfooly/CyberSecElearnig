@@ -89,6 +89,12 @@ interface RenderContext {
   onExplore: (blockId: string, state: SceneExploration) => void;
 }
 
+/** Etykieta „Dalej” ostatniego kroku odprawy (D-160) albo undefined (zwykłe „Dalej”). */
+function briefingNextLabel(block: ContentBlock): string | undefined {
+  const last = block.steps?.[block.steps.length - 1];
+  return last?.kind === 'typewriter' ? last.nextLabel : undefined;
+}
+
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
   const { onSubmit, disabled, contentBase } = ctx;
   if (isExploratory(block.type)) {
@@ -1038,7 +1044,10 @@ export default function CoursePlayer({
                   ? hasEvidence(evidence)
                     ? 'Zakończ sprawę'
                     : 'Zakończ szkolenie'
-                  : undefined
+                  : !showingFeedback && !reviewing && currentBlock?.type === 'BRIEFING' && briefingStep?.index === briefingLast
+                    ? // Własna etykieta ostatniego kroku odprawy (D-160, np. „Zaczynamy”); bez niej - „Dalej”.
+                      briefingNextLabel(currentBlock)
+                    : undefined
             }
             forwardHref={isSummaryMode ? '/courses' : undefined}
             onExitClick={handleExitClick}

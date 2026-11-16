@@ -36,7 +36,10 @@ describe('moduł 5 „Najłatwiejsze drzwi” - treść', () => {
     expect(steps).toHaveLength(1);
     // Ostatni krok: przycisk „Zaczynamy” to etykieta „Dalej” w pasku (D-160).
     expect(steps[0]).toMatchObject({ kind: 'typewriter', nextLabel: 'Zaczynamy' });
-    expect(steps[0].image).toMatch(/^assets\/najlatwiejsze-drzwi\/.+\.svg$/);
+    // Grafiki z ElevenLabs w stylu Unfooly (D-161): WebP, osobno poziomo i pionowo; miniatura modułu w katalogu.
+    expect(steps[0].image).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/start\.[0-9a-f]{8}\.webp$/);
+    expect((steps[0] as { portrait?: { image: string } }).portrait?.image).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/start-pion\.[0-9a-f]{8}\.webp$/);
+    expect(parsed.thumbnail).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/miniatura\.[0-9a-f]{8}\.webp$/);
     expect(steps[0].text).toMatch(/^Przestępca nie musi łamać zabezpieczeń/);
   });
 

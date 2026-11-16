@@ -2,15 +2,20 @@
   "lockVersion": 1,
   "slug": "najlatwiejsze-drzwi",
   "entries": {
+    "module#thumbnail": {
+      "original": "images/miniatura.webp",
+      "hash": "a8cf8742",
+      "key": "assets/najlatwiejsze-drzwi/images/miniatura.a8cf8742.webp"
+    },
     "start#steps.0.image": {
-      "original": "placeholders/start.svg",
-      "hash": "017d4ede",
-      "key": "assets/najlatwiejsze-drzwi/placeholders/start.017d4ede.svg"
+      "original": "images/start.webp",
+      "hash": "9722f6b2",
+      "key": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp"
     },
     "start#steps.0.portrait.image": {
-      "original": "placeholders/start-pion.svg",
-      "hash": "ed756623",
-      "key": "assets/najlatwiejsze-drzwi/placeholders/start-pion.ed756623.svg"
+      "original": "images/start-pion.webp",
+      "hash": "36ee7e6e",
+      "key": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
     },
     "film#src": {
       "original": "video/film.mp4",

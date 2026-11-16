@@ -853,6 +853,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Odprawa nie ma wyniku (zapis bez odpowiedzi, bez punktów) - waga > 0 tylko zaniżyłaby wynik modułu.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok BRIEFING jest nieoceniany (waga musi być 0)');
       block.steps.forEach((step, index) => errors.push(...briefingSceneErrors(`steps[${index}]`, step)));
+      // `nextLabel` (D-160) to etykieta paska na OSTATNIM kroku - na wcześniejszym nigdy by się nie pokazała.
+      block.steps.forEach((step, index) => {
+        if ('nextLabel' in step && step.nextLabel !== undefined && index !== block.steps.length - 1) {
+          errors.push(`steps[${index}].nextLabel: tylko na ostatnim kroku odprawy`);
+        }
+      });
       break;
     }
     case 'CALL_RECORDING': {

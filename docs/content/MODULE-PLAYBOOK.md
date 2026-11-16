@@ -219,6 +219,8 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 | Bartek Lis | postać (fikcyjna) | 4 `na-skroty` | fikcyjna; **zatwierdzona przez właściciela 2026-10-23** (sprawdzone - bez kolizji z prawdziwymi osobami) |
 | CzatPomocnik, MojaChmura, PDF Zamiennik Free | darmowe narzędzia w fabule (czat AI, dysk w chmurze, program do PDF) | 4 `na-skroty` | fikcyjne; **zatwierdzone przez właściciela 2026-10-23** (sprawdzone - nie kolidują z prawdziwymi produktami); w grafikach bez logo, ikony z kompozytora |
 | „Darmowy VPN”, NSK/2026/1023 | opis rozszerzenia (nazwa rodzajowa), sygnatura sprawy | 4 `na-skroty` | rodzajowa / wymyślona - bezpieczne |
+| Anna | postać z wideo (koleżanka z brandkitu); inna osoba niż Anna z modułu 1 | 5 `najlatwiejsze-drzwi` | fikcyjna; imię z wideo - **zostaje, decyzja właściciela 2026-11-16** |
+| „Unfooly”, „Unfooly-Gość” | nazwy sieci Wi-Fi (firmowa i dla gości) | 5 `najlatwiejsze-drzwi` | własna marka produktu - bezpieczne |
 
 ## 9. Zakazy (D-108)
 

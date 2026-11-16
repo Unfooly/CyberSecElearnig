@@ -107,6 +107,14 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(external)).toMatch(/poster: tylko przy wideo z potoku zasobów/);
   });
 
+  it('D-160 `nextLabel` odprawy: tylko na ostatnim kroku, najwyżej 24 znaki', () => {
+    const briefing = (steps: AnyModule[]) => mutate((m) => m.blocks.splice(0, 1, { id: 'odprawa', type: 'BRIEFING', steps }));
+    const step = (extra: AnyModule = {}) => ({ kind: 'typewriter', text: 'Krótki opis modułu.', cta: 'Dalej', ...extra });
+    expect(errorsOf(briefing([step({ nextLabel: 'Zaczynamy' })]))).toBe('');
+    expect(errorsOf(briefing([step({ nextLabel: 'Zaczynamy' }), step()]))).toMatch(/steps\[0\]\.nextLabel: tylko na ostatnim kroku odprawy/);
+    expect(errorsOf(briefing([step({ nextLabel: 'x'.repeat(25) })]))).toMatch(/nextLabel/);
+  });
+
   it('scena: najwyżej 4 cele, każdy min. 44×44 px w skali wyświetlania', () => {
     const five = mutate((m) => {
       const scene = byType(m, 'SCENE_HOTSPOTS');

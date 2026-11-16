@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 6,
+  "slug": "najlatwiejsze-drzwi",
+  "title": "Najłatwiejsze drzwi",
+  "subtitle": "Jak przestępca szuka wejścia do firmowej sieci – i jak mu go nie zostawić",
+  "category": "IT_HYGIENE",
+  "level": "basic",
+  "durationMinutes": 6,
+  "mandatory": true,
+  "simpleMode": true,
+  "locales": [
+    "pl"
+  ],
+  "objectives": [
+    "Wiedzieć, że do firmowej sieci prowadzą drzwi fizyczne (wejście, gniazdka) i niewidoczne (Wi-Fi, logowanie).",
+    "Nie wpuszczać obcych za sobą i pytać nieznajomych, do kogo przyszli.",
+    "Nie podłączać nieznanych urządzeń ani znalezionych nośników i zgłaszać je do IT.",
+    "Gościom dawać sieć dla gości, nigdy hasło do sieci firmowej.",
+    "Chronić konto logowaniem dwuetapowym i VPN poza biurem."
+  ],
+  "blocks": [
+    {
+      "id": "start",
+      "type": "BRIEFING",
+      "title": "Najłatwiejsze drzwi",
+      "steps": [
+        {
+          "kind": "typewriter",
+          "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
+          "cta": "Zaczynamy",
+          "nextLabel": "Zaczynamy",
+          "narration": {
+            "voice": "lektor-siec",
+            "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
+            "audioUrl": "audio/najlatwiejsze-drzwi/v1/start/434b2b598d4581c2.mp3",
+            "durationMs": 11517,
+            "cues": [
+              {
+                "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte.",
+                "startMs": 0
+              },
+              {
+                "text": "Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
+                "startMs": 4946
+              }
+            ]
+          },
+          "image": "assets/najlatwiejsze-drzwi/placeholders/start.017d4ede.svg",
+          "alt": "Szklane drzwi biura z czytnikiem kart (grafika zastępcza).",
+          "portrait": {
+            "image": "assets/najlatwiejsze-drzwi/placeholders/start-pion.ed756623.svg"
+          }
+        }
+      ]
+    },
+    {
+      "id": "film",
+      "type": "VIDEO",
+      "title": "Najłatwiejsze drzwi",
+      "src": "assets/najlatwiejsze-drzwi/video/film.6db4a598.mp4",
+      "durationSeconds": 146
+    },
+    {
+      "id": "ktos-za-toba",
+      "type": "QUIZ",
+      "title": "Ktoś za tobą",
+      "multiple": true,
+      "prompt": "Co robisz, gdy ktoś bez karty idzie tuż za tobą do biura?",
+      "narration": {
+        "voice": "lektor-siec",
+        "text": "Co robisz, gdy ktoś bez karty idzie tuż za tobą do biura?",
+        "audioUrl": "audio/najlatwiejsze-drzwi/v1/ktos-za-toba/23d7316574ed6119.mp3",
+        "durationMs": 2972,
+        "cues": [
+          {
+            "text": "Co robisz, gdy ktoś bez karty idzie tuż za tobą do biura?",
+            "startMs": 0
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Pytam, do kogo przyszedł, i prowadzę go do recepcji.",
+          "correct": true,
+          "feedback": "Tak – uprzejme pytanie wystarczy. Gość i tak trafi do recepcji."
+        },
+        {
+          "text": "Przytrzymuję drzwi, bo wygląda na kogoś z firmy.",
+          "correct": false,
+          "feedback": "Wygląd nic nie mówi. Tak właśnie haker z wideo wszedł za Anną."
+        },
+        {
+          "text": "Nie przytrzymuję drzwi osobie bez karty.",
+          "correct": true,
+          "feedback": "Tak – każdy ma swoją kartę. Niech skorzysta z niej albo z recepcji."
+        },
+        {
+          "text": "Pożyczam mu swoją kartę, żeby nie czekał.",
+          "correct": false,
+          "feedback": "Twoja karta to twoje wejście – wszystko, co ktoś z nią zrobi, idzie na twoje konto."
+        }
+      ],
+      "hint": "Do biura wchodzi się własną kartą albo przez recepcję."
+    },
+    {
+      "id": "cos-podpiete",
+      "type": "QUIZ",
+      "title": "Coś podpięte",
+      "multiple": true,
+      "prompt": "Które z tych sytuacji od razu zgłaszasz do IT?",
+      "narration": {
+        "voice": "lektor-siec",
+        "text": "Które z tych sytuacji od razu zgłaszasz do IT?",
+        "audioUrl": "audio/najlatwiejsze-drzwi/v1/cos-podpiete/7ebbb2611aaa542d.mp3",
+        "durationMs": 2601,
+        "cues": [
+          {
+            "text": "Które z tych sytuacji od razu zgłaszasz do IT?",
+            "startMs": 0
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Nieznane urządzenie podpięte do gniazdka w sali konferencyjnej.",
+          "correct": true,
+          "feedback": "Tak – to może być czyjś „przedłużacz” do firmowej sieci."
+        },
+        {
+          "text": "Pendrive znaleziony na parkingu firmy.",
+          "correct": true,
+          "feedback": "Tak – nie podłączaj go. Oddaj IT, nawet jeśli kusi, żeby sprawdzić, czyj jest."
+        },
+        {
+          "text": "Kolega pracuje na firmowym laptopie przy swoim biurku.",
+          "correct": false,
+          "feedback": "To zwykły dzień pracy – nie ma czego zgłaszać."
+        },
+        {
+          "text": "Nieznajomy siedzi z laptopem w sali, w której nie ma spotkania.",
+          "correct": true,
+          "feedback": "Tak – zapytaj, czy możesz pomóc, i daj znać IT albo recepcji."
+        }
+      ],
+      "hint": "Zgłaszasz to, czego nie znasz i czego nie powinno tam być."
+    },
+    {
+      "id": "gosc-prosi",
+      "type": "QUIZ",
+      "title": "Gość prosi o internet",
+      "multiple": true,
+      "prompt": "Co możesz zrobić, gdy gość na spotkaniu prosi o internet?",
+      "narration": {
+        "voice": "lektor-siec",
+        "text": "Co możesz zrobić, gdy gość na spotkaniu prosi o internet?",
+        "audioUrl": "audio/najlatwiejsze-drzwi/v1/gosc-prosi/bacfdcc4b343b547.mp3",
+        "durationMs": 2879,
+        "cues": [
+          {
+            "text": "Co możesz zrobić, gdy gość na spotkaniu prosi o internet?",
+            "startMs": 0
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Podaję mu hasło do firmowej sieci „Unfooly”.",
+          "correct": false,
+          "feedback": "Firmowa sieć jest tylko dla firmowych urządzeń. Hasło raz podane krąży dalej."
+        },
+        {
+          "text": "Daję mu dostęp do sieci „Unfooly-Gość”.",
+          "correct": true,
+          "feedback": "Tak – sieć dla gości jest oddzielona od firmowej. Gość ma internet, a nie twoje pliki."
+        },
+        {
+          "text": "Podłączam jego laptop kablem do gniazdka w sali.",
+          "correct": false,
+          "feedback": "Kabel w gniazdku to wejście do firmowej sieci – sieć dla gości jest bezpieczniejsza."
+        },
+        {
+          "text": "Kieruję go do recepcji po dane do sieci dla gości.",
+          "correct": true,
+          "feedback": "Tak – recepcja albo IT wydają dostęp dla gości."
+        }
+      ],
+      "hint": "Firma ma osobną sieć dla gości."
+    },
+    {
+      "id": "poza-biurem",
+      "type": "QUIZ",
+      "title": "Praca poza biurem",
+      "multiple": true,
+      "prompt": "Co chroni firmową sieć, gdy pracujesz na firmowym laptopie z kawiarni?",
+      "narration": {
+        "voice": "lektor-siec",
+        "text": "Co chroni firmową sieć, gdy pracujesz na firmowym laptopie z kawiarni?",
+        "audioUrl": "audio/najlatwiejsze-drzwi/v1/poza-biurem/2c5ace7864ddc1c8.mp3",
+        "durationMs": 3715,
+        "cues": [
+          {
+            "text": "Co chroni firmową sieć, gdy pracujesz na firmowym laptopie z kawiarni?",
+            "startMs": 0
+          }
+        ]
+      },
+      "options": [
+        {
+          "text": "Łączę się z firmą przez firmowy VPN.",
+          "correct": true,
+          "feedback": "Tak – VPN szyfruje połączenie, nawet w otwartej sieci kawiarni."
+        },
+        {
+          "text": "Loguję się z kodem z telefonu.",
+          "correct": true,
+          "feedback": "Tak – ktoś, kto zna tylko twoje hasło, bez twojego telefonu się nie zaloguje."
+        },
+        {
+          "text": "Używam jednego hasła do wszystkich kont, żeby go nie zapomnieć.",
+          "correct": false,
+          "feedback": "Jeden wyciek otwiera wtedy wszystkie konta naraz."
+        },
+        {
+          "text": "Zostawiam odblokowany laptop, gdy idę po kawę.",
+          "correct": false,
+          "feedback": "Odblokowany laptop to otwarte drzwi. Zablokuj ekran, zanim wstaniesz."
+        }
+      ],
+      "hint": "Szukaj tego, co działa także wtedy, gdy ktoś pozna twoje hasło."
+    },
+    {
+      "id": "podsumowanie",
+      "type": "SUMMARY",
+      "title": "Drzwi zamknięte",
+      "narration": {
+        "voice": "lektor-siec",
+        "text": "Haker szukał najłatwiejszych drzwi i żadnych nie znalazł. To zasługa nie tylko IT, ale każdej osoby w biurze.",
+        "audioUrl": "audio/najlatwiejsze-drzwi/v1/podsumowanie/e10a964b13e08a06.mp3",
+        "durationMs": 6362,
+        "cues": [
+          {
+            "text": "Haker szukał najłatwiejszych drzwi i żadnych nie znalazł.",
+            "startMs": 0
+          },
+          {
+            "text": "To zasługa nie tylko IT, ale każdej osoby w biurze.",
+            "startMs": 3123
+          }
+        ]
+      },
+      "text": "Sieć chroni IT, ale drzwi do niej otwierają i zamykają ludzie. Wystarczą trzy nawyki.\n\n**Trzy zasady**\n\n1. Wchodzisz swoją kartą – nikogo nie wpuszczasz za sobą, a obcych pytasz, do kogo przyszli.\n2. Nie podłączasz nieznanych urządzeń ani znalezionych nośników – zgłaszasz je do IT.\n3. Goście dostają sieć dla gości, a ty logujesz się z kodem i przez VPN poza biurem."
+    }
+  ]
+}

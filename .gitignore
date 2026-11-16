@@ -54,3 +54,7 @@ docs/brand/screens/*/*.png
 
 # paczki od grafika i próbki głosów przed rozpakowaniem na miejsca docelowe (lokalne, nigdy w repo)
 _incoming/
+
+# Pliki wideo modułów (D-159): za duże na repo - tylko w magazynie treści; w repo zostaje skrót w assets.lock.json.
+# (Małe próbki do layout-check w dev-modules są w repo.)
+packages/content/modules/*/assets/video/

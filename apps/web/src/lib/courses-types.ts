@@ -205,7 +205,8 @@ export interface BriefingScene {
 
 /** Krok odprawy (BRIEFING) tak, jak wraca z /start (wszystkie pola `client`, bez narration.spokenText). */
 export type BriefingStep =
-  | ({ kind: 'typewriter'; text: string; sub?: string; cta: string; narration?: Narration } & BriefingScene)
+  // `nextLabel` - etykieta „Dalej” w pasku na ostatnim kroku odprawy (D-160).
+  | ({ kind: 'typewriter'; text: string; sub?: string; cta: string; nextLabel?: string; narration?: Narration } & BriefingScene)
   | ({
       kind: 'call';
       caller: { name: string; role?: string; avatar?: string };

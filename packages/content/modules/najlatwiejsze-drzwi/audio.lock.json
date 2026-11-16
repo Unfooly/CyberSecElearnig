@@ -1,0 +1,57 @@
+{
+  "lockVersion": 2,
+  "slug": "najlatwiejsze-drzwi",
+  "audioVersion": "v1",
+  "model": "eleven_multilingual_v2",
+  "language": "pl",
+  "entries": {
+    "start#steps.0.narration": {
+      "hash": "434b2b598d4581c2",
+      "key": "audio/najlatwiejsze-drzwi/v1/start/434b2b598d4581c2.mp3",
+      "textSha": "1e2a000040ebc304",
+      "durationMs": 11517,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    },
+    "ktos-za-toba#narration": {
+      "hash": "23d7316574ed6119",
+      "key": "audio/najlatwiejsze-drzwi/v1/ktos-za-toba/23d7316574ed6119.mp3",
+      "textSha": "896ba2824086c2f6",
+      "durationMs": 2972,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    },
+    "cos-podpiete#narration": {
+      "hash": "7ebbb2611aaa542d",
+      "key": "audio/najlatwiejsze-drzwi/v1/cos-podpiete/7ebbb2611aaa542d.mp3",
+      "textSha": "ba5975795a5546c3",
+      "durationMs": 2601,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    },
+    "gosc-prosi#narration": {
+      "hash": "bacfdcc4b343b547",
+      "key": "audio/najlatwiejsze-drzwi/v1/gosc-prosi/bacfdcc4b343b547.mp3",
+      "textSha": "ff6f17025d886645",
+      "durationMs": 2879,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    },
+    "poza-biurem#narration": {
+      "hash": "2c5ace7864ddc1c8",
+      "key": "audio/najlatwiejsze-drzwi/v1/poza-biurem/2c5ace7864ddc1c8.mp3",
+      "textSha": "4022ae6f13c1fa83",
+      "durationMs": 3715,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    },
+    "podsumowanie#narration": {
+      "hash": "e10a964b13e08a06",
+      "key": "audio/najlatwiejsze-drzwi/v1/podsumowanie/e10a964b13e08a06.mp3",
+      "textSha": "ae8cc4abbda23e16",
+      "durationMs": 6362,
+      "voice": "lektor-siec",
+      "voiceId": "zs057lc0shdaAFXkm2Fm"
+    }
+  }
+}

@@ -11,16 +11,19 @@ export async function POST(request: Request, { params }: { params: { courseId: s
     return NextResponse.json({ message: 'Nieprawidłowy identyfikator.' }, { status: 400 });
   }
 
-  const body = (await request.json().catch(() => null)) as { option?: unknown; card?: unknown; verdict?: unknown } | null;
-  const isOption = typeof body?.option === 'number' && Number.isInteger(body.option) && body.option >= 0 && body.option <= 7;
+  const body = (await request.json().catch(() => null)) as { option?: unknown; options?: unknown; card?: unknown; verdict?: unknown } | null;
+  const isIndex = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 7;
+  const isOption = isIndex(body?.option);
+  // Wielokrotny wybór (D-158): 1-8 indeksów 0-7; powtórzenia i zakres bloku sprawdza API.
+  const isOptions = Array.isArray(body?.options) && body.options.length >= 1 && body.options.length <= 8 && body.options.every(isIndex);
   const isCard = typeof body?.card === 'string' && isSafeId(body.card) && (body.verdict === 'suspicious' || body.verdict === 'ok');
-  if (!body || isOption === isCard) {
+  if (!body || Number(isOption) + Number(isOptions) + Number(isCard) !== 1) {
     return NextResponse.json({ message: 'Nieprawidłowe żądanie.' }, { status: 400 });
   }
 
   return proxyAuthenticated(
     'POST',
     `/courses/${params.courseId}/blocks/${params.blockId}/check`,
-    isOption ? { option: body.option } : { card: body.card, verdict: body.verdict },
+    isOption ? { option: body.option } : isOptions ? { options: body.options } : { card: body.card, verdict: body.verdict },
   );
 }

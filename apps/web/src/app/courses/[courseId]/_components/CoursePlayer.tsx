@@ -21,6 +21,7 @@ import { playerIdentity, reportSigner, useMyDisplayName, type PlayerIdentity } f
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
+import SimpleMultiChoiceBlock from './blocks/SimpleMultiChoiceBlock';
 import SwipeSortBlock from './blocks/SwipeSortBlock';
 import { CourseLanguageSwitch, PolishOnlyBadge } from './player/CourseLanguage';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -141,6 +142,21 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
     case 'VIDEO':
       return <VideoBlock key={block.id} block={block} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />;
     case 'QUIZ':
+      if (ctx.simpleMode && block.multiple === true) {
+        // Wielokrotny wybór (D-158): zbiór przez /check, zapis po trafieniu bez odpowiedzi (wynik z prób w postępie).
+        return (
+          <SimpleMultiChoiceBlock
+            key={block.id}
+            block={block}
+            courseId={ctx.courseId}
+            progress={ctx.progress}
+            onSubmit={() => onSubmit(undefined)}
+            onReady={ctx.onReady}
+            onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
+            disabled={disabled}
+          />
+        );
+      }
       if (ctx.simpleMode) {
         return (
           <SimpleChoiceBlock

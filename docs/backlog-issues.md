@@ -867,6 +867,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-162 E2E `/check` dla wielokrotnego wyboru (QUIZ `multiple`)
+- Etykiety: `P3`, `test`, `mod:szkolenia` · Źródło: security review D-158
+- Opis: ocenę wielokrotnego wyboru pokrywają testy jednostkowe (`simple-mode.spec.ts`, `check-block.dto.spec.ts`), ale nie e2e przez HTTP.
+  Dopisanie bloku do wspólnej fixtury `simpleModule()` przesunęłoby twarde `blockIndex` w istniejących e2e (CLAUDE.md, reguła 9).
+- Akceptacja: e2e na osobnej, małej fixturze z blokiem `multiple` (bez zmiany `simpleModule`/`fullModule`): trafienie, wynik z pierwszej
+  próby, 400 dla `{ option, options }` naraz, duplikatów i zbioru już sprawdzonego, izolacja A/B.
+
 ### B-161 Półpauza w stałych tekstach kodu bez automatycznej kontroli
 - Etykiety: `P3`, `test`, `mod:web` · Źródło: code review B-159
 - Opis: walidator obejmuje tylko treść modułów (D-154). Teksty w `apps/web` poprawione ręcznie; nowy tekst z „ - ” przejdzie CI.

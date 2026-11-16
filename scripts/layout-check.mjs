@@ -2564,6 +2564,19 @@ try {
         const body = JSON.parse(route.request().postData() ?? '{}');
         const blockId = decodeURIComponent(route.request().url().split('/blocks/')[1].split('/')[0]);
         const block = demoBlocks.find((b) => b.id === blockId);
+        if (Array.isArray(body.options)) {
+          // Wielokrotny wybór (D-158): trafienie = dokładnie zbiór poprawnych; ocena każdej zaznaczonej, jak w API.
+          const good = block.options.every((option, index) => (option.correct === true) === body.options.includes(index));
+          const count = (mistakes.get(blockId) ?? 0) + (good ? 0 : 1);
+          mistakes.set(blockId, count);
+          const options = body.options.map((index) => ({ option: index, result: block.options[index].correct ? 'good' : 'bad', feedback: block.options[index].feedback }));
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ blockId, result: good ? 'good' : 'bad', feedback: '', options, ...(count >= 2 ? { hint: block.hint } : {}), done: good }),
+          });
+          return;
+        }
         const answer = block.type === 'QUIZ' ? block.options[body.option] : block.cards.find((card) => card.id === body.card);
         const good = block.type === 'QUIZ' ? answer.correct === true : answer.correct === body.verdict;
         const count = (mistakes.get(blockId) ?? 0) + (good ? 0 : 1);
@@ -2643,6 +2656,49 @@ try {
       await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
       await forwardEnabled();
       step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi ≥ 44 px, zdanie, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
+
+      // (p5) wielokrotny wybór (D-158): pola ≥ 44 px, „Sprawdź” ≥ 44 px; błędny zbiór - oceny przy zaznaczonych (w obszarze bloku), po 2 błędach
+      // podpowiedź; trafienie - „Dalej” aktywny. Najdłuższy stan (oceny przy wszystkich zaznaczonych + podpowiedź) mieści się w bloku z przewijaniem.
+      await open('wybor-wielokrotny');
+      label = `${viewport.name} / tryb prosty / wielokrotny wybór`;
+      await common(label);
+      const multiTarget = await minTarget('[data-testid="simple-multi-option"]');
+      if (multiTarget < 43.5) fail(`${label}: (p5) odpowiedź mniejsza niż 44 px (${multiTarget.toFixed(1)}).`);
+      const multiQuiz = demoBlocks.find((b) => b.id === 'wybor-wielokrotny');
+      const correctIdx = multiQuiz.options.flatMap((option, index) => (option.correct ? [index] : []));
+      const wrongIdx = multiQuiz.options.flatMap((option, index) => (option.correct ? [] : [index]));
+      const multiOption = (index) => page.getByTestId('simple-multi-option').nth(index);
+      const setSelection = async (indexes) => {
+        for (let index = 0; index < multiQuiz.options.length; index += 1) {
+          const box = multiOption(index).locator('input');
+          if ((await box.isChecked()) !== indexes.includes(index)) await multiOption(index).click();
+        }
+      };
+      const checkBtn = page.getByTestId('simple-multi-check');
+      const checkBox = await checkBtn.boundingBox();
+      if (!checkBox || checkBox.height < 43.5) fail(`${label}: (p5) „Sprawdź” niższy niż 44 px - ${JSON.stringify(checkBox)}.`);
+      // 1. błąd: wszystkie odpowiedzi naraz (oceny przy każdej - najdłuższa lista zdań).
+      await setSelection(multiQuiz.options.map((_, index) => index));
+      await checkBtn.click();
+      await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
+      const marks = await page.locator('[data-testid="simple-multi-option"][data-result]').count();
+      if (marks !== multiQuiz.options.length) fail(`${label}: (p5) ocenionych odpowiedzi ${marks} zamiast ${multiQuiz.options.length}.`);
+      if (!(await inArea('[data-testid="simple-multi-option"][data-result="bad"]'))) fail(`${label}: (p5) ocena błędnej odpowiedzi poza obszarem bloku.`);
+      // 2. błąd: sama pierwsza błędna - podpowiedź.
+      await setSelection([wrongIdx[0]]);
+      await checkBtn.click();
+      await page.getByTestId('simple-hint').waitFor({ timeout: 10000 });
+      if (!(await inArea('[data-testid="simple-hint"]'))) fail(`${label}: (p5) podpowiedź poza obszarem bloku.`);
+      await common(`${label} (podpowiedź)`);
+      await shot(page, `${viewport.name}-prosty-wielokrotny-podpowiedz`);
+      await setSelection(correctIdx);
+      await checkBtn.click();
+      await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
+      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p5) „Dobrze” poza obszarem bloku.`);
+      await forwardEnabled();
+      await common(`${label} (trafienie)`);
+      await shot(page, `${viewport.name}-prosty-wielokrotny-trafienie`);
+      step(`${label}: (p1, p2, p5) pola i „Sprawdź” ≥ 44 px, oceny przy zaznaczonych, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
 
       // (p4) SWIPE_SORT - każdy blok modułu podglądu: wiadomości (domyślne etykiety, moduł 3) i sytuacje z własnymi etykietami (D-151,
       // najdłuższa dozwolona - 16 znaków).

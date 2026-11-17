@@ -59,8 +59,11 @@
       "id": "film",
       "type": "VIDEO",
       "title": "Najłatwiejsze drzwi",
-      "src": "assets/najlatwiejsze-drzwi/video/film.6db4a598.mp4",
-      "durationSeconds": 146
+      "src": {
+        "pl": "assets/najlatwiejsze-drzwi/video/film.a460d876.mp4",
+        "en": "assets/najlatwiejsze-drzwi/video/film-en.cd484afc.mp4"
+      },
+      "durationSeconds": 134
     },
     {
       "id": "ktos-za-toba",

@@ -867,6 +867,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-163 Sprzątanie po D-162 razem z usunięciem dowodów (etap 2)
+- Etykiety: `P2`, `refactor`, `mod:odtwarzacz` · Źródło: code review D-162
+- Opis: D-162 usunęło z odtwarzacza Notatnik i licznik dowodów, ale mechanika dowodów zostaje do etapu 2 (decyzja właściciela: dowody
+  całkowicie). Do usunięcia/zmiany wtedy: `flyEvidence` (lib/motion.ts - bez celu `[data-evidence-target]` nic nie robi), `EvidenceCounter`,
+  `NotesPanel`/`TaskList`/`DistinctionList`, `.player-compact-label` w globals.css, warstwy `'transcript' | 'notebook' | 'fullscreen'` w
+  overlay-stack (używane już tylko w testach), test pominięty `it.skip` (wyróżnienie easter egga w notatniku), test lotu w
+  `CoursePlayer.exploratory.test.tsx` (przechodzi zawsze), oraz komunikaty dla gracza o notatniku („Trafił do notatnika”, „(w notatniku)” -
+  hints.tsx, DossierBlock, InterrogationBlock, OsintBlock, SceneHotspotsBlock) - te ostatnie wg decyzji właściciela przy D-162.
+- Akceptacja: brak kodu i tekstów o notatniku/dowodach w odtwarzaczu; pokrycie zadań karty sprawy po zapisie w tej sesji przeniesione na
+  widoczne miejsce (karta sprawy).
+
 ### B-162 E2E `/check` dla wielokrotnego wyboru (QUIZ `multiple`)
 - Etykiety: `P3`, `test`, `mod:szkolenia` · Źródło: security review D-158
 - Opis: ocenę wielokrotnego wyboru pokrywają testy jednostkowe (`simple-mode.spec.ts`, `check-block.dto.spec.ts`), ale nie e2e przez HTTP.

@@ -762,9 +762,9 @@ async function clickAllDialogueQuestions(page) {
 // BRIEFING (D-081), dla każdego kroku: (m) strona się nie przewija, obszar bloku (overflow-clip) nie przewija się, a
 // odprawa nie ma poziomego przewijania (przewija się - jeśli w ogóle - tylko w pionie, wewnątrz siebie); (n) przycisk kroku
 // po przewinięciu do niego leży w CAŁOŚCI w obszarze bloku i w ramce (osiągalny, nie przycięty przez overflow-clip);
-// (o) "Pomiń odprawę" w całości w górnym pasku (na ostatnim kroku go nie ma - nie ma czego pomijać, D-106), a sam pasek nie wypycha
-// treści poza siebie (tytuł się skraca, nie przycisk/Notatnik). Wraca też nazwę kroku, który przewija się wewnętrznie (informacyjnie).
-async function checkBriefingStep(page, cta, label, last = false) {
+// (o) górny pasek ma wyłącznie X i postęp (D-162: bez „Pomiń odprawę”, Notatnika i pełnego ekranu) i nie wypycha treści poza siebie.
+// Wraca też nazwę kroku, który przewija się wewnętrznie (informacyjnie).
+async function checkBriefingStep(page, cta, label) {
   await checkNoPageScroll(page, label);
   await checkMainSceneFits(page, label);
   const briefing = page.getByTestId('briefing-block');
@@ -789,17 +789,9 @@ async function checkBriefingStep(page, cta, label, last = false) {
     fail(`${label}: (n) przycisk "${cta}" wychodzi poza obszar bloku/ramkę - przycisk=${JSON.stringify(buttonBox)} obszar=${JSON.stringify(contentAreaBox)}.`);
   }
 
-  const skip = page.getByRole('button', { name: 'Pomiń odprawę' });
   const topbar = page.locator('.player-topbar');
-  const topbarBox = await boxOf(page, '.player-topbar');
-  if (last) {
-    if ((await skip.count()) !== 0) fail(`${label}: (o) "Pomiń odprawę" na ostatnim kroku (nie ma czego pomijać).`);
-  } else {
-    const skipBox = await skip.boundingBox();
-    if (!skipBox || !contains(topbarBox, skipBox)) {
-      fail(`${label}: (o) "Pomiń odprawę" poza górnym paskiem - przycisk=${JSON.stringify(skipBox)} pasek=${JSON.stringify(topbarBox)}.`);
-    }
-  }
+  const topbarControls = await topbar.locator('a, button').count();
+  if (topbarControls !== 1) fail(`${label}: (o) w górnym pasku ${topbarControls} kontrolek zamiast samego X (D-162).`);
   const topbarOverflow = await topbar.evaluate((el) => el.scrollWidth - el.clientWidth);
   if (topbarOverflow > 1) fail(`${label}: (o) górny pasek przepełniony w poziomie o ${topbarOverflow}px.`);
   return scrollHeight > clientHeight + 1;
@@ -883,7 +875,7 @@ async function walkBriefing(page, viewport, pageErrors, expectPortrait) {
     await page.waitForTimeout(150);
     await shot(page, `${viewport.name}-odprawa-${index + 1}`);
     if (pageErrors.length > 0) fail(`${label}: (p) błąd strony: ${pageErrors.join(' | ')}`);
-    const scrolls = await checkBriefingStep(page, cta, label, !!view.last);
+    const scrolls = await checkBriefingStep(page, cta, label);
     await checkBriefingScene(page, view, label, expectPortrait);
     await checkSingleNext(page, label);
     step(`${label}: (a, e, m-p, v-z, j1, j2) OK - ${expectPortrait ? 'pion' : 'poziom'}${scrolls ? ', krok przewija się wewnątrz odprawy (pionowo)' : ''}`, true);
@@ -1888,12 +1880,10 @@ try {
     }
   }
 
-  // NOTATNIK NA KAŻDYM BLOKU (uwaga właściciela po przejściu modułów 1 i 2 na desktopie 1920×975: po otwarciu notatnika cała ramka
-  // przesuwała się w lewo - ucięty X i początek treści). Każdy blok modułu 1 i 2 (czyli każdy używany typ bloku; odprawa także na drugim
-  // kroku), dwa desktopy: (o1) ramki nie da się przewinąć - ani przy schowanym, ani przy otwartym notatniku, także celowo (scrollLeft,
-  // scrollIntoView i focus() bez preventScroll na przycisku zamykania - to, co robi dowolny fokus albo przewinięcie wewnątrz ramki);
-  // (o2) po otwarciu ramka stoi w miejscu, X wyjścia i początek treści są w ramce; (o3) panel notatnika i jego X w całości w ramce;
-  // (o4) po zamknięciu (Escape) bez przesunięcia; (o5) strona bez przewijania w poziomie.
+  // RAMKA NA KAŻDYM BLOKU (uwaga właściciela po przejściu modułów 1 i 2 na desktopie 1920×975: cała ramka przesuwała się w lewo - ucięty
+  // X i początek treści). Każdy blok modułu 1 i 2 (każdy używany typ bloku; odprawa także na drugim kroku), dwa desktopy: (o1) ramki nie da
+  // się przewinąć, także celowo (scrollLeft, scrollIntoView i focus() bez preventScroll na X wyjścia); (o2) ramka stoi w miejscu, X wyjścia
+  // i początek treści są w ramce; (o5) strona bez przewijania w poziomie. Od D-162 bez notatnika (o3, o4 - panel notatnika - usunięte).
   if (runs('notes')) {
     const NOTES_VIEWPORTS = [
       { name: '1920x975', width: 1920, height: 975 },
@@ -1920,22 +1910,20 @@ try {
               frame: rect(frame),
               exit: rect(frame.querySelector('a[aria-label="Zakończ i wróć do listy kursów"]')),
               content: rect(frame.querySelector('[data-testid="player-content-area"]')),
-              drawer: rect(frame.querySelector('[data-testid="notes-drawer"]')),
-              close: rect(frame.querySelector('[aria-label="Zamknij notatnik"]')),
               scrolled,
               pageScrollX: window.scrollX,
               overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             };
           });
-        // To, co potrafi zrobić dowolny fokus albo scrollIntoView wewnątrz ramki, gdy schowany panel wystaje poza nią.
+        // To, co potrafi zrobić dowolny fokus albo scrollIntoView wewnątrz ramki.
         const tryToScrollFrame = () =>
           page.evaluate(async () => {
             const frame = document.querySelector('main.player-frame');
-            const close = frame.querySelector('[aria-label="Zamknij notatnik"]');
+            const exit = frame.querySelector('a[aria-label="Zakończ i wróć do listy kursów"]');
             frame.scrollLeft = 200;
-            close.scrollIntoView();
+            exit.scrollIntoView();
             const active = document.activeElement;
-            close.focus();
+            exit.focus();
             if (active instanceof HTMLElement) active.focus({ preventScroll: true });
             await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           });
@@ -1954,20 +1942,10 @@ try {
         const notebook = async (label) => {
           const before = await measure();
           await tryToScrollFrame();
-          await check(`${label} (notatnik schowany)`, before);
-          await page.getByRole('button', { name: /^Notatnik/ }).click();
-          await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="false"]');
-          await page.waitForTimeout(80);
-          await tryToScrollFrame();
-          const open = await check(`${label} (notatnik otwarty)`, before);
-          if (open.drawer.right > open.frame.right + 1 || open.drawer.left < open.frame.left - 1) fail(`${label}: (o3) panel notatnika poza ramką.`);
-          if (open.close.right > open.frame.right + 1 || open.close.left < open.drawer.left - 1 || open.close.top < open.frame.top - 1) fail(`${label}: (o3) X notatnika poza panelem.`);
-          await page.keyboard.press('Escape');
-          await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="true"]', { state: 'attached' });
-          await check(`${label} (po zamknięciu)`, before);
+          await check(label, before);
         };
         for (const block of blocks) {
-          const label = `${viewport.name} / notatnik / ${slug} / ${block.id}`;
+          const label = `${viewport.name} / ramka / ${slug} / ${block.id}`;
           await page.goto(`${WEB}/dev/player-harness?module=${slug}&block=${encodeURIComponent(block.id)}`);
           await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
           // Pole tekstowe z fokusem (zadanie tekstowe) - przypadek zgłoszony w module 1.
@@ -1979,10 +1957,10 @@ try {
             await page.locator('[data-testid="briefing-hotspot"]').first().click();
             await page.getByTestId('briefing-bubble').waitFor({ timeout: 10000 });
             await notebook(`${label} (krok 2)`);
-            await shot(page, `${viewport.name}-notatnik-${slug}-odprawa-krok-2`);
+            await shot(page, `${viewport.name}-ramka-${slug}-odprawa-krok-2`);
           }
         }
-        step(`${viewport.name} / notatnik / ${slug}: ${blocks.length} bloków (${[...new Set(blocks.map((b) => b.type))].join(', ')}) - (o1-o5) ramka nie do przewinięcia, bez przesunięcia OK`, true);
+        step(`${viewport.name} / ramka / ${slug}: ${blocks.length} bloków (${[...new Set(blocks.map((b) => b.type))].join(', ')}) - (o1, o2, o5) ramka nie do przewinięcia, bez przesunięcia OK`, true);
         await context.close();
       }
     }
@@ -2321,10 +2299,7 @@ try {
         if (!(await inArea(page, '[data-testid="osint-explanations"]'))) fail(`${label}: (n8) wyjaśnienia wyniku poza obszarem bloku.`);
         await shot(page, `${viewport.name}${reduced ? '-rm' : ''}-modul2-osint-wynik`);
         await page.unroute('**/api/courses/*/progress');
-        await page.getByRole('button', { name: /^Notatnik/ }).click();
-        if (!(await page.getByTestId('notebook-distinctions').textContent())?.includes('Off the Record')) fail(`${label}: (n8) brak wyróżnienia w notatniku.`);
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="true"]', { state: 'attached', timeout: 5000 });
+        // Wyróżnienie w notatniku - notatnik usunięty z odtwarzacza (D-162).
         await noShift(label);
         await common(label);
         step(`${label}: (n8, n6) wariant strony, obszary ≥ 44 px, nagranie z ukrytym zakończeniem, wynik na stronie OK`, true);
@@ -2385,26 +2360,21 @@ try {
     }
   }
 
-  // JĘZYK KURSU W PASKU GÓRNYM (D-133): najciaśniejszy pasek - pierwszy blok modułu 1 (odprawa z „Pomiń odprawę”, licznik dowodów,
-  // Notatnik) z przełącznikiem języka (`?localeUi=switch`, kurs dwujęzyczny) albo plakietką „Available in Polish only” (`?localeUi=badge`):
-  //  (j1) pasek górny bez przepełnienia w poziomie i każdy jego element w ramce; (j2) przyciski języka ≥ 40 px wysokości (jak reszta paska),
-  //  plakietka widoczna; od 640 px widoczna kopia w pasku górnym, węziej - nad treścią bloku (pasek nie ma miejsca), nigdy obie; (j3) strona
-  //  bez przewijania w poziomie; (j4) węziej: przedmiot odprawy („Odbierz telefon”) w całości w obszarze bloku mimo wiersza języka.
+  // JĘZYK KURSU (D-133, D-162): kurs dwujęzyczny (`?localeUi=switch`) i kurs bez języka gracza (`?localeUi=badge`) - od D-162 BEZ
+  // przełącznika i plakietki w odtwarzaczu (decyzja właściciela): (j0) żadnej kontrolki języka; (j1) pasek górny bez przepełnienia w
+  // poziomie i każdy jego element w ramce; (j3) strona bez przewijania w poziomie; (j4) węziej: przedmiot odprawy („Odbierz telefon”) w całości
+  // w obszarze bloku.
   if (runs('jezyk')) {
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
       const page = await context.newPage();
       for (const variant of ['switch', 'badge']) {
-        const label = `${viewport.name} / język / ${variant === 'switch' ? 'przełącznik' : 'plakietka'}`;
+        const label = `${viewport.name} / język / ${variant === 'switch' ? 'kurs dwujęzyczny' : 'kurs bez języka gracza'}`;
         await page.goto(`${WEB}/dev/player-harness?block=odprawa&localeUi=${variant}`);
         await page.getByTestId('player-content-area').waitFor({ timeout: 30000 });
-        // Dwie kopie w HTML (pasek górny od 640 px, wiersz nad treścią węziej), przełączane klasami - widoczna musi być właściwa, druga ukryta.
         const narrow = viewport.width < 640;
-        const ids = variant === 'badge' ? ['polish-only-badge', 'polish-only-badge-row'] : ['course-language', 'course-language-row'];
-        const control = page.getByTestId(narrow ? ids[1] : ids[0]);
-        await control.waitFor({ timeout: 10000 });
-        // Po pojawieniu się widocznej kopii (strona ostylowana) druga musi być ukryta.
-        if (await page.getByTestId(narrow ? ids[0] : ids[1]).isVisible()) fail(`${label}: (j2) widoczne obie kopie kontrolki.`);
+        const leftovers = await page.locator('[data-testid^="course-language"], [data-testid^="polish-only-badge"]').count();
+        if (leftovers > 0) fail(`${label}: (j0) w odtwarzaczu jest kontrolka języka (${leftovers}) - od D-162 nie powinno jej być.`);
         const info = await page.evaluate(() => {
           const bar = document.querySelector('.player-topbar');
           const frame = document.querySelector('main.player-frame').getBoundingClientRect();
@@ -2424,16 +2394,14 @@ try {
         if (info.overflow > 1) fail(`${label}: (j1) pasek górny przepełniony o ${info.overflow}px.`);
         if (info.outside.length > 0) fail(`${label}: (j1) poza ramką: ${info.outside.join(', ')}`);
         if (info.pageOverflow > 1) fail(`${label}: (j3) strona przewija się w poziomie o ${info.pageOverflow}px.`);
-        const box = await control.boundingBox();
-        if (!box || box.height < (variant === 'switch' ? 39.5 : 20)) fail(`${label}: (j2) kontrolka niewidoczna albo za niska (${box?.height ?? 0}px).`);
-        // (j4) Wąski ekran: wiersz języka nad treścią nie wypycha przedmiotu odprawy poza obszar bloku (układ 'fill' z overflow-clip).
+        // (j4) Wąski ekran: przedmiot odprawy w obszarze bloku (układ 'fill' z overflow-clip).
         if (narrow) {
           const area = await boxOf(page, '[data-testid="player-content-area"]');
           const item = await page.getByRole('button', { name: 'Odbierz telefon' }).boundingBox();
           if (!item || !contains(area, item)) fail(`${label}: (j4) przedmiot odprawy „Odbierz telefon” poza obszarem bloku.`);
         }
         await shot(page, `${viewport.name}-jezyk-${variant}`);
-        step(`${label}: (j1-j4) pasek górny bez przepełnienia, kontrolka w ${narrow ? 'wierszu nad treścią' : 'pasku'}, w ramce OK`, true);
+        step(`${label}: (j0-j4) bez kontrolki języka, pasek górny bez przepełnienia, w ramce OK`, true);
       }
       await context.close();
     }
@@ -3373,10 +3341,9 @@ try {
     }
   }
 
-  // RUCH (feat/player-motion, D-090): "Zabierz" przy dowodzie (karteczka) w prawdziwej przeglądarce. Bez reduced-motion: (m1) etykieta
-  // lotu pojawia się, leży w viewporcie, a strona się nie przewija w trakcie lotu; (m2) po locie etykieta znika z DOM; (m3) przycisk
-  // Notatnika po podskoku wraca do skali 1. Z reduced-motion: (m4) bez etykiety lotu. Zawsze: (m5) liczba wpisów notatnika rośnie; (m6) pasek
-  // postępu przesuwa się transformem na pełnej szerokości toru (translateX, nie width); (m7) błędy strony.
+  // RUCH (feat/player-motion, D-090): "Zabierz" przy dowodzie (karteczka) w prawdziwej przeglądarce. Od D-162 bez Notatnika w pasku, więc
+  // lot dowodu nie ma celu: (m1) żadnej etykiety lotu, strona się nie przewija; (m6) pasek postępu przesuwa się transformem na pełnej
+  // szerokości toru (translateX, nie width); (m7) błędy strony.
   for (const viewport of runs('motion') ? BRIEFING_VIEWPORTS : []) {
     console.log(`\n--- viewport (RUCH): ${viewport.name} ---`);
     for (const reduce of [false, true]) {
@@ -3392,45 +3359,17 @@ try {
       const label = `${viewport.name} / ruch${reduce ? ' (reduced-motion)' : ''}: Zabierz karteczkę`;
       await page.goto(`${WEB}/dev/player-harness?hotspot=karteczka`);
       await page.locator('[data-testid="scene-zoom"][data-phase="open"]').waitFor();
-      // Harness nie ma progress.evidence (licznik "Dowody x/N" się nie pokazuje) - wzrost liczy się po etykiecie przycisku Notatnika.
-      const notesCount = async () => Number(((await page.locator('[data-evidence-target]').getAttribute('aria-label')) ?? '').match(/\((\d+)\)/)?.[1] ?? NaN);
-      const before = await notesCount();
       await page.getByRole('dialog').getByRole('button', { name: 'Zabierz' }).click();
-      const chip = page.getByTestId('evidence-flight');
-      if (!reduce) {
-        // Pomiar w JEDNEJ klatce przeglądarki (polling raf), póki etykieta leci - osobne wywołania mogłyby trafić już po jej zniknięciu (400 ms).
-        const flight = await (
-          await page.waitForFunction(
-            () => {
-              const el = document.querySelector('[data-testid="evidence-flight"]');
-              if (!el) return null;
-              const r = el.getBoundingClientRect();
-              const doc = document.documentElement;
-              return { x: r.left, y: r.top, right: r.right, bottom: r.bottom, vw: window.innerWidth, vh: window.innerHeight, scrollX: doc.scrollWidth - doc.clientWidth, scrollY: doc.scrollHeight - doc.clientHeight };
-            },
-            null,
-            { timeout: 2000, polling: 'raf' },
-          )
-        ).jsonValue();
-        if (flight.scrollX > 1 || flight.scrollY > 1) fail(`${label}: (m1) strona przewija się w trakcie lotu - ${JSON.stringify(flight)}.`);
-        if (flight.x < -1 || flight.y < -1 || flight.right > flight.vw + 1 || flight.bottom > flight.vh + 1) fail(`${label}: (m1) etykieta lotu poza viewportem - ${JSON.stringify(flight)}.`);
-        await shot(page, `${viewport.name}-ruch-lot`);
-        await chip.waitFor({ state: 'detached', timeout: 2000 });
-        await page.waitForTimeout(350);
-        const transform = await page.locator('[data-evidence-target]').evaluate((el) => getComputedStyle(el).transform);
-        if (transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)') fail(`${label}: (m3) przycisk Notatnika po podskoku ma transform ${transform}.`);
-      } else {
-        await page.waitForTimeout(500);
-        if ((await chip.count()) !== 0) fail(`${label}: (m4) reduced-motion, a etykieta lotu jest w DOM.`);
-      }
-      const after = await notesCount();
-      if (after !== before + 1) fail(`${label}: (m5) notatnik ${before} -> ${after} (oczekiwane +1).`);
+      await page.waitForTimeout(500);
+      if ((await page.getByTestId('evidence-flight').count()) !== 0) fail(`${label}: (m1) etykieta lotu dowodu w DOM - bez Notatnika nie ma celu (D-162).`);
+      const pageScroll = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (pageScroll > 1) fail(`${label}: (m1) strona przewija się w poziomie o ${pageScroll}px.`);
       const bar = await page.getByTestId('progress-fill').evaluate((el) => ({ width: el.getBoundingClientRect().width, track: el.parentElement.clientWidth, transform: getComputedStyle(el).transform }));
       if (Math.abs(bar.width - 0) > 1 && !bar.transform.startsWith('matrix')) fail(`${label}: (m6) pasek postępu bez transformu: ${JSON.stringify(bar)}.`);
       const layoutWidth = await page.getByTestId('progress-fill').evaluate((el) => el.offsetWidth);
       if (Math.abs(layoutWidth - bar.track) > 1) fail(`${label}: (m6) pasek postępu zmienia szerokość układu (${layoutWidth} px zamiast toru ${bar.track} px).`);
       if (pageErrors.length > 0) fail(`${label}: (m7) błąd strony: ${pageErrors.join(' | ')}`);
-      step(`${label}: (m1-m7) OK`, true);
+      step(`${label}: (m1, m6, m7) OK`, true);
       await context.close();
     }
   }
@@ -3758,12 +3697,6 @@ try {
         }
       }
     }
-    // Notatnik otwarty (panel nad sceną).
-    await page.goto(`${WEB}/dev/player-harness?block=biuro-anny`);
-    await page.getByRole('button', { name: /^Notatnik/ }).click();
-    await page.waitForTimeout(300);
-    await audit('notatnik');
-
     // Rozmowy: start i po wszystkich pytaniach.
     for (const block of ['rozmowa-anna', 'rozmowa-marek']) {
       await page.goto(`${WEB}/dev/player-harness?block=${block}`);
@@ -4053,11 +3986,7 @@ try {
       const icon = await page.getByRole('button', { name: /^GTA6_PL\.exe/ }).getAttribute('aria-label');
       if (!icon?.includes('(obejrzane)')) fail(`${label}: (e6) ikona gry nie jest obejrzana („${icon}”).`);
       await page.keyboard.press('Escape'); // pulpit -> scena
-      await page.getByRole('button', { name: /^Notatnik/ }).click();
-      const distinctions = page.getByTestId('notebook-distinctions');
-      await distinctions.waitFor();
-      if (!(await distinctions.textContent())?.includes('Curious Detective')) fail(`${label}: (e6) brak wyróżnienia w notatniku.`);
-      await shot(page, `${viewport.name}-easter-4-notatnik${reduced ? '-rm' : ''}`);
+      // Wyróżnienie w notatniku - notatnik usunięty z odtwarzacza (D-162); wyróżnienie widać w outro (wyżej).
       await checkNoPageScroll(page, label);
       if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: ${single ? '(e1-e4, e6-e10, po jednym 1/3-3/3)' : '(e1-e4, e6-e8)'} OK`, true);
@@ -4168,9 +4097,9 @@ try {
   }
 
   // DOLNY PASEK (fix/mobile-player-bar): (n1) strona bez poziomego przewijania; (n2) elementy paska (przyciski, linki, linijka napisów)
-  // widoczne, w granicach paska i ekranu, BEZ nakładania się parami; (n3) scena < 640 px: Odtwórz/Transkrypcja/Lektor/Wstecz = 44x44,
+  // widoczne, w granicach paska i ekranu, BEZ nakładania się parami; (n3) scena < 640 px: Odtwórz/CC/głośnik/Wstecz = 44x44,
   // „Dalej” 44 px wysokości i >= 120 px szerokości, jedyny widoczny tekst w rzędzie przycisków, bez ucięcia; rząd przycisków 60 px;
-  // napisy (jeśli są) jedną linijką NAD przyciskami; scena >= 640 px: etykieta „Lektor” widoczna (układ bez zmian); (n4) rozmowa na
+  // napisy (jeśli są) jedną linijką NAD przyciskami; przy narracji CC i głośnik (D-162); (n6) okienko głośności; (n4) rozmowa na
   // scenie < 640 px: chipy w jednym rzędzie (wspólna górna krawędź, poziome przewijanie), „Wymagane pytania: x/y” jedną linijką nad nimi;
   // (n5) błędy strony.
   for (const viewport of runs('bar') ? BAR_VIEWPORTS : []) {
@@ -4219,6 +4148,8 @@ try {
           bar: box(barEl),
           controls: controls.map((el) => ({ name: el.getAttribute('aria-label') || el.textContent.trim(), cls: el.className, ...box(el) })),
           caption: caption && visible(caption) ? box(caption) : null,
+          // Tekst narracji bez nagrania (D-162) - celowo do 2 linijek (przewijany w środku), nie jedna linijka napisów.
+          fallbackText: !!caption?.querySelector('[data-testid="narration-text"]'),
           next: next ? { ...box(next), clipped: next.scrollWidth > next.clientWidth + 1, text: next.textContent.trim() } : null,
           labels,
           compact: barEl.closest('.player-bottombar-host').getBoundingClientRect().width < 640,
@@ -4251,11 +4182,16 @@ try {
         if (!m.caption && Math.abs(m.bar.h - 60) > 0.5) fail(`${label}: (n3) pasek ${m.bar.h.toFixed(1)} px zamiast 60.`);
         if (Math.abs(m.bar.y + m.bar.h - rowTop - 52) > 0.5) fail(`${label}: (n3) rząd przycisków nie 44 + 8 px od dołu paska.`);
         // Jedna linijka napisów 15 px (D-103: line-height 20 + odstępy 6) - dwie linijki miałyby >= 46 px.
-        if (m.caption && (m.caption.y + m.caption.h > rowTop + 0.5 || m.caption.h > 28)) fail(`${label}: (n3) napisy nie jedną linijką nad przyciskami - ${JSON.stringify(m.caption)}.`);
-      } else if (m.controls.some((c) => c.name === 'Lektor') && !m.labels.includes('Lektor')) {
-        fail(`${label}: (n3) scena >= 640 px - etykieta „Lektor” powinna być widoczna (układ bez zmian).`);
+        if (m.caption && (m.caption.y + m.caption.h > rowTop + 0.5 || m.caption.h > (m.fallbackText ? 48 : 28))) {
+          fail(`${label}: (n3) napisy nie ${m.fallbackText ? 'w 2 linijkach' : 'jedną linijką'} nad przyciskami - ${JSON.stringify(m.caption)}.`);
+        }
       }
+      // D-162: przy narracji - CC i głośnik zamiast „Transkrypcja”/„Lektor”; żadnego z dawnych przycisków.
       if (narration && (!m.caption || !m.controls.some((c) => /nagranie/.test(c.name)))) fail(`${label}: (n3) brak przycisku odtwarzania albo linijki napisów.`);
+      if (narration && (!m.controls.some((c) => c.name === 'Napisy') || !m.controls.some((c) => /^(Głośność lektora|Lektor wyciszony)/.test(c.name)))) {
+        fail(`${label}: (n3) brak przycisku CC („Napisy”) albo głośnika - ${m.controls.map((c) => c.name).join(', ')}.`);
+      }
+      if (m.controls.some((c) => c.name === 'Transkrypcja' || c.name === 'Lektor')) fail(`${label}: (n3) w pasku jest dawny przycisk „Transkrypcja”/„Lektor”.`);
       if (blockId === 'rozmowa-anna' && m.compact) {
         const chips = await page.evaluate(() => {
           const ul = document.querySelector('.dialogue-chips');
@@ -4273,18 +4209,28 @@ try {
         step(`${label}: (n4) chipy w jednym rzędzie${chips.scrolls ? ' (przewijane w poziomie)' : ''}, licznik nad nimi`, true);
       }
       await shot(page, `${viewport.name}-pasek-${blockId}${narration ? '-lektor' : ''}`);
-      if (blockId === 'ostatnie-pytanie' && !narration) {
-        // (n6) Otwarty notatnik: tło notatnika przykrywa też dolny pasek (klik w pasek trafia w tło, nie w przycisk).
-        await page.getByRole('button', { name: /^Notatnik/ }).click();
-        await page.waitForTimeout(400);
-        const hit = await page.evaluate(() => {
+      if (narration) {
+        // (n6) Okienko głośności (D-162): po kliknięciu głośnika w całości w ramce i w ekranie, nad paskiem, nieprzykryte (elementFromPoint);
+        // suwak i „Wycisz lektora” ≥ 44 px; Escape zamyka.
+        await page.getByRole('button', { name: /^(Głośność lektora|Lektor wyciszony)/ }).click();
+        const panel = page.getByTestId('volume-panel');
+        await panel.waitFor({ timeout: 5000 });
+        const vol = await page.evaluate(() => {
+          const p = document.querySelector('[data-testid="volume-panel"]').getBoundingClientRect();
+          const frame = document.querySelector('main.player-frame').getBoundingClientRect();
           const bar = document.querySelector('[data-testid="player-bottombar"]').getBoundingClientRect();
-          const el = document.elementFromPoint(bar.x + 30, bar.y + bar.height / 2);
-          return el ? { inBar: !!el.closest('[data-testid="player-bottombar"]'), tag: el.tagName } : null;
+          const top = document.elementFromPoint(p.x + p.width / 2, p.y + 12);
+          const sizes = [...document.querySelectorAll('[data-testid="volume-panel"] input, [data-testid="volume-panel"] button')].map((el) => el.getBoundingClientRect().height);
+          return { p: { x: p.x, y: p.y, right: p.right, bottom: p.bottom }, frame: { x: frame.x, y: frame.y, right: frame.right, bottom: frame.bottom }, barTop: bar.top, onTop: !!top?.closest('[data-testid="volume-panel"]'), sizes, vw: innerWidth, vh: innerHeight };
         });
-        if (!hit || hit.inBar) fail(`${label}: (n6) przy otwartym notatniku pasek nie jest przykryty tłem - ${JSON.stringify(hit)}.`);
+        if (vol.p.x < vol.frame.x - 1 || vol.p.right > vol.frame.right + 1 || vol.p.y < vol.frame.y - 1 || vol.p.right > vol.vw + 1 || vol.p.y < 0) fail(`${label}: (n6) okienko głośności poza ramką/ekranem - ${JSON.stringify(vol)}.`);
+        if (vol.p.bottom > vol.barTop + 1) fail(`${label}: (n6) okienko głośności nie nad paskiem - ${JSON.stringify(vol)}.`);
+        if (!vol.onTop) fail(`${label}: (n6) okienko głośności przykryte innym elementem.`);
+        if (vol.sizes.some((h) => h < 43.5)) fail(`${label}: (n6) kontrolka okienka głośności niższa niż 44 px - ${vol.sizes.join(', ')}.`);
+        await shot(page, `${viewport.name}-pasek-${blockId}-glosnosc`);
         await page.keyboard.press('Escape');
-        step(`${label}: (n6) otwarty notatnik przykrywa dolny pasek`, true);
+        await panel.waitFor({ state: 'detached', timeout: 3000 });
+        step(`${label}: (n6) okienko głośności w ramce, nad paskiem, kontrolki ≥ 44 px, Escape zamyka`, true);
       }
       if (pageErrors.length > 0) fail(`${label}: (n5) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: (n1-n3, n5) OK - ${m.compact ? 'wąski' : 'szeroki'}, elementy: ${m.controls.map((c) => c.name).join(', ')}${m.caption ? ' + napisy' : ''}`, true);

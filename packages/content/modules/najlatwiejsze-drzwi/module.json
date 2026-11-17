@@ -19,6 +19,7 @@
     "Chronić konto logowaniem dwuetapowym i VPN poza biurem."
   ],
   "thumbnail": "assets/najlatwiejsze-drzwi/images/miniatura.a8cf8742.webp",
+  "caseNumber": 5,
   "blocks": [
     {
       "id": "start",

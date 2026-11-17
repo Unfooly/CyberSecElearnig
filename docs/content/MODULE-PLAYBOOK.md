@@ -43,7 +43,9 @@ zasobie wpisz ścieżkę źródłową (`scenes/<nazwa>.svg`) - `--assets` podmie
 z plikami z RĘCZNEJ listy `ASSET_PATHS` (`scripts/content/src/assets.ts`) - nowe pole schematu z plikiem trzeba tam dopisać (z testem w
 `assets.test.ts`). `steps[].caller.avatar` (avatar dzwoniącego w odprawie) jest na liście od B-128; moduł 1 go nie używa (inicjały).
 
-Metadane modułu (v5): `slug`, `title`, `subtitle`, `category`, `level`, `durationMinutes`, `mandatory`, `objectives[]`, `thumbnail`.
+Metadane modułu (v5): `slug`, `title`, `subtitle`, `category`, `level`, `durationMinutes`, `mandatory`, `objectives[]`, `thumbnail`,
+`caseNumber` i `cover` (ekran startu i końca, D-163: `start`/`end` 1920×1080 - ważne elementy w prawej połowie, lewą zasłania panel;
+`startPortrait`/`endPortrait` 1080×1350 na telefon). `subtitle` to jedno zdanie pod tytułem na ekranie startu.
 `objectives` to cele szkoleniowe w katalogu kursów - co innego niż zadania sprawy (`caseFile.tasks` w odprawie, D-081).
 
 ## 3. Oś czasu jest źródłem prawdy

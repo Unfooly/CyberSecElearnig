@@ -156,6 +156,15 @@ export function collectAssetRefs(raw: Json): AssetRef[] {
   if (typeof raw.thumbnail === 'string' && raw.thumbnail.trim() !== '') {
     refs.push({ id: 'module#thumbnail', blockId: 'module', holder: raw, key: 'thumbnail', value: raw.thumbnail });
   }
+  // Okładki ekranu startu i końca (D-163) - poziom modułu jak miniatura: `module#cover.start`, inne języki `module#cover.start@en`.
+  for (const field of ['start', 'end', 'startPortrait', 'endPortrait']) {
+    for (const { holder, key, trail, locale } of expandAsset(raw, ['cover', field], [])) {
+      const value = holder[key] as string;
+      if (value.trim() === '') continue;
+      const suffix = locale && locale !== 'pl' ? `@${locale}` : '';
+      refs.push({ id: `module#${trail.join('.')}${suffix}`, blockId: 'module', holder, key, value });
+    }
+  }
   for (const block of blocks) {
     if (!isObject(block) || typeof block.id !== 'string') continue;
     for (const path of ASSET_PATHS) {

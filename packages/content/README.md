@@ -68,6 +68,11 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   scena 16:9 w pasach.
 - Miniatura modułu (D-084, opcjonalna): `thumbnail` na poziomie modułu - obraz 16:9 z `assets/` (potok `--assets`, klucz locka
   `module#thumbnail`), zapisywany przez import w `courses.thumbnail` i pokazywany na kartach katalogu i „moich kursów”.
+- Okładki i numer sprawy (D-163, opcjonalne, od v5): `cover: { start, end, startPortrait?, endPortrait? }` - grafiki ekranu startu
+  i końca modułu (poziome 1920×1080 z ważnymi elementami w prawej połowie, pionowe 1080×1350; osobny plik na język jak `limage`, v6),
+  klucze locka `module#cover.<pole>`; `caseNumber` (1-999) - „Sprawa N” na ekranie startu. Poza skrótem treści (dodanie nie tworzy
+  wersji kursu) i bez kolumn w bazie: API czyta je z module.json w obrazie (`apps/api/src/courses/module-meta.ts`). Bez okładki
+  ekran ma ciemne tło #23232A.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
   notatniku (czytana z bloku BRIEFING bieżącej wersji treści). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są
   ukończone (to nie ocena). `completeWhen` wskazuje istniejące bloki modułu, nigdy `BRIEFING` (pominięcie odprawy nie odhacza

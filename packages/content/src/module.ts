@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { blockSchema } from './blocks';
-import { CONTENT_LOCALES, COURSE_CATEGORIES, idSchema, imagePathSchema, ltext } from './common';
+import { CONTENT_LOCALES, COURSE_CATEGORIES, idSchema, imagePathSchema, limage, ltext } from './common';
 import { Delocalize } from './localize';
 
 /**
@@ -20,6 +20,21 @@ export const SUPPORTED_SCHEMA_VERSIONS = [2, 3, 4, 5, 6] as const;
 
 export const MODULE_LEVELS = ['basic', 'intermediate', 'advanced'] as const;
 
+/**
+ * Okładki ekranu startu i końca modułu (szablon modułu Unfooly, D-163) - addytywnie w v5, bez migracji: odtwarzacz dostaje je z API, które
+ * czyta module.json z obrazu (jak content-import). `start`/`end` - poziome 1920×1080 (ważne elementy w prawej połowie, lewą zasłania panel),
+ * `startPortrait`/`endPortrait` - pionowe 1080×1350 na telefon (bez nich telefon kadruje poziomą). Grafika z tekstem wpalonym w obraz -
+ * osobny plik na język (limage, D-133). Brak okładki - ciemne tło #23232A.
+ */
+export const moduleCoverSchema = z
+  .object({
+    start: limage(),
+    end: limage(),
+    startPortrait: limage().optional(),
+    endPortrait: limage().optional(),
+  })
+  .strict();
+
 export const moduleSchema = z
   .object({
     schemaVersion: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
@@ -38,6 +53,11 @@ export const moduleSchema = z
     objectives: z.array(ltext(200)).max(6).optional(),
     // Miniatura modułu 16:9 do katalogu i karty kursu (plik z assets/ modułu, potok --assets; D-084) - addytywnie w v5.
     thumbnail: imagePathSchema.optional(),
+    // Okładki ekranu startu i końca (D-163, addytywnie w v5) - opis przy moduleCoverSchema.
+    cover: moduleCoverSchema.optional(),
+    // Numer sprawy na ekranie startu („Sprawa 5 · ok. 6 min”, D-163, addytywnie w v5) - kolejność modułów w serii, nie numer z karty sprawy
+    // w odprawie (caseNo, D-081). Bez pola - sam czas.
+    caseNumber: z.number().int().min(1).max(999).optional(),
     // Tryb prosty (D-132, moduł 3 i kolejne, addytywnie w v6): ostrzejsza walidacja (semantics.ts simpleModeErrors) i odtwarzacz dla osób
     // nietechnicznych - ocena każdego kliknięcia od razu, podpowiedź po 2 błędach, tekst min. 16 px, bez wyniku w blokach.
     simpleMode: z.boolean().optional(),

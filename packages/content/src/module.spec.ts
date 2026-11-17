@@ -1053,6 +1053,62 @@ describe('parseModule: miniatura modułu (thumbnail, D-084)', () => {
   });
 });
 
+describe('parseModule: okładki i numer sprawy (cover, caseNumber, D-163)', () => {
+  const issues = (mutate: (m: Record<string, unknown>) => void): string => {
+    const module = fullModuleForTests() as unknown as Record<string, unknown>;
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  it('okładki start/end (z pionowymi albo bez) i numer sprawy są przyjmowane, także osobny plik na język', () => {
+    expect(issues((m) => (m.cover = { start: 'okladki/start.webp', end: 'okladki/koniec.webp' }))).toBe('');
+    expect(
+      issues((m) => {
+        m.schemaVersion = 6;
+        m.cover = {
+          start: { pl: 'okladki/pl/start.webp', en: 'okladki/en/start.webp' },
+          end: 'okladki/koniec.webp',
+          startPortrait: 'okladki/start-pion.webp',
+          endPortrait: 'okladki/koniec-pion.webp',
+        };
+      }),
+    ).toBe('');
+    expect(issues((m) => (m.caseNumber = 5))).toBe('');
+  });
+  it('okładka wymaga start i end, nie przyjmuje nieznanych pól, adresów zewnętrznych ani złych rozszerzeń', () => {
+    expect(issues((m) => (m.cover = { start: 'okladki/start.webp' }))).toContain('cover.end');
+    expect(issues((m) => (m.cover = { start: 'a.webp', end: 'b.webp', middle: 'c.webp' }))).toContain('cover');
+    expect(issues((m) => (m.cover = { start: 'https://evil.example/a.webp', end: 'b.webp' }))).toContain('cover.start');
+    expect(issues((m) => (m.cover = { start: '../a.webp', end: 'b.webp' }))).toContain('cover.start');
+    expect(issues((m) => (m.cover = { start: 'a.gif', end: 'b.webp' }))).toContain('cover.start');
+  });
+  it('numer sprawy to liczba całkowita 1-999', () => {
+    expect(issues((m) => (m.caseNumber = 0))).toContain('caseNumber');
+    expect(issues((m) => (m.caseNumber = 1.5))).toContain('caseNumber');
+    expect(issues((m) => (m.caseNumber = 1000))).toContain('caseNumber');
+    expect(issues((m) => (m.caseNumber = '5'))).toContain('caseNumber');
+  });
+  it('oba pola wymagają schemaVersion 5; okładka z osobnym plikiem na język - schemaVersion 6', () => {
+    const v4 = (extra: (m: Record<string, unknown>) => void) =>
+      issues((m) => {
+        extra(m);
+        m.schemaVersion = 4;
+      });
+    expect(v4((m) => (m.cover = { start: 'a.webp', end: 'b.webp' }))).toContain('cover: wymaga schemaVersion 5');
+    expect(v4((m) => (m.caseNumber = 2))).toContain('caseNumber: wymaga schemaVersion 5');
+    expect(
+      issues((m) => {
+        m.cover = { start: { pl: 'pl/a.webp', en: 'en/a.webp' }, end: 'b.webp' };
+        m.schemaVersion = 5;
+      }),
+    ).toContain('wymagają schemaVersion 6');
+  });
+});
+
 // Grafika kroków odprawy (D-084): scena, hotspot = cta, sloty, dwie fazy caseFile.
 describe('parseModule: BRIEFING - grafika kroków', () => {
   const invalid = (mutate: (m: TestModule) => void): string => {

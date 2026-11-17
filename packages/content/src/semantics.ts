@@ -1387,6 +1387,9 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
   }
   // Miniatura modułu (D-084) - addytywnie w v5. Istnienie pliku sprawdza potok zasobów (--assets), jak obrazy bloków.
   if (contentModule.schemaVersion < 5 && contentModule.thumbnail !== undefined) errors.push('thumbnail: wymaga schemaVersion 5');
+  // Okładki i numer sprawy (szablon modułu, D-163) - addytywnie w v5, jak miniatura; pliki sprawdza potok zasobów.
+  if (contentModule.schemaVersion < 5 && contentModule.cover !== undefined) errors.push('cover: wymaga schemaVersion 5');
+  if (contentModule.schemaVersion < 5 && contentModule.caseNumber !== undefined) errors.push('caseNumber: wymaga schemaVersion 5');
   errors.push(...simpleModeErrors(contentModule));
   // Wielokrotny wybór (D-158) istnieje tylko w trybie prostym: ocena idzie przez /check (próby do skutku), a zwykły zapis bloku przyjmuje
   // jeden indeks odpowiedzi.

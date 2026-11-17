@@ -113,7 +113,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'start', 'pseudo', 'coming-soon'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'monitor', 'jezyk', 'start', 'pseudo', 'coming-soon'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -2630,6 +2630,140 @@ try {
   //  (p4) SWIPE_SORT przyciskami (pierwsze 3 karty) i gestem myszy (pozostałe, w lewo i w prawo wg treści): zdanie po każdej karcie,
   //       „Dalej” aktywny po ostatniej.
   // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
+  // QUIZ W MONITORZE (szablon modułu, D-164): moduł 5 (wielokrotny wybór) i moduł 3 (pojedynczy), także w pseudo-lokalizacji xx, na
+  // komputerze, telefonie w poziomie i w pionie. Odpowiedzi /check podstawione z treści (jak sekcja `prosty`). Sprawdzamy:
+  //  (q1) szeroko (≥ 640 px i ≥ 420 px wysokości): ekran z treścią leży na białym prostokącie grafiki - pozycja i wymiary z manifestu
+  //       (apps/web/src/lib/player-monitor.json) ±1,5 px względem obrazu monitora, monitor w obszarze bloku; wąsko: karta w ramce 10 px
+  //       w obszarze bloku na przygaszonym monitorze (opacity 0,55);
+  //  (q2) bez przewijania strony i obszaru bloku (przewija się tylko ekran), bez przepełnienia w poziomie w ekranie, tekst ≥ 16 px;
+  //  (q3) odpowiedzi ≥ 44 px, litery A, B, C… w kolejności;
+  //  (q4) zła odpowiedź: kolor i ✕ (nie litera), zdanie w ekranie (po przewinięciu ekranu - widoczne w jego obrysie);
+  //  (q5) trafienie: ✓, „Dalej” aktywny; (q6) brak błędów strony i konsoli.
+  if (runs('monitor')) {
+    const manifest = JSON.parse(readFileSync(join(process.cwd(), 'apps', 'web', 'src', 'lib', 'player-monitor.json'), 'utf8'));
+    const MONITOR_CASES = [
+      { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba' },
+      { slug: 'lancuszek', block: 'zaloguj' },
+      { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba', pseudo: true },
+    ];
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text().slice(0, 200));
+      });
+      let quiz;
+      await page.route('**/api/courses/*/blocks/*/check', async (route) => {
+        const body = JSON.parse(route.request().postData() ?? '{}');
+        if (Array.isArray(body.options)) {
+          const good = quiz.options.every((option, index) => (option.correct === true) === body.options.includes(index));
+          const options = body.options.map((index) => ({ option: index, result: quiz.options[index].correct ? 'good' : 'bad', feedback: quiz.options[index].feedback }));
+          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ blockId: quiz.id, result: good ? 'good' : 'bad', feedback: '', options, done: good }) });
+          return;
+        }
+        const answer = quiz.options[body.option];
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ blockId: quiz.id, result: answer.correct ? 'good' : 'bad', feedback: answer.feedback, done: false }) });
+      });
+      for (const testCase of MONITOR_CASES) {
+        const label = `${viewport.name} / monitor / ${testCase.slug} ${testCase.block}${testCase.pseudo ? ' xx' : ''}`;
+        const json = JSON.parse(readFileSync(join(moduleDir(testCase.slug), 'module.json'), 'utf8'));
+        quiz = json.blocks.find((b) => b.id === testCase.block);
+        const text = (value) => (typeof value === 'string' ? value : value.pl);
+        quiz = { ...quiz, options: quiz.options.map((option) => ({ ...option, feedback: text(option.feedback ?? '') })) };
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=${testCase.slug}&block=${testCase.block}${testCase.pseudo ? '&pseudo=1' : ''}`);
+        await page.getByTestId('monitor-screen').waitFor({ timeout: 30000 });
+        await page.waitForFunction(() => document.querySelector('.monitor-stage-img')?.complete === true, null, { timeout: 15000 });
+        const wide = await page.evaluate(() => {
+          const stage = document.querySelector('[data-testid="monitor-stage"]').getBoundingClientRect();
+          return stage.width >= 640 && stage.height >= 420;
+        });
+        const geometry = async () =>
+          page.evaluate(() => {
+            const rect = (el) => {
+              const r = el.getBoundingClientRect();
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            };
+            const screenEl = document.querySelector('[data-testid="monitor-screen"]');
+            const area = document.querySelector('[data-testid="player-content-area"]');
+            const img = document.querySelector('.monitor-stage-img');
+            const texts = [...screenEl.querySelectorAll('*')].filter((el) => !el.closest('.sr-only, [aria-hidden="true"]') && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()));
+            return {
+              screen: rect(screenEl),
+              img: rect(img),
+              area: rect(area),
+              imgOpacity: getComputedStyle(img).opacity,
+              border: getComputedStyle(screenEl).borderTopWidth,
+              screenOverflowX: screenEl.scrollWidth - screenEl.clientWidth,
+              areaScroll: area.scrollHeight - area.clientHeight,
+              pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
+              minFont: Math.min(...texts.map((el) => parseFloat(getComputedStyle(el).fontSize))),
+            };
+          });
+        const g = await geometry();
+        if (wide) {
+          const s = manifest.screen;
+          const expected = { x: g.img.x + (g.img.width * s.left) / 100, y: g.img.y + (g.img.height * s.top) / 100, width: (g.img.width * s.width) / 100, height: (g.img.height * s.height) / 100 };
+          for (const key of ['x', 'y', 'width', 'height']) {
+            if (Math.abs(g.screen[key] - expected[key]) > 1.5) fail(`${label}: (q1) ekran ${key}=${g.screen[key].toFixed(1)} zamiast ${expected[key].toFixed(1)} (manifest).`);
+          }
+          if (!contains(g.area, g.img)) fail(`${label}: (q1) monitor wychodzi poza obszar bloku - ${JSON.stringify(g.img)}.`);
+        } else {
+          if (g.border !== '10px') fail(`${label}: (q1) karta bez ramki 10 px (${g.border}).`);
+          if (Math.abs(Number(g.imgOpacity) - 0.55) > 0.01) fail(`${label}: (q1) tło monitora nieprzygaszone (opacity ${g.imgOpacity}).`);
+          if (!contains(g.area, g.screen)) fail(`${label}: (q1) karta poza obszarem bloku - ${JSON.stringify(g.screen)}.`);
+        }
+        if (g.areaScroll > 1 || g.pageScroll.some((v) => v > 1)) fail(`${label}: (q2) przewija się obszar bloku (${g.areaScroll}) albo strona (${g.pageScroll}).`);
+        if (g.screenOverflowX > 1) fail(`${label}: (q2) treść ekranu przepełniona w poziomie o ${g.screenOverflowX}px.`);
+        if (g.minFont < 15.9) fail(`${label}: (q2) tekst ${g.minFont}px < 16px.`);
+        const optionSelector = quiz.multiple ? '[data-testid="simple-multi-option"]' : '[data-testid="simple-option"]';
+        const marks = await page.locator(optionSelector).evaluateAll((els) => els.map((el) => ({ h: el.getBoundingClientRect().height, mark: el.querySelector('[aria-hidden="true"]')?.textContent })));
+        if (marks.some((m) => m.h < 43.5)) fail(`${label}: (q3) odpowiedź niższa niż 44 px (${marks.map((m) => m.h).join(', ')}).`);
+        if (marks.map((m) => m.mark).join('') !== 'ABCDEFGH'.slice(0, marks.length)) fail(`${label}: (q3) litery odpowiedzi: ${marks.map((m) => m.mark).join(',')}.`);
+        // Widoczność elementu w obrysie ekranu (ekran przewija się sam - scrollIntoView przewija właśnie jego).
+        const visibleInScreen = (selector) =>
+          page.locator(selector).first().evaluate((el) => {
+            el.scrollIntoView({ block: 'nearest' });
+            const s = document.querySelector('[data-testid="monitor-screen"]').getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            return r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.left >= s.left - 1 && r.right <= s.right + 1;
+          });
+        const wrong = quiz.options.findIndex((option) => !option.correct);
+        const rights = quiz.options.map((option, index) => (option.correct ? index : -1)).filter((index) => index >= 0);
+        if (quiz.multiple) {
+          await page.locator(optionSelector).nth(wrong).click();
+          await page.getByTestId('simple-multi-check').click();
+        } else {
+          await page.locator(optionSelector).nth(wrong).click();
+        }
+        await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
+        const bad = await page.locator(optionSelector).nth(wrong).evaluate((el) => ({ result: el.dataset.result, mark: el.querySelector('[aria-hidden="true"]')?.textContent }));
+        if (bad.result !== 'bad' || /[A-H]/.test(bad.mark ?? '')) fail(`${label}: (q4) zła odpowiedź bez oznaczenia ✕ (${JSON.stringify(bad)}).`);
+        if (!(await visibleInScreen('[data-testid="simple-feedback"]'))) fail(`${label}: (q4) zdanie po odpowiedzi poza ekranem.`);
+        await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-zle`);
+        if (quiz.multiple) {
+          await page.locator(optionSelector).nth(wrong).click();
+          for (const index of rights) await page.locator(optionSelector).nth(index).click();
+          await page.getByTestId('simple-multi-check').click();
+        } else {
+          await page.locator(optionSelector).nth(rights[0]).click();
+        }
+        await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
+        await page.waitForFunction(() => document.querySelector('.pbar-next') && !document.querySelector('.pbar-next').disabled, null, { timeout: 10000 });
+        const good = await page.locator(optionSelector).nth(rights[0]).evaluate((el) => el.dataset.result);
+        if (good !== 'good') fail(`${label}: (q5) trafiona odpowiedź bez oznaczenia ✓.`);
+        const after = await geometry();
+        if (after.areaScroll > 1 || after.pageScroll.some((v) => v > 1)) fail(`${label}: (q5) po odpowiedzi przewija się obszar bloku albo strona.`);
+        if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);
+        await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-dobrze`);
+        step(`${label}: (q1-q6) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C ≥ 44 px, ✕/✓, zdanie w ekranie, „Dalej” OK`, true);
+      }
+      await context.close();
+    }
+  }
+
   if (runs('prosty')) {
     const DEMO = 'dev-tryb-prosty';
     const demoBlocks = JSON.parse(readFileSync(join(moduleDir(DEMO), 'module.json'), 'utf8')).blocks;

@@ -35,6 +35,16 @@ w poziomie) bez logo i dopisku. Bez okładki - tło #23232A. Dane: `moduleInfo` 
 sprawy i podtytuł w języku treści z module.json w obrazie API - `module-meta.ts`); odpowiedź bez `moduleInfo` - od razu blok. „Start” to
 gest: lektor pierwszego bloku gra od razu, fokus idzie na nagłówek bloku. layout-check: sekcja `start` (s1-s8).
 
+**Quiz w monitorze (D-164).** QUIZ w trybie prostym (pojedynczy i wielokrotny wybór) leży na ekranie wspólnej grafiki monitora
+(`player/MonitorStage.tsx`, `public/player/monitor.webp`). Prostokąt ekranu nie jest wpisany ręcznie: liczy go skrypt
+`scripts/content/scenes/monitor-screen.ts` z białego obszaru grafiki źródłowej (`scenes/monitor/monitor.png`) i zapisuje w
+`src/lib/player-monitor.json`; test w CI porównuje manifest z grafiką. Nowa grafika = podmiana `monitor.png` i
+`npx tsx scenes/monitor-screen.ts` (w `scripts/content`). Szeroko monitor jest wpisany w obszar bloku na tle #1B1424, a treść przewija się
+w ekranie. Wąsko (< 640 px) albo nisko (< 420 px) monitor jest przygaszonym tłem (55%), a pytanie białą kartą w ramce 10 px z fioletową
+poświatą. Odpowiedzi mają co najmniej 44 px i litery A/B/C, po ocenie zieleń/czerwień z ✓/✕ i jedno zdanie („Dobrze.” / „Nie tym razem.”).
+Nad pytaniem „Pytanie N z M” (numer wśród QUIZ modułu). Układ `scene` (podpowiedź bloku w rogu). Zwykły QUIZ (poza trybem prostym) i
+podgląd „Wstecz” bez zmian. layout-check: sekcja `monitor` (q1-q6).
+
 | Typ | Komponent | `answer` | Wynik / uwagi |
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |

@@ -75,25 +75,18 @@ function evidenceNotesBefore(blocks: ServerBlock[], index: number): HarnessNote[
 }
 
 /**
- * `?start=1` (D-163): ekran startu modułu przed blokiem - tytuł, kategoria, czas, podtytuł, numer i okładki z module.json (jak API w /start).
- * `?cover=briefing` - podgląd z okładką: grafika pierwszego kroku odprawy modułu (np. start modułu 5) zamiast `cover`, którego moduły
- * jeszcze nie mają - tylko do zrzutów i layout-check. `?pseudo=1` - tytuł i opis w pseudo-lokalizacji (dłuższy przekład).
+ * `?start=1` (D-163): ekran startu (i końca, z `completed=1`) modułu - tytuł, kategoria, czas, podtytuł, numer i okładki z module.json (jak
+ * API w /start). `?pseudo=1` - tytuł i opis w pseudo-lokalizacji (dłuższy przekład).
  */
-function startScreen(contentModule: ResolvedModule, briefingCover: boolean, pseudo: boolean): Pick<CoursePlayerInitialState, 'title' | 'moduleInfo'> {
-  const firstStep = contentModule.blocks.flatMap((block) => (block.type === 'BRIEFING' ? block.steps : []))[0] as
-    | { image?: string; portrait?: { image?: string } }
-    | undefined;
-  const cover =
-    briefingCover && firstStep?.image
-      ? { start: firstStep.image, end: firstStep.image, startPortrait: firstStep.portrait?.image ?? null, endPortrait: null }
-      : contentModule.cover
-        ? {
-            start: contentModule.cover.start,
-            end: contentModule.cover.end,
-            startPortrait: contentModule.cover.startPortrait ?? null,
-            endPortrait: contentModule.cover.endPortrait ?? null,
-          }
-        : null;
+function startScreen(contentModule: ResolvedModule, pseudo: boolean): Pick<CoursePlayerInitialState, 'title' | 'moduleInfo'> {
+  const cover = contentModule.cover
+    ? {
+        start: contentModule.cover.start,
+        end: contentModule.cover.end,
+        startPortrait: contentModule.cover.startPortrait ?? null,
+        endPortrait: contentModule.cover.endPortrait ?? null,
+      }
+    : null;
   const text = (value: string) => (pseudo ? pseudoLocalize(value) : value);
   return {
     title: text(contentModule.title),
@@ -122,7 +115,6 @@ export default function PlayerHarnessPage({
     pseudo?: string;
     start?: string;
     reward?: string;
-    cover?: string;
   };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
@@ -209,7 +201,7 @@ export default function PlayerHarnessPage({
     // layout-check sprawdza nimi najciaśniejszy pasek (pierwszy blok z „Pomiń odprawę”). Treść zostaje polska (podgląd układu).
     ...(searchParams.localeUi === 'switch' ? { locale: 'pl' as const, locales: ['pl', 'en'] as ('pl' | 'en')[], localeFallback: false } : {}),
     ...(searchParams.localeUi === 'badge' ? { locale: 'pl' as const, locales: ['pl'] as ('pl' | 'en')[], localeFallback: true } : {}),
-    ...(searchParams.start === '1' ? startScreen(parsedModule, searchParams.cover === 'briefing', pseudo) : {}),
+    ...(searchParams.start === '1' ? startScreen(parsedModule, pseudo) : {}),
   };
 
   // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze

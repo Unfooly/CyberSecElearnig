@@ -988,5 +988,10 @@
   }
   .module-start-card .module-start-subtitle {
     font-size: 16px;
+    line-height: 1.4;
+  }
+  /* Opis może mieć 2 zdania (moduł 5, D-167) - szerszy panel = mniej linijek; okładka i tak jest za nim. */
+  div.module-start-panel {
+    width: 62%;
   }
 }

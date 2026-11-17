@@ -497,8 +497,8 @@ try {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(`${WEB}/courses/${caseCourse.id}`);
   await page.getByTestId('hotspot-overlay-monitor').waitFor();
-  // Stały mianownik (D-130): suma dowodów znana od startu.
-  step('śledztwo: licznik startuje z serwera (Dowody 0/6)', (await counter().textContent())?.includes('Dowody 0/6') === true, await counter().textContent());
+  // D-162: górny pasek bez licznika dowodów i Notatnika - dowody liczy dalej serwer (sprawdzane w odpowiedziach zapisu niżej, D-130).
+  step('śledztwo: górny pasek bez licznika dowodów i Notatnika (D-162)', (await counter().count()) === 0 && (await page.getByRole('button', { name: /Notatnik/ }).count()) === 0);
   // D-154: przedmioty bez ramki do podpowiedzi (2 pudła na scenie) - przed pierwszym kliknięciem niczego nie zdradzają.
   step('śledztwo: punkty niewidoczne przed pierwszym kliknięciem (D-154)', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-przed');
@@ -515,11 +515,8 @@ try {
   await page.getByRole('button', { name: 'Monitor' }).click();
   await take();
   step(
-    'śledztwo: dowody z hotspotów podbijają licznik od razu (Dowody 2/6) i podpowiedź o dowodzie (bez maskotki, D-093)',
-    (await counter().textContent())?.includes('Dowody 2/6') === true &&
-      (await page.getByTestId('hint-overlay').getByText('Mamy dowód! Trafił do notatnika.').count()) === 1 &&
-      (await page.getByAltText(/Maskotka/).count()) === 0,
-    await counter().textContent(),
+    'śledztwo: dowód z hotspotu - podpowiedź o dowodzie (bez maskotki, D-093)',
+    (await page.getByTestId('hint-overlay').getByText('Mamy dowód! Trafił do notatnika.').count()) === 1 && (await page.getByAltText(/Maskotka/).count()) === 0,
   );
   step('śledztwo: odkryte punkty mają znacznik, nieodkryty (opcjonalny kubek) nie', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'discovered' && (await page.getByTestId('hotspot-overlay-kubek').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-po');
@@ -528,9 +525,11 @@ try {
   // Jeden „Dalej” (D-106, D-129): wyłącznie przycisk dolnego paska; po pokryciu wymaganych zapisuje blok i przechodzi dalej.
   const nextEnabled = () => page.getByTestId('player-bottombar').getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
+  const hotspotsSaved = progressResponse();
   await nextEnabled().click();
+  const hotspotsBody = await (await hotspotsSaved).json();
   await page.getByRole('list', { name: 'Pytania do zadania' }).waitFor();
-  step('śledztwo: po zapisie licznik z serwera nadal 2/6 (bez podwójnego liczenia)', (await counter().textContent())?.includes('Dowody 2/6') === true, await counter().textContent());
+  step('śledztwo: po zapisie serwer liczy 2/6 dowodów (bez podwójnego liczenia)', hotspotsBody.evidence?.collected === 2 && hotspotsBody.evidence?.total === 6, JSON.stringify(hotspotsBody.evidence));
 
   await page.getByRole('button', { name: 'Skąd był ten mail?' }).click();
   // Komunikator (D-087): kwestie przychodzą po "pisaniu" rozmówcy, jedna po drugiej.
@@ -545,14 +544,16 @@ try {
   await shoot('dialog-w-trakcie-390');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.locator('[role="log"][data-typing="false"]').waitFor();
-  step('śledztwo: po ostatniej kwestii dowód (Dowody 3/6)', (await counter().textContent())?.includes('Dowody 3/6') === true, await counter().textContent());
+  const dialogueSaved = progressResponse();
   await nextEnabled().click();
+  const dialogueBody = await (await dialogueSaved).json();
+  step('śledztwo: po rozmowie serwer liczy 3/6 dowodów', dialogueBody.evidence?.collected === 3, JSON.stringify(dialogueBody.evidence));
 
   // --- Bloki oceniane: mail (klik we fragmenty), kolejność (klawiatura), zadanie tekstowe z podpowiedzią; ocena po stronie serwera. ---
   await page.setViewportSize({ width: 1280, height: 1100 });
 
   await page.getByTestId('mail-client').waitFor();
-  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik), licznik 3/6', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1 && (await counter().textContent())?.includes('Dowody 3/6') === true, await counter().textContent());
+  step('śledztwo: makieta maila (nadawca z adresem, data, temat, załącznik)', (await page.getByTestId('mail-client').textContent())?.includes('wsparcie@bank-0ficjalny.pl') === true && (await page.getByRole('button', { name: /Załącznik: formularz-weryfikacji\.pdf/ }).count()) === 1);
   await shoot('mail-przed');
 
   // Link nigdy nie nawiguje: adres w pasku statusu po najechaniu i kliknięciu, adres strony bez zmian.
@@ -585,7 +586,7 @@ try {
   const mailBody = await (await mailAnswered).json();
   step('śledztwo: serwer ocenił mail (25%), rozstrzygnięcie po id nieprzejrzystych, dowody 5/6 i notatki od razu', mailBody.lastResult?.points === 0.25 && mailBody.lastResult?.detail?.criteria?.length === 5 && mailBody.evidence?.collected === 5 && mailBody.evidence?.total === 6 && mailBody.notes?.length === 2 && !JSON.stringify(mailBody.lastResult.detail).match(/"(adres|link|zalacznik|grozba|ogolny)"/), JSON.stringify({ points: mailBody.lastResult?.points, evidence: mailBody.evidence?.collected + '/' + mailBody.evidence?.total, notes: mailBody.notes?.length }));
   await page.getByText(/Wynik: 25%/).waitFor();
-  step('śledztwo: wynik maila w bloku: trafione, fałszywy alarm i przeoczone; licznik 5/6, notatnik (5)', (await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).textContent())?.includes('(trafione)') === true && (await page.getByTestId('mail-client').getByRole('button', { name: /Załącznik/ }).textContent())?.includes('(fałszywy alarm)') === true && (await counter().textContent())?.includes('Dowody 5/6') === true && (await page.getByRole('button', { name: /Notatnik \(5\)/ }).count()) === 1, await counter().textContent());
+  step('śledztwo: wynik maila w bloku: trafione, fałszywy alarm i przeoczone', (await page.getByTestId('mail-client').getByRole('button', { name: /Bank Zaufany/ }).textContent())?.includes('(trafione)') === true && (await page.getByTestId('mail-client').getByRole('button', { name: /Załącznik/ }).textContent())?.includes('(fałszywy alarm)') === true);
   step('śledztwo: zła odpowiedź maila: podpowiedź ostrzega', (await page.getByTestId('hint-bar').getByText('Uważaj, coś tu nie gra.').count()) === 1);
   await shoot('mail-wynik');
   await noHScroll('desktop, wynik maila');

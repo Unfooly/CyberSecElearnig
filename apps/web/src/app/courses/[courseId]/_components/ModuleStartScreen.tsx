@@ -68,7 +68,9 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
             src={landscape}
             alt=""
             data-testid="module-start-cover"
-            className="absolute inset-x-0 top-0 h-[58%] w-full object-cover object-[75%_50%] sm:inset-0 sm:h-full sm:object-center"
+            // Komputer (uwaga właściciela 2026-11-17: „przytnij i dopasuj”): okładka tylko w prawej części ekranu (od 40% - pod zaokrągloną
+            // krawędzią panelu), kadrowana od lewej strony obrazu, gdzie są postacie - nie znikają pod jasnym panelem. Telefon bez zmian.
+            className="module-start-cover absolute inset-x-0 top-0 h-[58%] w-full object-cover object-[75%_50%] sm:inset-y-0 sm:left-[40%] sm:right-0 sm:h-full sm:w-auto sm:object-[30%_50%]"
           />
         </picture>
       )}

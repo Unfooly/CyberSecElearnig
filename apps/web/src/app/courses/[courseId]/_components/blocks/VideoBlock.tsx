@@ -14,6 +14,51 @@ import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 // Wygląd (D-159): ciemna ramka 16:9 wpisana w obszar bloku (contentLayout 'fill') - szerokość albo wysokość, co skończy się pierwsze, bez
 // przewijania. Plik z potoku zasobów (`src`, CONTENT_BASE_URL) z plakatem; dotychczasowe bloki z zewnętrznym `url` grają po staremu.
 // Bez widocznego tytułu nad filmem (uwaga właściciela 2026-11-17: napis obok filmu zbędny) - tytuł bloku jest nazwą odtwarzacza dla czytnika.
+
+// Telefon = dotyk i wąski (pion) albo niski (poziom) ekran - te same progi co tryby telefonu odtwarzacza (globals.css .player-frame).
+const PHONE_QUERY = '(pointer: coarse) and (max-width: 767px), (pointer: coarse) and (max-height: 500px)';
+const isPhone = () => typeof window !== 'undefined' && window.matchMedia?.(PHONE_QUERY).matches === true;
+
+type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitExitFullscreen?: () => void; webkitDisplayingFullscreen?: boolean };
+type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> };
+
+/**
+ * Pełny ekran w poziomie dla filmu na telefonie (decyzja właściciela 2026-11-17). Android/Chrome: Fullscreen API na elemencie wideo i blokada
+ * orientacji poziomej (dozwolona tylko w pełnym ekranie). iPhone (Safari nie ma Fullscreen API dla elementów): natywny odtwarzacz
+ * pełnoekranowy `webkitEnterFullscreen`, który sam obraca się z telefonem. Każda odmowa (brak gestu, ustawienia) - film gra dalej w kursie.
+ */
+function enterLandscapeFullscreen(video: HTMLVideoElement) {
+  const webkit = video as WebkitVideo;
+  if (document.fullscreenElement || webkit.webkitDisplayingFullscreen) return;
+  if (typeof video.requestFullscreen === 'function') {
+    video
+      .requestFullscreen()
+      .then(() => (screen.orientation as LockableOrientation | undefined)?.lock?.('landscape'))
+      .catch(() => {});
+  } else if (typeof webkit.webkitEnterFullscreen === 'function') {
+    try {
+      webkit.webkitEnterFullscreen();
+    } catch {
+      // Odmowa przeglądarki - film zostaje w kursie.
+    }
+  }
+}
+
+function unlockOrientation() {
+  try {
+    screen.orientation?.unlock?.();
+  } catch {
+    // Brak blokady albo API - nic do zwolnienia.
+  }
+}
+
+function exitFullscreen(video: HTMLVideoElement) {
+  const webkit = video as WebkitVideo;
+  if (document.fullscreenElement === video) document.exitFullscreen?.().catch(() => {});
+  else if (webkit.webkitDisplayingFullscreen) webkit.webkitExitFullscreen?.();
+  unlockOrientation();
+}
+
 export default function VideoBlock({
   block,
   contentBase = LOCAL_CONTENT_BASE,
@@ -45,6 +90,14 @@ export default function VideoBlock({
   useEffect(() => {
     if (suspended) videoRef.current?.pause();
   }, [suspended]);
+  // Pełny ekran po wyjściu z niego - zwolnienie blokady orientacji (Android).
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) unlockOrientation();
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
   // Najdalszy obejrzany moment. Do pierwszego obejrzenia przewijanie do przodu wraca do niego - „Dalej” dopiero po końcu filmu (decyzja
   // właściciela, moduł 5); cofanie działa zawsze. Wyłącznie UX, jak cała blokada.
   const watched = useRef(0);
@@ -85,7 +138,15 @@ export default function VideoBlock({
             const video = event.currentTarget;
             if (!canProceed && video.currentTime > watched.current + 1) video.currentTime = watched.current;
           }}
-          onEnded={() => setCanProceed(true)}
+          // Telefon (decyzja właściciela 2026-11-17): film na pełnym ekranie w poziomie - film 16:9 w pionie zostawiał puste pasy.
+          onPlay={(event) => {
+            if (isPhone()) enterLandscapeFullscreen(event.currentTarget);
+          }}
+          onEnded={(event) => {
+            setCanProceed(true);
+            // Koniec filmu - powrót do kursu („Dalej” jest już aktywny).
+            exitFullscreen(event.currentTarget);
+          }}
           onError={() => setCanProceed(true)}
           className="block aspect-video w-[min(100cqw,calc(100cqh*16/9))] max-w-full rounded-card bg-black"
         />

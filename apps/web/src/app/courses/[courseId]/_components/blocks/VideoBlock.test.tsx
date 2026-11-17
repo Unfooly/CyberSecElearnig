@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VideoBlock from './VideoBlock';
 
 const block = { type: 'VIDEO' as const, url: 'https://example.test/video.mp4' };
@@ -50,6 +50,54 @@ describe('VideoBlock', () => {
     render(<VideoBlock block={block} onReady={vi.fn()} />);
     expect(play).toHaveBeenCalledTimes(1);
     play.mockRestore();
+  });
+
+  describe('telefon: pełny ekran w poziomie (decyzja właściciela 2026-11-17)', () => {
+    const matchMedia = (matches: boolean) => vi.stubGlobal('matchMedia', vi.fn(() => ({ matches, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null });
+    });
+
+    it('telefon: start filmu -> pełny ekran i blokada orientacji poziomej; koniec filmu -> wyjście z pełnego ekranu', async () => {
+      matchMedia(true);
+      const lock = vi.fn().mockResolvedValue(undefined);
+      const unlock = vi.fn();
+      // window.screen (nie `screen` z Testing Library).
+      Object.defineProperty(window.screen, 'orientation', { configurable: true, value: { lock, unlock } });
+      render(<VideoBlock block={block} onReady={vi.fn()} />);
+      const video = screen.getByTestId('video-player') as HTMLVideoElement;
+      const request = vi.fn().mockResolvedValue(undefined);
+      video.requestFullscreen = request;
+      fireEvent.play(video);
+      expect(request).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(lock).toHaveBeenCalledWith('landscape'));
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: video });
+      const exit = vi.fn().mockResolvedValue(undefined);
+      document.exitFullscreen = exit;
+      fireEvent.ended(video);
+      expect(exit).toHaveBeenCalledTimes(1);
+      expect(unlock).toHaveBeenCalled();
+    });
+
+    it('iPhone (bez Fullscreen API na elemencie): natywny odtwarzacz pełnoekranowy; komputer - bez pełnego ekranu', () => {
+      matchMedia(true);
+      const { unmount } = render(<VideoBlock block={block} onReady={vi.fn()} />);
+      const video = screen.getByTestId('video-player') as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+      Object.defineProperty(video, 'requestFullscreen', { configurable: true, value: undefined });
+      video.webkitEnterFullscreen = vi.fn();
+      fireEvent.play(video);
+      expect(video.webkitEnterFullscreen).toHaveBeenCalledTimes(1);
+      unmount();
+
+      matchMedia(false);
+      render(<VideoBlock block={block} onReady={vi.fn()} />);
+      const desktop = screen.getByTestId('video-player') as HTMLVideoElement;
+      const request = vi.fn().mockResolvedValue(undefined);
+      desktop.requestFullscreen = request;
+      fireEvent.play(desktop);
+      expect(request).not.toHaveBeenCalled();
+    });
   });
 
   it('podgląd „Wstecz” (suspended) zatrzymuje film - ukryty blok nie gra w tle', () => {

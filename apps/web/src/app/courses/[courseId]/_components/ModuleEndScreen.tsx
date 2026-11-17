@@ -84,7 +84,8 @@ export default function ModuleEndScreen({
             alt=""
             data-testid="module-end-cover"
             referrerPolicy="no-referrer"
-            className="absolute inset-x-0 top-0 h-[34%] w-full object-cover object-[75%_50%] sm:inset-0 sm:h-full sm:object-center"
+            // Komputer: okładka w prawej części (od 45% - panel końca jest szerszy, 60%), kadrowana tak, żeby postacie i czytnik zostały w kadrze.
+            className="absolute inset-x-0 top-0 h-[34%] w-full object-cover object-[75%_50%] sm:inset-y-0 sm:left-[45%] sm:right-0 sm:h-full sm:w-auto sm:object-[42%_50%]"
           />
         </picture>
       )}

@@ -611,6 +611,24 @@ export interface CourseDetail {
   locales?: ('pl' | 'en')[];
   /** Kurs bez języka gracza - treść po polsku z plakietką „Available in Polish only”. */
   localeFallback?: boolean;
+  /** Ekran startu i końca modułu (szablon modułu, D-163); bez pola (starsze odpowiedzi, testy) - bez ekranu startu. */
+  moduleInfo?: ModuleInfo;
+}
+
+/** Okładki modułu (D-163): ścieżki zasobów w języku treści; null - ciemne tło. */
+export interface ModuleCover {
+  start: string;
+  end: string;
+  startPortrait: string | null;
+  endPortrait: string | null;
+}
+
+export interface ModuleInfo {
+  category: string;
+  durationMinutes: number;
+  subtitle: string | null;
+  caseNumber: number | null;
+  cover: ModuleCover | null;
 }
 
 /** Rozstrzygnięcie ukończonego bloku (id elementów nieprzejrzyste, jak w /start): EMAIL_ANALYSIS -> criteria, ORDERING -> correctOrder. */

@@ -30,6 +30,7 @@ import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
 import CaseClosedScreen from './CaseClosedScreen';
+import ModuleStartScreen from './ModuleStartScreen';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
 import { NarrationPauseProvider } from './player/narration-pause';
@@ -441,6 +442,20 @@ export default function CoursePlayer({
   const hasAudio = (index: number) =>
     preference.enabled && blockNarrations(blocks[index]).some((narration) => contentAssetUrl(contentBase, narration?.audioUrl, 'audio') !== null);
   const keyOf = (index: number) => blockIdOf(blocks, index);
+
+  // Ekran startu modułu (szablon, D-163): kurs jeszcze na pierwszym bloku, z danymi modułu z API (odpowiedź bez `moduleInfo` - starsze API,
+  // testy - prosto do bloku). Każde wejście na blok 0 (także po odświeżeniu) zaczyna od niego; „Start” to gest, więc lektor pierwszego bloku
+  // gra od razu (autoPlayFor), a fokus idzie na nagłówek bloku, jak przy każdej zmianie bloku.
+  const [showStart, setShowStart] = useState(() => Boolean(initial.moduleInfo) && initial.status !== 'COMPLETED' && initial.currentBlockIndex === 0);
+  const startDismissed = useRef(false);
+  const startModule = () => {
+    startDismissed.current = true;
+    setAutoPlayFor(keyOf(0));
+    setShowStart(false);
+  };
+  useEffect(() => {
+    if (!showStart && startDismissed.current) headingRef.current?.focus();
+  }, [showStart]);
 
   // Stan częściowy sceny (D-128): zapis w tle, po kolei (jedno żądanie naraz, w kolejce tylko NAJNOWSZY stan - każde żądanie niesie
   // pełny stan, a serwer i tak scala go z zapisanym). Błędy pomijamy: to tylko wygoda powrotu, pełny stan niesie i tak zapis bloku
@@ -926,6 +941,23 @@ export default function CoursePlayer({
         ? `Kurs ukończony. Zdobyto ${reward.xpGained} punktów doświadczenia.`
         : 'Kurs ukończony ponownie. Punkty doświadczenia naliczone przy pierwszym ukończeniu.'
       : '';
+
+  if (showStart && initial.moduleInfo) {
+    return (
+      <ModuleStartScreen
+        title={initial.title}
+        info={initial.moduleInfo}
+        contentBase={contentBase}
+        lang={contentLocale}
+        onStart={startModule}
+        narration={narrationBarState}
+        narrationEnabled={preference.enabled}
+        onToggleNarration={preference.toggle}
+        togglePending={preference.pending}
+        toggleError={preference.error}
+      />
+    );
+  }
 
   return (
     // Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087/D-089).

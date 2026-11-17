@@ -997,5 +997,6 @@
   /* Okładka za szerszym panelem - przesunięta, żeby postacie nie znikały pod nim. */
   img.module-start-cover {
     left: 52%;
+    width: 48%;
   }
 }

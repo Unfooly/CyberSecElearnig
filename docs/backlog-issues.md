@@ -867,6 +867,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-165 Teksty osiągnięć modułu 1 ze starą nazwą „Wyłudzone hasło”
+- Etykiety: `P3`, `content`, `mod:grywalizacja` · Źródło: D-170, code review
+- Opis: moduł 1 nazywa się teraz „Zabawa w phishing” (D-170), a warunki dwóch osiągnięć (komplet dowodów, easter egg) mówią „w sprawie
+  „Wyłudzone hasło”” - w bazie (migracja `20260928200000_achievements`, `seed-badges.ts`) i w `apps/api/src/gamification/achievement-texts.ts`.
+- Akceptacja: decyzja właściciela; zmiana tekstów w bazie = nowa migracja danych (merge przez człowieka, reguła 11) razem z
+  `achievement-texts.ts` i `seed-badges.ts`. Przy okazji: osiągnięcie „komplet dowodów” a usunięcie dowodów (etap 2, B-163).
+
 ### B-164 Ręczne skrypty e2e modułów po szablonie (D-163 - D-169)
 - Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-169
 - Opis: `scripts/e2e-module-01.mjs` … `e2e-module-04.mjs` (ręczne, poza CI) przechodzą moduł starym przepływem: czekają na scenę startową

@@ -39,7 +39,17 @@ describe('VideoBlock', () => {
     expect(onReady).toHaveBeenCalledWith(true);
   });
 
-  it('D-159: plik z potoku zasobów - adres z bazy CONTENT_BASE_URL, plakat, playsinline; tytuł bloku nad filmem', () => {
+  it('autoPlay (po geście gracza) uruchamia film od razu; bez niego - nie; odrzucone odtwarzanie nie wywraca bloku', async () => {
+    const play = vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'NotAllowedError' }));
+    const { unmount } = render(<VideoBlock block={block} onReady={vi.fn()} autoPlay />);
+    expect(play).toHaveBeenCalledTimes(1);
+    unmount();
+    render(<VideoBlock block={block} onReady={vi.fn()} />);
+    expect(play).toHaveBeenCalledTimes(1);
+    play.mockRestore();
+  });
+
+  it('D-159: plik z potoku zasobów - adres z bazy CONTENT_BASE_URL, plakat, playsinline; tytuł bloku tylko jako nazwa odtwarzacza', () => {
     render(
       <VideoBlock
         block={{ type: 'VIDEO', title: 'Najłatwiejsze drzwi', src: 'assets/najlatwiejsze-drzwi/video/film.1a2b3c4d.mp4', poster: 'assets/najlatwiejsze-drzwi/video/plakat.5e6f7a8b.jpg' }}
@@ -51,7 +61,9 @@ describe('VideoBlock', () => {
     expect(video).toHaveAttribute('src', 'https://content.example.com/assets/najlatwiejsze-drzwi/video/film.1a2b3c4d.mp4');
     expect(video).toHaveAttribute('poster', 'https://content.example.com/assets/najlatwiejsze-drzwi/video/plakat.5e6f7a8b.jpg');
     expect(video).toHaveAttribute('playsinline');
-    expect(screen.getByText('Najłatwiejsze drzwi')).toBeInTheDocument();
+    // Uwaga właściciela 2026-11-17: bez napisu obok filmu - tytuł tylko dla czytnika.
+    expect(screen.queryByText('Najłatwiejsze drzwi')).not.toBeInTheDocument();
+    expect(video).toHaveAttribute('aria-label', 'Najłatwiejsze drzwi');
   });
 
   it('przed pierwszym obejrzeniem przewinięcie do przodu wraca do najdalej obejrzanego miejsca; cofanie bez zmian; po końcu - dowolnie', () => {

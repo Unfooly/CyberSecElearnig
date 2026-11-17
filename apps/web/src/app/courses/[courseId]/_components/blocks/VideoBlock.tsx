@@ -13,18 +13,32 @@ import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
 //
 // Wygląd (D-159): ciemna ramka 16:9 wpisana w obszar bloku (contentLayout 'fill') - szerokość albo wysokość, co skończy się pierwsze, bez
 // przewijania. Plik z potoku zasobów (`src`, CONTENT_BASE_URL) z plakatem; dotychczasowe bloki z zewnętrznym `url` grają po staremu.
+// Bez widocznego tytułu nad filmem (uwaga właściciela 2026-11-17: napis obok filmu zbędny) - tytuł bloku jest nazwą odtwarzacza dla czytnika.
 export default function VideoBlock({
   block,
   contentBase = LOCAL_CONTENT_BASE,
   onReady,
+  autoPlay = false,
 }: {
   block: ContentBlock;
   /** Baza zasobów modułu (CONTENT_BASE_URL) - dla `src` i `poster`. */
   contentBase?: string;
   /** true = obejrzane (albo błąd wideo) - „Dalej” w pasku aktywny. */
   onReady: (ready: boolean) => void;
+  /** Start filmu od razu - tylko po geście gracza (Start na ekranie startu, „Dalej”; decyzja w CoursePlayer). Przeglądarka, która mimo to
+      zablokuje odtwarzanie z dźwiękiem (np. iOS), zostawia zwykły przycisk odtwarzania. */
+  autoPlay?: boolean;
 }) {
   const [canProceed, setCanProceed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (!autoPlay) return;
+    videoRef.current?.play()?.catch(() => {
+      // NotAllowedError (autoodtwarzanie zablokowane) - gracz uruchomi film kontrolkami.
+    });
+    // Jednorazowo przy zamontowaniu bloku.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Najdalszy obejrzany moment. Do pierwszego obejrzenia przewijanie do przodu wraca do niego - „Dalej” dopiero po końcu filmu (decyzja
   // właściciela, moduł 5); cofanie działa zawsze. Wyłącznie UX, jak cała blokada.
   const watched = useRef(0);
@@ -46,10 +60,11 @@ export default function VideoBlock({
 
   return (
     <div data-testid="video-block" className="flex h-full min-h-0 flex-col gap-2 p-3 sm:p-4">
-      {block.title && <p className="text-lg font-semibold text-ink">{block.title}</p>}
       <div className="grid min-h-0 flex-1 place-items-center [container-type:size]">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- napisy wpalone w obraz filmu (D-159) */}
         <video
+          ref={videoRef}
+          aria-label={block.title ?? 'Film'}
           data-testid="video-player"
           src={src ?? undefined}
           poster={poster}

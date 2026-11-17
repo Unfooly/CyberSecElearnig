@@ -6,7 +6,30 @@ import { CircleAlert, CircleCheck, Lightbulb } from 'lucide-react';
 // czytnik ekranu ogłasza werdykt bez przenoszenia fokusu. Podpowiedź po 2 błędach zostaje widoczna do końca bloku (nie znika po kilku
 // sekundach jak dymek podpowiedzi powłoki).
 
-export function SimpleFeedback({ result, text, about }: { result: 'good' | 'bad' | null; text?: string; about?: string }) {
+export function SimpleFeedback({
+  result,
+  text,
+  about,
+  variant = 'card',
+}: {
+  result: 'good' | 'bad' | null;
+  text?: string;
+  about?: string;
+  /** 'plain' - quiz w monitorze (D-164, makieta): samo zdanie w kolorze wyniku, bez ramki i bez rezerwy wysokości (ekran jest mały). */
+  variant?: 'card' | 'plain';
+}) {
+  if (variant === 'plain') {
+    return (
+      <div role="status" aria-live="polite" data-testid="simple-feedback" data-result={result ?? undefined}>
+        {result && (
+          <p className={`text-base leading-snug ${result === 'good' ? 'text-[#0F5A3A]' : 'text-[#8A251B]'}`}>
+            <span className="font-bold">{result === 'good' ? 'Dobrze. ' : 'Nie tym razem. '}</span>
+            {text}
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div role="status" aria-live="polite" data-testid="simple-feedback" data-result={result ?? undefined} className="min-h-[3.5rem]">
       {result && (

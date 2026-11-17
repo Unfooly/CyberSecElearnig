@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import { Check, X } from 'lucide-react';
 import type { CheckedOption, ClientProgressBlock, ContentBlock, SimpleCheck } from '@/lib/courses-types';
 import { useSimpleCheck } from './simple-check';
 import { SimpleError, SimpleFeedback, SimpleHint } from './SimpleFeedback';
+import { OPTION, OptionMark, optionTone } from './SimpleChoiceBlock';
+import MonitorStage from '../player/MonitorStage';
 
 // Wielokrotny wybór w trybie prostym (QUIZ `multiple`, D-158): pola wyboru i „Sprawdź” - serwer (/check) ocenia cały zbiór. Trafienie to
 // dokładnie wszystkie poprawne; po próbie każda ZAZNACZONA odpowiedź dostaje ocenę i zdanie z treści (brakującej poprawnej serwer nie
 // zdradza). Zmiana zaznaczenia czyści oceny poprzedniej próby; po 2 błędach - podpowiedź. „Dalej” w pasku po trafieniu (zapis bez odpowiedzi,
 // wynik serwer liczy z PIERWSZEJ próby).
+// Wygląd (szablon modułu, D-164): na ekranie monitora (MonitorStage), odpowiedzi A/B/C jak w pojedynczym wyborze - pole wyboru jest
+// natywne, ale schowane (sr-only) za literą; zaznaczona odpowiedź fioletowa, po ocenie zielona/czerwona z ✓/✕ i zdaniem z treści.
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -24,7 +27,10 @@ export default function SimpleMultiChoiceBlock({
   onReady,
   onProgress,
   disabled = false,
+  questionLabel,
 }: {
+  /** „Pytanie 2 z 5” - numer wśród pytań quizu modułu (CoursePlayer). */
+  questionLabel?: string;
   block: ContentBlock;
   courseId: string;
   progress?: ClientProgressBlock;
@@ -63,77 +69,75 @@ export default function SimpleMultiChoiceBlock({
   };
 
   return (
-    <div data-testid="simple-multi-choice" className="mx-auto flex w-full max-w-[640px] flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <p id={promptId} className="text-xl font-semibold text-ink">
-          {block.prompt}
-        </p>
-        <p className="text-base text-muted">Zaznacz wszystkie poprawne odpowiedzi.</p>
-      </div>
-      <div role="group" aria-labelledby={promptId} className="flex flex-col gap-3">
-        {options.map((option, index) => {
-          const mark = marks.get(index);
-          const checked = selected.includes(index);
-          return (
-            <label
-              key={index}
-              data-testid="simple-multi-option"
-              data-result={mark?.result}
-              className={`flex min-h-[56px] w-full items-start gap-3 rounded-btn border-2 px-4 py-3 text-left text-base font-semibold text-ink ${
-                mark?.result === 'good'
-                  ? 'border-success bg-success/10'
-                  : mark?.result === 'bad'
-                    ? 'border-danger/60 bg-danger/5'
-                    : checked
-                      ? 'border-accent bg-accent-soft'
-                      : `border-border bg-surface ${locked ? '' : 'hover:border-accent hover:bg-paper'}`
-              } ${locked ? 'cursor-default' : 'cursor-pointer'}`}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                // aria-disabled zamiast `disabled` w trakcie sprawdzania i po trafieniu - fokus zostaje na polu (jak w zwykłym wyborze).
-                disabled={disabled}
-                aria-disabled={locked || undefined}
-                onChange={() => toggle(index)}
-                className={`mt-0.5 h-5 w-5 shrink-0 accent-accent ${FOCUS_RING}`}
-              />
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className="flex items-start gap-2">
-                  {mark?.result === 'good' && <Check aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-success" />}
-                  {mark?.result === 'bad' && <X aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-danger" />}
-                  <span>{option.text}</span>
-                </span>
-                {mark && (
-                  <span data-testid="simple-multi-feedback" className="text-base font-normal text-ink/80">
-                    <span className="sr-only">{mark.result === 'good' ? 'Dobra odpowiedź: ' : 'Zła odpowiedź: '}</span>
-                    {mark.feedback}
-                  </span>
-                )}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-      {!hit && (
-        <div>
-          <button
-            type="button"
-            data-testid="simple-multi-check"
-            disabled={disabled || pending || selected.length === 0 || alreadyChecked}
-            onClick={() => void check({ options: selected })}
-            className={`min-h-[44px] rounded-btn bg-accent px-5 text-base font-bold text-white disabled:cursor-default disabled:opacity-50 ${FOCUS_RING}`}
-          >
-            Sprawdź
-          </button>
+    <MonitorStage label="Pytanie quizu">
+      <div data-testid="simple-multi-choice" className="flex flex-col gap-3">
+        {questionLabel && <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-ink">{questionLabel}</p>}
+        <div className="flex flex-col gap-1">
+          <p id={promptId} className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
+            {block.prompt}
+          </p>
+          <p className="text-base text-muted">Zaznacz wszystkie poprawne odpowiedzi.</p>
         </div>
-      )}
-      <SimpleFeedback
-        result={shown?.result ?? null}
-        text={shown?.result === 'good' ? 'Zaznaczono wszystkie poprawne odpowiedzi.' : 'Popraw zaznaczenie i sprawdź jeszcze raz.'}
-      />
-      <SimpleHint text={hit ? undefined : hint} />
-      <SimpleError text={error} />
-    </div>
+        <div role="group" aria-labelledby={promptId} className="flex flex-col gap-2.5">
+          {options.map((option, index) => {
+            const mark = marks.get(index);
+            const checked = selected.includes(index);
+            return (
+              <label
+                key={index}
+                data-testid="simple-multi-option"
+                data-result={mark?.result}
+                // Fokus klawiatury na schowanym polu wyboru - obwódka na całej odpowiedzi.
+                className={`${OPTION} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${optionTone(
+                  mark?.result ?? null,
+                  locked,
+                  checked,
+                )} ${locked ? 'cursor-default' : 'cursor-pointer'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  // aria-disabled zamiast `disabled` w trakcie sprawdzania i po trafieniu - fokus zostaje na polu (jak w zwykłym wyborze).
+                  disabled={disabled}
+                  aria-disabled={locked || undefined}
+                  onChange={() => toggle(index)}
+                  className="sr-only"
+                />
+                <OptionMark index={index} state={mark?.result ?? null} selected={checked} />
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span>{option.text}</span>
+                  {mark && (
+                    <span data-testid="simple-multi-feedback" className="text-base font-normal">
+                      <span className="sr-only">{mark.result === 'good' ? 'Dobra odpowiedź: ' : 'Zła odpowiedź: '}</span>
+                      {mark.feedback}
+                    </span>
+                  )}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        {!hit && (
+          <div>
+            <button
+              type="button"
+              data-testid="simple-multi-check"
+              disabled={disabled || pending || selected.length === 0 || alreadyChecked}
+              onClick={() => void check({ options: selected })}
+              className={`min-h-[44px] rounded-[10px] bg-ink px-5 text-base font-bold text-white hover:bg-slate-800 disabled:cursor-default disabled:opacity-50 ${FOCUS_RING}`}
+            >
+              Sprawdź
+            </button>
+          </div>
+        )}
+        <SimpleFeedback
+          variant="plain"
+          result={shown?.result ?? null}
+          text={shown?.result === 'good' ? 'Zaznaczono wszystkie poprawne odpowiedzi.' : 'Popraw zaznaczenie i sprawdź jeszcze raz.'}
+        />
+        <SimpleHint text={hit ? undefined : hint} />
+        <SimpleError text={error} />
+      </div>
+    </MonitorStage>
   );
 }

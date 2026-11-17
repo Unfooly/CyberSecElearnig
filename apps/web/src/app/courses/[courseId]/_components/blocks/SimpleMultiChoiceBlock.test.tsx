@@ -79,7 +79,7 @@ describe('SimpleMultiChoiceBlock', () => {
     });
     await act(async () => fireEvent.click(checkButton()));
     expect(JSON.parse(fetchMock.mock.calls[2][1].body as string)).toEqual({ options: [0, 2] });
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Zaznaczono wszystkie poprawne odpowiedzi.');
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Zaznaczono wszystkie poprawne odpowiedzi.');
     expect(screen.queryByTestId('simple-hint')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sprawdź' })).not.toBeInTheDocument();
     // Po trafieniu zaznaczenie zablokowane.

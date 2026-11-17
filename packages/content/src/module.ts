@@ -58,6 +58,9 @@ export const moduleSchema = z
     // Numer sprawy na ekranie startu („Sprawa 5 · ok. 6 min”, D-163, addytywnie w v5) - kolejność modułów w serii, nie numer z karty sprawy
     // w odprawie (caseNo, D-081). Bez pola - sam czas.
     caseNumber: z.number().int().min(1).max(999).optional(),
+    // Uwaga na ekranie startu w czerwonej ramce (D-171, addytywnie w v5), np. „Przed rozpoczęciem tego modułu należy ukończyć moduł …”.
+    // Sam tekst do wyświetlenia - niczego nie blokuje (kolejność modułów nie jest wymuszana). Poza wersją kursu, jak okładki (module-meta).
+    startNotice: ltext(200).optional(),
     // Tryb prosty (D-132, moduł 3 i kolejne, addytywnie w v6): ostrzejsza walidacja (semantics.ts simpleModeErrors) i odtwarzacz dla osób
     // nietechnicznych - ocena każdego kliknięcia od razu, podpowiedź po 2 błędach, tekst min. 16 px, bez wyniku w blokach.
     simpleMode: z.boolean().optional(),

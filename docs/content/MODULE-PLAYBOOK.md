@@ -45,7 +45,8 @@ z plikami z RĘCZNEJ listy `ASSET_PATHS` (`scripts/content/src/assets.ts`) - now
 
 Metadane modułu (v5): `slug`, `title`, `subtitle`, `category`, `level`, `durationMinutes`, `mandatory`, `objectives[]`, `thumbnail`,
 `caseNumber` i `cover` (ekran startu i końca, D-163: `start`/`end` 1920×1080 - ważne elementy w prawej połowie, lewą zasłania panel;
-`startPortrait`/`endPortrait` 1080×1350 na telefon). `subtitle` to jedno zdanie pod tytułem na ekranie startu.
+`startPortrait`/`endPortrait` 1080×1350 na telefon). `subtitle` to jedno zdanie pod tytułem na ekranie startu. `startNotice` (D-171) to
+krótka uwaga w czerwonej ramce nad Start (np. wymagany wcześniejszy moduł) - sama informacja, niczego nie blokuje.
 `objectives` to cele szkoleniowe w katalogu kursów - co innego niż zadania sprawy (`caseFile.tasks` w odprawie, D-081).
 
 ## 3. Oś czasu jest źródłem prawdy

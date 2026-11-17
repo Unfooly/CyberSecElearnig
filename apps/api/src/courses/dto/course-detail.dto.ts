@@ -26,6 +26,8 @@ export class CourseDetailDto {
     durationMinutes: number;
     subtitle: string | null;
     caseNumber: number | null;
+    /** Uwaga na ekranie startu w czerwonej ramce (D-171, np. wymagany wcześniejszy moduł); null - brak. */
+    notice: string | null;
     cover: { start: string; end: string; startPortrait: string | null; endPortrait: string | null } | null;
   };
 }

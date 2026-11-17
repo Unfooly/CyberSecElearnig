@@ -21,6 +21,7 @@
     "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.b191c9b4.webp"
   },
   "caseNumber": 1,
+  "startNotice": "Przed rozpoczęciem tego modułu należy ukończyć moduł „Wykrywanie wiadomości phishingowych”.",
   "blocks": [
     {
       "id": "odprawa",

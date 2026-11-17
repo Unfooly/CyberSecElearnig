@@ -73,6 +73,9 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   klucze locka `module#cover.<pole>`; `caseNumber` (1-999) - „Sprawa N” na ekranie startu. Poza skrótem treści (dodanie nie tworzy
   wersji kursu) i bez kolumn w bazie: API czyta je z module.json w obrazie (`apps/api/src/courses/module-meta.ts`). Bez okładki
   ekran ma ciemne tło #23232A.
+- Uwaga startu (D-171, opcjonalna, od v5): `startNotice` (tekst ≤ 200 znaków, per język jak inne teksty) - czerwona ramka nad Start na
+  ekranie startu, np. „Przed rozpoczęciem tego modułu należy ukończyć moduł …”. Tylko informacja (Start działa zawsze), poza skrótem
+  treści, API czyta ją z module.json jak okładki.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
   notatniku (czytana z bloku BRIEFING bieżącej wersji treści). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są
   ukończone (to nie ocena). `completeWhen` wskazuje istniejące bloki modułu, nigdy `BRIEFING` (pominięcie odprawy nie odhacza

@@ -75,6 +75,21 @@ describe('CoursePlayer: ekran startu modułu (D-163)', () => {
     expect(screen.getByTestId('module-start')).toHaveClass('bg-[#23232A]');
     expect(screen.getByText('ok. 6 min')).toBeInTheDocument();
     expect(screen.getByTestId('module-start-category')).toHaveTextContent('NOWA');
+    // Bez uwagi startu (także starsze API bez pola) - bez czerwonej ramki.
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('uwaga startu (D-171): czerwona ramka z tekstem przed Start, Start działa mimo uwagi', async () => {
+    const notice = 'Przed rozpoczęciem tego modułu należy ukończyć moduł „Wykrywanie wiadomości phishingowych”.';
+    render(<CoursePlayer courseId="course-1" initial={course({ moduleInfo: info({ notice }) })} contentBase={BASE} narrationEnabled={false} />);
+    const note = screen.getByRole('note');
+    expect(note).toHaveTextContent(notice);
+    expect(note).toHaveClass('border-[#D9483B]');
+    const start = screen.getByRole('button', { name: 'Start' });
+    // Kolejność czytania: uwaga przed przyciskiem Start.
+    expect(note.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(start);
+    expect(await screen.findByText('Pytanie pierwsze')).toBeInTheDocument();
   });
 
   it('Start: pierwszy blok, fokus na nagłówku bloku i lektor gra od razu (Start to gest)', async () => {

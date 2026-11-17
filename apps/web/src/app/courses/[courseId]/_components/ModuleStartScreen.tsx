@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, ShieldCheck, X } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { contentAssetUrl } from '@/lib/content-assets';
 import { categoryLabel } from '@/lib/course-categories';
@@ -98,7 +98,8 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
 
       {/* Telefon: miejsce na okładkę nad kartą; komputer: panel w lewej połowie, treść wyśrodkowana w pionie. Na komputerze karta bez
           własnego przewijania (overflow visible - okienko głośności wystaje poza nią), więc treść musi zmieścić się w wysokości: tytuł ≤ 200
-          i podtytuł ≤ 300 znaków ze schematu, layout-check `start` (s1, s2) pilnuje tego dla 844x390 i pseudo-lokalizacji. */}
+          i podtytuł ≤ 300 znaków ze schematu (uwaga startu ≤ 200, D-171), layout-check `start` (s1, s2, s9) pilnuje tego dla 844x390 i
+          pseudo-lokalizacji. */}
       <div className="module-start-panel relative flex min-h-0 flex-1 flex-col justify-end sm:w-1/2 sm:justify-center">
         <main
           aria-labelledby="module-start-title"
@@ -122,6 +123,18 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
           {info.subtitle && (
             <p lang={lang} className="module-start-subtitle text-base leading-normal text-[#4A4A47] sm:text-lg">
               {info.subtitle}
+            </p>
+          )}
+          {/* Uwaga przed startem w czerwonej ramce (D-171, np. wymagany wcześniejszy moduł) - tylko informacja, Start działa zawsze. */}
+          {info.notice && (
+            <p
+              role="note"
+              data-testid="module-start-notice"
+              lang={lang}
+              className="module-start-notice flex items-start gap-2.5 rounded-xl border-2 border-[#D9483B] bg-[#FDF0EE] px-3.5 py-2.5 text-base font-medium leading-snug text-ink"
+            >
+              <AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#B23A2E]" />
+              <span>{info.notice}</span>
             </p>
           )}
           {/* Komputer: [Start] [CC] [głośnik] w jednym rzędzie. Telefon: rząd znika (display: contents) - CC/głośnik pod opisem, Start na

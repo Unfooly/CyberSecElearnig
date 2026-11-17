@@ -43,9 +43,12 @@ describe('moduł 5 „Najłatwiejsze drzwi” - treść', () => {
     expect(steps[0].text).toMatch(/^Przestępca nie musi łamać zabezpieczeń/);
   });
 
-  it('wideo: plik z potoku zasobów (opublikowany klucz), bez zewnętrznego adresu i bez narracji', () => {
+  it('wideo: osobny plik PL i EN z potoku zasobów (opublikowane klucze), bez zewnętrznego adresu i bez narracji', () => {
     const film = block('film');
-    expect(film.src).toMatch(/^assets\/najlatwiejsze-drzwi\/video\/film\.[0-9a-f]{8}\.mp4$/);
+    // Lektor i napisy wpalone w obraz - osobny plik na język (lvideo, D-159); EN czeka na wersję EN modułu (locales).
+    const src = film.src as { pl: string; en: string };
+    expect(src.pl).toMatch(/^assets\/najlatwiejsze-drzwi\/video\/film\.[0-9a-f]{8}\.mp4$/);
+    expect(src.en).toMatch(/^assets\/najlatwiejsze-drzwi\/video\/film-en\.[0-9a-f]{8}\.mp4$/);
     expect(film.url).toBeUndefined();
     expect(film.narration).toBeUndefined();
   });

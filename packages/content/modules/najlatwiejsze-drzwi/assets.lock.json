@@ -19,8 +19,13 @@
     },
     "film#src": {
       "original": "video/film.mp4",
-      "hash": "6db4a598",
-      "key": "assets/najlatwiejsze-drzwi/video/film.6db4a598.mp4"
+      "hash": "a460d876",
+      "key": "assets/najlatwiejsze-drzwi/video/film.a460d876.mp4"
+    },
+    "film#src@en": {
+      "original": "video/film-en.mp4",
+      "hash": "cd484afc",
+      "key": "assets/najlatwiejsze-drzwi/video/film-en.cd484afc.mp4"
     }
   }
 }

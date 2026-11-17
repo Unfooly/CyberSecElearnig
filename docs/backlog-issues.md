@@ -867,6 +867,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-164 Ręczne skrypty e2e modułów po szablonie (D-163 - D-169)
+- Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-169
+- Opis: `scripts/e2e-module-01.mjs` … `e2e-module-04.mjs` (ręczne, poza CI) przechodzą moduł starym przepływem: czekają na scenę startową
+  bez ekranu startu, na ekran podsumowania (`case-evidence`, lista zasad, „Zakończ sprawę”) i raport w teczce (`case-closed`). Z danymi modułu
+  (zawsze na produkcji) jest teraz ekran startu (D-163), podsumowanie zamyka się samo (D-169), a wynik to ekran końca (D-165).
+- Akceptacja: skrypty klikają Start na ekranie startu, po ostatnim bloku czekają na `/progress` z COMPLETED i sprawdzają `module-end`
+  (pieczątka, kafelki, zasady); dowody - z odpowiedzi serwera albo usunięte razem z etapem 2 (B-163).
+
 ### B-163 Sprzątanie po D-162 razem z usunięciem dowodów (etap 2)
 - Etykiety: `P2`, `refactor`, `mod:odtwarzacz` · Źródło: code review D-162
 - Opis: D-162 usunęło z odtwarzacza Notatnik i licznik dowodów, ale mechanika dowodów zostaje do etapu 2 (decyzja właściciela: dowody

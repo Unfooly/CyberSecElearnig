@@ -16,6 +16,12 @@ export default function MonitorStage({ label, children }: { label: string; child
     '--screen-top': `${screen.top}%`,
     '--screen-width': `${screen.width}%`,
     '--screen-height': `${screen.height}%`,
+    // Powiększenie (uwaga właściciela 2026-11-17: większy monitor): ramka skalowana tak, żeby EKRAN wypełniał obszar bloku, a środek
+    // ekranu leżał na środku obszaru - reszta grafiki (biurko, krawędzie) wychodzi poza obszar i jest przycinana.
+    '--screen-w-n': screen.width / 100,
+    '--screen-h-n': screen.height / 100,
+    '--screen-cx': `${screen.left + screen.width / 2}%`,
+    '--screen-cy': `${screen.top + screen.height / 2}%`,
   } as CSSProperties;
   return (
     <div data-testid="monitor-stage" className="monitor-stage" style={style}>

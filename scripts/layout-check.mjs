@@ -2547,7 +2547,9 @@ try {
       if (message.type() === 'error') errors.push(message.text().slice(0, 200));
     });
     for (const { slug, json } of pseudoModules) {
-      for (const blockId of json.blocks.map((block) => block.id)) {
+      // Film (VIDEO) nie ma widocznego tekstu treści - lektor i napisy są wpalone w obraz, a tytuł jest tylko nazwą odtwarzacza dla czytnika
+      // (uwaga właściciela 2026-11-17) - nie ma czego mierzyć w xx.
+      for (const blockId of json.blocks.filter((block) => block.type !== 'VIDEO').map((block) => block.id)) {
         const label = `${viewport.name} / xx / ${slug} / ${blockId}`;
         errors.length = 0;
         await page.goto(`${WEB}/dev/player-harness?module=${slug}&block=${encodeURIComponent(blockId)}&pseudo=1`);
@@ -2769,6 +2771,7 @@ try {
               imgOpacity: getComputedStyle(img).opacity,
               border: getComputedStyle(screenEl).borderTopWidth,
               screenOverflowX: screenEl.scrollWidth - screenEl.clientWidth,
+              screenOverflowY: screenEl.scrollHeight - screenEl.clientHeight,
               areaScroll: area.scrollHeight - area.clientHeight,
               pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
               minFont: Math.min(...texts.map((el) => parseFloat(getComputedStyle(el).fontSize))),
@@ -2781,7 +2784,12 @@ try {
           for (const key of ['x', 'y', 'width', 'height']) {
             if (Math.abs(g.screen[key] - expected[key]) > 1.5) fail(`${label}: (q1) ekran ${key}=${g.screen[key].toFixed(1)} zamiast ${expected[key].toFixed(1)} (manifest).`);
           }
-          if (!contains(g.area, g.img)) fail(`${label}: (q1) monitor wychodzi poza obszar bloku - ${JSON.stringify(g.img)}.`);
+          // Powiększony monitor (uwaga właściciela 2026-11-17): grafika wychodzi poza obszar (przycięta), EKRAN leży w obszarze i wypełnia go
+          // w jednym wymiarze w ≥ 85% (wpisany z marginesem 3-4%).
+          if (!contains(g.area, g.screen)) fail(`${label}: (q1) ekran monitora wychodzi poza obszar bloku - ${JSON.stringify(g.screen)}.`);
+          if (g.screen.width < g.area.width * 0.85 && g.screen.height < g.area.height * 0.85) {
+            fail(`${label}: (q1) ekran za mały - ${g.screen.width.toFixed(0)}×${g.screen.height.toFixed(0)} w obszarze ${g.area.width.toFixed(0)}×${g.area.height.toFixed(0)}.`);
+          }
         } else {
           if (g.border !== '10px') fail(`${label}: (q1) karta bez ramki 10 px (${g.border}).`);
           if (Math.abs(Number(g.imgOpacity) - 0.55) > 0.01) fail(`${label}: (q1) tło monitora nieprzygaszone (opacity ${g.imgOpacity}).`);
@@ -2789,6 +2797,11 @@ try {
         }
         if (g.areaScroll > 1 || g.pageScroll.some((v) => v > 1)) fail(`${label}: (q2) przewija się obszar bloku (${g.areaScroll}) albo strona (${g.pageScroll}).`);
         if (g.screenOverflowX > 1) fail(`${label}: (q2) treść ekranu przepełniona w poziomie o ${g.screenOverflowX}px.`);
+        // Pytanie i odpowiedzi mieszczą się w całości, bez przewijania (uwaga właściciela 2026-11-17) - PL na komputerze (szeroko) i w pionie
+        // na telefonie; xx (dłuższy przekład) i telefon w poziomie (≈ 250 px wysokości obszaru) mogą przewijać ekran.
+        if (!testCase.pseudo && viewport.width >= 360 && viewport.height >= 600 && g.screenOverflowY > 1) {
+          fail(`${label}: (q2) pytanie i odpowiedzi nie mieszczą się - ekran przewija się o ${g.screenOverflowY}px.`);
+        }
         if (g.minFont < 15.9) fail(`${label}: (q2) tekst ${g.minFont}px < 16px.`);
         const optionSelector = quiz.multiple ? '[data-testid="simple-multi-option"]' : '[data-testid="simple-option"]';
         const marks = await page.locator(optionSelector).evaluateAll((els) => els.map((el) => ({ h: el.getBoundingClientRect().height, mark: el.querySelector('[aria-hidden="true"]')?.textContent })));

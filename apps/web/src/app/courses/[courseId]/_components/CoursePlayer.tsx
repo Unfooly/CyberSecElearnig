@@ -86,6 +86,8 @@ interface RenderContext {
   simpleMode: boolean;
   /** Scena (D-128): zapis stanu częściowego (obejrzane, zabrane) - po powrocie do modułu scena wraca w tym samym stanie. */
   onExplore: (blockId: string, state: SceneExploration) => void;
+  /** Blok pojawił się po geście gracza (Start na ekranie startu, „Dalej”) - film (VIDEO) startuje od razu. */
+  autoPlay?: boolean;
 }
 
 /** Etykieta „Dalej” ostatniego kroku odprawy (D-160) albo undefined (zwykłe „Dalej”). */
@@ -145,7 +147,13 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   switch (block.type) {
     case 'VIDEO':
       return (
-        <VideoBlock key={block.id} block={block} contentBase={contentBase} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />
+        <VideoBlock
+          key={block.id}
+          block={block}
+          contentBase={contentBase}
+          autoPlay={ctx.autoPlay}
+          onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)}
+        />
       );
     case 'QUIZ': {
       // „Pytanie N z M” nad pytaniem na ekranie monitora (D-164): numer wśród pytań QUIZ modułu.
@@ -885,6 +893,9 @@ export default function CoursePlayer({
               blocks,
               onEvidence: setEvidence,
               onExplore: saveExploration,
+              // Ten sam gest co autostart lektora (Start na ekranie startu, „Dalej” z bloku z nagraniem) - film po Start gra od razu
+              // (uwaga właściciela 2026-11-17, moduł 5 zaczyna się od filmu).
+              autoPlay: autoPlayFor === keyOf(state.currentBlockIndex),
             })}
           </div>
         )}

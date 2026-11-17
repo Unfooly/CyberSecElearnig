@@ -86,6 +86,17 @@ describe('CoursePlayer: ekran startu modułu (D-163)', () => {
     await waitFor(() => expect(document.activeElement?.tagName).toBe('H2'));
   });
 
+  it('moduł zaczynający się od filmu: Start uruchamia film od razu (uwaga właściciela 2026-11-17), bez tytułu obok filmu', async () => {
+    const video = { id: 'film', type: 'VIDEO', title: 'Bezpieczeństwo sieci', src: 'assets/m/film.1a2b3c4d.mp4' } as CoursePlayerInitialState['contentBlocks'][number];
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [video, course().contentBlocks[1]] })} contentBase={BASE} narrationEnabled={false} />);
+    expect(playSpy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    const player = await screen.findByTestId('video-player');
+    await waitFor(() => expect(playSpy).toHaveBeenCalled());
+    expect(playSpy.mock.contexts.at(-1)).toBe(player);
+    expect(screen.queryByText('Bezpieczeństwo sieci', { selector: 'p' })).not.toBeInTheDocument();
+  });
+
   it('CC na ekranie startu to to samo ustawienie co w pasku odtwarzacza (zapamiętane w przeglądarce)', () => {
     render(<CoursePlayer courseId="course-1" initial={course()} contentBase={BASE} />);
     const cc = screen.getByRole('button', { name: 'Napisy' });

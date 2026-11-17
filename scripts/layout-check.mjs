@@ -2407,7 +2407,7 @@ try {
     }
   }
 
-  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduł 5 z okładką (grafika startu odprawy, `cover=briefing`), moduł 1 bez
+  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduł 5 z okładką (`cover` z treści, D-167), moduł 1 bez
   // okładki (ciemne tło #23232A) i moduł 5 w pseudo-lokalizacji (dłuższy tytuł i opis). Sprawdzamy:
   //  (s1) strona bez przewijania; (s2) Start, X, CC i głośnik w całości na ekranie, cele >= 44 px; (s3) tytuł bez przepełnienia w poziomie,
   //  opis >= 16 px; (s4) komputer: tytuł, opis i Start w jasnym panelu (lewa połowa); telefon: karta przy dolnej krawędzi, okładka nad nią;
@@ -2472,7 +2472,9 @@ try {
           if (Math.abs(info.card.y + info.card.height - viewport.height) > 1) fail(`${label}: (s4) karta nie przylega do dolnej krawędzi - ${JSON.stringify(info.card)}.`);
           if (testCase.cover && !(info.cover.box.y < info.card.y)) fail(`${label}: (s4) okładka nie jest nad kartą.`);
         } else {
-          const panelRight = viewport.width / 2 + 1;
+          // Szerokość jasnego panelu z DOM (50%, na niskim ekranie szerszy - globals.css); elipsa zwęża go u góry i u dołu, treść jest
+          // wyśrodkowana w pionie.
+          const panelRight = (await page.locator('div.module-start-panel[aria-hidden="true"]').boundingBox()).width + 1;
           for (const [what, box] of [['tytuł', info.h1], ['opis', info.subtitle], ['Start', start]]) {
             if (box && box.x + box.width > panelRight) fail(`${label}: (s4) ${what} wychodzi poza jasny panel (prawa krawędź ${box.x + box.width} > ${panelRight}).`);
           }

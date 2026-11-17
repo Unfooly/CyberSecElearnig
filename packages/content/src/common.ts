@@ -126,7 +126,7 @@ export const cueSchema = z
  */
 // schemaVersion 6 (moduł 2, D-114): karol (ofiara), pawel (prawdziwy helpdesk), oszust (podszywa się pod Pawła - w voices.json
 // `sameAs: "pawel"`, ten sam głos w każdym języku).
-// `lektor-siec` - lektor modułu 5 „Najłatwiejsze drzwi” (głos wybrany przez właściciela 2026-11-16, D-160; od schemaVersion 6).
+// `lektor-siec` - lektor modułu 5 „Bezpieczeństwo sieci” (głos wybrany przez właściciela 2026-11-16, D-160; od schemaVersion 6).
 export const VOICE_ROLES = ['narrator', 'komisarz', 'bank', 'marek', 'karol', 'pawel', 'oszust', 'lektor-siec'] as const;
 export type VoiceRole = (typeof VOICE_ROLES)[number];
 /** Role dostępne dopiero od schemaVersion 6 (semantics.ts, sprawdzenie wersji). */

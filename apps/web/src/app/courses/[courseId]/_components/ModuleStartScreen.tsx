@@ -74,7 +74,7 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
       )}
 
       {/* Jasny panel z lewej (komputer): zaokrąglona prawa krawędź jak na makiecie (elipsa wycięta z prostokąta). */}
-      <div aria-hidden="true" className="absolute inset-y-0 left-0 hidden w-1/2 bg-paper [clip-path:ellipse(100%_120%_at_0%_50%)] sm:block" />
+      <div aria-hidden="true" className="module-start-panel absolute inset-y-0 left-0 hidden w-1/2 bg-paper [clip-path:ellipse(100%_120%_at_0%_50%)] sm:block" />
 
       <header className="relative z-10 flex h-14 shrink-0 items-center px-2 sm:h-16 sm:px-4">
         <Link
@@ -96,7 +96,7 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
       {/* Telefon: miejsce na okładkę nad kartą; komputer: panel w lewej połowie, treść wyśrodkowana w pionie. Na komputerze karta bez
           własnego przewijania (overflow visible - okienko głośności wystaje poza nią), więc treść musi zmieścić się w wysokości: tytuł ≤ 200
           i podtytuł ≤ 300 znaków ze schematu, layout-check `start` (s1, s2) pilnuje tego dla 844x390 i pseudo-lokalizacji. */}
-      <div className="relative flex min-h-0 flex-1 flex-col justify-end sm:w-1/2 sm:justify-center">
+      <div className="module-start-panel relative flex min-h-0 flex-1 flex-col justify-end sm:w-1/2 sm:justify-center">
         <main
           aria-labelledby="module-start-title"
           className="module-start-card flex max-h-[78%] min-h-[min(470px,56%)] flex-col gap-3.5 overflow-y-auto rounded-t-3xl bg-paper px-5 pb-6 pt-7 sm:max-h-full sm:min-h-0 sm:overflow-visible sm:gap-5 sm:rounded-none sm:bg-transparent sm:py-6 sm:pl-[clamp(24px,7.5vw,96px)] sm:pr-[clamp(24px,6vw,96px)]"

@@ -121,6 +121,7 @@ export default function PlayerHarnessPage({
     localeUi?: string;
     pseudo?: string;
     start?: string;
+    reward?: string;
     cover?: string;
   };
 }) {
@@ -221,7 +222,27 @@ export default function PlayerHarnessPage({
     <div className="h-dvh overflow-hidden bg-paper">
       {/* `?narration=1` (fix/mobile-player-bar): lektor włączony - layout-check podstawia nagranie (page.route) i mierzy przycisk
           odtwarzania i linijkę napisów w dolnym pasku. Domyślnie wyłączony, jak dotąd (bez prób ładowania audio). */}
-      <CoursePlayer courseId="dev-harness" initial={initial} contentBase={contentBase} narrationEnabled={searchParams.narration === '1'} persistExploration={false} />
+      {/* `?reward=1` (D-165): nagroda jak po świeżym ukończeniu - ekran końca z kartą poziomu i nowym osiągnięciem (z `completed=1&start=1`). */}
+      <CoursePlayer
+        courseId="dev-harness"
+        initial={initial}
+        contentBase={contentBase}
+        narrationEnabled={searchParams.narration === '1'}
+        persistExploration={false}
+        previewReward={
+          searchParams.reward === '1'
+            ? {
+                xpGained: 150,
+                previousLevel: 3,
+                newLevel: 3,
+                leveledUp: false,
+                levelProgressBeforePercent: 38,
+                levelProgressAfterPercent: 68,
+                unlockedBadges: [{ code: 'flawless-case', title: 'Sprawa bez skazy', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', xpReward: 50, rank: 'RARE' }],
+              }
+            : null
+        }
+      />
       {clickPath && <HarnessAutoOpen path={clickPath} />}
     </div>
   );

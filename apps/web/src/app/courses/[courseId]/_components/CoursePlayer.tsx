@@ -31,6 +31,8 @@ import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from './blocks/Sc
 import FeedbackPanel from './FeedbackPanel';
 import CaseClosedScreen from './CaseClosedScreen';
 import ModuleStartScreen from './ModuleStartScreen';
+import ModuleEndScreen from './ModuleEndScreen';
+import { summaryRules } from './simple-markdown';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
 import { NarrationPauseProvider } from './player/narration-pause';
@@ -299,9 +301,13 @@ export default function CoursePlayer({
   userEmail = null,
   nextCourse = null,
   persistExploration = true,
+  previewReward = null,
 }: {
   // Zapis stanu częściowego sceny (D-128); strona deweloperska (player-harness) nie ma backendu, więc go wyłącza.
   persistExploration?: boolean;
+  /** Tylko podgląd (player-harness `?reward=1`): nagroda jak po świeżym ukończeniu - karta poziomu na ekranie końca (D-165). Produkcja
+      dostaje nagrodę wyłącznie z odpowiedzi /progress. */
+  previewReward?: CourseCompletionReward | null;
   courseId: string;
   initial: CoursePlayerInitialState;
   // true tylko, gdy user wrócił do JUŻ ukończonego kursu, a pobranie
@@ -371,7 +377,7 @@ export default function CoursePlayer({
   // Obecne WYŁĄCZNIE po świeżym ukończeniu w TEJ sesji (ustawiane w
   // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
   // wrócił do wcześniej ukończonego kursu (ekran zamknięcia bez ceremonii i bez XP).
-  const [reward, setReward] = useState<CourseCompletionReward | null>(null);
+  const [reward, setReward] = useState<CourseCompletionReward | null>(previewReward);
   // Ukończenie w TEJ sesji (ceremonia ekranu zamknięcia sprawy, D-089) i moment ukończenia (czas śledztwa).
   const [completedNow, setCompletedNow] = useState(false);
   const [completedAt, setCompletedAt] = useState<string | null>(initial.completedAt ?? null);
@@ -951,6 +957,32 @@ export default function CoursePlayer({
         ? `Kurs ukończony. Zdobyto ${reward.xpGained} punktów doświadczenia.`
         : 'Kurs ukończony ponownie. Punkty doświadczenia naliczone przy pierwszym ukończeniu.'
       : '';
+
+  // Ekran końca modułu (szablon, D-165): po ukończeniu, w odpowiedziach z danymi modułu. Bez nich (starsze API, testy) - raport w teczce
+  // (CaseClosedScreen) w ramce odtwarzacza, jak dotąd.
+  if (isSummaryMode && initial.moduleInfo) {
+    return (
+      <ModuleEndScreen
+        moduleTitle={initial.title}
+        headline={summaryBlock?.title}
+        info={initial.moduleInfo}
+        contentBase={contentBase}
+        lang={contentLocale}
+        score={state.score}
+        scoreUnavailable={scoreUnavailable}
+        reward={reward}
+        startedAt={initial.startedAt}
+        completedAt={completedAt}
+        rules={summaryRules(summaryBlock)}
+        nextCourse={nextCourse}
+        onRestart={restartCourse}
+        restarting={restarting}
+        restartError={restartError}
+        headingRef={summaryHeadingRef}
+        fresh={completedNow}
+      />
+    );
+  }
 
   if (showStart && initial.moduleInfo) {
     return (

@@ -690,23 +690,18 @@ try {
   await page.getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled')).click();
   await page.locator('iframe[title="Interaktywny moduł szkoleniowy"]').waitFor();
   step('embed: po powrocie z podglądu iframe wraca', (await page.locator('iframe').count()) === 1);
-  // „Ukończyłem” to przełącznik gotowości (D-106) - zapis rusza „Dalej” w pasku.
+  // „Ukończyłem” to przełącznik gotowości (D-106) - zapis rusza „Dalej” w pasku. Po nim bieżącym blokiem jest podsumowanie (SUMMARY), które
+  // odtwarzacz zamyka sam, bez osobnego ekranu (D-169) - drugi zapis kończy kurs. Odpowiedź z COMPLETED musi przyjść z serwera, nie tylko
+  // zmiana ekranu.
+  const completion = page.waitForResponse(
+    async (r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST' && (await r.json().catch(() => null))?.status === 'COMPLETED',
+  );
   await page.getByRole('button', { name: 'Ukończyłem' }).click();
   await nextEnabled().click();
-
-  await page.getByTestId('case-evidence').waitFor();
-  const caseText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('śledztwo: rozwiązanie sprawy: 5 z 6 dowodów, przeoczony 1 tylko liczbowo (bez treści)', caseText.includes('Zebrane dowody: 5 z 6') && caseText.includes('1 dowód w tej scenie pozostał nieodkryty') && caseText.includes('Podejrzany mail: 2 z 2') && !caseText.includes('Kubek'), caseText.slice(0, 200));
-  await shoot('rozwiazanie-sprawy');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await noHScroll('telefon, rozwiązanie sprawy');
-  await shoot('rozwiazanie-sprawy-390');
-  await page.setViewportSize({ width: 1280, height: 800 });
-  // Odpowiedź /progress na "Zakończ sprawę" musi mieć status COMPLETED (kurs ukończony po stronie serwera), nie tylko zmianę ekranu.
-  const completion = page.waitForResponse((r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST');
-  await page.getByTestId('player-bottombar').getByRole('button', { name: 'Zakończ sprawę' }).click();
   const completionBody = await (await completion).json();
-  step('śledztwo: "Zakończ sprawę" kończy kurs po stronie serwera (status COMPLETED)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status, evidence: completionBody.evidence?.collected }));
+  step('śledztwo: podsumowanie zamyka się samo i kończy kurs po stronie serwera (status COMPLETED, D-169)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status }));
+  // Dowody liczy dalej serwer (D-130) - 5 z 6 (jeden przedmiot sceny celowo pominięty).
+  step('śledztwo: serwer liczy 5 z 6 dowodów', completionBody.evidence?.collected === 5 && completionBody.evidence?.total === 6, JSON.stringify(completionBody.evidence));
   // Ekran końca modułu (D-165): pieczątka, kafelki i powrót do biblioteki (kurs bez pliku modułu - ciemne tło, bez okładki).
   await page.getByTestId('module-end').waitFor();
   step(

@@ -757,6 +757,28 @@ export default function CoursePlayer({
   const currentBlock = blocks[displayedIndex];
   const showingFeedback = feedback !== null;
 
+  // Bez ekranu podsumowania przed wynikiem (decyzja właściciela 2026-11-17, D-169): z danymi modułu (ekran końca, D-165) blok SUMMARY nie
+  // jest pokazywany - odtwarzacz zapisuje go sam, gdy stanie się bieżącym blokiem (po ostatnim pytaniu), i od razu przechodzi do ekranu
+  // wyniku. Treść SUMMARY zostaje źródłem nagłówka i zasad ekranu końca. Nieudany zapis (`error`) - podsumowanie pokazuje się jak dotąd,
+  // z „Dalej” (bez pętli ponawiania).
+  const autoCloseSummary =
+    Boolean(initial.moduleInfo) &&
+    state.status !== 'COMPLETED' &&
+    !showingFeedback &&
+    !reviewing &&
+    error === null &&
+    blocks[state.currentBlockIndex]?.type === 'SUMMARY';
+  // Jedna próba na blok (np. wygasła sesja -> przejście do logowania bez `error` nie może zapętlić zapisów).
+  const autoClosedFor = useRef<number | null>(null);
+  useEffect(() => {
+    // Po zakończeniu poprzedniego zapisu (`submitting`), inaczej blokada podwójnego wysłania w handleAnswer zjadłaby ten zapis.
+    if (!autoCloseSummary || submitting || autoClosedFor.current === state.currentBlockIndex) return;
+    autoClosedFor.current = state.currentBlockIndex;
+    void handleAnswer(undefined);
+    // handleAnswer czyta bieżący stan; wystarczy moment, w którym SUMMARY staje się bieżącym blokiem i nic się nie zapisuje.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCloseSummary, submitting]);
+
   // SCENE_HOTSPOTS wypełnia całą dostępną przestrzeń ramki (object-contain); DIALOGUE, BRIEFING i DOSSIER też wypełniają (własny,
   // wewnętrzny scroll wątku/odprawy zamiast przewijania całego panelu - fix/dialogue-sticky-questions, D-081), ale to NIE jest
   // "scena" (stąd osobna wartość 'fill', ten sam CSS co 'scene' w PlayerStage.tsx); reszta bloków (i FeedbackPanel/
@@ -854,7 +876,12 @@ export default function CoursePlayer({
     // notatnika dowody, rozmowa, zaznaczona opcja) przeżywa "Wstecz" i "Dalej", więc licznik dowodów i notatnik (stan ponad blokiem) nie
     // rozjeżdżają się ze stanem bloku. Ukryty blok jest poza drzewem dostępności i kolejnością Tab (atrybut hidden).
     const liveBlock = blocks[state.currentBlockIndex];
-    stage = (
+    stage = autoCloseSummary ? (
+      // Chwila zapisu podsumowania (D-169) - zamiast jego treści krótki komunikat, za moment ekran wyniku.
+      <p role="status" data-testid="closing-pending" className="m-auto text-base text-muted">
+        Zamykanie sprawy…
+      </p>
+    ) : (
       <>
         {liveBlock && (
           // Łańcuch wysokości dla contentLayout='scene'/'fill' (hotfix fix/player-scene-fit/B-100, druga runda code
@@ -944,6 +971,8 @@ export default function CoursePlayer({
       !showingFeedback &&
       // Film startuje sam po tym samym geście (D-166) - narracja bloku VIDEO (jeśli treść ją ma) nie gra razem z nim; gracz uruchomi ją ręcznie.
       currentBlock?.type !== 'VIDEO' &&
+      // Podsumowanie zamykane od razu (D-169) - lektor go nie zaczyna.
+      !autoCloseSummary &&
       (briefingStep && briefingStep.index > 0 ? briefingStep.gesture : autoPlayFor === keyOf(displayedIndex)),
     resetKey: isSummaryMode
       ? 'summary'
@@ -1103,7 +1132,7 @@ export default function CoursePlayer({
             forwardLabel={
               isSummaryMode
                 ? 'Wróć do biblioteki'
-                : !showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY'
+                : !showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY' && !autoCloseSummary
                   ? hasEvidence(evidence)
                     ? 'Zakończ sprawę'
                     : 'Zakończ szkolenie'

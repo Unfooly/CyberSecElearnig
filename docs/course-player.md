@@ -46,7 +46,8 @@ Nad pytaniem „Pytanie N z M” (numer wśród QUIZ modułu). Układ `scene` (p
 podgląd „Wstecz” bez zmian. layout-check: sekcja `monitor` (q1-q6).
 
 **Ekran końca modułu (D-165).** Po ukończeniu kursu, w odpowiedziach z `moduleInfo`, odtwarzacz pokazuje `ModuleEndScreen` zamiast raportu
-w teczce (`CaseClosedScreen` zostaje dla odpowiedzi bez danych modułu). Na komputerze widać okładkę `cover.end` na tle i jasny panel z lewej:
+w teczce (`CaseClosedScreen` zostaje dla odpowiedzi bez danych modułu). Blok SUMMARY nie jest wtedy pokazywany - po ostatnim pytaniu
+odtwarzacz zapisuje go sam i od razu przechodzi do wyniku (D-169); jego treść daje nagłówek i zasady ekranu końca. Na komputerze widać okładkę `cover.end` na tle i jasny panel z lewej:
 - pieczątka SPRAWA ZAMKNIĘTA i tytuł modułu, nagłówek (tytuł bloku SUMMARY);
 - kafelki Wynik / Czas / Punkty;
 - karta poziomu z paskiem i nowym osiągnięciem - tylko przy świeżym ukończeniu, bo tylko wtedy jest nagroda z `/progress`;

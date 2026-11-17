@@ -205,7 +205,7 @@ describe('CoursePlayerPage', () => {
 
     render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
 
-    expect(screen.getByRole('button', { name: 'Lektor' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Lektor wyciszony' })).toBeInTheDocument();
   });
 
   it('D-124: „Bez limitów czasu” z konta dochodzi do rozmowy na żywo (bez przełącznika limitu); bez ustawienia - przełącznik', async () => {
@@ -260,7 +260,7 @@ describe('CoursePlayerPage', () => {
 
     render(await CoursePlayerPage({ params: { courseId: 'course-1' } }));
 
-    expect(screen.getByRole('button', { name: 'Lektor' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Głośność lektora/ })).toBeInTheDocument();
   });
 
   it('kurs COMPLETED: dociąga wynik z /courses/my i NIE pobiera preferencji (podsumowanie nie ma odtwarzacza)', async () => {

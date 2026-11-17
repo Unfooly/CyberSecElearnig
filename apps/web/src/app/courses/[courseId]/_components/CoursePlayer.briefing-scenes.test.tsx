@@ -210,16 +210,6 @@ describe('CoursePlayer: odprawa ze scenami, postęp klikiem w przedmiot (D-084, 
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
   });
 
-  it('„Pomiń odprawę”, gdy ostatni krok ma przedmiot: odprawa gotowa od razu (bez akcji na legitymacji), zapis dopiero po „Dalej”', async () => {
-    const fetchMock = stubFetch();
-    render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="jan.p@firma.pl" contentBase="https://cdn.example" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
-    expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeEnabled();
-    expect(progressCalls(fetchMock)).toHaveLength(0);
-    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
-    await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-  });
-
   it('podgląd ukończonej odprawy: na ostatnim kroku przedmiot nieaktywny (nic nie zapisuje), dalej tylko "Dalej" w stopce', () => {
     const fetchMock = stubFetch();
     render(

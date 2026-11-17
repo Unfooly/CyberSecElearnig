@@ -136,24 +136,18 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     await screen.findByText('Biuro Anny.');
   });
 
-  it('"Pomiń odprawę" w górnym pasku przeskakuje na ostatni krok (bez zapisu); zapis rusza „Dalej” w pasku (D-106); zadania się NIE odhaczają', async () => {
+  it('D-162: bez „Pomiń odprawę” - kroki przechodzą przyciskami kroku, zapis odprawy dopiero „Dalej” w pasku (D-106)', async () => {
     const fetchMock = stubFetch();
     render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="anna.kowalska@firma.pl" />);
+    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+    for (const cta of ['Odbierz', 'Słucham', 'Przyjmuję sprawę', 'Do dzieła']) fireEvent.click(screen.getByRole('button', { name: cta }));
     expect(screen.getByText('Unfooly, drugie piętro.')).toBeInTheDocument();
     expect(progressCalls(fetchMock)).toHaveLength(0);
-    // Na ostatnim kroku nie ma już czego pomijać.
-    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
     await screen.findByText('Biuro Anny.');
-    expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Notatnik/ }));
-    expect(notebookTask('Zabezpiecz dowody w biurze.')).toHaveTextContent('Do zrobienia:');
-    expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
   });
 
   it('ponowne wejście w ukończoną odprawę ("Wstecz"): bez "Pomiń odprawę" - „Dalej” w pasku aktywny od razu, przewija dalej bez zapisu', async () => {
@@ -227,30 +221,6 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     });
   });
 
-  it('zadania w notatniku odhaczone wg ukończonych bloków (wszystkie z completeWhen), także zaraz po zapisie w tej sesji', async () => {
-    stubFetch();
-    render(
-      <CoursePlayer
-        courseId="course-1"
-        initial={course({
-          currentBlockIndex: 2,
-          progress: { v: 2, blocks: { odprawa: { type: 'BRIEFING', done: true }, biuro: { type: 'NARRATIVE', done: true } }, notes: [] },
-        })}
-        narrationEnabled={false}
-      />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: /Notatnik/ }));
-    expect(notebookTask('Zabezpiecz dowody w biurze.')).toHaveTextContent('Wykonane:');
-    expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Do zrobienia:');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zamknij notatnik' }));
-    fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
-    // Ostatni blok ukończony w TEJ sesji: kurs przechodzi dalej, a zadanie odhacza się z wyniku zapisu (bez /start).
-    await waitFor(() => expect(screen.queryByText('Rozmowa z IT.')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Notatnik/ }));
-    expect(notebookTask('Porozmawiaj z IT.')).toHaveTextContent('Wykonane:');
-  });
-
   it('legitymacja bez imienia w profilu: imię z e-maila; bez e-maila (np. podgląd dev) neutralny "Detektyw"', async () => {
     stubFetch({ firstName: null, lastInitial: null });
     const { unmount } = render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} userEmail="jan.nowak@firma.pl" />);
@@ -268,19 +238,44 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
 
   it('pasek lektora idzie za KROKIEM odprawy (steps[].narration), krok bez narracji nie ma paska', () => {
     stubFetch();
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
     const withNarration: ContentBlock = {
       ...briefing,
-      steps: briefing.steps!.map((step, index) => (index === 1 ? { ...step, narration: { text: 'Komisarz mówi o sprawie.' } } : step)),
+      steps: briefing.steps!.map((step, index) =>
+        index === 1 ? { ...step, narration: { text: 'Komisarz mówi o sprawie.', audioUrl: 'audio/krok.mp3', durationMs: 2000 } } : step,
+      ),
     };
-    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [withNarration] })} narrationEnabled={false} />);
-    expect(screen.queryByRole('button', { name: 'Transkrypcja' })).not.toBeInTheDocument();
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [withNarration] })} contentBase="/content" narrationEnabled />);
+    expect(screen.queryByRole('button', { name: 'Napisy' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
-    expect(within(screen.getByRole('region', { name: 'Transkrypcja narracji' })).getByText('Komisarz mówi o sprawie.')).toBeInTheDocument();
+    // Napisy (CC, D-162) z narracją tego kroku.
+    expect(screen.getByTestId('narration-caption')).toHaveTextContent('Komisarz mówi o sprawie.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Słucham' }));
-    expect(screen.queryByRole('button', { name: 'Transkrypcja' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Napisy' })).not.toBeInTheDocument();
+  });
+
+  it('D-162: lektor wyciszony - tekst narracji w pasku tylko dla kroku, którego narracji nie widać na ekranie', () => {
+    stubFetch();
+    const withNarration: ContentBlock = {
+      ...briefing,
+      steps: briefing.steps!.map((step, index) =>
+        index === 0
+          ? { ...step, narration: { text: 'Wtorek, 7:58.  Dzwoni telefon.', audioUrl: 'audio/krok-0.mp3', durationMs: 2000 } }
+          : index === 1
+            ? { ...step, narration: { text: 'Komisarz opowiada o sprawie.', audioUrl: 'audio/krok-1.mp3', durationMs: 2000 } }
+            : step,
+      ),
+    };
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [withNarration] })} contentBase="/content" narrationEnabled={false} />);
+    // Krok 0: narracja = tekst maszyny do pisania (różnica w białych znakach bez znaczenia) - bez dubla w pasku.
+    expect(screen.queryByTestId('narration-text')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Odbierz' }));
+    // Krok 1: narracji nie ma na ekranie - cały tekst w pasku.
+    expect(screen.getByTestId('narration-text')).toHaveTextContent('Komisarz opowiada o sprawie.');
   });
 
   describe('autoodtwarzanie narracji kroków (lektor włączony)', () => {
@@ -315,14 +310,14 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
       await waitFor(() => expect(played).toEqual([expect.stringContaining('krok-1.mp3')]));
     });
 
-    it('"Pomiń odprawę" + „Dalej” (odprawa ma nagrania w krokach) odtwarza narrację kolejnego bloku', async () => {
+    it('przejście kroków + „Dalej” (odprawa ma nagrania w krokach) odtwarza narrację kolejnego bloku', async () => {
       stubFetch();
       const played = spyPlay();
       render(<CoursePlayer courseId="course-1" initial={audioCourse()} narrationEnabled />);
-      fireEvent.click(screen.getByRole('button', { name: 'Pomiń odprawę' }));
+      for (const cta of ['Odbierz', 'Słucham', 'Przyjmuję sprawę', 'Do dzieła']) fireEvent.click(screen.getByRole('button', { name: cta }));
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await screen.findByText('Biuro Anny.');
-      // Pominięcie to gest - ekran startu (ostatni krok) może zacząć swoją narrację; po „Dalej” gra już kolejny blok.
+      // „Dalej” to gest - gra już kolejny blok.
       await waitFor(() => expect(played.at(-1)).toContain('biuro.mp3'));
     });
 
@@ -346,8 +341,8 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
       expect(screen.getByRole('button', { name: 'Odbierz' })).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
-      expect(within(screen.getByRole('region', { name: 'Transkrypcja narracji' })).getByText('Narracja kroku 0.')).toBeInTheDocument();
+      // Napisy (CC, D-162) pokazują narrację kroku 0 - nie starego kroku.
+      expect(screen.getByTestId('narration-caption')).toHaveTextContent('Narracja kroku 0.');
       expect(played.slice(before).filter((src) => src.includes('krok-2.mp3'))).toEqual([]);
     });
   });

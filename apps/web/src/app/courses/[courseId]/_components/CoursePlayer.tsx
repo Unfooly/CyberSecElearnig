@@ -23,7 +23,6 @@ import QuizBlock from './blocks/QuizBlock';
 import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
 import SimpleMultiChoiceBlock from './blocks/SimpleMultiChoiceBlock';
 import SwipeSortBlock from './blocks/SwipeSortBlock';
-import { CourseLanguageSwitch, PolishOnlyBadge } from './player/CourseLanguage';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
 import DragAndDropBlock from './blocks/DragAndDropBlock';
 import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
@@ -34,11 +33,10 @@ import CaseClosedScreen from './CaseClosedScreen';
 import PlayerStage from './player/PlayerStage';
 import NarrationBar from './player/NarrationBar';
 import { NarrationPauseProvider } from './player/narration-pause';
-import TranscriptPanel from './player/TranscriptPanel';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
 import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './player/notes';
-import { EvidenceCounter, EvidenceProvider, hasEvidence } from './player/evidence';
+import { EvidenceProvider, hasEvidence } from './player/evidence';
 import { DEFAULT_HINT, HintProvider, useHints } from './player/hints';
 import { useNarrationPreference } from './player/useNarrationPreference';
 import { SfxProvider } from '@/lib/sfx';
@@ -63,8 +61,6 @@ interface RenderContext {
   suspended: boolean;
   /** Zgłasza gotowość do "Dalej" w pasku powłoki - jedynego przejścia dalej (D-106); bloki nie mają własnych przycisków dalej. */
   onReady: (submit: (() => void) | null) => void;
-  /** „Pomiń odprawę” (D-106): zmiana licznika = żywy BRIEFING przeskakuje na ostatni krok. */
-  briefingSkip: number;
   myAvatarUrl?: string | null;
   myInitials?: string;
   /** BRIEFING (D-081): zadania pod kartą sprawy, tożsamość gracza (z sesji) i zmiana kroku odprawy. */
@@ -112,7 +108,6 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
         tasks={ctx.tasks}
         identity={ctx.identity}
         onBriefingStep={ctx.onBriefingStep}
-        briefingSkip={ctx.briefingSkip}
         moduleBlocks={ctx.blocks}
         exploration={ctx.progress?.exploration}
         onExplore={block.id ? (state) => ctx.onExplore(block.id ?? '', state) : undefined}
@@ -216,7 +211,6 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   }
 }
 
-const NOTES_ID = 'notes-panel';
 // Ile najwyżej „Dalej” czeka na trwający zapis stanu częściowego sceny (D-128), zanim wyśle zapis bloku.
 const EXPLORE_WAIT_MS = 4000;
 // Najdłuższe czekanie X na zapisy w toku (D-142) - potem wyjście i tak następuje. Obejmuje też czekanie samego „Dalej” na zapis stanu
@@ -230,22 +224,20 @@ const EXIT_SAVE_WAIT_MS = 5000;
 let restoredFromHistory = false;
 if (typeof window !== 'undefined') window.addEventListener('popstate', () => (restoredFromHistory = true));
 
-// Woła hooki, które MUSZĄ być dziećmi NotesProvider/HintProvider (useNotes, useHints) - liczbę notatek i bieżącą podpowiedź
-// PlayerStage dostaje jako zwykłe propsy, nie renderuje ich samo.
+// Woła hook, który MUSI być dzieckiem HintProvider (useHints) - bieżącą podpowiedź PlayerStage dostaje jako zwykły prop.
 function StageWithContext({
   idleHint,
   showHint,
   ...props
-}: Omit<React.ComponentProps<typeof PlayerStage>, 'notesCount' | 'hint'> & {
+}: Omit<React.ComponentProps<typeof PlayerStage>, 'hint'> & {
   /** Stała podpowiedź bieżącego bloku (z treści albo domyślna dla typu); podpowiedź zdarzenia (np. nowy dowód) ją chwilowo zastępuje. */
   idleHint?: string;
   /** false w trybie podsumowania - podpowiedź nie nakłada się na ekran zamknięcia sprawy. */
   showHint: boolean;
 }) {
-  const { notes } = useNotes();
   const { hint } = useHints();
   const shown = showHint ? (hint ?? idleHint) : undefined;
-  return <PlayerStage {...props} notesCount={notes.length} hint={shown} />;
+  return <PlayerStage {...props} hint={shown} />;
 }
 
 const blockIdOf = (blocks: ContentBlock[], index: number) => blocks[index]?.id ?? `b${index}`;
@@ -265,6 +257,19 @@ function stepNarration(block: ContentBlock | undefined, index: number): Narratio
   if (!block) return undefined;
   if (block.type === 'BRIEFING') return block.steps?.[index]?.narration;
   return block.markers?.[index]?.narration ?? (index === 0 ? block.narration : undefined);
+}
+
+/**
+ * Narracja kroku odprawy jest dosłownie na ekranie (maszyna do pisania, dymek rozmowy) - wtedy pasek nie dubluje jej tekstem zastępczym
+ * przy wyciszonym lektorze (D-162; dubel zabierałby scenie wysokość na telefonie). Krok z narracją, której nie widać (np. teczka,
+ * legitymacja) - tekst w pasku zostaje.
+ */
+function briefingNarrationOnScreen(block: ContentBlock | undefined, index: number): boolean {
+  if (block?.type !== 'BRIEFING') return false;
+  const step = block.steps?.[index] as { text?: string; narration?: Narration } | undefined;
+  const spoken = step?.narration?.text;
+  const norm = (value: string) => value.replace(/\s+/g, ' ').trim();
+  return typeof spoken === 'string' && typeof step?.text === 'string' && norm(step.text).includes(norm(spoken));
 }
 
 // Notatki dopisane przez serwer przy zapisie bloku (np. trafione kryteria maila) trafiają do notatnika od razu; dedup w addNote.
@@ -368,9 +373,6 @@ export default function CoursePlayer({
   const [error, setError] = useState<string | null>(null);
   // Podgląd wcześniejszego bloku ("Wstecz"): tylko klient, bez skutku na serwerze; null = bieżący blok z serwera.
   const [viewIndex, setViewIndex] = useState<number | null>(null);
-  const [notesOpen, setNotesOpen] = useState(false);
-  // „Pomiń odprawę” (D-106): licznik kliknięć - żywy blok BRIEFING przeskakuje na ostatni krok przy każdej zmianie.
-  const [briefingSkip, setBriefingSkip] = useState(0);
   // Klucz bloku, dla którego wolno rozpocząć narrację automatycznie (po geście "Dalej", gdy poprzedni blok miał nagranie).
   const [autoPlayFor, setAutoPlayFor] = useState<string | null>(null);
   // Wyniki bloków po id: początkowe z /start, uzupełniane po każdej odpowiedzi w tej sesji (dla podglądu "Wstecz").
@@ -406,8 +408,6 @@ export default function CoursePlayer({
   // sr-only nagłówku PlayerStage.tsx (ten drugi zostaje wyłącznie dla zmiany bloku - D-076, poprawka po code review:
   // wcześniejszy `headingOverride` dublował ten sam tekst w dwóch miejscach, jednym ukrytym).
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
-  // Dzielony z TranscriptPanel.tsx: fokus wraca na przycisk "Transkrypcja" (NarrationBar) po zamknięciu panelu.
-  const transcriptButtonRef = useRef<HTMLButtonElement>(null);
   const mounted = useRef(false);
   // Synchroniczna blokada podwójnego wysłania (stan `submitting` aktualizuje się asynchronicznie, więc dwa kliknięcia w tym samym ticku
   // by go ominęły): każdy blok oceniany korzysta z handleAnswer, więc wzorzec jest w powłoce.
@@ -840,7 +840,6 @@ export default function CoursePlayer({
               onProgress,
               suspended: reviewing,
               onReady: handleReady,
-              briefingSkip,
               myAvatarUrl,
               myInitials,
               tasks,
@@ -879,7 +878,7 @@ export default function CoursePlayer({
   }
 
   // Narracja: bloku podsumowania (tryb summary), bloku z wyniku (feedback) albo bieżącego/podglądanego bloku - JEDNO
-  // wywołanie hooka niezależnie od trybu (zasady hooków), NarrationBar/TranscriptPanel same nic nie pokazują bez
+  // wywołanie hooka niezależnie od trybu (zasady hooków), NarrationBar sam nic nie pokazuje bez
   // narration.
   const summaryBlock = useMemo(() => blocks.find((block) => block.type === 'SUMMARY'), [blocks]);
   const narrationBlock = isSummaryMode ? summaryBlock : showingFeedback ? blocks[feedback.blockIndex] : currentBlock;
@@ -912,38 +911,11 @@ export default function CoursePlayer({
     if (narrationBarRef.current.playing) narrationBarRef.current.togglePlay();
   }, []);
 
-  // "Pomiń odprawę" (D-081, D-106): przeskakuje na ostatni krok odprawy (ekran startu) - odprawa jest wtedy gotowa, a dalej prowadzi
-  // wyłącznie „Dalej” w dolnym pasku (jeden przycisk dalej). Tylko na żywym bloku i przed ostatnim krokiem; w podglądzie „Wstecz”
-  // „Dalej” w pasku jest i tak aktywny.
+  // Ostatni krok odprawy - etykieta „Dalej” (D-160) tylko na nim.
   const briefingLast = (currentBlock?.steps?.length ?? 1) - 1;
-  const skipBriefing =
-    briefingStep !== null && currentBlock?.type === 'BRIEFING' && !reviewing && briefingStep.index < briefingLast ? (
-      <button
-        type="button"
-        onClick={() => setBriefingSkip((count) => count + 1)}
-        disabled={submitting}
-        className="inline-flex h-10 shrink-0 items-center rounded border border-slate-300 bg-white px-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 sm:px-3"
-      >
-        Pomiń odprawę
-      </button>
-    ) : undefined;
 
-  // Język kursu (D-133): plakietka „Available in Polish only”, gdy kurs nie ma języka gracza; przełącznik na starcie kursu (pierwszy blok,
-  // kurs w toku), gdy kurs ma więcej niż jeden język. Starsze odpowiedzi /start bez pól - polski, bez plakietki i przełącznika.
+  // Język treści (D-133) - nadal z konta i przeglądarki (API), tylko bez plakietki i przełącznika w odtwarzaczu (D-162, decyzja właściciela).
   const contentLocale = initial.locale ?? 'pl';
-  const courseLocales = initial.locales ?? ['pl'];
-  // Dwie kopie (pasek górny od 640 px, wiersz nad treścią węziej - CourseLanguage.tsx), przełączane klasami: bez skoku układu po hydracji.
-  const showSwitch = !initial.localeFallback && courseLocales.length > 1 && state.currentBlockIndex === 0 && !reviewing && !isSummaryMode;
-  const languageControl = (place: 'bar' | 'row') =>
-    initial.localeFallback ? (
-      <PolishOnlyBadge testId={place === 'bar' ? 'polish-only-badge' : 'polish-only-badge-row'} />
-    ) : showSwitch ? (
-      <CourseLanguageSwitch locale={contentLocale} locales={courseLocales} testId={place === 'bar' ? 'course-language' : 'course-language-row'} />
-    ) : null;
-  const hasLanguageControl = initial.localeFallback === true || showSwitch;
-  // Wiersz nad treścią (telefon) tylko na starcie kursu - także dla plakietki: na kolejnych blokach zabierałby miejsce scenom ('scene'/'fill'
-  // z overflow-clip). Od 640 px plakietka zostaje w pasku górnym na każdym bloku (D-133).
-  const languageRow = hasLanguageControl && state.currentBlockIndex === 0 && !reviewing && !isSummaryMode;
 
   // Ogłoszenie aria-live (PlayerStage.tsx, region persystentny przez cały kurs - D-076) wypełnione WYŁĄCZNIE w
   // trybie podsumowania ze świeżym `reward` z TEJ sesji (patrz komentarz przy `reward` wyżej) - puste poza tym, w
@@ -971,13 +943,6 @@ export default function CoursePlayer({
             headingRef={headingRef}
             resultAnnouncement={resultAnnouncement}
             showHint={!isSummaryMode}
-            evidence={<EvidenceCounter />}
-            topAction={
-              <>
-                {hasLanguageControl && <div className="hidden sm:flex">{languageControl('bar')}</div>}
-                {skipBriefing}
-              </>
-            }
             lang={contentLocale}
             // Stała podpowiedź: `tip` (D-096), dla starszych wersji treści `mascot.text` (poza ignorowana, D-093); bez niej - domyślna dla typu.
             idleHint={
@@ -989,12 +954,6 @@ export default function CoursePlayer({
             simpleMode={simpleMode}
             stage={
               <>
-                {/* Wąski ekran: język kursu nad treścią bloku - pasek górny pierwszego bloku nie ma już miejsca (D-133). */}
-                {languageRow && (
-                  <div lang="pl" data-testid="course-language-place-row" className="mb-3 flex w-full shrink-0 justify-end sm:hidden">
-                    {languageControl('row')}
-                  </div>
-                )}
                 {error && (
                   <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
                     {error}
@@ -1011,20 +970,16 @@ export default function CoursePlayer({
                 onToggleEnabled={preference.toggle}
                 togglePending={preference.pending}
                 toggleError={preference.error}
-                transcriptButtonRef={transcriptButtonRef}
+                textOnScreen={
+                  // Raport zamknięcia (SUMMARY) pokazuje wnioski i liczby, które lektor streszcza; na telefonie raport 9:16 nie ma
+                  // zapasu wysokości na dodatkowy wiersz tekstu w pasku (360x740: wnioski wychodziły poza slot) - D-162.
+                  // Po ukończeniu kursu API ustawia currentBlockIndex = liczba bloków (currentBlock = undefined) - stąd isSummaryMode.
+                  isSummaryMode ||
+                  currentBlock?.type === 'SUMMARY' ||
+                  (briefingStep !== null && briefingNarrationOnScreen(currentBlock, briefingStep.index))
+                }
               />
             }
-            transcriptPanel={
-              <TranscriptPanel
-                text={narration?.text ?? ''}
-                open={narrationBarState.transcriptOpen}
-                onClose={narrationBarState.toggleTranscript}
-                triggerRef={transcriptButtonRef}
-              />
-            }
-            notesOpen={notesOpen}
-            onToggleNotes={() => setNotesOpen((open) => !open)}
-            notesId={NOTES_ID}
             onBack={isSummaryMode ? restartCourse : goBack}
             onForward={isSummaryMode ? undefined : goForward}
             canBack={isSummaryMode ? !restarting : displayedIndex > 0 && !showingFeedback && !submitting}

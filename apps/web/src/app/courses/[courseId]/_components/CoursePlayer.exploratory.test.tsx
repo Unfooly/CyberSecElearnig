@@ -112,15 +112,13 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
 
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/1');
+    // Licznik dowodów i Notatnik zniknęły z paska (D-162) - zostaje zapis `noted` i podpowiedź.
     // Domyślna podpowiedź dla scen z punktami (bez postaci, D-093).
     expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Mamy dowód! Trafił do notatnika.');
-    expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
 
     // "Dalej" w pasku powłoki (nie osobny "Kontynuuj" w bloku): wymagane elementy zebrane, więc jest już aktywne.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
@@ -129,8 +127,6 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
 
     // Bez pośredniego ekranu "Blok ukończony." - od razu kolejny blok.
     await screen.findByText('Pytanie?');
-    // Liczby z serwera (1/1), bez podwójnego liczenia dowodu lokalnego.
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
   });
 
   // Wymiary (jsdom liczy 0x0) tylko dla "Zabierz" i celu lotu; prostokąt nad krawędzią ekranu (y < 0), żeby fokus na "Zabierz" nie
@@ -168,26 +164,6 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Zabierz' }));
       expect(await screen.findByText('To nie jest dowód w tej sprawie.')).toBeInTheDocument();
       expect(flights()).toEqual([]); // nie dowód - potrząśnięcie, bez lotu
-    } finally {
-      delete (Element.prototype as unknown as { animate?: unknown }).animate;
-      document.querySelectorAll('[data-testid="evidence-flight"]').forEach((chip) => chip.remove());
-    }
-  });
-
-  it('ruch (D-090): "Zabierz" przy dowodzie bez reduced-motion - lot z nazwą przedmiotu do przycisku Notatnika', async () => {
-    vi.stubGlobal('fetch', vi.fn());
-    window.matchMedia = originalMatchMedia;
-    const animate = vi.fn((..._args: unknown[]) => ({ onfinish: null, oncancel: null }));
-    (Element.prototype as unknown as { animate: unknown }).animate = animate;
-    mockFlightRects();
-    try {
-      render(<CoursePlayer courseId="course-1" initial={sceneCourse()} narrationEnabled={false} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-      const take = await screen.findByRole('button', { name: 'Zabierz' });
-      fireEvent.click(take);
-      const chip = document.querySelector('[data-testid="evidence-flight"]');
-      expect(chip).toHaveTextContent('Monitor');
-      expect(animate.mock.calls[0][1]).toMatchObject({ duration: 400 });
     } finally {
       delete (Element.prototype as unknown as { animate?: unknown }).animate;
       document.querySelectorAll('[data-testid="evidence-flight"]').forEach((chip) => chip.remove());
@@ -232,7 +208,6 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
 
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
     expect(screen.getByTestId('review-block')).toBeInTheDocument();
@@ -241,7 +216,6 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
 
     // Ten sam blok, ten sam stan: przedmiot "w notatniku", wszystko obejrzane, licznik bez zmian.
     expect(screen.getByRole('button', { name: 'Monitor (w notatniku)' })).toBeInTheDocument();
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
     // Z powrotem na żywym bloku: ten sam "Dalej" w pasku (gotowość przetrwała powrót z podglądu) zapisuje odpowiedź.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
@@ -272,8 +246,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
       await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(2));
       expect(JSON.parse(exploreCalls(fetchMock)[1][1].body)).toEqual({ visited: ['h1'], noted: ['h1'] });
-      // Zapis częściowy nie rusza licznika z serwera ani nie przechodzi dalej.
-      expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
+      // Zapis częściowy nie przechodzi dalej.
       expect(progressCalls(fetchMock)).toHaveLength(0);
     });
 
@@ -298,8 +271,6 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       expect(screen.getByRole('button', { name: 'Monitor (w notatniku)' })).toHaveAttribute('data-state', 'discovered');
       expect(screen.getByRole('button', { name: 'Kubek' })).toHaveAttribute('data-state', 'hidden');
       expect(screen.getByText('Obejrzano 1 z 2 elementów.')).toBeInTheDocument();
-      expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/1');
-      expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeDisabled();
       expect(fetchMock).not.toHaveBeenCalled();
     });
@@ -487,7 +458,8 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       await screen.findByText('Pytanie?');
     });
 
-    it('powrót do sceny z obejrzanym easter eggiem: wyróżnienie wraca do notatnika (serwer nadaje je dopiero przy zapisie bloku)', () => {
+    // Notatnik zniknął z odtwarzacza (D-162) - wyróżnienia nie ma gdzie pokazać; test do przepisania razem z usunięciem dowodów (etap 2).
+    it.skip('powrót do sceny z obejrzanym easter eggiem: wyróżnienie wraca do notatnika (serwer nadaje je dopiero przy zapisie bloku)', () => {
       vi.stubGlobal('fetch', vi.fn());
       const base = sceneCourse();
       const scene = base.contentBlocks[0];
@@ -1094,21 +1066,15 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
       />,
     );
 
-    // Dowody: suma mail-a znana od startu (D-055 pkt 2), przed odpowiedzią.
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
     fireEvent.click(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Sprawdź odpowiedź' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 1, answer: { selected: ['op-1'] } });
 
-    // Wynik w samym bloku (trafienie, wyjaśnienie), licznik z serwera, notatka z serwera w notatniku.
+    // Wynik w samym bloku (trafienie, wyjaśnienie).
     await screen.findByText('Domena jest podróbką.');
     expect(screen.getByText(/Wynik: 50%/)).toBeInTheDocument();
-    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
-    // B-095: notatka z odpowiedzi serwera trafia do notatnika w osobnym renderze - na wolniejszym runnerze CI przycisk miał jeszcze
-    // „Notatnik (0)” (3 wystąpienia), więc czekamy na licznik zamiast sprawdzać go od razu.
-    expect(await screen.findByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
     expect(screen.getByTestId('hint-bar')).toHaveTextContent('Uważaj, coś tu nie gra.'); // zła odpowiedź
 
     // Dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem (pierwszy w DOM).
@@ -1120,9 +1086,6 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     expect(within(review).getByRole('button', { name: /Pilne/ })).toHaveTextContent('(przeoczone)');
     expect(within(review).queryByRole('button', { name: 'Sprawdź odpowiedź' })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    // Notatka z serwera dopisała się raz (dedup przy kolejnych renderach i przy podglądzie).
-    expect(screen.getByRole('button', { name: /Notatnik \(1\)/ })).toBeInTheDocument();
 
     // Wcześniejszy quiz: własna odpowiedź.
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));

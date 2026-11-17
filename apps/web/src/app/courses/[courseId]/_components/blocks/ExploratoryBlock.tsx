@@ -33,7 +33,6 @@ export default function ExploratoryBlock({
   tasks,
   identity,
   onBriefingStep,
-  briefingSkip = 0,
   moduleBlocks = [],
   exploration,
   onExplore,
@@ -53,8 +52,6 @@ export default function ExploratoryBlock({
   onReady: (submit: (() => void) | null) => void;
   /** Zapis w toku - przedmiot ostatniego kroku BRIEFING nie reaguje. */
   disabled: boolean;
-  /** „Pomiń odprawę” (D-106): zmiana licznika = BRIEFING przeskakuje na ostatni krok. */
-  briefingSkip?: number;
   review?: boolean;
   myAvatarUrl?: string | null;
   myInitials?: string;
@@ -97,7 +94,6 @@ export default function ExploratoryBlock({
           contentBase={contentBase}
           onSubmit={() => onSubmit()}
           onReady={onReady}
-          skipSignal={briefingSkip}
           review={review}
           disabled={disabled}
           tasks={tasks}

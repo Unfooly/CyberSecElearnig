@@ -2,16 +2,9 @@ import { useRef, useState } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PlayerStage, { forwardShortcutAllowed } from './PlayerStage';
-import TranscriptPanel from './TranscriptPanel';
 import { useOverlayLayer } from './overlay-stack';
 
-// jsdom nie implementuje `inert` W OGÓLE (ani jako atrybut, ani jako blokada .focus()) - `restRef.current.inert =
-// notesOpen` w PlayerStage.tsx staje się tam zwykłą, bezskutkową właściwością JS, więc `toHaveFocus()` przechodziłoby
-// nawet z BŁĘDNĄ kolejnością efektów (kod review PR #44, druga runda: `useEffect` zamiast `useLayoutEffect` w
-// PlayerStage.tsx wołał .inert PO tym, jak NotesDrawer.tsx próbował .focus() na wciąż-inertnym drzewie - w
-// przeglądarce .focus() na elemencie inert jest no-opem, w jsdom nie robi żadnej różnicy). Ta symulacja odtwarza
-// PRAWDZIWE zachowanie przeglądarki: .focus() jest no-opem, gdy jakikolwiek przodek ma (zwykłą) właściwość
-// `.inert === true` - wystarczy, żeby test faktycznie wykrył wyścig, gdyby wrócił.
+// jsdom nie implementuje `inert` - PlayerStage ustawia go jako zwykłą właściwość JS (`.inert = true`), więc sprawdzamy ją na przodkach.
 function hasInertAncestor(element: HTMLElement | null): boolean {
   for (let node = element; node; node = node.parentElement) {
     if ((node as unknown as { inert?: boolean }).inert) return true;
@@ -22,9 +15,22 @@ function hasInertAncestor(element: HTMLElement | null): boolean {
 // Test na PRAWDZIWYM, zamontowanym PlayerStage (kod review PR #44 - dotychczasowe testy overlay-stack.tsx testują
 // tylko sam rejestr, z ręcznie złożonymi warstwami-atrapami; ten plik sprawdza, że Escape w PlayerStage.tsx
 // (jedyny document.addEventListener('keydown', ...) w całej ramce) naprawdę woła closeTop() i że warstwy
-// zarejestrowane przez PRAWDZIWE komponenty potomne (tu: kartę hotspotu jako atrapę bloku SCENE_HOTSPOTS i
-// prawdziwy NotesDrawer wewnątrz PlayerStage) kaskadują poprawnie - bez żadnego mostkowania/mockowania
-// overlay-stack.tsx.
+// zarejestrowane przez komponenty potomne (tu: atrapy karty hotspotu i okienka głośności) kaskadują poprawnie - bez
+// mockowania overlay-stack.tsx.
+
+// Okienko głośności lektora (D-162) - warstwa 'volume', otwierana po karcie hotspotu.
+function VolumeStub() {
+  const [open, setOpen] = useState(false);
+  useOverlayLayer('volume', open, () => setOpen(false));
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        otwórz głośność
+      </button>
+      {open && <div role="group" aria-label="Głośność lektora" />}
+    </>
+  );
+}
 
 function HotspotCardStub() {
   const [open, setOpen] = useState(false);
@@ -62,9 +68,7 @@ function BlockModalStub() {
 }
 
 function Harness({ contentLayout, hint, stage }: { contentLayout?: 'scene' | 'slide' | 'fill'; hint?: string; stage?: React.ReactNode } = {}) {
-  const [notesOpen, setNotesOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const transcriptTriggerRef = useRef<HTMLButtonElement>(null);
   return (
     <PlayerStage
       title="Sprawa testowa"
@@ -74,12 +78,7 @@ function Harness({ contentLayout, hint, stage }: { contentLayout?: 'scene' | 'sl
       stage={stage ?? <HotspotCardStub />}
       contentLayout={contentLayout}
       hint={hint}
-      narrationBar={null}
-      transcriptPanel={<TranscriptPanel text="" open={false} onClose={() => {}} triggerRef={transcriptTriggerRef} />}
-      notesCount={0}
-      notesOpen={notesOpen}
-      onToggleNotes={() => setNotesOpen((open) => !open)}
-      notesId="notes-panel"
+      narrationBar={<VolumeStub />}
       onBack={() => {}}
       onForward={() => {}}
       canBack
@@ -88,6 +87,17 @@ function Harness({ contentLayout, hint, stage }: { contentLayout?: 'scene' | 'sl
     />
   );
 }
+
+describe('PlayerStage: pasek górny (D-162)', () => {
+  it('tylko X i tytuł z paskiem postępu - bez pełnego ekranu i Notatnika', () => {
+    render(<Harness />);
+    const topbar = document.querySelector('.player-topbar') as HTMLElement;
+    expect(topbar.querySelectorAll('a, button')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Zakończ i wróć do listy kursów' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Postęp szkolenia' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Notatnik|Pełny ekran/ })).toBeNull();
+  });
+});
 
 describe('PlayerStage: tekst min. 15 px na telefonie w całym module (D-103)', () => {
   it('cała ramka odtwarzacza (treść, notatnik, paski) ma klasę .mobile-readable (globals.css) - w każdym układzie', () => {
@@ -100,71 +110,39 @@ describe('PlayerStage: tekst min. 15 px na telefonie w całym module (D-103)', (
   });
 });
 
-describe('PlayerStage: powrót fokusu z NotesDrawer musi wygrać wyścig z restRef.inert (kod review PR #44, druga runda)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('fokus faktycznie ląduje na "Notatnik" (nie ginie na wciąż-inertnym drzewie) - symulowane .focus()/.inert jak w prawdziwej przeglądarce', () => {
-    const originalFocus = HTMLElement.prototype.focus;
-    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
-      if (hasInertAncestor(this)) return;
-      originalFocus.call(this, options);
-    });
-
-    render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: /^Notatnik/ }));
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(screen.getByRole('button', { name: /^Notatnik/ })).toHaveFocus();
-  });
-});
-
 describe('PlayerStage: kaskada Escape na PRAWDZIWYM, zamontowanym drzewie (bez mockowania overlay-stack)', () => {
-  it('scenariusz z code review PR #44: karta hotspotu otwarta, potem notatnik NAD nią - Escape zamyka notatnik (fokus wraca na "Notatnik"), karta zostaje otwarta; drugi Escape zamyka kartę', () => {
+  it('karta hotspotu otwarta, potem okienko głośności NAD nią - Escape zamyka okienko (LIFO), karta zostaje; drugi Escape zamyka kartę', () => {
     render(<Harness />);
 
     fireEvent.click(screen.getByRole('button', { name: 'otwórz kartę hotspotu' }));
-    expect(screen.getByRole('dialog', { name: 'Karta hotspotu' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /^Notatnik/ }));
-    // NotesDrawer jest prawdziwym modalem (aria-modal, focus trap) - otwarcie przenosi fokus na jego X.
-    expect(screen.getByRole('button', { name: 'Zamknij notatnik' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'otwórz głośność' }));
+    expect(screen.getByRole('group', { name: 'Głośność lektora' })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: 'Escape' });
-
-    // Notatnik (otwarty PÓŹNIEJ) zamyka się jako pierwszy - LIFO, nie stały priorytet typu warstwy.
-    // `getByRole(..., { name: 'Notatnik' })` NIE zadziałałby tutaj: dom-accessibility-api liczy nazwę dostępną
-    // elementu aria-hidden="true" jako pustą niezależnie od aria-label (ten sam wzorzec co testy Topbar.tsx) -
-    // trafiamy więc w dialog przez stały punkt odniesienia (przycisk X, zawsze w DOM) i sprawdzamy aria-hidden osobno.
-    const notesDialog = screen.getByRole('button', { name: 'Zamknij notatnik', hidden: true }).closest('[role="dialog"]') as HTMLElement;
-    expect(notesDialog).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByRole('button', { name: /^Notatnik/ })).toHaveFocus();
-    // Karta hotspotu, otwarta WCZEŚNIEJ, zostaje otwarta.
+    expect(screen.queryByRole('group', { name: 'Głośność lektora' })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Karta hotspotu' })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: 'Escape' });
-
     expect(screen.queryByRole('dialog', { name: 'Karta hotspotu' })).not.toBeInTheDocument();
   });
 
-  it('B-136: okno modalne bloku robi oba paski inert (notatnik, „Dalej”); karta hotspotu - nie; Escape zamyka okno i zdejmuje inert', () => {
+  it('B-136: okno modalne bloku robi oba paski inert (X, „Dalej”); karta hotspotu - nie; Escape zamyka okno i zdejmuje inert', () => {
     const { unmount } = render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'otwórz kartę hotspotu' }));
     expect(hasInertAncestor(screen.getByTestId('player-bottombar'))).toBe(false);
     unmount();
 
     render(<Harness stage={<BlockModalStub />} />);
-    const notes = screen.getByRole('button', { name: /^Notatnik/ });
+    const exit = screen.getByRole('link', { name: 'Zakończ i wróć do listy kursów' });
     const bar = screen.getByTestId('player-bottombar');
-    expect(hasInertAncestor(notes) || hasInertAncestor(bar)).toBe(false);
+    expect(hasInertAncestor(exit) || hasInertAncestor(bar)).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'otwórz nagranie' }));
-    expect(hasInertAncestor(notes)).toBe(true);
+    expect(hasInertAncestor(exit)).toBe(true);
     expect(hasInertAncestor(bar)).toBe(true);
     expect(hasInertAncestor(screen.getByRole('dialog', { name: 'Nagranie' }))).toBe(false);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: 'Nagranie' })).not.toBeInTheDocument();
-    expect(hasInertAncestor(notes) || hasInertAncestor(bar)).toBe(false);
+    expect(hasInertAncestor(exit) || hasInertAncestor(bar)).toBe(false);
   });
 
   it('Escape bez żadnej otwartej warstwy nic nie robi (closeTop() zwraca false, nic nie wybucha)', () => {
@@ -212,11 +190,6 @@ describe('PlayerStage: przycisk „Wstecz” w wąskim pasku (D-097)', () => {
         completedBlocks={0}
         stage={<p>blok</p>}
         narrationBar={null}
-        transcriptPanel={null}
-        notesCount={0}
-        notesOpen={false}
-        onToggleNotes={() => {}}
-        notesId="notes-panel"
         onBack={() => {}}
         onForward={() => {}}
         canBack
@@ -280,11 +253,6 @@ describe('PlayerStage: jeden „Dalej” - puls przy aktywacji i skróty Enter/�
         completedBlocks={0}
         stage={stage ?? <p>blok</p>}
         narrationBar={null}
-        transcriptPanel={null}
-        notesCount={0}
-        notesOpen={false}
-        onToggleNotes={() => {}}
-        notesId="notes-panel"
         onBack={() => {}}
         onForward={onForward}
         canBack
@@ -465,11 +433,6 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
         contentLayout={contentLayout}
         hint={hint}
         narrationBar={null}
-        transcriptPanel={null}
-        notesCount={0}
-        notesOpen={false}
-        onToggleNotes={() => {}}
-        notesId="notes-panel"
         onBack={() => {}}
         onForward={() => {}}
         canBack

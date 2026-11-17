@@ -183,16 +183,24 @@ describe('useNarrationBar', () => {
     expect(pauseSpy).toHaveBeenCalled();
   });
 
-  it('toggleTranscript przełącza transcriptOpen', () => {
+  it('D-162: toggleCaptions przełącza napisy (showCaption) i zapamiętuje wybór; głośność 0-1 przycięta i zapamiętana', () => {
+    window.localStorage.clear();
     const { result } = setup();
-    expect(result.current.transcriptOpen).toBe(false);
-    act(() => result.current.toggleTranscript());
-    expect(result.current.transcriptOpen).toBe(true);
-    act(() => result.current.toggleTranscript());
-    expect(result.current.transcriptOpen).toBe(false);
+    expect(result.current.captionsOn).toBe(true);
+    act(() => result.current.toggleCaptions());
+    expect(result.current.captionsOn).toBe(false);
+    expect(result.current.showCaption).toBe(false);
+    expect(window.localStorage.getItem('unfooly.narration.captions')).toBe('off');
+    act(() => result.current.setVolume(1.7));
+    expect(result.current.volume).toBe(1);
+    act(() => result.current.setVolume(0.4));
+    expect(result.current.volume).toBe(0.4);
+    expect(window.localStorage.getItem('unfooly.narration.volume')).toBe('0.4');
+    window.localStorage.clear();
   });
 
-  it('zmiana resetKey (nowy blok) zeruje pozycję, odtwarzanie i otwartą transkrypcję', () => {
+  it('zmiana resetKey (nowy blok) zeruje pozycję i odtwarzanie; napisy i głośność zostają (ustawienia gracza)', () => {
+    window.localStorage.clear();
     const { result, rerender } = renderHook((resetKey: string) => useNarrationBar({ narration, contentBase: BASE, enabled: true, resetKey }), {
       initialProps: 'b1',
     });
@@ -200,15 +208,17 @@ describe('useNarrationBar', () => {
     Object.defineProperty(result.current.audioRef, 'current', { value: audio, configurable: true, writable: true });
     act(() => result.current.onPlay());
     act(() => result.current.onTimeUpdate(2.5));
-    act(() => result.current.toggleTranscript());
+    act(() => result.current.toggleCaptions());
+    act(() => result.current.setVolume(0.5));
     expect(result.current.playing).toBe(true);
-    expect(result.current.transcriptOpen).toBe(true);
 
     rerender('b2');
 
     expect(result.current.playing).toBe(false);
     expect(result.current.positionMs).toBe(0);
-    expect(result.current.transcriptOpen).toBe(false);
+    expect(result.current.captionsOn).toBe(false);
+    expect(result.current.volume).toBe(0.5);
+    window.localStorage.clear();
   });
 
   it('bez autoPlay nic nie startuje samo', () => {

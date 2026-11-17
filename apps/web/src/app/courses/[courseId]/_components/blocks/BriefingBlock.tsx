@@ -15,9 +15,7 @@ import BriefingSceneStep, { activeHotspot, OPEN_CASE_LABEL, singleClick } from '
 // (np. komisarz; bez maskotki), karta sprawy z listą zadań, legitymacja gracza i ekran startu (miejsce akcji). Krok z `image`
 // (D-084) jest sceną z grafiką (BriefingScene.tsx); bez niej - karta na jasnym tle (paper), jak dotąd. Blok nieoceniany,
 // bez dowodów: ostatni krok (ekran startu) zgłasza gotowość, a zapis rusza „Dalej” w dolnym pasku - jedyne przejście dalej (D-106;
-// ostatni krok nie ma już własnego przycisku ani aktywnego przedmiotu). "Pomiń odprawę" (górny pasek ramki, CoursePlayer) przeskakuje
-// na ostatni krok (skipSignal) - dalej tak samo „Dalej”; serwer nie odróżnia pominięcia od przejścia, a zadania i tak nie mogą wskazywać
-// tego bloku (walidacja treści).
+// ostatni krok nie ma już własnego przycisku ani aktywnego przedmiotu). Bez „Pomiń odprawę” (D-162) - kroki przechodzi się po kolei.
 //
 // Dane gracza (imię, inicjały, avatar, numer odznaki) liczy WYŁĄCZNIE przeglądarka z sesji (`identity`, `myAvatarUrl`) -
 // nie ma ich w treści modułu i nie idą do progress.
@@ -241,7 +239,6 @@ export default function BriefingBlock({
   contentBase,
   onSubmit,
   onReady,
-  skipSignal = 0,
   review = false,
   disabled = false,
   tasks = [],
@@ -257,8 +254,6 @@ export default function BriefingBlock({
   onSubmit: () => void;
   /** Gotowość do „Dalej” w pasku (ostatni krok) - D-106. */
   onReady?: (submit: (() => void) | null) => void;
-  /** „Pomiń odprawę”: zmiana wartości = przeskok na ostatni krok. */
-  skipSignal?: number;
   review?: boolean;
   disabled?: boolean;
   /** Zadania (cele z completeWhen) ze stanem - ten sam co w notatniku. */
@@ -295,18 +290,6 @@ export default function BriefingBlock({
     // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [briefingReady, review]);
-
-  // „Pomiń odprawę”: licznik z CoursePlayer - reagujemy tylko na ZMIANĘ po zamontowaniu (licznik jest wspólny dla modułu). Pominięcie =
-  // ostatni krok od razu gotowy (bez akcji na jego przedmiocie).
-  const skipSeen = useRef(skipSignal);
-  useEffect(() => {
-    if (skipSignal === skipSeen.current) return;
-    skipSeen.current = skipSignal;
-    if (review) return;
-    setCaseOpen(false);
-    setLastTaken(true);
-    setIndex(Math.max(0, steps.length - 1));
-  }, [skipSignal, review, steps.length]);
 
   useEffect(() => {
     onStepChange?.(index, !firstRender.current);

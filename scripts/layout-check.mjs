@@ -2418,13 +2418,15 @@ try {
   //  (s1) strona bez przewijania; (s2) Start, X, CC i głośnik w całości na ekranie, cele >= 44 px; (s3) tytuł bez przepełnienia w poziomie,
   //  opis >= 16 px; (s4) komputer: tytuł, opis i Start w jasnym panelu (lewa połowa); telefon: karta przy dolnej krawędzi, okładka nad nią;
   //  (s5) kategoria w ekranie i nie nachodzi na X; (s6) okładka się wczytała / bez okładki - ciemne tło; (s7) okienko głośności w ekranie,
-  //  suwak i „Wycisz lektora” nieprzycięte (elementFromPoint), karta bez przewijania przy otwartym okienku, Escape je zamyka; (s8) Start prowadzi do pierwszego bloku (obszar bloku widoczny, ekranu startu nie ma).
+  //  suwak i „Wycisz lektora” nieprzycięte (elementFromPoint), karta bez przewijania przy otwartym okienku, Escape je zamyka; (s8) Start prowadzi do pierwszego bloku (obszar bloku widoczny, ekranu startu nie ma);
+  //  (s9) uwaga startu w czerwonej ramce (D-171; moduł 1, też xx): w ekranie, nad Start, w panelu, ≥ 16 px, bez przepełnienia.
   if (runs('start')) {
     const START_CASES = [
       { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
-      { name: 'moduł 1 z okładką', query: 'module=wyludzone-haslo&start=1', cover: true },
+      { name: 'moduł 1 z okładką i uwagą', query: 'module=wyludzone-haslo&start=1', cover: true, notice: true },
       { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1', cover: false },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&pseudo=1', cover: true },
+      { name: 'moduł 1 xx z uwagą', query: 'module=wyludzone-haslo&start=1&pseudo=1', cover: true, notice: true },
     ];
     const START_VIEWPORTS = [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }];
     for (const viewport of START_VIEWPORTS) {
@@ -2445,7 +2447,8 @@ try {
           const root = document.querySelector('[data-testid="module-start"]');
           const buttons = [...root.querySelectorAll('a, button')].map((el) => ({ name: el.getAttribute('aria-label') ?? el.textContent.trim(), box: rect(el) }));
           const h1 = root.querySelector('h1');
-          const subtitle = root.querySelector('main p[lang]');
+          const subtitle = root.querySelector('main p.module-start-subtitle');
+          const notice = root.querySelector('[data-testid="module-start-notice"]');
           const cover = root.querySelector('[data-testid="module-start-cover"]');
           return {
             scrollY: document.documentElement.scrollHeight - innerHeight,
@@ -2455,6 +2458,9 @@ try {
             h1Overflow: h1.scrollWidth - h1.clientWidth,
             subtitle: rect(subtitle),
             subtitleSize: subtitle ? parseFloat(getComputedStyle(subtitle).fontSize) : null,
+            notice: notice
+              ? { box: rect(notice), size: parseFloat(getComputedStyle(notice).fontSize), border: getComputedStyle(notice).borderTopColor, overflow: notice.scrollWidth - notice.clientWidth }
+              : null,
             card: rect(root.querySelector('.module-start-card')),
             category: rect(root.querySelector('[data-testid="module-start-category"]')),
             cover: cover ? { loaded: cover.naturalWidth > 0, box: rect(cover) } : null,
@@ -2482,9 +2488,18 @@ try {
           // Szerokość jasnego panelu z DOM (50%, na niskim ekranie szerszy - globals.css); elipsa zwęża go u góry i u dołu, treść jest
           // wyśrodkowana w pionie.
           const panelRight = (await page.locator('div.module-start-panel[aria-hidden="true"]').boundingBox()).width + 1;
-          for (const [what, box] of [['tytuł', info.h1], ['opis', info.subtitle], ['Start', start]]) {
+          for (const [what, box] of [['tytuł', info.h1], ['opis', info.subtitle], ['uwaga', info.notice?.box], ['Start', start]]) {
             if (box && box.x + box.width > panelRight) fail(`${label}: (s4) ${what} wychodzi poza jasny panel (prawa krawędź ${box.x + box.width} > ${panelRight}).`);
           }
+        }
+        // (s9) Uwaga startu (D-171): jest tam, gdzie moduł ją ma, w ekranie, przed Start, tekst ≥ 16 px bez przepełnienia, czerwona ramka.
+        if (Boolean(testCase.notice) !== Boolean(info.notice)) fail(`${label}: (s9) uwaga startu ${testCase.notice ? 'nie pokazała się' : 'pokazała się bez pola w module'}.`);
+        if (info.notice) {
+          if (!contains(screen, info.notice.box)) fail(`${label}: (s9) uwaga poza ekranem - ${JSON.stringify(info.notice.box)}.`);
+          if (info.notice.box.y + info.notice.box.height > start.y + 1) fail(`${label}: (s9) uwaga nie leży nad przyciskiem Start.`);
+          if (info.notice.size < 16) fail(`${label}: (s9) uwaga ma ${info.notice.size}px (<16).`);
+          if (info.notice.overflow > 0) fail(`${label}: (s9) tekst uwagi wychodzi poza ramkę w poziomie.`);
+          if (info.notice.border !== 'rgb(217, 72, 59)') fail(`${label}: (s9) ramka uwagi nie jest czerwona (#D9483B) - ${info.notice.border}.`);
         }
         const close = info.buttons.find((b) => b.name === 'Zakończ i wróć do listy kursów').box;
         if (!contains(screen, info.category)) fail(`${label}: (s5) kategoria poza ekranem - ${JSON.stringify(info.category)}.`);

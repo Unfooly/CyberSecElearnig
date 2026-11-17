@@ -1109,6 +1109,41 @@ describe('parseModule: okładki i numer sprawy (cover, caseNumber, D-163)', () =
   });
 });
 
+describe('parseModule: uwaga na ekranie startu (startNotice, D-171)', () => {
+  const issues = (mutate: (m: Record<string, unknown>) => void): string => {
+    const module = fullModuleForTests() as unknown as Record<string, unknown>;
+    mutate(module);
+    try {
+      parseModule(module);
+    } catch (e) {
+      return (e as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  it('przyjmuje krótki tekst (także per język w v6)', () => {
+    expect(issues((m) => (m.startNotice = 'Przed rozpoczęciem tego modułu należy ukończyć moduł „Podstawy”.'))).toBe('');
+    expect(
+      issues((m) => {
+        m.schemaVersion = 6;
+        m.startNotice = { pl: 'Najpierw moduł „Podstawy”.', en: 'Complete “Basics” first.' };
+      }),
+    ).toBe('');
+  });
+  it('odrzuca pusty, za długi albo nie-tekst', () => {
+    expect(issues((m) => (m.startNotice = ''))).toContain('startNotice');
+    expect(issues((m) => (m.startNotice = 'x'.repeat(201)))).toContain('startNotice');
+    expect(issues((m) => (m.startNotice = 5))).toContain('startNotice');
+  });
+  it('wymaga schemaVersion 5', () => {
+    expect(
+      issues((m) => {
+        m.startNotice = 'Najpierw moduł „Podstawy”.';
+        m.schemaVersion = 4;
+      }),
+    ).toContain('startNotice: wymaga schemaVersion 5');
+  });
+});
+
 // Grafika kroków odprawy (D-084): scena, hotspot = cta, sloty, dwie fazy caseFile.
 describe('parseModule: BRIEFING - grafika kroków', () => {
   const invalid = (mutate: (m: TestModule) => void): string => {

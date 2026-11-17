@@ -60,12 +60,13 @@ function playerLocaleOf(assignment: AssignmentWithCourse, acceptLanguage: string
 /** Ekran startu i końca modułu (D-163): kolumny katalogu + okładki, numer sprawy i podtytuł w języku treści z module.json (module-meta.ts). */
 function moduleInfoOf(course: Course, locale: ContentLocale): CourseDetailDto['moduleInfo'] {
   // Kurs utworzony wprost (bez importu) nie ma slug - bez okładek i numeru.
-  const meta = course.slug ? moduleMetaFor(course.slug, locale) : { cover: null, caseNumber: null, subtitle: null };
+  const meta = course.slug ? moduleMetaFor(course.slug, locale) : { cover: null, caseNumber: null, subtitle: null, notice: null };
   return {
     category: course.category,
     durationMinutes: course.durationMinutes,
     subtitle: meta.subtitle ?? course.subtitle ?? null,
     caseNumber: meta.caseNumber,
+    notice: meta.notice,
     cover: meta.cover,
   };
 }

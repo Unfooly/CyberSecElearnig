@@ -95,6 +95,7 @@ function startScreen(contentModule: ResolvedModule, pseudo: boolean): Pick<Cours
       durationMinutes: contentModule.durationMinutes,
       subtitle: contentModule.subtitle ? text(contentModule.subtitle) : null,
       caseNumber: contentModule.caseNumber ?? null,
+      notice: contentModule.startNotice ? text(contentModule.startNotice) : null,
       cover,
     },
   };

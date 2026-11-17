@@ -628,6 +628,8 @@ export interface ModuleInfo {
   durationMinutes: number;
   subtitle: string | null;
   caseNumber: number | null;
+  /** Uwaga na ekranie startu w czerwonej ramce (D-171); null - brak. Pole opcjonalne: starsze API go nie zwraca. */
+  notice?: string | null;
   cover: ModuleCover | null;
 }
 

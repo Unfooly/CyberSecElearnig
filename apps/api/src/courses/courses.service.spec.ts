@@ -697,7 +697,12 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
   it('/start zwraca dane ekranu startu (D-163): kategoria i czas z kursu, okładka, numer i podtytuł z module.json po slug', async () => {
     setModuleMetaCacheForTests(
-      new Map([['sprawa', { slug: 'sprawa', caseNumber: 5, subtitle: 'Z pliku', cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp' } }]]),
+      new Map([
+        [
+          'sprawa',
+          { slug: 'sprawa', caseNumber: 5, subtitle: 'Z pliku', startNotice: 'Najpierw moduł 1.', cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp' } },
+        ],
+      ]),
     );
     try {
       const course = { id: 'course-1', contentBlocks: [{ type: 'VIDEO' }], slug: 'sprawa', category: 'IT_HYGIENE', durationMinutes: 6, subtitle: 'Z bazy' };
@@ -707,6 +712,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
         durationMinutes: 6,
         subtitle: 'Z pliku',
         caseNumber: 5,
+        notice: 'Najpierw moduł 1.',
         cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: null, endPortrait: null },
       });
       // Kurs bez pliku modułu (utworzony wprost, bez slug) - podtytuł z bazy, bez okładki i numeru.
@@ -716,6 +722,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
         durationMinutes: 6,
         subtitle: 'Z bazy',
         caseNumber: null,
+        notice: null,
         cover: null,
       });
     } finally {

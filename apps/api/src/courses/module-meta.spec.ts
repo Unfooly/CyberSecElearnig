@@ -23,6 +23,7 @@ describe('module-meta (ekran startu modułu, D-163)', () => {
       slug: 'sprawa',
       caseNumber: 5,
       subtitle: { pl: 'Podtytuł', en: 'Subtitle' },
+      startNotice: { pl: 'Najpierw moduł „Podstawy”.', en: 'Complete “Basics” first.' },
       cover: { start: { pl: 'assets/s/start.1.webp', en: 'assets/s/start-en.1.webp' }, end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp' },
       blocks: [{ type: 'QUIZ', correctIndex: 1 }],
     });
@@ -31,9 +32,15 @@ describe('module-meta (ekran startu modułu, D-163)', () => {
     expect(moduleMetaFor('sprawa', 'pl')).toEqual({
       caseNumber: 5,
       subtitle: 'Podtytuł',
+      notice: 'Najpierw moduł „Podstawy”.',
       cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp', endPortrait: null },
     });
-    expect(moduleMetaFor('sprawa', 'en')).toMatchObject({ subtitle: 'Subtitle', cover: { start: 'assets/s/start-en.1.webp' } });
+    expect(moduleMetaFor('sprawa', 'en')).toMatchObject({ subtitle: 'Subtitle', notice: 'Complete “Basics” first.', cover: { start: 'assets/s/start-en.1.webp' } });
+  });
+
+  it('za długa uwaga startu (D-171) odrzuca cały wpis - jak niepoprawna okładka', () => {
+    write('dluga-uwaga', { slug: 'dluga-uwaga', startNotice: 'x'.repeat(201) });
+    expect(loadModuleMeta(dir).has('dluga-uwaga')).toBe(false);
   });
 
   it('w pamięci zostają WYŁĄCZNIE pola ekranu startu - bloki z kluczem odpowiedzi nie są przechowywane', () => {
@@ -50,8 +57,8 @@ describe('module-meta (ekran startu modułu, D-163)', () => {
     const loaded = loadModuleMeta(dir);
     setModuleMetaCacheForTests(loaded);
 
-    expect(moduleMetaFor('bez-okladki', 'pl')).toEqual({ cover: null, caseNumber: null, subtitle: null });
-    expect(moduleMetaFor('nie-ma', 'pl')).toEqual({ cover: null, caseNumber: null, subtitle: null });
+    expect(moduleMetaFor('bez-okladki', 'pl')).toEqual({ cover: null, caseNumber: null, subtitle: null, notice: null });
+    expect(moduleMetaFor('nie-ma', 'pl')).toEqual({ cover: null, caseNumber: null, subtitle: null, notice: null });
     // Niepoprawna okładka (adres zewnętrzny) odrzuca cały wpis - nigdy nie trafia do klienta.
     expect(loaded.has('zla-okladka')).toBe(false);
     expect(loaded.size).toBe(1);

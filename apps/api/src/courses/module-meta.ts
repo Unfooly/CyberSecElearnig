@@ -10,8 +10,8 @@ import { ContentLocale, ltext, localizeContent, moduleCoverSchema } from '@cyber
  * (Dockerfile, dla content-import) - te same pliki, z których import zapisał kurs, więc wartości są spójne z wdrożoną treścią.
  *
  * Treść tylko do wyświetlania (jak miniatura w `courses.thumbnail`), poza wersją kursu: poprawka okładki działa od razu, także dla
- * przypisań przypiętych do starszej wersji. Żadnych danych klienta, odpowiedzi ani pól `secret` - z pliku bierzemy WYŁĄCZNIE trzy pola
- * niżej, każde zwalidowane wąskim schematem (reszta module.json, w tym klucze odpowiedzi, nie jest nawet parsowana do pamięci podręcznej).
+ * przypisań przypiętych do starszej wersji. Żadnych danych klienta, odpowiedzi ani pól `secret` - z pliku bierzemy WYŁĄCZNIE pola
+ * wyświetlane niżej (okładki, numer, podtytuł, uwaga startu - D-171), każde zwalidowane wąskim schematem (reszta module.json, w tym klucze odpowiedzi, nie jest nawet parsowana do pamięci podręcznej).
  */
 
 // Wąski schemat: tylko pola ekranu startu. `passthrough` nie - nieznane pola po prostu odrzucamy (z.object bez strict pomija je).
@@ -20,6 +20,8 @@ const moduleMetaSchema = z.object({
   cover: moduleCoverSchema.optional(),
   caseNumber: z.number().int().min(1).max(999).optional(),
   subtitle: ltext(300).optional(),
+  // Uwaga na ekranie startu w czerwonej ramce (D-171) - sam tekst, niczego nie blokuje.
+  startNotice: ltext(200).optional(),
 });
 type StoredModuleMeta = z.infer<typeof moduleMetaSchema>;
 
@@ -35,7 +37,11 @@ export interface ModuleMeta {
   caseNumber: number | null;
   /** Podtytuł w języku treści; null - brak w pliku (wtedy polska kolumna `courses.subtitle`). */
   subtitle: string | null;
+  /** Uwaga na ekranie startu (D-171) w języku treści; null - brak. */
+  notice: string | null;
 }
+
+const EMPTY_META: ModuleMeta = { cover: null, caseNumber: null, subtitle: null, notice: null };
 
 // Jak content-import (apps/api/dist/scripts -> /app): z apps/api/{src,dist}/courses cztery poziomy w górę to korzeń repo/obrazu.
 const DEFAULT_MODULES_DIR = path.resolve(__dirname, '../../../../packages/content/modules');
@@ -92,17 +98,19 @@ export function warmModuleMeta(): void {
 /** Dane ekranu startu modułu `slug` w języku treści; kurs bez pliku (np. utworzony wprost) - same null. */
 export function moduleMetaFor(slug: string, locale: ContentLocale): ModuleMeta {
   warmModuleMeta();
-  if (!cache) return { cover: null, caseNumber: null, subtitle: null };
+  if (!cache) return { ...EMPTY_META };
   const stored = cache.get(slug);
-  if (!stored) return { cover: null, caseNumber: null, subtitle: null };
+  if (!stored) return { ...EMPTY_META };
   const cover = stored.cover ? localizeContent(stored.cover, locale) : undefined;
   const subtitle = stored.subtitle === undefined ? null : localizeContent(stored.subtitle, locale);
+  const notice = stored.startNotice === undefined ? null : localizeContent(stored.startNotice, locale);
   return {
     cover: cover
       ? { start: cover.start, end: cover.end, startPortrait: cover.startPortrait ?? null, endPortrait: cover.endPortrait ?? null }
       : null,
     caseNumber: stored.caseNumber ?? null,
     subtitle: typeof subtitle === 'string' ? subtitle : null,
+    notice: typeof notice === 'string' ? notice : null,
   };
 }
 

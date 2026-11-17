@@ -72,7 +72,8 @@ describe('monitor quizu: prostokąt ekranu z białego obszaru (D-164)', () => {
     const data = new Uint8Array(width * height * 4);
     let seed = 7;
     for (let i = 0; i < data.length; i++) {
-      seed = (seed * 1103515245 + 12345) % 2147483648;
+      // Park-Miller: iloczyn mieści się w 2^53 (zwykłe liczby JS), więc bajty są naprawdę zróżnicowane.
+      seed = (seed * 48271) % 2147483647;
       data[i] = seed % 256;
     }
     for (const filters of [[1], [2], [3], [4], [0, 1, 2, 3, 4]]) {

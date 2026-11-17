@@ -1,39 +1,7 @@
-import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from './evidence';
 import { TaskList, type NotebookTask } from './notes';
-import TranscriptPanel from './TranscriptPanel';
-
-describe('TranscriptPanel: wyjście 140 ms (usePresence)', () => {
-  it('po zamknięciu: stan "closing" bez interakcji (aria-hidden, X poza Tab), fokus wraca na "Transkrypcja", po 140 ms panel znika', () => {
-    vi.useFakeTimers();
-    try {
-      const trigger = document.createElement('button');
-      document.body.append(trigger);
-      const triggerRef = createRef<HTMLButtonElement>() as { current: HTMLButtonElement | null };
-      triggerRef.current = trigger;
-      const props = { text: 'Treść.', onClose: vi.fn(), triggerRef: triggerRef as React.RefObject<HTMLButtonElement> };
-      const { rerender, container } = render(<TranscriptPanel {...props} open />);
-      expect(screen.getByRole('region', { name: 'Transkrypcja narracji' })).toHaveClass('motion-safe:animate-overlay-in');
-
-      rerender(<TranscriptPanel {...props} open={false} />);
-      const panel = container.querySelector('[data-state="closing"]');
-      expect(panel).toHaveAttribute('aria-hidden', 'true');
-      expect(panel).toHaveClass('pointer-events-none', 'motion-safe:animate-overlay-out');
-      expect(panel?.querySelector('button')).toHaveAttribute('tabindex', '-1');
-      expect(trigger).toHaveFocus();
-
-      act(() => {
-        vi.advanceTimersByTime(140);
-      });
-      expect(container).toBeEmptyDOMElement();
-      trigger.remove();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
 
 // Ruch w odtwarzaczu (D-090): przewinięcie cyfry licznika i rysowany ptaszek zadania - tylko przy zmianie w tej sesji, pod motion-safe.
 

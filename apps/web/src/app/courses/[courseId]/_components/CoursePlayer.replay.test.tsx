@@ -73,20 +73,24 @@ describe('CoursePlayer: omówienie wstrzymane do dotarcia (revealedBlock)', () =
   });
 
   it('B-132: pasek lektora idzie za znacznikiem omówienia (pierwszy bez własnej - narracja bloku); bez „Pomiń odprawę”', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const audio = (text: string, file: string) => ({ text, audioUrl: `audio/${file}.mp3`, durationMs: 2000 });
     const narrated: ContentBlock = {
       ...revealed,
-      narration: { text: 'Wprowadzenie do omówienia.' },
-      markers: revealed.markers!.map((marker, index) => (index === 1 ? { ...marker, narration: { text: 'Komentarz do parowania liczb.' } } : marker)),
+      narration: audio('Wprowadzenie do omówienia.', 'wstep'),
+      markers: revealed.markers!.map((marker, index) => (index === 1 ? { ...marker, narration: audio('Komentarz do parowania liczb.', 'znacznik') } : marker)),
     };
     render(
-      <CoursePlayer courseId="course-1" initial={course({ currentBlockIndex: 1, contentBlocks: [course().contentBlocks[0], narrated] })} narrationEnabled={false} />,
+      <CoursePlayer
+        courseId="course-1"
+        initial={course({ currentBlockIndex: 1, contentBlocks: [course().contentBlocks[0], narrated] })}
+        contentBase="/content"
+        narrationEnabled
+      />,
     );
-    const transcriptText = () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
-      const text = screen.getByRole('region', { name: 'Transkrypcja narracji' }).textContent;
-      fireEvent.click(screen.getByRole('button', { name: 'Transkrypcja' }));
-      return text;
-    };
+    // Napisy (CC, D-162) pokazują bieżącą narrację - zamiast dawnego panelu transkrypcji.
+    const transcriptText = () => screen.getByTestId('narration-caption').textContent;
     expect(transcriptText()).toContain('Wprowadzenie do omówienia.');
     expect(screen.queryByRole('button', { name: 'Pomiń odprawę' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('replay-next'));

@@ -23,7 +23,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useCallback, use
 // karta nagrody na SummaryScreen (RewardCard.tsx) jest zwykłą treścią ekranu, nie nakładką overlay-stack.
 // 'blockModal' (B-136): okno modalne bloku (nagranie OSINT, wybór dowodu i konsola w przesłuchaniu) - jak 'hotspotCard' w kaskadzie
 // Escape, ale dodatkowo PlayerStage robi wtedy oba paski ramki (górny z notatnikiem, dolny z „Dalej”) inert, żeby aria-modal nie kłamało.
-export type OverlayLayer = 'hotspotCard' | 'blockModal' | 'transcript' | 'notebook' | 'fullscreen';
+// 'volume' - okienko głośności lektora w dolnym pasku (D-162).
+export type OverlayLayer = 'hotspotCard' | 'blockModal' | 'transcript' | 'notebook' | 'fullscreen' | 'volume';
 
 interface OverlayEntry {
   isOpen: boolean;

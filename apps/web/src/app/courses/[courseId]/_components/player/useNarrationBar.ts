@@ -5,6 +5,25 @@ import { activeCaptionIndex, buildCaptions, type Caption } from '@/lib/narration
 
 // Logika odtwarzania narracji bloku (bez prezentacji - to NarrationBar.tsx, jeden komponent dla wszystkich
 // breakpointów, D-078). Wydzielone z dawnego NarrationPlayer.tsx (usunięty w feat/player-stage).
+
+// Ustawienia gracza w przeglądarce (D-162): wygoda, nie stan, który musi przetrwać - brak albo zablokowany storage = wartości domyślne.
+const CAPTIONS_KEY = 'unfooly.narration.captions';
+const VOLUME_KEY = 'unfooly.narration.volume';
+const clampVolume = (value: number) => Math.min(1, Math.max(0, value));
+function readStored(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeStored(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Prywatne okno albo zablokowany storage - ustawienie działa do końca sesji.
+  }
+}
 export interface NarrationBarState {
   audioRef: React.RefObject<HTMLAudioElement>;
   audioUrl: string | null;
@@ -20,11 +39,15 @@ export interface NarrationBarState {
   autoplayBlocked: boolean;
   captions: Caption[];
   activeIndex: number;
-  /** hasAudio && jest aktywny napis - ten sam warunek co w dawnym NarrationPlayer, dla dwóch prezentacji. */
+  /** hasAudio && napisy włączone (CC) && jest aktywny napis. */
   showCaption: boolean;
   active: Caption | null;
-  transcriptOpen: boolean;
-  toggleTranscript: () => void;
+  /** Napisy lektora (przycisk CC, D-162) - zamiast panelu transkrypcji; wybór gracza zapamiętany w przeglądarce, domyślnie włączone. */
+  captionsOn: boolean;
+  toggleCaptions: () => void;
+  /** Głośność lektora 0-1 (okienko pod ikoną głośnika, D-162) - zapamiętana w przeglądarce, domyślnie 1. */
+  volume: number;
+  setVolume: (volume: number) => void;
   togglePlay: () => void;
   onPlay: () => void;
   onPause: () => void;
@@ -58,7 +81,17 @@ export function useNarrationBar({
   const [positionMs, setPositionMs] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  // Ustawienia gracza (D-162) - przez cały kurs, nie per blok. Odczyt z przeglądarki dopiero po zamontowaniu: HTML z serwera i po hydracji
+  // jest ten sam (domyślne wartości), potem podmiana.
+  const [captionsOn, setCaptionsOn] = useState(true);
+  const [volume, setVolumeState] = useState(1);
+  useEffect(() => {
+    setCaptionsOn(readStored(CAPTIONS_KEY) !== 'off');
+    // Pusta albo błędna wartość („”, „abc”) - zostaje domyślna głośność (Number('') to 0, czyli cisza).
+    const raw = readStored(VOLUME_KEY);
+    const stored = raw === null || raw.trim() === '' ? NaN : Number(raw);
+    if (Number.isFinite(stored)) setVolumeState(clampVolume(stored));
+  }, []);
 
   useEffect(() => {
     autoStarted.current = false;
@@ -66,7 +99,6 @@ export function useNarrationBar({
     setPositionMs(0);
     setLoadFailed(false);
     setAutoplayBlocked(false);
-    setTranscriptOpen(false);
   }, [resetKey]);
 
   const audioUrl = useMemo(() => contentAssetUrl(contentBase, narration?.audioUrl, 'audio'), [contentBase, narration?.audioUrl]);
@@ -74,8 +106,13 @@ export function useNarrationBar({
   const durationMs = narration?.durationMs ?? 0;
   const hasAudio = enabled && audioUrl !== null && !loadFailed;
   const activeIndex = activeCaptionIndex(captions, positionMs);
-  const showCaption = hasAudio && activeIndex >= 0;
+  const showCaption = hasAudio && captionsOn && activeIndex >= 0;
   const active = activeIndex >= 0 ? captions[activeIndex] : null;
+
+  // Głośność na elemencie audio - także na nowym elemencie po zmianie bloku albo ponownym włączeniu lektora.
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume, hasAudio, audioUrl]);
 
   // Odrzucone play(): AbortError (pause() przerwało oczekujące play(), np. szybkie Odtwórz i Wstrzymaj) to nie
   // błąd; NotAllowedError to blokada autoodtwarzania przez przeglądarkę (zostaje przycisk); reszta (np.
@@ -142,8 +179,17 @@ export function useNarrationBar({
     activeIndex,
     showCaption,
     active,
-    transcriptOpen,
-    toggleTranscript: () => setTranscriptOpen((open) => !open),
+    captionsOn,
+    toggleCaptions: () => {
+      writeStored(CAPTIONS_KEY, captionsOn ? 'off' : 'on');
+      setCaptionsOn(!captionsOn);
+    },
+    volume,
+    setVolume: (next: number) => {
+      const value = clampVolume(next);
+      writeStored(VOLUME_KEY, String(value));
+      setVolumeState(value);
+    },
     togglePlay,
     onPlay: () => setPlaying(true),
     onPause: () => setPlaying(false),

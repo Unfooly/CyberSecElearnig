@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 
 const pushMock = vi.fn();
@@ -318,53 +318,38 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
     });
   });
 
-  describe('notatnik', () => {
-    it('licznik z /start, panel pokazuje treść notatek po kliknięciu (aria-expanded, aria-controls tylko gdy panel istnieje)', () => {
-      render(
-        <CoursePlayer
-          courseId="course-1"
-          initial={course({ progress: { v: 2, blocks: {}, notes: [{ blockId: 'x', text: 'Mail przyszedł rano.' }, { blockId: 'y', text: 'Adres bank-0.pl' }] } })}
-        />,
-      );
-
-      const toggle = screen.getByRole('button', { name: /Notatnik \(2\)/ });
-      expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      expect(toggle).not.toHaveAttribute('aria-controls');
-      // Panel notatnika (jak drawer Topbara, PR #39) jest zamontowany od razu - animacja wysuwania wymaga
-      // trwałego montowania - ale jest aria-hidden, dopóki zamknięty, więc czytnik ekranu go nie widzi. Bez
-      // filtra name: element aria-hidden="true" liczy nazwę dostępną jako pustą niezależnie od aria-label
-      // (ten sam wzorzec co drawer Topbara, PR #39).
-      const drawer = screen.getByRole('dialog', { hidden: true });
-      expect(drawer).toHaveAttribute('aria-hidden', 'true');
-      expect(drawer).toHaveTextContent('Mail przyszedł rano.');
-
-      fireEvent.click(toggle);
-      expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      expect(toggle.getAttribute('aria-controls')).toBe(screen.getByRole('complementary', { name: 'Notatnik' }).id);
-      expect(drawer).toHaveAttribute('aria-hidden', 'false');
-      expect(screen.getByText('Mail przyszedł rano.')).toBeInTheDocument();
-      expect(screen.getByText('Adres bank-0.pl')).toBeInTheDocument();
-    });
-
-    it('pusty notatnik pokazuje podpowiedź', () => {
-      render(<CoursePlayer courseId="course-1" initial={course()} />);
-      fireEvent.click(screen.getByRole('button', { name: /Notatnik \(0\)/ }));
-      expect(screen.getByText('Notatki pojawią się w trakcie szkolenia.')).toBeInTheDocument();
+  describe('pasek górny (D-162)', () => {
+    it('tylko X (wyjście) i tytuł z paskiem postępu - bez Notatnika, pełnego ekranu i licznika dowodów, także z notatkami w postępie', () => {
+      render(<CoursePlayer courseId="course-1" initial={course({ progress: { v: 2, blocks: {}, notes: [{ blockId: 'x', text: 'Mail przyszedł rano.' }] } })} />);
+      const topbar = document.querySelector('.player-topbar') as HTMLElement;
+      expect(within(topbar).getAllByRole('link')).toHaveLength(1);
+      expect(within(topbar).getByRole('link', { name: 'Zakończ i wróć do listy kursów' })).toBeInTheDocument();
+      expect(within(topbar).queryAllByRole('button')).toEqual([]);
+      expect(within(topbar).getByRole('progressbar', { name: 'Postęp szkolenia' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Notatnik/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Pełny ekran/ })).toBeNull();
+      expect(screen.queryByText('Mail przyszedł rano.')).toBeNull();
     });
   });
 
-  describe('przełącznik "Lektor" (przycisk z aria-pressed, zapis od razu na koncie)', () => {
-    const lektor = () => screen.getByRole('button', { name: 'Lektor' });
+  describe('wyciszenie lektora (okienko głośnika, D-162; zapis od razu na koncie)', () => {
+    const speaker = () => screen.getByRole('button', { name: /^(Głośność lektora|Lektor wyciszony)/ });
+    // Okienko otwarte - przycisk wyciszenia/włączenia lektora (aria-pressed = wyciszony).
+    const mute = () => {
+      if (!screen.queryByTestId('volume-panel')) fireEvent.click(speaker());
+      return screen.getByRole('button', { name: /^(Wycisz|Włącz) lektora$/ });
+    };
 
-    it('zapisuje wybór przez PATCH /api/users/me/preferences i zmienia stan (aria-pressed)', async () => {
+    it('zapisuje wybór przez PATCH /api/users/me/preferences i zmienia stan (nazwa głośnika, aria-pressed)', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ narrationEnabled: false }) });
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled />);
-      expect(lektor()).toHaveAttribute('aria-pressed', 'true');
+      expect(mute()).toHaveAttribute('aria-pressed', 'false');
 
-      fireEvent.click(lektor());
+      fireEvent.click(mute());
 
-      await waitFor(() => expect(lektor()).toHaveAttribute('aria-pressed', 'false'));
+      await waitFor(() => expect(speaker()).toHaveAccessibleName('Lektor wyciszony'));
+      expect(mute()).toHaveAttribute('aria-pressed', 'true');
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/users/me/preferences',
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ narrationEnabled: false }) }),
@@ -375,25 +360,25 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) }));
       render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled />);
 
-      fireEvent.click(lektor());
+      fireEvent.click(mute());
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/nie udało się zapisać ustawienia lektora/i);
-      expect(lektor()).toHaveAttribute('aria-pressed', 'true');
+      expect(speaker()).toHaveAccessibleName(/^Głośność lektora/);
     });
 
     it('401 przekierowuje do logowania', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) }));
       render(<CoursePlayer courseId="course-1" initial={course()} />);
 
-      fireEvent.click(lektor());
+      fireEvent.click(mute());
 
       await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
     });
 
-    it('wyłączony z konta: brak odtwarzacza audio, przełącznik niezaznaczony', () => {
+    it('wyciszony z konta: brak odtwarzacza audio, głośnik „Lektor wyciszony”', () => {
       const { container } = render(<CoursePlayer courseId="course-1" initial={course()} narrationEnabled={false} />);
       expect(container.querySelector('audio')).toBeNull();
-      expect(lektor()).toHaveAttribute('aria-pressed', 'false');
+      expect(speaker()).toHaveAccessibleName('Lektor wyciszony');
     });
   });
 
@@ -461,5 +446,19 @@ describe('CoursePlayer: tekst min. 15 px na telefonie w całym module', () => {
     }
     render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: blocks, status: 'COMPLETED', currentBlockIndex: 3, score: 100 })} />);
     expect(frame()).toHaveClass('mobile-readable');
+  });
+});
+
+// D-162 (code review): raport zamknięcia po ukończeniu kursu (API: currentBlockIndex = liczba bloków, bieżącego bloku brak) - lektor
+// streszcza raport, więc przy wyciszonym lektorze i CC bez tekstu narracji w pasku (raport 9:16 na telefonie nie ma zapasu wysokości).
+describe('CoursePlayer: raport zamknięcia bez tekstu narracji w pasku (D-162)', () => {
+  it('ukończony kurs, lektor wyciszony, CC włączone - jest CC, nie ma tekstu zastępczego', () => {
+    const blocks = [
+      silentBlock('one', 'Pytanie pierwsze'),
+      { id: 'wnioski', type: 'SUMMARY' as const, text: 'Koniec.', narration: { text: 'Sprawa zamknięta, oto wnioski.', audioUrl: 'audio/koniec.mp3', durationMs: 2000 } },
+    ];
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: blocks, status: 'COMPLETED', currentBlockIndex: 2, score: 100 })} narrationEnabled={false} />);
+    expect(screen.getByRole('button', { name: 'Napisy' })).toBeInTheDocument();
+    expect(screen.queryByTestId('narration-text')).not.toBeInTheDocument();
   });
 });

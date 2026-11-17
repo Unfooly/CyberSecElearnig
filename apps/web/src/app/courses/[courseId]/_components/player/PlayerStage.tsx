@@ -2,12 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, NotebookPen, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
-import { useFullscreen } from './useFullscreen';
-import { OverlayStackProvider, useBlockingOverlayOpen, useBlockModalOpen, useCloseTopOverlay, useOverlayLayer } from './overlay-stack';
+import { OverlayStackProvider, useBlockingOverlayOpen, useBlockModalOpen, useCloseTopOverlay } from './overlay-stack';
 import Hint from './Hint';
-import NotesDrawer from './NotesDrawer';
 
 // Ramka odtwarzacza kursu (feat/player-stage) - zastępuje PlayerShell.tsx. Trasa /courses/[courseId] NIE ma już
 // Topbara (usunięty focusMode z Topbar.tsx) - ta ramka jest CAŁYM chromem strony (dlatego to <main>, nie
@@ -20,7 +18,7 @@ import NotesDrawer from './NotesDrawer';
 //  - telefon w poziomie, niska wysokość (max-height:500px, orientation:landscape, pointer:coarse - to ostatnie, żeby
 //    nie łapać wąskiego okna na desktopie): pełny ekran bez marginesów i zaokrągleń, paski ściśnięte.
 //  - telefon w pionie (max-width:767px, orientation:portrait, pointer:coarse): pełny ekran (100dvh) bez 16:9, te
-//    same 3 strefy; licznik dowodów/Notatnik zwijają się do ikon (.player-compact-label). Scena SCENE_HOTSPOTS w tym
+//    same 3 strefy. Scena SCENE_HOTSPOTS w tym
 //    trybie panuje w poziomie (ScenePanContainer.tsx), karta hotspotu jest bottom sheetem (feat/player-portrait).
 //
 // Strona NIGDY się nie przewija: <html>/<body> owija page.tsx w overflow-hidden h-dvh, ramka ma fixed grid rows
@@ -69,18 +67,8 @@ export interface PlayerStageProps {
   contentLayout?: 'scene' | 'slide' | 'fill';
   /** Tekst podpowiedzi (D-093, zamiast maskotki): neutralny dymek - na scenie w rogu, w układzie 'slide' nad treścią. */
   hint?: string;
-  /** Licznik dowodów w pasku górnym (sam decyduje, czy się pokazać - hasEvidence w evidence.tsx). */
-  evidence?: ReactNode;
-  /** Akcja bieżącego bloku w pasku górnym, przed licznikiem dowodów - dziś tylko "Pomiń odprawę" (BRIEFING, D-081). */
-  topAction?: ReactNode;
-  /** <NarrationBar .../> (CoursePlayer woła useNarrationBar i przekazuje wynik jemu ORAZ transcriptPanel poniżej - jedno źródło stanu). */
+  /** <NarrationBar .../> (CoursePlayer woła useNarrationBar i przekazuje mu wynik - jedno źródło stanu). */
   narrationBar: ReactNode;
-  /** <TranscriptPanel .../> - renderuje się NAD dolnym paskiem (bottom-full), rejestruje się sama w overlay-stack. */
-  transcriptPanel: ReactNode;
-  notesCount: number;
-  notesOpen: boolean;
-  onToggleNotes: () => void;
-  notesId: string;
   onBack: () => void;
   /** Ignorowane, gdy forwardHref jest podane (patrz niżej). */
   onForward?: () => void;
@@ -127,14 +115,7 @@ function PlayerStageInner({
   stage,
   contentLayout = 'slide',
   hint,
-  evidence,
-  topAction,
   narrationBar,
-  transcriptPanel,
-  notesCount,
-  notesOpen,
-  onToggleNotes,
-  notesId,
   onBack,
   onForward,
   canBack,
@@ -155,56 +136,24 @@ function PlayerStageInner({
   const hintId = 'forward-hint';
   const titleId = 'player-stage-title';
   const frameRef = useRef<HTMLDivElement>(null);
-  const restRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const bottomBarRef = useRef<HTMLDivElement>(null);
   const backIsDefault = backLabel === DEFAULT_BACK_LABEL;
-  const notesButtonRef = useRef<HTMLButtonElement>(null);
-  const fullscreen = useFullscreen(frameRef);
   const closeTop = useCloseTopOverlay();
 
-  // Reszta ramki (wszystko poza NotesDrawer) jest inert, dopóki notatnik jest otwarty (kod review PR #44: prawdziwy
-  // modal, nie tylko wizualne przyciemnienie) - blokuje interakcję I kolejność Tab dla WSZYSTKIEGO poza szufladą,
-  // niezależnie od pułapki fokusu w samej szufladzie. `.inert` ustawiane imperatywnie (nie jako prop JSX) - React 18
-  // (ten projekt) nie typuje jeszcze `inert` jako atrybutu JSX (dodane dopiero w React 19), ale DOM lib TypeScriptu
-  // zna `HTMLElement.inert` od dawna, więc przypisanie przez ref jest w pełni typowane.
-  //
-  // useLayoutEffect, NIE useEffect (drugi kod review PR #44, znaleziony jako martwy fokus w prawdziwej przeglądarce
-  // mimo zielonych testów - jsdom nie wspiera `inert` w ogóle, więc test tego nie łapał): NotesDrawer.tsx ma WŁASNY
-  // useEffect, który przy zamknięciu woła triggerRef.current.focus() na tym samym przycisku "Notatnik", który leży
-  // WEWNĄTRZ restRef. React commit'uje wszystkie useLayoutEffect (rodzica i dzieci) PRZED jakimkolwiek useEffect
-  // (pasywne efekty dziecka i tak biegną przed pasywnymi efektami rodzica, więc zwykły useEffect tutaj czyściłby
-  // .inert PO tym, jak NotesDrawer już próbował .focus() na wciąż-inertnym przycisku - przeglądarki ignorują focus()
-  // na elemencie inert, więc fokus zostawał na (teraz ukrytym, aria-hidden) X zamiast wrócić na "Notatnik").
-  useLayoutEffect(() => {
-    if (restRef.current) restRef.current.inert = notesOpen;
-  }, [notesOpen]);
-
   // Okno modalne bloku (B-136: nagranie OSINT, wybór dowodu i konsola w przesłuchaniu - aria-modal): oba paski ramki inert, żeby „Dalej”
-  // i notatnik nie działały z myszy pod oknem. Okno leży w obszarze bloku, więc całej reszty ramki (restRef) nie wyłączamy.
+  // nie działał z myszy pod oknem. Okno leży w obszarze bloku, więc obszaru treści nie wyłączamy.
   const blockModalOpen = useBlockModalOpen();
   const topBarRef = useRef<HTMLDivElement>(null);
-  // Kontener dolnego paska razem z panelem transkrypcji (otwarta wcześniej transkrypcja nie może zostać interaktywna nad oknem).
+  // Kontener dolnego paska (z okienkiem głośności - otwarte wcześniej nie może zostać interaktywne nad oknem).
   const bottomHostRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (topBarRef.current) topBarRef.current.inert = blockModalOpen;
     if (bottomHostRef.current) bottomHostRef.current.inert = blockModalOpen;
   }, [blockModalOpen]);
 
-  // Fullscreen jako najniższy priorytet kaskady (D-075: w praktyce Escape w fullscreenie i tak wychodzi z niego
-  // przez samą przeglądarkę PRZED tym kodem - to wyłącznie dopełnienie rejestru, nie próba obejścia tamtego
-  // zachowania).
-  useOverlayLayer(
-    'fullscreen',
-    fullscreen.active,
-    () => {
-      document.exitFullscreen().catch(() => {});
-    },
-  );
-
   // Jedyny nasłuch Escape w całej ramce: zamyka WYŁĄCZNIE najpóźniej otwartą, wciąż otwartą warstwę (LIFO wg
-  // overlay-stack.tsx - karta hotspotu rejestruje się sama z bloku SCENE_HOTSPOTS; transkrypcja i notatnik - niżej
-  // w tym komponencie/w NotesDrawer).
+  // overlay-stack.tsx - karta hotspotu rejestruje się sama z bloku SCENE_HOTSPOTS; okienko głośności - z NarrationBar).
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') closeTop();
@@ -214,7 +163,7 @@ function PlayerStageInner({
   }, [closeTop]);
 
   // Jeden „Dalej” (D-106): jedyne przejście dalej to przycisk w dolnym pasku. Enter i → uruchamiają go, gdy jest aktywny, żadna
-  // nakładka zasłaniająca treść (zbliżenie, notatnik, transkrypcja - pełny ekran nie blokuje) nie jest otwarta, a klawisz nie ma
+  // nakładka zasłaniająca treść (zbliżenie, okienko głośności) nie jest otwarta, a klawisz nie ma
   // własnego znaczenia tam, gdzie jest fokus (forwardShortcutAllowed). Bez skrótu, gdy „Dalej” jest wyjściem z modułu (forwardHref -
   // „Wróć do biblioteki” na ekranie zamknięcia: Enter po „Zakończ sprawę” nie może pominąć ceremonii i wyrzucić do biblioteki) i przez
   // SHORTCUT_GRACE_MS po aktywacji. "Wstecz" nie ma skrótu (← w scenie/rozmowie ma własne znaczenie).
@@ -256,11 +205,8 @@ function PlayerStageInner({
     wasActive.current = active;
   }, [shortcutActive, announceForward, reducedMotion, forwardLabel]);
 
-  // Warstwa 'notebook' rejestruje się WYŁĄCZNIE w NotesDrawer.tsx (kod review PR #44: podwójna rejestracja pod tym
-  // samym kluczem tutaj i tam była krucha - unregister jednej instancji kasował wpis drugiej).
-
   // Dolny pasek jest zawsze widoczny (nie sticky jak w dawnym PlayerShell - ramka ma stałą wysokość, grid ją
-  // pilnuje), ale mierzymy go i tak: TranscriptPanel pozycjonuje się względem niego (bottom-full), a obszar treści
+  // pilnuje), ale mierzymy go i tak: okienko głośności pozycjonuje się względem niego (bottom-full), a obszar treści
   // (środkowy wiersz grid, NIE document.documentElement jak w dawnym PlayerShell - ramka jest teraz jedynym
   // przewijanym obszarem, nie cała strona) ma własny scroll-padding-bottom na wypadek elementu z fokusem tuż nad
   // paskiem. (Dawne --player-bottombar-height dla bottom sheeta karty hotspotu usunięte razem z kartą - D-086: zbliżenie
@@ -306,20 +252,18 @@ function PlayerStageInner({
     <div className="player-outer flex h-full w-full items-center justify-center p-4">
       {/* .mobile-readable (globals.css, D-103): na telefonie cały tekst modułu min. 15 px - treść bloku, notatnik, paski; desktop bez zmian. */}
       {/* Ramka nigdy się nie przewija (overflow: clip w globals.css .player-frame). onScroll to rezerwa dla przeglądarek bez `clip`:
-          przewinięcie ramki (np. fokus albo scrollIntoView przy schowanym notatniku, który wystaje w prawo) cofamy od razu. */}
+          przewinięcie ramki (np. fokus albo scrollIntoView elementu wystającego poza ramkę) cofamy od razu. */}
       <main
         ref={frameRef}
         aria-labelledby={titleId}
         onScroll={resetFrameScroll}
         className={`player-frame mobile-readable relative isolate flex w-full flex-col rounded-card bg-white shadow-card${simpleMode ? ' simple-mode' : ''}`}
       >
-        {/* Reszta ramki (wszystko poza NotesDrawer, wyżej) jest inert, dopóki notatnik jest otwarty - patrz efekt
-            na restRef. h-full: NotesDrawer jest position:absolute (poza przepływem), więc to jedyne "prawdziwe"
-            dziecko flex kolumny ramki i musi samo wypełnić jej wysokość. */}
-        <div ref={restRef} className="flex h-full flex-col">
-          {/* Pasek górny (~48px, ściśnięty do 40px w telefonie w poziomie - globals.css): X (wyjście; zapis postępu
-              jest serwerowy po każdej odpowiedzi, a zapis w toku X dociska przez onExitClick - D-142), pełny ekran (tylko gdy
-              wspierany), tytuł + cienki pasek postępu, licznik dowodów, Notatnik. */}
+        {/* h-full: jedyne dziecko flex kolumny ramki - samo wypełnia jej wysokość. */}
+        <div className="flex h-full flex-col">
+          {/* Pasek górny (~48px, ściśnięty do 40px w telefonie w poziomie - globals.css): WYŁĄCZNIE X (wyjście; zapis postępu
+              jest serwerowy po każdej odpowiedzi, a zapis w toku X dociska przez onExitClick - D-142) oraz tytuł + cienki pasek postępu
+              (D-162, decyzja właściciela: bez pełnego ekranu, licznika dowodów, Notatnika, języka i „Pomiń odprawę”). */}
           <div ref={topBarRef} className="player-topbar flex min-h-[48px] shrink-0 items-center gap-3 border-b border-slate-200 px-3">
             <Link
               href="/courses"
@@ -330,17 +274,6 @@ function PlayerStageInner({
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </Link>
-            {fullscreen.enabled && (
-              <button
-                type="button"
-                onClick={fullscreen.toggle}
-                aria-label={fullscreen.active ? 'Wyjdź z pełnego ekranu' : 'Pełny ekran'}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              >
-                {fullscreen.active ? <Minimize2 aria-hidden="true" className="h-4 w-4" /> : <Maximize2 aria-hidden="true" className="h-4 w-4" />}
-              </button>
-            )}
-
             <div className="ml-auto flex min-w-0 items-center gap-3">
               <div className="min-w-0 text-right">
                 <h1 id={titleId} lang={lang} className="truncate text-xs font-medium text-slate-500">
@@ -364,24 +297,6 @@ function PlayerStageInner({
                   />
                 </div>
               </div>
-              {topAction}
-              {evidence}
-              <button
-                ref={notesButtonRef}
-                type="button"
-                // Cel lotu znalezionego dowodu (lib/motion.ts flyEvidence, D-090).
-                data-evidence-target=""
-                onClick={onToggleNotes}
-                aria-expanded={notesOpen}
-                aria-controls={notesOpen ? notesId : undefined}
-                aria-label={`Notatnik (${notesCount})`}
-                className="inline-flex h-10 shrink-0 items-center gap-2 rounded border border-slate-300 bg-white px-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 sm:px-3"
-              >
-                <NotebookPen aria-hidden="true" className="h-4 w-4" />
-                <span className="player-compact-label" aria-hidden="true">
-                  Notatnik ({notesCount})
-                </span>
-              </button>
             </div>
           </div>
 
@@ -458,17 +373,12 @@ function PlayerStageInner({
           </div>
 
           {/* Pasek dolny (~56px, ściśnięty do 48px w telefonie w poziomie): narracja (lewo+środek, NarrationBar samo
-              zwraca null bez narracji bloku), Wstecz/Dalej (prawo). TranscriptPanel pozycjonuje się względem opakowania
-              `player-bottombar-host` (relative, górna krawędź = górna krawędź paska; bottom-full).
+              zwraca null bez narracji bloku), Wstecz/Dalej (prawo). Okienko głośności (NarrationBar) leży nad paskiem (bottom-full).
               fix/mobile-player-bar (D-097): `player-bottombar-cq` jest kontenerem zapytań `pbar` - poniżej 640 px szerokości SCENY
               (nie viewportu) pasek przechodzi w jeden rząd ikon 44x44 + „Dalej” (globals.css). Kontener na osobnym opakowaniu,
               nie na ramce: container-type daje zawieranie układu, które zmieniłoby blok zawierający dla elementów position:fixed
-              w scenie (np. przeciągany klon karty tablicy, OrderingBlock). Zawieranie tworzy też własny kontekst warstw, dlatego
-              panel transkrypcji jest POZA kontenerem (w `player-bottombar-host`, bottom-full nad paskiem) - zostaje w tym samym
-              kontekście warstw co nakładki sceny i tło notatnika, jak przed D-097 (kod review: kontener z z-index nad tłem
-              notatnika zostawiał pasek nieprzyciemniony przy otwartym notatniku). */}
+              w scenie (np. przeciągany klon karty tablicy, OrderingBlock). */}
           <div ref={bottomHostRef} className="player-bottombar-host relative shrink-0">
-          {transcriptPanel}
           <div className="player-bottombar-cq">
           <div
             ref={bottomBarRef}
@@ -526,8 +436,6 @@ function PlayerStageInner({
           </div>
           </div>
         </div>
-
-        <NotesDrawer id={notesId} open={notesOpen} onClose={onToggleNotes} triggerRef={notesButtonRef} />
       </main>
     </div>
   );

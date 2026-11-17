@@ -763,6 +763,7 @@ export default function CoursePlayer({
   // z „Dalej” (bez pętli ponawiania).
   const autoCloseSummary =
     Boolean(initial.moduleInfo) &&
+    !showStart &&
     state.status !== 'COMPLETED' &&
     !showingFeedback &&
     !reviewing &&
@@ -877,9 +878,9 @@ export default function CoursePlayer({
     // rozjeżdżają się ze stanem bloku. Ukryty blok jest poza drzewem dostępności i kolejnością Tab (atrybut hidden).
     const liveBlock = blocks[state.currentBlockIndex];
     stage = autoCloseSummary ? (
-      // Chwila zapisu podsumowania (D-169) - zamiast jego treści krótki komunikat, za moment ekran wyniku.
+      // Chwila zapisu podsumowania (D-169) - zamiast jego treści krótki, neutralny komunikat (także moduły bez śledztwa), za moment wynik.
       <p role="status" data-testid="closing-pending" className="m-auto text-base text-muted">
-        Zamykanie sprawy…
+        Za chwilę wynik…
       </p>
     ) : (
       <>

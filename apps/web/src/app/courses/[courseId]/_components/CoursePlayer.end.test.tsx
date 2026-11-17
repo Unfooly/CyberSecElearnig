@@ -171,6 +171,79 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  const progressReply = (over: Record<string, unknown>) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ assignmentId: 'a1', score: 100, completedAt: null, gamification: null, ...over }),
+  });
+  const quizDone = { blockIndex: 0, blockId: 'q', type: 'QUIZ', correct: true, points: 1 };
+  const completedReply = progressReply({ status: 'COMPLETED', currentBlockIndex: 2, completedAt: '2026-11-17T10:07:00.000Z', lastResult: { blockIndex: 1, blockId: 'podsumowanie', type: 'SUMMARY' }, gamification: reward });
+
+  it('blok oceniany (tryb zwykły): ekran wyniku -> „Dalej” -> podsumowanie zamyka się samo -> ekran końca (D-169)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(progressReply({ status: 'IN_PROGRESS', currentBlockIndex: 1, lastResult: quizDone }))
+      .mockResolvedValueOnce(completedReply);
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CoursePlayer courseId="course-1" initial={completed({ status: 'IN_PROGRESS', currentBlockIndex: 0, completedAt: null, score: null })} contentBase={BASE} narrationEnabled={false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    fireEvent.click(await screen.findByLabelText('B'));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' })));
+    // Ekran wyniku bloku ocenianego zostaje (D-076); podsumowanie jeszcze nie jest zapisywane.
+    await screen.findByText(/Poprawna odpowiedź/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dalej' })));
+    await screen.findByTestId('module-end');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1 });
+  });
+
+  it('tryb prosty: trafienie w ostatnim pytaniu -> „Dalej” -> od razu ekran końca, bez ekranu podsumowania (D-169)', async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('/check') ? { ok: true, status: 200, json: async () => ({ blockId: 'q', result: 'good', feedback: 'Tak.', done: true }) } : undefined,
+    );
+    fetchMock.mockImplementationOnce(async () => ({ ok: true, status: 200, json: async () => ({ blockId: 'q', result: 'good', feedback: 'Tak.', done: true }) }));
+    fetchMock.mockImplementationOnce(async () => progressReply({ status: 'IN_PROGRESS', currentBlockIndex: 1, lastResult: quizDone }));
+    fetchMock.mockImplementationOnce(async () => completedReply);
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={completed({ status: 'IN_PROGRESS', currentBlockIndex: 0, completedAt: null, score: null, simpleMode: true })}
+        contentBase={BASE}
+        narrationEnabled={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'B' })));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dalej' })).not.toBeDisabled());
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dalej' })));
+    await screen.findByTestId('module-end');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText('Wstęp.')).not.toBeInTheDocument();
+  });
+
+  it('po nieudanym zapisie „Zakończ szkolenie” kończy kurs - łącznie 2 zapisy, bez podwójnego (D-169)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: 'Awaria.' }) })
+      .mockResolvedValueOnce(completedReply);
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={completed({ status: 'IN_PROGRESS', currentBlockIndex: 1, completedAt: null, score: null, progress: { v: 2, notes: [], blocks: { q: { type: 'QUIZ', done: true, answer: 1 } } } })}
+        contentBase={BASE}
+        narrationEnabled={false}
+      />,
+    );
+    const finish = await screen.findByRole('button', { name: 'Zakończ szkolenie' });
+    await waitFor(() => expect(finish).not.toBeDisabled());
+    await act(async () => fireEvent.click(finish));
+    await screen.findByTestId('module-end');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('bez danych modułu (starsze API) podsumowanie zostaje osobnym ekranem - nie zamyka się samo', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

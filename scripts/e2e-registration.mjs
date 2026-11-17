@@ -693,15 +693,23 @@ try {
   // „Ukończyłem” to przełącznik gotowości (D-106) - zapis rusza „Dalej” w pasku. Po nim bieżącym blokiem jest podsumowanie (SUMMARY), które
   // odtwarzacz zamyka sam, bez osobnego ekranu (D-169) - drugi zapis kończy kurs. Odpowiedź z COMPLETED musi przyjść z serwera, nie tylko
   // zmiana ekranu.
-  const completion = page.waitForResponse(
-    async (r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST' && (await r.json().catch(() => null))?.status === 'COMPLETED',
-  );
+  const completion = page
+    .waitForResponse(
+      async (r) => r.url().includes(`/api/courses/${caseCourse.id}/progress`) && r.request().method() === 'POST' && (await r.json().catch(() => null))?.status === 'COMPLETED',
+      { timeout: 20000 },
+    )
+    .catch(() => null);
   await page.getByRole('button', { name: 'Ukończyłem' }).click();
   await nextEnabled().click();
-  const completionBody = await (await completion).json();
-  step('śledztwo: podsumowanie zamyka się samo i kończy kurs po stronie serwera (status COMPLETED, D-169)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status }));
-  // Dowody liczy dalej serwer (D-130) - 5 z 6 (jeden przedmiot sceny celowo pominięty).
-  step('śledztwo: serwer liczy 5 z 6 dowodów', completionBody.evidence?.collected === 5 && completionBody.evidence?.total === 6, JSON.stringify(completionBody.evidence));
+  const completionResponse = await completion;
+  const completionBody = completionResponse ? await completionResponse.json() : {};
+  step('śledztwo: podsumowanie zamyka się samo i kończy kurs po stronie serwera (status COMPLETED, D-169)', completionBody.status === 'COMPLETED', completionResponse ? '' : 'brak odpowiedzi /progress z COMPLETED w 20 s');
+  // Dowody liczy dalej serwer (D-130) - 5 z 6 (jeden przedmiot sceny celowo pominięty), a nazwa przeoczonego przedmiotu nie wychodzi do klienta.
+  step(
+    'śledztwo: serwer liczy 5 z 6 dowodów, bez nazwy przeoczonego przedmiotu w odpowiedzi',
+    completionBody.evidence?.collected === 5 && completionBody.evidence?.total === 6 && !JSON.stringify(completionBody).includes('Kubek'),
+    JSON.stringify(completionBody.evidence),
+  );
   // Ekran końca modułu (D-165): pieczątka, kafelki i powrót do biblioteki (kurs bez pliku modułu - ciemne tło, bez okładki).
   await page.getByTestId('module-end').waitFor();
   step(

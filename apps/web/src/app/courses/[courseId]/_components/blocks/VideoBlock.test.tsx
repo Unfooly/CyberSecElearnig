@@ -54,9 +54,50 @@ describe('VideoBlock', () => {
 
   describe('telefon: pełny ekran w poziomie (decyzja właściciela 2026-11-17)', () => {
     const matchMedia = (matches: boolean) => vi.stubGlobal('matchMedia', vi.fn(() => ({ matches, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    // Oryginały globali podmienianych w testach - przywracane po każdym (bez przecieku do innych plików testów).
+    const originalOrientation = Object.getOwnPropertyDescriptor(window.screen, 'orientation');
+    const originalExit = document.exitFullscreen;
     afterEach(() => {
       vi.unstubAllGlobals();
       Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null });
+      if (originalOrientation) Object.defineProperty(window.screen, 'orientation', originalOrientation);
+      else delete (window.screen as unknown as Record<string, unknown>).orientation;
+      document.exitFullscreen = originalExit;
+    });
+
+    it('odmowa pełnego ekranu: bez blokady orientacji i bez nieobsłużonego błędu, film gra w kursie; ponowny play w pełnym ekranie - bez drugiej prośby', async () => {
+      matchMedia(true);
+      const lock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(window.screen, 'orientation', { configurable: true, value: { lock, unlock: vi.fn() } });
+      render(<VideoBlock block={block} onReady={vi.fn()} />);
+      const video = screen.getByTestId('video-player') as HTMLVideoElement;
+      const request = vi.fn().mockRejectedValue(Object.assign(new Error('x'), { name: 'TypeError' }));
+      video.requestFullscreen = request;
+      fireEvent.play(video);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(lock).not.toHaveBeenCalled();
+      expect(screen.getByTestId('video-player')).toBeInTheDocument();
+      // Już w pełnym ekranie - kolejne play (np. wznowienie) nie prosi drugi raz.
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: video });
+      fireEvent.play(video);
+      expect(request).toHaveBeenCalledTimes(1);
+    });
+
+    it('wyjście z pełnego ekranu gestem (fullscreenchange bez elementu) zwalnia blokadę orientacji; „Wstecz” (suspended) wychodzi z pełnego ekranu', () => {
+      const unlock = vi.fn();
+      Object.defineProperty(window.screen, 'orientation', { configurable: true, value: { lock: vi.fn(), unlock } });
+      const pause = vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+      const { rerender } = render(<VideoBlock block={block} onReady={vi.fn()} />);
+      document.dispatchEvent(new Event('fullscreenchange'));
+      expect(unlock).toHaveBeenCalledTimes(1);
+      const video = screen.getByTestId('video-player') as HTMLVideoElement;
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: video });
+      const exit = vi.fn().mockResolvedValue(undefined);
+      document.exitFullscreen = exit;
+      rerender(<VideoBlock block={block} onReady={vi.fn()} suspended />);
+      expect(exit).toHaveBeenCalledTimes(1);
+      pause.mockRestore();
     });
 
     it('telefon: start filmu -> pełny ekran i blokada orientacji poziomej; koniec filmu -> wyjście z pełnego ekranu', async () => {

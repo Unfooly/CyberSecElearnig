@@ -88,9 +88,11 @@ export default function VideoBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (suspended) videoRef.current?.pause();
+    if (!suspended || !videoRef.current) return;
+    videoRef.current.pause();
+    exitFullscreen(videoRef.current);
   }, [suspended]);
-  // Pełny ekran po wyjściu z niego - zwolnienie blokady orientacji (Android).
+  // Po wyjściu z pełnego ekranu (np. gestem „wstecz” na Androidzie) - zwolnienie blokady orientacji.
   useEffect(() => {
     const onChange = () => {
       if (!document.fullscreenElement) unlockOrientation();

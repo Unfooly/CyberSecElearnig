@@ -2483,6 +2483,14 @@ try {
         if (!contains(screen, info.category)) fail(`${label}: (s5) kategoria poza ekranem - ${JSON.stringify(info.category)}.`);
         if (info.category.x < close.x + close.width) fail(`${label}: (s5) kategoria nachodzi na X.`);
         if (testCase.cover && !info.cover?.loaded) fail(`${label}: (s6) okładka się nie wczytała.`);
+        // Szeroko (D-168): okładka w prawej części ekranu - od 40% (niski ekran: 52%) do prawej krawędzi, cała wysokość.
+        if (testCase.cover && !narrow) {
+          const fromLeft = viewport.height <= 520 ? 0.52 : 0.4;
+          const box = info.cover.box;
+          if (Math.abs(box.x - viewport.width * fromLeft) > 2 || Math.abs(box.x + box.width - viewport.width) > 2 || Math.abs(box.height - viewport.height) > 2) {
+            fail(`${label}: (s6) okładka nie leży w prawej części ekranu (od ${fromLeft * 100}% do krawędzi) - ${JSON.stringify(box)}.`);
+          }
+        }
         if (!testCase.cover && (info.cover || info.background !== 'rgb(35, 35, 42)')) fail(`${label}: (s6) bez okładki oczekiwano tła #23232A (jest ${info.background}).`);
         // (s7) Okienko głośności w ekranie, Escape zamyka.
         await page.getByRole('button', { name: /^Głośność lektora|^Lektor wyciszony/ }).click();
@@ -2697,6 +2705,13 @@ try {
         }
         if (info.rulesFont !== null && info.rulesFont < 14.9) fail(`${label}: (k5) zasady ${info.rulesFont}px < 15px.`);
         if (testCase.cover && !info.coverLoaded) fail(`${label}: (k6) okładka się nie wczytała.`);
+        // Szeroko (D-168): okładka końca od 45% szerokości do prawej krawędzi, cała wysokość.
+        if (testCase.cover && !narrow) {
+          const box = info.cover;
+          if (Math.abs(box.x - viewport.width * 0.45) > 2 || Math.abs(box.x + box.width - viewport.width) > 2 || Math.abs(box.height - viewport.height) > 2) {
+            fail(`${label}: (k6) okładka nie leży w prawej części ekranu (od 45% do krawędzi) - ${JSON.stringify(box)}.`);
+          }
+        }
         if (!testCase.cover && (info.cover || info.background !== 'rgb(35, 35, 42)')) fail(`${label}: (k6) bez okładki oczekiwano tła #23232A (jest ${info.background}).`);
         await page.evaluate(() => document.querySelector('.module-end-card').scrollTo(0, 0));
         await shot(page, `${viewport.name}-koniec-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`);

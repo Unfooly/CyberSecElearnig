@@ -707,6 +707,15 @@ try {
   await page.getByTestId('player-bottombar').getByRole('button', { name: 'Zakończ sprawę' }).click();
   const completionBody = await (await completion).json();
   step('śledztwo: "Zakończ sprawę" kończy kurs po stronie serwera (status COMPLETED)', completionBody.status === 'COMPLETED', JSON.stringify({ status: completionBody.status, evidence: completionBody.evidence?.collected }));
+  // Ekran końca modułu (D-165): pieczątka, kafelki i powrót do biblioteki (kurs bez pliku modułu - ciemne tło, bez okładki).
+  await page.getByTestId('module-end').waitFor();
+  step(
+    'ekran końca modułu: pieczątka „Sprawa zamknięta”, czas i punkty, „Wróć do biblioteki” (D-165)',
+    (await page.getByTestId('module-end-stamp').isVisible()) &&
+      (await page.getByTestId('module-end-punkty').isVisible()) &&
+      (await page.getByRole('link', { name: 'Wróć do biblioteki' }).getAttribute('href')) === '/courses',
+  );
+  await shoot('koniec');
 
   step('brak naruszeń CSP w konsoli przez cały scenariusz (rejestracja, panel, ustawienia, odtwarzacz)', cspViolations.length === 0, cspViolations.slice(0, 3).join(' | '));
 

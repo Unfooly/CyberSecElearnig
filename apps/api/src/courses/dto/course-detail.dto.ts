@@ -19,4 +19,13 @@ export class CourseDetailDto {
   locales!: string[];
   /** true - kurs bez języka gracza, treść po polsku z plakietką „Available in Polish only”. */
   localeFallback!: boolean;
+  /** Ekran startu i końca modułu (szablon modułu, D-163): kategoria, czas, podtytuł i numer sprawy w języku treści, okładki (ścieżki
+   *  zasobów; null - ciemne tło). Okładki, numer i podtytuł z module.json w obrazie API (module-meta.ts), reszta z `courses`. */
+  moduleInfo!: {
+    category: string;
+    durationMinutes: number;
+    subtitle: string | null;
+    caseNumber: number | null;
+    cover: { start: string; end: string; startPortrait: string | null; endPortrait: string | null } | null;
+  };
 }

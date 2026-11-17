@@ -4,6 +4,7 @@ import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
 import * as achievements from '../gamification/achievements';
 import { ConfigService } from '@nestjs/config';
 import { CoursesService } from './courses.service';
+import { setModuleMetaCacheForTests } from './module-meta';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 
@@ -692,6 +693,34 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     ).rejects.toBeInstanceOf(ConflictException);
 
     expect(awardCourseCompletion).not.toHaveBeenCalled();
+  });
+
+  it('/start zwraca dane ekranu startu (D-163): kategoria i czas z kursu, okładka, numer i podtytuł z module.json po slug', async () => {
+    setModuleMetaCacheForTests(
+      new Map([['sprawa', { slug: 'sprawa', caseNumber: 5, subtitle: 'Z pliku', cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp' } }]]),
+    );
+    try {
+      const course = { id: 'course-1', contentBlocks: [{ type: 'VIDEO' }], slug: 'sprawa', category: 'IT_HYGIENE', durationMinutes: 6, subtitle: 'Z bazy' };
+      findFirst.mockResolvedValue(assignmentFixture({ course }));
+      expect((await service.startOrContinue('org-1', 'user-1', 'course-1')).moduleInfo).toEqual({
+        category: 'IT_HYGIENE',
+        durationMinutes: 6,
+        subtitle: 'Z pliku',
+        caseNumber: 5,
+        cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: null, endPortrait: null },
+      });
+      // Kurs bez pliku modułu (utworzony wprost, bez slug) - podtytuł z bazy, bez okładki i numeru.
+      findFirst.mockResolvedValue(assignmentFixture({ course: { ...course, slug: null } }));
+      expect((await service.startOrContinue('org-1', 'user-1', 'course-1')).moduleInfo).toEqual({
+        category: 'IT_HYGIENE',
+        durationMinutes: 6,
+        subtitle: 'Z bazy',
+        caseNumber: null,
+        cover: null,
+      });
+    } finally {
+      setModuleMetaCacheForTests(null);
+    }
   });
 
   it('/start na ukończonym kursie nie zmienia statusu (żadnego updateMany po status)', async () => {

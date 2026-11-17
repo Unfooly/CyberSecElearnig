@@ -45,6 +45,18 @@ poświatą. Odpowiedzi mają co najmniej 44 px i litery A/B/C, po ocenie zieleń
 Nad pytaniem „Pytanie N z M” (numer wśród QUIZ modułu). Układ `scene` (podpowiedź bloku w rogu). Zwykły QUIZ (poza trybem prostym) i
 podgląd „Wstecz” bez zmian. layout-check: sekcja `monitor` (q1-q6).
 
+**Ekran końca modułu (D-165).** Po ukończeniu kursu, w odpowiedziach z `moduleInfo`, odtwarzacz pokazuje `ModuleEndScreen` zamiast raportu
+w teczce (`CaseClosedScreen` zostaje dla odpowiedzi bez danych modułu). Na komputerze widać okładkę `cover.end` na tle i jasny panel z lewej:
+- pieczątka SPRAWA ZAMKNIĘTA i tytuł modułu, nagłówek (tytuł bloku SUMMARY);
+- kafelki Wynik / Czas / Punkty;
+- karta poziomu z paskiem i nowym osiągnięciem - tylko przy świeżym ukończeniu, bo tylko wtedy jest nagroda z `/progress`;
+- zasady na wynos: `lessons`, a bez nich pierwsza lista numerowana z tekstu SUMMARY (`summaryRules`);
+- „Następna sprawa” (albo „wkrótce”), „Wróć do biblioteki” i link „Zagraj jeszcze raz” (restart jak dotąd, z potwierdzeniem).
+
+Na telefonie okładka (`endPortrait`) jest u góry, pod nią karta z przyciskami przyklejonymi do dołu. Bez okładki tło jest ciemne
+(#23232A). Ekran nie ma paska postępu ani dolnego paska, a wynik ogłasza czytnikowi własny region `status`. Harness:
+`?completed=1&start=1` (opcjonalnie `&reward=1`, `&cover=briefing`). layout-check: sekcja `koniec` (k1-k6).
+
 | Typ | Komponent | `answer` | Wynik / uwagi |
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |

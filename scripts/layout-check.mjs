@@ -113,7 +113,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'monitor', 'jezyk', 'start', 'pseudo', 'coming-soon'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'monitor', 'koniec', 'jezyk', 'start', 'pseudo', 'coming-soon'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -2630,6 +2630,78 @@ try {
   //  (p4) SWIPE_SORT przyciskami (pierwsze 3 karty) i gestem myszy (pozostałe, w lewo i w prawo wg treści): zdanie po każdej karcie,
   //       „Dalej” aktywny po ostatniej.
   // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
+  // EKRAN KOŃCA MODUŁU (szablon modułu, D-165): `?completed=1&start=1` (dane modułu) - moduł 5 z okładką i nagrodą (`reward=1`: poziom,
+  // nowe osiągnięcie), moduł 1 bez okładki i bez nagrody (wnioski `lessons`), moduł 5 xx. Sprawdzamy:
+  //  (k1) strona bez przewijania; (k2) pieczątka, nagłówek i trzy kafelki widoczne bez przewijania, wartości kafelków nieucięte;
+  //  (k3) przyciski ≥ 44 px i osiągalne (komputer: bez przewijania panelu; telefon i nisko: po przewinięciu karty - w ekranie);
+  //  (k4) komputer: treść w jasnym panelu (≤ 60% szerokości); telefon: karta przy dolnej krawędzi, okładka nad nią;
+  //  (k5) zasady ≥ 15 px; (k6) okładka wczytana albo ciemne tło #23232A.
+  if (runs('koniec')) {
+    const END_CASES = [
+      { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&cover=briefing&reward=1', cover: true },
+      { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: false },
+      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&cover=briefing&reward=1&pseudo=1', cover: true },
+    ];
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      for (const testCase of END_CASES) {
+        const label = `${viewport.name} / koniec / ${testCase.name}`;
+        await page.goto(`${WEB}/dev/player-harness?${testCase.query}`);
+        await page.getByTestId('module-end').waitFor({ timeout: 30000 });
+        if (testCase.cover) await page.waitForFunction(() => document.querySelector('[data-testid="module-end-cover"]')?.complete === true, null, { timeout: 15000 });
+        const narrow = viewport.width < 640;
+        const screen = { x: 0, y: 0, width: viewport.width, height: viewport.height };
+        const info = await page.evaluate(() => {
+          const rect = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, height: r.height };
+          };
+          const root = document.querySelector('[data-testid="module-end"]');
+          const card = root.querySelector('.module-end-card');
+          return {
+            scroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
+            card: rect(card),
+            cardScroll: card.scrollHeight - card.clientHeight,
+            top: ['[data-testid="module-end-stamp"]', 'h1', '[data-testid="module-end-wynik"]', '[data-testid="module-end-punkty"]'].map((s) => ({ s, box: rect(root.querySelector(s)) })),
+            tileCut: [...root.querySelectorAll('dd')].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent),
+            content: ['h1', 'dl', '[data-testid="module-end-level"]', 'section'].map((s) => rect(root.querySelector(s))).filter(Boolean),
+            rulesFont: root.querySelector('section ol') ? parseFloat(getComputedStyle(root.querySelector('section ol')).fontSize) : null,
+            cover: rect(root.querySelector('[data-testid="module-end-cover"]')),
+            coverLoaded: root.querySelector('[data-testid="module-end-cover"]')?.naturalWidth > 0,
+            background: getComputedStyle(root).backgroundColor,
+          };
+        });
+        if (info.scroll.some((v) => v > 1)) fail(`${label}: (k1) strona się przewija (${info.scroll}).`);
+        for (const { s, box } of info.top) if (!box || !contains(screen, box) || !contains(info.card, box)) fail(`${label}: (k2) „${s}” poza ekranem/kartą bez przewijania - ${JSON.stringify(box)}.`);
+        if (info.tileCut.length > 0) fail(`${label}: (k2) ucięte wartości kafelków: ${info.tileCut.join(', ')}.`);
+        if (!narrow && viewport.height >= 600 && info.cardScroll > 1) fail(`${label}: (k3) panel przewija się o ${info.cardScroll}px na komputerze.`);
+        for (const name of ['Wróć do biblioteki', 'Zagraj jeszcze raz', 'Następna sprawa']) {
+          const target = page.locator('[data-testid="module-end"] main :is(a, button)').filter({ hasText: name }).first();
+          await target.scrollIntoViewIfNeeded();
+          const box = await target.boundingBox();
+          if (!box || !contains(screen, box)) fail(`${label}: (k3) „${name}” nieosiągalny - ${JSON.stringify(box)}.`);
+          if (box.height < 43.5) fail(`${label}: (k3) „${name}” ma ${box.height}px wysokości (<44).`);
+        }
+        if (narrow) {
+          if (Math.abs(info.card.y + info.card.height - viewport.height) > 1) fail(`${label}: (k4) karta nie przylega do dolnej krawędzi - ${JSON.stringify(info.card)}.`);
+          if (testCase.cover && !(info.cover.y < info.card.y)) fail(`${label}: (k4) okładka nie jest nad kartą.`);
+        } else {
+          const panelRight = viewport.width * 0.6 + 1;
+          for (const box of info.content) if (box.x + box.width > panelRight) fail(`${label}: (k4) treść wychodzi poza jasny panel (${(box.x + box.width).toFixed(0)} > ${panelRight.toFixed(0)}).`);
+        }
+        if (info.rulesFont !== null && info.rulesFont < 14.9) fail(`${label}: (k5) zasady ${info.rulesFont}px < 15px.`);
+        if (testCase.cover && !info.coverLoaded) fail(`${label}: (k6) okładka się nie wczytała.`);
+        if (!testCase.cover && (info.cover || info.background !== 'rgb(35, 35, 42)')) fail(`${label}: (k6) bez okładki oczekiwano tła #23232A (jest ${info.background}).`);
+        await page.evaluate(() => document.querySelector('.module-end-card').scrollTo(0, 0));
+        await shot(page, `${viewport.name}-koniec-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`);
+        step(`${label}: (k1-k6) bez przewijania strony, pieczątka/nagłówek/kafelki, przyciski ≥ 44 px osiągalne, panel/karta, zasady ≥ 15 px, okładka OK`, true);
+      }
+      await context.close();
+    }
+  }
+
   // QUIZ W MONITORZE (szablon modułu, D-164): moduł 5 (wielokrotny wybór) i moduł 3 (pojedynczy), także w pseudo-lokalizacji xx, na
   // komputerze, telefonie w poziomie i w pionie. Odpowiedzi /check podstawione z treści (jak sekcja `prosty`). Sprawdzamy:
   //  (q1) szeroko (≥ 640 px i ≥ 420 px wysokości): ekran z treścią leży na białym prostokącie grafiki - pozycja i wymiary z manifestu

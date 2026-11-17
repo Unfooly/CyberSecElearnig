@@ -498,6 +498,12 @@ async function checkMainSceneFits(page, label) {
   }
 }
 
+// Nazwa zrzutu przypadku ekranu startu/końca: moduł z zapytania, okładka, pseudo-język - dwa moduły z okładką nie nadpisują sobie zrzutów.
+function caseShotName(testCase) {
+  const slug = new URLSearchParams(testCase.query).get('module') ?? 'modul';
+  return `${slug}-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`;
+}
+
 async function shot(page, name) {
   await mkdir(OUT_DIR, { recursive: true });
   const path = join(OUT_DIR, `${name}.png`);
@@ -2416,7 +2422,8 @@ try {
   if (runs('start')) {
     const START_CASES = [
       { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
-      { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&start=1', cover: false },
+      { name: 'moduł 1 z okładką', query: 'module=wyludzone-haslo&start=1', cover: true },
+      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1', cover: false },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&pseudo=1', cover: true },
     ];
     const START_VIEWPORTS = [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }];
@@ -2513,10 +2520,10 @@ try {
         });
         if (clipped.hidden.length > 0) fail(`${label}: (s7) w okienku głośności zasłonięte/przycięte: ${clipped.hidden.join(', ')}.`);
         if (clipped.cardScroll > 1) fail(`${label}: (s7) karta przewija się przy otwartym okienku (${clipped.cardScroll}px).`);
-        await shot(page, `${viewport.name}-start-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}-glosnosc`);
+        await shot(page, `${viewport.name}-start-${caseShotName(testCase)}-glosnosc`);
         await page.keyboard.press('Escape');
         if ((await page.getByTestId('volume-panel').count()) > 0) fail(`${label}: (s7) Escape nie zamknął okienka głośności.`);
-        await shot(page, `${viewport.name}-start-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`);
+        await shot(page, `${viewport.name}-start-${caseShotName(testCase)}`);
         // (s8) Start -> pierwszy blok.
         await page.getByRole('button', { name: 'Start' }).click();
         await page.getByTestId('player-content-area').waitFor({ timeout: 15000 });
@@ -2643,7 +2650,7 @@ try {
   //       „Dalej” aktywny po ostatniej.
   // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
   // EKRAN KOŃCA MODUŁU (szablon modułu, D-165): `?completed=1&start=1` (dane modułu) - moduł 5 z okładką i nagrodą (`reward=1`: poziom,
-  // nowe osiągnięcie), moduł 1 bez okładki i bez nagrody (wnioski `lessons`), moduł 5 xx. Sprawdzamy:
+  // nowe osiągnięcie), moduł 1 z okładką bez nagrody (wnioski `lessons`), moduł 2 bez okładki, moduł 5 xx. Sprawdzamy:
   //  (k1) strona bez przewijania; (k2) pieczątka, nagłówek i trzy kafelki widoczne bez przewijania, wartości kafelków nieucięte;
   //  (k3) przyciski ≥ 44 px i osiągalne (komputer: bez przewijania panelu; telefon i nisko: po przewinięciu karty - w ekranie);
   //  (k4) komputer: treść w jasnym panelu (≤ 60% szerokości); telefon: karta przy dolnej krawędzi, okładka nad nią;
@@ -2651,7 +2658,8 @@ try {
   if (runs('koniec')) {
     const END_CASES = [
       { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1', cover: true },
-      { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: false },
+      { name: 'moduł 1 z okładką', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
+      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1', cover: false },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1&pseudo=1', cover: true },
     ];
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
@@ -2714,7 +2722,7 @@ try {
         }
         if (!testCase.cover && (info.cover || info.background !== 'rgb(35, 35, 42)')) fail(`${label}: (k6) bez okładki oczekiwano tła #23232A (jest ${info.background}).`);
         await page.evaluate(() => document.querySelector('.module-end-card').scrollTo(0, 0));
-        await shot(page, `${viewport.name}-koniec-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`);
+        await shot(page, `${viewport.name}-koniec-${caseShotName(testCase)}`);
         step(`${label}: (k1-k6) bez przewijania strony, pieczątka/nagłówek/kafelki, przyciski ≥ 44 px osiągalne, panel/karta, zasady ≥ 15 px, okładka OK`, true);
       }
       await context.close();

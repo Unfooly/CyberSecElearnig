@@ -1,7 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
-import { DEFAULT_CONTENT_LOCALE, localizeContent, moduleSchema, toClientBlock, type ServerBlock, type ServerBlockOf } from '@cyberszkolo/content';
+import {
+  DEFAULT_CONTENT_LOCALE,
+  localizeContent,
+  moduleSchema,
+  pseudoLocalize,
+  toClientBlock,
+  type ResolvedModule,
+  type ServerBlock,
+  type ServerBlockOf,
+} from '@cyberszkolo/content';
 import { contentAssetBase } from '@/lib/content-assets';
 import type { ContentBlock, NoteKind } from '@/lib/courses-types';
 import CoursePlayer, { type CoursePlayerInitialState } from '../../courses/[courseId]/_components/CoursePlayer';
@@ -65,6 +74,39 @@ function evidenceNotesBefore(blocks: ServerBlock[], index: number): HarnessNote[
   return notes;
 }
 
+/**
+ * `?start=1` (D-163): ekran startu modułu przed blokiem - tytuł, kategoria, czas, podtytuł, numer i okładki z module.json (jak API w /start).
+ * `?cover=briefing` - podgląd z okładką: grafika pierwszego kroku odprawy modułu (np. start modułu 5) zamiast `cover`, którego moduły
+ * jeszcze nie mają - tylko do zrzutów i layout-check. `?pseudo=1` - tytuł i opis w pseudo-lokalizacji (dłuższy przekład).
+ */
+function startScreen(contentModule: ResolvedModule, briefingCover: boolean, pseudo: boolean): Pick<CoursePlayerInitialState, 'title' | 'moduleInfo'> {
+  const firstStep = contentModule.blocks.flatMap((block) => (block.type === 'BRIEFING' ? block.steps : []))[0] as
+    | { image?: string; portrait?: { image?: string } }
+    | undefined;
+  const cover =
+    briefingCover && firstStep?.image
+      ? { start: firstStep.image, end: firstStep.image, startPortrait: firstStep.portrait?.image ?? null, endPortrait: null }
+      : contentModule.cover
+        ? {
+            start: contentModule.cover.start,
+            end: contentModule.cover.end,
+            startPortrait: contentModule.cover.startPortrait ?? null,
+            endPortrait: contentModule.cover.endPortrait ?? null,
+          }
+        : null;
+  const text = (value: string) => (pseudo ? pseudoLocalize(value) : value);
+  return {
+    title: text(contentModule.title),
+    moduleInfo: {
+      category: contentModule.category,
+      durationMinutes: contentModule.durationMinutes,
+      subtitle: contentModule.subtitle ? text(contentModule.subtitle) : null,
+      caseNumber: contentModule.caseNumber ?? null,
+      cover,
+    },
+  };
+}
+
 export default function PlayerHarnessPage({
   searchParams,
 }: {
@@ -78,6 +120,8 @@ export default function PlayerHarnessPage({
     noPortrait?: string;
     localeUi?: string;
     pseudo?: string;
+    start?: string;
+    cover?: string;
   };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
@@ -164,6 +208,7 @@ export default function PlayerHarnessPage({
     // layout-check sprawdza nimi najciaśniejszy pasek (pierwszy blok z „Pomiń odprawę”). Treść zostaje polska (podgląd układu).
     ...(searchParams.localeUi === 'switch' ? { locale: 'pl' as const, locales: ['pl', 'en'] as ('pl' | 'en')[], localeFallback: false } : {}),
     ...(searchParams.localeUi === 'badge' ? { locale: 'pl' as const, locales: ['pl'] as ('pl' | 'en')[], localeFallback: true } : {}),
+    ...(searchParams.start === '1' ? startScreen(parsedModule, searchParams.cover === 'briefing', pseudo) : {}),
   };
 
   // Bez CONTENT_BASE_URL obrazy idą z lokalnych assets/ modułu (trasa dev /dev/module-assets, D-084) - także te jeszcze

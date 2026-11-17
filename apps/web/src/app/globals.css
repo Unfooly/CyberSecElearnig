@@ -879,3 +879,24 @@
     white-space: normal;
   }
 }
+
+/* Ekran startu modułu (D-163) na niskim ekranie z panelem (telefon w poziomie, 844x390): bez logo i dopisku o zapisie, mniejszy tytuł
+   i odstępy - Start i CC/głośnik muszą zmieścić się w wysokości bez przewijania panelu. Selektory z elementem/klasą rodzica - wygrywają
+   z klasami Tailwinda tej samej karty (ModuleStartScreen.tsx). */
+@media (min-width: 640px) and (max-height: 520px) {
+  main.module-start-card {
+    gap: 0.75rem;
+    padding-top: 0;
+    padding-bottom: 0.75rem;
+  }
+  .module-start-card .module-start-logo,
+  .module-start-card .module-start-note {
+    display: none;
+  }
+  .module-start-card h1 {
+    font-size: 30px;
+  }
+  .module-start-card .module-start-subtitle {
+    font-size: 16px;
+  }
+}

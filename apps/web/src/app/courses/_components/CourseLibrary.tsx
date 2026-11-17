@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { CourseAssignmentSummary } from '@/lib/courses-types';
+import { CATEGORY_LABELS } from '@/lib/course-categories';
 import { Library } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import { SelectField } from '@/components/ui/Fields';
@@ -14,17 +15,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'mandatory', label: 'Obowiązkowe' },
   { key: 'overdue', label: 'Zaległe' },
 ];
-
-// Ta sama lista co CourseCategory w apps/api/prisma/schema.prisma - front
-// nie ma dziś endpointu zwracającego dostępne kategorie, więc trzymane tu.
-const CATEGORY_LABELS: Record<string, string> = {
-  PHISHING_SOCIAL_ENGINEERING: 'Phishing i inżynieria społeczna',
-  EMAIL_SECURITY: 'Bezpieczeństwo e-mail',
-  IT_HYGIENE: 'Higiena IT',
-  INCIDENT_RESPONSE: 'Reagowanie na incydenty',
-  MALWARE: 'Złośliwe oprogramowanie',
-  GENERAL_AWARENESS: 'Świadomość ogólna',
-};
 
 function matchesTab(course: CourseAssignmentSummary, tab: Tab): boolean {
   if (tab === 'mandatory') return course.mandatory;

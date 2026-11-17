@@ -1,8 +1,8 @@
 {
   "schemaVersion": 5,
   "slug": "wyludzone-haslo",
-  "title": "Wyłudzone hasło",
-  "subtitle": "Phishing, hasła i jedna karteczka",
+  "title": "Zabawa w phishing",
+  "subtitle": "Twoim zadaniem jest przeprowadzenie dochodzenia w ciekawej sprawie i powstrzymanie cyberprzestępców!",
   "category": "PHISHING_SOCIAL_ENGINEERING",
   "level": "basic",
   "durationMinutes": 12,
@@ -13,7 +13,13 @@
     "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
     "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
   ],
-  "thumbnail": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.94eb28f3.svg",
+  "thumbnail": "assets/wyludzone-haslo/images/miniatura.c6d2af9b.webp",
+  "cover": {
+    "start": "assets/wyludzone-haslo/images/start.c66f76a6.webp",
+    "end": "assets/wyludzone-haslo/images/koniec.ee744380.webp",
+    "startPortrait": "assets/wyludzone-haslo/images/start-pion.9e2e277c.webp",
+    "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.b191c9b4.webp"
+  },
   "caseNumber": 1,
   "blocks": [
     {

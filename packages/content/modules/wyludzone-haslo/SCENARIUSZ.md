@@ -7,8 +7,10 @@ podpowiedzi (`tip`). Tam, gdzie schemat czegoś nie przewiduje, agent zgłasza, 
 ## Metadane
 
 - slug: `wyludzone-haslo`
-- tytuł: „Wyłudzone hasło" (bez przedrostka „Sprawa:” - to, że to śledztwo, mówi miniatura i odprawa)
-- subtitle: „Phishing, hasła i jedna karteczka"
+- tytuł: „Zabawa w phishing” (D-170, decyzja właściciela 2026-11-17; wcześniej „Wyłudzone hasło"; slug bez zmian)
+- subtitle: „Twoim zadaniem jest przeprowadzenie dochodzenia w ciekawej sprawie i powstrzymanie cyberprzestępców!” (D-170; opis na ekranie
+  startu i karcie kursu; wcześniej „Phishing, hasła i jedna karteczka")
+- okładki ekranu startu i końca oraz miniatura: grafiki właściciela (D-161/D-170), `assets/images/`
 - category: `PHISHING_SOCIAL_ENGINEERING`, mandatory: true, schemaVersion: 5
 - czas: ~12 minut
 - level: `basic`

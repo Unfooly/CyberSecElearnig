@@ -13,7 +13,8 @@ import { hashContent, moduleWarnings, parseModule } from './node';
 // ponownie opublikowane, w module.json zmieniły się WYŁĄCZNIE skróty w kluczach plików `assets/.../<nazwa>.<skrót>.svg`); D-154
 // (typografia: trzy „ - ” w tekstach dla gracza zamienione na półpauzę „ – ” - parsed, contentHash i clientBlocks nowe, ostrzeżenia
 // bez zmian; nowa wersja kursu przy imporcie); D-163 (numer sprawy `caseNumber: 1` na poziomie modułu - nowe tylko parsed; contentHash,
-// clientBlocks i ostrzeżenia bez zmian, więc import NIE tworzy nowej wersji kursu).
+// clientBlocks i ostrzeżenia bez zmian, więc import NIE tworzy nowej wersji kursu); D-170 (nazwa „Zabawa w phishing”, nowy podtytuł,
+// okładki `cover` i miniatura WebP z grafik właściciela - poziom modułu: nowe tylko parsed, bez nowej wersji kursu).
 const MODULE_1 = join(__dirname, '..', 'modules', 'wyludzone-haslo', 'module.json');
 
 const context = {
@@ -24,7 +25,7 @@ const context = {
 const sha = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 const GOLDEN = {
-  parsed: '66fefb1caff837475b2611b91c21ec6ce93807748cf032ca63e6a6242d00de7c',
+  parsed: '6377a00f2ef21f8b80251264e493d1ec34924ba25d9e44adff9189305d4dec2c',
   contentHash: 'dff6c20607cb9f9df23f8893b8512d22e32193472698483e150ee6bd10e4911b',
   clientBlocks: 'cfd91fbcddd7b5920afa6691d4940b8dba4afbf107a88a0a26d97b79265dc803',
   warnings: '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',

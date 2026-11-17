@@ -3,9 +3,29 @@
   "slug": "wyludzone-haslo",
   "entries": {
     "module#thumbnail": {
-      "original": "miniatura-wyludzone-haslo.svg",
-      "hash": "94eb28f3",
-      "key": "assets/wyludzone-haslo/miniatura-wyludzone-haslo.94eb28f3.svg"
+      "original": "images/miniatura.webp",
+      "hash": "c6d2af9b",
+      "key": "assets/wyludzone-haslo/images/miniatura.c6d2af9b.webp"
+    },
+    "module#cover.start": {
+      "original": "images/start.webp",
+      "hash": "c66f76a6",
+      "key": "assets/wyludzone-haslo/images/start.c66f76a6.webp"
+    },
+    "module#cover.end": {
+      "original": "images/koniec.webp",
+      "hash": "ee744380",
+      "key": "assets/wyludzone-haslo/images/koniec.ee744380.webp"
+    },
+    "module#cover.startPortrait": {
+      "original": "images/start-pion.webp",
+      "hash": "9e2e277c",
+      "key": "assets/wyludzone-haslo/images/start-pion.9e2e277c.webp"
+    },
+    "module#cover.endPortrait": {
+      "original": "images/koniec-pion.webp",
+      "hash": "b191c9b4",
+      "key": "assets/wyludzone-haslo/images/koniec-pion.b191c9b4.webp"
     },
     "odprawa#steps.0.image": {
       "original": "scenes/odprawa-biurko.svg",

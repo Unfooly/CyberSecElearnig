@@ -948,7 +948,7 @@
     padding-left: 10px;
     padding-right: 10px;
   }
-  .monitor-stage-screen p.text-xl {
+  .monitor-stage-screen [data-monitor-prompt] {
     font-size: 18px;
   }
   .monitor-stage-img {

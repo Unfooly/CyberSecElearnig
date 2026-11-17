@@ -43,10 +43,23 @@ describe('VideoBlock', () => {
     const play = vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'NotAllowedError' }));
     const { unmount } = render(<VideoBlock block={block} onReady={vi.fn()} autoPlay />);
     expect(play).toHaveBeenCalledTimes(1);
+    // Odrzucone play() (NotAllowedError) - blok zostaje, z kontrolkami.
+    await Promise.resolve();
+    expect(screen.getByTestId('video-player')).toHaveAttribute('controls');
     unmount();
     render(<VideoBlock block={block} onReady={vi.fn()} />);
     expect(play).toHaveBeenCalledTimes(1);
     play.mockRestore();
+  });
+
+  it('podgląd „Wstecz” (suspended) zatrzymuje film - ukryty blok nie gra w tle', () => {
+    const pause = vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const { rerender } = render(<VideoBlock block={block} onReady={vi.fn()} />);
+    expect(pause).not.toHaveBeenCalled();
+    rerender(<VideoBlock block={block} onReady={vi.fn()} suspended />);
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(pause.mock.contexts[0]).toBe(screen.getByTestId('video-player'));
+    pause.mockRestore();
   });
 
   it('D-159: plik z potoku zasobów - adres z bazy CONTENT_BASE_URL, plakat, playsinline; tytuł bloku tylko jako nazwa odtwarzacza', () => {

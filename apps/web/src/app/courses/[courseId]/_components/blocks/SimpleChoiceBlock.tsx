@@ -63,7 +63,7 @@ export default function SimpleChoiceBlock({
             {questionLabel}
           </p>
         )}
-        <p id={promptId} className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
+        <p id={promptId} data-monitor-prompt className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
           {block.prompt}
         </p>
         <div role="group" aria-labelledby={promptId} className="flex flex-col gap-2.5">

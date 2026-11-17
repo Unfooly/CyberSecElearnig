@@ -97,6 +97,27 @@ describe('CoursePlayer: ekran startu modułu (D-163)', () => {
     expect(screen.queryByText('Bezpieczeństwo sieci', { selector: 'p' })).not.toBeInTheDocument();
   });
 
+  it('film bez gestu (wejście na kurs w trakcie, blok filmu > 0) nie startuje sam; narracja bloku VIDEO nie gra razem z filmem', async () => {
+    const video = {
+      id: 'film',
+      type: 'VIDEO',
+      title: 'Film',
+      src: 'assets/m/film.1a2b3c4d.mp4',
+      narration: { text: 'Narracja filmu.', audioUrl: 'audio/film.mp3', durationMs: 2000 },
+    } as CoursePlayerInitialState['contentBlocks'][number];
+    // Wejście w trakcie (odświeżenie) - bez ekranu startu i bez gestu: ani film, ani lektor.
+    const { unmount } = render(<CoursePlayer courseId="course-1" initial={course({ currentBlockIndex: 1, contentBlocks: [course().contentBlocks[0], video] })} contentBase={BASE} />);
+    await screen.findByTestId('video-player');
+    expect(playSpy).not.toHaveBeenCalled();
+    unmount();
+    // Start na module od filmu z narracją: gra tylko film (lektor nie razem z nim).
+    render(<CoursePlayer courseId="course-1" initial={course({ contentBlocks: [video, course().contentBlocks[1]] })} contentBase={BASE} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    const player = await screen.findByTestId('video-player');
+    await waitFor(() => expect(playSpy).toHaveBeenCalled());
+    for (const context of playSpy.mock.contexts) expect(context).toBe(player);
+  });
+
   it('CC na ekranie startu to to samo ustawienie co w pasku odtwarzacza (zapamiętane w przeglądarce)', () => {
     render(<CoursePlayer courseId="course-1" initial={course()} contentBase={BASE} />);
     const cc = screen.getByRole('button', { name: 'Napisy' });

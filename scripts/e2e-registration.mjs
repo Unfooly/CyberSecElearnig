@@ -246,7 +246,19 @@ try {
     const admin = await tx.user.findFirst({ where: { organizationId: org.id, email: EMAIL } });
     await tx.courseAssignment.create({ data: { organizationId: org.id, userId: admin.id, courseId } });
   });
+  // Kurs na pierwszym bloku zaczyna od ekranu startu modułu (D-163) - „Start” prowadzi do bloku; kurs w trakcie (blok > 0) od razu do bloku.
+  const passStartScreen = async () => {
+    await page.getByTestId('module-start').or(page.getByTestId('player-content-area')).first().waitFor();
+    if ((await page.getByTestId('module-start').count()) > 0) await page.getByRole('button', { name: 'Start' }).click();
+  };
   await page.goto(`${WEB}/courses/${courseId}`);
+  // Ekran startu modułu (D-163) przed pierwszym blokiem: tytuł kursu i czas z /start (kurs bez pliku modułu - bez okładki i numeru sprawy).
+  await page.getByTestId('module-start').waitFor();
+  step(
+    'ekran startu modułu: tytuł i czas przed pierwszym blokiem (D-163)',
+    (await page.getByRole('heading', { level: 1, name: `E2E kurs CSP ${RUN}` }).isVisible()) && (await page.getByText('ok. 3 min').isVisible()),
+  );
+  await page.getByRole('button', { name: 'Start' }).click();
   await page.getByText('Który adres jest podejrzany?').waitFor();
   await page.getByLabel('a@bank-0.pl').check();
   step('odtwarzacz kursu: blok się renderuje i reaguje na kliknięcie (hydracja z nonce działa)', await page.getByLabel('a@bank-0.pl').isChecked());
@@ -340,6 +352,7 @@ try {
     for (const [name, size] of viewports) {
       await page.setViewportSize(size);
       await page.goto(`${WEB}/courses/${demoCourse.id}`);
+      await passStartScreen();
       await page.getByText(shot.promptText).waitFor();
       if (shot.narrated) await page.getByTestId('narration-caption').waitFor();
       const label = `${name}${shot.suffix}`;
@@ -496,6 +509,7 @@ try {
   // Wyższe okno desktopowe (1280x1100), żeby scena z obrazem, licznik i karta punktu mieściły się na jednym zrzucie.
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto(`${WEB}/courses/${caseCourse.id}`);
+  await passStartScreen();
   await page.getByTestId('hotspot-overlay-monitor').waitFor();
   // D-162: górny pasek bez licznika dowodów i Notatnika - dowody liczy dalej serwer (sprawdzane w odpowiedziach zapisu niżej, D-130).
   step('śledztwo: górny pasek bez licznika dowodów i Notatnika (D-162)', (await counter().count()) === 0 && (await page.getByRole('button', { name: /Notatnik/ }).count()) === 0);

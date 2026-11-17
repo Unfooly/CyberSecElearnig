@@ -199,12 +199,12 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
   });
 
   it('tryb prosty: trafienie w ostatnim pytaniu -> „Dalej” -> od razu ekran końca, bez ekranu podsumowania (D-169)', async () => {
-    const fetchMock = vi.fn(async (url: string) =>
-      url.endsWith('/check') ? { ok: true, status: 200, json: async () => ({ blockId: 'q', result: 'good', feedback: 'Tak.', done: true }) } : undefined,
-    );
-    fetchMock.mockImplementationOnce(async () => ({ ok: true, status: 200, json: async () => ({ blockId: 'q', result: 'good', feedback: 'Tak.', done: true }) }));
-    fetchMock.mockImplementationOnce(async () => progressReply({ status: 'IN_PROGRESS', currentBlockIndex: 1, lastResult: quizDone }));
-    fetchMock.mockImplementationOnce(async () => completedReply);
+    // Kolejno: /check (trafienie), zapis pytania, automatyczny zapis podsumowania.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ blockId: 'q', result: 'good', feedback: 'Tak.', done: true }) })
+      .mockResolvedValueOnce(progressReply({ status: 'IN_PROGRESS', currentBlockIndex: 1, lastResult: quizDone }))
+      .mockResolvedValueOnce(completedReply);
     vi.stubGlobal('fetch', fetchMock);
     render(
       <CoursePlayer

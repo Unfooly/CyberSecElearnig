@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useId } from 'react';
-import { Check, X } from 'lucide-react';
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
 import { useSimpleCheck } from './simple-check';
 import { SimpleError, SimpleFeedback, SimpleHint } from './SimpleFeedback';
+import { OPTION, OptionMark, optionTone, useRevealOnCheck } from './simple-option';
 import MonitorStage from '../player/MonitorStage';
 
 // Wybór w trybie prostym (QUIZ, D-132): duże przyciski odpowiedzi; każde kliknięcie sprawdza serwer (/check) - od razu „Dobrze”/„Nie tym
@@ -40,6 +40,7 @@ export default function SimpleChoiceBlock({
   const hit = checks.find((entry) => entry.result === 'good');
   const hitIndex = typeof hit?.item === 'number' ? hit.item : null;
   const last = checks[checks.length - 1];
+  const revealRef = useRevealOnCheck(checks.length);
 
   useEffect(() => {
     onReady(hitIndex !== null ? () => onSubmit(hitIndex) : null);
@@ -56,7 +57,12 @@ export default function SimpleChoiceBlock({
   return (
     <MonitorStage label="Pytanie quizu">
       <div data-testid="simple-choice" className="flex flex-col gap-3">
-        {questionLabel && <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-ink">{questionLabel}</p>}
+        {/* Napis interfejsu (polski) w obszarze z `lang` języka treści - lang="pl" (WCAG 3.1.2, jak „Blok X z Y” w PlayerStage). */}
+        {questionLabel && (
+          <p lang="pl" className="text-xs font-bold uppercase tracking-[0.08em] text-accent-ink">
+            {questionLabel}
+          </p>
+        )}
         <p id={promptId} className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
           {block.prompt}
         </p>
@@ -87,31 +93,12 @@ export default function SimpleChoiceBlock({
             );
           })}
         </div>
-        <SimpleFeedback variant="plain" result={last?.result ?? null} text={last?.feedback} />
+        <div ref={revealRef}>
+          <SimpleFeedback variant="plain" result={last?.result ?? null} text={last?.feedback} />
+        </div>
         <SimpleHint text={hitIndex === null ? hint : undefined} />
         <SimpleError text={error} />
       </div>
     </MonitorStage>
-  );
-}
-
-// Odpowiedź jak na makiecie (D-164): ≥ 44 px, litera w kółku; po ocenie kolor (zielony/czerwony) i ✓/✕ zamiast litery - nie sam kolor.
-export const OPTION =
-  'flex min-h-[44px] w-full items-center gap-2.5 rounded-[10px] px-3.5 py-2 text-left text-base font-semibold leading-snug';
-
-export function optionTone(state: 'good' | 'bad' | null, locked: boolean, selected = false): string {
-  if (state === 'good') return 'border-2 border-success bg-success-soft text-[#0F5A3A]';
-  if (state === 'bad') return 'border-2 border-danger bg-danger-soft text-[#8A251B]';
-  if (selected) return 'border-2 border-accent bg-accent-soft text-ink';
-  return `border border-border bg-white text-ink ${locked ? '' : 'hover:border-accent hover:bg-paper'}`;
-}
-
-export function OptionMark({ index, state, selected = false }: { index: number; state: 'good' | 'bad' | null; selected?: boolean }) {
-  const tone =
-    state === 'good' ? 'bg-success text-white' : state === 'bad' ? 'bg-danger text-white' : selected ? 'bg-accent text-white' : 'bg-[#F0EFEC] text-[#4A4A47]';
-  return (
-    <span aria-hidden="true" className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${tone}`}>
-      {state === 'good' ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : state === 'bad' ? <X className="h-3.5 w-3.5" strokeWidth={3} /> : String.fromCharCode(65 + index)}
-    </span>
   );
 }

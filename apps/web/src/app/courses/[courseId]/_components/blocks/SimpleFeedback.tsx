@@ -23,7 +23,10 @@ export function SimpleFeedback({
       <div role="status" aria-live="polite" data-testid="simple-feedback" data-result={result ?? undefined}>
         {result && (
           <p className={`text-base leading-snug ${result === 'good' ? 'text-[#0F5A3A]' : 'text-[#8A251B]'}`}>
-            <span className="font-bold">{result === 'good' ? 'Dobrze. ' : 'Nie tym razem. '}</span>
+            {/* Werdykt to napis interfejsu (polski), zdanie po nim - z treści (język treści). */}
+            <span lang="pl" className="font-bold">
+              {result === 'good' ? 'Dobrze. ' : 'Nie tym razem. '}
+            </span>
             {text}
           </p>
         )}

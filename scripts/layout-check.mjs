@@ -2722,10 +2722,10 @@ try {
         const marks = await page.locator(optionSelector).evaluateAll((els) => els.map((el) => ({ h: el.getBoundingClientRect().height, mark: el.querySelector('[aria-hidden="true"]')?.textContent })));
         if (marks.some((m) => m.h < 43.5)) fail(`${label}: (q3) odpowiedź niższa niż 44 px (${marks.map((m) => m.h).join(', ')}).`);
         if (marks.map((m) => m.mark).join('') !== 'ABCDEFGH'.slice(0, marks.length)) fail(`${label}: (q3) litery odpowiedzi: ${marks.map((m) => m.mark).join(',')}.`);
-        // Widoczność elementu w obrysie ekranu (ekran przewija się sam - scrollIntoView przewija właśnie jego).
+        // Widoczność elementu w obrysie ekranu BEZ przewijania przez test - po ocenie blok sam przewija ekran do zdania (osoba widząca
+        // ma zobaczyć werdykt bez szukania go pod krawędzią ekranu).
         const visibleInScreen = (selector) =>
           page.locator(selector).first().evaluate((el) => {
-            el.scrollIntoView({ block: 'nearest' });
             const s = document.querySelector('[data-testid="monitor-screen"]').getBoundingClientRect();
             const r = el.getBoundingClientRect();
             return r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.left >= s.left - 1 && r.right <= s.right + 1;
@@ -2739,6 +2739,7 @@ try {
           await page.locator(optionSelector).nth(wrong).click();
         }
         await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
+        await page.waitForTimeout(400); // płynne przewinięcie ekranu do zdania (bez reduced-motion byłoby animowane)
         const bad = await page.locator(optionSelector).nth(wrong).evaluate((el) => ({ result: el.dataset.result, mark: el.querySelector('[aria-hidden="true"]')?.textContent }));
         if (bad.result !== 'bad' || /[A-H]/.test(bad.mark ?? '')) fail(`${label}: (q4) zła odpowiedź bez oznaczenia ✕ (${JSON.stringify(bad)}).`);
         if (!(await visibleInScreen('[data-testid="simple-feedback"]'))) fail(`${label}: (q4) zdanie po odpowiedzi poza ekranem.`);
@@ -2754,6 +2755,8 @@ try {
         await page.waitForFunction(() => document.querySelector('.pbar-next') && !document.querySelector('.pbar-next').disabled, null, { timeout: 10000 });
         const good = await page.locator(optionSelector).nth(rights[0]).evaluate((el) => el.dataset.result);
         if (good !== 'good') fail(`${label}: (q5) trafiona odpowiedź bez oznaczenia ✓.`);
+        await page.waitForTimeout(400);
+        if (!(await visibleInScreen('[data-testid="simple-feedback"]'))) fail(`${label}: (q5) zdanie po trafieniu poza ekranem.`);
         const after = await geometry();
         if (after.areaScroll > 1 || after.pageScroll.some((v) => v > 1)) fail(`${label}: (q5) po odpowiedzi przewija się obszar bloku albo strona.`);
         if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);

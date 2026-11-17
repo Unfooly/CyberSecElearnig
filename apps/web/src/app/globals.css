@@ -923,10 +923,7 @@
 }
 @container monitor (max-width: 639px) or (max-height: 419px) {
   .monitor-stage-frame {
-    position: absolute;
     inset: 0;
-    left: 0;
-    top: 0;
     translate: none;
     width: auto;
     aspect-ratio: auto;

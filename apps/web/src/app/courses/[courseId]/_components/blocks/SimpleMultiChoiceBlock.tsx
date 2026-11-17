@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react';
 import type { CheckedOption, ClientProgressBlock, ContentBlock, SimpleCheck } from '@/lib/courses-types';
 import { useSimpleCheck } from './simple-check';
 import { SimpleError, SimpleFeedback, SimpleHint } from './SimpleFeedback';
-import { OPTION, OptionMark, optionTone } from './SimpleChoiceBlock';
+import { OPTION, OptionMark, optionTone, useRevealOnCheck } from './simple-option';
 import MonitorStage from '../player/MonitorStage';
 
 // Wielokrotny wybór w trybie prostym (QUIZ `multiple`, D-158): pola wyboru i „Sprawdź” - serwer (/check) ocenia cały zbiór. Trafienie to
@@ -44,6 +44,7 @@ export default function SimpleMultiChoiceBlock({
   const { checks, hint, pending, error, check } = useSimpleCheck(courseId, block.id ?? '', progress);
   const hit = checks.some((entry) => entry.result === 'good');
   const last = checks[checks.length - 1];
+  const revealRef = useRevealOnCheck(checks.length);
   // Po odświeżeniu strony w trakcie bloku zaznaczenie wraca z ostatniej próby (z jej ocenami).
   const [selected, setSelected] = useState<number[]>(() => pickedOf(last));
   const shown = last && sameSet(selected, pickedOf(last)) ? last : undefined;
@@ -71,12 +72,19 @@ export default function SimpleMultiChoiceBlock({
   return (
     <MonitorStage label="Pytanie quizu">
       <div data-testid="simple-multi-choice" className="flex flex-col gap-3">
-        {questionLabel && <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-ink">{questionLabel}</p>}
+        {/* Napisy interfejsu (polskie) w obszarze z `lang` języka treści - lang="pl" (WCAG 3.1.2). */}
+        {questionLabel && (
+          <p lang="pl" className="text-xs font-bold uppercase tracking-[0.08em] text-accent-ink">
+            {questionLabel}
+          </p>
+        )}
         <div className="flex flex-col gap-1">
           <p id={promptId} className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
             {block.prompt}
           </p>
-          <p className="text-base text-muted">Zaznacz wszystkie poprawne odpowiedzi.</p>
+          <p lang="pl" className="text-base text-muted">
+            Zaznacz wszystkie poprawne odpowiedzi.
+          </p>
         </div>
         <div role="group" aria-labelledby={promptId} className="flex flex-col gap-2.5">
           {options.map((option, index) => {
@@ -130,11 +138,13 @@ export default function SimpleMultiChoiceBlock({
             </button>
           </div>
         )}
-        <SimpleFeedback
-          variant="plain"
-          result={shown?.result ?? null}
-          text={shown?.result === 'good' ? 'Zaznaczono wszystkie poprawne odpowiedzi.' : 'Popraw zaznaczenie i sprawdź jeszcze raz.'}
-        />
+        <div ref={revealRef} lang="pl">
+          <SimpleFeedback
+            variant="plain"
+            result={shown?.result ?? null}
+            text={shown?.result === 'good' ? 'Zaznaczono wszystkie poprawne odpowiedzi.' : 'Popraw zaznaczenie i sprawdź jeszcze raz.'}
+          />
+        </div>
         <SimpleHint text={hit ? undefined : hint} />
         <SimpleError text={error} />
       </div>

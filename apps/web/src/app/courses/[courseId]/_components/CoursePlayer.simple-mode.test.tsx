@@ -59,10 +59,30 @@ describe('CoursePlayer: tryb prosty', () => {
     expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({ blockIndex: 0, answer: 1 });
   });
 
+  it('quiz w monitorze (D-164): „Pytanie N z M” liczone wśród bloków QUIZ (inne bloki pomiędzy), podgląd „Wstecz” bez monitora', () => {
+    const second = { id: 'drugi', type: 'QUIZ', prompt: 'Drugie pytanie?', options: [{ text: 'Tak.' }, { text: 'Nie.' }] } as ContentBlock;
+    const initial: CoursePlayerInitialState = {
+      ...course(true),
+      contentBlocks: [quiz, next, second],
+      currentBlockIndex: 2,
+      progress: { v: 2, notes: [], blocks: { wybor: { type: 'QUIZ', done: true, answer: 1 }, dalej: { type: 'NARRATIVE', done: true } } },
+    };
+    render(<CoursePlayer courseId="course-1" initial={initial} contentBase="/content" narrationEnabled={false} />);
+    // Trzeci blok modułu, ale drugie pytanie quizu.
+    expect(screen.getByTestId('monitor-stage')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Pytanie quizu' })).toHaveTextContent('Pytanie 2 z 2');
+    // „Wstecz” dwa razy - podgląd ukończonego pierwszego pytania: zwykły podgląd, bez monitora (żywy blok ukryty).
+    fireEvent.click(screen.getByRole('button', { name: 'Wstecz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Wstecz' }));
+    expect(screen.getByTestId('review-block')).toHaveTextContent('Co robisz?');
+    expect(screen.queryByRole('region', { name: 'Pytanie quizu' })).not.toBeInTheDocument();
+  });
+
   it('bez trybu prostego: zwykły quiz, ramka bez .simple-mode', () => {
     render(<CoursePlayer courseId="course-1" initial={course(false)} contentBase="/content" narrationEnabled={false} />);
     expect(screen.getByRole('main')).not.toHaveClass('simple-mode');
     expect(screen.queryByTestId('simple-choice')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('monitor-stage')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Loguję się.' })).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-// E2E w przeglądarce (Playwright) — pełne przejście modułu 1 ("Wyłudzone hasło", packages/content/modules/wyludzone-haslo)
+// E2E w przeglądarce (Playwright) — pełne przejście modułu 1 ("Zabawa w phishing", do D-170 „Wyłudzone hasło”; packages/content/modules/wyludzone-haslo)
 // zaimportowanego PRAWDZIWYM CLI (apps/api/dist/scripts/content-import.js), nie ręcznie sklejoną treścią jak w scripts/e2e-registration.mjs.
 // Cel: udowodnić, że treść modułu 1 (schemat v4: NARRATIVE, character.opening, reactions, email.to, markdown w TABS/SUMMARY) faktycznie
 // działa w przeglądarce od importu do ukończenia kursu, nie tylko przechodzi parseModule.
@@ -34,7 +34,7 @@ const DOMAIN = `module-01-e2e-${RUN}.test`;
 const EMAIL = `pracownik@${DOMAIN}`;
 const PASSWORD = 'E2e-Haslo-Testowe-1!';
 const ORG_NAME = `Module 01 E2E ${RUN}`;
-const MODULE_TITLE = 'Wyłudzone hasło';
+const MODULE_TITLE = 'Zabawa w phishing';
 // Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk); domyślnie okno Playwrighta 1280x720 jak dotąd.
 const VIEWPORT = process.env.E2E_VIEWPORT?.split('x').map(Number);
 if (VIEWPORT && (VIEWPORT.length !== 2 || !VIEWPORT.every((n) => Number.isInteger(n) && n > 0))) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
@@ -141,14 +141,16 @@ try {
   await page.fill('input[type=password]', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
-  step('logowanie pracownika kieruje na /courses', true);  // Nazwa modułu „Wyłudzone hasło” (feat/achievements-content): katalog (karta + alt miniatury), nagłówek playera, raport - bez „Sprawa:”.
+  step('logowanie pracownika kieruje na /courses', true);  // Nazwa modułu „Zabawa w phishing” (D-170; wcześniej „Wyłudzone hasło”): katalog (karta + alt miniatury), nagłówek playera, raport - bez „Sprawa:”.
   await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
-  step('Katalog: karta i miniatura modułu z nazwą „Wyłudzone hasło”, nigdzie „Sprawa: wyłudzone hasło”',
-    (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1 && (await page.getByText(/Sprawa: wyłudzone/i).count()) === 0);
+  step(`Katalog: karta i miniatura modułu z nazwą „${MODULE_TITLE}”, nigdzie „Sprawa: …” ani starej nazwy`,
+    (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1 &&
+      (await page.getByText(/Sprawa: (wyłudzone|zabawa)/i).count()) === 0 &&
+      (await page.getByText('Wyłudzone hasło', { exact: true }).count()) === 0);
 
   await page.goto(`${WEB}/courses/${courseId}`);
   await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
-  step('Player: nagłówek z nazwą modułu „Wyłudzone hasło”', true);
+  step(`Player: nagłówek z nazwą modułu „${MODULE_TITLE}”`, true);
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
   // Jeden „Dalej” (D-106): całe przejście modułu idzie WYŁĄCZNIE przez przycisk w dolnym pasku; w obszarze bloku nie ma żadnego
   // przycisku nawigacji dalej (noInBlockNext - sprawdzane w każdym bloku).
@@ -495,7 +497,7 @@ try {
   // --- Zamknięcie sprawy (feat/case-closed, D-089): zapis kończący kurs OD RAZU przełącza na raport końcowy (bez ekranu pośredniego
   // "Blok ukończony."/"Zobacz podsumowanie"); ceremonia: liczby, wnioski, podpis, pieczęć, liścik ---------------------------------
   await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
-  step('Zamknięcie: nazwa modułu w raporcie to „Wyłudzone hasło” (bez „Sprawa:”)', (await page.getByTestId('case-closed').getByText(MODULE_TITLE, { exact: true }).count()) >= 1);
+  step(`Zamknięcie: nazwa modułu w raporcie to „${MODULE_TITLE}” (bez „Sprawa:”)`, (await page.getByTestId('case-closed').getByText(MODULE_TITLE, { exact: true }).count()) >= 1);
   step('Zamknięcie: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
   step('Zamknięcie: "Wynik zadań: 100%" widoczny od razu', ((await page.getByText(/Wynik zadań:/).textContent()) ?? '').includes('100%'));
   await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });

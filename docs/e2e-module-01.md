@@ -1,4 +1,6 @@
-# E2E: pełne przejście modułu 1 ("Wyłudzone hasło", przeglądarka)
+# E2E: pełne przejście modułu 1 ("Zabawa w phishing", do D-170 „Wyłudzone hasło”; przeglądarka)
+
+> Skrypt przechodzi moduł jeszcze sprzed szablonu modułu (bez ekranu startu i końca) - do przepisania w B-164.
 
 ## Automatyczny scenariusz (Playwright)
 

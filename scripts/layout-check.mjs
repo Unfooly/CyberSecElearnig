@@ -2413,7 +2413,7 @@ try {
     }
   }
 
-  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduł 5 z okładką (`cover` z treści, D-167), moduł 1 bez
+  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduły 5 i 1 z okładką (`cover` z treści, D-167, D-170), moduł 2 bez
   // okładki (ciemne tło #23232A) i moduł 5 w pseudo-lokalizacji (dłuższy tytuł i opis). Sprawdzamy:
   //  (s1) strona bez przewijania; (s2) Start, X, CC i głośnik w całości na ekranie, cele >= 44 px; (s3) tytuł bez przepełnienia w poziomie,
   //  opis >= 16 px; (s4) komputer: tytuł, opis i Start w jasnym panelu (lewa połowa); telefon: karta przy dolnej krawędzi, okładka nad nią;

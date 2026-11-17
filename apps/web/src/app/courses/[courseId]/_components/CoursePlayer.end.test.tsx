@@ -114,7 +114,7 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('/restart');
   });
 
-  it('przejście jak na produkcji: „Zakończ szkolenie” na SUMMARY -> /progress COMPLETED z nagrodą -> ekran końca, fokus na nagłówku, +XP, ogłoszenie', async () => {
+  it('przejście jak na produkcji (D-169): SUMMARY jako bieżący blok zamyka się sam -> /progress COMPLETED z nagrodą -> ekran końca, fokus na nagłówku, +XP, ogłoszenie', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 200,
@@ -137,13 +137,14 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
         narrationEnabled={false}
       />,
     );
-    // Region ogłoszenia istnieje już w ramce odtwarzacza (przed ukończeniem) - pusty.
+    // Region ogłoszenia istnieje już w ramce odtwarzacza (przed ukończeniem) - pusty; zamiast treści podsumowania - „Zamykanie sprawy…”.
     const live = screen.getByTestId('result-announcement');
     expect(live).toBeEmptyDOMElement();
-    const finish = await screen.findByRole('button', { name: 'Zakończ szkolenie' });
-    await waitFor(() => expect(finish).not.toBeDisabled());
-    await act(async () => fireEvent.click(finish));
+    expect(screen.queryByRole('button', { name: 'Zakończ szkolenie' })).not.toBeInTheDocument();
     await screen.findByTestId('module-end');
+    // Jeden zapis - bloku podsumowania, bez kliknięcia.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1 });
     // Ten sam element regionu (zachowany przy przejściu), teraz z treścią.
     expect(screen.getByTestId('result-announcement')).toBe(live);
     expect(live).toHaveTextContent('Kurs ukończony. Zdobyto 150 punktów doświadczenia.');
@@ -151,6 +152,38 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     expect(screen.getByTestId('module-end-punkty')).toHaveTextContent('+150');
     expect(screen.getByTestId('module-end-level')).toHaveTextContent('Nowe: Sprawa bez skazy');
     expect(screen.queryByTestId('player-bottombar')).not.toBeInTheDocument();
+  });
+
+  it('nieudany zapis podsumowania (D-169) - podsumowanie pokazuje się jak dotąd, z błędem i „Zakończ szkolenie”, bez pętli zapisów', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ message: 'Awaria.' }) }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={completed({ status: 'IN_PROGRESS', currentBlockIndex: 1, completedAt: null, score: null, progress: { v: 2, notes: [], blocks: { q: { type: 'QUIZ', done: true, answer: 1 } } } })}
+        contentBase={BASE}
+        narrationEnabled={false}
+      />,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Awaria.');
+    expect(await screen.findByRole('button', { name: 'Zakończ szkolenie' })).toBeInTheDocument();
+    expect(screen.queryByTestId('module-end')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('bez danych modułu (starsze API) podsumowanie zostaje osobnym ekranem - nie zamyka się samo', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={completed({ moduleInfo: undefined, status: 'IN_PROGRESS', currentBlockIndex: 1, completedAt: null, score: null, progress: null })}
+        contentBase={BASE}
+        narrationEnabled={false}
+      />,
+    );
+    expect(await screen.findByRole('button', { name: 'Zakończ szkolenie' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('odpowiedź bez danych modułu (starsze API) - dotychczasowy raport w teczce', () => {

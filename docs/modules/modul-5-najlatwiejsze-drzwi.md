@@ -5,6 +5,10 @@ decyzje z tego samego dnia (pkt 1). Wideo `elearning_16x9.mp4` (2:21) i brandkit
 cudzego kursu posłużyły wyłącznie za wzór kolejności ekranów; wszystkie teksty, pytania i grafiki w tym dokumencie są własne. Ten
 dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1).
 
+**Aktualizacja wideo (2026-11-17):** poprawiony film od właściciela w dwóch wersjach - PL (2:14) i EN (2:23), napisy wpalone; blok
+`film` ma `src: { pl, en }`. Plik EN czeka na wersję EN modułu (`locales`). Przy włączaniu EN: `durationSeconds` (dziś 134, czas PL) jest
+nielokalizowane i nikt go nie czyta - usunąć albo uznać za orientacyjne.
+
 ## 1. Założenia
 
 - **Temat:** firmowa sieć ma „drzwi” - fizyczne (wejście z czytnikiem kart, gniazdka sieciowe w ścianie) i niewidoczne (Wi-Fi,

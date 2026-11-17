@@ -5,6 +5,11 @@ decyzje z tego samego dnia (pkt 1). Wideo `elearning_16x9.mp4` (2:21) i brandkit
 cudzego kursu posłużyły wyłącznie za wzór kolejności ekranów; wszystkie teksty, pytania i grafiki w tym dokumencie są własne. Ten
 dokument jest źródłem prawdy dla `module.json` (MODULE-PLAYBOOK, rozdział 1).
 
+**Aktualizacja po szablonie modułu (2026-11-17, D-167 - uwagi właściciela):** moduł nazywa się „Bezpieczeństwo sieci” (slug
+`najlatwiejsze-drzwi` bez zmian - po nim import rozpoznaje kurs). Scena startowa (blok BRIEFING `start`) usunięta: jej opis jest podtytułem
+modułu na ekranie startu (D-163), a jej grafiki - okładkami startu i końca (`cover`, poziomo i pionowo). Po „Start” od razu film (D-166).
+Lektor nie czyta już wstępu (ekran startu nie ma nagrania). Pkt 2 i 4 poniżej (ekran startu jako blok) - historyczne.
+
 **Aktualizacja wideo (2026-11-17):** poprawiony film od właściciela w dwóch wersjach - PL (2:14) i EN (2:23), napisy wpalone; blok
 `film` ma `src: { pl, en }`. Plik EN czeka na wersję EN modułu (`locales`). Przy włączaniu EN: `durationSeconds` (dziś 134, czas PL) jest
 nielokalizowane i nikt go nie czyta - usunąć albo uznać za orientacyjne.

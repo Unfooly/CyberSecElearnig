@@ -7,12 +7,22 @@
       "hash": "a8cf8742",
       "key": "assets/najlatwiejsze-drzwi/images/miniatura.a8cf8742.webp"
     },
-    "start#steps.0.image": {
+    "module#cover.start": {
       "original": "images/start.webp",
       "hash": "9722f6b2",
       "key": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp"
     },
-    "start#steps.0.portrait.image": {
+    "module#cover.end": {
+      "original": "images/start.webp",
+      "hash": "9722f6b2",
+      "key": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp"
+    },
+    "module#cover.startPortrait": {
+      "original": "images/start-pion.webp",
+      "hash": "36ee7e6e",
+      "key": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
+    },
+    "module#cover.endPortrait": {
       "original": "images/start-pion.webp",
       "hash": "36ee7e6e",
       "key": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"

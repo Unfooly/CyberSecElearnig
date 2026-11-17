@@ -2415,9 +2415,9 @@ try {
   //  suwak i „Wycisz lektora” nieprzycięte (elementFromPoint), karta bez przewijania przy otwartym okienku, Escape je zamyka; (s8) Start prowadzi do pierwszego bloku (obszar bloku widoczny, ekranu startu nie ma).
   if (runs('start')) {
     const START_CASES = [
-      { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1&cover=briefing', cover: true },
+      { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
       { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&start=1', cover: false },
-      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&cover=briefing&pseudo=1', cover: true },
+      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&pseudo=1', cover: true },
     ];
     const START_VIEWPORTS = [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }];
     for (const viewport of START_VIEWPORTS) {
@@ -2640,9 +2640,9 @@ try {
   //  (k5) zasady ≥ 15 px; (k6) okładka wczytana albo ciemne tło #23232A.
   if (runs('koniec')) {
     const END_CASES = [
-      { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&cover=briefing&reward=1', cover: true },
+      { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1', cover: true },
       { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: false },
-      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&cover=briefing&reward=1&pseudo=1', cover: true },
+      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1&pseudo=1', cover: true },
     ];
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });

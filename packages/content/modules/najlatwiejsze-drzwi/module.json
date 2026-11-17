@@ -1,8 +1,8 @@
 {
   "schemaVersion": 6,
   "slug": "najlatwiejsze-drzwi",
-  "title": "Najłatwiejsze drzwi",
-  "subtitle": "Jak przestępca szuka wejścia do firmowej sieci – i jak mu go nie zostawić",
+  "title": "Bezpieczeństwo sieci",
+  "subtitle": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
   "category": "IT_HYGIENE",
   "level": "basic",
   "durationMinutes": 6,
@@ -20,45 +20,17 @@
   ],
   "thumbnail": "assets/najlatwiejsze-drzwi/images/miniatura.a8cf8742.webp",
   "caseNumber": 5,
+  "cover": {
+    "start": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
+    "end": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
+    "startPortrait": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp",
+    "endPortrait": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
+  },
   "blocks": [
-    {
-      "id": "start",
-      "type": "BRIEFING",
-      "title": "Najłatwiejsze drzwi",
-      "steps": [
-        {
-          "kind": "typewriter",
-          "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
-          "cta": "Zaczynamy",
-          "nextLabel": "Zaczynamy",
-          "narration": {
-            "voice": "lektor-siec",
-            "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte. Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
-            "audioUrl": "audio/najlatwiejsze-drzwi/v1/start/434b2b598d4581c2.mp3",
-            "durationMs": 11517,
-            "cues": [
-              {
-                "text": "Przestępca nie musi łamać zabezpieczeń – szuka drzwi, które ktoś zostawił otwarte.",
-                "startMs": 0
-              },
-              {
-                "text": "Obejrzysz krótki film o tym, jak próbuje dostać się do firmowej sieci, a potem sprawdzisz w quizie, jak mu to utrudnić.",
-                "startMs": 4946
-              }
-            ]
-          },
-          "image": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
-          "alt": "Pracownik przykłada kartę do czytnika przy szklanych drzwiach biura, a tuż za nim, w cieniu, czeka postać w kapturze i ciemnych okularach.",
-          "portrait": {
-            "image": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
-          }
-        }
-      ]
-    },
     {
       "id": "film",
       "type": "VIDEO",
-      "title": "Najłatwiejsze drzwi",
+      "title": "Bezpieczeństwo sieci",
       "src": {
         "pl": "assets/najlatwiejsze-drzwi/video/film.a460d876.mp4",
         "en": "assets/najlatwiejsze-drzwi/video/film-en.cd484afc.mp4"

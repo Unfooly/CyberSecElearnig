@@ -5,14 +5,6 @@
   "model": "eleven_multilingual_v2",
   "language": "pl",
   "entries": {
-    "start#steps.0.narration": {
-      "hash": "434b2b598d4581c2",
-      "key": "audio/najlatwiejsze-drzwi/v1/start/434b2b598d4581c2.mp3",
-      "textSha": "1e2a000040ebc304",
-      "durationMs": 11517,
-      "voice": "lektor-siec",
-      "voiceId": "zs057lc0shdaAFXkm2Fm"
-    },
     "ktos-za-toba#narration": {
       "hash": "23d7316574ed6119",
       "key": "audio/najlatwiejsze-drzwi/v1/ktos-za-toba/23d7316574ed6119.mp3",

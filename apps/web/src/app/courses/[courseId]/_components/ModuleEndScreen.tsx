@@ -65,18 +65,6 @@ export default function ModuleEndScreen({
   const xp = reward?.xpGained ? reward.xpGained : null;
   const badges = reward?.unlockedBadges ?? [];
 
-  // Ogłoszenie wyniku dla czytnika (jak dotąd w PlayerStage, D-076): region obecny od montowania, wypełniany po nim - czytnik ogłasza zmianę
-  // treści regionu, a nie region wstawiony już z treścią.
-  const [announcement, setAnnouncement] = useState('');
-  useEffect(() => {
-    if (!reward) return;
-    setAnnouncement(
-      reward.xpGained > 0
-        ? `Kurs ukończony. Zdobyto ${reward.xpGained} punktów doświadczenia.`
-        : 'Kurs ukończony ponownie. Punkty doświadczenia naliczone przy pierwszym ukończeniu.',
-    );
-  }, [reward]);
-
   const tiles: [string, string, boolean][] = [
     ['Wynik', scoreUnavailable || score === null ? '—' : `${score}%`, false],
     ['Czas', minutes !== null ? `${minutes} min` : '—', false],
@@ -85,10 +73,8 @@ export default function ModuleEndScreen({
   ];
 
   return (
+    // Wynik dla czytnika ogłasza region persystentny w CoursePlayer (żyje przez cały kurs, D-076) - nie tutaj.
     <div data-testid="module-end" className="relative flex h-dvh flex-col overflow-hidden bg-[#23232A] text-ink">
-      <p role="status" aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
       {landscape && (
         <picture>
           {portrait && <source media="(max-width: 639px)" srcSet={portrait} />}
@@ -122,13 +108,16 @@ export default function ModuleEndScreen({
           className="module-end-card flex max-h-[80%] min-h-0 flex-col gap-3 overflow-y-auto rounded-t-3xl bg-paper px-4 pb-5 pt-[22px] sm:max-h-full sm:gap-[18px] sm:rounded-none sm:bg-transparent sm:py-6 sm:pl-[clamp(24px,7.5vw,96px)] sm:pr-[clamp(24px,5vw,72px)]"
         >
           <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
-            <p
-              data-testid="module-end-stamp"
-              className={`-rotate-[4deg] rounded-lg border-[3px] border-danger px-2.5 py-1 text-[13px] font-extrabold uppercase tracking-[0.07em] text-danger sm:px-3 sm:py-1.5 sm:text-[15px] ${
-                fresh ? 'motion-safe:animate-badge-pop' : ''
-              }`}
-            >
-              Sprawa zamknięta
+            {/* Obrót na elemencie zewnętrznym, „wbicie się” (badge-pop: transform scale) na wewnętrznym - animacja transformu na tym samym
+                elemencie zjadłaby obrót. Tekst ciemniejszą czerwienią niż ramka (#D9483B na jasnym tle ma 3,9:1 - poniżej AA dla 13-15 px). */}
+            <p data-testid="module-end-stamp" className="-rotate-[4deg]">
+              <span
+                className={`block rounded-lg border-[3px] border-danger px-2.5 py-1 text-[13px] font-extrabold uppercase tracking-[0.07em] text-[#B23A2E] sm:px-3 sm:py-1.5 sm:text-[15px] ${
+                  fresh ? 'motion-safe:animate-badge-pop' : ''
+                }`}
+              >
+                Sprawa zamknięta
+              </span>
             </p>
             <p lang={lang} className="hidden text-sm text-[#6F6F6B] sm:block">
               {moduleTitle}

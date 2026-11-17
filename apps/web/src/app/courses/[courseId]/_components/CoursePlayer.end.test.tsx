@@ -104,7 +104,7 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Kurs ukończony. Zdobyto 150 punktów doświadczenia.'));
   });
 
-  it('„Zagraj jeszcze raz” uruchamia kurs od nowa (POST restart) i przechodzi na nowe przypisanie', async () => {
+  it('„Zagraj jeszcze raz” uruchamia kurs od nowa (POST restart, jak „Rozpocznij od nowa”)', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ assignmentId: 'a2' }) }));
     vi.stubGlobal('fetch', fetchMock);
     // Restart pyta o potwierdzenie (D-069) - jak przy „Rozpocznij od nowa”.
@@ -112,6 +112,45 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     render(<CoursePlayer courseId="course-1" initial={completed()} contentBase={BASE} />);
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Zagraj jeszcze raz' })));
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('/restart');
+  });
+
+  it('przejście jak na produkcji: „Zakończ szkolenie” na SUMMARY -> /progress COMPLETED z nagrodą -> ekran końca, fokus na nagłówku, +XP, ogłoszenie', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        assignmentId: 'a1',
+        status: 'COMPLETED',
+        currentBlockIndex: 2,
+        score: 90,
+        completedAt: '2026-11-17T10:07:00.000Z',
+        lastResult: { blockIndex: 1, blockId: 'podsumowanie', type: 'SUMMARY' },
+        gamification: reward,
+      }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={completed({ status: 'IN_PROGRESS', currentBlockIndex: 1, completedAt: null, score: null, progress: { v: 2, notes: [], blocks: { q: { type: 'QUIZ', done: true, answer: 1 } } } })}
+        contentBase={BASE}
+        narrationEnabled={false}
+      />,
+    );
+    // Region ogłoszenia istnieje już w ramce odtwarzacza (przed ukończeniem) - pusty.
+    const live = screen.getByTestId('result-announcement');
+    expect(live).toBeEmptyDOMElement();
+    const finish = await screen.findByRole('button', { name: 'Zakończ szkolenie' });
+    await waitFor(() => expect(finish).not.toBeDisabled());
+    await act(async () => fireEvent.click(finish));
+    await screen.findByTestId('module-end');
+    // Ten sam element regionu (zachowany przy przejściu), teraz z treścią.
+    expect(screen.getByTestId('result-announcement')).toBe(live);
+    expect(live).toHaveTextContent('Kurs ukończony. Zdobyto 150 punktów doświadczenia.');
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Drzwi zamknięte' })).toHaveFocus());
+    expect(screen.getByTestId('module-end-punkty')).toHaveTextContent('+150');
+    expect(screen.getByTestId('module-end-level')).toHaveTextContent('Nowe: Sprawa bez skazy');
+    expect(screen.queryByTestId('player-bottombar')).not.toBeInTheDocument();
   });
 
   it('odpowiedź bez danych modułu (starsze API) - dotychczasowy raport w teczce', () => {

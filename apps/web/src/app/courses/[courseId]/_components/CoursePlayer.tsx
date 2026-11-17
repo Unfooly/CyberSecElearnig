@@ -790,7 +790,8 @@ export default function CoursePlayer({
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
   let stage: React.ReactNode;
-  if (isSummaryMode) {
+  // Z danymi modułu tryb podsumowania renderuje ekran końca (wczesny return niżej) - raport w teczce tylko bez nich.
+  if (isSummaryMode && !initial.moduleInfo) {
     stage = (
       <CaseClosedScreen
         title={initial.title}
@@ -958,10 +959,22 @@ export default function CoursePlayer({
         : 'Kurs ukończony ponownie. Punkty doświadczenia naliczone przy pierwszym ukończeniu.'
       : '';
 
+  // Region ogłoszenia wyniku dla ekranu końca (D-165): PIERWSZE dziecko fragmentu w KAŻDEJ gałęzi renderu poniżej (ekran końca, startu,
+  // ramka odtwarzacza) - React zachowuje go przy przejściu ramka -> ekran końca (ten sam typ na tej samej pozycji), więc region istnieje
+  // od wejścia na kurs i czytnik ogłasza zmianę jego treści (D-076), a nie region wstawiony już z treścią. Odpowiedź bez danych modułu
+  // (raport w teczce w ramce) - ogłasza region PlayerStage, a tego nie ma (null na tej samej pozycji w każdej gałęzi).
+  const liveRegion = initial.moduleInfo ? (
+    <p role="status" aria-live="polite" data-testid="result-announcement" className="sr-only">
+      {resultAnnouncement}
+    </p>
+  ) : null;
+
   // Ekran końca modułu (szablon, D-165): po ukończeniu, w odpowiedziach z danymi modułu. Bez nich (starsze API, testy) - raport w teczce
   // (CaseClosedScreen) w ramce odtwarzacza, jak dotąd.
   if (isSummaryMode && initial.moduleInfo) {
     return (
+      <>
+      {liveRegion}
       <ModuleEndScreen
         moduleTitle={initial.title}
         headline={summaryBlock?.title}
@@ -981,11 +994,14 @@ export default function CoursePlayer({
         headingRef={summaryHeadingRef}
         fresh={completedNow}
       />
+      </>
     );
   }
 
   if (showStart && initial.moduleInfo) {
     return (
+      <>
+      {liveRegion}
       <ModuleStartScreen
         title={initial.title}
         info={initial.moduleInfo}
@@ -998,11 +1014,14 @@ export default function CoursePlayer({
         togglePending={preference.pending}
         toggleError={preference.error}
       />
+      </>
     );
   }
 
   return (
-    // Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087/D-089).
+    <>
+    {liveRegion}
+    {/* Dźwięki interfejsu (czat, zamknięcie sprawy) grają tylko przy włączonym Lektorze - jedno ustawienie dźwięku gracza (D-087/D-089). */}
     <SfxProvider enabled={preference.enabled}>
     <NarrationPauseProvider pause={pauseNarration}>
     <NotesProvider initial={initial.progress?.notes ?? []} initialDistinctions={initial.progress?.distinctions} blockTitles={blockTitles} tasks={tasks}>
@@ -1015,7 +1034,8 @@ export default function CoursePlayer({
             totalBlocks={blocks.length}
             completedBlocks={isSummaryMode ? blocks.length : state.currentBlockIndex}
             headingRef={headingRef}
-            resultAnnouncement={resultAnnouncement}
+            // Z danymi modułu wynik ogłasza region `liveRegion` (ekran końca bez ramki) - tu pusto, bez podwójnego ogłoszenia.
+            resultAnnouncement={initial.moduleInfo ? '' : resultAnnouncement}
             showHint={!isSummaryMode}
             lang={contentLocale}
             // Stała podpowiedź: `tip` (D-096), dla starszych wersji treści `mascot.text` (poza ignorowana, D-093); bez niej - domyślna dla typu.
@@ -1096,5 +1116,6 @@ export default function CoursePlayer({
     </NotesProvider>
     </NarrationPauseProvider>
     </SfxProvider>
+    </>
   );
 }

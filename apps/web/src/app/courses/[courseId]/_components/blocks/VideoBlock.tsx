@@ -19,7 +19,10 @@ export default function VideoBlock({
   contentBase = LOCAL_CONTENT_BASE,
   onReady,
   autoPlay = false,
+  suspended = false,
 }: {
+  /** Podgląd wcześniejszego bloku („Wstecz”): blok zostaje zamontowany, ale ukryty - film się zatrzymuje (ukryte <video> grałoby dalej). */
+  suspended?: boolean;
   block: ContentBlock;
   /** Baza zasobów modułu (CONTENT_BASE_URL) - dla `src` i `poster`. */
   contentBase?: string;
@@ -39,6 +42,9 @@ export default function VideoBlock({
     // Jednorazowo przy zamontowaniu bloku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (suspended) videoRef.current?.pause();
+  }, [suspended]);
   // Najdalszy obejrzany moment. Do pierwszego obejrzenia przewijanie do przodu wraca do niego - „Dalej” dopiero po końcu filmu (decyzja
   // właściciela, moduł 5); cofanie działa zawsze. Wyłącznie UX, jak cała blokada.
   const watched = useRef(0);

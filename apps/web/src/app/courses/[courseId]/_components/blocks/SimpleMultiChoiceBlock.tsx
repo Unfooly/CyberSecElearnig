@@ -79,7 +79,7 @@ export default function SimpleMultiChoiceBlock({
           </p>
         )}
         <div className="flex flex-col gap-1">
-          <p id={promptId} className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
+          <p id={promptId} data-monitor-prompt className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
             {block.prompt}
           </p>
           <p lang="pl" className="text-base text-muted">

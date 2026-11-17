@@ -152,6 +152,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
           block={block}
           contentBase={contentBase}
           autoPlay={ctx.autoPlay}
+          suspended={ctx.suspended}
           onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)}
         />
       );
@@ -941,6 +942,8 @@ export default function CoursePlayer({
     autoPlay:
       !isSummaryMode &&
       !showingFeedback &&
+      // Film startuje sam po tym samym geście (D-166) - narracja bloku VIDEO (jeśli treść ją ma) nie gra razem z nim; gracz uruchomi ją ręcznie.
+      currentBlock?.type !== 'VIDEO' &&
       (briefingStep && briefingStep.index > 0 ? briefingStep.gesture : autoPlayFor === keyOf(displayedIndex)),
     resetKey: isSummaryMode
       ? 'summary'

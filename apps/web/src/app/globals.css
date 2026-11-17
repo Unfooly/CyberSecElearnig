@@ -880,6 +880,79 @@
   }
 }
 
+/* Quiz w monitorze (D-164, MonitorStage.tsx). Kontener zapytań `monitor` = obszar bloku: szeroko monitor „contain” z treścią na białym
+   ekranie (pozycja z manifestu, zmienne --screen-*), przewijanie w ekranie; wąsko (< 640 px) albo nisko (< 420 px) karta w ramce na
+   przygaszonym monitorze. */
+.monitor-stage {
+  container: monitor / size;
+  position: relative;
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #1b1424;
+}
+.monitor-stage-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(100cqw, calc(100cqh * var(--monitor-ratio-n)));
+  aspect-ratio: var(--monitor-ratio);
+}
+.monitor-stage-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+}
+.monitor-stage-screen {
+  position: absolute;
+  left: var(--screen-left);
+  top: var(--screen-top);
+  width: var(--screen-width);
+  height: var(--screen-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  background: #fff;
+  padding: 18px 24px;
+}
+@container monitor (max-width: 639px) or (max-height: 419px) {
+  .monitor-stage-frame {
+    position: absolute;
+    inset: 0;
+    left: 0;
+    top: 0;
+    translate: none;
+    width: auto;
+    aspect-ratio: auto;
+    display: flex;
+    align-items: center;
+    padding: 16px 12px;
+  }
+  .monitor-stage-img {
+    object-fit: cover;
+    object-position: 50% 80%;
+    opacity: 0.55;
+  }
+  .monitor-stage-screen {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    border: 10px solid #2a2433;
+    border-radius: 16px;
+    padding: 18px 16px;
+    box-shadow: 0 0 60px -10px rgba(108, 92, 231, 0.6);
+  }
+}
+
 /* Ekran startu modułu (D-163) na niskim ekranie z panelem (telefon w poziomie, 844x390): bez logo i dopisku o zapisie, mniejszy tytuł
    i odstępy - Start i CC/głośnik muszą zmieścić się w wysokości bez przewijania panelu. Selektory z elementem/klasą rodzica - wygrywają
    z klasami Tailwinda tej samej karty (ModuleStartScreen.tsx). */

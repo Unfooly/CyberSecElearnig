@@ -51,7 +51,7 @@ describe('CoursePlayer: tryb prosty', () => {
 
     expect(screen.getByRole('main')).toHaveClass('simple-mode');
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Pytam innym kanałem.' })));
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Tak sprawdzisz.');
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Tak sprawdzisz.');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Dalej' })).not.toBeDisabled());
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
     await waitFor(() => expect(screen.getByText('Następny blok.')).toBeInTheDocument());

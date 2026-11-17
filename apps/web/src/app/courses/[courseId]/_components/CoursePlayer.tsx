@@ -145,7 +145,11 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
       return (
         <VideoBlock key={block.id} block={block} contentBase={contentBase} onReady={(ready) => ctx.onReady(ready ? () => onSubmit(undefined) : null)} />
       );
-    case 'QUIZ':
+    case 'QUIZ': {
+      // „Pytanie N z M” nad pytaniem na ekranie monitora (D-164): numer wśród pytań QUIZ modułu.
+      const quizzes = (ctx.blocks ?? []).filter((item) => item.type === 'QUIZ');
+      const position = quizzes.findIndex((item) => item.id === block.id);
+      const questionLabel = position >= 0 ? `Pytanie ${position + 1} z ${quizzes.length}` : undefined;
       if (ctx.simpleMode && block.multiple === true) {
         // Wielokrotny wybór (D-158): zbiór przez /check, zapis po trafieniu bez odpowiedzi (wynik z prób w postępie).
         return (
@@ -158,6 +162,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
             onReady={ctx.onReady}
             onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
             disabled={disabled}
+            questionLabel={questionLabel}
           />
         );
       }
@@ -172,10 +177,12 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
             onReady={ctx.onReady}
             onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
             disabled={disabled}
+            questionLabel={questionLabel}
           />
         );
       }
       return <QuizBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
+    }
     case 'SWIPE_SORT':
       // D-132: każda karta przez /check; „Dalej” po ocenie wszystkich - zapis bez odpowiedzi (werdykty są już w postępie).
       return (
@@ -752,7 +759,10 @@ export default function CoursePlayer({
       ? 'slide'
       : boardFeedback
         ? 'fill'
-        : currentBlock?.type === 'SCENE_HOTSPOTS'
+        : currentBlock?.type === 'SCENE_HOTSPOTS' ||
+            // Quiz w monitorze (D-164, tryb prosty): monitor wypełnia obszar bloku, treść przewija się w ekranie; 'scene', nie 'fill', bo
+            // 'fill' nie pokazuje stałej podpowiedzi bloku (`tip`), a 'scene' kładzie ją w rogu. Podgląd „Wstecz” - zwykły podgląd ('slide').
+            (simpleMode && !reviewing && currentBlock?.type === 'QUIZ')
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
               // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).

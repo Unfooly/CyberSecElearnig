@@ -23,6 +23,22 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('SimpleChoiceBlock', () => {
+  it('wygląd z szablonu (D-164): pytanie na ekranie monitora, „Pytanie N z M”, litery A/B/C; po ocenie ✓/✕ zamiast litery', async () => {
+    render(<SimpleChoiceBlock block={block} courseId="kurs-1" onSubmit={vi.fn()} onReady={vi.fn()} questionLabel="Pytanie 2 z 4" />);
+    const screenSection = screen.getByRole('region', { name: 'Pytanie quizu' });
+    expect(screenSection).toHaveAttribute('data-testid', 'monitor-screen');
+    expect(screenSection).toHaveTextContent('Pytanie 2 z 4');
+    expect(screen.getAllByTestId('simple-option').map((option) => option.textContent?.slice(0, 1))).toEqual(['A', 'B', 'C']);
+    // Litera jest dekoracją - nazwa przycisku to sama odpowiedź.
+    expect(screen.getByRole('button', { name: 'Loguję się.' })).toBeInTheDocument();
+    reply({ blockId: 'wybor', result: 'bad', feedback: 'Nie.', done: false });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Loguję się.' })));
+    const tried = screen.getAllByTestId('simple-option')[0];
+    expect(tried).toHaveAttribute('data-result', 'bad');
+    expect(tried.textContent?.startsWith('A')).toBe(false);
+    expect(tried.className).toContain('border-danger');
+  });
+
   it('zła odpowiedź - zdanie i wyłączona; po 2 błędach podpowiedź; trafienie - „Dobrze”, wszystko wyłączone, „Dalej” z indeksem', async () => {
     const onSubmit = vi.fn();
     const ready: { current: (() => void) | null } = { current: null };
@@ -48,7 +64,7 @@ describe('SimpleChoiceBlock', () => {
 
     reply({ blockId: 'wybor', result: 'good', feedback: 'Tak sprawdzisz, czy to naprawdę ona.', done: true });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Pytam znajomą innym kanałem.' })));
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Tak sprawdzisz');
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Tak sprawdzisz');
     expect(screen.queryByTestId('simple-hint')).not.toBeInTheDocument();
     for (const button of screen.getAllByTestId('simple-option')) expect(button).toHaveAttribute('aria-disabled', 'true');
     act(() => ready.current!());
@@ -67,6 +83,6 @@ describe('SimpleChoiceBlock', () => {
       />,
     );
     expect(ready.current).not.toBeNull();
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze! Tak.');
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Tak.');
   });
 });

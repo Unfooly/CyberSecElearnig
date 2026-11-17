@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
@@ -29,6 +30,7 @@ import {
   toClientNote,
 } from './client-view';
 import { resolveVersion } from './course-versions';
+import { moduleMetaFor, warmModuleMeta } from './module-meta';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import {
   AttemptResponse,
@@ -55,6 +57,19 @@ function playerLocaleOf(assignment: AssignmentWithCourse, acceptLanguage: string
   return choosePlayerLocale(assignment.user?.contentLocale ?? null, parseAcceptLanguage(acceptLanguage));
 }
 
+/** Ekran startu i końca modułu (D-163): kolumny katalogu + okładki, numer sprawy i podtytuł w języku treści z module.json (module-meta.ts). */
+function moduleInfoOf(course: Course, locale: ContentLocale): CourseDetailDto['moduleInfo'] {
+  // Kurs utworzony wprost (bez importu) nie ma slug - bez okładek i numeru.
+  const meta = course.slug ? moduleMetaFor(course.slug, locale) : { cover: null, caseNumber: null, subtitle: null };
+  return {
+    category: course.category,
+    durationMinutes: course.durationMinutes,
+    subtitle: meta.subtitle ?? course.subtitle ?? null,
+    caseNumber: meta.caseNumber,
+    cover: meta.cover,
+  };
+}
+
 /**
  * Fakty modułu 2 do osiągnięć (D-124) przy ukończeniu kursu - obronnie: nietypowa treść wersji nie może zablokować ukończenia (500 przy
  * ostatnim bloku); wtedy bez osiągnięć zależnych od treści, jak w przyznaniu wstecznym (GamificationService.syncAchievements).
@@ -68,8 +83,13 @@ function safeModule2Facts(progress: ProgressV2, blocks: Parameters<typeof module
 }
 
 @Injectable()
-export class CoursesService {
+export class CoursesService implements OnModuleInit {
   private readonly shuffleSecret: string;
+
+  // Metadane ekranu startu (D-163) wczytane raz przy starcie API - pierwsze /start nie czyta plików synchronicznie w żądaniu.
+  onModuleInit(): void {
+    warmModuleMeta();
+  }
 
   constructor(
     private readonly tenantPrisma: TenantPrismaService,
@@ -297,6 +317,7 @@ export class CoursesService {
         locale: version.locale,
         locales: version.locales,
         localeFallback: version.localeFallback,
+        moduleInfo: moduleInfoOf(assignment.course, version.locale),
       };
     });
   }

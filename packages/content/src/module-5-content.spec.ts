@@ -3,9 +3,10 @@ import { join } from 'node:path';
 import { toClientBlock } from './index';
 import { moduleWarnings, parseModule } from './node';
 
-// Moduł 5 „Najłatwiejsze drzwi” (bezpieczeństwo sieci) - treść zgodna ze scenariuszem zatwierdzonym przez właściciela 2026-11-16
-// (docs/modules/modul-5-najlatwiejsze-drzwi.md): start → wideo → 4 pytania wielokrotnego wyboru (D-158) → podsumowanie z samymi zasadami.
-// Lektor `lektor-siec` czyta start, każde pytanie i podsumowanie; wideo z potoku zasobów (D-159) bez narracji; klucz nie idzie do klienta.
+// Moduł 5 „Bezpieczeństwo sieci” (slug `najlatwiejsze-drzwi` bez zmian - klucz importu) - treść zgodna ze scenariuszem zatwierdzonym przez
+// właściciela 2026-11-16 (docs/modules/modul-5-najlatwiejsze-drzwi.md) i uwagami z 2026-11-17 (D-167): ekran startu modułu (opis = podtytuł,
+// okładki z grafik startu) → od razu wideo → 4 pytania wielokrotnego wyboru (D-158) → podsumowanie z samymi zasadami. Lektor `lektor-siec`
+// czyta każde pytanie i podsumowanie; wideo z potoku zasobów (D-159) bez narracji; klucz nie idzie do klienta.
 const MODULE_5 = join(__dirname, '..', 'modules', 'najlatwiejsze-drzwi', 'module.json');
 const raw = JSON.parse(readFileSync(MODULE_5, 'utf8'));
 const parsed = parseModule(raw);
@@ -14,7 +15,7 @@ const context = { shuffleSeed: () => [1, 2, 3, 4] as [number, number, number, nu
 const QUIZZES = ['ktos-za-toba', 'cos-podpiete', 'gosc-prosi', 'poza-biurem'];
 type Option = { text: string; correct: boolean; feedback: string };
 
-describe('moduł 5 „Najłatwiejsze drzwi” - treść', () => {
+describe('moduł 5 „Bezpieczeństwo sieci” - treść', () => {
   it('waliduje się w trybie prostym, tylko po polsku, kategoria IT_HYGIENE, bez ostrzeżeń', () => {
     expect(parsed.simpleMode).toBe(true);
     expect(parsed.locales).toEqual(['pl']);
@@ -22,25 +23,23 @@ describe('moduł 5 „Najłatwiejsze drzwi” - treść', () => {
     expect(moduleWarnings(parsed)).toEqual([]);
   });
 
-  it('kolejność bloków ze scenariusza: start, wideo, 4 pytania, podsumowanie', () => {
-    expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual([
-      'start:BRIEFING',
-      'film:VIDEO',
-      ...QUIZZES.map((id) => `${id}:QUIZ`),
-      'podsumowanie:SUMMARY',
-    ]);
+  it('kolejność bloków (D-167): od razu wideo, 4 pytania, podsumowanie - bez sceny startowej (ekran startu modułu ją zastępuje)', () => {
+    expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual(['film:VIDEO', ...QUIZZES.map((id) => `${id}:QUIZ`), 'podsumowanie:SUMMARY']);
   });
 
-  it('start: jeden ekran z opisem, jedną grafiką i przyciskiem „Zaczynamy”', () => {
-    const steps = block('start').steps as { kind: string; nextLabel?: string; image?: string; text: string }[];
-    expect(steps).toHaveLength(1);
-    // Ostatni krok: przycisk „Zaczynamy” to etykieta „Dalej” w pasku (D-160).
-    expect(steps[0]).toMatchObject({ kind: 'typewriter', nextLabel: 'Zaczynamy' });
-    // Grafiki z ElevenLabs w stylu Unfooly (D-161): WebP, osobno poziomo i pionowo; miniatura modułu w katalogu.
-    expect(steps[0].image).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/start\.[0-9a-f]{8}\.webp$/);
-    expect((steps[0] as { portrait?: { image: string } }).portrait?.image).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/start-pion\.[0-9a-f]{8}\.webp$/);
+  it('ekran startu i końca (D-167): nazwa „Bezpieczeństwo sieci”, opis dawnej sceny startowej w podtytule, okładki z grafik startu', () => {
+    expect(parsed.slug).toBe('najlatwiejsze-drzwi');
+    expect(parsed.title).toBe('Bezpieczeństwo sieci');
+    expect(parsed.subtitle).toMatch(/^Przestępca nie musi łamać zabezpieczeń/);
+    expect(parsed.caseNumber).toBe(5);
+    // Grafiki z ElevenLabs w stylu Unfooly (D-161): WebP, poziomo i pionowo, ta sama scena na start i na koniec; miniatura w katalogu.
+    const landscape = /^assets\/najlatwiejsze-drzwi\/images\/start\.[0-9a-f]{8}\.webp$/;
+    const portrait = /^assets\/najlatwiejsze-drzwi\/images\/start-pion\.[0-9a-f]{8}\.webp$/;
+    expect(parsed.cover?.start).toMatch(landscape);
+    expect(parsed.cover?.end).toMatch(landscape);
+    expect(parsed.cover?.startPortrait).toMatch(portrait);
+    expect(parsed.cover?.endPortrait).toMatch(portrait);
     expect(parsed.thumbnail).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/miniatura\.[0-9a-f]{8}\.webp$/);
-    expect(steps[0].text).toMatch(/^Przestępca nie musi łamać zabezpieczeń/);
   });
 
   it('wideo: osobny plik PL i EN z potoku zasobów (opublikowane klucze), bez zewnętrznego adresu i bez narracji', () => {
@@ -53,9 +52,8 @@ describe('moduł 5 „Najłatwiejsze drzwi” - treść', () => {
     expect(film.narration).toBeUndefined();
   });
 
-  it('lektor `lektor-siec` czyta start, każde pytanie (tekstem pytania) i podsumowanie; wszystkie nagrania opublikowane', () => {
+  it('lektor `lektor-siec` czyta każde pytanie (tekstem pytania) i podsumowanie; wszystkie nagrania opublikowane', () => {
     const narrations = [
-      (block('start').steps as { narration: Record<string, unknown> }[])[0].narration,
       ...QUIZZES.map((id) => block(id).narration as Record<string, unknown>),
       block('podsumowanie').narration as Record<string, unknown>,
     ];

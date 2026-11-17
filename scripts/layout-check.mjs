@@ -113,7 +113,7 @@ const BRIEFING_SCENE_VIEWS = [
 ];
 
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
-const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'pseudo', 'coming-soon'];
+const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'jezyk', 'start', 'pseudo', 'coming-soon'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
 const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
 
@@ -2402,6 +2402,116 @@ try {
         }
         await shot(page, `${viewport.name}-jezyk-${variant}`);
         step(`${label}: (j0-j4) bez kontrolki języka, pasek górny bez przepełnienia, w ramce OK`, true);
+      }
+      await context.close();
+    }
+  }
+
+  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduł 5 z okładką (grafika startu odprawy, `cover=briefing`), moduł 1 bez
+  // okładki (ciemne tło #23232A) i moduł 5 w pseudo-lokalizacji (dłuższy tytuł i opis). Sprawdzamy:
+  //  (s1) strona bez przewijania; (s2) Start, X, CC i głośnik w całości na ekranie, cele >= 44 px; (s3) tytuł bez przepełnienia w poziomie,
+  //  opis >= 16 px; (s4) komputer: tytuł, opis i Start w jasnym panelu (lewa połowa); telefon: karta przy dolnej krawędzi, okładka nad nią;
+  //  (s5) kategoria w ekranie i nie nachodzi na X; (s6) okładka się wczytała / bez okładki - ciemne tło; (s7) okienko głośności w ekranie,
+  //  suwak i „Wycisz lektora” nieprzycięte (elementFromPoint), karta bez przewijania przy otwartym okienku, Escape je zamyka; (s8) Start prowadzi do pierwszego bloku (obszar bloku widoczny, ekranu startu nie ma).
+  if (runs('start')) {
+    const START_CASES = [
+      { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1&cover=briefing', cover: true },
+      { name: 'moduł 1 bez okładki', query: 'module=wyludzone-haslo&start=1', cover: false },
+      { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&cover=briefing&pseudo=1', cover: true },
+    ];
+    const START_VIEWPORTS = [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }];
+    for (const viewport of START_VIEWPORTS) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      for (const testCase of START_CASES) {
+        const label = `${viewport.name} / start / ${testCase.name}`;
+        await page.goto(`${WEB}/dev/player-harness?${testCase.query}`);
+        await page.getByTestId('module-start').waitFor({ timeout: 30000 });
+        const narrow = viewport.width < 640;
+        if (testCase.cover) await page.waitForFunction(() => document.querySelector('[data-testid="module-start-cover"]')?.complete === true, null, { timeout: 15000 });
+        const info = await page.evaluate(() => {
+          const rect = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, height: r.height };
+          };
+          const root = document.querySelector('[data-testid="module-start"]');
+          const buttons = [...root.querySelectorAll('a, button')].map((el) => ({ name: el.getAttribute('aria-label') ?? el.textContent.trim(), box: rect(el) }));
+          const h1 = root.querySelector('h1');
+          const subtitle = root.querySelector('main p[lang]');
+          const cover = root.querySelector('[data-testid="module-start-cover"]');
+          return {
+            scrollY: document.documentElement.scrollHeight - innerHeight,
+            scrollX: document.documentElement.scrollWidth - innerWidth,
+            buttons,
+            h1: rect(h1),
+            h1Overflow: h1.scrollWidth - h1.clientWidth,
+            subtitle: rect(subtitle),
+            subtitleSize: subtitle ? parseFloat(getComputedStyle(subtitle).fontSize) : null,
+            card: rect(root.querySelector('.module-start-card')),
+            category: rect(root.querySelector('[data-testid="module-start-category"]')),
+            cover: cover ? { loaded: cover.naturalWidth > 0, box: rect(cover) } : null,
+            background: getComputedStyle(root).backgroundColor,
+          };
+        });
+        const screen = { x: 0, y: 0, width: viewport.width, height: viewport.height };
+        if (info.scrollY > 1 || info.scrollX > 1) fail(`${label}: (s1) strona się przewija (${info.scrollX}x${info.scrollY}).`);
+        for (const name of ['Start', 'Zakończ i wróć do listy kursów', 'Napisy']) {
+          const button = info.buttons.find((b) => b.name === name);
+          if (!button) fail(`${label}: (s2) brak przycisku „${name}”.`);
+          if (!contains(screen, button.box)) fail(`${label}: (s2) „${name}” poza ekranem - ${JSON.stringify(button.box)}.`);
+          if (button.box.height < 43.5 || button.box.width < 43.5) fail(`${label}: (s2) „${name}” ma ${button.box.width}x${button.box.height}px (<44).`);
+        }
+        const speaker = info.buttons.find((b) => /^Głośność lektora|^Lektor wyciszony/.test(b.name));
+        if (!speaker || !contains(screen, speaker.box)) fail(`${label}: (s2) głośnik poza ekranem albo go brak.`);
+        if (info.h1Overflow > 1) fail(`${label}: (s3) tytuł przepełniony w poziomie o ${info.h1Overflow}px.`);
+        if (info.subtitle && info.subtitleSize < 16) fail(`${label}: (s3) opis ma ${info.subtitleSize}px (<16).`);
+        if (info.subtitle && !contains(screen, info.subtitle)) fail(`${label}: (s3) opis poza ekranem - ${JSON.stringify(info.subtitle)}.`);
+        const start = info.buttons.find((b) => b.name === 'Start').box;
+        if (narrow) {
+          if (Math.abs(info.card.y + info.card.height - viewport.height) > 1) fail(`${label}: (s4) karta nie przylega do dolnej krawędzi - ${JSON.stringify(info.card)}.`);
+          if (testCase.cover && !(info.cover.box.y < info.card.y)) fail(`${label}: (s4) okładka nie jest nad kartą.`);
+        } else {
+          const panelRight = viewport.width / 2 + 1;
+          for (const [what, box] of [['tytuł', info.h1], ['opis', info.subtitle], ['Start', start]]) {
+            if (box && box.x + box.width > panelRight) fail(`${label}: (s4) ${what} wychodzi poza jasny panel (prawa krawędź ${box.x + box.width} > ${panelRight}).`);
+          }
+        }
+        const close = info.buttons.find((b) => b.name === 'Zakończ i wróć do listy kursów').box;
+        if (!contains(screen, info.category)) fail(`${label}: (s5) kategoria poza ekranem - ${JSON.stringify(info.category)}.`);
+        if (info.category.x < close.x + close.width) fail(`${label}: (s5) kategoria nachodzi na X.`);
+        if (testCase.cover && !info.cover?.loaded) fail(`${label}: (s6) okładka się nie wczytała.`);
+        if (!testCase.cover && (info.cover || info.background !== 'rgb(35, 35, 42)')) fail(`${label}: (s6) bez okładki oczekiwano tła #23232A (jest ${info.background}).`);
+        // (s7) Okienko głośności w ekranie, Escape zamyka.
+        await page.getByRole('button', { name: /^Głośność lektora|^Lektor wyciszony/ }).click();
+        const panel = await page.getByTestId('volume-panel').boundingBox();
+        if (!panel || !contains(screen, panel)) fail(`${label}: (s7) okienko głośności poza ekranem - ${JSON.stringify(panel)}.`);
+        // boundingBox nie widzi przycięcia przez przodka z overflow - sprawdzamy, że oba końce okienka (suwak i „Wycisz lektora”) są naprawdę
+        // na wierzchu w swoim punkcie, a karta nie zaczęła się przewijać.
+        const clipped = await page.evaluate(() => {
+          const panelEl = document.querySelector('[data-testid="volume-panel"]');
+          const card = document.querySelector('.module-start-card');
+          const hit = (el) => {
+            const r = el.getBoundingClientRect();
+            const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+            return top === el || el.contains(top);
+          };
+          const targets = [...panelEl.querySelectorAll('input, button')];
+          // Karta przewijana (telefon: overflow auto) nie może urosnąć o okienko; na komputerze karta ma overflow visible (okienko wystaje).
+          const scrolls = getComputedStyle(card).overflowY !== 'visible';
+          return { hidden: targets.filter((el) => !hit(el)).map((el) => el.textContent.trim() || el.type), cardScroll: scrolls ? card.scrollHeight - card.clientHeight : 0 };
+        });
+        if (clipped.hidden.length > 0) fail(`${label}: (s7) w okienku głośności zasłonięte/przycięte: ${clipped.hidden.join(', ')}.`);
+        if (clipped.cardScroll > 1) fail(`${label}: (s7) karta przewija się przy otwartym okienku (${clipped.cardScroll}px).`);
+        await shot(page, `${viewport.name}-start-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}-glosnosc`);
+        await page.keyboard.press('Escape');
+        if ((await page.getByTestId('volume-panel').count()) > 0) fail(`${label}: (s7) Escape nie zamknął okienka głośności.`);
+        await shot(page, `${viewport.name}-start-${testCase.cover ? 'okladka' : 'bez-okladki'}${testCase.query.includes('pseudo') ? '-xx' : ''}`);
+        // (s8) Start -> pierwszy blok.
+        await page.getByRole('button', { name: 'Start' }).click();
+        await page.getByTestId('player-content-area').waitFor({ timeout: 15000 });
+        if ((await page.getByTestId('module-start').count()) > 0) fail(`${label}: (s8) ekran startu został po kliknięciu Start.`);
+        step(`${label}: (s1-s8) bez przewijania, przyciski w ekranie >= 44 px, panel/karta, kategoria, okładka, okienko głośności, Start OK`, true);
       }
       await context.close();
     }

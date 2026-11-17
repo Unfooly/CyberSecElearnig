@@ -27,6 +27,14 @@ jest otwarta (`forwardShortcutAllowed`). Górny pasek ma wyłącznie X i tytuł 
 dowodów, Notatnika, języka i pełnego ekranu). layout-check: sekcja
 `single-next` i kontrole (j1, j2) w pozostałych sekcjach.
 
+**Ekran startu modułu (D-163, szablon modułu Unfooly).** Kurs na pierwszym bloku (nieukończony) zaczyna od `ModuleStartScreen`, zanim
+pojawi się `PlayerStage`: na komputerze okładka `cover.start` na całe tło i jasny panel z lewej (logo, „Sprawa N · ok. X min”, tytuł,
+`subtitle`, Start, CC i głośnik z okienkiem głośności - te same ustawienia co w dolnym pasku, `NarrationControls`), kategoria w prawym górnym
+rogu; na telefonie (< 640 px) okładka u góry (`startPortrait`, bez niej wykadrowana pozioma) i karta od dołu; na niskim ekranie (telefon
+w poziomie) bez logo i dopisku. Bez okładki - tło #23232A. Dane: `moduleInfo` z `/start` (kategoria i czas z `courses`, okładki, numer
+sprawy i podtytuł w języku treści z module.json w obrazie API - `module-meta.ts`); odpowiedź bez `moduleInfo` - od razu blok. „Start” to
+gest: lektor pierwszego bloku gra od razu, fokus idzie na nagłówek bloku. layout-check: sekcja `start` (s1-s8).
+
 | Typ | Komponent | `answer` | Wynik / uwagi |
 |---|---|---|---|
 | `VIDEO`, `DRAG_AND_DROP` | `VideoBlock`, `DragAndDropBlock` | brak | nieoceniane; wideo spoza `CONTENT_BASE_URL` to link „Otwórz wideo” (B-076) |

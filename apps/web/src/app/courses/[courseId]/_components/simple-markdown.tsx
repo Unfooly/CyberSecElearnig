@@ -31,6 +31,25 @@ const LIST_KINDS = {
 const isBulletLine = (line: string) => LIST_KINDS.ul.marker.test(line);
 const isOrderedLine = (line: string) => LIST_KINDS.ol.marker.test(line);
 
+/** Jedna linijka z pogrubieniem i kodem (bez list i akapitów) - np. zasada na ekranie końca modułu (D-165). */
+export function SimpleInline({ text }: { text: string }) {
+  return <>{renderInline(text, 'i')}</>;
+}
+
+/**
+ * Zasady „na wynos” z bloku SUMMARY (ekran końca, D-165): `lessons` (wnioski śledczego), a bez nich pierwsza lista numerowana z `text`
+ * (moduły 3-5: „**Trzy zasady**” + 1. 2. 3.). Brak obu - pusta lista (ekran bez karty zasad).
+ */
+export function summaryRules(block: { lessons?: string[]; text?: string } | undefined): string[] {
+  if (!block) return [];
+  if (block.lessons && block.lessons.length > 0) return block.lessons;
+  for (const paragraph of (block.text ?? '').split(/\n{2,}/)) {
+    const lines = paragraph.split('\n').filter((line) => line.length > 0);
+    if (lines.length > 0 && lines.every(isOrderedLine)) return lines.map((line) => line.replace(LIST_KINDS.ol.marker, ''));
+  }
+  return [];
+}
+
 export function SimpleMarkdown({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/).filter((block) => block.trim().length > 0);
   return (

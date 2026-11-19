@@ -348,8 +348,8 @@ export class GamificationService {
         if (assignment.status !== AssignmentStatus.COMPLETED || isCurrent) continue;
         const completedAt = assignment.completedAt ?? assignment.updatedAt;
         // Dead Air i Perfect Pitch (moduł 2) wymagają treści (bloki liczy serwer z treści wersji przypiętej do tego podejścia); pierwsza
-        // sprawa, Sprawa bez skazy i Full Transcript nie - od D-174 to sam wynik podejścia. Przypisanie bez przypiętej wersji (sprzed
-        // silnika treści) nie jest modułem 2 - pomijamy.
+        // sprawa, Sprawa bez skazy i Full Transcript nie - od D-174 to sam wynik podejścia (także bez przypiętej wersji). Bez przypiętej
+        // wersji (sprzed silnika treści) nie czytamy treści - wtedy bez Dead Air i Perfect Pitch.
         let module2: Module2Facts | undefined;
         const needsModule2 =
           slug === MODULE_2_SLUG && [ACHIEVEMENT_CODES.DEAD_AIR, ACHIEVEMENT_CODES.PERFECT_PITCH].some((code) => missing.includes(code));

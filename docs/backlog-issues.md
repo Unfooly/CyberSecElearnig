@@ -900,6 +900,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   zapas dla kodów spoza mapy, gracz ich nie widzi.
 - Akceptacja: przy najbliższej migracji odznak (nowe odznaki m3-m5 albo zmiana warunków bez dowodów - decyzja właściciela 2026-11-19)
   wyrównać teksty w bazie i `seed-badges.ts` z `achievement-texts.ts`; opcjonalnie test, że warunki modułów zawierają tytuł z module.json.
+  Od D-174/D-176 dochodzą: warunki „Sprawa bez skazy” i „Pełny zapis” bez dowodów, „Ciekawski detektyw” - „na służbowym pulpicie”
+  zamiast „na pulpicie Anny”.
 
 ### B-164 Ręczne skrypty e2e modułów po szablonie (D-163 - D-169)
 - Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-169

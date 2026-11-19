@@ -111,3 +111,22 @@ describe('stan częściowy w postępie', () => {
     expect((view.blocks.scena as { exploration?: unknown }).exploration).toBeUndefined();
   });
 });
+
+describe('SCENE_HOTSPOTS: miejsca obejrzane wcześniej (`done`, D-178)', () => {
+  // Scena powtarzana: komputer już obejrzany (✓, nieklikalny), teraz wymagany telefon.
+  const repeated = {
+    id: 'biuro-2',
+    type: 'SCENE_HOTSPOTS',
+    image: 'img/biuro.webp',
+    imageAlt: 'Biuro',
+    hotspots: [
+      { id: 'komputer', label: 'Komputer', x: 5, y: 5, width: 20, height: 20, content: 'x', done: true },
+      { id: 'smartfon', label: 'Smartfon', x: 50, y: 50, width: 20, height: 20, content: 'Telefon.', required: true },
+    ],
+  } as unknown as Block;
+
+  it('poza pulą wymaganych - ukończenie po samym wymaganym przedmiocie; bez niego 400', () => {
+    expect(evaluateSubmit(repeated, { visited: ['smartfon'], noted: [] }, undefined, now, opaque).entry.done).toBe(true);
+    expect(() => evaluateSubmit(repeated, { visited: [], noted: [] }, undefined, now, opaque)).toThrow(BadRequestException);
+  });
+});

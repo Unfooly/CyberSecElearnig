@@ -105,6 +105,9 @@ export interface PlayerStageProps {
   onExitClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** Wyjście czeka na zapis (D-142): aria-busy i przygaszony X. */
   exitPending?: boolean;
+  /** Tło modułu za ramką (D-178, `cover.backdrop`): gotowy adres grafiki (poziomej i pionowej na telefon w pionie); bez - tło strony jak dotąd. */
+  backdropUrl?: string | null;
+  backdropPortraitUrl?: string | null;
 }
 
 function PlayerStageInner({
@@ -131,6 +134,8 @@ function PlayerStageInner({
   lang,
   onExitClick,
   exitPending = false,
+  backdropUrl = null,
+  backdropPortraitUrl = null,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -249,7 +254,22 @@ function PlayerStageInner({
   }
 
   return (
-    <div className="player-outer flex h-full w-full items-center justify-center p-4">
+    <div className="player-outer relative isolate flex h-full w-full items-center justify-center p-4">
+      {/* Tło modułu (D-178): dekoracyjne, za ramką (widać je wokół niej na komputerze); telefon w pionie - wariant pionowy. */}
+      {backdropUrl && (
+        <picture>
+          {backdropPortraitUrl && <source media="(max-width: 639px) and (orientation: portrait)" srcSet={backdropPortraitUrl} />}
+          {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
+          <img
+            src={backdropUrl}
+            alt=""
+            aria-hidden="true"
+            data-testid="player-backdrop"
+            referrerPolicy="no-referrer"
+            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
+          />
+        </picture>
+      )}
       {/* .mobile-readable (globals.css, D-103): na telefonie cały tekst modułu min. 15 px - treść bloku, notatnik, paski; desktop bez zmian. */}
       {/* Ramka nigdy się nie przewija (overflow: clip w globals.css .player-frame). onScroll to rezerwa dla przeglądarek bez `clip`:
           przewinięcie ramki (np. fokus albo scrollIntoView elementu wystającego poza ramkę) cofamy od razu. */}

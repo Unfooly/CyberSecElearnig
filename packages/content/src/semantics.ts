@@ -630,7 +630,13 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       );
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
-        if (h.action === 'next') {
+        if (h.done === true) {
+          // D-178: miejsce obejrzane w poprzednim przejściu sceny - tylko znak ✓, nieklikalne. Klikalne pola byłyby martwą konfiguracją,
+          // a required - ślepym zaułkiem (nie da się go odwiedzić).
+          if (h.action !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined || h.required !== undefined) {
+            errors.push(`hotspots[${i}]: done (obejrzane wcześniej) nie może mieć action, media, evidence, note ani required`);
+          }
+        } else if (h.action === 'next') {
           // "Drzwi": klik kończy blok jak przycisk "Dalej" - nigdy nie otwiera karty, więc content/media/evidence/note
           // byłyby martwą konfiguracją (autor mógłby pomyśleć, że działają). `required` też zakazane: drzwi nigdy nie
           // trafiają do `visited` (klik od razu wysyła submit, nie "odwiedza" siebie samych) - required:true na nich
@@ -659,6 +665,15 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           });
         }
       });
+      // D-178: scena z miejscami obejrzanymi wcześniej (`done`) nie może liczyć na domyślne „wszystkie wymagane” (objęłoby nieklikalne ✓) -
+      // pozostałe przedmioty (poza drzwiami) mają jawne `required`, a serwer i odtwarzacz biorą wtedy tylko required: true.
+      if (block.hotspots.some((h) => h.done === true)) {
+        block.hotspots.forEach((h, i) => {
+          if (h.done !== true && h.action !== 'next' && h.required === undefined) {
+            errors.push(`hotspots[${i}]: scena z miejscami „done” wymaga jawnego required przy każdym innym przedmiocie`);
+          }
+        });
+      }
       // Drzwi (action:'next') WYKLUCZONE z puli required: nigdy nie trafiają do `visited` same z siebie (klik od razu
       // kończy blok, nie "odwiedza" siebie), więc licząc je "wszystkie required" (fallback, brak jawnych flag) scena
       // z SAMYMI drzwiami (bez innych hotspotów - np. "korytarz") nigdy nie mogłaby się ukończyć.
@@ -667,7 +682,9 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // ale tylko gdy KAŻDY przedmiot ma jawnie required: false (świadoma decyzja autora). Częściowe `false` przy reszcie nieustawionej
       // to dalej błąd (pomyłka), a bez drzwi co najmniej jeden przedmiot musi być wymagany.
       // Okienka easter egga (D-100) nigdy nie są wymagane (także w domyślnym „wszystkie”) - poza pulą jak drzwi (apps/api evaluate.ts).
-      const items = flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id) && h.media?.kind !== 'popups');
+      // Miejsca obejrzane wcześniej (`done`, D-178) też poza pulą - nieklikalne, nie mają (i nie mogą mieć) required.
+      const doneIds = new Set(block.hotspots.filter((h) => h.done === true).map((h) => h.id));
+      const items = flattenHotspots(block.hotspots).filter((h) => !doorIds.has(h.id) && !doneIds.has(h.id) && h.media?.kind !== 'popups');
       const optionalByDesign = doorIds.size > 0 && items.length > 0 && items.every((h) => h.required === false);
       if (!optionalByDesign) checkRequiredFlags('hotspots', items, errors);
       break;

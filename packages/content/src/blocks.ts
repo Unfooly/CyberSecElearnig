@@ -212,6 +212,9 @@ const hotspotsSchema = z
             evidence: z.boolean().optional(),
             note: noteSchema.optional(),
             required: z.boolean().optional(),
+            // D-178 (addytywnie): miejsce już obejrzane w poprzednim przejściu tej samej sceny (scena powtarzana jak na makiecie: komputer
+            // ✓, teraz telefon) - znak ✓, nieklikalne, nie liczy się do wymaganych. Tylko bez required/evidence/note/action/media (semantics.ts).
+            done: z.boolean().optional(),
           })
           .strict(),
       )
@@ -309,6 +312,8 @@ const emailAnalysisSchema = z
       })
       .strict(),
     prompt: ltext(500).optional(),
+    // Oprawa (D-178, addytywnie): 'monitor' - okno poczty na ekranie wspólnej grafiki monitora (jak quiz w monitorze, D-164). Czysto wizualne.
+    frame: z.enum(['monitor']).optional(),
     criteria: z
       .array(
         z
@@ -410,6 +415,10 @@ const tabsSchema = z
     type: z.literal('TABS'),
     tabs: z.array(z.object({ id: idSchema, title: ltext(60), content: ltext(3000) }).strict()).min(1).max(10),
     requiredTabs: z.array(idSchema).max(10).optional(),
+    // Wygląd (D-178, addytywnie): 'folder' - teczka sprawy z przekładkami i kartką (moduł 1: „Nowe zadanie”, „Raport końcowy”); `stamp` -
+    // pieczątka na teczce (np. „ŚCIŚLE TAJNE”). Czysto wizualne - zaliczenie bez zmian (wszystkie wymagane zakładki obejrzane).
+    look: z.enum(['folder']).optional(),
+    stamp: ltext(30).optional(),
   })
   .strict();
 
@@ -627,6 +636,10 @@ const dossierDocumentsSchema = z
         meta: ltext(200).optional(),
         columns: z.array(ltext(40)).min(1).max(4),
         rows: z.array(dossierRowSchema).min(1).max(30),
+        // Wygląd (D-178, addytywnie): 'chat' - rozmowa w komunikatorze w ramce telefonu: wiersz = dymek, komórki [godzina, autor, treść];
+        // `self` - autor, którego dymki są po prawej (właściciel telefonu). Czysto wizualne - wiersze, dowody i zaliczenie bez zmian.
+        layout: z.enum(['chat']).optional(),
+        self: ltext(60).optional(),
       })
       .strict(),
   )
@@ -1090,6 +1103,8 @@ const DOSSIER_DOCUMENT_CLIENT = [
   'documents[].rows[].note.kind',
   'documents[].rows[].required',
   'documents[].rows[].message',
+  'documents[].layout',
+  'documents[].self',
 ];
 
 // Ścieżki narracji wysyłane klientowi i sekretne (tylko wejście TTS) - dla narracji pod prefiksem `prefix` (np. `lines[].`).
@@ -1117,6 +1132,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].width',
       'hotspots[].height',
       'hotspots[].action',
+      'hotspots[].done',
       'hotspots[].content',
       'hotspots[].media.kind',
       'hotspots[].media.src',
@@ -1259,6 +1275,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'email.links[].text',
       'email.links[].url',
       'prompt',
+      'frame',
       'criteria[].id',
       'criteria[].label',
       'criteria[].target.kind',
@@ -1290,7 +1307,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ],
   ),
   ORDERING: classify(['prompt', 'items[].id', 'items[].text', 'start.label', 'start.caption', 'end.label', 'end.caption'], ['scoring', 'explanation']),
-  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]'], []),
+  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]', 'look', 'stamp'], []),
   SUMMARY: classify(
     [
       'text',

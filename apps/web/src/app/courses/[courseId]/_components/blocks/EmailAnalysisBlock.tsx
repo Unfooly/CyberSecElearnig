@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, Info, Paperclip, X } from 'lucide-react';
 import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
 import { useHints } from '../player/hints';
+import MonitorStage from '../player/MonitorStage';
 
 // Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
 // linki). Kryteria zaznacza się klikając FRAGMENT maila (nadawca, temat, link, załącznik, fragment tekstu) - to zwykłe, fokusowalne
@@ -196,22 +197,35 @@ export default function EmailAnalysisBlock({
 
   const statusUrl = hoverUrl ?? pinnedUrl;
 
-  return (
-    <div>
+  // Poczta w monitorze (D-178, `frame: 'monitor'`): cały blok na ekranie wspólnego monitora, okno w barwach programu pocztowego Unfooly.
+  const inMonitor = block.frame === 'monitor';
+  // Kotwice w treści maila (D-061) - bez nich mail nie ma klikalnych fragmentów, więc zostaje sama lista (np. moduł 1, D-176).
+  const anchored = (block.criteria ?? []).some((criterion) => criterion.target);
+
+  const body = (
+    <div className={inMonitor ? 'p-3 sm:p-4' : undefined}>
       {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
-      {!readOnly && (
+      {!readOnly && anchored && (
         <p className="mb-3 text-sm text-slate-600">
           Kliknij fragmenty wiadomości, które budzą Twoje podejrzenia (nadawca, temat, link, załącznik, treść), a potem sprawdź odpowiedź.
         </p>
       )}
 
       <div data-testid="mail-client" className="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
-        <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-2" aria-hidden="true">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-          <span className="ml-2 text-xs text-slate-500">Skrzynka odbiorcza</span>
-        </div>
+        {inMonitor ? (
+          <div data-testid="mail-app-bar" className="flex items-center gap-2 bg-[#26305C] px-3 py-2 text-white" aria-hidden="true">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6C5CE7] text-[11px] font-extrabold">@</span>
+            <span className="text-sm font-bold">Poczta</span>
+            <span className="text-xs text-white/70">· Skrzynka odbiorcza</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-2" aria-hidden="true">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+            <span className="ml-2 text-xs text-slate-500">Skrzynka odbiorcza</span>
+          </div>
+        )}
 
         <div className="space-y-1 border-b border-slate-200 px-4 py-3">
           <h3 className="text-base font-semibold text-slate-900">{fragment(subjectCriterion?.id, email.subject)}</h3>
@@ -284,8 +298,15 @@ export default function EmailAnalysisBlock({
           </div>
         )}
 
-        {/* Pasek statusu jak w przeglądarce: prawdziwy adres linku po najechaniu, fokusie albo kliknięciu (nigdy nie nawigujemy). */}
-        <div role="status" aria-live="polite" data-testid="mail-status-bar" className="min-h-[28px] border-t border-slate-200 bg-slate-100 px-3 py-1 text-xs text-slate-700">
+        {/* Pasek statusu jak w przeglądarce: prawdziwy adres linku po najechaniu, fokusie albo kliknięciu (nigdy nie nawigujemy). Mail bez
+            linków (D-176) - bez paska (nie ma czego najeżdżać). */}
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="mail-status-bar"
+          hidden={email.links.length === 0}
+          className="min-h-[28px] border-t border-slate-200 bg-slate-100 px-3 py-1 text-xs text-slate-700"
+        >
           {statusUrl ? (
             <span>
               Adres linku: <span className="break-all font-mono">{statusUrl}</span>
@@ -306,7 +327,7 @@ export default function EmailAnalysisBlock({
         return (
           <fieldset className="mt-4">
             <legend className="mb-2 text-sm font-semibold text-slate-900">
-              {readOnly ? 'Kryteria' : 'Inne elementy (bez fragmentu w mailu)'}
+              {readOnly ? 'Kryteria' : anchored ? 'Inne elementy (bez fragmentu w mailu)' : 'Zaznacz cechy, które pasują do tej wiadomości'}
             </legend>
             <ul className="space-y-2">
               {listedCriteria.map((criterion) => {
@@ -365,4 +386,7 @@ export default function EmailAnalysisBlock({
       )}
     </div>
   );
+
+  // Wynik (readOnly) - zwykły podgląd pod monitorem nie mieści objaśnień; monitor tylko przy zadaniu.
+  return inMonitor && !readOnly ? <MonitorStage label="Poczta">{body}</MonitorStage> : body;
 }

@@ -162,6 +162,10 @@ export interface DossierDocument {
   meta?: string;
   columns: string[];
   rows: DossierRow[];
+  /** 'chat' (D-178): rozmowa w komunikatorze w ramce telefonu - wiersz = dymek, komórki [godzina, autor, treść]. */
+  layout?: 'chat';
+  /** Autor dymków po prawej (właściciel telefonu) w układzie 'chat'. */
+  self?: string;
 }
 
 /** Prostokąt na scenie kroku odprawy, w % sceny (D-084). */
@@ -352,6 +356,8 @@ export interface ContentBlock {
   // TABS
   tabs?: ContentTab[];
   requiredTabs?: string[];
+  /** TABS (D-178): 'folder' - teczka sprawy z przekładkami i kartką; pieczątka teczki w `stamp`. */
+  look?: 'folder';
   // BRIEFING
   steps?: BriefingStep[];
   // DOSSIER: pieczątka teczki i dokumenty (przekładki).
@@ -367,8 +373,9 @@ export interface ContentBlock {
   criteria?: EmailCriterion[];
   // TEXT_INPUT_GUIDED
   placeholder?: string;
-  /** Oprawa pola: 'browser' = pasek adresu w oknie przeglądarki (feat/browser-evidence). */
-  frame?: 'browser';
+  /** Oprawa: TEXT_INPUT_GUIDED 'browser' = pasek adresu w oknie przeglądarki (feat/browser-evidence); EMAIL_ANALYSIS 'monitor' = okno
+      poczty na ekranie monitora (D-178). */
+  frame?: 'browser' | 'monitor';
   maxAttempts?: number;
   hintCount?: number;
   // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.
@@ -490,6 +497,8 @@ export interface SceneHotspot {
   evidence?: boolean;
   note?: { text: string; kind?: NoteKind };
   required?: boolean;
+  /** D-178: miejsce obejrzane w poprzednim przejściu sceny - znak ✓, nieklikalne. */
+  done?: boolean;
 }
 
 export interface DialogueQuestion {
@@ -621,6 +630,9 @@ export interface ModuleCover {
   end: string;
   startPortrait: string | null;
   endPortrait: string | null;
+  /** Tło odtwarzacza za blokami (D-178); brak/null - bez tła. */
+  backdrop?: string | null;
+  backdropPortrait?: string | null;
 }
 
 export interface ModuleInfo {

@@ -1315,3 +1315,46 @@ describe('hashContent', () => {
     expect(hashContent([1, 2])).not.toBe(hashContent([2, 1]));
   });
 });
+
+describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, miejsca obejrzane, tło modułu', () => {
+  const errorsOf = (module: TestModule): string => {
+    try {
+      parseModule(module);
+    } catch (error) {
+      return (error as ContentValidationError).issues.join('\n');
+    }
+    return '';
+  };
+  const block = (module: TestModule, type: string) => module.blocks.find((b) => b.type === type)!;
+
+  it('nowe pola wyglądu przechodzą walidację (TABS look/stamp, EMAIL_ANALYSIS frame, DOSSIER layout/self, cover.backdrop)', () => {
+    const module = fullModuleForTests();
+    Object.assign(block(module, 'TABS'), { look: 'folder', stamp: 'ŚCIŚLE TAJNE' });
+    block(module, 'EMAIL_ANALYSIS').frame = 'monitor';
+    Object.assign(block(module, 'DOSSIER').documents[0], { layout: 'chat', self: 'Paweł' });
+    module.cover = { start: 'a.webp', end: 'b.webp', backdrop: 'tlo.webp', backdropPortrait: 'tlo-pion.webp' };
+    expect(errorsOf(module)).toBe('');
+    // Nieznane wartości - błąd (enum).
+    block(module, 'TABS').look = 'segregator';
+    expect(errorsOf(module)).toMatch(/look/);
+  });
+
+  it('miejsce `done`: bez akcji/mediów/dowodu/required; scena z `done` wymaga jawnego required przy pozostałych przedmiotach', () => {
+    const module = fullModuleForTests();
+    withoutPopups(module);
+    const scene = block(module, 'SCENE_HOTSPOTS');
+    scene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, content: 'x', done: true });
+    for (const h of scene.hotspots) if (!h.done && h.action !== 'next' && h.required === undefined) h.required = false;
+    expect(errorsOf(module)).toBe('');
+
+    scene.hotspots.at(-1).required = true;
+    expect(errorsOf(module)).toMatch(/done \(obejrzane wcześniej\) nie może mieć/);
+
+    const implicit = fullModuleForTests();
+    withoutPopups(implicit);
+    const implicitScene = block(implicit, 'SCENE_HOTSPOTS');
+    for (const h of implicitScene.hotspots) delete h.required;
+    implicitScene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, content: 'x', done: true });
+    expect(errorsOf(implicit)).toMatch(/scena z miejscami „done” wymaga jawnego required/);
+  });
+});

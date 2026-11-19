@@ -175,7 +175,9 @@ export function evaluateSubmit(
       // tę samą wykluczenie przy walidacji modułu).
       const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
       // Okienka easter egga (D-100) też poza pulą required - także w domyślnym „wszystkie wymagane” (bez flag required).
-      const optional = (h: HotspotLike) => doorIds.has(h.id) || h.media?.kind === 'popups';
+      // Miejsca obejrzane wcześniej (`done`, D-178) - nieklikalne ✓, też poza pulą (druga linia obrony za regułą semantics.ts).
+      const doneIds = new Set((block.hotspots as { id: string; done?: boolean }[]).filter((h) => h.done === true).map((h) => h.id));
+      const optional = (h: HotspotLike) => doorIds.has(h.id) || doneIds.has(h.id) || h.media?.kind === 'popups';
       requireCoverage('hotspoty', visited, all, requiredItemIds(hotspots.filter((h) => !optional(h)), block.requiredHotspots));
       // Do notatnika trafia tylko odwiedzony hotspot z evidence (i notatką); reszta to zwykły, bezpieczny 400 bez treści bloku.
       const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);

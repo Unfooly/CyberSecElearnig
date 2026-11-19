@@ -30,6 +30,9 @@ export interface ModuleCover {
   end: string;
   startPortrait: string | null;
   endPortrait: string | null;
+  /** Tło odtwarzacza za blokami (D-178); null - bez tła. */
+  backdrop: string | null;
+  backdropPortrait: string | null;
 }
 
 export interface ModuleMeta {
@@ -106,7 +109,14 @@ export function moduleMetaFor(slug: string, locale: ContentLocale): ModuleMeta {
   const notice = stored.startNotice === undefined ? null : localizeContent(stored.startNotice, locale);
   return {
     cover: cover
-      ? { start: cover.start, end: cover.end, startPortrait: cover.startPortrait ?? null, endPortrait: cover.endPortrait ?? null }
+      ? {
+          start: cover.start,
+          end: cover.end,
+          startPortrait: cover.startPortrait ?? null,
+          endPortrait: cover.endPortrait ?? null,
+          backdrop: cover.backdrop ?? null,
+          backdropPortrait: cover.backdropPortrait ?? null,
+        }
       : null,
     caseNumber: stored.caseNumber ?? null,
     subtitle: typeof subtitle === 'string' ? subtitle : null,

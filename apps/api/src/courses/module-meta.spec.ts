@@ -24,7 +24,7 @@ describe('module-meta (ekran startu modułu, D-163)', () => {
       caseNumber: 5,
       subtitle: { pl: 'Podtytuł', en: 'Subtitle' },
       startNotice: { pl: 'Najpierw moduł „Podstawy”.', en: 'Complete “Basics” first.' },
-      cover: { start: { pl: 'assets/s/start.1.webp', en: 'assets/s/start-en.1.webp' }, end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp' },
+      cover: { start: { pl: 'assets/s/start.1.webp', en: 'assets/s/start-en.1.webp' }, end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp', backdrop: 'assets/s/tlo.1.webp' },
       blocks: [{ type: 'QUIZ', correctIndex: 1 }],
     });
     setModuleMetaCacheForTests(loadModuleMeta(dir));
@@ -33,7 +33,7 @@ describe('module-meta (ekran startu modułu, D-163)', () => {
       caseNumber: 5,
       subtitle: 'Podtytuł',
       notice: 'Najpierw moduł „Podstawy”.',
-      cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp', endPortrait: null },
+      cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: 'assets/s/pion.1.webp', endPortrait: null, backdrop: 'assets/s/tlo.1.webp', backdropPortrait: null },
     });
     expect(moduleMetaFor('sprawa', 'en')).toMatchObject({ subtitle: 'Subtitle', notice: 'Complete “Basics” first.', cover: { start: 'assets/s/start-en.1.webp' } });
   });

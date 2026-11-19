@@ -207,8 +207,10 @@ export default function SceneHotspotsBlock({
   // kończy blok) - inaczej scena z SAMYMI drzwiami (np. "korytarz") nigdy nie mogłaby się ukończyć. Ta sama reguła co server-side
   // (evaluate.ts) i walidacja modułu (semantics.ts). Okienka easter egga (D-100) też poza pulą - nigdy nie są warunkiem ukończenia.
   const doorIds = new Set(hotspots.filter((hotspot) => hotspot.action === 'next').map((hotspot) => hotspot.id));
+  // Miejsca obejrzane w poprzednim przejściu sceny (`done`, D-178) - nieklikalne ✓, też poza pulą (jak serwer, evaluate.ts).
+  const doneIds = new Set(hotspots.filter((hotspot) => hotspot.done === true).map((hotspot) => hotspot.id));
   const required = requiredItemIds(
-    flat.filter((hotspot) => !doorIds.has(hotspot.id) && hotspot.media?.kind !== 'popups'),
+    flat.filter((hotspot) => !doorIds.has(hotspot.id) && !doneIds.has(hotspot.id) && hotspot.media?.kind !== 'popups'),
     block.requiredHotspots,
   );
   const doneCount = required.filter((id) => visited.includes(id)).length;
@@ -566,6 +568,25 @@ export default function SceneHotspotsBlock({
                 onError={() => (portraitScene ? setPortraitFailed(true) : setImageFailed(true))}
               />
               {shownHotspots.map((hotspot) => {
+                if (hotspot.done === true) {
+                  // Obejrzane wcześniej (D-178): sam znak ✓ w zielonej ramce, bez przycisku (nic do otwarcia).
+                  return (
+                    <span
+                      key={hotspot.id}
+                      role="img"
+                      aria-label={`${hotspot.label} (obejrzane wcześniej)`}
+                      aria-hidden={overlayOpen ? true : undefined}
+                      data-testid={`hotspot-overlay-${hotspot.id}`}
+                      data-state="done"
+                      style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: hotspotZIndex.get(hotspot.id) }}
+                      className="pointer-events-none absolute rounded border-2 border-green-600 bg-green-500/[0.07]"
+                    >
+                      <span className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white">
+                        <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                      </span>
+                    </span>
+                  );
+                }
                 const seen = visited.includes(hotspot.id);
                 const isDoor = hotspot.action === 'next';
                 const hinted = isRevealed(MAIN_VIEW) && leadsToPending(hotspot);

@@ -719,6 +719,12 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     stampAlt: 'Pieczęć: Sprawa zamknięta.',
     noteAlt: 'Liścik komisarza: Dobra robota.',
   });
+  // Wygląd okien (D-178) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9).
+  Object.assign(blocks.TABS, { look: 'folder', stamp: 'ŚCIŚLE TAJNE' });
+  blocks.EMAIL_ANALYSIS.frame = 'monitor';
+  for (const document of blocks.DOSSIER.documents as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
+  for (const document of (blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
+  (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[])[0].done = true;
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';
   // Etykieta „Dalej” ostatniego kroku (D-160) - publiczna; w fullBlocks() pierwszy krok nie jest ostatni, więc tylko tutaj.

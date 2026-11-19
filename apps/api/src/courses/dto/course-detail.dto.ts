@@ -28,6 +28,14 @@ export class CourseDetailDto {
     caseNumber: number | null;
     /** Uwaga na ekranie startu w czerwonej ramce (D-171, np. wymagany wcześniejszy moduł); null - brak. */
     notice: string | null;
-    cover: { start: string; end: string; startPortrait: string | null; endPortrait: string | null } | null;
+    cover: {
+      start: string;
+      end: string;
+      startPortrait: string | null;
+      endPortrait: string | null;
+      // Tło odtwarzacza za blokami (D-178).
+      backdrop: string | null;
+      backdropPortrait: string | null;
+    } | null;
   };
 }

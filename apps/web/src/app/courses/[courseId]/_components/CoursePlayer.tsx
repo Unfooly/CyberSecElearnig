@@ -311,9 +311,12 @@ export default function CoursePlayer({
   nextCourse = null,
   persistExploration = true,
   previewReward = null,
+  showStartScreen = true,
 }: {
   // Zapis stanu częściowego sceny (D-128); strona deweloperska (player-harness) nie ma backendu, więc go wyłącza.
   persistExploration?: boolean;
+  /** Tylko podgląd (player-harness `?backdrop=1`): dane modułu (tło, D-178) bez ekranu startu przed blokiem. Produkcja - zawsze true. */
+  showStartScreen?: boolean;
   /** Tylko podgląd (player-harness `?reward=1`): nagroda jak po świeżym ukończeniu - karta poziomu na ekranie końca (D-165). Produkcja
       dostaje nagrodę wyłącznie z odpowiedzi /progress. */
   previewReward?: CourseCompletionReward | null;
@@ -468,7 +471,9 @@ export default function CoursePlayer({
   // Ekran startu modułu (szablon, D-163): kurs jeszcze na pierwszym bloku, z danymi modułu z API (odpowiedź bez `moduleInfo` - starsze API,
   // testy - prosto do bloku). Każde wejście na blok 0 (także po odświeżeniu) zaczyna od niego; „Start” to gest, więc lektor pierwszego bloku
   // gra od razu (autoPlayFor), a fokus idzie na nagłówek bloku, jak przy każdej zmianie bloku.
-  const [showStart, setShowStart] = useState(() => Boolean(initial.moduleInfo) && initial.status !== 'COMPLETED' && initial.currentBlockIndex === 0);
+  const [showStart, setShowStart] = useState(
+    () => showStartScreen && Boolean(initial.moduleInfo) && initial.status !== 'COMPLETED' && initial.currentBlockIndex === 0,
+  );
   const startDismissed = useRef(false);
   const startModule = () => {
     startDismissed.current = true;
@@ -802,7 +807,9 @@ export default function CoursePlayer({
         : currentBlock?.type === 'SCENE_HOTSPOTS' ||
             // Quiz w monitorze (D-164, tryb prosty): monitor wypełnia obszar bloku, treść przewija się w ekranie; 'scene', nie 'fill', bo
             // 'fill' nie pokazuje stałej podpowiedzi bloku (`tip`), a 'scene' kładzie ją w rogu. Podgląd „Wstecz” - zwykły podgląd ('slide').
-            (simpleMode && !reviewing && currentBlock?.type === 'QUIZ')
+            (simpleMode && !reviewing && currentBlock?.type === 'QUIZ') ||
+            // Poczta w monitorze (D-178): jak quiz w monitorze - monitor wypełnia obszar, mail i lista przewijają się w ekranie.
+            (!reviewing && currentBlock?.type === 'EMAIL_ANALYSIS' && currentBlock.frame === 'monitor')
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
               // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).
@@ -1147,6 +1154,8 @@ export default function CoursePlayer({
             forwardHref={isSummaryMode ? '/courses' : undefined}
             onExitClick={handleExitClick}
             exitPending={exitPending}
+            backdropUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdrop ?? undefined, 'image')}
+            backdropPortraitUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdropPortrait ?? undefined, 'image')}
             // Scena z drzwiami (D-106): wyjściem jest podejście do drzwi - podpowiedź mówi to wprost (samo „Ukończ blok” myliło, gdy
             // wymagane przedmioty były już obejrzane).
             forwardHint={

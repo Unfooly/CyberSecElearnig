@@ -35,7 +35,6 @@ export class CourseDetailDto {
       endPortrait: string | null;
       // Tło odtwarzacza za blokami (D-178).
       backdrop: string | null;
-      backdropPortrait: string | null;
     } | null;
   };
 }

@@ -105,9 +105,9 @@ export interface PlayerStageProps {
   onExitClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** Wyjście czeka na zapis (D-142): aria-busy i przygaszony X. */
   exitPending?: boolean;
-  /** Tło modułu za ramką (D-178, `cover.backdrop`): gotowy adres grafiki (poziomej i pionowej na telefon w pionie); bez - tło strony jak dotąd. */
+  /** Tło modułu za ramką (D-178, `cover.backdrop`): gotowy adres grafiki; widoczne wokół ramki na komputerze (telefon - ramka na cały ekran,
+      bez tła); bez - tło strony jak dotąd. */
   backdropUrl?: string | null;
-  backdropPortraitUrl?: string | null;
 }
 
 function PlayerStageInner({
@@ -135,7 +135,6 @@ function PlayerStageInner({
   onExitClick,
   exitPending = false,
   backdropUrl = null,
-  backdropPortraitUrl = null,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -254,11 +253,13 @@ function PlayerStageInner({
   }
 
   return (
-    <div className="player-outer relative isolate flex h-full w-full items-center justify-center p-4">
-      {/* Tło modułu (D-178): dekoracyjne, za ramką (widać je wokół niej na komputerze); telefon w pionie - wariant pionowy. */}
+    // relative isolate tylko z tłem (D-178) - bez tła ramka bez nowego kontekstu nakładania, jak dotąd.
+    <div className={`player-outer flex h-full w-full items-center justify-center p-4${backdropUrl ? ' relative isolate' : ''}`}>
+      {/* Tło modułu (D-178): dekoracyjne, za ramką - widać je wokół niej na komputerze. Telefon (< 768 px): ramka na cały ekran, więc
+          tła nie ładujemy wcale (media w <source> bez obrazka: przeglądarka nie pobiera pliku). */}
       {backdropUrl && (
         <picture>
-          {backdropPortraitUrl && <source media="(max-width: 639px) and (orientation: portrait)" srcSet={backdropPortraitUrl} />}
+          <source media="(max-width: 767px)" srcSet="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
           {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL */}
           <img
             src={backdropUrl}
@@ -266,7 +267,7 @@ function PlayerStageInner({
             aria-hidden="true"
             data-testid="player-backdrop"
             referrerPolicy="no-referrer"
-            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
+            className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full object-cover md:block"
           />
         </picture>
       )}

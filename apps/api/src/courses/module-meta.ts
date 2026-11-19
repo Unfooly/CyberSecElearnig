@@ -32,7 +32,6 @@ export interface ModuleCover {
   endPortrait: string | null;
   /** Tło odtwarzacza za blokami (D-178); null - bez tła. */
   backdrop: string | null;
-  backdropPortrait: string | null;
 }
 
 export interface ModuleMeta {
@@ -115,7 +114,6 @@ export function moduleMetaFor(slug: string, locale: ContentLocale): ModuleMeta {
           startPortrait: cover.startPortrait ?? null,
           endPortrait: cover.endPortrait ?? null,
           backdrop: cover.backdrop ?? null,
-          backdropPortrait: cover.backdropPortrait ?? null,
         }
       : null,
     caseNumber: stored.caseNumber ?? null,

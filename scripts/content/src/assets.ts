@@ -158,7 +158,7 @@ export function collectAssetRefs(raw: Json): AssetRef[] {
   }
   // Okładki ekranu startu i końca (D-163) - poziom modułu jak miniatura: `module#cover.start`, inne języki `module#cover.start@en`.
   // Tło odtwarzacza (D-178) - te same zasady co okładki.
-  for (const field of ['start', 'end', 'startPortrait', 'endPortrait', 'backdrop', 'backdropPortrait']) {
+  for (const field of ['start', 'end', 'startPortrait', 'endPortrait', 'backdrop']) {
     for (const { holder, key, trail, locale } of expandAsset(raw, ['cover', field], [])) {
       const value = holder[key] as string;
       if (value.trim() === '') continue;

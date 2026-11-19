@@ -72,7 +72,9 @@ export function useDossier(documents: DossierDocument[], blockId: string | undef
 export type DossierState = ReturnType<typeof useDossier>;
 
 /** Przekładki (tablist) i arkusz z wierszami-zakreślaczami - bez ramki teczki (DossierBlock) i bez liczników. */
-export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint = 'Kliknij linijkę, która nie pasuje do zwykłego dnia.' }: { state: DossierState; tabsLabel?: string; hint?: string }) {
+export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint: hintProp }: { state: DossierState; tabsLabel?: string; hint?: string }) {
+  // Podpowiedź wywołującego (np. konsola przesłuchania) ma pierwszeństwo; domyślna zależy od wyglądu arkusza (D-178: czat).
+  const hint = hintProp ?? 'Kliknij linijkę, która nie pasuje do zwykłego dnia.';
   const { documents, activeId, opened, noted, lastNoted, message, select, mark } = state;
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const baseId = `dossier-${useId()}`;
@@ -145,7 +147,7 @@ export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint
           labelledBy={`${baseId}-tab-${active.id}`}
           document={active}
           noted={noted}
-          status={message || 'Kliknij wiadomość, która coś mówi o ataku.'}
+          status={message || (hintProp ?? 'Kliknij wiadomość, która coś mówi o ataku.')}
           onMark={mark}
         />
       )}
@@ -329,9 +331,10 @@ function ChatSheet({
                         : 'rounded-2xl rounded-bl-md bg-white px-3 py-2 text-ink shadow-sm'
                   } ${isNoted ? 'ring-2 ring-[#F4C430] ring-offset-1' : 'hover:brightness-95'}`}
                 >
-                  {!system && !mine && <span className="mb-0.5 block text-[11px] font-bold text-[#6C5CE7]">{author}</span>}
+                  {/* text-xs, nie arbitralne px: na telefonie .mobile-readable podbija je do min. 15 px (D-103). */}
+                  {!system && !mine && <span className="mb-0.5 block text-xs font-bold text-[#6C5CE7]">{author}</span>}
                   <span className="block whitespace-pre-line">{text}</span>
-                  <span className={`mt-0.5 block text-right text-[10px] ${mine ? 'text-white/75' : 'text-muted'}`}>{time}</span>
+                  <span className={`mt-0.5 block text-right text-xs ${mine ? 'text-white/75' : 'text-muted'}`}>{time}</span>
                   {isNoted && <span className="sr-only"> (zaznaczone, w notatkach)</span>}
                 </button>
               </li>

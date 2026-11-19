@@ -213,22 +213,25 @@ describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
     const module = {
       ...moduleWithAssets(),
       schemaVersion: 6,
-      cover: { start: { pl: 'start.png', en: 'start-en.png' }, end: 'koniec.png', startPortrait: 'start-pion.png' },
+      // Tło odtwarzacza (D-178) - te same zasady co okładki.
+      cover: { start: { pl: 'start.png', en: 'start-en.png' }, end: 'koniec.png', startPortrait: 'start-pion.png', backdrop: 'tlo.png' },
     };
     expect(collectAssetRefs(module).filter((ref) => ref.blockId === 'module').map((ref) => [ref.id, ref.value])).toEqual([
       ['module#cover.start', 'start.png'],
       ['module#cover.start@en', 'start-en.png'],
       ['module#cover.end', 'koniec.png'],
       ['module#cover.startPortrait', 'start-pion.png'],
+      ['module#cover.backdrop', 'tlo.png'],
     ]);
     await writeFile(modulePath, JSON.stringify(module));
-    for (const file of ['start.png', 'start-en.png', 'koniec.png', 'start-pion.png']) await writeFile(join(assetsDir, file), PNG);
+    for (const file of ['start.png', 'start-en.png', 'koniec.png', 'start-pion.png', 'tlo.png']) await writeFile(join(assetsDir, file), PNG);
     await runAssetsPipeline(params());
     const saved = JSON.parse(await readFile(modulePath, 'utf8'));
     expect(saved.cover.start.pl).toMatch(/^assets\/sprawa-testowa\/start\.[0-9a-f]{8}\.png$/);
     expect(saved.cover.start.en).toMatch(/^assets\/sprawa-testowa\/start-en\.[0-9a-f]{8}\.png$/);
     expect(saved.cover.end).toMatch(/^assets\/sprawa-testowa\/koniec\.[0-9a-f]{8}\.png$/);
     expect(saved.cover.startPortrait).toMatch(/^assets\/sprawa-testowa\/start-pion\.[0-9a-f]{8}\.png$/);
+    expect(saved.cover.backdrop).toMatch(/^assets\/sprawa-testowa\/tlo\.[0-9a-f]{8}\.png$/);
     expect(JSON.parse(await readFile(join(dir, 'assets.lock.json'), 'utf8')).entries['module#cover.start@en'].original).toBe('start-en.png');
   });
 

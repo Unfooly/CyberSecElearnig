@@ -78,7 +78,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   treści, API czyta ją z module.json jak okładki.
 - Wygląd okien (D-178, opcjonalne, czysto wizualne): `cover.backdrop` - tło odtwarzacza za ramką (jak okładki; tylko na komputerze -
   na telefonie ramka zajmuje cały ekran);
-  TABS `look: "folder"` + `stamp` - teczka z przekładkami; EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora; DOSSIER
+  TABS `look: "folder"` + `stamp` - teczka z przekładkami (`background`/`backgroundPortrait` - tło pod teczką,
+  np. biurko; tylko z folder); EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora; DOSSIER
   dokument `layout: "chat"` + `self` - czat w ramce telefonu (komórki [godzina, autor, treść]); SCENE_HOTSPOTS przedmiot `done: true` -
   miejsce obejrzane wcześniej (✓, nieklikalne; bez action/media/evidence/note/required, a pozostałe przedmioty z jawnym `required`).
   Podgląd: `dev-modules/dev-okna`.

@@ -720,7 +720,7 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     noteAlt: 'Liścik komisarza: Dobra robota.',
   });
   // Wygląd okien (D-178) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9).
-  Object.assign(blocks.TABS, { look: 'folder', stamp: 'ŚCIŚLE TAJNE' });
+  Object.assign(blocks.TABS, { look: 'folder', stamp: 'ŚCIŚLE TAJNE', background: 'images/biurko.webp', backgroundPortrait: 'images/biurko-pion.webp' });
   blocks.EMAIL_ANALYSIS.frame = 'monitor';
   for (const document of blocks.DOSSIER.documents as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   for (const document of (blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });

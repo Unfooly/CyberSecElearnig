@@ -341,7 +341,7 @@ export interface ContentBlock {
   requiredHotspots?: string[];
   // CALL_RECORDING (D-115): segmenty rozmowy (bez flag - te są sekretem, rozstrzygnięcie w ResultDetail.flags po ocenie).
   segments?: RecordingSegment[];
-  /** CALL_RECORDING (B-138): dekoracyjne tło odsłuchu i jego wariant pionowy (BlockBackground). */
+  /** CALL_RECORDING (B-138) i TABS folder (D-178, biurko pod teczką): dekoracyjne tło bloku i jego wariant pionowy (BlockBackground). */
   background?: string;
   backgroundPortrait?: string;
   // ANNOTATED_REPLAY (D-115): źródło (transkrypcja nagrania albo grafika) i numerowane znaczniki.

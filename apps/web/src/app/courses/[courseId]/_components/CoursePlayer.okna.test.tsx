@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CoursePlayer, { type CoursePlayerInitialState } from './CoursePlayer';
 import type { ContentBlock } from '@/lib/courses-types';
+import TabsBlock from './blocks/TabsBlock';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -66,6 +67,63 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
       blockId: 'teczka',
       answer: { opened: ['zadanie', 'ofiara'] },
     });
+  });
+
+  it('TABS folder z tłem: teczka na biurku (tło bloku z contentBase, licznik na jasnym podłożu)', () => {
+    stubFetch();
+    const tabs: ContentBlock = {
+      type: 'TABS',
+      id: 'teczka',
+      look: 'folder',
+      background: 'assets/m/biurko.1.webp',
+      tabs: [{ id: 'zadanie', title: 'Twoje zadanie', content: 'Ustal, co się stało.' }],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([tabs])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    const desk = screen.getByTestId('folder-desk');
+    expect(within(desk).getByTestId('block-background')).toBeInTheDocument();
+    expect(within(desk).getByTestId('folder')).toBeInTheDocument();
+    expect(within(desk).getByText('Wszystko obejrzane.')).toHaveClass('bg-surface/95');
+  });
+
+  it('TABS folder z tłem: polecenie na pigułce, podpowiedź bloku (tip) widoczna (układ scene, nie fill)', () => {
+    stubFetch();
+    const tabs: ContentBlock = {
+      type: 'TABS',
+      id: 'teczka',
+      look: 'folder',
+      background: 'assets/m/biurko.1.webp',
+      prompt: 'Przeczytaj akta.',
+      tip: 'Zajrzyj do każdej zakładki.',
+      tabs: [
+        { id: 'zadanie', title: 'Twoje zadanie', content: 'Ustal, co się stało.' },
+        { id: 'ofiara', title: 'Ofiara', content: 'Paweł.' },
+      ],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([tabs])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    expect(screen.getByText('Przeczytaj akta.')).toHaveClass('bg-surface/95');
+    expect(screen.getByText('Zajrzyj do każdej zakładki.')).toBeInTheDocument();
+  });
+
+  it('TABS folder bez tła: zwykła teczka (bez biurka, dawny cień)', () => {
+    stubFetch();
+    const tabs: ContentBlock = { type: 'TABS', id: 'teczka', look: 'folder', tabs: [{ id: 'zadanie', title: 'Twoje zadanie', content: 'Treść.' }] };
+    render(<CoursePlayer courseId="course-1" initial={course([tabs])} narrationEnabled={false} />);
+    expect(screen.queryByTestId('folder-desk')).toBeNull();
+    expect(screen.getByTestId('folder')).toHaveClass('shadow-card');
+  });
+
+  it('TABS folder z tłem w podglądzie „Wstecz” (review): bez biurka', () => {
+    const tabs: ContentBlock = {
+      type: 'TABS',
+      id: 'teczka',
+      look: 'folder',
+      background: 'assets/m/biurko.1.webp',
+      tabs: [{ id: 'zadanie', title: 'Twoje zadanie', content: 'Treść.' }],
+    };
+    render(<TabsBlock block={tabs} contentBase="https://content.example.test" onSubmit={() => {}} onReady={() => {}} review />);
+    expect(screen.queryByTestId('folder-desk')).toBeNull();
+    expect(screen.queryByTestId('block-background')).toBeNull();
+    expect(screen.getByTestId('folder')).toBeInTheDocument();
   });
 
   it('EMAIL_ANALYSIS frame monitor: mail na ekranie monitora z paskiem „Poczta”; bez kotwic - bez podpowiedzi o klikaniu fragmentów', () => {

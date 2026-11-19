@@ -809,7 +809,10 @@ export default function CoursePlayer({
             // 'fill' nie pokazuje stałej podpowiedzi bloku (`tip`), a 'scene' kładzie ją w rogu. Podgląd „Wstecz” - zwykły podgląd ('slide').
             (simpleMode && !reviewing && currentBlock?.type === 'QUIZ') ||
             // Poczta w monitorze (D-178): jak quiz w monitorze - monitor wypełnia obszar, mail i lista przewijają się w ekranie.
-            (!reviewing && currentBlock?.type === 'EMAIL_ANALYSIS' && currentBlock.frame === 'monitor')
+            (!reviewing && currentBlock?.type === 'EMAIL_ANALYSIS' && currentBlock.frame === 'monitor') ||
+            // Teczka na biurku (D-178): tło wypełnia obszar bloku; 'scene', nie 'fill' - podpowiedź bloku (`tip`) zostaje w rogu.
+            // Podgląd „Wstecz” - zwykły slajd bez tła (TabsBlock: review).
+            (!reviewing && currentBlock?.type === 'TABS' && currentBlock.look === 'folder' && !!currentBlock.background)
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
               // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).

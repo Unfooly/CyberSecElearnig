@@ -5,6 +5,7 @@ import type { ContentBlock } from '@/lib/courses-types';
 import { useCompleteHint } from '../player/hints';
 import { SimpleMarkdown } from '../simple-markdown';
 import ExploreFooter from './ExploreFooter';
+import BlockBackground from './BlockBackground';
 
 // Zakładki według wzorca ARIA (tablist/tab/tabpanel, strzałki, Home/End, roving tabindex). Zakładka liczy się jako otwarta po wyświetleniu.
 // Odpowiedź dla serwera: { opened: [id...] }.
@@ -13,8 +14,11 @@ export default function TabsBlock({
   onSubmit,
   onReady,
   review = false,
+  contentBase = '',
 }: {
   block: ContentBlock;
+  /** Baza adresów zasobów (tło pod teczką, D-178). */
+  contentBase?: string;
   onSubmit: (answer: { opened: string[] }) => void;
   /** Zgłasza gotowość do "Dalej" w pasku powłoki (wymagane zakładki otwarte) - CoursePlayer woła zwróconą funkcję zamiast osobnego "Kontynuuj". */
   onReady: (submit: (() => void) | null) => void;
@@ -118,11 +122,16 @@ export default function TabsBlock({
     </>
   );
 
-  return (
-    <div>
-      {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
+  // Tło pod teczką (D-178): biurko na cały obszar bloku (CoursePlayer daje wtedy układ 'scene' - podpowiedź bloku w rogu), teczka
+  // wyśrodkowana na nim; teksty poza teczką (polecenie, licznik zakładek) na jasnym podłożu - nie leżą wprost na grafice (jak odsłuch,
+  // B-138). Podgląd „Wstecz” - bez tła (zwykły slajd).
+  const desk = folder && !!block.background && !review;
+  const onDesk = desk ? 'w-fit rounded-card bg-surface/95 px-3 py-1.5 shadow-card' : '';
+  const body = (
+    <>
+      {block.prompt && <p className={`mb-3 text-lg text-slate-900 ${onDesk}`}>{block.prompt}</p>}
       {folder ? (
-        <div data-testid="folder" className="relative rounded-2xl bg-[#E7D6AC] p-3 shadow-card sm:p-5">
+        <div data-testid="folder" className={`relative rounded-2xl bg-[#E7D6AC] p-3 sm:p-5 ${desk ? 'shadow-[0_18px_40px_rgba(0,0,0,0.55)]' : 'shadow-card'}`}>
           {block.stamp && (
             <p
               data-testid="folder-stamp"
@@ -137,7 +146,18 @@ export default function TabsBlock({
       ) : (
         content
       )}
-      <ExploreFooter done={doneCount} total={required.length} noun="zakładek" review={review} />
+      <ExploreFooter done={doneCount} total={required.length} noun="zakładek" review={review} className={desk ? `mt-4 text-sm text-slate-700 ${onDesk}` : undefined} />
+    </>
+  );
+  if (!desk) return <div>{body}</div>;
+  // Tło w zewnętrznym (nieprzewijanym) elemencie - nie jedzie z treścią; przewija się wewnętrzny, a teczkę środkuje `m-auto` (nie
+  // `justify-center`, które w kontenerze przewijanym ucina górę przy treści wyższej niż ekran).
+  return (
+    <div data-testid="folder-desk" className="relative isolate flex min-h-0 w-full flex-1 flex-col">
+      <BlockBackground contentBase={contentBase} image={block.background} imagePortrait={block.backgroundPortrait} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-5 sm:px-8 sm:py-8">
+        <div className="m-auto w-full max-w-3xl">{body}</div>
+      </div>
     </div>
   );
 }

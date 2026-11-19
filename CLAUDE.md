@@ -143,7 +143,10 @@ Kursy to treść (JSON modułu zwalidowany zod), nie kod; szczegóły i format: 
    wprost w odpowiedzi API.
 2. **Ocenę wylicza wyłącznie serwer** (`apps/api/src/courses/scoring`); klient wysyła swój wybór, nigdy poprawność ani punkty.
 3. **Treść jest wersjonowana i niemutowalna** (`course_versions`): zmiana treści = nowa wersja, przypisanie zostaje na swojej. Nigdy nie
-   edytuj zapisanej wersji ani `blockId` opublikowanego bloku. `progress` jest kluczowany `blockId`.
+   edytuj zapisanej wersji ani `blockId` opublikowanego bloku. `progress` jest kluczowany `blockId`. Jedyny wyjątek (D-177): `/start`
+   przypisania, które nie ukończyło jeszcze pierwszego bloku (blok 0, nieukończone), przepina je na najnowszą wersję (`upgradeUnstartedPin`,
+   warunkowy update, czyszczenie postępu bloku 0); `/progress` porównuje `blockId` widzianego bloku z przypiętą wersją (409 przy niezgodności).
+   Nowa ścieżka zmieniająca przypiętą wersję wymaga decyzji i wpisu tutaj.
 4. **Id elementów ocenianych po id (ORDERING, kryteria EMAIL_ANALYSIS) są dla klienta nieprzejrzyste** (HMAC z kluczem serwera, inne w każdym
    przypisaniu); tasowanie ma seed z tego samego klucza, nigdy z samych publicznych identyfikatorów. SVG tylko przez `<img>`; `EMBEDDED_HTML` tylko w
    `<iframe sandbox>` bez `allow-same-origin`.

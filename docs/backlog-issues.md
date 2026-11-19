@@ -867,6 +867,19 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-170 Ten sam `blockId` pod tym samym indeksem w nowej wersji przechodzi sprawdzenie nieaktualnej karty (D-177)
+- Etykiety: `P3`, `security`, `mod:szkolenia` · Źródło: security review D-177
+- Opis: `/progress` odrzuca zapis (409), gdy `blockId` widzianego bloku nie zgadza się z przypiętą wersją. Jeśli nowa wersja ma pod tym samym
+  indeksem blok o tym samym id (np. poprawiony tekst), karta otwarta na starszej treści przejdzie sprawdzenie i odpowiedź zostanie oceniona
+  na nowej treści bloku (to samo `/check`, `/explore`, `/attempt` - szukają po `blockId`). Gracz psuje tylko własny wynik.
+- Akceptacja: odcisk wersji (np. `version.id` albo skrót treści bloku) w żądaniach zapisu i porównanie z przypiętą wersją; test e2e.
+
+### B-169 Niestabilny test web: zadanie tekstowe w `CoursePlayer.exploratory.test.tsx`
+- Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: CI PR #176 (2026-11-19)
+- Opis: „zadanie tekstowe: próby idą na /attempt, a "Dalej" po rozstrzygnięciu zapisuje postęp…” raz padło na CI (`expected "spy" to be
+  called 2 times, but got 1 times`, ~1 s), przeszło po ponownym uruchomieniu bez zmian kodu - zależność od czasu (waitFor/timery).
+- Akceptacja: test deterministyczny (czekanie na konkretne wywołanie `/progress`, fałszywe timery albo `findBy*`), 20 przebiegów z rzędu zielone.
+
 ### B-168 Obraz web: usuwać też `packages/content/dev-modules` (D-175)
 - Etykiety: `P2`, `security`, `infra` · Źródło: code review D-175
 - Opis: `apps/web/Dockerfile` (etap builder kopiuje cały `packages/content`) robi `rm -rf packages/content/modules` jako drugą warstwę

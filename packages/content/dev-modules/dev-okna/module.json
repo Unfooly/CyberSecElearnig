@@ -20,6 +20,8 @@
       "type": "TABS",
       "title": "Nowe zadanie",
       "look": "folder",
+      "background": "images/teczka-tlo.webp",
+      "backgroundPortrait": "images/teczka-tlo-pion.webp",
       "stamp": "ŚCIŚLE TAJNE",
       "tabs": [
         { "id": "zadanie", "title": "Twoje zadanie", "content": "Dzień dobry, detektywie.\n\nW nocy ze skrzynki Pawła Nowickiego wyszło kilkadziesiąt maili do klientów. Ustal, jak przestępcy przejęli jego konto." },

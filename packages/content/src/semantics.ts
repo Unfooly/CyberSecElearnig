@@ -754,6 +754,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const ids = block.tabs.map((t) => t.id);
       checkUnique('tabs', ids);
       checkSubset('requiredTabs', block.requiredTabs, ids);
+      // Tło pod teczką (D-178) tylko w wyglądzie teczki; wariant pionowy tylko z poziomym (jak odsłuch).
+      if ((block.background !== undefined || block.backgroundPortrait !== undefined) && block.look !== 'folder') {
+        errors.push('background: tło zakładek tylko z look "folder"');
+      }
+      if (block.backgroundPortrait !== undefined && block.background === undefined) errors.push('backgroundPortrait: wymaga background');
       break;
     }
     case 'DOSSIER': {

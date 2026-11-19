@@ -1327,6 +1327,18 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
   };
   const block = (module: TestModule, type: string) => module.blocks.find((b) => b.type === type)!;
 
+  it('tło pod teczką (TABS background): tylko z look folder; wariant pionowy tylko z poziomym', () => {
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'TABS'), { look: 'folder', background: 'biurko.webp', backgroundPortrait: 'biurko-pion.webp' });
+    expect(errorsOf(ok)).toBe('');
+    const noFolder = fullModuleForTests();
+    Object.assign(block(noFolder, 'TABS'), { background: 'biurko.webp' });
+    expect(errorsOf(noFolder)).toMatch(/tło zakładek tylko z look "folder"/);
+    const portraitOnly = fullModuleForTests();
+    Object.assign(block(portraitOnly, 'TABS'), { look: 'folder', backgroundPortrait: 'biurko-pion.webp' });
+    expect(errorsOf(portraitOnly)).toMatch(/backgroundPortrait: wymaga background/);
+  });
+
   it('nowe pola wyglądu przechodzą walidację (TABS look/stamp, EMAIL_ANALYSIS frame, DOSSIER layout/self, cover.backdrop)', () => {
     const module = fullModuleForTests();
     Object.assign(block(module, 'TABS'), { look: 'folder', stamp: 'ŚCIŚLE TAJNE' });

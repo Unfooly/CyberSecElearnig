@@ -419,6 +419,10 @@ const tabsSchema = z
     // pieczątka na teczce (np. „ŚCIŚLE TAJNE”). Czysto wizualne - zaliczenie bez zmian (wszystkie wymagane zakładki obejrzane).
     look: z.enum(['folder']).optional(),
     stamp: ltext(30).optional(),
+    // Tło pod teczką (D-178, tylko z `look: 'folder'`): dekoracja (biurko detektywa) na cały obszar bloku, wariant pionowy na telefon -
+    // jak tło odsłuchu (B-138, BlockBackground). Bez treści do odczytania.
+    background: limage().optional(),
+    backgroundPortrait: limage().optional(),
   })
   .strict();
 
@@ -1307,7 +1311,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ],
   ),
   ORDERING: classify(['prompt', 'items[].id', 'items[].text', 'start.label', 'start.caption', 'end.label', 'end.caption'], ['scoring', 'explanation']),
-  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]', 'look', 'stamp'], []),
+  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]', 'look', 'stamp', 'background', 'backgroundPortrait'], []),
   SUMMARY: classify(
     [
       'text',

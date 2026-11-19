@@ -483,8 +483,6 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     service = module.get(CoursesService);
   });
 
-  const noEvidence = { collected: 0, total: 0, perBlock: [] };
-
   it('woła GamificationService.awardCourseCompletion, gdy ostatni blok kończy kurs (isComplete)', async () => {
     findFirst.mockResolvedValue(assignmentFixture());
 
@@ -494,11 +492,11 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
       expect.anything(),
       'org-1',
       'user-1',
-      { score: null, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' },
+      { score: null, courseSlug: null, assignmentId: 'assignment-1' },
     );
   });
 
-  it('D-111: przekazuje slug kursu i dowody policzone przez serwer (osiągnięcia modułu 1)', async () => {
+  it('D-111, D-174: przekazuje slug kursu (osiągnięcia modułu 1), bez dowodów - warunki od D-174 to sam wynik', async () => {
     findFirst.mockResolvedValue(
       assignmentFixture({
         course: {
@@ -514,7 +512,6 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', {
       score: null,
       courseSlug: 'wyludzone-haslo',
-      evidence: { collected: 1, total: 1, perBlock: [{ blockId: 'b0', collected: 1, total: 1 }] },
       assignmentId: 'assignment-1',
     });
   });
@@ -629,7 +626,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
     await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, answer: 0 });
 
-    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: 100, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' });
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: 100, courseSlug: null, assignmentId: 'assignment-1' });
   });
 
   it('dołącza wynik GamificationService do odpowiedzi jako pole `gamification`, gdy kurs się kończy', async () => {
@@ -806,7 +803,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
 
     expect(result.lastResult).toEqual({ blockIndex: 0, blockId: 'b0', type: 'EMBEDDED_HTML', correct: undefined });
     expect(result.status).toBe('COMPLETED');
-    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null, courseSlug: null, evidence: noEvidence, assignmentId: 'assignment-1' });
+    expect(awardCourseCompletion).toHaveBeenCalledWith(expect.anything(), 'org-1', 'user-1', { score: null, courseSlug: null, assignmentId: 'assignment-1' });
   });
 
   describe('attemptBlock (TEXT_INPUT_GUIDED): reaction (schemaVersion 4) tylko przy rozstrzygnięciu', () => {

@@ -24,8 +24,8 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
     title: { pl: 'Sprawa bez skazy', en: 'Flawless Case' },
     description: { pl: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.', en: 'You closed the case without missing a single clue.' },
     conditionText: {
-      pl: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Zabawa w phishing”.',
-      en: 'Collect all evidence (23/23) and score 100% on the tasks in a single attempt at the case „Zabawa w phishing”.',
+      pl: 'Zdobądź 100% za zadania w jednym podejściu do sprawy „Zabawa w phishing”.',
+      en: 'Score 100% on the tasks in a single attempt at the case „Zabawa w phishing”.',
     },
   },
   [ACHIEVEMENT_CODES.CURIOUS_DETECTIVE]: {
@@ -59,8 +59,8 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
     title: { pl: 'Pełny zapis', en: 'Full Transcript' },
     description: { pl: 'Cała rozmowa rozpisana co do słowa. Sprawa bez luk.', en: 'The whole conversation transcribed word for word. A case with no gaps.' },
     conditionText: {
-      pl: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Vishing”.',
-      en: 'Collect all evidence (hidden ones too) and score 100% on the tasks in a single attempt at the case „Vishing”.',
+      pl: 'Zdobądź 100% za zadania w jednym podejściu do sprawy „Vishing”.',
+      en: 'Score 100% on the tasks in a single attempt at the case „Vishing”.',
     },
   },
   [ACHIEVEMENT_CODES.OFF_THE_RECORD]: {
@@ -94,17 +94,18 @@ export function localizedBadgeTexts(
 }
 
 /**
- * Tajne trofea są w public/achievements pod nazwą z hashem treści (B-155, bez migracji: baza trzyma nazwę bez hasha). Wartości to wynik
- * kompozytora (scripts/content/scenes/trophy-files.ts); zmiana grafiki = nowy hash tutaj, pilnuje achievement-texts.spec.ts.
+ * Tajne trofea są w public/achievements pod nazwą z hashem treści (B-155, bez migracji: baza trzyma nazwę bez hasha) - pierwsze 8 znaków
+ * sha256 pliku WebP (D-174: grafiki z generatora, bez tekstu, ten sam plik w obu językach). Zmiana grafiki = nowy hash tutaj, pilnuje
+ * achievement-texts.spec.ts.
  */
 export const SECRET_ICON_FILES: Record<string, Record<ContentLocale, string>> = {
-  'osiagniecie-ciekawski-detektyw': { pl: 'osiagniecie-ciekawski-detektyw-5a973d2b', en: 'osiagniecie-ciekawski-detektyw-7194d2d4' },
-  'osiagniecie-off-the-record': { pl: 'osiagniecie-off-the-record-8551a4b1', en: 'osiagniecie-off-the-record-7b4dd8b3' },
+  'osiagniecie-ciekawski-detektyw': { pl: 'osiagniecie-ciekawski-detektyw-95296dd5', en: 'osiagniecie-ciekawski-detektyw-95296dd5' },
+  'osiagniecie-off-the-record': { pl: 'osiagniecie-off-the-record-6abb6a44', en: 'osiagniecie-off-the-record-6abb6a44' },
 };
 
 /**
  * Grafika odznaki w języku gracza: nazwa pliku z bazy z katalogiem języka („pl/osiagniecie-pierwsza-sprawa”) - web składa z niej
- * /achievements/<język>/<nazwa>.svg (achievementImage). Nazwa spoza wzorca - bez zmian (web i tak jej nie pokaże).
+ * /achievements/<język>/<nazwa>.webp (achievementImage). Nazwa spoza wzorca - bez zmian (web i tak jej nie pokaże).
  */
 export function localizedIcon(icon: string | null, locale: ContentLocale): string | null {
   if (!icon || !/^[a-z0-9-]{1,80}$/.test(icon)) return icon;

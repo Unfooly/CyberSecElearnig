@@ -146,8 +146,8 @@ export default function AchievementsProfile({ badges, displayName }: { badges: B
                 >
                   <GripVertical aria-hidden="true" className="h-4 w-4 shrink-0 cursor-grab text-muted" />
                   {image && (
-                    // eslint-disable-next-line @next/next/no-img-element -- statyczny SVG z public/achievements; SVG wyłącznie przez <img> (D-051)
-                    <img src={image} alt="" width={36} height={36} className="h-9 w-9" />
+                    // eslint-disable-next-line @next/next/no-img-element -- statyczna grafika z public/achievements
+                    <img src={image} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
                   )}
                   <span className="text-sm font-semibold">
                     <span className="sr-only">{index + 1}. </span>

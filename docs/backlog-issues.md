@@ -867,6 +867,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-167 Martwe klocki trofeów w kompozytorze po przejściu odznak na WebP (D-174)
+- Etykiety: `P3`, `tech-debt`, `mod:grywalizacja` · Źródło: D-174
+- Opis: odznaki to od D-174 grafiki WebP z generatora. W kompozytorze zostały klocki `trophyBadge`/`trophyHelpdesk` (`props-odprawa.ts`,
+  `props-helpdesk.ts`), `trophy-labels.ts` i `trophy-files.ts` (używane jeszcze przez `cli.ts`) oraz ich testy - bez żadnego źródła sceny.
+  Pole `lockedIcon` z API i pliki „-zablokowane” w katalogu bazy (`badges.lockedIcon`) nie są już używane przez karty.
+- Akceptacja: klocki trofeów i ich testy usunięte (z liczbą klocków w `odprawa.test.ts`), `cli.ts` bez `trophy-files.ts`; przy najbliższej
+  migracji odznak (B-165) decyzja, czy `lockedIcon` zostaje w API.
+
 ### B-166 Miniatury SVG z kompozytora po przejściu na WebP (D-173)
 - Etykiety: `P3`, `docs`, `mod:szkolenia` · Źródło: code review D-173
 - Opis: wszystkie moduły mają miniaturę WebP (grafiki z generatora), a `docs/content/MODULE-PLAYBOOK.md` (układ katalogów, sekcja

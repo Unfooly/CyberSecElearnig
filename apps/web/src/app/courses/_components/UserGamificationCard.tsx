@@ -71,8 +71,8 @@ export default function UserGamificationCard({ overview }: { overview: Gamificat
             return (
               <span key={badge.code} title={badge.title} className="flex h-9 w-9 items-center justify-center rounded-full bg-warning-soft text-warning">
                 {image ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- statyczny SVG z public/achievements; SVG wyłącznie przez <img> (D-051)
-                  <img src={image} alt={badge.title} className="h-9 w-9" />
+                  // eslint-disable-next-line @next/next/no-img-element -- statyczna grafika z public/achievements
+                  <img src={image} alt={badge.title} className="h-9 w-9 rounded-full object-cover" />
                 ) : (
                   <Award size={18} strokeWidth={2} aria-hidden="true" />
                 )}

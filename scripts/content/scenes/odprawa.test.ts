@@ -3,30 +3,29 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeScene, composeSceneLocales, MIN_TEXT_PX, PHONE_SCENE_BOX, phoneScale, SCENE_LOCALES, sceneLocales } from './compose.js';
+import { composeScene, composeSceneLocales, PHONE_SCENE_BOX, SCENE_LOCALES, sceneLocales } from './compose.js';
 import { EKRAN_PROPS, KEYART_PROPS, ODPRAWA_PROPS, PION_OKNA_PROPS, PION_PROPS, PRZEGLADARKA_PROPS, TROFEA_PROPS, ZAMKNIECIE_PROPS } from './props-odprawa.js';
 import { HELPDESK_PROPS } from './props-helpdesk.js';
 import { LANCUSZEK_PROPS } from './props-lancuszek.js';
 import { NASKROTY_PROPS } from './props-naskroty.js';
 import { PROPS } from './props.js';
-import { isSecretTrophy, outputFileName } from './trophy-files.js';
 import type { SceneLocale, SceneSpec } from './types.js';
 
-// Grafiki modułów i trofea to WYNIK kompozytora ze źródeł scenes/examples/<cel>/*.json (B-128: jeden katalog na cel, dowolny moduł) -
+// Grafiki modułów to WYNIK kompozytora ze źródeł scenes/examples/<cel>/*.json (B-128: jeden katalog na cel, dowolny moduł) -
 // build ze źródła musi dać identyczny plik (inaczej ktoś poprawił SVG ręcznie albo zmienił klocek bez przebudowania scen) i identyczne
-// *.hotspots.json. Cel = slug modułu (packages/content/modules/<slug>: scenes/ albo assets/, np. miniatura) albo `achievements`
-// (trofea osiągnięć - globalne, statyczne pliki aplikacji web). Nowy moduł: katalog examples/<slug>/ - test obejmuje go sam.
+// *.hotspots.json. Cel = slug modułu (packages/content/modules/<slug>: scenes/ albo assets/, np. miniatura) albo `og` (og:image serwisu).
+// Nowy moduł: katalog examples/<slug>/ - test obejmuje go sam. Trofea osiągnięć od D-174 to grafiki WebP z generatora
+// (apps/web/public/achievements, bez tekstu), nie wynik kompozytora - klocki trofeów zostają w PROPS (testy niżej), bez źródeł.
 // Współrzędne hotspotów/slotów odprawy w module.json modułu 1 (przepisane ręcznie) muszą być równe *.hotspots.json - osobne testy niżej.
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..', '..');
 const examplesRoot = join(here, 'examples');
 const modulesRoot = join(repo, 'packages', 'content', 'modules');
-const achievements = join(repo, 'apps', 'web', 'public', 'achievements');
 // Grafika og:image serwisu (D-126): statyczny plik aplikacji web; PNG obok powstaje z tego SVG (scripts/render-og-image.mjs).
 const og = join(repo, 'apps', 'web', 'public', 'og');
-const STATIC_TARGETS: Record<string, string> = { achievements, og };
+const STATIC_TARGETS: Record<string, string> = { og };
 const targets = readdirSync(examplesRoot).filter((dir) => statSync(join(examplesRoot, dir)).isDirectory()).sort();
-/** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); trofea - public/achievements; og - public/og. */
+/** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); og - public/og. */
 const outputDirs = (target: string) =>
   STATIC_TARGETS[target] ? [STATIC_TARGETS[target]] : [join(modulesRoot, target, 'assets', 'scenes'), join(modulesRoot, target, 'assets')];
 interface Source {
@@ -48,20 +47,19 @@ const svgPath = (source: Source) =>
   outputDirs(source.target).map((dir) => join(dir, `${source.name}.svg`)).find((file) => existsSync(file)) ?? join(outputDirs(source.target)[0], `${source.name}.svg`);
 /** Plik wyniku: scena ze `strings` - <katalog celu>/<język>/<nazwa>.svg (jak cli.ts build). */
 const resultPath = (source: Source, locale?: SceneLocale) => (locale ? join(outputDirs(source.target)[0], locale, resultFile(source, locale)) : svgPath(source));
-/** Nazwa pliku w katalogu języka: tajne trofea z hashem treści (B-155), reszta `<nazwa>.svg`. */
-function resultFile(source: Source, locale: SceneLocale): string {
-  if (!isSecretTrophy(source.name)) return `${source.name}.svg`;
-  return outputFileName(source.name, buildAll(source).find((res) => res.locale === locale)!.svg);
+/** Nazwa pliku w katalogu języka. */
+function resultFile(source: Source, _locale: SceneLocale): string {
+  return `${source.name}.svg`;
 }
 
 // Moduł 1 - testy współrzędnych (module.json vs *.hotspots.json).
 const examples = join(examplesRoot, 'wyludzone-haslo');
 const assets = join(modulesRoot, 'wyludzone-haslo', 'assets');
 
-describe('sceny z kompozytora (każdy moduł i trofea)', () => {
-  it('cele w scenes/examples: moduły z packages/content/modules albo cele statyczne (achievements, og)', () => {
+describe('sceny z kompozytora (każdy moduł i og)', () => {
+  it('cele w scenes/examples: moduły z packages/content/modules albo cel statyczny og; bez trofeów (D-174)', () => {
     expect(targets).toContain('wyludzone-haslo');
-    expect(targets).toContain('achievements');
+    expect(targets).not.toContain('achievements');
     for (const target of targets) expect(target in STATIC_TARGETS || existsSync(join(modulesRoot, target, 'module.json')), target).toBe(true);
   });
 
@@ -83,9 +81,9 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
     expect(PROPS.phoneTop({ state: 'ringing' }).svg).toContain('Odbierz');
   });
 
-  // Kontrola „grafika bez źródła” obejmuje assets/scenes modułu (i public/achievements), nie korzeń assets/: tam leżą też avatary i
+  // Kontrola „grafika bez źródła” obejmuje assets/scenes modułu (i public/og), nie korzeń assets/: tam leżą też avatary i
   // pliki spoza kompozytora (miniatura ma źródło, ale obok bywa podgląd PNG).
-  it('każde źródło ma swój plik wynikowy (scena ze strings - w katalogu każdego języka); każda grafika w assets/scenes modułu i w public/achievements ma źródło (nic ręcznego)', () => {
+  it('każde źródło ma swój plik wynikowy (scena ze strings - w katalogu każdego języka); każda grafika w assets/scenes modułu i w public/og ma źródło (nic ręcznego)', () => {
     for (const source of sources) {
       const locales = sceneLocales(specOf(source));
       if (locales.length === 0) expect(existsSync(svgPath(source)), label(source)).toBe(true);
@@ -136,9 +134,8 @@ describe('sceny z kompozytora (każdy moduł i trofea)', () => {
 });
 
 describe('sceny modułu 1 z kompozytora', () => {
-  it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura); trofea: moduł 1 - 3 × zdobyte/zablokowane, moduł 2 (D-124) - 3 × zdobyte/zablokowane + tajne zdobyte (zablokowane tajne - wspólna grafika)', () => {
+  it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
     expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(30);
-    expect(sources.filter((s) => s.target === 'achievements')).toHaveLength(13);
   });
 
   it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
@@ -188,56 +185,6 @@ describe('sceny modułu 1 z kompozytora', () => {
     expect(svg('curious', false)).toContain('CURIOUS DETECTIVE');
     expect(svg('perfect', false)).toContain('LEGENDARY');
     expect(svg('first', false)).toContain('FIRST CASE CLOSED');
-  });
-
-  // Trofea w wersjach językowych (strings sceny, jak D-135): napisy klocka PRZED zamianą na krzywe, w trybie dopasowania z minimum sceny.
-  const trophyTexts = (name: string, locale: SceneLocale) => {
-    const spec = specOf({ target: 'achievements', name });
-    const item = spec.items[0];
-    const table = spec.strings![locale]!;
-    const params = Object.fromEntries(
-      Object.entries(item.params ?? {}).map(([key, value]) => [key, value && typeof value === 'object' && '$t' in value ? table[(value as { $t: string }).$t] : value]),
-    );
-    const svg = PROPS[item.prop](params, { minFontSize: MIN_TEXT_PX / phoneScale(spec), where: name }).svg as string;
-    return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1].replace(/&amp;/g, '&'));
-  };
-
-  it.each(SCENE_LOCALES.map((locale) => [locale] as const))('trofea (%s): każda scena osiągnięcia ma oba języki; zdobyte - nazwa i ranga z "strings", zablokowane bez nazwy (tajne: „???”)', (locale) => {
-    const expected = {
-      pl: {
-        'osiagniecie-pierwsza-sprawa': ['ZAMKNIĘTA', 'SPRAWA', '№ 1', 'PIERWSZA SPRAWA ZAMKNIĘTA'],
-        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARNE', 'SPRAWA BEZ SKAZY'],
-        'osiagniecie-ciekawski-detektyw': ['?', 'TAJNE', 'CIEKAWSKI DETEKTYW'],
-        'osiagniecie-cisza-na-linii': ['RZADKIE', 'CISZA NA LINII'],
-        'osiagniecie-czysty-odsluch': ['7/7', 'RZADKIE', 'SŁUCH ABSOLUTNY'],
-        'osiagniecie-pelny-zapis': ['“', 'LEGENDARNE', 'PEŁNY ZAPIS'],
-        'osiagniecie-off-the-record': ['TAJNE', 'POZA PROTOKOŁEM'],
-        'osiagniecie-tajne-zablokowane': ['???', 'TAJNE'],
-        'osiagniecie-pierwsza-sprawa-zablokowane': ['ZABLOKOWANE'],
-      },
-      en: {
-        'osiagniecie-pierwsza-sprawa': ['CLOSED', 'CASE', '№ 1', 'FIRST CASE CLOSED'],
-        'osiagniecie-perfekcyjne-sledztwo': ['100%', 'LEGENDARY', 'FLAWLESS CASE'],
-        'osiagniecie-ciekawski-detektyw': ['?', 'SECRET', 'CURIOUS DETECTIVE'],
-        'osiagniecie-cisza-na-linii': ['RARE', 'DEAD AIR'],
-        'osiagniecie-czysty-odsluch': ['7/7', 'RARE', 'PERFECT PITCH'],
-        'osiagniecie-pelny-zapis': ['“', 'LEGENDARY', 'FULL TRANSCRIPT'],
-        'osiagniecie-off-the-record': ['SECRET', 'OFF THE RECORD'],
-        'osiagniecie-tajne-zablokowane': ['???', 'SECRET'],
-        'osiagniecie-pierwsza-sprawa-zablokowane': ['LOCKED'],
-      },
-    }[locale];
-    for (const [name, texts] of Object.entries(expected)) expect(trophyTexts(name, locale), name).toEqual(texts);
-    const achievementSources = sources.filter((s) => s.target === 'achievements');
-    for (const source of achievementSources) {
-      expect(sceneLocales(specOf(source)), source.name).toEqual([...SCENE_LOCALES]);
-      if (!source.name.endsWith('-zablokowane')) continue;
-      // Zablokowana nie zawiera nazwy zdobytej (tajne zablokowane - wspólna grafika, bez pary).
-      const earned = sources.find((s) => s.target === 'achievements' && s.name === source.name.replace(/-zablokowane$/, ''));
-      const earnedName = earned ? (specOf(earned).strings![locale]!.name as string) : undefined;
-      if (earnedName) expect(trophyTexts(source.name, locale).join(' '), source.name).not.toContain(earnedName);
-      expect(trophyTexts(source.name, locale).length, source.name).toBeLessThanOrEqual(2);
-    }
   });
 
   it('D-104: reportPortrait (jeszcze bez sceny w module) renderuje się z domyślnymi parametrami i ma wszystkie sloty raportu', () => {

@@ -44,8 +44,8 @@ export default function PinnedBadges({ pinned, className = '' }: { pinned: Pinne
               data-testid="pinned-badge"
             >
               {image && (
-                // eslint-disable-next-line @next/next/no-img-element -- statyczny SVG z public/achievements; SVG wyłącznie przez <img> (D-051)
-                <img src={image} alt="" width={24} height={24} className="h-6 w-6" />
+                // eslint-disable-next-line @next/next/no-img-element -- statyczna grafika z public/achievements
+                <img src={image} alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
               )}
             </button>
             {open === badge.code && (

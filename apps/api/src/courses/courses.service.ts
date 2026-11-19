@@ -422,8 +422,7 @@ export class CoursesService implements OnModuleInit {
         ? await this.gamificationService.awardCourseCompletion(tx, organizationId, userId, {
             score,
             courseSlug,
-            evidence,
-            // Moduł 2 (D-124): Dead Air, Perfect Pitch i komplet dowodów (z ukrytymi) z bloków tego podejścia.
+            // Moduł 2 (D-124): Dead Air i Perfect Pitch z bloków tego podejścia (Full Transcript to sam wynik, D-174).
             module2: courseSlug === MODULE_2_SLUG ? safeModule2Facts(progress, blocks) : undefined,
             assignmentId: assignment.id,
           })

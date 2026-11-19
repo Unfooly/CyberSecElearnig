@@ -173,11 +173,10 @@ część przecinająca środek klocka (`stackedHalves`) to czytelny błąd.
 `phoneTop` w stanie `ringing` dzwoni (klasy animacji `a-ring`, `a-wave`, `a-grow`; `animated: false` je wyłącza). Test
 `odprawa.test.ts` pilnuje, że build KAŻDEJ sceny z `examples/<cel>/*.json` daje identyczny plik i identyczne `*.hotspots.json`
 (B-128: jeden katalog na cel - `examples/<slug>/` dla modułu, wynik w `packages/content/modules/<slug>/assets/scenes` albo `assets/`
-dla miniatury; `examples/achievements/` dla trofeów, wynik w `apps/web/public/achievements/<język>/` - trofea są scenami ze `strings`:
-tajne trofea pod nazwą z hashem treści (`trophy-files.ts`, po przebudowie usuń stary plik i zaktualizuj `SECRET_ICON_FILES` w API, D-156);
-napisy `trophyBadge`/`trophyHelpdesk` (`name`, `rank`, `lockedLabel`, medal `first`: `caseLabel`, `stampLabel`) idą przez `{ "$t" }`,
-wstęga i pigułka rangi rosną pod dłuższy tekst, a potem `fitText` w jednej linii, `trophy-labels.ts`), i że każda grafika w tych katalogach ma
-źródło. Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny
+dla miniatury; `examples/og/` dla og:image), i że każda grafika w tych katalogach ma źródło. **Trofea osiągnięć od D-174 nie są wynikiem
+kompozytora:** to grafiki WebP z generatora, bez tekstu (`apps/web/public/achievements/<język>/`, ten sam plik w obu językach; tajne pod
+nazwą z hashem sha256 pliku - `SECRET_ICON_FILES` w API, test `achievement-texts.spec.ts`). Klocki `trophyBadge`/`trophyHelpdesk` i
+`trophy-files.ts` zostają w kodzie bez źródeł (B-167). Nowy moduł = nowy katalog `examples/<slug>/`, test obejmuje go sam. Po zmianie klocka albo kompozytora przebuduj sceny
 (`cli.ts build examples/<slug>/<scena>.json --out <assets>/scenes`) i opublikuj (`--assets`).
 
 ### Grafika og:image serwisu (D-126)
@@ -192,8 +191,8 @@ wstęga i pigułka rangi rosną pod dłuższy tekst, a potem `fitText` w jednej 
 Zarejestrowane w `PROPS` (`...HELPDESK_PROPS`), dostarczone przez grafika (paczki 1 i 2). Klocki są bez słów (poza cyframi i
 numerami zamaskowanymi: 12 3XX XX 41, 214); napisy wpala scena klockami `textBox` w slotach `slot-*` (i18n-4, D-137 - dawniej `textLayer`
 odtwarzacza). Moduł 2 jest tylko po polsku: teksty wprost w parametrach `textBox`, bez `strings` (wersja EN - B-146). Źródła scen:
-`examples/glos-z-helpdesku/*.json` (sceny, zbliżenia, warianty `-pion`; legitymacja i pieczęć jak w module 1), trofea:
-`examples/achievements/osiagniecie-{cisza-na-linii,czysty-odsluch,pelny-zapis,off-the-record}*.json`. Współrzędne hotspotów
+`examples/glos-z-helpdesku/*.json` (sceny, zbliżenia, warianty `-pion`; legitymacja i pieczęć jak w module 1; trofea od D-174 - WebP
+z generatora, nie sceny). Współrzędne hotspotów
 w `module.json` pochodzą z `*.hotspots.json` (źródło prawdy); napisy bez slotu (strona „Zespół”, podpisy ikon pulpitu, hasło plakatu -
 `noCodePoster` z `slogan: true`) mają współrzędne `textBox` wpisane ręcznie w scenie.
 

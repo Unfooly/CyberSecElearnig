@@ -131,7 +131,7 @@ function StartScreenInner({ title, info, contentBase, lang, onStart, narration, 
               role="note"
               data-testid="module-start-notice"
               lang={lang}
-              className="module-start-notice flex items-start gap-2.5 rounded-xl border-2 border-[#D9483B] bg-[#FDF0EE] px-3.5 py-2.5 text-base font-medium leading-snug text-ink"
+              className="module-start-warning flex items-start gap-2.5 rounded-xl border-2 border-[#D9483B] bg-[#FDF0EE] px-3.5 py-2.5 text-base font-medium leading-snug text-ink"
             >
               <AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#B23A2E]" />
               <span>{info.notice}</span>

@@ -971,9 +971,10 @@
 }
 
 /* Ekran startu modułu z uwagą startu (D-171) na telefonie: o blok więcej w karcie (max 78% wysokości) - ciaśniejsze odstępy, żeby Start
-   był widoczny bez przewijania karty także przy dłuższym przekładzie (layout-check `start`, 360x740 xx). */
+   był widoczny bez przewijania karty także przy dłuższym przekładzie (layout-check `start`, 360x740 xx). Ramka uwagi to
+   `.module-start-warning` - nie mylić z `.module-start-note` (dopisek „Postęp zapisuje się sam”). */
 @media (max-width: 639px) {
-  main.module-start-card:has(.module-start-notice) {
+  main.module-start-card:has(.module-start-warning) {
     gap: 0.625rem;
     /* Karta może zająć więcej wysokości (okładka nad nią mniejsza) - inaczej długi przekład przewija kartę. */
     max-height: 86%;
@@ -1002,15 +1003,15 @@
   }
   /* Z uwagą startu (D-171) jest o blok więcej - ciaśniejsze odstępy i ramka (tekst zostaje 16 px), żeby Start nadal mieścił się w wysokości
      także przy dłuższym przekładzie (layout-check `start` s2/s9, pseudo-lokalizacja). */
-  main.module-start-card:has(.module-start-notice) {
+  main.module-start-card:has(.module-start-warning) {
     gap: 0.5rem;
   }
-  .module-start-card .module-start-notice {
+  .module-start-card .module-start-warning {
     padding-top: 0.375rem;
     padding-bottom: 0.375rem;
     line-height: 1.3;
   }
-  .module-start-card:has(.module-start-notice) .module-start-subtitle {
+  .module-start-card:has(.module-start-warning) .module-start-subtitle {
     line-height: 1.3;
   }
   /* Opis może mieć 2 zdania (moduł 5, D-167) - szerszy panel = mniej linijek; okładka i tak jest za nim. */

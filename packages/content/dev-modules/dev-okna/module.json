@@ -35,9 +35,9 @@
       "imageAlt": "Biuro Pawła: monitor, smartfon na biurku, Paweł.",
       "imagePortrait": "images/biuro-pawla-pion.webp",
       "portraitHotspots": [
-        { "id": "komputer", "x": 0, "y": 6, "width": 46, "height": 44 },
-        { "id": "smartfon", "x": 55, "y": 41, "width": 20, "height": 9 },
-        { "id": "pawel", "x": 33, "y": 38, "width": 33, "height": 61 }
+        { "id": "komputer", "x": 4, "y": 43, "width": 34, "height": 21 },
+        { "id": "smartfon", "x": 16, "y": 65, "width": 22, "height": 7 },
+        { "id": "pawel", "x": 42, "y": 14, "width": 46, "height": 85 }
       ],
       "hotspots": [
         { "id": "komputer", "label": "Komputer", "x": 8, "y": 31, "width": 21, "height": 38, "done": true },

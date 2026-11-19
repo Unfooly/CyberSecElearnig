@@ -29,7 +29,7 @@ import {
   shuffleContext,
   toClientNote,
 } from './client-view';
-import { resolveVersion } from './course-versions';
+import { resolveVersion, upgradeUnstartedPin } from './course-versions';
 import { moduleMetaFor, warmModuleMeta } from './module-meta';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
 import {
@@ -278,7 +278,9 @@ export class CoursesService implements OnModuleInit {
     acceptLanguage?: string,
   ): Promise<CourseDetailDto> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
-      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+      // Przed ukończeniem pierwszego bloku przypisanie przechodzi na najnowszą wersję treści (D-177) - np. moduł otwarty przed importem
+      // nowej treści nie zostaje na starej, choć nic w nim jeszcze nie zrobiono.
+      const assignment = await upgradeUnstartedPin(tx, await this.findOwnAssignment(tx, organizationId, userId, courseId));
       const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
 
       // NOT_STARTED -> IN_PROGRESS tylko warunkowo: równoległy zapis mógł już przesunąć/ukończyć kurs, a bezwarunkowy update

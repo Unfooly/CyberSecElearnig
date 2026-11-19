@@ -970,7 +970,7 @@
   }
 }
 
-/* Ekran startu modułu z uwagą startu (D-171) na telefonie: o blok więcej w karcie (max 78% wysokości) - ciaśniejsze odstępy, żeby Start
+/* Ekran startu modułu z uwagą startu (D-171) na telefonie: o blok więcej w karcie - ciaśniejsze odstępy i karta do 86% wysokości zamiast 78%, żeby Start
    był widoczny bez przewijania karty także przy dłuższym przekładzie (layout-check `start`, 360x740 xx). Ramka uwagi to
    `.module-start-warning` - nie mylić z `.module-start-note` (dopisek „Postęp zapisuje się sam”). */
 @media (max-width: 639px) {

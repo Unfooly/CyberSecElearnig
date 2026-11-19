@@ -14,7 +14,7 @@ export const modulesRoot = () => path.join(process.cwd(), '..', '..', 'packages'
 // treść prawdziwego modułu. Import treści ich nie czyta (tylko packages/content/modules).
 export const devModulesRoot = () => path.join(process.cwd(), '..', '..', 'packages', 'content', 'dev-modules');
 
-/** Katalog modułu dla sluga z parametru (brak parametru = moduł 1) albo null, gdy slug niepoprawny albo moduł nie istnieje. */
+/** Katalog modułu dla sluga z parametru (brak parametru = `dev-modul-1`) albo null, gdy slug niepoprawny albo moduł nie istnieje. */
 export function harnessModuleDir(param: string | undefined): { slug: string; dir: string } | null {
   const slug = param ?? DEFAULT_MODULE_SLUG;
   if (!SLUG.test(slug)) return null;

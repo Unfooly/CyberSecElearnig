@@ -57,6 +57,14 @@ async function walk(dir) {
 }
 
 async function main() {
+  // Kanarki muszą nadal być w treści, którą wczytuje harness (D-175) - inaczej test przechodziłby, niczego nie wykrywając.
+  const fixture = await readFile(join(process.cwd(), 'packages', 'content', 'dev-modules', 'dev-modul-1', 'module.json'), 'utf8');
+  const missing = SECRET_STRINGS.filter((secret) => !fixture.includes(secret));
+  if (missing.length > 0) {
+    console.error(`Kanarków nie ma już w dev-modul-1/module.json (zaktualizuj SECRET_STRINGS): ${missing.join(' | ')}`);
+    process.exitCode = 1;
+    return;
+  }
   let files = [];
   for (const dir of SCAN_DIRS) {
     try {

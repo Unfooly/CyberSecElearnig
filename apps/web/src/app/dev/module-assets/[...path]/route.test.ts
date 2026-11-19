@@ -8,7 +8,8 @@ import { GET } from './route.dev';
 // assets/ istniejącego modułu (plik źródłowy albo klucz z assets.lock.json), nic spoza katalogu. Next dekoduje segmenty przed
 // wywołaniem (`%2e%2e` przychodzi jako `..`).
 const get = (...path: string[]) => GET(new Request('http://localhost/dev/module-assets'), { params: { path } });
-const M1 = 'wyludzone-haslo';
+// Dawna treść modułu 1 jako moduł podglądu (D-175) - ma sceny odprawy i opublikowane klucze w assets.lock.json.
+const M1 = 'dev-modul-1';
 
 describe('GET /dev/module-assets/[...path]', () => {
   afterEach(() => {
@@ -30,7 +31,7 @@ describe('GET /dev/module-assets/[...path]', () => {
     expect(await source.text()).toMatch(/^<svg /);
 
     // Klucz bieżącej publikacji z locka (zmienia się przy każdej zmianie pliku), nie wpisany na sztywno.
-    const lock = JSON.parse(readFileSync(join(process.cwd(), '..', '..', 'packages', 'content', 'modules', M1, 'assets.lock.json'), 'utf8'));
+    const lock = JSON.parse(readFileSync(join(process.cwd(), '..', '..', 'packages', 'content', 'dev-modules', M1, 'assets.lock.json'), 'utf8'));
     const key: string = lock.entries['korytarz#image'].key;
     const published = await get(M1, ...key.split('/'));
     expect(published.status).toBe(200);
@@ -38,7 +39,7 @@ describe('GET /dev/module-assets/[...path]', () => {
 
   it('B-128: slug nieistniejącego modułu, niepoprawny slug albo brak ścieżki po slugu -> 404', async () => {
     vi.stubEnv('NEXT_PUBLIC_DEV_HARNESS', '1');
-    for (const path of [['nie-ma-modulu', 'scenes', 'odprawa-biurko.svg'], ['..', 'wyludzone-haslo', 'scenes', 'odprawa-biurko.svg'], ['Wyludzone', 'x.svg'], [M1]]) {
+    for (const path of [['nie-ma-modulu', 'scenes', 'odprawa-biurko.svg'], ['..', 'dev-modul-1', 'scenes', 'odprawa-biurko.svg'], ['Wyludzone', 'x.svg'], [M1]]) {
       expect((await get(...path)).status, path.join('/')).toBe(404);
     }
   });

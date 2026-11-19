@@ -142,7 +142,7 @@ tekstu to błąd builda.
 ### Klocki odprawy (`props-odprawa.ts`, widok z góry na biurko, D-084)
 
 Zarejestrowane w tym samym `PROPS` (`...ODPRAWA_PROPS`). Sceny 1600×900 z jednolitym tłem biurka
-(`"background": { "flat": true, "wall": "#D9C3A5" }`); źródła: `examples/wyludzone-haslo/odprawa-*.json`. Części `slot-*` to miejsca, w które
+(`"background": { "flat": true, "wall": "#D9C3A5" }`); źródła: `examples/dev-modul-1/odprawa-*.json` (dawna treść modułu 1 jako moduł podglądu, D-175). Części `slot-*` to miejsca, w które
 odtwarzacz wstawia HTML (zadania, dane gracza) - ich współrzędne (`*.hotspots.json`) trafiają do `steps[].slots` bloku BRIEFING.
 
 | prop | parametry | części |

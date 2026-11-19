@@ -20,14 +20,15 @@ import type { SceneLocale, SceneSpec } from './types.js';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..', '..');
 const examplesRoot = join(here, 'examples');
-const modulesRoot = join(repo, 'packages', 'content', 'modules');
+// Moduły podglądu `dev-*` (D-115) leżą w packages/content/dev-modules - m.in. `dev-modul-1`, dawna treść modułu 1 (D-175).
+const moduleRoot = (slug: string) => join(repo, 'packages', 'content', slug.startsWith('dev-') ? 'dev-modules' : 'modules', slug);
 // Grafika og:image serwisu (D-126): statyczny plik aplikacji web; PNG obok powstaje z tego SVG (scripts/render-og-image.mjs).
 const og = join(repo, 'apps', 'web', 'public', 'og');
 const STATIC_TARGETS: Record<string, string> = { og };
 const targets = readdirSync(examplesRoot).filter((dir) => statSync(join(examplesRoot, dir)).isDirectory()).sort();
 /** Katalogi wyników celu: moduł - assets/scenes i assets (miniatura); og - public/og. */
 const outputDirs = (target: string) =>
-  STATIC_TARGETS[target] ? [STATIC_TARGETS[target]] : [join(modulesRoot, target, 'assets', 'scenes'), join(modulesRoot, target, 'assets')];
+  STATIC_TARGETS[target] ? [STATIC_TARGETS[target]] : [join(moduleRoot(target), 'assets', 'scenes'), join(moduleRoot(target), 'assets')];
 interface Source {
   target: string;
   name: string;
@@ -53,14 +54,14 @@ function resultFile(source: Source, _locale: SceneLocale): string {
 }
 
 // Moduł 1 - testy współrzędnych (module.json vs *.hotspots.json).
-const examples = join(examplesRoot, 'wyludzone-haslo');
-const assets = join(modulesRoot, 'wyludzone-haslo', 'assets');
+const examples = join(examplesRoot, 'dev-modul-1');
+const assets = join(moduleRoot('dev-modul-1'), 'assets');
 
 describe('sceny z kompozytora (każdy moduł i og)', () => {
   it('cele w scenes/examples: moduły z packages/content/modules albo cel statyczny og; bez trofeów (D-174)', () => {
-    expect(targets).toContain('wyludzone-haslo');
+    expect(targets).toContain('dev-modul-1');
     expect(targets).not.toContain('achievements');
-    for (const target of targets) expect(target in STATIC_TARGETS || existsSync(join(modulesRoot, target, 'module.json')), target).toBe(true);
+    for (const target of targets) expect(target in STATIC_TARGETS || existsSync(join(moduleRoot(target), 'module.json')), target).toBe(true);
   });
 
   it('og:image serwisu (D-126): jedyny tekst to nazwa i podtytuł; klocki `wordless` nie mają napisów', () => {
@@ -135,7 +136,7 @@ describe('sceny z kompozytora (każdy moduł i og)', () => {
 
 describe('sceny modułu 1 z kompozytora', () => {
   it('moduł 1: komplet źródeł (11 scen + 2 sceny w pionie + 2 okna w pionie, 5 odprawy + 5 pionowych, 3 zamknięcia sprawy + 1 pionowa, miniatura)', () => {
-    expect(sources.filter((s) => s.target === 'wyludzone-haslo')).toHaveLength(30);
+    expect(sources.filter((s) => s.target === 'dev-modul-1')).toHaveLength(30);
   });
 
   it('klocki odprawy, zamknięcia sprawy i przeglądarki są zarejestrowane w PROPS kompozytora', () => {
@@ -288,10 +289,10 @@ describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, modu�
   // SHA-256 SVG zbudowanych PRZED dodaniem trybu dopasowania (main po #126) - każda scena modułów 1-2 z reportFolderOpen, reportPortrait,
   // closedStamp i commissionerNote. Zmiana skrótu = zmiana grafiki istniejącego modułu: tylko świadomą decyzją (nowy wpis D-xxx).
   const GOLDEN: Record<string, string> = {
-    'wyludzone-haslo/zamkniecie-raport': '90cca0c75e10d321e9d2b0da47d10707cda0b35c1ade096eea4bc4e7d6b30a8b',
-    'wyludzone-haslo/zamkniecie-raport-pion': '8126b02fd8eda60951a394e2658866343ec64b9609a72867c472ac88cd2085ee',
-    'wyludzone-haslo/zamkniecie-pieczec': '5b21f1488344a9ec5553588eabd2ee798a033f015969dc8c2b54d082168c0f90',
-    'wyludzone-haslo/zamkniecie-liscik': '52a4d25ea56728da30858e8a4591480d4df8014b5fbbc7124e8967d5ef8e1702',
+    'dev-modul-1/zamkniecie-raport': '90cca0c75e10d321e9d2b0da47d10707cda0b35c1ade096eea4bc4e7d6b30a8b',
+    'dev-modul-1/zamkniecie-raport-pion': '8126b02fd8eda60951a394e2658866343ec64b9609a72867c472ac88cd2085ee',
+    'dev-modul-1/zamkniecie-pieczec': '5b21f1488344a9ec5553588eabd2ee798a033f015969dc8c2b54d082168c0f90',
+    'dev-modul-1/zamkniecie-liscik': '52a4d25ea56728da30858e8a4591480d4df8014b5fbbc7124e8967d5ef8e1702',
     'glos-z-helpdesku/zamkniecie-raport': 'e1e95b5e517c2b44966aed2aa52bbef33544d975c2ea0f0ff88b6dd450173c5b',
     'glos-z-helpdesku/zamkniecie-raport-pion': '768d00b818ae28cf9c237ddaedb829c41d3c28906039f5f56971d40c6498b33e',
     'glos-z-helpdesku/zamkniecie-pieczec': '5b21f1488344a9ec5553588eabd2ee798a033f015969dc8c2b54d082168c0f90',
@@ -307,7 +308,7 @@ describe('klocki zamknięcia sprawy (D-140): napisy ze strings w module 3, modu�
 
   it('każda scena modułów 1-2 z tymi klockami jest w liście skrótów', () => {
     const using = sources
-      .filter((s) => s.target === 'wyludzone-haslo' || s.target === 'glos-z-helpdesku')
+      .filter((s) => s.target === 'dev-modul-1' || s.target === 'glos-z-helpdesku')
       .filter((s) => specOf(s).items.some((it) => ['reportFolderOpen', 'reportPortrait', 'closedStamp', 'commissionerNote'].includes(it.prop)))
       .map((s) => `${s.target}/${s.name}`)
       .sort();

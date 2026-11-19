@@ -1,7 +1,8 @@
 // Sprawdza, że sekretne pola treści (klucz odpowiedzi, wyjaśnienia, reactions.result, podpowiedzi) NIE trafiają do
 // KLIENCKIEGO bundla Next.js (apps/web/.next/static/) - silnik szkoleń, niezmiennik nr 1 (CLAUDE.md): "Klucz
 // odpowiedzi nigdy nie trafia do klienta". Powód tego testu: apps/web/src/app/dev/player-harness/page.dev.tsx
-// wczytuje CAŁY packages/content/modules/wyludzone-haslo/module.json po stronie serwera,
+// wczytuje CAŁY module.json modułu podglądu po stronie serwera (domyślnie packages/content/dev-modules/dev-modul-1 - dawna treść
+// modułu 1, D-175),
 // zanim wybierze i przefiltruje przez toClientBlock JEDEN blok (SCENE_HOTSPOTS "biuro-anny") - ten test potwierdza,
 // że NIEUŻYWANA reszta modułu (sekrety WSZYSTKICH INNYCH bloków: EMAIL_ANALYSIS.criteria[].explanation,
 // reactions.result, TEXT_INPUT_GUIDED.hints/answer) nigdy nie wycieka do przeglądarki - ani gdy
@@ -28,7 +29,7 @@ const NEXT_DIR = join(process.cwd(), 'apps', 'web', '.next');
 const SCAN_DIRS = [join(NEXT_DIR, 'static'), join(NEXT_DIR, 'standalone')];
 const TEXT_EXTENSIONS = new Set(['.js', '.css', '.json', '.map', '.txt']);
 
-// Trzy charakterystyczne, sekretne ciągi z packages/content/modules/wyludzone-haslo/module.json - po jednym z
+// Trzy charakterystyczne, sekretne ciągi z packages/content/dev-modules/dev-modul-1/module.json - po jednym z
 // TRZECH RÓŻNYCH bloków/kategorii sekretu (nie tylko ten sam typ pola), żeby test nie przeoczył systemowej luki
 // dotyczącej tylko jednej kategorii:
 const SECRET_STRINGS = [

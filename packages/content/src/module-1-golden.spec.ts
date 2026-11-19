@@ -14,8 +14,10 @@ import { hashContent, moduleWarnings, parseModule } from './node';
 // (typografia: trzy „ - ” w tekstach dla gracza zamienione na półpauzę „ – ” - parsed, contentHash i clientBlocks nowe, ostrzeżenia
 // bez zmian; nowa wersja kursu przy imporcie); D-163 (numer sprawy `caseNumber: 1` na poziomie modułu - nowe tylko parsed; contentHash,
 // clientBlocks i ostrzeżenia bez zmian, więc import NIE tworzy nowej wersji kursu); D-170 (nazwa „Zabawa w phishing”, nowy podtytuł,
-// okładki `cover` i miniatura WebP z grafik właściciela - poziom modułu: nowe tylko parsed, bez nowej wersji kursu); D-171 (uwaga startu `startNotice` - też tylko parsed).
-const MODULE_1 = join(__dirname, '..', 'modules', 'wyludzone-haslo', 'module.json');
+// okładki `cover` i miniatura WebP z grafik właściciela - poziom modułu: nowe tylko parsed, bez nowej wersji kursu); D-171 (uwaga startu `startNotice` - też tylko parsed);
+// D-175 (dawna treść modułu 1 przeniesiona jako moduł podglądu `dev-modul-1`, bo prawdziwy moduł 1 dostaje nową treść: zmienione tylko
+// `slug` i `title` - nowe tylko parsed; contentHash, clientBlocks i ostrzeżenia bez zmian - test pilnuje teraz tej kopii).
+const MODULE_1 = join(__dirname, '..', 'dev-modules', 'dev-modul-1', 'module.json');
 
 const context = {
   shuffleSeed: (blockId: string): ShuffleSeed => [blockId.length, 7, 11, 13],
@@ -25,7 +27,7 @@ const context = {
 const sha = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 const GOLDEN = {
-  parsed: '30f2a2e3cccc3b024bb2305c76a5174006547bb7ed9dbfb94a45818a76e91e5e',
+  parsed: '7d86f933bcfb69550aa833ab489fcb9e8614cf2cd2c34655c3f644f0454247f2',
   contentHash: 'dff6c20607cb9f9df23f8893b8512d22e32193472698483e150ee6bd10e4911b',
   clientBlocks: 'cfd91fbcddd7b5920afa6691d4940b8dba4afbf107a88a0a26d97b79265dc803',
   warnings: '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',

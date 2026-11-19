@@ -7,7 +7,7 @@ import type { SceneSpec } from './types.js';
 
 // Narzędzia D-101 (crop-zooms.ts, wrap-in-monitor.ts): zmieniają tylko tło, kadr i przesunięcia; drugi przebieg nic nie zmienia.
 // Sceny modułu 1 (źródła per cel: scenes/examples/<slug>/, B-128).
-const examples = join(dirname(fileURLToPath(import.meta.url)), 'examples', 'wyludzone-haslo');
+const examples = join(dirname(fileURLToPath(import.meta.url)), 'examples', 'dev-modul-1');
 const scene = (name: string) => JSON.parse(readFileSync(join(examples, `${name}.json`), 'utf8')) as SceneSpec;
 
 /** Treść sceny bez tego, co narzędzia wolno zmienić (tło, kadr, położenie elementów, ramka monitora). */

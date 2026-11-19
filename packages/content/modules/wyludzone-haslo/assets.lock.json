@@ -4,183 +4,53 @@
   "entries": {
     "module#thumbnail": {
       "original": "images/miniatura.webp",
-      "hash": "c6d2af9b",
-      "key": "assets/wyludzone-haslo/images/miniatura.c6d2af9b.webp"
+      "hash": "b81ce3d6",
+      "key": "assets/wyludzone-haslo/images/miniatura.b81ce3d6.webp"
     },
     "module#cover.start": {
       "original": "images/start.webp",
-      "hash": "c66f76a6",
-      "key": "assets/wyludzone-haslo/images/start.c66f76a6.webp"
+      "hash": "8d22c34a",
+      "key": "assets/wyludzone-haslo/images/start.8d22c34a.webp"
     },
     "module#cover.end": {
       "original": "images/koniec.webp",
-      "hash": "ee744380",
-      "key": "assets/wyludzone-haslo/images/koniec.ee744380.webp"
+      "hash": "3deb6e6d",
+      "key": "assets/wyludzone-haslo/images/koniec.3deb6e6d.webp"
     },
     "module#cover.startPortrait": {
       "original": "images/start-pion.webp",
-      "hash": "9e2e277c",
-      "key": "assets/wyludzone-haslo/images/start-pion.9e2e277c.webp"
+      "hash": "8cad0e42",
+      "key": "assets/wyludzone-haslo/images/start-pion.8cad0e42.webp"
     },
     "module#cover.endPortrait": {
       "original": "images/koniec-pion.webp",
-      "hash": "b191c9b4",
-      "key": "assets/wyludzone-haslo/images/koniec-pion.b191c9b4.webp"
+      "hash": "34e4a83a",
+      "key": "assets/wyludzone-haslo/images/koniec-pion.34e4a83a.webp"
     },
-    "odprawa#steps.0.image": {
-      "original": "scenes/odprawa-biurko.svg",
-      "hash": "d2702633",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-biurko.d2702633.svg"
+    "biuro-pawla#image": {
+      "original": "images/biuro-pawla.webp",
+      "hash": "20424773",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp"
     },
-    "odprawa#steps.1.image": {
-      "original": "scenes/odprawa-rozmowa.svg",
-      "hash": "1502e6de",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.1502e6de.svg"
+    "biuro-pawla#imagePortrait": {
+      "original": "images/biuro-pawla-pion.webp",
+      "hash": "c1e33646",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c1e33646.webp"
     },
-    "odprawa#steps.2.image": {
-      "original": "scenes/odprawa-akta.svg",
-      "hash": "719e8dbe",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-akta.719e8dbe.svg"
-    },
-    "odprawa#steps.3.image": {
-      "original": "scenes/odprawa-legitymacja.svg",
-      "hash": "f7ceead8",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.f7ceead8.svg"
-    },
-    "odprawa#steps.2.closedImage": {
-      "original": "scenes/odprawa-teczka.svg",
-      "hash": "e85aed2d",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-teczka.e85aed2d.svg"
-    },
-    "odprawa#steps.0.portrait.image": {
-      "original": "scenes/odprawa-biurko-pion.svg",
-      "hash": "f026c3ef",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-biurko-pion.f026c3ef.svg"
-    },
-    "odprawa#steps.1.portrait.image": {
-      "original": "scenes/odprawa-rozmowa-pion.svg",
-      "hash": "d46de638",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-rozmowa-pion.d46de638.svg"
-    },
-    "odprawa#steps.2.portrait.image": {
-      "original": "scenes/odprawa-akta-pion.svg",
-      "hash": "1146097e",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-akta-pion.1146097e.svg"
-    },
-    "odprawa#steps.3.portrait.image": {
-      "original": "scenes/odprawa-legitymacja-pion.svg",
-      "hash": "7be9c5ef",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-legitymacja-pion.7be9c5ef.svg"
-    },
-    "odprawa#steps.2.portrait.closedImage": {
-      "original": "scenes/odprawa-teczka-pion.svg",
-      "hash": "90593dff",
-      "key": "assets/wyludzone-haslo/scenes/odprawa-teczka-pion.90593dff.svg"
-    },
-    "korytarz#image": {
-      "original": "scenes/korytarz.svg",
-      "hash": "03396990",
-      "key": "assets/wyludzone-haslo/scenes/korytarz.03396990.svg"
-    },
-    "korytarz#imagePortrait": {
-      "original": "scenes/korytarz-pion.svg",
-      "hash": "8298eb57",
-      "key": "assets/wyludzone-haslo/scenes/korytarz-pion.8298eb57.svg"
-    },
-    "korytarz#hotspots.0.media.src": {
-      "original": "scenes/tablica-zoom.svg",
-      "hash": "ecd2c377",
-      "key": "assets/wyludzone-haslo/scenes/tablica-zoom.ecd2c377.svg"
-    },
-    "biuro-anny#image": {
-      "original": "scenes/biuro-anny.svg",
-      "hash": "b7eea3dc",
-      "key": "assets/wyludzone-haslo/scenes/biuro-anny.b7eea3dc.svg"
-    },
-    "biuro-anny#imagePortrait": {
-      "original": "scenes/biuro-anny-pion.svg",
-      "hash": "0d97b05f",
-      "key": "assets/wyludzone-haslo/scenes/biuro-anny-pion.0d97b05f.svg"
-    },
-    "biuro-anny#hotspots.0.media.src": {
-      "original": "scenes/karteczka-zoom.svg",
-      "hash": "f356944b",
-      "key": "assets/wyludzone-haslo/scenes/karteczka-zoom.f356944b.svg"
-    },
-    "biuro-anny#hotspots.3.media.src": {
-      "original": "scenes/kalendarz-zoom.svg",
-      "hash": "ab0560e6",
-      "key": "assets/wyludzone-haslo/scenes/kalendarz-zoom.ab0560e6.svg"
-    },
-    "biuro-anny#hotspots.4.media.src": {
-      "original": "scenes/wydruk.svg",
-      "hash": "f3a084c4",
-      "key": "assets/wyludzone-haslo/scenes/wydruk.f3a084c4.svg"
-    },
-    "biuro-anny#hotspots.5.media.src": {
-      "original": "scenes/kubek-zoom.svg",
-      "hash": "217c1ffc",
-      "key": "assets/wyludzone-haslo/scenes/kubek-zoom.217c1ffc.svg"
-    },
-    "biuro-anny#hotspots.2.media.image": {
-      "original": "scenes/telefon-zoom.svg",
-      "hash": "025d3c90",
-      "key": "assets/wyludzone-haslo/scenes/telefon-zoom.025d3c90.svg"
-    },
-    "biuro-anny#hotspots.1.media.scene.image": {
+    "biuro-pawla#hotspots.0.media.scene.image": {
       "original": "scenes/pulpit.svg",
       "hash": "da6538de",
       "key": "assets/wyludzone-haslo/scenes/pulpit.da6538de.svg"
     },
-    "biuro-anny#hotspots.1.media.scene.hotspots.0.media.src": {
-      "original": "scenes/mail-na-ekranie.svg",
-      "hash": "e04aba84",
-      "key": "assets/wyludzone-haslo/scenes/mail-na-ekranie.e04aba84.svg"
+    "rozmowa-pawel#character.avatar": {
+      "original": "images/pawel.webp",
+      "hash": "74a06b18",
+      "key": "assets/wyludzone-haslo/images/pawel.74a06b18.webp"
     },
-    "biuro-anny#hotspots.1.media.scene.hotspots.1.media.src": {
-      "original": "scenes/historia-przegladarki.svg",
-      "hash": "ca7ec320",
-      "key": "assets/wyludzone-haslo/scenes/historia-przegladarki.ca7ec320.svg"
-    },
-    "biuro-anny#hotspots.1.media.scene.hotspots.0.media.imagePortrait": {
-      "original": "scenes/mail-na-ekranie-pion.svg",
-      "hash": "82ed18d5",
-      "key": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.82ed18d5.svg"
-    },
-    "biuro-anny#hotspots.1.media.scene.hotspots.1.media.imagePortrait": {
-      "original": "scenes/historia-przegladarki-pion.svg",
-      "hash": "4dc7741d",
-      "key": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.4dc7741d.svg"
-    },
-    "rozmowa-anna#character.avatar": {
-      "original": "avatars/anna.svg",
-      "hash": "a31c9500",
-      "key": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg"
-    },
-    "rozmowa-marek#character.avatar": {
-      "original": "avatars/marek.svg",
-      "hash": "27eb889f",
-      "key": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg"
-    },
-    "rozwiazanie-sprawy#closing.image": {
-      "original": "scenes/zamkniecie-raport.svg",
-      "hash": "90cca0c7",
-      "key": "assets/wyludzone-haslo/scenes/zamkniecie-raport.90cca0c7.svg"
-    },
-    "rozwiazanie-sprawy#closing.stamp": {
-      "original": "scenes/zamkniecie-pieczec.svg",
-      "hash": "5b21f148",
-      "key": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.5b21f148.svg"
-    },
-    "rozwiazanie-sprawy#closing.note": {
-      "original": "scenes/zamkniecie-liscik.svg",
-      "hash": "52a4d25e",
-      "key": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.52a4d25e.svg"
-    },
-    "rozwiazanie-sprawy#closing.portrait.image": {
-      "original": "scenes/zamkniecie-raport-pion.svg",
-      "hash": "8126b02f",
-      "key": "assets/wyludzone-haslo/scenes/zamkniecie-raport-pion.8126b02f.svg"
+    "gazeta#image": {
+      "original": "images/gazeta.webp",
+      "hash": "39ac3ca7",
+      "key": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp"
     }
   }
 }

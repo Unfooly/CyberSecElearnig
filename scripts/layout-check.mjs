@@ -2425,6 +2425,7 @@ try {
     const START_CASES = [
       { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
       { name: 'moduł 1 z okładką i uwagą', query: 'module=dev-modul-1&start=1', cover: true, notice: true },
+      { name: 'moduł 1 „Webinar” z okładką i uwagą', query: 'module=wyludzone-haslo&start=1', cover: true, notice: true },
       { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1&noCover=1', cover: false },
       { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&start=1', cover: true },
       { name: 'moduł 3 z okładką', query: 'module=lancuszek&start=1', cover: true },
@@ -2679,6 +2680,7 @@ try {
     const END_CASES = [
       { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1', cover: true },
       { name: 'moduł 1 z okładką', query: 'module=dev-modul-1&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
+      { name: 'moduł 1 „Webinar” z okładką', query: 'module=wyludzone-haslo&block=zasady&completed=1&start=1', cover: true },
       { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1&noCover=1', cover: false },
       { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
       { name: 'moduł 3 z okładką', query: 'module=lancuszek&block=raport&completed=1&start=1', cover: true },

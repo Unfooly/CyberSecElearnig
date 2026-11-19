@@ -1,453 +1,133 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "slug": "wyludzone-haslo",
   "title": "Zabawa w phishing",
   "subtitle": "Twoim zadaniem jest przeprowadzenie dochodzenia w ciekawej sprawie i powstrzymanie cyberprzestępców!",
   "category": "PHISHING_SOCIAL_ENGINEERING",
   "level": "basic",
-  "durationMinutes": 12,
+  "durationMinutes": 10,
   "mandatory": true,
-  "objectives": [
-    "Rozpoznać fałszywą domenę w adresie nadawcy i w linku.",
-    "Wiedzieć, że ani bank, ani IT nie proszą o hasło ani kod SMS.",
-    "Nie zapisywać haseł na widoku i nie używać jednego hasła w wielu systemach.",
-    "Zgłosić podejrzany mail przyciskiem, zanim się kliknie."
+  "locales": [
+    "pl"
   ],
-  "thumbnail": "assets/wyludzone-haslo/images/miniatura.c6d2af9b.webp",
+  "objectives": [
+    "Rozpoznać niespodziewaną, atrakcyjną ofertę jako możliwy początek ataku.",
+    "Wiedzieć, że miła rozmowa telefoniczna nie potwierdza tożsamości rozmówcy.",
+    "Odczytać domenę z adresu linku i odróżnić ją od poddomeny.",
+    "Nie podawać służbowego hasła na obcej stronie i zgłaszać podejrzane linki do IT."
+  ],
+  "thumbnail": "assets/wyludzone-haslo/images/miniatura.b81ce3d6.webp",
   "cover": {
-    "start": "assets/wyludzone-haslo/images/start.c66f76a6.webp",
-    "end": "assets/wyludzone-haslo/images/koniec.ee744380.webp",
-    "startPortrait": "assets/wyludzone-haslo/images/start-pion.9e2e277c.webp",
-    "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.b191c9b4.webp"
+    "start": "assets/wyludzone-haslo/images/start.8d22c34a.webp",
+    "end": "assets/wyludzone-haslo/images/koniec.3deb6e6d.webp",
+    "startPortrait": "assets/wyludzone-haslo/images/start-pion.8cad0e42.webp",
+    "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.34e4a83a.webp"
   },
   "caseNumber": 1,
   "startNotice": "Przed rozpoczęciem tego modułu należy ukończyć moduł „Wykrywanie wiadomości phishingowych”.",
   "blocks": [
     {
-      "id": "odprawa",
-      "type": "BRIEFING",
-      "title": "Odprawa",
-      "steps": [
-        {
-          "kind": "typewriter",
-          "text": "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
-          "cta": "Odbierz telefon",
-          "narration": {
-            "text": "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
-            "spokenText": "Wtorek, dziewiąta czterdzieści. Wydział Cyberbezpieczeństwa, Kraków. Dzwoni telefon służbowy.",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/fb0479081fc6a6af.mp3",
-            "durationMs": 6780
-          },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-biurko.d2702633.svg",
-          "hotspot": {
-            "id": "telefon",
-            "x": 49,
-            "y": 21.6,
-            "w": 16.3,
-            "h": 54.2
-          },
-          "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-biurko-pion.f026c3ef.svg",
-            "hotspot": {
-              "id": "telefon",
-              "x": 31.1,
-              "y": 28.1,
-              "w": 37.8,
-              "h": 40
-            }
-          }
-        },
-        {
-          "kind": "call",
-          "caller": {
-            "name": "Komisarz Adam Wolski",
-            "role": "Wydział Cyberbezpieczeństwa"
-          },
-          "text": "Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
-          "cta": "Rozłącz",
-          "narration": {
-            "text": "Mamy zgłoszenie z Unfooly. Z konta firmy wyszło 14 000 zł. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
-            "spokenText": "Detektywie, mamy zgłoszenie z Unfooly. Z konta firmy wyszło czternaście tysięcy złotych. Księgowa, Anna Kowalska, twierdzi, że nic nie zrobiła. Jedź tam i ustal, co się naprawdę stało.",
-            "voice": "komisarz",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/d07f51b5ba3647d7.mp3",
-            "durationMs": 13050
-          },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa.1502e6de.svg",
-          "hotspot": {
-            "id": "rozlacz",
-            "x": 21.4,
-            "y": 72.4,
-            "w": 8.5,
-            "h": 15.1
-          },
-          "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-rozmowa-pion.d46de638.svg",
-            "hotspot": {
-              "id": "rozlacz",
-              "x": 42,
-              "y": 44.4,
-              "w": 15.9,
-              "h": 9
-            }
-          }
-        },
-        {
-          "kind": "caseFile",
-          "caseNo": "CS/2026/0915",
-          "title": "Nieautoryzowany przelew",
-          "fields": [
-            {
-              "label": "Poszkodowana",
-              "value": "Anna Kowalska (księgowa, Unfooly Sp. z o.o.)"
-            },
-            {
-              "label": "Strata",
-              "value": "14 000,00 PLN"
-            },
-            {
-              "label": "Kiedy",
-              "value": "wtorek 9:12"
-            },
-            {
-              "label": "Zgłosił",
-              "value": "Marek Zieliński, dział IT"
-            }
-          ],
-          "stamp": "Priorytet",
-          "tasks": [
-            {
-              "id": "dostep",
-              "text": "Ustal, jak przestępca dostał się do konta.",
-              "completeWhen": [
-                "akta-sprawy",
-                "rekonstrukcja"
-              ]
-            },
-            {
-              "id": "dowody",
-              "text": "Zbierz dowody w biurze Anny.",
-              "completeWhen": [
-                "biuro-anny"
-              ]
-            },
-            {
-              "id": "zapobieganie",
-              "text": "Wskaż, co mogło zatrzymać atak.",
-              "completeWhen": [
-                "rozmowa-marek"
-              ]
-            }
-          ],
-          "cta": "Zamknij teczkę",
-          "narration": {
-            "text": "Tu masz wszystko, co wiemy. Reszta jest w biurze Anny.",
-            "spokenText": "Tu masz wszystko, co wiemy. Przelew poszedł we wtorek o dziewiątej dwanaście. Zgłosił go Marek Zieliński z działu IT. Reszta jest w biurze Anny.",
-            "voice": "komisarz",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/bcc46163499f84a1.mp3",
-            "durationMs": 10217
-          },
-          "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka.e85aed2d.svg",
-          "image": "assets/wyludzone-haslo/scenes/odprawa-akta.719e8dbe.svg",
-          "hotspot": {
-            "id": "teczka",
-            "x": 24.4,
-            "y": 17.4,
-            "w": 51.6,
-            "h": 69.5
-          },
-          "openHotspot": {
-            "id": "akta",
-            "x": 3.9,
-            "y": 2.3,
-            "w": 92.1,
-            "h": 95.3
-          },
-          "slots": {
-            "tasks": {
-              "x": 54.1,
-              "y": 19.4,
-              "w": 37.1,
-              "h": 56.2
-            }
-          },
-          "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-akta-pion.1146097e.svg",
-            "closedImage": "assets/wyludzone-haslo/scenes/odprawa-teczka-pion.90593dff.svg",
-            "hotspot": {
-              "id": "teczka",
-              "x": 4.1,
-              "y": 32.3,
-              "w": 91.8,
-              "h": 39.1
-            },
-            "openHotspot": {
-              "id": "akta",
-              "x": 12.8,
-              "y": 0.6,
-              "w": 74.4,
-              "h": 99
-            },
-            "slots": {
-              "tasks": {
-                "x": 19.4,
-                "y": 59.6,
-                "w": 60,
-                "h": 28.7
-              }
-            }
-          }
-        },
-        {
-          "kind": "badge",
-          "cta": "Zabierz legitymację",
-          "narration": {
-            "text": "Legitymacja gotowa. Od dziś jesteś w Wydziale Cyberbezpieczeństwa. Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą.",
-            "voice": "komisarz",
-            "audioUrl": "audio/wyludzone-haslo/v1/odprawa/997fd2d0bbdbec16.mp3",
-            "durationMs": 7616,
-            "cues": [
-              {
-                "text": "Legitymacja gotowa.",
-                "startMs": 0
-              },
-              {
-                "text": "Od dziś jesteś w Wydziale Cyberbezpieczeństwa.",
-                "startMs": 1521
-              },
-              {
-                "text": "Szukaj szczegółów, bo przestępcy zawsze gdzieś się mylą.",
-                "startMs": 4400
-              }
-            ]
-          },
-          "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja.f7ceead8.svg",
-          "hotspot": {
-            "id": "legitymacja",
-            "x": 8.8,
-            "y": 6,
-            "w": 82.5,
-            "h": 88
-          },
-          "slots": {
-            "photo": {
-              "x": 55.1,
-              "y": 30,
-              "w": 11.2,
-              "h": 25.3
-            },
-            "name": {
-              "x": 68.8,
-              "y": 33.7,
-              "w": 17.4,
-              "h": 5.3
-            },
-            "number": {
-              "x": 68.8,
-              "y": 44.9,
-              "w": 17.4,
-              "h": 5.3
-            }
-          },
-          "portrait": {
-            "image": "assets/wyludzone-haslo/scenes/odprawa-legitymacja-pion.7be9c5ef.svg",
-            "hotspot": {
-              "id": "legitymacja",
-              "x": 13.3,
-              "y": 6.9,
-              "w": 73.3,
-              "h": 85.3
-            },
-            "slots": {
-              "photo": {
-                "x": 25.3,
-                "y": 59.8,
-                "w": 18.3,
-                "h": 13.1
-              },
-              "name": {
-                "x": 47.6,
-                "y": 61.7,
-                "w": 28.4,
-                "h": 2.8
-              },
-              "number": {
-                "x": 47.6,
-                "y": 67.5,
-                "w": 28.4,
-                "h": 2.8
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "korytarz",
-      "type": "SCENE_HOTSPOTS",
-      "title": "Korytarz",
+      "id": "teczka",
+      "type": "TABS",
+      "title": "Nowe zadanie",
       "narration": {
-        "text": "Wtorek, 10:05. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są przed tobą.",
-        "spokenText": "Wtorek, dziesiąta zero pięć. Unfooly, drugie piętro. Anna z księgowości jest teraz u Marka w IT. Zacznij od jej biura — drzwi są przed tobą.",
-        "audioUrl": "audio/wyludzone-haslo/v1/korytarz/fa82944590190eef.mp3",
-        "durationMs": 11378
-      },
-      "image": "assets/wyludzone-haslo/scenes/korytarz.03396990.svg",
-      "imageAlt": "Korytarz biurowy: okno, tabliczka „Księgowość →”, tablica ogłoszeń, dwoje drzwi (Księgowość, IT), rośliny.",
-      "imagePortrait": "assets/wyludzone-haslo/scenes/korytarz-pion.8298eb57.svg",
-      "portraitHotspots": [
-        {
-          "id": "tablica",
-          "x": 3.6,
-          "y": 28.2,
-          "width": 55.8,
-          "height": 30.9
-        },
-        {
-          "id": "drzwi",
-          "x": 67.3,
-          "y": 29.6,
-          "width": 29.6,
-          "height": 53.5
-        }
-      ],
-      "hotspots": [
-        {
-          "id": "tablica",
-          "label": "Tablica ogłoszeń",
-          "x": 63.2,
-          "y": 12.2,
-          "width": 23.5,
-          "height": 25.6,
-          "media": {
-            "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/tablica-zoom.ecd2c377.svg",
-            "alt": "Tablica ogłoszeń: szkolenie BHP w czwartek o 10:00, kuchnia – myjemy po sobie, hasła – nie na karteczkach, parking – nowe miejsca."
-          },
-          "evidence": true,
-          "required": false,
-          "note": {
-            "text": "Na tablicy w korytarzu: »Hasła — nie na karteczkach«. Zasada była znana.",
-            "kind": "item"
-          }
-        },
-        {
-          "id": "drzwi",
-          "label": "Drzwi do księgowości",
-          "x": 43.8,
-          "y": 36.6,
-          "width": 12.4,
-          "height": 42.8,
-          "action": "next"
-        }
-      ]
-    },
-    {
-      "id": "biuro-anny",
-      "type": "SCENE_HOTSPOTS",
-      "title": "Biuro Anny",
-      "narration": {
-        "text": "Biuro Anny wygląda jak każde inne. Biurko, monitor, telefon, kubek po kawie. Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
-        "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/7a5f0aeb354f1d3f.mp3",
-        "durationMs": 10913,
+        "text": "Nowe zadanie. Ktoś przejął firmową skrzynkę jednego z pracowników. Zanim zaczniesz szukać śladów, przejrzyj teczkę sprawy – wszystkie trzy zakładki.",
+        "audioUrl": "audio/wyludzone-haslo/v1/teczka/3b0f6d0a77b1ca51.mp3",
+        "durationMs": 10635,
         "cues": [
           {
-            "text": "Biuro Anny wygląda jak każde inne.",
+            "text": "Nowe zadanie.",
             "startMs": 0
           },
           {
-            "text": "Biurko, monitor, telefon, kubek po kawie.",
-            "startMs": 2984
+            "text": "Ktoś przejął firmową skrzynkę jednego z pracowników.",
+            "startMs": 1405
           },
           {
-            "text": "Ale w sprawach takich jak ta odpowiedź prawie zawsze leży na wierzchu.",
-            "startMs": 6490
+            "text": "Zanim zaczniesz szukać śladów, przejrzyj teczkę sprawy – wszystkie trzy zakładki.",
+            "startMs": 5097
           }
         ]
       },
-      "tip": "Rozejrzyj się. Kliknij to, co wygląda podejrzanie.",
-      "image": "assets/wyludzone-haslo/scenes/biuro-anny.b7eea3dc.svg",
-      "imageAlt": "Biuro księgowej: biurko z monitorem, na ramce monitora żółta karteczka, telefon stacjonarny z migającą diodą, kalendarz ścienny z zakreśloną datą, drukarka z wydrukiem na tacy, kubek z kawą, drzwi wyjściowe.",
-      "imagePortrait": "assets/wyludzone-haslo/scenes/biuro-anny-pion.0d97b05f.svg",
+      "tip": "Kliknij każdą zakładkę w teczce. Potem „Dalej”.",
+      "tabs": [
+        {
+          "id": "zadanie",
+          "title": "Twoje zadanie",
+          "content": "Dzień dobry, detektywie.\n\nW nocy z wtorku na środę z firmowej skrzynki Pawła Nowickiego wyszło kilkadziesiąt maili do klientów z prośbą o „pilną aktualizację danych do płatności”. Paweł twierdzi, że niczego nie wysyłał.\n\nTwoje zadanie: ustal, jak przestępcy przejęli jego konto, i podpowiedz, co zrobić, żeby to się nie powtórzyło."
+        },
+        {
+          "id": "incydent",
+          "title": "Incydent",
+          "content": "Wstępny raport działu IT\n\n• Konto: p.nowicki@unfooly.com\n• Logowanie z nieznanego urządzenia: wtorek, 22:47\n• Wysłane wiadomości: 46, w tym 31 do klientów\n• Hasło zmienione przez IT: środa, 7:30\n\nNie wiemy jeszcze, skąd przestępcy mieli hasło."
+        },
+        {
+          "id": "ofiara",
+          "title": "Ofiara ataku",
+          "content": "Paweł Nowicki – analityk danych w Unfooly Sp. z o.o.\n\nW firmie od czterech lat. Prowadzi wewnętrzne szkolenia z analizy danych i chętnie występuje na branżowych konferencjach.\n\nKonto jest już zabezpieczone. Paweł czeka na rozmowę w swoim biurze."
+        }
+      ],
+      "requiredTabs": [
+        "zadanie",
+        "incydent",
+        "ofiara"
+      ]
+    },
+    {
+      "id": "biuro-pawla",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Biuro Pawła",
+      "narration": {
+        "text": "Jesteś na miejscu zdarzenia, w biurze Pawła. Zanim z nim porozmawiasz, rozejrzyj się: komputer, telefon i sam Paweł.",
+        "audioUrl": "audio/wyludzone-haslo/v1/biuro-pawla/2fbf47b9b3072ad1.mp3",
+        "durationMs": 8081,
+        "cues": [
+          {
+            "text": "Jesteś na miejscu zdarzenia, w biurze Pawła.",
+            "startMs": 0
+          },
+          {
+            "text": "Zanim z nim porozmawiasz, rozejrzyj się: komputer, telefon i sam Paweł.",
+            "startMs": 3135
+          }
+        ]
+      },
+      "tip": "Kliknij komputer, telefon i Pawła. Potem „Dalej”.",
+      "image": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp",
+      "imageAlt": "Biuro Pawła: po lewej monitor z otwartą pocztą, na biurku smartfon z powiadomieniem z komunikatora, po prawej stoi Paweł.",
+      "imagePortrait": "assets/wyludzone-haslo/images/biuro-pawla-pion.c1e33646.webp",
       "portraitHotspots": [
         {
-          "id": "karteczka",
-          "x": 69.8,
-          "y": 47.5,
-          "width": 12.2,
-          "height": 7.2
+          "id": "komputer",
+          "x": 1,
+          "y": 0,
+          "width": 30,
+          "height": 38
         },
         {
-          "id": "monitor",
-          "x": 35.8,
-          "y": 49.3,
-          "width": 41.4,
-          "height": 21.3
+          "id": "smartfon",
+          "x": 61,
+          "y": 23,
+          "width": 22,
+          "height": 13
         },
         {
-          "id": "telefon",
-          "x": 81.3,
-          "y": 64.3,
-          "width": 17.8,
-          "height": 6.3
-        },
-        {
-          "id": "kalendarz",
-          "x": 43.6,
-          "y": 25.1,
-          "width": 23.1,
-          "height": 16.9
-        },
-        {
-          "id": "drukarka",
-          "x": 3.6,
-          "y": 60.1,
-          "width": 27.3,
-          "height": 10.4
-        },
-        {
-          "id": "kubek",
-          "x": 30.2,
-          "y": 65,
-          "width": 10.7,
-          "height": 5.6
-        },
-        {
-          "id": "drzwi",
-          "x": 80.7,
-          "y": 26.1,
-          "width": 19.3,
-          "height": 29.1
+          "id": "pawel",
+          "x": 33,
+          "y": 21,
+          "width": 33,
+          "height": 78
         }
       ],
       "hotspots": [
         {
-          "id": "karteczka",
-          "label": "Żółta karteczka",
-          "x": 53.3,
-          "y": 24.2,
-          "width": 7.9,
-          "height": 11.6,
-          "content": "Na karteczce: „Unfooly24!” — a niżej dopisek długopisem: bank: to samo.",
-          "media": {
-            "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/karteczka-zoom.f356944b.svg",
-            "alt": "Zbliżenie żółtej karteczki: hasło „Unfooly24!” i dopisek „bank: to samo”"
-          },
-          "evidence": true,
-          "note": {
-            "text": "Hasło do systemu księgowego zapisane na karteczce przy monitorze. To samo hasło do banku.",
-            "kind": "item"
-          },
-          "required": true
-        },
-        {
-          "id": "monitor",
-          "label": "Monitor",
-          "x": 30.8,
-          "y": 27.2,
-          "width": 27.3,
-          "height": 34.8,
-          "content": "Ekran nie jest zablokowany — pulpit świeci się, tak jak Anna go zostawiła. Zobacz, co ma otwarte.",
+          "id": "komputer",
+          "label": "Komputer",
+          "x": 8,
+          "y": 31,
+          "width": 21,
+          "height": 38,
+          "content": "Komputer Pawła nie jest zablokowany. Na pulpicie widać pocztę – zobacz, co jeszcze tu jest.",
           "media": {
             "kind": "scene",
             "scene": {
@@ -461,46 +141,23 @@
               },
               "hotspots": [
                 {
-                  "id": "outlook",
+                  "id": "poczta",
                   "label": "Poczta",
                   "x": 8.1,
                   "y": 9.6,
                   "width": 15.9,
                   "height": 22,
-                  "content": "Na ekranie otwarta wiadomość: „Bank Wektor — pilna weryfikacja konta firmowego”. Przyszła dziś o 8:47.",
-                  "media": {
-                    "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/mail-na-ekranie.e04aba84.svg",
-                    "imagePortrait": "assets/wyludzone-haslo/scenes/mail-na-ekranie-pion.82ed18d5.svg",
-                    "alt": "Otwarta wiadomość od Banku Wektor z 8:47"
-                  },
-                  "evidence": true,
-                  "note": {
-                    "text": "Mail od „Banku Wektor” z 8:47, temat: pilna weryfikacja konta.",
-                    "kind": "mail"
-                  },
-                  "required": false
+                  "content": "W skrzynce na górze: „Zaproszenie na webinar »Dane w praktyce«” od Fundacji Analityki Stosowanej. Przyjrzysz mu się za chwilę.",
+                  "required": true
                 },
                 {
-                  "id": "przegladarka",
+                  "id": "internet",
                   "label": "Internet",
                   "x": 8.3,
                   "y": 31.3,
                   "width": 15.6,
                   "height": 21.6,
-                  "content": "Przeglądarka Anny. W historii widać, gdzie dziś zaglądała — od menu stołówki do chwili, gdy wyszła od biurka.",
-                  "media": {
-                    "kind": "image",
-                    "src": "assets/wyludzone-haslo/scenes/historia-przegladarki.ca7ec320.svg",
-                    "imagePortrait": "assets/wyludzone-haslo/scenes/historia-przegladarki-pion.4dc7741d.svg",
-                    "alt": "Historia przeglądarki, dzisiaj (wtorek): 9:04 Intranet Unfooly, unfooly.com/intranet; 8:58 Weryfikacja konta firmowego, bankwektor-weryfikacja.pl/login; 8:47 Poczta — skrzynka odbiorcza, poczta.unfooly.com; 8:31 Kalendarz zespołu, kalendarz.unfooly.com; 8:05 Menu stołówki, unfooly.com/stolowka."
-                  },
-                  "evidence": true,
-                  "note": {
-                    "text": "Historia przeglądarki: o 8:58 Anna weszła na bankwektor-weryfikacja.pl/login — tam trafiły hasło i kod z SMS-a.",
-                    "kind": "item"
-                  },
-                  "required": false
+                  "content": "W historii przeglądarki we wtorek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie."
                 },
                 {
                   "id": "gra",
@@ -534,10 +191,9 @@
                     "outro": "Pirackie gry to jedna z najczęstszych dróg, którymi wirusy trafiają do firm. Dobrze, że to tylko ćwiczenie.",
                     "badge": {
                       "id": "ciekawski-detektyw",
-                      "label": "Curious Detective"
+                      "label": "Ciekawski detektyw"
                     }
-                  },
-                  "required": false
+                  }
                 }
               ]
             }
@@ -545,709 +201,201 @@
           "required": true
         },
         {
-          "id": "telefon",
-          "label": "Telefon stacjonarny",
-          "x": 59.5,
-          "y": 51.4,
-          "width": 12.3,
-          "height": 10.6,
-          "content": "Prawdziwy bank nigdy nie prosi o kod SMS przez telefon. Kod SMS zawsze zatwierdza operację, nigdy jej nie anuluje.",
-          "media": {
-            "kind": "audio",
-            "narration": {
-              "voice": "bank",
-              "text": "Dzień dobry, pani Anno. Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor. Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji. Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony. Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony. To zajmie minutę. Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie. Dziękuję i przepraszam za kłopot.",
-              "audioUrl": "audio/wyludzone-haslo/v1/biuro-anny/59cb257a096700d9.mp3",
-              "durationMs": 36224,
-              "cues": [
-                {
-                  "text": "Dzień dobry, pani Anno.",
-                  "startMs": 0
-                },
-                {
-                  "text": "Tomasz Wierzbicki, dział bezpieczeństwa, Bank Wektor.",
-                  "startMs": 1846
-                },
-                {
-                  "text": "Dzwonię, bo nasz system wykrył przed chwilą próbę logowania do państwa konta firmowego z nietypowej lokalizacji.",
-                  "startMs": 5573
-                },
-                {
-                  "text": "Zablokowaliśmy ją tymczasowo, ale żeby anulować operację, potrzebuję potwierdzenia z pani strony.",
-                  "startMs": 12121
-                },
-                {
-                  "text": "Za moment przyjdzie do pani SMS z kodem — proszę go nie wpisywać nigdzie w systemie, tylko podać mi go przez telefon, wtedy anulujemy wszystko od naszej strony.",
-                  "startMs": 18158
-                },
-                {
-                  "text": "To zajmie minutę.",
-                  "startMs": 27121
-                },
-                {
-                  "text": "Proszę oddzwonić jak najszybciej, sprawa jest pilna — po dziesiątej system zablokuje rachunek automatycznie.",
-                  "startMs": 28503
-                },
-                {
-                  "text": "Dziękuję i przepraszam za kłopot.",
-                  "startMs": 34320
-                }
-              ]
-            },
-            "image": "assets/wyludzone-haslo/scenes/telefon-zoom.025d3c90.svg",
-            "alt": "Telefon stacjonarny Anny z jedną nieodebraną rozmową"
-          },
-          "evidence": true,
-          "note": {
-            "text": "Połączenie o 9:05 z numeru zastrzeżonego, Anna zapisała „informatyk”.",
-            "kind": "item"
-          },
+          "id": "smartfon",
+          "label": "Smartfon",
+          "x": 25,
+          "y": 68,
+          "width": 11,
+          "height": 16,
+          "content": "Na ekranie powiadomienia z komunikatora: „Katarzyna Zielińska – Fundacja Analityki Stosowanej”. Paweł rozmawiał z nią w zeszłym tygodniu. Historię rozmowy przejrzysz za chwilę.",
           "required": true
         },
         {
-          "id": "kalendarz",
-          "label": "Kalendarz ścienny",
-          "x": 73.3,
-          "y": 11.2,
-          "width": 13,
-          "height": 23.6,
-          "content": "Wtorek zakreślony na czerwono: „PRZELEWY DO 15:00 — koniecznie!!!”. Anna miała dziś presję czasu.",
-          "media": {
-            "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kalendarz-zoom.ab0560e6.svg",
-            "alt": "Zbliżenie kalendarza ściennego z zakreśloną datą i dopiskiem „PRZELEWY DO 15:00 !!!”"
-          },
-          "evidence": true,
-          "note": {
-            "text": "Anna miała dziś termin przelewów do 15:00 — działała pod presją.",
-            "kind": "place"
-          },
+          "id": "pawel",
+          "label": "Paweł",
+          "x": 57,
+          "y": 10,
+          "width": 17,
+          "height": 88,
+          "content": "Paweł jest zdenerwowany, ale chce pomóc. Najpierw obejrzyj jego komputer i telefon – porozmawiacie, gdy będziesz wiedzieć, o co pytać.",
           "required": true
-        },
-        {
-          "id": "drukarka",
-          "label": "Drukarka",
-          "x": 8.9,
-          "y": 51.2,
-          "width": 15.4,
-          "height": 14.6,
-          "content": "Wydruk potwierdzenia przelewu z 9:12. Odbiorca: „Wektor Rozliczenia Sp. z o.o.”, tytuł: „weryfikacja salda”. Anna nie zna tej firmy.",
-          "media": {
-            "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/wydruk.f3a084c4.svg",
-            "alt": "Wydruk potwierdzenia przelewu: 14 000,00 PLN na rachunek Wektor Rozliczenia Sp. z o.o., tytuł „weryfikacja salda”"
-          },
-          "evidence": true,
-          "note": {
-            "text": "Przelew z 9:12 na nieznaną firmę „Wektor Rozliczenia”, tytuł „weryfikacja salda”.",
-            "kind": "item"
-          },
-          "required": false
-        },
-        {
-          "id": "kubek",
-          "label": "Kubek z kawą",
-          "x": 24.5,
-          "y": 53.7,
-          "width": 6,
-          "height": 7.8,
-          "content": "Kawa wystygła. Anna wyszła w pośpiechu — chyba tuż po rozmowie telefonicznej.",
-          "media": {
-            "kind": "image",
-            "src": "assets/wyludzone-haslo/scenes/kubek-zoom.217c1ffc.svg",
-            "alt": "Kubek Anny z napisem Najlepsza księgowa"
-          },
-          "required": false
-        },
-        {
-          "id": "drzwi",
-          "label": "Wyjście",
-          "x": 87.9,
-          "y": 36.6,
-          "width": 12.1,
-          "height": 42.8,
-          "action": "next"
         }
-      ],
-      "reactions": {
-        "complete": {
-          "text": "Cztery ślady. Teraz porozmawiajmy z Anną."
-        }
-      }
+      ]
     },
     {
-      "id": "rozmowa-anna",
-      "type": "DIALOGUE",
-      "title": "Rozmowa z Anną",
-      "narration": {
-        "text": "Anna wróciła od telefonu. Jest roztrzęsiona, ale chce pomóc. Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-anna/06ac7fb55530441f.mp3",
-        "durationMs": 11656,
-        "cues": [
-          {
-            "text": "Anna wróciła od telefonu.",
-            "startMs": 0
-          },
-          {
-            "text": "Jest roztrzęsiona, ale chce pomóc.",
-            "startMs": 2125
-          },
-          {
-            "text": "Pytaj — ale słuchaj uważnie, bo ludzie pod stresem mówią więcej, niż im się wydaje.",
-            "startMs": 5004
-          }
-        ]
-      },
-      "tip": "Nie oceniaj. Pytaj.",
-      "character": {
-        "name": "Anna Kowalska",
-        "role": "księgowa w Unfooly Sp. z o.o.",
-        "avatar": "assets/wyludzone-haslo/avatars/anna.a31c9500.svg",
-        "opening": "Ja naprawdę nic nie zrobiłam. Znaczy… zrobiłam to, co kazali."
-      },
-      "questions": [
-        {
-          "id": "mail",
-          "text": "Opowiedz o tym mailu z banku.",
-          "lines": [
-            {
-              "text": "Przyszedł rano, wyglądał normalnie — logo, stopka, wszystko."
-            },
-            {
-              "text": "Pisali, że konto firmowe będzie zablokowane do 10:00, jeśli nie potwierdzę danych."
-            },
-            {
-              "text": "Kliknęłam w link, strona wyglądała jak nasz bank. Wpisałam login i hasło."
-            },
-            {
-              "text": "Potem strona poprosiła jeszcze o kod z SMS-a, więc go wpisałam."
-            }
-          ],
-          "evidence": true,
-          "note": {
-            "text": "Anna kliknęła link z maila i wpisała na stronie „banku” login, hasło i kod z SMS-a.",
-            "kind": "person"
-          },
-          "required": true
-        },
-        {
-          "id": "telefon",
-          "text": "Kto dzwonił o 9:05?",
-          "lines": [
-            {
-              "text": "Informatyk z banku. Powiedział, że wykryli podejrzaną próbę logowania i muszą to zatrzymać."
-            },
-            {
-              "text": "Poprosił o kod SMS, który właśnie przyszedł. Żeby anulować operację."
-            },
-            {
-              "text": "Podałam. Był bardzo uprzejmy. Miał mój numer, znał nazwę firmy…"
-            }
-          ],
-          "evidence": true,
-          "note": {
-            "text": "Anna podała przez telefon kod SMS „informatykowi z banku”, który miał anulować operację.",
-            "kind": "person"
-          },
-          "required": true
-        },
-        {
-          "id": "haslo",
-          "text": "To hasło na karteczce…",
-          "lines": [
-            {
-              "text": "Wiem, wiem. Ale mamy dwanaście systemów i każdy chce innego hasła."
-            },
-            {
-              "text": "Marek z IT mówił, żebym używała menedżera haseł. Nie miałam kiedy."
-            }
-          ],
-          "evidence": true,
-          "note": {
-            "text": "Anna używa tego samego hasła do systemu księgowego i banku; nie ma menedżera haseł.",
-            "kind": "person"
-          },
-          "required": true
-        },
-        {
-          "id": "presja",
-          "text": "Dlaczego działałaś tak szybko?",
-          "lines": [
-            {
-              "text": "Do 15:00 muszę puścić wszystkie przelewy do dostawców. Jak konto by zablokowali, nie zdążyłabym."
-            },
-            {
-              "text": "W mailu był zegar. Odliczał."
-            }
-          ],
-          "evidence": true,
-          "note": {
-            "text": "Mail zawierał odliczanie; Anna działała pod presją terminu przelewów.",
-            "kind": "person"
-          },
-          "required": false
-        },
-        {
-          "id": "zglosic",
-          "text": "Pomyślałaś, żeby to komuś zgłosić?",
-          "lines": [
-            {
-              "text": "Komu? Marek był na urlopie do wczoraj."
-            },
-            {
-              "text": "Poza tym… to był bank. Bank się nie zgłasza, bank się słucha."
-            }
-          ],
-          "required": false
-        }
-      ],
-      "reactions": {
-        "complete": {
-          "text": "Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail."
-        }
-      }
-    },
-    {
-      "id": "ten-mail",
+      "id": "zaproszenie",
       "type": "EMAIL_ANALYSIS",
-      "title": "Ten mail",
-      "weight": 3,
+      "title": "Zaproszenie",
+      "weight": 2,
       "narration": {
-        "text": "Oto wiadomość, od której wszystko się zaczęło. Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli. Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
-        "audioUrl": "audio/wyludzone-haslo/v1/ten-mail/3c9b7959f45165eb.mp3",
-        "durationMs": 12028,
+        "text": "Oto mail, od którego wszystko się zaczęło. Przeczytaj go uważnie. Które cechy phishingu ma ta wiadomość?",
+        "audioUrl": "audio/wyludzone-haslo/v1/zaproszenie/006d52f1f52226d3.mp3",
+        "durationMs": 7012,
         "cues": [
           {
-            "text": "Oto wiadomość, od której wszystko się zaczęło.",
+            "text": "Oto mail, od którego wszystko się zaczęło.",
             "startMs": 0
           },
           {
-            "text": "Przeczytaj ją tak, jak nie przeczytała jej Anna: powoli.",
-            "startMs": 2949
+            "text": "Przeczytaj go uważnie.",
+            "startMs": 2810
           },
           {
-            "text": "Zaznacz wszystko, co powinno zapalić czerwoną lampkę.",
-            "startMs": 7964
+            "text": "Które cechy phishingu ma ta wiadomość?",
+            "startMs": 4423
           }
         ]
       },
-      "tip": "Kliknij w mailu to, co jest podejrzane. Możesz zaznaczyć kilka rzeczy.",
+      "tip": "Zaznacz tylko to, co naprawdę jest w tym mailu.",
       "email": {
-        "fromName": "Bank Wektor — Dział Bezpieczeństwa",
-        "fromAddress": "bezpieczenstwo@bankwektor-weryfikacja.pl",
-        "to": "a.kowalska@unfooly.com",
-        "subject": "PILNE: weryfikacja konta firmowego — blokada o 10:00",
-        "date": "wtorek, 8:47",
-        "body": "Szanowna Kliencie,\n\nW związku z aktualizacją systemów bezpieczeństwa Twoje konto firmowe wymaga natychmiastowej weryfikacji. W przypadku braku potwierdzenia do godziny 10:00 dostęp do rachunku zostanie tymczasowo zablokowany.\n\nPozostało: 01:12:33\n\nAby potwierdzić dane, kliknij: Przejdź do weryfikacji\n\nProsimy o nie odpowiadanie na tę wiadomość.\n\nZ poważaniem,\nZespół Bezpieczeństwa Bank Wektor\nBank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa",
-        "attachment": {
-          "name": "Regulamin_weryfikacji.pdf.exe",
-          "size": "412 KB"
-        },
-        "links": [
-          {
-            "id": "l1",
-            "text": "Przejdź do weryfikacji",
-            "url": "https://bankwektor-weryfikacja.pl/login?id=88213"
-          }
-        ]
+        "fromName": "Katarzyna Zielińska – Fundacja Analityki Stosowanej",
+        "fromAddress": "k.zielinska@fundacja-analityki.pl",
+        "to": "p.nowicki@unfooly.com",
+        "subject": "Zaproszenie na webinar „Dane w praktyce”",
+        "date": "czwartek, 9:12",
+        "body": "Szanowny Panie,\n\nniniejszym chcielibyśmy zaprosić Pana na webinar „Dane w praktyce: analiza, która zmienia decyzje”. Bylibyśmy zaszczyceni, gdyby zechciał Pan wystąpić w roli prelegenta i podzielić się z nami swoją wiedzą – Pana wewnętrzne szkolenia z analizy danych są w branży bardzo dobrze znane.\n\nPrelegenci otrzymują honorarium oraz certyfikat eksperta Fundacji.\n\nMamy wielką nadzieję, że się Pan zgodzi. Chętnie opowiem o szczegółach.\n\nZ wyrazami szacunku\nKatarzyna Zielińska\nkoordynatorka programu\nFundacja Analityki Stosowanej",
+        "links": []
       },
+      "prompt": "Jakie cechy phishingu ma ta wiadomość? Zaznacz wszystkie, które pasują.",
       "criteria": [
         {
-          "id": "domena",
-          "label": "Adres nadawcy: bankwektor-weryfikacja.pl",
-          "correct": true,
-          "evidence": true,
-          "note": {
-            "text": "Nadawca z domeny „bankwektor-weryfikacja.pl”, nie „bankwektor.pl”.",
-            "kind": "mail"
-          },
-          "explanation": "Prawdziwa domena banku to bankwektor.pl. Dopisek „-weryfikacja” robi z tego zupełnie inną stronę, którą może zarejestrować każdy.",
-          "target": {
-            "kind": "sender"
-          }
-        },
-        {
-          "id": "link",
-          "label": "Link „Przejdź do weryfikacji”",
-          "correct": true,
-          "evidence": true,
-          "note": {
-            "text": "Link prowadzi na „bankwektor-weryfikacja.pl/login”.",
-            "kind": "mail"
-          },
-          "explanation": "Napis mówi jedno, adres — drugie. Zawsze patrz na adres, nie na napis.",
-          "target": {
-            "kind": "link",
-            "linkId": "l1"
-          }
-        },
-        {
-          "id": "zalacznik",
-          "label": "Załącznik Regulamin_weryfikacji.pdf.exe",
-          "correct": true,
-          "evidence": true,
-          "note": {
-            "text": "Załącznik „.pdf.exe” — plik wykonywalny udający PDF.",
-            "kind": "mail"
-          },
-          "explanation": "„.pdf.exe” to program udający dokument. Bank nie wysyła programów.",
-          "target": {
-            "kind": "attachment"
-          }
-        },
-        {
-          "id": "presja",
-          "label": "Groźba zablokowania konta do godziny 10:00",
-          "correct": true,
-          "explanation": "Groźba bliskiej blokady konta ma wyłączyć myślenie i skłonić do szybkiego działania bez zastanowienia."
-        },
-        {
-          "id": "odliczanie",
-          "label": "Licznik: Pozostało 01:12:33",
-          "correct": true,
-          "evidence": true,
-          "note": {
-            "text": "Mail odlicza czas do blokady.",
-            "kind": "mail"
-          },
-          "explanation": "Licznik czasu to presja. Prawdziwy bank nie odlicza sekund do blokady konta.",
-          "target": {
-            "kind": "text",
-            "quote": "Pozostało: 01:12:33"
-          }
-        },
-        {
-          "id": "zwrot",
-          "label": "Zwrot „Szanowna Kliencie”",
-          "correct": true,
-          "explanation": "Błąd gramatyczny w zwrocie do klienta. Bank wie, jak się nazywasz.",
-          "target": {
-            "kind": "text",
-            "quote": "Szanowna Kliencie"
-          }
-        },
-        {
-          "id": "stopka",
-          "label": "Stopka z adresem banku",
+          "id": "bledy",
+          "label": "Treść zawiera dziwne sformułowania i błędy.",
           "correct": false,
-          "explanation": "Stopka jest skopiowana z prawdziwych maili banku — sama w sobie nic nie znaczy. Oszuści kopiują stopki jako pierwsze.",
-          "target": {
-            "kind": "text",
-            "quote": "Bank Wektor S.A. | ul. Przykładowa 1 | 00-001 Warszawa"
-          }
+          "explanation": "Mail jest napisany starannie, bez błędów. Przestępcy coraz częściej piszą poprawnie – brak błędów niczego nie dowodzi."
         },
         {
-          "id": "nieodpowiadaj",
-          "label": "„Prosimy o nie odpowiadanie”",
+          "id": "uklad",
+          "label": "Wiadomość ma nietypowy układ.",
           "correct": false,
-          "explanation": "To standardowy zwrot w automatycznych mailach. Nie jest sygnałem.",
-          "target": {
-            "kind": "text",
-            "quote": "Prosimy o nie odpowiadanie na tę wiadomość."
-          }
+          "explanation": "Układ jest zwyczajny: powitanie, treść, podpis z nazwą fundacji. Nic tu nie odstaje."
+        },
+        {
+          "id": "linki",
+          "label": "E-mail zawiera linki lub załączniki.",
+          "correct": false,
+          "explanation": "W tym mailu nie ma ani linku, ani załącznika. Pierwsza wiadomość miała tylko zbudować zaufanie – link przyszedł później, inną drogą."
+        },
+        {
+          "id": "oferta",
+          "label": "Wiadomość zawiera niespodziewaną, atrakcyjną ofertę.",
+          "correct": true,
+          "explanation": "Właśnie to: zaproszenie na prelegenta, honorarium i komplementy od nieznanej osoby. Niespodziewana, pochlebna propozycja to klasyczny haczyk."
         }
       ],
-      "scoring": "partial",
+      "scoring": "exact",
       "reactions": {
         "result": [
           {
-            "minScore": 0.8,
-            "text": "Czytasz maile jak detektyw."
-          },
-          {
-            "minScore": 0.4,
-            "text": "Część złapałeś. Domena i link to dwa najważniejsze — zapamiętaj je."
+            "minScore": 1,
+            "text": "Brawo! Poza atrakcyjną ofertą niewiele wskazuje na oszustwo. Ktokolwiek za tym stał, naprawdę dobrze się przygotował."
           },
           {
             "minScore": 0,
-            "text": "Ten mail złapałby też ciebie. Spójrz na adres nadawcy — tam zawsze zaczynaj."
+            "text": "Ten mail był przygotowany starannie: bez błędów i bez linków. Jedyną czerwoną flagą była niespodziewana, atrakcyjna oferta."
           }
         ]
       }
     },
     {
-      "id": "akta-sprawy",
+      "id": "komunikator",
       "type": "DOSSIER",
-      "title": "Teczka sprawy",
+      "title": "Smartfon Pawła",
       "narration": {
-        "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy. Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
-        "audioUrl": "audio/wyludzone-haslo/v1/akta-sprawy/aa781dfd2261b00c.mp3",
-        "durationMs": 7848,
+        "text": "Po mailu przestępcy skontaktowali się z Pawłem przez komunikator. Przejrzyj historię rozmowy i zaznacz to, co jest ważne dla śledztwa.",
+        "audioUrl": "audio/wyludzone-haslo/v1/komunikator/763bcaa8e7f89280.mp3",
+        "durationMs": 8870,
         "cues": [
           {
-            "text": "Zanim porozmawiasz z Markiem, przejrzyj teczkę sprawy.",
+            "text": "Po mailu przestępcy skontaktowali się z Pawłem przez komunikator.",
             "startMs": 0
           },
           {
-            "text": "Zakreśl każdą linijkę, która nie pasuje do zwykłego wtorku.",
-            "startMs": 3529
+            "text": "Przejrzyj historię rozmowy i zaznacz to, co jest ważne dla śledztwa.",
+            "startMs": 4029
           }
         ]
       },
-      "stamp": "Poufne",
+      "tip": "Kliknij wiadomości, które coś mówią o ataku.",
+      "stamp": "DOWÓD",
       "documents": [
         {
-          "id": "wyciag",
-          "tab": "Wyciąg bankowy",
-          "org": "BANK WEKTOR S.A.",
-          "title": "Wyciąg z rachunku firmowego",
-          "meta": "Unfooly Sp. z o.o. · wtorek",
+          "id": "czat",
+          "tab": "Komunikator",
+          "org": "SMARTFON PAWŁA · KOMUNIKATOR",
+          "title": "Rozmowa: Katarzyna Zielińska – Fundacja Analityki Stosowanej",
+          "meta": "Czwartek, w dniu zaproszenia",
           "columns": [
-            "Godzina",
-            "Opis operacji",
-            "Kwota"
+            "Godz.",
+            "Kto",
+            "Wiadomość"
           ],
           "rows": [
             {
-              "id": "w-0802",
+              "id": "powitanie",
               "cells": [
-                "08:02",
-                "Opłata za prowadzenie rachunku",
-                "−25,00 PLN"
+                "10:12",
+                "Katarzyna",
+                "Dzień dobry, Panie Pawle! Wspaniale, że jest Pan zainteresowany naszym webinarem. Jak mogę pomóc?"
+              ],
+              "message": "Zwykłe powitanie – ale zauważ, że rozmowa przeniosła się z maila do komunikatora."
+            },
+            {
+              "id": "pytanie",
+              "cells": [
+                "10:14",
+                "Paweł",
+                "Chciałbym dowiedzieć się więcej o wystąpieniu."
               ]
             },
             {
-              "id": "w-0831",
+              "id": "polaczenie",
               "cells": [
-                "08:31",
-                "Wpływ: płatność za fakturę od klienta",
-                "+3 200,00 PLN"
-              ]
-            },
-            {
-              "id": "w-0904",
-              "cells": [
-                "09:04",
-                "Dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
-                "—"
-              ],
-              "evidence": true,
-              "required": true,
-              "note": {
-                "text": "9:04 — dodano nowego odbiorcę: Wektor Rozliczenia Sp. z o.o.",
-                "kind": "item"
-              }
-            },
-            {
-              "id": "w-0912",
-              "cells": [
-                "09:12",
-                "Przelew: Wektor Rozliczenia Sp. z o.o.",
-                "−14 000,00 PLN"
-              ],
-              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
-            },
-            {
-              "id": "w-1005",
-              "cells": [
-                "10:05",
-                "Przelew: dostawca materiałów biurowych",
-                "−412,50 PLN"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "logi",
-          "tab": "Logi logowania",
-          "org": "BANK WEKTOR S.A. · BANKOWOŚĆ FIRMOWA",
-          "title": "Historia logowań",
-          "meta": "Użytkownik: a.kowalska · wtorek",
-          "columns": [
-            "Godzina",
-            "Zdarzenie",
-            "Miejsce i urządzenie"
-          ],
-          "rows": [
-            {
-              "id": "l-0758",
-              "cells": [
-                "07:58",
-                "Logowanie",
-                "Kraków, komputer biurowy"
-              ]
-            },
-            {
-              "id": "l-0902",
-              "cells": [
-                "09:02",
-                "Wysłano SMS: kod logowania z nowego urządzenia",
-                "SMS na telefon Anny"
-              ],
-              "message": "Bank wysłał Annie kod do logowania z nowego urządzenia. Sprawdź, co stało się minutę później."
-            },
-            {
-              "id": "l-0903",
-              "cells": [
-                "09:03",
-                "Logowanie, kod SMS poprawny",
-                "Bukareszt, nowe urządzenie"
-              ],
-              "evidence": true,
-              "required": true,
-              "note": {
-                "text": "9:03 — logowanie z Bukaresztu, z nowego urządzenia, z poprawnym kodem SMS.",
-                "kind": "place"
-              }
-            },
-            {
-              "id": "l-0906",
-              "cells": [
-                "09:06",
-                "Kod SMS (autoryzacja przelewu) wpisany",
-                "Bukareszt, nowe urządzenie"
+                "10:15",
+                "—",
+                "Połączenie głosowe · 12 min 40 s"
               ],
               "evidence": true,
               "note": {
-                "text": "9:06 — kod SMS autoryzujący przelew wpisany z urządzenia w Bukareszcie, nie z komputera Anny.",
-                "kind": "place"
-              }
+                "text": "Przestępcy zadzwonili do Pawła – rozmowa trwała prawie 13 minut.",
+                "kind": "call"
+              },
+              "required": true
             },
             {
-              "id": "l-0912",
+              "id": "link",
               "cells": [
-                "09:12",
-                "Przelew wysłany",
-                "Bukareszt, nowe urządzenie"
-              ],
-              "message": "Ten przelew już znasz. Szukaj tego, co go przygotowało."
-            }
-          ]
-        },
-        {
-          "id": "notatka-it",
-          "tab": "Notatka IT",
-          "org": "UNFOOLY SP. Z O.O. · DZIAŁ IT",
-          "title": "Notatka po incydencie",
-          "meta": "Autor: Marek Zieliński",
-          "columns": [
-            "Ustalenie"
-          ],
-          "rows": [
-            {
-              "id": "n-7-osob",
-              "cells": [
-                "Ten sam mail trafił do 7 osób w firmie. Nadawca z domeny bankwektor-weryfikacja.pl."
-              ],
-              "message": "O adresatach maila opowie ci Marek. W notatce szukaj tego, czego jeszcze nie wiesz."
-            },
-            {
-              "id": "n-naglowki",
-              "cells": [
-                "Nagłówki maila z 8:47: wysłany z adresu IP w Bukareszcie — z tej samej sieci, z której o 9:03 zalogowano się do banku."
+                "10:29",
+                "Katarzyna",
+                "Bardzo się cieszymy, że chce Pan wziąć udział! Prosimy zarejestrować się jako prelegent przez ten formularz: Rejestracja"
               ],
               "evidence": true,
               "note": {
-                "text": "Mail z 8:47 wysłano z sieci w Bukareszcie — tej samej, z której o 9:03 zalogowano się do banku.",
-                "kind": "mail"
-              }
+                "text": "Po rozmowie przestępcy wysłali Pawłowi link do „formularza prelegenta”.",
+                "kind": "web"
+              },
+              "required": true
             },
             {
-              "id": "n-whois",
+              "id": "haslo",
               "cells": [
-                "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS)."
+                "10:29",
+                "Katarzyna",
+                "Do rejestracji proszę przygotować służbowy adres e-mail i hasło – potwierdzimy nim tożsamość prelegenta."
               ],
               "evidence": true,
-              "required": true,
               "note": {
-                "text": "Domena bankwektor-weryfikacja.pl zarejestrowana 2 dni przed atakiem (WHOIS).",
-                "kind": "item"
-              }
+                "text": "„Organizatorka” poprosiła o służbowy e-mail i hasło.",
+                "kind": "web"
+              },
+              "required": true
             },
             {
-              "id": "n-filtr",
+              "id": "potwierdzenie",
               "cells": [
-                "Filtr spamu przepuścił wiadomość: domena była nowa i nie miała jeszcze złej reputacji."
-              ],
-              "message": "To wniosek z notatki, nie ślad."
-            },
-            {
-              "id": "n-rekomendacje",
-              "cells": [
-                "Rekomendacje: zgłaszać podejrzane maile przyciskiem, przelewy na nowe rachunki potwierdzać telefonicznie."
-              ],
-              "message": "To wniosek z notatki, nie ślad."
-            }
-          ]
-        },
-        {
-          "id": "procedury",
-          "tab": "Procedury",
-          "org": "UNFOOLY SP. Z O.O.",
-          "title": "Procedury bezpieczeństwa",
-          "columns": [
-            "Temat",
-            "Zasada"
-          ],
-          "rows": [
-            {
-              "id": "p-domeny-1",
-              "cells": [
-                "Domeny",
-                "Prawdziwe adresy Banku Wektor kończą się na @bankwektor.pl, a strona logowania to https://www.bankwektor.pl."
-              ]
-            },
-            {
-              "id": "p-domeny-2",
-              "cells": [
-                "Domeny",
-                "Każda inna wersja — z myślnikiem, dopiskiem, inną końcówką (.com, .net, .pl.info) — nie jest bankiem. Sprawdzaj to, co jest tuż przed pierwszym ukośnikiem po https://."
-              ]
-            },
-            {
-              "id": "p-bank-haslo",
-              "cells": [
-                "Bank",
-                "Nie poprosi o hasło — mailem, telefonem ani SMS-em."
-              ]
-            },
-            {
-              "id": "p-bank-sms",
-              "cells": [
-                "Bank",
-                "Nie poprosi o kod SMS „żeby anulować operację”. Kod SMS zawsze zatwierdza, nigdy nie anuluje."
-              ]
-            },
-            {
-              "id": "p-bank-telefon",
-              "cells": [
-                "Bank",
-                "Nie zadzwoni z numeru zastrzeżonego z prośbą o natychmiastowe działanie."
-              ]
-            },
-            {
-              "id": "p-bank-zalacznik",
-              "cells": [
-                "Bank",
-                "Nie wyśle programu (.exe, .scr, .bat) w załączniku."
-              ]
-            },
-            {
-              "id": "p-bank-watpliwosc",
-              "cells": [
-                "Bank",
-                "Jeśli masz wątpliwość: rozłącz się i zadzwoń na numer z odwrotu swojej karty, nie z maila."
-              ]
-            },
-            {
-              "id": "p-zgloszenie-mail",
-              "cells": [
-                "Zgłaszanie",
-                "Zgłoś przyciskiem „Zgłoś podejrzany mail” w programie pocztowym albo przekaż wiadomość na adres zgłoszeń podany przez twój dział IT."
-              ]
-            },
-            {
-              "id": "p-zgloszenie-telefon",
-              "cells": [
-                "Zgłaszanie",
-                "Podejrzany telefon: rozłącz się, zapisz godzinę i numer, napisz do Marka."
-              ]
-            },
-            {
-              "id": "p-zgloszenie-zasada",
-              "cells": [
-                "Zgłaszanie",
-                "Nikt nie ma za to pretensji — pretensje są za brak zgłoszenia. Lepiej zgłosić dziesięć prawdziwych maili niż przegapić jeden fałszywy."
+                "10:41",
+                "Paweł",
+                "Dziękuję! Zarejestrowałem się. Prześlecie mi potwierdzenie?"
               ]
             }
           ]
@@ -1255,354 +403,379 @@
       ]
     },
     {
-      "id": "rozmowa-marek",
-      "type": "DIALOGUE",
-      "title": "Rozmowa z Markiem z IT",
+      "id": "domena",
+      "type": "TEXT_INPUT_GUIDED",
+      "title": "Dokąd prowadzi link?",
+      "weight": 2,
       "narration": {
-        "text": "Marek wrócił z urlopu wczoraj wieczorem. Dziś rano zastał pożar. Ma logi — i ma coś, czego Anna nie wie.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-marek/8f7ee5eba0bbea22.mp3",
-        "durationMs": 7988,
+        "text": "Napis „Rejestracja” nie mówi, dokąd prowadzi link. Mówi to dopiero adres – a w adresie najważniejsza jest domena.",
+        "audioUrl": "audio/wyludzone-haslo/v1/domena/867db29391f018f9.mp3",
+        "durationMs": 7198,
         "cues": [
           {
-            "text": "Marek wrócił z urlopu wczoraj wieczorem.",
+            "text": "Napis „Rejestracja” nie mówi, dokąd prowadzi link.",
             "startMs": 0
           },
           {
-            "text": "Dziś rano zastał pożar.",
-            "startMs": 2473
-          },
-          {
-            "text": "Ma logi — i ma coś, czego Anna nie wie.",
-            "startMs": 4238
+            "text": "Mówi to dopiero adres – a w adresie najważniejsza jest domena.",
+            "startMs": 3181
           }
         ]
       },
-      "tip": "Marek widzi to, czego nie widać z biura Anny. Wyciągnij to z niego.",
+      "tip": "Domena to miejsce, do którego naprawdę prowadzi link.",
+      "prompt": "Pod napisem „Rejestracja” krył się adres:\n\nhttps://fundacja-analityki.formularz-online.net/prelegenci/48213\n\nWpisz domenę, do której prowadzi ten link (bez https:// i bez ukośników).",
+      "placeholder": "wpisz domenę",
+      "answer": {
+        "regex": "^(www\\.)?formularz-online\\.net/?$",
+        "caseSensitive": false
+      },
+      "maxAttempts": 4,
+      "hints": [
+        {
+          "text": "Zacznij od znalezienia pierwszego pojedynczego ukośnika „/” od lewej – tego zaraz po nazwie strony, nie tych w „https://”."
+        },
+        {
+          "text": "Od tego ukośnika idź w lewo, aż dotrzesz do drugiej kropki. To, co jest pomiędzy, to domena."
+        },
+        {
+          "text": "„fundacja-analityki” przed domeną to tylko poddomena – jej nazwę może wymyślić każdy, kto stawia stronę."
+        }
+      ],
+      "solution": {
+        "text": "formularz-online.net",
+        "explanation": "Domena to formularz-online.net. „fundacja-analityki” przed nią to poddomena, którą właściciel strony może nazwać dowolnie."
+      },
+      "reactions": {
+        "result": [
+          {
+            "when": "correct",
+            "text": "Brawo! Link prowadzi do domeny formularz-online.net."
+          },
+          {
+            "when": "incorrect",
+            "text": "Zapamiętaj: liczy się to, co stoi tuż przed pierwszym pojedynczym ukośnikiem – tutaj formularz-online.net."
+          }
+        ]
+      }
+    },
+    {
+      "id": "zaufanie",
+      "type": "QUIZ",
+      "title": "Czy to bezpieczny link?",
+      "weight": 1,
+      "narration": {
+        "text": "Link prowadzi do domeny formularz-online.net. Jak myślisz – czy ten link jest godny zaufania?",
+        "audioUrl": "audio/wyludzone-haslo/v1/zaufanie/8479019904d9c146.mp3",
+        "durationMs": 7477,
+        "cues": [
+          {
+            "text": "Link prowadzi do domeny formularz-online.net.",
+            "startMs": 0
+          },
+          {
+            "text": "Jak myślisz – czy ten link jest godny zaufania?",
+            "startMs": 3332
+          }
+        ]
+      },
+      "tip": "Porównaj domenę z nazwą nadawcy.",
+      "prompt": "Link prowadzi do domeny formularz-online.net. Czy ten link jest godny zaufania?",
+      "options": [
+        {
+          "text": "Tak – w adresie jest nazwa fundacji.",
+          "correct": false,
+          "feedback": "Nazwa fundacji jest tylko w poddomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
+        },
+        {
+          "text": "Nie – domena nie należy do fundacji.",
+          "correct": true,
+          "feedback": "Dokładnie. Strona formularz-online.net nie ma nic wspólnego z rzekomym nadawcą. Link prawie na pewno prowadzi na stronę przestępców."
+        }
+      ]
+    },
+    {
+      "id": "rozmowa-pawel",
+      "type": "DIALOGUE",
+      "title": "Rozmowa z Pawłem",
+      "narration": {
+        "text": "Wiesz już, czego szukać. Porozmawiaj z Pawłem – zadaj mu wszystkie pytania.",
+        "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-pawel/35b549e72c58defb.mp3",
+        "durationMs": 5433,
+        "cues": [
+          {
+            "text": "Wiesz już, czego szukać.",
+            "startMs": 0
+          },
+          {
+            "text": "Porozmawiaj z Pawłem – zadaj mu wszystkie pytania.",
+            "startMs": 1800
+          }
+        ]
+      },
+      "tip": "Nie oceniaj. Pytaj – i słuchaj uważnie.",
       "character": {
-        "name": "Marek Zieliński",
-        "role": "administrator IT (jednoosobowy dział)",
-        "avatar": "assets/wyludzone-haslo/avatars/marek.27eb889f.svg",
-        "opening": "Nie mów mi, że karteczka. Błagam, nie karteczka."
+        "name": "Paweł Nowicki",
+        "role": "analityk danych w Unfooly Sp. z o.o.",
+        "avatar": "assets/wyludzone-haslo/images/pawel.74a06b18.webp",
+        "opening": "Głupio mi. To wyglądało jak zwykłe zaproszenie na konferencję."
       },
       "questions": [
         {
-          "id": "logi",
-          "text": "Co mówią logi banku?",
+          "id": "co-sie-stalo",
+          "text": "Co dokładnie się wydarzyło?",
           "lines": [
             {
-              "text": "Logowanie o 9:03 z adresu IP w innym kraju. Poprawny login i hasło — Anna wpisała je na ich stronie o 8:58. I poprawny kod logowania z SMS-a z 9:02, też wpisany na ich stronie."
+              "text": "Dostałem maila z zaproszeniem na webinar. Pisali, że chcą, żebym wystąpił jako prelegent."
             },
             {
-              "text": "Przelew o 9:12, zatwierdzony drugim kodem SMS. Tym, który Anna podała przez telefon."
+              "text": "Odpisałem, że chętnie posłucham szczegółów. Wtedy pani Katarzyna napisała do mnie w komunikatorze."
             }
           ],
-          "evidence": true,
           "note": {
-            "text": "Logi: logowanie z zagranicy o 9:03 po wpisaniu przez Annę loginu i hasła (8:58) oraz kodu logowania z SMS-a (9:02); przelew 9:12 zatwierdzony drugim kodem SMS, podanym przez telefon.",
-            "kind": "item"
-          },
-          "required": true
-        },
-        {
-          "id": "dzwonil",
-          "text": "Ktoś z IT dzwonił do Anny o 9:05?",
-          "lines": [
-            {
-              "text": "Nikt. Jestem jedynym informatykiem w tej firmie, a o 9:05 stałem w korku."
-            },
-            {
-              "text": "Bank też nie dzwoni z zastrzeżonego. Ten „informatyk” to był oszust — i to on wtedy siedział zalogowany na koncie Anny, czekając na kod."
-            }
-          ],
-          "evidence": true,
-          "note": {
-            "text": "Nikt z IT ani z banku nie dzwonił o 9:05 — dzwonił oszust, już zalogowany, po kod SMS.",
+            "text": "Paweł odpisał na zaproszenie, a „organizatorka” przeniosła rozmowę do komunikatora.",
             "kind": "person"
           },
           "required": true
         },
         {
-          "id": "inni",
-          "text": "Czy ktoś jeszcze dostał ten mail?",
+          "id": "dziwne",
+          "text": "Czy coś w tym mailu wydało ci się dziwne?",
           "lines": [
             {
-              "text": "Sprawdziłem: siedem osób. Dwie kliknęły w link, ale nie wpisały danych — strona wydała im się dziwna."
+              "text": "Szczerze mówiąc – nie. Uczestniczyłem już w kursie tej fundacji. Przynajmniej tak mi się wydawało."
             },
             {
-              "text": "Nikt nie zgłosił. Ani jedna osoba. Gdyby pierwsza kliknęła „Zgłoś”, zablokowałbym domenę przed 8:55."
+              "text": "Zaproszenie mi pochlebiło. Kto by nie chciał wystąpić na webinarze?"
             }
           ],
-          "evidence": true,
           "note": {
-            "text": "Mail trafił do 7 osób, 2 kliknęły, nikt nie zgłosił.",
-            "kind": "mail"
-          },
-          "required": false
-        },
-        {
-          "id": "co_teraz",
-          "text": "Co robimy teraz?",
-          "lines": [
-            {
-              "text": "Bank próbuje cofnąć przelew — czasem się udaje, jeśli zgłosisz w ciągu godziny. Tu minęło pięć."
-            },
-            {
-              "text": "Zmieniamy hasła Anny — wszystkie, bo były takie same. Włączamy menedżer haseł dla całej księgowości."
-            },
-            {
-              "text": "I zgłaszamy na policję. To przestępstwo, nie wpadka."
-            }
-          ],
-          "required": false
-        }
-      ],
-      "reactions": {
-        "complete": {
-          "text": "Masz już wszystko. Ułóżmy to w kolejności."
-        }
-      }
-    },
-    {
-      "id": "rekonstrukcja",
-      "type": "ORDERING",
-      "title": "Rekonstrukcja zdarzeń",
-      "weight": 2,
-      "narration": {
-        "text": "Sześć zdarzeń. Jedna kolejność. Ułóż je tak, jak naprawdę się wydarzyły.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rekonstrukcja/c7eb9bb462503fd0.mp3",
-        "durationMs": 5805,
-        "cues": [
-          {
-            "text": "Sześć zdarzeń.",
-            "startMs": 0
-          },
-          {
-            "text": "Jedna kolejność.",
-            "startMs": 1358
-          },
-          {
-            "text": "Ułóż je tak, jak naprawdę się wydarzyły.",
-            "startMs": 2775
+            "text": "Paweł nie zauważył nic dziwnego – zaproszenie mu pochlebiło.",
+            "kind": "person"
           }
-        ]
-      },
-      "tip": "Przeciągnij albo użyj strzałek. Kolejność ma znaczenie — bo pokazuje, gdzie można było przerwać łańcuch.",
-      "prompt": "Ułóż sześć zdarzeń w kolejności, w jakiej naprawdę się wydarzyły.",
-      "items": [
-        {
-          "id": "mail",
-          "text": "Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl."
-        },
-        {
-          "id": "link",
-          "text": "Anna wpisuje login, hasło i kod z SMS na fałszywej stronie."
-        },
-        {
-          "id": "login",
-          "text": "Oszust loguje się do prawdziwego banku danymi Anny."
         },
         {
           "id": "telefon",
-          "text": "„Informatyk” dzwoni po kod SMS, żeby anulować operację."
+          "text": "O czym rozmawialiście przez telefon?",
+          "lines": [
+            {
+              "text": "O webinarze, o temacie mojego wystąpienia, o honorarium. Była bardzo miła i świetnie przygotowana."
+            },
+            {
+              "text": "Po tej rozmowie byłem pewien, że to prawdziwa organizatorka."
+            }
+          ],
+          "note": {
+            "text": "Rozmowa telefoniczna przekonała Pawła, że rozmówczyni jest prawdziwa.",
+            "kind": "person"
+          },
+          "required": true
         },
         {
-          "id": "kod",
-          "text": "Anna podaje kod; oszust zatwierdza przelew."
+          "id": "potem",
+          "text": "Co zrobiłeś z linkiem?",
+          "lines": [
+            {
+              "text": "Kliknąłem „Rejestracja”. Strona prosiła o zalogowanie się służbowym kontem pocztowym – żeby potwierdzić, że to naprawdę ja."
+            },
+            {
+              "text": "Wpisałem e-mail i hasło. Strona pokazała „Dziękujemy za rejestrację” i tyle."
+            }
+          ],
+          "note": {
+            "text": "Paweł wpisał służbowy e-mail i hasło na stronie z linku.",
+            "kind": "person"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "tablica",
+      "type": "ORDERING",
+      "title": "Tablica śledcza",
+      "weight": 2,
+      "narration": {
+        "text": "Fantastyczne dochodzenie. Lada moment rozwiążesz tę sprawę. Ułóż etapy ataku we właściwej kolejności.",
+        "audioUrl": "audio/wyludzone-haslo/v1/tablica/089f3110d00547bd.mp3",
+        "durationMs": 8638,
+        "cues": [
+          {
+            "text": "Fantastyczne dochodzenie.",
+            "startMs": 0
+          },
+          {
+            "text": "Lada moment rozwiążesz tę sprawę.",
+            "startMs": 2601
+          },
+          {
+            "text": "Ułóż etapy ataku we właściwej kolejności.",
+            "startMs": 5375
+          }
+        ]
+      },
+      "tip": "Przeciągnij albo użyj strzałek. Kolejność pokazuje, gdzie można było przerwać atak.",
+      "prompt": "Ułóż etapy ataku w kolejności, w jakiej się wydarzyły.",
+      "items": [
+        {
+          "id": "mail",
+          "text": "E-mail z pochlebnym zaproszeniem na webinar."
         },
         {
-          "id": "przelew",
-          "text": "14 000 zł wychodzi na konto „Wektor Rozliczenia”."
+          "id": "rozmowa",
+          "text": "Rozmowa w komunikatorze i telefon od „organizatorki”."
+        },
+        {
+          "id": "link",
+          "text": "Link do „formularza prelegenta” na domenie formularz-online.net."
+        },
+        {
+          "id": "logowanie",
+          "text": "Paweł wpisuje służbowy e-mail i hasło na fałszywej stronie."
         }
       ],
       "start": {
-        "label": "A.K.",
-        "caption": "Anna Kowalska"
+        "label": "P.N.",
+        "caption": "Paweł Nowicki"
       },
       "end": {
-        "label": "−14 000 zł",
-        "caption": "Wektor Rozliczenia"
+        "label": "46 maili",
+        "caption": "wysłanych z przejętej skrzynki"
       },
       "scoring": "partial",
       "reactions": {
         "result": [
           {
             "minScore": 1,
-            "text": "Dokładnie tak. I zauważ: łańcuch dało się przerwać w trzech miejscach — przy mailu, przy stronie i przy telefonie."
+            "text": "Dokładnie tak. Każdy etap budował zaufanie do następnego – i na każdym dało się atak przerwać."
           },
           {
             "minScore": 0,
-            "text": "Blisko. Kluczowe: logowanie oszusta było przed telefonem. Dzwonił, bo już był w środku i brakowało mu tylko kodu."
+            "text": "Prawie. Najpierw był mail, potem rozmowa, która zbudowała zaufanie, a dopiero na końcu link i hasło."
           }
         ]
       }
     },
     {
-      "id": "ostatnie-pytanie",
-      "type": "TEXT_INPUT_GUIDED",
-      "title": "Ostatnie pytanie",
-      "weight": 1,
+      "id": "raport",
+      "type": "TABS",
+      "title": "Raport końcowy",
       "narration": {
-        "text": "Zostało jedno pytanie. Najważniejsze — bo to ono uratuje cię następnym razem.",
-        "audioUrl": "audio/wyludzone-haslo/v1/ostatnie-pytanie/046e257f21ea0267.mp3",
-        "durationMs": 5619,
+        "text": "Sprawa rozwiązana. Twoje ustalenia trafiły do raportu końcowego. Przejrzyj wszystkie trzy etapy ataku.",
+        "audioUrl": "audio/wyludzone-haslo/v1/raport/1b9fd21bcb8457ed.mp3",
+        "durationMs": 6920,
         "cues": [
           {
-            "text": "Zostało jedno pytanie.",
+            "text": "Sprawa rozwiązana.",
             "startMs": 0
           },
           {
-            "text": "Najważniejsze — bo to ono uratuje cię następnym razem.",
-            "startMs": 1602
-          }
-        ]
-      },
-      "tip": "Bez zaglądania do notatnika. Pamiętasz?",
-      "prompt": "Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).",
-      "placeholder": "wpisz adres",
-      "frame": "browser",
-      "answer": {
-        "regex": "^(www\\.)?bankwektor-weryfikacja\\.pl/?$",
-        "caseSensitive": false
-      },
-      "maxAttempts": 3,
-      "hints": [
-        {
-          "text": "Spójrz na to, co jest po @ w adresie nadawcy."
-        },
-        {
-          "text": "Prawdziwa domena to bankwektor.pl. Fałszywa miała coś dopisane po myślniku."
-        }
-      ],
-      "solution": {
-        "text": "bankwektor-weryfikacja.pl",
-        "explanation": "Jedno słowo po myślniku wystarczyło, żeby to nie był bank."
-      },
-      "reactions": {
-        "result": [
-          {
-            "when": "correct",
-            "text": "To jest to. Domena, nie napis. Zawsze domena."
+            "text": "Twoje ustalenia trafiły do raportu końcowego.",
+            "startMs": 1277
           },
           {
-            "when": "incorrect",
-            "text": "Nic straconego — ale zapamiętaj ten adres. Następny będzie wyglądał podobnie."
+            "text": "Przejrzyj wszystkie trzy etapy ataku.",
+            "startMs": 4307
           }
         ]
-      }
+      },
+      "tip": "Kliknij każdą zakładkę raportu.",
+      "tabs": [
+        {
+          "id": "etap-mail",
+          "title": "Etap 1: E-mail",
+          "content": "Przestępcy wysłali Pawłowi pochlebne zaproszenie do wystąpienia na webinarze. Mail był staranny – bez błędów, bez linków i bez załączników. Jedyną czerwoną flagą była niespodziewana, atrakcyjna propozycja.\n\nRada: niespodziewaną ofertę sprawdź innym kanałem – samodzielnie wyszukaj organizatora albo zapytaj w firmie."
+        },
+        {
+          "id": "etap-rozmowa",
+          "title": "Etap 2: Rozmowa",
+          "content": "Po odpowiedzi Pawła „organizatorka” przeniosła rozmowę do komunikatora i zadzwoniła. Prawie 13 minut miłej rozmowy wystarczyło, żeby przestał ją traktować jak obcą osobę.\n\nRada: miła rozmowa to nie dowód tożsamości. Jeśli ktoś naciska albo coś cię niepokoi – rozłącz się i sprawdź."
+        },
+        {
+          "id": "etap-link",
+          "title": "Etap 3: Link",
+          "content": "Na koniec przyszedł link do „formularza prelegenta” na domenie formularz-online.net. Strona poprosiła o służbowy e-mail i hasło – i tak przestępcy przejęli skrzynkę.\n\nRada: przed zalogowaniem sprawdź domenę. Służbowego hasła nie podajesz na żadnej obcej stronie, a podejrzany link zgłaszasz do IT."
+        }
+      ],
+      "requiredTabs": [
+        "etap-mail",
+        "etap-rozmowa",
+        "etap-link"
+      ]
     },
     {
-      "id": "rozwiazanie-sprawy",
-      "type": "SUMMARY",
-      "title": "Rozwiązanie sprawy",
+      "id": "gazeta",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Zanim sobie pójdziesz",
       "narration": {
-        "text": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, 8:47.",
-        "spokenText": "Sprawa Anny nie była sprawą o głupotę. Była sprawą o pośpiech, zaufanie i jedną karteczkę. Oszust nie złamał żadnego zabezpieczenia. Poprosił — i dostał. Następnym razem, kiedy ktoś poprosi cię o hasło, kod albo „szybkie potwierdzenie”, przypomnij sobie wtorek, ósmą czterdzieści siedem.",
-        "audioUrl": "audio/wyludzone-haslo/v1/rozwiazanie-sprawy/d70acddda535e9d7.mp3",
-        "durationMs": 23127
+        "text": "Ta historia jest wymyślona, ale podobne ataki zdarzają się naprawdę. Kliknij gazetę, żeby dowiedzieć się więcej.",
+        "audioUrl": "audio/wyludzone-haslo/v1/gazeta/cf5adcbd4c57db7e.mp3",
+        "durationMs": 7709,
+        "cues": [
+          {
+            "text": "Ta historia jest wymyślona, ale podobne ataki zdarzają się naprawdę.",
+            "startMs": 0
+          },
+          {
+            "text": "Kliknij gazetę, żeby dowiedzieć się więcej.",
+            "startMs": 4737
+          }
+        ]
       },
-      "tip": "Sprawa zamknięta. Dobra robota, detektywie.",
-      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Domena, nie napis.** Sprawdzaj adres nadawcy i adres linku — to, co jest tuż przed pierwszym ukośnikiem.\n2. **Kod SMS zawsze zatwierdza.** Nikt — ani bank, ani IT — nie prosi o kod „żeby coś anulować”.\n3. **Zgłoś, zanim klikniesz.** Przycisk „Zgłoś podejrzany mail” jest po to, żeby Marek zablokował domenę, zanim ktoś wpisze hasło.\n\n**Co zmieniono w Unfooly po tej sprawie:** menedżer haseł dla wszystkich, osobne hasła do każdego systemu, zasada „bank dzwoni — ja oddzwaniam na numer z karty”.",
-      "lessons": [
-        "Sprawdzaj domenę nadawcy, nie nazwę.",
-        "Kod SMS zatwierdza, nigdy nie anuluje.",
-        "Hasło nie na karteczce — i nigdy przez telefon."
-      ],
-      "closing": {
-        "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport.90cca0c7.svg",
-        "stamp": "assets/wyludzone-haslo/scenes/zamkniecie-pieczec.5b21f148.svg",
-        "note": "assets/wyludzone-haslo/scenes/zamkniecie-liscik.52a4d25e.svg",
-        "slots": {
-          "evidence": {
-            "x": 8.8,
-            "y": 34.8,
-            "w": 11.7,
-            "h": 6.8
+      "tip": "Kliknij gazetę.",
+      "image": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp",
+      "imageAlt": "Gazeta na biurku z dwiema ilustracjami: przestępca w kapturze z mikrofonem i smartfon z wiadomością na tle sceny webinaru.",
+      "hotspots": [
+        {
+          "id": "artykul",
+          "label": "Gazeta",
+          "x": 10,
+          "y": 5,
+          "width": 80,
+          "height": 88,
+          "content": "Artykuł o prawdziwej kampanii przestępców, którzy działali bardzo podobnie jak w sprawie Pawła.",
+          "media": {
+            "kind": "document",
+            "title": "Hakerzy podszywali się pod dziennikarzy i organizatorów wydarzeń",
+            "lines": [
+              "W 2020 roku grupa przestępcza znana jako Charming Kitten (APT35) prowadziła kampanię wymierzoną w dziennikarzy, naukowców i ekspertów.",
+              "Przestępcy podszywali się pod dziennikarzy i organizatorów konferencji. Zapraszali ofiary na wywiady i wydarzenia.",
+              "Kontaktowali się przez e-mail, LinkedIn i WhatsApp, a czasem dzwonili do ofiar, żeby zdobyć ich zaufanie.",
+              "Na końcu wysyłali link do fałszywej strony logowania, na której ofiary podawały hasło do poczty."
+            ]
           },
-          "time": {
-            "x": 21.5,
-            "y": 34.8,
-            "w": 11.7,
-            "h": 6.8
-          },
-          "xp": {
-            "x": 34.2,
-            "y": 34.8,
-            "w": 11.7,
-            "h": 6.8
-          },
-          "lessons": {
-            "x": 8.8,
-            "y": 50.7,
-            "w": 37.1,
-            "h": 29.3
-          },
-          "signature": {
-            "x": 23.2,
-            "y": 81.8,
-            "w": 22.7,
-            "h": 6.1
-          },
-          "stamp": {
-            "x": 55.5,
-            "y": 69.6,
-            "w": 34.4,
-            "h": 22
-          },
-          "note": {
-            "x": 81.6,
-            "y": 24.3,
-            "w": 11.7,
-            "h": 19.3
-          }
-        },
-        "portrait": {
-          "image": "assets/wyludzone-haslo/scenes/zamkniecie-raport-pion.8126b02f.svg",
-          "slots": {
-            "evidence": {
-              "x": 8,
-              "y": 19.8,
-              "w": 25.8,
-              "h": 4.5
-            },
-            "time": {
-              "x": 35.8,
-              "y": 19.8,
-              "w": 25.8,
-              "h": 4.5
-            },
-            "xp": {
-              "x": 63.6,
-              "y": 19.8,
-              "w": 25.8,
-              "h": 4.5
-            },
-            "lessons": {
-              "x": 8,
-              "y": 29.6,
-              "w": 82.2,
-              "h": 26.3
-            },
-            "signature": {
-              "x": 44.7,
-              "y": 56.4,
-              "w": 45.6,
-              "h": 4
-            },
-            "stamp": {
-              "x": 58,
-              "y": 84.5,
-              "w": 35.6,
-              "h": 10.6
-            },
-            "note": {
-              "x": 62.4,
-              "y": 67.8,
-              "w": 27.8,
-              "h": 15
-            }
-          }
+          "required": true
         }
-      }
+      ]
+    },
+    {
+      "id": "zasady",
+      "type": "SUMMARY",
+      "title": "Sprawa zamknięta",
+      "narration": {
+        "text": "Sprawa zamknięta. Przestępcy nie złamali żadnego zabezpieczenia – zbudowali zaufanie krok po kroku i poprosili o hasło. Następnym razem, gdy ktoś zaproponuje ci coś zbyt dobrego, sprawdź, kto naprawdę stoi po drugiej stronie.",
+        "audioUrl": "audio/wyludzone-haslo/v1/zasady/0b82d6fa6df448aa.mp3",
+        "durationMs": 15929,
+        "cues": [
+          {
+            "text": "Sprawa zamknięta.",
+            "startMs": 0
+          },
+          {
+            "text": "Przestępcy nie złamali żadnego zabezpieczenia – zbudowali zaufanie krok po kroku i poprosili o hasło.",
+            "startMs": 2101
+          },
+          {
+            "text": "Następnym razem, gdy ktoś zaproponuje ci coś zbyt dobrego, sprawdź, kto naprawdę stoi po drugiej stronie.",
+            "startMs": 9172
+          }
+        ]
+      },
+      "text": "**Trzy rzeczy do zapamiętania**\n\n1. **Niespodziewana oferta? Sprawdź ją innym kanałem.**\n2. **Miła rozmowa to nie dowód tożsamości.** Możesz się rozłączyć i sprawdzić.\n3. **Domena, nie napis.** Służbowe hasło wpisujesz tylko na stronach firmy.",
+      "lessons": [
+        "Niespodziewana atrakcyjna oferta? Sprawdź ją innym kanałem.",
+        "Miła rozmowa to nie dowód tożsamości – możesz się rozłączyć.",
+        "Przed logowaniem sprawdź domenę. Hasło tylko na stronach firmy."
+      ]
     }
   ]
 }

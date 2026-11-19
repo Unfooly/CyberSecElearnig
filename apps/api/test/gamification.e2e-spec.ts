@@ -372,7 +372,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         expect.objectContaining({
           code: 'curious-detective',
           title: 'Ciekawski detektyw',
-          description: 'Otworzyłeś podejrzaną grę na pulpicie Anny. Na szczęście tylko w ćwiczeniu.',
+          description: 'Otworzyłeś podejrzaną grę na służbowym pulpicie. Na szczęście tylko w ćwiczeniu.',
           icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5',
           isUnlocked: true,
           unlockedAt: easterEggAt,

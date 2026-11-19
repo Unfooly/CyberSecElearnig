@@ -6,7 +6,7 @@ import type { PopupItem } from '@/lib/courses-types';
 import { usePhoneLayout } from '@/lib/use-phone-layout';
 
 // Easter egg (Q, D-100): komiksowe okienka („wirusy”, „wygrana”, „okup”) po kliknięciu przedmiotu z media.kind "popups" (moduł 1:
-// ikona gry na pulpicie Anny). Przesadzony, komiksowy wygląd w kolorach marki - celowo NIE imituje prawdziwych okien systemu ani
+// ikona gry na pulpicie komputera Pawła, D-176). Przesadzony, komiksowy wygląd w kolorach marki - celowo NIE imituje prawdziwych okien systemu ani
 // antywirusa. Okienka wyskakują kolejno co 350 ms (lekki obrót, kaskada), ekran „mruga” przy otwarciu. Zamykanie tylko krzyżykiem
 // (Esc = krzyżyk górnego okienka, SceneHotspotsBlock); przycisk w okienku nic nie robi - okienko drga, a „dodge” ucieka przed kursorem
 // (2 razy, nie na dotyku). Po zamknięciu wszystkich: `outro` i ukryte wyróżnienie w notatniku (onFound - bez XP i dowodów).

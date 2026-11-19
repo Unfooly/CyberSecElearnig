@@ -1,8 +1,10 @@
-# Moduł 1 „Zabawa w phishing” – nowy scenariusz „Webinar” (SZKIC do akceptacji)
+# Moduł 1 „Zabawa w phishing” – nowy scenariusz „Webinar”
 
 Status: **zaakceptowany przez właściciela 2026-11-19**: (1) zastępuje obecną treść modułu 1 (nowa wersja kursu, slug bez zmian),
 (2) nazwy OK (obie domeny sprawdzone 2026-11-19: nie istnieją), (3) gazeta z prawdziwym incydentem zostaje, jako ekran tuż PRZED
-ekranem końca. Nic z tego nie jest jeszcze w `module.json`.
+ekranem końca. **Wdrożone w D-176** - źródłem prawdy o blokach jest `packages/content/modules/wyludzone-haslo/SCENARIUSZ.md` i
+`module.json`; tabela „Nasza wersja” niżej to szkic sprzed wdrożenia (odstępstwa: czat jako DOSSIER, rozmowa jako DIALOGUE, raport jako
+TABS + osobne SUMMARY z zasadami, 4 etapy na tablicy).
 
 Do zachowania przy przebudowie: ukryta odznaka „Ciekawski detektyw” (easter egg `ciekawski-detektyw`, okienka na pulpicie
 komputera ofiary) - przenosimy ją na pulpit komputera Pawła, żeby odznaka dalej była do zdobycia.

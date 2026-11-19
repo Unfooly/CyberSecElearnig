@@ -147,7 +147,7 @@
                   "y": 9.6,
                   "width": 15.9,
                   "height": 22,
-                  "content": "W skrzynce na górze: „Zaproszenie na webinar »Dane w praktyce«” od Fundacji Analityki Stosowanej. Przyjrzysz mu się za chwilę.",
+                  "content": "W skrzynce jest mail „Zaproszenie na webinar »Dane w praktyce«” od Fundacji Analityki Stosowanej. Przyjrzysz mu się za chwilę.",
                   "required": true
                 },
                 {
@@ -157,7 +157,7 @@
                   "y": 31.3,
                   "width": 15.6,
                   "height": 21.6,
-                  "content": "W historii przeglądarki we wtorek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie."
+                  "content": "W historii przeglądarki w zeszły czwartek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie."
                 },
                 {
                   "id": "gra",
@@ -737,8 +737,8 @@
             "kind": "document",
             "title": "Hakerzy podszywali się pod dziennikarzy i organizatorów wydarzeń",
             "lines": [
-              "W 2020 roku grupa przestępcza znana jako Charming Kitten (APT35) prowadziła kampanię wymierzoną w dziennikarzy, naukowców i ekspertów.",
-              "Przestępcy podszywali się pod dziennikarzy i organizatorów konferencji. Zapraszali ofiary na wywiady i wydarzenia.",
+              "W 2020 roku grupa hakerów powiązana z Iranem, znana jako Charming Kitten (APT35), prowadziła kampanie wymierzone w dziennikarzy, naukowców i ekspertów.",
+              "Hakerzy podszywali się pod dziennikarzy i organizatorów konferencji. Zapraszali ofiary na wywiady i wydarzenia.",
               "Kontaktowali się przez e-mail, LinkedIn i WhatsApp, a czasem dzwonili do ofiar, żeby zdobyć ich zaufanie.",
               "Na końcu wysyłali link do fałszywej strony logowania, na której ofiary podawały hasło do poczty."
             ]

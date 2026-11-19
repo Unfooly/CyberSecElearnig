@@ -29,10 +29,14 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual([
       'teczka:TABS',
       'biuro-pawla:SCENE_HOTSPOTS',
+      'pulpit:SCENE_HOTSPOTS',
       'zaproszenie:EMAIL_ANALYSIS',
+      'biuro-pawla-2:SCENE_HOTSPOTS',
+      'telefon:SCENE_HOTSPOTS',
       'komunikator:DOSSIER',
       'domena:TEXT_INPUT_GUIDED',
       'zaufanie:QUIZ',
+      'biuro-pawla-3:SCENE_HOTSPOTS',
       'rozmowa-pawel:DIALOGUE',
       'tablica:ORDERING',
       'raport:TABS',
@@ -63,11 +67,35 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
   });
 
   it('easter egg odznaki „Ciekawski detektyw”: gra na pulpicie komputera Pawła z wyróżnieniem `ciekawski-detektyw`', () => {
-    const hotspots = block('biuro-pawla').hotspots as { id: string; media?: { kind: string; scene?: { hotspots: { id: string; media?: { kind: string; badge?: { id: string } } }[] } } }[];
-    const desktop = hotspots.find((h) => h.id === 'komputer')!.media!.scene!;
-    const game = desktop.hotspots.find((h) => h.id === 'gra')!;
+    const hotspots = block('pulpit').hotspots as { id: string; media?: { kind: string; badge?: { id: string } } }[];
+    const game = hotspots.find((h) => h.id === 'gra')!;
     expect(game.media?.kind).toBe('popups');
     expect(game.media?.badge?.id).toBe('ciekawski-detektyw');
+  });
+
+  it('okna jak na nagraniu (D-178): teczka i raport w teczce na biurku, poczta w monitorze, czat w telefonie', () => {
+    for (const id of ['teczka', 'raport']) {
+      expect(block(id).look).toBe('folder');
+      expect(block(id).background).toBeDefined();
+    }
+    expect(block('zaproszenie').frame).toBe('monitor');
+    const chat = (block('komunikator').documents as { layout?: string; self?: string }[])[0];
+    expect(chat).toMatchObject({ layout: 'chat', self: 'Paweł' });
+    expect(parsed.cover?.backdrop).toBeDefined();
+  });
+
+  it('biuro powtarzane jak na nagraniu: komputer → pulpit (Poczta) → mail; ✓ komputer, smartfon → ekran telefonu (Komunikator) → czat; ✓ oba, Paweł → rozmowa', () => {
+    const scene = (id: string) =>
+      Object.fromEntries((block(id).hotspots as { id: string; action?: string; done?: boolean }[]).map((h) => [h.id, h.done ? 'done' : (h.action ?? 'card')]));
+    expect(scene('biuro-pawla')).toEqual({ komputer: 'next', smartfon: 'card', pawel: 'card' });
+    expect(scene('pulpit')).toMatchObject({ poczta: 'next' });
+    expect(scene('biuro-pawla-2')).toEqual({ komputer: 'done', smartfon: 'next', pawel: 'card' });
+    expect(scene('telefon')).toMatchObject({ komunikator: 'next' });
+    expect(scene('biuro-pawla-3')).toEqual({ komputer: 'done', smartfon: 'done', pawel: 'next' });
+    const ids = parsed.blocks.map((b) => b.id);
+    expect(ids.indexOf('pulpit') + 1).toBe(ids.indexOf('zaproszenie'));
+    expect(ids.indexOf('telefon') + 1).toBe(ids.indexOf('komunikator'));
+    expect(ids.indexOf('biuro-pawla-3') + 1).toBe(ids.indexOf('rozmowa-pawel'));
   });
 
   it('fikcyjne domeny: tylko fundacja-analityki.pl, formularz-online.net i unfooly.com (sprawdzone 2026-11-19: dwie pierwsze nie istnieją)', () => {
@@ -96,8 +124,9 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
   it('okładki, miniatura, grafiki scen i portret Pawła - opublikowane WebP', () => {
     const key = /^assets\/wyludzone-haslo\/images\/[a-z-]+\.[0-9a-f]{8}\.webp$/;
     expect(parsed.thumbnail).toMatch(key);
-    for (const field of ['start', 'end', 'startPortrait', 'endPortrait'] as const) expect(parsed.cover?.[field]).toMatch(key);
-    expect(block('biuro-pawla').image).toMatch(key);
+    for (const field of ['start', 'end', 'startPortrait', 'endPortrait', 'backdrop'] as const) expect(parsed.cover?.[field]).toMatch(key);
+    for (const id of ['biuro-pawla', 'biuro-pawla-2', 'biuro-pawla-3', 'pulpit', 'telefon']) expect(block(id).image).toMatch(key);
+    for (const id of ['teczka', 'raport']) expect(block(id).background).toMatch(key);
     expect(block('gazeta').image).toMatch(key);
     expect((block('rozmowa-pawel').character as { avatar: string }).avatar).toMatch(key);
   });

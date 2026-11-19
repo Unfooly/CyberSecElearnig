@@ -306,7 +306,7 @@ export const noticeBoard: PropFn<{ w?: number; h?: number; title?: string; notes
 
 /* ---------- pulpit komputera ---------- */
 
-export type IconKind = 'outlook' | 'trash' | 'folder' | 'browser' | 'game' | 'sheet';
+export type IconKind = 'outlook' | 'trash' | 'folder' | 'browser' | 'game' | 'sheet' | 'chat' | 'calendar' | 'camera';
 
 export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: string }> = ({ icon = 'folder', label, badge }) => {
   const w = 120, h = 128;
@@ -337,6 +337,20 @@ export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: stri
     case 'sheet':
       g = `<rect x="26" y="14" width="68" height="78" rx="6" fill="${P.green}"/>` + [0, 1, 2, 3].map(i => `<rect x="36" y="${28 + i * 16}" width="48" height="10" fill="${P.white}" opacity="0.9"/>`).join('');
       break;
+    case 'chat':
+      /* komunikator (D-178): własna ikona - fioletowy kafel z dymkiem i trzema kropkami, bez cudzych logotypów */
+      g = `<rect x="20" y="12" width="80" height="80" rx="20" fill="${P.purple}"/>` +
+        `<path d="M38 34 h44 a8 8 0 0 1 8 8 v22 a8 8 0 0 1 -8 8 h-26 l-14 12 v-12 h-4 a8 8 0 0 1 -8 -8 v-22 a8 8 0 0 1 8 -8 z" fill="${P.white}"/>` +
+        [0, 1, 2].map(k => `<circle cx="${48 + k * 12}" cy="53" r="4" fill="${P.purple}"/>`).join('');
+      break;
+    case 'calendar':
+      g = `<rect x="20" y="12" width="80" height="80" rx="20" fill="${P.white}"/><rect x="20" y="12" width="80" height="26" rx="12" fill="${P.red}"/><rect x="20" y="28" width="80" height="10" fill="${P.red}"/>` +
+        text(60, 78, '14', 32, { bold: true, anchor: 'middle', fill: P.ink });
+      break;
+    case 'camera':
+      g = `<rect x="20" y="12" width="80" height="80" rx="20" fill="${P.greyDark}"/><rect x="32" y="38" width="56" height="38" rx="8" fill="${P.white}"/><rect x="48" y="30" width="24" height="10" rx="3" fill="${P.white}"/>` +
+        `<circle cx="60" cy="57" r="12" fill="${P.greyDark}"/><circle cx="60" cy="57" r="6" fill="${P.purple}"/>`;
+      break;
     default:
       g = `<path d="M22 30 h32 l10 10 h44 v50 a6 6 0 0 1 -6 6 h-74 a6 6 0 0 1 -6 -6 z" fill="${P.yellowDark}"/><rect x="22" y="46" width="86" height="50" rx="6" fill="${P.yellow}"/>`;
   }
@@ -344,6 +358,37 @@ export const desktopIcon: PropFn<{ icon?: IconKind; label?: string; badge?: stri
     w, h,
     svg: g + (label ? `<rect x="6" y="98" width="108" height="24" rx="6" fill="${P.ink}" opacity="0.35"/>` + text(60, 115, label, 14, { fill: P.white, bold: true, anchor: 'middle' }) : '') +
       (badge ? `<g class="a-bounce"><circle cx="98" cy="20" r="14" fill="${P.red}"/>` + text(98, 25, badge, 14, { fill: P.white, bold: true, anchor: 'middle' }) + `</g>` : ''),
+  };
+};
+
+/**
+ * Ekran główny smartfona z siatką aplikacji (moduł 1, D-178): obudowa i tapeta jak `phoneHomeTiles`, pasek stanu z godziną, aplikacje
+ * w 3 kolumnach (ikony `desktopIcon`, podpis pod spodem). Każda aplikacja jest częścią `app-<id>` (hotspot przez `partHotspots`).
+ */
+export const phoneHomeApps: PropFn<{ clock?: string; apps?: { id: string; icon: IconKind; label: string; badge?: string }[] }> = ({ clock = '10:42', apps = [] }) => {
+  const w = 620, h = 1180, sx = 34, sy = 90, sw = w - 68, sh = h - 170;
+  const cell = sw / 3, iconScale = 1.25, iw = 120 * iconScale, ih = 128 * iconScale;
+  const parts: Record<string, { x: number; y: number; w: number; h: number }> = {};
+  const grid = apps.slice(0, 12).map((app, i) => {
+    const col = i % 3, row = Math.floor(i / 3);
+    const x = sx + col * cell + (cell - iw) / 2, y = sy + 120 + row * (ih + 46);
+    parts[`app-${app.id}`] = { x, y, w: iw, h: ih };
+    return `<g transform="translate(${x} ${y}) scale(${iconScale})">${desktopIcon({ icon: app.icon, label: app.label, badge: app.badge }).svg}</g>`;
+  }).join('');
+  return {
+    w, h,
+    svg:
+      `<rect x="10" y="14" width="${w}" height="${h}" rx="70" fill="${P.ink}" opacity="0.22"/>` +
+      `<rect width="${w}" height="${h}" rx="70" fill="${P.ink}"/>` +
+      `<rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="30" fill="${P.purpleDark}"/>` +
+      `<clipPath id="pha-clip"><rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="30"/></clipPath>` +
+      `<circle clip-path="url(#pha-clip)" cx="${sx + sw - 60}" cy="${sy + sh - 120}" r="260" fill="${P.purple}" opacity="0.45"/>` +
+      `<rect x="${w / 2 - 70}" y="36" width="140" height="22" rx="11" fill="#1B1730"/>` +
+      text(sx + 40, sy + 52, clock, 26, { fill: P.white, bold: true }) +
+      `<rect x="${sx + sw - 110}" y="${sy + 34}" width="70" height="14" rx="7" fill="${P.white}" opacity="0.8"/>` +
+      grid +
+      `<rect x="${w / 2 - 90}" y="${h - 50}" width="180" height="10" rx="5" fill="${P.white}" opacity="0.6"/>`,
+    parts,
   };
 };
 
@@ -433,7 +478,7 @@ export const PROPS: Record<string, PropFn<any>> = {
   window: window_, calendar, shelf, whiteboard, door,
   desk, drawerUnit, chair, plant,
   monitor, stickyNote, phone, printer, mug, keyboardMouse, laptop, smartphone, box,
-  wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper, textBox,
+  wallSign, noticeBoard, desktopIcon, taskbar, mailWindow, paper, textBox, phoneHomeApps,
   // Odprawa (BRIEFING) - widok z góry na biurko detektywa (props-odprawa.ts); nazwy nie kolidują z powyższymi.
   ...ODPRAWA_PROPS,
   // Zamknięcie sprawy (SUMMARY.closing, D-089) - raport w teczce, pieczęć, liścik komisarza.

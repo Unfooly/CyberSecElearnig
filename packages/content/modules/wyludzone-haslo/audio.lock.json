@@ -13,14 +13,6 @@
       "voice": "narrator",
       "voiceId": "o2xdfKUpc1Bwq7RchZuW"
     },
-    "biuro-pawla#narration": {
-      "hash": "2fbf47b9b3072ad1",
-      "key": "audio/wyludzone-haslo/v1/biuro-pawla/2fbf47b9b3072ad1.mp3",
-      "textSha": "fdd21fa3e51d1c27",
-      "durationMs": 8081,
-      "voice": "narrator",
-      "voiceId": "o2xdfKUpc1Bwq7RchZuW"
-    },
     "zaproszenie#narration": {
       "hash": "006d52f1f52226d3",
       "key": "audio/wyludzone-haslo/v1/zaproszenie/006d52f1f52226d3.mp3",

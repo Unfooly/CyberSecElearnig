@@ -202,6 +202,8 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
     expect(done).toHaveAttribute('data-state', 'done');
     expect(screen.getByRole('img', { name: 'Komputer (obejrzane wcześniej)' })).toBeInTheDocument();
     expect(barNext()).toBeDisabled();
+    // Jest coś wymaganego - licznik jak dotąd, bez wskazówki drzwi (D-179).
+    expect(screen.queryByText(/Kliknij „.*”, żeby iść dalej/)).toBeNull();
     fireEvent.click(screen.getByTestId('hotspot-overlay-smartfon'));
     await screen.findByText('Telefon Pawła.');
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -222,6 +224,9 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
     };
     render(<CoursePlayer courseId="course-1" initial={course([scene])} narrationEnabled={false} />);
     expect(screen.getByTestId('hotspot-overlay-smartfon')).toHaveAttribute('data-state', 'ready');
+    // Nic do zebrania, jedne drzwi: zamiast mylącego „Wszystko obejrzane.” - co kliknąć dalej.
+    expect(screen.getByText('Kliknij „Smartfon”, żeby iść dalej.')).toBeInTheDocument();
+    expect(screen.queryByText('Wszystko obejrzane.')).toBeNull();
   });
 
   it('tło modułu (cover.backdrop) za ramką; bez tła - brak elementu', () => {

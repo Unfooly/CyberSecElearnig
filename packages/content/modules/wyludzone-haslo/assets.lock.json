@@ -27,6 +27,21 @@
       "hash": "34e4a83a",
       "key": "assets/wyludzone-haslo/images/koniec-pion.34e4a83a.webp"
     },
+    "module#cover.backdrop": {
+      "original": "images/tlo.webp",
+      "hash": "e47e1f5a",
+      "key": "assets/wyludzone-haslo/images/tlo.e47e1f5a.webp"
+    },
+    "teczka#background": {
+      "original": "images/teczka-tlo.webp",
+      "hash": "bb8ae8a4",
+      "key": "assets/wyludzone-haslo/images/teczka-tlo.bb8ae8a4.webp"
+    },
+    "teczka#backgroundPortrait": {
+      "original": "images/teczka-tlo-pion.webp",
+      "hash": "0bf7dcda",
+      "key": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp"
+    },
     "biuro-pawla#image": {
       "original": "images/biuro-pawla.webp",
       "hash": "20424773",
@@ -34,18 +49,58 @@
     },
     "biuro-pawla#imagePortrait": {
       "original": "images/biuro-pawla-pion.webp",
-      "hash": "c1e33646",
-      "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c1e33646.webp"
+      "hash": "c2a390bd",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp"
     },
-    "biuro-pawla#hotspots.0.media.scene.image": {
-      "original": "scenes/pulpit.svg",
-      "hash": "da6538de",
-      "key": "assets/wyludzone-haslo/scenes/pulpit.da6538de.svg"
+    "pulpit#image": {
+      "original": "images/pulpit.webp",
+      "hash": "b3c007e0",
+      "key": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp"
+    },
+    "biuro-pawla-2#image": {
+      "original": "images/biuro-pawla.webp",
+      "hash": "20424773",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp"
+    },
+    "biuro-pawla-2#imagePortrait": {
+      "original": "images/biuro-pawla-pion.webp",
+      "hash": "c2a390bd",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp"
+    },
+    "telefon#image": {
+      "original": "images/telefon.webp",
+      "hash": "43d8d84c",
+      "key": "assets/wyludzone-haslo/images/telefon.43d8d84c.webp"
+    },
+    "telefon#imagePortrait": {
+      "original": "images/telefon-pion.webp",
+      "hash": "f90a2270",
+      "key": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp"
+    },
+    "biuro-pawla-3#image": {
+      "original": "images/biuro-pawla.webp",
+      "hash": "20424773",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp"
+    },
+    "biuro-pawla-3#imagePortrait": {
+      "original": "images/biuro-pawla-pion.webp",
+      "hash": "c2a390bd",
+      "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp"
     },
     "rozmowa-pawel#character.avatar": {
       "original": "images/pawel.webp",
       "hash": "74a06b18",
       "key": "assets/wyludzone-haslo/images/pawel.74a06b18.webp"
+    },
+    "raport#background": {
+      "original": "images/teczka-tlo.webp",
+      "hash": "bb8ae8a4",
+      "key": "assets/wyludzone-haslo/images/teczka-tlo.bb8ae8a4.webp"
+    },
+    "raport#backgroundPortrait": {
+      "original": "images/teczka-tlo-pion.webp",
+      "hash": "0bf7dcda",
+      "key": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp"
     },
     "gazeta#image": {
       "original": "images/gazeta.webp",

@@ -19,7 +19,7 @@ export const PHONE_SCENE_BOX = { width: 364, height: 631 } as const;
 export const MIN_TEXT_PX = 14;
 export const MIN_PHONE_SCREEN_TEXT_PX = 16;
 /** Klocki, które są ekranem telefonu (tekst min. 16 px); element może to nadpisać polem `phoneScreen`. */
-export const PHONE_SCREEN_PROPS = new Set(['smartphone', 'phoneTop', 'phoneFaceUp', 'phoneHomeTiles', 'phoneLying', 'incomingCallScreen', 'mfaListZoom']);
+export const PHONE_SCREEN_PROPS = new Set(['smartphone', 'phoneTop', 'phoneFaceUp', 'phoneHomeTiles', 'phoneHomeApps', 'phoneLying', 'incomingCallScreen', 'mfaListZoom']);
 
 /**
  * Parametry klocków dopasowywane do slotu przez `fitText` (zawijanie + zmniejszanie do minimum, błąd gdy się nie mieści) - tylko tu

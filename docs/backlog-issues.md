@@ -867,6 +867,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-171 Narracja pięciu scen przejścia modułu 1 (D-179)
+- Etykiety: `P2`, `treść`, `mod:kursy` · Źródło: D-179 (limit ElevenLabs wyczerpany 2026-11-19; decyzja właściciela: wypuścić bez nagrań)
+- Opis: sceny `biuro-pawla`, `pulpit`, `biuro-pawla-2`, `telefon`, `biuro-pawla-3` mają tylko podpowiedź (`tip`), bez głosu lektora -
+  pozostałe bloki modułu mają narrację.
+- Akceptacja: po odnowieniu limitu ElevenLabs dodać `narration.text` (np. tekst dzisiejszego `tip`, a `tip` skrócić do polecenia
+  „Kliknij …”), wygenerować `npm run tts --prefix scripts/content -- wyludzone-haslo --storage r2 --yes`, `--check` zielone.
+
 ### B-168 Obraz web: usuwać też `packages/content/dev-modules` (D-175)
 - Etykiety: `P2`, `security`, `infra` · Źródło: code review D-175
 - Opis: `apps/web/Dockerfile` (etap builder kopiuje cały `packages/content`) robi `rm -rf packages/content/modules` jako drugą warstwę
@@ -913,6 +920,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Od D-176 moduł 1 ma nową treść („Webinar”, 11 bloków: teczka, biuro Pawła, mail, czat, domena, Tak/Nie, rozmowa, tablica, raport,
   gazeta, zasady) - `scripts/e2e-module-01.mjs`, `docs/e2e-module-01.md` i kroki `scripts/screenshot-module.mjs` opisują jeszcze dawną
   treść (Anna, bank) i trzeba je przepisać pod nowe id bloków.
+- Od D-179 moduł 1 ma 15 bloków (dodane `pulpit`, `biuro-pawla-2`, `telefon`, `biuro-pawla-3`; sceny przejścia kończą się drzwiami).
+  `scripts/e2e-module-01.mjs` zakłada jeszcze 10 bloków (linia ~115). Przy okazji: `dev-modules/dev-modul-1` odwołuje się do
+  opublikowanego `assets/wyludzone-haslo/scenes/pulpit.da6538de.svg`, którego źródło usunięto w D-179 - dać mu własne źródło sceny
+  (np. kopię `scenes/examples/dev-modul-1/pulpit.json` budowaną do `dev-modul-1`), żeby zasób dało się odtworzyć.
 
 ### B-163 Sprzątanie po D-162 razem z usunięciem dowodów (etap 2)
 - Etykiety: `P2`, `refactor`, `mod:odtwarzacz` · Źródło: code review D-162

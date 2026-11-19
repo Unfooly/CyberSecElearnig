@@ -215,6 +215,8 @@ export default function SceneHotspotsBlock({
   );
   const doneCount = required.filter((id) => visited.includes(id)).length;
   const ready = doneCount >= required.length;
+  // Dokładnie jedne drzwi i nic do zebrania: nagłówek wskazuje drzwi zamiast licznika (D-178). Przy kilku drzwiach - jak dotąd.
+  const doorOnlyLabel = required.length === 0 && doorIds.size === 1 ? (hotspots.find((hotspot) => hotspot.action === 'next')?.label ?? null) : null;
   // Ramka podpowiedzi tylko na celach wymaganych do ukończenia sceny (decyzja właściciela 2026-10-30): bez easter eggów i `required: false`.
   // Przedmiot ze sceną zagnieżdżoną też, gdy wymagany cel został w środku - inaczej scena główna nie miałaby czego wskazać.
   const isPending = (id: string) => required.includes(id) && !visited.includes(id);
@@ -518,8 +520,16 @@ export default function SceneHotspotsBlock({
     <div className="flex min-h-0 w-full flex-1 flex-col">
       <div className="shrink-0">
         {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
-        <p className="mb-2 text-sm text-slate-600">Wybierz przedmioty na scenie, żeby się im przyjrzeć.</p>
-        <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
+        {doorOnlyLabel !== null && !review ? (
+          // Scena-przejście (D-178: biuro powtarzane jak na nagraniu): nic do zebrania, tylko „drzwi” - zamiast licznika „Wszystko
+          // obejrzane.” (mylące, gdy gracz jeszcze nic nie kliknął) wskazówka, co kliknąć dalej.
+          <p className="mb-2 text-sm text-slate-600">Kliknij „{doorOnlyLabel}”, żeby iść dalej.</p>
+        ) : (
+          <>
+            <p className="mb-2 text-sm text-slate-600">Wybierz przedmioty na scenie, żeby się im przyjrzeć.</p>
+            <ExploreFooter done={doneCount} total={required.length} noun="elementów" review={review} className="mb-2 text-xs text-slate-500" />
+          </>
+        )}
       </div>
 
       {imageUrl && !imageFailed && (

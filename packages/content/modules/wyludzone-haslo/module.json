@@ -21,7 +21,8 @@
     "start": "assets/wyludzone-haslo/images/start.8d22c34a.webp",
     "end": "assets/wyludzone-haslo/images/koniec.3deb6e6d.webp",
     "startPortrait": "assets/wyludzone-haslo/images/start-pion.8cad0e42.webp",
-    "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.34e4a83a.webp"
+    "endPortrait": "assets/wyludzone-haslo/images/koniec-pion.34e4a83a.webp",
+    "backdrop": "assets/wyludzone-haslo/images/tlo.e47e1f5a.webp"
   },
   "caseNumber": 1,
   "startNotice": "Przed rozpoczęciem tego modułu należy ukończyć moduł „Wykrywanie wiadomości phishingowych”.",
@@ -50,6 +51,10 @@
         ]
       },
       "tip": "Kliknij każdą zakładkę w teczce. Potem „Dalej”.",
+      "look": "folder",
+      "stamp": "ŚCIŚLE TAJNE",
+      "background": "assets/wyludzone-haslo/images/teczka-tlo.bb8ae8a4.webp",
+      "backgroundPortrait": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp",
       "tabs": [
         {
           "id": "zadanie",
@@ -77,46 +82,31 @@
       "id": "biuro-pawla",
       "type": "SCENE_HOTSPOTS",
       "title": "Biuro Pawła",
-      "narration": {
-        "text": "Jesteś na miejscu zdarzenia, w biurze Pawła. Zanim z nim porozmawiasz, rozejrzyj się: komputer, telefon i sam Paweł.",
-        "audioUrl": "audio/wyludzone-haslo/v1/biuro-pawla/2fbf47b9b3072ad1.mp3",
-        "durationMs": 8081,
-        "cues": [
-          {
-            "text": "Jesteś na miejscu zdarzenia, w biurze Pawła.",
-            "startMs": 0
-          },
-          {
-            "text": "Zanim z nim porozmawiasz, rozejrzyj się: komputer, telefon i sam Paweł.",
-            "startMs": 3135
-          }
-        ]
-      },
-      "tip": "Kliknij komputer, telefon i Pawła. Potem „Dalej”.",
+      "tip": "Jesteś w biurze Pawła. Szukaj wskazówek – zacznij od jego komputera.",
       "image": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp",
       "imageAlt": "Biuro Pawła: po lewej monitor z otwartą pocztą, na biurku smartfon z powiadomieniem z komunikatora, po prawej stoi Paweł.",
-      "imagePortrait": "assets/wyludzone-haslo/images/biuro-pawla-pion.c1e33646.webp",
+      "imagePortrait": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp",
       "portraitHotspots": [
         {
           "id": "komputer",
-          "x": 1,
-          "y": 0,
-          "width": 30,
-          "height": 38
+          "x": 4,
+          "y": 43,
+          "width": 34,
+          "height": 21
         },
         {
           "id": "smartfon",
-          "x": 61,
-          "y": 23,
+          "x": 16,
+          "y": 65,
           "width": 22,
-          "height": 13
+          "height": 7
         },
         {
           "id": "pawel",
-          "x": 33,
-          "y": 21,
-          "width": 33,
-          "height": 78
+          "x": 42,
+          "y": 14,
+          "width": 46,
+          "height": 85
         }
       ],
       "hotspots": [
@@ -127,78 +117,7 @@
           "y": 31,
           "width": 21,
           "height": 38,
-          "content": "Komputer Pawła nie jest zablokowany. Na pulpicie widać pocztę – zobacz, co jeszcze tu jest.",
-          "media": {
-            "kind": "scene",
-            "scene": {
-              "image": "assets/wyludzone-haslo/scenes/pulpit.da6538de.svg",
-              "imageAlt": "Pulpit komputera z ikonami: Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe, Kosz; pasek zadań pokazuje 10:06.",
-              "screen": {
-                "x": 3.8,
-                "y": 4.9,
-                "w": 91.3,
-                "h": 79.8
-              },
-              "hotspots": [
-                {
-                  "id": "poczta",
-                  "label": "Poczta",
-                  "x": 8.1,
-                  "y": 9.6,
-                  "width": 15.9,
-                  "height": 22,
-                  "content": "W skrzynce jest mail „Zaproszenie na webinar »Dane w praktyce«” od Fundacji Analityki Stosowanej. Przyjrzysz mu się za chwilę.",
-                  "required": true
-                },
-                {
-                  "id": "internet",
-                  "label": "Internet",
-                  "x": 8.3,
-                  "y": 31.3,
-                  "width": 15.6,
-                  "height": 21.6,
-                  "content": "W historii przeglądarki w zeszły czwartek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie."
-                },
-                {
-                  "id": "gra",
-                  "label": "GTA6_PL.exe",
-                  "x": 26.3,
-                  "y": 31.3,
-                  "width": 15.6,
-                  "height": 21.6,
-                  "content": "Ikona „GTA6_PL.exe” na służbowym pulpicie. Skąd się tu wzięła?",
-                  "media": {
-                    "kind": "popups",
-                    "items": [
-                      {
-                        "title": "⚠ Wykryto 147 wirusów!",
-                        "body": "Twój komputer jest bardzo chory.",
-                        "button": "Wylecz za 0 zł",
-                        "behavior": "dodge"
-                      },
-                      {
-                        "title": "🎉 Gratulacje!",
-                        "body": "Wygrałeś smartfon!",
-                        "button": "Odbierz nagrodę"
-                      },
-                      {
-                        "title": "🔒 Pliki zaszyfrowane",
-                        "body": "Zapłać, żeby je odzyskać.",
-                        "button": "Zapłać teraz",
-                        "countdown": "23:59:59"
-                      }
-                    ],
-                    "outro": "Pirackie gry to jedna z najczęstszych dróg, którymi wirusy trafiają do firm. Dobrze, że to tylko ćwiczenie.",
-                    "badge": {
-                      "id": "ciekawski-detektyw",
-                      "label": "Ciekawski detektyw"
-                    }
-                  }
-                }
-              ]
-            }
-          },
-          "required": true
+          "action": "next"
         },
         {
           "id": "smartfon",
@@ -207,8 +126,8 @@
           "y": 68,
           "width": 11,
           "height": 16,
-          "content": "Na ekranie powiadomienia z komunikatora: „Katarzyna Zielińska – Fundacja Analityki Stosowanej”. Paweł rozmawiał z nią w zeszłym tygodniu. Historię rozmowy przejrzysz za chwilę.",
-          "required": true
+          "content": "Na ekranie powiadomienia z komunikatora. Telefon sprawdzisz za chwilę – najpierw komputer.",
+          "required": false
         },
         {
           "id": "pawel",
@@ -217,8 +136,73 @@
           "y": 10,
           "width": 17,
           "height": 88,
-          "content": "Paweł jest zdenerwowany, ale chce pomóc. Najpierw obejrzyj jego komputer i telefon – porozmawiacie, gdy będziesz wiedzieć, o co pytać.",
-          "required": true
+          "content": "Paweł jest zdenerwowany, ale chce pomóc. Porozmawiacie, gdy będziesz wiedzieć, o co pytać.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "pulpit",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Komputer Pawła",
+      "tip": "Komputer nie jest zablokowany. Na pulpicie czeka nieprzeczytana wiadomość – otwórz Pocztę.",
+      "image": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp",
+      "imageAlt": "Monitor Pawła z pulpitem: ikony Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe i Kosz; pasek zadań pokazuje 10:06.",
+      "hotspots": [
+        {
+          "id": "poczta",
+          "label": "Poczta",
+          "x": 18.9,
+          "y": 20.4,
+          "width": 8.9,
+          "height": 15.6,
+          "action": "next"
+        },
+        {
+          "id": "internet",
+          "label": "Internet",
+          "x": 18.9,
+          "y": 35.9,
+          "width": 8.9,
+          "height": 15.6,
+          "content": "W historii przeglądarki w zeszły czwartek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie.",
+          "required": false
+        },
+        {
+          "id": "gra",
+          "label": "GTA6_PL.exe",
+          "x": 28.5,
+          "y": 35.9,
+          "width": 8.9,
+          "height": 15.6,
+          "content": "Ikona „GTA6_PL.exe” na służbowym pulpicie. Skąd się tu wzięła?",
+          "media": {
+            "kind": "popups",
+            "items": [
+              {
+                "title": "⚠ Wykryto 147 wirusów!",
+                "body": "Twój komputer jest bardzo chory.",
+                "button": "Wylecz za 0 zł",
+                "behavior": "dodge"
+              },
+              {
+                "title": "🎉 Gratulacje!",
+                "body": "Wygrałeś smartfon!",
+                "button": "Odbierz nagrodę"
+              },
+              {
+                "title": "🔒 Pliki zaszyfrowane",
+                "body": "Zapłać, żeby je odzyskać.",
+                "button": "Zapłać teraz",
+                "countdown": "23:59:59"
+              }
+            ],
+            "outro": "Pirackie gry to jedna z najczęstszych dróg, którymi wirusy trafiają do firm. Dobrze, że to tylko ćwiczenie.",
+            "badge": {
+              "id": "ciekawski-detektyw",
+              "label": "Ciekawski detektyw"
+            }
+          }
         }
       ]
     },
@@ -226,6 +210,7 @@
       "id": "zaproszenie",
       "type": "EMAIL_ANALYSIS",
       "title": "Zaproszenie",
+      "frame": "monitor",
       "weight": 2,
       "narration": {
         "text": "Oto mail, od którego wszystko się zaczęło. Przeczytaj go uważnie. Które cechy phishingu ma ta wiadomość?",
@@ -298,6 +283,131 @@
       }
     },
     {
+      "id": "biuro-pawla-2",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Biuro Pawła",
+      "tip": "Mail już znasz. Teraz sprawdź smartfon Pawła.",
+      "image": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp",
+      "imageAlt": "Biuro Pawła: po lewej monitor z otwartą pocztą, na biurku smartfon z powiadomieniem z komunikatora, po prawej stoi Paweł.",
+      "imagePortrait": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp",
+      "portraitHotspots": [
+        {
+          "id": "komputer",
+          "x": 4,
+          "y": 43,
+          "width": 34,
+          "height": 21
+        },
+        {
+          "id": "smartfon",
+          "x": 16,
+          "y": 65,
+          "width": 22,
+          "height": 7
+        },
+        {
+          "id": "pawel",
+          "x": 42,
+          "y": 14,
+          "width": 46,
+          "height": 85
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "komputer",
+          "label": "Komputer",
+          "x": 8,
+          "y": 31,
+          "width": 21,
+          "height": 38,
+          "done": true
+        },
+        {
+          "id": "smartfon",
+          "label": "Smartfon",
+          "x": 25,
+          "y": 68,
+          "width": 11,
+          "height": 16,
+          "action": "next"
+        },
+        {
+          "id": "pawel",
+          "label": "Paweł",
+          "x": 57,
+          "y": 10,
+          "width": 17,
+          "height": 88,
+          "content": "Paweł czeka. Porozmawiacie, gdy sprawdzisz jeszcze jego telefon.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "telefon",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Telefon Pawła",
+      "tip": "W komunikatorze czekają trzy wiadomości – otwórz Komunikator.",
+      "image": "assets/wyludzone-haslo/images/telefon.43d8d84c.webp",
+      "imageAlt": "Smartfon Pawła na biurku: ekran główny z aplikacjami Komunikator (3 nowe wiadomości), Poczta, Kalendarz, Internet, Aparat i Pliki.",
+      "imagePortrait": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp",
+      "portraitHotspots": [
+        {
+          "id": "komunikator",
+          "x": 23.7,
+          "y": 25.2,
+          "width": 15.2,
+          "height": 10.2
+        },
+        {
+          "id": "poczta-telefon",
+          "x": 42.4,
+          "y": 25.2,
+          "width": 15.2,
+          "height": 10.2
+        },
+        {
+          "id": "kalendarz",
+          "x": 61.1,
+          "y": 25.2,
+          "width": 15.2,
+          "height": 10.2
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "komunikator",
+          "label": "Komunikator",
+          "x": 41.7,
+          "y": 22.1,
+          "width": 4.8,
+          "height": 11.4,
+          "action": "next"
+        },
+        {
+          "id": "poczta-telefon",
+          "label": "Poczta",
+          "x": 47.6,
+          "y": 22.1,
+          "width": 4.8,
+          "height": 11.4,
+          "content": "Ta sama skrzynka co na komputerze. Zaproszenie od fundacji już znasz.",
+          "required": false
+        },
+        {
+          "id": "kalendarz",
+          "label": "Kalendarz",
+          "x": 53.5,
+          "y": 22.1,
+          "width": 4.8,
+          "height": 11.4,
+          "content": "W kalendarzu na czwartek: „Webinar »Dane w praktyce« – rejestracja prelegentów”. Paweł wpisał to sam.",
+          "required": false
+        }
+      ]
+    },
+    {
       "id": "komunikator",
       "type": "DOSSIER",
       "title": "Smartfon Pawła",
@@ -323,8 +433,10 @@
           "id": "czat",
           "tab": "Komunikator",
           "org": "SMARTFON PAWŁA · KOMUNIKATOR",
-          "title": "Rozmowa: Katarzyna Zielińska – Fundacja Analityki Stosowanej",
+          "title": "Katarzyna Zielińska – Fundacja Analityki Stosowanej",
           "meta": "Czwartek, w dniu zaproszenia",
+          "layout": "chat",
+          "self": "Paweł",
           "columns": [
             "Godz.",
             "Kto",
@@ -490,6 +602,67 @@
           "text": "Nie – domena nie należy do fundacji.",
           "correct": true,
           "feedback": "Dokładnie. Strona formularz-online.net nie ma nic wspólnego z rzekomym nadawcą. Link prawie na pewno prowadzi na stronę przestępców."
+        }
+      ]
+    },
+    {
+      "id": "biuro-pawla-3",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Biuro Pawła",
+      "tip": "Komputer i telefon sprawdzone. Czas porozmawiać z Pawłem.",
+      "image": "assets/wyludzone-haslo/images/biuro-pawla.20424773.webp",
+      "imageAlt": "Biuro Pawła: po lewej monitor z otwartą pocztą, na biurku smartfon z powiadomieniem z komunikatora, po prawej stoi Paweł.",
+      "imagePortrait": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp",
+      "portraitHotspots": [
+        {
+          "id": "komputer",
+          "x": 4,
+          "y": 43,
+          "width": 34,
+          "height": 21
+        },
+        {
+          "id": "smartfon",
+          "x": 16,
+          "y": 65,
+          "width": 22,
+          "height": 7
+        },
+        {
+          "id": "pawel",
+          "x": 42,
+          "y": 14,
+          "width": 46,
+          "height": 85
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "komputer",
+          "label": "Komputer",
+          "x": 8,
+          "y": 31,
+          "width": 21,
+          "height": 38,
+          "done": true
+        },
+        {
+          "id": "smartfon",
+          "label": "Smartfon",
+          "x": 25,
+          "y": 68,
+          "width": 11,
+          "height": 16,
+          "done": true
+        },
+        {
+          "id": "pawel",
+          "label": "Paweł",
+          "x": 57,
+          "y": 10,
+          "width": 17,
+          "height": 88,
+          "action": "next"
         }
       ]
     },
@@ -679,6 +852,10 @@
         ]
       },
       "tip": "Kliknij każdą zakładkę raportu.",
+      "look": "folder",
+      "stamp": "SPRAWA ZAMKNIĘTA",
+      "background": "assets/wyludzone-haslo/images/teczka-tlo.bb8ae8a4.webp",
+      "backgroundPortrait": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp",
       "tabs": [
         {
           "id": "etap-mail",

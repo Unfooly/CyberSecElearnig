@@ -17,6 +17,8 @@ const TECHNICAL_KEYS = new Set([
   'id', 'type', 'kind', 'blockId', 'fromBlock', 'image', 'imagePortrait', 'scene', 'portrait', 'src', 'audio', 'audioUrl', 'icon',
   'voice', 'layout', 'variant', 'phase', 'evidence', 'href', 'url', 'side', 'target', 'tone', 'mood', 'state', 'format', 'mode',
   'align', 'role', 'slot', 'speaker', 'channel', 'stamp', 'note', 'time',
+  // Adresy e-mail w makiecie maila (EMAIL_ANALYSIS, moduł 1 od D-176) - nie tłumaczy się ich.
+  'fromAddress', 'to',
 ]);
 const NOT_TEXT = [
   /^[a-z0-9]+(?:-[a-z0-9]+)*$/, // id w kebab-case (także jednowyrazowe małymi literami)

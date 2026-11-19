@@ -61,7 +61,8 @@ describe('Nowa wersja treści przed pierwszym blokiem: POST /courses/:id/start (
     const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    await app.init();
+    // Równoległe /start w teście wyścigu - nasłuchujący serwer, nie app.init() (CLAUDE.md, reguła 9).
+    await app.listen(0);
     prisma = app.get(PrismaService);
     tenantPrisma = app.get(TenantPrismaService);
     jwtService = app.get(JwtService);
@@ -123,5 +124,47 @@ describe('Nowa wersja treści przed pierwszym blokiem: POST /courses/:id/start (
     // Po przejściu wynik bloku 0 nowej wersji zapisuje się normalnie.
     const saved = await request(app.getHttpServer()).post(`/courses/${courseId}/progress`).set('Authorization', `Bearer ${openedToken}`).send({ blockIndex: 0, answer: 1 }).expect(200);
     expect(saved.body.currentBlockIndex).toBe(1);
+  });
+
+  it('dwa równoległe /start (dwie karty) po imporcie: OBA dostają nową treść; zapis z karty starej treści (inny blockId) - 409, z nowej - 200', async () => {
+    const { id: twoTabsId, token: twoTabsToken } = await employee(orgAId, 'dwie-karty');
+    // Pierwsze otwarcie przypina obecną najnowszą (wersja 2, id bloków b0/b1 - schemaVersion 1).
+    const before = await start(twoTabsToken);
+    expect(before.body.contentBlocks[0].id).toBe('b0');
+
+    // Import wersji 3 z jawnymi id bloków.
+    const v3 = await prisma.courseVersion.create({
+      data: {
+        courseId,
+        version: 3,
+        schemaVersion: 5,
+        contentHash: `upgrade-3-${uniqueSuffix}`,
+        contentBlocks: [
+          { id: 'v3-pytanie-1', ...quiz('Wersja 3 - pytanie 1') },
+          { id: 'v3-pytanie-2', ...quiz('Wersja 3 - pytanie 2') },
+        ],
+        blockCount: 2,
+      },
+    });
+
+    const results = await Promise.allSettled([start(twoTabsToken), start(twoTabsToken)]);
+    for (const result of results) {
+      expect(result.status).toBe('fulfilled');
+      if (result.status === 'fulfilled') expect(result.value.body.contentBlocks[0].prompt).toBe('Wersja 3 - pytanie 1');
+    }
+    expect(await pinnedVersion(orgAId, twoTabsId)).toBe(v3.id);
+
+    // Karta otwarta jeszcze na wersji 2 wysyła blok 0 (b0): treść się zmieniła - 409, postęp bez zmian.
+    await request(app.getHttpServer())
+      .post(`/courses/${courseId}/progress`)
+      .set('Authorization', `Bearer ${twoTabsToken}`)
+      .send({ blockIndex: 0, blockId: 'b0', answer: 1 })
+      .expect(409);
+    const fresh = await request(app.getHttpServer())
+      .post(`/courses/${courseId}/progress`)
+      .set('Authorization', `Bearer ${twoTabsToken}`)
+      .send({ blockIndex: 0, blockId: 'v3-pytanie-1', answer: 1 })
+      .expect(200);
+    expect(fresh.body.currentBlockIndex).toBe(1);
   });
 });

@@ -123,7 +123,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     // "Dalej" w pasku powłoki (nie osobny "Kontynuuj" w bloku): wymagane elementy zebrane, więc jest już aktywne.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-    expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, answer: { visited: ['h1'], noted: ['h1'] } });
+    expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, blockId: 'scena', answer: { visited: ['h1'], noted: ['h1'] } });
 
     // Bez pośredniego ekranu "Blok ukończony." - od razu kolejny blok.
     await screen.findByText('Pytanie?');
@@ -219,7 +219,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     // Z powrotem na żywym bloku: ten sam "Dalej" w pasku (gotowość przetrwała powrót z podglądu) zapisuje odpowiedź.
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-    expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 1, answer: { visited: ['h1'], noted: ['h1'] } });
+    expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 1, blockId: 'scena', answer: { visited: ['h1'], noted: ['h1'] } });
   });
 
   describe('stan częściowy sceny (D-128)', () => {
@@ -312,7 +312,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-      expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, answer: { visited: ['h1', 'h2'], noted: ['h1'] } });
+      expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, blockId: 'scena', answer: { visited: ['h1', 'h2'], noted: ['h1'] } });
       await screen.findByText('Pytanie?');
     });
 
@@ -369,7 +369,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
 
       await act(async () => release[0]());
       await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-      expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, answer: { visited: ['h1', 'h2'], noted: ['h1'] } });
+      expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, blockId: 'scena', answer: { visited: ['h1', 'h2'], noted: ['h1'] } });
       await screen.findByText('Pytanie?');
       expect(exploreCalls(fetchMock)).toHaveLength(1);
     });
@@ -764,7 +764,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/courses/course-1/progress',
-        expect.objectContaining({ method: 'POST', body: JSON.stringify({ blockIndex: 0, answer: { visited: [], noted: [] } }) }),
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ blockIndex: 0, blockId: 'korytarz', answer: { visited: [], noted: [] } }) }),
       ),
     );
     await screen.findByText('Pytanie?');
@@ -1070,7 +1070,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     fireEvent.click(screen.getByRole('button', { name: 'Sprawdź odpowiedź' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 1, answer: { selected: ['op-1'] } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ blockIndex: 1, blockId: 'mail', answer: { selected: ['op-1'] } });
 
     // Wynik w samym bloku (trafienie, wyjaśnienie).
     await screen.findByText('Domena jest podróbką.');
@@ -1128,7 +1128,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock.mock.calls[1][0]).toBe('/api/courses/course-1/progress');
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ blockIndex: 0 });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ blockIndex: 0, blockId: 'domena' });
   });
 
   it('zadanie tekstowe: przed rozstrzygnięciem "Dalej" w pasku jest nieaktywne z podpowiedzią', () => {
@@ -1166,7 +1166,7 @@ describe('CoursePlayer: bloki eksploracyjne', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/courses/course-1/progress');
-    expect(JSON.parse(init.body)).toEqual({ blockIndex: 0, answer: { opened: ['x', 'y'] } });
+    expect(JSON.parse(init.body)).toEqual({ blockIndex: 0, blockId: 'tabs1', answer: { opened: ['x', 'y'] } });
 
     // Bez pośredniego ekranu "Blok ukończony." - jeden klik i już kolejny blok.
     expect(await screen.findByText('Pytanie?')).toBeInTheDocument();

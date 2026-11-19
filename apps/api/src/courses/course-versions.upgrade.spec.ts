@@ -29,7 +29,8 @@ describe('upgradeUnstartedPin (D-177)', () => {
     const result = (await upgradeUnstartedPin(t as never, base)) as { courseVersionId: string; course: unknown };
     expect(t.courseAssignment.updateMany).toHaveBeenCalledWith({
       where: { id: 'a1', organizationId: 'org-1', courseVersionId: 'v1', currentBlockIndex: 0, status: { not: AssignmentStatus.COMPLETED } },
-      data: { courseVersionId: 'v2', progress: Prisma.DbNull },
+      // W toku: czas sprawy od przejścia na nową treść (D-177).
+      data: { courseVersionId: 'v2', progress: Prisma.DbNull, startedAt: expect.any(Date) },
     });
     expect(result.courseVersionId).toBe('v2');
     // Relacje z odczytu wywołującego (kurs, użytkownik) zostają.
@@ -47,8 +48,18 @@ describe('upgradeUnstartedPin (D-177)', () => {
       expect(await upgradeUnstartedPin(t as never, assignment as never)).toBe(assignment);
       expect(t.courseAssignment.updateMany).not.toHaveBeenCalled();
     }
+  });
+
+  it('wyścig (count 0 - równoległy /start już przepiął): odczyt wiersza ponownie, obowiązuje wersja z bazy, nie nieaktualny obiekt', async () => {
     const raced = tx('v2', 0);
-    expect(await upgradeUnstartedPin(raced as never, base)).toBe(base);
-    expect(raced.courseAssignment.findFirst).not.toHaveBeenCalled();
+    const result = (await upgradeUnstartedPin(raced as never, base)) as { courseVersionId: string };
+    expect(raced.courseAssignment.findFirst).toHaveBeenCalledWith({ where: { id: 'a1', organizationId: 'org-1' } });
+    expect(result.courseVersionId).toBe('v2');
+  });
+
+  it('nierozpoczęte (NOT_STARTED): bez zmiany czasu startu - ustawi go pierwsze wejście', async () => {
+    const t = tx('v2');
+    await upgradeUnstartedPin(t as never, { ...(base as object), status: AssignmentStatus.NOT_STARTED } as never);
+    expect(t.courseAssignment.updateMany.mock.calls[0][0].data).toEqual({ courseVersionId: 'v2', progress: Prisma.DbNull });
   });
 });

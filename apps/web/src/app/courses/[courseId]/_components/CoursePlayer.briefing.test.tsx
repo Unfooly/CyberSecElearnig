@@ -132,7 +132,7 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-    expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
+    expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0, blockId: 'odprawa' });
     await screen.findByText('Biuro Anny.');
   });
 
@@ -146,7 +146,7 @@ describe('CoursePlayer: odprawa (BRIEFING)', () => {
     expect(progressCalls(fetchMock)).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
-    expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0 });
+    expect(JSON.parse(String(progressCalls(fetchMock)[0][1]?.body))).toEqual({ blockIndex: 0, blockId: 'odprawa' });
     await screen.findByText('Biuro Anny.');
   });
 

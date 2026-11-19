@@ -483,6 +483,16 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
     service = module.get(CoursesService);
   });
 
+  it('D-177: blockId niezgodny z blokiem pod indeksem w przypiętej wersji (treść zmieniła się pod kartą) - 409, bez zapisu i oceny', async () => {
+    findFirst.mockResolvedValue(assignmentFixture());
+    await expect(service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, blockId: 'inny-blok' })).rejects.toBeInstanceOf(ConflictException);
+    expect(awardCourseCompletion).not.toHaveBeenCalled();
+    // Zgodny (wersja 1 - id nadane deterministycznie: b<indeks>) albo brak pola (starsza karta): zapis jak dotąd.
+    findFirst.mockResolvedValue(assignmentFixture());
+    await service.submitBlockProgress('org-1', 'user-1', 'course-1', { blockIndex: 0, blockId: 'b0' });
+    expect(awardCourseCompletion).toHaveBeenCalledTimes(1);
+  });
+
   it('woła GamificationService.awardCourseCompletion, gdy ostatni blok kończy kurs (isComplete)', async () => {
     findFirst.mockResolvedValue(assignmentFixture());
 

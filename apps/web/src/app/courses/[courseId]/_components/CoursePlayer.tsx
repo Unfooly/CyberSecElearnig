@@ -591,11 +591,12 @@ export default function CoursePlayer({
       const response = await fetch(`/api/courses/${courseId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          answer === undefined
-            ? { blockIndex: state.currentBlockIndex }
-            : { blockIndex: state.currentBlockIndex, answer },
-        ),
+        // blockId (D-177): serwer odrzuca zapis (409), gdy pod tym indeksem jest już inny blok - treść zmieniła się pod otwartą kartą.
+        body: JSON.stringify({
+          blockIndex: state.currentBlockIndex,
+          ...(blocks[state.currentBlockIndex]?.id ? { blockId: blocks[state.currentBlockIndex].id } : {}),
+          ...(answer === undefined ? {} : { answer }),
+        }),
       });
 
       if (response.status === 401) {
@@ -611,7 +612,8 @@ export default function CoursePlayer({
         setError(data?.message ?? 'Nie udało się zapisać odpowiedzi.');
         // 400 (np. „Bloki trzeba ukończyć po kolei”): odtwarzacz mógł mieć nieaktualny postęp (D-142: drzewo z pamięci routera, nieudane
         // odświeżenie po „Wstecz”) - świeży postęp z serwera; inny currentBlockIndex zmienia klucz w page.tsx i przemontowuje odtwarzacz.
-        if (response.status === 400) router.refresh();
+        // 409 (D-177): treść kursu zmieniła się pod otwartą kartą - świeże /start pokazuje nową wersję.
+        if (response.status === 400 || response.status === 409) router.refresh();
         return;
       }
 

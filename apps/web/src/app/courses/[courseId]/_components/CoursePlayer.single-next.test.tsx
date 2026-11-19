@@ -140,7 +140,7 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     fireEvent.ended(document.querySelector('video')!);
     expect(barNext()).toBeEnabled();
     fireEvent.click(barNext());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0, blockId: 'wideo' }) })));
     // Blok bez oceny (D-129): bez pustego ekranu „Blok ukończony.” - od razu kolejny blok, bez przycisku dalej w bloku.
     await screen.findByText('Kolejny blok.');
     expect(screen.queryByText('Blok ukończony.')).not.toBeInTheDocument();
@@ -195,7 +195,7 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     fireEvent.click(screen.getAllByRole('button', { name: 'Phishing' })[1]);
     expect(barNext()).toBeEnabled();
     fireEvent.click(barNext());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0, blockId: 'segreguj' }) })));
   });
 
   it('EMBEDDED_HTML: „Ukończyłem” aktywuje „Dalej”, odznaczenie je wyłącza; zapis dopiero po „Dalej”', async () => {
@@ -210,6 +210,6 @@ describe('CoursePlayer: jeden „Dalej” w każdym typie bloku (D-106)', () => 
     fireEvent.click(finished);
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.click(barNext());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0 }) })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/courses/course-1/progress', expect.objectContaining({ body: JSON.stringify({ blockIndex: 0, blockId: 'gra' }) })));
   });
 });

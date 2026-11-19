@@ -31,7 +31,7 @@
 // (kod wyjścia 1) z opisem: viewport, hotspot, który warunek i jakie wartości.
 //
 // DIALOGUE (fix/dialogue-sticky-questions, komunikator D-087): OSOBNA pętla (DIALOGUE_VIEWPORTS - 1920x1080, 1366x768, 844x390,
-// 390x844) - `?block=rozmowa-anna` (packages/content/modules/wyludzone-haslo, 5 pytań, >= 12 wiadomości po zadaniu wszystkich).
+// 390x844) - `?block=rozmowa-anna` (packages/content/dev-modules/dev-modul-1, 5 pytań, >= 12 wiadomości po zadaniu wszystkich).
 // (g2) kolumna wątku max 760 px, wyśrodkowana; wskaźnik pisania w wątku, chipy nieaktywne, gdy rozmówca pisze. Sprawdza NA STARCIE
 // (także w trakcie "pisania" kwestii otwierającej), W TRAKCIE (drugie pytanie, rozmówca pisze) i PO ZAKOŃCZENIU
 // (kod review: pierwsza wersja sprawdzała tylko start/koniec - stopka ma NAJWIĘKSZĄ wysokość akurat na starcie
@@ -115,7 +115,7 @@ const BRIEFING_SCENE_VIEWS = [
 // Tylko wybrane sekcje (szybka iteracja lokalna): LAYOUT_CHECK_SECTION=board,dialogue. Bez zmiennej - wszystko (tak do opisu PR).
 const SECTIONS = ['hotspots', 'dialogue', 'catalog', 'reduced-motion', 'briefing', 'dossier', 'board', 'closing', 'motion', 'home', 'browser', 'bar', 'portrait', 'mobile-summary', 'easter', 'zoom-focus', 'mobile-module', 'single-next', 'achievements', 'module', 'hint', 'notes', 'modul2', 'prosty', 'monitor', 'koniec', 'jezyk', 'start', 'pseudo', 'coming-soon'];
 // Sekcja `notes`: otwarty notatnik na każdym bloku obu modułów treści (niezależnie od LAYOUT_CHECK_MODULE).
-const NOTES_MODULES = ['wyludzone-haslo', 'glos-z-helpdesku'];
+const NOTES_MODULES = ['dev-modul-1', 'glos-z-helpdesku'];
 
 // EASTER EGG (feat/easter-egg-game, D-100): okienka po ikonie gry na pulpicie (`?block=biuro-anny&hotspot=gra`) - dwa desktopy, telefon
 // w poziomie i dwa w pionie; uciekający przycisk tylko tam, gdzie jest mysz (desktop). Patrz sekcja w pętli głównej (e1-e10).
@@ -157,8 +157,9 @@ const BAR_BLOCKS = ['biuro-anny', 'rozmowa-anna', 'ostatnie-pytanie'];
 const ONLY = process.env.LAYOUT_CHECK_SECTION?.split(',').filter(Boolean) ?? [];
 for (const name of ONLY) if (!SECTIONS.includes(name)) throw new Error(`Nieznana sekcja LAYOUT_CHECK_SECTION: ${name} (są: ${SECTIONS.join(', ')})`);
 // Moduł (B-128): LAYOUT_CHECK_MODULE=<slug> - sekcja `module` przechodzi wszystkie bloki TEGO modułu (harness `?module=<slug>`).
-// Pozostałe sekcje sprawdzają konkretne elementy treści modułu 1 (id bloków, hotspotów), więc dla innego modułu są pomijane.
-const DEFAULT_MODULE = 'wyludzone-haslo';
+// Pozostałe sekcje sprawdzają konkretne elementy treści modułu 1 (id bloków, hotspotów), więc dla innego modułu są pomijane. Od D-175
+// to dawna treść modułu 1 zachowana jako moduł podglądu `dev-modul-1` (packages/content/dev-modules) - prawdziwy moduł 1 ma nową treść.
+const DEFAULT_MODULE = 'dev-modul-1';
 const MODULE_SLUG = process.env.LAYOUT_CHECK_MODULE || DEFAULT_MODULE;
 // Moduły podglądu `dev-*` (D-115) leżą w packages/content/dev-modules - jak w harnessie (apps/web/src/app/dev/harness-module.ts).
 const moduleDir = (slug) => join(process.cwd(), 'packages', 'content', slug.startsWith('dev-') ? 'dev-modules' : 'modules', slug);
@@ -2423,13 +2424,13 @@ try {
   if (runs('start')) {
     const START_CASES = [
       { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
-      { name: 'moduł 1 z okładką i uwagą', query: 'module=wyludzone-haslo&start=1', cover: true, notice: true },
+      { name: 'moduł 1 z okładką i uwagą', query: 'module=dev-modul-1&start=1', cover: true, notice: true },
       { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1&noCover=1', cover: false },
       { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&start=1', cover: true },
       { name: 'moduł 3 z okładką', query: 'module=lancuszek&start=1', cover: true },
       { name: 'moduł 4 z okładką', query: 'module=na-skroty&start=1', cover: true },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&pseudo=1', cover: true },
-      { name: 'moduł 1 xx z uwagą', query: 'module=wyludzone-haslo&start=1&pseudo=1', cover: true, notice: true },
+      { name: 'moduł 1 xx z uwagą', query: 'module=dev-modul-1&start=1&pseudo=1', cover: true, notice: true },
     ];
     const START_VIEWPORTS = [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }];
     for (const viewport of START_VIEWPORTS) {
@@ -2677,7 +2678,7 @@ try {
   if (runs('koniec')) {
     const END_CASES = [
       { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1', cover: true },
-      { name: 'moduł 1 z okładką', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
+      { name: 'moduł 1 z okładką', query: 'module=dev-modul-1&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
       { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1&noCover=1', cover: false },
       { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
       { name: 'moduł 3 z okładką', query: 'module=lancuszek&block=raport&completed=1&start=1', cover: true },

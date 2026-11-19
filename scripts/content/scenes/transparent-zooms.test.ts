@@ -10,7 +10,11 @@ import { composeScene } from './compose.js';
 // media.scene.image i to samo w scenie zagnieżdżonej. SVG nie może mieć prostokąta tła na całą scenę; ramka monitora (screenFrame) sama
 // takiego prostokąta nie rysuje (jest przesunięta o margines), więc owinięte ekrany przechodzą tę samą kontrolę bez wyjątku.
 
-const modulesDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules');
+const contentDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content');
+const modulesDir = join(contentDir, 'modules');
+// Dawna treść modułu 1 jako moduł podglądu (D-175) - jej zbliżenia nadal sprawdzamy (layout-check i testy kompozytora na niej pracują).
+const DEV_MODULE_1 = 'dev-modul-1';
+const moduleDir = (slug: string) => join(slug === DEV_MODULE_1 ? join(contentDir, 'dev-modules') : modulesDir, slug);
 
 // Grafika osobna na język (D-134): `{ pl, en }` - każdy język to osobny plik, reguła dotyczy każdego (`<miejsce>@<język>`).
 type ImagePath = string | Record<string, string>;
@@ -58,11 +62,11 @@ function hasFullSceneBackground(svg: string): boolean {
   });
 }
 
-const modules = readdirSync(modulesDir).filter((slug) => existsSync(join(modulesDir, slug, 'module.json')));
+const modules = [...readdirSync(modulesDir).filter((slug) => existsSync(join(modulesDir, slug, 'module.json'))), DEV_MODULE_1];
 
 describe('D-101: grafiki otwierane kliknięciem mają przezroczyste tło', () => {
   it.each(modules)('moduł %s', (slug) => {
-    const dir = join(modulesDir, slug);
+    const dir = moduleDir(slug);
     const module = JSON.parse(readFileSync(join(dir, 'module.json'), 'utf8'));
     const lockPath = join(dir, 'assets.lock.json');
     const lock = existsSync(lockPath) ? (JSON.parse(readFileSync(lockPath, 'utf8')) as { entries: Record<string, { original: string; key: string }> }) : { entries: {} };
@@ -80,8 +84,8 @@ describe('D-101: grafiki otwierane kliknięciem mają przezroczyste tło', () =>
       if (hasFullSceneBackground(svg)) problems.push(`${where}: ${original} ma prostokąt tła na całą scenę albo brak viewBox (crop-zooms.ts / wrap-in-monitor.ts)`);
     }
     expect(problems).toEqual([]);
-    // Moduł bez scen z grafikami też przechodzi, ale moduł 1 ma ich kilka - test nie może być ślepy.
-    if (slug === 'wyludzone-haslo') expect(images.length).toBeGreaterThanOrEqual(11);
+    // Moduł bez scen z grafikami też przechodzi, ale dawny moduł 1 ma ich kilka - test nie może być ślepy.
+    if (slug === DEV_MODULE_1) expect(images.length).toBeGreaterThanOrEqual(11);
   });
 
   it('D-134: grafika { pl, en } - każdy język sprawdzany osobno (miejsce z sufiksem @<język>)', () => {

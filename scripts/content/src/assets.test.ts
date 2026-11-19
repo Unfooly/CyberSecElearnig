@@ -233,7 +233,7 @@ describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
   });
 
   it('moduł 1: każdy obraz odprawy wskazuje istniejący plik w assets/ (przed publikacją nazwa pliku, po - klucz z locka)', async () => {
-    const moduleDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'modules', 'wyludzone-haslo');
+    const moduleDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packages', 'content', 'dev-modules', 'dev-modul-1');
     const raw = JSON.parse(await readFile(join(moduleDir, 'module.json'), 'utf8'));
     const lock = JSON.parse(await readFile(join(moduleDir, 'assets.lock.json'), 'utf8')) as { entries: Record<string, { original: string; key: string }> };
     const refs = collectAssetRefs(raw).filter((ref) => ref.blockId === 'odprawa' || ref.id === 'module#thumbnail');

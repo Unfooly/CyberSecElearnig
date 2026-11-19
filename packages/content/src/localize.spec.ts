@@ -86,7 +86,7 @@ describe('localizeContent: rozwinięcie do jednego języka', () => {
 });
 
 describe('moduł 1 (v5, jednojęzyczny): rozwinięcie języka to tożsamość', () => {
-  const parsed = parseModule(JSON.parse(readFileSync(join(__dirname, '..', 'modules', 'wyludzone-haslo', 'module.json'), 'utf8')));
+  const parsed = parseModule(JSON.parse(readFileSync(join(__dirname, '..', 'dev-modules', 'dev-modul-1', 'module.json'), 'utf8')));
 
   it('pl i en dają ten sam JSON co zapisana treść (bez pól wielojęzycznych, bez ostrzeżeń o tłumaczeniu)', () => {
     expect(localizedPaths(parsed)).toEqual([]);

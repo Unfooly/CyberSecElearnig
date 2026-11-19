@@ -17,8 +17,14 @@
     "Przed użyciem nowego programu, strony albo AI zapytać IT.",
     "Gdy coś poszło nie tak – od razu zgłosić to do IT."
   ],
-  "thumbnail": "assets/na-skroty/miniatura-na-skroty.748ea883.svg",
+  "thumbnail": "assets/na-skroty/images/miniatura.b6e4b1d8.webp",
   "caseNumber": 4,
+  "cover": {
+    "start": "assets/na-skroty/images/start.2506a894.webp",
+    "end": "assets/na-skroty/images/koniec.8c95232c.webp",
+    "startPortrait": "assets/na-skroty/images/start-pion.18c7645f.webp",
+    "endPortrait": "assets/na-skroty/images/koniec-pion.6f09edfb.webp"
+  },
   "blocks": [
     {
       "id": "odprawa",

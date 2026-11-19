@@ -25,8 +25,14 @@
       "pl": "Nie instalować niczego i nie czytać ID sesji na prośbę rozmówcy."
     }
   ],
-  "thumbnail": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.b7e907a3.svg",
+  "thumbnail": "assets/glos-z-helpdesku/images/miniatura.52329b24.webp",
   "caseNumber": 2,
+  "cover": {
+    "start": "assets/glos-z-helpdesku/images/start.d13fcd37.webp",
+    "end": "assets/glos-z-helpdesku/images/koniec.a344f607.webp",
+    "startPortrait": "assets/glos-z-helpdesku/images/start-pion.47d26d1e.webp",
+    "endPortrait": "assets/glos-z-helpdesku/images/koniec-pion.13b66bd7.webp"
+  },
   "blocks": [
     {
       "id": "odprawa",

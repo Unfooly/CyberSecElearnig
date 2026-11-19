@@ -13,9 +13,9 @@
       "key": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp"
     },
     "module#cover.end": {
-      "original": "images/start.webp",
-      "hash": "9722f6b2",
-      "key": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp"
+      "original": "images/koniec.webp",
+      "hash": "ce51fd47",
+      "key": "assets/najlatwiejsze-drzwi/images/koniec.ce51fd47.webp"
     },
     "module#cover.startPortrait": {
       "original": "images/start-pion.webp",
@@ -23,9 +23,9 @@
       "key": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
     },
     "module#cover.endPortrait": {
-      "original": "images/start-pion.webp",
-      "hash": "36ee7e6e",
-      "key": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
+      "original": "images/koniec-pion.webp",
+      "hash": "a085a859",
+      "key": "assets/najlatwiejsze-drzwi/images/koniec-pion.a085a859.webp"
     },
     "film#src": {
       "original": "video/film.mp4",

@@ -3,9 +3,29 @@
   "slug": "glos-z-helpdesku",
   "entries": {
     "module#thumbnail": {
-      "original": "miniatura-glos-z-helpdesku.svg",
-      "hash": "b7e907a3",
-      "key": "assets/glos-z-helpdesku/miniatura-glos-z-helpdesku.b7e907a3.svg"
+      "original": "images/miniatura.webp",
+      "hash": "52329b24",
+      "key": "assets/glos-z-helpdesku/images/miniatura.52329b24.webp"
+    },
+    "module#cover.start": {
+      "original": "images/start.webp",
+      "hash": "d13fcd37",
+      "key": "assets/glos-z-helpdesku/images/start.d13fcd37.webp"
+    },
+    "module#cover.end": {
+      "original": "images/koniec.webp",
+      "hash": "a344f607",
+      "key": "assets/glos-z-helpdesku/images/koniec.a344f607.webp"
+    },
+    "module#cover.startPortrait": {
+      "original": "images/start-pion.webp",
+      "hash": "47d26d1e",
+      "key": "assets/glos-z-helpdesku/images/start-pion.47d26d1e.webp"
+    },
+    "module#cover.endPortrait": {
+      "original": "images/koniec-pion.webp",
+      "hash": "13b66bd7",
+      "key": "assets/glos-z-helpdesku/images/koniec-pion.13b66bd7.webp"
     },
     "odprawa#steps.0.image": {
       "original": "scenes/odprawa-biurko.svg",

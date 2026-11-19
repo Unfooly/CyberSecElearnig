@@ -3,9 +3,29 @@
   "slug": "na-skroty",
   "entries": {
     "module#thumbnail": {
-      "original": "miniatura-na-skroty.svg",
-      "hash": "748ea883",
-      "key": "assets/na-skroty/miniatura-na-skroty.748ea883.svg"
+      "original": "images/miniatura.webp",
+      "hash": "b6e4b1d8",
+      "key": "assets/na-skroty/images/miniatura.b6e4b1d8.webp"
+    },
+    "module#cover.start": {
+      "original": "images/start.webp",
+      "hash": "2506a894",
+      "key": "assets/na-skroty/images/start.2506a894.webp"
+    },
+    "module#cover.end": {
+      "original": "images/koniec.webp",
+      "hash": "8c95232c",
+      "key": "assets/na-skroty/images/koniec.8c95232c.webp"
+    },
+    "module#cover.startPortrait": {
+      "original": "images/start-pion.webp",
+      "hash": "18c7645f",
+      "key": "assets/na-skroty/images/start-pion.18c7645f.webp"
+    },
+    "module#cover.endPortrait": {
+      "original": "images/koniec-pion.webp",
+      "hash": "6f09edfb",
+      "key": "assets/na-skroty/images/koniec-pion.6f09edfb.webp"
     },
     "odprawa#steps.0.image": {
       "original": "scenes/pl/odprawa.svg",

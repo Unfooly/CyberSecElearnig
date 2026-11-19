@@ -100,7 +100,7 @@ describe('Język szkoleń: wybór języka treści kursu (e2e)', () => {
     expect(pl).toMatchObject({ locale: 'pl', title: 'Łańcuszek' });
     expect(textOf(pl)).toBe('Dzień dobry.');
     // Ekran startu (D-163): kategoria i czas z kursu; kurs bez pliku modułu (utworzony wprost, bez slug) - bez okładki i numeru sprawy.
-    expect(pl.moduleInfo).toEqual({ category: 'EMAIL_SECURITY', durationMinutes: 5, subtitle: null, caseNumber: null, cover: null });
+    expect(pl.moduleInfo).toEqual({ category: 'EMAIL_SECURITY', durationMinutes: 5, subtitle: null, caseNumber: null, notice: null, cover: null });
     expect((await start(bilingualId, tokenA, 'de-DE').expect(200)).body.locale).toBe('en');
     expect((await start(bilingualId, tokenA).expect(200)).body.locale).toBe('en');
   });

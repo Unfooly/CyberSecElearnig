@@ -1,4 +1,3 @@
-import { evidenceSummary } from '../courses/client-view';
 import type { ProgressV2 } from '../courses/progress';
 import { Block, liveCallDetail } from '../courses/scoring/evaluate';
 import {
@@ -16,13 +15,11 @@ import {
 
 /**
  * Fakty z przebiegu modułu 2 liczone z postępu i treści wersji kursu (serwer - klient niczego tu nie deklaruje poza tym, co przeszło
- * ocenę bloków). `fullEvidence` liczy WSZYSTKIE dowody z treści, łącznie z ukrytymi do zebrania (sprzeczności przesłuchania, obszary OSINT) -
- * od D-130 to ta sama suma co w liczniku gracza (evidenceSummary: stały mianownik).
+ * ocenę bloków).
  */
 export interface Module2Facts {
   deadAir: boolean;
   perfectPitch: boolean;
-  fullEvidence: { collected: number; total: number };
 }
 
 export interface CompletionFacts {
@@ -31,35 +28,24 @@ export interface CompletionFacts {
   // Wynik tego podejścia 0..100 (null, gdy kurs bez bloków ocenianych).
   score: number | null;
   courseSlug: string | null;
-  // Dowody zebrane w tym podejściu (liczy serwer: evidenceSummary).
-  evidence: { collected: number; total: number };
-  // Moduł 2 (D-124): fakty z bloków; bez nich (inne kursy, brak treści) - bez osiągnięć modułu 2.
+  // Moduł 2 (D-124): fakty z bloków; bez nich (inne kursy, brak treści) - bez Dead Air i Perfect Pitch.
   module2?: Module2Facts;
 }
 
 /**
- * Osiągnięcia za ukończenie kursu: pierwsza sprawa (dowolny kurs), sprawa bez skazy (moduł 1: komplet dowodów + 100%), w module 2 -
- * Dead Air, Perfect Pitch i Full Transcript (komplet dowodów z ukrytymi + 100%). Przyznawane przy ukończeniu (karta nagrody pokazuje je
- * razem z XP), choć Dead Air i Perfect Pitch dotyczą jednego bloku.
+ * Osiągnięcia za ukończenie kursu: pierwsza sprawa (dowolny kurs), sprawa bez skazy (moduł 1: 100% zadań w tym podejściu), w module 2 -
+ * Dead Air, Perfect Pitch i Full Transcript (100% zadań w tym podejściu). Od D-174 bez warunku dowodów (dowody znikają z gry, etap 2):
+ * „w jednym podejściu” = wynik tego przypisania, nie suma kilku podejść. Przyznawane przy ukończeniu (karta nagrody pokazuje je razem
+ * z XP), choć Dead Air i Perfect Pitch dotyczą jednego bloku.
  */
 export function completionAchievements(facts: CompletionFacts): AchievementCode[] {
   const codes: AchievementCode[] = [];
   if (facts.completedCount >= 1) codes.push(ACHIEVEMENT_CODES.FIRST_CASE_CLOSED);
-  if (
-    facts.courseSlug === MODULE_1_SLUG &&
-    facts.score === 100 &&
-    facts.evidence.total > 0 &&
-    facts.evidence.collected === facts.evidence.total
-  ) {
-    codes.push(ACHIEVEMENT_CODES.FLAWLESS_CASE);
-  }
-  if (facts.courseSlug === MODULE_2_SLUG && facts.module2) {
-    const { deadAir, perfectPitch, fullEvidence } = facts.module2;
-    if (deadAir) codes.push(ACHIEVEMENT_CODES.DEAD_AIR);
-    if (perfectPitch) codes.push(ACHIEVEMENT_CODES.PERFECT_PITCH);
-    if (facts.score === 100 && fullEvidence.total > 0 && fullEvidence.collected === fullEvidence.total) {
-      codes.push(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
-    }
+  if (facts.courseSlug === MODULE_1_SLUG && facts.score === 100) codes.push(ACHIEVEMENT_CODES.FLAWLESS_CASE);
+  if (facts.courseSlug === MODULE_2_SLUG) {
+    if (facts.module2?.deadAir) codes.push(ACHIEVEMENT_CODES.DEAD_AIR);
+    if (facts.module2?.perfectPitch) codes.push(ACHIEVEMENT_CODES.PERFECT_PITCH);
+    if (facts.score === 100) codes.push(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
   }
   return codes;
 }
@@ -80,8 +66,7 @@ export function secretEndingAchievements(courseSlug: string | null, secretEnding
  * Fakty modułu 2 z postępu i treści (obronnie - uszkodzony wpis albo treść nie może zablokować ukończenia ani profilu):
  *  - Dead Air: ukończona rozmowa na żywo z zakończeniem `good`, bez odpowiedzi oddających informację i najwyżej 3 kroki ścieżki
  *    (dobre zakończenie = rozłączenie/oddzwonienie, D-122); tryb czasu bez znaczenia;
- *  - Perfect Pitch: ukończony odsłuch nagrania - wszystkie flagi z treści trafione i zero fałszywych tapnięć;
- *  - komplet dowodów: wszystkie dowody z treści (z ukrytymi) w notatkach postępu.
+ *  - Perfect Pitch: ukończony odsłuch nagrania - wszystkie flagi z treści trafione i zero fałszywych tapnięć.
  */
 export function module2Facts(progress: ProgressV2, blocks: readonly Block[]): Module2Facts {
   let deadAir = false;
@@ -101,6 +86,5 @@ export function module2Facts(progress: ProgressV2, blocks: readonly Block[]): Mo
       if (flags.length > 0 && flags.every((flag) => hit.has(flag.segmentId))) perfectPitch = true;
     }
   }
-  const { collected, total } = evidenceSummary(progress, blocks);
-  return { deadAir, perfectPitch, fullEvidence: { collected, total } };
+  return { deadAir, perfectPitch };
 }

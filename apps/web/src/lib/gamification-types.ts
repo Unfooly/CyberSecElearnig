@@ -65,11 +65,20 @@ export const PIN_LIMIT_MESSAGE = 'Możesz przypiąć maksymalnie 3 odznaki.';
 
 /**
  * Adres grafiki trofeum z nazwy pliku z API - tylko bezpieczne nazwy (litery, cyfry, myślnik), inaczej brak grafiki. API podaje nazwę
- * z katalogiem języka szkoleń („pl/osiagniecie-…”, poprawki m3 pkt c) - grafiki z kompozytora w public/achievements/<język>/.
+ * z katalogiem języka szkoleń („pl/osiagniecie-…”, poprawki m3 pkt c) - grafiki WebP bez tekstu w public/achievements/<język>/ (D-174:
+ * nazwa i ranga są w interfejsie, zablokowana = ta sama grafika w szarości z kłódką).
  */
 export function achievementImage(name: string | null | undefined): string | null {
-  return name && /^(?:(?:pl|en)\/)?[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.svg` : null;
+  return name && /^(?:(?:pl|en)\/)?[a-z0-9-]{1,80}$/.test(name) ? `/achievements/${name}.webp` : null;
 }
+
+/** Obwódka grafiki odznaki w kolorze rangi (D-174) - grafika bez tekstu, ranga widać po kolorze i w podpisie. */
+export const RANK_RING: Record<AchievementRank, string> = {
+  SECRET: 'ring-rank-secret',
+  LEGENDARY: 'ring-rank-legendary',
+  MILESTONE: 'ring-rank-milestone',
+  RARE: 'ring-rank-rare',
+};
 
 /** Wpis rankingu organizacji (D-112): imię i inicjał nazwiska, bez działu. */
 export interface LeaderboardEntry {

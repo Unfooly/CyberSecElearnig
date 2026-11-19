@@ -27,7 +27,7 @@ describe('LeaderboardTable (D-112)', () => {
     const row = screen.getByText('Jan K.').closest('tr')!;
     const badges = within(row).getAllByTestId('pinned-badge');
     expect(badges.map((badge) => badge.getAttribute('title'))).toEqual(['Flawless Case', 'First Case Closed']);
-    expect(badges[0].querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-perfekcyjne-sledztwo.svg');
+    expect(badges[0].querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-perfekcyjne-sledztwo.webp');
     expect(badges[0].querySelector('img')).toHaveAttribute('width', '24');
     fireEvent.click(badges[0]);
     expect(within(row).getByRole('tooltip')).toHaveTextContent('Flawless Case');

@@ -6,15 +6,13 @@ import { Module2Facts, completionAchievements, easterEggAchievements, module2Fac
 import { ACHIEVEMENT_CODES, ACHIEVEMENTS_SYNC_VERSION, MODULE_1_SLUG, MODULE_2_SLUG } from './gamification.constants';
 import type { Block } from '../courses/scoring/evaluate';
 
-/** Kontekst ukończenia: domyślnie kurs spoza modułu 1, bez dowodów. */
+/** Kontekst ukończenia: domyślnie kurs spoza modułu 1. */
 const opts = (overrides: {
   score: number | null;
   courseSlug?: string | null;
-  evidence?: { collected: number; total: number };
   module2?: Module2Facts;
 }) => ({
   courseSlug: null,
-  evidence: { collected: 0, total: 0 },
   assignmentId: 'assignment-now',
   ...overrides,
 });
@@ -127,12 +125,12 @@ describe('GamificationService', () => {
       expect(result.xpGained).toBe(100);
     });
 
-    it('moduł 1, komplet dowodów i 100%: Flawless Case; brak jednego dowodu - nie', async () => {
+    it('moduł 1, 100% w tym podejściu: Flawless Case (bez warunku dowodów, D-174); 99% - nie', async () => {
       const full = await service.awardCourseCompletion(
         buildTx({ completedCount: 1 }) as never,
         'org-1',
         'user-1',
-        opts({ score: 100, courseSlug: MODULE_1_SLUG, evidence: { collected: 23, total: 23 } }),
+        opts({ score: 100, courseSlug: MODULE_1_SLUG }),
       );
       expect(full.unlockedBadges.map((b) => b.code)).toEqual([ACHIEVEMENT_CODES.FIRST_CASE_CLOSED, ACHIEVEMENT_CODES.FLAWLESS_CASE]);
 
@@ -140,7 +138,7 @@ describe('GamificationService', () => {
         buildTx({ completedCount: 1 }) as never,
         'org-1',
         'user-1',
-        opts({ score: 100, courseSlug: MODULE_1_SLUG, evidence: { collected: 22, total: 23 } }),
+        opts({ score: 99, courseSlug: MODULE_1_SLUG }),
       );
       expect(missing.unlockedBadges.map((b) => b.code)).toEqual([ACHIEVEMENT_CODES.FIRST_CASE_CLOSED]);
     });
@@ -248,7 +246,7 @@ describe('GamificationService', () => {
         tx as never,
         'org-1',
         'user-1',
-        opts({ score: 100, courseSlug: MODULE_1_SLUG, evidence: { collected: 23, total: 23 } }),
+        opts({ score: 100, courseSlug: MODULE_1_SLUG }),
       );
 
       expect(result.previousLevel).toBe(1);
@@ -285,7 +283,6 @@ describe('GamificationService', () => {
     const facts = (overrides: Partial<Module2Facts> = {}): Module2Facts => ({
       deadAir: false,
       perfectPitch: false,
-      fullEvidence: { collected: 0, total: 5 },
       ...overrides,
     });
 
@@ -295,7 +292,7 @@ describe('GamificationService', () => {
         tx as never,
         'org-1',
         'user-1',
-        opts({ score: 100, courseSlug: MODULE_2_SLUG, module2: facts({ deadAir: true, perfectPitch: true, fullEvidence: { collected: 5, total: 5 } }) }),
+        opts({ score: 100, courseSlug: MODULE_2_SLUG, module2: facts({ deadAir: true, perfectPitch: true }) }),
       );
       expect(result.unlockedBadges.map((b) => b.code)).toEqual([
         ACHIEVEMENT_CODES.DEAD_AIR,
@@ -309,17 +306,19 @@ describe('GamificationService', () => {
         buildTx({ completedCount: 2, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] }) as never,
         'org-1',
         'user-1',
-        opts({ score: 100, courseSlug: 'inny-kurs', module2: facts({ deadAir: true, perfectPitch: true, fullEvidence: { collected: 5, total: 5 } }) }),
+        opts({ score: 100, courseSlug: 'inny-kurs', module2: facts({ deadAir: true, perfectPitch: true }) }),
       );
       expect(other.unlockedBadges).toEqual([]);
     });
 
-    it('Full Transcript wymaga 100% i kompletu dowodów z ukrytymi', () => {
-      const codes = (score: number, collected: number) =>
-        completionAchievements({ completedCount: 1, score, courseSlug: MODULE_2_SLUG, evidence: { collected: 0, total: 0 }, module2: facts({ fullEvidence: { collected, total: 5 } }) });
-      expect(codes(100, 5)).toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
-      expect(codes(99, 5)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
-      expect(codes(100, 4)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+    it('Full Transcript: 100% w tym podejściu - bez warunku dowodów i bez faktów z treści (D-174); 99% albo inny kurs - nie', () => {
+      const codes = (score: number | null, courseSlug = MODULE_2_SLUG, module2?: Module2Facts) =>
+        completionAchievements({ completedCount: 1, score, courseSlug, module2 });
+      expect(codes(100)).toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(100, MODULE_2_SLUG, facts())).toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(99)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(null)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
+      expect(codes(100, MODULE_1_SLUG)).not.toContain(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
     });
 
     it('Off the Record: przy zapisie bloku, raz, bez XP; tylko moduł 2 i id ukrytego zakończenia webinaru', async () => {
@@ -380,12 +379,6 @@ describe('GamificationService', () => {
         expect(module2Facts(progress({ nagranie: rec(['s1', 's3'], 0) }), blocks).perfectPitch).toBe(true);
         expect(module2Facts(progress({ nagranie: rec(['s1', 's3'], 1) }), blocks).perfectPitch).toBe(false);
         expect(module2Facts(progress({ nagranie: rec(['s1'], 0) }), blocks).perfectPitch).toBe(false);
-      });
-
-      it('komplet dowodów liczy także ukryte (sprzeczności przesłuchania, obszary OSINT) - licznik gracza ich nie widzi przed zebraniem', () => {
-        const all = ['scena.h1', 'scena.h4-outlook', 'rozmowa.q1', 'mail.c1', 'akta.w2', 'nagranie.liczba', 'przesluchanie.glos-1', 'przesluchanie.kod-1', 'przesluchanie.l2', 'osint.zespol', 'osint.webinar'];
-        expect(module2Facts(progress({}, all), blocks).fullEvidence).toEqual({ collected: 11, total: 11 });
-        expect(module2Facts(progress({}, all.filter((key) => key !== 'osint.webinar')), blocks).fullEvidence).toEqual({ collected: 10, total: 11 });
       });
     });
 
@@ -532,7 +525,7 @@ describe('GamificationService', () => {
       expect(tx.courseVersion.findUnique).not.toHaveBeenCalled();
     });
 
-    it('uszkodzony postęp nie blokuje profilu: wpis nie-obiekt pominięty, brak/zła data -> data zmiany przypisania, zła treść wersji -> bez sprawy bez skazy', async () => {
+    it('uszkodzony postęp nie blokuje profilu: wpis nie-obiekt pominięty, brak/zła data -> data zmiany przypisania; zła treść wersji bez znaczenia dla sprawy bez skazy (D-174)', async () => {
       const progress = {
         v: 2,
         blocks: { zly: null, scena: { type: 'SCENE_HOTSPOTS', done: true, answeredAt: 'nie-data', weight: 0, easterEggs: ['ciekawski-detektyw'] } },
@@ -542,14 +535,27 @@ describe('GamificationService', () => {
       tx.courseVersion.findUnique.mockResolvedValue({ id: 'v1', version: 1, schemaVersion: 5, contentBlocks: 'uszkodzone' });
       await service.syncAchievements(tx as never, 'org-1', 'user-1');
       const created = tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0] as { badgeId: string; unlockedAt?: Date });
-      expect(created.map((row) => row.badgeId).sort()).toEqual(['badge-curious', 'badge-first-case']);
+      expect(created.map((row) => row.badgeId).sort()).toEqual(['badge-curious', 'badge-first-case', 'badge-flawless']);
       expect(created.find((row) => row.badgeId === 'badge-curious')!.unlockedAt).toEqual(completedAt);
     });
 
-    it('sprawa bez skazy wymaga kompletu dowodów: 100% bez zebranego dowodu daje tylko pierwszą sprawę', async () => {
-      const tx = syncTx({ assignments: [module1({ v: 2, blocks: {}, notes: [] }, 100)] });
+    it('sprawa bez skazy bez dowodów (D-174): 100% bez zebranego dowodu wystarcza, treści wersji nie czyta; 99% - tylko pierwsza sprawa', async () => {
+      const full = syncTx({ assignments: [module1({ v: 2, blocks: {}, notes: [] }, 100)] });
+      await service.syncAchievements(full as never, 'org-1', 'user-1');
+      expect(full.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-first-case', 'badge-flawless']);
+      expect(full.courseVersion.findUnique).not.toHaveBeenCalled();
+
+      const almost = syncTx({ assignments: [module1({ v: 2, blocks: {}, notes: [] }, 99)] });
+      await service.syncAchievements(almost as never, 'org-1', 'user-1');
+      expect(almost.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-first-case']);
+    });
+
+    it('Full Transcript wstecznie (D-174): moduł 2 ze 100% bez kompletu dowodów; Dead Air i Perfect Pitch dalej z treści wersji', async () => {
+      const module2 = { ...module1({ v: 2, blocks: {}, notes: [] }, 100), course: { slug: MODULE_2_SLUG } };
+      const tx = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [module2] });
       await service.syncAchievements(tx as never, 'org-1', 'user-1');
-      expect(tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-first-case']);
+      expect(tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-full-transcript']);
+      expect(tx.courseVersion.findUnique).toHaveBeenCalledWith({ where: { id: 'v1' } });
     });
 
     it('easter egg bez ukończenia kursu też się liczy (przypisanie w toku)', async () => {
@@ -572,17 +578,15 @@ describe('GamificationService', () => {
   });
 
   describe('warunki osiągnięć (czyste funkcje)', () => {
-    const evidence = (collected: number, total: number) => ({ collected, total });
-    it('pierwsza sprawa za każde ukończenie; sprawa bez skazy tylko moduł 1 + 100% + komplet dowodów', () => {
-      expect(completionAchievements({ completedCount: 1, score: null, courseSlug: null, evidence: evidence(0, 0) })).toEqual([ACHIEVEMENT_CODES.FIRST_CASE_CLOSED]);
-      expect(completionAchievements({ completedCount: 3, score: 100, courseSlug: MODULE_1_SLUG, evidence: evidence(23, 23) })).toEqual([
+    it('pierwsza sprawa za każde ukończenie; sprawa bez skazy tylko moduł 1 + 100% w tym podejściu (D-174, bez dowodów)', () => {
+      expect(completionAchievements({ completedCount: 1, score: null, courseSlug: null })).toEqual([ACHIEVEMENT_CODES.FIRST_CASE_CLOSED]);
+      expect(completionAchievements({ completedCount: 3, score: 100, courseSlug: MODULE_1_SLUG })).toEqual([
         ACHIEVEMENT_CODES.FIRST_CASE_CLOSED,
         ACHIEVEMENT_CODES.FLAWLESS_CASE,
       ]);
-      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: MODULE_1_SLUG, evidence: evidence(22, 23) })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
-      expect(completionAchievements({ completedCount: 1, score: 99, courseSlug: MODULE_1_SLUG, evidence: evidence(23, 23) })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
-      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: 'inny', evidence: evidence(5, 5) })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
-      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: MODULE_1_SLUG, evidence: evidence(0, 0) })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
+      expect(completionAchievements({ completedCount: 1, score: 99, courseSlug: MODULE_1_SLUG })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
+      expect(completionAchievements({ completedCount: 1, score: null, courseSlug: MODULE_1_SLUG })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
+      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: 'inny' })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
     });
     it('easter egg: tylko wyróżnienie ciekawski-detektyw w module 1', () => {
       expect(easterEggAchievements(MODULE_1_SLUG, ['ciekawski-detektyw'])).toEqual([ACHIEVEMENT_CODES.CURIOUS_DETECTIVE]);
@@ -823,7 +827,7 @@ describe('GamificationService', () => {
 
       run(boardTx({ top, owned }));
       const forFan = await service.getLeaderboard('org-1', 'fan', 'organization', 'pl-PL');
-      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b', rank: 'SECRET' }]);
+      expect(forFan.top[0].pinned).toEqual([{ code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5', rank: 'SECRET' }]);
 
       // Przeglądarka po angielsku (bez ustawienia konta) - nazwy i grafiki EN (poprawki m3, pkt c).
       run(boardTx({ top, owned }));

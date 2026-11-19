@@ -373,7 +373,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
           code: 'curious-detective',
           title: 'Ciekawski detektyw',
           description: 'Otworzyłeś podejrzaną grę na pulpicie Anny. Na szczęście tylko w ćwiczeniu.',
-          icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b',
+          icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5',
           isUnlocked: true,
           unlockedAt: easterEggAt,
         }),
@@ -509,7 +509,7 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
 
         const forOwner = await board(employeeToken).expect(200);
         expect(forOwner.body.me.pinned).toEqual([
-          { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b', rank: 'SECRET' },
+          { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5', rank: 'SECRET' },
         ]);
       });
 

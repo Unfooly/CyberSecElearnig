@@ -25,8 +25,9 @@ export const OFF_THE_RECORD_ENDING = 'off-the-record';
 export const DEAD_AIR_MAX_STEPS = 3;
 
 // Wersja zasad przyznania wstecznego (users.achievementsSyncVersion): podbij przy NOWYM osiągnięciu, którego warunek mógł być
-// spełniony wcześniej - każdy użytkownik przejdzie wtedy backfill jeszcze raz (idempotentnie). 2 - osiągnięcia modułu 2 (D-124).
-export const ACHIEVEMENTS_SYNC_VERSION = 2;
+// spełniony wcześniej - każdy użytkownik przejdzie wtedy backfill jeszcze raz (idempotentnie). 2 - osiągnięcia modułu 2 (D-124);
+// 3 - Sprawa bez skazy i Full Transcript bez warunku dowodów (D-174): kto miał już 100% bez kompletu dowodów, dostaje je wstecznie.
+export const ACHIEVEMENTS_SYNC_VERSION = 3;
 export const CURIOUS_DETECTIVE_EASTER_EGG = 'ciekawski-detektyw';
 
 export const COURSE_COMPLETION_XP = 100;

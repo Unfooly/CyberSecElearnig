@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AssignmentStatus, Badge, Prisma, UserStatus } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import { evidenceSummary } from '../courses/client-view';
 import { toResolved } from '../courses/course-versions';
 import { readProgress } from '../courses/progress';
 import { initialsFromEmail } from './initials.util';
@@ -75,7 +74,6 @@ export class GamificationService {
     options: {
       score: number | null;
       courseSlug: string | null;
-      evidence: { collected: number; total: number };
       // Moduł 2 (D-124): fakty z bloków tego podejścia (CoursesService liczy je z postępu i treści wersji).
       module2?: Module2Facts;
       // Przypisanie właśnie ukończone - wyłączone z przyznania wstecznego (jego osiągnięcia idą niżej, „na żywo”, z XP).
@@ -349,31 +347,21 @@ export class GamificationService {
         const isCurrent = excludeAssignmentId !== undefined && assignment.id === excludeAssignmentId;
         if (assignment.status !== AssignmentStatus.COMPLETED || isCurrent) continue;
         const completedAt = assignment.completedAt ?? assignment.updatedAt;
-        // Sprawa bez skazy (moduł 1) i osiągnięcia modułu 2 wymagają treści (dowody i bloki liczy serwer z treści wersji przypiętej do
-        // tego podejścia); pierwsza sprawa nie. Przypisanie bez przypiętej wersji (sprzed silnika treści) nie jest modułem 1 ani 2 - pomijamy.
-        let evidence = { collected: 0, total: 0 };
+        // Dead Air i Perfect Pitch (moduł 2) wymagają treści (bloki liczy serwer z treści wersji przypiętej do tego podejścia); pierwsza
+        // sprawa, Sprawa bez skazy i Full Transcript nie - od D-174 to sam wynik podejścia. Przypisanie bez przypiętej wersji (sprzed
+        // silnika treści) nie jest modułem 2 - pomijamy.
         let module2: Module2Facts | undefined;
-        const needsFlawless = missing.includes(ACHIEVEMENT_CODES.FLAWLESS_CASE) && slug === MODULE_1_SLUG && assignment.score === 100;
-        // Full Transcript wymaga 100% - bez tego treści nie czytamy, jeśli brakuje tylko jego.
-        const module2Codes = [
-          ACHIEVEMENT_CODES.DEAD_AIR,
-          ACHIEVEMENT_CODES.PERFECT_PITCH,
-          ...(assignment.score === 100 ? [ACHIEVEMENT_CODES.FULL_TRANSCRIPT] : []),
-        ];
-        const needsModule2 = slug === MODULE_2_SLUG && module2Codes.some((code) => missing.includes(code));
-        if ((needsFlawless || needsModule2) && assignment.courseVersionId) {
+        const needsModule2 =
+          slug === MODULE_2_SLUG && [ACHIEVEMENT_CODES.DEAD_AIR, ACHIEVEMENT_CODES.PERFECT_PITCH].some((code) => missing.includes(code));
+        if (needsModule2 && assignment.courseVersionId) {
           const version = await tx.courseVersion.findUnique({ where: { id: assignment.courseVersionId } });
           try {
-            if (version) {
-              const blocks = toResolved(version).blocks;
-              if (needsFlawless) evidence = evidenceSummary(progress, blocks);
-              if (needsModule2) module2 = module2Facts(progress, blocks);
-            }
+            if (version) module2 = module2Facts(progress, toResolved(version).blocks);
           } catch {
             // Uszkodzona treść wersji: bez osiągnięć zależnych od treści z tego podejścia, ale reszta przyznania działa.
           }
         }
-        for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, evidence, module2 })) {
+        for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, module2 })) {
           earn(code, completedAt);
         }
       }

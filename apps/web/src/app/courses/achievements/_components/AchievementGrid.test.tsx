@@ -22,7 +22,7 @@ const badges: Badge[] = [
     code: 'flawless-case',
     title: 'Flawless Case',
     description: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.',
-    conditionText: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania.',
+    conditionText: 'Zdobądź 100% za zadania w jednym podejściu.',
     icon: 'osiagniecie-perfekcyjne-sledztwo',
     lockedIcon: 'osiagniecie-perfekcyjne-sledztwo-zablokowane',
     rank: 'LEGENDARY',
@@ -50,22 +50,39 @@ const badges: Badge[] = [
 const card = (code: string) => screen.getAllByTestId('achievement-card').find((el) => el.dataset.code === code)!;
 
 describe('AchievementGrid (D-111, karty z obrotem)', () => {
-  it('awers: grafika zdobyta albo zablokowana, ranga po polsku (UI), nazwa; tajne niezdobyte jako „???”', () => {
+  it('awers (D-174): grafika WebP z obwódką w kolorze rangi, ranga po polsku (UI), nazwa; tajne niezdobyte jako „???”', () => {
     render(<AchievementGrid badges={badges} />);
 
     const first = card('first-case-closed');
-    expect(first.querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-pierwsza-sprawa.svg');
+    const firstImage = within(first).getByTestId('achievement-image');
+    expect(firstImage).toHaveAttribute('src', '/achievements/osiagniecie-pierwsza-sprawa.webp');
+    expect(firstImage).toHaveClass('ring-rank-milestone');
+    expect(firstImage).not.toHaveClass('grayscale');
+    expect(within(first).queryByTestId('achievement-lock')).toBeNull();
     expect(within(first).getByTestId('achievement-front')).toHaveTextContent('Kamień milowyFirst Case Closed');
-    expect(card('flawless-case').querySelector('img')).toHaveAttribute('src', '/achievements/osiagniecie-perfekcyjne-sledztwo-zablokowane.svg');
     const secret = card('secret-3');
     expect(within(secret).getByTestId('achievement-front')).toHaveTextContent('Tajne???');
     expect(secret).toHaveAccessibleName(/^Tajne osiągnięcie \(Tajne\), niezdobyte/);
   });
 
+  it('zablokowana (D-174): ta sama grafika co zdobyta, w szarości i z kłódką; tajna niezdobyta - neutralna grafika z API, bez szarości, z kłódką', () => {
+    render(<AchievementGrid badges={badges} />);
+
+    const locked = within(card('flawless-case')).getByTestId('achievement-image');
+    expect(locked).toHaveAttribute('src', '/achievements/osiagniecie-perfekcyjne-sledztwo.webp');
+    expect(locked).toHaveClass('grayscale', 'ring-rank-legendary');
+    expect(within(card('flawless-case')).getByTestId('achievement-lock')).toBeInTheDocument();
+
+    const secret = within(card('secret-3')).getByTestId('achievement-image');
+    expect(secret).toHaveAttribute('src', '/achievements/osiagniecie-tajne-zablokowane.webp');
+    expect(secret).not.toHaveClass('grayscale');
+    expect(within(card('secret-3')).getByTestId('achievement-lock')).toBeInTheDocument();
+  });
+
   // Poprawki m3, pkt c: grafika w katalogu języka szkoleń (API podaje „pl/…”); inne ścieżki nadal bez grafiki.
   it('achievementImage: nazwa z katalogiem języka pl/en, inne katalogi i znaki odrzucone', () => {
-    expect(achievementImage('pl/osiagniecie-pierwsza-sprawa')).toBe('/achievements/pl/osiagniecie-pierwsza-sprawa.svg');
-    expect(achievementImage('en/osiagniecie-tajne-zablokowane')).toBe('/achievements/en/osiagniecie-tajne-zablokowane.svg');
+    expect(achievementImage('pl/osiagniecie-pierwsza-sprawa')).toBe('/achievements/pl/osiagniecie-pierwsza-sprawa.webp');
+    expect(achievementImage('en/osiagniecie-tajne-zablokowane')).toBe('/achievements/en/osiagniecie-tajne-zablokowane.webp');
     expect(achievementImage('de/osiagniecie-x')).toBeNull();
     expect(achievementImage('../secret')).toBeNull();
     expect(achievementImage('pl/../x')).toBeNull();
@@ -92,7 +109,7 @@ describe('AchievementGrid (D-111, karty z obrotem)', () => {
     expect(within(card('first-case-closed')).getByTestId('achievement-back')).toHaveTextContent(
       'Kamień milowyFirst Case ClosedTwoja pierwsza zamknięta sprawa.Zdobyto: 28.09.2026',
     );
-    expect(within(card('flawless-case')).getByTestId('achievement-back')).toHaveTextContent('Zbierz wszystkie dowody (23/23)');
+    expect(within(card('flawless-case')).getByTestId('achievement-back')).toHaveTextContent('Zdobądź 100% za zadania w jednym podejściu.');
     const secretBack = within(card('secret-3')).getByTestId('achievement-back');
     expect(secretBack).toHaveTextContent(`Tajne${SECRET_TEXT}`);
   });

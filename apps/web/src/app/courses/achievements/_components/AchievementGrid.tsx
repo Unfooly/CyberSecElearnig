@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { formatDateShort } from '@/lib/datetime';
-import { RANK_LABELS, achievementImage, type AchievementRank, type Badge } from '@/lib/gamification-types';
+import { Lock } from 'lucide-react';
+import { RANK_LABELS, RANK_RING, achievementImage, type AchievementRank, type Badge } from '@/lib/gamification-types';
 
 // Karty osiągnięć (D-111, dopisek A): klik / Enter / Spacja obraca kartę o 180° wokół osi Y (perspektywa 900 px, 500 ms,
 // ease-in-out-soft), ponowny klik wraca; naraz odwrócona jest jedna karta. Przy prefers-reduced-motion zamiast obrotu
@@ -55,7 +56,9 @@ function AchievementCard({
   const canPin = badge.isUnlocked && !!onTogglePin;
   const secretLocked = badge.hidden && !badge.isUnlocked;
   const name = secretLocked ? '???' : (badge.title ?? '');
-  const image = achievementImage(badge.isUnlocked ? badge.icon : (badge.lockedIcon ?? badge.icon));
+  // D-174: grafika bez tekstu - zablokowana jawna to TA SAMA grafika w szarości z kłódką (bez osobnych plików „-zablokowane”); tajna
+  // niezdobyta - neutralna grafika, którą API podaje w `icon` (nigdy grafika osiągnięcia, D-111).
+  const image = achievementImage(badge.icon);
   const rank = rankLabel(badge);
   const back = badge.rank ? RANK_BACK[badge.rank] : 'bg-ink';
 
@@ -84,12 +87,30 @@ function AchievementCard({
               flipped ? 'motion-reduce:invisible motion-reduce:opacity-0' : ''
             } ${badge.isUnlocked ? 'bg-surface' : 'bg-paper'}`}
           >
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element -- statyczny SVG z public/achievements; SVG wyłącznie przez <img> (D-051)
-              <img src={image} alt="" className="aspect-square w-full max-w-[180px] object-contain" />
-            ) : (
-              <span className="aspect-square w-full" />
-            )}
+            <span className="relative mt-1 block aspect-square w-[78%] max-w-[160px]">
+              {image ? (
+                // eslint-disable-next-line @next/next/no-img-element -- statyczna grafika z public/achievements
+                <img
+                  src={image}
+                  alt=""
+                  data-testid="achievement-image"
+                  className={`h-full w-full rounded-full object-cover ring-4 ring-offset-2 ring-offset-surface ${badge.rank ? RANK_RING[badge.rank] : 'ring-border'} ${
+                    badge.isUnlocked ? '' : 'opacity-70'
+                  } ${badge.isUnlocked || secretLocked ? '' : 'grayscale'}`}
+                />
+              ) : (
+                <span className="block h-full w-full rounded-full bg-paper" />
+              )}
+              {!badge.isUnlocked && (
+                <span
+                  data-testid="achievement-lock"
+                  aria-hidden="true"
+                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-card"
+                >
+                  <Lock size={16} strokeWidth={2.25} />
+                </span>
+              )}
+            </span>
             <span className="flex w-full flex-col items-center gap-0.5 text-center">
               <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{rank}</span>
               <span className={`text-sm font-bold leading-tight sm:text-base ${badge.isUnlocked ? 'text-ink' : 'text-muted'}`}>{name}</span>

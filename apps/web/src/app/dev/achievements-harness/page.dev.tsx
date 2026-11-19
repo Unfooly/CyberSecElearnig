@@ -30,7 +30,7 @@ const BADGES: Badge[] = [
     code: 'flawless-case',
     title: 'Sprawa bez skazy',
     description: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.',
-    conditionText: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Zabawa w phishing”.',
+    conditionText: 'Zdobądź 100% za zadania w jednym podejściu do sprawy „Zabawa w phishing”.',
     icon: 'pl/osiagniecie-perfekcyjne-sledztwo',
     lockedIcon: 'pl/osiagniecie-perfekcyjne-sledztwo-zablokowane',
     rank: 'LEGENDARY',
@@ -91,7 +91,7 @@ const BADGES: Badge[] = [
     code: 'full-transcript',
     title: 'Pełny zapis',
     description: 'Cała rozmowa rozpisana co do słowa. Sprawa bez luk.',
-    conditionText: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Vishing”.',
+    conditionText: 'Zdobądź 100% za zadania w jednym podejściu do sprawy „Vishing”.',
     icon: 'pl/osiagniecie-pelny-zapis',
     lockedIcon: 'pl/osiagniecie-pelny-zapis-zablokowane',
     rank: 'LEGENDARY',
@@ -107,7 +107,7 @@ const BADGES: Badge[] = [
     title: 'Poza protokołem',
     description: 'Wysłuchałeś webinaru do końca i usłyszałeś to, czego nie powinno tam być.',
     conditionText: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Vishing”.',
-    icon: 'pl/osiagniecie-off-the-record-8551a4b1',
+    icon: 'pl/osiagniecie-off-the-record-6abb6a44',
     lockedIcon: 'pl/osiagniecie-tajne-zablokowane',
     rank: 'SECRET',
     hidden: true,
@@ -121,7 +121,7 @@ const BADGES: Badge[] = [
 
 const PINNED = [
   { code: 'flawless-case', title: 'Sprawa bez skazy', icon: 'pl/osiagniecie-perfekcyjne-sledztwo', rank: 'LEGENDARY' as const },
-  { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-5a973d2b', rank: 'SECRET' as const },
+  { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5', rank: 'SECRET' as const },
   { code: 'first-case-closed', title: 'Pierwsza sprawa zamknięta', icon: 'pl/osiagniecie-pierwsza-sprawa', rank: 'MILESTONE' as const },
 ];
 const NAMES = ['Katarzyna', 'Bartłomiej', 'Anna', 'Jan', 'Małgorzata', 'Piotr', 'Zofia', 'Krzysztof', 'Ewa', 'Tomasz'];

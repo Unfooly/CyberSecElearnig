@@ -867,6 +867,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-166 Miniatury SVG z kompozytora po przejściu na WebP (D-173)
+- Etykiety: `P3`, `docs`, `mod:szkolenia` · Źródło: code review D-173
+- Opis: wszystkie moduły mają miniaturę WebP (grafiki z generatora), a `docs/content/MODULE-PLAYBOOK.md` (układ katalogów, sekcja
+  „Miniatura”) dalej opisuje `miniatura-<slug>.svg` z kompozytora. Pliki `assets/miniatura-{glos-z-helpdesku,lancuszek,na-skroty}.svg` i
+  ich źródła `scripts/content/scenes/examples/*/miniatura-*.json` są nieużywane. Moduł 5 ma pionowy start 9:16 (768×1360), reszta 4:5
+  (1080×1350).
+- Akceptacja: playbook opisuje miniaturę i okładki jako WebP z generatora (rozmiary, kadr pod okno ekranu startu, `--assets`); nieużywane
+  SVG i ich źródła usunięte (po sprawdzeniu testów kompozytora); opcjonalnie start modułu 5 w 4:5.
+
 ### B-165 Stare nazwy modułów w tekstach odznak w bazie (zapas)
 - Etykiety: `P3`, `tech-debt`, `mod:grywalizacja` · Źródło: D-170, D-172, code review
 - Opis: gracz widzi teksty odznak z `achievement-texts.ts` - te mają nowe nazwy modułów 1 i 2 (D-172, bez migracji). Kolumny `badges`

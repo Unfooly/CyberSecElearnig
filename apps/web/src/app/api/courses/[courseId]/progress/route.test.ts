@@ -58,6 +58,16 @@ describe('POST /api/courses/[courseId]/progress', () => {
     );
   });
 
+  it('D-177: blockId (id widzianego bloku) przechodzi do API; niepoprawny blockId - 400 bez wołania API', async () => {
+    await POST(buildRequest({ blockIndex: 0, blockId: 'teczka', answer: 1 }), ctx());
+    expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ blockIndex: 0, blockId: 'teczka', answer: 1 }));
+    for (const blockId of ['../x', 'a b', 7, '']) {
+      const response = await POST(buildRequest({ blockIndex: 0, blockId }), ctx());
+      expect(response.status).toBe(400);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('blok bez odpowiedzi: ciało zawiera tylko blockIndex; odpowiedź liczbowa (quiz) przechodzi', async () => {
     await POST(buildRequest({ blockIndex: 0 }), ctx());
     expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ blockIndex: 0 }));

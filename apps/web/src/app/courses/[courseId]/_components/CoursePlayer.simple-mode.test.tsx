@@ -56,7 +56,7 @@ describe('CoursePlayer: tryb prosty', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
     await waitFor(() => expect(screen.getByText('Następny blok.')).toBeInTheDocument());
     expect(screen.queryByText(/Poprawna odpowiedź|Niepoprawna odpowiedź/)).not.toBeInTheDocument();
-    expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({ blockIndex: 0, answer: 1 });
+    expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({ blockIndex: 0, blockId: 'wybor', answer: 1 });
   });
 
   it('quiz w monitorze (D-164): „Pytanie N z M” liczone wśród bloków QUIZ (inne bloki pomiędzy), podgląd „Wstecz” bez monitora', () => {

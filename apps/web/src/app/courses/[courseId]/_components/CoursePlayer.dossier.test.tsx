@@ -124,6 +124,7 @@ describe('CoursePlayer: teczka sprawy (DOSSIER)', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({
       blockIndex: 0,
+      blockId: 'akta',
       answer: { opened: ['wyciag', 'logi'], noted: ['w2', 'l2'] },
     });
   });

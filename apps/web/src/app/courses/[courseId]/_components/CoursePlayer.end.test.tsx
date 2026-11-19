@@ -144,7 +144,7 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     await screen.findByTestId('module-end');
     // Jeden zapis - bloku podsumowania, bez kliknięcia.
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1 });
+    expect(JSON.parse(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1, blockId: 'podsumowanie' });
     // Ten sam element regionu (zachowany przy przejściu), teraz z treścią.
     expect(screen.getByTestId('result-announcement')).toBe(live);
     expect(live).toHaveTextContent('Kurs ukończony. Zdobyto 150 punktów doświadczenia.');
@@ -195,7 +195,7 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dalej' })));
     await screen.findByTestId('module-end');
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1 });
+    expect(JSON.parse(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body as string)).toEqual({ blockIndex: 1, blockId: 'podsumowanie' });
   });
 
   it('tryb prosty: trafienie w ostatnim pytaniu -> „Dalej” -> od razu ekran końca, bez ekranu podsumowania (D-169)', async () => {

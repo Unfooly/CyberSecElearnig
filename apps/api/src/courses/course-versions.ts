@@ -92,7 +92,34 @@ async function ensureLegacyVersion(tx: Prisma.TransactionClient, course: Course)
 }
 
 /**
- * Wersja treści, na której pracuje to przypisanie. Przypięta (courseVersionId) jest ostateczna. Nieprzypięta:
+ * Przypisanie przypięte do starszej wersji, ale jeszcze PRZED ukończeniem pierwszego bloku (D-177) - przy /start przechodzi na najnowszą
+ * wersję treści: nic nie zostało ukończone, więc nic nie ginie (najwyżej częściowy stan pierwszego bloku, np. obejrzane przedmioty sceny -
+ * postęp jest czyszczony, bo jest kluczowany id bloków starej treści). Kurs rozpoczęty dalej (currentBlockIndex > 0) albo ukończony
+ * zostaje na swojej wersji (silnik szkoleń, niezmiennik 3). Warunkowy update (ta sama wersja, blok 0, nieukończone) - równoległy zapis
+ * postępu albo inne /start nie zostaną nadpisane. Zwraca przypisanie po ewentualnej zmianie.
+ */
+export async function upgradeUnstartedPin<T extends CourseAssignment & { course: Course }>(tx: Prisma.TransactionClient, assignment: T): Promise<T> {
+  if (!assignment.courseVersionId || assignment.status === AssignmentStatus.COMPLETED || assignment.currentBlockIndex !== 0) return assignment;
+  const latest = await tx.courseVersion.findFirst({ where: { courseId: assignment.courseId }, orderBy: { version: 'desc' }, select: { id: true } });
+  if (!latest || latest.id === assignment.courseVersionId) return assignment;
+  const moved = await tx.courseAssignment.updateMany({
+    where: {
+      id: assignment.id,
+      organizationId: assignment.organizationId,
+      courseVersionId: assignment.courseVersionId,
+      currentBlockIndex: 0,
+      status: { not: AssignmentStatus.COMPLETED },
+    },
+    data: { courseVersionId: latest.id, progress: Prisma.DbNull },
+  });
+  if (moved.count === 0) return assignment;
+  const fresh = await tx.courseAssignment.findFirst({ where: { id: assignment.id, organizationId: assignment.organizationId } });
+  return fresh ? { ...assignment, ...fresh } : assignment;
+}
+
+/**
+ * Wersja treści, na której pracuje to przypisanie. Przypięta (courseVersionId) jest ostateczna (wyjątek przy /start: przypisanie przed
+ * ukończeniem pierwszego bloku przechodzi na najnowszą - upgradeUnstartedPin, D-177). Nieprzypięta:
  *  - już rozpoczęta (stan sprzed wprowadzenia wersji) -> NAJNIŻSZA wersja (1 = treść, na której zaczynała),
  *  - jeszcze nie rozpoczęta -> NAJNOWSZA.
  * Wynik jest zapisywany w przypisaniu (pierwszy /start albo zapis postępu przypina), więc późniejszy import nowej wersji

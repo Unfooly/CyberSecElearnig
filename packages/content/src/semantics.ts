@@ -274,11 +274,20 @@ export function flattenDossierRows(documents: readonly { rows?: readonly Dossier
  * notatka i `required` tylko przy dowodzie, `message` tylko przy zwykłej linijce.
  */
 function dossierDocumentErrors(
-  documents: readonly { columns: readonly string[]; rows: readonly (DossierRowLike & { cells: readonly string[]; message?: string })[] }[],
+  documents: readonly {
+    columns: readonly string[];
+    rows: readonly (DossierRowLike & { cells: readonly string[]; message?: string })[];
+    layout?: 'chat';
+    self?: unknown;
+  }[],
   kindRequired: boolean,
 ): string[] {
   const errors: string[] = [];
   documents.forEach((document, d) => {
+    // Czat (D-178): komórki to [godzina, autor, treść] - inna liczba kolumn dałaby puste albo ucięte dymki; `self` ma sens tylko w czacie.
+    // Tu, a nie w DOSSIER: ten sam kształt dokumentu ma konsola przesłuchania (INTERROGATION.documents).
+    if (document.layout === 'chat' && document.columns.length !== 3) errors.push(`documents[${d}]: layout "chat" wymaga 3 kolumn [godzina, autor, treść]`);
+    if (document.self !== undefined && document.layout !== 'chat') errors.push(`documents[${d}]: self tylko z layout "chat"`);
     document.rows.forEach((row, r) => {
       const label = `documents[${d}].rows[${r}]`;
       if (row.cells.length !== document.columns.length) {
@@ -751,11 +760,6 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Id dokumentów i wierszy unikalne w CAŁYM bloku (jedna przestrzeń kluczy notatek `<blockId>.<id>` i odpowiedzi opened/noted).
       const rows = flattenDossierRows(block.documents);
       checkUnique('documents/rows', [...block.documents.map((d) => d.id), ...rows.map((r) => r.id)]);
-      // Czat (D-178): komórki to [godzina, autor, treść] - inna liczba kolumn dałaby puste albo ucięte dymki; `self` ma sens tylko w czacie.
-      block.documents.forEach((d, i) => {
-        if (d.layout === 'chat' && d.columns.length !== 3) errors.push(`documents[${i}]: layout "chat" wymaga 3 kolumn [godzina, autor, treść]`);
-        if (d.self !== undefined && d.layout !== 'chat') errors.push(`documents[${i}]: self tylko z layout "chat"`);
-      });
       // Teczka jest nieoceniana, a wszystkie jej pola są publiczne (D-083) - waga > 0 dawałaby punkty za samo przejście.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok DOSSIER jest nieoceniany (waga musi być 0)');
       // Odpowiedź `noted` przyjmuje najwyżej MAX_DOSSIER_EVIDENCE id (evaluate.ts) - więcej dowodów = bloku nie da się ukończyć.

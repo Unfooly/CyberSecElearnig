@@ -73,7 +73,8 @@ export default function TabsBlock({
       <div
         role="tablist"
         aria-label={block.title ?? 'Zakładki'}
-        className={folder ? 'flex flex-wrap gap-1.5 pr-28 sm:pr-36' : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'}
+        // Miejsce na pieczątkę: na telefonie tekst rośnie do 15 px (.mobile-readable), stąd szersza rezerwa.
+        className={folder ? `flex flex-wrap gap-1.5 ${block.stamp ? 'pr-40 sm:pr-44' : ''}` : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'}
       >
         {tabs.map((tab, index) => (
           <button
@@ -125,7 +126,8 @@ export default function TabsBlock({
           {block.stamp && (
             <p
               data-testid="folder-stamp"
-              className="pointer-events-none absolute right-3 top-3 z-10 rotate-[-6deg] rounded-md border-[3px] border-[#D9483B] px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.12em] text-[#D9483B] sm:right-5 sm:top-4 sm:text-sm"
+              // Ciemniejsza czerwień (#A3271B) - kontrast ≥ 4.5:1 na kremowej teczce (WCAG AA dla tekstu 12-15 px).
+              className="pointer-events-none absolute right-3 top-3 z-10 rotate-[-6deg] rounded-md border-[3px] border-[#A3271B] px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-[#A3271B] sm:right-5 sm:top-4 sm:text-sm"
             >
               {block.stamp}
             </p>

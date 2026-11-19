@@ -708,7 +708,10 @@ export function evaluateExploration(
   // Ukończonego wpisu (punkty, wyróżnienia) stan częściowy nigdy nie zastępuje - także przy niespójnym postępie (jak evaluateAttempt).
   if (existing?.done) throw new BadRequestException('Ten blok jest już ukończony');
   const hotspots = flattenHotspots(block.hotspots as HotspotLike[]);
-  const doorIds = new Set((block.hotspots as { id: string; action?: string }[]).filter((h) => h.action === 'next').map((h) => h.id));
+  // Drzwi i miejsca obejrzane wcześniej (`done`, D-178 - nieklikalne) nie trafiają do stanu częściowego.
+  const doorIds = new Set(
+    (block.hotspots as { id: string; action?: string; done?: boolean }[]).filter((h) => h.action === 'next' || h.done === true).map((h) => h.id),
+  );
   const viewable = hotspots.filter((h) => !doorIds.has(h.id)).map((h) => h.id);
   const evidenceIds = hotspots.filter((h) => h.evidence === true && h.note).map((h) => h.id);
   const { visited, noted } = answer;

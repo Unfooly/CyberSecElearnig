@@ -578,8 +578,10 @@ export default function SceneHotspotsBlock({
                       aria-hidden={overlayOpen ? true : undefined}
                       data-testid={`hotspot-overlay-${hotspot.id}`}
                       data-state="done"
+                      // Klik w obejrzane miejsce nie jest „pudłem” (nie przybliża ujawnienia ramek) - zatrzymany przed obrazem sceny.
+                      onClick={(event) => event.stopPropagation()}
                       style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, width: `${hotspot.width}%`, height: `${hotspot.height}%`, zIndex: hotspotZIndex.get(hotspot.id) }}
-                      className="pointer-events-none absolute rounded border-2 border-green-600 bg-green-500/[0.07]"
+                      className="absolute cursor-default rounded border-2 border-green-600 bg-green-500/[0.07]"
                     >
                       <span className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white">
                         <Check aria-hidden="true" className="h-3.5 w-3.5" />

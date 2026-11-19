@@ -1155,7 +1155,6 @@ export default function CoursePlayer({
             onExitClick={handleExitClick}
             exitPending={exitPending}
             backdropUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdrop ?? undefined, 'image')}
-            backdropPortraitUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdropPortrait ?? undefined, 'image')}
             // Scena z drzwiami (D-106): wyjściem jest podejście do drzwi - podpowiedź mówi to wprost (samo „Ukończ blok” myliło, gdy
             // wymagane przedmioty były już obejrzane).
             forwardHint={

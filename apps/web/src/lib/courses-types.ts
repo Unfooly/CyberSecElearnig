@@ -630,9 +630,8 @@ export interface ModuleCover {
   end: string;
   startPortrait: string | null;
   endPortrait: string | null;
-  /** Tło odtwarzacza za blokami (D-178); brak/null - bez tła. */
+  /** Tło odtwarzacza za ramką (D-178, tylko komputer); brak/null - bez tła. */
   backdrop?: string | null;
-  backdropPortrait?: string | null;
 }
 
 export interface ModuleInfo {

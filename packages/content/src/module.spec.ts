@@ -1332,7 +1332,7 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     Object.assign(block(module, 'TABS'), { look: 'folder', stamp: 'ŚCIŚLE TAJNE' });
     block(module, 'EMAIL_ANALYSIS').frame = 'monitor';
     Object.assign(block(module, 'DOSSIER').documents[0], { layout: 'chat', self: 'Paweł' });
-    module.cover = { start: 'a.webp', end: 'b.webp', backdrop: 'tlo.webp', backdropPortrait: 'tlo-pion.webp' };
+    module.cover = { start: 'a.webp', end: 'b.webp', backdrop: 'tlo.webp' };
     expect(errorsOf(module)).toBe('');
     // Nieznane wartości - błąd (enum).
     block(module, 'TABS').look = 'segregator';
@@ -1343,7 +1343,7 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     const module = fullModuleForTests();
     withoutPopups(module);
     const scene = block(module, 'SCENE_HOTSPOTS');
-    scene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, content: 'x', done: true });
+    scene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, done: true });
     for (const h of scene.hotspots) if (!h.done && h.action !== 'next' && h.required === undefined) h.required = false;
     expect(errorsOf(module)).toBe('');
 
@@ -1354,7 +1354,37 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     withoutPopups(implicit);
     const implicitScene = block(implicit, 'SCENE_HOTSPOTS');
     for (const h of implicitScene.hotspots) delete h.required;
-    implicitScene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, content: 'x', done: true });
+    implicitScene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, done: true });
     expect(errorsOf(implicit)).toMatch(/scena z miejscami „done” wymaga jawnego required/);
+
+    // Sama scena z „done” (pomyłka autora - zaliczałaby się bez czynności) i przestarzała lista wymaganych z id „done” - błędy.
+    const onlyDone = fullModuleForTests();
+    withoutPopups(onlyDone);
+    block(onlyDone, 'SCENE_HOTSPOTS').hotspots = [{ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, done: true }];
+    expect(errorsOf(onlyDone)).toMatch(/co najmniej jeden przedmiot, który nie jest „done”/);
+    scene.hotspots.at(-1).required = undefined;
+    delete scene.hotspots.at(-1).required;
+    scene.requiredHotspots = ['zrobione'];
+    expect(errorsOf(module)).toMatch(/requiredHotspots: „zrobione” jest „done”/);
+
+    // `done` z treścią karty (martwa konfiguracja) - błąd.
+    const withContent = fullModuleForTests();
+    withoutPopups(withContent);
+    const contentScene = block(withContent, 'SCENE_HOTSPOTS');
+    for (const h of contentScene.hotspots) if (h.action !== 'next' && h.required === undefined) h.required = false;
+    contentScene.hotspots.push({ id: 'zrobione', label: 'Komputer', x: 70, y: 70, width: 10, height: 10, content: 'x', done: true });
+    expect(errorsOf(withContent)).toMatch(/content ani narration/);
+  });
+
+  it('czat (DOSSIER layout chat): dokładnie 3 kolumny; self tylko w czacie', () => {
+    const module = fullModuleForTests();
+    const doc = block(module, 'DOSSIER').documents[0];
+    Object.assign(doc, { layout: 'chat', self: 'Paweł' });
+    doc.columns = doc.columns.slice(0, 2);
+    for (const row of doc.rows) row.cells = row.cells.slice(0, 2);
+    expect(errorsOf(module)).toMatch(/layout "chat" wymaga 3 kolumn/);
+    const selfOnly = fullModuleForTests();
+    block(selfOnly, 'DOSSIER').documents[0].self = 'Paweł';
+    expect(errorsOf(selfOnly)).toMatch(/self tylko z layout "chat"/);
   });
 });

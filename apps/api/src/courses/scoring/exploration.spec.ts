@@ -120,13 +120,32 @@ describe('SCENE_HOTSPOTS: miejsca obejrzane wcześniej (`done`, D-178)', () => {
     image: 'img/biuro.webp',
     imageAlt: 'Biuro',
     hotspots: [
-      { id: 'komputer', label: 'Komputer', x: 5, y: 5, width: 20, height: 20, content: 'x', done: true },
+      { id: 'komputer', label: 'Komputer', x: 5, y: 5, width: 20, height: 20, done: true },
       { id: 'smartfon', label: 'Smartfon', x: 50, y: 50, width: 20, height: 20, content: 'Telefon.', required: true },
     ],
   } as unknown as Block;
 
+  it('scena „obejrzane + drzwi” (bez flag required): pula wymaganych pusta - ukończenie od razu (bez wykluczenia „done” blok byłby nie do ukończenia)', () => {
+    const doorOnly = {
+      id: 'biuro-3',
+      type: 'SCENE_HOTSPOTS',
+      image: 'img/biuro.webp',
+      imageAlt: 'Biuro',
+      hotspots: [
+        { id: 'komputer', label: 'Komputer', x: 5, y: 5, width: 20, height: 20, done: true },
+        { id: 'smartfon', label: 'Smartfon', x: 50, y: 50, width: 20, height: 20, action: 'next' },
+      ],
+    } as unknown as Block;
+    expect(evaluateSubmit(doorOnly, { visited: [], noted: [] }, undefined, now, opaque).entry.done).toBe(true);
+  });
+
   it('poza pulą wymaganych - ukończenie po samym wymaganym przedmiocie; bez niego 400', () => {
     expect(evaluateSubmit(repeated, { visited: ['smartfon'], noted: [] }, undefined, now, opaque).entry.done).toBe(true);
     expect(() => evaluateSubmit(repeated, { visited: [], noted: [] }, undefined, now, opaque)).toThrow(BadRequestException);
+  });
+
+  it('stan częściowy (/explore) nie przyjmuje miejsca „done” (nieklikalne)', () => {
+    expect(() => evaluateExploration(repeated, { visited: ['komputer'], noted: [] }, undefined, now)).toThrow(BadRequestException);
+    expect(evaluateExploration(repeated, { visited: ['smartfon'], noted: [] }, undefined, now).entry.visited).toEqual(['smartfon']);
   });
 });

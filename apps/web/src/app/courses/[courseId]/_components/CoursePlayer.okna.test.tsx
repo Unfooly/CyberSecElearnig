@@ -146,6 +146,24 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
     expect(barNext()).toBeDisabled();
     fireEvent.click(screen.getByTestId('hotspot-overlay-smartfon'));
     await screen.findByText('Telefon Pawła.');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(barNext()).toBeEnabled());
+  });
+
+  it('SCENE_HOTSPOTS done + drzwi (bez flag required): drzwi aktywne od razu - „done” poza pulą (bez wykluczenia blok byłby nie do ukończenia)', () => {
+    stubFetch();
+    const scene: ContentBlock = {
+      type: 'SCENE_HOTSPOTS',
+      id: 'biuro-3',
+      image: 'img/biuro.webp',
+      imageAlt: 'Biuro',
+      hotspots: [
+        { id: 'komputer', label: 'Komputer', x: 5, y: 5, width: 20, height: 20, done: true },
+        { id: 'smartfon', label: 'Smartfon', x: 50, y: 50, width: 20, height: 20, action: 'next' },
+      ],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([scene])} narrationEnabled={false} />);
+    expect(screen.getByTestId('hotspot-overlay-smartfon')).toHaveAttribute('data-state', 'ready');
   });
 
   it('tło modułu (cover.backdrop) za ramką; bez tła - brak elementu', () => {
@@ -157,7 +175,7 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
       subtitle: null,
       caseNumber: 1,
       notice: null,
-      cover: { start: 'a.webp', end: 'b.webp', startPortrait: null, endPortrait: null, backdrop: 'assets/m/tlo.1.webp', backdropPortrait: null },
+      cover: { start: 'a.webp', end: 'b.webp', startPortrait: null, endPortrait: null, backdrop: 'assets/m/tlo.1.webp' },
     };
     const { unmount } = render(
       <CoursePlayer courseId="course-1" initial={course([narrative], { currentBlockIndex: 1, moduleInfo })} narrationEnabled={false} contentBase="https://content.example.test" />,

@@ -88,7 +88,6 @@ function startScreen(contentModule: ResolvedModule, pseudo: boolean, noCover: bo
         startPortrait: contentModule.cover.startPortrait ?? null,
         endPortrait: contentModule.cover.endPortrait ?? null,
         backdrop: contentModule.cover.backdrop ?? null,
-        backdropPortrait: contentModule.cover.backdropPortrait ?? null,
       }
     : null;
   const text = (value: string) => (pseudo ? pseudoLocalize(value) : value);

@@ -40,7 +40,7 @@
         { "id": "pawel", "x": 33, "y": 21, "width": 33, "height": 78 }
       ],
       "hotspots": [
-        { "id": "komputer", "label": "Komputer", "x": 8, "y": 31, "width": 21, "height": 38, "content": "Komputer Pawła.", "done": true },
+        { "id": "komputer", "label": "Komputer", "x": 8, "y": 31, "width": 21, "height": 38, "done": true },
         { "id": "smartfon", "label": "Smartfon", "x": 25, "y": 68, "width": 11, "height": 16, "action": "next" },
         { "id": "pawel", "label": "Paweł", "x": 57, "y": 10, "width": 17, "height": 88, "content": "Paweł poczeka na rozmowę.", "required": false }
       ]

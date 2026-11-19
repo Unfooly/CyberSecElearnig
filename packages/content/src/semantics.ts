@@ -633,8 +633,16 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         if (h.done === true) {
           // D-178: miejsce obejrzane w poprzednim przejściu sceny - tylko znak ✓, nieklikalne. Klikalne pola byłyby martwą konfiguracją,
           // a required - ślepym zaułkiem (nie da się go odwiedzić).
-          if (h.action !== undefined || h.media !== undefined || h.evidence !== undefined || h.note !== undefined || h.required !== undefined) {
-            errors.push(`hotspots[${i}]: done (obejrzane wcześniej) nie może mieć action, media, evidence, note ani required`);
+          if (
+            h.action !== undefined ||
+            h.media !== undefined ||
+            h.evidence !== undefined ||
+            h.note !== undefined ||
+            h.required !== undefined ||
+            h.content !== undefined ||
+            h.narration !== undefined
+          ) {
+            errors.push(`hotspots[${i}]: done (obejrzane wcześniej) nie może mieć action, media, evidence, note, required, content ani narration`);
           }
         } else if (h.action === 'next') {
           // "Drzwi": klik kończy blok jak przycisk "Dalej" - nigdy nie otwiera karty, więc content/media/evidence/note
@@ -668,6 +676,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // D-178: scena z miejscami obejrzanymi wcześniej (`done`) nie może liczyć na domyślne „wszystkie wymagane” (objęłoby nieklikalne ✓) -
       // pozostałe przedmioty (poza drzwiami) mają jawne `required`, a serwer i odtwarzacz biorą wtedy tylko required: true.
       if (block.hotspots.some((h) => h.done === true)) {
+        // Scena z samych miejsc obejrzanych wcześniej zaliczałaby się bez żadnej czynności gracza (pomyłka autora).
+        if (block.hotspots.every((h) => h.done === true)) errors.push('hotspots: scena musi mieć co najmniej jeden przedmiot, który nie jest „done”');
+        // Przestarzała lista wymaganych z id miejsca „done” - ślepy zaułek (nieklikalnego miejsca nie da się obejrzeć).
+        const doneSet = new Set(block.hotspots.filter((h) => h.done === true).map((h) => h.id));
+        for (const id of block.requiredHotspots ?? []) if (doneSet.has(id)) errors.push(`requiredHotspots: „${id}” jest „done” (nieklikalne)`);
         block.hotspots.forEach((h, i) => {
           if (h.done !== true && h.action !== 'next' && h.required === undefined) {
             errors.push(`hotspots[${i}]: scena z miejscami „done” wymaga jawnego required przy każdym innym przedmiocie`);
@@ -738,6 +751,11 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Id dokumentów i wierszy unikalne w CAŁYM bloku (jedna przestrzeń kluczy notatek `<blockId>.<id>` i odpowiedzi opened/noted).
       const rows = flattenDossierRows(block.documents);
       checkUnique('documents/rows', [...block.documents.map((d) => d.id), ...rows.map((r) => r.id)]);
+      // Czat (D-178): komórki to [godzina, autor, treść] - inna liczba kolumn dałaby puste albo ucięte dymki; `self` ma sens tylko w czacie.
+      block.documents.forEach((d, i) => {
+        if (d.layout === 'chat' && d.columns.length !== 3) errors.push(`documents[${i}]: layout "chat" wymaga 3 kolumn [godzina, autor, treść]`);
+        if (d.self !== undefined && d.layout !== 'chat') errors.push(`documents[${i}]: self tylko z layout "chat"`);
+      });
       // Teczka jest nieoceniana, a wszystkie jej pola są publiczne (D-083) - waga > 0 dawałaby punkty za samo przejście.
       if (block.weight !== undefined && block.weight > 0) errors.push('weight: blok DOSSIER jest nieoceniany (waga musi być 0)');
       // Odpowiedź `noted` przyjmuje najwyżej MAX_DOSSIER_EVIDENCE id (evaluate.ts) - więcej dowodów = bloku nie da się ukończyć.

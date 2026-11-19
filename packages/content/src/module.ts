@@ -32,9 +32,9 @@ export const moduleCoverSchema = z
     end: limage(),
     startPortrait: limage().optional(),
     endPortrait: limage().optional(),
-    // Tło odtwarzacza za blokami modułu (D-178, addytywnie): dekoracyjna grafika (np. rozmyte biuro) za ramką bloku, pionowa na telefon.
+    // Tło odtwarzacza za blokami modułu (D-178, addytywnie): dekoracyjna grafika (np. rozmyte biuro) za ramką bloku - widoczna wokół ramki
+    // na komputerze; na telefonie ramka zajmuje cały ekran, więc tła tam nie ma (i nie ma wariantu pionowego).
     backdrop: limage().optional(),
-    backdropPortrait: limage().optional(),
   })
   .strict();
 

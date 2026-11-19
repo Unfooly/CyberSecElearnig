@@ -75,8 +75,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 # scripts/check-no-secrets-in-bundle.mjs), ale zbędne zwiększenie powierzchni ataku kontenera web - surowe sekrety
 # treści kursów na dysku serwera WWW, który wcześniej ich w ogóle nie miał (tylko apps/api je czyta, do importu).
 # Bezpieczne: żaden inny kod w apps/web nie czyta packages/content/modules w runtime (prawdziwa treść kursu idzie
-# z bazy przez API, nie z tych plików) - jedynym konsumentem jest strona harnessu.
-RUN rm -rf packages/content/modules
+# z bazy przez API, nie z tych plików) - jedynym konsumentem jest strona harnessu. To samo dotyczy modułów podglądu
+# packages/content/dev-modules (D-115) - od D-175 jest tam pełna dawna treść modułu 1 z kluczem odpowiedzi (`dev-modul-1`), B-168.
+RUN rm -rf packages/content/modules packages/content/dev-modules
 
 EXPOSE 3000
 

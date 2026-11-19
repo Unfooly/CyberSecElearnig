@@ -22,9 +22,9 @@
   "caseNumber": 5,
   "cover": {
     "start": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
-    "end": "assets/najlatwiejsze-drzwi/images/start.9722f6b2.webp",
+    "end": "assets/najlatwiejsze-drzwi/images/koniec.ce51fd47.webp",
     "startPortrait": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp",
-    "endPortrait": "assets/najlatwiejsze-drzwi/images/start-pion.36ee7e6e.webp"
+    "endPortrait": "assets/najlatwiejsze-drzwi/images/koniec-pion.a085a859.webp"
   },
   "blocks": [
     {

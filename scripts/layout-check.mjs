@@ -2413,8 +2413,8 @@ try {
     }
   }
 
-  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduły 5 i 1 z okładką (`cover` z treści, D-167, D-170), moduł 2 bez
-  // okładki (ciemne tło #23232A) i moduł 5 w pseudo-lokalizacji (dłuższy tytuł i opis). Sprawdzamy:
+  // EKRAN STARTU MODUŁU (szablon modułu, D-163): `?start=1` - moduły 1-5 z okładką (`cover` z treści, D-167, D-170, D-173), moduł 2 bez
+  // okładki (`noCover=1` - ciemne tło #23232A) i moduł 5 w pseudo-lokalizacji (dłuższy tytuł i opis). Sprawdzamy:
   //  (s1) strona bez przewijania; (s2) Start, X, CC i głośnik w całości na ekranie, cele >= 44 px; (s3) tytuł bez przepełnienia w poziomie,
   //  opis >= 16 px; (s4) komputer: tytuł, opis i Start w jasnym panelu (lewa połowa); telefon: karta przy dolnej krawędzi, okładka nad nią;
   //  (s5) kategoria w ekranie i nie nachodzi na X; (s6) okładka się wczytała / bez okładki - ciemne tło; (s7) okienko głośności w ekranie,
@@ -2424,7 +2424,10 @@ try {
     const START_CASES = [
       { name: 'moduł 5 z okładką', query: 'module=najlatwiejsze-drzwi&start=1', cover: true },
       { name: 'moduł 1 z okładką i uwagą', query: 'module=wyludzone-haslo&start=1', cover: true, notice: true },
-      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1', cover: false },
+      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&start=1&noCover=1', cover: false },
+      { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&start=1', cover: true },
+      { name: 'moduł 3 z okładką', query: 'module=lancuszek&start=1', cover: true },
+      { name: 'moduł 4 z okładką', query: 'module=na-skroty&start=1', cover: true },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&start=1&pseudo=1', cover: true },
       { name: 'moduł 1 xx z uwagą', query: 'module=wyludzone-haslo&start=1&pseudo=1', cover: true, notice: true },
     ];
@@ -2665,7 +2668,8 @@ try {
   //       „Dalej” aktywny po ostatniej.
   // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
   // EKRAN KOŃCA MODUŁU (szablon modułu, D-165): `?completed=1&start=1` (dane modułu) - moduł 5 z okładką i nagrodą (`reward=1`: poziom,
-  // nowe osiągnięcie), moduł 1 z okładką bez nagrody (wnioski `lessons`), moduł 2 bez okładki, moduł 5 xx. Sprawdzamy:
+  // nowe osiągnięcie), moduł 1 z okładką bez nagrody (wnioski `lessons`), moduły 2-4 z okładką (D-173), moduł 2 bez okładki
+  // (`noCover=1`), moduł 5 xx. Sprawdzamy:
   //  (k1) strona bez przewijania; (k2) pieczątka, nagłówek i trzy kafelki widoczne bez przewijania, wartości kafelków nieucięte;
   //  (k3) przyciski ≥ 44 px i osiągalne (komputer: bez przewijania panelu; telefon i nisko: po przewinięciu karty - w ekranie);
   //  (k4) komputer: treść w jasnym panelu (≤ 60% szerokości); telefon: karta przy dolnej krawędzi, okładka nad nią;
@@ -2674,7 +2678,10 @@ try {
     const END_CASES = [
       { name: 'moduł 5 z okładką i nagrodą', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1', cover: true },
       { name: 'moduł 1 z okładką', query: 'module=wyludzone-haslo&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
-      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1', cover: false },
+      { name: 'moduł 2 bez okładki', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1&noCover=1', cover: false },
+      { name: 'moduł 2 z okładką', query: 'module=glos-z-helpdesku&block=rozwiazanie-sprawy&completed=1&start=1', cover: true },
+      { name: 'moduł 3 z okładką', query: 'module=lancuszek&block=raport&completed=1&start=1', cover: true },
+      { name: 'moduł 4 z okładką', query: 'module=na-skroty&block=raport&completed=1&start=1', cover: true },
       { name: 'moduł 5 xx', query: 'module=najlatwiejsze-drzwi&block=podsumowanie&completed=1&start=1&reward=1&pseudo=1', cover: true },
     ];
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {

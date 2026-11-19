@@ -3,9 +3,29 @@
   "slug": "lancuszek",
   "entries": {
     "module#thumbnail": {
-      "original": "miniatura-lancuszek.svg",
-      "hash": "1e119e96",
-      "key": "assets/lancuszek/miniatura-lancuszek.1e119e96.svg"
+      "original": "images/miniatura.webp",
+      "hash": "d523ac66",
+      "key": "assets/lancuszek/images/miniatura.d523ac66.webp"
+    },
+    "module#cover.start": {
+      "original": "images/start.webp",
+      "hash": "70d81bf1",
+      "key": "assets/lancuszek/images/start.70d81bf1.webp"
+    },
+    "module#cover.end": {
+      "original": "images/koniec.webp",
+      "hash": "2a372b50",
+      "key": "assets/lancuszek/images/koniec.2a372b50.webp"
+    },
+    "module#cover.startPortrait": {
+      "original": "images/start-pion.webp",
+      "hash": "3bbeb6e2",
+      "key": "assets/lancuszek/images/start-pion.3bbeb6e2.webp"
+    },
+    "module#cover.endPortrait": {
+      "original": "images/koniec-pion.webp",
+      "hash": "64c9e434",
+      "key": "assets/lancuszek/images/koniec-pion.64c9e434.webp"
     },
     "odprawa#steps.0.image": {
       "original": "scenes/pl/odprawa.svg",

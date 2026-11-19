@@ -27,18 +27,17 @@ describe('moduł 5 „Bezpieczeństwo sieci” - treść', () => {
     expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual(['film:VIDEO', ...QUIZZES.map((id) => `${id}:QUIZ`), 'podsumowanie:SUMMARY']);
   });
 
-  it('ekran startu i końca (D-167): nazwa „Bezpieczeństwo sieci”, opis dawnej sceny startowej w podtytule, okładki z grafik startu', () => {
+  it('ekran startu i końca (D-167, D-173): nazwa „Bezpieczeństwo sieci”, opis dawnej sceny startowej w podtytule, okładki startu i końca', () => {
     expect(parsed.slug).toBe('najlatwiejsze-drzwi');
     expect(parsed.title).toBe('Bezpieczeństwo sieci');
     expect(parsed.subtitle).toMatch(/^Przestępca nie musi łamać zabezpieczeń/);
     expect(parsed.caseNumber).toBe(5);
-    // Grafiki z ElevenLabs w stylu Unfooly (D-161): WebP, poziomo i pionowo, ta sama scena na start i na koniec; miniatura w katalogu.
-    const landscape = /^assets\/najlatwiejsze-drzwi\/images\/start\.[0-9a-f]{8}\.webp$/;
-    const portrait = /^assets\/najlatwiejsze-drzwi\/images\/start-pion\.[0-9a-f]{8}\.webp$/;
-    expect(parsed.cover?.start).toMatch(landscape);
-    expect(parsed.cover?.end).toMatch(landscape);
-    expect(parsed.cover?.startPortrait).toMatch(portrait);
-    expect(parsed.cover?.endPortrait).toMatch(portrait);
+    // Start: grafiki z ElevenLabs (D-161); koniec: własna scena z Dreaminy (D-173). WebP, poziomo i pionowo; miniatura w katalogu.
+    const image = (name: string) => new RegExp(`^assets/najlatwiejsze-drzwi/images/${name}\\.[0-9a-f]{8}\\.webp$`);
+    expect(parsed.cover?.start).toMatch(image('start'));
+    expect(parsed.cover?.end).toMatch(image('koniec'));
+    expect(parsed.cover?.startPortrait).toMatch(image('start-pion'));
+    expect(parsed.cover?.endPortrait).toMatch(image('koniec-pion'));
     expect(parsed.thumbnail).toMatch(/^assets\/najlatwiejsze-drzwi\/images\/miniatura\.[0-9a-f]{8}\.webp$/);
   });
 

@@ -17,8 +17,14 @@
     "Dziwną prośbę o pieniądze albo kod sprawdzić innym kanałem, np. telefonem na znany numer.",
     "Nie podawać nikomu kodu z SMS-a."
   ],
-  "thumbnail": "assets/lancuszek/miniatura-lancuszek.1e119e96.svg",
+  "thumbnail": "assets/lancuszek/images/miniatura.d523ac66.webp",
   "caseNumber": 3,
+  "cover": {
+    "start": "assets/lancuszek/images/start.70d81bf1.webp",
+    "end": "assets/lancuszek/images/koniec.2a372b50.webp",
+    "startPortrait": "assets/lancuszek/images/start-pion.3bbeb6e2.webp",
+    "endPortrait": "assets/lancuszek/images/koniec-pion.64c9e434.webp"
+  },
   "blocks": [
     {
       "id": "odprawa",

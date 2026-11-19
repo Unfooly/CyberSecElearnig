@@ -867,12 +867,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
-### B-165 Teksty osiągnięć modułu 1 ze starą nazwą „Wyłudzone hasło”
-- Etykiety: `P3`, `content`, `mod:grywalizacja` · Źródło: D-170, code review
-- Opis: moduł 1 nazywa się teraz „Zabawa w phishing” (D-170), a warunki dwóch osiągnięć (komplet dowodów, easter egg) mówią „w sprawie
-  „Wyłudzone hasło”” - w bazie (migracja `20260928200000_achievements`, `seed-badges.ts`) i w `apps/api/src/gamification/achievement-texts.ts`.
-- Akceptacja: decyzja właściciela; zmiana tekstów w bazie = nowa migracja danych (merge przez człowieka, reguła 11) razem z
-  `achievement-texts.ts` i `seed-badges.ts`. Przy okazji: osiągnięcie „komplet dowodów” a usunięcie dowodów (etap 2, B-163).
+### B-165 Stare nazwy modułów w tekstach odznak w bazie (zapas)
+- Etykiety: `P3`, `tech-debt`, `mod:grywalizacja` · Źródło: D-170, D-172, code review
+- Opis: gracz widzi teksty odznak z `achievement-texts.ts` - te mają nowe nazwy modułów 1 i 2 (D-172, bez migracji). Kolumny `badges`
+  (migracje `20260928200000_achievements`, `20260929200100_module2_achievements`) i `seed-badges.ts` mają jeszcze stare nazwy - to tylko
+  zapas dla kodów spoza mapy, gracz ich nie widzi.
+- Akceptacja: przy najbliższej migracji odznak (nowe odznaki m3-m5 albo zmiana warunków bez dowodów - decyzja właściciela 2026-11-19)
+  wyrównać teksty w bazie i `seed-badges.ts` z `achievement-texts.ts`; opcjonalnie test, że warunki modułów zawierają tytuł z module.json.
 
 ### B-164 Ręczne skrypty e2e modułów po szablonie (D-163 - D-169)
 - Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-169

@@ -94,7 +94,7 @@ function AchievementCard({
                   src={image}
                   alt=""
                   data-testid="achievement-image"
-                  className={`h-full w-full rounded-full object-cover ring-4 ring-offset-2 ring-offset-surface ${badge.rank ? RANK_RING[badge.rank] : 'ring-border'} ${
+                  className={`h-full w-full rounded-full object-cover ring-4 ring-offset-2 ${badge.isUnlocked ? 'ring-offset-surface' : 'ring-offset-paper'} ${badge.rank ? RANK_RING[badge.rank] : 'ring-border'} ${
                     badge.isUnlocked ? '' : 'opacity-70'
                   } ${badge.isUnlocked || secretLocked ? '' : 'grayscale'}`}
                 />

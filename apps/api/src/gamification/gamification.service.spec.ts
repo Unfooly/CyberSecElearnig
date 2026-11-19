@@ -550,6 +550,13 @@ describe('GamificationService', () => {
       expect(almost.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-first-case']);
     });
 
+    it('podbicie wersji (D-174): użytkownik po syncu v2 z pierwszą sprawą i 100% w module 1 dostaje Sprawę bez skazy; potem wersja 3', async () => {
+      const tx = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [module1({ v: 2, blocks: {}, notes: [] }, 100)], syncVersion: 2 });
+      await service.syncAchievements(tx as never, 'org-1', 'user-1');
+      expect(tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-flawless']);
+      expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { achievementsSyncVersion: 3 } });
+    });
+
     it('Full Transcript wstecznie (D-174): moduł 2 ze 100% bez kompletu dowodów; Dead Air i Perfect Pitch dalej z treści wersji', async () => {
       const module2 = { ...module1({ v: 2, blocks: {}, notes: [] }, 100), course: { slug: MODULE_2_SLUG } };
       const tx = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [module2] });

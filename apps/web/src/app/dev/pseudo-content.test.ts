@@ -12,6 +12,9 @@ const TEXT_KEYS = new Set([
   'suspicious', 'ok',
   // Etykieta „Dalej” ostatniego kroku odprawy (D-160) - tekst przycisku w pasku.
   'nextLabel',
+  // Moduł 1 w modelu z `locales` (D-176): mail (EMAIL_ANALYSIS), czat (DOSSIER), zadanie tekstowe, rozmowa, tablica, gazeta, zasady.
+  'fromName', 'subject', 'body', 'date', 'placeholder', 'name', 'opening', 'cells', 'tab', 'org', 'meta', 'columns', 'message',
+  'caption', 'lines', 'lessons',
 ]);
 
 /** Klucze (ostatni segment ścieżki, bez indeksów list) wartości tekstowych, które różnią się między `a` i `b`. */

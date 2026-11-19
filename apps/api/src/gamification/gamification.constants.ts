@@ -14,10 +14,10 @@ export const ACHIEVEMENT_CODES = {
 
 export type AchievementCode = (typeof ACHIEVEMENT_CODES)[keyof typeof ACHIEVEMENT_CODES];
 
-// Osiągnięcia modułu 1 („Wyłudzone hasło”): moduł rozpoznajemy po `Course.slug` (stały klucz importu treści, D-062),
+// Osiągnięcia modułu 1 („Zabawa w phishing”, do D-170 „Wyłudzone hasło”): moduł rozpoznajemy po `Course.slug` (stały klucz importu treści, D-062),
 // easter egg po id wyróżnienia z treści (`media.badge.id`, D-100) zapisanym przez serwer w postępie (`easterEggs`).
 export const MODULE_1_SLUG = 'wyludzone-haslo';
-// Moduł 2 („Głos z helpdesku”, D-124): osiągnięcia z rozmowy na żywo, odsłuchu nagrania, kompletu dowodów i ukrytego zakończenia webinaru.
+// Moduł 2 („Vishing”, do D-172 „Głos z helpdesku”; D-124): osiągnięcia z rozmowy na żywo, odsłuchu nagrania, kompletu dowodów i ukrytego zakończenia webinaru.
 export const MODULE_2_SLUG = 'glos-z-helpdesku';
 // Id ukrytego zakończenia webinaru (OSINT `spots[].media.secretEnding.id`, D-120) zapisanego przez serwer w postępie (`secretEndings`).
 export const OFF_THE_RECORD_ENDING = 'off-the-record';

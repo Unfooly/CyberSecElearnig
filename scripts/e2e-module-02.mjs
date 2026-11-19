@@ -1,4 +1,4 @@
-// E2E w przeglądarce (Playwright) - pełne przejście modułu 2 ("Głos z helpdesku", packages/content/modules/glos-z-helpdesku)
+// E2E w przeglądarce (Playwright) - pełne przejście modułu 2 ("Vishing", do D-172 „Głos z helpdesku”; packages/content/modules/glos-z-helpdesku)
 // zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-01.mjs (tam opis założeń: org i pracownik przez Prisma, `next dev`,
 // sprzątanie tylko kursu stworzonego przez ten przebieg). Cel: wszystkie 11 bloków od odprawy do zamknięcia sprawy, 20/20 dowodów,
 // 100% wyniku i osiągnięcia modułu 2 (Dead Air, Perfect Pitch, Full Transcript, Off the Record - D-124) przyznane przez serwer.
@@ -125,7 +125,7 @@ try {
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
   step('logowanie pracownika kieruje na /courses', true);  await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
-  step('Katalog: karta i miniatura „Głos z helpdesku”', (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
+  step(`Katalog: karta i miniatura „${MODULE_TITLE}”`, (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
 
   await page.goto(`${WEB}/courses/${courseId}`);
   await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();

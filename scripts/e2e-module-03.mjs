@@ -1,4 +1,4 @@
-// E2E w przeglądarce (Playwright) - pełne przejście modułu 3 („Łańcuszek”, packages/content/modules/lancuszek, tryb prosty D-132)
+// E2E w przeglądarce (Playwright) - pełne przejście modułu 3 („Przejęte konto”, do D-172 „Łańcuszek”; packages/content/modules/lancuszek, tryb prosty D-132)
 // zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-02.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko kursu
 // stworzonego przez ten przebieg). Cel: odprawa (statyczna scena z połączeniem od Oli), scena telefonu (3 cele, zbliżenie ekranu
 // logowania), trzy wybory z natychmiastową oceną (najpierw zła odpowiedź - komunikat „Nie tym razem”, potem dobra), sortowanie

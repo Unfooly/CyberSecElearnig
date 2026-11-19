@@ -24,8 +24,8 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
     title: { pl: 'Sprawa bez skazy', en: 'Flawless Case' },
     description: { pl: 'Zamknąłeś sprawę bez jednego przeoczonego śladu.', en: 'You closed the case without missing a single clue.' },
     conditionText: {
-      pl: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Wyłudzone hasło”.',
-      en: 'Collect all evidence (23/23) and score 100% on the tasks in a single attempt at the case „Wyłudzone hasło”.',
+      pl: 'Zbierz wszystkie dowody (23/23) i zdobądź 100% za zadania w jednym podejściu do sprawy „Zabawa w phishing”.',
+      en: 'Collect all evidence (23/23) and score 100% on the tasks in a single attempt at the case „Zabawa w phishing”.',
     },
   },
   [ACHIEVEMENT_CODES.CURIOUS_DETECTIVE]: {
@@ -35,32 +35,32 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
       en: 'You opened the suspicious game on Anna’s desktop. Luckily, only in a training exercise.',
     },
     conditionText: {
-      pl: 'Otwórz podejrzaną grę na pulpicie Anny w sprawie „Wyłudzone hasło”.',
-      en: 'Open the suspicious game on Anna’s desktop in the case „Wyłudzone hasło”.',
+      pl: 'Otwórz podejrzaną grę na pulpicie Anny w sprawie „Zabawa w phishing”.',
+      en: 'Open the suspicious game on Anna’s desktop in the case „Zabawa w phishing”.',
     },
   },
   [ACHIEVEMENT_CODES.DEAD_AIR]: {
     title: { pl: 'Cisza na linii', en: 'Dead Air' },
     description: { pl: 'Rozłączyłeś się, zanim oszust zdążył cokolwiek wyciągnąć.', en: 'You hung up before the scammer could get anything out of you.' },
     conditionText: {
-      pl: 'W rozmowie na żywo w sprawie „Głos z helpdesku” zakończ rozmowę dobrze w najwyżej trzech odpowiedziach, nie podając niczego.',
-      en: 'In the live call in the case „Głos z helpdesku”, end the call well within three replies at most, without giving anything away.',
+      pl: 'W rozmowie na żywo w sprawie „Vishing” zakończ rozmowę dobrze w najwyżej trzech odpowiedziach, nie podając niczego.',
+      en: 'In the live call in the case „Vishing”, end the call well within three replies at most, without giving anything away.',
     },
   },
   [ACHIEVEMENT_CODES.PERFECT_PITCH]: {
     title: { pl: 'Słuch absolutny', en: 'Perfect Pitch' },
     description: { pl: 'Wyłapałeś każdą manipulację. Bez jednego fałszywego alarmu.', en: 'You caught every manipulation. Not a single false alarm.' },
     conditionText: {
-      pl: 'W odsłuchu nagrania w sprawie „Głos z helpdesku” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',
-      en: 'While listening to the recording in the case „Głos z helpdesku”, flag every red flag without a single false alarm.',
+      pl: 'W odsłuchu nagrania w sprawie „Vishing” zaznacz wszystkie czerwone flagi bez żadnego fałszywego alarmu.',
+      en: 'While listening to the recording in the case „Vishing”, flag every red flag without a single false alarm.',
     },
   },
   [ACHIEVEMENT_CODES.FULL_TRANSCRIPT]: {
     title: { pl: 'Pełny zapis', en: 'Full Transcript' },
     description: { pl: 'Cała rozmowa rozpisana co do słowa. Sprawa bez luk.', en: 'The whole conversation transcribed word for word. A case with no gaps.' },
     conditionText: {
-      pl: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Głos z helpdesku”.',
-      en: 'Collect all evidence (hidden ones too) and score 100% on the tasks in a single attempt at the case „Głos z helpdesku”.',
+      pl: 'Zbierz wszystkie dowody (także ukryte) i zdobądź 100% za zadania w jednym podejściu do sprawy „Vishing”.',
+      en: 'Collect all evidence (hidden ones too) and score 100% on the tasks in a single attempt at the case „Vishing”.',
     },
   },
   [ACHIEVEMENT_CODES.OFF_THE_RECORD]: {
@@ -70,8 +70,8 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
       en: 'You listened to the webinar to the end and heard what shouldn’t have been there.',
     },
     conditionText: {
-      pl: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Głos z helpdesku”.',
-      en: 'Listen to the webinar on the company website to the end in the case „Głos z helpdesku”.',
+      pl: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Vishing”.',
+      en: 'Listen to the webinar on the company website to the end in the case „Vishing”.',
     },
   },
 };

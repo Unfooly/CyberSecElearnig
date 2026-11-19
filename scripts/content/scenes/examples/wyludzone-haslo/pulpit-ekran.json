@@ -1,0 +1,14 @@
+{
+  "width": 1092,
+  "height": 564,
+  "background": { "flat": true, "wall": "#4E40B8" },
+  "items": [
+    { "id": "poczta", "prop": "desktopIcon", "x": 30, "y": 22, "scale": 1.1, "hotspot": true, "pad": 8, "params": { "icon": "outlook", "label": "Poczta", "badge": "1" } },
+    { "id": "internet", "prop": "desktopIcon", "x": 30, "y": 178, "scale": 1.1, "hotspot": true, "pad": 8, "params": { "icon": "browser", "label": "Internet" } },
+    { "id": "faktury", "prop": "desktopIcon", "x": 30, "y": 334, "scale": 1.1, "params": { "icon": "folder", "label": "Faktury" } },
+    { "id": "przelewy", "prop": "desktopIcon", "x": 190, "y": 22, "scale": 1.1, "params": { "icon": "sheet", "label": "Przelewy" } },
+    { "id": "gra", "prop": "desktopIcon", "x": 190, "y": 178, "scale": 1.1, "hotspot": true, "pad": 8, "params": { "icon": "game", "label": "GTA6_PL.exe" } },
+    { "id": "kosz", "prop": "desktopIcon", "x": 930, "y": 22, "scale": 1.1, "params": { "icon": "trash", "label": "Kosz" } },
+    { "id": "pasek", "prop": "taskbar", "x": 0, "y": 508, "params": { "w": 1092, "clock": "10:06", "date": "czwartek" } }
+  ]
+}

@@ -306,8 +306,9 @@ function ChatSheet({
             {contact.trim().charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">{contact}</p>
-            {document.meta && <p className="truncate text-xs text-white/80">{document.meta}</p>}
+            {/* Zawijanie zamiast wielokropka (D-179, layout-check xx 390 px): nazwa rozmówcy i data czytelne w całości. */}
+            <p className="break-words text-sm font-bold leading-snug">{contact}</p>
+            {document.meta && <p className="break-words text-xs text-white/80">{document.meta}</p>}
           </div>
         </div>
         <ul data-testid="dossier-rows" className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 py-3 [scrollbar-width:thin]">

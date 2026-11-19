@@ -1,0 +1,26 @@
+{
+  "width": 700,
+  "height": 1260,
+  "background": { "flat": true, "wall": "none" },
+  "items": [
+    {
+      "id": "ekran",
+      "prop": "phoneHomeApps",
+      "x": 40,
+      "y": 30,
+      "pad": 0,
+      "partHotspots": { "app-komunikator": "komunikator", "app-poczta": "poczta-telefon", "app-kalendarz": "kalendarz" },
+      "params": {
+        "clock": "10:42",
+        "apps": [
+          { "id": "komunikator", "icon": "chat", "label": "Komunikator", "badge": "3" },
+          { "id": "poczta", "icon": "outlook", "label": "Poczta" },
+          { "id": "kalendarz", "icon": "calendar", "label": "Kalendarz" },
+          { "id": "internet", "icon": "browser", "label": "Internet" },
+          { "id": "aparat", "icon": "camera", "label": "Aparat" },
+          { "id": "pliki", "icon": "folder", "label": "Pliki" }
+        ]
+      }
+    }
+  ]
+}

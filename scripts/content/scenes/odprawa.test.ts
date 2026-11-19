@@ -173,8 +173,8 @@ describe('sceny modułu 1 z kompozytora', () => {
     const groups = [ODPRAWA_PROPS, ZAMKNIECIE_PROPS, PRZEGLADARKA_PROPS, PION_PROPS, EKRAN_PROPS, PION_OKNA_PROPS, TROFEA_PROPS, KEYART_PROPS, HELPDESK_PROPS, LANCUSZEK_PROPS, NASKROTY_PROPS];
     const groupNames = groups.flatMap((group) => Object.keys(group));
     expect(new Set(groupNames).size).toBe(groupNames.length);
-    // 25 klocków podstawowych zdefiniowanych w props.ts (window…paper, textBox): razem z grupami każda nazwa dokładnie raz.
-    expect(Object.keys(PROPS).length).toBe(25 + groupNames.length);
+    // 26 klocków podstawowych zdefiniowanych w props.ts (window…paper, textBox, phoneHomeApps - D-178): razem z grupami każda nazwa dokładnie raz.
+    expect(Object.keys(PROPS).length).toBe(26 + groupNames.length);
   });
 
   it('trophyBadge bez "strings" (domyślne parametry): wersja zablokowana nie zdradza nazwy (tajne: „???” i SECRET), zdobyta ma nazwę i rangę po angielsku', () => {

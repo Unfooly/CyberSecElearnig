@@ -110,9 +110,16 @@ export async function upgradeUnstartedPin<T extends CourseAssignment & { course:
       currentBlockIndex: 0,
       status: { not: AssignmentStatus.COMPLETED },
     },
-    data: { courseVersionId: latest.id, progress: Prisma.DbNull },
+    // Czas sprawy (D-089, ekran końca) liczony od przejścia na nową treść, nie od otwarcia starej (security review D-177).
+    data: {
+      courseVersionId: latest.id,
+      progress: Prisma.DbNull,
+      ...(assignment.status === AssignmentStatus.IN_PROGRESS ? { startedAt: new Date() } : {}),
+    },
   });
-  if (moved.count === 0) return assignment;
+  // Odczyt ZAWSZE po próbie (także count 0): równoległy /start mógł przepiąć wiersz między naszym odczytem a zapisem - wtedy obowiązuje
+  // jego wersja, a nie nieaktualny obiekt sprzed zapisu (inaczej ta karta dostałaby starą treść oceniana już według nowej).
+  void moved;
   const fresh = await tx.courseAssignment.findFirst({ where: { id: assignment.id, organizationId: assignment.organizationId } });
   return fresh ? { ...assignment, ...fresh } : assignment;
 }

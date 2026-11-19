@@ -356,6 +356,10 @@ export class CoursesService implements OnModuleInit {
       }
 
       const block = blocks[dto.blockIndex];
+      // Karta otwarta na starszej wersji treści (D-177: inna karta przeszła przy /start na nową) - nie oceniamy odpowiedzi na innym bloku.
+      if (dto.blockId !== undefined && dto.blockId !== block.id) {
+        throw new ConflictException('Treść kursu się zmieniła - odśwież stronę.');
+      }
       const progress = readProgress(assignment.progress);
       const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
       // Rozmowa na żywo (D-124): konto z „Bez limitów czasu” nie ma krawędzi ciszy - serwer bierze ustawienie z konta, nie z `timed`

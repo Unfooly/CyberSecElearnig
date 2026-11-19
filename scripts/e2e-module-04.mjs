@@ -1,4 +1,4 @@
-// E2E w przeglądarce (Playwright) - pełne przejście modułu 4 („Na skróty”, packages/content/modules/na-skroty, shadow IT, tryb prosty
+// E2E w przeglądarce (Playwright) - pełne przejście modułu 4 („Shadow IT”, do D-172 „Na skróty”; packages/content/modules/na-skroty, shadow IT, tryb prosty
 // D-132) zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-03.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko
 // kursu stworzonego przez ten przebieg). Cel: odprawa (statyczna scena - laptop z raportem na jutro), biurko Bartka (4 narzędzia-dowody),
 // tablica skutków (4 karty-dowody), sortowanie 6 sytuacji z werdyktami „Zapytaj IT” / „Bezpieczne” (D-151; 1 gestem, reszta

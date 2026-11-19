@@ -96,12 +96,20 @@ export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint
   const columnsStyle = (count: number): CSSProperties =>
     ({ '--dossier-cols': count > 1 ? `minmax(4.5rem, auto) repeat(${count - 1}, minmax(0, 1fr))` : 'minmax(0, 1fr)' }) as CSSProperties;
 
+  // Jedna rozmowa w komunikatorze (D-178) - przekładka niczego nie przełącza, więc jej nie pokazujemy (zostaje w DOM: etykieta panelu).
+  const soloChat = documents.length === 1 && documents[0].layout === 'chat';
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 sm:flex-row-reverse sm:gap-3">
       <div
         role="tablist"
         aria-label={tabsLabel}
-        className="flex shrink-0 gap-1 overflow-x-auto p-0.5 [scrollbar-width:thin] sm:min-h-0 sm:w-40 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden"
+        // Klasa, nie atrybut `hidden`: utility `flex` wygrywa z [hidden] z preflightu Tailwinda.
+        className={
+          soloChat
+            ? 'hidden'
+            : 'flex shrink-0 gap-1 overflow-x-auto p-0.5 [scrollbar-width:thin] sm:min-h-0 sm:w-40 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden'
+        }
       >
         {documents.map((document, index) => {
           const selected = document.id === activeId;
@@ -130,7 +138,18 @@ export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint
         })}
       </div>
 
-      {active && (
+      {active && active.layout === 'chat' && (
+        <ChatSheet
+          key={active.id}
+          id={`${baseId}-panel`}
+          labelledBy={`${baseId}-tab-${active.id}`}
+          document={active}
+          noted={noted}
+          status={message || 'Kliknij wiadomość, która coś mówi o ataku.'}
+          onMark={mark}
+        />
+      )}
+      {active && active.layout !== 'chat' && (
         <div
           key={active.id}
           id={`${baseId}-panel`}
@@ -252,6 +271,77 @@ export default function DossierBlock({
               : `Dokumenty: ${opened.length} z ${documents.length}${requiredRows.length > 0 ? ` · wymagane dowody: ${requiredNoted} z ${requiredRows.length}` : ''}.`}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Rozmowa w komunikatorze w ramce telefonu (D-178, `layout: 'chat'`): wiersz dokumentu = dymek, komórki [godzina, autor, treść]. Dymki
+ * `self` (właściciel telefonu) po prawej, rozmówcy po lewej, wiersz bez autora (np. „—” - połączenie głosowe) - pigułka na środku. Każdy
+ * dymek to ten sam przycisk co linijka arkusza (zaznaczenie do notatek, aria-pressed, komunikat w stopce) - zmienia się tylko wygląd.
+ */
+function ChatSheet({
+  id,
+  labelledBy,
+  document,
+  noted,
+  status,
+  onMark,
+}: {
+  id: string;
+  labelledBy: string;
+  document: DossierDocument;
+  noted: string[];
+  status: string;
+  onMark: (row: DossierRow, from?: Element) => void;
+}) {
+  const contact = document.title;
+  return (
+    <div id={id} role="tabpanel" aria-labelledby={labelledBy} data-testid="chat-sheet" className="dossier-sheet-enter flex min-h-0 flex-1 flex-col items-center">
+      <div className="flex min-h-0 w-full max-w-[400px] flex-1 flex-col overflow-hidden rounded-[30px] border-[10px] border-[#1E1E24] bg-[#F4F2FB] shadow-card">
+        <div className="flex shrink-0 items-center gap-2.5 bg-[#6C5CE7] px-3 py-2.5 text-white">
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
+            {contact.trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">{contact}</p>
+            {document.meta && <p className="truncate text-xs text-white/80">{document.meta}</p>}
+          </div>
+        </div>
+        <ul data-testid="dossier-rows" className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 py-3 [scrollbar-width:thin]">
+          {document.rows.map((row) => {
+            const [time = '', author = '', text = ''] = row.cells;
+            const isNoted = noted.includes(row.id);
+            const system = author.trim() === '' || author.trim() === '—';
+            const mine = !system && document.self !== undefined && author === document.self;
+            return (
+              <li key={row.id} className={`flex ${system ? 'justify-center' : mine ? 'justify-end' : 'justify-start'}`}>
+                <button
+                  type="button"
+                  aria-pressed={isNoted}
+                  data-testid="chat-bubble"
+                  onClick={(event) => onMark(row, event.currentTarget)}
+                  className={`relative isolate min-h-[44px] max-w-[85%] text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    system
+                      ? 'rounded-full bg-[#E3DFF5] px-3 py-1.5 text-xs font-semibold text-[#3D3570]'
+                      : mine
+                        ? 'rounded-2xl rounded-br-md bg-[#6C5CE7] px-3 py-2 text-white'
+                        : 'rounded-2xl rounded-bl-md bg-white px-3 py-2 text-ink shadow-sm'
+                  } ${isNoted ? 'ring-2 ring-[#F4C430] ring-offset-1' : 'hover:brightness-95'}`}
+                >
+                  {!system && !mine && <span className="mb-0.5 block text-[11px] font-bold text-[#6C5CE7]">{author}</span>}
+                  <span className="block whitespace-pre-line">{text}</span>
+                  <span className={`mt-0.5 block text-right text-[10px] ${mine ? 'text-white/75' : 'text-muted'}`}>{time}</span>
+                  {isNoted && <span className="sr-only"> (zaznaczone, w notatkach)</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <p role="status" className="mt-2 min-h-[1rem] w-full max-w-[400px] text-center text-xs text-muted">
+        {status}
+      </p>
     </div>
   );
 }

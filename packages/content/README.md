@@ -76,6 +76,11 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - Uwaga startu (D-171, opcjonalna, od v5): `startNotice` (tekst ≤ 200 znaków, per język jak inne teksty) - czerwona ramka nad Start na
   ekranie startu, np. „Przed rozpoczęciem tego modułu należy ukończyć moduł …”. Tylko informacja (Start działa zawsze), poza skrótem
   treści, API czyta ją z module.json jak okładki.
+- Wygląd okien (D-178, opcjonalne, czysto wizualne): `cover.backdrop`/`backdropPortrait` - tło odtwarzacza za ramką (jak okładki);
+  TABS `look: "folder"` + `stamp` - teczka z przekładkami; EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora; DOSSIER
+  dokument `layout: "chat"` + `self` - czat w ramce telefonu (komórki [godzina, autor, treść]); SCENE_HOTSPOTS przedmiot `done: true` -
+  miejsce obejrzane wcześniej (✓, nieklikalne; bez action/media/evidence/note/required, a pozostałe przedmioty z jawnym `required`).
+  Podgląd: `dev-modules/dev-okna`.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w
   notatniku (czytana z bloku BRIEFING bieżącej wersji treści). Klient odhacza zadanie, gdy wszystkie bloki z `completeWhen` są
   ukończone (to nie ocena). `completeWhen` wskazuje istniejące bloki modułu, nigdy `BRIEFING` (pominięcie odprawy nie odhacza

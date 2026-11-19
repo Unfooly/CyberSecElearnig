@@ -720,7 +720,7 @@ describe('CoursesService.submitBlockProgress / attemptBlock — hak grywalizacji
         subtitle: 'Z pliku',
         caseNumber: 5,
         notice: 'Najpierw moduł 1.',
-        cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: null, endPortrait: null },
+        cover: { start: 'assets/s/start.1.webp', end: 'assets/s/koniec.1.webp', startPortrait: null, endPortrait: null, backdrop: null, backdropPortrait: null },
       });
       // Kurs bez pliku modułu (utworzony wprost, bez slug) - podtytuł z bazy, bez okładki i numeru.
       findFirst.mockResolvedValue(assignmentFixture({ course: { ...course, slug: null } }));

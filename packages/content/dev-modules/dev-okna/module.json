@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 6,
+  "slug": "dev-okna",
+  "title": "Podgląd okien (D-178)",
+  "subtitle": "Teczka, poczta w monitorze, czat w telefonie, miejsca obejrzane i tło modułu – harness i layout-check.",
+  "category": "PHISHING_SOCIAL_ENGINEERING",
+  "level": "basic",
+  "durationMinutes": 5,
+  "mandatory": false,
+  "locales": ["pl"],
+  "objectives": ["Podgląd wyglądu okien modułu 1."],
+  "cover": {
+    "start": "images/gazeta.webp",
+    "end": "images/gazeta.webp",
+    "backdrop": "images/gazeta.webp"
+  },
+  "blocks": [
+    {
+      "id": "teczka",
+      "type": "TABS",
+      "title": "Nowe zadanie",
+      "look": "folder",
+      "stamp": "ŚCIŚLE TAJNE",
+      "tabs": [
+        { "id": "zadanie", "title": "Twoje zadanie", "content": "Dzień dobry, detektywie.\n\nW nocy ze skrzynki Pawła Nowickiego wyszło kilkadziesiąt maili do klientów. Ustal, jak przestępcy przejęli jego konto." },
+        { "id": "incydent", "title": "Incydent", "content": "Wstępny raport działu IT\n\n• Logowanie z nieznanego urządzenia: wtorek, 22:47\n• Wysłane wiadomości: 46" },
+        { "id": "ofiara", "title": "Ofiara ataku", "content": "Paweł Nowicki – analityk danych w Unfooly Sp. z o.o." }
+      ]
+    },
+    {
+      "id": "biuro-2",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Biuro Pawła",
+      "image": "images/biuro-pawla.webp",
+      "imageAlt": "Biuro Pawła: monitor, smartfon na biurku, Paweł.",
+      "imagePortrait": "images/biuro-pawla-pion.webp",
+      "portraitHotspots": [
+        { "id": "komputer", "x": 1, "y": 0, "width": 30, "height": 38 },
+        { "id": "smartfon", "x": 61, "y": 23, "width": 22, "height": 13 },
+        { "id": "pawel", "x": 33, "y": 21, "width": 33, "height": 78 }
+      ],
+      "hotspots": [
+        { "id": "komputer", "label": "Komputer", "x": 8, "y": 31, "width": 21, "height": 38, "content": "Komputer Pawła.", "done": true },
+        { "id": "smartfon", "label": "Smartfon", "x": 25, "y": 68, "width": 11, "height": 16, "action": "next" },
+        { "id": "pawel", "label": "Paweł", "x": 57, "y": 10, "width": 17, "height": 88, "content": "Paweł poczeka na rozmowę.", "required": false }
+      ]
+    },
+    {
+      "id": "poczta",
+      "type": "EMAIL_ANALYSIS",
+      "title": "Poczta",
+      "frame": "monitor",
+      "email": {
+        "fromName": "Katarzyna Zielińska – Fundacja Analityki Stosowanej",
+        "fromAddress": "k.zielinska@fundacja-analityki.pl",
+        "to": "p.nowicki@unfooly.com",
+        "subject": "Zaproszenie na webinar „Dane w praktyce”",
+        "date": "czwartek, 9:12",
+        "body": "Szanowny Panie,\n\nniniejszym chcielibyśmy zaprosić Pana na webinar „Dane w praktyce”. Bylibyśmy zaszczyceni, gdyby zechciał Pan wystąpić w roli prelegenta.\n\nZ wyrazami szacunku\nKatarzyna Zielińska",
+        "links": []
+      },
+      "prompt": "Jakie cechy phishingu ma ta wiadomość? Zaznacz wszystkie, które pasują.",
+      "criteria": [
+        { "id": "bledy", "label": "Treść zawiera dziwne sformułowania i błędy.", "correct": false },
+        { "id": "uklad", "label": "Wiadomość ma nietypowy układ.", "correct": false },
+        { "id": "linki", "label": "E-mail zawiera linki lub załączniki.", "correct": false },
+        { "id": "oferta", "label": "Wiadomość zawiera niespodziewaną, atrakcyjną ofertę.", "correct": true }
+      ],
+      "scoring": "exact"
+    },
+    {
+      "id": "komunikator",
+      "type": "DOSSIER",
+      "title": "Smartfon Pawła",
+      "documents": [
+        {
+          "id": "czat",
+          "tab": "Komunikator",
+          "org": "SMARTFON PAWŁA · KOMUNIKATOR",
+          "title": "Katarzyna Zielińska – Fundacja",
+          "meta": "Czwartek",
+          "layout": "chat",
+          "self": "Paweł",
+          "columns": ["Godz.", "Kto", "Wiadomość"],
+          "rows": [
+            { "id": "powitanie", "cells": ["10:12", "Katarzyna", "Dzień dobry, Panie Pawle! Wspaniale, że jest Pan zainteresowany naszym webinarem. Jak mogę pomóc?"] },
+            { "id": "pytanie", "cells": ["10:14", "Paweł", "Chciałbym dowiedzieć się więcej o wystąpieniu."] },
+            { "id": "polaczenie", "cells": ["10:15", "—", "Połączenie głosowe · 12 min 40 s"], "evidence": true, "note": { "text": "Telefon – prawie 13 minut.", "kind": "call" }, "required": true },
+            { "id": "link", "cells": ["10:29", "Katarzyna", "Prosimy zarejestrować się jako prelegent przez ten formularz: Rejestracja"], "evidence": true, "note": { "text": "Link do formularza.", "kind": "web" }, "required": true },
+            { "id": "potwierdzenie", "cells": ["10:41", "Paweł", "Dziękuję! Zarejestrowałem się."] }
+          ]
+        }
+      ]
+    }
+  ]
+}

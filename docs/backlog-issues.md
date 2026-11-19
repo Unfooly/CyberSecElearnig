@@ -908,6 +908,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (zawsze na produkcji) jest teraz ekran startu (D-163), podsumowanie zamyka się samo (D-169), a wynik to ekran końca (D-165).
 - Akceptacja: skrypty klikają Start na ekranie startu, po ostatnim bloku czekają na `/progress` z COMPLETED i sprawdzają `module-end`
   (pieczątka, kafelki, zasady); dowody - z odpowiedzi serwera albo usunięte razem z etapem 2 (B-163).
+- Od D-176 moduł 1 ma nową treść („Webinar”, 11 bloków: teczka, biuro Pawła, mail, czat, domena, Tak/Nie, rozmowa, tablica, raport,
+  gazeta, zasady) - `scripts/e2e-module-01.mjs`, `docs/e2e-module-01.md` i kroki `scripts/screenshot-module.mjs` opisują jeszcze dawną
+  treść (Anna, bank) i trzeba je przepisać pod nowe id bloków.
 
 ### B-163 Sprzątanie po D-162 razem z usunięciem dowodów (etap 2)
 - Etykiety: `P2`, `refactor`, `mod:odtwarzacz` · Źródło: code review D-162

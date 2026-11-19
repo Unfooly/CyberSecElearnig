@@ -31,12 +31,12 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
   [ACHIEVEMENT_CODES.CURIOUS_DETECTIVE]: {
     title: { pl: 'Ciekawski detektyw', en: 'Curious Detective' },
     description: {
-      pl: 'Otworzyłeś podejrzaną grę na pulpicie Anny. Na szczęście tylko w ćwiczeniu.',
-      en: 'You opened the suspicious game on Anna’s desktop. Luckily, only in a training exercise.',
+      pl: 'Otworzyłeś podejrzaną grę na służbowym pulpicie. Na szczęście tylko w ćwiczeniu.',
+      en: 'You opened the suspicious game on a work desktop. Luckily, only in a training exercise.',
     },
     conditionText: {
-      pl: 'Otwórz podejrzaną grę na pulpicie Anny w sprawie „Zabawa w phishing”.',
-      en: 'Open the suspicious game on Anna’s desktop in the case „Zabawa w phishing”.',
+      pl: 'Otwórz podejrzaną grę na służbowym pulpicie w sprawie „Zabawa w phishing”.',
+      en: 'Open the suspicious game on a work desktop in the case „Zabawa w phishing”.',
     },
   },
   [ACHIEVEMENT_CODES.DEAD_AIR]: {

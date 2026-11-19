@@ -155,6 +155,9 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   przez całą rozmowę (ostatni krok `"hangup"`); id `reject` i `hangup` zarezerwowane. Rozłączenie PO odpowiedzi z `infoChoices` serwer ocenia
   jako złe (0). Kolejność odpowiedzi w każdym węźle tasuje serwer (seed per przypisanie i węzeł) - autor nie musi jej mieszać.
 - Moduły podglądu nowych bloków: `dev-modules/dev-*` (harness `?module=dev-…`, layout-check sekcje `modul2` i `prosty`) - import ich nie czyta.
+  `dev-modul-1` (D-175) to dawna treść modułu 1 („Wyłudzone hasło”): domyślny moduł harnessu i większości sekcji layout-check, źródła scen
+  w `scripts/content/scenes/examples/dev-modul-1`. Locki kopii zostają przy kluczach `wyludzone-haslo` (harness tłumaczy je na pliki
+  lokalne; `tts`/`--assets` na kopii odmówią - slug nie zgadza się z katalogiem) - nie usuwaj tych kluczy z magazynu.
 
 ### Języki kursu i grafiki z wpalonym tekstem (D-133, D-134)
 

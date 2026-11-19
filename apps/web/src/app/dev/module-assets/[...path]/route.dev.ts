@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { harnessModuleDir } from '../../harness-module';
 
-// Zasoby modułu prosto z packages/content/modules/<slug>/assets - WYŁĄCZNIE dla podglądu (dev harness, scripts/layout-check.mjs),
+// Zasoby modułu prosto z packages/content/{modules,dev-modules}/<slug>/assets - WYŁĄCZNIE dla podglądu (dev harness, scripts/layout-check.mjs),
 // adres `/dev/module-assets/<slug>/<ścieżka>` (B-128: dowolny moduł; slug sprawdza harness-module.ts),
 // żeby nowe grafiki (np. sceny odprawy, D-084) dało się sprawdzić w przeglądarce PRZED publikacją w magazynie (--assets). Plik
 // `.dev.ts`: trasa istnieje tylko z NEXT_PUBLIC_DEV_HARNESS=1 (next.config.mjs, pageExtensions) - jak page.dev.tsx; notFound niżej

@@ -29,8 +29,8 @@ import { pseudoLocalizeClientContent } from '../pseudo-content';
 // pierwotnie) - domyślnie DEFAULT_BLOCK_ID, żeby dotychczasowe wywołania scripts/layout-check.mjs (bez ?block=)
 // zostały bez zmian. `?hotspot=`/`?stripMedia=` (drilling HarnessAutoOpen, patrz niżej) mają sens WYŁĄCZNIE dla
 // SCENE_HOTSPOTS - dla innych typów bloku (np. DIALOGUE) są po prostu ignorowane.
-// `?module=<slug>` (B-128): dowolny moduł z packages/content/modules, domyślnie moduł 1 (harness-module.ts). Domyślny blok: dla modułu 1
-// jak dotąd `biuro-anny` (wywołania layout-check bez ?block=), dla innych - pierwszy blok modułu.
+// `?module=<slug>` (B-128): dowolny moduł z packages/content/{modules,dev-modules}, domyślnie `dev-modul-1` - dawna treść modułu 1 (D-175,
+// harness-module.ts). Domyślny blok: dla niej jak dotąd `biuro-anny` (wywołania layout-check bez ?block=), dla innych - pierwszy blok modułu.
 const DEFAULT_BLOCK_ID = 'biuro-anny';
 
 type SceneHotspotsServerBlock = ServerBlockOf<'SCENE_HOTSPOTS'>;

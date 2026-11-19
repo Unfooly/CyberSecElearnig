@@ -867,6 +867,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-168 Obraz web: usuwać też `packages/content/dev-modules` (D-175)
+- Etykiety: `P2`, `security`, `infra` · Źródło: code review D-175
+- Opis: `apps/web/Dockerfile` (etap builder kopiuje cały `packages/content`) robi `rm -rf packages/content/modules` jako drugą warstwę
+  obrony przed treścią z kluczem odpowiedzi w obrazie, ale `dev-modules` zostaje. Od D-175 `dev-modules/dev-modul-1` to pełna treść
+  szkoleniowa (dawny moduł 1, z kluczem odpowiedzi). Pierwsza warstwa działa (strony `.dev.*` nie są budowane bez `NEXT_PUBLIC_DEV_HARNESS`,
+  `check-no-secrets-in-bundle.mjs` skanuje standalone).
+- Akceptacja: `RUN rm -rf packages/content/modules packages/content/dev-modules` + komentarz w Dockerfile; zmiana Dockerfile - merge przez
+  człowieka (safe-merge jej nie przepuszcza).
+
 ### B-167 Martwe klocki trofeów w kompozytorze po przejściu odznak na WebP (D-174)
 - Etykiety: `P3`, `tech-debt`, `mod:grywalizacja` · Źródło: D-174
 - Opis: odznaki to od D-174 grafiki WebP z generatora. W kompozytorze zostały klocki `trophyBadge`/`trophyHelpdesk` (`props-odprawa.ts`,

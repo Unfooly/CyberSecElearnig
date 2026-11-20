@@ -357,7 +357,9 @@ export interface ContentBlock {
   tabs?: ContentTab[];
   requiredTabs?: string[];
   /** TABS (D-178): 'folder' - teczka sprawy z przekładkami i kartką; pieczątka teczki w `stamp`. */
-  look?: 'folder';
+  look?: 'folder' | 'notes';
+  /** ORDERING look 'notes' (D-182): notatki na kartce N tablicy (kolejność kartek = kolejność etapów). */
+  slots?: { notes: string[] }[];
   // BRIEFING
   steps?: BriefingStep[];
   // DOSSIER: pieczątka teczki i dokumenty (przekładki).

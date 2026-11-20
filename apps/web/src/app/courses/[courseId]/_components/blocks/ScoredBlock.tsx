@@ -3,6 +3,7 @@
 import type { ChosenAnswer, ClientProgressBlock, ContentBlock, ContentReaction, EvidenceSummary, InterrogationChallenge, ResultDetail } from '@/lib/courses-types';
 import EmailAnalysisBlock from './EmailAnalysisBlock';
 import OrderingBlock from './OrderingBlock';
+import NotesBoard from './NotesBoard';
 import TextInputBlock from './TextInputBlock';
 import CallRecordingBlock from './CallRecordingBlock';
 import InterrogationBlock, { InterrogationResult } from './InterrogationBlock';
@@ -106,6 +107,19 @@ export default function ScoredBlock({
     }
     case 'ORDERING': {
       const answer = result?.answer && typeof result.answer === 'object' && 'order' in result.answer ? result.answer : undefined;
+      // Tablica z notatkami (D-182): kartki z notatkami i etykiety etapów zamiast śladów na tacce.
+      if (block.look === 'notes') {
+        return (
+          <NotesBoard
+            block={block}
+            contentBase={contentBase ?? ''}
+            onSubmit={onSubmit}
+            disabled={disabled}
+            result={result ? { answer, detail: result.detail, correct: result.correct, points: result.points, reaction: result.reaction } : undefined}
+            live={live}
+          />
+        );
+      }
       return (
         <OrderingBlock
           block={block}

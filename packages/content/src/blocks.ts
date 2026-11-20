@@ -422,6 +422,15 @@ const orderingSchema = z
     // sam opis, nie element oceniany (nie zdradza kolejności kroków).
     start: z.object({ label: ltext(40), caption: ltext(60) }).strict().optional(),
     end: z.object({ label: ltext(40), caption: ltext(60) }).strict().optional(),
+    // Tablica z notatkami (D-182, jak na nagraniu właściciela): `look: 'notes'` - ponumerowane kartki z notesu na korkowej tablicy
+    // (`background` / `backgroundPortrait`, grafika bez tekstu), na kartce N notatki gracza o etapie N (`slots[N].notes`) i pole do
+    // upuszczenia etykiety; etykiety to `items[].text` (krótkie: „E-mail”, „Link”). Zadanie: dopasować etap do notatek - kolejność
+    // pól = kolejność etapów, ocena bez zmian (serwer, `order`). Notatki są publiczne: opisują ustalenia gracza, a dopasowanie ich do
+    // etapu jest samym ćwiczeniem.
+    look: z.enum(['notes']).optional(),
+    slots: z.array(z.object({ notes: z.array(ltext(200)).min(1).max(6) }).strict()).max(12).optional(),
+    background: limage().optional(),
+    backgroundPortrait: limage().optional(),
   })
   .strict();
 
@@ -1348,7 +1357,23 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'solution.explanation',
     ],
   ),
-  ORDERING: classify(['prompt', 'items[].id', 'items[].text', 'start.label', 'start.caption', 'end.label', 'end.caption'], ['scoring', 'explanation']),
+  ORDERING: classify(
+    [
+      'prompt',
+      'items[].id',
+      'items[].text',
+      'start.label',
+      'start.caption',
+      'end.label',
+      'end.caption',
+      // Tablica z notatkami (D-182): wygląd, notatki na kartkach i tło - publiczne (patrz komentarz przy schemacie).
+      'look',
+      'slots[].notes[]',
+      'background',
+      'backgroundPortrait',
+    ],
+    ['scoring', 'explanation'],
+  ),
   TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]', 'look', 'stamp', 'background', 'backgroundPortrait'], []),
   SUMMARY: classify(
     [

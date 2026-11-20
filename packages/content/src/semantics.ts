@@ -765,6 +765,18 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
     }
     case 'ORDERING': {
       checkUnique('items', block.items.map((i) => i.id));
+      // Tablica z notatkami (D-182): kartka na każdy etap, tło tylko w tym wyglądzie, bez „zdjęć” start/end (inny układ tablicy).
+      if (block.look === 'notes') {
+        if (block.slots?.length !== block.items.length) errors.push('slots: tablica z notatkami wymaga kartki (slots) na każdy element items');
+        if (block.start !== undefined || block.end !== undefined) errors.push('start/end: tablica z notatkami nie ma zdjęć początku i końca');
+        const texts = (value: unknown): string[] => (typeof value === 'string' ? [value] : Object.values(value as Record<string, string>));
+        if (block.items.some((item) => texts(item.text).some((label) => label.length > 40))) {
+          errors.push('items: etykiety etapów na tablicy z notatkami najwyżej 40 znaków');
+        }
+      } else if (block.slots !== undefined || block.background !== undefined || block.backgroundPortrait !== undefined) {
+        errors.push('slots/background: tylko z look "notes"');
+      }
+      if (block.backgroundPortrait !== undefined && block.background === undefined) errors.push('backgroundPortrait: wymaga background');
       break;
     }
     case 'TABS': {

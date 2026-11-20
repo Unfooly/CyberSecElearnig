@@ -880,6 +880,11 @@
   }
 }
 
+/* Tablica z notatkami (D-182, NotesBoard.tsx) - dziurki notesu wzdłuż lewej krawędzi kartki. */
+.notes-card-holes {
+  background: radial-gradient(circle, #d9d5ca 0.16em, transparent 0.18em) 0 0 / 0.45em 1.4em repeat-y;
+}
+
 /* Telefon ze sceny z rozmową na ekranie (D-181, PhoneStage.tsx) - jak monitor: ekran telefonu (nie cała grafika) wpisany w obszar bloku
    z marginesem 4%, środek ekranu na środku obszaru, biurko poza obszarem przycinane. Rozmowa przewija się wewnątrz ekranu. */
 .phone-stage {

@@ -389,6 +389,8 @@ export interface ContentBlock {
   markUrl?: string;
   /** TEXT_INPUT_GUIDED (D-184): fałszywa strona pod paskiem adresu (`background` - scena pod oknem, wspólne pole z TABS/ORDERING). */
   page?: FakePage;
+  /** TEXT_INPUT_GUIDED (D-186): ekran monitora na grafice `background` (%) - okno przeglądarki leży w nim. */
+  backgroundScreen?: { x: number; y: number; width: number; height: number };
   maxAttempts?: number;
   hintCount?: number;
   // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.

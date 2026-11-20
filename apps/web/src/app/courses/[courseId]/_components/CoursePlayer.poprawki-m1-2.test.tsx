@@ -99,12 +99,12 @@ describe('CoursePlayer: poprawki modułu 1, runda 2 (D-184)', () => {
     expect(screen.getByText('W historii przeglądarki: formularz.')).toBeInTheDocument();
   });
 
-  it('Internet: „Odłóż” i klik w tło zamykają okno od razu (bez fazy oddalania), fokus wraca na przedmiot', () => {
+  it('Internet: „Zamknij” (D-187, zamiast „Odłóż”) i klik w tło zamykają okno od razu (bez fazy oddalania), fokus wraca na przedmiot', () => {
     stubFetch();
     render(<CoursePlayer courseId="course-1" initial={course([desktop({ kind: 'page', page })])} narrationEnabled={false} />);
     const item = screen.getByTestId('hotspot-overlay-ikona');
     fireEvent.click(item);
-    fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }));
     expect(screen.queryByTestId('scene-zoom')).toBeNull();
     expect(item).toHaveFocus();
     fireEvent.click(item);
@@ -135,6 +135,8 @@ describe('CoursePlayer: poprawki modułu 1, runda 2 (D-184)', () => {
     };
     render(<CoursePlayer courseId="course-1" initial={course([mail])} narrationEnabled={false} />);
     fireEvent.click(screen.getByLabelText('Atrakcyjna oferta'));
+    // „Sprawdź odpowiedź” w miejscu „Dalej” (D-187) - jedyny taki przycisk.
+    expect(screen.getAllByRole('button', { name: 'Sprawdź odpowiedź' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Sprawdź odpowiedź' }));
     const result = await screen.findByText(/Świetnie: wszystkie oznaki trafione/);
     expect(screen.getByTestId('monitor-screen')).toContainElement(result);

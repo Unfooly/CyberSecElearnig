@@ -205,7 +205,7 @@ try {
       await dialog().getByText(/Kłódka w pasku adresu/).waitFor();
       step('Karta „link”: zdanie o kłódce w pasku adresu', true);
     }
-    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await dialog().getByRole('button', { name: 'Zamknij' }).click();
     await closed();
   }
   await page.getByRole('button', { name: /^Ponaglenie do logowania/ }).click();
@@ -213,7 +213,7 @@ try {
   await login.waitFor();
   step('Zbliżenie: ekran logowania bez marki (grafika z opisem alt załadowana)', await login.evaluate((img) => img.complete && img.naturalWidth > 0));
   await shot('3-zblizenie-logowanie');
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await closed();
   // Bez notatnika i licznika dowodów (D-162): po trzech celach „Dalej” w pasku jest aktywny.
   await nextEnabled().waitFor({ timeout: 15000 });

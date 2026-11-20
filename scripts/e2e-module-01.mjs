@@ -182,7 +182,7 @@ try {
   const lookAt = async (blockId, id) => {
     await hotspot(id).click();
     await dialog().getByText(cardText(blockId, id)).waitFor();
-    await dialog().getByRole('button', { name: 'Odłóż' }).click();
+    await dialog().getByRole('button', { name: 'Zamknij' }).click();
     await closed();
   };
   // Drzwi (action:'next'): klik zapisuje blok i przechodzi dalej - bez osobnego „Dalej” (D-129).
@@ -432,11 +432,12 @@ try {
   await page.getByTestId('notes-board').waitFor();
   const labels = page.getByRole('group', { name: 'Etapy ataku do przypięcia' });
   step(
-    `TABLICA: ${tablica.slots.length} kartki z notatkami z treści, ${tablica.items.length} etapy pod tablicą, bez „Sprawdź trop”`,
+    `TABLICA: ${tablica.slots.length} kartki z notatkami z treści, ${tablica.items.length} etapy pod tablicą, „Sprawdź trop” w pasku nieaktywny (D-187)`,
     (await page.getByTestId('notes-card').count()) === tablica.slots.length &&
       ((await page.getByTestId('notes-card').first().textContent()) ?? '').includes(text(tablica.slots[0].notes[0])) &&
       (await labels.getByRole('button').count()) === tablica.items.length &&
-      (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0,
+      (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 1 &&
+      (await bar().getByRole('button', { name: 'Sprawdź trop' }).isDisabled()),
   );
   await shot('12a-tablica-pusta');
   const labelOf = (item) => labels.getByRole('button', { name: new RegExp(`^Etap: ${text(item.text)}`) });
@@ -490,7 +491,7 @@ try {
   await dialog().getByTestId('newspaper-page').getByText(text(article.lines[0]).slice(0, 40)).first().waitFor();
   step('GAZETA: strona gazety z winietą z treści (D-181)', ((await dialog().getByTestId('newspaper-page').textContent()) ?? '').includes(text(article.masthead)));
   await shot('14-gazeta');
-  await dialog().getByRole('button', { name: 'Odłóż' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await closed();
   // Dwa zapisy po kolei: gazeta („Dalej”), potem SUMMARY bez ekranu (odtwarzacz sam, D-169) - ten drugi kończy kurs.
   const completion = completionResponse(page, courseId);

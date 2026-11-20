@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import type { ContentBlock } from '@/lib/courses-types';
+import { useBarAction, useHasBarAction } from '../player/bar-action';
 
 // Wspólna logika dla QuizBlock i BranchingScenarioBlock - identyczny
 // mechanizm UI (prompt + jednokrotny wybór), różni się tylko copy
@@ -24,6 +25,9 @@ export default function SingleChoiceBlock({
   const [selected, setSelected] = useState<number | null>(null);
   const promptId = useId();
   const options = block.options ?? [];
+  // Przycisk wyboru w miejscu „Dalej” (D-187); własny tylko bez paska odtwarzacza.
+  const inBar = useHasBarAction();
+  useBarAction({ label: submitLabel, enabled: selected !== null && !disabled, run: () => selected !== null && onSubmit(selected) });
 
   return (
     <div>
@@ -51,14 +55,16 @@ export default function SingleChoiceBlock({
         ))}
       </fieldset>
 
-      <button
-        type="button"
-        disabled={selected === null || disabled}
-        onClick={() => selected !== null && onSubmit(selected)}
-        className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        {submitLabel}
-      </button>
+      {!inBar && (
+        <button
+          type="button"
+          disabled={selected === null || disabled}
+          onClick={() => selected !== null && onSubmit(selected)}
+          className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {submitLabel}
+        </button>
+      )}
     </div>
   );
 }

@@ -91,7 +91,7 @@ function renderBlock(block: ContentBlock, props: { review?: boolean; onSubmit?: 
 // Jedyna interakcja to klik w punkt na obrazie (w pełni dostępny); zbliżenie (role="dialog", D-086) leży NA scenie, więc "Odłóż"
 // trzeba kliknąć, zanim klika się kolejny punkt. prefers-reduced-motion: bez ruchu kamery zbliżenie otwiera się i zamyka od razu.
 describe('SCENE_HOTSPOTS', () => {
-  const back = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Odłóż' }));
+  const back = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Zamknij' }));
   const originalMatchMedia = window.matchMedia;
   beforeEach(() => {
     window.matchMedia = ((query: string) => ({

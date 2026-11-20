@@ -117,7 +117,8 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       render(<CoursePlayer courseId="course-1" initial={course()} />);
 
       const nav = screen.getByRole('navigation', { name: 'Nawigacja po blokach' });
-      const next = screen.getByRole('button', { name: /^Dalej$/ });
+      // Pierwszy blok to quiz - w miejscu „Dalej” jego akcja „Wybierz odpowiedź” (D-187), z tą samą podpowiedzią.
+      const next = screen.getByRole('button', { name: /^Wybierz odpowiedź$/ });
       // Podpowiedź zawijana w dwóch wierszach (D-130): tekst w wewnętrznym elemencie z line-clamp, id na zewnętrznym.
       const hint = screen.getByText('Ukończ ten blok, aby przejść dalej.').closest('[id]') as HTMLElement;
       expect(next).toBeDisabled();
@@ -176,7 +177,8 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       expect(screen.getByText('Pytanie czwarte')).toBeInTheDocument();
       expect(screen.queryByTestId('review-block')).toBeNull();
-      expect(screen.getByRole('button', { name: /^Dalej$/ })).toBeDisabled();
+      // Bieżący quiz: w miejscu „Dalej” jego akcja (D-187) - przeżywa podgląd „Wstecz”, nieaktywna bez wybranej odpowiedzi.
+      expect(screen.getByRole('button', { name: /^Wybierz odpowiedź$/ })).toBeDisabled();
     });
 
     it('podgląd nie wysyła nic na serwer', () => {

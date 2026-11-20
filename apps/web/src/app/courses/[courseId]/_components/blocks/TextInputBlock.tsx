@@ -9,6 +9,7 @@ import BrowserWindow, { DeceptiveSiteWarning, FakeLoginPage } from './BrowserWin
 import AddressMarker, { type MarkStep } from './AddressMarker';
 import MonitorStage from '../player/MonitorStage';
 import DesktopStage from '../player/DesktopStage';
+import { useBarAction, useHasBarAction } from '../player/bar-action';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
@@ -134,8 +135,8 @@ export default function TextInputBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, readOnly]);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function submit(event?: React.FormEvent) {
+    event?.preventDefault();
     const answer = value.trim();
     if (!answer || done || submitting.current) return;
     // Brak identyfikatora zadania to błąd treści: pusty id nie może trafić do adresu żądania.
@@ -203,6 +204,14 @@ export default function TextInputBlock({
 
   const attemptsLeft = Math.max(0, maxAttempts - attempts);
 
+  // „Sprawdź” w miejscu „Dalej” (D-187): aktywny, gdy pole jest widoczne (po zaznaczeniu domeny) i niepuste; po rozstrzygnięciu pasek wraca
+  // do „Dalej” (onReady). Enter w polu dalej wysyła odpowiedź. Własny przycisk przy polu tylko bez paska odtwarzacza.
+  const inBar = useHasBarAction();
+  const fieldShown = !(monitor && marks) || markStep === 2;
+  useBarAction(
+    readOnly || done ? null : { label: 'Sprawdź', enabled: fieldShown && value.trim().length > 0 && !pending && !disabled, run: () => void submit() },
+  );
+
   const form = !readOnly && !done && (
     <form onSubmit={submit} className={browser ? 'flex min-w-0 flex-1 items-center gap-2' : 'flex flex-wrap items-center gap-2'}>
       <input
@@ -234,17 +243,19 @@ export default function TextInputBlock({
             : 'min-h-[44px] min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-slate-900 disabled:opacity-60'
         }
       />
-      <button
-        type="submit"
-        disabled={pending || disabled || value.trim().length === 0}
-        className={
-          browser
-            ? 'min-h-[44px] shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white disabled:opacity-50'
-            : 'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50'
-        }
-      >
-        Sprawdź
-      </button>
+      {!inBar && (
+        <button
+          type="submit"
+          disabled={pending || disabled || value.trim().length === 0}
+          className={
+            browser
+              ? 'min-h-[44px] shrink-0 rounded-full bg-ink px-4 text-sm font-medium text-white disabled:opacity-50'
+              : 'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50'
+          }
+        >
+          Sprawdź
+        </button>
+      )}
     </form>
   );
 
@@ -335,7 +346,7 @@ export default function TextInputBlock({
     // oknem przeglądarki, w oknie pasek adresu do zaznaczenia, pasek zadania i pod nim fałszywa strona logowania (obrazek, bez pól).
     if (block.background) {
       return (
-        <DesktopStage contentBase={contentBase} background={block.background} label="Przeglądarka">
+        <DesktopStage contentBase={contentBase} background={block.background} screen={block.backgroundScreen} label="Przeglądarka">
           <BrowserWindow tabTitle={block.page?.tabTitle ?? 'Nowa karta'} addressBar={addressBar} bodyClassName="">
             <div data-testid="page-task" className="border-b border-accent/30 bg-accent-soft px-4 py-3">
               {promptNode}

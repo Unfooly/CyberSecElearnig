@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { BarActionProvider, type BarAction } from './player/bar-action';
 import type { Narration } from '@cyberszkolo/content';
 import type {
   ClientNote,
@@ -231,6 +232,9 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
 }
 
 // Ile najwyżej „Dalej” czeka na trwający zapis stanu częściowego sceny (D-128), zanim wyśle zapis bloku.
+/** Podgląd „Wstecz” nie rejestruje akcji paska (D-187). */
+const ignoreBarAction = () => {};
+
 const EXPLORE_WAIT_MS = 4000;
 // Najdłuższe czekanie X na zapisy w toku (D-142) - potem wyjście i tak następuje. Obejmuje też czekanie samego „Dalej” na zapis stanu
 // sceny (do EXPLORE_WAIT_MS), więc w najgorszym razie na /progress zostaje ~1 s: celem jest „wyjście nigdy nie wisi”, nie pewność zapisu.
@@ -428,6 +432,9 @@ export default function CoursePlayer({
   // te testowały blok i powłokę osobno, bez tego wyścigu).
   const [readySubmit, setReadySubmit] = useState<(() => void) | null>(null);
   const handleReady = (submit: (() => void) | null) => setReadySubmit(() => submit);
+  // Akcja bloku w miejscu „Dalej” (D-187, player/bar-action.tsx): „Sprawdź”, „Wybierz odpowiedź”… - przed odpowiedzią na blok oceniany.
+  const [barAction, setBarAction] = useState<BarAction | null>(null);
+  const handleBarAction = useCallback((action: BarAction | null) => setBarAction(action), []);
   const preference = useNarrationPreference(narrationEnabled);
   const headingRef = useRef<HTMLHeadingElement>(null);
   // Fokus po przejściu na ekran zamknięcia (CaseClosedScreen, D-089) ląduje na JEGO WŁASNYM, widocznym nagłówku "Sprawa zamknięta" (h2), nie na
@@ -725,6 +732,11 @@ export default function CoursePlayer({
       return;
     }
     if (viewIndex === null) {
+      // Akcja bloku w miejscu „Dalej” (D-187): „Sprawdź” itp. przed odpowiedzią.
+      if (barAction) {
+        if (barAction.enabled) barAction.run();
+        return;
+      }
       // Nie podglądamy historii: "Dalej" tu znaczy "zgłoś gotowość bieżącego bloku eksploracyjnego" (patrz onReady) -
       // ten sam zapis, który wcześniej uruchamiał wewnętrzny przycisk "Kontynuuj" bloku.
       readySubmit?.();
@@ -796,6 +808,9 @@ export default function CoursePlayer({
   // PlayerStage nie dokłada paska podpowiedzi, zdanie informacji zwrotnej jest pod tablicą.
   // Odsłuch nagrania (D-115) pokazuje wynik na tej samej transkrypcji - też 'fill', jak tablica.
   // OSINT (D-121) i rozmowa na żywo (D-123) - wynik na tym samym ekranie, też 'fill' (BOARD_TYPES).
+  // Akcja bloku w pasku tylko przy bieżącym bloku przed odpowiedzią - nie w podglądzie „Wstecz” (ukryty blok bieżący zostaje zamontowany)
+  // ani przy wyniku.
+  const activeBarAction = barAction && !reviewing && !showingFeedback && !isSummaryMode ? barAction : null;
   const boardFeedback = showingFeedback && BOARD_TYPES.includes(blocks[feedback.blockIndex]?.type ?? '') && !!feedback.detail;
   // Wynik poczty w monitorze (D-184): zostaje w tym samym monitorze - układ jak przy zadaniu ('scene').
   const answeredBlock = showingFeedback ? blocks[feedback.blockIndex] : undefined;
@@ -952,6 +967,8 @@ export default function CoursePlayer({
           </div>
         )}
         {reviewing && (
+          // Podgląd „Wstecz” nie rejestruje akcji paska (D-187) - jego zdjęcie przy wyjściu z podglądu zdjęłoby akcję bieżącego bloku.
+          <BarActionProvider onChange={ignoreBarAction}>
           <ReviewBlock
             key={keyOf(displayedIndex)}
             block={currentBlock}
@@ -967,6 +984,7 @@ export default function CoursePlayer({
             moduleBlocks={blocks}
             simpleMode={simpleMode}
           />
+          </BarActionProvider>
         )}
       </>
     );
@@ -1120,7 +1138,7 @@ export default function CoursePlayer({
                     {error}
                   </p>
                 )}
-                {stage}
+                <BarActionProvider onChange={handleBarAction}>{stage}</BarActionProvider>
               </>
             }
             narrationBar={
@@ -1147,15 +1165,21 @@ export default function CoursePlayer({
             // Jeden „Dalej” (D-106): pasek jest JEDYNYM przejściem dalej w całym odtwarzaczu - bloki nie mają własnych przycisków
             // dalej, tylko zgłaszają gotowość (onReady) po akcji w bloku (sprawdzenie, obejrzenie, podejście do drzwi, ostatni krok
             // odprawy); wynik bloku ocenianego (feedback) - „Dalej” od razu aktywny.
-            canForward={(reviewing || showingFeedback || readySubmit !== null) && !submitting}
+            canForward={
+              (reviewing || showingFeedback || (activeBarAction ? activeBarAction.enabled : readySubmit !== null)) && !submitting
+            }
             // Puls i ogłoszenie „możesz przejść dalej” tylko przy gotowości i wyniku - nie w podglądzie „Wstecz” (B-126).
             announceForward={!reviewing}
+            // Akcja bloku w pasku (D-187): bez skrótu Enter/→, pulsu i ogłoszenia „możesz przejść dalej” - odpowiedź wysyła tylko klik.
+            forwardShortcut={!activeBarAction}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
             // Etykieta zmienia się tylko tam, gdzie „Dalej” kończy sprawę (SUMMARY) albo jest wyjściem z modułu (ekran zamknięcia -
             // prawdziwy link do biblioteki; pod raportem zostaje tylko „Następna sprawa”).
             forwardLabel={
               isSummaryMode
                 ? 'Wróć do biblioteki'
+                : activeBarAction
+                  ? activeBarAction.label
                 : !showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY' && !autoCloseSummary
                   ? hasEvidence(evidence)
                     ? 'Zakończ sprawę'

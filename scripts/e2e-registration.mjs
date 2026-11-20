@@ -517,11 +517,11 @@ try {
   step('śledztwo: punkty niewidoczne przed pierwszym kliknięciem (D-154)', (await page.getByTestId('hotspot-overlay-monitor').getAttribute('data-state')) === 'hidden');
   await shoot('hotspoty-przed');
 
-  // Punkt na obrazie jest jedyną, w pełni dostępną ścieżką - klik otwiera zbliżenie NA scenie (role="dialog", D-086); dowód dodaje
-  // "Zabierz", które też odkłada przedmiot (oddalenie 350 ms - czekamy na zniknięcie nakładki, zanim klikniemy kolejny punkt).
+  // Punkt na obrazie jest jedyną, w pełni dostępną ścieżką - klik otwiera zbliżenie NA scenie (role="dialog", D-086); dowód trafia do
+  // notatnika sam po otwarciu (D-187, bez „Zabierz”), „Zamknij” odkłada przedmiot (oddalenie 350 ms - czekamy na zniknięcie nakładki).
   const dialog = () => page.getByRole('dialog');
   const take = async () => {
-    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await dialog().getByRole('button', { name: 'Zamknij' }).click();
     await page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
   };
   await page.getByTestId('hotspot-overlay-drzwi').click();

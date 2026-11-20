@@ -19,6 +19,7 @@ import {
   type Rect,
 } from '@/lib/evidence-board';
 import { usePrefersReducedMotion } from '@/lib/use-prefers-reduced-motion';
+import { useBarAction, useHasBarAction } from '../player/bar-action';
 
 // Układanie kroków w kolejności jako TABLICA ŚLEDCZA (feat/evidence-board, D-088). Telefon w pionie (D-105, zastępuje listę z D-099):
 // ta sama tablica z korkiem, pinezkami i nicią, ale pola w jednej kolumnie zygzakiem (szerokie karty, tekst min. 15 px), scena
@@ -176,6 +177,9 @@ export default function OrderingBlock({
   const inPlaceCount = playerOrder.filter((id) => inPlace(id)).length;
   const tray = readOnly ? [] : ids.filter((id) => !placements.includes(id));
   const full = !readOnly && placements.every((id) => id !== null);
+  // „Sprawdź trop” w miejscu „Dalej” (D-187): aktywny przy pełnej tablicy; własny przycisk tylko bez paska odtwarzacza.
+  const inBar = useHasBarAction();
+  useBarAction(readOnly ? null : { label: 'Sprawdź trop', enabled: full && !disabled, run: () => onSubmit?.({ order: placements as string[] }) });
   const segments = yarnSegments(
     layout,
     shown.map((id) => id !== null),
@@ -434,7 +438,7 @@ export default function OrderingBlock({
           Odłóż na tackę
         </button>
       )}
-      {full && (
+      {full && !inBar && (
         <button
           ref={checkRef}
           type="button"
@@ -682,7 +686,7 @@ export default function OrderingBlock({
                           </li>
                         )}
                       </ul>
-                      {full && (
+                      {full && !inBar && (
                         <button
                           ref={checkRef}
                           type="button"

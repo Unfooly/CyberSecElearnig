@@ -216,7 +216,7 @@ try {
         step(`SCENE_HOTSPOTS ${id}: karta „${hotspot.label}” z treścią ze scenariusza`, true);
         await shot(`3-karta-${id}`);
       }
-      await dialog().getByRole('button', { name: 'Zabierz' }).click();
+      await dialog().getByRole('button', { name: 'Zamknij' }).click();
       await closed();
     }
     // Bez notatnika i licznika dowodów (D-162): po wszystkich celach „Dalej” w pasku jest aktywny.

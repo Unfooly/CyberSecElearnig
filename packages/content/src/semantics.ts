@@ -784,6 +784,14 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Strona pod paskiem i scena pod oknem (D-184) są częścią oprawy monitora - bez niej nie ma ich gdzie pokazać.
       if (block.page !== undefined && block.frame !== 'monitor') errors.push('page: tylko z frame: monitor');
       if (block.background !== undefined && block.frame !== 'monitor') errors.push('background: tylko z frame: monitor');
+      // Ekran na tle (D-186): tylko z tłem i w obrębie grafiki.
+      if (block.backgroundScreen !== undefined) {
+        const rect = block.backgroundScreen;
+        if (block.background === undefined) errors.push('backgroundScreen: wymaga background');
+        if (rect.x + rect.width > 100 || rect.y + rect.height > 100 || rect.width <= 0 || rect.height <= 0) {
+          errors.push('backgroundScreen: prostokąt ekranu poza grafiką');
+        }
+      }
       break;
     }
     case 'ORDERING': {

@@ -14,6 +14,7 @@ import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+import { passStartScreen } from './lib/module-screens.mjs';
 
 // Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
 assertLocalDatabase('scripts/e2e-module.mjs');
@@ -123,8 +124,8 @@ try {
   step(`Katalog: kurs „${TITLE}”${MODULE.thumbnail ? ' z miniaturą' : ''}`, MODULE.thumbnail ? thumbnails >= 1 : true, `${thumbnails} miniatur`);
 
   await page.goto(`${WEB}/courses/${courseId}`);
-  await page.getByRole('heading', { level: 1, name: TITLE, exact: true }).waitFor();
-  step('Player: nagłówek z tytułem modułu', true);
+  // Ekran startu (D-163) - zawsze przy nowym przypisaniu z danymi modułu (produkcja); „Start” otwiera pierwszy blok.
+  await passStartScreen(page, step, { title: TITLE, caseNumber: MODULE.caseNumber, notice: MODULE.startNotice && (typeof MODULE.startNotice === 'string' ? MODULE.startNotice : MODULE.startNotice.pl) });
   await page.getByTestId('player-content-area').waitFor();
   await page.getByTestId('player-bottombar').getByRole('button', { name: /Dalej|Zakończ/ }).first().waitFor();
   step(`Player: pierwszy blok (${MODULE.blocks[0].id}, ${MODULE.blocks[0].type}) i dolny pasek`, true);

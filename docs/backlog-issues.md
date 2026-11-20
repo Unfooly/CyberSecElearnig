@@ -912,6 +912,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 
 ### B-164 Ręczne skrypty e2e modułów po szablonie (D-163 - D-169)
 - Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-169
+- **Status: zrobione (D-180)**:
+  - `e2e-module-01.mjs` napisany od nowa pod 15 bloków;
+  - `e2e-module-02..04.mjs` i smoke `e2e-module.mjs` mają ekran startu, ekran końca i nie używają licznika ani notatnika;
+  - `screenshot-module.mjs` uruchamia skrypty e2e z `E2E_SHOTS_DIR`.
+
+  Wszystkie przeszły lokalnie na 1366x768 i 390x844. Uwaga o `dev-modul-1` była nieścisła: źródło
+  `scenes/examples/dev-modul-1/pulpit.json` istnieje i build daje dokładnie `pulpit.da6538de.svg`. Jak pozostałe sceny
+  `dev-modul-1`, ten plik SVG nie leży w repo, tylko w magazynie, i da się go odtworzyć ze źródła.
 - Opis: `scripts/e2e-module-01.mjs` … `e2e-module-04.mjs` (ręczne, poza CI) przechodzą moduł starym przepływem: czekają na scenę startową
   bez ekranu startu, na ekran podsumowania (`case-evidence`, lista zasad, „Zakończ sprawę”) i raport w teczce (`case-closed`). Z danymi modułu
   (zawsze na produkcji) jest teraz ekran startu (D-163), podsumowanie zamyka się samo (D-169), a wynik to ekran końca (D-165).

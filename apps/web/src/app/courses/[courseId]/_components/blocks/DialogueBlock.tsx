@@ -442,7 +442,7 @@ export default function DialogueBlock({
         role="group"
         aria-label="Pytania i postęp rozmowy"
         tabIndex={-1}
-        className={`dialogue-footer mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING} ${onPhone ? 'border-t border-[#E3DFF5] bg-white px-2.5 pb-2' : ''}`}
+        className={`dialogue-footer mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING} ${onPhone ? 'dialogue-footer-phone border-t border-[#E3DFF5] bg-white px-2.5 pb-2' : ''}`}
       >
         {hasNewMessages && (
           <button

@@ -162,6 +162,8 @@ describe('CoursePlayer: poprawki modułu 1, runda 2 (D-184)', () => {
     expect(within(phoneScreen).getByRole('button', { name: 'Co się wydarzyło?' })).toBeInTheDocument();
     expect(within(phoneScreen).queryByText(/Rozmawiasz z:/)).toBeNull();
     expect(within(phoneScreen).queryByText('Pytaj i słuchaj.')).toBeNull();
+    // Pytania jedno pod drugim, zawijane (D-185) - stopka w wariancie telefonu (globals.css .dialogue-footer-phone).
+    expect(within(phoneScreen).getByRole('group', { name: 'Pytania i postęp rozmowy' })).toHaveClass('dialogue-footer-phone');
   });
 
   it('rozmowa z telefonem w podglądzie „Wstecz” (review): zwykła rozmowa, bez telefonu ze sceny', () => {

@@ -78,6 +78,20 @@
   overflow: clip;
 }
 
+/* Skala kursu na komputerze (D-185, uwaga właściciela 2026-11-20: „lepiej wygląda cały kurs w skali 125% - żeby 100% wyglądało jak
+   125%”): na stronie odtwarzacza bazowy rozmiar czcionki 125% (20 px) - tekst, odstępy, przyciski i paski w rem rosną o 25%, a limit
+   szerokości ramki z 1280 do 1600 px (jak przy zoomie przeglądarki). Celowo NIE `zoom` na ramce: pomiary w JS (kamera sceny, tablica,
+   okienka, lot dowodu) mieszają getBoundingClientRect z pikselami stylu i rozjeżdżały się o 25%. Tylko mysz/trackpad i okno co najmniej
+   1200×600 - mniejsze okna i telefony bez zmian. */
+@media (pointer: fine) and (min-width: 1200px) and (min-height: 600px) {
+  html:has(.player-frame) {
+    font-size: 125%;
+  }
+  .player-frame {
+    width: min(calc(100vw - 32px), calc((100dvh - 32px) * 16 / 9), 1600px);
+  }
+}
+
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   .player-outer {
     padding: 0;
@@ -877,6 +891,30 @@
   /* Podgląd „Wstecz”: długi tekst o podglądzie zawija się zamiast ucinać. */
   .dialogue-footer .dialogue-progress-review {
     white-space: normal;
+  }
+  /* Rozmowa na ekranie telefonu ze sceny (D-185, uwaga właściciela 2026-11-20: „pytania nie mieszczą się w każdym telefonie”): ekran jest
+     wąski, więc zamiast rzędu przewijanego w bok - pytania jedno pod drugim na całą szerokość, zawijane, przewijane w pionie (max 45%
+     wysokości ekranu), jak gotowe odpowiedzi w komunikatorze. */
+  .dialogue-footer.dialogue-footer-phone .dialogue-chips {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+    max-height: 45cqh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .dialogue-footer.dialogue-footer-phone .dialogue-chips button {
+    width: 100%;
+    white-space: normal;
+    text-align: left;
+    padding: 8px 12px;
+    line-height: 1.3;
+    /* Kilkuwierszowe pytanie w „kapsule” (rounded-full) miałoby ogromne półkola - zaokrąglenie jak dymek. Reguła działa w kontenerze
+       węższym niż 640 px - ekran telefonu ze sceny jest zawsze węższy. */
+    border-radius: 14px;
   }
 }
 

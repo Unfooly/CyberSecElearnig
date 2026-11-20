@@ -34,6 +34,7 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
       'biuro-pawla-2:SCENE_HOTSPOTS',
       'telefon:SCENE_HOTSPOTS',
       'komunikator:DOSSIER',
+      'pulpit-2:SCENE_HOTSPOTS',
       'domena:TEXT_INPUT_GUIDED',
       'zaufanie:QUIZ',
       'biuro-pawla-3:SCENE_HOTSPOTS',
@@ -121,18 +122,25 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect(article).toMatchObject({ look: 'newspaper', masthead: 'Kurier Cyfrowy' });
   });
 
-  it('poprawki właściciela, runda 2 (D-184): Internet = fałszywa strona logowania, domena wbudowana w tę stronę na pulpicie, rozmowa na telefonie', () => {
-    const internet = (block('pulpit').hotspots as { id: string; media?: { kind: string; page?: Record<string, unknown> } }[]).find((h) => h.id === 'internet')!;
-    expect(internet.media?.kind).toBe('page');
-    const domena = block('domena') as { markUrl: string; background: string; page: Record<string, unknown> };
-    // Ta sama strona: adres z pola do zaznaczenia, ten sam formularz.
-    expect(internet.media?.page?.url).toBe(domena.markUrl);
-    const { url: _url, ...samePage } = internet.media!.page!;
-    expect(domena.page).toEqual(samePage);
+  it('poprawki właściciela, rundy 2-3 (D-184, D-185): zadanie z formularzem startuje kliknięciem Internetu na pulpicie po komunikatorze', () => {
+    const ids = parsed.blocks.map((b) => b.id);
+    // Po komunikatorze (link) z powrotem przy komputerze Pawła: Poczta ✓, Internet = drzwi do zadania z domeną.
+    expect(ids.indexOf('komunikator') + 1).toBe(ids.indexOf('pulpit-2'));
+    expect(ids.indexOf('pulpit-2') + 1).toBe(ids.indexOf('domena'));
+    const pulpit2 = block('pulpit-2') as { image: string; hotspots: { id: string; action?: string; done?: boolean }[] };
+    expect(pulpit2.image).toBe(block('pulpit').image);
+    expect(Object.fromEntries(pulpit2.hotspots.map((h) => [h.id, h.done ? 'done' : (h.action ?? 'card')]))).toEqual({ poczta: 'done', internet: 'next' });
+    // Na pierwszym pulpicie Internet to tylko zapowiedź (bez strony) - strona otwiera się dopiero razem z zadaniem.
+    const internet = (block('pulpit').hotspots as { id: string; media?: unknown }[]).find((h) => h.id === 'internet')!;
+    expect(internet.media).toBeUndefined();
+    const domena = block('domena') as { markUrl: string; background: string; page: { tabTitle: string; fields: string[] } };
+    expect(domena.page).toMatchObject({ tabTitle: 'Formularz prelegenta – rejestracja', fields: ['Służbowy e-mail', 'Hasło'] });
     // Tło zadania to scena pulpitu Pawła (ten sam plik).
     expect(domena.background).toBe(block('pulpit').image);
     // Rozmowa z Pawłem na tym samym telefonie co komunikator.
     expect(block('rozmowa-pawel').phone).toEqual(block('komunikator').phone);
+    // Ramka gazety na zdjęciu w artykule (D-185), nie na całym stole.
+    expect((block('gazeta').hotspots as { x: number; y: number; width: number; height: number }[])[0]).toMatchObject({ x: 20, y: 20, width: 34, height: 66 });
   });
 
   it('biuro powtarzane jak na nagraniu: komputer → pulpit (Poczta) → mail; ✓ komputer, smartfon → ekran telefonu (Komunikator) → czat; ✓ oba, Paweł → rozmowa', () => {

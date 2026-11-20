@@ -1522,8 +1522,14 @@ try {
   if (runs('module')) {
     const moduleJson = JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8'));
     const blockIds = moduleJson.blocks.map((block) => block.id);
-    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }]) {
-      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false });
+    // Okna z myszą (D-185): skala kursu 125% działa tylko przy `pointer: fine` (hasTouch daje `coarse`) - laptop z paskami przeglądarki
+    // (1366x650) i 1920x1080 ze skalowaniem Windows 125% (1536x730), najciaśniejsze przypadki skali.
+    const mouseViewports = [
+      { name: '1366x650 mysz', width: 1366, height: 650, mouse: true },
+      { name: '1536x730 mysz', width: 1536, height: 730, mouse: true },
+    ];
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }, ...mouseViewports]) {
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: !viewport.mouse, isMobile: viewport.isMobile ?? false });
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message.slice(0, 200)));

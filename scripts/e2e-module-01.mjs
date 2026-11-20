@@ -263,24 +263,9 @@ try {
   // --- 3. Pulpit (monitor Unfooly; Poczta = drzwi, Internet - karta, gra - easter egg) ---------------------------------------
   step('PULPIT: jedyne drzwi to Poczta - podpowiedź „Kliknij „Poczta”…”', (await doorHint('Poczta').count()) === 1);
   await shot('03-pulpit');
-  {
-    // Internet (D-184): okno przeglądarki z fałszywą stroną logowania (makieta bez pól), bez najazdu kamery, opis z historii pod oknem.
-    await hotspot('internet').click();
-    // Faza od razu po kliknięciu: z najazdem kamery byłaby 'in' (450 ms), bez niego od razu 'open'.
-    const internetPhase = await page.getByTestId('scene-zoom').getAttribute('data-phase');
-    await dialog().getByText(cardText('pulpit', 'internet')).waitFor();
-    const fakeWindow = page.getByTestId('fake-page-window');
-    step(
-      'PULPIT: Internet - okno z fałszywą stroną logowania (karta „Formularz prelegenta”, makieta bez pól), bez najazdu kamery',
-      internetPhase === 'open' &&
-        ((await fakeWindow.textContent()) ?? '').includes('Formularz prelegenta') &&
-        (await fakeWindow.getByTestId('fake-login-page').count()) === 1 &&
-        (await fakeWindow.locator('input, form, textarea, button').count()) === 0,
-    );
-    await shot('03b-internet');
-    await dialog().getByRole('button', { name: 'Odłóż' }).click();
-    await closed();
-  }
+  // Internet na pierwszym pulpicie (D-185): tylko zapowiedź - strona z zadaniem otwiera się na pulpicie po komunikatorze.
+  await lookAt('pulpit', 'internet');
+  step('PULPIT: Internet - karta „Wrócisz do niej…” (bez strony)', (await page.getByTestId('fake-page-window').count()) === 0);
   if (!PHONE) {
     // Easter egg (D-100): trzy okienka zamykane krzyżykiem, outro z osiągnięciem, „Wróć” zamyka zbliżenie. Bez najazdu kamery (D-184).
     await hotspot('gra').click();
@@ -366,6 +351,12 @@ try {
   step('CZAT: po wymaganych „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   await goNext('CZAT');
 
+  // --- 7b. Pulpit po komunikatorze (D-185): Poczta ✓, Internet = drzwi do zadania z formularzem --------------------------------
+  await hotspot('internet').waitFor();
+  step('PULPIT 2: Poczta z ✓ (bez przycisku), drzwi - Internet', (await doneMark('Poczta').count()) === 1 && (await doorHint('Internet').count()) === 1);
+  await shot('07b-pulpit-2');
+  await door('internet', 'PULPIT 2');
+
   // --- 8. Domena (TEXT_INPUT_GUIDED, D-181/D-184, waga 0): fałszywa strona na pulpicie Pawła; w pasku adresu pierwszy pojedynczy „/”,
   // potem druga „.” w lewo -----
   const domena = blockOf('domena');
@@ -377,6 +368,8 @@ try {
     'DOMENA: okno przeglądarki na pulpicie (tło sceny), pod zadaniem fałszywa strona logowania, pole odpowiedzi ukryte do zaznaczenia domeny',
     (await page.getByTestId('desktop-stage').count()) === 1 &&
       (await monitor.getByTestId('fake-login-page').count()) === 1 &&
+      // Makieta to obrazek: bez pól i przycisków (jedyne pole w oknie to odpowiedź zadania, poza makietą).
+      (await monitor.getByTestId('fake-login-page').locator('input, form, textarea, button').count()) === 0 &&
       (await page.getByPlaceholder(text(domena.placeholder)).count()) === 0,
   );
   await shot('08a-domena-adres');

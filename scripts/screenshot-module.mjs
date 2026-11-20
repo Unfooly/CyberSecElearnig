@@ -10,6 +10,10 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+
+// Uruchamiane skrypty e2e mają własną blokadę, ale odmowa już tutaj - zanim powstanie katalog i ruszy pierwszy przebieg (B-140).
+assertLocalDatabase('scripts/screenshot-module.mjs');
 
 // Moduły, których skrypt e2e robi zrzuty (E2E_SHOTS_DIR). Moduł 2 (`glos-z-helpdesku`) jeszcze ich nie ma.
 const SCRIPTS = {

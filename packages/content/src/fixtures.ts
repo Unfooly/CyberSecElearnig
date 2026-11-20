@@ -768,7 +768,11 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     content: 'Historia przeglądarki.',
     media: { kind: 'page', page: fakePage },
   });
-  Object.assign(blocks.TEXT_INPUT_GUIDED, { page: fakePage, background: 'images/pulpit.webp' });
+  Object.assign(blocks.TEXT_INPUT_GUIDED, {
+    page: fakePage,
+    background: 'images/pulpit.webp',
+    backgroundScreen: { x: 17.64, y: 18.96, width: 65.08, height: 51.3 },
+  });
   blocks.DIALOGUE.phone = { ...(blocks.DOSSIER.phone as Record<string, unknown>) };
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';

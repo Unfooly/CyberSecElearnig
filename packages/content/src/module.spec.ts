@@ -1423,6 +1423,21 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(tooMany)).toMatch(/fields/);
   });
 
+  it('ekran monitora na tle zadania z domeną (TEXT_INPUT_GUIDED.backgroundScreen, D-186): tylko z tłem, w obrębie grafiki', () => {
+    const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
+    const answer = { accept: ['przyklad-online.net'], caseSensitive: false };
+    const screenRect = { x: 17.64, y: 18.96, width: 65.08, height: 51.3 };
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, background: 'pulpit.webp', backgroundScreen: screenRect });
+    expect(errorsOf(ok)).toBe('');
+    const noBackground = fullModuleForTests();
+    Object.assign(block(noBackground, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, backgroundScreen: screenRect });
+    expect(errorsOf(noBackground)).toMatch(/backgroundScreen: wymaga background/);
+    const outside = fullModuleForTests();
+    Object.assign(block(outside, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, background: 'pulpit.webp', backgroundScreen: { ...screenRect, x: 50 } });
+    expect(errorsOf(outside)).toMatch(/backgroundScreen: prostokąt ekranu poza grafiką/);
+  });
+
   it('rozmowa na telefonie ze sceny (DIALOGUE.phone, D-184): wariant pionowy w komplecie, ekran w grafice', () => {
     const phone = { image: 'telefon.webp', screen: { x: 41, y: 13, width: 18, height: 72 } };
     const ok = fullModuleForTests();

@@ -867,6 +867,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-176 Martwy kod po usunięciu „Zabierz” (D-187)
+- Etykiety: `P3`, `mod:odtwarzacz`, `refactor` · Źródło: code review D-187
+- Opis: w `SceneHotspotsBlock.tsx` zostały nieużywane: stan i prop `shake` (`void shake` w ZoomContent), gałąź `NOT_EVIDENCE_TOAST` w
+  `take` (nieosiągalna - zbieranie tylko dla evidence + note) i CSS `.scene-zoom-shake` w `globals.css`.
+- Akceptacja: usunięte, testy zielone.
+
+### B-175 Tablica śledcza (ORDERING) w niskim oknie desktopu - drobny tekst kart
+- Etykiety: `P3`, `mod:odtwarzacz` · Źródło: D-187 (layout-check `module`, okno 1366x650 z myszą)
+- Opis: ramka odtwarzacza w niskim oknie (laptop 1366x768 z paskami przeglądarki, ok. 1366x650) jest ograniczona wysokością (ok. 1099 px
+  szerokości), więc tablica pozioma z D-130 nie ma miejsca na minimalną skalę (tekst kart 14 px) i rysuje się „contain” - tekst kart ok.
+  10 px (moduł podglądu dev-modul-1, blok rekonstrukcja; stan sprzed D-185, skala 125% tego nie zmienia). Tablica z notatkami (moduł 1) tego
+  nie ma. layout-check (m8) wymaga minimalnej skali dopiero przy obszarze ≥ 1280 px.
+- Akceptacja: tablica w niskim oknie z czytelnym tekstem (np. minimalna skala liczona od wysokości z przewijaniem albo układ jak telefon).
+
 ### B-174 layout-check `module` modułów 2 i 3 na telefonie w pionie - błędy niewidoczne w domyślnym przebiegu
 - Etykiety: `P2`, `mod:odtwarzacz`, `test` · Źródło: D-185 (przebieg `LAYOUT_CHECK_SECTION=module` dla wszystkich modułów)
 - Opis: domyślny `node scripts/layout-check.mjs` sprawdza sekcję `module` tylko dla modułu z `LAYOUT_CHECK_MODULE` (domyślnie 1), więc:

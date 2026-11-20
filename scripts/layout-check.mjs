@@ -205,15 +205,8 @@ const HOTSPOT_CASES = [
   { name: 'karteczka', hotspotId: 'karteczka' },
   { name: 'kalendarz', hotspotId: 'kalendarz' },
   { name: 'drukarka', hotspotId: 'drukarka' },
+  // „kubek+zabierz (nie dowód)” usunięty (D-187): bez „Zabierz” nie ma toastu „to nie dowód”.
   { name: 'kubek', hotspotId: 'kubek' },
-  {
-    name: 'kubek+zabierz (nie dowód)',
-    hotspotId: 'kubek',
-    async postOpen(page) {
-      await page.getByRole('dialog').getByRole('button', { name: 'Zabierz' }).click();
-      await page.getByRole('dialog').getByRole('status').waitFor();
-    },
-  },
   { name: 'telefon (audio)', hotspotId: 'telefon' },
   {
     name: 'telefon+transkrypcja',
@@ -466,7 +459,8 @@ async function checkZoomFits(page, testCase, label) {
     }
     if (box.height < 44 - 0.5) fail(`${label}: (d) przycisk "${name}" ma ${box.height}px wysokości (<44px).`);
   }
-  const expected = testCase.scene ? ['Wróć'] : ['Odłóż'];
+  // Przy zwykłym przedmiocie jedynym przyciskiem jest „Zamknij” (D-187, zamiast Zabierz/Odłóż).
+  const expected = testCase.scene ? ['Wróć'] : ['Zamknij'];
   for (const name of expected) if (!names.includes(name)) fail(`${label}: (d) brak przycisku "${name}" (są: ${names.join(', ')}).`);
   return names;
 }
@@ -964,7 +958,11 @@ async function checkEvidenceBoard(page, label, { trayCards, result = false }) {
       texts,
       tray: rect(tray),
       trayCards: tray.querySelectorAll('[data-card-id]').length,
-      check: !!board.querySelector('button') && [...board.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Sprawdź trop'),
+      // „Sprawdź trop” w miejscu „Dalej” (D-187): aktywny w pasku przy pełnej tablicy.
+      check: (() => {
+        const next = document.querySelector('[data-testid="player-bottombar"] .pbar-next');
+        return !!next && next.textContent.trim() === 'Sprawdź trop' && !next.disabled;
+      })(),
       dashed: board.querySelectorAll('[data-yarn="dashed"]').length,
       feedback: board.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
       barNextEnabled: !document.querySelector('[data-testid="player-bottombar"] .pbar-next')?.disabled,
@@ -1063,7 +1061,11 @@ async function checkEvidenceZigzag(page, label, { trayCards, result = false }) {
       tray: tray ? rect(tray) : null,
       trayInBoard: tray ? board.contains(tray) : false,
       trayCards: tray ? tray.querySelectorAll('[data-card-id]').length : 0,
-      check: buttons.some((b) => b.textContent.trim() === 'Sprawdź trop'),
+      // „Sprawdź trop” w miejscu „Dalej” (D-187): aktywny w pasku przy pustej tacce.
+      check: (() => {
+        const next = document.querySelector('[data-testid="player-bottombar"] .pbar-next');
+        return !!next && next.textContent.trim() === 'Sprawdź trop' && !next.disabled;
+      })(),
       feedback: document.querySelector('[data-testid="board-feedback"]')?.textContent ?? '',
       result: result ? rect(result) : null,
       barNextEnabled: !document.querySelector('[data-testid="player-bottombar"] .pbar-next')?.disabled,
@@ -1662,9 +1664,11 @@ try {
         );
         const badCards = cards.filter((card) => card.size < 13.9 || card.clipped);
         if (badCards.length > 0) fail(`${label}: (m8) karta śladu za mała albo ucięta: ${JSON.stringify(badCards)}.`);
-        // Na szerokich viewportach desktopu tablica MUSI być w minimalnej skali (inaczej m8 nie sprawdziłoby niczego).
+        // Na szerokich viewportach desktopu tablica MUSI być w minimalnej skali (inaczej m8 nie sprawdziłoby niczego). Liczy się szerokość
+        // obszaru bloku, nie okna: niskie okno (1366x650 z myszą, D-185) ogranicza ramkę wysokością - tam tablica jest „contain” (B-175).
         const hasBoard = await page.locator('[data-testid="evidence-board"][data-orientation="landscape"]').count();
-        if (hasBoard > 0 && viewport.width >= 1280 && !viewport.isMobile && cards.length === 0) {
+        const areaWidth = await page.evaluate(() => document.querySelector('[data-testid="player-content-area"]')?.getBoundingClientRect().width ?? 0);
+        if (hasBoard > 0 && viewport.width >= 1280 && areaWidth >= 1280 && !viewport.isMobile && cards.length === 0) {
           fail(`${label}: (m8) tablica pozioma na szerokim ekranie bez minimalnej skali (data-min-scale) albo bez kart na tacce.`);
         }
         // (m10) maszyna do pisania w odprawie kursu w trybie prostym (D-145): ramka NAD sceną (nie nakładka), tekst ≥ 16 px (także
@@ -3747,8 +3751,9 @@ try {
       const label = `${viewport.name} / ruch${reduce ? ' (reduced-motion)' : ''}: Zabierz karteczkę`;
       await page.goto(`${WEB}/dev/player-harness?hotspot=karteczka`);
       await page.locator('[data-testid="scene-zoom"][data-phase="open"]').waitFor();
-      await page.getByRole('dialog').getByRole('button', { name: 'Zabierz' }).click();
+      // Dowód zbierany sam przy otwarciu (D-187) - zostaje odczekać lot i zamknąć.
       await page.waitForTimeout(500);
+      await page.getByRole('dialog').getByRole('button', { name: 'Zamknij' }).click();
       if ((await page.getByTestId('evidence-flight').count()) !== 0) fail(`${label}: (m1) etykieta lotu dowodu w DOM - bez Notatnika nie ma celu (D-162).`);
       const pageScroll = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (pageScroll > 1) fail(`${label}: (m1) strona przewija się w poziomie o ${pageScroll}px.`);
@@ -3975,12 +3980,12 @@ try {
     await audit('ostatnie pytanie start');
     attemptBody = { correct: false, attempt: 1, attemptsLeft: 2, done: false, hint: { text: 'Spójrz na to, co jest po @ w adresie nadawcy.' } };
     await win.getByRole('textbox').fill('bank.pl');
-    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('player-bottombar').getByRole('button', { name: 'Sprawdź', exact: true }).click();
     await page.getByTestId('browser-error').waitFor();
     await audit('ostatnie pytanie zła próba');
     attemptBody = { correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75 };
     await win.getByRole('textbox').fill('bankwektor-weryfikacja.pl');
-    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('player-bottombar').getByRole('button', { name: 'Sprawdź', exact: true }).click();
     await page.getByTestId('browser-deceptive-warning').waitFor();
     await audit('ostatnie pytanie ostrzeżenie');
 
@@ -4168,7 +4173,7 @@ try {
     const win = page.getByTestId('browser-window');
     await win.waitFor();
     await win.getByRole('textbox').fill('bankwektor-weryfikacja.pl');
-    await win.getByRole('button', { name: 'Sprawdź' }).click();
+    await page.getByTestId('player-bottombar').getByRole('button', { name: 'Sprawdź', exact: true }).click();
     await page.getByTestId('text-input-result').waitFor();
     await checkSingleNext(page, `${viewport.name} / ostatnie-pytanie rozstrzygnięte`);
     if (await barNext().isDisabled()) fail(`${viewport.name} / ostatnie-pytanie rozstrzygnięte: (j3) „Dalej” w pasku nieaktywny.`);
@@ -4397,7 +4402,7 @@ try {
       await page.goto(`${WEB}/dev/player-harness?block=biuro-anny`);
       await page.getByTestId('hotspot-overlay-kalendarz').click();
       await phase('open');
-      await zoom.getByRole('button', { name: 'Odłóż' }).click();
+      await zoom.getByRole('button', { name: 'Zamknij' }).click();
       await zoom.waitFor({ state: 'detached' });
       const outer = await focused();
       if (outer.testid !== 'hotspot-overlay-kalendarz') fail(`${label}: (o1) po Odłóż fokus na ${JSON.stringify(outer)}, oczekiwany przedmiot „kalendarz”.`);
@@ -4405,7 +4410,7 @@ try {
       await phase('open');
       await zoom.getByRole('button', { name: /^Poczta/ }).click();
       await phase('inner-open');
-      await zoom.getByRole('button', { name: 'Odłóż' }).click();
+      await zoom.getByRole('button', { name: 'Zamknij' }).click();
       await phase('open');
       await page.waitForTimeout(100);
       const inner = await focused();
@@ -4454,8 +4459,9 @@ try {
     const winBox = await win.boundingBox();
     if (!winBox || winBox.x < areaBox.x - 1 || winBox.x + winBox.width > areaBox.x + areaBox.width + 1) fail(`${label}: (p1) okno poza obszarem bloku - ${JSON.stringify({ winBox, areaBox })}.`);
     const input = win.getByRole('textbox');
-    const go = win.getByRole('button', { name: 'Sprawdź' });
-    for (const [name, loc] of [['pole adresu', input], ['Sprawdź', go]]) {
+    const go = page.getByTestId('player-bottombar').getByRole('button', { name: 'Sprawdź', exact: true });
+    // „Sprawdź” jest w dolnym pasku (D-187) - w oknie zostaje samo pole adresu.
+    for (const [name, loc] of [['pole adresu', input]]) {
       const box = await loc.boundingBox();
       if (!box || box.height < 40 || !contains(winBox, box)) fail(`${label}: (p2) ${name} poza oknem albo < 40 px - ${JSON.stringify(box)}.`);
     }

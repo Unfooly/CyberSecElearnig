@@ -584,6 +584,12 @@
       "frame": "monitor",
       "markUrl": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
       "background": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp",
+      "backgroundScreen": {
+        "x": 17.64,
+        "y": 18.96,
+        "width": 65.08,
+        "height": 51.3
+      },
       "page": {
         "tabTitle": "Formularz prelegenta – rejestracja",
         "brand": "Fundacja Analityki Stosowanej",

@@ -414,6 +414,9 @@ const textInputSchema = z
     // wspólnej grafiki monitora. Czysto wizualne, publiczne.
     page: fakePageSchema.optional(),
     background: limage().optional(),
+    // Ekran monitora na grafice `background` w % (D-186, uwaga właściciela 2026-11-20: okno ma być „wbudowane w wyświetlacz”): okno
+    // przeglądarki leży dokładnie w tym prostokącie (bez paska zadań), grafika skalowana tak, żeby ekran wypełniał obszar bloku.
+    backgroundScreen: screenRectSchema.optional(),
     answer: z
       .object({
         // Odpowiedzi i wzorzec zostają jednojęzyczne w schemaVersion 6 (ocena per język przypisania - faza EN, rozdz. 10 specyfikacji
@@ -1371,7 +1374,17 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   ),
   TEXT_INPUT_GUIDED: classify(
     // Strona pod paskiem adresu i scena pod oknem (D-184) - wygląd, publiczne.
-    ['prompt', 'placeholder', 'frame', 'markUrl', 'maxAttempts', 'background', ...FAKE_PAGE_FIELDS.map((key) => `page.${key}`)],
+    [
+      'prompt',
+      'placeholder',
+      'frame',
+      'markUrl',
+      'maxAttempts',
+      'background',
+      ...FAKE_PAGE_FIELDS.map((key) => `page.${key}`),
+      // Ekran monitora na tle (D-186) - wygląd.
+      ...['x', 'y', 'width', 'height'].map((key) => `backgroundScreen.${key}`),
+    ],
     [
       'answer.accept[]',
       'answer.regex',

@@ -152,11 +152,11 @@ try {
   const dialog = () => page.getByRole('dialog');
   const closed = () => page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
   const take = async () => {
-    await dialog().getByRole('button', { name: 'Zabierz' }).click();
+    await dialog().getByRole('button', { name: 'Zamknij' }).click();
     await closed();
   };
   const putDown = async () => {
-    await dialog().getByRole('button', { name: 'Odłóż' }).click();
+    await dialog().getByRole('button', { name: 'Zamknij' }).click();
     await closed();
   };
   const briefingItem = async (name) => {
@@ -253,18 +253,18 @@ try {
   };
   step('Telefon: zbliżenie powiadomień (grafika z wpalonym tekstem)', await zoomImage(/sześciu odrzuconych próśb/));
   step('SCENE_HOTSPOTS (telefon): ramka celu schowana pod otwartym przedmiotem (B-158)', await hiddenUnderZoom('rejestr-helpdesk'));
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await dialog().getByRole('button', { name: 'Rejestr połączeń' }).click();
   step('Telefon: zbliżenie rejestru połączeń (grafika z wpalonym tekstem)', await zoomImage(/Rejestr połączeń: 9:02 IT Helpdesk/));
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
   step('Telefon (scena zagnieżdżona): seria MFA i rejestr połączeń zebrane', (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1);
   await page.getByRole('button', { name: 'Komputer' }).click();
   await dialog().getByRole('button', { name: 'Narzędzie zdalnej pomocy' }).click();
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await dialog().getByRole('button', { name: 'Przeglądarka' }).click();
-  await dialog().getByRole('button', { name: 'Odłóż' }).click();
+  await dialog().getByRole('button', { name: 'Zamknij' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
   await page.getByRole('button', { name: 'Karteczka' }).click();

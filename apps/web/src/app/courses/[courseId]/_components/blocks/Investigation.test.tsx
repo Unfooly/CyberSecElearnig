@@ -136,13 +136,14 @@ function setup(
 }
 
 // Zbliżenie przedmiotu (D-086): klik w punkt na obrazie (w pełni dostępny: aria-label, focus-ring) - kamera przybliża scenę, na
-// niej nakładka role="dialog" z grafiką zbliżenia i przyciskami "Zabierz"/"Odłóż"; dowód zalicza WYŁĄCZNIE "Zabierz".
-// Testy komponentu idą z prefers-reduced-motion (bez ruchu kamery nakładka jest od razu otwarta - synchronicznie); ścieżka z
-// animacją (450/350 ms) ma osobny test z fałszywym zegarem.
+// niej nakładka role="dialog" z grafiką zbliżenia i przyciskiem „Zamknij” (D-187: bez „Zabierz”/„Odłóż” - dowód trafia do notatnika sam
+// przy otwarciu zbliżenia). Testy komponentu idą z prefers-reduced-motion (bez ruchu kamery nakładka jest od razu otwarta -
+// synchronicznie); ścieżka z animacją (450/350 ms) ma osobny test z fałszywym zegarem.
 const pick = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const dialog = () => screen.getByRole('dialog');
-const putDown = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
-const takeIt = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Zabierz' }));
+const putDown = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Zamknij' }));
+// Dawne „Zabierz” (zabranie i odłożenie) - dziś dowód jest już zebrany przy otwarciu, zostaje zamknięcie.
+const takeIt = putDown;
 const back = () => fireEvent.click(within(dialog()).getByRole('button', { name: 'Wróć' }));
 
 function stubMotion(reduce: boolean) {
@@ -307,7 +308,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
       pick('Komputer');
       pick('Poczta');
       missTwice(desktopImage());
-      fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(within(dialog()).getByRole('button', { name: 'Zamknij' }));
       expect(overlay('kosz')).toHaveAttribute('data-state', 'hidden');
       expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
     });
@@ -337,7 +338,7 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
       setup(pulpit);
       pick('Komputer');
       pick('Poczta');
-      fireEvent.click(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(within(dialog()).getByRole('button', { name: 'Zamknij' }));
       back();
       missTwice(mainImage());
       expect(screen.queryByText(REVEAL_HINT)).not.toBeInTheDocument();
@@ -374,8 +375,9 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(dialog()).toHaveAttribute('aria-modal', 'true');
     expect(dialog().className).toMatch(/bg-ink\/35/);
     expect(dialog().className).toMatch(/backdrop-blur-\[3px\]/);
-    // Odłóż ghost (jasny tekst i obrys) na ciemniejszym wypełnieniu - kontrast na scenie przyciemnionej tylko w 35%.
-    expect(within(dialog()).getByRole('button', { name: 'Odłóż' }).className).toMatch(/text-white.*bg-ink\/50|bg-ink\/50.*text-white/);
+    // „Zamknij” (D-187, zamiast Zabierz/Odłóż): jasna ikona na ciemnym kółku - kontrast na scenie przyciemnionej tylko w 35%.
+    expect(within(dialog()).getByRole('button', { name: 'Zamknij' }).className).toMatch(/text-white.*bg-ink\/80|bg-ink\/80.*text-white/);
+    expect(within(dialog()).queryByRole('button', { name: /Zabierz|Odłóż/ })).toBeNull();
     expect(dialog().querySelector('.hotspot-card, .bg-white, h3')).toBeNull();
     expect(within(dialog()).getByTestId('scene-zoom-graphic').className).toMatch(/max-h-\[88%\]/);
 
@@ -410,29 +412,29 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(screen.queryByRole('button', { name: 'Monitor' })).not.toBeInTheDocument();
   });
 
-  it('klik w punkt otwiera zbliżenie z fokusem na "Zabierz"; "Zabierz" zalicza dowód (notatnik z ikoną rodzaju, licznik, podpowiedź), odkłada przedmiot i oddaje fokus; ponowne otwarcie: tylko "Odłóż" i "W notatniku"', () => {
+  it('klik w punkt otwiera zbliżenie z fokusem na „Zamknij”; dowód trafia do notatnika sam przy otwarciu (D-187: notatnik z ikoną rodzaju, licznik, podpowiedź, „W notatniku”); zamknięcie oddaje fokus; ponowne otwarcie nie dubluje', () => {
     const { onSubmit, ready } = setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
     fireEvent.click(trigger);
-    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Zabierz' }));
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Zamknij' }));
     // Treść przedmiotu bez grafiki (fixture bez media) - opis w ciemnym panelu zamiast pustego zbliżenia.
     expect(dialog()).toHaveTextContent('Kartka z hasłem.');
-
-    takeIt();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(trigger);
+    expect(within(dialog()).getByText('W notatniku')).toBeInTheDocument();
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło na kartce.');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.evidence);
+
+    putDown();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
 
     // Panel notatnika: grupa z nazwą sceny, ikona (etykieta) rodzaju.
     const panel = screen.getByRole('complementary', { name: 'Notatnik' });
     expect(within(panel).getByRole('region', { name: 'Biuro' })).toHaveTextContent('Przedmiot: Hasło na kartce.');
 
     fireEvent.click(trigger);
-    expect(within(dialog()).queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
     expect(within(dialog()).getByText('W notatniku')).toBeInTheDocument();
-    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Odłóż' }));
+    expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 1/2');
     putDown();
 
     pick('Drzwi'); // wymagany tylko Monitor
@@ -441,17 +443,16 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1', 'h2'], noted: ['h1'] });
   });
 
-  it('klik w tło (poza grafiką i przyciskami) = "Odłóż"; focus trap: Tab z ostatniego przycisku wraca na pierwszy', () => {
+  it('klik w tło (poza grafiką i przyciskami) = „Zamknij”; focus trap: Tab z jedynego przycisku zostaje w nakładce', () => {
     setup(scene, { summary });
     const trigger = screen.getByTestId('hotspot-overlay-h1');
     fireEvent.click(trigger);
-    const take = within(dialog()).getByRole('button', { name: 'Zabierz' });
-    const put = within(dialog()).getByRole('button', { name: 'Odłóż' });
-    put.focus();
-    fireEvent.keyDown(put, { key: 'Tab' });
-    expect(document.activeElement).toBe(take);
-    fireEvent.keyDown(take, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(put);
+    const close = within(dialog()).getByRole('button', { name: 'Zamknij' });
+    close.focus();
+    fireEvent.keyDown(close, { key: 'Tab' });
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true });
+    expect(dialog().contains(document.activeElement)).toBe(true);
 
     fireEvent.click(within(dialog()).getByText('Kartka z hasłem.')); // klik w samą treść nie zamyka
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -460,14 +461,11 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('"Zabierz" przy przedmiocie, który nie jest dowodem: potrząśnięcie i toast, bez notatki i bez zamknięcia', () => {
+  it('przedmiot, który nie jest dowodem (D-187): otwarcie niczego nie zbiera - bez notatki, bez „W notatniku”, bez komunikatu', () => {
     setup(scene, { summary });
     pick('Drzwi');
-    takeIt();
-    expect(within(dialog()).getByRole('status')).toHaveTextContent(NOT_EVIDENCE_TOAST);
-    expect(within(dialog()).getByRole('button', { name: 'Zabierz' }).className).toMatch(/scene-zoom-shake/);
-    // Przycisk jest montowany od nowa (restart animacji) - fokus zostaje na nim, w nakładce.
-    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Zabierz' }));
+    expect(within(dialog()).queryByText('W notatniku')).toBeNull();
+    expect(screen.queryByText(NOT_EVIDENCE_TOAST)).toBeNull();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
   });
@@ -490,7 +488,8 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     putDown();
     expect(ready.current).not.toBeNull();
     ready.current!();
-    expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1'], noted: [] });
+    // Monitor jest dowodem - zebrany przy otwarciu (D-187).
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['h1'], noted: ['h1'] });
   });
 
   it('D-154: w podglądzie (review) kliki w scenę nie odsłaniają ramek ani komunikatu', () => {
@@ -757,11 +756,12 @@ describe('SCENE_HOTSPOTS: ruch kamery (bez prefers-reduced-motion)', () => {
     expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'in');
     expect(box.style.transition).toContain('450ms');
     expect(box.style.transform).toMatch(/scale\(/);
-    expect(screen.queryByTestId('scene-zoom-actions')).not.toBeInTheDocument();
+    // Dowód zbierany dopiero po dojechaniu kamery (D-187) - w fazie „in” jeszcze nie w notatniku.
+    expect(screen.queryByText('W notatniku')).not.toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(450));
     expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'open');
-    expect(within(dialog()).getByRole('button', { name: 'Zabierz' })).toBeInTheDocument();
+    expect(within(dialog()).getByText('W notatniku')).toBeInTheDocument();
 
     putDown();
     expect(screen.getByTestId('scene-zoom')).toHaveAttribute('data-phase', 'out');
@@ -1066,14 +1066,12 @@ describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)
     expect(screen.queryByText(/autoodtwarzanie|zablokował/i)).not.toBeInTheDocument(); // celowo BEZ komunikatu (inaczej niż NarrationPlayer.tsx)
   });
 
-  it('audio: dowód WYMAGA "Zabierz" - samo otwarcie (ani odsłuchanie) nie wystarcza (D-071)', () => {
+  it('audio: dowód trafia do notatnika przy otwarciu zbliżenia (D-187, zmiana D-071 - bez „Zabierz”), odsłuchanie go nie dubluje', () => {
     setup(mediaScene);
     pick('Telefon');
-    expect(screen.getByTestId('notes')).toHaveTextContent('');
-    fireEvent(document.querySelector('audio')!, new Event('ended')); // odsłuchanie samo z siebie też nie zalicza dowodu
-    expect(screen.getByTestId('notes')).toHaveTextContent('');
-    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Telefon z podejrzaną prośbą o kod SMS.');
+    fireEvent(document.querySelector('audio')!, new Event('ended'));
+    expect(screen.getByTestId('notes').textContent).toBe('item:Telefon z podejrzaną prośbą o kod SMS.');
   });
 
   it('audio: transkrypcja działa NIEZALEŻNIE od audioUrl - dostępna i klikalna nawet, gdy plik audio się nie wczytał/nie ma go w treści (druga runda code review, punkt 7 - regresja pierwszej wersji tego hotfixu: przycisk transkrypcji stawał się "martwy", bo widok transkrypcji był zagnieżdżony w tym samym warunku co odtwarzacz)', () => {
@@ -1107,11 +1105,9 @@ describe('SCENE_HOTSPOTS: grafika zbliżenia (image/audio/document, B-086/D-071)
     expect(within(screen.getByRole('region', { name: 'Transkrypcja' })).getByText('Dzień dobry, tu bank Wektor.')).toBeVisible();
   });
 
-  it('image: dowód też wymaga "Zabierz", tak samo jak audio (spójne dla wszystkich mediów)', () => {
+  it('image: dowód też trafia do notatnika przy otwarciu, tak samo jak audio (spójne dla wszystkich mediów, D-187)', () => {
     setup(mediaScene);
     pick('Zdjęcie');
-    expect(screen.getByTestId('notes')).toHaveTextContent('');
-    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('item:Hasło widoczne na zbliżeniu.');
   });
 });
@@ -1225,21 +1221,20 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     }
   });
 
-  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego zbliżenie (drugi poziom TEJ SAMEJ nakładki); dowód wymaga "Zabierz"', () => {
+  it('klik na element WEWNĄTRZ zagnieżdżonej sceny otwiera jego zbliżenie (drugi poziom TEJ SAMEJ nakładki); dowód zebrany przy otwarciu (D-187)', () => {
     setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
 
     expect(dialog()).toHaveAttribute('aria-label', 'Outlook');
     expect(screen.getByAltText('Podgląd maila')).toBeInTheDocument();
-    expect(screen.getByTestId('notes')).toHaveTextContent('');
-    takeIt();
     expect(screen.getByTestId('notes')).toHaveTextContent('mail:Mail otwarty w programie pocztowym.');
-    // "Zabierz" odkłada TYLKO przedmiot - pulpit zostaje otwarty.
+    putDown();
+    // „Zamknij” odkłada TYLKO przedmiot - pulpit zostaje otwarty.
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Monitor');
   });
 
-  it('"Odłóż" z poziomu maila cofa do pulpitu (nakładka zostaje otwarta), "Wróć" z pulpitu zamyka nakładkę', () => {
+  it('„Zamknij” z poziomu maila cofa do pulpitu (nakładka zostaje otwarta), "Wróć" z pulpitu zamyka nakładkę', () => {
     setup(nestedScene);
     pick('Monitor');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
@@ -1247,8 +1242,8 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
 
     putDown(); // z maila -> pulpit
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Monitor');
-    // Outlook już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)", fokus wraca na niego.
-    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' }));
+    // Outlook zebrany (dowód przy otwarciu): dostępna nazwa ma sufiks " (w notatniku)", fokus wraca na niego.
+    expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Outlook (w notatniku)' }));
 
     back(); // z pulpitu -> zamyka
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -1260,7 +1255,7 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Outlook' }));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Outlook (w notatniku)' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -1299,7 +1294,7 @@ describe('SCENE_HOTSPOTS: zagnieżdżona mini-scena (media.kind:"scene", B-086/D
     // Monitor już odwiedzony: dostępna nazwa ma teraz sufiks " (obejrzane)".
     fireEvent.click(screen.getByRole('button', { name: 'Monitor (obejrzane)' }));
     expect(dialog()).toHaveAttribute('aria-label', 'Monitor');
-    expect(within(dialog()).getByRole('button', { name: 'Outlook (obejrzane)' })).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Outlook (w notatniku)' })).toBeInTheDocument();
   });
 });
 
@@ -1425,7 +1420,8 @@ describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () 
     pick('Kubek');
     putDown();
     ready.current!();
-    expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'gra', 'outlook', 'kosz', 'kubek']), noted: [] });
+    // Outlook (dowód) zebrany przy otwarciu (D-187); gra nie jest dowodem.
+    expect(onSubmit).toHaveBeenCalledWith({ visited: expect.arrayContaining(['monitor', 'gra', 'outlook', 'kosz', 'kubek']), noted: ['outlook'] });
   });
 
   it('easter egg nie jest wymagany: blok gotowy bez niego, licznik „Obejrzano” go nie liczy', () => {
@@ -1599,7 +1595,8 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
     expect(door).not.toHaveAttribute('title');
     fireEvent.click(door);
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
+    // Kartka jest dowodem - zebrana przy otwarciu (D-187).
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: ['dowod'] });
     // Drzwi same nigdy nie otwierają nakładki (w odróżnieniu od zwykłego hotspotu) - klik w nie nie ustawia activeId.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -1611,7 +1608,7 @@ describe('SCENE_HOTSPOTS: "drzwi" (action: "next", B-086/D-071)', () => {
     putDown();
     expect(ready.current).not.toBeNull();
     ready.current!();
-    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: [] });
+    expect(onSubmit).toHaveBeenCalledWith({ visited: ['dowod'], noted: ['dowod'] });
   });
 });
 

@@ -7,6 +7,7 @@ import { contentAssetUrl } from '@/lib/content-assets';
 import { feedbackSentence } from '@/lib/evidence-board';
 import { usePortraitContainer } from '@/lib/use-portrait-container';
 import type { OrderingResult } from './OrderingBlock';
+import { useBarAction, useHasBarAction } from '../player/bar-action';
 
 // Tablica z notatkami (ORDERING `look: 'notes'`, D-182 - jak na nagraniu właściciela): korkowa tablica (grafika `background`, wariant
 // pionowy `backgroundPortrait`), na niej ponumerowane kartki z notesu z notatkami gracza o każdym etapie (`slots[N].notes`) i polem
@@ -128,6 +129,9 @@ export default function NotesBoard({
   };
   const tray = readOnly ? [] : ids.filter((id) => !placements.includes(id));
   const full = !readOnly && placements.length > 0 && placements.every((id) => id !== null);
+  // „Sprawdź trop” w miejscu „Dalej” (D-187): aktywny, gdy wszystkie kartki mają etykietę; własny przycisk tylko bez paska odtwarzacza.
+  const inBar = useHasBarAction();
+  useBarAction(readOnly ? null : { label: 'Sprawdź trop', enabled: full && !disabled, run: () => onSubmit?.({ order: placements as string[] }) });
   const inPlaceCount = playerOrder.filter((id, index) => correctOrder[index] === id).length;
 
   // Fokus po przypięciu (przycisk pustej kartki albo „Odłóż” znika z DOM - bez tego fokus spadłby na <body>): na etykietę na kartce,
@@ -389,7 +393,7 @@ export default function NotesBoard({
           Odłóż pod tablicę
         </button>
       )}
-      {full && (
+      {full && !inBar && (
         <button
           ref={checkRef}
           type="button"

@@ -117,7 +117,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
     expect(screen.getByTestId('hint-overlay')).toHaveTextContent('Mamy dowód! Trafił do notatnika.');
 
     // "Dalej" w pasku powłoki (nie osobny "Kontynuuj" w bloku): wymagane elementy zebrane, więc jest już aktywne.
@@ -134,7 +134,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
   function mockFlightRects() {
     const original = Element.prototype.getBoundingClientRect;
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
-      if (this.textContent === 'Zabierz' || this.hasAttribute('data-evidence-target')) {
+      if (this.getAttribute('data-testid') === 'scene-zoom-graphic' || this.hasAttribute('data-evidence-target')) {
         return { left: 10, top: -100, width: 100, height: 40, right: 110, bottom: -60, x: 10, y: -100, toJSON: () => ({}) } as DOMRect;
       }
       return original.call(this);
@@ -154,16 +154,17 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       const { unmount } = render(<CoursePlayer courseId="course-1" initial={withMug} narrationEnabled={false} />);
       // reduced-motion (beforeEach): dowód trafia do notatnika bez lotu.
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       expect(flights()).toEqual([]);
       unmount();
 
       window.matchMedia = originalMatchMedia;
       render(<CoursePlayer courseId="course-1" initial={withMug} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Zabierz' }));
-      expect(await screen.findByText('To nie jest dowód w tej sprawie.')).toBeInTheDocument();
-      expect(flights()).toEqual([]); // nie dowód - potrząśnięcie, bez lotu
+      // Zbliżenie otwarte (po najeździe kamery) - przedmiot bez dowodu niczego nie zbiera (D-187: bez „Zabierz”), więc bez lotu.
+      await screen.findByRole('button', { name: 'Zamknij' });
+      await screen.findByText('Kubek.');
+      expect(flights()).toEqual([]);
     } finally {
       delete (Element.prototype as unknown as { animate?: unknown }).animate;
       document.querySelectorAll('[data-testid="evidence-flight"]').forEach((chip) => chip.remove());
@@ -207,7 +208,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
 
     fireEvent.click(screen.getByRole('button', { name: /Wstecz/ }));
     expect(screen.getByTestId('review-block')).toBeInTheDocument();
@@ -243,7 +244,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       expect(exploreCalls(fetchMock)[0][1]).toMatchObject({ method: 'POST', keepalive: true });
       expect(JSON.parse(exploreCalls(fetchMock)[0][1].body)).toEqual({ visited: ['h1'], noted: [] });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(2));
       expect(JSON.parse(exploreCalls(fetchMock)[1][1].body)).toEqual({ visited: ['h1'], noted: ['h1'] });
       // Zapis częściowy nie przechodzi dalej.
@@ -309,7 +310,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
         />,
       );
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }));
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
       expect(JSON.parse(progressCalls(fetchMock)[0][1].body)).toEqual({ blockIndex: 0, blockId: 'scena', answer: { visited: ['h1', 'h2'], noted: ['h1'] } });
@@ -342,7 +343,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       const { fetchMock, release } = hangingExplore();
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis 1 (wisi)
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' })); // zmiana 2 - w kolejce
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187) // zmiana 2 - w kolejce
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' })); // zmiana 3 - zastępuje zmianę 2 w kolejce
       await flush();
       expect(exploreCalls(fetchMock)).toHaveLength(1);
@@ -359,9 +360,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       const { fetchMock, release } = hangingExplore();
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis 1 (wisi)
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' })); // stan w kolejce
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // stan w kolejce
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await flush();
       expect(progressCalls(fetchMock)).toHaveLength(0);
@@ -384,9 +385,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis 1 (wisi)
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' })); // stan w kolejce
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // stan w kolejce
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await act(async () => release[0]());
       await screen.findByText('Nie teraz.');
@@ -403,9 +404,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis 1 (wisi)
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' })); // stan w kolejce
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // stan w kolejce
       fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
       await act(async () => release[0]());
       await waitFor(() => expect(progressCalls(fetchMock)).toHaveLength(1));
@@ -437,9 +438,9 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' })); // zapis częściowy - wisi
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }));
       fireEvent.click(screen.getByRole('button', { name: 'Kubek' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Odłóż' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }));
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
       try {
         fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
@@ -496,7 +497,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
       await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(1));
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(2));
       expect(screen.getByRole('button', { name: 'Monitor (w notatniku)' })).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -507,7 +508,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
       vi.stubGlobal('fetch', fetchMock);
       render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} persistExploration={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });
@@ -588,19 +589,17 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     expect(hintIcon.className).toMatch(/invisible/);
     expect(hintIcon).toHaveAttribute('aria-hidden', 'true');
     expect(hintIcon).toHaveAttribute('tabindex', '-1');
-    // Region aria-live zostaje w drzewie dostępności (reakcja pod zbliżeniem zostanie ogłoszona).
+    // Region aria-live zostaje w drzewie dostępności - reakcja pod zbliżeniem jest ogłaszana (dowód zebrany przy otwarciu, D-187).
     expect(hintRoot).not.toHaveAttribute('aria-hidden');
-    expect(within(hintRoot).getByRole('status')).toHaveTextContent('Rozejrzyj się. Kliknij to, co wygląda podejrzanie.');
+    expect(within(hintRoot).getByRole('status')).toHaveTextContent('Mamy dowód! Trafił do notatnika.');
 
-    // Przyciski zbliżenia ("Zabierz", "Odłóż") są osiągalne i klikalne - podpowiedź faktycznie ich nie zasłania
-    // ani nie przechwytuje kliknięcia (gdyby przechwytywała, fireEvent.click poniżej i tak by "trafił" w DOM-owy
-    // element pod wskazanym testowym selektorem - to RTL, nie prawdziwy hit-testing przeglądarki - ale asercja na
-    // invisible/pointer-events-none wyżej jest tym, co faktycznie to gwarantuje w prawdziwej przeglądarce).
+    // Zamknięcie zbliżenia („Zamknij”, D-187 - bez „Zabierz”/„Odłóż”) jest osiągalne i klikalne - podpowiedź go nie zasłania
+    // (asercja na invisible/pointer-events-none wyżej gwarantuje to w prawdziwej przeglądarce).
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('button', { name: 'Zabierz' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Odłóż' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Zabierz' })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Odłóż' })).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Odłóż' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zamknij' }));
 
     // Ikonka wraca (widoczna, klikalna, osiągalna), ale dymek ZOSTAJE zwinięty - nie rozwija się sam po zamknięciu karty.
     expect(hintIcon.className).not.toMatch(/invisible/);
@@ -631,7 +630,7 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     render(<CoursePlayer courseId="course-1" initial={sceneCourse({ contentBlocks: [base.contentBlocks[0], quizWithMascot] })} narrationEnabled={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Zabierz' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' })); // dowód zebrany przy otwarciu (D-187)
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await screen.findByText('Pytanie?');
@@ -1131,7 +1130,7 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ blockIndex: 0, blockId: 'domena' });
   });
 
-  it('zadanie tekstowe: przed rozstrzygnięciem "Dalej" w pasku jest nieaktywne z podpowiedzią', () => {
+  it('zadanie tekstowe: przed rozstrzygnięciem w miejscu "Dalej" jest "Sprawdź" (D-187) - nieaktywne z podpowiedzią, dopóki pole jest puste', () => {
     render(
       <CoursePlayer
         courseId="course-1"
@@ -1142,9 +1141,14 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
         })}
       />,
     );
-    const forward = screen.getByRole('button', { name: /^Dalej$/ });
+    const forward = screen.getByRole('button', { name: /^Sprawdź$/ });
     expect(forward).toBeDisabled();
     expect(forward).toHaveAttribute('title', 'Ukończ ten blok, aby przejść dalej.');
+    expect(screen.queryByRole('button', { name: /^Dalej$/ })).toBeNull();
+    // Wpisana odpowiedź - „Sprawdź” w pasku aktywny (jedyny przycisk sprawdzenia, w bloku go nie ma).
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'przyklad.pl' } });
+    expect(screen.getByRole('button', { name: /^Sprawdź$/ })).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: /Sprawdź/ })).toHaveLength(1);
   });
 });
 

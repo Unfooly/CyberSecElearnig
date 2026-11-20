@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
-import { ArrowLeft, Check, Pause, Play } from 'lucide-react';
+import { ArrowLeft, Check, Pause, Play, X } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneExploration, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -111,9 +111,9 @@ function cameraTransition(reducedMotion: boolean, phase: Phase | null): string |
 //      (data-zoom-open);
 //   2. crossfade do grafiki zbliżenia (media.image / media.src; przezroczyste tło - D-101) na środku, max 88% sceny - bez karty i bez
 //      bloków tekstu, tylko cień po kształcie (.zoom-shadow, drop-shadow);
-//   3. na dole "Zabierz" (accent) i "Odłóż" (jasny ghost). Esc / klik w tło = Odłóż; wyjście - odwrotny zoom 350 ms.
-// "Zabierz" przy dowodzie dopisuje notatkę do notatnika (tekst notatki jest TYLKO w notatniku) i odkłada; przy przedmiocie bez dowodu -
-// potrząśnięcie i toast NOT_EVIDENCE_TOAST, bez kary. Już zabrany - tylko "Odłóż" i znacznik "W notatniku". Nagranie (poczta głosowa):
+//   3. w rogu „Zamknij” (✕); Esc / klik w tło - to samo; wyjście - odwrotny zoom 350 ms.
+// Dowód (evidence + note) trafia do notatnika sam po otwarciu zbliżenia (D-187, bez „Zabierz”/„Odłóż”; tekst notatki jest TYLKO w
+// notatniku), pod grafiką znacznik „W notatniku”; przedmiot bez dowodu niczego nie zbiera. Nagranie (poczta głosowa):
 // play/pauza pod grafiką (i transkrypcja jako alternatywa tekstowa). Scena zagnieżdżona (monitor -> pulpit): przybliżenie na monitor i
 // przejście do sceny zagnieżdżonej z ikoną "Wróć" - jej przedmioty (okna na ekranie, D-104) otwierają się BEZ ruchu kamery, od razu nad
 // przyciemnionym pulpitem (max 94% sceny), okienka easter egga bez przyciemnienia. Drzwi (action:'next') - bez
@@ -153,6 +153,8 @@ export default function SceneHotspotsBlock({
   // Stan początkowy z serwera (D-128) tylko dla przedmiotów TEJ wersji sceny: zabrany = obejrzany przedmiot-dowód z notatką (jak w API).
   const [visited, setVisited] = useState<string[]>(() => restoredVisited(flat, initial));
   const [noted, setNoted] = useState<string[]>(() => restoredNoted(flat, initial));
+  // Dowody już zebrane w tej sesji bloku - blokada synchroniczna przed podwójnym wywołaniem `take` (D-187, StrictMode).
+  const takenRef = useRef<Set<string>>(new Set());
   // Przedmioty są niewidoczne (nie zdradzają odpowiedzi, D-154) - ramki podpowiedzi (puls) dopiero po MISSES_TO_REVEAL pudłach: klik w
   // obraz widoku poza przedmiotem. Licznik osobno dla widoku (B-158): MAIN_VIEW albo id przedmiotu ze sceną zagnieżdżoną. Obejrzane mają
   // zawsze znacznik, fokus klawiatury - pierścień.
@@ -469,20 +471,23 @@ export default function SceneHotspotsBlock({
   }
 
   function take(hotspot: AnyHotspot, from?: Element) {
-    if (review || noted.includes(hotspot.id) || !block.id) return;
+    if (review || noted.includes(hotspot.id) || takenRef.current.has(hotspot.id) || !block.id) return;
     if (!hotspot.evidence || !hotspot.note) {
       setShake((n) => n + 1);
       setToast(NOT_EVIDENCE_TOAST);
       later(TOAST_MS, () => setToast((t) => (t === NOT_EVIDENCE_TOAST ? null : t)));
       return;
     }
-    setNoted((list) => [...list, hotspot.id]);
+    // Zbieranie przy otwarciu (D-187) idzie z efektu - StrictMode (dev) odpala go dwa razy z tym samym domknięciem, więc blokada
+    // synchroniczna w refie i bez duplikatów w `noted` (API odrzuca duplikat błędem 400).
+    takenRef.current.add(hotspot.id);
+    setNoted((list) => (list.includes(hotspot.id) ? list : [...list, hotspot.id]));
     addNote({ blockId: block.id, text: hotspot.note.text, kind: hotspot.note.kind });
     evidence.addPending(`${block.id}.${hotspot.id}`);
-    // Ruch (D-090): nazwa przedmiotu leci od "Zabierz" do Notatnika (przed odłożeniem - przycisk jeszcze stoi na miejscu).
+    // Ruch (D-090): nazwa przedmiotu leci z grafiki zbliżenia do Notatnika. Zbliżenie zostaje otwarte (D-187: dowód zbierany sam przy
+    // otwarciu, bez „Zabierz” - gracz ogląda dalej i zamyka sam).
     flyEvidence(from, hotspot.label);
     hints.notify('evidence');
-    goBack();
   }
 
   // Focus trap w nakładce (Tab / Shift+Tab krążą po jej przyciskach).
@@ -848,15 +853,32 @@ function ZoomContent({
   portrait?: boolean;
 }) {
   const fade = `${reducedMotion ? '' : 'transition-opacity duration-200'} ${visible ? 'opacity-100' : 'opacity-0'}`;
-  // `key={shake}` montuje "Zabierz" od nowa, żeby powtórzyć animację potrząśnięcia - fokus (był na tym przycisku) wraca na nowy egzemplarz,
-  // inaczej spadłby na <body>, poza nakładkę i focus trap.
-  const takeRef = useRef<HTMLButtonElement | null>(null);
+  // Bez „Zabierz/Odłóż” (D-187, uwaga właściciela 2026-11-20: „wywalamy przyciski zabierz/odłóż”): dowód trafia do notatnika sam, gdy
+  // zbliżenie się otworzy (nazwa leci z grafiki do Notatnika); zamyka ✕ w rogu, klik w tło albo Esc. `shake` zostaje nieużywany.
+  void shake;
+  const graphicRef = useRef<HTMLDivElement | null>(null);
+  const autoTake = visible && !review && !noted && !!hotspot.evidence && !!hotspot.note;
   useEffect(() => {
-    if (shake > 0) takeRef.current?.focus();
-  }, [shake]);
+    if (autoTake && graphicRef.current) onTake(graphicRef.current);
+    // onTake celowo poza deps - raz na otwarcie przedmiotu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTake]);
   return (
     <>
+      {/* Tylko przy otwartym zbliżeniu - w trakcie najazdu/oddalania kamery niewidoczny przycisk nie może być skupialny. */}
+      {visible && (
+        <button
+          type="button"
+          aria-label="Zamknij"
+          data-autofocus
+          onClick={onPutDown}
+          className={`absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-ink/80 text-white shadow-card hover:bg-ink ${LIGHT_FOCUS}`}
+        >
+          <X aria-hidden="true" className="h-5 w-5" />
+        </button>
+      )}
       <div
+        ref={graphicRef}
         data-testid="scene-zoom-graphic"
         onClick={onBackdrop}
         className={`flex ${onScreen ? 'max-h-[94%]' : 'max-h-[88%]'} min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 ${fade}`}
@@ -873,38 +895,15 @@ function ZoomContent({
           <p className="max-w-[min(94%,720px)] shrink-0 rounded-card bg-ink/90 px-4 py-2 text-sm text-white shadow-card">{hotspot.content}</p>
         )}
       </div>
-      {visible && (
-        <div data-testid="scene-zoom-actions" className="flex shrink-0 flex-wrap items-center justify-center gap-2">
-          {noted ? (
-            <p className="inline-flex min-h-[44px] items-center gap-2 rounded-btn bg-success-soft px-4 text-sm font-bold text-success">
-              {hotspot.note && <NoteKindIcon kind={hotspot.note.kind} />}W notatniku
-            </p>
-          ) : (
-            !review && (
-              <button
-                key={shake}
-                ref={takeRef}
-                type="button"
-                data-autofocus
-                onClick={(event) => onTake(event.currentTarget)}
-                className={`${shake > 0 ? 'scene-zoom-shake' : ''} min-h-[44px] rounded-btn bg-accent px-5 text-sm font-bold text-white hover:bg-accent-hover ${LIGHT_FOCUS}`}
-              >
-                Zabierz
-              </button>
-            )
-          )}
-          <button
-            type="button"
-            data-autofocus={noted || review ? true : undefined}
-            onClick={onPutDown}
-            // Ghost - jasny tekst i obrys na ciemnym (D-102); wypełnienie ink 50% zamiast white/10 - na scenie przyciemnionej tylko w 35%
-            // biały tekst na jasnym fragmencie sceny miałby za mały kontrast.
-            className={`min-h-[44px] rounded-btn border border-white/70 bg-ink/50 px-5 text-sm font-bold text-white hover:bg-ink/70 ${LIGHT_FOCUS}`}
-          >
-            Odłóż
-          </button>
-        </div>
-      )}
+      {/* Dowód w notatniku - sama etykieta (bez przycisków). Dopisanie ogłasza podpowiedź „Mamy dowód!” (hints) - bez drugiego regionu
+          live, także przy ponownym otwarciu zebranego przedmiotu. */}
+      <div data-testid="scene-zoom-actions" className="flex min-h-0 shrink-0 flex-wrap items-center justify-center gap-2">
+        {visible && noted && (
+          <p className="inline-flex min-h-[36px] items-center gap-2 rounded-btn bg-success-soft px-4 text-sm font-bold text-success">
+            {hotspot.note && <NoteKindIcon kind={hotspot.note.kind} />}W notatniku
+          </p>
+        )}
+      </div>
     </>
   );
 }
@@ -967,13 +966,14 @@ function NewspaperPage({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
     <article
       tabIndex={0}
       data-testid="newspaper-page"
-      className="zoom-shadow flex max-h-full w-[min(94%,860px)] min-h-0 flex-col overflow-y-auto bg-[#F6F1E4] px-5 py-4 font-serif text-[#1E1B16] outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-8 sm:py-5"
+      // Kolory Unfooly (D-186, uwaga właściciela 2026-11-20): biała strona, winieta na fioletowym pasku, linie w akcencie.
+      className="zoom-shadow flex max-h-full w-[min(94%,860px)] min-h-0 flex-col overflow-y-auto rounded-card bg-surface px-5 py-4 font-serif text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-8 sm:py-5"
     >
-      <header className="shrink-0 border-b-4 border-double border-[#1E1B16] pb-2 text-center">
+      <header className="-mx-5 -mt-4 shrink-0 rounded-t-card bg-accent px-5 pb-2 pt-3 text-center text-white sm:-mx-8 sm:-mt-5 sm:px-8">
         <p className="text-[28px] font-black uppercase leading-none tracking-[0.06em] sm:text-[36px]">{media.masthead ?? 'Gazeta'}</p>
-        {media.date && <p className="mt-1.5 border-t border-[#1E1B16]/40 pt-1 text-xs uppercase tracking-[0.12em] text-[#4A443A]">{media.date}</p>}
+        {media.date && <p className="mt-1.5 border-t border-white/50 pt-1 text-xs uppercase tracking-[0.12em] text-white/90">{media.date}</p>}
       </header>
-      <h4 className="mt-3 text-[22px] font-bold leading-tight sm:text-[28px]">{media.title}</h4>
+      <h4 className="mt-3 border-b-2 border-accent/30 pb-2 text-[22px] font-bold leading-tight text-accent-ink sm:text-[28px]">{media.title}</h4>
       {lead && <p className="mt-2 text-base font-semibold leading-snug">{lead}</p>}
       {rest.length > 0 && (
         <div className="mt-2 gap-6 text-base leading-snug lg:columns-2 [&>p+p]:mt-2">

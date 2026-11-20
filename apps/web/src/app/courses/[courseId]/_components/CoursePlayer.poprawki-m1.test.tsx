@@ -175,7 +175,9 @@ describe('CoursePlayer: poprawki modułu 1 (D-181)', () => {
     expect(screen.getByPlaceholderText('wpisz domenę')).toHaveFocus();
     expect(within(monitor).getByRole('status')).toHaveTextContent('Domena zaznaczona.');
     fireEvent.change(screen.getByPlaceholderText('wpisz domenę'), { target: { value: 'formularz-online.net' } });
-    fireEvent.click(within(monitor).getByRole('button', { name: 'Sprawdź' }));
+    // „Sprawdź” w miejscu „Dalej” w dolnym pasku (D-187), nie w monitorze.
+    expect(within(monitor).queryByRole('button', { name: 'Sprawdź' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Sprawdź$/ }));
     await within(monitor).findByText('Poprawna odpowiedź!');
     expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith('/blocks/domena/attempt'))).toBe(true);
   });

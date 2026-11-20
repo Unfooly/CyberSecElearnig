@@ -67,18 +67,22 @@ export default function TabsBlock({
   const folder = block.look === 'folder';
   const tabClass = (selected: boolean) =>
     folder
-      ? `min-h-[44px] rounded-t-xl px-4 py-2 text-sm font-bold ${selected ? 'bg-[#FBF8F1] text-ink' : 'bg-[#D6C495] text-[#4A3B1C] hover:bg-[#E0CFA3]'}`
+      ? // Kolory Unfooly (D-186, uwaga właściciela 2026-11-20): fioletowa teczka, wybrana przekładka biała jak kartka.
+        `min-h-[44px] rounded-t-xl px-4 py-2 text-sm font-bold ${selected ? 'bg-surface text-ink' : 'bg-accent-ink text-white hover:bg-accent-hover'}`
       : `min-h-[44px] rounded-t border-b-2 px-3 py-2 text-sm font-medium ${
           selected ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-600 hover:text-slate-900'
         }`;
 
+  // Teczka na biurku ma STAŁĄ wysokość (D-186, uwaga właściciela 2026-11-20: „teczka zmienia wysokość w zależności od kontentu, a powinna
+  // być stała”): wypełnia obszar bloku (kolumna najwyżej 40 rem), kartka przewija się w środku - przełączanie zakładek nie zmienia rozmiaru.
+  const desk = folder && !!block.background && !review;
   const content = (
     <>
       <div
         role="tablist"
         aria-label={block.title ?? 'Zakładki'}
         // Miejsce na pieczątkę: na telefonie tekst rośnie do 15 px (.mobile-readable), stąd szersza rezerwa.
-        className={folder ? `flex flex-wrap gap-1.5 ${block.stamp ? 'pr-40 sm:pr-44' : ''}` : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'}
+        className={folder ? `flex shrink-0 flex-wrap gap-1.5 ${block.stamp ? 'pr-40 sm:pr-44' : ''}` : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'}
       >
         {tabs.map((tab, index) => (
           <button
@@ -110,7 +114,7 @@ export default function TabsBlock({
           data-testid={folder ? 'folder-sheet' : undefined}
           className={
             folder
-              ? 'min-h-[220px] rounded-b-xl rounded-tr-xl bg-[#FBF8F1] p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(74,59,28,0.08)] sm:p-7'
+              ? `${desk ? 'min-h-0 flex-1 overflow-y-auto' : 'min-h-[220px]'} rounded-b-xl rounded-tr-xl bg-surface p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(63,50,181,0.12)] sm:p-7`
               : 'rounded bg-slate-50 p-3'
           }
         >
@@ -125,18 +129,20 @@ export default function TabsBlock({
   // Tło pod teczką (D-178): biurko na cały obszar bloku (CoursePlayer daje wtedy układ 'scene' - podpowiedź bloku w rogu), teczka
   // wyśrodkowana na nim; teksty poza teczką (polecenie, licznik zakładek) na jasnym podłożu - nie leżą wprost na grafice (jak odsłuch,
   // B-138). Podgląd „Wstecz” - bez tła (zwykły slajd).
-  const desk = folder && !!block.background && !review;
-  const onDesk = desk ? 'w-fit rounded-card bg-surface/95 px-3 py-1.5 shadow-card' : '';
+  const onDesk = desk ? 'w-fit shrink-0 rounded-card bg-surface/95 px-3 py-1.5 shadow-card' : '';
   const body = (
     <>
       {block.prompt && <p className={`mb-3 text-lg text-slate-900 ${onDesk}`}>{block.prompt}</p>}
       {folder ? (
-        <div data-testid="folder" className={`relative rounded-2xl bg-[#E7D6AC] p-3 sm:p-5 ${desk ? 'shadow-[0_18px_40px_rgba(0,0,0,0.55)]' : 'shadow-card'}`}>
+        <div
+          data-testid="folder"
+          className={`relative rounded-2xl bg-accent p-3 sm:p-5 ${desk ? 'flex min-h-0 flex-1 flex-col shadow-[0_18px_40px_rgba(0,0,0,0.55)]' : 'shadow-card'}`}
+        >
           {block.stamp && (
             <p
               data-testid="folder-stamp"
-              // Ciemniejsza czerwień (#A3271B) - kontrast ≥ 4.5:1 na kremowej teczce (WCAG AA dla tekstu 12-15 px).
-              className="pointer-events-none absolute right-3 top-3 z-10 rotate-[-6deg] rounded-md border-[3px] border-[#A3271B] px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-[#A3271B] sm:right-5 sm:top-4 sm:text-sm"
+              // Biała pieczątka na fioletowej teczce (D-186) - czerwień na fiolecie nie miałaby kontrastu; biel na #6C5CE7 ok. 4.6:1.
+              className="pointer-events-none absolute right-3 top-3 z-10 rotate-[-6deg] rounded-md border-[3px] border-white px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-white sm:right-5 sm:top-4 sm:text-sm"
             >
               {block.stamp}
             </p>
@@ -150,13 +156,15 @@ export default function TabsBlock({
     </>
   );
   if (!desk) return <div>{body}</div>;
-  // Tło w zewnętrznym (nieprzewijanym) elemencie - nie jedzie z treścią; przewija się wewnętrzny, a teczkę środkuje `m-auto` (nie
-  // `justify-center`, które w kontenerze przewijanym ucina górę przy treści wyższej niż ekran).
+  // Tło w zewnętrznym (nieprzewijanym) elemencie - nie jedzie z treścią. Teczka o stałej wysokości (D-186): kolumna na cały obszar (najwyżej
+  // 40 rem razem z poleceniem i licznikiem), wyśrodkowana w pionie; przewija się tylko kartka w teczce.
   return (
     <div data-testid="folder-desk" className="relative isolate flex min-h-0 w-full flex-1 flex-col">
       <BlockBackground contentBase={contentBase} image={block.background} imagePortrait={block.backgroundPortrait} />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-5 sm:px-8 sm:py-8">
-        <div className="m-auto w-full max-w-3xl">{body}</div>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-5 sm:px-8 sm:py-8">
+        <div data-testid="folder-column" className="flex h-full max-h-[40rem] min-h-0 w-full max-w-3xl flex-col">
+          {body}
+        </div>
       </div>
     </div>
   );

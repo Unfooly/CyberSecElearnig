@@ -918,9 +918,12 @@
   }
 }
 
-/* Okno na pulpicie komputera ze sceny (D-184, DesktopStage.tsx): pulpit z ramką monitora na cały obszar bloku (cover), przy wejściu
-   lekki najazd kamery (1 -> 1.06, 700 ms) i pojawienie się okna; okno wyśrodkowane, przewijane w sobie. Do krawędzi obszaru jak monitor. */
+/* Okno na pulpicie komputera ze sceny (D-184, DesktopStage.tsx). Do krawędzi obszaru jak monitor. Domyślnie (bez prostokąta ekranu albo
+   obszar wyższy niż szeroki - telefon w pionie): pulpit na cały obszar (cover) z lekkim najazdem (1 -> 1.06, 700 ms), okno wyśrodkowane
+   nad nim, przewijane w sobie. Z prostokątem ekranu (D-186, „wbudowane w wyświetlacz”) na obszarze co najmniej kwadratowym: jak telefon
+   (.phone-stage) - ekran grafiki wpisany w obszar z marginesem 4%, okno dokładnie w ekranie, najazd całej ramki (0.88 -> 1). */
 .desktop-stage {
+  container: desk / size;
   position: relative;
   flex: 1 1 0%;
   width: calc(100% + 1.5rem);
@@ -928,6 +931,10 @@
   min-height: 0;
   overflow: hidden;
   background: #1b1424;
+}
+.desktop-stage-frame {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -950,12 +957,53 @@
   border-radius: 12px;
   box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
 }
+@container desk (min-aspect-ratio: 1 / 1) {
+  .desktop-stage[data-screen] .desktop-stage-frame {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    padding: 0;
+    display: block;
+    translate: calc(-1 * var(--screen-cx)) calc(-1 * var(--screen-cy));
+    width: min(calc(100cqw * 0.96 / var(--screen-w-n)), calc(100cqh * 0.92 / var(--screen-h-n) * var(--desk-ratio-n)));
+    aspect-ratio: var(--desk-ratio-n);
+  }
+  .desktop-stage[data-screen] .desktop-stage-bg {
+    object-fit: fill;
+    transform: none;
+    animation: none;
+  }
+  .desktop-stage[data-screen] .desktop-stage-window {
+    position: absolute;
+    left: var(--screen-left);
+    top: var(--screen-top);
+    width: var(--screen-width);
+    height: var(--screen-height);
+    max-height: none;
+    border-radius: 4px;
+    box-shadow: none;
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .desktop-stage-bg {
     animation: desktop-stage-zoom 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
   .desktop-stage-window {
     animation: desktop-stage-window 300ms ease-out 350ms both;
+  }
+  @container desk (min-aspect-ratio: 1 / 1) {
+    .desktop-stage[data-screen] .desktop-stage-frame {
+      animation: desktop-stage-frame-zoom 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+  }
+}
+@keyframes desktop-stage-frame-zoom {
+  from {
+    transform: scale(0.88);
+  }
+  to {
+    transform: scale(1);
   }
 }
 @keyframes desktop-stage-zoom {

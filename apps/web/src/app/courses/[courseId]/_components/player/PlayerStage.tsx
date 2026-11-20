@@ -95,6 +95,9 @@ export interface PlayerStageProps {
   /** Puls „Dalej” i ogłoszenie gotowości tylko przy gotowości bloku i wyniku - nie w podglądzie „Wstecz” (tam „Dalej” też jest aktywny,
       ale to nawigacja po historii, nie nowy stan; B-126). Domyślnie true. */
   announceForward?: boolean;
+  /** Skrót Enter/→ (D-106). false, gdy w miejscu „Dalej” jest akcja bloku (D-187: „Sprawdź…”) - odpowiedzi nie da się cofnąć, więc wysyła
+      ją wyłącznie świadomy klik albo Enter na samym przycisku. Domyślnie true. */
+  forwardShortcut?: boolean;
   /** Tryb prosty (D-132): klasa .simple-mode na ramce - cały tekst modułu min. 16 px (globals.css). */
   simpleMode?: boolean;
   /** Język treści kursu (D-133) - atrybut `lang` obszaru treści i tytułu (czytnik ekranu czyta treść właściwą wymową; paski - polski interfejs). */
@@ -130,6 +133,7 @@ function PlayerStageInner({
   forwardLabel = 'Dalej',
   forwardHref,
   announceForward = true,
+  forwardShortcut = true,
   simpleMode = false,
   lang,
   onExitClick,
@@ -171,7 +175,7 @@ function PlayerStageInner({
   // własnego znaczenia tam, gdzie jest fokus (forwardShortcutAllowed). Bez skrótu, gdy „Dalej” jest wyjściem z modułu (forwardHref -
   // „Wróć do biblioteki” na ekranie zamknięcia: Enter po „Zakończ sprawę” nie może pominąć ceremonii i wyrzucić do biblioteki) i przez
   // SHORTCUT_GRACE_MS po aktywacji. "Wstecz" nie ma skrótu (← w scenie/rozmowie ma własne znaczenie).
-  const shortcutActive = forwardHref === undefined && canForward;
+  const shortcutActive = forwardHref === undefined && canForward && forwardShortcut;
   const blockingOverlayOpen = useBlockingOverlayOpen();
   useEffect(() => {
     if (!shortcutActive || blockingOverlayOpen) return undefined;

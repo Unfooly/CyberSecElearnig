@@ -5,6 +5,7 @@ import { Check, Info, Paperclip, X } from 'lucide-react';
 import type { ContentBlock, ContentReaction, EmailCriterion, ResultDetail } from '@/lib/courses-types';
 import { useHints } from '../player/hints';
 import MonitorStage from '../player/MonitorStage';
+import { useBarAction, useHasBarAction } from '../player/bar-action';
 
 // Analiza maila: makieta klienta pocztowego (nadawca z nazwą i adresem, opcjonalny adresat "Do:", data, temat, treść, załącznik,
 // linki). Kryteria zaznacza się klikając FRAGMENT maila (nadawca, temat, link, załącznik, fragment tekstu) - to zwykłe, fokusowalne
@@ -131,6 +132,10 @@ export default function EmailAnalysisBlock({
     // Jednorazowo przy pokazaniu wyniku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // „Sprawdź odpowiedź” w miejscu „Dalej” (D-187) - przed odpowiedzią; po niej pasek wraca do „Dalej”. Przed wczesnym return (hooki).
+  const inBar = useHasBarAction();
+  useBarAction(readOnly || !email ? null : { label: 'Sprawdź odpowiedź', enabled: !disabled, run: () => onSubmit?.({ selected }) });
 
   if (!email) return <p className="text-slate-500">Brak treści maila.</p>;
 
@@ -375,14 +380,17 @@ export default function EmailAnalysisBlock({
           </p>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onSubmit?.({ selected })}
-          className="mt-4 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Sprawdź odpowiedź
-        </button>
+        // W odtwarzaczu „Sprawdź odpowiedź” jest w miejscu „Dalej” (D-187); własny przycisk tylko bez paska.
+        !inBar && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onSubmit?.({ selected })}
+            className="mt-4 min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            Sprawdź odpowiedź
+          </button>
+        )
       )}
     </div>
   );

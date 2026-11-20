@@ -2,8 +2,8 @@
 // zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-02.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko kursu
 // stworzonego przez ten przebieg). Cel: odprawa (statyczna scena z połączeniem od Oli), scena telefonu (3 cele, zbliżenie ekranu
 // logowania), trzy wybory z natychmiastową oceną (najpierw zła odpowiedź - komunikat „Nie tym razem”, potem dobra), sortowanie
-// 6 wiadomości (5 przyciskami, 1 gestem przeciągnięcia), raport z trzema zasadami i ekran zamknięcia sprawy (zasady w grafice,
-// podpis jednym dotknięciem, pieczęć i liścik) - bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy pola `correct`.
+// 6 wiadomości (5 przyciskami, 1 gestem przeciągnięcia), a po nich - bez ekranu raportu (D-169) - ekran końca (D-165) z trzema
+// zasadami na wynos; przed odprawą ekran startu (D-163). Bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy pola `correct`.
 //
 // Nagrania i grafiki modułu 3 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
@@ -18,13 +18,15 @@ import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+import { checkEndScreen, completionResponse, passStartScreen } from './lib/module-screens.mjs';
 
 // Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
 assertLocalDatabase('scripts/e2e-module-03.mjs');
 
 const SLUG = 'lancuszek';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
-const MODULE_TITLE = typeof MODULE.title === 'string' ? MODULE.title : MODULE.title.pl;
+const text = (value) => (typeof value === 'string' ? value : value?.pl);
+const MODULE_TITLE = text(MODULE.title);
 const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3110';
@@ -117,7 +119,8 @@ try {
   page.on('console', (message) => {
     if (message.type() === 'error') problems.push(`console: ${message.text().slice(0, 200)}`);
   });
-  // Klucz odpowiedzi nigdy w treści bloków ani w `/check` (D-132: `correct` jest sekretem, `/check` zwraca tylko result good/bad).
+  // Klucz odpowiedzi nigdy w odpowiedziach `/api` (w praktyce `/check`; D-132: `correct` jest sekretem, `/check` zwraca tylko result
+  // good/bad). Treść bloków przychodzi w HTML/RSC strony - tę pilnują classification.spec.ts i e2e API.
   // `/progress` pomijamy: jego `lastResult.correct` to ocena odpowiedzi, którą gracz już wysłał, nie klucz.
   page.on('response', async (response) => {
     if (response.status() >= 500) problems.push(`${response.status()} ${response.url()}`);
@@ -137,8 +140,8 @@ try {
   step(`Katalog: karta i miniatura „${MODULE_TITLE}”`, (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
 
   await page.goto(`${WEB}/courses/${courseId}`);
-  await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
-  step('Player: nagłówek z nazwą modułu', true);
+  await passStartScreen(page, step, { title: MODULE_TITLE, caseNumber: MODULE.caseNumber, notice: MODULE.startNotice && text(MODULE.startNotice) });
+  await shot('0-start');
 
   const bar = () => page.getByTestId('player-bottombar');
   const nextEnabled = () => bar().getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
@@ -212,9 +215,12 @@ try {
   await shot('3-zblizenie-logowanie');
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await closed();
-  await page.waitForFunction(() => document.querySelector('[data-testid="evidence-counter"]')?.textContent?.includes('3/3'), null, { timeout: 15000 });
-  step('SCENE_HOTSPOTS: trzy cele w notatniku (Dowody 3/3)', true);
+  // Bez notatnika i licznika dowodów (D-162): po trzech celach „Dalej” w pasku jest aktywny.
+  await nextEnabled().waitFor({ timeout: 15000 });
+  step('SCENE_HOTSPOTS: po trzech celach „Dalej” aktywny', true);
   await goNext();
+  // Ostatni wybór zapisuje „Dalej”, a zaraz po nim odtwarzacz sam zapisuje raport (SUMMARY bez ekranu, D-169) - ten zapis kończy kurs.
+  const completion = completionResponse(page, courseId, 600000);
 
   // --- 3-6. Wybory (QUIZ w trybie prostym: zła odpowiedź -> „Nie tym razem”, potem dobra -> „Dobrze” i „Dalej”) i skrzynka (blok 4) -
   for (const id of ['zaloguj', 'wiadomosci', 'blik', 'kod-sms']) {
@@ -310,35 +316,13 @@ try {
     await goNext();
   }
 
-  // --- 7. Raport (SUMMARY z trzema zasadami jako lista w tekście), potem ekran zamknięcia sprawy (jak w module 2) --------------
+  // --- 7. Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ----------
+  const finishedBody = await (await completion).json();
+  step('Zakończenie: kurs ukończony (status COMPLETED) bez ekranu raportu', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
   const rules = ['Dziwna prośba od znajomego? Zadzwoń na znany numer.', 'Kodu z SMS-a nie podajesz nikomu.', 'Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.'];
-  for (const rule of rules) {
-    await page.locator('ol li', { hasText: rule }).first().waitFor({ timeout: 20000 });
-  }
-  step('SUMMARY: trzy zasady z raportu na liście', (await page.locator('ol li').count()) >= 3);
-  step('SUMMARY: wszystkie dowody (3 z 3)', (await page.getByText('Zebrane dowody: 3 z 3').count()) >= 1);
-  await shot('7-raport');
-  const finished = progressResponse();
-  await bar().getByRole('button', { name: 'Zakończ sprawę' }).click();
-  const finishedBody = await (await finished).json();
-  step('Zakończenie: kurs ukończony (status COMPLETED)', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
-
-  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
-  await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
-  const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
-  const report = page.getByTestId('case-closed').getByRole('img', { name: /Raport końcowy w teczce/ });
-  step('Zamknięcie: grafika raportu (zasady wpalone w grafikę) załadowana', await report.evaluate((img) => img.complete && img.naturalWidth > 0));
-  const reportAlt = (await report.getAttribute('alt')) ?? '';
-  step('Zamknięcie: opis alt raportu zawiera wszystkie trzy zasady', rules.every((rule) => reportAlt.includes(rule)), reportAlt);
-  step('Zamknięcie: dowody 3/3', (await slotText('closing-evidence')) === '3/3', await slotText('closing-evidence'));
-  step('Zamknięcie: czas sprawy w minutach i +XP', /^\d+ min$/.test(await slotText('closing-time')) && /^\+[1-9]\d*$/.test(await slotText('closing-xp')), `${await slotText('closing-time')} | ${await slotText('closing-xp')}`);
-  step('Zamknięcie: bez wpisywanych wniosków (zasady są w grafice)', (await page.getByTestId('closing-lesson-typed').count()) === 0);
-  await shot('8-zamkniecie-przed-podpisem');
-  await page.getByRole('button', { name: 'Podpisz raport' }).click();
-  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
-  step('Zamknięcie: podpis jednym dotknięciem, potem pieczęć i liścik', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1);
-  await shot('9-zamkniecie-podpisane');
-  step('Klucz odpowiedzi (`correct`) nigdy w treści bloków ani w /check', leaks.length === 0, leaks.join(' | '));
+  await checkEndScreen(page, step, { completion: finishedBody, rules });
+  await shot('8-koniec');
+  step('Klucz odpowiedzi (`correct`) nigdy w odpowiedziach /check', leaks.length === 0, leaks.join(' | '));
   step('Bez błędów strony, konsoli i odpowiedzi 5xx', problems.length === 0, problems.join(' | '));
 
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);

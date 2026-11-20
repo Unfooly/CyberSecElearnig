@@ -1,29 +1,44 @@
-// E2E w przeglądarce (Playwright) — pełne przejście modułu 1 ("Zabawa w phishing", do D-170 „Wyłudzone hasło”; packages/content/modules/wyludzone-haslo)
-// zaimportowanego PRAWDZIWYM CLI (apps/api/dist/scripts/content-import.js), nie ręcznie sklejoną treścią jak w scripts/e2e-registration.mjs.
-// Cel: udowodnić, że treść modułu 1 (schemat v4: NARRATIVE, character.opening, reactions, email.to, markdown w TABS/SUMMARY) faktycznie
-// działa w przeglądarce od importu do ukończenia kursu, nie tylko przechodzi parseModule.
+// E2E w przeglądarce (Playwright) - pełne przejście modułu 1 („Zabawa w phishing”, scenariusz „Webinar” D-176, okna D-178/D-179;
+// packages/content/modules/wyludzone-haslo) zaimportowanego PRAWDZIWYM CLI (apps/api/dist/scripts/content-import.js), nie ręcznie
+// sklejoną treścią. Przebieg: ekran startu (D-163, uwaga D-171) → teczka na biurku → biuro (komputer = drzwi) → pulpit (Poczta = drzwi,
+// Internet, easter egg „Ciekawski detektyw”) → mail w monitorze → biuro z ✓ → ekran telefonu → czat → domena → Tak/Nie → biuro z dwoma ✓
+// → rozmowa z Pawłem → tablica → raport w teczce → gazeta → (podsumowanie zapisuje się samo, D-169) → ekran końca (D-165) → osiągnięcia.
 //
 // Rejestracja/aktywacja organizacji NIE jest tu powtarzana (pełna ścieżka: scripts/e2e-registration.mjs) - organizację i pracownika
-// tworzymy wprost przez Prisma (ACTIVE, jak w istniejących testach e2e apps/api), żeby skupić się na odtwarzaczu.
+// tworzymy wprost przez Prisma (ACTIVE, jak w testach e2e apps/api), żeby skupić się na odtwarzaczu.
 //
-// Wymaga zbudowanych pakietów: `npm run build --workspace=packages/content`, `--workspace=apps/api` (skrypt importuje treść
-// przez skompilowany apps/api/dist/scripts/content-import.js i startuje API z apps/api/dist/main.js). Web NIE wymaga builda -
-// startuje przez `next dev` (patrz komentarz przy jego uruchomieniu niżej), kompiluje z apps/web/src na bieżąco.
+// Wymaga zbudowanych pakietów: `npm run build --workspace=packages/content`, `--workspace=apps/api` (import przez skompilowany
+// apps/api/dist/scripts/content-import.js, API z apps/api/dist/main.js). Web startuje przez `next dev` (komentarz niżej).
+// Grafiki i nagrania modułu 1 są wyłącznie na R2 (pipeline treści), więc web dostaje CONTENT_BASE_URL.
 //
 // Użycie z katalogu repo (dotenv-cli ładuje bazę i sekrety JWT z .env):
-//   npx dotenv -e .env -- node scripts/e2e-module-01.mjs
-// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk; bez easter egga pulpitu). Scenariusz wznowienia po wyjściu (X i „Kontynuuj
-// naukę” bez przeładowania, D-142) jest częścią przebiegu.
+//   CONTENT_BASE_URL=https://content.unfooly.com npx dotenv -e .env -- node scripts/e2e-module-01.mjs
+// Opcjonalnie: E2E_VIEWPORT=390x844 (telefon w pionie, dotyk; bez easter egga pulpitu) zamiast domyślnego 1366x768,
+// E2E_WEB_MODE=start (build produkcyjny, D-142), E2E_SHOTS_DIR=<katalog> (zrzut każdego bloku do przeglądu graficznego).
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+import { checkEndScreen, completionResponse, passStartScreen } from './lib/module-screens.mjs';
 
 // Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
 assertLocalDatabase('scripts/e2e-module-01.mjs');
+
+const SLUG = 'wyludzone-haslo';
+const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
+const text = (value) => (typeof value === 'string' ? value : value?.pl);
+const MODULE_TITLE = text(MODULE.title);
+const blockOf = (id) => {
+  const block = MODULE.blocks.find((item) => item.id === id);
+  if (!block) throw new Error(`Brak bloku "${id}" w module ${SLUG} - skrypt nieaktualny względem treści`);
+  return block;
+};
+const BLOCK_IDS = MODULE.blocks.map((block) => block.id);
+const positionOf = (id) => `blok ${BLOCK_IDS.indexOf(id) + 1} z ${BLOCK_IDS.length}`;
 
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3110';
@@ -34,19 +49,17 @@ const DOMAIN = `module-01-e2e-${RUN}.test`;
 const EMAIL = `pracownik@${DOMAIN}`;
 const PASSWORD = 'E2e-Haslo-Testowe-1!';
 const ORG_NAME = `Module 01 E2E ${RUN}`;
-const MODULE_TITLE = 'Zabawa w phishing';
-// Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk); domyślnie okno Playwrighta 1280x720 jak dotąd.
-const VIEWPORT = process.env.E2E_VIEWPORT?.split('x').map(Number);
-if (VIEWPORT && (VIEWPORT.length !== 2 || !VIEWPORT.every((n) => Number.isInteger(n) && n > 0))) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
-// Opcjonalnie E2E_WEB_MODE=start - web z buildu produkcyjnego zamiast `next dev` (D-142).
+const [VW, VH] = (process.env.E2E_VIEWPORT ?? '1366x768').split('x').map(Number);
+if (![VW, VH].every((n) => Number.isInteger(n) && n > 0)) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
 const WEB_MODE = process.env.E2E_WEB_MODE ?? 'dev';
 if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);
-// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie Curious Detective: kaskada okienek na telefonie
-// to inny przebieg, poza zakresem tego skryptu (pełna ścieżka desktopowa bez zmian).
-const PHONE = !!VIEWPORT && VIEWPORT[0] < 768;
+// Na telefonie skrypt pomija easter egg pulpitu (D-100) i zależne od niego osiągnięcie: kaskada okienek na telefonie to inny przebieg,
+// poza zakresem tego skryptu (pełna ścieżka desktopowa bez zmian).
+const PHONE = VW < 768;
+const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 
 const children = [];
-let apiLog = '';
+let log = '';
 const results = [];
 
 function step(name, ok, detail = '') {
@@ -65,12 +78,11 @@ async function waitFor(check, what, timeoutMs = 60000) {
   throw new Error(`Timeout: ${what}`);
 }
 
-function start(name, command, args, env, cwd) {
+function start(command, args, env, cwd) {
   const child = spawn(command, args, { env: { ...process.env, ...env }, cwd, shell: false });
   children.push(child);
-  child.stdout.on('data', (chunk) => (apiLog += chunk.toString()));
-  child.stderr.on('data', (chunk) => (apiLog += chunk.toString()));
-  return child;
+  child.stdout.on('data', (chunk) => (log += chunk.toString()));
+  child.stderr.on('data', (chunk) => (log += chunk.toString()));
 }
 
 let prisma;
@@ -78,41 +90,27 @@ let browser;
 let page;
 let orgId;
 let courseId;
-// Sprzątamy TYLKO kurs, który TEN przebieg naprawdę stworzył (importResult.courseCreated) - importModule robi upsert po
-// slug, więc gdy developer wcześniej sam uruchomił `content:import` dla tego samego modułu, ten skrypt znajduje ISTNIEJĄCY
-// kurs zamiast tworzyć nowy; bezwarunkowe kasowanie po id skasowałoby wtedy cudzy (nie-testowy) kurs z lokalnej bazy.
+// Sprzątamy TYLKO kurs, który TEN przebieg naprawdę stworzył (importResult.courseCreated) - importModule robi upsert po slug, więc gdy
+// developer wcześniej sam uruchomił `content:import`, skrypt znajduje ISTNIEJĄCY kurs; kasowanie go skasowałoby cudzy kurs z lokalnej bazy.
 let courseCreatedByThisRun = false;
 try {
-  const apiEnv = { PORT: API_PORT, FRONTEND_URL: WEB, MAILERSEND_API_TOKEN: '', BACKGROUND_JOBS_ENABLED: 'false', NODE_ENV: 'development' };
-  start('api', process.execPath, ['apps/api/dist/main.js'], apiEnv, process.cwd());
-  // `next dev`, NIE `next start`: `next start` twardo ustawia NODE_ENV=production WEWNĄTRZ CLI (nie da się tego nadpisać
-  // zmienną środowiskową procesu) - cookies (auth-cookies.ts) dostają wtedy Secure, którego przeglądarka nigdy nie wyśle
-  // bez TLS (przechowuje, ale nie wysyła - stąd 401 na każdym żądaniu do BFF mimo poprawnego zalogowania; zweryfikowane
-  // empirycznie). `next dev` kompiluje z apps/web/src na bieżąco (bez wymogu wcześniejszego `next build`), więc ten
-  // skrypt zawsze testuje NAJNOWSZY kod, nie stary build .next. Skutek uboczny (CSP z unsafe-eval/WebSocket, D-053 pkt 5)
-  // nie ma znaczenia: ten skrypt nie sprawdza nagłówków CSP (to robi scripts/e2e-registration.mjs).
-  // E2E_WEB_MODE=start (D-142): build produkcyjny (`next start`, wymaga wcześniejszego `next build` apps/web) - pamięć routera klienta
-  // i prefetch działają w nim inaczej niż w `next dev`. Ciasteczka z Secure: patrz komentarz wyżej i obsługa w WEB_MODE niżej.
-  start(
-    'web',
-    process.execPath,
-    [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), WEB_MODE, '-p', WEB_PORT],
-    { API_URL: API },
-    join(process.cwd(), 'apps', 'web'),
-  );
-
+  if (!process.env.CONTENT_BASE_URL) throw new Error('Brak CONTENT_BASE_URL - grafiki i nagrania modułu 1 są tylko na R2.');
+  start(process.execPath, ['apps/api/dist/main.js'], { PORT: API_PORT, FRONTEND_URL: WEB, MAILERSEND_API_TOKEN: '', BACKGROUND_JOBS_ENABLED: 'false', NODE_ENV: 'development' }, process.cwd());
+  // `next dev`, NIE `next start`: `next start` twardo ustawia NODE_ENV=production WEWNĄTRZ CLI - cookies (auth-cookies.ts) dostają wtedy
+  // Secure, którego przeglądarka bez TLS nie wyśle (401 na każdym żądaniu do BFF). `next dev` kompiluje z apps/web/src na bieżąco, więc
+  // skrypt testuje NAJNOWSZY kod. E2E_WEB_MODE=start (D-142): build produkcyjny - pamięć routera i prefetch działają w nim inaczej.
+  start(process.execPath, [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), WEB_MODE, '-p', WEB_PORT], { API_URL: API }, join(process.cwd(), 'apps', 'web'));
   await waitFor(async () => (await fetch(`${API}/`)).status > 0, 'start API');
   await waitFor(async () => (await fetch(`${WEB}/`)).ok, 'start web');
 
-  // Import PRAWDZIWEGO modułu przez PRAWDZIWY skrypt (ta sama ścieżka co produkcja - D-051 pkt 11), nie ręczna treść.
-  // Skrypt jest CJS, a ten plik ESM: ścieżka z rozszerzeniem, eksport przez interop (jak w scripts/e2e-registration.mjs).
+  // Import PRAWDZIWEGO modułu przez PRAWDZIWY skrypt (ta sama ścieżka co produkcja - D-051 pkt 11). Skrypt jest CJS, ten plik ESM.
   const contentImport = await import('../apps/api/dist/scripts/content-import.js');
   prisma = new PrismaClient();
   const modules = await contentImport.loadModules(join(process.cwd(), 'packages', 'content', 'modules'));
-  const wyludzoneHaslo = modules.find((m) => m.slug === 'wyludzone-haslo');
-  step('content-import: moduł "wyludzone-haslo" wczytany i zwalidowany', !!wyludzoneHaslo, `${modules.length} modułów łącznie`);
-  const importResult = await prisma.$transaction((tx) => contentImport.importModule(tx, wyludzoneHaslo));
-  step('content-import: moduł zaimportowany do bazy (10 bloków)', importResult.courseId != null && importResult.slug === 'wyludzone-haslo', JSON.stringify(importResult));
+  const loaded = modules.find((m) => m.slug === SLUG);
+  step(`content-import: moduł "${SLUG}" wczytany i zwalidowany`, !!loaded, `${modules.length} modułów łącznie`);
+  const importResult = await prisma.$transaction((tx) => contentImport.importModule(tx, loaded));
+  step(`content-import: moduł zaimportowany do bazy (${BLOCK_IDS.length} bloków)`, importResult.courseId != null && importResult.slug === SLUG, JSON.stringify(importResult));
   courseId = importResult.courseId;
   courseCreatedByThisRun = importResult.courseCreated;
 
@@ -131,178 +129,116 @@ try {
   step('organizacja ACTIVE i pracownik z przypisanym kursem utworzeni', true);
 
   browser = await launchPolishBrowser(chromium);
-  page = await (
-    await browser.newContext(VIEWPORT ? { viewport: { width: VIEWPORT[0], height: VIEWPORT[1] }, isMobile: VIEWPORT[0] < 768, hasTouch: VIEWPORT[0] < 768 } : {})
-  ).newPage();
+  page = await (await browser.newContext({ viewport: { width: VW, height: VH }, isMobile: PHONE, hasTouch: PHONE })).newPage();
+  const problems = [];
+  page.on('pageerror', (error) => problems.push(`pageerror: ${error.message.slice(0, 200)}`));
+  // Treść bloków przychodzi w HTML/RSC strony (`/start` woła serwer Next), nie przez `/api` - klucza odpowiedzi w treści pilnują
+  // classification.spec.ts (packages/content) i e2e API. Tu: odpowiedź `/attempt` w bloku „domena” (bez rozwiązania i podpowiedzi).
+  page.on('response', (response) => {
+    if (response.status() >= 500) problems.push(`${response.status()} ${response.url()}`);
+  });
+  const shot = async (name) => {
+    if (!SHOTS_DIR) return;
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: join(SHOTS_DIR, `${VW}x${VH}-${name}.png`) });
+  };
 
-  // 1. Logowanie -> pracownik ląduje na /courses (homePathForRole).
+  // 1. Logowanie -> pracownik ląduje na /courses (homePathForRole); katalog z nazwą modułu (D-170).
   await page.goto(`${WEB}/login`);
   await page.fill('input[type=email]', EMAIL);
   await page.fill('input[type=password]', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
-  step('logowanie pracownika kieruje na /courses', true);  // Nazwa modułu „Zabawa w phishing” (D-170; wcześniej „Wyłudzone hasło”): katalog (karta + alt miniatury), nagłówek playera, raport - bez „Sprawa:”.
+  step('logowanie pracownika kieruje na /courses', true);
   await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
-  step(`Katalog: karta i miniatura modułu z nazwą „${MODULE_TITLE}”, nigdzie „Sprawa: …” ani starej nazwy`,
-    (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1 &&
-      (await page.getByText(/Sprawa: (wyłudzone|zabawa)/i).count()) === 0 &&
-      (await page.getByText('Wyłudzone hasło', { exact: true }).count()) === 0);
+  step(
+    `Katalog: karta i miniatura modułu „${MODULE_TITLE}”, bez starej nazwy`,
+    (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1 && (await page.getByText('Wyłudzone hasło', { exact: true }).count()) === 0,
+  );
 
-  await page.goto(`${WEB}/courses/${courseId}`);
-  await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
-  step(`Player: nagłówek z nazwą modułu „${MODULE_TITLE}”`, true);
-  const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
-  // Jeden „Dalej” (D-106): całe przejście modułu idzie WYŁĄCZNIE przez przycisk w dolnym pasku; w obszarze bloku nie ma żadnego
-  // przycisku nawigacji dalej (noInBlockNext - sprawdzane w każdym bloku).
   const bar = () => page.getByTestId('player-bottombar');
   const nextEnabled = () => bar().getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':enabled'));
   const nextDisabled = async () => (await bar().getByRole('button', { name: 'Dalej', exact: true }).and(page.locator(':disabled')).count()) === 1;
-  const IN_BLOCK_NEXT = /^(Dalej|Kontynuuj|Przejdź dalej|Zakończ scenę|Sprawdź i dalej|Zakończ sprawę|Zakończ szkolenie|Wróć do biblioteki|Wchodzę)$/;
+  const isProgress = (r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST';
+  const progressResponse = () => page.waitForResponse(isProgress);
+  // Jeden „Dalej” (D-106): w obszarze bloku nie ma przycisku nawigacji dalej.
+  const IN_BLOCK_NEXT = /^(Dalej|Kontynuuj|Przejdź dalej|Zakończ scenę|Sprawdź i dalej|Zakończ sprawę|Zakończ szkolenie|Wróć do biblioteki)$/;
   const noInBlockNext = async () =>
     (await page.getByTestId('player-content-area').getByRole('button', { name: IN_BLOCK_NEXT }).count()) === 0 &&
     (await page.getByTestId('player-content-area').getByRole('link', { name: IN_BLOCK_NEXT }).count()) === 0;
-  // D-093: odtwarzacz nie pokazuje postaci - żadnego obrazka maskotki (alt ani plik z /mascot/).
-  const noMascot = async () => (await page.getByAltText(/Maskotka/).count()) === 0 && (await page.locator('img[src*="/mascot/"]').count()) === 0;
-  // reactions.complete (klient) może na chwilę "przegrać" wyścig z inną reakcją zdarzeniową (np. hints.notify('evidence') przy
-  // ostatnim wymaganym elemencie, który JEST też dowodem - DialogueBlock.tsx/SceneHotspotsBlock.tsx) w tym samym cyklu renderowania:
-  // druga reakcja (z useCompleteHint) nadpisuje pierwszą w KOLEJNYM, natychmiastowym cyklu efektów. getByText(...).waitFor()
-  // (auto-retry Playwrighta) czeka na TEN docelowy tekst zamiast zgadywać z arbitralnym opóźnieniem.
-  const reactionText = (text) => page.getByText(text, { exact: true }).waitFor();
-
-  // Zbliżenie przedmiotu (D-086): klik w przedmiot -> kamera przybliża scenę (450 ms), nakładka role="dialog" z grafiką i
-  // "Zabierz"/"Odłóż". "Zabierz" przy dowodzie dopisuje notatkę i odkłada przedmiot, "Odłóż" tylko odkłada; oddalenie trwa 350 ms -
-  // czekamy, aż nakładka zniknie, zanim klikniemy kolejny przedmiot (zasłania scenę, tak jak dla prawdziwego użytkownika).
+  const goNext = async (what) => {
+    const saved = progressResponse();
+    await nextEnabled().click();
+    const response = await saved;
+    step(`${what}: „Dalej” w pasku zapisuje blok`, response.ok(), `HTTP ${response.status()}`);
+    return response;
+  };
   const dialog = () => page.getByRole('dialog');
   const closed = () => page.getByTestId('scene-zoom').waitFor({ state: 'detached' });
-  const take = async () => {
-    await dialog().getByRole('button', { name: 'Zabierz' }).click();
-    await closed();
-  };
-  const putDown = async () => {
+  const hotspot = (id) => page.getByTestId(`hotspot-overlay-${id}`);
+  // Karta przedmiotu (treść bez grafiki): otwarcie = obejrzane (wymagane liczą się po obejrzeniu), „Odłóż” zamyka zbliżenie.
+  // Treść karty z module.json (pierwsze słowa wystarczą do znalezienia jej w zbliżeniu).
+  const cardText = (blockId, id) => text(blockOf(blockId).hotspots.find((h) => h.id === id).content).slice(0, 40);
+  const lookAt = async (blockId, id) => {
+    await hotspot(id).click();
+    await dialog().getByText(cardText(blockId, id)).waitFor();
     await dialog().getByRole('button', { name: 'Odłóż' }).click();
     await closed();
   };
-  const briefingItem = async (name) => {
-    const item = page.getByRole('button', { name, exact: true });
-    await item.waitFor();
-    const testId = await item.getAttribute('data-testid');
-    if (testId !== 'briefing-hotspot') throw new Error(`"${name}" nie jest przedmiotem na scenie odprawy (data-testid: ${testId})`);
-    await item.click();
+  // Drzwi (action:'next'): klik zapisuje blok i przechodzi dalej - bez osobnego „Dalej” (D-129).
+  const door = async (id, what) => {
+    const label = (await hotspot(id).getAttribute('aria-label')) ?? id;
+    const saved = progressResponse();
+    await hotspot(id).click();
+    step(`${what}: klik w drzwi „${label}” zapisuje blok i przechodzi dalej`, (await saved).ok());
+  };
+  const doneMark = (label) => page.getByRole('img', { name: `${label} (obejrzane wcześniej)`, exact: true });
+  const doorHint = (label) => page.getByText(`Kliknij „${label}”, żeby iść dalej.`, { exact: true });
+  const openTabs = async (block) => {
+    for (const tab of block.tabs) {
+      await page.getByRole('tab', { name: text(tab.title), exact: true }).click();
+      await page.getByRole('tabpanel').getByText(text(tab.content).split('\n')[0].slice(0, 40), { exact: false }).first().waitFor();
+    }
   };
 
-  // --- Blok 0: Odprawa (BRIEFING, D-081/D-084/D-086) -----------------------------------------------------------------------
-  // Moduł zaczyna się od odprawy: cztery kroki (sceny), "Pomiń odprawę" w górnym pasku widoczny od razu, „Dalej” w dolnym nieaktywny do
-  // ostatniego kroku. Bez przycisków cta - postęp między krokami WYŁĄCZNIE klikiem w przedmiot kroku.
-  await page.getByRole('button', { name: 'Odbierz telefon' }).waitFor();
-  step('BRIEFING: "Pomiń odprawę" w górnym pasku od razu, „Dalej” w dolnym nieaktywny, w bloku brak przycisku dalej', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await nextDisabled()) && (await noInBlockNext()));
-  step('BRIEFING: odprawa jako scena z grafiką, jedynym przyciskiem kroku jest przedmiot (telefon)', (await page.locator('[data-testid="briefing-block"][data-scene="true"]').count()) === 1 && (await page.getByRole('button', { name: 'Odbierz telefon' }).count()) === 1);
-  step('BRIEFING: krok 0 - "Wtorek, 9:40. Wydział Cyberbezpieczeństwa, Kraków."', (await page.getByText(/Wtorek, 9:40\. Wydział Cyberbezpieczeństwa, Kraków\. Dzwoni telefon służbowy\./).count()) >= 1);
-  await briefingItem('Odbierz telefon');
-  step('BRIEFING: dzwoni komisarz - dymek w scenie, bez maskotki', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1 && (await noMascot()));
-  await briefingItem('Rozłącz');
-  // Karta sprawy w dwóch fazach: zamknięta teczka ("Otwórz teczkę") -> akta z zadaniami w slocie; klik w akta zamyka teczkę.
-  await page.getByRole('button', { name: 'Otwórz teczkę' }).waitFor();
-  step('BRIEFING: zamknięta teczka, dane karty dla czytnika (CS/2026/0915)', (await page.getByTestId('briefing-scene').getAttribute('data-phase')) === 'closed' && (await page.getByText(/CS\/2026\/0915/).count()) === 1);
-  await briefingItem('Otwórz teczkę');
-  step('BRIEFING: akta z listą 3 zadań w slocie', (await page.getByTestId('briefing-slot-tasks').getByRole('listitem').count()) === 3);
-  await briefingItem('Zamknij teczkę');
-  // Legitymacja: imię wyłącznie z danych sesji (konto testowe bez imienia -> z e-maila), numer odznaki z numeru sprawy.
-  await page.getByTestId('briefing-slot-number').waitFor();
-  step('BRIEFING: legitymacja z numerem odznaki 0915-* w slocie', /^0915-/.test((await page.getByTestId('briefing-slot-number').textContent()) ?? ''));
-  await briefingItem('Zabierz legitymację');
-  // „Zabierz legitymację” to akcja (D-106) - odprawa gotowa, zapis rusza dopiero „Dalej” w pasku.
+  // --- Ekran startu (D-163): okładka, numer sprawy, uwaga w czerwonej ramce (D-171), Start -------------------------------------
+  await page.goto(`${WEB}/courses/${courseId}`);
+  await page.getByTestId('module-start').waitFor();
+  await shot('00-start');
+  await passStartScreen(page, step, { title: MODULE_TITLE, caseNumber: MODULE.caseNumber, notice: text(MODULE.startNotice) });
+  // Tło modułu za ramką (cover.backdrop, D-178) - na komputerze; na telefonie ukryte.
+  if (!PHONE) step('Player: rozmyte tło modułu za ramką (cover.backdrop)', (await page.getByTestId('player-backdrop').count()) === 1);
+
+  // --- 1. Teczka (TABS look folder na biurku, pieczątka ŚCIŚLE TAJNE) --------------------------------------------------------
+  const teczka = blockOf('teczka');
+  await page.getByTestId('folder').waitFor();
+  step(
+    'TECZKA: teczka na biurku (tło), pieczątka „ŚCIŚLE TAJNE”, „Dalej” nieaktywny przed zakładkami',
+    (await page.getByTestId('folder-desk').count()) === 1 && ((await page.getByTestId('folder-stamp').textContent()) ?? '').includes(teczka.stamp) && (await nextDisabled()),
+  );
+  await shot('01-teczka');
+  await openTabs(teczka);
   await nextEnabled().waitFor();
-  step('BRIEFING: legitymacja zabrana - „Dalej” w pasku aktywny, w bloku brak przycisku dalej', await noInBlockNext());
-  const briefingSaved = progressResponse();
-  await nextEnabled().click();
-  const briefingResponse = await briefingSaved;
-  step('BRIEFING: „Dalej” w pasku zapisuje blok', briefingResponse.ok(), `HTTP ${briefingResponse.status()} ${briefingResponse.ok() ? '' : await briefingResponse.text().catch(() => '')}`);
+  step('TECZKA: wszystkie zakładki obejrzane - „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
+  await goNext('TECZKA');
 
-  // --- Blok 1: Korytarz (SCENE_HOTSPOTS: tablica - dowód opcjonalny, drzwi) - B-086/D-071/D-086 -----------------------------
-  await page.getByRole('button', { name: 'Drzwi do księgowości' }).waitFor();
-  // Tablica jest opcjonalna (required: false) - scena gotowa od razu: drzwi i „Dalej” w pasku prowadzą dalej (D-129).
-  step('SCENE_HOTSPOTS (korytarz): „Dalej” aktywny od razu (brak wymaganych), w bloku brak przycisku dalej', (await nextEnabled().count()) === 1 && (await noInBlockNext()));
-  await page.getByRole('button', { name: 'Tablica ogłoszeń' }).click();
-  await dialog().getByRole('img', { name: /hasła – nie na karteczkach/ }).waitFor();
-  step('SCENE_HOTSPOTS (korytarz): zbliżenie tablicy (grafika, Zabierz/Odłóż)', (await dialog().getByRole('button', { name: 'Zabierz' }).count()) === 1 && (await dialog().getByRole('button', { name: 'Odłóż' }).count()) === 1);
-  await take();
-  step('SCENE_HOTSPOTS (korytarz): tablica w notatniku (dowód 1)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 1/23'), await page.getByTestId('evidence-counter').textContent());
-  // Klik w drzwi to przejście dalej - zapis bloku od razu, bez osobnego „Dalej” (D-129).
-  const corridorSaved = progressResponse();
-  await page.getByRole('button', { name: 'Drzwi do księgowości' }).click();
-  step('SCENE_HOTSPOTS (korytarz): klik w drzwi zapisuje blok i przechodzi dalej', (await corridorSaved).ok());
+  // --- 2. Biuro Pawła (komputer = drzwi; smartfon i Paweł - karty nieobowiązkowe) --------------------------------------------
+  await hotspot('komputer').waitFor();
+  step('BIURO: jedyne drzwi to komputer - podpowiedź „Kliknij „Komputer”…” zamiast licznika', (await doorHint('Komputer').count()) === 1);
+  await shot('02-biuro');
+  await lookAt('biuro-pawla', 'smartfon');
+  await lookAt('biuro-pawla', 'pawel');
+  step('BIURO: karty smartfona i Pawła otwierają się i zamykają „Odłóż”', true);
+  await door('komputer', 'BIURO');
 
-  // --- Blok 2: Biuro Anny (SCENE_HOTSPOTS, media w hotspotach + zagnieżdżona scena "pulpit") - B-086/D-071/D-086 -------------
-  await page.getByRole('button', { name: 'Żółta karteczka' }).waitFor();
-  // Dowód zalicza WYŁĄCZNIE "Zabierz" w zbliżeniu - jednolicie, także dla przedmiotów z nagraniem.
-  for (const label of ['Żółta karteczka', 'Telefon stacjonarny', 'Kalendarz ścienny']) {
-    await page.getByRole('button', { name: label }).click();
-    await take();
-  }
-
-  // "Monitor" jest 4. i ostatnim wymaganym punktem - zbliżenie przechodzi w zagnieżdżoną scenę "pulpit" (bez własnego dowodu,
-  // bez Zabierz/Odłóż - ikona "Wróć"). reactions.complete odpala się od razu po tym kliku.
-  await page.getByRole('button', { name: 'Monitor' }).click();
-  await reactionText('Cztery ślady. Teraz porozmawiajmy z Anną.');
-  step('SCENE_HOTSPOTS: reactions.complete po wymaganych 4 punktach', true);
-  // D-129: po pokryciu wymaganych „Dalej” w pasku jest aktywny od razu (drzwi nie są obowiązkowe - klik w nie też prowadzi dalej).
-  step('SCENE_HOTSPOTS: scena z drzwiami - „Dalej” aktywny po pokryciu wymaganych, w bloku brak przycisku dalej', (await nextEnabled().count()) === 1 && (await noInBlockNext()));
-
-  // Prawdziwy dowód maila jest dopiero za Pocztą wewnątrz zagnieżdżonej sceny "pulpit" - "Zabierz" w jej zbliżeniu go zalicza.
-  await dialog().getByRole('button', { name: 'Poczta' }).click();
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
-  step('SCENE_HOTSPOTS: zagnieżdżona scena "pulpit" - dowód z przedmiotu "Poczta" (media image, B-086/D-071)', true);
-  // Ikona "Internet" na pulpicie (feat/browser-evidence): zbliżenie historii przeglądarki, dowód niewymagany.
-  await dialog().getByRole('button', { name: 'Internet' }).click();
-  await dialog().getByRole('img', { name: /bankwektor-weryfikacja\.pl\/login/ }).waitFor();
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
-  // Tablica 1 + karteczka, telefon, kalendarz 3 + Poczta 1 + historia przeglądarki 1 = 6.
-  await page.waitForFunction(() => document.querySelector('[data-testid="evidence-counter"]')?.textContent?.includes('Dowody 6/23'));
-  step('SCENE_HOTSPOTS: pulpit - dowód z historii przeglądarki (Internet, 8:58 bankwektor-weryfikacja.pl/login)', true);
-  // Easter egg (D-100): ikona gry - trzy okienka zamykane krzyżykiem, potem outro i ukryte wyróżnienie w notatniku. Licznik dowodów
-  // zostaje 6/23; końcowe 23/23 i +XP w raporcie (niżej) są takie same jak bez easter egga - znalezienie nie zmienia N ani XP.
-  if (!PHONE) {
-    await dialog().getByRole('button', { name: 'GTA6_PL.exe' }).click();
-    await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
-    // Etykieta krzyżyka bez ozdobnego symbolu z początku tytułu (spokenTitle).
-    for (const title of ['Pliki zaszyfrowane', 'Gratulacje!', 'Wykryto 147 wirusów!']) {
-      await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
-    }
-    await page.getByTestId('easter-outro').waitFor();
-    const eggCounter = await page.getByTestId('evidence-counter').textContent();
-    const eggBadge = await page.getByTestId('easter-badge').textContent();
-    step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem, licznik dowodów bez zmian (6/23)', eggCounter?.includes('Dowody 6/23') && eggBadge?.includes('Nowe osiągnięcie: Curious Detective'), `${eggCounter} | ${eggBadge}`);
-    await page.getByRole('button', { name: 'Wróć do pulpitu' }).click();
-  }
-  await dialog().getByRole('button', { name: 'Wróć' }).click(); // pulpit -> zamyka nakładkę
-  await closed();
-
-  await page.getByRole('button', { name: 'Drukarka' }).click();
-  await take();
-  step('SCENE_HOTSPOTS: 7 dowodów w notatniku (tablica + 6 z biura, kubek bez dowodu)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/23'), await page.getByTestId('evidence-counter').textContent());
-  // Kubek nie jest dowodem: "Zabierz" = potrząśnięcie i toast, bez notatki.
-  await page.getByRole('button', { name: 'Kubek z kawą' }).click();
-  await dialog().getByRole('button', { name: 'Zabierz' }).click();
-  await dialog().getByRole('status').getByText('To nie jest dowód w tej sprawie.').waitFor();
-  step('SCENE_HOTSPOTS: "Zabierz" przy kubku - toast "To nie jest dowód w tej sprawie.", licznik bez zmian', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 7/'));
-  await putDown();
-
-  // "drzwi" (action:'next', label "Wyjście"): wymagane 4 są już odwiedzone - klik w drzwi zapisuje blok i przechodzi dalej (D-129).
-  const officeSaved = progressResponse();
-  await page.getByRole('button', { name: 'Wyjście' }).click();
-  step('SCENE_HOTSPOTS: "drzwi" (Wyjście) zapisują blok i przechodzą dalej', (await officeSaved).ok());
-
-  // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 3 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
-  // blok, na którym przerwano (rozmowa z Anną), a nie na odprawę z pamięci routera klienta. 0 pełnych żądań RSC = strona z pamięci.
-  // Przy okazji sieć jednej nawigacji kurs → lista → kurs (D-142, staleTimes.dynamic = 0): lista kursów pobrana raz (bez podwójnego
-  // pobierania), prefetch liczony osobno (nagłówek Next-Router-Prefetch).
+  // Wznowienie po wyjściu (fix/resume-po-wyjsciu, D-142): X i od razu „Kontynuuj naukę” - BEZ przeładowania - wraca na pulpit, a nie na
+  // teczkę z pamięci routera klienta (ani na ekran startu). Przy okazji sieć: lista kursów pobrana raz, prefetch liczony osobno.
   {
-    const net = { list: [], course: [], listPrefetch: [], coursePrefetch: [], api: [] };
+    const net = { list: [], course: [], listPrefetch: [], coursePrefetch: [] };
     let phase = 'list';
     const onRequest = (request) => {
       const { pathname } = new URL(request.url());
       const headers = request.headers();
-      if (pathname.startsWith('/api/')) net.api.push(`${phase} ${request.method()} ${pathname}`);
       if (headers.rsc !== '1') return;
       const prefetch = headers['next-router-prefetch'] === '1';
       if (pathname === '/courses') (prefetch ? net.listPrefetch : net.list).push(phase);
@@ -312,248 +248,209 @@ try {
     await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
     await page.waitForURL((url) => url.pathname === '/courses');
     await page.getByRole('link', { name: 'Kontynuuj naukę' }).waitFor();
-    // Lista doczytana do końca (żądania w locie), zanim liczymy, ile razy poszła.
     await page.waitForLoadState('networkidle');
     phase = 'course';
     await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
     await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
-    const resumed = await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    const resumed = await hotspot('poczta').waitFor({ timeout: 15000 }).then(() => true, () => false);
     page.off('request', onRequest);
-    const detail = `RSC lista: ${net.list.length} (prefetch ${net.listPrefetch.length}), RSC odtwarzacz: ${net.course.length} (prefetch ${net.coursePrefetch.length}), API: ${net.api.join(', ') || 'brak'}`;
-    step('Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - rozmowa z Anną, blok 4 z 10, nie odprawa', resumed, detail);
+    const detail = `RSC lista: ${net.list.length} (prefetch ${net.listPrefetch.length}), RSC odtwarzacz: ${net.course.length} (prefetch ${net.coursePrefetch.length})`;
+    step(`Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - pulpit, ${positionOf('pulpit')}, bez ekranu startu`, resumed && (await page.getByTestId('module-start').count()) === 0, detail);
     step('Wznowienie: strona odtwarzacza pobrana z serwera (pełne żądanie RSC), nie z pamięci routera', net.course.filter((p) => p === 'course').length >= 1, detail);
     step('Sieć: lista kursów pobrana raz przy powrocie X (bez podwójnego pobierania)', net.list.filter((p) => p === 'list').length === 1, detail);
   }
 
-  // --- Blok 3: Rozmowa z Anną (DIALOGUE) ---------------------------------------------------------------------------------
-  // Komunikator (D-087): rozmówca "pisze" (wskaźnik), potem kwestia; data-typing na wątku mówi, czy ktoś właśnie pisze.
-  const chatIdle = () => page.locator('[role="log"][data-typing="false"]').waitFor();
-  await page.getByText('Ja naprawdę nic nie zrobiłam').waitFor();
-  step('DIALOGUE: character.opening pokazuje się przed jakimkolwiek pytaniem', true);
-  step('DIALOGUE: bez przycisku "Następna kwestia"', (await page.getByRole('button', { name: 'Następna kwestia' }).count()) === 0);
-  const askAll = async (questions) => {
-    for (const text of questions) {
-      await chatIdle();
-      await page.getByRole('button', { name: text, exact: true }).click();
-      await chatIdle();
+  // --- 3. Pulpit (monitor Unfooly; Poczta = drzwi, Internet - karta, gra - easter egg) ---------------------------------------
+  step('PULPIT: jedyne drzwi to Poczta - podpowiedź „Kliknij „Poczta”…”', (await doorHint('Poczta').count()) === 1);
+  await shot('03-pulpit');
+  await lookAt('pulpit', 'internet');
+  step('PULPIT: Internet - historia przeglądarki z „Formularzem prelegenta”', true);
+  if (!PHONE) {
+    // Easter egg (D-100): trzy okienka zamykane krzyżykiem, outro z osiągnięciem, „Wróć” zamyka zbliżenie.
+    await hotspot('gra').click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
+    for (const item of [...blockOf('pulpit').hotspots.find((h) => h.id === 'gra').media.items].reverse()) {
+      const title = text(item.title).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+      await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
     }
-  };
-  await askAll(['Opowiedz o tym mailu z banku.', 'Kto dzwonił o 9:05?', 'To hasło na karteczce…']);
-  await reactionText('Hasło, kod SMS, presja czasu. Trzy rzeczy, których prawdziwy bank nigdy nie połączy w jednej rozmowie. Zobaczmy ten mail.');
-  step('DIALOGUE (Anna): reactions.complete po 3 wymaganych pytaniach', true);
-  await askAll(['Dlaczego działałaś tak szybko?', 'Pomyślałaś, żeby to komuś zgłosić?']);
-  step('DIALOGUE (Anna): w bloku brak przycisku dalej', await noInBlockNext());
+    await page.getByTestId('easter-outro').waitFor();
+    const eggBadge = (await page.getByTestId('easter-badge').textContent()) ?? '';
+    step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem „Ciekawski detektyw”', eggBadge.includes('Ciekawski detektyw'), eggBadge);
+    await page.getByTestId('easter-outro').getByRole('button').click();
+    await closed();
+  }
+  await door('poczta', 'PULPIT');
+
+  // --- 4. Zaproszenie (EMAIL_ANALYSIS w monitorze, waga 2): jedyna prawdziwa cecha - niespodziewana oferta --------------------
+  const zaproszenie = blockOf('zaproszenie');
+  await page.getByTestId('monitor-screen').getByTestId('mail-client').waitFor();
+  step(
+    'MAIL: wiadomość na ekranie monitora (pasek „Poczta”), adresat „Do:” z treści',
+    ((await page.getByTestId('mail-app-bar').textContent()) ?? '').includes('Poczta') && ((await page.getByTestId('mail-client').textContent()) ?? '').includes(zaproszenie.email.to),
+  );
+  await shot('04-mail');
+  for (const criterion of zaproszenie.criteria.filter((c) => c.correct)) {
+    await page.getByRole('checkbox', { name: text(criterion.label) }).check();
+  }
+  const emailAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
+  const emailBody = await (await emailAnswered).json();
+  step('MAIL: tylko „niespodziewana oferta” -> 100% i reakcja z treści', emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.text === text(zaproszenie.reactions.result[0].text), JSON.stringify(emailBody.lastResult));
+  await page.getByText(/Wynik: 100%/).waitFor();
+  step('MAIL: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();
 
-  // --- Blok 4: Ten mail (EMAIL_ANALYSIS, waga 3) -------------------------------------------------------------------------
-  await page.getByTestId('mail-client').waitFor();
-  // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na rozmowę z Anną, a postęp poszedł
-  // dalej - odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje mail, nie rozmowę.
+  // --- 5. Biuro z ✓ komputera (smartfon = drzwi) ------------------------------------------------------------------------------
+  await hotspot('smartfon').waitFor();
+  // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii ma drzewo z wejścia na pulpit, a postęp poszedł dalej - odtwarzacz
+  // pobiera świeży postęp i pokazuje biuro z ✓, nie pulpit.
   {
     await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
     await page.waitForURL((url) => url.pathname === '/courses');
     await page.goBack();
     await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
-    const back = await page.getByTestId('mail-client').waitFor({ timeout: 15000 }).then(() => true, () => false);
-    step('Wznowienie: X i „Wstecz” przeglądarki po kolejnym bloku - mail, blok 5 z 10, nie rozmowa', back && (await page.getByText('Ja naprawdę nic nie zrobiłam').count()) === 0);
+    const back = await doneMark('Komputer').waitFor({ timeout: 15000 }).then(() => true, () => false);
+    step(`Wznowienie: X i „Wstecz” przeglądarki - biuro z ✓, ${positionOf('biuro-pawla-2')}, nie pulpit`, back && (await hotspot('poczta').count()) === 0);
   }
-  step('EMAIL_ANALYSIS: adresat "Do:" (schemaVersion 4, email.to) w makiecie', (await page.getByTestId('mail-client').textContent())?.includes('a.kowalska@unfooly.com'));
-  // Fragmenty maila są prawdziwymi <button>-ami inline (aria-pressed) - klikamy bezpośrednio, bez osobnej "Listy
-  // elementów (dla klawiatury)" (usunięta, feedback z produkcji). "presja" (groźba blokady) NIE ma fragmentu w treści
-  // (nie sąsiaduje z licznikiem "Pozostało: 01:12:33", który dostał WŁASNE, anchorowalne kryterium "odliczanie") -
-  // jedyna droga do zaznaczenia go to lista pod mailem, teraz pokazująca wyłącznie kryteria bez fragmentu.
-  const mail = page.getByTestId('mail-client');
-  await mail.getByRole('button', { name: /Dział Bezpieczeństwa/ }).click(); // domena (nadawca)
-  await mail.getByRole('button', { name: 'Przejdź do weryfikacji' }).click(); // link
-  await mail.getByRole('button', { name: /Załącznik: Regulamin_weryfikacji\.pdf\.exe/ }).click(); // zalacznik
-  await mail.getByRole('button', { name: 'Pozostało: 01:12:33' }).click(); // odliczanie
-  await mail.getByRole('button', { name: 'Szanowna Kliencie' }).click(); // zwrot
-  await page.getByRole('group', { name: /Inne elementy/ }).getByRole('checkbox', { name: /Groźba zablokowania/ }).check(); // presja
-  const emailAnswered = progressResponse();
-  await page.getByRole('button', { name: 'Sprawdź odpowiedź' }).click();
-  const emailBody = await (await emailAnswered).json();
-  // D-096: reakcja to sam tekst (bez pose).
-  step(
-    'EMAIL_ANALYSIS: wszystkie 6 poprawnych kryteriów -> 100%, reakcja na wynik (bez pose)',
-    emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.text === 'Czytasz maile jak detektyw.' && emailBody.lastResult?.reaction?.pose === undefined,
-    JSON.stringify(emailBody.lastResult),
-  );
-  await page.getByText(/Wynik: 100%/).waitFor();
-  step('EMAIL_ANALYSIS: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
+  step('BIURO 2: komputer z ✓ (bez przycisku), drzwi - smartfon', (await page.getByRole('button', { name: /^Komputer/ }).count()) === 0 && (await doorHint('Smartfon').count()) === 1);
+  await shot('05-biuro-2');
+  await door('smartfon', 'BIURO 2');
+
+  // --- 6. Telefon Pawła (ekran główny; Komunikator = drzwi, Poczta i Kalendarz - karty) --------------------------------------
+  await hotspot('komunikator').waitFor();
+  await shot('06-telefon');
+  await lookAt('telefon', 'kalendarz');
+  await door('komunikator', 'TELEFON');
+
+  // --- 7. Komunikator (DOSSIER layout chat w ramce telefonu): wymagane wiadomości - połączenie, link, prośba o hasło ----------
+  const czat = blockOf('komunikator').documents[0];
+  await page.getByTestId('chat-sheet').waitFor();
+  const bubble = (row) => page.getByTestId('chat-bubble').filter({ hasText: text(row.cells[2]).slice(0, 30) });
+  step('CZAT: dymki rozmowy w ramce telefonu, „Dalej” nieaktywny przed wymaganymi', (await page.getByTestId('chat-bubble').count()) === czat.rows.length && (await nextDisabled()), `${await page.getByTestId('chat-bubble').count()} dymków`);
+  await shot('07-czat');
+  const greeting = czat.rows.find((row) => row.message);
+  await bubble(greeting).click();
+  step('CZAT: zwykła wiadomość - komunikat z treści, bez zaznaczenia', ((await page.getByTestId('chat-sheet').getByRole('status').textContent()) ?? '').includes(text(greeting.message).slice(0, 30)) && (await bubble(greeting).getAttribute('aria-pressed')) === 'false');
+  for (const row of czat.rows.filter((r) => r.required)) {
+    await bubble(row).click();
+    step(`CZAT: „${text(row.cells[2]).slice(0, 40)}…” zaznaczona`, (await bubble(row).getAttribute('aria-pressed')) === 'true');
+  }
+  await nextEnabled().waitFor();
+  step('CZAT: po wymaganych „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
+  await goNext('CZAT');
+
+  // --- 8. Domena (TEXT_INPUT_GUIDED, waga 2) ----------------------------------------------------------------------------------
+  const domena = blockOf('domena');
+  await page.getByPlaceholder(text(domena.placeholder)).fill(text(domena.solution.text));
+  const attempted = page.waitForResponse((r) => r.url().endsWith('/blocks/domena/attempt') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Sprawdź', exact: true }).click();
+  const attemptBody = await (await attempted).json();
+  step('DOMENA: /attempt po dobrej pierwszej próbie - werdykt bez rozwiązania i podpowiedzi', attemptBody.correct === true && !('solution' in attemptBody) && !('hint' in attemptBody), JSON.stringify(Object.keys(attemptBody)));
+  await page.getByText(/Poprawna odpowiedź!/).waitFor();
+  step('DOMENA: poprawna odpowiedź za pierwszym razem -> reakcja z treści', (await page.getByText(text(domena.reactions.result[0].text), { exact: true }).count()) === 1);
+  await shot('08-domena');
+  step('DOMENA: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
+  const domainBody = await (await goNext('DOMENA')).json();
+  step('DOMENA: pełne punkty za pierwszą próbę', domainBody.lastResult?.points === 1, JSON.stringify(domainBody.lastResult?.points));
+
+  // --- 9. Czy to bezpieczny link? (QUIZ, waga 1) ------------------------------------------------------------------------------
+  const zaufanie = blockOf('zaufanie');
+  const right = zaufanie.options.find((option) => option.correct);
+  await page.getByRole('radio', { name: text(right.text) }).check();
+  const quizAnswered = progressResponse();
+  await page.getByRole('button', { name: 'Wybierz odpowiedź' }).click();
+  const quizBody = await (await quizAnswered).json();
+  step('QUIZ: „Nie – domena nie należy do fundacji.” -> pełne punkty', quizBody.lastResult?.points === 1, JSON.stringify(quizBody.lastResult));
+  await shot('09-quiz');
   await nextEnabled().click();
 
-  // --- Blok 5: Teczka sprawy (DOSSIER, D-083) -----------------------------------------------------------------------------
-  // Zwykła linijka: komunikat bez zaznaczenia; wiersze-dowody: zakreślenie = notatka + licznik. Wymagane: 3 z 5 (✱), zbieramy wszystkie 5.
-  await page.getByRole('tablist', { name: 'Dokumenty w teczce' }).waitFor();
-  const row = (text) => page.getByRole('button', { name: new RegExp(text) });
-  await row('Opłata za prowadzenie rachunku').click();
-  step('DOSSIER: zwykła linijka - komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ta linijka wygląda na zwykłą operację.') && (await row('Opłata za prowadzenie rachunku').getAttribute('aria-pressed')) === 'false');
-  step('DOSSIER: "Dalej" nieaktywne przed wymaganymi', (await nextEnabled().count()) === 0);
-  // Przelew 9:12 zna gracz z odprawy - zwykła linijka z własnym komunikatem (`message`), dowodem jest nowy odbiorca 9:04.
-  await row('Przelew: Wektor Rozliczenia').click();
-  step('DOSSIER: przelew 9:12 - własny komunikat, bez zaznaczenia', (await page.getByRole('status').textContent())?.includes('Ten przelew już znasz.') && (await row('Przelew: Wektor Rozliczenia').getAttribute('aria-pressed')) === 'false');
-  await row('Dodano nowego odbiorcę').click();
-  step('DOSSIER: wiersz-dowód zakreślony (aria-pressed)', (await row('Dodano nowego odbiorcę').getAttribute('aria-pressed')) === 'true');
-  await page.getByRole('tab', { name: 'Logi logowania' }).click();
-  // 09:02 (fix/login-2fa-timeline): SMS z kodem logowania - zwykły wiersz z własnym komunikatem, NIE dowód.
-  await row('Wysłano SMS: kod logowania').click();
-  step(
-    'DOSSIER: 09:02 SMS z kodem logowania - własny komunikat, bez zaznaczenia (nie dowód)',
-    (await page.getByRole('status').textContent())?.includes('Bank wysłał Annie kod do logowania') && (await row('Wysłano SMS: kod logowania').getAttribute('aria-pressed')) === 'false',
-  );
-  step('DOSSIER: 09:03 - logowanie z poprawnym kodem SMS', (await row('Logowanie, kod SMS poprawny').filter({ hasText: '09:03' }).count()) === 1);
-  await row('Logowanie').filter({ hasText: '09:03' }).click();
-  // row() buduje regex - fragment bez nawiasów z etykiety „Kod SMS (autoryzacja przelewu) wpisany”.
-  await row('autoryzacja przelewu').click();
-  await page.getByRole('tab', { name: 'Notatka IT' }).click();
-  await row('Nagłówki maila').click();
-  await row('zarejestrowana 2 dni przed atakiem').click();
-  await page.getByRole('tab', { name: 'Procedury' }).click();
-  step('DOSSIER: procedury z dawnych akt (zdanie o przycisku "Zgłoś podejrzany mail")', (await row('Zgłoś podejrzany mail').count()) === 1);
-  step('DOSSIER: licznik 5 dowodów z teczki (razem 20 po korytarzu, biurze, rozmowie z Anną, mailu i teczce)', (await page.getByTestId('evidence-counter').textContent())?.includes('Dowody 20/23'), await page.getByTestId('evidence-counter').textContent());
-  step('DOSSIER: w bloku brak przycisku dalej', await noInBlockNext());
-  await nextEnabled().click();
+  // --- 10. Biuro z dwoma ✓ (Paweł = drzwi) ------------------------------------------------------------------------------------
+  await hotspot('pawel').waitFor();
+  step('BIURO 3: komputer i smartfon z ✓, drzwi - Paweł', (await doneMark('Komputer').count()) === 1 && (await doneMark('Smartfon').count()) === 1 && (await doorHint('Paweł').count()) === 1);
+  await shot('10-biuro-3');
+  await door('pawel', 'BIURO 3');
 
-  // --- Blok 6: Rozmowa z Markiem z IT (DIALOGUE) ---------------------------------------------------------------------------
-  await page.getByText('Nie mów mi, że karteczka').waitFor();
-  await askAll(['Co mówią logi banku?', 'Ktoś z IT dzwonił do Anny o 9:05?']);
-  await reactionText('Masz już wszystko. Ułóżmy to w kolejności.');
-  step('DIALOGUE (Marek): reactions.complete po 2 wymaganych pytaniach', true);
-  await askAll(['Czy ktoś jeszcze dostał ten mail?', 'Co robimy teraz?']);
-  await nextEnabled().click();
+  // --- 11. Rozmowa z Pawłem (DIALOGUE): opening przed pytaniami, wszystkie pytania ----------------------------------------------
+  const rozmowa = blockOf('rozmowa-pawel');
+  const chatIdle = () => page.locator('[role="log"][data-typing="false"]').waitFor();
+  await page.getByText(text(rozmowa.character.opening)).waitFor();
+  step('ROZMOWA: character.opening przed pierwszym pytaniem, „Dalej” nieaktywny', await nextDisabled());
+  for (const question of rozmowa.questions) {
+    await chatIdle();
+    await page.getByRole('button', { name: text(question.text), exact: true }).click();
+    await chatIdle();
+  }
+  await nextEnabled().waitFor();
+  await shot('11-rozmowa');
+  step('ROZMOWA: po pytaniach „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
+  await goNext('ROZMOWA');
 
-  // --- Blok 7: Rekonstrukcja zdarzeń (ORDERING, waga 2) --------------------------------------------------------------------
-  // Tablica śledcza (D-088): ślady z tacki na pola 1..6 - klawiaturą (Enter na śladzie, Enter na polu), jak gracz bez myszy.
+  // --- 12. Tablica śledcza (ORDERING, waga 2): ślady z tacki na pola klawiaturą -----------------------------------------------
+  const tablica = blockOf('tablica');
   await page.getByTestId('evidence-board').waitFor();
-  step('ORDERING: tablica śledcza z numerem sprawy i zdjęciami początku/końca', (await page.getByRole('region', { name: 'Tablica śledcza · CS/2026/0915' }).count()) === 1 && (await page.getByText('−14 000 zł').count()) === 1);
-  // Bez godzin w treści (usunięte z module.json) - z samymi godzinami układanie kolejności byłoby odczytem zegara,
-  // nie rekonstrukcją zdarzeń.
-  const wanted = [
-    'Do skrzynki Anny trafia mail z domeny bankwektor-weryfikacja.pl.',
-    'Anna wpisuje login, hasło i kod z SMS na fałszywej stronie.',
-    'Oszust loguje się do prawdziwego banku danymi Anny.',
-    '„Informatyk” dzwoni po kod SMS, żeby anulować operację.',
-    'Anna podaje kod; oszust zatwierdza przelew.',
-    '14 000 zł wychodzi na konto „Wektor Rozliczenia”.',
-  ];
-  const boardTray = page.getByRole('group', { name: 'Ślady do przypięcia' });
-  step('ORDERING: 6 śladów na tacce, bez "Sprawdź trop" przed zapełnieniem', (await boardTray.getByRole('button', { name: /^Ślad: / }).count()) === 6 && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0);
-  for (const [index, text] of wanted.entries()) {
-    const card = boardTray.getByRole('button', { name: `Ślad: ${text}` });
+  const tray = page.getByRole('group', { name: 'Ślady do przypięcia' });
+  step(`TABLICA: ${tablica.items.length} śladów na tacce, bez „Sprawdź trop” przed zapełnieniem`, (await tray.getByRole('button', { name: /^Ślad: / }).count()) === tablica.items.length && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0);
+  for (const [index, item] of tablica.items.entries()) {
+    const card = tray.getByRole('button', { name: `Ślad: ${text(item.text)}` });
     await card.focus();
     await card.press('Enter');
     const slot = page.getByRole('button', { name: new RegExp(`^Pole ${index + 1}, puste`) });
     await slot.focus();
     await slot.press('Enter');
   }
-  step('ORDERING: pełna tablica - nić ciągła, "Sprawdź trop" widoczne', (await page.locator('[data-yarn="dashed"]').count()) === 0 && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 1);
   const orderingAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   const orderingBody = await (await orderingAnswered).json();
-  step(
-    'ORDERING: pełna poprawna kolejność (6/6) -> reakcja na wynik (bez pose)',
-    orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.text?.startsWith('Dokładnie tak.') && orderingBody.lastResult?.reaction?.pose === undefined,
-    JSON.stringify(orderingBody.lastResult),
-  );
+  step('TABLICA: poprawna kolejność -> pełne punkty i reakcja z treści', orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.text === text(tablica.reactions.result[0].text), JSON.stringify(orderingBody.lastResult));
   await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
-  step('ORDERING: po sprawdzeniu 6 zielonych pinezek i zdanie pod tablicą (bez listy "Poprawna kolejność")', (await page.locator('.board-pin--good').count()) === 6 && ((await page.getByTestId('board-feedback').textContent()) ?? '').length > 0 && (await page.getByRole('region', { name: 'Poprawna kolejność' }).count()) === 0);
-  step('ORDERING: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
+  await shot('12-tablica');
+  step('TABLICA: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();
 
-  // --- Blok 8: Ostatnie pytanie (TEXT_INPUT_GUIDED, waga 1) ----------------------------------------------------------------
-  await page.getByLabel('Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).').waitFor();
-  await page.getByLabel('Wpisz domenę, z której przyszedł fałszywy mail (samą domenę, bez https:// i bez adresu e-mail).').fill('bankwektor-weryfikacja.pl');
-  await page.getByRole('button', { name: 'Sprawdź' }).click();
-  await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  step('TEXT_INPUT_GUIDED: poprawna odpowiedź za pierwszym razem -> reakcja „Domena, nie napis”', (await page.getByText('To jest to. Domena, nie napis.').count()) === 1);
-  // Wynik już jest widoczny w bloku (TextInputBlock, stan `done`): „Dalej” w pasku (D-106 - bez przycisku pod wynikiem) zapisuje
-  // postęp I OD RAZU przechodzi dalej, bez osobnego ekranu "Blok ukończony." (isExploratory/TEXT_INPUT_GUIDED, handleAnswer).
-  step('TEXT_INPUT_GUIDED: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
-  const textDone = progressResponse();
+  // --- 13. Raport końcowy (TABS w teczce „SPRAWA ZAMKNIĘTA” na biurku) ---------------------------------------------------------
+  const raport = blockOf('raport');
+  await page.getByTestId('folder-stamp').filter({ hasText: raport.stamp }).waitFor();
+  step('RAPORT: teczka „SPRAWA ZAMKNIĘTA” na biurku, „Dalej” nieaktywny przed zakładkami', (await page.getByTestId('folder-desk').count()) === 1 && (await nextDisabled()));
+  await openTabs(raport);
+  await shot('13-raport');
+  await goNext('RAPORT');
+
+  // --- 14. Gazeta (SCENE_HOTSPOTS, wymagany artykuł), potem podsumowanie zapisuje się samo (D-169) i ekran końca (D-165) -------
+  await hotspot('artykul').waitFor();
+  step('GAZETA: „Dalej” nieaktywny przed artykułem', await nextDisabled());
+  await hotspot('artykul').click();
+  await dialog().getByText(text(blockOf('gazeta').hotspots[0].media.lines[0]).slice(0, 40)).first().waitFor();
+  await shot('14-gazeta');
+  await dialog().getByRole('button', { name: 'Odłóż' }).click();
+  await closed();
+  // Dwa zapisy po kolei: gazeta („Dalej”), potem SUMMARY bez ekranu (odtwarzacz sam, D-169) - ten drugi kończy kurs.
+  const completion = completionResponse(page, courseId);
   await nextEnabled().click();
-  const textBody = await (await textDone).json();
-  step('TEXT_INPUT_GUIDED: pełne punkty za pierwszą próbę (bez kary)', textBody.lastResult?.points === 1, JSON.stringify(textBody.lastResult?.points));
-
-  // --- Blok 9: Rozwiązanie sprawy (SUMMARY) --------------------------------------------------------------------------------
-  await page.getByTestId('case-evidence').waitFor();
-  const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step('SUMMARY: wszystkie 23 dowody zebrane (1+6+4+4+5+3)', summaryText.includes('Zebrane dowody: 23 z 23'), summaryText.slice(0, 120));
-  step('SUMMARY: numerowana lista "Trzy rzeczy do zapamiętania" renderuje się jako <ol>', (await page.locator('ol li', { hasText: 'Domena, nie napis.' }).count()) === 1);
-  step(
-    'SUMMARY: podpowiedź z treści ("Sprawa zamknięta..."), bez maskotki (D-093)',
-    (await page.getByText('Sprawa zamknięta. Dobra robota, detektywie.', { exact: true }).count()) === 1 && (await noMascot()),
-  );
-
-  step('SUMMARY: „Zakończ sprawę” tylko w dolnym pasku (etykieta „Dalej”), nie w bloku', (await noInBlockNext()) && (await bar().getByRole('button', { name: 'Zakończ sprawę' }).count()) === 1);
-  const completion = progressResponse();
-  await bar().getByRole('button', { name: 'Zakończ sprawę' }).click();
   const completionBody = await (await completion).json();
-  // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)), nie ułamek 0-1.
-  step('Kurs ukończony po stronie serwera ze 100% wyniku (3+2+1 wag, wszystko poprawne)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
-  // Osiągnięcia „na żywo” (D-111) w odpowiedzi ukończenia - zanim profil zrobi cokolwiek (przyznanie wsteczne tego nie maskuje).
+  // score to skala 0-100 (progress.ts computeScore: Math.round((weighted/total)*100)).
+  step('Kurs ukończony po stronie serwera ze 100% wyniku (bez ekranu podsumowania, D-169)', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
+  // Osiągnięcia „na żywo” (D-111) w odpowiedzi ukończenia.
   const liveCodes = (completionBody.gamification?.unlockedBadges ?? []).map((badge) => badge.code).sort();
-  step('Osiągnięcia na żywo przy ukończeniu: First Case Closed i Flawless Case', JSON.stringify(liveCodes) === JSON.stringify(['first-case-closed', 'flawless-case']), JSON.stringify(liveCodes));
+  step('Osiągnięcia na żywo przy ukończeniu: Pierwsza sprawa zamknięta i Sprawa bez skazy', JSON.stringify(liveCodes) === JSON.stringify(['first-case-closed', 'flawless-case']), JSON.stringify(liveCodes));
 
-  // --- Zamknięcie sprawy (feat/case-closed, D-089): zapis kończący kurs OD RAZU przełącza na raport końcowy (bez ekranu pośredniego
-  // "Blok ukończony."/"Zobacz podsumowanie"); ceremonia: liczby, wnioski, podpis, pieczęć, liścik ---------------------------------
-  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
-  step(`Zamknięcie: nazwa modułu w raporcie to „${MODULE_TITLE}” (bez „Sprawa:”)`, (await page.getByTestId('case-closed').getByText(MODULE_TITLE, { exact: true }).count()) >= 1);
-  step('Zamknięcie: brak przycisku "Zobacz podsumowanie" (ekran pośredni usunięty)', (await page.getByRole('button', { name: 'Zobacz podsumowanie' }).count()) === 0);
-  step('Zamknięcie: "Wynik zadań: 100%" widoczny od razu', ((await page.getByText(/Wynik zadań:/).textContent()) ?? '').includes('100%'));
-  await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
-  const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
-  step('Zamknięcie: dowody 23/23 w raporcie', (await slotText('closing-evidence')) === '23/23', await slotText('closing-evidence'));
-  // startedAt (nowa kolumna przypisania) -> czas sprawy w minutach; pierwsze ukończenie dolicza XP (COURSE_COMPLETION_XP >= 100).
-  step('Zamknięcie: czas sprawy w minutach (startedAt z /start)', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
-  step('Zamknięcie: +XP w raporcie', /^\+[1-9]\d*$/.test(await slotText('closing-xp')), await slotText('closing-xp'));
-  // Wpisane (widoczne) wnioski - lista ma też niewidoczne pełne kopie, które rezerwują miejsce (D-128).
-  const typedLessons = (await page.getByTestId('closing-lesson-typed').allTextContents()).filter((line) => /^\d\. .+/.test(line));
-  step('Zamknięcie: trzy wnioski śledczego wpisane', typedLessons.length === 3, typedLessons.join(' | '));
-  await page.getByRole('button', { name: 'Podpisz raport' }).click();
-  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
-  // B-153: nowe konto (0 XP) awansuje przy pierwszym ukończeniu - pasek podpisany NOWYM poziomem, wartość w jego skali. W pionowym
-  // raporcie pasek poziomu nie występuje (D-107), awans pokazuje toast - o układzie decyduje komponent (data-orientation), nie szerokość.
-  const reward = completionBody.gamification;
-  if ((await page.getByTestId('case-closed-frame').getAttribute('data-orientation')) !== 'portrait') {
-    const levelBar = page.getByTestId('case-closed').getByRole('progressbar', { name: `Poziom ${reward?.newLevel}`, exact: true });
-    step(
-      `Zamknięcie: po awansie pasek „Poziom ${reward?.newLevel}” (nie „Poziom ${reward?.previousLevel}”) z postępem w nowym poziomie`,
-      reward?.leveledUp === true &&
-        typeof reward.levelProgressNewPercent === 'number' &&
-        (await levelBar.count()) === 1 &&
-        (await levelBar.getAttribute('aria-valuenow')) === String(reward.levelProgressNewPercent) &&
-        (await page.getByTestId('case-closed').getByRole('progressbar', { name: `Poziom ${reward.previousLevel}`, exact: true }).count()) === 0,
-      JSON.stringify({ newLevel: reward.newLevel, previousLevel: reward.previousLevel, levelProgressNewPercent: reward.levelProgressNewPercent }),
-    );
-  }
-  step('Zamknięcie: po podpisie pieczęć i liścik, bez modala (role=dialog)', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1 && (await page.getByRole('dialog').count()) === 0);
-  step('Zamknięcie: "Następna sprawa" zamknięta (wkrótce)', (await page.getByRole('button', { name: /Następna sprawa/ }).getAttribute('aria-disabled')) === 'true');
-  step(
-    'Zamknięcie: „Wróć do biblioteki” TYLKO w dolnym pasku (link do /courses), nie pod raportem (D-106)',
-    (await noInBlockNext()) && (await bar().getByRole('link', { name: 'Wróć do biblioteki' }).getAttribute('href')) === '/courses',
-  );
+  // --- Ekran końca (D-165): pieczątka, kafelki Wynik / Czas / Punkty, poziom, zasady na wynos, przyciski -------------------------
+  const end = page.getByTestId('module-end');
+  const tile = async (name) => ((await page.getByTestId(`module-end-${name}`).textContent()) ?? '').trim();
+  await checkEndScreen(page, step, { completion: completionBody, rules: blockOf('zasady').lessons.map(text) });
+  await shot('15-koniec');
 
-  // Powrót do ukończonego kursu: stan końcowy od razu (bez ceremonii), czas sprawy nadal znany (startedAt/completedAt z /start).
+  // Powrót do ukończonego kursu: od razu ekran końca, bez ekranu startu; czas sprawy nadal znany (startedAt/completedAt z /start).
   await page.reload();
-  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
-  step('Zamknięcie po odświeżeniu: stan końcowy od razu, czas sprawy z /start', /^\d+ min$/.test(await slotText('closing-time')), await slotText('closing-time'));
-  // Wyróżnienie easter egga (D-100) zapisane po stronie serwera: po odświeżeniu nadal w notatniku (progress.distinctions z /start).
-  if (!PHONE) {
-    await page.getByRole('button', { name: /^Notatnik/ }).click();
-    const distinctions = page.getByTestId('notebook-distinctions');
-    await distinctions.waitFor();
-    step('EASTER EGG: osiągnięcie w notatniku po odświeżeniu (zapis na serwerze)', (await distinctions.textContent())?.includes('Curious Detective'));
-  }
+  await end.waitFor();
+  step('KONIEC po odświeżeniu: ekran końca od razu (bez startu), czas w minutach', (await page.getByTestId('module-start').count()) === 0 && /^\d+ min$/.test(await tile('czas')), await tile('czas'));
 
-  // Osiągnięcia (D-111): pełne przejście - easter egg, 23/23 dowodów, 100% - daje na profilu wszystkie trzy, przyznane przez serwer.
+  // Osiągnięcia (D-111): pełne przejście z easter eggiem i 100% - na profilu trzy z modułu 1, przyznane przez serwer.
   await page.goto(`${WEB}/courses/achievements`);
   await page.getByTestId('achievements-counter').waitFor();
-  // Mianownik to cały katalog osiągnięć (rośnie z kolejnymi modułami) - tu liczą się trzy zdobyte w module 1.
   const achievementsCounter = ((await page.getByTestId('achievements-counter').textContent()) ?? '').replace(/\s/g, '');
-  const earnedCount = PHONE ? 2 : 3;
-  step(`Osiągnięcia: licznik ${earnedCount} / N na profilu`, new RegExp(`^${earnedCount}/\\d+$`).test(achievementsCounter), achievementsCounter);
-  // Nazwy w języku szkoleń (D-146): przeglądarka testu pl-PL - polskie nazwy i rangi.
-  for (const name of PHONE ? ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy'] : ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy', 'Ciekawski detektyw']) {
+  const earned = PHONE ? ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy'] : ['Pierwsza sprawa zamknięta', 'Sprawa bez skazy', 'Ciekawski detektyw'];
+  step(`Osiągnięcia: licznik ${earned.length} / N na profilu`, new RegExp(`^${earned.length}/\\d+$`).test(achievementsCounter), achievementsCounter);
+  for (const name of earned) {
     step(`Osiągnięcia: ${name} zdobyte`, (await page.getByRole('button', { name: new RegExp(`^${name} \\([^)]+\\), zdobyte`) }).count()) === 1);
   }
   if (!PHONE) {
@@ -573,16 +470,18 @@ try {
   const myRow = page.getByRole('row').filter({ has: page.getByText('Ty', { exact: true }) });
   await myRow.waitFor();
   const rowBadges = await myRow.getByTestId('pinned-badge').evaluateAll((els) => els.map((el) => el.getAttribute('title')));
-  step('Ranking: przy moim nazwisku przypięte osiągnięcia (24 px, nazwa w podpowiedzi)', rowBadges.join('|') === 'Sprawa bez skazy|Pierwsza sprawa zamknięta', rowBadges.join('|'));
+  step('Ranking: przy moim nazwisku przypięte osiągnięcia (nazwa w podpowiedzi)', rowBadges.join('|') === 'Sprawa bez skazy|Pierwsza sprawa zamknięta', rowBadges.join('|'));
 
+  step('Bez błędów strony i odpowiedzi 5xx', problems.length === 0, problems.join(' | '));
   console.log(`\nWSZYSTKIE KROKI OK (${results.length})`);
 } catch (error) {
   console.error(`\nBŁĄD: ${error.message}`);
   if (page) {
     console.error('--- URL w chwili błędu ---', page.url());
+    if (SHOTS_DIR) await page.screenshot({ path: join(SHOTS_DIR, `${VW}x${VH}-blad.png`) }).catch(() => {});
     console.error('--- treść strony (pierwsze 2000 znaków) ---\n' + (await page.locator('body').innerText().catch(() => '(brak)')).slice(0, 2000));
   }
-  console.error('--- ostatnie logi API/web ---\n' + apiLog.split('\n').slice(-40).join('\n'));
+  console.error('--- ostatnie logi API/web ---\n' + log.split('\n').slice(-40).join('\n'));
   process.exitCode = 1;
 } finally {
   await browser?.close();
@@ -590,9 +489,8 @@ try {
   try {
     prisma ??= new PrismaClient();
     if (orgId) await prisma.organization.deleteMany({ where: { id: orgId } });
-    // Kurs po organizacji (przypisania znikają kaskadowo z organizacją; kurs z przypisaniami jest chroniony - RESTRICT, B-032).
-    // TYLKO gdy ten przebieg go stworzył (courseCreatedByThisRun) - inaczej to cudzy, wcześniej zaimportowany kurs (patrz
-    // deklaracja courseCreatedByThisRun wyżej), którego ten skrypt nie ma prawa skasować.
+    // Kurs po organizacji (przypisania znikają kaskadowo; kurs z przypisaniami jest chroniony - RESTRICT, B-032) i TYLKO, gdy ten
+    // przebieg go stworzył (courseCreatedByThisRun).
     if (courseId && courseCreatedByThisRun) await prisma.course.deleteMany({ where: { id: courseId } });
     await prisma.$disconnect();
   } catch (error) {

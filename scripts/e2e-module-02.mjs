@@ -1,7 +1,8 @@
 // E2E w przeglądarce (Playwright) - pełne przejście modułu 2 ("Vishing", do D-172 „Głos z helpdesku”; packages/content/modules/glos-z-helpdesku)
 // zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-01.mjs (tam opis założeń: org i pracownik przez Prisma, `next dev`,
-// sprzątanie tylko kursu stworzonego przez ten przebieg). Cel: wszystkie 11 bloków od odprawy do zamknięcia sprawy, 20/20 dowodów,
-// 100% wyniku i osiągnięcia modułu 2 (Dead Air, Perfect Pitch, Full Transcript, Off the Record - D-124) przyznane przez serwer.
+// sprzątanie tylko kursu stworzonego przez ten przebieg). Cel: ekran startu (D-163), wszystkie 11 bloków od odprawy do omówienia
+// (podsumowanie zapisuje się samo, D-169), ekran końca (D-165) ze 100% wyniku i osiągnięcia modułu 2 (Dead Air, Perfect Pitch,
+// Full Transcript, Off the Record - D-124) przyznane przez serwer.
 //
 // Nagrania i grafiki modułu 2 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
@@ -16,6 +17,7 @@ import { launchPolishBrowser } from './lib/pl-browser.mjs';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { assertLocalDatabase } from './lib/local-db-guard.mjs';
+import { checkEndScreen, completionResponse, passStartScreen } from './lib/module-screens.mjs';
 
 // Skrypt tworzy i usuwa dane - tylko baza lokalna albo kontener testowy CI (B-140).
 assertLocalDatabase('scripts/e2e-module-02.mjs');
@@ -24,7 +26,6 @@ const SLUG = 'glos-z-helpdesku';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
 const MODULE_TITLE = MODULE.title.pl;
 const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
-const EVIDENCE_TOTAL = 20;
 // Opcjonalnie E2E_VIEWPORT=390x844 (telefon w pionie, dotyk) zamiast domyślnego 1366x768.
 const [VW, VH] = (process.env.E2E_VIEWPORT ?? '1366x768').split('x').map(Number);
 if (![VW, VH].every((n) => Number.isInteger(n) && n > 0)) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
@@ -128,8 +129,7 @@ try {
   step(`Katalog: karta i miniatura „${MODULE_TITLE}”`, (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
 
   await page.goto(`${WEB}/courses/${courseId}`);
-  await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
-  step('Player: nagłówek z nazwą modułu', true);
+  await passStartScreen(page, step, { title: MODULE_TITLE, caseNumber: MODULE.caseNumber, notice: typeof MODULE.startNotice === 'string' ? MODULE.startNotice : MODULE.startNotice?.pl });
 
   const progressResponse = () => page.waitForResponse((r) => r.url().includes(`/api/courses/${courseId}/progress`) && r.request().method() === 'POST');
   const bar = () => page.getByTestId('player-bottombar');
@@ -139,16 +139,6 @@ try {
   const noInBlockNext = async () =>
     (await page.getByTestId('player-content-area').getByRole('button', { name: IN_BLOCK_NEXT }).count()) === 0 &&
     (await page.getByTestId('player-content-area').getByRole('link', { name: IN_BLOCK_NEXT }).count()) === 0;
-  const counter = async () => (await page.getByTestId('evidence-counter').textContent()) ?? '';
-  // Stały mianownik (D-130): suma to wszystkie dowody modułu (także ukryte do zebrania - sprzeczność przesłuchania, notatki OSINT) od startu.
-  const counterIs = async (n, total = EVIDENCE_TOTAL) => {
-    const wanted = `Dowody ${n}/${total}`;
-    await page
-      .waitForFunction((text) => document.querySelector('[data-testid="evidence-counter"]')?.textContent?.includes(text), wanted, { timeout: 15000 })
-      .catch(async () => {
-        throw new Error(`Licznik dowodów: oczekiwane „${wanted}”, jest „${await counter()}”`);
-      });
-  };
   // „Dalej” w pasku, aż pojawi się znacznik następnego bloku (blok z wynikiem pokazuje go po zapisie - wtedy drugi „Dalej” przechodzi dalej).
   const advanceUntil = async (locator, what) => {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -178,7 +168,7 @@ try {
 
   // --- 1. Odprawa (BRIEFING, 5 kroków: telefon, rozmowa, teczka, legitymacja, start) -------------------------------------------
   await page.getByRole('button', { name: 'Odbierz telefon' }).waitFor();
-  step('BRIEFING: scena, „Pomiń odprawę” od razu, „Dalej” nieaktywny, w bloku brak przycisku dalej', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 1 && (await nextDisabled()) && (await noInBlockNext()));
+  step('BRIEFING: scena, „Dalej” nieaktywny, w bloku brak przycisku dalej (bez „Pomiń odprawę”, D-162)', (await page.getByRole('button', { name: 'Pomiń odprawę' }).count()) === 0 && (await nextDisabled()) && (await noInBlockNext()));
   step('BRIEFING: krok 0 - „Czwartek, 10:20…”', (await page.getByText(/Czwartek, 10:20\. Wydział Cyberbezpieczeństwa, Kraków\./).count()) >= 1);
   await briefingItem('Odbierz telefon');
   step('BRIEFING: dzwoni komisarz (dymek w scenie)', (await page.getByTestId('briefing-bubble').getByText('Komisarz Adam Wolski').count()) === 1);
@@ -269,8 +259,7 @@ try {
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
-  await counterIs(2);
-  step(`Telefon (scena zagnieżdżona): seria MFA i rejestr połączeń w notatniku (2/${EVIDENCE_TOTAL} - stały mianownik, D-130)`, true, await counter());
+  step('Telefon (scena zagnieżdżona): seria MFA i rejestr połączeń zebrane', (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1);
   await page.getByRole('button', { name: 'Komputer' }).click();
   await dialog().getByRole('button', { name: 'Narzędzie zdalnej pomocy' }).click();
   await dialog().getByRole('button', { name: 'Zabierz' }).click();
@@ -278,8 +267,6 @@ try {
   await dialog().getByRole('button', { name: 'Odłóż' }).click();
   await dialog().getByRole('button', { name: 'Wróć' }).click();
   await closed();
-  await counterIs(3);
-  step(`Pulpit (scena zagnieżdżona): narzędzie zdalnej pomocy w notatniku (3/${EVIDENCE_TOTAL}), przeglądarka bez dowodu`, true, await counter());
   await page.getByRole('button', { name: 'Karteczka' }).click();
   await take();
   await page.getByRole('button', { name: 'Plakat' }).click();
@@ -287,24 +274,21 @@ try {
   await take();
   await page.getByRole('button', { name: 'Kubek' }).click();
   await putDown();
-  await counterIs(5);
-  step(`SCENE_HOTSPOTS (biurko): karteczka i plakat w notatniku (5/${EVIDENCE_TOTAL}), kubek bez dowodu`, true, await counter());
+  step('SCENE_HOTSPOTS (biurko): karteczka i plakat zabrane, kubek bez dowodu', (await page.getByRole('button', { name: 'Karteczka (w notatniku)' }).count()) === 1 && (await page.getByRole('button', { name: 'Plakat (w notatniku)' }).count()) === 1);
   step('SCENE_HOTSPOTS (biurko): wymagane zebrane - „Dalej” w pasku aktywny (drzwi też prowadzą dalej, D-129)', (await nextEnabled().count()) === 1);
-  // Stan częściowy sceny (D-128): wyjście z modułu w połowie sceny i powrót - obejrzane i zabrane przedmioty, licznik i notatnik wracają.
+  // Stan częściowy sceny (D-128): wyjście z modułu w połowie sceny i powrót - obejrzane i zabrane przedmioty wracają.
   await page.waitForLoadState('networkidle');
   await page.goto(`${WEB}/courses`);
   await page.getByRole('img', { name: MODULE_TITLE, exact: true }).first().waitFor();
   await page.goto(`${WEB}/courses/${courseId}`);
   await page.getByRole('button', { name: 'Karteczka (w notatniku)' }).waitFor();
-  await counterIs(5);
   step(
-    `SCENE_HOTSPOTS (biurko): po wyjściu i powrocie scena w tym samym stanie (zabrane, obejrzane, licznik 5/${EVIDENCE_TOTAL}, notatnik 5)`,
+    'SCENE_HOTSPOTS (biurko): po wyjściu i powrocie scena w tym samym stanie (zabrane, obejrzane, „Dalej” aktywny), bez ekranu startu',
     (await page.getByRole('button', { name: 'Plakat (w notatniku)' }).count()) === 1 &&
       (await page.getByRole('button', { name: 'Kubek (obejrzane)' }).count()) === 1 &&
       (await page.getByRole('button', { name: 'Telefon Karola (obejrzane)' }).count()) === 1 &&
-      (await page.getByRole('button', { name: /^Notatnik \(5\)/ }).count()) === 1 &&
+      (await page.getByTestId('module-start').count()) === 0 &&
       (await nextEnabled().count()) === 1,
-    await counter(),
   );
   // Klik w drzwi to przejście dalej - zapis bloku od razu, bez osobnego „Dalej” (D-129).
   const deskSaved = progressResponse();
@@ -340,8 +324,6 @@ try {
   const recordingBody = await (await recordingSaved).json();
   step('CALL_RECORDING: 7/7 flag bez fałszywych -> 100%', recordingBody.lastResult?.points === 1 && recordingBody.lastResult?.detail?.falseTaps === 0, JSON.stringify(recordingBody.lastResult?.detail));
   await page.getByTestId('call-recording-result').waitFor();
-  await counterIs(7);
-  step(`CALL_RECORDING: dowody z nagrania (liczba 47, prośba o instalację) w notatniku (7/${EVIDENCE_TOTAL})`, true, await counter());
   step('CALL_RECORDING: wynik bez własnego „Dalej”', await noInBlockNext());
   await advanceUntil(page.getByTestId('interrogation-block'), 'przesłuchanie Karola');
   // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na odsłuch, a postęp poszedł dalej -
@@ -386,8 +368,6 @@ try {
   await ask('Co o tobie wiedział?', 'Znał moje imię, dział, nazwisko kierownika.');
   await note('Znał moje imię, dział, nazwisko kierownika.');
   await ask('Jak zakończyła się rozmowa?', 'Kazał zrestartować komputer');
-  await counterIs(10);
-  step(`INTERROGATION (Karol): 2 fragmenty + przyznanie w notatniku (10/${EVIDENCE_TOTAL} - suma bez zmian)`, true, await counter());
   await nextEnabled().waitFor();
   step('INTERROGATION (Karol): wymagane pytania zadane, „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   const karolSaved = progressResponse();
@@ -417,8 +397,6 @@ try {
   }
   await consolePanel.getByText('Konsola przejrzana.').waitFor();
   await consolePanel.getByRole('button', { name: 'Zamknij konsolę' }).click();
-  await counterIs(16);
-  step(`INTERROGATION (Paweł): 2 fragmenty + 4 ślady z konsoli w notatniku (16/${EVIDENCE_TOTAL})`, true, await counter());
   await nextEnabled().waitFor();
   step('INTERROGATION (Paweł): „Dalej” aktywny po konsoli, w bloku brak przycisku dalej', await noInBlockNext());
   await advanceUntil(page.getByRole('button', { name: 'Połączenie 9:02 – „IT Helpdesk”' }), 'porównanie w rejestrze');
@@ -434,9 +412,8 @@ try {
   await putDown();
   await page.getByRole('button', { name: 'Karta intranetu' }).click();
   await putDown();
-  await counterIs(17);
-  step(`SCENE_HOTSPOTS (rejestr): numer zewnętrzny w notatniku (17/${EVIDENCE_TOTAL})`, true, await counter());
   await nextEnabled().waitFor();
+  step('SCENE_HOTSPOTS (rejestr): numer zewnętrzny zabrany, „Dalej” aktywny po wymaganych', (await page.getByRole('button', { name: 'Połączenie 9:02 – „IT Helpdesk” (w notatniku)' }).count()) === 1);
   await advanceUntil(page.getByTestId('osint-frame'), 'OSINT');
 
   // --- 7. OSINT (OSINT_SPOT): 4 wykorzystane informacje, bez pułapek; webinar do końca -> Off the Record ------------------------
@@ -461,12 +438,7 @@ try {
   const osintBody = await (await osintSaved).json();
   step('OSINT: 4 wykorzystane informacje bez pułapek -> 100%', osintBody.lastResult?.points === 1, JSON.stringify(osintBody.lastResult?.points));
   await page.getByTestId('osint-summary').waitFor();
-  await counterIs(EVIDENCE_TOTAL);
-  step(`OSINT: 3 ukryte notatki ze strony w notatniku po ocenie (${EVIDENCE_TOTAL}/${EVIDENCE_TOTAL})`, true, await counter());
-  await page.getByRole('button', { name: /^Notatnik/ }).click();
-  step('OSINT: wyróżnienie „Off the Record” w notatniku', (await page.getByTestId('notebook-distinctions').textContent())?.includes('Off the Record'));
-  await page.keyboard.press('Escape');
-  await page.waitForSelector('[data-testid="notes-drawer"][aria-hidden="true"]', { state: 'attached', timeout: 5000 });
+  // „Poza protokołem” (Off the Record) przyznaje serwer przy zapisie OSINT - sprawdzane niżej na profilu (bez notatnika, D-162).
   await advanceUntil(page.getByTestId('evidence-board'), 'tablica osi czasu');
 
   // --- 8. Tablica osi czasu (ORDERING, waga 2): 7 zdarzeń klawiaturą ----------------------------------------------------------
@@ -517,14 +489,10 @@ try {
   for (let i = 1; i < markers; i++) await page.getByTestId('replay-next').click();
   await nextEnabled().waitFor();
   step('ANNOTATED_REPLAY: po ostatnim znaczniku „Dalej” aktywny', await noInBlockNext());
-  await advanceUntil(page.getByTestId('case-evidence'), 'zamknięcie sprawy');
 
-  // --- 11. Zamknięcie sprawy (SUMMARY) ------------------------------------------------------------------------------------------
-  const summaryText = (await page.getByTestId('case-evidence').textContent()) ?? '';
-  step(`SUMMARY: wszystkie dowody zebrane (${EVIDENCE_TOTAL} z ${EVIDENCE_TOTAL})`, summaryText.includes(`Zebrane dowody: ${EVIDENCE_TOTAL} z ${EVIDENCE_TOTAL}`), summaryText.slice(0, 120));
-  step('SUMMARY: lista „Trzy rzeczy do zapamiętania”', (await page.locator('ol li', { hasText: 'Numer, nie głos.' }).count()) === 1);
-  const completion = progressResponse();
-  await bar().getByRole('button', { name: 'Zakończ sprawę' }).click();
+  // --- 11. Zamknięcie sprawy (SUMMARY bez ekranu, D-169): „Dalej” zapisuje omówienie, odtwarzacz sam zapisuje podsumowanie ---------
+  const completion = completionResponse(page, courseId);
+  await nextEnabled().click();
   const completionBody = await (await completion).json();
   step('Kurs ukończony ze 100% wyniku', completionBody.status === 'COMPLETED' && completionBody.score === 100, JSON.stringify({ status: completionBody.status, score: completionBody.score }));
   // Off the Record przyznaje serwer przy zapisie bloku OSINT, bez XP i bez pozycji w odpowiedzi (jak Curious Detective w module 1) -
@@ -536,19 +504,7 @@ try {
     JSON.stringify(live),
   );
 
-  await page.getByRole('heading', { level: 2, name: 'Sprawa zamknięta' }).waitFor();
-  await page.locator('[data-testid="case-closed"][data-stage="sign"]').waitFor({ timeout: 20000 });
-  const slotText = async (testId) => ((await page.getByTestId(testId).textContent()) ?? '').trim();
-  step('Zamknięcie: nazwa modułu w raporcie', (await page.getByTestId('case-closed').getByText(MODULE_TITLE, { exact: true }).count()) >= 1);
-  step(`Zamknięcie: dowody ${EVIDENCE_TOTAL}/${EVIDENCE_TOTAL}`, (await slotText('closing-evidence')) === `${EVIDENCE_TOTAL}/${EVIDENCE_TOTAL}`, await slotText('closing-evidence'));
-  step('Zamknięcie: czas sprawy w minutach i +XP', /^\d+ min$/.test(await slotText('closing-time')) && /^\+[1-9]\d*$/.test(await slotText('closing-xp')), `${await slotText('closing-time')} | ${await slotText('closing-xp')}`);
-  // Wpisane (widoczne) wnioski - lista ma też niewidoczne pełne kopie, które rezerwują miejsce (D-128).
-  const typedLessons = (await page.getByTestId('closing-lesson-typed').allTextContents()).filter((line) => /^\d\. .+/.test(line));
-  step('Zamknięcie: trzy wnioski', typedLessons.length === 3, typedLessons.join(' | '));
-  await page.getByRole('button', { name: 'Podpisz raport' }).click();
-  await page.locator('[data-testid="case-closed"][data-stage="done"]').waitFor();
-  step('Zamknięcie: pieczęć i liścik po podpisie', (await page.getByTestId('closing-stamp').count()) === 1 && (await page.getByTestId('closing-note').count()) === 1);
-  step('Zamknięcie: „Wróć do biblioteki” tylko w pasku', (await noInBlockNext()) && (await bar().getByRole('link', { name: 'Wróć do biblioteki' }).getAttribute('href')) === '/courses');
+  await checkEndScreen(page, step, { completion: completionBody, rules: blockOf('rozwiazanie-sprawy').lessons.map((lesson) => lesson.pl) });
 
   await page.goto(`${WEB}/courses/achievements`);
   await page.getByTestId('achievements-counter').waitFor();

@@ -867,6 +867,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-173 Rozmowa na telefonie ze sceny po wznowieniu nie przewija się na dół (D-184)
+- Etykiety: `P3`, `mod:odtwarzacz` · Źródło: code review D-184
+- Opis: `PhoneStage` montuje treść ekranu dopiero po pomiarze orientacji, więc efekt autoprzewijania wątku przy montowaniu
+  (`DialogueBlock`, pewnie też czat `DOSSIER.phone`) widzi pusty `logRef` i nie przewija; po wznowieniu z kilkoma zadanymi pytaniami wątek
+  stoi na górze (przewinie się przy następnej wiadomości). Poprawka: przewinięcie w callback-ref albo zależność efektu od zamontowania wątku.
+  `DesktopStage`/`PhoneStage` nie są na liście plików reguły 12 w CLAUDE.md (layout-check przed pushem) - zmiana CLAUDE.md idzie do człowieka.
+- Akceptacja: test wznowienia rozmowy na telefonie (wątek przewinięty na dół).
+
 ### B-172 Tablica z notatkami - drobne uwagi z review (D-182)
 - Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-182
 - Opis:

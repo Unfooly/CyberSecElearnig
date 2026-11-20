@@ -18,6 +18,7 @@ import ScenePanContainer from '../player/ScenePanContainer';
 import { vibrate } from '@/lib/vibrate';
 import ExploreFooter from './ExploreFooter';
 import PopupsEasterEgg, { type PopupsHandle } from './PopupsEasterEgg';
+import BrowserWindow, { FakeLoginPage } from './BrowserWindow';
 
 type AnyHotspot = SceneHotspot | InnerSceneHotspot;
 type Phase = 'in' | 'open' | 'out';
@@ -26,6 +27,9 @@ type CameraStyle = { transformOrigin: string; transform: string } | null;
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700';
 // Przyciemnienie sceny pod zbliżeniem (D-102): ink 35% + rozmycie 3 px - pulpit i okienka easter egga leżą na tej samej nakładce.
 const ZOOM_DIM = 'bg-ink/35 backdrop-blur-[3px]';
+
+/** Okienka easter egga i strona w oknie przeglądarki (D-184): bez najazdu kamery; okienka także bez przyciemnienia sceny. */
+const opensWithoutZoom = (hotspot: { media?: { kind: string } }) => hotspot.media?.kind === 'popups' || hotspot.media?.kind === 'page';
 // Pierścień fokusu przycisków nakładki dwukolorowy (D-101): ciemny obrys na zewnątrz i biały pierścień przy krawędzi - widoczny
 // niezależnie od tego, co leży pod przyciskiem (przyciemniona scena, jasny fragment grafiki, ciemny przycisk).
 const LIGHT_FOCUS =
@@ -358,7 +362,9 @@ export default function SceneHotspotsBlock({
     setNestedPhase(null);
     // Easter egg (D-100) liczy się jako odwiedzony dopiero po zamknięciu wszystkich okienek (foundEasterEgg).
     if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
-    if (reducedMotionNow(reducedMotion)) {
+    // Okienka easter egga i okno przeglądarki (D-184, uwaga właściciela 2026-11-20: „po kliknięciu GTA6 nie rób zooma, tylko wyświetl
+    // same te monity”) otwierają się od razu nad sceną, bez ruchu kamery - jak programy na komputerze (D-104).
+    if (reducedMotionNow(reducedMotion) || opensWithoutZoom(hotspot)) {
       setCamera(null);
       setPhase('open');
       return;
@@ -387,7 +393,8 @@ export default function SceneHotspotsBlock({
       trigger?.focus();
     };
     setCamera(null);
-    if (reducedMotionNow(reducedMotion)) finish();
+    // Bez najazdu (D-184) nie ma czego oddalać - okno znika od razu.
+    if (reducedMotionNow(reducedMotion) || (active && opensWithoutZoom(active))) finish();
     else {
       setPhase('out');
       later(ZOOM_OUT_MS, finish);
@@ -664,9 +671,10 @@ export default function SceneHotspotsBlock({
               onClick={onBackdrop}
               // Scena pod zbliżeniem przyciemniona (ink 35%) i rozmyta (3 px) - D-102, przywrócone po D-101; sama grafika zbliżenia ma
               // przezroczyste tło i cień po kształcie (.zoom-shadow). Przy oddalaniu (out) przyciemnienie znika razem z kamerą.
+              // Okienka easter egga na scenie głównej (D-184) - bez przyciemnienia, jak wyskakujące okna na pulpicie (D-104).
               className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 p-3 outline-none ${
                 reducedMotion ? '' : 'transition-[background-color,backdrop-filter] duration-300'
-              } ${phase === 'out' ? 'bg-transparent' : ZOOM_DIM}`}
+              } ${phase === 'out' || (!nestedScene && active.media?.kind === 'popups') ? 'bg-transparent' : ZOOM_DIM}`}
             >
               {/* Stały region live (czytniki ogłaszają zmianę treści, nie region wstawiony razem z nią); widoczny tylko z tekstem. */}
               <p
@@ -860,6 +868,10 @@ function ZoomContent({
         {visible && !hotspot.media && hotspot.content && (
           <p className="max-w-[88%] rounded-card bg-ink/90 p-4 text-base text-white shadow-card">{hotspot.content}</p>
         )}
+        {/* Strona w oknie (D-184): opis z treści pod oknem - makieta sama nie mówi, skąd się wzięła. */}
+        {visible && hotspot.media?.kind === 'page' && hotspot.content && (
+          <p className="max-w-[min(94%,720px)] shrink-0 rounded-card bg-ink/90 px-4 py-2 text-sm text-white shadow-card">{hotspot.content}</p>
+        )}
       </div>
       {visible && (
         <div data-testid="scene-zoom-actions" className="flex shrink-0 flex-wrap items-center justify-center gap-2">
@@ -919,6 +931,21 @@ function ZoomGraphic({
   }
   if (media.kind === 'audio') return <AudioZoom media={media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />;
   if (media.kind === 'document' && media.look === 'newspaper') return <NewspaperPage media={media} />;
+  // Fałszywa strona logowania (D-184): okno przeglądarki z adresem i makietą formularza (obrazek, bez pól).
+  if (media.kind === 'page' && media.page) {
+    return (
+      // tabIndex: okno przewija się na niskim ekranie, a w środku nie ma nic skupialnego - przewijanie z klawiatury (WCAG 2.1.1).
+      <div data-testid="fake-page-window" tabIndex={0} aria-label={media.page.tabTitle} className="zoom-shadow flex max-h-full w-[min(94%,720px)] min-h-0 flex-col overflow-y-auto rounded-card">
+        <BrowserWindow
+          tabTitle={media.page.tabTitle}
+          bodyClassName=""
+          addressBar={<span className="min-w-0 flex-1 break-all py-1.5 text-sm text-ink">{media.page.url ?? ''}</span>}
+        >
+          <FakeLoginPage page={media.page} compact={portrait} />
+        </BrowserWindow>
+      </div>
+    );
+  }
   if (media.kind === 'document') {
     return (
       <div className="flex max-h-full w-[88%] min-h-0 flex-col rounded-card bg-ink/90 p-4 text-white shadow-card">

@@ -166,6 +166,21 @@
           "width": 8.9,
           "height": 15.6,
           "content": "W historii przeglądarki w zeszły czwartek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie.",
+          "media": {
+            "kind": "page",
+            "page": {
+              "tabTitle": "Formularz prelegenta – rejestracja",
+              "url": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
+              "brand": "Fundacja Analityki Stosowanej",
+              "heading": "Rejestracja prelegenta",
+              "text": "Potwierdź tożsamość służbowym adresem e-mail i hasłem.",
+              "fields": [
+                "Służbowy e-mail",
+                "Hasło"
+              ],
+              "button": "Zarejestruj się"
+            }
+          },
           "required": false
         },
         {
@@ -555,6 +570,18 @@
       "placeholder": "wpisz domenę",
       "frame": "monitor",
       "markUrl": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
+      "background": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp",
+      "page": {
+        "tabTitle": "Formularz prelegenta – rejestracja",
+        "brand": "Fundacja Analityki Stosowanej",
+        "heading": "Rejestracja prelegenta",
+        "text": "Potwierdź tożsamość służbowym adresem e-mail i hasłem.",
+        "fields": [
+          "Służbowy e-mail",
+          "Hasło"
+        ],
+        "button": "Zarejestruj się"
+      },
       "answer": {
         "regex": "^(www\\.)?formularz-online\\.net/?$",
         "caseSensitive": false
@@ -688,6 +715,22 @@
       "id": "rozmowa-pawel",
       "type": "DIALOGUE",
       "title": "Rozmowa z Pawłem",
+      "phone": {
+        "image": "assets/wyludzone-haslo/images/telefon.43d8d84c.webp",
+        "screen": {
+          "x": 41.13,
+          "y": 13.55,
+          "width": 17.74,
+          "height": 72.18
+        },
+        "imagePortrait": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp",
+        "screenPortrait": {
+          "x": 21.96,
+          "y": 17.63,
+          "width": 56.07,
+          "height": 64.11
+        }
+      },
       "narration": {
         "text": "Wiesz już, czego szukać. Porozmawiaj z Pawłem – zadaj mu wszystkie pytania.",
         "audioUrl": "audio/wyludzone-haslo/v1/rozmowa-pawel/35b549e72c58defb.mp3",

@@ -1,4 +1,4 @@
-import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, withLegacyIds } from './index';
+import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, toClientBlock, withLegacyIds } from './index';
 import { MAX_DOSSIER_EVIDENCE } from './semantics';
 import { fullModule } from './fixtures';
 import { hashContent, moduleWarnings, parseModule } from './node';
@@ -1394,6 +1394,46 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     const typo = fullModuleForTests();
     Object.assign(block(typo, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer: { accept: ['przyklad-onlin.net'] } });
     expect(errorsOf(typo)).toMatch(/zaznaczona domena „przyklad-online.net” nie jest poprawną odpowiedzią/);
+  });
+
+  const fakePage = { tabTitle: 'Formularz', brand: 'Fundacja', heading: 'Rejestracja', fields: ['E-mail', 'Hasło'], button: 'Wyślij' };
+  const testContext = { shuffleSeed: () => [1, 2, 3, 4] as [number, number, number, number], opaqueId: (blockId: string, itemId: string) => `x${blockId}-${itemId}` };
+
+  it('fałszywa strona logowania (D-184): media page przy przedmiocie sceny i strona + tło zadania z domeną tylko w monitorze; trafia do klienta', () => {
+    const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
+    const answer = { accept: ['przyklad-online.net'], caseSensitive: false };
+    const ok = fullModuleForTests();
+    withoutPopups(ok);
+    const hotspot = block(ok, 'SCENE_HOTSPOTS').hotspots.find((h: { action?: string }) => h.action !== 'next');
+    hotspot.media = { kind: 'page', page: { ...fakePage, url } };
+    Object.assign(block(ok, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, page: fakePage, background: 'pulpit.webp' });
+    expect(errorsOf(ok)).toBe('');
+    const parsed = parseModule(ok);
+    const text = toClientBlock(parsed.blocks.find((b) => b.type === 'TEXT_INPUT_GUIDED')!, testContext) as Record<string, unknown>;
+    expect(text).toMatchObject({ page: fakePage, background: 'pulpit.webp' });
+    const scene = toClientBlock(parsed.blocks.find((b) => b.type === 'SCENE_HOTSPOTS')!, testContext) as unknown as { hotspots: { media?: unknown }[] };
+    expect(scene.hotspots.map((h) => h.media)).toContainEqual({ kind: 'page', page: { ...fakePage, url } });
+
+    const noMonitor = fullModuleForTests();
+    Object.assign(block(noMonitor, 'TEXT_INPUT_GUIDED'), { page: fakePage, background: 'pulpit.webp' });
+    expect(errorsOf(noMonitor)).toMatch(/page: tylko z frame: monitor/);
+    expect(errorsOf(noMonitor)).toMatch(/background: tylko z frame: monitor/);
+    const tooMany = fullModuleForTests();
+    Object.assign(block(tooMany, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, page: { ...fakePage, fields: ['a', 'b', 'c', 'd', 'e'] } });
+    expect(errorsOf(tooMany)).toMatch(/fields/);
+  });
+
+  it('rozmowa na telefonie ze sceny (DIALOGUE.phone, D-184): wariant pionowy w komplecie, ekran w grafice', () => {
+    const phone = { image: 'telefon.webp', screen: { x: 41, y: 13, width: 18, height: 72 } };
+    const ok = fullModuleForTests();
+    block(ok, 'DIALOGUE').phone = { ...phone, imagePortrait: 'telefon-pion.webp', screenPortrait: { x: 22, y: 17, width: 56, height: 64 } };
+    expect(errorsOf(ok)).toBe('');
+    const half = fullModuleForTests();
+    block(half, 'DIALOGUE').phone = { ...phone, imagePortrait: 'telefon-pion.webp' };
+    expect(errorsOf(half)).toMatch(/phone: imagePortrait i screenPortrait podaje się razem/);
+    const outside = fullModuleForTests();
+    block(outside, 'DIALOGUE').phone = { image: 'telefon.webp', screen: { x: 90, y: 13, width: 18, height: 72 } };
+    expect(errorsOf(outside)).toMatch(/phone.screen: prostokąt ekranu poza grafiką/);
   });
 
   it('tablica z notatkami (ORDERING look notes, D-182): kartka na każdy etap, bez start/end, krótkie etykiety, tło tylko w tym wyglądzie', () => {

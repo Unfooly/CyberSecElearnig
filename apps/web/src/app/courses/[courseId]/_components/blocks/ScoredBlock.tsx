@@ -203,6 +203,7 @@ export default function ScoredBlock({
           disabled={disabled}
           readOnly={!!result && !live}
           onProgress={onProgress}
+          contentBase={contentBase}
         />
       );
     default:

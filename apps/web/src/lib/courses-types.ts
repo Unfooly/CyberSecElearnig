@@ -365,7 +365,7 @@ export interface ContentBlock {
   // DOSSIER: pieczątka teczki i dokumenty (przekładki).
   stamp?: string;
   documents?: DossierDocument[];
-  /** DOSSIER (D-181): telefon ze sceny - rozmowa leży na jego ekranie (prostokąt w % grafiki), wariant pionowy dla telefonu w pionie. */
+  /** DOSSIER (D-181) i DIALOGUE (D-184): telefon ze sceny - rozmowa leży na jego ekranie (prostokąt w % grafiki), wariant pionowy dla telefonu w pionie. */
   phone?: {
     image: string;
     screen: { x: number; y: number; width: number; height: number };
@@ -387,6 +387,8 @@ export interface ContentBlock {
   frame?: 'browser' | 'monitor';
   /** TEXT_INPUT_GUIDED (D-181): adres do rozłożenia - gracz zaznacza pierwszy pojedynczy „/” i drugą „.” na lewo, potem wpisuje domenę. */
   markUrl?: string;
+  /** TEXT_INPUT_GUIDED (D-184): fałszywa strona pod paskiem adresu (`background` - scena pod oknem, wspólne pole z TABS/ORDERING). */
+  page?: FakePage;
   maxAttempts?: number;
   hintCount?: number;
   // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.
@@ -439,8 +441,23 @@ interface PopupsFields {
   date?: string;
 }
 
+/**
+ * Fałszywa strona logowania (D-184): karta, adres i napisy makiety formularza. Odtwarzacz rysuje ją jako obrazek - bez pól i bez <form>.
+ */
+export interface FakePage {
+  tabTitle: string;
+  url?: string;
+  brand: string;
+  heading: string;
+  text?: string;
+  fields: string[];
+  button: string;
+}
+
 export interface HotspotMedia extends PopupsFields {
-  kind: 'image' | 'audio' | 'document' | 'scene' | 'popups';
+  kind: 'image' | 'audio' | 'document' | 'scene' | 'popups' | 'page';
+  /** kind:'page' (D-184) - fałszywa strona logowania w oknie przeglądarki. */
+  page?: FakePage;
   src?: string;
   /** kind:'image' - wariant dla telefonu w pionie (D-104). */
   imagePortrait?: string;

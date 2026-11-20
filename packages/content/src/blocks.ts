@@ -143,6 +143,25 @@ const popupsMediaSchema = z
   })
   .strict();
 
+// Fałszywa strona logowania (D-184, uwaga właściciela 2026-11-20: „po kliknięciu Internet niech otworzy się fałszywa strona logowania”):
+// okno przeglądarki z kartą, adresem i makietą formularza. Makieta jest OBRAZKIEM formularza (odtwarzacz rysuje ją bez pól i bez
+// <form> - nic nie da się w nią wpisać), więc treść to same napisy: marka, nagłówek, opis, etykiety pól i przycisku. Wszystko publiczne.
+// Ta sama strona leży pod zadaniem z domeną (TEXT_INPUT_GUIDED.page) - adres jest wtedy w `markUrl`, nie tutaj.
+const fakePageSchema = z
+  .object({
+    tabTitle: ltext(80),
+    url: text(300).optional(),
+    brand: ltext(80),
+    heading: ltext(120),
+    text: ltext(300).optional(),
+    fields: z.array(ltext(40)).min(1).max(4),
+    button: ltext(40),
+  })
+  .strict();
+const pageMediaSchema = z.object({ kind: z.literal('page'), page: fakePageSchema }).strict();
+// Ścieżki pól makiety do klasyfikacji (SCENE_HOTSPOTS media.page, TEXT_INPUT_GUIDED.page).
+const FAKE_PAGE_FIELDS = ['tabTitle', 'url', 'brand', 'heading', 'text', 'fields[]', 'button'] as const;
+
 // Hotspot WEWNĄTRZ zagnieżdżonej sceny (media.kind: 'scene'): jak hotspot najwyższego poziomu, ale BEZ `action` i BEZ
 // wariantu media `scene` - limit 1 poziomu zagnieżdżenia wymuszony przez system typów (nie osobną walidacją w runtime).
 // Zawsze zachowuje się jak `action: 'card'` (klik otwiera kartę), więc `content` zostaje wymagane, tak jak dziś.
@@ -183,6 +202,7 @@ const hotspotMediaSchema = z.discriminatedUnion('kind', [
   audioMediaSchema,
   documentMediaSchema,
   popupsMediaSchema,
+  pageMediaSchema,
   z.object({ kind: z.literal('scene'), scene: nestedSceneSchema }).strict(),
 ]);
 
@@ -237,10 +257,25 @@ const hotspotsSchema = z
   })
   .strict();
 
+// Prostokąt ekranu urządzenia w % grafiki (D-181) i telefon ze sceny: grafika telefonu na biurku z prostokątem jego ekranu, wariant
+// pionowy dla telefonu w pionie (DOSSIER.phone - D-181, DIALOGUE.phone - D-184).
+const screenPercent = z.number().min(0).max(100);
+const screenRectSchema = z.object({ x: screenPercent, y: screenPercent, width: screenPercent, height: screenPercent }).strict();
+const phoneSchema = z
+  .object({
+    image: limage(),
+    screen: screenRectSchema,
+    imagePortrait: limage().optional(),
+    screenPortrait: screenRectSchema.optional(),
+  })
+  .strict();
+
 const dialogueSchema = z
   .object({
     ...baseShape,
     type: z.literal('DIALOGUE'),
+    // Rozmowa na ekranie telefonu ze sceny (D-184, jak DOSSIER.phone z D-181): wątek leży na ekranie telefonu z biurka.
+    phone: phoneSchema.optional(),
     character: z
       .object({
         name: ltext(80),
@@ -374,6 +409,11 @@ const textInputSchema = z
     // pierwszy pojedynczy „/”, potem drugą „.” na lewo od niego - zaznaczony fragment to domena. Reguła jest ogólna (liczona w
     // odtwarzaczu z samego adresu, który i tak jest w treści zadania), więc pole jest publiczne; ocena odpowiedzi bez zmian (serwer).
     markUrl: text(300).optional(),
+    // Strona pod paskiem adresu (D-184): fałszywa strona logowania z `markUrl` - zadanie z domeną jest „wbudowane” w tę stronę.
+    // `background` (tylko z `frame: 'monitor'`): scena pod oknem przeglądarki (pulpit komputera ze sceny, z przybliżeniem) zamiast
+    // wspólnej grafiki monitora. Czysto wizualne, publiczne.
+    page: fakePageSchema.optional(),
+    background: limage().optional(),
     answer: z
       .object({
         // Odpowiedzi i wzorzec zostają jednojęzyczne w schemaVersion 6 (ocena per język przypisania - faza EN, rozdz. 10 specyfikacji
@@ -675,10 +715,6 @@ const dossierDocumentsSchema = z
   .min(1)
   .max(6);
 
-// Prostokąt ekranu urządzenia w % grafiki (D-181).
-const screenPercent = z.number().min(0).max(100);
-const screenRectSchema = z.object({ x: screenPercent, y: screenPercent, width: screenPercent, height: screenPercent }).strict();
-
 const dossierSchema = z
   .object({
     ...baseShape,
@@ -689,15 +725,7 @@ const dossierSchema = z
     // Telefon ze sceny (D-181, uwaga właściciela 2026-11-20: „messenger ma się wyświetlić na ekranie tego telefonu, a nie w nowym oknie”):
     // grafika telefonu na biurku i prostokąt jego ekranu w % grafiki - rozmowa (`layout: 'chat'`) leży dokładnie na ekranie. Wariant
     // pionowy dla telefonu w pionie. Czysto wizualne (semantics.ts: tylko z jednym dokumentem `layout: 'chat'`).
-    phone: z
-      .object({
-        image: limage(),
-        screen: screenRectSchema,
-        imagePortrait: limage().optional(),
-        screenPortrait: screenRectSchema.optional(),
-      })
-      .strict()
-      .optional(),
+    phone: phoneSchema.optional(),
   })
   .strict();
 
@@ -1197,6 +1225,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.look',
       'hotspots[].media.masthead',
       'hotspots[].media.date',
+      // Fałszywa strona logowania (D-184): same napisy makiety - publiczne.
+      ...FAKE_PAGE_FIELDS.map((key) => `hotspots[].media.page.${key}`),
       // Easter egg (D-100): okienka, outro i wyróżnienie to treść do pokazania (nic do odgadnięcia; znajomość z góry niczego nie daje).
       'hotspots[].media.items[].title',
       'hotspots[].media.items[].body',
@@ -1301,6 +1331,10 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'questions[].answerNarration.cues[].startMs',
       'questions[].note.text',
       'requiredQuestions[]',
+      // Telefon ze sceny pod rozmową (D-184): grafika i prostokąt ekranu - wygląd.
+      'phone.image',
+      'phone.imagePortrait',
+      ...['x', 'y', 'width', 'height'].flatMap((key) => [`phone.screen.${key}`, `phone.screenPortrait.${key}`]),
     ],
     [
       'questions[].lines[].narration.spokenText',
@@ -1336,7 +1370,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'criteria[].note.kind', 'criteria[].evidence', 'scoring'],
   ),
   TEXT_INPUT_GUIDED: classify(
-    ['prompt', 'placeholder', 'frame', 'markUrl', 'maxAttempts'],
+    // Strona pod paskiem adresu i scena pod oknem (D-184) - wygląd, publiczne.
+    ['prompt', 'placeholder', 'frame', 'markUrl', 'maxAttempts', 'background', ...FAKE_PAGE_FIELDS.map((key) => `page.${key}`)],
     [
       'answer.accept[]',
       'answer.regex',

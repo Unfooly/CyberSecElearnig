@@ -747,6 +747,29 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   };
   // `markUrl` wymaga w module frame 'monitor' (semantics.ts); te bloki nie przechodzą walidacji, więc oprawa zostaje 'browser' (test niżej).
   blocks.TEXT_INPUT_GUIDED.markUrl = 'https://fundacja.przyklad-online.net/rejestracja/1';
+  // Poprawki właściciela, runda 2 (D-184) - publiczne, czysto wizualne; tylko tutaj: fałszywa strona logowania przy przedmiocie sceny i
+  // pod zadaniem z domeną (z tłem pulpitu), rozmowa na telefonie ze sceny.
+  const fakePage = {
+    tabTitle: 'Formularz prelegenta',
+    url: 'https://fundacja.przyklad-online.net/rejestracja/1',
+    brand: 'Fundacja',
+    heading: 'Rejestracja',
+    text: 'Potwierdź tożsamość.',
+    fields: ['E-mail', 'Hasło'],
+    button: 'Zarejestruj się',
+  };
+  (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[]).push({
+    id: 'internet',
+    label: 'Internet',
+    x: 60,
+    y: 60,
+    width: 10,
+    height: 10,
+    content: 'Historia przeglądarki.',
+    media: { kind: 'page', page: fakePage },
+  });
+  Object.assign(blocks.TEXT_INPUT_GUIDED, { page: fakePage, background: 'images/pulpit.webp' });
+  blocks.DIALOGUE.phone = { ...(blocks.DOSSIER.phone as Record<string, unknown>) };
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';
   // Etykieta „Dalej” ostatniego kroku (D-160) - publiczna; w fullBlocks() pierwszy krok nie jest ostatni, więc tylko tutaj.

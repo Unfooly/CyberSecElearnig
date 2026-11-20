@@ -21,6 +21,8 @@ const TEXT_KEYS = new Set([
   'masthead',
   // Notatki na kartkach tablicy (ORDERING look notes, D-182).
   'notes',
+  // Fałszywa strona logowania (D-184): karta, marka, nagłówek i etykiety pól makiety.
+  'tabTitle', 'brand', 'heading', 'fields',
   // Czat w telefonie (D-178): `self` to imię autora własnych dymków - tłumaczone razem z komórkami (porównanie z autorem wiersza).
   'self',
 ]);

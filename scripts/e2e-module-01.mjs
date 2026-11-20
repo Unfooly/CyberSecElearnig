@@ -263,11 +263,32 @@ try {
   // --- 3. Pulpit (monitor Unfooly; Poczta = drzwi, Internet - karta, gra - easter egg) ---------------------------------------
   step('PULPIT: jedyne drzwi to Poczta - podpowiedź „Kliknij „Poczta”…”', (await doorHint('Poczta').count()) === 1);
   await shot('03-pulpit');
-  await lookAt('pulpit', 'internet');
-  step('PULPIT: Internet - historia przeglądarki z „Formularzem prelegenta”', true);
+  {
+    // Internet (D-184): okno przeglądarki z fałszywą stroną logowania (makieta bez pól), bez najazdu kamery, opis z historii pod oknem.
+    await hotspot('internet').click();
+    // Faza od razu po kliknięciu: z najazdem kamery byłaby 'in' (450 ms), bez niego od razu 'open'.
+    const internetPhase = await page.getByTestId('scene-zoom').getAttribute('data-phase');
+    await dialog().getByText(cardText('pulpit', 'internet')).waitFor();
+    const fakeWindow = page.getByTestId('fake-page-window');
+    step(
+      'PULPIT: Internet - okno z fałszywą stroną logowania (karta „Formularz prelegenta”, makieta bez pól), bez najazdu kamery',
+      internetPhase === 'open' &&
+        ((await fakeWindow.textContent()) ?? '').includes('Formularz prelegenta') &&
+        (await fakeWindow.getByTestId('fake-login-page').count()) === 1 &&
+        (await fakeWindow.locator('input, form, textarea, button').count()) === 0,
+    );
+    await shot('03b-internet');
+    await dialog().getByRole('button', { name: 'Odłóż' }).click();
+    await closed();
+  }
   if (!PHONE) {
-    // Easter egg (D-100): trzy okienka zamykane krzyżykiem, outro z osiągnięciem, „Wróć” zamyka zbliżenie.
+    // Easter egg (D-100): trzy okienka zamykane krzyżykiem, outro z osiągnięciem, „Wróć” zamyka zbliżenie. Bez najazdu kamery (D-184).
     await hotspot('gra').click();
+    {
+      const zoom = page.getByTestId('scene-zoom');
+      const [phase, cls] = [await zoom.getAttribute('data-phase'), (await zoom.getAttribute('class')) ?? ''];
+      step('EASTER EGG: okienka bez najazdu kamery i bez przyciemnienia sceny', phase === 'open' && cls.includes('bg-transparent') && !cls.includes('backdrop-blur'), `${phase} | ${cls}`);
+    }
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="easter-popup"]').length === 3, undefined, { timeout: 10000 });
     for (const item of [...blockOf('pulpit').hotspots.find((h) => h.id === 'gra').media.items].reverse()) {
       const title = text(item.title).replace(/^[^\p{L}\p{N}]+/u, '').trim();
@@ -297,6 +318,8 @@ try {
   const emailBody = await (await emailAnswered).json();
   step('MAIL: tylko „niespodziewana oferta” -> 100% i reakcja z treści', emailBody.lastResult?.points === 1 && emailBody.lastResult?.reaction?.text === text(zaproszenie.reactions.result[0].text), JSON.stringify(emailBody.lastResult));
   await page.getByText(/Wynik: 100%/).waitFor();
+  step('MAIL: wynik zostaje w tym samym monitorze (D-184)', (await page.getByTestId('monitor-screen').getByText(/Wynik: 100%/).count()) === 1);
+  await shot('04b-mail-wynik');
   step('MAIL: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();
 
@@ -343,13 +366,19 @@ try {
   step('CZAT: po wymaganych „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   await goNext('CZAT');
 
-  // --- 8. Domena (TEXT_INPUT_GUIDED w monitorze, D-181, waga 0): w pasku adresu pierwszy pojedynczy „/”, potem druga „.” w lewo -----
+  // --- 8. Domena (TEXT_INPUT_GUIDED, D-181/D-184, waga 0): fałszywa strona na pulpicie Pawła; w pasku adresu pierwszy pojedynczy „/”,
+  // potem druga „.” w lewo -----
   const domena = blockOf('domena');
   const url = domena.markUrl;
-  const monitor = page.getByTestId('monitor-screen');
+  const monitor = page.getByTestId('desktop-window');
   await monitor.getByTestId('address-marker').waitFor();
   const separator = (index) => monitor.locator(`[data-testid="address-separator"][data-index="${index}"]`);
-  step('DOMENA: strona w monitorze, pole odpowiedzi ukryte do zaznaczenia domeny', (await page.getByPlaceholder(text(domena.placeholder)).count()) === 0);
+  step(
+    'DOMENA: okno przeglądarki na pulpicie (tło sceny), pod zadaniem fałszywa strona logowania, pole odpowiedzi ukryte do zaznaczenia domeny',
+    (await page.getByTestId('desktop-stage').count()) === 1 &&
+      (await monitor.getByTestId('fake-login-page').count()) === 1 &&
+      (await page.getByPlaceholder(text(domena.placeholder)).count()) === 0,
+  );
   await shot('08a-domena-adres');
   await separator(url.indexOf('/')).click(); // ukośnik z „https://” - zły
   step('DOMENA: ukośnik z „https://” - komunikat, bez zapisu', ((await monitor.getByRole('status').textContent()) ?? '').includes('POJEDYNCZEGO'));
@@ -394,6 +423,7 @@ try {
   const chatIdle = () => page.locator('[role="log"][data-typing="false"]').waitFor();
   await page.getByText(text(rozmowa.character.opening)).waitFor();
   step('ROZMOWA: character.opening przed pierwszym pytaniem, „Dalej” nieaktywny', await nextDisabled());
+  step('ROZMOWA: wątek na ekranie telefonu z biurka (D-184)', (await page.getByTestId('phone-screen').getByTestId('dialogue-on-phone').count()) === 1);
   for (const question of rozmowa.questions) {
     await chatIdle();
     await page.getByRole('button', { name: text(question.text), exact: true }).click();

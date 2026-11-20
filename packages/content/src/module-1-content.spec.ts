@@ -121,6 +121,20 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect(article).toMatchObject({ look: 'newspaper', masthead: 'Kurier Cyfrowy' });
   });
 
+  it('poprawki właściciela, runda 2 (D-184): Internet = fałszywa strona logowania, domena wbudowana w tę stronę na pulpicie, rozmowa na telefonie', () => {
+    const internet = (block('pulpit').hotspots as { id: string; media?: { kind: string; page?: Record<string, unknown> } }[]).find((h) => h.id === 'internet')!;
+    expect(internet.media?.kind).toBe('page');
+    const domena = block('domena') as { markUrl: string; background: string; page: Record<string, unknown> };
+    // Ta sama strona: adres z pola do zaznaczenia, ten sam formularz.
+    expect(internet.media?.page?.url).toBe(domena.markUrl);
+    const { url: _url, ...samePage } = internet.media!.page!;
+    expect(domena.page).toEqual(samePage);
+    // Tło zadania to scena pulpitu Pawła (ten sam plik).
+    expect(domena.background).toBe(block('pulpit').image);
+    // Rozmowa z Pawłem na tym samym telefonie co komunikator.
+    expect(block('rozmowa-pawel').phone).toEqual(block('komunikator').phone);
+  });
+
   it('biuro powtarzane jak na nagraniu: komputer → pulpit (Poczta) → mail; ✓ komputer, smartfon → ekran telefonu (Komunikator) → czat; ✓ oba, Paweł → rozmowa', () => {
     const scene = (id: string) =>
       Object.fromEntries((block(id).hotspots as { id: string; action?: string; done?: boolean }[]).map((h) => [h.id, h.done ? 'done' : (h.action ?? 'card')]));

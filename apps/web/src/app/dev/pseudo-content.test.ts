@@ -19,6 +19,8 @@ const TEXT_KEYS = new Set([
   'button', 'outro',
   // Winieta strony gazety w zbliżeniu (D-181).
   'masthead',
+  // Notatki na kartkach tablicy (ORDERING look notes, D-182).
+  'notes',
   // Czat w telefonie (D-178): `self` to imię autora własnych dymków - tłumaczone razem z komórkami (porównanie z autorem wiersza).
   'self',
 ]);

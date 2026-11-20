@@ -31,7 +31,9 @@ bloków lub hotspotów, ich kolejności albo mechaniki bloku wymaga poprawki skr
 
    Potem **Tak/Nie** (QUIZ, waga 1), też poprawnie za pierwszym razem.
 10. **Biuro z dwoma ✓** (Paweł = drzwi), **rozmowa z Pawłem** (DIALOGUE: najpierw kwestia otwierająca, potem
-    wszystkie pytania), **tablica** (ORDERING, waga 2; układana klawiaturą).
+    wszystkie pytania), **tablica z notatkami** (ORDERING `look: notes`, waga 2, D-182): trzy kartki z notatkami z treści;
+    pierwszy etap przeciągany myszą (na telefonie stuknięciami), drugi klawiaturą, trzeci kliknięciami; po „Sprawdź trop”
+    ✓ na każdej kartce.
 11. **Raport w teczce „SPRAWA ZAMKNIĘTA”**, potem **gazeta** (wymagany artykuł jako strona gazety z winietą, D-181).
 12. **Koniec:** podsumowanie zapisuje się samo, bez ekranu (D-169). Kurs jest ukończony ze 100% wyniku.
     Osiągnięcia przyznane na żywo to „Pierwsza sprawa zamknięta” i „Sprawa bez skazy”.

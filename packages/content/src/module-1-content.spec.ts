@@ -85,6 +85,30 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect(parsed.cover?.backdrop).toBeDefined();
   });
 
+  it('tablica jak na nagraniu (D-182): trzy etapy E-mail → Rozmowa → Link na kartkach z notatkami, tło tablicy z Dreaminy', () => {
+    const tablica = block('tablica') as {
+      look?: string;
+      items: { id: string; text: string }[];
+      slots?: { notes: string[] }[];
+      background?: string;
+      backgroundPortrait?: string;
+      start?: unknown;
+    };
+    expect(tablica.look).toBe('notes');
+    expect(tablica.items.map((item) => [item.id, item.text])).toEqual([
+      ['mail', 'E-mail'],
+      ['rozmowa', 'Rozmowa telefoniczna'],
+      ['link', 'Link'],
+    ]);
+    expect(tablica.slots).toHaveLength(3);
+    // Kartka 3 (link) zbiera domenę z bloku „domena” i wpisanie hasła (dawny czwarty etap).
+    expect(tablica.slots![2].notes.join(' ')).toContain('formularz-online.net');
+    expect(tablica.slots![2].notes.join(' ')).toContain('hasło');
+    expect(tablica.background).toMatch(/^assets\/wyludzone-haslo\/images\/tablica-tlo\.[0-9a-f]{8}\.webp$/);
+    expect(tablica.backgroundPortrait).toMatch(/^assets\/wyludzone-haslo\/images\/tablica-tlo-pion\.[0-9a-f]{8}\.webp$/);
+    expect(tablica.start).toBeUndefined();
+  });
+
   it('poprawki właściciela (D-181): czat na ekranie telefonu ze sceny, domena rozkładana w monitorze, gazeta jako strona gazety', () => {
     // Ten sam telefon co na scenie z ekranem głównym - rozmowa leży na jego ekranie, a nie w osobnym oknie.
     const phone = block('komunikator').phone as { image: string; imagePortrait?: string };

@@ -41,7 +41,7 @@ Domeny `fundacja-analityki.pl` i `formularz-online.net` sprawdzone 2026-11-19 - 
 | 9 | `zaufanie` | QUIZ | „Czy link jest godny zaufania?” Tak / Nie → Nie | 1 |
 | 10 | `biuro-pawla-3` | SCENE_HOTSPOTS | ✓ komputer i smartfon; Paweł = drzwi do rozmowy | – |
 | 11 | `rozmowa-pawel` | DIALOGUE | 4 pytania (3 wymagane): co się stało, czy coś było dziwne, telefon, link | – |
-| 12 | `tablica` | ORDERING | e-mail → rozmowa i telefon → link → logowanie; start „P.N.”, koniec „46 maili” | 2 |
+| 12 | `tablica` | ORDERING | tablica z notatkami jak na nagraniu (`look: notes`, D-182): na korkowej tablicy (tło z Dreaminy) trzy ponumerowane kartki z notatkami ze śledztwa; gracz przeciąga etapy „E-mail”, „Rozmowa telefoniczna”, „Link” na właściwe kartki (wpisanie hasła jest w notatkach kartki „Link”) | 2 |
 | 13 | `raport` | TABS | „Raport końcowy” w teczce „SPRAWA ZAMKNIĘTA” na biurku: 3 etapy, przy każdym rada | – |
 | 14 | `gazeta` | SCENE_HOTSPOTS | „Zanim sobie pójdziesz”: gazeta → strona gazety „Kurier Cyfrowy” (`look: newspaper`, D-181) z artykułem o Charming Kitten (2020) - tuż przed ekranem końca | – |
 | 15 | `zasady` | SUMMARY | trzy zasady (`lessons`) na ekran końca; zamyka się samo (D-169) | – |

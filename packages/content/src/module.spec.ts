@@ -1396,6 +1396,37 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(typo)).toMatch(/zaznaczona domena „przyklad-online.net” nie jest poprawną odpowiedzią/);
   });
 
+  it('tablica z notatkami (ORDERING look notes, D-182): kartka na każdy etap, bez start/end, krótkie etykiety, tło tylko w tym wyglądzie', () => {
+    const notes = (module: TestModule) => {
+      const ordering = block(module, 'ORDERING');
+      delete ordering.start;
+      delete ordering.end;
+      Object.assign(ordering, {
+        look: 'notes',
+        background: 'tablica.webp',
+        backgroundPortrait: 'tablica-pion.webp',
+        slots: ordering.items.map((_: unknown, index: number) => ({ notes: [`Notatka ${index + 1}.`] })),
+      });
+      ordering.items.forEach((item: { text: unknown }, index: number) => (item.text = `Etap ${index + 1}`));
+      return ordering;
+    };
+    const ok = fullModuleForTests();
+    notes(ok);
+    expect(errorsOf(ok)).toBe('');
+    const missingSlot = fullModuleForTests();
+    notes(missingSlot).slots.pop();
+    expect(errorsOf(missingSlot)).toMatch(/slots: tablica z notatkami wymaga kartki/);
+    const withPhotos = fullModuleForTests();
+    notes(withPhotos).start = { label: 'P.N.', caption: 'Paweł' };
+    expect(errorsOf(withPhotos)).toMatch(/start\/end: tablica z notatkami nie ma zdjęć/);
+    const longLabel = fullModuleForTests();
+    notes(longLabel).items[0].text = 'Bardzo długa etykieta etapu, która nie zmieści się w polu kartki';
+    expect(errorsOf(longLabel)).toMatch(/etykiety etapów na tablicy z notatkami najwyżej 40 znaków/);
+    const plain = fullModuleForTests();
+    block(plain, 'ORDERING').background = 'tablica.webp';
+    expect(errorsOf(plain)).toMatch(/slots\/background: tylko z look "notes"/);
+  });
+
   it('strona gazety w zbliżeniu (document look newspaper, D-181) przechodzi walidację; nieznany wygląd - błąd', () => {
     const module = fullModuleForTests();
     const media = block(module, 'SCENE_HOTSPOTS').hotspots.find((h: { media?: { kind?: string } }) => h.media?.kind === 'document').media;

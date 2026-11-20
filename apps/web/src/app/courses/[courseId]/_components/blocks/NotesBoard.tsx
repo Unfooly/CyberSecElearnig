@@ -163,7 +163,7 @@ export default function NotesBoard({
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
   function slotUnder(x: number, y: number): number | null {
-    const element = document.elementsFromPoint?.(x, y).find((el) => el instanceof HTMLElement && el.dataset.slot !== undefined) as HTMLElement | undefined;
+    const element = (document.elementsFromPoint?.(x, y) ?? []).find((el) => el instanceof HTMLElement && el.dataset.slot !== undefined) as HTMLElement | undefined;
     return element ? Number(element.dataset.slot) : null;
   }
   function onPointerMove(event: PointerEvent<HTMLButtonElement>) {
@@ -179,7 +179,10 @@ export default function NotesBoard({
     dragStart.current = null;
     if (!start || !dragging.current) return;
     dragging.current = false;
+    // Klik po przeciągnięciu (jeśli przeglądarka go wyśle - przy przechwyconym wskaźniku nie zawsze) jest pomijany; flaga gaśnie zaraz po
+    // tym zdarzeniu, inaczej połknęłaby następny prawdziwy klik albo Enter.
     suppressClick.current = true;
+    window.setTimeout(() => (suppressClick.current = false), 0);
     const target = slotUnder(event.clientX, event.clientY);
     setDrag(null);
     setHoverSlot(null);

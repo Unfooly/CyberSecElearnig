@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ContentBlock } from '@/lib/courses-types';
 import NotesBoard from './NotesBoard';
 
@@ -103,6 +103,44 @@ describe('NotesBoard (D-182)', () => {
     await new Promise((resolve) => setTimeout(resolve, 320));
     fireEvent.click(label('Link'), { detail: 1 });
     expect(label('Link')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('przełączenie tablica → lista → tablica (zwężenie i poszerzenie okna): tablica ponownie zmierzona, ramka nie zostaje 0×0', () => {
+    let width = 1000;
+    const observers: (() => void)[] = [];
+    const originalRect = Element.prototype.getBoundingClientRect;
+    const originalObserver = window.ResizeObserver;
+    // Jak w przeglądarce: odłączony element (stara scena po przejściu na listę) ma rozmiar 0×0.
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      const w = this.isConnected ? width : 0;
+      const h = this.isConnected ? 600 : 0;
+      return { width: w, height: h, top: 0, left: 0, right: w, bottom: h, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    };
+    window.ResizeObserver = class {
+      constructor(callback: () => void) {
+        observers.push(callback);
+      }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      render(<NotesBoard block={board} contentBase="" onSubmit={() => {}} />);
+      const frameWidth = () => (screen.getByTestId('notes-board-stage').firstElementChild as HTMLElement).style.width;
+      expect(screen.getByTestId('notes-board')).toHaveAttribute('data-variant', 'landscape');
+      expect(frameWidth()).toBe('1000px');
+      width = 600;
+      act(() => observers.forEach((callback) => callback()));
+      expect(screen.getByTestId('notes-board')).toHaveAttribute('data-variant', 'portrait');
+      expect(screen.queryByTestId('notes-board-stage')).toBeNull();
+      width = 1000;
+      act(() => observers.forEach((callback) => callback()));
+      expect(screen.getByTestId('notes-board')).toHaveAttribute('data-variant', 'landscape');
+      expect(frameWidth()).toBe('1000px');
+    } finally {
+      Element.prototype.getBoundingClientRect = originalRect;
+      window.ResizeObserver = originalObserver;
+    }
   });
 
   it('klawiatura: Enter na etykiecie i Enter na kartce (te same przyciski)', () => {

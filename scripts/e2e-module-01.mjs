@@ -404,24 +404,49 @@ try {
   step('ROZMOWA: po pytaniach „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   await goNext('ROZMOWA');
 
-  // --- 12. Tablica śledcza (ORDERING, waga 2): ślady z tacki na pola klawiaturą -----------------------------------------------
+  // --- 12. Tablica z notatkami (ORDERING look notes, D-182, waga 2): etapy na kartki - przeciągnięcie, klawiatura, kliknięcia ----------
   const tablica = blockOf('tablica');
-  await page.getByTestId('evidence-board').waitFor();
-  const tray = page.getByRole('group', { name: 'Ślady do przypięcia' });
-  step(`TABLICA: ${tablica.items.length} śladów na tacce, bez „Sprawdź trop” przed zapełnieniem`, (await tray.getByRole('button', { name: /^Ślad: / }).count()) === tablica.items.length && (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0);
+  await page.getByTestId('notes-board').waitFor();
+  const labels = page.getByRole('group', { name: 'Etapy ataku do przypięcia' });
+  step(
+    `TABLICA: ${tablica.slots.length} kartki z notatkami z treści, ${tablica.items.length} etapy pod tablicą, bez „Sprawdź trop”`,
+    (await page.getByTestId('notes-card').count()) === tablica.slots.length &&
+      ((await page.getByTestId('notes-card').first().textContent()) ?? '').includes(text(tablica.slots[0].notes[0])) &&
+      (await labels.getByRole('button').count()) === tablica.items.length &&
+      (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 0,
+  );
+  await shot('12a-tablica-pusta');
+  const labelOf = (item) => labels.getByRole('button', { name: new RegExp(`^Etap: ${text(item.text)}`) });
+  const emptyCard = (index) => page.getByRole('button', { name: new RegExp(`^Kartka ${index + 1}: pusta`) });
   for (const [index, item] of tablica.items.entries()) {
-    const card = tray.getByRole('button', { name: `Ślad: ${text(item.text)}` });
-    await card.focus();
-    await card.press('Enter');
-    const slot = page.getByRole('button', { name: new RegExp(`^Pole ${index + 1}, puste`) });
-    await slot.focus();
-    await slot.press('Enter');
+    if (index === 0 && !PHONE) {
+      // Przeciągnięcie myszą: etykieta -> kartka 1.
+      const from = await labelOf(item).boundingBox();
+      const to = await emptyCard(index).boundingBox();
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(from.x + from.width / 2 + 20, from.y + from.height / 2 - 20, { steps: 4 });
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+      await page.mouse.up();
+    } else if (index === 1) {
+      // Klawiatura: Enter na etykiecie, Enter na kartce.
+      await labelOf(item).focus();
+      await labelOf(item).press('Enter');
+      await emptyCard(index).focus();
+      await emptyCard(index).press('Enter');
+    } else {
+      await labelOf(item).click();
+      await emptyCard(index).click();
+    }
+    await page.getByRole('button', { name: new RegExp(`^Kartka ${index + 1}: ${text(item.text)}`) }).waitFor({ timeout: 5000 });
   }
+  step(`TABLICA: etapy przypięte (${PHONE ? 'stuknięcia' : 'przeciągnięcie'}, klawiatura, klik) - „Sprawdź trop” widoczny`, (await page.getByRole('button', { name: 'Sprawdź trop' }).count()) === 1);
   const orderingAnswered = progressResponse();
   await page.getByRole('button', { name: 'Sprawdź trop' }).click();
   const orderingBody = await (await orderingAnswered).json();
   step('TABLICA: poprawna kolejność -> pełne punkty i reakcja z treści', orderingBody.lastResult?.points === 1 && orderingBody.lastResult?.reaction?.text === text(tablica.reactions.result[0].text), JSON.stringify(orderingBody.lastResult));
-  await page.locator('[data-testid="evidence-board"][data-phase="settled"]').waitFor();
+  await page.locator('[data-testid="notes-board"][data-phase="settled"]').waitFor();
+  step('TABLICA: po sprawdzeniu ✓ na każdej kartce', (await page.locator('[data-testid="notes-card"][data-result="good"]').count()) === tablica.slots.length);
   await shot('12-tablica');
   step('TABLICA: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   await nextEnabled().click();

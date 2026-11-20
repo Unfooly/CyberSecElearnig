@@ -89,7 +89,9 @@ export default function NotesBoard({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [portraitMeasured]);
+    // Scena istnieje tylko w układzie tablicy - pomiar od nowa przy każdym przełączeniu układu (lista ↔ tablica), także z powodu
+    // samego rozmiaru obszaru (`roomy`), inaczej nowo zamontowana scena zostawałaby bez rozmiaru.
+  }, [portrait]);
   const frameWidth = Math.max(0, Math.min(stage.width, stage.height * ratio));
   const frame = { width: frameWidth, height: frameWidth / ratio };
 
@@ -129,12 +131,16 @@ export default function NotesBoard({
   const inPlaceCount = playerOrder.filter((id, index) => correctOrder[index] === id).length;
 
   // Fokus po przypięciu (przycisk pustej kartki albo „Odłóż” znika z DOM - bez tego fokus spadłby na <body>): na etykietę na kartce,
-  // po odłożeniu - na etykietę pod tablicą; przy pełnej tablicy - na „Sprawdź trop”.
+  // po odłożeniu - na etykietę pod tablicą; gdy tablica właśnie się zapełniła - na „Sprawdź trop” (zamiany na już pełnej tablicy
+  // zostawiają fokus na kartce, żeby poprawianie kolejności z klawiatury nie wracało za każdym razem Tabem).
   const focusAfter = useRef<{ slot: number } | { label: string } | null>(null);
+  const wasFull = useRef(false);
   useEffect(() => {
     const target = focusAfter.current;
     focusAfter.current = null;
-    if (full) {
+    const justFilled = full && !wasFull.current;
+    wasFull.current = full;
+    if (justFilled) {
       checkRef.current?.focus();
       return;
     }
@@ -234,6 +240,8 @@ export default function NotesBoard({
 
   // Przerwane przeciąganie (anulowanie wskaźnika, utrata przechwycenia, Escape): klon znika, nic się nie przypina.
   function cancelDrag() {
+    // Escape w trakcie przeciągania: puszczenie przycisku wyśle jeszcze `click` - pomijamy go, żeby nie wybrać anulowanej etykiety.
+    if (dragging.current) suppressClickUntil.current = performance.now() + 300;
     dragStart.current = null;
     dragging.current = false;
     setDrag(null);

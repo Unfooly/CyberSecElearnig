@@ -878,7 +878,11 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
     - wyniku bez `correctOrder`;
   - na telefonie brak autoprzewijania listy kartek przy przeciąganiu (klik działa jako alternatywa);
   - `NotesBoard.tsx` nie jest na liście plików reguły 12 w CLAUDE.md (layout-check przed pushem) - zmiana CLAUDE.md idzie do człowieka;
-  - przy błędzie wczytania tła tablica zostaje z proporcjami zastępczymi (kartki czytelne, bez grafiki).
+  - przy błędzie wczytania tła tablica zostaje z proporcjami zastępczymi (kartki czytelne, bez grafiki);
+  - ogłoszenie wyniku obu tablic (`NotesBoard`, `OrderingBlock`) siedzi w regionie `role="status"` montowanym od razu z treścią (wynik ma
+    nowy `key`) - czytniki mogą go nie ogłosić; wspólne rozwiązanie: region trwały ponad `key` albo wypełnienie po montowaniu;
+  - Escape w trakcie przeciągania w Safari (macOS) nie działa - `pointerdown` nie daje fokusu przyciskowi; brak histerezy progu
+    700 px między tablicą a listą.
 - Akceptacja: testy dopisane, reguła 12 obejmuje `NotesBoard.tsx`.
 
 ### B-171 Narracja pięciu scen przejścia modułu 1 (D-179)

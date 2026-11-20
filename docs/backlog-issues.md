@@ -867,6 +867,14 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-174 layout-check `module` modułów 2 i 3 na telefonie w pionie - błędy niewidoczne w domyślnym przebiegu
+- Etykiety: `P2`, `mod:odtwarzacz`, `test` · Źródło: D-185 (przebieg `LAYOUT_CHECK_SECTION=module` dla wszystkich modułów)
+- Opis: domyślny `node scripts/layout-check.mjs` sprawdza sekcję `module` tylko dla modułu z `LAYOUT_CHECK_MODULE` (domyślnie 1), więc:
+  `glos-z-helpdesku` 390x844 - (m11) liścik i pieczęć zamknięcia zasłaniają zasady/podpis (szerokość liściku 94 px, pieczęci 112 px);
+  `lancuszek` 360x800 - (m10) scena odprawy za niska (180 px) pod maszyną do pisania. Oba przy dotyku (`pointer: coarse`), więc nie od skali
+  125% z D-185 (tylko `pointer: fine`).
+- Akceptacja: poprawione oba przypadki; layout-check `module` dla każdego modułu w jednym przebiegu (pętla po `packages/content/modules`).
+
 ### B-173 Rozmowa na telefonie ze sceny po wznowieniu nie przewija się na dół (D-184)
 - Etykiety: `P3`, `mod:odtwarzacz` · Źródło: code review D-184
 - Opis: `PhoneStage` montuje treść ekranu dopiero po pomiarze orientacji, więc efekt autoprzewijania wątku przy montowaniu

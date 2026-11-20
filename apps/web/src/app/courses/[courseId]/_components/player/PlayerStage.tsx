@@ -14,7 +14,7 @@ import Hint from './Hint';
 // CSS, nie stylu inline - dzięki temu @media wygrywają zwykłą specyficznością, bez !important), nie JS/matchMedia -
 // unika migotania przy starcie i przy obrocie ekranu:
 //  - desktop/tablet/telefon w poziomie: karta 16:9, wyśrodkowana, szerokość min(100vw-32px, (100dvh-32px)*16/9,
-//    1280px), aspect-ratio robi resztę - bez JS.
+//    1280px; na komputerze ≥ 1200×600 - 1600px i czcionka bazowa 125%, D-185), aspect-ratio robi resztę - bez JS.
 //  - telefon w poziomie, niska wysokość (max-height:500px, orientation:landscape, pointer:coarse - to ostatnie, żeby
 //    nie łapać wąskiego okna na desktopie): pełny ekran bez marginesów i zaokrągleń, paski ściśnięte.
 //  - telefon w pionie (max-width:767px, orientation:portrait, pointer:coarse): pełny ekran (100dvh) bez 16:9, te

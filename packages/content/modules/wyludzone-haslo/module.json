@@ -165,22 +165,7 @@
           "y": 35.9,
           "width": 8.9,
           "height": 15.6,
-          "content": "W historii przeglądarki w zeszły czwartek o 10:31: „Formularz prelegenta – rejestracja”. Ta strona jeszcze wróci w tej sprawie.",
-          "media": {
-            "kind": "page",
-            "page": {
-              "tabTitle": "Formularz prelegenta – rejestracja",
-              "url": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
-              "brand": "Fundacja Analityki Stosowanej",
-              "heading": "Rejestracja prelegenta",
-              "text": "Potwierdź tożsamość służbowym adresem e-mail i hasłem.",
-              "fields": [
-                "Służbowy e-mail",
-                "Hasło"
-              ],
-              "button": "Zarejestruj się"
-            }
-          },
+          "content": "Przeglądarka Pawła. Wrócisz do niej, gdy dowiesz się, jaki link dostał Paweł.",
           "required": false
         },
         {
@@ -542,6 +527,34 @@
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "pulpit-2",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Komputer Pawła",
+      "tip": "Link z komunikatora Paweł otworzył na komputerze. Kliknij Internet.",
+      "image": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp",
+      "imageAlt": "Monitor Pawła z pulpitem: ikony Poczta (z odznaką „1”), Internet, Faktury, Przelewy, GTA6_PL.exe i Kosz; pasek zadań pokazuje 10:06.",
+      "hotspots": [
+        {
+          "id": "poczta",
+          "label": "Poczta",
+          "x": 18.9,
+          "y": 20.4,
+          "width": 8.9,
+          "height": 15.6,
+          "done": true
+        },
+        {
+          "id": "internet",
+          "label": "Internet",
+          "x": 18.9,
+          "y": 35.9,
+          "width": 8.9,
+          "height": 15.6,
+          "action": "next"
         }
       ]
     },
@@ -980,10 +993,10 @@
         {
           "id": "artykul",
           "label": "Gazeta",
-          "x": 10,
-          "y": 5,
-          "width": 80,
-          "height": 88,
+          "x": 20,
+          "y": 20,
+          "width": 34,
+          "height": 66,
           "content": "Artykuł o prawdziwej kampanii przestępców, którzy działali bardzo podobnie jak w sprawie Pawła.",
           "media": {
             "kind": "document",

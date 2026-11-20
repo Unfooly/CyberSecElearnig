@@ -812,7 +812,11 @@ export default function CoursePlayer({
             (!reviewing && currentBlock?.type === 'EMAIL_ANALYSIS' && currentBlock.frame === 'monitor') ||
             // Teczka na biurku (D-178): tło wypełnia obszar bloku; 'scene', nie 'fill' - podpowiedź bloku (`tip`) zostaje w rogu.
             // Podgląd „Wstecz” - zwykły slajd bez tła (TabsBlock: review).
-            (!reviewing && currentBlock?.type === 'TABS' && currentBlock.look === 'folder' && !!currentBlock.background)
+            (!reviewing && currentBlock?.type === 'TABS' && currentBlock.look === 'folder' && !!currentBlock.background) ||
+            // Rozmowa na ekranie telefonu ze sceny (D-181): jak monitor - telefon wypełnia obszar bloku, `tip` w rogu.
+            (!reviewing && currentBlock?.type === 'DOSSIER' && !!currentBlock.phone) ||
+            // Strona z domeną w monitorze (D-181): jak poczta w monitorze.
+            (!reviewing && currentBlock?.type === 'TEXT_INPUT_GUIDED' && currentBlock.frame === 'monitor')
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
               // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).

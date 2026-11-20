@@ -880,6 +880,47 @@
   }
 }
 
+/* Telefon ze sceny z rozmową na ekranie (D-181, PhoneStage.tsx) - jak monitor: ekran telefonu (nie cała grafika) wpisany w obszar bloku
+   z marginesem 4%, środek ekranu na środku obszaru, biurko poza obszarem przycinane. Rozmowa przewija się wewnątrz ekranu. */
+.phone-stage {
+  container: phone / size;
+  position: relative;
+  flex: 1 1 0%;
+  width: calc(100% + 1.5rem);
+  margin: -0.75rem;
+  min-height: 0;
+  overflow: hidden;
+  background: #1b1424;
+}
+.phone-stage-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: calc(-1 * var(--screen-cx)) calc(-1 * var(--screen-cy));
+  width: min(calc(100cqw * 0.94 / var(--screen-w-n)), calc(100cqh * 0.94 / var(--screen-h-n) * var(--phone-ratio-n)));
+  aspect-ratio: var(--phone-ratio-n);
+  transition: opacity 150ms ease-out;
+}
+.phone-stage-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+}
+.phone-stage-screen {
+  position: absolute;
+  left: var(--screen-left);
+  top: var(--screen-top);
+  width: var(--screen-width);
+  height: var(--screen-height);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 4.5% / 2.5%;
+}
+
 /* Quiz w monitorze (D-164, MonitorStage.tsx). Kontener zapytań `monitor` = obszar bloku: szeroko monitor „contain” z treścią na białym
    ekranie (pozycja z manifestu, zmienne --screen-*), przewijanie w ekranie; wąsko (< 640 px) albo nisko (< 420 px) karta w ramce na
    przygaszonym monitorze. */

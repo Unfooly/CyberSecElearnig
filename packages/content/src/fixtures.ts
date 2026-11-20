@@ -725,6 +725,21 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   for (const document of blocks.DOSSIER.documents as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   for (const document of (blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[])[0].done = true;
+  // Poprawki właściciela (D-181) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9): strona gazety w zbliżeniu,
+  // telefon ze sceny pod rozmową, adres do rozłożenia na domenę w monitorze.
+  const newspaper = { look: 'newspaper', masthead: 'Kurier Cyfrowy', date: 'Wydanie specjalne' };
+  for (const hotspot of blocks.SCENE_HOTSPOTS.hotspots as { media?: { kind?: string; scene?: { hotspots: { media?: { kind?: string } }[] } } }[]) {
+    if (hotspot.media?.kind === 'document') Object.assign(hotspot.media, newspaper);
+    for (const inner of hotspot.media?.scene?.hotspots ?? []) if (inner.media?.kind === 'document') Object.assign(inner.media, newspaper);
+  }
+  blocks.DOSSIER.phone = {
+    image: 'images/telefon.webp',
+    screen: { x: 41, y: 13, width: 18, height: 72 },
+    imagePortrait: 'images/telefon-pion.webp',
+    screenPortrait: { x: 22, y: 17, width: 56, height: 64 },
+  };
+  // `markUrl` wymaga w module frame 'monitor' (semantics.ts); te bloki nie przechodzą walidacji, więc oprawa zostaje 'browser' (test niżej).
+  blocks.TEXT_INPUT_GUIDED.markUrl = 'https://fundacja.przyklad-online.net/rejestracja/1';
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';
   // Etykieta „Dalej” ostatniego kroku (D-160) - publiczna; w fullBlocks() pierwszy krok nie jest ostatni, więc tylko tutaj.

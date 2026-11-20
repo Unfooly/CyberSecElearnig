@@ -6,6 +6,7 @@ import type { ContentBlock, DossierDocument, DossierRow } from '@/lib/courses-ty
 import { flyEvidence } from '@/lib/motion';
 import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
+import PhoneStage from '../player/PhoneStage';
 
 // Teczka sprawy (DOSSIER, schemaVersion 5, D-083): dokumenty na przekładkach (po prawej; na telefonie w pionie poziomy
 // pasek nad arkuszem), arkusz z nagłówkiem wystawcy i wierszami tabeli. Wiersz to przycisk-zakreślacz (aria-pressed):
@@ -72,7 +73,18 @@ export function useDossier(documents: DossierDocument[], blockId: string | undef
 export type DossierState = ReturnType<typeof useDossier>;
 
 /** Przekładki (tablist) i arkusz z wierszami-zakreślaczami - bez ramki teczki (DossierBlock) i bez liczników. */
-export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint: hintProp }: { state: DossierState; tabsLabel?: string; hint?: string }) {
+export function DossierDocuments({
+  state,
+  tabsLabel = 'Dokumenty w teczce',
+  hint: hintProp,
+  onScreen = false,
+}: {
+  state: DossierState;
+  tabsLabel?: string;
+  hint?: string;
+  /** Rozmowa na ekranie telefonu ze sceny (D-181) - bez ramki telefonu czatu. */
+  onScreen?: boolean;
+}) {
   // Podpowiedź wywołującego (np. konsola przesłuchania) ma pierwszeństwo; domyślna zależy od wyglądu arkusza (D-178: czat).
   const hint = hintProp ?? 'Kliknij linijkę, która nie pasuje do zwykłego dnia.';
   const { documents, activeId, opened, noted, lastNoted, message, select, mark } = state;
@@ -149,6 +161,7 @@ export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint
           noted={noted}
           status={message || (hintProp ?? 'Kliknij wiadomość, która coś mówi o ataku.')}
           onMark={mark}
+          onScreen={onScreen}
         />
       )}
       {active && active.layout !== 'chat' && (
@@ -228,11 +241,13 @@ export function DossierDocuments({ state, tabsLabel = 'Dokumenty w teczce', hint
 
 export default function DossierBlock({
   block,
+  contentBase,
   onSubmit,
   onReady,
   review = false,
 }: {
   block: ContentBlock;
+  contentBase: string;
   onSubmit: (answer: { opened: string[]; noted: string[] }) => void;
   onReady: (submit: (() => void) | null) => void;
   review?: boolean;
@@ -246,6 +261,23 @@ export default function DossierBlock({
     // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku (jak SceneHotspotsBlock.tsx).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, noted, review]);
+
+  // Rozmowa na ekranie telefonu ze sceny (D-181): bez karty teczki - telefon z biurka wypełnia obszar bloku, czat leży na jego ekranie.
+  // Podgląd „Wstecz” - zwykła karta (układ 'slide', jak monitor poczty).
+  if (block.phone && !review) {
+    return (
+      <PhoneStage
+        contentBase={contentBase}
+        image={block.phone.image}
+        screen={block.phone.screen}
+        imagePortrait={block.phone.imagePortrait}
+        screenPortrait={block.phone.screenPortrait}
+        label={block.title ?? 'Telefon'}
+      >
+        <DossierDocuments state={state} onScreen />
+      </PhoneStage>
+    );
+  }
 
   return (
     <div data-testid="dossier-block" className="flex min-h-0 w-full flex-1 flex-col">
@@ -289,6 +321,7 @@ function ChatSheet({
   noted,
   status,
   onMark,
+  onScreen = false,
 }: {
   id: string;
   labelledBy: string;
@@ -296,11 +329,31 @@ function ChatSheet({
   noted: string[];
   status: string;
   onMark: (row: DossierRow, from?: Element) => void;
+  /** Na ekranie telefonu ze sceny (DOSSIER.phone, D-181): bez własnej ramki telefonu, na cały ekran, komunikat w dolnym pasku ekranu. */
+  onScreen?: boolean;
 }) {
   const contact = document.title;
+  const statusLine = (
+    <p
+      role="status"
+      className={
+        onScreen
+          ? 'min-h-[2rem] shrink-0 border-t border-[#E3DFF5] bg-white px-2.5 py-1.5 text-center text-xs text-muted'
+          : 'mt-2 min-h-[1rem] w-full max-w-[400px] text-center text-xs text-muted'
+      }
+    >
+      {status}
+    </p>
+  );
   return (
     <div id={id} role="tabpanel" aria-labelledby={labelledBy} data-testid="chat-sheet" className="dossier-sheet-enter flex min-h-0 flex-1 flex-col items-center">
-      <div className="flex min-h-0 w-full max-w-[400px] flex-1 flex-col overflow-hidden rounded-[30px] border-[10px] border-[#1E1E24] bg-[#F4F2FB] shadow-card">
+      <div
+        className={
+          onScreen
+            ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#F4F2FB]'
+            : 'flex min-h-0 w-full max-w-[400px] flex-1 flex-col overflow-hidden rounded-[30px] border-[10px] border-[#1E1E24] bg-[#F4F2FB] shadow-card'
+        }
+      >
         <div className="flex shrink-0 items-center gap-2.5 bg-[#6C5CE7] px-3 py-2.5 text-white">
           <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
             {contact.trim().charAt(0).toUpperCase()}
@@ -342,10 +395,9 @@ function ChatSheet({
             );
           })}
         </ul>
+        {onScreen && statusLine}
       </div>
-      <p role="status" className="mt-2 min-h-[1rem] w-full max-w-[400px] text-center text-xs text-muted">
-        {status}
-      </p>
+      {!onScreen && statusLine}
     </div>
   );
 }

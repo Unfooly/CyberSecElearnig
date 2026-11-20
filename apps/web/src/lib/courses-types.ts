@@ -363,6 +363,13 @@ export interface ContentBlock {
   // DOSSIER: pieczątka teczki i dokumenty (przekładki).
   stamp?: string;
   documents?: DossierDocument[];
+  /** DOSSIER (D-181): telefon ze sceny - rozmowa leży na jego ekranie (prostokąt w % grafiki), wariant pionowy dla telefonu w pionie. */
+  phone?: {
+    image: string;
+    screen: { x: number; y: number; width: number; height: number };
+    imagePortrait?: string;
+    screenPortrait?: { x: number; y: number; width: number; height: number };
+  };
   // OSINT_SPOT (D-120): obszary strony i ich wariant pionowy (te same id).
   spots?: OsintSpot[];
   portraitSpots?: { id: string; x: number; y: number; w: number; h: number }[];
@@ -376,6 +383,8 @@ export interface ContentBlock {
   /** Oprawa: TEXT_INPUT_GUIDED 'browser' = pasek adresu w oknie przeglądarki (feat/browser-evidence); EMAIL_ANALYSIS 'monitor' = okno
       poczty na ekranie monitora (D-178). */
   frame?: 'browser' | 'monitor';
+  /** TEXT_INPUT_GUIDED (D-181): adres do rozłożenia - gracz zaznacza pierwszy pojedynczy „/” i drugą „.” na lewo, potem wpisuje domenę. */
+  markUrl?: string;
   maxAttempts?: number;
   hintCount?: number;
   // Reakcja maskotki na ukończenie bloku (schemaVersion 4): statyczna, bez klucza odpowiedzi - patrz packages/content D-061.
@@ -417,11 +426,15 @@ export interface PopupItem {
   countdown?: string;
 }
 
-/** Pola wariantu "popups" (D-100) - wspólne dla HotspotMedia i InnerHotspotMedia. */
+/** Pola wariantu "popups" (D-100) i wyglądu dokumentu (D-181) - wspólne dla HotspotMedia i InnerHotspotMedia. */
 interface PopupsFields {
   items?: PopupItem[];
   outro?: string;
   badge?: { id: string; label: string };
+  /** kind:'document' - strona gazety (winieta, data, nagłówek, akapity w łamach) zamiast ciemnego panelu. */
+  look?: 'newspaper';
+  masthead?: string;
+  date?: string;
 }
 
 export interface HotspotMedia extends PopupsFields {

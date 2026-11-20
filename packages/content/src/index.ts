@@ -5,6 +5,7 @@ export * from './localize';
 export * from './pseudo-locale';
 export * from './locale-choice';
 export * from './recording';
+export * from './url-marks';
 export * from './blocks';
 export * from './module';
 export * from './client';

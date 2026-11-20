@@ -36,14 +36,14 @@ Domeny `fundacja-analityki.pl` i `formularz-online.net` sprawdzone 2026-11-19 - 
 | 4 | `zaproszenie` | EMAIL_ANALYSIS | mail na ekranie monitora (`frame: monitor`), bez linków i załączników; 4 cechy, poprawna tylko „niespodziewana, atrakcyjna oferta” (`exact`) | 2 |
 | 5 | `biuro-pawla-2` | SCENE_HOTSPOTS | ✓ komputer (`done`); smartfon = drzwi do ekranu telefonu | – |
 | 6 | `telefon` | SCENE_HOTSPOTS | ekran główny smartfona na biurku: Komunikator (3 wiadomości) = drzwi do czatu; Poczta, Kalendarz - karty | – |
-| 7 | `komunikator` | DOSSIER | czat w ramce telefonu (`layout: chat`); dowody: połączenie 12 min 40 s, link „Rejestracja”, prośba o służbowy e-mail i hasło | – |
-| 8 | `domena` | TEXT_INPUT_GUIDED | domena z `https://fundacja-analityki.formularz-online.net/prelegenci/48213` → `formularz-online.net`; 3 podpowiedzi (ukośnik, druga kropka, poddomena) | 2 |
+| 7 | `komunikator` | DOSSIER | czat na ekranie telefonu ze sceny `telefon` (`layout: chat`, `phone`, D-181); dowody: połączenie 12 min 40 s, link „Rejestracja”, prośba o służbowy e-mail i hasło | – |
+| 8 | `domena` | TEXT_INPUT_GUIDED | strona w monitorze (`frame: monitor`, D-181): w pasku adresu `https://fundacja-analityki.formularz-online.net/prelegenci/48213` gracz klika pierwszy pojedynczy „/”, potem drugą „.” na lewo (`markUrl`), dopiero wtedy wpisuje domenę → `formularz-online.net`; 3 podpowiedzi po złej próbie (ukośnik, druga kropka, poddomena); waga 0 - ćwiczenie prowadzone (D-181) | 0 |
 | 9 | `zaufanie` | QUIZ | „Czy link jest godny zaufania?” Tak / Nie → Nie | 1 |
 | 10 | `biuro-pawla-3` | SCENE_HOTSPOTS | ✓ komputer i smartfon; Paweł = drzwi do rozmowy | – |
 | 11 | `rozmowa-pawel` | DIALOGUE | 4 pytania (3 wymagane): co się stało, czy coś było dziwne, telefon, link | – |
 | 12 | `tablica` | ORDERING | e-mail → rozmowa i telefon → link → logowanie; start „P.N.”, koniec „46 maili” | 2 |
 | 13 | `raport` | TABS | „Raport końcowy” w teczce „SPRAWA ZAMKNIĘTA” na biurku: 3 etapy, przy każdym rada | – |
-| 14 | `gazeta` | SCENE_HOTSPOTS | „Zanim sobie pójdziesz”: gazeta → artykuł o Charming Kitten (2020) - tuż przed ekranem końca | – |
+| 14 | `gazeta` | SCENE_HOTSPOTS | „Zanim sobie pójdziesz”: gazeta → strona gazety „Kurier Cyfrowy” (`look: newspaper`, D-181) z artykułem o Charming Kitten (2020) - tuż przed ekranem końca | – |
 | 15 | `zasady` | SUMMARY | trzy zasady (`lessons`) na ekran końca; zamyka się samo (D-169) | – |
 
 Okna jak na nagraniu (D-178, PR 2): tło modułu `cover.backdrop` (rozmyte biurko), pulpit = monitor odtwarzacza (`scenes/monitor`) z ekranem

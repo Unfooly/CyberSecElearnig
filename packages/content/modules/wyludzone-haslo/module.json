@@ -428,6 +428,22 @@
       },
       "tip": "Kliknij wiadomości, które coś mówią o ataku.",
       "stamp": "DOWÓD",
+      "phone": {
+        "image": "assets/wyludzone-haslo/images/telefon.43d8d84c.webp",
+        "screen": {
+          "x": 41.13,
+          "y": 13.55,
+          "width": 17.74,
+          "height": 72.18
+        },
+        "imagePortrait": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp",
+        "screenPortrait": {
+          "x": 21.96,
+          "y": 17.63,
+          "width": 56.07,
+          "height": 64.11
+        }
+      },
       "documents": [
         {
           "id": "czat",
@@ -518,7 +534,7 @@
       "id": "domena",
       "type": "TEXT_INPUT_GUIDED",
       "title": "Dokąd prowadzi link?",
-      "weight": 2,
+      "weight": 0,
       "narration": {
         "text": "Napis „Rejestracja” nie mówi, dokąd prowadzi link. Mówi to dopiero adres – a w adresie najważniejsza jest domena.",
         "audioUrl": "audio/wyludzone-haslo/v1/domena/867db29391f018f9.mp3",
@@ -535,8 +551,10 @@
         ]
       },
       "tip": "Domena to miejsce, do którego naprawdę prowadzi link.",
-      "prompt": "Pod napisem „Rejestracja” krył się adres:\n\nhttps://fundacja-analityki.formularz-online.net/prelegenci/48213\n\nWpisz domenę, do której prowadzi ten link (bez https:// i bez ukośników).",
+      "prompt": "Pod napisem „Rejestracja” krył się adres, który widzisz w pasku przeglądarki. Znajdź w nim domenę – miejsce, do którego naprawdę prowadzi link.",
       "placeholder": "wpisz domenę",
+      "frame": "monitor",
+      "markUrl": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
       "answer": {
         "regex": "^(www\\.)?formularz-online\\.net/?$",
         "caseSensitive": false
@@ -912,6 +930,9 @@
           "content": "Artykuł o prawdziwej kampanii przestępców, którzy działali bardzo podobnie jak w sprawie Pawła.",
           "media": {
             "kind": "document",
+            "look": "newspaper",
+            "masthead": "Kurier Cyfrowy",
+            "date": "Wydanie specjalne · Bezpieczeństwo w sieci",
             "title": "Hakerzy podszywali się pod dziennikarzy i organizatorów wydarzeń",
             "lines": [
               "W 2020 roku grupa hakerów powiązana z Iranem, znana jako Charming Kitten (APT35), prowadziła kampanie wymierzone w dziennikarzy, naukowców i ekspertów.",

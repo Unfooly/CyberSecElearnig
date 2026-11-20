@@ -93,10 +93,16 @@ describe('NotesBoard (D-182)', () => {
       document.elementsFromPoint = original;
     }
     expect(screen.getByRole('button', { name: /^Kartka 1: E-mail/ })).toBeInTheDocument();
-    // Przeglądarka nie wysłała `click` po przeciągnięciu - następny prawdziwy klik nie może zostać pominięty.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    fireEvent.click(label('Link'));
+    // Klik MYSZY zaraz po upuszczeniu (detail 1) to ślad przeciągnięcia - pomijany.
+    fireEvent.click(screen.getByRole('button', { name: /^Kartka 1: E-mail/ }), { detail: 1 });
+    expect(screen.getByRole('button', { name: /^Kartka 1: E-mail/ })).toHaveAttribute('aria-pressed', 'false');
+    // Klik z klawiatury (Enter, detail 0) zaraz po przeciągnięciu działa od razu (regresja: połknięty Enter).
+    fireEvent.click(label('Link'), { detail: 0 });
     expect(label('Link')).toHaveAttribute('aria-pressed', 'true');
+    // Po 300 ms klik myszy znów działa normalnie.
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    fireEvent.click(label('Link'), { detail: 1 });
+    expect(label('Link')).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('klawiatura: Enter na etykiecie i Enter na kartce (te same przyciski)', () => {
@@ -106,7 +112,17 @@ describe('NotesBoard (D-182)', () => {
     fireEvent.click(mail); // Enter na <button> = click
     emptyCard(2).focus();
     fireEvent.click(emptyCard(2));
-    expect(screen.getByRole('button', { name: /^Kartka 2: E-mail/ })).toBeInTheDocument();
+    // Przycisk pustej kartki znika - fokus na etykiecie przypiętej do tej kartki, nie na <body>.
+    expect(screen.getByRole('button', { name: /^Kartka 2: E-mail/ })).toHaveFocus();
+    // „Odłóż pod tablicę” też znika - fokus na odłożonej etykiecie pod tablicą.
+    fireEvent.click(screen.getByRole('button', { name: /^Kartka 2: E-mail/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Odłóż pod tablicę' }));
+    expect(label('E-mail')).toHaveFocus();
+    // Escape odznacza wybraną etykietę.
+    fireEvent.click(label('Link'));
+    expect(label('Link')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(label('Link'), { key: 'Escape' });
+    expect(label('Link')).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('wynik z serwera: werdykt na kartkach gracza (✓ / ✗), zdanie pod tablicą, potem poprawne etykiety; bez przycisków przypinania', () => {
@@ -118,16 +134,22 @@ describe('NotesBoard (D-182)', () => {
       reaction: { text: 'Prawie. Najpierw był mail, potem rozmowa.' },
     };
     const { unmount } = render(<NotesBoard block={board} contentBase="" result={result} live />);
+    // Tekst pola bez dopisku dla czytnika („(na właściwym miejscu)” / „(nie tutaj)”).
+    const slotLabel = (slot: HTMLElement) => (slot.textContent ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim();
     const slots = screen.getAllByTestId('notes-slot');
-    expect(slots.map((slot) => slot.textContent?.trim())).toEqual(['Rozmowa telefoniczna', 'E-mail', 'Link']);
+    expect(slots.map(slotLabel)).toEqual(['Rozmowa telefoniczna', 'E-mail', 'Link']);
+    expect(slots[2]).toHaveTextContent('(na właściwym miejscu)');
+    expect(slots[0]).toHaveTextContent('(nie tutaj)');
     expect(screen.getAllByTestId('notes-card').map((card) => card.getAttribute('data-result'))).toEqual(['bad', 'bad', 'good']);
     expect(screen.getByTestId('board-feedback')).toHaveTextContent('Prawie. Najpierw był mail, potem rozmowa.');
-    expect(screen.getByText('Na właściwym miejscu: 1 z 3')).toBeInTheDocument();
+    expect(screen.getByText('Na właściwym miejscu: 1 z 3. Wynik: 33%.')).toBeInTheDocument();
+    // Czytnik ekranu: wynik ogłaszany w regionie statusu (komponent z wynikiem montuje się od nowa).
+    expect(screen.getByRole('status')).toHaveTextContent('Prawie. Najpierw był mail, potem rozmowa. Na właściwym miejscu: 1 z 3. Wynik: 33%.');
     expect(screen.queryByRole('group', { name: 'Etapy ataku do przypięcia' })).toBeNull();
     unmount();
     // Podgląd „Wstecz” (bez live): od razu stan końcowy - poprawne etykiety na kartkach.
     render(<NotesBoard block={board} contentBase="" result={result} />);
     expect(screen.getByTestId('notes-board')).toHaveAttribute('data-phase', 'settled');
-    expect(screen.getAllByTestId('notes-slot').map((slot) => slot.textContent?.trim())).toEqual(['E-mail', 'Rozmowa telefoniczna', 'Link']);
+    expect(screen.getAllByTestId('notes-slot').map(slotLabel)).toEqual(['E-mail', 'Rozmowa telefoniczna', 'Link']);
   });
 });

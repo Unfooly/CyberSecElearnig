@@ -7,6 +7,9 @@ import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, ResolvedM
 import { compileAnswerRegex, validateRegex } from './regex';
 import { urlDomainMarks } from './url-marks';
 
+/** Liczba kartek na tablicy z notatkami (ORDERING look notes, D-182) - tyle miejsc ma układ odtwarzacza (NotesBoard). */
+const NOTES_BOARD_CARDS = 3;
+
 // Walidacja semantyczna modułu (relacje między polami, których zod nie wyrazi w schemacie obiektu, kompilacja wzorców RE2).
 // Kod tylko dla Node (patrz regex.ts): eksportowany z `@cyberszkolo/content/dist/node`.
 
@@ -767,7 +770,14 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       checkUnique('items', block.items.map((i) => i.id));
       // Tablica z notatkami (D-182): kartka na każdy etap, tło tylko w tym wyglądzie, bez „zdjęć” start/end (inny układ tablicy).
       if (block.look === 'notes') {
+        // Układ tablicy (NotesBoard) ma miejsca na 3 kartki z najwyżej 4 krótkimi notatkami - więcej nie zmieści się czytelnie.
+        if (block.items.length !== NOTES_BOARD_CARDS) errors.push(`items: tablica z notatkami ma dokładnie ${NOTES_BOARD_CARDS} etapy`);
         if (block.slots?.length !== block.items.length) errors.push('slots: tablica z notatkami wymaga kartki (slots) na każdy element items');
+        const noteTexts = (block.slots ?? []).map((slot) => slot.notes);
+        if (noteTexts.some((notes) => notes.length > 4)) errors.push('slots: najwyżej 4 notatki na kartce');
+        const longNotes = (value: unknown): boolean => (typeof value === 'string' ? [value] : Object.values(value as Record<string, string>)).some((note) => note.length > 120);
+        if (noteTexts.some((notes) => notes.some(longNotes))) errors.push('slots: notatka na kartce najwyżej 120 znaków');
+        if (block.background === undefined) errors.push('background: tablica z notatkami wymaga grafiki tablicy');
         if (block.start !== undefined || block.end !== undefined) errors.push('start/end: tablica z notatkami nie ma zdjęć początku i końca');
         const texts = (value: unknown): string[] => (typeof value === 'string' ? [value] : Object.values(value as Record<string, string>));
         if (block.items.some((item) => texts(item.text).some((label) => label.length > 40))) {

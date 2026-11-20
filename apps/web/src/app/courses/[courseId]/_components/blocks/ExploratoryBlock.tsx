@@ -80,7 +80,7 @@ export default function ExploratoryBlock({
     case 'TABS':
       return <TabsBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'DOSSIER':
-      return <DossierBlock block={block} onSubmit={onSubmit} onReady={onReady} review={review} />;
+      return <DossierBlock block={block} contentBase={contentBase} onSubmit={onSubmit} onReady={onReady} review={review} />;
     case 'NOTEPAD':
       return <NotepadBlock block={block} onSubmit={() => onSubmit()} onReady={onReady} review={review} />;
     case 'SUMMARY':

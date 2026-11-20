@@ -17,6 +17,8 @@ const TEXT_KEYS = new Set([
   'caption', 'lines', 'lessons',
   // Okienka easter egga na pulpicie modułu 1 (D-178: pulpit jako osobna scena) - przycisk okienka i komentarz po zamknięciu.
   'button', 'outro',
+  // Winieta strony gazety w zbliżeniu (D-181).
+  'masthead',
   // Czat w telefonie (D-178): `self` to imię autora własnych dymków - tłumaczone razem z komórkami (porównanie z autorem wiersza).
   'self',
 ]);

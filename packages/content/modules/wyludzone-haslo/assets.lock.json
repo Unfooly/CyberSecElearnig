@@ -77,6 +77,16 @@
       "hash": "f90a2270",
       "key": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp"
     },
+    "komunikator#phone.image": {
+      "original": "images/telefon.webp",
+      "hash": "43d8d84c",
+      "key": "assets/wyludzone-haslo/images/telefon.43d8d84c.webp"
+    },
+    "komunikator#phone.imagePortrait": {
+      "original": "images/telefon-pion.webp",
+      "hash": "f90a2270",
+      "key": "assets/wyludzone-haslo/images/telefon-pion.f90a2270.webp"
+    },
     "biuro-pawla-3#image": {
       "original": "images/biuro-pawla.webp",
       "hash": "20424773",

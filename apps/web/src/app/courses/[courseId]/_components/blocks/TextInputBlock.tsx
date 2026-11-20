@@ -4,7 +4,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/courses-types';
 import { TriangleAlert } from 'lucide-react';
 import { useHints } from '../player/hints';
+import { urlDomainMarks } from '@cyberszkolo/content';
 import BrowserWindow, { DeceptiveSiteWarning } from './BrowserWindow';
+import AddressMarker, { type MarkStep } from './AddressMarker';
+import MonitorStage from '../player/MonitorStage';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
@@ -65,6 +68,60 @@ export default function TextInputBlock({
   const [submitted, setSubmitted] = useState<string | null>(null);
   const submitting = useRef(false);
   const browser = block.frame === 'browser';
+  const monitor = block.frame === 'monitor';
+  // Rozkład adresu (D-181): po pierwszej próbie albo rozstrzygnięciu (także po odświeżeniu) domena jest już zaznaczona.
+  const marks = monitor && block.markUrl ? urlDomainMarks(block.markUrl) : null;
+  const [markStep, setMarkStep] = useState<MarkStep>((progress?.done ?? false) || (progress?.attempts ?? 0) > 0 ? 2 : 0);
+  // Komunikat kroku zaznaczania: błąd (czerwony) albo potwierdzenie udanego kroku - ogłaszane w role="status".
+  const [markMessage, setMarkMessage] = useState<{ text: string; error: boolean }>({ text: '', error: false });
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Po zaznaczeniu domeny przyciski separatorów znikają - fokus na pole odpowiedzi (inaczej spadłby na <body>).
+  const focusInputAfterMark = useRef(false);
+  useEffect(() => {
+    if (markStep === 2 && focusInputAfterMark.current) {
+      focusInputAfterMark.current = false;
+      inputRef.current?.focus();
+    }
+  }, [markStep]);
+
+  function pick(index: number) {
+    if (!marks || !block.markUrl) return;
+    const ch = block.markUrl[index];
+    const wrong = (text: string) => {
+      setMarkMessage({ text, error: true });
+      hintBar.notify('wrong');
+    };
+    if (markStep === 0) {
+      if (index === marks.slash) {
+        setMarkStep(1);
+        setMarkMessage({ text: 'Ukośnik zaznaczony.', error: false });
+      } else {
+        wrong(
+          index < marks.hostStart
+            ? 'To ukośnik z „https://” – podwójny. Szukaj pierwszego POJEDYNCZEGO „/”.'
+            : ch === '/'
+              ? 'To nie pierwszy pojedynczy ukośnik. Szukaj tego, który stoi zaraz po nazwie strony.'
+              : 'To kropka. Najpierw znajdź pierwszy pojedynczy ukośnik „/”.',
+        );
+      }
+      return;
+    }
+    if (markStep === 1) {
+      if (index === marks.dot) {
+        focusInputAfterMark.current = true;
+        setMarkStep(2);
+        setMarkMessage({ text: 'Domena zaznaczona.', error: false });
+      } else {
+        wrong(
+          ch === '/'
+            ? 'Teraz szukasz kropki „.” na lewo od zaznaczonego ukośnika.'
+            : index > marks.slash
+              ? 'Ta kropka jest za ukośnikiem. Idź od zaznaczonego „/” w lewo.'
+              : 'To nie ta kropka. Licz od ukośnika w lewo: pierwsza kropka, potem druga.',
+        );
+      }
+    }
+  }
 
   // Rozstrzygnięte (także po odświeżeniu - `done` z /start): „Dalej” w pasku aktywny.
   useEffect(() => {
@@ -145,6 +202,7 @@ export default function TextInputBlock({
   const form = !readOnly && !done && (
     <form onSubmit={submit} className={browser ? 'flex min-w-0 flex-1 items-center gap-2' : 'flex flex-wrap items-center gap-2'}>
       <input
+        ref={inputRef}
         id={inputId}
         type="text"
         value={value}
@@ -156,12 +214,12 @@ export default function TextInputBlock({
         maxLength={500}
         placeholder={block.placeholder}
         autoComplete="off"
-        // Pasek adresu: bez autokorekty i wielkiej litery na telefonie (adres, nie zdanie).
-        autoCapitalize={browser ? 'none' : undefined}
-        autoCorrect={browser ? 'off' : undefined}
-        spellCheck={browser ? false : undefined}
-        inputMode={browser ? 'url' : undefined}
-        enterKeyHint={browser ? 'go' : undefined}
+        // Pasek adresu i domena w monitorze: bez autokorekty i wielkiej litery na telefonie (adres, nie zdanie).
+        autoCapitalize={browser || monitor ? 'none' : undefined}
+        autoCorrect={browser || monitor ? 'off' : undefined}
+        spellCheck={browser || monitor ? false : undefined}
+        inputMode={browser || monitor ? 'url' : undefined}
+        enterKeyHint={browser || monitor ? 'go' : undefined}
         // readOnly zamiast disabled na czas wysyłki: pole zachowuje fokus (klawiatura nie wraca na początek strony po każdej próbie).
         readOnly={pending}
         disabled={disabled}
@@ -186,6 +244,97 @@ export default function TextInputBlock({
     </form>
   );
 
+  const hintsSection = hints.length > 0 && (
+    <section aria-label="Podpowiedzi" className="mt-3 rounded bg-amber-50 p-3 ring-1 ring-amber-200">
+      <h3 className="mb-1 text-sm font-semibold text-amber-900">Podpowiedź</h3>
+      <ul className="space-y-1 text-sm text-slate-800">
+        {hints.map((hint, index) => (
+          <li key={index}>{hint}</li>
+        ))}
+      </ul>
+    </section>
+  );
+  const resultSection = done && (
+    <div className="mt-4" data-testid="text-input-result">
+      {correct ? (
+        <p className="text-lg font-medium text-green-700">
+          Poprawna odpowiedź!
+          {typeof points === 'number' && points < 1 && <span className="text-sm text-slate-700"> Wynik: {Math.round(points * 100)}%.</span>}
+        </p>
+      ) : (
+        <div className="rounded bg-slate-50 p-3 ring-1 ring-slate-200">
+          <p className="font-medium text-slate-900">Wykorzystano wszystkie próby.</p>
+          {solution && (
+            <>
+              <p className="mt-1 text-slate-800">
+                Prawidłowa odpowiedź: <span className="font-semibold">{solution.text}</span>
+              </p>
+              {solution.explanation && <p className="mt-1 text-sm text-slate-700">{solution.explanation}</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Strona w monitorze z rozkładem adresu (D-181): najpierw „/”, potem „.”, dopiero wtedy pole na domenę. Podgląd „Wstecz” - jak niżej.
+  if (monitor && !readOnly) {
+    const step: MarkStep = marks ? markStep : 2;
+    const instruction =
+      step === 0
+        ? 'Krok 1 z 3: kliknij w pasku adresu pierwszy pojedynczy ukośnik „/” – ten zaraz po nazwie strony.'
+        : step === 1
+          ? 'Krok 2 z 3: od zaznaczonego ukośnika idź w lewo i kliknij drugą kropkę „.”.'
+          : done
+            ? null
+            : 'Krok 3 z 3: zaznaczony fragment to domena. Wpisz ją poniżej i naciśnij „Sprawdź”.';
+    return (
+      <MonitorStage label="Przeglądarka">
+        <div className="flex flex-col gap-3">
+          {/* Etykieta pola dopiero, gdy pole istnieje (krok 3) - wcześniej zwykły akapit z poleceniem. */}
+          {step === 2 ? (
+            <label htmlFor={inputId} className="block text-base text-slate-900" data-monitor-prompt>
+              {block.prompt}
+            </label>
+          ) : (
+            <p className="block text-base text-slate-900" data-monitor-prompt>
+              {block.prompt}
+            </p>
+          )}
+          <BrowserWindow
+            // Tytuł karty neutralny (nie z konkretnego modułu); po zaznaczeniu - zaznaczona domena.
+            tabTitle={step === 2 && marks ? marks.domain : 'Nowa karta'}
+            addressBar={
+              marks && block.markUrl ? (
+                <AddressMarker url={block.markUrl} step={step} slash={marks.slash} dot={marks.dot} onPick={pick} />
+              ) : (
+                <span className="min-w-0 flex-1 break-all py-2.5 text-sm text-ink">{block.markUrl ?? ''}</span>
+              )
+            }
+          >
+            {instruction && (
+              <p data-testid="mark-instruction" className="text-base font-semibold text-ink">
+                {instruction}
+              </p>
+            )}
+            <p role="status" className={`mt-1 min-h-[1.25rem] text-sm font-medium ${message || markMessage.error ? 'text-red-700' : 'text-green-700'}`}>
+              {done ? '' : message || markMessage.text}
+            </p>
+            {step === 2 && form}
+            {step === 2 && !done && (
+              <p className="mt-2 text-sm text-slate-600" aria-live="polite">
+                Próba {Math.min(attempts + 1, maxAttempts)} z {maxAttempts}
+                {attempts > 0 && ` (pozostało: ${attemptsLeft})`}.
+              </p>
+            )}
+            {hintsSection}
+            {resultSection}
+          </BrowserWindow>
+        </div>
+      </MonitorStage>
+    );
+  }
+
   // Adres pokazywany po rozstrzygnięciu: wpisana (poprawna) odpowiedź albo rozwiązanie po wyczerpaniu prób.
   const shownAddress = done ? (correct ? (submitted ?? undefined) : solution?.text) : undefined;
 
@@ -195,6 +344,12 @@ export default function TextInputBlock({
       <label htmlFor={inputId} className="mb-3 block text-lg text-slate-900">
         {block.prompt}
       </label>
+      {/* Podgląd „Wstecz” zadania z monitora (D-181): adres był w pasku przeglądarki, nie w poleceniu - pokazujemy go tutaj. */}
+      {block.markUrl && (
+        <p data-testid="text-input-address" className="mb-3 break-all font-mono text-sm text-ink">
+          {block.markUrl}
+        </p>
+      )}
 
       {browser ? (
         <BrowserWindow
@@ -236,39 +391,9 @@ export default function TextInputBlock({
         </p>
       )}
 
-      {hints.length > 0 && (
-        <section aria-label="Podpowiedzi" className="mt-3 rounded bg-amber-50 p-3 ring-1 ring-amber-200">
-          <h3 className="mb-1 text-sm font-semibold text-amber-900">Podpowiedź</h3>
-          <ul className="space-y-1 text-sm text-slate-800">
-            {hints.map((hint, index) => (
-              <li key={index}>{hint}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {hintsSection}
 
-      {done && (
-        <div className="mt-4" data-testid="text-input-result">
-          {correct ? (
-            <p className="text-lg font-medium text-green-700">
-              Poprawna odpowiedź!
-              {typeof points === 'number' && points < 1 && <span className="text-sm text-slate-700"> Wynik: {Math.round(points * 100)}%.</span>}
-            </p>
-          ) : (
-            <div className="rounded bg-slate-50 p-3 ring-1 ring-slate-200">
-              <p className="font-medium text-slate-900">Wykorzystano wszystkie próby.</p>
-              {solution && (
-                <>
-                  <p className="mt-1 text-slate-800">
-                    Prawidłowa odpowiedź: <span className="font-semibold">{solution.text}</span>
-                  </p>
-                  {solution.explanation && <p className="mt-1 text-sm text-slate-700">{solution.explanation}</p>}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {resultSection}
     </div>
   );
 }

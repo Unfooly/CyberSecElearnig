@@ -4,7 +4,8 @@ import { DEFAULT_CONTENT_LOCALE, V6_NOTE_KINDS, V6_VOICE_ROLES, hasLocaleShape, 
 import { collectPaths, localizedFieldPaths } from './introspect';
 import { localesIn, localizeContent, localizedPaths, missingTranslations } from './localize';
 import { ContentModule, ContentValidationError, MODULE_SCHEMA_VERSION, ResolvedModule, moduleSchema } from './module';
-import { validateRegex } from './regex';
+import { compileAnswerRegex, validateRegex } from './regex';
+import { urlDomainMarks } from './url-marks';
 
 // Walidacja semantyczna modułu (relacje między polami, których zod nie wyrazi w schemacie obiektu, kompilacja wzorców RE2).
 // Kod tylko dla Node (patrz regex.ts): eksportowany z `@cyberszkolo/content/dist/node`.
@@ -744,6 +745,22 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       if (block.hints.length >= block.maxAttempts) {
         errors.push('hints: podpowiedzi przysługują po błędnej próbie, więc musi ich być mniej niż maxAttempts');
       }
+      // Zaznaczanie domeny w adresie (D-181): reguła musi dać się zastosować, a pasek adresu jest tylko w oprawie monitora.
+      if (block.markUrl !== undefined) {
+        if (block.frame !== 'monitor') errors.push('markUrl: tylko z frame: monitor');
+        const marks = urlDomainMarks(block.markUrl);
+        if (marks === null) {
+          errors.push('markUrl: adres, którego reguła „pierwszy pojedynczy /, druga . w lewo” nie rozkłada poprawnie (brak ukośnika lub kropek, port, ?, #, @, domena typu com.pl)');
+        } else {
+          // Podświetlona domena musi być odpowiedzią, którą przyjmie serwer - inaczej gracz nie ma szans na poprawną odpowiedź.
+          const caseSensitive = block.answer.caseSensitive;
+          const same = (a: string) => (caseSensitive ? a === marks.domain : a.toLowerCase() === marks.domain.toLowerCase());
+          const regexOk = block.answer.regex !== undefined && validateRegex(block.answer.regex).length === 0 && compileAnswerRegex(block.answer.regex, caseSensitive).test(marks.domain);
+          if (!block.answer.accept.some(same) && !regexOk) errors.push(`markUrl: zaznaczona domena „${marks.domain}” nie jest poprawną odpowiedzią (answer)`);
+        }
+      }
+      // Monitor bez adresu nie ma czego pokazać w pasku przeglądarki.
+      if (block.frame === 'monitor' && block.markUrl === undefined) errors.push('frame: monitor wymaga markUrl');
       break;
     }
     case 'ORDERING': {
@@ -773,6 +790,18 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         errors.push(`documents: ${evidenceCount} wierszy-dowodów, najwyżej ${MAX_DOSSIER_EVIDENCE} (limit odpowiedzi noted)`);
       }
       errors.push(...dossierDocumentErrors(block.documents, kindRequired));
+      // Telefon ze sceny (D-181): rozmowa leży na ekranie telefonu - tylko jedna rozmowa (bez przekładek), wariant pionowy w komplecie.
+      if (block.phone) {
+        if (block.documents.length !== 1 || block.documents[0].layout !== 'chat') errors.push('phone: wymaga dokładnie jednego dokumentu z layout: chat');
+        if ((block.phone.imagePortrait === undefined) !== (block.phone.screenPortrait === undefined)) {
+          errors.push('phone: imagePortrait i screenPortrait podaje się razem');
+        }
+        for (const [name, rect] of [['screen', block.phone.screen], ['screenPortrait', block.phone.screenPortrait]] as const) {
+          if (rect && (rect.x + rect.width > 100 || rect.y + rect.height > 100 || rect.width <= 0 || rect.height <= 0)) {
+            errors.push(`phone.${name}: prostokąt ekranu poza grafiką`);
+          }
+        }
+      }
       break;
     }
     case 'INTERROGATION': {

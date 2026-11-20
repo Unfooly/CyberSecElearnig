@@ -45,9 +45,10 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     ]);
   });
 
-  it('bloki oceniane i wagi: mail 2, domena 2, zaufanie 1, tablica 2; reszta nieoceniana', () => {
+  it('bloki oceniane i wagi: mail 2, zaufanie 1, tablica 2; domena 0 (ćwiczenie prowadzone, D-181); reszta nieoceniana', () => {
     const weights = Object.fromEntries(parsed.blocks.filter((b) => (b.weight ?? 0) > 0).map((b) => [b.id, b.weight]));
-    expect(weights).toEqual({ zaproszenie: 2, domena: 2, zaufanie: 1, tablica: 2 });
+    expect(weights).toEqual({ zaproszenie: 2, zaufanie: 1, tablica: 2 });
+    expect(block('domena').weight).toBe(0);
   });
 
   it('mail: jedyna poprawna cecha to niespodziewana, atrakcyjna oferta; mail bez linków i załączników', () => {
@@ -82,6 +83,18 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     const chat = (block('komunikator').documents as { layout?: string; self?: string }[])[0];
     expect(chat).toMatchObject({ layout: 'chat', self: 'Paweł' });
     expect(parsed.cover?.backdrop).toBeDefined();
+  });
+
+  it('poprawki właściciela (D-181): czat na ekranie telefonu ze sceny, domena rozkładana w monitorze, gazeta jako strona gazety', () => {
+    // Ten sam telefon co na scenie z ekranem głównym - rozmowa leży na jego ekranie, a nie w osobnym oknie.
+    const phone = block('komunikator').phone as { image: string; imagePortrait?: string };
+    expect(phone.image).toBe(block('telefon').image);
+    expect(phone.imagePortrait).toBe(block('telefon').imagePortrait);
+    expect(block('domena')).toMatchObject({ frame: 'monitor', markUrl: 'https://fundacja-analityki.formularz-online.net/prelegenci/48213' });
+    // Adres jest w pasku przeglądarki, nie w treści zadania.
+    expect(block('domena').prompt).not.toContain('https://');
+    const article = (block('gazeta').hotspots as { media?: { look?: string; masthead?: string } }[])[0].media;
+    expect(article).toMatchObject({ look: 'newspaper', masthead: 'Kurier Cyfrowy' });
   });
 
   it('biuro powtarzane jak na nagraniu: komputer → pulpit (Poczta) → mail; ✓ komputer, smartfon → ekran telefonu (Komunikator) → czat; ✓ oba, Paweł → rozmowa', () => {

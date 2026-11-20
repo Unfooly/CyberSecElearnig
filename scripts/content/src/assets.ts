@@ -69,6 +69,9 @@ export const ASSET_PATHS: string[][] = [
   // Wideo modułu z potoku (VIDEO, D-159): plik filmu i plakat.
   ['src'],
   ['poster'],
+  // Telefon ze sceny pod rozmową (DOSSIER.phone, D-181) i jego wariant pionowy.
+  ['phone', 'image'],
+  ['phone', 'imagePortrait'],
 ];
 
 // fatal: true - żadnych zastępczych znaków U+FFFD po cichu; plik, który nie jest ścisłym UTF-8, jest odrzucany (nie lintowany na oślep).

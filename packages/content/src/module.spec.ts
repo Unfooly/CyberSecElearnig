@@ -1351,6 +1351,60 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(module)).toMatch(/look/);
   });
 
+  it('telefon pod rozmową (DOSSIER.phone, D-181): tylko z jedną rozmową chat, wariant pionowy w komplecie, ekran w grafice', () => {
+    const phone = { image: 'telefon.webp', screen: { x: 41, y: 13, width: 18, height: 72 } };
+    const withChat = (module: TestModule) => {
+      const dossier = block(module, 'DOSSIER');
+      dossier.documents = [Object.assign(dossier.documents[0], { layout: 'chat', self: 'Paweł' })];
+      return dossier;
+    };
+    const ok = fullModuleForTests();
+    withChat(ok).phone = { ...phone, imagePortrait: 'telefon-pion.webp', screenPortrait: { x: 22, y: 17, width: 56, height: 64 } };
+    expect(errorsOf(ok)).toBe('');
+    const sheets = fullModuleForTests();
+    block(sheets, 'DOSSIER').phone = phone;
+    expect(errorsOf(sheets)).toMatch(/phone: wymaga dokładnie jednego dokumentu z layout: chat/);
+    const half = fullModuleForTests();
+    withChat(half).phone = { ...phone, imagePortrait: 'telefon-pion.webp' };
+    expect(errorsOf(half)).toMatch(/imagePortrait i screenPortrait podaje się razem/);
+    const outside = fullModuleForTests();
+    withChat(outside).phone = { image: 'telefon.webp', screen: { x: 90, y: 13, width: 18, height: 72 } };
+    expect(errorsOf(outside)).toMatch(/phone.screen: prostokąt ekranu poza grafiką/);
+  });
+
+  it('rozkład adresu na domenę (TEXT_INPUT_GUIDED markUrl, D-181): tylko w monitorze, adres rozkładalny, domena = poprawna odpowiedź', () => {
+    const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
+    const answer = { accept: ['przyklad-online.net'], caseSensitive: false };
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer });
+    expect(errorsOf(ok)).toBe('');
+    const viaRegex = fullModuleForTests();
+    Object.assign(block(viaRegex, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer: { accept: [], regex: '^(www\\.)?przyklad-online\\.net/?$' } });
+    expect(errorsOf(viaRegex)).toBe('');
+    const noMonitor = fullModuleForTests();
+    Object.assign(block(noMonitor, 'TEXT_INPUT_GUIDED'), { markUrl: url, answer });
+    expect(errorsOf(noMonitor)).toMatch(/markUrl: tylko z frame: monitor/);
+    const monitorOnly = fullModuleForTests();
+    block(monitorOnly, 'TEXT_INPUT_GUIDED').frame = 'monitor';
+    expect(errorsOf(monitorOnly)).toMatch(/frame: monitor wymaga markUrl/);
+    const flat = fullModuleForTests();
+    Object.assign(block(flat, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: 'https://bank.com.pl/logowanie', answer });
+    expect(errorsOf(flat)).toMatch(/markUrl: adres, którego reguła/);
+    // Literówka autora: podświetlona domena nie przeszłaby oceny serwera.
+    const typo = fullModuleForTests();
+    Object.assign(block(typo, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer: { accept: ['przyklad-onlin.net'] } });
+    expect(errorsOf(typo)).toMatch(/zaznaczona domena „przyklad-online.net” nie jest poprawną odpowiedzią/);
+  });
+
+  it('strona gazety w zbliżeniu (document look newspaper, D-181) przechodzi walidację; nieznany wygląd - błąd', () => {
+    const module = fullModuleForTests();
+    const media = block(module, 'SCENE_HOTSPOTS').hotspots.find((h: { media?: { kind?: string } }) => h.media?.kind === 'document').media;
+    Object.assign(media, { look: 'newspaper', masthead: 'Kurier Cyfrowy', date: 'Wydanie specjalne' });
+    expect(errorsOf(module)).toBe('');
+    media.look = 'magazyn';
+    expect(errorsOf(module)).toMatch(/look/);
+  });
+
   it('miejsce `done`: bez akcji/mediów/dowodu/required; scena z `done` wymaga jawnego required przy pozostałych przedmiotach', () => {
     const module = fullModuleForTests();
     withoutPopups(module);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
-import { ArrowLeft, Check, DoorOpen, Pause, Play } from 'lucide-react';
+import { ArrowLeft, Check, Pause, Play } from 'lucide-react';
 import type { ContentBlock, HotspotMedia, InnerHotspotMedia, InnerSceneHotspot, NestedScene, SceneExploration, SceneHotspot } from '@/lib/courses-types';
 import { contentAssetUrl, withStaticFragment } from '@/lib/content-assets';
 import { requiredItemIds } from '@/lib/required-items';
@@ -627,7 +627,8 @@ export default function SceneHotspotsBlock({
                     className={`scene-hotspot absolute min-h-[24px] min-w-[24px] rounded border-2 outline-none transition-[color,background-color,border-color,transform] duration-[100ms] ${blocked ? '' : 'motion-safe:active:scale-[.98]'} ${FOCUS_RING} ${
                       isDoor
                         ? ready
-                          ? 'border-amber-500 bg-amber-400/20 hover:border-amber-600 hover:bg-amber-400/30'
+                          ? // Drzwi gotowe (uwaga właściciela 2026-11-20): sama niebieska ramka, bez ikony drzwi.
+                            'border-indigo-600 bg-indigo-500/10 shadow-[0_0_0_2px_rgb(255_255_255/0.85)] hover:bg-indigo-500/20'
                           : 'cursor-not-allowed border-slate-400/50 bg-slate-400/10'
                         : `hover:border-indigo-600 hover:bg-indigo-500/20 ${
                             hinted ? HINT_FRAME : seen ? 'border-green-600 bg-green-500/[0.07]' : 'border-transparent'
@@ -639,7 +640,6 @@ export default function SceneHotspotsBlock({
                     {portraitScene && (
                       <span aria-hidden="true" data-hit className="absolute left-1/2 top-1/2 h-full min-h-[44px] w-full min-w-[44px] -translate-x-1/2 -translate-y-1/2" />
                     )}
-                    {isDoor && <DoorOpen aria-hidden="true" className="pointer-events-none mx-auto h-4 w-4 text-amber-800" />}
                     {!isDoor && seen && (
                       <span className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white">
                         <Check aria-hidden="true" className="h-3 w-3" />
@@ -918,6 +918,7 @@ function ZoomGraphic({
     return <ZoomImage path={path} alt={media.alt} contentBase={contentBase} wide={onScreen} />;
   }
   if (media.kind === 'audio') return <AudioZoom media={media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />;
+  if (media.kind === 'document' && media.look === 'newspaper') return <NewspaperPage media={media} />;
   if (media.kind === 'document') {
     return (
       <div className="flex max-h-full w-[88%] min-h-0 flex-col rounded-card bg-ink/90 p-4 text-white shadow-card">
@@ -929,6 +930,35 @@ function ZoomGraphic({
     );
   }
   return null;
+}
+
+// Strona gazety (D-181, `look: 'newspaper'`): papier, winieta szeryfowa z datą, nagłówek artykułu, pierwszy akapit jako lead, reszta
+// w dwóch łamach (od 640 px szerokości; węziej jedna kolumna). Przewija się wewnątrz strony, gdy tekst się nie mieści.
+function NewspaperPage({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
+  const [lead, ...rest] = media.lines ?? [];
+  return (
+    <article
+      tabIndex={0}
+      data-testid="newspaper-page"
+      className="zoom-shadow flex max-h-full w-[min(94%,860px)] min-h-0 flex-col overflow-y-auto bg-[#F6F1E4] px-5 py-4 font-serif text-[#1E1B16] outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-8 sm:py-5"
+    >
+      <header className="shrink-0 border-b-4 border-double border-[#1E1B16] pb-2 text-center">
+        <p className="text-[28px] font-black uppercase leading-none tracking-[0.06em] sm:text-[36px]">{media.masthead ?? 'Gazeta'}</p>
+        {media.date && <p className="mt-1.5 border-t border-[#1E1B16]/40 pt-1 text-xs uppercase tracking-[0.12em] text-[#4A443A]">{media.date}</p>}
+      </header>
+      <h4 className="mt-3 text-[22px] font-bold leading-tight sm:text-[28px]">{media.title}</h4>
+      {lead && <p className="mt-2 text-base font-semibold leading-snug">{lead}</p>}
+      {rest.length > 0 && (
+        <div className="mt-2 gap-6 text-base leading-snug lg:columns-2 [&>p+p]:mt-2">
+          {rest.map((line, index) => (
+            <p key={index} className="break-inside-avoid">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+    </article>
+  );
 }
 
 function ZoomImage({ path, alt, contentBase, wide = false }: { path: string | undefined; alt: string | undefined; contentBase: string; wide?: boolean }) {

@@ -109,7 +109,18 @@ const audioMediaSchema = z
     alt: ltext(300).optional(),
   })
   .strict();
-const documentMediaSchema = z.object({ kind: z.literal('document'), title: ltext(200), lines: z.array(ltext(300)).min(1).max(30) }).strict();
+// `look: 'newspaper'` (uwaga właściciela 2026-11-20, D-181): zbliżenie jako strona gazety - winieta (`masthead`), data, tytuł jako
+// nagłówek artykułu, `lines` jako akapity w łamach. Czysto wizualne; bez `look` - ciemny panel z tekstem jak dotąd.
+const documentMediaSchema = z
+  .object({
+    kind: z.literal('document'),
+    title: ltext(200),
+    lines: z.array(ltext(300)).min(1).max(30),
+    look: z.enum(['newspaper']).optional(),
+    masthead: ltext(60).optional(),
+    date: ltext(60).optional(),
+  })
+  .strict();
 // Easter egg (Q, D-100): seria komiksowych okienek („wirusy”, „wygrana”, „okup”) zamykanych tylko krzyżykiem, po nich `outro` i
 // opcjonalne ukryte wyróżnienie w notatniku. Nie jest dowodem (semantics.ts: bez evidence/note/required) i nie zmienia wyniku ani XP -
 // serwer zapisuje tylko flagę wyróżnienia (progress, `easterEggs`). `behavior: 'dodge'` - przycisk ucieka przed kursorem (2 razy, nie na
@@ -357,7 +368,12 @@ const textInputSchema = z
     // Oprawa pola (feat/browser-evidence): 'browser' = pole jako pasek adresu w oknie przeglądarki (zadanie „wpisz adres/domenę”).
     // Czysto wizualne - ocena bez zmian (serwer). Po poprawnej odpowiedzi okno pokazuje ostrzeżenie o stronie podszywającej się pod
     // bank (bez formularzy); tekst jest stały w odtwarzaczu, więc pole nie niesie żadnej treści zadania.
-    frame: z.enum(['browser']).optional(),
+    // 'monitor' (D-181): zadanie jako strona przeglądarki na ekranie wspólnego monitora (jak poczta w monitorze, D-178).
+    frame: z.enum(['browser', 'monitor']).optional(),
+    // Adres do rozłożenia na części (D-181, uwaga właściciela 2026-11-20): zanim pole odpowiedzi się pokaże, gracz klika w pasku adresu
+    // pierwszy pojedynczy „/”, potem drugą „.” na lewo od niego - zaznaczony fragment to domena. Reguła jest ogólna (liczona w
+    // odtwarzaczu z samego adresu, który i tak jest w treści zadania), więc pole jest publiczne; ocena odpowiedzi bez zmian (serwer).
+    markUrl: text(300).optional(),
     answer: z
       .object({
         // Odpowiedzi i wzorzec zostają jednojęzyczne w schemaVersion 6 (ocena per język przypisania - faza EN, rozdz. 10 specyfikacji
@@ -650,6 +666,10 @@ const dossierDocumentsSchema = z
   .min(1)
   .max(6);
 
+// Prostokąt ekranu urządzenia w % grafiki (D-181).
+const screenPercent = z.number().min(0).max(100);
+const screenRectSchema = z.object({ x: screenPercent, y: screenPercent, width: screenPercent, height: screenPercent }).strict();
+
 const dossierSchema = z
   .object({
     ...baseShape,
@@ -657,6 +677,18 @@ const dossierSchema = z
     // Pieczątka na teczce (np. "POUFNE").
     stamp: ltext(30).optional(),
     documents: dossierDocumentsSchema,
+    // Telefon ze sceny (D-181, uwaga właściciela 2026-11-20: „messenger ma się wyświetlić na ekranie tego telefonu, a nie w nowym oknie”):
+    // grafika telefonu na biurku i prostokąt jego ekranu w % grafiki - rozmowa (`layout: 'chat'`) leży dokładnie na ekranie. Wariant
+    // pionowy dla telefonu w pionie. Czysto wizualne (semantics.ts: tylko z jednym dokumentem `layout: 'chat'`).
+    phone: z
+      .object({
+        image: limage(),
+        screen: screenRectSchema,
+        imagePortrait: limage().optional(),
+        screenPortrait: screenRectSchema.optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -1153,6 +1185,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.image',
       'hotspots[].media.title',
       'hotspots[].media.lines[]',
+      'hotspots[].media.look',
+      'hotspots[].media.masthead',
+      'hotspots[].media.date',
       // Easter egg (D-100): okienka, outro i wyróżnienie to treść do pokazania (nic do odgadnięcia; znajomość z góry niczego nie daje).
       'hotspots[].media.items[].title',
       'hotspots[].media.items[].body',
@@ -1185,6 +1220,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'hotspots[].media.scene.hotspots[].media.image',
       'hotspots[].media.scene.hotspots[].media.title',
       'hotspots[].media.scene.hotspots[].media.lines[]',
+      'hotspots[].media.scene.hotspots[].media.look',
+      'hotspots[].media.scene.hotspots[].media.masthead',
+      'hotspots[].media.scene.hotspots[].media.date',
       'hotspots[].media.scene.hotspots[].media.items[].title',
       'hotspots[].media.scene.hotspots[].media.items[].body',
       'hotspots[].media.scene.hotspots[].media.items[].button',
@@ -1289,7 +1327,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ['criteria[].correct', 'criteria[].explanation', 'criteria[].note.text', 'criteria[].note.kind', 'criteria[].evidence', 'scoring'],
   ),
   TEXT_INPUT_GUIDED: classify(
-    ['prompt', 'placeholder', 'frame', 'maxAttempts'],
+    ['prompt', 'placeholder', 'frame', 'markUrl', 'maxAttempts'],
     [
       'answer.accept[]',
       'answer.regex',
@@ -1381,7 +1419,17 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ['steps[].narration.spokenText', 'steps[].narration.voice'],
   ),
   // Wszystko client - jak hotspoty SCENE_HOTSPOTS (evidence/note/required też): blok eksploracyjny, bez klucza odpowiedzi.
-  DOSSIER: classify(['stamp', ...DOSSIER_DOCUMENT_CLIENT], []),
+  DOSSIER: classify(
+    [
+      'stamp',
+      ...DOSSIER_DOCUMENT_CLIENT,
+      // Telefon ze sceny (D-181): grafika i prostokąt ekranu - wygląd, nic tu nie jest sekretem.
+      'phone.image',
+      'phone.imagePortrait',
+      ...['x', 'y', 'width', 'height'].flatMap((key) => [`phone.screen.${key}`, `phone.screenPortrait.${key}`]),
+    ],
+    [],
+  ),
   // Nagranie (D-115): klient zna segmenty (tekst, podpis, nagranie) - bez nich nie ma odsłuchu ani transkrypcji. Sekret: które segmenty
   // są flagami (i ich kategorie), okno i kara oceny oraz dowody (notatki zdradzałyby flagi; wychodzą po ocenie, jak kryteria maila).
   CALL_RECORDING: classify(

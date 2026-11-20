@@ -102,6 +102,16 @@
       "hash": "74a06b18",
       "key": "assets/wyludzone-haslo/images/pawel.74a06b18.webp"
     },
+    "tablica#background": {
+      "original": "images/tablica-tlo.webp",
+      "hash": "81ddf961",
+      "key": "assets/wyludzone-haslo/images/tablica-tlo.81ddf961.webp"
+    },
+    "tablica#backgroundPortrait": {
+      "original": "images/tablica-tlo-pion.webp",
+      "hash": "8b6a4fe9",
+      "key": "assets/wyludzone-haslo/images/tablica-tlo-pion.8b6a4fe9.webp"
+    },
     "raport#background": {
       "original": "images/teczka-tlo.webp",
       "hash": "bb8ae8a4",

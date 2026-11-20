@@ -722,6 +722,13 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   // Wygląd okien (D-178) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.TABS, { look: 'folder', stamp: 'ŚCIŚLE TAJNE', background: 'images/biurko.webp', backgroundPortrait: 'images/biurko-pion.webp' });
   blocks.EMAIL_ANALYSIS.frame = 'monitor';
+  // Tablica z notatkami (D-182) - publiczna; tylko tutaj (fullModule() bez zmian, reguła 9).
+  Object.assign(blocks.ORDERING, {
+    look: 'notes',
+    slots: (blocks.ORDERING.items as unknown[]).map((_, index) => ({ notes: [`Notatka do kartki ${index + 1}.`] })),
+    background: 'images/tablica.webp',
+    backgroundPortrait: 'images/tablica-pion.webp',
+  });
   for (const document of blocks.DOSSIER.documents as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   for (const document of (blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[])[0].done = true;

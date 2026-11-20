@@ -804,34 +804,48 @@
           }
         ]
       },
-      "tip": "Przeciągnij albo użyj strzałek. Kolejność pokazuje, gdzie można było przerwać atak.",
-      "prompt": "Ułóż etapy ataku w kolejności, w jakiej się wydarzyły.",
+      "tip": "Przeciągnij etap na kartkę albo kliknij etap, a potem kartkę.",
+      "prompt": "Oto Twoje notatki ze śledztwa. Przeciągnij każdy z trzech etapów ataku na kartkę, która go opisuje.",
+      "look": "notes",
+      "background": "assets/wyludzone-haslo/images/tablica-tlo.81ddf961.webp",
+      "backgroundPortrait": "assets/wyludzone-haslo/images/tablica-tlo-pion.8b6a4fe9.webp",
       "items": [
         {
           "id": "mail",
-          "text": "E-mail z pochlebnym zaproszeniem na webinar."
+          "text": "E-mail"
         },
         {
           "id": "rozmowa",
-          "text": "Rozmowa w komunikatorze i telefon od „organizatorki”."
+          "text": "Rozmowa telefoniczna"
         },
         {
           "id": "link",
-          "text": "Link do „formularza prelegenta” na domenie formularz-online.net."
-        },
-        {
-          "id": "logowanie",
-          "text": "Paweł wpisuje służbowy e-mail i hasło na fałszywej stronie."
+          "text": "Link"
         }
       ],
-      "start": {
-        "label": "P.N.",
-        "caption": "Paweł Nowicki"
-      },
-      "end": {
-        "label": "46 maili",
-        "caption": "wysłanych z przejętej skrzynki"
-      },
+      "slots": [
+        {
+          "notes": [
+            "Paweł dostał e-mail z propozycją wystąpienia na webinarze.",
+            "Nadawczyni robiła wrażenie godnej zaufania.",
+            "Jedyna czerwona flaga: niespodziewana, atrakcyjna oferta.",
+            "Po odpowiedzi Pawła rozmowa przeniosła się do komunikatora."
+          ]
+        },
+        {
+          "notes": [
+            "„Organizatorka” zadzwoniła – rozmowa trwała prawie 13 minut.",
+            "Gdy zdobyła zaufanie, wysłała Pawłowi link do „formularza prelegenta”."
+          ]
+        },
+        {
+          "notes": [
+            "Link prowadził do domeny formularz-online.net.",
+            "To nie jest domena fundacji – strona była fałszywa.",
+            "Paweł wpisał tam służbowy e-mail i hasło."
+          ]
+        }
+      ],
       "scoring": "partial",
       "reactions": {
         "result": [

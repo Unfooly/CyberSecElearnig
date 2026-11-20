@@ -322,11 +322,15 @@ try {
   await lookAt('telefon', 'kalendarz');
   await door('komunikator', 'TELEFON');
 
-  // --- 7. Komunikator (DOSSIER layout chat w ramce telefonu): wymagane wiadomości - połączenie, link, prośba o hasło ----------
+  // --- 7. Komunikator (DOSSIER layout chat na ekranie telefonu ze sceny, D-181): wymagane - połączenie, link, prośba o hasło -----
   const czat = blockOf('komunikator').documents[0];
-  await page.getByTestId('chat-sheet').waitFor();
+  await page.getByTestId('phone-screen').getByTestId('chat-sheet').waitFor();
   const bubble = (row) => page.getByTestId('chat-bubble').filter({ hasText: text(row.cells[2]).slice(0, 30) });
-  step('CZAT: dymki rozmowy w ramce telefonu, „Dalej” nieaktywny przed wymaganymi', (await page.getByTestId('chat-bubble').count()) === czat.rows.length && (await nextDisabled()), `${await page.getByTestId('chat-bubble').count()} dymków`);
+  step(
+    'CZAT: dymki na ekranie telefonu ze sceny (bez karty teczki), „Dalej” nieaktywny przed wymaganymi',
+    (await page.getByTestId('chat-bubble').count()) === czat.rows.length && (await page.getByTestId('dossier-block').count()) === 0 && (await nextDisabled()),
+    `${await page.getByTestId('chat-bubble').count()} dymków`,
+  );
   await shot('07-czat');
   const greeting = czat.rows.find((row) => row.message);
   await bubble(greeting).click();
@@ -339,8 +343,23 @@ try {
   step('CZAT: po wymaganych „Dalej” aktywny, w bloku brak przycisku dalej', await noInBlockNext());
   await goNext('CZAT');
 
-  // --- 8. Domena (TEXT_INPUT_GUIDED, waga 2) ----------------------------------------------------------------------------------
+  // --- 8. Domena (TEXT_INPUT_GUIDED w monitorze, D-181, waga 0): w pasku adresu pierwszy pojedynczy „/”, potem druga „.” w lewo -----
   const domena = blockOf('domena');
+  const url = domena.markUrl;
+  const monitor = page.getByTestId('monitor-screen');
+  await monitor.getByTestId('address-marker').waitFor();
+  const separator = (index) => monitor.locator(`[data-testid="address-separator"][data-index="${index}"]`);
+  step('DOMENA: strona w monitorze, pole odpowiedzi ukryte do zaznaczenia domeny', (await page.getByPlaceholder(text(domena.placeholder)).count()) === 0);
+  await shot('08a-domena-adres');
+  await separator(url.indexOf('/')).click(); // ukośnik z „https://” - zły
+  step('DOMENA: ukośnik z „https://” - komunikat, bez zapisu', ((await monitor.getByRole('status').textContent()) ?? '').includes('POJEDYNCZEGO'));
+  const slash = url.indexOf('/', url.indexOf('://') + 3);
+  await separator(slash).click();
+  const firstDot = url.lastIndexOf('.', slash);
+  await separator(firstDot).click(); // pierwsza kropka w lewo (.net) - zła
+  step('DOMENA: pierwsza kropka w lewo - komunikat „To nie ta kropka”', ((await monitor.getByRole('status').textContent()) ?? '').includes('To nie ta kropka'));
+  await separator(url.lastIndexOf('.', firstDot - 1)).click();
+  step('DOMENA: po „/” i „.” podświetlona domena z treści i pole odpowiedzi', ((await monitor.getByTestId('address-domain').textContent()) ?? '') === text(domena.solution.text) && (await page.getByPlaceholder(text(domena.placeholder)).count()) === 1);
   await page.getByPlaceholder(text(domena.placeholder)).fill(text(domena.solution.text));
   const attempted = page.waitForResponse((r) => r.url().endsWith('/blocks/domena/attempt') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sprawdź', exact: true }).click();
@@ -419,7 +438,9 @@ try {
   await hotspot('artykul').waitFor();
   step('GAZETA: „Dalej” nieaktywny przed artykułem', await nextDisabled());
   await hotspot('artykul').click();
-  await dialog().getByText(text(blockOf('gazeta').hotspots[0].media.lines[0]).slice(0, 40)).first().waitFor();
+  const article = blockOf('gazeta').hotspots[0].media;
+  await dialog().getByTestId('newspaper-page').getByText(text(article.lines[0]).slice(0, 40)).first().waitFor();
+  step('GAZETA: strona gazety z winietą z treści (D-181)', ((await dialog().getByTestId('newspaper-page').textContent()) ?? '').includes(text(article.masthead)));
   await shot('14-gazeta');
   await dialog().getByRole('button', { name: 'Odłóż' }).click();
   await closed();

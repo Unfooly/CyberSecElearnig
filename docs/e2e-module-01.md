@@ -19,13 +19,20 @@ bloków lub hotspotów, ich kolejności albo mechaniki bloku wymaga poprawki skr
    Poczta = drzwi.
 6. **Mail w monitorze** (EMAIL_ANALYSIS, waga 2): zaznaczona tylko „niespodziewana oferta”, wynik 100% i reakcja z treści.
 7. **Biuro z ✓ komputera:** „Wstecz” przeglądarki po kolejnym zapisie pokazuje to biuro, nie pulpit. Smartfon = drzwi.
-8. **Ekran telefonu** (karta Kalendarz, Komunikator = drzwi) i **czat w ramce telefonu** (DOSSIER layout chat):
+8. **Ekran telefonu** (karta Kalendarz, Komunikator = drzwi) i **czat na ekranie telefonu ze sceny** (DOSSIER layout chat z
+   `phone`, D-181; bez karty teczki):
    - zwykła wiadomość pokazuje komunikat bez zaznaczenia;
    - trzy wymagane wiadomości są zaznaczane.
-9. **Domena** (TEXT_INPUT_GUIDED, waga 2) i **Tak/Nie** (QUIZ, waga 1): poprawnie za pierwszym razem.
+9. **Domena** (TEXT_INPUT_GUIDED w monitorze, waga 0, D-181):
+   - pole odpowiedzi jest ukryte do zaznaczenia domeny;
+   - złe kliknięcia (ukośnik z „https://”, pierwsza kropka) dają komunikat;
+   - pierwszy pojedynczy „/” i druga „.” w lewo podświetlają domenę z treści;
+   - wpisana domena jest poprawna za pierwszym razem.
+
+   Potem **Tak/Nie** (QUIZ, waga 1), też poprawnie za pierwszym razem.
 10. **Biuro z dwoma ✓** (Paweł = drzwi), **rozmowa z Pawłem** (DIALOGUE: najpierw kwestia otwierająca, potem
     wszystkie pytania), **tablica** (ORDERING, waga 2; układana klawiaturą).
-11. **Raport w teczce „SPRAWA ZAMKNIĘTA”**, potem **gazeta** (wymagany artykuł).
+11. **Raport w teczce „SPRAWA ZAMKNIĘTA”**, potem **gazeta** (wymagany artykuł jako strona gazety z winietą, D-181).
 12. **Koniec:** podsumowanie zapisuje się samo, bez ekranu (D-169). Kurs jest ukończony ze 100% wyniku.
     Osiągnięcia przyznane na żywo to „Pierwsza sprawa zamknięta” i „Sprawa bez skazy”.
 13. **Ekran końca** (D-165):

@@ -1405,9 +1405,9 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
         look: 'notes',
         background: 'tablica.webp',
         backgroundPortrait: 'tablica-pion.webp',
-        slots: ordering.items.map((_: unknown, index: number) => ({ notes: [`Notatka ${index + 1}.`] })),
+        items: [1, 2, 3].map((n) => ({ id: `etap-${n}`, text: `Etap ${n}` })),
+        slots: [1, 2, 3].map((n) => ({ notes: [`Notatka ${n}.`] })),
       });
-      ordering.items.forEach((item: { text: unknown }, index: number) => (item.text = `Etap ${index + 1}`));
       return ordering;
     };
     const ok = fullModuleForTests();
@@ -1425,6 +1425,26 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     const plain = fullModuleForTests();
     block(plain, 'ORDERING').background = 'tablica.webp';
     expect(errorsOf(plain)).toMatch(/slots\/background: tylko z look "notes"/);
+    // Układ tablicy ma 3 kartki z najwyżej 4 krótkimi notatkami i wymaga grafiki tablicy.
+    const fourStages = fullModuleForTests();
+    const four = notes(fourStages);
+    four.items.push({ id: 'etap-4', text: 'Etap 4' });
+    four.slots.push({ notes: ['Notatka 4.'] });
+    expect(errorsOf(fourStages)).toMatch(/tablica z notatkami ma dokładnie 3 etapy/);
+    const manyNotes = fullModuleForTests();
+    notes(manyNotes).slots[0].notes = ['a.', 'b.', 'c.', 'd.', 'e.'];
+    expect(errorsOf(manyNotes)).toMatch(/najwyżej 4 notatki na kartce/);
+    const longNote = fullModuleForTests();
+    notes(longNote).slots[1].notes = ['x'.repeat(121)];
+    expect(errorsOf(longNote)).toMatch(/notatka na kartce najwyżej 120 znaków/);
+    const noBackground = fullModuleForTests();
+    const bare = notes(noBackground);
+    delete bare.background;
+    delete bare.backgroundPortrait;
+    expect(errorsOf(noBackground)).toMatch(/tablica z notatkami wymaga grafiki tablicy/);
+    const portraitOnly = fullModuleForTests();
+    delete notes(portraitOnly).background;
+    expect(errorsOf(portraitOnly)).toMatch(/backgroundPortrait: wymaga background/);
   });
 
   it('strona gazety w zbliżeniu (document look newspaper, D-181) przechodzi walidację; nieznany wygląd - błąd', () => {

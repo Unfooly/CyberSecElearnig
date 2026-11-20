@@ -867,6 +867,20 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-172 Tablica z notatkami - drobne uwagi z review (D-182)
+- Etykiety: `P3`, `test`, `mod:odtwarzacz` · Źródło: code review D-182
+- Opis:
+  - testy `NotesBoard` nie obejmują:
+    - upuszczenia poza kartką (powrót pod tablicę), `pointercancel` i utraty przechwycenia;
+    - `disabled`;
+    - wariantu pionowego i listy na niskim ekranie;
+    - `prefers-reduced-motion`;
+    - wyniku bez `correctOrder`;
+  - na telefonie brak autoprzewijania listy kartek przy przeciąganiu (klik działa jako alternatywa);
+  - `NotesBoard.tsx` nie jest na liście plików reguły 12 w CLAUDE.md (layout-check przed pushem) - zmiana CLAUDE.md idzie do człowieka;
+  - przy błędzie wczytania tła tablica zostaje z proporcjami zastępczymi (kartki czytelne, bez grafiki).
+- Akceptacja: testy dopisane, reguła 12 obejmuje `NotesBoard.tsx`.
+
 ### B-171 Narracja pięciu scen przejścia modułu 1 (D-179)
 - Etykiety: `P2`, `treść`, `mod:kursy` · Źródło: D-179 (limit ElevenLabs wyczerpany 2026-11-19; decyzja właściciela: wypuścić bez nagrań)
 - Opis: sceny `biuro-pawla`, `pulpit`, `biuro-pawla-2`, `telefon`, `biuro-pawla-3` mają tylko podpowiedź (`tip`), bez głosu lektora -

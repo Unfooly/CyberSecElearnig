@@ -26,8 +26,12 @@ const LANDSCAPE_SLOTS = [
   { left: 39, top: 22, width: 24 },
   { left: 63, top: 46, width: 22 },
 ];
-// Proporcje tła poziomego (1920×1320 po kadrowaniu) - do czasu wczytania grafiki.
-const DEFAULT_RATIO = 1920 / 1320;
+// Najmniejszy obszar bloku dla tablicy poziomej - poniżej kartki (22-24% szerokości) miałyby kilka słów w wierszu (telefon w poziomie).
+const MIN_BOARD_WIDTH = 700;
+const MIN_BOARD_HEIGHT = 420;
+// Proporcje tła poziomego modułu 1 (1920×990 po kadrowaniu) - do czasu wczytania grafiki; zgodne z grafiką, żeby tablica nie
+// przeskakiwała po wczytaniu (przeskok w trakcie przeciągania kładł etykietę obok kartki).
+const DEFAULT_RATIO = 1920 / 990;
 
 export default function NotesBoard({
   block,
@@ -50,7 +54,25 @@ export default function NotesBoard({
   const slots = block.slots ?? [];
   const readOnly = !!result;
   const [rootRef, portraitMeasured] = usePortraitContainer<HTMLDivElement>();
-  const portrait = portraitMeasured === true;
+  // Układ listy (kartki jedna pod drugą, przewijane): telefon w pionie albo obszar za mały na tablicę poziomą z czytelnymi kartkami
+  // (telefon w poziomie, wąskie okno) - mierzony cały blok (zawsze zamontowany), więc układ nie przeskakuje.
+  const [roomy, setRoomy] = useState(true);
+  useLayoutEffect(() => {
+    const element = rootRef.current;
+    if (!element) return undefined;
+    const measure = () => {
+      const { width, height } = element.getBoundingClientRect();
+      if (width > 0 && height > 0) setRoomy(width >= MIN_BOARD_WIDTH && height >= MIN_BOARD_HEIGHT);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+    // rootRef jest stabilny.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const portrait = portraitMeasured === true || !roomy;
   const [ratio, setRatio] = useState<number>(DEFAULT_RATIO);
   // Tablica pozioma „contain” w obszarze sceny: rozmiar sceny mierzony ResizeObserverem, ramka o proporcjach grafiki.
   const stageRef = useRef<HTMLDivElement>(null);
@@ -78,7 +100,7 @@ export default function NotesBoard({
   const [hoverSlot, setHoverSlot] = useState<number | null>(null);
   const dragStart = useRef<{ id: string; x: number; y: number } | null>(null);
   const dragging = useRef(false);
-  const suppressClick = useRef(false);
+  const suppressClickUntil = useRef(0);
   const checkRef = useRef<HTMLButtonElement>(null);
 
   const playerOrder = result?.answer?.order ?? [];
@@ -106,13 +128,31 @@ export default function NotesBoard({
   const full = !readOnly && placements.length > 0 && placements.every((id) => id !== null);
   const inPlaceCount = playerOrder.filter((id, index) => correctOrder[index] === id).length;
 
+  // Fokus po przypięciu (przycisk pustej kartki albo „Odłóż” znika z DOM - bez tego fokus spadłby na <body>): na etykietę na kartce,
+  // po odłożeniu - na etykietę pod tablicą; przy pełnej tablicy - na „Sprawdź trop”.
+  const focusAfter = useRef<{ slot: number } | { label: string } | null>(null);
   useEffect(() => {
-    if (full) checkRef.current?.focus();
-  }, [full]);
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (full) {
+      checkRef.current?.focus();
+      return;
+    }
+    if (!target) return;
+    const root = rootRef.current;
+    const element =
+      'slot' in target
+        ? root?.querySelector<HTMLElement>(`button[data-testid="notes-slot"][data-slot="${target.slot}"]`)
+        : Array.from(root?.querySelectorAll<HTMLElement>('button[data-testid="notes-label"]') ?? []).find((el) => el.dataset.label === target.label);
+    element?.focus();
+    // rootRef jest stabilny; efekt reaguje na zmianę ułożenia.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placements, full]);
 
   function place(id: string, target: number | 'tray') {
     const from = placements.indexOf(id);
     const next = [...placements];
+    focusAfter.current = target === 'tray' ? { label: id } : { slot: target };
     if (target === 'tray') {
       if (from >= 0) next[from] = null;
       setAnnouncement(`Etap „${textOf(id)}” wrócił pod tablicę.`);
@@ -132,10 +172,12 @@ export default function NotesBoard({
     setSelected(null);
   }
 
-  function clickLabel(id: string) {
+  function clickLabel(id: string, event?: { detail: number }) {
     if (readOnly || disabled) return;
-    if (suppressClick.current) {
-      suppressClick.current = false;
+    // Pomijamy wyłącznie klik MYSZY tuż po przeciągnięciu (detail > 0, do 300 ms po upuszczeniu); klik z klawiatury (Enter/spacja,
+    // detail 0) nigdy - inaczej połknięty Enter psuł obsługę klawiaturą zaraz po przeciągnięciu.
+    if ((event?.detail ?? 0) > 0 && performance.now() < suppressClickUntil.current) {
+      suppressClickUntil.current = 0;
       return;
     }
     // Wybrana etykieta i klik w etykietę na kartce = zamiana (jak klik w tę kartkę).
@@ -157,6 +199,8 @@ export default function NotesBoard({
 
   // Przeciąganie (pointer events): etykieta podąża za wskaźnikiem, upuszczenie nad kartką ([data-slot]) przypina, gdzie indziej - odkłada.
   function onPointerDown(event: PointerEvent<HTMLButtonElement>, id: string) {
+    // Nowe naciśnięcie = nowy, prawdziwy klik: kasuje okno pomijania kliku po poprzednim przeciągnięciu.
+    suppressClickUntil.current = 0;
     if (readOnly || disabled || event.button !== 0) return;
     dragStart.current = { id, x: event.clientX, y: event.clientY };
     dragging.current = false;
@@ -179,10 +223,8 @@ export default function NotesBoard({
     dragStart.current = null;
     if (!start || !dragging.current) return;
     dragging.current = false;
-    // Klik po przeciągnięciu (jeśli przeglądarka go wyśle - przy przechwyconym wskaźniku nie zawsze) jest pomijany; flaga gaśnie zaraz po
-    // tym zdarzeniu, inaczej połknęłaby następny prawdziwy klik albo Enter.
-    suppressClick.current = true;
-    window.setTimeout(() => (suppressClick.current = false), 0);
+    // Klik myszy po przeciągnięciu (jeśli przeglądarka go wyśle - przy przechwyconym wskaźniku nie zawsze) jest pomijany przez 300 ms.
+    suppressClickUntil.current = performance.now() + 300;
     const target = slotUnder(event.clientX, event.clientY);
     setDrag(null);
     setHoverSlot(null);
@@ -190,16 +232,23 @@ export default function NotesBoard({
     else if (placements.includes(start.id)) place(start.id, 'tray');
   }
 
+  // Przerwane przeciąganie (anulowanie wskaźnika, utrata przechwycenia, Escape): klon znika, nic się nie przypina.
+  function cancelDrag() {
+    dragStart.current = null;
+    dragging.current = false;
+    setDrag(null);
+    setHoverSlot(null);
+  }
+
   const labelProps = (id: string) => ({
-    onClick: () => clickLabel(id),
+    onClick: (event: { detail: number }) => clickLabel(id, event),
     onPointerDown: (event: PointerEvent<HTMLButtonElement>) => onPointerDown(event, id),
     onPointerMove,
     onPointerUp,
-    onPointerCancel: () => {
-      dragStart.current = null;
-      dragging.current = false;
-      setDrag(null);
-      setHoverSlot(null);
+    onPointerCancel: cancelDrag,
+    onLostPointerCapture: () => {
+      // Po zwykłym puszczeniu pointerup już wyczyścił stan - tu tylko przerwane przeciąganie.
+      if (dragging.current) cancelDrag();
     },
   });
 
@@ -239,16 +288,26 @@ export default function NotesBoard({
                   : 'border-dashed border-[#1E1B16]/40 bg-white/60 text-[#6F6F6B]'
               }`}
             >
-              {id ? textOf(id) : 'Przeciągnij tutaj'}
-              {verdict === 'good' && <Check aria-label="na właściwym miejscu" className="ml-[0.4em] h-[1em] w-[1em] text-green-700" />}
-              {verdict === 'bad' && <X aria-label="nie tutaj" className="ml-[0.4em] h-[1em] w-[1em] text-red-700" />}
+              {id ? textOf(id) : readOnly ? '—' : 'Przeciągnij tutaj'}
+              {verdict === 'good' && (
+                <>
+                  <Check aria-hidden="true" className="ml-[0.4em] h-[1em] w-[1em] text-green-700" />
+                  <span className="sr-only"> (na właściwym miejscu)</span>
+                </>
+              )}
+              {verdict === 'bad' && (
+                <>
+                  <X aria-hidden="true" className="ml-[0.4em] h-[1em] w-[1em] text-red-700" />
+                  <span className="sr-only"> (nie tutaj)</span>
+                </>
+              )}
             </span>
           ) : (
             <button
               type="button"
               data-slot={index}
               data-testid="notes-slot"
-              aria-label={`Kartka ${index + 1}: ${textOf(id)}${selected === id ? ' - wybrany, wybierz kartkę albo odłóż' : ''}`}
+              aria-label={`Kartka ${index + 1}: ${textOf(id)}`}
               aria-pressed={selected === id}
               {...labelProps(id)}
               className={`flex min-h-[2.6em] flex-1 touch-none items-center justify-center rounded border border-[#6C5CE7] bg-[#EFEDFC] px-[0.6em] text-center font-semibold text-[#3D3570] outline-none focus-visible:ring-2 focus-visible:ring-accent ${
@@ -278,9 +337,17 @@ export default function NotesBoard({
     );
   };
 
-  const backgroundPath = portrait && block.backgroundPortrait ? block.backgroundPortrait : block.background;
+  // Grafika pionowa tylko przy pionowym obszarze; lista na niskim ekranie poziomym ma tło poziome.
+  const backgroundPath = portraitMeasured === true && block.backgroundPortrait ? block.backgroundPortrait : block.background;
   const backgroundUrl = portraitMeasured === null ? null : contentAssetUrl(contentBase, backgroundPath, 'image');
   const feedback = result ? feedbackSentence(result.reaction?.text ?? result.detail?.explanation, result.correct) : null;
+  // Jak w zwykłej tablicy (OrderingBlock): liczba kartek na miejscu i wynik w procentach z serwera.
+  const resultLine = [
+    correctOrder.length > 0 ? `Na właściwym miejscu: ${inPlaceCount} z ${ids.length}.` : null,
+    typeof result?.points === 'number' ? `Wynik: ${Math.round(result.points * 100)}%.` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const trayBar = (
     <div className="flex shrink-0 flex-col gap-2 pt-2">
@@ -291,7 +358,8 @@ export default function NotesBoard({
               key={id}
               type="button"
               data-testid="notes-label"
-              aria-label={`Etap: ${textOf(id)}${selected === id ? ' - wybrany, wybierz kartkę' : ''}`}
+              data-label={id}
+              aria-label={`Etap: ${textOf(id)}`}
               aria-pressed={selected === id}
               {...labelProps(id)}
               className={`min-h-[44px] touch-none rounded-btn border bg-white px-4 font-semibold text-ink shadow-card outline-none focus-visible:ring-2 focus-visible:ring-accent ${
@@ -329,15 +397,12 @@ export default function NotesBoard({
           <p data-testid="board-feedback" className="font-semibold text-ink">
             {feedback}
           </p>
-          {correctOrder.length > 0 && (
-            <p className="text-sm text-muted">
-              Na właściwym miejscu: {inPlaceCount} z {correctOrder.length}
-            </p>
-          )}
+          <p className="text-sm text-muted">{resultLine}</p>
         </div>
       )}
+      {/* Region ogłoszeń: przy układaniu - ruchy etykiet; po wyniku (komponent montowany od nowa) - zdanie i wynik, jak w zwykłej tablicy. */}
       <p role="status" className="sr-only">
-        {announcement}
+        {readOnly && feedback ? `${feedback} ${resultLine}` : announcement}
       </p>
     </div>
   );
@@ -358,6 +423,12 @@ export default function NotesBoard({
       data-phase={readOnly ? phase : undefined}
       data-variant={portrait ? 'portrait' : 'landscape'}
       className="relative isolate flex min-h-0 w-full flex-1 flex-col"
+      // Escape: przerywa przeciąganie i odznacza wybraną etykietę.
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || (!selected && !drag)) return;
+        cancelDrag();
+        setSelected(null);
+      }}
     >
       {portrait ? (
         <>

@@ -11,6 +11,7 @@ import { useNotes } from '../player/notes';
 import { useEvidence } from '../player/evidence';
 import { DEFAULT_HINT, useCompleteHint, useHints } from '../player/hints';
 import Hint from '../player/Hint';
+import PhoneStage from '../player/PhoneStage';
 import ExploreFooter from './ExploreFooter';
 
 // Odległość od dołu wątku (px), poniżej której uznajemy usera za "trzymającego się dołu" - autoprzewijanie po
@@ -351,14 +352,41 @@ export default function DialogueBlock({
   const speakerName = character?.name ?? 'Postać';
   const onAvatarError = () => setAvatarFailed(true);
 
-  return (
+  // Rozmowa na ekranie telefonu ze sceny (D-184, uwaga właściciela 2026-11-20: „te wiadomości niech będą opakowane w telefon, który leży
+  // na blacie, tak jak wiadomości phishingowe”): jak komunikator (DOSSIER.phone, D-181) - pasek komunikatora z rozmówcą, wątek i pytania
+  // na ekranie telefonu; podpowiedź bloku w rogu sceny (układ 'scene'), nie paskiem. Podgląd „Wstecz” - zwykła rozmowa.
+  const onPhone = !!block.phone && !review;
+  const thread = (
     // flex-1 (nie h-full) i [container-type:size]: chipy niżej używają cqh (max-h-[40cqh]) względem TEGO korzenia.
-    <div ref={rootRef} onKeyDown={skipOnSpace} onKeyUp={releaseSpace} className="flex min-h-0 w-full flex-1 flex-col [container-type:size]">
-      {!review && <Hint variant="bar" text={bannerHint} />}
+    <div
+      ref={rootRef}
+      onKeyDown={skipOnSpace}
+      onKeyUp={releaseSpace}
+      data-testid={onPhone ? 'dialogue-on-phone' : undefined}
+      className={`flex min-h-0 w-full flex-1 flex-col [container-type:size] ${onPhone ? 'bg-[#F4F2FB] text-sm' : ''}`}
+    >
+      {!review && !onPhone && <Hint variant="bar" text={bannerHint} />}
+      {onPhone && character && (
+        // Niska wysokość (telefon w poziomie): pasek rozmówcy znika jak nagłówek zwykłej rozmowy - imię i avatar są przy wiadomościach.
+        <div className="mb-2 flex shrink-0 items-center gap-2.5 bg-[#6C5CE7] px-3 py-2.5 text-white [@media(max-height:500px)]:hidden">
+          {avatarUrl && !avatarFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next
+            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-8 w-8 shrink-0 rounded-full object-cover" onError={() => setAvatarFailed(true)} />
+          ) : (
+            <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
+              {character.name.trim().charAt(0).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="break-words text-sm font-bold leading-snug">{character.name}</p>
+            {character.role && <p className="break-words text-xs text-white/80">{character.role}</p>}
+          </div>
+        </div>
+      )}
       {block.prompt && <p className="mx-auto mb-3 w-full max-w-[760px] shrink-0 text-lg text-ink">{block.prompt}</p>}
       {/* Niska wysokość (telefon w poziomie): nagłówek rozmowy znika (imię i avatar są przy wiadomościach), chipy w jednym przewijanym
           rzędzie - inaczej wątek kurczył się do kilkunastu pikseli (layout-check, 844x390). */}
-      {character && (
+      {character && !onPhone && (
         <div className="mx-auto mb-3 flex w-full max-w-[760px] shrink-0 items-center gap-3 [@media(max-height:500px)]:hidden">
           {avatarUrl && !avatarFailed && (
             // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next
@@ -379,7 +407,7 @@ export default function DialogueBlock({
         data-typing={typing && !review ? 'true' : 'false'}
         tabIndex={0}
         onScroll={handleScroll}
-        className={`relative min-h-0 flex-1 overflow-y-auto outline-none ${FOCUS_RING}`}
+        className={`relative min-h-0 flex-1 overflow-y-auto outline-none ${FOCUS_RING} ${onPhone ? 'px-2.5' : ''}`}
       >
         <ol data-testid="dialogue-thread" className="mx-auto w-full max-w-[760px] pb-1">
           {messages.map((message, index) => {
@@ -409,7 +437,13 @@ export default function DialogueBlock({
 
       {/* Stopka poza obszarem przewijania: "Nowe wiadomości", chipy pytań (własny scroll, gdy dużo), postęp. Na scenie węższej niż 640 px
           (fix/mobile-player-bar, globals.css .dialogue-footer): chipy w jednym poziomym rzędzie, postęp jedną linijką nad nimi. */}
-      <div ref={footerRef} role="group" aria-label="Pytania i postęp rozmowy" tabIndex={-1} className={`dialogue-footer mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING}`}>
+      <div
+        ref={footerRef}
+        role="group"
+        aria-label="Pytania i postęp rozmowy"
+        tabIndex={-1}
+        className={`dialogue-footer mx-auto w-full max-w-[760px] shrink-0 pt-2 outline-none ${FOCUS_RING} ${onPhone ? 'border-t border-[#E3DFF5] bg-white px-2.5 pb-2' : ''}`}
+      >
         {hasNewMessages && (
           <button
             type="button"
@@ -450,9 +484,25 @@ export default function DialogueBlock({
           format={(done, total) => `Wymagane pytania: ${done}/${total}`}
           readyText="Wszystkie wymagane pytania zadane."
           review={review}
-          className={`dialogue-progress mt-4 ${review ? 'dialogue-progress-review text-xs text-slate-500' : 'text-sm text-slate-600'}`}
+          className={`dialogue-progress ${onPhone ? 'mt-2' : 'mt-4'} ${review ? 'dialogue-progress-review text-xs text-slate-500' : 'text-sm text-slate-600'}`}
         />
       </div>
     </div>
   );
+
+  if (onPhone && block.phone) {
+    return (
+      <PhoneStage
+        contentBase={contentBase}
+        image={block.phone.image}
+        screen={block.phone.screen}
+        imagePortrait={block.phone.imagePortrait}
+        screenPortrait={block.phone.screenPortrait}
+        label={block.title ?? 'Telefon'}
+      >
+        {thread}
+      </PhoneStage>
+    );
+  }
+  return thread;
 }

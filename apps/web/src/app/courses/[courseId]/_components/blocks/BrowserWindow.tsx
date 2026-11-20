@@ -1,11 +1,23 @@
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Lock, RotateCw, ShieldAlert, X } from 'lucide-react';
+import type { FakePage } from '@/lib/courses-types';
 
 // Okno przeglądarki wokół zadania „wpisz adres” (TEXT_INPUT_GUIDED z `frame: 'browser'`, feat/browser-evidence). Czysto wizualne:
 // pasek kart, strzałki i pasek adresu z kłódką są dekoracją (aria-hidden), prawdziwe kontrolki (pole + „Sprawdź”) przychodzą z
 // TextInputBlock przez `addressBar`. Treść okna (`children`) to stan zadania: pusta karta, komunikat po złej próbie albo ostrzeżenie
-// o stronie podszywającej się pod bank. Nigdy żadnych formularzy logowania ani pól na dane - to szkolenie, nie makieta phishingu.
-export default function BrowserWindow({ tabTitle, addressBar, children }: { tabTitle: string; addressBar: ReactNode; children: ReactNode }) {
+// o stronie podszywającej się pod bank. Nigdy żadnych PRAWDZIWYCH formularzy logowania ani pól na dane - fałszywa strona logowania
+// (FakeLoginPage, D-184) to obrazek formularza zbudowany z elementów bez interakcji.
+export default function BrowserWindow({
+  tabTitle,
+  addressBar,
+  children,
+  bodyClassName = 'min-h-[160px] p-4 sm:p-6',
+}: {
+  tabTitle: string;
+  addressBar: ReactNode;
+  children: ReactNode;
+  bodyClassName?: string;
+}) {
   return (
     <div data-testid="browser-window" className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
       <div className="flex items-end gap-2 bg-paper px-3 pt-2" aria-hidden="true">
@@ -32,7 +44,43 @@ export default function BrowserWindow({ tabTitle, addressBar, children }: { tabT
           {addressBar}
         </div>
       </div>
-      <div className="min-h-[160px] p-4 sm:p-6">{children}</div>
+      <div className={bodyClassName}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Fałszywa strona logowania (D-184, uwaga właściciela 2026-11-20): makieta formularza z napisów z treści. Wyłącznie OBRAZEK - żadnego
+ * <form>, <input> ani przycisku (nic nie da się wpisać ani wysłać, menedżer haseł niczego nie podpowie); dla czytnika jeden opis.
+ */
+export function FakeLoginPage({ page, compact = false }: { page: FakePage; compact?: boolean }) {
+  const description = `Makieta strony: ${page.brand} – ${page.heading}. Pola: ${page.fields.join(', ')}. Przycisk: ${page.button}.`;
+  return (
+    <div
+      role="img"
+      aria-label={description}
+      data-testid="fake-login-page"
+      className={`flex w-full justify-center bg-[#EEF2F7] ${compact ? 'px-3 py-4' : 'px-4 py-6 sm:py-10'}`}
+    >
+      <div aria-hidden="true" className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[#1F4E79]">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-xs text-white">
+            {page.brand.slice(0, 1).toUpperCase()}
+          </span>
+          {page.brand}
+        </p>
+        <p className="text-lg font-bold leading-tight text-slate-900">{page.heading}</p>
+        {page.text && <p className="mt-1 text-sm text-slate-600">{page.text}</p>}
+        <div className="mt-4 space-y-3">
+          {page.fields.map((field, index) => (
+            <div key={index}>
+              <p className="mb-1 text-xs font-medium text-slate-700">{field}</p>
+              <div className="h-9 rounded border border-slate-300 bg-white" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex h-10 items-center justify-center rounded bg-[#1F4E79] text-sm font-semibold text-white">{page.button}</div>
+      </div>
     </div>
   );
 }

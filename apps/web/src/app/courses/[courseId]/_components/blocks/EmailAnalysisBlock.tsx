@@ -387,6 +387,7 @@ export default function EmailAnalysisBlock({
     </div>
   );
 
-  // Wynik (readOnly) - zwykły podgląd pod monitorem nie mieści objaśnień; monitor tylko przy zadaniu.
-  return inMonitor && !readOnly ? <MonitorStage label="Poczta">{body}</MonitorStage> : body;
+  // Wynik zaraz po zapisie zostaje w tym samym monitorze (D-184, uwaga właściciela 2026-11-20: „po zatwierdzeniu przechodzi do nowego
+  // okna zamiast zostać w tym samym”) - objaśnienia przewijają się w ekranie. Podgląd „Wstecz” - zwykła karta.
+  return inMonitor && (!readOnly || live) ? <MonitorStage label="Poczta">{body}</MonitorStage> : body;
 }

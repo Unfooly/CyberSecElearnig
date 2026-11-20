@@ -456,6 +456,22 @@ function checkRequiredFlags(label: string, items: { required?: boolean }[], erro
   if (!items.some((item) => item.required === true)) errors.push(`${label}: co najmniej jeden element musi mieć required: true`);
 }
 
+/** Telefon ze sceny (DOSSIER.phone - D-181, DIALOGUE.phone - D-184): wariant pionowy w komplecie, ekran w obrębie grafiki. */
+function phoneErrors(phone: {
+  screen: { x: number; y: number; width: number; height: number };
+  imagePortrait?: string | Record<string, string>;
+  screenPortrait?: { x: number; y: number; width: number; height: number };
+}): string[] {
+  const errors: string[] = [];
+  if ((phone.imagePortrait === undefined) !== (phone.screenPortrait === undefined)) errors.push('phone: imagePortrait i screenPortrait podaje się razem');
+  for (const [name, rect] of [['screen', phone.screen], ['screenPortrait', phone.screenPortrait]] as const) {
+    if (rect && (rect.x + rect.width > 100 || rect.y + rect.height > 100 || rect.width <= 0 || rect.height <= 0)) {
+      errors.push(`phone.${name}: prostokąt ekranu poza grafiką`);
+    }
+  }
+  return errors;
+}
+
 // Pola dostępne dopiero od schemaVersion 3 (moduł w wersji 2 ich nie używa). Ścieżki względem bloku: `a.b`, `a[].b`.
 const V3_FEATURES = ['hotspots[].evidence', 'hotspots[].note', 'hotspots[].required', 'questions[].evidence', 'questions[].required',
   'questions[].lines', 'questions[].note.kind', 'character.avatar', 'criteria[].evidence', 'criteria[].note.kind', 'criteria[].target', 'email.date', 'email.attachment'];
@@ -726,6 +742,7 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         errors.push(...evidenceErrors(`questions[${i}]`, q, kindRequired));
       });
       checkRequiredFlags('questions', block.questions, errors);
+      if (block.phone) errors.push(...phoneErrors(block.phone));
       break;
     }
     case 'EMAIL_ANALYSIS': {
@@ -764,6 +781,9 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       }
       // Monitor bez adresu nie ma czego pokazać w pasku przeglądarki.
       if (block.frame === 'monitor' && block.markUrl === undefined) errors.push('frame: monitor wymaga markUrl');
+      // Strona pod paskiem i scena pod oknem (D-184) są częścią oprawy monitora - bez niej nie ma ich gdzie pokazać.
+      if (block.page !== undefined && block.frame !== 'monitor') errors.push('page: tylko z frame: monitor');
+      if (block.background !== undefined && block.frame !== 'monitor') errors.push('background: tylko z frame: monitor');
       break;
     }
     case 'ORDERING': {
@@ -815,14 +835,7 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       // Telefon ze sceny (D-181): rozmowa leży na ekranie telefonu - tylko jedna rozmowa (bez przekładek), wariant pionowy w komplecie.
       if (block.phone) {
         if (block.documents.length !== 1 || block.documents[0].layout !== 'chat') errors.push('phone: wymaga dokładnie jednego dokumentu z layout: chat');
-        if ((block.phone.imagePortrait === undefined) !== (block.phone.screenPortrait === undefined)) {
-          errors.push('phone: imagePortrait i screenPortrait podaje się razem');
-        }
-        for (const [name, rect] of [['screen', block.phone.screen], ['screenPortrait', block.phone.screenPortrait]] as const) {
-          if (rect && (rect.x + rect.width > 100 || rect.y + rect.height > 100 || rect.width <= 0 || rect.height <= 0)) {
-            errors.push(`phone.${name}: prostokąt ekranu poza grafiką`);
-          }
-        }
+        errors.push(...phoneErrors(block.phone));
       }
       break;
     }

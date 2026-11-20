@@ -5,9 +5,10 @@ import type { ClientProgressBlock, ContentBlock, ContentReaction } from '@/lib/c
 import { TriangleAlert } from 'lucide-react';
 import { useHints } from '../player/hints';
 import { urlDomainMarks } from '@cyberszkolo/content';
-import BrowserWindow, { DeceptiveSiteWarning } from './BrowserWindow';
+import BrowserWindow, { DeceptiveSiteWarning, FakeLoginPage } from './BrowserWindow';
 import AddressMarker, { type MarkStep } from './AddressMarker';
 import MonitorStage from '../player/MonitorStage';
+import DesktopStage from '../player/DesktopStage';
 
 // Zadanie z wpisaniem odpowiedzi ("z podpowiedzią"). Ocena WYŁĄCZNIE na serwerze: klient wysyła tekst próby na BFF
 // (`/api/courses/:id/blocks/:blockId/attempt`), a w odpowiedzi dostaje werdykt, liczbę pozostałych prób, kolejną podpowiedź (po błędnej
@@ -38,9 +39,12 @@ export default function TextInputBlock({
   disabled,
   readOnly = false,
   onProgress,
+  contentBase = '',
 }: {
   block: ContentBlock;
   courseId: string;
+  /** Baza zasobów (tło `background` zadania na pulpicie, D-184). */
+  contentBase?: string;
   /** Stan z serwera (próby, podpowiedzi, rozwiązanie): z /start albo ostatnia odpowiedź /attempt. */
   progress?: ClientProgressBlock;
   /** true = zadanie rozstrzygnięte - „Dalej” w pasku aktywny (D-106). */
@@ -288,47 +292,76 @@ export default function TextInputBlock({
           : done
             ? null
             : 'Krok 3 z 3: zaznaczony fragment to domena. Wpisz ją poniżej i naciśnij „Sprawdź”.';
+    // Etykieta pola dopiero, gdy pole istnieje (krok 3) - wcześniej zwykły akapit z poleceniem.
+    const promptNode =
+      step === 2 ? (
+        <label htmlFor={inputId} className="block text-base text-slate-900" data-monitor-prompt>
+          {block.prompt}
+        </label>
+      ) : (
+        <p className="block text-base text-slate-900" data-monitor-prompt>
+          {block.prompt}
+        </p>
+      );
+    const task = (
+      <>
+        {instruction && (
+          <p data-testid="mark-instruction" className="text-base font-semibold text-ink">
+            {instruction}
+          </p>
+        )}
+        <p role="status" className={`mt-1 min-h-[1.25rem] text-sm font-medium ${message || markMessage.error ? 'text-red-700' : 'text-green-700'}`}>
+          {done ? '' : message || markMessage.text}
+        </p>
+        {step === 2 && form}
+        {step === 2 && !done && (
+          <p className="mt-2 text-sm text-slate-600" aria-live="polite">
+            Próba {Math.min(attempts + 1, maxAttempts)} z {maxAttempts}
+            {attempts > 0 && ` (pozostało: ${attemptsLeft})`}.
+          </p>
+        )}
+        {hintsSection}
+        {resultSection}
+      </>
+    );
+    const addressBar =
+      marks && block.markUrl ? (
+        <AddressMarker url={block.markUrl} step={step} slash={marks.slash} dot={marks.dot} onPick={pick} />
+      ) : (
+        <span className="min-w-0 flex-1 break-all py-2.5 text-sm text-ink">{block.markUrl ?? ''}</span>
+      );
+
+    // Zadanie wbudowane w fałszywą stronę na pulpicie (D-184, uwaga właściciela 2026-11-20): scena komputera z przybliżeniem pod
+    // oknem przeglądarki, w oknie pasek adresu do zaznaczenia, pasek zadania i pod nim fałszywa strona logowania (obrazek, bez pól).
+    if (block.background) {
+      return (
+        <DesktopStage contentBase={contentBase} background={block.background} label="Przeglądarka">
+          <BrowserWindow tabTitle={block.page?.tabTitle ?? 'Nowa karta'} addressBar={addressBar} bodyClassName="">
+            <div data-testid="page-task" className="border-b border-accent/30 bg-accent-soft px-4 py-3">
+              {promptNode}
+              <div className="mt-2">{task}</div>
+            </div>
+            {block.page && <FakeLoginPage page={block.page} compact />}
+          </BrowserWindow>
+        </DesktopStage>
+      );
+    }
+
     return (
       <MonitorStage label="Przeglądarka">
         <div className="flex flex-col gap-3">
-          {/* Etykieta pola dopiero, gdy pole istnieje (krok 3) - wcześniej zwykły akapit z poleceniem. */}
-          {step === 2 ? (
-            <label htmlFor={inputId} className="block text-base text-slate-900" data-monitor-prompt>
-              {block.prompt}
-            </label>
-          ) : (
-            <p className="block text-base text-slate-900" data-monitor-prompt>
-              {block.prompt}
-            </p>
-          )}
+          {promptNode}
           <BrowserWindow
             // Tytuł karty neutralny (nie z konkretnego modułu); po zaznaczeniu - zaznaczona domena.
             tabTitle={step === 2 && marks ? marks.domain : 'Nowa karta'}
-            addressBar={
-              marks && block.markUrl ? (
-                <AddressMarker url={block.markUrl} step={step} slash={marks.slash} dot={marks.dot} onPick={pick} />
-              ) : (
-                <span className="min-w-0 flex-1 break-all py-2.5 text-sm text-ink">{block.markUrl ?? ''}</span>
-              )
-            }
+            addressBar={addressBar}
           >
-            {instruction && (
-              <p data-testid="mark-instruction" className="text-base font-semibold text-ink">
-                {instruction}
-              </p>
+            {task}
+            {block.page && (
+              <div className="mt-3">
+                <FakeLoginPage page={block.page} compact />
+              </div>
             )}
-            <p role="status" className={`mt-1 min-h-[1.25rem] text-sm font-medium ${message || markMessage.error ? 'text-red-700' : 'text-green-700'}`}>
-              {done ? '' : message || markMessage.text}
-            </p>
-            {step === 2 && form}
-            {step === 2 && !done && (
-              <p className="mt-2 text-sm text-slate-600" aria-live="polite">
-                Próba {Math.min(attempts + 1, maxAttempts)} z {maxAttempts}
-                {attempts > 0 && ` (pozostało: ${attemptsLeft})`}.
-              </p>
-            )}
-            {hintsSection}
-            {resultSection}
           </BrowserWindow>
         </div>
       </MonitorStage>

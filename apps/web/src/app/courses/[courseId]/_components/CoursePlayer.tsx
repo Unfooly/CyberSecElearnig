@@ -797,10 +797,15 @@ export default function CoursePlayer({
   // Odsłuch nagrania (D-115) pokazuje wynik na tej samej transkrypcji - też 'fill', jak tablica.
   // OSINT (D-121) i rozmowa na żywo (D-123) - wynik na tym samym ekranie, też 'fill' (BOARD_TYPES).
   const boardFeedback = showingFeedback && BOARD_TYPES.includes(blocks[feedback.blockIndex]?.type ?? '') && !!feedback.detail;
+  // Wynik poczty w monitorze (D-184): zostaje w tym samym monitorze - układ jak przy zadaniu ('scene').
+  const answeredBlock = showingFeedback ? blocks[feedback.blockIndex] : undefined;
+  const monitorFeedback = answeredBlock?.type === 'EMAIL_ANALYSIS' && answeredBlock.frame === 'monitor' && !!feedback?.detail;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
       ? 'fill'
-      : isSummaryMode || (showingFeedback && !boardFeedback)
+      : monitorFeedback
+        ? 'scene'
+        : isSummaryMode || (showingFeedback && !boardFeedback)
       ? 'slide'
       : boardFeedback
         ? 'fill'
@@ -815,6 +820,8 @@ export default function CoursePlayer({
             (!reviewing && currentBlock?.type === 'TABS' && currentBlock.look === 'folder' && !!currentBlock.background) ||
             // Rozmowa na ekranie telefonu ze sceny (D-181): jak monitor - telefon wypełnia obszar bloku, `tip` w rogu.
             (!reviewing && currentBlock?.type === 'DOSSIER' && !!currentBlock.phone) ||
+            // Rozmowa z postacią na ekranie telefonu (D-184): jak komunikator.
+            (!reviewing && currentBlock?.type === 'DIALOGUE' && !!currentBlock.phone) ||
             // Strona z domeną w monitorze (D-181): jak poczta w monitorze.
             (!reviewing && currentBlock?.type === 'TEXT_INPUT_GUIDED' && currentBlock.frame === 'monitor')
           ? 'scene'

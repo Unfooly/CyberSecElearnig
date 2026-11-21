@@ -79,7 +79,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
 - Wygląd okien (D-178, opcjonalne, czysto wizualne): `cover.backdrop` - tło odtwarzacza za ramką (jak okładki; tylko na komputerze -
   na telefonie ramka zajmuje cały ekran);
   TABS `look: "folder"` + `stamp` - teczka z przekładkami (`background`/`backgroundPortrait` - tło pod teczką,
-  np. biurko; tylko z folder); EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora; DOSSIER
+  np. biurko; tylko z folder); EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora (na szerokim ekranie lista
+  odpowiedzi z prawej strony maila, D-188); QUIZ `frame: "monitor"` + `markUrl`, `page`, `background` (komplet; `backgroundScreen`
+  opcjonalny; poza trybem prostym, bez `multiple`) - pytanie na fałszywej stronie w oknie przeglądarki na pulpicie, ten sam widok co
+  zadanie z domeną (D-190); DOSSIER
   dokument `layout: "chat"` + `self` - czat w ramce telefonu (komórki [godzina, autor, treść]); SCENE_HOTSPOTS przedmiot `done: true` -
   miejsce obejrzane wcześniej (✓, nieklikalne; bez action/media/evidence/note/required, a pozostałe przedmioty z jawnym `required`).
   Podgląd: `dev-modules/dev-okna`.

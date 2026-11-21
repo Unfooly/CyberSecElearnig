@@ -141,6 +141,19 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     const ofiara = (block('teczka').tabs as { id: string; photo?: string; photoAlt?: string }[]).find((tab) => tab.id === 'ofiara')!;
     expect(ofiara.photo).toBe((block('rozmowa-pawel').character as { avatar: string }).avatar);
     expect(ofiara.photoAlt).toContain('Pawła Nowickiego');
+    // Komentarz do wyniku domeny (D-193): poddomena o dowolnej nazwie i domena bez związku z rzekomym nadawcą - w obu wariantach.
+    const reactions = (block('domena').reactions as { result: { when: string; text: string }[] }).result;
+    expect(reactions.map((r) => r.when)).toEqual(['correct', 'incorrect']);
+    for (const reaction of reactions) {
+      expect(reaction.text).toMatch(/poddomena/);
+      expect(reaction.text).toMatch(/dowolną nazwę/);
+      expect(reaction.text).toMatch(/nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej/);
+    }
+    // Napis „Rejestracja” w komunikatorze wygląda jak link (D-192).
+    const czat = (block('komunikator').documents as { rows: { id: string; link?: string; cells: string[] }[] }[])[0];
+    const linkRow = czat.rows.find((row) => row.id === 'link')!;
+    expect(linkRow.link).toBe('Rejestracja');
+    expect(linkRow.cells[2].endsWith('Rejestracja')).toBe(true);
     // Pytanie Tak/Nie o link zaraz po domenie, w tym samym widoku (D-190): ta sama strona, adres, tło i ekran co zadanie z domeną.
     const zaufanie = block('zaufanie') as Record<string, unknown>;
     expect(ids.indexOf('domena') + 1).toBe(ids.indexOf('zaufanie'));

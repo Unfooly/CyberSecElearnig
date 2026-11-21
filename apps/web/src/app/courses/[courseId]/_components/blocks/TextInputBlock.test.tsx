@@ -101,6 +101,38 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     expect(screen.getByTestId('reaction')).toHaveTextContent('Świetnie!');
   });
 
+  it('w monitorze (D-193) komentarz do wyniku zostaje na stronie pod wynikiem, nie w dymku; po odświeżeniu wraca z postępu', async () => {
+    const monitorBlock: ContentBlock = { ...block, frame: 'monitor', markUrl: 'https://fundacja.przyklad-online.net/rejestracja/1' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(attempt({ correct: true, attempt: 2, attemptsLeft: 1, done: true, points: 0.75, reaction: { text: 'To poddomena o dowolnej nazwie.' } })),
+    );
+    // Po pierwszej próbie domena jest już zaznaczona - pole odpowiedzi widoczne od razu.
+    const { unmount } = render(
+      <HintProvider resetKey="k">
+        <TextInputBlock block={monitorBlock} courseId="course-1" progress={{ type: 'TEXT_INPUT_GUIDED', done: false, attempts: 1 } as ClientProgressBlock} />
+        <Probe />
+      </HintProvider>,
+    );
+    type('przyklad-online.net');
+    check();
+    await screen.findByText(/Poprawna odpowiedź!/);
+    expect(screen.getByTestId('text-input-reaction')).toHaveTextContent('To poddomena o dowolnej nazwie.');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    unmount();
+
+    render(
+      <HintProvider resetKey="k2">
+        <TextInputBlock
+          block={monitorBlock}
+          courseId="course-1"
+          progress={{ type: 'TEXT_INPUT_GUIDED', done: true, correct: true, attempts: 2, points: 0.75, reaction: { text: 'To poddomena o dowolnej nazwie.' } } as ClientProgressBlock}
+        />
+      </HintProvider>,
+    );
+    expect(screen.getByTestId('text-input-reaction')).toHaveTextContent('To poddomena o dowolnej nazwie.');
+  });
+
   it('wyczerpane próby: rozwiązanie z wyjaśnieniem', async () => {
     vi.stubGlobal(
       'fetch',

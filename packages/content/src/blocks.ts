@@ -711,6 +711,10 @@ const dossierRowSchema = z
     // Komunikat po kliknięciu ZWYKŁEJ linijki (domyślnie „Ta linijka wygląda na zwykłą operację.”) - np. naprowadzenie, gdy wiersz
     // pokazuje fakt znany już z innej sceny. Tylko bez evidence (semantics.ts); publiczny jak reszta wiersza.
     message: ltext(200).optional(),
+    // Fragment wiadomości czatu pokazany jak link (D-192, uwaga właściciela 2026-11-21: napis „Rejestracja” w komunikatorze „w niebieskim
+    // kolorze, skoro to link”): niebieski i podkreślony, bez adresu i bez nawigacji. Tylko w `layout: 'chat'`, musi być fragmentem treści
+    // wiadomości (ostatniej komórki) - semantics.ts. Czysto wizualne, publiczne.
+    link: ltext(80).optional(),
   })
   .strict();
 
@@ -1199,6 +1203,7 @@ const DOSSIER_DOCUMENT_CLIENT = [
   'documents[].rows[].note.kind',
   'documents[].rows[].required',
   'documents[].rows[].message',
+  'documents[].rows[].link',
   'documents[].layout',
   'documents[].self',
 ];

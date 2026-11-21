@@ -152,6 +152,8 @@ export interface DossierRow {
   required?: boolean;
   /** Komunikat po kliknięciu zwykłej linijki (brak = „Ta linijka wygląda na zwykłą operację.”). */
   message?: string;
+  /** Czat (D-192): fragment treści wiadomości pokazany jak link (niebieski, podkreślony; bez adresu i nawigacji). */
+  link?: string;
 }
 
 export interface DossierDocument {

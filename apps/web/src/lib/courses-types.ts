@@ -564,6 +564,9 @@ export interface ContentTab {
   id: string;
   title: string;
   content: string;
+  /** Zdjęcie przypięte do kartki teczki (D-191) i jego opis dla czytnika ekranu. */
+  photo?: string;
+  photoAlt?: string;
 }
 
 // Widok postępu z /start (apps/api: clientProgress): własne wyniki bloków po id oraz notatki (treść rozwiązana przez serwer, bez kluczy).

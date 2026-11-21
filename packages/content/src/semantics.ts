@@ -842,6 +842,12 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       const ids = block.tabs.map((t) => t.id);
       checkUnique('tabs', ids);
       checkSubset('requiredTabs', block.requiredTabs, ids);
+      // Zdjęcie przypięte do kartki (D-191): tylko w teczce, zawsze z opisem dla czytnika ekranu; opis bez zdjęcia nie ma sensu.
+      block.tabs.forEach((tab, i) => {
+        if (tab.photo !== undefined && block.look !== 'folder') errors.push(`tabs[${i}].photo: zdjęcie tylko z look "folder"`);
+        if (tab.photo !== undefined && tab.photoAlt === undefined) errors.push(`tabs[${i}].photoAlt: zdjęcie wymaga opisu`);
+        if (tab.photoAlt !== undefined && tab.photo === undefined) errors.push(`tabs[${i}].photoAlt: opis bez zdjęcia (photo)`);
+      });
       // Tło pod teczką (D-178) tylko w wyglądzie teczki; wariant pionowy tylko z poziomym (jak odsłuch).
       if ((block.background !== undefined || block.backgroundPortrait !== undefined) && block.look !== 'folder') {
         errors.push('background: tło zakładek tylko z look "folder"');

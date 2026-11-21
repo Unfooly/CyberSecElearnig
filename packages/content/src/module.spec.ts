@@ -1423,6 +1423,35 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(tooMany)).toMatch(/fields/);
   });
 
+  it('zdjęcie przypięte do kartki teczki (TABS tabs[].photo, D-191): tylko w teczce i z opisem; trafia do klienta', () => {
+    const photo = { photo: 'images/ofiara.webp', photoAlt: 'Zdjęcie ofiary.' };
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'TABS'), { look: 'folder' });
+    Object.assign(block(ok, 'TABS').tabs[0], photo);
+    expect(errorsOf(ok)).toBe('');
+    const client = toClientBlock(parseModule(ok).blocks.find((b) => b.type === 'TABS')!, testContext) as unknown as { tabs: Record<string, unknown>[] };
+    expect(client.tabs[0]).toMatchObject(photo);
+
+    const plain = fullModuleForTests();
+    Object.assign(block(plain, 'TABS').tabs[0], photo);
+    expect(errorsOf(plain)).toMatch(/tabs\[0\]\.photo: zdjęcie tylko z look "folder"/);
+
+    const noAlt = fullModuleForTests();
+    Object.assign(block(noAlt, 'TABS'), { look: 'folder' });
+    Object.assign(block(noAlt, 'TABS').tabs[0], { photo: photo.photo });
+    expect(errorsOf(noAlt)).toMatch(/tabs\[0\]\.photoAlt: zdjęcie wymaga opisu/);
+
+    const altOnly = fullModuleForTests();
+    Object.assign(block(altOnly, 'TABS'), { look: 'folder' });
+    Object.assign(block(altOnly, 'TABS').tabs[0], { photoAlt: photo.photoAlt });
+    expect(errorsOf(altOnly)).toMatch(/tabs\[0\]\.photoAlt: opis bez zdjęcia/);
+
+    const badPath = fullModuleForTests();
+    Object.assign(block(badPath, 'TABS'), { look: 'folder' });
+    Object.assign(block(badPath, 'TABS').tabs[0], { ...photo, photo: 'https://example.test/x.webp' });
+    expect(errorsOf(badPath)).toMatch(/photo/);
+  });
+
   it('pytanie na fałszywej stronie na pulpicie (QUIZ frame: monitor, D-190): komplet pól, adres rozkładalny, poza trybem prostym; wygląd trafia do klienta, klucz odpowiedzi nie', () => {
     const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
     const screenRect = { x: 17.64, y: 18.96, width: 65.08, height: 51.3 };

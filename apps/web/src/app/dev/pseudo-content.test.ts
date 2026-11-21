@@ -25,6 +25,8 @@ const TEXT_KEYS = new Set([
   'tabTitle', 'brand', 'heading', 'fields',
   // Czat w telefonie (D-178): `self` to imię autora własnych dymków - tłumaczone razem z komórkami (porównanie z autorem wiersza).
   'self',
+  // Opis zdjęcia przypiętego do kartki teczki (D-191).
+  'photoAlt',
 ]);
 
 /** Klucze (ostatni segment ścieżki, bez indeksów list) wartości tekstowych, które różnią się między `a` i `b`. */

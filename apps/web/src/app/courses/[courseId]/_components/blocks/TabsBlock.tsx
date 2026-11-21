@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { Paperclip } from 'lucide-react';
 import type { ContentBlock } from '@/lib/courses-types';
+import { contentAssetUrl } from '@/lib/content-assets';
 import { useCompleteHint } from '../player/hints';
 import { SimpleMarkdown } from '../simple-markdown';
 import ExploreFooter from './ExploreFooter';
@@ -34,6 +36,7 @@ export default function TabsBlock({
   const required = block.requiredTabs ?? tabs.map((tab) => tab.id);
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
+  const photoUrl = contentAssetUrl(contentBase, active?.photo, 'image');
   const ready = doneCount >= required.length;
   useCompleteHint(block.reactions?.complete, ready, review);
 
@@ -118,6 +121,15 @@ export default function TabsBlock({
               : 'rounded bg-slate-50 p-3'
           }
         >
+          {/* Zdjęcie przypięte do kartki (D-191, uwaga właściciela 2026-11-21: przy ofierze ataku „jego zdjęcie twarzy”): jak zdjęcie
+              legitymacyjne pod spinaczem w prawym górnym rogu, tekst kartki opływa je z lewej. Tylko w teczce (walidacja treści). */}
+          {folder && photoUrl && (
+            <figure data-testid="folder-photo" className="relative float-right mb-2 ml-4 mt-1 w-24 rotate-2 rounded-sm bg-white p-1.5 shadow-[0_6px_16px_rgba(0,0,0,0.28)] ring-1 ring-black/10 sm:w-36">
+              <Paperclip aria-hidden="true" className="absolute -top-3 left-3 h-7 w-7 -rotate-12 text-slate-500" strokeWidth={1.75} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
+              <img src={photoUrl} alt={active.photoAlt ?? ''} referrerPolicy="no-referrer" className="block aspect-[4/5] w-full object-cover object-top" />
+            </figure>
+          )}
           <div className={folder ? 'space-y-3 text-[15px] leading-relaxed sm:text-base' : 'space-y-2 text-slate-800'}>
             <SimpleMarkdown text={active.content} />
           </div>

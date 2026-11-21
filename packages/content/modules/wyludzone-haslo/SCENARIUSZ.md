@@ -30,7 +30,7 @@ Domeny `fundacja-analityki.pl` i `formularz-online.net` sprawdzone 2026-11-19 - 
 
 | # | id | typ | treść | ocena |
 |---|---|---|---|---|
-| 1 | `teczka` | TABS | teczka „ŚCIŚLE TAJNE” na biurku detektywa (D-178): Twoje zadanie / Incydent / Ofiara ataku (wszystkie zakładki wymagane) | – |
+| 1 | `teczka` | TABS | teczka „ŚCIŚLE TAJNE” na biurku detektywa (D-178): Twoje zadanie / Incydent / Ofiara ataku (wszystkie zakładki wymagane); na kartce „Ofiara ataku” zdjęcie Pawła przypięte spinaczem (`photo`, D-191 - ten sam portret co avatar w rozmowie) | – |
 | 2 | `biuro-pawla` | SCENE_HOTSPOTS | „zacznij od komputera”: komputer = drzwi do pulpitu; smartfon i Paweł - karty (nieobowiązkowe); wariant pionowy | – |
 | 3 | `pulpit` | SCENE_HOTSPOTS | monitor Unfooly z pulpitem: Poczta = drzwi do maila; Internet - tylko zapowiedź, bez strony (zadanie startuje na `pulpit-2`, D-185); gra (okienka bez najazdu kamery, D-184) - easter egg odznaki „Ciekawski detektyw” | – |
 | 4 | `zaproszenie` | EMAIL_ANALYSIS | mail na ekranie monitora (`frame: monitor`), bez linków i załączników; 4 cechy, poprawna tylko „niespodziewana, atrakcyjna oferta” (`exact`) | 2 |

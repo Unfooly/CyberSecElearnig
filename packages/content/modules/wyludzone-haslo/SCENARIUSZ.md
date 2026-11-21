@@ -43,8 +43,8 @@ Domeny `fundacja-analityki.pl` i `formularz-online.net` sprawdzone 2026-11-19 - 
 | 11 | `biuro-pawla-3` | SCENE_HOTSPOTS | ✓ komputer i smartfon; Paweł = drzwi do rozmowy | – |
 | 12 | `rozmowa-pawel` | DIALOGUE | na ekranie telefonu z biurka (`phone`, D-184); 4 pytania (3 wymagane): co się stało, czy coś było dziwne, telefon, link | – |
 | 13 | `tablica` | ORDERING | tablica z notatkami jak na nagraniu (`look: notes`, D-182): na korkowej tablicy (tło z Dreaminy) trzy ponumerowane kartki z notatkami ze śledztwa; gracz przeciąga etapy „E-mail”, „Rozmowa telefoniczna”, „Link” na właściwe kartki (wpisanie hasła jest w notatkach kartki „Link”) | 2 |
-| 14 | `raport` | TABS | „Raport końcowy” w teczce „SPRAWA ZAMKNIĘTA” na biurku: 3 etapy, przy każdym rada | – |
-| 15 | `gazeta` | SCENE_HOTSPOTS | „Zanim sobie pójdziesz”: gazeta (ramka na zdjęciu w artykule, D-185) → strona gazety „Kurier Cyfrowy” (`look: newspaper`, D-181) z artykułem o Charming Kitten (2020) - tuż przed ekranem końca | – |
+| 14 | `raport` | TABS | „Raport końcowy” w teczce „SPRAWA ZAMKNIĘTA” na biurku: 3 etapy, przy każdym rada i przypięta ilustracja (`photo`, D-196 - jak w pierwszej teczce) | – |
+| 15 | `gazeta` | SCENE_HOTSPOTS | „Zanim sobie pójdziesz”: gazeta (ramka na zdjęciu w artykule, D-185) → strona gazety „Kurier Cyfrowy” (`look: newspaper`, D-181) z artykułem o Charming Kitten (2020; 8 akapitów: kampania, kim jest grupa, kto ją opisał, wniosek - D-195; strona sięga do dołu obszaru kursu) - tuż przed ekranem końca | – |
 | 16 | `zasady` | SUMMARY | trzy zasady (`lessons`) na ekran końca; zamyka się samo (D-169) | – |
 
 Okna jak na nagraniu (D-178, PR 2): tło modułu `cover.backdrop` (rozmyte biurko), pulpit = monitor odtwarzacza (`scenes/monitor`) z ekranem

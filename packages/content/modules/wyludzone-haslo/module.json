@@ -59,12 +59,16 @@
         {
           "id": "zadanie",
           "title": "Twoje zadanie",
-          "content": "Dzień dobry, detektywie.\n\nW nocy z wtorku na środę z firmowej skrzynki Pawła Nowickiego wyszło kilkadziesiąt maili do klientów z prośbą o „pilną aktualizację danych do płatności”. Paweł twierdzi, że niczego nie wysyłał.\n\nTwoje zadanie: ustal, jak przestępcy przejęli jego konto, i podpowiedz, co zrobić, żeby to się nie powtórzyło."
+          "content": "Dzień dobry, detektywie.\n\nW nocy z wtorku na środę z firmowej skrzynki Pawła Nowickiego wyszło kilkadziesiąt maili do klientów z prośbą o „pilną aktualizację danych do płatności”. Paweł twierdzi, że niczego nie wysyłał.\n\nTwoje zadanie: ustal, jak przestępcy przejęli jego konto, i podpowiedz, co zrobić, żeby to się nie powtórzyło.",
+          "photo": "assets/wyludzone-haslo/images/teczka-zadanie.6162da49.webp",
+          "photoAlt": "Ilustracja: Paweł przy laptopie, a za nim ciemna postać z telefonem i wędką."
         },
         {
           "id": "incydent",
           "title": "Incydent",
-          "content": "Wstępny raport działu IT\n\n• Konto: p.nowicki@unfooly.com\n• Logowanie z nieznanego urządzenia: wtorek, 22:47\n• Wysłane wiadomości: 46, w tym 31 do klientów\n• Hasło zmienione przez IT: środa, 7:30\n\nNie wiemy jeszcze, skąd przestępcy mieli hasło."
+          "content": "Wstępny raport działu IT\n\n• Konto: p.nowicki@unfooly.com\n• Logowanie z nieznanego urządzenia: wtorek, 22:47\n• Wysłane wiadomości: 46, w tym 31 do klientów\n• Hasło zmienione przez IT: środa, 7:30\n\nNie wiemy jeszcze, skąd przestępcy mieli hasło.",
+          "photo": "assets/wyludzone-haslo/images/teczka-incydent.005a44f1.webp",
+          "photoAlt": "Zdjęcie monitora Pawła z pulpitem: ikony Poczta, Przelewy, Internet, GTA6_PL.exe, Faktury i Kosz."
         },
         {
           "id": "ofiara",
@@ -989,17 +993,23 @@
         {
           "id": "etap-mail",
           "title": "Etap 1: E-mail",
-          "content": "Przestępcy wysłali Pawłowi pochlebne zaproszenie do wystąpienia na webinarze. Mail był staranny – bez błędów, bez linków i bez załączników. Jedyną czerwoną flagą była niespodziewana, atrakcyjna propozycja.\n\nRada: niespodziewaną ofertę sprawdź innym kanałem – samodzielnie wyszukaj organizatora albo zapytaj w firmie."
+          "content": "Przestępcy wysłali Pawłowi pochlebne zaproszenie do wystąpienia na webinarze. Mail był staranny – bez błędów, bez linków i bez załączników. Jedyną czerwoną flagą była niespodziewana, atrakcyjna propozycja.\n\nRada: niespodziewaną ofertę sprawdź innym kanałem – samodzielnie wyszukaj organizatora albo zapytaj w firmie.",
+          "photo": "assets/wyludzone-haslo/images/raport-mail.6de5aba5.webp",
+          "photoAlt": "Ilustracja: haczyk wędkarski nad laptopem z otwartą wiadomością."
         },
         {
           "id": "etap-rozmowa",
           "title": "Etap 2: Rozmowa",
-          "content": "Po odpowiedzi Pawła „organizatorka” przeniosła rozmowę do komunikatora i zadzwoniła. Prawie 13 minut miłej rozmowy wystarczyło, żeby przestał ją traktować jak obcą osobę.\n\nRada: miła rozmowa to nie dowód tożsamości. Jeśli ktoś naciska albo coś cię niepokoi – rozłącz się i sprawdź."
+          "content": "Po odpowiedzi Pawła „organizatorka” przeniosła rozmowę do komunikatora i zadzwoniła. Prawie 13 minut miłej rozmowy wystarczyło, żeby przestał ją traktować jak obcą osobę.\n\nRada: miła rozmowa to nie dowód tożsamości. Jeśli ktoś naciska albo coś cię niepokoi – rozłącz się i sprawdź.",
+          "photo": "assets/wyludzone-haslo/images/raport-rozmowa.9b2ba963.webp",
+          "photoAlt": "Ilustracja: postać w kapturze z telefonem na ekranie smartfona, obok dymki rozmowy."
         },
         {
           "id": "etap-link",
           "title": "Etap 3: Link",
-          "content": "Na koniec przyszedł link do „formularza prelegenta” na domenie formularz-online.net. Strona poprosiła o służbowy e-mail i hasło – i tak przestępcy przejęli skrzynkę.\n\nRada: przed zalogowaniem sprawdź domenę. Służbowego hasła nie podajesz na żadnej obcej stronie, a podejrzany link zgłaszasz do IT."
+          "content": "Na koniec przyszedł link do „formularza prelegenta” na domenie formularz-online.net. Strona poprosiła o służbowy e-mail i hasło – i tak przestępcy przejęli skrzynkę.\n\nRada: przed zalogowaniem sprawdź domenę. Służbowego hasła nie podajesz na żadnej obcej stronie, a podejrzany link zgłaszasz do IT.",
+          "photo": "assets/wyludzone-haslo/images/raport-link.a04c7b50.webp",
+          "photoAlt": "Ilustracja: monitor ze stroną, na której świeci duży fioletowy przycisk."
         }
       ],
       "requiredTabs": [
@@ -1049,7 +1059,11 @@
               "W 2020 roku grupa hakerów powiązana z Iranem, znana jako Charming Kitten (APT35), prowadziła kampanie wymierzone w dziennikarzy, naukowców i ekspertów.",
               "Hakerzy podszywali się pod dziennikarzy i organizatorów konferencji. Zapraszali ofiary na wywiady i wydarzenia.",
               "Kontaktowali się przez e-mail, LinkedIn i WhatsApp, a czasem dzwonili do ofiar, żeby zdobyć ich zaufanie.",
-              "Na końcu wysyłali link do fałszywej strony logowania, na której ofiary podawały hasło do poczty."
+              "Na końcu wysyłali link do fałszywej strony logowania, na której ofiary podawały hasło do poczty.",
+              "Kim są? Charming Kitten działa co najmniej od 2014 roku. Badacze bezpieczeństwa znają tę grupę także pod nazwami APT35 i Phosphorus.",
+              "Kampanię z 2020 roku opisali badacze z firmy ClearSky: hakerzy udawali dziennikarzy znanych redakcji i zapraszali ofiary na internetowe seminarium.",
+              "W tym samym roku Microsoft ostrzegł, że grupa rozsyłała fałszywe zaproszenia na międzynarodowe konferencje do byłych urzędników, naukowców i ekspertów.",
+              "Wniosek? Atak nie musi zaczynać się od podejrzanego linku. Często zaczyna się od miłej wiadomości i spokojnie budowanego zaufania."
             ]
           },
           "required": true

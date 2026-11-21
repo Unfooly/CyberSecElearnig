@@ -42,6 +42,21 @@
       "hash": "0bf7dcda",
       "key": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp"
     },
+    "teczka#tabs.0.photo": {
+      "original": "images/teczka-zadanie.webp",
+      "hash": "6162da49",
+      "key": "assets/wyludzone-haslo/images/teczka-zadanie.6162da49.webp"
+    },
+    "teczka#tabs.1.photo": {
+      "original": "images/teczka-incydent.webp",
+      "hash": "005a44f1",
+      "key": "assets/wyludzone-haslo/images/teczka-incydent.005a44f1.webp"
+    },
+    "teczka#tabs.2.photo": {
+      "original": "images/pawel.webp",
+      "hash": "74a06b18",
+      "key": "assets/wyludzone-haslo/images/pawel.74a06b18.webp"
+    },
     "biuro-pawla#image": {
       "original": "images/biuro-pawla.webp",
       "hash": "20424773",
@@ -112,11 +127,6 @@
       "hash": "c2a390bd",
       "key": "assets/wyludzone-haslo/images/biuro-pawla-pion.c2a390bd.webp"
     },
-    "teczka#tabs.2.photo": {
-      "original": "images/pawel.webp",
-      "hash": "74a06b18",
-      "key": "assets/wyludzone-haslo/images/pawel.74a06b18.webp"
-    },
     "rozmowa-pawel#character.avatar": {
       "original": "images/pawel.webp",
       "hash": "74a06b18",
@@ -151,6 +161,21 @@
       "original": "images/teczka-tlo-pion.webp",
       "hash": "0bf7dcda",
       "key": "assets/wyludzone-haslo/images/teczka-tlo-pion.0bf7dcda.webp"
+    },
+    "raport#tabs.0.photo": {
+      "original": "images/raport-mail.webp",
+      "hash": "6de5aba5",
+      "key": "assets/wyludzone-haslo/images/raport-mail.6de5aba5.webp"
+    },
+    "raport#tabs.1.photo": {
+      "original": "images/raport-rozmowa.webp",
+      "hash": "9b2ba963",
+      "key": "assets/wyludzone-haslo/images/raport-rozmowa.9b2ba963.webp"
+    },
+    "raport#tabs.2.photo": {
+      "original": "images/raport-link.webp",
+      "hash": "a04c7b50",
+      "key": "assets/wyludzone-haslo/images/raport-link.a04c7b50.webp"
     },
     "gazeta#image": {
       "original": "images/gazeta.webp",

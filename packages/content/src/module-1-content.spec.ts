@@ -145,10 +145,12 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     const reactions = (block('domena').reactions as { result: { when: string; text: string }[] }).result;
     expect(reactions.map((r) => r.when)).toEqual(['correct', 'incorrect']);
     for (const reaction of reactions) {
-      expect(reaction.text).toMatch(/poddomena/);
+      // Słowo „subdomena”, nie „poddomena” (D-194) - w całej treści modułu.
+      expect(reaction.text).toMatch(/subdomena/);
       expect(reaction.text).toMatch(/dowolną nazwę/);
       expect(reaction.text).toMatch(/nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej/);
     }
+    expect(JSON.stringify(parsed)).not.toMatch(/poddomen/i);
     // Napis „Rejestracja” w komunikatorze wygląda jak link (D-192).
     const czat = (block('komunikator').documents as { rows: { id: string; link?: string; cells: string[] }[] }[])[0];
     const linkRow = czat.rows.find((row) => row.id === 'link')!;

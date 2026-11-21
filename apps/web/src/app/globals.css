@@ -1111,32 +1111,9 @@
   background: #fff;
   padding: 18px 24px;
 }
-/* Analiza maila (D-188): odpowiedzi do zaznaczenia z prawej strony maila. Poza monitorem (podgląd „Wstecz”) od 1024 px szerokości okna;
-   w monitorze decyduje szerokość kontenera `monitor` (ten sam próg co układ monitora). Wąsko: kolejność z DOM (pytanie, mail, lista). */
-@media (min-width: 1024px) {
-  .email-split {
-    display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      'mail head'
-      'mail side';
-    column-gap: 16px;
-    align-items: start;
-  }
-  .email-split > .email-split-head {
-    grid-area: head;
-  }
-  .email-split > .email-split-mail {
-    grid-area: mail;
-  }
-  .email-split > .email-split-side {
-    grid-area: side;
-  }
-  .email-split > .email-split-side > fieldset {
-    margin-top: 0;
-  }
-}
+/* Analiza maila (D-188): odpowiedzi do zaznaczenia z prawej strony maila - tylko w monitorze (`frame: 'monitor'`), gdy kontener
+   `monitor` jest szeroki (ten sam próg co układ monitora). Wąski monitor i mail poza monitorem (podgląd „Wstecz”, panel ok. 720 px - za
+   wąski na dwie kolumny; uwaga z code review): kolejność z DOM (pytanie, mail, lista pod nim). */
 @container monitor (min-width: 640px) and (min-height: 420px) {
   .monitor-stage-screen .email-split {
     display: grid;
@@ -1162,12 +1139,6 @@
   }
 }
 @container monitor (max-width: 639px) or (max-height: 419px) {
-  .monitor-stage-screen .email-split {
-    display: block;
-  }
-  .monitor-stage-screen .email-split > .email-split-side > fieldset {
-    margin-top: 1rem;
-  }
   .monitor-stage-frame {
     inset: 0;
     translate: none;

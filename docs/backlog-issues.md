@@ -867,6 +867,32 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-179 Treść bloku po zadaniu cytuje odpowiedź wcześniejszego zadania (`/start` wysyła wszystkie bloki naraz)
+- Etykiety: `P3`, `mod:kursy`, `security` · Źródło: security review D-190 (stan z `main`, nie regresja)
+- Opis: narracja i `prompt` bloku `zaufanie` (moduł 1) zawierają `formularz-online.net`, czyli odpowiedź wcześniejszego zadania `domena`
+  (waga 0, ćwiczenie prowadzone; tę samą odpowiedź da się wyliczyć jawną regułą z `domena.markUrl`). `/start` wysyła wszystkie bloki od razu
+  (wstrzymywany jest tylko `ANNOTATED_REPLAY`). Dziś akceptowane; gdyby wynik takiego zadania miał się liczyć do raportów, potrzebne
+  wstrzymywanie bloku albo reguła walidacji „blok po zadaniu nie cytuje jego `answer.accept`”.
+- Akceptacja: decyzja (zostaje / wstrzymywanie / walidacja) zapisana w `docs/decisions.md`.
+
+### B-178 Pytanie na fałszywej stronie (D-190) i układ maila (D-188) - uwagi z review
+- Etykiety: `P3`, `mod:odtwarzacz`, `a11y`, `test` · Źródło: code review i security review D-188/D-190
+- Opis: (1) `PageQuizBlock` - wynik w `role="status"` montowany razem z treścią, więc czytnik zwykle go nie ogłosi (przy złej odpowiedzi
+  ratuje to dymek ostrzeżenia; `FeedbackPanel` regionu nie ma wcale) - ogłaszać przez stały region; (2) radio w wyniku ma `aria-disabled`,
+  ale zostaje fokusowalne (zmianę blokuje `onChange`); (3) efekt ostrzeżenia bez warunku `live` - bez znaczenia, dopóki komponent nie
+  trafia do podglądu „Wstecz”; (4) brak testu podglądu „Wstecz” pytania na stronie (zwykły slajd, w pasku „Dalej”); (5) `semantics.ts` -
+  walidacja `markUrl`/`backgroundScreen` skopiowana z TEXT_INPUT_GUIDED do QUIZ, do wydzielenia; `page.url` dozwolone przy QUIZ, choć adres
+  bierze się z `markUrl` (dodać zakaz albo regułę zgodności); brak bramki `schemaVersion` dla nowych pól QUIZ; (6) `EmailAnalysisBlock.tsx` -
+  niewcięta zawartość `<div data-testid="email-answers">`, pusty napis klasy `" "`.
+- Akceptacja: punkty poprawione albo świadomie odrzucone (wpis tutaj), testy zielone.
+
+### B-177 layout-check bez asercji nowych układów: lista obok maila (D-188), pytanie na fałszywej stronie (D-190)
+- Etykiety: `P2`, `mod:odtwarzacz`, `test` · Źródło: code review D-188/D-190
+- Opis: sekcja `module` w `scripts/layout-check.mjs` sprawdza bloki `zaproszenie` i `zaufanie` tylko ogólnie (pasek w kadrze, brak
+  poziomego przewijania, obrazy). Nic nie pilnuje, że na szerokim ekranie lista odpowiedzi stoi OBOK maila (a na telefonie pod nim) ani że
+  pytanie z odpowiedziami mieści się w oknie przeglądarki bez przewijania (1366x650, 360x800). jsdom tego nie policzy.
+- Akceptacja: asercje położenia (prostokąty listy i maila; pasek zadania w oknie) w layout-check dla modułu 1.
+
 ### B-176 Martwy kod po usunięciu „Zabierz” (D-187)
 - Etykiety: `P3`, `mod:odtwarzacz`, `refactor` · Źródło: code review D-187
 - Opis: w `SceneHotspotsBlock.tsx` zostały nieużywane: stan i prop `shake` (`void shake` w ZoomContent), gałąź `NOT_EVIDENCE_TOAST` w

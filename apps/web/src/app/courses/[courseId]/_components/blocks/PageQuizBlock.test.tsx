@@ -81,6 +81,12 @@ describe('PageQuizBlock: pytanie na fałszywej stronie na pulpicie (D-190)', () 
     expect(screen.getByTestId('hint')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
   });
 
+  it('wynik bez zapisanego wyboru (starszy zapis): werdykt i komentarz, żadna odpowiedź niezaznaczona', () => {
+    setup({ result: { correct: true, reaction: { text: 'Komentarz.' } } });
+    expect(within(screen.getByTestId('page-quiz-result')).getByText('Poprawna odpowiedź!')).toBeInTheDocument();
+    for (const radio of screen.getAllByRole('radio')) expect(radio).not.toBeChecked();
+  });
+
   it('isPageQuiz: tylko QUIZ z oprawą monitora i tłem', () => {
     expect(isPageQuiz(block)).toBe(true);
     expect(isPageQuiz({ ...block, frame: undefined })).toBe(false);

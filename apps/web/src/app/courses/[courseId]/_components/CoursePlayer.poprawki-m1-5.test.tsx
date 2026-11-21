@@ -138,6 +138,63 @@ describe('CoursePlayer: poprawki modułu 1, runda 5 (D-190)', () => {
     expect(bubbles[1]).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('teczka: poziome zdjęcie dostaje szerszą ramkę po wczytaniu, pionowe zostaje wąskie (D-196)', () => {
+    stubFetch(true);
+    const tabs: ContentBlock = {
+      type: 'TABS',
+      id: 'teczka',
+      look: 'folder',
+      background: 'assets/m/biurko.1.webp',
+      tabs: [{ id: 'incydent', title: 'Incydent', content: 'Raport.', photo: 'assets/m/images/monitor.1.webp', photoAlt: 'Monitor.' }],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([tabs])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    const figure = screen.getByTestId('folder-photo');
+    const img = within(figure).getByRole('img', { name: 'Monitor.' }) as HTMLImageElement;
+    expect(figure).not.toHaveAttribute('data-wide');
+    Object.defineProperty(img, 'naturalWidth', { value: 560, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 411, configurable: true });
+    fireEvent.load(img);
+    expect(screen.getByTestId('folder-photo')).toHaveAttribute('data-wide', 'true');
+  });
+
+  it('gazeta: strona sięga do dołu obszaru kursu - bez dolnego marginesu zbliżenia i pustego paska pod spodem (D-195)', async () => {
+    stubFetch(true);
+    const scene: ContentBlock = {
+      type: 'SCENE_HOTSPOTS',
+      id: 'gazeta',
+      image: 'assets/m/gazeta.1.webp',
+      imageAlt: 'Gazeta na biurku.',
+      hotspots: [
+        {
+          id: 'artykul',
+          label: 'Gazeta',
+          x: 20,
+          y: 20,
+          width: 30,
+          height: 60,
+          required: true,
+          content: 'Artykuł.',
+          media: { kind: 'document', look: 'newspaper', masthead: 'Kurier Cyfrowy', title: 'Hakerzy', lines: ['Lead.', 'Akapit pierwszy.', 'Akapit drugi.'] },
+        },
+      ],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([scene])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    fireEvent.click(screen.getByRole('button', { name: /Gazeta/ }));
+    const page = await screen.findByTestId('newspaper-page');
+    expect(page).toHaveTextContent('Akapit drugi.');
+    expect(screen.getByTestId('scene-zoom-graphic').className).toContain('-mb-3');
+    expect(screen.getByTestId('scene-zoom-actions')).not.toBeVisible();
+    // Dół strony bez zaokrągleń - kartka wychodzi poza kadr.
+    expect(page.className).toContain('rounded-t-card');
+    expect(page.className).not.toMatch(/(^|\s)rounded-card(\s|$)/);
+  });
+
+  it('pytanie na fałszywej stronie: odpowiedzi węższe niż okno (D-197) - limit szerokości na szerokim ekranie', () => {
+    stubFetch(true);
+    render(<CoursePlayer courseId="course-1" initial={course([quiz])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    for (const option of screen.getAllByTestId('page-quiz-option')) expect(option.className).toContain('sm:max-w-[380px]');
+  });
+
   it('zwykły quiz (bez oprawy) zostaje jak dotąd - bez okna przeglądarki', () => {
     stubFetch(true);
     const plain: ContentBlock = { type: 'QUIZ', id: 'zaufanie', prompt: 'Czy link jest godny zaufania?', options: [{ text: 'Tak' }, { text: 'Nie' }] };

@@ -141,6 +141,17 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     const ofiara = (block('teczka').tabs as { id: string; photo?: string; photoAlt?: string }[]).find((tab) => tab.id === 'ofiara')!;
     expect(ofiara.photo).toBe((block('rozmowa-pawel').character as { avatar: string }).avatar);
     expect(ofiara.photoAlt).toContain('Pawła Nowickiego');
+    // Zdjęcia w obu teczkach (D-196): każda zakładka teczki sprawy i raportu ma przypiętą ilustrację z opisem.
+    for (const id of ['teczka', 'raport']) {
+      for (const tab of block(id).tabs as { id: string; photo?: string; photoAlt?: string }[]) {
+        expect(`${id}/${tab.id}: ${tab.photo}`).toMatch(/: assets\/wyludzone-haslo\/images\/[a-z-]+\.[0-9a-f]{8}\.webp$/);
+        expect((tab.photoAlt ?? '').length).toBeGreaterThan(10);
+      }
+    }
+    // Gazeta (D-195): dłuższy artykuł o Charming Kitten - kim są, kto opisał kampanię, wniosek.
+    const artykul = (block('gazeta').hotspots as { id: string; media: { lines: string[] } }[]).find((h) => h.id === 'artykul')!;
+    expect(artykul.media.lines.length).toBeGreaterThanOrEqual(8);
+    for (const word of ['Charming Kitten', '2014', 'ClearSky', 'Microsoft']) expect(artykul.media.lines.join(' ')).toContain(word);
     // Komentarz do wyniku domeny (D-193): poddomena o dowolnej nazwie i domena bez związku z rzekomym nadawcą - w obu wariantach.
     const reactions = (block('domena').reactions as { result: { when: string; text: string }[] }).result;
     expect(reactions.map((r) => r.when)).toEqual(['correct', 'incorrect']);

@@ -37,6 +37,14 @@ export default function TabsBlock({
   const doneCount = required.filter((id) => opened.includes(id)).length;
   const active = tabs.find((tab) => tab.id === activeId) ?? null;
   const photoUrl = contentAssetUrl(contentBase, active?.photo, 'image');
+  // Które zdjęcia są poziome (po wczytaniu) - poziome dostają szerszą ramkę (D-196).
+  const [widePhotos, setWidePhotos] = useState<Record<string, boolean>>({});
+  const photoWide = photoUrl ? widePhotos[photoUrl] === true : false;
+  function notePhotoRatio(url: string, width: number, height: number) {
+    if (width <= 0 || height <= 0) return;
+    const wide = width > height * 1.15;
+    setWidePhotos((current) => (current[url] === wide ? current : { ...current, [url]: wide }));
+  }
   const ready = doneCount >= required.length;
   useCompleteHint(block.reactions?.complete, ready, review);
 
@@ -125,10 +133,26 @@ export default function TabsBlock({
           {/* Zdjęcie przypięte do kartki (D-191, uwaga właściciela 2026-11-21: przy ofierze ataku „jego zdjęcie twarzy”): jak zdjęcie
               legitymacyjne pod spinaczem w prawym górnym rogu, tekst kartki opływa je z lewej. Tylko w teczce (walidacja treści). */}
           {folder && photoUrl && (
-            <figure data-testid="folder-photo" className="relative float-right mb-2 ml-4 mt-1 w-24 rotate-2 rounded-sm bg-white p-1.5 shadow-[0_6px_16px_rgba(0,0,0,0.28)] ring-1 ring-black/10 sm:w-36">
+            // Proporcje z pliku (D-196: zdjęcia pionowe, kwadratowe i poziome) - ramka nie przycina; poziome zdjęcie dostaje szerszą ramkę.
+            <figure
+              data-testid="folder-photo"
+              data-wide={photoWide ? 'true' : undefined}
+              className={`relative float-right mb-2 ml-4 mt-1 rotate-2 rounded-sm bg-white p-1.5 shadow-[0_6px_16px_rgba(0,0,0,0.28)] ring-1 ring-black/10 ${photoWide ? 'w-32 sm:w-56' : 'w-24 sm:w-44'}`}
+            >
               <Paperclip aria-hidden="true" className="absolute -top-3 left-3 h-7 w-7 -rotate-12 text-slate-500" strokeWidth={1.75} />
               {/* eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next */}
-              <img src={photoUrl} alt={active.photoAlt ?? ''} referrerPolicy="no-referrer" className="block aspect-[4/5] w-full object-cover object-top" />
+              <img
+                key={photoUrl}
+                ref={(img) => {
+                  // Obraz z pamięci podręcznej nie da już onLoad - proporcje od razu z gotowego obrazu.
+                  if (img?.complete && img.naturalWidth > 0) notePhotoRatio(photoUrl, img.naturalWidth, img.naturalHeight);
+                }}
+                src={photoUrl}
+                alt={active.photoAlt ?? ''}
+                referrerPolicy="no-referrer"
+                className="block h-auto w-full"
+                onLoad={(event) => notePhotoRatio(photoUrl, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
+              />
             </figure>
           )}
           <div className={folder ? 'space-y-3 text-[15px] leading-relaxed sm:text-base' : 'space-y-2 text-slate-800'}>

@@ -78,7 +78,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   treści, API czyta ją z module.json jak okładki.
 - Wygląd okien (D-178, opcjonalne, czysto wizualne): `cover.backdrop` - tło odtwarzacza za ramką (jak okładki; tylko na komputerze -
   na telefonie ramka zajmuje cały ekran);
-  TABS `look: "folder"` + `stamp` - teczka z przekładkami (`background`/`backgroundPortrait` - tło pod teczką,
+  TABS `look: "folder"` + `stamp` - teczka z przekładkami (zakładka może mieć `photo` + `photoAlt` - zdjęcie przypięte spinaczem do
+  kartki, D-191; `background`/`backgroundPortrait` - tło pod teczką,
   np. biurko; tylko z folder); EMAIL_ANALYSIS `frame: "monitor"` - poczta na ekranie monitora (na szerokim ekranie lista
   odpowiedzi z prawej strony maila, D-188); QUIZ `frame: "monitor"` + `markUrl`, `page`, `background` (komplet; `backgroundScreen`
   opcjonalny; poza trybem prostym, bez `multiple`) - pytanie na fałszywej stronie w oknie przeglądarki na pulpicie, ten sam widok co

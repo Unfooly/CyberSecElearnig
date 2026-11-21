@@ -496,7 +496,12 @@ const tabsSchema = z
   .object({
     ...baseShape,
     type: z.literal('TABS'),
-    tabs: z.array(z.object({ id: idSchema, title: ltext(60), content: ltext(3000) }).strict()).min(1).max(10),
+    // `photo` + `photoAlt` (D-191, uwaga właściciela 2026-11-21: w teczce przy ofierze ataku „jego zdjęcie twarzy”): zdjęcie przypięte do
+    // kartki zakładki, tylko w wyglądzie teczki (semantics.ts); plik bez tekstu (jeden na wszystkie języki), opis dla czytnika wymagany.
+    tabs: z
+      .array(z.object({ id: idSchema, title: ltext(60), content: ltext(3000), photo: imagePathSchema.optional(), photoAlt: ltext(160).optional() }).strict())
+      .min(1)
+      .max(10),
     requiredTabs: z.array(idSchema).max(10).optional(),
     // Wygląd (D-178, addytywnie): 'folder' - teczka sprawy z przekładkami i kartką (moduł 1: „Nowe zadanie”, „Raport końcowy”); `stamp` -
     // pieczątka na teczce (np. „ŚCIŚLE TAJNE”). Czysto wizualne - zaliczenie bez zmian (wszystkie wymagane zakładki obejrzane).
@@ -1450,7 +1455,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ],
     ['scoring', 'explanation'],
   ),
-  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'requiredTabs[]', 'look', 'stamp', 'background', 'backgroundPortrait'], []),
+  TABS: classify(['tabs[].id', 'tabs[].title', 'tabs[].content', 'tabs[].photo', 'tabs[].photoAlt', 'requiredTabs[]', 'look', 'stamp', 'background', 'backgroundPortrait'], []),
   SUMMARY: classify(
     [
       'text',

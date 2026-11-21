@@ -721,6 +721,8 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   });
   // Wygląd okien (D-178) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.TABS, { look: 'folder', stamp: 'ŚCIŚLE TAJNE', background: 'images/biurko.webp', backgroundPortrait: 'images/biurko-pion.webp' });
+  // Zdjęcie przypięte do kartki teczki (D-191) - publiczne; tylko tutaj.
+  Object.assign((blocks.TABS.tabs as Record<string, unknown>[])[0], { photo: 'images/ofiara.webp', photoAlt: 'Zdjęcie legitymacyjne ofiary.' });
   blocks.EMAIL_ANALYSIS.frame = 'monitor';
   // Tablica z notatkami (D-182) - publiczna; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.ORDERING, {

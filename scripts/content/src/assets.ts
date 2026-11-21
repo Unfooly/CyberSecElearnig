@@ -69,6 +69,8 @@ export const ASSET_PATHS: string[][] = [
   // Wideo modułu z potoku (VIDEO, D-159): plik filmu i plakat.
   ['src'],
   ['poster'],
+  // Zdjęcie przypięte do kartki teczki (TABS, D-191).
+  ['tabs', '*', 'photo'],
   // Telefon ze sceny pod rozmową (DOSSIER.phone, D-181) i jego wariant pionowy.
   ['phone', 'image'],
   ['phone', 'imagePortrait'],

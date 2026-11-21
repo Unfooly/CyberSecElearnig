@@ -82,6 +82,28 @@ describe('CoursePlayer: poprawki modułu 1, runda 5 (D-190)', () => {
     expect(screen.queryByRole('button', { name: /Wybierz odpowiedź/ })).toBeNull();
   });
 
+  it('teczka: zdjęcie przypięte do kartki zakładki ze zdjęciem (D-191) - z opisem, tylko na tej zakładce', () => {
+    stubFetch(true);
+    const tabs: ContentBlock = {
+      type: 'TABS',
+      id: 'teczka',
+      look: 'folder',
+      background: 'assets/m/biurko.1.webp',
+      tabs: [
+        { id: 'zadanie', title: 'Twoje zadanie', content: 'Ustal, co się stało.' },
+        { id: 'ofiara', title: 'Ofiara ataku', content: 'Paweł Nowicki.', photo: 'assets/m/images/pawel.1.webp', photoAlt: 'Zdjęcie Pawła Nowickiego.' },
+      ],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([tabs])} narrationEnabled={false} contentBase="https://content.example.test" />);
+    expect(screen.queryByTestId('folder-photo')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: /Ofiara ataku/ }));
+    const photo = within(screen.getByTestId('folder-sheet')).getByRole('img', { name: 'Zdjęcie Pawła Nowickiego.' });
+    expect(photo).toHaveAttribute('src', 'https://content.example.test/assets/m/images/pawel.1.webp');
+    expect(screen.getByTestId('folder-photo')).toContainElement(photo);
+    fireEvent.click(screen.getByRole('tab', { name: /Twoje zadanie/ }));
+    expect(screen.queryByTestId('folder-photo')).toBeNull();
+  });
+
   it('zwykły quiz (bez oprawy) zostaje jak dotąd - bez okna przeglądarki', () => {
     stubFetch(true);
     const plain: ContentBlock = { type: 'QUIZ', id: 'zaufanie', prompt: 'Czy link jest godny zaufania?', options: [{ text: 'Tak' }, { text: 'Nie' }] };

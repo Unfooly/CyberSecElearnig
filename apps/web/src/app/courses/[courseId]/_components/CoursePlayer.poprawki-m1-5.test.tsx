@@ -155,6 +155,11 @@ describe('CoursePlayer: poprawki modułu 1, runda 5 (D-190)', () => {
     Object.defineProperty(img, 'naturalHeight', { value: 411, configurable: true });
     fireEvent.load(img);
     expect(screen.getByTestId('folder-photo')).toHaveAttribute('data-wide', 'true');
+    // Pionowe (480x600) po wczytaniu zostaje w wąskiej ramce.
+    Object.defineProperty(img, 'naturalWidth', { value: 480, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 600, configurable: true });
+    fireEvent.load(img);
+    expect(screen.getByTestId('folder-photo')).not.toHaveAttribute('data-wide');
   });
 
   it('gazeta: strona sięga do dołu obszaru kursu - bez dolnego marginesu zbliżenia i pustego paska pod spodem (D-195)', async () => {
@@ -192,7 +197,14 @@ describe('CoursePlayer: poprawki modułu 1, runda 5 (D-190)', () => {
   it('pytanie na fałszywej stronie: odpowiedzi węższe niż okno (D-197) - limit szerokości na szerokim ekranie', () => {
     stubFetch(true);
     render(<CoursePlayer courseId="course-1" initial={course([quiz])} narrationEnabled={false} contentBase="https://content.example.test" />);
-    for (const option of screen.getAllByTestId('page-quiz-option')) expect(option.className).toContain('sm:max-w-[380px]');
+    for (const option of screen.getAllByTestId('page-quiz-option')) {
+      // classList, nie podciąg - sklejone klasy (brak spacji) nie mogą przejść.
+      expect(option.classList.contains('sm:max-w-[380px]')).toBe(true);
+      expect(option.classList.contains('border-border')).toBe(true);
+    }
+    // Wybrana odpowiedź ma ramkę w akcencie (regresja ze sklejonych klas - code review D-197).
+    fireEvent.click(screen.getByRole('radio', { name: 'Nie' }));
+    expect(screen.getAllByTestId('page-quiz-option')[1].classList.contains('border-accent')).toBe(true);
   });
 
   it('zwykły quiz (bez oprawy) zostaje jak dotąd - bez okna przeglądarki', () => {

@@ -123,6 +123,30 @@ describe('EmailAnalysisBlock: makieta klienta pocztowego', () => {
     expect(checkbox(/Ogólny/)).toBeChecked();
   });
 
+  it('odpowiedzi z prawej (D-188): z listą do zaznaczenia układ jest dzielony - pytanie, mail, lista w tej kolejności w DOM', () => {
+    setup();
+    const layout = screen.getByTestId('email-layout');
+    expect(layout).toHaveAttribute('data-split', 'true');
+    expect(layout).toHaveClass('email-split');
+    const [head, mail, side] = Array.from(layout.children);
+    expect(head).toHaveTextContent('Zaznacz oznaki phishingu.');
+    expect(mail).toBe(screen.getByTestId('mail-client'));
+    expect(side).toBe(screen.getByTestId('email-answers'));
+    expect(within(side as HTMLElement).getByRole('checkbox', { name: 'Ogólny, bezosobowy ton' })).toBeInTheDocument();
+  });
+
+  it('odpowiedzi z prawej (D-188): bez listy (wszystkie kryteria mają fragment w mailu) mail zostaje na całą szerokość', () => {
+    const anchoredOnly: ContentBlock = { ...block, criteria: (block.criteria ?? []).filter((criterion) => criterion.target) };
+    render(
+      <HintProvider resetKey="mail">
+        <EmailAnalysisBlock block={anchoredOnly} onSubmit={vi.fn()} />
+      </HintProvider>,
+    );
+    const layout = screen.getByTestId('email-layout');
+    expect(layout).not.toHaveAttribute('data-split');
+    expect(layout).not.toHaveClass('email-split');
+  });
+
   it('wysyła { selected: [id kryteriów] } i nic więcej (ani poprawności, ani punktów)', () => {
     const onSubmit = setup();
     fireEvent.click(within(screen.getByTestId('mail-client')).getByRole('button', { name: /Bank Zaufany/ }));

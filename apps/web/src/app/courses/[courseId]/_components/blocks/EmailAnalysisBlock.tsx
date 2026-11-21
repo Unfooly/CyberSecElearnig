@@ -207,16 +207,24 @@ export default function EmailAnalysisBlock({
   // Kotwice w treści maila (D-061) - bez nich mail nie ma klikalnych fragmentów, więc zostaje sama lista (np. moduł 1, D-176).
   const anchored = (block.criteria ?? []).some((criterion) => criterion.target);
 
-  const body = (
-    <div className={inMonitor ? 'p-3 sm:p-4' : undefined}>
-      {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
-      {!readOnly && anchored && (
-        <p className="mb-3 text-sm text-slate-600">
-          Kliknij fragmenty wiadomości, które budzą Twoje podejrzenia (nadawca, temat, link, załącznik, treść), a potem sprawdź odpowiedź.
-        </p>
-      )}
+  // Lista do zaznaczania: podczas odpowiadania WYŁĄCZNIE kryteria bez fragmentu w mailu, w wyniku wszystkie (opis przy <fieldset>).
+  const listedCriteria = readOnly ? criteria : criteria.filter((criterion) => !criterion.target);
+  // Odpowiedzi z prawej strony maila (D-188): na szerokim ekranie mail z lewej, pytanie i lista do zaznaczenia z prawej (globals.css,
+  // .email-split*); wąsko jak dotąd - pytanie, mail, lista pod nim. Bez listy (same klikalne fragmenty) mail zostaje na całą szerokość.
+  const split = listedCriteria.length > 0;
 
-      <div data-testid="mail-client" className="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
+  const body = (
+    <div data-testid="email-layout" data-split={split ? 'true' : undefined} className={`${inMonitor ? 'p-3 sm:p-4' : ''} ${split ? 'email-split' : ''}`}>
+      <div className="email-split-head">
+        {block.prompt && <p className="mb-3 text-lg text-slate-900">{block.prompt}</p>}
+        {!readOnly && anchored && (
+          <p className="mb-3 text-sm text-slate-600">
+            Kliknij fragmenty wiadomości, które budzą Twoje podejrzenia (nadawca, temat, link, załącznik, treść), a potem sprawdź odpowiedź.
+          </p>
+        )}
+      </div>
+
+      <div data-testid="mail-client" className="email-split-mail overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
         {inMonitor ? (
           <div data-testid="mail-app-bar" className="flex items-center gap-2 bg-[#26305C] px-3 py-2 text-white" aria-hidden="true">
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6C5CE7] text-[11px] font-extrabold">@</span>
@@ -326,8 +334,8 @@ export default function EmailAnalysisBlock({
           jedyna droga do zaznaczenia jest tu); reszta idzie przez fragment(), który jest już prawdziwym <button>em.
           Pełna checklista dopiero w wyniku (readOnly), z wyjaśnieniami. Puste podczas odpowiadania (wszystkie kryteria
           mają fragment) - fieldset się wtedy nie renderuje. */}
+      <div data-testid="email-answers" className="email-split-side">
       {(() => {
-        const listedCriteria = readOnly ? criteria : criteria.filter((criterion) => !criterion.target);
         if (listedCriteria.length === 0) return null;
         return (
           <fieldset className="mt-4">
@@ -392,6 +400,7 @@ export default function EmailAnalysisBlock({
           </button>
         )
       )}
+      </div>
     </div>
   );
 

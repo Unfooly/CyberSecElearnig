@@ -78,19 +78,8 @@
   overflow: clip;
 }
 
-/* Skala kursu na komputerze (D-185, uwaga właściciela 2026-11-20: „lepiej wygląda cały kurs w skali 125% - żeby 100% wyglądało jak
-   125%”): na stronie odtwarzacza bazowy rozmiar czcionki 125% (20 px) - tekst, odstępy, przyciski i paski w rem rosną o 25%, a limit
-   szerokości ramki z 1280 do 1600 px (jak przy zoomie przeglądarki). Celowo NIE `zoom` na ramce: pomiary w JS (kamera sceny, tablica,
-   okienka, lot dowodu) mieszają getBoundingClientRect z pikselami stylu i rozjeżdżały się o 25%. Tylko mysz/trackpad i okno co najmniej
-   1200×600 - mniejsze okna i telefony bez zmian. */
-@media (pointer: fine) and (min-width: 1200px) and (min-height: 600px) {
-  html:has(.player-frame) {
-    font-size: 125%;
-  }
-  .player-frame {
-    width: min(calc(100vw - 32px), calc((100dvh - 32px) * 16 / 9), 1600px);
-  }
-}
+/* Skala kursu na komputerze: 100% (D-189, uwaga właściciela 2026-11-21: „wróćmy jednak do skali 100%”) - skala 125% z D-185 (czcionka
+   bazowa 125% i ramka do 1600 px przy myszy i oknie ≥ 1200×600) jest wycofana; ramka wszędzie do 1280 px, czcionka bazowa przeglądarki. */
 
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   .player-outer {
@@ -1116,7 +1105,63 @@
   background: #fff;
   padding: 18px 24px;
 }
+/* Analiza maila (D-188): odpowiedzi do zaznaczenia z prawej strony maila. Poza monitorem (podgląd „Wstecz”) od 1024 px szerokości okna;
+   w monitorze decyduje szerokość kontenera `monitor` (ten sam próg co układ monitora). Wąsko: kolejność z DOM (pytanie, mail, lista). */
+@media (min-width: 1024px) {
+  .email-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'mail head'
+      'mail side';
+    column-gap: 16px;
+    align-items: start;
+  }
+  .email-split > .email-split-head {
+    grid-area: head;
+  }
+  .email-split > .email-split-mail {
+    grid-area: mail;
+  }
+  .email-split > .email-split-side {
+    grid-area: side;
+  }
+  .email-split > .email-split-side > fieldset {
+    margin-top: 0;
+  }
+}
+@container monitor (min-width: 640px) and (min-height: 420px) {
+  .monitor-stage-screen .email-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'mail head'
+      'mail side';
+    column-gap: 16px;
+    align-items: start;
+  }
+  .monitor-stage-screen .email-split > .email-split-head {
+    grid-area: head;
+  }
+  .monitor-stage-screen .email-split > .email-split-mail {
+    grid-area: mail;
+  }
+  .monitor-stage-screen .email-split > .email-split-side {
+    grid-area: side;
+  }
+  .monitor-stage-screen .email-split > .email-split-side > fieldset {
+    margin-top: 0;
+  }
+}
 @container monitor (max-width: 639px) or (max-height: 419px) {
+  .monitor-stage-screen .email-split {
+    display: block;
+  }
+  .monitor-stage-screen .email-split > .email-split-side > fieldset {
+    margin-top: 1rem;
+  }
   .monitor-stage-frame {
     inset: 0;
     translate: none;

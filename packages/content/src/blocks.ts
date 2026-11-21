@@ -35,7 +35,8 @@ const choiceOptionSchema = z
   })
   .strict();
 
-const quizSchema = z
+// Pola wyglądu pytania na fałszywej stronie (D-190) dochodzą niżej (quizSchema) - ich schematy są zdefiniowane dalej w pliku.
+const quizBaseSchema = z
   .object({
     ...baseShape,
     type: z.literal('QUIZ'),
@@ -261,6 +262,20 @@ const hotspotsSchema = z
 // pionowy dla telefonu w pionie (DOSSIER.phone - D-181, DIALOGUE.phone - D-184).
 const screenPercent = z.number().min(0).max(100);
 const screenRectSchema = z.object({ x: screenPercent, y: screenPercent, width: screenPercent, height: screenPercent }).strict();
+
+// Pytanie na fałszywej stronie na pulpicie (D-190, uwaga właściciela 2026-11-21: pytanie Tak/Nie o link „w tym samym widoku gdzie
+// fałszywa strona”): ten sam widok co zadanie z domeną (TEXT_INPUT_GUIDED z `page` i `background`) - okno przeglądarki w ekranie monitora
+// ze sceny, w pasku adres `markUrl` z zaznaczoną domeną, pytanie w pasku zadania nad stroną `page`. Czysto wizualne, publiczne; ocena bez
+// zmian (serwer). `frame`, `markUrl`, `page` i `background` tylko razem (semantics.ts), `backgroundScreen` opcjonalny; poza trybem prostym.
+const quizSchema = quizBaseSchema
+  .extend({
+    frame: z.literal('monitor').optional(),
+    markUrl: text(300).optional(),
+    page: fakePageSchema.optional(),
+    background: limage().optional(),
+    backgroundScreen: screenRectSchema.optional(),
+  })
+  .strict();
 const phoneSchema = z
   .object({
     image: limage(),
@@ -1191,7 +1206,20 @@ const narrationSecret = (prefix: string) => ['spokenText', 'voice'].map((key) =>
 export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
   VIDEO: classify(['url', 'src', 'poster', 'durationSeconds'], []),
   // `multiple` jawne: odtwarzacz musi wiedzieć, że to pola wyboru; nie zdradza, ile odpowiedzi jest poprawnych (D-158).
-  QUIZ: classify(['prompt', 'options[].text', 'multiple'], QUIZ_SECRET),
+  // Pytanie na fałszywej stronie (D-190): oprawa, adres, strona i tło - wygląd, publiczne (te same pola co w TEXT_INPUT_GUIDED).
+  QUIZ: classify(
+    [
+      'prompt',
+      'options[].text',
+      'multiple',
+      'frame',
+      'markUrl',
+      'background',
+      ...FAKE_PAGE_FIELDS.map((key) => `page.${key}`),
+      ...['x', 'y', 'width', 'height'].map((key) => `backgroundScreen.${key}`),
+    ],
+    QUIZ_SECRET,
+  ),
   BRANCHING_SCENARIO: classify(['prompt', 'options[].text'], CHOICE_SECRET),
   DRAG_AND_DROP: classify(['prompt', 'items[].text', 'categories[]'], []),
   // `html` wykonuje dowolny JS, więc NIE idzie do przeglądarki razem z treścią modułu (/start): serwowany jest osobnym dokumentem

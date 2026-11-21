@@ -137,6 +137,11 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect(domena.page).toMatchObject({ tabTitle: 'Formularz prelegenta – rejestracja', fields: ['Służbowy e-mail', 'Hasło'] });
     // Tło zadania to scena pulpitu Pawła (ten sam plik).
     expect(domena.background).toBe(block('pulpit').image);
+    // Pytanie Tak/Nie o link zaraz po domenie, w tym samym widoku (D-190): ta sama strona, adres, tło i ekran co zadanie z domeną.
+    const zaufanie = block('zaufanie') as Record<string, unknown>;
+    expect(ids.indexOf('domena') + 1).toBe(ids.indexOf('zaufanie'));
+    expect(zaufanie.frame).toBe('monitor');
+    for (const field of ['markUrl', 'page', 'background', 'backgroundScreen']) expect(zaufanie[field]).toEqual((block('domena') as Record<string, unknown>)[field]);
     // Rozmowa z Pawłem na tym samym telefonie co komunikator.
     expect(block('rozmowa-pawel').phone).toEqual(block('komunikator').phone);
     // Ramka gazety na zdjęciu w artykule (D-185), nie na całym stole.

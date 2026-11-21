@@ -987,6 +987,12 @@
     }
   }
 }
+/* Kolejny blok w tym samym widoku (pytanie po zadaniu z domeną, D-190): bez najazdu - scena zostaje w miejscu. */
+.desktop-stage[data-still] .desktop-stage-bg,
+.desktop-stage[data-still] .desktop-stage-window,
+.desktop-stage[data-still][data-screen] .desktop-stage-frame {
+  animation: none;
+}
 @keyframes desktop-stage-frame-zoom {
   from {
     transform: scale(0.88);

@@ -1,6 +1,6 @@
 import { ContentValidationError, MODULE_SCHEMA_VERSION, requiredItemIds, toClientBlock, withLegacyIds } from './index';
 import { MAX_DOSSIER_EVIDENCE } from './semantics';
-import { fullModule } from './fixtures';
+import { fullModule, simpleModule } from './fixtures';
 import { hashContent, moduleWarnings, parseModule } from './node';
 
 // Głęboka kopia z luźnym typem: testy celowo psują moduł.
@@ -1421,6 +1421,42 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     const tooMany = fullModuleForTests();
     Object.assign(block(tooMany, 'TEXT_INPUT_GUIDED'), { frame: 'monitor', markUrl: url, answer, page: { ...fakePage, fields: ['a', 'b', 'c', 'd', 'e'] } });
     expect(errorsOf(tooMany)).toMatch(/fields/);
+  });
+
+  it('pytanie na fałszywej stronie na pulpicie (QUIZ frame: monitor, D-190): komplet pól, adres rozkładalny, poza trybem prostym; wygląd trafia do klienta, klucz odpowiedzi nie', () => {
+    const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
+    const screenRect = { x: 17.64, y: 18.96, width: 65.08, height: 51.3 };
+    const look = { frame: 'monitor', markUrl: url, page: fakePage, background: 'pulpit.webp', backgroundScreen: screenRect };
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'QUIZ'), look);
+    expect(errorsOf(ok)).toBe('');
+    const client = toClientBlock(parseModule(ok).blocks.find((b) => b.type === 'QUIZ')!, testContext) as Record<string, unknown>;
+    expect(client).toMatchObject(look);
+    expect(JSON.stringify(client)).not.toMatch(/"correct"|"feedback"/);
+
+    const frameOnly = fullModuleForTests();
+    Object.assign(block(frameOnly, 'QUIZ'), { frame: 'monitor' });
+    expect(errorsOf(frameOnly)).toMatch(/frame: monitor wymaga markUrl/);
+    expect(errorsOf(frameOnly)).toMatch(/frame: monitor wymaga page/);
+    expect(errorsOf(frameOnly)).toMatch(/frame: monitor wymaga background/);
+
+    const noFrame = fullModuleForTests();
+    Object.assign(block(noFrame, 'QUIZ'), { markUrl: url, page: fakePage, background: 'pulpit.webp' });
+    expect(errorsOf(noFrame)).toMatch(/markUrl: tylko z frame: monitor/);
+    expect(errorsOf(noFrame)).toMatch(/page: tylko z frame: monitor/);
+    expect(errorsOf(noFrame)).toMatch(/background: tylko z frame: monitor/);
+
+    const flat = fullModuleForTests();
+    Object.assign(block(flat, 'QUIZ'), { ...look, markUrl: 'https://bank.com.pl/logowanie' });
+    expect(errorsOf(flat)).toMatch(/markUrl: adres, którego reguła/);
+
+    const outside = fullModuleForTests();
+    Object.assign(block(outside, 'QUIZ'), { ...look, backgroundScreen: { x: 60, y: 10, width: 50, height: 50 } });
+    expect(errorsOf(outside)).toMatch(/backgroundScreen: prostokąt ekranu poza grafiką/);
+
+    const simple = JSON.parse(JSON.stringify(simpleModule())) as TestModule;
+    Object.assign(block(simple, 'QUIZ'), look);
+    expect(errorsOf(simple)).toMatch(/frame: pytanie na fałszywej stronie tylko poza trybem prostym/);
   });
 
   it('ekran monitora na tle zadania z domeną (TEXT_INPUT_GUIDED.backgroundScreen, D-186): tylko z tłem, w obrębie grafiki', () => {

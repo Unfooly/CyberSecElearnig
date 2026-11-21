@@ -773,6 +773,14 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     background: 'images/pulpit.webp',
     backgroundScreen: { x: 17.64, y: 18.96, width: 65.08, height: 51.3 },
   });
+  // Pytanie na fałszywej stronie na pulpicie (D-190) - publiczne, czysto wizualne; tylko tutaj.
+  Object.assign(blocks.QUIZ, {
+    frame: 'monitor',
+    markUrl: 'https://fundacja.przyklad-online.net/rejestracja/1',
+    page: fakePage,
+    background: 'images/pulpit.webp',
+    backgroundScreen: { x: 17.64, y: 18.96, width: 65.08, height: 51.3 },
+  });
   blocks.DIALOGUE.phone = { ...(blocks.DOSSIER.phone as Record<string, unknown>) };
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';

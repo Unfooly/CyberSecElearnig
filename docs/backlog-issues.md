@@ -1595,6 +1595,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - **Trzecie wystąpienie (2026-10-19, PR #134, https://github.com/Unfooly/CyberSecElearnig/actions/runs/39240542760) - poprawione w D-145:**
   asercja „Notatnik (1)” po odpowiedzi serwera przez `findByRole` (czeka na render z notatką). Do zamknięcia, jeśli nie powtórzy się w
   kolejnych PR-ach.
+- **Czwarte wystąpienie (2026-11-21, `main` po PR #188, https://github.com/Unfooly/CyberSecElearnig/actions/runs/44934963624; PR był
+  zielony, ponowne uruchomienie joba też):** ten sam test, kolejny krok - `Unable to find an element by: [data-testid="hint-bar"]`: dymek
+  ostrzeżenia ustawia efekt widoku wyniku, a asercja szła przez `getByTestId` zaraz po `findByText` wyniku. Poprawione: `findByTestId`.
+  Skutek czerwonego `main`: obrazy się nie budują, więc wdrożenie nie dostaje zmian - do czasu ponownego uruchomienia.
 - Etykiety: `P3`, `tech-debt`, `mod:kursy` · Źródło: D-051
 - Opis: usunięcie kursu z przypisaniami jest już zablokowane (RESTRICT), ale nie ma sposobu na wycofanie kursu z katalogu bez usuwania.
 - Akceptacja: pole/status archiwizacji, ukrycie zarchiwizowanych przy nowych przypisaniach, istniejące przypisania dokańczalne.

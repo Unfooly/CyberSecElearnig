@@ -1624,4 +1624,27 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     block(selfOnly, 'DOSSIER').documents[0].self = 'Paweł';
     expect(errorsOf(selfOnly)).toMatch(/self tylko z layout "chat"/);
   });
+
+  it('czat: fragment wiadomości pokazany jak link (rows[].link, D-192) - tylko w czacie, fragment treści wiadomości; trafia do klienta', () => {
+    const ok = fullModuleForTests();
+    const doc = block(ok, 'DOSSIER').documents[0];
+    Object.assign(doc, { layout: 'chat', self: 'Paweł' });
+    doc.rows[0].cells[2] = 'Formularz: Rejestracja';
+    doc.rows[0].link = 'Rejestracja';
+    expect(errorsOf(ok)).toBe('');
+    const client = toClientBlock(parseModule(ok).blocks.find((b) => b.type === 'DOSSIER')!, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (_b: string, item: string) => item }) as unknown as {
+      documents: { rows: { link?: string }[] }[];
+    };
+    expect(client.documents[0].rows[0].link).toBe('Rejestracja');
+
+    const missing = fullModuleForTests();
+    const missingDoc = block(missing, 'DOSSIER').documents[0];
+    Object.assign(missingDoc, { layout: 'chat', self: 'Paweł' });
+    missingDoc.rows[0].link = 'Rejestracja';
+    expect(errorsOf(missing)).toMatch(/rows\[0\]: link musi być fragmentem treści wiadomości/);
+
+    const table = fullModuleForTests();
+    block(table, 'DOSSIER').documents[0].rows[0].link = 'Opłata';
+    expect(errorsOf(table)).toMatch(/rows\[0\]: link tylko z layout "chat"/);
+  });
 });

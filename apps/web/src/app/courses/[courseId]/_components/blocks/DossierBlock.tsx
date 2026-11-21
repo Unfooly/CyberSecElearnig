@@ -310,6 +310,26 @@ export default function DossierBlock({
 }
 
 /**
+ * Treść dymka z fragmentem pokazanym jak link (D-192, uwaga właściciela 2026-11-21: „Rejestracja” na niebiesko, „skoro to link”): pierwsze
+ * wystąpienie `link` w treści jest niebieskie i podkreślone (we własnym, fioletowym dymku - białe i podkreślone, dla kontrastu). To tylko
+ * wygląd: zwykły <span> bez adresu, nic nie nawiguje; kliknięcie dalej zaznacza cały dymek. Bez `link` albo gdy fragmentu nie ma w treści -
+ * sam tekst.
+ */
+function chatText(text: string, link: string | undefined, mine: boolean) {
+  const at = link ? text.indexOf(link) : -1;
+  if (!link || at < 0) return text;
+  return (
+    <>
+      {text.slice(0, at)}
+      <span data-testid="chat-link" className={`font-semibold underline underline-offset-2 ${mine ? 'text-white' : 'text-[#1D4ED8]'}`}>
+        {link}
+      </span>
+      {text.slice(at + link.length)}
+    </>
+  );
+}
+
+/**
  * Rozmowa w komunikatorze w ramce telefonu (D-178, `layout: 'chat'`): wiersz dokumentu = dymek, komórki [godzina, autor, treść]. Dymki
  * `self` (właściciel telefonu) po prawej, rozmówcy po lewej, wiersz bez autora (np. „—” - połączenie głosowe) - pigułka na środku. Każdy
  * dymek to ten sam przycisk co linijka arkusza (zaznaczenie do notatek, aria-pressed, komunikat w stopce) - zmienia się tylko wygląd.
@@ -387,7 +407,7 @@ function ChatSheet({
                 >
                   {/* text-xs, nie arbitralne px: na telefonie .mobile-readable podbija je do min. 15 px (D-103). */}
                   {!system && !mine && <span className="mb-0.5 block text-xs font-bold text-[#6C5CE7]">{author}</span>}
-                  <span className="block whitespace-pre-line">{text}</span>
+                  <span className="block whitespace-pre-line">{chatText(text, row.link, mine)}</span>
                   <span className={`mt-0.5 block text-right text-xs ${mine ? 'text-white/75' : 'text-muted'}`}>{time}</span>
                   {isNoted && <span className="sr-only"> (zaznaczone, w notatkach)</span>}
                 </button>

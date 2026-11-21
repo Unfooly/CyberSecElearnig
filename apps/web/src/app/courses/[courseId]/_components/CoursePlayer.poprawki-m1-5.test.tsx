@@ -104,6 +104,40 @@ describe('CoursePlayer: poprawki modułu 1, runda 5 (D-190)', () => {
     expect(screen.queryByTestId('folder-photo')).toBeNull();
   });
 
+  it('komunikator: fragment wiadomości oznaczony jako link (D-192) jest wyróżniony w dymku - bez adresu, klik zaznacza cały dymek', () => {
+    stubFetch(true);
+    const chat: ContentBlock = {
+      type: 'DOSSIER',
+      id: 'komunikator',
+      title: 'Smartfon Pawła',
+      documents: [
+        {
+          id: 'czat',
+          tab: 'Komunikator',
+          org: 'SMARTFON',
+          title: 'Katarzyna Zielińska',
+          layout: 'chat',
+          self: 'Paweł',
+          columns: ['Godz.', 'Kto', 'Wiadomość'],
+          rows: [
+            { id: 'r1', cells: ['10:12', 'Katarzyna', 'Dzień dobry!'] },
+            { id: 'r2', cells: ['10:29', 'Katarzyna', 'Prosimy przez ten formularz: Rejestracja'], link: 'Rejestracja', evidence: true, required: true, note: { text: 'Link.', kind: 'web' } },
+          ],
+        },
+      ],
+    };
+    render(<CoursePlayer courseId="course-1" initial={course([chat])} narrationEnabled={false} />);
+    const bubbles = within(screen.getByTestId('chat-sheet')).getAllByTestId('chat-bubble');
+    expect(within(bubbles[0]).queryByTestId('chat-link')).toBeNull();
+    const link = within(bubbles[1]).getByTestId('chat-link');
+    expect(link).toHaveTextContent('Rejestracja');
+    expect(link.tagName).toBe('SPAN');
+    expect(bubbles[1].querySelector('a')).toBeNull();
+    expect(bubbles[1]).toHaveTextContent('Prosimy przez ten formularz: Rejestracja');
+    fireEvent.click(link);
+    expect(bubbles[1]).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('zwykły quiz (bez oprawy) zostaje jak dotąd - bez okna przeglądarki', () => {
     stubFetch(true);
     const plain: ContentBlock = { type: 'QUIZ', id: 'zaufanie', prompt: 'Czy link jest godny zaufania?', options: [{ text: 'Tak' }, { text: 'Nie' }] };

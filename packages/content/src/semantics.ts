@@ -280,7 +280,7 @@ export function flattenDossierRows(documents: readonly { rows?: readonly Dossier
 function dossierDocumentErrors(
   documents: readonly {
     columns: readonly string[];
-    rows: readonly (DossierRowLike & { cells: readonly string[]; message?: string })[];
+    rows: readonly (DossierRowLike & { cells: readonly string[]; message?: string; link?: string })[];
     layout?: 'chat';
     self?: unknown;
   }[],
@@ -303,6 +303,11 @@ function dossierDocumentErrors(
       if (row.required === true && row.evidence !== true) errors.push(`${label}: required dotyczy wyłącznie wierszy-dowodów`);
       // Wiersz-dowód ma stały komunikat („Zakreślone…”) - własny message byłby martwy.
       if (row.message !== undefined && row.evidence === true) errors.push(`${label}: message dotyczy wyłącznie zwykłych linijek`);
+      // Fragment wiadomości pokazany jak link (D-192): tylko w czacie i tylko jako fragment treści wiadomości (ostatnia komórka).
+      if (row.link !== undefined) {
+        if (document.layout !== 'chat') errors.push(`${label}: link tylko z layout "chat"`);
+        else if (!row.link.trim() || !(row.cells[row.cells.length - 1] ?? '').includes(row.link)) errors.push(`${label}: link musi być fragmentem treści wiadomości`);
+      }
     });
   });
   return errors;

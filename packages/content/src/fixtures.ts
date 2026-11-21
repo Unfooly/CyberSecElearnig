@@ -733,6 +733,10 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   });
   for (const document of blocks.DOSSIER.documents as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
   for (const document of (blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[]) Object.assign(document, { layout: 'chat', self: 'Paweł' });
+  // Fragment wiadomości czatu pokazany jak link (D-192) - publiczny; tylko tutaj.
+  for (const document of [...(blocks.DOSSIER.documents as Record<string, unknown>[]), ...((blocks.INTERROGATION.documents ?? []) as Record<string, unknown>[])]) {
+    (document.rows as Record<string, unknown>[])[0].link = 'Rejestracja';
+  }
   (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[])[0].done = true;
   // Poprawki właściciela (D-181) - publiczne, czysto wizualne; tylko tutaj (fullModule() bez zmian, reguła 9): strona gazety w zbliżeniu,
   // telefon ze sceny pod rozmową, adres do rozłożenia na domenę w monitorze.

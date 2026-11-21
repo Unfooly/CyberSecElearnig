@@ -67,6 +67,9 @@ export default function TextInputBlock({
   const [correct, setCorrect] = useState<boolean | undefined>(progress?.correct);
   const [points, setPoints] = useState<number | undefined>(progress?.points);
   const [solution, setSolution] = useState(progress?.solution);
+  // Komentarz do wyniku z treści (reactions.result). W monitorze zostaje na stronie pod wynikiem (D-193, uwaga właściciela 2026-11-21:
+  // wyjaśnienie o poddomenie i nadawcy ma być przy zadaniu - w dymku znikało po 5 s); poza monitorem jak dotąd w dymku.
+  const [reactionText, setReactionText] = useState<string | undefined>(progress?.reaction?.text);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   // Ostatnia wysłana odpowiedź - w oprawie przeglądarki pokazywana w pasku adresu po rozstrzygnięciu (po odświeżeniu nieznana).
@@ -186,7 +189,10 @@ export default function TextInputBlock({
         hintBar.notify('hint');
       } else if (data.done && data.reaction) {
         // Reakcja z treści (schemaVersion 4, reactions.result: when correct/incorrect) ma pierwszeństwo nad ogólnym ostrzeżeniem.
-        hintBar.show(data.reaction);
+        // W monitorze zostaje na stronie pod wynikiem (D-193); przy złym wyniku dymek daje samo ostrzeżenie.
+        setReactionText(data.reaction.text);
+        if (!monitor) hintBar.show(data.reaction);
+        else if (!data.correct) hintBar.notify('wrong');
       } else if (!data.correct) {
         hintBar.notify('wrong');
       }
@@ -288,6 +294,11 @@ export default function TextInputBlock({
             </>
           )}
         </div>
+      )}
+      {monitor && !readOnly && reactionText && (
+        <p data-testid="text-input-reaction" className="mt-2 text-sm leading-relaxed text-slate-800">
+          {reactionText}
+        </p>
       )}
     </div>
   );

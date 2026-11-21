@@ -499,6 +499,7 @@
                 "Katarzyna",
                 "Bardzo się cieszymy, że chce Pan wziąć udział! Prosimy zarejestrować się jako prelegent przez ten formularz: Rejestracja"
               ],
+              "link": "Rejestracja",
               "evidence": true,
               "note": {
                 "text": "Po rozmowie przestępcy wysłali Pawłowi link do „formularza prelegenta”.",
@@ -627,11 +628,11 @@
         "result": [
           {
             "when": "correct",
-            "text": "Brawo! Link prowadzi do domeny formularz-online.net."
+            "text": "Brawo! Link prowadzi do domeny formularz-online.net. „fundacja-analityki” przed nią to poddomena – można jej nadać dowolną nazwę podczas tworzenia strony internetowej. Sama domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
           },
           {
             "when": "incorrect",
-            "text": "Zapamiętaj: liczy się to, co stoi tuż przed pierwszym pojedynczym ukośnikiem – tutaj formularz-online.net."
+            "text": "Zapamiętaj: liczy się to, co stoi tuż przed pierwszym pojedynczym ukośnikiem – tutaj formularz-online.net. Tekst przed domeną to poddomena, której można nadać dowolną nazwę podczas tworzenia strony. Ta domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
           }
         ]
       }

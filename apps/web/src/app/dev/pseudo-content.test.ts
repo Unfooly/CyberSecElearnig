@@ -27,6 +27,8 @@ const TEXT_KEYS = new Set([
   'self',
   // Opis zdjęcia przypiętego do kartki teczki (D-191).
   'photoAlt',
+  // Fragment wiadomości czatu pokazany jak link (D-192) - tekst z treści wiadomości.
+  'link',
 ]);
 
 /** Klucze (ostatni segment ścieżki, bez indeksów list) wartości tekstowych, które różnią się między `a` i `b`. */

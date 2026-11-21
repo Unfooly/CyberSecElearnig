@@ -667,7 +667,39 @@
           "correct": true,
           "feedback": "Dokładnie. Strona formularz-online.net nie ma nic wspólnego z rzekomym nadawcą. Link prawie na pewno prowadzi na stronę przestępców."
         }
-      ]
+      ],
+      "frame": "monitor",
+      "markUrl": "https://fundacja-analityki.formularz-online.net/prelegenci/48213",
+      "background": "assets/wyludzone-haslo/images/pulpit.b3c007e0.webp",
+      "backgroundScreen": {
+        "x": 17.64,
+        "y": 18.96,
+        "width": 65.08,
+        "height": 51.3
+      },
+      "page": {
+        "tabTitle": "Formularz prelegenta – rejestracja",
+        "brand": "Fundacja Analityki Stosowanej",
+        "heading": "Rejestracja prelegenta",
+        "text": "Potwierdź tożsamość służbowym adresem e-mail i hasłem.",
+        "fields": [
+          "Służbowy e-mail",
+          "Hasło"
+        ],
+        "button": "Zarejestruj się"
+      },
+      "reactions": {
+        "result": [
+          {
+            "minScore": 1,
+            "text": "Dokładnie. Strona formularz-online.net nie ma nic wspólnego z rzekomym nadawcą. Link prawie na pewno prowadzi na stronę przestępców."
+          },
+          {
+            "minScore": 0,
+            "text": "Nazwa fundacji jest tylko w poddomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
+          }
+        ]
+      }
     },
     {
       "id": "biuro-pawla-3",

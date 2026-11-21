@@ -15,12 +15,15 @@ export default function DesktopStage({
   background,
   screen,
   label,
+  still = false,
   children,
 }: {
   contentBase: string;
   background: string;
   screen?: { x: number; y: number; width: number; height: number };
   label: string;
+  /** Bez najazdu przy wejściu (D-190): kolejny blok w tym samym widoku (pytanie po zadaniu z domeną) - scena ma zostać w miejscu. */
+  still?: boolean;
   children: ReactNode;
 }) {
   const url = contentAssetUrl(contentBase, background, 'image');
@@ -39,7 +42,7 @@ export default function DesktopStage({
       } as CSSProperties)
     : undefined;
   return (
-    <div data-testid="desktop-stage" data-screen={screen ? 'true' : undefined} className="desktop-stage" style={style}>
+    <div data-testid="desktop-stage" data-screen={screen ? 'true' : undefined} data-still={still ? 'true' : undefined} className="desktop-stage" style={style}>
       <div className="desktop-stage-frame">
         {url && (
           // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next

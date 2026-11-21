@@ -619,6 +619,27 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       });
       const correct = block.options.filter((o) => o.correct === true || o.outcome === 'correct').length;
       if (correct < 1) errors.push('options: brak poprawnej opcji');
+      // Pytanie na fałszywej stronie na pulpicie (D-190): oprawa to komplet - adres w pasku, strona pod pytaniem i tło pulpitu.
+      if (block.type === 'QUIZ') {
+        const pageFields = { markUrl: block.markUrl, page: block.page, background: block.background };
+        for (const [field, value] of Object.entries(pageFields)) {
+          if (block.frame === 'monitor' && value === undefined) errors.push(`frame: monitor wymaga ${field}`);
+          if (block.frame !== 'monitor' && value !== undefined) errors.push(`${field}: tylko z frame: monitor`);
+        }
+        // W pasku adresu domena jest zaznaczona tą samą regułą co w zadaniu z domeną (D-181) - adres musi dać się rozłożyć.
+        if (block.markUrl !== undefined && urlDomainMarks(block.markUrl) === null) {
+          errors.push('markUrl: adres, którego reguła „pierwszy pojedynczy /, druga . w lewo” nie rozkłada poprawnie (brak ukośnika lub kropek, port, ?, #, @, domena typu com.pl)');
+        }
+        if (block.backgroundScreen !== undefined) {
+          const rect = block.backgroundScreen;
+          if (block.background === undefined) errors.push('backgroundScreen: wymaga background');
+          if (rect.x + rect.width > 100 || rect.y + rect.height > 100 || rect.width <= 0 || rect.height <= 0) {
+            errors.push('backgroundScreen: prostokąt ekranu poza grafiką');
+          }
+        }
+        // Wielokrotny wybór ma własny wygląd (tryb prosty, D-158) - nie łączy się z tą oprawą.
+        if (block.frame === 'monitor' && block.multiple === true) errors.push('frame: monitor nie łączy się z multiple');
+      }
       break;
     }
     case 'SCENE_HOTSPOTS': {
@@ -1514,6 +1535,11 @@ function moduleSemanticErrors(contentModule: ResolvedModule): string[] {
   if (contentModule.simpleMode !== true) {
     contentModule.blocks.forEach((block, index) => {
       if (block.type === 'QUIZ' && block.multiple === true) errors.push(`blocks[${index}] (${block.id}): multiple: wielokrotny wybór wymaga simpleMode`);
+    });
+  } else {
+    // Pytanie na fałszywej stronie (D-190) ma odtwarzacz tylko poza trybem prostym (tam pytanie jest na wspólnym monitorze, D-164).
+    contentModule.blocks.forEach((block, index) => {
+      if (block.type === 'QUIZ' && block.frame !== undefined) errors.push(`blocks[${index}] (${block.id}): frame: pytanie na fałszywej stronie tylko poza trybem prostym`);
     });
   }
   // Zadania sprawy (BRIEFING, krok caseFile, D-081): unikalne id, completeWhen wskazuje istniejące bloki modułu, ale nie

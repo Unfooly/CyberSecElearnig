@@ -30,6 +30,7 @@ import EmbeddedHtmlBlock from './blocks/EmbeddedHtmlBlock';
 import ExploratoryBlock, { isExploratory } from './blocks/ExploratoryBlock';
 import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from './blocks/ScoredBlock';
 import FeedbackPanel from './FeedbackPanel';
+import PageQuizBlock, { isPageQuiz } from './blocks/PageQuizBlock';
 import CaseClosedScreen from './CaseClosedScreen';
 import ModuleStartScreen from './ModuleStartScreen';
 import ModuleEndScreen from './ModuleEndScreen';
@@ -193,6 +194,8 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
           />
         );
       }
+      // Pytanie na fałszywej stronie na pulpicie (D-190): ten sam widok co zadanie z domeną.
+      if (isPageQuiz(block)) return <PageQuizBlock key={block.id} block={block} contentBase={contentBase} onSubmit={onSubmit} disabled={disabled} />;
       return <QuizBlock block={block} onSubmit={onSubmit} disabled={disabled} />;
     }
     case 'SWIPE_SORT':
@@ -814,7 +817,9 @@ export default function CoursePlayer({
   const boardFeedback = showingFeedback && BOARD_TYPES.includes(blocks[feedback.blockIndex]?.type ?? '') && !!feedback.detail;
   // Wynik poczty w monitorze (D-184): zostaje w tym samym monitorze - układ jak przy zadaniu ('scene').
   const answeredBlock = showingFeedback ? blocks[feedback.blockIndex] : undefined;
-  const monitorFeedback = answeredBlock?.type === 'EMAIL_ANALYSIS' && answeredBlock.frame === 'monitor' && !!feedback?.detail;
+  // Wynik pytania na fałszywej stronie (D-190): zostaje na tej samej stronie.
+  const pageQuizFeedback = showingFeedback && isPageQuiz(answeredBlock);
+  const monitorFeedback = (answeredBlock?.type === 'EMAIL_ANALYSIS' && answeredBlock.frame === 'monitor' && !!feedback?.detail) || pageQuizFeedback;
   const contentLayout: 'scene' | 'slide' | 'fill' =
     isSummaryMode && closingBlock
       ? 'fill'
@@ -838,7 +843,9 @@ export default function CoursePlayer({
             // Rozmowa z postacią na ekranie telefonu (D-184): jak komunikator.
             (!reviewing && currentBlock?.type === 'DIALOGUE' && !!currentBlock.phone) ||
             // Strona z domeną w monitorze (D-181): jak poczta w monitorze.
-            (!reviewing && currentBlock?.type === 'TEXT_INPUT_GUIDED' && currentBlock.frame === 'monitor')
+            (!reviewing && currentBlock?.type === 'TEXT_INPUT_GUIDED' && currentBlock.frame === 'monitor') ||
+            // Pytanie na fałszywej stronie na pulpicie (D-190): ten sam widok co strona z domeną.
+            (!reviewing && isPageQuiz(currentBlock))
           ? 'scene'
           : currentBlock?.type === 'DIALOGUE' ||
               // Wideo (D-159): ramka 16:9 wpisana w wysokość obszaru - bez przewijania (decyzja właściciela po podglądzie modułu 5).
@@ -904,6 +911,18 @@ export default function CoursePlayer({
           live
           caseNo={caseNo}
           contentBase={contentBase}
+        />
+      ) : answered && isPageQuiz(answered) ? (
+        // Wynik pytania na fałszywej stronie (D-190) - na tej samej stronie, nie na osobnym slajdzie.
+        <PageQuizBlock
+          key={`result-${answered.id}`}
+          block={answered}
+          contentBase={contentBase}
+          result={{
+            selected: typeof answeredResult?.answer === 'number' ? answeredResult.answer : undefined,
+            correct: feedback.correct,
+            reaction: feedback.reaction,
+          }}
         />
       ) : (
         <FeedbackPanel feedback={feedback} />

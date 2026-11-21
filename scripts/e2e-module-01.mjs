@@ -397,11 +397,22 @@ try {
   // --- 9. Czy to bezpieczny link? (QUIZ, waga 1) ------------------------------------------------------------------------------
   const zaufanie = blockOf('zaufanie');
   const right = zaufanie.options.find((option) => option.correct);
+  // Pytanie w tym samym widoku co fałszywa strona (D-190): okno przeglądarki na pulpicie, adres z zaznaczoną domeną, makieta strony.
+  step(
+    'QUIZ: pytanie na fałszywej stronie na pulpicie (okno przeglądarki, zaznaczona domena, makieta strony)',
+    (await page.getByTestId('desktop-stage').getByTestId('page-task').getByText(text(zaufanie.prompt), { exact: true }).count()) === 1 &&
+      ((await page.getByTestId('address-domain').textContent()) ?? '') === text(domena.solution.text) &&
+      (await page.getByTestId('desktop-stage').getByRole('img', { name: /Makieta strony/ }).count()) === 1,
+  );
   await page.getByRole('radio', { name: text(right.text) }).check();
   const quizAnswered = progressResponse();
   await page.getByRole('button', { name: 'Wybierz odpowiedź' }).click();
   const quizBody = await (await quizAnswered).json();
   step('QUIZ: „Nie – domena nie należy do fundacji.” -> pełne punkty', quizBody.lastResult?.points === 1, JSON.stringify(quizBody.lastResult));
+  step(
+    'QUIZ: wynik zostaje na fałszywej stronie (werdykt i komentarz z treści w oknie przeglądarki)',
+    (await page.getByTestId('desktop-stage').getByTestId('page-quiz-result').getByText(text(zaufanie.reactions.result[0].text), { exact: true }).count()) === 1,
+  );
   await shot('09-quiz');
   await nextEnabled().click();
 

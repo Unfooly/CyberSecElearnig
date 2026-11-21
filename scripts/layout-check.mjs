@@ -1524,8 +1524,8 @@ try {
   if (runs('module')) {
     const moduleJson = JSON.parse(readFileSync(join(moduleDir(MODULE_SLUG), 'module.json'), 'utf8'));
     const blockIds = moduleJson.blocks.map((block) => block.id);
-    // Okna z myszą (D-185): skala kursu 125% działa tylko przy `pointer: fine` (hasTouch daje `coarse`) - laptop z paskami przeglądarki
-    // (1366x650) i 1920x1080 ze skalowaniem Windows 125% (1536x730), najciaśniejsze przypadki skali.
+    // Okna z myszą (`pointer: fine`; hasTouch daje `coarse`): laptop z paskami przeglądarki (1366x650) i 1920x1080 ze skalowaniem Windows
+    // 125% (1536x730) - niskie okna na komputerze. Dodane przy skali kursu 125% (D-185); skala wycofana (D-189), przypadki zostają.
     const mouseViewports = [
       { name: '1366x650 mysz', width: 1366, height: 650, mouse: true },
       { name: '1536x730 mysz', width: 1536, height: 730, mouse: true },

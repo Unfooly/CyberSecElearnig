@@ -22,7 +22,7 @@ module 5. Prawdziwy incydent z zakończenia (Charming Kitten, 2020) to fakt publ
 | 3 | Komputer → mail z zaproszeniem na webinar + notes „Czy to phishing?” | zaznacz cechy phishingu (poprawna tylko „atrakcyjna oferta”) |
 | 4 | Smartfon → historia komunikatora (połączenie głosowe 14 min, link „Rejestracja”) | klik w fragmenty = notatki w notesie |
 | 5 | „Dostał link” → adres URL ukryty, wpisz domenę | pole tekstowe + podpowiedzi krok po kroku (pierwszy „/” od lewej, potem w lewo do drugiej kropki) |
-| 6 | „Czy link jest godny zaufania?” Tak / Nie | wyjaśnienie: poddomena może mieć dowolną nazwę |
+| 6 | „Czy link jest godny zaufania?” Tak / Nie | wyjaśnienie: subdomena może mieć dowolną nazwę |
 | 7 | Rozmowa z ofiarą | wybór pytań, przeciąganie odpowiedzi do notesu |
 | 8 | Tablica śledcza – ułóż etapy ataku: E-mail → Rozmowa telefoniczna → Link | przeciąganie w kolejności |
 | 9 | Raport końcowy – zakładki Etap 1–3, przy każdym rada | zakładki |
@@ -47,7 +47,7 @@ z brandkitu), gracz (detektyw). Lektor: obecna rola narratora modułu 1.
 | 2 | EMAIL_ANALYSIS „Zaproszenie” | 4 kryteria: błędy językowe / nietypowy układ / linki lub załączniki / nieoczekiwana atrakcyjna oferta → poprawne tylko ostatnie; reakcja: „Ktoś się naprawdę przygotował.” | waga 2 |
 | 3 | NOTEPAD „Komunikator” | historia czatu; klik: połączenie 12 min 40 s → „Przestępcy dzwonili do Pawła”, link → „Po rozmowie wysłali link” | – |
 | 4 | TEXT_INPUT_GUIDED „Dokąd prowadzi link?” | wpisz domenę; podpowiedzi 1) pierwszy pojedynczy „/” od lewej, 2) w lewo do drugiej kropki; odpowiedź `formularz-online.net` | waga 2 |
-| 5 | QUIZ „Czy link jest godny zaufania?” | Tak / Nie → Nie; wyjaśnienie poddomeny | waga 1 |
+| 5 | QUIZ „Czy link jest godny zaufania?” | Tak / Nie → Nie; wyjaśnienie subdomeny | waga 1 |
 | 6 | INTERROGATION „Rozmowa z Pawłem” | 4 pytania: co się stało / czy coś było dziwne w mailu / co zrobił potem / czy podał hasło; odpowiedzi trafiają do notatek | – |
 | 7 | ORDERING „Tablica” | E-mail → Rozmowa telefoniczna → Link | waga 2 |
 | 8 | SUMMARY „Raport końcowy” | 3 etapy, przy każdym rada: sprawdź nieoczekiwaną ofertę innym kanałem; nie daj się naciskom przez telefon – rozłącz się; przed logowaniem sprawdź domenę, służbowego hasła nie podajesz na obcej stronie; zgłoś do IT | – |

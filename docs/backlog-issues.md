@@ -867,6 +867,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-181 Gazeta do dołu, ilustracje w teczkach, okno pytania (D-195..D-197) - uwagi z review
+- Etykiety: `P2`, `mod:odtwarzacz`, `i18n`, `test` · Źródło: code review i security review D-195/D-196/D-197
+- Opis: (1) **przed wersją EN modułu 1:** `teczka-incydent.webp` ma wpalone polskie etykiety ikon, a `tabs[].photo` to jeden plik na
+  wszystkie języki (`imagePathSchema`, nie `limage`) - podmienić na grafikę bez tekstu albo zrobić pole per język; (2) layout-check nie ma
+  przypadków dla strony gazety, okna pytania przy mailu ani pytania na fałszywej stronie (razem z B-177) - dziś pilnują ich tylko zrzuty
+  w opisie PR; (3) zdjęcie w teczce bez zarezerwowanego miejsca - tekst przeskakuje po wczytaniu obrazu, a poziome zdjęcie poszerza
+  ramkę dopiero po `onLoad` (wymiary w treści/locku albo `aspect-ratio`); ścieżka `ref` (obraz z pamięci podręcznej) bez testu;
+  (4) kolory paska okna pytania (`#26305c`, `#6c5ce7`) powtórzone z `EmailAnalysisBlock.tsx` - wspólna zmienna; (5) `<article>` strony
+  gazety bez nazwy dostępnej (`aria-labelledby` na nagłówku) - stan sprzed D-195; (6) `packages/content/README.md` mówi „Moduły 1-2 (bez
+  pola)” o `locales`, a moduł 1 ma `locales: ["pl"]`.
+- Akceptacja: punkt (1) przed bramką EN modułu 1; pozostałe poprawione albo świadomie odrzucone (wpis tutaj).
+
 ### B-180 Zdjęcie w teczce, link w czacie, komentarz domeny (D-191..D-193) - uwagi z review
 - Etykiety: `P3`, `mod:odtwarzacz`, `mod:kursy`, `test` · Źródło: code review i security review D-191/D-192/D-193
 - Opis: (1) zadanie z domeną po wyczerpaniu prób w monitorze pokazuje naraz 3 podpowiedzi, rozwiązanie z wyjaśnieniem i komentarz do

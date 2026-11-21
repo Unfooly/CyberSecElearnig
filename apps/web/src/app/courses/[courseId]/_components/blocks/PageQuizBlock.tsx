@@ -83,7 +83,7 @@ export default function PageQuizBlock({
                   data-testid="page-quiz-option"
                   // Węższe odpowiedzi (D-197, uwaga właściciela 2026-11-21): na szerokim ekranie najwyżej 380 px każda, od lewej - nie na
                   // całą szerokość okna; na telefonie jedna pod drugą na całą szerokość.
-                  className={`flex min-h-[44px] flex-1 items-center gap-3 rounded-lg border-2 px-3 py-2 text-base text-ink sm:max-w-[380px]${tone} ${readOnly ? '' : 'cursor-pointer hover:border-accent'}`}
+                  className={`flex min-h-[44px] flex-1 items-center gap-3 rounded-lg border-2 px-3 py-2 text-base text-ink sm:max-w-[380px] ${tone} ${readOnly ? '' : 'cursor-pointer hover:border-accent'}`}
                 >
                   <input
                     type="radio"

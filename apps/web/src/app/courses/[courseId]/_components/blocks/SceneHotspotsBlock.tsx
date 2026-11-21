@@ -857,8 +857,9 @@ function ZoomContent({
   // zbliżenie się otworzy (nazwa leci z grafiki do Notatnika); zamyka ✕ w rogu, klik w tło albo Esc. `shake` zostaje nieużywany.
   void shake;
   const graphicRef = useRef<HTMLDivElement | null>(null);
-  const newspaper = hotspot.media?.kind === 'document' && hotspot.media.look === 'newspaper';
-  const autoTake =visible && !review && !noted && !!hotspot.evidence && !!hotspot.note;
+  // Gazeta bez dowodu sięga do samego dołu obszaru (D-195); z dowodem zostaje pasek „W notatniku” pod stroną, więc układ jak dotąd.
+  const flush = hotspot.media?.kind === 'document' && hotspot.media.look === 'newspaper' && !noted;
+  const autoTake = visible && !review && !noted && !!hotspot.evidence && !!hotspot.note;
   useEffect(() => {
     if (autoTake && graphicRef.current) onTake(graphicRef.current);
     // onTake celowo poza deps - raz na otwarcie przedmiotu.
@@ -883,15 +884,16 @@ function ZoomContent({
         data-testid="scene-zoom-graphic"
         onClick={onBackdrop}
         className={
-          newspaper
+          flush
             ? // Strona gazety sięga do samego dołu obszaru kursu (D-195, uwaga właściciela 2026-11-21): bez dolnego marginesu zbliżenia
-              // (-mb-3 znosi padding nakładki), u góry miejsce na ✕; strona wypełnia całą wysokość i przewija się w środku.
-              `-mb-3 flex min-h-0 w-full flex-1 flex-col items-center justify-end pt-12 sm:pt-4 ${fade}`
+              // (-mb-3 znosi padding nakładki), u góry zawsze miejsce na ✕ (44 px + odstęp - strona bywa szersza niż margines przycisku);
+              // strona wypełnia całą wysokość i przewija się w środku. Tła do kliknięcia zostaje mało - zamyka ✕ albo Esc.
+              `-mb-3 flex min-h-0 w-full flex-1 flex-col items-center justify-end pt-12 ${fade}`
             : `flex ${onScreen ? 'max-h-[94%]' : 'max-h-[88%]'} min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 ${fade}`
         }
       >
         {visible && hotspot.media && (
-          <ZoomGraphic media={hotspot.media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} onScreen={onScreen} portrait={portrait} />
+          <ZoomGraphic media={hotspot.media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} onScreen={onScreen} portrait={portrait} flush={flush} />
         )}
         {/* Przedmiot bez grafiki (treść sprzed D-086): opis zamiast pustego zbliżenia - ciemny panel z cieniem, bez białej karty. */}
         {visible && !hotspot.media && hotspot.content && (
@@ -905,7 +907,7 @@ function ZoomContent({
       {/* Dowód w notatniku - sama etykieta (bez przycisków). Dopisanie ogłasza podpowiedź „Mamy dowód!” (hints) - bez drugiego regionu
           live, także przy ponownym otwarciu zebranego przedmiotu. */}
       {/* Przy gazecie bez dowodu pasek jest pusty - schowany, żeby strona sięgała do dołu obszaru (odstęp flex liczy też puste elementy). */}
-      <div data-testid="scene-zoom-actions" hidden={newspaper && !noted} className={newspaper && !noted ? undefined : 'flex min-h-0 shrink-0 flex-wrap items-center justify-center gap-2'}>
+      <div data-testid="scene-zoom-actions" hidden={flush} className={flush ? undefined : 'flex min-h-0 shrink-0 flex-wrap items-center justify-center gap-2'}>
         {visible && noted && (
           <p className="inline-flex min-h-[36px] items-center gap-2 rounded-btn bg-success-soft px-4 text-sm font-bold text-success">
             {hotspot.note && <NoteKindIcon kind={hotspot.note.kind} />}W notatniku
@@ -923,6 +925,7 @@ function ZoomGraphic({
   onToggleTranscript,
   onScreen = false,
   portrait = false,
+  flush = false,
 }: {
   media: HotspotMedia | InnerHotspotMedia;
   contentBase: string;
@@ -930,6 +933,8 @@ function ZoomGraphic({
   onToggleTranscript: () => void;
   onScreen?: boolean;
   portrait?: boolean;
+  /** Strona gazety do samego dołu obszaru (D-195) - patrz ZoomContent. */
+  flush?: boolean;
 }) {
   if (media.kind === 'image') {
     const usePortrait = portrait && !!media.imagePortrait;
@@ -937,7 +942,7 @@ function ZoomGraphic({
     return <ZoomImage path={path} alt={media.alt} contentBase={contentBase} wide={onScreen} />;
   }
   if (media.kind === 'audio') return <AudioZoom media={media} contentBase={contentBase} transcriptOpen={transcriptOpen} onToggleTranscript={onToggleTranscript} />;
-  if (media.kind === 'document' && media.look === 'newspaper') return <NewspaperPage media={media} />;
+  if (media.kind === 'document' && media.look === 'newspaper') return <NewspaperPage media={media} flush={flush} />;
   // Fałszywa strona logowania (D-184): okno przeglądarki z adresem i makietą formularza (obrazek, bez pól).
   if (media.kind === 'page' && media.page) {
     return (
@@ -968,7 +973,7 @@ function ZoomGraphic({
 
 // Strona gazety (D-181, `look: 'newspaper'`): papier, winieta szeryfowa z datą, nagłówek artykułu, pierwszy akapit jako lead, reszta
 // w dwóch łamach (od 640 px szerokości; węziej jedna kolumna). Przewija się wewnątrz strony, gdy tekst się nie mieści.
-function NewspaperPage({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
+function NewspaperPage({ media, flush = false }: { media: HotspotMedia | InnerHotspotMedia; flush?: boolean }) {
   const [lead, ...rest] = media.lines ?? [];
   return (
     <article
@@ -976,7 +981,8 @@ function NewspaperPage({ media }: { media: HotspotMedia | InnerHotspotMedia }) {
       data-testid="newspaper-page"
       // Kolory Unfooly (D-186, uwaga właściciela 2026-11-20): biała strona, winieta na fioletowym pasku, linie w akcencie.
       // Do samego dołu obszaru kursu (D-195): strona wypełnia wysokość zbliżenia, dół bez zaokrągleń - jak kartka wychodząca poza kadr.
-      className="zoom-shadow flex min-h-0 w-[min(96%,920px)] flex-1 flex-col overflow-y-auto rounded-t-card bg-surface px-5 py-4 font-serif text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-8 sm:py-5"
+      // Z dowodem (pasek „W notatniku” pod stroną) - jak dotąd: strona najwyżej na wysokość zbliżenia, zaokrąglona z każdej strony.
+      className={`zoom-shadow flex min-h-0 w-[min(96%,920px)] flex-col overflow-y-auto bg-surface px-5 py-4 font-serif text-ink outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:px-8 sm:py-5 ${flush ? 'flex-1 rounded-t-card' : 'max-h-full rounded-card'}`}
     >
       <header className="-mx-5 -mt-4 shrink-0 rounded-t-card bg-accent px-5 pb-2 pt-3 text-center text-white sm:-mx-8 sm:-mt-5 sm:px-8">
         <p className="text-[28px] font-black uppercase leading-none tracking-[0.06em] sm:text-[36px]">{media.masthead ?? 'Gazeta'}</p>

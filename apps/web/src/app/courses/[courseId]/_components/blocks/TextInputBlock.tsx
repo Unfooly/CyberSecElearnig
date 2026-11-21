@@ -183,6 +183,8 @@ export default function TextInputBlock({
         ...(data.done ? { correct: data.correct, ...(data.points !== undefined ? { points: data.points } : {}) } : {}),
         ...(data.solution ? { solution: data.solution } : {}),
         revealedHints: [...hints.map((text) => ({ text })), ...(data.hint ? [{ text: data.hint.text }] : [])],
+        // Komentarz do wyniku (D-193) - do podglądu „Wstecz” i ponownego montowania w tej samej sesji.
+        ...(data.done && data.reaction ? { reaction: data.reaction } : {}),
       });
       if (data.hint) {
         setHints((list) => [...list, data.hint!.text]);
@@ -295,7 +297,8 @@ export default function TextInputBlock({
           )}
         </div>
       )}
-      {monitor && !readOnly && reactionText && (
+      {/* Także w podglądzie „Wstecz” (zwykła karta) - komentarz jest częścią wyniku. */}
+      {monitor && reactionText && (
         <p data-testid="text-input-reaction" className="mt-2 text-sm leading-relaxed text-slate-800">
           {reactionText}
         </p>
@@ -332,8 +335,10 @@ export default function TextInputBlock({
             {instruction}
           </p>
         )}
-        <p role="status" className={`mt-1 min-h-[1.25rem] text-sm font-medium ${message || markMessage.error ? 'text-red-700' : 'text-green-700'}`}>
-          {done ? '' : message || markMessage.text}
+        {/* Po rozstrzygnięciu ten sam (stały) region ogłasza czytnikowi komentarz z treści (D-193; dotąd ogłaszał go dymek) - widoczna
+            wersja jest niżej, w wyniku; region montowany razem z treścią nie zostałby ogłoszony. */}
+        <p role="status" className={done ? 'sr-only' : `mt-1 min-h-[1.25rem] text-sm font-medium ${message || markMessage.error ? 'text-red-700' : 'text-green-700'}`}>
+          {done ? (reactionText ?? '') : message || markMessage.text}
         </p>
         {step === 2 && form}
         {step === 2 && !done && (

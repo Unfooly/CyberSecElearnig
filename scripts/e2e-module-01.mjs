@@ -388,7 +388,7 @@ try {
   const attemptBody = await (await attempted).json();
   step('DOMENA: /attempt po dobrej pierwszej próbie - werdykt bez rozwiązania i podpowiedzi', attemptBody.correct === true && !('solution' in attemptBody) && !('hint' in attemptBody), JSON.stringify(Object.keys(attemptBody)));
   await page.getByText(/Poprawna odpowiedź!/).waitFor();
-  step('DOMENA: poprawna odpowiedź za pierwszym razem -> reakcja z treści', (await page.getByText(text(domena.reactions.result[0].text), { exact: true }).count()) === 1);
+  step('DOMENA: poprawna odpowiedź za pierwszym razem -> reakcja z treści', (await page.getByTestId('text-input-reaction').getByText(text(domena.reactions.result[0].text), { exact: true }).count()) === 1);
   await shot('08-domena');
   step('DOMENA: wynik bez własnego „Dalej” - jedyny w pasku', await noInBlockNext());
   const domainBody = await (await goNext('DOMENA')).json();

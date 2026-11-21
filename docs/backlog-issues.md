@@ -867,6 +867,18 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-180 Zdjęcie w teczce, link w czacie, komentarz domeny (D-191..D-193) - uwagi z review
+- Etykiety: `P3`, `mod:odtwarzacz`, `mod:kursy`, `test` · Źródło: code review i security review D-191/D-192/D-193
+- Opis: (1) zadanie z domeną po wyczerpaniu prób w monitorze pokazuje naraz 3 podpowiedzi, rozwiązanie z wyjaśnieniem i komentarz do
+  wyniku (trzy razy o poddomenie) - najwyższy stan bloku na telefonie, bez asercji w layout-check; rozważyć skrócenie
+  `solution.explanation` albo wariantu `incorrect`; (2) `chatText` wyróżnia PIERWSZE wystąpienie `link` w wiadomości - przy powtórzonym
+  słowie może to być nie to miejsce; gałąź pustego `link` bez testu; (3) w pseudo-języku `xx` `link` przestaje być fragmentem treści i
+  wyróżnienie znika (degradacja do tekstu) - layout-check `pseudo` nie ćwiczy wyglądu linku; (4) konwencja dla autorów: w dokumentach
+  przesłuchania (INTERROGATION) `link` nie może wyróżniać akurat wiersza obalającego kłamstwo (`refutedBy`) - dopisać przy
+  `DOSSIER_DOCUMENT_CLIENT`; (5) test regresji w `apps/api` (`client-view.gating.spec.ts`): TEXT_INPUT_GUIDED z próbami i `done: false`
+  nie ma `reaction` w `/start` (treść reakcji bloku `domena` zawiera odpowiedź); (6) testy D-191/D-192 siedzą w `describe` „runda 5”.
+- Akceptacja: punkty poprawione albo świadomie odrzucone (wpis tutaj), testy zielone.
+
 ### B-179 Treść bloku po zadaniu cytuje odpowiedź wcześniejszego zadania (`/start` wysyła wszystkie bloki naraz)
 - Etykiety: `P3`, `mod:kursy`, `security` · Źródło: security review D-190 (stan z `main`, nie regresja)
 - Opis: narracja i `prompt` bloku `zaufanie` (moduł 1) zawierają `formularz-online.net`, czyli odpowiedź wcześniejszego zadania `domena`

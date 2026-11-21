@@ -1074,7 +1074,8 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     // Wynik w samym bloku (trafienie, wyjaśnienie).
     await screen.findByText('Domena jest podróbką.');
     expect(screen.getByText(/Wynik: 50%/)).toBeInTheDocument();
-    expect(screen.getByTestId('hint-bar')).toHaveTextContent('Uważaj, coś tu nie gra.'); // zła odpowiedź
+    // Dymek ustawia efekt widoku wyniku (render po wyniku) - czekamy na niego (B-095, czwarte wystąpienie: `getByTestId` bywał za wcześnie w CI).
+    expect(await screen.findByTestId('hint-bar')).toHaveTextContent('Uważaj, coś tu nie gra.'); // zła odpowiedź
 
     // Dwa "Dalej": nieaktywny w powłoce i aktywny pod wynikiem (pierwszy w DOM).
     fireEvent.click(screen.getAllByRole('button', { name: /^Dalej$/ })[0]);

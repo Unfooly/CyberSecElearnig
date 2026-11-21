@@ -13,7 +13,7 @@
   "objectives": [
     "Rozpoznać niespodziewaną, atrakcyjną ofertę jako możliwy początek ataku.",
     "Wiedzieć, że miła rozmowa telefoniczna nie potwierdza tożsamości rozmówcy.",
-    "Odczytać domenę z adresu linku i odróżnić ją od poddomeny.",
+    "Odczytać domenę z adresu linku i odróżnić ją od subdomeny.",
     "Nie podawać służbowego hasła na obcej stronie i zgłaszać podejrzane linki do IT."
   ],
   "thumbnail": "assets/wyludzone-haslo/images/miniatura.b81ce3d6.webp",
@@ -617,22 +617,22 @@
           "text": "Od tego ukośnika idź w lewo, aż dotrzesz do drugiej kropki. To, co jest pomiędzy, to domena."
         },
         {
-          "text": "„fundacja-analityki” przed domeną to tylko poddomena – jej nazwę może wymyślić każdy, kto stawia stronę."
+          "text": "„fundacja-analityki” przed domeną to tylko subdomena – jej nazwę może wymyślić każdy, kto stawia stronę."
         }
       ],
       "solution": {
         "text": "formularz-online.net",
-        "explanation": "Domena to formularz-online.net. „fundacja-analityki” przed nią to poddomena, którą właściciel strony może nazwać dowolnie."
+        "explanation": "Domena to formularz-online.net. „fundacja-analityki” przed nią to subdomena, którą właściciel strony może nazwać dowolnie."
       },
       "reactions": {
         "result": [
           {
             "when": "correct",
-            "text": "Brawo! Link prowadzi do domeny formularz-online.net. „fundacja-analityki” przed nią to poddomena – można jej nadać dowolną nazwę podczas tworzenia strony internetowej. Sama domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
+            "text": "Brawo! Link prowadzi do domeny formularz-online.net. „fundacja-analityki” przed nią to subdomena – można jej nadać dowolną nazwę podczas tworzenia strony internetowej. Sama domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
           },
           {
             "when": "incorrect",
-            "text": "Zapamiętaj: liczy się to, co stoi tuż przed pierwszym pojedynczym ukośnikiem – tutaj formularz-online.net. Tekst przed domeną to poddomena, której można nadać dowolną nazwę podczas tworzenia strony. Ta domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
+            "text": "Zapamiętaj: liczy się to, co stoi tuż przed pierwszym pojedynczym ukośnikiem – tutaj formularz-online.net. Tekst przed domeną to subdomena, której można nadać dowolną nazwę podczas tworzenia strony. Ta domena nie ma nic wspólnego z rzekomym nadawcą e-maila, Fundacją Analityki Stosowanej."
           }
         ]
       }
@@ -663,7 +663,7 @@
         {
           "text": "Tak – w adresie jest nazwa fundacji.",
           "correct": false,
-          "feedback": "Nazwa fundacji jest tylko w poddomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
+          "feedback": "Nazwa fundacji jest tylko w subdomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
         },
         {
           "text": "Nie – domena nie należy do fundacji.",
@@ -699,7 +699,7 @@
           },
           {
             "minScore": 0,
-            "text": "Nazwa fundacji jest tylko w poddomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
+            "text": "Nazwa fundacji jest tylko w subdomenie, a tę może wpisać każdy. Domena formularz-online.net nie ma nic wspólnego z Fundacją Analityki Stosowanej."
           }
         ]
       }

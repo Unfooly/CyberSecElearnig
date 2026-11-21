@@ -119,6 +119,8 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
     await screen.findByText(/Poprawna odpowiedź!/);
     expect(screen.getByTestId('text-input-reaction')).toHaveTextContent('To poddomena o dowolnej nazwie.');
     expect(screen.getByTestId('reaction')).toHaveTextContent('');
+    // Stały region ogłasza komentarz czytnikowi ekranu.
+    expect(screen.getAllByRole('status').some((node) => node.textContent === 'To poddomena o dowolnej nazwie.')).toBe(true);
     unmount();
 
     render(
@@ -131,6 +133,36 @@ describe('TextInputBlock: zadanie z podpowiedzią (ocena na serwerze)', () => {
       </HintProvider>,
     );
     expect(screen.getByTestId('text-input-reaction')).toHaveTextContent('To poddomena o dowolnej nazwie.');
+  });
+
+  it('w monitorze (D-193) po wyczerpaniu prób: komentarz na stronie, w dymku samo ostrzeżenie; komentarz trafia do postępu i do podglądu „Wstecz”', async () => {
+    const monitorBlock: ContentBlock = { ...block, frame: 'monitor', markUrl: 'https://fundacja.przyklad-online.net/rejestracja/1' };
+    const reaction = { text: 'Tekst przed domeną to poddomena.' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(attempt({ correct: false, attempt: 3, attemptsLeft: 0, done: true, points: 0, solution: { text: 'przyklad-online.net' }, reaction })),
+    );
+    const onProgress = vi.fn();
+    const { unmount } = render(
+      <HintProvider resetKey="k">
+        <TextInputBlock block={monitorBlock} courseId="course-1" onProgress={onProgress} progress={{ type: 'TEXT_INPUT_GUIDED', done: false, attempts: 2 } as ClientProgressBlock} />
+        <Probe />
+      </HintProvider>,
+    );
+    type('zle.pl');
+    check();
+    await screen.findByText('Wykorzystano wszystkie próby.', { selector: 'p.font-medium' });
+    expect(screen.getByTestId('text-input-reaction')).toHaveTextContent(reaction.text);
+    expect(screen.getByTestId('reaction')).toHaveTextContent(HINT_EVENT_TEXT.wrong);
+    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ done: true, reaction }));
+    unmount();
+
+    render(
+      <HintProvider resetKey="k3">
+        <TextInputBlock block={monitorBlock} courseId="course-1" readOnly progress={{ type: 'TEXT_INPUT_GUIDED', done: true, correct: false, attempts: 3, reaction } as ClientProgressBlock} />
+      </HintProvider>,
+    );
+    expect(screen.getByTestId('text-input-reaction')).toHaveTextContent(reaction.text);
   });
 
   it('wyczerpane próby: rozwiązanie z wyjaśnieniem', async () => {

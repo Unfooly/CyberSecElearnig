@@ -84,7 +84,8 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   odpowiedzi z prawej strony maila, D-188); QUIZ `frame: "monitor"` + `markUrl`, `page`, `background` (komplet; `backgroundScreen`
   opcjonalny; poza trybem prostym, bez `multiple`) - pytanie na fałszywej stronie w oknie przeglądarki na pulpicie, ten sam widok co
   zadanie z domeną (D-190); DOSSIER
-  dokument `layout: "chat"` + `self` - czat w ramce telefonu (komórki [godzina, autor, treść]); SCENE_HOTSPOTS przedmiot `done: true` -
+  dokument `layout: "chat"` + `self` - czat w ramce telefonu (komórki [godzina, autor, treść]; wiersz może mieć
+  `link` - fragment treści wiadomości pokazany jak link, bez adresu, D-192); SCENE_HOTSPOTS przedmiot `done: true` -
   miejsce obejrzane wcześniej (✓, nieklikalne; bez action/media/evidence/note/required, a pozostałe przedmioty z jawnym `required`).
   Podgląd: `dev-modules/dev-okna`.
 - Zadania sprawy: `caseFile.tasks[] { id, text, completeWhen: blockId[] }` - lista pod kartą sprawy w odprawie i sekcja „Zadania” w

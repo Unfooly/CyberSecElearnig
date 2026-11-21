@@ -117,7 +117,8 @@ export default function TabsBlock({
           data-testid={folder ? 'folder-sheet' : undefined}
           className={
             folder
-              ? `${desk ? 'min-h-0 flex-1 overflow-y-auto' : 'min-h-[220px]'} rounded-b-xl rounded-tr-xl bg-surface p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(63,50,181,0.12)] sm:p-7`
+              ? // flow-root: zdjęcie (float, D-191) nie wychodzi poza kartkę przy krótkiej treści.
+                `${desk ? 'min-h-0 flex-1 overflow-y-auto' : 'flow-root min-h-[220px]'} rounded-b-xl rounded-tr-xl bg-surface p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(63,50,181,0.12)] sm:p-7`
               : 'rounded bg-slate-50 p-3'
           }
         >

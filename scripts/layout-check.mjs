@@ -2793,15 +2793,20 @@ try {
   if (runs('monitor')) {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), 'apps', 'web', 'src', 'lib', 'player-monitor.json'), 'utf8'));
     const MONITOR_CASES = [
-      { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba' },
+      // Moduł 5 z ilustracjami przy pytaniach (standard quizu, 2026-11-22) - także q7.
+      { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba', illustration: true },
       // Moduł 3 po D-203: pytanie z ilustracją (dawne `zaloguj` bez ilustracji usunięte z treści).
       { slug: 'lancuszek', block: 'smishing', illustration: true },
+      // Najdłuższe pytania z ilustracją (code review D-206): q2 - mieszczą się bez przewijania także z widoczną ilustracją (390x844, 360x800).
+      { slug: 'lancuszek', block: 'niebezpieczne', illustration: true },
+      { slug: 'najlatwiejsze-drzwi', block: 'cos-podpiete', illustration: true },
       { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba', pseudo: true },
       // Ilustracja obok pytania (D-200): na ekranie monitora - pojedynczy i wielokrotny wybór; (q7) niżej.
       { slug: 'dev-ilustracja', block: 'instalowac', illustration: true },
       { slug: 'dev-ilustracja', block: 'skutki', illustration: true },
     ];
-    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
+    // 360x800 (popularny Android): poniżej progu chowania ilustracji (820 px wysokości, Illustrated.tsx) - pytanie mieści się bez ilustracji.
+    for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x800', width: 360, height: 800, isMobile: true }, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
       const page = await context.newPage();
       const errors = [];
@@ -2852,8 +2857,14 @@ try {
             };
           });
         const g = await geometry();
-        // (q7) Ilustracja (D-200): wczytana, ≥ 60 px wysokości, w całości w obrysie ekranu monitora (przed przewinięciem ekranu).
-        if (testCase.illustration) {
+        // (q7) Ilustracja (D-200): wczytana, ≥ 60 px wysokości, w całości w obrysie ekranu monitora (przed przewinięciem ekranu). Niski telefon w
+        // pionie (szerokość < 640, wysokość ≤ 820, np. 360x740, 360x800): ilustracja schowana - treść ma pierwszeństwo (pytanie bez przewijania, q2).
+        // Próg jak w Illustrated.tsx (`max-sm:[@media(max-height:820px)]:hidden`).
+        const shortPhone = viewport.width < 640 && viewport.height <= 820;
+        if (testCase.illustration && shortPhone) {
+          const hidden = await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid="illustration-figure"]')).display === 'none');
+          if (!hidden) fail(`${label}: (q7) na niskim telefonie ilustracja pytania powinna być schowana.`);
+        } else if (testCase.illustration) {
           await page.waitForFunction(() => document.querySelector('[data-testid="illustration"]')?.complete === true, null, { timeout: 15000 });
           const ill = await page.evaluate(() => {
             const img = document.querySelector('[data-testid="illustration"]');

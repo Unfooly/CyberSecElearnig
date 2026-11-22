@@ -27,25 +27,20 @@
       "hash": "6f09edfb",
       "key": "assets/na-skroty/images/koniec-pion.6f09edfb.webp"
     },
-    "odprawa#steps.0.image": {
-      "original": "scenes/pl/odprawa.svg",
-      "hash": "5e6b7bef",
-      "key": "assets/na-skroty/scenes/pl/odprawa.5e6b7bef.svg"
+    "tabela#illustration.image": {
+      "original": "images/tabela.webp",
+      "hash": "4f854a93",
+      "key": "assets/na-skroty/images/tabela.4f854a93.webp"
     },
-    "odprawa#steps.0.portrait.image": {
-      "original": "scenes/pl/odprawa-pion.svg",
-      "hash": "02da70ab",
-      "key": "assets/na-skroty/scenes/pl/odprawa-pion.02da70ab.svg"
+    "instalowac#illustration.image": {
+      "original": "images/program.webp",
+      "hash": "293ae856",
+      "key": "assets/na-skroty/images/program.293ae856.webp"
     },
-    "biurko#image": {
-      "original": "scenes/pl/biurko-bartka.svg",
-      "hash": "8bb3cb0e",
-      "key": "assets/na-skroty/scenes/pl/biurko-bartka.8bb3cb0e.svg"
-    },
-    "biurko#imagePortrait": {
-      "original": "scenes/pl/biurko-bartka-pion.svg",
-      "hash": "9b1bc476",
-      "key": "assets/na-skroty/scenes/pl/biurko-bartka-pion.9b1bc476.svg"
+    "shadow-it#illustration.image": {
+      "original": "images/shadow-it.webp",
+      "hash": "7309f47f",
+      "key": "assets/na-skroty/images/shadow-it.7309f47f.webp"
     },
     "skutki#image": {
       "original": "scenes/pl/tablica-skutki.svg",
@@ -56,6 +51,46 @@
       "original": "scenes/pl/tablica-skutki-pion.svg",
       "hash": "901adff3",
       "key": "assets/na-skroty/scenes/pl/tablica-skutki-pion.901adff3.svg"
+    },
+    "pracownik#illustration.image": {
+      "original": "images/pracownik.webp",
+      "hash": "7518ff0b",
+      "key": "assets/na-skroty/images/pracownik.7518ff0b.webp"
+    },
+    "dwie-drogi#illustration.image": {
+      "original": "images/dwie-drogi.webp",
+      "hash": "c8fe42b4",
+      "key": "assets/na-skroty/images/dwie-drogi.c8fe42b4.webp"
+    },
+    "prywatny-telefon#illustration.image": {
+      "original": "images/prywatny-telefon.webp",
+      "hash": "64ff06a1",
+      "key": "assets/na-skroty/images/prywatny-telefon.64ff06a1.webp"
+    },
+    "cala-naprzod#illustration.image": {
+      "original": "images/cala-naprzod.webp",
+      "hash": "13d91db5",
+      "key": "assets/na-skroty/images/cala-naprzod.13d91db5.webp"
+    },
+    "czas-na-quiz#illustration.image": {
+      "original": "images/quiz-start.webp",
+      "hash": "da23c402",
+      "key": "assets/na-skroty/images/quiz-start.da23c402.webp"
+    },
+    "bez-sprawdzenia#illustration.image": {
+      "original": "images/quiz-tomek.webp",
+      "hash": "4460be8b",
+      "key": "assets/na-skroty/images/quiz-tomek.4460be8b.webp"
+    },
+    "poczta-na-telefonie#illustration.image": {
+      "original": "images/quiz-telefon.webp",
+      "hash": "d31499e3",
+      "key": "assets/na-skroty/images/quiz-telefon.d31499e3.webp"
+    },
+    "pliki-w-chmurze#illustration.image": {
+      "original": "images/quiz-chmura.webp",
+      "hash": "ed77618f",
+      "key": "assets/na-skroty/images/quiz-chmura.ed77618f.webp"
     },
     "raport#closing.image": {
       "original": "scenes/pl/zamkniecie-raport.svg",

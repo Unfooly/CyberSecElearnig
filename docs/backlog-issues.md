@@ -867,6 +867,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-183 Moduł 4 według nagrania (D-201) - lektor i sprzątanie
+- Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 i code review D-201
+- Opis: (1) **lektor na nowych ekranach** - 11 narracji (głos `komisarz`, teksty w `docs/modules/modul-4-na-skroty-nagranie.md`) po
+  powrocie do płatnego planu ElevenLabs (darmowy odrzuca głos z biblioteki); przy nagraniu: narracja `skutki` („Każdy taki skrót…”) i
+  `raport` („bezpieczne narzędzia”) pasują do nowej historii tylko luźno - do przejrzenia; (2) osierocone źródła poprzedniej wersji
+  (`assets/scenes/pl/{odprawa,odprawa-pion,biurko-bartka,biurko-bartka-pion}.svg`, `scripts/content/scenes/examples/na-skroty/{odprawa*,biurko-bartka*}.json`,
+  klocki biurka w `props-naskroty.ts`, opis w `scripts/content/scenes/README.md`) - usunąć (obiekty w R2 zostają dla starej wersji kursu);
+  (3) numeracja „Pytanie N z M” liczy też pytanie `instalowac` przed quizem - rozważyć numerację w ramach quizu; (4) cel modułu „Gdy coś
+  poszło nie tak – zgłoś do IT” uczy już tylko zasada 3 w raporcie (pytanie `juz-wklejone` usunięte) - przeformułować cel albo dodać ekran.
+- Akceptacja: (1) nagrane i `--check` zielony; (2)-(4) zrobione albo świadomie odrzucone (wpis tutaj).
+
 ### B-182 Ilustracja na ekranie monitora (D-200) - uwagi z review
 - Etykiety: `P3`, `mod:odtwarzacz`, `test` · Źródło: code review D-200
 - Opis: (1) kolumny ilustracji na ekranie monitora (`Illustrated` z `screen`) przełączają się po szerokości OKNA (`sm:`), a sam monitor -

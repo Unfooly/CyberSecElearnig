@@ -1,5 +1,8 @@
 # Moduł 4 „Na skróty” - scenariusz (zatwierdzony przez właściciela 2026-10-23)
 
+> **Nieaktualny od 2026-11-22.** Zastąpiony przez `modul-4-na-skroty-nagranie.md` (D-201) - moduł według nagrania właściciela.
+> Zostaje jako historia poprzedniej wersji (odwołania: D-153 i wcześniejsze).
+
 Źródło: specyfikacja właściciela z 2026-10-19 (zastępuje wcześniejszą). Ten dokument uzupełnia ją o wszystkie teksty, których
 specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, odpowiedzi błędne), i jest źródłem prawdy dla
 `module.json` (MODULE-PLAYBOOK, rozdział 1). Teksty z kursywą *(spec)* są przepisane ze specyfikacji bez zmian.

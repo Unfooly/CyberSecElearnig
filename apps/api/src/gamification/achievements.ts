@@ -7,7 +7,9 @@ import {
   DEAD_AIR_MAX_STEPS,
   MODULE_1_SLUG,
   MODULE_2_SLUG,
+  MODULE_4_SLUG,
   OFF_THE_RECORD_ENDING,
+  THREE_CASES_COUNT,
 } from './gamification.constants';
 
 // Warunki osiągnięć (D-111, D-124) jako czyste funkcje - jedno źródło prawdy dla przyznania „na żywo” (ukończenie kursu, zapis bloku)
@@ -30,6 +32,10 @@ export interface CompletionFacts {
   courseSlug: string | null;
   // Moduł 2 (D-124): fakty z bloków; bez nich (inne kursy, brak treści) - bez Dead Air i Perfect Pitch.
   module2?: Module2Facts;
+  // D-202: liczba RÓŻNYCH ukończonych kursów (powtórka tego samego się nie liczy) i czy ukończone są wszystkie moduły katalogu (kursy
+  // z treścią z packages/content - mają `slug`). Bez nich (np. przyznanie wsteczne per podejście) - bez Trzech spraw i Kompletu.
+  distinctCompleted?: number;
+  allModulesCompleted?: boolean;
 }
 
 /**
@@ -47,7 +53,24 @@ export function completionAchievements(facts: CompletionFacts): AchievementCode[
     if (facts.module2?.perfectPitch) codes.push(ACHIEVEMENT_CODES.PERFECT_PITCH);
     if (facts.score === 100) codes.push(ACHIEVEMENT_CODES.FULL_TRANSCRIPT);
   }
+  // D-202: „Najpierw pytam IT” - moduł 4 na 100% w jednym podejściu (w trybie prostym punkt za pytanie tylko za dobrą odpowiedź od razu).
+  if (facts.courseSlug === MODULE_4_SLUG && facts.score === 100) codes.push(ACHIEVEMENT_CODES.ASK_IT_FIRST);
+  if ((facts.distinctCompleted ?? 0) >= THREE_CASES_COUNT) codes.push(ACHIEVEMENT_CODES.THREE_CASES);
+  // Komplet - wszystkie moduły katalogu (próg „co najmniej trzy” liczy progressFacts od wielkości katalogu).
+  if (facts.allModulesCompleted === true) codes.push(ACHIEVEMENT_CODES.ALL_CASES);
   return codes;
+}
+
+/**
+ * Postęp w całym kursie (D-202) z listy ukończonych podejść: różne kursy i czy wśród nich są wszystkie moduły katalogu. Katalog mniejszy
+ * niż próg Trzech spraw (np. baza testowa albo bez zaimportowanej treści) nigdy nie daje Kompletu.
+ */
+export function progressFacts(completedCourseIds: readonly string[], catalogModuleIds: readonly string[]): { distinctCompleted: number; allModulesCompleted: boolean } {
+  const done = new Set(completedCourseIds);
+  return {
+    distinctCompleted: done.size,
+    allModulesCompleted: catalogModuleIds.length >= THREE_CASES_COUNT && catalogModuleIds.every((id) => done.has(id)),
+  };
 }
 
 /** Osiągnięcia za wyróżnienia easter egga zapisane przez serwer w postępie bloku (`easterEggs`, D-100). */

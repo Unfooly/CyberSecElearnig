@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GamificationService } from './gamification.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { fullBlocks } from '@cyberszkolo/content/dist/fixtures';
-import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, secretEndingAchievements } from './achievements';
-import { ACHIEVEMENT_CODES, ACHIEVEMENTS_SYNC_VERSION, MODULE_1_SLUG, MODULE_2_SLUG } from './gamification.constants';
+import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, progressFacts, secretEndingAchievements } from './achievements';
+import { ACHIEVEMENT_CODES, ACHIEVEMENTS_SYNC_VERSION, MODULE_1_SLUG, MODULE_2_SLUG, MODULE_4_SLUG } from './gamification.constants';
 import type { Block } from '../courses/scoring/evaluate';
 
 /** Kontekst ukończenia: domyślnie kurs spoza modułu 1. */
@@ -26,8 +26,12 @@ function buildTx(options: {
   userLevelBefore?: number;
   // Wersja przyznania wstecznego użytkownika; domyślnie już przeszedł (backfill pomijany).
   syncVersion?: number;
+  // D-202: ukończone kursy użytkownika (różne courseId - z `distinct`) i moduły katalogu (kursy ze `slug`).
+  completedCourseIds?: string[];
+  catalogCourseIds?: string[];
 }) {
   const { completedCount, existingBadgeCodes = [], retired = [], userXpBefore = 0, userLevelBefore = 1, syncVersion = ACHIEVEMENTS_SYNC_VERSION } = options;
+  const { completedCourseIds = [], catalogCourseIds = [] } = options;
 
   let currentXp = userXpBefore;
   let currentLevel = userLevelBefore;
@@ -40,12 +44,21 @@ function buildTx(options: {
     { id: 'badge-perfect-pitch', code: ACHIEVEMENT_CODES.PERFECT_PITCH, xpReward: 25 },
     { id: 'badge-full-transcript', code: ACHIEVEMENT_CODES.FULL_TRANSCRIPT, xpReward: 50 },
     { id: 'badge-off-the-record', code: ACHIEVEMENT_CODES.OFF_THE_RECORD, xpReward: 0 },
+    { id: 'badge-ask-it-first', code: ACHIEVEMENT_CODES.ASK_IT_FIRST, xpReward: 50 },
+    { id: 'badge-three-cases', code: ACHIEVEMENT_CODES.THREE_CASES, xpReward: 50 },
+    { id: 'badge-all-cases', code: ACHIEVEMENT_CODES.ALL_CASES, xpReward: 100 },
   ].map((badge) => ({ ...badge, retiredAt: retired.includes(badge.code) ? new Date() : null }));
 
   const alreadyUnlocked = new Set(existingBadgeCodes);
 
   return {
-    courseAssignment: { count: jest.fn(() => completedCount) },
+    // Blokada wiersza użytkownika na czas przyznania (D-202, równoległe ukończenia).
+    $queryRaw: jest.fn().mockResolvedValue([{ id: 'user-1' }]),
+    courseAssignment: {
+      count: jest.fn(() => completedCount),
+      findMany: jest.fn((args: { distinct?: string[] }) => (args?.distinct ? completedCourseIds.map((courseId) => ({ courseId })) : [])),
+    },
+    course: { findMany: jest.fn(() => catalogCourseIds.map((id) => ({ id }))) },
     badge: {
       findUnique: jest.fn(({ where: { code } }: { where: { code: string } }) => catalog.find((b) => b.code === code) ?? null),
     },
@@ -86,6 +99,57 @@ describe('GamificationService', () => {
   });
 
   describe('awardCourseCompletion', () => {
+    it('D-202 na żywo: trzeci różny kurs - Trzy sprawy; ostatni moduł katalogu - Komplet (z XP); liczy tylko ukończenia tego użytkownika w tej organizacji', async () => {
+      const tx = buildTx({
+        completedCount: 4,
+        existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED],
+        completedCourseIds: ['c1', 'c2', 'c3'],
+        catalogCourseIds: ['c1', 'c2', 'c3'],
+      });
+      const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', opts({ score: 80 }));
+      expect(result.unlockedBadges.map((b) => b.code).sort()).toEqual([ACHIEVEMENT_CODES.ALL_CASES, ACHIEVEMENT_CODES.THREE_CASES].sort());
+      expect(result.xpGained).toBe(100 + 50 + 100);
+      expect(tx.courseAssignment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1', userId: 'user-1', status: 'COMPLETED' }), distinct: ['courseId'] }),
+      );
+      expect(tx.course.findMany).toHaveBeenCalledWith({ where: { slug: { not: null }, NOT: { slug: { startsWith: 'dev-' } } }, select: { id: true } });
+      // Ukończenia jednego użytkownika po kolei: blokada jego wiersza przed odczytami.
+      expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.courseAssignment.findMany.mock.invocationCallOrder[0]);
+    });
+
+    it('D-202: konto z wersją 3 kończy trzeci różny kurs - backfill pomija bieżące podejście (bez odznaki), na żywo Trzy sprawy z XP', async () => {
+      const tx = buildTx({ completedCount: 3, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], syncVersion: 3 });
+      const history = [
+        { id: 'a1', courseId: 'c1', status: 'COMPLETED', score: 80, progress: null, completedAt: new Date('2026-10-01'), updatedAt: new Date('2026-10-01'), courseVersionId: null, course: { slug: null } },
+        { id: 'a2', courseId: 'c2', status: 'COMPLETED', score: 80, progress: null, completedAt: new Date('2026-10-02'), updatedAt: new Date('2026-10-02'), courseVersionId: null, course: { slug: null } },
+        { id: 'assignment-now', courseId: 'c3', status: 'COMPLETED', score: 80, progress: null, completedAt: new Date('2026-10-03'), updatedAt: new Date('2026-10-03'), courseVersionId: null, course: { slug: null } },
+      ];
+      // Atrapa honoruje `where.id.not` (wykluczenie bieżącego podejścia z backfillu) - bez niego backfill przyznałby odznakę bez XP.
+      tx.courseAssignment.findMany = jest.fn((args: { distinct?: string[]; where?: { id?: { not?: string } } }) => {
+        const rows = history.filter((row) => row.id !== args?.where?.id?.not);
+        return args?.distinct ? [...new Set(rows.map((row) => row.courseId))].map((courseId) => ({ courseId })) : rows;
+      }) as never;
+      (tx as unknown as { userBadge: { findMany: jest.Mock } }).userBadge.findMany = jest.fn().mockResolvedValue([{ badge: { code: ACHIEVEMENT_CODES.FIRST_CASE_CLOSED } }]);
+      const result = await service.awardCourseCompletion(tx as never, 'org-1', 'user-1', opts({ score: 80 }));
+      expect(result.unlockedBadges.map((b) => b.code)).toEqual([ACHIEVEMENT_CODES.THREE_CASES]);
+      expect(result.xpGained).toBe(100 + 50);
+      // Jedna próba przyznania Trzech spraw - na żywo, bez daty z backfillu (pierwsza sprawa: próba trafia na duplikat, bez XP).
+      const rows = tx.userBadge.createMany.mock.calls
+        .map((call) => call[0].data[0] as { badgeId: string; unlockedAt?: Date })
+        .filter((row) => row.badgeId === 'badge-three-cases');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].unlockedAt).toBeUndefined();
+    });
+
+    it('D-202 na żywo: trzy podejścia do tego samego kursu nie dają Trzech spraw; moduł 4 na 100% - Najpierw pytam IT', async () => {
+      const same = buildTx({ completedCount: 3, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], completedCourseIds: ['c1'], catalogCourseIds: ['c1', 'c2'] });
+      expect((await service.awardCourseCompletion(same as never, 'org-1', 'user-1', opts({ score: 80 }))).unlockedBadges).toEqual([]);
+      const m4 = buildTx({ completedCount: 1, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], completedCourseIds: ['c4'], catalogCourseIds: ['c1', 'c4'] });
+      const result = await service.awardCourseCompletion(m4 as never, 'org-1', 'user-1', opts({ score: 100, courseSlug: MODULE_4_SLUG }));
+      expect(result.unlockedBadges.map((b) => b.code)).toEqual([ACHIEVEMENT_CODES.ASK_IT_FIRST]);
+    });
+
     it('przyznaje bazowe +100 XP za ukończenie kursu bez perfekcyjnego wyniku (pierwsza sprawa już zdobyta)', async () => {
       const tx = buildTx({ completedCount: 2, existingBadgeCodes: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED] });
 
@@ -550,11 +614,58 @@ describe('GamificationService', () => {
       expect(almost.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-first-case']);
     });
 
-    it('podbicie wersji (D-174): użytkownik po syncu v2 z pierwszą sprawą i 100% w module 1 dostaje Sprawę bez skazy; potem wersja 3', async () => {
+    it('podbicie wersji (D-174): użytkownik po syncu v2 z pierwszą sprawą i 100% w module 1 dostaje Sprawę bez skazy; potem wersja bieżąca', async () => {
       const tx = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [module1({ v: 2, blocks: {}, notes: [] }, 100)], syncVersion: 2 });
       await service.syncAchievements(tx as never, 'org-1', 'user-1');
       expect(tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0].badgeId)).toEqual(['badge-flawless']);
-      expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { achievementsSyncVersion: 3 } });
+      expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { achievementsSyncVersion: ACHIEVEMENTS_SYNC_VERSION } });
+    });
+
+    it('D-202 wstecz (wersja 4): trzy różne ukończone kursy - Trzy sprawy; wszystkie moduły katalogu - Komplet; data ostatniego ukończenia', async () => {
+      const done = (id: string, courseId: string, at: string) => ({
+        id,
+        status: 'COMPLETED',
+        score: 80,
+        progress: null,
+        completedAt: new Date(at),
+        updatedAt: new Date(at),
+        courseVersionId: null,
+        course: { slug: null },
+        courseId,
+      });
+      // Powtórka c1 po spełnieniu warunku (a4) nie przesuwa daty - data to moment spełnienia (trzeci różny kurs, ostatni moduł katalogu).
+      const assignments = [done('a1', 'c1', '2026-10-01'), done('a2', 'c2', '2026-10-05'), done('a3', 'c3', '2026-10-09'), done('a4', 'c1', '2026-10-20')];
+      const tx = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments, syncVersion: 3 });
+      tx.courseAssignment.findMany = jest.fn((args: { distinct?: string[] }) =>
+        args?.distinct ? [...new Set(assignments.map((a) => a.courseId))].map((courseId) => ({ courseId })) : assignments,
+      ) as never;
+      (tx as unknown as { course: { findMany: jest.Mock } }).course = { findMany: jest.fn(() => [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }]) };
+      await service.syncAchievements(tx as never, 'org-1', 'user-1');
+      const unlocked = tx.userBadge.createMany.mock.calls.map((call) => call[0].data[0] as { badgeId: string; unlockedAt?: Date });
+      expect(unlocked.map((row) => row.badgeId).sort()).toEqual(['badge-all-cases', 'badge-three-cases']);
+      for (const row of unlocked) expect(row.unlockedAt).toEqual(new Date('2026-10-09'));
+    });
+
+    it('D-202 wstecz: Najpierw pytam IT za 100% w module 4 (data ukończenia), nie za 99%', async () => {
+      const m4 = (score: number) => ({
+        id: 'm4',
+        status: 'COMPLETED',
+        score,
+        progress: null,
+        completedAt: new Date('2026-10-15'),
+        updatedAt: new Date('2026-10-15'),
+        courseVersionId: null,
+        course: { slug: MODULE_4_SLUG },
+        courseId: 'c4',
+      });
+      const full = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [m4(100)], syncVersion: 3 });
+      await service.syncAchievements(full as never, 'org-1', 'user-1');
+      expect(full.userBadge.createMany.mock.calls.map((call) => call[0].data[0])).toEqual([
+        expect.objectContaining({ badgeId: 'badge-ask-it-first', unlockedAt: new Date('2026-10-15') }),
+      ]);
+      const almost = syncTx({ owned: [ACHIEVEMENT_CODES.FIRST_CASE_CLOSED], assignments: [m4(99)], syncVersion: 3 });
+      await service.syncAchievements(almost as never, 'org-1', 'user-1');
+      expect(almost.userBadge.createMany).not.toHaveBeenCalled();
     });
 
     it('Full Transcript wstecznie (D-174): moduł 2 ze 100% bez kompletu dowodów; Dead Air i Perfect Pitch dalej z treści wersji', async () => {
@@ -594,6 +705,23 @@ describe('GamificationService', () => {
       expect(completionAchievements({ completedCount: 1, score: 99, courseSlug: MODULE_1_SLUG })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
       expect(completionAchievements({ completedCount: 1, score: null, courseSlug: MODULE_1_SLUG })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
       expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: 'inny' })).not.toContain(ACHIEVEMENT_CODES.FLAWLESS_CASE);
+    });
+    it('D-202: Najpierw pytam IT - moduł 4 na 100%; Trzy sprawy - 3 różne kursy; Komplet - wszystkie moduły katalogu', () => {
+      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: MODULE_4_SLUG })).toContain(ACHIEVEMENT_CODES.ASK_IT_FIRST);
+      expect(completionAchievements({ completedCount: 1, score: 99, courseSlug: MODULE_4_SLUG })).not.toContain(ACHIEVEMENT_CODES.ASK_IT_FIRST);
+      expect(completionAchievements({ completedCount: 1, score: 100, courseSlug: MODULE_1_SLUG })).not.toContain(ACHIEVEMENT_CODES.ASK_IT_FIRST);
+      expect(completionAchievements({ completedCount: 5, score: null, courseSlug: null, distinctCompleted: 3 })).toContain(ACHIEVEMENT_CODES.THREE_CASES);
+      // Trzy ukończenia tego samego kursu (powtórki) to jeden różny kurs.
+      expect(completionAchievements({ completedCount: 3, score: null, courseSlug: null, distinctCompleted: 1 })).not.toContain(ACHIEVEMENT_CODES.THREE_CASES);
+      expect(completionAchievements({ completedCount: 3, score: null, courseSlug: null, distinctCompleted: 3, allModulesCompleted: true })).toContain(ACHIEVEMENT_CODES.ALL_CASES);
+      expect(completionAchievements({ completedCount: 3, score: null, courseSlug: null, distinctCompleted: 3, allModulesCompleted: false })).not.toContain(ACHIEVEMENT_CODES.ALL_CASES);
+    });
+    it('D-202: progressFacts - różne kursy, komplet tylko gdy wszystkie moduły katalogu ukończone; pusty katalog nigdy nie daje kompletu', () => {
+      expect(progressFacts(['c1', 'c1', 'c2', 'c3'], ['c1', 'c2', 'c3'])).toEqual({ distinctCompleted: 3, allModulesCompleted: true });
+      expect(progressFacts(['c1', 'c3', 'c4'], ['c1', 'c2', 'c3'])).toEqual({ distinctCompleted: 3, allModulesCompleted: false });
+      expect(progressFacts(['c1'], [])).toEqual({ distinctCompleted: 1, allModulesCompleted: false });
+      // Katalog mniejszy niż trzy moduły (np. baza testowa) - nigdy komplet, także z ukończonym kursem spoza katalogu.
+      expect(progressFacts(['c1', 'c2', 'x'], ['c1', 'c2'])).toEqual({ distinctCompleted: 3, allModulesCompleted: false });
     });
     it('easter egg: tylko wyróżnienie ciekawski-detektyw w module 1', () => {
       expect(easterEggAchievements(MODULE_1_SLUG, ['ciekawski-detektyw'])).toEqual([ACHIEVEMENT_CODES.CURIOUS_DETECTIVE]);

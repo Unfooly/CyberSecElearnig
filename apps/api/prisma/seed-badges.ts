@@ -1,5 +1,5 @@
 import { AchievementRank, AchievementScope, PrismaClient } from '@prisma/client';
-import { ACHIEVEMENT_CODES, MODULE_1_SLUG, MODULE_2_SLUG } from '../src/gamification/gamification.constants';
+import { ACHIEVEMENT_CODES, MODULE_1_SLUG, MODULE_2_SLUG, MODULE_4_SLUG } from '../src/gamification/gamification.constants';
 
 // Katalog osiągnięć (D-111). Źródłem na wdrożeniu jest MIGRACJA 20260928200000_achievements (seed nie jest częścią
 // wdrożenia); ten skrypt tylko przywraca te same wpisy (np. po ręcznej zmianie w bazie deweloperskiej). Idempotentny (upsert
@@ -108,6 +108,49 @@ const ACHIEVEMENTS = [
     moduleSlug: MODULE_2_SLUG,
     conditionText: 'Wysłuchaj do końca webinaru na stronie firmy w sprawie „Głos z helpdesku”.',
     sortOrder: 7,
+  },
+  // D-202 (migracja 20261122200000_progress_achievements).
+  {
+    code: ACHIEVEMENT_CODES.ASK_IT_FIRST,
+    title: 'Najpierw pytam IT',
+    description: 'Każde narzędzie do pracy najpierw przez IT. Ani jednej drogi na skróty.',
+    icon: 'osiagniecie-najpierw-pytam-it',
+    lockedIcon: 'osiagniecie-najpierw-pytam-it-zablokowane',
+    xpReward: 50,
+    rank: AchievementRank.LEGENDARY,
+    hidden: false,
+    scope: AchievementScope.MODULE,
+    moduleSlug: MODULE_4_SLUG,
+    conditionText: 'Odpowiedz dobrze za pierwszym razem na wszystkie pytania w jednym podejściu do sprawy „Shadow IT”.',
+    sortOrder: 8,
+  },
+  {
+    code: ACHIEVEMENT_CODES.THREE_CASES,
+    title: 'Trzy sprawy',
+    description: 'Trzy zamknięte sprawy. Wiesz już, jak działają przestępcy.',
+    icon: 'osiagniecie-trzy-sprawy',
+    lockedIcon: 'osiagniecie-trzy-sprawy-zablokowane',
+    xpReward: 50,
+    rank: AchievementRank.MILESTONE,
+    hidden: false,
+    scope: AchievementScope.GLOBAL,
+    moduleSlug: null,
+    conditionText: 'Ukończ trzy różne szkolenia.',
+    sortOrder: 9,
+  },
+  {
+    code: ACHIEVEMENT_CODES.ALL_CASES,
+    title: 'Komplet',
+    description: 'Wszystkie sprawy zamknięte. Żadna sztuczka Cię już nie zaskoczy.',
+    icon: 'osiagniecie-komplet',
+    lockedIcon: 'osiagniecie-komplet-zablokowane',
+    xpReward: 100,
+    rank: AchievementRank.LEGENDARY,
+    hidden: false,
+    scope: AchievementScope.GLOBAL,
+    moduleSlug: null,
+    conditionText: 'Ukończ wszystkie szkolenia z katalogu.',
+    sortOrder: 10,
   },
 ];
 

@@ -87,7 +87,8 @@ export default function RewardDialog({
             first.focus();
           }
         }}
-        className="relative w-full max-w-[340px] rounded-card bg-surface px-5 pb-5 pt-6 text-center text-ink shadow-[0_18px_40px_rgba(0,0,0,0.45)] motion-safe:animate-badge-pop"
+        // Kilka odznak naraz (np. trzeci kurs = osiągnięcia modułu + Trzy sprawy, D-202) na niskim ekranie - okno przewija się w sobie.
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-[340px] overflow-y-auto rounded-card bg-surface px-5 pb-5 pt-6 text-center text-ink shadow-[0_18px_40px_rgba(0,0,0,0.45)] motion-safe:animate-badge-pop"
       >
         <button
           type="button"

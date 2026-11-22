@@ -421,7 +421,7 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
     );
   }
 
-  function ContentLayoutHarness({ contentLayout, hint }: { contentLayout: 'scene' | 'slide' | 'fill'; hint?: string }) {
+  function ContentLayoutHarness({ contentLayout, hint }: { contentLayout: 'scene' | 'slide' | 'fill' | 'feature'; hint?: string }) {
     const headingRef = useRef<HTMLHeadingElement>(null);
     return (
       <PlayerStage
@@ -468,5 +468,52 @@ describe('PlayerStage: {stage} NIE remontuje się przy zmianie contentLayout (fi
     rerender(<ContentLayoutHarness contentLayout="slide" hint="B" />);
 
     expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
+  });
+
+  it('D-205 "feature" (ekran z ilustracją): szeroki slajd wyśrodkowany w pionie na całą wysokość, przewijany jak slajd; przejście do "slide" zachowuje stan', () => {
+    const { rerender } = render(<ContentLayoutHarness contentLayout="feature" hint="A" />);
+    const area = screen.getByTestId('player-content-area');
+    expect(area.className).toContain('overflow-y-auto');
+    const inner = area.querySelector(':scope > div') as HTMLElement;
+    expect(inner.className).toMatch(/min-h-full/);
+    expect(inner.className).toMatch(/justify-center/);
+    expect(inner.className).toMatch(/max-w-6xl/);
+    fireEvent.click(screen.getByRole('button', { name: /Klik/ }));
+    rerender(<ContentLayoutHarness contentLayout="slide" hint="B" />);
+    expect(screen.getByRole('button', { name: 'Klik: 1' })).toBeInTheDocument();
+  });
+});
+
+describe('PlayerStage: tło modułu (D-178, D-205)', () => {
+  function BackdropHarness({ soft }: { soft?: boolean }) {
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    return (
+      <PlayerStage
+        title="Sprawa testowa"
+        blockNumber={1}
+        totalBlocks={1}
+        completedBlocks={0}
+        stage={<p>Treść</p>}
+        narrationBar={null}
+        onBack={() => {}}
+        onForward={() => {}}
+        canBack
+        canForward
+        headingRef={headingRef}
+        backdropUrl="https://content.test/start.webp"
+        backdropSoft={soft}
+      />
+    );
+  }
+
+  it('własne tło (D-178) - bez rozmycia; tło zastępcze z okładki (D-205) - rozmyte i przyciemnione, przycięte do okna', () => {
+    const { unmount } = render(<BackdropHarness />);
+    expect(screen.getByTestId('player-backdrop').className).not.toMatch(/blur/);
+    unmount();
+    render(<BackdropHarness soft />);
+    const img = screen.getByTestId('player-backdrop');
+    expect(img.className).toMatch(/blur-xl/);
+    expect(img.className).toMatch(/brightness-/);
+    expect(document.querySelector('.player-outer')!.className).toContain('overflow-clip');
   });
 });

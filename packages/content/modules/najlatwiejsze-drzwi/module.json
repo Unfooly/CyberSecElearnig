@@ -77,7 +77,11 @@
           "feedback": "Twoja karta to twoje wejście – wszystko, co ktoś z nią zrobi, idzie na twoje konto."
         }
       ],
-      "hint": "Do biura wchodzi się własną kartą albo przez recepcję."
+      "hint": "Do biura wchodzi się własną kartą albo przez recepcję.",
+      "illustration": {
+        "image": "assets/najlatwiejsze-drzwi/images/quiz-drzwi.89c27d3f.webp",
+        "alt": "Pracownik otwiera szklane drzwi biura z czytnikiem kart, a tuż za nim próbuje wejść postać w kapturze bez karty."
+      }
     },
     {
       "id": "cos-podpiete",
@@ -119,7 +123,11 @@
           "feedback": "Tak – zapytaj, czy możesz pomóc, i daj znać IT albo recepcji."
         }
       ],
-      "hint": "Zgłaszasz to, czego nie znasz i czego nie powinno tam być."
+      "hint": "Zgłaszasz to, czego nie znasz i czego nie powinno tam być.",
+      "illustration": {
+        "image": "assets/najlatwiejsze-drzwi/images/quiz-gniazdko.e1469c91.webp",
+        "alt": "Pod stołem w pustej sali konferencyjnej nieznane urządzenie podpięte do gniazdka sieciowego, obok pendrive i czerwony znak ostrzegawczy."
+      }
     },
     {
       "id": "gosc-prosi",
@@ -161,7 +169,11 @@
           "feedback": "Tak – recepcja albo IT wydają dostęp dla gości."
         }
       ],
-      "hint": "Firma ma osobną sieć dla gości."
+      "hint": "Firma ma osobną sieć dla gości.",
+      "illustration": {
+        "image": "assets/najlatwiejsze-drzwi/images/quiz-wifi.cfe8aadf.webp",
+        "alt": "Pracowniczka wskazuje gościowi z laptopem osobny router z zielonym symbolem Wi-Fi; firmowa sieć obok jest zamknięta na kłódkę."
+      }
     },
     {
       "id": "poza-biurem",
@@ -203,7 +215,11 @@
           "feedback": "Odblokowany laptop to otwarte drzwi. Zablokuj ekran, zanim wstaniesz."
         }
       ],
-      "hint": "Szukaj tego, co działa także wtedy, gdy ktoś pozna twoje hasło."
+      "hint": "Szukaj tego, co działa także wtedy, gdy ktoś pozna twoje hasło.",
+      "illustration": {
+        "image": "assets/najlatwiejsze-drzwi/images/quiz-kawiarnia.c53ea0f6.webp",
+        "alt": "Pracownik przy laptopie w kawiarni; nad laptopem fioletowa tarcza z kłódką i przerywana linia do budynku firmy, na telefonie zielony znacznik."
+      }
     },
     {
       "id": "podsumowanie",

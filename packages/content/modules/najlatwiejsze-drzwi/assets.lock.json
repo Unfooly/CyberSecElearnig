@@ -36,6 +36,26 @@
       "original": "video/film-en.mp4",
       "hash": "cd484afc",
       "key": "assets/najlatwiejsze-drzwi/video/film-en.cd484afc.mp4"
+    },
+    "ktos-za-toba#illustration.image": {
+      "original": "images/quiz-drzwi.webp",
+      "hash": "89c27d3f",
+      "key": "assets/najlatwiejsze-drzwi/images/quiz-drzwi.89c27d3f.webp"
+    },
+    "cos-podpiete#illustration.image": {
+      "original": "images/quiz-gniazdko.webp",
+      "hash": "e1469c91",
+      "key": "assets/najlatwiejsze-drzwi/images/quiz-gniazdko.e1469c91.webp"
+    },
+    "gosc-prosi#illustration.image": {
+      "original": "images/quiz-wifi.webp",
+      "hash": "cfe8aadf",
+      "key": "assets/najlatwiejsze-drzwi/images/quiz-wifi.cfe8aadf.webp"
+    },
+    "poza-biurem#illustration.image": {
+      "original": "images/quiz-kawiarnia.webp",
+      "hash": "c53ea0f6",
+      "key": "assets/najlatwiejsze-drzwi/images/quiz-kawiarnia.c53ea0f6.webp"
     }
   }
 }

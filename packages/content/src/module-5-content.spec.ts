@@ -76,6 +76,14 @@ describe('moduł 5 „Bezpieczeństwo sieci” - treść', () => {
     expect(correct('poza-biurem')).toEqual([0, 1]);
   });
 
+  it('każde pytanie ma ilustrację (opublikowany WebP) z opisem - standard quizu (decyzja właściciela 2026-11-22, jak moduły 3 i 4)', () => {
+    for (const id of QUIZZES) {
+      const illustration = block(id).illustration as { image: string; alt: string } | undefined;
+      expect({ id, image: illustration?.image }).toEqual({ id, image: expect.stringMatching(/^assets\/najlatwiejsze-drzwi\/images\/quiz-[a-z]+\.[0-9a-f]{8}\.webp$/) });
+      expect({ id, altLong: (illustration?.alt.trim().length ?? 0) > 20 }).toEqual({ id, altLong: true });
+    }
+  });
+
   it('podsumowanie: same zasady - trzy zasady dosłownie, bez pieczęci i raportu w teczce', () => {
     const summary = block('podsumowanie');
     expect(summary.closing).toBeUndefined();

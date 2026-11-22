@@ -89,6 +89,10 @@ describe('Illustrated (D-200)', () => {
     const screenArea = screen.getByTestId('monitor-screen');
     const quiz = within(screenArea).getByTestId('illustrated');
     expect(quiz).toHaveAttribute('data-variant', 'screen');
+    // D-206: na ekranie monitora kolumny do góry (nie środka), a na niskim telefonie w pionie ilustracja schowana (próg jak w layout-check q7).
+    expect(quiz.className).toContain('sm:items-start');
+    expect(quiz.className).not.toContain('sm:items-center');
+    expect(within(quiz).getByTestId('illustration-figure').className).toContain('max-sm:[@media(max-height:820px)]:hidden');
     expect(within(quiz).getByText('Instalować?')).toBeInTheDocument();
     expect(within(quiz).getByRole('img', { name: illustration.alt })).toBeInTheDocument();
     expect(screen.getAllByTestId('illustrated')).toHaveLength(1);

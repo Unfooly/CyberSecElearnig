@@ -3,10 +3,11 @@ import { join } from 'node:path';
 import { toClientBlock } from './index';
 import { moduleWarnings, parseModule } from './node';
 
-// Moduł 4 „Na skróty” (shadow IT) - treść zgodna ze scenariuszem zatwierdzonym przez właściciela 2026-10-23
-// (docs/modules/modul-4-na-skroty.md) i trybem prostym (D-132): kolejność bloków, trzy zasady raportu dosłownie, 6 sytuacji do oceny
-// (4 „zapytaj IT”, 2 bezpieczne) z własnymi werdyktami (D-151), bez wątku kryminalnego, bez form rodzajowych w poleceniach, bez
-// prawdziwych marek i domen, klucz odpowiedzi nie idzie do klienta.
+// Moduł 4 „Na skróty” (shadow IT) - treść według nagrania właściciela `shadowit.mp4` (2026-11-22, D-201; scenariusz:
+// docs/modules/modul-4-na-skroty-nagranie.md), w trybie prostym (D-132): kolejność ekranów z nagrania, ilustracja obok tekstu i pytania
+// (D-200), postacie zatwierdzone przez właściciela (Bartek, Adam z IT, Tomek, Kasia), tablica skutków i raport z poprzedniej wersji (trzy
+// zasady dosłownie), bez wątku kryminalnego, bez form rodzajowych w poleceniach, bez prawdziwych marek i domen, klucz odpowiedzi nie idzie
+// do klienta.
 const MODULE_4 = join(__dirname, '..', 'modules', 'na-skroty', 'module.json');
 const SCENES = join(__dirname, '..', '..', '..', 'scripts', 'content', 'scenes', 'examples', 'na-skroty');
 const raw = JSON.parse(readFileSync(MODULE_4, 'utf8'));
@@ -14,6 +15,8 @@ const parsed = parseModule(raw);
 const block = (id: string) => parsed.blocks.find((b) => b.id === id)! as unknown as Record<string, unknown>;
 const context = { shuffleSeed: () => [1, 2, 3, 4] as [number, number, number, number], opaqueId: (blockId: string, itemId: string) => `x${blockId}-${itemId}` };
 type Hotspot = { id: string; x: number; y: number; width: number; height: number; required?: boolean; evidence?: boolean };
+type Option = { text: string; correct: boolean; feedback: string };
+const QUIZZES = ['instalowac', 'bez-sprawdzenia', 'poczta-na-telefonie', 'pliki-w-chmurze'];
 
 describe('moduł 4 „Na skróty” - treść', () => {
   it('waliduje się w trybie prostym, tylko po polsku, kategoria IT_HYGIENE, bez ostrzeżeń', () => {
@@ -23,39 +26,66 @@ describe('moduł 4 „Na skróty” - treść', () => {
     expect(moduleWarnings(parsed)).toEqual([]);
   });
 
-  it('kolejność bloków ze scenariusza: odprawa, biurko (4 narzędzia), skutki (4 karty), sytuacje, dwa wybory, raport', () => {
+  it('kolejność ekranów z nagrania: sytuacja, pytanie, definicja, skutki, pracownik, dwie drogi, sprzęt, finał, quiz (3 pytania), raport', () => {
     expect(parsed.blocks.map((b) => `${b.id}:${b.type}`)).toEqual([
-      'odprawa:BRIEFING',
-      'biurko:SCENE_HOTSPOTS',
+      'tabela:NARRATIVE',
+      'instalowac:QUIZ',
+      'shadow-it:NARRATIVE',
       'skutki:SCENE_HOTSPOTS',
-      'bezpieczne-czy-it:SWIPE_SORT',
-      'brak-programu:QUIZ',
-      'juz-wklejone:QUIZ',
+      'pracownik:NARRATIVE',
+      'dwie-drogi:NARRATIVE',
+      'prywatny-telefon:NARRATIVE',
+      'cala-naprzod:NARRATIVE',
+      'czas-na-quiz:NARRATIVE',
+      'bez-sprawdzenia:QUIZ',
+      'poczta-na-telefonie:QUIZ',
+      'pliki-w-chmurze:QUIZ',
       'raport:SUMMARY',
     ]);
-    const desk = block('biurko').hotspots as Hotspot[];
-    expect(desk.map((h) => h.id)).toEqual(['czat', 'chmura', 'program', 'pendrive']);
-    expect(desk.every((h) => h.required && h.evidence)).toBe(true);
     const effects = block('skutki').hotspots as (Hotspot & { content: string })[];
     expect(effects.map((h) => h.id)).toEqual(['dane', 'wirus', 'prawo', 'pliki']);
-    // Karty skutków to też dowody (z notatką): „Zabierz” przy przedmiocie bez dowodu daje komunikat „To nie jest dowód”.
     expect(effects.every((h) => h.required && h.evidence)).toBe(true);
+    // Karty skutków - walidator trybu prostego ich nie limituje, a mają się zmieścić na telefonie.
     for (const card of effects) expect(card.content.length).toBeLessThanOrEqual(140);
   });
 
-  it('definicja shadow IT ze specyfikacji w narracji wejścia biurka', () => {
-    expect((block('biurko').narration as { text: string }).text).toBe(
-      'Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła.',
-    );
+  it('każdy ekran z tekstem i każde pytanie ma ilustrację (opublikowany WebP) z opisem', () => {
+    const illustrated = parsed.blocks.filter((b) => b.type === 'NARRATIVE' || b.type === 'QUIZ');
+    expect(illustrated).toHaveLength(11);
+    for (const item of illustrated) {
+      const illustration = (item as unknown as { illustration?: { image: string; alt: string } }).illustration;
+      expect({ id: item.id, image: illustration?.image }).toEqual({ id: item.id, image: expect.stringMatching(/^assets\/na-skroty\/images\/[a-z-]+\.[0-9a-f]{8}\.webp$/) });
+      expect({ id: item.id, altLong: (illustration?.alt.trim().length ?? 0) > 20 }).toEqual({ id: item.id, altLong: true });
+    }
   });
 
-  it('raport: trzy zasady dosłownie w tekście i w opisie grafiki zamknięcia, bez powtarzania ich w `lessons`', () => {
+  it('definicja shadow IT (zatwierdzona 2026-10-19) i postacie: Bartek, Adam z IT, Tomek, Kasia', () => {
+    expect(block('shadow-it').text).toContain('Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła');
+    expect(block('dwie-drogi').text).toContain('Adama z działu IT');
+    expect(block('bez-sprawdzenia').prompt).toContain('Tomek');
+    expect(block('poczta-na-telefonie').prompt).toContain('Kasia');
+    expect(block('pliki-w-chmurze').prompt).toContain('Kasia');
+  });
+
+  it('pytania: dobra odpowiedź to zawsze „zapytaj IT”/ryzyko; wielokrotny wybór - 3 dobre i 1 zła; podpowiedź po dwóch błędach', () => {
+    const options = (id: string) => block(id).options as Option[];
+    for (const id of QUIZZES) expect(typeof block(id).hint).toBe('string');
+    expect(options('instalowac').find((o) => o.correct)!.text).toBe('Najpierw zapytać dział IT, czy może z niego korzystać.');
+    expect(block('bez-sprawdzenia').multiple).toBe(true);
+    expect(options('bez-sprawdzenia').filter((o) => o.correct)).toHaveLength(3);
+    expect(options('bez-sprawdzenia').filter((o) => !o.correct).map((o) => o.text)).toEqual(['Nic się nie stanie, skoro program działa.']);
+    expect(options('pliki-w-chmurze').find((o) => o.correct)!.text).toBe('Najpierw zapytać IT o zgodę i firmowe rozwiązanie.');
+  });
+
+  it('raport: trzy zasady dosłownie w tekście i w opisie grafiki zamknięcia, nowa historia (Bartek zapytał IT), bez `lessons`', () => {
     const rules = [
       'Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.',
       'Dane firmy i klientów tylko w firmowych narzędziach – także w AI.',
       'Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.',
     ];
     expect(block('raport').lessons).toBeUndefined();
+    expect(block('raport').text).toContain('Zamiast instalować program z internetu, Bartek zapytał dział IT.');
+    expect(block('raport').text).not.toMatch(/PDF|czatu/);
     const closing = block('raport').closing as Record<string, string>;
     for (const rule of rules) {
       expect(block('raport').text).toContain(rule);
@@ -65,14 +95,12 @@ describe('moduł 4 „Na skróty” - treść', () => {
     expect(closing.stampAlt).toContain('SPRAWA ZAMKNIĘTA');
   });
 
-  it('współrzędne hotspotów obu scen i slotów raportu = *.hotspots.json kompozytora (poziomo i pionowo)', () => {
+  it('współrzędne hotspotów tablicy skutków i slotów raportu = *.hotspots.json kompozytora (poziomo i pionowo)', () => {
     const rects = (name: string) =>
       Object.fromEntries((JSON.parse(readFileSync(join(SCENES, `${name}.hotspots.json`), 'utf8')) as { id: string; x: number; y: number; w: number; h: number }[]).map(({ id, ...r }) => [id, r]));
     const asRects = (list: Hotspot[]) => Object.fromEntries(list.map((h) => [h.id, { x: h.x, y: h.y, w: h.width, h: h.height }]));
-    for (const [id, scene] of [['biurko', 'biurko-bartka'], ['skutki', 'tablica-skutki']]) {
-      expect(asRects(block(id).hotspots as Hotspot[])).toEqual(rects(scene));
-      expect(asRects(block(id).portraitHotspots as Hotspot[])).toEqual(rects(`${scene}-pion`));
-    }
+    expect(asRects(block('skutki').hotspots as Hotspot[])).toEqual(rects('tablica-skutki'));
+    expect(asRects(block('skutki').portraitHotspots as Hotspot[])).toEqual(rects('tablica-skutki-pion'));
     const slotIds = { evidence: 'slot-dowody', time: 'slot-czas', xp: 'slot-xp', lessons: 'slot-wnioski', signature: 'podpis', stamp: 'slot-pieczec', note: 'slot-liscik' };
     const closing = block('raport').closing as { slots: Record<string, unknown>; portrait: { slots: Record<string, unknown> } };
     const byPart = (slots: Record<string, unknown>) => Object.fromEntries(Object.entries(slotIds).map(([slot, part]) => [part, slots[slot]]));
@@ -80,34 +108,14 @@ describe('moduł 4 „Na skróty” - treść', () => {
     expect(byPart(closing.portrait.slots)).toEqual(rects('zamkniecie-raport-pion'));
   });
 
-  it('sytuacje: 6 kart-sytuacji (4 „zapytaj IT”, 2 bezpieczne), werdykty „Zapytaj IT” / „Bezpieczne”, komentarz ≤ 140 znaków', () => {
-    const swipe = block('bezpieczne-czy-it') as { labels: unknown; cards: { channel: string; correct: string; feedback: string }[] };
-    expect(swipe.labels).toEqual({ suspicious: 'Zapytaj IT', ok: 'Bezpieczne' });
-    expect(swipe.cards).toHaveLength(6);
-    expect(swipe.cards.every((c) => c.channel === 'situation')).toBe(true);
-    expect(swipe.cards.filter((c) => c.correct === 'suspicious')).toHaveLength(4);
-    expect(swipe.cards.filter((c) => c.correct === 'ok')).toHaveLength(2);
-    for (const card of swipe.cards) expect(card.feedback.length).toBeLessThanOrEqual(140);
-  });
-
-  it('wybory: jedna dobra odpowiedź (zgłoszenie do IT), podpowiedź po dwóch błędach; skasowanie historii nie usuwa danych', () => {
-    const options = (id: string) => block(id).options as { text: string; correct: boolean; feedback: string }[];
-    for (const id of ['brak-programu', 'juz-wklejone']) {
-      expect(options(id).filter((o) => o.correct)).toHaveLength(1);
-      expect(typeof block(id).hint).toBe('string');
-    }
-    expect(options('brak-programu').find((o) => o.correct)!.text).toBe('Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.');
-    expect(options('juz-wklejone').find((o) => o.correct)!.text).toBe('Od razu zgłaszam to do IT.');
-    expect(options('juz-wklejone').find((o) => /historię/.test(o.text))!.feedback).toBe('Skasowanie historii u siebie nie usuwa danych z serwerów narzędzia.');
-  });
-
   it('polecenia i pytania bez form rodzajowych (-łeś/-łaś) - decyzja właściciela 2026-10-23', () => {
     const prompts = parsed.blocks.flatMap((b) => {
-      const item = b as unknown as { tip?: string; prompt?: string; options?: { text: string }[]; cards?: { text: string }[] };
-      return [item.tip, item.prompt, ...(item.options ?? []).map((o) => o.text), ...(item.cards ?? []).map((c) => c.text)].filter((t): t is string => !!t);
+      const item = b as unknown as { tip?: string; prompt?: string; text?: string; options?: { text: string }[] };
+      // Teksty ekranów NARRATIVE też mówią do gracza.
+      const narrative = b.type === 'NARRATIVE' ? item.text : undefined;
+      return [item.tip, item.prompt, narrative, ...(item.options ?? []).map((o) => o.text)].filter((t): t is string => !!t);
     });
     expect(prompts.length).toBeGreaterThan(10);
-    // Czas przeszły 2. osoby (zrobiłeś/zrobiłaś); „-łam” bywa czasem teraźniejszym („wysyłam”) - odpowiedzi są w czasie teraźniejszym.
     for (const text of prompts) expect(text).not.toMatch(/\p{L}+(łeś|łaś)\b/u);
   });
 
@@ -118,11 +126,11 @@ describe('moduł 4 „Na skróty” - treść', () => {
     for (const domain of domains) expect(domain).toMatch(/\.(test|example)$/);
   });
 
-  it('klient nie dostaje klucza odpowiedzi ani komentarzy do kart', () => {
-    const swipe = toClientBlock(block('bezpieczne-czy-it') as never, context);
-    expect(JSON.stringify(swipe)).not.toMatch(/"correct"|"feedback"|"hint"/);
-    for (const id of ['brak-programu', 'juz-wklejone']) {
-      expect(JSON.stringify(toClientBlock(block(id) as never, context))).not.toMatch(/"correct"|"feedback"|"hint"/);
+  it('klient nie dostaje klucza odpowiedzi, komentarzy ani podpowiedzi; ilustracja tak', () => {
+    for (const id of QUIZZES) {
+      const client = toClientBlock(block(id) as never, context) as Record<string, unknown>;
+      expect(JSON.stringify(client)).not.toMatch(/"correct"|"feedback"|"hint"/);
+      expect(client.illustration).toEqual(block(id).illustration);
     }
   });
 });

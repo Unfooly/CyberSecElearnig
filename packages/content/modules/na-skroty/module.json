@@ -12,9 +12,9 @@
     "pl"
   ],
   "objectives": [
-    "Wiedzieć, czym jest shadow IT: narzędzie do pracy, którego firma nie sprawdziła i nie zatwierdziła.",
+    "Wiedzieć, czym jest shadow IT: narzędzie albo sprzęt do pracy, którego firma nie sprawdziła i nie zatwierdziła.",
     "Znać skutki: dane firmy u obcej firmy, złośliwe dodatki, naruszenie danych osobowych, utrata plików.",
-    "Przed użyciem nowego programu, strony albo AI zapytać IT.",
+    "Przed użyciem nowego programu, strony, AI albo prywatnego sprzętu zapytać IT.",
     "Gdy coś poszło nie tak – od razu zgłosić to do IT."
   ],
   "thumbnail": "assets/na-skroty/images/miniatura.b6e4b1d8.webp",
@@ -27,162 +27,47 @@
   },
   "blocks": [
     {
-      "id": "odprawa",
-      "type": "BRIEFING",
-      "title": "Odprawa",
-      "steps": [
-        {
-          "kind": "typewriter",
-          "text": "Wieczór przed ważnym spotkaniem. Bartek Lis z marketingu ma do rana przygotować raport. Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu. Takie skróty mają swoją nazwę: shadow IT. Zobacz, czego użył.",
-          "cta": "Zobacz biurko Bartka",
-          "narration": {
-            "voice": "komisarz",
-            "text": "Wieczór przed ważnym spotkaniem. Bartek Lis z marketingu ma do rana przygotować raport. Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu. Takie skróty mają swoją nazwę: shadow IT. Zobacz, czego użył.",
-            "audioUrl": "audio/na-skroty/v1/odprawa/d2d92051ac7fa472.mp3",
-            "durationMs": 16069,
-            "cues": [
-              {
-                "text": "Wieczór przed ważnym spotkaniem.",
-                "startMs": 0
-              },
-              {
-                "text": "Bartek Lis z marketingu ma do rana przygotować raport.",
-                "startMs": 2078
-              },
-              {
-                "text": "Chciał zdążyć, więc sięgnął po kilka darmowych narzędzi z internetu.",
-                "startMs": 6107
-              },
-              {
-                "text": "Takie skróty mają swoją nazwę: shadow IT.",
-                "startMs": 11146
-              },
-              {
-                "text": "Zobacz, czego użył.",
-                "startMs": 14524
-              }
-            ]
-          },
-          "image": "assets/na-skroty/scenes/pl/odprawa.5e6b7bef.svg",
-          "alt": "Wieczór, biurko w świetle lampki: otwarty laptop z dokumentem „Raport na jutro, 9:00”, obok kubek kawy i okulary.",
-          "portrait": {
-            "image": "assets/na-skroty/scenes/pl/odprawa-pion.02da70ab.svg"
-          }
-        }
-      ]
+      "id": "tabela",
+      "type": "NARRATIVE",
+      "title": "Tabela na jutro",
+      "text": "Bartek z marketingu ma do rana przygotować analizę kampanii: 40 tysięcy wierszy danych klientów. Sam nie zdąży, więc szuka w internecie czegoś, co zrobi to za niego.",
+      "illustration": {
+        "image": "assets/na-skroty/images/tabela.4f854a93.webp",
+        "alt": "Bartek wieczorem przy biurku, z ręką na czole; na laptopie ogromna tabela, obok sterty papierów."
+      }
     },
     {
-      "id": "biurko",
-      "type": "SCENE_HOTSPOTS",
-      "title": "Co to jest shadow IT",
-      "tip": "Wskaż cztery narzędzia, których Bartek użył bez wiedzy IT.",
-      "narration": {
-        "voice": "komisarz",
-        "text": "Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła.",
-        "audioUrl": "audio/na-skroty/v1/biurko/7b5b44b3771d5fbe.mp3",
-        "durationMs": 7988,
-        "cues": [
-          {
-            "text": "Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła.",
-            "startMs": 0
-          }
-        ]
-      },
-      "image": "assets/na-skroty/scenes/pl/biurko-bartka.8bb3cb0e.svg",
-      "imageAlt": "Laptop Bartka: okno czatu AI „CzatPomocnik” z prośbą „Uporządkuj tabelę klientów” i wklejoną, rozmytą tabelą, okno dysku „MojaChmura” z folderem „Raporty firmowe”, ikona programu „PDF Zamiennik Free” na pulpicie i pomarańczowy pendrive w porcie z prawej strony laptopa.",
-      "imagePortrait": "assets/na-skroty/scenes/pl/biurko-bartka-pion.9b1bc476.svg",
-      "portraitHotspots": [
+      "id": "instalowac",
+      "type": "QUIZ",
+      "title": "Program z internetu",
+      "prompt": "Darmowy program AI obiecuje analizę jednym kliknięciem – co powinien zrobić Bartek?",
+      "options": [
         {
-          "id": "czat",
-          "x": 23.8,
-          "y": 5,
-          "width": 68.9,
-          "height": 32.5
+          "text": "Zainstalować – ma świetne opinie, więc jest bezpieczny.",
+          "correct": false,
+          "feedback": "Opinie w internecie nie mówią, co program zrobi z danymi firmy ani czy nie ma ukrytych dodatków."
         },
         {
-          "id": "chmura",
-          "x": 23.8,
-          "y": 39.4,
-          "width": 68.9,
-          "height": 20
-        },
-        {
-          "id": "program",
-          "x": 23.8,
-          "y": 60.6,
-          "width": 68.9,
-          "height": 10.9
-        },
-        {
-          "id": "pendrive",
-          "x": 0.1,
-          "y": 70.6,
-          "width": 24.9,
-          "height": 11.4
+          "text": "Najpierw zapytać dział IT, czy może z niego korzystać.",
+          "correct": true,
+          "feedback": "Tak – IT sprawdzi program albo wskaże bezpieczne narzędzie, które firma już ma."
         }
       ],
-      "hotspots": [
-        {
-          "id": "czat",
-          "label": "CzatPomocnik",
-          "x": 8.1,
-          "y": 8,
-          "width": 41.3,
-          "height": 60,
-          "content": "Bartek wkleił do darmowego czatu AI tabelę z danymi klientów. Te dane są teraz na serwerach obcej firmy.",
-          "evidence": true,
-          "required": true,
-          "note": {
-            "text": "Dane klientów wklejone do darmowego czatu AI.",
-            "kind": "web"
-          }
-        },
-        {
-          "id": "chmura",
-          "label": "MojaChmura",
-          "x": 51.9,
-          "y": 8,
-          "width": 30,
-          "height": 36,
-          "content": "Folder „Raporty firmowe” leży na prywatnym dysku w chmurze. Firma nie ma do niego dostępu ani kopii zapasowej.",
-          "evidence": true,
-          "required": true,
-          "note": {
-            "text": "Firmowe raporty na prywatnym dysku w chmurze.",
-            "kind": "web"
-          }
-        },
-        {
-          "id": "program",
-          "label": "PDF Zamiennik Free",
-          "x": 51.6,
-          "y": 48.6,
-          "width": 16.3,
-          "height": 29,
-          "content": "Program ściągnięty z internetu. Nikt w firmie go nie sprawdził – może mieć ukryte dodatki.",
-          "evidence": true,
-          "required": true,
-          "note": {
-            "text": "Program z internetu, którego nikt nie sprawdził.",
-            "kind": "item"
-          }
-        },
-        {
-          "id": "pendrive",
-          "label": "Pendrive",
-          "x": 88,
-          "y": 75.7,
-          "width": 11.6,
-          "height": 20,
-          "content": "Prywatny pendrive w firmowym laptopie. Nie wiadomo, co na nim jest, a firmowe pliki łatwo z nim zgubić.",
-          "evidence": true,
-          "required": true,
-          "note": {
-            "text": "Prywatny pendrive w firmowym laptopie.",
-            "kind": "item"
-          }
-        }
-      ]
+      "hint": "Kto w firmie sprawdza programy, zanim ktoś je zainstaluje?",
+      "illustration": {
+        "image": "assets/na-skroty/images/program.293ae856.webp",
+        "alt": "Laptop ze stroną pobierania programu: fioletowa ikona z gwiazdką, gwiazdki ocen i duży przycisk pobierania."
+      }
+    },
+    {
+      "id": "shadow-it",
+      "type": "NARRATIVE",
+      "title": "Co to jest shadow IT",
+      "text": "Shadow IT to każde narzędzie, którego używasz do pracy, a którego firma nie sprawdziła i nie zatwierdziła: program, aplikacja, czat AI, prywatna chmura albo pendrive.\n\nNawet jeśli pomaga szybciej skończyć pracę, może być niebezpieczne. Dlatego zanim zaczniesz z niego korzystać, **zapytaj dział IT**.",
+      "illustration": {
+        "image": "assets/na-skroty/images/shadow-it.7309f47f.webp",
+        "alt": "Laptop otoczony ikonami: chmura, czat, gwiazdka AI, pendrive, folder i kłódka; wokół ikon czerwone przerywane linie ostrzegawcze."
+      }
     },
     {
       "id": "skutki",
@@ -302,155 +187,139 @@
       ]
     },
     {
-      "id": "bezpieczne-czy-it",
-      "type": "SWIPE_SORT",
-      "title": "Bezpieczne czy zapytaj IT?",
-      "prompt": "Oceń każdą sytuację: bezpieczne czy najpierw zapytać IT?",
-      "labels": {
-        "suspicious": "Zapytaj IT",
-        "ok": "Bezpieczne"
-      },
-      "narration": {
-        "voice": "komisarz",
-        "text": "Oto sytuacje z pracy. Przesuń kartę w lewo, jeśli najpierw trzeba zapytać IT, albo w prawo, jeśli to bezpieczne.",
-        "audioUrl": "audio/na-skroty/v1/bezpieczne-czy-it/13de8f9627898319.mp3",
-        "durationMs": 7941,
-        "cues": [
-          {
-            "text": "Oto sytuacje z pracy.",
-            "startMs": 0
-          },
-          {
-            "text": "Przesuń kartę w lewo, jeśli najpierw trzeba zapytać IT, albo w prawo, jeśli to bezpieczne.",
-            "startMs": 1753
-          }
-        ]
-      },
-      "cards": [
-        {
-          "id": "umowa",
-          "channel": "situation",
-          "text": "Wklejam umowę z klientem do darmowego czatu AI, żeby ją streścić.",
-          "correct": "suspicious",
-          "feedback": "Umowa trafiłaby na serwery obcej firmy. Do dokumentów używaj narzędzi zatwierdzonych przez IT."
-        },
-        {
-          "id": "dysk",
-          "channel": "situation",
-          "text": "Zapisuję raport na firmowym dysku.",
-          "correct": "ok",
-          "feedback": "Tak – firmowy dysk ma kopię zapasową, a dostęp mają tylko osoby z firmy."
-        },
-        {
-          "id": "konwerter",
-          "channel": "situation",
-          "text": "Zamieniam listę płac na PDF w darmowym konwerterze online.",
-          "correct": "suspicious",
-          "feedback": "Lista płac to dane osobowe – nie wysyłaj jej na obce strony. IT wskaże firmowe narzędzie."
-        },
-        {
-          "id": "vpn",
-          "channel": "situation",
-          "text": "Instaluję w przeglądarce rozszerzenie „Darmowy VPN”.",
-          "correct": "suspicious",
-          "feedback": "Takie rozszerzenie widzi wszystko, co robisz w przeglądarce. Zapytaj IT przed instalacją."
-        },
-        {
-          "id": "katalog",
-          "channel": "situation",
-          "text": "Instaluję program z firmowego katalogu aplikacji.",
-          "correct": "ok",
-          "feedback": "Tak – programy z firmowego katalogu IT już sprawdziło."
-        },
-        {
-          "id": "prywatna-poczta",
-          "channel": "situation",
-          "text": "Wysyłam plik z ofertą na prywatną skrzynkę, żeby skończyć w domu.",
-          "correct": "suspicious",
-          "feedback": "Prywatna poczta to już poza firmą. Zapytaj IT o bezpieczny dostęp z domu."
-        }
-      ],
-      "hint": "Czy firma sprawdziła to narzędzie? Jeśli nie – zapytaj IT."
+      "id": "pracownik",
+      "type": "NARRATIVE",
+      "title": "A co z Tobą?",
+      "text": "Shadow IT to ryzyko nie tylko dla firmy. Jeśli przez niesprawdzony program dojdzie do incydentu, firma może na czas wyjaśnienia sprawy zablokować dostęp do części systemów.\n\nDlatego lepiej zapytać wcześniej. IT woli pomóc na początku niż sprzątać na końcu.",
+      "illustration": {
+        "image": "assets/na-skroty/images/pracownik.7518ff0b.webp",
+        "alt": "Bartek przy biurku patrzy z niepokojem na laptopa, na którego ekranie jest duża kłódka – dostęp zablokowany."
+      }
     },
     {
-      "id": "brak-programu",
-      "type": "QUIZ",
-      "title": "Programu nie ma na liście firmowej",
-      "prompt": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu – co robisz?",
-      "narration": {
-        "voice": "komisarz",
-        "text": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu. Co robisz?",
-        "audioUrl": "audio/na-skroty/v1/brak-programu/1b542188d4658abc.mp3",
-        "durationMs": 5108,
-        "cues": [
-          {
-            "text": "Potrzebujesz programu do edycji PDF, a nie ma go w firmowym katalogu.",
-            "startMs": 0
-          },
-          {
-            "text": "Co robisz?",
-            "startMs": 4226
-          }
-        ]
-      },
-      "options": [
-        {
-          "text": "Pobieram pierwszy darmowy program, jaki znajdę w internecie.",
-          "correct": false,
-          "feedback": "Darmowe programy z internetu bywają z ukrytymi dodatkami – firma nie wie, co instalujesz."
-        },
-        {
-          "text": "Zgłaszam potrzebę do IT i piszę, do czego jest mi potrzebny.",
-          "correct": true,
-          "feedback": "Tak – IT znajdzie bezpieczne narzędzie albo sprawdzi to, którego chcesz użyć."
-        },
-        {
-          "text": "Proszę kolegę, żeby zainstalował mi swój program.",
-          "correct": false,
-          "feedback": "To nadal program, którego nikt nie sprawdził – decyzję zostaw IT."
-        }
-      ],
-      "hint": "Kto w firmie sprawdza i zatwierdza programy?"
+      "id": "dwie-drogi",
+      "type": "NARRATIVE",
+      "title": "Lepiej zapytać",
+      "text": "Bartek pisze do Adama z działu IT. Adam pokazuje mu dwie drogi.\n\n**Droga 1:** sprawdź, czy firma ma już takie narzędzie – w firmowym katalogu są programy sprawdzone przez IT.\n\n**Droga 2:** jeśli go nie ma, zgłoś potrzebę do IT i napisz, do czego ma służyć. IT sprawdzi nowe narzędzie i powie, czy możesz z niego korzystać.",
+      "illustration": {
+        "image": "assets/na-skroty/images/dwie-drogi.c8fe42b4.webp",
+        "alt": "Adam z działu IT, w okularach i musztardowym kardiganie, pokazuje tablicę: z lewej programy z zielonymi znacznikami, z prawej formularz zgłoszenia."
+      }
     },
     {
-      "id": "juz-wklejone",
+      "id": "prywatny-telefon",
+      "type": "NARRATIVE",
+      "title": "Prywatny sprzęt w pracy",
+      "text": "To samo dotyczy sprzętu. Prywatny telefon, laptop czy pendrive w firmowej sieci albo ze służbową pocztą to też shadow IT, jeśli firma na to nie pozwala.\n\nSprawdź firmowe zasady, a w razie wątpliwości – **zapytaj IT**.",
+      "illustration": {
+        "image": "assets/na-skroty/images/prywatny-telefon.64ff06a1.webp",
+        "alt": "Prywatny telefon w kolorowym etui leży przed firmowym monitorem; na ekranie symbol Wi-Fi i tarcza ze znakiem zapytania."
+      }
+    },
+    {
+      "id": "cala-naprzod",
+      "type": "NARRATIVE",
+      "title": "Cała naprzód!",
+      "text": "Adam znalazł w firmowym katalogu program do analizy danych, sprawdzony przez IT. Bartek skończył raport na czas, a dane klientów zostały w firmie.",
+      "illustration": {
+        "image": "assets/na-skroty/images/cala-naprzod.13d91db5.webp",
+        "alt": "Bartek przy biurku, na laptopie dokument z dużym zielonym znacznikiem; obok stoi Adam z działu IT z uniesionym kciukiem."
+      }
+    },
+    {
+      "id": "czas-na-quiz",
+      "type": "NARRATIVE",
+      "title": "Czas na quiz",
+      "text": "Sprawdź, czy rozpoznasz shadow IT w codziennej pracy. Przed Tobą kilka sytuacji z biura.",
+      "illustration": {
+        "image": "assets/na-skroty/images/quiz-start.da23c402.webp",
+        "alt": "Adam z działu IT z tabletem w ręce, obok duży fioletowy znak zapytania."
+      }
+    },
+    {
+      "id": "bez-sprawdzenia",
       "type": "QUIZ",
-      "title": "Dane już wklejone",
-      "prompt": "Dane klientów trafiły już do darmowego czatu AI – co teraz?",
-      "narration": {
-        "voice": "komisarz",
-        "text": "Dane klientów trafiły już do darmowego czatu AI. Co teraz?",
-        "audioUrl": "audio/na-skroty/v1/juz-wklejone/ebd6867505cc1cff.mp3",
-        "durationMs": 4040,
-        "cues": [
-          {
-            "text": "Dane klientów trafiły już do darmowego czatu AI.",
-            "startMs": 0
-          },
-          {
-            "text": "Co teraz?",
-            "startMs": 3216
-          }
-        ]
-      },
+      "title": "Program bez sprawdzenia",
+      "prompt": "Tomek zainstalował program bez sprawdzenia – co może się stać?",
+      "multiple": true,
       "options": [
         {
-          "text": "Kasuję historię rozmowy i nic nie mówię.",
-          "correct": false,
-          "feedback": "Skasowanie historii u siebie nie usuwa danych z serwerów narzędzia."
-        },
-        {
-          "text": "Od razu zgłaszam to do IT.",
+          "text": "Wyciek danych firmy.",
           "correct": true,
-          "feedback": "Tak – liczy się czas. IT oceni, co się stało, i pomoże ograniczyć skutki."
+          "feedback": "Tak – niesprawdzony program może wysyłać dane firmy na obce serwery."
         },
         {
-          "text": "Czekam, czy coś się stanie.",
+          "text": "Wirus na komputerze.",
+          "correct": true,
+          "feedback": "Tak – darmowe programy z internetu bywają zainfekowane."
+        },
+        {
+          "text": "Luka w zabezpieczeniach firmy.",
+          "correct": true,
+          "feedback": "Tak – programu, o którym IT nie wie, nikt w firmie nie aktualizuje ani nie pilnuje, więc może otworzyć furtkę do sieci firmy."
+        },
+        {
+          "text": "Nic się nie stanie, skoro program działa.",
           "correct": false,
-          "feedback": "Jeśli to dane osobowe, firma ma 72 godziny na zgłoszenie naruszenia – czekanie zabiera ten czas."
+          "feedback": "To, że program działa, nie znaczy, że jest bezpieczny."
         }
       ],
-      "hint": "Im szybciej IT się dowie, tym więcej da się zrobić."
+      "hint": "Pomyśl o danych firmy i o bezpieczeństwie komputera.",
+      "illustration": {
+        "image": "assets/na-skroty/images/quiz-tomek.4460be8b.webp",
+        "alt": "Tomek, ubrany na niebiesko, stoi zamyślony przy biurku; na laptopie pasek instalacji i czerwony trójkąt ostrzegawczy."
+      }
+    },
+    {
+      "id": "poczta-na-telefonie",
+      "type": "QUIZ",
+      "title": "Poczta na prywatnym telefonie",
+      "prompt": "Kasia czyta służbową pocztę na prywatnym telefonie bez zgody IT – czym to grozi?",
+      "options": [
+        {
+          "text": "Niczym, dopóki nie zgubi telefonu.",
+          "correct": false,
+          "feedback": "Ryzyko jest od razu: prywatny telefon nie ma firmowych zabezpieczeń, a aplikacje mogą mieć dostęp do poczty."
+        },
+        {
+          "text": "To ryzyko dla firmy – służbowa poczta trafia na niesprawdzone urządzenie.",
+          "correct": true,
+          "feedback": "Tak – zgubiony albo zainfekowany telefon to dostęp do służbowej poczty."
+        }
+      ],
+      "hint": "Czy firma wie, jak zabezpieczony jest ten telefon?",
+      "illustration": {
+        "image": "assets/na-skroty/images/quiz-telefon.d31499e3.webp",
+        "alt": "Dłoń trzyma fioletowy prywatny telefon; na ekranie skrzynka pocztowa z kopertą, przy krawędzi czerwony znak ostrzegawczy."
+      }
+    },
+    {
+      "id": "pliki-w-chmurze",
+      "type": "QUIZ",
+      "title": "Pliki w chmurze",
+      "prompt": "Kasia chce mieć służbowe pliki w prywatnej chmurze – co powinna zrobić?",
+      "options": [
+        {
+          "text": "Wybrać chmurę z najlepszymi opiniami w internecie.",
+          "correct": false,
+          "feedback": "Opinie nie mówią, czy dane firmy będą tam bezpieczne – o tym decyduje IT."
+        },
+        {
+          "text": "Najpierw zapytać IT o zgodę i firmowe rozwiązanie.",
+          "correct": true,
+          "feedback": "Tak – IT wskaże firmową chmurę albo sprawdzi tę, której Kasia chce użyć."
+        },
+        {
+          "text": "Zapytać znajomych, z której chmury korzystają.",
+          "correct": false,
+          "feedback": "Znajomi nie odpowiadają za dane firmy – zapytaj IT."
+        }
+      ],
+      "hint": "Kto w firmie decyduje, gdzie mogą leżeć służbowe pliki?",
+      "illustration": {
+        "image": "assets/na-skroty/images/quiz-chmura.ed77618f.webp",
+        "alt": "Kasia w domu przy laptopie, zamyślona; nad laptopem chmura z folderem i czerwonym znakiem zapytania."
+      }
     },
     {
       "id": "raport",
@@ -472,7 +341,7 @@
           }
         ]
       },
-      "text": "Bartek zgłosił do IT program do PDF i dane wklejone do czatu. IT pomogło ograniczyć skutki, a do raportu znalazło firmowe narzędzia. Następnym razem Bartek zacznie od pytania.\n\n**Trzy zasady**\n\n1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.\n2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI.\n3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.",
+      "text": "Zamiast instalować program z internetu, Bartek zapytał dział IT. Adam znalazł w firmowym katalogu sprawdzone narzędzie – raport był gotowy na czas, a dane klientów zostały w firmie.\n\n**Trzy zasady**\n\n1. Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.\n2. Dane firmy i klientów tylko w firmowych narzędziach – także w AI.\n3. Coś poszło nie tak? Zgłoś od razu. Liczy się czas, nie szukanie winnych.",
       "closing": {
         "image": "assets/na-skroty/scenes/pl/zamkniecie-raport.7c4178d9.svg",
         "stamp": "assets/na-skroty/scenes/pl/zamkniecie-pieczec.eb11c289.svg",

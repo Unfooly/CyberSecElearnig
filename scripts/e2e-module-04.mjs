@@ -1,10 +1,10 @@
 // E2E w przeglądarce (Playwright) - pełne przejście modułu 4 („Shadow IT”, do D-172 „Na skróty”; packages/content/modules/na-skroty, shadow IT, tryb prosty
 // D-132) zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-03.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko
-// kursu stworzonego przez ten przebieg). Cel: odprawa (statyczna scena - laptop z raportem na jutro), biurko Bartka (4 narzędzia-dowody),
-// tablica skutków (4 karty-dowody), sortowanie 6 sytuacji z werdyktami „Zapytaj IT” / „Bezpieczne” (D-151; 1 gestem, reszta
-// przyciskami), dwa wybory z natychmiastową oceną (najpierw zła odpowiedź - „Nie tym razem”, potem dobra), a po nich - bez ekranu
-// raportu (D-169) - ekran końca (D-165) z trzema zasadami na wynos; przed odprawą ekran startu (D-163). Bez błędów strony, konsoli i
-// 5xx, a w odpowiedziach API nigdy pola `correct`.
+// kursu stworzonego przez ten przebieg). Cel - przebieg według nagrania właściciela (D-201): ekran startu (D-163), po kolei bloki z
+// module.json - ekrany NARRATIVE z ilustracją (D-200), pytania w monitorze z ilustracją (najpierw zła odpowiedź - „Nie tym razem” i
+// zdanie z treści, potem dobra; wielokrotny wybór przez „Sprawdź”), tablica skutków (4 karty-dowody), a po ostatnim pytaniu - bez ekranu
+// raportu (D-169) - ekran końca (D-165) z trzema zasadami na wynos i okienkiem nagrody (D-199). Bez błędów strony, konsoli i 5xx, a w
+// odpowiedziach API nigdy pola `correct`.
 //
 // Nagrania i grafiki modułu 4 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
@@ -28,7 +28,6 @@ const SLUG = 'na-skroty';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
 const text = (value) => (typeof value === 'string' ? value : value?.pl);
 const MODULE_TITLE = text(MODULE.title);
-const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
 // Etykieta z treści jako początek nazwy przycisku (znaki specjalne wyrażeń regularnych dosłownie).
 const startsWith = (label) => new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
@@ -168,30 +167,58 @@ try {
       img.addEventListener('error', () => resolve(false));
     })));
 
-  // --- 1. Odprawa (BRIEFING: jedna statyczna scena - laptop z „Raport na jutro, 9:00”; dalej „Dalej” w pasku, D-106) -------------
-  const briefingScene = page.locator('img[alt*="Raport na jutro, 9:00"]');
-  await briefingScene.first().waitFor();
-  await page.getByTestId('briefing-scene-text').filter({ hasText: /Bartek Lis z marketingu/ }).waitFor();
-  step('BRIEFING: odprawa - scena z laptopem (grafika z opisem alt załadowana) i tekst narracji', await imageLoaded(briefingScene.first()));
-  step('BRIEFING: scena bez klikalnego przedmiotu (bez hotspotu)', (await page.getByTestId('briefing-hotspot').count()) === 0);
-  await nextEnabled().waitFor();
-  await page.locator('.briefing-caret').waitFor({ state: 'detached', timeout: 60000 });
-  const typed = await page.getByTestId('briefing-scene-text').evaluate((frame) => {
-    const box = frame.getBoundingClientRect();
-    const visible = [...frame.querySelectorAll('p')].find((p) => !p.classList.contains('invisible'))?.textContent ?? '';
-    return { visible, overflow: frame.scrollHeight - frame.clientHeight, inView: box.top >= 0 && box.bottom <= window.innerHeight, pageScroll: document.documentElement.scrollHeight - window.innerHeight };
-  });
-  step(
-    'BRIEFING: po zakończeniu pisania pełny tekst w ramce, bez przewijania, w ekranie',
-    typed.visible.includes('shadow IT') && typed.overflow <= 1 && typed.inView && typed.pageScroll <= 1,
-    JSON.stringify({ ...typed, visible: `${typed.visible.length} znaków` }),
-  );
-  await shot('1-odprawa');
-  await goNext();
+  // Ostatnie pytanie zapisuje „Dalej”, a zaraz po nim odtwarzacz sam zapisuje raport (SUMMARY bez ekranu, D-169) - ten zapis kończy kurs.
+  const completion = completionResponse(page, courseId, 600000);
+  // Ilustracja obok tekstu i pytania (D-200): wczytana, z opisem z treści.
+  const illustrationOk = async (block) => {
+    const img = page.locator(`[data-testid="illustration"][alt="${block.illustration.alt}"]`);
+    await img.first().waitFor();
+    return imageLoaded(img.first());
+  };
 
-  // --- 2-3. Biurko Bartka i tablica skutków (SCENE_HOTSPOTS, po 4 cele-dowody; „Zabierz” dopisuje notatkę) -------------------------
-  for (const [id, cardCheck] of [['biurko', /serwerach obcej firmy/], ['skutki', /UODO w ciągu 72 godzin/]]) {
-    const block = blockOf(id);
+  // --- Ekrany według nagrania właściciela (D-201): po kolei bloki modułu ---------------------------------------------------------------
+  for (const block of MODULE.blocks) {
+    if (block.type === 'SUMMARY') break;
+    if (block.type === 'NARRATIVE') {
+      await page.getByText(block.title, { exact: true }).first().waitFor();
+      step(`NARRATIVE ${block.id}: tytuł „${block.title}” i ilustracja załadowana`, await illustrationOk(block));
+      await nextEnabled().waitFor();
+      await shot(`ekran-${block.id}`);
+      await goNext();
+      continue;
+    }
+    if (block.type === 'QUIZ') {
+      const multi = block.multiple === true;
+      await page.getByTestId(multi ? 'simple-multi-choice' : 'simple-choice').waitFor();
+      step(`QUIZ ${block.id}: polecenie, ilustracja na ekranie monitora, „Dalej” nieaktywny`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await illustrationOk(block)) && (await nextDisabled()));
+      const wrong = block.options.find((option) => !option.correct);
+      const rights = block.options.filter((option) => option.correct);
+      const option = (o) => page.getByTestId(multi ? 'simple-multi-option' : 'simple-option').filter({ hasText: o.text });
+      await option(wrong).click();
+      if (multi) await page.getByTestId('simple-multi-check').click();
+      const bad = await feedbackIs('bad');
+      // Zdanie z treści: przy pojedynczym wyborze w ogólnym komunikacie, przy wielokrotnym - przy zaznaczonej odpowiedzi.
+      const badSentence = multi ? ((await option(wrong).getByTestId('simple-multi-feedback').textContent()) ?? '') : bad;
+      step(`QUIZ ${block.id}: zła odpowiedź - „Nie tym razem” i zdanie z treści`, bad.startsWith('Nie tym razem') && badSentence.includes(wrong.feedback), `${bad} | ${badSentence}`);
+      await shot(`pytanie-${block.id}-zle`);
+      if (multi) {
+        await option(wrong).click();
+        for (const right of rights) await option(right).click();
+        await page.getByTestId('simple-multi-check').click();
+      } else {
+        await option(rights[0]).click();
+      }
+      const good = await feedbackIs('good');
+      const goodSentence = multi ? ((await option(rights[0]).getByTestId('simple-multi-feedback').textContent()) ?? '') : good;
+      step(`QUIZ ${block.id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && goodSentence.includes(rights[0].feedback), `${good} | ${goodSentence}`);
+      await goNext();
+      continue;
+    }
+    // Nowy typ bloku w module - jawny błąd zamiast mylącego timeoutu w gałęzi sceny.
+    if (block.type !== 'SCENE_HOTSPOTS') throw new Error(`e2e-module-04: nieobsługiwany typ bloku ${block.type} (${block.id})`);
+    // Tablica skutków (SCENE_HOTSPOTS, 4 karty-dowody).
+    const cardCheck = /UODO w ciągu 72 godzin/;
+    const id = block.id;
     await page.getByRole('button', { name: startsWith(block.hotspots[0].label) }).waitFor();
     step(`SCENE_HOTSPOTS ${id}: polecenie trybu prostego i „Dalej” nieaktywny przed celami`, (await page.getByText(block.tip).count()) >= 1 && (await nextDisabled()));
     const scene = page.locator(`img[alt="${block.imageAlt}"]`);
@@ -224,68 +251,8 @@ try {
     step(`SCENE_HOTSPOTS ${id}: po ${block.hotspots.length} celach „Dalej” aktywny`, true);
     await goNext();
   }
-  // Ostatni wybór zapisuje „Dalej”, a zaraz po nim odtwarzacz sam zapisuje raport (SUMMARY bez ekranu, D-169) - ten zapis kończy kurs.
-  const completion = completionResponse(page, courseId, 600000);
 
-  // --- 4-6. Sytuacje (SWIPE_SORT) i dwa wybory (QUIZ w trybie prostym) --------------------------------------------------------------
-  for (const id of ['bezpieczne-czy-it', 'brak-programu', 'juz-wklejone']) {
-    const block = blockOf(id);
-    if (block.type === 'QUIZ') {
-      await page.getByTestId('simple-choice').waitFor();
-      step(`QUIZ ${id}: polecenie „${block.prompt}”, „Dalej” nieaktywny`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await nextDisabled()));
-      const wrong = block.options.find((option) => !option.correct);
-      const right = block.options.find((option) => option.correct);
-      await page.getByTestId('simple-option').filter({ hasText: wrong.text }).click();
-      const bad = await feedbackIs('bad');
-      step(`QUIZ ${id}: zła odpowiedź - „Nie tym razem” i zdanie z treści`, bad.startsWith('Nie tym razem') && bad.includes(wrong.feedback), bad);
-      if (id === 'juz-wklejone') await shot('5-wybor-zla-odpowiedz');
-      await page.getByTestId('simple-option').filter({ hasText: right.text }).click();
-      const good = await feedbackIs('good');
-      step(`QUIZ ${id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && good.includes(right.feedback), good);
-      await goNext();
-      continue;
-    }
-
-    await page.getByTestId('swipe-sort').waitFor();
-    step('SWIPE_SORT: polecenie i „Dalej” nieaktywny przed ocenami', (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await nextDisabled()));
-    const labels = [await page.getByTestId('swipe-suspicious').textContent(), await page.getByTestId('swipe-ok').textContent()].map((t) => (t ?? '').trim());
-    step('SWIPE_SORT: własne werdykty z treści (D-151)', labels[0] === block.labels.suspicious && labels[1] === block.labels.ok, labels.join(' | '));
-    for (let i = 0; i < block.cards.length; i++) {
-      const card = page.getByTestId('swipe-card');
-      await card.waitFor();
-      const shown = (await card.textContent()) ?? '';
-      const expected = block.cards.find((c) => shown.includes(c.text));
-      if (!expected) throw new Error(`Nieznana karta: ${shown.slice(0, 80)}`);
-      if (i === 0) await shot('4-karta-sytuacji');
-      const checked = page.waitForResponse((r) => r.url().includes('/check') && r.request().method() === 'POST');
-      if (i === 0) {
-        // Gest: przeciągnięcie karty w stronę werdyktu (lewo = zapytaj IT, prawo = bezpieczne).
-        const box = await card.boundingBox();
-        const dx = expected.correct === 'suspicious' ? -260 : 260;
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + dx / 2, box.y + box.height / 2, { steps: 5 });
-        await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2, { steps: 5 });
-        await page.mouse.up();
-      } else {
-        await page.getByTestId(expected.correct === 'suspicious' ? 'swipe-suspicious' : 'swipe-ok').click();
-      }
-      const body = await (await checked).json();
-      await page.locator('[data-testid="simple-feedback"][data-result="good"]').filter({ hasText: expected.feedback }).waitFor({ timeout: 15000 });
-      const text = ((await feedback().textContent()) ?? '').trim();
-      step(`SWIPE_SORT: ${i === 0 ? 'gest' : 'przycisk'} - „${expected.id}” ${expected.correct === 'suspicious' ? 'zapytaj IT' : 'bezpieczne'}: „Dobrze”, bez klucza w odpowiedzi`, text.includes(expected.feedback) && body.result === 'good' && !('correct' in body), text);
-      await page.waitForFunction(
-        (prev) => !document.querySelector('[data-testid="swipe-card"]') || !document.querySelector('[data-testid="swipe-card"]').textContent.includes(prev),
-        expected.text,
-        { timeout: 10000 },
-      );
-    }
-    await page.getByText('Wszystkie sytuacje ocenione.').waitFor();
-    step('SWIPE_SORT: wszystkie sytuacje ocenione', true);
-    await goNext();
-  }
-
-  // --- 7. Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ---------------
+  // --- Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ---------------
   const finishedBody = await (await completion).json();
   step('Zakończenie: kurs ukończony (status COMPLETED) bez ekranu raportu', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
   const rules = [

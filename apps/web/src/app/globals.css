@@ -407,6 +407,11 @@
   .scene-box {
     width: calc(100cqh * var(--scene-ratio));
   }
+  /* Wariant pionowy sceny niższy niż obszar (pozioma gazeta w całości, D-198) - wyśrodkowany w pionie. Tylko tutaj: w tej regule kontener
+     panoramy ma wysokość obszaru; poza nią (np. wąskie okno desktopu) centruje go flex widoku. Sceny wyższe niż obszar: max(0, ujemne) = 0. */
+  .scene-pan-container > .briefing-scene-box {
+    margin-top: max(0px, calc((100cqh - 100cqw / var(--scene-ratio)) / 2));
+  }
 }
 
 /* Odprawa (BriefingBlock.tsx, D-081): dzwoniący telefon, spadająca karta sprawy, pieczątka, migający kursor maszyny do

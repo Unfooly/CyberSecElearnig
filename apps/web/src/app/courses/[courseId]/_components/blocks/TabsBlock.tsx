@@ -64,8 +64,9 @@ export default function TabsBlock({
   function onKeyDown(event: KeyboardEvent, index: number) {
     if (event.altKey || event.ctrlKey || event.metaKey) return; // np. Alt+strzałka to nawigacja przeglądarki
     let target = -1;
-    if (event.key === 'ArrowRight') target = (index + 1) % tabs.length;
-    else if (event.key === 'ArrowLeft') target = (index - 1 + tabs.length) % tabs.length;
+    // Góra/dół też: na telefonie przekładki teczki stoją w kolumnie (jedna pod drugą).
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') target = (index + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') target = (index - 1 + tabs.length) % tabs.length;
     else if (event.key === 'Home') target = 0;
     else if (event.key === 'End') target = tabs.length - 1;
     if (target < 0) return;
@@ -78,8 +79,11 @@ export default function TabsBlock({
   const folder = block.look === 'folder';
   const tabClass = (selected: boolean) =>
     folder
-      ? // Kolory Unfooly (D-186, uwaga właściciela 2026-11-20): fioletowa teczka, wybrana przekładka biała jak kartka.
-        `min-h-[44px] rounded-t-xl px-4 py-2 text-sm font-bold ${selected ? 'bg-surface text-ink' : 'bg-accent-ink text-white hover:bg-accent-hover'}`
+      ? // Kolory Unfooly (D-186, uwaga właściciela 2026-11-20): fioletowa teczka, wybrana przekładka biała jak kartka. Telefon (uwaga
+        // właściciela 2026-11-22): przekładki w kolumnie - każda to pełny wiersz, kliknięcie przełącza kartkę pod spodem.
+        `min-h-[44px] px-4 py-2 text-left text-sm font-bold max-sm:flex max-sm:w-full max-sm:items-center max-sm:justify-between max-sm:rounded-xl sm:rounded-t-xl sm:text-center ${
+          selected ? 'bg-surface text-ink' : 'bg-accent-ink text-white hover:bg-accent-hover'
+        }`
       : `min-h-[44px] rounded-t border-b-2 px-3 py-2 text-sm font-medium ${
           selected ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-600 hover:text-slate-900'
         }`;
@@ -92,8 +96,13 @@ export default function TabsBlock({
       <div
         role="tablist"
         aria-label={block.title ?? 'Zakładki'}
-        // Miejsce na pieczątkę: na telefonie tekst rośnie do 15 px (.mobile-readable), stąd szersza rezerwa.
-        className={folder ? `flex shrink-0 flex-wrap gap-1.5 ${block.stamp ? 'pr-40 sm:pr-44' : ''}` : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'}
+        // Szerszy ekran: przekładki w rzędzie, po prawej miejsce na pieczątkę. Telefon: kolumna na całą szerokość, pieczątka nad nią (w
+        // przepływie) - nie zasłania pierwszej przekładki.
+        className={
+          folder
+            ? `flex shrink-0 gap-1.5 max-sm:flex-col sm:flex-wrap ${block.stamp ? 'sm:pr-44' : ''}`
+            : 'mb-3 flex flex-wrap gap-1 border-b border-slate-200'
+        }
       >
         {tabs.map((tab, index) => (
           <button
@@ -111,7 +120,7 @@ export default function TabsBlock({
             onKeyDown={(event) => onKeyDown(event, index)}
             className={tabClass(activeId === tab.id)}
           >
-            {tab.title}
+            <span>{tab.title}</span>
             {opened.includes(tab.id) && activeId !== tab.id && <span aria-hidden="true"> ✓</span>}
           </button>
         ))}
@@ -126,7 +135,7 @@ export default function TabsBlock({
           className={
             folder
               ? // flow-root: zdjęcie (float, D-191) nie wychodzi poza kartkę przy krótkiej treści.
-                `${desk ? 'min-h-0 flex-1 overflow-y-auto' : 'flow-root min-h-[220px]'} rounded-b-xl rounded-tr-xl bg-surface p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(63,50,181,0.12)] sm:p-7`
+                `${desk ? 'min-h-0 flex-1 overflow-y-auto' : 'flow-root min-h-[220px]'} rounded-b-xl rounded-tr-xl bg-surface max-sm:mt-2 max-sm:rounded-xl p-5 text-ink shadow-[0_1px_0_rgba(0,0,0,0.04),inset_0_0_0_1px_rgba(63,50,181,0.12)] sm:p-7`
               : 'rounded bg-slate-50 p-3'
           }
         >
@@ -179,7 +188,8 @@ export default function TabsBlock({
             <p
               data-testid="folder-stamp"
               // Biała pieczątka na fioletowej teczce (D-186) - czerwień na fiolecie nie miałaby kontrastu; biel na #6C5CE7 ok. 4.6:1.
-              className="pointer-events-none absolute right-3 top-3 z-10 rotate-[-6deg] rounded-md border-[3px] border-white px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-white sm:right-5 sm:top-4 sm:text-sm"
+              // Telefon: w przepływie nad kolumną przekładek, przy prawej krawędzi (absolutnie nachodziła na „Etap 1”, uwaga właściciela 2026-11-22).
+              className="pointer-events-none z-10 w-fit shrink-0 rotate-[-4deg] rounded-md border-[3px] border-white px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-white max-sm:mb-2.5 max-sm:ml-auto max-sm:mr-1 max-sm:mt-0.5 sm:absolute sm:right-5 sm:top-4 sm:rotate-[-6deg] sm:text-sm"
             >
               {block.stamp}
             </p>

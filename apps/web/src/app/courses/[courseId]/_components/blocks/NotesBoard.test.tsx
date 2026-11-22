@@ -181,6 +181,11 @@ describe('NotesBoard (D-182)', () => {
     expect(screen.getAllByTestId('notes-card').map((card) => card.getAttribute('data-result'))).toEqual(['bad', 'bad', 'good']);
     expect(screen.getByTestId('board-feedback')).toHaveTextContent('Prawie. Najpierw był mail, potem rozmowa.');
     expect(screen.getByText('Na właściwym miejscu: 1 z 3. Wynik: 33%.')).toBeInTheDocument();
+    // Zdanie i wynik na jasnej karcie - pod tablicą leży ciemne tło (uwaga właściciela 2026-11-22: tekst nieczytelny na telefonie).
+    const resultCard = screen.getByTestId('board-result');
+    expect(resultCard).toHaveClass('bg-surface');
+    expect(resultCard).toContainElement(screen.getByTestId('board-feedback'));
+    expect(resultCard).toContainElement(screen.getByText('Na właściwym miejscu: 1 z 3. Wynik: 33%.'));
     // Czytnik ekranu: wynik ogłaszany w regionie statusu (komponent z wynikiem montuje się od nowa).
     expect(screen.getByRole('status')).toHaveTextContent('Prawie. Najpierw był mail, potem rozmowa. Na właściwym miejscu: 1 z 3. Wynik: 33%.');
     expect(screen.queryByRole('group', { name: 'Etapy ataku do przypięcia' })).toBeNull();

@@ -178,6 +178,13 @@ describe('moduł 1 „Zabawa w phishing” - scenariusz „Webinar”', () => {
     expect((block('gazeta').hotspots as { x: number; y: number; width: number; height: number }[])[0]).toMatchObject({ x: 20, y: 20, width: 34, height: 66 });
   });
 
+  it('gazeta na telefonie w całości, bez przesuwania (uwaga właściciela 2026-11-22): wariant pionowy to ta sama grafika z tą samą ramką', () => {
+    const gazeta = block('gazeta');
+    // Wariant pionowy (D-116) = „contain” bez panoramy; ta sama opublikowana grafika, więc nic nowego do publikacji.
+    expect(gazeta.imagePortrait).toBe(gazeta.image);
+    expect(gazeta.portraitHotspots).toEqual([{ id: 'artykul', x: 20, y: 20, width: 34, height: 66 }]);
+  });
+
   it('biuro powtarzane jak na nagraniu: komputer → pulpit (Poczta) → mail; ✓ komputer, smartfon → ekran telefonu (Komunikator) → czat; ✓ oba, Paweł → rozmowa', () => {
     const scene = (id: string) =>
       Object.fromEntries((block(id).hotspots as { id: string; action?: string; done?: boolean }[]).map((h) => [h.id, h.done ? 'done' : (h.action ?? 'card')]));

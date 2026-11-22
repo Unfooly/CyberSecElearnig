@@ -28,7 +28,7 @@ export default function BrowserWindow({
         </span>
         {/* Tytuł karty zawijany (nie ucinany wielokropkiem) - na telefonie adres z odpowiedzi nie mieści się w jednej linii (D-099). */}
         <span className="flex min-w-0 max-w-[60%] items-center gap-2 rounded-t-lg bg-surface px-3 py-1.5 text-xs text-ink max-sm:max-w-[80%]">
-          <span className="min-w-0 break-all">{tabTitle}</span>
+          <span className="min-w-0 break-words">{tabTitle}</span>
           <X className="h-3 w-3 shrink-0 text-muted" />
         </span>
       </div>
@@ -39,7 +39,9 @@ export default function BrowserWindow({
           <RotateCw className="h-4 w-4" />
         </span>
         {/* Pole w pasku nie ma własnej ramki - widoczny fokus (WCAG 2.4.7) daje pierścień na całym pasku adresu. */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-paper py-1 pl-3 pr-1 focus-within:ring-2 focus-within:ring-accent">
+        {/* Na telefonie długi adres zawija się na 2-3 wiersze - zaokrąglony prostokąt zamiast „pigułki”, w której wiersze wychodziły poza
+            łuki (uwaga właściciela 2026-11-22). */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-paper py-1 pl-3 pr-1 focus-within:ring-2 focus-within:ring-accent sm:rounded-full">
           <Lock aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted" />
           {addressBar}
         </div>

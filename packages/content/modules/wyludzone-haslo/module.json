@@ -1040,6 +1040,16 @@
       "tip": "Kliknij gazetę.",
       "image": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp",
       "imageAlt": "Gazeta na biurku z dwiema ilustracjami: przestępca w kapturze z mikrofonem i smartfon z wiadomością na tle sceny webinaru.",
+      "imagePortrait": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp",
+      "portraitHotspots": [
+        {
+          "id": "artykul",
+          "x": 20,
+          "y": 20,
+          "width": 34,
+          "height": 66
+        }
+      ],
       "hotspots": [
         {
           "id": "artykul",

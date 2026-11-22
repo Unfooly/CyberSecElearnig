@@ -317,6 +317,8 @@ export interface ContentBlock {
   options?: ContentBlockOption[];
   /** QUIZ: wielokrotny wybór - pola wyboru i „Sprawdź” (D-158, tylko tryb prosty). */
   multiple?: boolean;
+  /** NARRATIVE / QUIZ: ilustracja obok tekstu albo pytania (D-200) - komputer z lewej, telefon nad treścią. */
+  illustration?: { image: string; alt: string };
   // SWIPE_SORT (D-132): karty-wiadomości (id nieprzejrzyste, przetasowane przez serwer).
   cards?: SwipeCard[];
   /** SWIPE_SORT (D-151): własne etykiety werdyktów; brak - „Podejrzane” / „W porządku”. */

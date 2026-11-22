@@ -23,9 +23,12 @@ export default function SimpleChoiceBlock({
   onProgress,
   disabled = false,
   questionLabel,
+  contentBase = '',
 }: {
   /** „Pytanie 2 z 5” - numer wśród pytań quizu modułu (CoursePlayer). */
   questionLabel?: string;
+  /** Baza adresów zasobów - ilustracja obok pytania (D-200). */
+  contentBase?: string;
   block: ContentBlock;
   courseId: string;
   progress?: ClientProgressBlock;
@@ -55,7 +58,7 @@ export default function SimpleChoiceBlock({
   }, [checks, hint]);
 
   return (
-    <MonitorStage label="Pytanie quizu">
+    <MonitorStage label="Pytanie quizu" illustration={block.illustration} contentBase={contentBase}>
       <div data-testid="simple-choice" className="flex flex-col gap-3">
         {/* Napis interfejsu (polski) w obszarze z `lang` języka treści - lang="pl" (WCAG 3.1.2, jak „Blok X z Y” w PlayerStage). */}
         {questionLabel && (

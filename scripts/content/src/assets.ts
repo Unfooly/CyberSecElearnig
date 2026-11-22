@@ -40,6 +40,8 @@ export const ASSET_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'imagePortrait'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
+  // Ilustracja obok tekstu albo pytania (NARRATIVE, QUIZ, D-200).
+  ['illustration', 'image'],
   // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.
   ['steps', '*', 'image'],
   ['steps', '*', 'closedImage'],

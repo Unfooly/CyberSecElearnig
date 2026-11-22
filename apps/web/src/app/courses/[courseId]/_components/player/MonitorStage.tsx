@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import monitor from '@/lib/player-monitor.json';
+import Illustrated from '../blocks/Illustrated';
 
 // Quiz w monitorze (szablon modułu Unfooly, D-164): wspólna grafika monitora (apps/web/public/player/monitor.webp) i prostokąt jej białego
 // ekranu z manifestu liczonego skryptem (scripts/content/scenes/monitor-screen.ts) - treść pytania leży DOKŁADNIE na ekranie i przewija się
@@ -7,7 +8,18 @@ import monitor from '@/lib/player-monitor.json';
 // #1B1424. Wąsko albo nisko (telefon, telefon w poziomie): przygaszony monitor na tło (cover, 55%) i biała karta w ciemnej ramce 10 px,
 // r16, z fioletową poświatą - globals.css (.monitor-stage*).
 
-export default function MonitorStage({ label, children }: { label: string; children: ReactNode }) {
+export default function MonitorStage({
+  label,
+  illustration,
+  contentBase = '',
+  children,
+}: {
+  label: string;
+  /** Ilustracja obok pytania (D-200) - na ekranie monitora, obok treści (komputer) albo nad nią (telefon). */
+  illustration?: { image: string; alt: string };
+  contentBase?: string;
+  children: ReactNode;
+}) {
   const { screen } = monitor;
   const style = {
     '--monitor-ratio': `${monitor.width} / ${monitor.height}`,
@@ -30,7 +42,9 @@ export default function MonitorStage({ label, children }: { label: string; child
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/player/monitor.webp" alt="" aria-hidden="true" className="monitor-stage-img" />
         <section aria-label={label} data-testid="monitor-screen" className="monitor-stage-screen">
-          {children}
+          <Illustrated illustration={illustration} contentBase={contentBase} screen>
+            {children}
+          </Illustrated>
         </section>
       </div>
     </div>

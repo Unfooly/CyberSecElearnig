@@ -4,6 +4,7 @@ import type { NotebookTask } from './notes';
 import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from '../blocks/ScoredBlock';
 import SwipeSortBlock from '../blocks/SwipeSortBlock';
+import Illustrated from '../blocks/Illustrated';
 
 // Podgląd JUŻ ukończonego bloku (przycisk "Wstecz"): tylko do odczytu, bez zmiany stanu na serwerze. Serwer i tak nie pozwala ponownie
 // zapisać ukończonego bloku (sekwencyjność). Bloki eksploracyjne (hotspoty, dialog, zakładki, notatnik, podsumowanie) można przejść
@@ -53,21 +54,24 @@ export default function ReviewBlock({
     return (
       <div data-testid="review-block" className={isFill ? 'flex min-h-0 w-full flex-1 flex-col' : undefined}>
         <p className={`mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${isFill ? 'shrink-0' : ''}`}>Podgląd ukończonego bloku</p>
-        <ExploratoryBlock
-          block={block}
-          contentBase={contentBase}
-          onSubmit={() => {}}
-          onReady={() => {}}
-          disabled
-          review
-          myAvatarUrl={myAvatarUrl}
-          myInitials={myInitials}
-          tasks={tasks}
-          identity={identity}
-          onBriefingStep={onBriefingStep}
-          moduleBlocks={moduleBlocks}
-          simpleMode={simpleMode}
-        />
+        {/* Ilustracja NARRATIVE (D-200) także w podglądzie - jak w bieżącym bloku. */}
+        <Illustrated illustration={block.type === 'NARRATIVE' ? block.illustration : undefined} contentBase={contentBase}>
+          <ExploratoryBlock
+            block={block}
+            contentBase={contentBase}
+            onSubmit={() => {}}
+            onReady={() => {}}
+            disabled
+            review
+            myAvatarUrl={myAvatarUrl}
+            myInitials={myInitials}
+            tasks={tasks}
+            identity={identity}
+            onBriefingStep={onBriefingStep}
+            moduleBlocks={moduleBlocks}
+            simpleMode={simpleMode}
+          />
+        </Illustrated>
       </div>
     );
   }
@@ -108,23 +112,27 @@ export default function ReviewBlock({
   return (
     <div data-testid="review-block">
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
-      <p className="mb-3 text-lg text-slate-900">{headline}</p>
-      {block.prompt && block.title && <p className="mb-3 text-slate-700">{block.prompt}</p>}
-      {chosen && (
-        <p className="mb-2 text-sm text-slate-800">
-          Twoja odpowiedź: <span className="font-semibold">{chosen}</span>
-        </p>
-      )}
+      <Illustrated illustration={block.type === 'QUIZ' ? block.illustration : undefined} contentBase={contentBase}>
+        <div>
+          <p className="mb-3 text-lg text-slate-900">{headline}</p>
+          {block.prompt && block.title && <p className="mb-3 text-slate-700">{block.prompt}</p>}
+          {chosen && (
+            <p className="mb-2 text-sm text-slate-800">
+              Twoja odpowiedź: <span className="font-semibold">{chosen}</span>
+            </p>
+          )}
 
-      {result && result.correct !== undefined && !simpleMode ? (
-        <p className={`text-sm font-medium ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
-          {result.correct ? 'Twoja odpowiedź była poprawna.' : 'Twoja odpowiedź była niepoprawna.'}
-          {typeof result.points === 'number' && result.points > 0 && result.points < 1 && ` Punkty: ${Math.round(result.points * 100)}%.`}
-        </p>
-      ) : (
-        <p className="text-sm font-medium text-slate-700">Blok ukończony.</p>
-      )}
-      <p className="mt-2 text-xs text-slate-500">Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
+          {result && result.correct !== undefined && !simpleMode ? (
+            <p className={`text-sm font-medium ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
+              {result.correct ? 'Twoja odpowiedź była poprawna.' : 'Twoja odpowiedź była niepoprawna.'}
+              {typeof result.points === 'number' && result.points > 0 && result.points < 1 && ` Punkty: ${Math.round(result.points * 100)}%.`}
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-slate-700">Blok ukończony.</p>
+          )}
+          <p className="mt-2 text-xs text-slate-500">Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
+        </div>
+      </Illustrated>
     </div>
   );
 }

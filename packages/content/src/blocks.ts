@@ -36,6 +36,10 @@ const choiceOptionSchema = z
   .strict();
 
 // Pola wyglądu pytania na fałszywej stronie (D-190) dochodzą niżej (quizSchema) - ich schematy są zdefiniowane dalej w pliku.
+// Ilustracja obok tekstu albo pytania (D-200, NARRATIVE i QUIZ, moduł 4 według nagrania): plik z assets/ modułu (potok --assets)
+// i opis dla czytnika ekranu. Publiczne - czysto wizualne.
+const illustrationSchema = z.object({ image: limage(), alt: ltext(300) }).strict();
+
 const quizBaseSchema = z
   .object({
     ...baseShape,
@@ -269,6 +273,8 @@ const screenRectSchema = z.object({ x: screenPercent, y: screenPercent, width: s
 // zmian (serwer). `frame`, `markUrl`, `page` i `background` tylko razem (semantics.ts), `backgroundScreen` opcjonalny; poza trybem prostym.
 const quizSchema = quizBaseSchema
   .extend({
+    // Ilustracja obok pytania (D-200, moduł 4 według nagrania) - nie razem z oprawą monitora (walidacja treści).
+    illustration: illustrationSchema.optional(),
     frame: z.literal('monitor').optional(),
     markUrl: text(300).optional(),
     page: fakePageSchema.optional(),
@@ -345,6 +351,8 @@ const narrativeSchema = z
     ...baseShape,
     type: z.literal('NARRATIVE'),
     text: ltext(2000),
+    // Ilustracja obok tekstu (D-200): komputer - z lewej, telefon - nad tekstem.
+    illustration: illustrationSchema.optional(),
   })
   .strict();
 
@@ -1222,6 +1230,8 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
       'prompt',
       'options[].text',
       'multiple',
+      'illustration.image',
+      'illustration.alt',
       'frame',
       'markUrl',
       'background',
@@ -1385,7 +1395,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ],
   ),
   NOTEPAD: classify(['prompt'], []),
-  NARRATIVE: classify(['text'], []),
+  NARRATIVE: classify(['text', 'illustration.image', 'illustration.alt'], []),
   EMAIL_ANALYSIS: classify(
     [
       'email.fromName',

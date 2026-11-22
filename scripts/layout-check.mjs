@@ -2779,6 +2779,9 @@ try {
       { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba' },
       { slug: 'lancuszek', block: 'zaloguj' },
       { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba', pseudo: true },
+      // Ilustracja obok pytania (D-200): na ekranie monitora - pojedynczy i wielokrotny wybór; (q7) niżej.
+      { slug: 'dev-ilustracja', block: 'instalowac', illustration: true },
+      { slug: 'dev-ilustracja', block: 'skutki', illustration: true },
     ];
     for (const viewport of [...BRIEFING_VIEWPORTS, { name: '360x740', width: 360, height: 740, isMobile: true }]) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: viewport.isMobile ?? false, reducedMotion: 'reduce' });
@@ -2838,6 +2841,17 @@ try {
             };
           });
         const g = await geometry();
+        // (q7) Ilustracja (D-200): wczytana, ≥ 60 px wysokości, w całości w obrysie ekranu monitora (przed przewinięciem ekranu).
+        if (testCase.illustration) {
+          await page.waitForFunction(() => document.querySelector('[data-testid="illustration"]')?.complete === true, null, { timeout: 15000 });
+          const ill = await page.evaluate(() => {
+            const img = document.querySelector('[data-testid="illustration"]');
+            const r = img.getBoundingClientRect();
+            const s = document.querySelector('[data-testid="monitor-screen"]').getBoundingClientRect();
+            return { natural: img.naturalWidth, height: r.height, inside: r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.left >= s.left - 1 && r.right <= s.right + 1 };
+          });
+          if (ill.natural === 0 || ill.height < 60 || !ill.inside) fail(`${label}: (q7) ilustracja niewidoczna albo poza ekranem - ${JSON.stringify(ill)}.`);
+        }
         if (wide) {
           const s = manifest.screen;
           const expected = { x: g.img.x + (g.img.width * s.left) / 100, y: g.img.y + (g.img.height * s.top) / 100, width: (g.img.width * s.width) / 100, height: (g.img.height * s.height) / 100 };
@@ -2906,7 +2920,37 @@ try {
         if (after.areaScroll > 1 || after.pageScroll.some((v) => v > 1)) fail(`${label}: (q5) po odpowiedzi przewija się obszar bloku albo strona.`);
         if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);
         await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-dobrze`);
-        step(`${label}: (q1-q6) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C ≥ 44 px, ✕/✓, zdanie w ekranie, „Dalej” OK`, true);
+        step(`${label}: (q1-q6${testCase.illustration ? ', q7' : ''}) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C ≥ 44 px, ✕/✓, zdanie w ekranie, „Dalej” OK`, true);
+      }
+      // (q8) Ilustracja obok tekstu (NARRATIVE, D-200): wczytana, ≥ 60 px, w oknie; tekst obok (komputer) albo pod nią (telefon), ≥ 16 px; bez
+      // przewijania strony.
+      {
+        const label = `${viewport.name} / ilustracja / dev-ilustracja tabela`;
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=dev-ilustracja&block=tabela`);
+        await page.getByTestId('illustrated').waitFor({ timeout: 30000 });
+        await page.waitForFunction(() => document.querySelector('[data-testid="illustration"]')?.complete === true, null, { timeout: 15000 });
+        const n = await page.evaluate(() => {
+          const img = document.querySelector('[data-testid="illustration"]');
+          const r = img.getBoundingClientRect();
+          const text = [...document.querySelectorAll('[data-testid="illustrated"] p')].find((p) => p.textContent.includes('Bartek'));
+          const t = text.getBoundingClientRect();
+          return {
+            natural: img.naturalWidth,
+            img: { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height },
+            text: { top: t.top, left: t.left },
+            font: parseFloat(getComputedStyle(text).fontSize),
+            pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
+          };
+        });
+        const side = viewport.width >= 640;
+        if (n.natural === 0 || n.img.height < 60 || n.img.top < 0 || n.img.bottom > viewport.height) fail(`${label}: (q8) ilustracja niewidoczna - ${JSON.stringify(n.img)}.`);
+        if (side ? n.text.left < n.img.right - 1 : n.text.top < n.img.bottom - 1) fail(`${label}: (q8) tekst nie ${side ? 'obok' : 'pod'} ilustracją - ${JSON.stringify(n)}.`);
+        if (n.font < 15.9) fail(`${label}: (q8) tekst ${n.font}px < 16px.`);
+        if (n.pageScroll.some((v) => v > 1)) fail(`${label}: (q8) przewija się strona (${n.pageScroll}).`);
+        if (errors.length > 0) fail(`${label}: (q8) błędy: ${errors.join(' | ')}`);
+        await shot(page, `${viewport.name}-ilustracja-tabela`);
+        step(`${label}: (q8) ilustracja ${side ? 'z lewej, tekst obok' : 'nad tekstem'}, tekst ≥ 16 px, bez przewijania strony`, true);
       }
       await context.close();
     }

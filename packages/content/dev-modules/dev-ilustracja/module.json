@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 6,
+  "slug": "dev-ilustracja",
+  "title": "Ilustracja obok tekstu i pytania (podgląd)",
+  "category": "IT_HYGIENE",
+  "durationMinutes": 5,
+  "mandatory": false,
+  "simpleMode": true,
+  "locales": ["pl"],
+  "blocks": [
+    {
+      "id": "tabela",
+      "type": "NARRATIVE",
+      "title": "Tabela na jutro",
+      "text": "Bartek z marketingu ma do rana przerobić 40 tysięcy wierszy wyników kampanii. Sam nie da rady, więc szuka w internecie czegoś, co mu pomoże.",
+      "illustration": {
+        "image": "images/tabela.webp",
+        "alt": "Bartek przy biurku z górą papierów, na laptopie ogromna tabela."
+      }
+    },
+    {
+      "id": "instalowac",
+      "type": "QUIZ",
+      "prompt": "Darmowy program AI ma świetne opinie – co powinien zrobić Bartek?",
+      "options": [
+        {
+          "text": "Zainstalować – skoro inni chwalą, to jest bezpieczny.",
+          "correct": false,
+          "feedback": "Opinie w internecie nie mówią, co program robi z danymi firmy."
+        },
+        {
+          "text": "Najpierw zapytać dział IT.",
+          "correct": true,
+          "feedback": "Tak – IT sprawdzi program albo wskaże bezpieczne narzędzie."
+        }
+      ],
+      "hint": "Kto w firmie sprawdza programy przed instalacją?",
+      "illustration": {
+        "image": "images/program.webp",
+        "alt": "Laptop ze stroną pobierania programu z gwiazdkami i dużym przyciskiem pobierania."
+      }
+    },
+    {
+      "id": "skutki",
+      "type": "QUIZ",
+      "multiple": true,
+      "prompt": "Co może się stać, gdy Tomek zainstaluje program bez sprawdzenia?",
+      "options": [
+        { "text": "Wyciek danych firmy.", "correct": true, "feedback": "Tak – program mógł wysłać dane na obce serwery." },
+        { "text": "Wirus na komputerze.", "correct": true, "feedback": "Tak – darmowe programy bywają zainfekowane." },
+        { "text": "Nic, to tylko program.", "correct": false, "feedback": "Każdy niesprawdzony program to ryzyko dla firmy." }
+      ],
+      "hint": "Pomyśl o danych i o bezpieczeństwie komputera.",
+      "illustration": {
+        "image": "images/program.webp",
+        "alt": "Laptop ze stroną pobierania programu z gwiazdkami i dużym przyciskiem pobierania."
+      }
+    },
+    {
+      "id": "koniec",
+      "type": "SUMMARY",
+      "text": "Nowy program do pracy? Najpierw zapytaj IT."
+    }
+  ]
+}

@@ -787,6 +787,11 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
     background: 'images/pulpit.webp',
     backgroundScreen: { x: 17.64, y: 18.96, width: 65.08, height: 51.3 },
   });
+  // Ilustracja obok tekstu i pytania (D-200) - publiczna, czysto wizualna; tylko tutaj. Te bloki służą wyłącznie testowi wycieku i kompletności
+  // klasyfikacji - QUIZ łączy ją tu z oprawą monitora, czego walidacja modułu nie przepuszcza (semantics.ts), co tu nie ma znaczenia.
+  const illustration = { image: 'images/tabela.webp', alt: 'Pracownik przy biurku z górą danych.' };
+  blocks.QUIZ.illustration = { ...illustration };
+  blocks.NARRATIVE.illustration = { ...illustration };
   blocks.DIALOGUE.phone = { ...(blocks.DOSSIER.phone as Record<string, unknown>) };
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';

@@ -867,6 +867,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-182 Ilustracja na ekranie monitora (D-200) - uwagi z review
+- Etykiety: `P3`, `mod:odtwarzacz`, `test` · Źródło: code review D-200
+- Opis: (1) kolumny ilustracji na ekranie monitora (`Illustrated` z `screen`) przełączają się po szerokości OKNA (`sm:`), a sam monitor -
+  po rozmiarze kontenera (`@container monitor (max-width: 639px) or (max-height: 419px)`); przy 844x390 i tabletach z wąskim obszarem
+  bloku jest karta w ramce z dwiema kolumnami (dziś przechodzi layout-check) - spójniej: kolumny tym samym zapytaniem kontenerowym (klasa
+  w `globals.css` obok `.monitor-stage*`); (2) reguła `.monitor-stage-screen > div { gap: 8px }` (zwarte odstępy na telefonie) przy
+  ilustracji trafia w opakowanie `illustrated`, a pytanie i odpowiedzi dostają 12 px - rozszerzyć selektor o `[data-testid=illustrated] > div > div`.
+- Akceptacja: oba punkty poprawione z zielonym pełnym layout-check (sekcja `monitor` z q7) albo świadomie odrzucone (wpis tutaj).
+
 ### B-181 Gazeta do dołu, ilustracje w teczkach, okno pytania (D-195..D-197) - uwagi z review
 - Etykiety: `P2`, `mod:odtwarzacz`, `i18n`, `test` · Źródło: code review i security review D-195/D-196/D-197
 - Opis: (1) **przed wersją EN modułu 1:** `teczka-incydent.webp` ma wpalone polskie etykiety ikon, a `tabs[].photo` to jeden plik na

@@ -2777,7 +2777,8 @@ try {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), 'apps', 'web', 'src', 'lib', 'player-monitor.json'), 'utf8'));
     const MONITOR_CASES = [
       { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba' },
-      { slug: 'lancuszek', block: 'zaloguj' },
+      // Moduł 3 po D-203: pytanie z ilustracją (dawne `zaloguj` bez ilustracji usunięte z treści).
+      { slug: 'lancuszek', block: 'smishing', illustration: true },
       { slug: 'najlatwiejsze-drzwi', block: 'ktos-za-toba', pseudo: true },
       // Ilustracja obok pytania (D-200): na ekranie monitora - pojedynczy i wielokrotny wybór; (q7) niżej.
       { slug: 'dev-ilustracja', block: 'instalowac', illustration: true },
@@ -3154,7 +3155,7 @@ try {
       await shot(page, `${viewport.name}-prosty-wielokrotny-trafienie`);
       step(`${label}: (p1, p2, p5) pola i „Sprawdź” ≥ 44 px, oceny przy zaznaczonych, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
 
-      // (p4) SWIPE_SORT - każdy blok modułu podglądu: wiadomości (domyślne etykiety, moduł 3) i sytuacje z własnymi etykietami (D-151,
+      // (p4) SWIPE_SORT - każdy blok modułu podglądu: wiadomości (domyślne etykiety, jak dawny moduł 3) i sytuacje z własnymi etykietami (D-151,
       // najdłuższa dozwolona - 16 znaków).
       for (const sort of demoBlocks.filter((b) => b.type === 'SWIPE_SORT')) {
       await open(sort.id);

@@ -10,16 +10,16 @@
   "pl": {
    "raport": "RAPORT KOŃCOWY",
    "sygnatura": "LAN/2026/1013",
-   "tytul": "Łańcuszek",
+   "tytul": "Komunikatory",
    "dowody": "DOWODY",
    "czas": "CZAS",
    "xp": "XP",
    "zasady-naglowek": "TRZY ZASADY",
    "podpis": "PODPIS PROWADZĄCEGO",
    "zasady": [
-    "1. Dziwna prośba od znajomego? Zadzwoń na znany numer.",
-    "2. Kodu z SMS-a nie podajesz nikomu.",
-    "3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę."
+    "1. Plik albo aplikacja od nieznajomego? Nie otwieraj – zapytaj IT.",
+    "2. Dziwna wiadomość od znajomego? Sprawdź ją innym kanałem.",
+    "3. SMS z linkiem i pośpiechem? Nie klikaj i nie odpisuj."
    ]
   }
  },

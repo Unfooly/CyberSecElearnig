@@ -27,35 +27,80 @@
       "hash": "64c9e434",
       "key": "assets/lancuszek/images/koniec-pion.64c9e434.webp"
     },
-    "odprawa#steps.0.image": {
-      "original": "scenes/pl/odprawa.svg",
-      "hash": "b3b6523f",
-      "key": "assets/lancuszek/scenes/pl/odprawa.b3b6523f.svg"
+    "zaproszenie#illustration.image": {
+      "original": "images/zaproszenie.webp",
+      "hash": "4dafd788",
+      "key": "assets/lancuszek/images/zaproszenie.4dafd788.webp"
     },
-    "odprawa#steps.0.portrait.image": {
-      "original": "scenes/pl/odprawa-pion.svg",
-      "hash": "1151b967",
-      "key": "assets/lancuszek/scenes/pl/odprawa-pion.1151b967.svg"
+    "nowy-komunikator#illustration.image": {
+      "original": "images/nowy-komunikator.webp",
+      "hash": "f3d1c2a6",
+      "key": "assets/lancuszek/images/nowy-komunikator.f3d1c2a6.webp"
     },
-    "telefon#image": {
-      "original": "scenes/pl/telefon-oli.svg",
-      "hash": "83668f90",
-      "key": "assets/lancuszek/scenes/pl/telefon-oli.83668f90.svg"
+    "wirus#illustration.image": {
+      "original": "images/wirus.webp",
+      "hash": "4a7f8429",
+      "key": "assets/lancuszek/images/wirus.4a7f8429.webp"
     },
-    "telefon#imagePortrait": {
-      "original": "scenes/pl/telefon-oli-pion.svg",
-      "hash": "2bcbd815",
-      "key": "assets/lancuszek/scenes/pl/telefon-oli-pion.2bcbd815.svg"
+    "rozmowa#image": {
+      "original": "scenes/pl/komunikator.svg",
+      "hash": "cc30fd3c",
+      "key": "assets/lancuszek/scenes/pl/komunikator.cc30fd3c.svg"
     },
-    "telefon#hotspots.2.media.src": {
-      "original": "scenes/pl/logowanie-zoom.svg",
-      "hash": "6e9acfba",
-      "key": "assets/lancuszek/scenes/pl/logowanie-zoom.6e9acfba.svg"
+    "rozmowa#imagePortrait": {
+      "original": "scenes/pl/komunikator-pion.svg",
+      "hash": "65694592",
+      "key": "assets/lancuszek/scenes/pl/komunikator-pion.65694592.svg"
+    },
+    "sms#image": {
+      "original": "scenes/pl/sms.svg",
+      "hash": "dc782884",
+      "key": "assets/lancuszek/scenes/pl/sms.dc782884.svg"
+    },
+    "sms#imagePortrait": {
+      "original": "scenes/pl/sms-pion.svg",
+      "hash": "9021560c",
+      "key": "assets/lancuszek/scenes/pl/sms-pion.9021560c.svg"
+    },
+    "lancuszek#illustration.image": {
+      "original": "images/lancuszek.webp",
+      "hash": "f15bc444",
+      "key": "assets/lancuszek/images/lancuszek.f15bc444.webp"
+    },
+    "trzy-pytania#illustration.image": {
+      "original": "images/trzy-pytania.webp",
+      "hash": "d4934fed",
+      "key": "assets/lancuszek/images/trzy-pytania.d4934fed.webp"
+    },
+    "czas-na-quiz#illustration.image": {
+      "original": "images/quiz-start.webp",
+      "hash": "da23c402",
+      "key": "assets/lancuszek/images/quiz-start.da23c402.webp"
+    },
+    "prawda#illustration.image": {
+      "original": "images/quiz-dane.webp",
+      "hash": "d39bc467",
+      "key": "assets/lancuszek/images/quiz-dane.d39bc467.webp"
+    },
+    "niebezpieczne#illustration.image": {
+      "original": "images/quiz-profil.webp",
+      "hash": "0b156af5",
+      "key": "assets/lancuszek/images/quiz-profil.0b156af5.webp"
+    },
+    "film#illustration.image": {
+      "original": "images/quiz-film.webp",
+      "hash": "fab29277",
+      "key": "assets/lancuszek/images/quiz-film.fab29277.webp"
+    },
+    "smishing#illustration.image": {
+      "original": "images/quiz-sms.webp",
+      "hash": "bc902221",
+      "key": "assets/lancuszek/images/quiz-sms.bc902221.webp"
     },
     "raport#closing.image": {
       "original": "scenes/pl/zamkniecie-raport.svg",
-      "hash": "1a95b831",
-      "key": "assets/lancuszek/scenes/pl/zamkniecie-raport.1a95b831.svg"
+      "hash": "487d2811",
+      "key": "assets/lancuszek/scenes/pl/zamkniecie-raport.487d2811.svg"
     },
     "raport#closing.stamp": {
       "original": "scenes/pl/zamkniecie-pieczec.svg",
@@ -69,8 +114,8 @@
     },
     "raport#closing.portrait.image": {
       "original": "scenes/pl/zamkniecie-raport-pion.svg",
-      "hash": "f55085b4",
-      "key": "assets/lancuszek/scenes/pl/zamkniecie-raport-pion.f55085b4.svg"
+      "hash": "09d267f5",
+      "key": "assets/lancuszek/scenes/pl/zamkniecie-raport-pion.09d267f5.svg"
     }
   }
 }

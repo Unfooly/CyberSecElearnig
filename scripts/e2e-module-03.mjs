@@ -1,15 +1,16 @@
-// E2E w przeglądarce (Playwright) - pełne przejście modułu 3 („Przejęte konto”, do D-172 „Łańcuszek”; packages/content/modules/lancuszek, tryb prosty D-132)
-// zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-02.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko kursu
-// stworzonego przez ten przebieg). Cel: odprawa (statyczna scena z połączeniem od Oli), scena telefonu (3 cele, zbliżenie ekranu
-// logowania), trzy wybory z natychmiastową oceną (najpierw zła odpowiedź - komunikat „Nie tym razem”, potem dobra), sortowanie
-// 6 wiadomości (5 przyciskami, 1 gestem przeciągnięcia), a po nich - bez ekranu raportu (D-169) - ekran końca (D-165) z trzema
-// zasadami na wynos; przed odprawą ekran startu (D-163). Bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy pola `correct`.
+// E2E w przeglądarce (Playwright) - pełne przejście modułu 3 („Komunikatory i SMS-y”, slug `lancuszek`, tryb prosty D-132) zaimportowanego
+// PRAWDZIWYM CLI, na wzór scripts/e2e-module-04.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko kursu stworzonego przez ten
+// przebieg). Cel - przebieg według nagrania właściciela „Usługi przesyłania wiadomości” (D-203): ekran startu (D-163), po kolei bloki z
+// module.json - ekrany NARRATIVE z ilustracją (D-200), rozmowa w komunikatorze i SMS (po 4 cele), pytania w monitorze z ilustracją
+// (najpierw zła odpowiedź - „Nie tym razem” i zdanie z treści, potem dobra; wielokrotny wybór przez „Sprawdź”), a po ostatnim pytaniu - bez
+// ekranu raportu (D-169) - ekran końca (D-165) z trzema zasadami na wynos. Bez błędów strony, konsoli i 5xx, a w odpowiedziach API nigdy
+// pola `correct`.
 //
-// Nagrania i grafiki modułu 3 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
+// Grafiki modułu 3 są wyłącznie na R2 (pipeline treści), więc web musi dostać CONTENT_BASE_URL.
 // Użycie z katalogu repo:
 //   CONTENT_BASE_URL=https://content.unfooly.com npx dotenv -e .env -- node scripts/e2e-module-03.mjs
 // Opcjonalnie: E2E_VIEWPORT=390x844 (telefon w pionie, dotyk) zamiast domyślnego 1366x768; E2E_SHOTS_DIR=<katalog> - zrzuty ekranu
-// kluczowych momentów (scena, zbliżenie, wybór z oceną, karta wiadomości, raport) do przeglądu graficznego.
+// kluczowych momentów do przeglądu graficznego; E2E_WEB_MODE=start - web z buildu produkcyjnego (D-142).
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -27,7 +28,8 @@ const SLUG = 'lancuszek';
 const MODULE = JSON.parse(readFileSync(join(process.cwd(), 'packages', 'content', 'modules', SLUG, 'module.json'), 'utf8'));
 const text = (value) => (typeof value === 'string' ? value : value?.pl);
 const MODULE_TITLE = text(MODULE.title);
-const blockOf = (id) => MODULE.blocks.find((block) => block.id === id);
+// Etykieta z treści jako początek nazwy przycisku (znaki specjalne wyrażeń regularnych dosłownie).
+const startsWith = (label) => new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 const API_PORT = process.env.E2E_API_PORT ?? '3111';
 const WEB_PORT = process.env.E2E_WEB_PORT ?? '3110';
 const WEB = `http://localhost:${WEB_PORT}`;
@@ -35,9 +37,9 @@ const API = `http://localhost:${API_PORT}`;
 const RUN = Date.now();
 const [VW, VH] = (process.env.E2E_VIEWPORT ?? '1366x768').split('x').map(Number);
 if (![VW, VH].every((n) => Number.isInteger(n) && n > 0)) throw new Error(`E2E_VIEWPORT: oczekiwano <szer>x<wys>, jest "${process.env.E2E_VIEWPORT}"`);
-// Opcjonalnie E2E_WEB_MODE=start - web z buildu produkcyjnego (`next start`, wymaga `next build` apps/web) zamiast `next dev` (D-142).
 const WEB_MODE = process.env.E2E_WEB_MODE ?? 'dev';
-if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);const MOBILE = VW < 768;
+if (!['dev', 'start'].includes(WEB_MODE)) throw new Error(`E2E_WEB_MODE: dev albo start, jest "${WEB_MODE}"`);
+const MOBILE = VW < 768;
 const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 const DOMAIN = `module-03-e2e-${RUN}.test`;
 const EMAIL = `pracownik@${DOMAIN}`;
@@ -77,7 +79,7 @@ let orgId;
 let courseId;
 let courseCreatedByThisRun = false;
 try {
-  if (!process.env.CONTENT_BASE_URL) throw new Error('Brak CONTENT_BASE_URL - nagrania i grafiki modułu 3 są tylko na R2.');
+  if (!process.env.CONTENT_BASE_URL) throw new Error('Brak CONTENT_BASE_URL - grafiki modułu 3 są tylko na R2.');
   start(process.execPath, ['apps/api/dist/main.js'], { PORT: API_PORT, FRONTEND_URL: WEB, MAILERSEND_API_TOKEN: '', BACKGROUND_JOBS_ENABLED: 'false', NODE_ENV: 'development' }, process.cwd());
   start(process.execPath, [join(process.cwd(), 'node_modules', 'next', 'dist', 'bin', 'next'), WEB_MODE, '-p', WEB_PORT], { API_URL: API }, join(process.cwd(), 'apps', 'web'));
   await waitFor(async () => (await fetch(`${API}/`)).status > 0, 'start API');
@@ -119,9 +121,8 @@ try {
   page.on('console', (message) => {
     if (message.type() === 'error') problems.push(`console: ${message.text().slice(0, 200)}`);
   });
-  // Klucz odpowiedzi nigdy w odpowiedziach `/api` (w praktyce `/check`; D-132: `correct` jest sekretem, `/check` zwraca tylko result
-  // good/bad). Treść bloków przychodzi w HTML/RSC strony - tę pilnują classification.spec.ts i e2e API.
-  // `/progress` pomijamy: jego `lastResult.correct` to ocena odpowiedzi, którą gracz już wysłał, nie klucz.
+  // Klucz odpowiedzi nigdy w odpowiedziach `/api` (w praktyce `/check`); `/progress` pomijamy (jego `lastResult.correct` to ocena wysłanej
+  // odpowiedzi). Treść bloków przychodzi w HTML/RSC strony - tę pilnują classification.spec.ts i e2e API.
   page.on('response', async (response) => {
     if (response.status() >= 500) problems.push(`${response.status()} ${response.url()}`);
     const url = response.url();
@@ -136,7 +137,8 @@ try {
   await page.fill('input[type=password]', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL((url) => url.pathname === '/courses');
-  step('logowanie pracownika kieruje na /courses', true);  await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
+  step('logowanie pracownika kieruje na /courses', true);
+  await page.getByText(MODULE_TITLE, { exact: true }).first().waitFor();
   step(`Katalog: karta i miniatura „${MODULE_TITLE}”`, (await page.getByRole('img', { name: MODULE_TITLE, exact: true }).count()) >= 1);
 
   await page.goto(`${WEB}/courses/${courseId}`);
@@ -159,169 +161,106 @@ try {
     await nextEnabled().click();
     step('„Dalej” zapisuje blok', (await saved).ok());
   };
+  const imageLoaded = (locator) =>
+    locator.evaluate((img) => (img.complete ? img.naturalWidth > 0 : new Promise((resolve) => {
+      img.addEventListener('load', () => resolve(img.naturalWidth > 0));
+      img.addEventListener('error', () => resolve(false));
+    })));
 
-  // --- 1. Odprawa (BRIEFING: jedna statyczna scena - telefon z połączeniem od Oli; jedyny krok, dalej „Dalej” w pasku, D-106) ----
-  const briefingScene = page.locator('img[alt*="połączenie przychodzące – Ola Malec, księgowość"]');
-  await briefingScene.first().waitFor();
-  await page.getByTestId('briefing-scene-text').filter({ hasText: /Dzwoni Ola Malec z księgowości/ }).waitFor();
-  const sceneLoaded = await briefingScene.first().evaluate((img) => (img.complete ? img.naturalWidth > 0 : new Promise((resolve) => {
-    img.addEventListener('load', () => resolve(img.naturalWidth > 0));
-    img.addEventListener('error', () => resolve(false));
-  })));
-  step('BRIEFING: odprawa - scena z połączeniem od Oli (grafika z opisem alt załadowana) i tekst narracji', sceneLoaded);
-  step('BRIEFING: scena bez klikalnego przedmiotu (bez hotspotu)', (await page.getByTestId('briefing-hotspot').count()) === 0);
-  await nextEnabled().waitFor();
-  await shot('1-odprawa');
-  // Po zakończeniu pisania (bez kliknięcia - samo się dopisuje; kursor znika): pełny tekst widoczny w ramce, ramka mieści go bez
-  // przewijania i bez wychodzenia poza ekran, scena pod nią nie zasłonięta (D-145, przegląd właściciela 2026-10-19).
-  await page.locator('.briefing-caret').waitFor({ state: 'detached', timeout: 60000 });
-  const typed = await page.getByTestId('briefing-scene-text').evaluate((frame) => {
-    const box = frame.getBoundingClientRect();
-    const scene = document.querySelector('[data-testid="briefing-scene"]')?.getBoundingClientRect();
-    const visible = [...frame.querySelectorAll('p')].find((p) => !p.classList.contains('invisible'))?.textContent ?? '';
-    return {
-      visible,
-      overflow: frame.scrollHeight - frame.clientHeight,
-      inView: box.top >= 0 && box.bottom <= window.innerHeight,
-      clearOfScene: !scene || box.bottom <= scene.top + 1 || box.right <= scene.left + 1,
-      pageScroll: document.documentElement.scrollHeight - window.innerHeight,
-    };
-  });
-  step(
-    'BRIEFING: po zakończeniu pisania pełny tekst w ramce, bez przewijania, w ekranie, scena niezasłonięta',
-    typed.visible.includes('łańcuszek') && typed.overflow <= 1 && typed.inView && typed.clearOfScene && typed.pageScroll <= 1,
-    JSON.stringify({ ...typed, visible: `${typed.visible.length} znaków` }),
-  );
-  await shot('1b-odprawa-po-pisaniu');
-  await goNext();
-
-  // --- 2. Telefon Oli (SCENE_HOTSPOTS, 3 cele, zbliżenie ekranu logowania) -----------------------------------------------------
-  await page.getByRole('button', { name: /^Wiadomość od Kasi/ }).waitFor();
-  step('SCENE_HOTSPOTS: polecenie trybu prostego (jedno zdanie) i „Dalej” nieaktywny przed celami', (await page.getByText(blockOf('telefon').tip).count()) >= 1 && (await nextDisabled()));
-  await shot('2-scena-telefon');
-  for (const label of ['Wiadomość od Kasi', 'Link do filmu']) {
-    await page.getByRole('button', { name: new RegExp(`^${label}`) }).click();
-    if (label === 'Link do filmu') {
-      await dialog().getByText(/Kłódka w pasku adresu/).waitFor();
-      step('Karta „link”: zdanie o kłódce w pasku adresu', true);
-    }
-    await dialog().getByRole('button', { name: 'Zamknij' }).click();
-    await closed();
-  }
-  await page.getByRole('button', { name: /^Ponaglenie do logowania/ }).click();
-  const login = dialog().getByRole('img', { name: /Strona wideo-kasi\.test\/login/ });
-  await login.waitFor();
-  step('Zbliżenie: ekran logowania bez marki (grafika z opisem alt załadowana)', await login.evaluate((img) => img.complete && img.naturalWidth > 0));
-  await shot('3-zblizenie-logowanie');
-  await dialog().getByRole('button', { name: 'Zamknij' }).click();
-  await closed();
-  // Bez notatnika i licznika dowodów (D-162): po trzech celach „Dalej” w pasku jest aktywny.
-  await nextEnabled().waitFor({ timeout: 15000 });
-  step('SCENE_HOTSPOTS: po trzech celach „Dalej” aktywny', true);
-  await goNext();
-  // Ostatni wybór zapisuje „Dalej”, a zaraz po nim odtwarzacz sam zapisuje raport (SUMMARY bez ekranu, D-169) - ten zapis kończy kurs.
+  // Ostatnie pytanie zapisuje „Dalej”, a zaraz po nim odtwarzacz sam zapisuje raport (SUMMARY bez ekranu, D-169) - ten zapis kończy kurs.
   const completion = completionResponse(page, courseId, 600000);
+  // Ilustracja obok tekstu i pytania (D-200): wczytana, z opisem z treści.
+  const illustrationOk = async (block) => {
+    const img = page.locator(`[data-testid="illustration"][alt="${block.illustration.alt}"]`);
+    await img.first().waitFor();
+    return imageLoaded(img.first());
+  };
 
-  // --- 3-6. Wybory (QUIZ w trybie prostym: zła odpowiedź -> „Nie tym razem”, potem dobra -> „Dobrze” i „Dalej”) i skrzynka (blok 4) -
-  for (const id of ['zaloguj', 'wiadomosci', 'blik', 'kod-sms']) {
-    const block = blockOf(id);
-    // Wznowienie po wyjściu (fix/resume-po-wyjsciu): po 3 blokach X i od razu „Kontynuuj naukę” - BEZ przeładowania strony - wraca na
-    // blok, na którym przerwano (skrzynka), a nie na odprawę z pamięci routera klienta.
-    if (id === 'wiadomosci') {
-      // Żądania RSC strony odtwarzacza w trakcie powrotu: 0 = strona podana z pamięci routera klienta (stary postęp).
-      const rsc = [];
-      const onRequest = (request) => {
-        // Bez prefetchu (Next-Router-Prefetch): liczy się pełne pobranie strony przy nawigacji.
-        const headers = request.headers();
-        if (headers.rsc === '1' && headers['next-router-prefetch'] !== '1' && new URL(request.url()).pathname === `/courses/${courseId}`) rsc.push(request.url());
-      };
-      page.on('request', onRequest);
-      await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
-      await page.waitForURL((url) => url.pathname === '/courses');
-      await page.getByRole('link', { name: 'Kontynuuj naukę' }).click();
-      await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
-      await page.getByRole('heading', { level: 1, name: MODULE_TITLE, exact: true }).waitFor();
-      const resumed = await page.getByText(block.prompt, { exact: true }).waitFor({ timeout: 15000 }).then(() => true, () => false);
-      page.off('request', onRequest);
-      step(
-        'Wznowienie: X i od razu „Kontynuuj naukę” (bez przeładowania) - skrzynka, blok 4 z 7, nie odprawa',
-        resumed && (await page.getByTestId('briefing-scene-text').count()) === 0,
-        `żądania RSC odtwarzacza: ${rsc.length}`,
-      );
-      step('Wznowienie: strona odtwarzacza pobrana z serwera (pełne żądanie RSC), nie z pamięci routera', rsc.length >= 1, `${rsc.length}`);
-    }
-    // „Wstecz” przeglądarki po kolejnym zapisie (D-142): wpis historii odtwarzacza ma drzewo z wejścia na skrzynkę, a postęp poszedł
-    // dalej - odtwarzacz z pamięci routera pobiera świeży postęp i pokazuje BLIK, nie skrzynkę.
-    if (id === 'blik') {
-      await page.getByRole('link', { name: 'Zakończ i wróć do listy kursów' }).click();
-      await page.waitForURL((url) => url.pathname === '/courses');
-      await page.goBack();
-      await page.waitForURL((url) => url.pathname === `/courses/${courseId}`);
-      const back = await page.getByText(block.prompt, { exact: true }).waitFor({ timeout: 15000 }).then(() => true, () => false);
-      step('Wznowienie: X i „Wstecz” przeglądarki po kolejnym bloku - BLIK, blok 5 z 7, nie skrzynka', back && (await page.getByTestId('swipe-card').count()) === 0);
-    }
-    if (block.type === 'QUIZ') {
-      await page.getByTestId('simple-choice').waitFor();
-      step(`QUIZ ${id}: polecenie „${block.prompt}”, „Dalej” nieaktywny`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await nextDisabled()));
-      const wrong = block.options.find((option) => !option.correct);
-      const right = block.options.find((option) => option.correct);
-      await page.getByTestId('simple-option').filter({ hasText: wrong.text }).click();
-      const bad = await feedbackIs('bad');
-      step(`QUIZ ${id}: zła odpowiedź - „Nie tym razem” i zdanie z treści`, bad.startsWith('Nie tym razem') && bad.includes(wrong.feedback), bad);
-      if (id === 'zaloguj') await shot('4-wybor-zla-odpowiedz');
-      await page.getByTestId('simple-option').filter({ hasText: right.text }).click();
-      const good = await feedbackIs('good');
-      step(`QUIZ ${id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && good.includes(right.feedback), good);
-      if (id === 'zaloguj') await shot('5-wybor-dobra-odpowiedz');
+  // --- Ekrany według nagrania właściciela (D-203): po kolei bloki modułu ---------------------------------------------------------------
+  for (const block of MODULE.blocks) {
+    if (block.type === 'SUMMARY') break;
+    if (block.type === 'NARRATIVE') {
+      await page.getByText(block.title, { exact: true }).first().waitFor();
+      step(`NARRATIVE ${block.id}: tytuł „${block.title}” i ilustracja załadowana`, await illustrationOk(block));
+      await nextEnabled().waitFor();
+      await shot(`ekran-${block.id}`);
       await goNext();
       continue;
     }
-
-    // --- 4. Skrzynka Oli (SWIPE_SORT, 6 kart w kolejności serwera; jedna gestem, reszta przyciskami) ----------------------------
-    await page.getByTestId('swipe-sort').waitFor();
-    step(`SWIPE_SORT: polecenie i „Dalej” nieaktywny przed ocenami`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await nextDisabled()));
-    for (let i = 0; i < block.cards.length; i++) {
-      const card = page.getByTestId('swipe-card');
-      await card.waitFor();
-      const shown = (await card.textContent()) ?? '';
-      const expected = block.cards.find((c) => shown.includes(c.text));
-      if (!expected) throw new Error(`Nieznana karta: ${shown.slice(0, 80)}`);
-      if (i === 0) await shot('6-karta-wiadomosci');
-      const checked = page.waitForResponse((r) => r.url().includes('/check') && r.request().method() === 'POST');
-      if (i === 0) {
-        // Gest: przeciągnięcie karty w stronę werdyktu (lewo = podejrzane, prawo = w porządku).
-        const box = await card.boundingBox();
-        const dx = expected.correct === 'suspicious' ? -260 : 260;
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + dx / 2, box.y + box.height / 2, { steps: 5 });
-        await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2, { steps: 5 });
-        await page.mouse.up();
+    if (block.type === 'QUIZ') {
+      const multi = block.multiple === true;
+      await page.getByTestId(multi ? 'simple-multi-choice' : 'simple-choice').waitFor();
+      step(`QUIZ ${block.id}: polecenie, ilustracja na ekranie monitora, „Dalej” nieaktywny`, (await page.getByText(block.prompt, { exact: true }).count()) === 1 && (await illustrationOk(block)) && (await nextDisabled()));
+      const wrong = block.options.find((option) => !option.correct);
+      const rights = block.options.filter((option) => option.correct);
+      const option = (o) => page.getByTestId(multi ? 'simple-multi-option' : 'simple-option').filter({ hasText: o.text });
+      await option(wrong).click();
+      if (multi) await page.getByTestId('simple-multi-check').click();
+      const bad = await feedbackIs('bad');
+      // Zdanie z treści: przy pojedynczym wyborze w ogólnym komunikacie, przy wielokrotnym - przy zaznaczonej odpowiedzi.
+      const badSentence = multi ? ((await option(wrong).getByTestId('simple-multi-feedback').textContent()) ?? '') : bad;
+      step(`QUIZ ${block.id}: zła odpowiedź - „Nie tym razem” i zdanie z treści`, bad.startsWith('Nie tym razem') && badSentence.includes(wrong.feedback), `${bad} | ${badSentence}`);
+      await shot(`pytanie-${block.id}-zle`);
+      if (multi) {
+        await option(wrong).click();
+        for (const right of rights) await option(right).click();
+        await page.getByTestId('simple-multi-check').click();
       } else {
-        await page.getByTestId(expected.correct === 'suspicious' ? 'swipe-suspicious' : 'swipe-ok').click();
+        await option(rights[0]).click();
       }
-      const body = await (await checked).json();
-      // Komunikat poprzedniej karty (też „good”) zostaje do odpowiedzi /check - czekamy na komentarz TEJ karty.
-      await page.locator('[data-testid="simple-feedback"][data-result="good"]').filter({ hasText: expected.feedback }).waitFor({ timeout: 15000 });
-      const text = ((await feedback().textContent()) ?? '').trim();
-      step(`SWIPE_SORT: ${i === 0 ? 'gest' : 'przycisk'} - „${expected.from}” ${expected.correct === 'suspicious' ? 'podejrzana' : 'w porządku'}: „Dobrze”, bez klucza w odpowiedzi`, text.includes(expected.feedback) && body.result === 'good' && !('correct' in body), text);
-      await page.waitForFunction(
-        (prev) => !document.querySelector('[data-testid="swipe-card"]') || !document.querySelector('[data-testid="swipe-card"]').textContent.includes(prev),
-        expected.text,
-        { timeout: 10000 },
-      );
+      const good = await feedbackIs('good');
+      const goodSentence = multi ? ((await option(rights[0]).getByTestId('simple-multi-feedback').textContent()) ?? '') : good;
+      step(`QUIZ ${block.id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && goodSentence.includes(rights[0].feedback), `${good} | ${goodSentence}`);
+      await goNext();
+      continue;
     }
-    await page.getByText('Wszystkie wiadomości ocenione.').waitFor();
-    step('SWIPE_SORT: wszystkie wiadomości ocenione', true);
+    // Nowy typ bloku w module - jawny błąd zamiast mylącego timeoutu w gałęzi sceny.
+    if (block.type !== 'SCENE_HOTSPOTS') throw new Error(`e2e-module-03: nieobsługiwany typ bloku ${block.type} (${block.id})`);
+    // Rozmowa w komunikatorze i SMS (SCENE_HOTSPOTS, po 4 cele-dowody na ekranie telefonu).
+    const cardCheck = /złośliwy program|smishing/;
+    const id = block.id;
+    await page.getByRole('button', { name: startsWith(block.hotspots[0].label) }).waitFor();
+    step(`SCENE_HOTSPOTS ${id}: polecenie trybu prostego i „Dalej” nieaktywny przed celami`, (await page.getByText(block.tip).count()) >= 1 && (await nextDisabled()));
+    const scene = page.locator(`img[alt="${block.imageAlt}"]`);
+    step(`SCENE_HOTSPOTS ${id}: grafika sceny załadowana`, await imageLoaded(scene.first()));
+    // Zrzut stanu przed interakcją: kursor poza sceną (bez :hover), przedmioty bez widocznej ramki (D-154).
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+    await page.waitForTimeout(150); // przejście koloru ramki trwa 100 ms
+    const framed = await page.evaluate(() =>
+      [...document.querySelectorAll('.scene-hotspot')].filter((el) => !['ready', 'blocked'].includes(el.dataset.state)).filter((el) => {
+        const { borderTopColor, backgroundColor } = getComputedStyle(el);
+        return ![borderTopColor, backgroundColor].every((c) => c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c));
+      }).length,
+    );
+    step(`SCENE_HOTSPOTS ${id}: przed interakcją żaden cel nie ma widocznej ramki`, framed === 0, `${framed}`);
+    await shot(`2-scena-${id}`);
+    for (const hotspot of block.hotspots) {
+      await page.getByRole('button', { name: startsWith(hotspot.label) }).click();
+      await dialog().getByText(hotspot.content).waitFor();
+      if (cardCheck.test(hotspot.content)) {
+        step(`SCENE_HOTSPOTS ${id}: karta „${hotspot.label}” z treścią ze scenariusza`, true);
+        await shot(`3-karta-${id}-${hotspot.id}`);
+      }
+      await dialog().getByRole('button', { name: 'Zamknij' }).click();
+      await closed();
+    }
+    // Bez notatnika i licznika dowodów (D-162): po wszystkich celach „Dalej” w pasku jest aktywny.
+    await nextEnabled().waitFor({ timeout: 15000 });
+    step(`SCENE_HOTSPOTS ${id}: po ${block.hotspots.length} celach „Dalej” aktywny`, true);
     await goNext();
   }
 
-  // --- 7. Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ----------
+  // --- Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ---------------
   const finishedBody = await (await completion).json();
   step('Zakończenie: kurs ukończony (status COMPLETED) bez ekranu raportu', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
-  const rules = ['Dziwna prośba od znajomego? Zadzwoń na znany numer.', 'Kodu z SMS-a nie podajesz nikomu.', 'Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.'];
+  const rules = [
+    'Plik albo aplikacja od nieznajomego? Nie otwieraj – zapytaj IT.',
+    'Dziwna wiadomość od znajomego? Sprawdź ją innym kanałem.',
+    'SMS z linkiem i pośpiechem? Nie klikaj i nie odpisuj.',
+  ];
   await checkEndScreen(page, step, { completion: finishedBody, rules });
-  await shot('8-koniec');
+  await shot('7-koniec');
   step('Klucz odpowiedzi (`correct`) nigdy w odpowiedziach /check', leaks.length === 0, leaks.join(' | '));
   step('Bez błędów strony, konsoli i odpowiedzi 5xx', problems.length === 0, problems.join(' | '));
 

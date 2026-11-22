@@ -4373,13 +4373,14 @@ try {
       const outroBox = await outro.boundingBox();
       const backBox = await back.boundingBox();
       if (!contains({ x: 0, y: 0, width: viewport.width, height: viewport.height }, outroBox) || backBox.height < 44) fail(`${label}: (e6) outro ${JSON.stringify({ outroBox, backBox })}.`);
-      if (!(await page.getByTestId('easter-badge').textContent())?.includes('Curious Detective')) fail(`${label}: (e6) brak wyróżnienia w outro.`);
+      // Outro bez zapowiedzi osiągnięcia (D-199) - odznakę pokazuje okienko z odpowiedzi /explore (podgląd jej nie zapisuje).
+      if (/osiągnięcie/i.test((await outro.textContent()) ?? '')) fail(`${label}: (e6) outro zapowiada osiągnięcie - to robi okienko odznaki (D-199).`);
       await back.click();
       await page.getByTestId('easter-outro').waitFor({ state: 'detached' });
       const icon = await page.getByRole('button', { name: /^GTA6_PL\.exe/ }).getAttribute('aria-label');
       if (!icon?.includes('(obejrzane)')) fail(`${label}: (e6) ikona gry nie jest obejrzana („${icon}”).`);
       await page.keyboard.press('Escape'); // pulpit -> scena
-      // Wyróżnienie w notatniku - notatnik usunięty z odtwarzacza (D-162); wyróżnienie widać w outro (wyżej).
+      // Wyróżnienie w notatniku - notatnik usunięty z odtwarzacza (D-162); osiągnięcie - okienko odznaki z /explore (D-199).
       await checkNoPageScroll(page, label);
       if (pageErrors.length > 0) fail(`${label}: (e7) błąd strony: ${pageErrors.join(' | ')}`);
       step(`${label}: ${single ? '(e1-e4, e6-e10, po jednym 1/3-3/3)' : '(e1-e4, e6-e8)'} OK`, true);

@@ -7,6 +7,10 @@ import { contentAssetUrl } from '@/lib/content-assets';
 import type { CourseCompletionReward, ModuleInfo } from '@/lib/courses-types';
 import { caseMinutes } from './CaseClosedScreen';
 import { SimpleInline } from './simple-markdown';
+import RewardDialog from './RewardDialog';
+
+// Okienko nagrody po „wbiciu” pieczątki (animacja badge-pop ok. 0,6 s) i chwili na przeczytanie nagłówka.
+export const REWARD_DIALOG_DELAY_MS = 1200;
 
 // Ekran końca modułu (szablon modułu Unfooly, D-165) - zastępuje raport w teczce (CaseClosedScreen) w odpowiedziach z danymi modułu.
 // Komputer (≥ 640 px): okładka „po sprawie” (`cover.end`) na tle, jasny panel z lewej (~60%, zaokrąglona prawa krawędź): pieczątka
@@ -64,6 +68,16 @@ export default function ModuleEndScreen({
   // Ponowne ukończenie po restarcie nie dolicza XP (0) - „—” zamiast „+0”.
   const xp = reward?.xpGained ? reward.xpGained : null;
   const badges = reward?.unlockedBadges ?? [];
+  // Okienko nagrody (D-199): przy świeżym ukończeniu, gdy są nowe osiągnięcia albo awans - po „wbiciu” pieczątki (reduced-motion - od
+  // razu). Powrót do ukończonego kursu (bez `reward`) i ponowne ukończenie bez nowych osiągnięć i awansu - bez okienka.
+  const rewardWorthDialog = fresh && !!reward && (badges.length > 0 || reward.leveledUp);
+  const [rewardOpen, setRewardOpen] = useState(false);
+  useEffect(() => {
+    if (!rewardWorthDialog) return undefined;
+    const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setRewardOpen(true), reduced ? 0 : REWARD_DIALOG_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [rewardWorthDialog]);
 
   const tiles: [string, string, boolean][] = [
     ['Wynik', scoreUnavailable || score === null ? '—' : `${score}%`, false],
@@ -209,6 +223,9 @@ export default function ModuleEndScreen({
           </div>
         </main>
       </div>
+      {rewardOpen && reward && (
+        <RewardDialog badges={badges} level={reward.leveledUp ? reward.newLevel : null} onClose={() => setRewardOpen(false)} />
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
+import { AchievementRank, AssignmentStatus, Course, CourseAssignment, Prisma } from '@prisma/client';
 import { ContentLocale, choosePlayerLocale, parseAcceptLanguage } from '@cyberszkolo/content';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
@@ -81,6 +81,14 @@ function safeModule2Facts(progress: ProgressV2, blocks: Parameters<typeof module
   } catch {
     return undefined;
   }
+}
+
+/** Osiągnięcie przyznane zapisem stanu sceny (easter egg, D-199) - nazwa i grafika w języku gracza, jak w nagrodzie za ukończenie. */
+export interface ExploreUnlockedBadge {
+  code: string;
+  title: string;
+  icon: string;
+  rank: AchievementRank | null;
 }
 
 @Injectable()
@@ -413,8 +421,8 @@ export class CoursesService implements OnModuleInit {
       const evidence = evidenceSummary(progress, blocks);
       const revealed = isComplete ? undefined : revealedBlockAt(blocks, currentBlockIndex, context);
       const courseSlug = assignment.course.slug ?? null;
-      // Osiągnięcie za easter egg (D-111) - od razu przy zapisie bloku, w tej samej transakcji; bez XP (D-100). Komunikat
-      // w playerze pokazuje outro easter egga (przed zapisem bloku), więc wynik nie wraca w odpowiedzi.
+      // Osiągnięcie za easter egg (D-111) - zwykle przyznane już przy odkryciu (/explore, D-199, tam okienko odznaki); tutaj zapasowo i
+      // idempotentnie (gdyby tamten zapis nie doszedł), w tej samej transakcji, bez XP (D-100). Wynik nie wraca w odpowiedzi.
       await this.gamificationService.awardEasterEggAchievements(
         tx,
         organizationId,
@@ -684,7 +692,7 @@ export class CoursesService implements OnModuleInit {
     blockId: string,
     answer: { visited: string[]; noted: string[] },
     acceptLanguage?: string,
-  ): Promise<{ blockId: string; visited: string[]; noted: string[]; evidence: EvidenceSummary }> {
+  ): Promise<{ blockId: string; visited: string[]; noted: string[]; evidence: EvidenceSummary; unlockedBadges: ExploreUnlockedBadge[] }> {
     return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
       // FOR UPDATE: równoległe zapisy stanu (szybkie kliknięcia, dwie karty) idą po kolei - suma stanów, żaden nie nadpisuje drugiego.
       await this.lockOwnAssignment(tx, organizationId, userId, courseId);
@@ -705,7 +713,7 @@ export class CoursesService implements OnModuleInit {
       const block = version.blocks[index];
 
       const progress: ProgressV2 = readProgress(assignment.progress);
-      const { entry, notesAdded } = evaluateExploration(block, answer, entryOf(progress, block.id), new Date());
+      const { entry, notesAdded, easterEggs } = evaluateExploration(block, answer, entryOf(progress, block.id), new Date());
       progress.blocks[block.id] = entry;
       for (const key of notesAdded) {
         if (!progress.notes.includes(key)) progress.notes.push(key);
@@ -724,7 +732,20 @@ export class CoursesService implements OnModuleInit {
         throw new ConflictException('Stan kursu zmienił się w trakcie zapisu');
       }
 
-      return { blockId: block.id, visited: entry.visited ?? [], noted: entry.noted ?? [], evidence: evidenceSummary(progress, version.blocks) };
+      // Osiągnięcie za easter egg (D-199) od razu przy odkryciu, nie dopiero przy „Dalej” - odtwarzacz pokazuje wtedy okienko z odznaką.
+      // W odpowiedzi WYŁĄCZNIE osiągnięcia przyznane tym żądaniem (createMany skipDuplicates): kto zdobył je wcześniej (np. przy
+      // poprzednim przejściu kursu), nie dostaje okienka drugi raz. Ta sama transakcja i blokada co zapis stanu; zapis bloku przyznaje je
+      // dalej idempotentnie (gdyby to żądanie nie doszło).
+      const awarded = await this.gamificationService.awardEasterEggAchievements(tx, organizationId, userId, assignment.course.slug ?? null, easterEggs);
+      const locale = playerLocaleOf(assignment, acceptLanguage);
+      const unlockedBadges = awarded.map((badge) => ({
+        code: badge.code,
+        title: localizedBadgeTexts(badge, locale).title,
+        icon: localizedIcon(badge.icon, locale) ?? badge.icon,
+        rank: badge.rank,
+      }));
+
+      return { blockId: block.id, visited: entry.visited ?? [], noted: entry.noted ?? [], evidence: evidenceSummary(progress, version.blocks), unlockedBadges };
     });
   }
 

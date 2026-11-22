@@ -232,6 +232,44 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
     };
     const exploreCalls = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/explore'));
 
+    it('D-199: osiągnięcie przyznane zapisem stanu (/explore) - okienko z odznaką (grafika, nazwa, ranga), paski ramki inert, Esc zamyka okienko, nie zbliżenie pod nim', async () => {
+      const unlocked = { code: 'curious-detective', title: 'Ciekawski detektyw', icon: 'pl/osiagniecie-ciekawski-detektyw-95296dd5', rank: 'SECRET' };
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ unlockedBadges: [unlocked] }) });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Nowe osiągnięcie!' });
+      expect(dialog).toHaveTextContent('Ciekawski detektyw');
+      expect(dialog).toHaveTextContent('Tajne');
+      expect(dialog.querySelector('img')).toHaveAttribute('src', '/achievements/pl/osiagniecie-ciekawski-detektyw-95296dd5.webp');
+      expect(within(dialog).getByRole('button', { name: 'Super!' })).toHaveFocus();
+      // Paski ramki nieaktywne pod oknem (aria-modal). jsdom nie implementuje `inert` - PlayerStage ustawia go jako właściwość JS (przodkowie).
+      const inertAncestor = (node: HTMLElement | null): boolean => {
+        for (let el = node; el; el = el.parentElement) if ((el as unknown as { inert?: boolean }).inert) return true;
+        return false;
+      };
+      expect(inertAncestor(screen.getByTestId('player-bottombar'))).toBe(true);
+      // Esc zamyka okienko, a nie zbliżenie przedmiotu pod nim (kaskada LIFO).
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog', { name: 'Nowe osiągnięcie!' })).not.toBeInTheDocument();
+      expect(screen.getByTestId('scene-zoom')).toBeInTheDocument();
+    });
+
+    it('D-199: zapis stanu bez nowych osiągnięć (np. zdobyte przy poprzednim przejściu) i błąd zapisu - bez okienka', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ unlockedBadges: [] }) })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ unlockedBadges: [{ code: 'x', title: 'X', icon: 'x' }] }) });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<CoursePlayer courseId="course-1" initial={twoItems()} narrationEnabled={false} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Monitor' }));
+      await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(1));
+      fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }));
+      await waitFor(() => expect(exploreCalls(fetchMock)).toHaveLength(2));
+      await act(async () => {});
+      expect(screen.queryByTestId('reward-dialog')).not.toBeInTheDocument();
+    });
+
     it('każda zmiana (obejrzenie, zabranie) idzie na /blocks/:id/explore z pełnym stanem; zamontowanie niczego nie wysyła', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
       vi.stubGlobal('fetch', fetchMock);

@@ -121,6 +121,7 @@ export default function PlayerHarnessPage({
     backdrop?: string;
     noCover?: string;
     reward?: string;
+    explore?: string;
   };
 }) {
   if (process.env.NEXT_PUBLIC_DEV_HARNESS !== '1') {
@@ -226,7 +227,9 @@ export default function PlayerHarnessPage({
         initial={initial}
         contentBase={contentBase}
         narrationEnabled={searchParams.narration === '1'}
-        persistExploration={false}
+        // `?explore=1` (D-199): zapis stanu sceny włączony - do ręcznych zrzutów okienka odznaki z podstawioną odpowiedzią /explore
+        // (Playwright page.route). Domyślnie wyłączony (podgląd nie ma backendu).
+        persistExploration={searchParams.explore === '1'}
         showStartScreen={searchParams.backdrop !== '1'}
         previewReward={
           searchParams.reward === '1'

@@ -562,16 +562,15 @@ export default function SceneHotspotsBlock({
               ref={boxRef}
               data-scene-variant={portraitScene ? 'portrait' : 'landscape'}
               // Wariant pionowy (D-116): "contain" jak scena odprawy (.briefing-scene-box - bez panoramy na telefonie w pionie).
-              className={`${portraitScene ? 'briefing-scene-box' : 'scene-box'} relative isolate overflow-hidden rounded border border-slate-200`}
+              className={`${portraitScene ? 'briefing-scene-box mx-auto' : 'scene-box'} relative isolate overflow-hidden rounded border border-slate-200`}
               style={
                 {
                   '--scene-ratio': String(aspectRatio),
                   height: 'auto',
                   aspectRatio: 'var(--scene-ratio)',
-                  // Wariant pionowy: tylko poziome `auto` - pionowe wyśrodkowanie (gdy grafika niższa niż obszar, np. gazeta, D-198) daje
-                  // globals.css w regule telefonu w pionie, gdzie kontener panoramy ma wysokość obszaru (inline `margin` by ją przykrył).
-                  marginInline: 'auto',
-                  marginBlock: portraitScene ? undefined : 'auto',
+                  // Wariant pionowy: bez marginesu inline (przykryłby regułę CSS) - poziomo klasa `mx-auto`, pionowe wyśrodkowanie (grafika
+                  // niższa niż obszar, np. gazeta, D-198) daje globals.css w regule telefonu w pionie, gdzie kontener panoramy ma wysokość obszaru.
+                  margin: portraitScene ? undefined : 'auto',
                   ...(camera ?? {}),
                   transition: cameraTransition(reducedMotion, phase),
                 } as CSSProperties

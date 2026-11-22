@@ -5,7 +5,7 @@ import { toResolved } from '../courses/course-versions';
 import { readProgress } from '../courses/progress';
 import { initialsFromEmail } from './initials.util';
 import { currentLevelProgressPercent, levelForXp, xpForNextLevel } from './level.util';
-import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, secretEndingAchievements } from './achievements';
+import { Module2Facts, completionAchievements, easterEggAchievements, module2Facts, progressFacts, secretEndingAchievements } from './achievements';
 import {
   ACHIEVEMENT_CODES,
   ACHIEVEMENTS_SYNC_VERSION,
@@ -19,6 +19,7 @@ import {
   PIN_LIMIT_MESSAGE,
   SECRET_LOCKED_ICON,
   PERFECT_SCORE_XP,
+  THREE_CASES_COUNT,
 } from './gamification.constants';
 import { ContentLocale, choosePlayerLocale, localizeContent, parseAcceptLanguage } from '@cyberszkolo/content';
 import { SECRET_ACHIEVEMENT_LABEL, localizedBadgeTexts, localizedIcon } from './achievement-texts';
@@ -81,6 +82,10 @@ export class GamificationService {
     },
   ): Promise<CourseCompletionResult> {
     const { assignmentId, ...facts } = options;
+    // Ukończenia jednego użytkownika po kolei (D-202, security review): dwa kursy ukończone naraz (dwie karty) widziałyby tylko własne,
+    // niezatwierdzone ukończenie i żadne nie przyznałoby „Trzech spraw”/„Kompletu” (a sync jest już na bieżącej wersji - odznaka
+    // przepadłaby). Blokada wiersza użytkownika do końca transakcji: drugie ukończenie czeka i potem widzi zatwierdzone pierwsze.
+    await tx.$queryRaw`SELECT "id" FROM "users" WHERE "id" = ${userId} AND "organizationId" = ${organizationId} FOR UPDATE`;
     let xpGained = COURSE_COMPLETION_XP;
     if (facts.score === 100) {
       xpGained += PERFECT_SCORE_XP;
@@ -95,7 +100,8 @@ export class GamificationService {
     const completedCount = await tx.courseAssignment.count({
       where: { organizationId, userId, status: AssignmentStatus.COMPLETED },
     });
-    const candidateCodes = completionAchievements({ completedCount, ...facts });
+    const progress = await this.courseProgressFacts(tx, organizationId, userId);
+    const candidateCodes = completionAchievements({ completedCount, ...facts, ...progress });
 
     const unlockedBadges: Badge[] = [];
     for (const code of candidateCodes) {
@@ -319,6 +325,7 @@ export class GamificationService {
           completedAt: true,
           updatedAt: true,
           courseVersionId: true,
+          courseId: true,
           course: { select: { slug: true } },
         },
       });
@@ -363,6 +370,27 @@ export class GamificationService {
         }
         for (const code of completionAchievements({ completedCount: 1, score: assignment.score, courseSlug: slug, module2 })) {
           earn(code, completedAt);
+        }
+      }
+
+      // Trzy sprawy i Komplet (D-202) - z całej historii ukończeń (bez podejścia właśnie ukończonego: jego wkład idzie „na żywo”, z XP).
+      // Data = moment spełnienia warunku (D-111): dla każdego kursu najwcześniejsze ukończenie; Trzy sprawy - trzecie z nich w czasie,
+      // Komplet - ostatni moduł katalogu. Powtórki i późniejsze kursy nie przesuwają daty.
+      if (missing.includes(ACHIEVEMENT_CODES.THREE_CASES) || missing.includes(ACHIEVEMENT_CODES.ALL_CASES)) {
+        const progress = await this.courseProgressFacts(tx, organizationId, userId, excludeAssignmentId);
+        const firstDone = new Map<string, Date>();
+        for (const a of assignments) {
+          if (a.status !== AssignmentStatus.COMPLETED || a.id === excludeAssignmentId) continue;
+          const at = a.completedAt ?? a.updatedAt;
+          const current = firstDone.get(a.courseId);
+          if (!current || at < current) firstDone.set(a.courseId, at);
+        }
+        const dates = [...firstDone.values()].sort((x, y) => x.getTime() - y.getTime());
+        if (progress.distinctCompleted >= THREE_CASES_COUNT && dates[THREE_CASES_COUNT - 1]) earn(ACHIEVEMENT_CODES.THREE_CASES, dates[THREE_CASES_COUNT - 1]);
+        if (progress.allModulesCompleted) {
+          const catalog = await this.catalogModuleIds(tx);
+          const last = catalog.map((id) => firstDone.get(id)).reduce<Date | null>((max, at) => (at && (max === null || at > max) ? at : max), null);
+          if (last) earn(ACHIEVEMENT_CODES.ALL_CASES, last);
         }
       }
 
@@ -530,6 +558,37 @@ export class GamificationService {
       await tx.user.update({ where: { id: userId }, data: { pinnedAchievements: codes } });
       return { pinned: codes };
     });
+  }
+
+  /**
+   * Postęp w całym kursie (D-202): różne ukończone kursy użytkownika (także podejścia zarchiwizowane restartem, D-069 - historia ukończeń)
+   * i czy wśród nich są wszystkie moduły katalogu. Przypisania - w transakcji wołającego pod RLS organizacji, z jawnym filtrem
+   * organizationId/userId; katalog kursów (`courses`) jest globalny bez RLS - tylko identyfikatory modułów z treścią (`slug`).
+   */
+  private async courseProgressFacts(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+    excludeAssignmentId?: string,
+  ): Promise<{ distinctCompleted: number; allModulesCompleted: boolean }> {
+    const [completed, catalog] = await Promise.all([
+      tx.courseAssignment.findMany({
+        where: { organizationId, userId, status: AssignmentStatus.COMPLETED, ...(excludeAssignmentId ? { id: { not: excludeAssignmentId } } : {}) },
+        select: { courseId: true },
+        distinct: ['courseId'],
+      }),
+      this.catalogModuleIds(tx),
+    ]);
+    return progressFacts(
+      completed.map((row) => row.courseId),
+      catalog,
+    );
+  }
+
+  /** Moduły katalogu (D-202): kursy z treścią z packages/content (`slug`), bez modułów podglądu `dev-*` - gdyby trafiły do bazy, nie blokują Kompletu. */
+  private async catalogModuleIds(tx: Prisma.TransactionClient): Promise<string[]> {
+    const rows = await tx.course.findMany({ where: { slug: { not: null }, NOT: { slug: { startsWith: 'dev-' } } }, select: { id: true } });
+    return rows.map((row) => row.id);
   }
 
   /**

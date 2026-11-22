@@ -74,6 +74,28 @@ export const ACHIEVEMENT_TEXTS: Record<string, AchievementTexts> = {
       en: 'Listen to the webinar on the company website to the end in the case „Vishing”.',
     },
   },
+  // D-202: moduł 4 na 100% i postęp w całym kursie.
+  [ACHIEVEMENT_CODES.ASK_IT_FIRST]: {
+    title: { pl: 'Najpierw pytam IT', en: 'Ask IT First' },
+    description: {
+      pl: 'Każde narzędzie do pracy najpierw przez IT. Ani jednej drogi na skróty.',
+      en: 'Every work tool goes through IT first. Not a single shortcut.',
+    },
+    conditionText: {
+      pl: 'Odpowiedz dobrze za pierwszym razem na wszystkie pytania w jednym podejściu do sprawy „Shadow IT”.',
+      en: 'Answer every question correctly on the first try in a single attempt at the case „Shadow IT”.',
+    },
+  },
+  [ACHIEVEMENT_CODES.THREE_CASES]: {
+    title: { pl: 'Trzy sprawy', en: 'Three Cases' },
+    description: { pl: 'Trzy zamknięte sprawy. Wiesz już, jak działają przestępcy.', en: 'Three closed cases. You know how attackers work.' },
+    conditionText: { pl: 'Ukończ trzy różne szkolenia.', en: 'Complete three different trainings.' },
+  },
+  [ACHIEVEMENT_CODES.ALL_CASES]: {
+    title: { pl: 'Komplet', en: 'Full Set' },
+    description: { pl: 'Wszystkie sprawy zamknięte. Żadna sztuczka Cię już nie zaskoczy.', en: 'Every case closed. No trick will catch you off guard.' },
+    conditionText: { pl: 'Ukończ wszystkie szkolenia z katalogu.', en: 'Complete every training in the catalog.' },
+  },
 };
 
 /** Etykieta tajnego osiągnięcia w rankingu (przypięte, niezdobyte przez oglądającego). */

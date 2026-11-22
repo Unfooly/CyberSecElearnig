@@ -218,7 +218,14 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         'perfect-pitch',
         'full-transcript',
         'secret-7',
+        // D-202 (migracja 20261122200000): moduł 4 na 100% i postęp w całym kursie.
+        'ask-it-first',
+        'three-cases',
+        'all-cases',
       ]);
+      expect(response.body[7]).toMatchObject({ title: 'Ask IT First', rank: 'LEGENDARY', xpReward: 50, icon: 'en/osiagniecie-najpierw-pytam-it', isUnlocked: false });
+      expect(response.body[8]).toMatchObject({ title: 'Three Cases', rank: 'MILESTONE', xpReward: 50, conditionText: 'Complete three different trainings.' });
+      expect(response.body[9]).toMatchObject({ title: 'Full Set', rank: 'LEGENDARY', xpReward: 100 });
       // Moduł 2 (D-124, migracja 20260929200100): ranga RARE, tajne Off the Record bez nazwy i z neutralną grafiką.
       expect(response.body[3]).toMatchObject({ title: 'Dead Air', rank: 'RARE', xpReward: 25, isUnlocked: false });
       expect(response.body[4]).toMatchObject({ title: 'Perfect Pitch', rank: 'RARE' });
@@ -382,6 +389,10 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         expect.objectContaining({ code: 'perfect-pitch', isUnlocked: false }),
         expect.objectContaining({ code: 'full-transcript', isUnlocked: false }),
         expect.objectContaining({ code: 'secret-7', title: null, isUnlocked: false }),
+        // D-202: B ma jedno ukończenie (moduł 1) - bez Najpierw pytam IT, Trzech spraw i Kompletu (komplet wymaga też trzech modułów).
+        expect.objectContaining({ code: 'ask-it-first', isUnlocked: false }),
+        expect.objectContaining({ code: 'three-cases', isUnlocked: false }),
+        expect.objectContaining({ code: 'all-cases', isUnlocked: false }),
       ]);
       const xpAfter = (await tenantPrisma.runInOrgContext(orgBId, (tx) => tx.user.findUniqueOrThrow({ where: { id: orgBUserId } }))).xp;
       expect(xpAfter).toBe(xpBefore);
@@ -436,6 +447,9 @@ describe('Grywalizacja: XP, odznaki, leaderboard, avatar (e2e)', () => {
         ['perfect-pitch', null],
         ['full-transcript', null],
         ['secret-7', null],
+        ['ask-it-first', null],
+        ['three-cases', null],
+        ['all-cases', null],
       ]);
     });
 

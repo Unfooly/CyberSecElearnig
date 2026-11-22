@@ -446,12 +446,7 @@ export default function SceneHotspotsBlock({
 
   // Wszystkie okienka easter egga zamknięte (D-100): przedmiot odwiedzony (serwer zapisze flagę wyróżnienia przy ukończeniu bloku) i
   // wyróżnienie w notatniku od razu. Bez dowodu, notatki i wpływu na licznik. W podglądzie ukończonego bloku - bez wyróżnienia.
-  // Wyróżnienie już w notatniku (z /start albo znalezione wcześniej w tej sesji) - outro bez „Nowe”.
-  function hasDistinction(hotspot: AnyHotspot): boolean {
-    const badge = hotspot.media?.kind === 'popups' ? hotspot.media.badge : undefined;
-    return !!badge && distinctions.some((d) => d.blockId === block.id && d.label === badge.label);
-  }
-
+  // Osiągnięcie przyznaje serwer przy zapisie stanu sceny (/explore, D-199) - okienko odznaki pokazuje CoursePlayer.
   function foundEasterEgg(hotspot: AnyHotspot) {
     markVisited(hotspot.id);
     const badge = hotspot.media?.kind === 'popups' ? hotspot.media.badge : undefined;
@@ -729,12 +724,10 @@ export default function SceneHotspotsBlock({
                             ref={popupsRef}
                             items={activeInner.media.items ?? []}
                             outro={activeInner.media.outro ?? ''}
-                            badge={activeInner.media.badge}
                             reducedMotion={reducedMotion}
                             onFound={() => foundEasterEgg(activeInner)}
                             onDone={closeNested}
                             backLabel="Wróć do pulpitu"
-                            alreadyFound={hasDistinction(activeInner)}
                             onScreen
                           />
                         ) : undefined
@@ -754,12 +747,10 @@ export default function SceneHotspotsBlock({
                             ref={popupsRef}
                             items={activeInner.media.items ?? []}
                             outro={activeInner.media.outro ?? ''}
-                            badge={activeInner.media.badge}
                             reducedMotion={reducedMotion}
                             onFound={() => foundEasterEgg(activeInner)}
                             onDone={closeNested}
                             backLabel="Wróć do pulpitu"
-                            alreadyFound={hasDistinction(activeInner)}
                           />
                         )
                       ) : (
@@ -789,11 +780,9 @@ export default function SceneHotspotsBlock({
                     ref={popupsRef}
                     items={active.media.items ?? []}
                     outro={active.media.outro ?? ''}
-                    badge={active.media.badge}
                     reducedMotion={reducedMotion}
                     onFound={() => foundEasterEgg(active)}
                     onDone={close}
-                    alreadyFound={hasDistinction(active)}
                   />
                 )
               ) : (

@@ -1405,8 +1405,8 @@ describe('SCENE_HOTSPOTS: okienka easter egga (media.kind "popups", D-100)', () 
     closePopup('Gratulacje!');
     closePopup('Wykryto 147 wirusów!');
     expect(screen.getByTestId('easter-outro')).toHaveTextContent('Pirackie gry');
-    // Pierwsze znalezienie: „Nowe” mimo że onFound już dopisał osiągnięcie do notatnika (stan zamrożony przy otwarciu).
-    expect(screen.getByTestId('easter-badge')).toHaveTextContent(/^Nowe osiągnięcie: Curious Detective$/);
+    // Outro bez zapowiedzi osiągnięcia - odznakę pokazuje okienko z odpowiedzi serwera (D-199, CoursePlayer), tylko przy pierwszym zdobyciu.
+    expect(screen.queryByTestId('easter-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('notebook-distinctions')).toHaveTextContent('Curious Detective');
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     fireEvent.click(screen.getByRole('button', { name: 'Wróć do pulpitu' }));

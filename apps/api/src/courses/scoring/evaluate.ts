@@ -695,7 +695,9 @@ export function checksView(block: Block, entry: BlockEntry, opaque: OpaqueId) {
  *    przedmiotem do obejrzenia;
  *  - `noted` tylko dla obejrzanego przedmiotu-dowodu z notatką;
  *  - stan tylko rośnie: wynik to suma z poprzednim zapisem (spóźnione albo powtórzone żądanie niczego nie cofa).
- * Blok nie jest tu ukończony (done: false), nie ma punktów ani wyróżnień easter egga - te nadaje dopiero zapis bloku („Dalej”).
+ * Blok nie jest tu ukończony (done: false), nie ma punktów ani wyróżnień easter egga w notatniku - te nadaje dopiero zapis bloku („Dalej”).
+ * `easterEggs` (D-199): id easter eggów z `visited` TEGO żądania - serwis przyznaje za nie osiągnięcie od razu (okienko odznaki w chwili
+ * odkrycia; „tylko raz” gwarantuje createMany skipDuplicates, bo klient wysyła pełny stan); wpis postępu ich nie zapisuje.
  * To bramka UX jak przy zapisie bloku, nie dowód kliknięcia: klient zgłasza, co obejrzał.
  */
 export function evaluateExploration(
@@ -703,7 +705,7 @@ export function evaluateExploration(
   answer: { visited: string[]; noted: string[] },
   existing: BlockEntry | undefined,
   now: Date,
-): { entry: BlockEntry; notesAdded: string[] } {
+): { entry: BlockEntry; notesAdded: string[]; easterEggs: string[] } {
   if (block.type !== 'SCENE_HOTSPOTS') throw new BadRequestException('Ten blok nie zapisuje stanu częściowego');
   // Ukończonego wpisu (punkty, wyróżnienia) stan częściowy nigdy nie zastępuje - także przy niespójnym postępie (jak evaluateAttempt).
   if (existing?.done) throw new BadRequestException('Ten blok jest już ukończony');
@@ -729,6 +731,7 @@ export function evaluateExploration(
   return {
     entry: { type: block.type, done: false, answeredAt: now.toISOString(), weight: weightOf(block), visited: mergedVisited, noted: mergedNoted },
     notesAdded: mergedNoted.map((id) => noteKey(block.id, id)),
+    easterEggs: easterEggIds(hotspots, visited),
   };
 }
 

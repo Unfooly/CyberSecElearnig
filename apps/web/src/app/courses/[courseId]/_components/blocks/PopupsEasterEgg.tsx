@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
-import { Award, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { PopupItem } from '@/lib/courses-types';
 import { usePhoneLayout } from '@/lib/use-phone-layout';
 
@@ -54,22 +54,19 @@ const PopupsEasterEgg = forwardRef<
   {
     items: PopupItem[];
     outro: string;
-    badge?: { id: string; label: string };
     reducedMotion: boolean;
     /** Wszystkie okienka zamknięte - raz (hotspot do `visited`, wyróżnienie do notatnika). */
     onFound: () => void;
     /** Przycisk po outro (np. „Wróć do pulpitu” w scenie zagnieżdżonej, „Wróć” na scenie głównej). */
     onDone: () => void;
     backLabel?: string;
-    /** Wyróżnienie już było w notatniku (ponowne otwarcie przedmiotu) - bez „Nowe”. */
-    alreadyFound?: boolean;
     /**
      * Okienka na ekranie monitora (D-116): kontener = prostokąt ekranu (ucina wszystko poza nim), okno max 60% ekranu, kaskada ~6%
      * w jego wnętrzu, okno zmniejszane, gdy nie mieści się w wysokości ekranu.
      */
     onScreen?: boolean;
   }
->(function PopupsEasterEgg({ items, outro, badge, reducedMotion, onFound, onDone, backLabel = 'Wróć', alreadyFound = false, onScreen = false }, ref) {
+>(function PopupsEasterEgg({ items, outro, reducedMotion, onFound, onDone, backLabel = 'Wróć', onScreen = false }, ref) {
   const [appeared, setAppeared] = useState(reducedMotion ? items.length : 0);
   const [closed, setClosed] = useState<number[]>([]);
   const [blink, setBlink] = useState(!reducedMotion);
@@ -80,11 +77,8 @@ const PopupsEasterEgg = forwardRef<
   const firstOpen = items.findIndex((_, index) => !closed.includes(index));
   const top = single ? (firstOpen === -1 ? null : firstOpen) : openIndexes.length > 0 ? openIndexes[openIndexes.length - 1] : null;
   const finished = closed.length === items.length;
-  // Stan z chwili OTWARCIA przedmiotu: onFound dopisuje wyróżnienie do notatnika, więc rodzic przelicza `alreadyFound` na true
-  // zaraz po znalezieniu - bez zamrożenia pierwsze znalezienie pokazywało outro bez „Nowe”.
-  const [foundBefore] = useState(alreadyFound);
-  // Wyróżnienie easter egga to osiągnięcie (D-111): serwer przyznaje je przy zapisie bloku, profil pokazuje je na stałe.
-  const badgeText = badge ? `${foundBefore ? 'Osiągnięcie' : 'Nowe osiągnięcie'}: ${badge.label}` : '';
+  // Osiągnięcie za easter egg (D-111) pokazuje okienko odznaki (RewardDialog, D-199) - wyłącznie, gdy serwer przyznał je TERAZ (pierwsze
+  // zdobycie); outro samo go nie zapowiada, więc ponowne przejście kursu nie mówi „Nowe osiągnięcie” drugi raz.
 
   useEffect(() => {
     if (reducedMotion) return undefined;
@@ -188,10 +182,10 @@ const PopupsEasterEgg = forwardRef<
           ) : null,
         )
       )}
-      {/* Stały region live (od montowania): czytnik ogłasza WYPEŁNIENIE regionu, nie region wstawiony razem z treścią - outro i
-          wyróżnienie dochodzą do czytnika, choć fokus od razu przechodzi na przycisk. */}
+      {/* Stały region live (od montowania): czytnik ogłasza WYPEŁNIENIE regionu, nie region wstawiony razem z treścią - outro dochodzi
+          do czytnika, choć fokus od razu przechodzi na przycisk. */}
       <p role="status" className="sr-only">
-        {finished ? `${outro}${badge ? ` ${badgeText}` : ''}` : ''}
+        {finished ? outro : ''}
       </p>
       {finished && (
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center p-3">
@@ -203,12 +197,6 @@ const PopupsEasterEgg = forwardRef<
             }`}
           >
             <p aria-hidden="true">{outro}</p>
-            {badge && (
-              <p aria-hidden="true" data-testid="easter-badge" className="inline-flex items-center gap-2 font-bold text-accent-ink">
-                <Award className="h-5 w-5 shrink-0" />
-                {badgeText}
-              </p>
-            )}
             <button
               type="button"
               onClick={onDone}

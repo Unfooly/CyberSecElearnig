@@ -64,6 +64,21 @@ export async function checkEndScreen(page, step, { completion, rules }) {
       (await page.getByTestId('module-end-level').getByRole('progressbar', { name: `Poziom ${level}`, exact: true }).count()) === 1 && titles.every((title) => badgeText.includes(title)),
       badgeText,
     );
+    // Okienko nagrody (D-199): przy nowych osiągnięciach albo awansie - odznaki z grafiką i nowy poziom; zamykane „Super!”.
+    if (titles.length > 0 || reward.leveledUp) {
+      const dialog = page.getByTestId('reward-dialog');
+      await dialog.waitFor({ timeout: 5000 });
+      const dialogText = (await dialog.textContent()) ?? '';
+      step(
+        `KONIEC: okienko nagrody${titles.length ? ` z odznakami (${titles.join(', ')})` : ''}${reward.leveledUp ? ` i awansem na poziom ${reward.newLevel}` : ''}`,
+        titles.every((title) => dialogText.includes(title)) &&
+          (await dialog.getByTestId('reward-dialog-badge').locator('img').count()) === titles.length &&
+          (!reward.leveledUp || dialogText.includes(`Awans na poziom ${reward.newLevel}`)),
+        dialogText,
+      );
+      await dialog.getByRole('button', { name: 'Super!' }).click();
+      await dialog.waitFor({ state: 'detached' });
+    }
   }
   if (rules) {
     const shown = (await end.getByRole('region', { name: /zasady na wynos/i }).getByRole('listitem').allTextContents()).map((line) => line.replace(/^\d+\.\s*/, '').trim());

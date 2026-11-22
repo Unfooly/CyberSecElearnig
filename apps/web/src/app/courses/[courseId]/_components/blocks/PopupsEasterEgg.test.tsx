@@ -24,7 +24,7 @@ const items: PopupItem[] = [
   { title: '🔒 Pliki zaszyfrowane', body: 'Zapłać, żeby je odzyskać.', button: 'Zapłać teraz', countdown: '23:59:59' },
 ];
 
-function setup(reducedMotion = false, extra: { backLabel?: string; alreadyFound?: boolean; onScreen?: boolean } = {}) {
+function setup(reducedMotion = false, extra: { backLabel?: string; onScreen?: boolean } = {}) {
   const onFound = vi.fn();
   const onDone = vi.fn();
   const ref = createRef<PopupsHandle>();
@@ -33,7 +33,6 @@ function setup(reducedMotion = false, extra: { backLabel?: string; alreadyFound?
       ref={ref}
       items={items}
       outro="Pirackie gry to częsta droga wirusów do firm."
-      badge={{ id: 'ciekawski-detektyw', label: 'Curious Detective' }}
       reducedMotion={reducedMotion}
       onFound={onFound}
       onDone={onDone}
@@ -126,7 +125,7 @@ describe('PopupsEasterEgg', () => {
     expect(countdown).toHaveTextContent('Odliczanie od 23:59:59');
   });
 
-  it('po zamknięciu wszystkich: onFound raz, outro z wyróżnieniem w STAŁYM regionie live, przycisk powrotu woła onDone', () => {
+  it('po zamknięciu wszystkich: onFound raz, outro w STAŁYM regionie live (bez zapowiedzi osiągnięcia - to okienko odznaki, D-199), przycisk powrotu woła onDone', () => {
     const { onFound, onDone } = setup(true, { backLabel: 'Wróć do pulpitu' });
     // Region live istnieje od montowania (pusty) - czytnik ogłasza jego wypełnienie.
     const live = screen.getByRole('status');
@@ -134,18 +133,18 @@ describe('PopupsEasterEgg', () => {
     closeAll();
     expect(onFound).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('status')).toBe(live);
-    expect(live).toHaveTextContent('Pirackie gry to częsta droga wirusów do firm. Nowe osiągnięcie: Curious Detective');
-    expect(screen.getByTestId('easter-badge')).toHaveTextContent('Nowe osiągnięcie: Curious Detective');
+    expect(live).toHaveTextContent(/^Pirackie gry to częsta droga wirusów do firm\.$/);
+    expect(screen.queryByTestId('easter-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('easter-outro')).not.toHaveTextContent(/osiągnięcie/i);
     const back = screen.getByRole('button', { name: 'Wróć do pulpitu' });
     expect(back).toHaveFocus();
     fireEvent.click(back);
     expect(onDone).toHaveBeenCalled();
   });
 
-  it('ponowne otwarcie po znalezieniu: „Osiągnięcie” (bez „Nowe”); domyślny przycisk „Wróć”', () => {
-    setup(true, { alreadyFound: true });
+  it('domyślny przycisk po outro: „Wróć”', () => {
+    setup(true);
     closeAll();
-    expect(screen.getByTestId('easter-badge')).toHaveTextContent(/^Osiągnięcie: Curious Detective$/);
     expect(screen.getByRole('button', { name: 'Wróć' })).toBeInTheDocument();
   });
 

@@ -71,10 +71,19 @@ describe('evaluateExploration (stan częściowy sceny)', () => {
     expect(explore(['h2'], [], broken).entry).toMatchObject({ visited: ['h2'], noted: [] });
   });
 
-  it('easter egg: obejrzenie zapisuje tylko stan - wyróżnienie nadaje dopiero zapis bloku', () => {
-    const { entry } = explore(['h4', 'h4-gra'], []);
+  it('easter egg: wpis zapisuje tylko stan (wyróżnienie w notatniku nadaje zapis bloku); id easter egga do przyznania osiągnięcia (D-199)', () => {
+    const { entry, easterEggs } = explore(['h4', 'h4-gra'], []);
     expect(entry.visited).toEqual(['h4', 'h4-gra']);
     expect(entry.easterEggs).toBeUndefined();
+    expect(easterEggs).toEqual(['ciekawski']);
+  });
+
+  // Odtwarzacz wysyła zwykle pełny stan, więc po odkryciu kolejne zapisy znów zgłaszają easter egg - jedno okienko gwarantuje serwis
+  // (createMany skipDuplicates, e2e easter-egg-badge), nie ta funkcja. Tu: zgłaszane są wyłącznie id z bieżącego żądania.
+  it('easter egg (D-199): zgłaszane tylko id z bieżącego żądania (nie ze scalonego, zapisanego wcześniej stanu)', () => {
+    const first = explore(['h4', 'h4-gra'], []);
+    expect(explore(['h1'], [], first.entry).easterEggs).toEqual([]);
+    expect(explore(['h1', 'h2'], []).easterEggs).toEqual([]);
   });
 });
 

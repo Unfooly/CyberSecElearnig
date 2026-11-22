@@ -239,9 +239,9 @@ export class GamificationService {
   }
 
   /**
-   * Osiągnięcia za wyróżnienia easter egga zapisane TYM zapisem bloku (CoursesService.submitBlockProgress, ta sama
-   * transakcja). Bez XP (easter egg nie wpływa na wynik ani XP, D-100). Zwraca nowo zdobyte (testy; odpowiedź API ich nie
-   * niesie - komunikat w playerze pokazuje outro easter egga jeszcze przed zapisem bloku).
+   * Osiągnięcia za easter eggi obejrzane w zapisie stanu sceny (CoursesService.exploreBlock, D-199) albo zapisane zapisem bloku
+   * (submitBlockProgress - zapasowo), zawsze w transakcji wołającego. Bez XP (D-100). Zwraca WYŁĄCZNIE nowo zdobyte (createMany
+   * skipDuplicates): /explore oddaje je klientowi (okienko odznaki tylko przy pierwszym zdobyciu), zapis bloku - nie.
    */
   async awardEasterEggAchievements(
     tx: Prisma.TransactionClient,

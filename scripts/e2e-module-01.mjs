@@ -280,8 +280,14 @@ try {
       await page.getByRole('button', { name: `Zamknij okienko: ${title}` }).click();
     }
     await page.getByTestId('easter-outro').waitFor();
-    const eggBadge = (await page.getByTestId('easter-badge').textContent()) ?? '';
-    step('EASTER EGG: trzy okienka zamknięte krzyżykiem, outro z osiągnięciem „Ciekawski detektyw”', eggBadge.includes('Ciekawski detektyw'), eggBadge);
+    // Odznaka od razu po odkryciu (D-199): /explore przyznaje osiągnięcie, okienko z grafiką; nowy użytkownik - pierwsze zdobycie.
+    const rewardDialog = page.getByRole('dialog', { name: 'Nowe osiągnięcie!' });
+    await rewardDialog.waitFor({ timeout: 10000 });
+    const eggBadge = (await rewardDialog.textContent()) ?? '';
+    step('EASTER EGG: trzy okienka zamknięte krzyżykiem, okienko odznaki „Ciekawski detektyw” z grafiką', eggBadge.includes('Ciekawski detektyw') && (await rewardDialog.locator('img').count()) === 1, eggBadge);
+    await shot('03-odznaka');
+    await rewardDialog.getByRole('button', { name: 'Super!' }).click();
+    await rewardDialog.waitFor({ state: 'detached' });
     await page.getByTestId('easter-outro').getByRole('button').click();
     await closed();
   }

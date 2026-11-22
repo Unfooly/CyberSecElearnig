@@ -24,7 +24,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useCallback, use
 // 'blockModal' (B-136): okno modalne bloku (nagranie OSINT, wybór dowodu i konsola w przesłuchaniu) - jak 'hotspotCard' w kaskadzie
 // Escape, ale dodatkowo PlayerStage robi wtedy oba paski ramki (górny z notatnikiem, dolny z „Dalej”) inert, żeby aria-modal nie kłamało.
 // 'volume' - okienko głośności lektora w dolnym pasku (D-162).
-export type OverlayLayer = 'hotspotCard' | 'blockModal' | 'transcript' | 'notebook' | 'fullscreen' | 'volume';
+// 'reward' (D-199): okienko nowej odznaki (RewardDialog) - jak 'blockModal': w kaskadzie Escape i z paskami ramki inert.
+export type OverlayLayer = 'hotspotCard' | 'blockModal' | 'transcript' | 'notebook' | 'fullscreen' | 'volume' | 'reward';
 
 interface OverlayEntry {
   isOpen: boolean;
@@ -66,7 +67,7 @@ export function OverlayStackProvider({ children }: { children: ReactNode }) {
   const sync = useCallback(() => {
     setAnyOpen(order.current.length > 0);
     setBlockingOpen(order.current.some((layer) => layer !== 'fullscreen'));
-    setModalOpen(order.current.includes('blockModal'));
+    setModalOpen(order.current.includes('blockModal') || order.current.includes('reward'));
   }, []);
 
   const register = useCallback((layer: OverlayLayer, entry: OverlayEntry) => {
@@ -161,7 +162,12 @@ export function useBlockingOverlayOpen(): boolean {
   return ctx?.blockingOpen ?? false;
 }
 
-/** true, gdy otwarte jest okno modalne bloku ('blockModal', B-136) - false poza providerem. */
+/** true wewnątrz ramki odtwarzacza (OverlayStackProvider) - okno poza nią (ekran końca) obsługuje Escape samo. */
+export function useHasOverlayStack(): boolean {
+  return useContext(OverlayStackContext) !== null;
+}
+
+/** true, gdy otwarte jest okno modalne bloku ('blockModal', B-136) albo okienko odznaki ('reward', D-199) - false poza providerem. */
 export function useBlockModalOpen(): boolean {
   const ctx = useContext(OverlayStackContext);
   return ctx?.modalOpen ?? false;

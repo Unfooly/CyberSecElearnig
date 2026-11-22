@@ -45,6 +45,19 @@ import { EvidenceProvider, hasEvidence } from './player/evidence';
 import { DEFAULT_HINT, HintProvider, useHints } from './player/hints';
 import { useNarrationPreference } from './player/useNarrationPreference';
 import { SfxProvider } from '@/lib/sfx';
+import RewardDialog, { type RewardBadge } from './RewardDialog';
+import { RANK_LABELS, type AchievementRank } from '@/lib/gamification-types';
+
+/** Osiągnięcia z odpowiedzi /explore (D-199) - obronnie: tylko poprawnie zbudowane wpisy, nieznana ranga = bez rangi. */
+function unlockedBadgesOf(body: unknown): RewardBadge[] {
+  const list = (body as { unlockedBadges?: unknown } | null)?.unlockedBadges;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((item): RewardBadge[] => {
+    const { code, title, icon, rank } = (item ?? {}) as Record<string, unknown>;
+    if (typeof code !== 'string' || typeof title !== 'string' || typeof icon !== 'string') return [];
+    return [{ code, title, icon, rank: typeof rank === 'string' && rank in RANK_LABELS ? (rank as AchievementRank) : null }];
+  });
+}
 
 export interface CoursePlayerInitialState extends CourseDetail {
   // Wzbogacone server-side (page.tsx) o wynik z GET /courses/my, gdy user
@@ -397,6 +410,8 @@ export default function CoursePlayer({
   // handleAnswer z odpowiedzi /progress) - zostaje null, gdy user po prostu
   // wrócił do wcześniej ukończonego kursu (ekran zamknięcia bez ceremonii i bez XP).
   const [reward, setReward] = useState<CourseCompletionReward | null>(previewReward);
+  // Okienko odznaki za easter egg (D-199) - z odpowiedzi /explore; pusto = zamknięte.
+  const [badgeReveal, setBadgeReveal] = useState<RewardBadge[]>([]);
   // Ukończenie w TEJ sesji (ceremonia ekranu zamknięcia sprawy, D-089) i moment ukończenia (czas śledztwa).
   const [completedNow, setCompletedNow] = useState(false);
   const [completedAt, setCompletedAt] = useState<string | null>(initial.completedAt ?? null);
@@ -515,13 +530,18 @@ export default function CoursePlayer({
         const abort = typeof AbortController === 'undefined' ? null : new AbortController();
         queue.abort = abort;
         try {
-          await fetch(`/api/courses/${courseId}/blocks/${id}/explore`, {
+          const response = await fetch(`/api/courses/${courseId}/blocks/${id}/explore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
             keepalive: true,
             ...(abort ? { signal: abort.signal } : {}),
           });
+          // Osiągnięcie za easter egg przyznane TYM zapisem (D-199) - okienko z odznaką. Serwer zgłasza je tylko przy pierwszym zdobyciu.
+          const unlocked = response.ok ? unlockedBadgesOf(await response.json().catch(() => null)) : [];
+          if (unlocked.length > 0 && !unmounted.current) {
+            setBadgeReveal((current) => [...current, ...unlocked.filter((badge) => !current.some((shown) => shown.code === badge.code))]);
+          }
         } catch {
           // Brak sieci albo przerwane po limicie czekania (handleAnswer): stan doniesie kolejny zapis częściowy albo zapis bloku.
         }
@@ -1158,6 +1178,7 @@ export default function CoursePlayer({
                   </p>
                 )}
                 <BarActionProvider onChange={handleBarAction}>{stage}</BarActionProvider>
+                {badgeReveal.length > 0 && <RewardDialog badges={badgeReveal} onClose={() => setBadgeReveal([])} />}
               </>
             }
             narrationBar={

@@ -65,7 +65,7 @@ export const moduleSchema = z
     // Sam tekst do wyświetlenia - niczego nie blokuje (kolejność modułów nie jest wymuszana). Poza wersją kursu, jak okładki (module-meta).
     startNotice: ltext(200).optional(),
     // Tryb prosty (D-132, moduł 3 i kolejne, addytywnie w v6): ostrzejsza walidacja (semantics.ts simpleModeErrors) i odtwarzacz dla osób
-    // nietechnicznych - ocena każdego kliknięcia od razu, podpowiedź po 2 błędach, tekst min. 16 px, bez wyniku w blokach.
+    // nietechnicznych - ocena przez serwer (pytanie quizu: „Sprawdź”, jedna próba - D-204), tekst min. 16 px, bez wyniku w blokach.
     simpleMode: z.boolean().optional(),
     // Języki kursu (D-133): w których językach kurs jest kompletny - gracz w innym języku dostaje `pl` z plakietką „Available in Polish
     // only”. Zawsze z `pl`; brak pola = ['pl'] (częściowe tłumaczenie pól nie czyni kursu dwujęzycznym). Kompletność języków sprawdza

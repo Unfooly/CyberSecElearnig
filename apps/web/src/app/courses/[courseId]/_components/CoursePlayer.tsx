@@ -191,7 +191,7 @@ function renderBlockContent(block: ContentBlock, ctx: RenderContext) {
       const position = quizzes.findIndex((item) => item.id === block.id);
       const questionLabel = position >= 0 ? `Pytanie ${position + 1} z ${quizzes.length}` : undefined;
       if (ctx.simpleMode && block.multiple === true) {
-        // Wielokrotny wybór (D-158): zbiór przez /check, zapis po trafieniu bez odpowiedzi (wynik z prób w postępie).
+        // Wielokrotny wybór (D-158): zbiór przez /check, zapis po „Sprawdź” (D-204) bez odpowiedzi (wynik z próby w postępie).
         return (
           <SimpleMultiChoiceBlock
             key={block.id}

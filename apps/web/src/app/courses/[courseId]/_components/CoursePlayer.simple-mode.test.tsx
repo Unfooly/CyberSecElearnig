@@ -50,8 +50,11 @@ describe('CoursePlayer: tryb prosty', () => {
     render(<CoursePlayer courseId="course-1" initial={course(true)} contentBase="/content" narrationEnabled={false} />);
 
     expect(screen.getByRole('main')).toHaveClass('simple-mode');
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Pytam innym kanałem.' })));
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Tak sprawdzisz.');
+    // D-204: zaznaczenie, potem „Sprawdź”.
+    fireEvent.click(screen.getByRole('radio', { name: 'Pytam innym kanałem.' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Sprawdź' })));
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. To poprawna odpowiedź.');
+    expect(screen.getByRole('radio', { name: /Pytam innym kanałem\./ }).closest('label')).toHaveTextContent('Tak sprawdzisz.');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Dalej' })).not.toBeDisabled());
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }));
     await waitFor(() => expect(screen.getByText('Następny blok.')).toBeInTheDocument());

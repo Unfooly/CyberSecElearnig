@@ -215,7 +215,8 @@ describe('CoursePlayer: ekran końca modułu (D-165)', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Start' }));
-    await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'B' })));
+    fireEvent.click(await screen.findByRole('radio', { name: 'B' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Sprawdź' })));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Dalej' })).not.toBeDisabled());
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dalej' })));
     await screen.findByTestId('module-end');

@@ -3,8 +3,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import SimpleMultiChoiceBlock from './SimpleMultiChoiceBlock';
 import type { ContentBlock } from '@/lib/courses-types';
 
-// Wielokrotny wybór w trybie prostym (D-158): zaznaczenie, „Sprawdź” wysyła zbiór, oceny przy zaznaczonych, zmiana zaznaczenia czyści oceny,
-// po 2 błędach podpowiedź, „Dalej” po trafieniu (zapis bez odpowiedzi).
+// Wielokrotny wybór w trybie prostym (D-158, D-204): zaznaczenie, „Sprawdź” wysyła zbiór - jedna próba rozstrzyga; oceny przy zaznaczonych
+// i poprawne niezaznaczone na zielono, „Dalej” od razu (zapis bez odpowiedzi).
 
 const block = {
   id: 'ktos-za-toba',
@@ -26,46 +26,52 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('SimpleMultiChoiceBlock', () => {
-  it('„Sprawdź” wysyła zbiór; oceny przy zaznaczonych; zmiana zaznaczenia czyści oceny; po 2 błędach podpowiedź; trafienie - „Dalej” bez odpowiedzi', async () => {
+  it('„Sprawdź” wysyła zbiór; zła próba rozstrzyga: oceny przy zaznaczonych, brakująca poprawna na zielono, „Dalej” od razu, bez drugiej próby', async () => {
     const onSubmit = vi.fn();
     const ready: { current: (() => void) | null } = { current: null };
     render(<SimpleMultiChoiceBlock block={block} courseId="kurs-1" onSubmit={onSubmit} onReady={(submit) => (ready.current = submit)} />);
-    expect(screen.getByText('Zaznacz wszystkie poprawne odpowiedzi.')).toBeInTheDocument();
+    expect(screen.getByText('Zaznacz wszystkie poprawne odpowiedzi i kliknij „Sprawdź”.')).toBeInTheDocument();
     expect(checkButton()).toBeDisabled();
 
     fireEvent.click(box('Przytrzymuję drzwi.'));
     fireEvent.click(box('Pytam, do kogo przyszedł.'));
+    expect(fetchMock).not.toHaveBeenCalled();
     reply({
       blockId: 'ktos-za-toba',
       result: 'bad',
       feedback: '',
-      done: false,
+      done: true,
       options: [
-        { option: 0, result: 'good', feedback: 'Tak – uprzejme pytanie wystarczy.' },
-        { option: 1, result: 'bad', feedback: 'Wygląd nic nie mówi.' },
+        { option: 0, result: 'good', feedback: 'Tak – uprzejme pytanie wystarczy.', picked: true },
+        { option: 1, result: 'bad', feedback: 'Wygląd nic nie mówi.', picked: true },
+        { option: 2, result: 'good', feedback: 'Tak – każdy ma swoją kartę.', picked: false },
       ],
     });
     await act(async () => fireEvent.click(checkButton()));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ options: [0, 1] });
-    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Nie tym razem. Popraw zaznaczenie i sprawdź jeszcze raz.');
+    expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Nie tym razem. Poprawne odpowiedzi oznaczyliśmy znakiem ✓.');
     const marked = screen.getAllByTestId('simple-multi-option');
     expect(marked[0]).toHaveAttribute('data-result', 'good');
     expect(marked[1]).toHaveAttribute('data-result', 'bad');
-    expect(marked[2]).not.toHaveAttribute('data-result');
     expect(marked[1]).toHaveTextContent('Wygląd nic nie mówi.');
-    // Ten sam zbiór drugi raz - przycisk nieaktywny (serwer i tak odrzuci).
-    expect(checkButton()).toBeDisabled();
-    expect(ready.current).toBeNull();
+    expect(marked[2]).toHaveAttribute('data-result', 'good');
+    expect(marked[2]).toHaveAttribute('data-picked', 'false');
+    expect(marked[2]).toHaveTextContent('Poprawna odpowiedź. Tak – każdy ma swoją kartę.');
+    expect(marked[3]).not.toHaveAttribute('data-result');
+    // Przycisk zostaje (fokus), ale nieaktywny: „Sprawdzone”.
+    expect(screen.getByTestId('simple-multi-check')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('simple-multi-check')).toHaveTextContent('Sprawdzone');
+    // Po rozstrzygnięciu zaznaczenie zablokowane, „Dalej” od razu.
+    fireEvent.click(box('Pożyczam kartę.'));
+    expect(box('Pożyczam kartę.')).not.toBeChecked();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    act(() => ready.current!());
+    expect(onSubmit).toHaveBeenCalledWith(undefined);
+  });
 
-    // Zmiana zaznaczenia czyści oceny poprzedniej próby.
-    fireEvent.click(box('Przytrzymuję drzwi.'));
-    expect(screen.queryAllByTestId('simple-multi-feedback')).toHaveLength(0);
-    expect(screen.getByTestId('simple-feedback')).not.toHaveAttribute('data-result');
-
-    reply({ blockId: 'ktos-za-toba', result: 'bad', feedback: '', hint: 'Do biura wchodzi się własną kartą.', done: false, options: [{ option: 0, result: 'good', feedback: 'Tak.' }] });
-    await act(async () => fireEvent.click(checkButton()));
-    expect(screen.getByTestId('simple-hint')).toHaveTextContent('Do biura wchodzi się własną kartą.');
-
+  it('dobra próba: „Dobrze. Zaznaczono wszystkie poprawne odpowiedzi.”', async () => {
+    render(<SimpleMultiChoiceBlock block={block} courseId="kurs-1" onSubmit={vi.fn()} onReady={vi.fn()} />);
+    fireEvent.click(box('Pytam, do kogo przyszedł.'));
     fireEvent.click(box('Nie przytrzymuję drzwi.'));
     reply({
       blockId: 'ktos-za-toba',
@@ -73,23 +79,16 @@ describe('SimpleMultiChoiceBlock', () => {
       feedback: '',
       done: true,
       options: [
-        { option: 0, result: 'good', feedback: 'Tak.' },
-        { option: 2, result: 'good', feedback: 'Tak – każdy ma swoją kartę.' },
+        { option: 0, result: 'good', feedback: 'Tak.', picked: true },
+        { option: 2, result: 'good', feedback: 'Tak – każdy ma swoją kartę.', picked: true },
       ],
     });
     await act(async () => fireEvent.click(checkButton()));
-    expect(JSON.parse(fetchMock.mock.calls[2][1].body as string)).toEqual({ options: [0, 2] });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ options: [0, 2] });
     expect(screen.getByTestId('simple-feedback')).toHaveTextContent('Dobrze. Zaznaczono wszystkie poprawne odpowiedzi.');
-    expect(screen.queryByTestId('simple-hint')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Sprawdź' })).not.toBeInTheDocument();
-    // Po trafieniu zaznaczenie zablokowane.
-    fireEvent.click(box('Pożyczam kartę.'));
-    expect(box('Pożyczam kartę.')).not.toBeChecked();
-    act(() => ready.current!());
-    expect(onSubmit).toHaveBeenCalledWith(undefined);
   });
 
-  it('odświeżenie strony: zaznaczenie i oceny z ostatniej próby w postępie; po trafieniu „Dalej” od razu', () => {
+  it('odświeżenie strony: zaznaczenie i oceny z rozstrzygniętej próby; „Dalej” od razu (także po złej próbie)', () => {
     const ready: { current: (() => void) | null } = { current: null };
     const { unmount } = render(
       <SimpleMultiChoiceBlock
@@ -97,12 +96,12 @@ describe('SimpleMultiChoiceBlock', () => {
         courseId="kurs-1"
         onSubmit={vi.fn()}
         onReady={(submit) => (ready.current = submit)}
-        progress={{ type: 'QUIZ', done: false, checks: [{ item: [1], result: 'bad', feedback: '', options: [{ option: 1, result: 'bad', feedback: 'Nie.' }] }] }}
+        progress={{ type: 'QUIZ', done: false, checks: [{ item: [1], result: 'bad', feedback: '', options: [{ option: 1, result: 'bad', feedback: 'Nie.', picked: true }] }] }}
       />,
     );
     expect(box('Przytrzymuję drzwi.')).toBeChecked();
     expect(screen.getAllByTestId('simple-multi-option')[1]).toHaveAttribute('data-result', 'bad');
-    expect(ready.current).toBeNull();
+    expect(ready.current).not.toBeNull();
     unmount();
 
     render(

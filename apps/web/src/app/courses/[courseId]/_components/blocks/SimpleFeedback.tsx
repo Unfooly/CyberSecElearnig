@@ -3,7 +3,8 @@
 import { CircleAlert, CircleCheck, Lightbulb } from 'lucide-react';
 
 // Tryb prosty (D-132): ocena kliknięcia od razu - „Dobrze”/„Nie tym razem” i jedno zdanie z treści (z odpowiedzi /check). Region `status`:
-// czytnik ekranu ogłasza werdykt bez przenoszenia fokusu. Podpowiedź po 2 błędach zostaje widoczna do końca bloku (nie znika po kilku
+// czytnik ekranu ogłasza werdykt bez przenoszenia fokusu. Podpowiedź po 2 błędach (SWIPE_SORT; pytanie quizu od D-204 bez podpowiedzi)
+// zostaje widoczna do końca bloku (nie znika po kilku
 // sekundach jak dymek podpowiedzi powłoki).
 
 export function SimpleFeedback({

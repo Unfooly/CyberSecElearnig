@@ -129,7 +129,8 @@ export class CoursesController {
     return this.coursesService.challengeBlock(user.organizationId, user.userId, courseId, blockId, dto.lineId, dto.noteRef, acceptLanguage);
   }
 
-  // Ocena jednego kliknięcia (D-132): wybór w trybie prostym i karta SWIPE_SORT - werdykt, zdanie i podpowiedź po 2 błędach; kurs się nie
+  // Ocena jednego kliknięcia (D-132): pytanie quizu w trybie prostym (D-204 - jedna próba rozstrzyga, potem klucz tego pytania) i karta
+  // SWIPE_SORT (werdykt, zdanie, podpowiedź po 2 błędach); kurs się nie
   // przesuwa ("Dalej" to /progress).
   @Post(':courseId/blocks/:blockId/check')
   @HttpCode(HttpStatus.OK)

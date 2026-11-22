@@ -95,17 +95,27 @@ describe('Tryb prosty: /check (e2e)', () => {
     await check(tokenA, 'nie-ma', { option: 1 }).expect(404);
   });
 
-  it('wybór: błędna odpowiedź - „bad” i zdanie, „Dalej” przed trafieniem - 400; trafienie - „good”; wynik z pierwszej próby', async () => {
+  it('wybór (D-204): „Dalej” przed „Sprawdź” - 400; jedna zła próba rozstrzyga (zdanie, klucz po rozstrzygnięciu), druga - 400; wynik z niej', async () => {
     await submit(tokenA, { blockIndex: 0 }).expect(200);
     await submit(tokenA, { blockIndex: 1, answer: { visited: ['link', 'tekst', 'logowanie'] } }).expect(200);
-    const bad = (await check(tokenA, 'wybor', { option: 0 }).expect(200)).body;
-    expect(bad).toEqual({ blockId: 'wybor', result: 'bad', feedback: `${SECRET_MARKER}-prosty-zle`, done: false });
     await submit(tokenA, { blockIndex: 2, answer: 1 }).expect(400);
-    // DTO: pole spoza listy i zły typ - 400.
+    // DTO: pole spoza listy i zły typ - 400 (bez zapisu próby).
     await check(tokenA, 'wybor', { option: 1, correct: true }).expect(400);
     await check(tokenA, 'wybor', { option: 'x' }).expect(400);
-    const good = (await check(tokenA, 'wybor', { option: 1 }).expect(200)).body;
-    expect(good).toEqual({ blockId: 'wybor', result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, done: true });
+    const bad = (await check(tokenA, 'wybor', { option: 0 }).expect(200)).body;
+    expect(bad).toEqual({
+      blockId: 'wybor',
+      result: 'bad',
+      feedback: `${SECRET_MARKER}-prosty-zle`,
+      done: true,
+      options: [
+        { option: 0, result: 'bad', feedback: `${SECRET_MARKER}-prosty-zle`, picked: true },
+        { option: 1, result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, picked: false },
+      ],
+    });
+    // Ponowne „Sprawdź” (np. zgubiona odpowiedź) - to samo rozstrzygnięcie, nowy wybór ignorowany.
+    expect((await check(tokenA, 'wybor', { option: 1 }).expect(200)).body).toEqual(bad);
+    // `answer` klienta pominięty - liczy się próba z /check.
     const saved = (await submit(tokenA, { blockIndex: 2, answer: 1 }).expect(200)).body;
     expect(saved.lastResult).toMatchObject({ type: 'QUIZ', correct: false, points: 0 });
   });
@@ -146,7 +156,33 @@ describe('Tryb prosty: /check (e2e)', () => {
 
     await submit(tokenB, { blockIndex: 0 }).expect(200);
     await submit(tokenB, { blockIndex: 1, answer: { visited: ['link', 'tekst', 'logowanie'] } }).expect(200);
-    expect((await check(tokenB, 'wybor', { option: 1 }).expect(200)).body.result).toBe('good');
+    // D-204: przed rozstrzygnięciem /start nie zdradza klucza pytania.
+    const before = JSON.stringify((await start(tokenB).expect(200)).body);
+    expect(before).not.toContain('"picked"');
+    expect(before).not.toContain(`${SECRET_MARKER}-prosty`);
+    // Jedna próba także przy równoległych żądaniach (FOR UPDATE): wszystkie dostają to samo rozstrzygnięcie (idempotentnie), a w postępie
+    // jest dokładnie jedna próba (widok /start niżej).
+    const tries = await Promise.allSettled(Array.from({ length: 5 }, () => check(tokenB, 'wybor', { option: 0 })));
+    const bodies = tries.map((r) => (r.status === 'fulfilled' && r.value.status === 200 ? r.value.body : null));
+    expect(bodies[0]).toMatchObject({ result: 'bad', done: true });
+    for (const body of bodies) expect(body).toEqual(bodies[0]);
+    const stored = await tenantPrisma.runInOrgContext(orgBId, (tx) =>
+      tx.courseAssignment.findFirst({ where: { organizationId: orgBId, userId: userBId, courseId, archivedAt: null }, select: { progress: true } }),
+    );
+    expect((stored!.progress as { blocks: Record<string, { checks: unknown[] }> }).blocks.wybor.checks).toHaveLength(1);
+    // Po rozstrzygnięciu (przed „Dalej”) odświeżenie strony pokazuje tę samą próbę z kluczem: zła zaznaczona i poprawna niezaznaczona.
+    const after = (await start(tokenB).expect(200)).body;
+    expect(after.progress.blocks.wybor.checks).toEqual([
+      {
+        item: 0,
+        result: 'bad',
+        feedback: `${SECRET_MARKER}-prosty-zle`,
+        options: [
+          { option: 0, result: 'bad', feedback: `${SECRET_MARKER}-prosty-zle`, picked: true },
+          { option: 1, result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, picked: false },
+        ],
+      },
+    ]);
     await submit(tokenB, { blockIndex: 2, answer: 1 }).expect(200);
     await check(tokenB, 'wiadomosci', { card: cardsA[0].id, verdict: 'ok' }).expect(400);
   });

@@ -1193,7 +1193,7 @@ function classify(client: string[], secret: string[]): FieldClassification {
 }
 
 const CHOICE_SECRET = ['options[].correct', 'options[].outcome', 'options[].feedback'];
-// Podpowiedź po 2 błędach w trybie prostym (D-132) - tylko QUIZ ma to pole.
+// Podpowiedź w trybie prostym (D-132; od D-204 jedna próba w pytaniu - pole wymagane, dziś nieużywane w QUIZ).
 const QUIZ_SECRET = [...CHOICE_SECRET, 'hint'];
 
 // Dokumenty teczki (DOSSIER) i konsoli przesłuchania (INTERROGATION.documents) - ten sam kształt, wszystko publiczne (D-083).

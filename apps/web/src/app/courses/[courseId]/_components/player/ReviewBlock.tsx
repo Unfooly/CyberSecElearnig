@@ -5,6 +5,7 @@ import ExploratoryBlock, { isExploratory } from '../blocks/ExploratoryBlock';
 import ScoredBlock, { BOARD_TYPES, hasInlineResult, isScored } from '../blocks/ScoredBlock';
 import SwipeSortBlock from '../blocks/SwipeSortBlock';
 import Illustrated from '../blocks/Illustrated';
+import { OPTION, OptionFeedback, OptionMark, decidedMarks, optionTone } from '../blocks/simple-option';
 
 // Podgląd JUŻ ukończonego bloku (przycisk "Wstecz"): tylko do odczytu, bez zmiany stanu na serwerze. Serwer i tak nie pozwala ponownie
 // zapisać ukończonego bloku (sekwencyjność). Bloki eksploracyjne (hotspoty, dialog, zakładki, notatnik, podsumowanie) można przejść
@@ -24,7 +25,7 @@ export default function ReviewBlock({
   moduleBlocks,
   simpleMode = false,
 }: {
-  /** Tryb prosty (D-132): bez wyniku „poprawna/niepoprawna” - gracz i tak doszedł do dobrej odpowiedzi. */
+  /** Tryb prosty (D-132): pytanie quizu z rozstrzygnięciem (D-204 - jedna próba, zaznaczone i poprawne z oceną); bez prób - „Blok ukończony”. */
   simpleMode?: boolean;
   caseNo?: string;
   /** Bloki modułu (omówienie czyta transkrypcję z bloku nagrania). */
@@ -101,6 +102,42 @@ export default function ReviewBlock({
           contentBase={contentBase}
         />
         <p className={`mt-2 text-xs text-slate-500 ${isBoard ? 'shrink-0' : ''}`}>Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
+      </div>
+    );
+  }
+
+  if (simpleMode && block.type === 'QUIZ' && result?.checks && result.checks.length > 0) {
+    // Pytanie quizu w trybie prostym (D-204): rozstrzygnięcie jak zaraz po „Sprawdź” - zaznaczone i poprawne z oceną i zdaniem (z postępu
+    // albo z tej sesji; serwer pokazuje tylko pierwszą, rozstrzygającą próbę). Bez monitora - zwykły slajd podglądu.
+    const decided = result.checks[0];
+    const marks = decidedMarks(decided);
+    const picked = Array.isArray(decided.item) ? decided.item : typeof decided.item === 'number' ? [decided.item] : [];
+    return (
+      <div data-testid="review-block">
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Podgląd ukończonego bloku</p>
+        <Illustrated illustration={block.illustration} contentBase={contentBase}>
+          <div className="flex flex-col gap-2.5">
+            <p className="text-lg font-bold text-slate-900">{block.prompt ?? block.title}</p>
+            <ul className="flex flex-col gap-2.5">
+              {(block.options ?? []).map((option, index) => {
+                const mark = marks.get(index);
+                return (
+                  <li key={index} data-testid="review-option" data-result={mark?.result} className={`${OPTION} ${optionTone(mark?.result ?? null, true, picked.includes(index))}`}>
+                    <OptionMark index={index} state={mark?.result ?? null} selected={picked.includes(index)} />
+                    <span className="flex min-w-0 flex-col gap-1">
+                      <span>{option.text}</span>
+                      {mark && <OptionFeedback mark={mark} testId="review-option-feedback" />}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className={`text-sm font-medium ${decided.result === 'good' ? 'text-green-700' : 'text-red-700'}`}>
+              {decided.result === 'good' ? 'Odpowiedź była poprawna.' : 'Odpowiedź była niepoprawna - poprawne oznaczone znakiem ✓.'}
+            </p>
+            <p className="text-xs text-slate-500">Ukończonego bloku nie można zmienić. Przejdź „Dalej”, aby wrócić do bieżącego miejsca.</p>
+          </div>
+        </Illustrated>
       </div>
     );
   }

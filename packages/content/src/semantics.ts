@@ -644,6 +644,8 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
         }
         // Wielokrotny wybór ma własny wygląd (tryb prosty, D-158) - nie łączy się z tą oprawą.
         if (block.frame === 'monitor' && block.multiple === true) errors.push('frame: monitor nie łączy się z multiple');
+        // Ilustracja obok pytania (D-200) to inny układ niż oprawa monitora - jedno albo drugie.
+        if (block.frame === 'monitor' && block.illustration !== undefined) errors.push('illustration: nie łączy się z frame: monitor');
       }
       break;
     }
@@ -1235,6 +1237,10 @@ function newModelErrors(stored: ContentModule): string[] {
         needAlt(`steps[${s}]`, step.image, step.alt);
         if (step.kind === 'caseFile') needAlt(`steps[${s}].closedImage (closedAlt)`, step.closedImage, step.closedAlt);
       });
+    }
+    // Ilustracja obok tekstu i pytania (D-200): schemat wymaga `alt`, tu - także niepustego po przycięciu spacji.
+    if ((block.type === 'NARRATIVE' || block.type === 'QUIZ') && block.illustration) {
+      needAlt('illustration', block.illustration.image, block.illustration.alt);
     }
     if (block.type === 'SUMMARY' && block.closing) {
       needAlt('closing', block.closing.image, block.closing.alt);

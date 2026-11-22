@@ -28,9 +28,12 @@ export default function SimpleMultiChoiceBlock({
   onProgress,
   disabled = false,
   questionLabel,
+  contentBase = '',
 }: {
   /** „Pytanie 2 z 5” - numer wśród pytań quizu modułu (CoursePlayer). */
   questionLabel?: string;
+  /** Baza adresów zasobów - ilustracja obok pytania (D-200). */
+  contentBase?: string;
   block: ContentBlock;
   courseId: string;
   progress?: ClientProgressBlock;
@@ -70,7 +73,7 @@ export default function SimpleMultiChoiceBlock({
   };
 
   return (
-    <MonitorStage label="Pytanie quizu">
+    <MonitorStage label="Pytanie quizu" illustration={block.illustration} contentBase={contentBase}>
       <div data-testid="simple-multi-choice" className="flex flex-col gap-3">
         {/* Napisy interfejsu (polskie) w obszarze z `lang` języka treści - lang="pl" (WCAG 3.1.2). */}
         {questionLabel && (

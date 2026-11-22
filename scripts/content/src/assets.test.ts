@@ -167,6 +167,31 @@ describe('raport zamknięcia sprawy (SUMMARY.closing, D-089)', () => {
   });
 });
 
+describe('ilustracja obok tekstu i pytania (NARRATIVE, QUIZ, D-200)', () => {
+  it('collectAssetRefs znajduje illustration.image; opis (alt) nie jest zasobem', () => {
+    const module = moduleWithAssets();
+    (module.blocks as Record<string, unknown>[]).push(
+      { type: 'NARRATIVE', id: 'tabela', text: 'Tekst.', illustration: { image: 'tabela.webp', alt: 'Opis.' } },
+      { type: 'QUIZ', id: 'pytanie', prompt: 'Pytanie?', options: [{ text: 'A', correct: true }, { text: 'B' }], illustration: { image: 'program.webp', alt: 'Opis.' } },
+    );
+    const refs = collectAssetRefs(module);
+    expect(refs.map((ref) => ref.value).sort()).toEqual(['anna.png', 'program.webp', 'scena.png', 'tabela.webp']);
+    expect(refs.map((ref) => ref.id)).toEqual(expect.arrayContaining([expect.stringMatching(/#illustration\.image$/)]));
+  });
+
+  it('ilustracja w dwóch językach ({ pl, en }): osobne zasoby, en z sufiksem @en', () => {
+    const module = moduleWithAssets();
+    (module.blocks as Record<string, unknown>[]).push({
+      type: 'NARRATIVE',
+      id: 'tabela',
+      text: 'Tekst.',
+      illustration: { image: { pl: 'tabela.webp', en: 'tabela-en.webp' }, alt: 'Opis.' },
+    });
+    const ids = collectAssetRefs(module).map((ref) => ref.id);
+    expect(ids).toEqual(expect.arrayContaining([expect.stringMatching(/tabela#illustration\.image$/), expect.stringMatching(/tabela#illustration\.image@en$/)]));
+  });
+});
+
 describe('grafika kroków odprawy (BRIEFING, D-084)', () => {
   it('collectAssetRefs znajduje steps[].image i closedImage', () => {
     const values = collectAssetRefs(moduleWithBriefingScenes()).map((ref) => ref.value).sort();

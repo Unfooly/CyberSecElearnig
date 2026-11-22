@@ -1488,6 +1488,37 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(simple)).toMatch(/frame: pytanie na fałszywej stronie tylko poza trybem prostym/);
   });
 
+  it('ilustracja obok tekstu i pytania (NARRATIVE, QUIZ - D-200): także w trybie prostym; trafia do klienta; wymaga opisu; nie z oprawą monitora', () => {
+    const illustration = { image: 'tabela.webp', alt: 'Bartek przy biurku z górą danych.' };
+    const simple = JSON.parse(JSON.stringify(simpleModule())) as TestModule;
+    Object.assign(block(simple, 'QUIZ'), { illustration });
+    expect(errorsOf(simple)).toBe('');
+    const parsedQuiz = parseModule(simple).blocks.find((b) => b.type === 'QUIZ')!;
+    expect(toClientBlock(parsedQuiz, testContext)).toMatchObject({ illustration });
+
+    const ok = fullModuleForTests();
+    Object.assign(block(ok, 'NARRATIVE'), { illustration });
+    expect(errorsOf(ok)).toBe('');
+    expect(toClientBlock(parseModule(ok).blocks.find((b) => b.type === 'NARRATIVE')!, testContext)).toMatchObject({ illustration });
+
+    const noAlt = fullModuleForTests();
+    Object.assign(block(noAlt, 'NARRATIVE'), { illustration: { image: 'tabela.webp' } });
+    expect(errorsOf(noAlt)).not.toBe('');
+    const extra = fullModuleForTests();
+    Object.assign(block(extra, 'NARRATIVE'), { illustration: { ...illustration, caption: 'x' } });
+    expect(errorsOf(extra)).not.toBe('');
+    // Opis z samych spacji (moduł z `locales`, jak moduł 4) - grafika bez opisu.
+    const blank = JSON.parse(JSON.stringify(simpleModule())) as TestModule & { locales?: string[] };
+    blank.locales = ['pl'];
+    Object.assign(block(blank, 'NARRATIVE'), { illustration: { image: 'tabela.webp', alt: '   ' } });
+    expect(errorsOf(blank)).toMatch(/illustration: grafika bez opisu alt/);
+
+    const monitor = fullModuleForTests();
+    const look = { frame: 'monitor', markUrl: 'https://fundacja.przyklad-online.net/rejestracja/1', page: fakePage, background: 'pulpit.webp', illustration };
+    Object.assign(block(monitor, 'QUIZ'), look);
+    expect(errorsOf(monitor)).toMatch(/illustration: nie łączy się z frame: monitor/);
+  });
+
   it('ekran monitora na tle zadania z domeną (TEXT_INPUT_GUIDED.backgroundScreen, D-186): tylko z tłem, w obrębie grafiki', () => {
     const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
     const answer = { accept: ['przyklad-online.net'], caseSensitive: false };

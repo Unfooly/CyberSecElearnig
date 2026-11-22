@@ -22,6 +22,7 @@ import { playerIdentity, reportSigner, useMyDisplayName, type PlayerIdentity } f
 import VideoBlock from './blocks/VideoBlock';
 import QuizBlock from './blocks/QuizBlock';
 import SimpleChoiceBlock from './blocks/SimpleChoiceBlock';
+import Illustrated from './blocks/Illustrated';
 import SimpleMultiChoiceBlock from './blocks/SimpleMultiChoiceBlock';
 import SwipeSortBlock from './blocks/SwipeSortBlock';
 import BranchingScenarioBlock from './blocks/BranchingScenarioBlock';
@@ -111,7 +112,20 @@ function briefingNextLabel(block: ContentBlock): string | undefined {
   return last?.kind === 'typewriter' ? last.nextLabel : undefined;
 }
 
+// Ilustracja obok tekstu albo pytania (D-200): NARRATIVE i QUIZ poza trybem prostym - wspólna oprawa wokół bloku. QUIZ w trybie prostym
+// rysuje się w monitorze (MonitorStage, wysokość z łańcucha flex) - tam ilustracja leży na ekranie monitora (Simple*ChoiceBlock).
 function renderBlock(block: ContentBlock, ctx: RenderContext) {
+  const content = renderBlockContent(block, ctx);
+  const wraps = block.type === 'NARRATIVE' || (block.type === 'QUIZ' && !ctx.simpleMode);
+  if (!block.illustration || !wraps) return content;
+  return (
+    <Illustrated illustration={block.illustration} contentBase={ctx.contentBase}>
+      {content}
+    </Illustrated>
+  );
+}
+
+function renderBlockContent(block: ContentBlock, ctx: RenderContext) {
   const { onSubmit, disabled, contentBase } = ctx;
   if (isExploratory(block.type)) {
     // key: stan wewnętrzny (odwiedzone elementy) nie może przechodzić między kolejnymi blokami tego samego typu.
@@ -189,6 +203,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
             onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
             disabled={disabled}
             questionLabel={questionLabel}
+            contentBase={contentBase}
           />
         );
       }
@@ -204,6 +219,7 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
             onProgress={(patch) => ctx.onProgress(block.id ?? '', { type: block.type, ...patch })}
             disabled={disabled}
             questionLabel={questionLabel}
+            contentBase={contentBase}
           />
         );
       }

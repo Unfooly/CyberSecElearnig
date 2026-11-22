@@ -181,6 +181,11 @@
       "original": "images/gazeta.webp",
       "hash": "39ac3ca7",
       "key": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp"
+    },
+    "gazeta#imagePortrait": {
+      "original": "images/gazeta.webp",
+      "hash": "39ac3ca7",
+      "key": "assets/wyludzone-haslo/images/gazeta.39ac3ca7.webp"
     }
   }
 }

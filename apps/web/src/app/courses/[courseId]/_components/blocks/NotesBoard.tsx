@@ -362,7 +362,7 @@ export default function NotesBoard({
     .join(' ');
 
   const trayBar = (
-    <div className="flex shrink-0 flex-col gap-2 pt-2">
+    <div className={`flex shrink-0 flex-col gap-2 pt-2 ${portrait ? 'px-3 pb-3' : ''}`}>
       {!readOnly && (
         <div role="group" aria-label="Etapy ataku do przypięcia" className="flex flex-wrap justify-center gap-2">
           {tray.map((id) => (
@@ -404,8 +404,10 @@ export default function NotesBoard({
           Sprawdź trop
         </button>
       )}
+      {/* Wynik na jasnej karcie: pod tablicą leży ciemne tło (grafika tablicy na telefonie, tło odtwarzacza poziomo) - sam tekst
+          był tam nieczytelny (uwaga właściciela 2026-11-22). */}
       {feedback && (
-        <div className="text-center">
+        <div data-testid="board-result" className="mx-auto w-full max-w-2xl rounded-card bg-surface px-4 py-3 text-center shadow-card">
           <p data-testid="board-feedback" className="font-semibold text-ink">
             {feedback}
           </p>

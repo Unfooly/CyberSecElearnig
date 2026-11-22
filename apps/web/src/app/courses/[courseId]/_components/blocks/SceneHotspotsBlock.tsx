@@ -568,7 +568,10 @@ export default function SceneHotspotsBlock({
                   '--scene-ratio': String(aspectRatio),
                   height: 'auto',
                   aspectRatio: 'var(--scene-ratio)',
-                  margin: 'auto',
+                  // Wariant pionowy: tylko poziome `auto` - pionowe wyśrodkowanie (gdy grafika niższa niż obszar, np. gazeta, D-198) daje
+                  // globals.css w regule telefonu w pionie, gdzie kontener panoramy ma wysokość obszaru (inline `margin` by ją przykrył).
+                  marginInline: 'auto',
+                  marginBlock: portraitScene ? undefined : 'auto',
                   ...(camera ?? {}),
                   transition: cameraTransition(reducedMotion, phase),
                 } as CSSProperties

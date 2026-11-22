@@ -27,7 +27,9 @@ export default function AddressMarker({
   onPick: (index: number) => void;
 }) {
   const wrap = (children: ReactNode) => (
-    <span role="group" aria-label="Adres strony" data-testid="address-marker" className="min-w-0 flex-1 break-all py-1 font-mono text-sm leading-8 text-ink">
+    // Zawijanie na granicach części adresu (przy przyciskach „/” i „.”, po zaznaczeniu - po „/” i „-”), nie w środku słowa (`break-all` dawało „formular|z-online”, uwaga właściciela
+    // 2026-11-22); `break-words` tnie słowo tylko, gdy samo nie mieści się w wierszu.
+    <span role="group" aria-label="Adres strony" data-testid="address-marker" className="min-w-0 flex-1 break-words py-1 font-mono text-sm leading-8 text-ink">
       {children}
     </span>
   );

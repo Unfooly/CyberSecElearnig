@@ -264,7 +264,8 @@ describe('CoursePlayer: powłoka (postęp, nawigacja, notatnik, lektor)', () => 
       expect(await screen.findByRole('alert')).toHaveTextContent('Błąd serwera');
       fireEvent.click(screen.getByRole('button', { name: 'Wybierz odpowiedź' }));
 
-      await screen.findByText('Poprawna odpowiedź!');
+      // Limit 5 s zamiast domyślnej 1 s: na obciążonym runnerze CI ekran wyniku pojawiał się po ~1,1 s (PR #199, test niestabilny).
+      await screen.findByText('Poprawna odpowiedź!', undefined, { timeout: 5000 });
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
